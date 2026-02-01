@@ -1,0 +1,67 @@
+/**
+ * File import functionality: importSTEP, importSTL.
+ * Ported from replicad's importers.ts.
+ */
+
+import { getKernel } from '../kernel/index.js';
+import { localGC } from '../core/memory.js';
+import { cast } from '../topology/cast.js';
+import type { AnyShape } from '../topology/shapes.js';
+
+const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+
+export async function importSTEP(STEPBlob: Blob): Promise<AnyShape> {
+  const oc = getKernel().oc;
+  const [r, gc] = localGC();
+
+  const fileName = uniqueId();
+  const bufferView = new Uint8Array(await STEPBlob.arrayBuffer());
+  oc.FS.writeFile(`/${fileName}`, bufferView);
+
+  const reader = r(new oc.STEPControl_Reader_1());
+  if (reader.ReadFile(fileName)) {
+    oc.FS.unlink('/' + fileName);
+    reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
+    const stepShape = r(reader.OneShape());
+
+    const shape = cast(stepShape);
+    gc();
+    return shape;
+  } else {
+    oc.FS.unlink('/' + fileName);
+    gc();
+    throw new Error('Failed to load STEP file');
+  }
+}
+
+export async function importSTL(STLBlob: Blob): Promise<AnyShape> {
+  const oc = getKernel().oc;
+  const [r, gc] = localGC();
+
+  const fileName = uniqueId();
+  const bufferView = new Uint8Array(await STLBlob.arrayBuffer());
+  oc.FS.writeFile(`/${fileName}`, bufferView);
+
+  const reader = r(new oc.StlAPI_Reader());
+  const readShape = r(new oc.TopoDS_Shell());
+
+  if (reader.Read(readShape, fileName)) {
+    oc.FS.unlink('/' + fileName);
+
+    const shapeUpgrader = r(new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false));
+    shapeUpgrader.Build();
+    const upgradedShape = r(shapeUpgrader.Shape());
+
+    const solidSTL = r(new oc.BRepBuilderAPI_MakeSolid_1());
+    solidSTL.Add(oc.TopoDS.Shell_1(upgradedShape));
+    const asSolid = r(solidSTL.Solid());
+
+    const shape = cast(asSolid);
+    gc();
+    return shape;
+  } else {
+    oc.FS.unlink('/' + fileName);
+    gc();
+    throw new Error('Failed to load STL file');
+  }
+}
