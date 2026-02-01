@@ -27,6 +27,8 @@ export {
   isPoint,
   createNamedPlane,
   type Point,
+  type PlaneName,
+  type SimplePoint,
 } from './core/geometry.js';
 
 export {
@@ -151,13 +153,22 @@ export { default as Blueprint } from './2d/blueprints/Blueprint.js';
 export { default as CompoundBlueprint } from './2d/blueprints/CompoundBlueprint.js';
 export { default as Blueprints } from './2d/blueprints/Blueprints.js';
 export { organiseBlueprints } from './2d/blueprints/lib.js';
+export { polysidesBlueprint, roundedRectangleBlueprint } from './2d/blueprints/cannedBlueprints.js';
+export {
+  fuseBlueprints,
+  cutBlueprints,
+  intersectBlueprints,
+} from './2d/blueprints/booleanOperations.js';
+export { fuse2D, cut2D, intersect2D, type Shape2D } from './2d/blueprints/boolean2D.js';
+export type { ScaleMode } from './2d/curves.js';
 
 // ── Layer 2: query ──
 
 export { EdgeFinder } from './query/edgeFinder.js';
 export { FaceFinder } from './query/faceFinder.js';
-export { CornerFinder } from './query/cornerFinder.js';
+export { CornerFinder, type Corner } from './query/cornerFinder.js';
 export { getSingleFace, type SingleFace } from './query/helpers.js';
+export { combineFinderFilters, type FilterFcn } from './query/index.js';
 
 // ── Layer 2: measurement ──
 
@@ -165,6 +176,10 @@ export {
   measureVolume,
   measureArea,
   measureLength,
+  measureDistanceBetween,
+  measureShapeSurfaceProperties,
+  measureShapeLinearProperties,
+  measureShapeVolumeProperties,
   DistanceTool,
   VolumePhysicalProperties,
   SurfacePhysicalProperties,
@@ -184,6 +199,7 @@ import { type GenericSketcher, type SplineConfig } from './sketching/sketcherlib
 
 export { Sketcher, FaceSketcher, BaseSketcher2d, BlueprintSketcher };
 export type { GenericSketcher, SplineConfig };
+export type { SketchInterface } from './sketching/sketchLib.js';
 
 export { default as Sketch } from './sketching/Sketch.js';
 export { default as CompoundSketch } from './sketching/CompoundSketch.js';
@@ -195,6 +211,10 @@ export {
   sketchRoundedRectangle,
   sketchPolysides,
   sketchEllipse,
+  polysideInnerRadius,
+  sketchFaceOffset,
+  sketchParametricFunction,
+  sketchHelix,
 } from './sketching/cannedSketches.js';
 
 export { makeBaseBox } from './sketching/shortcuts.js';

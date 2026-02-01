@@ -1,0 +1,11 @@
+#@ load("defaults.yml", "bindings", "emccFlags", "additionalCppCode")
+
+mainBuild:
+  name: brepjs_single.js
+  bindings: #@ bindings()
+  emccFlags:
+  #@ for flag in emccFlags():
+  - #@ flag
+  #@ end
+  - -sDISABLE_EXCEPTION_CATCHING=1
+additionalCppCode: #@ additionalCppCode()

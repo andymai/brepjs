@@ -1,0 +1,21 @@
+#@ load("defaults.yml", "bindings", "emccFlags", "additionalCppCode")
+
+mainBuild:
+  name: brepjs_with_exceptions.js
+  bindings:
+  #@ for b in bindings():
+  - #@ b
+  #@ end
+  - symbol: OCJS
+  - symbol: Standard_Failure
+  emccFlags: #@ emccFlags()
+additionalCppCode: |
+  #@ additionalCppCode()
+
+  typedef Handle(IMeshTools_Context) Handle_IMeshTools_Context;
+  class OCJS {
+  public:
+    static Standard_Failure* getStandard_FailureData(intptr_t exceptionPtr) {
+      return reinterpret_cast<Standard_Failure*>(exceptionPtr);
+    }
+  };

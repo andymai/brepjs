@@ -1,0 +1,20 @@
+{
+  "name": "brepjs-opencascade",
+  "version": "0.1.0",
+  "description": "OpenCascade.js custom WASM build for brepjs",
+  "license": "MIT",
+  "main": "src/brepjs_single.js",
+  "directories": {
+    "lib": "src"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "buildWasm": "pnpm run generateConfig && pnpm run buildSingle && pnpm run buildWithExceptions",
+    "updateDocker": "docker pull donalffons/opencascade.js",
+    "generateConfig": "ytt -f build-source/ --output-files build-config",
+    "buildSingle": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js custom_build_single.yml && mv brepjs_single* ../src && cd -",
+    "buildWithExceptions": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js custom_build_with_exceptions.yml && mv brepjs_with_exceptions* ../src && cd -"
+  }
+}
