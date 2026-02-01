@@ -1,0 +1,32 @@
+import { describe, expect, it, beforeAll } from 'vitest';
+import { initOC } from './setup.js';
+import { makeBox, exportSTEP, deserializeShape } from '../src/index.js';
+
+beforeAll(async () => {
+  await initOC();
+}, 30000);
+
+describe('Shape serialization', () => {
+  it('serializes and deserializes a shape', () => {
+    const box = makeBox([10, 10, 10]);
+    const serialized = box.serialize();
+    expect(serialized).toBeDefined();
+    expect(typeof serialized).toBe('string');
+    expect(serialized.length).toBeGreaterThan(0);
+
+    const deserialized = deserializeShape(serialized);
+    expect(deserialized).toBeDefined();
+  });
+});
+
+describe('Mesh generation', () => {
+  it('meshes a box', () => {
+    const box = makeBox([10, 10, 10]);
+    const mesh = box.mesh();
+    expect(mesh).toBeDefined();
+    expect(mesh.vertices).toBeDefined();
+    expect(mesh.triangles).toBeDefined();
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+    expect(mesh.triangles.length).toBeGreaterThan(0);
+  });
+});

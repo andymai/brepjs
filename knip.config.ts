@@ -4,7 +4,7 @@ const config: KnipConfig = {
   entry: ['src/index.ts'],
   project: ['src/**/*.ts'],
   ignore: ['src/**/*.test.ts'],
-  ignoreDependencies: [],
+  ignoreDependencies: ['brepjs-opencascade'],
   ignoreExportsUsedInFile: true,
 };
 
