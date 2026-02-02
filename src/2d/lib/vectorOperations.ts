@@ -1,5 +1,6 @@
 import type { Matrix2X2, Point2D } from './definitions.js';
 import { PRECISION_POINT } from './precision.js';
+import { bug } from '../../core/errors.js';
 
 export const samePoint = ([x0, y0]: Point2D, [x1, y1]: Point2D, precision = PRECISION_POINT): boolean => {
   return Math.abs(x0 - x1) <= precision && Math.abs(y0 - y1) <= precision;
@@ -43,6 +44,9 @@ export const polarAngle2d = ([x0, y0]: Point2D, [x1, y1]: Point2D = [0, 0]): num
 
 export const normalize2d = ([x0, y0]: Point2D): Point2D => {
   const l = distance2d([x0, y0]);
+  if (l < 1e-12) {
+    bug('normalize2d', 'Cannot normalize zero-length vector');
+  }
   return [x0 / l, y0 / l];
 };
 
