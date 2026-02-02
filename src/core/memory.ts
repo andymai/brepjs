@@ -96,7 +96,7 @@ export const localGC = (
     },
 
     () => {
-      [...cleaner.values()].forEach((d) => {
+      cleaner.forEach((d) => {
         d.delete();
       });
       cleaner.clear();

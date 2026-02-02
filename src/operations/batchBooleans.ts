@@ -6,7 +6,7 @@
 import { getKernel } from '../kernel/index.js';
 import { GCWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
-import type { BooleanOperationOptions } from '../topology/shapes.js';
+import { applyGlue, type BooleanOperationOptions } from '../topology/shapes.js';
 
 function buildCompound(shapes: OcType[]): OcType {
   const oc = getKernel().oc;
@@ -17,16 +17,6 @@ function buildCompound(shapes: OcType[]): OcType {
     builder.Add(compound, s);
   });
   return compound;
-}
-
-function applyGlue(op: { SetGlue(glue: OcType): void }, optimisation: string): void {
-  const oc = getKernel().oc;
-  if (optimisation === 'commonFace') {
-    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueShift);
-  }
-  if (optimisation === 'sameFace') {
-    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
-  }
 }
 
 export function fuseAllShapes(

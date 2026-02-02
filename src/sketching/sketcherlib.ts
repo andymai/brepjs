@@ -25,7 +25,7 @@ export const defaultsSplineConfig = (
   config?: SplineConfig
 ): {
   endTangent: Point2D | 'symmetric';
-  startTangent?: Point2D;
+  startTangent?: Point2D | undefined;
   startFactor: number;
   endFactor: number;
 } => {

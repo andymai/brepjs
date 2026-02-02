@@ -39,7 +39,7 @@ export default class Sketch implements SketchInterface {
    */
   // @ts-expect-error initialised indirectly
   _defaultDirection: Vector;
-  protected _baseFace?: Face | null;
+  protected _baseFace: Face | null | undefined;
   constructor(
     wire: Wire,
     {

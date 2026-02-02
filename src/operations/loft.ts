@@ -11,9 +11,9 @@ import type { Wire, Shape3D } from '../topology/shapes.js';
 import { makeVertex } from '../topology/shapeHelpers.js';
 
 export interface LoftConfig {
-  ruled?: boolean;
-  startPoint?: Point;
-  endPoint?: Point;
+  ruled?: boolean | undefined;
+  startPoint?: Point | undefined;
+  endPoint?: Point | undefined;
 }
 
 export const loft = (
