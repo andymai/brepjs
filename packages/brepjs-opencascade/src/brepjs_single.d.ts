@@ -8003,6 +8003,30 @@ export declare class GeomToolsWrapper {
   delete(): void;
 }
 
+export declare class MeshData {
+  constructor();
+  getVerticesPtr(): number;
+  getNormalsPtr(): number;
+  getTrianglesPtr(): number;
+  getFaceGroupsPtr(): number;
+  getVerticesSize(): number;
+  getNormalsSize(): number;
+  getTrianglesSize(): number;
+  getFaceGroupsSize(): number;
+  delete(): void;
+}
+
+export declare class MeshExtractor {
+  constructor();
+  static extract(
+    shape: TopoDS_Shape,
+    tolerance: number,
+    angularTolerance: number,
+    skipNormals: boolean
+  ): MeshData;
+  delete(): void;
+}
+
 type Standard_Boolean = boolean;
 type Standard_Byte = number;
 type Standard_Character = number;
@@ -8999,6 +9023,11 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   Geom2dAdaptor_Curve_3: typeof Geom2dAdaptor_Curve_3;
   BRepToolsWrapper: typeof BRepToolsWrapper;
   GeomToolsWrapper: typeof GeomToolsWrapper;
+  MeshData: typeof MeshData;
+  MeshExtractor: typeof MeshExtractor;
+  HEAPF32: Float32Array;
+  HEAPU32: Uint32Array;
+  HEAP32: Int32Array;
 };
 
 declare function init(): Promise<OpenCascadeInstance>;

@@ -217,7 +217,10 @@ export interface FaceTriangulation {
   verticesNormals: number[];
 }
 
-/** Triangulate a face. Returns triangulation data or null if unavailable. */
+/**
+ * Triangulate a face. Returns triangulation data or null if unavailable.
+ * @deprecated Use meshShape() instead for better performance via bulk C++ extraction.
+ */
 export function triangulateFace(
   face: Face,
   index0 = 0,

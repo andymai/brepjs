@@ -144,6 +144,7 @@ export {
   faceCenter,
   outerWire,
   innerWires,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- re-export for backward compat
   triangulateFace,
   type UVBounds,
   type FaceTriangulation as FnFaceTriangulation,

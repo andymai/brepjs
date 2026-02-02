@@ -135,9 +135,9 @@ export interface FaceTriangulation {
 }
 
 export interface ShapeMesh {
-  triangles: number[];
-  vertices: number[];
-  normals: number[];
+  triangles: Uint32Array;
+  vertices: Float32Array;
+  normals: Float32Array;
   faceGroups: { start: number; count: number; faceId: number }[];
 }
 
@@ -347,60 +347,21 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     angularTolerance?: number;
     skipNormals?: boolean;
   } = {}): ShapeMesh {
-    this._mesh({ tolerance, angularTolerance });
-
-    // Collect per-face results first to compute total sizes
-    const faces = this.faces;
-    const faceResults: { tri: FaceTriangulation; faceId: number }[] = [];
-    let totalTriangles = 0;
-    let totalVertices = 0;
-    let totalNormals = 0;
-    let vertexOffset = 0;
-
-    for (const face of faces) {
-      const tri = face.triangulation(vertexOffset, skipNormals);
-      if (!tri) continue;
-      faceResults.push({ tri, faceId: face.hashCode });
-      totalTriangles += tri.trianglesIndexes.length;
-      totalVertices += tri.vertices.length;
-      totalNormals += tri.verticesNormals.length;
-      vertexOffset += tri.vertices.length / 3;
-    }
-
-    // Pre-allocate final arrays at exact size
-    const triangles = new Array<number>(totalTriangles);
-    const vertices = new Array<number>(totalVertices);
-    const normals = new Array<number>(totalNormals);
-    const faceGroups: { start: number; count: number; faceId: number }[] = [];
-    let triOffset = 0;
-    let vtxOffset = 0;
-    let nrmOffset = 0;
-
-    for (const { tri, faceId } of faceResults) {
-      faceGroups.push({
-        start: triOffset,
-        count: tri.trianglesIndexes.length,
-        faceId,
-      });
-      for (let i = 0; i < tri.trianglesIndexes.length; i++) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        triangles[triOffset++] = tri.trianglesIndexes[i]!;
-      }
-      for (let i = 0; i < tri.vertices.length; i++) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        vertices[vtxOffset++] = tri.vertices[i]!;
-      }
-      for (let i = 0; i < tri.verticesNormals.length; i++) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        normals[nrmOffset++] = tri.verticesNormals[i]!;
-      }
-    }
+    const result = getKernel().mesh(this.wrapped, {
+      tolerance,
+      angularTolerance,
+      skipNormals,
+    });
 
     return {
-      triangles,
-      vertices,
-      normals,
-      faceGroups,
+      vertices: result.vertices,
+      normals: result.normals,
+      triangles: result.triangles,
+      faceGroups: result.faceGroups.map((g) => ({
+        start: g.start,
+        count: g.count,
+        faceId: g.faceHash,
+      })),
     };
   }
 

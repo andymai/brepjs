@@ -1,5 +1,6 @@
 import type {
   KernelAdapter,
+  KernelMeshResult,
   OpenCascadeInstance,
   OcShape,
   OcType,
@@ -378,15 +379,68 @@ export class OCCTAdapter implements KernelAdapter {
 
   // --- Meshing ---
 
-  mesh(
-    shape: OcShape,
-    options: MeshOptions
-  ): {
-    vertices: Float32Array;
-    normals: Float32Array;
-    triangles: Uint32Array;
-    faceGroups: Array<{ start: number; count: number }>;
-  } {
+  mesh(shape: OcShape, options: MeshOptions): KernelMeshResult {
+    // Use C++ bulk extraction when available, fall back to JS-side extraction
+    if (this.oc.MeshExtractor) {
+      return this._meshBulk(shape, options);
+    }
+    return this._meshJS(shape, options);
+  }
+
+  private _meshBulk(shape: OcShape, options: MeshOptions): KernelMeshResult {
+    // Single WASM call: mesh + extract all data in C++
+    const raw = this.oc.MeshExtractor.extract(
+      shape,
+      options.tolerance,
+      options.angularTolerance,
+      !!options.skipNormals
+    );
+
+    const verticesSize = raw.getVerticesSize() as number;
+    const normalsSize = raw.getNormalsSize() as number;
+    const trianglesSize = raw.getTrianglesSize() as number;
+    const faceGroupsSize = raw.getFaceGroupsSize() as number;
+
+    // Copy from WASM heap into owned TypedArrays.
+    // Must .slice() before any other WASM call could grow/relocate the heap.
+    const verticesPtr = (raw.getVerticesPtr() as number) / 4;
+    const vertices = this.oc.HEAPF32.slice(verticesPtr, verticesPtr + verticesSize) as Float32Array;
+
+    let normals: Float32Array;
+    if (options.skipNormals || normalsSize === 0) {
+      normals = new Float32Array(0);
+    } else {
+      const normalsPtr = (raw.getNormalsPtr() as number) / 4;
+      normals = this.oc.HEAPF32.slice(normalsPtr, normalsPtr + normalsSize) as Float32Array;
+    }
+
+    const trianglesPtr = (raw.getTrianglesPtr() as number) / 4;
+    const triangles = this.oc.HEAPU32.slice(
+      trianglesPtr,
+      trianglesPtr + trianglesSize
+    ) as Uint32Array;
+
+    // Parse face groups from packed [start, count, faceHash, ...] triples
+    const faceGroups: KernelMeshResult['faceGroups'] = [];
+    if (faceGroupsSize > 0) {
+      const fgPtr = (raw.getFaceGroupsPtr() as number) / 4;
+      const fgRaw = this.oc.HEAP32.slice(fgPtr, fgPtr + faceGroupsSize) as Int32Array;
+      for (let i = 0; i < fgRaw.length; i += 3) {
+        faceGroups.push({
+          start: fgRaw[i] as number,
+          count: fgRaw[i + 1] as number,
+          faceHash: fgRaw[i + 2] as number,
+        });
+      }
+    }
+
+    // Free C++ allocated memory (destructor frees internal buffers)
+    raw.delete();
+
+    return { vertices, normals, triangles, faceGroups };
+  }
+
+  private _meshJS(shape: OcShape, options: MeshOptions): KernelMeshResult {
     const mesher = new this.oc.BRepMesh_IncrementalMesh_2(
       shape,
       options.tolerance,
@@ -423,7 +477,7 @@ export class OCCTAdapter implements KernelAdapter {
     const vertices = new Float32Array(totalNodes * 3);
     const normals = options.skipNormals ? new Float32Array(0) : new Float32Array(totalNodes * 3);
     const triangles = new Uint32Array(totalTris * 3);
-    const faceGroups: Array<{ start: number; count: number }> = [];
+    const faceGroups: KernelMeshResult['faceGroups'] = [];
 
     let vIdx = 0;
     let nIdx = 0;
@@ -490,7 +544,11 @@ export class OCCTAdapter implements KernelAdapter {
           t.delete();
         }
 
-        faceGroups.push({ start: triStart, count: tIdx - triStart });
+        faceGroups.push({
+          start: triStart,
+          count: tIdx - triStart,
+          faceHash: face.HashCode(HASH_CODE_MAX),
+        });
         transformation.delete();
       }
 

@@ -260,6 +260,8 @@ mainBuild:
   - symbol: IFSelect_WorkSession
   - symbol: BRepToolsWrapper
   - symbol: GeomToolsWrapper
+  - symbol: MeshData
+  - symbol: MeshExtractor
   - symbol: OCJS
   - symbol: Standard_Failure
   emccFlags:
@@ -302,6 +304,181 @@ additionalCppCode: |
       Handle(Geom2d_Curve) geometry;
       GeomTools::Read(geometry, iss);
       return geometry;
+    }
+  };
+
+  class MeshData {
+  public:
+    MeshData()
+      : verticesPtr_(nullptr), normalsPtr_(nullptr),
+        trianglesPtr_(nullptr), faceGroupsPtr_(nullptr),
+        verticesSize_(0), normalsSize_(0),
+        trianglesSize_(0), faceGroupsSize_(0) {}
+
+    ~MeshData() {
+      std::free(verticesPtr_);
+      std::free(normalsPtr_);
+      std::free(trianglesPtr_);
+      std::free(faceGroupsPtr_);
+    }
+
+    MeshData(const MeshData&) = delete;
+    MeshData& operator=(const MeshData&) = delete;
+    MeshData(MeshData&& other) noexcept
+      : verticesPtr_(other.verticesPtr_), normalsPtr_(other.normalsPtr_),
+        trianglesPtr_(other.trianglesPtr_), faceGroupsPtr_(other.faceGroupsPtr_),
+        verticesSize_(other.verticesSize_), normalsSize_(other.normalsSize_),
+        trianglesSize_(other.trianglesSize_), faceGroupsSize_(other.faceGroupsSize_) {
+      other.verticesPtr_ = nullptr;
+      other.normalsPtr_ = nullptr;
+      other.trianglesPtr_ = nullptr;
+      other.faceGroupsPtr_ = nullptr;
+    }
+    MeshData& operator=(MeshData&& other) noexcept {
+      if (this != &other) {
+        std::free(verticesPtr_); std::free(normalsPtr_);
+        std::free(trianglesPtr_); std::free(faceGroupsPtr_);
+        verticesPtr_ = other.verticesPtr_; normalsPtr_ = other.normalsPtr_;
+        trianglesPtr_ = other.trianglesPtr_; faceGroupsPtr_ = other.faceGroupsPtr_;
+        verticesSize_ = other.verticesSize_; normalsSize_ = other.normalsSize_;
+        trianglesSize_ = other.trianglesSize_; faceGroupsSize_ = other.faceGroupsSize_;
+        other.verticesPtr_ = nullptr; other.normalsPtr_ = nullptr;
+        other.trianglesPtr_ = nullptr; other.faceGroupsPtr_ = nullptr;
+      }
+      return *this;
+    }
+
+    int getVerticesPtr() const  { return static_cast<int>(reinterpret_cast<uintptr_t>(verticesPtr_)); }
+    int getNormalsPtr() const   { return static_cast<int>(reinterpret_cast<uintptr_t>(normalsPtr_)); }
+    int getTrianglesPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(trianglesPtr_)); }
+    int getFaceGroupsPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(faceGroupsPtr_)); }
+
+    int getVerticesSize() const   { return verticesSize_; }
+    int getNormalsSize() const    { return normalsSize_; }
+    int getTrianglesSize() const  { return trianglesSize_; }
+    int getFaceGroupsSize() const { return faceGroupsSize_; }
+
+    float*    verticesPtr_;
+    float*    normalsPtr_;
+    uint32_t* trianglesPtr_;
+    int32_t*  faceGroupsPtr_;
+
+    int verticesSize_;
+    int normalsSize_;
+    int trianglesSize_;
+    int faceGroupsSize_;
+  };
+
+  class MeshExtractor {
+  public:
+    static MeshData extract(
+      const TopoDS_Shape& shape,
+      double tolerance,
+      double angularTolerance,
+      bool skipNormals
+    ) {
+      BRepMesh_IncrementalMesh mesher(shape, tolerance, Standard_False, angularTolerance, Standard_False);
+
+      int totalNodes = 0;
+      int totalTriangles = 0;
+      int totalFaces = 0;
+
+      for (TopExp_Explorer ex(shape, TopAbs_FACE); ex.More(); ex.Next()) {
+        TopLoc_Location loc;
+        Handle(Poly_Triangulation) tri = BRep_Tool::Triangulation(
+          TopoDS::Face(ex.Current()), loc);
+        if (tri.IsNull()) continue;
+        totalNodes += tri->NbNodes();
+        totalTriangles += tri->NbTriangles();
+        totalFaces++;
+      }
+
+      MeshData result;
+
+      result.verticesSize_ = totalNodes * 3;
+      result.verticesPtr_ = static_cast<float*>(
+        std::malloc(result.verticesSize_ * sizeof(float)));
+
+      if (!skipNormals) {
+        result.normalsSize_ = totalNodes * 3;
+        result.normalsPtr_ = static_cast<float*>(
+          std::malloc(result.normalsSize_ * sizeof(float)));
+      }
+
+      result.trianglesSize_ = totalTriangles * 3;
+      result.trianglesPtr_ = static_cast<uint32_t*>(
+        std::malloc(result.trianglesSize_ * sizeof(uint32_t)));
+
+      result.faceGroupsSize_ = totalFaces * 3;
+      result.faceGroupsPtr_ = static_cast<int32_t*>(
+        std::malloc(result.faceGroupsSize_ * sizeof(int32_t)));
+
+      int vertexOffset = 0;
+      int triOffset = 0;
+      int faceGroupIdx = 0;
+
+      for (TopExp_Explorer ex(shape, TopAbs_FACE); ex.More(); ex.Next()) {
+        const TopoDS_Face& face = TopoDS::Face(ex.Current());
+        TopLoc_Location loc;
+        Handle(Poly_Triangulation) tri = BRep_Tool::Triangulation(face, loc);
+        if (tri.IsNull()) continue;
+
+        const gp_Trsf& trsf = loc.Transformation();
+        int nbNodes = tri->NbNodes();
+        int nbTri = tri->NbTriangles();
+
+        for (int i = 1; i <= nbNodes; i++) {
+          gp_Pnt p = tri->Node(i).Transformed(trsf);
+          int base = (vertexOffset + i - 1) * 3;
+          result.verticesPtr_[base + 0] = static_cast<float>(p.X());
+          result.verticesPtr_[base + 1] = static_cast<float>(p.Y());
+          result.verticesPtr_[base + 2] = static_cast<float>(p.Z());
+        }
+
+        if (!skipNormals) {
+          TColgp_Array1OfDir normalsArray(1, nbNodes);
+          Poly_Connect pc(tri);
+          StdPrs_ToolTriangulatedShape::Normal(face, pc, normalsArray);
+
+          for (int i = 1; i <= nbNodes; i++) {
+            gp_Dir d = normalsArray.Value(i).Transformed(trsf);
+            int base = (vertexOffset + i - 1) * 3;
+            result.normalsPtr_[base + 0] = static_cast<float>(d.X());
+            result.normalsPtr_[base + 1] = static_cast<float>(d.Y());
+            result.normalsPtr_[base + 2] = static_cast<float>(d.Z());
+          }
+        }
+
+        int faceTriStart = triOffset;
+        bool isReversed = (face.Orientation() != TopAbs_FORWARD);
+        for (int t = 1; t <= nbTri; t++) {
+          const Poly_Triangle& triangle = tri->Triangle(t);
+          int n1 = triangle.Value(1);
+          int n2 = triangle.Value(2);
+          int n3 = triangle.Value(3);
+
+          if (isReversed) {
+            int tmp = n1;
+            n1 = n2;
+            n2 = tmp;
+          }
+
+          result.trianglesPtr_[triOffset + 0] = static_cast<uint32_t>(n1 - 1 + vertexOffset);
+          result.trianglesPtr_[triOffset + 1] = static_cast<uint32_t>(n2 - 1 + vertexOffset);
+          result.trianglesPtr_[triOffset + 2] = static_cast<uint32_t>(n3 - 1 + vertexOffset);
+          triOffset += 3;
+        }
+
+        int faceHash = face.HashCode(2147483647);
+        result.faceGroupsPtr_[faceGroupIdx + 0] = faceTriStart;
+        result.faceGroupsPtr_[faceGroupIdx + 1] = (triOffset - faceTriStart);
+        result.faceGroupsPtr_[faceGroupIdx + 2] = faceHash;
+        faceGroupIdx += 3;
+
+        vertexOffset += nbNodes;
+      }
+
+      return result;
     }
   };
 

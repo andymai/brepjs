@@ -18,6 +18,7 @@ export function initFromOC(oc: OpenCascadeInstance): void {
 
 export type {
   KernelAdapter,
+  KernelMeshResult,
   OpenCascadeInstance,
   BooleanOptions,
   ShapeType,
