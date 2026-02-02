@@ -5,6 +5,7 @@
 
 import type { Point2D } from '../2d/lib/index.js';
 import type { Plane, PlaneName, Point } from '../core/geometry.js';
+import type Blueprints from '../2d/blueprints/Blueprints.js';
 import { bug } from '../core/errors.js';
 import { organiseBlueprints } from '../2d/blueprints/lib.js';
 import { BlueprintSketcher } from '../sketching/Sketcher2d.js';
@@ -91,13 +92,9 @@ const sketchFontCommands = function* (commands: any[]) {
 export function textBlueprints(
   text: string,
   { startX = 0, startY = 0, fontSize = 16, fontFamily = 'default' } = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- font rendering returns dynamic blueprint structures
-): any {
+): Blueprints {
   let font = getFont(fontFamily);
-  if (!font) {
-    console.warn(`Font family "${fontFamily}" not found, please load it first, using the default`);
-    font = getFont();
-  }
+  if (!font) font = getFont();
   if (!font) {
     bug('text', 'No fonts loaded. Call loadFont() before using text functions.');
   }
