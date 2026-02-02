@@ -56,7 +56,6 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
 export function filletCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
   const cornerRemoved = removeCorner(firstCurve, secondCurve, radius);
   if (!cornerRemoved) {
-    console.warn('Cannot fillet between curves', firstCurve.repr, secondCurve.repr);
     return [firstCurve, secondCurve];
   }
 
@@ -68,7 +67,6 @@ export function filletCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: 
 export function chamferCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
   const cornerRemoved = removeCorner(firstCurve, secondCurve, radius);
   if (!cornerRemoved) {
-    console.warn('Cannot chamfer between curves', firstCurve.repr, secondCurve.repr);
     return [firstCurve, secondCurve];
   }
 
