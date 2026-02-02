@@ -4,6 +4,7 @@
  */
 
 import { unwrap } from '../core/result.js';
+import { bug } from '../core/errors.js';
 import type { ApproximationOptions } from '../2d/lib/index.js';
 import {
   BoundingBox2d,
@@ -88,7 +89,7 @@ export class Drawing implements DrawingInterface {
           curves: shape.curves.map((c) => c.serialize()),
         };
       } else {
-        throw new Error('Unknown shape type for serialization');
+        bug('Drawing.serialize', 'Unknown shape type for serialization');
       }
     }
 
@@ -188,12 +189,12 @@ export class Drawing implements DrawingInterface {
     inputPlane?: PlaneName | Plane,
     origin?: Point | number
   ): SketchInterface | Sketches {
-    if (!this.innerShape) throw new Error('Trying to sketch an empty drawing');
+    if (!this.innerShape) bug('Drawing', 'Trying to sketch an empty drawing');
     return this.innerShape.sketchOnPlane(inputPlane, origin);
   }
 
   sketchOnFace(face: Face, scaleMode: ScaleMode): SketchInterface | Sketches {
-    if (!this.innerShape) throw new Error('Trying to sketch an empty drawing');
+    if (!this.innerShape) bug('Drawing', 'Trying to sketch an empty drawing');
     return this.innerShape.sketchOnFace(face, scaleMode);
   }
 
@@ -228,7 +229,7 @@ export class Drawing implements DrawingInterface {
 
   approximate(target: 'svg' | 'arcs', options: ApproximationOptions = {}): Drawing {
     if (target !== 'svg') {
-      throw new Error("Only 'svg' is supported for now");
+      bug('Drawing.approximate', "Only 'svg' is supported for now");
     }
     return new Drawing(approximateForSVG(this.innerShape, options));
   }
@@ -242,7 +243,7 @@ export class Drawing implements DrawingInterface {
       ) {
         return this.innerShape.blueprints[0];
       }
-      throw new Error('This drawing is not a blueprint');
+      bug('Drawing.blueprint', 'This drawing is not a blueprint');
     }
     return this.innerShape;
   }
@@ -308,7 +309,7 @@ export function deserializeDrawing(data: string): Drawing {
       const curves = json['curves'].map((c: string) => deserializeCurve2D(c));
       return new Blueprint(curves);
     } else {
-      throw new Error('Unknown shape type for deserialization');
+      bug('Drawing.deserialize', 'Unknown shape type for deserialization');
     }
   }
 

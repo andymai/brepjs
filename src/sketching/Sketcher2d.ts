@@ -109,7 +109,7 @@ export class BaseSketcher2d {
 
   movePointerTo(point: Point2D): this {
     if (this.pendingCurves.length)
-      throw new Error('You can only move the pointer if there is no curve defined');
+      bug('Sketcher2d.movePointerTo', 'You can only move the pointer if there is no curve defined');
 
     this.pointer = point;
     this.firstPoint = point;
@@ -173,7 +173,8 @@ export class BaseSketcher2d {
       ? this.pendingCurves[this.pendingCurves.length - 1]
       : null;
 
-    if (!previousCurve) throw new Error('You need a previous curve to sketch a tangent line');
+    if (!previousCurve)
+      bug('Sketcher2d.tangentLine', 'You need a previous curve to sketch a tangent line');
 
     const direction = normalize2d(this._convertFromUV(previousCurve.tangentAt(1)));
     return this.line(direction[0] * distance, direction[1] * distance);
@@ -263,7 +264,8 @@ export class BaseSketcher2d {
       ? this.pendingCurves[this.pendingCurves.length - 1]
       : null;
 
-    if (!previousCurve) throw new Error('You need a previous curve to sketch a tangent arc');
+    if (!previousCurve)
+      bug('Sketcher2d.tangentArc', 'You need a previous curve to sketch a tangent arc');
 
     this.saveCurve(
       make2dTangentArc(
@@ -447,7 +449,8 @@ export class BaseSketcher2d {
     radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]),
     mode: 'fillet' | 'chamfer' = 'fillet'
   ) {
-    if (!this.pendingCurves.length) throw new Error('You need a curve defined to fillet the angle');
+    if (!this.pendingCurves.length)
+      bug('Sketcher2d.customCorner', 'You need a curve defined to fillet the angle');
 
     this._nextCorner = buildCornerFunction(radius, mode);
     return this;
@@ -475,7 +478,10 @@ export class BaseSketcher2d {
 
   protected _closeWithMirror() {
     if (samePoint(this.pointer, this.firstPoint))
-      throw new Error('Cannot close with a mirror when the sketch is already closed');
+      bug(
+        'Sketcher2d._closeWithMirror',
+        'Cannot close with a mirror when the sketch is already closed'
+      );
     const startToEndVector: Point2D = [
       this.pointer[0] - this.firstPoint[0],
       this.pointer[1] - this.firstPoint[1],

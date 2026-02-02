@@ -8,6 +8,7 @@ import { makePlane } from '../core/geometryHelpers.js';
 import { localGC } from '../core/memory.js';
 import { DEG2RAD, RAD2DEG } from '../core/constants.js';
 import { unwrap } from '../core/result.js';
+import { bug } from '../core/errors.js';
 import { distance2d, polarAngle2d, polarToCartesian, type Point2D } from '../2d/lib/index.js';
 import {
   makeLine,
@@ -67,7 +68,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   movePointerTo([x, y]: Point2D): this {
     if (this.pendingEdges.length)
-      throw new Error('You can only move the pointer if there is no edge defined');
+      bug('Sketcher.movePointerTo', 'You can only move the pointer if there is no edge defined');
     this._updatePointer(this.plane.toWorldCoords([x, y]));
     this.firstPoint = new Vector(this.pointer);
     return this;
@@ -121,7 +122,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
       ? this.pendingEdges[this.pendingEdges.length - 1]
       : null;
 
-    if (!previousEdge) throw new Error('you need a previous edge to create a tangent line');
+    if (!previousEdge)
+      bug('Sketcher.tangentLine', 'You need a previous edge to create a tangent line');
 
     const tangent = r(previousEdge.tangentAt(1));
     const endPoint = r(tangent.normalized().multiply(distance)).add(this.pointer);
@@ -408,7 +410,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   protected buildWire(): Wire {
-    if (!this.pendingEdges.length) throw new Error('No lines to convert into a wire');
+    if (!this.pendingEdges.length) bug('Sketcher.buildWire', 'No lines to convert into a wire');
 
     let wire = unwrap(assembleWire(this.pendingEdges));
 

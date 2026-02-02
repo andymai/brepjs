@@ -19,6 +19,7 @@ import type { LoftConfig } from '../operations/loft.js';
 import type { SketchInterface } from './sketchLib.js';
 import { cast } from '../topology/cast.js';
 import { type Result, unwrap, isOk } from '../core/result.js';
+import { bug } from '../core/errors.js';
 import { Face, type Shape3D, type Shell, type Wire } from '../topology/shapes.js';
 import { getKernel } from '../kernel/index.js';
 
@@ -56,7 +57,7 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
   faceBuilder.delete();
 
   if (!(newFace instanceof Face)) {
-    throw new Error('Failed to create a face');
+    bug('guessFaceFromWires', 'Failed to create a face');
   }
   return newFace;
 };
@@ -212,7 +213,10 @@ export default class CompoundSketch implements SketchInterface {
 
   loftWith(otherCompound: this, loftConfig: LoftConfig): Shape3D {
     if (this.sketches.length !== otherCompound.sketches.length)
-      throw new Error('You need to loft with another compound with the same number of sketches');
+      bug(
+        'CompoundSketch.loftWith',
+        'You need to loft with another compound with the same number of sketches'
+      );
 
     const shells: Array<Shell | Face> = this.sketches.map((base, cIndex) => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
