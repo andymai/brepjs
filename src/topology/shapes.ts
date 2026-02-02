@@ -19,8 +19,8 @@ import { rotate, translate, mirror, scale as scaleShape } from '../core/geometry
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { cast, downcast, iterTopo, type TopoEntity } from './cast.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
-import { bug } from '../core/errors.js';
-import { unwrap } from '../core/result.js';
+import { bug, typeCastError, validationError, ioError } from '../core/errors.js';
+import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 
 export type { CurveType };
 
@@ -526,7 +526,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    *
    * @category Shape Export
    */
-  blobSTEP(): Blob {
+  blobSTEP(): Result<Blob> {
     const filename = 'blob.step';
     const writer = new this.oc.STEPControl_Writer_1();
 
@@ -551,9 +551,9 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
       this.oc.FS.unlink('/' + filename);
 
       const blob = new Blob([file], { type: 'application/STEP' });
-      return blob;
+      return ok(blob);
     } else {
-      throw new Error('Failed to write STEP file');
+      return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
     }
   }
 
@@ -562,7 +562,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    *
    * @category Shape Export
    */
-  blobSTL({ tolerance = 1e-3, angularTolerance = 0.1, binary = false } = {}): Blob {
+  blobSTL({ tolerance = 1e-3, angularTolerance = 0.1, binary = false } = {}): Result<Blob> {
     this._mesh({ tolerance, angularTolerance });
     const filename = 'blob.stl';
     const done = this.oc.StlAPI.Write(this.wrapped, filename, !binary);
@@ -572,9 +572,9 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
       this.oc.FS.unlink('/' + filename);
 
       const blob = new Blob([file], { type: 'application/sla' });
-      return blob;
+      return ok(blob);
     } else {
-      throw new Error('Failed to write STL file');
+      return err(ioError('STL_EXPORT_FAILED', 'Failed to write STL file'));
     }
   }
 }
@@ -738,7 +738,7 @@ export class Wire extends _1DShape {
     return new this.oc.BRepAdaptor_CompCurve_2(this.wrapped, false);
   }
 
-  offset2D(offset: number, kind: 'arc' | 'intersection' | 'tangent' = 'arc'): Wire {
+  offset2D(offset: number, kind: 'arc' | 'intersection' | 'tangent' = 'arc'): Result<Wire> {
     const kinds = {
       arc: this.oc.GeomAbs_JoinType.GeomAbs_Arc,
       intersection: this.oc.GeomAbs_JoinType.GeomAbs_Intersection,
@@ -753,11 +753,14 @@ export class Wire extends _1DShape {
     );
     offsetter.Perform(offset, 0);
 
-    const newShape = unwrap(cast(offsetter.Shape()));
+    const result = andThen(cast(offsetter.Shape()), (newShape) => {
+      if (!(newShape instanceof Wire))
+        return err(typeCastError('OFFSET_NOT_WIRE', 'Offset did not produce a Wire'));
+      return ok(newShape);
+    });
     offsetter.delete();
     this.delete();
-    if (!(newShape instanceof Wire)) throw new Error('Offset did not produce a Wire');
-    return newShape;
+    return result;
   }
 }
 
@@ -766,7 +769,7 @@ export class Wire extends _1DShape {
 // ---------------------------------------------------------------------------
 
 export class Surface extends WrappingObj<OcType> {
-  get surfaceType(): SurfaceType {
+  get surfaceType(): Result<SurfaceType> {
     const ga = this.oc.GeomAbs_SurfaceType;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are dynamic
@@ -785,8 +788,11 @@ export class Surface extends WrappingObj<OcType> {
     ]);
 
     const st = CAST_MAP.get(this.wrapped.GetType());
-    if (!st) throw new Error('Unrecognized surface type from OCCT adapter');
-    return st;
+    if (!st)
+      return err(
+        typeCastError('UNKNOWN_SURFACE_TYPE', 'Unrecognized surface type from OCCT adapter')
+      );
+    return ok(st);
   }
 }
 
@@ -812,7 +818,7 @@ export class Face extends Shape {
 
   get geomType(): SurfaceType {
     const surface = this.surface;
-    const geomType = surface.surfaceType;
+    const geomType = unwrap(surface.surfaceType);
     surface.delete();
     return geomType;
   }
@@ -997,7 +1003,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
   fuse(
     other: Shape3D,
     { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
-  ): Shape3D {
+  ): Result<Shape3D> {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const newBody = r(new this.oc.BRepAlgoAPI_Fuse_3(this.wrapped, other.wrapped, progress));
@@ -1007,10 +1013,11 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     if (simplify) {
       newBody.SimplifyResult(true, true, 1e-3);
     }
-    const newShape = unwrap(cast(newBody.Shape()));
-    if (!isShape3D(newShape)) throw new Error('Fuse did not produce a 3D shape');
-
-    return newShape;
+    return andThen(cast(newBody.Shape()), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('FUSE_NOT_3D', 'Fuse did not produce a 3D shape'));
+      return ok(newShape);
+    });
   }
 
   /**
@@ -1021,7 +1028,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
   cut(
     tool: Shape3D,
     { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
-  ): Shape3D {
+  ): Result<Shape3D> {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const cutter = r(new this.oc.BRepAlgoAPI_Cut_3(this.wrapped, tool.wrapped, progress));
@@ -1031,9 +1038,11 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       cutter.SimplifyResult(true, true, 1e-3);
     }
 
-    const newShape = unwrap(cast(cutter.Shape()));
-    if (!isShape3D(newShape)) throw new Error('Cut did not produce a 3D shape');
-    return newShape;
+    return andThen(cast(cutter.Shape()), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('CUT_NOT_3D', 'Cut did not produce a 3D shape'));
+      return ok(newShape);
+    });
   }
 
   /**
@@ -1041,7 +1050,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    *
    * @category Shape Modifications
    */
-  intersect(tool: AnyShape, { simplify = true }: { simplify?: boolean } = {}): AnyShape {
+  intersect(tool: AnyShape, { simplify = true }: { simplify?: boolean } = {}): Result<Shape3D> {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const intersector = r(new this.oc.BRepAlgoAPI_Common_3(this.wrapped, tool.wrapped, progress));
@@ -1050,9 +1059,11 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       intersector.SimplifyResult(true, true, 1e-3);
     }
 
-    const newShape = unwrap(cast(intersector.Shape()));
-    if (!isShape3D(newShape)) throw new Error('Intersect did not produce a 3D shape');
-    return newShape;
+    return andThen(cast(intersector.Shape()), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('INTERSECT_NOT_3D', 'Intersect did not produce a 3D shape'));
+      return ok(newShape);
+    });
   }
 
   /**
@@ -1060,13 +1071,17 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    *
    * @category Shape Modifications
    */
-  shell(config: { filter: FaceFinder; thickness: number }, tolerance?: number): Shape3D;
-  shell(thickness: number, finderFcn: (f: FaceFinder) => FaceFinder, tolerance?: number): Shape3D;
+  shell(config: { filter: FaceFinder; thickness: number }, tolerance?: number): Result<Shape3D>;
+  shell(
+    thickness: number,
+    finderFcn: (f: FaceFinder) => FaceFinder,
+    tolerance?: number
+  ): Result<Shape3D>;
   shell(
     thicknessOrConfig: { filter: FaceFinder; thickness: number } | number,
     toleranceOrFinderFcn: null | number | ((f: FaceFinder) => FaceFinder) = null,
     tolerance = 1e-3
-  ): Shape3D {
+  ): Result<Shape3D> {
     const tol = typeof toleranceOrFinderFcn === 'number' ? toleranceOrFinderFcn : tolerance;
 
     const { FaceFinder: FaceFinderClass } = getQueryModule();
@@ -1109,10 +1124,11 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       false,
       progress
     );
-    const newShape = unwrap(cast(shellBuilder.Shape()));
-    if (!isShape3D(newShape)) throw new Error('Shell operation did not produce a 3D shape');
-
-    return newShape;
+    return andThen(cast(shellBuilder.Shape()), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('SHELL_NOT_3D', 'Shell operation did not produce a 3D shape'));
+      return ok(newShape);
+    });
   }
 
   protected _builderIter<R = number>(
@@ -1171,7 +1187,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
   fillet(
     radiusConfig: RadiusConfig<FilletRadius>,
     filter?: (e: EdgeFinder) => EdgeFinder
-  ): Shape3D {
+  ): Result<Shape3D> {
     const r = GCWithScope();
 
     const filletBuilder = r(
@@ -1199,11 +1215,14 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       },
       isFilletRadius
     );
-    if (!edgesFound) throw new Error('Fillet failed: no edges matched the filter');
+    if (!edgesFound)
+      return err(validationError('FILLET_NO_EDGES', 'Fillet failed: no edges matched the filter'));
 
-    const newShape = unwrap(cast(filletBuilder.Shape()));
-    if (!isShape3D(newShape)) throw new Error('Fillet did not produce a 3D shape');
-    return newShape;
+    return andThen(cast(filletBuilder.Shape()), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('FILLET_NOT_3D', 'Fillet did not produce a 3D shape'));
+      return ok(newShape);
+    });
   }
 
   /**
@@ -1214,7 +1233,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
   chamfer(
     radiusConfig: RadiusConfig<ChamferRadius>,
     filter?: (e: EdgeFinder) => EdgeFinder
-  ): Shape3D {
+  ): Result<Shape3D> {
     const r = GCWithScope();
 
     const chamferBuilder = r(new this.oc.BRepFilletAPI_MakeChamfer(this.wrapped));
@@ -1238,7 +1257,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
 
         const finder = new FaceFinderClass();
         const face = rad.selectedFace(finder).find(this, { unique: true });
-        if (!face) throw new Error('Chamfer failed: could not find the specified face');
+        if (!face) bug('chamfer', 'Chamfer failed: could not find the specified face');
 
         if ('distances' in rad) {
           const [d1, d2] = rad.distances;
@@ -1251,11 +1270,16 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       },
       isChamferRadius
     );
-    if (!edgesFound) throw new Error('Chamfer failed: no edges matched the filter');
+    if (!edgesFound)
+      return err(
+        validationError('CHAMFER_NO_EDGES', 'Chamfer failed: no edges matched the filter')
+      );
 
-    const newShape = unwrap(cast(chamferBuilder.Shape()));
-    if (!isShape3D(newShape)) throw new Error('Chamfer did not produce a 3D shape');
-    return newShape;
+    return andThen(cast(chamferBuilder.Shape()), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('CHAMFER_NOT_3D', 'Chamfer did not produce a 3D shape'));
+      return ok(newShape);
+    });
   }
 }
 
@@ -1325,10 +1349,11 @@ export function applyGlue(
 export function fuseAll(
   shapes: Shape3D[],
   { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
-): Shape3D {
-  if (shapes.length === 0) throw new Error('fuseAll requires at least one shape');
+): Result<Shape3D> {
+  if (shapes.length === 0)
+    return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  if (shapes.length === 1) return shapes[0]!;
+  if (shapes.length === 1) return ok(shapes[0]!);
 
   const oc = getKernel().oc;
   const r = GCWithScope();
@@ -1345,9 +1370,11 @@ export function fuseAll(
     fuseOp.SimplifyResult(true, true, 1e-3);
   }
 
-  const newShape = unwrap(cast(fuseOp.Shape()));
-  if (!isShape3D(newShape)) throw new Error('fuseAll did not produce a 3D shape');
-  return newShape;
+  return andThen(cast(fuseOp.Shape()), (newShape) => {
+    if (!isShape3D(newShape))
+      return err(typeCastError('FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape'));
+    return ok(newShape);
+  });
 }
 
 /**
@@ -1359,8 +1386,8 @@ export function cutAll(
   base: Shape3D,
   tools: Shape3D[],
   { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
-): Shape3D {
-  if (tools.length === 0) return base;
+): Result<Shape3D> {
+  if (tools.length === 0) return ok(base);
 
   const oc = getKernel().oc;
   const r = GCWithScope();
@@ -1375,7 +1402,9 @@ export function cutAll(
     cutOp.SimplifyResult(true, true, 1e-3);
   }
 
-  const newShape = unwrap(cast(cutOp.Shape()));
-  if (!isShape3D(newShape)) throw new Error('cutAll did not produce a 3D shape');
-  return newShape;
+  return andThen(cast(cutOp.Shape()), (newShape) => {
+    if (!isShape3D(newShape))
+      return err(typeCastError('CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape'));
+    return ok(newShape);
+  });
 }

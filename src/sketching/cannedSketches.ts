@@ -188,7 +188,7 @@ export const polysideInnerRadius = (
 export const sketchFaceOffset = (face: Face, offset: number): Sketch => {
   const defaultOrigin = face.center;
   const defaultDirection = face.normalAt();
-  const wire = face.outerWire().offset2D(offset);
+  const wire = unwrap(face.outerWire().offset2D(offset));
 
   const sketch = new Sketch(wire, { defaultOrigin, defaultDirection });
   defaultOrigin.delete();

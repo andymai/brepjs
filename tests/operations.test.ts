@@ -12,6 +12,7 @@ import {
   loft,
   measureVolume,
   Vector,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -155,21 +156,21 @@ describe('Boolean operations', () => {
   it('fuse increases volume', () => {
     const box1 = makeBox([10, 10, 10]);
     const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
-    const fused = box1.fuse(box2);
+    const fused = unwrap(box1.fuse(box2));
     expect(measureVolume(fused)).toBeCloseTo(1500, 0);
   });
 
   it('cut decreases volume', () => {
     const box1 = makeBox([10, 10, 10]);
     const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
-    const cut = box1.cut(box2);
+    const cut = unwrap(box1.cut(box2));
     expect(measureVolume(cut)).toBeCloseTo(500, 0);
   });
 
   it('intersect yields overlap', () => {
     const box1 = makeBox([10, 10, 10]);
     const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
-    const intersection = box1.intersect(box2);
+    const intersection = unwrap(box1.intersect(box2));
     expect(measureVolume(intersection)).toBeCloseTo(500, 0);
   });
 });
