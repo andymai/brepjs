@@ -232,6 +232,7 @@ export class Transformation extends WrappingObj<OcType> {
     );
 
     this.wrapped.SetTranslation_1(translation.wrapped);
+    translation.delete();
     return this;
   }
 
@@ -540,7 +541,8 @@ export class BoundingBox extends WrappingObj<OcType> {
 
   get repr(): string {
     const [min, max] = this.bounds;
-    return `${new Vector(min).repr} - ${new Vector(max).repr}`;
+    const fmt = ([x, y, z]: SimplePoint) => `x: ${round3(x)}, y: ${round3(y)}, z: ${round3(z)}`;
+    return `${fmt(min)} - ${fmt(max)}`;
   }
 
   get bounds(): [SimplePoint, SimplePoint] {
