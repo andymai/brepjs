@@ -20,7 +20,7 @@ jobs:
 
       - name: Install ytt
         run: |
-          curl -fsSL -o ytt https://github.com/carvel-dev/ytt/releases/latest/download/ytt-linux-amd64
+          curl -fsSL -o ytt https://github.com/carvel-dev/ytt/releases/download/v0.50.0/ytt-linux-amd64
           chmod +x ytt
           sudo mv ytt /usr/local/bin/
 
