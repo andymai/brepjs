@@ -9,7 +9,7 @@ import { GCWithScope, localGC, WrappingObj } from '../core/memory.js';
 import { asPnt, makeAx2, makeAx3, makeAx1, Vector, type Point } from '../core/geometry.js';
 import { cast, downcast } from './cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
-import { validationError, occtError, typeCastError } from '../core/errors.js';
+import { bug, validationError, occtError, typeCastError } from '../core/errors.js';
 import {
   type AnyShape,
   type Shape3D,
@@ -212,6 +212,9 @@ export const makeBSplineApproximation = function makeBSplineApproximation(
 };
 
 export const makeBezierCurve = (points: Point[]): Edge => {
+  if (points.length < 2) {
+    bug('makeBezierCurve', `Need at least 2 points for a Bezier curve, got ${points.length}`);
+  }
   const oc = getKernel().oc;
   const arrayOfPoints = new oc.TColgp_Array1OfPnt_2(1, points.length);
   points.forEach((p, i) => {

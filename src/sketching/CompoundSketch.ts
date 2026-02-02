@@ -120,6 +120,9 @@ const solidFromShellGenerator = (
 export default class CompoundSketch implements SketchInterface {
   sketches: Sketch[];
   constructor(sketches: Sketch[]) {
+    if (sketches.length === 0) {
+      bug('CompoundSketch', 'Cannot create CompoundSketch with an empty array of sketches');
+    }
     this.sketches = sketches;
   }
 
