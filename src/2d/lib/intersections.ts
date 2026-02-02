@@ -64,7 +64,6 @@ export const intersectCurves = (
     intersections = Array.from(pointsIteration(intersector));
     commonSegments = Array.from(commonSegmentsIteration(intersector));
   } catch (e) {
-    console.error(first, second, e);
     return err(computationError('INTERSECTION_FAILED', 'Intersections failed between curves', e));
   } finally {
     intersector.delete();

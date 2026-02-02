@@ -124,7 +124,6 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           newFused = newFused.blueprints[0]!;
         } else if (!(newFused instanceof Blueprints)) {
-          console.error(newFused);
           bug('fuseIntersectingBlueprints', 'Fuse produced unexpected non-blueprint result');
         }
       }

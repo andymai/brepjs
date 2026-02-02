@@ -49,10 +49,6 @@ const rotateToStartAtSegment = (curves: Curve2D[], segment: Curve2D) => {
     curves = reverseSegment(curves);
     startIndex = curves.findIndex(onSegment);
     if (startIndex === -1) {
-      console.error(
-        curves.map((c) => c.repr),
-        segment.repr
-      );
       bug('rotateToStartAtSegment', 'Failed to rotate to segment start');
     }
   }
@@ -141,7 +137,6 @@ function removeNonCrossingPoint(
       return samePoint(s.firstPoint, intersection) || samePoint(s.lastPoint, intersection);
     });
     if (segmentsOfIntersection.length % 2) {
-      console.error(segmentsOfIntersection, intersection);
       bug('removeNonCrossingPoint', 'Odd number of segments at intersection point (expected even)');
     }
 
