@@ -69,9 +69,13 @@ export class OCCTAdapter implements KernelAdapter {
     if (shapes.length === 0) throw new Error('fuseAll requires at least one shape');
     if (shapes.length === 1) return shapes[0];
 
+    // Recursive pairwise fuse: divide-and-conquer using actual boolean fuse
+    // at each level. Using compounds here would be incorrect when shapes within
+    // the same compound intersect each other (OCCT expects non-self-intersecting
+    // input shapes for BRepAlgoAPI_Fuse).
     const mid = Math.ceil(shapes.length / 2);
-    const left = this._buildCompound(shapes.slice(0, mid));
-    const right = this._buildCompound(shapes.slice(mid));
+    const left = this.fuseAll(shapes.slice(0, mid), options);
+    const right = this.fuseAll(shapes.slice(mid), options);
     return this.fuse(left, right, options);
   }
 

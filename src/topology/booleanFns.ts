@@ -10,7 +10,7 @@ import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Shape3D, Compound } from '../core/shapeTypes.js';
 import { castShape, isShape3D, createCompound } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
-import { type Result, ok, err } from '../core/result.js';
+import { type Result, ok, err, isErr } from '../core/result.js';
 import { validationError, typeCastError } from '../core/errors.js';
 
 // ---------------------------------------------------------------------------
@@ -121,19 +121,14 @@ export function fuseAll(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   if (shapes.length === 1) return ok(shapes[0]!);
 
-  const oc = getKernel().oc;
-  const r = gcWithScope();
-
+  // Recursive pairwise fuse to avoid compounding mutually-intersecting shapes
   const mid = Math.ceil(shapes.length / 2);
-  const leftCompound = r(buildCompoundOcInternal(shapes.slice(0, mid).map((s) => s.wrapped)));
-  const rightCompound = r(buildCompoundOcInternal(shapes.slice(mid).map((s) => s.wrapped)));
+  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify });
+  if (isErr(leftResult)) return leftResult;
+  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify });
+  if (isErr(rightResult)) return rightResult;
 
-  const progress = r(new oc.Message_ProgressRange_1());
-  const fuseOp = r(new oc.BRepAlgoAPI_Fuse_3(leftCompound, rightCompound, progress));
-  applyGlue(fuseOp, optimisation);
-  fuseOp.Build(progress);
-  if (simplify) fuseOp.SimplifyResult(true, true, 1e-3);
-  return castToShape3D(fuseOp.Shape(), 'FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape');
+  return fuseShapes(leftResult.value, rightResult.value, { optimisation, simplify });
 }
 
 /** Cut all tool shapes from a base shape in a single boolean operation. */

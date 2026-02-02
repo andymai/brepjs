@@ -15,7 +15,7 @@ import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { cast, downcast, iterTopo, type TopoEntity } from './cast.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
 import { bug, typeCastError, validationError, ioError } from '../core/errors.js';
-import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
+import { type Result, ok, err, isErr, unwrap, andThen } from '../core/result.js';
 
 export type { CurveType };
 
@@ -1317,26 +1317,16 @@ export function fuseAll(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   if (shapes.length === 1) return ok(shapes[0]!);
 
-  const oc = getKernel().oc;
-  const r = GCWithScope();
-
+  // Recursive pairwise fuse: each level boolean-fuses two halves.
+  // Using compounds here would be incorrect when shapes within the same
+  // compound intersect each other — OCCT expects non-self-intersecting inputs.
   const mid = Math.ceil(shapes.length / 2);
-  const leftCompound = r(buildCompound(shapes.slice(0, mid)));
-  const rightCompound = r(buildCompound(shapes.slice(mid)));
+  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify });
+  if (isErr(leftResult)) return leftResult;
+  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify });
+  if (isErr(rightResult)) return rightResult;
 
-  const progress = r(new oc.Message_ProgressRange_1());
-  const fuseOp = r(new oc.BRepAlgoAPI_Fuse_3(leftCompound, rightCompound, progress));
-  applyGlue(fuseOp, optimisation);
-  fuseOp.Build(progress);
-  if (simplify) {
-    fuseOp.SimplifyResult(true, true, 1e-3);
-  }
-
-  return andThen(cast(fuseOp.Shape()), (newShape) => {
-    if (!isShape3D(newShape))
-      return err(typeCastError('FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape'));
-    return ok(newShape);
-  });
+  return leftResult.value.fuse(rightResult.value, { optimisation, simplify });
 }
 
 /**
