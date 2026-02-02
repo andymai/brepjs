@@ -1,6 +1,6 @@
 import type { KernelAdapter, OpenCascadeInstance } from './types.js';
 import { OCCTAdapter } from './occtAdapter.js';
-import { bug } from '../core/errors.js';
+import { bug } from '../utils/bug.js';
 
 let _kernel: KernelAdapter | null = null;
 

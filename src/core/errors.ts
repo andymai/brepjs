@@ -1,7 +1,9 @@
 /**
  * Domain error types and constructors for brepjs.
- * Zero internal imports — this is a pure foundation module.
+ * Re-exports bug/BrepBugError from utils (Layer 0) for convenience.
  */
+
+export { bug, BrepBugError } from '../utils/bug.js';
 
 // ---------------------------------------------------------------------------
 // Error kinds
@@ -65,23 +67,5 @@ export function queryError(code: string, message: string, cause?: unknown): Brep
 }
 
 // ---------------------------------------------------------------------------
-// Bug / panic helper — these are NOT Results, they throw
+// Bug / panic helper — re-exported from utils/bug.ts (Layer 0)
 // ---------------------------------------------------------------------------
-
-export class BrepBugError extends Error {
-  readonly location: string;
-
-  constructor(location: string, message: string) {
-    super(`Bug in ${location}: ${message}`);
-    this.name = 'BrepBugError';
-    this.location = location;
-  }
-}
-
-/**
- * Throws a BrepBugError for invariant violations / programmer errors.
- * Equivalent to Rust's panic!() — should never be caught in normal code.
- */
-export function bug(location: string, message: string): never {
-  throw new BrepBugError(location, message);
-}
