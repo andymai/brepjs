@@ -1,0 +1,33 @@
+# Kernel
+
+OCCT WASM abstraction layer providing unified interface to OpenCascade operations.
+
+```mermaid
+graph TD
+    A[initFromOC] -->|creates| B[OCCTAdapter singleton]
+    B -->|accessed via| C[getKernel]
+    C -->|returns| D[KernelAdapter interface]
+    D -->|wraps| E[WASM bindings]
+
+    style A fill:#e1f5ff
+    style B fill:#fff3cd
+    style C fill:#d4edda
+```
+
+## Key Files
+
+| File             | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `index.ts`       | Singleton accessor `getKernel()`, bootstrap `initFromOC(oc)`, type re-exports                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `types.ts`       | Type aliases (`OpenCascadeInstance`, `OcShape`, `OcType` all `any`), `ShapeType` union, `BooleanOptions`, `MeshOptions`, `KernelMeshResult`, `KernelAdapter` interface                                                                                                                                                                                                                                                                                                                     |
+| `occtAdapter.ts` | `OCCTAdapter` class implementing ~70 methods: boolean ops (fuse/cut/intersect/fuseAll/cutAll), shape construction (makeVertex/Edge/Wire/Face/Box/Cylinder/Sphere), extrusion/sweep/loft, modification (fillet/chamfer/shell/offset), transforms (translate/rotate/mirror/scale), meshing (C++ bulk extractor or JS fallback), file I/O (STEP/STL via emscripten FS), measurement (volume/area/length/centerOfMass/boundingBox), topology iteration with hash deduplication, simplification |
+
+## Gotchas
+
+1. **Must initialize first** — Call `initFromOC(oc)` before any `getKernel()` call, throws descriptive error if not initialized
+2. **Manual memory management** — All intermediate OCCT objects need `.delete()`, only final returned shapes are kept alive
+3. **Dynamic types** — `OcShape`/`OcType`/`OpenCascadeInstance` are typed as `any` with lint exemptions because OCCT WASM bindings lack TypeScript types
+4. **Recursive fusion** — `fuseAll` uses recursive pairwise fusion (not compounds) because OCCT requires non-self-intersecting inputs
+5. **Dual mesh path** — Mesh has two implementations: bulk C++ `MeshExtractor` if available, JS `TopExp_Explorer` fallback
+6. **Virtual filesystem** — File I/O uses emscripten virtual filesystem, not real disk paths
+7. **Degree conversion** — `rotate()` takes degrees, converts internally to radians
