@@ -325,30 +325,18 @@ public:
     std::free(faceGroupsPtr_);
   }
 
-  MeshData(const MeshData&) = delete;
-  MeshData& operator=(const MeshData&) = delete;
-  MeshData(MeshData&& other) noexcept
+  // Embind requires a copy constructor; implement as ownership transfer
+  // since MeshData owns heap memory and copies are only used by embind internals.
+  MeshData(const MeshData& other)
     : verticesPtr_(other.verticesPtr_), normalsPtr_(other.normalsPtr_),
       trianglesPtr_(other.trianglesPtr_), faceGroupsPtr_(other.faceGroupsPtr_),
       verticesSize_(other.verticesSize_), normalsSize_(other.normalsSize_),
       trianglesSize_(other.trianglesSize_), faceGroupsSize_(other.faceGroupsSize_) {
-    other.verticesPtr_ = nullptr;
-    other.normalsPtr_ = nullptr;
-    other.trianglesPtr_ = nullptr;
-    other.faceGroupsPtr_ = nullptr;
-  }
-  MeshData& operator=(MeshData&& other) noexcept {
-    if (this != &other) {
-      std::free(verticesPtr_); std::free(normalsPtr_);
-      std::free(trianglesPtr_); std::free(faceGroupsPtr_);
-      verticesPtr_ = other.verticesPtr_; normalsPtr_ = other.normalsPtr_;
-      trianglesPtr_ = other.trianglesPtr_; faceGroupsPtr_ = other.faceGroupsPtr_;
-      verticesSize_ = other.verticesSize_; normalsSize_ = other.normalsSize_;
-      trianglesSize_ = other.trianglesSize_; faceGroupsSize_ = other.faceGroupsSize_;
-      other.verticesPtr_ = nullptr; other.normalsPtr_ = nullptr;
-      other.trianglesPtr_ = nullptr; other.faceGroupsPtr_ = nullptr;
-    }
-    return *this;
+    auto& mutable_other = const_cast<MeshData&>(other);
+    mutable_other.verticesPtr_ = nullptr;
+    mutable_other.normalsPtr_ = nullptr;
+    mutable_other.trianglesPtr_ = nullptr;
+    mutable_other.faceGroupsPtr_ = nullptr;
   }
 
   int getVerticesPtr() const  { return static_cast<int>(reinterpret_cast<uintptr_t>(verticesPtr_)); }
@@ -361,6 +349,7 @@ public:
   int getTrianglesSize() const  { return trianglesSize_; }
   int getFaceGroupsSize() const { return faceGroupsSize_; }
 
+private:
   float*    verticesPtr_;
   float*    normalsPtr_;
   uint32_t* trianglesPtr_;
@@ -370,6 +359,8 @@ public:
   int normalsSize_;
   int trianglesSize_;
   int faceGroupsSize_;
+
+  friend class MeshExtractor;
 };
 
 class MeshExtractor {
