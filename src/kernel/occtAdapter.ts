@@ -121,7 +121,7 @@ export class OCCTAdapter implements KernelAdapter {
       builder.delete();
       return face;
     }
-    // Non-planar face
+    // Non-planar face — add wire edges to the filling builder
     const builder = new this.oc.BRepOffsetAPI_MakeFilling(
       3,
       15,
@@ -134,6 +134,10 @@ export class OCCTAdapter implements KernelAdapter {
       8,
       9
     );
+    const edges = this.iterShapes(wire, 'edge');
+    for (const edge of edges) {
+      builder.Add_1(edge, this.oc.GeomAbs_Shape.GeomAbs_C0, true);
+    }
     const progress = new this.oc.Message_ProgressRange_1();
     builder.Build(progress);
     const shape = builder.Shape();
