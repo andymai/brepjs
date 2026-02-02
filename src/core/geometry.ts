@@ -305,7 +305,9 @@ export class Transformation extends WrappingObj<OcType> {
 
   transform(shape: OcType): OcType {
     const transformer = new this.oc.BRepBuilderAPI_Transform_2(shape, this.wrapped, true);
-    return transformer.ModifiedShape(shape);
+    const result = transformer.ModifiedShape(shape);
+    transformer.delete();
+    return result;
   }
 }
 
