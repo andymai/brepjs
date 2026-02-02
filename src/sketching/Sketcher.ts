@@ -60,9 +60,12 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   delete(): void {
     this.plane.delete();
+    this.pointer.delete();
+    this.firstPoint.delete();
   }
 
   protected _updatePointer(newPointer: Vector): void {
+    this.pointer.delete();
     this.pointer = newPointer;
   }
 
@@ -70,6 +73,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     if (this.pendingEdges.length)
       bug('Sketcher.movePointerTo', 'You can only move the pointer if there is no edge defined');
     this._updatePointer(this.plane.toWorldCoords([x, y]));
+    this.firstPoint.delete();
     this.firstPoint = new Vector(this.pointer);
     return this;
   }
