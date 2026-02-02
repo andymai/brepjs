@@ -7,6 +7,7 @@ import { getKernel } from '../kernel/index.js';
 import { localGC } from '../core/memory.js';
 import type { Point } from '../core/geometry.js';
 import { cast, isShape3D } from '../topology/cast.js';
+import { unwrap } from '../core/result.js';
 import type { Wire, Shape3D } from '../topology/shapes.js';
 import { makeVertex } from '../topology/shapeHelpers.js';
 
@@ -36,7 +37,7 @@ export const loft = (
 
   const progress = r(new oc.Message_ProgressRange_1());
   loftBuilder.Build(progress);
-  const shape = cast(loftBuilder.Shape());
+  const shape = unwrap(cast(loftBuilder.Shape()));
   gc();
 
   if (!isShape3D(shape)) throw new Error('Loft did not produce a 3D shape');

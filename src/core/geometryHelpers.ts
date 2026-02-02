@@ -11,6 +11,7 @@ import {
   Transformation,
   Vector,
 } from './geometry.js';
+import { unwrap } from './result.js';
 import type { OcType } from '../kernel/types.js';
 
 export const makePlaneFromFace = (
@@ -36,7 +37,7 @@ function makePlane(plane: Plane | PlaneName = 'XY', origin: Point | number = [0,
   if (plane instanceof Plane) {
     return plane.clone();
   } else {
-    return createNamedPlane(plane, origin);
+    return unwrap(createNamedPlane(plane, origin));
   }
 }
 

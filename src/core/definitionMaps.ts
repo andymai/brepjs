@@ -4,6 +4,8 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import { type Result, ok, err } from './result.js';
+import { typeCastError } from './errors.js';
 
 export type CurveType =
   | 'LINE'
@@ -40,9 +42,9 @@ const getCurveTypesMap = (refresh?: boolean): Map<unknown, CurveType> => {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value type
-export const findCurveType = (type: any): CurveType => {
+export const findCurveType = (type: any): Result<CurveType> => {
   let shapeType = getCurveTypesMap().get(type);
   if (!shapeType) shapeType = getCurveTypesMap(true).get(type);
-  if (!shapeType) throw new Error('unknown type');
-  return shapeType;
+  if (!shapeType) return err(typeCastError('UNKNOWN_CURVE_TYPE', 'Unknown curve type'));
+  return ok(shapeType);
 };

@@ -7,6 +7,8 @@ import { WrappingObj, GCWithScope } from './memory.js';
 import { DEG2RAD, RAD2DEG } from './constants.js';
 import { getKernel } from '../kernel/index.js';
 import type { OpenCascadeInstance, OcType } from '../kernel/types.js';
+import { type Result, ok, err, unwrap } from './result.js';
+import { validationError } from './errors.js';
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
 
@@ -253,7 +255,7 @@ export class Transformation extends WrappingObj<OcType> {
     let direction: Point;
 
     if (typeof inputPlane === 'string') {
-      const plane = r(createNamedPlane(inputPlane, inputOrigin));
+      const plane = r(unwrap(createNamedPlane(inputPlane, inputOrigin)));
       origin = plane.origin;
       direction = plane.zDir;
     } else if (inputPlane instanceof Plane) {
@@ -326,7 +328,7 @@ export class Plane {
 
     const zDir = new Vector(normal);
     if (zDir.Length === 0) {
-      throw new Error('normal should be non null');
+      throw new Error('Plane normal must be non-zero');
     }
     this.zDir = zDir.normalize();
 
@@ -340,7 +342,7 @@ export class Plane {
     }
 
     if (xDir.Length === 0) {
-      throw new Error('xDir should be non null');
+      throw new Error('Plane xDir must be non-zero');
     }
 
     this.xDir = xDir.normalize();
@@ -497,9 +499,9 @@ const PLANES_CONFIG: Record<
 export const createNamedPlane = (
   plane: PlaneName,
   sourceOrigin: Point | number = [0, 0, 0]
-): Plane => {
+): Result<Plane> => {
   const config = PLANES_CONFIG[plane];
-  if (!config) throw new Error(`Could not find plane ${plane}`);
+  if (!config) return err(validationError('UNKNOWN_PLANE', `Could not find plane ${plane}`));
 
   let origin: Point;
   if (typeof sourceOrigin === 'number') {
@@ -507,7 +509,7 @@ export const createNamedPlane = (
   } else {
     origin = sourceOrigin;
   }
-  return new Plane(origin, config.xDir, config.normal);
+  return ok(new Plane(origin, config.xDir, config.normal));
 };
 
 export class BoundingBox extends WrappingObj<OcType> {

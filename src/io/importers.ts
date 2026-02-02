@@ -6,6 +6,7 @@
 import { getKernel } from '../kernel/index.js';
 import { localGC } from '../core/memory.js';
 import { cast } from '../topology/cast.js';
+import { unwrap } from '../core/result.js';
 import type { AnyShape } from '../topology/shapes.js';
 
 const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
@@ -24,7 +25,7 @@ export async function importSTEP(STEPBlob: Blob): Promise<AnyShape> {
     reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
     const stepShape = r(reader.OneShape());
 
-    const shape = cast(stepShape);
+    const shape = unwrap(cast(stepShape));
     gc();
     return shape;
   } else {
@@ -56,7 +57,7 @@ export async function importSTL(STLBlob: Blob): Promise<AnyShape> {
     solidSTL.Add(oc.TopoDS.Shell_1(upgradedShape));
     const asSolid = r(solidSTL.Solid());
 
-    const shape = cast(asSolid);
+    const shape = unwrap(cast(asSolid));
     gc();
     return shape;
   } else {

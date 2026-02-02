@@ -8,6 +8,7 @@ import type { OcType } from '../kernel/types.js';
 import { Vector, makeAx1, type Point } from '../core/geometry.js';
 import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
+import { unwrap } from '../core/result.js';
 import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
 import { Solid } from '../topology/shapes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
@@ -20,7 +21,7 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: Vector): Solid => {
     false,
     true
   );
-  const solid = new Solid(downcast(solidBuilder.Shape()));
+  const solid = new Solid(unwrap(downcast(solidBuilder.Shape())));
   solidBuilder.delete();
   return solid;
 };
@@ -36,7 +37,7 @@ export const revolution = (
 
   const revolBuilder = new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false);
 
-  const shape = cast(revolBuilder.Shape());
+  const shape = unwrap(cast(revolBuilder.Shape()));
   ax.delete();
   revolBuilder.delete();
 
@@ -115,12 +116,12 @@ function genericSweep(
   if (!shellMode) {
     sweepBuilder.MakeSolid();
   }
-  const shape = cast(sweepBuilder.Shape());
+  const shape = unwrap(cast(sweepBuilder.Shape()));
   if (!isShape3D(shape)) throw new Error('Sweep did not produce a 3D shape');
 
   if (shellMode) {
-    const startWire = cast(sweepBuilder.FirstShape());
-    const endWire = cast(sweepBuilder.LastShape());
+    const startWire = unwrap(cast(sweepBuilder.FirstShape()));
+    const endWire = unwrap(cast(sweepBuilder.LastShape()));
     if (!isWire(startWire)) throw new Error('Sweep did not produce a start Wire');
     if (!isWire(endWire)) throw new Error('Sweep did not produce an end Wire');
     sweepBuilder.delete();

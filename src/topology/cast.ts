@@ -8,7 +8,8 @@ import type { AnyShape, Shape3D, Wire } from './shapes.js';
 import type * as ShapesModule from './shapes.js';
 import { getKernel } from '../kernel/index.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
-import { bug } from '../core/errors.js';
+import { bug, typeCastError } from '../core/errors.js';
+import { type Result, ok, err, andThen } from '../core/result.js';
 
 // Lazy imports to break circular dependency between cast.ts and shapes.ts.
 // The Shape classes reference cast/downcast, and cast/downcast reference Shape classes.
@@ -83,12 +84,12 @@ export const iterTopo = function* iterTopo(
   explorer.delete();
 };
 
-export const shapeType = (shape: OcShape): OcType => {
-  if (shape.IsNull()) throw new Error('This shape has no type, it is null');
-  return shape.ShapeType();
+export const shapeType = (shape: OcShape): Result<OcType> => {
+  if (shape.IsNull()) return err(typeCastError('NULL_SHAPE', 'This shape has no type, it is null'));
+  return ok(shape.ShapeType());
 };
 
-export function downcast(shape: OcShape): GenericTopo {
+export function downcast(shape: OcShape): Result<GenericTopo> {
   const oc = getKernel().oc;
   const ta = oc.TopAbs_ShapeEnum;
 
@@ -103,13 +104,15 @@ export function downcast(shape: OcShape): GenericTopo {
     [ta.TopAbs_COMPOUND, oc.TopoDS.Compound_1],
   ]);
 
-  const myType = shapeType(shape);
-  const caster = CAST_MAP.get(myType);
-  if (!caster) throw new Error('Could not find a wrapper for this shape type');
-  return caster(shape);
+  return andThen(shapeType(shape), (myType) => {
+    const caster = CAST_MAP.get(myType);
+    if (!caster)
+      return err(typeCastError('NO_WRAPPER', 'Could not find a wrapper for this shape type'));
+    return ok(caster(shape));
+  });
 }
 
-export function cast(shape: OcShape): AnyShape {
+export function cast(shape: OcShape): Result<AnyShape> {
   const oc = getKernel().oc;
   const ta = oc.TopAbs_ShapeEnum;
   const mod = getShapesModuleSync();
@@ -126,10 +129,12 @@ export function cast(shape: OcShape): AnyShape {
     [ta.TopAbs_COMPOUND, mod.Compound],
   ]);
 
-  const Klass = CAST_MAP.get(shapeType(shape));
-
-  if (!Klass) throw new Error('Could not find a wrapper for this shape type');
-  return new Klass(downcast(shape));
+  return andThen(shapeType(shape), (st) => {
+    const Klass = CAST_MAP.get(st);
+    if (!Klass)
+      return err(typeCastError('NO_WRAPPER', 'Could not find a wrapper for this shape type'));
+    return andThen(downcast(shape), (downcasted) => ok(new Klass(downcasted) as AnyShape));
+  });
 }
 
 export function isShape3D(shape: AnyShape): shape is Shape3D {
@@ -147,7 +152,7 @@ export function isWire(shape: AnyShape): shape is Wire {
   return shape instanceof mod.Wire;
 }
 
-export function deserializeShape(data: string): AnyShape {
+export function deserializeShape(data: string): Result<AnyShape> {
   const oc = getKernel().oc;
   return cast(oc.BRepToolsWrapper.Read(data));
 }

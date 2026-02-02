@@ -20,6 +20,7 @@ import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { cast, downcast, iterTopo, type TopoEntity } from './cast.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
 import { bug } from '../core/errors.js';
+import { unwrap } from '../core/result.js';
 
 export type { CurveType };
 
@@ -170,7 +171,7 @@ export type BooleanOperationOptions = {
 export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
   clone(): this {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic constructor access
-    return new (this.constructor as any)(downcast(this.wrapped));
+    return new (this.constructor as any)(unwrap(downcast(this.wrapped)));
   }
 
   serialize(): string {
@@ -201,7 +202,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     const oc = getKernel().oc;
     const shapeUpgrader = new oc.ShapeUpgrade_UnifySameDomain_2(this.wrapped, true, true, false);
     shapeUpgrader.Build();
-    const newShape = cast(shapeUpgrader.Shape());
+    const newShape = unwrap(cast(shapeUpgrader.Shape()));
     shapeUpgrader.delete();
 
     if (this.constructor !== newShape.constructor)
@@ -221,7 +222,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
   translate(vectorOrxDist: Point | number, yDist = 0, zDist = 0): this {
     const translation: Point =
       typeof vectorOrxDist === 'number' ? [vectorOrxDist, yDist, zDist] : vectorOrxDist;
-    const newShape = cast(translate(this.wrapped, translation));
+    const newShape = unwrap(cast(translate(this.wrapped, translation)));
     this.delete();
 
     if (this.constructor !== newShape.constructor)
@@ -264,7 +265,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    * @category Shape Transformations
    */
   rotate(angle: number, position: Point = [0, 0, 0], direction: Point = [0, 0, 1]): this {
-    const newShape = cast(rotate(this.wrapped, angle, position, direction));
+    const newShape = unwrap(cast(rotate(this.wrapped, angle, position, direction)));
     this.delete();
     if (this.constructor !== newShape.constructor)
       bug('transform', 'Shape type changed unexpectedly after transformation');
@@ -279,7 +280,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    * @category Shape Transformations
    */
   mirror(inputPlane?: Plane | PlaneName | Point, origin?: Point): this {
-    const newShape = cast(mirror(this.wrapped, inputPlane, origin));
+    const newShape = unwrap(cast(mirror(this.wrapped, inputPlane, origin)));
     this.delete();
 
     if (this.constructor !== newShape.constructor)
@@ -295,7 +296,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    * @category Shape Transformations
    */
   scale(scaleFactor: number, center: Point = [0, 0, 0]): this {
-    const newShape = cast(scaleShape(this.wrapped, center, scaleFactor));
+    const newShape = unwrap(cast(scaleShape(this.wrapped, center, scaleFactor)));
     this.delete();
 
     if (this.constructor !== newShape.constructor)
@@ -311,7 +312,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
 
   protected _listTopo(topo: TopoEntity): OcShape[] {
     return Array.from(this._iterTopo(topo)).map((e) => {
-      return downcast(e);
+      return unwrap(downcast(e));
     });
   }
 
@@ -606,7 +607,7 @@ export class Curve extends WrappingObj<CurveLike> {
 
   get curveType(): CurveType {
     const technicalType = this.wrapped.GetType && this.wrapped.GetType();
-    return findCurveType(technicalType);
+    return unwrap(findCurveType(technicalType));
   }
 
   get startPoint(): Vector {
@@ -722,7 +723,7 @@ export abstract class _1DShape<Type extends Deletable = OcShape> extends Shape<T
 
   flipOrientation(): Type {
     const flipped = (this.wrapped as OcShape).Reversed();
-    return cast(flipped) as unknown as Type;
+    return unwrap(cast(flipped)) as unknown as Type;
   }
 }
 
@@ -752,7 +753,7 @@ export class Wire extends _1DShape {
     );
     offsetter.Perform(offset, 0);
 
-    const newShape = cast(offsetter.Shape());
+    const newShape = unwrap(cast(offsetter.Shape()));
     offsetter.delete();
     this.delete();
     if (!(newShape instanceof Wire)) throw new Error('Offset did not produce a Wire');
@@ -806,7 +807,7 @@ export class Face extends Shape {
 
   flipOrientation(): Face {
     const flipped = this.wrapped.Reversed();
-    return cast(flipped) as Face;
+    return unwrap(cast(flipped)) as Face;
   }
 
   get geomType(): SurfaceType {
@@ -1006,7 +1007,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     if (simplify) {
       newBody.SimplifyResult(true, true, 1e-3);
     }
-    const newShape = cast(newBody.Shape());
+    const newShape = unwrap(cast(newBody.Shape()));
     if (!isShape3D(newShape)) throw new Error('Fuse did not produce a 3D shape');
 
     return newShape;
@@ -1030,7 +1031,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       cutter.SimplifyResult(true, true, 1e-3);
     }
 
-    const newShape = cast(cutter.Shape());
+    const newShape = unwrap(cast(cutter.Shape()));
     if (!isShape3D(newShape)) throw new Error('Cut did not produce a 3D shape');
     return newShape;
   }
@@ -1049,7 +1050,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       intersector.SimplifyResult(true, true, 1e-3);
     }
 
-    const newShape = cast(intersector.Shape());
+    const newShape = unwrap(cast(intersector.Shape()));
     if (!isShape3D(newShape)) throw new Error('Intersect did not produce a 3D shape');
     return newShape;
   }
@@ -1108,7 +1109,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       false,
       progress
     );
-    const newShape = cast(shellBuilder.Shape());
+    const newShape = unwrap(cast(shellBuilder.Shape()));
     if (!isShape3D(newShape)) throw new Error('Shell operation did not produce a 3D shape');
 
     return newShape;
@@ -1122,7 +1123,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     if (isRadius(radiusConfigInput)) {
       let edgeCount = 0;
       for (const rawEdge of this._iterTopo('edge')) {
-        builderAdd(radiusConfigInput, downcast(rawEdge));
+        builderAdd(radiusConfigInput, unwrap(downcast(rawEdge)));
         edgeCount += 1;
       }
       return edgeCount;
@@ -1149,7 +1150,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
 
     let edgeAddedCount = 0;
     for (const e of this._iterTopo('edge')) {
-      const rawEdge = downcast(e);
+      const rawEdge = unwrap(downcast(e));
       const edge = new Edge(rawEdge);
       const radius = radiusConfigFun(edge);
       if (radius) {
@@ -1200,7 +1201,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     );
     if (!edgesFound) throw new Error('Fillet failed: no edges matched the filter');
 
-    const newShape = cast(filletBuilder.Shape());
+    const newShape = unwrap(cast(filletBuilder.Shape()));
     if (!isShape3D(newShape)) throw new Error('Fillet did not produce a 3D shape');
     return newShape;
   }
@@ -1252,7 +1253,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     );
     if (!edgesFound) throw new Error('Chamfer failed: no edges matched the filter');
 
-    const newShape = cast(chamferBuilder.Shape());
+    const newShape = unwrap(cast(chamferBuilder.Shape()));
     if (!isShape3D(newShape)) throw new Error('Chamfer did not produce a 3D shape');
     return newShape;
   }
@@ -1344,7 +1345,7 @@ export function fuseAll(
     fuseOp.SimplifyResult(true, true, 1e-3);
   }
 
-  const newShape = cast(fuseOp.Shape());
+  const newShape = unwrap(cast(fuseOp.Shape()));
   if (!isShape3D(newShape)) throw new Error('fuseAll did not produce a 3D shape');
   return newShape;
 }
@@ -1374,7 +1375,7 @@ export function cutAll(
     cutOp.SimplifyResult(true, true, 1e-3);
   }
 
-  const newShape = cast(cutOp.Shape());
+  const newShape = unwrap(cast(cutOp.Shape()));
   if (!isShape3D(newShape)) throw new Error('cutAll did not produce a 3D shape');
   return newShape;
 }

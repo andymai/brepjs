@@ -21,6 +21,7 @@ import {
 import type { AnyShape, Face } from '../../topology/shapes.js';
 import { Wire } from '../../topology/shapes.js';
 import { cast } from '../../topology/cast.js';
+import { unwrap } from '../../core/result.js';
 
 import { getKernel } from '../../kernel/index.js';
 import type { PlaneName, Point } from '../../core/geometry.js';
@@ -224,7 +225,7 @@ export default class Blueprint implements DrawingInterface {
     } else {
       maker.PerformThruAll();
     }
-    return cast(maker.Shape());
+    return unwrap(cast(maker.Shape()));
   }
 
   toSVGPathD() {

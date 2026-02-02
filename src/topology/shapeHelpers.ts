@@ -8,6 +8,7 @@ import { getKernel } from '../kernel/index.js';
 import { GCWithScope, localGC, WrappingObj } from '../core/memory.js';
 import { asPnt, makeAx2, makeAx3, makeAx1, Vector, type Point } from '../core/geometry.js';
 import { cast, downcast } from './cast.js';
+import { unwrap } from '../core/result.js';
 import {
   type AnyShape,
   type Shape3D,
@@ -307,7 +308,7 @@ export const makeNonPlanarFace = (wire: Wire): Face => {
 
   const progress = r(new oc.Message_ProgressRange_1());
   faceBuilder.Build(progress);
-  const newFace = cast(faceBuilder.Shape());
+  const newFace = unwrap(cast(faceBuilder.Shape()));
 
   gc();
 
@@ -424,8 +425,8 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
       baseSurface.SetPole_1(rowIdx + 1, colIdx + 1, newPoint);
     });
   });
-  const shell = cast(
-    r(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell()
+  const shell = unwrap(
+    cast(r(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
   ) as Shell;
 
   return makeSolid([shell]);
@@ -473,7 +474,7 @@ export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Shape3
     progress
   );
 
-  const newShape = cast(downcast(offsetBuilder.Shape()));
+  const newShape = unwrap(cast(unwrap(downcast(offsetBuilder.Shape()))));
   offsetBuilder.delete();
   progress.delete();
 
@@ -492,7 +493,7 @@ export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {
     s.delete();
   });
 
-  const newShape = cast(compound);
+  const newShape = unwrap(cast(compound));
   return newShape;
 };
 
@@ -510,7 +511,7 @@ function _weld(facesOrShells: Array<Face | Shell>): AnyShape {
 
   shellBuilder.Perform(r(new oc.Message_ProgressRange_1()));
 
-  return cast(downcast(shellBuilder.SewedShape()));
+  return unwrap(cast(unwrap(downcast(shellBuilder.SewedShape()))));
 }
 
 /**
@@ -541,7 +542,7 @@ export function makeSolid(facesOrShells: Array<Face | Shell>): Solid {
   const r = GCWithScope();
   const oc = getKernel().oc;
   const shell = _weld(facesOrShells);
-  const solid = cast(r(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped));
+  const solid = unwrap(cast(r(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)));
 
   if (!(solid instanceof Solid)) throw new Error('Could not make a solid of faces and shells');
 

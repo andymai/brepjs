@@ -1,6 +1,7 @@
 import type { OcType } from '../../kernel/types.js';
 import { RAD2DEG } from '../../core/constants.js';
 import { findCurveType } from '../../core/definitionMaps.js';
+import { unwrap } from '../../core/result.js';
 import { getKernel } from '../../kernel/index.js';
 import round2 from '../../utils/round2.js';
 import round5 from '../../utils/round5.js';
@@ -10,7 +11,7 @@ const fromPnt = (pnt: OcType) => `${round2(pnt.X())} ${round2(pnt.Y())}`;
 
 export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): string => {
   const oc = getKernel().oc;
-  const curveType = findCurveType(adaptor.GetType());
+  const curveType = unwrap(findCurveType(adaptor.GetType()));
 
   const [endX, endY] = lastPoint;
   const endpoint = `${round5(endX)} ${round5(endY)}`;

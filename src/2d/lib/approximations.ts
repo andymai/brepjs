@@ -1,5 +1,6 @@
 import type { OcType } from '../../kernel/types.js';
 import { findCurveType } from '../../core/definitionMaps.js';
+import { unwrap } from '../../core/result.js';
 import { getKernel } from '../../kernel/index.js';
 import { GCWithScope } from '../../core/memory.js';
 import { Curve2D } from './Curve2D.js';
@@ -35,7 +36,7 @@ export const approximateAsBSpline = (
 };
 
 export const BSplineToBezier = (adaptor: OcType): Curve2D[] => {
-  if (findCurveType(adaptor.GetType()) !== 'BSPLINE_CURVE')
+  if (unwrap(findCurveType(adaptor.GetType())) !== 'BSPLINE_CURVE')
     throw new Error('You can only convert a Bspline');
 
   const handle = adaptor.BSpline();
@@ -76,7 +77,7 @@ export function approximateAsSvgCompatibleCurve(
 
   return curves.flatMap((curve) => {
     const adaptor = r(curve.adaptor());
-    const curveType = findCurveType(adaptor.GetType());
+    const curveType = unwrap(findCurveType(adaptor.GetType()));
 
     if (
       curveType === 'ELLIPSE' ||

@@ -18,6 +18,7 @@ import {
 import type { LoftConfig } from '../operations/loft.js';
 import type { SketchInterface } from './sketchLib.js';
 import { cast } from '../topology/cast.js';
+import { unwrap } from '../core/result.js';
 import { Face, type Shape3D, type Shell, type Wire } from '../topology/shapes.js';
 import { getKernel } from '../kernel/index.js';
 
@@ -50,7 +51,7 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
   const progress = new oc.Message_ProgressRange_1();
   faceBuilder.Build(progress);
   progress.delete();
-  const newFace = cast(faceBuilder.Shape());
+  const newFace = unwrap(cast(faceBuilder.Shape()));
 
   faceBuilder.delete();
 

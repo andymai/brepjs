@@ -2,6 +2,7 @@ import type { OcType } from '../../kernel/types.js';
 
 import type { CurveType } from '../../core/definitionMaps.js';
 import { findCurveType } from '../../core/definitionMaps.js';
+import { unwrap } from '../../core/result.js';
 import precisionRound from '../../utils/precisionRound.js';
 import { getKernel } from '../../kernel/index.js';
 import { GCWithScope, localGC, WrappingObj } from '../../core/memory.js';
@@ -85,7 +86,7 @@ export class Curve2D extends WrappingObj<OcType> {
 
   get geomType(): CurveType {
     const adaptor = this.adaptor();
-    const curveType = findCurveType(adaptor.GetType());
+    const curveType = unwrap(findCurveType(adaptor.GetType()));
     adaptor.delete();
     return curveType;
   }

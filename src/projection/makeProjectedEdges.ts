@@ -7,12 +7,13 @@ import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
 import { GCWithScope } from '../core/memory.js';
 import { cast } from '../topology/cast.js';
+import { unwrap } from '../core/result.js';
 import type { Edge, AnyShape } from '../topology/shapes.js';
 import type { ProjectionCamera } from './ProjectionCamera.js';
 
 const getEdges = (shape: OcType): Edge[] => {
   if (shape.IsNull()) return [];
-  return cast(shape).edges;
+  return unwrap(cast(shape)).edges;
 };
 
 export function makeProjectedEdges(
