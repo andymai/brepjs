@@ -1,19 +1,34 @@
 /**
- * Memory management utilities for OCCT wrappers.
- * Ported from replicad's register.ts.
+ * Memory management utilities.
+ *
+ * This module provides the new disposal system and backward-compatible
+ * WrappingObj for classes being migrated.
  */
+
+export type { Deletable } from './disposal.js';
+export {
+  createHandle,
+  createOcHandle,
+  DisposalScope,
+  withScope,
+  gcWithScope as GCWithScope,
+  gcWithObject as GCWithObject,
+  localGC,
+  type ShapeHandle,
+  type OcHandle,
+} from './disposal.js';
+
+// ---------------------------------------------------------------------------
+// Legacy WrappingObj — kept during migration, will be removed
+// ---------------------------------------------------------------------------
 
 import type { OpenCascadeInstance } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
+import type { Deletable } from './disposal.js';
 
-export interface Deletable {
-  delete: () => void;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- FinalizationRegistry polyfill for environments without it
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- FinalizationRegistry polyfill
 if (!(globalThis as any).FinalizationRegistry) {
   console.warn('brepjs: FinalizationRegistry unavailable — garbage collection will not work');
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- polyfill shim
   (globalThis as any).FinalizationRegistry = (() => ({
     register: () => null,
@@ -26,11 +41,12 @@ if (!(globalThis as any).FinalizationRegistry) {
 const deletableRegistry = new (globalThis as any).FinalizationRegistry((heldValue: Deletable) => {
   try {
     heldValue.delete();
-  } catch (e) {
-    console.error(e);
+  } catch {
+    // Already deleted
   }
 });
 
+// TODO(functional-rewrite): Replace with createHandle() + branded types
 export class WrappingObj<Type extends Deletable> {
   protected oc: OpenCascadeInstance;
   private _wrapped: Type | null;
@@ -66,43 +82,3 @@ export class WrappingObj<Type extends Deletable> {
     }
   }
 }
-
-export const GCWithScope = (): (<Type extends Deletable>(value: Type) => Type) => {
-  function gcWithScope<Type extends Deletable>(value: Type): Type {
-    deletableRegistry.register(gcWithScope, value);
-    return value;
-  }
-
-  return gcWithScope;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- obj can be any reference holder
-export const GCWithObject = (obj: any): (<Type extends Deletable>(value: Type) => Type) => {
-  function registerForGC<Type extends Deletable>(value: Type): Type {
-    deletableRegistry.register(obj, value);
-    return value;
-  }
-
-  return registerForGC;
-};
-
-export const localGC = (
-  debug?: boolean
-): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined] => {
-  const cleaner = new Set<Deletable>();
-
-  return [
-    <T extends Deletable>(v: T): T => {
-      cleaner.add(v);
-      return v;
-    },
-
-    () => {
-      cleaner.forEach((d) => {
-        d.delete();
-      });
-      cleaner.clear();
-    },
-    debug ? cleaner : undefined,
-  ];
-};

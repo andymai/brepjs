@@ -1,16 +1,73 @@
 /**
- * Core geometry types: Vector, Plane, Transformation, BoundingBox.
- * Ported from replicad's geom.ts.
+ * Core geometry — functional API with legacy backward-compatible classes.
+ *
+ * Primary exports are Vec3 tuples and pure functions.
+ * Legacy class exports (Vector, Plane, Transformation, BoundingBox)
+ * are kept for backward compatibility during migration.
  */
 
-import { WrappingObj, GCWithScope } from './memory.js';
+// ── New functional API re-exports (preferred) ──
+
+export { toVec3, toVec2, resolveDirection } from './types.js';
+export type { Vec3, Vec2, Direction as DirectionInput } from './types.js';
+
+export {
+  vecAdd,
+  vecSub,
+  vecScale,
+  vecNegate,
+  vecDot,
+  vecCross,
+  vecLength,
+  vecLengthSq,
+  vecDistance,
+  vecNormalize,
+  vecEquals,
+  vecIsZero,
+  vecAngle,
+  vecProjectToPlane,
+  vecRotate,
+  vecRepr,
+  vec2Add,
+  vec2Sub,
+  vec2Scale,
+  vec2Length,
+  vec2Distance,
+  vec2Normalize,
+  vec2Equals,
+} from './vecOps.js';
+
+export {
+  toOcVec,
+  toOcPnt as toOcPntVec3,
+  toOcDir as toOcDirVec3,
+  fromOcVec,
+  fromOcPnt,
+  fromOcDir,
+  withOcVec,
+  withOcPnt,
+  withOcDir,
+  makeOcAx1 as makeOcAx1Vec3,
+  makeOcAx2 as makeOcAx2Vec3,
+  makeOcAx3 as makeOcAx3Vec3,
+} from './occtBoundary.js';
+
+// ── Legacy imports ──
+
+import { WrappingObj } from './memory.js';
+import { GCWithScope } from './memory.js';
 import { DEG2RAD, RAD2DEG } from './constants.js';
 import { getKernel } from '../kernel/index.js';
 import type { OpenCascadeInstance, OcType } from '../kernel/types.js';
 import { type Result, ok, err, unwrap } from './result.js';
 import { bug, validationError } from './errors.js';
+import type { Vec3 } from './types.js';
 
-const round3 = (v: number) => Math.round(v * 1000) / 1000;
+const round3 = (v: number): number => Math.round(v * 1000) / 1000;
+
+// ---------------------------------------------------------------------------
+// Legacy Point type
+// ---------------------------------------------------------------------------
 
 export type SimplePoint = [number, number, number];
 export type Point =
@@ -27,6 +84,10 @@ export function isPoint(p: unknown): p is Point {
   else if (p && typeof (p as any)?.XYZ === 'function') return true;
   return false;
 }
+
+// ---------------------------------------------------------------------------
+// Legacy axis helpers
+// ---------------------------------------------------------------------------
 
 export const makeAx3 = (center: Point, dir: Point, xDir?: Point): OcType => {
   const oc = getKernel().oc;
@@ -74,6 +135,10 @@ export const makeAx1 = (center: Point, dir: Point): OcType => {
   return axis;
 };
 
+// ---------------------------------------------------------------------------
+// Legacy Vector class
+// ---------------------------------------------------------------------------
+
 const makeVec = (vector: Point = [0, 0, 0]): OcType => {
   const oc = getKernel().oc;
 
@@ -86,6 +151,7 @@ const makeVec = (vector: Point = [0, 0, 0]): OcType => {
   return new oc.gp_Vec_4(0, 0, 0);
 };
 
+// TODO(functional-rewrite): Replace with Vec3 tuples and vecOps functions
 export class Vector extends WrappingObj<OcType> {
   constructor(vector: Point = [0, 0, 0]) {
     super(makeVec(vector));
@@ -112,6 +178,11 @@ export class Vector extends WrappingObj<OcType> {
   }
 
   toTuple(): [number, number, number] {
+    return [this.x, this.y, this.z];
+  }
+
+  /** Convert to Vec3 tuple */
+  toVec3(): Vec3 {
     return [this.x, this.y, this.z];
   }
 
@@ -186,6 +257,10 @@ export class Vector extends WrappingObj<OcType> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Direction helpers
+// ---------------------------------------------------------------------------
+
 type Direction = Point | 'X' | 'Y' | 'Z';
 
 const DIRECTIONS: Record<string, Point> = {
@@ -202,6 +277,10 @@ export function makeDirection(p: Direction): Point {
   return p;
 }
 
+// ---------------------------------------------------------------------------
+// Legacy asPnt / asDir
+// ---------------------------------------------------------------------------
+
 export function asPnt(coords: Point): OcType {
   const v = new Vector(coords);
   const pnt = v.toPnt();
@@ -216,8 +295,13 @@ export function asDir(coords: Point): OcType {
   return dir;
 }
 
+// ---------------------------------------------------------------------------
+// Legacy Transformation class
+// ---------------------------------------------------------------------------
+
 type CoordSystem = 'reference' | { origin: Point; zDir: Point; xDir: Point };
 
+// TODO(functional-rewrite): Replace with standalone transform functions
 export class Transformation extends WrappingObj<OcType> {
   constructor(transform?: OcType) {
     const oc = getKernel().oc;
@@ -312,6 +396,11 @@ export class Transformation extends WrappingObj<OcType> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Legacy Plane class
+// ---------------------------------------------------------------------------
+
+// TODO(functional-rewrite): Replace with PlaneData + planeOps functions
 export class Plane {
   oc: OpenCascadeInstance;
 
@@ -478,6 +567,10 @@ export class Plane {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Legacy PlaneName and createNamedPlane
+// ---------------------------------------------------------------------------
+
 export type PlaneName =
   | 'XY'
   | 'YZ'
@@ -529,6 +622,11 @@ export const createNamedPlane = (
   return ok(new Plane(origin, config.xDir, config.normal));
 };
 
+// ---------------------------------------------------------------------------
+// Legacy BoundingBox class
+// ---------------------------------------------------------------------------
+
+// TODO(functional-rewrite): Replace with BoundingBox data from shapeQuery functions
 export class BoundingBox extends WrappingObj<OcType> {
   constructor(wrapped?: OcType) {
     const oc = getKernel().oc;
