@@ -480,6 +480,8 @@ const edgesToDrawing = (edges: Edge[]): Drawing => {
   const planeFace = unwrap(makeFace(planeSketch.wire));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
+  planeFace.delete();
+
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));
   if (stitchedCurves.length === 0) return new Drawing();
   if (stitchedCurves.length === 1) return new Drawing(stitchedCurves[0]);
@@ -519,8 +521,10 @@ export function drawProjection(
  * @category Drawing
  */
 export function drawFaceOutline(face: Face): Drawing {
-  const outerWire = face.clone().outerWire();
+  const clonedFace = face.clone();
+  const outerWire = clonedFace.outerWire();
   const curves = outerWire.edges.map((e) => edgeToCurve(e, face));
+  outerWire.delete();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));
   if (stitchedCurves.length === 0) return new Drawing();
