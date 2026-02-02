@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.1](https://github.com/andymai/brepjs/compare/v1.0.0...v1.0.1) (2026-02-02)
+
+
+### Bug Fixes
+
+* add explicit permissions to workflow files ([#8](https://github.com/andymai/brepjs/issues/8)) ([4e78f95](https://github.com/andymai/brepjs/commit/4e78f95d7346a23c8d1b4182ffe9b9376cb0a1d0))
+
+
+### Performance Improvements
+
+* cache hot-path maps and fix builder leak in kernel adapter ([e77a65e](https://github.com/andymai/brepjs/commit/e77a65e310a26bb7517362a9e91a5f81f6c97df9))
+
 ## 1.0.0 (2026-02-02)
 
 
