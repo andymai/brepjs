@@ -205,6 +205,41 @@ export {
 export { fuse2D, cut2D, intersect2D, type Shape2D } from './2d/blueprints/boolean2D.js';
 export type { ScaleMode } from './2d/curves.js';
 
+// ── Layer 2: 2d (functional) ──
+
+export {
+  reverseCurve,
+  curve2dBoundingBox,
+  curve2dFirstPoint,
+  curve2dLastPoint,
+  curve2dSplitAt,
+  curve2dParameter,
+  curve2dTangentAt,
+  curve2dIsOnCurve,
+  curve2dDistanceFrom,
+} from './2d/lib/curve2dFns.js';
+
+export {
+  createBlueprint,
+  blueprintBoundingBox,
+  blueprintOrientation,
+  translateBlueprint,
+  rotateBlueprint,
+  scaleBlueprint,
+  mirrorBlueprint,
+  stretchBlueprint,
+  blueprintToSVGPathD,
+  blueprintIsInside,
+  sketchBlueprintOnPlane,
+  sketchBlueprintOnFace,
+} from './2d/blueprints/blueprintFns.js';
+
+export {
+  fuseBlueprint2D,
+  cutBlueprint2D,
+  intersectBlueprint2D,
+} from './2d/blueprints/boolean2dFns.js';
+
 // ── Layer 2: query ──
 
 export { EdgeFinder } from './query/edgeFinder.js';
