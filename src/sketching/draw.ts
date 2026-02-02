@@ -32,12 +32,11 @@ import {
 } from '../2d/blueprints/index.js';
 import type { Plane } from '../core/geometry.js';
 import { type PlaneName, type Point } from '../core/geometry.js';
-import type { AnyShape, Edge, Face } from '../topology/shapes.js';
+import type { AnyShape, Edge, Face, Wire } from '../topology/shapes.js';
 import { makeFace } from '../topology/shapeHelpers.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
 import type { SketchInterface } from './sketchLib.js';
 import type Sketches from './Sketches.js';
-import type Sketch from './Sketch.js';
 import type { GenericSketcher } from './sketcherlib.js';
 import { textBlueprints } from '../text/textBlueprints.js';
 import { lookFromPlane, ProjectionCamera } from '../projection/ProjectionCamera.js';
@@ -475,7 +474,9 @@ export const drawParametricFunction = (
 };
 
 const edgesToDrawing = (edges: Edge[]): Drawing => {
-  const planeSketch = drawRectangle(1000, 1000).sketchOnPlane();
+  const planeSketch = drawRectangle(1000, 1000).sketchOnPlane() as SketchInterface & {
+    wire: Wire;
+  };
   const planeFace = unwrap(makeFace(planeSketch.wire));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));

@@ -214,7 +214,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   bulgeArc(xDist: number, yDist: number, bulge: number): this {
     const pointer = this.plane.toLocalCoords(this.pointer);
-    return this.bulgeArcTo([xDist + pointer.x, yDist + this.pointer.y], bulge);
+    return this.bulgeArcTo([xDist + pointer.x, yDist + pointer.y], bulge);
   }
 
   vBulgeArc(distance: number, bulge: number): this {
