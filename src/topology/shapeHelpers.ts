@@ -232,7 +232,7 @@ export const makeTangentArc = (startPoint: Point, startTgt: Point, endPoint: Poi
   const circleGeom = r(
     new oc.GC_MakeArcOfCircle_5(
       r(asPnt(startPoint)),
-      new Vector(startTgt).wrapped,
+      r(new Vector(startTgt)).wrapped,
       r(asPnt(endPoint))
     ).Value()
   );

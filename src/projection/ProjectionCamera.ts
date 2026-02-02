@@ -50,12 +50,16 @@ export function lookFromPlane(projectionPlane: ProjectionPlane): ProjectionCamer
 
 function defaultXDir(direction: Point): Vector {
   const dir = new Vector(direction);
-  let yAxis: Point = new Vector([0, 0, 1]);
-  let xAxis: Point = yAxis.cross(dir);
+  let yAxis = new Vector([0, 0, 1]);
+  let xAxis = yAxis.cross(dir);
   if (xAxis.Length === 0) {
+    yAxis.delete();
+    xAxis.delete();
     yAxis = new Vector([0, 1, 0]);
     xAxis = yAxis.cross(dir);
   }
+  dir.delete();
+  yAxis.delete();
   return xAxis.normalize();
 }
 
@@ -64,6 +68,7 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     const xDir = xAxis ? new Vector(xAxis) : defaultXDir(direction);
     const ax2 = makeAx2(position, direction, xDir);
     super(ax2);
+    xDir.delete();
   }
 
   get position(): Vector {
@@ -83,8 +88,11 @@ export class ProjectionCamera extends WrappingObj<OcType> {
   }
 
   autoAxes(): void {
-    const xAxis = defaultXDir(this.direction);
+    const dir = this.direction;
+    const xAxis = defaultXDir(dir);
     this.wrapped.SetXDirection(asDir(xAxis));
+    dir.delete();
+    xAxis.delete();
   }
 
   setPosition(position: Point): this {
