@@ -52,7 +52,7 @@ const makeBoxOc = (corner1: Point, corner2: Point): OcType => {
  * Keeps the first shape loaded so multiple second-shape queries are efficient.
  */
 class DistanceQueryInternal extends WrappingObj<OcType> {
-  private progress: OcType;
+  private readonly progress: OcType;
 
   constructor(shape1: OcType) {
     const oc = getKernel().oc;

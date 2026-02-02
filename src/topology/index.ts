@@ -17,6 +17,7 @@ export {
   asTopo,
   isShape3D,
   isWire,
+  isCompSolid,
   deserializeShape,
   initCast,
   type TopoEntity,

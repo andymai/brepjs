@@ -115,7 +115,11 @@ export const sketchRoundedRectangle = (
   planeConfig: PlaneConfig = {}
 ): Sketch => {
   const bp = roundedRectangleBlueprint(width, height, r);
-  return bp.sketchOnPlane(planeConfig.plane, planeConfig.origin);
+  const data = bp.sketchOnPlane(planeConfig.plane, planeConfig.origin);
+  const opts: { defaultOrigin?: Point; defaultDirection?: Point } = {};
+  if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
+  if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
+  return new Sketch(data.wire, opts);
 };
 
 /**

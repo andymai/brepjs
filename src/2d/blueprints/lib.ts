@@ -1,7 +1,8 @@
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
-import type { Face } from '../../topology/shapes.js';
+import type { Face, Wire } from '../../topology/shapes.js';
 
 import type { Plane, PlaneName, Point } from '../../core/geometry.js';
+import type { Vector } from '../../core/geometry.js';
 
 import type { ScaleMode } from '../curves.js';
 import type Blueprint from './Blueprint.js';
@@ -121,6 +122,15 @@ export const organiseBlueprints = (blueprints: Blueprint[]): Blueprints => {
   );
 };
 
+/** Plain data returned by blueprint sketchOnPlane/sketchOnFace (Layer 2).
+ *  Layer 3 wraps this in a Sketch class. */
+export interface SketchData {
+  wire: Wire;
+  defaultOrigin?: Vector;
+  defaultDirection?: Vector;
+  baseFace?: Face | null;
+}
+
 export interface DrawingInterface {
   clone(): DrawingInterface;
   boundingBox: BoundingBox2d;
@@ -139,16 +149,15 @@ export interface DrawingInterface {
   mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): DrawingInterface;
 
   /**
-   * Returns the sketched version of the drawing, on a plane.
-   *
-   * Note: Sketch types are not yet available in brepjs. These methods
-   * will return the appropriate sketch type once the sketching layer is ported.
+   * Returns sketch data for the drawing on a plane.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch types not yet ported
-  sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: Point | number): any;
+  sketchOnPlane(
+    inputPlane?: PlaneName | Plane,
+    origin?: Point | number
+  ): SketchData | SketchData[] | (SketchData | SketchData[])[];
 
   /**
-   * Returns the sketched version of the drawing, on a face.
+   * Returns sketch data for the drawing on a face.
    *
    * The scale mode corresponds to the way the coordinates of the drawing are
    * interpreted match with the face:
@@ -159,8 +168,10 @@ export interface DrawingInterface {
    * - `bounds` normalises the UV parameters on the face to [0,1] intervals.
    * - `native` uses the default UV parameters of opencascade
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch types not yet ported
-  sketchOnFace(face: Face, scaleMode: ScaleMode): any;
+  sketchOnFace(
+    face: Face,
+    scaleMode: ScaleMode
+  ): SketchData | SketchData[] | (SketchData | SketchData[])[];
 
   /**
    * Formats the drawing as an SVG image

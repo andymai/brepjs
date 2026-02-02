@@ -4,7 +4,7 @@
  */
 
 import type { OcShape, OcType } from '../kernel/types.js';
-import type { AnyShape, Shape3D, Wire } from './shapes.js';
+import type { AnyShape, CompSolid, Shape3D, Wire } from './shapes.js';
 import type * as ShapesModule from './shapes.js';
 import { getKernel } from '../kernel/index.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
@@ -154,6 +154,11 @@ export function isShape3D(shape: AnyShape): shape is Shape3D {
 export function isWire(shape: AnyShape): shape is Wire {
   const mod = getShapesModuleSync();
   return shape instanceof mod.Wire;
+}
+
+export function isCompSolid(shape: AnyShape): shape is CompSolid {
+  const mod = getShapesModuleSync();
+  return shape instanceof mod.CompSolid;
 }
 
 export function deserializeShape(data: string): Result<AnyShape> {

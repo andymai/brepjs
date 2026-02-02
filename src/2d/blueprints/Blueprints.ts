@@ -2,7 +2,7 @@ import type { Point2D } from '../lib/index.js';
 import { BoundingBox2d } from '../lib/index.js';
 import Blueprint from './Blueprint.js';
 import type CompoundBlueprint from './CompoundBlueprint.js';
-import type { DrawingInterface } from './lib.js';
+import type { DrawingInterface, SketchData } from './lib.js';
 import { asSVG, viewbox } from './svg.js';
 
 import type { AnyShape, Face } from '../../topology/shapes.js';
@@ -65,13 +65,11 @@ export default class Blueprints implements DrawingInterface {
     return new Blueprints(this.blueprints.map((bp) => bp.mirror(centerOrDirection, origin, mode)));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch types not yet ported
-  sketchOnPlane(plane?: PlaneName | Plane, origin?: Point | number): any {
+  sketchOnPlane(plane?: PlaneName | Plane, origin?: Point | number): (SketchData | SketchData[])[] {
     return this.blueprints.map((bp) => bp.sketchOnPlane(plane, origin));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch types not yet ported
-  sketchOnFace(face: Face, scaleMode?: ScaleMode): any {
+  sketchOnFace(face: Face, scaleMode?: ScaleMode): (SketchData | SketchData[])[] {
     return this.blueprints.map((bp) => bp.sketchOnFace(face, scaleMode));
   }
 

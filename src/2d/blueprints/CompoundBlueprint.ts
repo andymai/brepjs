@@ -1,7 +1,7 @@
 import type { Point2D } from '../lib/index.js';
 import { BoundingBox2d } from '../lib/index.js';
 import type Blueprint from './Blueprint.js';
-import type { DrawingInterface } from './lib.js';
+import type { DrawingInterface, SketchData } from './lib.js';
 import { asSVG, viewbox } from './svg.js';
 
 import type { AnyShape, Face } from '../../topology/shapes.js';
@@ -78,20 +78,12 @@ export default class CompoundBlueprint implements DrawingInterface {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch types not yet ported
-  sketchOnPlane(plane?: PlaneName | Plane, origin?: Point | number): any {
-    const sketches = this.blueprints.map((blueprint) => blueprint.sketchOnPlane(plane, origin));
-
-    // TODO: Return CompoundSketch once sketching layer is ported
-    return sketches;
+  sketchOnPlane(plane?: PlaneName | Plane, origin?: Point | number): SketchData[] {
+    return this.blueprints.map((blueprint) => blueprint.sketchOnPlane(plane, origin));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch types not yet ported
-  sketchOnFace(face: Face, scaleMode?: ScaleMode): any {
-    const sketches = this.blueprints.map((blueprint) => blueprint.sketchOnFace(face, scaleMode));
-
-    // TODO: Return CompoundSketch once sketching layer is ported
-    return sketches;
+  sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData[] {
+    return this.blueprints.map((blueprint) => blueprint.sketchOnFace(face, scaleMode));
   }
 
   punchHole(

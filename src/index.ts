@@ -95,6 +95,7 @@ export {
   asTopo,
   isShape3D,
   isWire,
+  isCompSolid,
   deserializeShape,
   initCast,
   type TopoEntity,
@@ -281,16 +282,11 @@ export {
   deserializeDrawing,
 } from './sketching/draw.js';
 
-export type { DrawingInterface } from './2d/blueprints/lib.js';
+export type { DrawingInterface, SketchData } from './2d/blueprints/lib.js';
 
 // ── Layer 3: text ──
 
-export {
-  loadFont,
-  getFont,
-  textBlueprints,
-  sketchText,
-} from './text/textBlueprints.js';
+export { loadFont, getFont, textBlueprints, sketchText } from './text/textBlueprints.js';
 
 // ── Layer 3: projection ──
 

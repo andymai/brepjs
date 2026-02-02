@@ -7,8 +7,12 @@ import type { Point2D } from '../2d/lib/index.js';
 import type { Plane, PlaneName, Point } from '../core/geometry.js';
 import type Blueprints from '../2d/blueprints/Blueprints.js';
 import { bug } from '../core/errors.js';
+import type { SketchData } from '../2d/blueprints/lib.js';
 import { organiseBlueprints } from '../2d/blueprints/lib.js';
 import { BlueprintSketcher } from '../sketching/Sketcher2d.js';
+import Sketch from '../sketching/Sketch.js';
+import CompoundSketch from '../sketching/CompoundSketch.js';
+import Sketches from '../sketching/Sketches.js';
 
 import opentype from 'opentype.js';
 
@@ -103,6 +107,15 @@ export function textBlueprints(
   return organiseBlueprints(blueprints).mirror([0, 0]);
 }
 
+function wrapSketchData(data: SketchData): Sketch {
+  const opts: { defaultOrigin?: Point; defaultDirection?: Point } = {};
+  if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
+  if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
+  const sketch = new Sketch(data.wire, opts);
+  if (data.baseFace) sketch.baseFace = data.baseFace;
+  return sketch;
+}
+
 export function sketchText(
   text: string,
   textConfig?: {
@@ -115,10 +128,15 @@ export function sketchText(
     plane?: PlaneName | Plane;
     origin?: Point | number;
   } = {}
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns Sketches type
-): any {
+): Sketches {
   const textBp = textBlueprints(text, textConfig);
-  return typeof planeConfig.plane === 'string' || planeConfig.plane === undefined
-    ? textBp.sketchOnPlane(planeConfig.plane, planeConfig.origin)
-    : textBp.sketchOnPlane(planeConfig.plane);
+  const results =
+    typeof planeConfig.plane === 'string' || planeConfig.plane === undefined
+      ? textBp.sketchOnPlane(planeConfig.plane, planeConfig.origin)
+      : textBp.sketchOnPlane(planeConfig.plane);
+  return new Sketches(
+    results.map((item) =>
+      Array.isArray(item) ? new CompoundSketch(item.map(wrapSketchData)) : wrapSketchData(item)
+    )
+  );
 }

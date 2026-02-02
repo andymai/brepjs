@@ -24,10 +24,11 @@ import { cast } from '../../topology/cast.js';
 import { unwrap } from '../../core/result.js';
 
 import { getKernel } from '../../kernel/index.js';
+import { makeFace } from '../../topology/shapeHelpers.js';
 import type { PlaneName, Point } from '../../core/geometry.js';
 import { Plane } from '../../core/geometry.js';
 import { DEG2RAD } from '../../core/constants.js';
-import type { DrawingInterface } from './lib.js';
+import type { DrawingInterface, SketchData } from './lib.js';
 import round5 from '../../utils/round5.js';
 import { asSVG, viewbox } from './svg.js';
 import { GCWithScope } from '../../core/memory.js';
@@ -56,7 +57,7 @@ function assembleWire(listOfEdges: { wrapped: unknown }[]): Wire {
 export default class Blueprint implements DrawingInterface {
   curves: Curve2D[];
   protected _boundingBox: null | BoundingBox2d;
-  private _orientation: null | 'clockwise' | 'counterClockwise';
+  private readonly _orientation: null | 'clockwise' | 'counterClockwise';
   private _guessedOrientation: null | 'clockwise' | 'counterClockwise';
   constructor(curves: Curve2D[]) {
     this.curves = curves;
@@ -148,15 +149,13 @@ export default class Blueprint implements DrawingInterface {
     return new Blueprint(curves);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch type not yet ported
-  sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: Point | number): any {
+  sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: Point | number): SketchData {
     const plane =
       inputPlane instanceof Plane ? makePlane(inputPlane) : makePlane(inputPlane, origin);
 
     const edges = curvesAsEdgesOnPlane(this.curves, plane);
     const wire = assembleWire(edges);
 
-    // TODO: Return Sketch once sketching layer is ported
     return {
       wire,
       defaultOrigin: plane.origin,
@@ -164,8 +163,7 @@ export default class Blueprint implements DrawingInterface {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch type not yet ported
-  sketchOnFace(face: Face, scaleMode?: ScaleMode): any {
+  sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData {
     const oc = getKernel().oc;
 
     const edges = unwrap(curvesAsEdgesOnFace(this.curves, face, scaleMode));
@@ -177,18 +175,15 @@ export default class Blueprint implements DrawingInterface {
     wireFixer.FixEdgeCurves();
     wireFixer.delete();
 
-    // TODO: Return Sketch once sketching layer is ported
-    return { wire, face };
+    return { wire, baseFace: face };
   }
 
   subFace(face: Face, origin?: Point | null): Face {
-    const subFace = this.translate(face.uvCoordinates(origin || face.center)).sketchOnFace(
+    const sketch = this.translate(face.uvCoordinates(origin || face.center)).sketchOnFace(
       face,
       'original'
-    ).wire;
-
-    // TODO: Complete once Sketch.face() is available
-    return subFace;
+    );
+    return unwrap(makeFace(sketch.wire));
   }
 
   punchHole(

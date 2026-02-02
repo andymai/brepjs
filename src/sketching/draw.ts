@@ -21,7 +21,6 @@ import {
   Blueprint,
   cut2D,
   intersect2D,
-  type DrawingInterface,
   fuse2D,
   polysidesBlueprint,
   roundedRectangleBlueprint,
@@ -36,8 +35,11 @@ import type { AnyShape, Edge, Face, Wire } from '../topology/shapes.js';
 import { makeFace } from '../topology/shapeHelpers.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
 import type { SketchInterface } from './sketchLib.js';
-import type Sketches from './Sketches.js';
+import Sketch from './Sketch.js';
+import CompoundSketch from './CompoundSketch.js';
+import Sketches from './Sketches.js';
 import type { GenericSketcher } from './sketcherlib.js';
+import type { SketchData } from '../2d/blueprints/lib.js';
 import { textBlueprints } from '../text/textBlueprints.js';
 import { lookFromPlane, ProjectionCamera } from '../projection/ProjectionCamera.js';
 import type { ProjectionPlane } from '../projection/ProjectionCamera.js';
@@ -51,6 +53,36 @@ import type { BSplineApproximationConfig } from '../topology/shapeHelpers.js';
 import { approximateForSVG } from '../2d/blueprints/approximations.js';
 import type { SingleFace } from '../query/helpers.js';
 
+function wrapSketchData(data: SketchData): Sketch {
+  const opts: { defaultOrigin?: Point; defaultDirection?: Point } = {};
+  if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
+  if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
+  const sketch = new Sketch(data.wire, opts);
+  if (data.baseFace) sketch.baseFace = data.baseFace;
+  return sketch;
+}
+
+function wrapSketchDataArray(dataArr: SketchData[]): CompoundSketch {
+  return new CompoundSketch(dataArr.map(wrapSketchData));
+}
+
+function wrapBlueprintResult(
+  shape: Shape2D,
+  result: SketchData | SketchData[] | (SketchData | SketchData[])[]
+): SketchInterface | Sketches {
+  if (shape instanceof Blueprint) {
+    return wrapSketchData(result as SketchData);
+  } else if (shape instanceof CompoundBlueprint) {
+    return wrapSketchDataArray(result as SketchData[]);
+  } else {
+    // Blueprints — array of (SketchData | SketchData[])
+    const items = result as (SketchData | SketchData[])[];
+    return new Sketches(
+      items.map((item) => (Array.isArray(item) ? wrapSketchDataArray(item) : wrapSketchData(item)))
+    );
+  }
+}
+
 /**
  * @categoryDescription Drawing
  *
@@ -58,8 +90,8 @@ import type { SingleFace } from '../query/helpers.js';
  * draw a shape, or use some of the canned shapes like circles or rectangles.
  */
 
-export class Drawing implements DrawingInterface {
-  private innerShape: Shape2D;
+export class Drawing {
+  private readonly innerShape: Shape2D;
 
   constructor(innerShape: Shape2D = null) {
     this.innerShape = innerShape;
@@ -190,12 +222,14 @@ export class Drawing implements DrawingInterface {
     origin?: Point | number
   ): SketchInterface | Sketches {
     if (!this.innerShape) bug('Drawing', 'Trying to sketch an empty drawing');
-    return this.innerShape.sketchOnPlane(inputPlane, origin);
+    const result = this.innerShape.sketchOnPlane(inputPlane, origin);
+    return wrapBlueprintResult(this.innerShape, result);
   }
 
   sketchOnFace(face: Face, scaleMode: ScaleMode): SketchInterface | Sketches {
     if (!this.innerShape) bug('Drawing', 'Trying to sketch an empty drawing');
-    return this.innerShape.sketchOnFace(face, scaleMode);
+    const result = this.innerShape.sketchOnFace(face, scaleMode);
+    return wrapBlueprintResult(this.innerShape, result);
   }
 
   punchHole(
