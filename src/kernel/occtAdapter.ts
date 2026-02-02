@@ -8,6 +8,8 @@ import type {
   MeshOptions,
 } from './types.js';
 
+const HASH_CODE_MAX = 2147483647;
+
 /**
  * OpenCascade implementation of KernelAdapter.
  *
@@ -665,12 +667,16 @@ export class OCCTAdapter implements KernelAdapter {
     );
 
     const result: OcShape[] = [];
-    const hashes = new Set<number>();
+    const seen = new Map<number, OcShape[]>();
     while (explorer.More()) {
       const item = explorer.Current();
-      const hash = item.HashCode(2147483647);
-      if (!hashes.has(hash)) {
-        hashes.add(hash);
+      const hash = item.HashCode(HASH_CODE_MAX);
+      const bucket = seen.get(hash);
+      if (!bucket) {
+        seen.set(hash, [item]);
+        result.push(item);
+      } else if (!bucket.some((s) => s.IsSame(item))) {
+        bucket.push(item);
         result.push(item);
       }
       explorer.Next();

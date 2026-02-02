@@ -71,12 +71,16 @@ export const iterTopo = function* iterTopo(
 ): IterableIterator<OcShape> {
   const oc = getKernel().oc;
   const explorer = new oc.TopExp_Explorer_2(shape, asTopo(topo), asTopo('shape'));
-  const hashes = new Map<number, boolean>();
+  const seen = new Map<number, OcShape[]>();
   while (explorer.More()) {
     const item = explorer.Current();
     const hash = item.HashCode(HASH_CODE_MAX);
-    if (!hashes.get(hash)) {
-      hashes.set(hash, true);
+    const bucket = seen.get(hash);
+    if (!bucket) {
+      seen.set(hash, [item]);
+      yield item;
+    } else if (!bucket.some((s) => s.IsSame(item))) {
+      bucket.push(item);
       yield item;
     }
     explorer.Next();
