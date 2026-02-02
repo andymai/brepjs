@@ -6,7 +6,7 @@
 import { getKernel } from '../kernel/index.js';
 import { GCWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
-import type { BooleanOperationOptions } from './booleans.js';
+import type { BooleanOperationOptions } from '../topology/shapes.js';
 
 function buildCompound(shapes: OcType[]): OcType {
   const oc = getKernel().oc;

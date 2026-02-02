@@ -1,6 +1,6 @@
 import type { Corner, CornerFinder } from '../../query/cornerFinder.js';
 import type { Curve2D } from '../lib/index.js';
-import { chamferCurves, filletCurves, samePoint, dogboneFilletCurves } from '../lib/index.js';
+import { chamferCurves, filletCurves, samePoint } from '../lib/index.js';
 import Blueprint from './Blueprint.js';
 import Blueprints from './Blueprints.js';
 import type { Shape2D } from './boolean2D.js';
@@ -86,8 +86,4 @@ export function fillet2D(shape: Shape2D, radius: number, finder?: CornerFinder) 
 
 export function chamfer2D(shape: Shape2D, radius: number, finder?: CornerFinder) {
   return modifyCorner2D(chamferCurves, shape, radius, finder);
-}
-
-export function dogbone2D(shape: Shape2D, radius: number, finder?: CornerFinder) {
-  return modifyCorner2D(dogboneFilletCurves, shape, radius, finder);
 }

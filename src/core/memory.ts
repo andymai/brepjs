@@ -12,8 +12,7 @@ export interface Deletable {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- FinalizationRegistry polyfill for environments without it
 if (!(globalThis as any).FinalizationRegistry) {
-  // eslint-disable-next-line no-console
-  console.log('Garbage collection will not work');
+  console.warn('brepjs: FinalizationRegistry unavailable — garbage collection will not work');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- polyfill shim
   (globalThis as any).FinalizationRegistry = (() => ({

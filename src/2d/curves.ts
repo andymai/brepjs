@@ -142,19 +142,6 @@ export const scaleTransform2d = (
   return new Transformation2D(transform);
 };
 
-export function faceRadius(face: Face): null | number {
-  const oc = getKernel().oc;
-  const [r, gc] = localGC();
-  const geomSurf = r(oc.BRep_Tool.Surface_2(face.wrapped));
-
-  if (face.geomType !== 'CYLINDRE') return null;
-
-  const cylinder = r(geomSurf.get().Cylinder());
-  const radius = cylinder.Radius();
-  gc();
-  return radius;
-}
-
 export type ScaleMode = 'original' | 'bounds' | 'native';
 
 export function curvesAsEdgesOnFace(
