@@ -511,7 +511,6 @@ export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {
 
   shapeArray.forEach((s) => {
     builder.Add(compound, s.wrapped);
-    s.delete();
   });
 
   const newShape = unwrap(cast(compound));
