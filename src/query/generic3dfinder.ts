@@ -52,16 +52,24 @@ const makeBoxOc = (corner1: Point, corner2: Point): OcType => {
  * Keeps the first shape loaded so multiple second-shape queries are efficient.
  */
 class DistanceQueryInternal extends WrappingObj<OcType> {
+  private progress: OcType;
+
   constructor(shape1: OcType) {
     const oc = getKernel().oc;
     super(new oc.BRepExtrema_DistShapeShape_1());
+    this.progress = new oc.Message_ProgressRange_1();
     this.wrapped.LoadS1(shape1);
   }
 
   distanceTo(shape2Wrapped: OcType): number {
     this.wrapped.LoadS2(shape2Wrapped);
-    this.wrapped.Perform();
+    this.wrapped.Perform(this.progress);
     return this.wrapped.Value();
+  }
+
+  override delete(): void {
+    this.progress.delete();
+    super.delete();
   }
 }
 
