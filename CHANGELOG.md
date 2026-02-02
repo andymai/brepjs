@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.3](https://github.com/andymai/brepjs/compare/v1.0.2...v1.0.3) (2026-02-02)
+
+
+### Bug Fixes
+
+* **ci:** pin ytt to v0.50.0 for opencascade build ([#12](https://github.com/andymai/brepjs/issues/12)) ([6a34f3a](https://github.com/andymai/brepjs/commit/6a34f3a402031e5d53e373d0beac8e60a16b7cb7))
+* **ci:** use checked-in build-config instead of running ytt ([#14](https://github.com/andymai/brepjs/issues/14)) ([6cc2e53](https://github.com/andymai/brepjs/commit/6cc2e5388a0952ec41a5571302b56141efa5b420))
+* make MeshData compatible with embind copy semantics ([#15](https://github.com/andymai/brepjs/issues/15)) ([5d7cb66](https://github.com/andymai/brepjs/commit/5d7cb665afc561f21add1ffb24fa62276d51bb2e))
+
 ## [1.0.2](https://github.com/andymai/brepjs/compare/v1.0.1...v1.0.2) (2026-02-02)
 
 
