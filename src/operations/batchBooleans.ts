@@ -14,15 +14,18 @@ export function fuseAllShapes(
 
   if (shapes.length === 1) return ok(shapes[0]);
 
+  // Recursive pairwise fuse to avoid compounding mutually-intersecting shapes
   const oc = getKernel().oc;
   const r = GCWithScope();
 
   const mid = Math.ceil(shapes.length / 2);
-  const leftCompound = r(buildCompoundOc(shapes.slice(0, mid)));
-  const rightCompound = r(buildCompoundOc(shapes.slice(mid)));
+  const leftResult = fuseAllShapes(shapes.slice(0, mid), { optimisation, simplify });
+  if (!leftResult.ok) return leftResult;
+  const rightResult = fuseAllShapes(shapes.slice(mid), { optimisation, simplify });
+  if (!rightResult.ok) return rightResult;
 
   const progress = r(new oc.Message_ProgressRange_1());
-  const fuseOp = r(new oc.BRepAlgoAPI_Fuse_3(leftCompound, rightCompound, progress));
+  const fuseOp = r(new oc.BRepAlgoAPI_Fuse_3(leftResult.value, rightResult.value, progress));
   applyGlue(fuseOp, optimisation);
   fuseOp.Build(progress);
   if (simplify) {
