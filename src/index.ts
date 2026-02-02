@@ -7,6 +7,47 @@
 
 export { setOC, getOC } from './oclib.js';
 
+// ── Result type ──
+
+export {
+  ok,
+  err,
+  OK,
+  isOk,
+  isErr,
+  map,
+  mapErr,
+  andThen,
+  flatMap,
+  unwrap,
+  unwrapOr,
+  unwrapOrElse,
+  unwrapErr,
+  match,
+  collect,
+  tryCatch,
+  tryCatchAsync,
+  type Result,
+  type Ok,
+  type Err,
+  type Unit,
+} from './core/result.js';
+
+export {
+  type BrepError,
+  type BrepErrorKind,
+  occtError,
+  validationError,
+  typeCastError,
+  sketcherStateError,
+  moduleInitError,
+  computationError,
+  ioError,
+  queryError,
+  bug,
+  BrepBugError,
+} from './core/errors.js';
+
 // ── Layer 1: core ──
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
