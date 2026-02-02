@@ -29,98 +29,76 @@ const getIntersectionPoint = (
   line1End: Point2D,
   line2Start: Point2D,
   line2End: Point2D
-) => {
+): Point2D | null => {
+  const denom = determinant2x2([
+    [
+      determinant2x2([
+        [line1Start[0], 1],
+        [line1End[0], 1],
+      ]),
+      determinant2x2([
+        [line1Start[1], 1],
+        [line1End[1], 1],
+      ]),
+    ],
+    [
+      determinant2x2([
+        [line2Start[0], 1],
+        [line2End[0], 1],
+      ]),
+      determinant2x2([
+        [line2Start[1], 1],
+        [line2End[1], 1],
+      ]),
+    ],
+  ]);
+
+  if (Math.abs(denom) < 1e-12) return null;
+
+  const cross1 = determinant2x2([
+    [line1Start[0], line1Start[1]],
+    [line1End[0], line1End[1]],
+  ]);
+  const cross2 = determinant2x2([
+    [line2Start[0], line2Start[1]],
+    [line2End[0], line2End[1]],
+  ]);
+
   const x =
     determinant2x2([
       [
-        determinant2x2([
-          [line1Start[0], line1Start[1]],
-          [line1End[0], line1End[1]],
-        ]),
+        cross1,
         determinant2x2([
           [line1Start[0], 1],
           [line1End[0], 1],
         ]),
       ],
       [
-        determinant2x2([
-          [line2Start[0], line2Start[1]],
-          [line2End[0], line2End[1]],
-        ]),
+        cross2,
         determinant2x2([
           [line2Start[0], 1],
           [line2End[0], 1],
         ]),
       ],
-    ]) /
-    determinant2x2([
-      [
-        determinant2x2([
-          [line1Start[0], 1],
-          [line1End[0], 1],
-        ]),
-        determinant2x2([
-          [line1Start[1], 1],
-          [line1End[1], 1],
-        ]),
-      ],
-      [
-        determinant2x2([
-          [line2Start[0], 1],
-          [line2End[0], 1],
-        ]),
-        determinant2x2([
-          [line2Start[1], 1],
-          [line2End[1], 1],
-        ]),
-      ],
-    ]);
+    ]) / denom;
 
   const y =
     determinant2x2([
       [
-        determinant2x2([
-          [line1Start[0], line1Start[1]],
-          [line1End[0], line1End[1]],
-        ]),
+        cross1,
         determinant2x2([
           [line1Start[1], 1],
           [line1End[1], 1],
         ]),
       ],
       [
-        determinant2x2([
-          [line2Start[0], line2Start[1]],
-          [line2End[0], line2End[1]],
-        ]),
+        cross2,
         determinant2x2([
           [line2Start[1], 1],
           [line2End[1], 1],
         ]),
       ],
-    ]) /
-    determinant2x2([
-      [
-        determinant2x2([
-          [line1Start[0], 1],
-          [line1End[0], 1],
-        ]),
-        determinant2x2([
-          [line1Start[1], 1],
-          [line1End[1], 1],
-        ]),
-      ],
-      [
-        determinant2x2([
-          [line2Start[0], 1],
-          [line2End[0], 1],
-        ]),
-        determinant2x2([
-          [line2Start[1], 1],
-          [line2End[1], 1],
-        ]),
-      ],
-    ]);
+    ]) / denom;
 
   return [x, y] as Point2D;
 };
@@ -177,6 +155,15 @@ function joinMiter(
     firstPoint,
     nextOtherPoint
   );
+
+  if (!offsetIntersectionPoint) {
+    // Lines are parallel — fall back to bevel join
+    const bevelJoiner = make2dSegmentCurve(previousLastPoint, firstPoint);
+    appendCurve(previousCurve);
+    appendCurve(bevelJoiner);
+    return;
+  }
+
   const miterJoiner1 = make2dSegmentCurve(previousLastPoint, offsetIntersectionPoint);
   const miterJoiner2 = make2dSegmentCurve(offsetIntersectionPoint, firstPoint);
 

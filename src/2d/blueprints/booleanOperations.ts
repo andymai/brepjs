@@ -121,8 +121,7 @@ const endOfSegment = (s: Segment): Point2D => {
 };
 
 const reverseSegment = (segment: Segment) => {
-  segment.reverse();
-  return segment.map((curve) => {
+  return [...segment].reverse().map((curve) => {
     const newCurve = curve.clone();
     newCurve.reverse();
     return newCurve;
@@ -130,8 +129,7 @@ const reverseSegment = (segment: Segment) => {
 };
 
 const reverseSegments = (s: Segment[]) => {
-  s.reverse();
-  return s.map(reverseSegment);
+  return [...s].reverse().map(reverseSegment);
 };
 
 function removeNonCrossingPoint(
