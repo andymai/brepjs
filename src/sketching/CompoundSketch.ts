@@ -18,7 +18,7 @@ import {
 import type { LoftConfig } from '../operations/loft.js';
 import type { SketchInterface } from './sketchLib.js';
 import { cast } from '../topology/cast.js';
-import { unwrap, isOk } from '../core/result.js';
+import { type Result, unwrap, isOk } from '../core/result.js';
 import { Face, type Shape3D, type Shell, type Wire } from '../topology/shapes.js';
 import { getKernel } from '../kernel/index.js';
 
@@ -88,15 +88,15 @@ const faceFromWires = (wires: Wire[]): Face => {
 
 const solidFromShellGenerator = (
   sketches: Sketch[],
-  shellGenerator: (sketch: Sketch) => [Shell, Wire, Wire]
+  shellGenerator: (sketch: Sketch) => Result<[Shape3D, Wire, Wire]>
 ): Shape3D => {
   const shells: Shell[] = [];
   const startWires: Wire[] = [];
   const endWires: Wire[] = [];
 
   sketches.forEach((sketch) => {
-    const [shell, startWire, endWire] = shellGenerator(sketch);
-    shells.push(shell);
+    const [shell, startWire, endWire] = unwrap(shellGenerator(sketch));
+    shells.push(shell as Shell);
     startWires.push(startWire);
     endWires.push(endWire);
   });
@@ -197,9 +197,7 @@ export default class CompoundSketch implements SketchInterface {
       return solid;
     }
 
-    const solid = basicFaceExtrusion(this.face(), extrusionVec);
-
-    return solid;
+    return basicFaceExtrusion(this.face(), extrusionVec);
   }
 
   /**
@@ -207,8 +205,9 @@ export default class CompoundSketch implements SketchInterface {
    * (defaults to the sketch origin)
    */
   revolve(revolutionAxis?: Point, { origin }: { origin?: Point } = {}): Shape3D {
-    const solid = revolution(this.face(), origin || this.outerSketch.defaultOrigin, revolutionAxis);
-    return solid;
+    return unwrap(
+      revolution(this.face(), origin || this.outerSketch.defaultOrigin, revolutionAxis)
+    );
   }
 
   loftWith(otherCompound: this, loftConfig: LoftConfig): Shape3D {

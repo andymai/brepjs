@@ -8,6 +8,8 @@ import { getKernel } from '../kernel/index.js';
 import { GCWithScope, WrappingObj } from '../core/memory.js';
 import { uuidv } from '../utils/uuid.js';
 import type { AnyShape } from '../topology/shapes.js';
+import { type Result, ok, err } from '../core/result.js';
+import { ioError } from '../core/errors.js';
 
 const wrapString = (str: string): OcType => {
   const oc = getKernel().oc;
@@ -81,7 +83,7 @@ export type SupportedUnit = 'M' | 'CM' | 'MM' | 'INCH' | 'FT' | 'm' | 'mm' | 'cm
 export function exportSTEP(
   shapes: ShapeConfig[] = [],
   { unit, modelUnit }: { unit?: SupportedUnit; modelUnit?: SupportedUnit } = {}
-): Blob {
+): Result<Blob> {
   const oc = getKernel().oc;
   const r = GCWithScope();
 
@@ -122,8 +124,8 @@ export function exportSTEP(
     oc.FS.unlink('/' + filename);
 
     const blob = new Blob([file], { type: 'application/STEP' });
-    return blob;
+    return ok(blob);
   } else {
-    throw new Error('Failed to write STEP file');
+    return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
   }
 }

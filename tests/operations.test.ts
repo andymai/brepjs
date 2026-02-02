@@ -46,7 +46,7 @@ describe('revolution', () => {
       .lineTo([1, 5])
       .close();
     const face = sketch.face();
-    const solid = revolution(face, [0, 0, 0], [0, 0, 1], 360);
+    const solid = unwrap(revolution(face, [0, 0, 0], [0, 0, 1], 360));
     expect(solid).toBeDefined();
     // Volume of hollow cylinder: π(R²-r²)*h
     expect(measureVolume(solid)).toBeCloseTo(Math.PI * (4 - 1) * 5, 0);
@@ -57,7 +57,7 @@ describe('loft', () => {
   it('lofts between two circles', () => {
     const bottom = sketchCircle(10);
     const top = sketchCircle(5, { origin: [0, 0, 10] });
-    const solid = loft([bottom.wire, top.wire]);
+    const solid = unwrap(loft([bottom.wire, top.wire]));
     expect(solid).toBeDefined();
     const vol = measureVolume(solid);
     // Truncated cone: (π*h/3)(R² + Rr + r²)

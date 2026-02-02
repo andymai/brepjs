@@ -125,7 +125,7 @@ export default class Sketch implements SketchInterface {
    */
   revolve(revolutionAxis?: Point, { origin }: { origin?: Point } = {}): Shape3D {
     const face = unwrap(makeFace(this.wire));
-    const solid = revolution(face, origin || this.defaultOrigin, revolutionAxis);
+    const solid = unwrap(revolution(face, origin || this.defaultOrigin, revolutionAxis));
     face.delete();
     this.delete();
     return solid;
@@ -164,11 +164,8 @@ export default class Sketch implements SketchInterface {
     );
 
     if (extrusionProfile && !twistAngle) {
-      const solid = complexExtrude(
-        this.wire,
-        origin || this.defaultOrigin,
-        extrusionVec,
-        extrusionProfile
+      const solid = unwrap(
+        complexExtrude(this.wire, origin || this.defaultOrigin, extrusionVec, extrusionProfile)
       );
       gc();
       this.delete();
@@ -176,12 +173,14 @@ export default class Sketch implements SketchInterface {
     }
 
     if (twistAngle) {
-      const solid = twistExtrude(
-        this.wire,
-        twistAngle,
-        origin || this.defaultOrigin,
-        extrusionVec,
-        extrusionProfile
+      const solid = unwrap(
+        twistExtrude(
+          this.wire,
+          twistAngle,
+          origin || this.defaultOrigin,
+          extrusionVec,
+          extrusionProfile
+        )
       );
       gc();
       this.delete();
@@ -217,7 +216,7 @@ export default class Sketch implements SketchInterface {
     if (this.baseFace) {
       config.support = this.baseFace.wrapped;
     }
-    const shape = genericSweep(sketch.wire, this.wire, config);
+    const shape = unwrap(genericSweep(sketch.wire, this.wire, config));
     this.delete();
 
     return shape;
@@ -240,10 +239,12 @@ export default class Sketch implements SketchInterface {
     const sketchArray = Array.isArray(otherSketches)
       ? [this, ...otherSketches]
       : [this, otherSketches];
-    const shape = loft(
-      sketchArray.map((s) => s.wire),
-      loftConfig,
-      returnShell
+    const shape = unwrap(
+      loft(
+        sketchArray.map((s) => s.wire),
+        loftConfig,
+        returnShell
+      )
     );
 
     sketchArray.forEach((s) => {

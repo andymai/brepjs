@@ -7,14 +7,17 @@ import { getKernel } from '../kernel/index.js';
 import { GCWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
 import { applyGlue, buildCompoundOc, type BooleanOperationOptions } from '../topology/shapes.js';
+import { type Result, ok, err } from '../core/result.js';
+import { validationError } from '../core/errors.js';
 
 export function fuseAllShapes(
   shapes: OcType[],
   { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
-): OcType {
-  if (shapes.length === 0) throw new Error('fuseAll requires at least one shape');
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  if (shapes.length === 1) return shapes[0]!;
+): Result<OcType> {
+  if (shapes.length === 0)
+    return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
+
+  if (shapes.length === 1) return ok(shapes[0]);
 
   const oc = getKernel().oc;
   const r = GCWithScope();
@@ -31,15 +34,15 @@ export function fuseAllShapes(
     fuseOp.SimplifyResult(true, true, 1e-3);
   }
 
-  return fuseOp.Shape();
+  return ok(fuseOp.Shape());
 }
 
 export function cutAllShapes(
   base: OcType,
   tools: OcType[],
   { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
-): OcType {
-  if (tools.length === 0) return base;
+): Result<OcType> {
+  if (tools.length === 0) return ok(base);
 
   const oc = getKernel().oc;
   const r = GCWithScope();
@@ -54,5 +57,5 @@ export function cutAllShapes(
     cutOp.SimplifyResult(true, true, 1e-3);
   }
 
-  return cutOp.Shape();
+  return ok(cutOp.Shape());
 }
