@@ -1,3 +1,4 @@
+export * from './precision.js';
 export * from './definitions.js';
 export * from './approximations.js';
 export * from './BoundingBox2d.js';

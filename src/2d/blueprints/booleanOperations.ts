@@ -6,6 +6,7 @@ import {
   samePoint as defaultSamePoint,
   intersectCurves,
   removeDuplicatePoints,
+  PRECISION_INTERSECTION,
 } from '../lib/index.js';
 
 import Blueprint from './Blueprint.js';
@@ -13,9 +14,7 @@ import Blueprints from './Blueprints.js';
 import CompoundBlueprint from './CompoundBlueprint.js';
 import { organiseBlueprints } from './lib.js';
 
-const PRECISION = 1e-9;
-
-const samePoint = (x: Point2D, y: Point2D) => defaultSamePoint(x, y, PRECISION);
+const samePoint = (x: Point2D, y: Point2D) => defaultSamePoint(x, y, PRECISION_INTERSECTION);
 
 const curveMidPoint = (curve: Curve2D) => {
   // (lp - fp) / 2 + fp
@@ -182,7 +181,7 @@ function blueprintsIntersectionSegments(
       // The algorithm used here seems to fail for smaller precisions (it
       // detects overlaps in circle that do not exist
       const { intersections, commonSegments, commonSegmentsPoints } = unwrap(
-        intersectCurves(thisCurve, otherCurve, PRECISION / 100)
+        intersectCurves(thisCurve, otherCurve, PRECISION_INTERSECTION / 100)
       );
 
       allIntersections.push(...intersections);
@@ -200,7 +199,7 @@ function blueprintsIntersectionSegments(
     });
   });
 
-  allIntersections = removeDuplicatePoints(allIntersections, PRECISION);
+  allIntersections = removeDuplicatePoints(allIntersections, PRECISION_INTERSECTION);
 
   // If there is only one intersection point we consider that the blueprints
   // are not intersecting
@@ -209,7 +208,7 @@ function blueprintsIntersectionSegments(
   // We further split the curves at the intersections
   const cutCurve = ([curve, intersections]: [Curve2D, Point2D[]]): Curve2D[] => {
     if (!intersections.length) return [curve];
-    return curve.splitAt(intersections, PRECISION / 100);
+    return curve.splitAt(intersections, PRECISION_INTERSECTION / 100);
   };
   let firstCurveSegments = zip([first.curves, firstCurvePoints] as [
     Curve2D[],

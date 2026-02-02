@@ -1,6 +1,7 @@
 import type { Matrix2X2, Point2D } from './definitions.js';
+import { PRECISION_POINT } from './precision.js';
 
-export const samePoint = ([x0, y0]: Point2D, [x1, y1]: Point2D, precision = 1e-6): boolean => {
+export const samePoint = ([x0, y0]: Point2D, [x1, y1]: Point2D, precision = PRECISION_POINT): boolean => {
   return Math.abs(x0 - x1) <= precision && Math.abs(y0 - y1) <= precision;
 };
 
