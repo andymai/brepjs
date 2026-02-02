@@ -144,11 +144,11 @@ const makeVec = (vector: Point = [0, 0, 0]): OcType => {
 
   if (Array.isArray(vector)) {
     if (vector.length === 3) return new oc.gp_Vec_4(...vector);
-    else if (vector.length === 2) return new oc.gp_Vec_4(...vector, 0);
+    return new oc.gp_Vec_4(...vector, 0);
   } else if (vector instanceof Vector) {
     return new oc.gp_Vec_3(vector.wrapped.XYZ());
-  } else if (vector.XYZ) return new oc.gp_Vec_3(vector.XYZ());
-  return new oc.gp_Vec_4(0, 0, 0);
+  }
+  return new oc.gp_Vec_3(vector.XYZ());
 };
 
 // TODO(functional-rewrite): Replace with Vec3 tuples and vecOps functions
@@ -461,6 +461,7 @@ export class Plane {
   }
 
   set origin(newOrigin: Vector) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- _origin is undefined before first assignment (see @ts-expect-error above)
     if (this._origin) this._origin.delete();
     this._origin = newOrigin;
     this._calcTransforms();
@@ -518,7 +519,9 @@ export class Plane {
   }
 
   _calcTransforms(): void {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- undefined before first assignment (see @ts-expect-error above)
     if (this.globalToLocal) this.globalToLocal.delete();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- undefined before first assignment (see @ts-expect-error above)
     if (this.localToGlobal) this.localToGlobal.delete();
 
     const _globalCoordSystem = new this.oc.gp_Ax3_1();
@@ -610,7 +613,9 @@ export const createNamedPlane = (
   plane: PlaneName,
   sourceOrigin: Point | number = [0, 0, 0]
 ): Result<Plane> => {
-  const config = PLANES_CONFIG[plane];
+  const config = PLANES_CONFIG[plane] as
+    | { xDir: [number, number, number]; normal: [number, number, number] }
+    | undefined;
   if (!config) return err(validationError('UNKNOWN_PLANE', `Could not find plane ${plane}`));
 
   let origin: Point;

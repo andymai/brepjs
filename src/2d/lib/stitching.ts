@@ -26,6 +26,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
 
     let maxLoops = curves.length;
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- intentional infinite loop with break
     while (true) {
       if (maxLoops-- < 0) {
         bug('stitchCurves', 'Infinite loop detected');

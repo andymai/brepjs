@@ -105,7 +105,7 @@ export function isChamferRadius(r: unknown): r is ChamferRadius {
   if (typeof r === 'object' && r !== null) {
     const obj = r as Record<string, unknown>;
     return (
-      ('distances' in obj && Array.isArray(obj.distances) && 'selectedFace' in obj) ||
+      ('distances' in obj && Array.isArray(obj['distances']) && 'selectedFace' in obj) ||
       ('distance' in obj && 'angle' in obj && 'selectedFace' in obj)
     );
   }
@@ -1261,7 +1261,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
 
         if ('distances' in rad) {
           const [d1, d2] = rad.distances;
-          return chamferBuilder.Add_3(d1 ?? 1, d2 ?? 1, e, face.wrapped);
+          return chamferBuilder.Add_3(d1, d2, e, face.wrapped);
         }
 
         if ('distance' in rad) {

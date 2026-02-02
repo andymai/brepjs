@@ -521,12 +521,12 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     this._bounds = face.UVBounds;
   }
 
-  protected _convertToUV([x, y]: Point2D): Point2D {
+  protected override _convertToUV([x, y]: Point2D): Point2D {
     const { uMin, uMax, vMin, vMax } = this._bounds;
     return [uMin + x * (uMax - uMin), vMin + y * (vMax - vMin)];
   }
 
-  protected _convertFromUV([u, v]: Point2D): Point2D {
+  protected override _convertFromUV([u, v]: Point2D): Point2D {
     const { uMin, uMax, vMin, vMax } = this._bounds;
     return [(u - uMin) / (uMax - uMin), (v - vMin) / (vMax - vMin)];
   }

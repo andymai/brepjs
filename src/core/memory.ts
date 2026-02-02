@@ -53,9 +53,7 @@ export class WrappingObj<Type extends Deletable> {
 
   constructor(wrapped: Type) {
     this.oc = getKernel().oc;
-    if (wrapped) {
-      deletableRegistry.register(this, wrapped, wrapped);
-    }
+    deletableRegistry.register(this, wrapped, wrapped);
     this._wrapped = wrapped;
   }
 

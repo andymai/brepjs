@@ -58,8 +58,7 @@ export class EdgeFinder extends Finder3d<Edge> {
    * @category Filter
    */
   parallelTo(plane: Plane | StandardPlane | Face): this {
-    if (typeof plane === 'string' && PLANE_TO_DIR[plane])
-      return this.atAngleWith(PLANE_TO_DIR[plane], 90);
+    if (typeof plane === 'string') return this.atAngleWith(PLANE_TO_DIR[plane], 90);
     if (typeof plane !== 'string' && plane instanceof PlaneClass)
       return this.atAngleWith(plane.zDir, 90);
     if (typeof plane !== 'string' && 'normalAt' in plane) {

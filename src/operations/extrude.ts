@@ -84,7 +84,7 @@ function genericSweep(
   const withCorrection = transitionMode === 'round' ? true : !!forceProfileSpineOthogonality;
   const sweepBuilder = new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped);
 
-  if (transitionMode) {
+  {
     const mode = {
       transformed: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_Transformed,
       round: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_RoundCorner,

@@ -114,10 +114,6 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const secondPart = secondCurve.splitAt([secondInt]).at(-1)!;
 
-  if (!firstPart || !secondPart) {
-    return [firstCurve, secondCurve];
-  }
-
   try {
     return [
       firstPart,

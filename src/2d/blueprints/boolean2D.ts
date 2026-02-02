@@ -133,12 +133,7 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
     });
   });
 
-  return organiseBlueprints(
-    output
-      .map(({ current }) => current)
-      .filter((a) => a)
-      .flatMap((b) => allBlueprints(b))
-  );
+  return organiseBlueprints(output.map(({ current }) => current).flatMap((b) => allBlueprints(b)));
 };
 
 const allBlueprints = (shape: Shape2D): Blueprint[] => {
@@ -205,10 +200,10 @@ export const fuse2D = (
   second: Shape2D
 ): Blueprint | Blueprints | CompoundBlueprint | null => {
   if (first === null) {
-    return second && second.clone();
+    return second?.clone() ?? null;
   }
   if (second === null) {
-    return first && first.clone();
+    return first.clone();
   }
 
   if (!(first instanceof Blueprints) && second instanceof Blueprints) {

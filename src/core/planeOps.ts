@@ -77,7 +77,7 @@ export function createNamedPlane(
   name: PlaneName,
   sourceOrigin: PointInput | number = [0, 0, 0]
 ): Result<Plane> {
-  const config = PLANES_CONFIG[name];
+  const config = PLANES_CONFIG[name] as { xDir: Vec3; normal: Vec3 } | undefined;
   if (!config) return err(validationError('UNKNOWN_PLANE', `Could not find plane ${name}`));
 
   let origin: Vec3;
