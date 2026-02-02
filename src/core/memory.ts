@@ -59,9 +59,11 @@ export class WrappingObj<Type extends Deletable> {
   }
 
   delete(): void {
-    deletableRegistry.unregister(this.wrapped);
-    this.wrapped?.delete();
-    this._wrapped = null;
+    if (this._wrapped) {
+      deletableRegistry.unregister(this._wrapped);
+      this._wrapped.delete();
+      this._wrapped = null;
+    }
   }
 }
 
