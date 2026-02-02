@@ -1,3 +1,4 @@
+import { bug } from '../../core/errors.js';
 import zip from '../../utils/zip.js';
 import type { Point2D, Curve2D } from '../lib/index.js';
 import {
@@ -143,7 +144,7 @@ function removeNonCrossingPoint(
     });
     if (segmentsOfIntersection.length % 2) {
       console.error(segmentsOfIntersection, intersection);
-      throw new Error('Bug in the intersection algo on non crossing point');
+      bug('boolean2d', 'Bug in the intersection algo on non crossing point');
     }
 
     const isInside = segmentsOfIntersection.map((segment: Curve2D): boolean => {

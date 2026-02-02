@@ -1,3 +1,4 @@
+import { bug } from '../../core/errors.js';
 import Blueprint from './Blueprint.js';
 import Blueprints from './Blueprints.js';
 import CompoundBlueprint from './CompoundBlueprint.js';
@@ -33,7 +34,7 @@ const genericIntersects = (
     return second.blueprints.some((bp) => genericIntersects(first, bp));
   }
 
-  throw new Error('Bug in the generic intersects algorithm');
+  bug('boolean2d', 'Bug in the generic intersects algorithm');
 };
 
 const genericFuse = (
@@ -62,7 +63,7 @@ const genericFuse = (
     return fuseBlueprints(first, second);
   }
 
-  throw new Error('Bug in the generic fuse algorithm');
+  bug('boolean2d', 'Bug in the generic fuse algorithm');
 };
 
 const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[]) => {
@@ -121,7 +122,7 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
           newFused = newFused.blueprints[0]!;
         } else if (!(newFused instanceof Blueprints)) {
           console.error(newFused);
-          throw new Error('Bug in blueprint fusing algorigthm');
+          bug('boolean2d', 'Bug in blueprint fusing algorithm');
         }
       }
       savedBlueprint.fusedWith.add(currentIndex);

@@ -1,5 +1,6 @@
 import type { KernelAdapter, OpenCascadeInstance } from './types.js';
 import { OCCTAdapter } from './occtAdapter.js';
+import { bug } from '../core/errors.js';
 
 let _kernel: KernelAdapter | null = null;
 
@@ -9,7 +10,7 @@ export function setKernel(kernel: KernelAdapter): void {
 
 export function getKernel(): KernelAdapter {
   if (!_kernel) {
-    throw new Error('Kernel has not been initialized. Call setKernel() or initFromOC() first.');
+    bug('kernel', 'Kernel has not been initialized. Call setKernel() or initFromOC() first.');
   }
   return _kernel;
 }

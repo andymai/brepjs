@@ -19,6 +19,7 @@ import { rotate, translate, mirror, scale as scaleShape } from '../core/geometry
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { cast, downcast, iterTopo, type TopoEntity } from './cast.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
+import { bug } from '../core/errors.js';
 
 export type { CurveType };
 
@@ -35,7 +36,8 @@ function getQueryModule(): { EdgeFinder: new () => EdgeFinder; FaceFinder: new (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy runtime load of optional peer module
     _queryModule = (globalThis as any).__brepjs_query_module__;
     if (!_queryModule) {
-      throw new Error(
+      bug(
+        'shapes',
         'Query module not registered. Call registerQueryModule() or import query/index.js before using shell/fillet/chamfer.'
       );
     }
@@ -203,7 +205,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     shapeUpgrader.delete();
 
     if (this.constructor !== newShape.constructor)
-      throw new Error('Shape type changed unexpectedly after transformation');
+      bug('transform', 'Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -223,7 +225,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     this.delete();
 
     if (this.constructor !== newShape.constructor)
-      throw new Error('Shape type changed unexpectedly after transformation');
+      bug('transform', 'Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -265,7 +267,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     const newShape = cast(rotate(this.wrapped, angle, position, direction));
     this.delete();
     if (this.constructor !== newShape.constructor)
-      throw new Error('Shape type changed unexpectedly after transformation');
+      bug('transform', 'Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -281,7 +283,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     this.delete();
 
     if (this.constructor !== newShape.constructor)
-      throw new Error('Shape type changed unexpectedly after transformation');
+      bug('transform', 'Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -297,7 +299,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     this.delete();
 
     if (this.constructor !== newShape.constructor)
-      throw new Error('Shape type changed unexpectedly after transformation');
+      bug('transform', 'Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;

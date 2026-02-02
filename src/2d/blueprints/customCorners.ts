@@ -1,3 +1,4 @@
+import { bug } from '../../core/errors.js';
 import type { Corner, CornerFinder } from '../../query/cornerFinder.js';
 import type { Curve2D } from '../lib/index.js';
 import { chamferCurves, filletCurves, samePoint } from '../lib/index.js';
@@ -32,12 +33,12 @@ function modifyCorners(
 
   blueprint.curves.slice(1).forEach((secondCurve) => {
     const firstCurve = curves.pop();
-    if (!firstCurve) throw new Error('Bug in the blueprint filletting algo');
+    if (!firstCurve) bug('customCorners', 'Bug in the blueprint filletting algo');
     addModifiedCorner(firstCurve, secondCurve);
   });
 
   const lastCurve = curves.at(-1);
-  if (!lastCurve) throw new Error('Bug in the blueprint corner algo');
+  if (!lastCurve) bug('customCorners', 'Bug in the blueprint corner algo');
   if (
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     samePoint(curves[0]!.firstPoint, lastCurve.lastPoint) &&
@@ -45,7 +46,7 @@ function modifyCorners(
   ) {
     const firstCurve = curves.pop();
     const secondCurve = curves.shift();
-    if (!firstCurve || !secondCurve) throw new Error('Bug in the blueprint filletting algo');
+    if (!firstCurve || !secondCurve) bug('customCorners', 'Bug in the blueprint filletting algo');
     addModifiedCorner(firstCurve, secondCurve);
   }
 

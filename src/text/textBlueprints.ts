@@ -5,6 +5,7 @@
 
 import type { Point2D } from '../2d/lib/index.js';
 import type { Plane, PlaneName, Point } from '../core/geometry.js';
+import { bug } from '../core/errors.js';
 
 import opentype from 'opentype.js';
 
@@ -76,7 +77,7 @@ const sketchFontCommands = function* (commands: any[]) {
   let lastPoint: Point2D | null = null;
 
   if (!_BlueprintSketcher) {
-    throw new Error('Text dependencies not injected. Call _injectTextDeps first.');
+    bug('text', 'Text dependencies not injected. Call _injectTextDeps first.');
   }
 
   for (const command of commands) {
@@ -128,7 +129,7 @@ export function textBlueprints(
     font = getFont();
   }
   if (!_organiseBlueprints) {
-    throw new Error('Text dependencies not injected. Call _injectTextDeps first.');
+    bug('text', 'Text dependencies not injected. Call _injectTextDeps first.');
   }
   const writtenText = font.getPath(text, -startX, -startY, fontSize);
   const blueprints = Array.from(sketchFontCommands(writtenText.commands));

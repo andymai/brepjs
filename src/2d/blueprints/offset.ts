@@ -1,3 +1,4 @@
+import { bug } from '../../core/errors.js';
 import type { Point2D } from '../lib/index.js';
 import {
   intersectCurves,
@@ -242,7 +243,7 @@ export function rawOffsets(
       yield curve;
     }
     // This should never happen
-    if (!savedLastCurve) throw new Error('Bug in the offset algorithm');
+    if (!savedLastCurve) bug('offset', 'Bug in the offset algorithm');
     yield savedLastCurve;
   };
 
@@ -293,7 +294,7 @@ export function rawOffsets(
       )[0]!;
       const splitCurve = (curve.offset as Curve2D).splitAt([intersection], PRECISION).at(-1);
 
-      if (!splitCurve) throw new Error('Bug in the splitting algo in offset');
+      if (!splitCurve) bug('offset', 'Bug in the splitting algo in offset');
 
       appendCurve({
         offset: splitPreviousCurve,

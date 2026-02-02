@@ -8,6 +8,7 @@ import type { AnyShape, Shape3D, Wire } from './shapes.js';
 import type * as ShapesModule from './shapes.js';
 import { getKernel } from '../kernel/index.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
+import { bug } from '../core/errors.js';
 
 // Lazy imports to break circular dependency between cast.ts and shapes.ts.
 // The Shape classes reference cast/downcast, and cast/downcast reference Shape classes.
@@ -18,9 +19,8 @@ let _shapesModule: any = null;
 // This is safe because the module is loaded eagerly at first use.
 function getShapesModuleSync(): typeof ShapesModule {
   if (!_shapesModule) {
-    // Force synchronous import via require-like pattern.
-    // In practice this module is always loaded before cast is called.
-    throw new Error(
+    bug(
+      'cast',
       'Shapes module not yet loaded. Ensure initCast() has been called or import shapes.js first.'
     );
   }

@@ -18,6 +18,7 @@ import {
 } from './sketcherlib.js';
 import type { OcType } from '../kernel/types.js';
 import { chamferCurves, Curve2D, dogboneFilletCurves, filletCurves } from '../2d/lib/index.js';
+import { bug } from '../core/errors.js';
 
 import {
   normalize2d,
@@ -121,7 +122,7 @@ export class BaseSketcher2d {
     }
 
     const previousCurve = this.pendingCurves.pop();
-    if (!previousCurve) throw new Error('bug in the custom corner algorithm');
+    if (!previousCurve) bug('sketcher', 'bug in the custom corner algorithm');
 
     this.pendingCurves.push(...this._nextCorner(previousCurve, curve));
     this._nextCorner = null;
@@ -460,7 +461,7 @@ export class BaseSketcher2d {
     const previousCurve = this.pendingCurves.pop();
     const curve = this.pendingCurves.shift();
 
-    if (!previousCurve || !curve) throw new Error('Not enough curves to close and fillet');
+    if (!previousCurve || !curve) bug('sketcher', 'Not enough curves to close and fillet');
 
     this.pendingCurves.push(...buildCornerFunction(radius, mode)(previousCurve, curve));
   }
