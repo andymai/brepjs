@@ -371,6 +371,7 @@ export class Plane {
   }
 
   set origin(newOrigin: Vector) {
+    if (this._origin) this._origin.delete();
     this._origin = newOrigin;
     this._calcTransforms();
   }
@@ -388,7 +389,11 @@ export class Plane {
       typeof xDistOrVector === 'number' ? [xDistOrVector, yDist, zDist] : xDistOrVector
     );
 
-    return this.translateTo(this.origin.add(translation));
+    const newOrigin = this.origin.add(translation);
+    translation.delete();
+    const result = this.translateTo(newOrigin);
+    newOrigin.delete();
+    return result;
   }
 
   translateX(xDist: number): Plane {
@@ -408,13 +413,18 @@ export class Plane {
     const zDir = new Vector(this.zDir).rotate(angle, [0, 0, 0], dir);
     const xDir = new Vector(this.xDir).rotate(angle, [0, 0, 0], dir);
 
-    return new Plane(this.origin, xDir, zDir);
+    const result = new Plane(this.origin, xDir, zDir);
+    zDir.delete();
+    xDir.delete();
+    return result;
   }
 
   rotate2DAxes(angle: number): Plane {
     const xDir = new Vector(this.xDir).rotate(angle, [0, 0, 0], this.zDir);
 
-    return new Plane(this.origin, xDir, this.zDir);
+    const result = new Plane(this.origin, xDir, this.zDir);
+    xDir.delete();
+    return result;
   }
 
   _calcTransforms(): void {
