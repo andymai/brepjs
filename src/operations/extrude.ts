@@ -186,9 +186,14 @@ export const supportExtrude = (
 ): Result<Shape3D> => {
   const centerVec = new Vector(center);
   const normalVec = new Vector(normal);
+  const endVec = centerVec.add(normalVec);
 
-  const mainSpineEdge = makeLine(centerVec, centerVec.add(normalVec));
+  const mainSpineEdge = makeLine(centerVec, endVec);
   const spine = unwrap(assembleWire([mainSpineEdge]));
+
+  centerVec.delete();
+  normalVec.delete();
+  endVec.delete();
 
   return genericSweep(wire, spine, { support });
 };
@@ -216,11 +221,16 @@ function complexExtrude(
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const centerVec = new Vector(center);
   const normalVec = new Vector(normal);
+  const endVec = centerVec.add(normalVec);
 
-  const mainSpineEdge = makeLine(centerVec, centerVec.add(normalVec));
+  const mainSpineEdge = makeLine(centerVec, endVec);
   const spine = unwrap(assembleWire([mainSpineEdge]));
 
   const law = profileShape ? unwrap(buildLawFromProfile(normalVec.Length, profileShape)) : null;
+
+  centerVec.delete();
+  endVec.delete();
+  normalVec.delete();
 
   return shellMode
     ? genericSweep(wire, spine, { law }, shellMode)
@@ -255,16 +265,22 @@ function twistExtrude(
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const centerVec = new Vector(center);
   const normalVec = new Vector(normal);
+  const endVec = centerVec.add(normalVec);
 
-  const mainSpineEdge = makeLine(centerVec, centerVec.add(normalVec));
+  const mainSpineEdge = makeLine(centerVec, endVec);
   const spine = unwrap(assembleWire([mainSpineEdge]));
 
-  const pitch = (360.0 / angleDegrees) * normalVec.Length;
+  const extrusionLength = normalVec.Length;
+  const pitch = (360.0 / angleDegrees) * extrusionLength;
   const radius = 1;
 
-  const auxiliarySpine = makeHelix(pitch, normalVec.Length, radius, center, normal);
+  const auxiliarySpine = makeHelix(pitch, extrusionLength, radius, center, normal);
 
-  const law = profileShape ? unwrap(buildLawFromProfile(normalVec.Length, profileShape)) : null;
+  const law = profileShape ? unwrap(buildLawFromProfile(extrusionLength, profileShape)) : null;
+
+  centerVec.delete();
+  normalVec.delete();
+  endVec.delete();
 
   return shellMode
     ? genericSweep(wire, spine, { auxiliarySpine, law }, shellMode)
