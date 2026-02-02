@@ -1,4 +1,5 @@
 import { bug } from '../../core/errors.js';
+import { unwrap } from '../../core/result.js';
 import Blueprint from './Blueprint.js';
 import Blueprints from './Blueprints.js';
 import CompoundBlueprint from './CompoundBlueprint.js';
@@ -18,7 +19,9 @@ const genericIntersects = (
 
     first.curves.forEach((thisCurve) => {
       second.curves.forEach((otherCurve) => {
-        const { intersections, commonSegmentsPoints } = intersectCurves(thisCurve, otherCurve);
+        const { intersections, commonSegmentsPoints } = unwrap(
+          intersectCurves(thisCurve, otherCurve)
+        );
         allIntersections.push(...intersections);
         allIntersections.push(...commonSegmentsPoints);
       });
@@ -356,5 +359,5 @@ export function intersect2D(
     return cut2D(intersect2D(wrapper, first), cut);
   }
 
-  throw new Error('intersct 2D algorithm error');
+  bug('intersect2D', 'intersect 2D algorithm error: unhandled Shape2D combination');
 }

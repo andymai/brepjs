@@ -4,6 +4,7 @@ import { approximateAsBSpline } from './approximations.js';
 import { Curve2D } from './Curve2D.js';
 import type { Point2D } from './definitions.js';
 import { selfIntersections } from './intersections.js';
+import { unwrap } from '../../core/result.js';
 import { make2dSegmentCurve } from './makeCurves.js';
 import { add2d, normalize2d, subtract2d } from './vectorOperations.js';
 
@@ -88,7 +89,7 @@ export const make2dOffset = (
 
   // We need a better way to handle curves that self intersect, for now we
   // replace them with a line
-  const selfIntersects = selfIntersections(approximation);
+  const selfIntersects = unwrap(selfIntersections(approximation));
   if (selfIntersects.length) {
     return {
       collapsed: true,

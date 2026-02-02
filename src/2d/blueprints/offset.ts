@@ -1,4 +1,5 @@
 import { bug } from '../../core/errors.js';
+import { unwrap } from '../../core/result.js';
 import type { Point2D } from '../lib/index.js';
 import {
   intersectCurves,
@@ -262,10 +263,8 @@ export function rawOffsets(
 
     if (previousCurve.offset instanceof Curve2D && curve.offset instanceof Curve2D) {
       // When the offset curves intersect we cut them and save them at
-      const { intersections: pointIntersections, commonSegmentsPoints } = intersectCurves(
-        previousCurve.offset,
-        curve.offset,
-        PRECISION / 100
+      const { intersections: pointIntersections, commonSegmentsPoints } = unwrap(
+        intersectCurves(previousCurve.offset, curve.offset, PRECISION / 100)
       );
       intersections = [...pointIntersections, ...commonSegmentsPoints];
     }
@@ -344,10 +343,8 @@ export function offsetBlueprint(
 
   offsettedArray.forEach((firstCurve, firstIndex) => {
     offsettedArray.slice(firstIndex + 1).forEach((secondCurve, secondIndex) => {
-      const { intersections: rawIntersections, commonSegmentsPoints } = intersectCurves(
-        firstCurve,
-        secondCurve,
-        PRECISION
+      const { intersections: rawIntersections, commonSegmentsPoints } = unwrap(
+        intersectCurves(firstCurve, secondCurve, PRECISION)
       );
 
       const intersections = [...rawIntersections, ...commonSegmentsPoints].filter(

@@ -1,4 +1,5 @@
 import Flatbush from 'flatbush';
+import { bug } from '../../core/errors.js';
 import type { Curve2D } from './Curve2D.js';
 
 export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] => {
@@ -27,7 +28,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
 
     while (true) {
       if (maxLoops-- < 0) {
-        throw new Error('Infinite loop detected');
+        bug('stitchCurves', 'Infinite loop detected');
       }
 
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

@@ -3,6 +3,8 @@ import { getKernel } from '../../kernel/index.js';
 import { Curve2D } from './Curve2D.js';
 import type { Point2D } from './definitions.js';
 import { samePoint } from './vectorOperations.js';
+import { type Result, ok, err } from '../../core/result.js';
+import { computationError } from '../../core/errors.js';
 
 function* pointsIteration(intersector: OcType): Generator<Point2D> {
   const nPoints = intersector.NbPoints();
@@ -36,9 +38,19 @@ function* commonSegmentsIteration(intersector: OcType): Generator<Curve2D> {
   }
 }
 
-export const intersectCurves = (first: Curve2D, second: Curve2D, precision = 1e-9) => {
+interface IntersectionResult {
+  intersections: Point2D[];
+  commonSegments: Curve2D[];
+  commonSegmentsPoints: Point2D[];
+}
+
+export const intersectCurves = (
+  first: Curve2D,
+  second: Curve2D,
+  precision = 1e-9
+): Result<IntersectionResult> => {
   if (first.boundingBox.isOut(second.boundingBox))
-    return { intersections: [], commonSegments: [], commonSegmentsPoints: [] };
+    return ok({ intersections: [], commonSegments: [], commonSegmentsPoints: [] });
 
   const oc = getKernel().oc;
   const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
@@ -53,7 +65,7 @@ export const intersectCurves = (first: Curve2D, second: Curve2D, precision = 1e-
     commonSegments = Array.from(commonSegmentsIteration(intersector));
   } catch (e) {
     console.error(first, second, e);
-    throw new Error('Intersections failed between curves');
+    return err(computationError('INTERSECTION_FAILED', 'Intersections failed between curves', e));
   } finally {
     intersector.delete();
   }
@@ -69,10 +81,10 @@ export const intersectCurves = (first: Curve2D, second: Curve2D, precision = 1e-
 
   const commonSegmentsPoints = commonSegments.flatMap((c) => [c.firstPoint, c.lastPoint]);
 
-  return { intersections, commonSegments, commonSegmentsPoints };
+  return ok({ intersections, commonSegments, commonSegmentsPoints });
 };
 
-export const selfIntersections = (curve: Curve2D, precision = 1e-9) => {
+export const selfIntersections = (curve: Curve2D, precision = 1e-9): Result<Point2D[]> => {
   const oc = getKernel().oc;
   const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
 
@@ -82,11 +94,11 @@ export const selfIntersections = (curve: Curve2D, precision = 1e-9) => {
     intersector.Init_1(curve.wrapped, curve.wrapped, precision);
 
     intersections = Array.from(pointsIteration(intersector));
-  } catch {
-    throw new Error('Self intersection failed');
+  } catch (e) {
+    return err(computationError('SELF_INTERSECTION_FAILED', 'Self intersection failed', e));
   } finally {
     intersector.delete();
   }
 
-  return intersections;
+  return ok(intersections);
 };

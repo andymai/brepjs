@@ -10,6 +10,8 @@ import type { Plane } from '../core/geometry.js';
 import { makeAx2 } from '../core/geometry.js';
 import type { Face } from '../topology/shapes.js';
 import { Edge } from '../topology/shapes.js';
+import { type Result, ok, err } from '../core/result.js';
+import { validationError } from '../core/errors.js';
 import type { Point2D } from './lib/index.js';
 import { axis2d, pnt, vec, BoundingBox2d, Curve2D } from './lib/index.js';
 
@@ -148,7 +150,7 @@ export function curvesAsEdgesOnFace(
   curves: Curve2D[],
   face: Face,
   scale: ScaleMode = 'original'
-): Edge[] {
+): Result<Edge[]> {
   const [r, gc] = localGC();
 
   const oc = getKernel().oc;
@@ -162,7 +164,12 @@ export function curvesAsEdgesOnFace(
 
   if (scale === 'original' && face.geomType !== 'PLANE') {
     if (face.geomType !== 'CYLINDRE')
-      throw new Error('Only planar and cylindrical faces can be unwrapped for sketching');
+      return err(
+        validationError(
+          'UNSUPPORTED_FACE_TYPE',
+          'Only planar and cylindrical faces can be unwrapped for sketching'
+        )
+      );
 
     const cylinder = r(geomSurf.get().Cylinder());
     if (!cylinder.Direct()) {
@@ -198,7 +205,7 @@ export function curvesAsEdgesOnFace(
   const edges = curvesAsEdgesOnSurface(modifiedCurves, geomSurf);
 
   gc();
-  return edges;
+  return ok(edges);
 }
 
 export function edgeToCurve(e: Edge, face: Face): Curve2D {

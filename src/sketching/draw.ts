@@ -3,6 +3,7 @@
  * Ported from replicad's draw.ts.
  */
 
+import { unwrap } from '../core/result.js';
 import type { ApproximationOptions } from '../2d/lib/index.js';
 import {
   BoundingBox2d,
@@ -440,7 +441,7 @@ export const drawPointsInterpolation = (
     closeShape?: boolean;
   } = {}
 ): Drawing => {
-  const curves = [make2dInerpolatedBSplineCurve(points, approximationConfig)];
+  const curves = [unwrap(make2dInerpolatedBSplineCurve(points, approximationConfig))];
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   if (options.closeShape && !samePoint(points[0]!, points[points.length - 1]!)) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

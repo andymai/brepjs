@@ -168,7 +168,7 @@ export default class Blueprint implements DrawingInterface {
   sketchOnFace(face: Face, scaleMode?: ScaleMode): any {
     const oc = getKernel().oc;
 
-    const edges = curvesAsEdgesOnFace(this.curves, face, scaleMode);
+    const edges = unwrap(curvesAsEdgesOnFace(this.curves, face, scaleMode));
     const wire = assembleWire(edges);
 
     oc.BRepLib.BuildCurves3d_2(wire.wrapped);
@@ -207,7 +207,7 @@ export default class Blueprint implements DrawingInterface {
     const oc = getKernel().oc;
     const gc = GCWithScope();
 
-    const foundFace = getSingleFace(face, shape);
+    const foundFace = unwrap(getSingleFace(face, shape));
     const hole = this.subFace(foundFace, origin);
 
     const maker = gc(

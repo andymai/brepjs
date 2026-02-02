@@ -1,6 +1,8 @@
 import type { OcType } from '../../kernel/types.js';
 import { getKernel } from '../../kernel/index.js';
 import { GCWithScope, localGC } from '../../core/memory.js';
+import { type Result, ok, err } from '../../core/result.js';
+import { computationError } from '../../core/errors.js';
 
 import type { Point2D } from './definitions.js';
 import { axis2d, pnt, vec } from './ocWrapper.js';
@@ -247,7 +249,7 @@ export function make2dInerpolatedBSplineCurve(
     degMax?: number;
     degMin?: number;
   } = {}
-) {
+): Result<Curve2D> {
   const r = GCWithScope();
   const oc = getKernel().oc;
 
@@ -286,10 +288,10 @@ export function make2dInerpolatedBSplineCurve(
   }
 
   if (!splineBuilder.IsDone()) {
-    throw new Error('B-spline approximation failed');
+    return err(computationError('BSPLINE_2D_FAILED', 'B-spline approximation failed'));
   }
 
-  return new Curve2D(splineBuilder.Curve());
+  return ok(new Curve2D(splineBuilder.Curve()));
 }
 
 // This assumes that both start and end points are at radius distance from the

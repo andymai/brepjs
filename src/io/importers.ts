@@ -6,12 +6,13 @@
 import { getKernel } from '../kernel/index.js';
 import { localGC } from '../core/memory.js';
 import { cast } from '../topology/cast.js';
-import { unwrap } from '../core/result.js';
+import { type Result, err } from '../core/result.js';
+import { ioError } from '../core/errors.js';
 import type { AnyShape } from '../topology/shapes.js';
 
 const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
 
-export async function importSTEP(STEPBlob: Blob): Promise<AnyShape> {
+export async function importSTEP(STEPBlob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
@@ -25,17 +26,17 @@ export async function importSTEP(STEPBlob: Blob): Promise<AnyShape> {
     reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
     const stepShape = r(reader.OneShape());
 
-    const shape = unwrap(cast(stepShape));
+    const result = cast(stepShape);
     gc();
-    return shape;
+    return result;
   } else {
     oc.FS.unlink('/' + fileName);
     gc();
-    throw new Error('Failed to load STEP file');
+    return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
   }
 }
 
-export async function importSTL(STLBlob: Blob): Promise<AnyShape> {
+export async function importSTL(STLBlob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
@@ -57,12 +58,12 @@ export async function importSTL(STLBlob: Blob): Promise<AnyShape> {
     solidSTL.Add(oc.TopoDS.Shell_1(upgradedShape));
     const asSolid = r(solidSTL.Solid());
 
-    const shape = unwrap(cast(asSolid));
+    const result = cast(asSolid);
     gc();
-    return shape;
+    return result;
   } else {
     oc.FS.unlink('/' + fileName);
     gc();
-    throw new Error('Failed to load STL file');
+    return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
   }
 }

@@ -1,7 +1,7 @@
 import { Curve2D } from './Curve2D.js';
-import type { Point2D } from './definitions.js';
 import { isPoint2D } from './definitions.js';
 import { intersectCurves } from './intersections.js';
+import { unwrap, isOk } from '../../core/result.js';
 import {
   make2dArcFromCenter,
   make2dCircle,
@@ -27,16 +27,12 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
     return null;
   }
 
-  let potentialCenter: Point2D | undefined;
-  try {
-    const { intersections } = intersectCurves(firstOffset, secondOffset, 1e-9);
-
-    // We need to work on the case where there are more than one intersections
-    potentialCenter = intersections.at(-1);
-  } catch {
+  const intersectionResult = intersectCurves(firstOffset, secondOffset, 1e-9);
+  if (!isOk(intersectionResult)) {
     return null;
   }
 
+  const potentialCenter = intersectionResult.value.intersections.at(-1);
   if (!isPoint2D(potentialCenter)) {
     return null;
   }
@@ -46,7 +42,7 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
     const [x, y] = offsetCurve.tangentAt(center);
     const normal = normalize2d([-y, x]);
     const splitPoint = add2d(center, scalarMultiply2d(normal, offset));
-    const splitParam = curve.parameter(splitPoint, 1e-6);
+    const splitParam = unwrap(curve.parameter(splitPoint, 1e-6));
     return curve.splitAt([splitParam]);
   };
 
@@ -100,21 +96,18 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
     return [firstCurve, secondCurve];
   }
 
-  let potentialCenter: Point2D | undefined;
-  try {
-    const { intersections } = intersectCurves(firstOffset, secondOffset, 1e-9);
-    // We need to work on the case where there are more than one intersections
-    potentialCenter = intersections.at(-1);
-  } catch {
+  const intersectionResult2 = intersectCurves(firstOffset, secondOffset, 1e-9);
+  if (!isOk(intersectionResult2)) {
     return [firstCurve, secondCurve];
   }
+  const potentialCenter = intersectionResult2.value.intersections.at(-1);
   if (!isPoint2D(potentialCenter)) {
     return [firstCurve, secondCurve];
   }
 
   const circle = make2dCircle(radius, potentialCenter);
-  const firstInt = intersectCurves(firstCurve, circle).intersections[0];
-  const secondInt = intersectCurves(secondCurve, circle).intersections.at(-1);
+  const firstInt = unwrap(intersectCurves(firstCurve, circle)).intersections[0];
+  const secondInt = unwrap(intersectCurves(secondCurve, circle)).intersections.at(-1);
 
   if (!firstInt || !secondInt) return [firstCurve, secondCurve];
 

@@ -5,6 +5,8 @@
 
 import type { Vector, Point } from '../core/geometry.js';
 import type { Face, Edge } from '../topology/shapes.js';
+import { type Result, ok, err } from '../core/result.js';
+import { queryError } from '../core/errors.js';
 
 export type Direction = 'X' | 'Y' | 'Z';
 export const DIRECTIONS: Record<Direction, Point> = {
@@ -121,18 +123,23 @@ export abstract class Finder<Type, FilterType> {
    * If unique is configured as an option it will either return the unique
    * element found or throw an error.
    */
-  find(shape: FilterType, options: { unique: true }): Type;
+  find(shape: FilterType, options: { unique: true }): Result<Type>;
   find(shape: FilterType, options?: { unique?: false }): Type[];
-  find(shape: FilterType, { unique = false } = {}): Type | Type[] {
+  find(shape: FilterType, { unique = false } = {}): Result<Type> | Type[] {
     const elements = this.applyFilter(shape);
 
     if (unique) {
       if (elements.length !== 1) {
         console.error(elements);
-        throw new Error(`Finder expected a unique match but found ${elements.length} element(s)`);
+        return err(
+          queryError(
+            'FINDER_NOT_UNIQUE',
+            `Finder expected a unique match but found ${elements.length} element(s)`
+          )
+        );
       }
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return elements[0]!;
+      return ok(elements[0]!);
     }
 
     return elements;

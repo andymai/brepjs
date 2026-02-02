@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, EdgeFinder, FaceFinder } from '../src/index.js';
+import { makeBox, EdgeFinder, FaceFinder, unwrap, isErr } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -73,7 +73,7 @@ describe('EdgeFinder', () => {
     const box = makeBox([10, 20, 30]);
     // There's only one edge that is length-10 and in the X direction at distance 0 from origin
     const finder = new EdgeFinder().inDirection('X').atDistance(0, [0, 0, 0]);
-    const edge = finder.find(box, { unique: true });
+    const edge = unwrap(finder.find(box, { unique: true }));
     expect(edge).toBeDefined();
     expect(edge.length).toBeCloseTo(10, 5);
   });
@@ -81,7 +81,8 @@ describe('EdgeFinder', () => {
   it('throws when unique finds multiple', () => {
     const box = makeBox([10, 10, 10]);
     const finder = new EdgeFinder().inDirection('Z');
-    expect(() => finder.find(box, { unique: true })).toThrow('unique');
+    const result = finder.find(box, { unique: true });
+    expect(isErr(result)).toBe(true);
   });
 
   it('supports inList filter', () => {

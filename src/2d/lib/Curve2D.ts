@@ -2,7 +2,8 @@ import type { OcType } from '../../kernel/types.js';
 
 import type { CurveType } from '../../core/definitionMaps.js';
 import { findCurveType } from '../../core/definitionMaps.js';
-import { unwrap } from '../../core/result.js';
+import { type Result, ok, err, unwrap } from '../../core/result.js';
+import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';
 import { getKernel } from '../../kernel/index.js';
 import { GCWithScope, localGC, WrappingObj } from '../../core/memory.js';
@@ -164,7 +165,7 @@ export class Curve2D extends WrappingObj<OcType> {
     return this.distanceFromPoint(point) < 1e-9;
   }
 
-  parameter(point: Point2D, precision = 1e-9): number {
+  parameter(point: Point2D, precision = 1e-9): Result<number> {
     const oc = getKernel().oc;
     const r = GCWithScope();
 
@@ -176,18 +177,21 @@ export class Curve2D extends WrappingObj<OcType> {
       lowerDistanceParameter = projector.LowerDistanceParameter();
     } catch {
       // Perhaps it failed because it is on an extremity
-      if (samePoint(point, this.firstPoint, precision)) return this.firstParameter;
-      if (samePoint(point, this.lastPoint, precision)) return this.lastParameter;
+      if (samePoint(point, this.firstPoint, precision)) return ok(this.firstParameter);
+      if (samePoint(point, this.lastPoint, precision)) return ok(this.lastParameter);
 
-      throw new Error('Failed to find parameter');
+      return err(computationError('PARAMETER_NOT_FOUND', 'Failed to find parameter'));
     }
 
     if (lowerDistance > precision) {
-      throw new Error(
-        `Point ${reprPnt(point)} not on curve ${this.repr}, ${lowerDistance.toFixed(9)}`
+      return err(
+        computationError(
+          'POINT_NOT_ON_CURVE',
+          `Point ${reprPnt(point)} not on curve ${this.repr}, ${lowerDistance.toFixed(9)}`
+        )
       );
     }
-    return lowerDistanceParameter;
+    return ok(lowerDistanceParameter);
   }
 
   tangentAt(index: number | Point2D): Point2D {
@@ -197,7 +201,7 @@ export class Curve2D extends WrappingObj<OcType> {
     let param;
 
     if (Array.isArray(index)) {
-      param = this.parameter(index);
+      param = unwrap(this.parameter(index));
     } else {
       const paramLength = this.innerCurve.LastParameter() - this.innerCurve.FirstParameter();
       param = paramLength * index + Number(this.innerCurve.FirstParameter());
@@ -219,7 +223,7 @@ export class Curve2D extends WrappingObj<OcType> {
     const r = GCWithScope();
 
     let parameters = points.map((point: Point2D | number) => {
-      if (isPoint2D(point)) return this.parameter(point, precision);
+      if (isPoint2D(point)) return unwrap(this.parameter(point, precision));
       return point;
     });
 
@@ -273,8 +277,8 @@ export class Curve2D extends WrappingObj<OcType> {
 
         const trimmed = new oc.Geom2d_TrimmedCurve(this.wrapped, first, last, true, true);
         return new Curve2D(new oc.Handle_Geom2d_Curve_2(trimmed));
-      } catch {
-        throw new Error('Failed to split the curve');
+      } catch (e) {
+        throw new Error(`Failed to split the curve: ${e instanceof Error ? e.message : String(e)}`);
       }
     });
   }

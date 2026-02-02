@@ -1256,8 +1256,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
         if (isNumber(rad)) return chamferBuilder.Add_2(rad, e);
 
         const finder = new FaceFinderClass();
-        const face = rad.selectedFace(finder).find(this, { unique: true });
-        if (!face) bug('chamfer', 'Chamfer failed: could not find the specified face');
+        const face = unwrap(rad.selectedFace(finder).find(this, { unique: true }));
 
         if ('distances' in rad) {
           const [d1, d2] = rad.distances;

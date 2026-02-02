@@ -2,6 +2,7 @@ import type { OcType } from '../../kernel/types.js';
 import { RAD2DEG } from '../../core/constants.js';
 import { findCurveType } from '../../core/definitionMaps.js';
 import { unwrap } from '../../core/result.js';
+import { bug } from '../../core/errors.js';
 import { getKernel } from '../../kernel/index.js';
 import round2 from '../../utils/round2.js';
 import round5 from '../../utils/round5.js';
@@ -73,5 +74,5 @@ export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): str
     } ${curve.IsDirect() ? '1' : '0'} ${end}`;
   }
 
-  throw new Error(`Unsupported curve type: ${curveType}`);
+  bug('adaptedCurveToPathElem', `Unsupported curve type: ${curveType}`);
 };

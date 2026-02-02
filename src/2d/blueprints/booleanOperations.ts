@@ -1,4 +1,5 @@
 import { bug } from '../../core/errors.js';
+import { unwrap } from '../../core/result.js';
 import zip from '../../utils/zip.js';
 import type { Point2D, Curve2D } from '../lib/index.js';
 import {
@@ -53,7 +54,7 @@ const rotateToStartAtSegment = (curves: Curve2D[], segment: Curve2D) => {
         curves.map((c) => c.repr),
         segment.repr
       );
-      throw new Error('Failed to rotate to segment start');
+      bug('rotateToStartAtSegment', 'Failed to rotate to segment start');
     }
   }
 
@@ -182,10 +183,8 @@ function blueprintsIntersectionSegments(
     second.curves.forEach((otherCurve, secondIndex) => {
       // The algorithm used here seems to fail for smaller precisions (it
       // detects overlaps in circle that do not exist
-      const { intersections, commonSegments, commonSegmentsPoints } = intersectCurves(
-        thisCurve,
-        otherCurve,
-        PRECISION / 100
+      const { intersections, commonSegments, commonSegmentsPoints } = unwrap(
+        intersectCurves(thisCurve, otherCurve, PRECISION / 100)
       );
 
       allIntersections.push(...intersections);
