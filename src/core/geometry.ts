@@ -8,7 +8,7 @@ import { DEG2RAD, RAD2DEG } from './constants.js';
 import { getKernel } from '../kernel/index.js';
 import type { OpenCascadeInstance, OcType } from '../kernel/types.js';
 import { type Result, ok, err, unwrap } from './result.js';
-import { validationError } from './errors.js';
+import { bug, validationError } from './errors.js';
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
 
@@ -328,7 +328,7 @@ export class Plane {
 
     const zDir = new Vector(normal);
     if (zDir.Length === 0) {
-      throw new Error('Plane normal must be non-zero');
+      bug('Plane', 'Plane normal must be non-zero');
     }
     this.zDir = zDir.normalize();
 
@@ -342,7 +342,7 @@ export class Plane {
     }
 
     if (xDir.Length === 0) {
-      throw new Error('Plane xDir must be non-zero');
+      bug('Plane', 'Plane xDir must be non-zero');
     }
 
     this.xDir = xDir.normalize();

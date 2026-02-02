@@ -13,6 +13,8 @@ import {
   measureVolume,
   Vector,
   unwrap,
+  isOk,
+  isErr,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -172,5 +174,45 @@ describe('Boolean operations', () => {
     const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
     const intersection = unwrap(box1.intersect(box2));
     expect(measureVolume(intersection)).toBeCloseTo(500, 0);
+  });
+});
+
+describe('Result error paths', () => {
+  it('revolution returns Ok for valid input', () => {
+    const sketch = new Sketcher('XZ')
+      .movePointerTo([1, 0])
+      .lineTo([2, 0])
+      .lineTo([2, 1])
+      .lineTo([1, 1])
+      .close();
+    const face = sketch.face();
+    const result = revolution(face, [0, 0, 0], [0, 0, 1]);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('loft returns Ok for valid wires', () => {
+    const bottom = sketchCircle(10);
+    const top = sketchCircle(5, { origin: [0, 0, 10] });
+    const result = loft([bottom.wire, top.wire]);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('fuse returns Ok for overlapping shapes', () => {
+    const box1 = makeBox([10, 10, 10]);
+    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
+    const result = box1.fuse(box2);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('blobSTEP returns Ok for valid shape', () => {
+    const box = makeBox([10, 10, 10]);
+    const result = box.blobSTEP();
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('blobSTL returns Ok for valid shape', () => {
+    const box = makeBox([10, 10, 10]);
+    const result = box.blobSTL();
+    expect(isOk(result)).toBe(true);
   });
 });
