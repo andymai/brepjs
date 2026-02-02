@@ -34,6 +34,13 @@ export interface MeshOptions {
   skipNormals?: boolean;
 }
 
+export interface KernelMeshResult {
+  vertices: Float32Array;
+  normals: Float32Array;
+  triangles: Uint32Array;
+  faceGroups: Array<{ start: number; count: number; faceHash: number }>;
+}
+
 export interface KernelAdapter {
   /** The raw OpenCascade instance */
   readonly oc: OpenCascadeInstance;
@@ -92,15 +99,7 @@ export interface KernelAdapter {
   scale(shape: OcShape, center: [number, number, number], factor: number): OcShape;
 
   // --- Meshing ---
-  mesh(
-    shape: OcShape,
-    options: MeshOptions
-  ): {
-    vertices: Float32Array;
-    normals: Float32Array;
-    triangles: Uint32Array;
-    faceGroups: Array<{ start: number; count: number }>;
-  };
+  mesh(shape: OcShape, options: MeshOptions): KernelMeshResult;
   meshEdges(shape: OcShape, tolerance?: number): Float32Array[];
 
   // --- File I/O ---

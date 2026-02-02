@@ -11,17 +11,16 @@ import { gcWithScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
-import { getFaces, getEdges, getHashCode } from './shapeFns.js';
-import { type FaceTriangulation, triangulateFace } from './faceFns.js';
+import { getFaces, getEdges } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Mesh types
 // ---------------------------------------------------------------------------
 
 export interface ShapeMesh {
-  triangles: number[];
-  vertices: number[];
-  normals: number[];
+  triangles: Uint32Array;
+  vertices: Float32Array;
+  normals: Float32Array;
   faceGroups: { start: number; count: number; faceId: number }[];
 }
 
@@ -33,18 +32,6 @@ export interface EdgeMesh {
 export interface MeshOptions {
   tolerance?: number;
   angularTolerance?: number;
-}
-
-// ---------------------------------------------------------------------------
-// Internal: incremental mesh
-// ---------------------------------------------------------------------------
-
-function incrementalMesh(
-  shape: AnyShape,
-  { tolerance = 1e-3, angularTolerance = 0.1 }: MeshOptions = {}
-): void {
-  const oc = getKernel().oc;
-  new oc.BRepMesh_IncrementalMesh_2(shape.wrapped, tolerance, false, angularTolerance, false);
 }
 
 // ---------------------------------------------------------------------------
@@ -60,50 +47,22 @@ export function meshShape(
     skipNormals = false,
   }: MeshOptions & { skipNormals?: boolean } = {}
 ): ShapeMesh {
-  incrementalMesh(shape, { tolerance, angularTolerance });
+  const result = getKernel().mesh(shape.wrapped, {
+    tolerance,
+    angularTolerance,
+    skipNormals,
+  });
 
-  const faces = getFaces(shape);
-  const faceResults: { tri: FaceTriangulation; faceId: number }[] = [];
-  let totalTriangles = 0;
-  let totalVertices = 0;
-  let totalNormals = 0;
-  let vertexOffset = 0;
-
-  for (const face of faces) {
-    const tri = triangulateFace(face, vertexOffset, skipNormals);
-    if (!tri) continue;
-    faceResults.push({ tri, faceId: getHashCode(face) });
-    totalTriangles += tri.trianglesIndexes.length;
-    totalVertices += tri.vertices.length;
-    totalNormals += tri.verticesNormals.length;
-    vertexOffset += tri.vertices.length / 3;
-  }
-
-  const triangles = new Array<number>(totalTriangles);
-  const vertices = new Array<number>(totalVertices);
-  const normals = new Array<number>(totalNormals);
-  const faceGroups: { start: number; count: number; faceId: number }[] = [];
-  let triOffset = 0;
-  let vtxOffset = 0;
-  let nrmOffset = 0;
-
-  for (const { tri, faceId } of faceResults) {
-    faceGroups.push({ start: triOffset, count: tri.trianglesIndexes.length, faceId });
-    for (let i = 0; i < tri.trianglesIndexes.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      triangles[triOffset++] = tri.trianglesIndexes[i]!;
-    }
-    for (let i = 0; i < tri.vertices.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      vertices[vtxOffset++] = tri.vertices[i]!;
-    }
-    for (let i = 0; i < tri.verticesNormals.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      normals[nrmOffset++] = tri.verticesNormals[i]!;
-    }
-  }
-
-  return { triangles, vertices, normals, faceGroups };
+  return {
+    vertices: result.vertices,
+    normals: result.normals,
+    triangles: result.triangles,
+    faceGroups: result.faceGroups.map((g) => ({
+      start: g.start,
+      count: g.count,
+      faceId: g.faceHash,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +203,7 @@ export function exportSTL(
   }: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
   const oc = getKernel().oc;
-  incrementalMesh(shape, { tolerance, angularTolerance });
+  new oc.BRepMesh_IncrementalMesh_2(shape.wrapped, tolerance, false, angularTolerance, false);
   const filename = 'blob.stl';
   const done = oc.StlAPI.Write(shape.wrapped, filename, !binary);
 
