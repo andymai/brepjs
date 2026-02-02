@@ -318,6 +318,34 @@ export {
 
 export type { DrawingInterface } from './2d/blueprints/lib.js';
 
+// ── Layer 3: sketching (functional) ──
+
+export {
+  sketchExtrude,
+  sketchRevolve,
+  sketchLoft,
+  sketchSweep,
+  sketchFace as fnSketchFace,
+  sketchWires as fnSketchWires,
+  compoundSketchExtrude,
+  compoundSketchRevolve,
+  compoundSketchFace,
+  compoundSketchLoft,
+} from './sketching/sketchFns.js';
+
+export {
+  drawingToSketchOnPlane,
+  drawingFuse,
+  drawingCut,
+  drawingIntersect,
+  drawingFillet,
+  drawingChamfer,
+  translateDrawing,
+  rotateDrawing,
+  scaleDrawing,
+  mirrorDrawing,
+} from './sketching/drawFns.js';
+
 // ── Layer 3: text ──
 
 export { loadFont, getFont, textBlueprints, sketchText } from './text/textBlueprints.js';
