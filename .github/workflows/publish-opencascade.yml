@@ -18,16 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install ytt
-        run: |
-          curl -fsSL -o ytt https://github.com/carvel-dev/ytt/releases/download/v0.50.0/ytt-linux-amd64
-          chmod +x ytt
-          sudo mv ytt /usr/local/bin/
-
-      - name: Generate build config
-        working-directory: packages/brepjs-opencascade
-        run: ytt -f build-source/ --output-files build-config
-
       - name: Build single (no exceptions)
         working-directory: packages/brepjs-opencascade/build-config
         run: |
