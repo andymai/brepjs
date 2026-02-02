@@ -396,12 +396,40 @@ export class OCCTAdapter implements KernelAdapter {
     );
     mesher.delete();
 
-    const vertices: number[] = [];
-    const normals: number[] = [];
-    const triangles: number[] = [];
-    const faceGroups: Array<{ start: number; count: number }> = [];
+    // Pass 1: count totals so we can pre-allocate
+    let totalNodes = 0;
+    let totalTris = 0;
 
     const explorer = new this.oc.TopExp_Explorer_2(
+      shape,
+      this.oc.TopAbs_ShapeEnum.TopAbs_FACE,
+      this.oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+    while (explorer.More()) {
+      const face = this.oc.TopoDS.Face_1(explorer.Current());
+      const loc = new this.oc.TopLoc_Location_1();
+      const tri = this.oc.BRep_Tool.Triangulation(face, loc, 0);
+      if (!tri.IsNull()) {
+        const t = tri.get();
+        totalNodes += t.NbNodes() as number;
+        totalTris += t.NbTriangles() as number;
+      }
+      loc.delete();
+      tri.delete();
+      explorer.Next();
+    }
+
+    // Pass 2: fill pre-allocated arrays
+    const vertices = new Float32Array(totalNodes * 3);
+    const normals = options.skipNormals ? new Float32Array(0) : new Float32Array(totalNodes * 3);
+    const triangles = new Uint32Array(totalTris * 3);
+    const faceGroups: Array<{ start: number; count: number }> = [];
+
+    let vIdx = 0;
+    let nIdx = 0;
+    let tIdx = 0;
+
+    explorer.Init(
       shape,
       this.oc.TopAbs_ShapeEnum.TopAbs_FACE,
       this.oc.TopAbs_ShapeEnum.TopAbs_SHAPE
@@ -416,12 +444,14 @@ export class OCCTAdapter implements KernelAdapter {
         const tri = triangulation.get();
         const transformation = location.Transformation();
         const nbNodes = tri.NbNodes();
-        const vertexOffset = vertices.length / 3;
-        const triStart = triangles.length;
+        const vertexOffset = vIdx / 3;
+        const triStart = tIdx;
 
         for (let i = 1; i <= nbNodes; i++) {
           const p = tri.Node(i).Transformed(transformation);
-          vertices.push(p.X(), p.Y(), p.Z());
+          vertices[vIdx++] = p.X();
+          vertices[vIdx++] = p.Y();
+          vertices[vIdx++] = p.Z();
           p.delete();
         }
 
@@ -431,7 +461,9 @@ export class OCCTAdapter implements KernelAdapter {
           this.oc.StdPrs_ToolTriangulatedShape.Normal(face, pc, normalsArray);
           for (let i = normalsArray.Lower(); i <= normalsArray.Upper(); i++) {
             const d = normalsArray.Value(i).Transformed(transformation);
-            normals.push(d.X(), d.Y(), d.Z());
+            normals[nIdx++] = d.X();
+            normals[nIdx++] = d.Y();
+            normals[nIdx++] = d.Z();
             d.delete();
           }
           normalsArray.delete();
@@ -452,11 +484,13 @@ export class OCCTAdapter implements KernelAdapter {
             n1 = n2;
             n2 = tmp;
           }
-          triangles.push(n1 - 1 + vertexOffset, n2 - 1 + vertexOffset, n3 - 1 + vertexOffset);
+          triangles[tIdx++] = n1 - 1 + vertexOffset;
+          triangles[tIdx++] = n2 - 1 + vertexOffset;
+          triangles[tIdx++] = n3 - 1 + vertexOffset;
           t.delete();
         }
 
-        faceGroups.push({ start: triStart, count: triangles.length - triStart });
+        faceGroups.push({ start: triStart, count: tIdx - triStart });
         transformation.delete();
       }
 
@@ -466,12 +500,7 @@ export class OCCTAdapter implements KernelAdapter {
     }
     explorer.delete();
 
-    return {
-      vertices: new Float32Array(vertices),
-      normals: new Float32Array(normals),
-      triangles: new Uint32Array(triangles),
-      faceGroups,
-    };
+    return { vertices, normals, triangles, faceGroups };
   }
 
   meshEdges(shape: OcShape, tolerance = 1e-3): Float32Array[] {
@@ -689,22 +718,29 @@ export class OCCTAdapter implements KernelAdapter {
     return result;
   }
 
+  private _shapeTypeMap: Map<unknown, ShapeType> | null = null;
+
+  private _getShapeTypeMap(): Map<unknown, ShapeType> {
+    if (!this._shapeTypeMap) {
+      const ta = this.oc.TopAbs_ShapeEnum;
+      this._shapeTypeMap = new Map<unknown, ShapeType>([
+        [ta.TopAbs_VERTEX, 'vertex'],
+        [ta.TopAbs_EDGE, 'edge'],
+        [ta.TopAbs_WIRE, 'wire'],
+        [ta.TopAbs_FACE, 'face'],
+        [ta.TopAbs_SHELL, 'shell'],
+        [ta.TopAbs_SOLID, 'solid'],
+        [ta.TopAbs_COMPSOLID, 'compsolid'],
+        [ta.TopAbs_COMPOUND, 'compound'],
+      ]);
+    }
+    return this._shapeTypeMap;
+  }
+
   shapeType(shape: OcShape): ShapeType {
     if (shape.IsNull()) throw new Error('Cannot determine shape type: shape is null');
-    const ta = this.oc.TopAbs_ShapeEnum;
-    const st = shape.ShapeType();
-    const map = new Map<unknown, ShapeType>([
-      [ta.TopAbs_VERTEX, 'vertex'],
-      [ta.TopAbs_EDGE, 'edge'],
-      [ta.TopAbs_WIRE, 'wire'],
-      [ta.TopAbs_FACE, 'face'],
-      [ta.TopAbs_SHELL, 'shell'],
-      [ta.TopAbs_SOLID, 'solid'],
-      [ta.TopAbs_COMPSOLID, 'compsolid'],
-      [ta.TopAbs_COMPOUND, 'compound'],
-    ]);
-    const result = map.get(st);
-    if (!result) throw new Error(`Unknown shape type enum value: ${st}`);
+    const result = this._getShapeTypeMap().get(shape.ShapeType());
+    if (!result) throw new Error(`Unknown shape type enum value: ${shape.ShapeType()}`);
     return result;
   }
 
@@ -735,6 +771,7 @@ export class OCCTAdapter implements KernelAdapter {
     for (const s of shapes) {
       builder.Add(compound, s);
     }
+    builder.delete();
     return compound;
   }
 

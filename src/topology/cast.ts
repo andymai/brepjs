@@ -88,48 +88,64 @@ export const shapeType = (shape: OcShape): Result<OcType> => {
   return ok(shape.ShapeType());
 };
 
+// Lazily cached map: TopAbs enum → TopoDS downcast function
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are opaque
+let _downcastMap: Map<any, any> | null = null;
+
+function getDowncastMap() {
+  if (!_downcastMap) {
+    const oc = getKernel().oc;
+    const ta = oc.TopAbs_ShapeEnum;
+    _downcastMap = new Map([
+      [ta.TopAbs_VERTEX, oc.TopoDS.Vertex_1],
+      [ta.TopAbs_EDGE, oc.TopoDS.Edge_1],
+      [ta.TopAbs_WIRE, oc.TopoDS.Wire_1],
+      [ta.TopAbs_FACE, oc.TopoDS.Face_1],
+      [ta.TopAbs_SHELL, oc.TopoDS.Shell_1],
+      [ta.TopAbs_SOLID, oc.TopoDS.Solid_1],
+      [ta.TopAbs_COMPSOLID, oc.TopoDS.CompSolid_1],
+      [ta.TopAbs_COMPOUND, oc.TopoDS.Compound_1],
+    ]);
+  }
+  return _downcastMap;
+}
+
 export function downcast(shape: OcShape): Result<GenericTopo> {
-  const oc = getKernel().oc;
-  const ta = oc.TopAbs_ShapeEnum;
-
-  const CAST_MAP = new Map([
-    [ta.TopAbs_VERTEX, oc.TopoDS.Vertex_1],
-    [ta.TopAbs_EDGE, oc.TopoDS.Edge_1],
-    [ta.TopAbs_WIRE, oc.TopoDS.Wire_1],
-    [ta.TopAbs_FACE, oc.TopoDS.Face_1],
-    [ta.TopAbs_SHELL, oc.TopoDS.Shell_1],
-    [ta.TopAbs_SOLID, oc.TopoDS.Solid_1],
-    [ta.TopAbs_COMPSOLID, oc.TopoDS.CompSolid_1],
-    [ta.TopAbs_COMPOUND, oc.TopoDS.Compound_1],
-  ]);
-
   return andThen(shapeType(shape), (myType) => {
-    const caster = CAST_MAP.get(myType);
+    const caster = getDowncastMap().get(myType);
     if (!caster)
       return err(typeCastError('NO_WRAPPER', 'Could not find a wrapper for this shape type'));
     return ok(caster(shape));
   });
 }
 
+// Lazily cached map: TopAbs enum → Shape class constructor
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are opaque
+let _castMap: Map<any, any> | null = null;
+
+function getCastMap() {
+  if (!_castMap) {
+    const oc = getKernel().oc;
+    const ta = oc.TopAbs_ShapeEnum;
+    const mod = getShapesModuleSync();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapping enum to class constructors
+    _castMap = new Map<any, any>([
+      [ta.TopAbs_VERTEX, mod.Vertex],
+      [ta.TopAbs_EDGE, mod.Edge],
+      [ta.TopAbs_WIRE, mod.Wire],
+      [ta.TopAbs_FACE, mod.Face],
+      [ta.TopAbs_SHELL, mod.Shell],
+      [ta.TopAbs_SOLID, mod.Solid],
+      [ta.TopAbs_COMPSOLID, mod.CompSolid],
+      [ta.TopAbs_COMPOUND, mod.Compound],
+    ]);
+  }
+  return _castMap;
+}
+
 export function cast(shape: OcShape): Result<AnyShape> {
-  const oc = getKernel().oc;
-  const ta = oc.TopAbs_ShapeEnum;
-  const mod = getShapesModuleSync();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapping enum to class constructors
-  const CAST_MAP = new Map<any, any>([
-    [ta.TopAbs_VERTEX, mod.Vertex],
-    [ta.TopAbs_EDGE, mod.Edge],
-    [ta.TopAbs_WIRE, mod.Wire],
-    [ta.TopAbs_FACE, mod.Face],
-    [ta.TopAbs_SHELL, mod.Shell],
-    [ta.TopAbs_SOLID, mod.Solid],
-    [ta.TopAbs_COMPSOLID, mod.CompSolid],
-    [ta.TopAbs_COMPOUND, mod.Compound],
-  ]);
-
   return andThen(shapeType(shape), (st) => {
-    const Klass = CAST_MAP.get(st);
+    const Klass = getCastMap().get(st);
     if (!Klass)
       return err(typeCastError('NO_WRAPPER', 'Could not find a wrapper for this shape type'));
     return andThen(downcast(shape), (downcasted) => ok(new Klass(downcasted) as AnyShape));
