@@ -33,6 +33,7 @@ import {
 import type { Plane } from '../core/geometry.js';
 import { type PlaneName, type Point } from '../core/geometry.js';
 import type { AnyShape, Edge, Face } from '../topology/shapes.js';
+import { makeFace } from '../topology/shapeHelpers.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
 import type { SketchInterface } from './sketchLib.js';
 import type Sketches from './Sketches.js';
@@ -474,7 +475,8 @@ export const drawParametricFunction = (
 };
 
 const edgesToDrawing = (edges: Edge[]): Drawing => {
-  const planeFace = (drawRectangle(1000, 1000).sketchOnPlane() as Sketch).face();
+  const planeSketch = drawRectangle(1000, 1000).sketchOnPlane();
+  const planeFace = unwrap(makeFace(planeSketch.wire));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));

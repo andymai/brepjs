@@ -345,6 +345,12 @@ describe('DrawingPen', () => {
 });
 
 describe('Projection and face outline', () => {
+  it('drawProjection returns visible and hidden drawings', () => {
+    const result = drawProjection(makeBaseBox(10, 10, 10), 'front');
+    expect(result.visible).toBeInstanceOf(Drawing);
+    expect(result.hidden).toBeInstanceOf(Drawing);
+  });
+
   it('drawFaceOutline returns a drawing from a face', () => {
     expect(drawFaceOutline(sketchRectangle(10, 10).face())).toBeInstanceOf(Drawing);
   });
