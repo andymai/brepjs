@@ -15,40 +15,45 @@ const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).subs
 export async function importSTEP(STEPBlob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
-
   const fileName = uniqueId();
-  const bufferView = new Uint8Array(await STEPBlob.arrayBuffer());
-  oc.FS.writeFile(`/${fileName}`, bufferView);
 
-  const reader = r(new oc.STEPControl_Reader_1());
-  if (reader.ReadFile(fileName)) {
-    oc.FS.unlink('/' + fileName);
+  try {
+    const bufferView = new Uint8Array(await STEPBlob.arrayBuffer());
+    oc.FS.writeFile(`/${fileName}`, bufferView);
+
+    const reader = r(new oc.STEPControl_Reader_1());
+    if (!reader.ReadFile(fileName)) {
+      return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
+    }
+
     reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
     const stepShape = r(reader.OneShape());
-
-    const result = cast(stepShape);
+    return cast(stepShape);
+  } finally {
+    try {
+      oc.FS.unlink('/' + fileName);
+    } catch {
+      /* file may not exist if writeFile failed */
+    }
     gc();
-    return result;
-  } else {
-    oc.FS.unlink('/' + fileName);
-    gc();
-    return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
   }
 }
 
 export async function importSTL(STLBlob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
-
   const fileName = uniqueId();
-  const bufferView = new Uint8Array(await STLBlob.arrayBuffer());
-  oc.FS.writeFile(`/${fileName}`, bufferView);
 
-  const reader = r(new oc.StlAPI_Reader());
-  const readShape = r(new oc.TopoDS_Shell());
+  try {
+    const bufferView = new Uint8Array(await STLBlob.arrayBuffer());
+    oc.FS.writeFile(`/${fileName}`, bufferView);
 
-  if (reader.Read(readShape, fileName)) {
-    oc.FS.unlink('/' + fileName);
+    const reader = r(new oc.StlAPI_Reader());
+    const readShape = r(new oc.TopoDS_Shell());
+
+    if (!reader.Read(readShape, fileName)) {
+      return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
+    }
 
     const shapeUpgrader = r(new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false));
     shapeUpgrader.Build();
@@ -58,12 +63,13 @@ export async function importSTL(STLBlob: Blob): Promise<Result<AnyShape>> {
     solidSTL.Add(oc.TopoDS.Shell_1(upgradedShape));
     const asSolid = r(solidSTL.Solid());
 
-    const result = cast(asSolid);
+    return cast(asSolid);
+  } finally {
+    try {
+      oc.FS.unlink('/' + fileName);
+    } catch {
+      /* file may not exist if writeFile failed */
+    }
     gc();
-    return result;
-  } else {
-    oc.FS.unlink('/' + fileName);
-    gc();
-    return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
   }
 }
