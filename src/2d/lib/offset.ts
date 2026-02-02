@@ -57,6 +57,7 @@ export const make2dOffset = (
     const oc = getKernel().oc;
     const newCircle = new oc.gp_Circ2d_3(circle.Axis(), newRadius);
     const newInnerCurve = new oc.Geom2d_Circle_1(newCircle);
+    newCircle.delete();
     const newCurve = new oc.Geom2d_TrimmedCurve(
       new oc.Handle_Geom2d_Curve_2(newInnerCurve),
       curve.firstParameter,

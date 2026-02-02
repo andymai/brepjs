@@ -111,6 +111,8 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     const direction = this.position.sub(lookAtPoint).normalized();
 
     this.wrapped.SetDirection(direction.toDir());
+    lookAtPoint.delete();
+    direction.delete();
     this.autoAxes();
     return this;
   }
