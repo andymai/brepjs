@@ -8,6 +8,7 @@ import { DEG2RAD, RAD2DEG } from '../core/constants.js';
 import { localGC } from '../core/memory.js';
 import { getKernel } from '../kernel/index.js';
 import { assembleWire } from '../topology/shapeHelpers.js';
+import { unwrap } from '../core/result.js';
 import type { Face, Wire } from '../topology/shapes.js';
 import { Edge } from '../topology/shapes.js';
 import {
@@ -544,7 +545,7 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     const edges = this.pendingCurves.map((curve) => {
       return r(new Edge(r(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf)).Edge()));
     });
-    const wire = assembleWire(edges);
+    const wire = unwrap(assembleWire(edges));
     oc.BRepLib.BuildCurves3d_2(wire.wrapped);
 
     gc();

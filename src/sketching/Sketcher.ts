@@ -7,6 +7,7 @@ import { Plane, type PlaneName, type Point, Vector } from '../core/geometry.js';
 import { makePlane } from '../core/geometryHelpers.js';
 import { localGC } from '../core/memory.js';
 import { DEG2RAD, RAD2DEG } from '../core/constants.js';
+import { unwrap } from '../core/result.js';
 import { distance2d, polarAngle2d, polarToCartesian, type Point2D } from '../2d/lib/index.js';
 import {
   makeLine,
@@ -257,14 +258,16 @@ export default class Sketcher implements GenericSketcher<Sketch> {
       new Vector(this.plane.xDir).rotate(rotationAngle, this.plane.origin, this.plane.zDir)
     );
 
-    const arc = makeEllipseArc(
-      rx,
-      ry,
-      clockwise ? startAngle : endAngle,
-      clockwise ? endAngle : startAngle,
-      r(this.plane.toWorldCoords([cx, cy])),
-      this.plane.zDir,
-      xDir
+    const arc = unwrap(
+      makeEllipseArc(
+        rx,
+        ry,
+        clockwise ? startAngle : endAngle,
+        clockwise ? endAngle : startAngle,
+        r(this.plane.toWorldCoords([cx, cy])),
+        this.plane.zDir,
+        xDir
+      )
     );
 
     if (!clockwise) {
@@ -399,7 +402,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
     const mirroredWire = wire.clone().mirror(normal, this.pointer);
 
-    const combinedWire = assembleWire([wire, mirroredWire]);
+    const combinedWire = unwrap(assembleWire([wire, mirroredWire]));
 
     return combinedWire;
   }
@@ -407,7 +410,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   protected buildWire(): Wire {
     if (!this.pendingEdges.length) throw new Error('No lines to convert into a wire');
 
-    let wire = assembleWire(this.pendingEdges);
+    let wire = unwrap(assembleWire(this.pendingEdges));
 
     if (this._mirrorWire) {
       wire = this._mirrorWireOnStartEnd(wire);

@@ -3,6 +3,7 @@
  * Ported from replicad's sketches/cannedSketches.ts.
  */
 
+import { unwrap } from '../core/result.js';
 import {
   assembleWire,
   type BSplineApproximationConfig,
@@ -36,7 +37,7 @@ export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Ske
       ? makePlane(planeConfig.plane)
       : makePlane(planeConfig.plane, planeConfig.origin);
 
-  const wire = assembleWire([makeCircle(radius, plane.origin, plane.zDir)]);
+  const wire = unwrap(assembleWire([makeCircle(radius, plane.origin, plane.zDir)]));
   const sketch = new Sketch(wire, {
     defaultOrigin: plane.origin,
     defaultDirection: plane.zDir,
@@ -66,7 +67,9 @@ export const sketchEllipse = (xRadius = 1, yRadius = 2, planeConfig: PlaneConfig
     minR = xRadius;
   }
 
-  const wire = assembleWire([makeEllipse(majR, minR, plane.origin, plane.zDir, xDir)]);
+  const wire = unwrap(
+    assembleWire([unwrap(makeEllipse(majR, minR, plane.origin, plane.zDir, xDir))])
+  );
   xDir.delete();
 
   const sketch = new Sketch(wire, {
@@ -220,7 +223,9 @@ export const sketchParametricFunction = (
     return r(plane.toWorldCoords(point));
   });
 
-  const wire = assembleWire([r(makeBSplineApproximation(points, approximationConfig))]);
+  const wire = unwrap(
+    assembleWire([r(unwrap(makeBSplineApproximation(points, approximationConfig)))])
+  );
 
   const sketch = new Sketch(wire, {
     defaultOrigin: plane.origin,
@@ -243,5 +248,7 @@ export const sketchHelix = (
   dir: Point = [0, 0, 1],
   lefthand = false
 ): Sketch => {
-  return new Sketch(assembleWire(makeHelix(pitch, height, radius, center, dir, lefthand).wires));
+  return new Sketch(
+    unwrap(assembleWire(makeHelix(pitch, height, radius, center, dir, lefthand).wires))
+  );
 };

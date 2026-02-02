@@ -170,7 +170,7 @@ export const supportExtrude = (
   const normalVec = new Vector(normal);
 
   const mainSpineEdge = makeLine(centerVec, centerVec.add(normalVec));
-  const spine = assembleWire([mainSpineEdge]);
+  const spine = unwrap(assembleWire([mainSpineEdge]));
 
   return genericSweep(wire, spine, { support });
 };
@@ -200,7 +200,7 @@ function complexExtrude(
   const normalVec = new Vector(normal);
 
   const mainSpineEdge = makeLine(centerVec, centerVec.add(normalVec));
-  const spine = assembleWire([mainSpineEdge]);
+  const spine = unwrap(assembleWire([mainSpineEdge]));
 
   const law = profileShape ? buildLawFromProfile(normalVec.Length, profileShape) : null;
 
@@ -241,7 +241,7 @@ function twistExtrude(
   const normalVec = new Vector(normal);
 
   const mainSpineEdge = makeLine(centerVec, centerVec.add(normalVec));
-  const spine = assembleWire([mainSpineEdge]);
+  const spine = unwrap(assembleWire([mainSpineEdge]));
 
   const pitch = (360.0 / angleDegrees) * normalVec.Length;
   const radius = 1;

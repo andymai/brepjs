@@ -8,7 +8,8 @@ import { getKernel } from '../kernel/index.js';
 import { GCWithScope, localGC, WrappingObj } from '../core/memory.js';
 import { asPnt, makeAx2, makeAx3, makeAx1, Vector, type Point } from '../core/geometry.js';
 import { cast, downcast } from './cast.js';
-import { unwrap } from '../core/result.js';
+import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
+import { validationError, occtError, typeCastError } from '../core/errors.js';
 import {
   type AnyShape,
   type Shape3D,
@@ -51,21 +52,24 @@ export const makeEllipse = (
   center: Point = [0, 0, 0],
   normal: Point = [0, 0, 1],
   xDir?: Point
-): Edge => {
+): Result<Edge> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
   const ax = r(makeAx2(center, normal, xDir));
 
   if (minorRadius > majorRadius) {
-    throw new Error('The minor radius must be smaller than the major one');
+    gc();
+    return err(
+      validationError('ELLIPSE_RADII', 'The minor radius must be smaller than the major one')
+    );
   }
   const ellipseGp = r(new oc.gp_Elips_2(ax, majorRadius, minorRadius));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_12(ellipseGp));
   const shape = new Edge(edgeMaker.Edge());
   gc();
 
-  return shape;
+  return ok(shape);
 };
 
 export const makeHelix = (
@@ -126,13 +130,16 @@ export const makeEllipseArc = (
   center: Point = [0, 0, 0],
   normal: Point = [0, 0, 1],
   xDir?: Point
-): Edge => {
+): Result<Edge> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
   const ax = r(makeAx2(center, normal, xDir));
   if (minorRadius > majorRadius) {
-    throw new Error('The minor radius must be smaller than the major one');
+    gc();
+    return err(
+      validationError('ELLIPSE_RADII', 'The minor radius must be smaller than the major one')
+    );
   }
 
   const ellipseGp = r(new oc.gp_Elips_2(ax, majorRadius, minorRadius));
@@ -140,7 +147,7 @@ export const makeEllipseArc = (
   const shape = new Edge(edgeMaker.Edge());
   gc();
 
-  return shape;
+  return ok(shape);
 };
 
 export interface BSplineApproximationConfig {
@@ -153,7 +160,7 @@ export interface BSplineApproximationConfig {
 export const makeBSplineApproximation = function makeBSplineApproximation(
   points: Point[],
   { tolerance = 1e-3, smoothing = null, degMax = 6, degMin = 1 }: BSplineApproximationConfig = {}
-): Edge {
+): Result<Edge> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
@@ -193,7 +200,7 @@ export const makeBSplineApproximation = function makeBSplineApproximation(
 
   if (!splineBuilder.IsDone()) {
     gc();
-    throw new Error('B-spline approximation failed');
+    return err(occtError('BSPLINE_FAILED', 'B-spline approximation failed'));
   }
 
   const splineGeom = r(splineBuilder.Curve());
@@ -201,7 +208,7 @@ export const makeBSplineApproximation = function makeBSplineApproximation(
   const curve = r(new oc.Handle_Geom_Curve_2(splineGeom.get()));
   const edge = new Edge(new oc.BRepBuilderAPI_MakeEdge_24(curve).Edge());
   gc();
-  return edge;
+  return ok(edge);
 };
 
 export const makeBezierCurve = (points: Point[]): Edge => {
@@ -233,7 +240,7 @@ export const makeTangentArc = (startPoint: Point, startTgt: Point, endPoint: Poi
   return edge;
 };
 
-export const assembleWire = (listOfEdges: (Edge | Wire)[]): Wire => {
+export const assembleWire = (listOfEdges: (Edge | Wire)[]): Result<Wire> => {
   const oc = getKernel().oc;
   const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
   listOfEdges.forEach((e) => {
@@ -254,16 +261,23 @@ export const assembleWire = (listOfEdges: (Edge | Wire)[]): Wire => {
       [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_NonManifoldWire, 'non manifold wire'],
       [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_DisconnectedWire, 'disconnected wire'],
     ]);
-    throw new Error(`Failed to build the wire, ${errorNames.get(res) || 'unknown error'}`);
+    wireBuilder.delete();
+    progress.delete();
+    return err(
+      occtError(
+        'WIRE_BUILD_FAILED',
+        `Failed to build the wire, ${errorNames.get(res) || 'unknown error'}`
+      )
+    );
   }
 
   const wire = new Wire(wireBuilder.Wire());
   wireBuilder.delete();
   progress.delete();
-  return wire;
+  return ok(wire);
 };
 
-export const makeFace = (wire: Wire, holes?: Wire[]): Face => {
+export const makeFace = (wire: Wire, holes?: Wire[]): Result<Face> => {
   const oc = getKernel().oc;
   const faceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wire.wrapped, false);
   holes?.forEach((hole) => {
@@ -271,12 +285,14 @@ export const makeFace = (wire: Wire, holes?: Wire[]): Face => {
   });
   if (!faceBuilder.IsDone()) {
     faceBuilder.delete();
-    throw new Error('Failed to build the face. Your wire might be non planar.');
+    return err(
+      occtError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
+    );
   }
   const face = faceBuilder.Face();
   faceBuilder.delete();
 
-  return new Face(face);
+  return ok(new Face(face));
 };
 
 export const makeNewFaceWithinFace = (originFace: Face, wire: Wire): Face => {
@@ -290,7 +306,7 @@ export const makeNewFaceWithinFace = (originFace: Face, wire: Wire): Face => {
   return new Face(face);
 };
 
-export const makeNonPlanarFace = (wire: Wire): Face => {
+export const makeNonPlanarFace = (wire: Wire): Result<Face> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
@@ -308,14 +324,14 @@ export const makeNonPlanarFace = (wire: Wire): Face => {
 
   const progress = r(new oc.Message_ProgressRange_1());
   faceBuilder.Build(progress);
-  const newFace = unwrap(cast(faceBuilder.Shape()));
 
-  gc();
-
-  if (!(newFace instanceof Face)) {
-    throw new Error('Failed to create a face');
-  }
-  return newFace;
+  return andThen(cast(faceBuilder.Shape()), (newFace) => {
+    gc();
+    if (!(newFace instanceof Face)) {
+      return err(occtError('FACE_BUILD_FAILED', 'Failed to create a face'));
+    }
+    return ok(newFace);
+  });
 };
 
 /**
@@ -429,7 +445,7 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
     cast(r(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
   ) as Shell;
 
-  return makeSolid([shell]);
+  return unwrap(makeSolid([shell]));
 };
 
 /**
@@ -456,7 +472,7 @@ export const makeVertex = (point: Point): Vertex => {
   return new Vertex(vertex);
 };
 
-export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Shape3D => {
+export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Result<Shape3D> => {
   const oc = getKernel().oc;
   const progress = new oc.Message_ProgressRange_1();
   const offsetBuilder = new oc.BRepOffsetAPI_MakeOffsetShape();
@@ -474,12 +490,17 @@ export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Shape3
     progress
   );
 
-  const newShape = unwrap(cast(unwrap(downcast(offsetBuilder.Shape()))));
+  const result = andThen(downcast(offsetBuilder.Shape()), (downcasted) =>
+    andThen(cast(downcasted), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('OFFSET_NOT_3D', 'Could not offset to a 3d shape'));
+      return ok(newShape);
+    })
+  );
   offsetBuilder.delete();
   progress.delete();
 
-  if (!isShape3D(newShape)) throw new Error('Could not offset to a 3d shape');
-  return newShape;
+  return result;
 };
 
 export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {
@@ -521,13 +542,16 @@ function _weld(facesOrShells: Array<Face | Shell>): AnyShape {
  * @param ignoreType - If true, the function will not check if the result is a shell.
  * @returns A shell that contains all the faces and shells.
  */
-export function weldShellsAndFaces(facesOrShells: Array<Face | Shell>, ignoreType = false): Shell {
+export function weldShellsAndFaces(
+  facesOrShells: Array<Face | Shell>,
+  ignoreType = false
+): Result<Shell> {
   const shell = _weld(facesOrShells);
 
   if (!ignoreType && !(shell instanceof Shell))
-    throw new Error('Could not make a solid of faces and shells');
+    return err(typeCastError('WELD_NOT_SHELL', 'Could not make a shell from faces and shells'));
 
-  return shell as Shell;
+  return ok(shell as Shell);
 }
 
 /**
@@ -538,15 +562,15 @@ export function weldShellsAndFaces(facesOrShells: Array<Face | Shell>, ignoreTyp
  *
  * @category Solids
  */
-export function makeSolid(facesOrShells: Array<Face | Shell>): Solid {
+export function makeSolid(facesOrShells: Array<Face | Shell>): Result<Solid> {
   const r = GCWithScope();
   const oc = getKernel().oc;
   const shell = _weld(facesOrShells);
-  const solid = unwrap(cast(r(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)));
-
-  if (!(solid instanceof Solid)) throw new Error('Could not make a solid of faces and shells');
-
-  return solid;
+  return andThen(cast(r(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)), (solid) => {
+    if (!(solid instanceof Solid))
+      return err(typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells'));
+    return ok(solid);
+  });
 }
 
 export const addHolesInFace = (face: Face, holes: Wire[]): Face => {
@@ -568,12 +592,15 @@ export const addHolesInFace = (face: Face, holes: Wire[]): Face => {
   return new Face(newFace);
 };
 
-export const makePolygon = (points: Point[]): Face => {
-  if (points.length < 3) throw new Error('You need at least 3 points to make a polygon');
+export const makePolygon = (points: Point[]): Result<Face> => {
+  if (points.length < 3)
+    return err(
+      validationError('POLYGON_MIN_POINTS', 'You need at least 3 points to make a polygon')
+    );
 
   const edges = zip([points, [...points.slice(1), points[0]]]).map(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zip returns untyped pairs
     ([p1, p2]: any) => makeLine(p1, p2)
   );
-  return makeFace(assembleWire(edges));
+  return andThen(assembleWire(edges), (wire) => makeFace(wire));
 };

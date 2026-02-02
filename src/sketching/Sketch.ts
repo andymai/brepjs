@@ -6,6 +6,7 @@
 import { Vector, Plane, type Point } from '../core/geometry.js';
 import { localGC } from '../core/memory.js';
 import { makeFace, makeNewFaceWithinFace } from '../topology/shapeHelpers.js';
+import { unwrap } from '../core/result.js';
 import {
   basicFaceExtrusion,
   complexExtrude,
@@ -103,7 +104,7 @@ export default class Sketch implements SketchInterface {
   face(): Face {
     let face;
     if (!this.baseFace) {
-      face = makeFace(this.wire);
+      face = unwrap(makeFace(this.wire));
     } else {
       face = makeNewFaceWithinFace(this.baseFace, this.wire);
     }
@@ -123,7 +124,7 @@ export default class Sketch implements SketchInterface {
    * (defaults to the sketch origin)
    */
   revolve(revolutionAxis?: Point, { origin }: { origin?: Point } = {}): Shape3D {
-    const face = makeFace(this.wire);
+    const face = unwrap(makeFace(this.wire));
     const solid = revolution(face, origin || this.defaultOrigin, revolutionAxis);
     face.delete();
     this.delete();
@@ -187,7 +188,7 @@ export default class Sketch implements SketchInterface {
       return solid;
     }
 
-    const face = makeFace(this.wire);
+    const face = unwrap(makeFace(this.wire));
     const solid = basicFaceExtrusion(face, extrusionVec);
 
     gc();

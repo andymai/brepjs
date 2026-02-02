@@ -18,7 +18,7 @@ import {
 import type { LoftConfig } from '../operations/loft.js';
 import type { SketchInterface } from './sketchLib.js';
 import { cast } from '../topology/cast.js';
-import { unwrap } from '../core/result.js';
+import { unwrap, isOk } from '../core/result.js';
 import { Face, type Shape3D, type Shell, type Wire } from '../topology/shapes.js';
 import { getKernel } from '../kernel/index.js';
 
@@ -73,11 +73,12 @@ const faceFromWires = (wires: Wire[]): Face => {
   let baseFace: Face;
   let holeWires: Wire[];
 
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    baseFace = makeFace(wires[0]!);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const faceResult = makeFace(wires[0]!);
+  if (isOk(faceResult)) {
+    baseFace = faceResult.value;
     holeWires = wires.slice(1);
-  } catch {
+  } else {
     baseFace = guessFaceFromWires(wires);
     holeWires = wires.slice(1).map((w) => fixWire(w, baseFace));
   }
@@ -102,7 +103,7 @@ const solidFromShellGenerator = (
 
   const startFace = faceFromWires(startWires);
   const endFace = faceFromWires(endWires);
-  const solid = makeSolid([startFace, ...shells, endFace]);
+  const solid = unwrap(makeSolid([startFace, ...shells, endFace]));
 
   return solid;
 };
@@ -223,6 +224,6 @@ export default class CompoundSketch implements SketchInterface {
     const baseFace = this.face().clone();
     shells.push(baseFace, otherCompound.face());
 
-    return makeSolid(shells);
+    return unwrap(makeSolid(shells));
   }
 }
