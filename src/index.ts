@@ -285,12 +285,7 @@ export type { DrawingInterface } from './2d/blueprints/lib.js';
 
 // ── Layer 3: text ──
 
-export {
-  loadFont,
-  getFont,
-  textBlueprints,
-  sketchText,
-} from './text/textBlueprints.js';
+export { loadFont, getFont, textBlueprints, sketchText } from './text/textBlueprints.js';
 
 // ── Layer 3: projection ──
 
@@ -303,3 +298,224 @@ export {
 } from './projection/ProjectionCamera.js';
 
 export { makeProjectedEdges } from './projection/makeProjectedEdges.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NEW FUNCTIONAL API — Vec3 tuples, branded types, standalone functions
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Core types ──
+
+export type { Vec3, Vec2, PointInput, Direction as DirectionInput } from './core/types.js';
+
+export { toVec3, toVec2, resolveDirection } from './core/types.js';
+
+export {
+  vecAdd,
+  vecSub,
+  vecScale,
+  vecNegate,
+  vecDot,
+  vecCross,
+  vecLength,
+  vecLengthSq,
+  vecDistance,
+  vecNormalize,
+  vecEquals,
+  vecIsZero,
+  vecAngle,
+  vecProjectToPlane,
+  vecRotate,
+  vecRepr,
+} from './core/vecOps.js';
+
+export {
+  toOcVec,
+  fromOcVec,
+  fromOcPnt,
+  fromOcDir,
+  withOcVec,
+  withOcPnt,
+  withOcDir,
+} from './core/occtBoundary.js';
+
+// ── Branded shape types ──
+
+export type {
+  ShapeKind,
+  Vertex as FnVertex,
+  Edge as FnEdge,
+  Wire as FnWire,
+  Face as FnFace,
+  Shell as FnShell,
+  Solid as FnSolid,
+  CompSolid as FnCompSolid,
+  Compound as FnCompound,
+  AnyShape as FnAnyShape,
+  Shape1D as FnShape1D,
+  Shape3D as FnShape3D,
+} from './core/shapeTypes.js';
+
+export {
+  castShape,
+  getShapeKind,
+  createVertex as fnCreateVertex,
+  createEdge as fnCreateEdge,
+  createWire as fnCreateWire,
+  createFace as fnCreateFace,
+  createShell as fnCreateShell,
+  createSolid as fnCreateSolid,
+  createCompound as fnCreateCompound,
+  isVertex as fnIsVertex,
+  isEdge as fnIsEdge,
+  isWire as fnIsWire,
+  isFace as fnIsFace,
+  isShell as fnIsShell,
+  isSolid as fnIsSolid,
+  isCompound as fnIsCompound,
+  isShape3D as fnIsShape3D,
+  isShape1D as fnIsShape1D,
+} from './core/shapeTypes.js';
+
+// ── Disposal / resource management ──
+
+export type { ShapeHandle, OcHandle } from './core/disposal.js';
+
+export { createHandle, createOcHandle, DisposalScope, withScope } from './core/disposal.js';
+
+// ── Plane types ──
+
+export type { Plane as FnPlane, PlaneName as FnPlaneName, PlaneInput } from './core/planeTypes.js';
+
+export {
+  createPlane,
+  createNamedPlane as fnCreateNamedPlane,
+  resolvePlane,
+  translatePlane,
+  pivotPlane,
+} from './core/planeOps.js';
+
+// ── Shape functions (topology) ──
+
+export {
+  cloneShape,
+  serializeShape,
+  getHashCode,
+  isShapeNull,
+  isSameShape,
+  isEqualShape,
+  simplifyShape,
+  translateShape,
+  rotateShape,
+  mirrorShape,
+  scaleShape,
+  getEdges,
+  getFaces,
+  getWires,
+  getBounds,
+  vertexPosition,
+  type Bounds3D,
+} from './topology/shapeFns.js';
+
+export {
+  getCurveType as fnGetCurveType,
+  curveStartPoint,
+  curveEndPoint,
+  curvePointAt,
+  curveTangentAt,
+  curveLength,
+  curveIsClosed,
+  curveIsPeriodic,
+  curvePeriod,
+  getOrientation,
+  flipOrientation,
+  offsetWire2D,
+} from './topology/curveFns.js';
+
+export {
+  getSurfaceType,
+  faceGeomType,
+  faceOrientation,
+  flipFaceOrientation,
+  uvBounds,
+  pointOnSurface as fnPointOnSurface,
+  uvCoordinates as fnUvCoordinates,
+  normalAt as fnNormalAt,
+  faceCenter,
+  outerWire as fnOuterWire,
+  innerWires as fnInnerWires,
+  triangulateFace,
+  type UVBounds,
+} from './topology/faceFns.js';
+
+// ── Meshing and export ──
+
+export {
+  meshShape,
+  meshShapeEdges,
+  exportSTEP as fnExportSTEP,
+  exportSTL as fnExportSTL,
+  type ShapeMesh as FnShapeMesh,
+  type EdgeMesh,
+  type MeshOptions,
+} from './topology/meshFns.js';
+
+// ── Boolean operations (functional) ──
+
+export {
+  fuseShapes,
+  cutShape,
+  intersectShapes,
+  fuseAll as fnFuseAll,
+  cutAll as fnCutAll,
+  buildCompound as fnBuildCompound,
+  type BooleanOptions,
+} from './topology/booleanFns.js';
+
+// ── Operations (functional) ──
+
+export {
+  extrudeFace,
+  revolveFace,
+  sweep,
+  supportExtrude as fnSupportExtrude,
+  complexExtrude as fnComplexExtrude,
+  twistExtrude as fnTwistExtrude,
+  type SweepConfig,
+  type ExtrusionProfile as FnExtrusionProfile,
+} from './operations/extrudeFns.js';
+
+export { loftWires, type LoftConfig as FnLoftConfig } from './operations/loftFns.js';
+
+export {
+  exportAssemblySTEP,
+  type ShapeConfig as FnShapeConfig,
+  type SupportedUnit as FnSupportedUnit,
+} from './operations/exporterFns.js';
+
+// ── Measurement (functional) ──
+
+export {
+  measureVolume as fnMeasureVolume,
+  measureArea as fnMeasureArea,
+  measureLength as fnMeasureLength,
+  measureDistance,
+  createDistanceQuery,
+  measureVolumeProps,
+  measureSurfaceProps,
+  measureLinearProps,
+  type PhysicalProps,
+} from './measurement/measureFns.js';
+
+// ── Import (functional) ──
+
+export { importSTEP as fnImportSTEP, importSTL as fnImportSTL } from './io/importFns.js';
+
+// ── Query (functional, immutable finders) ──
+
+export {
+  edgeFinder,
+  faceFinder,
+  type EdgeFinderFn,
+  type FaceFinderFn,
+  type ShapeFinder,
+} from './query/finderFns.js';

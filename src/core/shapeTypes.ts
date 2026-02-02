@@ -151,18 +151,36 @@ export function isShape1D(s: AnyShape): s is Shape1D {
 // Cast utility — wraps an OCCT shape into the correct branded type
 // ---------------------------------------------------------------------------
 
-/** Wrap a raw OCCT shape handle into a properly branded type. */
-export function castShape(ocShape: OcShape): AnyShape {
+/** Downcast a raw OCCT shape to its specific TopoDS subtype. */
+function downcastOc(ocShape: OcShape): OcShape {
   const oc = getKernel().oc;
   const st = ocShape.ShapeType();
   const e = oc.TopAbs_ShapeEnum;
 
-  if (st === e.TopAbs_VERTEX) return createVertex(ocShape);
-  if (st === e.TopAbs_EDGE) return createEdge(ocShape);
-  if (st === e.TopAbs_WIRE) return createWire(ocShape);
-  if (st === e.TopAbs_FACE) return createFace(ocShape);
-  if (st === e.TopAbs_SHELL) return createShell(ocShape);
-  if (st === e.TopAbs_SOLID) return createSolid(ocShape);
-  if (st === e.TopAbs_COMPSOLID) return createCompSolid(ocShape);
-  return createCompound(ocShape);
+  if (st === e.TopAbs_VERTEX) return oc.TopoDS.Vertex_1(ocShape);
+  if (st === e.TopAbs_EDGE) return oc.TopoDS.Edge_1(ocShape);
+  if (st === e.TopAbs_WIRE) return oc.TopoDS.Wire_1(ocShape);
+  if (st === e.TopAbs_FACE) return oc.TopoDS.Face_1(ocShape);
+  if (st === e.TopAbs_SHELL) return oc.TopoDS.Shell_1(ocShape);
+  if (st === e.TopAbs_SOLID) return oc.TopoDS.Solid_1(ocShape);
+  if (st === e.TopAbs_COMPSOLID) return oc.TopoDS.CompSolid_1(ocShape);
+  return oc.TopoDS.Compound_1(ocShape);
+}
+
+/** Wrap a raw OCCT shape handle into a properly branded type.
+ *  Performs a TopoDS downcast and wraps in a disposable handle. */
+export function castShape(ocShape: OcShape): AnyShape {
+  const oc = getKernel().oc;
+  const st = ocShape.ShapeType();
+  const e = oc.TopAbs_ShapeEnum;
+  const dc = downcastOc(ocShape);
+
+  if (st === e.TopAbs_VERTEX) return createVertex(dc);
+  if (st === e.TopAbs_EDGE) return createEdge(dc);
+  if (st === e.TopAbs_WIRE) return createWire(dc);
+  if (st === e.TopAbs_FACE) return createFace(dc);
+  if (st === e.TopAbs_SHELL) return createShell(dc);
+  if (st === e.TopAbs_SOLID) return createSolid(dc);
+  if (st === e.TopAbs_COMPSOLID) return createCompSolid(dc);
+  return createCompound(dc);
 }

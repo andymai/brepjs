@@ -1,5 +1,8 @@
 /**
  * Topology layer — shape hierarchy, casting, and construction helpers.
+ *
+ * Exports both legacy class-based API and new functional API.
+ * New code should prefer the functional exports (shapeFns, curveFns, faceFns, etc.).
  */
 
 // Eagerly wire up the circular dependency between cast.ts and shapes.ts
@@ -8,7 +11,8 @@ import * as shapesModule from './shapes.js';
 import { initCast } from './cast.js';
 initCast(shapesModule);
 
-// Re-export everything from sub-modules
+// ── Legacy class-based API (kept for backward compatibility) ──
+
 export {
   cast,
   downcast,
@@ -89,3 +93,78 @@ export {
   makePolygon,
   type BSplineApproximationConfig,
 } from './shapeHelpers.js';
+
+// ── New functional API ──
+
+export {
+  cloneShape,
+  serializeShape,
+  getHashCode,
+  isShapeNull,
+  isSameShape,
+  isEqualShape,
+  simplifyShape,
+  translateShape,
+  rotateShape,
+  mirrorShape,
+  scaleShape,
+  getEdges,
+  getFaces,
+  getWires,
+  getBounds,
+  vertexPosition,
+  type Bounds3D,
+} from './shapeFns.js';
+
+export {
+  getCurveType,
+  curveStartPoint,
+  curveEndPoint,
+  curvePointAt,
+  curveTangentAt,
+  curveLength,
+  curveIsClosed,
+  curveIsPeriodic,
+  curvePeriod,
+  getOrientation,
+  flipOrientation,
+  offsetWire2D,
+} from './curveFns.js';
+
+export {
+  getSurfaceType,
+  faceGeomType,
+  faceOrientation,
+  flipFaceOrientation,
+  uvBounds,
+  pointOnSurface,
+  uvCoordinates,
+  normalAt,
+  faceCenter,
+  outerWire,
+  innerWires,
+  triangulateFace,
+  type UVBounds,
+  type FaceTriangulation as FnFaceTriangulation,
+  type SurfaceType as FnSurfaceType,
+} from './faceFns.js';
+
+export {
+  meshShape,
+  meshShapeEdges,
+  exportSTEP,
+  exportSTL,
+  type ShapeMesh as FnShapeMesh,
+  type EdgeMesh,
+  type MeshOptions,
+} from './meshFns.js';
+
+export {
+  fuseShapes,
+  cutShape,
+  intersectShapes,
+  fuseAll as fnFuseAll,
+  cutAll as fnCutAll,
+  buildCompound as fnBuildCompound,
+  type BooleanOptions,
+} from './booleanFns.js';
