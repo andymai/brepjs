@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/andymai/brepjs/compare/v1.0.3...v1.0.4) (2026-02-02)
+
+
+### Bug Fixes
+
+* use recursive pairwise fuse in fuseAll instead of compounds ([#18](https://github.com/andymai/brepjs/issues/18)) ([8d161b8](https://github.com/andymai/brepjs/commit/8d161b88005db56ad88adcd441400db750dd900b))
+
 ## [1.0.3](https://github.com/andymai/brepjs/compare/v1.0.2...v1.0.3) (2026-02-02)
 
 
