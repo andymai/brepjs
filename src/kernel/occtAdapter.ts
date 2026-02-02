@@ -90,10 +90,13 @@ export class OCCTAdapter implements KernelAdapter {
   }
 
   makeEdge(curve: OcType, start?: number, end?: number): OcShape {
-    if (start !== undefined && end !== undefined) {
-      return new this.oc.BRepBuilderAPI_MakeEdge_24(curve, start, end).Edge();
-    }
-    return new this.oc.BRepBuilderAPI_MakeEdge_24(curve).Edge();
+    const maker =
+      start !== undefined && end !== undefined
+        ? new this.oc.BRepBuilderAPI_MakeEdge_24(curve, start, end)
+        : new this.oc.BRepBuilderAPI_MakeEdge_24(curve);
+    const edge = maker.Edge();
+    maker.delete();
+    return edge;
   }
 
   makeWire(edges: OcShape[]): OcShape {
@@ -200,9 +203,11 @@ export class OCCTAdapter implements KernelAdapter {
       loftBuilder.AddWire(wire);
     }
     if (endShape) loftBuilder.AddVertex(endShape);
-    loftBuilder.Build(new this.oc.Message_ProgressRange_1());
+    const progress = new this.oc.Message_ProgressRange_1();
+    loftBuilder.Build(progress);
     const result = loftBuilder.Shape();
     loftBuilder.delete();
+    progress.delete();
     return result;
   }
 
@@ -213,7 +218,9 @@ export class OCCTAdapter implements KernelAdapter {
       sweepBuilder.SetTransitionMode(transitionMode);
     }
     sweepBuilder.Add_1(wire, false, false);
-    sweepBuilder.Build(new this.oc.Message_ProgressRange_1());
+    const progress = new this.oc.Message_ProgressRange_1();
+    sweepBuilder.Build(progress);
+    progress.delete();
     sweepBuilder.MakeSolid();
     const result = sweepBuilder.Shape();
     sweepBuilder.delete();
@@ -374,13 +381,14 @@ export class OCCTAdapter implements KernelAdapter {
     triangles: Uint32Array;
     faceGroups: Array<{ start: number; count: number }>;
   } {
-    new this.oc.BRepMesh_IncrementalMesh_2(
+    const mesher = new this.oc.BRepMesh_IncrementalMesh_2(
       shape,
       options.tolerance,
       false,
       options.angularTolerance,
       false
     );
+    mesher.delete();
 
     const vertices: number[] = [];
     const normals: number[] = [];
@@ -542,7 +550,9 @@ export class OCCTAdapter implements KernelAdapter {
     const reader = new this.oc.STEPControl_Reader_1();
     if (reader.ReadFile(filename)) {
       this.oc.FS.unlink('/' + filename);
-      reader.TransferRoots(new this.oc.Message_ProgressRange_1());
+      const progress = new this.oc.Message_ProgressRange_1();
+      reader.TransferRoots(progress);
+      progress.delete();
       const shape = reader.OneShape();
       reader.delete();
       return [shape];
