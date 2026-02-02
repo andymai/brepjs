@@ -348,53 +348,60 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   smoothSplineTo(end: Point2D, config?: SplineConfig): this {
     const [r, gc] = localGC();
-    const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineConfig(config);
+    try {
+      const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineConfig(config);
 
-    const endPoint = this.plane.toWorldCoords(end);
-    const previousEdge = this.pendingEdges.length
-      ? this.pendingEdges[this.pendingEdges.length - 1]
-      : null;
+      const endPoint = this.plane.toWorldCoords(end);
+      const previousEdge = this.pendingEdges.length
+        ? this.pendingEdges[this.pendingEdges.length - 1]
+        : null;
 
-    const defaultDistance = r(endPoint.sub(this.pointer)).Length * 0.25;
+      const defaultDistance = r(endPoint.sub(this.pointer)).Length * 0.25;
 
-    let startPoleDirection: Point;
-    if (startTangent) {
-      startPoleDirection = this.plane.toWorldCoords(startTangent);
-    } else if (!previousEdge) {
-      startPoleDirection = this.plane.toWorldCoords([1, 0]);
-    } else if (previousEdge.geomType === 'BEZIER_CURVE') {
-      const rawCurve = (
-        r(previousEdge.curve).wrapped as CurveLike & {
-          Bezier: () => { get: () => OcType };
-        }
-      )
-        .Bezier()
-        .get();
-      const previousPole = r(new Vector(rawCurve.Pole(rawCurve.NbPoles() - 1)));
+      let startPoleDirection: Point;
+      if (startTangent) {
+        startPoleDirection = this.plane.toWorldCoords(startTangent);
+      } else if (!previousEdge) {
+        startPoleDirection = this.plane.toWorldCoords([1, 0]);
+      } else if (previousEdge.geomType === 'BEZIER_CURVE') {
+        const rawCurve = (
+          r(previousEdge.curve).wrapped as CurveLike & {
+            Bezier: () => { get: () => OcType };
+          }
+        )
+          .Bezier()
+          .get();
+        const previousPole = r(new Vector(rawCurve.Pole(rawCurve.NbPoles() - 1)));
 
-      startPoleDirection = r(this.pointer.sub(previousPole));
-    } else {
-      startPoleDirection = r(previousEdge.tangentAt(1));
+        startPoleDirection = r(this.pointer.sub(previousPole));
+      } else {
+        startPoleDirection = r(previousEdge.tangentAt(1));
+      }
+
+      const poleDistance = r(
+        startPoleDirection.normalized().multiply(startFactor * defaultDistance)
+      );
+      const startControl = r(this.pointer.add(poleDistance));
+
+      let endPoleDirection: Point;
+      if (endTangent === 'symmetric') {
+        endPoleDirection = r(startPoleDirection.multiply(-1));
+      } else {
+        endPoleDirection = r(this.plane.toWorldCoords(endTangent));
+      }
+
+      const endPoleDistance = r(
+        endPoleDirection.normalized().multiply(endFactor * defaultDistance)
+      );
+      const endControl = r(endPoint.sub(endPoleDistance));
+
+      this.pendingEdges.push(makeBezierCurve([this.pointer, startControl, endControl, endPoint]));
+
+      this._updatePointer(endPoint);
+      return this;
+    } finally {
+      gc();
     }
-
-    const poleDistance = r(startPoleDirection.normalized().multiply(startFactor * defaultDistance));
-    const startControl = r(this.pointer.add(poleDistance));
-
-    let endPoleDirection: Point;
-    if (endTangent === 'symmetric') {
-      endPoleDirection = r(startPoleDirection.multiply(-1));
-    } else {
-      endPoleDirection = r(this.plane.toWorldCoords(endTangent));
-    }
-
-    const endPoleDistance = r(endPoleDirection.normalized().multiply(endFactor * defaultDistance));
-    const endControl = r(endPoint.sub(endPoleDistance));
-
-    this.pendingEdges.push(makeBezierCurve([this.pointer, startControl, endControl, endPoint]));
-
-    this._updatePointer(endPoint);
-    gc();
-    return this;
   }
 
   smoothSpline(xDist: number, yDist: number, splineConfig: SplineConfig = {}): this {
