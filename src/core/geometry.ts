@@ -9,7 +9,7 @@
 // ── New functional API re-exports (preferred) ──
 
 export { toVec3, toVec2, resolveDirection } from './types.js';
-export type { Vec3, Vec2, Direction as DirectionInput } from './types.js';
+export type { Vec3, Vec2 } from './types.js';
 
 export {
   vecAdd,

@@ -2,7 +2,9 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { makeBox, EdgeFinder, Plane } from '../src/index.js';
 
-beforeAll(async () => { await initOC(); }, 30000);
+beforeAll(async () => {
+  await initOC();
+}, 30000);
 
 describe('EdgeFinder extra coverage', () => {
   it('ofLength with predicate function', () => {

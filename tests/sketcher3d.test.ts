@@ -35,21 +35,12 @@ describe('Sketcher 3D', () => {
   });
 
   it('vLineTo and hLineTo', () => {
-    const sketch = new Sketcher()
-      .movePointerTo([0, 0])
-      .hLineTo(10)
-      .vLineTo(10)
-      .hLineTo(0)
-      .close();
+    const sketch = new Sketcher().movePointerTo([0, 0]).hLineTo(10).vLineTo(10).hLineTo(0).close();
     expect(sketch).toBeDefined();
   });
 
   it('polarLine', () => {
-    const sketch = new Sketcher()
-      .polarLine(10, 0)
-      .polarLine(10, 90)
-      .polarLine(10, 180)
-      .close();
+    const sketch = new Sketcher().polarLine(10, 0).polarLine(10, 90).polarLine(10, 180).close();
     expect(sketch).toBeDefined();
   });
 
@@ -63,11 +54,7 @@ describe('Sketcher 3D', () => {
   });
 
   it('tangentLine', () => {
-    const sketch = new Sketcher()
-      .hLine(10)
-      .tangentLine(5)
-      .lineTo([0, 15])
-      .close();
+    const sketch = new Sketcher().hLine(10).tangentLine(5).lineTo([0, 15]).close();
     expect(sketch).toBeDefined();
   });
 
@@ -81,92 +68,52 @@ describe('Sketcher 3D', () => {
   });
 
   it('threePointsArc', () => {
-    const sketch = new Sketcher()
-      .threePointsArc(10, 0, 5, 5)
-      .line(0, -5)
-      .line(-10, 0)
-      .close();
+    const sketch = new Sketcher().threePointsArc(10, 0, 5, 5).line(0, -5).line(-10, 0).close();
     expect(sketch).toBeDefined();
   });
 
   it('sagittaArcTo', () => {
-    const sketch = new Sketcher()
-      .sagittaArcTo([10, 0], 3)
-      .lineTo([10, -5])
-      .lineTo([0, -5])
-      .close();
+    const sketch = new Sketcher().sagittaArcTo([10, 0], 3).lineTo([10, -5]).lineTo([0, -5]).close();
     expect(sketch).toBeDefined();
   });
 
   it('sagittaArc', () => {
-    const sketch = new Sketcher()
-      .sagittaArc(10, 0, 3)
-      .line(0, -5)
-      .line(-10, 0)
-      .close();
+    const sketch = new Sketcher().sagittaArc(10, 0, 3).line(0, -5).line(-10, 0).close();
     expect(sketch).toBeDefined();
   });
 
   it('vSagittaArc', () => {
-    const sketch = new Sketcher()
-      .hLine(5)
-      .vSagittaArc(10, 2)
-      .hLine(-5)
-      .close();
+    const sketch = new Sketcher().hLine(5).vSagittaArc(10, 2).hLine(-5).close();
     expect(sketch).toBeDefined();
   });
 
   it('hSagittaArc', () => {
-    const sketch = new Sketcher()
-      .vLine(5)
-      .hSagittaArc(10, 2)
-      .vLine(-5)
-      .close();
+    const sketch = new Sketcher().vLine(5).hSagittaArc(10, 2).vLine(-5).close();
     expect(sketch).toBeDefined();
   });
 
   it('bulgeArcTo', () => {
-    const sketch = new Sketcher()
-      .bulgeArcTo([10, 0], 0.5)
-      .lineTo([10, -5])
-      .lineTo([0, -5])
-      .close();
+    const sketch = new Sketcher().bulgeArcTo([10, 0], 0.5).lineTo([10, -5]).lineTo([0, -5]).close();
     expect(sketch).toBeDefined();
   });
 
   it('tangentArcTo', () => {
-    const sketch = new Sketcher()
-      .hLine(5)
-      .tangentArcTo([10, 5])
-      .lineTo([0, 10])
-      .close();
+    const sketch = new Sketcher().hLine(5).tangentArcTo([10, 5]).lineTo([0, 10]).close();
     expect(sketch).toBeDefined();
   });
 
   it('tangentArc', () => {
-    const sketch = new Sketcher()
-      .hLine(5)
-      .tangentArc(5, 5)
-      .lineTo([0, 10])
-      .close();
+    const sketch = new Sketcher().hLine(5).tangentArc(5, 5).lineTo([0, 10]).close();
     expect(sketch).toBeDefined();
   });
 
   it('ellipseTo', () => {
-    const sketch = new Sketcher()
-      .ellipseTo([10, 0], 3, 5)
-      .lineTo([10, -5])
-      .lineTo([0, -5])
-      .close();
+    const sketch = new Sketcher().ellipseTo([10, 0], 3, 5).lineTo([10, -5]).lineTo([0, -5]).close();
     expect(sketch).toBeDefined();
   });
 
   it('ellipse', () => {
-    const sketch = new Sketcher()
-      .ellipse(10, 0, 3, 5)
-      .line(0, -5)
-      .line(-10, 0)
-      .close();
+    const sketch = new Sketcher().ellipse(10, 0, 3, 5).line(0, -5).line(-10, 0).close();
     expect(sketch).toBeDefined();
   });
 
@@ -180,17 +127,19 @@ describe('Sketcher 3D', () => {
   });
 
   it('halfEllipse', () => {
-    const sketch = new Sketcher()
-      .halfEllipse(10, 0, 5)
-      .line(0, -5)
-      .line(-10, 0)
-      .close();
+    const sketch = new Sketcher().halfEllipse(10, 0, 5).line(0, -5).line(-10, 0).close();
     expect(sketch).toBeDefined();
   });
 
   it('bezierCurveTo', () => {
     const sketch = new Sketcher()
-      .bezierCurveTo([10, 0], [[3, 5], [7, 5]])
+      .bezierCurveTo(
+        [10, 0],
+        [
+          [3, 5],
+          [7, 5],
+        ]
+      )
       .lineTo([10, -5])
       .lineTo([0, -5])
       .close();
@@ -225,20 +174,12 @@ describe('Sketcher 3D', () => {
   });
 
   it('smoothSpline', () => {
-    const sketch = new Sketcher()
-      .smoothSpline(10, 0)
-      .line(0, -5)
-      .line(-10, 0)
-      .close();
+    const sketch = new Sketcher().smoothSpline(10, 0).line(0, -5).line(-10, 0).close();
     expect(sketch).toBeDefined();
   });
 
   it('closeWithMirror', () => {
-    const sketch = new Sketcher()
-      .hLine(5)
-      .vLine(5)
-      .hLine(5)
-      .closeWithMirror();
+    const sketch = new Sketcher().hLine(5).vLine(5).hLine(5).closeWithMirror();
     expect(sketch).toBeDefined();
   });
 
@@ -304,12 +245,7 @@ describe('Sketch class', () => {
   });
 
   it('revolve creates a solid of revolution', () => {
-    const sketch = new Sketcher('XZ')
-      .movePointerTo([5, 0])
-      .hLine(5)
-      .vLine(5)
-      .hLine(-5)
-      .close();
+    const sketch = new Sketcher('XZ').movePointerTo([5, 0]).hLine(5).vLine(5).hLine(-5).close();
     const solid = sketch.revolve([0, 0, 1]);
     expect(solid).toBeDefined();
   });

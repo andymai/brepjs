@@ -8,11 +8,26 @@ import {
   makeProjectedEdges,
 } from '../src/index.js';
 
-beforeAll(async () => { await initOC(); }, 30000);
+beforeAll(async () => {
+  await initOC();
+}, 30000);
 
 describe('isProjectionPlane', () => {
   it('returns true for valid projection planes', () => {
-    const planes = ['XY', 'XZ', 'YZ', 'YX', 'ZX', 'ZY', 'front', 'back', 'top', 'bottom', 'left', 'right'];
+    const planes = [
+      'XY',
+      'XZ',
+      'YZ',
+      'YX',
+      'ZX',
+      'ZY',
+      'front',
+      'back',
+      'top',
+      'bottom',
+      'left',
+      'right',
+    ];
     for (const p of planes) {
       expect(isProjectionPlane(p)).toBe(true);
     }
@@ -32,7 +47,20 @@ describe('isProjectionPlane', () => {
 
 describe('lookFromPlane', () => {
   it('creates camera for each valid plane', () => {
-    const planes = ['XY', 'XZ', 'YZ', 'YX', 'ZX', 'ZY', 'front', 'back', 'top', 'bottom', 'left', 'right'] as const;
+    const planes = [
+      'XY',
+      'XZ',
+      'YZ',
+      'YX',
+      'ZX',
+      'ZY',
+      'front',
+      'back',
+      'top',
+      'bottom',
+      'left',
+      'right',
+    ] as const;
     for (const p of planes) {
       const cam = lookFromPlane(p);
       expect(cam).toBeDefined();

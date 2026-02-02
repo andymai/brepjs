@@ -76,10 +76,7 @@ describe('exportSTEP', () => {
 
   it('exports with unit option', () => {
     const box = makeBox([10, 10, 10]);
-    const result = exportSTEP(
-      [{ shape: box, name: 'box', color: '#ff0000' }],
-      { unit: 'MM' }
-    );
+    const result = exportSTEP([{ shape: box, name: 'box', color: '#ff0000' }], { unit: 'MM' });
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
     expect(blob.size).toBeGreaterThan(0);
@@ -87,10 +84,7 @@ describe('exportSTEP', () => {
 
   it('exports with modelUnit option', () => {
     const box = makeBox([10, 10, 10]);
-    const result = exportSTEP(
-      [{ shape: box, name: 'box', color: '#ff0000' }],
-      { modelUnit: 'CM' }
-    );
+    const result = exportSTEP([{ shape: box, name: 'box', color: '#ff0000' }], { modelUnit: 'CM' });
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
     expect(blob.size).toBeGreaterThan(0);
@@ -98,10 +92,10 @@ describe('exportSTEP', () => {
 
   it('exports with both unit and modelUnit options', () => {
     const box = makeBox([10, 10, 10]);
-    const result = exportSTEP(
-      [{ shape: box, name: 'box', color: '#ff0000' }],
-      { unit: 'INCH', modelUnit: 'MM' }
-    );
+    const result = exportSTEP([{ shape: box, name: 'box', color: '#ff0000' }], {
+      unit: 'INCH',
+      modelUnit: 'MM',
+    });
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
     expect(blob.size).toBeGreaterThan(0);

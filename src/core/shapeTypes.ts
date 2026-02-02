@@ -129,10 +129,6 @@ export function isSolid(s: AnyShape): s is Solid {
   return getShapeKind(s) === 'solid';
 }
 
-export function isCompSolid(s: AnyShape): s is CompSolid {
-  return getShapeKind(s) === 'compsolid';
-}
-
 export function isCompound(s: AnyShape): s is Compound {
   return getShapeKind(s) === 'compound';
 }

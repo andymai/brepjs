@@ -2,7 +2,9 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { makeBox, FaceFinder, getSingleFace, unwrap, isErr } from '../src/index.js';
 
-beforeAll(async () => { await initOC(); }, 30000);
+beforeAll(async () => {
+  await initOC();
+}, 30000);
 
 describe('getSingleFace', () => {
   it('accepts a Face directly', () => {

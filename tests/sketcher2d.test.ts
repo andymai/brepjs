@@ -26,7 +26,9 @@ beforeAll(async () => {
 
 describe('BlueprintSketcher 2D', () => {
   it('lineTo and close', () => {
-    expect(new BlueprintSketcher().lineTo([10, 0]).lineTo([10, 10]).lineTo([0, 10]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().lineTo([10, 0]).lineTo([10, 10]).lineTo([0, 10]).close()
+    ).toBeDefined();
   });
 
   it('line draws relative', () => {
@@ -42,7 +44,9 @@ describe('BlueprintSketcher 2D', () => {
   });
 
   it('polarLine', () => {
-    expect(new BlueprintSketcher().polarLine(10, 0).polarLine(10, 90).polarLine(10, 180).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().polarLine(10, 0).polarLine(10, 90).polarLine(10, 180).close()
+    ).toBeDefined();
   });
 
   it('tangentLine', () => {
@@ -50,27 +54,49 @@ describe('BlueprintSketcher 2D', () => {
   });
 
   it('threePointsArcTo', () => {
-    expect(new BlueprintSketcher().threePointsArcTo([10, 0], [5, 5]).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher()
+        .threePointsArcTo([10, 0], [5, 5])
+        .lineTo([10, -5])
+        .lineTo([0, -5])
+        .close()
+    ).toBeDefined();
   });
 
   it('sagittaArcTo', () => {
-    expect(new BlueprintSketcher().sagittaArcTo([10, 0], 3).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().sagittaArcTo([10, 0], 3).lineTo([10, -5]).lineTo([0, -5]).close()
+    ).toBeDefined();
   });
 
   it('sagittaArc', () => {
-    expect(new BlueprintSketcher().sagittaArc(10, 0, 3).line(0, -5).line(-10, 0).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().sagittaArc(10, 0, 3).line(0, -5).line(-10, 0).close()
+    ).toBeDefined();
   });
 
   it('vSagittaArc and hSagittaArc', () => {
-    expect(new BlueprintSketcher().hLine(5).vSagittaArc(10, 2).hLine(-5).vLine(-5).hSagittaArc(-5, 1).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher()
+        .hLine(5)
+        .vSagittaArc(10, 2)
+        .hLine(-5)
+        .vLine(-5)
+        .hSagittaArc(-5, 1)
+        .close()
+    ).toBeDefined();
   });
 
   it('bulgeArcTo', () => {
-    expect(new BlueprintSketcher().bulgeArcTo([10, 0], 0.5).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().bulgeArcTo([10, 0], 0.5).lineTo([10, -5]).lineTo([0, -5]).close()
+    ).toBeDefined();
   });
 
   it('tangentArcTo', () => {
-    expect(new BlueprintSketcher().hLine(5).tangentArcTo([10, 5]).lineTo([0, 10]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().hLine(5).tangentArcTo([10, 5]).lineTo([0, 10]).close()
+    ).toBeDefined();
   });
 
   it('tangentArc', () => {
@@ -78,27 +104,57 @@ describe('BlueprintSketcher 2D', () => {
   });
 
   it('ellipseTo', () => {
-    expect(new BlueprintSketcher().ellipseTo([10, 0], 3, 5).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().ellipseTo([10, 0], 3, 5).lineTo([10, -5]).lineTo([0, -5]).close()
+    ).toBeDefined();
   });
 
   it('halfEllipseTo', () => {
-    expect(new BlueprintSketcher().halfEllipseTo([10, 0], 5).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().halfEllipseTo([10, 0], 5).lineTo([10, -5]).lineTo([0, -5]).close()
+    ).toBeDefined();
   });
 
   it('bezierCurveTo', () => {
-    expect(new BlueprintSketcher().bezierCurveTo([10, 0], [[3, 5], [7, 5]]).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher()
+        .bezierCurveTo(
+          [10, 0],
+          [
+            [3, 5],
+            [7, 5],
+          ]
+        )
+        .lineTo([10, -5])
+        .lineTo([0, -5])
+        .close()
+    ).toBeDefined();
   });
 
   it('quadraticBezierCurveTo', () => {
-    expect(new BlueprintSketcher().quadraticBezierCurveTo([10, 0], [5, 5]).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher()
+        .quadraticBezierCurveTo([10, 0], [5, 5])
+        .lineTo([10, -5])
+        .lineTo([0, -5])
+        .close()
+    ).toBeDefined();
   });
 
   it('cubicBezierCurveTo', () => {
-    expect(new BlueprintSketcher().cubicBezierCurveTo([10, 0], [3, 5], [7, 5]).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher()
+        .cubicBezierCurveTo([10, 0], [3, 5], [7, 5])
+        .lineTo([10, -5])
+        .lineTo([0, -5])
+        .close()
+    ).toBeDefined();
   });
 
   it('smoothSplineTo', () => {
-    expect(new BlueprintSketcher().smoothSplineTo([10, 0], {}).lineTo([10, -5]).lineTo([0, -5]).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().smoothSplineTo([10, 0], {}).lineTo([10, -5]).lineTo([0, -5]).close()
+    ).toBeDefined();
   });
 
   it('closeWithMirror', () => {
@@ -106,19 +162,27 @@ describe('BlueprintSketcher 2D', () => {
   });
 
   it('customCorner applies fillet', () => {
-    expect(new BlueprintSketcher().hLine(10).customCorner(1).vLine(10).hLine(-10).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().hLine(10).customCorner(1).vLine(10).hLine(-10).close()
+    ).toBeDefined();
   });
 
   it('customCorner applies chamfer', () => {
-    expect(new BlueprintSketcher().hLine(10).customCorner(1, 'chamfer').vLine(10).hLine(-10).close()).toBeDefined();
+    expect(
+      new BlueprintSketcher().hLine(10).customCorner(1, 'chamfer').vLine(10).hLine(-10).close()
+    ).toBeDefined();
   });
 
   it('closeWithCustomCorner fillet', () => {
-    expect(new BlueprintSketcher().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'fillet')).toBeDefined();
+    expect(
+      new BlueprintSketcher().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'fillet')
+    ).toBeDefined();
   });
 
   it('closeWithCustomCorner chamfer', () => {
-    expect(new BlueprintSketcher().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'chamfer')).toBeDefined();
+    expect(
+      new BlueprintSketcher().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'chamfer')
+    ).toBeDefined();
   });
 
   it('penPosition returns current pointer', () => {
@@ -157,12 +221,22 @@ describe('Drawing factory functions', () => {
   });
 
   it('drawPointsInterpolation', () => {
-    const points: [number, number][] = [[0, 0], [5, 3], [10, 0], [15, -3], [20, 0]];
+    const points: [number, number][] = [
+      [0, 0],
+      [5, 3],
+      [10, 0],
+      [15, -3],
+      [20, 0],
+    ];
     expect(drawPointsInterpolation(points)).toBeDefined();
   });
 
   it('drawPointsInterpolation closed', () => {
-    const points: [number, number][] = [[0, 0], [5, 5], [10, 0]];
+    const points: [number, number][] = [
+      [0, 0],
+      [5, 5],
+      [10, 0],
+    ];
     expect(drawPointsInterpolation(points, {}, { closeShape: true })).toBeDefined();
   });
 
@@ -170,8 +244,8 @@ describe('Drawing factory functions', () => {
     expect(
       drawParametricFunction(
         (t) => [Math.cos(t * 2 * Math.PI) * 10, Math.sin(t * 2 * Math.PI) * 10],
-        { pointsCount: 50, closeShape: true },
-      ),
+        { pointsCount: 50, closeShape: true }
+      )
     ).toBeDefined();
   });
 
@@ -336,11 +410,15 @@ describe('DrawingPen', () => {
   });
 
   it('closeWithCustomCorner fillet', () => {
-    expect(draw().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'fillet')).toBeInstanceOf(Drawing);
+    expect(draw().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'fillet')).toBeInstanceOf(
+      Drawing
+    );
   });
 
   it('closeWithCustomCorner chamfer', () => {
-    expect(draw().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'chamfer')).toBeInstanceOf(Drawing);
+    expect(
+      draw().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1, 'chamfer')
+    ).toBeInstanceOf(Drawing);
   });
 });
 

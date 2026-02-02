@@ -72,7 +72,8 @@ describe('Blueprint', () => {
     expect(t1.boundingBox.center[0]).toBeCloseTo(5, 1);
     const t2 = rect(10, 10).translate([3, 4]) as Blueprint;
     expect(t2.boundingBox.center[0]).toBeCloseTo(3, 1);
-    t1.delete(); t2.delete();
+    t1.delete();
+    t2.delete();
   });
 
   it('rotate', () => {
@@ -93,7 +94,8 @@ describe('Blueprint', () => {
     expect(m1).toBeDefined();
     const m2 = rect(10, 10).mirror([5, 5]) as Blueprint;
     expect(m2).toBeDefined();
-    m1.delete(); m2.delete();
+    m1.delete();
+    m2.delete();
   });
 
   it('stretch', () => {
@@ -116,7 +118,9 @@ describe('Blueprint', () => {
     const b2 = rect(10, 10, 100, 100);
     expect(a.intersects(b1)).toBe(true);
     expect(a.intersects(b2)).toBe(false);
-    a.delete(); b1.delete(); b2.delete();
+    a.delete();
+    b1.delete();
+    b2.delete();
   });
 });
 
@@ -155,7 +159,10 @@ describe('BoundingBox2d', () => {
     expect(bp1.boundingBox.isOut(bp3.boundingBox)).toBe(false);
     bp1.boundingBox.add(bp4.boundingBox);
     expect(bp1.boundingBox.width).toBeGreaterThan(15);
-    bp1.delete(); bp2.delete(); bp3.delete(); bp4.delete();
+    bp1.delete();
+    bp2.delete();
+    bp3.delete();
+    bp4.delete();
   });
 });
 
@@ -229,7 +236,8 @@ describe('Curve2D', () => {
     expect(curve.distanceFrom([1000, 1000])).toBeGreaterThan(0);
     expect(curve.distanceFrom(curve.firstPoint)).toBeCloseTo(0, 5);
     expect(curve.distanceFrom(bp2.curves[0]!)).toBeGreaterThan(0);
-    bp1.delete(); bp2.delete();
+    bp1.delete();
+    bp2.delete();
   });
 });
 

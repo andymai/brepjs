@@ -2,7 +2,9 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { CornerFinder, roundedRectangleBlueprint, polysidesBlueprint } from '../src/index.js';
 
-beforeAll(async () => { await initOC(); }, 30000);
+beforeAll(async () => {
+  await initOC();
+}, 30000);
 
 describe('CornerFinder', () => {
   it('finds all corners of a rectangle', () => {
@@ -54,10 +56,9 @@ describe('CornerFinder', () => {
     const rect = roundedRectangleBlueprint(10, 20);
     const allCorners = new CornerFinder().find(rect);
     const pt = allCorners[0]!.point;
-    const found = new CornerFinder().inBox(
-      [pt[0] - 0.1, pt[1] - 0.1],
-      [pt[0] + 0.1, pt[1] + 0.1]
-    ).find(rect);
+    const found = new CornerFinder()
+      .inBox([pt[0] - 0.1, pt[1] - 0.1], [pt[0] + 0.1, pt[1] + 0.1])
+      .find(rect);
     expect(found.length).toBe(1);
   });
 
