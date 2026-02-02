@@ -130,7 +130,6 @@ export abstract class Finder<Type, FilterType> {
 
     if (unique) {
       if (elements.length !== 1) {
-        console.error(elements);
         return err(
           queryError(
             'FINDER_NOT_UNIQUE',

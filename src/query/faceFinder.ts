@@ -31,8 +31,7 @@ export class FaceFinder extends Finder3d<Face> {
       return this.atAngleWith(plane.zDir);
     if (typeof plane !== 'string' && 'normalAt' in plane) {
       const normal = plane.normalAt();
-      this.atAngleWith(normal);
-      return this;
+      return this.atAngleWith(normal);
     }
     return this;
   }

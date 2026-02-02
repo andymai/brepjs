@@ -69,8 +69,7 @@ export class EdgeFinder extends Finder3d<Edge> {
       return this.atAngleWith(plane.zDir, 90);
     if (typeof plane !== 'string' && 'normalAt' in plane) {
       const normal = plane.normalAt();
-      this.atAngleWith(normal, 90);
-      return this;
+      return this.atAngleWith(normal, 90);
     }
     return this;
   }
@@ -101,8 +100,8 @@ export class EdgeFinder extends Finder3d<Edge> {
 
     try {
       normal = element.tangentAt().normalized();
-    } catch (error) {
-      console.error('Failed to compute edge tangent', error);
+    } catch {
+      // Degenerate edges may lack a valid tangent — filters should handle null normal
     }
 
     return this.filters.every((filter) => filter({ normal, element }));

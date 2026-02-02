@@ -547,11 +547,14 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     progress.delete();
 
     if (done === this.oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
-      const file = this.oc.FS.readFile('/' + filename);
-      this.oc.FS.unlink('/' + filename);
-
-      const blob = new Blob([file], { type: 'application/STEP' });
-      return ok(blob);
+      try {
+        const file = this.oc.FS.readFile('/' + filename);
+        this.oc.FS.unlink('/' + filename);
+        const blob = new Blob([file], { type: 'application/STEP' });
+        return ok(blob);
+      } catch (e) {
+        return err(ioError('STEP_FILE_READ_ERROR', 'Failed to read exported STEP file', e));
+      }
     } else {
       return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
     }
@@ -568,11 +571,14 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     const done = this.oc.StlAPI.Write(this.wrapped, filename, !binary);
 
     if (done) {
-      const file = this.oc.FS.readFile('/' + filename);
-      this.oc.FS.unlink('/' + filename);
-
-      const blob = new Blob([file], { type: 'application/sla' });
-      return ok(blob);
+      try {
+        const file = this.oc.FS.readFile('/' + filename);
+        this.oc.FS.unlink('/' + filename);
+        const blob = new Blob([file], { type: 'application/sla' });
+        return ok(blob);
+      } catch (e) {
+        return err(ioError('STL_FILE_READ_ERROR', 'Failed to read exported STL file', e));
+      }
     } else {
       return err(ioError('STL_EXPORT_FAILED', 'Failed to write STL file'));
     }

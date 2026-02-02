@@ -1,12 +1,13 @@
 import type { KernelAdapter, OpenCascadeInstance } from './types.js';
 import { OCCTAdapter } from './occtAdapter.js';
-import { bug } from '../utils/bug.js';
 
 let _kernel: KernelAdapter | null = null;
 
 export function getKernel(): KernelAdapter {
   if (!_kernel) {
-    bug('kernel', 'Kernel has not been initialized. Call initFromOC() first.');
+    throw new Error(
+      'brepjs kernel not initialized. Call initFromOC() or setOC() before using the library.'
+    );
   }
   return _kernel;
 }
