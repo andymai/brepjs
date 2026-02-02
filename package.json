@@ -49,6 +49,7 @@
     "test:affected": "vitest run --changed",
     "check:boundaries": "bash scripts/check-layer-boundaries.sh",
     "check:boundaries:staged": "bash scripts/check-layer-boundaries.sh --staged",
+    "check:readme-reminders": "bash scripts/check-readme-reminders.sh",
     "knip": "knip",
     "prepare": "husky"
   },
