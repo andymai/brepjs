@@ -582,3 +582,14 @@ export {
   type FaceFinderFn,
   type ShapeFinder,
 } from './query/finderFns.js';
+
+// ── Projection (functional) ──
+
+export {
+  createCamera,
+  cameraLookAt,
+  cameraFromPlane,
+  cameraToProjectionCamera,
+  projectEdges,
+  type Camera,
+} from './projection/cameraFns.js';
