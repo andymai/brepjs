@@ -1,0 +1,74 @@
+name: Publish brepjs-opencascade
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build only, skip publish)"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ytt
+        run: |
+          curl -fsSL -o ytt https://github.com/carvel-dev/ytt/releases/latest/download/ytt-linux-amd64
+          chmod +x ytt
+          sudo mv ytt /usr/local/bin/
+
+      - name: Generate build config
+        working-directory: packages/brepjs-opencascade
+        run: ytt -f build-source/ --output-files build-config
+
+      - name: Build single (no exceptions)
+        working-directory: packages/brepjs-opencascade/build-config
+        run: |
+          docker run -i --rm -v $(pwd):/src donalffons/opencascade.js custom_build_single.yml
+          mv brepjs_single* ../src/
+
+      - name: Build with exceptions
+        working-directory: packages/brepjs-opencascade/build-config
+        run: |
+          docker run -i --rm -v $(pwd):/src donalffons/opencascade.js custom_build_with_exceptions.yml
+          mv brepjs_with_exceptions* ../src/
+
+      - name: Upload WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencascade-wasm
+          path: packages/brepjs-opencascade/src/
+
+  publish:
+    needs: build-wasm
+    if: ${{ inputs.dry_run != true }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download WASM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: opencascade-wasm
+          path: packages/brepjs-opencascade/src/
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish to npm
+        working-directory: packages/brepjs-opencascade
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
