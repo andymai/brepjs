@@ -401,20 +401,24 @@ public:
     result.verticesSize_ = totalNodes * 3;
     result.verticesPtr_ = static_cast<float*>(
       std::malloc(result.verticesSize_ * sizeof(float)));
+    if (!result.verticesPtr_ && result.verticesSize_ > 0) throw std::bad_alloc();
 
     if (!skipNormals) {
       result.normalsSize_ = totalNodes * 3;
       result.normalsPtr_ = static_cast<float*>(
         std::malloc(result.normalsSize_ * sizeof(float)));
+      if (!result.normalsPtr_ && result.normalsSize_ > 0) throw std::bad_alloc();
     }
 
     result.trianglesSize_ = totalTriangles * 3;
     result.trianglesPtr_ = static_cast<uint32_t*>(
       std::malloc(result.trianglesSize_ * sizeof(uint32_t)));
+    if (!result.trianglesPtr_ && result.trianglesSize_ > 0) throw std::bad_alloc();
 
     result.faceGroupsSize_ = totalFaces * 3;
     result.faceGroupsPtr_ = static_cast<int32_t*>(
       std::malloc(result.faceGroupsSize_ * sizeof(int32_t)));
+    if (!result.faceGroupsPtr_ && result.faceGroupsSize_ > 0) throw std::bad_alloc();
 
     int vertexOffset = 0;
     int triOffset = 0;
