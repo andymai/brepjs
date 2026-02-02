@@ -1320,6 +1320,7 @@ export function buildCompoundOc(shapes: OcType[]): OcShape {
   for (const s of shapes) {
     builder.Add(compound, s);
   }
+  builder.delete();
   return compound;
 }
 

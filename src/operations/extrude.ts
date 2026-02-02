@@ -173,7 +173,9 @@ const buildLawFromProfile = (
     );
   }
 
-  return ok(law.Trim(0, extrusionLength, 1e-6));
+  const trimmed = law.Trim(0, extrusionLength, 1e-6);
+  law.delete();
+  return ok(trimmed);
 };
 
 export const supportExtrude = (
