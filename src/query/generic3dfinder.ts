@@ -84,8 +84,19 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    * @category Filter
    */
   inList(elementList: Type[]): this {
+    const hashBuckets = new Map<number, Type[]>();
+    for (const e of elementList) {
+      const h = e.hashCode;
+      const bucket = hashBuckets.get(h);
+      if (bucket) {
+        bucket.push(e);
+      } else {
+        hashBuckets.set(h, [e]);
+      }
+    }
     const elementInList = ({ element }: { element: Type }) => {
-      return !!elementList.find((e) => e.isSame(element));
+      const bucket = hashBuckets.get(element.hashCode);
+      return !!bucket && bucket.some((e) => e.isSame(element));
     };
     this.filters.push(elementInList);
     return this;
@@ -128,6 +139,7 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
   atDistance(distance: number, point: Point = [0, 0, 0]): this {
     const vertexShape = makeVertexOc(point);
     const query = new DistanceQueryInternal(vertexShape);
+    vertexShape.delete();
 
     const checkPoint = ({ element }: { element: Type }) => {
       return Math.abs(query.distanceTo(element.wrapped) - distance) < 1e-6;
@@ -154,6 +166,7 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
   withinDistance(distance: number, point: Point = [0, 0, 0]): this {
     const vertexShape = makeVertexOc(point);
     const query = new DistanceQueryInternal(vertexShape);
+    vertexShape.delete();
 
     const checkPoint = ({ element }: { element: Type }) => {
       return query.distanceTo(element.wrapped) - distance < 1e-6;
@@ -172,7 +185,9 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    */
   inBox(corner1: Point, corner2: Point): this {
     const boxShape = makeBoxOc(corner1, corner2);
-    return this.inShape(boxShape);
+    this.inShape(boxShape);
+    boxShape.delete();
+    return this;
   }
 
   /**

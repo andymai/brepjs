@@ -349,25 +349,52 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     skipNormals?: boolean;
   } = {}): ShapeMesh {
     this._mesh({ tolerance, angularTolerance });
-    let triangles: number[] = [];
-    let vertices: number[] = [];
-    let normals: number[] = [];
-    const faceGroups: { start: number; count: number; faceId: number }[] = [];
 
-    for (const face of this.faces) {
-      const tri = face.triangulation(vertices.length / 3, skipNormals);
+    // Collect per-face results first to compute total sizes
+    const faces = this.faces;
+    const faceResults: { tri: FaceTriangulation; faceId: number }[] = [];
+    let totalTriangles = 0;
+    let totalVertices = 0;
+    let totalNormals = 0;
+    let vertexOffset = 0;
 
+    for (const face of faces) {
+      const tri = face.triangulation(vertexOffset, skipNormals);
       if (!tri) continue;
-      const { trianglesIndexes, vertices: faceVertices, verticesNormals } = tri;
+      faceResults.push({ tri, faceId: face.hashCode });
+      totalTriangles += tri.trianglesIndexes.length;
+      totalVertices += tri.vertices.length;
+      totalNormals += tri.verticesNormals.length;
+      vertexOffset += tri.vertices.length / 3;
+    }
 
+    // Pre-allocate final arrays at exact size
+    const triangles = new Array<number>(totalTriangles);
+    const vertices = new Array<number>(totalVertices);
+    const normals = new Array<number>(totalNormals);
+    const faceGroups: { start: number; count: number; faceId: number }[] = [];
+    let triOffset = 0;
+    let vtxOffset = 0;
+    let nrmOffset = 0;
+
+    for (const { tri, faceId } of faceResults) {
       faceGroups.push({
-        start: triangles.length,
-        count: trianglesIndexes.length,
-        faceId: face.hashCode,
+        start: triOffset,
+        count: tri.trianglesIndexes.length,
+        faceId,
       });
-      triangles = triangles.concat(trianglesIndexes);
-      vertices = vertices.concat(faceVertices);
-      normals = normals.concat(verticesNormals);
+      for (let i = 0; i < tri.trianglesIndexes.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        triangles[triOffset++] = tri.trianglesIndexes[i]!;
+      }
+      for (let i = 0; i < tri.vertices.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        vertices[vtxOffset++] = tri.vertices[i]!;
+      }
+      for (let i = 0; i < tri.verticesNormals.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        normals[nrmOffset++] = tri.verticesNormals[i]!;
+      }
     }
 
     return {
@@ -394,17 +421,23 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
 
     const addEdge = (): [(p: OcType) => void, (h: number) => void] => {
       const start = lines.length;
-      let previousPoint: null | number[] = null;
+      let prevX = 0;
+      let prevY = 0;
+      let prevZ = 0;
+      let hasPrev = false;
 
       return [
         (p: OcType) => {
-          if (previousPoint) {
-            lines.push(...previousPoint);
-            previousPoint = [p.X(), p.Y(), p.Z()];
-            lines.push(...previousPoint);
-          } else {
-            previousPoint = [p.X(), p.Y(), p.Z()];
+          const x = p.X();
+          const y = p.Y();
+          const z = p.Z();
+          if (hasPrev) {
+            lines.push(prevX, prevY, prevZ, x, y, z);
           }
+          prevX = x;
+          prevY = y;
+          prevZ = z;
+          hasPrev = true;
         },
 
         (edgeHash: number) => {
@@ -421,7 +454,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
 
     const aLocation = r(new this.oc.TopLoc_Location_1());
 
-    for (const face of this.faces) {
+    const faces = this.faces;
+    for (const face of faces) {
       const triangulation = r(this.oc.BRep_Tool.Triangulation(face.wrapped, aLocation, 0));
 
       if (triangulation.IsNull()) {
@@ -429,7 +463,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
       }
       const tri = triangulation.get();
 
-      for (const edge of face.edges) {
+      const faceEdges = face.edges;
+      for (const edge of faceEdges) {
         r(edge);
         if (recordedEdges.has(edge.hashCode)) continue;
 
@@ -454,7 +489,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
       }
     }
 
-    for (const edge of this.edges) {
+    const allEdges = this.edges;
+    for (const edge of allEdges) {
       r(edge);
       const edgeHash = edge.hashCode;
       if (recordedEdges.has(edgeHash)) continue;
