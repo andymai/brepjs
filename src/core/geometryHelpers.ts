@@ -28,7 +28,11 @@ export const makePlaneFromFace = (
   }
 
   v.delete();
-  return new Plane(originPoint, xd, normal);
+  const plane = new Plane(originPoint, xd, normal);
+  originPoint.delete();
+  normal.delete();
+  xd.delete();
+  return plane;
 };
 
 function makePlane(plane: Plane): Plane;

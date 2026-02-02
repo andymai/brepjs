@@ -170,38 +170,42 @@ export default class CompoundSketch implements SketchInterface {
       origin?: Point;
     } = {}
   ): Shape3D {
-    const extrusionVec = new Vector(extrusionDirection || this.outerSketch.defaultDirection)
-      .normalized()
-      .multiply(extrusionDistance);
+    const rawVec = new Vector(extrusionDirection || this.outerSketch.defaultDirection);
+    const normVec = rawVec.normalized();
+    const extrusionVec = normVec.multiply(extrusionDistance);
+    rawVec.delete();
+    normVec.delete();
 
-    if (extrusionProfile && !twistAngle) {
-      const solid = solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
-        complexExtrude(
-          sketch.wire,
-          origin || this.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile,
-          true
-        )
-      );
-      return solid;
+    try {
+      if (extrusionProfile && !twistAngle) {
+        return solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
+          complexExtrude(
+            sketch.wire,
+            origin || this.outerSketch.defaultOrigin,
+            extrusionVec,
+            extrusionProfile,
+            true
+          )
+        );
+      }
+
+      if (twistAngle) {
+        return solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
+          twistExtrude(
+            sketch.wire,
+            twistAngle,
+            origin || this.outerSketch.defaultOrigin,
+            extrusionVec,
+            extrusionProfile,
+            true
+          )
+        );
+      }
+
+      return basicFaceExtrusion(this.face(), extrusionVec);
+    } finally {
+      extrusionVec.delete();
     }
-
-    if (twistAngle) {
-      const solid = solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
-        twistExtrude(
-          sketch.wire,
-          twistAngle,
-          origin || this.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile,
-          true
-        )
-      );
-      return solid;
-    }
-
-    return basicFaceExtrusion(this.face(), extrusionVec);
   }
 
   /**
