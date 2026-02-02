@@ -5,6 +5,7 @@
 
 import { DEG2RAD } from '../core/constants.js';
 import { polarToCartesian, type Point2D } from '../2d/lib/index.js';
+import { bug } from '../core/errors.js';
 
 type StartSplineTangent = number | Point2D;
 export type SplineTangent = StartSplineTangent | 'symmetric';
@@ -410,7 +411,7 @@ export function convertSvgEllipseParams(
   }
   if (rx === 0.0 || ry === 0.0) {
     // invalid arguments
-    throw Error('rx and ry can not be 0');
+    bug('convertSvgEllipseParams', 'rx and ry cannot be 0');
   }
 
   const s_phi = Math.sin(phi);
@@ -437,7 +438,7 @@ export function convertSvgEllipseParams(
   const ryx1_ = ry * x1_;
   const sum_of_sq = rxy1_ * rxy1_ + ryx1_ * ryx1_; // sum of square
   if (!sum_of_sq) {
-    throw Error('start point can not be same as end point');
+    bug('convertSvgEllipseParams', 'Start point cannot be same as end point');
   }
   let coe = Math.sqrt(Math.abs((rxry * rxry - sum_of_sq) / sum_of_sq));
   if (fA === fS) {

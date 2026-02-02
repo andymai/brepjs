@@ -37,7 +37,7 @@ const genericIntersects = (
     return second.blueprints.some((bp) => genericIntersects(first, bp));
   }
 
-  bug('boolean2d', 'Bug in the generic intersects algorithm');
+  bug('genericIntersects', 'Unhandled shape combination in genericIntersects');
 };
 
 const genericFuse = (
@@ -66,7 +66,7 @@ const genericFuse = (
     return fuseBlueprints(first, second);
   }
 
-  bug('boolean2d', 'Bug in the generic fuse algorithm');
+  bug('genericFuse', 'Unhandled shape combination in genericFuse');
 };
 
 const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[]) => {
@@ -125,7 +125,7 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
           newFused = newFused.blueprints[0]!;
         } else if (!(newFused instanceof Blueprints)) {
           console.error(newFused);
-          bug('boolean2d', 'Bug in blueprint fusing algorithm');
+          bug('fuseIntersectingBlueprints', 'Fuse produced unexpected non-blueprint result');
         }
       }
       savedBlueprint.fusedWith.add(currentIndex);
@@ -359,5 +359,5 @@ export function intersect2D(
     return cut2D(intersect2D(wrapper, first), cut);
   }
 
-  bug('intersect2D', 'intersect 2D algorithm error: unhandled Shape2D combination');
+  bug('intersect2D', 'Unhandled Shape2D combination');
 }

@@ -244,7 +244,7 @@ export function rawOffsets(
       yield curve;
     }
     // This should never happen
-    if (!savedLastCurve) bug('offset', 'Bug in the offset algorithm');
+    if (!savedLastCurve) bug('offset.rawOffsets', 'No saved curve after iterating offset segments');
     yield savedLastCurve;
   };
 
@@ -293,7 +293,7 @@ export function rawOffsets(
       )[0]!;
       const splitCurve = (curve.offset as Curve2D).splitAt([intersection], PRECISION).at(-1);
 
-      if (!splitCurve) bug('offset', 'Bug in the splitting algo in offset');
+      if (!splitCurve) bug('offset.rawOffsets', 'Split produced no trailing curve segment');
 
       appendCurve({
         offset: splitPreviousCurve,

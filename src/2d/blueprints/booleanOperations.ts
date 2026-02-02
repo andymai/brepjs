@@ -145,7 +145,7 @@ function removeNonCrossingPoint(
     });
     if (segmentsOfIntersection.length % 2) {
       console.error(segmentsOfIntersection, intersection);
-      bug('boolean2d', 'Bug in the intersection algo on non crossing point');
+      bug('removeNonCrossingPoint', 'Odd number of segments at intersection point (expected even)');
     }
 
     const isInside = segmentsOfIntersection.map((segment: Curve2D): boolean => {
@@ -399,7 +399,7 @@ function booleanOperation(
         return [];
       }
 
-      console.error('weird situation');
+      // segmentsIn has a value other than 0, 1, 2, or null — should not happen
       return [];
     }
 

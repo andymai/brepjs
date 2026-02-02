@@ -102,7 +102,7 @@ export class EdgeFinder extends Finder3d<Edge> {
     try {
       normal = element.tangentAt().normalized();
     } catch (error) {
-      console.error('failed to compute a normal', error);
+      console.error('Failed to compute edge tangent', error);
     }
 
     return this.filters.every((filter) => filter({ normal, element }));

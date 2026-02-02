@@ -123,7 +123,8 @@ export class BaseSketcher2d {
     }
 
     const previousCurve = this.pendingCurves.pop();
-    if (!previousCurve) bug('sketcher', 'bug in the custom corner algorithm');
+    if (!previousCurve)
+      bug('Sketcher2d.saveCurve', 'No previous curve available for custom corner');
 
     this.pendingCurves.push(...this._nextCorner(previousCurve, curve));
     this._nextCorner = null;
@@ -465,7 +466,8 @@ export class BaseSketcher2d {
     const previousCurve = this.pendingCurves.pop();
     const curve = this.pendingCurves.shift();
 
-    if (!previousCurve || !curve) bug('sketcher', 'Not enough curves to close and fillet');
+    if (!previousCurve || !curve)
+      bug('Sketcher2d._customCornerLastWithFirst', 'Not enough curves to close and fillet');
 
     this.pendingCurves.push(...buildCornerFunction(radius, mode)(previousCurve, curve));
   }

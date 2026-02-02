@@ -518,7 +518,7 @@ export class OCCTAdapter implements KernelAdapter {
       this.oc.FS.unlink('/' + filename);
       return new TextDecoder().decode(file);
     }
-    throw new Error('STEP export failed');
+    throw new Error('STEP export failed: writer did not complete successfully');
   }
 
   exportSTL(shape: OcShape, binary = false): string | ArrayBuffer {
@@ -531,7 +531,7 @@ export class OCCTAdapter implements KernelAdapter {
       if (binary) return file.buffer as ArrayBuffer;
       return new TextDecoder().decode(file);
     }
-    throw new Error('STL export failed');
+    throw new Error('STL export failed: StlAPI.Write returned false');
   }
 
   importSTEP(data: string | ArrayBuffer): OcShape[] {
@@ -549,7 +549,7 @@ export class OCCTAdapter implements KernelAdapter {
     }
     this.oc.FS.unlink('/' + filename);
     reader.delete();
-    throw new Error('Failed to import STEP file');
+    throw new Error('Failed to import STEP file: reader could not parse the input data');
   }
 
   importSTL(data: string | ArrayBuffer): OcShape {
@@ -575,7 +575,7 @@ export class OCCTAdapter implements KernelAdapter {
     }
     this.oc.FS.unlink('/' + filename);
     reader.delete();
-    throw new Error('Failed to import STL file');
+    throw new Error('Failed to import STL file: reader could not parse the input data');
   }
 
   // --- Measurement ---
@@ -670,7 +670,7 @@ export class OCCTAdapter implements KernelAdapter {
   }
 
   shapeType(shape: OcShape): ShapeType {
-    if (shape.IsNull()) throw new Error('Shape is null');
+    if (shape.IsNull()) throw new Error('Cannot determine shape type: shape is null');
     const ta = this.oc.TopAbs_ShapeEnum;
     const st = shape.ShapeType();
     const map = new Map<unknown, ShapeType>([
@@ -684,7 +684,7 @@ export class OCCTAdapter implements KernelAdapter {
       [ta.TopAbs_COMPOUND, 'compound'],
     ]);
     const result = map.get(st);
-    if (!result) throw new Error('Unknown shape type');
+    if (!result) throw new Error(`Unknown shape type enum value: ${st}`);
     return result;
   }
 

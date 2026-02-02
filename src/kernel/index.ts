@@ -4,13 +4,9 @@ import { bug } from '../core/errors.js';
 
 let _kernel: KernelAdapter | null = null;
 
-export function setKernel(kernel: KernelAdapter): void {
-  _kernel = kernel;
-}
-
 export function getKernel(): KernelAdapter {
   if (!_kernel) {
-    bug('kernel', 'Kernel has not been initialized. Call setKernel() or initFromOC() first.');
+    bug('kernel', 'Kernel has not been initialized. Call initFromOC() first.');
   }
   return _kernel;
 }
