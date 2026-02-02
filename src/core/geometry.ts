@@ -355,6 +355,7 @@ export class Plane {
 
   delete(): void {
     this.localToGlobal.delete();
+    this.globalToLocal.delete();
     this.xDir.delete();
     this.yDir.delete();
     this.zDir.delete();
@@ -417,6 +418,9 @@ export class Plane {
   }
 
   _calcTransforms(): void {
+    if (this.globalToLocal) this.globalToLocal.delete();
+    if (this.localToGlobal) this.localToGlobal.delete();
+
     const _globalCoordSystem = new this.oc.gp_Ax3_1();
     const _localCoordSystem = makeAx3(this.origin, this.zDir, this.xDir);
 
