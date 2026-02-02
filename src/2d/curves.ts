@@ -1,8 +1,3 @@
-/**
- * 2D/3D curve conversions and transformations.
- * Ported from replicad's curves.ts.
- */
-
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { GCWithScope, localGC, WrappingObj } from '../core/memory.js';

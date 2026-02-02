@@ -1,8 +1,3 @@
-/**
- * File import functionality: importSTEP, importSTL.
- * Ported from replicad's importers.ts.
- */
-
 import { getKernel } from '../kernel/index.js';
 import { localGC } from '../core/memory.js';
 import { cast } from '../topology/cast.js';

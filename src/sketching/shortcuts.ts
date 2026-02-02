@@ -1,8 +1,3 @@
-/**
- * Shortcut functions for common 3D shapes.
- * Ported from replicad's shortcuts.ts.
- */
-
 import type { Shape3D } from '../topology/shapes.js';
 import Sketcher from './Sketcher.js';
 

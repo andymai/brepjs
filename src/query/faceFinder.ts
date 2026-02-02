@@ -1,8 +1,3 @@
-/**
- * FaceFinder — filter and select faces within a shape.
- * Ported from replicad's finders/faceFinder.ts.
- */
-
 import type { Point, Plane, PlaneName } from '../core/geometry.js';
 import { makePlane } from '../core/geometryHelpers.js';
 import type { Face, AnyShape, SurfaceType } from '../topology/shapes.js';

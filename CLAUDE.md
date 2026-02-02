@@ -1,6 +1,6 @@
 # brepjs
 
-Web CAD library built on OpenCascade. Drop-in replacement for replicad with improved architecture.
+Web CAD library built on OpenCascade with a layered architecture and kernel abstraction layer.
 
 ## Architecture
 

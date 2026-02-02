@@ -1,8 +1,3 @@
-/**
- * Shape construction helper functions.
- * Ported from replicad's shapeHelpers.ts.
- */
-
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { GCWithScope, localGC, WrappingObj } from '../core/memory.js';

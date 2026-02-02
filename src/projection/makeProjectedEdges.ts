@@ -1,8 +1,3 @@
-/**
- * Edge projection with hidden line removal.
- * Ported from replicad's projection/makeProjectedEdges.ts.
- */
-
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
 import { GCWithScope } from '../core/memory.js';

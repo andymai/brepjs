@@ -1,8 +1,3 @@
-/**
- * Base Finder class and shared type definitions for the query layer.
- * Ported from replicad's finders/definitions.ts.
- */
-
 import type { Vector, Point } from '../core/geometry.js';
 import type { Face, Edge } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';

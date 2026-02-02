@@ -1,8 +1,3 @@
-/**
- * Projection camera for hidden line removal.
- * Ported from replicad's projection/ProjectionCamera.ts.
- */
-
 import type { OcType } from '../kernel/types.js';
 import { asDir, asPnt, makeAx2, type Point, Vector } from '../core/geometry.js';
 import type { BoundingBox } from '../core/geometry.js';

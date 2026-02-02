@@ -1,8 +1,3 @@
-/**
- * Text rendering using opentype.js.
- * Ported from replicad's text.ts.
- */
-
 import type { Point2D } from '../2d/lib/index.js';
 import type { Plane, PlaneName, Point } from '../core/geometry.js';
 import type Blueprints from '../2d/blueprints/Blueprints.js';

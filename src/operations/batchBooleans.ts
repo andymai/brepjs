@@ -1,8 +1,3 @@
-/**
- * Batch boolean operations: fuseAll, cutAll.
- * Ported from replicad's shapes.ts additions.
- */
-
 import { getKernel } from '../kernel/index.js';
 import { GCWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';

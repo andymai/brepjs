@@ -1,8 +1,3 @@
-/**
- * Sketch class - a line drawing to be acted upon.
- * Ported from replicad's sketches/Sketch.ts.
- */
-
 import { Vector, Plane, type Point } from '../core/geometry.js';
 import { localGC } from '../core/memory.js';
 import { makeFace, makeNewFaceWithinFace } from '../topology/shapeHelpers.js';

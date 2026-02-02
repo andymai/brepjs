@@ -1,8 +1,3 @@
-/**
- * Curve and surface type enum mappings.
- * Ported from replicad's definitionMaps.ts.
- */
-
 import { getKernel } from '../kernel/index.js';
 import { type Result, ok, err } from './result.js';
 import { typeCastError } from './errors.js';

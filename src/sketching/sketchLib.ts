@@ -1,8 +1,3 @@
-/**
- * Sketch interface definition.
- * Ported from replicad's sketches/lib.ts.
- */
-
 import type { Face, Shape3D } from '../topology/shapes.js';
 import type { Point } from '../core/geometry.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';

@@ -1,8 +1,3 @@
-/**
- * EdgeFinder — filter and select edges within a shape.
- * Ported from replicad's finders/edgeFinder.ts.
- */
-
 import type { Point, Plane, PlaneName, Vector } from '../core/geometry.js';
 import { makePlane } from '../core/geometryHelpers.js';
 import type { Face, AnyShape, Edge, CurveType } from '../topology/shapes.js';

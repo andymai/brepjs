@@ -1,8 +1,3 @@
-/**
- * Sketcher library types and helpers.
- * Ported from replicad's sketcherlib.ts.
- */
-
 import { DEG2RAD } from '../core/constants.js';
 import { polarToCartesian, type Point2D } from '../2d/lib/index.js';
 import { bug } from '../core/errors.js';

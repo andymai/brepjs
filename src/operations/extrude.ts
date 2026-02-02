@@ -1,8 +1,3 @@
-/**
- * Extrusion operations: basicFaceExtrusion, complexExtrude, twistExtrude, supportExtrude.
- * Ported from replicad's addThickness.ts.
- */
-
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
 import { Vector, makeAx1, type Point } from '../core/geometry.js';

@@ -1,8 +1,3 @@
-/**
- * Export operations: blobSTEP, blobSTL, assemblyExporter.
- * Ported from replicad's export/assemblyExporter.ts.
- */
-
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { GCWithScope, WrappingObj } from '../core/memory.js';

@@ -1,8 +1,3 @@
-/**
- * Canned (pre-built) sketch factories.
- * Ported from replicad's sketches/cannedSketches.ts.
- */
-
 import { unwrap } from '../core/result.js';
 import {
   assembleWire,

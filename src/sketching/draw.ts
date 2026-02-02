@@ -1,8 +1,3 @@
-/**
- * Drawing API - 2D shape creation and manipulation.
- * Ported from replicad's draw.ts.
- */
-
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
 import type { ApproximationOptions } from '../2d/lib/index.js';

@@ -1,9 +1,3 @@
-/**
- * CompoundSketch - a group of sketches that correspond to a unique face
- * (i.e. an outer sketch and multiple holes within).
- * Ported from replicad's sketches/CompoundSketch.ts.
- */
-
 import { compoundShapes, addHolesInFace, makeSolid, makeFace } from '../topology/shapeHelpers.js';
 import type Sketch from './Sketch.js';
 

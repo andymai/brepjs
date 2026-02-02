@@ -1,8 +1,3 @@
-/**
- * Shape casting and topology iteration utilities.
- * Ported from replicad's shapes.ts.
- */
-
 import type { OcShape, OcType } from '../kernel/types.js';
 import type { AnyShape, CompSolid, Shape3D, Wire } from './shapes.js';
 import type * as ShapesModule from './shapes.js';

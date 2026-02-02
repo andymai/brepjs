@@ -1,8 +1,3 @@
-/**
- * 3D Sketcher - draws on a plane in 3D space.
- * Ported from replicad's Sketcher.ts.
- */
-
 import { Plane, type PlaneName, type Point, Vector } from '../core/geometry.js';
 import { makePlane } from '../core/geometryHelpers.js';
 import { localGC } from '../core/memory.js';

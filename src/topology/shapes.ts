@@ -1,8 +1,3 @@
-/**
- * Shape hierarchy for topology wrappers.
- * Ported from replicad's shapes.ts.
- */
-
 import type { OcShape, OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { WrappingObj, GCWithScope, type Deletable } from '../core/memory.js';

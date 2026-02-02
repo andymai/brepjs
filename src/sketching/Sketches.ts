@@ -1,8 +1,3 @@
-/**
- * Sketches - a collection of Sketch and CompoundSketch objects.
- * Ported from replicad's sketches/Sketches.ts.
- */
-
 import type { Point } from '../core/geometry.js';
 import { compoundShapes } from '../topology/shapeHelpers.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';

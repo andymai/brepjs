@@ -1,6 +1,5 @@
 /**
  * brepjs — Public API
- * Re-exports matching replicad's public API for drop-in compatibility.
  */
 
 // ── Layer 0: kernel / utils ──

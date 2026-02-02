@@ -1,8 +1,3 @@
-/**
- * 2D Sketchers: BaseSketcher2d, FaceSketcher, BlueprintSketcher.
- * Ported from replicad's Sketcher2d.ts.
- */
-
 import Sketch from './Sketch.js';
 import { DEG2RAD, RAD2DEG } from '../core/constants.js';
 import { localGC } from '../core/memory.js';

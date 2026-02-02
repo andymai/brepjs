@@ -1,8 +1,3 @@
-/**
- * Abstract 3D finder with common spatial filters (angle, distance, containment).
- * Ported from replicad's finders/generic3dfinder.ts.
- */
-
 import {
   type Direction,
   DIRECTIONS,

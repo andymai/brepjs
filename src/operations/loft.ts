@@ -1,8 +1,3 @@
-/**
- * Loft operation.
- * Ported from replicad's addThickness.ts.
- */
-
 import { getKernel } from '../kernel/index.js';
 import { localGC } from '../core/memory.js';
 import type { Point } from '../core/geometry.js';

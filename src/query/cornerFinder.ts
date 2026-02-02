@@ -1,8 +1,3 @@
-/**
- * CornerFinder — filter and select corners within a 2D blueprint.
- * Ported from replicad's finders/cornerFinder.ts.
- */
-
 import { DEG2RAD } from '../core/constants.js';
 import { angle2d, distance2d, samePoint } from '../2d/lib/vectorOperations.js';
 import type { Point2D } from '../2d/lib/definitions.js';

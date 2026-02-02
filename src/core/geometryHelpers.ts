@@ -1,8 +1,3 @@
-/**
- * Geometric transformation helper functions.
- * Ported from replicad's geomHelpers.ts.
- */
-
 import {
   createNamedPlane,
   Plane,

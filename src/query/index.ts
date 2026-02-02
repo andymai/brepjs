@@ -1,8 +1,3 @@
-/**
- * Query layer barrel file.
- * Ported from replicad's finders/index.ts.
- */
-
 import type { Finder } from './definitions.js';
 import { type FilterFcn } from './definitions.js';
 

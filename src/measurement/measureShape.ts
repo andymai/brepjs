@@ -1,8 +1,3 @@
-/**
- * Shape measurement and analysis functions.
- * Ported from replicad's measureShape.ts.
- */
-
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
 import { GCWithScope, WrappingObj } from '../core/memory.js';
