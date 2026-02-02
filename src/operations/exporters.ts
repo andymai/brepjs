@@ -124,6 +124,6 @@ export function exportSTEP(
     const blob = new Blob([file], { type: 'application/STEP' });
     return blob;
   } else {
-    throw new Error('WRITE STEP FILE FAILED.');
+    throw new Error('Failed to write STEP file');
   }
 }

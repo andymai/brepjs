@@ -39,6 +39,6 @@ export const loft = (
   const shape = cast(loftBuilder.Shape());
   gc();
 
-  if (!isShape3D(shape)) throw new Error('Could not loft to a 3d shape');
+  if (!isShape3D(shape)) throw new Error('Loft did not produce a 3D shape');
   return shape;
 };

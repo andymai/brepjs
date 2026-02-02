@@ -46,12 +46,6 @@ const positiveHalfAngle = (angle: number) => {
 };
 
 export class CornerFinder extends Finder<Corner, BlueprintLike> {
-  clone(): CornerFinder {
-    const ef = new CornerFinder();
-    ef.filters = [...this.filters];
-    return ef;
-  }
-
   /**
    * Filter to find corner that have their point are in the list.
    *

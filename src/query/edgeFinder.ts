@@ -18,12 +18,6 @@ import { Plane as PlaneClass } from '../core/geometry.js';
  * @category Finders
  */
 export class EdgeFinder extends Finder3d<Edge> {
-  clone(): EdgeFinder {
-    const ef = new EdgeFinder();
-    ef.filters = [...this.filters];
-    return ef;
-  }
-
   /**
    * Filter to find edges that are in a certain direction
    *
@@ -95,14 +89,8 @@ export class EdgeFinder extends Finder3d<Edge> {
 
     this.parallelTo(plane);
 
-    const firstPointInPlane = ({ element }: { element: Edge }) => {
-      const point = element.startPoint;
-      const projectedPoint = point.projectToPlane(plane);
-
-      const isSamePoint = point.equals(projectedPoint);
-
-      return isSamePoint;
-    };
+    const firstPointInPlane = ({ element }: { element: Edge }) =>
+      element.startPoint.equals(element.startPoint.projectToPlane(plane));
 
     this.filters.push(firstPointInPlane);
     return this;

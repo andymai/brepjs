@@ -17,14 +17,9 @@ import {
   Solid,
   Vertex,
   Shell,
-  isShape3DLocal,
+  isShape3D,
 } from './shapes.js';
 import zip from '../utils/zip.js';
-
-// Re-export isShape3DLocal under a public name for this module
-function isShape3D(shape: AnyShape): shape is Shape3D {
-  return isShape3DLocal(shape);
-}
 
 export const makeLine = (v1: Point, v2: Point): Edge => {
   const oc = getKernel().oc;

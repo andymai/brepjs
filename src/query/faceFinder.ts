@@ -17,12 +17,6 @@ import { Plane as PlaneClass } from '../core/geometry.js';
  * @category Finders
  */
 export class FaceFinder extends Finder3d<Face> {
-  clone(): FaceFinder {
-    const ff = new FaceFinder();
-    ff.filters = [...this.filters];
-    return ff;
-  }
-
   /** Filter to find faces that are parallel to plane or another face
    *
    * Note that this will work only in planar faces (but the method does not
@@ -69,13 +63,8 @@ export class FaceFinder extends Finder3d<Face> {
 
     this.parallelTo(plane);
 
-    const centerInPlane = ({ element }: { element: Face }) => {
-      const point = element.center;
-      const projectedPoint = point.projectToPlane(plane);
-
-      const isSamePoint = point.equals(projectedPoint);
-      return isSamePoint;
-    };
+    const centerInPlane = ({ element }: { element: Face }) =>
+      element.center.equals(element.center.projectToPlane(plane));
 
     this.filters.push(centerInPlane);
     return this;

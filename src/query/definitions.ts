@@ -42,6 +42,16 @@ export abstract class Finder<Type, FilterType> {
     this.filters = [];
   }
 
+  /**
+   * Creates a shallow clone of this finder with the same filters.
+   */
+  clone(): this {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic constructor invocation for polymorphic clone
+    const cloned = new (this.constructor as any)() as this;
+    cloned.filters = [...this.filters];
+    return cloned;
+  }
+
   delete(): void {
     this.filters = [];
   }
@@ -119,7 +129,7 @@ export abstract class Finder<Type, FilterType> {
     if (unique) {
       if (elements.length !== 1) {
         console.error(elements);
-        throw new Error('Finder has not found a unique solution');
+        throw new Error(`Finder expected a unique match but found ${elements.length} element(s)`);
       }
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return elements[0]!;

@@ -40,7 +40,7 @@ export const revolution = (
   ax.delete();
   revolBuilder.delete();
 
-  if (!isShape3D(shape)) throw new Error('Could not revolve to a 3d shape');
+  if (!isShape3D(shape)) throw new Error('Revolution did not produce a 3D shape');
   return shape;
 };
 
@@ -116,13 +116,13 @@ function genericSweep(
     sweepBuilder.MakeSolid();
   }
   const shape = cast(sweepBuilder.Shape());
-  if (!isShape3D(shape)) throw new Error('Could not sweep to a 3d shape');
+  if (!isShape3D(shape)) throw new Error('Sweep did not produce a 3D shape');
 
   if (shellMode) {
     const startWire = cast(sweepBuilder.FirstShape());
     const endWire = cast(sweepBuilder.LastShape());
-    if (!isWire(startWire)) throw new Error('Could not sweep with one start wire');
-    if (!isWire(endWire)) throw new Error('Could not sweep with one end wire');
+    if (!isWire(startWire)) throw new Error('Sweep did not produce a start Wire');
+    if (!isWire(endWire)) throw new Error('Sweep did not produce an end Wire');
     sweepBuilder.delete();
     return [shape, startWire, endWire];
   }
@@ -153,7 +153,7 @@ const buildLawFromProfile = (
     law = new oc.Law_Linear();
     law.Set(0, 1, extrusionLength, endFactor);
   } else {
-    throw new Error('Could not generate a law function');
+    throw new Error(`Unsupported extrusion profile: ${String(profile)}`);
   }
 
   return law.Trim(0, extrusionLength, 1e-6);

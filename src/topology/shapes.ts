@@ -105,14 +105,10 @@ export function isNumber(r: unknown): r is number {
 export function isChamferRadius(r: unknown): r is ChamferRadius {
   if (typeof r === 'number') return true;
   if (typeof r === 'object' && r !== null) {
+    const obj = r as Record<string, unknown>;
     return (
-      ('distances' in r &&
-        Array.isArray(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- narrowing union
-          (r as any).distances
-        ) &&
-        'selectedFace' in r) ||
-      ('distance' in r && 'angle' in r && 'selectedFace' in r)
+      ('distances' in obj && Array.isArray(obj.distances) && 'selectedFace' in obj) ||
+      ('distance' in obj && 'angle' in obj && 'selectedFace' in obj)
     );
   }
   return false;
@@ -206,7 +202,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     const newShape = cast(shapeUpgrader.Shape());
     shapeUpgrader.delete();
 
-    if (this.constructor !== newShape.constructor) throw new Error('unexpected types mismatch');
+    if (this.constructor !== newShape.constructor)
+      throw new Error('Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -225,7 +222,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     const newShape = cast(translate(this.wrapped, translation));
     this.delete();
 
-    if (this.constructor !== newShape.constructor) throw new Error('unexpected types mismatch');
+    if (this.constructor !== newShape.constructor)
+      throw new Error('Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -266,7 +264,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
   rotate(angle: number, position: Point = [0, 0, 0], direction: Point = [0, 0, 1]): this {
     const newShape = cast(rotate(this.wrapped, angle, position, direction));
     this.delete();
-    if (this.constructor !== newShape.constructor) throw new Error('unexpected types mismatch');
+    if (this.constructor !== newShape.constructor)
+      throw new Error('Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -281,7 +280,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     const newShape = cast(mirror(this.wrapped, inputPlane, origin));
     this.delete();
 
-    if (this.constructor !== newShape.constructor) throw new Error('unexpected types mismatch');
+    if (this.constructor !== newShape.constructor)
+      throw new Error('Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -296,7 +296,8 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     const newShape = cast(scaleShape(this.wrapped, center, scaleFactor));
     this.delete();
 
-    if (this.constructor !== newShape.constructor) throw new Error('unexpected types mismatch');
+    if (this.constructor !== newShape.constructor)
+      throw new Error('Shape type changed unexpectedly after transformation');
 
     // @ts-expect-error we actually check just before
     return newShape as typeof this;
@@ -549,7 +550,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
       const blob = new Blob([file], { type: 'application/STEP' });
       return blob;
     } else {
-      throw new Error('WRITE STEP FILE FAILED.');
+      throw new Error('Failed to write STEP file');
     }
   }
 
@@ -570,7 +571,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
       const blob = new Blob([file], { type: 'application/sla' });
       return blob;
     } else {
-      throw new Error('WRITE STL FILE FAILED.');
+      throw new Error('Failed to write STL file');
     }
   }
 }
@@ -719,8 +720,7 @@ export abstract class _1DShape<Type extends Deletable = OcShape> extends Shape<T
 
   flipOrientation(): Type {
     const flipped = (this.wrapped as OcShape).Reversed();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cast returns AnyShape, need Type
-    return cast(flipped) as any as Type;
+    return cast(flipped) as unknown as Type;
   }
 }
 
@@ -753,7 +753,7 @@ export class Wire extends _1DShape {
     const newShape = cast(offsetter.Shape());
     offsetter.delete();
     this.delete();
-    if (!(newShape instanceof Wire)) throw new Error('Could not offset with a wire');
+    if (!(newShape instanceof Wire)) throw new Error('Offset did not produce a Wire');
     return newShape;
   }
 }
@@ -782,7 +782,7 @@ export class Surface extends WrappingObj<OcType> {
     ]);
 
     const st = CAST_MAP.get(this.wrapped.GetType());
-    if (!st) throw new Error('surface type not found');
+    if (!st) throw new Error('Unrecognized surface type from OCCT adapter');
     return st;
   }
 }
@@ -993,30 +993,19 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    */
   fuse(
     other: Shape3D,
-    {
-      optimisation = 'none',
-      simplify = true,
-    }: {
-      optimisation?: 'none' | 'commonFace' | 'sameFace';
-      simplify?: boolean;
-    } = {}
+    { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
   ): Shape3D {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const newBody = r(new this.oc.BRepAlgoAPI_Fuse_3(this.wrapped, other.wrapped, progress));
-    if (optimisation === 'commonFace') {
-      newBody.SetGlue(this.oc.BOPAlgo_GlueEnum.BOPAlgo_GlueShift);
-    }
-    if (optimisation === 'sameFace') {
-      newBody.SetGlue(this.oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
-    }
+    applyGlue(newBody, optimisation);
 
     newBody.Build(progress);
     if (simplify) {
       newBody.SimplifyResult(true, true, 1e-3);
     }
     const newShape = cast(newBody.Shape());
-    if (!isShape3DLocal(newShape)) throw new Error('Could not fuse as a 3d shape');
+    if (!isShape3D(newShape)) throw new Error('Fuse did not produce a 3D shape');
 
     return newShape;
   }
@@ -1028,30 +1017,19 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    */
   cut(
     tool: Shape3D,
-    {
-      optimisation = 'none',
-      simplify = true,
-    }: {
-      optimisation?: 'none' | 'commonFace' | 'sameFace';
-      simplify?: boolean;
-    } = {}
+    { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
   ): Shape3D {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const cutter = r(new this.oc.BRepAlgoAPI_Cut_3(this.wrapped, tool.wrapped, progress));
-    if (optimisation === 'commonFace') {
-      cutter.SetGlue(this.oc.BOPAlgo_GlueEnum.BOPAlgo_GlueShift);
-    }
-    if (optimisation === 'sameFace') {
-      cutter.SetGlue(this.oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
-    }
+    applyGlue(cutter, optimisation);
     cutter.Build(progress);
     if (simplify) {
       cutter.SimplifyResult(true, true, 1e-3);
     }
 
     const newShape = cast(cutter.Shape());
-    if (!isShape3DLocal(newShape)) throw new Error('Could not cut as a 3d shape');
+    if (!isShape3D(newShape)) throw new Error('Cut did not produce a 3D shape');
     return newShape;
   }
 
@@ -1070,7 +1048,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     }
 
     const newShape = cast(intersector.Shape());
-    if (!isShape3DLocal(newShape)) throw new Error('Could not intersect as a 3d shape');
+    if (!isShape3D(newShape)) throw new Error('Intersect did not produce a 3D shape');
     return newShape;
   }
 
@@ -1104,8 +1082,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
 
     const r = GCWithScope();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- FaceFinder.find returns Face[]
-    const filteredFaces = (filter as any).find(this);
+    const filteredFaces = filter.find(this as unknown as AnyShape);
     const facesToRemove = r(new this.oc.TopTools_ListOfShape_1());
 
     filteredFaces.forEach((face: Face) => {
@@ -1130,7 +1107,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       progress
     );
     const newShape = cast(shellBuilder.Shape());
-    if (!isShape3DLocal(newShape)) throw new Error('Could not shell as a 3d shape');
+    if (!isShape3D(newShape)) throw new Error('Shell operation did not produce a 3D shape');
 
     return newShape;
   }
@@ -1155,17 +1132,16 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     if (typeof radiusConfigInput === 'function') {
       radiusConfigFun = radiusConfigInput;
     } else {
+      const configObj = radiusConfigInput as { filter: EdgeFinder; radius: R; keep?: boolean };
       radiusConfigFun = (element: Edge) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- EdgeFinder duck typing
-        const shouldKeep = (radiusConfigInput as any).filter.shouldKeep(element);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic radius
-        return shouldKeep ? (radiusConfigInput as any).radius || (1 as R) : null;
+        const shouldKeep = configObj.filter.shouldKeep(element);
+        return shouldKeep ? configObj.radius || (1 as R) : null;
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- EdgeFinder duck typing
-      const configObj = radiusConfigInput as any;
-      if (configObj.filter && !configObj.keep) {
-        finalize = () => configObj.filter.delete();
+      if (!configObj.keep) {
+        finalize = () => {
+          configObj.filter.delete();
+        };
       }
     }
 
@@ -1220,10 +1196,10 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       },
       isFilletRadius
     );
-    if (!edgesFound) throw new Error('Could not fillet, no edge was selected');
+    if (!edgesFound) throw new Error('Fillet failed: no edges matched the filter');
 
     const newShape = cast(filletBuilder.Shape());
-    if (!isShape3DLocal(newShape)) throw new Error('Could not fillet as a 3d shape');
+    if (!isShape3D(newShape)) throw new Error('Fillet did not produce a 3D shape');
     return newShape;
   }
 
@@ -1258,28 +1234,24 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
         if (isNumber(rad)) return chamferBuilder.Add_2(rad, e);
 
         const finder = new FaceFinderClass();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- FaceFinder.find duck typing
-        const face = (rad as any).selectedFace(finder).find(this, { unique: true });
-        if (!face) throw new Error('Could not find face for chamfer');
+        const face = rad.selectedFace(finder).find(this, { unique: true });
+        if (!face) throw new Error('Chamfer failed: could not find the specified face');
 
         if ('distances' in rad) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- narrowed union
-          const distances = (rad as any).distances as [number, number];
-          return chamferBuilder.Add_3(distances[0] ?? 1, distances[1] ?? 1, e, face.wrapped);
+          const [d1, d2] = rad.distances;
+          return chamferBuilder.Add_3(d1 ?? 1, d2 ?? 1, e, face.wrapped);
         }
 
         if ('distance' in rad) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- narrowed union
-          const distRad = rad as any;
-          return chamferBuilder.AddDA(distRad.distance, distRad.angle * DEG2RAD, e, face.wrapped);
+          return chamferBuilder.AddDA(rad.distance, rad.angle * DEG2RAD, e, face.wrapped);
         }
       },
       isChamferRadius
     );
-    if (!edgesFound) throw new Error('Could not chamfer, no edge was selected');
+    if (!edgesFound) throw new Error('Chamfer failed: no edges matched the filter');
 
     const newShape = cast(chamferBuilder.Shape());
-    if (!isShape3DLocal(newShape)) throw new Error('Could not chamfer as a 3d shape');
+    if (!isShape3D(newShape)) throw new Error('Chamfer did not produce a 3D shape');
     return newShape;
   }
 }
@@ -1297,7 +1269,7 @@ export class Compound extends _3DShape {}
 // Local isShape3D (avoids circular reference to cast.ts for internal use)
 // ---------------------------------------------------------------------------
 
-export function isShape3DLocal(shape: AnyShape): shape is Shape3D {
+export function isShape3D(shape: AnyShape): shape is Shape3D {
   return (
     shape instanceof Shell ||
     shape instanceof Solid ||
@@ -1310,15 +1282,23 @@ export function isShape3DLocal(shape: AnyShape): shape is Shape3D {
 // Compound builders and batch booleans
 // ---------------------------------------------------------------------------
 
-export function buildCompound(shapes: Shape3D[]): OcShape {
+/**
+ * Builds a TopoDS_Compound from raw OCCT shape handles.
+ * Used internally by both high-level (Shape3D[]) and low-level (OcType[]) APIs.
+ */
+export function buildCompoundOc(shapes: OcType[]): OcShape {
   const oc = getKernel().oc;
   const builder = new oc.TopoDS_Builder();
   const compound = new oc.TopoDS_Compound();
   builder.MakeCompound(compound);
-  shapes.forEach((s) => {
-    builder.Add(compound, s.wrapped);
-  });
+  for (const s of shapes) {
+    builder.Add(compound, s);
+  }
   return compound;
+}
+
+export function buildCompound(shapes: Shape3D[]): OcShape {
+  return buildCompoundOc(shapes.map((s) => s.wrapped));
 }
 
 export function applyGlue(
@@ -1363,7 +1343,7 @@ export function fuseAll(
   }
 
   const newShape = cast(fuseOp.Shape());
-  if (!isShape3DLocal(newShape)) throw new Error('fuseAll did not produce a 3d shape');
+  if (!isShape3D(newShape)) throw new Error('fuseAll did not produce a 3D shape');
   return newShape;
 }
 
@@ -1393,6 +1373,6 @@ export function cutAll(
   }
 
   const newShape = cast(cutOp.Shape());
-  if (!isShape3DLocal(newShape)) throw new Error('cutAll did not produce a 3d shape');
+  if (!isShape3D(newShape)) throw new Error('cutAll did not produce a 3D shape');
   return newShape;
 }

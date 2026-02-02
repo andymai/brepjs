@@ -6,18 +6,7 @@
 import { getKernel } from '../kernel/index.js';
 import { GCWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
-import { applyGlue, type BooleanOperationOptions } from '../topology/shapes.js';
-
-function buildCompound(shapes: OcType[]): OcType {
-  const oc = getKernel().oc;
-  const builder = new oc.TopoDS_Builder();
-  const compound = new oc.TopoDS_Compound();
-  builder.MakeCompound(compound);
-  shapes.forEach((s: OcType) => {
-    builder.Add(compound, s);
-  });
-  return compound;
-}
+import { applyGlue, buildCompoundOc, type BooleanOperationOptions } from '../topology/shapes.js';
 
 export function fuseAllShapes(
   shapes: OcType[],
@@ -31,8 +20,8 @@ export function fuseAllShapes(
   const r = GCWithScope();
 
   const mid = Math.ceil(shapes.length / 2);
-  const leftCompound = r(buildCompound(shapes.slice(0, mid)));
-  const rightCompound = r(buildCompound(shapes.slice(mid)));
+  const leftCompound = r(buildCompoundOc(shapes.slice(0, mid)));
+  const rightCompound = r(buildCompoundOc(shapes.slice(mid)));
 
   const progress = r(new oc.Message_ProgressRange_1());
   const fuseOp = r(new oc.BRepAlgoAPI_Fuse_3(leftCompound, rightCompound, progress));
@@ -55,7 +44,7 @@ export function cutAllShapes(
   const oc = getKernel().oc;
   const r = GCWithScope();
 
-  const toolCompound = r(buildCompound(tools));
+  const toolCompound = r(buildCompoundOc(tools));
 
   const progress = r(new oc.Message_ProgressRange_1());
   const cutOp = r(new oc.BRepAlgoAPI_Cut_3(base, toolCompound, progress));
