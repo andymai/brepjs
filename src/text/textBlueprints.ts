@@ -6,36 +6,10 @@
 import type { Point2D } from '../2d/lib/index.js';
 import type { Plane, PlaneName, Point } from '../core/geometry.js';
 import { bug } from '../core/errors.js';
+import { organiseBlueprints } from '../2d/blueprints/lib.js';
+import { BlueprintSketcher } from '../sketching/Sketcher2d.js';
 
 import opentype from 'opentype.js';
-
-// Forward declarations - these will be available at runtime through the barrel imports
-// We use dynamic imports to avoid circular dependency issues
-type BlueprintSketcherType = {
-  new (): {
-    movePointerTo(p: Point2D): unknown;
-    lineTo(p: Point2D): unknown;
-    cubicBezierCurveTo(p: Point2D, c1: Point2D, c2: Point2D): unknown;
-    quadraticBezierCurveTo(p: Point2D, c: Point2D): unknown;
-    close(): unknown;
-    done(): unknown;
-  };
-};
-
-let _BlueprintSketcher: BlueprintSketcherType | null = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy loaded reference
-let _organiseBlueprints: ((...args: any[]) => any) | null = null;
-
-export function _injectTextDeps(
-  BlueprintSketcher: BlueprintSketcherType,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- function ref
-  organiseBlueprints: (...args: any[]) => any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- class ref kept for future use
-  _Sketches: any
-): void {
-  _BlueprintSketcher = BlueprintSketcher;
-  _organiseBlueprints = organiseBlueprints;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
 const FONT_REGISTER: Record<string, any> = {};
@@ -76,10 +50,6 @@ const sketchFontCommands = function* (commands: any[]) {
   let sk: any = null;
   let lastPoint: Point2D | null = null;
 
-  if (!_BlueprintSketcher) {
-    bug('text', 'Text dependencies not injected. Call _injectTextDeps first.');
-  }
-
   for (const command of commands) {
     if (command.type === 'Z') {
       if (sk) yield sk.close();
@@ -93,7 +63,7 @@ const sketchFontCommands = function* (commands: any[]) {
       if (sk) {
         yield sk.done();
       }
-      sk = new _BlueprintSketcher();
+      sk = new BlueprintSketcher();
       sk.movePointerTo(p);
       lastPoint = p;
       continue;
@@ -128,12 +98,12 @@ export function textBlueprints(
     console.warn(`Font family "${fontFamily}" not found, please load it first, using the default`);
     font = getFont();
   }
-  if (!_organiseBlueprints) {
-    bug('text', 'Text dependencies not injected. Call _injectTextDeps first.');
+  if (!font) {
+    bug('text', 'No fonts loaded. Call loadFont() before using text functions.');
   }
   const writtenText = font.getPath(text, -startX, -startY, fontSize);
   const blueprints = Array.from(sketchFontCommands(writtenText.commands));
-  return _organiseBlueprints(blueprints).mirror([0, 0]);
+  return organiseBlueprints(blueprints).mirror([0, 0]);
 }
 
 export function sketchText(
@@ -151,8 +121,7 @@ export function sketchText(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns Sketches type
 ): any {
   const textBp = textBlueprints(text, textConfig);
-  return planeConfig.plane instanceof
-    (Object.getPrototypeOf(planeConfig.plane)?.constructor || Object)
-    ? textBp.sketchOnPlane(planeConfig.plane)
-    : textBp.sketchOnPlane(planeConfig.plane, planeConfig.origin);
+  return typeof planeConfig.plane === 'string' || planeConfig.plane === undefined
+    ? textBp.sketchOnPlane(planeConfig.plane, planeConfig.origin)
+    : textBp.sketchOnPlane(planeConfig.plane);
 }

@@ -290,7 +290,6 @@ export {
   getFont,
   textBlueprints,
   sketchText,
-  _injectTextDeps,
 } from './text/textBlueprints.js';
 
 // ── Layer 3: projection ──
