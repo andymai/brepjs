@@ -25,16 +25,13 @@ import { typeCastError, validationError } from '../core/errors.js';
 /** Build a wire spine from start to end point (line segment). */
 function makeSpineWire(start: Vec3, end: Vec3): Wire {
   const oc = getKernel().oc;
-  const pnt1 = toOcPnt(start);
-  const pnt2 = toOcPnt(end);
-  const edgeMaker = new oc.BRepBuilderAPI_MakeEdge_3(pnt1, pnt2);
-  const wireMaker = new oc.BRepBuilderAPI_MakeWire_2(edgeMaker.Edge());
-  const wire = castShape(wireMaker.Wire()) as Wire;
-  edgeMaker.delete();
-  wireMaker.delete();
-  pnt1.delete();
-  pnt2.delete();
-  return wire;
+  const r = gcWithScope();
+
+  const pnt1 = r(toOcPnt(start));
+  const pnt2 = r(toOcPnt(end));
+  const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_3(pnt1, pnt2));
+  const wireMaker = r(new oc.BRepBuilderAPI_MakeWire_2(edgeMaker.Edge()));
+  return castShape(wireMaker.Wire()) as Wire;
 }
 
 /** Build a helix wire for twist extrusion. */
@@ -86,12 +83,11 @@ function makeHelixWire(
 /** Extrude a face along a vector to produce a solid. */
 export function extrudeFace(face: Face, extrusionVec: Vec3): Solid {
   const oc = getKernel().oc;
-  const vec = toOcVec(extrusionVec);
-  const builder = new oc.BRepPrimAPI_MakePrism_1(face.wrapped, vec, false, true);
-  const solid = createSolid(unwrap(downcast(builder.Shape())));
-  builder.delete();
-  vec.delete();
-  return solid;
+  const r = gcWithScope();
+
+  const vec = r(toOcVec(extrusionVec));
+  const builder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, vec, false, true));
+  return createSolid(unwrap(downcast(builder.Shape())));
 }
 
 /** Revolve a face around an axis. Angle is in degrees. */
@@ -143,6 +139,8 @@ export function sweep(
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const oc = getKernel().oc;
+  const r = gcWithScope();
+
   const {
     frenet = false,
     auxiliarySpine,
@@ -154,7 +152,7 @@ export function sweep(
   } = config;
 
   const withCorrection = transitionMode === 'round' ? true : !!forceProfileSpineOthogonality;
-  const builder = new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped);
+  const builder = r(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
 
   {
     const mode = {
@@ -177,22 +175,18 @@ export function sweep(
   if (!law) builder.Add_1(wire.wrapped, !!withContact, withCorrection);
   else builder.SetLaw_1(wire.wrapped, law, !!withContact, withCorrection);
 
-  const progress = new oc.Message_ProgressRange_1();
+  const progress = r(new oc.Message_ProgressRange_1());
   builder.Build(progress);
   if (!shellMode) builder.MakeSolid();
 
   const shape = castShape(builder.Shape());
   if (!isShape3D(shape)) {
-    builder.delete();
-    progress.delete();
     return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
   }
 
   if (shellMode) {
     const startWire = castShape(builder.FirstShape());
     const endWire = castShape(builder.LastShape());
-    builder.delete();
-    progress.delete();
     if (!isWireGuard(startWire)) {
       return err(typeCastError('SWEEP_START_NOT_WIRE', 'Sweep did not produce a start Wire'));
     }
@@ -202,8 +196,6 @@ export function sweep(
     return ok([shape, startWire, endWire] as [Shape3D, Wire, Wire]);
   }
 
-  builder.delete();
-  progress.delete();
   return ok(shape);
 }
 
@@ -221,13 +213,14 @@ function buildLawFromProfile(
   { profile, endFactor = 1 }: ExtrusionProfile
 ): Result<OcType> {
   const oc = getKernel().oc;
+  const r = gcWithScope();
 
   let law: OcType;
   if (profile === 's-curve') {
-    law = new oc.Law_S();
+    law = r(new oc.Law_S());
     law.Set_1(0, 1, extrusionLength, endFactor);
   } else if (profile === 'linear') {
-    law = new oc.Law_Linear();
+    law = r(new oc.Law_Linear());
     law.Set(0, 1, extrusionLength, endFactor);
   } else {
     return err(
@@ -235,9 +228,7 @@ function buildLawFromProfile(
     );
   }
 
-  const trimmed = law.Trim(0, extrusionLength, 1e-6);
-  law.delete();
-  return ok(trimmed);
+  return ok(law.Trim(0, extrusionLength, 1e-6));
 }
 
 // ---------------------------------------------------------------------------

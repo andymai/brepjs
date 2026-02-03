@@ -1,6 +1,6 @@
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
-import { GCWithScope, WrappingObj } from '../core/memory.js';
+import { GCWithScope, WrappingObj, localGC } from '../core/memory.js';
 import type { AnyShape, Face, Shape3D } from '../topology/shapes.js';
 
 class PhysicalProperties extends WrappingObj<OcType> {
@@ -51,23 +51,26 @@ export function measureShapeVolumeProperties(shape: Shape3D): VolumePhysicalProp
 }
 
 export function measureVolume(shape: Shape3D): number {
-  const props = measureShapeVolumeProperties(shape);
+  const [r, gc] = localGC();
+  const props = r(measureShapeVolumeProperties(shape));
   const v = props.volume;
-  props.delete();
+  gc();
   return v;
 }
 
 export function measureArea(shape: Face | Shape3D): number {
-  const props = measureShapeSurfaceProperties(shape);
+  const [r, gc] = localGC();
+  const props = r(measureShapeSurfaceProperties(shape));
   const a = props.area;
-  props.delete();
+  gc();
   return a;
 }
 
 export function measureLength(shape: AnyShape): number {
-  const props = measureShapeLinearProperties(shape);
+  const [r, gc] = localGC();
+  const props = r(measureShapeLinearProperties(shape));
   const l = props.length;
-  props.delete();
+  gc();
   return l;
 }
 
@@ -78,20 +81,22 @@ export class DistanceTool extends WrappingObj<OcType> {
   }
 
   distanceBetween(shape1: AnyShape, shape2: AnyShape): number {
+    const [r, gc] = localGC();
     this.wrapped.LoadS1(shape1.wrapped);
     this.wrapped.LoadS2(shape2.wrapped);
     const oc = getKernel().oc;
-    const progress = new oc.Message_ProgressRange_1();
+    const progress = r(new oc.Message_ProgressRange_1());
     this.wrapped.Perform(progress);
-    progress.delete();
+    gc();
     return this.wrapped.Value();
   }
 }
 
 export function measureDistanceBetween(shape1: AnyShape, shape2: AnyShape): number {
-  const tool = new DistanceTool();
+  const [r, gc] = localGC();
+  const tool = r(new DistanceTool());
   const dist = tool.distanceBetween(shape1, shape2);
-  tool.delete();
+  gc();
   return dist;
 }
 
@@ -103,11 +108,12 @@ export class DistanceQuery extends WrappingObj<OcType> {
   }
 
   distanceTo(shape: AnyShape): number {
+    const [r, gc] = localGC();
     this.wrapped.LoadS2(shape.wrapped);
     const oc = getKernel().oc;
-    const progress = new oc.Message_ProgressRange_1();
+    const progress = r(new oc.Message_ProgressRange_1());
     this.wrapped.Perform(progress);
-    progress.delete();
+    gc();
     return this.wrapped.Value();
   }
 }

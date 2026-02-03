@@ -34,7 +34,9 @@ export type SurfaceType =
 /** Get the geometric surface type of a face. */
 export function getSurfaceType(face: Face): Result<SurfaceType> {
   const oc = getKernel().oc;
-  const adaptor = new oc.BRepAdaptor_Surface_2(face.wrapped, false);
+  const r = gcWithScope();
+
+  const adaptor = r(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
   const ga = oc.GeomAbs_SurfaceType;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are dynamic
@@ -53,7 +55,6 @@ export function getSurfaceType(face: Face): Result<SurfaceType> {
   ]);
 
   const surfType = CAST_MAP.get(adaptor.GetType());
-  adaptor.delete();
 
   if (!surfType) {
     return err(
@@ -115,20 +116,17 @@ export function uvBounds(face: Face): UVBounds {
 /** Get a point on a face surface at normalized UV coordinates (0–1 range). */
 export function pointOnSurface(face: Face, u: number, v: number): Vec3 {
   const oc = getKernel().oc;
+  const r = gcWithScope();
+
   const bounds = uvBounds(face);
-  const adaptor = new oc.BRepAdaptor_Surface_2(face.wrapped, false);
-  const p = new oc.gp_Pnt_1();
+  const adaptor = r(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
+  const p = r(new oc.gp_Pnt_1());
 
-  try {
-    const absU = u * (bounds.uMax - bounds.uMin) + bounds.uMin;
-    const absV = v * (bounds.vMax - bounds.vMin) + bounds.vMin;
+  const absU = u * (bounds.uMax - bounds.uMin) + bounds.uMin;
+  const absV = v * (bounds.vMax - bounds.vMin) + bounds.vMin;
 
-    adaptor.D0(absU, absV, p);
-    return [p.X(), p.Y(), p.Z()];
-  } finally {
-    p.delete();
-    adaptor.delete();
-  }
+  adaptor.D0(absU, absV, p);
+  return [p.X(), p.Y(), p.Z()];
 }
 
 /** Get the UV coordinates on a face for a given 3D point. */
@@ -179,13 +177,12 @@ export function normalAt(face: Face, locationPoint?: PointInput): Vec3 {
 /** Get the center of mass of a face. */
 export function faceCenter(face: Face): Vec3 {
   const oc = getKernel().oc;
-  const props = new oc.GProp_GProps_1();
+  const r = gcWithScope();
+
+  const props = r(new oc.GProp_GProps_1());
   oc.BRepGProp.SurfaceProperties_2(face.wrapped, props, 1e-7, true);
-  const center = props.CentreOfMass();
-  const result: Vec3 = [center.X(), center.Y(), center.Z()];
-  center.delete();
-  props.delete();
-  return result;
+  const center = r(props.CentreOfMass());
+  return [center.X(), center.Y(), center.Z()];
 }
 
 // ---------------------------------------------------------------------------

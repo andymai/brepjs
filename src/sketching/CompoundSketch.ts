@@ -2,6 +2,7 @@ import { compoundShapes, addHolesInFace, makeSolid, makeFace } from '../topology
 import type Sketch from './Sketch.js';
 
 import { type Point, Vector } from '../core/geometry.js';
+import { localGC } from '../core/memory.js';
 import {
   basicFaceExtrusion,
   complexExtrude,
@@ -19,51 +20,36 @@ import { getKernel } from '../kernel/index.js';
 
 const guessFaceFromWires = (wires: Wire[]): Face => {
   const oc = getKernel().oc;
+  const [r, gc] = localGC();
 
-  const faceBuilder = new oc.BRepOffsetAPI_MakeFilling(
-    3,
-    15,
-    2,
-    false,
-    1e-5,
-    1e-4,
-    1e-2,
-    0.1,
-    8,
-    9
+  const faceBuilder = r(
+    new oc.BRepOffsetAPI_MakeFilling(3, 15, 2, false, 1e-5, 1e-4, 1e-2, 0.1, 8, 9)
   );
 
-  try {
-    wires.forEach((wire: Wire, wireIndex: number) => {
-      wire.edges.forEach((edge: { wrapped: unknown }) => {
-        faceBuilder.Add_1(
-          edge.wrapped,
-
-          oc.GeomAbs_Shape.GeomAbs_C0,
-          wireIndex === 0
-        );
-      });
+  wires.forEach((wire: Wire, wireIndex: number) => {
+    wire.edges.forEach((edge: { wrapped: unknown }) => {
+      faceBuilder.Add_1(edge.wrapped, oc.GeomAbs_Shape.GeomAbs_C0, wireIndex === 0);
     });
+  });
 
-    const progress = new oc.Message_ProgressRange_1();
-    faceBuilder.Build(progress);
-    progress.delete();
-    const newFace = unwrap(cast(faceBuilder.Shape()));
+  const progress = r(new oc.Message_ProgressRange_1());
+  faceBuilder.Build(progress);
+  const newFace = unwrap(cast(faceBuilder.Shape()));
+  gc();
 
-    if (!(newFace instanceof Face)) {
-      bug('guessFaceFromWires', 'Failed to create a face');
-    }
-    return newFace;
-  } finally {
-    faceBuilder.delete();
+  if (!(newFace instanceof Face)) {
+    bug('guessFaceFromWires', 'Failed to create a face');
   }
+  return newFace;
 };
 
 const fixWire = (wire: Wire, baseFace: Face): Wire => {
   const oc = getKernel().oc;
-  const wireFixer = new oc.ShapeFix_Wire_2(wire.wrapped, baseFace.wrapped, 1e-9);
+  const [r, gc] = localGC();
+
+  const wireFixer = r(new oc.ShapeFix_Wire_2(wire.wrapped, baseFace.wrapped, 1e-9));
   wireFixer.FixEdgeCurves();
-  wireFixer.delete();
+  gc();
   return wire;
 };
 
@@ -167,42 +153,39 @@ export default class CompoundSketch implements SketchInterface {
       origin?: Point;
     } = {}
   ): Shape3D {
-    const rawVec = new Vector(extrusionDirection || this.outerSketch.defaultDirection);
-    const normVec = rawVec.normalized();
-    const extrusionVec = normVec.multiply(extrusionDistance);
-    rawVec.delete();
-    normVec.delete();
+    const [r, gc] = localGC();
+    const rawVec = r(new Vector(extrusionDirection || this.outerSketch.defaultDirection));
+    const normVec = r(rawVec.normalized());
+    const extrusionVec = r(normVec.multiply(extrusionDistance));
 
-    try {
-      if (extrusionProfile && !twistAngle) {
-        return solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
-          complexExtrude(
-            sketch.wire,
-            origin || this.outerSketch.defaultOrigin,
-            extrusionVec,
-            extrusionProfile,
-            true
-          )
-        );
-      }
-
-      if (twistAngle) {
-        return solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
-          twistExtrude(
-            sketch.wire,
-            twistAngle,
-            origin || this.outerSketch.defaultOrigin,
-            extrusionVec,
-            extrusionProfile,
-            true
-          )
-        );
-      }
-
-      return basicFaceExtrusion(this.face(), extrusionVec);
-    } finally {
-      extrusionVec.delete();
+    let result: Shape3D;
+    if (extrusionProfile && !twistAngle) {
+      result = solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
+        complexExtrude(
+          sketch.wire,
+          origin || this.outerSketch.defaultOrigin,
+          extrusionVec,
+          extrusionProfile,
+          true
+        )
+      );
+    } else if (twistAngle) {
+      result = solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
+        twistExtrude(
+          sketch.wire,
+          twistAngle,
+          origin || this.outerSketch.defaultOrigin,
+          extrusionVec,
+          extrusionProfile,
+          true
+        )
+      );
+    } else {
+      result = basicFaceExtrusion(this.face(), extrusionVec);
     }
+
+    gc();
+    return result;
   }
 
   /**
