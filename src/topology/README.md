@@ -45,3 +45,4 @@ graph TD
 5. **Query dependency** — `fillet`/`chamfer`/`shell` require query module registration via `registerQueryModule()`
 6. **Chainable transforms** — Shape transforms in class API return `this` (chainable but mutating)
 7. **Flat mesh data** — `meshShape` returns flat typed arrays (Float32Array/Uint32Array) — not nested objects
+8. **Consolidated types** — `ShapeMesh`, `FaceTriangulation`, `SurfaceType` are defined in functional files (`meshFns.ts`, `faceFns.ts`) and re-exported from `shapes.ts` for backward compatibility
