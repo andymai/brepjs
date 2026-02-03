@@ -397,12 +397,16 @@ class EllipsoidTransform extends WrappingObj<OcType> {
     const xzRatio = x / xyRatio;
     const yzRatio = y / xyRatio;
 
+    const ax1 = r(makeAx1([0, 0, 0], [0, 1, 0]));
+    const ax2 = r(makeAx1([0, 0, 0], [0, 0, 1]));
+    const ax3 = r(makeAx1([0, 0, 0], [1, 0, 0]));
+
     const transform = new oc.gp_GTrsf_1();
-    transform.SetAffinity_1(makeAx1([0, 0, 0], [0, 1, 0]), xzRatio);
+    transform.SetAffinity_1(ax1, xzRatio);
     const xy = r(new oc.gp_GTrsf_1());
-    xy.SetAffinity_1(makeAx1([0, 0, 0], [0, 0, 1]), xyRatio);
+    xy.SetAffinity_1(ax2, xyRatio);
     const yz = r(new oc.gp_GTrsf_1());
-    yz.SetAffinity_1(makeAx1([0, 0, 0], [1, 0, 0]), yzRatio);
+    yz.SetAffinity_1(ax3, yzRatio);
 
     transform.Multiply(xy);
     transform.Multiply(yz);

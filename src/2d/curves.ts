@@ -28,8 +28,9 @@ export function curvesAsEdgesOnPlane(curves: Curve2D[], plane: Plane): Edge[] {
   const oc = getKernel().oc;
 
   const edges = curves.map((curve: Curve2D) => {
-    const curve3d = oc.GeomLib.To3d(ax, curve.wrapped);
-    return new Edge(new oc.BRepBuilderAPI_MakeEdge_24(curve3d).Edge());
+    const curve3d = r(oc.GeomLib.To3d(ax, curve.wrapped));
+    const edgeBuilder = r(new oc.BRepBuilderAPI_MakeEdge_24(curve3d));
+    return new Edge(edgeBuilder.Edge());
   });
 
   gc();

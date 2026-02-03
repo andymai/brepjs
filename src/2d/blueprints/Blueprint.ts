@@ -272,21 +272,24 @@ export default class Blueprint implements DrawingInterface {
 
     const oc = getKernel().oc;
     const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
-    const segment = make2dSegmentCurve(point, this.boundingBox.outsidePoint());
-    let crossCounts = 0;
 
-    const onCurve = this.curves.find((c) => c.isOnCurve(point));
-    if (onCurve) return false;
+    try {
+      const segment = make2dSegmentCurve(point, this.boundingBox.outsidePoint());
+      let crossCounts = 0;
 
-    this.curves.forEach((c) => {
-      if (c.boundingBox.isOut(segment.boundingBox)) return;
-      intersector.Init_1(segment.wrapped, c.wrapped, 1e-9);
-      crossCounts += Number(intersector.NbPoints());
-    });
+      const onCurve = this.curves.find((c) => c.isOnCurve(point));
+      if (onCurve) return false;
 
-    intersector.delete();
+      this.curves.forEach((c) => {
+        if (c.boundingBox.isOut(segment.boundingBox)) return;
+        intersector.Init_1(segment.wrapped, c.wrapped, 1e-9);
+        crossCounts += Number(intersector.NbPoints());
+      });
 
-    return !!(crossCounts % 2);
+      return !!(crossCounts % 2);
+    } finally {
+      intersector.delete();
+    }
   }
 
   isClosed() {
@@ -294,20 +297,23 @@ export default class Blueprint implements DrawingInterface {
   }
 
   intersects(other: Blueprint) {
+    if (this.boundingBox.isOut(other.boundingBox)) return false;
+
     const oc = getKernel().oc;
     const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
 
-    if (this.boundingBox.isOut(other.boundingBox)) return false;
+    try {
+      for (const myCurve of this.curves) {
+        for (const otherCurve of other.curves) {
+          if (myCurve.boundingBox.isOut(otherCurve.boundingBox)) continue;
 
-    for (const myCurve of this.curves) {
-      for (const otherCurve of other.curves) {
-        if (myCurve.boundingBox.isOut(otherCurve.boundingBox)) continue;
-
-        intersector.Init_1(myCurve.wrapped, otherCurve.wrapped, 1e-9);
-        if (intersector.NbPoints() || intersector.NbSegments()) return true;
+          intersector.Init_1(myCurve.wrapped, otherCurve.wrapped, 1e-9);
+          if (intersector.NbPoints() || intersector.NbSegments()) return true;
+        }
       }
+      return false;
+    } finally {
+      intersector.delete();
     }
-    intersector.delete();
-    return false;
   }
 }
