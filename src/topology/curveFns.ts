@@ -162,6 +162,7 @@ export function offsetWire2D(
   offsetter.delete();
 
   if (!isWireGuard(wrapped)) {
+    wrapped[Symbol.dispose]();
     return err(typeCastError('OFFSET_NOT_WIRE', 'Offset did not produce a Wire'));
   }
   return ok(wrapped);

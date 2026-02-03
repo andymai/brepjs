@@ -52,6 +52,7 @@ function buildCompoundOcInternal(shapes: OcType[]): OcType {
 function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
+    wrapped[Symbol.dispose]();
     return err(typeCastError(errorCode, errorMsg));
   }
   return ok(wrapped);

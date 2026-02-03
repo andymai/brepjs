@@ -93,36 +93,38 @@ export const makeAx3 = (center: Point, dir: Point, xDir?: Point): OcType => {
   const oc = getKernel().oc;
   const origin = asPnt(center);
   const direction = asDir(dir);
+  const xDirection = xDir ? asDir(xDir) : null;
 
-  let axis: OcType;
-  if (xDir) {
-    const xDirection = asDir(xDir);
-    axis = new oc.gp_Ax3_3(origin, direction, xDirection);
-    xDirection.delete();
-  } else {
-    axis = new oc.gp_Ax3_4(origin, direction);
+  try {
+    if (xDirection) {
+      return new oc.gp_Ax3_3(origin, direction, xDirection);
+    } else {
+      return new oc.gp_Ax3_4(origin, direction);
+    }
+  } finally {
+    origin.delete();
+    direction.delete();
+    if (xDirection) xDirection.delete();
   }
-  origin.delete();
-  direction.delete();
-  return axis;
 };
 
 export const makeAx2 = (center: Point, dir: Point, xDir?: Point): OcType => {
   const oc = getKernel().oc;
   const origin = asPnt(center);
   const direction = asDir(dir);
+  const xDirection = xDir ? asDir(xDir) : null;
 
-  let axis: OcType;
-  if (xDir) {
-    const xDirection = asDir(xDir);
-    axis = new oc.gp_Ax2_2(origin, direction, xDirection);
-    xDirection.delete();
-  } else {
-    axis = new oc.gp_Ax2_3(origin, direction);
+  try {
+    if (xDirection) {
+      return new oc.gp_Ax2_2(origin, direction, xDirection);
+    } else {
+      return new oc.gp_Ax2_3(origin, direction);
+    }
+  } finally {
+    origin.delete();
+    direction.delete();
+    if (xDirection) xDirection.delete();
   }
-  origin.delete();
-  direction.delete();
-  return axis;
 };
 
 export const makeAx1 = (center: Point, dir: Point): OcType => {
