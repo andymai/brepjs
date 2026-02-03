@@ -1,7 +1,6 @@
 import type { OcType } from '../kernel/types.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
-import type { BoundingBox } from '../core/geometry.js';
 import { WrappingObj, localGC } from '../core/memory.js';
 import { toOcPnt, toOcDir, makeOcAx2, fromOcPnt, fromOcDir } from '../core/occtBoundary.js';
 import { vecCross, vecLength, vecNormalize } from '../core/vecOps.js';
@@ -99,11 +98,11 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     return this;
   }
 
-  lookAt(shape: { boundingBox: BoundingBox } | PointInput): this {
+  lookAt(shape: { boundingBox: { center: PointInput } } | PointInput): this {
     const [r, gc] = localGC();
     const lookAtPoint = toVec3(
       'boundingBox' in (shape as object)
-        ? (shape as { boundingBox: BoundingBox }).boundingBox.center
+        ? (shape as { boundingBox: { center: PointInput } }).boundingBox.center
         : (shape as PointInput)
     );
     const pos = this.position;

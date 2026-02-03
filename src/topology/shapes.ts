@@ -32,6 +32,7 @@ import {
   isChamferRadius,
   isFilletRadius,
 } from './shapeModifiers.js';
+import { getBounds } from './shapeFns.js';
 
 export type { CurveType };
 
@@ -234,9 +235,20 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
   }
 
   get boundingBox(): BoundingBox {
-    const bbox = new BoundingBox();
-    this.oc.BRepBndLib.Add(this.wrapped, bbox.wrapped, true);
-    return bbox;
+    const oc = getKernel().oc;
+    // Use functional getBounds() internally, then wrap in legacy BoundingBox for backward compatibility
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Shape class compatible with functional shape API
+    const bounds = getBounds({ wrapped: this.wrapped } as any);
+    const bbox = new oc.Bnd_Box_1();
+    bbox.Update_1(
+      bounds.xMin,
+      bounds.yMin,
+      bounds.zMin,
+      bounds.xMax,
+      bounds.yMax,
+      bounds.zMax
+    );
+    return new BoundingBox(bbox);
   }
 
   protected _mesh({ tolerance = 1e-3, angularTolerance = 0.1 } = {}): void {
