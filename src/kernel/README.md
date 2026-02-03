@@ -26,6 +26,7 @@ graph TD
 | `transformOps.ts` | Transform operations: `transform`, `translate`, `rotate`, `mirror`, `scale`, `simplify` — wraps gp_Trsf and BRepBuilderAPI_Transform                                                                     |
 | `booleanOps.ts`   | Boolean operations: `fuse`, `cut`, `intersect`, `fuseAll`, `cutAll`, `buildCompound`, `applyGlue` — with batch/native/pairwise implementations                                                           |
 | `meshOps.ts`      | Meshing operations: `mesh`, `meshEdges` with dual implementations (C++ bulk `MeshExtractor`/`EdgeMeshExtractor` or JS `TopExp_Explorer` fallback)                                                        |
+| `topologyOps.ts`  | Topology iteration: `iterShapes`, `shapeType`, `isSame`, `isEqual` — with dual implementations (C++ `TopologyExtractor` or JS `TopExp_Explorer` fallback)                                                |
 
 ## Gotchas
 

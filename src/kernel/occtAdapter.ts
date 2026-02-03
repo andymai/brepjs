@@ -21,7 +21,6 @@ import {
   length as _length,
   centerOfMass as _centerOfMass,
   boundingBox as _boundingBox,
-  HASH_CODE_MAX,
 } from './measureOps.js';
 import {
   transform as _transform,
@@ -41,6 +40,12 @@ import {
   applyGlue as _applyGlue,
 } from './booleanOps.js';
 import { mesh as _mesh, meshEdges as _meshEdges } from './meshOps.js';
+import {
+  iterShapes as _iterShapes,
+  shapeType as _shapeType,
+  isSame as _isSame,
+  isEqual as _isEqual,
+} from './topologyOps.js';
 
 /**
  * OpenCascade implementation of KernelAdapter.
@@ -392,106 +397,22 @@ export class OCCTAdapter implements KernelAdapter {
     return _boundingBox(this.oc, shape);
   }
 
-  // --- Topology iteration ---
+  // --- Topology iteration (delegates to topologyOps.ts) ---
 
   iterShapes(shape: OcShape, type: ShapeType): OcShape[] {
-    if (this.oc.TopologyExtractor) {
-      return this._iterShapesBulk(shape, type);
-    }
-    return this._iterShapesJS(shape, type);
-  }
-
-  private _iterShapesBulk(shape: OcShape, type: ShapeType): OcShape[] {
-    const typeEnumMap: Record<ShapeType, number> = {
-      vertex: 7,
-      edge: 6,
-      wire: 5,
-      face: 4,
-      shell: 3,
-      solid: 2,
-      compsolid: 1,
-      compound: 0,
-    };
-
-    const raw = this.oc.TopologyExtractor.extract(shape, typeEnumMap[type]);
-    const count = raw.getShapesCount() as number;
-    const result: OcShape[] = [];
-    for (let i = 0; i < count; i++) {
-      result.push(raw.getShape(i));
-    }
-    raw.delete();
-    return result;
-  }
-
-  private _iterShapesJS(shape: OcShape, type: ShapeType): OcShape[] {
-    const typeMap: Record<ShapeType, unknown> = {
-      vertex: this.oc.TopAbs_ShapeEnum.TopAbs_VERTEX,
-      edge: this.oc.TopAbs_ShapeEnum.TopAbs_EDGE,
-      wire: this.oc.TopAbs_ShapeEnum.TopAbs_WIRE,
-      face: this.oc.TopAbs_ShapeEnum.TopAbs_FACE,
-      shell: this.oc.TopAbs_ShapeEnum.TopAbs_SHELL,
-      solid: this.oc.TopAbs_ShapeEnum.TopAbs_SOLID,
-      compsolid: this.oc.TopAbs_ShapeEnum.TopAbs_COMPSOLID,
-      compound: this.oc.TopAbs_ShapeEnum.TopAbs_COMPOUND,
-    };
-
-    const explorer = new this.oc.TopExp_Explorer_2(
-      shape,
-      typeMap[type],
-      this.oc.TopAbs_ShapeEnum.TopAbs_SHAPE
-    );
-
-    const result: OcShape[] = [];
-    const seen = new Map<number, OcShape[]>();
-    while (explorer.More()) {
-      const item = explorer.Current();
-      const hash = item.HashCode(HASH_CODE_MAX);
-      const bucket = seen.get(hash);
-      if (!bucket) {
-        seen.set(hash, [item]);
-        result.push(item);
-      } else if (!bucket.some((s) => s.IsSame(item))) {
-        bucket.push(item);
-        result.push(item);
-      }
-      explorer.Next();
-    }
-    explorer.delete();
-    return result;
-  }
-
-  private _shapeTypeMap: Map<unknown, ShapeType> | null = null;
-
-  private _getShapeTypeMap(): Map<unknown, ShapeType> {
-    if (!this._shapeTypeMap) {
-      const ta = this.oc.TopAbs_ShapeEnum;
-      this._shapeTypeMap = new Map<unknown, ShapeType>([
-        [ta.TopAbs_VERTEX, 'vertex'],
-        [ta.TopAbs_EDGE, 'edge'],
-        [ta.TopAbs_WIRE, 'wire'],
-        [ta.TopAbs_FACE, 'face'],
-        [ta.TopAbs_SHELL, 'shell'],
-        [ta.TopAbs_SOLID, 'solid'],
-        [ta.TopAbs_COMPSOLID, 'compsolid'],
-        [ta.TopAbs_COMPOUND, 'compound'],
-      ]);
-    }
-    return this._shapeTypeMap;
+    return _iterShapes(this.oc, shape, type);
   }
 
   shapeType(shape: OcShape): ShapeType {
-    if (shape.IsNull()) throw new Error('Cannot determine shape type: shape is null');
-    const result = this._getShapeTypeMap().get(shape.ShapeType());
-    if (!result) throw new Error(`Unknown shape type enum value: ${shape.ShapeType()}`);
-    return result;
+    return _shapeType(this.oc, shape);
   }
 
   isSame(a: OcShape, b: OcShape): boolean {
-    return a.IsSame(b);
+    return _isSame(a, b);
   }
 
   isEqual(a: OcShape, b: OcShape): boolean {
-    return a.IsEqual(b);
+    return _isEqual(a, b);
   }
 
   // --- Simplification ---
