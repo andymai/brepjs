@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/andymai/brepjs/compare/v2.0.2...v2.1.0) (2026-02-03)
+
+
+### Features
+
+* **opencascade:** add multi-threaded WASM build ([e042efd](https://github.com/andymai/brepjs/commit/e042efd61cd2d296576798f56fa24ff761ab4d51))
+
 ## [2.0.2](https://github.com/andymai/brepjs/compare/v2.0.1...v2.0.2) (2026-02-03)
 
 
