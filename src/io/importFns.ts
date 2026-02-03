@@ -8,8 +8,7 @@ import { castShape } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
-
-const uniqueId = (): string => Date.now().toString(36) + Math.random().toString(36).substring(2);
+import { uniqueId } from '../core/constants.js';
 
 /** Import a STEP file from a Blob. Returns a branded shape. */
 export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {

@@ -31,8 +31,6 @@ import type { AnyShape, Edge, Face, Wire } from '../topology/shapes.js';
 import { makeFace } from '../topology/shapeHelpers.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
 import type { SketchInterface } from './sketchLib.js';
-import Sketch from './Sketch.js';
-import CompoundSketch from './CompoundSketch.js';
 import Sketches from './Sketches.js';
 import type { GenericSketcher } from './sketcherlib.js';
 import type { SketchData } from '../2d/blueprints/lib.js';
@@ -48,19 +46,7 @@ import { edgeToCurve } from '../2d/curves.js';
 import type { BSplineApproximationConfig } from '../topology/shapeHelpers.js';
 import { approximateForSVG } from '../2d/blueprints/approximations.js';
 import type { SingleFace } from '../query/helpers.js';
-
-function wrapSketchData(data: SketchData): Sketch {
-  const opts: { defaultOrigin?: Point; defaultDirection?: Point } = {};
-  if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
-  if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
-  const sketch = new Sketch(data.wire, opts);
-  if (data.baseFace) sketch.baseFace = data.baseFace;
-  return sketch;
-}
-
-function wrapSketchDataArray(dataArr: SketchData[]): CompoundSketch {
-  return new CompoundSketch(dataArr.map(wrapSketchData));
-}
+import { wrapSketchData, wrapSketchDataArray } from './sketchUtils.js';
 
 function wrapBlueprintResult(
   shape: Shape2D,

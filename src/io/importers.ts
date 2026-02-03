@@ -3,9 +3,8 @@ import { localGC } from '../core/memory.js';
 import { cast } from '../topology/cast.js';
 import { type Result, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
+import { uniqueId } from '../core/constants.js';
 import type { AnyShape } from '../topology/shapes.js';
-
-const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
 
 export async function importSTEP(STEPBlob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
