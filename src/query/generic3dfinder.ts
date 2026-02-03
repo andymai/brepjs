@@ -6,10 +6,11 @@ import {
   Finder,
 } from './definitions.js';
 
-import { type Point, asPnt, Vector } from '../core/geometry.js';
+import { type Point, Vector } from '../core/geometry.js';
 import type { Vec3 } from '../core/types.js';
 import { vecDot, vecNormalize } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
+import { toOcPnt } from '../core/occtBoundary.js';
 
 /** Helper to convert legacy Point type to Vec3 */
 function pointToVec3(p: Point): Vec3 {
@@ -36,7 +37,7 @@ import type { OcType } from '../kernel/types.js';
  */
 const makeVertexOc = (point: Point): OcType => {
   const oc = getKernel().oc;
-  const pnt = asPnt(point);
+  const pnt = toOcPnt(pointToVec3(point));
   const vertexMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
   const vertex = vertexMaker.Vertex();
   vertexMaker.delete();
@@ -49,8 +50,8 @@ const makeVertexOc = (point: Point): OcType => {
  */
 const makeBoxOc = (corner1: Point, corner2: Point): OcType => {
   const oc = getKernel().oc;
-  const p1 = asPnt(corner1);
-  const p2 = asPnt(corner2);
+  const p1 = toOcPnt(pointToVec3(corner1));
+  const p2 = toOcPnt(pointToVec3(corner2));
   const boxMaker = new oc.BRepPrimAPI_MakeBox_4(p1, p2);
   const solid = boxMaker.Solid();
   boxMaker.delete();

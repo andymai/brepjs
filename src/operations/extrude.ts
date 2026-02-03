@@ -1,7 +1,8 @@
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
-import { makeAx1, type Point, Vector } from '../core/geometry.js';
+import { type Point, Vector } from '../core/geometry.js';
 import type { Vec3 } from '../core/types.js';
+import { makeOcAx1 } from '../core/occtBoundary.js';
 import { vecAdd, vecLength } from '../core/vecOps.js';
 import { localGC } from '../core/memory.js';
 import { DEG2RAD } from '../core/constants.js';
@@ -49,7 +50,9 @@ export const revolution = (
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const ax = r(makeAx1(center, direction));
+  const centerVec = pointToVec3(center);
+  const directionVec = pointToVec3(direction);
+  const ax = r(makeOcAx1(centerVec, directionVec));
   const revolBuilder = r(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
 
   const result = andThen(cast(revolBuilder.Shape()), (shape) => {

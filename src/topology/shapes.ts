@@ -3,10 +3,11 @@ import { getKernel } from '../kernel/index.js';
 import { WrappingObj, gcWithScope, type Deletable } from '../core/memory.js';
 import { meshShapeEdges as _meshShapeEdges, type ShapeMesh } from './meshFns.js';
 import { type SurfaceType, type FaceTriangulation } from './faceFns.js';
-import { asPnt, type Point, type Plane, type PlaneName, BoundingBox } from '../core/geometry.js';
-import type { Vec3 } from '../core/types.js';
+import { type Point, type Plane, type PlaneName, BoundingBox } from '../core/geometry.js';
+import type { Vec3, PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
 import { vecRepr } from '../core/vecOps.js';
-import { fromOcVec, fromOcPnt } from '../core/occtBoundary.js';
+import { fromOcVec, fromOcPnt, toOcPnt } from '../core/occtBoundary.js';
 import { DEG2RAD, HASH_CODE_MAX, uniqueIOFilename } from '../core/constants.js';
 import { rotate, translate, mirror, scale as scaleShape } from '../core/geometryHelpers.js';
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
@@ -667,13 +668,13 @@ export class Face extends Shape {
     return point;
   }
 
-  uvCoordinates(point: Point): [number, number] {
+  uvCoordinates(point: PointInput): [number, number] {
     const r = gcWithScope();
     const surface = r(this.oc.BRep_Tool.Surface_2(this.wrapped));
 
     const projectedPoint = r(
       new this.oc.GeomAPI_ProjectPointOnSurf_2(
-        r(asPnt(point)),
+        r(toOcPnt(toVec3(point))),
         surface,
 
         this.oc.Extrema_ExtAlgo.Extrema_ExtAlgo_Grad
@@ -687,7 +688,7 @@ export class Face extends Shape {
     return [uPtr.current, vPtr.current];
   }
 
-  normalAt(locationVector?: Point): Vec3 {
+  normalAt(locationVector?: PointInput): Vec3 {
     let u = 0;
     let v = 0;
 
