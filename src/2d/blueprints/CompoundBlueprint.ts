@@ -16,6 +16,9 @@ export default class CompoundBlueprint implements DrawingInterface {
   protected _boundingBox: BoundingBox2d | null;
 
   constructor(blueprints: Blueprint[]) {
+    if (blueprints.length === 0) {
+      throw new Error('CompoundBlueprint requires at least one blueprint (the outer boundary)');
+    }
     this.blueprints = blueprints;
     this._boundingBox = null;
   }

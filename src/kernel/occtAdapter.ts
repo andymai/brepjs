@@ -739,7 +739,8 @@ export class OCCTAdapter implements KernelAdapter {
             seenHashes.add(edgeHash);
             const edgeLoc = new this.oc.TopLoc_Location_1();
             const polygon = this.oc.BRep_Tool.PolygonOnTriangulation_1(edge, tri, edgeLoc);
-            const edgeNodes = polygon?.get()?.Nodes();
+            // Check both existence and IsNull() - Handle can exist but be null
+            const edgeNodes = polygon && !polygon.IsNull() ? polygon.get().Nodes() : null;
             if (edgeNodes) {
               const lineStart = lines.length / 3;
               let prevX = 0,

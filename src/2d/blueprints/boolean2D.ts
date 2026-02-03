@@ -332,12 +332,22 @@ export function intersect2D(
   }
 
   if (first instanceof CompoundBlueprint) {
+    // blueprints[0] is the outer boundary (wrapper), remaining are holes (cuts)
+    // Non-null assertion safe: CompoundBlueprint constructor validates non-empty array
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const wrapper = first.blueprints[0]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const cut = first.blueprints[1]!;
+    const cuts = first.blueprints.slice(1);
 
-    return cut2D(intersect2D(wrapper, second), cut);
+    // If no holes, just intersect with the wrapper
+    if (cuts.length === 0) {
+      return intersect2D(wrapper, second);
+    }
+    // With holes, cut each from the intersection result
+    let result = intersect2D(wrapper, second);
+    for (const cut of cuts) {
+      result = cut2D(result, cut);
+    }
+    return result;
   }
 
   if (second instanceof Blueprints) {
@@ -345,12 +355,22 @@ export function intersect2D(
   }
 
   if (second instanceof CompoundBlueprint) {
+    // blueprints[0] is the outer boundary (wrapper), remaining are holes (cuts)
+    // Non-null assertion safe: CompoundBlueprint constructor validates non-empty array
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const wrapper = second.blueprints[0]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const cut = second.blueprints[1]!;
+    const cuts = second.blueprints.slice(1);
 
-    return cut2D(intersect2D(wrapper, first), cut);
+    // If no holes, just intersect with the wrapper
+    if (cuts.length === 0) {
+      return intersect2D(wrapper, first);
+    }
+    // With holes, cut each from the intersection result
+    let result = intersect2D(wrapper, first);
+    for (const cut of cuts) {
+      result = cut2D(result, cut);
+    }
+    return result;
   }
 
   bug('intersect2D', 'Unhandled Shape2D combination');
