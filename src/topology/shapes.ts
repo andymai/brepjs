@@ -16,7 +16,7 @@ import { rotate, translate, mirror, scale as scaleShape } from '../core/geometry
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { cast, downcast, iterTopo, type TopoEntity } from './cast.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
-import { bug, typeCastError, validationError, ioError } from '../core/errors.js';
+import { typeCastError, validationError, ioError, bug } from '../core/errors.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import {
   fuseAll as _fuseAll,
@@ -25,43 +25,18 @@ import {
   buildCompoundOc as _buildCompoundOc,
   applyGlue as _applyGlue,
 } from './shapeBooleans.js';
+import {
+  getQueryModule,
+  registerQueryModule as _registerQueryModule,
+  type ChamferRadius,
+  type FilletRadius,
+  type RadiusConfig,
+  isNumber,
+  isChamferRadius,
+  isFilletRadius,
+} from './shapeModifiers.js';
 
 export type { CurveType };
-
-// ---------------------------------------------------------------------------
-// Lazy query module loader — avoids hard compile-time dependency on query/
-// while still allowing runtime access to EdgeFinder / FaceFinder constructors.
-// ---------------------------------------------------------------------------
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy-loaded module type
-let _queryModule: any = null;
-
-function getQueryModule(): { EdgeFinder: new () => EdgeFinder; FaceFinder: new () => FaceFinder } {
-  if (!_queryModule) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy runtime load of optional peer module
-    _queryModule = (globalThis as any).__brepjs_query_module__;
-    if (!_queryModule) {
-      bug(
-        'shapes',
-        'Query module not registered. Call registerQueryModule() or import query/index.js before using shell/fillet/chamfer.'
-      );
-    }
-  }
-  return _queryModule;
-}
-
-/**
- * Register the query module so that shell/fillet/chamfer can construct
- * EdgeFinder and FaceFinder at runtime without a hard import.
- */
-export function registerQueryModule(mod: {
-  EdgeFinder: new () => EdgeFinder;
-  FaceFinder: new () => FaceFinder;
-}): void {
-  _queryModule = mod;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- global registration
-  (globalThis as any).__brepjs_query_module__ = mod;
-}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -84,61 +59,12 @@ export interface CurveLike {
   D1(v: number, p: OcType, vPrime: OcType): void;
 }
 
-/**
- * A chamfer radius specification.
- *
- * - A number for symmetric chamfer.
- * - Two distances for asymmetric chamfer (first distance for the selected face).
- * - A distance and angle for asymmetric chamfer.
- */
-export type ChamferRadius =
-  | number
-  | {
-      distances: [number, number];
-      selectedFace: (f: FaceFinder) => FaceFinder;
-    }
-  | {
-      distance: number;
-      angle: number;
-      selectedFace: (f: FaceFinder) => FaceFinder;
-    };
-
-export type FilletRadius = number | [number, number];
-
-export function isNumber(r: unknown): r is number {
-  return typeof r === 'number';
-}
-
-export function isChamferRadius(r: unknown): r is ChamferRadius {
-  if (typeof r === 'number') return true;
-  if (typeof r === 'object' && r !== null) {
-    const obj = r as Record<string, unknown>;
-    return (
-      ('distances' in obj && Array.isArray(obj['distances']) && 'selectedFace' in obj) ||
-      ('distance' in obj && 'angle' in obj && 'selectedFace' in obj)
-    );
-  }
-  return false;
-}
-
-export function isFilletRadius(r: unknown): r is FilletRadius {
-  if (typeof r === 'number') return true;
-  if (Array.isArray(r) && r.length === 2) {
-    return r.every(isNumber);
-  }
-  return false;
-}
-
-/**
- * A generic way to define radii for fillet or chamfer operations.
- */
-export type RadiusConfig<R = number> =
-  | ((e: Edge) => R | null)
-  | R
-  | { filter: EdgeFinder; radius: R; keep?: boolean };
-
 // Re-export types from functional API for backward compatibility
 export type { FaceTriangulation, ShapeMesh, SurfaceType };
+
+// Re-export modifier types from shapeModifiers.ts for backward compatibility
+export type { ChamferRadius, FilletRadius, RadiusConfig };
+export { isNumber, isChamferRadius, isFilletRadius };
 
 export type BooleanOperationOptions = {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
@@ -1201,4 +1127,5 @@ export {
   _buildCompound as buildCompound,
   _buildCompoundOc as buildCompoundOc,
   _applyGlue as applyGlue,
+  _registerQueryModule as registerQueryModule,
 };
