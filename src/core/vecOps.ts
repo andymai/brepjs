@@ -60,7 +60,7 @@ export function vecDistance(a: Vec3, b: Vec3): number {
 
 export function vecNormalize(v: Vec3): Vec3 {
   const len = vecLength(v);
-  if (len === 0) return [0, 0, 0];
+  if (len < 1e-10) return [0, 0, 0];
   return [v[0] / len, v[1] / len, v[2] / len];
 }
 

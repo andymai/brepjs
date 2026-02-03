@@ -13,7 +13,7 @@ import {
   vecDot,
   vecCross,
   vecNormalize,
-  vecLength,
+  vecIsZero,
   vecRotate,
 } from './vecOps.js';
 import { DEG2RAD } from './constants.js';
@@ -32,7 +32,7 @@ export function createPlane(
   normal: Vec3 = [0, 0, 1]
 ): Plane {
   const zDir = vecNormalize(normal);
-  if (vecLength(zDir) === 0) throw new Error('Plane normal must be non-zero');
+  if (vecIsZero(zDir)) throw new Error('Plane normal must be non-zero');
 
   let xDir: Vec3;
   if (!xDirection) {
@@ -46,7 +46,7 @@ export function createPlane(
     xDir = vecNormalize(xDirection);
   }
 
-  if (vecLength(xDir) === 0) throw new Error('Plane xDir must be non-zero');
+  if (vecIsZero(xDir)) throw new Error('Plane xDir must be non-zero');
 
   const yDir = vecNormalize(vecCross(zDir, xDir));
 
