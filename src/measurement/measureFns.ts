@@ -104,10 +104,12 @@ export function createDistanceQuery(referenceShape: AnyShape): {
     distanceTo(other: AnyShape): number {
       distTool.LoadS2(other.wrapped);
       const progress = new oc.Message_ProgressRange_1();
-      distTool.Perform(progress);
-      const dist = distTool.Value();
-      progress.delete();
-      return dist;
+      try {
+        distTool.Perform(progress);
+        return distTool.Value();
+      } finally {
+        progress.delete();
+      }
     },
     dispose(): void {
       distTool.delete();

@@ -176,15 +176,14 @@ function createEdgeFinder(filters: ReadonlyArray<Predicate<Edge>>): EdgeFinderFn
       const d = vecNormalize(resolveDir(dir));
       return withFilter((edge) => {
         const oc = getKernel().oc;
-        const adaptor = new oc.BRepAdaptor_Curve_2(edge.wrapped);
-        const tmpPnt = new oc.gp_Pnt_1();
-        const tmpVec = new oc.gp_Vec_1();
+        const r = gcWithScope();
+
+        const adaptor = r(new oc.BRepAdaptor_Curve_2(edge.wrapped));
+        const tmpPnt = r(new oc.gp_Pnt_1());
+        const tmpVec = r(new oc.gp_Vec_1());
         const mid = (Number(adaptor.FirstParameter()) + Number(adaptor.LastParameter())) / 2;
         adaptor.D1(mid, tmpPnt, tmpVec);
         const tangent: Vec3 = vecNormalize([tmpVec.X(), tmpVec.Y(), tmpVec.Z()]);
-        tmpPnt.delete();
-        tmpVec.delete();
-        adaptor.delete();
         const ang = Math.acos(Math.min(1, Math.abs(vecDot(tangent, d))));
         return Math.abs(ang - DEG2RAD * angle) < 1e-6;
       });

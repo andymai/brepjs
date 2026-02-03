@@ -509,18 +509,22 @@ export class Plane {
     const zDir = new Vector(this.zDir).rotate(angle, [0, 0, 0], dir);
     const xDir = new Vector(this.xDir).rotate(angle, [0, 0, 0], dir);
 
-    const result = new Plane(this.origin, xDir, zDir);
-    zDir.delete();
-    xDir.delete();
-    return result;
+    try {
+      return new Plane(this.origin, xDir, zDir);
+    } finally {
+      zDir.delete();
+      xDir.delete();
+    }
   }
 
   rotate2DAxes(angle: number): Plane {
     const xDir = new Vector(this.xDir).rotate(angle, [0, 0, 0], this.zDir);
 
-    const result = new Plane(this.origin, xDir, this.zDir);
-    xDir.delete();
-    return result;
+    try {
+      return new Plane(this.origin, xDir, this.zDir);
+    } finally {
+      xDir.delete();
+    }
   }
 
   _calcTransforms(): void {
