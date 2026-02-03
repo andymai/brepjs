@@ -158,8 +158,12 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   tangentArcTo(end: Point2D): this {
     const [r, gc] = localGC();
     const endPoint = this.plane.toWorldCoords(end);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const previousEdge = this.pendingEdges[this.pendingEdges.length - 1]!;
+    const previousEdge = this.pendingEdges.length
+      ? this.pendingEdges[this.pendingEdges.length - 1]
+      : null;
+
+    if (!previousEdge)
+      bug('Sketcher.tangentArcTo', 'You need a previous edge to create a tangent arc');
 
     const prevEnd = r(previousEdge.endPoint);
     const prevTangent = r(previousEdge.tangentAt(1));
