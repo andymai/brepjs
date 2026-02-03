@@ -5,7 +5,8 @@ import { localGC } from '../core/memory.js';
 import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
-import { typeCastError, validationError } from '../core/errors.js';
+import { typeCastError } from '../core/errors.js';
+import { buildLawFromProfile, type ExtrusionProfile } from './extrudeUtils.js';
 import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
 import { Solid } from '../topology/shapes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
@@ -143,35 +144,7 @@ function genericSweep(
 
 export { genericSweep };
 
-export interface ExtrusionProfile {
-  profile?: 's-curve' | 'linear';
-  endFactor?: number;
-}
-
-const buildLawFromProfile = (
-  extrusionLength: number,
-  { profile, endFactor = 1 }: ExtrusionProfile
-): Result<OcType> => {
-  const oc = getKernel().oc;
-  const [r, gc] = localGC();
-
-  let law: OcType;
-  if (profile === 's-curve') {
-    law = r(new oc.Law_S());
-    law.Set_1(0, 1, extrusionLength, endFactor);
-  } else if (profile === 'linear') {
-    law = r(new oc.Law_Linear());
-    law.Set(0, 1, extrusionLength, endFactor);
-  } else {
-    return err(
-      validationError('UNSUPPORTED_PROFILE', `Unsupported extrusion profile: ${String(profile)}`)
-    );
-  }
-
-  const trimmed = law.Trim(0, extrusionLength, 1e-6);
-  gc();
-  return ok(trimmed);
-};
+export type { ExtrusionProfile } from './extrudeUtils.js';
 
 export const supportExtrude = (
   wire: Wire,

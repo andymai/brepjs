@@ -16,7 +16,10 @@ import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../cor
 import { gcWithScope } from '../core/disposal.js';
 import { downcast } from '../topology/cast.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
-import { typeCastError, validationError } from '../core/errors.js';
+import { typeCastError } from '../core/errors.js';
+import { buildLawFromProfile, type ExtrusionProfile } from './extrudeUtils.js';
+
+export type { ExtrusionProfile } from './extrudeUtils.js';
 
 // ---------------------------------------------------------------------------
 // Internal: spine construction
@@ -197,38 +200,6 @@ export function sweep(
   }
 
   return ok(shape);
-}
-
-// ---------------------------------------------------------------------------
-// Extrusion profiles
-// ---------------------------------------------------------------------------
-
-export interface ExtrusionProfile {
-  profile?: 's-curve' | 'linear';
-  endFactor?: number;
-}
-
-function buildLawFromProfile(
-  extrusionLength: number,
-  { profile, endFactor = 1 }: ExtrusionProfile
-): Result<OcType> {
-  const oc = getKernel().oc;
-  const r = gcWithScope();
-
-  let law: OcType;
-  if (profile === 's-curve') {
-    law = r(new oc.Law_S());
-    law.Set_1(0, 1, extrusionLength, endFactor);
-  } else if (profile === 'linear') {
-    law = r(new oc.Law_Linear());
-    law.Set(0, 1, extrusionLength, endFactor);
-  } else {
-    return err(
-      validationError('UNSUPPORTED_PROFILE', `Unsupported extrusion profile: ${String(profile)}`)
-    );
-  }
-
-  return ok(law.Trim(0, extrusionLength, 1e-6));
 }
 
 // ---------------------------------------------------------------------------
