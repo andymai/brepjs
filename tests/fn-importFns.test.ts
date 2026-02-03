@@ -28,6 +28,12 @@ describe('fnImportSTEP', () => {
     expect(imported).toBeDefined();
     expect(fnMeasureVolume(imported)).toBeCloseTo(1000, -1);
   });
+
+  it('returns error for invalid STEP data', async () => {
+    const invalidBlob = new Blob(['not a valid STEP file'], { type: 'application/octet-stream' });
+    const result = await fnImportSTEP(invalidBlob);
+    expect(isOk(result)).toBe(false);
+  });
 });
 
 describe('fnImportSTL', () => {
@@ -39,5 +45,11 @@ describe('fnImportSTL', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     expect(imported).toBeDefined();
+  });
+
+  it('returns error for invalid STL data', async () => {
+    const invalidBlob = new Blob(['not a valid STL file'], { type: 'application/octet-stream' });
+    const result = await fnImportSTL(invalidBlob);
+    expect(isOk(result)).toBe(false);
   });
 });

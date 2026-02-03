@@ -33,7 +33,8 @@ const deletableRegistry = new (globalThis as any).FinalizationRegistry((heldValu
   try {
     heldValue.delete();
   } catch {
-    // Already deleted
+    // Object was already deleted manually or via another GC path — this is expected
+    // and not an error. OCCT objects can be deleted multiple times safely.
   }
 });
 

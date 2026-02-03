@@ -59,26 +59,33 @@ const rotateToStartAtSegment = (curves: Curve2D[], segment: Curve2D) => {
   return end.concat(start);
 };
 
+// Hash a point for Set/Map lookup (uses precision rounding for fuzzy matching)
+const hashPoint = (p: Point2D): string => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
+
+// Hash a segment by both orientations for bidirectional lookup
+const hashSegment = (first: Point2D, last: Point2D): string => {
+  const h1 = hashPoint(first);
+  const h2 = hashPoint(last);
+  return h1 < h2 ? `${h1}|${h2}` : `${h2}|${h1}`;
+};
+
 function* createSegmentOnPoints(
   curves: Curve2D[],
   allIntersections: Point2D[],
   allCommonSegments: Curve2D[]
 ) {
+  // Pre-compute hash sets for O(1) lookup instead of O(n) find()
+  const intersectionSet = new Set(allIntersections.map(hashPoint));
+  const commonSegmentSet = new Set(
+    allCommonSegments.map((seg) => hashSegment(seg.firstPoint, seg.lastPoint))
+  );
+
   const endsAtIntersection = (curve: Curve2D) => {
-    return !!allIntersections.find((intersection) => {
-      return samePoint(intersection, curve.lastPoint);
-    });
+    return intersectionSet.has(hashPoint(curve.lastPoint));
   };
 
   const isCommonSegment = (curve: Curve2D) => {
-    return !!allCommonSegments.find((segment) => {
-      return (
-        (samePoint(segment.firstPoint, curve.firstPoint) &&
-          samePoint(segment.lastPoint, curve.lastPoint)) ||
-        (samePoint(segment.firstPoint, curve.lastPoint) &&
-          samePoint(segment.lastPoint, curve.firstPoint))
-      );
-    });
+    return commonSegmentSet.has(hashSegment(curve.firstPoint, curve.lastPoint));
   };
 
   let currentCurves: Curve2D[] = [];

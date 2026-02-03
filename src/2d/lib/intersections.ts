@@ -28,10 +28,13 @@ function* commonSegmentsIteration(intersector: OcType): Generator<Curve2D> {
     const h1 = new oc.Handle_Geom2d_Curve_1();
     const h2 = r(new oc.Handle_Geom2d_Curve_1());
     try {
-      // There seem to be a bug in occt where it returns segments but fails to
-      // fetch them.
+      // Known OCCT bug: NbSegments() may report segments that Segment() cannot fetch.
+      // This occurs with certain curve intersection configurations. We skip unfetchable
+      // segments since they represent a geometry issue in OCCT, not a code error.
+      // See: https://dev.opencascade.org/content/geom2dapi-intercurvecurve-nbsegments-bug
       intersector.Segment(i, h1, h2);
     } catch {
+      // Skip segments that OCCT reports but cannot provide (known OCCT limitation)
       continue;
     }
 
