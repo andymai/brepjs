@@ -64,6 +64,26 @@ describe('meshShapeEdges', () => {
     expect(edgeMesh.lines.length).toBeGreaterThan(0);
     expect(edgeMesh.edgeGroups.length).toBe(12); // 12 edges on a box
   });
+
+  it('returns cached result on second call with same parameters', () => {
+    clearMeshCache();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const shape = castShape(box.wrapped);
+    const mesh1 = meshShapeEdges(shape, { tolerance: 0.1 });
+    const mesh2 = meshShapeEdges(shape, { tolerance: 0.1 });
+    // Cached — same object reference
+    expect(mesh2).toBe(mesh1);
+  });
+
+  it('bypasses cache when cache option is false', () => {
+    clearMeshCache();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const shape = castShape(box.wrapped);
+    const mesh1 = meshShapeEdges(shape, { tolerance: 0.1 });
+    const mesh2 = meshShapeEdges(shape, { tolerance: 0.1, cache: false });
+    // Not cached — different object
+    expect(mesh2).not.toBe(mesh1);
+  });
 });
 
 describe('fnExportSTEP', () => {

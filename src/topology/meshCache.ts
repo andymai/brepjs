@@ -3,16 +3,16 @@
  *
  * Keyed by a composite string of shapeHash:tolerance:angularTolerance:skipNormals.
  * Avoids redundant meshing when the same shape is rendered multiple times with
- * identical parameters.
+ * identical parameters. Shared pool for both triangle meshes and edge meshes.
  */
 
-import type { ShapeMesh } from './meshFns.js';
+import type { ShapeMesh, EdgeMesh } from './meshFns.js';
 
 const DEFAULT_MAX_SIZE = 128;
 
 interface CacheEntry {
   key: string;
-  value: ShapeMesh;
+  value: ShapeMesh | EdgeMesh;
 }
 
 let cache: Map<string, CacheEntry> = new Map();
@@ -27,6 +27,14 @@ export function buildMeshCacheKey(
   return `${shapeHash}:${tolerance}:${angularTolerance}:${skipNormals}`;
 }
 
+export function buildEdgeMeshCacheKey(
+  shapeHash: number,
+  tolerance: number,
+  angularTolerance: number
+): string {
+  return `edge:${shapeHash}:${tolerance}:${angularTolerance}`;
+}
+
 export function getMesh(key: string): ShapeMesh | undefined {
   const entry = cache.get(key);
   if (!entry) return undefined;
@@ -34,10 +42,28 @@ export function getMesh(key: string): ShapeMesh | undefined {
   // Move to end (most recently used) by re-inserting
   cache.delete(key);
   cache.set(key, entry);
-  return entry.value;
+  return entry.value as ShapeMesh;
 }
 
 export function setMesh(key: string, value: ShapeMesh): void {
+  _set(key, value);
+}
+
+export function getEdgeMesh(key: string): EdgeMesh | undefined {
+  const entry = cache.get(key);
+  if (!entry) return undefined;
+
+  // Move to end (most recently used) by re-inserting
+  cache.delete(key);
+  cache.set(key, entry);
+  return entry.value as EdgeMesh;
+}
+
+export function setEdgeMesh(key: string, value: EdgeMesh): void {
+  _set(key, value);
+}
+
+function _set(key: string, value: ShapeMesh | EdgeMesh): void {
   // If key already exists, delete it first so insertion is at the end
   if (cache.has(key)) {
     cache.delete(key);

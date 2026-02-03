@@ -1,6 +1,6 @@
 {
   "name": "brepjs-opencascade",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenCascade.js custom WASM build for brepjs",
   "license": "MIT",
   "main": "src/brepjs_single.js",

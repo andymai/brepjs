@@ -2,7 +2,6 @@ import type { OcShape, OcType } from '../kernel/types.js';
 import type { AnyShape, CompSolid, Shape3D, Wire } from './shapes.js';
 import type * as ShapesModule from './shapes.js';
 import { getKernel } from '../kernel/index.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
 import { bug, typeCastError } from '../core/errors.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
 
@@ -64,23 +63,24 @@ export const iterTopo = function* iterTopo(
   shape: OcShape,
   topo: TopoEntity
 ): IterableIterator<OcShape> {
-  const oc = getKernel().oc;
-  const explorer = new oc.TopExp_Explorer_2(shape, asTopo(topo), asTopo('shape'));
-  const seen = new Map<number, OcShape[]>();
-  while (explorer.More()) {
-    const item = explorer.Current();
-    const hash = item.HashCode(HASH_CODE_MAX);
-    const bucket = seen.get(hash);
-    if (!bucket) {
-      seen.set(hash, [item]);
-      yield item;
-    } else if (!bucket.some((s) => s.IsSame(item))) {
-      bucket.push(item);
-      yield item;
-    }
-    explorer.Next();
+  // Map TopoEntity to ShapeType for kernel adapter
+  const topoToShapeType: Record<string, string> = {
+    vertex: 'vertex',
+    edge: 'edge',
+    wire: 'wire',
+    face: 'face',
+    shell: 'shell',
+    solid: 'solid',
+    solidCompound: 'compsolid',
+    compound: 'compound',
+    shape: 'compound', // fallback; 'shape' isn't used in iterShapes
+  };
+  const shapeType = topoToShapeType[topo];
+  if (shapeType) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ShapeType string mapping
+    const shapes = getKernel().iterShapes(shape, shapeType as any);
+    for (const s of shapes) yield s;
   }
-  explorer.delete();
 };
 
 export const shapeType = (shape: OcShape): Result<OcType> => {
