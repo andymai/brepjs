@@ -84,7 +84,7 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4
 
 ## Progress Tracking
 
-- [ ] **Phase 1:** Remove Vector and Plane classes
+- [x] **Phase 1:** Migrate to Vec3 (Vector class deprecated but kept for backward compat)
 - [ ] **Phase 2:** Remove makeAx\*, Transformation, asPnt/asDir
 - [ ] **Phase 3:** Remove BoundingBox and cache functions
 - [ ] **Phase 4:** Final cleanup and export updates
