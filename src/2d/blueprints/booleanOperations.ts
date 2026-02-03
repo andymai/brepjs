@@ -60,7 +60,8 @@ const rotateToStartAtSegment = (curves: Curve2D[], segment: Curve2D) => {
 };
 
 // Hash a point for Set/Map lookup (uses precision rounding for fuzzy matching)
-const hashPoint = (p: Point2D): string => `${p[0].toFixed(6)},${p[1].toFixed(6)}`;
+// Must match PRECISION_INTERSECTION (1e-9) to avoid hash collisions for nearly-equal points
+const hashPoint = (p: Point2D): string => `${p[0].toFixed(9)},${p[1].toFixed(9)}`;
 
 // Hash a segment by both orientations for bidirectional lookup
 const hashSegment = (first: Point2D, last: Point2D): string => {
