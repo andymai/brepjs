@@ -30,6 +30,12 @@ jobs:
           docker run -i --rm -v $(pwd):/src donalffons/opencascade.js custom_build_with_exceptions.yml
           mv brepjs_with_exceptions* ../src/
 
+      - name: Build threaded (multi-threading)
+        working-directory: packages/brepjs-opencascade/build-config
+        run: |
+          docker run -i --rm -v $(pwd):/src donalffons/opencascade.js:multi-threaded custom_build_threaded.yml
+          mv brepjs_threaded* ../src/
+
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
