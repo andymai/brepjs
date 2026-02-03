@@ -11,15 +11,15 @@ import type { Vec3 } from '../core/types.js';
 import { toOcVec, toOcPnt, makeOcAx3 } from '../core/occtBoundary.js';
 import { vecAdd, vecLength } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
-import type { Face, Wire, Edge, Shape3D, Solid } from '../core/shapeTypes.js';
+import type { Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
 import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { downcast } from '../topology/cast.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
-import { buildLawFromProfile, type ExtrusionProfile } from './extrudeUtils.js';
+import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
 
-export type { ExtrusionProfile } from './extrudeUtils.js';
+export type { ExtrusionProfile, SweepConfig } from './extrudeUtils.js';
 
 // ---------------------------------------------------------------------------
 // Internal: spine construction
@@ -114,20 +114,6 @@ export function revolveFace(
     return err(typeCastError('REVOLUTION_NOT_3D', 'Revolution did not produce a 3D shape'));
   }
   return ok(result);
-}
-
-// ---------------------------------------------------------------------------
-// Sweep configuration
-// ---------------------------------------------------------------------------
-
-export interface SweepConfig {
-  frenet?: boolean;
-  auxiliarySpine?: Wire | Edge;
-  law?: OcType;
-  transitionMode?: 'right' | 'transformed' | 'round';
-  withContact?: boolean;
-  support?: OcType;
-  forceProfileSpineOthogonality?: boolean;
 }
 
 // ---------------------------------------------------------------------------

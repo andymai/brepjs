@@ -12,6 +12,28 @@ import { type Result, ok, err } from '../core/result.js';
 import { validationError } from '../core/errors.js';
 
 // ---------------------------------------------------------------------------
+// Sweep configuration
+// ---------------------------------------------------------------------------
+
+/** Configuration for sweep/pipe operations along a spine. */
+export interface SweepConfig {
+  /** Use Frenet trihedron for profile orientation */
+  frenet?: boolean;
+  /** Auxiliary spine for twist control */
+  auxiliarySpine?: { wrapped: OcType };
+  /** Scaling law along the path */
+  law?: OcType;
+  /** Transition mode at corners: 'right' (sharp), 'transformed', or 'round' */
+  transitionMode?: 'right' | 'transformed' | 'round';
+  /** Enable contact detection */
+  withContact?: boolean;
+  /** Support surface for constrained sweeps */
+  support?: OcType;
+  /** Force profile to be orthogonal to spine */
+  forceProfileSpineOthogonality?: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Extrusion profile types
 // ---------------------------------------------------------------------------
 

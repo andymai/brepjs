@@ -6,7 +6,7 @@ import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
-import { buildLawFromProfile, type ExtrusionProfile } from './extrudeUtils.js';
+import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
 import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
 import { Solid } from '../topology/shapes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
@@ -45,14 +45,10 @@ export const revolution = (
   return result;
 };
 
-export interface GenericSweepConfig {
-  frenet?: boolean;
+/** Configuration for sweep operations in the OO API. */
+export interface GenericSweepConfig extends Omit<SweepConfig, 'auxiliarySpine'> {
+  /** Auxiliary spine for twist control (Wire or Edge in OO API) */
   auxiliarySpine?: Wire | Edge;
-  law?: OcType;
-  transitionMode?: 'right' | 'transformed' | 'round';
-  withContact?: boolean;
-  support?: OcType;
-  forceProfileSpineOthogonality?: boolean;
 }
 
 function genericSweep(
