@@ -1,5 +1,6 @@
 import type { Point, Plane, PlaneName } from '../core/geometry.js';
 import { makePlane } from '../core/geometryHelpers.js';
+import { localGC } from '../core/memory.js';
 import type { Face, AnyShape, SurfaceType } from '../topology/shapes.js';
 import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
 import { Finder3d } from './generic3dfinder.js';
@@ -20,14 +21,15 @@ export class FaceFinder extends Finder3d<Face> {
    * @category Filter
    */
   parallelTo(plane: Plane | StandardPlane | Face): this {
+    const [r, gc] = localGC();
     if (typeof plane === 'string') return this.atAngleWith(PLANE_TO_DIR[plane]);
     if (typeof plane !== 'string' && plane instanceof PlaneClass)
       return this.atAngleWith(plane.zDir);
     if (typeof plane !== 'string' && 'normalAt' in plane) {
-      const normal = plane.normalAt();
+      const normal = r(plane.normalAt());
       // Extract primitive values to avoid capturing Vector in closure
       const normalPoint: Point = [normal.x, normal.y, normal.z];
-      normal.delete();
+      gc();
       return this.atAngleWith(normalPoint);
     }
     return this;
@@ -60,10 +62,11 @@ export class FaceFinder extends Finder3d<Face> {
     this.parallelTo(plane);
 
     const centerInPlane = ({ element }: { element: Face }) => {
+      const [r, gc] = localGC();
       const center = element.center;
-      const projected = center.projectToPlane(plane);
+      const projected = r(center.projectToPlane(plane));
       const result = center.equals(projected);
-      projected.delete();
+      gc();
       return result;
     };
 
@@ -72,9 +75,10 @@ export class FaceFinder extends Finder3d<Face> {
   }
 
   shouldKeep(element: Face): boolean {
-    const normal = element.normalAt();
+    const [r, gc] = localGC();
+    const normal = r(element.normalAt());
     const shouldKeep = this.filters.every((filter) => filter({ normal, element }));
-    normal.delete();
+    gc();
     return shouldKeep;
   }
 

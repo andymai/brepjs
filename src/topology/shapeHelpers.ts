@@ -20,13 +20,13 @@ import zip from '../utils/zip.js';
 
 export const makeLine = (v1: Point, v2: Point): Edge => {
   const oc = getKernel().oc;
-  const p1 = asPnt(v1);
-  const p2 = asPnt(v2);
-  const maker = new oc.BRepBuilderAPI_MakeEdge_3(p1, p2);
+  const [r, gc] = localGC();
+
+  const p1 = r(asPnt(v1));
+  const p2 = r(asPnt(v2));
+  const maker = r(new oc.BRepBuilderAPI_MakeEdge_3(p1, p2));
   const edge = new Edge(maker.Edge());
-  maker.delete();
-  p1.delete();
-  p2.delete();
+  gc();
   return edge;
 };
 
@@ -260,7 +260,9 @@ export const makeTangentArc = (startPoint: Point, startTgt: Point, endPoint: Poi
 
 export const assembleWire = (listOfEdges: (Edge | Wire)[]): Result<Wire> => {
   const oc = getKernel().oc;
-  const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
+  const [r, gc] = localGC();
+
+  const wireBuilder = r(new oc.BRepBuilderAPI_MakeWire_1());
   listOfEdges.forEach((e) => {
     if (e instanceof Edge) {
       wireBuilder.Add_1(e.wrapped);
@@ -270,7 +272,7 @@ export const assembleWire = (listOfEdges: (Edge | Wire)[]): Result<Wire> => {
     }
   });
 
-  const progress = new oc.Message_ProgressRange_1();
+  const progress = r(new oc.Message_ProgressRange_1());
   wireBuilder.Build(progress);
   const res = wireBuilder.Error();
   if (res !== oc.BRepBuilderAPI_WireError.BRepBuilderAPI_WireDone) {
@@ -279,8 +281,7 @@ export const assembleWire = (listOfEdges: (Edge | Wire)[]): Result<Wire> => {
       [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_NonManifoldWire, 'non manifold wire'],
       [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_DisconnectedWire, 'disconnected wire'],
     ]);
-    wireBuilder.delete();
-    progress.delete();
+    gc();
     return err(
       occtError(
         'WIRE_BUILD_FAILED',
@@ -290,8 +291,7 @@ export const assembleWire = (listOfEdges: (Edge | Wire)[]): Result<Wire> => {
   }
 
   const wire = new Wire(wireBuilder.Wire());
-  wireBuilder.delete();
-  progress.delete();
+  gc();
   return ok(wire);
 };
 
@@ -364,12 +364,12 @@ export const makeCylinder = (
   direction: Point = [0, 0, 1]
 ): Solid => {
   const oc = getKernel().oc;
-  const axis = makeAx2(location, direction);
+  const [r, gc] = localGC();
 
-  const cylinder = new oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height);
+  const axis = r(makeAx2(location, direction));
+  const cylinder = r(new oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height));
   const solid = new Solid(cylinder.Shape());
-  axis.delete();
-  cylinder.delete();
+  gc();
   return solid;
 };
 
@@ -380,10 +380,11 @@ export const makeCylinder = (
  */
 export const makeSphere = (radius: number): Solid => {
   const oc = getKernel().oc;
+  const [r, gc] = localGC();
 
-  const sphereMaker = new oc.BRepPrimAPI_MakeSphere_1(radius);
+  const sphereMaker = r(new oc.BRepPrimAPI_MakeSphere_1(radius));
   const sphere = new Solid(sphereMaker.Shape());
-  sphereMaker.delete();
+  gc();
   return sphere;
 };
 
@@ -478,24 +479,24 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
  */
 export const makeBox = (corner1: Point, corner2: Point): Solid => {
   const oc = getKernel().oc;
-  const p1 = asPnt(corner1);
-  const p2 = asPnt(corner2);
-  const boxMaker = new oc.BRepPrimAPI_MakeBox_4(p1, p2);
+  const [r, gc] = localGC();
+
+  const p1 = r(asPnt(corner1));
+  const p2 = r(asPnt(corner2));
+  const boxMaker = r(new oc.BRepPrimAPI_MakeBox_4(p1, p2));
   const box = new Solid(boxMaker.Solid());
-  boxMaker.delete();
-  p1.delete();
-  p2.delete();
+  gc();
   return box;
 };
 
 export const makeVertex = (point: Point): Vertex => {
   const oc = getKernel().oc;
-  const pnt = asPnt(point);
+  const [r, gc] = localGC();
 
-  const vertexMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
+  const pnt = r(asPnt(point));
+  const vertexMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
   const vertex = vertexMaker.Vertex();
-  vertexMaker.delete();
-  pnt.delete();
+  gc();
 
   return new Vertex(vertex);
 };

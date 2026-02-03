@@ -1,7 +1,7 @@
 import type { OcType } from '../kernel/types.js';
 import { asDir, asPnt, makeAx2, type Point, Vector } from '../core/geometry.js';
 import type { BoundingBox } from '../core/geometry.js';
-import { WrappingObj } from '../core/memory.js';
+import { WrappingObj, localGC } from '../core/memory.js';
 import {
   PROJECTION_PLANES,
   isProjectionPlane as isProjectionPlaneCheck,
@@ -24,26 +24,26 @@ export function lookFromPlane(projectionPlane: ProjectionPlane): ProjectionCamer
 }
 
 function defaultXDir(direction: Point): Vector {
-  const dir = new Vector(direction);
-  let yAxis = new Vector([0, 0, 1]);
+  const [r, gc] = localGC();
+  const dir = r(new Vector(direction));
+  let yAxis = r(new Vector([0, 0, 1]));
   let xAxis = yAxis.cross(dir);
   if (xAxis.Length === 0) {
-    yAxis.delete();
     xAxis.delete();
-    yAxis = new Vector([0, 1, 0]);
+    yAxis = r(new Vector([0, 1, 0]));
     xAxis = yAxis.cross(dir);
   }
-  dir.delete();
-  yAxis.delete();
+  gc();
   return xAxis.normalize();
 }
 
 export class ProjectionCamera extends WrappingObj<OcType> {
   constructor(position: Point = [0, 0, 0], direction: Point = [0, 0, 1], xAxis?: Point) {
-    const xDir = xAxis ? new Vector(xAxis) : defaultXDir(direction);
+    const [r, gc] = localGC();
+    const xDir = xAxis ? r(new Vector(xAxis)) : r(defaultXDir(direction));
     const ax2 = makeAx2(position, direction, xDir);
+    gc();
     super(ax2);
-    xDir.delete();
   }
 
   get position(): Vector {
@@ -63,53 +63,54 @@ export class ProjectionCamera extends WrappingObj<OcType> {
   }
 
   autoAxes(): void {
-    const dir = this.direction;
-    const xAxis = defaultXDir(dir);
-    const ocDir = asDir(xAxis);
+    const [r, gc] = localGC();
+    const dir = r(this.direction);
+    const xAxis = r(defaultXDir(dir));
+    const ocDir = r(asDir(xAxis));
     this.wrapped.SetXDirection(ocDir);
-    ocDir.delete();
-    dir.delete();
-    xAxis.delete();
+    gc();
   }
 
   setPosition(position: Point): this {
-    const pnt = asPnt(position);
+    const [r, gc] = localGC();
+    const pnt = r(asPnt(position));
     this.wrapped.SetLocation(pnt);
-    pnt.delete();
+    gc();
     return this;
   }
 
   setXAxis(xAxis: Point): this {
-    const dir = asDir(xAxis);
+    const [r, gc] = localGC();
+    const dir = r(asDir(xAxis));
     this.wrapped.SetXDirection(dir);
-    dir.delete();
+    gc();
     return this;
   }
 
   setYAxis(yAxis: Point): this {
-    const dir = asDir(yAxis);
+    const [r, gc] = localGC();
+    const dir = r(asDir(yAxis));
     this.wrapped.SetYDirection(dir);
-    dir.delete();
+    gc();
     return this;
   }
 
   lookAt(shape: { boundingBox: BoundingBox } | Point): this {
-    const lookAtPoint = new Vector(
-      'boundingBox' in (shape as object)
-        ? (shape as { boundingBox: BoundingBox }).boundingBox.center
-        : (shape as Point)
+    const [r, gc] = localGC();
+    const lookAtPoint = r(
+      new Vector(
+        'boundingBox' in (shape as object)
+          ? (shape as { boundingBox: BoundingBox }).boundingBox.center
+          : (shape as Point)
+      )
     );
-    const pos = this.position;
-    const diff = pos.sub(lookAtPoint);
-    const direction = diff.normalized();
-    const ocDir = direction.toDir();
+    const pos = r(this.position);
+    const diff = r(pos.sub(lookAtPoint));
+    const direction = r(diff.normalized());
+    const ocDir = r(direction.toDir());
 
     this.wrapped.SetDirection(ocDir);
-    ocDir.delete();
-    diff.delete();
-    pos.delete();
-    lookAtPoint.delete();
-    direction.delete();
+    gc();
     this.autoAxes();
     return this;
   }

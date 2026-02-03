@@ -131,10 +131,13 @@ export const makeAx1 = (center: Point, dir: Point): OcType => {
   const oc = getKernel().oc;
   const origin = asPnt(center);
   const direction = asDir(dir);
-  const axis = new oc.gp_Ax1_2(origin, direction);
-  origin.delete();
-  direction.delete();
-  return axis;
+
+  try {
+    return new oc.gp_Ax1_2(origin, direction);
+  } finally {
+    origin.delete();
+    direction.delete();
+  }
 };
 
 // ---------------------------------------------------------------------------

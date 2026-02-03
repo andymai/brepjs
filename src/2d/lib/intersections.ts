@@ -1,5 +1,6 @@
 import type { OcType } from '../../kernel/types.js';
 import { getKernel } from '../../kernel/index.js';
+import { gcWithScope } from '../../core/disposal.js';
 import { Curve2D } from './Curve2D.js';
 import type { Point2D } from './definitions.js';
 import { samePoint } from './vectorOperations.js';
@@ -21,10 +22,11 @@ function* commonSegmentsIteration(intersector: OcType): Generator<Curve2D> {
   if (!nSegments) return;
 
   const oc = getKernel().oc;
+  const r = gcWithScope();
 
   for (let i = 1; i <= nSegments; i++) {
     const h1 = new oc.Handle_Geom2d_Curve_1();
-    const h2 = new oc.Handle_Geom2d_Curve_1();
+    const h2 = r(new oc.Handle_Geom2d_Curve_1());
     try {
       // There seem to be a bug in occt where it returns segments but fails to
       // fetch them.
@@ -34,7 +36,6 @@ function* commonSegmentsIteration(intersector: OcType): Generator<Curve2D> {
     }
 
     yield new Curve2D(h1);
-    h2.delete();
   }
 }
 
@@ -53,7 +54,9 @@ export const intersectCurves = (
     return ok({ intersections: [], commonSegments: [], commonSegmentsPoints: [] });
 
   const oc = getKernel().oc;
-  const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
+  const r = gcWithScope();
+
+  const intersector = r(new oc.Geom2dAPI_InterCurveCurve_1());
 
   let intersections;
   let commonSegments;
@@ -65,8 +68,6 @@ export const intersectCurves = (
     commonSegments = Array.from(commonSegmentsIteration(intersector));
   } catch (e) {
     return err(computationError('INTERSECTION_FAILED', 'Intersections failed between curves', e));
-  } finally {
-    intersector.delete();
   }
 
   const segmentsAsPoints = commonSegments
@@ -85,7 +86,9 @@ export const intersectCurves = (
 
 export const selfIntersections = (curve: Curve2D, precision = 1e-9): Result<Point2D[]> => {
   const oc = getKernel().oc;
-  const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
+  const r = gcWithScope();
+
+  const intersector = r(new oc.Geom2dAPI_InterCurveCurve_1());
 
   let intersections;
 
@@ -95,8 +98,6 @@ export const selfIntersections = (curve: Curve2D, precision = 1e-9): Result<Poin
     intersections = Array.from(pointsIteration(intersector));
   } catch (e) {
     return err(computationError('SELF_INTERSECTION_FAILED', 'Self intersection failed', e));
-  } finally {
-    intersector.delete();
   }
 
   return ok(intersections);

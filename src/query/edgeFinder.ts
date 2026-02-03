@@ -1,5 +1,6 @@
 import type { Point, Plane, PlaneName, Vector } from '../core/geometry.js';
 import { makePlane } from '../core/geometryHelpers.js';
+import { localGC } from '../core/memory.js';
 import type { Face, AnyShape, Edge, CurveType } from '../topology/shapes.js';
 import type { Direction } from './definitions.js';
 import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
@@ -58,14 +59,15 @@ export class EdgeFinder extends Finder3d<Edge> {
    * @category Filter
    */
   parallelTo(plane: Plane | StandardPlane | Face): this {
+    const [r, gc] = localGC();
     if (typeof plane === 'string') return this.atAngleWith(PLANE_TO_DIR[plane], 90);
     if (typeof plane !== 'string' && plane instanceof PlaneClass)
       return this.atAngleWith(plane.zDir, 90);
     if (typeof plane !== 'string' && 'normalAt' in plane) {
-      const normal = plane.normalAt();
+      const normal = r(plane.normalAt());
       // Extract primitive values to avoid capturing Vector in closure
       const normalPoint: Point = [normal.x, normal.y, normal.z];
-      normal.delete();
+      gc();
       return this.atAngleWith(normalPoint, 90);
     }
     return this;
@@ -86,10 +88,11 @@ export class EdgeFinder extends Finder3d<Edge> {
     this.parallelTo(plane);
 
     const firstPointInPlane = ({ element }: { element: Edge }) => {
+      const [r, gc] = localGC();
       const startPoint = element.startPoint;
-      const projected = startPoint.projectToPlane(plane);
+      const projected = r(startPoint.projectToPlane(plane));
       const result = startPoint.equals(projected);
-      projected.delete();
+      gc();
       return result;
     };
 
@@ -98,20 +101,19 @@ export class EdgeFinder extends Finder3d<Edge> {
   }
 
   shouldKeep(element: Edge): boolean {
+    const [r, gc] = localGC();
     let normal: Vector | null = null;
     let tangent: Vector | null = null;
 
     try {
-      tangent = element.tangentAt();
-      normal = tangent.normalized();
+      tangent = r(element.tangentAt());
+      normal = r(tangent.normalized());
     } catch {
       // Degenerate edges may lack a valid tangent — filters should handle null normal
     }
 
     const result = this.filters.every((filter) => filter({ normal, element }));
-
-    if (tangent) tangent.delete();
-    if (normal) normal.delete();
+    gc();
 
     return result;
   }

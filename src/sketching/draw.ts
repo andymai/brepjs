@@ -1,5 +1,6 @@
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
+import { localGC } from '../core/memory.js';
 import type { ApproximationOptions } from '../2d/lib/index.js';
 import {
   BoundingBox2d,
@@ -503,13 +504,14 @@ export const drawParametricFunction = (
 };
 
 const edgesToDrawing = (edges: Edge[]): Drawing => {
+  const [r, gc] = localGC();
   const planeSketch = drawRectangle(1000, 1000).sketchOnPlane() as SketchInterface & {
     wire: Wire;
   };
-  const planeFace = unwrap(makeFace(planeSketch.wire));
+  const planeFace = r(unwrap(makeFace(planeSketch.wire)));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
-  planeFace.delete();
+  gc();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));
   if (stitchedCurves.length === 0) return new Drawing();
@@ -529,17 +531,17 @@ export function drawProjection(
   shape: AnyShape,
   projectionCamera: ProjectionPlane | ProjectionCamera = 'front'
 ): { visible: Drawing; hidden: Drawing } {
+  const [r, gc] = localGC();
   let camera: ProjectionCamera;
   const ownCamera = !(projectionCamera instanceof ProjectionCamera);
   if (!ownCamera) {
     camera = projectionCamera;
   } else {
-    camera = lookFromPlane(projectionCamera);
+    camera = r(lookFromPlane(projectionCamera));
   }
 
   const { visible, hidden } = makeProjectedEdges(shape, camera);
-
-  if (ownCamera) camera.delete();
+  gc();
 
   return {
     visible: edgesToDrawing(visible),
@@ -553,11 +555,11 @@ export function drawProjection(
  * @category Drawing
  */
 export function drawFaceOutline(face: Face): Drawing {
-  const clonedFace = face.clone();
-  const outerWire = clonedFace.outerWire();
+  const [r, gc] = localGC();
+  const clonedFace = r(face.clone());
+  const outerWire = r(clonedFace.outerWire());
   const curves = outerWire.edges.map((e) => edgeToCurve(e, face));
-  outerWire.delete();
-  clonedFace.delete();
+  gc();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));
   if (stitchedCurves.length === 0) return new Drawing();
