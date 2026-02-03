@@ -1,7 +1,8 @@
 import type { OcShape, OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { WrappingObj, gcWithScope, type Deletable } from '../core/memory.js';
-import { meshShapeEdges as _meshShapeEdges } from './meshFns.js';
+import { meshShapeEdges as _meshShapeEdges, type ShapeMesh } from './meshFns.js';
+import { type SurfaceType, type FaceTriangulation } from './faceFns.js';
 import {
   Vector,
   asPnt,
@@ -129,31 +130,8 @@ export type RadiusConfig<R = number> =
   | R
   | { filter: EdgeFinder; radius: R; keep?: boolean };
 
-export interface FaceTriangulation {
-  vertices: number[];
-  trianglesIndexes: number[];
-  verticesNormals: number[];
-}
-
-export interface ShapeMesh {
-  triangles: Uint32Array;
-  vertices: Float32Array;
-  normals: Float32Array;
-  faceGroups: { start: number; count: number; faceId: number }[];
-}
-
-export type SurfaceType =
-  | 'PLANE'
-  | 'CYLINDRE'
-  | 'CONE'
-  | 'SPHERE'
-  | 'TORUS'
-  | 'BEZIER_SURFACE'
-  | 'BSPLINE_SURFACE'
-  | 'REVOLUTION_SURFACE'
-  | 'EXTRUSION_SURFACE'
-  | 'OFFSET_SURFACE'
-  | 'OTHER_SURFACE';
+// Re-export types from functional API for backward compatibility
+export type { FaceTriangulation, ShapeMesh, SurfaceType };
 
 export type BooleanOperationOptions = {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
