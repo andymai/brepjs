@@ -46,6 +46,27 @@ import {
   isSame as _isSame,
   isEqual as _isEqual,
 } from './topologyOps.js';
+import {
+  makeVertex as _makeVertex,
+  makeEdge as _makeEdge,
+  makeWire as _makeWire,
+  makeFace as _makeFace,
+  makeBox as _makeBox,
+  makeCylinder as _makeCylinder,
+  makeSphere as _makeSphere,
+} from './constructorOps.js';
+import {
+  extrude as _extrude,
+  revolve as _revolve,
+  loft as _loft,
+  sweep as _sweep,
+} from './sweepOps.js';
+import {
+  fillet as _fillet,
+  chamfer as _chamfer,
+  shell as _shell,
+  offset as _offset,
+} from './modifierOps.js';
 
 /**
  * OpenCascade implementation of KernelAdapter.
@@ -83,77 +104,26 @@ export class OCCTAdapter implements KernelAdapter {
     return _cutAll(this.oc, shape, tools, options);
   }
 
-  // --- Shape construction ---
+  // --- Shape construction (delegates to constructorOps.ts) ---
 
   makeVertex(x: number, y: number, z: number): OcShape {
-    const pnt = new this.oc.gp_Pnt_3(x, y, z);
-    const maker = new this.oc.BRepBuilderAPI_MakeVertex(pnt);
-    const vertex = maker.Vertex();
-    maker.delete();
-    pnt.delete();
-    return vertex;
+    return _makeVertex(this.oc, x, y, z);
   }
 
   makeEdge(curve: OcType, start?: number, end?: number): OcShape {
-    const maker =
-      start !== undefined && end !== undefined
-        ? new this.oc.BRepBuilderAPI_MakeEdge_24(curve, start, end)
-        : new this.oc.BRepBuilderAPI_MakeEdge_24(curve);
-    const edge = maker.Edge();
-    maker.delete();
-    return edge;
+    return _makeEdge(this.oc, curve, start, end);
   }
 
   makeWire(edges: OcShape[]): OcShape {
-    const wireBuilder = new this.oc.BRepBuilderAPI_MakeWire_1();
-    for (const edge of edges) {
-      wireBuilder.Add_1(edge);
-    }
-    const progress = new this.oc.Message_ProgressRange_1();
-    wireBuilder.Build(progress);
-    const wire = wireBuilder.Wire();
-    wireBuilder.delete();
-    progress.delete();
-    return wire;
+    return _makeWire(this.oc, edges);
   }
 
   makeFace(wire: OcShape, planar = true): OcShape {
-    if (planar) {
-      const builder = new this.oc.BRepBuilderAPI_MakeFace_15(wire, false);
-      const face = builder.Face();
-      builder.delete();
-      return face;
-    }
-    // Non-planar face — add wire edges to the filling builder
-    const builder = new this.oc.BRepOffsetAPI_MakeFilling(
-      3,
-      15,
-      2,
-      false,
-      1e-5,
-      1e-4,
-      1e-2,
-      0.1,
-      8,
-      9
-    );
-    const edges = this.iterShapes(wire, 'edge');
-    for (const edge of edges) {
-      builder.Add_1(edge, this.oc.GeomAbs_Shape.GeomAbs_C0, true);
-    }
-    const progress = new this.oc.Message_ProgressRange_1();
-    builder.Build(progress);
-    const shape = builder.Shape();
-    builder.delete();
-    progress.delete();
-    return shape;
+    return _makeFace(this.oc, wire, planar);
   }
 
   makeBox(width: number, height: number, depth: number): OcShape {
-    const maker = new this.oc.BRepPrimAPI_MakeBox_2(width, height, depth);
-    const solid = maker.Solid();
-    maker.delete();
-    return solid;
+    return _makeBox(this.oc, width, height, depth);
   }
 
   makeCylinder(
@@ -162,94 +132,35 @@ export class OCCTAdapter implements KernelAdapter {
     center: [number, number, number] = [0, 0, 0],
     direction: [number, number, number] = [0, 0, 1]
   ): OcShape {
-    const origin = new this.oc.gp_Pnt_3(...center);
-    const dir = new this.oc.gp_Dir_4(...direction);
-    const axis = new this.oc.gp_Ax2_3(origin, dir);
-    const maker = new this.oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height);
-    const solid = maker.Shape();
-    maker.delete();
-    axis.delete();
-    origin.delete();
-    dir.delete();
-    return solid;
+    return _makeCylinder(this.oc, radius, height, center, direction);
   }
 
   makeSphere(radius: number, center: [number, number, number] = [0, 0, 0]): OcShape {
-    const origin = new this.oc.gp_Pnt_3(...center);
-    const maker = new this.oc.BRepPrimAPI_MakeSphere_2(origin, radius);
-    const solid = maker.Shape();
-    maker.delete();
-    origin.delete();
-    return solid;
+    return _makeSphere(this.oc, radius, center);
   }
 
-  // --- Extrusion / sweep / loft / revolution ---
+  // --- Extrusion / sweep / loft / revolution (delegates to sweepOps.ts) ---
 
   extrude(face: OcShape, direction: [number, number, number], length: number): OcShape {
-    const vec = new this.oc.gp_Vec_4(
-      direction[0] * length,
-      direction[1] * length,
-      direction[2] * length
-    );
-    const maker = new this.oc.BRepPrimAPI_MakePrism_1(face, vec, false, true);
-    const result = maker.Shape();
-    maker.delete();
-    vec.delete();
-    return result;
+    return _extrude(this.oc, face, direction, length);
   }
 
   revolve(shape: OcShape, axis: OcType, angle: number): OcShape {
-    const maker = new this.oc.BRepPrimAPI_MakeRevol_1(shape, axis, angle, false);
-    const result = maker.Shape();
-    maker.delete();
-    return result;
+    return _revolve(this.oc, shape, axis, angle);
   }
 
   loft(wires: OcShape[], ruled = false, startShape?: OcShape, endShape?: OcShape): OcShape {
-    const loftBuilder = new this.oc.BRepOffsetAPI_ThruSections(true, ruled, 1e-6);
-    if (startShape) loftBuilder.AddVertex(startShape);
-    for (const wire of wires) {
-      loftBuilder.AddWire(wire);
-    }
-    if (endShape) loftBuilder.AddVertex(endShape);
-    const progress = new this.oc.Message_ProgressRange_1();
-    loftBuilder.Build(progress);
-    const result = loftBuilder.Shape();
-    loftBuilder.delete();
-    progress.delete();
-    return result;
+    return _loft(this.oc, wires, ruled, startShape, endShape);
   }
 
   sweep(wire: OcShape, spine: OcShape, options: { transitionMode?: number } = {}): OcShape {
-    const { transitionMode } = options;
-    const sweepBuilder = new this.oc.BRepOffsetAPI_MakePipeShell(spine);
-    if (transitionMode !== undefined) {
-      sweepBuilder.SetTransitionMode(transitionMode);
-    }
-    sweepBuilder.Add_1(wire, false, false);
-    const progress = new this.oc.Message_ProgressRange_1();
-    sweepBuilder.Build(progress);
-    progress.delete();
-    sweepBuilder.MakeSolid();
-    const result = sweepBuilder.Shape();
-    sweepBuilder.delete();
-    return result;
+    return _sweep(this.oc, wire, spine, options);
   }
 
-  // --- Modification ---
+  // --- Modification (delegates to modifierOps.ts) ---
 
   fillet(shape: OcShape, edges: OcShape[], radius: number | ((edge: OcShape) => number)): OcShape {
-    const builder = new this.oc.BRepFilletAPI_MakeFillet(
-      shape,
-      this.oc.ChFi3d_FilletShape.ChFi3d_Rational
-    );
-    for (const edge of edges) {
-      const r = typeof radius === 'function' ? radius(edge) : radius;
-      if (r > 0) builder.Add_2(r, edge);
-    }
-    const result = builder.Shape();
-    builder.delete();
-    return result;
+    return _fillet(this.oc, shape, edges, radius);
   }
 
   chamfer(
@@ -257,60 +168,15 @@ export class OCCTAdapter implements KernelAdapter {
     edges: OcShape[],
     distance: number | ((edge: OcShape) => number)
   ): OcShape {
-    const builder = new this.oc.BRepFilletAPI_MakeChamfer(shape);
-    for (const edge of edges) {
-      const d = typeof distance === 'function' ? distance(edge) : distance;
-      if (d > 0) builder.Add_2(d, edge);
-    }
-    const result = builder.Shape();
-    builder.delete();
-    return result;
+    return _chamfer(this.oc, shape, edges, distance);
   }
 
   shell(shape: OcShape, faces: OcShape[], thickness: number, tolerance = 1e-3): OcShape {
-    const facesToRemove = new this.oc.TopTools_ListOfShape_1();
-    for (const face of faces) {
-      facesToRemove.Append_1(face);
-    }
-    const progress = new this.oc.Message_ProgressRange_1();
-    const builder = new this.oc.BRepOffsetAPI_MakeThickSolid();
-    builder.MakeThickSolidByJoin(
-      shape,
-      facesToRemove,
-      -thickness,
-      tolerance,
-      this.oc.BRepOffset_Mode.BRepOffset_Skin,
-      false,
-      false,
-      this.oc.GeomAbs_JoinType.GeomAbs_Arc,
-      false,
-      progress
-    );
-    const result = builder.Shape();
-    builder.delete();
-    facesToRemove.delete();
-    progress.delete();
-    return result;
+    return _shell(this.oc, shape, faces, thickness, tolerance);
   }
 
   offset(shape: OcShape, distance: number, tolerance = 1e-6): OcShape {
-    const progress = new this.oc.Message_ProgressRange_1();
-    const builder = new this.oc.BRepOffsetAPI_MakeOffsetShape();
-    builder.PerformByJoin(
-      shape,
-      distance,
-      tolerance,
-      this.oc.BRepOffset_Mode.BRepOffset_Skin,
-      false,
-      false,
-      this.oc.GeomAbs_JoinType.GeomAbs_Arc,
-      false,
-      progress
-    );
-    const result = builder.Shape();
-    builder.delete();
-    progress.delete();
-    return result;
+    return _offset(this.oc, shape, distance, tolerance);
   }
 
   // --- Transforms (delegates to transformOps.ts) ---

@@ -16,17 +16,20 @@ graph TD
 
 ## Key Files
 
-| File              | Purpose                                                                                                                                                                                                  |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`        | Singleton accessor `getKernel()`, bootstrap `initFromOC(oc)`, type re-exports                                                                                                                            |
-| `types.ts`        | Type aliases (`OpenCascadeInstance`, `OcShape`, `OcType` all `any`), `ShapeType` union, `BooleanOptions`, `MeshOptions`, `KernelMeshResult`, `KernelAdapter` interface                                   |
-| `occtAdapter.ts`  | `OCCTAdapter` class implementing shape construction, extrusion/sweep/loft, modification (fillet/chamfer/shell/offset), topology iteration with hash deduplication. Delegates to operation modules below. |
-| `ioOps.ts`        | File I/O operations: `exportSTEP`, `exportSTL`, `importSTEP`, `importSTL` — uses emscripten virtual filesystem                                                                                           |
-| `measureOps.ts`   | Measurement operations: `volume`, `area`, `length`, `centerOfMass`, `boundingBox` — wraps BRepGProp                                                                                                      |
-| `transformOps.ts` | Transform operations: `transform`, `translate`, `rotate`, `mirror`, `scale`, `simplify` — wraps gp_Trsf and BRepBuilderAPI_Transform                                                                     |
-| `booleanOps.ts`   | Boolean operations: `fuse`, `cut`, `intersect`, `fuseAll`, `cutAll`, `buildCompound`, `applyGlue` — with batch/native/pairwise implementations                                                           |
-| `meshOps.ts`      | Meshing operations: `mesh`, `meshEdges` with dual implementations (C++ bulk `MeshExtractor`/`EdgeMeshExtractor` or JS `TopExp_Explorer` fallback)                                                        |
-| `topologyOps.ts`  | Topology iteration: `iterShapes`, `shapeType`, `isSame`, `isEqual` — with dual implementations (C++ `TopologyExtractor` or JS `TopExp_Explorer` fallback)                                                |
+| File                | Purpose                                                                                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`          | Singleton accessor `getKernel()`, bootstrap `initFromOC(oc)`, type re-exports                                                                                          |
+| `types.ts`          | Type aliases (`OpenCascadeInstance`, `OcShape`, `OcType` all `any`), `ShapeType` union, `BooleanOptions`, `MeshOptions`, `KernelMeshResult`, `KernelAdapter` interface |
+| `occtAdapter.ts`    | `OCCTAdapter` class — thin wrapper implementing `KernelAdapter` interface, delegates all operations to the modules below                                               |
+| `constructorOps.ts` | Shape construction: `makeVertex`, `makeEdge`, `makeWire`, `makeFace`, `makeBox`, `makeCylinder`, `makeSphere`                                                          |
+| `sweepOps.ts`       | Sweep operations: `extrude`, `revolve`, `loft`, `sweep` — creates 3D solids from 2D profiles                                                                           |
+| `modifierOps.ts`    | Modification operations: `fillet`, `chamfer`, `shell`, `offset` — modifies existing 3D shapes                                                                          |
+| `booleanOps.ts`     | Boolean operations: `fuse`, `cut`, `intersect`, `fuseAll`, `cutAll`, `buildCompound`, `applyGlue` — with batch/native/pairwise implementations                         |
+| `transformOps.ts`   | Transform operations: `transform`, `translate`, `rotate`, `mirror`, `scale`, `simplify` — wraps gp_Trsf and BRepBuilderAPI_Transform                                   |
+| `measureOps.ts`     | Measurement operations: `volume`, `area`, `length`, `centerOfMass`, `boundingBox` — wraps BRepGProp                                                                    |
+| `meshOps.ts`        | Meshing operations: `mesh`, `meshEdges` with dual implementations (C++ bulk `MeshExtractor`/`EdgeMeshExtractor` or JS `TopExp_Explorer` fallback)                      |
+| `topologyOps.ts`    | Topology iteration: `iterShapes`, `shapeType`, `isSame`, `isEqual` — with dual implementations (C++ `TopologyExtractor` or JS `TopExp_Explorer` fallback)              |
+| `ioOps.ts`          | File I/O operations: `exportSTEP`, `exportSTL`, `importSTEP`, `importSTL` — uses emscripten virtual filesystem                                                         |
 
 ## Gotchas
 
