@@ -5,7 +5,7 @@ import {
   makeCylinder,
   makeSphere,
   FaceFinder,
-  Plane,
+  fnCreateNamedPlane,
   unwrap,
   isErr,
 } from '../src/index.js';
@@ -37,7 +37,7 @@ describe('FaceFinder extra coverage', () => {
     expect(new FaceFinder().parallelTo('YZ').find(makeBox([0, 0, 0], [10, 20, 30])).length).toBe(2);
   });
   it('parallelTo Plane object', () => {
-    const plane = new Plane([0, 0, 0], null, [0, 0, 1]);
+    const plane = unwrap(fnCreateNamedPlane('XY'));
     expect(new FaceFinder().parallelTo(plane).find(makeBox([0, 0, 0], [10, 20, 30])).length).toBe(
       2
     );
@@ -62,7 +62,7 @@ describe('FaceFinder extra coverage', () => {
     expect(new FaceFinder().inPlane('YZ').find(makeBox([0, 0, 0], [10, 20, 30])).length).toBe(1);
   });
   it('inPlane Plane object', () => {
-    const plane = new Plane([0, 0, 30], null, [0, 0, 1]);
+    const plane = unwrap(fnCreateNamedPlane('XY', [0, 0, 30]));
     expect(new FaceFinder().inPlane(plane).find(makeBox([0, 0, 0], [10, 20, 30])).length).toBe(1);
   });
   it('containsPoint corner', () => {

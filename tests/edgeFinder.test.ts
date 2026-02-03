@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, EdgeFinder, Plane } from '../src/index.js';
+import { makeBox, EdgeFinder, fnCreateNamedPlane, unwrap } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -41,7 +41,7 @@ describe('EdgeFinder extra coverage', () => {
 
   it('parallelTo Plane object', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const plane = new Plane([0, 0, 0], null, [0, 0, 1]);
+    const plane = unwrap(fnCreateNamedPlane('XY'));
     expect(new EdgeFinder().parallelTo(plane).find(box).length).toBe(8);
   });
 
@@ -66,7 +66,7 @@ describe('EdgeFinder extra coverage', () => {
 
   it('inPlane with Plane object', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const plane = new Plane([0, 0, 0], null, [0, 0, 1]);
+    const plane = unwrap(fnCreateNamedPlane('XY'));
     const edges = new EdgeFinder().inPlane(plane).find(box);
     expect(edges.length).toBe(4);
   });
