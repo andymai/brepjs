@@ -3,7 +3,7 @@ import { findCurveType } from '../../core/definitionMaps.js';
 import { unwrap } from '../../core/result.js';
 import { bug } from '../../core/errors.js';
 import { getKernel } from '../../kernel/index.js';
-import { GCWithScope } from '../../core/memory.js';
+import { gcWithScope } from '../../core/memory.js';
 import { Curve2D } from './Curve2D.js';
 import { samePoint } from './vectorOperations.js';
 
@@ -14,7 +14,7 @@ export const approximateAsBSpline = (
   maxSegments = 200
 ): Curve2D => {
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const continuities: Record<string, OcType> = {
     C0: oc.GeomAbs_Shape.GeomAbs_C0,
@@ -74,7 +74,7 @@ export function approximateAsSvgCompatibleCurve(
     maxSegments: 300,
   }
 ): Curve2D[] {
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   return curves.flatMap((curve) => {
     const adaptor = r(curve.adaptor());

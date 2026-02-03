@@ -1,6 +1,6 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { GCWithScope, localGC, WrappingObj } from '../core/memory.js';
+import { gcWithScope, localGC, WrappingObj } from '../core/memory.js';
 import { asPnt, makeAx2, makeAx3, makeAx1, Vector, type Point } from '../core/geometry.js';
 import { cast, downcast } from './cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
@@ -391,7 +391,7 @@ export const makeSphere = (radius: number): Solid => {
 class EllipsoidTransform extends WrappingObj<OcType> {
   constructor(x: number, y: number, z: number) {
     const oc = getKernel().oc;
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     const xyRatio = Math.sqrt((x * y) / z);
     const xzRatio = x / xyRatio;
@@ -416,7 +416,7 @@ class EllipsoidTransform extends WrappingObj<OcType> {
 
   applyToPoint(p: OcType): OcType {
     const oc = getKernel().oc;
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     const coords = r(p.XYZ());
     this.wrapped.Transforms_1(coords);
@@ -446,7 +446,7 @@ function convertToJSArray(arrayOfPoints: OcType): OcType[][] {
  */
 export const makeEllipsoid = (aLength: number, bLength: number, cLength: number): Solid => {
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const sphere = r(new oc.gp_Sphere_1());
   sphere.SetRadius(1);
@@ -556,7 +556,7 @@ export const makeCompound = compoundShapes;
 
 function _weld(facesOrShells: Array<Face | Shell>): AnyShape {
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const shellBuilder = r(new oc.BRepBuilderAPI_Sewing(1e-6, true, true, true, false));
 
@@ -597,7 +597,7 @@ export function weldShellsAndFaces(
  * @category Solids
  */
 export function makeSolid(facesOrShells: Array<Face | Shell>): Result<Solid> {
-  const r = GCWithScope();
+  const r = gcWithScope();
   const oc = getKernel().oc;
   const shell = _weld(facesOrShells);
   return andThen(cast(r(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)), (solid) => {

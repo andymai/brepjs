@@ -31,7 +31,7 @@ import { DEG2RAD } from '../../core/constants.js';
 import type { DrawingInterface, SketchData } from './lib.js';
 import round5 from '../../utils/round5.js';
 import { asSVG, viewbox } from './svg.js';
-import { GCWithScope } from '../../core/memory.js';
+import { gcWithScope } from '../../core/memory.js';
 import type { SingleFace } from '../../query/helpers.js';
 import { getSingleFace } from '../../query/helpers.js';
 
@@ -203,7 +203,7 @@ export default class Blueprint implements DrawingInterface {
     } = {}
   ) {
     const oc = getKernel().oc;
-    const gc = GCWithScope();
+    const gc = gcWithScope();
 
     const foundFace = unwrap(getSingleFace(face, shape));
     const hole = this.subFace(foundFace, origin);
@@ -227,7 +227,7 @@ export default class Blueprint implements DrawingInterface {
   }
 
   toSVGPathD() {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const bp = this.clone().mirror([1, 0], [0, 0], 'plane');
 
     const compatibleCurves = approximateAsSvgCompatibleCurve(bp.curves);

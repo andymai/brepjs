@@ -1,6 +1,6 @@
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
-import { GCWithScope } from '../core/memory.js';
+import { gcWithScope } from '../core/memory.js';
 import { cast } from '../topology/cast.js';
 import { unwrap } from '../core/result.js';
 import type { Edge, AnyShape } from '../topology/shapes.js';
@@ -17,7 +17,7 @@ export function makeProjectedEdges(
   withHiddenLines = true
 ): { visible: Edge[]; hidden: Edge[] } {
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const hiddenLineRemoval = r(new oc.HLRBRep_Algo_1());
   hiddenLineRemoval.Add_2(shape.wrapped, 0);

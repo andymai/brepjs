@@ -1,5 +1,5 @@
 import { getKernel } from '../../kernel/index.js';
-import { GCWithScope } from '../../core/memory.js';
+import { gcWithScope } from '../../core/memory.js';
 import { approximateAsBSpline } from './approximations.js';
 import { Curve2D } from './Curve2D.js';
 import type { Point2D } from './definitions.js';
@@ -25,7 +25,7 @@ export const make2dOffset = (
   curve: Curve2D,
   offset: number
 ): Curve2D | { collapsed: true; firstPoint: Point2D; lastPoint: Point2D } => {
-  const r = GCWithScope();
+  const r = gcWithScope();
   const curveType = curve.geomType;
 
   if (curveType === 'CIRCLE') {

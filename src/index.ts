@@ -51,7 +51,16 @@ export {
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
-export { WrappingObj, GCWithScope, GCWithObject, localGC, type Deletable } from './core/memory.js';
+export {
+  WrappingObj,
+  gcWithScope,
+  gcWithObject,
+  localGC,
+  type Deletable,
+  // Deprecated aliases — use gcWithScope and gcWithObject instead
+  GCWithScope,
+  GCWithObject,
+} from './core/memory.js';
 
 export {
   Vector,

@@ -1,6 +1,6 @@
 import type { OcShape, OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { WrappingObj, GCWithScope, type Deletable } from '../core/memory.js';
+import { WrappingObj, gcWithScope, type Deletable } from '../core/memory.js';
 import { meshShapeEdges as _meshShapeEdges } from './meshFns.js';
 import {
   Vector,
@@ -758,7 +758,7 @@ export class Face extends Shape {
   }
 
   uvCoordinates(point: Point): [number, number] {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const surface = r(this.oc.BRep_Tool.Surface_2(this.wrapped));
 
     const projectedPoint = r(
@@ -781,7 +781,7 @@ export class Face extends Shape {
     let u = 0;
     let v = 0;
 
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     if (!locationVector) {
       const { uMin, uMax, vMin, vMax } = this.UVBounds;
@@ -828,7 +828,7 @@ export class Face extends Shape {
    * @internal
    */
   triangulation(index0 = 0, skipNormals = false): FaceTriangulation | null {
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     const aLocation = r(new this.oc.TopLoc_Location_1());
     const triangulationHandle = r(this.oc.BRep_Tool.Triangulation(this.wrapped, aLocation, 0));
@@ -906,7 +906,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     other: Shape3D,
     { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
   ): Result<Shape3D> {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const newBody = r(new this.oc.BRepAlgoAPI_Fuse_3(this.wrapped, other.wrapped, progress));
     applyGlue(newBody, optimisation);
@@ -931,7 +931,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     tool: Shape3D,
     { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
   ): Result<Shape3D> {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const cutter = r(new this.oc.BRepAlgoAPI_Cut_3(this.wrapped, tool.wrapped, progress));
     applyGlue(cutter, optimisation);
@@ -953,7 +953,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    * @category Shape Modifications
    */
   intersect(tool: AnyShape, { simplify = false }: { simplify?: boolean } = {}): Result<Shape3D> {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const intersector = r(new this.oc.BRepAlgoAPI_Common_3(this.wrapped, tool.wrapped, progress));
     intersector.Build(progress);
@@ -1000,7 +1000,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
       filter = thicknessOrConfig.filter;
     }
 
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     const filteredFaces = filter.find(this as unknown as AnyShape);
     const facesToRemove = r(new this.oc.TopTools_ListOfShape_1());
@@ -1090,7 +1090,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     radiusConfig: RadiusConfig<FilletRadius>,
     filter?: (e: EdgeFinder) => EdgeFinder
   ): Result<Shape3D> {
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     const filletBuilder = r(
       new this.oc.BRepFilletAPI_MakeFillet(
@@ -1136,7 +1136,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
     radiusConfig: RadiusConfig<ChamferRadius>,
     filter?: (e: EdgeFinder) => EdgeFinder
   ): Result<Shape3D> {
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     const chamferBuilder = r(new this.oc.BRepFilletAPI_MakeChamfer(this.wrapped));
 
@@ -1294,7 +1294,7 @@ export function cutAll(
   if (tools.length === 0) return ok(base);
 
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const toolCompound = r(buildCompound(tools));
 

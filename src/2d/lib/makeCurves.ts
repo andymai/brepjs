@@ -1,6 +1,6 @@
 import type { OcType } from '../../kernel/types.js';
 import { getKernel } from '../../kernel/index.js';
-import { GCWithScope, localGC } from '../../core/memory.js';
+import { gcWithScope, localGC } from '../../core/memory.js';
 import { type Result, ok, err } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 
@@ -250,7 +250,7 @@ export function make2dInerpolatedBSplineCurve(
     degMin?: number;
   } = {}
 ): Result<Curve2D> {
-  const r = GCWithScope();
+  const r = gcWithScope();
   const oc = getKernel().oc;
 
   const pnts = r(new oc.TColgp_Array1OfPnt2d_2(1, points.length));
