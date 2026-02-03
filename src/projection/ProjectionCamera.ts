@@ -2,45 +2,25 @@ import type { OcType } from '../kernel/types.js';
 import { asDir, asPnt, makeAx2, type Point, Vector } from '../core/geometry.js';
 import type { BoundingBox } from '../core/geometry.js';
 import { WrappingObj } from '../core/memory.js';
+import {
+  PROJECTION_PLANES,
+  isProjectionPlane as isProjectionPlaneCheck,
+  type CubeFace,
+  type ProjectionPlane,
+} from './projectionPlanes.js';
 
-export type CubeFace = 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right';
-export type ProjectionPlane =
-  | 'XY'
-  | 'XZ'
-  | 'YZ'
-  | 'YX'
-  | 'ZX'
-  | 'ZY'
-  | 'front'
-  | 'back'
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right';
-
-const PROJECTION_PLANES: Record<ProjectionPlane, { dir: Point; xAxis: Point }> = {
-  XY: { dir: [0, 0, 1], xAxis: [1, 0, 0] },
-  XZ: { dir: [0, -1, 0], xAxis: [1, 0, 0] },
-  YZ: { dir: [1, 0, 0], xAxis: [0, 1, 0] },
-  YX: { dir: [0, 0, -1], xAxis: [0, 1, 0] },
-  ZX: { dir: [0, 1, 0], xAxis: [0, 0, 1] },
-  ZY: { dir: [-1, 0, 0], xAxis: [0, 0, 1] },
-
-  front: { dir: [0, -1, 0], xAxis: [1, 0, 0] },
-  back: { dir: [0, 1, 0], xAxis: [-1, 0, 0] },
-  right: { dir: [-1, 0, 0], xAxis: [0, -1, 0] },
-  left: { dir: [1, 0, 0], xAxis: [0, 1, 0] },
-  bottom: { dir: [0, 0, 1], xAxis: [1, 0, 0] },
-  top: { dir: [0, 0, -1], xAxis: [1, 0, 0] },
-};
-
-export function isProjectionPlane(plane: unknown): plane is ProjectionPlane {
-  return typeof plane === 'string' && plane in PROJECTION_PLANES;
-}
+// Re-export types for backward compatibility
+export type { CubeFace, ProjectionPlane };
+export { isProjectionPlaneCheck as isProjectionPlane };
 
 export function lookFromPlane(projectionPlane: ProjectionPlane): ProjectionCamera {
   const { dir, xAxis } = PROJECTION_PLANES[projectionPlane];
-  return new ProjectionCamera([0, 0, 0], dir, xAxis);
+  // Cast readonly Vec3 to mutable Point for constructor compatibility
+  return new ProjectionCamera(
+    [0, 0, 0],
+    dir as [number, number, number],
+    xAxis as [number, number, number]
+  );
 }
 
 function defaultXDir(direction: Point): Vector {

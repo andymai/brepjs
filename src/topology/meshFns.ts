@@ -6,14 +6,14 @@ import { getKernel } from '../kernel/index.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
-import { HASH_CODE_MAX, uniqueIOFilename } from '../core/constants.js';
+import { uniqueIOFilename } from '../core/constants.js';
 import {
   buildMeshCacheKey,
-  getMesh,
-  setMesh,
+  getMeshForShape,
+  setMeshForShape,
   buildEdgeMeshCacheKey,
-  getEdgeMesh,
-  setEdgeMesh,
+  getEdgeMeshForShape,
+  setEdgeMeshForShape,
 } from './meshCache.js';
 
 // ---------------------------------------------------------------------------
@@ -51,11 +51,10 @@ export function meshShape(
     cache = true,
   }: MeshOptions & { skipNormals?: boolean; cache?: boolean } = {}
 ): ShapeMesh {
-  // Check cache first
-  const shapeHash = shape.wrapped.HashCode(HASH_CODE_MAX) as number;
+  // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
+  const cacheKey = buildMeshCacheKey(0, tolerance, angularTolerance, skipNormals);
   if (cache) {
-    const cacheKey = buildMeshCacheKey(shapeHash, tolerance, angularTolerance, skipNormals);
-    const cached = getMesh(cacheKey);
+    const cached = getMeshForShape(shape.wrapped, cacheKey);
     if (cached) return cached;
   }
 
@@ -78,8 +77,7 @@ export function meshShape(
 
   // Store in cache
   if (cache) {
-    const cacheKey = buildMeshCacheKey(shapeHash, tolerance, angularTolerance, skipNormals);
-    setMesh(cacheKey, mesh);
+    setMeshForShape(shape.wrapped, cacheKey, mesh);
   }
 
   return mesh;
@@ -94,11 +92,10 @@ export function meshShapeEdges(
   shape: AnyShape,
   { tolerance = 1e-3, angularTolerance = 0.1, cache = true }: MeshOptions & { cache?: boolean } = {}
 ): EdgeMesh {
-  // Check cache first
-  const shapeHash = shape.wrapped.HashCode(HASH_CODE_MAX) as number;
+  // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
+  const cacheKey = buildEdgeMeshCacheKey(0, tolerance, angularTolerance);
   if (cache) {
-    const cacheKey = buildEdgeMeshCacheKey(shapeHash, tolerance, angularTolerance);
-    const cached = getEdgeMesh(cacheKey);
+    const cached = getEdgeMeshForShape(shape.wrapped, cacheKey);
     if (cached) return cached;
   }
 
@@ -115,8 +112,7 @@ export function meshShapeEdges(
 
   // Store in cache
   if (cache) {
-    const cacheKey = buildEdgeMeshCacheKey(shapeHash, tolerance, angularTolerance);
-    setEdgeMesh(cacheKey, result);
+    setEdgeMeshForShape(shape.wrapped, cacheKey, result);
   }
 
   return result;

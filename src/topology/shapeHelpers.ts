@@ -387,7 +387,7 @@ export const makeSphere = (radius: number): Solid => {
   return sphere;
 };
 
-class EllpsoidTransform extends WrappingObj<OcType> {
+class EllipsoidTransform extends WrappingObj<OcType> {
   constructor(x: number, y: number, z: number) {
     const oc = getKernel().oc;
     const r = GCWithScope();
@@ -451,7 +451,7 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
   const baseSurface = oc.GeomConvert.SurfaceToBSplineSurface(sphericalSurface.UReversed()).get();
 
   const poles = convertToJSArray(baseSurface.Poles_2());
-  const transform = new EllpsoidTransform(aLength, bLength, cLength);
+  const transform = new EllipsoidTransform(aLength, bLength, cLength);
 
   poles.forEach((columns, rowIdx) => {
     columns.forEach((value, colIdx) => {

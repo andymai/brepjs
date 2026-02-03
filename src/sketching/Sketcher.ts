@@ -57,6 +57,10 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     this.plane.delete();
     this.pointer.delete();
     this.firstPoint.delete();
+    for (const edge of this.pendingEdges) {
+      edge.delete();
+    }
+    this.pendingEdges = [];
   }
 
   protected _updatePointer(newPointer: Vector): void {
