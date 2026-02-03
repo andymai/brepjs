@@ -182,10 +182,8 @@ export default class Blueprint implements DrawingInterface {
   }
 
   subFace(face: Face, origin?: Point | null): Face {
-    const sketch = this.translate(face.uvCoordinates(origin || face.center)).sketchOnFace(
-      face,
-      'original'
-    );
+    const originPoint = origin || [...face.center];
+    const sketch = this.translate(face.uvCoordinates(originPoint)).sketchOnFace(face, 'original');
     return unwrap(makeFace(sketch.wire));
   }
 

@@ -2,6 +2,8 @@ import { Vector, Plane, type Point } from '../core/geometry.js';
 import { localGC } from '../core/memory.js';
 import { makeFace, makeNewFaceWithinFace } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';
+import { toVec3, type Vec3 } from '../core/types.js';
+import { vecScale, vecNormalize, vecCross } from '../core/vecOps.js';
 import {
   basicFaceExtrusion,
   complexExtrude,
@@ -150,17 +152,35 @@ export default class Sketch implements SketchInterface {
       origin?: Point;
     } = {}
   ): Shape3D {
-    const [r, gc] = localGC();
+    const gc = localGC()[1];
 
-    const extrusionVec = r(
-      new Vector(extrusionDirection || this.defaultDirection)
-        .normalized()
-        .multiply(extrusionDistance)
-    );
+    // Convert Point to Vec3
+    const getVec3FromPoint = (p: Point): Vec3 => {
+      if (p instanceof Vector) {
+        return [p.x, p.y, p.z];
+      }
+      if (Array.isArray(p)) {
+        return p.length === 3 ? [p[0], p[1], p[2]] : [p[0], p[1], 0];
+      }
+      // OCCT point-like object
+      const xyz = p.XYZ();
+      const vec: Vec3 = [xyz.X(), xyz.Y(), xyz.Z()];
+      xyz.delete();
+      return vec;
+    };
+
+    const direction: Vec3 = extrusionDirection
+      ? getVec3FromPoint(extrusionDirection)
+      : [this.defaultDirection.x, this.defaultDirection.y, this.defaultDirection.z];
+    const extrusionVec = vecScale(vecNormalize(direction), extrusionDistance);
+
+    const originVec: Vec3 = origin
+      ? getVec3FromPoint(origin)
+      : [this.defaultOrigin.x, this.defaultOrigin.y, this.defaultOrigin.z];
 
     if (extrusionProfile && !twistAngle) {
       const solid = unwrap(
-        complexExtrude(this.wire, origin || this.defaultOrigin, extrusionVec, extrusionProfile)
+        complexExtrude(this.wire, [...originVec], [...extrusionVec], extrusionProfile)
       );
       gc();
       this.delete();
@@ -169,13 +189,7 @@ export default class Sketch implements SketchInterface {
 
     if (twistAngle) {
       const solid = unwrap(
-        twistExtrude(
-          this.wire,
-          twistAngle,
-          origin || this.defaultOrigin,
-          extrusionVec,
-          extrusionProfile
-        )
+        twistExtrude(this.wire, twistAngle, [...originVec], [...extrusionVec], extrusionProfile)
       );
       gc();
       this.delete();
@@ -183,7 +197,7 @@ export default class Sketch implements SketchInterface {
     }
 
     const face = unwrap(makeFace(this.wire));
-    const solid = basicFaceExtrusion(face, extrusionVec);
+    const solid = basicFaceExtrusion(face, [...extrusionVec]);
 
     gc();
     this.delete();
@@ -199,10 +213,18 @@ export default class Sketch implements SketchInterface {
     sweepConfig: GenericSweepConfig = {}
   ): Shape3D {
     const startPoint = this.wire.startPoint;
-    const normal = this.wire.tangentAt(1e-9).multiply(-1).normalize();
-    const xDir = normal.cross(this.defaultDirection).multiply(-1);
+    const tangent = this.wire.tangentAt(1e-9);
+    const normal = vecNormalize(vecScale(tangent, -1));
+    const defaultDir: Point = [
+      this.defaultDirection.x,
+      this.defaultDirection.y,
+      this.defaultDirection.z,
+    ];
+    const xDir = vecScale(vecCross(normal, toVec3(defaultDir)), -1);
 
-    const sketch = sketchOnPlane(new Plane(startPoint, xDir, normal), startPoint);
+    const sketch = sketchOnPlane(new Plane([...startPoint], [...xDir], [...normal]), [
+      ...startPoint,
+    ]);
 
     const config: GenericSweepConfig = {
       forceProfileSpineOthogonality: true,

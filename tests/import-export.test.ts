@@ -8,7 +8,7 @@ beforeAll(async () => {
 
 describe('Shape serialization', () => {
   it('serializes and deserializes a shape', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const serialized = box.serialize();
     expect(serialized).toBeDefined();
     expect(typeof serialized).toBe('string');
@@ -21,7 +21,7 @@ describe('Shape serialization', () => {
 
 describe('Mesh generation', () => {
   it('meshes a box', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const mesh = box.mesh();
     expect(mesh).toBeDefined();
     expect(mesh.vertices).toBeDefined();

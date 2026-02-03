@@ -1,7 +1,10 @@
 import type { OcType } from '../kernel/types.js';
-import { asDir, asPnt, makeAx2, type Point, Vector } from '../core/geometry.js';
+import type { Vec3, PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
 import type { BoundingBox } from '../core/geometry.js';
 import { WrappingObj, localGC } from '../core/memory.js';
+import { toOcPnt, toOcDir, makeOcAx2, fromOcPnt, fromOcDir } from '../core/occtBoundary.js';
+import { vecCross, vecLength, vecNormalize } from '../core/vecOps.js';
 import {
   PROJECTION_PLANES,
   isProjectionPlane as isProjectionPlaneCheck,
@@ -23,91 +26,93 @@ export function lookFromPlane(projectionPlane: ProjectionPlane): ProjectionCamer
   );
 }
 
-function defaultXDir(direction: Point): Vector {
-  const [r, gc] = localGC();
-  const dir = r(new Vector(direction));
-  let yAxis = r(new Vector([0, 0, 1]));
-  let xAxis = yAxis.cross(dir);
-  if (xAxis.Length === 0) {
-    xAxis.delete();
-    yAxis = r(new Vector([0, 1, 0]));
-    xAxis = yAxis.cross(dir);
+function defaultXDir(direction: PointInput): Vec3 {
+  const dir = toVec3(direction);
+  const yAxis: Vec3 = [0, 0, 1];
+  let xAxis = vecCross(yAxis, dir);
+  if (vecLength(xAxis) === 0) {
+    const yAxis2: Vec3 = [0, 1, 0];
+    xAxis = vecCross(yAxis2, dir);
   }
-  gc();
-  return xAxis.normalize();
+  return vecNormalize(xAxis);
 }
 
 export class ProjectionCamera extends WrappingObj<OcType> {
-  constructor(position: Point = [0, 0, 0], direction: Point = [0, 0, 1], xAxis?: Point) {
-    const [r, gc] = localGC();
-    const xDir = xAxis ? r(new Vector(xAxis)) : r(defaultXDir(direction));
-    const ax2 = makeAx2(position, direction, xDir);
-    gc();
+  constructor(
+    position: PointInput = [0, 0, 0],
+    direction: PointInput = [0, 0, 1],
+    xAxis?: PointInput
+  ) {
+    const pos = toVec3(position);
+    const dir = toVec3(direction);
+    const xDir = xAxis ? toVec3(xAxis) : defaultXDir(direction);
+    const ax2 = makeOcAx2(pos, dir, xDir);
     super(ax2);
   }
 
-  get position(): Vector {
-    return new Vector(this.wrapped.Location());
+  get position(): Vec3 {
+    return fromOcPnt(this.wrapped.Location());
   }
 
-  get direction(): Vector {
-    return new Vector(this.wrapped.Direction());
+  get direction(): Vec3 {
+    return fromOcDir(this.wrapped.Direction());
   }
 
-  get xAxis(): Vector {
-    return new Vector(this.wrapped.XDirection());
+  get xAxis(): Vec3 {
+    return fromOcDir(this.wrapped.XDirection());
   }
 
-  get yAxis(): Vector {
-    return new Vector(this.wrapped.YDirection());
+  get yAxis(): Vec3 {
+    return fromOcDir(this.wrapped.YDirection());
   }
 
   autoAxes(): void {
     const [r, gc] = localGC();
-    const dir = r(this.direction);
-    const xAxis = r(defaultXDir(dir));
-    const ocDir = r(asDir(xAxis));
+    const dir = this.direction;
+    const xAxis = defaultXDir(dir);
+    const ocDir = r(toOcDir(xAxis));
     this.wrapped.SetXDirection(ocDir);
     gc();
   }
 
-  setPosition(position: Point): this {
+  setPosition(position: PointInput): this {
     const [r, gc] = localGC();
-    const pnt = r(asPnt(position));
+    const pnt = r(toOcPnt(toVec3(position)));
     this.wrapped.SetLocation(pnt);
     gc();
     return this;
   }
 
-  setXAxis(xAxis: Point): this {
+  setXAxis(xAxis: PointInput): this {
     const [r, gc] = localGC();
-    const dir = r(asDir(xAxis));
+    const dir = r(toOcDir(toVec3(xAxis)));
     this.wrapped.SetXDirection(dir);
     gc();
     return this;
   }
 
-  setYAxis(yAxis: Point): this {
+  setYAxis(yAxis: PointInput): this {
     const [r, gc] = localGC();
-    const dir = r(asDir(yAxis));
+    const dir = r(toOcDir(toVec3(yAxis)));
     this.wrapped.SetYDirection(dir);
     gc();
     return this;
   }
 
-  lookAt(shape: { boundingBox: BoundingBox } | Point): this {
+  lookAt(shape: { boundingBox: BoundingBox } | PointInput): this {
     const [r, gc] = localGC();
-    const lookAtPoint = r(
-      new Vector(
-        'boundingBox' in (shape as object)
-          ? (shape as { boundingBox: BoundingBox }).boundingBox.center
-          : (shape as Point)
-      )
+    const lookAtPoint = toVec3(
+      'boundingBox' in (shape as object)
+        ? (shape as { boundingBox: BoundingBox }).boundingBox.center
+        : (shape as PointInput)
     );
-    const pos = r(this.position);
-    const diff = r(pos.sub(lookAtPoint));
-    const direction = r(diff.normalized());
-    const ocDir = r(direction.toDir());
+    const pos = this.position;
+    const diff = vecNormalize([
+      pos[0] - lookAtPoint[0],
+      pos[1] - lookAtPoint[1],
+      pos[2] - lookAtPoint[2],
+    ]);
+    const ocDir = r(toOcDir(diff));
 
     this.wrapped.SetDirection(ocDir);
     gc();

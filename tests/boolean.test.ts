@@ -8,8 +8,8 @@ beforeAll(async () => {
 
 describe('Boolean operations', () => {
   it('fuses two boxes', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
     const fused = unwrap(box1.fuse(box2));
     expect(fused).toBeDefined();
     const vol = measureVolume(fused);
@@ -18,8 +18,8 @@ describe('Boolean operations', () => {
   });
 
   it('cuts a box from a box', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
     const cut = unwrap(box1.cut(box2));
     expect(cut).toBeDefined();
     const vol = measureVolume(cut);
@@ -28,8 +28,8 @@ describe('Boolean operations', () => {
   });
 
   it('intersects two boxes', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
     const common = unwrap(box1.intersect(box2));
     expect(common).toBeDefined();
     const vol = measureVolume(common);
@@ -40,7 +40,7 @@ describe('Boolean operations', () => {
 
 describe('Shape transforms', () => {
   it('translates a box', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const translated = box.translate([100, 0, 0]);
     expect(translated).toBeDefined();
     const vol = measureVolume(translated);
@@ -48,7 +48,7 @@ describe('Shape transforms', () => {
   });
 
   it('clones a box', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const cloned = box.clone();
     expect(cloned).toBeDefined();
     const vol = measureVolume(cloned);

@@ -1,4 +1,5 @@
-import type { Vector, Point } from '../core/geometry.js';
+import type { Point } from '../core/geometry.js';
+import type { Vec3 } from '../core/types.js';
 import type { Face, Edge } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { queryError } from '../core/errors.js';
@@ -21,7 +22,7 @@ export type FaceOrEdge = Face | Edge;
 
 export type FilterFcn<Type> = {
   element: Type;
-  normal: Vector | null;
+  normal: Vec3 | null;
 };
 
 export abstract class Finder<Type, FilterType> {

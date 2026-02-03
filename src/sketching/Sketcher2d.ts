@@ -32,6 +32,7 @@ import {
   make2dEllipseArc,
   type Point2D,
 } from '../2d/lib/index.js';
+import { vecScale } from '../core/vecOps.js';
 import Blueprint from '../2d/blueprints/Blueprint.js';
 
 type UVBounds = {
@@ -562,12 +563,16 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     const sketch = new Sketch(wire);
     if (wire.isClosed) {
       const face = r(sketch.clone().face());
-      sketch.defaultOrigin = r(face.pointOnSurface(0.5, 0.5));
-      sketch.defaultDirection = r(r(face.normalAt()).multiply(-1));
+      const origin = face.pointOnSurface(0.5, 0.5);
+      const normal = face.normalAt();
+      const direction = vecScale(normal, -1);
+      sketch.defaultOrigin = [origin[0], origin[1], origin[2]];
+      sketch.defaultDirection = [direction[0], direction[1], direction[2]];
     } else {
-      const startPoint = r(wire.startPoint);
-      sketch.defaultOrigin = startPoint;
-      sketch.defaultDirection = r(this.face.normalAt(startPoint));
+      const startPoint = wire.startPoint;
+      const normal = this.face.normalAt([startPoint[0], startPoint[1], startPoint[2]]);
+      sketch.defaultOrigin = [startPoint[0], startPoint[1], startPoint[2]];
+      sketch.defaultDirection = [normal[0], normal[1], normal[2]];
     }
     sketch.baseFace = this.face;
     gc();

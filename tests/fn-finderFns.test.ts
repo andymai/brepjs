@@ -20,7 +20,7 @@ beforeAll(async () => {
 }, 30000);
 
 function fnBox(x = 10, y = 10, z = 10) {
-  return castShape(makeBox([x, y, z]).wrapped);
+  return castShape(makeBox([0, 0, 0], [x, y, z]).wrapped);
 }
 
 describe('edgeFinder', () => {

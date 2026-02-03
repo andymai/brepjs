@@ -7,7 +7,8 @@ import {
   makeEllipse,
   makeHelix,
 } from '../topology/shapeHelpers.js';
-import { Plane, type PlaneName, type Point, Vector } from '../core/geometry.js';
+import { Plane, type PlaneName, type Point, type Vec3, vecRotate } from '../core/geometry.js';
+import { DEG2RAD } from '../core/constants.js';
 import Sketcher from './Sketcher.js';
 import { makePlane } from '../core/geometryHelpers.js';
 import Sketch from './Sketch.js';
@@ -32,10 +33,12 @@ export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Ske
       ? makePlane(planeConfig.plane)
       : makePlane(planeConfig.plane, planeConfig.origin);
 
-  const wire = unwrap(assembleWire([makeCircle(radius, plane.origin, plane.zDir)]));
+  const wire = unwrap(
+    assembleWire([makeCircle(radius, plane.origin.toVec3(), plane.zDir.toVec3())])
+  );
   const sketch = new Sketch(wire, {
-    defaultOrigin: plane.origin,
-    defaultDirection: plane.zDir,
+    defaultOrigin: [...plane.origin.toVec3()],
+    defaultDirection: [...plane.zDir.toVec3()],
   });
   plane.delete();
   return sketch;
@@ -51,25 +54,26 @@ export const sketchEllipse = (xRadius = 1, yRadius = 2, planeConfig: PlaneConfig
     planeConfig.plane instanceof Plane
       ? makePlane(planeConfig.plane)
       : makePlane(planeConfig.plane, planeConfig.origin);
-  const xDir = new Vector(plane.xDir);
+  let xDir: Vec3 = plane.xDir.toVec3();
 
   let majR = xRadius;
   let minR = yRadius;
 
   if (yRadius > xRadius) {
-    xDir.rotate(90, plane.origin, plane.zDir);
+    xDir = vecRotate(xDir, plane.zDir.toVec3(), 90 * DEG2RAD);
     majR = yRadius;
     minR = xRadius;
   }
 
   const wire = unwrap(
-    assembleWire([unwrap(makeEllipse(majR, minR, plane.origin, plane.zDir, xDir))])
+    assembleWire([
+      unwrap(makeEllipse(majR, minR, plane.origin.toVec3(), plane.zDir.toVec3(), xDir)),
+    ])
   );
-  xDir.delete();
 
   const sketch = new Sketch(wire, {
-    defaultOrigin: plane.origin,
-    defaultDirection: plane.zDir,
+    defaultOrigin: [...plane.origin.toVec3()],
+    defaultDirection: [...plane.zDir.toVec3()],
   });
   plane.delete();
   return sketch;
@@ -185,13 +189,11 @@ export const polysideInnerRadius = (
  * @category Sketching
  */
 export const sketchFaceOffset = (face: Face, offset: number): Sketch => {
-  const defaultOrigin = face.center;
-  const defaultDirection = face.normalAt();
+  const defaultOrigin: [number, number, number] = [...face.center];
+  const defaultDirection: [number, number, number] = [...face.normalAt()];
   const wire = unwrap(face.outerWire().offset2D(offset));
 
   const sketch = new Sketch(wire, { defaultOrigin, defaultDirection });
-  defaultOrigin.delete();
-  defaultDirection.delete();
 
   return sketch;
 };
@@ -217,9 +219,10 @@ export const sketchParametricFunction = (
   );
 
   const stepSize = (stop - start) / pointsCount;
-  const points = [...Array(pointsCount + 1).keys()].map((t) => {
+  const points: Vec3[] = [...Array(pointsCount + 1).keys()].map((t) => {
     const point = func(start + t * stepSize);
-    return r(plane.toWorldCoords(point));
+    const worldCoords = r(plane.toWorldCoords(point));
+    return worldCoords.toVec3();
   });
 
   const wire = unwrap(
@@ -227,8 +230,8 @@ export const sketchParametricFunction = (
   );
 
   const sketch = new Sketch(wire, {
-    defaultOrigin: plane.origin,
-    defaultDirection: plane.zDir,
+    defaultOrigin: [...plane.origin.toVec3()],
+    defaultDirection: [...plane.zDir.toVec3()],
   });
   gc();
   return sketch;
@@ -247,7 +250,26 @@ export const sketchHelix = (
   dir: Point = [0, 0, 1],
   lefthand = false
 ): Sketch => {
+  // Convert Point to Vec3 - handle array case (most common) and fall back to Vector conversion
+  let centerVec3: Vec3;
+  let dirVec3: Vec3;
+
+  if (Array.isArray(center)) {
+    centerVec3 =
+      center.length === 2 ? [center[0], center[1], 0] : [center[0], center[1], center[2]];
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Point can be Vector or OCCT object
+    centerVec3 = (center as any).toVec3 ? (center as any).toVec3() : [0, 0, 0];
+  }
+
+  if (Array.isArray(dir)) {
+    dirVec3 = dir.length === 2 ? [dir[0], dir[1], 0] : [dir[0], dir[1], dir[2]];
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Point can be Vector or OCCT object
+    dirVec3 = (dir as any).toVec3 ? (dir as any).toVec3() : [0, 0, 1];
+  }
+
   return new Sketch(
-    unwrap(assembleWire(makeHelix(pitch, height, radius, center, dir, lefthand).wires))
+    unwrap(assembleWire(makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand).wires))
   );
 };

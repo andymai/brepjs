@@ -85,19 +85,19 @@ describe('GCWithObject', () => {
 
 describe('WrappingObj', () => {
   it('wraps an OCCT shape and exposes it via .wrapped', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     expect(box.wrapped).toBeDefined();
   });
 
   it('throws after delete', () => {
-    const box = makeBox([5, 5, 5]);
+    const box = makeBox([0, 0, 0], [5, 5, 5]);
     box.delete();
     expect(() => box.wrapped).toThrow('This object has been deleted');
   });
 
   it('replaces wrapped object via setter', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([5, 5, 5]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [5, 5, 5]);
     const original = box1.wrapped;
     box1.wrapped = box2.wrapped;
     expect(box1.wrapped).not.toBe(original);

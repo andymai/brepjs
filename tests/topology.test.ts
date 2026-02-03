@@ -124,14 +124,14 @@ describe('Vertex', () => {
 describe('Edge', () => {
   it('start/end', () => {
     const e = makeLine([0, 0, 0], [10, 0, 0]);
-    expect(e.startPoint.x).toBeCloseTo(0);
-    expect(e.endPoint.x).toBeCloseTo(10);
+    expect(e.startPoint[0]).toBeCloseTo(0);
+    expect(e.endPoint[0]).toBeCloseTo(10);
   });
   it('length', () => {
     expect(makeLine([0, 0, 0], [10, 0, 0]).length).toBeCloseTo(10);
   });
   it('pointAt', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).pointAt(0.5).x).toBeCloseTo(5);
+    expect(makeLine([0, 0, 0], [10, 0, 0]).pointAt(0.5)[0]).toBeCloseTo(5);
   });
   it('tangentAt', () => {
     expect(makeLine([0, 0, 0], [10, 0, 0]).tangentAt(0.5)).toBeDefined();
@@ -170,8 +170,8 @@ describe('Wire', () => {
     const w = unwrap(
       assembleWire([makeLine([0, 0, 0], [10, 0, 0]), makeLine([10, 0, 0], [10, 10, 0])])
     );
-    expect(w.startPoint.x).toBeCloseTo(0);
-    expect(w.endPoint.y).toBeCloseTo(10);
+    expect(w.startPoint[0]).toBeCloseTo(0);
+    expect(w.endPoint[1]).toBeCloseTo(10);
     expect(w.length).toBeCloseTo(20);
   });
   it('geomType', () => {
@@ -204,22 +204,18 @@ describe('Face', () => {
   it('pointOnSurface', () => {
     const p = sketchRectangle(10, 10).face().pointOnSurface(0.5, 0.5);
     expect(p).toBeDefined();
-    p.delete();
   });
   it('normalAt', () => {
     const n = sketchRectangle(10, 10).face().normalAt();
-    expect(Math.abs(n.z)).toBeCloseTo(1, 1);
-    n.delete();
+    expect(Math.abs(n[2])).toBeCloseTo(1, 1);
   });
   it('normalAt loc', () => {
     const n = sketchRectangle(10, 10).face().normalAt([0, 0, 0]);
     expect(n).toBeDefined();
-    n.delete();
   });
   it('center', () => {
     const c = sketchRectangle(10, 10).face().center;
-    expect(c.x).toBeCloseTo(0, 0);
-    c.delete();
+    expect(c[0]).toBeCloseTo(0, 0);
   });
   it('outerWire', () => {
     expect(sketchRectangle(10, 10).face().outerWire()).toBeInstanceOf(Wire);
@@ -550,9 +546,9 @@ describe('Curve', () => {
     const c = makeLine([0, 0, 0], [10, 0, 0]).curve;
     expect(c.repr).toContain('start');
     expect(c.curveType).toBe('LINE');
-    expect(c.startPoint.x).toBeCloseTo(0);
-    expect(c.endPoint.x).toBeCloseTo(10);
-    expect(c.pointAt(0.5).x).toBeCloseTo(5);
+    expect(c.startPoint[0]).toBeCloseTo(0);
+    expect(c.endPoint[0]).toBeCloseTo(10);
+    expect(c.pointAt(0.5)[0]).toBeCloseTo(5);
     c.delete();
   });
   it('circle', () => {

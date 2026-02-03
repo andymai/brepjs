@@ -1,7 +1,8 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { gcWithScope, localGC, WrappingObj } from '../core/memory.js';
-import { asPnt, makeAx2, makeAx3, makeAx1, Vector, type Point } from '../core/geometry.js';
+import { toOcPnt, toOcVec, makeOcAx1, makeOcAx2, makeOcAx3 } from '../core/occtBoundary.js';
+import type { Vec3 } from '../core/types.js';
 import { cast, downcast } from './cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import { bug, validationError, occtError, typeCastError } from '../core/errors.js';
@@ -18,12 +19,12 @@ import {
 } from './shapes.js';
 import zip from '../utils/zip.js';
 
-export const makeLine = (v1: Point, v2: Point): Edge => {
+export const makeLine = (v1: Vec3, v2: Vec3): Edge => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const p1 = r(asPnt(v1));
-  const p2 = r(asPnt(v2));
+  const p1 = r(toOcPnt(v1));
+  const p2 = r(toOcPnt(v2));
   const maker = r(new oc.BRepBuilderAPI_MakeEdge_3(p1, p2));
   const edge = new Edge(maker.Edge());
   gc();
@@ -32,13 +33,13 @@ export const makeLine = (v1: Point, v2: Point): Edge => {
 
 export const makeCircle = (
   radius: number,
-  center: Point = [0, 0, 0],
-  normal: Point = [0, 0, 1]
+  center: Vec3 = [0, 0, 0],
+  normal: Vec3 = [0, 0, 1]
 ): Edge => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const ax = r(makeAx2(center, normal));
+  const ax = r(makeOcAx2(center, normal));
 
   const circleGp = r(new oc.gp_Circ_2(ax, radius));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_8(circleGp));
@@ -51,14 +52,14 @@ export const makeCircle = (
 export const makeEllipse = (
   majorRadius: number,
   minorRadius: number,
-  center: Point = [0, 0, 0],
-  normal: Point = [0, 0, 1],
-  xDir?: Point
+  center: Vec3 = [0, 0, 0],
+  normal: Vec3 = [0, 0, 1],
+  xDir?: Vec3
 ): Result<Edge> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const ax = r(makeAx2(center, normal, xDir));
+  const ax = r(makeOcAx2(center, normal, xDir));
 
   if (minorRadius > majorRadius) {
     gc();
@@ -78,8 +79,8 @@ export const makeHelix = (
   pitch: number,
   height: number,
   radius: number,
-  center: Point = [0, 0, 0],
-  dir: Point = [0, 0, 1],
+  center: Vec3 = [0, 0, 0],
+  dir: Vec3 = [0, 0, 1],
   lefthand = false
 ): Wire => {
   const oc = getKernel().oc;
@@ -99,7 +100,7 @@ export const makeHelix = (
   const geomSeg = r(new oc.GCE2d_MakeSegment_1(uStart, uStop));
 
   // We do not GC this surface (or it can break for some reason)
-  const geomSurf = new oc.Geom_CylindricalSurface_1(r(makeAx3(center, dir)), radius);
+  const geomSurf = new oc.Geom_CylindricalSurface_1(r(makeOcAx3(center, dir)), radius);
 
   const e = r(
     new oc.BRepBuilderAPI_MakeEdge_30(
@@ -116,13 +117,13 @@ export const makeHelix = (
   return new Wire(w);
 };
 
-export const makeThreePointArc = (v1: Point, v2: Point, v3: Point): Edge => {
+export const makeThreePointArc = (v1: Vec3, v2: Vec3, v3: Vec3): Edge => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const p1 = r(asPnt(v1));
-  const p2 = r(asPnt(v2));
-  const p3 = r(asPnt(v3));
+  const p1 = r(toOcPnt(v1));
+  const p2 = r(toOcPnt(v2));
+  const p3 = r(toOcPnt(v3));
   const arcMaker = r(new oc.GC_MakeArcOfCircle_4(p1, p2, p3));
   const circleGeom = r(arcMaker.Value());
 
@@ -138,14 +139,14 @@ export const makeEllipseArc = (
   minorRadius: number,
   startAngle: number,
   endAngle: number,
-  center: Point = [0, 0, 0],
-  normal: Point = [0, 0, 1],
-  xDir?: Point
+  center: Vec3 = [0, 0, 0],
+  normal: Vec3 = [0, 0, 1],
+  xDir?: Vec3
 ): Result<Edge> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const ax = r(makeAx2(center, normal, xDir));
+  const ax = r(makeOcAx2(center, normal, xDir));
   if (minorRadius > majorRadius) {
     gc();
     return err(
@@ -169,7 +170,7 @@ export interface BSplineApproximationConfig {
 }
 
 export const makeBSplineApproximation = function makeBSplineApproximation(
-  points: Point[],
+  points: Vec3[],
   { tolerance = 1e-3, smoothing = null, degMax = 6, degMin = 1 }: BSplineApproximationConfig = {}
 ): Result<Edge> {
   const oc = getKernel().oc;
@@ -178,7 +179,7 @@ export const makeBSplineApproximation = function makeBSplineApproximation(
   const pnts = r(new oc.TColgp_Array1OfPnt_2(1, points.length));
 
   points.forEach((point, index) => {
-    pnts.SetValue(index + 1, r(asPnt(point)));
+    pnts.SetValue(index + 1, r(toOcPnt(point)));
   });
 
   let splineBuilder: OcType;
@@ -222,7 +223,7 @@ export const makeBSplineApproximation = function makeBSplineApproximation(
   return ok(edge);
 };
 
-export const makeBezierCurve = (points: Point[]): Edge => {
+export const makeBezierCurve = (points: Vec3[]): Edge => {
   if (points.length < 2) {
     bug('makeBezierCurve', `Need at least 2 points for a Bezier curve, got ${points.length}`);
   }
@@ -230,7 +231,7 @@ export const makeBezierCurve = (points: Point[]): Edge => {
   const [r, gc] = localGC();
   const arrayOfPoints = r(new oc.TColgp_Array1OfPnt_2(1, points.length));
   points.forEach((p, i) => {
-    arrayOfPoints.SetValue(i + 1, r(asPnt(p)));
+    arrayOfPoints.SetValue(i + 1, r(toOcPnt(p)));
   });
   const bezCurve = new oc.Geom_BezierCurve_1(arrayOfPoints);
 
@@ -241,14 +242,14 @@ export const makeBezierCurve = (points: Point[]): Edge => {
   return edge;
 };
 
-export const makeTangentArc = (startPoint: Point, startTgt: Point, endPoint: Point): Edge => {
+export const makeTangentArc = (startPoint: Vec3, startTgt: Vec3, endPoint: Vec3): Edge => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
   const circleGeom = r(
     new oc.GC_MakeArcOfCircle_5(
-      r(asPnt(startPoint)),
-      r(new Vector(startTgt)).wrapped,
-      r(asPnt(endPoint))
+      r(toOcPnt(startPoint)),
+      r(toOcVec(startTgt)),
+      r(toOcPnt(endPoint))
     ).Value()
   );
 
@@ -360,13 +361,13 @@ export const makeNonPlanarFace = (wire: Wire): Result<Face> => {
 export const makeCylinder = (
   radius: number,
   height: number,
-  location: Point = [0, 0, 0],
-  direction: Point = [0, 0, 1]
+  location: Vec3 = [0, 0, 0],
+  direction: Vec3 = [0, 0, 1]
 ): Solid => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const axis = r(makeAx2(location, direction));
+  const axis = r(makeOcAx2(location, direction));
   const cylinder = r(new oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height));
   const solid = new Solid(cylinder.Shape());
   gc();
@@ -397,9 +398,9 @@ class EllipsoidTransform extends WrappingObj<OcType> {
     const xzRatio = x / xyRatio;
     const yzRatio = y / xyRatio;
 
-    const ax1 = r(makeAx1([0, 0, 0], [0, 1, 0]));
-    const ax2 = r(makeAx1([0, 0, 0], [0, 0, 1]));
-    const ax3 = r(makeAx1([0, 0, 0], [1, 0, 0]));
+    const ax1 = r(makeOcAx1([0, 0, 0], [0, 1, 0]));
+    const ax2 = r(makeOcAx1([0, 0, 0], [0, 0, 1]));
+    const ax3 = r(makeOcAx1([0, 0, 0], [1, 0, 0]));
 
     const transform = new oc.gp_GTrsf_1();
     transform.SetAffinity_1(ax1, xzRatio);
@@ -481,23 +482,23 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
  *
  * @category Solids
  */
-export const makeBox = (corner1: Point, corner2: Point): Solid => {
+export const makeBox = (corner1: Vec3, corner2: Vec3): Solid => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const p1 = r(asPnt(corner1));
-  const p2 = r(asPnt(corner2));
+  const p1 = r(toOcPnt(corner1));
+  const p2 = r(toOcPnt(corner2));
   const boxMaker = r(new oc.BRepPrimAPI_MakeBox_4(p1, p2));
   const box = new Solid(boxMaker.Solid());
   gc();
   return box;
 };
 
-export const makeVertex = (point: Point): Vertex => {
+export const makeVertex = (point: Vec3): Vertex => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const pnt = r(asPnt(point));
+  const pnt = r(toOcPnt(point));
   const vertexMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
   const vertex = vertexMaker.Vertex();
   gc();
@@ -626,7 +627,7 @@ export const addHolesInFace = (face: Face, holes: Wire[]): Face => {
   return new Face(newFace);
 };
 
-export const makePolygon = (points: Point[]): Result<Face> => {
+export const makePolygon = (points: Vec3[]): Result<Face> => {
   if (points.length < 3)
     return err(
       validationError('POLYGON_MIN_POINTS', 'You need at least 3 points to make a polygon')
