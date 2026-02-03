@@ -198,9 +198,8 @@ export function rawOffsets(
 
   let previousCurve = offsetCurves.at(-1);
 
-  // We have no offseted curves
+  // We have no offset curves
   if (!previousCurve) return [];
-  if (offsettedArray.length === 1) return offsettedArray;
 
   function appendCurve(curve: OffsetCurvePair | Curve2D) {
     // There are different ways to build the array of offsetted curves.
