@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/andymai/brepjs/compare/v1.0.4...v2.0.0) (2026-02-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* boolean operation and meshing performance optimizations ([#21](https://github.com/andymai/brepjs/issues/21))
+
+### Performance Improvements
+
+* boolean operation and meshing performance optimizations ([#21](https://github.com/andymai/brepjs/issues/21)) ([f7ce008](https://github.com/andymai/brepjs/commit/f7ce00802d23174b3d29f189554f5cc9ba8f41c6))
+* edge mesh caching and bulk C++ extractors ([#23](https://github.com/andymai/brepjs/issues/23)) ([347f5a3](https://github.com/andymai/brepjs/commit/347f5a35fec301a608cbdf0cad5d2c83a50d2d65))
+
 ## [1.0.4](https://github.com/andymai/brepjs/compare/v1.0.3...v1.0.4) (2026-02-02)
 
 
