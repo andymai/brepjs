@@ -9,9 +9,28 @@ import type {
   ShapeType,
   MeshOptions,
 } from './types.js';
-import { uniqueIOFilename } from '../utils/ioFilename.js';
-
-const HASH_CODE_MAX = 2147483647;
+import {
+  exportSTEP as _exportSTEP,
+  exportSTL as _exportSTL,
+  importSTEP as _importSTEP,
+  importSTL as _importSTL,
+} from './ioOps.js';
+import {
+  volume as _volume,
+  area as _area,
+  length as _length,
+  centerOfMass as _centerOfMass,
+  boundingBox as _boundingBox,
+  HASH_CODE_MAX,
+} from './measureOps.js';
+import {
+  transform as _transform,
+  translate as _translate,
+  rotate as _rotate,
+  mirror as _mirror,
+  scale as _scale,
+  simplify as _simplify,
+} from './transformOps.js';
 
 /**
  * OpenCascade implementation of KernelAdapter.
@@ -402,23 +421,14 @@ export class OCCTAdapter implements KernelAdapter {
     return result;
   }
 
-  // --- Transforms ---
+  // --- Transforms (delegates to transformOps.ts) ---
 
   transform(shape: OcShape, trsf: OcType): OcShape {
-    const transformer = new this.oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
-    const result = transformer.ModifiedShape(shape);
-    transformer.delete();
-    return result;
+    return _transform(this.oc, shape, trsf);
   }
 
   translate(shape: OcShape, x: number, y: number, z: number): OcShape {
-    const trsf = new this.oc.gp_Trsf_1();
-    const vec = new this.oc.gp_Vec_4(x, y, z);
-    trsf.SetTranslation_1(vec);
-    const result = this.transform(shape, trsf);
-    trsf.delete();
-    vec.delete();
-    return result;
+    return _translate(this.oc, shape, x, y, z);
   }
 
   rotate(
@@ -427,17 +437,7 @@ export class OCCTAdapter implements KernelAdapter {
     axis: [number, number, number] = [0, 0, 1],
     center: [number, number, number] = [0, 0, 0]
   ): OcShape {
-    const trsf = new this.oc.gp_Trsf_1();
-    const origin = new this.oc.gp_Pnt_3(...center);
-    const dir = new this.oc.gp_Dir_4(...axis);
-    const ax1 = new this.oc.gp_Ax1_2(origin, dir);
-    trsf.SetRotation_1(ax1, (angle * Math.PI) / 180);
-    const result = this.transform(shape, trsf);
-    trsf.delete();
-    ax1.delete();
-    origin.delete();
-    dir.delete();
-    return result;
+    return _rotate(this.oc, shape, angle, axis, center);
   }
 
   mirror(
@@ -445,27 +445,11 @@ export class OCCTAdapter implements KernelAdapter {
     origin: [number, number, number],
     normal: [number, number, number]
   ): OcShape {
-    const trsf = new this.oc.gp_Trsf_1();
-    const pnt = new this.oc.gp_Pnt_3(...origin);
-    const dir = new this.oc.gp_Dir_4(...normal);
-    const ax2 = new this.oc.gp_Ax2_3(pnt, dir);
-    trsf.SetMirror_3(ax2);
-    const result = this.transform(shape, trsf);
-    trsf.delete();
-    ax2.delete();
-    pnt.delete();
-    dir.delete();
-    return result;
+    return _mirror(this.oc, shape, origin, normal);
   }
 
   scale(shape: OcShape, center: [number, number, number], factor: number): OcShape {
-    const trsf = new this.oc.gp_Trsf_1();
-    const pnt = new this.oc.gp_Pnt_3(...center);
-    trsf.SetScale(pnt, factor);
-    const result = this.transform(shape, trsf);
-    trsf.delete();
-    pnt.delete();
-    return result;
+    return _scale(this.oc, shape, center, factor);
   }
 
   // --- Meshing ---
@@ -837,146 +821,47 @@ export class OCCTAdapter implements KernelAdapter {
     return { lines: new Float32Array(lines), edgeGroups };
   }
 
-  // --- File I/O ---
+  // --- File I/O (delegates to ioOps.ts) ---
 
   exportSTEP(shapes: OcShape[]): string {
-    const writer = new this.oc.STEPControl_Writer_1();
-    this.oc.Interface_Static.SetIVal('write.step.schema', 5);
-    writer.Model(true).delete();
-    const progress = new this.oc.Message_ProgressRange_1();
-
-    for (const shape of shapes) {
-      writer.Transfer(shape, this.oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
-    }
-
-    const filename = uniqueIOFilename('_export', 'step');
-    const done = writer.Write(filename);
-    writer.delete();
-    progress.delete();
-
-    if (done === this.oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
-      const file = this.oc.FS.readFile('/' + filename);
-      this.oc.FS.unlink('/' + filename);
-      return new TextDecoder().decode(file);
-    }
-    throw new Error('STEP export failed: writer did not complete successfully');
+    return _exportSTEP(this.oc, shapes);
   }
 
   exportSTL(shape: OcShape, binary = false): string | ArrayBuffer {
-    const filename = uniqueIOFilename('_export', 'stl');
-    const done = this.oc.StlAPI.Write(shape, filename, !binary);
-
-    if (done) {
-      const file = this.oc.FS.readFile('/' + filename);
-      this.oc.FS.unlink('/' + filename);
-      if (binary) return file.buffer as ArrayBuffer;
-      return new TextDecoder().decode(file);
-    }
-    throw new Error('STL export failed: StlAPI.Write returned false');
+    return _exportSTL(this.oc, shape, binary);
   }
 
   importSTEP(data: string | ArrayBuffer): OcShape[] {
-    const filename = uniqueIOFilename('_import', 'step');
-    const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
-    this.oc.FS.writeFile('/' + filename, buffer);
-
-    const reader = new this.oc.STEPControl_Reader_1();
-    if (reader.ReadFile(filename)) {
-      this.oc.FS.unlink('/' + filename);
-      const progress = new this.oc.Message_ProgressRange_1();
-      reader.TransferRoots(progress);
-      progress.delete();
-      const shape = reader.OneShape();
-      reader.delete();
-      return [shape];
-    }
-    this.oc.FS.unlink('/' + filename);
-    reader.delete();
-    throw new Error('Failed to import STEP file: reader could not parse the input data');
+    return _importSTEP(this.oc, data);
   }
 
   importSTL(data: string | ArrayBuffer): OcShape {
-    const filename = uniqueIOFilename('_import', 'stl');
-    const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
-    this.oc.FS.writeFile('/' + filename, buffer);
-
-    const reader = new this.oc.StlAPI_Reader();
-    const readShape = new this.oc.TopoDS_Shell();
-
-    if (reader.Read(readShape, filename)) {
-      this.oc.FS.unlink('/' + filename);
-      const upgrader = new this.oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false);
-      upgrader.Build();
-      const upgraded = upgrader.Shape();
-      const solidBuilder = new this.oc.BRepBuilderAPI_MakeSolid_1();
-      solidBuilder.Add(this.oc.TopoDS.Shell_1(upgraded));
-      const solid = solidBuilder.Solid();
-      readShape.delete();
-      upgrader.delete();
-      solidBuilder.delete();
-      reader.delete();
-      return solid;
-    }
-    this.oc.FS.unlink('/' + filename);
-    readShape.delete();
-    reader.delete();
-    throw new Error('Failed to import STL file: reader could not parse the input data');
+    return _importSTL(this.oc, data);
   }
 
-  // --- Measurement ---
+  // --- Measurement (delegates to measureOps.ts) ---
 
   volume(shape: OcShape): number {
-    const props = new this.oc.GProp_GProps_1();
-    this.oc.BRepGProp.VolumeProperties_1(shape, props, true, false, false);
-    const vol = props.Mass();
-    props.delete();
-    return vol;
+    return _volume(this.oc, shape);
   }
 
   area(shape: OcShape): number {
-    const props = new this.oc.GProp_GProps_1();
-    this.oc.BRepGProp.SurfaceProperties_2(shape, props, 1e-7, true);
-    const a = props.Mass();
-    props.delete();
-    return a;
+    return _area(this.oc, shape);
   }
 
   length(shape: OcShape): number {
-    const props = new this.oc.GProp_GProps_1();
-    this.oc.BRepGProp.LinearProperties(shape, props, true, false);
-    const len = props.Mass();
-    props.delete();
-    return len;
+    return _length(this.oc, shape);
   }
 
   centerOfMass(shape: OcShape): [number, number, number] {
-    const props = new this.oc.GProp_GProps_1();
-    this.oc.BRepGProp.VolumeProperties_1(shape, props, true, false, false);
-    const center = props.CentreOfMass();
-    const result: [number, number, number] = [center.X(), center.Y(), center.Z()];
-    center.delete();
-    props.delete();
-    return result;
+    return _centerOfMass(this.oc, shape);
   }
 
   boundingBox(shape: OcShape): {
     min: [number, number, number];
     max: [number, number, number];
   } {
-    const box = new this.oc.Bnd_Box_1();
-    this.oc.BRepBndLib.Add(shape, box, true);
-    const xMin = { current: 0 };
-    const yMin = { current: 0 };
-    const zMin = { current: 0 };
-    const xMax = { current: 0 };
-    const yMax = { current: 0 };
-    const zMax = { current: 0 };
-    box.Get(xMin, yMin, zMin, xMax, yMax, zMax);
-    box.delete();
-    return {
-      min: [xMin.current, yMin.current, zMin.current],
-      max: [xMax.current, yMax.current, zMax.current],
-    };
+    return _boundingBox(this.oc, shape);
   }
 
   // --- Topology iteration ---
@@ -1084,11 +969,7 @@ export class OCCTAdapter implements KernelAdapter {
   // --- Simplification ---
 
   simplify(shape: OcShape): OcShape {
-    const upgrader = new this.oc.ShapeUpgrade_UnifySameDomain_2(shape, true, true, false);
-    upgrader.Build();
-    const result = upgrader.Shape();
-    upgrader.delete();
-    return result;
+    return _simplify(this.oc, shape);
   }
 
   // --- Private helpers ---
