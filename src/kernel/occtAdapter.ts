@@ -31,6 +31,15 @@ import {
   scale as _scale,
   simplify as _simplify,
 } from './transformOps.js';
+import {
+  fuse as _fuse,
+  cut as _cut,
+  intersect as _intersect,
+  fuseAll as _fuseAll,
+  cutAll as _cutAll,
+  buildCompound as _buildCompound,
+  applyGlue as _applyGlue,
+} from './booleanOps.js';
 
 /**
  * OpenCascade implementation of KernelAdapter.
@@ -46,149 +55,26 @@ export class OCCTAdapter implements KernelAdapter {
     this.oc = oc;
   }
 
-  // --- Boolean operations ---
+  // --- Boolean operations (delegates to booleanOps.ts) ---
 
   fuse(shape: OcShape, tool: OcShape, options: BooleanOptions = {}): OcShape {
-    const { optimisation, simplify = false } = options;
-    const progress = new this.oc.Message_ProgressRange_1();
-    const fuseOp = new this.oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
-    this._applyGlue(fuseOp, optimisation);
-    fuseOp.Build(progress);
-    if (simplify) fuseOp.SimplifyResult(true, true, 1e-3);
-    const result = fuseOp.Shape();
-    fuseOp.delete();
-    progress.delete();
-    return result;
+    return _fuse(this.oc, shape, tool, options);
   }
 
   cut(shape: OcShape, tool: OcShape, options: BooleanOptions = {}): OcShape {
-    const { optimisation, simplify = false } = options;
-    const progress = new this.oc.Message_ProgressRange_1();
-    const cutOp = new this.oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
-    this._applyGlue(cutOp, optimisation);
-    cutOp.Build(progress);
-    if (simplify) cutOp.SimplifyResult(true, true, 1e-3);
-    const result = cutOp.Shape();
-    cutOp.delete();
-    progress.delete();
-    return result;
+    return _cut(this.oc, shape, tool, options);
   }
 
   intersect(shape: OcShape, tool: OcShape, options: BooleanOptions = {}): OcShape {
-    const { optimisation, simplify = false } = options;
-    const progress = new this.oc.Message_ProgressRange_1();
-    const commonOp = new this.oc.BRepAlgoAPI_Common_3(shape, tool, progress);
-    this._applyGlue(commonOp, optimisation);
-    commonOp.Build(progress);
-    if (simplify) commonOp.SimplifyResult(true, true, 1e-3);
-    const result = commonOp.Shape();
-    commonOp.delete();
-    progress.delete();
-    return result;
+    return _intersect(this.oc, shape, tool, options);
   }
 
   fuseAll(shapes: OcShape[], options: BooleanOptions = {}): OcShape {
-    if (shapes.length === 0) throw new Error('fuseAll requires at least one shape');
-    if (shapes.length === 1) return shapes[0];
-
-    const { strategy = 'native' } = options;
-    if (strategy === 'pairwise') {
-      return this._fuseAllPairwise(shapes, options);
-    }
-
-    // Prefer C++ BooleanBatch (single WASM call) when available
-    if (this.oc.BooleanBatch) {
-      return this._fuseAllBatch(shapes, options);
-    }
-
-    return this._fuseAllNative(shapes, options);
-  }
-
-  private _fuseAllBatch(shapes: OcShape[], options: BooleanOptions = {}): OcShape {
-    const { optimisation, simplify = false } = options;
-    const batch = new this.oc.BooleanBatch();
-    for (const s of shapes) {
-      batch.addShape(s);
-    }
-    const glueMode = optimisation === 'commonFace' ? 1 : optimisation === 'sameFace' ? 2 : 0;
-    const result = batch.fuseAll(glueMode, simplify);
-    batch.delete();
-    return result;
-  }
-
-  private _fuseAllNative(shapes: OcShape[], options: BooleanOptions = {}): OcShape {
-    const { optimisation, simplify = false } = options;
-
-    // Use OCCT's native N-way general fuse via BRepAlgoAPI_BuilderAlgo.
-    // This handles mutually-intersecting shapes correctly in a single pass.
-    const argList = new this.oc.TopTools_ListOfShape_1();
-    for (const s of shapes) {
-      argList.Append_1(s);
-    }
-
-    const builder = new this.oc.BRepAlgoAPI_BuilderAlgo_1();
-    builder.SetArguments(argList);
-    this._applyGlue(builder, optimisation);
-
-    const progress = new this.oc.Message_ProgressRange_1();
-    builder.Build(progress);
-    let result = builder.Shape();
-
-    if (simplify) {
-      const upgrader = new this.oc.ShapeUpgrade_UnifySameDomain_2(result, true, true, false);
-      upgrader.Build();
-      result = upgrader.Shape();
-      upgrader.delete();
-    }
-
-    argList.delete();
-    builder.delete();
-    progress.delete();
-    return result;
-  }
-
-  private _fuseAllPairwise(shapes: OcShape[], options: BooleanOptions = {}): OcShape {
-    // Recursive pairwise fuse: divide-and-conquer using actual boolean fuse
-    // at each level. Kept as escape hatch via { strategy: 'pairwise' }.
-    // Defer simplification to the final fuse — intermediate simplification is wasted work.
-    const mid = Math.ceil(shapes.length / 2);
-    const left = this.fuseAll(shapes.slice(0, mid), {
-      ...options,
-      simplify: false,
-      strategy: 'pairwise',
-    });
-    const right = this.fuseAll(shapes.slice(mid), {
-      ...options,
-      simplify: false,
-      strategy: 'pairwise',
-    });
-    return this.fuse(left, right, options);
+    return _fuseAll(this.oc, shapes, options);
   }
 
   cutAll(shape: OcShape, tools: OcShape[], options: BooleanOptions = {}): OcShape {
-    if (tools.length === 0) return shape;
-
-    // Prefer C++ BooleanBatch (single WASM call) when available
-    if (this.oc.BooleanBatch) {
-      return this._cutAllBatch(shape, tools, options);
-    }
-
-    const toolCompound = this._buildCompound(tools);
-    const result = this.cut(shape, toolCompound, options);
-    toolCompound.delete();
-    return result;
-  }
-
-  private _cutAllBatch(shape: OcShape, tools: OcShape[], options: BooleanOptions = {}): OcShape {
-    const { optimisation, simplify = false } = options;
-    const batch = new this.oc.BooleanBatch();
-    for (const t of tools) {
-      batch.addShape(t);
-    }
-    const glueMode = optimisation === 'commonFace' ? 1 : optimisation === 'sameFace' ? 2 : 0;
-    const result = batch.cutAll(shape, glueMode, simplify);
-    batch.delete();
-    return result;
+    return _cutAll(this.oc, shape, tools, options);
   }
 
   // --- Shape construction ---
@@ -973,24 +859,4 @@ export class OCCTAdapter implements KernelAdapter {
   }
 
   // --- Private helpers ---
-
-  private _buildCompound(shapes: OcShape[]): OcShape {
-    const builder = new this.oc.TopoDS_Builder();
-    const compound = new this.oc.TopoDS_Compound();
-    builder.MakeCompound(compound);
-    for (const s of shapes) {
-      builder.Add(compound, s);
-    }
-    builder.delete();
-    return compound;
-  }
-
-  private _applyGlue(op: { SetGlue(glue: unknown): void }, optimisation?: string): void {
-    if (optimisation === 'commonFace') {
-      op.SetGlue(this.oc.BOPAlgo_GlueEnum.BOPAlgo_GlueShift);
-    }
-    if (optimisation === 'sameFace') {
-      op.SetGlue(this.oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
-    }
-  }
 }
