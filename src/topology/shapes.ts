@@ -718,9 +718,11 @@ export class Face extends Shape {
 
   get geomType(): SurfaceType {
     const surface = this.surface;
-    const geomType = unwrap(surface.surfaceType);
-    surface.delete();
-    return geomType;
+    try {
+      return unwrap(surface.surfaceType);
+    } finally {
+      surface.delete();
+    }
   }
 
   get UVBounds(): { uMin: number; uMax: number; vMin: number; vMax: number } {

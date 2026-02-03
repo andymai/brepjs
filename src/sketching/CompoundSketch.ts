@@ -32,28 +32,31 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
     8,
     9
   );
-  wires.forEach((wire: Wire, wireIndex: number) => {
-    wire.edges.forEach((edge: { wrapped: unknown }) => {
-      faceBuilder.Add_1(
-        edge.wrapped,
 
-        oc.GeomAbs_Shape.GeomAbs_C0,
-        wireIndex === 0
-      );
+  try {
+    wires.forEach((wire: Wire, wireIndex: number) => {
+      wire.edges.forEach((edge: { wrapped: unknown }) => {
+        faceBuilder.Add_1(
+          edge.wrapped,
+
+          oc.GeomAbs_Shape.GeomAbs_C0,
+          wireIndex === 0
+        );
+      });
     });
-  });
 
-  const progress = new oc.Message_ProgressRange_1();
-  faceBuilder.Build(progress);
-  progress.delete();
-  const newFace = unwrap(cast(faceBuilder.Shape()));
+    const progress = new oc.Message_ProgressRange_1();
+    faceBuilder.Build(progress);
+    progress.delete();
+    const newFace = unwrap(cast(faceBuilder.Shape()));
 
-  faceBuilder.delete();
-
-  if (!(newFace instanceof Face)) {
-    bug('guessFaceFromWires', 'Failed to create a face');
+    if (!(newFace instanceof Face)) {
+      bug('guessFaceFromWires', 'Failed to create a face');
+    }
+    return newFace;
+  } finally {
+    faceBuilder.delete();
   }
-  return newFace;
 };
 
 const fixWire = (wire: Wire, baseFace: Face): Wire => {
