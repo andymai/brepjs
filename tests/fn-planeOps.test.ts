@@ -6,6 +6,8 @@ import {
   resolvePlane,
   planeToWorld,
   planeToLocal,
+  planeToWorldVec3,
+  planeToLocalVec3,
   translatePlane,
   translatePlaneTo,
   pivotPlane,
@@ -50,6 +52,10 @@ describe('createPlane', () => {
 
   it('throws for zero normal', () => {
     expect(() => createPlane([0, 0, 0], null, [0, 0, 0])).toThrow();
+  });
+
+  it('throws for zero xDir when explicitly provided', () => {
+    expect(() => createPlane([0, 0, 0], [0, 0, 0], [0, 0, 1])).toThrow();
   });
 });
 
@@ -152,6 +158,51 @@ describe('planeToWorld / planeToLocal', () => {
     const plane = resolvePlane('XY', 10);
     const world = planeToWorld(plane, [1, 2]);
     expect(world[2]).toBeCloseTo(10);
+  });
+});
+
+describe('planeToWorldVec3 / planeToLocalVec3', () => {
+  it('converts 3D local to world on XY plane', () => {
+    const plane = resolvePlane('XY');
+    const world = planeToWorldVec3(plane, [3, 4, 5]);
+    expect(world[0]).toBeCloseTo(3);
+    expect(world[1]).toBeCloseTo(4);
+    expect(world[2]).toBeCloseTo(5);
+  });
+
+  it('converts 3D world to local on XY plane', () => {
+    const plane = resolvePlane('XY');
+    const local = planeToLocalVec3(plane, [3, 4, 5]);
+    expect(local[0]).toBeCloseTo(3);
+    expect(local[1]).toBeCloseTo(4);
+    expect(local[2]).toBeCloseTo(5);
+  });
+
+  it('round-trips correctly with 3D coordinates', () => {
+    const plane = resolvePlane('XY');
+    const local = [7, 11, 13] as const;
+    const world = planeToWorldVec3(plane, local);
+    const backToLocal = planeToLocalVec3(plane, world);
+    expect(backToLocal[0]).toBeCloseTo(local[0]);
+    expect(backToLocal[1]).toBeCloseTo(local[1]);
+    expect(backToLocal[2]).toBeCloseTo(local[2]);
+  });
+
+  it('works with rotated plane', () => {
+    const plane = resolvePlane('YZ'); // Normal along X
+    const world = planeToWorldVec3(plane, [1, 2, 3]);
+    // YZ plane: x maps to Y, y maps to Z, z maps to X
+    expect(world[0]).toBeCloseTo(3); // z component along X
+    expect(world[1]).toBeCloseTo(1); // x component along Y
+    expect(world[2]).toBeCloseTo(2); // y component along Z
+  });
+
+  it('works with offset plane', () => {
+    const plane = resolvePlane('XY', 10);
+    const world = planeToWorldVec3(plane, [1, 2, 3]);
+    expect(world[0]).toBeCloseTo(1);
+    expect(world[1]).toBeCloseTo(2);
+    expect(world[2]).toBeCloseTo(13); // 10 + 3
   });
 });
 

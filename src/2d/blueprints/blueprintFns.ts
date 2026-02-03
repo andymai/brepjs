@@ -6,8 +6,8 @@
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
 import BlueprintClass from './Blueprint.js';
 import type Blueprint from './Blueprint.js';
-import type { PlaneName, Point } from '../../core/geometry.js';
-import type { Plane } from '../../core/geometry.js';
+import type { PointInput } from '../../core/types.js';
+import type { Plane, PlaneName } from '../../core/planeTypes.js';
 import type { Face } from '../../topology/shapes.js';
 import type { ScaleMode } from '../curves.js';
 
@@ -76,7 +76,7 @@ export function blueprintIsInside(bp: Blueprint, point: Point2D): boolean {
 export function sketchBlueprintOnPlane(
   bp: Blueprint,
   inputPlane?: PlaneName | Plane,
-  origin?: Point | number
+  origin?: PointInput | number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch type not yet ported
 ): any {
   return bp.sketchOnPlane(inputPlane, origin);

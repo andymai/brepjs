@@ -1,7 +1,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
-import { type Point, Vector } from '../core/geometry.js';
-import type { Vec3 } from '../core/types.js';
+import type { PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
 import { makeOcAx1 } from '../core/occtBoundary.js';
 import { vecAdd, vecLength } from '../core/vecOps.js';
 import { localGC } from '../core/memory.js';
@@ -14,26 +14,11 @@ import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
 import { Solid } from '../topology/shapes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
 
-/** Helper to convert legacy Point type to Vec3 */
-function pointToVec3(p: Point): Vec3 {
-  if (Array.isArray(p)) {
-    return p.length === 3 ? [p[0], p[1], p[2]] : [p[0], p[1], 0];
-  } else if (p instanceof Vector) {
-    return [p.x, p.y, p.z];
-  } else {
-    // OCCT point-like object
-    const xyz = p.XYZ();
-    const vec: Vec3 = [xyz.X(), xyz.Y(), xyz.Z()];
-    xyz.delete();
-    return vec;
-  }
-}
-
-export const basicFaceExtrusion = (face: Face, extrusionVec: Point): Solid => {
+export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const vec = pointToVec3(extrusionVec);
+  const vec = toVec3(extrusionVec);
   const ocVec = r(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
   const solidBuilder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true));
   const solid = new Solid(unwrap(downcast(solidBuilder.Shape())));
@@ -43,15 +28,15 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: Point): Solid => {
 
 export const revolution = (
   face: Face,
-  center: Point = [0, 0, 0],
-  direction: Point = [0, 0, 1],
+  center: PointInput = [0, 0, 0],
+  direction: PointInput = [0, 0, 1],
   angle = 360
 ): Result<Shape3D> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const centerVec = pointToVec3(center);
-  const directionVec = pointToVec3(direction);
+  const centerVec = toVec3(center);
+  const directionVec = toVec3(direction);
   const ax = r(makeOcAx1(centerVec, directionVec));
   const revolBuilder = r(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
 
@@ -164,13 +149,13 @@ export type { ExtrusionProfile } from './extrudeUtils.js';
 
 export const supportExtrude = (
   wire: Wire,
-  center: Point,
-  normal: Point,
+  center: PointInput,
+  normal: PointInput,
   support: OcType
 ): Result<Shape3D> => {
   const [r, gc] = localGC();
-  const centerVec = pointToVec3(center);
-  const normalVec = pointToVec3(normal);
+  const centerVec = toVec3(center);
+  const normalVec = toVec3(normal);
   const endVec = vecAdd(centerVec, normalVec);
 
   const mainSpineEdge = r(makeLine(centerVec, endVec));
@@ -183,28 +168,28 @@ export const supportExtrude = (
 
 function complexExtrude(
   wire: Wire,
-  center: Point,
-  normal: Point,
+  center: PointInput,
+  normal: PointInput,
   profileShape: ExtrusionProfile | undefined,
   shellMode: true
 ): Result<[Shape3D, Wire, Wire]>;
 function complexExtrude(
   wire: Wire,
-  center: Point,
-  normal: Point,
+  center: PointInput,
+  normal: PointInput,
   profileShape?: ExtrusionProfile,
   shellMode?: false
 ): Result<Shape3D>;
 function complexExtrude(
   wire: Wire,
-  center: Point,
-  normal: Point,
+  center: PointInput,
+  normal: PointInput,
   profileShape?: ExtrusionProfile,
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const [r, gc] = localGC();
-  const centerVec = pointToVec3(center);
-  const normalVec = pointToVec3(normal);
+  const centerVec = toVec3(center);
+  const normalVec = toVec3(normal);
   const endVec = vecAdd(centerVec, normalVec);
 
   const mainSpineEdge = r(makeLine(centerVec, endVec));
@@ -227,30 +212,30 @@ export { complexExtrude };
 function twistExtrude(
   wire: Wire,
   angleDegrees: number,
-  center: Point,
-  normal: Point,
+  center: PointInput,
+  normal: PointInput,
   profileShape?: ExtrusionProfile,
   shellMode?: false
 ): Result<Shape3D>;
 function twistExtrude(
   wire: Wire,
   angleDegrees: number,
-  center: Point,
-  normal: Point,
+  center: PointInput,
+  normal: PointInput,
   profileShape: ExtrusionProfile | undefined,
   shellMode: true
 ): Result<[Shape3D, Wire, Wire]>;
 function twistExtrude(
   wire: Wire,
   angleDegrees: number,
-  center: Point,
-  normal: Point,
+  center: PointInput,
+  normal: PointInput,
   profileShape?: ExtrusionProfile,
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const [r, gc] = localGC();
-  const centerVec = pointToVec3(center);
-  const normalVec = pointToVec3(normal);
+  const centerVec = toVec3(center);
+  const normalVec = toVec3(normal);
   const endVec = vecAdd(centerVec, normalVec);
 
   const mainSpineEdge = r(makeLine(centerVec, endVec));

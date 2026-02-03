@@ -1,8 +1,9 @@
-import { Vector, Plane, type Point } from '../core/geometry.js';
+import type { Plane } from '../core/planeTypes.js';
+import { createPlane } from '../core/planeOps.js';
 import { localGC } from '../core/memory.js';
 import { makeFace, makeNewFaceWithinFace } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';
-import { toVec3, type Vec3 } from '../core/types.js';
+import { toVec3, type Vec3, type PointInput } from '../core/types.js';
 import { vecScale, vecNormalize, vecCross } from '../core/vecOps.js';
 import {
   basicFaceExtrusion,
@@ -30,13 +31,11 @@ export default class Sketch implements SketchInterface {
   /**
    * @ignore
    */
-  // @ts-expect-error initialised indirectly
-  _defaultOrigin: Vector;
+  _defaultOrigin: Vec3;
   /**
    * @ignore
    */
-  // @ts-expect-error initialised indirectly
-  _defaultDirection: Vector;
+  _defaultDirection: Vec3;
   protected _baseFace: Face | null | undefined;
   constructor(
     wire: Wire,
@@ -44,13 +43,13 @@ export default class Sketch implements SketchInterface {
       defaultOrigin = [0, 0, 0],
       defaultDirection = [0, 0, 1],
     }: {
-      defaultOrigin?: Point;
-      defaultDirection?: Point;
+      defaultOrigin?: PointInput;
+      defaultDirection?: PointInput;
     } = {}
   ) {
     this.wire = wire;
-    this.defaultOrigin = defaultOrigin;
-    this.defaultDirection = defaultDirection;
+    this._defaultOrigin = toVec3(defaultOrigin);
+    this._defaultDirection = toVec3(defaultDirection);
     this.baseFace = null;
   }
 
@@ -65,8 +64,7 @@ export default class Sketch implements SketchInterface {
 
   delete(): void {
     this.wire.delete();
-    this._defaultOrigin.delete();
-    this._defaultDirection.delete();
+    // _defaultOrigin and _defaultDirection are Vec3 tuples - no need to delete
     if (this.baseFace) this.baseFace.delete();
   }
 
@@ -79,20 +77,20 @@ export default class Sketch implements SketchInterface {
     return sketch;
   }
 
-  get defaultOrigin(): Vector {
+  get defaultOrigin(): Vec3 {
     return this._defaultOrigin;
   }
 
-  set defaultOrigin(newOrigin: Point) {
-    this._defaultOrigin = new Vector(newOrigin);
+  set defaultOrigin(newOrigin: PointInput) {
+    this._defaultOrigin = toVec3(newOrigin);
   }
 
-  get defaultDirection(): Vector {
+  get defaultDirection(): Vec3 {
     return this._defaultDirection;
   }
 
-  set defaultDirection(newDirection: Point) {
-    this._defaultDirection = new Vector(newDirection);
+  set defaultDirection(newDirection: PointInput) {
+    this._defaultDirection = toVec3(newDirection);
   }
 
   /**
@@ -120,7 +118,7 @@ export default class Sketch implements SketchInterface {
    * Revolves the drawing on an axis (defined by its direction and an origin
    * (defaults to the sketch origin)
    */
-  revolve(revolutionAxis?: Point, { origin }: { origin?: Point } = {}): Shape3D {
+  revolve(revolutionAxis?: PointInput, { origin }: { origin?: PointInput } = {}): Shape3D {
     const face = unwrap(makeFace(this.wire));
     const solid = unwrap(revolution(face, origin || this.defaultOrigin, revolutionAxis));
     face.delete();
@@ -146,37 +144,18 @@ export default class Sketch implements SketchInterface {
       twistAngle,
       origin,
     }: {
-      extrusionDirection?: Point;
+      extrusionDirection?: PointInput;
       extrusionProfile?: ExtrusionProfile;
       twistAngle?: number;
-      origin?: Point;
+      origin?: PointInput;
     } = {}
   ): Shape3D {
     const gc = localGC()[1];
 
-    // Convert Point to Vec3
-    const getVec3FromPoint = (p: Point): Vec3 => {
-      if (p instanceof Vector) {
-        return [p.x, p.y, p.z];
-      }
-      if (Array.isArray(p)) {
-        return p.length === 3 ? [p[0], p[1], p[2]] : [p[0], p[1], 0];
-      }
-      // OCCT point-like object
-      const xyz = p.XYZ();
-      const vec: Vec3 = [xyz.X(), xyz.Y(), xyz.Z()];
-      xyz.delete();
-      return vec;
-    };
-
-    const direction: Vec3 = extrusionDirection
-      ? getVec3FromPoint(extrusionDirection)
-      : [this.defaultDirection.x, this.defaultDirection.y, this.defaultDirection.z];
+    const direction: Vec3 = extrusionDirection ? toVec3(extrusionDirection) : this.defaultDirection;
     const extrusionVec = vecScale(vecNormalize(direction), extrusionDistance);
 
-    const originVec: Vec3 = origin
-      ? getVec3FromPoint(origin)
-      : [this.defaultOrigin.x, this.defaultOrigin.y, this.defaultOrigin.z];
+    const originVec: Vec3 = origin ? toVec3(origin) : this.defaultOrigin;
 
     if (extrusionProfile && !twistAngle) {
       const solid = unwrap(
@@ -209,20 +188,16 @@ export default class Sketch implements SketchInterface {
    * `sketchOnPlane`.
    */
   sweepSketch(
-    sketchOnPlane: (plane: Plane, origin: Point) => this,
+    sketchOnPlane: (plane: Plane, origin: Vec3) => this,
     sweepConfig: GenericSweepConfig = {}
   ): Shape3D {
     const startPoint = this.wire.startPoint;
     const tangent = this.wire.tangentAt(1e-9);
     const normal = vecNormalize(vecScale(tangent, -1));
-    const defaultDir: Point = [
-      this.defaultDirection.x,
-      this.defaultDirection.y,
-      this.defaultDirection.z,
-    ];
-    const xDir = vecScale(vecCross(normal, toVec3(defaultDir)), -1);
+    const defaultDir: Vec3 = this.defaultDirection;
+    const xDir = vecScale(vecCross(normal, defaultDir), -1);
 
-    const sketch = sketchOnPlane(new Plane([...startPoint], [...xDir], [...normal]), [
+    const sketch = sketchOnPlane(createPlane([...startPoint], [...xDir], [...normal]), [
       ...startPoint,
     ]);
 

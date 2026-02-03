@@ -115,6 +115,21 @@ export function planeToLocal(plane: Plane, world: Vec3): Vec2 {
   return [vecDot(relative, plane.xDir), vecDot(relative, plane.yDir)];
 }
 
+/** Convert 3D local coordinates to 3D world coordinates on the plane. */
+export function planeToWorldVec3(plane: Plane, local: Vec3): Vec3 {
+  const [u, v, w] = local;
+  return vecAdd(
+    vecAdd(vecAdd(plane.origin, vecScale(plane.xDir, u)), vecScale(plane.yDir, v)),
+    vecScale(plane.zDir, w)
+  );
+}
+
+/** Convert 3D world coordinates to 3D local coordinates on the plane. */
+export function planeToLocalVec3(plane: Plane, world: Vec3): Vec3 {
+  const relative = vecSub(world, plane.origin);
+  return [vecDot(relative, plane.xDir), vecDot(relative, plane.yDir), vecDot(relative, plane.zDir)];
+}
+
 // ---------------------------------------------------------------------------
 // Plane transformations (all return new Plane)
 // ---------------------------------------------------------------------------

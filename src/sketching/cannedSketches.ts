@@ -7,10 +7,13 @@ import {
   makeEllipse,
   makeHelix,
 } from '../topology/shapeHelpers.js';
-import { Plane, type PlaneName, type Point, type Vec3, vecRotate } from '../core/geometry.js';
+import type { Plane, PlaneName } from '../core/planeTypes.js';
+import { resolvePlane, planeToWorld } from '../core/planeOps.js';
+import type { Vec3, PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
+import { vecRotate } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import Sketcher from './Sketcher.js';
-import { makePlane } from '../core/geometryHelpers.js';
 import Sketch from './Sketch.js';
 import type { Face } from '../topology/shapes.js';
 import type { Point2D } from '../2d/lib/index.js';
@@ -19,7 +22,7 @@ import { roundedRectangleBlueprint } from '../2d/blueprints/cannedBlueprints.js'
 
 interface PlaneConfig {
   plane?: PlaneName | Plane;
-  origin?: Point | number;
+  origin?: PointInput | number;
 }
 
 /**
@@ -29,18 +32,15 @@ interface PlaneConfig {
  */
 export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Sketch => {
   const plane =
-    planeConfig.plane instanceof Plane
-      ? makePlane(planeConfig.plane)
-      : makePlane(planeConfig.plane, planeConfig.origin);
+    planeConfig.plane && typeof planeConfig.plane !== 'string'
+      ? { ...planeConfig.plane }
+      : resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin);
 
-  const wire = unwrap(
-    assembleWire([makeCircle(radius, plane.origin.toVec3(), plane.zDir.toVec3())])
-  );
+  const wire = unwrap(assembleWire([makeCircle(radius, plane.origin, plane.zDir)]));
   const sketch = new Sketch(wire, {
-    defaultOrigin: [...plane.origin.toVec3()],
-    defaultDirection: [...plane.zDir.toVec3()],
+    defaultOrigin: [...plane.origin],
+    defaultDirection: [...plane.zDir],
   });
-  plane.delete();
   return sketch;
 };
 
@@ -51,31 +51,28 @@ export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Ske
  */
 export const sketchEllipse = (xRadius = 1, yRadius = 2, planeConfig: PlaneConfig = {}): Sketch => {
   const plane =
-    planeConfig.plane instanceof Plane
-      ? makePlane(planeConfig.plane)
-      : makePlane(planeConfig.plane, planeConfig.origin);
-  let xDir: Vec3 = plane.xDir.toVec3();
+    planeConfig.plane && typeof planeConfig.plane !== 'string'
+      ? { ...planeConfig.plane }
+      : resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin);
+  let xDir: Vec3 = plane.xDir;
 
   let majR = xRadius;
   let minR = yRadius;
 
   if (yRadius > xRadius) {
-    xDir = vecRotate(xDir, plane.zDir.toVec3(), 90 * DEG2RAD);
+    xDir = vecRotate(xDir, plane.zDir, 90 * DEG2RAD);
     majR = yRadius;
     minR = xRadius;
   }
 
   const wire = unwrap(
-    assembleWire([
-      unwrap(makeEllipse(majR, minR, plane.origin.toVec3(), plane.zDir.toVec3(), xDir)),
-    ])
+    assembleWire([unwrap(makeEllipse(majR, minR, plane.origin, plane.zDir, xDir))])
   );
 
   const sketch = new Sketch(wire, {
-    defaultOrigin: [...plane.origin.toVec3()],
-    defaultDirection: [...plane.zDir.toVec3()],
+    defaultOrigin: [...plane.origin],
+    defaultDirection: [...plane.zDir],
   });
-  plane.delete();
   return sketch;
 };
 
@@ -90,7 +87,7 @@ export const sketchRectangle = (
   planeConfig: PlaneConfig = {}
 ): Sketch => {
   const sketcher =
-    planeConfig.plane instanceof Plane
+    planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? new Sketcher(planeConfig.plane)
       : new Sketcher(planeConfig.plane, planeConfig.origin);
   return sketcher
@@ -115,7 +112,7 @@ export const sketchRoundedRectangle = (
 ): Sketch => {
   const bp = roundedRectangleBlueprint(width, height, r);
   const data = bp.sketchOnPlane(planeConfig.plane, planeConfig.origin);
-  const opts: { defaultOrigin?: Point; defaultDirection?: Point } = {};
+  const opts: { defaultOrigin?: PointInput; defaultDirection?: PointInput } = {};
   if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
   if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
   return new Sketch(data.wire, opts);
@@ -142,7 +139,7 @@ export const sketchPolysides = (
 
   // We start with the last point to make sure the shape is complete
   const sketcher =
-    planeConfig.plane instanceof Plane
+    planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? new Sketcher(planeConfig.plane)
       : new Sketcher(planeConfig.plane, planeConfig.origin);
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -212,17 +209,15 @@ export const sketchParametricFunction = (
   approximationConfig: BSplineApproximationConfig = {}
 ): Sketch => {
   const [r, gc] = localGC();
-  const plane = r(
-    planeConfig.plane instanceof Plane
-      ? makePlane(planeConfig.plane)
-      : makePlane(planeConfig.plane, planeConfig.origin)
-  );
+  const plane =
+    planeConfig.plane && typeof planeConfig.plane !== 'string'
+      ? { ...planeConfig.plane }
+      : resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin);
 
   const stepSize = (stop - start) / pointsCount;
   const points: Vec3[] = [...Array(pointsCount + 1).keys()].map((t) => {
     const point = func(start + t * stepSize);
-    const worldCoords = r(plane.toWorldCoords(point));
-    return worldCoords.toVec3();
+    return planeToWorld(plane, point);
   });
 
   const wire = unwrap(
@@ -230,8 +225,8 @@ export const sketchParametricFunction = (
   );
 
   const sketch = new Sketch(wire, {
-    defaultOrigin: [...plane.origin.toVec3()],
-    defaultDirection: [...plane.zDir.toVec3()],
+    defaultOrigin: [...plane.origin],
+    defaultDirection: [...plane.zDir],
   });
   gc();
   return sketch;
@@ -246,28 +241,12 @@ export const sketchHelix = (
   pitch: number,
   height: number,
   radius: number,
-  center: Point = [0, 0, 0],
-  dir: Point = [0, 0, 1],
+  center: PointInput = [0, 0, 0],
+  dir: PointInput = [0, 0, 1],
   lefthand = false
 ): Sketch => {
-  // Convert Point to Vec3 - handle array case (most common) and fall back to Vector conversion
-  let centerVec3: Vec3;
-  let dirVec3: Vec3;
-
-  if (Array.isArray(center)) {
-    centerVec3 =
-      center.length === 2 ? [center[0], center[1], 0] : [center[0], center[1], center[2]];
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Point can be Vector or OCCT object
-    centerVec3 = (center as any).toVec3 ? (center as any).toVec3() : [0, 0, 0];
-  }
-
-  if (Array.isArray(dir)) {
-    dirVec3 = dir.length === 2 ? [dir[0], dir[1], 0] : [dir[0], dir[1], dir[2]];
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Point can be Vector or OCCT object
-    dirVec3 = (dir as any).toVec3 ? (dir as any).toVec3() : [0, 0, 1];
-  }
+  const centerVec3 = toVec3(center);
+  const dirVec3 = toVec3(dir);
 
   return new Sketch(
     unwrap(assembleWire(makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand).wires))

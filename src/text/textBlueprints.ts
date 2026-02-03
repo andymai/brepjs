@@ -1,5 +1,6 @@
 import type { Point2D } from '../2d/lib/index.js';
-import type { Plane, PlaneName, Point } from '../core/geometry.js';
+import type { Plane, PlaneName } from '../core/planeTypes.js';
+import type { PointInput } from '../core/types.js';
 import type Blueprints from '../2d/blueprints/Blueprints.js';
 import { bug } from '../core/errors.js';
 import { organiseBlueprints } from '../2d/blueprints/lib.js';
@@ -111,7 +112,7 @@ export function sketchText(
   },
   planeConfig: {
     plane?: PlaneName | Plane;
-    origin?: Point | number;
+    origin?: PointInput | number;
   } = {}
 ): Sketches {
   const textBp = textBlueprints(text, textConfig);

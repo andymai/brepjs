@@ -1,5 +1,5 @@
 import type { Face, Shape3D } from '../topology/shapes.js';
-import type { Point } from '../core/geometry.js';
+import type { PointInput } from '../core/types.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';
 import type { LoftConfig } from '../operations/loft.js';
 
@@ -13,7 +13,7 @@ export interface SketchInterface {
    * Revolves the drawing on an axis (defined by its direction and an origin
    * (defaults to the sketch origin)
    */
-  revolve(revolutionAxis?: Point, config?: { origin?: Point }): Shape3D;
+  revolve(revolutionAxis?: PointInput, config?: { origin?: PointInput }): Shape3D;
 
   /**
    * Extrudes the sketch to a certain distance (along the default direction
@@ -29,10 +29,10 @@ export interface SketchInterface {
   extrude(
     extrusionDistance: number,
     extrusionConfig?: {
-      extrusionDirection?: Point;
+      extrusionDirection?: PointInput;
       extrusionProfile?: ExtrusionProfile;
       twistAngle?: number;
-      origin?: Point;
+      origin?: PointInput;
     }
   ): Shape3D;
 

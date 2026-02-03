@@ -1,4 +1,4 @@
-import type { Point } from '../core/geometry.js';
+import type { PointInput } from '../core/types.js';
 import { compoundShapes } from '../topology/shapeHelpers.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';
 import type { AnyShape } from '../topology/shapes.js';
@@ -36,10 +36,10 @@ export default class Sketches {
   extrude(
     extrusionDistance: number,
     extrusionConfig: {
-      extrusionDirection?: Point;
+      extrusionDirection?: PointInput;
       extrusionProfile?: ExtrusionProfile;
       twistAngle?: number;
-      origin?: Point;
+      origin?: PointInput;
     } = {}
   ): AnyShape {
     const extruded = this.sketches.map((s) => s.extrude(extrusionDistance, extrusionConfig));
@@ -51,7 +51,7 @@ export default class Sketches {
    * Revolves the drawing on an axis (defined by its direction and an origin
    * (defaults to the sketch origin)
    */
-  revolve(revolutionAxis?: Point, config?: { origin?: Point }): AnyShape {
+  revolve(revolutionAxis?: PointInput, config?: { origin?: PointInput }): AnyShape {
     return compoundShapes(this.sketches.map((s) => s.revolve(revolutionAxis, config)));
   }
 }

@@ -1,8 +1,8 @@
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
 import type { Face, Wire } from '../../topology/shapes.js';
 
-import type { Plane, PlaneName, Point } from '../../core/geometry.js';
-import type { Vector } from '../../core/geometry.js';
+import type { Plane, PlaneName } from '../../core/planeTypes.js';
+import type { Vec3, PointInput } from '../../core/types.js';
 
 import type { ScaleMode } from '../curves.js';
 import type Blueprint from './Blueprint.js';
@@ -126,8 +126,8 @@ export const organiseBlueprints = (blueprints: Blueprint[]): Blueprints => {
  *  Layer 3 wraps this in a Sketch class. */
 export interface SketchData {
   wire: Wire;
-  defaultOrigin?: Vector;
-  defaultDirection?: Vector;
+  defaultOrigin?: Vec3;
+  defaultDirection?: Vec3;
   baseFace?: Face | null;
 }
 
@@ -153,7 +153,7 @@ export interface DrawingInterface {
    */
   sketchOnPlane(
     inputPlane?: PlaneName | Plane,
-    origin?: Point | number
+    origin?: PointInput | number
   ): SketchData | SketchData[] | (SketchData | SketchData[])[];
 
   /**

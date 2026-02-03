@@ -3,7 +3,7 @@ import { getKernel } from '../kernel/index.js';
 import { WrappingObj, gcWithScope, type Deletable } from '../core/memory.js';
 import { meshShapeEdges as _meshShapeEdges, type ShapeMesh } from './meshFns.js';
 import { type SurfaceType, type FaceTriangulation } from './faceFns.js';
-import { type Point, type Plane, type PlaneName, BoundingBox } from '../core/geometry.js';
+import type { Plane, PlaneName } from '../core/planeTypes.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { vecRepr } from '../core/vecOps.js';
@@ -32,7 +32,6 @@ import {
   isChamferRadius,
   isFilletRadius,
 } from './shapeModifiers.js';
-import { getBounds } from './shapeFns.js';
 
 export type { CurveType };
 
@@ -124,9 +123,9 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    * @category Shape Transformations
    */
   translate(xDist: number, yDist: number, zDist: number): this;
-  translate(vector: Point): this;
-  translate(vectorOrxDist: Point | number, yDist = 0, zDist = 0): this {
-    const translation: Point =
+  translate(vector: PointInput): this;
+  translate(vectorOrxDist: PointInput | number, yDist = 0, zDist = 0): this {
+    const translation: PointInput =
       typeof vectorOrxDist === 'number' ? [vectorOrxDist, yDist, zDist] : vectorOrxDist;
     const newShape = unwrap(cast(translate(this.wrapped, translation)));
     this.delete();
@@ -170,7 +169,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    *
    * @category Shape Transformations
    */
-  rotate(angle: number, position: Point = [0, 0, 0], direction: Point = [0, 0, 1]): this {
+  rotate(angle: number, position: PointInput = [0, 0, 0], direction: PointInput = [0, 0, 1]): this {
     const newShape = unwrap(cast(rotate(this.wrapped, angle, position, direction)));
     this.delete();
     if (this.constructor !== newShape.constructor)
@@ -185,7 +184,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    *
    * @category Shape Transformations
    */
-  mirror(inputPlane?: Plane | PlaneName | Point, origin?: Point): this {
+  mirror(inputPlane?: Plane | PlaneName | PointInput, origin?: PointInput): this {
     const newShape = unwrap(cast(mirror(this.wrapped, inputPlane, origin)));
     this.delete();
 
@@ -201,7 +200,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    *
    * @category Shape Transformations
    */
-  scale(scaleFactor: number, center: Point = [0, 0, 0]): this {
+  scale(scaleFactor: number, center: PointInput = [0, 0, 0]): this {
     const newShape = unwrap(cast(scaleShape(this.wrapped, center, scaleFactor)));
     this.delete();
 
@@ -232,16 +231,6 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
 
   get wires(): Wire[] {
     return this._listTopo('wire').map((e) => new Wire(e));
-  }
-
-  get boundingBox(): BoundingBox {
-    const oc = getKernel().oc;
-    // Use functional getBounds() internally, then wrap in legacy BoundingBox for backward compatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Shape class compatible with functional shape API
-    const bounds = getBounds({ wrapped: this.wrapped } as any);
-    const bbox = new oc.Bnd_Box_1();
-    bbox.Update_1(bounds.xMin, bounds.yMin, bounds.zMin, bounds.xMax, bounds.yMax, bounds.zMax);
-    return new BoundingBox(bbox);
   }
 
   protected _mesh({ tolerance = 1e-3, angularTolerance = 0.1 } = {}): void {
