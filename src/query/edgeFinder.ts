@@ -63,7 +63,10 @@ export class EdgeFinder extends Finder3d<Edge> {
       return this.atAngleWith(plane.zDir, 90);
     if (typeof plane !== 'string' && 'normalAt' in plane) {
       const normal = plane.normalAt();
-      return this.atAngleWith(normal, 90);
+      // Extract primitive values to avoid capturing Vector in closure
+      const normalPoint: Point = [normal.x, normal.y, normal.z];
+      normal.delete();
+      return this.atAngleWith(normalPoint, 90);
     }
     return this;
   }
@@ -82,8 +85,13 @@ export class EdgeFinder extends Finder3d<Edge> {
 
     this.parallelTo(plane);
 
-    const firstPointInPlane = ({ element }: { element: Edge }) =>
-      element.startPoint.equals(element.startPoint.projectToPlane(plane));
+    const firstPointInPlane = ({ element }: { element: Edge }) => {
+      const startPoint = element.startPoint;
+      const projected = startPoint.projectToPlane(plane);
+      const result = startPoint.equals(projected);
+      projected.delete();
+      return result;
+    };
 
     this.filters.push(firstPointInPlane);
     return this;
@@ -91,14 +99,21 @@ export class EdgeFinder extends Finder3d<Edge> {
 
   shouldKeep(element: Edge): boolean {
     let normal: Vector | null = null;
+    let tangent: Vector | null = null;
 
     try {
-      normal = element.tangentAt().normalized();
+      tangent = element.tangentAt();
+      normal = tangent.normalized();
     } catch {
       // Degenerate edges may lack a valid tangent — filters should handle null normal
     }
 
-    return this.filters.every((filter) => filter({ normal, element }));
+    const result = this.filters.every((filter) => filter({ normal, element }));
+
+    if (tangent) tangent.delete();
+    if (normal) normal.delete();
+
+    return result;
   }
 
   protected applyFilter(shape: AnyShape): Edge[] {

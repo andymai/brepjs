@@ -56,9 +56,10 @@ export class OCCTAdapter implements KernelAdapter {
   }
 
   intersect(shape: OcShape, tool: OcShape, options: BooleanOptions = {}): OcShape {
-    const { simplify = false } = options;
+    const { optimisation, simplify = false } = options;
     const progress = new this.oc.Message_ProgressRange_1();
     const commonOp = new this.oc.BRepAlgoAPI_Common_3(shape, tool, progress);
+    this._applyGlue(commonOp, optimisation);
     commonOp.Build(progress);
     if (simplify) commonOp.SimplifyResult(true, true, 1e-3);
     const result = commonOp.Shape();
@@ -154,7 +155,9 @@ export class OCCTAdapter implements KernelAdapter {
     }
 
     const toolCompound = this._buildCompound(tools);
-    return this.cut(shape, toolCompound, options);
+    const result = this.cut(shape, toolCompound, options);
+    toolCompound.delete();
+    return result;
   }
 
   private _cutAllBatch(shape: OcShape, tools: OcShape[], options: BooleanOptions = {}): OcShape {
@@ -907,12 +910,14 @@ export class OCCTAdapter implements KernelAdapter {
       const solidBuilder = new this.oc.BRepBuilderAPI_MakeSolid_1();
       solidBuilder.Add(this.oc.TopoDS.Shell_1(upgraded));
       const solid = solidBuilder.Solid();
+      readShape.delete();
       upgrader.delete();
       solidBuilder.delete();
       reader.delete();
       return solid;
     }
     this.oc.FS.unlink('/' + filename);
+    readShape.delete();
     reader.delete();
     throw new Error('Failed to import STL file: reader could not parse the input data');
   }

@@ -85,43 +85,47 @@ export function exportSTEP(
 
   const doc = createAssembly(shapes);
 
-  if (unit || modelUnit) {
-    r(new oc.STEPCAFControl_Writer_1());
+  try {
+    if (unit || modelUnit) {
+      r(new oc.STEPCAFControl_Writer_1());
 
-    oc.Interface_Static.SetCVal('xstep.cascade.unit', (modelUnit || unit || 'MM').toUpperCase());
-    oc.Interface_Static.SetCVal('write.step.unit', (unit || modelUnit || 'MM').toUpperCase());
-  }
+      oc.Interface_Static.SetCVal('xstep.cascade.unit', (modelUnit || unit || 'MM').toUpperCase());
+      oc.Interface_Static.SetCVal('write.step.unit', (unit || modelUnit || 'MM').toUpperCase());
+    }
 
-  const session = r(new oc.XSControl_WorkSession());
-  const writer = r(
-    new oc.STEPCAFControl_Writer_2(r(new oc.Handle_XSControl_WorkSession_2(session)), false)
-  );
-  writer.SetColorMode(true);
-  writer.SetLayerMode(true);
-  writer.SetNameMode(true);
-  oc.Interface_Static.SetIVal('write.surfacecurve.mode', true);
-  oc.Interface_Static.SetIVal('write.precision.mode', 0);
-  oc.Interface_Static.SetIVal('write.step.assembly', 2);
-  oc.Interface_Static.SetIVal('write.step.schema', 5);
+    const session = r(new oc.XSControl_WorkSession());
+    const writer = r(
+      new oc.STEPCAFControl_Writer_2(r(new oc.Handle_XSControl_WorkSession_2(session)), false)
+    );
+    writer.SetColorMode(true);
+    writer.SetLayerMode(true);
+    writer.SetNameMode(true);
+    oc.Interface_Static.SetIVal('write.surfacecurve.mode', true);
+    oc.Interface_Static.SetIVal('write.precision.mode', 0);
+    oc.Interface_Static.SetIVal('write.step.assembly', 2);
+    oc.Interface_Static.SetIVal('write.step.schema', 5);
 
-  const progress = r(new oc.Message_ProgressRange_1());
-  writer.Transfer_1(
-    new oc.Handle_TDocStd_Document_2(doc.wrapped),
-    oc.STEPControl_StepModelType.STEPControl_AsIs,
-    null,
-    progress
-  );
+    const progress = r(new oc.Message_ProgressRange_1());
+    writer.Transfer_1(
+      new oc.Handle_TDocStd_Document_2(doc.wrapped),
+      oc.STEPControl_StepModelType.STEPControl_AsIs,
+      null,
+      progress
+    );
 
-  const filename = uniqueIOFilename('_export', 'step');
-  const done = writer.Write(filename);
+    const filename = uniqueIOFilename('_export', 'step');
+    const done = writer.Write(filename);
 
-  if (done === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
-    const file = oc.FS.readFile('/' + filename);
-    oc.FS.unlink('/' + filename);
+    if (done === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
+      const file = oc.FS.readFile('/' + filename);
+      oc.FS.unlink('/' + filename);
 
-    const blob = new Blob([file], { type: 'application/STEP' });
-    return ok(blob);
-  } else {
-    return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
+      const blob = new Blob([file], { type: 'application/STEP' });
+      return ok(blob);
+    } else {
+      return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
+    }
+  } finally {
+    doc.delete();
   }
 }

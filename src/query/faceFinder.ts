@@ -25,7 +25,10 @@ export class FaceFinder extends Finder3d<Face> {
       return this.atAngleWith(plane.zDir);
     if (typeof plane !== 'string' && 'normalAt' in plane) {
       const normal = plane.normalAt();
-      return this.atAngleWith(normal);
+      // Extract primitive values to avoid capturing Vector in closure
+      const normalPoint: Point = [normal.x, normal.y, normal.z];
+      normal.delete();
+      return this.atAngleWith(normalPoint);
     }
     return this;
   }
@@ -56,8 +59,13 @@ export class FaceFinder extends Finder3d<Face> {
 
     this.parallelTo(plane);
 
-    const centerInPlane = ({ element }: { element: Face }) =>
-      element.center.equals(element.center.projectToPlane(plane));
+    const centerInPlane = ({ element }: { element: Face }) => {
+      const center = element.center;
+      const projected = center.projectToPlane(plane);
+      const result = center.equals(projected);
+      projected.delete();
+      return result;
+    };
 
     this.filters.push(centerInPlane);
     return this;
@@ -66,6 +74,7 @@ export class FaceFinder extends Finder3d<Face> {
   shouldKeep(element: Face): boolean {
     const normal = element.normalAt();
     const shouldKeep = this.filters.every((filter) => filter({ normal, element }));
+    normal.delete();
     return shouldKeep;
   }
 

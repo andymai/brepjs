@@ -119,14 +119,16 @@ export function pointOnSurface(face: Face, u: number, v: number): Vec3 {
   const adaptor = new oc.BRepAdaptor_Surface_2(face.wrapped, false);
   const p = new oc.gp_Pnt_1();
 
-  const absU = u * (bounds.uMax - bounds.uMin) + bounds.uMin;
-  const absV = v * (bounds.vMax - bounds.vMin) + bounds.vMin;
+  try {
+    const absU = u * (bounds.uMax - bounds.uMin) + bounds.uMin;
+    const absV = v * (bounds.vMax - bounds.vMin) + bounds.vMin;
 
-  adaptor.D0(absU, absV, p);
-  const result: Vec3 = [p.X(), p.Y(), p.Z()];
-  p.delete();
-  adaptor.delete();
-  return result;
+    adaptor.D0(absU, absV, p);
+    return [p.X(), p.Y(), p.Z()];
+  } finally {
+    p.delete();
+    adaptor.delete();
+  }
 }
 
 /** Get the UV coordinates on a face for a given 3D point. */

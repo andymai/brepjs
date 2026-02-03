@@ -94,8 +94,8 @@ export const makeHelix = (
   );
 
   const nTurns = height / pitch;
-  const uStart = geomLine.Value(0.0);
-  const uStop = geomLine.Value(nTurns * Math.sqrt((2 * Math.PI) ** 2 + pitch ** 2));
+  const uStart = r(geomLine.Value(0.0));
+  const uStop = r(geomLine.Value(nTurns * Math.sqrt((2 * Math.PI) ** 2 + pitch ** 2)));
   const geomSeg = r(new oc.GCE2d_MakeSegment_1(uStart, uStop));
 
   // We do not GC this surface (or it can break for some reason)
@@ -450,20 +450,25 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
 
   const baseSurface = oc.GeomConvert.SurfaceToBSplineSurface(sphericalSurface.UReversed()).get();
 
-  const poles = convertToJSArray(baseSurface.Poles_2());
-  const transform = new EllipsoidTransform(aLength, bLength, cLength);
+  try {
+    const poles = convertToJSArray(baseSurface.Poles_2());
+    const transform = new EllipsoidTransform(aLength, bLength, cLength);
 
-  poles.forEach((columns, rowIdx) => {
-    columns.forEach((value, colIdx) => {
-      const newPoint = transform.applyToPoint(value);
-      baseSurface.SetPole_1(rowIdx + 1, colIdx + 1, newPoint);
+    poles.forEach((columns, rowIdx) => {
+      columns.forEach((value, colIdx) => {
+        const newPoint = transform.applyToPoint(value);
+        baseSurface.SetPole_1(rowIdx + 1, colIdx + 1, newPoint);
+        newPoint.delete();
+      });
     });
-  });
-  const shell = unwrap(
-    cast(r(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
-  ) as Shell;
+    const shell = unwrap(
+      cast(r(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
+    ) as Shell;
 
-  return unwrap(makeSolid([shell]));
+    return unwrap(makeSolid([shell]));
+  } finally {
+    baseSurface.delete();
+  }
 };
 
 /**
@@ -499,31 +504,33 @@ export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Result
   const oc = getKernel().oc;
   const progress = new oc.Message_ProgressRange_1();
   const offsetBuilder = new oc.BRepOffsetAPI_MakeOffsetShape();
-  offsetBuilder.PerformByJoin(
-    face.wrapped,
-    offset,
-    tolerance,
 
-    oc.BRepOffset_Mode.BRepOffset_Skin,
-    false,
-    false,
+  try {
+    offsetBuilder.PerformByJoin(
+      face.wrapped,
+      offset,
+      tolerance,
 
-    oc.GeomAbs_JoinType.GeomAbs_Arc,
-    false,
-    progress
-  );
+      oc.BRepOffset_Mode.BRepOffset_Skin,
+      false,
+      false,
 
-  const result = andThen(downcast(offsetBuilder.Shape()), (downcasted) =>
-    andThen(cast(downcasted), (newShape) => {
-      if (!isShape3D(newShape))
-        return err(typeCastError('OFFSET_NOT_3D', 'Could not offset to a 3d shape'));
-      return ok(newShape);
-    })
-  );
-  offsetBuilder.delete();
-  progress.delete();
+      oc.GeomAbs_JoinType.GeomAbs_Arc,
+      false,
+      progress
+    );
 
-  return result;
+    return andThen(downcast(offsetBuilder.Shape()), (downcasted) =>
+      andThen(cast(downcasted), (newShape) => {
+        if (!isShape3D(newShape))
+          return err(typeCastError('OFFSET_NOT_3D', 'Could not offset to a 3d shape'));
+        return ok(newShape);
+      })
+    );
+  } finally {
+    offsetBuilder.delete();
+    progress.delete();
+  }
 };
 
 export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {

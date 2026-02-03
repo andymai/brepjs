@@ -127,27 +127,30 @@ export function exportSTEP(shape: AnyShape): Result<Blob> {
   const oc = getKernel().oc;
   const filename = uniqueIOFilename('_blob', 'step');
   const writer = new oc.STEPControl_Writer_1();
-
-  oc.Interface_Static.SetIVal('write.step.schema', 5);
-  writer.Model(true).delete();
   const progress = new oc.Message_ProgressRange_1();
 
-  writer.Transfer(shape.wrapped, oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
+  try {
+    oc.Interface_Static.SetIVal('write.step.schema', 5);
+    writer.Model(true).delete();
 
-  const done = writer.Write(filename);
-  writer.delete();
-  progress.delete();
+    writer.Transfer(shape.wrapped, oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
 
-  if (done === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
-    try {
-      const file = oc.FS.readFile('/' + filename);
-      oc.FS.unlink('/' + filename);
-      return ok(new Blob([file], { type: 'application/STEP' }));
-    } catch (e) {
-      return err(ioError('STEP_FILE_READ_ERROR', 'Failed to read exported STEP file', e));
+    const done = writer.Write(filename);
+
+    if (done === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
+      try {
+        const file = oc.FS.readFile('/' + filename);
+        oc.FS.unlink('/' + filename);
+        return ok(new Blob([file], { type: 'application/STEP' }));
+      } catch (e) {
+        return err(ioError('STEP_FILE_READ_ERROR', 'Failed to read exported STEP file', e));
+      }
     }
+    return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
+  } finally {
+    writer.delete();
+    progress.delete();
   }
-  return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
 }
 
 /** Export a shape as an STL file Blob. */

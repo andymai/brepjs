@@ -24,8 +24,8 @@ export default class Blueprints implements DrawingInterface {
     return ['Blueprints', ...this.blueprints.map((b) => b.repr)].join('\n');
   }
 
-  clone() {
-    return new Blueprints(this.blueprints);
+  clone(): Blueprints {
+    return new Blueprints(this.blueprints.map((bp) => bp.clone()));
   }
 
   get boundingBox(): BoundingBox2d {
