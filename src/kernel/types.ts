@@ -16,6 +16,7 @@ export type OcType = any;
 export interface BooleanOptions {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
   simplify?: boolean;
+  strategy?: 'native' | 'pairwise';
 }
 
 export type ShapeType =

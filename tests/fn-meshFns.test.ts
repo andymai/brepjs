@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, beforeEach } from 'vitest';
 import { initOC } from './setup.js';
 import {
   makeBox,
@@ -11,6 +11,7 @@ import {
   fnExportSTL,
   isOk,
   unwrap,
+  clearMeshCache,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -33,6 +34,26 @@ describe('meshShape', () => {
     const fine = meshShape(castShape(box.wrapped), { tolerance: 0.01 });
     // Fine mesh may have more vertices
     expect(fine.vertices.length).toBeGreaterThanOrEqual(coarse.vertices.length);
+  });
+
+  it('returns cached result on second call with same parameters', () => {
+    clearMeshCache();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const shape = castShape(box.wrapped);
+    const mesh1 = meshShape(shape, { tolerance: 0.1 });
+    const mesh2 = meshShape(shape, { tolerance: 0.1 });
+    // Cached — same object reference
+    expect(mesh2).toBe(mesh1);
+  });
+
+  it('bypasses cache when cache option is false', () => {
+    clearMeshCache();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const shape = castShape(box.wrapped);
+    const mesh1 = meshShape(shape, { tolerance: 0.1 });
+    const mesh2 = meshShape(shape, { tolerance: 0.1, cache: false });
+    // Not cached — different object
+    expect(mesh2).not.toBe(mesh1);
   });
 });
 

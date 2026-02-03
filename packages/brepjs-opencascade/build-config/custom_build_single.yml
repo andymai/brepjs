@@ -262,6 +262,7 @@ mainBuild:
   - symbol: GeomToolsWrapper
   - symbol: MeshData
   - symbol: MeshExtractor
+  - symbol: BooleanBatch
   emccFlags:
   - -flto
   - -fexceptions
@@ -474,4 +475,60 @@ additionalCppCode: |
 
       return result;
     }
+  };
+
+  class BooleanBatch {
+  public:
+    void addShape(const TopoDS_Shape& s) { shapes_.Append(s); }
+    void clear() { shapes_.Clear(); }
+    int count() const { return shapes_.Size(); }
+
+    TopoDS_Shape fuseAll(int glueMode, bool simplify) {
+      if (shapes_.Size() == 0) return TopoDS_Shape();
+      if (shapes_.Size() == 1) return shapes_.First();
+
+      BRepAlgoAPI_BuilderAlgo builder;
+      builder.SetArguments(shapes_);
+      if (glueMode == 1) builder.SetGlue(BOPAlgo_GlueShift);
+      if (glueMode == 2) builder.SetGlue(BOPAlgo_GlueFull);
+
+      Message_ProgressRange progress;
+      builder.Build(progress);
+
+      TopoDS_Shape result = builder.Shape();
+      if (simplify) {
+        ShapeUpgrade_UnifySameDomain upgrader(result, Standard_True, Standard_True, Standard_False);
+        upgrader.Build();
+        result = upgrader.Shape();
+      }
+      return result;
+    }
+
+    TopoDS_Shape cutAll(const TopoDS_Shape& base, int glueMode, bool simplify) {
+      if (shapes_.Size() == 0) return base;
+
+      TopoDS_Builder compBuilder;
+      TopoDS_Compound toolCompound;
+      compBuilder.MakeCompound(toolCompound);
+      for (TopTools_ListIteratorOfListOfShape it(shapes_); it.More(); it.Next()) {
+        compBuilder.Add(toolCompound, it.Value());
+      }
+
+      Message_ProgressRange progress;
+      BRepAlgoAPI_Cut cutter(base, toolCompound, progress);
+      if (glueMode == 1) cutter.SetGlue(BOPAlgo_GlueShift);
+      if (glueMode == 2) cutter.SetGlue(BOPAlgo_GlueFull);
+      cutter.Build(progress);
+
+      TopoDS_Shape result = cutter.Shape();
+      if (simplify) {
+        ShapeUpgrade_UnifySameDomain upgrader(result, Standard_True, Standard_True, Standard_False);
+        upgrader.Build();
+        result = upgrader.Shape();
+      }
+      return result;
+    }
+
+  private:
+    TopTools_ListOfShape shapes_;
   };

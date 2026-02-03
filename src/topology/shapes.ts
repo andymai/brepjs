@@ -157,6 +157,7 @@ export type SurfaceType =
 export type BooleanOperationOptions = {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
   simplify?: boolean;
+  strategy?: 'native' | 'pairwise';
 };
 
 // ---------------------------------------------------------------------------
@@ -964,7 +965,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    */
   fuse(
     other: Shape3D,
-    { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
+    { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
   ): Result<Shape3D> {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
@@ -989,7 +990,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    */
   cut(
     tool: Shape3D,
-    { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
+    { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
   ): Result<Shape3D> {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
@@ -1012,7 +1013,7 @@ export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
    *
    * @category Shape Modifications
    */
-  intersect(tool: AnyShape, { simplify = true }: { simplify?: boolean } = {}): Result<Shape3D> {
+  intersect(tool: AnyShape, { simplify = false }: { simplify?: boolean } = {}): Result<Shape3D> {
     const r = GCWithScope();
     const progress = r(new this.oc.Message_ProgressRange_1());
     const intersector = r(new this.oc.BRepAlgoAPI_Common_3(this.wrapped, tool.wrapped, progress));
@@ -1310,20 +1311,32 @@ export function applyGlue(
  */
 export function fuseAll(
   shapes: Shape3D[],
-  { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
+  { optimisation = 'none', simplify = false, strategy = 'native' }: BooleanOperationOptions = {}
 ): Result<Shape3D> {
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   if (shapes.length === 1) return ok(shapes[0]!);
 
-  // Recursive pairwise fuse: each level boolean-fuses two halves.
-  // Using compounds here would be incorrect when shapes within the same
-  // compound intersect each other — OCCT expects non-self-intersecting inputs.
+  if (strategy === 'native') {
+    // Delegate to kernel's native N-way fuse via BRepAlgoAPI_BuilderAlgo
+    const result = getKernel().fuseAll(
+      shapes.map((s) => s.wrapped),
+      { optimisation, simplify, strategy }
+    );
+    return andThen(cast(result), (newShape) => {
+      if (!isShape3D(newShape))
+        return err(typeCastError('FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape'));
+      return ok(newShape);
+    });
+  }
+
+  // Pairwise fallback: recursive divide-and-conquer
+  // Defer simplification to the final fuse — intermediate simplification is wasted work.
   const mid = Math.ceil(shapes.length / 2);
-  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify });
+  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify: false, strategy });
   if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify });
+  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify: false, strategy });
   if (isErr(rightResult)) return rightResult;
 
   return leftResult.value.fuse(rightResult.value, { optimisation, simplify });
@@ -1337,7 +1350,7 @@ export function fuseAll(
 export function cutAll(
   base: Shape3D,
   tools: Shape3D[],
-  { optimisation = 'none', simplify = true }: BooleanOperationOptions = {}
+  { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
 ): Result<Shape3D> {
   if (tools.length === 0) return ok(base);
 

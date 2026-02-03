@@ -20,6 +20,7 @@ import { validationError, typeCastError } from '../core/errors.js';
 export interface BooleanOptions {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
   simplify?: boolean;
+  strategy?: 'native' | 'pairwise';
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +65,7 @@ function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Resu
 export function fuseShapes(
   a: Shape3D,
   b: Shape3D,
-  { optimisation = 'none', simplify = true }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false }: BooleanOptions = {}
 ): Result<Shape3D> {
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -80,7 +81,7 @@ export function fuseShapes(
 export function cutShape(
   base: Shape3D,
   tool: Shape3D,
-  { optimisation = 'none', simplify = true }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false }: BooleanOptions = {}
 ): Result<Shape3D> {
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -96,7 +97,7 @@ export function cutShape(
 export function intersectShapes(
   a: Shape3D,
   b: AnyShape,
-  { simplify = true }: { simplify?: boolean } = {}
+  { simplify = false }: { simplify?: boolean } = {}
 ): Result<Shape3D> {
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -114,18 +115,28 @@ export function intersectShapes(
 /** Fuse all shapes in a single boolean operation. */
 export function fuseAll(
   shapes: Shape3D[],
-  { optimisation = 'none', simplify = true }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, strategy = 'native' }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   if (shapes.length === 1) return ok(shapes[0]!);
 
-  // Recursive pairwise fuse to avoid compounding mutually-intersecting shapes
+  if (strategy === 'native') {
+    // Delegate to kernel's native N-way fuse via BRepAlgoAPI_BuilderAlgo
+    const result = getKernel().fuseAll(
+      shapes.map((s) => s.wrapped),
+      { optimisation, simplify, strategy }
+    );
+    return castToShape3D(result, 'FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape');
+  }
+
+  // Pairwise fallback: recursive divide-and-conquer
+  // Defer simplification to the final fuse — intermediate simplification is wasted work
   const mid = Math.ceil(shapes.length / 2);
-  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify });
+  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify: false, strategy });
   if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify });
+  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify: false, strategy });
   if (isErr(rightResult)) return rightResult;
 
   return fuseShapes(leftResult.value, rightResult.value, { optimisation, simplify });
@@ -135,7 +146,7 @@ export function fuseAll(
 export function cutAll(
   base: Shape3D,
   tools: Shape3D[],
-  { optimisation = 'none', simplify = true }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (tools.length === 0) return ok(base);
 
