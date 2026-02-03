@@ -74,8 +74,8 @@ export default class Blueprint implements DrawingInterface {
     if (this._boundingBox) this._boundingBox.delete();
   }
 
-  clone() {
-    return new Blueprint(this.curves);
+  clone(): Blueprint {
+    return new Blueprint(this.curves.map((c) => c.clone()));
   }
 
   get repr() {
