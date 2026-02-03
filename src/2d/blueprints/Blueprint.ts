@@ -60,6 +60,9 @@ export default class Blueprint implements DrawingInterface {
   private readonly _orientation: null | 'clockwise' | 'counterClockwise';
   private _guessedOrientation: null | 'clockwise' | 'counterClockwise';
   constructor(curves: Curve2D[]) {
+    if (curves.length === 0) {
+      throw new Error('Blueprint requires at least one curve');
+    }
     this.curves = curves;
     this._boundingBox = null;
 
