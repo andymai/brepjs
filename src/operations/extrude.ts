@@ -127,13 +127,16 @@ function genericSweep(
     const endWire = unwrap(cast(sweepBuilder.LastShape()));
     if (!isWire(startWire)) {
       sweepBuilder.delete();
+      progress.delete();
       return err(typeCastError('SWEEP_START_NOT_WIRE', 'Sweep did not produce a start Wire'));
     }
     if (!isWire(endWire)) {
       sweepBuilder.delete();
+      progress.delete();
       return err(typeCastError('SWEEP_END_NOT_WIRE', 'Sweep did not produce an end Wire'));
     }
     sweepBuilder.delete();
+    progress.delete();
     return ok([shape, startWire, endWire] as [Shape3D, Wire, Wire]);
   }
 
@@ -190,7 +193,10 @@ export const supportExtrude = (
   normalVec.delete();
   endVec.delete();
 
-  return genericSweep(wire, spine, { support });
+  const result = genericSweep(wire, spine, { support });
+  mainSpineEdge.delete();
+  spine.delete();
+  return result;
 };
 
 function complexExtrude(
@@ -227,9 +233,15 @@ function complexExtrude(
   endVec.delete();
   normalVec.delete();
 
-  return shellMode
+  const result = shellMode
     ? genericSweep(wire, spine, { law }, shellMode)
     : genericSweep(wire, spine, { law }, shellMode);
+
+  mainSpineEdge.delete();
+  spine.delete();
+  if (law) law.delete();
+
+  return result;
 }
 
 export { complexExtrude };
@@ -277,8 +289,15 @@ function twistExtrude(
   normalVec.delete();
   endVec.delete();
 
-  return shellMode
+  const result = shellMode
     ? genericSweep(wire, spine, { auxiliarySpine, law }, shellMode)
     : genericSweep(wire, spine, { auxiliarySpine, law }, shellMode);
+
+  mainSpineEdge.delete();
+  spine.delete();
+  auxiliarySpine.delete();
+  if (law) law.delete();
+
+  return result;
 }
 export { twistExtrude };
