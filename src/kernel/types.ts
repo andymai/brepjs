@@ -42,6 +42,11 @@ export interface KernelMeshResult {
   faceGroups: Array<{ start: number; count: number; faceHash: number }>;
 }
 
+export interface KernelEdgeMeshResult {
+  lines: Float32Array;
+  edgeGroups: Array<{ start: number; count: number; edgeHash: number }>;
+}
+
 export interface KernelAdapter {
   /** The raw OpenCascade instance */
   readonly oc: OpenCascadeInstance;
@@ -101,7 +106,7 @@ export interface KernelAdapter {
 
   // --- Meshing ---
   mesh(shape: OcShape, options: MeshOptions): KernelMeshResult;
-  meshEdges(shape: OcShape, tolerance?: number): Float32Array[];
+  meshEdges(shape: OcShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
 
   // --- File I/O ---
   exportSTEP(shapes: OcShape[]): string;

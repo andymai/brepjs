@@ -1,6 +1,7 @@
 import type {
   KernelAdapter,
   KernelMeshResult,
+  KernelEdgeMeshResult,
   OpenCascadeInstance,
   OcShape,
   OcType,
@@ -647,40 +648,188 @@ export class OCCTAdapter implements KernelAdapter {
     return { vertices, normals, triangles, faceGroups };
   }
 
-  meshEdges(shape: OcShape, tolerance = 1e-3): Float32Array[] {
-    const edgeLines: Float32Array[] = [];
-    const explorer = new this.oc.TopExp_Explorer_2(
+  meshEdges(shape: OcShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult {
+    if (this.oc.EdgeMeshExtractor) {
+      return this._meshEdgesBulk(shape, tolerance, angularTolerance);
+    }
+    return this._meshEdgesJS(shape, tolerance, angularTolerance);
+  }
+
+  private _meshEdgesBulk(
+    shape: OcShape,
+    tolerance: number,
+    angularTolerance: number
+  ): KernelEdgeMeshResult {
+    const raw = this.oc.EdgeMeshExtractor.extract(shape, tolerance, angularTolerance);
+
+    const linesSize = raw.getLinesSize() as number;
+    const edgeGroupsSize = raw.getEdgeGroupsSize() as number;
+
+    let lines: Float32Array;
+    if (linesSize > 0) {
+      const linesPtr = (raw.getLinesPtr() as number) / 4;
+      lines = this.oc.HEAPF32.slice(linesPtr, linesPtr + linesSize) as Float32Array;
+    } else {
+      lines = new Float32Array(0);
+    }
+
+    const edgeGroups: KernelEdgeMeshResult['edgeGroups'] = [];
+    if (edgeGroupsSize > 0) {
+      const egPtr = (raw.getEdgeGroupsPtr() as number) / 4;
+      const egRaw = this.oc.HEAP32.slice(egPtr, egPtr + edgeGroupsSize) as Int32Array;
+      for (let i = 0; i < egRaw.length; i += 3) {
+        edgeGroups.push({
+          start: egRaw[i] as number,
+          count: egRaw[i + 1] as number,
+          edgeHash: egRaw[i + 2] as number,
+        });
+      }
+    }
+
+    raw.delete();
+    return { lines, edgeGroups };
+  }
+
+  private _meshEdgesJS(
+    shape: OcShape,
+    tolerance: number,
+    angularTolerance: number
+  ): KernelEdgeMeshResult {
+    // Ensure triangulation exists
+    const mesher = new this.oc.BRepMesh_IncrementalMesh_2(
+      shape,
+      tolerance,
+      false,
+      angularTolerance,
+      false
+    );
+    mesher.delete();
+
+    const lines: number[] = [];
+    const edgeGroups: KernelEdgeMeshResult['edgeGroups'] = [];
+    const seenHashes = new Set<number>();
+
+    // Pass 1: edges from face triangulations
+    const faceExplorer = new this.oc.TopExp_Explorer_2(
+      shape,
+      this.oc.TopAbs_ShapeEnum.TopAbs_FACE,
+      this.oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+    while (faceExplorer.More()) {
+      const face = this.oc.TopoDS.Face_1(faceExplorer.Current());
+      const faceLoc = new this.oc.TopLoc_Location_1();
+      const tri = this.oc.BRep_Tool.Triangulation(face, faceLoc, 0);
+
+      if (!tri.IsNull()) {
+        const triObj = tri.get();
+        const edgeExplorer = new this.oc.TopExp_Explorer_2(
+          face,
+          this.oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+          this.oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+        );
+        while (edgeExplorer.More()) {
+          const edgeShape = edgeExplorer.Current();
+          const edge = this.oc.TopoDS.Edge_1(edgeShape);
+          const edgeHash = edge.HashCode(HASH_CODE_MAX);
+          if (!seenHashes.has(edgeHash)) {
+            seenHashes.add(edgeHash);
+            const edgeLoc = new this.oc.TopLoc_Location_1();
+            const polygon = this.oc.BRep_Tool.PolygonOnTriangulation_1(edge, tri, edgeLoc);
+            const edgeNodes = polygon?.get()?.Nodes();
+            if (edgeNodes) {
+              const lineStart = lines.length / 3;
+              let prevX = 0,
+                prevY = 0,
+                prevZ = 0;
+              let hasPrev = false;
+              for (let i = edgeNodes.Lower(); i <= edgeNodes.Upper(); i++) {
+                const p = triObj.Node(edgeNodes.Value(i)).Transformed(edgeLoc.Transformation());
+                const x = p.X(),
+                  y = p.Y(),
+                  z = p.Z();
+                if (hasPrev) {
+                  lines.push(prevX, prevY, prevZ, x, y, z);
+                }
+                prevX = x;
+                prevY = y;
+                prevZ = z;
+                hasPrev = true;
+                p.delete();
+              }
+              edgeGroups.push({
+                start: lineStart,
+                count: lines.length / 3 - lineStart,
+                edgeHash,
+              });
+              edgeNodes.delete();
+            }
+            if (polygon && !polygon.IsNull()) polygon.delete();
+            edgeLoc.delete();
+          }
+          edgeExplorer.Next();
+        }
+        edgeExplorer.delete();
+      }
+
+      tri.delete();
+      faceLoc.delete();
+      faceExplorer.Next();
+    }
+    faceExplorer.delete();
+
+    // Pass 2: remaining edges via curve tessellation
+    const edgeExplorer = new this.oc.TopExp_Explorer_2(
       shape,
       this.oc.TopAbs_ShapeEnum.TopAbs_EDGE,
       this.oc.TopAbs_ShapeEnum.TopAbs_SHAPE
     );
-
-    while (explorer.More()) {
-      const edge = explorer.Current();
-      const adaptor = new this.oc.BRepAdaptor_Curve_2(edge);
-      const tangDef = new this.oc.GCPnts_TangentialDeflection_2(
-        adaptor,
-        tolerance,
-        0.1,
-        2,
-        1e-9,
-        1e-7
-      );
-
-      const points: number[] = [];
-      for (let j = 1; j <= tangDef.NbPoints(); j++) {
-        const p = tangDef.Value(j);
-        points.push(p.X(), p.Y(), p.Z());
-        p.delete();
+    while (edgeExplorer.More()) {
+      const edgeShape = edgeExplorer.Current();
+      const edge = this.oc.TopoDS.Edge_1(edgeShape);
+      const edgeHash = edge.HashCode(HASH_CODE_MAX);
+      if (!seenHashes.has(edgeHash)) {
+        seenHashes.add(edgeHash);
+        const adaptor = new this.oc.BRepAdaptor_Curve_2(edge);
+        const tangDef = new this.oc.GCPnts_TangentialDeflection_2(
+          adaptor,
+          tolerance,
+          angularTolerance,
+          2,
+          1e-9,
+          1e-7
+        );
+        const lineStart = lines.length / 3;
+        let prevX = 0,
+          prevY = 0,
+          prevZ = 0;
+        let hasPrev = false;
+        for (let j = 1; j <= tangDef.NbPoints(); j++) {
+          const p = tangDef.Value(j);
+          const x = p.X(),
+            y = p.Y(),
+            z = p.Z();
+          if (hasPrev) {
+            lines.push(prevX, prevY, prevZ, x, y, z);
+          }
+          prevX = x;
+          prevY = y;
+          prevZ = z;
+          hasPrev = true;
+          p.delete();
+        }
+        edgeGroups.push({
+          start: lineStart,
+          count: lines.length / 3 - lineStart,
+          edgeHash,
+        });
+        tangDef.delete();
+        adaptor.delete();
       }
-      edgeLines.push(new Float32Array(points));
-
-      tangDef.delete();
-      adaptor.delete();
-      explorer.Next();
+      edgeExplorer.Next();
     }
-    explorer.delete();
-    return edgeLines;
+    edgeExplorer.delete();
+
+    return { lines: new Float32Array(lines), edgeGroups };
   }
 
   // --- File I/O ---
@@ -826,6 +975,35 @@ export class OCCTAdapter implements KernelAdapter {
   // --- Topology iteration ---
 
   iterShapes(shape: OcShape, type: ShapeType): OcShape[] {
+    if (this.oc.TopologyExtractor) {
+      return this._iterShapesBulk(shape, type);
+    }
+    return this._iterShapesJS(shape, type);
+  }
+
+  private _iterShapesBulk(shape: OcShape, type: ShapeType): OcShape[] {
+    const typeEnumMap: Record<ShapeType, number> = {
+      vertex: 7,
+      edge: 6,
+      wire: 5,
+      face: 4,
+      shell: 3,
+      solid: 2,
+      compsolid: 1,
+      compound: 0,
+    };
+
+    const raw = this.oc.TopologyExtractor.extract(shape, typeEnumMap[type]);
+    const count = raw.getShapesCount() as number;
+    const result: OcShape[] = [];
+    for (let i = 0; i < count; i++) {
+      result.push(raw.getShape(i));
+    }
+    raw.delete();
+    return result;
+  }
+
+  private _iterShapesJS(shape: OcShape, type: ShapeType): OcShape[] {
     const typeMap: Record<ShapeType, unknown> = {
       vertex: this.oc.TopAbs_ShapeEnum.TopAbs_VERTEX,
       edge: this.oc.TopAbs_ShapeEnum.TopAbs_EDGE,

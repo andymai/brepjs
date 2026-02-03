@@ -1,6 +1,7 @@
 import type { OcShape, OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { WrappingObj, GCWithScope, type Deletable } from '../core/memory.js';
+import { meshShapeEdges as _meshShapeEdges } from './meshFns.js';
 import {
   Vector,
   asPnt,
@@ -371,111 +372,16 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    *
    * @category Shape Export
    */
-  meshEdges({ tolerance = 1e-3, angularTolerance = 0.1 } = {}): {
+  meshEdges({
+    tolerance = 1e-3,
+    angularTolerance = 0.1,
+    cache = true,
+  }: { tolerance?: number; angularTolerance?: number; cache?: boolean } = {}): {
     lines: number[];
     edgeGroups: { start: number; count: number; edgeId: number }[];
   } {
-    const r = GCWithScope();
-    const recordedEdges = new Set<number>();
-    const lines: number[] = [];
-    const edgeGroups: { start: number; count: number; edgeId: number }[] = [];
-
-    const addEdge = (): [(p: OcType) => void, (h: number) => void] => {
-      const start = lines.length;
-      let prevX = 0;
-      let prevY = 0;
-      let prevZ = 0;
-      let hasPrev = false;
-
-      return [
-        (p: OcType) => {
-          const x = p.X();
-          const y = p.Y();
-          const z = p.Z();
-          if (hasPrev) {
-            lines.push(prevX, prevY, prevZ, x, y, z);
-          }
-          prevX = x;
-          prevY = y;
-          prevZ = z;
-          hasPrev = true;
-        },
-
-        (edgeHash: number) => {
-          edgeGroups.push({
-            start: start / 3,
-            count: (lines.length - start) / 3,
-            edgeId: edgeHash,
-          });
-
-          recordedEdges.add(edgeHash);
-        },
-      ];
-    };
-
-    const aLocation = r(new this.oc.TopLoc_Location_1());
-
-    const faces = this.faces;
-    for (const face of faces) {
-      const triangulation = r(this.oc.BRep_Tool.Triangulation(face.wrapped, aLocation, 0));
-
-      if (triangulation.IsNull()) {
-        continue;
-      }
-      const tri = triangulation.get();
-
-      const faceEdges = face.edges;
-      for (const edge of faceEdges) {
-        r(edge);
-        if (recordedEdges.has(edge.hashCode)) continue;
-
-        const edgeLoc = r(new this.oc.TopLoc_Location_1());
-
-        const polygon = r(
-          this.oc.BRep_Tool.PolygonOnTriangulation_1(edge.wrapped, triangulation, edgeLoc)
-        );
-        const edgeNodes = polygon?.get()?.Nodes();
-        if (!edgeNodes) {
-          continue;
-        }
-        r(edgeNodes);
-
-        const [recordPoint, done] = addEdge();
-
-        for (let i = edgeNodes.Lower(); i <= edgeNodes.Upper(); i++) {
-          const p = r(r(tri.Node(edgeNodes.Value(i))).Transformed(edgeLoc.Transformation()));
-          recordPoint(p);
-        }
-        done(edge.hashCode);
-      }
-    }
-
-    const allEdges = this.edges;
-    for (const edge of allEdges) {
-      r(edge);
-      const edgeHash = edge.hashCode;
-      if (recordedEdges.has(edgeHash)) continue;
-
-      const adaptorCurve = r(new this.oc.BRepAdaptor_Curve_2(edge.wrapped));
-      const tangDef = r(
-        new this.oc.GCPnts_TangentialDeflection_2(
-          adaptorCurve,
-          tolerance,
-          angularTolerance,
-          2,
-          1e-9,
-          1e-7
-        )
-      );
-      const [recordPoint, done] = addEdge();
-      for (let j = 0; j < tangDef.NbPoints(); j++) {
-        const p = r(tangDef.Value(j + 1).Transformed(aLocation.Transformation()));
-        recordPoint(p);
-      }
-      done(edgeHash);
-    }
-
-    return { lines, edgeGroups };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Shape → AnyShape coercion for internal delegation
+    return _meshShapeEdges(this as any, { tolerance, angularTolerance, cache });
   }
 
   /**

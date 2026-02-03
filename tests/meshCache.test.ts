@@ -3,10 +3,13 @@ import {
   buildMeshCacheKey,
   getMesh,
   setMesh,
+  buildEdgeMeshCacheKey,
+  getEdgeMesh,
+  setEdgeMesh,
   clearMeshCache,
   setMeshCacheSize,
 } from '../src/topology/meshCache.js';
-import type { ShapeMesh } from '../src/topology/meshFns.js';
+import type { ShapeMesh, EdgeMesh } from '../src/topology/meshFns.js';
 
 function fakeMesh(id: number): ShapeMesh {
   return {
@@ -14,6 +17,13 @@ function fakeMesh(id: number): ShapeMesh {
     normals: new Float32Array([id]),
     triangles: new Uint32Array([id]),
     faceGroups: [],
+  };
+}
+
+function fakeEdgeMesh(id: number): EdgeMesh {
+  return {
+    lines: [id, id, id],
+    edgeGroups: [{ start: 0, count: 1, edgeId: id }],
   };
 }
 
@@ -97,6 +107,41 @@ describe('meshCache', () => {
       expect(getMesh('a')).toBeUndefined();
       expect(getMesh('b')).toBeUndefined();
       expect(getMesh('c')).toBeDefined();
+    });
+  });
+
+  describe('buildEdgeMeshCacheKey', () => {
+    it('produces a deterministic key with edge prefix', () => {
+      const key = buildEdgeMeshCacheKey(123, 0.1, 30);
+      expect(key).toBe('edge:123:0.1:30');
+    });
+
+    it('differs from triangle mesh key for same params', () => {
+      const edgeKey = buildEdgeMeshCacheKey(1, 0.1, 30);
+      const triKey = buildMeshCacheKey(1, 0.1, 30, false);
+      expect(edgeKey).not.toBe(triKey);
+    });
+  });
+
+  describe('getEdgeMesh / setEdgeMesh', () => {
+    it('returns undefined for missing keys', () => {
+      expect(getEdgeMesh('nonexistent')).toBeUndefined();
+    });
+
+    it('stores and retrieves an edge mesh', () => {
+      const mesh = fakeEdgeMesh(1);
+      setEdgeMesh('ekey1', mesh);
+      expect(getEdgeMesh('ekey1')).toBe(mesh);
+    });
+
+    it('shares LRU pool with triangle meshes', () => {
+      setMeshCacheSize(2);
+      setMesh('tri1', fakeMesh(1));
+      setEdgeMesh('edge1', fakeEdgeMesh(2));
+      setEdgeMesh('edge2', fakeEdgeMesh(3)); // evicts 'tri1'
+      expect(getMesh('tri1')).toBeUndefined();
+      expect(getEdgeMesh('edge1')).toBeDefined();
+      expect(getEdgeMesh('edge2')).toBeDefined();
     });
   });
 });

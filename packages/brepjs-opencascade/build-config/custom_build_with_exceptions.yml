@@ -263,6 +263,10 @@ mainBuild:
   - symbol: MeshData
   - symbol: MeshExtractor
   - symbol: BooleanBatch
+  - symbol: EdgeMeshData
+  - symbol: EdgeMeshExtractor
+  - symbol: TopologyResult
+  - symbol: TopologyExtractor
   - symbol: OCJS
   - symbol: Standard_Failure
   emccFlags:
@@ -532,6 +536,206 @@ additionalCppCode: |
 
   private:
     TopTools_ListOfShape shapes_;
+  };
+
+  class EdgeMeshData {
+  public:
+    EdgeMeshData()
+      : linesPtr_(nullptr), edgeGroupsPtr_(nullptr),
+        linesSize_(0), edgeGroupsSize_(0) {}
+
+    ~EdgeMeshData() {
+      std::free(linesPtr_);
+      std::free(edgeGroupsPtr_);
+    }
+
+    EdgeMeshData(const EdgeMeshData& other)
+      : linesPtr_(other.linesPtr_), edgeGroupsPtr_(other.edgeGroupsPtr_),
+        linesSize_(other.linesSize_), edgeGroupsSize_(other.edgeGroupsSize_) {
+      auto& mutable_other = const_cast<EdgeMeshData&>(other);
+      mutable_other.linesPtr_ = nullptr;
+      mutable_other.edgeGroupsPtr_ = nullptr;
+    }
+
+    int getLinesPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(linesPtr_)); }
+    int getLinesSize() const { return linesSize_; }
+    int getEdgeGroupsPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(edgeGroupsPtr_)); }
+    int getEdgeGroupsSize() const { return edgeGroupsSize_; }
+
+  private:
+    float*   linesPtr_;
+    int32_t* edgeGroupsPtr_;
+    int linesSize_;
+    int edgeGroupsSize_;
+
+    friend class EdgeMeshExtractor;
+  };
+
+  class EdgeMeshExtractor {
+  public:
+    static EdgeMeshData extract(
+      const TopoDS_Shape& shape,
+      double tolerance,
+      double angularTolerance
+    ) {
+      BRepMesh_IncrementalMesh mesher(shape, tolerance, Standard_False, angularTolerance, Standard_False);
+
+      std::vector<float> lines;
+      std::vector<int32_t> edgeGroups;
+      NCollection_Map<TopoDS_Shape, TopTools_ShapeMapHasher> seenEdges;
+
+      for (TopExp_Explorer faceEx(shape, TopAbs_FACE); faceEx.More(); faceEx.Next()) {
+        const TopoDS_Face& face = TopoDS::Face(faceEx.Current());
+        TopLoc_Location faceLoc;
+        Handle(Poly_Triangulation) tri = BRep_Tool::Triangulation(face, faceLoc);
+        if (tri.IsNull()) continue;
+
+        for (TopExp_Explorer edgeEx(face, TopAbs_EDGE); edgeEx.More(); edgeEx.Next()) {
+          const TopoDS_Edge& edge = TopoDS::Edge(edgeEx.Current());
+          if (seenEdges.Contains(edge)) continue;
+          seenEdges.Add(edge);
+
+          TopLoc_Location edgeLoc;
+          Handle(Poly_PolygonOnTriangulation) polygon =
+            BRep_Tool::PolygonOnTriangulation(edge, tri, edgeLoc);
+          if (polygon.IsNull()) continue;
+
+          const TColStd_Array1OfInteger& nodes = polygon->Nodes();
+          if (nodes.Length() < 2) continue;
+
+          int lineStart = static_cast<int>(lines.size()) / 3;
+          int pointCount = 0;
+
+          gp_Pnt prevPt;
+          bool hasPrev = false;
+
+          for (int i = nodes.Lower(); i <= nodes.Upper(); i++) {
+            gp_Pnt p = tri->Node(nodes.Value(i)).Transformed(edgeLoc.Transformation());
+            if (hasPrev) {
+              lines.push_back(static_cast<float>(prevPt.X()));
+              lines.push_back(static_cast<float>(prevPt.Y()));
+              lines.push_back(static_cast<float>(prevPt.Z()));
+              lines.push_back(static_cast<float>(p.X()));
+              lines.push_back(static_cast<float>(p.Y()));
+              lines.push_back(static_cast<float>(p.Z()));
+              pointCount += 2;
+            }
+            prevPt = p;
+            hasPrev = true;
+          }
+
+          int edgeHash = edge.HashCode(2147483647);
+          edgeGroups.push_back(lineStart);
+          edgeGroups.push_back(pointCount);
+          edgeGroups.push_back(edgeHash);
+        }
+      }
+
+      for (TopExp_Explorer edgeEx(shape, TopAbs_EDGE); edgeEx.More(); edgeEx.Next()) {
+        const TopoDS_Edge& edge = TopoDS::Edge(edgeEx.Current());
+        if (seenEdges.Contains(edge)) continue;
+        seenEdges.Add(edge);
+
+        BRepAdaptor_Curve adaptor(edge);
+        GCPnts_TangentialDeflection tangDef(adaptor, tolerance, angularTolerance, 2, 1e-9, 1e-7);
+        int nbPts = tangDef.NbPoints();
+        if (nbPts < 2) continue;
+
+        int lineStart = static_cast<int>(lines.size()) / 3;
+        int pointCount = 0;
+
+        gp_Pnt prevPt;
+        bool hasPrev = false;
+
+        for (int j = 1; j <= nbPts; j++) {
+          gp_Pnt p = tangDef.Value(j);
+          if (hasPrev) {
+            lines.push_back(static_cast<float>(prevPt.X()));
+            lines.push_back(static_cast<float>(prevPt.Y()));
+            lines.push_back(static_cast<float>(prevPt.Z()));
+            lines.push_back(static_cast<float>(p.X()));
+            lines.push_back(static_cast<float>(p.Y()));
+            lines.push_back(static_cast<float>(p.Z()));
+            pointCount += 2;
+          }
+          prevPt = p;
+          hasPrev = true;
+        }
+
+        int edgeHash = edge.HashCode(2147483647);
+        edgeGroups.push_back(lineStart);
+        edgeGroups.push_back(pointCount);
+        edgeGroups.push_back(edgeHash);
+      }
+
+      EdgeMeshData result;
+
+      result.linesSize_ = static_cast<int>(lines.size());
+      if (result.linesSize_ > 0) {
+        result.linesPtr_ = static_cast<float*>(std::malloc(result.linesSize_ * sizeof(float)));
+        if (!result.linesPtr_) throw std::bad_alloc();
+        std::memcpy(result.linesPtr_, lines.data(), result.linesSize_ * sizeof(float));
+      }
+
+      result.edgeGroupsSize_ = static_cast<int>(edgeGroups.size());
+      if (result.edgeGroupsSize_ > 0) {
+        result.edgeGroupsPtr_ = static_cast<int32_t*>(std::malloc(result.edgeGroupsSize_ * sizeof(int32_t)));
+        if (!result.edgeGroupsPtr_) throw std::bad_alloc();
+        std::memcpy(result.edgeGroupsPtr_, edgeGroups.data(), result.edgeGroupsSize_ * sizeof(int32_t));
+      }
+
+      return result;
+    }
+  };
+
+  class TopologyResult {
+  public:
+    TopologyResult() : shapesPtr_(nullptr), shapesCount_(0) {}
+
+    ~TopologyResult() {
+      delete[] shapesPtr_;
+    }
+
+    TopologyResult(const TopologyResult& other)
+      : shapesPtr_(other.shapesPtr_), shapesCount_(other.shapesCount_) {
+      auto& mutable_other = const_cast<TopologyResult&>(other);
+      mutable_other.shapesPtr_ = nullptr;
+    }
+
+    int getShapesCount() const { return shapesCount_; }
+    TopoDS_Shape getShape(int index) const { return shapesPtr_[index]; }
+
+  private:
+    TopoDS_Shape* shapesPtr_;
+    int shapesCount_;
+
+    friend class TopologyExtractor;
+  };
+
+  class TopologyExtractor {
+  public:
+    static TopologyResult extract(const TopoDS_Shape& shape, int shapeType) {
+      TopAbs_ShapeEnum topoType = static_cast<TopAbs_ShapeEnum>(shapeType);
+      NCollection_Map<TopoDS_Shape, TopTools_ShapeMapHasher> seen;
+      std::vector<TopoDS_Shape> shapes;
+
+      for (TopExp_Explorer ex(shape, topoType); ex.More(); ex.Next()) {
+        const TopoDS_Shape& item = ex.Current();
+        if (seen.Add(item)) {
+          shapes.push_back(item);
+        }
+      }
+
+      TopologyResult result;
+      result.shapesCount_ = static_cast<int>(shapes.size());
+      if (result.shapesCount_ > 0) {
+        result.shapesPtr_ = new TopoDS_Shape[result.shapesCount_];
+        for (int i = 0; i < result.shapesCount_; i++) {
+          result.shapesPtr_[i] = shapes[i];
+        }
+      }
+      return result;
+    }
   };
 
   typedef Handle(IMeshTools_Context) Handle_IMeshTools_Context;
