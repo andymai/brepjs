@@ -530,13 +530,16 @@ export function drawProjection(
   projectionCamera: ProjectionPlane | ProjectionCamera = 'front'
 ): { visible: Drawing; hidden: Drawing } {
   let camera: ProjectionCamera;
-  if (projectionCamera instanceof ProjectionCamera) {
+  const ownCamera = !(projectionCamera instanceof ProjectionCamera);
+  if (!ownCamera) {
     camera = projectionCamera;
   } else {
     camera = lookFromPlane(projectionCamera);
   }
 
   const { visible, hidden } = makeProjectedEdges(shape, camera);
+
+  if (ownCamera) camera.delete();
 
   return {
     visible: edgesToDrawing(visible),
@@ -554,6 +557,7 @@ export function drawFaceOutline(face: Face): Drawing {
   const outerWire = clonedFace.outerWire();
   const curves = outerWire.edges.map((e) => edgeToCurve(e, face));
   outerWire.delete();
+  clonedFace.delete();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));
   if (stitchedCurves.length === 0) return new Drawing();

@@ -202,8 +202,7 @@ export function innerWires(face: Face): Wire[] {
   const allWires = Array.from(iterTopo(face.wrapped, 'wire')).map(
     (w) => castShape(unwrap(downcast(w))) as Wire
   );
-  const outerHash = outer.wrapped.HashCode(2147483647);
-  const result = allWires.filter((w) => w.wrapped.HashCode(2147483647) !== outerHash);
+  const result = allWires.filter((w) => !w.wrapped.IsSame(outer.wrapped));
   return result;
 }
 

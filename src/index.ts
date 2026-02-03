@@ -523,7 +523,9 @@ export {
   type MeshOptions,
 } from './topology/meshFns.js';
 
-export { clearMeshCache, setMeshCacheSize } from './topology/meshCache.js';
+export { clearMeshCache } from './topology/meshCache.js';
+// eslint-disable-next-line @typescript-eslint/no-deprecated -- Public API, kept for backward compatibility
+export { setMeshCacheSize } from './topology/meshCache.js';
 
 // ── Boolean operations (functional) ──
 

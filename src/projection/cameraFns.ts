@@ -7,6 +7,7 @@
 import type { Vec3 } from '../core/types.js';
 import { vecCross, vecNormalize, vecSub, vecLength } from '../core/vecOps.js';
 import { ProjectionCamera, type ProjectionPlane } from './ProjectionCamera.js';
+import { PROJECTION_PLANES } from './projectionPlanes.js';
 import type { Edge, AnyShape } from '../topology/shapes.js';
 import { makeProjectedEdges } from './makeProjectedEdges.js';
 
@@ -50,25 +51,9 @@ export function cameraLookAt(camera: Camera, target: Vec3): Camera {
   return createCamera(camera.position, direction);
 }
 
-const PLANE_MAP: Record<string, { dir: Vec3; xAxis: Vec3 }> = {
-  XY: { dir: [0, 0, 1], xAxis: [1, 0, 0] },
-  XZ: { dir: [0, -1, 0], xAxis: [1, 0, 0] },
-  YZ: { dir: [1, 0, 0], xAxis: [0, 1, 0] },
-  YX: { dir: [0, 0, -1], xAxis: [0, 1, 0] },
-  ZX: { dir: [0, 1, 0], xAxis: [0, 0, 1] },
-  ZY: { dir: [-1, 0, 0], xAxis: [0, 0, 1] },
-  front: { dir: [0, -1, 0], xAxis: [1, 0, 0] },
-  back: { dir: [0, 1, 0], xAxis: [-1, 0, 0] },
-  right: { dir: [-1, 0, 0], xAxis: [0, -1, 0] },
-  left: { dir: [1, 0, 0], xAxis: [0, 1, 0] },
-  bottom: { dir: [0, 0, 1], xAxis: [1, 0, 0] },
-  top: { dir: [0, 0, -1], xAxis: [1, 0, 0] },
-};
-
 /** Create a camera from a named projection plane. */
 export function cameraFromPlane(planeName: ProjectionPlane): Camera {
-  const config = PLANE_MAP[planeName];
-  if (!config) throw new Error(`Unknown projection plane: ${planeName}`);
+  const config = PROJECTION_PLANES[planeName];
   return createCamera([0, 0, 0], config.dir, config.xAxis);
 }
 

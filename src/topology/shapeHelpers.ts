@@ -20,7 +20,14 @@ import zip from '../utils/zip.js';
 
 export const makeLine = (v1: Point, v2: Point): Edge => {
   const oc = getKernel().oc;
-  return new Edge(new oc.BRepBuilderAPI_MakeEdge_3(asPnt(v1), asPnt(v2)).Edge());
+  const p1 = asPnt(v1);
+  const p2 = asPnt(v2);
+  const maker = new oc.BRepBuilderAPI_MakeEdge_3(p1, p2);
+  const edge = new Edge(maker.Edge());
+  maker.delete();
+  p1.delete();
+  p2.delete();
+  return edge;
 };
 
 export const makeCircle = (
@@ -111,10 +118,19 @@ export const makeHelix = (
 
 export const makeThreePointArc = (v1: Point, v2: Point, v3: Point): Edge => {
   const oc = getKernel().oc;
-  const circleGeom = new oc.GC_MakeArcOfCircle_4(asPnt(v1), asPnt(v2), asPnt(v3)).Value();
+  const [r, gc] = localGC();
 
-  const curve = new oc.Handle_Geom_Curve_2(circleGeom.get());
-  return new Edge(new oc.BRepBuilderAPI_MakeEdge_24(curve).Edge());
+  const p1 = r(asPnt(v1));
+  const p2 = r(asPnt(v2));
+  const p3 = r(asPnt(v3));
+  const arcMaker = r(new oc.GC_MakeArcOfCircle_4(p1, p2, p3));
+  const circleGeom = r(arcMaker.Value());
+
+  const curve = r(new oc.Handle_Geom_Curve_2(circleGeom.get()));
+  const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_24(curve));
+  const edge = new Edge(edgeMaker.Edge());
+  gc();
+  return edge;
 };
 
 export const makeEllipseArc = (
@@ -211,14 +227,18 @@ export const makeBezierCurve = (points: Point[]): Edge => {
     bug('makeBezierCurve', `Need at least 2 points for a Bezier curve, got ${points.length}`);
   }
   const oc = getKernel().oc;
-  const arrayOfPoints = new oc.TColgp_Array1OfPnt_2(1, points.length);
+  const [r, gc] = localGC();
+  const arrayOfPoints = r(new oc.TColgp_Array1OfPnt_2(1, points.length));
   points.forEach((p, i) => {
-    arrayOfPoints.SetValue(i + 1, asPnt(p));
+    arrayOfPoints.SetValue(i + 1, r(asPnt(p)));
   });
   const bezCurve = new oc.Geom_BezierCurve_1(arrayOfPoints);
 
-  const curve = new oc.Handle_Geom_Curve_2(bezCurve);
-  return new Edge(new oc.BRepBuilderAPI_MakeEdge_24(curve).Edge());
+  const curve = r(new oc.Handle_Geom_Curve_2(bezCurve));
+  const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_24(curve));
+  const edge = new Edge(edgeMaker.Edge());
+  gc();
+  return edge;
 };
 
 export const makeTangentArc = (startPoint: Point, startTgt: Point, endPoint: Point): Edge => {
@@ -367,7 +387,7 @@ export const makeSphere = (radius: number): Solid => {
   return sphere;
 };
 
-class EllpsoidTransform extends WrappingObj<OcType> {
+class EllipsoidTransform extends WrappingObj<OcType> {
   constructor(x: number, y: number, z: number) {
     const oc = getKernel().oc;
     const r = GCWithScope();
@@ -431,7 +451,7 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
   const baseSurface = oc.GeomConvert.SurfaceToBSplineSurface(sphericalSurface.UReversed()).get();
 
   const poles = convertToJSArray(baseSurface.Poles_2());
-  const transform = new EllpsoidTransform(aLength, bLength, cLength);
+  const transform = new EllipsoidTransform(aLength, bLength, cLength);
 
   poles.forEach((columns, rowIdx) => {
     columns.forEach((value, colIdx) => {
@@ -453,9 +473,13 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
  */
 export const makeBox = (corner1: Point, corner2: Point): Solid => {
   const oc = getKernel().oc;
-  const boxMaker = new oc.BRepPrimAPI_MakeBox_4(asPnt(corner1), asPnt(corner2));
+  const p1 = asPnt(corner1);
+  const p2 = asPnt(corner2);
+  const boxMaker = new oc.BRepPrimAPI_MakeBox_4(p1, p2);
   const box = new Solid(boxMaker.Solid());
   boxMaker.delete();
+  p1.delete();
+  p2.delete();
   return box;
 };
 
@@ -466,6 +490,7 @@ export const makeVertex = (point: Point): Vertex => {
   const vertexMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
   const vertex = vertexMaker.Vertex();
   vertexMaker.delete();
+  pnt.delete();
 
   return new Vertex(vertex);
 };

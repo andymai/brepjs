@@ -11,6 +11,7 @@ import { gcWithScope } from '../core/disposal.js';
 import { uuidv } from '../utils/uuid.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
+import { uniqueIOFilename } from '../core/constants.js';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -108,7 +109,7 @@ export function exportAssemblySTEP(
     progress
   );
 
-  const filename = 'export.step';
+  const filename = uniqueIOFilename('_export', 'step');
   const done = writer.Write(filename);
   doc.delete();
 

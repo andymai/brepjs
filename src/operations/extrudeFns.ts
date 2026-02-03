@@ -57,8 +57,8 @@ function makeHelixWire(
   );
 
   const nTurns = height / pitch;
-  const uStart = geomLine.Value(0.0);
-  const uStop = geomLine.Value(nTurns * Math.sqrt((2 * Math.PI) ** 2 + pitch ** 2));
+  const uStart = r(geomLine.Value(0.0));
+  const uStop = r(geomLine.Value(nTurns * Math.sqrt((2 * Math.PI) ** 2 + pitch ** 2)));
   const geomSeg = r(new oc.GCE2d_MakeSegment_1(uStart, uStop));
 
   const ax3 = makeOcAx3(center, dir);

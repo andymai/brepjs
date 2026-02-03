@@ -8,6 +8,10 @@ import {
   setEdgeMesh,
   clearMeshCache,
   setMeshCacheSize,
+  getMeshForShape,
+  setMeshForShape,
+  getEdgeMeshForShape,
+  setEdgeMeshForShape,
 } from '../src/topology/meshCache.js';
 import type { ShapeMesh, EdgeMesh } from '../src/topology/meshFns.js';
 
@@ -27,16 +31,21 @@ function fakeEdgeMesh(id: number): EdgeMesh {
   };
 }
 
+// Mock OCCT shape object for WeakMap testing
+function fakeOcShape(id: number): object {
+  return { _id: id };
+}
+
 describe('meshCache', () => {
   beforeEach(() => {
     clearMeshCache();
-    setMeshCacheSize(128);
   });
 
   describe('buildMeshCacheKey', () => {
     it('produces a deterministic key from parameters', () => {
+      // shapeHash parameter is kept for API compatibility but no longer used
       const key = buildMeshCacheKey(123, 0.1, 30, false);
-      expect(key).toBe('123:0.1:30:false');
+      expect(key).toBe('0.1:30:false');
     });
 
     it('distinguishes skipNormals', () => {
@@ -44,9 +53,16 @@ describe('meshCache', () => {
       const b = buildMeshCacheKey(1, 0.1, 30, true);
       expect(a).not.toBe(b);
     });
+
+    it('ignores shapeHash parameter (no longer used)', () => {
+      // Different hashes should produce the same key since identity is via WeakMap
+      const a = buildMeshCacheKey(123, 0.1, 30, false);
+      const b = buildMeshCacheKey(456, 0.1, 30, false);
+      expect(a).toBe(b);
+    });
   });
 
-  describe('getMesh / setMesh', () => {
+  describe('getMesh / setMesh (legacy API)', () => {
     it('returns undefined for missing keys', () => {
       expect(getMesh('nonexistent')).toBeUndefined();
     });
@@ -65,55 +81,37 @@ describe('meshCache', () => {
     });
   });
 
-  describe('LRU eviction', () => {
-    it('evicts oldest entry when capacity is exceeded', () => {
-      setMeshCacheSize(2);
-      setMesh('a', fakeMesh(1));
-      setMesh('b', fakeMesh(2));
-      setMesh('c', fakeMesh(3)); // evicts 'a'
-      expect(getMesh('a')).toBeUndefined();
-      expect(getMesh('b')).toBeDefined();
-      expect(getMesh('c')).toBeDefined();
-    });
-
-    it('promotes accessed entries so they survive eviction', () => {
-      setMeshCacheSize(2);
-      setMesh('a', fakeMesh(1));
-      setMesh('b', fakeMesh(2));
-      getMesh('a'); // promote 'a', 'b' is now oldest
-      setMesh('c', fakeMesh(3)); // evicts 'b'
-      expect(getMesh('a')).toBeDefined();
-      expect(getMesh('b')).toBeUndefined();
-      expect(getMesh('c')).toBeDefined();
-    });
-  });
-
   describe('clearMeshCache', () => {
-    it('removes all entries', () => {
+    it('removes all legacy entries', () => {
       setMesh('a', fakeMesh(1));
       setMesh('b', fakeMesh(2));
       clearMeshCache();
       expect(getMesh('a')).toBeUndefined();
       expect(getMesh('b')).toBeUndefined();
     });
+
+    it('removes all WeakMap entries', () => {
+      const shape = fakeOcShape(1);
+      setMeshForShape(shape, 'key', fakeMesh(1));
+      clearMeshCache();
+      expect(getMeshForShape(shape, 'key')).toBeUndefined();
+    });
   });
 
-  describe('setMeshCacheSize', () => {
-    it('evicts entries when shrinking below current size', () => {
-      setMesh('a', fakeMesh(1));
-      setMesh('b', fakeMesh(2));
-      setMesh('c', fakeMesh(3));
-      setMeshCacheSize(1); // evicts 'a' and 'b'
-      expect(getMesh('a')).toBeUndefined();
-      expect(getMesh('b')).toBeUndefined();
-      expect(getMesh('c')).toBeDefined();
+  describe('setMeshCacheSize (deprecated)', () => {
+    it('is a no-op for backward compatibility', () => {
+      // WeakMap cache doesn't use size limits - entries are GC'd with shapes
+      // This should not throw
+      expect(() => setMeshCacheSize(1)).not.toThrow();
+      expect(() => setMeshCacheSize(1000)).not.toThrow();
     });
   });
 
   describe('buildEdgeMeshCacheKey', () => {
     it('produces a deterministic key with edge prefix', () => {
+      // shapeHash parameter is kept for API compatibility but no longer used
       const key = buildEdgeMeshCacheKey(123, 0.1, 30);
-      expect(key).toBe('edge:123:0.1:30');
+      expect(key).toBe('edge:0.1:30');
     });
 
     it('differs from triangle mesh key for same params', () => {
@@ -123,7 +121,7 @@ describe('meshCache', () => {
     });
   });
 
-  describe('getEdgeMesh / setEdgeMesh', () => {
+  describe('getEdgeMesh / setEdgeMesh (legacy API)', () => {
     it('returns undefined for missing keys', () => {
       expect(getEdgeMesh('nonexistent')).toBeUndefined();
     });
@@ -133,15 +131,86 @@ describe('meshCache', () => {
       setEdgeMesh('ekey1', mesh);
       expect(getEdgeMesh('ekey1')).toBe(mesh);
     });
+  });
 
-    it('shares LRU pool with triangle meshes', () => {
-      setMeshCacheSize(2);
-      setMesh('tri1', fakeMesh(1));
-      setEdgeMesh('edge1', fakeEdgeMesh(2));
-      setEdgeMesh('edge2', fakeEdgeMesh(3)); // evicts 'tri1'
-      expect(getMesh('tri1')).toBeUndefined();
-      expect(getEdgeMesh('edge1')).toBeDefined();
-      expect(getEdgeMesh('edge2')).toBeDefined();
+  describe('WeakMap-based API', () => {
+    describe('getMeshForShape / setMeshForShape', () => {
+      it('returns undefined for missing shapes', () => {
+        const shape = fakeOcShape(1);
+        expect(getMeshForShape(shape, 'key')).toBeUndefined();
+      });
+
+      it('returns undefined for missing parameter keys', () => {
+        const shape = fakeOcShape(1);
+        setMeshForShape(shape, 'key1', fakeMesh(1));
+        expect(getMeshForShape(shape, 'key2')).toBeUndefined();
+      });
+
+      it('stores and retrieves a mesh by shape identity', () => {
+        const shape = fakeOcShape(1);
+        const mesh = fakeMesh(1);
+        setMeshForShape(shape, 'key', mesh);
+        expect(getMeshForShape(shape, 'key')).toBe(mesh);
+      });
+
+      it('distinguishes different shape objects', () => {
+        const shape1 = fakeOcShape(1);
+        const shape2 = fakeOcShape(2);
+        const mesh1 = fakeMesh(1);
+        const mesh2 = fakeMesh(2);
+
+        setMeshForShape(shape1, 'key', mesh1);
+        setMeshForShape(shape2, 'key', mesh2);
+
+        expect(getMeshForShape(shape1, 'key')).toBe(mesh1);
+        expect(getMeshForShape(shape2, 'key')).toBe(mesh2);
+      });
+
+      it('stores multiple parameter variations for same shape', () => {
+        const shape = fakeOcShape(1);
+        const mesh1 = fakeMesh(1);
+        const mesh2 = fakeMesh(2);
+
+        setMeshForShape(shape, 'params1', mesh1);
+        setMeshForShape(shape, 'params2', mesh2);
+
+        expect(getMeshForShape(shape, 'params1')).toBe(mesh1);
+        expect(getMeshForShape(shape, 'params2')).toBe(mesh2);
+      });
+
+      it('overwrites existing entry for same shape and key', () => {
+        const shape = fakeOcShape(1);
+        setMeshForShape(shape, 'key', fakeMesh(1));
+        const mesh2 = fakeMesh(2);
+        setMeshForShape(shape, 'key', mesh2);
+        expect(getMeshForShape(shape, 'key')).toBe(mesh2);
+      });
+    });
+
+    describe('getEdgeMeshForShape / setEdgeMeshForShape', () => {
+      it('returns undefined for missing shapes', () => {
+        const shape = fakeOcShape(1);
+        expect(getEdgeMeshForShape(shape, 'key')).toBeUndefined();
+      });
+
+      it('stores and retrieves an edge mesh by shape identity', () => {
+        const shape = fakeOcShape(1);
+        const mesh = fakeEdgeMesh(1);
+        setEdgeMeshForShape(shape, 'key', mesh);
+        expect(getEdgeMeshForShape(shape, 'key')).toBe(mesh);
+      });
+
+      it('keeps triangle and edge caches separate', () => {
+        const shape = fakeOcShape(1);
+        const triMesh = fakeMesh(1);
+        const edgeMesh = fakeEdgeMesh(2);
+
+        setMeshForShape(shape, 'key', triMesh);
+        setEdgeMeshForShape(shape, 'key', edgeMesh);
+
+        expect(getMeshForShape(shape, 'key')).toBe(triMesh);
+        expect(getEdgeMeshForShape(shape, 'key')).toBe(edgeMesh);
+      });
     });
   });
 });

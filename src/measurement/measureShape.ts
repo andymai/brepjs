@@ -51,15 +51,24 @@ export function measureShapeVolumeProperties(shape: Shape3D): VolumePhysicalProp
 }
 
 export function measureVolume(shape: Shape3D): number {
-  return measureShapeVolumeProperties(shape).volume;
+  const props = measureShapeVolumeProperties(shape);
+  const v = props.volume;
+  props.delete();
+  return v;
 }
 
 export function measureArea(shape: Face | Shape3D): number {
-  return measureShapeSurfaceProperties(shape).area;
+  const props = measureShapeSurfaceProperties(shape);
+  const a = props.area;
+  props.delete();
+  return a;
 }
 
 export function measureLength(shape: AnyShape): number {
-  return measureShapeLinearProperties(shape).length;
+  const props = measureShapeLinearProperties(shape);
+  const l = props.length;
+  props.delete();
+  return l;
 }
 
 export class DistanceTool extends WrappingObj<OcType> {
@@ -80,7 +89,10 @@ export class DistanceTool extends WrappingObj<OcType> {
 }
 
 export function measureDistanceBetween(shape1: AnyShape, shape2: AnyShape): number {
-  return new DistanceTool().distanceBetween(shape1, shape2);
+  const tool = new DistanceTool();
+  const dist = tool.distanceBetween(shape1, shape2);
+  tool.delete();
+  return dist;
 }
 
 export class DistanceQuery extends WrappingObj<OcType> {

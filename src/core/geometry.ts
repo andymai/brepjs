@@ -524,11 +524,6 @@ export class Plane {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- undefined before first assignment (see @ts-expect-error above)
     if (this.localToGlobal) this.localToGlobal.delete();
 
-    const _globalCoordSystem = new this.oc.gp_Ax3_1();
-    const _localCoordSystem = makeAx3(this.origin, this.zDir, this.xDir);
-
-    const _forwardT = new this.oc.gp_Trsf_1();
-    _forwardT.SetTransformation_1(_globalCoordSystem, _localCoordSystem);
     this.globalToLocal = new Transformation();
     this.globalToLocal.coordSystemChange('reference', {
       origin: this.origin,
@@ -545,10 +540,6 @@ export class Plane {
       },
       'reference'
     );
-
-    _globalCoordSystem.delete();
-    _localCoordSystem.delete();
-    _forwardT.delete();
   }
 
   setOrigin2d(x: number, y: number): void {

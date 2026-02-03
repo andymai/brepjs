@@ -10,7 +10,7 @@ import {
   type PlaneName,
   BoundingBox,
 } from '../core/geometry.js';
-import { DEG2RAD, HASH_CODE_MAX } from '../core/constants.js';
+import { DEG2RAD, HASH_CODE_MAX, uniqueIOFilename } from '../core/constants.js';
 import { rotate, translate, mirror, scale as scaleShape } from '../core/geometryHelpers.js';
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { cast, downcast, iterTopo, type TopoEntity } from './cast.js';
@@ -332,7 +332,14 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
   }
 
   protected _mesh({ tolerance = 1e-3, angularTolerance = 0.1 } = {}): void {
-    new this.oc.BRepMesh_IncrementalMesh_2(this.wrapped, tolerance, false, angularTolerance, false);
+    const mesher = new this.oc.BRepMesh_IncrementalMesh_2(
+      this.wrapped,
+      tolerance,
+      false,
+      angularTolerance,
+      false
+    );
+    mesher.delete();
   }
 
   /**
@@ -390,7 +397,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    * @category Shape Export
    */
   blobSTEP(): Result<Blob> {
-    const filename = 'blob.step';
+    const filename = uniqueIOFilename('_blob', 'step');
     const writer = new this.oc.STEPControl_Writer_1();
 
     this.oc.Interface_Static.SetIVal('write.step.schema', 5);
@@ -430,7 +437,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
    */
   blobSTL({ tolerance = 1e-3, angularTolerance = 0.1, binary = false } = {}): Result<Blob> {
     this._mesh({ tolerance, angularTolerance });
-    const filename = 'blob.stl';
+    const filename = uniqueIOFilename('_blob', 'stl');
     const done = this.oc.StlAPI.Write(this.wrapped, filename, !binary);
 
     if (done) {
@@ -544,35 +551,59 @@ export abstract class _1DShape<Type extends Deletable = OcShape> extends Shape<T
   }
 
   get startPoint(): Vector {
-    return this.curve.startPoint;
+    const c = this.curve;
+    const result = c.startPoint;
+    c.delete();
+    return result;
   }
 
   get endPoint(): Vector {
-    return this.curve.endPoint;
+    const c = this.curve;
+    const result = c.endPoint;
+    c.delete();
+    return result;
   }
 
   tangentAt(position = 0): Vector {
-    return this.curve.tangentAt(position);
+    const c = this.curve;
+    const result = c.tangentAt(position);
+    c.delete();
+    return result;
   }
 
   pointAt(position = 0): Vector {
-    return this.curve.pointAt(position);
+    const c = this.curve;
+    const result = c.pointAt(position);
+    c.delete();
+    return result;
   }
 
   get isClosed(): boolean {
-    return this.curve.isClosed;
+    const c = this.curve;
+    const result = c.isClosed;
+    c.delete();
+    return result;
   }
 
   get isPeriodic(): boolean {
-    return this.curve.isPeriodic;
+    const c = this.curve;
+    const result = c.isPeriodic;
+    c.delete();
+    return result;
   }
 
   get period(): number {
-    return this.curve.period;
+    const c = this.curve;
+    const result = c.period;
+    c.delete();
+    return result;
   }
 
   get geomType(): CurveType {
-    return this.curve.curveType;
+    const c = this.curve;
+    const result = c.curveType;
+    c.delete();
+    return result;
   }
 
   get length(): number {
