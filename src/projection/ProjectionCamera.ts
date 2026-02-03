@@ -85,23 +85,31 @@ export class ProjectionCamera extends WrappingObj<OcType> {
   autoAxes(): void {
     const dir = this.direction;
     const xAxis = defaultXDir(dir);
-    this.wrapped.SetXDirection(asDir(xAxis));
+    const ocDir = asDir(xAxis);
+    this.wrapped.SetXDirection(ocDir);
+    ocDir.delete();
     dir.delete();
     xAxis.delete();
   }
 
   setPosition(position: Point): this {
-    this.wrapped.SetLocation(asPnt(position));
+    const pnt = asPnt(position);
+    this.wrapped.SetLocation(pnt);
+    pnt.delete();
     return this;
   }
 
   setXAxis(xAxis: Point): this {
-    this.wrapped.SetXDirection(asDir(xAxis));
+    const dir = asDir(xAxis);
+    this.wrapped.SetXDirection(dir);
+    dir.delete();
     return this;
   }
 
   setYAxis(yAxis: Point): this {
-    this.wrapped.SetYDirection(asDir(yAxis));
+    const dir = asDir(yAxis);
+    this.wrapped.SetYDirection(dir);
+    dir.delete();
     return this;
   }
 
@@ -111,9 +119,15 @@ export class ProjectionCamera extends WrappingObj<OcType> {
         ? (shape as { boundingBox: BoundingBox }).boundingBox.center
         : (shape as Point)
     );
-    const direction = this.position.sub(lookAtPoint).normalized();
+    const pos = this.position;
+    const diff = pos.sub(lookAtPoint);
+    const direction = diff.normalized();
+    const ocDir = direction.toDir();
 
-    this.wrapped.SetDirection(direction.toDir());
+    this.wrapped.SetDirection(ocDir);
+    ocDir.delete();
+    diff.delete();
+    pos.delete();
     lookAtPoint.delete();
     direction.delete();
     this.autoAxes();

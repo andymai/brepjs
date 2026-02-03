@@ -152,15 +152,17 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   tangentArcTo(end: Point2D): this {
+    const [r, gc] = localGC();
     const endPoint = this.plane.toWorldCoords(end);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const previousEdge = this.pendingEdges[this.pendingEdges.length - 1]!;
 
-    this.pendingEdges.push(
-      makeTangentArc(previousEdge.endPoint, previousEdge.tangentAt(1), endPoint)
-    );
+    const prevEnd = r(previousEdge.endPoint);
+    const prevTangent = r(previousEdge.tangentAt(1));
+    this.pendingEdges.push(makeTangentArc(prevEnd, prevTangent, endPoint));
 
     this._updatePointer(endPoint);
+    gc();
     return this;
   }
 
@@ -170,21 +172,23 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   sagittaArcTo(end: Point2D, sagitta: number): this {
+    const [r, gc] = localGC();
     const startPoint = this.pointer;
     const endPoint = this.plane.toWorldCoords(end);
 
-    let p = endPoint.add(startPoint);
-    const midPoint = p.multiply(0.5);
+    const sum = r(endPoint.add(startPoint));
+    const midPoint = r(sum.multiply(0.5));
 
-    p = endPoint.sub(startPoint);
-    const sagDirection = p.cross(this.plane.zDir).normalized();
+    const diff = r(endPoint.sub(startPoint));
+    const sagDirection = r(r(diff.cross(this.plane.zDir)).normalized());
 
-    const sagVector = sagDirection.multiply(sagitta);
+    const sagVector = r(sagDirection.multiply(sagitta));
 
-    const sagPoint = midPoint.add(sagVector);
+    const sagPoint = r(midPoint.add(sagVector));
 
     this.pendingEdges.push(makeThreePointArc(this.pointer, sagPoint, endPoint));
     this._updatePointer(endPoint);
+    gc();
 
     return this;
   }
@@ -405,12 +409,15 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   protected _mirrorWireOnStartEnd(wire: Wire): Wire {
-    const startToEndVector = this.pointer.sub(this.firstPoint).normalize();
-    const normal = startToEndVector.cross(this.plane.zDir);
+    const [r, gc] = localGC();
+    const diff = r(this.pointer.sub(this.firstPoint));
+    const startToEndVector = r(diff.normalize());
+    const normal = r(startToEndVector.cross(this.plane.zDir));
 
     const mirroredWire = wire.clone().mirror(normal, this.pointer);
 
     const combinedWire = unwrap(assembleWire([wire, mirroredWire]));
+    gc();
 
     return combinedWire;
   }
