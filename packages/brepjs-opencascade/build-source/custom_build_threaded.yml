@@ -1,0 +1,15 @@
+#@ load("defaults.yml", "bindings", "emccFlags", "additionalCppCode")
+
+mainBuild:
+  name: brepjs_threaded.js
+  bindings: #@ bindings()
+  emccFlags:
+  #@ for flag in emccFlags():
+  - #@ flag
+  #@ end
+  - -pthread
+  - -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
+  - -sSHARED_MEMORY=1
+  - -sINITIAL_MEMORY=134217728
+  - -sMAXIMUM_MEMORY=4294967296
+additionalCppCode: #@ additionalCppCode()

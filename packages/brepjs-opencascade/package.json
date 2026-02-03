@@ -1,9 +1,15 @@
 {
   "name": "brepjs-opencascade",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "OpenCascade.js custom WASM build for brepjs",
   "license": "MIT",
   "main": "src/brepjs_single.js",
+  "exports": {
+    ".": "./src/brepjs_single.js",
+    "./single": "./src/brepjs_single.js",
+    "./threaded": "./src/brepjs_threaded.js",
+    "./src/*": "./src/*"
+  },
   "directories": {
     "lib": "src"
   },
@@ -11,10 +17,11 @@
     "src"
   ],
   "scripts": {
-    "buildWasm": "pnpm run generateConfig && pnpm run buildSingle && pnpm run buildWithExceptions",
+    "buildWasm": "pnpm run generateConfig && pnpm run buildSingle && pnpm run buildWithExceptions && pnpm run buildThreaded",
     "updateDocker": "docker pull donalffons/opencascade.js",
     "generateConfig": "ytt -f build-source/ --output-files build-config",
     "buildSingle": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js custom_build_single.yml && mv brepjs_single* ../src && cd -",
-    "buildWithExceptions": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js custom_build_with_exceptions.yml && mv brepjs_with_exceptions* ../src && cd -"
+    "buildWithExceptions": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js custom_build_with_exceptions.yml && mv brepjs_with_exceptions* ../src && cd -",
+    "buildThreaded": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js:multi-threaded custom_build_threaded.yml && mv brepjs_threaded* ../src && cd -"
   }
 }

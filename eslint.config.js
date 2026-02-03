@@ -12,6 +12,8 @@ export default tseslint.config(
       },
     },
     rules: {
+      // Deprecation warnings for external users, not errors for internal usage
+      '@typescript-eslint/no-deprecated': 'warn',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
