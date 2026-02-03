@@ -12,46 +12,105 @@ Web CAD library built on OpenCascade with a layered architecture and kernel abst
 npm install brepjs brepjs-opencascade
 ```
 
-## Usage
+## Quick Start
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
-import { setOC, draw, drawRoundedRectangle } from 'brepjs';
+import {
+  setOC,
+  makeBox,
+  makeCylinder,
+  castShape,
+  fuseShapes,
+  cutShape,
+  translateShape,
+  fnMeasureVolume,
+  fnExportSTEP,
+  unwrap,
+} from 'brepjs';
 
 // Initialize the WASM kernel
 const oc = await opencascade();
 setOC(oc);
 
-// Create a shape
-const box = draw()
-  .hLine(50)
-  .vLine(30)
-  .hLine(-50)
-  .close()
-  .sketchOnPlane()
-  .extrude(10);
+// Create primitive shapes
+const box = castShape(makeBox([0, 0, 0], [50, 30, 20]).wrapped);
+const cylinder = castShape(makeCylinder(8, 25).translate([25, 15, -2]).wrapped);
+
+// Boolean operations
+const withHole = unwrap(cutShape(box, cylinder));
+
+// Transform
+const moved = translateShape(withHole, [100, 0, 0]);
+
+// Measure
+console.log('Volume:', fnMeasureVolume(moved), 'mm³');
+
+// Export
+const stepBlob = unwrap(fnExportSTEP(moved));
 ```
+
+## Examples
+
+See the [examples/](./examples/) directory for complete workflows:
+
+- **[basic-primitives.ts](./examples/basic-primitives.ts)** — Create shapes and boolean operations
+- **[mechanical-part.ts](./examples/mechanical-part.ts)** — Build a bracket with holes
+- **[2d-to-3d.ts](./examples/2d-to-3d.ts)** — Sketch to extrusion workflow
+- **[import-export.ts](./examples/import-export.ts)** — Load, modify, export files
+- **[text-engraving.ts](./examples/text-engraving.ts)** — Engrave text on shapes
+
+## Documentation
+
+- **[Architecture](./docs/architecture.md)** — Layer diagram and module overview
+- **[Performance](./docs/performance.md)** — Optimization best practices
+- **[Memory Management](./docs/memory-management.md)** — Resource cleanup patterns
+- **[Error Reference](./docs/errors.md)** — Error codes and recovery
+- **[Compatibility](./docs/compatibility.md)** — Tested environments
 
 ## Architecture
 
 Four-layer architecture with enforced import boundaries:
 
-| Layer | Directories | Imports from |
-|-------|------------|--------------|
-| 0 | `kernel/`, `utils/` | External only |
-| 1 | `core/` | Layers 0 |
-| 2 | `topology/`, `operations/`, `2d/`, `query/`, `measurement/`, `io/` | Layers 0-2 |
-| 3 | `sketching/`, `text/`, `projection/` | Layers 0-3 |
+```
+Layer 3: sketching/, text/, projection/     (High-level API)
+Layer 2: topology/, operations/, 2d/, ...   (Domain)
+Layer 1: core/                               (Types, memory, errors)
+Layer 0: kernel/, utils/                     (WASM bindings)
+```
+
+See [docs/architecture.md](./docs/architecture.md) for the full diagram.
+
+## API Styles
+
+brepjs supports two API styles:
+
+**Functional API (recommended):**
+```typescript
+const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+const moved = translateShape(box, [5, 0, 0]); // Returns new shape
+```
+
+**Legacy class API:**
+```typescript
+const box = makeBox([10, 10, 10]);
+box.translate([5, 0, 0]); // Mutates in place
+```
 
 ## Development
 
 ```bash
 npm install
-npm run build
-npm run test
-npm run typecheck
-npm run lint
+npm run build        # Build library
+npm run test         # Run tests
+npm run typecheck    # Type check
+npm run lint         # Lint
+npm run bench        # Run benchmarks
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines.
 
 ## License
 
