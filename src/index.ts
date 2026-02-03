@@ -523,6 +523,8 @@ export {
   type MeshOptions,
 } from './topology/meshFns.js';
 
+export { clearMeshCache, setMeshCacheSize } from './topology/meshCache.js';
+
 // ── Boolean operations (functional) ──
 
 export {

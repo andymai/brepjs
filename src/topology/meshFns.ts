@@ -12,6 +12,7 @@ import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { getFaces, getEdges } from './shapeFns.js';
+import { buildMeshCacheKey, getMesh, setMesh } from './meshCache.js';
 
 // ---------------------------------------------------------------------------
 // Mesh types
@@ -45,15 +46,24 @@ export function meshShape(
     tolerance = 1e-3,
     angularTolerance = 0.1,
     skipNormals = false,
-  }: MeshOptions & { skipNormals?: boolean } = {}
+    cache = true,
+  }: MeshOptions & { skipNormals?: boolean; cache?: boolean } = {}
 ): ShapeMesh {
+  // Check cache first
+  const shapeHash = shape.wrapped.HashCode(HASH_CODE_MAX) as number;
+  if (cache) {
+    const cacheKey = buildMeshCacheKey(shapeHash, tolerance, angularTolerance, skipNormals);
+    const cached = getMesh(cacheKey);
+    if (cached) return cached;
+  }
+
   const result = getKernel().mesh(shape.wrapped, {
     tolerance,
     angularTolerance,
     skipNormals,
   });
 
-  return {
+  const mesh: ShapeMesh = {
     vertices: result.vertices,
     normals: result.normals,
     triangles: result.triangles,
@@ -63,6 +73,14 @@ export function meshShape(
       faceId: g.faceHash,
     })),
   };
+
+  // Store in cache
+  if (cache) {
+    const cacheKey = buildMeshCacheKey(shapeHash, tolerance, angularTolerance, skipNormals);
+    setMesh(cacheKey, mesh);
+  }
+
+  return mesh;
 }
 
 // ---------------------------------------------------------------------------
