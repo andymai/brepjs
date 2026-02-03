@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { drawRectangle, drawCircle, Blueprint } from '../src/index.js';
 import {
+  createBlueprint,
   blueprintBoundingBox,
   blueprintOrientation,
   translateBlueprint,
@@ -12,7 +13,9 @@ import {
   blueprintToSVGPathD,
   blueprintIsInside,
   sketchBlueprintOnPlane,
+  sketchBlueprintOnFace,
 } from '../src/2d/blueprints/blueprintFns.js';
+import { makeBox } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -131,6 +134,26 @@ describe('sketchBlueprintOnPlane', () => {
   it('sketches on XY plane', () => {
     const bp = rect(10, 10);
     const sketch = sketchBlueprintOnPlane(bp, 'XY');
+    expect(sketch).toBeDefined();
+    expect(sketch.wire).toBeDefined();
+  });
+});
+
+describe('createBlueprint', () => {
+  it('creates a blueprint from curves', () => {
+    const source = rect(10, 10);
+    const bp = createBlueprint(source.curves);
+    expect(bp).toBeInstanceOf(Blueprint);
+    expect(bp.curves.length).toBe(source.curves.length);
+  });
+});
+
+describe('sketchBlueprintOnFace', () => {
+  it('sketches on a box face', () => {
+    const bp = rect(5, 5);
+    const box = makeBox([0, 0, 0], [20, 20, 20]);
+    const face = box.faces[0];
+    const sketch = sketchBlueprintOnFace(bp, face, 'original');
     expect(sketch).toBeDefined();
     expect(sketch.wire).toBeDefined();
   });

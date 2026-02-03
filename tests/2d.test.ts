@@ -20,7 +20,11 @@ import {
   fuse2D,
   cut2D,
   intersect2D,
+  makeBox,
 } from '../src/index.js';
+import { fillet2D, chamfer2D } from '../src/2d/blueprints/customCorners.js';
+import { offsetBlueprint } from '../src/2d/blueprints/offset.js';
+import { approximateForSVG } from '../src/2d/blueprints/approximations.js';
 
 beforeAll(async () => {
   await initOC();
@@ -343,6 +347,13 @@ describe('Blueprints', () => {
     expect(Array.isArray(b.toSVGPaths())).toBe(true);
   });
 
+  it('toSVGViewBox', () => {
+    const b = new Blueprints([rect(10, 10), rect(10, 10, 30, 0)]);
+    const viewBox = b.toSVGViewBox(1);
+    expect(typeof viewBox).toBe('string');
+    expect(viewBox).toMatch(/^-?\d+(\.\d+)? -?\d+(\.\d+)? \d+(\.\d+)? \d+(\.\d+)?$/);
+  });
+
   it('clone', () => {
     const b = new Blueprints([rect(10, 10), rect(10, 10, 30, 0)]);
     expect(b.clone()).not.toBe(b);
@@ -355,6 +366,13 @@ describe('Blueprints', () => {
     expect(b.scale(2)).toBeDefined();
     expect(b.mirror([0, 1], [0, 0], 'plane')).toBeDefined();
     expect(b.stretch(2, [1, 0], [0, 0])).toBeDefined();
+  });
+
+  it('sketchOnPlane', () => {
+    const b = new Blueprints([rect(10, 10), rect(10, 10, 30, 0)]);
+    const sketches = b.sketchOnPlane('XY');
+    expect(Array.isArray(sketches)).toBe(true);
+    expect(sketches.length).toBe(2);
   });
 });
 
@@ -424,5 +442,79 @@ describe('Drawing API', () => {
     expect(d.toSVG()).toContain('<svg');
     expect(typeof d.toSVGViewBox(1)).toBe('string');
     expect(d.toSVGPaths().length).toBeGreaterThan(0);
+  });
+});
+
+describe('customCorners', () => {
+  it('fillet2D rounds corners', () => {
+    const bp = rect(10, 10);
+    const filleted = fillet2D(bp, 1);
+    expect(filleted).toBeDefined();
+    // Filleted shape has more curves than original (4 lines -> 4 lines + 4 arcs)
+    if (filleted) {
+      expect(filleted.curves.length).toBeGreaterThan(bp.curves.length);
+    }
+  });
+
+  it('chamfer2D cuts corners', () => {
+    const bp = rect(10, 10);
+    const chamfered = chamfer2D(bp, 1);
+    expect(chamfered).toBeDefined();
+    // Chamfered shape has more curves than original (4 lines -> 8 lines)
+    if (chamfered) {
+      expect(chamfered.curves.length).toBeGreaterThan(bp.curves.length);
+    }
+  });
+});
+
+describe('offsetBlueprint', () => {
+  it('offsets a rectangle outward', () => {
+    const bp = rect(10, 10);
+    const offset = offsetBlueprint(bp, 1);
+    expect(offset).toBeDefined();
+    if (offset) {
+      expect(offset.boundingBox.width).toBeGreaterThan(bp.boundingBox.width);
+    }
+  });
+
+  it('offsets a rectangle inward', () => {
+    const bp = rect(10, 10);
+    const offset = offsetBlueprint(bp, -1);
+    expect(offset).toBeDefined();
+    if (offset) {
+      expect(offset.boundingBox.width).toBeLessThan(bp.boundingBox.width);
+    }
+  });
+});
+
+describe('Blueprints.sketchOnFace', () => {
+  it('sketches blueprints on a box face', () => {
+    const b = new Blueprints([rect(5, 5), rect(5, 5, 10, 0)]);
+    const box = makeBox([0, 0, 0], [30, 30, 30]);
+    const face = box.faces[0];
+    const sketches = b.sketchOnFace(face, 'original');
+    expect(Array.isArray(sketches)).toBe(true);
+    expect(sketches.length).toBe(2);
+  });
+});
+
+describe('approximateForSVG', () => {
+  it('approximates blueprint curves for SVG compatibility', () => {
+    const bp = circ(5);
+    const approximated = approximateForSVG(bp, { precision: 0.1 });
+    expect(approximated).toBeDefined();
+    expect(approximated.curves.length).toBeGreaterThan(0);
+  });
+
+  it('approximates CompoundBlueprint', () => {
+    const c = new CompoundBlueprint([rect(30, 30), circ(3)]);
+    const approximated = approximateForSVG(c, { precision: 0.1 });
+    expect(approximated).toBeDefined();
+  });
+
+  it('approximates Blueprints', () => {
+    const b = new Blueprints([rect(10, 10), circ(5, 20, 0)]);
+    const approximated = approximateForSVG(b, { precision: 0.1 });
+    expect(approximated).toBeDefined();
   });
 });

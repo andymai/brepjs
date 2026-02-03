@@ -15,6 +15,8 @@ import {
   isOk,
   isErr,
   getBounds,
+  resolvePlane,
+  makePlaneFromFace,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -154,6 +156,43 @@ describe('Shape transformations', () => {
   it('mirror preserves volume', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]).mirror('XY');
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
+  });
+
+  it('mirror with Plane object', () => {
+    const plane = resolvePlane('YZ');
+    const box = makeBox([0, 0, 0], [10, 10, 10]).mirror(plane);
+    expect(measureVolume(box)).toBeCloseTo(1000, 0);
+  });
+
+  it('mirror with Plane and custom origin', () => {
+    const plane = resolvePlane('YZ');
+    const box = makeBox([0, 0, 0], [10, 10, 10]).mirror(plane, [5, 0, 0]);
+    expect(measureVolume(box)).toBeCloseTo(1000, 0);
+  });
+
+  it('mirror with default (no args)', () => {
+    const box = makeBox([0, 0, 0], [10, 10, 10]).mirror();
+    expect(measureVolume(box)).toBeCloseTo(1000, 0);
+  });
+});
+
+describe('makePlaneFromFace', () => {
+  it('creates plane from box face', () => {
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const face = box.faces[0];
+    const plane = makePlaneFromFace(face);
+    expect(plane).toBeDefined();
+    expect(plane.origin).toBeDefined();
+    expect(plane.xDir).toBeDefined();
+    expect(plane.yDir).toBeDefined();
+    expect(plane.zDir).toBeDefined();
+  });
+
+  it('creates plane with custom origin on surface', () => {
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const face = box.faces[0];
+    const plane = makePlaneFromFace(face, [0.5, 0.5]);
+    expect(plane).toBeDefined();
   });
 });
 
