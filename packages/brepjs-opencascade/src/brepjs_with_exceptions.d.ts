@@ -8077,6 +8077,48 @@ export declare class BooleanBatch {
   delete(): void;
 }
 
+export declare class EdgeMeshData {
+  getLinesPtr(): Standard_Integer;
+  getLinesSize(): Standard_Integer;
+  getEdgeGroupsPtr(): Standard_Integer;
+  getEdgeGroupsSize(): Standard_Integer;
+  delete(): void;
+}
+
+  export declare class EdgeMeshData_1 extends EdgeMeshData {
+    constructor();
+  }
+
+  export declare class EdgeMeshData_2 extends EdgeMeshData {
+    constructor(other: EdgeMeshData);
+  }
+
+export declare class EdgeMeshExtractor {
+  constructor();
+  static extract(shape: TopoDS_Shape, tolerance: Standard_Real, angularTolerance: Standard_Real): EdgeMeshData;
+  delete(): void;
+}
+
+export declare class TopologyResult {
+  getShapesCount(): Standard_Integer;
+  getShape(index: Standard_Integer): TopoDS_Shape;
+  delete(): void;
+}
+
+  export declare class TopologyResult_1 extends TopologyResult {
+    constructor();
+  }
+
+  export declare class TopologyResult_2 extends TopologyResult {
+    constructor(other: TopologyResult);
+  }
+
+export declare class TopologyExtractor {
+  constructor();
+  static extract(shape: TopoDS_Shape, shapeType: Standard_Integer): TopologyResult;
+  delete(): void;
+}
+
 export declare class OCJS {
   constructor();
   static getStandard_FailureData(exceptionPtr: intptr_t): Standard_Failure;
@@ -9089,6 +9131,14 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   MeshData_2: typeof MeshData_2;
   MeshExtractor: typeof MeshExtractor;
   BooleanBatch: typeof BooleanBatch;
+  EdgeMeshData: typeof EdgeMeshData;
+  EdgeMeshData_1: typeof EdgeMeshData_1;
+  EdgeMeshData_2: typeof EdgeMeshData_2;
+  EdgeMeshExtractor: typeof EdgeMeshExtractor;
+  TopologyResult: typeof TopologyResult;
+  TopologyResult_1: typeof TopologyResult_1;
+  TopologyResult_2: typeof TopologyResult_2;
+  TopologyExtractor: typeof TopologyExtractor;
   OCJS: typeof OCJS;
 };
 
