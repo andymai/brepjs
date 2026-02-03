@@ -12,6 +12,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
 import { toOcPnt } from '../core/occtBoundary.js';
+import { gcWithScope } from '../core/disposal.js';
 import { vecDot, vecNormalize } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import type { AnyShape, Edge, Face } from '../core/shapeTypes.js';
@@ -196,26 +197,25 @@ function createEdgeFinder(filters: ReadonlyArray<Predicate<Edge>>): EdgeFinderFn
 
     parallelTo: (dir = 'Z') => createEdgeFinder([...filters]).inDirection(dir, 0),
 
-    atDistance: (distance, point = [0, 0, 0]) => {
-      const oc = getKernel().oc;
-      const pnt = toOcPnt(point);
-      const vtxMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
-      const vtx = vtxMaker.Vertex();
-      vtxMaker.delete();
-      pnt.delete();
+    atDistance: (distance, point = [0, 0, 0]) =>
+      withFilter((edge) => {
+        const oc = getKernel().oc;
+        const r = gcWithScope();
 
-      const distTool = new oc.BRepExtrema_DistShapeShape_1();
-      distTool.LoadS1(vtx);
+        const pnt = r(toOcPnt(point));
+        const vtxMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
+        const vtx = vtxMaker.Vertex();
 
-      return withFilter((edge) => {
+        const distTool = r(new oc.BRepExtrema_DistShapeShape_1());
+        distTool.LoadS1(vtx);
         distTool.LoadS2(edge.wrapped);
-        const progress = new oc.Message_ProgressRange_1();
+
+        const progress = r(new oc.Message_ProgressRange_1());
         distTool.Perform(progress);
         const d = distTool.Value();
-        progress.delete();
+
         return Math.abs(d - distance) < 1e-6;
-      });
-    },
+      }),
   };
 }
 
@@ -265,25 +265,24 @@ function createFaceFinder(filters: ReadonlyArray<Predicate<Face>>): FaceFinderFn
     ofSurfaceType: (surfaceType) =>
       withFilter((face) => unwrap(getSurfaceType(face)) === surfaceType),
 
-    atDistance: (distance, point = [0, 0, 0]) => {
-      const oc = getKernel().oc;
-      const pnt = toOcPnt(point);
-      const vtxMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
-      const vtx = vtxMaker.Vertex();
-      vtxMaker.delete();
-      pnt.delete();
+    atDistance: (distance, point = [0, 0, 0]) =>
+      withFilter((face) => {
+        const oc = getKernel().oc;
+        const r = gcWithScope();
 
-      const distTool = new oc.BRepExtrema_DistShapeShape_1();
-      distTool.LoadS1(vtx);
+        const pnt = r(toOcPnt(point));
+        const vtxMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
+        const vtx = vtxMaker.Vertex();
 
-      return withFilter((face) => {
+        const distTool = r(new oc.BRepExtrema_DistShapeShape_1());
+        distTool.LoadS1(vtx);
         distTool.LoadS2(face.wrapped);
-        const progress = new oc.Message_ProgressRange_1();
+
+        const progress = r(new oc.Message_ProgressRange_1());
         distTool.Perform(progress);
         const d = distTool.Value();
-        progress.delete();
+
         return Math.abs(d - distance) < 1e-6;
-      });
-    },
+      }),
   };
 }
