@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/andymai/brepjs/compare/v2.0.1...v2.0.2) (2026-02-03)
+
+
+### Bug Fixes
+
+* align hashPoint precision with PRECISION_INTERSECTION ([#34](https://github.com/andymai/brepjs/issues/34)) ([bc84b64](https://github.com/andymai/brepjs/commit/bc84b641f7563b5d7eaff3ee6e7eec43036b3315))
+
 ## [2.0.1](https://github.com/andymai/brepjs/compare/v2.0.0...v2.0.1) (2026-02-03)
 
 
