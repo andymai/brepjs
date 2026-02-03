@@ -1,6 +1,6 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { GCWithScope, WrappingObj } from '../core/memory.js';
+import { gcWithScope, WrappingObj } from '../core/memory.js';
 import { uuidv } from '../utils/uuid.js';
 import type { AnyShape } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -81,7 +81,7 @@ export function exportSTEP(
   { unit, modelUnit }: { unit?: SupportedUnit; modelUnit?: SupportedUnit } = {}
 ): Result<Blob> {
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const doc = createAssembly(shapes);
 

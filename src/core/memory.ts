@@ -11,12 +11,15 @@ export {
   createOcHandle,
   DisposalScope,
   withScope,
-  gcWithScope as GCWithScope,
-  gcWithObject as GCWithObject,
+  gcWithScope,
+  gcWithObject,
   localGC,
   type ShapeHandle,
   type OcHandle,
 } from './disposal.js';
+
+// Legacy aliases (deprecated) — use gcWithScope and gcWithObject instead
+export { gcWithScope as GCWithScope, gcWithObject as GCWithObject } from './disposal.js';
 
 // ---------------------------------------------------------------------------
 // Legacy WrappingObj — kept during migration, will be removed

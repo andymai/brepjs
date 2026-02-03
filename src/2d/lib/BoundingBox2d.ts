@@ -1,4 +1,4 @@
-import { WrappingObj, GCWithScope } from '../../core/memory.js';
+import { WrappingObj, gcWithScope } from '../../core/memory.js';
 import { getKernel } from '../../kernel/index.js';
 import type { OcType } from '../../kernel/types.js';
 
@@ -69,7 +69,7 @@ export class BoundingBox2d extends WrappingObj<OcType> {
   }
 
   containsPoint(other: Point2D): boolean {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const point = r(pnt(other));
     return !this.wrapped.IsOut_1(point);
   }

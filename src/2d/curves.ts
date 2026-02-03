@@ -1,6 +1,6 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { GCWithScope, localGC, WrappingObj } from '../core/memory.js';
+import { gcWithScope, localGC, WrappingObj } from '../core/memory.js';
 import type { Plane } from '../core/geometry.js';
 import { makeAx2 } from '../core/geometry.js';
 import type { Face } from '../topology/shapes.js';
@@ -206,7 +206,7 @@ export function curvesAsEdgesOnFace(
 
 export function edgeToCurve(e: Edge, face: Face): Curve2D {
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const adaptor = r(new oc.BRepAdaptor_Curve2d_2(e.wrapped, face.wrapped));
 

@@ -6,7 +6,7 @@ import { type Result, ok, err, unwrap } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';
 import { getKernel } from '../../kernel/index.js';
-import { GCWithScope, localGC, WrappingObj } from '../../core/memory.js';
+import { gcWithScope, localGC, WrappingObj } from '../../core/memory.js';
 import zip from '../../utils/zip.js';
 
 import { BoundingBox2d } from './BoundingBox2d.js';
@@ -102,7 +102,7 @@ export class Curve2D extends WrappingObj<OcType> {
 
   private distanceFromPoint(point: Point2D): number {
     const oc = getKernel().oc;
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     const projector = r(new oc.Geom2dAPI_ProjectPointOnCurve_2(r(pnt(point)), this.wrapped));
 
@@ -123,7 +123,7 @@ export class Curve2D extends WrappingObj<OcType> {
 
   private distanceFromCurve(curve: Curve2D): number {
     const oc = getKernel().oc;
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     let curveDistance = Infinity;
     const projector = r(
@@ -167,7 +167,7 @@ export class Curve2D extends WrappingObj<OcType> {
 
   parameter(point: Point2D, precision = 1e-9): Result<number> {
     const oc = getKernel().oc;
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     let lowerDistance;
     let lowerDistanceParameter;
@@ -220,7 +220,7 @@ export class Curve2D extends WrappingObj<OcType> {
 
   splitAt(points: Point2D[] | number[], precision = 1e-9): Curve2D[] {
     const oc = getKernel().oc;
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     let parameters = points.map((point: Point2D | number) => {
       if (isPoint2D(point)) return unwrap(this.parameter(point, precision));

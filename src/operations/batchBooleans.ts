@@ -1,5 +1,5 @@
 import { getKernel } from '../kernel/index.js';
-import { GCWithScope } from '../core/memory.js';
+import { gcWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
 import { applyGlue, buildCompoundOc, type BooleanOperationOptions } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -23,7 +23,7 @@ export function fuseAllShapes(
   // Pairwise fallback: recursive divide-and-conquer
   // Defer simplification to the final fuse — intermediate simplification is wasted work
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const mid = Math.ceil(shapes.length / 2);
   const leftResult = fuseAllShapes(shapes.slice(0, mid), {
@@ -54,7 +54,7 @@ export function cutAllShapes(
   if (tools.length === 0) return ok(base);
 
   const oc = getKernel().oc;
-  const r = GCWithScope();
+  const r = gcWithScope();
 
   const toolCompound = r(buildCompoundOc(tools));
 

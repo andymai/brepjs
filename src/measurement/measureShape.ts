@@ -1,11 +1,11 @@
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
-import { GCWithScope, WrappingObj, localGC } from '../core/memory.js';
+import { gcWithScope, WrappingObj, localGC } from '../core/memory.js';
 import type { AnyShape, Face, Shape3D } from '../topology/shapes.js';
 
 class PhysicalProperties extends WrappingObj<OcType> {
   get centerOfMass(): [number, number, number] {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const pnt = r(this.wrapped.CentreOfMass());
     return [pnt.X(), pnt.Y(), pnt.Z()];
   }

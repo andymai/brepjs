@@ -55,7 +55,7 @@ export {
 // ── Legacy imports ──
 
 import { WrappingObj } from './memory.js';
-import { GCWithScope } from './memory.js';
+import { gcWithScope } from './memory.js';
 import { DEG2RAD, RAD2DEG } from './constants.js';
 import { getKernel } from '../kernel/index.js';
 import type { OpenCascadeInstance, OcType } from '../kernel/types.js';
@@ -339,7 +339,7 @@ export class Transformation extends WrappingObj<OcType> {
   }
 
   mirror(inputPlane: Plane | PlaneName | Point = 'YZ', inputOrigin?: Point): this {
-    const r = GCWithScope();
+    const r = gcWithScope();
 
     let origin: Point;
     let direction: Point;
@@ -370,7 +370,7 @@ export class Transformation extends WrappingObj<OcType> {
   }
 
   coordSystemChange(fromSystem: CoordSystem, toSystem: CoordSystem): this {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const fromAx = r(
       fromSystem === 'reference'
         ? new this.oc.gp_Ax3_1()
