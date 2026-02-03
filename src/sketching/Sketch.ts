@@ -58,8 +58,7 @@ export default class Sketch implements SketchInterface {
 
   set baseFace(newFace: Face | null | undefined) {
     if (this._baseFace) this._baseFace.delete();
-    if (!newFace) this._baseFace = newFace;
-    else this._baseFace = newFace.clone();
+    this._baseFace = newFace ? newFace.clone() : newFace;
   }
 
   delete(): void {

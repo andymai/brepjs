@@ -490,7 +490,7 @@ export class BaseSketcher2d {
       (c) => new Curve2D(c.innerCurve.Mirrored_2(mirrorAxis))
     );
     mirroredCurves.reverse();
-    mirroredCurves.map((c) => {
+    mirroredCurves.forEach((c) => {
       c.reverse();
     });
     this.pendingCurves.push(...mirroredCurves);
