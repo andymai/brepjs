@@ -3,14 +3,11 @@ import { getKernel } from '../kernel/index.js';
 import { WrappingObj, gcWithScope, type Deletable } from '../core/memory.js';
 import { meshShapeEdges as _meshShapeEdges, type ShapeMesh } from './meshFns.js';
 import { type SurfaceType, type FaceTriangulation } from './faceFns.js';
-import {
-  Vector,
-  asPnt,
-  type Point,
-  type Plane,
-  type PlaneName,
-  BoundingBox,
-} from '../core/geometry.js';
+import { type Point, type Plane, type PlaneName, BoundingBox } from '../core/geometry.js';
+import type { Vec3, PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
+import { vecRepr } from '../core/vecOps.js';
+import { fromOcVec, fromOcPnt, toOcPnt } from '../core/occtBoundary.js';
 import { DEG2RAD, HASH_CODE_MAX, uniqueIOFilename } from '../core/constants.js';
 import { rotate, translate, mirror, scale as scaleShape } from '../core/geometryHelpers.js';
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
@@ -35,6 +32,7 @@ import {
   isChamferRadius,
   isFilletRadius,
 } from './shapeModifiers.js';
+import { getBounds } from './shapeFns.js';
 
 export type { CurveType };
 
@@ -237,9 +235,13 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
   }
 
   get boundingBox(): BoundingBox {
-    const bbox = new BoundingBox();
-    this.oc.BRepBndLib.Add(this.wrapped, bbox.wrapped, true);
-    return bbox;
+    const oc = getKernel().oc;
+    // Use functional getBounds() internally, then wrap in legacy BoundingBox for backward compatibility
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Shape class compatible with functional shape API
+    const bounds = getBounds({ wrapped: this.wrapped } as any);
+    const bbox = new oc.Bnd_Box_1();
+    bbox.Update_1(bounds.xMin, bounds.yMin, bounds.zMin, bounds.xMax, bounds.yMax, bounds.zMax);
+    return new BoundingBox(bbox);
   }
 
   protected _mesh({ tolerance = 1e-3, angularTolerance = 0.1 } = {}): void {
@@ -386,9 +388,7 @@ export class Vertex extends Shape {
 export class Curve extends WrappingObj<CurveLike> {
   get repr(): string {
     const { startPoint, endPoint } = this;
-    const retVal = `start: (${startPoint.repr}) end:(${endPoint.repr})`;
-    startPoint.delete();
-    endPoint.delete();
+    const retVal = `start: (${vecRepr(startPoint)}) end:(${vecRepr(endPoint)})`;
     return retVal;
   }
 
@@ -397,14 +397,18 @@ export class Curve extends WrappingObj<CurveLike> {
     return unwrap(findCurveType(technicalType));
   }
 
-  get startPoint(): Vector {
+  get startPoint(): Vec3 {
     const umin = this.wrapped.Value(this.wrapped.FirstParameter());
-    return new Vector(umin);
+    const result = fromOcPnt(umin);
+    umin.delete();
+    return result;
   }
 
-  get endPoint(): Vector {
+  get endPoint(): Vec3 {
     const umax = this.wrapped.Value(this.wrapped.LastParameter());
-    return new Vector(umax);
+    const result = fromOcPnt(umax);
+    umax.delete();
+    return result;
   }
 
   protected _mapParameter(position: number): number {
@@ -414,18 +418,21 @@ export class Curve extends WrappingObj<CurveLike> {
     return firstParam + (lastParam - firstParam) * position;
   }
 
-  pointAt(position = 0.5): Vector {
-    return new Vector(this.wrapped.Value(this._mapParameter(position)));
+  pointAt(position = 0.5): Vec3 {
+    const pnt = this.wrapped.Value(this._mapParameter(position));
+    const result = fromOcPnt(pnt);
+    pnt.delete();
+    return result;
   }
 
-  tangentAt(position = 0.5): Vector {
+  tangentAt(position = 0.5): Vec3 {
     const pos = this._mapParameter(position);
 
     const tmp = new this.oc.gp_Pnt_1();
     const res = new this.oc.gp_Vec_1();
 
     this.wrapped.D1(pos, tmp, res);
-    const tangent = new Vector(res);
+    const tangent = fromOcVec(res);
 
     tmp.delete();
     res.delete();
@@ -451,9 +458,7 @@ export abstract class _1DShape<Type extends Deletable = OcShape> extends Shape<T
 
   get repr(): string {
     const { startPoint, endPoint } = this;
-    const retVal = `start: (${startPoint.repr}) end:(${endPoint.repr})`;
-    startPoint.delete();
-    endPoint.delete();
+    const retVal = `start: (${vecRepr(startPoint)}) end:(${vecRepr(endPoint)})`;
     return retVal;
   }
 
@@ -461,28 +466,28 @@ export abstract class _1DShape<Type extends Deletable = OcShape> extends Shape<T
     return new Curve(this._geomAdaptor());
   }
 
-  get startPoint(): Vector {
+  get startPoint(): Vec3 {
     const c = this.curve;
     const result = c.startPoint;
     c.delete();
     return result;
   }
 
-  get endPoint(): Vector {
+  get endPoint(): Vec3 {
     const c = this.curve;
     const result = c.endPoint;
     c.delete();
     return result;
   }
 
-  tangentAt(position = 0): Vector {
+  tangentAt(position = 0): Vec3 {
     const c = this.curve;
     const result = c.tangentAt(position);
     c.delete();
     return result;
   }
 
-  pointAt(position = 0): Vector {
+  pointAt(position = 0): Vec3 {
     const c = this.curve;
     const result = c.pointAt(position);
     c.delete();
@@ -652,7 +657,7 @@ export class Face extends Shape {
     };
   }
 
-  pointOnSurface(u: number, v: number): Vector {
+  pointOnSurface(u: number, v: number): Vec3 {
     const { uMin, uMax, vMin, vMax } = this.UVBounds;
     const surface = this._geomAdaptor();
     const p = new this.oc.gp_Pnt_1();
@@ -661,20 +666,20 @@ export class Face extends Shape {
     const absoluteV = v * (vMax - vMin) + vMin;
 
     surface.D0(absoluteU, absoluteV, p);
-    const point = new Vector(p);
+    const point = fromOcPnt(p);
     surface.delete();
     p.delete();
 
     return point;
   }
 
-  uvCoordinates(point: Point): [number, number] {
+  uvCoordinates(point: PointInput): [number, number] {
     const r = gcWithScope();
     const surface = r(this.oc.BRep_Tool.Surface_2(this.wrapped));
 
     const projectedPoint = r(
       new this.oc.GeomAPI_ProjectPointOnSurf_2(
-        r(asPnt(point)),
+        r(toOcPnt(toVec3(point))),
         surface,
 
         this.oc.Extrema_ExtAlgo.Extrema_ExtAlgo_Grad
@@ -688,7 +693,7 @@ export class Face extends Shape {
     return [uPtr.current, vPtr.current];
   }
 
-  normalAt(locationVector?: Point): Vector {
+  normalAt(locationVector?: PointInput): Vec3 {
     let u = 0;
     let v = 0;
 
@@ -708,15 +713,17 @@ export class Face extends Shape {
     const props = r(new this.oc.BRepGProp_Face_2(this.wrapped, false));
     props.Normal(u, v, p, vn);
 
-    const normal = new Vector(vn);
+    const normal = fromOcVec(vn);
     return normal;
   }
 
-  get center(): Vector {
+  get center(): Vec3 {
     const properties = new this.oc.GProp_GProps_1();
     this.oc.BRepGProp.SurfaceProperties_2(this.wrapped, properties, 1e-7, true);
 
-    const center = new Vector(properties.CentreOfMass());
+    const centerPnt = properties.CentreOfMass();
+    const center = fromOcPnt(centerPnt);
+    centerPnt.delete();
     properties.delete();
     return center;
   }

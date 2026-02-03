@@ -62,30 +62,10 @@ export {
   GCWithObject,
 } from './core/memory.js';
 
-// Legacy geometry exports (deprecated — use functional API below)
+// Legacy type exports (kept for compatibility)
 export {
-  /** @deprecated Use Vec3 tuples with vecOps functions instead */
-  Vector,
-  /** @deprecated Use Plane interface from planeTypes.ts with planeOps functions */
-  Plane,
-  /** @deprecated Use translateShape, rotateShape, mirrorShape, scaleShape */
-  Transformation,
-  /** @deprecated Use getBounds() which returns Bounds3D */
-  BoundingBox,
-  /** @deprecated Use toOcPnt from occtBoundary.ts */
-  asPnt,
-  /** @deprecated Use toOcDir from occtBoundary.ts */
-  asDir,
-  /** @deprecated Use makeOcAx1 from occtBoundary.ts */
-  makeAx1,
-  /** @deprecated Use makeOcAx2 from occtBoundary.ts */
-  makeAx2,
-  /** @deprecated Use makeOcAx3 from occtBoundary.ts */
-  makeAx3,
   makeDirection,
   isPoint,
-  /** @deprecated Use fnCreateNamedPlane from planeOps.ts */
-  createNamedPlane,
   type Point,
   type PlaneName,
   type SimplePoint,

@@ -17,14 +17,14 @@ beforeAll(async () => {
 
 describe('createAssembly', () => {
   it('creates an assembly from a single shape', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const assembly = createAssembly([{ shape: box, name: 'box', color: '#ff0000' }]);
     expect(assembly).toBeDefined();
     expect(assembly.wrapped).toBeDefined();
   });
 
   it('creates an assembly from multiple shapes with colors', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const sphere = makeSphere(5);
     const assembly = createAssembly([
       { shape: box, name: 'box', color: '#ff0000', alpha: 1 },
@@ -35,7 +35,7 @@ describe('createAssembly', () => {
   });
 
   it('creates an assembly with default name and color', () => {
-    const box = makeBox([5, 5, 5]);
+    const box = makeBox([0, 0, 0], [5, 5, 5]);
     const assembly = createAssembly([{ shape: box }]);
     expect(assembly).toBeDefined();
   });
@@ -46,7 +46,7 @@ describe('createAssembly', () => {
   });
 
   it('handles 3-char hex color shorthand', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const assembly = createAssembly([{ shape: box, color: '#f00' }]);
     expect(assembly).toBeDefined();
   });
@@ -54,7 +54,7 @@ describe('createAssembly', () => {
 
 describe('exportSTEP', () => {
   it('exports a single shape to STEP format', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = exportSTEP([{ shape: box, name: 'box', color: '#ff0000' }]);
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
@@ -63,7 +63,7 @@ describe('exportSTEP', () => {
   });
 
   it('exports multiple shapes to STEP format', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const sphere = makeSphere(5);
     const result = exportSTEP([
       { shape: box, name: 'mybox', color: '#ff0000' },
@@ -75,7 +75,7 @@ describe('exportSTEP', () => {
   });
 
   it('exports with unit option', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = exportSTEP([{ shape: box, name: 'box', color: '#ff0000' }], { unit: 'MM' });
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
@@ -83,7 +83,7 @@ describe('exportSTEP', () => {
   });
 
   it('exports with modelUnit option', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = exportSTEP([{ shape: box, name: 'box', color: '#ff0000' }], { modelUnit: 'CM' });
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
@@ -91,7 +91,7 @@ describe('exportSTEP', () => {
   });
 
   it('exports with both unit and modelUnit options', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = exportSTEP([{ shape: box, name: 'box', color: '#ff0000' }], {
       unit: 'INCH',
       modelUnit: 'MM',

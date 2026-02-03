@@ -2,7 +2,7 @@ import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { gcWithScope, localGC, WrappingObj } from '../core/memory.js';
 import type { Plane } from '../core/geometry.js';
-import { makeAx2 } from '../core/geometry.js';
+import { makeOcAx2 } from '../core/occtBoundary.js';
 import type { Face } from '../topology/shapes.js';
 import { Edge } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -23,7 +23,7 @@ export const curvesBoundingBox = (curves: Curve2D[]): BoundingBox2d => {
 
 export function curvesAsEdgesOnPlane(curves: Curve2D[], plane: Plane): Edge[] {
   const [r, gc] = localGC();
-  const ax = r(makeAx2(plane.origin, plane.zDir, plane.xDir));
+  const ax = r(makeOcAx2(plane.origin.toVec3(), plane.zDir.toVec3(), plane.xDir.toVec3()));
 
   const oc = getKernel().oc;
 

@@ -1,6 +1,9 @@
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
-import { Vector, makeAx1, type Point } from '../core/geometry.js';
+import { type Point, Vector } from '../core/geometry.js';
+import type { Vec3 } from '../core/types.js';
+import { makeOcAx1 } from '../core/occtBoundary.js';
+import { vecAdd, vecLength } from '../core/vecOps.js';
 import { localGC } from '../core/memory.js';
 import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
@@ -11,13 +14,28 @@ import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
 import { Solid } from '../topology/shapes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
 
-export const basicFaceExtrusion = (face: Face, extrusionVec: Vector): Solid => {
+/** Helper to convert legacy Point type to Vec3 */
+function pointToVec3(p: Point): Vec3 {
+  if (Array.isArray(p)) {
+    return p.length === 3 ? [p[0], p[1], p[2]] : [p[0], p[1], 0];
+  } else if (p instanceof Vector) {
+    return [p.x, p.y, p.z];
+  } else {
+    // OCCT point-like object
+    const xyz = p.XYZ();
+    const vec: Vec3 = [xyz.X(), xyz.Y(), xyz.Z()];
+    xyz.delete();
+    return vec;
+  }
+}
+
+export const basicFaceExtrusion = (face: Face, extrusionVec: Point): Solid => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const solidBuilder = r(
-    new oc.BRepPrimAPI_MakePrism_1(face.wrapped, extrusionVec.wrapped, false, true)
-  );
+  const vec = pointToVec3(extrusionVec);
+  const ocVec = r(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
+  const solidBuilder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true));
   const solid = new Solid(unwrap(downcast(solidBuilder.Shape())));
   gc();
   return solid;
@@ -32,7 +50,9 @@ export const revolution = (
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
-  const ax = r(makeAx1(center, direction));
+  const centerVec = pointToVec3(center);
+  const directionVec = pointToVec3(direction);
+  const ax = r(makeOcAx1(centerVec, directionVec));
   const revolBuilder = r(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
 
   const result = andThen(cast(revolBuilder.Shape()), (shape) => {
@@ -149,9 +169,9 @@ export const supportExtrude = (
   support: OcType
 ): Result<Shape3D> => {
   const [r, gc] = localGC();
-  const centerVec = r(new Vector(center));
-  const normalVec = r(new Vector(normal));
-  const endVec = r(centerVec.add(normalVec));
+  const centerVec = pointToVec3(center);
+  const normalVec = pointToVec3(normal);
+  const endVec = vecAdd(centerVec, normalVec);
 
   const mainSpineEdge = r(makeLine(centerVec, endVec));
   const spine = r(unwrap(assembleWire([mainSpineEdge])));
@@ -183,14 +203,16 @@ function complexExtrude(
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const [r, gc] = localGC();
-  const centerVec = r(new Vector(center));
-  const normalVec = r(new Vector(normal));
-  const endVec = r(centerVec.add(normalVec));
+  const centerVec = pointToVec3(center);
+  const normalVec = pointToVec3(normal);
+  const endVec = vecAdd(centerVec, normalVec);
 
   const mainSpineEdge = r(makeLine(centerVec, endVec));
   const spine = r(unwrap(assembleWire([mainSpineEdge])));
 
-  const law = profileShape ? r(unwrap(buildLawFromProfile(normalVec.Length, profileShape))) : null;
+  const law = profileShape
+    ? r(unwrap(buildLawFromProfile(vecLength(normalVec), profileShape)))
+    : null;
 
   const result = shellMode
     ? genericSweep(wire, spine, { law }, shellMode)
@@ -227,18 +249,18 @@ function twistExtrude(
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const [r, gc] = localGC();
-  const centerVec = r(new Vector(center));
-  const normalVec = r(new Vector(normal));
-  const endVec = r(centerVec.add(normalVec));
+  const centerVec = pointToVec3(center);
+  const normalVec = pointToVec3(normal);
+  const endVec = vecAdd(centerVec, normalVec);
 
   const mainSpineEdge = r(makeLine(centerVec, endVec));
   const spine = r(unwrap(assembleWire([mainSpineEdge])));
 
-  const extrusionLength = normalVec.Length;
+  const extrusionLength = vecLength(normalVec);
   const pitch = (360.0 / angleDegrees) * extrusionLength;
   const radius = 1;
 
-  const auxiliarySpine = r(makeHelix(pitch, extrusionLength, radius, center, normal));
+  const auxiliarySpine = r(makeHelix(pitch, extrusionLength, radius, centerVec, normalVec));
 
   const law = profileShape ? r(unwrap(buildLawFromProfile(extrusionLength, profileShape))) : null;
 

@@ -6,8 +6,26 @@ import {
   Finder,
 } from './definitions.js';
 
-import { Vector, type Point, asPnt } from '../core/geometry.js';
+import { type Point, Vector } from '../core/geometry.js';
+import type { Vec3 } from '../core/types.js';
+import { vecDot, vecNormalize } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
+import { toOcPnt } from '../core/occtBoundary.js';
+
+/** Helper to convert legacy Point type to Vec3 */
+function pointToVec3(p: Point): Vec3 {
+  if (Array.isArray(p)) {
+    return p.length === 3 ? [p[0], p[1], p[2]] : [p[0], p[1], 0];
+  } else if (p instanceof Vector) {
+    return [p.x, p.y, p.z];
+  } else {
+    // OCCT point-like object
+    const xyz = p.XYZ();
+    const vec: Vec3 = [xyz.X(), xyz.Y(), xyz.Z()];
+    xyz.delete();
+    return vec;
+  }
+}
 import type { AnyShape } from '../topology/shapes.js';
 import { getKernel } from '../kernel/index.js';
 import { WrappingObj } from '../core/memory.js';
@@ -19,7 +37,7 @@ import type { OcType } from '../kernel/types.js';
  */
 const makeVertexOc = (point: Point): OcType => {
   const oc = getKernel().oc;
-  const pnt = asPnt(point);
+  const pnt = toOcPnt(pointToVec3(point));
   const vertexMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
   const vertex = vertexMaker.Vertex();
   vertexMaker.delete();
@@ -32,8 +50,8 @@ const makeVertexOc = (point: Point): OcType => {
  */
 const makeBoxOc = (corner1: Point, corner2: Point): OcType => {
   const oc = getKernel().oc;
-  const p1 = asPnt(corner1);
-  const p2 = asPnt(corner2);
+  const p1 = toOcPnt(pointToVec3(corner1));
+  const p2 = toOcPnt(pointToVec3(corner2));
   const boxMaker = new oc.BRepPrimAPI_MakeBox_4(p1, p2);
   const solid = boxMaker.Solid();
   boxMaker.delete();
@@ -114,17 +132,18 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    * @category Filter
    */
   atAngleWith(direction: Direction | Point = 'Z', angle = 0): this {
-    let myDirection: Vector;
+    let myDirection: Vec3;
     if (typeof direction === 'string') {
-      myDirection = new Vector(DIRECTIONS[direction]);
+      myDirection = pointToVec3(DIRECTIONS[direction]);
     } else {
-      myDirection = new Vector(direction);
+      myDirection = pointToVec3(direction);
     }
+    const normalizedDirection = vecNormalize(myDirection);
 
-    const checkAngle = ({ normal }: { normal: Vector | null }) => {
+    const checkAngle = ({ normal }: { normal: Vec3 | null }) => {
       // We do not care about the orientation
       if (!normal) return false;
-      const angleOfNormal = Math.acos(Math.abs(normal.dot(myDirection)));
+      const angleOfNormal = Math.acos(Math.abs(vecDot(normal, normalizedDirection)));
 
       return Math.abs(angleOfNormal - DEG2RAD * angle) < 1e-6;
     };

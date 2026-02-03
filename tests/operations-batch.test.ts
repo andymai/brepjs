@@ -20,14 +20,14 @@ beforeAll(async () => {
 
 describe('fuseAllShapes (low-level OcType batch fuse)', () => {
   it('fuses two overlapping box shapes', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
     const result = fuseAllShapes([box1.wrapped, box2.wrapped]);
     expect(isOk(result)).toBe(true);
   });
 
   it('returns the single shape when given one element', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = fuseAllShapes([box.wrapped]);
     expect(isOk(result)).toBe(true);
   });
@@ -38,16 +38,16 @@ describe('fuseAllShapes (low-level OcType batch fuse)', () => {
   });
 
   it('fuses three shapes', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
-    const box3 = makeBox([10, 10, 10]).translate([0, 5, 0]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
+    const box3 = makeBox([0, 0, 0], [10, 10, 10]).translate([0, 5, 0]);
     const result = fuseAllShapes([box1.wrapped, box2.wrapped, box3.wrapped]);
     expect(isOk(result)).toBe(true);
   });
 
   it('fuses with simplify disabled', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
     const result = fuseAllShapes([box1.wrapped, box2.wrapped], { simplify: false });
     expect(isOk(result)).toBe(true);
   });
@@ -55,20 +55,20 @@ describe('fuseAllShapes (low-level OcType batch fuse)', () => {
 
 describe('cutAllShapes (low-level OcType batch cut)', () => {
   it('cuts a box with a sphere', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const sphere = makeSphere(3).translate([5, 5, 5]);
     const result = cutAllShapes(box.wrapped, [sphere.wrapped]);
     expect(isOk(result)).toBe(true);
   });
 
   it('returns base shape when tools array is empty', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = cutAllShapes(box.wrapped, []);
     expect(isOk(result)).toBe(true);
   });
 
   it('cuts with multiple tools', () => {
-    const box = makeBox([20, 20, 20]);
+    const box = makeBox([0, 0, 0], [20, 20, 20]);
     const sphere1 = makeSphere(3).translate([5, 5, 5]);
     const sphere2 = makeSphere(3).translate([15, 15, 15]);
     const result = cutAllShapes(box.wrapped, [sphere1.wrapped, sphere2.wrapped]);
@@ -76,7 +76,7 @@ describe('cutAllShapes (low-level OcType batch cut)', () => {
   });
 
   it('cuts with simplify disabled', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const cyl = makeCylinder(2, 10).translate([5, 5, 0]);
     const result = cutAllShapes(box.wrapped, [cyl.wrapped], { simplify: false });
     expect(isOk(result)).toBe(true);
@@ -85,8 +85,8 @@ describe('cutAllShapes (low-level OcType batch cut)', () => {
 
 describe('fuseAll (high-level)', () => {
   it('fuses two overlapping boxes', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
     const result = fuseAll([box1, box2]);
     expect(isOk(result)).toBe(true);
     const fused = unwrap(result);
@@ -99,7 +99,7 @@ describe('fuseAll (high-level)', () => {
   });
 
   it('returns the single shape when given one element', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = fuseAll([box]);
     expect(isOk(result)).toBe(true);
     const fused = unwrap(result);
@@ -109,7 +109,7 @@ describe('fuseAll (high-level)', () => {
 
 describe('cutAll (high-level)', () => {
   it('cuts a box with a sphere', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const sphere = makeSphere(3).translate([5, 5, 5]);
     const result = cutAll(box, [sphere]);
     expect(isOk(result)).toBe(true);
@@ -119,7 +119,7 @@ describe('cutAll (high-level)', () => {
   });
 
   it('returns base shape when tools array is empty', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = cutAll(box, []);
     expect(isOk(result)).toBe(true);
     const cut = unwrap(result);

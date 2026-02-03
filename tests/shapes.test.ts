@@ -20,7 +20,7 @@ beforeAll(async () => {
 
 describe('Shape construction', () => {
   it('creates a box', () => {
-    const box = makeBox([10, 20, 30]);
+    const box = makeBox([0, 0, 0], [10, 20, 30]);
     expect(box).toBeDefined();
     expect(measureVolume(box)).toBeCloseTo(10 * 20 * 30, 0);
   });
@@ -59,13 +59,13 @@ describe('Edge and wire construction', () => {
 
 describe('cast and downcast', () => {
   it('casts a shape to its specific type', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const casted = cast(box.wrapped);
     expect(casted).toBeDefined();
   });
 
   it('downcasts a TopoDS_Shape', () => {
-    const box = makeBox([10, 10, 10]);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
     const downcasted = downcast(box.wrapped);
     expect(downcasted).toBeDefined();
   });
@@ -73,15 +73,15 @@ describe('cast and downcast', () => {
 
 describe('Compound shapes', () => {
   it('creates a compound from multiple solids', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([5, 5, 5]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [5, 5, 5]);
     const compound = compoundShapes([box1, box2]);
     expect(compound).toBeDefined();
   });
 
   it('makeCompound from shapes', () => {
-    const box1 = makeBox([10, 10, 10]);
-    const box2 = makeBox([5, 5, 5]);
+    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
+    const box2 = makeBox([0, 0, 0], [5, 5, 5]);
     const compound = makeCompound([box1, box2]);
     expect(compound).toBeDefined();
   });

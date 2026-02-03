@@ -1,6 +1,7 @@
 import { getKernel } from '../kernel/index.js';
 import { localGC } from '../core/memory.js';
-import type { Point } from '../core/geometry.js';
+import type { PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
 import { cast, isShape3D } from '../topology/cast.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
@@ -9,8 +10,8 @@ import { makeVertex } from '../topology/shapeHelpers.js';
 
 export interface LoftConfig {
   ruled?: boolean | undefined;
-  startPoint?: Point | undefined;
-  endPoint?: Point | undefined;
+  startPoint?: PointInput | undefined;
+  endPoint?: PointInput | undefined;
 }
 
 export const loft = (
@@ -24,11 +25,11 @@ export const loft = (
   const loftBuilder = r(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, 1e-6));
 
   if (startPoint) {
-    loftBuilder.AddVertex(r(makeVertex(startPoint)).wrapped);
+    loftBuilder.AddVertex(r(makeVertex(toVec3(startPoint))).wrapped);
   }
   wires.forEach((w) => loftBuilder.AddWire(w.wrapped));
   if (endPoint) {
-    loftBuilder.AddVertex(r(makeVertex(endPoint)).wrapped);
+    loftBuilder.AddVertex(r(makeVertex(toVec3(endPoint))).wrapped);
   }
 
   const progress = r(new oc.Message_ProgressRange_1());
