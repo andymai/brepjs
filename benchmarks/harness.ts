@@ -76,3 +76,33 @@ export function writeResultsJSON(results: BenchResult[]): void {
   console.log(JSON.stringify(results, null, 2));
   console.log('--- END BENCHMARK RESULTS ---\n');
 }
+
+/**
+ * Compare current results against a baseline.
+ * Returns array of regressions (>threshold % slower).
+ */
+export function compareResults(
+  current: BenchResult[],
+  baseline: BenchResult[],
+  threshold = 0.1
+): { name: string; baselineMedian: number; currentMedian: number; change: number }[] {
+  const baselineMap = new Map(baseline.map((r) => [r.name, r]));
+  const regressions: { name: string; baselineMedian: number; currentMedian: number; change: number }[] = [];
+
+  for (const curr of current) {
+    const base = baselineMap.get(curr.name);
+    if (!base) continue;
+
+    const change = (curr.median - base.median) / base.median;
+    if (change > threshold) {
+      regressions.push({
+        name: curr.name,
+        baselineMedian: base.median,
+        currentMedian: curr.median,
+        change,
+      });
+    }
+  }
+
+  return regressions;
+}
