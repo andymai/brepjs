@@ -90,4 +90,25 @@ describe('FaceFinder extra coverage', () => {
       .find(makeBox([10, 10, 10]), { unique: true });
     expect(isErr(r)).toBe(true);
   });
+  it('clone preserves filters', () => {
+    const original = new FaceFinder().parallelTo('XY');
+    const cloned = original.clone();
+    const box = makeBox([10, 20, 30]);
+    expect(cloned.find(box).length).toBe(2);
+    // Original and clone should produce same results
+    expect(original.find(box).length).toBe(cloned.find(box).length);
+  });
+  it('clone is independent of original', () => {
+    const original = new FaceFinder().parallelTo('XY');
+    const cloned = original.clone();
+    // Adding filter to original doesn't affect clone
+    original.inPlane('XY');
+    const box = makeBox([10, 20, 30]);
+    expect(cloned.find(box).length).toBe(2);
+    expect(original.find(box).length).toBe(1);
+  });
+  it('and combines multiple filter functions', () => {
+    const finder = new FaceFinder().and([(f) => f.parallelTo('XY'), (f) => f.inPlane('XY', 30)]);
+    expect(finder.find(makeBox([10, 20, 30])).length).toBe(1);
+  });
 });

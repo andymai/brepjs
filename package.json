@@ -49,6 +49,7 @@
     "test:affected": "vitest run --changed",
     "check:boundaries": "bash scripts/check-layer-boundaries.sh",
     "bench": "vitest run --config vitest.bench.config.ts",
+    "bench:json": "BENCH_OUTPUT_JSON=1 vitest run --config vitest.bench.config.ts",
     "check:boundaries:staged": "bash scripts/check-layer-boundaries.sh --staged",
     "check:readme-reminders": "bash scripts/check-readme-reminders.sh",
     "knip": "knip",

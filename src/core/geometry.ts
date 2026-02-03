@@ -89,6 +89,10 @@ export function isPoint(p: unknown): p is Point {
 // Legacy axis helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Use makeOcAx3 from occtBoundary.ts with Vec3 tuples instead.
+ * @see makeOcAx3
+ */
 export const makeAx3 = (center: Point, dir: Point, xDir?: Point): OcType => {
   const oc = getKernel().oc;
   const origin = asPnt(center);
@@ -108,6 +112,10 @@ export const makeAx3 = (center: Point, dir: Point, xDir?: Point): OcType => {
   }
 };
 
+/**
+ * @deprecated Use makeOcAx2 from occtBoundary.ts with Vec3 tuples instead.
+ * @see makeOcAx2
+ */
 export const makeAx2 = (center: Point, dir: Point, xDir?: Point): OcType => {
   const oc = getKernel().oc;
   const origin = asPnt(center);
@@ -127,6 +135,10 @@ export const makeAx2 = (center: Point, dir: Point, xDir?: Point): OcType => {
   }
 };
 
+/**
+ * @deprecated Use makeOcAx1 from occtBoundary.ts with Vec3 tuples instead.
+ * @see makeOcAx1
+ */
 export const makeAx1 = (center: Point, dir: Point): OcType => {
   const oc = getKernel().oc;
   const origin = asPnt(center);
@@ -156,7 +168,18 @@ const makeVec = (vector: Point = [0, 0, 0]): OcType => {
   return new oc.gp_Vec_3(vector.XYZ());
 };
 
-// TODO(functional-rewrite): Replace with Vec3 tuples and vecOps functions
+/**
+ * @deprecated Use Vec3 tuples with vecOps functions instead.
+ * @example
+ * // Before (legacy):
+ * const v = new Vector([1, 2, 3]);
+ * const result = v.add(new Vector([4, 5, 6]));
+ *
+ * // After (functional):
+ * import { vecAdd, type Vec3 } from 'brepjs';
+ * const v: Vec3 = [1, 2, 3];
+ * const result = vecAdd(v, [4, 5, 6]);
+ */
 export class Vector extends WrappingObj<OcType> {
   constructor(vector: Point = [0, 0, 0]) {
     super(makeVec(vector));
@@ -286,6 +309,10 @@ export function makeDirection(p: Direction): Point {
 // Legacy asPnt / asDir
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Use toOcPnt from occtBoundary.ts with Vec3 tuples instead.
+ * @see toOcPnt
+ */
 export function asPnt(coords: Point): OcType {
   const v = new Vector(coords);
   const pnt = v.toPnt();
@@ -293,6 +320,10 @@ export function asPnt(coords: Point): OcType {
   return pnt;
 }
 
+/**
+ * @deprecated Use toOcDir from occtBoundary.ts with Vec3 tuples instead.
+ * @see toOcDir
+ */
 export function asDir(coords: Point): OcType {
   const v = new Vector(coords);
   const dir = v.toDir();
@@ -306,7 +337,20 @@ export function asDir(coords: Point): OcType {
 
 type CoordSystem = 'reference' | { origin: Point; zDir: Point; xDir: Point };
 
-// TODO(functional-rewrite): Replace with standalone transform functions
+/**
+ * @deprecated Use standalone transform functions instead.
+ * @example
+ * // Before (legacy):
+ * const trsf = new Transformation();
+ * trsf.translate([1, 0, 0]);
+ * const newShape = trsf.transform(shape.wrapped);
+ *
+ * // After (functional):
+ * import { translateShape } from 'brepjs';
+ * const newShape = translateShape(shape, [1, 0, 0]);
+ *
+ * @see translateShape, rotateShape, mirrorShape, scaleShape
+ */
 export class Transformation extends WrappingObj<OcType> {
   constructor(transform?: OcType) {
     const oc = getKernel().oc;
@@ -405,7 +449,20 @@ export class Transformation extends WrappingObj<OcType> {
 // Legacy Plane class
 // ---------------------------------------------------------------------------
 
-// TODO(functional-rewrite): Replace with PlaneData + planeOps functions
+/**
+ * @deprecated Use the Plane interface from planeTypes.ts with planeOps functions instead.
+ * @example
+ * // Before (legacy):
+ * const plane = new Plane([0, 0, 0], [1, 0, 0], [0, 0, 1]);
+ * const moved = plane.translate([1, 0, 0]);
+ *
+ * // After (functional):
+ * import { createPlane, translatePlane, type Plane as FnPlane } from 'brepjs';
+ * const plane: FnPlane = createPlane([0, 0, 0], [1, 0, 0], [0, 0, 1]);
+ * const moved = translatePlane(plane, [1, 0, 0]);
+ *
+ * @see createPlane, translatePlane, pivotPlane, rotatePlane2DAxes
+ */
 export class Plane {
   oc: OpenCascadeInstance;
 
@@ -609,6 +666,10 @@ const PLANES_CONFIG: Record<
   bottom: { xDir: [1, 0, 0], normal: [0, -1, 0] },
 };
 
+/**
+ * @deprecated Use createNamedPlane from planeOps.ts which returns a functional Plane.
+ * @see createNamedPlane from planeOps.ts (exported as fnCreateNamedPlane from brepjs)
+ */
 export const createNamedPlane = (
   plane: PlaneName,
   sourceOrigin: Point | number = [0, 0, 0]
@@ -631,7 +692,24 @@ export const createNamedPlane = (
 // Legacy BoundingBox class
 // ---------------------------------------------------------------------------
 
-// TODO(functional-rewrite): Replace with BoundingBox data from shapeQuery functions
+/**
+ * @deprecated Use getBounds() from shapeFns.ts which returns a Bounds3D plain object.
+ * @example
+ * // Before (legacy):
+ * const bbox = shape.boundingBox;
+ * const center = bbox.center;
+ *
+ * // After (functional):
+ * import { getBounds, type Bounds3D } from 'brepjs';
+ * const bounds: Bounds3D = getBounds(shape);
+ * const center = [
+ *   (bounds.xMin + bounds.xMax) / 2,
+ *   (bounds.yMin + bounds.yMax) / 2,
+ *   (bounds.zMin + bounds.zMax) / 2
+ * ];
+ *
+ * @see getBounds, Bounds3D
+ */
 export class BoundingBox extends WrappingObj<OcType> {
   constructor(wrapped?: OcType) {
     const oc = getKernel().oc;

@@ -171,4 +171,25 @@ describe('faceFinder', () => {
     expect(zFaces.length).toBe(2);
     expect(allFaces.length).toBe(6);
   });
+
+  it('supports when() with custom predicate', () => {
+    let callCount = 0;
+    const faces = faceFinder()
+      .when((face) => {
+        callCount++;
+        return true; // Accept all faces
+      })
+      .find(fnBox());
+    expect(faces.length).toBe(6);
+    expect(callCount).toBe(6); // Predicate called for each face
+  });
+
+  it('supports inList() to filter from specific faces', () => {
+    const box = fnBox();
+    const allFaces = faceFinder().find(box);
+    // Create a list with just the first 2 faces
+    const subset = [allFaces[0]!, allFaces[1]!];
+    const filtered = faceFinder().inList(subset).find(box);
+    expect(filtered.length).toBe(2);
+  });
 });

@@ -23,5 +23,6 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run check:boundaries
+      - run: npm run knip
       - run: npm run build
       - run: npm test
