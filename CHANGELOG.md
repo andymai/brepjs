@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.0.1](https://github.com/andymai/brepjs/compare/v2.0.0...v2.0.1) (2026-02-03)
+
+
+### Bug Fixes
+
+* add safety checks and fix memory leaks ([#29](https://github.com/andymai/brepjs/issues/29)) ([5260393](https://github.com/andymai/brepjs/commit/5260393283944ed234046e7112ce3c12d6aacdb2))
+* comprehensive memory leak fixes across codebase ([#31](https://github.com/andymai/brepjs/issues/31)) ([207aa8e](https://github.com/andymai/brepjs/commit/207aa8e49451b7b324e436eef0ccc2e8a8de256d))
+* memory leaks and code quality improvements ([#30](https://github.com/andymai/brepjs/issues/30)) ([ee9fb2f](https://github.com/andymai/brepjs/commit/ee9fb2faffd5e0295e9b92da48a0d605ccebff5a))
+* memory leaks on error paths and axis helpers ([#27](https://github.com/andymai/brepjs/issues/27)) ([8c2d469](https://github.com/andymai/brepjs/commit/8c2d469ebd51309faa04e686060d54bea007bc8a))
+* memory leaks, file I/O race conditions, and dead code ([#24](https://github.com/andymai/brepjs/issues/24)) ([735e52f](https://github.com/andymai/brepjs/commit/735e52ffa8748627b751847c232408114aa6c3b5))
+* memory management and correctness improvements ([#26](https://github.com/andymai/brepjs/issues/26)) ([acf8687](https://github.com/andymai/brepjs/commit/acf8687c6b35212a05887c9733aa5ab50d0ac138))
+* use epsilon comparison for floating-point validation ([81de132](https://github.com/andymai/brepjs/commit/81de132b0f65a4e200f6c4ab8cd027be8d9e7671))
+
+
+### Performance Improvements
+
+* optimize O(n²) to O(1) lookup in boolean operations ([#32](https://github.com/andymai/brepjs/issues/32)) ([8c64db6](https://github.com/andymai/brepjs/commit/8c64db6f371951beaac4267223473efb0c4d580e))
+
 ## [2.0.0](https://github.com/andymai/brepjs/compare/v1.0.4...v2.0.0) (2026-02-03)
 
 
