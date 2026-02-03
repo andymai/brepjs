@@ -24,6 +24,7 @@ graph TD
 | `ioOps.ts`        | File I/O operations: `exportSTEP`, `exportSTL`, `importSTEP`, `importSTL` — uses emscripten virtual filesystem                                                                                                                                                        |
 | `measureOps.ts`   | Measurement operations: `volume`, `area`, `length`, `centerOfMass`, `boundingBox` — wraps BRepGProp                                                                                                                                                                   |
 | `transformOps.ts` | Transform operations: `transform`, `translate`, `rotate`, `mirror`, `scale`, `simplify` — wraps gp_Trsf and BRepBuilderAPI_Transform                                                                                                                                  |
+| `booleanOps.ts`   | Boolean operations: `fuse`, `cut`, `intersect`, `fuseAll`, `cutAll`, `buildCompound`, `applyGlue` — with batch/native/pairwise implementations                                                                                                                        |
 
 ## Gotchas
 
