@@ -108,10 +108,7 @@ describe('FaceFinder extra coverage', () => {
     expect(original.find(box).length).toBe(1);
   });
   it('and combines multiple filter functions', () => {
-    const finder = new FaceFinder().and([
-      (f) => f.parallelTo('XY'),
-      (f) => f.inPlane('XY', 30),
-    ]);
+    const finder = new FaceFinder().and([(f) => f.parallelTo('XY'), (f) => f.inPlane('XY', 30)]);
     expect(finder.find(makeBox([10, 20, 30])).length).toBe(1);
   });
 });

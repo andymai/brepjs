@@ -171,7 +171,9 @@ describe('boolean edge cases', () => {
     });
 
     it('cutShape with simplify option', () => {
-      const result = cutShape(box(0, 0, 0, 20, 10, 10), box(5, 0, 0, 15, 10, 10), { simplify: true });
+      const result = cutShape(box(0, 0, 0, 20, 10, 10), box(5, 0, 0, 15, 10, 10), {
+        simplify: true,
+      });
       expect(isOk(result)).toBe(true);
       expect(fnMeasureVolume(unwrap(result))).toBeCloseTo(1000, 0);
     });
