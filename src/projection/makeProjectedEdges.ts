@@ -28,7 +28,9 @@ export function makeProjectedEdges(
   hiddenLineRemoval.Update();
   hiddenLineRemoval.Hide_1();
 
-  const hlrShapes = new oc.HLRBRep_HLRToShape(new oc.Handle_HLRBRep_Algo_2(hiddenLineRemoval));
+  const hlrShapes = r(
+    new oc.HLRBRep_HLRToShape(r(new oc.Handle_HLRBRep_Algo_2(hiddenLineRemoval)))
+  );
 
   const visible = [
     ...getEdges(hlrShapes.VCompound_1()),
