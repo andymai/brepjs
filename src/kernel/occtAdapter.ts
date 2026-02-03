@@ -9,14 +9,9 @@ import type {
   ShapeType,
   MeshOptions,
 } from './types.js';
+import { uniqueIOFilename } from '../utils/ioFilename.js';
 
 const HASH_CODE_MAX = 2147483647;
-
-/** Counter for unique filenames to prevent race conditions in concurrent I/O. */
-let _fileCounter = 0;
-function uniqueFilename(prefix: string, ext: string): string {
-  return `${prefix}_${++_fileCounter}.${ext}`;
-}
 
 /**
  * OpenCascade implementation of KernelAdapter.
@@ -850,7 +845,7 @@ export class OCCTAdapter implements KernelAdapter {
       writer.Transfer(shape, this.oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
     }
 
-    const filename = uniqueFilename('_export', 'step');
+    const filename = uniqueIOFilename('_export', 'step');
     const done = writer.Write(filename);
     writer.delete();
     progress.delete();
@@ -864,7 +859,7 @@ export class OCCTAdapter implements KernelAdapter {
   }
 
   exportSTL(shape: OcShape, binary = false): string | ArrayBuffer {
-    const filename = uniqueFilename('_export', 'stl');
+    const filename = uniqueIOFilename('_export', 'stl');
     const done = this.oc.StlAPI.Write(shape, filename, !binary);
 
     if (done) {
@@ -877,7 +872,7 @@ export class OCCTAdapter implements KernelAdapter {
   }
 
   importSTEP(data: string | ArrayBuffer): OcShape[] {
-    const filename = uniqueFilename('_import', 'step');
+    const filename = uniqueIOFilename('_import', 'step');
     const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
     this.oc.FS.writeFile('/' + filename, buffer);
 
@@ -897,7 +892,7 @@ export class OCCTAdapter implements KernelAdapter {
   }
 
   importSTL(data: string | ArrayBuffer): OcShape {
-    const filename = uniqueFilename('_import', 'stl');
+    const filename = uniqueIOFilename('_import', 'stl');
     const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
     this.oc.FS.writeFile('/' + filename, buffer);
 
