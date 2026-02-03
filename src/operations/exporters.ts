@@ -5,6 +5,7 @@ import { uuidv } from '../utils/uuid.js';
 import type { AnyShape } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
+import { uniqueIOFilename } from '../core/constants.js';
 
 const wrapString = (str: string): OcType => {
   const oc = getKernel().oc;
@@ -111,7 +112,7 @@ export function exportSTEP(
     progress
   );
 
-  const filename = 'export.step';
+  const filename = uniqueIOFilename('_export', 'step');
   const done = writer.Write(filename);
 
   if (done === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {

@@ -6,7 +6,7 @@ import { getKernel } from '../kernel/index.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
+import { HASH_CODE_MAX, uniqueIOFilename } from '../core/constants.js';
 import {
   buildMeshCacheKey,
   getMesh,
@@ -129,7 +129,7 @@ export function meshShapeEdges(
 /** Export a shape as a STEP file Blob. */
 export function exportSTEP(shape: AnyShape): Result<Blob> {
   const oc = getKernel().oc;
-  const filename = 'blob.step';
+  const filename = uniqueIOFilename('_blob', 'step');
   const writer = new oc.STEPControl_Writer_1();
 
   oc.Interface_Static.SetIVal('write.step.schema', 5);
@@ -164,8 +164,15 @@ export function exportSTL(
   }: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
   const oc = getKernel().oc;
-  new oc.BRepMesh_IncrementalMesh_2(shape.wrapped, tolerance, false, angularTolerance, false);
-  const filename = 'blob.stl';
+  const mesher = new oc.BRepMesh_IncrementalMesh_2(
+    shape.wrapped,
+    tolerance,
+    false,
+    angularTolerance,
+    false
+  );
+  mesher.delete();
+  const filename = uniqueIOFilename('_blob', 'stl');
   const done = oc.StlAPI.Write(shape.wrapped, filename, !binary);
 
   if (done) {

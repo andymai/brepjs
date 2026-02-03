@@ -26,16 +26,7 @@ import type { OpenCascadeInstance } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import type { Deletable } from './disposal.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- FinalizationRegistry polyfill
-if (!(globalThis as any).FinalizationRegistry) {
-  console.warn('brepjs: FinalizationRegistry unavailable — garbage collection will not work');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- polyfill shim
-  (globalThis as any).FinalizationRegistry = (() => ({
-    register: () => null,
-    unregister: () => null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- polyfill shim
-  })) as any;
-}
+// FinalizationRegistry polyfill is installed by disposal.ts (imported above via re-exports).
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- FinalizationRegistry generic typing
 const deletableRegistry = new (globalThis as any).FinalizationRegistry((heldValue: Deletable) => {
