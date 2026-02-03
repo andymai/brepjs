@@ -111,6 +111,12 @@ describe('edgeFinder', () => {
     expect(isErr(result)).toBe(true);
   });
 
+  it('returns error when unique finds zero', () => {
+    // Use impossible filter: length 999 on a 10x10x10 box
+    const result = edgeFinder().ofLength(999).find(fnBox(), { unique: true });
+    expect(isErr(result)).toBe(true);
+  });
+
   it('shouldKeep works on individual elements', () => {
     const finder = edgeFinder().ofLength(10);
     const edges = getEdges(fnBox(10, 20, 30));

@@ -12,7 +12,6 @@ import {
   make2dArcFromCenter,
   add2d,
   subtract2d,
-  determinant2x2,
   PRECISION_OFFSET,
 } from '../lib/index.js';
 import Blueprint from './Blueprint.js';
@@ -29,75 +28,23 @@ const getIntersectionPoint = (
   line2Start: Point2D,
   line2End: Point2D
 ): Point2D | null => {
-  const denom = determinant2x2([
-    [
-      determinant2x2([
-        [line1Start[0], 1],
-        [line1End[0], 1],
-      ]),
-      determinant2x2([
-        [line1Start[1], 1],
-        [line1End[1], 1],
-      ]),
-    ],
-    [
-      determinant2x2([
-        [line2Start[0], 1],
-        [line2End[0], 1],
-      ]),
-      determinant2x2([
-        [line2Start[1], 1],
-        [line2End[1], 1],
-      ]),
-    ],
-  ]);
+  // Pre-compute direction differences (det([[a,1],[b,1]]) = a - b)
+  const dx1 = line1Start[0] - line1End[0];
+  const dy1 = line1Start[1] - line1End[1];
+  const dx2 = line2Start[0] - line2End[0];
+  const dy2 = line2Start[1] - line2End[1];
 
+  // Denominator: det([[dx1, dy1], [dx2, dy2]])
+  const denom = dx1 * dy2 - dy1 * dx2;
   if (Math.abs(denom) < 1e-12) return null;
 
-  const cross1 = determinant2x2([
-    [line1Start[0], line1Start[1]],
-    [line1End[0], line1End[1]],
-  ]);
-  const cross2 = determinant2x2([
-    [line2Start[0], line2Start[1]],
-    [line2End[0], line2End[1]],
-  ]);
+  // Cross products for the line equations
+  const cross1 = line1Start[0] * line1End[1] - line1Start[1] * line1End[0];
+  const cross2 = line2Start[0] * line2End[1] - line2Start[1] * line2End[0];
 
-  const x =
-    determinant2x2([
-      [
-        cross1,
-        determinant2x2([
-          [line1Start[0], 1],
-          [line1End[0], 1],
-        ]),
-      ],
-      [
-        cross2,
-        determinant2x2([
-          [line2Start[0], 1],
-          [line2End[0], 1],
-        ]),
-      ],
-    ]) / denom;
-
-  const y =
-    determinant2x2([
-      [
-        cross1,
-        determinant2x2([
-          [line1Start[1], 1],
-          [line1End[1], 1],
-        ]),
-      ],
-      [
-        cross2,
-        determinant2x2([
-          [line2Start[1], 1],
-          [line2End[1], 1],
-        ]),
-      ],
-    ]) / denom;
+  // Intersection point using Cramer's rule
+  const x = (cross1 * dx2 - cross2 * dx1) / denom;
+  const y = (cross1 * dy2 - cross2 * dy1) / denom;
 
   return [x, y] as Point2D;
 };

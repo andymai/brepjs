@@ -28,6 +28,11 @@ export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
 
     reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
     const stepShape = reader.OneShape();
+
+    if (stepShape.IsNull()) {
+      return err(ioError('STEP_IMPORT_FAILED', 'STEP file contains no valid geometry'));
+    }
+
     return ok(castShape(stepShape));
   } finally {
     try {
