@@ -240,14 +240,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- legacy Shape class compatible with functional shape API
     const bounds = getBounds({ wrapped: this.wrapped } as any);
     const bbox = new oc.Bnd_Box_1();
-    bbox.Update_1(
-      bounds.xMin,
-      bounds.yMin,
-      bounds.zMin,
-      bounds.xMax,
-      bounds.yMax,
-      bounds.zMax
-    );
+    bbox.Update_1(bounds.xMin, bounds.yMin, bounds.zMin, bounds.xMax, bounds.yMax, bounds.zMax);
     return new BoundingBox(bbox);
   }
 
