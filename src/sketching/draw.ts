@@ -25,8 +25,8 @@ import {
   Blueprints,
   CompoundBlueprint,
 } from '../2d/blueprints/index.js';
-import type { Plane } from '../core/geometry.js';
-import { type PlaneName, type Point } from '../core/geometry.js';
+import type { Plane, PlaneName } from '../core/planeTypes.js';
+import type { PointInput } from '../core/types.js';
 import type { AnyShape, Edge, Face, Wire } from '../topology/shapes.js';
 import { makeFace } from '../topology/shapeHelpers.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
@@ -198,10 +198,10 @@ export class Drawing {
   }
 
   sketchOnPlane(inputPlane: Plane): SketchInterface | Sketches;
-  sketchOnPlane(inputPlane?: PlaneName, origin?: Point | number): SketchInterface | Sketches;
+  sketchOnPlane(inputPlane?: PlaneName, origin?: PointInput | number): SketchInterface | Sketches;
   sketchOnPlane(
     inputPlane?: PlaneName | Plane,
-    origin?: Point | number
+    origin?: PointInput | number
   ): SketchInterface | Sketches {
     if (!this.innerShape) bug('Drawing', 'Trying to sketch an empty drawing');
     const result = this.innerShape.sketchOnPlane(inputPlane, origin);
@@ -219,7 +219,7 @@ export class Drawing {
     faceFinder: SingleFace,
     options: {
       height?: number;
-      origin?: Point;
+      origin?: PointInput;
       draftAngle?: number;
     } = {}
   ): AnyShape {

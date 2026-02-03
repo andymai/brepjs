@@ -25,9 +25,9 @@ import { unwrap } from '../../core/result.js';
 
 import { getKernel } from '../../kernel/index.js';
 import { makeFace } from '../../topology/shapeHelpers.js';
-import type { PlaneName, Point } from '../../core/geometry.js';
-import { Plane, Vector } from '../../core/geometry.js';
-import type { Vec3 } from '../../core/types.js';
+import type { Plane, PlaneName } from '../../core/planeTypes.js';
+import type { PointInput } from '../../core/types.js';
+import { toVec3 } from '../../core/types.js';
 import { DEG2RAD } from '../../core/constants.js';
 import type { DrawingInterface, SketchData } from './lib.js';
 import round5 from '../../utils/round5.js';
@@ -47,24 +47,6 @@ function assembleWire(listOfEdges: { wrapped: unknown }[]): Wire {
     builder.Add_1(e.wrapped);
   });
   return new Wire(builder.Wire());
-}
-
-/**
- * Helper to convert legacy Point type to Vec3.
- * Handles arrays, Vector instances, and OCCT point-like objects.
- */
-function pointToVec3(p: Point): Vec3 {
-  if (Array.isArray(p)) {
-    return p.length === 3 ? [p[0], p[1], p[2]] : [p[0], p[1], 0];
-  } else if (p instanceof Vector) {
-    return [p.x, p.y, p.z];
-  } else {
-    // OCCT point-like object
-    const xyz = p.XYZ();
-    const vec: Vec3 = [xyz.X(), xyz.Y(), xyz.Z()];
-    xyz.delete();
-    return vec;
-  }
 }
 
 /**
@@ -171,9 +153,11 @@ export default class Blueprint implements DrawingInterface {
     return new Blueprint(curves);
   }
 
-  sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: Point | number): SketchData {
+  sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: PointInput | number): SketchData {
     const plane =
-      inputPlane instanceof Plane ? makePlane(inputPlane) : makePlane(inputPlane, origin);
+      inputPlane && typeof inputPlane !== 'string'
+        ? { ...inputPlane }
+        : makePlane(inputPlane, origin);
 
     const edges = curvesAsEdgesOnPlane(this.curves, plane);
     const wire = assembleWire(edges);
@@ -200,9 +184,9 @@ export default class Blueprint implements DrawingInterface {
     return { wire, baseFace: face };
   }
 
-  subFace(face: Face, origin?: Point | null): Face {
+  subFace(face: Face, origin?: PointInput | null): Face {
     const originPoint = origin || [...face.center];
-    const originVec3 = Array.isArray(originPoint) ? originPoint : pointToVec3(originPoint);
+    const originVec3 = toVec3(originPoint);
     const sketch = this.translate(face.uvCoordinates(originVec3)).sketchOnFace(face, 'original');
     return unwrap(makeFace(sketch.wire));
   }
@@ -216,7 +200,7 @@ export default class Blueprint implements DrawingInterface {
       draftAngle = 0,
     }: {
       height?: number | null;
-      origin?: Point | null;
+      origin?: PointInput | null;
       draftAngle?: number;
     } = {}
   ) {

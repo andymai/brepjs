@@ -6,26 +6,12 @@ import {
   Finder,
 } from './definitions.js';
 
-import { type Point, Vector } from '../core/geometry.js';
-import type { Vec3 } from '../core/types.js';
+import type { Vec3, PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
 import { vecDot, vecNormalize } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import { toOcPnt } from '../core/occtBoundary.js';
 
-/** Helper to convert legacy Point type to Vec3 */
-function pointToVec3(p: Point): Vec3 {
-  if (Array.isArray(p)) {
-    return p.length === 3 ? [p[0], p[1], p[2]] : [p[0], p[1], 0];
-  } else if (p instanceof Vector) {
-    return [p.x, p.y, p.z];
-  } else {
-    // OCCT point-like object
-    const xyz = p.XYZ();
-    const vec: Vec3 = [xyz.X(), xyz.Y(), xyz.Z()];
-    xyz.delete();
-    return vec;
-  }
-}
 import type { AnyShape } from '../topology/shapes.js';
 import { getKernel } from '../kernel/index.js';
 import { WrappingObj } from '../core/memory.js';
@@ -35,9 +21,9 @@ import type { OcType } from '../kernel/types.js';
  * Lightweight vertex wrapper used for distance queries within finders.
  * This avoids a dependency on shape-helper utilities that may not exist yet.
  */
-const makeVertexOc = (point: Point): OcType => {
+const makeVertexOc = (point: PointInput): OcType => {
   const oc = getKernel().oc;
-  const pnt = toOcPnt(pointToVec3(point));
+  const pnt = toOcPnt(toVec3(point));
   const vertexMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
   const vertex = vertexMaker.Vertex();
   vertexMaker.delete();
@@ -48,10 +34,10 @@ const makeVertexOc = (point: Point): OcType => {
 /**
  * Lightweight box builder used for the `inBox` filter.
  */
-const makeBoxOc = (corner1: Point, corner2: Point): OcType => {
+const makeBoxOc = (corner1: PointInput, corner2: PointInput): OcType => {
   const oc = getKernel().oc;
-  const p1 = toOcPnt(pointToVec3(corner1));
-  const p2 = toOcPnt(pointToVec3(corner2));
+  const p1 = toOcPnt(toVec3(corner1));
+  const p2 = toOcPnt(toVec3(corner2));
   const boxMaker = new oc.BRepPrimAPI_MakeBox_4(p1, p2);
   const solid = boxMaker.Solid();
   boxMaker.delete();
@@ -131,12 +117,12 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    *
    * @category Filter
    */
-  atAngleWith(direction: Direction | Point = 'Z', angle = 0): this {
+  atAngleWith(direction: Direction | PointInput = 'Z', angle = 0): this {
     let myDirection: Vec3;
     if (typeof direction === 'string') {
-      myDirection = pointToVec3(DIRECTIONS[direction]);
+      myDirection = toVec3(DIRECTIONS[direction]);
     } else {
-      myDirection = pointToVec3(direction);
+      myDirection = toVec3(direction);
     }
     const normalizedDirection = vecNormalize(myDirection);
 
@@ -158,7 +144,7 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    *
    * @category Filter
    */
-  atDistance(distance: number, point: Point = [0, 0, 0]): this {
+  atDistance(distance: number, point: PointInput = [0, 0, 0]): this {
     const vertexShape = makeVertexOc(point);
     const query = new DistanceQueryInternal(vertexShape);
     vertexShape.delete();
@@ -176,7 +162,7 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    *
    * @category Filter
    */
-  containsPoint(point: Point): this {
+  containsPoint(point: PointInput): this {
     return this.atDistance(0, point);
   }
 
@@ -185,7 +171,7 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    *
    * @category Filter
    */
-  withinDistance(distance: number, point: Point = [0, 0, 0]): this {
+  withinDistance(distance: number, point: PointInput = [0, 0, 0]): this {
     const vertexShape = makeVertexOc(point);
     const query = new DistanceQueryInternal(vertexShape);
     vertexShape.delete();
@@ -205,7 +191,7 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
    *
    * @category Filter
    */
-  inBox(corner1: Point, corner2: Point): this {
+  inBox(corner1: PointInput, corner2: PointInput): this {
     const boxShape = makeBoxOc(corner1, corner2);
     this.inShape(boxShape);
     boxShape.delete();

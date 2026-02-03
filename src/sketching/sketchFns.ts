@@ -3,7 +3,7 @@
  * Delegates to existing Sketch/CompoundSketch class methods and operations/ functions.
  */
 
-import type { Point } from '../core/geometry.js';
+import type { PointInput } from '../core/types.js';
 import type { Face, Shape3D, Wire } from '../topology/shapes.js';
 import type { ExtrusionProfile, GenericSweepConfig } from '../operations/extrude.js';
 import type { LoftConfig } from '../operations/loft.js';
@@ -19,10 +19,10 @@ export function sketchExtrude(
   sketch: Sketch,
   height: number,
   config?: {
-    extrusionDirection?: Point;
+    extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
-    origin?: Point;
+    origin?: PointInput;
   }
 ): Shape3D {
   return sketch.extrude(height, config);
@@ -31,8 +31,8 @@ export function sketchExtrude(
 /** Revolve a sketch around an axis. Consumes the sketch. */
 export function sketchRevolve(
   sketch: Sketch,
-  revolutionAxis?: Point,
-  options?: { origin?: Point }
+  revolutionAxis?: PointInput,
+  options?: { origin?: PointInput }
 ): Shape3D {
   return sketch.revolve(revolutionAxis, options);
 }
@@ -75,10 +75,10 @@ export function compoundSketchExtrude(
   sketch: CompoundSketch,
   height: number,
   config?: {
-    extrusionDirection?: Point;
+    extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
-    origin?: Point;
+    origin?: PointInput;
   }
 ): Shape3D {
   return sketch.extrude(height, config);
@@ -87,8 +87,8 @@ export function compoundSketchExtrude(
 /** Revolve a compound sketch around an axis. */
 export function compoundSketchRevolve(
   sketch: CompoundSketch,
-  revolutionAxis?: Point,
-  options?: { origin?: Point }
+  revolutionAxis?: PointInput,
+  options?: { origin?: PointInput }
 ): Shape3D {
   return sketch.revolve(revolutionAxis, options);
 }

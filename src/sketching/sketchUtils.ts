@@ -2,14 +2,14 @@
  * Shared utilities for sketch creation and manipulation.
  */
 
-import type { Point } from '../core/geometry.js';
+import type { PointInput } from '../core/types.js';
 import type { SketchData } from '../2d/blueprints/lib.js';
 import Sketch from './Sketch.js';
 import CompoundSketch from './CompoundSketch.js';
 
 /** Wrap SketchData into a Sketch instance. */
 export function wrapSketchData(data: SketchData): Sketch {
-  const opts: { defaultOrigin?: Point; defaultDirection?: Point } = {};
+  const opts: { defaultOrigin?: PointInput; defaultDirection?: PointInput } = {};
   if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
   if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
   const sketch = new Sketch(data.wire, opts);

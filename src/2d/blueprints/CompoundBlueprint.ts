@@ -6,7 +6,8 @@ import { asSVG, viewbox } from './svg.js';
 
 import type { AnyShape, Face } from '../../topology/shapes.js';
 
-import type { Plane, PlaneName, Point } from '../../core/geometry.js';
+import type { Plane, PlaneName } from '../../core/planeTypes.js';
+import type { PointInput } from '../../core/types.js';
 
 import type { ScaleMode } from '../curves.js';
 import type { SingleFace } from '../../query/helpers.js';
@@ -81,7 +82,7 @@ export default class CompoundBlueprint implements DrawingInterface {
     );
   }
 
-  sketchOnPlane(plane?: PlaneName | Plane, origin?: Point | number): SketchData[] {
+  sketchOnPlane(plane?: PlaneName | Plane, origin?: PointInput | number): SketchData[] {
     return this.blueprints.map((blueprint) => blueprint.sketchOnPlane(plane, origin));
   }
 
@@ -94,7 +95,7 @@ export default class CompoundBlueprint implements DrawingInterface {
     face: SingleFace,
     options: {
       height?: number;
-      origin?: Point;
+      origin?: PointInput;
       draftAngle?: number;
     } = {}
   ): AnyShape {

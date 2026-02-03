@@ -4,6 +4,8 @@ import { toVec3 } from '../core/types.js';
 import { WrappingObj, localGC } from '../core/memory.js';
 import { toOcPnt, toOcDir, makeOcAx2, fromOcPnt, fromOcDir } from '../core/occtBoundary.js';
 import { vecCross, vecLength, vecNormalize } from '../core/vecOps.js';
+import { getBounds } from '../topology/shapeFns.js';
+import type { AnyShape } from '../core/shapeTypes.js';
 import {
   PROJECTION_PLANES,
   isProjectionPlane as isProjectionPlaneCheck,
@@ -98,13 +100,20 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     return this;
   }
 
-  lookAt(shape: { boundingBox: { center: PointInput } } | PointInput): this {
+  lookAt(shape: AnyShape | PointInput): this {
     const [r, gc] = localGC();
-    const lookAtPoint = toVec3(
-      'boundingBox' in (shape as object)
-        ? (shape as { boundingBox: { center: PointInput } }).boundingBox.center
-        : (shape as PointInput)
-    );
+    let lookAtPoint: Vec3;
+    if (typeof shape === 'object' && 'wrapped' in shape) {
+      // It's a shape - get bounds and compute center
+      const bounds = getBounds(shape);
+      lookAtPoint = [
+        (bounds.xMin + bounds.xMax) / 2,
+        (bounds.yMin + bounds.yMax) / 2,
+        (bounds.zMin + bounds.zMax) / 2,
+      ];
+    } else {
+      lookAtPoint = toVec3(shape as PointInput);
+    }
     const pos = this.position;
     const diff = vecNormalize([
       pos[0] - lookAtPoint[0],

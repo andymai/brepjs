@@ -1,11 +1,11 @@
-import { Plane, type PlaneName, type Point, Vector } from '../core/geometry.js';
-import { makePlane } from '../core/geometryHelpers.js';
+import type { Plane, PlaneName, PlaneInput } from '../core/planeTypes.js';
+import { resolvePlane, planeToWorld, planeToLocal } from '../core/planeOps.js';
 import { localGC } from '../core/memory.js';
 import { DEG2RAD, RAD2DEG } from '../core/constants.js';
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
 import { distance2d, polarAngle2d, polarToCartesian, type Point2D } from '../2d/lib/index.js';
-import type { Vec3 } from '../core/types.js';
+import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import {
   vecAdd,
@@ -15,17 +15,9 @@ import {
   vecCross,
   vecEquals,
   vecLength,
+  vecRotate,
 } from '../core/vecOps.js';
 
-// Helper to convert readonly Vec3 to mutable Point for legacy APIs
-function toPoint(v: Vec3): Point {
-  return [v[0], v[1], v[2]];
-}
-
-// Helper to convert Vec3 to Vector for Plane methods
-function toVector(v: Vec3): Vector {
-  return new Vector(toPoint(v));
-}
 import {
   makeLine,
   makeThreePointArc,
@@ -63,20 +55,20 @@ export default class Sketcher implements GenericSketcher<Sketch> {
    * the coordinates origin
    */
   constructor(plane: Plane);
-  constructor(plane?: PlaneName, origin?: Point | number);
-  constructor(plane?: Plane | PlaneName, origin?: Point) {
-    this.plane = plane instanceof Plane ? makePlane(plane) : makePlane(plane, origin);
+  constructor(plane?: PlaneName, origin?: PointInput | number);
+  constructor(plane?: PlaneInput, origin?: PointInput | number) {
+    this.plane =
+      plane && typeof plane !== 'string' ? { ...plane } : resolvePlane(plane ?? 'XY', origin);
 
-    this.pointer = this.plane.origin.toVec3();
-    this.firstPoint = this.plane.origin.toVec3();
+    this.pointer = [...this.plane.origin];
+    this.firstPoint = [...this.plane.origin];
 
     this.pendingEdges = [];
     this._mirrorWire = false;
   }
 
   delete(): void {
-    this.plane.delete();
-    // pointer and firstPoint are Vec3 tuples - no need to delete
+    // plane is now a plain object - no need to delete
     for (const edge of this.pendingEdges) {
       edge.delete();
     }
@@ -84,28 +76,27 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   protected _updatePointer(newPointer: Vec3): void {
-    // Vec3 tuples don't need deletion
     this.pointer = newPointer;
   }
 
   movePointerTo([x, y]: Point2D): this {
     if (this.pendingEdges.length)
       bug('Sketcher.movePointerTo', 'You can only move the pointer if there is no edge defined');
-    this._updatePointer(this.plane.toWorldCoords([x, y]).toVec3());
+    this._updatePointer(planeToWorld(this.plane, [x, y]));
     this.firstPoint = this.pointer;
     return this;
   }
 
   lineTo([x, y]: Point2D): this {
-    const endPoint = this.plane.toWorldCoords([x, y]).toVec3();
+    const endPoint = planeToWorld(this.plane, [x, y]);
     this.pendingEdges.push(makeLine(this.pointer, endPoint));
     this._updatePointer(endPoint);
     return this;
   }
 
   line(xDist: number, yDist: number): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.lineTo([xDist + pointer.x, yDist + pointer.y]);
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    return this.lineTo([xDist + px, yDist + py]);
   }
 
   vLine(distance: number): this {
@@ -117,13 +108,13 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   vLineTo(yPos: number): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.lineTo([pointer.x, yPos]);
+    const [px] = planeToLocal(this.plane, this.pointer);
+    return this.lineTo([px, yPos]);
   }
 
   hLineTo(xPos: number): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.lineTo([xPos, pointer.y]);
+    const [, py] = planeToLocal(this.plane, this.pointer);
+    return this.lineTo([xPos, py]);
   }
 
   polarLine(distance: number, angle: number): this {
@@ -156,8 +147,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   threePointsArcTo(end: Point2D, innerPoint: Point2D): this {
-    const gpoint1 = this.plane.toWorldCoords(innerPoint).toVec3();
-    const gpoint2 = this.plane.toWorldCoords(end).toVec3();
+    const gpoint1 = planeToWorld(this.plane, innerPoint);
+    const gpoint2 = planeToWorld(this.plane, end);
 
     this.pendingEdges.push(makeThreePointArc(this.pointer, gpoint1, gpoint2));
 
@@ -166,15 +157,12 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.threePointsArcTo(
-      [pointer.x + xDist, pointer.y + yDist],
-      [pointer.x + viaXDist, pointer.y + viaYDist]
-    );
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    return this.threePointsArcTo([px + xDist, py + yDist], [px + viaXDist, py + viaYDist]);
   }
 
   tangentArcTo(end: Point2D): this {
-    const endPoint = this.plane.toWorldCoords(end).toVec3();
+    const endPoint = planeToWorld(this.plane, end);
     const previousEdge = this.pendingEdges.length
       ? this.pendingEdges[this.pendingEdges.length - 1]
       : null;
@@ -191,19 +179,19 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   tangentArc(xDist: number, yDist: number): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.tangentArcTo([xDist + pointer.x, yDist + pointer.y]);
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    return this.tangentArcTo([xDist + px, yDist + py]);
   }
 
   sagittaArcTo(end: Point2D, sagitta: number): this {
     const startPoint = this.pointer;
-    const endPoint = this.plane.toWorldCoords(end).toVec3();
+    const endPoint = planeToWorld(this.plane, end);
 
     const sum = vecAdd(endPoint, startPoint);
     const midPoint = vecScale(sum, 0.5);
 
     const diff = vecSub(endPoint, startPoint);
-    const crossResult = vecCross(diff, this.plane.zDir.toVec3());
+    const crossResult = vecCross(diff, this.plane.zDir);
     const sagDirection = vecNormalize(crossResult);
 
     const sagVector = vecScale(sagDirection, sagitta);
@@ -217,8 +205,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   sagittaArc(xDist: number, yDist: number, sagitta: number): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.sagittaArcTo([xDist + pointer.x, yDist + pointer.y], sagitta);
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    return this.sagittaArcTo([xDist + px, yDist + py], sagitta);
   }
 
   vSagittaArc(distance: number, sagitta: number): this {
@@ -231,16 +219,16 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   bulgeArcTo(end: Point2D, bulge: number): this {
     if (!bulge) return this.lineTo(end);
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    const halfChord = distance2d([pointer.x, pointer.y], end) / 2;
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    const halfChord = distance2d([px, py], end) / 2;
     const bulgeAsSagitta = -bulge * halfChord;
 
     return this.sagittaArcTo(end, bulgeAsSagitta);
   }
 
   bulgeArc(xDist: number, yDist: number, bulge: number): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.bulgeArcTo([xDist + pointer.x, yDist + pointer.y], bulge);
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    return this.bulgeArcTo([xDist + px, yDist + py], bulge);
   }
 
   vBulgeArc(distance: number, bulge: number): this {
@@ -259,8 +247,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     longAxis = false,
     sweep = false
   ): this {
-    const [r, gc] = localGC();
-    const start = this.plane.toLocalCoords(toVector(this.pointer));
+    const [, gc] = localGC();
+    const [startX, startY] = planeToLocal(this.plane, this.pointer);
 
     let rotationAngle = rotation;
     let majorRadius = horizontalRadius;
@@ -273,7 +261,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     }
 
     const { cx, cy, rx, ry, startAngle, endAngle, clockwise } = convertSvgEllipseParams(
-      [start.x, start.y],
+      [startX, startY],
       end,
       majorRadius,
       minorRadius,
@@ -282,8 +270,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
       sweep
     );
 
-    const xDirRotated = this.plane.xDir.rotate(rotationAngle, this.plane.origin, this.plane.zDir);
-    const xDir = r(xDirRotated).toVec3();
+    const xDir = vecRotate(this.plane.xDir, this.plane.zDir, rotationAngle * DEG2RAD);
 
     const arc = unwrap(
       makeEllipseArc(
@@ -291,8 +278,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
         ry,
         clockwise ? startAngle : endAngle,
         clockwise ? endAngle : startAngle,
-        r(this.plane.toWorldCoords([cx, cy])).toVec3(),
-        this.plane.zDir.toVec3(),
+        planeToWorld(this.plane, [cx, cy]),
+        this.plane.zDir,
         xDir
       )
     );
@@ -302,7 +289,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     }
 
     this.pendingEdges.push(arc);
-    this._updatePointer(this.plane.toWorldCoords(end).toVec3());
+    this._updatePointer(planeToWorld(this.plane, end));
     gc();
     return this;
   }
@@ -316,9 +303,9 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     longAxis = false,
     sweep = false
   ): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
+    const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.ellipseTo(
-      [xDist + pointer.x, yDist + pointer.y],
+      [xDist + px, yDist + py],
       horizontalRadius,
       verticalRadius,
       rotation,
@@ -328,8 +315,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   halfEllipseTo(end: Point2D, verticalRadius: number, sweep = false): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    const start: Point2D = [pointer.x, pointer.y];
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    const start: Point2D = [px, py];
 
     const angle = polarAngle2d(end, start);
     const distance = distance2d(end, start);
@@ -338,8 +325,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   halfEllipse(xDist: number, yDist: number, verticalRadius: number, sweep = false): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.halfEllipseTo([xDist + pointer.x, yDist + pointer.y], verticalRadius, sweep);
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    return this.halfEllipseTo([xDist + px, yDist + py], verticalRadius, sweep);
   }
 
   bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this {
@@ -350,8 +337,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
       cp = controlPoints as Point2D[];
     }
 
-    const inWorldPoints = cp.map((p) => this.plane.toWorldCoords(p).toVec3());
-    const endPoint = this.plane.toWorldCoords(end).toVec3();
+    const inWorldPoints = cp.map((p) => planeToWorld(this.plane, p));
+    const endPoint = planeToWorld(this.plane, end);
 
     this.pendingEdges.push(makeBezierCurve([this.pointer, ...inWorldPoints, endPoint]));
 
@@ -372,7 +359,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     try {
       const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineConfig(config);
 
-      const endPoint = this.plane.toWorldCoords(end).toVec3();
+      const endPoint = planeToWorld(this.plane, end);
       const previousEdge = this.pendingEdges.length
         ? this.pendingEdges[this.pendingEdges.length - 1]
         : null;
@@ -382,9 +369,9 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
       let startPoleDirection: Vec3;
       if (startTangent) {
-        startPoleDirection = this.plane.toWorldCoords(startTangent).toVec3();
+        startPoleDirection = planeToWorld(this.plane, startTangent);
       } else if (!previousEdge) {
-        startPoleDirection = this.plane.toWorldCoords([1, 0]).toVec3();
+        startPoleDirection = planeToWorld(this.plane, [1, 0]);
       } else if (previousEdge.geomType === 'BEZIER_CURVE') {
         const rawCurve = (
           r(previousEdge.curve).wrapped as CurveLike & {
@@ -410,7 +397,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
       if (endTangent === 'symmetric') {
         endPoleDirection = vecScale(startPoleDirection, -1);
       } else {
-        endPoleDirection = this.plane.toWorldCoords(endTangent).toVec3();
+        endPoleDirection = planeToWorld(this.plane, endTangent);
       }
 
       const endPoleDistance = vecScale(vecNormalize(endPoleDirection), endFactor * defaultDistance);
@@ -426,16 +413,16 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   smoothSpline(xDist: number, yDist: number, splineConfig: SplineConfig = {}): this {
-    const pointer = this.plane.toLocalCoords(toVector(this.pointer));
-    return this.smoothSplineTo([xDist + pointer.x, yDist + pointer.y], splineConfig);
+    const [px, py] = planeToLocal(this.plane, this.pointer);
+    return this.smoothSplineTo([xDist + px, yDist + py], splineConfig);
   }
 
   protected _mirrorWireOnStartEnd(wire: Wire): Wire {
     const diff = vecSub(this.pointer, this.firstPoint);
     const startToEndVector = vecNormalize(diff);
-    const normal = vecCross(startToEndVector, this.plane.zDir.toVec3());
+    const normal = vecCross(startToEndVector, this.plane.zDir);
 
-    const mirroredWire = wire.clone().mirror(toPoint(normal), toPoint(this.pointer));
+    const mirroredWire = wire.clone().mirror(normal, this.pointer);
 
     const combinedWire = unwrap(assembleWire([wire, mirroredWire]));
 
@@ -456,8 +443,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   protected _closeSketch(): void {
     if (!vecEquals(this.pointer, this.firstPoint) && !this._mirrorWire) {
-      const endpoint = this.plane.toLocalCoords(toVector(this.firstPoint));
-      this.lineTo([endpoint.x, endpoint.y]);
+      const [endX, endY] = planeToLocal(this.plane, this.firstPoint);
+      this.lineTo([endX, endY]);
     }
   }
 

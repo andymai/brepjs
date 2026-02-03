@@ -1,11 +1,10 @@
-import type { Point } from '../core/geometry.js';
 import type { Vec3 } from '../core/types.js';
 import type { Face, Edge } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { queryError } from '../core/errors.js';
 
 export type Direction = 'X' | 'Y' | 'Z';
-export const DIRECTIONS: Record<Direction, Point> = {
+export const DIRECTIONS: Record<Direction, Vec3> = {
   X: [1, 0, 0],
   Y: [0, 1, 0],
   Z: [0, 0, 1],

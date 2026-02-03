@@ -7,7 +7,8 @@ import { asSVG, viewbox } from './svg.js';
 
 import type { AnyShape, Face } from '../../topology/shapes.js';
 
-import type { Plane, PlaneName, Point } from '../../core/geometry.js';
+import type { Plane, PlaneName } from '../../core/planeTypes.js';
+import type { PointInput } from '../../core/types.js';
 
 import type { ScaleMode } from '../curves.js';
 import type { SingleFace } from '../../query/helpers.js';
@@ -65,7 +66,10 @@ export default class Blueprints implements DrawingInterface {
     return new Blueprints(this.blueprints.map((bp) => bp.mirror(centerOrDirection, origin, mode)));
   }
 
-  sketchOnPlane(plane?: PlaneName | Plane, origin?: Point | number): (SketchData | SketchData[])[] {
+  sketchOnPlane(
+    plane?: PlaneName | Plane,
+    origin?: PointInput | number
+  ): (SketchData | SketchData[])[] {
     return this.blueprints.map((bp) => bp.sketchOnPlane(plane, origin));
   }
 
@@ -78,7 +82,7 @@ export default class Blueprints implements DrawingInterface {
     face: SingleFace,
     options: {
       height?: number;
-      origin?: Point;
+      origin?: PointInput;
       draftAngle?: number;
     } = {}
   ) {

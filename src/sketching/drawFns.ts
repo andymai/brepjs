@@ -6,14 +6,14 @@
 import type { Point2D } from '../2d/lib/definitions.js';
 import type { Drawing } from './draw.js';
 import type { CornerFinder } from '../query/cornerFinder.js';
-import type { PlaneName, Point } from '../core/geometry.js';
-import type { Plane } from '../core/geometry.js';
+import type { PointInput } from '../core/types.js';
+import type { Plane, PlaneName } from '../core/planeTypes.js';
 
 /** Sketch a drawing on a plane, returning a Sketch or Sketches. */
 export function drawingToSketchOnPlane(
   drawing: Drawing,
   inputPlane?: PlaneName | Plane,
-  origin?: Point | number
+  origin?: PointInput | number
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Sketch types
 ): any {
   if (origin !== undefined) {

@@ -1,8 +1,10 @@
 import { compoundShapes, addHolesInFace, makeSolid, makeFace } from '../topology/shapeHelpers.js';
 import type Sketch from './Sketch.js';
 
-import { type Point, Vector } from '../core/geometry.js';
 import { localGC } from '../core/memory.js';
+import type { Vec3, PointInput } from '../core/types.js';
+import { toVec3 } from '../core/types.js';
+import { vecNormalize, vecScale } from '../core/vecOps.js';
 import {
   basicFaceExtrusion,
   complexExtrude,
@@ -147,23 +149,25 @@ export default class CompoundSketch implements SketchInterface {
       twistAngle,
       origin,
     }: {
-      extrusionDirection?: Point;
+      extrusionDirection?: PointInput;
       extrusionProfile?: ExtrusionProfile;
       twistAngle?: number;
-      origin?: Point;
+      origin?: PointInput;
     } = {}
   ): Shape3D {
-    const [r, gc] = localGC();
-    const rawVec = r(new Vector(extrusionDirection || this.outerSketch.defaultDirection));
-    const normVec = r(rawVec.normalized());
-    const extrusionVec = r(normVec.multiply(extrusionDistance));
+    const [, gc] = localGC();
+    const rawVec: Vec3 = extrusionDirection
+      ? toVec3(extrusionDirection)
+      : this.outerSketch.defaultDirection;
+    const normVec = vecNormalize(rawVec);
+    const extrusionVec = vecScale(normVec, extrusionDistance);
 
     let result: Shape3D;
     if (extrusionProfile && !twistAngle) {
       result = solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
         complexExtrude(
           sketch.wire,
-          origin || this.outerSketch.defaultOrigin,
+          origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
           extrusionVec,
           extrusionProfile,
           true
@@ -174,7 +178,7 @@ export default class CompoundSketch implements SketchInterface {
         twistExtrude(
           sketch.wire,
           twistAngle,
-          origin || this.outerSketch.defaultOrigin,
+          origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
           extrusionVec,
           extrusionProfile,
           true
@@ -192,9 +196,13 @@ export default class CompoundSketch implements SketchInterface {
    * Revolves the drawing on an axis (defined by its direction and an origin
    * (defaults to the sketch origin)
    */
-  revolve(revolutionAxis?: Point, { origin }: { origin?: Point } = {}): Shape3D {
+  revolve(revolutionAxis?: PointInput, { origin }: { origin?: PointInput } = {}): Shape3D {
     return unwrap(
-      revolution(this.face(), origin || this.outerSketch.defaultOrigin, revolutionAxis)
+      revolution(
+        this.face(),
+        origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
+        revolutionAxis
+      )
     );
   }
 

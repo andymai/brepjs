@@ -13,19 +13,10 @@ import {
   type PlaneName,
   fnCreateNamedPlane,
 } from '../src/index.js';
-// Deprecated APIs - import from core/geometry for testing only
-import {
-  Vector,
-  Plane,
-  Transformation,
-  BoundingBox,
-  asPnt,
-  asDir,
-  makeAx1,
-  makeAx2,
-  makeAx3,
-  createNamedPlane,
-} from '../src/core/geometry.js';
+// Functional plane API
+import { createNamedPlane, resolvePlane } from '../src/core/planeOps.js';
+// OCCT boundary functions
+import { toOcPnt } from '../src/core/occtBoundary.js';
 
 beforeAll(async () => {
   await initOC();
@@ -38,13 +29,8 @@ describe('isPoint', () => {
   it('returns true for a 2-element array', () => {
     expect(isPoint([1, 2])).toBe(true);
   });
-  it('returns true for a Vector instance', () => {
-    const v = new Vector([1, 2, 3]);
-    expect(isPoint(v)).toBe(true);
-    v.delete();
-  });
   it('returns true for an OCCT duck-typed object with XYZ', () => {
-    const pnt = asPnt([1, 2, 3]);
+    const pnt = toOcPnt([1, 2, 3]);
     expect(isPoint(pnt)).toBe(true);
     pnt.delete();
   });
@@ -687,31 +673,25 @@ describe.skip('BoundingBox (deprecated)', () => {
 describe('makePlane', () => {
   it('creates a plane from a PlaneName', () => {
     const p = makePlane('XY');
-    expect(p.zDir.z).toBeCloseTo(1);
-    p.delete();
+    expect(p.zDir[2]).toBeCloseTo(1);
   });
   it('creates a plane with origin', () => {
     const p = makePlane('XY', [1, 2, 3]);
-    expect(p.origin.x).toBeCloseTo(1);
-    p.delete();
+    expect(p.origin[0]).toBeCloseTo(1);
   });
   it('clones a Plane instance', () => {
-    const orig = new Plane([5, 5, 5], [1, 0, 0], [0, 0, 1]);
+    const orig = makePlane('XY', [5, 5, 5]);
     const cl = makePlane(orig);
-    expect(cl.origin.x).toBeCloseTo(5);
+    expect(cl.origin[0]).toBeCloseTo(5);
     expect(cl).not.toBe(orig);
-    orig.delete();
-    cl.delete();
   });
   it('defaults to XY plane', () => {
     const p = makePlane();
-    expect(p.zDir.z).toBeCloseTo(1);
-    p.delete();
+    expect(p.zDir[2]).toBeCloseTo(1);
   });
   it('creates a plane with numeric origin', () => {
     const p = makePlane('XY', 5);
-    expect(p.origin.z).toBeCloseTo(5);
-    p.delete();
+    expect(p.origin[2]).toBeCloseTo(5);
   });
 });
 

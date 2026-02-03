@@ -14,6 +14,7 @@ import {
   unwrap,
   isOk,
   isErr,
+  getBounds,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -126,8 +127,11 @@ describe('Shape topology accessors', () => {
 
   it('bounding box is correct', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const bb = box.boundingBox;
+    const bb = getBounds(box);
     expect(bb).toBeDefined();
+    expect(bb.xMax).toBeCloseTo(10);
+    expect(bb.yMax).toBeCloseTo(20);
+    expect(bb.zMax).toBeCloseTo(30);
   });
 });
 
