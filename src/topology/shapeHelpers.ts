@@ -233,7 +233,7 @@ export const makeBezierCurve = (points: Vec3[]): Edge => {
   points.forEach((p, i) => {
     arrayOfPoints.SetValue(i + 1, r(toOcPnt(p)));
   });
-  const bezCurve = new oc.Geom_BezierCurve_1(arrayOfPoints);
+  const bezCurve = r(new oc.Geom_BezierCurve_1(arrayOfPoints));
 
   const curve = r(new oc.Handle_Geom_Curve_2(bezCurve));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_24(curve));

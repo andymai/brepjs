@@ -16,7 +16,7 @@ import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../cor
 import { gcWithScope } from '../core/disposal.js';
 import { downcast } from '../topology/cast.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
-import { typeCastError } from '../core/errors.js';
+import { typeCastError, validationError } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
 
 export type { ExtrusionProfile, SweepConfig } from './extrudeUtils.js';
@@ -212,9 +212,15 @@ export function complexExtrude(
   profileShape?: ExtrusionProfile,
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
+  const extrusionLength = vecLength(normal);
+  if (extrusionLength === 0) {
+    return err(
+      validationError('ZERO_LENGTH_EXTRUSION', 'Extrusion vector cannot have zero length')
+    );
+  }
   const endPoint = vecAdd(center, normal);
   const spine = makeSpineWire(center, endPoint);
-  const law = profileShape ? unwrap(buildLawFromProfile(vecLength(normal), profileShape)) : null;
+  const law = profileShape ? unwrap(buildLawFromProfile(extrusionLength, profileShape)) : null;
   return sweep(wire, spine, { law }, shellMode);
 }
 
@@ -227,10 +233,19 @@ export function twistExtrude(
   profileShape?: ExtrusionProfile,
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
+  if (angleDegrees === 0) {
+    return err(validationError('ZERO_TWIST_ANGLE', 'Twist angle cannot be zero'));
+  }
+  const extrusionLength = vecLength(normal);
+  if (extrusionLength === 0) {
+    return err(
+      validationError('ZERO_LENGTH_EXTRUSION', 'Extrusion vector cannot have zero length')
+    );
+  }
+
   const endPoint = vecAdd(center, normal);
   const spine = makeSpineWire(center, endPoint);
 
-  const extrusionLength = vecLength(normal);
   const pitch = (360.0 / angleDegrees) * extrusionLength;
   const auxiliarySpine = makeHelixWire(pitch, extrusionLength, 1, center, normal);
 
