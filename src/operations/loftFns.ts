@@ -10,7 +10,7 @@ import type { Wire, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
-import { typeCastError, validationError, occtError } from '../core/errors.js';
+import { typeCastError } from '../core/errors.js';
 
 export interface LoftConfig {
   ruled?: boolean;
@@ -24,10 +24,6 @@ export function loftWires(
   { ruled = true, startPoint, endPoint }: LoftConfig = {},
   returnShell = false
 ): Result<Shape3D> {
-  if (wires.length === 0 && !startPoint && !endPoint) {
-    return err(validationError('LOFT_EMPTY', 'Loft requires at least one wire or start/end point'));
-  }
-
   const oc = getKernel().oc;
   const r = gcWithScope();
 
@@ -49,10 +45,6 @@ export function loftWires(
 
   const progress = r(new oc.Message_ProgressRange_1());
   builder.Build(progress);
-
-  if (!builder.IsDone()) {
-    return err(occtError('LOFT_FAILED', 'Loft operation failed'));
-  }
 
   const result = castShape(builder.Shape());
   if (!isShape3D(result)) {
