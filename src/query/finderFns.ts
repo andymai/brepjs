@@ -65,10 +65,18 @@ function createFinder<T extends AnyShape>(
 
   const shouldKeep = (element: T): boolean => filters.every((f) => f(element));
 
-  const extractElements = (shape: AnyShape): T[] =>
-    Array.from(iterTopo(shape.wrapped, topoKind))
-      .map((raw) => castShape(unwrap(downcast(raw))) as T)
-      .filter(shouldKeep);
+  // Single-pass extraction avoids creating intermediate arrays
+  // (compared to Array.from().map().filter() which creates 3 arrays)
+  const extractElements = (shape: AnyShape): T[] => {
+    const result: T[] = [];
+    for (const raw of iterTopo(shape.wrapped, topoKind)) {
+      const element = castShape(unwrap(downcast(raw))) as T;
+      if (shouldKeep(element)) {
+        result.push(element);
+      }
+    }
+    return result;
+  };
 
   const finder: ShapeFinder<T> = {
     _filters: filters,
