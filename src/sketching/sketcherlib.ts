@@ -371,7 +371,10 @@ export interface GenericSketcher<ReturnType> {
 function radianAngle(ux: number, uy: number, vx: number, vy: number): number {
   const dot = ux * vx + uy * vy;
   const mod = Math.sqrt((ux * ux + uy * uy) * (vx * vx + vy * vy));
-  let rad = Math.acos(dot / mod);
+  if (mod < 1e-12) {
+    bug('radianAngle', 'Cannot compute angle between zero-length vectors');
+  }
+  let rad = Math.acos(Math.max(-1, Math.min(1, dot / mod)));
   if (ux * vy - uy * vx < 0.0) {
     rad = -rad;
   }
