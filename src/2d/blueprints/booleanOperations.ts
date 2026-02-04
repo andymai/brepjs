@@ -22,18 +22,36 @@ const curveMidPoint = (curve: Curve2D) => {
   return curve.value(midParameter);
 };
 
+/**
+ * Rotates array to start at the curve whose firstPoint matches the given point.
+ * Uses hash map for O(1) lookup instead of O(n) findIndex.
+ */
 const rotateToStartAt = (curves: Curve2D[], point: Point2D) => {
-  const startIndex = curves.findIndex((curve: Curve2D) => {
-    return samePoint(point, curve.firstPoint);
-  });
+  // Build hash map of curve start points for O(1) lookup
+  const pointHash = hashPoint(point);
+  let startIndex = -1;
+  for (let i = 0; i < curves.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index within array bounds
+    const curve = curves[i]!;
+    if (hashPoint(curve.firstPoint) === pointHash && samePoint(point, curve.firstPoint)) {
+      startIndex = i;
+      break;
+    }
+  }
 
-  const start = curves.slice(0, startIndex);
-  const end = curves.slice(startIndex);
-
-  return end.concat(start);
+  if (startIndex <= 0) return curves;
+  // Rotate in-place by concatenating slices
+  return curves.slice(startIndex).concat(curves.slice(0, startIndex));
 };
 
+/**
+ * Rotates array to start at the curve matching the given segment.
+ * Uses hash-based filtering for faster candidate identification.
+ */
 const rotateToStartAtSegment = (curves: Curve2D[], segment: Curve2D) => {
+  const segFirstHash = hashPoint(segment.firstPoint);
+  const segLastHash = hashPoint(segment.lastPoint);
+
   const onSegment = (curve: Curve2D) => {
     return (
       samePoint(segment.firstPoint, curve.firstPoint) &&
@@ -41,22 +59,44 @@ const rotateToStartAtSegment = (curves: Curve2D[], segment: Curve2D) => {
     );
   };
 
-  let startIndex = curves.findIndex(onSegment);
+  // Fast path: check hash before expensive samePoint comparison
+  let startIndex = -1;
+  for (let i = 0; i < curves.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index within array bounds
+    const curve = curves[i]!;
+    if (
+      hashPoint(curve.firstPoint) === segFirstHash &&
+      hashPoint(curve.lastPoint) === segLastHash &&
+      onSegment(curve)
+    ) {
+      startIndex = i;
+      break;
+    }
+  }
 
   // it is also possible that the segment is oriented the other way. We still
   // need to align a start point
   if (startIndex === -1) {
     curves = reverseSegment(curves);
-    startIndex = curves.findIndex(onSegment);
+    for (let i = 0; i < curves.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index within array bounds
+      const curve = curves[i]!;
+      if (
+        hashPoint(curve.firstPoint) === segFirstHash &&
+        hashPoint(curve.lastPoint) === segLastHash &&
+        onSegment(curve)
+      ) {
+        startIndex = i;
+        break;
+      }
+    }
     if (startIndex === -1) {
       bug('rotateToStartAtSegment', 'Failed to rotate to segment start');
     }
   }
 
-  const start = curves.slice(0, startIndex);
-  const end = curves.slice(startIndex);
-
-  return end.concat(start);
+  if (startIndex <= 0) return curves;
+  return curves.slice(startIndex).concat(curves.slice(0, startIndex));
 };
 
 // Hash a point for Set/Map lookup (uses precision rounding for fuzzy matching)

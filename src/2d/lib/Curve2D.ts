@@ -24,6 +24,8 @@ export function deserializeCurve2D(data: string): Curve2D {
 
 export class Curve2D extends WrappingObj<OcType> {
   _boundingBox: null | BoundingBox2d;
+  private _firstPoint: Point2D | null = null;
+  private _lastPoint: Point2D | null = null;
   constructor(handle: OcType) {
     const oc = getKernel().oc;
     const inner = handle.get();
@@ -65,11 +67,17 @@ export class Curve2D extends WrappingObj<OcType> {
   }
 
   get firstPoint(): Point2D {
-    return this.value(this.firstParameter);
+    if (this._firstPoint === null) {
+      this._firstPoint = this.value(this.firstParameter);
+    }
+    return this._firstPoint;
   }
 
   get lastPoint(): Point2D {
-    return this.value(this.lastParameter);
+    if (this._lastPoint === null) {
+      this._lastPoint = this.value(this.lastParameter);
+    }
+    return this._lastPoint;
   }
 
   get firstParameter(): number {
@@ -93,11 +101,19 @@ export class Curve2D extends WrappingObj<OcType> {
   }
 
   clone(): Curve2D {
-    return new Curve2D(this.innerCurve.Copy());
+    const cloned = new Curve2D(this.innerCurve.Copy());
+    // Copy cached endpoint values to avoid redundant recalculation
+    cloned._firstPoint = this._firstPoint;
+    cloned._lastPoint = this._lastPoint;
+    return cloned;
   }
 
   reverse(): void {
     this.innerCurve.Reverse();
+    // Swap cached points (first becomes last, last becomes first)
+    const tmp = this._firstPoint;
+    this._firstPoint = this._lastPoint;
+    this._lastPoint = tmp;
   }
 
   private distanceFromPoint(point: Point2D): number {

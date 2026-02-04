@@ -73,6 +73,9 @@ class DistanceQueryInternal extends WrappingObj<OcType> {
 }
 
 export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, AnyShape> {
+  /** Track OCCT objects that need cleanup after find() completes */
+  protected readonly _disposables: DistanceQueryInternal[] = [];
+
   /**
    * Filter to find elements following a custom function.
    *
@@ -149,6 +152,9 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
     const query = new DistanceQueryInternal(vertexShape);
     vertexShape.delete();
 
+    // Track for cleanup
+    this._disposables.push(query);
+
     const checkPoint = ({ element }: { element: Type }) => {
       return Math.abs(query.distanceTo(element.wrapped) - distance) < 1e-6;
     };
@@ -175,6 +181,9 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
     const vertexShape = makeVertexOc(point);
     const query = new DistanceQueryInternal(vertexShape);
     vertexShape.delete();
+
+    // Track for cleanup
+    this._disposables.push(query);
 
     const checkPoint = ({ element }: { element: Type }) => {
       return query.distanceTo(element.wrapped) - distance < 1e-6;
@@ -213,11 +222,25 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
 
     const query = new DistanceQueryInternal(shapeWrapped);
 
+    // Track for cleanup
+    this._disposables.push(query);
+
     const checkPoint = ({ element }: { element: Type }) => {
       return query.distanceTo(element.wrapped) < 1e-6;
     };
 
     this.filters.push(checkPoint);
     return this;
+  }
+
+  /**
+   * Disposes all OCCT objects created by distance/shape filters.
+   * Call this after find() to free WASM memory.
+   */
+  dispose(): void {
+    for (const disposable of this._disposables) {
+      disposable.delete();
+    }
+    this._disposables.length = 0;
   }
 }

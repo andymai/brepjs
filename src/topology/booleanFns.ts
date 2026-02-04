@@ -127,6 +127,40 @@ export function intersectShapes(
 // Batch boolean operations
 // ---------------------------------------------------------------------------
 
+/**
+ * Internal helper for pairwise fuse using index ranges to avoid array allocations.
+ */
+function fuseAllPairwise(
+  shapes: Shape3D[],
+  start: number,
+  end: number,
+  optimisation: 'none' | 'commonFace' | 'sameFace',
+  simplify: boolean,
+  isTopLevel: boolean
+): Result<Shape3D> {
+  const count = end - start;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start is valid index
+  if (count === 1) return ok(shapes[start]!);
+  if (count === 2) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start and start+1 are valid indices
+    return fuseShapes(shapes[start]!, shapes[start + 1]!, {
+      optimisation,
+      simplify: isTopLevel ? simplify : false,
+    });
+  }
+
+  const mid = start + Math.ceil(count / 2);
+  const leftResult = fuseAllPairwise(shapes, start, mid, optimisation, simplify, false);
+  if (isErr(leftResult)) return leftResult;
+  const rightResult = fuseAllPairwise(shapes, mid, end, optimisation, simplify, false);
+  if (isErr(rightResult)) return rightResult;
+
+  return fuseShapes(leftResult.value, rightResult.value, {
+    optimisation,
+    simplify: isTopLevel ? simplify : false,
+  });
+}
+
 /** Fuse all shapes in a single boolean operation. */
 export function fuseAll(
   shapes: Shape3D[],
@@ -146,15 +180,9 @@ export function fuseAll(
     return castToShape3D(result, 'FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape');
   }
 
-  // Pairwise fallback: recursive divide-and-conquer
-  // Defer simplification to the final fuse — intermediate simplification is wasted work
-  const mid = Math.ceil(shapes.length / 2);
-  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify: false, strategy });
-  if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify: false, strategy });
-  if (isErr(rightResult)) return rightResult;
-
-  return fuseShapes(leftResult.value, rightResult.value, { optimisation, simplify });
+  // Pairwise fallback: recursive divide-and-conquer with index ranges
+  // Uses index ranges instead of slice() to avoid array allocations
+  return fuseAllPairwise(shapes, 0, shapes.length, optimisation, simplify, true);
 }
 
 /** Cut all tool shapes from a base shape in a single boolean operation. */

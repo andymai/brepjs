@@ -1,3 +1,5 @@
+import Flatbush from 'flatbush';
+
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
 import type { Face, Wire } from '../../topology/shapes.js';
 
@@ -9,16 +11,37 @@ import type Blueprint from './Blueprint.js';
 import Blueprints from './Blueprints.js';
 import CompoundBlueprint from './CompoundBlueprint.js';
 
+/**
+ * Groups blueprints by bounding box overlap using a spatial index.
+ * Uses Flatbush for O(n log n) performance instead of O(n²) pairwise comparison.
+ */
 const groupByBoundingBoxOverlap = (blueprints: Blueprint[]): Blueprint[][] => {
-  const overlaps = blueprints.map((blueprint, i) => {
-    return blueprints
-      .slice(i + 1)
-      .map((v, j): [number, Blueprint] => [j + i + 1, v])
-      .filter(([, other]) => !blueprint.boundingBox.isOut(other.boundingBox))
-      .map(([index]) => index);
+  if (blueprints.length === 0) return [];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length check above
+  if (blueprints.length === 1) return [[blueprints[0]!]];
+
+  // Build spatial index
+  const index = new Flatbush(blueprints.length);
+  for (const bp of blueprints) {
+    const [[xMin, yMin], [xMax, yMax]] = bp.boundingBox.bounds;
+    index.add(xMin, yMin, xMax, yMax);
+  }
+  index.finish();
+
+  // Find overlaps using spatial queries
+  const overlaps: number[][] = blueprints.map((blueprint, i) => {
+    const [[xMin, yMin], [xMax, yMax]] = blueprint.boundingBox.bounds;
+    const candidates = index.search(xMin, yMin, xMax, yMax);
+    // Filter to indices > i (to avoid duplicates) and verify overlap
+    return candidates.filter(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index from spatial query within bounds
+      (j: number) => j > i && !blueprint.boundingBox.isOut(blueprints[j]!.boundingBox)
+    );
   });
+
+  // Union-find to group overlapping blueprints
   const groups: Blueprint[][] = [];
-  const groupsInOverlaps = Array(overlaps.length);
+  const groupsInOverlaps: Blueprint[][] = new Array(overlaps.length);
 
   overlaps.forEach((indices, i) => {
     let myGroup = groupsInOverlaps[i];
@@ -27,11 +50,12 @@ const groupByBoundingBoxOverlap = (blueprints: Blueprint[]): Blueprint[][] => {
       groups.push(myGroup);
     }
 
-    myGroup.push(blueprints[i]);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i is valid index from forEach
+    myGroup.push(blueprints[i]!);
 
     if (indices.length) {
-      indices.forEach((index) => {
-        groupsInOverlaps[index] = myGroup;
+      indices.forEach((idx) => {
+        groupsInOverlaps[idx] = myGroup;
       });
     }
   });
