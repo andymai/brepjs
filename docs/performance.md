@@ -24,6 +24,7 @@ function buildComplexShape() {
 ```
 
 **Key patterns:**
+
 - Wrap intermediate OCCT objects with `r()` to register them for cleanup
 - Objects returned from the function escape the scope and remain valid
 - Cleanup happens automatically when the scope exits
@@ -41,7 +42,7 @@ try {
   box.delete();
 }
 
-// ✅ Modern pattern — automatic cleanup
+// ✅ Modern pattern — automatic cleanup (requires TypeScript 5.9+)
 using box = makeBox([10, 10, 10]);
 doSomething(box);
 ```
@@ -101,17 +102,18 @@ clearMeshCache();
 ```
 
 **Mesh options affecting cache:**
+
 - `linearDeflection`: Maximum chord height (smaller = finer mesh)
 - `angularDeflection`: Maximum angle between adjacent normals
 
 ### Mesh Quality vs. Performance
 
-| linearDeflection | Use Case | Relative Speed |
-|------------------|----------|----------------|
-| 0.5 | Preview/bounding box | ~1x |
-| 0.1 | Interactive display | ~5x |
-| 0.01 | High-quality render | ~50x |
-| 0.001 | CAM/precision | ~500x |
+| linearDeflection | Use Case             | Relative Speed |
+| ---------------- | -------------------- | -------------- |
+| 0.5              | Preview/bounding box | ~1x            |
+| 0.1              | Interactive display  | ~5x            |
+| 0.01             | High-quality render  | ~50x           |
+| 0.001            | CAM/precision        | ~500x          |
 
 ## Query Operations
 
@@ -160,9 +162,13 @@ import { bench, printResults, type BenchResult } from './harness.js';
 const results: BenchResult[] = [];
 
 results.push(
-  await bench('operation name', () => {
-    // Operation to benchmark
-  }, { warmup: 3, iterations: 10 })
+  await bench(
+    'operation name',
+    () => {
+      // Operation to benchmark
+    },
+    { warmup: 3, iterations: 10 }
+  )
 );
 
 printResults(results);

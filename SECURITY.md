@@ -4,11 +4,11 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 2.x     | :white_check_mark: |
-| 1.x     | :x:                |
-| < 1.0   | :x:                |
+| 4.x     | :white_check_mark: |
+| 3.x     | :x:                |
+| < 3.0   | :x:                |
 
-Only the current major version (2.x) receives security updates. We recommend upgrading to the latest version.
+Only the current major version (4.x) receives security updates. We recommend upgrading to the latest version.
 
 ## Reporting a Vulnerability
 

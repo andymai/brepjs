@@ -27,8 +27,10 @@ The `using` declaration automatically disposes objects when they go out of scope
 
 ### Requirements
 
-- TypeScript 5.2+ with `"lib": ["ES2022", "ESNext.Disposable"]`
+- TypeScript 5.9+ with `"lib": ["ES2022", "ESNext.Disposable"]`
 - Node.js 20+ or modern browsers
+
+> **Note:** TypeScript 5.9 is required for proper `using` syntax support in brepjs v4.0.0+.
 
 ### Polyfill
 
@@ -80,6 +82,7 @@ const shape = makeBox([10, 10, 10]);
 ```
 
 **Warning**: Relying on FinalizationRegistry is not recommended because:
+
 - GC timing is unpredictable
 - Memory pressure may build up before cleanup
 - Not all environments support it
@@ -99,14 +102,14 @@ try {
 
 ## Environment Compatibility
 
-| Environment | Symbol.dispose | FinalizationRegistry | Recommendation |
-|-------------|----------------|----------------------|----------------|
-| Node.js 20+ | ✅ | ✅ | Use `using` declaration |
-| Node.js 18-19 | ❌ | ✅ | Use `gcWithScope` |
-| Chrome 117+ | ✅ | ✅ | Use `using` declaration |
-| Firefox 115+ | ✅ | ✅ | Use `using` declaration |
-| Safari 16.4+ | ✅ | ✅ | Use `using` declaration |
-| Older browsers | ❌ | ⚠️ | Use `gcWithScope` + polyfill |
+| Environment    | Symbol.dispose | FinalizationRegistry | Recommendation               |
+| -------------- | -------------- | -------------------- | ---------------------------- |
+| Node.js 20+    | ✅             | ✅                   | Use `using` declaration      |
+| Node.js 18-19  | ❌             | ✅                   | Use `gcWithScope`            |
+| Chrome 117+    | ✅             | ✅                   | Use `using` declaration      |
+| Firefox 115+   | ✅             | ✅                   | Use `using` declaration      |
+| Safari 16.4+   | ✅             | ✅                   | Use `using` declaration      |
+| Older browsers | ❌             | ⚠️                   | Use `gcWithScope` + polyfill |
 
 ### Checking Support
 
@@ -156,7 +159,7 @@ for (let i = 0; i < 100; i++) {
 // ✅ Clear when done
 shapes.length = 0;
 // Or explicitly dispose each
-shapes.forEach(s => s[Symbol.dispose]?.());
+shapes.forEach((s) => s[Symbol.dispose]?.());
 ```
 
 ### 3. Event Handlers Holding References
@@ -214,10 +217,10 @@ console.log(`Active shapes: ${activeShapes}`);
 
 ## Summary
 
-| Scenario | Recommended Approach |
-|----------|---------------------|
-| Simple temporary | `using shape = makeShape()` |
-| Multiple temporaries | `const r = gcWithScope()` |
-| Long-lived objects | Store reference, dispose when done |
-| Loops | `using` in loop body |
-| Legacy code | `try/finally` with `delete()` |
+| Scenario             | Recommended Approach               |
+| -------------------- | ---------------------------------- |
+| Simple temporary     | `using shape = makeShape()`        |
+| Multiple temporaries | `const r = gcWithScope()`          |
+| Long-lived objects   | Store reference, dispose when done |
+| Loops                | `using` in loop body               |
+| Legacy code          | `try/finally` with `delete()`      |
