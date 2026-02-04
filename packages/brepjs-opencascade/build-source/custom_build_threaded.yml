@@ -7,6 +7,7 @@ mainBuild:
   #@ for flag in emccFlags():
   - #@ flag
   #@ end
+  - -sDISABLE_EXCEPTION_CATCHING=1
   - -pthread
   - -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
   - -sSHARED_MEMORY=1

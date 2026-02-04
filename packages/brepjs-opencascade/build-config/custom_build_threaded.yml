@@ -277,6 +277,7 @@ mainBuild:
   - -sALLOW_MEMORY_GROWTH=1
   - -sLLD_REPORT_UNDEFINED
   - --no-entry
+  - -sDISABLE_EXCEPTION_CATCHING=1
   - -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
 additionalCppCode: |
   class BRepToolsWrapper {
