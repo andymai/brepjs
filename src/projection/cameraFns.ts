@@ -25,14 +25,24 @@ export function createCamera(
   direction: Vec3 = [0, 0, 1],
   xAxis?: Vec3
 ): Camera {
+  // Validate direction is not zero-length
+  const dirLength = vecLength(direction);
+  if (dirLength < 1e-12) {
+    throw new Error('Camera direction cannot be a zero-length vector');
+  }
+
   let resolvedXAxis: Vec3;
   if (xAxis) {
     resolvedXAxis = vecNormalize(xAxis);
   } else {
     // Derive xAxis from direction (same logic as ProjectionCamera)
+    // Try crossing with Z-axis first, then Y-axis, then X-axis as fallbacks
     let cross = vecCross([0, 0, 1], direction);
-    if (vecLength(cross) === 0) {
+    if (vecLength(cross) < 1e-12) {
       cross = vecCross([0, 1, 0], direction);
+    }
+    if (vecLength(cross) < 1e-12) {
+      cross = vecCross([1, 0, 0], direction);
     }
     resolvedXAxis = vecNormalize(cross);
   }
