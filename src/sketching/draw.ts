@@ -84,6 +84,10 @@ export class Drawing {
   }
 
   serialize(): string {
+    if (!this.innerShape) {
+      return JSON.stringify({ type: 'Empty' });
+    }
+
     // walk the tree of blueprints
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive serialization
     function serializeHelper(shape: Shape2D): any {
