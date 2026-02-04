@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/andymai/brepjs/compare/brepjs-v4.0.0...brepjs-v4.0.1) (2026-02-04)
+
+
+### Bug Fixes
+
+* use OCCT shape type enum for isShape3D checks to avoid minification issues ([f3e0939](https://github.com/andymai/brepjs/commit/f3e09398d70c166de6c551f3cc3cbb6e0a207852))
+
 ## [4.0.0](https://github.com/andymai/brepjs/compare/brepjs-v3.0.2...brepjs-v4.0.0) (2026-02-04)
 
 
