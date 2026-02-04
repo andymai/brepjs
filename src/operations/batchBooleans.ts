@@ -3,7 +3,7 @@ import { gcWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
 import { applyGlue, buildCompoundOc, type BooleanOperationOptions } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError } from '../core/errors.js';
+import { validationError, occtError } from '../core/errors.js';
 
 export function fuseAllShapes(
   shapes: OcType[],
@@ -39,6 +39,11 @@ export function fuseAllShapes(
   const fuseOp = r(new oc.BRepAlgoAPI_Fuse_3(leftResult.value, rightResult.value, progress));
   applyGlue(fuseOp, optimisation);
   fuseOp.Build(progress);
+
+  if (!fuseOp.IsDone()) {
+    return err(occtError('FUSE_FAILED', 'Boolean fuse operation failed'));
+  }
+
   if (simplify) {
     fuseOp.SimplifyResult(true, true, 1e-3);
   }
@@ -62,6 +67,11 @@ export function cutAllShapes(
   const cutOp = r(new oc.BRepAlgoAPI_Cut_3(base, toolCompound, progress));
   applyGlue(cutOp, optimisation);
   cutOp.Build(progress);
+
+  if (!cutOp.IsDone()) {
+    return err(occtError('CUT_FAILED', 'Boolean cut operation failed'));
+  }
+
   if (simplify) {
     cutOp.SimplifyResult(true, true, 1e-3);
   }
