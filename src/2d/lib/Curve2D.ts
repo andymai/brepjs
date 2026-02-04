@@ -101,7 +101,11 @@ export class Curve2D extends WrappingObj<OcType> {
   }
 
   clone(): Curve2D {
-    return new Curve2D(this.innerCurve.Copy());
+    const cloned = new Curve2D(this.innerCurve.Copy());
+    // Copy cached endpoint values to avoid redundant recalculation
+    cloned._firstPoint = this._firstPoint;
+    cloned._lastPoint = this._lastPoint;
+    return cloned;
   }
 
   reverse(): void {
