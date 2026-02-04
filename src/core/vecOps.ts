@@ -105,9 +105,6 @@ export function vecProjectToPlane(v: Vec3, planeOrigin: Vec3, planeNormal: Vec3)
 /** Rotate vector around an axis by angle (radians) */
 export function vecRotate(v: Vec3, axis: Vec3, angleRad: number): Vec3 {
   const n = vecNormalize(axis);
-  if (vecIsZero(n)) {
-    throw new Error('Rotation axis must be non-zero');
-  }
   const cos = Math.cos(angleRad);
   const sin = Math.sin(angleRad);
   const dot = vecDot(v, n);
