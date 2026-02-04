@@ -67,7 +67,12 @@ export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
     const solidBuilder = r(new oc.BRepBuilderAPI_MakeSolid_1());
     solidBuilder.Add(oc.TopoDS.Shell_1(upgraded));
 
-    return ok(castShape(solidBuilder.Solid()));
+    const solid = solidBuilder.Solid();
+    if (solid.IsNull()) {
+      return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
+    }
+
+    return ok(castShape(solid));
   } finally {
     try {
       oc.FS.unlink('/' + fileName);

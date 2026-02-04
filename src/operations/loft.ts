@@ -4,7 +4,7 @@ import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { cast, isShape3D } from '../topology/cast.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
-import { typeCastError } from '../core/errors.js';
+import { typeCastError, validationError, occtError } from '../core/errors.js';
 import type { Wire, Shape3D } from '../topology/shapes.js';
 import { makeVertex } from '../topology/shapeHelpers.js';
 
@@ -19,6 +19,10 @@ export const loft = (
   { ruled = true, startPoint, endPoint }: LoftConfig = {},
   returnShell = false
 ): Result<Shape3D> => {
+  if (wires.length === 0 && !startPoint && !endPoint) {
+    return err(validationError('LOFT_EMPTY', 'Loft requires at least one wire or start/end point'));
+  }
+
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
@@ -34,6 +38,12 @@ export const loft = (
 
   const progress = r(new oc.Message_ProgressRange_1());
   loftBuilder.Build(progress);
+
+  if (!loftBuilder.IsDone()) {
+    gc();
+    return err(occtError('LOFT_FAILED', 'Loft operation failed'));
+  }
+
   const result = andThen(cast(loftBuilder.Shape()), (shape) => {
     if (!isShape3D(shape))
       return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));

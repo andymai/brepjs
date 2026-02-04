@@ -198,18 +198,21 @@ export class BaseSketcher2d {
     const [x0, y0] = this.pointer;
     const [x1, y1] = end;
 
-    const midPoint = [(x0 + x1) / 2, (y0 + y1) / 2];
+    const midX = (x0 + x1) / 2;
+    const midY = (y0 + y1) / 2;
 
     // perpendicular vector of B - A
-    const sagDir = [-(y1 - y0), x1 - x0];
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const sagDirLen = Math.sqrt(sagDir[0]! ** 2 + sagDir[1]! ** 2);
+    const sagDirX = -(y1 - y0);
+    const sagDirY = x1 - x0;
+    const sagDirLen = Math.sqrt(sagDirX ** 2 + sagDirY ** 2);
+
+    if (sagDirLen < 1e-12) {
+      bug('sagittaArcTo', 'Start and end points cannot be identical');
+    }
 
     const sagPoint: Point2D = [
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      midPoint[0]! + (sagDir[0]! / sagDirLen) * sagitta,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      midPoint[1]! + (sagDir[1]! / sagDirLen) * sagitta,
+      midX + (sagDirX / sagDirLen) * sagitta,
+      midY + (sagDirY / sagDirLen) * sagitta,
     ];
 
     this.saveCurve(

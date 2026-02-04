@@ -84,6 +84,10 @@ export class Drawing {
   }
 
   serialize(): string {
+    if (!this.innerShape) {
+      return JSON.stringify({ type: 'Empty' });
+    }
+
     // walk the tree of blueprints
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive serialization
     function serializeHelper(shape: Shape2D): any {
@@ -458,11 +462,17 @@ export const drawPointsInterpolation = (
     closeShape?: boolean;
   } = {}
 ): Drawing => {
+  if (points.length < 2) {
+    bug(
+      'drawPointsInterpolation',
+      `Need at least 2 points for interpolation, got ${points.length}`
+    );
+  }
   const curves = [unwrap(make2dInerpolatedBSplineCurve(points, approximationConfig))];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  if (options.closeShape && !samePoint(points[0]!, points[points.length - 1]!)) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    curves.push(make2dSegmentCurve(points[points.length - 1]!, points[0]!));
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  if (options.closeShape && firstPoint && lastPoint && !samePoint(firstPoint, lastPoint)) {
+    curves.push(make2dSegmentCurve(lastPoint, firstPoint));
   }
 
   return new Drawing(new Blueprint(curves));
