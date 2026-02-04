@@ -1,3 +1,5 @@
+import Flatbush from 'flatbush';
+
 import { bug } from '../../core/errors.js';
 import { unwrap } from '../../core/result.js';
 import type { Point2D } from '../lib/index.js';
@@ -210,9 +212,17 @@ export function rawOffsets(
         // https://github.com/jbuckmccready/cavalier_contours/)
 
         const originalEndpoint: Point2D = previousCurve.original.lastPoint;
-        const distances: number[] = intersections.map((i) => squareDistance2d(i, originalEndpoint));
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        intersection = intersections[distances.indexOf(Math.min(...distances))]!;
+        // Single-pass min distance calculation (more efficient than indexOf(Math.min(...)))
+        let minDist = squareDistance2d(intersection, originalEndpoint);
+        for (let i = 1; i < intersections.length; i++) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index within bounds
+          const point = intersections[i]!;
+          const d = squareDistance2d(point, originalEndpoint);
+          if (d < minDist) {
+            minDist = d;
+            intersection = point;
+          }
+        }
       }
 
       // We need to be a lot more careful here with multiple intersections
@@ -273,8 +283,32 @@ export function offsetBlueprint(
     allIntersections.set(index, [...intersections, ...newPoints]);
   };
 
+  // Build spatial index of curve bounding boxes for O(n log n) intersection filtering
+  const spatialIndex = new Flatbush(offsettedArray.length);
+  for (const curve of offsettedArray) {
+    const [[xMin, yMin], [xMax, yMax]] = curve.boundingBox.bounds;
+    spatialIndex.add(xMin, yMin, xMax, yMax);
+  }
+  spatialIndex.finish();
+
+  // Use spatial index to find candidate pairs, avoiding O(n²) comparisons
+  const testedPairs = new Set<string>();
   offsettedArray.forEach((firstCurve, firstIndex) => {
-    offsettedArray.slice(firstIndex + 1).forEach((secondCurve, secondIndex) => {
+    const [[xMin, yMin], [xMax, yMax]] = firstCurve.boundingBox.bounds;
+    const candidates = spatialIndex.search(xMin, yMin, xMax, yMax);
+
+    for (const secondIndex of candidates) {
+      // Only test pairs where secondIndex > firstIndex to avoid duplicates
+      if (secondIndex <= firstIndex) continue;
+
+      // Avoid testing the same pair twice
+      const pairKey = `${firstIndex}-${secondIndex}`;
+      if (testedPairs.has(pairKey)) continue;
+      testedPairs.add(pairKey);
+
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index from spatial query within bounds
+      const secondCurve = offsettedArray[secondIndex]!;
+
       const { intersections: rawIntersections, commonSegmentsPoints } = unwrap(
         intersectCurves(firstCurve, secondCurve, PRECISION_OFFSET)
       );
@@ -293,11 +327,11 @@ export function offsetBlueprint(
         }
       );
 
-      if (!intersections.length) return;
+      if (!intersections.length) continue;
 
       updateIntersections(firstIndex, intersections);
-      updateIntersections(secondIndex + firstIndex + 1, intersections);
-    });
+      updateIntersections(secondIndex, intersections);
+    }
   });
 
   if (!allIntersections.size) {
