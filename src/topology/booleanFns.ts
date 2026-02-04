@@ -52,8 +52,22 @@ function buildCompoundOcInternal(shapes: OcType[]): OcType {
 function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
+    // Include actual shape type in error for debugging
+    const shapeType = shape.ShapeType();
+    const typeNames = [
+      'COMPOUND',
+      'COMPSOLID',
+      'SOLID',
+      'SHELL',
+      'FACE',
+      'WIRE',
+      'EDGE',
+      'VERTEX',
+      'SHAPE',
+    ];
+    const typeName = typeNames[shapeType] ?? `UNKNOWN(${shapeType})`;
     wrapped[Symbol.dispose]();
-    return err(typeCastError(errorCode, errorMsg));
+    return err(typeCastError(errorCode, `${errorMsg}. Got ${typeName} instead.`));
   }
   return ok(wrapped);
 }

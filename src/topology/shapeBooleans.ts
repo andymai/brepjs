@@ -17,9 +17,13 @@ import type { Shape3D, AnyShape, BooleanOperationOptions } from './shapes.js';
 // ---------------------------------------------------------------------------
 
 function isShape3DInternal(shape: AnyShape): shape is Shape3D {
-  // Check by constructor name to avoid importing concrete classes
-  const name = shape.constructor.name;
-  return name === 'Shell' || name === 'Solid' || name === 'CompSolid' || name === 'Compound';
+  // Check by OCCT shape type enum to avoid minification issues
+  // COMPOUND=0, COMPSOLID=1, SOLID=2, SHELL=3 are 3D shapes
+  // FACE=4, WIRE=5, EDGE=6, VERTEX=7 are not
+  const shapeTypeRaw = shape.wrapped?.ShapeType?.();
+  const shapeType =
+    typeof shapeTypeRaw === 'object' && shapeTypeRaw !== null ? shapeTypeRaw.value : shapeTypeRaw;
+  return typeof shapeType === 'number' && shapeType <= 3;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,9 +100,38 @@ export function fuseAll(
       shapes.map((s) => s.wrapped),
       { optimisation, simplify, strategy }
     );
+    // Get the raw shape type before casting for better error messages
+    // Emscripten enums are objects with a .value property
+    const shapeTypeEnumRaw = result.ShapeType?.();
+    const shapeTypeEnum =
+      typeof shapeTypeEnumRaw === 'object' && shapeTypeEnumRaw !== null
+        ? shapeTypeEnumRaw.value
+        : shapeTypeEnumRaw;
+    const typeNames = [
+      'COMPOUND',
+      'COMPSOLID',
+      'SOLID',
+      'SHELL',
+      'FACE',
+      'WIRE',
+      'EDGE',
+      'VERTEX',
+      'SHAPE',
+    ];
+    const rawTypeName =
+      typeof shapeTypeEnum === 'number'
+        ? (typeNames[shapeTypeEnum] ?? `UNKNOWN(${shapeTypeEnum})`)
+        : 'UNKNOWN';
+
     return andThen(cast(result), (newShape) => {
-      if (!isShape3DInternal(newShape))
-        return err(typeCastError('FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape'));
+      if (!isShape3DInternal(newShape)) {
+        return err(
+          typeCastError(
+            'FUSE_ALL_NOT_3D',
+            `fuseAll did not produce a 3D shape. Got ${rawTypeName} (${newShape.constructor.name}) instead.`
+          )
+        );
+      }
       return ok(newShape);
     });
   }
