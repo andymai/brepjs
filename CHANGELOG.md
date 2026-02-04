@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.2](https://github.com/andymai/brepjs/compare/brepjs-v4.0.1...brepjs-v4.0.2) (2026-02-04)
+
+
+### Bug Fixes
+
+* format BrepError in unwrap() for readable error messages ([4dd9c9d](https://github.com/andymai/brepjs/commit/4dd9c9d94fed47f83a45fc6fcb5513377c34c531))
+
 ## [4.0.1](https://github.com/andymai/brepjs/compare/brepjs-v4.0.0...brepjs-v4.0.1) (2026-02-04)
 
 
