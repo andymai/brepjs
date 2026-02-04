@@ -10,6 +10,18 @@
 import type { OpenCascadeInstance, OcShape, ShapeType } from './types.js';
 import { HASH_CODE_MAX } from './measureOps.js';
 
+// Static type enum map for bulk extraction (TopologyExtractor uses integer types)
+const BULK_TYPE_ENUM_MAP: Record<ShapeType, number> = {
+  vertex: 7,
+  edge: 6,
+  wire: 5,
+  face: 4,
+  shell: 3,
+  solid: 2,
+  compsolid: 1,
+  compound: 0,
+};
+
 /**
  * Iterates shapes using C++ bulk extraction.
  */
@@ -18,18 +30,7 @@ export function iterShapesBulk(
   shape: OcShape,
   type: ShapeType
 ): OcShape[] {
-  const typeEnumMap: Record<ShapeType, number> = {
-    vertex: 7,
-    edge: 6,
-    wire: 5,
-    face: 4,
-    shell: 3,
-    solid: 2,
-    compsolid: 1,
-    compound: 0,
-  };
-
-  const raw = oc.TopologyExtractor.extract(shape, typeEnumMap[type]);
+  const raw = oc.TopologyExtractor.extract(shape, BULK_TYPE_ENUM_MAP[type]);
   const count = raw.getShapesCount() as number;
   const result: OcShape[] = [];
   for (let i = 0; i < count; i++) {
@@ -39,21 +40,29 @@ export function iterShapesBulk(
   return result;
 }
 
+// Cached type enum maps for JS-side iteration, keyed by OC instance
+const jsTypeEnumMaps = new WeakMap<OpenCascadeInstance, Record<ShapeType, unknown>>();
+
 /**
  * Iterates shapes using JS-side TopExp_Explorer.
  */
 export function iterShapesJS(oc: OpenCascadeInstance, shape: OcShape, type: ShapeType): OcShape[] {
-  const typeMap: Record<ShapeType, unknown> = {
-    vertex: oc.TopAbs_ShapeEnum.TopAbs_VERTEX,
-    edge: oc.TopAbs_ShapeEnum.TopAbs_EDGE,
-    wire: oc.TopAbs_ShapeEnum.TopAbs_WIRE,
-    face: oc.TopAbs_ShapeEnum.TopAbs_FACE,
-    shell: oc.TopAbs_ShapeEnum.TopAbs_SHELL,
-    solid: oc.TopAbs_ShapeEnum.TopAbs_SOLID,
-    compsolid: oc.TopAbs_ShapeEnum.TopAbs_COMPSOLID,
-    compound: oc.TopAbs_ShapeEnum.TopAbs_COMPOUND,
-  };
-
+  // Get or create cached type enum map for this OC instance
+  let typeMap = jsTypeEnumMaps.get(oc);
+  if (!typeMap) {
+    const ta = oc.TopAbs_ShapeEnum;
+    typeMap = {
+      vertex: ta.TopAbs_VERTEX,
+      edge: ta.TopAbs_EDGE,
+      wire: ta.TopAbs_WIRE,
+      face: ta.TopAbs_FACE,
+      shell: ta.TopAbs_SHELL,
+      solid: ta.TopAbs_SOLID,
+      compsolid: ta.TopAbs_COMPSOLID,
+      compound: ta.TopAbs_COMPOUND,
+    };
+    jsTypeEnumMaps.set(oc, typeMap);
+  }
   const explorer = new oc.TopExp_Explorer_2(shape, typeMap[type], oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
 
   const result: OcShape[] = [];
