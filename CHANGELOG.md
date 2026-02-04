@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.3](https://github.com/andymai/brepjs/compare/brepjs-v4.0.2...brepjs-v4.0.3) (2026-02-04)
+
+
+### Bug Fixes
+
+* critical bug fixes from code review ([#51](https://github.com/andymai/brepjs/issues/51)) ([9f553e7](https://github.com/andymai/brepjs/commit/9f553e71129a4511af85deab12dfeee33acfdf5b))
+
 ## [4.0.2](https://github.com/andymai/brepjs/compare/brepjs-v4.0.1...brepjs-v4.0.2) (2026-02-04)
 
 
