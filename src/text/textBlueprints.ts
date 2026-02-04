@@ -26,13 +26,30 @@ export async function loadFont(
 
   let fontData: ArrayBuffer;
   if (typeof fontPath === 'string') {
-    const response = await fetch(fontPath);
+    let response: Response;
+    try {
+      response = await fetch(fontPath);
+    } catch (e) {
+      throw new Error(
+        `Failed to fetch font from ${fontPath}: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch font from ${fontPath}: HTTP ${response.status} ${response.statusText}`
+      );
+    }
     fontData = await response.arrayBuffer();
   } else {
     fontData = fontPath;
   }
 
-  const font = opentype.parse(fontData);
+  let font;
+  try {
+    font = opentype.parse(fontData);
+  } catch (e) {
+    throw new Error(`Failed to parse font data: ${e instanceof Error ? e.message : String(e)}`);
+  }
   FONT_REGISTER[fontFamily] = font;
   if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = font;
 

@@ -8,7 +8,7 @@ import { localGC } from '../core/memory.js';
 import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
-import { typeCastError } from '../core/errors.js';
+import { typeCastError, occtError } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
 import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
 import { Solid } from '../topology/shapes.js';
@@ -115,6 +115,12 @@ function genericSweep(
 
   const progress = r(new oc.Message_ProgressRange_1());
   sweepBuilder.Build(progress);
+
+  if (!sweepBuilder.IsDone()) {
+    gc();
+    return err(occtError('SWEEP_FAILED', 'Sweep operation failed'));
+  }
+
   if (!shellMode) {
     sweepBuilder.MakeSolid();
   }
