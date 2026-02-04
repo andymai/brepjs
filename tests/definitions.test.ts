@@ -19,6 +19,15 @@ describe('isPoint2D', () => {
     expect(isPoint2D([1, 2, 3])).toBe(false);
     expect(isPoint2D([])).toBe(false);
   });
+
+  it('returns false for arrays with non-numeric elements', () => {
+    expect(isPoint2D(['a', 'b'])).toBe(false);
+    expect(isPoint2D([1, 'b'])).toBe(false);
+    expect(isPoint2D(['a', 2])).toBe(false);
+    expect(isPoint2D([null, 1])).toBe(false);
+    expect(isPoint2D([1, undefined])).toBe(false);
+    expect(isPoint2D([{}, {}])).toBe(false);
+  });
 });
 
 describe('isMatrix2X2', () => {
@@ -51,5 +60,26 @@ describe('isMatrix2X2', () => {
     ).toBe(false);
     expect(isMatrix2X2([[1, 2]])).toBe(false);
     expect(isMatrix2X2([])).toBe(false);
+  });
+
+  it('returns false for matrices with non-numeric elements', () => {
+    expect(
+      isMatrix2X2([
+        ['a', 'b'],
+        ['c', 'd'],
+      ])
+    ).toBe(false);
+    expect(
+      isMatrix2X2([
+        [1, 2],
+        ['a', 'b'],
+      ])
+    ).toBe(false);
+    expect(
+      isMatrix2X2([
+        [1, null],
+        [3, 4],
+      ])
+    ).toBe(false);
   });
 });
