@@ -370,6 +370,16 @@ describe('fuseAll/cutAll', () => {
   it('fuseAll empty', () => {
     expect(isErr(fuseAll([]))).toBe(true);
   });
+  it('fuseAll disjoint boxes returns valid Shape3D', () => {
+    // Verifies that isShape3D check works by OCCT shape type (not class names).
+    // When fusing disjoint boxes, OCCT returns a COMPOUND which must be
+    // correctly identified as a 3D shape even when class names are minified.
+    const result = fuseAll([makeBox([0, 0, 0], [10, 10, 10]), makeBox([100, 0, 0], [110, 10, 10])]);
+    expect(isOk(result)).toBe(true);
+    const shape = unwrap(result);
+    expect(isShape3D(shape)).toBe(true);
+    expect(measureVolume(shape)).toBeCloseTo(2000, 0);
+  });
   it('cutAll', () => {
     expect(
       measureVolume(

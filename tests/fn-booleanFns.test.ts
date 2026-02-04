@@ -206,6 +206,22 @@ describe('boolean edge cases', () => {
       expect(isOk(result)).toBe(true);
       expect(fnMeasureVolume(unwrap(result))).toBeCloseTo(3000, 0);
     });
+
+    it('fuseAll native strategy correctly identifies result as Shape3D', () => {
+      // This test verifies that the isShape3D check works correctly by using
+      // the OCCT shape type enum (not constructor.name which gets minified).
+      // When fusing disjoint boxes, native strategy returns a COMPOUND, which
+      // must be correctly identified as a 3D shape.
+      const result = fnFuseAll(
+        [box(0, 0, 0, 10, 10, 10), box(100, 0, 0, 110, 10, 10)], // disjoint
+        { strategy: 'native' }
+      );
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+      expect(fnIsShape3D(shape)).toBe(true);
+      // Disjoint boxes should have combined volume
+      expect(fnMeasureVolume(shape)).toBeCloseTo(2000, 0);
+    });
   });
 
   describe('cutAll edge cases', () => {
@@ -216,6 +232,90 @@ describe('boolean edge cases', () => {
       ]);
       expect(isOk(result)).toBe(true);
       expect(fnMeasureVolume(unwrap(result))).toBeCloseTo(1000, 0); // Middle third remains
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Compound shape verification tests (TDD for minification-resistant checks)
+// ---------------------------------------------------------------------------
+
+describe('compound shape verification', () => {
+  // These tests verify that operations returning COMPOUND shapes are correctly
+  // identified as 3D shapes. This is critical because class name checks would
+  // fail in minified builds where "Compound" becomes something like "pc".
+
+  describe('fuseAll compound results', () => {
+    it('three disjoint boxes returns valid Shape3D', () => {
+      const result = fnFuseAll([
+        box(0, 0, 0, 10, 10, 10),
+        box(50, 0, 0, 60, 10, 10),
+        box(100, 0, 0, 110, 10, 10),
+      ]);
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+      expect(fnIsShape3D(shape)).toBe(true);
+      expect(fnMeasureVolume(shape)).toBeCloseTo(3000, 0);
+    });
+
+    it('four disjoint boxes at corners returns valid Shape3D', () => {
+      const result = fnFuseAll([
+        box(0, 0, 0, 10, 10, 10),
+        box(50, 0, 0, 60, 10, 10),
+        box(0, 50, 0, 10, 60, 10),
+        box(50, 50, 0, 60, 60, 10),
+      ]);
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+      expect(fnIsShape3D(shape)).toBe(true);
+      expect(fnMeasureVolume(shape)).toBeCloseTo(4000, 0);
+    });
+
+    it('mixed disjoint and overlapping boxes returns valid Shape3D', () => {
+      // Two boxes touch (fuse to solid) + one disjoint = compound
+      const result = fnFuseAll([
+        box(0, 0, 0, 10, 10, 10),
+        box(10, 0, 0, 20, 10, 10), // touches first box
+        box(100, 0, 0, 110, 10, 10), // disjoint
+      ]);
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+      expect(fnIsShape3D(shape)).toBe(true);
+      expect(fnMeasureVolume(shape)).toBeCloseTo(3000, 0);
+    });
+  });
+
+  describe('cutAll compound results', () => {
+    it('cutting through box creates valid Shape3D compound', () => {
+      // Cut a vertical slice through the middle, creating two separate pieces
+      const result = fnCutAll(box(0, 0, 0, 30, 10, 10), [box(10, 0, 0, 20, 10, 10)]);
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+      expect(fnIsShape3D(shape)).toBe(true);
+      expect(fnMeasureVolume(shape)).toBeCloseTo(2000, 0); // 3000 - 1000 removed
+    });
+
+    it('multiple cuts creating three pieces returns valid Shape3D', () => {
+      const result = fnCutAll(box(0, 0, 0, 50, 10, 10), [
+        box(10, 0, 0, 20, 10, 10),
+        box(30, 0, 0, 40, 10, 10),
+      ]);
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+      expect(fnIsShape3D(shape)).toBe(true);
+      expect(fnMeasureVolume(shape)).toBeCloseTo(3000, 0); // 5000 - 2000 removed
+    });
+  });
+
+  describe('pairwise strategy compound results', () => {
+    it('pairwise strategy with disjoint boxes returns valid Shape3D', () => {
+      const result = fnFuseAll([box(0, 0, 0, 10, 10, 10), box(100, 0, 0, 110, 10, 10)], {
+        strategy: 'pairwise',
+      });
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+      expect(fnIsShape3D(shape)).toBe(true);
+      expect(fnMeasureVolume(shape)).toBeCloseTo(2000, 0);
     });
   });
 });
