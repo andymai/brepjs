@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.2](https://github.com/andymai/brepjs/compare/brepjs-v3.0.1...brepjs-v3.0.2) (2026-02-04)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * devDependencies
+    * brepjs-opencascade bumped from ^0.4.1 to ^0.5.1
+  * peerDependencies
+    * brepjs-opencascade bumped from ^0.4.1 to ^0.5.1
+
 ## [3.0.1](https://github.com/andymai/brepjs/compare/brepjs-v3.0.0...brepjs-v3.0.1) (2026-02-04)
 
 
