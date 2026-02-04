@@ -97,7 +97,7 @@ Comprehensive code review of the brepjs codebase identified **27+ issues** acros
 | File                           | Line    | Issue                                                                                  | Recommendation                                                   |
 | ------------------------------ | ------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | `src/topology/shapeHelpers.ts` | 103     | `makeHelix` intentionally leaks `Geom_CylindricalSurface` (comment: "or it can break") | Investigate root cause; may indicate OCCT handle ownership issue |
-| `src/topology/shapes.ts`       | 561-568 | `Wire.offset2D` error path may leak intermediate shapes from `cast()`                  | Wrap in try-finally for cleanup                                  |
+| `src/topology/shapes.ts`       | 561-568 | `Wire.offset2D` always deletes `this` even on success (mutates input unexpectedly)     | Consider matching functional API behavior (don't mutate input)   |
 | `src/query/generic3dfinder.ts` | 147-157 | `DistanceQueryInternal` objects in filters never cleaned up                            | Track and delete in `Finder.delete()`                            |
 
 #### Missing Validation
