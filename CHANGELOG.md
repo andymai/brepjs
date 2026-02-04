@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/andymai/brepjs/compare/brepjs-v3.0.0...brepjs-v3.0.1) (2026-02-04)
+
+
+### Bug Fixes
+
+* **brepjs-opencascade:** add repository field for npm provenance ([5f9edf7](https://github.com/andymai/brepjs/commit/5f9edf76f593dabb4702d5264550291d4231df7d))
+
 ## [3.0.0](https://github.com/andymai/brepjs/compare/brepjs-v2.0.4...brepjs-v3.0.0) (2026-02-04)
 
 
