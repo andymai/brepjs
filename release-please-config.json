@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true
+    },
+    "packages/brepjs-opencascade": {
+      "release-type": "node",
+      "changelog-path": "CHANGELOG.md",
+      "component": "brepjs-opencascade",
+      "bump-minor-pre-major": true
+    }
+  },
+  "separate-pull-requests": true
+}

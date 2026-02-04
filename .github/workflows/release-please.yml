@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
+      brepjs_release_created: ${{ steps.release.outputs['.--release_created'] }}
+      brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
     steps:
       - uses: actions/create-github-app-token@v1
         id: app-token
@@ -21,8 +23,9 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          release-type: node
           token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
   build:
     runs-on: ubuntu-latest
@@ -42,10 +45,35 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  publish:
+  publish-brepjs-opencascade:
     runs-on: ubuntu-latest
     needs: [release-please, build]
-    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
+    if: ${{ needs.release-please.outputs.brepjs_opencascade_release_created == 'true' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+      - run: npm ci
+      - name: Publish brepjs-opencascade
+        working-directory: packages/brepjs-opencascade
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-brepjs:
+    runs-on: ubuntu-latest
+    needs: [release-please, build, publish-brepjs-opencascade]
+    # Run if brepjs release created, even if opencascade publish was skipped
+    if: |
+      always() &&
+      needs.release-please.outputs.brepjs_release_created == 'true' &&
+      (needs.publish-brepjs-opencascade.result == 'success' || needs.publish-brepjs-opencascade.result == 'skipped')
     permissions:
       contents: read
       id-token: write
@@ -58,4 +86,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npm publish --access public
+      - name: Publish brepjs
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
