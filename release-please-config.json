@@ -13,5 +13,11 @@
       "bump-minor-pre-major": true
     }
   },
+  "plugins": [
+    {
+      "type": "node-workspace",
+      "updatePeerDependencies": true
+    }
+  ],
   "separate-pull-requests": true
 }
