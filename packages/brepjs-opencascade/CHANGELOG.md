@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.5.0...brepjs-opencascade-v0.5.1) (2026-02-04)
+
+
+### Bug Fixes
+
+* **brepjs-opencascade:** add repository field for npm provenance ([5f9edf7](https://github.com/andymai/brepjs/commit/5f9edf76f593dabb4702d5264550291d4231df7d))
+
 ## [0.5.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.4.1...brepjs-opencascade-v0.5.0) (2026-02-04)
 
 ### ⚠ BREAKING CHANGES
