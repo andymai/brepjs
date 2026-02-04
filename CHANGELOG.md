@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.0.4](https://github.com/andymai/brepjs/compare/brepjs-v4.0.3...brepjs-v4.0.4) (2026-02-04)
+
+
+### Performance Improvements
+
+* cache asTopo lookup map ([4971a46](https://github.com/andymai/brepjs/commit/4971a46c12f2ad24fb397731a6af7f0010f350c7))
+* cache topology type enum maps ([1cc4490](https://github.com/andymai/brepjs/commit/1cc4490b353d223b727f3151a2140be154652c96))
+* single-pass element extraction in finders ([7430a86](https://github.com/andymai/brepjs/commit/7430a86bbe9fe18a9c16f376d37963014172cb42))
+* use index ranges in fuseAllPairwise to avoid allocations ([30b7231](https://github.com/andymai/brepjs/commit/30b723172f0337dc51795194ec59e00c3acb2e3e))
+
 ## [4.0.3](https://github.com/andymai/brepjs/compare/brepjs-v4.0.2...brepjs-v4.0.3) (2026-02-04)
 
 
