@@ -10,7 +10,7 @@ Comprehensive code review of the brepjs codebase identified **27+ issues** acros
 
 **Fixed in PR #49:**
 
-- 22 critical/high-priority issues fixed (across 4 commits)
+- 24 critical/high-priority issues fixed (across 5 commits)
 - 2 new tests added for type guard validation
 
 **Remaining Issues:** Documented below for future work
@@ -85,6 +85,13 @@ Comprehensive code review of the brepjs codebase identified **27+ issues** acros
 | `src/core/memory.ts`   | 60-68   | WrappingObj setter allows resurrection of deleted objects   | Added check, throws on deleted object |
 | `src/core/vecOps.ts`   | 106-118 | `vecRotate` doesn't validate zero-length axis               | Added zero vector check with error    |
 | `src/core/planeOps.ts` | 51      | `createPlane` doesn't validate parallel xDir/normal vectors | Added parallel vector validation      |
+
+### High - Kernel File Cleanup (Commit 4)
+
+| File                  | Line | Issue                                            | Fix                          |
+| --------------------- | ---- | ------------------------------------------------ | ---------------------------- |
+| `src/kernel/ioOps.ts` | 34   | `exportSTEP` doesn't unlink temp file on failure | Added FS.unlink before throw |
+| `src/kernel/ioOps.ts` | 54   | `exportSTL` doesn't unlink temp file on failure  | Added FS.unlink before throw |
 
 ---
 
@@ -192,7 +199,7 @@ expect(
 - **High priority issues found:** 18
 - **Medium priority issues found:** 7
 - **Low priority issues found:** 2
-- **Issues fixed in PR #49:** 22
+- **Issues fixed in PR #49:** 24
 - **Tests added:** 2
 - **All tests passing:** Yes (1037 tests)
 
