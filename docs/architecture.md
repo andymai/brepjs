@@ -80,41 +80,41 @@ graph TB
 
 No internal imports allowed.
 
-| Module | Purpose |
-|--------|---------|
-| `kernel/` | WASM adapter, OCCT bindings |
-| `utils/` | Pure utilities (no dependencies) |
+| Module    | Purpose                          |
+| --------- | -------------------------------- |
+| `kernel/` | WASM adapter, OCCT bindings      |
+| `utils/`  | Pure utilities (no dependencies) |
 
 ### Layer 1: Core
 
 Imports kernel/utils only.
 
-| Module | Purpose |
-|--------|---------|
+| Module  | Purpose                                                       |
+| ------- | ------------------------------------------------------------- |
 | `core/` | Memory management, types, geometry primitives, error handling |
 
 ### Layer 2: Domain
 
 Imports layers 0-1 and each other.
 
-| Module | Purpose |
-|--------|---------|
-| `topology/` | Shape classes, boolean operations, casting |
-| `operations/` | Extrusion, loft, sweep, batch operations |
-| `2d/` | Blueprints, curves, 2D operations |
-| `query/` | Shape finders (face, edge, corner) |
-| `measurement/` | Volume, area, length, distance |
-| `io/` | STEP/STL import/export |
+| Module         | Purpose                                    |
+| -------------- | ------------------------------------------ |
+| `topology/`    | Shape classes, boolean operations, casting |
+| `operations/`  | Extrusion, loft, sweep, batch operations   |
+| `2d/`          | Blueprints, curves, 2D operations          |
+| `query/`       | Shape finders (face, edge, corner)         |
+| `measurement/` | Volume, area, length, distance             |
+| `io/`          | STEP/STL import/export                     |
 
 ### Layer 3: High-Level API
 
 Imports all lower layers.
 
-| Module | Purpose |
-|--------|---------|
-| `sketching/` | Sketcher API, sketch-to-shape workflows |
-| `text/` | Text blueprints from fonts |
-| `projection/` | Camera and projection utilities |
+| Module        | Purpose                                 |
+| ------------- | --------------------------------------- |
+| `sketching/`  | Sketcher API, sketch-to-shape workflows |
+| `text/`       | Text blueprints from fonts              |
+| `projection/` | Camera and projection utilities         |
 
 ## Data Flow
 
@@ -141,18 +141,13 @@ sequenceDiagram
 
 ## Key Patterns
 
-### 1. Dual API
+### 1. Functional API
 
-Both class-based (legacy) and functional APIs:
+brepjs uses an immutable functional API:
 
 ```typescript
-// Legacy (mutates)
-const shape = makeBox([10, 10, 10]);
-shape.translate([5, 0, 0]);
-
-// Functional (immutable)
 const shape = castShape(makeBox([10, 10, 10]).wrapped);
-const moved = translateShape(shape, [5, 0, 0]);
+const moved = translateShape(shape, [5, 0, 0]); // Returns new shape
 ```
 
 ### 2. Result Types

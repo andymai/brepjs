@@ -81,21 +81,18 @@ Layer 0: kernel/, utils/                     (WASM bindings)
 
 See [docs/architecture.md](./docs/architecture.md) for the full diagram.
 
-## API Styles
+## API Style
 
-brepjs supports two API styles:
+brepjs uses an immutable functional API:
 
-**Functional API (recommended):**
 ```typescript
 const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
 const moved = translateShape(box, [5, 0, 0]); // Returns new shape
 ```
 
-**Legacy class API:**
-```typescript
-const box = makeBox([10, 10, 10]);
-box.translate([5, 0, 0]); // Mutates in place
-```
+## Projects Using brepjs
+
+- [Gridfinity Layout Tool](https://github.com/andymai/gridfinity-layout-tool) — Web-based layout generator for Gridfinity storage systems
 
 ## Development
 

@@ -2,34 +2,34 @@
 
 ## Runtime Environments
 
-| Environment | Tested | Notes |
-|-------------|--------|-------|
-| Node.js 24 | ✅ Primary | CI tested |
-| Node.js 22 | ✅ | LTS |
-| Node.js 20 | ✅ | LTS, Symbol.dispose support |
-| Node.js 18 | ⚠️ | Works, no Symbol.dispose |
-| Deno | 🔲 | Untested |
-| Bun | 🔲 | Untested |
+| Environment | Tested     | Notes                       |
+| ----------- | ---------- | --------------------------- |
+| Node.js 24  | ✅ Primary | CI tested                   |
+| Node.js 22  | ✅         | LTS                         |
+| Node.js 20  | ✅         | LTS, Symbol.dispose support |
+| Node.js 18  | ⚠️         | Works, no Symbol.dispose    |
+| Deno        | 🔲         | Untested                    |
+| Bun         | 🔲         | Untested                    |
 
 ## Browsers
 
-| Browser | Tested | Notes |
-|---------|--------|-------|
-| Chrome 117+ | ✅ | Full support |
-| Firefox 115+ | ✅ | Full support |
-| Safari 16.4+ | ✅ | Full support |
-| Edge (Chromium) | ✅ | Same as Chrome |
-| Safari < 16.4 | ⚠️ | May need polyfills |
-| IE 11 | ❌ | Not supported |
+| Browser         | Tested | Notes              |
+| --------------- | ------ | ------------------ |
+| Chrome 117+     | ✅     | Full support       |
+| Firefox 115+    | ✅     | Full support       |
+| Safari 16.4+    | ✅     | Full support       |
+| Edge (Chromium) | ✅     | Same as Chrome     |
+| Safari < 16.4   | ⚠️     | May need polyfills |
+| IE 11           | ❌     | Not supported      |
 
 ## TypeScript
 
-| Version | Support |
-|---------|---------|
-| 5.9+ | ✅ Recommended |
-| 5.2-5.8 | ✅ Full support |
-| 5.0-5.1 | ⚠️ Missing Symbol.dispose types |
-| < 5.0 | ❌ Not tested |
+| Version | Support                    |
+| ------- | -------------------------- |
+| 5.9+    | ✅ Required                |
+| 5.2-5.8 | ❌ Not supported (v4.0.0+) |
+| 5.0-5.1 | ❌ Not supported           |
+| < 5.0   | ❌ Not supported           |
 
 ### tsconfig.json Requirements
 
@@ -47,20 +47,21 @@
 
 ## Bundlers
 
-| Bundler | Tested | Notes |
-|---------|--------|-------|
-| Vite 7 | ✅ Primary | Used in development |
-| Vite 5-6 | ✅ | Works |
-| esbuild | ✅ | Direct usage |
-| Webpack 5 | ⚠️ | Requires externals config |
-| Rollup | ⚠️ | Requires externals config |
-| Parcel | 🔲 | Untested |
+| Bundler   | Tested     | Notes                     |
+| --------- | ---------- | ------------------------- |
+| Vite 7    | ✅ Primary | Used in development       |
+| Vite 5-6  | ✅         | Works                     |
+| esbuild   | ✅         | Direct usage              |
+| Webpack 5 | ⚠️         | Requires externals config |
+| Rollup    | ⚠️         | Requires externals config |
+| Parcel    | 🔲         | Untested                  |
 
 ### WASM External
 
 The `brepjs-opencascade` WASM module must be external:
 
 **Vite:**
+
 ```typescript
 // vite.config.ts
 export default defineConfig({
@@ -71,6 +72,7 @@ export default defineConfig({
 ```
 
 **Webpack:**
+
 ```javascript
 // webpack.config.js
 module.exports = {
@@ -84,19 +86,20 @@ module.exports = {
 
 brepjs requires WebAssembly support:
 
-| Feature | Required |
-|---------|----------|
-| Basic WASM | ✅ |
+| Feature         | Required                        |
+| --------------- | ------------------------------- |
+| Basic WASM      | ✅                              |
 | WASM Exceptions | ✅ (for brepjs-with-exceptions) |
-| WASM BigInt | ✅ |
-| WASM Threads | ❌ Not used |
-| WASM SIMD | ❌ Not used |
+| WASM BigInt     | ✅                              |
+| WASM Threads    | ✅ (for brepjs_multi variant)   |
+| WASM SIMD       | ❌ Not used                     |
 
 ### WASM Module Variants
 
-| Module | Size | Features |
-|--------|------|----------|
-| `brepjs_single` | ~15 MB | Standard, no exceptions |
+| Module                   | Size   | Features                                 |
+| ------------------------ | ------ | ---------------------------------------- |
+| `brepjs_single`          | ~15 MB | Standard, single-threaded, no exceptions |
+| `brepjs_multi`           | ~16 MB | Multi-threaded variant                   |
 | `brepjs_with_exceptions` | ~17 MB | C++ exceptions for better error messages |
 
 ## Known Limitations
@@ -107,11 +110,11 @@ brepjs requires WebAssembly support:
 - Complex models may require memory tuning
 - Node.js: Use `--max-old-space-size=4096`
 
-### 2. Single-Threaded
+### 2. Threading
 
-- OCCT operations are single-threaded
-- Long operations block the main thread
-- Consider Web Workers for heavy computation
+- Default (`brepjs_single`): OCCT operations are single-threaded and block the main thread
+- Multi-threaded (`brepjs_multi`): Parallel operations available, requires SharedArrayBuffer and cross-origin isolation
+- Consider Web Workers for heavy computation in single-threaded mode
 
 ### 3. No SSR Support
 
