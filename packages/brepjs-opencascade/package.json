@@ -3,6 +3,11 @@
   "version": "0.5.0",
   "description": "OpenCascade.js custom WASM build for brepjs",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-opencascade"
+  },
   "main": "src/brepjs_single.js",
   "exports": {
     ".": "./src/brepjs_single.js",
