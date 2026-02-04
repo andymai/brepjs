@@ -43,20 +43,28 @@ export type TopoEntity =
 
 export type GenericTopo = OcShape;
 
-export const asTopo = (entity: TopoEntity): OcType => {
-  const oc = getKernel().oc;
+// Lazily cached map: TopoEntity string → TopAbs enum value
+// Avoids creating a new object on every asTopo() call
+let _topoMap: Map<TopoEntity, OcType> | null = null;
 
-  return {
-    vertex: oc.TopAbs_ShapeEnum.TopAbs_VERTEX,
-    wire: oc.TopAbs_ShapeEnum.TopAbs_WIRE,
-    face: oc.TopAbs_ShapeEnum.TopAbs_FACE,
-    shell: oc.TopAbs_ShapeEnum.TopAbs_SHELL,
-    solid: oc.TopAbs_ShapeEnum.TopAbs_SOLID,
-    solidCompound: oc.TopAbs_ShapeEnum.TopAbs_COMPSOLID,
-    compound: oc.TopAbs_ShapeEnum.TopAbs_COMPOUND,
-    edge: oc.TopAbs_ShapeEnum.TopAbs_EDGE,
-    shape: oc.TopAbs_ShapeEnum.TopAbs_SHAPE,
-  }[entity];
+export const asTopo = (entity: TopoEntity): OcType => {
+  if (!_topoMap) {
+    const oc = getKernel().oc;
+    const ta = oc.TopAbs_ShapeEnum;
+    _topoMap = new Map<TopoEntity, OcType>([
+      ['vertex', ta.TopAbs_VERTEX],
+      ['edge', ta.TopAbs_EDGE],
+      ['wire', ta.TopAbs_WIRE],
+      ['face', ta.TopAbs_FACE],
+      ['shell', ta.TopAbs_SHELL],
+      ['solid', ta.TopAbs_SOLID],
+      ['solidCompound', ta.TopAbs_COMPSOLID],
+      ['compound', ta.TopAbs_COMPOUND],
+      ['shape', ta.TopAbs_SHAPE],
+    ]);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- all TopoEntity values are in map
+  return _topoMap.get(entity)!;
 };
 
 export const iterTopo = function* iterTopo(
