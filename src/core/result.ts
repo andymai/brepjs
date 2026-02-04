@@ -78,9 +78,25 @@ export const flatMap = andThen;
 // Extraction
 // ---------------------------------------------------------------------------
 
+/** Format an error for display, handling BrepError objects specially */
+function formatError(error: unknown): string {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'kind' in error &&
+    'code' in error &&
+    'message' in error
+  ) {
+    // BrepError-like object
+    const e = error as { kind: string; code: string; message: string };
+    return `[${e.kind}] ${e.code}: ${e.message}`;
+  }
+  return String(error);
+}
+
 export function unwrap<T, E>(result: Result<T, E>): T {
   if (result.ok) return result.value;
-  throw new Error(`Called unwrap() on an Err: ${String(result.error)}`);
+  throw new Error(`Called unwrap() on an Err: ${formatError(result.error)}`);
 }
 
 export function unwrapOr<T, E>(result: Result<T, E>, defaultValue: T): T {
