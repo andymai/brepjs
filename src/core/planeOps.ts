@@ -48,7 +48,11 @@ export function createPlane(
 
   if (vecIsZero(xDir)) throw new Error('Plane xDir must be non-zero');
 
-  const yDir = vecNormalize(vecCross(zDir, xDir));
+  const yDirRaw = vecCross(zDir, xDir);
+  if (vecIsZero(yDirRaw)) {
+    throw new Error('Plane xDir and normal must not be parallel');
+  }
+  const yDir = vecNormalize(yDirRaw);
 
   return { origin, xDir, yDir, zDir };
 }
