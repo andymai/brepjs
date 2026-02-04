@@ -58,11 +58,10 @@ export class WrappingObj<Type extends Deletable> {
   }
 
   set wrapped(newWrapped: Type) {
-    if (this._wrapped === null) {
-      throw new Error('Cannot set wrapped on deleted object');
+    if (this._wrapped) {
+      deletableRegistry.unregister(this._wrapped);
+      this._wrapped.delete();
     }
-    deletableRegistry.unregister(this._wrapped);
-    this._wrapped.delete();
 
     deletableRegistry.register(this, newWrapped, newWrapped);
     this._wrapped = newWrapped;
