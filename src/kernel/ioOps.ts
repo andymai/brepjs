@@ -31,6 +31,8 @@ export function exportSTEP(oc: OpenCascadeInstance, shapes: OcShape[]): string {
     oc.FS.unlink('/' + filename);
     return new TextDecoder().decode(file);
   }
+  // Clean up temporary file on failure
+  oc.FS.unlink('/' + filename);
   throw new Error('STEP export failed: writer did not complete successfully');
 }
 
@@ -51,6 +53,8 @@ export function exportSTL(
     if (binary) return file.buffer as ArrayBuffer;
     return new TextDecoder().decode(file);
   }
+  // Clean up temporary file on failure
+  oc.FS.unlink('/' + filename);
   throw new Error('STL export failed: StlAPI.Write returned false');
 }
 
