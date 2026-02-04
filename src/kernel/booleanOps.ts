@@ -156,6 +156,30 @@ function fuseAllNative(
 }
 
 /**
+ * Fuses multiple shapes using recursive pairwise fusion with index ranges.
+ * Uses start/end indices to avoid array allocations on each recursive call.
+ */
+function fuseAllPairwiseRange(
+  oc: OpenCascadeInstance,
+  shapes: OcShape[],
+  start: number,
+  end: number,
+  options: BooleanOptions
+): OcShape {
+  const count = end - start;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
+  if (count === 1) return shapes[start]!;
+  if (count === 2) {
+    return fuse(oc, shapes[start], shapes[start + 1], { ...options, simplify: false });
+  }
+
+  const mid = start + Math.ceil(count / 2);
+  const left = fuseAllPairwiseRange(oc, shapes, start, mid, options);
+  const right = fuseAllPairwiseRange(oc, shapes, mid, end, options);
+  return fuse(oc, left, right, { ...options, simplify: false });
+}
+
+/**
  * Fuses multiple shapes using recursive pairwise fusion.
  */
 function fuseAllPairwise(
@@ -163,18 +187,16 @@ function fuseAllPairwise(
   shapes: OcShape[],
   options: BooleanOptions = {}
 ): OcShape {
-  const mid = Math.ceil(shapes.length / 2);
-  const left = fuseAll(oc, shapes.slice(0, mid), {
-    ...options,
-    simplify: false,
-    strategy: 'pairwise',
-  });
-  const right = fuseAll(oc, shapes.slice(mid), {
-    ...options,
-    simplify: false,
-    strategy: 'pairwise',
-  });
-  return fuse(oc, left, right, options);
+  const result = fuseAllPairwiseRange(oc, shapes, 0, shapes.length, options);
+  // Apply simplify only at the end if requested
+  if (options.simplify) {
+    const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(result, true, true, false);
+    upgrader.Build();
+    const simplified = upgrader.Shape();
+    upgrader.delete();
+    return simplified;
+  }
+  return result;
 }
 
 /**
