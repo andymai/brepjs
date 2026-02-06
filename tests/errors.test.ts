@@ -10,6 +10,7 @@ import {
   queryError,
   bug,
   BrepBugError,
+  BrepErrorCode,
 } from '../src/core/errors.js';
 
 describe('Error constructors', () => {
@@ -61,6 +62,27 @@ describe('Error constructors', () => {
     const original = new Error('OCCT internal');
     const e = occtError('FUSE_FAILED', 'Fuse failed', original);
     expect(e.cause).toBe(original);
+  });
+});
+
+describe('BrepErrorCode', () => {
+  it('contains all known error codes', () => {
+    expect(BrepErrorCode.FUSE_FAILED).toBe('FUSE_FAILED');
+    expect(BrepErrorCode.STEP_EXPORT_FAILED).toBe('STEP_EXPORT_FAILED');
+    expect(BrepErrorCode.NULL_SHAPE).toBe('NULL_SHAPE');
+    expect(BrepErrorCode.PARAMETER_NOT_FOUND).toBe('PARAMETER_NOT_FOUND');
+    expect(BrepErrorCode.ELLIPSE_RADII).toBe('ELLIPSE_RADII');
+  });
+
+  it('has key names matching their values', () => {
+    for (const [key, value] of Object.entries(BrepErrorCode)) {
+      expect(key).toBe(value);
+    }
+  });
+
+  it('works with error constructors', () => {
+    const e = occtError(BrepErrorCode.FUSE_FAILED, 'Fuse operation failed');
+    expect(e.code).toBe('FUSE_FAILED');
   });
 });
 

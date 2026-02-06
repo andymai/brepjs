@@ -35,6 +35,8 @@ export {
 export {
   type BrepError,
   type BrepErrorKind,
+  BrepErrorCode,
+  type BrepErrorCode as BrepErrorCodeType,
   occtError,
   validationError,
   typeCastError,
