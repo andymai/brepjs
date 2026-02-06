@@ -564,7 +564,7 @@ export {
 
 // ── Modifier operations (functional) ──
 
-export { thickenSurface } from './topology/modifierFns.js';
+export { thickenSurface, filletShape, chamferShape, shellShape, offsetShape } from './topology/modifierFns.js';
 
 // ── Operations (functional) ──
 
