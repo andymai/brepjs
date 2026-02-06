@@ -253,21 +253,25 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
     tolerance = 1e-3,
     angularTolerance = 0.1,
     skipNormals = false,
+    includeUVs = false,
   }: {
     tolerance?: number;
     angularTolerance?: number;
     skipNormals?: boolean;
+    includeUVs?: boolean;
   } = {}): ShapeMesh {
     const result = getKernel().mesh(this.wrapped, {
       tolerance,
       angularTolerance,
       skipNormals,
+      includeUVs,
     });
 
     return {
       vertices: result.vertices,
       normals: result.normals,
       triangles: result.triangles,
+      uvs: result.uvs,
       faceGroups: result.faceGroups.map((g) => ({
         start: g.start,
         count: g.count,
