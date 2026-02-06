@@ -616,6 +616,13 @@ export {
   type PhysicalProps,
 } from './measurement/measureFns.js';
 
+export {
+  checkInterference,
+  checkAllInterferences,
+  type InterferenceResult,
+  type InterferencePair,
+} from './measurement/interferenceFns.js';
+
 // ── Import (functional) ──
 
 export { importSTEP as fnImportSTEP, importSTL as fnImportSTL } from './io/importFns.js';
