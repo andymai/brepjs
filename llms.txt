@@ -1296,7 +1296,7 @@ Key types used across the API:
 - `ModelHistory`: `{ steps: ReadonlyArray<OperationStep>, shapes: ReadonlyMap<string, AnyShape> }`
 - `OperationStep`: `{ id, type, parameters, inputIds, outputId, timestamp, metadata? }`
 - `OperationFn`: `(inputs: AnyShape[], params: Record<string, unknown>) => AnyShape`
-- `OperationRegistry`: `{ operations: ReadonlyMap<string, OperationFn> }`
+- `HistoryOperationRegistry`: `{ operations: ReadonlyMap<string, OperationFn> }`
 - `HealingReport`: `{ isValid, wiresHealed, facesHealed, solidHealed, steps, diagnostics }`
 - `InterferenceResult`: `{ hasInterference, minDistance, pointOnShape1, pointOnShape2 }`
 - `CurvatureResult`: `{ mean, gaussian, maxCurvature, minCurvature, maxDirection, minDirection }`
