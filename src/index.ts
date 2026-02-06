@@ -564,6 +564,8 @@ export {
   type SupportedUnit as FnSupportedUnit,
 } from './operations/exporterFns.js';
 
+export { linearPattern, circularPattern } from './operations/patternFns.js';
+
 // ── Measurement (functional) ──
 
 export {
