@@ -31,7 +31,7 @@ export function fillet(
       if (r > 0) builder.Add_2(r, edge);
     } else {
       const [r1, r2] = r;
-      if (r1 > 0 || r2 > 0) builder.Add_3(r1, r2, edge);
+      if (r1 > 0 && r2 > 0) builder.Add_3(r1, r2, edge);
     }
   }
   const result = builder.Shape();
