@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.4.0](https://github.com/andymai/brepjs/compare/brepjs-v4.3.0...brepjs-v4.4.0) (2026-02-06)
+
+
+### Features
+
+* chamfer with distance + angle ([#65](https://github.com/andymai/brepjs/issues/65)) ([b2b6039](https://github.com/andymai/brepjs/commit/b2b6039a18ce1a94343063404b31dba4a34ae83a))
+
 ## [4.3.0](https://github.com/andymai/brepjs/compare/brepjs-v4.2.0...brepjs-v4.3.0) (2026-02-06)
 
 
