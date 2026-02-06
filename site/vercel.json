@@ -1,4 +1,5 @@
 {
+  "installCommand": "cd .. && npm install --ignore-scripts && cd site && npm install --ignore-scripts",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "headers": [
