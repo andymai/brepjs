@@ -125,7 +125,7 @@ function getShapeTypeMap(oc: OpenCascadeInstance): Map<unknown, ShapeType> {
 export function shapeType(oc: OpenCascadeInstance, shape: OcShape): ShapeType {
   if (shape.IsNull()) throw new Error('Cannot determine shape type: shape is null');
   const result = getShapeTypeMap(oc).get(shape.ShapeType());
-  if (!result) throw new Error(`Unknown shape type enum value: ${shape.ShapeType()}`);
+  if (!result) throw new Error('Unknown shape type enum value');
   return result;
 }
 

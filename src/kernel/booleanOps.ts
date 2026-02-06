@@ -195,7 +195,8 @@ function fuseAllPairwiseRange(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
   if (count === 1) return shapes[start]!;
   if (count === 2) {
-    return fuse(oc, shapes[start], shapes[start + 1], { ...options, simplify: false });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
+    return fuse(oc, shapes[start]!, shapes[start + 1]!, { ...options, simplify: false });
   }
 
   const mid = start + Math.ceil(count / 2);

@@ -20,9 +20,12 @@ function isShape3DInternal(shape: AnyShape): shape is Shape3D {
   // Check by OCCT shape type enum to avoid minification issues
   // COMPOUND=0, COMPSOLID=1, SOLID=2, SHELL=3 are 3D shapes
   // FACE=4, WIRE=5, EDGE=6, VERTEX=7 are not
-  const shapeTypeRaw = shape.wrapped?.ShapeType?.();
+  const shapeTypeRaw: unknown = shape.wrapped.ShapeType();
+  // Emscripten enums are objects with a .value property at runtime
   const shapeType =
-    typeof shapeTypeRaw === 'object' && shapeTypeRaw !== null ? shapeTypeRaw.value : shapeTypeRaw;
+    typeof shapeTypeRaw === 'object' && shapeTypeRaw !== null
+      ? (shapeTypeRaw as { value: number }).value
+      : shapeTypeRaw;
   return typeof shapeType === 'number' && shapeType <= 3;
 }
 
@@ -102,10 +105,11 @@ export function fuseAll(
     );
     // Get the raw shape type before casting for better error messages
     // Emscripten enums are objects with a .value property
-    const shapeTypeEnumRaw = result.ShapeType?.();
+    const shapeTypeEnumRaw: unknown = result.ShapeType();
+    // Emscripten enums are objects with a .value property at runtime
     const shapeTypeEnum =
       typeof shapeTypeEnumRaw === 'object' && shapeTypeEnumRaw !== null
-        ? shapeTypeEnumRaw.value
+        ? (shapeTypeEnumRaw as { value: number }).value
         : shapeTypeEnumRaw;
     const typeNames = [
       'COMPOUND',
