@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.11.0](https://github.com/andymai/brepjs/compare/brepjs-v4.10.0...brepjs-v4.11.0) (2026-02-06)
+
+
+### Features
+
+* add slicing, measurement aliases, topo caching, AbortSignal ([#96](https://github.com/andymai/brepjs/issues/96)) ([47e5aef](https://github.com/andymai/brepjs/commit/47e5aefd99fa201a5ae11c370bab13e7ed3980b9))
+
 ## [4.10.0](https://github.com/andymai/brepjs/compare/brepjs-v4.9.0...brepjs-v4.10.0) (2026-02-06)
 
 
