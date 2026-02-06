@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.8.0](https://github.com/andymai/brepjs/compare/brepjs-v4.7.1...brepjs-v4.8.0) (2026-02-06)
+
+
+### Features
+
+* add IGES import/export support ([#90](https://github.com/andymai/brepjs/issues/90)) ([e6b75d4](https://github.com/andymai/brepjs/commit/e6b75d432180ec1a380d58b8ed3fd86401bd94b3))
+* add parametric history module ([#89](https://github.com/andymai/brepjs/issues/89)) ([baad772](https://github.com/andymai/brepjs/commit/baad77215aa29c0d8403dd1012fe3e2a4740c100))
+* add web worker protocol and helpers ([#91](https://github.com/andymai/brepjs/issues/91)) ([a7f4f06](https://github.com/andymai/brepjs/commit/a7f4f0676975222705279f9f1f44e8bd60b26924))
+
 ## [4.7.1](https://github.com/andymai/brepjs/compare/brepjs-v4.7.0...brepjs-v4.7.1) (2026-02-06)
 
 
