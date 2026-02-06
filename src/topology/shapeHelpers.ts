@@ -599,18 +599,8 @@ export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {
 export const makeCompound = compoundShapes;
 
 function _weld(facesOrShells: Array<Face | Shell>): AnyShape {
-  const oc = getKernel().oc;
-  const r = gcWithScope();
-
-  const shellBuilder = r(new oc.BRepBuilderAPI_Sewing(1e-6, true, true, true, false));
-
-  facesOrShells.forEach(({ wrapped }) => {
-    shellBuilder.Add(wrapped);
-  });
-
-  shellBuilder.Perform(r(new oc.Message_ProgressRange_1()));
-
-  return unwrap(cast(unwrap(downcast(shellBuilder.SewedShape()))));
+  const sewn = getKernel().sew(facesOrShells.map((s) => s.wrapped));
+  return unwrap(cast(unwrap(downcast(sewn))));
 }
 
 /**

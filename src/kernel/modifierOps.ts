@@ -172,6 +172,25 @@ export function chamferDistAngle(
 }
 
 /**
+ * Offsets a 2D wire by the given distance.
+ * joinType: the raw OCCT GeomAbs_JoinType enum value.
+ */
+export function offsetWire2D(
+  oc: OpenCascadeInstance,
+  wire: OcShape,
+  offsetVal: number,
+  joinType?: number
+): OcShape {
+  // Default to GeomAbs_Arc if no joinType provided
+  const jt = joinType ?? oc.GeomAbs_JoinType.GeomAbs_Arc;
+  const offsetter = new oc.BRepOffsetAPI_MakeOffset_3(wire, jt, false);
+  offsetter.Perform(offsetVal, 0);
+  const result = offsetter.Shape();
+  offsetter.delete();
+  return result;
+}
+
+/**
  * Offsets all faces of a shape by a given distance.
  */
 export function offset(

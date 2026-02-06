@@ -80,15 +80,7 @@ export function measureLength(shape: AnyShape): number {
 
 /** Measure the minimum distance between two shapes. */
 export function measureDistance(shape1: AnyShape, shape2: AnyShape): number {
-  const oc = getKernel().oc;
-  const r = gcWithScope();
-
-  const distTool = r(new oc.BRepExtrema_DistShapeShape_1());
-  distTool.LoadS1(shape1.wrapped);
-  distTool.LoadS2(shape2.wrapped);
-  const progress = r(new oc.Message_ProgressRange_1());
-  distTool.Perform(progress);
-  return distTool.Value();
+  return getKernel().distance(shape1.wrapped, shape2.wrapped).value;
 }
 
 /** Create a reusable distance query from a reference shape. */

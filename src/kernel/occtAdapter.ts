@@ -2,6 +2,7 @@ import type {
   KernelAdapter,
   KernelMeshResult,
   KernelEdgeMeshResult,
+  DistanceResult,
   OpenCascadeInstance,
   OcShape,
   OcType,
@@ -23,6 +24,7 @@ import {
   length as _length,
   centerOfMass as _centerOfMass,
   boundingBox as _boundingBox,
+  distance as _distance,
 } from './measureOps.js';
 import {
   transform as _transform,
@@ -48,6 +50,8 @@ import {
   shapeType as _shapeType,
   isSame as _isSame,
   isEqual as _isEqual,
+  isValid as _isValid,
+  sew as _sew,
 } from './topologyOps.js';
 import {
   makeVertex as _makeVertex,
@@ -73,6 +77,7 @@ import {
   shell as _shell,
   thicken as _thicken,
   offset as _offset,
+  offsetWire2D as _offsetWire2D,
 } from './modifierOps.js';
 
 /**
@@ -337,5 +342,25 @@ export class OCCTAdapter implements KernelAdapter {
     return _simplify(this.oc, shape);
   }
 
-  // --- Private helpers ---
+  // --- Validation & repair ---
+
+  isValid(shape: OcShape): boolean {
+    return _isValid(this.oc, shape);
+  }
+
+  sew(shapes: OcShape[], tolerance = 1e-6): OcShape {
+    return _sew(this.oc, shapes, tolerance);
+  }
+
+  // --- 2D offset ---
+
+  offsetWire2D(wire: OcShape, offset: number, joinType?: number): OcShape {
+    return _offsetWire2D(this.oc, wire, offset, joinType);
+  }
+
+  // --- Distance ---
+
+  distance(shape1: OcShape, shape2: OcShape): DistanceResult {
+    return _distance(this.oc, shape1, shape2);
+  }
 }

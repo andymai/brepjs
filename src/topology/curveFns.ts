@@ -148,18 +148,14 @@ export function offsetWire2D(
   kind: 'arc' | 'intersection' | 'tangent' = 'arc'
 ): Result<Wire> {
   const oc = getKernel().oc;
-  const kinds = {
+  const joinTypes = {
     arc: oc.GeomAbs_JoinType.GeomAbs_Arc,
     intersection: oc.GeomAbs_JoinType.GeomAbs_Intersection,
     tangent: oc.GeomAbs_JoinType.GeomAbs_Tangent,
   };
 
-  const offsetter = new oc.BRepOffsetAPI_MakeOffset_3(wire.wrapped, kinds[kind], false);
-  offsetter.Perform(offset, 0);
-
-  const resultShape = offsetter.Shape();
+  const resultShape = getKernel().offsetWire2D(wire.wrapped, offset, joinTypes[kind]);
   const wrapped = castShape(resultShape);
-  offsetter.delete();
 
   if (!isWireGuard(wrapped)) {
     wrapped[Symbol.dispose]();

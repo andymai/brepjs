@@ -19,11 +19,7 @@ import { occtError, validationError } from '../core/errors.js';
  * Check if a shape is valid according to OCCT geometry and topology checks.
  */
 export function isShapeValid(shape: AnyShape): boolean {
-  const oc = getKernel().oc;
-  const analyzer = new oc.BRepCheck_Analyzer(shape.wrapped, true, false);
-  const valid = analyzer.IsValid_2();
-  analyzer.delete();
-  return valid;
+  return getKernel().isValid(shape.wrapped);
 }
 
 // ---------------------------------------------------------------------------

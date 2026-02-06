@@ -130,6 +130,32 @@ export function shapeType(oc: OpenCascadeInstance, shape: OcShape): ShapeType {
 }
 
 /**
+ * Checks if a shape is valid according to OCCT geometry and topology checks.
+ */
+export function isValid(oc: OpenCascadeInstance, shape: OcShape): boolean {
+  const analyzer = new oc.BRepCheck_Analyzer(shape, true, false);
+  const valid = analyzer.IsValid_2();
+  analyzer.delete();
+  return valid;
+}
+
+/**
+ * Sews shapes together using BRepBuilderAPI_Sewing.
+ */
+export function sew(oc: OpenCascadeInstance, shapes: OcShape[], tolerance = 1e-6): OcShape {
+  const builder = new oc.BRepBuilderAPI_Sewing(tolerance, true, true, true, false);
+  for (const shape of shapes) {
+    builder.Add(shape);
+  }
+  const progress = new oc.Message_ProgressRange_1();
+  builder.Perform(progress);
+  const result = builder.SewedShape();
+  progress.delete();
+  builder.delete();
+  return result;
+}
+
+/**
  * Checks if two shapes are the same (same TShape, location, and orientation).
  */
 export function isSame(a: OcShape, b: OcShape): boolean {
