@@ -100,6 +100,7 @@ export interface KernelAdapter {
     distance: number | ((edge: OcShape) => number)
   ): OcShape;
   shell(shape: OcShape, faces: OcShape[], thickness: number, tolerance?: number): OcShape;
+  thicken(shape: OcShape, thickness: number): OcShape;
   offset(shape: OcShape, distance: number, tolerance?: number): OcShape;
 
   // --- Transforms ---

@@ -68,6 +68,7 @@ import {
   fillet as _fillet,
   chamfer as _chamfer,
   shell as _shell,
+  thicken as _thicken,
   offset as _offset,
 } from './modifierOps.js';
 
@@ -199,6 +200,10 @@ export class OCCTAdapter implements KernelAdapter {
 
   shell(shape: OcShape, faces: OcShape[], thickness: number, tolerance = 1e-3): OcShape {
     return _shell(this.oc, shape, faces, thickness, tolerance);
+  }
+
+  thicken(shape: OcShape, thickness: number): OcShape {
+    return _thicken(this.oc, shape, thickness);
   }
 
   offset(shape: OcShape, distance: number, tolerance = 1e-6): OcShape {

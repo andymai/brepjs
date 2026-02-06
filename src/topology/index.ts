@@ -183,3 +183,5 @@ export {
   type BufferGeometryData,
   type LineGeometryData,
 } from './threeHelpers.js';
+
+export { thickenSurface } from './modifierFns.js';
