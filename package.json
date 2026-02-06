@@ -18,16 +18,46 @@
   "type": "module",
   "main": "./dist/brepjs.cjs",
   "module": "./dist/brepjs.js",
-  "types": "./dist/brepjs.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/brepjs.d.ts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/brepjs.js"
       },
       "require": {
-        "types": "./dist/brepjs.d.ts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/brepjs.cjs"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.js"
+      },
+      "require": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.cjs"
+      }
+    },
+    "./query": {
+      "import": {
+        "types": "./dist/query.d.ts",
+        "default": "./dist/query.js"
+      },
+      "require": {
+        "types": "./dist/query.d.ts",
+        "default": "./dist/query.cjs"
+      }
+    },
+    "./measurement": {
+      "import": {
+        "types": "./dist/measurement.d.ts",
+        "default": "./dist/measurement.js"
+      },
+      "require": {
+        "types": "./dist/measurement.d.ts",
+        "default": "./dist/measurement.cjs"
       }
     }
   },
