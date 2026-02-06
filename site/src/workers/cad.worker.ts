@@ -89,8 +89,9 @@ function handleEval(id: string, code: string) {
   const keysBefore = new Set(Object.keys(globalThis as Record<string, unknown>));
 
   try {
-    // Wrap user code in a function and execute it
-    const fn = new Function(code);
+    // Intentional: playground evaluates user-authored scripts in a sandboxed Web Worker
+    // with no access to DOM, cookies, or storage.
+    const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
     let result = fn();
 
     // Restore console
@@ -172,7 +173,7 @@ function handleEval(id: string, code: string) {
 
 function handleExportSTL(id: string, code: string) {
   try {
-    const fn = new Function(code);
+    const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
     let result = fn();
 
     if (result && typeof result === 'object' && 'wrapped' in result) {
