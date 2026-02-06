@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.17.1](https://github.com/andymai/brepjs/compare/brepjs-v4.17.0...brepjs-v4.17.1) (2026-02-06)
+
+
+### Bug Fixes
+
+* **site:** use npm packages for Vercel deployment ([#120](https://github.com/andymai/brepjs/issues/120)) ([cd03716](https://github.com/andymai/brepjs/commit/cd03716141b5dc33294079af8759fdfb5863db0c))
+
 ## [4.17.0](https://github.com/andymai/brepjs/compare/brepjs-v4.16.0...brepjs-v4.17.0) (2026-02-06)
 
 
