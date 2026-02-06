@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.7.0](https://github.com/andymai/brepjs/compare/brepjs-v4.6.0...brepjs-v4.7.0) (2026-02-06)
+
+
+### Features
+
+* add AbortSignal cancellation to long-running operations ([#79](https://github.com/andymai/brepjs/issues/79)) ([0031823](https://github.com/andymai/brepjs/commit/00318230a078b8616f2965dcde0291b79e11dc44))
+* functional modifier operations (fillet, chamfer, shell, offset) ([#75](https://github.com/andymai/brepjs/issues/75)) ([8710738](https://github.com/andymai/brepjs/commit/8710738fb41ce5d94d4a1fe22c875b5932f2ef9b))
+* shape healing and validation functions ([#77](https://github.com/andymai/brepjs/issues/77)) ([f783842](https://github.com/andymai/brepjs/commit/f7838423ee30e9d5b4ba938fe01c141b5304a723))
+* topology adjacency queries ([#76](https://github.com/andymai/brepjs/issues/76)) ([4752fa3](https://github.com/andymai/brepjs/commit/4752fa3cf75dff8bfc9e077f4c4c981ffff1be54))
+* type OcShape as TopoDS_Shape instead of any ([#78](https://github.com/andymai/brepjs/issues/78)) ([6112bc7](https://github.com/andymai/brepjs/commit/6112bc732d07134dd38e46bb84f132025d5b9ba3))
+
 ## [4.6.0](https://github.com/andymai/brepjs/compare/brepjs-v4.5.0...brepjs-v4.6.0) (2026-02-06)
 
 
