@@ -57,8 +57,10 @@ export function interpolatePoints(
 
   const curve: OcType = splineBuilder.Curve();
   const geomHandle = new oc.Handle_Geom_Curve_2(curve.get());
-  const edge = new oc.BRepBuilderAPI_MakeEdge_24(geomHandle).Edge();
+  const builder = new oc.BRepBuilderAPI_MakeEdge_24(geomHandle);
+  const edge = builder.Edge();
 
+  builder.delete();
   splineBuilder.delete();
   return edge;
 }
@@ -112,8 +114,10 @@ export function approximatePoints(
 
   const curve = splineBuilder.Curve();
   const geomHandle = new oc.Handle_Geom_Curve_2(curve.get());
-  const edge = new oc.BRepBuilderAPI_MakeEdge_24(geomHandle).Edge();
+  const builder = new oc.BRepBuilderAPI_MakeEdge_24(geomHandle);
+  const edge = builder.Edge();
 
+  builder.delete();
   splineBuilder.delete();
   return edge;
 }

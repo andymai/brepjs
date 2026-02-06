@@ -169,16 +169,18 @@ function buildZip(entries: ZipEntry[]): ArrayBuffer {
 function build3MFModel(mesh: ShapeMesh, name: string, unit: string): string {
   const vertices: string[] = [];
   for (let i = 0; i < mesh.vertices.length; i += 3) {
-    vertices.push(
-      `        <vertex x="${mesh.vertices[i]}" y="${mesh.vertices[i + 1]}" z="${mesh.vertices[i + 2]}" />`
-    );
+    const x = mesh.vertices[i] ?? 0;
+    const y = mesh.vertices[i + 1] ?? 0;
+    const z = mesh.vertices[i + 2] ?? 0;
+    vertices.push(`        <vertex x="${x}" y="${y}" z="${z}" />`);
   }
 
   const triangles: string[] = [];
   for (let i = 0; i < mesh.triangles.length; i += 3) {
-    triangles.push(
-      `        <triangle v1="${mesh.triangles[i]}" v2="${mesh.triangles[i + 1]}" v3="${mesh.triangles[i + 2]}" />`
-    );
+    const v1 = mesh.triangles[i] ?? 0;
+    const v2 = mesh.triangles[i + 1] ?? 0;
+    const v3 = mesh.triangles[i + 2] ?? 0;
+    triangles.push(`        <triangle v1="${v1}" v2="${v2}" v3="${v3}" />`);
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
