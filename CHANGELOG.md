@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.0](https://github.com/andymai/brepjs/compare/brepjs-v4.1.0...brepjs-v4.2.0) (2026-02-06)
+
+
+### Features
+
+* add BrepErrorCode enum ([#57](https://github.com/andymai/brepjs/issues/57)) ([4046e81](https://github.com/andymai/brepjs/commit/4046e81a322df28da5fb216b01080ef0da2fcb14))
+
 ## [4.1.0](https://github.com/andymai/brepjs/compare/brepjs-v4.0.4...brepjs-v4.1.0) (2026-02-06)
 
 
