@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30000,
-    exclude: ['benchmarks/**', 'node_modules/**'],
+    exclude: ['benchmarks/**', 'node_modules/**', 'site/**'],
     pool: 'forks',
     poolOptions: {
       forks: {
