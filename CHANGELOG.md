@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.15.0](https://github.com/andymai/brepjs/compare/brepjs-v4.14.0...brepjs-v4.15.0) (2026-02-06)
+
+
+### Features
+
+* add quick wins — kernelCall, pipeline, BSpline curves, 3MF export, SVG import, and more ([#108](https://github.com/andymai/brepjs/issues/108)) ([7c48763](https://github.com/andymai/brepjs/commit/7c48763951ecfb321ab6f5b09a8c720f0807e8ec))
+
 ## [4.14.0](https://github.com/andymai/brepjs/compare/brepjs-v4.13.0...brepjs-v4.14.0) (2026-02-06)
 
 
