@@ -191,6 +191,7 @@ function fuseAllPairwiseRange(
   end: number,
   options: BooleanOptions
 ): OcShape {
+  options.signal?.throwIfAborted();
   const count = end - start;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
   if (count === 1) return shapes[start]!;

@@ -20,6 +20,8 @@ export interface BooleanOptions {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
   simplify?: boolean;
   strategy?: 'native' | 'pairwise';
+  /** Abort signal to cancel long-running operations between steps. */
+  signal?: AbortSignal;
 }
 
 export type ShapeType =
@@ -37,6 +39,8 @@ export interface MeshOptions {
   angularTolerance: number;
   skipNormals?: boolean;
   includeUVs?: boolean;
+  /** Abort signal to cancel mesh generation between face iterations. */
+  signal?: AbortSignal;
 }
 
 export interface KernelMeshResult {

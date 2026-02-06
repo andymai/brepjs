@@ -25,6 +25,8 @@ export interface BooleanOptions {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
   simplify?: boolean;
   strategy?: 'native' | 'pairwise';
+  /** Abort signal to cancel long-running operations between steps. */
+  signal?: AbortSignal;
 }
 
 // ---------------------------------------------------------------------------
@@ -140,8 +142,10 @@ function fuseAllPairwise(
   end: number,
   optimisation: 'none' | 'commonFace' | 'sameFace',
   simplify: boolean,
-  isTopLevel: boolean
+  isTopLevel: boolean,
+  signal?: AbortSignal
 ): Result<Shape3D> {
+  signal?.throwIfAborted();
   const count = end - start;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start is valid index
   if (count === 1) return ok(shapes[start]!);
@@ -154,9 +158,9 @@ function fuseAllPairwise(
   }
 
   const mid = start + Math.ceil(count / 2);
-  const leftResult = fuseAllPairwise(shapes, start, mid, optimisation, simplify, false);
+  const leftResult = fuseAllPairwise(shapes, start, mid, optimisation, simplify, false, signal);
   if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAllPairwise(shapes, mid, end, optimisation, simplify, false);
+  const rightResult = fuseAllPairwise(shapes, mid, end, optimisation, simplify, false, signal);
   if (isErr(rightResult)) return rightResult;
 
   return fuseShapes(leftResult.value, rightResult.value, {
@@ -168,8 +172,9 @@ function fuseAllPairwise(
 /** Fuse all shapes in a single boolean operation. */
 export function fuseAll(
   shapes: Shape3D[],
-  { optimisation = 'none', simplify = false, strategy = 'native' }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, strategy = 'native', signal }: BooleanOptions = {}
 ): Result<Shape3D> {
+  signal?.throwIfAborted();
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -179,14 +184,14 @@ export function fuseAll(
     // Delegate to kernel's native N-way fuse via BRepAlgoAPI_BuilderAlgo
     const result = getKernel().fuseAll(
       shapes.map((s) => s.wrapped),
-      { optimisation, simplify, strategy }
+      { optimisation, simplify, strategy, ...(signal ? { signal } : {}) }
     );
     return castToShape3D(result, 'FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape');
   }
 
   // Pairwise fallback: recursive divide-and-conquer with index ranges
   // Uses index ranges instead of slice() to avoid array allocations
-  return fuseAllPairwise(shapes, 0, shapes.length, optimisation, simplify, true);
+  return fuseAllPairwise(shapes, 0, shapes.length, optimisation, simplify, true, signal);
 }
 
 /** Cut all tool shapes from a base shape in a single boolean operation. */
