@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.17.0](https://github.com/andymai/brepjs/compare/brepjs-v4.16.0...brepjs-v4.17.0) (2026-02-06)
+
+
+### Features
+
+* **site:** landing page + playground with spiral staircase hero ([#110](https://github.com/andymai/brepjs/issues/110)) ([55cacd3](https://github.com/andymai/brepjs/commit/55cacd395c29cfdd4447a8072d82325581543325))
+
 ## [4.16.0](https://github.com/andymai/brepjs/compare/brepjs-v4.15.0...brepjs-v4.16.0) (2026-02-06)
 
 
