@@ -63,6 +63,39 @@ describe('Error constructors', () => {
     const e = occtError('FUSE_FAILED', 'Fuse failed', original);
     expect(e.cause).toBe(original);
   });
+
+  it('metadata is undefined when not provided', () => {
+    const e = occtError('FUSE_FAILED', 'Fuse failed');
+    expect(e.metadata).toBeUndefined();
+  });
+
+  it('preserves metadata when provided', () => {
+    const meta = { operation: 'fuse', tolerance: 1e-3, inputTypes: ['solid', 'solid'] };
+    const e = occtError('FUSE_FAILED', 'Fuse failed', undefined, meta);
+    expect(e.metadata).toEqual(meta);
+    expect(e.metadata?.operation).toBe('fuse');
+    expect(e.metadata?.tolerance).toBe(1e-3);
+  });
+
+  it('all factory functions accept metadata', () => {
+    const meta = { step: 'build' };
+    expect(validationError('V1', 'msg', undefined, meta).metadata).toEqual(meta);
+    expect(typeCastError('T1', 'msg', undefined, meta).metadata).toEqual(meta);
+    expect(sketcherStateError('S1', 'msg', undefined, meta).metadata).toEqual(meta);
+    expect(moduleInitError('M1', 'msg', undefined, meta).metadata).toEqual(meta);
+    expect(computationError('C1', 'msg', undefined, meta).metadata).toEqual(meta);
+    expect(ioError('I1', 'msg', undefined, meta).metadata).toEqual(meta);
+    expect(queryError('Q1', 'msg', undefined, meta).metadata).toEqual(meta);
+  });
+
+  it('preserves both cause and metadata together', () => {
+    const cause = new Error('root');
+    const meta = { inputCount: 3 };
+    const e = computationError('BSPLINE_FAILED', 'failed', cause, meta);
+    expect(e.cause).toBe(cause);
+    expect(e.metadata).toEqual(meta);
+    expect(e.kind).toBe('COMPUTATION');
+  });
 });
 
 describe('BrepErrorCode', () => {

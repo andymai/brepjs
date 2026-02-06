@@ -95,42 +95,95 @@ export interface BrepError {
   readonly code: string;
   readonly message: string;
   readonly cause?: unknown;
+  readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 // ---------------------------------------------------------------------------
 // Constructors per kind
 // ---------------------------------------------------------------------------
 
-export function occtError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'OCCT_OPERATION', code, message, cause };
+function makeError(
+  kind: BrepErrorKind,
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  const base: BrepError = { kind, code, message, cause };
+  if (metadata) return { ...base, metadata };
+  return base;
 }
 
-export function validationError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'VALIDATION', code, message, cause };
+export function occtError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('OCCT_OPERATION', code, message, cause, metadata);
 }
 
-export function typeCastError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'TYPE_CAST', code, message, cause };
+export function validationError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('VALIDATION', code, message, cause, metadata);
 }
 
-export function sketcherStateError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'SKETCHER_STATE', code, message, cause };
+export function typeCastError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('TYPE_CAST', code, message, cause, metadata);
 }
 
-export function moduleInitError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'MODULE_INIT', code, message, cause };
+export function sketcherStateError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('SKETCHER_STATE', code, message, cause, metadata);
 }
 
-export function computationError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'COMPUTATION', code, message, cause };
+export function moduleInitError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('MODULE_INIT', code, message, cause, metadata);
 }
 
-export function ioError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'IO', code, message, cause };
+export function computationError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('COMPUTATION', code, message, cause, metadata);
 }
 
-export function queryError(code: string, message: string, cause?: unknown): BrepError {
-  return { kind: 'QUERY', code, message, cause };
+export function ioError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('IO', code, message, cause, metadata);
+}
+
+export function queryError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>
+): BrepError {
+  return makeError('QUERY', code, message, cause, metadata);
 }
 
 // ---------------------------------------------------------------------------
