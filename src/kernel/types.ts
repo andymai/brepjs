@@ -116,7 +116,7 @@ export interface KernelAdapter {
   chamfer(
     shape: OcShape,
     edges: OcShape[],
-    distance: number | ((edge: OcShape) => number)
+    distance: number | [number, number] | ((edge: OcShape) => number | [number, number])
   ): OcShape;
   chamferDistAngle(shape: OcShape, edges: OcShape[], distance: number, angleDeg: number): OcShape;
   shell(shape: OcShape, faces: OcShape[], thickness: number, tolerance?: number): OcShape;
@@ -188,4 +188,19 @@ export interface KernelAdapter {
 
   // --- Splitting ---
   split(shape: OcShape, tools: OcShape[]): OcShape;
+
+  // --- Curve construction ---
+  interpolatePoints(
+    points: [number, number, number][],
+    options?: { periodic?: boolean; tolerance?: number }
+  ): OcShape;
+  approximatePoints(
+    points: [number, number, number][],
+    options?: {
+      tolerance?: number;
+      degMin?: number;
+      degMax?: number;
+      smoothing?: [number, number, number] | null;
+    }
+  ): OcShape;
 }

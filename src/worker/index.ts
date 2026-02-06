@@ -30,3 +30,18 @@ export {
   isEmpty as isQueueEmpty,
   rejectAll,
 } from './taskQueue.js';
+
+export {
+  createWorkerClient,
+  type WorkerClient,
+  type WorkerClientOptions,
+  type WorkerResult,
+} from './workerClient.js';
+
+export {
+  createOperationRegistry,
+  registerHandler,
+  createWorkerHandler,
+  type OperationHandler,
+  type OperationRegistry,
+} from './workerHandler.js';

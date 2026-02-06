@@ -39,20 +39,77 @@ export function fillet(
   return result;
 }
 
+export type ChamferDistSpec =
+  | number
+  | [number, number]
+  | ((edge: OcShape) => number | [number, number]);
+
 /**
  * Applies a chamfer (beveled edge) to selected edges of a shape.
+ * Supports symmetric distance, asymmetric `[d1, d2]`, and per-edge callbacks.
  */
 export function chamfer(
   oc: OpenCascadeInstance,
   shape: OcShape,
   edges: OcShape[],
-  distance: number | ((edge: OcShape) => number)
+  distance: ChamferDistSpec
 ): OcShape {
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
+
+  // Lazily collect faces only if asymmetric distances are needed
+  let faces: OcShape[] | null = null;
+  function getFaces(): OcShape[] {
+    if (faces) return faces;
+    faces = [];
+    const explorer = new oc.TopExp_Explorer_2(
+      shape,
+      oc.TopAbs_ShapeEnum.TopAbs_FACE,
+      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+    while (explorer.More()) {
+      faces.push(oc.TopoDS.Face_1(explorer.Current()));
+      explorer.Next();
+    }
+    explorer.delete();
+    return faces;
+  }
+
+  function findContainingFace(edge: OcShape): OcShape | null {
+    for (const face of getFaces()) {
+      const edgeExplorer = new oc.TopExp_Explorer_2(
+        face,
+        oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+        oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+      );
+      let found = false;
+      while (edgeExplorer.More()) {
+        if (edgeExplorer.Current().IsSame(edge)) {
+          found = true;
+          break;
+        }
+        edgeExplorer.Next();
+      }
+      edgeExplorer.delete();
+      if (found) return face;
+    }
+    return null;
+  }
+
   for (const edge of edges) {
     const d = typeof distance === 'function' ? distance(edge) : distance;
-    if (d > 0) builder.Add_2(d, edge);
+    if (typeof d === 'number') {
+      if (d > 0) builder.Add_2(d, edge);
+    } else {
+      const [d1, d2] = d;
+      if (d1 > 0 && d2 > 0) {
+        const face = findContainingFace(edge);
+        if (face) {
+          builder.Add_3(d1, d2, oc.TopoDS.Edge_1(edge), face);
+        }
+      }
+    }
   }
+
   const result = builder.Shape();
   builder.delete();
   return result;

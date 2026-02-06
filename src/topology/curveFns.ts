@@ -13,7 +13,7 @@ import { castShape } from '../core/shapeTypes.js';
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
-import { isWire as isWireGuard } from '../core/shapeTypes.js';
+import { isWire as isWireGuard, isEdge } from '../core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Internal: adaptor creation
@@ -140,6 +140,92 @@ export function getOrientation(shape: Edge | Wire): 'forward' | 'backward' {
 export function flipOrientation(shape: Edge | Wire): Edge | Wire {
   return castShape(shape.wrapped.Reversed()) as Edge | Wire;
 }
+
+// ---------------------------------------------------------------------------
+// BSpline from points
+// ---------------------------------------------------------------------------
+
+/** Options for BSpline interpolation through points. */
+export interface InterpolateCurveOptions {
+  periodic?: boolean;
+  tolerance?: number;
+}
+
+/** Options for BSpline approximation through points. */
+export interface ApproximateCurveOptions {
+  tolerance?: number;
+  degMin?: number;
+  degMax?: number;
+  smoothing?: [number, number, number] | null;
+}
+
+/**
+ * Interpolate a smooth BSpline curve that passes exactly through the given points.
+ *
+ * @param points - At least 2 points defining the curve path.
+ * @param options - Interpolation options.
+ * @returns An Edge representing the interpolated curve.
+ */
+export function interpolateCurve(
+  points: Vec3[],
+  options: InterpolateCurveOptions = {}
+): Result<Edge> {
+  if (points.length < 2) {
+    return err(typeCastError('INTERPOLATE_MIN_POINTS', 'Interpolation requires at least 2 points'));
+  }
+
+  try {
+    const result = getKernel().interpolatePoints(points as [number, number, number][], options);
+    const cast = castShape(result);
+    if (!isEdge(cast)) {
+      return err(typeCastError('INTERPOLATE_NOT_EDGE', 'Interpolation did not produce an edge'));
+    }
+    return ok(cast);
+  } catch (e) {
+    return err(
+      typeCastError(
+        'INTERPOLATE_FAILED',
+        `Interpolation failed: ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
+  }
+}
+
+/**
+ * Approximate a BSpline curve that passes near the given points.
+ *
+ * @param points - At least 2 points defining the curve path.
+ * @param options - Approximation options.
+ * @returns An Edge representing the approximated curve.
+ */
+export function approximateCurve(
+  points: Vec3[],
+  options: ApproximateCurveOptions = {}
+): Result<Edge> {
+  if (points.length < 2) {
+    return err(typeCastError('APPROXIMATE_MIN_POINTS', 'Approximation requires at least 2 points'));
+  }
+
+  try {
+    const result = getKernel().approximatePoints(points as [number, number, number][], options);
+    const cast = castShape(result);
+    if (!isEdge(cast)) {
+      return err(typeCastError('APPROXIMATE_NOT_EDGE', 'Approximation did not produce an edge'));
+    }
+    return ok(cast);
+  } catch (e) {
+    return err(
+      typeCastError(
+        'APPROXIMATE_FAILED',
+        `Approximation failed: ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2D wire offset
+// ---------------------------------------------------------------------------
 
 /** Offset a wire in 2D. Returns a new wire. Does NOT dispose the input. */
 export function offsetWire2D(

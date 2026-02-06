@@ -5,8 +5,8 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
-import type { AnyShape, Edge, Face, Wire, Vertex } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
+import type { AnyShape, Edge, Face, Wire, Vertex, ShapeKind } from '../core/shapeTypes.js';
+import { castShape, getShapeKind } from '../core/shapeTypes.js';
 import { toOcVec, toOcPnt, makeOcAx1, makeOcAx2 } from '../core/occtBoundary.js';
 import { HASH_CODE_MAX, DEG2RAD } from '../core/constants.js';
 import { downcast, iterTopo } from './cast.js';
@@ -253,6 +253,34 @@ export function getBounds(shape: AnyShape): Bounds3D {
     yMax: yMax.current,
     zMin: zMin.current,
     zMax: zMax.current,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Shape description
+// ---------------------------------------------------------------------------
+
+/** A summary of a shape's topology, geometry, and validity. */
+export interface ShapeDescription {
+  readonly kind: ShapeKind;
+  readonly faceCount: number;
+  readonly edgeCount: number;
+  readonly wireCount: number;
+  readonly vertexCount: number;
+  readonly valid: boolean;
+  readonly bounds: Bounds3D;
+}
+
+/** Get a quick summary of a shape for debugging and inspection. */
+export function describeShape(shape: AnyShape): ShapeDescription {
+  return {
+    kind: getShapeKind(shape),
+    faceCount: getFaces(shape).length,
+    edgeCount: getEdges(shape).length,
+    wireCount: getWires(shape).length,
+    vertexCount: getVertices(shape).length,
+    valid: getKernel().isValid(shape.wrapped),
+    bounds: getBounds(shape),
   };
 }
 

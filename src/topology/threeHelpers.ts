@@ -50,6 +50,61 @@ export function toBufferGeometryData(mesh: ShapeMesh): BufferGeometryData {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Grouped buffer geometry (with face groups for multi-material support)
+// ---------------------------------------------------------------------------
+
+/** A material group entry compatible with THREE.BufferGeometry.addGroup(). */
+export interface BufferGeometryGroup {
+  /** Start index in the triangle index buffer. */
+  readonly start: number;
+  /** Number of indices in this group. */
+  readonly count: number;
+  /** Sequential material index (0-based). */
+  readonly materialIndex: number;
+  /** Face topology ID for correlation with the shape's face. */
+  readonly faceId: number;
+}
+
+/** BufferGeometry data with per-face material groups. */
+export interface GroupedBufferGeometryData extends BufferGeometryData {
+  /** Face groups for use with THREE.BufferGeometry.addGroup(). */
+  readonly groups: ReadonlyArray<BufferGeometryGroup>;
+}
+
+/**
+ * Convert a ShapeMesh into grouped BufferGeometry data with face material groups.
+ *
+ * Each face becomes a separate group, allowing per-face materials in Three.js:
+ * ```ts
+ * const data = toGroupedBufferGeometryData(mesh);
+ * const geo = new THREE.BufferGeometry();
+ * geo.setAttribute('position', new THREE.BufferAttribute(data.position, 3));
+ * geo.setAttribute('normal', new THREE.BufferAttribute(data.normal, 3));
+ * geo.setIndex(new THREE.BufferAttribute(data.index, 1));
+ * for (const g of data.groups) {
+ *   geo.addGroup(g.start, g.count, g.materialIndex);
+ * }
+ * ```
+ */
+export function toGroupedBufferGeometryData(mesh: ShapeMesh): GroupedBufferGeometryData {
+  return {
+    position: mesh.vertices,
+    normal: mesh.normals,
+    index: mesh.triangles,
+    groups: mesh.faceGroups.map((g, i) => ({
+      start: g.start,
+      count: g.count,
+      materialIndex: i,
+      faceId: g.faceId,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Edge mesh conversion
+// ---------------------------------------------------------------------------
+
 /**
  * Convert an EdgeMesh into position data for THREE.LineSegments.
  *

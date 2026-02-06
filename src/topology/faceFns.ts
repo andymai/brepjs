@@ -150,6 +150,63 @@ export function uvCoordinates(face: Face, point: PointInput): [number, number] {
   return [uPtr.current, vPtr.current];
 }
 
+/** Result of projecting a point onto a face surface. */
+export interface PointProjectionResult {
+  /** UV coordinates on the surface. */
+  readonly uv: [number, number];
+  /** The closest 3D point on the surface. */
+  readonly point: Vec3;
+  /** Distance from the input point to the projected point. */
+  readonly distance: number;
+}
+
+/**
+ * Project a 3D point onto a face surface.
+ *
+ * Returns the projected point, its UV coordinates, and the distance
+ * from the original point to the surface.
+ */
+export function projectPointOnFace(face: Face, point: PointInput): Result<PointProjectionResult> {
+  const oc = getKernel().oc;
+  const r = gcWithScope();
+  const v = toVec3(point);
+
+  try {
+    const surface = r(oc.BRep_Tool.Surface_2(face.wrapped));
+    const projected = r(
+      new oc.GeomAPI_ProjectPointOnSurf_2(
+        r(toOcPnt(v)),
+        surface,
+        oc.Extrema_ExtAlgo.Extrema_ExtAlgo_Grad
+      )
+    );
+
+    if (projected.NbPoints() === 0) {
+      return err(typeCastError('PROJECTION_FAILED', 'No projection found on the face'));
+    }
+
+    const uPtr = { current: 0 };
+    const vPtr = { current: 0 };
+    projected.LowerDistanceParameters(uPtr, vPtr);
+
+    const nearestPnt = r(projected.NearestPoint());
+    const projectedPoint: Vec3 = [nearestPnt.X(), nearestPnt.Y(), nearestPnt.Z()];
+
+    return ok({
+      uv: [uPtr.current, vPtr.current],
+      point: projectedPoint,
+      distance: projected.LowerDistance(),
+    });
+  } catch (e) {
+    return err(
+      typeCastError(
+        'PROJECTION_FAILED',
+        `Point projection failed: ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
+  }
+}
+
 /** Get the surface normal at a point (or at the center if no point given). */
 export function normalAt(face: Face, locationPoint?: PointInput): Vec3 {
   const oc = getKernel().oc;
