@@ -573,7 +573,13 @@ export {
 
 // ── Modifier operations (functional) ──
 
-export { thickenSurface, filletShape, chamferShape, shellShape, offsetShape } from './topology/modifierFns.js';
+export {
+  thickenSurface,
+  filletShape,
+  chamferShape,
+  shellShape,
+  offsetShape,
+} from './topology/modifierFns.js';
 
 // ── Healing (functional) ──
 
