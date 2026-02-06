@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.13.0](https://github.com/andymai/brepjs/compare/brepjs-v4.12.0...brepjs-v4.13.0) (2026-02-06)
+
+
+### Features
+
+* add glTF PBR materials and DXF export ([#99](https://github.com/andymai/brepjs/issues/99)) ([85c7abe](https://github.com/andymai/brepjs/commit/85c7abe47e565bc3cf05aa1e2e3659d3b1bd5d12))
+
 ## [4.12.0](https://github.com/andymai/brepjs/compare/brepjs-v4.11.0...brepjs-v4.12.0) (2026-02-06)
 
 
