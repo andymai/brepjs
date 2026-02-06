@@ -24,6 +24,7 @@ export interface ShapeMesh {
   triangles: Uint32Array;
   vertices: Float32Array;
   normals: Float32Array;
+  uvs: Float32Array;
   faceGroups: { start: number; count: number; faceId: number }[];
 }
 
@@ -48,12 +49,13 @@ export function meshShape(
     tolerance = 1e-3,
     angularTolerance = 0.1,
     skipNormals = false,
+    includeUVs = false,
     cache = true,
-  }: MeshOptions & { skipNormals?: boolean; cache?: boolean } = {}
+  }: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean } = {}
 ): ShapeMesh {
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
   const cacheKey = buildMeshCacheKey(0, tolerance, angularTolerance, skipNormals);
-  if (cache) {
+  if (cache && !includeUVs) {
     const cached = getMeshForShape(shape.wrapped, cacheKey);
     if (cached) return cached;
   }
@@ -62,12 +64,14 @@ export function meshShape(
     tolerance,
     angularTolerance,
     skipNormals,
+    includeUVs,
   });
 
   const mesh: ShapeMesh = {
     vertices: result.vertices,
     normals: result.normals,
     triangles: result.triangles,
+    uvs: result.uvs,
     faceGroups: result.faceGroups.map((g) => ({
       start: g.start,
       count: g.count,

@@ -71,7 +71,7 @@ export function meshBulk(
   // Free C++ allocated memory (destructor frees internal buffers)
   raw.delete();
 
-  return { vertices, normals, triangles, faceGroups };
+  return { vertices, normals, triangles, uvs: new Float32Array(0), faceGroups };
 }
 
 /**
@@ -117,11 +117,13 @@ export function meshJS(
   // Pass 2: fill pre-allocated arrays
   const vertices = new Float32Array(totalNodes * 3);
   const normals = options.skipNormals ? new Float32Array(0) : new Float32Array(totalNodes * 3);
+  const uvs = options.includeUVs ? new Float32Array(totalNodes * 2) : new Float32Array(0);
   const triangles = new Uint32Array(totalTris * 3);
   const faceGroups: KernelMeshResult['faceGroups'] = [];
 
   let vIdx = 0;
   let nIdx = 0;
+  let uvIdx = 0;
   let tIdx = 0;
 
   explorer.Init(shape, oc.TopAbs_ShapeEnum.TopAbs_FACE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
@@ -161,6 +163,21 @@ export function meshJS(
         pc.delete();
       }
 
+      if (options.includeUVs && tri.HasUVNodes()) {
+        for (let i = 1; i <= nbNodes; i++) {
+          const uv = tri.UVNode(i);
+          uvs[uvIdx++] = uv.X();
+          uvs[uvIdx++] = uv.Y();
+          uv.delete();
+        }
+      } else if (options.includeUVs) {
+        // No UV data for this face — fill with zeros
+        for (let i = 0; i < nbNodes; i++) {
+          uvs[uvIdx++] = 0;
+          uvs[uvIdx++] = 0;
+        }
+      }
+
       const orient = face.Orientation_1();
       const isForward = orient === oc.TopAbs_Orientation.TopAbs_FORWARD;
       const nbTriangles = tri.NbTriangles();
@@ -195,7 +212,7 @@ export function meshJS(
   }
   explorer.delete();
 
-  return { vertices, normals, triangles, faceGroups };
+  return { vertices, normals, triangles, uvs, faceGroups };
 }
 
 /**
@@ -206,7 +223,8 @@ export function mesh(
   shape: OcShape,
   options: MeshOptions
 ): KernelMeshResult {
-  if (oc.MeshExtractor) {
+  // C++ bulk path doesn't support UV extraction — fall back to JS
+  if (oc.MeshExtractor && !options.includeUVs) {
     return meshBulk(oc, shape, options);
   }
   return meshJS(oc, shape, options);

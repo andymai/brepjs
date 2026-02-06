@@ -33,12 +33,14 @@ export interface MeshOptions {
   tolerance: number;
   angularTolerance: number;
   skipNormals?: boolean;
+  includeUVs?: boolean;
 }
 
 export interface KernelMeshResult {
   vertices: Float32Array;
   normals: Float32Array;
   triangles: Uint32Array;
+  uvs: Float32Array;
   faceGroups: Array<{ start: number; count: number; faceHash: number }>;
 }
 

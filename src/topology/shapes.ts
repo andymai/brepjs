@@ -268,6 +268,7 @@ export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
       vertices: result.vertices,
       normals: result.normals,
       triangles: result.triangles,
+      uvs: result.uvs,
       faceGroups: result.faceGroups.map((g) => ({
         start: g.start,
         count: g.count,
