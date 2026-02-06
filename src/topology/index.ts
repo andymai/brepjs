@@ -82,6 +82,8 @@ export {
   makeNonPlanarFace,
   makeCylinder,
   makeSphere,
+  makeCone,
+  makeTorus,
   makeEllipsoid,
   makeBox,
   makeVertex,

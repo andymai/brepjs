@@ -200,6 +200,7 @@ mainBuild:
   - symbol: BRepPrimAPI_MakePrism
   - symbol: BRepPrimAPI_MakeRevol
   - symbol: BRepPrimAPI_MakeSphere
+  - symbol: BRepPrimAPI_MakeCone
   - symbol: BRepPrimAPI_MakeTorus
   - symbol: BRepPrimAPI_MakeRevolution
   - symbol: BRepOffsetAPI_ThruSections

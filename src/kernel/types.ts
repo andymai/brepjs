@@ -71,6 +71,19 @@ export interface KernelAdapter {
     direction?: [number, number, number]
   ): OcShape;
   makeSphere(radius: number, center?: [number, number, number]): OcShape;
+  makeCone(
+    radius1: number,
+    radius2: number,
+    height: number,
+    center?: [number, number, number],
+    direction?: [number, number, number]
+  ): OcShape;
+  makeTorus(
+    majorRadius: number,
+    minorRadius: number,
+    center?: [number, number, number],
+    direction?: [number, number, number]
+  ): OcShape;
 
   // --- Extrusion / sweep / loft / revolution ---
   extrude(face: OcShape, direction: [number, number, number], length: number): OcShape;
