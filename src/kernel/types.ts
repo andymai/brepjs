@@ -95,7 +95,11 @@ export interface KernelAdapter {
   sweep(wire: OcShape, spine: OcShape, options?: { transitionMode?: number }): OcShape;
 
   // --- Modification ---
-  fillet(shape: OcShape, edges: OcShape[], radius: number | ((edge: OcShape) => number)): OcShape;
+  fillet(
+    shape: OcShape,
+    edges: OcShape[],
+    radius: number | [number, number] | ((edge: OcShape) => number | [number, number])
+  ): OcShape;
   chamfer(
     shape: OcShape,
     edges: OcShape[],

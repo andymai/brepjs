@@ -187,7 +187,11 @@ export class OCCTAdapter implements KernelAdapter {
 
   // --- Modification (delegates to modifierOps.ts) ---
 
-  fillet(shape: OcShape, edges: OcShape[], radius: number | ((edge: OcShape) => number)): OcShape {
+  fillet(
+    shape: OcShape,
+    edges: OcShape[],
+    radius: number | [number, number] | ((edge: OcShape) => number | [number, number])
+  ): OcShape {
     return _fillet(this.oc, shape, edges, radius);
   }
 
