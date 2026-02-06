@@ -182,6 +182,13 @@ export function getWires(shape: AnyShape): Wire[] {
   return wires;
 }
 
+/** Get all vertices of a shape as branded Vertex handles. */
+export function getVertices(shape: AnyShape): Vertex[] {
+  return Array.from(iterTopo(shape.wrapped, 'vertex')).map(
+    (e) => castShape(unwrap(downcast(e))) as Vertex
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Lazy topology iterators (generators)
 // ---------------------------------------------------------------------------
@@ -204,6 +211,13 @@ export function* iterFaces(shape: AnyShape): Generator<Face> {
 export function* iterWires(shape: AnyShape): Generator<Wire> {
   for (const w of iterTopo(shape.wrapped, 'wire')) {
     yield castShape(unwrap(downcast(w))) as Wire;
+  }
+}
+
+/** Lazily iterate vertices of a shape, yielding branded Vertex handles one at a time. */
+export function* iterVertices(shape: AnyShape): Generator<Vertex> {
+  for (const v of iterTopo(shape.wrapped, 'vertex')) {
+    yield castShape(unwrap(downcast(v))) as Vertex;
   }
 }
 

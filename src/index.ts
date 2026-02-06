@@ -480,9 +480,11 @@ export {
   getEdges,
   getFaces,
   getWires,
+  getVertices,
   iterEdges,
   iterFaces,
   iterWires,
+  iterVertices,
   getBounds,
   vertexPosition,
   type Bounds3D,
@@ -676,9 +678,11 @@ export {
   edgeFinder,
   faceFinder,
   wireFinder,
+  vertexFinder,
   type EdgeFinderFn,
   type FaceFinderFn,
   type WireFinderFn,
+  type VertexFinderFn,
   type ShapeFinder,
 } from './query/finderFns.js';
 
