@@ -16,6 +16,7 @@ import type { Plane } from '../core/planeTypes.js';
 import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
+import { applyGlue } from './shapeBooleans.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,16 +33,6 @@ export interface BooleanOptions {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-function applyGlue(op: { SetGlue(glue: OcType): void }, optimisation: string): void {
-  const oc = getKernel().oc;
-  if (optimisation === 'commonFace') {
-    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueShift);
-  }
-  if (optimisation === 'sameFace') {
-    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
-  }
-}
 
 function buildCompoundOcInternal(shapes: OcType[]): OcType {
   const oc = getKernel().oc;
@@ -86,8 +77,9 @@ function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Resu
 export function fuseShapes(
   a: Shape3D,
   b: Shape3D,
-  { optimisation = 'none', simplify = false }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
+  if (signal?.aborted) throw signal.reason;
   const oc = getKernel().oc;
   const r = gcWithScope();
   const progress = r(new oc.Message_ProgressRange_1());
@@ -102,8 +94,9 @@ export function fuseShapes(
 export function cutShape(
   base: Shape3D,
   tool: Shape3D,
-  { optimisation = 'none', simplify = false }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
+  if (signal?.aborted) throw signal.reason;
   const oc = getKernel().oc;
   const r = gcWithScope();
   const progress = r(new oc.Message_ProgressRange_1());
@@ -118,8 +111,9 @@ export function cutShape(
 export function intersectShapes(
   a: Shape3D,
   b: AnyShape,
-  { simplify = false }: { simplify?: boolean } = {}
+  { simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
+  if (signal?.aborted) throw signal.reason;
   const oc = getKernel().oc;
   const r = gcWithScope();
   const progress = r(new oc.Message_ProgressRange_1());
@@ -145,7 +139,7 @@ function fuseAllPairwise(
   isTopLevel: boolean,
   signal?: AbortSignal
 ): Result<Shape3D> {
-  signal?.throwIfAborted();
+  if (signal?.aborted) throw signal.reason;
   const count = end - start;
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start is valid index
   if (count === 1) return ok(shapes[start]!);
@@ -154,6 +148,7 @@ function fuseAllPairwise(
     return fuseShapes(shapes[start]!, shapes[start + 1]!, {
       optimisation,
       simplify: isTopLevel ? simplify : false,
+      ...(signal ? { signal } : {}),
     });
   }
 
@@ -166,6 +161,7 @@ function fuseAllPairwise(
   return fuseShapes(leftResult.value, rightResult.value, {
     optimisation,
     simplify: isTopLevel ? simplify : false,
+    ...(signal ? { signal } : {}),
   });
 }
 
@@ -174,7 +170,7 @@ export function fuseAll(
   shapes: Shape3D[],
   { optimisation = 'none', simplify = false, strategy = 'native', signal }: BooleanOptions = {}
 ): Result<Shape3D> {
-  signal?.throwIfAborted();
+  if (signal?.aborted) throw signal.reason;
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -198,8 +194,9 @@ export function fuseAll(
 export function cutAll(
   base: Shape3D,
   tools: Shape3D[],
-  { optimisation = 'none', simplify = false }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
+  if (signal?.aborted) throw signal.reason;
   if (tools.length === 0) return ok(base);
 
   const oc = getKernel().oc;
@@ -335,6 +332,28 @@ export function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape>
       )
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Batch slicing
+// ---------------------------------------------------------------------------
+
+/**
+ * Slice a shape with multiple planes, returning one cross-section per plane.
+ * Each result entry corresponds to the input plane at the same index.
+ */
+export function sliceShape(
+  shape: AnyShape,
+  planes: PlaneInput[],
+  options: { approximation?: boolean; planeSize?: number } = {}
+): Result<AnyShape[]> {
+  const results: AnyShape[] = [];
+  for (const plane of planes) {
+    const section = sectionShape(shape, plane, options);
+    if (isErr(section)) return section as Result<AnyShape[]>;
+    results.push(section.value);
+  }
+  return ok(results);
 }
 
 // ---------------------------------------------------------------------------

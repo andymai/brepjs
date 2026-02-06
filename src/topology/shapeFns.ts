@@ -135,28 +135,51 @@ export function scaleShape<T extends AnyShape>(
 }
 
 // ---------------------------------------------------------------------------
-// Topology queries
+// Topology queries (with lazy caching)
 // ---------------------------------------------------------------------------
 
-/** Get all edges of a shape as branded Edge handles. */
+const topoCache = new WeakMap<object, { edges?: Edge[]; faces?: Face[]; wires?: Wire[] }>();
+
+function getOrCreateCache(shape: AnyShape): { edges?: Edge[]; faces?: Face[]; wires?: Wire[] } {
+  let entry = topoCache.get(shape.wrapped);
+  if (!entry) {
+    entry = {};
+    topoCache.set(shape.wrapped, entry);
+  }
+  return entry;
+}
+
+/** Get all edges of a shape as branded Edge handles. Results are cached per shape. */
 export function getEdges(shape: AnyShape): Edge[] {
-  return Array.from(iterTopo(shape.wrapped, 'edge')).map(
+  const cache = getOrCreateCache(shape);
+  if (cache.edges) return cache.edges;
+  const edges = Array.from(iterTopo(shape.wrapped, 'edge')).map(
     (e) => castShape(unwrap(downcast(e))) as Edge
   );
+  cache.edges = edges;
+  return edges;
 }
 
-/** Get all faces of a shape as branded Face handles. */
+/** Get all faces of a shape as branded Face handles. Results are cached per shape. */
 export function getFaces(shape: AnyShape): Face[] {
-  return Array.from(iterTopo(shape.wrapped, 'face')).map(
+  const cache = getOrCreateCache(shape);
+  if (cache.faces) return cache.faces;
+  const faces = Array.from(iterTopo(shape.wrapped, 'face')).map(
     (e) => castShape(unwrap(downcast(e))) as Face
   );
+  cache.faces = faces;
+  return faces;
 }
 
-/** Get all wires of a shape as branded Wire handles. */
+/** Get all wires of a shape as branded Wire handles. Results are cached per shape. */
 export function getWires(shape: AnyShape): Wire[] {
-  return Array.from(iterTopo(shape.wrapped, 'wire')).map(
+  const cache = getOrCreateCache(shape);
+  if (cache.wires) return cache.wires;
+  const wires = Array.from(iterTopo(shape.wrapped, 'wire')).map(
     (e) => castShape(unwrap(downcast(e))) as Wire
   );
+  cache.wires = wires;
+  return wires;
 }
 
 // ---------------------------------------------------------------------------

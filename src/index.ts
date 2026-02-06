@@ -568,6 +568,7 @@ export {
   intersectShapes,
   sectionShape,
   splitShape,
+  sliceShape,
   fuseAll as fnFuseAll,
   cutAll as fnCutAll,
   buildCompound as fnBuildCompound,
@@ -649,6 +650,9 @@ export {
   measureSurfaceProps,
   measureLinearProps,
   type PhysicalProps,
+  type VolumeProps,
+  type SurfaceProps,
+  type LinearProps,
 } from './measurement/measureFns.js';
 
 export {
