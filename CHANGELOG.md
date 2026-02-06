@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.3.0](https://github.com/andymai/brepjs/compare/brepjs-v4.2.0...brepjs-v4.3.0) (2026-02-06)
+
+
+### Features
+
+* add lazy topology iterators ([#63](https://github.com/andymai/brepjs/issues/63)) ([c7f6de3](https://github.com/andymai/brepjs/commit/c7f6de36bf1c3d56f4c2c46846bc95cb8e932854))
+* add linear and circular pattern operations ([#59](https://github.com/andymai/brepjs/issues/59)) ([7b20234](https://github.com/andymai/brepjs/commit/7b20234e5a6f189b72793b5fab17ffd81ee3af93))
+* add optional metadata field to BrepError ([#61](https://github.com/andymai/brepjs/issues/61)) ([c74a378](https://github.com/andymai/brepjs/commit/c74a37852a227745a12cb7bcb2ba997de4bc07a3))
+* add section/slice operation ([#60](https://github.com/andymai/brepjs/issues/60)) ([1debde8](https://github.com/andymai/brepjs/commit/1debde8bb5b559f1561f7cba488119b817b2e325))
+* add Three.js BufferGeometry helpers ([#62](https://github.com/andymai/brepjs/issues/62)) ([889f81c](https://github.com/andymai/brepjs/commit/889f81c13483ac87829176aeb09b01a984723ad0))
+
 ## [4.2.0](https://github.com/andymai/brepjs/compare/brepjs-v4.1.0...brepjs-v4.2.0) (2026-02-06)
 
 
