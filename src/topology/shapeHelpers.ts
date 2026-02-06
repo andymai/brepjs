@@ -389,6 +389,49 @@ export const makeSphere = (radius: number): Solid => {
   return sphere;
 };
 
+/**
+ * Creates a cone (or frustum) with the given radii and height.
+ *
+ * @category Solids
+ */
+export const makeCone = (
+  radius1: number,
+  radius2: number,
+  height: number,
+  location: Vec3 = [0, 0, 0],
+  direction: Vec3 = [0, 0, 1]
+): Solid => {
+  const oc = getKernel().oc;
+  const [r, gc] = localGC();
+
+  const axis = r(makeOcAx2(location, direction));
+  const coneMaker = r(new oc.BRepPrimAPI_MakeCone_3(axis, radius1, radius2, height));
+  const solid = new Solid(coneMaker.Shape());
+  gc();
+  return solid;
+};
+
+/**
+ * Creates a torus with the given major and minor radii.
+ *
+ * @category Solids
+ */
+export const makeTorus = (
+  majorRadius: number,
+  minorRadius: number,
+  location: Vec3 = [0, 0, 0],
+  direction: Vec3 = [0, 0, 1]
+): Solid => {
+  const oc = getKernel().oc;
+  const [r, gc] = localGC();
+
+  const axis = r(makeOcAx2(location, direction));
+  const torusMaker = r(new oc.BRepPrimAPI_MakeTorus_5(axis, majorRadius, minorRadius));
+  const solid = new Solid(torusMaker.Shape());
+  gc();
+  return solid;
+};
+
 class EllipsoidTransform extends WrappingObj<OcType> {
   constructor(x: number, y: number, z: number) {
     const oc = getKernel().oc;

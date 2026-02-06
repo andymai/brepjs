@@ -54,6 +54,8 @@ import {
   makeBox as _makeBox,
   makeCylinder as _makeCylinder,
   makeSphere as _makeSphere,
+  makeCone as _makeCone,
+  makeTorus as _makeTorus,
 } from './constructorOps.js';
 import {
   extrude as _extrude,
@@ -137,6 +139,25 @@ export class OCCTAdapter implements KernelAdapter {
 
   makeSphere(radius: number, center: [number, number, number] = [0, 0, 0]): OcShape {
     return _makeSphere(this.oc, radius, center);
+  }
+
+  makeCone(
+    radius1: number,
+    radius2: number,
+    height: number,
+    center: [number, number, number] = [0, 0, 0],
+    direction: [number, number, number] = [0, 0, 1]
+  ): OcShape {
+    return _makeCone(this.oc, radius1, radius2, height, center, direction);
+  }
+
+  makeTorus(
+    majorRadius: number,
+    minorRadius: number,
+    center: [number, number, number] = [0, 0, 0],
+    direction: [number, number, number] = [0, 0, 1]
+  ): OcShape {
+    return _makeTorus(this.oc, majorRadius, minorRadius, center, direction);
   }
 
   // --- Extrusion / sweep / loft / revolution (delegates to sweepOps.ts) ---

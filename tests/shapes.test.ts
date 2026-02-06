@@ -4,6 +4,8 @@ import {
   makeBox,
   makeSphere,
   makeCylinder,
+  makeCone,
+  makeTorus,
   makeVertex,
   makeLine,
   assembleWire,
@@ -40,6 +42,24 @@ describe('Shape construction', () => {
   it('creates a vertex', () => {
     const vertex = makeVertex([1, 2, 3]);
     expect(vertex).toBeDefined();
+  });
+
+  it('creates a cone', () => {
+    const cone = makeCone(5, 0, 10);
+    const expectedVolume = (1 / 3) * Math.PI * 25 * 10;
+    expect(measureVolume(cone)).toBeCloseTo(expectedVolume, 0);
+  });
+
+  it('creates a truncated cone', () => {
+    const cone = makeCone(5, 3, 10);
+    const expectedVolume = (1 / 3) * Math.PI * 10 * (25 + 9 + 15);
+    expect(measureVolume(cone)).toBeCloseTo(expectedVolume, 0);
+  });
+
+  it('creates a torus', () => {
+    const torus = makeTorus(10, 3);
+    const expectedVolume = 2 * Math.PI * Math.PI * 10 * 9;
+    expect(measureVolume(torus)).toBeCloseTo(expectedVolume, 0);
   });
 });
 
