@@ -41,6 +41,12 @@ const deletableRegistry = new (globalThis as any).FinalizationRegistry((heldValu
   }
 });
 
+/**
+ * Legacy wrapper for OCCT objects with FinalizationRegistry-based GC.
+ *
+ * @remarks Prefer {@link createHandle} + branded shape types for new code.
+ * @deprecated Use `createHandle()` from `disposal.ts` instead.
+ */
 // TODO(functional-rewrite): Replace with createHandle() + branded types
 export class WrappingObj<Type extends Deletable> {
   protected oc: OpenCascadeInstance;

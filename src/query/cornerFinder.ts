@@ -6,16 +6,23 @@ import { Finder } from './definitions.js';
 
 /**
  * Minimal Blueprint interface for corner extraction.
+ *
  * The full Blueprint class lives in the sketching layer; this interface
- * keeps the query layer decoupled from it.
+ * keeps the query layer decoupled from it so that corner finding does
+ * not pull in Layer 3 dependencies.
  */
 export interface BlueprintLike {
+  /** Ordered sequence of curves forming the profile. */
   curves: Curve2D[];
 }
 
+/** A junction between two consecutive curves in a 2D profile. */
 export type Corner = {
+  /** The curve arriving at the corner point. */
   firstCurve: Curve2D;
+  /** The curve departing from the corner point. */
   secondCurve: Curve2D;
+  /** The shared endpoint where the two curves meet. */
   point: Point2D;
 };
 
@@ -40,10 +47,26 @@ const positiveHalfAngle = (angle: number) => {
   return Math.abs(coterminalAngle - PI_2);
 };
 
+/**
+ * Find corners within a 2D blueprint by chaining declarative filters.
+ *
+ * A corner is the junction between two consecutive curves.
+ * Filters are combined with AND logic by default.
+ *
+ * @example
+ * ```ts
+ * const rightAngles = new CornerFinder()
+ *   .ofAngle(90)
+ *   .find(blueprint);
+ * ```
+ *
+ * @category Finders
+ */
 export class CornerFinder extends Finder<Corner, BlueprintLike> {
   /**
-   * Filter to find corner that have their point are in the list.
+   * Filter to find corners whose point matches one from the list.
    *
+   * @param elementList - Points to match against using geometric equality.
    * @category Filter
    */
   inList(elementList: Point2D[]): this {
@@ -55,8 +78,10 @@ export class CornerFinder extends Finder<Corner, BlueprintLike> {
   }
 
   /**
-   * Filter to find elements that are at a specified distance from a point.
+   * Filter to find corners at a specified distance from a point.
    *
+   * @param distance - Target distance from the reference point.
+   * @param point - Reference point. Default: origin [0, 0].
    * @category Filter
    */
   atDistance(distance: number, point: Point2D = [0, 0]): this {
@@ -68,8 +93,9 @@ export class CornerFinder extends Finder<Corner, BlueprintLike> {
   }
 
   /**
-   * Filter to find elements that contain a certain point
+   * Filter to find corners located at an exact point.
    *
+   * @param point - The 2D point to match.
    * @category Filter
    */
   atPoint(point: Point2D): this {
@@ -81,8 +107,10 @@ export class CornerFinder extends Finder<Corner, BlueprintLike> {
   }
 
   /**
-   * Filter to find elements that are within a box
+   * Filter to find corners within an axis-aligned bounding box.
    *
+   * @param corner1 - First corner of the bounding box.
+   * @param corner2 - Opposite corner of the bounding box.
    * @category Filter
    */
   inBox(corner1: Point2D, corner2: Point2D): this {
@@ -104,9 +132,12 @@ export class CornerFinder extends Finder<Corner, BlueprintLike> {
   }
 
   /**
-   * Filter to find corner that a certain angle between them - only between
-   * 0 and 180.
+   * Filter to find corners with a specific interior angle (in degrees).
    *
+   * The angle is measured between the tangent vectors of the two curves
+   * at the corner point and is folded to the range 0--180.
+   *
+   * @param angle - Target angle in degrees (0--180).
    * @category Filter
    */
   ofAngle(angle: number): this {

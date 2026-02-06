@@ -48,6 +48,23 @@ interface IntersectionResult {
   commonSegmentsPoints: Point2D[];
 }
 
+/**
+ * Compute intersection points and common segments between two 2D curves.
+ *
+ * Uses an early bounding-box rejection test before delegating to the OCCT
+ * `Geom2dAPI_InterCurveCurve` algorithm.
+ *
+ * @returns `Ok` with intersection points, common segments, and the endpoints of those segments;
+ *   or an error result when the OCCT intersector fails.
+ *
+ * @example
+ * ```ts
+ * const result = intersectCurves(circle, line);
+ * if (isOk(result)) {
+ *   console.log(result.value.intersections); // Point2D[]
+ * }
+ * ```
+ */
 export const intersectCurves = (
   first: Curve2D,
   second: Curve2D,
@@ -87,6 +104,11 @@ export const intersectCurves = (
   return ok({ intersections, commonSegments, commonSegmentsPoints });
 };
 
+/**
+ * Find self-intersection points on a single 2D curve.
+ *
+ * @returns `Ok` with the array of self-intersection points, or an error result on failure.
+ */
 export const selfIntersections = (curve: Curve2D, precision = 1e-9): Result<Point2D[]> => {
   const oc = getKernel().oc;
   const r = gcWithScope();

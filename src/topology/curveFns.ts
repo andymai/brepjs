@@ -39,7 +39,11 @@ function mapParam(adaptor: CurveAdaptor, t: number): number {
 // Curve properties
 // ---------------------------------------------------------------------------
 
-/** Get the geometric curve type of an edge or wire. */
+/**
+ * Get the geometric curve type of an edge or wire (LINE, CIRCLE, BSPLINE, etc.).
+ *
+ * @see _1DShape.geomType — OOP equivalent
+ */
 export function getCurveType(shape: Edge | Wire): CurveType {
   const adaptor = getAdaptor(shape);
   const technicalType = adaptor.GetType && adaptor.GetType();
@@ -68,7 +72,11 @@ export function curveEndPoint(shape: Edge | Wire): Vec3 {
   return result;
 }
 
-/** Get a point at parameter position (0 = start, 1 = end). */
+/**
+ * Get a point at a normalized parameter position on the curve.
+ * @param shape - Edge or wire to evaluate.
+ * @param position - Normalized parameter (0 = start, 0.5 = midpoint, 1 = end).
+ */
 export function curvePointAt(shape: Edge | Wire, position = 0.5): Vec3 {
   const adaptor = getAdaptor(shape);
   const pnt = adaptor.Value(mapParam(adaptor, position));
@@ -78,7 +86,11 @@ export function curvePointAt(shape: Edge | Wire, position = 0.5): Vec3 {
   return result;
 }
 
-/** Get the tangent vector at parameter position. */
+/**
+ * Get the tangent vector at a normalized parameter position on the curve.
+ * @param shape - Edge or wire to evaluate.
+ * @param position - Normalized parameter (0 = start, 0.5 = midpoint, 1 = end).
+ */
 export function curveTangentAt(shape: Edge | Wire, position = 0.5): Vec3 {
   const oc = getKernel().oc;
   const adaptor = getAdaptor(shape);
@@ -147,15 +159,21 @@ export function flipOrientation(shape: Edge | Wire): Edge | Wire {
 
 /** Options for BSpline interpolation through points. */
 export interface InterpolateCurveOptions {
+  /** If true, create a periodic (closed) BSpline. */
   periodic?: boolean;
+  /** Fitting tolerance (default varies by kernel). */
   tolerance?: number;
 }
 
 /** Options for BSpline approximation through points. */
 export interface ApproximateCurveOptions {
+  /** Maximum deviation from the input points. */
   tolerance?: number;
+  /** Minimum BSpline degree. */
   degMin?: number;
+  /** Maximum BSpline degree. */
   degMax?: number;
+  /** Smoothing weights `[weight1, weight2, weight3]` or null to disable. */
   smoothing?: [number, number, number] | null;
 }
 
@@ -227,7 +245,16 @@ export function approximateCurve(
 // 2D wire offset
 // ---------------------------------------------------------------------------
 
-/** Offset a wire in 2D. Returns a new wire. Does NOT dispose the input. */
+/**
+ * Offset a wire in 2D. Returns a new wire. Does NOT dispose the input.
+ *
+ * @param wire - The wire to offset.
+ * @param offset - Offset distance (positive = outward, negative = inward).
+ * @param kind - Join type for offset corners ('arc', 'intersection', or 'tangent').
+ * @returns Ok with the offset wire, or Err if the operation fails.
+ *
+ * @see Wire.offset2D — OOP equivalent (deprecated, disposes input)
+ */
 export function offsetWire2D(
   wire: Wire,
   offset: number,

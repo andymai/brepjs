@@ -52,6 +52,15 @@ function buildCornerFunction(
   return (first: Curve2D, second: Curve2D) => makeFn(first, second, radius);
 }
 
+/**
+ * Base class for 2D sketchers that accumulate {@link Curve2D} segments.
+ *
+ * Provides the shared pen-drawing API (lines, arcs, ellipses, beziers, splines)
+ * used by {@link FaceSketcher}, {@link BlueprintSketcher}, and {@link DrawingPen}.
+ * Subclasses implement `done()` / `close()` to produce the appropriate output type.
+ *
+ * @category Sketching
+ */
 export class BaseSketcher2d {
   protected pointer: Point2D;
   protected firstPoint: Point2D;
@@ -103,6 +112,7 @@ export class BaseSketcher2d {
     return angleInRadians * RAD2DEG;
   }
 
+  /** Move the pen to an absolute 2D position before drawing any curves. */
   movePointerTo(point: Point2D): this {
     if (this.pendingCurves.length)
       bug('Sketcher2d.movePointerTo', 'You can only move the pointer if there is no curve defined');
@@ -126,6 +136,7 @@ export class BaseSketcher2d {
     this._nextCorner = null;
   }
 
+  /** Draw a straight line to an absolute 2D point. */
   lineTo(point: Point2D): this {
     const curve = make2dSegmentCurve(this._convertToUV(this.pointer), this._convertToUV(point));
     this.pointer = point;
@@ -133,38 +144,46 @@ export class BaseSketcher2d {
     return this;
   }
 
+  /** Draw a straight line by relative horizontal and vertical distances. */
   line(xDist: number, yDist: number): this {
     return this.lineTo([this.pointer[0] + xDist, this.pointer[1] + yDist]);
   }
 
+  /** Draw a vertical line of the given signed distance. */
   vLine(distance: number): this {
     return this.line(0, distance);
   }
 
+  /** Draw a horizontal line of the given signed distance. */
   hLine(distance: number): this {
     return this.line(distance, 0);
   }
 
+  /** Draw a vertical line to an absolute Y coordinate. */
   vLineTo(yPos: number): this {
     return this.lineTo([this.pointer[0], yPos]);
   }
 
+  /** Draw a horizontal line to an absolute X coordinate. */
   hLineTo(xPos: number): this {
     return this.lineTo([xPos, this.pointer[1]]);
   }
 
+  /** Draw a line to a point given in polar coordinates [r, theta] from the origin. */
   polarLineTo([r, theta]: Point2D): this {
     const angleInRads = theta * DEG2RAD;
     const point = polarToCartesian(r, angleInRads);
     return this.lineTo(point);
   }
 
+  /** Draw a line in polar coordinates (distance and angle in degrees) from the current point. */
   polarLine(distance: number, angle: number): this {
     const angleInRads = angle * DEG2RAD;
     const [x, y] = polarToCartesian(distance, angleInRads);
     return this.line(x, y);
   }
 
+  /** Draw a line tangent to the previous curve, extending by the given distance. */
   tangentLine(distance: number): this {
     const previousCurve = this.pendingCurves.length
       ? this.pendingCurves[this.pendingCurves.length - 1]
@@ -177,6 +196,7 @@ export class BaseSketcher2d {
     return this.line(direction[0] * distance, direction[1] * distance);
   }
 
+  /** Draw a circular arc passing through a mid-point to an absolute end point. */
   threePointsArcTo(end: Point2D, midPoint: Point2D): this {
     this.saveCurve(
       make2dThreePointArc(
@@ -189,11 +209,13 @@ export class BaseSketcher2d {
     return this;
   }
 
+  /** Draw a circular arc through a via-point to an end point, both as relative distances. */
   threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this {
     const [x0, y0] = this.pointer;
     return this.threePointsArcTo([x0 + xDist, y0 + yDist], [x0 + viaXDist, y0 + viaYDist]);
   }
 
+  /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
   sagittaArcTo(end: Point2D, sagitta: number): this {
     const [x0, y0] = this.pointer;
     const [x1, y1] = end;
@@ -227,18 +249,22 @@ export class BaseSketcher2d {
     return this;
   }
 
+  /** Draw a circular arc to a relative end point, bulging by the given sagitta. */
   sagittaArc(xDist: number, yDist: number, sagitta: number): this {
     return this.sagittaArcTo([xDist + this.pointer[0], yDist + this.pointer[1]], sagitta);
   }
 
+  /** Draw a vertical sagitta arc of the given distance and bulge. */
   vSagittaArc(distance: number, sagitta: number): this {
     return this.sagittaArc(0, distance, sagitta);
   }
 
+  /** Draw a horizontal sagitta arc of the given distance and bulge. */
   hSagittaArc(distance: number, sagitta: number): this {
     return this.sagittaArc(distance, 0, sagitta);
   }
 
+  /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
   bulgeArcTo(end: Point2D, bulge: number): this {
     if (!bulge) return this.lineTo(end);
     const halfChord = distance2d(this.pointer, end) / 2;
@@ -247,18 +273,22 @@ export class BaseSketcher2d {
     return this.sagittaArcTo(end, bulgeAsSagitta);
   }
 
+  /** Draw an arc to a relative end point using a bulge factor. */
   bulgeArc(xDist: number, yDist: number, bulge: number): this {
     return this.bulgeArcTo([xDist + this.pointer[0], yDist + this.pointer[1]], bulge);
   }
 
+  /** Draw a vertical bulge arc of the given distance and bulge factor. */
   vBulgeArc(distance: number, bulge: number): this {
     return this.bulgeArc(0, distance, bulge);
   }
 
+  /** Draw a horizontal bulge arc of the given distance and bulge factor. */
   hBulgeArc(distance: number, bulge: number): this {
     return this.bulgeArc(distance, 0, bulge);
   }
 
+  /** Draw a circular arc tangent to the previous curve, ending at an absolute point. */
   tangentArcTo(end: Point2D): this {
     const previousCurve = this.pendingCurves.length
       ? this.pendingCurves[this.pendingCurves.length - 1]
@@ -279,11 +309,13 @@ export class BaseSketcher2d {
     return this;
   }
 
+  /** Draw a circular arc tangent to the previous curve, ending at a relative offset. */
   tangentArc(xDist: number, yDist: number): this {
     const [x0, y0] = this.pointer;
     return this.tangentArcTo([xDist + x0, yDist + y0]);
   }
 
+  /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
   ellipseTo(
     end: Point2D,
     horizontalRadius: number,
@@ -338,6 +370,7 @@ export class BaseSketcher2d {
     return this;
   }
 
+  /** Draw an elliptical arc to a relative end point (SVG-style parameters). */
   ellipse(
     xDist: number,
     yDist: number,
@@ -358,6 +391,7 @@ export class BaseSketcher2d {
     );
   }
 
+  /** Draw a half-ellipse arc to an absolute end point with a given minor radius. */
   halfEllipseTo(end: Point2D, minorRadius: number, sweep = false): this {
     const angle = polarAngle2d(end, this.pointer);
     const dist = distance2d(end, this.pointer);
@@ -365,11 +399,13 @@ export class BaseSketcher2d {
     return this.ellipseTo(end, dist / 2, minorRadius, angle * RAD2DEG, true, sweep);
   }
 
+  /** Draw a half-ellipse arc to a relative end point with a given minor radius. */
   halfEllipse(xDist: number, yDist: number, minorRadius: number, sweep = false): this {
     const [x0, y0] = this.pointer;
     return this.halfEllipseTo([x0 + xDist, y0 + yDist], minorRadius, sweep);
   }
 
+  /** Draw a Bezier curve to an absolute end point through one or more control points. */
   bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this {
     let cp: Point2D[];
     if (controlPoints.length === 2 && !Array.isArray(controlPoints[0])) {
@@ -390,14 +426,17 @@ export class BaseSketcher2d {
     return this;
   }
 
+  /** Draw a quadratic Bezier curve to an absolute end point with a single control point. */
   quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this {
     return this.bezierCurveTo(end, [controlPoint]);
   }
 
+  /** Draw a cubic Bezier curve to an absolute end point with start and end control points. */
   cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this {
     return this.bezierCurveTo(end, [startControlPoint, endControlPoint]);
   }
 
+  /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous curve. */
   smoothSplineTo(end: Point2D, config?: SplineConfig): this {
     const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineConfig(config);
 
@@ -438,6 +477,7 @@ export class BaseSketcher2d {
     return this.cubicBezierCurveTo(end, startControl, endControl);
   }
 
+  /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous curve. */
   smoothSpline(xDist: number, yDist: number, splineConfig?: SplineConfig): this {
     return this.smoothSplineTo([xDist + this.pointer[0], yDist + this.pointer[1]], splineConfig);
   }
@@ -559,6 +599,7 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     return wire;
   }
 
+  /** Finish drawing and return the resulting {@link Sketch} (does not close the path). */
   done(): Sketch {
     const [r, gc] = localGC();
 
@@ -582,20 +623,24 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     return sketch;
   }
 
+  /** Close the path with a straight line to the start point and return the Sketch. */
   close(): Sketch {
     this._closeSketch();
     return this.done();
   }
 
+  /** Close the path by mirroring all curves about the line from first to last point. */
   closeWithMirror(): Sketch {
     this._closeWithMirror();
     return this.close();
   }
 
   /**
-   * Stop drawing, make sure the sketch is closed (by adding a straight line to
-   * from the last point to the first), add a fillet between the last and the
-   * first segments and returns the sketch.
+   * Close the path and apply a custom corner treatment between the last and first segments.
+   *
+   * @param radius - Fillet/chamfer radius, or a custom corner function.
+   * @param mode - Corner treatment type.
+   * @returns The closed {@link Sketch}.
    */
   closeWithCustomCorner(
     radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
@@ -608,6 +653,15 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
   }
 }
 
+/**
+ * Draw 2D curves and produce a {@link Blueprint} (pure-2D shape, no OCCT wire).
+ *
+ * Use this when you need a reusable 2D profile that can later be sketched onto
+ * different planes or faces.
+ *
+ * @see {@link DrawingPen} for the higher-level Drawing wrapper.
+ * @category Sketching
+ */
 export class BlueprintSketcher extends BaseSketcher2d implements GenericSketcher<Blueprint> {
   constructor(origin: Point2D = [0, 0]) {
     super();
@@ -617,24 +671,29 @@ export class BlueprintSketcher extends BaseSketcher2d implements GenericSketcher
     this.pendingCurves = [];
   }
 
+  /** Finish drawing and return the resulting {@link Blueprint} (does not close the path). */
   done(): Blueprint {
     return new Blueprint(this.pendingCurves);
   }
 
+  /** Close the path with a straight line to the start point and return the Blueprint. */
   close(): Blueprint {
     this._closeSketch();
     return this.done();
   }
 
+  /** Close the path by mirroring all curves about the line from first to last point. */
   closeWithMirror(): Blueprint {
     this._closeWithMirror();
     return this.close();
   }
 
   /**
-   * Stop drawing, make sure the sketch is closed (by adding a straight line to
-   * from the last point to the first), add a fillet between the last and the
-   * first segments and returns the sketch.
+   * Close the path and apply a custom corner treatment between the last and first segments.
+   *
+   * @param radius - Fillet/chamfer radius.
+   * @param mode - Corner treatment type.
+   * @returns The closed {@link Blueprint}.
    */
   closeWithCustomCorner(
     radius: number,

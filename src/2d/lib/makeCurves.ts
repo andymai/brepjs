@@ -223,16 +223,26 @@ export const make2dBezierCurve = (
 };
 
 /**
- * Creates a 2D B-spline curve defined by a set of points.
+ * Create a 2D interpolated B-spline curve through the given points.
  *
- * @param points - An array of points defining the B-spline curve.
+ * @param points - Ordered through-points for the spline.
  * @param options - Options for the B-spline curve.
- * @param options.tolerance - The tolerance for the approximation (default is 1e-3).
- * @param options.smoothing - Smoothing parameters for the B-spline curve (default is null).
- * @param options.degMax - Maximum degree of the B-spline curve (default is 3).
- * @param options.degMin - Minimum degree of the B-spline curve (default is 1).
+ * @param options.tolerance - Maximum deviation from the input points (default 1e-3).
+ * @param options.smoothing - Optional `[weight1, weight2, weight3]` smoothing
+ *   weights. When provided, the `Geom2dAPI_PointsToBSpline` smoothing
+ *   constructor is used instead of the standard one.
+ * @param options.degMax - Maximum polynomial degree (default 3).
+ * @param options.degMin - Minimum polynomial degree (default 1).
  *
- * @returns A Curve2D object representing the B-spline curve.
+ * @returns `Ok(Curve2D)` on success, or an error result if the approximation fails.
+ *
+ * @example
+ * ```ts
+ * const spline = unwrap(make2dInerpolatedBSplineCurve(
+ *   [[0, 0], [1, 2], [3, 1]],
+ *   { degMax: 3 }
+ * ));
+ * ```
  *
  * @category Planar curves
  */
@@ -294,8 +304,17 @@ export function make2dInerpolatedBSplineCurve(
   return ok(new Curve2D(splineBuilder.Curve()));
 }
 
-// This assumes that both start and end points are at radius distance from the
-// center
+/**
+ * Create a 2D arc given its endpoints and center point.
+ *
+ * Both `startPoint` and `endPoint` must lie at the circle's radius distance
+ * from `center`. The arc passes through the midpoint of the chord unless
+ * `longArc` is `true`, in which case the major arc is produced.
+ *
+ * @param longArc - When `true`, produce the major arc (greater than 180 degrees).
+ *
+ * @category Planar curves
+ */
 export const make2dArcFromCenter = (
   startPoint: Point2D,
   endPoint: Point2D,

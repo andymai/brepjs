@@ -53,6 +53,18 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
   return { first: first!, second: second!, center };
 }
 
+/**
+ * Insert a circular fillet arc at the corner between two curves.
+ *
+ * Trims both curves and inserts a tangent arc of the given radius.
+ * Returns the original curves unmodified when they are collinear.
+ *
+ * @example
+ * ```ts
+ * const segments = filletCurves(line1, line2, 5);
+ * // [trimmedLine1, filletArc, trimmedLine2]
+ * ```
+ */
 export function filletCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
   const cornerRemoved = removeCorner(firstCurve, secondCurve, radius);
   if (!cornerRemoved) {
@@ -64,6 +76,12 @@ export function filletCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: 
   return [first, make2dArcFromCenter(first.lastPoint, second.firstPoint, center), second];
 }
 
+/**
+ * Insert a straight chamfer segment at the corner between two curves.
+ *
+ * Trims both curves and connects them with a line segment.
+ * Returns the original curves unmodified when they are collinear.
+ */
 export function chamferCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
   const cornerRemoved = removeCorner(firstCurve, secondCurve, radius);
   if (!cornerRemoved) {
@@ -75,6 +93,12 @@ export function chamferCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius:
   return [first, make2dSegmentCurve(first.lastPoint, second.firstPoint), second];
 }
 
+/**
+ * Insert a dogbone fillet at an inner corner for CNC milling clearance.
+ *
+ * Creates a circular arc that extends past the original corner so that a
+ * round end-mill of the given radius can fully reach the corner.
+ */
 export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
   const tgt1 = normalize2d(firstCurve.tangentAt(1));
   const tgt2 = normalize2d(secondCurve.tangentAt(0));

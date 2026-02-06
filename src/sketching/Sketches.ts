@@ -6,6 +6,14 @@ import type { AnyShape } from '../topology/shapes.js';
 import type CompoundSketch from './CompoundSketch.js';
 import Sketch from './Sketch.js';
 
+/**
+ * Batch wrapper around multiple {@link Sketch} or {@link CompoundSketch} instances.
+ *
+ * Applies the same operation (extrude, revolve, etc.) to every contained sketch
+ * and returns the results combined into a single compound shape.
+ *
+ * @category Sketching
+ */
 export default class Sketches {
   sketches: Array<Sketch | CompoundSketch>;
 
@@ -13,11 +21,13 @@ export default class Sketches {
     this.sketches = sketches;
   }
 
+  /** Return all wires combined into a single compound shape. */
   wires(): AnyShape {
     const wires = this.sketches.map((s) => (s instanceof Sketch ? s.wire : s.wires));
     return compoundShapes(wires);
   }
 
+  /** Return all sketch faces combined into a single compound shape. */
   faces(): AnyShape {
     const faces = this.sketches.map((s) => s.face());
     return compoundShapes(faces);

@@ -30,6 +30,7 @@ export function initCast(shapesModule: typeof ShapesModule): void {
   _shapesModule = shapesModule;
 }
 
+/** String literal identifying a topological entity type for TopExp_Explorer iteration. */
 export type TopoEntity =
   | 'vertex'
   | 'edge'
@@ -41,12 +42,14 @@ export type TopoEntity =
   | 'compound'
   | 'shape';
 
+/** An OCCT shape after downcast — same underlying type, used for clarity. */
 export type GenericTopo = OcShape;
 
 // Lazily cached map: TopoEntity string → TopAbs enum value
 // Avoids creating a new object on every asTopo() call
 let _topoMap: Map<TopoEntity, OcType> | null = null;
 
+/** Convert a TopoEntity string to its OCCT TopAbs_ShapeEnum value. */
 export const asTopo = (entity: TopoEntity): OcType => {
   if (!_topoMap) {
     const oc = getKernel().oc;
@@ -67,6 +70,11 @@ export const asTopo = (entity: TopoEntity): OcType => {
   return _topoMap.get(entity)!;
 };
 
+/**
+ * Iterate over all sub-shapes of a given type within a shape.
+ *
+ * @remarks Uses the kernel adapter's iterShapes rather than direct TopExp_Explorer.
+ */
 export const iterTopo = function* iterTopo(
   shape: OcShape,
   topo: TopoEntity
@@ -91,6 +99,7 @@ export const iterTopo = function* iterTopo(
   }
 };
 
+/** Get the TopAbs_ShapeEnum type of an OCCT shape, returning Err for null shapes. */
 export const shapeType = (shape: OcShape): Result<OcType> => {
   if (shape.IsNull()) return err(typeCastError('NULL_SHAPE', 'This shape has no type, it is null'));
   return ok(shape.ShapeType());
@@ -118,6 +127,12 @@ function getDowncastMap() {
   return _downcastMap;
 }
 
+/**
+ * Downcast a generic TopoDS_Shape to its concrete OCCT type (e.g., TopoDS_Face).
+ *
+ * @remarks WASM requires explicit downcasting via `oc.TopoDS.Face_1()` etc.
+ * @returns Ok with the downcasted shape, or Err if the shape type is unknown.
+ */
 export function downcast(shape: OcShape): Result<GenericTopo> {
   return andThen(shapeType(shape), (myType) => {
     const caster = getDowncastMap().get(myType);
@@ -151,6 +166,13 @@ function getCastMap() {
   return _castMap;
 }
 
+/**
+ * Cast a raw OCCT shape to its corresponding brepjs wrapper class (Vertex, Edge, Face, etc.).
+ *
+ * Performs downcast + class instantiation in one step.
+ *
+ * @returns Ok with a typed AnyShape, or Err if the shape type is unknown.
+ */
 export function cast(shape: OcShape): Result<AnyShape> {
   return andThen(shapeType(shape), (st) => {
     const Klass = getCastMap().get(st);
@@ -160,6 +182,7 @@ export function cast(shape: OcShape): Result<AnyShape> {
   });
 }
 
+/** Type guard: return true if the shape is a 3D body (Shell, Solid, CompSolid, or Compound). */
 export function isShape3D(shape: AnyShape): shape is Shape3D {
   const mod = getShapesModuleSync();
   return (
@@ -170,16 +193,24 @@ export function isShape3D(shape: AnyShape): shape is Shape3D {
   );
 }
 
+/** Type guard: return true if the shape is a Wire. */
 export function isWire(shape: AnyShape): shape is Wire {
   const mod = getShapesModuleSync();
   return shape instanceof mod.Wire;
 }
 
+/** Type guard: return true if the shape is a CompSolid. */
 export function isCompSolid(shape: AnyShape): shape is CompSolid {
   const mod = getShapesModuleSync();
   return shape instanceof mod.CompSolid;
 }
 
+/**
+ * Deserialize a shape from a BREP string representation.
+ *
+ * @param data - BREP string produced by serializeShape().
+ * @returns Ok with the deserialized shape, or Err if parsing fails.
+ */
 export function deserializeShape(data: string): Result<AnyShape> {
   const oc = getKernel().oc;
   return cast(oc.BRepToolsWrapper.Read(data));

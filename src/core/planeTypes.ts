@@ -13,6 +13,12 @@ export interface Plane {
   readonly zDir: Vec3;
 }
 
+/**
+ * Named standard planes.
+ *
+ * Axis pairs (`'XY'`, `'YZ'`, …) and view names (`'front'`, `'top'`, …)
+ * are both supported. The axis-pair order determines the normal direction.
+ */
 export type PlaneName =
   | 'XY'
   | 'YZ'
@@ -27,4 +33,5 @@ export type PlaneName =
   | 'top'
   | 'bottom';
 
+/** Accept either an explicit {@link Plane} object or a {@link PlaneName} string. */
 export type PlaneInput = Plane | PlaneName;

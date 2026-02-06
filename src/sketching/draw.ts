@@ -72,6 +72,23 @@ function wrapBlueprintResult(
  * draw a shape, or use some of the canned shapes like circles or rectangles.
  */
 
+/**
+ * Immutable wrapper around a 2D shape ({@link Blueprint}, {@link CompoundBlueprint}, or {@link Blueprints}).
+ *
+ * A Drawing can be transformed (translate, rotate, scale, mirror), combined
+ * with Boolean operations (cut, fuse, intersect), filleted/chamfered,
+ * serialized, and ultimately projected onto a 3D plane via `sketchOnPlane`.
+ *
+ * @example
+ * ```ts
+ * const profile = drawRectangle(40, 20)
+ *   .fillet(3)
+ *   .cut(drawCircle(5).translate(10, 0));
+ * const sketch = profile.sketchOnPlane("XY");
+ * ```
+ *
+ * @category Drawing
+ */
 export class Drawing {
   private readonly innerShape: Shape2D;
 
@@ -79,10 +96,12 @@ export class Drawing {
     this.innerShape = innerShape;
   }
 
+  /** Create an independent deep copy of this drawing. */
   clone(): Drawing {
     return new Drawing(this.innerShape?.clone() || null);
   }
 
+  /** Serialize the drawing to a JSON string for persistence or transfer. */
   serialize(): string {
     if (!this.innerShape) {
       return JSON.stringify({ type: 'Empty' });
@@ -114,27 +133,33 @@ export class Drawing {
     return JSON.stringify(serializeHelper(this.innerShape));
   }
 
+  /** Get the axis-aligned 2D bounding box of this drawing. */
   get boundingBox(): BoundingBox2d {
     if (!this.innerShape) return new BoundingBox2d();
     return this.innerShape.boundingBox;
   }
 
+  /** Stretch the drawing by a ratio along a direction from an origin point. */
   stretch(ratio: number, direction: Point2D, origin: Point2D): Drawing {
     if (!this.innerShape) return new Drawing();
     return new Drawing(this.innerShape.stretch(ratio, direction, origin));
   }
 
+  /** Return a human-readable string representation of the drawing. */
   get repr(): string {
     if (this.innerShape === null) return '=== empty shape';
     return this.innerShape.repr;
   }
 
+  /** Rotate the drawing by an angle (in degrees) around an optional center point. */
   rotate(angle: number, center?: Point2D): Drawing {
     if (!this.innerShape) return new Drawing();
     return new Drawing(this.innerShape.rotate(angle, center));
   }
 
+  /** Translate the drawing by horizontal and vertical distances. */
   translate(xDist: number, yDist: number): Drawing;
+  /** Translate the drawing by a 2D vector. */
   translate(translationVector: Point2D): Drawing;
   translate(xDistOrPoint: number | Point2D, yDist = 0): Drawing {
     if (!this.innerShape) return new Drawing();
@@ -142,11 +167,13 @@ export class Drawing {
     return new Drawing(this.innerShape.translate(xDistOrPoint as any, yDist));
   }
 
+  /** Uniformly scale the drawing by a factor around an optional center point. */
   scale(scaleFactor: number, center?: Point2D): Drawing {
     if (!this.innerShape) return new Drawing();
     return new Drawing(this.innerShape.scale(scaleFactor, center));
   }
 
+  /** Mirror the drawing about a point or a line defined by direction and origin. */
   mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Drawing {
     if (!this.innerShape) return new Drawing();
     return new Drawing(this.innerShape.mirror(centerOrDirection, origin, mode));
@@ -201,7 +228,9 @@ export class Drawing {
     return new Drawing(chamfer2D(this.innerShape, radius, finder));
   }
 
+  /** Project this drawing onto a 3D plane, producing a Sketch or Sketches. */
   sketchOnPlane(inputPlane: Plane): SketchInterface | Sketches;
+  /** Project this drawing onto a named plane at an optional origin. */
   sketchOnPlane(inputPlane?: PlaneName, origin?: PointInput | number): SketchInterface | Sketches;
   sketchOnPlane(
     inputPlane?: PlaneName | Plane,
@@ -212,12 +241,14 @@ export class Drawing {
     return wrapBlueprintResult(this.innerShape, result);
   }
 
+  /** Project this drawing onto a 3D face surface with the given scale mode. */
   sketchOnFace(face: Face, scaleMode: ScaleMode): SketchInterface | Sketches {
     if (!this.innerShape) bug('Drawing', 'Trying to sketch an empty drawing');
     const result = this.innerShape.sketchOnFace(face, scaleMode);
     return wrapBlueprintResult(this.innerShape, result);
   }
 
+  /** Punch the drawing's profile as a hole through a 3D shape on the given face. */
   punchHole(
     shape: AnyShape,
     faceFinder: SingleFace,
@@ -231,22 +262,27 @@ export class Drawing {
     return this.innerShape.punchHole(shape, faceFinder, options);
   }
 
+  /** Export the drawing as a complete SVG string. */
   toSVG(margin?: number): string {
     return this.innerShape?.toSVG(margin) || '';
   }
 
+  /** Return the SVG `viewBox` attribute string for this drawing. */
   toSVGViewBox(margin = 1): string {
     return this.innerShape?.toSVGViewBox(margin) || '';
   }
 
+  /** Return the SVG `<path>` `d` attribute strings for this drawing. */
   toSVGPaths(): string[] | string[][] {
     return this.innerShape?.toSVGPaths() || [];
   }
 
+  /** Offset the drawing contour by a signed distance (positive = outward). */
   offset(distance: number, offsetConfig: Offset2DConfig = {}): Drawing {
     return new Drawing(offsetFn(this.innerShape, distance, offsetConfig));
   }
 
+  /** Approximate the drawing curves for a target format (currently only `'svg'`). */
   approximate(target: 'svg' | 'arcs', options: ApproximationOptions = {}): Drawing {
     if (target !== 'svg') {
       bug('Drawing.approximate', "Only 'svg' is supported for now");
@@ -254,6 +290,7 @@ export class Drawing {
     return new Drawing(approximateForSVG(this.innerShape, options));
   }
 
+  /** Access the underlying {@link Blueprint}, throwing if the drawing is compound. */
   get blueprint(): Blueprint {
     if (!(this.innerShape instanceof Blueprint)) {
       if (
@@ -285,24 +322,29 @@ export class DrawingPen extends BaseSketcher2d implements GenericSketcher<Drawin
     this.pendingCurves = [];
   }
 
+  /** Finish drawing and return the resulting {@link Drawing} (does not close the path). */
   done(): Drawing {
     return new Drawing(new Blueprint(this.pendingCurves));
   }
 
+  /** Close the path with a straight line to the start point and return the Drawing. */
   close(): Drawing {
     this._closeSketch();
     return this.done();
   }
 
+  /** Close the path by mirroring all curves about the line from first to last point. */
   closeWithMirror(): Drawing {
     this._closeWithMirror();
     return this.close();
   }
 
   /**
-   * Stop drawing, make sure the sketch is closed (by adding a straight line to
-   * from the last point to the first), change the corner between the last and the
-   * first segments and returns the sketch.
+   * Close the path and apply a custom corner treatment between the last and first segments.
+   *
+   * @param radius - Fillet/chamfer radius.
+   * @param mode - Corner treatment type.
+   * @returns The closed {@link Drawing}.
    */
   closeWithCustomCorner(radius: number, mode: 'fillet' | 'chamfer' = 'fillet'): Drawing {
     this._closeSketch();
@@ -365,6 +407,7 @@ export function drawRoundedRectangle(
 ): Drawing {
   return new Drawing(roundedRectangleBlueprint(width, height, r));
 }
+/** Alias for {@link drawRoundedRectangle}. Creates a rectangle (sharp corners when `r` is 0). */
 export const drawRectangle = drawRoundedRectangle;
 
 /**

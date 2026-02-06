@@ -14,6 +14,15 @@ import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
 import { Solid } from '../topology/shapes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
 
+/**
+ * Extrude a face along a vector to produce a solid (OOP API).
+ *
+ * @param face - The planar face to extrude.
+ * @param extrusionVec - Direction and magnitude of the extrusion.
+ * @returns A new {@link Solid} created by the linear extrusion.
+ *
+ * @see {@link extrudeFns!extrudeFace | extrudeFace} for the functional API equivalent.
+ */
 export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -26,6 +35,17 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid 
   return solid;
 };
 
+/**
+ * Revolve a face around an axis to create a solid of revolution (OOP API).
+ *
+ * @param face - The face to revolve.
+ * @param center - A point on the rotation axis. Defaults to the origin.
+ * @param direction - Direction vector of the rotation axis. Defaults to Z-up.
+ * @param angle - Rotation angle in degrees (0-360). Defaults to a full revolution.
+ * @returns `Result` containing the revolved 3D shape, or an error if the result is not 3D.
+ *
+ * @see {@link extrudeFns!revolveFace | revolveFace} for the functional API equivalent.
+ */
 export const revolution = (
   face: Face,
   center: PointInput = [0, 0, 0],
@@ -149,10 +169,34 @@ function genericSweep(
   return ok(shape);
 }
 
+/**
+ * Sweep a wire profile along a spine wire to create a 3D shape (OOP API).
+ *
+ * Supports Frenet framing, auxiliary spine twist, scaling laws, contact
+ * detection, and configurable corner transition modes. Overloaded: pass
+ * `shellMode: true` to receive `[Shape3D, Wire, Wire]` instead of a solid.
+ *
+ * @remarks
+ * In WASM, `BRepOffsetAPI_MakePipeShell` supports only a single `Add_1` call
+ * per builder. Multi-profile sweeps will silently ignore additional profiles.
+ *
+ * @see {@link extrudeFns!sweep | sweep} for the functional API equivalent.
+ */
 export { genericSweep };
 
 export type { ExtrusionProfile } from './extrudeUtils.js';
 
+/**
+ * Extrude a wire along a normal constrained to a support surface (OOP API).
+ *
+ * @param wire - The profile wire to sweep.
+ * @param center - Start point of the extrusion spine.
+ * @param normal - Direction and length of the extrusion.
+ * @param support - OCCT support surface that constrains the sweep.
+ * @returns `Result` containing the swept 3D shape.
+ *
+ * @see {@link extrudeFns!supportExtrude | supportExtrude (Fns)} for the functional equivalent.
+ */
 export const supportExtrude = (
   wire: Wire,
   center: PointInput,
@@ -213,6 +257,15 @@ function complexExtrude(
   return result;
 }
 
+/**
+ * Extrude a wire along a normal with optional profile scaling (OOP API).
+ *
+ * Builds a linear spine from `center` to `center + normal` and sweeps the
+ * profile wire. When `profileShape` is provided, a scaling law modulates the
+ * cross-section size along the path. Overloaded for solid vs. shell mode.
+ *
+ * @see {@link extrudeFns!complexExtrude | complexExtrude (Fns)} for the functional equivalent.
+ */
 export { complexExtrude };
 
 function twistExtrude(
@@ -262,4 +315,12 @@ function twistExtrude(
   gc();
   return result;
 }
+/**
+ * Extrude a wire along a normal with helical twist and optional scaling (OOP API).
+ *
+ * Constructs a helical auxiliary spine that rotates the profile over the
+ * extrusion length. Overloaded for solid vs. shell mode.
+ *
+ * @see {@link extrudeFns!twistExtrude | twistExtrude (Fns)} for the functional equivalent.
+ */
 export { twistExtrude };

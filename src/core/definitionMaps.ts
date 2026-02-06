@@ -2,6 +2,7 @@ import { getKernel } from '../kernel/index.js';
 import { type Result, ok, err } from './result.js';
 import { typeCastError } from './errors.js';
 
+/** Discriminant for the geometric type of a 3D curve. */
 export type CurveType =
   | 'LINE'
   | 'CIRCLE'
@@ -36,6 +37,11 @@ const getCurveTypesMap = (refresh?: boolean): Map<unknown, CurveType> => {
   return CURVE_TYPES_MAP;
 };
 
+/**
+ * Map an OCCT `GeomAbs_CurveType` enum value to its string discriminant.
+ *
+ * @returns `Ok<CurveType>` on success, or `Err` if the enum value is unrecognised.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value type
 export const findCurveType = (type: any): Result<CurveType> => {
   let shapeType = getCurveTypesMap().get(type);

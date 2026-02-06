@@ -95,12 +95,15 @@ const solidFromShellGenerator = (
 };
 
 /**
- * A group of sketches that should correspond to a unique face (i.e. an outer
- * sketch, and multiple holes within this sketch.
+ * Represent a face with holes as a group of sketches (one outer + zero or more inner).
  *
- * All the sketches should share the same base face (or surface)
+ * All contained sketches must share the same base surface. The first sketch is
+ * treated as the outer boundary; subsequent sketches define holes.
  *
- * Ideally generated from a `CompoundBlueprint`
+ * Typically produced from a {@link CompoundBlueprint} via `sketchOnPlane`.
+ *
+ * @see {@link Sketch} for single-wire profiles without holes.
+ * @category Sketching
  */
 export default class CompoundSketch implements SketchInterface {
   sketches: Sketch[];
@@ -111,26 +114,31 @@ export default class CompoundSketch implements SketchInterface {
     this.sketches = sketches;
   }
 
+  /** Release all OCCT resources held by every sub-sketch. */
   delete() {
     this.sketches.forEach((sketch) => {
       sketch.delete();
     });
   }
 
+  /** Get the outer boundary sketch (the first in the array). */
   get outerSketch() {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return this.sketches[0]!;
   }
 
+  /** Get the hole sketches (all but the first). */
   get innerSketches() {
     return this.sketches.slice(1);
   }
 
+  /** Return all wires (outer + holes) combined into a compound shape. */
   get wires() {
     const wires = this.sketches.map((s) => s.wire);
     return compoundShapes(wires);
   }
 
+  /** Build a face from the outer boundary with inner wires subtracted as holes. */
   face() {
     const baseFace = this.outerSketch.face();
     const newFace = addHolesInFace(
@@ -141,6 +149,12 @@ export default class CompoundSketch implements SketchInterface {
     return newFace;
   }
 
+  /**
+   * Extrude the compound face (with holes) along the default or given direction.
+   *
+   * Supports twist and profile extrusions. For twist/profile modes each
+   * sub-sketch is extruded as a shell, then capped into a solid.
+   */
   extrude(
     extrusionDistance: number,
     {
@@ -206,6 +220,7 @@ export default class CompoundSketch implements SketchInterface {
     );
   }
 
+  /** Loft between this compound sketch and another with matching sub-sketch counts. */
   loftWith(otherCompound: this, loftConfig: LoftConfig): Shape3D {
     if (this.sketches.length !== otherCompound.sketches.length)
       bug(

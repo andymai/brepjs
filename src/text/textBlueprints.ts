@@ -14,6 +14,18 @@ import opentype from 'opentype.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
 const FONT_REGISTER: Record<string, any> = {};
 
+/**
+ * Load and register an OpenType/TrueType font for use with text drawing functions.
+ *
+ * The font is fetched (if a URL string) or parsed (if an ArrayBuffer) and
+ * stored in an internal registry keyed by `fontFamily`. The first font loaded
+ * is also registered as `'default'`.
+ *
+ * @param fontPath - URL string or raw ArrayBuffer of the font file.
+ * @param fontFamily - Registry key for later retrieval (defaults to `'default'`).
+ * @param force - If true, overwrite a previously loaded font with the same key.
+ * @returns The parsed opentype.js Font object.
+ */
 export async function loadFont(
   fontPath: string | ArrayBuffer,
   fontFamily = 'default',
@@ -56,6 +68,12 @@ export async function loadFont(
   return font;
 }
 
+/**
+ * Retrieve a previously loaded font by family name.
+ *
+ * @param fontFamily - Registry key (defaults to `'default'`).
+ * @returns The opentype.js Font object, or `undefined` if not loaded.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
 export const getFont = (fontFamily = 'default'): any => {
   return FONT_REGISTER[fontFamily];
@@ -105,6 +123,17 @@ const sketchFontCommands = function* (commands: any[]) {
   }
 };
 
+/**
+ * Convert a text string into 2D Blueprints using a loaded font.
+ *
+ * Each glyph outline is traced as a series of line/bezier curves, then
+ * organised into a {@link Blueprints} collection (outer contours + holes).
+ *
+ * @param text - The string to render.
+ * @returns A Blueprints instance representing the text outlines.
+ *
+ * @remarks Requires a font to be loaded via {@link loadFont} before use.
+ */
 export function textBlueprints(
   text: string,
   { startX = 0, startY = 0, fontSize = 16, fontFamily = 'default' } = {}
@@ -119,6 +148,24 @@ export function textBlueprints(
   return organiseBlueprints(blueprints).mirror([0, 0]);
 }
 
+/**
+ * Render text as 3D sketch outlines on a plane.
+ *
+ * Combines {@link textBlueprints} with `sketchOnPlane` to produce a
+ * {@link Sketches} collection that can be extruded, revolved, etc.
+ *
+ * @param text - The string to render.
+ * @param textConfig - Font size, family, and start position.
+ * @param planeConfig - Plane name / origin to sketch on (defaults to XY at origin).
+ * @returns A {@link Sketches} collection of the text outlines.
+ *
+ * @example
+ * ```ts
+ * await loadFont("/fonts/Roboto.ttf");
+ * const textSketches = sketchText("Hello", { fontSize: 24 });
+ * const solid = textSketches.extrude(2);
+ * ```
+ */
 export function sketchText(
   text: string,
   textConfig?: {

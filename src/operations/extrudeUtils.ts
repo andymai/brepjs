@@ -50,8 +50,16 @@ export interface ExtrusionProfile {
 // ---------------------------------------------------------------------------
 
 /**
- * Build an OCCT Law from an extrusion profile.
- * The law defines how the profile scales along the extrusion path.
+ * Build an OCCT scaling law from an extrusion profile configuration.
+ *
+ * The law defines how the cross-section scales along the extrusion path.
+ * An `'s-curve'` profile produces smooth ease-in/ease-out scaling, while
+ * `'linear'` produces constant-rate scaling.
+ *
+ * @param extrusionLength - Total length of the extrusion path.
+ * @param profile - Profile configuration with curve type and end scale factor.
+ * @returns `Result` containing a trimmed OCCT `Law_Function`, or a validation error
+ *   if the profile type is unsupported.
  */
 export function buildLawFromProfile(
   extrusionLength: number,

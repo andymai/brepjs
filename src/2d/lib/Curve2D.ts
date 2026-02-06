@@ -16,12 +16,23 @@ import { pnt } from './ocWrapper.js';
 import { reprPnt } from './utils.js';
 import { distance2d, samePoint } from './vectorOperations.js';
 
+/**
+ * Deserialize a curve from a string produced by {@link Curve2D.serialize}.
+ *
+ * @returns A new `Curve2D` restored from the serialized data.
+ */
 export function deserializeCurve2D(data: string): Curve2D {
   const oc = getKernel().oc;
   const handle = oc.GeomToolsWrapper.Read(data);
   return new Curve2D(handle);
 }
 
+/**
+ * Handle-wrapped 2D parametric curve backed by an OCCT `Geom2d_Curve`.
+ *
+ * Provides evaluation, splitting, projection, tangent queries, and distance
+ * computations on a single parametric curve.
+ */
 export class Curve2D extends WrappingObj<OcType> {
   _boundingBox: null | BoundingBox2d;
   private _firstPoint: Point2D | null = null;
@@ -35,6 +46,7 @@ export class Curve2D extends WrappingObj<OcType> {
     this._boundingBox = null;
   }
 
+  /** Compute (and cache) the 2D bounding box of this curve. */
   get boundingBox() {
     if (this._boundingBox) return this._boundingBox;
     const oc = getKernel().oc;
@@ -46,19 +58,23 @@ export class Curve2D extends WrappingObj<OcType> {
     return this._boundingBox;
   }
 
+  /** Return a human-readable representation, e.g. `LINE (0,0) - (1,1)`. */
   get repr() {
     return `${this.geomType} ${reprPnt(this.firstPoint)} - ${reprPnt(this.lastPoint)}`;
   }
 
+  /** Access the underlying OCCT `Geom2d_Curve` (unwrapped from its handle). */
   get innerCurve(): OcType {
     return this.wrapped.get();
   }
 
+  /** Serialize this curve to a string that can be restored with {@link deserializeCurve2D}. */
   serialize(): string {
     const oc = getKernel().oc;
     return oc.GeomToolsWrapper.Write(this.wrapped);
   }
 
+  /** Evaluate the curve at the given parameter, returning the 2D point. */
   value(parameter: number): Point2D {
     const p = this.innerCurve.Value(parameter);
     const v: Point2D = [p.X(), p.Y()];
@@ -66,6 +82,7 @@ export class Curve2D extends WrappingObj<OcType> {
     return v;
   }
 
+  /** Return the point at the start of the curve (cached after first access). */
   get firstPoint(): Point2D {
     if (this._firstPoint === null) {
       this._firstPoint = this.value(this.firstParameter);
@@ -73,6 +90,7 @@ export class Curve2D extends WrappingObj<OcType> {
     return this._firstPoint;
   }
 
+  /** Return the point at the end of the curve (cached after first access). */
   get lastPoint(): Point2D {
     if (this._lastPoint === null) {
       this._lastPoint = this.value(this.lastParameter);
@@ -80,19 +98,23 @@ export class Curve2D extends WrappingObj<OcType> {
     return this._lastPoint;
   }
 
+  /** Return the parameter value at the start of the curve. */
   get firstParameter(): number {
     return this.innerCurve.FirstParameter();
   }
 
+  /** Return the parameter value at the end of the curve. */
   get lastParameter(): number {
     return this.innerCurve.LastParameter();
   }
 
+  /** Create a `Geom2dAdaptor_Curve` for algorithmic queries (caller must delete). */
   adaptor(): OcType {
     const oc = getKernel().oc;
     return new oc.Geom2dAdaptor_Curve_2(this.wrapped);
   }
 
+  /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
   get geomType(): CurveType {
     const adaptor = this.adaptor();
     const curveType = unwrap(findCurveType(adaptor.GetType()));
@@ -100,6 +122,7 @@ export class Curve2D extends WrappingObj<OcType> {
     return curveType;
   }
 
+  /** Create an independent deep copy of this curve. */
   clone(): Curve2D {
     const cloned = new Curve2D(this.innerCurve.Copy());
     // Copy cached endpoint values to avoid redundant recalculation
@@ -108,6 +131,7 @@ export class Curve2D extends WrappingObj<OcType> {
     return cloned;
   }
 
+  /** Reverse the orientation of this curve in place. */
   reverse(): void {
     this.innerCurve.Reverse();
     // Swap cached points (first becomes last, last becomes first)
@@ -169,6 +193,7 @@ export class Curve2D extends WrappingObj<OcType> {
     );
   }
 
+  /** Compute the minimum distance from this curve to a point or another curve. */
   distanceFrom(element: Curve2D | Point2D): number {
     if (isPoint2D(element)) {
       return this.distanceFromPoint(element);
@@ -177,10 +202,16 @@ export class Curve2D extends WrappingObj<OcType> {
     return this.distanceFromCurve(element);
   }
 
+  /** Test whether a point lies on the curve within a tight tolerance (1e-9). */
   isOnCurve(point: Point2D): boolean {
     return this.distanceFromPoint(point) < 1e-9;
   }
 
+  /**
+   * Project a point onto the curve and return its parameter value.
+   *
+   * @returns `Ok(parameter)` when the point is on the curve, or an error result otherwise.
+   */
   parameter(point: Point2D, precision = 1e-9): Result<number> {
     const oc = getKernel().oc;
     const r = gcWithScope();
@@ -210,6 +241,11 @@ export class Curve2D extends WrappingObj<OcType> {
     return ok(lowerDistanceParameter);
   }
 
+  /**
+   * Compute the tangent vector at a parameter position or at the projection of a point.
+   *
+   * @param index - A normalized parameter (0..1) or a Point2D to project onto the curve.
+   */
   tangentAt(index: number | Point2D): Point2D {
     const oc = getKernel().oc;
     const [r, gc] = localGC();
@@ -234,6 +270,11 @@ export class Curve2D extends WrappingObj<OcType> {
     return tgtVec;
   }
 
+  /**
+   * Split this curve at the given points or parameter values.
+   *
+   * @returns An array of sub-curves whose union covers the original curve.
+   */
   splitAt(points: Point2D[] | number[], precision = 1e-9): Curve2D[] {
     const oc = getKernel().oc;
     const r = gcWithScope();

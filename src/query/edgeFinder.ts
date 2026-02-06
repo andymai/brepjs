@@ -9,15 +9,28 @@ import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
 import { Finder3d } from './generic3dfinder.js';
 
 /**
- * With an EdgeFinder you can apply a set of filters to find specific edges
- * within a shape.
+ * Find edges within a shape by chaining declarative filters.
+ *
+ * Filters are combined with AND logic by default. Use `.either()` for OR
+ * and `.not()` for negation (inherited from {@link Finder3d}).
+ *
+ * @example
+ * ```ts
+ * const topEdges = new EdgeFinder()
+ *   .inDirection("Z")
+ *   .ofLength(10)
+ *   .find(box);
+ * ```
  *
  * @category Finders
  */
 export class EdgeFinder extends Finder3d<Edge> {
   /**
-   * Filter to find edges that are in a certain direction
+   * Filter to find edges that are aligned with a direction.
    *
+   * Equivalent to `atAngleWith(direction, 0)`.
+   *
+   * @param direction - An axis name ("X", "Y", "Z") or arbitrary vector.
    * @category Filter
    */
   inDirection(direction: Direction | PointInput): this {
@@ -25,8 +38,9 @@ export class EdgeFinder extends Finder3d<Edge> {
   }
 
   /**
-   * Filter to find edges of a certain length
+   * Filter to find edges of a certain length.
    *
+   * @param length - Exact length to match, or a predicate for custom comparison.
    * @category Filter
    */
   ofLength(length: number | ((l: number) => boolean)): this {
@@ -54,9 +68,10 @@ export class EdgeFinder extends Finder3d<Edge> {
   /**
    * Filter to find edges that are parallel to a plane.
    *
-   * Note that this will work only in lines (but the method does not
-   * check this assumption).
+   * @remarks Only meaningful for linear edges. Non-linear edges may
+   * produce unexpected results because only the tangent direction is tested.
    *
+   * @param plane - A standard plane name ("XY", "XZ", "YZ"), a Plane object, or a Face.
    * @category Filter
    */
   parallelTo(plane: Plane | StandardPlane | Face): this {
@@ -74,11 +89,16 @@ export class EdgeFinder extends Finder3d<Edge> {
   }
 
   /**
-   * Filter to find edges that within a plane.
+   * Filter to find edges that lie within a plane.
    *
-   * Note that this will work only in lines (but the method does not
-   * check this assumption).
+   * Checks both that the edge is parallel to the plane and that its
+   * start point projects onto the plane.
    *
+   * @remarks Only meaningful for linear edges. Non-linear edges may
+   * produce unexpected results.
+   *
+   * @param inputPlane - A plane name or Plane object.
+   * @param origin - Plane origin offset (number for standard planes, or a point).
    * @category Filter
    */
   inPlane(inputPlane: PlaneName | Plane, origin?: PointInput | number): this {

@@ -16,15 +16,36 @@ import {
 
 export type { SupportedUnit } from './exporterUtils.js';
 
+/**
+ * Wrapper around an XCAF document used for STEP assembly export.
+ *
+ * @see {@link createAssembly} to construct an instance.
+ */
 export class AssemblyExporter extends WrappingObj<OcType> {}
 
+/** Configuration for a single shape within an assembly export. */
 export type ShapeConfig = {
+  /** The shape to include in the assembly. */
   shape: AnyShape;
+  /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
   color?: string;
+  /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */
   alpha?: number;
+  /** Display name for the shape node. Auto-generated UUID if omitted. */
   name?: string;
 };
 
+/**
+ * Create an XCAF assembly document from a list of shape configurations.
+ *
+ * Each shape is added as a named, colored node in the XCAF document tree.
+ * The returned {@link AssemblyExporter} wraps the live `TDocStd_Document` and
+ * must be deleted after use to avoid memory leaks.
+ *
+ * @returns An {@link AssemblyExporter} wrapping the XCAF document.
+ *
+ * @see {@link exportSTEP} which calls this internally to produce a STEP blob.
+ */
 export function createAssembly(shapes: ShapeConfig[] = []): AssemblyExporter {
   const oc = getKernel().oc;
 
@@ -56,6 +77,29 @@ export function createAssembly(shapes: ShapeConfig[] = []): AssemblyExporter {
   return new AssemblyExporter(doc);
 }
 
+/**
+ * Export shapes as a STEP file blob with optional unit configuration.
+ *
+ * Builds an XCAF assembly, configures the STEP writer, and writes to an
+ * in-memory filesystem. The resulting `Blob` can be saved or downloaded directly.
+ *
+ * @param shapes - Shapes to include in the STEP file.
+ * @param options - Optional unit settings for the STEP writer.
+ * @param options.unit - Write unit (e.g. `'MM'`, `'INCH'`).
+ * @param options.modelUnit - Model unit; defaults to the write unit.
+ * @returns `Result` containing a `Blob` with MIME type `application/STEP`.
+ *
+ * @example
+ * ```ts
+ * const result = exportSTEP(
+ *   [{ shape: myBox, color: '#00ff00', name: 'box' }],
+ *   { unit: 'MM' }
+ * );
+ * if (result.ok) saveAs(result.value, 'model.step');
+ * ```
+ *
+ * @see {@link exporterFns!exportAssemblySTEP | exportAssemblySTEP} for the functional API equivalent.
+ */
 export function exportSTEP(
   shapes: ShapeConfig[] = [],
   { unit, modelUnit }: { unit?: SupportedUnit; modelUnit?: SupportedUnit } = {}

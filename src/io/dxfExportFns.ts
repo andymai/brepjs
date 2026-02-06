@@ -14,12 +14,17 @@ import type Blueprints from '../2d/blueprints/Blueprints.js';
 // Public types
 // ---------------------------------------------------------------------------
 
-/** A single DXF entity. */
+/**
+ * A single DXF entity (LINE or POLYLINE).
+ *
+ * LINE maps directly to a DXF LINE entity.
+ * POLYLINE maps to an LWPOLYLINE with optional closure.
+ */
 export type DXFEntity =
   | { type: 'LINE'; start: Point2D; end: Point2D; layer?: string }
   | { type: 'POLYLINE'; points: Point2D[]; closed?: boolean; layer?: string };
 
-/** Options for DXF export. */
+/** Options controlling DXF ASCII export formatting. */
 export interface DXFExportOptions {
   /** Default layer name for entities. Default: "0" */
   layer?: string;
@@ -32,7 +37,24 @@ export interface DXFExportOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Export DXF entities to a DXF ASCII string.
+ * Export DXF entities to a DXF R12 ASCII string.
+ *
+ * Produces a complete DXF document with HEADER, TABLES, ENTITIES, and EOF
+ * sections. Layer definitions are generated automatically from entities.
+ *
+ * @param entities - Array of LINE or POLYLINE entities to write.
+ * @param options - Layer name and formatting options.
+ * @returns A complete DXF ASCII string ready to save as a `.dxf` file.
+ *
+ * @example
+ * ```ts
+ * const entities: DXFEntity[] = [
+ *   { type: 'LINE', start: [0, 0], end: [10, 0] },
+ * ];
+ * const dxfString = exportDXF(entities);
+ * ```
+ *
+ * @see {@link blueprintToDXF} for a higher-level API that converts Blueprints directly.
  */
 export function exportDXF(entities: DXFEntity[], options?: DXFExportOptions): string {
   const layer = options?.layer ?? '0';
@@ -105,7 +127,20 @@ export function exportDXF(entities: DXFEntity[], options?: DXFExportOptions): st
 
 /**
  * Convert a Blueprint (or CompoundBlueprint/Blueprints) to a DXF string.
- * Each curve becomes a LINE (for straight segments) or an approximated POLYLINE.
+ *
+ * Each straight segment becomes a LINE entity; arcs, ellipses, splines,
+ * and other curves are approximated as LWPOLYLINE entities.
+ *
+ * @param drawing - A Blueprint, CompoundBlueprint, or Blueprints collection.
+ * @param options - Layer name and curve approximation settings.
+ * @returns A complete DXF ASCII string.
+ *
+ * @example
+ * ```ts
+ * const dxf = blueprintToDXF(myBlueprint, { curveSegments: 64 });
+ * ```
+ *
+ * @see {@link exportDXF} for the lower-level entity-based API.
  */
 export function blueprintToDXF(
   drawing: Blueprint | CompoundBlueprint | Blueprints,

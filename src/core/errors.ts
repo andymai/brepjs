@@ -9,6 +9,7 @@ export { bug, BrepBugError } from '../utils/bug.js';
 // Error kinds
 // ---------------------------------------------------------------------------
 
+/** High-level category for a brepjs error. */
 export type BrepErrorKind =
   | 'OCCT_OPERATION'
   | 'VALIDATION'
@@ -23,6 +24,11 @@ export type BrepErrorKind =
 // Error codes — typed constants for all known error code strings
 // ---------------------------------------------------------------------------
 
+/**
+ * Typed string constants for all known brepjs error codes, grouped by category.
+ *
+ * Use these instead of raw strings so that typos are caught at compile time.
+ */
 export const BrepErrorCode = {
   // OCCT operation errors
   BSPLINE_FAILED: 'BSPLINE_FAILED',
@@ -86,12 +92,20 @@ export const BrepErrorCode = {
   FINDER_NOT_UNIQUE: 'FINDER_NOT_UNIQUE',
 } as const;
 
+/** Union of all known error code string literals. */
 export type BrepErrorCode = (typeof BrepErrorCode)[keyof typeof BrepErrorCode];
 
 // ---------------------------------------------------------------------------
 // Error interface
 // ---------------------------------------------------------------------------
 
+/**
+ * Structured error returned inside `Result<T>` on failure.
+ *
+ * Every error carries a `kind` (category), a machine-readable `code`,
+ * and a human-readable `message`. Optional `cause` preserves the
+ * original exception, and `metadata` holds extra context.
+ */
 export interface BrepError {
   readonly kind: BrepErrorKind;
   readonly code: string;
@@ -116,6 +130,7 @@ function makeError(
   return base;
 }
 
+/** Create an error for a failed OCCT kernel operation. */
 export function occtError(
   code: string,
   message: string,
@@ -125,6 +140,7 @@ export function occtError(
   return makeError('OCCT_OPERATION', code, message, cause, metadata);
 }
 
+/** Create an error for invalid input parameters. */
 export function validationError(
   code: string,
   message: string,
@@ -134,6 +150,7 @@ export function validationError(
   return makeError('VALIDATION', code, message, cause, metadata);
 }
 
+/** Create an error for a failed shape type cast or conversion. */
 export function typeCastError(
   code: string,
   message: string,
@@ -143,6 +160,7 @@ export function typeCastError(
   return makeError('TYPE_CAST', code, message, cause, metadata);
 }
 
+/** Create an error for an invalid sketcher state transition. */
 export function sketcherStateError(
   code: string,
   message: string,
@@ -152,6 +170,7 @@ export function sketcherStateError(
   return makeError('SKETCHER_STATE', code, message, cause, metadata);
 }
 
+/** Create an error for a module initialisation failure. */
 export function moduleInitError(
   code: string,
   message: string,
@@ -161,6 +180,7 @@ export function moduleInitError(
   return makeError('MODULE_INIT', code, message, cause, metadata);
 }
 
+/** Create an error for a failed geometric computation. */
 export function computationError(
   code: string,
   message: string,
@@ -170,6 +190,7 @@ export function computationError(
   return makeError('COMPUTATION', code, message, cause, metadata);
 }
 
+/** Create an error for a file import/export failure. */
 export function ioError(
   code: string,
   message: string,
@@ -179,6 +200,7 @@ export function ioError(
   return makeError('IO', code, message, cause, metadata);
 }
 
+/** Create an error for a shape query failure (e.g. finder not unique). */
 export function queryError(
   code: string,
   message: string,

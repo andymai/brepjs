@@ -11,6 +11,17 @@ import { gcWithScope } from '../../core/disposal.js';
 
 const fromPnt = (pnt: OcType) => `${round2(pnt.X())} ${round2(pnt.Y())}`;
 
+/**
+ * Convert an adapted 2D curve to an SVG path command string.
+ *
+ * Supports lines, degree-1/2/3 Bezier curves, circular arcs, and elliptical
+ * arcs. The caller must ensure the curve has already been converted to an
+ * SVG-compatible type (see {@link approximateAsSvgCompatibleCurve}).
+ *
+ * @param adaptor - A `Geom2dAdaptor_Curve` for the segment to render.
+ * @param lastPoint - The endpoint of the curve, used as the SVG command target.
+ * @returns An SVG path command such as `L`, `Q`, `C`, or `A`.
+ */
 export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): string => {
   const oc = getKernel().oc;
   const r = gcWithScope();

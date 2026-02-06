@@ -11,27 +11,44 @@ class PhysicalProperties extends WrappingObj<OcType> {
   }
 }
 
-/** @deprecated Use measureVolumeProps() instead. */
+/**
+ * Volume physical properties wrapper around GProp_GProps.
+ *
+ * @deprecated Use {@link measureVolumeProps} from `measureFns.ts` instead.
+ */
 export class VolumePhysicalProperties extends PhysicalProperties {
   get volume(): number {
     return this.wrapped.Mass();
   }
 }
 
-/** @deprecated Use measureSurfaceProps() instead. */
+/**
+ * Surface physical properties wrapper around GProp_GProps.
+ *
+ * @deprecated Use {@link measureSurfaceProps} from `measureFns.ts` instead.
+ */
 export class SurfacePhysicalProperties extends PhysicalProperties {
   get area(): number {
     return this.wrapped.Mass();
   }
 }
 
-/** @deprecated Use measureLinearProps() instead. */
+/**
+ * Linear physical properties wrapper around GProp_GProps.
+ *
+ * @deprecated Use {@link measureLinearProps} from `measureFns.ts` instead.
+ */
 export class LinearPhysicalProperties extends PhysicalProperties {
   get length(): number {
     return this.wrapped.Mass();
   }
 }
 
+/**
+ * Compute surface properties (area, center of mass) for a face or 3D shape.
+ *
+ * @see {@link measureSurfaceProps} for the preferred functional API.
+ */
 export function measureShapeSurfaceProperties(shape: Face | Shape3D): SurfacePhysicalProperties {
   const oc = getKernel().oc;
   const properties = new oc.GProp_GProps_1();
@@ -39,6 +56,11 @@ export function measureShapeSurfaceProperties(shape: Face | Shape3D): SurfacePhy
   return new SurfacePhysicalProperties(properties);
 }
 
+/**
+ * Compute linear properties (length, center of mass) for any shape.
+ *
+ * @see {@link measureLinearProps} for the preferred functional API.
+ */
 export function measureShapeLinearProperties(shape: AnyShape): LinearPhysicalProperties {
   const oc = getKernel().oc;
   const properties = new oc.GProp_GProps_1();
@@ -46,6 +68,11 @@ export function measureShapeLinearProperties(shape: AnyShape): LinearPhysicalPro
   return new LinearPhysicalProperties(properties);
 }
 
+/**
+ * Compute volume properties (volume, center of mass) for a 3D shape.
+ *
+ * @see {@link measureVolumeProps} for the preferred functional API.
+ */
 export function measureShapeVolumeProperties(shape: Shape3D): VolumePhysicalProperties {
   const oc = getKernel().oc;
   const properties = new oc.GProp_GProps_1();
@@ -53,6 +80,11 @@ export function measureShapeVolumeProperties(shape: Shape3D): VolumePhysicalProp
   return new VolumePhysicalProperties(properties);
 }
 
+/**
+ * Get the volume of a 3D shape (OOP measurement API).
+ *
+ * @see {@link measureVolumeProps} for the preferred functional API.
+ */
 export function measureVolume(shape: Shape3D): number {
   const [r, gc] = localGC();
   const props = r(measureShapeVolumeProperties(shape));
@@ -61,6 +93,11 @@ export function measureVolume(shape: Shape3D): number {
   return v;
 }
 
+/**
+ * Get the surface area of a face or 3D shape (OOP measurement API).
+ *
+ * @see {@link measureSurfaceProps} for the preferred functional API.
+ */
 export function measureArea(shape: Face | Shape3D): number {
   const [r, gc] = localGC();
   const props = r(measureShapeSurfaceProperties(shape));
@@ -69,6 +106,11 @@ export function measureArea(shape: Face | Shape3D): number {
   return a;
 }
 
+/**
+ * Get the arc length of a shape (OOP measurement API).
+ *
+ * @see {@link measureLinearProps} for the preferred functional API.
+ */
 export function measureLength(shape: AnyShape): number {
   const [r, gc] = localGC();
   const props = r(measureShapeLinearProperties(shape));
@@ -77,7 +119,11 @@ export function measureLength(shape: AnyShape): number {
   return l;
 }
 
-/** @deprecated Use measureDistance() instead. */
+/**
+ * Stateful distance measurement tool wrapping BRepExtrema_DistShapeShape.
+ *
+ * @deprecated Use {@link measureDistance} or {@link createDistanceQuery} from `measureFns.ts` instead.
+ */
 export class DistanceTool extends WrappingObj<OcType> {
   constructor() {
     const oc = getKernel().oc;
@@ -96,6 +142,11 @@ export class DistanceTool extends WrappingObj<OcType> {
   }
 }
 
+/**
+ * Measure the minimum distance between two shapes.
+ *
+ * @see {@link measureDistance} from `measureFns.ts` for the preferred functional API.
+ */
 export function measureDistanceBetween(shape1: AnyShape, shape2: AnyShape): number {
   const [r, gc] = localGC();
   const tool = r(new DistanceTool());
@@ -104,7 +155,11 @@ export function measureDistanceBetween(shape1: AnyShape, shape2: AnyShape): numb
   return dist;
 }
 
-/** @deprecated Use createDistanceQuery() instead. */
+/**
+ * Reusable distance query that keeps the first shape loaded.
+ *
+ * @deprecated Use {@link createDistanceQuery} from `measureFns.ts` instead.
+ */
 export class DistanceQuery extends WrappingObj<OcType> {
   constructor(shape: AnyShape) {
     const oc = getKernel().oc;

@@ -23,14 +23,42 @@ import {
 
 export type { SupportedUnit } from './exporterUtils.js';
 
+/** Configuration for a single shape within a functional assembly export. */
 export interface ShapeConfig {
+  /** The branded shape to include in the assembly. */
   shape: AnyShape;
+  /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
   color?: string;
+  /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */
   alpha?: number;
+  /** Display name for the shape node. Auto-generated UUID if omitted. */
   name?: string;
 }
 
-/** Create an XCAF document from shape configs and export as STEP blob. */
+/**
+ * Create an XCAF document from shape configs and export as a STEP blob.
+ *
+ * Builds an in-memory XCAF assembly with named, colored shape nodes, writes
+ * it through `STEPCAFControl_Writer`, and returns the file contents as a
+ * `Blob`. The XCAF document is deleted after export to avoid memory leaks.
+ *
+ * @param shapes - Shapes to include in the STEP file.
+ * @param options - Optional unit settings for the STEP writer.
+ * @param options.unit - Write unit (e.g. `'MM'`, `'INCH'`).
+ * @param options.modelUnit - Model unit; defaults to the write unit.
+ * @returns `Result` containing a `Blob` with MIME type `application/STEP`.
+ *
+ * @example
+ * ```ts
+ * const result = exportAssemblySTEP(
+ *   [{ shape: myBox, color: '#00ff00', name: 'box' }],
+ *   { unit: 'MM' }
+ * );
+ * if (result.ok) saveAs(result.value, 'model.step');
+ * ```
+ *
+ * @see {@link exporters!exportSTEP | exportSTEP} for the OOP API equivalent.
+ */
 export function exportAssemblySTEP(
   shapes: ShapeConfig[] = [],
   { unit, modelUnit }: { unit?: SupportedUnit; modelUnit?: SupportedUnit } = {}

@@ -8,6 +8,11 @@ import { fuseBlueprints, cutBlueprints, intersectBlueprints } from './booleanOpe
 import type { Point2D } from '../lib/index.js';
 import { intersectCurves, removeDuplicatePoints } from '../lib/index.js';
 
+/**
+ * Union type for all 2D shape representations, including `null` for empty results.
+ *
+ * Used throughout the 2D boolean API as both input and output of operations.
+ */
 export type Shape2D = Blueprint | Blueprints | CompoundBlueprint | null;
 
 const genericIntersects = (
@@ -195,6 +200,25 @@ const fuseCompoundWithCompound = (first: CompoundBlueprint, second: CompoundBlue
   ]);
 };
 
+/**
+ * Compute the boolean union of two 2D shapes.
+ *
+ * Handles all combinations of {@link Blueprint}, {@link CompoundBlueprint},
+ * {@link Blueprints}, and `null`. When both inputs are simple blueprints the
+ * operation delegates to {@link fuseBlueprints}; compound and multi-blueprint
+ * cases are decomposed recursively.
+ *
+ * @param first - First operand (or `null` for empty).
+ * @param second - Second operand (or `null` for empty).
+ * @returns The fused shape, or `null` if both operands are empty.
+ *
+ * @example
+ * ```ts
+ * const union = fuse2D(circleBlueprint, squareBlueprint);
+ * ```
+ *
+ * @see {@link fuseBlueprint2D} for the functional API wrapper.
+ */
 export const fuse2D = (
   first: Shape2D,
   second: Shape2D
@@ -264,6 +288,24 @@ const mergeNonIntersecting = (shapes: Shape2D[]) => {
   return new Blueprints(exploded);
 };
 
+/**
+ * Compute the boolean difference of two 2D shapes (first minus second).
+ *
+ * Removes the region covered by `second` from `first`. When the tool is fully
+ * inside the base, the result is a {@link CompoundBlueprint} (base with a
+ * hole).
+ *
+ * @param first - Base shape to cut from.
+ * @param second - Tool shape to subtract.
+ * @returns The remaining shape, or `null` if nothing remains.
+ *
+ * @example
+ * ```ts
+ * const withHole = cut2D(outerRect, innerCircle);
+ * ```
+ *
+ * @see {@link cutBlueprint2D} for the functional API wrapper.
+ */
 export const cut2D = (
   first: Shape2D,
   second: Shape2D
@@ -315,6 +357,24 @@ export const cut2D = (
   return singleCut;
 };
 
+/**
+ * Compute the boolean intersection of two 2D shapes.
+ *
+ * Returns only the region common to both shapes. Compound and multi-blueprint
+ * operands are decomposed recursively, with holes handled via complementary
+ * cut operations.
+ *
+ * @param first - First operand.
+ * @param second - Second operand.
+ * @returns The intersection shape, or `null` if the shapes do not overlap.
+ *
+ * @example
+ * ```ts
+ * const overlap = intersect2D(circle, rectangle);
+ * ```
+ *
+ * @see {@link intersectBlueprint2D} for the functional API wrapper.
+ */
 export function intersect2D(
   first: Shape2D,
   second: Shape2D

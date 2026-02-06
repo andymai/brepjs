@@ -1,6 +1,10 @@
 /**
- * Standalone functions for 2D curve operations.
- * Wraps Curve2D class methods as pure functions (no mutation).
+ * Standalone pure functions for 2D curve operations.
+ *
+ * Each function wraps a corresponding {@link Curve2D} method without mutating
+ * the input curve, providing a functional API for 2D geometry pipelines.
+ *
+ * @module
  */
 
 import type { Point2D } from './definitions.js';
@@ -8,7 +12,11 @@ import type { BoundingBox2d } from './BoundingBox2d.js';
 import type { Curve2D } from './Curve2D.js';
 import type { Result } from '../../core/result.js';
 
-/** Return a reversed copy of the curve (non-mutating). */
+/**
+ * Return a reversed copy of the curve (non-mutating).
+ *
+ * @returns A new `Curve2D` with swapped start/end orientation.
+ */
 export function reverseCurve(curve: Curve2D): Curve2D {
   const cloned = curve.clone();
   cloned.reverse();
@@ -30,7 +38,12 @@ export function curve2dLastPoint(curve: Curve2D): Point2D {
   return curve.lastPoint;
 }
 
-/** Split a curve at the given parameters or points. */
+/**
+ * Split a curve at the given parameters or points.
+ *
+ * @param params - Parameter values or `Point2D` locations at which to split.
+ * @returns An ordered array of sub-curves covering the original curve.
+ */
 export function curve2dSplitAt(
   curve: Curve2D,
   params: Point2D[] | number[],
@@ -39,7 +52,11 @@ export function curve2dSplitAt(
   return curve.splitAt(params, precision);
 }
 
-/** Find the parameter on the curve closest to the given point. */
+/**
+ * Find the parameter on the curve closest to the given point.
+ *
+ * @returns `Ok(parameter)` when the point is on the curve, or an error result.
+ */
 export function curve2dParameter(
   curve: Curve2D,
   point: Point2D,
@@ -48,7 +65,11 @@ export function curve2dParameter(
   return curve.parameter(point, precision);
 }
 
-/** Get the tangent vector at a parameter position on the curve. */
+/**
+ * Get the tangent vector at a parameter position on the curve.
+ *
+ * @param param - A normalized parameter (0..1) or a `Point2D` to project onto the curve.
+ */
 export function curve2dTangentAt(curve: Curve2D, param: number | Point2D): Point2D {
   return curve.tangentAt(param);
 }

@@ -50,16 +50,43 @@ function assembleWire(listOfEdges: { wrapped: unknown }[]): Wire {
 }
 
 /**
- * A Blueprint is an abstract Sketch, a 2D set of curves that can then be
- * sketched on different surfaces (faces or planes)
+ * Represent a closed or open 2D profile as an ordered list of curves.
  *
- * You should create them by "sketching" with a `BlueprintSketcher`
+ * A Blueprint is the fundamental 2D drawing primitive: it stores an ordered
+ * sequence of {@link Curve2D} segments that together describe a planar profile.
+ * Blueprints can be transformed (translate, rotate, scale, mirror, stretch),
+ * projected onto 3D planes or faces, combined with boolean operations, and
+ * serialized to SVG.
+ *
+ * Create instances via {@link BlueprintSketcher} rather than calling the
+ * constructor directly.
+ *
+ * @example
+ * ```ts
+ * const bp = new BlueprintSketcher()
+ *   .movePointerTo([0, 0])
+ *   .lineTo([10, 0])
+ *   .lineTo([10, 10])
+ *   .lineTo([0, 10])
+ *   .close();
+ *
+ * const face = bp.sketchOnPlane("XY");
+ * ```
+ *
+ * @see {@link CompoundBlueprint} for blueprints with holes.
+ * @see {@link Blueprints} for collections of disjoint blueprints.
+ * @see {@link createBlueprint} for the functional API equivalent.
  */
 export default class Blueprint implements DrawingInterface {
+  /** Ordered 2D curve segments that compose this blueprint. */
   curves: Curve2D[];
   protected _boundingBox: null | BoundingBox2d;
   private readonly _orientation: null | 'clockwise' | 'counterClockwise';
   private _guessedOrientation: null | 'clockwise' | 'counterClockwise';
+  /** Create a blueprint from an ordered array of 2D curves.
+   *
+   * @throws Error if the curves array is empty.
+   */
   constructor(curves: Curve2D[]) {
     if (curves.length === 0) {
       throw new Error('Blueprint requires at least one curve');
@@ -71,6 +98,7 @@ export default class Blueprint implements DrawingInterface {
     this._guessedOrientation = null;
   }
 
+  /** Release WASM resources held by the underlying curves and bounding box. */
   delete() {
     this.curves.forEach((c) => {
       c.delete();
@@ -78,14 +106,17 @@ export default class Blueprint implements DrawingInterface {
     if (this._boundingBox) this._boundingBox.delete();
   }
 
+  /** Return a deep copy of this blueprint. */
   clone(): Blueprint {
     return new Blueprint(this.curves.map((c) => c.clone()));
   }
 
+  /** Return a multi-line string representation for debugging. */
   get repr() {
     return ['Blueprint', ...this.curves.map((c) => c.repr)].join('\n');
   }
 
+  /** Compute (and cache) the axis-aligned bounding box of all curves. */
   get boundingBox(): BoundingBox2d {
     if (!this._boundingBox) {
       this._boundingBox = curvesBoundingBox(this.curves);
@@ -93,6 +124,11 @@ export default class Blueprint implements DrawingInterface {
     return this._boundingBox;
   }
 
+  /** Determine the winding direction of the blueprint via the shoelace formula.
+   *
+   * @remarks Uses an approximation based on curve midpoints for non-linear
+   * segments. The result is cached after the first call.
+   */
   get orientation(): 'clockwise' | 'counterClockwise' {
     if (this._orientation) return this._orientation;
     if (this._guessedOrientation) return this._guessedOrientation;
@@ -118,22 +154,49 @@ export default class Blueprint implements DrawingInterface {
     return this._guessedOrientation;
   }
 
+  /**
+   * Stretch the blueprint along a direction by a given ratio.
+   *
+   * @param ratio - Stretch factor (1 = unchanged).
+   * @param direction - Unit direction vector to stretch along.
+   * @param origin - Fixed point of the stretch (defaults to the origin).
+   * @returns A new stretched Blueprint.
+   */
   stretch(ratio: number, direction: Point2D, origin: Point2D = [0, 0]): Blueprint {
     const curves = stretchTransform2d(ratio, direction, origin).transformCurves(this.curves);
     return new Blueprint(curves);
   }
 
+  /**
+   * Uniformly scale the blueprint around a center point.
+   *
+   * @param scaleFactor - Scale multiplier (>1 enlarges, <1 shrinks).
+   * @param center - Center of scaling (defaults to the bounding box center).
+   * @returns A new scaled Blueprint.
+   */
   scale(scaleFactor: number, center?: Point2D): Blueprint {
     const centerPoint = center || this.boundingBox.center;
     const curves = scaleTransform2d(scaleFactor, centerPoint).transformCurves(this.curves);
     return new Blueprint(curves);
   }
 
+  /**
+   * Rotate the blueprint by an angle in degrees.
+   *
+   * @param angle - Rotation angle in degrees (positive = counter-clockwise).
+   * @param center - Center of rotation (defaults to the origin).
+   * @returns A new rotated Blueprint.
+   */
   rotate(angle: number, center?: Point2D): Blueprint {
     const curves = rotateTransform2d(angle * DEG2RAD, center).transformCurves(this.curves);
     return new Blueprint(curves);
   }
 
+  /**
+   * Translate the blueprint by separate x/y distances or a vector.
+   *
+   * @returns A new translated Blueprint.
+   */
   translate(xDist: number, yDist: number): Blueprint;
   translate(translationVector: Point2D): Blueprint;
   translate(xDistOrPoint: number | Point2D, yDist = 0): Blueprint {
@@ -144,6 +207,14 @@ export default class Blueprint implements DrawingInterface {
     return new Blueprint(curves);
   }
 
+  /**
+   * Mirror the blueprint across a point or plane.
+   *
+   * @param centerOrDirection - Mirror center (center mode) or plane normal (plane mode).
+   * @param origin - Origin for plane-mode mirroring.
+   * @param mode - `'center'` for point symmetry, `'plane'` for reflection across an axis.
+   * @returns A new mirrored Blueprint.
+   */
   mirror(
     centerOrDirection: Point2D,
     origin: Point2D = [0, 0],
@@ -153,6 +224,13 @@ export default class Blueprint implements DrawingInterface {
     return new Blueprint(curves);
   }
 
+  /**
+   * Project this 2D blueprint onto a 3D plane, producing a wire and metadata.
+   *
+   * @param inputPlane - Named plane (`"XY"`, `"XZ"`, etc.) or a custom Plane.
+   * @param origin - Origin offset; a number sets the offset along the plane normal.
+   * @returns Sketch data containing the projected wire and default orientation.
+   */
   sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: PointInput | number): SketchData {
     const plane =
       inputPlane && typeof inputPlane !== 'string'
@@ -169,6 +247,13 @@ export default class Blueprint implements DrawingInterface {
     };
   }
 
+  /**
+   * Map this 2D blueprint onto a 3D face's UV surface.
+   *
+   * @param face - Target face to project onto.
+   * @param scaleMode - How UV coordinates are interpreted (`'original'`, `'bounds'`, or `'native'`).
+   * @returns Sketch data containing the wire mapped onto the face.
+   */
   sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData {
     const oc = getKernel().oc;
 
@@ -184,6 +269,13 @@ export default class Blueprint implements DrawingInterface {
     return { wire, baseFace: face };
   }
 
+  /**
+   * Create a face on a target face's surface defined by this blueprint's profile.
+   *
+   * @param face - The face whose surface the sub-face lies on.
+   * @param origin - Optional UV origin offset (defaults to the face center).
+   * @returns A new Face bounded by the blueprint's profile.
+   */
   subFace(face: Face, origin?: PointInput | null): Face {
     const originPoint = origin || [...face.center];
     const originVec3 = toVec3(originPoint);
@@ -191,6 +283,17 @@ export default class Blueprint implements DrawingInterface {
     return unwrap(makeFace(sketch.wire));
   }
 
+  /**
+   * Cut a prism-shaped hole through a solid along a face using this blueprint.
+   *
+   * @param shape - The solid to punch through.
+   * @param face - The face on which the hole profile is placed.
+   * @param options - Optional hole parameters.
+   * @param options.height - Hole depth; `null` (default) cuts through the entire solid.
+   * @param options.origin - UV origin on the face for the blueprint placement.
+   * @param options.draftAngle - Taper angle in degrees (0 = straight hole).
+   * @returns The modified shape with the hole removed.
+   */
   punchHole(
     shape: AnyShape,
     face: SingleFace,
@@ -228,6 +331,7 @@ export default class Blueprint implements DrawingInterface {
     return unwrap(cast(maker.Shape()));
   }
 
+  /** Convert the blueprint to an SVG path `d` attribute string. */
   toSVGPathD() {
     const r = gcWithScope();
     const bp = this.clone().mirror([1, 0], [0, 0], 'plane');
@@ -243,32 +347,55 @@ export default class Blueprint implements DrawingInterface {
     return `M ${round5(startX)} ${round5(startY)} ${path.join(' ')}${bp.isClosed() ? ' Z' : ''}`;
   }
 
+  /** Wrap the SVG path data in a `<path>` element string. */
   toSVGPath() {
     return `<path d="${this.toSVGPathD()}" />`;
   }
 
+  /**
+   * Compute the SVG `viewBox` attribute for this blueprint.
+   *
+   * @param margin - Extra padding around the bounding box in drawing units.
+   */
   toSVGViewBox(margin = 1) {
     return viewbox(this.boundingBox, margin);
   }
 
+  /** Return the SVG path `d` strings for this blueprint as an array. */
   toSVGPaths() {
     return [this.toSVGPathD()];
   }
 
+  /**
+   * Render a complete SVG document string for this blueprint.
+   *
+   * @param margin - Extra padding around the bounding box in drawing units.
+   */
   toSVG(margin = 1) {
     return asSVG(this.toSVGPath(), this.boundingBox, margin);
   }
 
+  /** Get the start point of the first curve. */
   get firstPoint(): Point2D {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return this.curves[0]!.firstPoint;
   }
 
+  /** Get the end point of the last curve. */
   get lastPoint(): Point2D {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return this.curves[this.curves.length - 1]!.lastPoint;
   }
 
+  /**
+   * Test whether a 2D point lies inside this closed blueprint.
+   *
+   * Uses ray-casting (intersection counting) against a segment from the point
+   * to a location guaranteed to be outside the bounding box.
+   *
+   * @remarks Returns `false` for points on the boundary.
+   * @returns `true` if the point is strictly inside the blueprint.
+   */
   isInside(point: Point2D): boolean {
     if (!this.boundingBox.containsPoint(point)) return false;
 
@@ -294,10 +421,16 @@ export default class Blueprint implements DrawingInterface {
     }
   }
 
+  /** Check whether the first and last points coincide (the profile is closed). */
   isClosed() {
     return samePoint(this.firstPoint, this.lastPoint);
   }
 
+  /**
+   * Test whether this blueprint's curves intersect with another blueprint's curves.
+   *
+   * @remarks Uses bounding-box pre-filtering for early rejection.
+   */
   intersects(other: Blueprint) {
     if (this.boundingBox.isOut(other.boundingBox)) return false;
 

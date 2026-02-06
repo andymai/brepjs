@@ -39,10 +39,13 @@ export type { CurveType };
 // Public types
 // ---------------------------------------------------------------------------
 
+/** Union of all concrete shape types in the topology layer. */
 export type AnyShape = Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound;
 
+/** Union of shape types that represent 3D bodies (shells, solids, compounds). */
 export type Shape3D = Shell | Solid | CompSolid | Compound;
 
+/** Interface for OCCT curve adaptors (BRepAdaptor_Curve / CompCurve). */
 export interface CurveLike {
   delete(): void;
   Value(v: number): OcType;
@@ -63,6 +66,7 @@ export type { FaceTriangulation, ShapeMesh, SurfaceType };
 export type { ChamferRadius, FilletRadius, RadiusConfig };
 export { isNumber, isChamferRadius, isFilletRadius };
 
+/** Options for boolean operations (fuse, cut, intersect) on OOP Shape classes. */
 export type BooleanOperationOptions = {
   optimisation?: 'none' | 'commonFace' | 'sameFace';
   simplify?: boolean;
@@ -73,6 +77,16 @@ export type BooleanOperationOptions = {
 // Shape base class
 // ---------------------------------------------------------------------------
 
+/**
+ * Base class for all BREP topology shapes.
+ *
+ * Wraps an OCCT TopoDS_Shape handle with GC support and provides common
+ * operations (transform, mesh, export). Concrete subclasses: Vertex, Edge,
+ * Wire, Face, Shell, Solid, CompSolid, Compound.
+ *
+ * @see cloneShape — functional equivalent of clone()
+ * @see serializeShape — functional equivalent of serialize()
+ */
 export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   /** @deprecated Use cloneShape() instead. */
   clone(): this {
@@ -80,23 +94,31 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
     return new (this.constructor as any)(unwrap(downcast(this.wrapped)));
   }
 
+  /**
+   * Serialize the shape to BREP string format.
+   * @see serializeShape — functional equivalent
+   */
   serialize(): string {
     const oc = getKernel().oc;
     return oc.BRepToolsWrapper.Write(this.wrapped);
   }
 
+  /** Get the topology hash code of the underlying OCCT shape. */
   get hashCode(): number {
     return (this.wrapped as OcShape).HashCode(HASH_CODE_MAX);
   }
 
+  /** Return true if the underlying OCCT shape handle is null. */
   get isNull(): boolean {
     return (this.wrapped as OcShape).IsNull();
   }
 
+  /** Check if two shapes refer to the same topological entity. */
   isSame(other: AnyShape): boolean {
     return (this.wrapped as OcShape).IsSame(other.wrapped);
   }
 
+  /** Check if two shapes are geometrically equal (same geometry and orientation). */
   isEqual(other: AnyShape): boolean {
     return (this.wrapped as OcShape).IsEqual(other.wrapped);
   }
@@ -228,14 +250,17 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
     });
   }
 
+  /** Get all edges of this shape. */
   get edges(): Edge[] {
     return this._listTopo('edge').map((e) => new Edge(e));
   }
 
+  /** Get all faces of this shape. */
   get faces(): Face[] {
     return this._listTopo('face').map((e) => new Face(e));
   }
 
+  /** Get all wires of this shape. */
   get wires(): Wire[] {
     return this._listTopo('wire').map((e) => new Wire(e));
   }
@@ -373,7 +398,9 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
 // Vertex
 // ---------------------------------------------------------------------------
 
+/** A zero-dimensional topological shape representing a single point. */
 export class Vertex extends Shape {
+  /** Get the 3D coordinates as a `[x, y, z]` tuple. */
   asTuple(): [number, number, number] {
     const pnt = this.oc.BRep_Tool.Pnt(this.wrapped);
     const tuple: [number, number, number] = [pnt.X(), pnt.Y(), pnt.Z()];
@@ -386,18 +413,26 @@ export class Vertex extends Shape {
 // Curve & 1D shapes
 // ---------------------------------------------------------------------------
 
+/**
+ * Wrapper around an OCCT curve adaptor for evaluating geometry along a 1D parameter space.
+ *
+ * @see getCurveType — functional equivalent
+ */
 export class Curve extends WrappingObj<CurveLike> {
+  /** Get a human-readable representation showing start and end points. */
   get repr(): string {
     const { startPoint, endPoint } = this;
     const retVal = `start: (${vecRepr(startPoint)}) end:(${vecRepr(endPoint)})`;
     return retVal;
   }
 
+  /** Get the geometric type of this curve (LINE, CIRCLE, BSPLINE, etc.). */
   get curveType(): CurveType {
     const technicalType = this.wrapped.GetType && this.wrapped.GetType();
     return unwrap(findCurveType(technicalType));
   }
 
+  /** Get the start point of the curve. */
   get startPoint(): Vec3 {
     const umin = this.wrapped.Value(this.wrapped.FirstParameter());
     const result = fromOcPnt(umin);
@@ -405,6 +440,7 @@ export class Curve extends WrappingObj<CurveLike> {
     return result;
   }
 
+  /** Get the end point of the curve. */
   get endPoint(): Vec3 {
     const umax = this.wrapped.Value(this.wrapped.LastParameter());
     const result = fromOcPnt(umax);
@@ -419,6 +455,10 @@ export class Curve extends WrappingObj<CurveLike> {
     return firstParam + (lastParam - firstParam) * position;
   }
 
+  /**
+   * Evaluate a point on the curve at a normalized position.
+   * @param position - Normalized parameter (0 = start, 1 = end, default 0.5 = midpoint).
+   */
   pointAt(position = 0.5): Vec3 {
     const pnt = this.wrapped.Value(this._mapParameter(position));
     const result = fromOcPnt(pnt);
@@ -426,6 +466,10 @@ export class Curve extends WrappingObj<CurveLike> {
     return result;
   }
 
+  /**
+   * Evaluate the tangent vector at a normalized position on the curve.
+   * @param position - Normalized parameter (0 = start, 1 = end, default 0.5 = midpoint).
+   */
   tangentAt(position = 0.5): Vec3 {
     const pos = this._mapParameter(position);
 
@@ -441,32 +485,44 @@ export class Curve extends WrappingObj<CurveLike> {
     return tangent;
   }
 
+  /** Return true if the curve forms a closed loop. */
   get isClosed(): boolean {
     return this.wrapped.IsClosed();
   }
 
+  /** Return true if the curve is periodic (e.g., a full circle). */
   get isPeriodic(): boolean {
     return this.wrapped.IsPeriodic();
   }
 
+  /** Get the period length of a periodic curve. */
   get period(): number {
     return this.wrapped.Period();
   }
 }
 
+/**
+ * Abstract base for one-dimensional shapes (Edge, Wire).
+ *
+ * Provides curve evaluation (point/tangent at parameter), length,
+ * orientation, and period queries.
+ */
 export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Type> {
   protected abstract _geomAdaptor(): CurveLike;
 
+  /** Get a human-readable representation showing start and end points. */
   get repr(): string {
     const { startPoint, endPoint } = this;
     const retVal = `start: (${vecRepr(startPoint)}) end:(${vecRepr(endPoint)})`;
     return retVal;
   }
 
+  /** Get the underlying Curve adaptor for direct parameter evaluation. */
   get curve(): Curve {
     return new Curve(this._geomAdaptor());
   }
 
+  /** Get the start point of the edge or wire. */
   get startPoint(): Vec3 {
     const c = this.curve;
     const result = c.startPoint;
@@ -474,6 +530,7 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /** Get the end point of the edge or wire. */
   get endPoint(): Vec3 {
     const c = this.curve;
     const result = c.endPoint;
@@ -481,6 +538,10 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /**
+   * Evaluate the tangent vector at a normalized position.
+   * @param position - Normalized parameter (0 = start, 1 = end).
+   */
   tangentAt(position = 0): Vec3 {
     const c = this.curve;
     const result = c.tangentAt(position);
@@ -488,6 +549,10 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /**
+   * Evaluate a point on the curve at a normalized position.
+   * @param position - Normalized parameter (0 = start, 1 = end).
+   */
   pointAt(position = 0): Vec3 {
     const c = this.curve;
     const result = c.pointAt(position);
@@ -495,6 +560,7 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /** Return true if the curve forms a closed loop. */
   get isClosed(): boolean {
     const c = this.curve;
     const result = c.isClosed;
@@ -502,6 +568,7 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /** Return true if the curve is periodic (e.g., a full circle). */
   get isPeriodic(): boolean {
     const c = this.curve;
     const result = c.isPeriodic;
@@ -509,6 +576,7 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /** Get the period length of a periodic curve. */
   get period(): number {
     const c = this.curve;
     const result = c.period;
@@ -516,6 +584,7 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /** Get the geometric type of this curve (LINE, CIRCLE, BSPLINE, etc.). */
   get geomType(): CurveType {
     const c = this.curve;
     const result = c.curveType;
@@ -523,6 +592,7 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return result;
   }
 
+  /** Get the arc length of the edge or wire. */
   get length(): number {
     const properties = new this.oc.GProp_GProps_1();
     this.oc.BRepGProp.LinearProperties(this.wrapped, properties, true, false);
@@ -532,29 +602,42 @@ export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Typ
     return length;
   }
 
+  /** Get the topological orientation ('forward' or 'backward'). */
   get orientation(): 'forward' | 'backward' {
     const orient = (this.wrapped as OcShape).Orientation_1();
     if (orient === this.oc.TopAbs_Orientation.TopAbs_FORWARD) return 'forward';
     return 'backward';
   }
 
+  /** Return a copy of this shape with reversed orientation. */
   flipOrientation(): Type {
     const flipped = (this.wrapped as OcShape).Reversed();
     return unwrap(cast(flipped)) as unknown as Type;
   }
 }
 
+/** A one-dimensional shape representing a single curve segment between two vertices. */
 export class Edge extends _1DShape {
   protected _geomAdaptor(): CurveLike {
     return new this.oc.BRepAdaptor_Curve_2(this.wrapped);
   }
 }
 
+/** A one-dimensional shape representing a connected sequence of edges. */
 export class Wire extends _1DShape {
   protected _geomAdaptor(): CurveLike {
     return new this.oc.BRepAdaptor_CompCurve_2(this.wrapped, false);
   }
 
+  /**
+   * Offset this wire in 2D by a distance. Positive offsets go outward, negative inward.
+   * Disposes this wire and returns a new one.
+   *
+   * @param offset - Offset distance (positive = outward, negative = inward).
+   * @param kind - Join type for offset corners.
+   * @returns The offset wire, or an error if the operation fails.
+   * @see offsetWire2D — functional equivalent (does not dispose input)
+   */
   offset2D(offset: number, kind: 'arc' | 'intersection' | 'tangent' = 'arc'): Result<Wire> {
     const kinds = {
       arc: this.oc.GeomAbs_JoinType.GeomAbs_Arc,
@@ -585,7 +668,9 @@ export class Wire extends _1DShape {
 // Surface & Face
 // ---------------------------------------------------------------------------
 
+/** Wrapper around an OCCT surface adaptor for querying surface geometry. */
 export class Surface extends WrappingObj<OcType> {
+  /** Get the geometric type of this surface (PLANE, CYLINDRE, SPHERE, etc.). */
   get surfaceType(): Result<SurfaceType> {
     const ga = this.oc.GeomAbs_SurfaceType;
 
@@ -613,26 +698,36 @@ export class Surface extends WrappingObj<OcType> {
   }
 }
 
+/**
+ * A two-dimensional shape representing a bounded surface.
+ *
+ * @see getSurfaceType — functional equivalent of geomType
+ * @see normalAt — functional equivalent in faceFns.ts
+ */
 export class Face extends Shape {
   protected _geomAdaptor(): OcType {
     return new this.oc.BRepAdaptor_Surface_2(this.wrapped, false);
   }
 
+  /** Get the underlying Surface adaptor for querying surface properties. */
   get surface(): Surface {
     return new Surface(this._geomAdaptor());
   }
 
+  /** Get the topological orientation ('forward' or 'backward'). */
   get orientation(): 'forward' | 'backward' {
     const orient = this.wrapped.Orientation_1();
     if (orient === this.oc.TopAbs_Orientation.TopAbs_FORWARD) return 'forward';
     return 'backward';
   }
 
+  /** Return a copy of this face with reversed orientation. */
   flipOrientation(): Face {
     const flipped = this.wrapped.Reversed();
     return unwrap(cast(flipped)) as Face;
   }
 
+  /** Get the geometric surface type (PLANE, CYLINDRE, SPHERE, etc.). */
   get geomType(): SurfaceType {
     const surface = this.surface;
     try {
@@ -642,6 +737,7 @@ export class Face extends Shape {
     }
   }
 
+  /** Get the UV parameter bounds of this face's surface. */
   get UVBounds(): { uMin: number; uMax: number; vMin: number; vMax: number } {
     const uMin = { current: 0 };
     const uMax = { current: 0 };
@@ -658,6 +754,11 @@ export class Face extends Shape {
     };
   }
 
+  /**
+   * Evaluate a 3D point on the surface at normalized UV coordinates (0-1 range).
+   * @param u - Normalized U parameter (0-1).
+   * @param v - Normalized V parameter (0-1).
+   */
   pointOnSurface(u: number, v: number): Vec3 {
     const { uMin, uMax, vMin, vMax } = this.UVBounds;
     const surface = this._geomAdaptor();
@@ -674,6 +775,10 @@ export class Face extends Shape {
     return point;
   }
 
+  /**
+   * Project a 3D point onto this face and return its UV coordinates.
+   * @param point - The 3D point to project onto the surface.
+   */
   uvCoordinates(point: PointInput): [number, number] {
     const r = gcWithScope();
     const surface = r(this.oc.BRep_Tool.Surface_2(this.wrapped));
@@ -694,6 +799,10 @@ export class Face extends Shape {
     return [uPtr.current, vPtr.current];
   }
 
+  /**
+   * Compute the surface normal at a given point, or at the face center if omitted.
+   * @param locationVector - Optional 3D point to evaluate the normal at.
+   */
   normalAt(locationVector?: PointInput): Vec3 {
     let u = 0;
     let v = 0;
@@ -718,6 +827,7 @@ export class Face extends Shape {
     return normal;
   }
 
+  /** Get the center of mass of this face. */
   get center(): Vec3 {
     const properties = new this.oc.GProp_GProps_1();
     this.oc.BRepGProp.SurfaceProperties_2(this.wrapped, properties, 1e-7, true);
@@ -729,12 +839,20 @@ export class Face extends Shape {
     return center;
   }
 
+  /**
+   * Extract the outer wire of this face. Deletes the face.
+   * @see outerWire — functional equivalent in faceFns.ts (does not dispose input)
+   */
   outerWire(): Wire {
     const newVal = new Wire(this.oc.BRepTools.OuterWire(this.wrapped));
     this.delete();
     return newVal;
   }
 
+  /**
+   * Extract the inner (hole) wires of this face. Deletes the face.
+   * @see innerWires — functional equivalent in faceFns.ts (does not dispose input)
+   */
   innerWires(): Wire[] {
     const outer = this.clone().outerWire();
     const innerWiresArr = this.wires.filter((w) => !outer.isSame(w));
@@ -815,6 +933,14 @@ export class Face extends Shape {
 // 3D shapes
 // ---------------------------------------------------------------------------
 
+/**
+ * Abstract base for three-dimensional shapes (Shell, Solid, CompSolid, Compound).
+ *
+ * Provides boolean operations (fuse, cut, intersect), shell, fillet, and chamfer.
+ *
+ * @see fuseShapes — functional replacement for fuse()
+ * @see cutShape — functional replacement for cut()
+ */
 export class _3DShape<Type extends OcShape = OcShape> extends Shape<Type> {
   /**
    * Builds a new shape out of the two fused shapes.
@@ -1110,15 +1236,20 @@ export class _3DShape<Type extends OcShape = OcShape> extends Shape<Type> {
 // Concrete 3D shape classes
 // ---------------------------------------------------------------------------
 
+/** A connected set of faces forming a surface (open or closed). */
 export class Shell extends _3DShape {}
+/** A closed volume bounded by a shell. The most common 3D shape type. */
 export class Solid extends _3DShape {}
+/** A composite solid — a set of solids that share common faces. */
 export class CompSolid extends _3DShape {}
+/** A heterogeneous collection of shapes grouped together. */
 export class Compound extends _3DShape {}
 
 // ---------------------------------------------------------------------------
 // Local isShape3D (avoids circular reference to cast.ts for internal use)
 // ---------------------------------------------------------------------------
 
+/** Type guard: return true if the shape is a 3D body (Shell, Solid, CompSolid, or Compound). */
 export function isShape3D(shape: AnyShape): shape is Shape3D {
   return (
     shape instanceof Shell ||

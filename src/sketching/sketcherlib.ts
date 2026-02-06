@@ -3,8 +3,15 @@ import { polarToCartesian, type Point2D } from '../2d/lib/index.js';
 import { bug } from '../core/errors.js';
 
 type StartSplineTangent = number | Point2D;
+/** Tangent specification for smooth spline endpoints: an angle (degrees), a 2D direction, or `'symmetric'`. */
 export type SplineTangent = StartSplineTangent | 'symmetric';
 
+/**
+ * Configuration for {@link GenericSketcher.smoothSplineTo}.
+ *
+ * Can be a single tangent value (applied to the end), or an object with
+ * separate start/end tangents and distance factors.
+ */
 export type SplineConfig =
   | SplineTangent
   | {
@@ -17,6 +24,7 @@ export type SplineConfig =
 const isTangent = (c: unknown): c is SplineTangent =>
   c === 'symmetric' || typeof c === 'number' || (Array.isArray(c) && c.length === 2);
 
+/** Resolve a {@link SplineConfig} into fully-expanded tangent directions and factors. */
 export const defaultsSplineConfig = (
   config?: SplineConfig
 ): {
@@ -381,6 +389,14 @@ function radianAngle(ux: number, uy: number, vx: number, vy: number): number {
   return rad;
 }
 
+/**
+ * Convert SVG-style elliptical arc endpoint parameters to center-parametrization.
+ *
+ * Implements the SVG spec F.6.5 / F.6.6 algorithm for converting (x1,y1)-(x2,y2)
+ * arc notation into center, radii, and angle ranges.
+ *
+ * @returns Center coordinates, corrected radii, start/end/delta angles, and winding direction.
+ */
 export function convertSvgEllipseParams(
   [x1, y1]: [number, number],
   [x2, y2]: [number, number],

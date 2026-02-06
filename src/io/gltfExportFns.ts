@@ -11,7 +11,12 @@ import type { ShapeMesh } from '../topology/meshFns.js';
 // Public types
 // ---------------------------------------------------------------------------
 
-/** PBR material definition for glTF export. */
+/**
+ * PBR material definition for glTF export.
+ *
+ * Maps to the glTF 2.0 `pbrMetallicRoughness` material model.
+ * Assign instances to face IDs via {@link GltfExportOptions.materials}.
+ */
 export interface GltfMaterial {
   name?: string;
   /** RGBA base color factor, each component 0–1. Default: [0.8, 0.8, 0.8, 1.0] */
@@ -22,7 +27,12 @@ export interface GltfMaterial {
   roughness?: number;
 }
 
-/** Options for glTF/GLB export. */
+/**
+ * Options for glTF/GLB export.
+ *
+ * When `materials` is provided, faces are grouped into separate
+ * glTF primitives by material, enabling per-face coloring.
+ */
 export interface GltfExportOptions {
   /** Map of faceId → material. FaceIds come from ShapeMesh.faceGroups[].faceId. */
   materials?: Map<number, GltfMaterial>;
@@ -128,7 +138,21 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 /**
  * Export a ShapeMesh to a glTF 2.0 JSON string with an embedded base64 buffer.
- * The resulting string is a self-contained .gltf file.
+ *
+ * The resulting string is a self-contained `.gltf` file that can be loaded
+ * directly by three.js, Babylon.js, or any glTF viewer.
+ *
+ * @param mesh - Triangulated mesh from `meshShape()`.
+ * @param options - Optional material assignments.
+ * @returns A JSON string representing the complete glTF document.
+ *
+ * @example
+ * ```ts
+ * const mesh = meshShape(solid);
+ * const gltfJson = exportGltf(mesh);
+ * ```
+ *
+ * @see {@link exportGlb} for the binary GLB variant.
  */
 export function exportGltf(mesh: ShapeMesh, options?: GltfExportOptions): string {
   const doc = buildGltfDocument(mesh, 'base64', options);
@@ -136,8 +160,23 @@ export function exportGltf(mesh: ShapeMesh, options?: GltfExportOptions): string
 }
 
 /**
- * Export a ShapeMesh to a .glb binary (ArrayBuffer).
- * This is a single binary file containing JSON + binary chunks.
+ * Export a ShapeMesh to a `.glb` binary (ArrayBuffer).
+ *
+ * GLB packs the JSON header and binary buffer into a single file,
+ * which is more efficient for network transfer than base64-encoded glTF.
+ *
+ * @param mesh - Triangulated mesh from `meshShape()`.
+ * @param options - Optional material assignments.
+ * @returns An ArrayBuffer containing the complete GLB binary.
+ *
+ * @example
+ * ```ts
+ * const mesh = meshShape(solid);
+ * const glbBuffer = exportGlb(mesh);
+ * const blob = new Blob([glbBuffer], { type: 'model/gltf-binary' });
+ * ```
+ *
+ * @see {@link exportGltf} for the JSON variant.
  */
 export function exportGlb(mesh: ShapeMesh, options?: GltfExportOptions): ArrayBuffer {
   const { doc, binBuffer } = buildGlbData(mesh, options);

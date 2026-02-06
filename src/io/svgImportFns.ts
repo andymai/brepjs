@@ -322,6 +322,7 @@ function parseSVGPathToCurves(d: string): Curve2D[] {
 // Public API
 // ---------------------------------------------------------------------------
 
+/** Options controlling SVG import behavior. */
 export interface SVGImportOptions {
   /** Whether to flip the Y axis (default: true, since SVG Y is down). */
   flipY?: boolean;
@@ -330,8 +331,19 @@ export interface SVGImportOptions {
 /**
  * Import a single SVG path data string (`d` attribute) as a Blueprint.
  *
- * @param pathD - The SVG path data string (e.g., "M 0 0 L 10 0 L 10 10 Z").
- * @returns A Blueprint representing the path.
+ * Supports all SVG path commands: M, L, H, V, C, S, Q, T, A, Z
+ * (both absolute and relative). The Y axis is flipped to match
+ * brepjs coordinates (Y up).
+ *
+ * @param pathD - The SVG path data string (e.g., `"M 0 0 L 10 0 L 10 10 Z"`).
+ * @returns A `Result` wrapping the Blueprint, or an error if parsing fails.
+ *
+ * @example
+ * ```ts
+ * const bp = unwrap(importSVGPathD('M 0 0 L 10 0 L 10 10 Z'));
+ * ```
+ *
+ * @see {@link importSVG} to extract all `<path>` elements from a full SVG string.
  */
 export function importSVGPathD(pathD: string): Result<Blueprint> {
   try {
@@ -353,10 +365,23 @@ export function importSVGPathD(pathD: string): Result<Blueprint> {
 /**
  * Import all `<path>` elements from an SVG string as Blueprints.
  *
- * Uses regex extraction — no DOM parser dependency.
+ * Uses regex extraction (no DOM parser dependency) to find `<path d="...">`.
+ * Each path becomes a separate Blueprint with its curves.
+ *
+ * @remarks Paths that fail to parse are silently skipped. Only the
+ * successfully parsed paths appear in the result. If no paths are found
+ * at all, an error `Result` is returned.
  *
  * @param svgString - Complete SVG XML string.
- * @returns An array of Blueprints, one per `<path>` element.
+ * @returns A `Result` wrapping an array of Blueprints (one per `<path>` element).
+ *
+ * @example
+ * ```ts
+ * const blueprints = unwrap(importSVG(svgFileContents));
+ * blueprints.forEach(bp => console.log(bp.curves.length));
+ * ```
+ *
+ * @see {@link importSVGPathD} to import a single path `d` attribute directly.
  */
 export function importSVG(svgString: string): Result<Blueprint[]> {
   try {

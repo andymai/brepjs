@@ -9,17 +9,29 @@ import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
 import { Finder3d } from './generic3dfinder.js';
 
 /**
- * With a FaceFinder you can apply a set of filters to find specific faces
- * within a shape.
+ * Find faces within a shape by chaining declarative filters.
+ *
+ * Filters are combined with AND logic by default. Use `.either()` for OR
+ * and `.not()` for negation (inherited from {@link Finder3d}).
+ *
+ * @example
+ * ```ts
+ * const topFace = new FaceFinder()
+ *   .parallelTo("XY")
+ *   .ofArea(100)
+ *   .find(box, { unique: true });
+ * ```
  *
  * @category Finders
  */
 export class FaceFinder extends Finder3d<Face> {
-  /** Filter to find faces that are parallel to plane or another face
+  /**
+   * Filter to find faces whose normal is parallel to a plane's normal or another face's normal.
    *
-   * Note that this will work only in planar faces (but the method does not
-   * check this assumption).
+   * @remarks Only meaningful for planar faces. Curved faces use the normal
+   * at the face center, which may not represent the whole surface.
    *
+   * @param plane - A standard plane name ("XY", "XZ", "YZ"), a Plane object, or a Face.
    * @category Filter
    */
   parallelTo(plane: Plane | StandardPlane | Face): this {
@@ -52,6 +64,8 @@ export class FaceFinder extends Finder3d<Face> {
   /**
    * Filter to find faces that have a specific area.
    *
+   * @param area - Target surface area.
+   * @param tolerance - Absolute tolerance for the area comparison. Default: 1e-3.
    * @category Filter
    */
   ofArea(area: number, tolerance = 1e-3): this {
@@ -62,11 +76,16 @@ export class FaceFinder extends Finder3d<Face> {
     return this;
   }
 
-  /** Filter to find faces that are contained in a plane.
+  /**
+   * Filter to find faces that lie within a plane.
    *
-   * Note that this will work only in planar faces (but the method does not
-   * check this assumption).
+   * Checks both that the face is parallel to the plane and that its
+   * center point projects onto the plane.
    *
+   * @remarks Only meaningful for planar faces.
+   *
+   * @param inputPlane - A plane name or Plane object.
+   * @param origin - Plane origin offset (number for standard planes, or a point).
    * @category Filter
    */
   inPlane(inputPlane: PlaneName | Plane, origin?: PointInput | number): this {

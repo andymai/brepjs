@@ -21,7 +21,18 @@ function triAt(arr: Uint32Array, offset: number): [number, number, number] {
 /**
  * Export a ShapeMesh as a Wavefront OBJ string.
  *
- * The mesh should be obtained from `meshShape()`.
+ * Produces vertices (`v`), normals (`vn`), and face indices (`f`) with
+ * OBJ's 1-based indexing. When `faceGroups` are present, each group
+ * becomes a named OBJ group (`g face_<id>`).
+ *
+ * @param mesh - Triangulated mesh from `meshShape()`.
+ * @returns A Wavefront OBJ string ready to save as a `.obj` file.
+ *
+ * @example
+ * ```ts
+ * const mesh = meshShape(solid);
+ * const objString = exportOBJ(mesh);
+ * ```
  */
 export function exportOBJ(mesh: ShapeMesh): string {
   const lines: string[] = ['# brepjs OBJ export'];

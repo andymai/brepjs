@@ -26,6 +26,10 @@ export function buildMeshCacheKey(
   return `${tolerance}:${angularTolerance}:${skipNormals}`;
 }
 
+/**
+ * Build a parameter key for edge mesh cache lookup (excludes shape identity).
+ * Shape identity is handled by the WeakMap outer layer.
+ */
 export function buildEdgeMeshCacheKey(
   _shapeHash: number, // Kept for API compatibility but no longer used
   tolerance: number,
@@ -138,7 +142,12 @@ export function setMeshCacheSize(_size: number): void {
 // Isolated mesh cache context
 // ---------------------------------------------------------------------------
 
-/** An isolated mesh cache context for per-viewer or per-worker use. */
+/**
+ * An isolated mesh cache context for per-viewer or per-worker use.
+ *
+ * Provides the same get/set interface as the global cache but with
+ * independent state, so multiple viewers can cache independently.
+ */
 export interface MeshCacheContext {
   getMesh(shape: OcShape, key: string): ShapeMesh | undefined;
   setMesh(shape: OcShape, key: string, value: ShapeMesh): void;

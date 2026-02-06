@@ -128,6 +128,10 @@ function wrapAll<T extends AnyShape>(shapes: any[]): T[] {
  *
  * An edge typically borders exactly two faces in a solid, or one face
  * if the edge is on a boundary.
+ *
+ * @param parent - The parent shape to search within.
+ * @param edge - The edge whose adjacent faces to find.
+ * @returns Array of unique faces containing the given edge.
  */
 export function facesOfEdge(parent: AnyShape, edge: Edge): Face[] {
   const oc = getKernel().oc;
@@ -141,7 +145,10 @@ export function facesOfEdge(parent: AnyShape, edge: Edge): Face[] {
 }
 
 /**
- * Get all edges of a given face within a parent shape.
+ * Get all edges bounding a face.
+ *
+ * @param face - The face whose edges to enumerate.
+ * @returns Array of unique edges forming the face boundary.
  */
 export function edgesOfFace(face: Face): Edge[] {
   const oc = getKernel().oc;
@@ -150,7 +157,9 @@ export function edgesOfFace(face: Face): Edge[] {
 }
 
 /**
- * Get all wires of a given face.
+ * Get all wires of a face (outer wire + inner hole wires).
+ *
+ * @param face - The face whose wires to enumerate.
  */
 export function wiresOfFace(face: Face): Wire[] {
   const oc = getKernel().oc;
@@ -159,7 +168,10 @@ export function wiresOfFace(face: Face): Wire[] {
 }
 
 /**
- * Get all vertices of a given edge.
+ * Get the start and end vertices of an edge.
+ *
+ * @param edge - The edge whose vertices to retrieve.
+ * @returns Array of 1-2 vertices (1 if degenerate/closed, 2 otherwise).
  */
 export function verticesOfEdge(edge: Edge): Vertex[] {
   const oc = getKernel().oc;
@@ -169,7 +181,12 @@ export function verticesOfEdge(edge: Edge): Vertex[] {
 
 /**
  * Get all faces that share at least one edge with the given face.
+ *
  * The returned list does not include the input face itself.
+ *
+ * @param parent - The parent shape to search within.
+ * @param face - The face whose neighbors to find.
+ * @returns Array of unique adjacent faces (excluding the input face).
  */
 export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
   const oc = getKernel().oc;
@@ -208,6 +225,10 @@ export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
 
 /**
  * Get all edges shared between two faces.
+ *
+ * @param face1 - The first face.
+ * @param face2 - The second face.
+ * @returns Array of edges present in both faces (via IsSame comparison).
  */
 export function sharedEdges(face1: Face, face2: Face): Edge[] {
   const oc = getKernel().oc;

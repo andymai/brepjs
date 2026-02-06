@@ -11,10 +11,11 @@ import type { ShapeMesh } from '../topology/meshFns.js';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Options controlling 3MF archive export. */
 export interface ThreeMFExportOptions {
-  /** Model name. Default: "model". */
+  /** Name of the model object inside the 3MF archive. Default: `"model"`. */
   name?: string;
-  /** Unit of measurement. Default: "millimeter". */
+  /** Unit of measurement for vertex coordinates. Default: `"millimeter"`. */
   unit?: 'micron' | 'millimeter' | 'centimeter' | 'meter' | 'inch' | 'foot';
 }
 
@@ -210,7 +211,23 @@ ${triangles.join('\n')}
 /**
  * Export a ShapeMesh to 3MF format (ArrayBuffer).
  *
- * 3MF is the standard format for modern 3D printing slicers (PrusaSlicer, Cura, etc.).
+ * 3MF is the standard format for modern 3D printing slicers
+ * (PrusaSlicer, Cura, etc.). The output is a store-only ZIP archive
+ * containing the OPC content types, relationships, and 3D model XML.
+ *
+ * @param mesh - Triangulated mesh from `meshShape()`.
+ * @param options - Model name and unit settings.
+ * @returns An ArrayBuffer containing the 3MF ZIP archive.
+ *
+ * @remarks No external compression library is needed; the archive uses
+ * store-only (uncompressed) ZIP entries with CRC-32 integrity checks.
+ *
+ * @example
+ * ```ts
+ * const mesh = meshShape(solid);
+ * const buf = exportThreeMF(mesh, { unit: 'millimeter' });
+ * const blob = new Blob([buf], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });
+ * ```
  */
 export function exportThreeMF(mesh: ShapeMesh, options: ThreeMFExportOptions = {}): ArrayBuffer {
   const { name = 'model', unit = 'millimeter' } = options;

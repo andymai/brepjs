@@ -1,6 +1,10 @@
 /**
  * Standalone functions for Blueprint operations.
- * Wraps Blueprint class methods as pure functions.
+ *
+ * Each function wraps the corresponding {@link Blueprint} class method as a
+ * pure function, enabling a functional programming style.
+ *
+ * @see {@link Blueprint} for the OOP equivalent.
  */
 
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
@@ -11,37 +15,72 @@ import type { Plane, PlaneName } from '../../core/planeTypes.js';
 import type { Face } from '../../topology/shapes.js';
 import type { ScaleMode } from '../curves.js';
 
-/** Create a new Blueprint from curves. */
+/**
+ * Create a new Blueprint from an ordered array of 2D curves.
+ *
+ * @see {@link Blueprint} constructor.
+ */
 export function createBlueprint(curves: Blueprint['curves']): Blueprint {
   return new BlueprintClass(curves);
 }
 
-/** Get the bounding box of a blueprint. */
+/**
+ * Get the axis-aligned bounding box of a blueprint.
+ *
+ * @see {@link Blueprint.boundingBox}
+ */
 export function blueprintBoundingBox(bp: Blueprint): BoundingBox2d {
   return bp.boundingBox;
 }
 
-/** Get the orientation (winding direction) of a blueprint. */
+/**
+ * Get the winding direction of a blueprint (`'clockwise'` or `'counterClockwise'`).
+ *
+ * @see {@link Blueprint.orientation}
+ */
 export function blueprintOrientation(bp: Blueprint): 'clockwise' | 'counterClockwise' {
   return bp.orientation;
 }
 
-/** Translate a blueprint by (dx, dy). Returns a new Blueprint. */
+/**
+ * Translate a blueprint by the given x and y distances.
+ *
+ * @returns A new translated Blueprint.
+ * @see {@link Blueprint.translate}
+ */
 export function translateBlueprint(bp: Blueprint, dx: number, dy: number): Blueprint {
   return bp.translate(dx, dy);
 }
 
-/** Rotate a blueprint by angle degrees around an optional center. Returns a new Blueprint. */
+/**
+ * Rotate a blueprint by the given angle in degrees.
+ *
+ * @param center - Center of rotation (defaults to the origin).
+ * @returns A new rotated Blueprint.
+ * @see {@link Blueprint.rotate}
+ */
 export function rotateBlueprint(bp: Blueprint, angle: number, center?: Point2D): Blueprint {
   return bp.rotate(angle, center);
 }
 
-/** Scale a blueprint by a factor around an optional center. Returns a new Blueprint. */
+/**
+ * Uniformly scale a blueprint by a factor around a center point.
+ *
+ * @param center - Center of scaling (defaults to the bounding box center).
+ * @returns A new scaled Blueprint.
+ * @see {@link Blueprint.scale}
+ */
 export function scaleBlueprint(bp: Blueprint, factor: number, center?: Point2D): Blueprint {
   return bp.scale(factor, center);
 }
 
-/** Mirror a blueprint. Returns a new Blueprint. */
+/**
+ * Mirror a blueprint across a point or plane.
+ *
+ * @param mode - `'center'` for point symmetry, `'plane'` for reflection across an axis.
+ * @returns A new mirrored Blueprint.
+ * @see {@link Blueprint.mirror}
+ */
 export function mirrorBlueprint(
   bp: Blueprint,
   centerOrDirection: Point2D,
@@ -51,7 +90,12 @@ export function mirrorBlueprint(
   return bp.mirror(centerOrDirection, origin, mode);
 }
 
-/** Stretch a blueprint. Returns a new Blueprint. */
+/**
+ * Stretch a blueprint along a direction by a given ratio.
+ *
+ * @returns A new stretched Blueprint.
+ * @see {@link Blueprint.stretch}
+ */
 export function stretchBlueprint(
   bp: Blueprint,
   ratio: number,
@@ -61,18 +105,30 @@ export function stretchBlueprint(
   return bp.stretch(ratio, direction, origin);
 }
 
-/** Convert a blueprint to an SVG path data string. */
+/**
+ * Convert a blueprint to an SVG path `d` attribute string.
+ *
+ * @see {@link Blueprint.toSVGPathD}
+ */
 export function blueprintToSVGPathD(bp: Blueprint): string {
   return bp.toSVGPathD();
 }
 
-/** Check if a 2D point is inside the blueprint. */
+/**
+ * Test whether a 2D point lies strictly inside the blueprint.
+ *
+ * @returns `true` if the point is inside (boundary points return `false`).
+ * @see {@link Blueprint.isInside}
+ */
 export function blueprintIsInside(bp: Blueprint, point: Point2D): boolean {
   return bp.isInside(point);
 }
 
-/** Sketch a blueprint on a plane. */
-
+/**
+ * Project a blueprint onto a 3D plane, producing sketch data.
+ *
+ * @see {@link Blueprint.sketchOnPlane}
+ */
 export function sketchBlueprintOnPlane(
   bp: Blueprint,
   inputPlane?: PlaneName | Plane,
@@ -82,7 +138,11 @@ export function sketchBlueprintOnPlane(
   return bp.sketchOnPlane(inputPlane, origin);
 }
 
-/** Sketch a blueprint on a face. */
+/**
+ * Map a blueprint onto a 3D face's UV surface, producing sketch data.
+ *
+ * @see {@link Blueprint.sketchOnFace}
+ */
 export function sketchBlueprintOnFace(
   bp: Blueprint,
   face: Face,
