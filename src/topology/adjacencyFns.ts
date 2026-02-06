@@ -40,7 +40,8 @@ function findAncestors(
   const outerExplorer = new oc.TopExp_Explorer_2(parent, targetType, shapeEnum);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
   const results: any[] = [];
-  const seen = new Map<number, boolean[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shapes for IsSame dedup
+  const seen = new Map<number, any[]>();
 
   while (outerExplorer.More()) {
     const candidate = outerExplorer.Current();
@@ -58,14 +59,14 @@ function findAncestors(
     innerExplorer.delete();
 
     if (found) {
-      // Deduplicate using hash + IsSame
+      // Deduplicate using hash + IsSame within bucket
       const hash = candidate.HashCode(HASH_CODE_MAX);
       const bucket = seen.get(hash);
       if (!bucket) {
-        seen.set(hash, [true]);
+        seen.set(hash, [candidate]);
         results.push(candidate);
-      } else if (!results.some((r) => r.IsSame(candidate))) {
-        bucket.push(true);
+      } else if (!bucket.some((r) => r.IsSame(candidate))) {
+        bucket.push(candidate);
         results.push(candidate);
       }
     }
@@ -92,17 +93,18 @@ function findChildren(
   const explorer = new oc.TopExp_Explorer_2(parent, childType, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
   const results: any[] = [];
-  const seen = new Map<number, boolean[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shapes for IsSame dedup
+  const seen = new Map<number, any[]>();
 
   while (explorer.More()) {
     const item = explorer.Current();
     const hash = item.HashCode(HASH_CODE_MAX);
     const bucket = seen.get(hash);
     if (!bucket) {
-      seen.set(hash, [true]);
+      seen.set(hash, [item]);
       results.push(item);
-    } else if (!results.some((r) => r.IsSame(item))) {
-      bucket.push(true);
+    } else if (!bucket.some((r) => r.IsSame(item))) {
+      bucket.push(item);
       results.push(item);
     }
     explorer.Next();
@@ -176,7 +178,8 @@ export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
   // Collect all faces that share any edge with the input face
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
   const neighborRaw: any[] = [];
-  const seen = new Map<number, boolean[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shapes for IsSame dedup
+  const seen = new Map<number, any[]>();
 
   for (const edgeOc of faceEdges) {
     const edgeFaces = findAncestors(
@@ -191,10 +194,10 @@ export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
       const hash = f.HashCode(HASH_CODE_MAX);
       const bucket = seen.get(hash);
       if (!bucket) {
-        seen.set(hash, [true]);
+        seen.set(hash, [f]);
         neighborRaw.push(f);
-      } else if (!neighborRaw.some((r) => r.IsSame(f))) {
-        bucket.push(true);
+      } else if (!bucket.some((r) => r.IsSame(f))) {
+        bucket.push(f);
         neighborRaw.push(f);
       }
     }
