@@ -9,19 +9,30 @@
 
 import type { OpenCascadeInstance, OcShape } from './types.js';
 
+export type FilletRadiusSpec =
+  | number
+  | [number, number]
+  | ((edge: OcShape) => number | [number, number]);
+
 /**
  * Applies a fillet (rounded edge) to selected edges of a shape.
+ * Supports constant radius, variable radius [r1, r2], and per-edge callbacks.
  */
 export function fillet(
   oc: OpenCascadeInstance,
   shape: OcShape,
   edges: OcShape[],
-  radius: number | ((edge: OcShape) => number)
+  radius: FilletRadiusSpec
 ): OcShape {
   const builder = new oc.BRepFilletAPI_MakeFillet(shape, oc.ChFi3d_FilletShape.ChFi3d_Rational);
   for (const edge of edges) {
     const r = typeof radius === 'function' ? radius(edge) : radius;
-    if (r > 0) builder.Add_2(r, edge);
+    if (typeof r === 'number') {
+      if (r > 0) builder.Add_2(r, edge);
+    } else {
+      const [r1, r2] = r;
+      if (r1 > 0 && r2 > 0) builder.Add_3(r1, r2, edge);
+    }
   }
   const result = builder.Shape();
   builder.delete();
