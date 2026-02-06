@@ -8,8 +8,9 @@
 import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face, Wire, Solid } from '../core/shapeTypes.js';
 import { castShape, isSolid, isFace, isWire } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
+import { type Result, ok, err, isOk } from '../core/result.js';
 import { occtError, validationError } from '../core/errors.js';
+import { getWires, getFaces } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -115,4 +116,87 @@ export function healShape<T extends AnyShape>(shape: T): Result<T> {
   }
   // For unsupported types, return the shape as-is
   return ok(shape);
+}
+
+// ---------------------------------------------------------------------------
+// Auto-healing pipeline
+// ---------------------------------------------------------------------------
+
+/** Report of what the auto-heal pipeline did. */
+export interface HealingReport {
+  readonly isValid: boolean;
+  readonly wiresHealed: number;
+  readonly facesHealed: number;
+  readonly solidHealed: boolean;
+  readonly steps: ReadonlyArray<string>;
+}
+
+/**
+ * Automatically heal a shape using the appropriate shape-level fixer.
+ *
+ * If the shape is already valid, returns it unchanged with a no-op report.
+ * Uses ShapeFix_Solid/Face/Wire depending on shape type, which internally
+ * handles sub-shape healing and reconstruction.
+ */
+export function autoHeal(shape: AnyShape): Result<{ shape: AnyShape; report: HealingReport }> {
+  const steps: string[] = [];
+
+  // First check — if already valid, short-circuit
+  if (isShapeValid(shape)) {
+    return ok({
+      shape,
+      report: {
+        isValid: true,
+        wiresHealed: 0,
+        facesHealed: 0,
+        solidHealed: false,
+        steps: ['Shape already valid'],
+      },
+    });
+  }
+
+  steps.push('Shape invalid — applying shape-level healing');
+
+  // Count sub-shapes before healing for comparison
+  const wiresBefore = getWires(shape).length;
+  const facesBefore = getFaces(shape).length;
+
+  // Apply shape-level healing (ShapeFix_Solid/Face/Wire handles sub-shapes internally)
+  const healResult = healShape(shape);
+  let current: AnyShape = shape;
+  let solidHealed = false;
+
+  if (isOk(healResult)) {
+    current = healResult.value;
+    if (isSolid(shape)) {
+      solidHealed = true;
+      steps.push('Applied ShapeFix_Solid');
+    } else {
+      steps.push('Applied shape-level healing');
+    }
+  }
+
+  // Count sub-shapes after healing to detect changes
+  const wiresAfter = getWires(current).length;
+  const facesAfter = getFaces(current).length;
+  const wiresHealed = Math.abs(wiresAfter - wiresBefore);
+  const facesHealed = Math.abs(facesAfter - facesBefore);
+
+  if (wiresHealed > 0) steps.push(`Wire count changed by ${wiresHealed}`);
+  if (facesHealed > 0) steps.push(`Face count changed by ${facesHealed}`);
+
+  // Final validation
+  const valid = isShapeValid(current);
+  steps.push(valid ? 'Final validation: valid' : 'Final validation: still invalid');
+
+  return ok({
+    shape: current,
+    report: {
+      isValid: valid,
+      wiresHealed,
+      facesHealed,
+      solidHealed,
+      steps,
+    },
+  });
 }
