@@ -36,6 +36,8 @@ export interface EdgeMesh {
 export interface MeshOptions {
   tolerance?: number;
   angularTolerance?: number;
+  /** Abort signal to cancel mesh generation between face iterations. */
+  signal?: AbortSignal;
 }
 
 // ---------------------------------------------------------------------------
@@ -51,8 +53,10 @@ export function meshShape(
     skipNormals = false,
     includeUVs = false,
     cache = true,
+    signal,
   }: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean } = {}
 ): ShapeMesh {
+  signal?.throwIfAborted();
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
   const cacheKey = buildMeshCacheKey(0, tolerance, angularTolerance, skipNormals);
   if (cache && !includeUVs) {
@@ -65,6 +69,7 @@ export function meshShape(
     angularTolerance,
     skipNormals,
     includeUVs,
+    ...(signal ? { signal } : {}),
   });
 
   const mesh: ShapeMesh = {

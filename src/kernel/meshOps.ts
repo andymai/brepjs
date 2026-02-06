@@ -129,6 +129,7 @@ export function meshJS(
   explorer.Init(shape, oc.TopAbs_ShapeEnum.TopAbs_FACE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
 
   while (explorer.More()) {
+    options.signal?.throwIfAborted();
     const face = oc.TopoDS.Face_1(explorer.Current());
     const location = new oc.TopLoc_Location_1();
     const triangulation = oc.BRep_Tool.Triangulation(face, location, 0);
