@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/andymai/brepjs/compare/brepjs-v4.0.4...brepjs-v4.1.0) (2026-02-06)
+
+
+### Features
+
+* add cone and torus primitive constructors ([#56](https://github.com/andymai/brepjs/issues/56)) ([61a488d](https://github.com/andymai/brepjs/commit/61a488d79c6f1d8da1ac596e39e03babacb90242))
+
 ## [4.0.4](https://github.com/andymai/brepjs/compare/brepjs-v4.0.3...brepjs-v4.0.4) (2026-02-04)
 
 
