@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.12.0](https://github.com/andymai/brepjs/compare/brepjs-v4.11.0...brepjs-v4.12.0) (2026-02-06)
+
+
+### Features
+
+* add vertex finder and topology query functions ([#97](https://github.com/andymai/brepjs/issues/97)) ([8031fa2](https://github.com/andymai/brepjs/commit/8031fa2d6b235596063619da6159557d26d5a6fc))
+
 ## [4.11.0](https://github.com/andymai/brepjs/compare/brepjs-v4.10.0...brepjs-v4.11.0) (2026-02-06)
 
 
