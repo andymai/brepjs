@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useUrlState } from '../../hooks/useUrlState';
@@ -9,7 +9,6 @@ import ViewerPanel from './ViewerPanel';
 import OutputPanel from './OutputPanel';
 import StatusBar from './StatusBar';
 import LoadingOverlay from './LoadingOverlay';
-import ExamplePicker from './ExamplePicker';
 
 export default function PlaygroundPage() {
   const code = usePlaygroundStore((s) => s.code);
@@ -17,7 +16,6 @@ export default function PlaygroundPage() {
   const setMeshes = usePlaygroundStore((s) => s.setMeshes);
   const { runCode, exportSTL, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
-  const [showExamples, setShowExamples] = useState(false);
   const heroMesh = useHeroMesh();
 
   // Seed viewer with pre-computed mesh while WASM engine loads
@@ -51,21 +49,11 @@ export default function PlaygroundPage() {
     <div className="relative flex h-screen flex-col bg-gray-950">
       <LoadingOverlay />
 
-      <div className="relative">
-        <Toolbar
-          onRun={handleRun}
-          onExportSTL={handleExportSTL}
-          onShare={handleShare}
-          onToggleExamples={() => setShowExamples((v) => !v)}
-          showExamples={showExamples}
-        />
-        {showExamples && (
-          <ExamplePicker
-            onClose={() => setShowExamples(false)}
-            onSelect={(code) => runCode(code)}
-          />
-        )}
-      </div>
+      <Toolbar
+        onRun={handleRun}
+        onExportSTL={handleExportSTL}
+        onShare={handleShare}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: editor + output */}

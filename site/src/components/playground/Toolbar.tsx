@@ -5,16 +5,12 @@ interface ToolbarProps {
   onRun: () => void;
   onExportSTL: () => void;
   onShare: () => void;
-  onToggleExamples: () => void;
-  showExamples: boolean;
 }
 
 export default function Toolbar({
   onRun,
   onExportSTL,
   onShare,
-  onToggleExamples,
-  showExamples,
 }: ToolbarProps) {
   const engineReady = useEngineStore((s) => s.status === 'ready');
 
@@ -30,16 +26,7 @@ export default function Toolbar({
 
         <div className="mx-2 h-4 w-px bg-border-subtle" />
 
-        <button
-          onClick={onToggleExamples}
-          className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-            showExamples
-              ? 'bg-surface-overlay text-white'
-              : 'text-gray-400 hover:bg-surface-overlay hover:text-white'
-          }`}
-        >
-          Examples
-        </button>
+        <span className="text-xs font-medium text-gray-400">Playground</span>
       </div>
 
       <div className="flex items-center gap-2">
