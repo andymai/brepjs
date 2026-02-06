@@ -139,7 +139,7 @@ export function chamferDistAngle(
 
   for (const edge of edges) {
     // Find a face containing this edge
-    let containingFace: OcShape = null;
+    let containingFace: OcShape | null = null;
     for (const face of faces) {
       const edgeExplorer = new oc.TopExp_Explorer_2(
         face,
