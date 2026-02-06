@@ -15,13 +15,13 @@ import { toOcPnt } from '../core/occtBoundary.js';
 import { gcWithScope } from '../core/disposal.js';
 import { vecDot, vecNormalize } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
-import type { AnyShape, Edge, Face } from '../core/shapeTypes.js';
+import type { AnyShape, Edge, Face, Wire } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { iterTopo, downcast } from '../topology/cast.js';
 import { getHashCode, isSameShape } from '../topology/shapeFns.js';
 import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '../topology/faceFns.js';
 import { measureArea } from '../measurement/measureFns.js';
-import { getCurveType, curveLength } from '../topology/curveFns.js';
+import { getCurveType, curveLength, curveIsClosed } from '../topology/curveFns.js';
 import type { CurveType } from '../core/definitionMaps.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { queryError } from '../core/errors.js';
@@ -53,11 +53,11 @@ export interface ShapeFinder<T extends AnyShape> {
 
   // ── Internal (for composition) ──
   readonly _filters: ReadonlyArray<Predicate<T>>;
-  readonly _topoKind: 'edge' | 'face';
+  readonly _topoKind: 'edge' | 'face' | 'wire';
 }
 
 function createFinder<T extends AnyShape>(
-  topoKind: 'edge' | 'face',
+  topoKind: 'edge' | 'face' | 'wire',
   filters: ReadonlyArray<Predicate<T>>,
   getNormal: (element: T) => Vec3 | null
 ): ShapeFinder<T> {
@@ -295,6 +295,52 @@ function createFaceFinder(filters: ReadonlyArray<Predicate<Face>>): FaceFinderFn
         const d = distTool.Value();
 
         return Math.abs(d - distance) < 1e-6;
+      }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Wire finder
+// ---------------------------------------------------------------------------
+
+export interface WireFinderFn extends ShapeFinder<Wire> {
+  readonly isClosed: () => WireFinderFn;
+  readonly isOpen: () => WireFinderFn;
+  readonly ofEdgeCount: (count: number) => WireFinderFn;
+}
+
+/** Create an immutable wire finder. */
+export function wireFinder(): WireFinderFn {
+  return createWireFinder([]);
+}
+
+function createWireFinder(filters: ReadonlyArray<Predicate<Wire>>): WireFinderFn {
+  const base = createFinder<Wire>('wire', filters, () => null);
+
+  const withFilter = (pred: Predicate<Wire>): WireFinderFn => createWireFinder([...filters, pred]);
+
+  return {
+    ...base,
+    when: (pred) => createWireFinder([...filters, pred]),
+    inList: (elements) => createWireFinder([...base.inList(elements)._filters]),
+    not: (fn) =>
+      createWireFinder([...base.not(fn as (f: ShapeFinder<Wire>) => ShapeFinder<Wire>)._filters]),
+    either: (fns) =>
+      createWireFinder([
+        ...base.either(fns as ((f: ShapeFinder<Wire>) => ShapeFinder<Wire>)[])._filters,
+      ]),
+
+    isClosed: () => withFilter((wire) => curveIsClosed(wire)),
+
+    isOpen: () => withFilter((wire) => !curveIsClosed(wire)),
+
+    ofEdgeCount: (count) =>
+      withFilter((wire) => {
+        let edgeCount = 0;
+        for (const _raw of iterTopo(wire.wrapped, 'edge')) {
+          edgeCount++;
+        }
+        return edgeCount === count;
       }),
   };
 }

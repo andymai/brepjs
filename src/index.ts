@@ -608,8 +608,10 @@ export { importSTEP as fnImportSTEP, importSTL as fnImportSTL } from './io/impor
 export {
   edgeFinder,
   faceFinder,
+  wireFinder,
   type EdgeFinderFn,
   type FaceFinderFn,
+  type WireFinderFn,
   type ShapeFinder,
 } from './query/finderFns.js';
 
