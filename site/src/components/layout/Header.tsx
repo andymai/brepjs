@@ -30,14 +30,6 @@ export default function Header() {
         >
           GitHub
         </a>
-        <a
-          href="https://www.npmjs.com/package/brepjs"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-gray-400 transition-colors hover:text-white"
-        >
-          npm
-        </a>
       </nav>
     </header>
   );
