@@ -133,3 +133,51 @@ export function setMeshCacheSize(_size: number): void {
   // WeakMap doesn't support size limits - entries are GC'd when shapes are GC'd
   // This function is kept for backward compatibility but is now a no-op
 }
+
+// ---------------------------------------------------------------------------
+// Isolated mesh cache context
+// ---------------------------------------------------------------------------
+
+/** An isolated mesh cache context for per-viewer or per-worker use. */
+export interface MeshCacheContext {
+  getMesh(shape: OcShape, key: string): ShapeMesh | undefined;
+  setMesh(shape: OcShape, key: string, value: ShapeMesh): void;
+  getEdgeMesh(shape: OcShape, key: string): EdgeMesh | undefined;
+  setEdgeMesh(shape: OcShape, key: string, value: EdgeMesh): void;
+  clear(): void;
+}
+
+/** Create an isolated mesh cache that doesn't share state with the global cache. */
+export function createMeshCache(): MeshCacheContext {
+  let shapeMap: WeakMap<OcShape, Map<string, ShapeMesh>> = new WeakMap();
+  let edgeMap: WeakMap<OcShape, Map<string, EdgeMesh>> = new WeakMap();
+
+  return {
+    getMesh(shape: OcShape, key: string): ShapeMesh | undefined {
+      return shapeMap.get(shape)?.get(key);
+    },
+    setMesh(shape: OcShape, key: string, value: ShapeMesh): void {
+      let inner = shapeMap.get(shape);
+      if (!inner) {
+        inner = new Map();
+        shapeMap.set(shape, inner);
+      }
+      inner.set(key, value);
+    },
+    getEdgeMesh(shape: OcShape, key: string): EdgeMesh | undefined {
+      return edgeMap.get(shape)?.get(key);
+    },
+    setEdgeMesh(shape: OcShape, key: string, value: EdgeMesh): void {
+      let inner = edgeMap.get(shape);
+      if (!inner) {
+        inner = new Map();
+        edgeMap.set(shape, inner);
+      }
+      inner.set(key, value);
+    },
+    clear(): void {
+      shapeMap = new WeakMap();
+      edgeMap = new WeakMap();
+    },
+  };
+}

@@ -10,6 +10,7 @@ import type { AnyShape, Edge, Face, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { occtError, validationError } from '../core/errors.js';
+import { kernelCall } from '../core/kernelCall.js';
 import { getEdges } from './shapeFns.js';
 
 /**
@@ -20,18 +21,11 @@ import { getEdges } from './shapeFns.js';
  * along the surface normal; negative thickness offsets against it.
  */
 export function thickenSurface(shape: AnyShape, thickness: number): Result<AnyShape> {
-  try {
-    const kernel = getKernel();
-    const resultOc = kernel.thicken(shape.wrapped, thickness);
-    return ok(castShape(resultOc));
-  } catch (e) {
-    return err(
-      occtError(
-        'THICKEN_FAILED',
-        `Thicken operation failed: ${e instanceof Error ? e.message : String(e)}`
-      )
-    );
-  }
+  return kernelCall(
+    () => getKernel().thicken(shape.wrapped, thickness),
+    'THICKEN_FAILED',
+    'Thicken operation failed'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -43,15 +37,18 @@ export function thickenSurface(shape: AnyShape, thickness: number): Result<AnySh
  *
  * @param shape - The shape to modify.
  * @param edges - Edges to fillet. Pass `undefined` to fillet all edges.
- * @param radius - Constant radius or per-edge callback.
+ * @param radius - Constant radius, variable radius `[r1, r2]`, or per-edge callback.
  */
 export function filletShape(
   shape: Shape3D,
   edges: ReadonlyArray<Edge> | undefined,
-  radius: number | ((edge: Edge) => number | null)
+  radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
 ): Result<Shape3D> {
   if (typeof radius === 'number' && radius <= 0) {
     return err(validationError('INVALID_FILLET_RADIUS', 'Fillet radius must be positive'));
+  }
+  if (Array.isArray(radius) && (radius[0] <= 0 || radius[1] <= 0)) {
+    return err(validationError('INVALID_FILLET_RADIUS', 'Fillet radii must both be positive'));
   }
 
   const selectedEdges = edges ?? getEdges(shape);
@@ -96,15 +93,20 @@ export function filletShape(
  *
  * @param shape - The shape to modify.
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
- * @param distance - Chamfer distance or per-edge callback.
+ * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
  */
 export function chamferShape(
   shape: Shape3D,
   edges: ReadonlyArray<Edge> | undefined,
-  distance: number | ((edge: Edge) => number | null)
+  distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
 ): Result<Shape3D> {
   if (typeof distance === 'number' && distance <= 0) {
     return err(validationError('INVALID_CHAMFER_DISTANCE', 'Chamfer distance must be positive'));
+  }
+  if (Array.isArray(distance) && (distance[0] <= 0 || distance[1] <= 0)) {
+    return err(
+      validationError('INVALID_CHAMFER_DISTANCE', 'Chamfer distances must both be positive')
+    );
   }
 
   const selectedEdges = edges ?? getEdges(shape);
@@ -199,10 +201,9 @@ export function offsetShape(shape: AnyShape, distance: number, tolerance = 1e-6)
     return err(validationError('ZERO_OFFSET', 'Offset distance cannot be zero'));
   }
 
-  try {
-    const result = getKernel().offset(shape.wrapped, distance, tolerance);
-    return ok(castShape(result));
-  } catch (e) {
-    return err(occtError('OFFSET_FAILED', 'Offset operation failed', e));
-  }
+  return kernelCall(
+    () => getKernel().offset(shape.wrapped, distance, tolerance),
+    'OFFSET_FAILED',
+    'Offset operation failed'
+  );
 }

@@ -26,11 +26,15 @@ export {
   collect,
   tryCatch,
   tryCatchAsync,
+  pipeline,
   type Result,
   type Ok,
   type Err,
   type Unit,
+  type ResultPipeline,
 } from './core/result.js';
+
+export { kernelCall, kernelCallRaw } from './core/kernelCall.js';
 
 export {
   type BrepError,
@@ -286,6 +290,10 @@ export {
   type DXFExportOptions,
 } from './io/dxfExportFns.js';
 
+export { exportThreeMF, type ThreeMFExportOptions } from './io/threemfExportFns.js';
+
+export { importSVGPathD, importSVG, type SVGImportOptions } from './io/svgImportFns.js';
+
 // ── Layer 3: sketching ──
 
 import Sketcher from './sketching/Sketcher.js';
@@ -498,7 +506,9 @@ export {
   iterVertices,
   getBounds,
   vertexPosition,
+  describeShape,
   type Bounds3D,
+  type ShapeDescription,
 } from './topology/shapeFns.js';
 
 export { chamferDistAngleShape } from './topology/chamferAngleFns.js';
@@ -527,6 +537,10 @@ export {
   getOrientation,
   flipOrientation,
   offsetWire2D,
+  interpolateCurve,
+  approximateCurve,
+  type InterpolateCurveOptions,
+  type ApproximateCurveOptions,
 } from './topology/curveFns.js';
 
 export {
@@ -542,9 +556,11 @@ export {
   classifyPointOnFace,
   outerWire as fnOuterWire,
   innerWires as fnInnerWires,
+  projectPointOnFace,
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- re-export for backward compat
   triangulateFace,
   type UVBounds,
+  type PointProjectionResult,
 } from './topology/faceFns.js';
 
 // ── Meshing and export ──
@@ -560,7 +576,7 @@ export {
   type MeshOptions,
 } from './topology/meshFns.js';
 
-export { clearMeshCache } from './topology/meshCache.js';
+export { clearMeshCache, createMeshCache, type MeshCacheContext } from './topology/meshCache.js';
 // eslint-disable-next-line @typescript-eslint/no-deprecated -- Public API, kept for backward compatibility
 export { setMeshCacheSize } from './topology/meshCache.js';
 
@@ -569,8 +585,11 @@ export { setMeshCacheSize } from './topology/meshCache.js';
 export {
   toBufferGeometryData,
   toLineGeometryData,
+  toGroupedBufferGeometryData,
   type BufferGeometryData,
   type LineGeometryData,
+  type GroupedBufferGeometryData,
+  type BufferGeometryGroup,
 } from './topology/threeHelpers.js';
 
 // ── Boolean operations (functional) ──
@@ -608,6 +627,8 @@ export {
   healShape,
   autoHeal,
   type HealingReport,
+  type AutoHealOptions,
+  type HealingStepDiagnostic,
 } from './topology/healingFns.js';
 
 // ── Operations (functional) ──
@@ -655,8 +676,15 @@ export {
   stepCount,
   stepsFrom,
   registerShape,
+  createRegistry,
+  registerOperation,
+  replayHistory,
+  replayFrom,
+  modifyStep,
   type OperationStep,
   type ModelHistory,
+  type OperationFn,
+  type OperationRegistry as HistoryOperationRegistry,
 } from './operations/historyFns.js';
 
 // ── Measurement (functional) ──
@@ -742,4 +770,13 @@ export {
   pendingCount,
   isQueueEmpty,
   rejectAll,
+  createWorkerClient,
+  createOperationRegistry,
+  registerHandler,
+  createWorkerHandler,
+  type WorkerClient,
+  type WorkerClientOptions,
+  type WorkerResult,
+  type OperationHandler,
+  type OperationRegistry,
 } from './worker/index.js';

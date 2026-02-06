@@ -173,3 +173,53 @@ export async function tryCatchAsync<T, E>(
     return err(mapError(e));
   }
 }
+
+// ---------------------------------------------------------------------------
+// Pipeline combinator
+// ---------------------------------------------------------------------------
+
+/** A chainable pipeline that short-circuits on the first Err. */
+export interface ResultPipeline<T, E> {
+  /** Chain a Result-returning transform. Short-circuits on Err. */
+  then<U>(fn: (value: T) => Result<U, E>): ResultPipeline<U, E>;
+  /** Extract the final Result. */
+  readonly result: Result<T, E>;
+}
+
+/**
+ * Create a chainable pipeline from a value or Result.
+ *
+ * ```ts
+ * pipeline(shape)
+ *   .then(s => filletShape(s, edges, 2))
+ *   .then(s => shellShape(s, [topFace], 1))
+ *   .result  // → Result<Shape3D>
+ * ```
+ */
+export function pipeline<T, E = BrepError>(input: T | Result<T, E>): ResultPipeline<T, E> {
+  // Detect Result objects by checking the 'ok' discriminant is a boolean
+  function isResult(v: unknown): v is Result<T, E> {
+    return (
+      typeof v === 'object' &&
+      v !== null &&
+      'ok' in v &&
+      typeof (v as Record<string, unknown>)['ok'] === 'boolean'
+    );
+  }
+
+  const initial: Result<T, E> = isResult(input) ? input : ok(input);
+
+  function makePipeline<U>(current: Result<U, E>): ResultPipeline<U, E> {
+    return {
+      then<V>(fn: (value: U) => Result<V, E>): ResultPipeline<V, E> {
+        if (!current.ok) return makePipeline(current as unknown as Result<V, E>);
+        return makePipeline(fn(current.value));
+      },
+      get result(): Result<U, E> {
+        return current;
+      },
+    };
+  }
+
+  return makePipeline(initial);
+}

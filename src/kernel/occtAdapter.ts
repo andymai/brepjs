@@ -86,6 +86,10 @@ import {
   offset as _offset,
   offsetWire2D as _offsetWire2D,
 } from './modifierOps.js';
+import {
+  interpolatePoints as _interpolatePoints,
+  approximatePoints as _approximatePoints,
+} from './curveOps.js';
 
 /**
  * OpenCascade implementation of KernelAdapter.
@@ -212,7 +216,7 @@ export class OCCTAdapter implements KernelAdapter {
   chamfer(
     shape: OcShape,
     edges: OcShape[],
-    distance: number | ((edge: OcShape) => number)
+    distance: number | [number, number] | ((edge: OcShape) => number | [number, number])
   ): OcShape {
     return _chamfer(this.oc, shape, edges, distance);
   }
@@ -393,5 +397,26 @@ export class OCCTAdapter implements KernelAdapter {
 
   split(shape: OcShape, tools: OcShape[]): OcShape {
     return _split(this.oc, shape, tools);
+  }
+
+  // --- Curve construction ---
+
+  interpolatePoints(
+    points: [number, number, number][],
+    options: { periodic?: boolean; tolerance?: number } = {}
+  ): OcShape {
+    return _interpolatePoints(this.oc, points, options);
+  }
+
+  approximatePoints(
+    points: [number, number, number][],
+    options: {
+      tolerance?: number;
+      degMin?: number;
+      degMax?: number;
+      smoothing?: [number, number, number] | null;
+    } = {}
+  ): OcShape {
+    return _approximatePoints(this.oc, points, options);
   }
 }

@@ -122,6 +122,28 @@ export function healShape<T extends AnyShape>(shape: T): Result<T> {
 // Auto-healing pipeline
 // ---------------------------------------------------------------------------
 
+/** Diagnostic for a single healing step. */
+export interface HealingStepDiagnostic {
+  readonly name: string;
+  readonly attempted: boolean;
+  readonly succeeded: boolean;
+  readonly detail?: string;
+}
+
+/** Options for autoHeal. All default to true. */
+export interface AutoHealOptions {
+  /** Fix wire issues (gaps, connectivity). Default: true. */
+  fixWires?: boolean;
+  /** Fix face issues (orientation, geometry). Default: true. */
+  fixFaces?: boolean;
+  /** Fix solid issues (shell gaps, orientation). Default: true. */
+  fixSolids?: boolean;
+  /** Tolerance for sewing. If provided, applies sewing as a healing step. */
+  sewTolerance?: number;
+  /** Fix self-intersections in wires. Default: false. */
+  fixSelfIntersection?: boolean;
+}
+
 /** Report of what the auto-heal pipeline did. */
 export interface HealingReport {
   readonly isValid: boolean;
@@ -129,6 +151,7 @@ export interface HealingReport {
   readonly facesHealed: number;
   readonly solidHealed: boolean;
   readonly steps: ReadonlyArray<string>;
+  readonly diagnostics: ReadonlyArray<HealingStepDiagnostic>;
 }
 
 /**
@@ -138,8 +161,18 @@ export interface HealingReport {
  * Uses ShapeFix_Solid/Face/Wire depending on shape type, which internally
  * handles sub-shape healing and reconstruction.
  */
-export function autoHeal(shape: AnyShape): Result<{ shape: AnyShape; report: HealingReport }> {
+export function autoHeal(
+  shape: AnyShape,
+  options?: AutoHealOptions
+): Result<{ shape: AnyShape; report: HealingReport }> {
+  const fixWires = options?.fixWires !== false;
+  const fixFaces = options?.fixFaces !== false;
+  const fixSolids = options?.fixSolids !== false;
+  const fixSelfIntersection = options?.fixSelfIntersection === true;
+  const sewTolerance = options?.sewTolerance;
+
   const steps: string[] = [];
+  const diagnostics: HealingStepDiagnostic[] = [];
 
   // First check — if already valid, short-circuit
   if (isShapeValid(shape)) {
@@ -151,6 +184,7 @@ export function autoHeal(shape: AnyShape): Result<{ shape: AnyShape; report: Hea
         facesHealed: 0,
         solidHealed: false,
         steps: ['Shape already valid'],
+        diagnostics: [{ name: 'validation', attempted: true, succeeded: true }],
       },
     });
   }
@@ -161,19 +195,85 @@ export function autoHeal(shape: AnyShape): Result<{ shape: AnyShape; report: Hea
   const wiresBefore = getWires(shape).length;
   const facesBefore = getFaces(shape).length;
 
-  // Apply shape-level healing (ShapeFix_Solid/Face/Wire handles sub-shapes internally)
-  const healResult = healShape(shape);
   let current: AnyShape = shape;
   let solidHealed = false;
 
-  if (isOk(healResult)) {
-    current = healResult.value;
-    if (isSolid(shape)) {
-      solidHealed = true;
-      steps.push('Applied ShapeFix_Solid');
-    } else {
-      steps.push('Applied shape-level healing');
+  // Sewing step (if tolerance provided)
+  if (sewTolerance !== undefined) {
+    try {
+      const sewResult = castShape(getKernel().sew([current.wrapped], sewTolerance));
+      current = sewResult;
+      steps.push(`Applied sewing with tolerance ${sewTolerance}`);
+      diagnostics.push({
+        name: 'sew',
+        attempted: true,
+        succeeded: true,
+        detail: `tolerance=${sewTolerance}`,
+      });
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      steps.push(`Sewing failed: ${detail}`);
+      diagnostics.push({ name: 'sew', attempted: true, succeeded: false, detail });
     }
+  }
+
+  // Wire self-intersection fix
+  if (fixSelfIntersection && fixWires) {
+    const wires = getWires(current);
+    let fixCount = 0;
+    for (const wire of wires) {
+      try {
+        const oc = getKernel().oc;
+        const fixer = new oc.ShapeFix_Wire_1();
+        fixer.Load_1(wire.wrapped);
+        const fixed = fixer.FixSelfIntersection();
+        if (fixed) fixCount++;
+        fixer.delete();
+      } catch {
+        // Ignore individual wire failures
+      }
+    }
+    steps.push(`Self-intersection fix: ${fixCount}/${wires.length} wires`);
+    diagnostics.push({
+      name: 'fixSelfIntersection',
+      attempted: true,
+      succeeded: fixCount > 0,
+      detail: `${fixCount}/${wires.length} wires fixed`,
+    });
+  }
+
+  // Apply shape-level healing (ShapeFix_Solid/Face/Wire handles sub-shapes internally)
+  const shouldHealShape =
+    (isSolid(current) && fixSolids) ||
+    (isFace(current) && fixFaces) ||
+    (isWire(current) && fixWires);
+
+  if (shouldHealShape) {
+    const healResult = healShape(current);
+    if (isOk(healResult)) {
+      current = healResult.value;
+      if (isSolid(shape)) {
+        solidHealed = true;
+        steps.push('Applied ShapeFix_Solid');
+        diagnostics.push({ name: 'healSolid', attempted: true, succeeded: true });
+      } else if (isFace(shape)) {
+        steps.push('Applied ShapeFix_Face');
+        diagnostics.push({ name: 'healFace', attempted: true, succeeded: true });
+      } else {
+        steps.push('Applied ShapeFix_Wire');
+        diagnostics.push({ name: 'healWire', attempted: true, succeeded: true });
+      }
+    } else {
+      steps.push('Shape-level healing failed');
+      diagnostics.push({ name: 'healShape', attempted: true, succeeded: false });
+    }
+  } else {
+    diagnostics.push({
+      name: 'healShape',
+      attempted: false,
+      succeeded: false,
+      detail: 'skipped by options',
+    });
   }
 
   // Count sub-shapes after healing to detect changes
@@ -188,6 +288,7 @@ export function autoHeal(shape: AnyShape): Result<{ shape: AnyShape; report: Hea
   // Final validation
   const valid = isShapeValid(current);
   steps.push(valid ? 'Final validation: valid' : 'Final validation: still invalid');
+  diagnostics.push({ name: 'finalValidation', attempted: true, succeeded: valid });
 
   return ok({
     shape: current,
@@ -197,6 +298,7 @@ export function autoHeal(shape: AnyShape): Result<{ shape: AnyShape; report: Hea
       facesHealed,
       solidHealed,
       steps,
+      diagnostics,
     },
   });
 }

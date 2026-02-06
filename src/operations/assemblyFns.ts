@@ -40,14 +40,14 @@ export interface AssemblyNodeOptions {
 
 /** Create a new assembly node. */
 export function createAssemblyNode(name: string, options: AssemblyNodeOptions = {}): AssemblyNode {
-  const node: AssemblyNode = { name, children: [] };
-  if (options.shape !== undefined) (node as { shape: AnyShape }).shape = options.shape;
-  if (options.translate !== undefined) (node as { translate: Vec3 }).translate = options.translate;
-  if (options.rotate !== undefined)
-    (node as { rotate: { angle: number; axis?: Vec3 } }).rotate = options.rotate;
-  if (options.metadata !== undefined)
-    (node as { metadata: Record<string, unknown> }).metadata = options.metadata;
-  return node;
+  return {
+    name,
+    children: [],
+    ...(options.shape !== undefined ? { shape: options.shape } : {}),
+    ...(options.translate !== undefined ? { translate: options.translate } : {}),
+    ...(options.rotate !== undefined ? { rotate: options.rotate } : {}),
+    ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
