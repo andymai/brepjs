@@ -59,6 +59,16 @@
         "types": "./dist/measurement.d.ts",
         "default": "./dist/measurement.cjs"
       }
+    },
+    "./worker": {
+      "import": {
+        "types": "./dist/worker.d.ts",
+        "default": "./dist/worker.js"
+      },
+      "require": {
+        "types": "./dist/worker.d.ts",
+        "default": "./dist/worker.cjs"
+      }
     }
   },
   "files": [

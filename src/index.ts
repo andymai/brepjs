@@ -686,3 +686,28 @@ export {
   projectEdges,
   type Camera,
 } from './projection/cameraFns.js';
+
+// ── Worker protocol ──
+
+export {
+  type WorkerRequest,
+  type InitRequest,
+  type OperationRequest,
+  type DisposeRequest,
+  type WorkerResponse,
+  type SuccessResponse,
+  type ErrorResponse,
+  isInitRequest,
+  isOperationRequest,
+  isDisposeRequest,
+  isSuccessResponse,
+  isErrorResponse,
+  type PendingTask,
+  type TaskQueue,
+  createTaskQueue,
+  enqueueTask,
+  dequeueTask,
+  pendingCount,
+  isQueueEmpty,
+  rejectAll,
+} from './worker/index.js';

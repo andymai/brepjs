@@ -25,7 +25,7 @@ get_layer() {
   case "$dir" in
     kernel|utils) echo 0 ;;
     core) echo 1 ;;
-    topology|2d|operations|query|measurement|io) echo 2 ;;
+    topology|2d|operations|query|measurement|io|worker) echo 2 ;;
     sketching|text|projection) echo 3 ;;
     *) echo -1 ;;
   esac
