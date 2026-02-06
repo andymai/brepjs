@@ -531,6 +531,15 @@ export { clearMeshCache } from './topology/meshCache.js';
 // eslint-disable-next-line @typescript-eslint/no-deprecated -- Public API, kept for backward compatibility
 export { setMeshCacheSize } from './topology/meshCache.js';
 
+// ── Three.js integration ──
+
+export {
+  toBufferGeometryData,
+  toLineGeometryData,
+  type BufferGeometryData,
+  type LineGeometryData,
+} from './topology/threeHelpers.js';
+
 // ── Boolean operations (functional) ──
 
 export {
