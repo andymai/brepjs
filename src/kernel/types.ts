@@ -99,6 +99,7 @@ export interface KernelAdapter {
     edges: OcShape[],
     distance: number | ((edge: OcShape) => number)
   ): OcShape;
+  chamferDistAngle(shape: OcShape, edges: OcShape[], distance: number, angleDeg: number): OcShape;
   shell(shape: OcShape, faces: OcShape[], thickness: number, tolerance?: number): OcShape;
   thicken(shape: OcShape, thickness: number): OcShape;
   offset(shape: OcShape, distance: number, tolerance?: number): OcShape;

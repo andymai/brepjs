@@ -67,6 +67,7 @@ import {
 import {
   fillet as _fillet,
   chamfer as _chamfer,
+  chamferDistAngle as _chamferDistAngle,
   shell as _shell,
   thicken as _thicken,
   offset as _offset,
@@ -196,6 +197,10 @@ export class OCCTAdapter implements KernelAdapter {
     distance: number | ((edge: OcShape) => number)
   ): OcShape {
     return _chamfer(this.oc, shape, edges, distance);
+  }
+
+  chamferDistAngle(shape: OcShape, edges: OcShape[], distance: number, angleDeg: number): OcShape {
+    return _chamferDistAngle(this.oc, shape, edges, distance, angleDeg);
   }
 
   shell(shape: OcShape, faces: OcShape[], thickness: number, tolerance = 1e-3): OcShape {

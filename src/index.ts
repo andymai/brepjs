@@ -486,6 +486,8 @@ export {
   type Bounds3D,
 } from './topology/shapeFns.js';
 
+export { chamferDistAngleShape } from './topology/chamferAngleFns.js';
+
 export {
   getCurveType as fnGetCurveType,
   curveStartPoint,
