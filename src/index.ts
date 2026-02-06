@@ -621,6 +621,19 @@ export {
   type AssemblyNodeOptions,
 } from './operations/assemblyFns.js';
 
+export {
+  createHistory,
+  addStep,
+  undoLast,
+  findStep,
+  getShape as getHistoryShape,
+  stepCount,
+  stepsFrom,
+  registerShape,
+  type OperationStep,
+  type ModelHistory,
+} from './operations/historyFns.js';
+
 // ── Measurement (functional) ──
 
 export {
