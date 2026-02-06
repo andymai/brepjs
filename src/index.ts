@@ -589,6 +589,19 @@ export {
 
 export { linearPattern, circularPattern } from './operations/patternFns.js';
 
+export {
+  createAssemblyNode,
+  addChild,
+  removeChild,
+  updateNode,
+  findNode,
+  walkAssembly,
+  countNodes,
+  collectShapes,
+  type AssemblyNode,
+  type AssemblyNodeOptions,
+} from './operations/assemblyFns.js';
+
 // ── Measurement (functional) ──
 
 export {
