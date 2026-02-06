@@ -92,10 +92,10 @@ brepjs caches mesh results for shapes. The cache is keyed by shape hash and mesh
 import { meshShape, clearMeshCache } from 'brepjs';
 
 // First call computes the mesh
-const mesh1 = meshShape(shape, { linearDeflection: 0.1 });
+const mesh1 = meshShape(shape, { tolerance: 0.1 });
 
 // Second call returns cached result
-const mesh2 = meshShape(shape, { linearDeflection: 0.1 });
+const mesh2 = meshShape(shape, { tolerance: 0.1 });
 
 // Clear cache if memory is constrained
 clearMeshCache();
@@ -103,17 +103,17 @@ clearMeshCache();
 
 **Mesh options affecting cache:**
 
-- `linearDeflection`: Maximum chord height (smaller = finer mesh)
-- `angularDeflection`: Maximum angle between adjacent normals
+- `tolerance`: Maximum chord height / linear deflection (smaller = finer mesh)
+- `angularTolerance`: Maximum angle between adjacent normals
 
 ### Mesh Quality vs. Performance
 
-| linearDeflection | Use Case             | Relative Speed |
-| ---------------- | -------------------- | -------------- |
-| 0.5              | Preview/bounding box | ~1x            |
-| 0.1              | Interactive display  | ~5x            |
-| 0.01             | High-quality render  | ~50x           |
-| 0.001            | CAM/precision        | ~500x          |
+| tolerance | Use Case             | Relative Speed |
+| --------- | -------------------- | -------------- |
+| 0.5       | Preview/bounding box | ~1x            |
+| 0.1       | Interactive display  | ~5x            |
+| 0.01      | High-quality render  | ~50x           |
+| 0.001     | CAM/precision        | ~500x          |
 
 ## Query Operations
 
@@ -125,23 +125,22 @@ Finders iterate over topology once per filter application. Chain filters to mini
 // ✅ Efficient — single iteration with combined filters
 const faces = faceFinder()
   .parallelTo('Z')
-  .inPlane('XY', 0)
+  .ofSurfaceType('PLANE')
   .find(shape);
 
 // ❌ Less efficient — multiple separate queries
 const zFaces = faceFinder().parallelTo('Z').find(shape);
-const originFaces = zFaces.filter(f => /* manual check */);
+const planeFaces = zFaces.filter(f => /* manual check */);
 ```
 
-### Clone Finders for Reuse
+### Create Finders for Reuse
 
-When applying the same base filters with different specifics, clone the finder:
+When applying different filters from a common base, create new finder instances:
 
 ```typescript
-const baseFinder = faceFinder().ofSurfaceType('PLANE');
-
-const topFaces = baseFinder.clone().inDirection('Z').find(shape);
-const sideFaces = baseFinder.clone().inDirection('X').find(shape);
+// Each finder call creates a new immutable chain
+const topFaces = faceFinder().ofSurfaceType('PLANE').inDirection('Z').find(shape);
+const sideFaces = faceFinder().ofSurfaceType('PLANE').inDirection('X').find(shape);
 ```
 
 ## Benchmarking

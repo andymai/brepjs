@@ -5,9 +5,9 @@
 | Environment | Tested     | Notes                       |
 | ----------- | ---------- | --------------------------- |
 | Node.js 24  | ✅ Primary | CI tested                   |
-| Node.js 22  | ✅         | LTS                         |
-| Node.js 20  | ✅         | LTS, Symbol.dispose support |
-| Node.js 18  | ⚠️         | Works, no Symbol.dispose    |
+| Node.js 22  | ⚠️         | LTS, untested in CI         |
+| Node.js 20  | ⚠️         | LTS, untested in CI         |
+| Node.js 18  | ⚠️         | Untested, no Symbol.dispose |
 | Deno        | 🔲         | Untested                    |
 | Bun         | 🔲         | Untested                    |
 
@@ -86,21 +86,21 @@ module.exports = {
 
 brepjs requires WebAssembly support:
 
-| Feature         | Required                        |
-| --------------- | ------------------------------- |
-| Basic WASM      | ✅                              |
-| WASM Exceptions | ✅ (for brepjs-with-exceptions) |
-| WASM BigInt     | ✅                              |
-| WASM Threads    | ✅ (for brepjs_multi variant)   |
-| WASM SIMD       | ❌ Not used                     |
+| Feature         | Required                         |
+| --------------- | -------------------------------- |
+| Basic WASM      | ✅                               |
+| WASM Exceptions | ✅ (for brepjs-with-exceptions)  |
+| WASM BigInt     | ✅                               |
+| WASM Threads    | ✅ (for brepjs_threaded variant) |
+| WASM SIMD       | ❌ Not used                      |
 
 ### WASM Module Variants
 
-| Module                   | Size   | Features                                 |
-| ------------------------ | ------ | ---------------------------------------- |
-| `brepjs_single`          | ~15 MB | Standard, single-threaded, no exceptions |
-| `brepjs_multi`           | ~16 MB | Multi-threaded variant                   |
-| `brepjs_with_exceptions` | ~17 MB | C++ exceptions for better error messages |
+| Module                   | Size   | Features                                            |
+| ------------------------ | ------ | --------------------------------------------------- |
+| `brepjs_single`          | ~15 MB | Standard, single-threaded, no exceptions            |
+| `brepjs_threaded`        | ~16 MB | Multi-threaded variant (SharedArrayBuffer required) |
+| `brepjs_with_exceptions` | ~17 MB | C++ exceptions for better error messages            |
 
 ## Known Limitations
 
@@ -113,7 +113,7 @@ brepjs requires WebAssembly support:
 ### 2. Threading
 
 - Default (`brepjs_single`): OCCT operations are single-threaded and block the main thread
-- Multi-threaded (`brepjs_multi`): Parallel operations available, requires SharedArrayBuffer and cross-origin isolation
+- Multi-threaded (`brepjs_threaded`): Parallel operations available, requires SharedArrayBuffer and cross-origin isolation (COOP/COEP headers)
 - Consider Web Workers for heavy computation in single-threaded mode
 
 ### 3. No SSR Support

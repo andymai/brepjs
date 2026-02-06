@@ -60,15 +60,36 @@ function buildPart() {
 
 ### How It Works
 
-1. `gcWithScope()` creates a cleanup registry
-2. `r(obj)` registers an object and returns it
-3. When the scope exits (via FinalizationRegistry), all registered objects are disposed
+1. `gcWithScope()` returns a register function backed by `FinalizationRegistry`
+2. `r(obj)` registers an object for cleanup and returns it
+3. When the register function is garbage collected, all registered objects are disposed
 
 ### Best Practices
 
 - Register **only** intermediate objects you won't return
 - Don't register objects you need to keep
 - Nest scopes for complex operations
+
+## localGC (Deterministic Cleanup)
+
+For explicit, deterministic cleanup without relying on garbage collection:
+
+```typescript
+import { localGC } from 'brepjs';
+
+function buildPart() {
+  const [register, cleanup] = localGC();
+  try {
+    const box = register(makeBox([0, 0, 0], [10, 10, 10]));
+    const hole = register(makeCylinder(2, 15));
+    return cutShape(box, hole);
+  } finally {
+    cleanup(); // Immediately disposes all registered objects
+  }
+}
+```
+
+Unlike `gcWithScope`, cleanup is immediate and deterministic — it happens in the `finally` block, not when GC runs.
 
 ## FinalizationRegistry Safety Net
 
@@ -217,10 +238,11 @@ console.log(`Active shapes: ${activeShapes}`);
 
 ## Summary
 
-| Scenario             | Recommended Approach               |
-| -------------------- | ---------------------------------- |
-| Simple temporary     | `using shape = makeShape()`        |
-| Multiple temporaries | `const r = gcWithScope()`          |
-| Long-lived objects   | Store reference, dispose when done |
-| Loops                | `using` in loop body               |
-| Legacy code          | `try/finally` with `delete()`      |
+| Scenario             | Recommended Approach                           |
+| -------------------- | ---------------------------------------------- |
+| Simple temporary     | `using shape = makeShape()`                    |
+| Multiple temporaries | `const [r, cleanup] = localGC()` + `cleanup()` |
+| GC-based cleanup     | `const r = gcWithScope()`                      |
+| Long-lived objects   | Store reference, dispose when done             |
+| Loops                | `using` in loop body                           |
+| Legacy code          | `try/finally` with `delete()`                  |
