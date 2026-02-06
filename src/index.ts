@@ -273,6 +273,8 @@ export {
 export { importSTEP, importSTL } from './io/importers.js';
 export { exportOBJ } from './io/objExportFns.js';
 
+export { exportGltf, exportGlb } from './io/gltfExportFns.js';
+
 // ── Layer 3: sketching ──
 
 import Sketcher from './sketching/Sketcher.js';
