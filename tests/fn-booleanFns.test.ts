@@ -2,11 +2,13 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   makeBox,
+  makeSphere,
   // functional API
   castShape,
   fuseShapes,
   cutShape,
   intersectShapes,
+  sectionShape,
   fnFuseAll,
   fnCutAll,
   fnBuildCompound,
@@ -16,6 +18,9 @@ import {
   fnIsSolid,
   fnIsCompound,
   fnIsShape3D,
+  getShapeKind,
+  getEdges,
+  getWires,
 } from '../src/index.js';
 import { fnMeasureVolume } from '../src/index.js';
 
@@ -317,5 +322,81 @@ describe('compound shape verification', () => {
       expect(fnIsShape3D(shape)).toBe(true);
       expect(fnMeasureVolume(shape)).toBeCloseTo(2000, 0);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Section / cross-section tests
+// ---------------------------------------------------------------------------
+
+describe('sectionShape', () => {
+  it('sections a box at mid-height with XY plane', () => {
+    // Box from (0,0,0) to (10,10,10), section at z=5
+    const b = box(0, 0, 0, 10, 10, 10);
+    const result = sectionShape(b, {
+      origin: [0, 0, 5],
+      xDir: [1, 0, 0],
+      yDir: [0, 1, 0],
+      zDir: [0, 0, 1],
+    });
+    expect(isOk(result)).toBe(true);
+    const section = unwrap(result);
+    // Section of a box at mid-height should produce edges/wires forming a square
+    const kind = getShapeKind(section);
+    expect(kind === 'compound' || kind === 'wire' || kind === 'edge').toBe(true);
+    // Should have edges (the outline of the square cross-section)
+    const edges = getEdges(section);
+    expect(edges.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('sections a box with named XY plane at z=0 origin', () => {
+    // Box from (-5,-5,-5) to (5,5,5), section with XY plane at z=0
+    const b = box(-5, -5, -5, 5, 5, 5);
+    const result = sectionShape(b, 'XY');
+    expect(isOk(result)).toBe(true);
+    const section = unwrap(result);
+    const edges = getEdges(section);
+    expect(edges.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('sections a box with XZ plane', () => {
+    const b = box(-5, -5, -5, 5, 5, 5);
+    const result = sectionShape(b, 'XZ');
+    expect(isOk(result)).toBe(true);
+    const section = unwrap(result);
+    const edges = getEdges(section);
+    expect(edges.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('sections a sphere producing a circular cross-section', () => {
+    const s = castShape(makeSphere(10).wrapped);
+    const result = sectionShape(s, 'XY');
+    expect(isOk(result)).toBe(true);
+    const section = unwrap(result);
+    // A sphere sectioned at its equator should produce edges
+    const edges = getEdges(section);
+    expect(edges.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('returns result for plane not intersecting shape', () => {
+    // Box at z=0..10, plane at z=100 — no intersection
+    const b = box(0, 0, 0, 10, 10, 10);
+    const result = sectionShape(b, {
+      origin: [0, 0, 100],
+      xDir: [1, 0, 0],
+      yDir: [0, 1, 0],
+      zDir: [0, 0, 1],
+    });
+    // Should succeed but produce empty or minimal result
+    expect(isOk(result)).toBe(true);
+    const section = unwrap(result);
+    const edges = getEdges(section);
+    expect(edges.length).toBe(0);
+  });
+
+  it('accepts custom planeSize option', () => {
+    const b = box(0, 0, 0, 10, 10, 10);
+    const result = sectionShape(b, 'XY', { planeSize: 1e6 });
+    expect(isOk(result)).toBe(true);
   });
 });

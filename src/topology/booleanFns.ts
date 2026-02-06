@@ -11,7 +11,11 @@ import type { AnyShape, Shape3D, Compound } from '../core/shapeTypes.js';
 import { castShape, isShape3D, createCompound } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, typeCastError } from '../core/errors.js';
+import { validationError, typeCastError, occtError } from '../core/errors.js';
+import type { Plane } from '../core/planeTypes.js';
+import type { PlaneInput } from '../core/planeTypes.js';
+import { resolvePlane } from '../core/planeOps.js';
+import { vecAdd, vecScale } from '../core/vecOps.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -203,6 +207,99 @@ export function cutAll(
   cutOp.Build(progress);
   if (simplify) cutOp.SimplifyResult(true, true, 1e-3);
   return castToShape3D(cutOp.Shape(), 'CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape');
+}
+
+// ---------------------------------------------------------------------------
+// Section (cross-section / slicing)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a large bounded planar face from a Plane definition.
+ * The face extends ±size along xDir and yDir from the origin.
+ */
+function makeSectionFace(plane: Plane, size: number): OcType {
+  const oc = getKernel().oc;
+
+  // Compute 4 corners of a large rectangle on the plane
+  const hx = vecScale(plane.xDir, size);
+  const hy = vecScale(plane.yDir, size);
+  const nhx = vecScale(plane.xDir, -size);
+  const nhy = vecScale(plane.yDir, -size);
+  const o = plane.origin;
+  const corners = [
+    vecAdd(vecAdd(o, nhx), nhy),
+    vecAdd(vecAdd(o, hx), nhy),
+    vecAdd(vecAdd(o, hx), hy),
+    vecAdd(vecAdd(o, nhx), hy),
+  ];
+
+  // Build 4 OCCT points
+  const pts = corners.map((c) => new oc.gp_Pnt_3(c[0], c[1], c[2]));
+
+  // Build 4 edges forming a closed rectangle
+  const edges = [
+    new oc.BRepBuilderAPI_MakeEdge_3(pts[0], pts[1]),
+    new oc.BRepBuilderAPI_MakeEdge_3(pts[1], pts[2]),
+    new oc.BRepBuilderAPI_MakeEdge_3(pts[2], pts[3]),
+    new oc.BRepBuilderAPI_MakeEdge_3(pts[3], pts[0]),
+  ];
+
+  // Build wire from edges
+  const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
+  for (const e of edges) {
+    wireBuilder.Add_1(e.Edge());
+  }
+  const progress = new oc.Message_ProgressRange_1();
+  wireBuilder.Build(progress);
+  const wire = wireBuilder.Wire();
+
+  // Build planar face from wire
+  const faceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wire, true);
+  const face = faceBuilder.Face();
+
+  // Cleanup temporaries
+  faceBuilder.delete();
+  wireBuilder.delete();
+  progress.delete();
+  for (const e of edges) e.delete();
+  for (const p of pts) p.delete();
+
+  return face;
+}
+
+/**
+ * Section (cross-section) a shape with a plane, returning the intersection
+ * edges and wires. Useful for slicing solids to get 2D cross-section profiles.
+ *
+ * @param shape The shape to section (typically a solid or shell)
+ * @param plane Plane definition — a named plane ("XY", "XZ", etc.) or a Plane object
+ * @param options.approximation Whether to approximate the section curves (default true)
+ * @param options.planeSize Half-size of the cutting plane (default 1e4)
+ * @returns The section result as a shape (typically containing wires/edges)
+ */
+export function sectionShape(
+  shape: AnyShape,
+  plane: PlaneInput,
+  { approximation = true, planeSize = 1e4 }: { approximation?: boolean; planeSize?: number } = {}
+): Result<AnyShape> {
+  const resolvedPlane: Plane = typeof plane === 'string' ? resolvePlane(plane) : plane;
+  const sectionFace = makeSectionFace(resolvedPlane, planeSize);
+
+  try {
+    const kernel = getKernel();
+    const resultOc = kernel.section(shape.wrapped, sectionFace, approximation);
+    const wrapped = castShape(resultOc);
+    return ok(wrapped);
+  } catch (e) {
+    return err(
+      occtError(
+        'SECTION_FAILED',
+        `Section operation failed: ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
+  } finally {
+    sectionFace.delete();
+  }
 }
 
 // ---------------------------------------------------------------------------

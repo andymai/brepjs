@@ -167,6 +167,7 @@ export {
   fuseShapes,
   cutShape,
   intersectShapes,
+  sectionShape,
   fuseAll as fnFuseAll,
   cutAll as fnCutAll,
   buildCompound as fnBuildCompound,
