@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "4.7.1",
+  "version": "4.8.0",
   "description": "Web CAD library built on OpenCascade",
   "keywords": [
     "cad",
@@ -58,6 +58,16 @@
       "require": {
         "types": "./dist/measurement.d.ts",
         "default": "./dist/measurement.cjs"
+      }
+    },
+    "./worker": {
+      "import": {
+        "types": "./dist/worker.d.ts",
+        "default": "./dist/worker.js"
+      },
+      "require": {
+        "types": "./dist/worker.d.ts",
+        "default": "./dist/worker.cjs"
       }
     }
   },
