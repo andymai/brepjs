@@ -273,7 +273,18 @@ export {
 export { importSTEP, importSTL } from './io/importers.js';
 export { exportOBJ } from './io/objExportFns.js';
 
-export { exportGltf, exportGlb } from './io/gltfExportFns.js';
+export {
+  exportGltf,
+  exportGlb,
+  type GltfMaterial,
+  type GltfExportOptions,
+} from './io/gltfExportFns.js';
+export {
+  exportDXF,
+  blueprintToDXF,
+  type DXFEntity,
+  type DXFExportOptions,
+} from './io/dxfExportFns.js';
 
 // ── Layer 3: sketching ──
 
