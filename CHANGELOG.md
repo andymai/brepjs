@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.5.0](https://github.com/andymai/brepjs/compare/brepjs-v4.4.0...brepjs-v4.5.0) (2026-02-06)
+
+
+### Features
+
+* add wireFinder() immutable wire query builder ([#67](https://github.com/andymai/brepjs/issues/67)) ([6bafa6d](https://github.com/andymai/brepjs/commit/6bafa6de12e5c15b17078b5fd57cee14df6aef28))
+
 ## [4.4.0](https://github.com/andymai/brepjs/compare/brepjs-v4.3.0...brepjs-v4.4.0) (2026-02-06)
 
 
