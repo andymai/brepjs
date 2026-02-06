@@ -69,17 +69,17 @@ function createPipe<T extends AnyShape>(shape: T): ShapePipe<T> {
     apply: (fn) => createPipe(fn(shape)),
 
     fuse: (tool, options) => {
-      if (!isShape3D(shape)) throw new Error('fuse requires a 3D shape');
+      if (!isShape3D(shape)) throw new Error('pipe.fuse() requires a 3D shape');
       return createPipe(unwrap(fuseShapes(shape, tool, options)));
     },
 
     cut: (tool, options) => {
-      if (!isShape3D(shape)) throw new Error('cut requires a 3D shape');
+      if (!isShape3D(shape)) throw new Error('pipe.cut() requires a 3D shape');
       return createPipe(unwrap(cutShape(shape, tool, options)));
     },
 
     intersect: (tool) => {
-      if (!isShape3D(shape)) throw new Error('intersect requires a 3D shape');
+      if (!isShape3D(shape)) throw new Error('pipe.intersect() requires a 3D shape');
       return createPipe(unwrap(intersectShapes(shape, tool)));
     },
   };

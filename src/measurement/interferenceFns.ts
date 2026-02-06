@@ -9,6 +9,8 @@ import { getKernel } from '../kernel/index.js';
 import { gcWithScope } from '../core/disposal.js';
 import type { Vec3 } from '../core/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
+import { type Result, ok, err, unwrap } from '../core/result.js';
+import { computationError } from '../core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,7 +51,7 @@ export function checkInterference(
   shape1: AnyShape,
   shape2: AnyShape,
   tolerance = 1e-6
-): InterferenceResult {
+): Result<InterferenceResult> {
   const oc = getKernel().oc;
   const r = gcWithScope();
 
@@ -60,7 +62,7 @@ export function checkInterference(
   distTool.Perform(progress);
 
   if (!distTool.IsDone()) {
-    throw new Error('BRepExtrema_DistShapeShape failed');
+    return err(computationError('INTERFERENCE_FAILED', 'BRepExtrema_DistShapeShape failed'));
   }
 
   const minDistance = distTool.Value() as number;
@@ -78,7 +80,7 @@ export function checkInterference(
   p1.delete();
   p2.delete();
 
-  return result;
+  return ok(result);
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +102,7 @@ export function checkAllInterferences(
   shapes.forEach((si, i) => {
     for (let j = i + 1; j < shapes.length; j++) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j is bounds-checked
-      const result = checkInterference(si, shapes[j]!, tolerance);
+      const result = unwrap(checkInterference(si, shapes[j]!, tolerance));
       if (result.hasInterference) {
         pairs.push({ i, j, result });
       }
