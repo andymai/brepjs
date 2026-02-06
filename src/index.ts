@@ -600,7 +600,15 @@ export {
 
 // ── Healing (functional) ──
 
-export { isShapeValid, healSolid, healFace, healWire, healShape } from './topology/healingFns.js';
+export {
+  isShapeValid,
+  healSolid,
+  healFace,
+  healWire,
+  healShape,
+  autoHeal,
+  type HealingReport,
+} from './topology/healingFns.js';
 
 // ── Operations (functional) ──
 
@@ -666,6 +674,9 @@ export {
   type VolumeProps,
   type SurfaceProps,
   type LinearProps,
+  measureCurvatureAt,
+  measureCurvatureAtMid,
+  type CurvatureResult,
 } from './measurement/measureFns.js';
 
 export {

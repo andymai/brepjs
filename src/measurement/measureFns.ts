@@ -7,6 +7,8 @@ import { getKernel } from '../kernel/index.js';
 import { gcWithScope } from '../core/disposal.js';
 import type { Vec3 } from '../core/types.js';
 import type { AnyShape, Face, Shape3D } from '../core/shapeTypes.js';
+import { uvBounds } from '../topology/faceFns.js';
+import { surfaceCurvature, type CurvatureResult } from '../kernel/measureOps.js';
 
 // ---------------------------------------------------------------------------
 // Volume, area, length
@@ -128,4 +130,35 @@ export function createDistanceQuery(referenceShape: AnyShape): {
       distTool.delete();
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Surface curvature
+// ---------------------------------------------------------------------------
+
+export type { CurvatureResult } from '../kernel/measureOps.js';
+
+/**
+ * Measure surface curvature at a (u, v) parameter point on a face.
+ *
+ * Returns mean, Gaussian, and principal curvatures with directions.
+ * The u,v parameters correspond to the face's parametric domain.
+ */
+export function measureCurvatureAt(face: Face, u: number, v: number): CurvatureResult {
+  const oc = getKernel().oc;
+  return surfaceCurvature(oc, face.wrapped, u, v);
+}
+
+/**
+ * Measure surface curvature at the mid-point of a face's UV bounds.
+ *
+ * Uses BRepTools::UVBounds for the actual trimmed face UV region,
+ * avoiding singularities that can occur with surface-level parameter bounds.
+ */
+export function measureCurvatureAtMid(face: Face): CurvatureResult {
+  const oc = getKernel().oc;
+  const bounds = uvBounds(face);
+  const uMid = (bounds.uMin + bounds.uMax) / 2;
+  const vMid = (bounds.vMin + bounds.vMax) / 2;
+  return surfaceCurvature(oc, face.wrapped, uMid, vMid);
 }
