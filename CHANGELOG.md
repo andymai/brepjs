@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.6.0](https://github.com/andymai/brepjs/compare/brepjs-v4.5.0...brepjs-v4.6.0) (2026-02-06)
+
+
+### Features
+
+* add glTF 2.0 and GLB export ([#69](https://github.com/andymai/brepjs/issues/69)) ([e16be4b](https://github.com/andymai/brepjs/commit/e16be4bf8e959e6c8d6950938cd9db30e5b07de5))
+* add immutable assembly graph for shape hierarchies ([#70](https://github.com/andymai/brepjs/issues/70)) ([a4d1bd5](https://github.com/andymai/brepjs/commit/a4d1bd53d4904592a83d5df10c84c7fc6697de3d))
+* add interference detection between shapes ([#73](https://github.com/andymai/brepjs/issues/73)) ([b03708c](https://github.com/andymai/brepjs/commit/b03708c10b2f5159904189a2427a573afa5d70a4))
+* add subpath exports for core, query, and measurement ([#71](https://github.com/andymai/brepjs/issues/71)) ([f1d21db](https://github.com/andymai/brepjs/commit/f1d21db30a33102dabf5fe21c92ef9467fe340e0))
+* add UV texture coordinates to mesh output ([#72](https://github.com/andymai/brepjs/issues/72)) ([bffbd9b](https://github.com/andymai/brepjs/commit/bffbd9ba0db5bbbfc1910103968de83ee78368c6))
+
 ## [4.5.0](https://github.com/andymai/brepjs/compare/brepjs-v4.4.0...brepjs-v4.5.0) (2026-02-06)
 
 
