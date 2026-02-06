@@ -27,9 +27,8 @@ interface PathToken {
 
 function tokenizeSVGPath(d: string): PathToken[] {
   const tokens: PathToken[] = [];
-  // Match command letter followed by optional numbers
-  const re =
-    /([MmLlHhVvCcSsQqTtAaZz])\s*((?:[^MmLlHhVvCcSsQqTtAaZz]*?)(?=\s*[MmLlHhVvCcSsQqTtAaZz]|$))/g;
+  // Match command letter followed by everything up to the next command letter
+  const re = /([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)/g;
   let match: RegExpExecArray | null;
 
   while ((match = re.exec(d)) !== null) {
@@ -361,24 +360,17 @@ export function importSVGPathD(pathD: string): Result<Blueprint> {
  */
 export function importSVG(svgString: string): Result<Blueprint[]> {
   try {
-    // Extract path d attributes using regex
-    const pathRe = /<path[^>]+d\s*=\s*"([^"]*)"/gi;
+    // Two-step extraction to avoid polynomial regex backtracking:
+    // 1. Find all <path ...> tags (linear — [^>]* is greedy, no ambiguity)
+    // 2. Extract d attribute from each short tag string
+    const tagRe = /<path\s[^>]*>/gi;
+    const dAttrRe = /\bd\s*=\s*(?:"([^"]*)"|'([^']*)')/;
     const blueprints: Blueprint[] = [];
     let match: RegExpExecArray | null;
 
-    while ((match = pathRe.exec(svgString)) !== null) {
-      const d = match[1];
-      if (!d) continue;
-      const result = importSVGPathD(d);
-      if (result.ok) {
-        blueprints.push(result.value);
-      }
-    }
-
-    // Also try single-quoted attributes
-    const pathReSingle = /<path[^>]+d\s*=\s*'([^']*)'/gi;
-    while ((match = pathReSingle.exec(svgString)) !== null) {
-      const d = match[1];
+    while ((match = tagRe.exec(svgString)) !== null) {
+      const attrMatch = dAttrRe.exec(match[0]);
+      const d = attrMatch?.[1] ?? attrMatch?.[2];
       if (!d) continue;
       const result = importSVGPathD(d);
       if (result.ok) {

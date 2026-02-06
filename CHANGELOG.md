@@ -2,53 +2,46 @@
 
 ## [4.15.0](https://github.com/andymai/brepjs/compare/brepjs-v4.14.0...brepjs-v4.15.0) (2026-02-06)
 
-
 ### Features
 
-* add quick wins — kernelCall, pipeline, BSpline curves, 3MF export, SVG import, and more ([#108](https://github.com/andymai/brepjs/issues/108)) ([7c48763](https://github.com/andymai/brepjs/commit/7c48763951ecfb321ab6f5b09a8c720f0807e8ec))
+- add quick wins — kernelCall, pipeline, BSpline curves, 3MF export, SVG import, and more ([#108](https://github.com/andymai/brepjs/issues/108)) ([7c48763](https://github.com/andymai/brepjs/commit/7c48763951ecfb321ab6f5b09a8c720f0807e8ec))
 
 ## [4.14.0](https://github.com/andymai/brepjs/compare/brepjs-v4.13.0...brepjs-v4.14.0) (2026-02-06)
 
-
 ### Features
 
-* add auto-healing pipeline and surface curvature ([#100](https://github.com/andymai/brepjs/issues/100)) ([2d2ac6e](https://github.com/andymai/brepjs/commit/2d2ac6e2f4f3b014c06e72b408971008c67121a1))
+- add auto-healing pipeline and surface curvature ([#100](https://github.com/andymai/brepjs/issues/100)) ([2d2ac6e](https://github.com/andymai/brepjs/commit/2d2ac6e2f4f3b014c06e72b408971008c67121a1))
 
 ## [4.13.0](https://github.com/andymai/brepjs/compare/brepjs-v4.12.0...brepjs-v4.13.0) (2026-02-06)
 
-
 ### Features
 
-* add glTF PBR materials and DXF export ([#99](https://github.com/andymai/brepjs/issues/99)) ([85c7abe](https://github.com/andymai/brepjs/commit/85c7abe47e565bc3cf05aa1e2e3659d3b1bd5d12))
+- add glTF PBR materials and DXF export ([#99](https://github.com/andymai/brepjs/issues/99)) ([85c7abe](https://github.com/andymai/brepjs/commit/85c7abe47e565bc3cf05aa1e2e3659d3b1bd5d12))
 
 ## [4.12.0](https://github.com/andymai/brepjs/compare/brepjs-v4.11.0...brepjs-v4.12.0) (2026-02-06)
 
-
 ### Features
 
-* add vertex finder and topology query functions ([#97](https://github.com/andymai/brepjs/issues/97)) ([8031fa2](https://github.com/andymai/brepjs/commit/8031fa2d6b235596063619da6159557d26d5a6fc))
+- add vertex finder and topology query functions ([#97](https://github.com/andymai/brepjs/issues/97)) ([8031fa2](https://github.com/andymai/brepjs/commit/8031fa2d6b235596063619da6159557d26d5a6fc))
 
 ## [4.11.0](https://github.com/andymai/brepjs/compare/brepjs-v4.10.0...brepjs-v4.11.0) (2026-02-06)
 
-
 ### Features
 
-* add slicing, measurement aliases, topo caching, AbortSignal ([#96](https://github.com/andymai/brepjs/issues/96)) ([47e5aef](https://github.com/andymai/brepjs/commit/47e5aefd99fa201a5ae11c370bab13e7ed3980b9))
+- add slicing, measurement aliases, topo caching, AbortSignal ([#96](https://github.com/andymai/brepjs/issues/96)) ([47e5aef](https://github.com/andymai/brepjs/commit/47e5aefd99fa201a5ae11c370bab13e7ed3980b9))
 
 ## [4.10.0](https://github.com/andymai/brepjs/compare/brepjs-v4.9.0...brepjs-v4.10.0) (2026-02-06)
 
-
 ### Features
 
-* add healing ops, point-in-face, and splitter to kernel ([#103](https://github.com/andymai/brepjs/issues/103)) ([9e27811](https://github.com/andymai/brepjs/commit/9e27811a1db3dd52eccba850765eee313ee34744))
-* promote isValid, sew, offsetWire2D, distance into kernel ([#94](https://github.com/andymai/brepjs/issues/94)) ([37ca207](https://github.com/andymai/brepjs/commit/37ca207fbf37f7ff31d0c85f20f09e6367d9204b))
+- add healing ops, point-in-face, and splitter to kernel ([#103](https://github.com/andymai/brepjs/issues/103)) ([9e27811](https://github.com/andymai/brepjs/commit/9e27811a1db3dd52eccba850765eee313ee34744))
+- promote isValid, sew, offsetWire2D, distance into kernel ([#94](https://github.com/andymai/brepjs/issues/94)) ([37ca207](https://github.com/andymai/brepjs/commit/37ca207fbf37f7ff31d0c85f20f09e6367d9204b))
 
 ## [4.9.0](https://github.com/andymai/brepjs/compare/brepjs-v4.8.0...brepjs-v4.9.0) (2026-02-06)
 
-
 ### Features
 
-* improve error handling and add deprecation tags ([#98](https://github.com/andymai/brepjs/issues/98)) ([918ff5b](https://github.com/andymai/brepjs/commit/918ff5bac559c160de78e2116c515522f4b312c2))
+- improve error handling and add deprecation tags ([#98](https://github.com/andymai/brepjs/issues/98)) ([918ff5b](https://github.com/andymai/brepjs/commit/918ff5bac559c160de78e2116c515522f4b312c2))
 
 ## [4.8.0](https://github.com/andymai/brepjs/compare/brepjs-v4.7.1...brepjs-v4.8.0) (2026-02-06)
 
