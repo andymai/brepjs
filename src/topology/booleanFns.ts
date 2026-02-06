@@ -247,7 +247,9 @@ function makeSectionFace(plane: Plane, size: number): OcType {
   // Build wire from edges
   const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
   for (const e of edges) {
-    wireBuilder.Add_1(e.Edge());
+    const edge = e.Edge();
+    wireBuilder.Add_1(edge);
+    edge.delete();
   }
   const progress = new oc.Message_ProgressRange_1();
   wireBuilder.Build(progress);
@@ -259,6 +261,7 @@ function makeSectionFace(plane: Plane, size: number): OcType {
 
   // Cleanup temporaries
   faceBuilder.delete();
+  wire.delete();
   wireBuilder.delete();
   progress.delete();
   for (const e of edges) e.delete();

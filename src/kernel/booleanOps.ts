@@ -114,6 +114,11 @@ export function section(
   const sectionOp = new oc.BRepAlgoAPI_Section_3(shape, tool, false);
   sectionOp.Approximation(approximation);
   sectionOp.Build(progress);
+  if (!sectionOp.IsDone()) {
+    sectionOp.delete();
+    progress.delete();
+    throw new Error('BRepAlgoAPI_Section build failed');
+  }
   const result = sectionOp.Shape();
   sectionOp.delete();
   progress.delete();
