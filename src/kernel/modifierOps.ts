@@ -83,6 +83,21 @@ export function shell(
 }
 
 /**
+ * Thickens a surface (face/shell) into a solid by offsetting it.
+ * Uses the simple offset approach (BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple).
+ */
+export function thicken(oc: OpenCascadeInstance, shape: OcShape, thickness: number): OcShape {
+  const builder = new oc.BRepOffsetAPI_MakeThickSolid();
+  builder.MakeThickSolidBySimple(shape, thickness);
+  const progress = new oc.Message_ProgressRange_1();
+  builder.Build(progress);
+  const result = builder.Shape();
+  builder.delete();
+  progress.delete();
+  return result;
+}
+
+/**
  * Offsets all faces of a shape by a given distance.
  */
 export function offset(

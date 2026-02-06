@@ -556,6 +556,10 @@ export {
   type BooleanOptions,
 } from './topology/booleanFns.js';
 
+// ── Modifier operations (functional) ──
+
+export { thickenSurface } from './topology/modifierFns.js';
+
 // ── Operations (functional) ──
 
 export {
