@@ -219,11 +219,12 @@ function buildGltfDocument(mesh: ShapeMesh, mode: 'base64' | 'glb'): GltfDocumen
   if (mode === 'base64') {
     const buffer = buildBinaryBuffer(mesh);
     const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      binary += String.fromCharCode(bytes[i]!);
+    const CHUNK = 8192;
+    const chunks: string[] = [];
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      chunks.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK)));
     }
+    const binary = chunks.join('');
     doc.buffers[0] = {
       byteLength: totalByteLength,
       uri: 'data:application/octet-stream;base64,' + btoa(binary),
