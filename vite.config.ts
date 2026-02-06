@@ -5,17 +5,20 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [
     dts({
-      rollupTypes: true,
+      rollupTypes: false,
     }),
   ],
   build: {
     target: 'es2022',
     minify: false,
     lib: {
-      entry: resolve(__dirname, 'src/index.ts'),
-      name: 'brepjs',
+      entry: {
+        brepjs: resolve(__dirname, 'src/index.ts'),
+        core: resolve(__dirname, 'src/core.ts'),
+        query: resolve(__dirname, 'src/query.ts'),
+        measurement: resolve(__dirname, 'src/measurement.ts'),
+      },
       formats: ['es', 'cjs'],
-      fileName: 'brepjs',
     },
     rollupOptions: {
       external: ['brepjs-opencascade', 'opentype.js'],
