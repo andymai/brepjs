@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.6.0...brepjs-opencascade-v0.7.0) (2026-02-06)
+
+
+### Features
+
+* add IGES import/export support ([#90](https://github.com/andymai/brepjs/issues/90)) ([e6b75d4](https://github.com/andymai/brepjs/commit/e6b75d432180ec1a380d58b8ed3fd86401bd94b3))
+
 ## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.5.1...brepjs-opencascade-v0.6.0) (2026-02-06)
 
 
