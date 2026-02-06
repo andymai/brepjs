@@ -4,6 +4,7 @@ import { resolvePlane } from '../core/planeOps.js';
 import { vecProjectToPlane, vecEquals } from '../core/vecOps.js';
 
 import type { Face, AnyShape, SurfaceType } from '../topology/shapes.js';
+import { measureArea } from '../measurement/measureShape.js';
 import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
 import { Finder3d } from './generic3dfinder.js';
 
@@ -43,6 +44,19 @@ export class FaceFinder extends Finder3d<Face> {
   ofSurfaceType(surfaceType: SurfaceType): this {
     const check = ({ element }: { element: Face }) => {
       return element.geomType === surfaceType;
+    };
+    this.filters.push(check);
+    return this;
+  }
+
+  /**
+   * Filter to find faces that have a specific area.
+   *
+   * @category Filter
+   */
+  ofArea(area: number, tolerance = 1e-3): this {
+    const check = ({ element }: { element: Face }) => {
+      return Math.abs(measureArea(element) - area) < tolerance;
     };
     this.filters.push(check);
     return this;

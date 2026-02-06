@@ -192,4 +192,37 @@ describe('faceFinder', () => {
     const filtered = faceFinder().inList(subset).find(box);
     expect(filtered.length).toBe(2);
   });
+
+  it('filters faces by area (10x10 box)', () => {
+    const box = fnBox(10, 10, 10);
+    // A 10x10x10 box has all faces of area 100
+    const faces = faceFinder().ofArea(100).find(box);
+    expect(faces.length).toBe(6);
+  });
+
+  it('filters faces by area on non-uniform box', () => {
+    const box = fnBox(10, 20, 30);
+    // 10x20 faces (area=200): 2 faces
+    const faces200 = faceFinder().ofArea(200).find(box);
+    expect(faces200.length).toBe(2);
+    // 10x30 faces (area=300): 2 faces
+    const faces300 = faceFinder().ofArea(300).find(box);
+    expect(faces300.length).toBe(2);
+    // 20x30 faces (area=600): 2 faces
+    const faces600 = faceFinder().ofArea(600).find(box);
+    expect(faces600.length).toBe(2);
+  });
+
+  it('ofArea returns empty for no match', () => {
+    const box = fnBox(10, 10, 10);
+    const faces = faceFinder().ofArea(999).find(box);
+    expect(faces.length).toBe(0);
+  });
+
+  it('ofArea with custom tolerance', () => {
+    const box = fnBox(10, 10, 10);
+    // With very tight tolerance, should still match exactly
+    const faces = faceFinder().ofArea(100, 0.001).find(box);
+    expect(faces.length).toBe(6);
+  });
 });

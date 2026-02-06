@@ -20,6 +20,7 @@ import { castShape } from '../core/shapeTypes.js';
 import { iterTopo, downcast } from '../topology/cast.js';
 import { getHashCode, isSameShape } from '../topology/shapeFns.js';
 import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '../topology/faceFns.js';
+import { measureArea } from '../measurement/measureFns.js';
 import { getCurveType, curveLength } from '../topology/curveFns.js';
 import type { CurveType } from '../core/definitionMaps.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
@@ -234,6 +235,7 @@ export interface FaceFinderFn extends ShapeFinder<Face> {
   readonly inDirection: (dir?: 'X' | 'Y' | 'Z' | Vec3, angle?: number) => FaceFinderFn;
   readonly parallelTo: (dir?: 'X' | 'Y' | 'Z' | Vec3) => FaceFinderFn;
   readonly ofSurfaceType: (surfaceType: SurfaceType) => FaceFinderFn;
+  readonly ofArea: (area: number, tolerance?: number) => FaceFinderFn;
   readonly atDistance: (distance: number, point?: Vec3) => FaceFinderFn;
 }
 
@@ -271,6 +273,9 @@ function createFaceFinder(filters: ReadonlyArray<Predicate<Face>>): FaceFinderFn
 
     ofSurfaceType: (surfaceType) =>
       withFilter((face) => unwrap(getSurfaceType(face)) === surfaceType),
+
+    ofArea: (area, tolerance = 1e-3) =>
+      withFilter((face) => Math.abs(measureArea(face) - area) < tolerance),
 
     atDistance: (distance, point = [0, 0, 0]) =>
       withFilter((face) => {

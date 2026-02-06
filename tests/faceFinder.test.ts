@@ -123,4 +123,18 @@ describe('FaceFinder extra coverage', () => {
     const finder = new FaceFinder().and([(f) => f.parallelTo('XY'), (f) => f.inPlane('XY', 30)]);
     expect(finder.find(makeBox([0, 0, 0], [10, 20, 30])).length).toBe(1);
   });
+
+  it('ofArea finds faces with specific area', () => {
+    const box = makeBox([0, 0, 0], [10, 20, 30]);
+    // 10x20 faces (area=200): 2 faces
+    expect(new FaceFinder().ofArea(200).find(box).length).toBe(2);
+    // 10x30 faces (area=300): 2 faces
+    expect(new FaceFinder().ofArea(300).find(box).length).toBe(2);
+    // 20x30 faces (area=600): 2 faces
+    expect(new FaceFinder().ofArea(600).find(box).length).toBe(2);
+  });
+
+  it('ofArea returns empty for no match', () => {
+    expect(new FaceFinder().ofArea(999).find(makeBox([0, 0, 0], [10, 10, 10])).length).toBe(0);
+  });
 });
