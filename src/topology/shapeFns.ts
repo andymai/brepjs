@@ -159,6 +159,31 @@ export function getWires(shape: AnyShape): Wire[] {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Lazy topology iterators (generators)
+// ---------------------------------------------------------------------------
+
+/** Lazily iterate edges of a shape, yielding branded Edge handles one at a time. */
+export function* iterEdges(shape: AnyShape): Generator<Edge> {
+  for (const e of iterTopo(shape.wrapped, 'edge')) {
+    yield castShape(unwrap(downcast(e))) as Edge;
+  }
+}
+
+/** Lazily iterate faces of a shape, yielding branded Face handles one at a time. */
+export function* iterFaces(shape: AnyShape): Generator<Face> {
+  for (const f of iterTopo(shape.wrapped, 'face')) {
+    yield castShape(unwrap(downcast(f))) as Face;
+  }
+}
+
+/** Lazily iterate wires of a shape, yielding branded Wire handles one at a time. */
+export function* iterWires(shape: AnyShape): Generator<Wire> {
+  for (const w of iterTopo(shape.wrapped, 'wire')) {
+    yield castShape(unwrap(downcast(w))) as Wire;
+  }
+}
+
 /** Bounding box as a plain object. */
 export interface Bounds3D {
   readonly xMin: number;

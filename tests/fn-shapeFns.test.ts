@@ -22,6 +22,9 @@ import {
   getEdges,
   getFaces,
   getWires,
+  iterEdges,
+  iterFaces,
+  iterWires,
   getBounds,
   vertexPosition,
   castShape,
@@ -29,6 +32,7 @@ import {
   fnIsFace,
   fnIsSolid,
   fnIsVertex,
+  fnIsWire,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -165,5 +169,71 @@ describe('vertexPosition', () => {
     expect(pos[0]).toBeCloseTo(3);
     expect(pos[1]).toBeCloseTo(4);
     expect(pos[2]).toBeCloseTo(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lazy topology iterators
+// ---------------------------------------------------------------------------
+
+describe('iterEdges', () => {
+  it('yields same edges as getEdges', () => {
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const eager = getEdges(box);
+    const lazy = [...iterEdges(box)];
+    expect(lazy.length).toBe(eager.length);
+    // A box has 12 edges
+    expect(lazy.length).toBe(12);
+  });
+
+  it('yields branded Edge values', () => {
+    const box = castShape(makeBox([0, 0, 0], [5, 5, 5]).wrapped);
+    for (const edge of iterEdges(box)) {
+      expect(fnIsEdge(edge)).toBe(true);
+    }
+  });
+
+  it('supports early termination', () => {
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    let count = 0;
+    for (const _edge of iterEdges(box)) {
+      count++;
+      if (count === 3) break;
+    }
+    expect(count).toBe(3);
+  });
+});
+
+describe('iterFaces', () => {
+  it('yields same faces as getFaces', () => {
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const eager = getFaces(box);
+    const lazy = [...iterFaces(box)];
+    expect(lazy.length).toBe(eager.length);
+    // A box has 6 faces
+    expect(lazy.length).toBe(6);
+  });
+
+  it('yields branded Face values', () => {
+    const box = castShape(makeBox([0, 0, 0], [5, 5, 5]).wrapped);
+    for (const face of iterFaces(box)) {
+      expect(fnIsFace(face)).toBe(true);
+    }
+  });
+});
+
+describe('iterWires', () => {
+  it('yields same wires as getWires', () => {
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const eager = getWires(box);
+    const lazy = [...iterWires(box)];
+    expect(lazy.length).toBe(eager.length);
+  });
+
+  it('yields branded Wire values', () => {
+    const box = castShape(makeBox([0, 0, 0], [5, 5, 5]).wrapped);
+    for (const wire of iterWires(box)) {
+      expect(fnIsWire(wire)).toBe(true);
+    }
   });
 });
