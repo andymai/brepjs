@@ -38,7 +38,7 @@ export default function HeroSection() {
         <div className="order-2 min-w-0 lg:order-1">
           <CodeDisplay />
         </div>
-        <div className="order-1 min-w-0 h-[300px] sm:h-[400px] lg:order-2 lg:h-auto">
+        <div className="order-1 min-w-0 h-[400px] sm:h-[560px] lg:order-2 lg:h-auto">
           <HeroViewer />
         </div>
       </div>

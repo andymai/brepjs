@@ -14,10 +14,13 @@ export default function EditorPanel({ onCodeChange }: EditorPanelProps) {
   const errorLine = usePlaygroundStore((s) => s.errorLine);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
+  // Track last code from user typing to distinguish from external updates
+  const lastUserCodeRef = useRef(code);
 
   const handleMount: OnMount = useCallback(
     (editor, monaco) => {
       editorRef.current = editor;
+      monacoRef.current = monaco;
       setupMonaco(monaco);
       monaco.editor.setTheme('brepjs-dark');
     },
@@ -27,35 +30,48 @@ export default function EditorPanel({ onCodeChange }: EditorPanelProps) {
   const handleChange = useCallback(
     (value: string | undefined) => {
       const newCode = value ?? '';
+      lastUserCodeRef.current = newCode;
       setCode(newCode);
       onCodeChange(newCode);
     },
     [setCode, onCodeChange],
   );
 
-  const handleBeforeMount = useCallback((monaco: Parameters<OnMount>[1]) => {
-    monacoRef.current = monaco;
-  }, []);
-
-  // Update error markers in useEffect
+  // Sync external code changes (example picker, URL state) to editor
   useEffect(() => {
-    if (!editorRef.current || !monacoRef.current) return;
-    const model = editorRef.current.getModel();
-    if (!model) return;
+    if (!editorRef.current) return;
+    if (code !== lastUserCodeRef.current) {
+      lastUserCodeRef.current = code;
+      editorRef.current.setValue(code);
+    }
+  }, [code]);
 
-    if (error && errorLine) {
-      monacoRef.current.editor.setModelMarkers(model, 'brepjs', [
-        {
-          severity: monacoRef.current.MarkerSeverity.Error,
-          message: error,
-          startLineNumber: errorLine,
-          startColumn: 1,
-          endLineNumber: errorLine,
-          endColumn: model.getLineMaxColumn(errorLine),
-        },
-      ]);
-    } else {
-      monacoRef.current.editor.setModelMarkers(model, 'brepjs', []);
+  // Update error markers
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    try {
+      const model = editor.getModel();
+      if (!model) return;
+
+      if (error && errorLine) {
+        monaco.editor.setModelMarkers(model, 'brepjs', [
+          {
+            severity: monaco.MarkerSeverity.Error,
+            message: error,
+            startLineNumber: errorLine,
+            startColumn: 1,
+            endLineNumber: errorLine,
+            endColumn: model.getLineMaxColumn(errorLine),
+          },
+        ]);
+      } else {
+        monaco.editor.setModelMarkers(model, 'brepjs', []);
+      }
+    } catch {
+      // Editor may be disposed during StrictMode remount — ignore
     }
   }, [error, errorLine]);
 
@@ -63,10 +79,11 @@ export default function EditorPanel({ onCodeChange }: EditorPanelProps) {
     <Editor
       height="100%"
       defaultLanguage="typescript"
-      value={code}
+      path="playground.ts"
+      defaultValue={code}
+      keepCurrentModel
       onChange={handleChange}
       onMount={handleMount}
-      beforeMount={handleBeforeMount}
       theme="brepjs-dark"
       options={{
         fontSize: 14,

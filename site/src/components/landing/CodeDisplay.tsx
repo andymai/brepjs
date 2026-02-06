@@ -44,9 +44,9 @@ export default function CodeDisplay() {
         <div className="h-3 w-3 rounded-full bg-red-500/60" />
         <div className="h-3 w-3 rounded-full bg-yellow-500/60" />
         <div className="h-3 w-3 rounded-full bg-green-500/60" />
-        <span className="ml-3 text-xs text-gray-500">playground.ts</span>
+        <span className="ml-3 text-xs text-gray-500">staircase.ts</span>
       </div>
-      <pre className="scrollbar-thin max-h-[400px] overflow-auto p-4 text-sm leading-relaxed">
+      <pre className="scrollbar-thin max-h-[560px] overflow-auto p-4 text-sm leading-relaxed">
         <code>
           {lines.map((line, i) => (
             <div key={i} className="flex">

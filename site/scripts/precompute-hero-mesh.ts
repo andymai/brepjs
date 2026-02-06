@@ -15,11 +15,12 @@ const {
   setOC,
   makeBox,
   makeCylinder,
+  makeSphere,
   castShape,
   fuseShapes,
+  cloneShape,
   rotateShape,
   translateShape,
-  filletShape,
   meshShape,
   meshShapeEdges,
   toBufferGeometryData,
@@ -97,9 +98,17 @@ if (isOk(handrailResult)) {
   console.warn('Handrail sweep failed, skipping:', handrailResult.error);
 }
 
-// Try fillet; fall back if it fails
-const filletResult = filletShape(shape, undefined, 1.5);
-shape = isOk(filletResult) ? filletResult.value : shape;
+// Ball endcaps on handrail ends
+const ball = castShape(makeSphere(4).wrapped);
+const end1 = translateShape(ball, [railRadius, 0, firstPostTop]);
+shape = unwrap(fuseShapes(shape, end1));
+
+const lastPostTop = firstPostTop + stepRise * (stepCount - 1);
+const end2 = rotateShape(
+  translateShape(cloneShape(ball), [railRadius, 0, lastPostTop]),
+  rotationPerStep * (stepCount - 1), [0, 0, 0], [0, 0, 1]
+);
+shape = unwrap(fuseShapes(shape, end2));
 
 // Mesh it
 const shapeMesh = meshShape(shape, { tolerance: 2, angularTolerance: 1.5 });

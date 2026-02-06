@@ -97,6 +97,7 @@ interface SweepConfig {
   transitionMode?: 'right' | 'transformed' | 'round';
 }
 declare function sweep(wire: AnyShape, spine: AnyShape, config?: SweepConfig, shellMode?: boolean): Result<Shape3D>;
+declare function genericSweep(wire: AnyShape, spine: AnyShape, config?: SweepConfig, shellMode?: boolean): Result<Shape3D>;
 declare function twistExtrude(wire: AnyShape, angleDeg: number, center: Vec3, normal: Vec3, profileShape?: { profile?: 's-curve' | 'linear'; endFactor?: number }, shellMode?: boolean): Result<Shape3D>;
 
 // ── Loft ──
@@ -111,6 +112,8 @@ declare function circularPattern(shape: Shape3D, axis: Vec3, count: number, full
 
 // ── Curves ──
 
+declare function makeCircle(radius: number, center?: Vec3, normal?: Vec3): AnyShape;
+declare function makeLine(start: Vec3, end: Vec3): AnyShape;
 declare function makeHelix(pitch: number, height: number, radius: number, center?: Vec3, dir?: Vec3, lefthand?: boolean): AnyShape;
 declare function makeBezierCurve(points: Vec3[]): AnyShape;
 declare function makeBSplineApproximation(points: Vec3[], config?: { tolerance?: number; degMax?: number }): Result<AnyShape>;

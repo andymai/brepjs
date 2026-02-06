@@ -15,7 +15,7 @@ const column = castShape(
 const landing = castShape(
   makeCylinder(colR + width, thick).wrapped
 );
-let staircase = unwrap(fuseShapes(column, landing));
+let shape = unwrap(fuseShapes(column, landing));
 
 // Spiral: treads with railing posts
 for (let i = 0; i < steps; i++) {
@@ -36,7 +36,7 @@ for (let i = 0; i < steps; i++) {
     step, [0, 0, rise * (i + 1)]
   );
   const rotated = rotateShape(placed, twist * i);
-  staircase = unwrap(fuseShapes(staircase, rotated));
+  shape = unwrap(fuseShapes(shape, rotated));
 }
 
 // Handrail: sweep circle along helix
@@ -55,12 +55,22 @@ const spine   = makeHelix(
 const handrail = unwrap(
   genericSweep(profile, spine, { frenet: true })
 );
-staircase = unwrap(fuseShapes(staircase, handrail));
+shape = unwrap(fuseShapes(shape, handrail));
 
-// Smooth all edges
-const shape = unwrap(
-  filletShape(staircase, undefined, 1.5)
+// Ball endcaps on handrail ends
+const ball = castShape(makeSphere(4).wrapped);
+const end1 = translateShape(
+  ball, [railR, 0, railTop]
 );
+shape = unwrap(fuseShapes(shape, end1));
+const end2 = rotateShape(
+  translateShape(cloneShape(ball),
+    [railR, 0, railTop + rise * (steps - 1)]
+  ),
+  twist * (steps - 1)
+);
+shape = unwrap(fuseShapes(shape, end2));
+
 return shape;`;
 
 export const DEFAULT_CODE = `// Welcome to the brepjs playground!

@@ -59,11 +59,11 @@ function HeroAutoFit({ data }: { data: HeroMeshData }) {
     const fov = (camera as THREE.PerspectiveCamera).fov;
     const dist = (radius / Math.sin((fov / 2) * (Math.PI / 180))) * 1.2;
 
-    const angle = Math.PI / 4;
+    const elevation = Math.PI / 12; // 15° — side profile
     camera.position.set(
-      center.x + dist * Math.cos(angle) * Math.cos(angle),
-      center.y + dist * Math.sin(angle),
-      center.z + dist * Math.cos(angle) * Math.sin(angle),
+      center.x + dist * Math.cos(elevation),
+      center.y + dist * Math.sin(elevation),
+      center.z,
     );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls

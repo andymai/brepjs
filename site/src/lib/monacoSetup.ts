@@ -2,7 +2,12 @@ import type { Monaco } from '@monaco-editor/react';
 // Vite ?raw import — gets file contents as string
 import ambientTypes from '../types/brepjs-ambient.d.ts?raw';
 
+let initialized = false;
+
 export function setupMonaco(monaco: Monaco) {
+  if (initialized) return;
+  initialized = true;
+
   // Define dark theme matching site colors
   monaco.editor.defineTheme('brepjs-dark', {
     base: 'vs-dark',

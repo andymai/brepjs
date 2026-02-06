@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useUrlState } from '../../hooks/useUrlState';
+import { useHeroMesh } from '../../hooks/useHeroMesh';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanel';
@@ -12,9 +13,19 @@ import ExamplePicker from './ExamplePicker';
 
 export default function PlaygroundPage() {
   const code = usePlaygroundStore((s) => s.code);
+  const meshes = usePlaygroundStore((s) => s.meshes);
+  const setMeshes = usePlaygroundStore((s) => s.setMeshes);
   const { runCode, exportSTL, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
   const [showExamples, setShowExamples] = useState(false);
+  const heroMesh = useHeroMesh();
+
+  // Seed viewer with pre-computed mesh while WASM engine loads
+  useEffect(() => {
+    if (heroMesh && meshes.length === 0) {
+      setMeshes([heroMesh]);
+    }
+  }, [heroMesh, meshes.length, setMeshes]);
 
   const handleCodeChange = useCallback(
     (newCode: string) => {
