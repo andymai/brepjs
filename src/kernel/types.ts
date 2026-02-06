@@ -5,12 +5,15 @@
  * factory methods and operations that centralize scattered getOC() patterns.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT instance type comes from brepjs-opencascade
+import type { TopoDS_Shape } from 'brepjs-opencascade';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT instance type; many dynamic members
 export type OpenCascadeInstance = any;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape types are dynamic
-export type OcShape = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT wrapper types
+/** An OCCT TopoDS_Shape handle — the kernel-level shape representation. */
+export type OcShape = TopoDS_Shape;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Covers many non-shape OCCT types (gp_*, Geom_*, etc.)
 export type OcType = any;
 
 export interface BooleanOptions {

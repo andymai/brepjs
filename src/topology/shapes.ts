@@ -1,6 +1,6 @@
 import type { OcShape, OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { WrappingObj, gcWithScope, type Deletable } from '../core/memory.js';
+import { WrappingObj, gcWithScope } from '../core/memory.js';
 import { meshShapeEdges as _meshShapeEdges, type ShapeMesh } from './meshFns.js';
 import { type SurfaceType, type FaceTriangulation } from './faceFns.js';
 import type { Plane, PlaneName } from '../core/planeTypes.js';
@@ -73,7 +73,7 @@ export type BooleanOperationOptions = {
 // Shape base class
 // ---------------------------------------------------------------------------
 
-export class Shape<Type extends Deletable = OcShape> extends WrappingObj<Type> {
+export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   clone(): this {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic constructor access
     return new (this.constructor as any)(unwrap(downcast(this.wrapped)));
@@ -446,7 +446,7 @@ export class Curve extends WrappingObj<CurveLike> {
   }
 }
 
-export abstract class _1DShape<Type extends Deletable = OcShape> extends Shape<Type> {
+export abstract class _1DShape<Type extends OcShape = OcShape> extends Shape<Type> {
   protected abstract _geomAdaptor(): CurveLike;
 
   get repr(): string {
@@ -807,7 +807,7 @@ export class Face extends Shape {
 // 3D shapes
 // ---------------------------------------------------------------------------
 
-export class _3DShape<Type extends Deletable = OcShape> extends Shape<Type> {
+export class _3DShape<Type extends OcShape = OcShape> extends Shape<Type> {
   /**
    * Builds a new shape out of the two fused shapes.
    *
