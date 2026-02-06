@@ -575,6 +575,10 @@ export {
 
 export { thickenSurface, filletShape, chamferShape, shellShape, offsetShape } from './topology/modifierFns.js';
 
+// ── Healing (functional) ──
+
+export { isShapeValid, healSolid, healFace, healWire, healShape } from './topology/healingFns.js';
+
 // ── Operations (functional) ──
 
 export {
