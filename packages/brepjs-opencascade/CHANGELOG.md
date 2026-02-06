@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.5.1...brepjs-opencascade-v0.6.0) (2026-02-06)
+
+
+### Features
+
+* add cone and torus primitive constructors ([#56](https://github.com/andymai/brepjs/issues/56)) ([61a488d](https://github.com/andymai/brepjs/commit/61a488d79c6f1d8da1ac596e39e03babacb90242))
+
 ## [0.5.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.5.0...brepjs-opencascade-v0.5.1) (2026-02-04)
 
 ### Bug Fixes
