@@ -1,5 +1,5 @@
 {
-  "installCommand": "cd .. && npm install --ignore-scripts && cd site && npm install --ignore-scripts",
+  "installCommand": "npm install --ignore-scripts --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "headers": [
