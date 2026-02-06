@@ -4,11 +4,12 @@ import {
   sketchRectangle,
   thickenSurface,
   castShape,
-  measureVolume,
   fnIsSolid,
   isOk,
   unwrap,
 } from '../src/index.js';
+import { measureVolume } from '../src/measurement/measureFns.js';
+import type { Shape3D } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initOC();
@@ -42,8 +43,10 @@ describe('thickenSurface', () => {
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
+    // After fnIsSolid check above, safe to assert Shape3D
+    expect(fnIsSolid(solid)).toBe(true);
     // 10 x 20 face thickened by 3 => |volume| ≈ 600
-    const vol = measureVolume({ wrapped: solid.wrapped } as Parameters<typeof measureVolume>[0]);
+    const vol = measureVolume(solid as Shape3D);
     expect(Math.abs(vol)).toBeCloseTo(600, 0);
   });
 });
