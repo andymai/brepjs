@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.10.0](https://github.com/andymai/brepjs/compare/brepjs-v4.9.0...brepjs-v4.10.0) (2026-02-06)
+
+
+### Features
+
+* add healing ops, point-in-face, and splitter to kernel ([#103](https://github.com/andymai/brepjs/issues/103)) ([9e27811](https://github.com/andymai/brepjs/commit/9e27811a1db3dd52eccba850765eee313ee34744))
+* promote isValid, sew, offsetWire2D, distance into kernel ([#94](https://github.com/andymai/brepjs/issues/94)) ([37ca207](https://github.com/andymai/brepjs/commit/37ca207fbf37f7ff31d0c85f20f09e6367d9204b))
+
 ## [4.9.0](https://github.com/andymai/brepjs/compare/brepjs-v4.8.0...brepjs-v4.9.0) (2026-02-06)
 
 
