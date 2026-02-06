@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { makeBox, castShape, meshShape, exportGltf, exportGlb } from '../src/index.js';
-import type { FnShapeMesh } from '../src/index.js';
+import type { FnShapeMesh, GltfExportOptions } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -123,5 +123,109 @@ describe('exportGlb', () => {
     const mesh = getBoxMesh();
     const glb = exportGlb(mesh);
     expect(glb.byteLength).toBeGreaterThan(100);
+  });
+});
+
+describe('glTF with materials', () => {
+  function getMeshWithMaterials(): { mesh: FnShapeMesh; options: GltfExportOptions } {
+    const mesh = getBoxMesh();
+    // Assign two different materials to face groups
+    const redMat = {
+      name: 'red',
+      baseColor: [1, 0, 0, 1] as [number, number, number, number],
+      metallic: 0,
+      roughness: 0.8,
+    };
+    const blueMat = {
+      name: 'blue',
+      baseColor: [0, 0, 1, 1] as [number, number, number, number],
+      metallic: 0.5,
+      roughness: 0.3,
+    };
+    const materials = new Map<number, typeof redMat>();
+    // Assign first face group to red, second to blue
+    for (let i = 0; i < mesh.faceGroups.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i < length
+      const fg = mesh.faceGroups[i]!;
+      materials.set(fg.faceId, i % 2 === 0 ? redMat : blueMat);
+    }
+    return { mesh, options: { materials } };
+  }
+
+  it('exportGltf includes materials array', () => {
+    const { mesh, options } = getMeshWithMaterials();
+    const json = exportGltf(mesh, options);
+    const doc = JSON.parse(json);
+
+    expect(doc.materials).toBeDefined();
+    expect(doc.materials.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('materials have PBR properties', () => {
+    const { mesh, options } = getMeshWithMaterials();
+    const json = exportGltf(mesh, options);
+    const doc = JSON.parse(json);
+
+    for (const mat of doc.materials) {
+      expect(mat.pbrMetallicRoughness).toBeDefined();
+      expect(mat.pbrMetallicRoughness.baseColorFactor).toHaveLength(4);
+      expect(typeof mat.pbrMetallicRoughness.metallicFactor).toBe('number');
+      expect(typeof mat.pbrMetallicRoughness.roughnessFactor).toBe('number');
+    }
+  });
+
+  it('primitives reference material indices', () => {
+    const { mesh, options } = getMeshWithMaterials();
+    const json = exportGltf(mesh, options);
+    const doc = JSON.parse(json);
+
+    const primitives = doc.meshes[0].primitives;
+    expect(primitives.length).toBeGreaterThan(0);
+
+    // At least one primitive should have a material index
+    const hasMaterial = primitives.some((p: { material?: number }) => p.material !== undefined);
+    expect(hasMaterial).toBe(true);
+  });
+
+  it('total triangle count matches across primitives', () => {
+    const { mesh, options } = getMeshWithMaterials();
+    const json = exportGltf(mesh, options);
+    const doc = JSON.parse(json);
+
+    let totalIndices = 0;
+    for (const prim of doc.meshes[0].primitives) {
+      const indicesAcc = doc.accessors[prim.indices];
+      totalIndices += indicesAcc.count;
+    }
+    expect(totalIndices).toBe(mesh.triangles.length);
+  });
+
+  it('exportGltf has embedded base64 buffer with materials', () => {
+    const { mesh, options } = getMeshWithMaterials();
+    const json = exportGltf(mesh, options);
+    const doc = JSON.parse(json);
+
+    expect(doc.buffers).toHaveLength(1);
+    expect(doc.buffers[0].uri).toMatch(/^data:application\/octet-stream;base64,/);
+    expect(doc.buffers[0].byteLength).toBeGreaterThan(0);
+  });
+
+  it('exportGlb produces valid GLB with materials', () => {
+    const { mesh, options } = getMeshWithMaterials();
+    const glb = exportGlb(mesh, options);
+    expect(glb).toBeInstanceOf(ArrayBuffer);
+
+    const view = new DataView(glb);
+    expect(view.getUint32(0, true)).toBe(0x46546c67); // "glTF"
+    expect(view.getUint32(4, true)).toBe(2);
+    expect(view.getUint32(8, true)).toBe(glb.byteLength);
+
+    // Parse JSON chunk to verify materials
+    const jsonLen = view.getUint32(12, true);
+    const jsonBytes = new Uint8Array(glb, 20, jsonLen);
+    const jsonStr = new TextDecoder().decode(jsonBytes).trim();
+    const doc = JSON.parse(jsonStr);
+    expect(doc.materials).toBeDefined();
+    expect(doc.materials.length).toBeGreaterThanOrEqual(1);
   });
 });
