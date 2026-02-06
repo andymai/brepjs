@@ -7,7 +7,7 @@ import type { Vec3 } from '../core/types.js';
 import type { Shape3D } from '../core/shapeTypes.js';
 import type { Result } from '../core/result.js';
 import { ok, err } from '../core/result.js';
-import { vecScale, vecNormalize } from '../core/vecOps.js';
+import { vecScale, vecNormalize, vecIsZero } from '../core/vecOps.js';
 import { translateShape, rotateShape } from '../topology/shapeFns.js';
 import { fuseAll, type BooleanOptions } from '../topology/booleanFns.js';
 import { validationError } from '../core/errors.js';
@@ -32,6 +32,8 @@ export function linearPattern(
   if (count < 1)
     return err(validationError('PATTERN_INVALID_COUNT', 'Pattern count must be at least 1'));
   if (count === 1) return ok(shape);
+  if (vecIsZero(direction))
+    return err(validationError('PATTERN_ZERO_DIRECTION', 'Pattern direction cannot be zero'));
 
   const dir = vecNormalize(direction);
   const copies: Shape3D[] = [shape];
@@ -66,6 +68,8 @@ export function circularPattern(
   if (count < 1)
     return err(validationError('PATTERN_INVALID_COUNT', 'Pattern count must be at least 1'));
   if (count === 1) return ok(shape);
+  if (vecIsZero(axis))
+    return err(validationError('PATTERN_ZERO_AXIS', 'Pattern axis cannot be zero'));
 
   const angleStep = fullAngle / count;
   const copies: Shape3D[] = [shape];

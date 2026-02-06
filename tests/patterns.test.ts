@@ -41,6 +41,12 @@ describe('linearPattern', () => {
     const result = linearPattern(box, [1, 0, 0], 0, 10);
     expect(isErr(result)).toBe(true);
   });
+
+  it('returns error for zero direction', () => {
+    const box = makeBox([0, 0, 0], [5, 5, 5]);
+    const result = linearPattern(box, [0, 0, 0], 3, 10);
+    expect(isErr(result)).toBe(true);
+  });
 });
 
 describe('circularPattern', () => {
@@ -68,6 +74,12 @@ describe('circularPattern', () => {
   it('returns error for count < 1', () => {
     const box = makeBox([0, 0, 0], [5, 5, 5]);
     const result = circularPattern(box, [0, 0, 1], 0);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns error for zero axis', () => {
+    const box = makeBox([0, 0, 0], [5, 5, 5]);
+    const result = circularPattern(box, [0, 0, 0], 4);
     expect(isErr(result)).toBe(true);
   });
 });
