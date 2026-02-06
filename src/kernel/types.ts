@@ -173,10 +173,19 @@ export interface KernelAdapter {
   // --- Validation & repair ---
   isValid(shape: OcShape): boolean;
   sew(shapes: OcShape[], tolerance?: number): OcShape;
+  healSolid(shape: OcShape): OcShape | null;
+  healFace(shape: OcShape): OcShape;
+  healWire(wire: OcShape, face?: OcShape): OcShape;
 
   // --- 2D offset ---
   offsetWire2D(wire: OcShape, offset: number, joinType?: number): OcShape;
 
   // --- Distance ---
   distance(shape1: OcShape, shape2: OcShape): DistanceResult;
+
+  // --- Classification ---
+  classifyPointOnFace(face: OcShape, u: number, v: number, tolerance?: number): 'in' | 'on' | 'out';
+
+  // --- Splitting ---
+  split(shape: OcShape, tools: OcShape[]): OcShape;
 }

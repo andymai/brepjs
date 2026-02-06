@@ -186,6 +186,25 @@ export function faceCenter(face: Face): Vec3 {
 }
 
 // ---------------------------------------------------------------------------
+// Point classification
+// ---------------------------------------------------------------------------
+
+/**
+ * Classify a 3D point's position relative to a face boundary.
+ * Projects the point onto the face's surface and classifies the UV result.
+ *
+ * @returns 'in' if inside, 'on' if on the boundary, 'out' if outside
+ */
+export function classifyPointOnFace(
+  face: Face,
+  point: PointInput,
+  tolerance = 1e-6
+): 'in' | 'on' | 'out' {
+  const [u, v] = uvCoordinates(face, point);
+  return getKernel().classifyPointOnFace(face.wrapped, u, v, tolerance);
+}
+
+// ---------------------------------------------------------------------------
 // Wire extraction from faces
 // ---------------------------------------------------------------------------
 

@@ -112,5 +112,31 @@ export function distance(
   return result;
 }
 
+/**
+ * Classifies a point (given in UV space) relative to a face boundary.
+ * Returns 'in', 'on', or 'out'.
+ */
+export function classifyPointOnFace(
+  oc: OpenCascadeInstance,
+  face: OcShape,
+  u: number,
+  v: number,
+  tolerance = 1e-6
+): 'in' | 'on' | 'out' {
+  if (!oc.BRepClass_FaceClassifier) {
+    throw new Error('BRepClass_FaceClassifier not available in this WASM build');
+  }
+  const pnt2d = new oc.gp_Pnt2d_3(u, v);
+  const classifier = new oc.BRepClass_FaceClassifier_3(face, pnt2d, tolerance);
+  const state = classifier.State();
+  pnt2d.delete();
+  classifier.delete();
+
+  const topAbs = oc.TopAbs_State;
+  if (state === topAbs.TopAbs_IN) return 'in';
+  if (state === topAbs.TopAbs_ON) return 'on';
+  return 'out';
+}
+
 // Re-export HASH_CODE_MAX for use by other modules
 export { HASH_CODE_MAX };

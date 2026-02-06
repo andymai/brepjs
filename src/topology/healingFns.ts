@@ -37,14 +37,8 @@ export function healSolid(solid: Solid): Result<Solid> {
   }
 
   try {
-    const oc = getKernel().oc;
-    const fixer = new oc.ShapeFix_Solid_2(solid.wrapped);
-    const progress = new oc.Message_ProgressRange_1();
-    fixer.Perform(progress);
-    progress.delete();
-    const result = fixer.Solid();
-    fixer.delete();
-    if (result.IsNull()) {
+    const result = getKernel().healSolid(solid.wrapped);
+    if (!result) {
       // Perform may return null solid if there's nothing to fix — return original
       return ok(solid);
     }
@@ -69,11 +63,7 @@ export function healFace(face: Face): Result<Face> {
   }
 
   try {
-    const oc = getKernel().oc;
-    const fixer = new oc.ShapeFix_Face_2(face.wrapped);
-    fixer.Perform();
-    const result = fixer.Face();
-    fixer.delete();
+    const result = getKernel().healFace(face.wrapped);
     const cast = castShape(result);
     if (!isFace(cast)) {
       return err(occtError('HEAL_RESULT_NOT_FACE', 'Healed result is not a face'));
@@ -96,21 +86,7 @@ export function healWire(wire: Wire, face?: Face): Result<Wire> {
   }
 
   try {
-    const oc = getKernel().oc;
-    let fixer;
-    if (face) {
-      fixer = new oc.ShapeFix_Wire_2(
-        wire.wrapped,
-        face.wrapped,
-        1e-6 // default precision
-      );
-    } else {
-      fixer = new oc.ShapeFix_Wire_1();
-      fixer.Load_1(wire.wrapped);
-    }
-    fixer.Perform();
-    const result = fixer.Wire();
-    fixer.delete();
+    const result = getKernel().healWire(wire.wrapped, face?.wrapped);
     const cast = castShape(result);
     if (!isWire(cast)) {
       return err(occtError('HEAL_RESULT_NOT_WIRE', 'Healed result is not a wire'));

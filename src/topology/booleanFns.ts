@@ -311,6 +311,33 @@ export function sectionShape(
 }
 
 // ---------------------------------------------------------------------------
+// Splitting
+// ---------------------------------------------------------------------------
+
+/**
+ * Split a shape with one or more tool shapes using BRepAlgoAPI_Splitter.
+ * Returns all pieces from the split as a compound.
+ */
+export function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
+  if (tools.length === 0) return ok(shape);
+
+  try {
+    const result = getKernel().split(
+      shape.wrapped,
+      tools.map((t) => t.wrapped)
+    );
+    return ok(castShape(result));
+  } catch (e) {
+    return err(
+      occtError(
+        'SPLIT_FAILED',
+        `Split operation failed: ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Compound building
 // ---------------------------------------------------------------------------
 
