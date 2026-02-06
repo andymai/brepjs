@@ -1,33 +1,37 @@
 const features = [
   {
-    title: 'Precise CAD Modeling',
+    title: 'Exact geometry',
     description:
-      'Built on OpenCascade, the same kernel used in FreeCAD and Fusion. Boolean operations, fillets, chamfers — all exact geometry, not mesh approximations.',
+      'Boolean operations, fillets, chamfers, and shells on boundary representation solids. No mesh approximations.',
   },
   {
-    title: '2D Sketches to 3D Solids',
+    title: 'Sketch to solid',
     description:
-      'Draw 2D profiles with the sketching API, then extrude, revolve, loft, or sweep into solid parts. The same workflow used by professional CAD tools.',
+      'Draw 2D profiles, then extrude, revolve, loft, or sweep into solid parts.',
   },
   {
-    title: 'Export STL for Printing',
+    title: 'Multi-format export',
     description:
-      'Export watertight STL meshes directly from your code. Tune mesh tolerance for file size vs. surface quality. Supports STEP, OBJ, and glTF too.',
+      'STL, STEP, OBJ, glTF, and DXF. Tune mesh tolerance for file size vs. surface quality.',
   },
   {
-    title: 'TypeScript-First',
+    title: 'TypeScript-native',
     description:
-      'Full type definitions, autocomplete, and compile-time checks. Catch dimension errors before they waste filament. Works with any editor or CI pipeline.',
+      'Full type definitions and autocomplete. Catch errors at compile time, not after a failed print.',
   },
 ];
 
 export default function FeaturesSection() {
   return (
-    <section className="border-t border-border-subtle bg-surface-raised/50 py-20">
-      <div className="mx-auto max-w-7xl px-6">
-        <h2 className="mb-12 text-center text-3xl font-bold text-white">
-          Why brepjs?
+    <section className="border-t border-border-subtle bg-surface-raised/50 py-12 sm:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <h2 className="mb-2 text-center text-3xl font-bold text-white">
+          Built on OpenCascade
         </h2>
+        <p className="mb-12 text-center text-gray-400">
+          The same geometry kernel behind FreeCAD, KiCad, and Fusion. brepjs wraps it in a
+          TypeScript API designed for the browser.
+        </p>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
             <div

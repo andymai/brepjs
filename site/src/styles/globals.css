@@ -15,4 +15,28 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  overflow-x: hidden;
+}
+
+/* Thin dark scrollbars for code panels */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a3e transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #2a2a3e;
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #3a3a5e;
+}
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: transparent;
 }

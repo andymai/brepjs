@@ -12,8 +12,16 @@ export default function LandingPage() {
       <FeaturesSection />
       <ExamplesPreview />
       <InstallSection />
-      <footer className="border-t border-border-subtle py-8 text-center text-sm text-gray-600">
-        brepjs is open source under the Apache-2.0 license
+      <footer className="border-t border-border-subtle py-8 text-center text-sm text-gray-500">
+        Apache-2.0 ·{' '}
+        <a
+          href="https://github.com/andymai/brepjs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-400 transition-colors hover:text-white"
+        >
+          GitHub
+        </a>
       </footer>
     </div>
   );

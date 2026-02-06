@@ -4,6 +4,8 @@ import { examples, featuredExampleIds } from '../../lib/examples';
 const featured = examples.filter((e) => featuredExampleIds.includes(e.id));
 
 export default function ExamplesPreview() {
+  if (featured.length === 0) return null;
+
   return (
     <section className="py-20">
       <div className="mx-auto max-w-7xl px-6">

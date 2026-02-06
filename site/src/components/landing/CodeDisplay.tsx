@@ -5,8 +5,9 @@ const KEYWORDS = new Set([
 ]);
 
 const BREPJS_FNS = new Set([
-  'castShape', 'makeBox', 'makeCylinder', 'makeSphere', 'cutShape', 'filletShape',
-  'fuseShapes', 'intersectShapes', 'unwrap', 'translate', 'rotate',
+  'castShape', 'makeBox', 'makeCylinder', 'makeSphere', 'makeCircle', 'makeHelix',
+  'cutShape', 'filletShape', 'fuseShapes', 'intersectShapes',
+  'unwrap', 'translateShape', 'rotateShape', 'assembleWire', 'genericSweep',
 ]);
 
 function highlightLine(line: string): React.ReactNode[] {
@@ -45,7 +46,7 @@ export default function CodeDisplay() {
         <div className="h-3 w-3 rounded-full bg-green-500/60" />
         <span className="ml-3 text-xs text-gray-500">playground.ts</span>
       </div>
-      <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
+      <pre className="scrollbar-thin max-h-[400px] overflow-auto p-4 text-sm leading-relaxed">
         <code>
           {lines.map((line, i) => (
             <div key={i} className="flex">

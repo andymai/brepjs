@@ -16,7 +16,9 @@ const {
   makeBox,
   makeCylinder,
   castShape,
-  cutShape,
+  fuseShapes,
+  rotateShape,
+  translateShape,
   filletShape,
   meshShape,
   meshShapeEdges,
@@ -24,22 +26,84 @@ const {
   toLineGeometryData,
   unwrap,
   isOk,
+  makeHelix,
+  makeCircle,
+  assembleWire,
+  genericSweep,
 } = await import('brepjs');
 
 setOC(oc);
 
-// Create the hero shape: box with a cylindrical hole, optionally filleted
-const box = castShape(makeBox([0, 0, 0], [30, 30, 30]).wrapped);
-const hole = castShape(makeCylinder(8, 40).translate([15, 15, -5]).wrapped);
-const cut = unwrap(cutShape(box, hole));
+// Parametric spiral staircase (cm) — matches HERO_CODE in constants.ts
+const stepCount = 16;
+const stepRise = 18;          // 18 cm per step
+const rotationPerStep = 22.5; // degrees
+const stepWidth = 70;         // tread width from column
+const stepDepth = 25;         // tread depth
+const columnRadius = 12;      // column radius
+const stepThickness = 4;
+const railHeight = 90;        // railing height from tread
+const railRadius = columnRadius + stepWidth - 4; // where posts sit
+const postRadius = 1.5;
 
-// Try fillet with small radius; fall back to unfilleted if OCCT fillet fails
-const filletResult = filletShape(cut, undefined, 1.5);
-const shape = isOk(filletResult) ? filletResult.value : cut;
+// Bottom landing — matches staircase footprint
+const landingRadius = columnRadius + stepWidth;
+const bottomLanding = castShape(makeCylinder(landingRadius, stepThickness).wrapped);
+
+// Central column — from ground to top step surface
+const colHeight = stepCount * stepRise + stepThickness;
+let shape = castShape(makeCylinder(columnRadius, colHeight).wrapped);
+shape = unwrap(fuseShapes(shape, bottomLanding));
+
+// Wind steps + railing posts around the column
+for (let i = 0; i < stepCount; i++) {
+  const z = stepRise * (i + 1);
+
+  // Step inner edge at x=0 so it fully penetrates the column
+  const step = castShape(
+    makeBox(
+      [0, -stepDepth / 2, 0],
+      [columnRadius + stepWidth, stepDepth / 2, stepThickness]
+    ).wrapped
+  );
+
+  // Railing post at outer edge of each step
+  const post = castShape(
+    makeCylinder(postRadius, railHeight)
+      .translate([railRadius, 0, stepThickness]).wrapped
+  );
+
+  const piece = unwrap(fuseShapes(step, post));
+  const lifted = translateShape(piece, [0, 0, z]);
+  const rotated = rotateShape(lifted, rotationPerStep * i, [0, 0, 0], [0, 0, 1]);
+  shape = unwrap(fuseShapes(shape, rotated));
+}
+
+// Handrail: sweep a circle profile along a helical path
+// Post tops: first at z = rise + thickness + railHeight, last 15 steps higher
+// Pitch = rise per full 360°. 16 steps × 22.5° = 360°, so pitch = 16 × rise = 288
+// But we only span from step 0 to step 15 (15 gaps), so height = 15 × rise = 270
+const firstPostTop = stepRise + stepThickness + railHeight;
+const helixPitch = stepCount * stepRise;
+const helixHeight = (stepCount - 1) * stepRise;
+const railProfileEdge = makeCircle(2, [railRadius, 0, firstPostTop], [0, 1, 0]);
+const railProfile = unwrap(assembleWire([railProfileEdge]));
+const helixSpine = makeHelix(helixPitch, helixHeight, railRadius, [0, 0, firstPostTop]);
+
+const handrailResult = genericSweep(railProfile, helixSpine, { frenet: true });
+if (isOk(handrailResult)) {
+  shape = unwrap(fuseShapes(shape, castShape((handrailResult.value as any).wrapped)));
+} else {
+  console.warn('Handrail sweep failed, skipping:', handrailResult.error);
+}
+
+// Try fillet; fall back if it fails
+const filletResult = filletShape(shape, undefined, 1.5);
+shape = isOk(filletResult) ? filletResult.value : shape;
 
 // Mesh it
-const shapeMesh = meshShape(shape, { tolerance: 0.1, angularTolerance: 0.5 });
-const edgeMesh = meshShapeEdges(shape, { tolerance: 0.1, angularTolerance: 0.5 });
+const shapeMesh = meshShape(shape, { tolerance: 2, angularTolerance: 1.5 });
+const edgeMesh = meshShapeEdges(shape, { tolerance: 2, angularTolerance: 1.5 });
 
 const bufferData = toBufferGeometryData(shapeMesh);
 const lineData = toLineGeometryData(edgeMesh);

@@ -83,7 +83,7 @@ export default function HeroViewer() {
 
   return (
     <div className="relative h-full w-full rounded-xl border border-border-subtle overflow-hidden">
-      <Canvas camera={{ position: [45, 35, 45], fov: 45 }} gl={{ preserveDrawingBuffer: true }}>
+      <Canvas camera={{ position: [400, 300, 400], fov: 45, near: 1, far: 5000 }} gl={{ preserveDrawingBuffer: true }}>
         <color attach="background" args={['#1e1e24']} />
         <SceneSetup autoRotate />
         {mesh && <HeroAutoFit data={mesh} />}
