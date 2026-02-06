@@ -526,6 +526,7 @@ export {
   uvCoordinates as fnUvCoordinates,
   normalAt as fnNormalAt,
   faceCenter,
+  classifyPointOnFace,
   outerWire as fnOuterWire,
   innerWires as fnInnerWires,
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- re-export for backward compat
@@ -566,6 +567,7 @@ export {
   cutShape,
   intersectShapes,
   sectionShape,
+  splitShape,
   fuseAll as fnFuseAll,
   cutAll as fnCutAll,
   buildCompound as fnBuildCompound,

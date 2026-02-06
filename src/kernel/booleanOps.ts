@@ -252,6 +252,38 @@ export function fuseAll(
 }
 
 /**
+ * Splits a shape using one or more tool shapes via BRepAlgoAPI_Splitter.
+ * The result contains all the pieces from the split.
+ */
+export function split(oc: OpenCascadeInstance, shape: OcShape, tools: OcShape[]): OcShape {
+  if (!oc.BRepAlgoAPI_Splitter) {
+    throw new Error('BRepAlgoAPI_Splitter not available in this WASM build');
+  }
+
+  const argList = new oc.TopTools_ListOfShape_1();
+  argList.Append_1(shape);
+
+  const toolList = new oc.TopTools_ListOfShape_1();
+  for (const tool of tools) {
+    toolList.Append_1(tool);
+  }
+
+  const splitter = new oc.BRepAlgoAPI_Splitter();
+  splitter.SetArguments(argList);
+  splitter.SetTools(toolList);
+
+  const progress = new oc.Message_ProgressRange_1();
+  splitter.Build(progress);
+
+  const result = splitter.Shape();
+  splitter.delete();
+  progress.delete();
+  argList.delete();
+  toolList.delete();
+  return result;
+}
+
+/**
  * Cuts all tool shapes from a base shape using C++ batch operation.
  */
 function cutAllBatch(

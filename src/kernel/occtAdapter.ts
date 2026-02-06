@@ -25,6 +25,7 @@ import {
   centerOfMass as _centerOfMass,
   boundingBox as _boundingBox,
   distance as _distance,
+  classifyPointOnFace as _classifyPointOnFace,
 } from './measureOps.js';
 import {
   transform as _transform,
@@ -43,6 +44,7 @@ import {
   cutAll as _cutAll,
   buildCompound as _buildCompound,
   applyGlue as _applyGlue,
+  split as _split,
 } from './booleanOps.js';
 import { mesh as _mesh, meshEdges as _meshEdges } from './meshOps.js';
 import {
@@ -70,6 +72,11 @@ import {
   loft as _loft,
   sweep as _sweep,
 } from './sweepOps.js';
+import {
+  healSolid as _healSolid,
+  healFace as _healFace,
+  healWire as _healWire,
+} from './healingOps.js';
 import {
   fillet as _fillet,
   chamfer as _chamfer,
@@ -352,6 +359,18 @@ export class OCCTAdapter implements KernelAdapter {
     return _sew(this.oc, shapes, tolerance);
   }
 
+  healSolid(shape: OcShape): OcShape | null {
+    return _healSolid(this.oc, shape);
+  }
+
+  healFace(shape: OcShape): OcShape {
+    return _healFace(this.oc, shape);
+  }
+
+  healWire(wire: OcShape, face?: OcShape): OcShape {
+    return _healWire(this.oc, wire, face);
+  }
+
   // --- 2D offset ---
 
   offsetWire2D(wire: OcShape, offset: number, joinType?: number): OcShape {
@@ -362,5 +381,17 @@ export class OCCTAdapter implements KernelAdapter {
 
   distance(shape1: OcShape, shape2: OcShape): DistanceResult {
     return _distance(this.oc, shape1, shape2);
+  }
+
+  // --- Classification ---
+
+  classifyPointOnFace(face: OcShape, u: number, v: number, tolerance = 1e-6): 'in' | 'on' | 'out' {
+    return _classifyPointOnFace(this.oc, face, u, v, tolerance);
+  }
+
+  // --- Splitting ---
+
+  split(shape: OcShape, tools: OcShape[]): OcShape {
+    return _split(this.oc, shape, tools);
   }
 }
