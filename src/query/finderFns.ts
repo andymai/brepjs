@@ -13,12 +13,12 @@ import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
 import { toOcPnt } from '../core/occtBoundary.js';
 import { gcWithScope } from '../core/disposal.js';
-import { vecDot, vecNormalize } from '../core/vecOps.js';
+import { vecDot, vecNormalize, vecDistance } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
-import type { AnyShape, Edge, Face, Wire } from '../core/shapeTypes.js';
+import type { AnyShape, Edge, Face, Wire, Vertex } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { iterTopo, downcast } from '../topology/cast.js';
-import { getHashCode, isSameShape } from '../topology/shapeFns.js';
+import { getHashCode, isSameShape, vertexPosition } from '../topology/shapeFns.js';
 import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '../topology/faceFns.js';
 import { measureArea } from '../measurement/measureFns.js';
 import { getCurveType, curveLength, curveIsClosed } from '../topology/curveFns.js';
@@ -53,11 +53,11 @@ export interface ShapeFinder<T extends AnyShape> {
 
   // ── Internal (for composition) ──
   readonly _filters: ReadonlyArray<Predicate<T>>;
-  readonly _topoKind: 'edge' | 'face' | 'wire';
+  readonly _topoKind: 'edge' | 'face' | 'wire' | 'vertex';
 }
 
 function createFinder<T extends AnyShape>(
-  topoKind: 'edge' | 'face' | 'wire',
+  topoKind: 'edge' | 'face' | 'wire' | 'vertex',
   filters: ReadonlyArray<Predicate<T>>,
   getNormal: (element: T) => Vec3 | null
 ): ShapeFinder<T> {
@@ -342,5 +342,135 @@ function createWireFinder(filters: ReadonlyArray<Predicate<Wire>>): WireFinderFn
         }
         return edgeCount === count;
       }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Vertex finder
+// ---------------------------------------------------------------------------
+
+export interface VertexFinderFn extends ShapeFinder<Vertex> {
+  /** Filter vertices nearest to a reference point. Returns a new finder that keeps only the closest vertex. */
+  readonly nearestTo: (point: Vec3) => VertexFinderFn;
+  /** Filter vertices at an exact position (within tolerance). */
+  readonly atPosition: (point: Vec3, tolerance?: number) => VertexFinderFn;
+  /** Filter vertices within an axis-aligned bounding box. */
+  readonly withinBox: (min: Vec3, max: Vec3) => VertexFinderFn;
+  /** Filter vertices at a given distance from a point. */
+  readonly atDistance: (distance: number, point?: Vec3, tolerance?: number) => VertexFinderFn;
+}
+
+/** Create an immutable vertex finder. */
+export function vertexFinder(): VertexFinderFn {
+  return createVertexFinder([]);
+}
+
+function createVertexFinder(filters: ReadonlyArray<Predicate<Vertex>>): VertexFinderFn {
+  const base = createFinder<Vertex>('vertex', filters, () => null);
+
+  const withFilter = (pred: Predicate<Vertex>): VertexFinderFn =>
+    createVertexFinder([...filters, pred]);
+
+  return {
+    ...base,
+    when: (pred) => createVertexFinder([...filters, pred]),
+    inList: (elements) => createVertexFinder([...base.inList(elements)._filters]),
+    not: (fn) =>
+      createVertexFinder([
+        ...base.not(fn as (f: ShapeFinder<Vertex>) => ShapeFinder<Vertex>)._filters,
+      ]),
+    either: (fns) =>
+      createVertexFinder([
+        ...base.either(fns as ((f: ShapeFinder<Vertex>) => ShapeFinder<Vertex>)[])._filters,
+      ]),
+
+    nearestTo: (point) => {
+      // This is a post-filter: it runs after all other filters and keeps only the closest.
+      // We implement this as a special predicate that tracks the best candidate.
+      // Since predicates are pure boolean filters, we use a two-pass approach via find() override.
+      // Instead, we add a filter that marks all elements, then override find.
+      // Simplest correct approach: use when() with a closure that finds the nearest.
+      const newFilters = [...filters];
+      const finderWithNearestTo = createVertexFinderWithNearest(newFilters, point);
+      return finderWithNearestTo;
+    },
+
+    atPosition: (point, tolerance = 1e-4) =>
+      withFilter((vertex) => {
+        const pos = vertexPosition(vertex);
+        return vecDistance(pos, point) < tolerance;
+      }),
+
+    withinBox: (min, max) =>
+      withFilter((vertex) => {
+        const pos = vertexPosition(vertex);
+        return (
+          pos[0] >= min[0] - 1e-6 &&
+          pos[0] <= max[0] + 1e-6 &&
+          pos[1] >= min[1] - 1e-6 &&
+          pos[1] <= max[1] + 1e-6 &&
+          pos[2] >= min[2] - 1e-6 &&
+          pos[2] <= max[2] + 1e-6
+        );
+      }),
+
+    atDistance: (distance, point = [0, 0, 0], tolerance = 1e-4) =>
+      withFilter((vertex) => {
+        const pos = vertexPosition(vertex);
+        return Math.abs(vecDistance(pos, point) - distance) < tolerance;
+      }),
+  };
+}
+
+/**
+ * Creates a vertex finder that keeps only the vertex nearest to a given point.
+ * The nearestTo filter is special — it selects the single closest element
+ * among those that pass all other filters, using the base finder pipeline.
+ */
+function createVertexFinderWithNearest(
+  filters: ReadonlyArray<Predicate<Vertex>>,
+  nearestPoint: Vec3
+): VertexFinderFn {
+  // Use the base finder's find() pipeline for filtering
+  const baseFinder = createVertexFinder(filters);
+
+  const overriddenFind = ((shape: AnyShape, opts?: { unique?: boolean }) => {
+    // Delegate to the base finder pipeline for filtering
+    const candidates = baseFinder.find(shape);
+
+    if (candidates.length === 0) {
+      if (opts?.unique) {
+        return err(
+          queryError('FINDER_NOT_UNIQUE', 'Finder expected a unique match but found 0 element(s)')
+        );
+      }
+      return [];
+    }
+
+    // Find the nearest vertex among filtered candidates
+    let bestIdx = 0;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by length > 0 above
+    let bestDist = vecDistance(vertexPosition(candidates[0]!), nearestPoint);
+    for (let i = 1; i < candidates.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i < candidates.length
+      const d = vecDistance(vertexPosition(candidates[i]!), nearestPoint);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bestIdx is valid
+    const nearest = candidates[bestIdx]!;
+    if (opts?.unique) {
+      return ok(nearest);
+    }
+    return [nearest];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overload implementation
+  }) as any;
+
+  return {
+    ...baseFinder,
+    find: overriddenFind,
   };
 }
