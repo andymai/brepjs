@@ -17,44 +17,65 @@ export interface PhysicalProps {
   readonly centerOfMass: Vec3;
 }
 
+/** Volume properties with a domain-specific `volume` alias. */
+export interface VolumeProps extends PhysicalProps {
+  readonly volume: number;
+}
+
+/** Surface properties with a domain-specific `area` alias. */
+export interface SurfaceProps extends PhysicalProps {
+  readonly area: number;
+}
+
+/** Linear properties with a domain-specific `length` alias. */
+export interface LinearProps extends PhysicalProps {
+  readonly length: number;
+}
+
 /** Measure volume properties of a 3D shape. */
-export function measureVolumeProps(shape: Shape3D): PhysicalProps {
+export function measureVolumeProps(shape: Shape3D): VolumeProps {
   const oc = getKernel().oc;
   const r = gcWithScope();
 
   const props = r(new oc.GProp_GProps_1());
   oc.BRepGProp.VolumeProperties_1(shape.wrapped, props, false, false, false);
   const pnt = r(props.CentreOfMass());
+  const m = props.Mass();
   return {
-    mass: props.Mass(),
+    mass: m,
+    volume: m,
     centerOfMass: [pnt.X(), pnt.Y(), pnt.Z()],
   };
 }
 
 /** Measure surface properties of a face or 3D shape. */
-export function measureSurfaceProps(shape: Face | Shape3D): PhysicalProps {
+export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
   const oc = getKernel().oc;
   const r = gcWithScope();
 
   const props = r(new oc.GProp_GProps_1());
   oc.BRepGProp.SurfaceProperties_1(shape.wrapped, props, false, false);
   const pnt = r(props.CentreOfMass());
+  const m = props.Mass();
   return {
-    mass: props.Mass(),
+    mass: m,
+    area: m,
     centerOfMass: [pnt.X(), pnt.Y(), pnt.Z()],
   };
 }
 
 /** Measure linear properties of any shape. */
-export function measureLinearProps(shape: AnyShape): PhysicalProps {
+export function measureLinearProps(shape: AnyShape): LinearProps {
   const oc = getKernel().oc;
   const r = gcWithScope();
 
   const props = r(new oc.GProp_GProps_1());
   oc.BRepGProp.LinearProperties(shape.wrapped, props, false, false);
   const pnt = r(props.CentreOfMass());
+  const m = props.Mass();
   return {
-    mass: props.Mass(),
+    mass: m,
+    length: m,
     centerOfMass: [pnt.X(), pnt.Y(), pnt.Z()],
   };
 }
