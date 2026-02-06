@@ -22,12 +22,13 @@ export function useCodeExecution() {
           // Auto-run current code the moment engine is ready —
           // reads directly from store, posts directly to worker,
           // no dependency on React render cycle.
-          const code = usePlaygroundStore.getState().code;
-          if (code.trim()) {
+          // Skip auto-run for shared links (pendingReview) — user must review first.
+          const state = usePlaygroundStore.getState();
+          if (state.code.trim() && !state.pendingReview) {
             const id = `eval-${++evalCounter}`;
             latestIdRef.current = id;
-            usePlaygroundStore.getState().setIsRunning(true);
-            postMessageRef.current({ type: 'eval', id, code });
+            state.setIsRunning(true);
+            postMessageRef.current({ type: 'eval', id, code: state.code });
           }
           break;
         }

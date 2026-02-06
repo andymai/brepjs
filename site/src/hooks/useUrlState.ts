@@ -5,6 +5,7 @@ import { findExample } from '../lib/examples';
 
 export function useUrlState() {
   const setCode = usePlaygroundStore((s) => s.setCode);
+  const setPendingReview = usePlaygroundStore((s) => s.setPendingReview);
   const initialized = useRef(false);
 
   // On mount: read URL hash and set code
@@ -17,11 +18,12 @@ export function useUrlState() {
 
     if (result.type === 'code') {
       setCode(result.code);
+      setPendingReview(true); // Don't auto-run shared links — user must review first
     } else if (result.type === 'example') {
       const ex = findExample(result.id);
       if (ex) setCode(ex.code);
     }
-  }, [setCode]);
+  }, [setCode, setPendingReview]);
 
   // Update URL on successful eval (called manually, not on every code change)
   const updateUrl = (code: string) => {

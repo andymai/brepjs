@@ -14,6 +14,8 @@ export default function PlaygroundPage() {
   const code = usePlaygroundStore((s) => s.code);
   const meshes = usePlaygroundStore((s) => s.meshes);
   const setMeshes = usePlaygroundStore((s) => s.setMeshes);
+  const pendingReview = usePlaygroundStore((s) => s.pendingReview);
+  const setPendingReview = usePlaygroundStore((s) => s.setPendingReview);
   const { runCode, exportSTL, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
   const heroMesh = useHeroMesh();
@@ -33,9 +35,10 @@ export default function PlaygroundPage() {
   );
 
   const handleRun = useCallback(() => {
+    if (pendingReview) setPendingReview(false);
     runCode(code);
     updateUrl(code);
-  }, [runCode, code, updateUrl]);
+  }, [runCode, code, updateUrl, pendingReview, setPendingReview]);
 
   const handleExportSTL = useCallback(() => {
     exportSTL(code);
@@ -54,6 +57,26 @@ export default function PlaygroundPage() {
         onExportSTL={handleExportSTL}
         onShare={handleShare}
       />
+
+      {pendingReview && (
+        <div className="flex items-center gap-3 border-b border-amber-700/50 bg-amber-950/40 px-4 py-2">
+          <span className="text-sm text-amber-200">
+            Code loaded from a shared link. Review before running.
+          </span>
+          <button
+            onClick={handleRun}
+            className="rounded bg-amber-600 px-3 py-0.5 text-xs font-semibold text-white hover:bg-amber-500"
+          >
+            Run
+          </button>
+          <button
+            onClick={() => setPendingReview(false)}
+            className="text-xs text-amber-400 hover:text-amber-200"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: editor + output */}
