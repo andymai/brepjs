@@ -24,6 +24,7 @@ export interface WorkerClientOptions {
   wasmUrl?: string;
 }
 
+/** Result returned from a successful worker operation. */
 export interface WorkerResult {
   resultBrep?: string;
   resultData?: unknown;

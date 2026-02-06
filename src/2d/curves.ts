@@ -10,6 +10,7 @@ import { validationError } from '../core/errors.js';
 import type { Point2D } from './lib/index.js';
 import { axis2d, pnt, vec, BoundingBox2d, Curve2D } from './lib/index.js';
 
+/** Compute the 2D bounding box enclosing all given curves. */
 export const curvesBoundingBox = (curves: Curve2D[]): BoundingBox2d => {
   const oc = getKernel().oc;
   const boundBox = new oc.Bnd_Box2d();
@@ -21,6 +22,7 @@ export const curvesBoundingBox = (curves: Curve2D[]): BoundingBox2d => {
   return new BoundingBox2d(boundBox);
 };
 
+/** Convert 2D curves to 3D edges by projecting them onto a plane. */
 export function curvesAsEdgesOnPlane(curves: Curve2D[], plane: Plane): Edge[] {
   const [r, gc] = localGC();
   const ax = r(makeOcAx2(plane.origin, plane.zDir, plane.xDir));
@@ -37,6 +39,7 @@ export function curvesAsEdgesOnPlane(curves: Curve2D[], plane: Plane): Edge[] {
   return edges;
 }
 
+/** Convert 2D curves to 3D edges by mapping them onto a parametric surface. */
 export const curvesAsEdgesOnSurface = (curves: Curve2D[], geomSurf: OcType): Edge[] => {
   const [r, gc] = localGC();
   const oc = getKernel().oc;
@@ -50,6 +53,7 @@ export const curvesAsEdgesOnSurface = (curves: Curve2D[], geomSurf: OcType): Edg
   return modifiedCurves;
 };
 
+/** Apply an OCCT `gp_GTrsf2d` transformation to an array of 2D curves. */
 export const transformCurves = (curves: Curve2D[], transformation: OcType): Curve2D[] => {
   const oc = getKernel().oc;
 
@@ -61,12 +65,14 @@ export const transformCurves = (curves: Curve2D[], transformation: OcType): Curv
   return modifiedCurves;
 };
 
+/** Wrapper around an OCCT `gp_GTrsf2d` for transforming 2D curves. */
 export class Transformation2D extends WrappingObj<OcType> {
   transformCurves(curves: Curve2D[]): Curve2D[] {
     return transformCurves(curves, this.wrapped);
   }
 }
 
+/** Create a 2D affinity (non-uniform scale) transformation along a direction. */
 export const stretchTransform2d = (
   ratio: number,
   direction: Point2D,
@@ -81,6 +87,7 @@ export const stretchTransform2d = (
   return new Transformation2D(transform);
 };
 
+/** Create a 2D translation transformation. */
 export const translationTransform2d = (translation: Point2D): Transformation2D => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -93,6 +100,11 @@ export const translationTransform2d = (translation: Point2D): Transformation2D =
   return new Transformation2D(transform);
 };
 
+/**
+ * Create a 2D mirror transformation.
+ *
+ * @param mode - `'center'` mirrors around a point; `'axis'` mirrors across a line.
+ */
 export const mirrorTransform2d = (
   centerOrDirection: Point2D,
   origin: Point2D = [0, 0],
@@ -113,6 +125,7 @@ export const mirrorTransform2d = (
   return new Transformation2D(transform);
 };
 
+/** Create a 2D rotation transformation around a center point (angle in radians). */
 export const rotateTransform2d = (angle: number, center: Point2D = [0, 0]): Transformation2D => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -125,6 +138,7 @@ export const rotateTransform2d = (angle: number, center: Point2D = [0, 0]): Tran
   return new Transformation2D(transform);
 };
 
+/** Create a 2D uniform scale transformation around a center point. */
 export const scaleTransform2d = (
   scaleFactor: number,
   center: Point2D = [0, 0]
@@ -140,8 +154,15 @@ export const scaleTransform2d = (
   return new Transformation2D(transform);
 };
 
+/** How to map 2D sketch coordinates onto a face's parametric UV space. */
 export type ScaleMode = 'original' | 'bounds' | 'native';
 
+/**
+ * Convert 2D curves to 3D edges on a face's surface, applying UV scaling.
+ *
+ * @param scale - How to map 2D coordinates to the face's parametric space.
+ * @returns `Err` if the face type is unsupported for the chosen scale mode.
+ */
 export function curvesAsEdgesOnFace(
   curves: Curve2D[],
   face: Face,
@@ -204,6 +225,7 @@ export function curvesAsEdgesOnFace(
   return ok(edges);
 }
 
+/** Extract the 2D parametric curve of an edge on a face's surface. */
 export function edgeToCurve(e: Edge, face: Face): Curve2D {
   const oc = getKernel().oc;
   const r = gcWithScope();

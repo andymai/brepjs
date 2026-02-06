@@ -72,6 +72,13 @@ class DistanceQueryInternal extends WrappingObj<OcType> {
   }
 }
 
+/**
+ * Abstract base class for 3D shape finders (edge and face finders).
+ *
+ * Adds spatial filters (distance, containment, angle) on top of the
+ * generic {@link Finder} combinators. Call {@link dispose} after
+ * {@link find} to free WASM memory used by distance queries.
+ */
 export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, AnyShape> {
   /** Track OCCT objects that need cleanup after find() completes */
   protected readonly _disposables: DistanceQueryInternal[] = [];

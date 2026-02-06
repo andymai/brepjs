@@ -6,6 +6,12 @@ import { ioError } from '../core/errors.js';
 import { uniqueId } from '../core/constants.js';
 import type { AnyShape } from '../topology/shapes.js';
 
+/**
+ * Import a STEP file from a Blob and return the parsed shape.
+ *
+ * @remarks Writes the blob to the WASM virtual FS, reads it with OCCT, then cleans up.
+ * @see {@link importSTEP} in `importFns.ts` for the functional-API equivalent.
+ */
 export async function importSTEP(STEPBlob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -33,6 +39,12 @@ export async function importSTEP(STEPBlob: Blob): Promise<Result<AnyShape>> {
   }
 }
 
+/**
+ * Import an STL file from a Blob and return the parsed solid.
+ *
+ * @remarks Unifies duplicate faces via `ShapeUpgrade_UnifySameDomain` before solidifying.
+ * @see {@link importSTL} in `importFns.ts` for the functional-API equivalent.
+ */
 export async function importSTL(STLBlob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();

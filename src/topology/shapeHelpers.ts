@@ -19,6 +19,7 @@ import {
 } from './shapes.js';
 import zip from '../utils/zip.js';
 
+/** Create a straight edge between two 3D points. */
 export const makeLine = (v1: Vec3, v2: Vec3): Edge => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -31,6 +32,7 @@ export const makeLine = (v1: Vec3, v2: Vec3): Edge => {
   return edge;
 };
 
+/** Create a circular edge with the given radius, center, and normal. */
 export const makeCircle = (
   radius: number,
   center: Vec3 = [0, 0, 0],
@@ -49,6 +51,12 @@ export const makeCircle = (
   return shape;
 };
 
+/**
+ * Create an elliptical edge with the given radii.
+ *
+ * @param xDir - Optional direction for the major axis.
+ * @returns An error if `minorRadius` exceeds `majorRadius`.
+ */
 export const makeEllipse = (
   majorRadius: number,
   minorRadius: number,
@@ -75,6 +83,12 @@ export const makeEllipse = (
   return ok(shape);
 };
 
+/**
+ * Create a helical wire with the given pitch, height, and radius.
+ *
+ * @param pitch - Vertical distance per full turn.
+ * @param lefthand - Wind the helix in the left-hand direction.
+ */
 export const makeHelix = (
   pitch: number,
   height: number,
@@ -117,6 +131,13 @@ export const makeHelix = (
   return new Wire(w);
 };
 
+/**
+ * Create a circular arc edge passing through three points.
+ *
+ * @param v1 - Start point.
+ * @param v2 - Mid point (on the arc).
+ * @param v3 - End point.
+ */
 export const makeThreePointArc = (v1: Vec3, v2: Vec3, v3: Vec3): Edge => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -134,6 +155,14 @@ export const makeThreePointArc = (v1: Vec3, v2: Vec3, v3: Vec3): Edge => {
   return edge;
 };
 
+/**
+ * Create an elliptical arc edge between two angles.
+ *
+ * @param startAngle - Start angle in radians.
+ * @param endAngle - End angle in radians.
+ * @param xDir - Optional direction for the major axis.
+ * @returns An error if `minorRadius` exceeds `majorRadius`.
+ */
 export const makeEllipseArc = (
   majorRadius: number,
   minorRadius: number,
@@ -162,13 +191,23 @@ export const makeEllipseArc = (
   return ok(shape);
 };
 
+/** Configuration for {@link makeBSplineApproximation}. */
 export interface BSplineApproximationConfig {
+  /** Maximum allowed distance between the curve and the input points. */
   tolerance?: number;
+  /** Maximum B-spline degree. */
   degMax?: number;
+  /** Minimum B-spline degree. */
   degMin?: number;
+  /** Optional `[weight1, weight2, weight3]` smoothing weights, or `null` to disable. */
   smoothing?: null | [number, number, number];
 }
 
+/**
+ * Create a B-spline edge that approximates a set of 3D points.
+ *
+ * @returns An error if the OCCT approximation algorithm fails.
+ */
 export const makeBSplineApproximation = function makeBSplineApproximation(
   points: Vec3[],
   { tolerance = 1e-3, smoothing = null, degMax = 6, degMin = 1 }: BSplineApproximationConfig = {}
@@ -223,6 +262,11 @@ export const makeBSplineApproximation = function makeBSplineApproximation(
   return ok(edge);
 };
 
+/**
+ * Create a Bezier curve edge from control points.
+ *
+ * @param points - Two or more control points defining the curve.
+ */
 export const makeBezierCurve = (points: Vec3[]): Edge => {
   if (points.length < 2) {
     bug('makeBezierCurve', `Need at least 2 points for a Bezier curve, got ${points.length}`);
@@ -242,6 +286,11 @@ export const makeBezierCurve = (points: Vec3[]): Edge => {
   return edge;
 };
 
+/**
+ * Create a circular arc edge tangent to a direction at the start point.
+ *
+ * @param startTgt - Tangent direction at the start point.
+ */
 export const makeTangentArc = (startPoint: Vec3, startTgt: Vec3, endPoint: Vec3): Edge => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -259,6 +308,11 @@ export const makeTangentArc = (startPoint: Vec3, startTgt: Vec3, endPoint: Vec3)
   return edge;
 };
 
+/**
+ * Assemble edges and/or wires into a single connected wire.
+ *
+ * @returns An error if the edges cannot form a valid wire (e.g. disconnected).
+ */
 export const assembleWire = (listOfEdges: (Edge | Wire)[]): Result<Wire> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -296,6 +350,11 @@ export const assembleWire = (listOfEdges: (Edge | Wire)[]): Result<Wire> => {
   return ok(wire);
 };
 
+/**
+ * Create a planar face from a closed wire, optionally with hole wires.
+ *
+ * @returns An error if the wire is non-planar or the face cannot be built.
+ */
 export const makeFace = (wire: Wire, holes?: Wire[]): Result<Face> => {
   const oc = getKernel().oc;
   const faceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wire.wrapped, false);
@@ -314,6 +373,12 @@ export const makeFace = (wire: Wire, holes?: Wire[]): Result<Face> => {
   return ok(new Face(face));
 };
 
+/**
+ * Create a face bounded by a wire on an existing face's underlying surface.
+ *
+ * @param originFace - Face whose surface geometry is reused.
+ * @param wire - Wire that defines the boundary on that surface.
+ */
 export const makeNewFaceWithinFace = (originFace: Face, wire: Wire): Face => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -325,6 +390,11 @@ export const makeNewFaceWithinFace = (originFace: Face, wire: Wire): Face => {
   return new Face(face);
 };
 
+/**
+ * Create a non-planar face from a wire using surface filling.
+ *
+ * @returns An error if the filling algorithm fails to produce a face.
+ */
 export const makeNonPlanarFace = (wire: Wire): Result<Face> => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -537,6 +607,7 @@ export const makeBox = (corner1: Vec3, corner2: Vec3): Solid => {
   return box;
 };
 
+/** Create a vertex at a 3D point. */
 export const makeVertex = (point: Vec3): Vertex => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -549,6 +620,13 @@ export const makeVertex = (point: Vec3): Vertex => {
   return new Vertex(vertex);
 };
 
+/**
+ * Create an offset shape from a face.
+ *
+ * @param offset - Signed offset distance (positive = outward).
+ * @param tolerance - Geometric tolerance for the offset algorithm.
+ * @returns An error if the result is not a valid 3D shape.
+ */
 export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Result<Shape3D> => {
   const oc = getKernel().oc;
   const progress = new oc.Message_ProgressRange_1();
@@ -582,6 +660,7 @@ export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Result
   }
 };
 
+/** Combine multiple shapes into a single compound shape. */
 export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {
   const oc = getKernel().oc;
   const builder = new oc.TopoDS_Builder();
@@ -596,6 +675,7 @@ export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {
   return newShape;
 };
 
+/** Alias for {@link compoundShapes}. */
 export const makeCompound = compoundShapes;
 
 function _weld(facesOrShells: Array<Face | Shell>): AnyShape {
@@ -641,6 +721,11 @@ export function makeSolid(facesOrShells: Array<Face | Shell>): Result<Solid> {
   });
 }
 
+/**
+ * Add hole wires to an existing face.
+ *
+ * Orientation of the holes is automatically fixed.
+ */
 export const addHolesInFace = (face: Face, holes: Wire[]): Face => {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -660,6 +745,11 @@ export const addHolesInFace = (face: Face, holes: Wire[]): Face => {
   return new Face(newFace);
 };
 
+/**
+ * Create a polygonal face from three or more coplanar points.
+ *
+ * @returns An error if fewer than 3 points are provided or the face cannot be built.
+ */
 export const makePolygon = (points: Vec3[]): Result<Face> => {
   if (points.length < 3)
     return err(
