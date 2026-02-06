@@ -1,5 +1,6 @@
 /**
  * Functional file import operations using branded shape types.
+ * Supports STEP, STL, and IGES formats.
  */
 
 import { getKernel } from '../kernel/index.js';
@@ -79,6 +80,39 @@ export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
     } catch {
       // Cleanup failure is non-critical — file may not exist if writeFile failed,
       // or may already be removed. WASM FS is ephemeral anyway.
+    }
+  }
+}
+
+/** Import an IGES file from a Blob. Returns a branded shape. */
+export async function importIGES(blob: Blob): Promise<Result<AnyShape>> {
+  const oc = getKernel().oc;
+  const r = gcWithScope();
+  const fileName = uniqueId();
+
+  try {
+    const bufferView = new Uint8Array(await blob.arrayBuffer());
+    oc.FS.writeFile(`/${fileName}`, bufferView);
+
+    const reader = r(new oc.IGESControl_Reader_1());
+    const status = reader.ReadFile(fileName);
+    if (status !== oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
+      return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file'));
+    }
+
+    reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
+    const igesShape = reader.OneShape();
+
+    if (igesShape.IsNull()) {
+      return err(ioError('IGES_IMPORT_FAILED', 'IGES file contains no valid geometry'));
+    }
+
+    return ok(castShape(igesShape));
+  } finally {
+    try {
+      oc.FS.unlink('/' + fileName);
+    } catch {
+      // Cleanup failure is non-critical
     }
   }
 }

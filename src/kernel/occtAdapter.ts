@@ -14,6 +14,8 @@ import {
   exportSTL as _exportSTL,
   importSTEP as _importSTEP,
   importSTL as _importSTL,
+  exportIGES as _exportIGES,
+  importIGES as _importIGES,
 } from './ioOps.js';
 import {
   volume as _volume,
@@ -276,6 +278,14 @@ export class OCCTAdapter implements KernelAdapter {
 
   importSTL(data: string | ArrayBuffer): OcShape {
     return _importSTL(this.oc, data);
+  }
+
+  exportIGES(shapes: OcShape[]): string {
+    return _exportIGES(this.oc, shapes);
+  }
+
+  importIGES(data: string | ArrayBuffer): OcShape[] {
+    return _importIGES(this.oc, data);
   }
 
   // --- Measurement (delegates to measureOps.ts) ---
