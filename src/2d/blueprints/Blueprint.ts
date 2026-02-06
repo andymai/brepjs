@@ -70,7 +70,8 @@ function assembleWire(listOfEdges: { wrapped: unknown }[]): Wire {
  *   .lineTo([0, 10])
  *   .close();
  *
- * const face = bp.sketchOnPlane("XY");
+ * // sketchOnPlane returns SketchData (wire + metadata), not a Face
+ * const sketch = bp.sketchOnPlane("XY");
  * ```
  *
  * @see {@link CompoundBlueprint} for blueprints with holes.
