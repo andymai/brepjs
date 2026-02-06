@@ -56,6 +56,12 @@ export interface KernelEdgeMeshResult {
   edgeGroups: Array<{ start: number; count: number; edgeHash: number }>;
 }
 
+export interface DistanceResult {
+  value: number;
+  point1: [number, number, number];
+  point2: [number, number, number];
+}
+
 export interface KernelAdapter {
   /** The raw OpenCascade instance */
   readonly oc: OpenCascadeInstance;
@@ -163,4 +169,14 @@ export interface KernelAdapter {
 
   // --- Simplification ---
   simplify(shape: OcShape): OcShape;
+
+  // --- Validation & repair ---
+  isValid(shape: OcShape): boolean;
+  sew(shapes: OcShape[], tolerance?: number): OcShape;
+
+  // --- 2D offset ---
+  offsetWire2D(wire: OcShape, offset: number, joinType?: number): OcShape;
+
+  // --- Distance ---
+  distance(shape1: OcShape, shape2: OcShape): DistanceResult;
 }
