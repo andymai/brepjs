@@ -4,8 +4,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SITE_DIR="$(dirname "$SCRIPT_DIR")"
-OC_SRC="$SITE_DIR/../packages/brepjs-opencascade/src"
 DEST="$SITE_DIR/public/wasm"
+
+# Try local monorepo path first (local dev), then node_modules (CI/Vercel)
+OC_SRC="$SITE_DIR/../packages/brepjs-opencascade/src"
+if [ ! -f "$OC_SRC/brepjs_single.wasm" ]; then
+  OC_SRC="$SITE_DIR/node_modules/brepjs-opencascade/src"
+fi
 
 mkdir -p "$DEST"
 cp "$OC_SRC/brepjs_single.wasm" "$DEST/"
