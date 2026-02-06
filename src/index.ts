@@ -493,6 +493,15 @@ export { chamferDistAngleShape } from './topology/chamferAngleFns.js';
 export { pipe, type ShapePipe } from './topology/pipeFns.js';
 
 export {
+  facesOfEdge,
+  edgesOfFace,
+  wiresOfFace,
+  verticesOfEdge,
+  adjacentFaces,
+  sharedEdges,
+} from './topology/adjacencyFns.js';
+
+export {
   getCurveType as fnGetCurveType,
   curveStartPoint,
   curveEndPoint,
