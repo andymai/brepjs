@@ -1,3 +1,6 @@
+# Claude Code auto-memory (user-specific, not shared)
+memory/
+
 node_modules/
 dist/
 coverage/
