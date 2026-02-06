@@ -173,3 +173,10 @@ export {
   buildCompound as fnBuildCompound,
   type BooleanOptions,
 } from './booleanFns.js';
+
+export {
+  toBufferGeometryData,
+  toLineGeometryData,
+  type BufferGeometryData,
+  type LineGeometryData,
+} from './threeHelpers.js';
