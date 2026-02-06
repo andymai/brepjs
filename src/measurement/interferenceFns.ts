@@ -1,12 +1,11 @@
 /**
  * Interference detection between shapes.
  *
- * Uses BRepExtrema_DistShapeShape to detect collisions, contact,
+ * Uses the kernel distance API to detect collisions, contact,
  * and proximity between shape pairs.
  */
 
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope } from '../core/disposal.js';
 import type { Vec3 } from '../core/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 
@@ -50,35 +49,14 @@ export function checkInterference(
   shape2: AnyShape,
   tolerance = 1e-6
 ): InterferenceResult {
-  const oc = getKernel().oc;
-  const r = gcWithScope();
+  const dist = getKernel().distance(shape1.wrapped, shape2.wrapped);
 
-  const distTool = r(new oc.BRepExtrema_DistShapeShape_1());
-  distTool.LoadS1(shape1.wrapped);
-  distTool.LoadS2(shape2.wrapped);
-  const progress = r(new oc.Message_ProgressRange_1());
-  distTool.Perform(progress);
-
-  if (!distTool.IsDone()) {
-    throw new Error('BRepExtrema_DistShapeShape failed');
-  }
-
-  const minDistance = distTool.Value() as number;
-
-  const p1 = distTool.PointOnShape1(1);
-  const p2 = distTool.PointOnShape2(1);
-
-  const result: InterferenceResult = {
-    hasInterference: minDistance <= tolerance,
-    minDistance,
-    pointOnShape1: [p1.X(), p1.Y(), p1.Z()],
-    pointOnShape2: [p2.X(), p2.Y(), p2.Z()],
+  return {
+    hasInterference: dist.value <= tolerance,
+    minDistance: dist.value,
+    pointOnShape1: dist.point1,
+    pointOnShape2: dist.point2,
   };
-
-  p1.delete();
-  p2.delete();
-
-  return result;
 }
 
 // ---------------------------------------------------------------------------

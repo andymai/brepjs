@@ -81,5 +81,36 @@ export function boundingBox(
   };
 }
 
+/**
+ * Measures the minimum distance between two shapes, returning value and closest points.
+ */
+export function distance(
+  oc: OpenCascadeInstance,
+  shape1: OcShape,
+  shape2: OcShape
+): { value: number; point1: [number, number, number]; point2: [number, number, number] } {
+  const distTool = new oc.BRepExtrema_DistShapeShape_1();
+  distTool.LoadS1(shape1);
+  distTool.LoadS2(shape2);
+  const progress = new oc.Message_ProgressRange_1();
+  distTool.Perform(progress);
+
+  const value = distTool.Value() as number;
+  const p1 = distTool.PointOnShape1(1);
+  const p2 = distTool.PointOnShape2(1);
+
+  const result = {
+    value,
+    point1: [p1.X(), p1.Y(), p1.Z()] as [number, number, number],
+    point2: [p2.X(), p2.Y(), p2.Z()] as [number, number, number],
+  };
+
+  p1.delete();
+  p2.delete();
+  progress.delete();
+  distTool.delete();
+  return result;
+}
+
 // Re-export HASH_CODE_MAX for use by other modules
 export { HASH_CODE_MAX };
