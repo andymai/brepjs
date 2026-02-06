@@ -19,6 +19,7 @@ graph TB
         Query["query/"]
         Measurement["measurement/"]
         IO["io/"]
+        Worker["worker/"]
     end
 
     subgraph "Layer 1 - Core"
@@ -53,6 +54,7 @@ graph TB
     Query --> Core
     Measurement --> Core
     IO --> Core
+    Worker --> Core
 
     %% Layer 1 imports
     Core --> Kernel
@@ -68,7 +70,7 @@ graph TB
     classDef ext fill:#f5f5f5
 
     class Sketching,Text,Projection l3
-    class Topology,Operations,TwoD,Query,Measurement,IO l2
+    class Topology,Operations,TwoD,Query,Measurement,IO,Worker l2
     class Core l1
     class Kernel,Utils l0
     class OCCT ext
@@ -97,14 +99,15 @@ Imports kernel/utils only.
 
 Imports layers 0-1 and each other.
 
-| Module         | Purpose                                    |
-| -------------- | ------------------------------------------ |
-| `topology/`    | Shape classes, boolean operations, casting |
-| `operations/`  | Extrusion, loft, sweep, batch operations   |
-| `2d/`          | Blueprints, curves, 2D operations          |
-| `query/`       | Shape finders (face, edge, corner)         |
-| `measurement/` | Volume, area, length, distance             |
-| `io/`          | STEP/STL import/export                     |
+| Module         | Purpose                                                   |
+| -------------- | --------------------------------------------------------- |
+| `topology/`    | Shape classes, boolean operations, casting                |
+| `operations/`  | Extrusion, loft, sweep, batch operations                  |
+| `2d/`          | Blueprints, curves, 2D operations                         |
+| `query/`       | Shape finders (face, edge, corner)                        |
+| `measurement/` | Volume, area, length, distance                            |
+| `io/`          | Import/export (STEP, STL, IGES, SVG, glTF, DXF, 3MF, OBJ) |
+| `worker/`      | Off-main-thread worker protocol                           |
 
 ### Layer 3: High-Level API
 
@@ -146,8 +149,8 @@ sequenceDiagram
 brepjs uses an immutable functional API:
 
 ```typescript
-const shape = castShape(makeBox([10, 10, 10]).wrapped);
-const moved = translateShape(shape, [5, 0, 0]); // Returns new shape
+const box = makeBox([0, 0, 0], [10, 10, 10]);
+const moved = translateShape(box, [5, 0, 0]); // Returns new shape
 ```
 
 ### 2. Result Types
@@ -166,8 +169,9 @@ if (isOk(result)) {
 Shapes use branded types for type safety:
 
 ```typescript
-type Solid = ShapeHandle & { readonly __brand: 'solid' };
-type Face = ShapeHandle & { readonly __brand: 'face' };
+declare const __brand: unique symbol;
+type Solid = ShapeHandle & { readonly [__brand]: 'solid' };
+type Face = ShapeHandle & { readonly [__brand]: 'face' };
 
 // Compiler prevents mixing
 function takeSolid(s: Solid) {}
