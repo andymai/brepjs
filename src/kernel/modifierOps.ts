@@ -98,6 +98,69 @@ export function thicken(oc: OpenCascadeInstance, shape: OcShape, thickness: numb
 }
 
 /**
+ * Applies a chamfer with distance + angle to selected edges of a shape.
+ *
+ * Each edge requires a face that contains it, so the shape's faces are iterated
+ * to find a containing face for each edge.
+ */
+export function chamferDistAngle(
+  oc: OpenCascadeInstance,
+  shape: OcShape,
+  edges: OcShape[],
+  distance: number,
+  angleDeg: number
+): OcShape {
+  const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
+  const angleRad = (angleDeg * Math.PI) / 180;
+
+  // Collect faces as properly downcast TopoDS_Face instances
+  const faces: OcShape[] = [];
+  const faceExplorer = new oc.TopExp_Explorer_2(
+    shape,
+    oc.TopAbs_ShapeEnum.TopAbs_FACE,
+    oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
+  while (faceExplorer.More()) {
+    faces.push(oc.TopoDS.Face_1(faceExplorer.Current()));
+    faceExplorer.Next();
+  }
+  faceExplorer.delete();
+
+  for (const edge of edges) {
+    // Find a face containing this edge
+    let containingFace: OcShape = null;
+    for (const face of faces) {
+      const edgeExplorer = new oc.TopExp_Explorer_2(
+        face,
+        oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+        oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+      );
+      let found = false;
+      while (edgeExplorer.More()) {
+        if (edgeExplorer.Current().IsSame(edge)) {
+          found = true;
+          break;
+        }
+        edgeExplorer.Next();
+      }
+      edgeExplorer.delete();
+      if (found) {
+        containingFace = face;
+        break;
+      }
+    }
+    if (containingFace && distance > 0) {
+      // Edge must also be downcast to TopoDS_Edge for the AddDA binding
+      builder.AddDA(distance, angleRad, oc.TopoDS.Edge_1(edge), containingFace);
+    }
+  }
+
+  const result = builder.Shape();
+  builder.delete();
+  return result;
+}
+
+/**
  * Offsets all faces of a shape by a given distance.
  */
 export function offset(
