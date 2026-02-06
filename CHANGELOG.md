@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.14.0](https://github.com/andymai/brepjs/compare/brepjs-v4.13.0...brepjs-v4.14.0) (2026-02-06)
+
+
+### Features
+
+* add auto-healing pipeline and surface curvature ([#100](https://github.com/andymai/brepjs/issues/100)) ([2d2ac6e](https://github.com/andymai/brepjs/commit/2d2ac6e2f4f3b014c06e72b408971008c67121a1))
+
 ## [4.13.0](https://github.com/andymai/brepjs/compare/brepjs-v4.12.0...brepjs-v4.13.0) (2026-02-06)
 
 
