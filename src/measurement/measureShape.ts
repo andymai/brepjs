@@ -11,18 +11,21 @@ class PhysicalProperties extends WrappingObj<OcType> {
   }
 }
 
+/** @deprecated Use measureVolumeProps() instead. */
 export class VolumePhysicalProperties extends PhysicalProperties {
   get volume(): number {
     return this.wrapped.Mass();
   }
 }
 
+/** @deprecated Use measureSurfaceProps() instead. */
 export class SurfacePhysicalProperties extends PhysicalProperties {
   get area(): number {
     return this.wrapped.Mass();
   }
 }
 
+/** @deprecated Use measureLinearProps() instead. */
 export class LinearPhysicalProperties extends PhysicalProperties {
   get length(): number {
     return this.wrapped.Mass();
@@ -74,6 +77,7 @@ export function measureLength(shape: AnyShape): number {
   return l;
 }
 
+/** @deprecated Use measureDistance() instead. */
 export class DistanceTool extends WrappingObj<OcType> {
   constructor() {
     const oc = getKernel().oc;
@@ -100,6 +104,7 @@ export function measureDistanceBetween(shape1: AnyShape, shape2: AnyShape): numb
   return dist;
 }
 
+/** @deprecated Use createDistanceQuery() instead. */
 export class DistanceQuery extends WrappingObj<OcType> {
   constructor(shape: AnyShape) {
     const oc = getKernel().oc;

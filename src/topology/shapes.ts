@@ -74,6 +74,7 @@ export type BooleanOperationOptions = {
 // ---------------------------------------------------------------------------
 
 export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
+  /** @deprecated Use cloneShape() instead. */
   clone(): this {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic constructor access
     return new (this.constructor as any)(unwrap(downcast(this.wrapped)));
@@ -102,6 +103,8 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
 
   /**
    * Simplifies the shape by removing unnecessary edges and faces.
+   *
+   * @deprecated Use simplifyShape() instead.
    */
   simplify(): this {
     const oc = getKernel().oc;
@@ -120,6 +123,7 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   /**
    * Translates the shape by an arbitrary vector.
    *
+   * @deprecated Use translateShape() instead.
    * @category Shape Transformations
    */
   translate(xDist: number, yDist: number, zDist: number): this;
@@ -167,6 +171,7 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   /**
    * Rotates the shape.
    *
+   * @deprecated Use rotateShape() instead.
    * @category Shape Transformations
    */
   rotate(angle: number, position: PointInput = [0, 0, 0], direction: PointInput = [0, 0, 1]): this {
@@ -182,6 +187,7 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   /**
    * Mirrors the shape through a plane.
    *
+   * @deprecated Use mirrorShape() instead.
    * @category Shape Transformations
    */
   mirror(inputPlane?: Plane | PlaneName | PointInput, origin?: PointInput): this {
@@ -198,6 +204,7 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   /**
    * Returns a scaled version of the shape.
    *
+   * @deprecated Use scaleShape() instead.
    * @category Shape Transformations
    */
   scale(scaleFactor: number, center: PointInput = [0, 0, 0]): this {
@@ -247,6 +254,7 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   /**
    * Exports the current shape as a set of triangles for rendering.
    *
+   * @deprecated Use meshShape() instead.
    * @category Shape Export
    */
   mesh({
@@ -811,6 +819,7 @@ export class _3DShape<Type extends OcShape = OcShape> extends Shape<Type> {
   /**
    * Builds a new shape out of the two fused shapes.
    *
+   * @deprecated Use fuseShapes() instead.
    * @category Shape Modifications
    */
   fuse(
@@ -836,6 +845,7 @@ export class _3DShape<Type extends OcShape = OcShape> extends Shape<Type> {
   /**
    * Builds a new shape by removing the tool from this shape.
    *
+   * @deprecated Use cutShape() instead.
    * @category Shape Modifications
    */
   cut(
@@ -861,6 +871,7 @@ export class _3DShape<Type extends OcShape = OcShape> extends Shape<Type> {
   /**
    * Builds a new shape by intersecting this shape and another.
    *
+   * @deprecated Use intersectShapes() instead.
    * @category Shape Modifications
    */
   intersect(tool: AnyShape, { simplify = false }: { simplify?: boolean } = {}): Result<Shape3D> {

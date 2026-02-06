@@ -10,6 +10,8 @@ import { ProjectionCamera, type ProjectionPlane } from './ProjectionCamera.js';
 import { PROJECTION_PLANES } from './projectionPlanes.js';
 import type { Edge, AnyShape } from '../topology/shapes.js';
 import { makeProjectedEdges } from './makeProjectedEdges.js';
+import { type Result, ok, err } from '../core/result.js';
+import { validationError } from '../core/errors.js';
 
 /** Plain camera data object. */
 export interface Camera {
@@ -24,11 +26,13 @@ export function createCamera(
   position: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
   xAxis?: Vec3
-): Camera {
+): Result<Camera> {
   // Validate direction is not zero-length
   const dirLength = vecLength(direction);
   if (dirLength < 1e-12) {
-    throw new Error('Camera direction cannot be a zero-length vector');
+    return err(
+      validationError('CAMERA_ZERO_DIRECTION', 'Camera direction cannot be a zero-length vector')
+    );
   }
 
   let resolvedXAxis: Vec3;
@@ -47,22 +51,22 @@ export function createCamera(
     resolvedXAxis = vecNormalize(cross);
   }
   const yAxis = vecNormalize(vecCross(direction, resolvedXAxis));
-  return {
+  return ok({
     position,
     direction: vecNormalize(direction),
     xAxis: resolvedXAxis,
     yAxis,
-  };
+  });
 }
 
 /** Create a camera that looks at a target from the camera's position. */
-export function cameraLookAt(camera: Camera, target: Vec3): Camera {
+export function cameraLookAt(camera: Camera, target: Vec3): Result<Camera> {
   const direction = vecNormalize(vecSub(camera.position, target));
   return createCamera(camera.position, direction);
 }
 
 /** Create a camera from a named projection plane. */
-export function cameraFromPlane(planeName: ProjectionPlane): Camera {
+export function cameraFromPlane(planeName: ProjectionPlane): Result<Camera> {
   const config = PROJECTION_PLANES[planeName];
   return createCamera([0, 0, 0], config.dir, config.xAxis);
 }
