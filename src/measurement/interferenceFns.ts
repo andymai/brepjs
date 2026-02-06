@@ -59,6 +59,10 @@ export function checkInterference(
   const progress = r(new oc.Message_ProgressRange_1());
   distTool.Perform(progress);
 
+  if (!distTool.IsDone()) {
+    throw new Error('BRepExtrema_DistShapeShape failed');
+  }
+
   const minDistance = distTool.Value() as number;
 
   const p1 = distTool.PointOnShape1(1);
