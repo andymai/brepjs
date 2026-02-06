@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.16.0](https://github.com/andymai/brepjs/compare/brepjs-v4.15.0...brepjs-v4.16.0) (2026-02-06)
+
+
+### Features
+
+* quick wins phase 2 + comprehensive llms.txt rewrite ([#111](https://github.com/andymai/brepjs/issues/111)) ([1ff2f30](https://github.com/andymai/brepjs/commit/1ff2f30242e0e03bf3015abddd909435b1a9f879))
+
 ## [4.15.0](https://github.com/andymai/brepjs/compare/brepjs-v4.14.0...brepjs-v4.15.0) (2026-02-06)
 
 ### Features
