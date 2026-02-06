@@ -268,6 +268,7 @@ export {
 // ── Layer 2: io ──
 
 export { importSTEP, importSTL } from './io/importers.js';
+export { exportOBJ } from './io/objExportFns.js';
 
 // ── Layer 3: sketching ──
 
