@@ -17,6 +17,7 @@ export default defineConfig({
         core: resolve(__dirname, 'src/core.ts'),
         query: resolve(__dirname, 'src/query.ts'),
         measurement: resolve(__dirname, 'src/measurement.ts'),
+        worker: resolve(__dirname, 'src/worker.ts'),
       },
       formats: ['es', 'cjs'],
     },
