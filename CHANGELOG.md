@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.9.0](https://github.com/andymai/brepjs/compare/brepjs-v4.8.0...brepjs-v4.9.0) (2026-02-06)
+
+
+### Features
+
+* improve error handling and add deprecation tags ([#98](https://github.com/andymai/brepjs/issues/98)) ([918ff5b](https://github.com/andymai/brepjs/commit/918ff5bac559c160de78e2116c515522f4b312c2))
+
 ## [4.8.0](https://github.com/andymai/brepjs/compare/brepjs-v4.7.1...brepjs-v4.8.0) (2026-02-06)
 
 ### Features
