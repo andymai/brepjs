@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.7.1](https://github.com/andymai/brepjs/compare/brepjs-v4.7.0...brepjs-v4.7.1) (2026-02-06)
+
+
+### Bug Fixes
+
+* widen brepjs-opencascade version range to accept 0.6.0 ([577e783](https://github.com/andymai/brepjs/commit/577e78306b06d5b52476f6b4f7f193674112c5f3))
+
 ## [4.7.0](https://github.com/andymai/brepjs/compare/brepjs-v4.6.0...brepjs-v4.7.0) (2026-02-06)
 
 
