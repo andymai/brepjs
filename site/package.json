@@ -1,0 +1,39 @@
+{
+  "name": "brepjs-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bash scripts/copy-wasm.sh && vite",
+    "build": "bash scripts/copy-wasm.sh && tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "precompute-hero": "npx tsx scripts/precompute-hero-mesh.ts",
+    "screenshot-examples": "npx tsx scripts/screenshot-examples.ts"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@react-three/drei": "^10.0.0",
+    "@react-three/fiber": "^9.0.0",
+    "brepjs": "file:..",
+    "brepjs-opencascade": "file:../packages/brepjs-opencascade",
+    "lz-string": "^1.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.0",
+    "three": "^0.175.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/lz-string": "^1.5.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/three": "^0.175.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "puppeteer": "^24.37.2",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}

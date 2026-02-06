@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-indigo-primary: #6366f1;
+  --color-indigo-light: #818cf8;
+  --color-indigo-dark: #4f46e5;
+  --color-surface: #0f0f14;
+  --color-surface-raised: #1a1a24;
+  --color-surface-overlay: #24243a;
+  --color-border-subtle: #2a2a3e;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+/* Thin dark scrollbars for code panels */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a3e transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #2a2a3e;
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #3a3a5e;
+}
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: transparent;
+}
