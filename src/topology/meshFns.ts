@@ -20,21 +20,33 @@ import {
 // Mesh types
 // ---------------------------------------------------------------------------
 
+/** Triangle mesh data extracted from a shape, ready for GPU rendering. */
 export interface ShapeMesh {
+  /** Triangle vertex indices (3 per triangle). */
   triangles: Uint32Array;
+  /** Flat array of vertex positions (x,y,z interleaved). */
   vertices: Float32Array;
+  /** Flat array of vertex normals (x,y,z interleaved). */
   normals: Float32Array;
+  /** Flat array of UV coordinates (u,v interleaved), empty if not requested. */
   uvs: Float32Array;
+  /** Per-face triangle index ranges for multi-material rendering. */
   faceGroups: { start: number; count: number; faceId: number }[];
 }
 
+/** Line segment mesh data for edge rendering (wireframe). */
 export interface EdgeMesh {
+  /** Flat array of line vertex positions (x,y,z interleaved, 2 vertices per segment). */
   lines: number[];
+  /** Per-edge line segment index ranges for highlighting individual edges. */
   edgeGroups: { start: number; count: number; edgeId: number }[];
 }
 
+/** Shared options for meshing operations. */
 export interface MeshOptions {
+  /** Linear deflection tolerance (default 1e-3). Smaller = finer mesh. */
   tolerance?: number;
+  /** Angular deflection tolerance in radians (default 0.1). Smaller = finer mesh on curved surfaces. */
   angularTolerance?: number;
   /** Abort signal to cancel mesh generation between face iterations. */
   signal?: AbortSignal;
@@ -44,7 +56,16 @@ export interface MeshOptions {
 // Triangle mesh
 // ---------------------------------------------------------------------------
 
-/** Mesh a shape as a set of triangles for rendering. */
+/**
+ * Mesh a shape as a set of triangles for rendering.
+ *
+ * Results are cached by default (keyed by shape identity + tolerance parameters).
+ * Delegates to the kernel adapter's bulk C++ mesh extraction for performance.
+ *
+ * @returns A ShapeMesh containing typed arrays ready for GPU upload.
+ * @see Shape.mesh — OOP equivalent (deprecated)
+ * @see toBufferGeometryData — convert to Three.js BufferGeometry format
+ */
 export function meshShape(
   shape: AnyShape,
   {
@@ -96,7 +117,15 @@ export function meshShape(
 // Edge mesh (line segments)
 // ---------------------------------------------------------------------------
 
-/** Mesh the edges of a shape as line segments for edge rendering. */
+/**
+ * Mesh the edges of a shape as line segments for wireframe rendering.
+ *
+ * Results are cached by default (keyed by shape identity + tolerance parameters).
+ *
+ * @returns An EdgeMesh containing line vertex positions and per-edge groups.
+ * @see Shape.meshEdges — OOP equivalent
+ * @see toLineGeometryData — convert to Three.js LineSegments format
+ */
 export function meshShapeEdges(
   shape: AnyShape,
   { tolerance = 1e-3, angularTolerance = 0.1, cache = true }: MeshOptions & { cache?: boolean } = {}
@@ -131,7 +160,12 @@ export function meshShapeEdges(
 // File export
 // ---------------------------------------------------------------------------
 
-/** Export a shape as a STEP file Blob. */
+/**
+ * Export a shape as a STEP file Blob.
+ *
+ * @returns Ok with a Blob (MIME type `application/STEP`), or Err on failure.
+ * @see Shape.blobSTEP — OOP equivalent
+ */
 export function exportSTEP(shape: AnyShape): Result<Blob> {
   const oc = getKernel().oc;
   const filename = uniqueIOFilename('_blob', 'step');
@@ -162,7 +196,12 @@ export function exportSTEP(shape: AnyShape): Result<Blob> {
   }
 }
 
-/** Export a shape as an STL file Blob. */
+/**
+ * Export a shape as an STL file Blob.
+ *
+ * @returns Ok with a Blob (MIME type `application/sla`), or Err on failure.
+ * @see Shape.blobSTL — OOP equivalent
+ */
 export function exportSTL(
   shape: AnyShape,
   {
@@ -195,7 +234,11 @@ export function exportSTL(
   return err(ioError('STL_EXPORT_FAILED', 'Failed to write STL file'));
 }
 
-/** Export a shape as an IGES file Blob. */
+/**
+ * Export a shape as an IGES file Blob.
+ *
+ * @returns Ok with a Blob (MIME type `application/iges`), or Err on failure.
+ */
 export function exportIGES(shape: AnyShape): Result<Blob> {
   const oc = getKernel().oc;
   const filename = uniqueIOFilename('_blob', 'iges');

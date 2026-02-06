@@ -20,6 +20,11 @@ import { unwrap } from '../core/result.js';
 // Pipe interface
 // ---------------------------------------------------------------------------
 
+/**
+ * Fluent builder interface for chaining immutable shape transformations.
+ *
+ * Call `.done()` to extract the final shape from the pipe.
+ */
 export interface ShapePipe<T extends AnyShape> {
   /** Get the current shape. */
   readonly done: () => T;
@@ -85,7 +90,18 @@ function createPipe<T extends AnyShape>(shape: T): ShapePipe<T> {
   };
 }
 
-/** Create a fluent pipe for chaining shape operations. */
+/**
+ * Create a fluent pipe for chaining immutable shape operations.
+ *
+ * @example
+ * ```ts
+ * const result = pipe(box)
+ *   .translate([10, 0, 0])
+ *   .fuse(cylinder)
+ *   .rotate(45)
+ *   .done();
+ * ```
+ */
 export function pipe<T extends AnyShape>(shape: T): ShapePipe<T> {
   return createPipe(shape);
 }

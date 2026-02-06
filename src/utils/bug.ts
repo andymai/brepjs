@@ -3,6 +3,7 @@
  * Lives in utils (Layer 0) so it can be used by all layers including kernel.
  */
 
+/** Error thrown for invariant violations / programmer bugs (should never be caught). */
 export class BrepBugError extends Error {
   readonly location: string;
 

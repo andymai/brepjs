@@ -1,5 +1,6 @@
 import range from './range.js';
 
+/** Zip multiple arrays together, truncating to the shortest length. */
 export default function zip<T extends unknown[][]>(
   arrays: T
 ): { [K in keyof T]: T[K] extends (infer V)[] ? V : never }[] {

@@ -19,11 +19,17 @@ import { type Face, type Shape3D, type Wire } from '../topology/shapes.js';
 import type { SketchInterface } from './sketchLib.js';
 
 /**
- * A line drawing to be acted upon. It defines directions to be acted upon by
- * definition (extrusion direction for instance).
+ * Represent a closed or open wire profile with a default extrusion origin and direction.
  *
- * Note that all operations will delete the sketch
+ * A Sketch wraps a single {@link Wire} and carries metadata (origin, direction,
+ * optional base face) so that downstream operations like {@link Sketch.extrude},
+ * {@link Sketch.revolve}, {@link Sketch.sweepSketch}, and {@link Sketch.loftWith}
+ * know how to act on it without extra arguments.
  *
+ * @remarks Most operations consume (delete) the sketch after producing a solid.
+ *
+ * @see {@link Sketcher} to build a Sketch interactively.
+ * @see {@link CompoundSketch} for multi-wire (outer + holes) profiles.
  * @category Sketching
  */
 export default class Sketch implements SketchInterface {
@@ -62,12 +68,14 @@ export default class Sketch implements SketchInterface {
     this._baseFace = newFace ? newFace.clone() : newFace;
   }
 
+  /** Release all OCCT resources held by this sketch. */
   delete(): void {
     this.wire.delete();
     // _defaultOrigin and _defaultDirection are Vec3 tuples - no need to delete
     if (this.baseFace) this.baseFace.delete();
   }
 
+  /** Create an independent deep copy of this sketch. */
   clone(): Sketch {
     const sketch = new Sketch(this.wire.clone(), {
       defaultOrigin: this.defaultOrigin,
@@ -77,18 +85,22 @@ export default class Sketch implements SketchInterface {
     return sketch;
   }
 
+  /** Get the 3D origin used as default for extrusion and revolution. */
   get defaultOrigin(): Vec3 {
     return this._defaultOrigin;
   }
 
+  /** Set the 3D origin used as default for extrusion and revolution. */
   set defaultOrigin(newOrigin: PointInput) {
     this._defaultOrigin = toVec3(newOrigin);
   }
 
+  /** Get the default extrusion/normal direction. */
   get defaultDirection(): Vec3 {
     return this._defaultDirection;
   }
 
+  /** Set the default extrusion/normal direction. */
   set defaultDirection(newDirection: PointInput) {
     this._defaultDirection = toVec3(newDirection);
   }
@@ -106,10 +118,12 @@ export default class Sketch implements SketchInterface {
     return face;
   }
 
+  /** Return a clone of the underlying wire. */
   wires(): Wire {
     return this.wire.clone();
   }
 
+  /** Alias for {@link Sketch.face}. */
   faces(): Face {
     return this.face();
   }

@@ -7,6 +7,19 @@ import { gcWithScope } from '../../core/memory.js';
 import { Curve2D } from './Curve2D.js';
 import { samePoint } from './vectorOperations.js';
 
+/**
+ * Approximate a 2D curve as a B-spline via `Geom2dConvert_ApproxCurve`.
+ *
+ * @param adaptor - A `Geom2dAdaptor_Curve` wrapping the source curve.
+ * @param tolerance - Maximum deviation from the original curve.
+ * @param continuity - Required geometric continuity of the result.
+ * @param maxSegments - Maximum number of B-spline spans.
+ *
+ * @example
+ * ```ts
+ * const bspline = approximateAsBSpline(curve.adaptor(), 1e-4, 'C1');
+ * ```
+ */
 export const approximateAsBSpline = (
   adaptor: OcType,
   tolerance = 1e-4,
@@ -36,6 +49,12 @@ export const approximateAsBSpline = (
   return new Curve2D(convert.Curve());
 };
 
+/**
+ * Decompose a B-spline curve into an array of Bezier arcs.
+ *
+ * @param adaptor - A `Geom2dAdaptor_Curve` whose type must be `BSPLINE_CURVE`.
+ * @returns An array of Bezier `Curve2D` segments covering the original B-spline.
+ */
 export const BSplineToBezier = (adaptor: OcType): Curve2D[] => {
   if (unwrap(findCurveType(adaptor.GetType())) !== 'BSPLINE_CURVE')
     bug('BSplineToBezier', 'You can only convert a Bspline');
@@ -60,12 +79,29 @@ export const BSplineToBezier = (adaptor: OcType): Curve2D[] => {
   return curves;
 };
 
+/** Options for SVG-compatible curve approximation. */
 export interface ApproximationOptions {
+  /** Maximum deviation from the original curve. */
   tolerance?: number;
+  /** Required geometric continuity. */
   continuity?: 'C0' | 'C1' | 'C2' | 'C3';
+  /** Maximum number of B-spline spans. */
   maxSegments?: number;
 }
 
+/**
+ * Convert an array of curves to SVG-compatible primitives (lines, arcs, and
+ * degree-1/2/3 Bezier curves).
+ *
+ * Higher-degree B-splines are decomposed into Bezier arcs and recursively
+ * processed. Full circles/ellipses are split at the midpoint so they can be
+ * represented as two SVG arcs.
+ *
+ * @example
+ * ```ts
+ * const svgCurves = approximateAsSvgCompatibleCurve(curves, { tolerance: 1e-5 });
+ * ```
+ */
 export function approximateAsSvgCompatibleCurve(
   curves: Curve2D[],
   options: ApproximationOptions = {

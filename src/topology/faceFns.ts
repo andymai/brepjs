@@ -18,6 +18,7 @@ import { iterTopo, downcast } from './cast.js';
 // Surface type detection
 // ---------------------------------------------------------------------------
 
+/** String literal identifying the geometric type of a face's underlying surface. */
 export type SurfaceType =
   | 'PLANE'
   | 'CYLINDRE'
@@ -31,7 +32,12 @@ export type SurfaceType =
   | 'OFFSET_SURFACE'
   | 'OTHER_SURFACE';
 
-/** Get the geometric surface type of a face. */
+/**
+ * Get the geometric surface type of a face.
+ *
+ * @returns Ok with the surface type, or Err for unrecognized OCCT surface types.
+ * @see Face.geomType — OOP equivalent
+ */
 export function getSurfaceType(face: Face): Result<SurfaceType> {
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -113,7 +119,13 @@ export function uvBounds(face: Face): UVBounds {
   };
 }
 
-/** Get a point on a face surface at normalized UV coordinates (0–1 range). */
+/**
+ * Get a point on a face surface at normalized UV coordinates (0-1 range).
+ *
+ * @param face - The face to evaluate.
+ * @param u - Normalized U parameter (0-1).
+ * @param v - Normalized V parameter (0-1).
+ */
 export function pointOnSurface(face: Face, u: number, v: number): Vec3 {
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -285,9 +297,13 @@ export function innerWires(face: Face): Wire[] {
 // Triangulation
 // ---------------------------------------------------------------------------
 
+/** Raw triangulation data for a single face (vertices, triangle indices, normals). */
 export interface FaceTriangulation {
+  /** Flat array of vertex positions (x,y,z interleaved). */
   vertices: number[];
+  /** Flat array of triangle vertex indices (3 per triangle). */
   trianglesIndexes: number[];
+  /** Flat array of vertex normals (x,y,z interleaved). */
   verticesNormals: number[];
 }
 

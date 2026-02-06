@@ -38,8 +38,23 @@ import type { OcType } from '../kernel/types.js';
 import Sketch from './Sketch.js';
 
 /**
- * The Sketcher allows you to sketch on a plane.
+ * Build 2D wire profiles on a 3D plane using a builder-pen API.
  *
+ * The Sketcher converts relative/absolute 2D drawing commands into 3D edges
+ * projected onto the chosen plane, then assembles them into a {@link Sketch}.
+ *
+ * @example
+ * ```ts
+ * const sketch = new Sketcher("XZ", 5)
+ *   .hLine(20)
+ *   .vLine(10)
+ *   .hLine(-20)
+ *   .close();
+ * const solid = sketch.extrude(8);
+ * ```
+ *
+ * @see {@link FaceSketcher} for sketching on non-planar surfaces.
+ * @see {@link DrawingPen} for the pure-2D equivalent.
  * @category Sketching
  */
 export default class Sketcher implements GenericSketcher<Sketch> {
@@ -67,6 +82,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     this._mirrorWire = false;
   }
 
+  /** Release all OCCT edges held by this sketcher. */
   delete(): void {
     // plane is now a plain object - no need to delete
     for (const edge of this.pendingEdges) {
@@ -79,6 +95,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     this.pointer = newPointer;
   }
 
+  /** Move the pen to an absolute 2D position before drawing any edges. */
   movePointerTo([x, y]: Point2D): this {
     if (this.pendingEdges.length)
       bug('Sketcher.movePointerTo', 'You can only move the pointer if there is no edge defined');
@@ -87,6 +104,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw a straight line to an absolute 2D point on the sketch plane. */
   lineTo([x, y]: Point2D): this {
     const endPoint = planeToWorld(this.plane, [x, y]);
     this.pendingEdges.push(makeLine(this.pointer, endPoint));
@@ -94,41 +112,49 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw a straight line by relative horizontal and vertical distances. */
   line(xDist: number, yDist: number): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.lineTo([xDist + px, yDist + py]);
   }
 
+  /** Draw a vertical line of the given signed distance. */
   vLine(distance: number): this {
     return this.line(0, distance);
   }
 
+  /** Draw a horizontal line of the given signed distance. */
   hLine(distance: number): this {
     return this.line(distance, 0);
   }
 
+  /** Draw a vertical line to an absolute Y coordinate. */
   vLineTo(yPos: number): this {
     const [px] = planeToLocal(this.plane, this.pointer);
     return this.lineTo([px, yPos]);
   }
 
+  /** Draw a horizontal line to an absolute X coordinate. */
   hLineTo(xPos: number): this {
     const [, py] = planeToLocal(this.plane, this.pointer);
     return this.lineTo([xPos, py]);
   }
 
+  /** Draw a line in polar coordinates (distance and angle in degrees) from the current point. */
   polarLine(distance: number, angle: number): this {
     const angleInRads = angle * DEG2RAD;
     const [x, y] = polarToCartesian(distance, angleInRads);
     return this.line(x, y);
   }
 
+  /** Draw a line to a point given in polar coordinates [r, theta] from the origin. */
   polarLineTo([r, theta]: [number, number]): this {
     const angleInRads = theta * DEG2RAD;
     const point = polarToCartesian(r, angleInRads);
     return this.lineTo(point);
   }
 
+  /** Draw a line tangent to the previous edge, extending by the given distance. */
   tangentLine(distance: number): this {
     const previousEdge = this.pendingEdges.length
       ? this.pendingEdges[this.pendingEdges.length - 1]
@@ -146,6 +172,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw a circular arc passing through an inner point to an absolute end point. */
   threePointsArcTo(end: Point2D, innerPoint: Point2D): this {
     const gpoint1 = planeToWorld(this.plane, innerPoint);
     const gpoint2 = planeToWorld(this.plane, end);
@@ -156,11 +183,13 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw a circular arc through a via-point to an end point, both given as relative distances. */
   threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.threePointsArcTo([px + xDist, py + yDist], [px + viaXDist, py + viaYDist]);
   }
 
+  /** Draw a circular arc tangent to the previous edge, ending at an absolute point. */
   tangentArcTo(end: Point2D): this {
     const endPoint = planeToWorld(this.plane, end);
     const previousEdge = this.pendingEdges.length
@@ -178,11 +207,13 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw a circular arc tangent to the previous edge, ending at a relative offset. */
   tangentArc(xDist: number, yDist: number): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.tangentArcTo([xDist + px, yDist + py]);
   }
 
+  /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
   sagittaArcTo(end: Point2D, sagitta: number): this {
     const startPoint = this.pointer;
     const endPoint = planeToWorld(this.plane, end);
@@ -204,19 +235,23 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw a circular arc to a relative end point, bulging by the given sagitta. */
   sagittaArc(xDist: number, yDist: number, sagitta: number): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.sagittaArcTo([xDist + px, yDist + py], sagitta);
   }
 
+  /** Draw a vertical sagitta arc of the given distance and bulge. */
   vSagittaArc(distance: number, sagitta: number): this {
     return this.sagittaArc(0, distance, sagitta);
   }
 
+  /** Draw a horizontal sagitta arc of the given distance and bulge. */
   hSagittaArc(distance: number, sagitta: number): this {
     return this.sagittaArc(distance, 0, sagitta);
   }
 
+  /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
   bulgeArcTo(end: Point2D, bulge: number): this {
     if (!bulge) return this.lineTo(end);
     const [px, py] = planeToLocal(this.plane, this.pointer);
@@ -226,19 +261,23 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this.sagittaArcTo(end, bulgeAsSagitta);
   }
 
+  /** Draw an arc to a relative end point using a bulge factor. */
   bulgeArc(xDist: number, yDist: number, bulge: number): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.bulgeArcTo([xDist + px, yDist + py], bulge);
   }
 
+  /** Draw a vertical bulge arc of the given distance and bulge factor. */
   vBulgeArc(distance: number, bulge: number): this {
     return this.bulgeArc(0, distance, bulge);
   }
 
+  /** Draw a horizontal bulge arc of the given distance and bulge factor. */
   hBulgeArc(distance: number, bulge: number): this {
     return this.bulgeArc(distance, 0, bulge);
   }
 
+  /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
   ellipseTo(
     end: Point2D,
     horizontalRadius: number,
@@ -294,6 +333,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw an elliptical arc to a relative end point (SVG-style parameters). */
   ellipse(
     xDist: number,
     yDist: number,
@@ -314,6 +354,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     );
   }
 
+  /** Draw a half-ellipse arc to an absolute end point with a given minor radius. */
   halfEllipseTo(end: Point2D, verticalRadius: number, sweep = false): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     const start: Point2D = [px, py];
@@ -324,11 +365,13 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this.ellipseTo(end, distance / 2, verticalRadius, angle * RAD2DEG, false, sweep);
   }
 
+  /** Draw a half-ellipse arc to a relative end point with a given minor radius. */
   halfEllipse(xDist: number, yDist: number, verticalRadius: number, sweep = false): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.halfEllipseTo([xDist + px, yDist + py], verticalRadius, sweep);
   }
 
+  /** Draw a Bezier curve to an absolute end point through one or more control points. */
   bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this {
     let cp: Point2D[];
     if (controlPoints.length === 2 && !Array.isArray(controlPoints[0])) {
@@ -346,14 +389,17 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return this;
   }
 
+  /** Draw a quadratic Bezier curve to an absolute end point with a single control point. */
   quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this {
     return this.bezierCurveTo(end, [controlPoint]);
   }
 
+  /** Draw a cubic Bezier curve to an absolute end point with start and end control points. */
   cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this {
     return this.bezierCurveTo(end, [startControlPoint, endControlPoint]);
   }
 
+  /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous edge. */
   smoothSplineTo(end: Point2D, config?: SplineConfig): this {
     const [r, gc] = localGC();
     try {
@@ -412,6 +458,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     }
   }
 
+  /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous edge. */
   smoothSpline(xDist: number, yDist: number, splineConfig: SplineConfig = {}): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.smoothSplineTo([xDist + px, yDist + py], splineConfig);
@@ -448,6 +495,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     }
   }
 
+  /** Finish drawing and return the open-wire Sketch (does not close the path). */
   done(): Sketch {
     const sketch = new Sketch(this.buildWire(), {
       defaultOrigin: this.plane.origin,
@@ -456,11 +504,13 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     return sketch;
   }
 
+  /** Close the path with a straight line to the start point and return the Sketch. */
   close(): Sketch {
     this._closeSketch();
     return this.done();
   }
 
+  /** Close the path by mirroring all edges about the line from first to last point. */
   closeWithMirror(): Sketch {
     this._mirrorWire = true;
     return this.close();

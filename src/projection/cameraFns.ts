@@ -13,7 +13,11 @@ import { makeProjectedEdges } from './makeProjectedEdges.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError } from '../core/errors.js';
 
-/** Plain camera data object. */
+/**
+ * Immutable plain-object representation of a projection camera.
+ *
+ * @see {@link ProjectionCamera} for the OCCT-backed class equivalent.
+ */
 export interface Camera {
   readonly position: Vec3;
   readonly direction: Vec3;
@@ -21,7 +25,18 @@ export interface Camera {
   readonly yAxis: Vec3;
 }
 
-/** Create a camera from position, direction, and optional xAxis. */
+/**
+ * Create a camera from position, direction, and an optional X-axis.
+ *
+ * If `xAxis` is omitted, it is derived automatically from the direction.
+ *
+ * @param position - Camera position in world coordinates.
+ * @param direction - View direction (camera looks along this vector).
+ * @param xAxis - Optional horizontal axis; derived automatically if not provided.
+ * @returns `Result<Camera>` -- an error if direction is zero-length.
+ *
+ * @see {@link ProjectionCamera} for the OOP equivalent.
+ */
 export function createCamera(
   position: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
@@ -59,19 +74,42 @@ export function createCamera(
   });
 }
 
-/** Create a camera that looks at a target from the camera's position. */
+/**
+ * Create a new camera oriented to look at a target point from the current position.
+ *
+ * @param camera - Existing camera whose position is preserved.
+ * @param target - World-space point to look at.
+ * @returns `Result<Camera>` with updated direction and derived axes.
+ *
+ * @see {@link ProjectionCamera.lookAt} for the OOP equivalent.
+ */
 export function cameraLookAt(camera: Camera, target: Vec3): Result<Camera> {
   const direction = vecNormalize(vecSub(camera.position, target));
   return createCamera(camera.position, direction);
 }
 
-/** Create a camera from a named projection plane. */
+/**
+ * Create a camera positioned at the origin, looking along a named projection plane.
+ *
+ * @param planeName - Named projection direction (e.g., `'front'`, `'top'`).
+ * @returns `Result<Camera>` configured for that standard view.
+ *
+ * @see {@link lookFromPlane} for the OOP equivalent.
+ */
 export function cameraFromPlane(planeName: ProjectionPlane): Result<Camera> {
   const config = PROJECTION_PLANES[planeName];
   return createCamera([0, 0, 0], config.dir, config.xAxis);
 }
 
-/** Convert a Camera plain object to a ProjectionCamera for use with makeProjectedEdges. */
+/**
+ * Convert a plain {@link Camera} object to a {@link ProjectionCamera} (OCCT-backed).
+ *
+ * The caller is responsible for calling `.delete()` on the returned object
+ * when it is no longer needed.
+ *
+ * @param camera - Plain camera data.
+ * @returns A new ProjectionCamera instance.
+ */
 export function cameraToProjectionCamera(camera: Camera): ProjectionCamera {
   // Cast readonly Vec3 to mutable tuple for ProjectionCamera constructor
   return new ProjectionCamera(
@@ -81,7 +119,16 @@ export function cameraToProjectionCamera(camera: Camera): ProjectionCamera {
   );
 }
 
-/** Project edges of a shape using a functional Camera. */
+/**
+ * Project the edges of a 3D shape onto a 2D plane defined by a {@link Camera}.
+ *
+ * @param shape - The 3D shape to project.
+ * @param camera - Camera defining the projection plane.
+ * @param withHiddenLines - If true, compute hidden-line edges as well.
+ * @returns Separate arrays of visible and hidden projected edges.
+ *
+ * @see {@link drawProjection} for the higher-level Drawing-based API.
+ */
 export function projectEdges(
   shape: AnyShape,
   camera: Camera,

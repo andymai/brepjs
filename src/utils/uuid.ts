@@ -1,3 +1,4 @@
+/** Generate a v4-style UUID string using `crypto.getRandomValues`. */
 export function uuidv(): string {
   return (String([1e7]) + String(-1e3) + String(-4e3) + String(-8e3) + String(-1e11)).replace(
     /[018]/g,

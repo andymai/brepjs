@@ -126,6 +126,20 @@ const OFFSET_JOINERS = {
   miter: joinMiter,
 } as const;
 
+/**
+ * Compute raw offset curves for a single blueprint without self-intersection cleanup.
+ *
+ * Offsets each curve individually, then joins adjacent offset curves using the
+ * configured line-join strategy (round, bevel, or miter).
+ *
+ * @param blueprint - The blueprint to offset.
+ * @param offset - Offset distance (positive = outward, negative = inward).
+ * @param offsetConfig - Join style configuration.
+ * @returns Array of offset curves (may contain self-intersections).
+ *
+ * @remarks This is the low-level building block used by {@link offsetBlueprint}.
+ * Most callers should prefer {@link offset} instead.
+ */
 export function rawOffsets(
   blueprint: Blueprint,
   offset: number,
@@ -262,10 +276,27 @@ interface OffsetCurvePair {
   original: Curve2D;
 }
 
+/** Configuration for 2D offset operations. */
 export interface Offset2DConfig {
+  /** Corner join style when offset curves diverge (default: `'round'`). */
   lineJoinType?: 'miter' | 'bevel' | 'round';
 }
 
+/**
+ * Offset a single blueprint, resolving self-intersections and pruning invalid segments.
+ *
+ * Produces a new shape whose boundary is at a constant distance from the input
+ * blueprint. Self-intersections introduced by the offset are resolved using
+ * spatial indexing and curve splitting, following the
+ * {@link https://github.com/jbuckmccready/CavalierContours | Cavalier Contours} algorithm.
+ *
+ * @param blueprint - The source blueprint.
+ * @param offset - Offset distance (positive = outward, negative = inward).
+ * @param offsetConfig - Join style configuration.
+ * @returns The offset shape, or `null` if the offset collapses the blueprint.
+ *
+ * @see {@link offset} for the polymorphic version that handles all Shape2D types.
+ */
 export function offsetBlueprint(
   blueprint: Blueprint,
   offset: number,
@@ -383,6 +414,23 @@ const fuseAll = (blueprints: Shape2D[]): Shape2D => {
   return fused;
 };
 
+/**
+ * Offset any 2D shape (Blueprint, CompoundBlueprint, or Blueprints) by a distance.
+ *
+ * Dispatches to {@link offsetBlueprint} for simple blueprints and recursively
+ * handles compound and multi-blueprint shapes.
+ *
+ * @param bp - The shape to offset.
+ * @param offsetDistance - Offset distance (positive = outward, negative = inward).
+ * @param offsetConfig - Join style configuration.
+ * @returns The offset shape, or `null` if the offset collapses entirely.
+ *
+ * @example
+ * ```ts
+ * const expanded = offset(blueprint, 2);
+ * const shrunk = offset(blueprint, -1, { lineJoinType: 'miter' });
+ * ```
+ */
 export default function offset(
   bp: Shape2D,
   offsetDistance: number,

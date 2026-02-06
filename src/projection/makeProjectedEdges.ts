@@ -11,6 +11,12 @@ const getEdges = (shape: OcType): Edge[] => {
   return unwrap(cast(shape)).edges;
 };
 
+/**
+ * Project a 3D shape onto a 2D plane using hidden-line removal (HLR).
+ *
+ * @param withHiddenLines - If `true`, also returns hidden (occluded) edges.
+ * @returns Separate arrays of visible and hidden projected edges.
+ */
 export function makeProjectedEdges(
   shape: AnyShape,
   camera: ProjectionCamera,

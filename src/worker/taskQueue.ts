@@ -3,6 +3,7 @@
  * Pure data structure -- no Worker API dependency.
  */
 
+/** A task awaiting a response from the worker. */
 export interface PendingTask<T = unknown> {
   readonly id: string;
   readonly resolve: (value: T) => void;
@@ -10,6 +11,7 @@ export interface PendingTask<T = unknown> {
   readonly createdAt: number;
 }
 
+/** Immutable queue of pending worker tasks, keyed by ID. */
 export interface TaskQueue<T = unknown> {
   readonly pending: ReadonlyMap<string, PendingTask<T>>;
 }

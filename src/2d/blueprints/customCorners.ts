@@ -84,10 +84,34 @@ function modifyCorner2D(
   return null;
 }
 
+/**
+ * Apply fillet (rounded) corners to a 2D shape.
+ *
+ * Replaces sharp junctions between adjacent curves with tangent arcs of the
+ * given radius. An optional {@link CornerFinder} can restrict which corners
+ * are modified.
+ *
+ * @param shape - The 2D shape to fillet.
+ * @param radius - Fillet arc radius.
+ * @param finder - Optional filter to select specific corners.
+ * @returns A new shape with filleted corners, or `null` if the input is `null`.
+ */
 export function fillet2D(shape: Shape2D, radius: number, finder?: CornerFinder) {
   return modifyCorner2D(filletCurves, shape, radius, finder);
 }
 
+/**
+ * Apply chamfer (beveled) corners to a 2D shape.
+ *
+ * Replaces sharp junctions between adjacent curves with straight-line cuts at
+ * the given distance from the corner. An optional {@link CornerFinder} can
+ * restrict which corners are modified.
+ *
+ * @param shape - The 2D shape to chamfer.
+ * @param radius - Chamfer setback distance from the corner.
+ * @param finder - Optional filter to select specific corners.
+ * @returns A new shape with chamfered corners, or `null` if the input is `null`.
+ */
 export function chamfer2D(shape: Shape2D, radius: number, finder?: CornerFinder) {
   return modifyCorner2D(chamferCurves, shape, radius, finder);
 }

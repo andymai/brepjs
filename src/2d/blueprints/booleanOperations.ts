@@ -502,6 +502,20 @@ function booleanOperation(
   return organiseBlueprints(paths);
 }
 
+/**
+ * Compute the boolean union of two simple blueprints.
+ *
+ * Segments each blueprint at their intersection points, discards segments
+ * inside the other shape, and reassembles the remaining curves.
+ *
+ * @param first - First blueprint operand.
+ * @param second - Second blueprint operand.
+ * @returns The fused outline, a {@link Blueprints} if the result is
+ *   disjoint, or `null` if the operation produces no geometry.
+ *
+ * @remarks Both blueprints must be closed. For compound or multi-blueprint
+ * inputs, use {@link fuse2D} instead.
+ */
 export const fuseBlueprints = (
   first: Blueprint,
   second: Blueprint
@@ -528,6 +542,19 @@ export const fuseBlueprints = (
   return new Blueprints([first, second]);
 };
 
+/**
+ * Compute the boolean difference of two simple blueprints (first minus second).
+ *
+ * Segments the blueprints at their intersections, keeps segments of the first
+ * that are outside the second, and segments of the second that are inside the
+ * first (reversed to form the boundary of the cut).
+ *
+ * @param first - Base blueprint to cut from.
+ * @param second - Tool blueprint to subtract.
+ * @returns The remaining outline, or `null` if nothing remains.
+ *
+ * @remarks Both blueprints must be closed. For compound inputs use {@link cut2D}.
+ */
 export const cutBlueprints = (
   first: Blueprint,
   second: Blueprint
@@ -554,6 +581,18 @@ export const cutBlueprints = (
   return first.clone();
 };
 
+/**
+ * Compute the boolean intersection of two simple blueprints.
+ *
+ * Keeps only the segments of each blueprint that lie inside the other,
+ * producing the overlapping region.
+ *
+ * @param first - First blueprint operand.
+ * @param second - Second blueprint operand.
+ * @returns The intersection outline, or `null` if the blueprints do not overlap.
+ *
+ * @remarks Both blueprints must be closed. For compound inputs use {@link intersect2D}.
+ */
 export const intersectBlueprints = (
   first: Blueprint,
   second: Blueprint

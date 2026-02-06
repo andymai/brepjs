@@ -26,7 +26,17 @@ interface PlaneConfig {
 }
 
 /**
- * Creates the `Sketch` of a circle in a defined plane
+ * Create a circular Sketch on a given plane.
+ *
+ * @param radius - Radius of the circle.
+ * @param planeConfig - Plane name / origin to sketch on (defaults to XY at origin).
+ * @returns A closed circular {@link Sketch}.
+ *
+ * @example
+ * ```ts
+ * const circle = sketchCircle(10, { plane: "XZ", origin: 5 });
+ * const cylinder = circle.extrude(20);
+ * ```
  *
  * @category Sketching
  */
@@ -45,7 +55,12 @@ export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Ske
 };
 
 /**
- * Creates the `Sketch` of an ellipse in a defined plane
+ * Create an elliptical Sketch on a given plane.
+ *
+ * @param xRadius - Semi-axis length along the plane X direction.
+ * @param yRadius - Semi-axis length along the plane Y direction.
+ * @param planeConfig - Plane name / origin to sketch on (defaults to XY at origin).
+ * @returns A closed elliptical {@link Sketch}.
  *
  * @category Sketching
  */
@@ -77,7 +92,18 @@ export const sketchEllipse = (xRadius = 1, yRadius = 2, planeConfig: PlaneConfig
 };
 
 /**
- * Creates the `Sketch` of a rectangle in a defined plane
+ * Create a rectangular Sketch centered on a given plane.
+ *
+ * @param xLength - Width along the plane X direction.
+ * @param yLength - Height along the plane Y direction.
+ * @param planeConfig - Plane name / origin to sketch on (defaults to XY at origin).
+ * @returns A closed rectangular {@link Sketch}.
+ *
+ * @example
+ * ```ts
+ * const rect = sketchRectangle(30, 20);
+ * const box = rect.extrude(10);
+ * ```
  *
  * @category Sketching
  */
@@ -100,7 +126,13 @@ export const sketchRectangle = (
 };
 
 /**
- * Creates the `Sketch` of a rounded rectangle in a defined plane
+ * Create a rounded-rectangle Sketch centered on a given plane.
+ *
+ * @param width - Width of the rectangle.
+ * @param height - Height of the rectangle.
+ * @param r - Corner radius, or `{ rx, ry }` for elliptical corners (0 = sharp).
+ * @param planeConfig - Plane name / origin to sketch on (defaults to XY at origin).
+ * @returns A closed rounded-rectangle {@link Sketch}.
  *
  * @category Sketching
  */
@@ -119,10 +151,21 @@ export const sketchRoundedRectangle = (
 };
 
 /**
- * Creates the `Sketch` of a polygon in a defined plane
+ * Create a regular-polygon Sketch on a given plane.
  *
- * The sides of the polygon can be arcs of circle with a defined sagitta.
- * The radius defines the outer radius of the polygon without sagitta
+ * Sides may optionally be arcs (sagitta != 0). The outer radius is measured
+ * to the vertices when sagitta is zero.
+ *
+ * @param radius - Circumscribed (outer) radius.
+ * @param sidesCount - Number of polygon sides.
+ * @param sagitta - Arc sagitta per side (0 = straight edges).
+ * @param planeConfig - Plane name / origin to sketch on.
+ * @returns A closed polygon {@link Sketch}.
+ *
+ * @example
+ * ```ts
+ * const hex = sketchPolysides(15, 6);
+ * ```
  *
  * @category Sketching
  */
@@ -163,8 +206,12 @@ export const sketchPolysides = (
 };
 
 /**
- * Helper function to compute the inner radius of a polyside (even if a sagitta
- * is defined)
+ * Compute the apothem (inner radius) of a regular polygon, accounting for sagitta.
+ *
+ * @param outerRadius - Circumscribed radius.
+ * @param sidesCount - Number of polygon sides.
+ * @param sagitta - Arc sagitta per side (0 = straight edges).
+ * @returns The inscribed radius (distance from center to the nearest edge midpoint).
  */
 export const polysideInnerRadius = (
   outerRadius: number,
@@ -180,8 +227,13 @@ export const polysideInnerRadius = (
 };
 
 /**
- * Creates the `Sketch` of an offset of a certain face. A negative offset will
- * be within the face, a positive one outside.
+ * Create a Sketch by offsetting the outer wire of a face.
+ *
+ * A negative offset shrinks inward; a positive offset expands outward.
+ *
+ * @param face - The face whose outer wire to offset.
+ * @param offset - Signed offset distance.
+ * @returns A {@link Sketch} of the offset wire, inheriting the face normal.
  *
  * @category Sketching
  */
@@ -196,9 +248,15 @@ export const sketchFaceOffset = (face: Face, offset: number): Sketch => {
 };
 
 /**
- * Creates the `Sketch` of a parametric function in a specified plane
+ * Create a Sketch from a parametric 2D function, approximated as a B-spline.
  *
- * The sketch will be a spline approximating the function
+ * The function is sampled at `pointsCount + 1` evenly spaced parameter values
+ * between `start` and `stop`, then fit with a B-spline approximation.
+ *
+ * @param func - Parametric function mapping `t` to a 2D point.
+ * @param planeConfig - Plane to sketch on (defaults to XY at origin).
+ * @param approximationConfig - B-spline fitting options (tolerance, degree, etc.).
+ * @returns A {@link Sketch} containing the approximated curve.
  *
  * @category Sketching
  */
@@ -233,7 +291,15 @@ export const sketchParametricFunction = (
 };
 
 /**
- * Creates the `Sketch` of a helix
+ * Create a helical Sketch (open wire) with the given pitch, height, and radius.
+ *
+ * @param pitch - Axial distance per full revolution.
+ * @param height - Total height of the helix along its axis.
+ * @param radius - Radius of the helix.
+ * @param center - Center point of the helix base.
+ * @param dir - Axis direction of the helix.
+ * @param lefthand - If true, generate a left-handed helix.
+ * @returns A {@link Sketch} wrapping the helical wire.
  *
  * @category Sketching
  */

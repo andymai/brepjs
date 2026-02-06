@@ -14,9 +14,17 @@ import {
 } from './projectionPlanes.js';
 
 // Re-export types for backward compatibility
+/** Named face of a bounding cube (e.g., `'front'`, `'top'`). */
 export type { CubeFace, ProjectionPlane };
+/** Check whether a string is a valid {@link ProjectionPlane} name. */
 export { isProjectionPlaneCheck as isProjectionPlane };
 
+/**
+ * Create a {@link ProjectionCamera} positioned at the origin looking along a named projection plane.
+ *
+ * @param projectionPlane - Named projection direction (e.g., `'front'`, `'top'`).
+ * @returns A new ProjectionCamera configured for that view.
+ */
 export function lookFromPlane(projectionPlane: ProjectionPlane): ProjectionCamera {
   const { dir, xAxis } = PROJECTION_PLANES[projectionPlane];
   // Cast readonly Vec3 to mutable Point for constructor compatibility
@@ -38,6 +46,16 @@ function defaultXDir(direction: PointInput): Vec3 {
   return vecNormalize(xAxis);
 }
 
+/**
+ * Camera for projecting 3D shapes onto a 2D plane.
+ *
+ * Wraps an OCCT `gp_Ax2` coordinate system. Use {@link lookFromPlane} for
+ * quick setup from a named view, or construct directly with position,
+ * direction, and optional X-axis.
+ *
+ * @see {@link Camera} and {@link createCamera} for the functional (plain-object) alternative.
+ * @category Projection
+ */
 export class ProjectionCamera extends WrappingObj<OcType> {
   constructor(
     position: PointInput = [0, 0, 0],
@@ -51,22 +69,27 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     super(ax2);
   }
 
+  /** Get the camera position in world coordinates. */
   get position(): Vec3 {
     return fromOcPnt(this.wrapped.Location());
   }
 
+  /** Get the view direction (camera looks along this vector). */
   get direction(): Vec3 {
     return fromOcDir(this.wrapped.Direction());
   }
 
+  /** Get the camera's local X axis (horizontal in the projected image). */
   get xAxis(): Vec3 {
     return fromOcDir(this.wrapped.XDirection());
   }
 
+  /** Get the camera's local Y axis (vertical in the projected image). */
   get yAxis(): Vec3 {
     return fromOcDir(this.wrapped.YDirection());
   }
 
+  /** Recompute the X and Y axes from the current direction using default up-vector logic. */
   autoAxes(): void {
     const [r, gc] = localGC();
     const dir = this.direction;
@@ -76,6 +99,7 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     gc();
   }
 
+  /** Set the camera position in world coordinates. */
   setPosition(position: PointInput): this {
     const [r, gc] = localGC();
     const pnt = r(toOcPnt(toVec3(position)));
@@ -84,6 +108,7 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     return this;
   }
 
+  /** Override the camera's local X axis direction. */
   setXAxis(xAxis: PointInput): this {
     const [r, gc] = localGC();
     const dir = r(toOcDir(toVec3(xAxis)));
@@ -92,6 +117,7 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     return this;
   }
 
+  /** Override the camera's local Y axis direction. */
   setYAxis(yAxis: PointInput): this {
     const [r, gc] = localGC();
     const dir = r(toOcDir(toVec3(yAxis)));
@@ -100,6 +126,7 @@ export class ProjectionCamera extends WrappingObj<OcType> {
     return this;
   }
 
+  /** Orient the camera to look at a shape's bounding-box center or a specific point. */
   lookAt(shape: AnyShape | PointInput): this {
     const [r, gc] = localGC();
     let lookAtPoint: Vec3;

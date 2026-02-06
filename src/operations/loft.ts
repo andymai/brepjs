@@ -8,12 +8,35 @@ import { typeCastError, validationError, occtError } from '../core/errors.js';
 import type { Wire, Shape3D } from '../topology/shapes.js';
 import { makeVertex } from '../topology/shapeHelpers.js';
 
+/** Configuration for the OOP loft operation. */
 export interface LoftConfig {
+  /** Use ruled (straight) interpolation between profiles. Defaults to `true`. */
   ruled?: boolean | undefined;
+  /** Optional start vertex before the first wire profile. */
   startPoint?: PointInput | undefined;
+  /** Optional end vertex after the last wire profile. */
   endPoint?: PointInput | undefined;
 }
 
+/**
+ * Loft through a set of wire profiles to create a 3D shape.
+ *
+ * Builds a `BRepOffsetAPI_ThruSections` surface through the given wires,
+ * optionally starting and/or ending at point vertices. Produces a solid
+ * by default, or a shell when `returnShell` is `true`.
+ *
+ * @param wires - Ordered wire profiles to loft through.
+ * @param config - Loft configuration (ruled interpolation, start/end points).
+ * @param returnShell - When `true`, return a shell instead of a solid.
+ * @returns `Result` containing the lofted 3D shape.
+ *
+ * @example
+ * ```ts
+ * const result = loft([bottomWire, topWire], { ruled: false });
+ * ```
+ *
+ * @see {@link loftFns!loftWires | loftWires} for the functional API equivalent.
+ */
 export const loft = (
   wires: Wire[],
   { ruled = true, startPoint, endPoint }: LoftConfig = {},

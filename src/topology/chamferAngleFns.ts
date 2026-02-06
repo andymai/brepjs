@@ -17,11 +17,13 @@ import { unwrap } from '../core/result.js';
  * The distance is measured along the face that contains the edge, and the
  * angle (in degrees) determines how the chamfer cuts into the adjacent face.
  *
- * @param shape   - The shape to chamfer
- * @param edges   - Edges to chamfer
- * @param distance - Chamfer distance along the face
- * @param angleDeg - Chamfer angle in degrees (typically 0 < angle < 90)
- * @returns A new shape with chamfered edges
+ * @param shape   - The shape to chamfer.
+ * @param edges   - Edges to chamfer.
+ * @param distance - Chamfer distance along the face.
+ * @param angleDeg - Chamfer angle in degrees (typically 0 < angle < 90).
+ * @returns A new shape with chamfered edges.
+ *
+ * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
 export function chamferDistAngleShape(
   shape: AnyShape,

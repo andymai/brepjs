@@ -11,11 +11,13 @@ import { isInitRequest, isOperationRequest, isDisposeRequest } from './protocol.
 // Types
 // ---------------------------------------------------------------------------
 
+/** Handler function for a single named worker operation. */
 export type OperationHandler = (
   shapesBrep: ReadonlyArray<string>,
   params: Readonly<Record<string, unknown>>
 ) => { resultBrep?: string; resultData?: unknown };
 
+/** Immutable registry mapping operation names to their handler functions. */
 export interface OperationRegistry {
   readonly operations: ReadonlyMap<string, OperationHandler>;
 }

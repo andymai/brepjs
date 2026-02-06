@@ -22,9 +22,13 @@ import { applyGlue } from './shapeBooleans.js';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Options shared by all boolean and compound operations. */
 export interface BooleanOptions {
+  /** Glue algorithm hint for faces shared between operands. */
   optimisation?: 'none' | 'commonFace' | 'sameFace';
+  /** Merge same-domain faces/edges after the boolean. */
   simplify?: boolean;
+  /** Algorithm selection: 'native' uses N-way BRepAlgoAPI_BuilderAlgo; 'pairwise' uses recursive divide-and-conquer. */
   strategy?: 'native' | 'pairwise';
   /** Abort signal to cancel long-running operations between steps. */
   signal?: AbortSignal;
@@ -73,7 +77,22 @@ function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Resu
 // Boolean operations
 // ---------------------------------------------------------------------------
 
-/** Fuse two shapes together. Returns a new shape. */
+/**
+ * Fuse two 3D shapes together (boolean union). Returns a new shape.
+ *
+ * @param a - The first operand.
+ * @param b - The second operand.
+ * @param options - Boolean operation options.
+ * @returns Ok with the fused shape, or Err if the result is not 3D.
+ *
+ * @example
+ * ```ts
+ * const result = fuseShapes(box, cylinder);
+ * if (isOk(result)) console.log(describeShape(result.value));
+ * ```
+ *
+ * @see _3DShape.fuse — OOP equivalent (deprecated)
+ */
 export function fuseShapes(
   a: Shape3D,
   b: Shape3D,
@@ -90,7 +109,21 @@ export function fuseShapes(
   return castToShape3D(fuseOp.Shape(), 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
 }
 
-/** Cut a tool shape from a base shape. Returns a new shape. */
+/**
+ * Cut a tool shape from a base shape (boolean subtraction). Returns a new shape.
+ *
+ * @param base - The shape to cut from.
+ * @param tool - The shape to subtract.
+ * @param options - Boolean operation options.
+ * @returns Ok with the cut shape, or Err if the result is not 3D.
+ *
+ * @example
+ * ```ts
+ * const result = cutShape(box, hole);
+ * ```
+ *
+ * @see _3DShape.cut — OOP equivalent (deprecated)
+ */
 export function cutShape(
   base: Shape3D,
   tool: Shape3D,
@@ -107,7 +140,16 @@ export function cutShape(
   return castToShape3D(cutOp.Shape(), 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
 }
 
-/** Intersect two shapes. Returns a new shape. */
+/**
+ * Compute the intersection of two shapes (boolean common). Returns a new shape.
+ *
+ * @param a - The first operand (must be a 3D shape).
+ * @param b - The second operand (any shape).
+ * @param options - Boolean operation options.
+ * @returns Ok with the intersection, or Err if the result is not 3D.
+ *
+ * @see _3DShape.intersect — OOP equivalent (deprecated)
+ */
 export function intersectShapes(
   a: Shape3D,
   b: AnyShape,
@@ -165,7 +207,21 @@ function fuseAllPairwise(
   });
 }
 
-/** Fuse all shapes in a single boolean operation. */
+/**
+ * Fuse all shapes in a single boolean operation.
+ *
+ * With `strategy: 'native'` (default), uses N-way BRepAlgoAPI_BuilderAlgo.
+ * With `strategy: 'pairwise'`, uses recursive divide-and-conquer.
+ *
+ * @param shapes - Array of 3D shapes to fuse (at least one required).
+ * @param options - Boolean operation options.
+ * @returns Ok with the fused shape, or Err if the array is empty or the result is not 3D.
+ *
+ * @example
+ * ```ts
+ * const result = fuseAll([box1, box2, box3], { simplify: true });
+ * ```
+ */
 export function fuseAll(
   shapes: Shape3D[],
   { optimisation = 'none', simplify = false, strategy = 'native', signal }: BooleanOptions = {}
@@ -190,7 +246,17 @@ export function fuseAll(
   return fuseAllPairwise(shapes, 0, shapes.length, optimisation, simplify, true, signal);
 }
 
-/** Cut all tool shapes from a base shape in a single boolean operation. */
+/**
+ * Cut all tool shapes from a base shape in a single boolean operation.
+ *
+ * Combines all tools into a compound before cutting to avoid accumulated
+ * floating-point drift from sequential pair-wise cuts.
+ *
+ * @param base - The shape to cut from.
+ * @param tools - Array of tool shapes to subtract.
+ * @param options - Boolean operation options.
+ * @returns Ok with the cut shape, or the base shape unchanged if tools is empty.
+ */
 export function cutAll(
   base: Shape3D,
   tools: Shape3D[],
@@ -360,7 +426,12 @@ export function sliceShape(
 // Compound building
 // ---------------------------------------------------------------------------
 
-/** Build a compound from multiple shapes. */
+/**
+ * Build a compound from multiple shapes.
+ *
+ * @param shapes - Shapes to group into a single compound.
+ * @returns A new Compound containing all input shapes.
+ */
 export function buildCompound(shapes: AnyShape[]): Compound {
   const compound = buildCompoundOcInternal(shapes.map((s) => s.wrapped));
   return createCompound(compound);

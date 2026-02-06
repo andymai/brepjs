@@ -15,6 +15,7 @@ import type { OcShape } from '../kernel/types.js';
 // Deletable interface (same as before)
 // ---------------------------------------------------------------------------
 
+/** Any object that can be cleaned up by calling `delete()` (OCCT WASM objects). */
 export interface Deletable {
   delete: () => void;
 }

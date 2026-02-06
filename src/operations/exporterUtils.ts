@@ -13,7 +13,12 @@ import type { Deletable } from '../core/disposal.js';
 // String and color utilities
 // ---------------------------------------------------------------------------
 
-/** Wrap a string for OCCT TCollection_ExtendedString. */
+/**
+ * Wrap a JS string as an OCCT `TCollection_ExtendedString`.
+ *
+ * @param str - The string to wrap.
+ * @returns An OCCT `TCollection_ExtendedString` instance.
+ */
 export function wrapString(str: string): OcType {
   const oc = getKernel().oc;
   return new oc.TCollection_ExtendedString_2(str, true);
@@ -24,7 +29,14 @@ function parseSlice(hex: string, index: number): number {
   return parseInt(hex.slice(index * 2, (index + 1) * 2), 16);
 }
 
-/** Convert a hex color string to RGB tuple [0-255]. */
+/**
+ * Convert a hex color string to an RGB tuple with values in [0, 255].
+ *
+ * Accepts `'#rgb'`, `'#rrggbb'`, or bare hex without the leading `#`.
+ *
+ * @param hex - Hex color string (e.g. `'#ff8800'` or `'f80'`).
+ * @returns A 3-element tuple `[red, green, blue]` with integer values 0-255.
+ */
 export function colorFromHex(hex: string): [number, number, number] {
   let color = hex;
   if (color.indexOf('#') === 0) color = color.slice(1);
@@ -34,7 +46,13 @@ export function colorFromHex(hex: string): [number, number, number] {
   return [parseSlice(color, 0), parseSlice(color, 1), parseSlice(color, 2)];
 }
 
-/** Create an OCCT Quantity_ColorRGBA from a hex string. */
+/**
+ * Create an OCCT `Quantity_ColorRGBA` from a hex color string and alpha.
+ *
+ * @param hex - Hex color string (e.g. `'#ff0000'`).
+ * @param alpha - Opacity from 0 (transparent) to 1 (opaque). Defaults to 1.
+ * @returns An OCCT `Quantity_ColorRGBA` instance.
+ */
 export function wrapColor(hex: string, alpha = 1): OcType {
   const oc = getKernel().oc;
   const [red, green, blue] = colorFromHex(hex);
@@ -52,7 +70,16 @@ export type SupportedUnit = 'M' | 'CM' | 'MM' | 'INCH' | 'FT' | 'm' | 'mm' | 'cm
 // STEP writer configuration
 // ---------------------------------------------------------------------------
 
-/** Configure STEP writer unit settings. */
+/**
+ * Configure STEP writer unit settings via OCCT static interface variables.
+ *
+ * Sets `xstep.cascade.unit` and `write.step.unit` when either `unit` or
+ * `modelUnit` is provided. No-ops when both are `undefined`.
+ *
+ * @param unit - Write unit (e.g. `'MM'`). Falls back to `modelUnit`.
+ * @param modelUnit - Model unit. Falls back to `unit`.
+ * @param r - GC registration function for the temporary writer instance.
+ */
 export function configureStepUnits(
   unit: SupportedUnit | undefined,
   modelUnit: SupportedUnit | undefined,
@@ -66,7 +93,14 @@ export function configureStepUnits(
   oc.Interface_Static.SetCVal('write.step.unit', (unit || modelUnit || 'MM').toUpperCase());
 }
 
-/** Configure STEP writer standard settings. */
+/**
+ * Configure STEP writer standard settings for color, layer, name, and schema.
+ *
+ * Enables color/layer/name modes and sets surface curve mode, precision,
+ * assembly mode (2 = write as assembly), and schema version (5 = AP214).
+ *
+ * @param writer - An OCCT `STEPCAFControl_Writer` instance to configure.
+ */
 export function configureStepWriter(writer: OcType): void {
   const oc = getKernel().oc;
   writer.SetColorMode(true);

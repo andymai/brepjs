@@ -3,6 +3,7 @@ import type { PointInput } from '../core/types.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';
 import type { LoftConfig } from '../operations/loft.js';
 
+/** Common interface for sketch-like objects that can be extruded, revolved, or lofted. */
 export interface SketchInterface {
   /**
    * Transforms the lines into a face. The lines should be closed.

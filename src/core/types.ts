@@ -31,7 +31,7 @@ export function toVec2(p: PointInput): Vec2 {
   return [p[0], p[1]];
 }
 
-/** Direction shorthand — named axis or explicit vector */
+/** Direction shorthand — a named axis (`'X'`, `'Y'`, `'Z'`) or an explicit {@link Vec3}. */
 export type Direction = Vec3 | 'X' | 'Y' | 'Z';
 
 const DIRECTIONS: Record<string, Vec3> = {
@@ -40,7 +40,11 @@ const DIRECTIONS: Record<string, Vec3> = {
   Z: [0, 0, 1],
 };
 
-/** Resolve a direction shorthand to a Vec3 */
+/**
+ * Resolve a {@link Direction} shorthand to a unit {@link Vec3}.
+ *
+ * @throws If the string is not a recognised axis name.
+ */
 export function resolveDirection(d: Direction): Vec3 {
   if (typeof d === 'string') {
     const dir = DIRECTIONS[d];

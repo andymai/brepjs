@@ -14,23 +14,25 @@ import { type Result, ok, unwrap } from '../core/result.js';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Result of a pairwise interference check between two shapes. */
 export interface InterferenceResult {
-  /** True if shapes are touching or overlapping (distance ≈ 0). */
+  /** True if shapes are touching or overlapping (distance within tolerance). */
   readonly hasInterference: boolean;
-  /** Minimum distance between the shapes. 0 if touching/overlapping. */
+  /** Minimum distance between the shapes. 0 when touching or overlapping. */
   readonly minDistance: number;
-  /** Closest point on the first shape. */
+  /** Closest point on the first shape as [x, y, z]. */
   readonly pointOnShape1: Vec3;
-  /** Closest point on the second shape. */
+  /** Closest point on the second shape as [x, y, z]. */
   readonly pointOnShape2: Vec3;
 }
 
+/** A pair of shapes that were found to interfere during batch checking. */
 export interface InterferencePair {
-  /** Index of first shape in the input array. */
+  /** Index of the first shape in the input array. */
   readonly i: number;
-  /** Index of second shape in the input array. */
+  /** Index of the second shape in the input array. */
   readonly j: number;
-  /** Interference result for this pair. */
+  /** Detailed interference result for this pair. */
   readonly result: InterferenceResult;
 }
 
@@ -44,6 +46,19 @@ export interface InterferencePair {
  * Returns detailed proximity information including the minimum distance
  * and closest points. Shapes are considered interfering when their
  * minimum distance is within the given tolerance.
+ *
+ * @param shape1 - First shape.
+ * @param shape2 - Second shape.
+ * @param tolerance - Distance threshold below which shapes are considered interfering. Default: 1e-6.
+ * @returns A `Result` wrapping the {@link InterferenceResult}.
+ *
+ * @example
+ * ```ts
+ * const result = unwrap(checkInterference(boxA, boxB));
+ * if (result.hasInterference) {
+ *   console.log('Collision at distance', result.minDistance);
+ * }
+ * ```
  */
 export function checkInterference(
   shape1: AnyShape,
@@ -69,6 +84,16 @@ export function checkInterference(
  *
  * Returns only pairs that have interference (distance within tolerance).
  * For N shapes, checks N*(N-1)/2 unique pairs.
+ *
+ * @param shapes - Array of shapes to test pairwise.
+ * @param tolerance - Distance threshold for interference. Default: 1e-6.
+ * @returns Array of {@link InterferencePair} entries, one per colliding pair.
+ *
+ * @example
+ * ```ts
+ * const collisions = checkAllInterferences([box, sphere, cylinder]);
+ * collisions.forEach(({ i, j }) => console.log(`Shape ${i} hits shape ${j}`));
+ * ```
  */
 export function checkAllInterferences(
   shapes: ReadonlyArray<AnyShape>,

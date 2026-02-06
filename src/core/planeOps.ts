@@ -25,7 +25,16 @@ import { validationError } from './errors.js';
 // Plane construction
 // ---------------------------------------------------------------------------
 
-/** Create a Plane from origin, optional xDir, and normal (zDir). */
+/**
+ * Create a {@link Plane} from an origin, optional X direction, and a normal.
+ *
+ * If `xDirection` is omitted, the X axis is derived automatically via OCCT `gp_Ax3`.
+ *
+ * @param origin - Origin point of the plane.
+ * @param xDirection - Explicit X axis direction, or `null` to auto-derive.
+ * @param normal - Plane normal (Z direction).
+ * @throws If the normal or derived xDir is zero-length.
+ */
 export function createPlane(
   origin: Vec3,
   xDirection: Vec3 | null = null,
@@ -72,7 +81,13 @@ const PLANES_CONFIG: Record<PlaneName, { xDir: Vec3; normal: Vec3 }> = {
   bottom: { xDir: [1, 0, 0], normal: [0, -1, 0] },
 };
 
-/** Create a named plane with optional origin offset. */
+/**
+ * Create a standard named plane with an optional origin offset.
+ *
+ * @param name - One of the predefined {@link PlaneName} values.
+ * @param sourceOrigin - Origin point, or a scalar offset along the plane normal.
+ * @returns `Ok<Plane>` on success, or `Err` if the name is unknown.
+ */
 export function createNamedPlane(
   name: PlaneName,
   sourceOrigin: PointInput | number = [0, 0, 0]
@@ -89,7 +104,11 @@ export function createNamedPlane(
   return ok(createPlane(origin, config.xDir, config.normal));
 }
 
-/** Resolve a PlaneInput to a Plane. */
+/**
+ * Resolve a {@link PlaneInput} to a concrete {@link Plane}.
+ *
+ * @throws If a named plane cannot be resolved.
+ */
 export function resolvePlane(input: PlaneInput, origin?: PointInput | number): Plane {
   if (typeof input === 'string') {
     const result = createNamedPlane(input, origin);
@@ -144,7 +163,12 @@ export function translatePlaneTo(plane: Plane, newOrigin: Vec3): Plane {
   return { ...plane, origin: newOrigin };
 }
 
-/** Pivot plane by rotating around an axis. */
+/**
+ * Pivot a plane by rotating its axes around a world-space axis.
+ *
+ * @param angleDeg - Rotation angle in **degrees**.
+ * @param axis - World-space axis to rotate around.
+ */
 export function pivotPlane(plane: Plane, angleDeg: number, axis: Vec3 = [1, 0, 0]): Plane {
   const angleRad = angleDeg * DEG2RAD;
   const newZDir = vecRotate(plane.zDir, axis, angleRad);
@@ -153,7 +177,11 @@ export function pivotPlane(plane: Plane, angleDeg: number, axis: Vec3 = [1, 0, 0
   return { origin: plane.origin, xDir: newXDir, yDir: newYDir, zDir: newZDir };
 }
 
-/** Rotate the 2D axes of the plane around its normal. */
+/**
+ * Rotate the X/Y axes of a plane around its normal (Z direction).
+ *
+ * @param angleDeg - Rotation angle in **degrees**.
+ */
 export function rotatePlane2DAxes(plane: Plane, angleDeg: number): Plane {
   const angleRad = angleDeg * DEG2RAD;
   const newXDir = vecRotate(plane.xDir, plane.zDir, angleRad);

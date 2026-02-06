@@ -10,18 +10,22 @@ import type { Vec3, Vec2 } from './types.js';
 // Arithmetic
 // ---------------------------------------------------------------------------
 
+/** Add two 3D vectors component-wise. */
 export function vecAdd(a: Vec3, b: Vec3): Vec3 {
   return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 }
 
+/** Subtract vector `b` from vector `a` component-wise. */
 export function vecSub(a: Vec3, b: Vec3): Vec3 {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
+/** Multiply each component of a 3D vector by a scalar. */
 export function vecScale(v: Vec3, s: number): Vec3 {
   return [v[0] * s, v[1] * s, v[2] * s];
 }
 
+/** Negate all components of a 3D vector. */
 export function vecNegate(v: Vec3): Vec3 {
   return [-v[0], -v[1], -v[2]];
 }
@@ -30,10 +34,12 @@ export function vecNegate(v: Vec3): Vec3 {
 // Products
 // ---------------------------------------------------------------------------
 
+/** Compute the dot product of two 3D vectors. */
 export function vecDot(a: Vec3, b: Vec3): number {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
+/** Compute the cross product of two 3D vectors. */
 export function vecCross(a: Vec3, b: Vec3): Vec3 {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
@@ -42,14 +48,17 @@ export function vecCross(a: Vec3, b: Vec3): Vec3 {
 // Length / distance
 // ---------------------------------------------------------------------------
 
+/** Compute the Euclidean length of a 3D vector. */
 export function vecLength(v: Vec3): number {
   return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 }
 
+/** Compute the squared length of a 3D vector (avoids a sqrt). */
 export function vecLengthSq(v: Vec3): number {
   return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
 }
 
+/** Compute the Euclidean distance between two 3D points. */
 export function vecDistance(a: Vec3, b: Vec3): number {
   return vecLength(vecSub(a, b));
 }
@@ -58,6 +67,7 @@ export function vecDistance(a: Vec3, b: Vec3): number {
 // Normalization
 // ---------------------------------------------------------------------------
 
+/** Return a unit-length vector in the same direction, or `[0,0,0]` for near-zero input. */
 export function vecNormalize(v: Vec3): Vec3 {
   const len = vecLength(v);
   if (len < 1e-10) return [0, 0, 0];
@@ -68,6 +78,12 @@ export function vecNormalize(v: Vec3): Vec3 {
 // Comparison
 // ---------------------------------------------------------------------------
 
+/**
+ * Test whether two 3D vectors are approximately equal.
+ *
+ * @param tolerance - Per-component absolute tolerance.
+ * @default tolerance `1e-5`
+ */
 export function vecEquals(a: Vec3, b: Vec3, tolerance = 1e-5): boolean {
   return (
     Math.abs(a[0] - b[0]) < tolerance &&
@@ -76,6 +92,12 @@ export function vecEquals(a: Vec3, b: Vec3, tolerance = 1e-5): boolean {
   );
 }
 
+/**
+ * Test whether a 3D vector is approximately zero-length.
+ *
+ * @param tolerance - Length threshold below which the vector is considered zero.
+ * @default tolerance `1e-10`
+ */
 export function vecIsZero(v: Vec3, tolerance = 1e-10): boolean {
   return vecLengthSq(v) < tolerance * tolerance;
 }
@@ -84,6 +106,11 @@ export function vecIsZero(v: Vec3, tolerance = 1e-10): boolean {
 // Geometry
 // ---------------------------------------------------------------------------
 
+/**
+ * Compute the unsigned angle between two 3D vectors in **radians**.
+ *
+ * @returns Angle in `[0, PI]`, or `0` if either vector is zero-length.
+ */
 export function vecAngle(a: Vec3, b: Vec3): number {
   const dot = vecDot(a, b);
   const lenA = vecLength(a);
@@ -123,6 +150,7 @@ export function vecRotate(v: Vec3, axis: Vec3, angleRad: number): Vec3 {
 
 const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 
+/** Format a Vec3 as a human-readable string rounded to 3 decimal places. */
 export function vecRepr(v: Vec3): string {
   return `x: ${round3(v[0])}, y: ${round3(v[1])}, z: ${round3(v[2])}`;
 }
@@ -131,32 +159,44 @@ export function vecRepr(v: Vec3): string {
 // 2D operations
 // ---------------------------------------------------------------------------
 
+/** Add two 2D vectors component-wise. */
 export function vec2Add(a: Vec2, b: Vec2): Vec2 {
   return [a[0] + b[0], a[1] + b[1]];
 }
 
+/** Subtract vector `b` from vector `a` in 2D. */
 export function vec2Sub(a: Vec2, b: Vec2): Vec2 {
   return [a[0] - b[0], a[1] - b[1]];
 }
 
+/** Multiply each component of a 2D vector by a scalar. */
 export function vec2Scale(v: Vec2, s: number): Vec2 {
   return [v[0] * s, v[1] * s];
 }
 
+/** Compute the Euclidean length of a 2D vector. */
 export function vec2Length(v: Vec2): number {
   return Math.sqrt(v[0] * v[0] + v[1] * v[1]);
 }
 
+/** Compute the Euclidean distance between two 2D points. */
 export function vec2Distance(a: Vec2, b: Vec2): number {
   return vec2Length(vec2Sub(a, b));
 }
 
+/** Return a unit-length 2D vector in the same direction, or `[0,0]` for zero input. */
 export function vec2Normalize(v: Vec2): Vec2 {
   const len = vec2Length(v);
   if (len === 0) return [0, 0];
   return [v[0] / len, v[1] / len];
 }
 
+/**
+ * Test whether two 2D vectors are approximately equal.
+ *
+ * @param tolerance - Per-component absolute tolerance.
+ * @default tolerance `1e-5`
+ */
 export function vec2Equals(a: Vec2, b: Vec2, tolerance = 1e-5): boolean {
   return Math.abs(a[0] - b[0]) < tolerance && Math.abs(a[1] - b[1]) < tolerance;
 }

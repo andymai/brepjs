@@ -2,6 +2,18 @@ import Flatbush from 'flatbush';
 import { bug } from '../../core/errors.js';
 import type { Curve2D } from './Curve2D.js';
 
+/**
+ * Group a flat list of curves into connected chains by matching endpoints.
+ *
+ * Uses a Flatbush spatial index for fast nearest-neighbour lookups.
+ * Each returned sub-array is a connected sequence where each curve's
+ * start point matches the previous curve's end point within the given
+ * precision.
+ *
+ * @param curves - Unordered input curves to stitch.
+ * @param precision - Maximum distance to consider two endpoints coincident.
+ * @returns An array of connected curve chains.
+ */
 export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] => {
   // We create a spacial index of the startpoints
   const startPoints = new Flatbush(curves.length);

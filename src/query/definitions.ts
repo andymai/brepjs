@@ -3,27 +3,42 @@ import type { Face, Edge } from '../topology/shapes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { queryError } from '../core/errors.js';
 
+/** Named axis direction for finder filters. */
 export type Direction = 'X' | 'Y' | 'Z';
+
+/** Unit vectors for each named axis direction. */
 export const DIRECTIONS: Record<Direction, Vec3> = {
   X: [1, 0, 0],
   Y: [0, 1, 0],
   Z: [0, 0, 1],
 };
 
+/** Named standard plane for finder filters. */
 export type StandardPlane = 'XY' | 'XZ' | 'YZ';
+
+/** Normal direction vector for each standard plane. */
 export const PLANE_TO_DIR: Record<StandardPlane, [number, number, number]> = {
   YZ: [1, 0, 0],
   XZ: [0, 1, 0],
   XY: [0, 0, 1],
 };
 
+/** Union of the two shape types that finders operate on. */
 export type FaceOrEdge = Face | Edge;
 
+/** Element + normal pair passed to each finder filter function. */
 export type FilterFcn<Type> = {
   element: Type;
   normal: Vec3 | null;
 };
 
+/**
+ * Abstract base class for shape finders.
+ *
+ * Subclasses define how to extract candidate elements from a shape, then
+ * filters are applied via chainable methods (`and`, `not`, `either`).
+ * Call {@link find} to execute the query.
+ */
 export abstract class Finder<Type, FilterType> {
   protected filters: (({ element, normal }: FilterFcn<Type>) => boolean)[];
 

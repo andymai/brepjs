@@ -62,6 +62,7 @@ export type { PlaneName } from './planeTypes.js';
 // Legacy Point type (kept for backward compatibility)
 // ---------------------------------------------------------------------------
 
+/** @deprecated Use {@link Vec3} from `types.ts` instead. */
 export type SimplePoint = [number, number, number];
 
 /**
@@ -74,6 +75,7 @@ export type Point =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT point-like objects
   | { XYZ: () => any; delete: () => void };
 
+/** Check whether a value is a valid {@link Point} (tuple or OCCT point-like object). */
 export function isPoint(p: unknown): p is Point {
   if (Array.isArray(p)) return p.length === 3 || p.length === 2;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT duck typing
@@ -93,6 +95,11 @@ const DIRECTIONS: Record<string, Point> = {
   Z: [0, 0, 1],
 };
 
+/**
+ * Resolve a direction shorthand (`'X'`, `'Y'`, `'Z'`) to a {@link Point} tuple.
+ *
+ * @deprecated Use {@link resolveDirection} from `types.ts` instead.
+ */
 export function makeDirection(p: Direction): Point {
   if (p === 'X' || p === 'Y' || p === 'Z') {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

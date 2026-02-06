@@ -9,6 +9,13 @@ import { getKernel } from '../kernel/index.js';
 import { toOcPnt, toOcVec, makeOcAx1, makeOcAx2 } from './occtBoundary.js';
 import { DEG2RAD } from './constants.js';
 
+/**
+ * Derive a {@link Plane} from a face's surface geometry.
+ *
+ * @param face - Object exposing `pointOnSurface` and `normalAt` (e.g. a Face shape).
+ * @param originOnSurface - UV coordinates on the face surface used as the plane origin.
+ * @default originOnSurface `[0, 0]`
+ */
 export const makePlaneFromFace = (
   face: { pointOnSurface: (u: number, v: number) => Vec3; normalAt: (p?: Vec3) => Vec3 },
   originOnSurface: [number, number] = [0, 0]
@@ -25,6 +32,17 @@ export const makePlaneFromFace = (
   return createPlane(originPoint, xd, normal);
 };
 
+/**
+ * Create or copy a {@link Plane}.
+ *
+ * When called with a `Plane` object, returns a shallow copy.
+ * When called with a `PlaneName` string (or no arguments), resolves the named
+ * plane with an optional origin offset.
+ *
+ * @param plane - A `Plane` object to copy, or a `PlaneName` string to resolve.
+ * @param origin - Origin point or scalar offset along the plane normal.
+ * @default plane `'XY'`
+ */
 function makePlane(plane: Plane): Plane;
 function makePlane(plane?: PlaneName, origin?: PointInput | number): Plane;
 function makePlane(plane?: PlaneInput, origin?: PointInput | number): Plane {
@@ -38,6 +56,15 @@ function makePlane(plane?: PlaneInput, origin?: PointInput | number): Plane {
 
 export { makePlane };
 
+/**
+ * Rotate an OCCT shape around an axis.
+ *
+ * @param shape - Raw OCCT shape to rotate.
+ * @param angle - Rotation angle in **degrees**.
+ * @param position - Point on the rotation axis.
+ * @param direction - Direction vector of the rotation axis.
+ * @returns A new rotated OCCT shape (the original is not modified).
+ */
 export function rotate(
   shape: OcType,
   angle: number,
@@ -61,6 +88,13 @@ export function rotate(
   return newShape;
 }
 
+/**
+ * Translate an OCCT shape by a displacement vector.
+ *
+ * @param shape - Raw OCCT shape to translate.
+ * @param vector - Translation vector `[dx, dy, dz]`.
+ * @returns A new translated OCCT shape.
+ */
 export function translate(shape: OcType, vector: PointInput): OcType {
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -78,6 +112,17 @@ export function translate(shape: OcType, vector: PointInput): OcType {
   return newShape;
 }
 
+/**
+ * Mirror an OCCT shape across a plane.
+ *
+ * The mirror plane can be specified as a `PlaneName`, a `Plane` object,
+ * or a direction vector (used as the plane normal). Defaults to the YZ plane.
+ *
+ * @param shape - Raw OCCT shape to mirror.
+ * @param inputPlane - Mirror plane specification.
+ * @param origin - Override origin for the mirror plane.
+ * @returns A new mirrored OCCT shape.
+ */
 export function mirror(
   shape: OcType,
   inputPlane?: PlaneInput | PointInput,
@@ -126,6 +171,14 @@ export function mirror(
   return newShape;
 }
 
+/**
+ * Scale an OCCT shape uniformly around a center point.
+ *
+ * @param shape - Raw OCCT shape to scale.
+ * @param center - Center of scaling.
+ * @param scaleFactor - Uniform scale factor (> 0).
+ * @returns A new scaled OCCT shape.
+ */
 export function scale(shape: OcType, center: PointInput, scaleFactor: number): OcType {
   const oc = getKernel().oc;
   const [r, gc] = localGC();

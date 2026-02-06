@@ -12,6 +12,7 @@ import { createHandle } from './disposal.js';
 // Shape kind discriminant
 // ---------------------------------------------------------------------------
 
+/** String discriminant identifying the topological type of a shape. */
 export type ShapeKind =
   | 'vertex'
   | 'edge'
@@ -28,13 +29,21 @@ export type ShapeKind =
 
 declare const __brand: unique symbol;
 
+/** A topological vertex (0D point). */
 export type Vertex = ShapeHandle & { readonly [__brand]: 'vertex' };
+/** A topological edge (1D curve segment). */
 export type Edge = ShapeHandle & { readonly [__brand]: 'edge' };
+/** An ordered sequence of connected edges forming a path or loop. */
 export type Wire = ShapeHandle & { readonly [__brand]: 'wire' };
+/** A bounded portion of a surface. */
 export type Face = ShapeHandle & { readonly [__brand]: 'face' };
+/** A connected set of faces sharing edges. */
 export type Shell = ShapeHandle & { readonly [__brand]: 'shell' };
+/** A closed volume bounded by shells. */
 export type Solid = ShapeHandle & { readonly [__brand]: 'solid' };
+/** A set of solids connected by faces. */
 export type CompSolid = ShapeHandle & { readonly [__brand]: 'compsolid' };
+/** A heterogeneous collection of shapes. */
 export type Compound = ShapeHandle & { readonly [__brand]: 'compound' };
 
 /** Any branded shape type */
@@ -54,34 +63,42 @@ function brandHandle(handle: ShapeHandle): AnyShape {
   return handle as AnyShape;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link Vertex} handle. */
 export function createVertex(ocShape: OcShape): Vertex {
   return brandHandle(createHandle(ocShape)) as Vertex;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link Edge} handle. */
 export function createEdge(ocShape: OcShape): Edge {
   return brandHandle(createHandle(ocShape)) as Edge;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link Wire} handle. */
 export function createWire(ocShape: OcShape): Wire {
   return brandHandle(createHandle(ocShape)) as Wire;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link Face} handle. */
 export function createFace(ocShape: OcShape): Face {
   return brandHandle(createHandle(ocShape)) as Face;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link Shell} handle. */
 export function createShell(ocShape: OcShape): Shell {
   return brandHandle(createHandle(ocShape)) as Shell;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link Solid} handle. */
 export function createSolid(ocShape: OcShape): Solid {
   return brandHandle(createHandle(ocShape)) as Solid;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link CompSolid} handle. */
 export function createCompSolid(ocShape: OcShape): CompSolid {
   return brandHandle(createHandle(ocShape)) as CompSolid;
 }
 
+/** Wrap a raw OCCT shape as a branded {@link Compound} handle. */
 export function createCompound(ocShape: OcShape): Compound {
   return brandHandle(createHandle(ocShape)) as Compound;
 }
@@ -90,6 +107,7 @@ export function createCompound(ocShape: OcShape): Compound {
 // Type guards (runtime checks via OCCT ShapeType)
 // ---------------------------------------------------------------------------
 
+/** Query the OCCT runtime for the topological type of a shape. */
 export function getShapeKind(shape: AnyShape): ShapeKind {
   const oc = getKernel().oc;
   const st = shape.wrapped.ShapeType();
@@ -105,39 +123,48 @@ export function getShapeKind(shape: AnyShape): ShapeKind {
   return 'compound';
 }
 
+/** Type guard — check if a shape is a {@link Vertex}. */
 export function isVertex(s: AnyShape): s is Vertex {
   return getShapeKind(s) === 'vertex';
 }
 
+/** Type guard — check if a shape is an {@link Edge}. */
 export function isEdge(s: AnyShape): s is Edge {
   return getShapeKind(s) === 'edge';
 }
 
+/** Type guard — check if a shape is a {@link Wire}. */
 export function isWire(s: AnyShape): s is Wire {
   return getShapeKind(s) === 'wire';
 }
 
+/** Type guard — check if a shape is a {@link Face}. */
 export function isFace(s: AnyShape): s is Face {
   return getShapeKind(s) === 'face';
 }
 
+/** Type guard — check if a shape is a {@link Shell}. */
 export function isShell(s: AnyShape): s is Shell {
   return getShapeKind(s) === 'shell';
 }
 
+/** Type guard — check if a shape is a {@link Solid}. */
 export function isSolid(s: AnyShape): s is Solid {
   return getShapeKind(s) === 'solid';
 }
 
+/** Type guard — check if a shape is a {@link Compound}. */
 export function isCompound(s: AnyShape): s is Compound {
   return getShapeKind(s) === 'compound';
 }
 
+/** Type guard — check if a shape is a 3D shape (shell, solid, compsolid, or compound). */
 export function isShape3D(s: AnyShape): s is Shape3D {
   const kind = getShapeKind(s);
   return kind === 'shell' || kind === 'solid' || kind === 'compsolid' || kind === 'compound';
 }
 
+/** Type guard — check if a shape is a 1D shape (edge or wire). */
 export function isShape1D(s: AnyShape): s is Shape1D {
   const kind = getShapeKind(s);
   return kind === 'edge' || kind === 'wire';
