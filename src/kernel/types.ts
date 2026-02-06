@@ -142,6 +142,8 @@ export interface KernelAdapter {
   exportSTL(shape: OcShape, binary?: boolean): string | ArrayBuffer;
   importSTEP(data: string | ArrayBuffer): OcShape[];
   importSTL(data: string | ArrayBuffer): OcShape;
+  exportIGES(shapes: OcShape[]): string;
+  importIGES(data: string | ArrayBuffer): OcShape[];
 
   // --- Measurement ---
   volume(shape: OcShape): number;

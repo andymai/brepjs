@@ -540,6 +540,7 @@ export {
   meshShapeEdges,
   exportSTEP as fnExportSTEP,
   exportSTL as fnExportSTL,
+  exportIGES as fnExportIGES,
   type ShapeMesh as FnShapeMesh,
   type EdgeMesh,
   type MeshOptions,
@@ -644,7 +645,11 @@ export {
 
 // ── Import (functional) ──
 
-export { importSTEP as fnImportSTEP, importSTL as fnImportSTL } from './io/importFns.js';
+export {
+  importSTEP as fnImportSTEP,
+  importSTL as fnImportSTL,
+  importIGES as fnImportIGES,
+} from './io/importFns.js';
 
 // ── Query (functional, immutable finders) ──
 

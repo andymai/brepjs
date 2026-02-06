@@ -194,3 +194,30 @@ export function exportSTL(
   }
   return err(ioError('STL_EXPORT_FAILED', 'Failed to write STL file'));
 }
+
+/** Export a shape as an IGES file Blob. */
+export function exportIGES(shape: AnyShape): Result<Blob> {
+  const oc = getKernel().oc;
+  const filename = uniqueIOFilename('_blob', 'iges');
+  const writer = new oc.IGESControl_Writer_1();
+
+  try {
+    writer.AddShape(shape.wrapped);
+    writer.ComputeModel();
+
+    const done = writer.Write_2(filename);
+
+    if (done) {
+      try {
+        const file = oc.FS.readFile('/' + filename);
+        oc.FS.unlink('/' + filename);
+        return ok(new Blob([file], { type: 'application/iges' }));
+      } catch (e) {
+        return err(ioError('IGES_EXPORT_FAILED', 'Failed to read exported IGES file', e));
+      }
+    }
+    return err(ioError('IGES_EXPORT_FAILED', 'Failed to write IGES file'));
+  } finally {
+    writer.delete();
+  }
+}

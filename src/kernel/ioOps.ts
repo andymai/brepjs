@@ -1,7 +1,7 @@
 /**
  * File I/O operations for OCCT shapes.
  *
- * Provides STEP and STL import/export functionality.
+ * Provides STEP, STL, and IGES import/export functionality.
  * Used by OCCTAdapter - re-exported for backward compatibility.
  */
 
@@ -52,6 +52,29 @@ export function exportSTL(
     return new TextDecoder().decode(file);
   }
   throw new Error('STL export failed: StlAPI.Write returned false');
+}
+
+/**
+ * Exports shapes to IGES format.
+ */
+export function exportIGES(oc: OpenCascadeInstance, shapes: OcShape[]): string {
+  const writer = new oc.IGESControl_Writer_1();
+
+  for (const shape of shapes) {
+    writer.AddShape(shape);
+  }
+  writer.ComputeModel();
+
+  const filename = uniqueIOFilename('_export', 'iges');
+  const done = writer.Write_2(filename);
+  writer.delete();
+
+  if (done) {
+    const file = oc.FS.readFile('/' + filename);
+    oc.FS.unlink('/' + filename);
+    return new TextDecoder().decode(file);
+  }
+  throw new Error('IGES export failed: writer did not complete successfully');
 }
 
 /**
@@ -106,4 +129,29 @@ export function importSTL(oc: OpenCascadeInstance, data: string | ArrayBuffer): 
   readShape.delete();
   reader.delete();
   throw new Error('Failed to import STL file: reader could not parse the input data');
+}
+
+/**
+ * Imports shapes from IGES data.
+ */
+export function importIGES(oc: OpenCascadeInstance, data: string | ArrayBuffer): OcShape[] {
+  const filename = uniqueIOFilename('_import', 'iges');
+  const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
+  oc.FS.writeFile('/' + filename, buffer);
+
+  const reader = new oc.IGESControl_Reader_1();
+  const status = reader.ReadFile(filename);
+
+  if (status === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
+    oc.FS.unlink('/' + filename);
+    const progress = new oc.Message_ProgressRange_1();
+    reader.TransferRoots(progress);
+    progress.delete();
+    const shape = reader.OneShape();
+    reader.delete();
+    return [shape];
+  }
+  oc.FS.unlink('/' + filename);
+  reader.delete();
+  throw new Error('Failed to import IGES file: reader could not parse the input data');
 }
