@@ -34,6 +34,7 @@ import {
   fuse as _fuse,
   cut as _cut,
   intersect as _intersect,
+  section as _section,
   fuseAll as _fuseAll,
   cutAll as _cutAll,
   buildCompound as _buildCompound,
@@ -96,6 +97,10 @@ export class OCCTAdapter implements KernelAdapter {
 
   intersect(shape: OcShape, tool: OcShape, options: BooleanOptions = {}): OcShape {
     return _intersect(this.oc, shape, tool, options);
+  }
+
+  section(shape: OcShape, plane: OcShape, approximation = true): OcShape {
+    return _section(this.oc, shape, plane, approximation);
   }
 
   fuseAll(shapes: OcShape[], options: BooleanOptions = {}): OcShape {

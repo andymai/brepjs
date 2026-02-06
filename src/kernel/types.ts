@@ -55,6 +55,7 @@ export interface KernelAdapter {
   fuse(shape: OcShape, tool: OcShape, options?: BooleanOptions): OcShape;
   cut(shape: OcShape, tool: OcShape, options?: BooleanOptions): OcShape;
   intersect(shape: OcShape, tool: OcShape, options?: BooleanOptions): OcShape;
+  section(shape: OcShape, plane: OcShape, approximation?: boolean): OcShape;
   fuseAll(shapes: OcShape[], options?: BooleanOptions): OcShape;
   cutAll(shape: OcShape, tools: OcShape[], options?: BooleanOptions): OcShape;
 

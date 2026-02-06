@@ -101,6 +101,31 @@ export function intersect(
 }
 
 /**
+ * Sections a shape with another shape (typically a planar face), returning
+ * the intersection edges/wires.
+ */
+export function section(
+  oc: OpenCascadeInstance,
+  shape: OcShape,
+  tool: OcShape,
+  approximation: boolean = true
+): OcShape {
+  const progress = new oc.Message_ProgressRange_1();
+  const sectionOp = new oc.BRepAlgoAPI_Section_3(shape, tool, false);
+  sectionOp.Approximation(approximation);
+  sectionOp.Build(progress);
+  if (!sectionOp.IsDone()) {
+    sectionOp.delete();
+    progress.delete();
+    throw new Error('BRepAlgoAPI_Section build failed');
+  }
+  const result = sectionOp.Shape();
+  sectionOp.delete();
+  progress.delete();
+  return result;
+}
+
+/**
  * Fuses multiple shapes using C++ batch operation.
  */
 function fuseAllBatch(
