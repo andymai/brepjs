@@ -299,6 +299,8 @@ splitShape(shape, tools): Result<AnyShape>
 sliceShape(shape, planes, options?): Result<AnyShape[]>
 ```
 
+All boolean operations validate inputs before calling OCCT: null shapes return `VALIDATION` errors with code `NULL_SHAPE_INPUT` and a message identifying which operand was invalid.
+
 Boolean options: `{ optimisation?: 'none' | 'commonFace' | 'sameFace', simplify?: boolean, strategy?: 'native' | 'pairwise', signal?: AbortSignal }`
 
 Batch: `fuseAll(shapes, options?): Result<Shape3D>`, `cutAll(base, tools, options?): Result<Shape3D>`
@@ -342,6 +344,8 @@ const hollowed = unwrap(shellShape(box, topFaces, 1));
 ```
 
 `shellShape(shape, faces, thickness, tolerance?): Result<Shape3D>`
+
+All modifier operations (`filletShape`, `chamferShape`, `shellShape`, `offsetShape`, `thickenSurface`) validate that the input shape is not null before calling OCCT, returning `NULL_SHAPE_INPUT` validation errors. Error messages from OCCT failures include operation name and parameter metadata (edge count, radius, distance).
 
 ### Offset & Thicken
 
@@ -622,7 +626,8 @@ autoHeal(shape, options?): Result<{ shape, report: HealingReport }>
 // Options: { fixWires?: boolean (default true), fixFaces?: boolean (default true),
 //            fixSolids?: boolean (default true), sewTolerance?: number,
 //            fixSelfIntersection?: boolean (default FALSE — unlike the others) }
-// HealingReport: { isValid, wiresHealed, facesHealed, solidHealed, steps, diagnostics }
+// HealingReport: { isValid, alreadyValid, wiresHealed, facesHealed, solidHealed, steps, diagnostics }
+// alreadyValid: true when shape was valid before healing — distinguishes "nothing to fix" from "fix succeeded"
 ```
 
 ## Import / Export
@@ -1241,7 +1246,7 @@ Key types used across the API:
 - `OperationStep`: `{ id, type, parameters, inputIds, outputId, timestamp, metadata? }`
 - `OperationFn`: `(inputs: AnyShape[], params: Record<string, unknown>) => AnyShape`
 - `HistoryOperationRegistry`: `{ operations: ReadonlyMap<string, OperationFn> }`
-- `HealingReport`: `{ isValid, wiresHealed, facesHealed, solidHealed, steps, diagnostics }`
+- `HealingReport`: `{ isValid, alreadyValid, wiresHealed, facesHealed, solidHealed, steps, diagnostics }`
 - `InterferenceResult`: `{ hasInterference, minDistance, pointOnShape1, pointOnShape2 }`
 - `CurvatureResult`: `{ mean, gaussian, maxCurvature, minCurvature, maxDirection, minDirection }`
 - `ShapeHandle`: `{ wrapped, disposed, [Symbol.dispose]() }`
