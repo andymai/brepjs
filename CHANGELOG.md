@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.29.0](https://github.com/andymai/brepjs/compare/brepjs-v4.28.0...brepjs-v4.29.0) (2026-02-07)
+
+
+### Features
+
+* **site:** update playground examples to v5 API ([#177](https://github.com/andymai/brepjs/issues/177)) ([c1c2a0c](https://github.com/andymai/brepjs/commit/c1c2a0c1e7b911fda540b07c7e79ce719449fed0))
+
 ## [4.28.0](https://github.com/andymai/brepjs/compare/brepjs-v4.27.1...brepjs-v4.28.0) (2026-02-07)
 
 
