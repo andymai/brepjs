@@ -9,13 +9,14 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "precompute-hero": "npx tsx scripts/precompute-hero-mesh.ts",
-    "screenshot-examples": "npx tsx scripts/screenshot-examples.ts"
+    "screenshot-examples": "npx tsx scripts/screenshot-examples.ts",
+    "generate-types": "npx tsx scripts/generate-ambient-types.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
-    "brepjs": "^4.17.1",
+    "brepjs": "^4.18.5",
     "brepjs-opencascade": "^0.7.0",
     "lz-string": "^1.5.0",
     "monaco-editor": "^0.55.0",
