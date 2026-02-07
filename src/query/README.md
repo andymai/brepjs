@@ -4,8 +4,8 @@
 
 ```mermaid
 graph TB
-    FN[finderFns.ts] -->|edgeFinder, faceFinder, cornerFinder| I[index.ts]
-    H[helpers.ts] -->|SingleFace| I
+    FN[finderFns.ts] -->|edgeFinder, faceFinder, cornerFinder| E[exports]
+    H[helpers.ts] -->|SingleFace| E
 ```
 
 ## Key Files
@@ -14,7 +14,6 @@ graph TB
 | -------------- | ------------------------------------------------------------------------------ |
 | `finderFns.ts` | Functional immutable finders: `edgeFinder()`, `faceFinder()`, `cornerFinder()` |
 | `helpers.ts`   | `SingleFace` type resolution helper                                            |
-| `index.ts`     | Barrel re-exports                                                              |
 
 ## edgeFinder() Filters
 
