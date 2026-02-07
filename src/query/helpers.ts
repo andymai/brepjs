@@ -1,7 +1,7 @@
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { isFace } from '../core/shapeTypes.js';
 import { FaceFinder } from './faceFinder.js';
-import type { FaceFinderFn } from './finderFns.js';
+import { faceFinder, type FaceFinderFn } from './finderFns.js';
 import { type Result, ok } from '../core/result.js';
 
 /**
@@ -28,8 +28,19 @@ export function getSingleFace(f: SingleFace, shape: AnyShape): Result<Face> {
   // Use isFace type guard for proper type discrimination of Face values
   if (typeof f !== 'function' && isFace(f)) return ok(f);
 
-  // Handle callback — try deprecated FaceFinder class for backward compat,
-  // then fall back to functional faceFinder
+  // Handle callback — try functional faceFinder first, fall back to deprecated class.
+  // The functional path is preferred but the callback may use deprecated FaceFinder
+  // methods (e.g. inPlane) that don't exist on FaceFinderFn, so we catch and retry.
+  try {
+    const fnResult = (f as (ff: FaceFinderFn) => FaceFinderFn)(faceFinder());
+    if (typeof fnResult === 'object' && '_topoKind' in fnResult) {
+      return fnResult.findUnique(shape);
+    }
+  } catch {
+    // Callback likely uses deprecated FaceFinder API — fall through
+  }
+
+  // Fall back to deprecated FaceFinder class for backward compat
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- backward compat bridge
   const finder = (f as (ff: FaceFinder) => FaceFinder)(new FaceFinder());
   return finder.find(shape, { unique: true });

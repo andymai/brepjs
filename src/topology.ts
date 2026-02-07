@@ -3,7 +3,7 @@
  *
  * @example
  * ```typescript
- * import { makeBox, fuseShape, filletShape, meshShape, unwrap } from 'brepjs/topology';
+ * import { makeBox, fuseShape, filletShape, meshShape } from 'brepjs/topology';
  * ```
  */
 

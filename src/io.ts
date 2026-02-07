@@ -11,7 +11,11 @@
 
 export { importSTEP, importSTL, importIGES } from './io/importFns.js';
 
-// ── Export ──
+// ── CAD Export (STEP / STL / IGES) ──
+
+export { exportSTEP, exportSTL, exportIGES } from './topology/meshFns.js';
+
+// ── Mesh & Document Export ──
 
 export { exportOBJ } from './io/objExportFns.js';
 
