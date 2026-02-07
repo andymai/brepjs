@@ -8,6 +8,7 @@
     "url": "https://github.com/andymai/brepjs",
     "directory": "packages/brepjs-opencascade"
   },
+  "sideEffects": false,
   "main": "src/brepjs_single.js",
   "exports": {
     ".": "./src/brepjs_single.js",

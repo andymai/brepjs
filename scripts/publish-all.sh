@@ -58,7 +58,7 @@ publish_package() {
     npm pack --dry-run
   else
     local otp_code=$(get_otp)
-    npm publish --otp="$otp_code"
+    npm publish --no-provenance --otp="$otp_code"
     echo -e "${GREEN}Published ${pkg_name}@${version}${NC}"
   fi
 }

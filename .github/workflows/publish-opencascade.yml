@@ -65,6 +65,6 @@ jobs:
 
       - name: Publish to npm
         working-directory: packages/brepjs-opencascade
-        run: npm publish --access public --provenance
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
