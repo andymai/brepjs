@@ -6,7 +6,7 @@
  *   const edges = edgeFinder()
  *     .inDirection('Z')
  *     .ofLength(10, 0.01)
- *     .find(shape);
+ *     .findAll(shape);
  */
 
 import { getKernel } from '../kernel/index.js';
@@ -48,7 +48,14 @@ export interface ShapeFinder<T extends AnyShape> {
   readonly not: (builderFn: (f: ShapeFinder<T>) => ShapeFinder<T>) => ShapeFinder<T>;
   /** Combine filters with OR. Returns new finder. */
   readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
-  /** Find matching elements from a shape. */
+  /** Find all matching elements from a shape. */
+  readonly findAll: (shape: AnyShape) => T[];
+  /** Find exactly one matching element. Returns error if 0 or more than 1 match. */
+  readonly findUnique: (shape: AnyShape) => Result<T>;
+  /**
+   * Find matching elements from a shape.
+   * @deprecated Use {@link findAll} for array results or {@link findUnique} for single-element `Result<T>`.
+   */
   readonly find: ((shape: AnyShape) => T[]) &
     ((shape: AnyShape, opts: { unique: true }) => Result<T>);
   /** Check if an element passes all filters. */
@@ -112,22 +119,26 @@ function createFinder<T extends AnyShape>(
       return withFilter((el) => builtFinders.some((f) => f.shouldKeep(el)));
     },
 
-    find: ((shape: AnyShape, opts?: { unique?: boolean }) => {
+    findAll: (shape: AnyShape): T[] => extractElements(shape),
+
+    findUnique: (shape: AnyShape): Result<T> => {
       const elements = extractElements(shape);
-      if (opts?.unique) {
-        if (elements.length !== 1) {
-          return err(
-            queryError(
-              'FINDER_NOT_UNIQUE',
-              `Finder expected a unique match but found ${elements.length} element(s)`
-            )
-          );
-        }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return ok(elements[0]!);
+      if (elements.length !== 1) {
+        return err(
+          queryError(
+            'FINDER_NOT_UNIQUE',
+            `Finder expected a unique match but found ${elements.length} element(s)`
+          )
+        );
       }
-      return elements;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overload implementation
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return ok(elements[0]!);
+    },
+
+    find: ((shape: AnyShape, opts?: { unique?: boolean }) => {
+      if (opts?.unique) return finder.findUnique(shape);
+      return finder.findAll(shape);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deprecated overload bridge
     }) as any,
 
     shouldKeep,
@@ -435,23 +446,12 @@ function createVertexFinderWithNearest(
   filters: ReadonlyArray<Predicate<Vertex>>,
   nearestPoint: Vec3
 ): VertexFinderFn {
-  // Use the base finder's find() pipeline for filtering
   const baseFinder = createVertexFinder(filters);
 
-  const overriddenFind = ((shape: AnyShape, opts?: { unique?: boolean }) => {
-    // Delegate to the base finder pipeline for filtering
-    const candidates = baseFinder.find(shape);
+  const findAllNearest = (shape: AnyShape): Vertex[] => {
+    const candidates = baseFinder.findAll(shape);
+    if (candidates.length === 0) return [];
 
-    if (candidates.length === 0) {
-      if (opts?.unique) {
-        return err(
-          queryError('FINDER_NOT_UNIQUE', 'Finder expected a unique match but found 0 element(s)')
-        );
-      }
-      return [];
-    }
-
-    // Find the nearest vertex among filtered candidates
     let bestIdx = 0;
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by length > 0 above
     let bestDist = vecDistance(vertexPosition(candidates[0]!), nearestPoint);
@@ -465,17 +465,29 @@ function createVertexFinderWithNearest(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bestIdx is valid
-    const nearest = candidates[bestIdx]!;
-    if (opts?.unique) {
-      return ok(nearest);
+    return [candidates[bestIdx]!];
+  };
+
+  const findUniqueNearest = (shape: AnyShape): Result<Vertex> => {
+    const nearest = findAllNearest(shape);
+    if (nearest.length === 0) {
+      return err(
+        queryError('FINDER_NOT_UNIQUE', 'Finder expected a unique match but found 0 element(s)')
+      );
     }
-    return [nearest];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overload implementation
-  }) as any;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
+    return ok(nearest[0]!);
+  };
 
   return {
     ...baseFinder,
-    find: overriddenFind,
+    findAll: findAllNearest,
+    findUnique: findUniqueNearest,
+    find: ((shape: AnyShape, opts?: { unique?: boolean }) => {
+      if (opts?.unique) return findUniqueNearest(shape);
+      return findAllNearest(shape);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deprecated overload bridge
+    }) as any,
   };
 }
 

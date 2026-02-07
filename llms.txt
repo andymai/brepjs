@@ -312,7 +312,7 @@ import { filletShape, chamferShape, chamferDistAngleShape, getEdges, edgeFinder 
 const rounded = unwrap(filletShape(box, getEdges(box), 2));
 
 // Fillet specific edges using edgeFinder
-const selective = unwrap(filletShape(box, edgeFinder().ofLength(20).find(box), 2));
+const selective = unwrap(filletShape(box, edgeFinder().ofLength(20).findAll(box), 2));
 
 // Chamfer
 const chamfered = unwrap(chamferShape(box, getEdges(box), 1));
@@ -337,7 +337,7 @@ chamferDistAngleShape(shape, edges, distance, angleDeg): Result<Shape3D>
 import { shellShape, faceFinder } from 'brepjs';
 
 // Remove top face and shell to 1mm thickness — returns Result<Shape3D>
-const topFaces = faceFinder().parallelTo('XY').find(box);
+const topFaces = faceFinder().parallelTo('XY').findAll(box);
 const hollowed = unwrap(shellShape(box, topFaces, 1));
 ```
 
@@ -478,39 +478,39 @@ const faces = finder.find(shape);      // Returns Face[]
 ```typescript
 import { edgeFinder, faceFinder, wireFinder, vertexFinder } from 'brepjs';
 
-// Composable, immutable chain
+// Composable, immutable chain — findAll returns T[]
 const topEdges = edgeFinder()
   .inDirection([0, 0, 1])
   .ofLength(10, tolerance?)
   .ofCurveType('LINE')
-  .find(shape);
+  .findAll(shape);
 
 const topFaces = faceFinder()
   .inDirection('Z')                // Faces whose normal aligns with Z (shorthand for [0,0,1])
   .ofSurfaceType('PLANE')
   .ofArea(100, tolerance?)
-  .find(shape);
+  .findAll(shape);
 // faceFinder also has: .parallelTo(dir) (alias for inDirection(dir, 0)), .atDistance(dist, point?)
 
 const closedWires = wireFinder()
   .isClosed()
   .ofEdgeCount(4)
-  .find(shape);
+  .findAll(shape);
 
 const cornerVerts = vertexFinder()
   .atPosition([0, 0, 0], tolerance?)
   .nearestTo([10, 0, 0])
   .withinBox([0, 0, 0], [10, 10, 10])
-  .find(shape);
+  .findAll(shape);
 
-// Unique find (returns Result<T>)
-const uniqueEdge = edgeFinder().ofLength(10).find(shape, { unique: true });
+// findUnique — returns Result<T>, errors if 0 or >1 matches
+const uniqueEdge = edgeFinder().ofLength(10).findUnique(shape);
 
 // Combinators (available on all finders)
-edgeFinder().not(f => f.ofCurveType('LINE')).find(shape);
-edgeFinder().either([f => f.ofLength(10), f => f.ofLength(20)]).find(shape);
-edgeFinder().when(edge => customPredicate(edge)).find(shape);
-edgeFinder().inList(knownEdges).find(shape);
+edgeFinder().not(f => f.ofCurveType('LINE')).findAll(shape);
+edgeFinder().either([f => f.ofLength(10), f => f.ofLength(20)]).findAll(shape);
+edgeFinder().when(edge => customPredicate(edge)).findAll(shape);
+edgeFinder().inList(knownEdges).findAll(shape);
 ```
 
 ### cornerFinder (2D)
@@ -1306,11 +1306,11 @@ const pipe = gcWithScope(() => {
 
   // Hollow out: remove top face, shell to 2mm wall thickness
   // parallelTo('XY') finds faces with Z-normal; atDistance selects the one at Z=100
-  const shellFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).find(body);
+  const shellFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).findAll(body);
   const hollowed = unwrap(shellShape(body, shellFaces, 2));
 
   // Fillet the tube-to-flange transitions
-  const filletEdges = edgeFinder().ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15).find(hollowed);
+  const filletEdges = edgeFinder().ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15).findAll(hollowed);
   const filleted = unwrap(filletShape(hollowed, filletEdges, 3));
 
   // Bolt holes in each flange
@@ -1352,11 +1352,11 @@ const enclosure = gcWithScope(() => {
 
   // Shell: remove top face
   // parallelTo accepts StandardPlane strings ('XY', 'XZ', 'YZ') or Plane objects
-  const shellFaces = faceFinder().parallelTo('XY').find(box);
+  const shellFaces = faceFinder().parallelTo('XY').findAll(box);
   const shelled = unwrap(shellShape(box, shellFaces, 2));
 
   // Fillet all vertical edges
-  const vertEdges = edgeFinder().inDirection([0, 0, 1]).find(shelled);
+  const vertEdges = edgeFinder().inDirection([0, 0, 1]).findAll(shelled);
   const filleted = unwrap(filletShape(shelled, vertEdges, 1));
 
   // Mounting bosses: 4 cylinders at corners inside the box
@@ -1498,17 +1498,17 @@ const base = extrudeFace(
 );
 
 // Find top face and cut mounting holes
-const topFaces = faceFinder().inDirection('Z').find(base);
+const topFaces = faceFinder().inDirection('Z').findAll(base);
 const holeFace = unwrap(makeFace(makeCircle(3, [10, 15, 20])));
 const hole1 = extrudeFace(holeFace, [0, 0, -25]);
 const withHoles = unwrap(cutShape(base, hole1));
 
 // Fillet just the top edges
-const topEdges = edgeFinder().atDistance(20, [20, 15, 0]).find(withHoles);
+const topEdges = edgeFinder().atDistance(20, [20, 15, 0]).findAll(withHoles);
 const filleted = unwrap(filletShape(withHoles, topEdges, 2));
 
 // Shell it out
-const shellFaces = faceFinder().inDirection([0, 0, 1]).find(filleted);
+const shellFaces = faceFinder().inDirection([0, 0, 1]).findAll(filleted);
 const shelled = unwrap(shellShape(filleted, shellFaces, 1.5));
 
 // Validate and heal

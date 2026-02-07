@@ -18,7 +18,7 @@ import { Finder3d } from './generic3dfinder.js';
  * and `.not()` for negation (inherited from {@link Finder3d}).
  *
  * @deprecated Use the immutable {@link faceFinder} factory from `finderFns` instead.
- *   `faceFinder().parallelTo('XY').ofArea(100).find(box, { unique: true })`
+ *   `faceFinder().parallelTo('XY').ofArea(100).findUnique(box)`
  *
  * @category Finders
  */
