@@ -36,6 +36,8 @@ Create primitive shapes (box, cylinder, sphere) and combine them with boolean op
 
 ### [mechanical-part.ts](./mechanical-part.ts)
 
+<img src="../docs/images/examples/bracket.svg" alt="Bracket preview" width="100" align="right" />
+
 Build a bracket with 4 mounting holes and a center slot. Generates SVG technical drawings (front and top views).
 
 **Concepts:** batch booleans with `cutAll`, `translateShape`, `drawProjection`, SVG output
@@ -43,6 +45,8 @@ Build a bracket with 4 mounting holes and a center slot. Generates SVG technical
 **Visual output:** `examples/output/bracket-front.svg`, `examples/output/bracket-top.svg`
 
 ### [2d-to-3d.ts](./2d-to-3d.ts)
+
+<img src="../docs/images/examples/2d-profile.svg" alt="2D profile preview" width="100" align="right" />
 
 Sketch a 2D profile and extrude it to a 3D solid. Exports the 2D profile as SVG.
 
@@ -59,6 +63,8 @@ Load a STEP file, modify it, export in multiple formats.
 ## Advanced
 
 ### [parametric-part.ts](./parametric-part.ts)
+
+<img src="../docs/images/examples/pipe-fitting.svg" alt="Pipe fitting preview" width="100" align="right" />
 
 Build a configurable flanged pipe fitting with bolt holes. Shows how to wrap brepjs operations into a reusable parametric function.
 

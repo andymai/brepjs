@@ -228,7 +228,7 @@ All major items resolved. The `brepjs/quick` entry point, zero-to-shape tutorial
 
 ### Recommendation
 
-All major items resolved. Consider adding PNG screenshots to the README for examples that produce visual output.
+All major items resolved. ~~Consider adding PNG screenshots to the README for examples that produce visual output.~~ **RESOLVED.** Styled SVG preview images generated from actual shapes are committed to `docs/images/examples/` and embedded in both the main README (gallery section) and `examples/README.md` (inline thumbnails).
 
 ---
 
@@ -258,7 +258,7 @@ All major items resolved. Consider adding PNG screenshots to the README for exam
 | Docs site                 |   9    |    10    |   7   |    9     |
 | Learning curve (newcomer) |   9    |    8     |   7   |    7     |
 | Error handling            |   10   |    4     |   4   |    6     |
-| Visual examples           |   9    |    10    |   9   |    8     |
+| Visual examples           |   10   |    10    |   9   |    8     |
 | API organization          |   10   |    6     |   7   |    8     |
 
 **Bottom line:** brepjs has an exceptionally well-designed API that compares favorably to or exceeds its peers across all factors. The `brepjs/quick` auto-init entry point, cheat sheet, zero-to-shape tutorial, and runnable examples provide a smooth on-ramp even for web developers new to CAD.

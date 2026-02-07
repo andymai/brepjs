@@ -182,6 +182,7 @@
     "knip": "knip",
     "docs:api": "typedoc",
     "docs:generate-lookup": "npx tsx scripts/generate-function-lookup.ts",
+    "docs:generate-previews": "npx tsx scripts/generate-example-previews.ts",
     "prepare": "husky"
   },
   "devDependencies": {

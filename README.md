@@ -65,6 +65,17 @@ npm run example examples/hello-world.ts
 - **[import-export.ts](./examples/import-export.ts)** — Load, modify, export files
 - **[text-engraving.ts](./examples/text-engraving.ts)** — Engrave text on shapes
 
+## Gallery
+
+<p align="center">
+  <img src="docs/images/examples/hello-world.svg" alt="Box" width="120" />
+  <img src="docs/images/examples/boolean-ops.svg" alt="Boolean cut" width="120" />
+  <img src="docs/images/examples/bracket.svg" alt="Bracket" width="120" />
+  <img src="docs/images/examples/2d-profile.svg" alt="2D profile" width="120" />
+  <img src="docs/images/examples/pipe-fitting.svg" alt="Pipe fitting" width="120" />
+</p>
+<p align="center"><em>Box · Boolean cut · Bracket · 2D profile · Pipe fitting — see <a href="./examples/">examples/</a></em></p>
+
 ## Documentation
 
 - **[Getting Started](./docs/getting-started.md)** — Step-by-step tutorial from install to first part
