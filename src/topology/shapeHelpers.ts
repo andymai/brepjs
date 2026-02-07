@@ -708,9 +708,6 @@ export const makeCompound = (shapeArray: AnyShape[]): Compound => {
   return createCompound(compound);
 };
 
-/** @deprecated Use {@link makeCompound} instead. */
-export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => makeCompound(shapeArray);
-
 function _weld(facesOrShells: Array<Face | Shell>): AnyShape {
   const sewn = getKernel().sew(facesOrShells.map((s) => s.wrapped));
   return unwrap(cast(unwrap(downcast(sewn))));

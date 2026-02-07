@@ -32,7 +32,6 @@ export {
   makeVertex,
   makeOffset,
   makeCompound,
-  compoundShapes,
   weldShellsAndFaces,
   makeSolid,
   addHolesInFace,
@@ -73,16 +72,13 @@ export {
 
 export {
   fuseShape,
-  fuseShapes,
   cutShape,
   intersectShape,
-  intersectShapes,
   sectionShape,
   splitShape,
   sliceShape,
   fuseAll,
   cutAll,
-  buildCompound,
   type BooleanOptions,
 } from './topology/booleanFns.js';
 

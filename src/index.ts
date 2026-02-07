@@ -87,7 +87,6 @@ export {
   type TopoEntity,
   type GenericTopo,
   // shapeBooleans.ts
-  buildCompoundOc,
   applyGlue,
   // shapeModifiers.ts
   isNumber,
@@ -120,7 +119,6 @@ export {
   makeBox,
   makeVertex,
   makeOffset,
-  compoundShapes,
   makeCompound,
   weldShellsAndFaces,
   makeSolid,
@@ -517,16 +515,13 @@ export {
 
 export {
   fuseShape,
-  fuseShapes,
   cutShape,
   intersectShape,
-  intersectShapes,
   sectionShape,
   splitShape,
   sliceShape,
   fuseAll,
   cutAll,
-  buildCompound,
   type BooleanOptions,
 } from './topology/booleanFns.js';
 

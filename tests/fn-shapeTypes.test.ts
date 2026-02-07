@@ -18,7 +18,7 @@ import {
   isCompound,
   isShape3D,
   isShape1D,
-  buildCompound,
+  makeCompound,
   getFaces,
   getEdges,
   type AnyShape,
@@ -47,7 +47,7 @@ describe('getShapeKind', () => {
   it('returns compound for multiple shapes', () => {
     const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
     const box2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
-    const compound = buildCompound([box1, box2]);
+    const compound = makeCompound([box1, box2]);
     expect(getShapeKind(compound)).toBe('compound');
   });
 });
@@ -83,7 +83,7 @@ describe('type guards', () => {
   function createCompound() {
     const s1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
     const s2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
-    return buildCompound([s1, s2]);
+    return makeCompound([s1, s2]);
   }
 
   describe('isVertex', () => {
