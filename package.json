@@ -40,6 +40,46 @@
         "default": "./dist/core.cjs"
       }
     },
+    "./topology": {
+      "import": {
+        "types": "./dist/topology.d.ts",
+        "default": "./dist/topology.js"
+      },
+      "require": {
+        "types": "./dist/topology.d.ts",
+        "default": "./dist/topology.cjs"
+      }
+    },
+    "./operations": {
+      "import": {
+        "types": "./dist/operations.d.ts",
+        "default": "./dist/operations.js"
+      },
+      "require": {
+        "types": "./dist/operations.d.ts",
+        "default": "./dist/operations.cjs"
+      }
+    },
+    "./2d": {
+      "import": {
+        "types": "./dist/2d.d.ts",
+        "default": "./dist/2d.js"
+      },
+      "require": {
+        "types": "./dist/2d.d.ts",
+        "default": "./dist/2d.cjs"
+      }
+    },
+    "./sketching": {
+      "import": {
+        "types": "./dist/sketching.d.ts",
+        "default": "./dist/sketching.js"
+      },
+      "require": {
+        "types": "./dist/sketching.d.ts",
+        "default": "./dist/sketching.cjs"
+      }
+    },
     "./query": {
       "import": {
         "types": "./dist/query.d.ts",
@@ -58,6 +98,16 @@
       "require": {
         "types": "./dist/measurement.d.ts",
         "default": "./dist/measurement.cjs"
+      }
+    },
+    "./io": {
+      "import": {
+        "types": "./dist/io.d.ts",
+        "default": "./dist/io.js"
+      },
+      "require": {
+        "types": "./dist/io.d.ts",
+        "default": "./dist/io.cjs"
       }
     },
     "./worker": {
