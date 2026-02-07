@@ -16,6 +16,7 @@ import type { Edge } from '../core/shapeTypes.js';
  * - Two distances for asymmetric chamfer (first distance for the selected face).
  * - A distance and angle for asymmetric chamfer.
  */
+/* eslint-disable @typescript-eslint/no-deprecated -- public API types kept for backward compat */
 export type ChamferRadius =
   | number
   | {
@@ -37,6 +38,7 @@ export type RadiusConfig<R = number> =
   | ((e: Edge) => R | null)
   | R
   | { filter: EdgeFinder; radius: R; keep?: boolean };
+/* eslint-enable @typescript-eslint/no-deprecated */
 
 // ---------------------------------------------------------------------------
 // Type guards

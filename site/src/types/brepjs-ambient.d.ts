@@ -4232,11 +4232,11 @@ interface BooleanOptions {
  *
  * @example
  * ```ts
- * const result = fuseShapes(box, cylinder);
+ * const result = fuseShape(box, cylinder);
  * if (isOk(result)) console.log(describeShape(result.value));
  * ```
  */
-declare function fuseShapes(
+declare function fuseShape(
   a: Shape3D,
   b: Shape3D,
   { optimisation, simplify, signal }?: BooleanOptions
@@ -4269,7 +4269,7 @@ declare function cutShape(
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
  */
-declare function intersectShapes(
+declare function intersectShape(
   a: Shape3D,
   b: Shape3D,
   { simplify, signal }?: BooleanOptions

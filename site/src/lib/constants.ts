@@ -10,7 +10,7 @@ const thick = 4;    // tread thickness
 // Central column + landing pad
 const column = makeCylinder(colR, steps * rise + thick);
 const landing = makeCylinder(colR + width, thick);
-let shape = unwrap(fuseShapes(column, landing));
+let shape = unwrap(fuseShape(column, landing));
 
 // Spiral treads with railing posts
 for (let i = 0; i < steps; i++) {
@@ -22,10 +22,10 @@ for (let i = 0; i < steps; i++) {
     makeCylinder(1.5, 90),
     [colR + width - 4, 0, thick]
   );
-  const step = unwrap(fuseShapes(tread, post));
+  const step = unwrap(fuseShape(tread, post));
   const placed = translateShape(step, [0, 0, rise * (i + 1)]);
   const rotated = rotateShape(placed, twist * i);
-  shape = unwrap(fuseShapes(shape, rotated));
+  shape = unwrap(fuseShape(shape, rotated));
 }
 
 return shape;`;

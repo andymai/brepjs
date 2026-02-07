@@ -2,7 +2,7 @@ import { describe, it, beforeAll } from 'vitest';
 import { initOC } from '../tests/setup.js';
 import { makeBox, makeSphere, makeCylinder, unwrap, castShape, meshShape } from '../src/index.js';
 import { translateShape } from '../src/topology/shapeFns.js';
-import { fuseShapes } from '../src/topology/booleanFns.js';
+import { fuseShape } from '../src/topology/booleanFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -33,7 +33,7 @@ describe('Meshing benchmarks', () => {
   it('mesh a fused result (post-boolean)', async () => {
     const box = makeBox([10, 10, 10]);
     const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
-    const fused = unwrap(fuseShapes(box as any, cyl));
+    const fused = unwrap(fuseShape(box as any, cyl));
     results.push(
       await bench('mesh fused', () => {
         meshShape(fused as any);

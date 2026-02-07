@@ -20,7 +20,7 @@ import {
   clearMeshCache,
 } from '../src/index.js';
 import { translateShape } from '../src/topology/shapeFns.js';
-import { fuseShapes, cutShape } from '../src/topology/booleanFns.js';
+import { fuseShape, cutShape } from '../src/topology/booleanFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -67,7 +67,7 @@ describe('simplify=false vs simplify=true', () => {
       await bench('fuse simplify=false', () => {
         const box1 = makeBox([10, 10, 10]);
         const box2 = translateShape(makeBox([10, 10, 10]) as any, [5, 0, 0]);
-        unwrap(fuseShapes(box1 as any, box2, { simplify: false }));
+        unwrap(fuseShape(box1 as any, box2, { simplify: false }));
       })
     );
   });
@@ -77,7 +77,7 @@ describe('simplify=false vs simplify=true', () => {
       await bench('fuse simplify=true', () => {
         const box1 = makeBox([10, 10, 10]);
         const box2 = translateShape(makeBox([10, 10, 10]) as any, [5, 0, 0]);
-        unwrap(fuseShapes(box1 as any, box2, { simplify: true }));
+        unwrap(fuseShape(box1 as any, box2, { simplify: true }));
       })
     );
   });

@@ -2,7 +2,7 @@ import { describe, it, beforeAll } from 'vitest';
 import { initOC } from '../tests/setup.js';
 import { makeBox, makeCylinder, unwrap, castShape, getEdges, getFaces } from '../src/index.js';
 import { translateShape } from '../src/topology/shapeFns.js';
-import { fuseShapes } from '../src/topology/booleanFns.js';
+import { fuseShape } from '../src/topology/booleanFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -33,7 +33,7 @@ describe('Topology iteration benchmarks', () => {
   it('.edges on a fused complex shape', async () => {
     const box = makeBox([10, 10, 10]);
     const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
-    const fused = unwrap(fuseShapes(box as any, cyl));
+    const fused = unwrap(fuseShape(box as any, cyl));
     results.push(
       await bench('fused .edges', () => {
         fused.edges;
@@ -64,7 +64,7 @@ describe('Topology iteration benchmarks', () => {
   it('getEdges() on fused complex shape', async () => {
     const box = makeBox([10, 10, 10]);
     const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
-    const fused = unwrap(fuseShapes(box as any, cyl));
+    const fused = unwrap(fuseShape(box as any, cyl));
     const shape = castShape(fused.wrapped);
     results.push(
       await bench('getEdges(fused)', () => {

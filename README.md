@@ -105,7 +105,7 @@ See [docs/architecture.md](./docs/architecture.md) for the full diagram.
 brepjs uses an immutable functional API with [sub-path imports](./docs/which-api.md#sub-path-imports) for focused autocomplete:
 
 ```typescript
-import { makeBox, fuseShapes, filletShape } from 'brepjs/topology';
+import { makeBox, fuseShape, filletShape } from 'brepjs/topology';
 import { importSTEP, exportSTEP } from 'brepjs/io';
 import { measureVolume } from 'brepjs/measurement';
 ```
