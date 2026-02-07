@@ -10,13 +10,16 @@
 import ts from 'typescript';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const BREPJS_DIST = resolve(
-  import.meta.dirname,
+  __dirname,
   '../node_modules/brepjs/dist',
 );
 const ENTRY = resolve(BREPJS_DIST, 'index.d.ts');
-const OUT = resolve(import.meta.dirname, '../src/types/brepjs-ambient.d.ts');
+const OUT = resolve(__dirname, '../src/types/brepjs-ambient.d.ts');
 
 // ── Helpers ──
 
