@@ -60,10 +60,12 @@ See the [examples/](./examples/) directory for complete workflows:
 
 ## Documentation
 
+- **[Getting Started](./docs/getting-started.md)** — Step-by-step tutorial from install to first part
+- **[B-Rep Concepts](./docs/concepts.md)** — Vertices, edges, faces, solids explained for JS developers
 - **[Architecture](./docs/architecture.md)** — Layer diagram and module overview
-- **[Performance](./docs/performance.md)** — Optimization best practices
 - **[Memory Management](./docs/memory-management.md)** — Resource cleanup patterns
 - **[Error Reference](./docs/errors.md)** — Error codes and recovery
+- **[Performance](./docs/performance.md)** — Optimization best practices
 - **[Compatibility](./docs/compatibility.md)** — Tested environments
 
 ## Architecture

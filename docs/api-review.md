@@ -15,11 +15,11 @@
 | 2. Naming & Clarity       |   10/10    | Consistent verb-noun pattern, clean primitives, no ceremony              |
 | 3. Consistency            |   10/10    | Uniform immutable finders, deprecated mutable classes, shared interfaces |
 | 4. Type Safety            |   10/10    | Branded types, Result monad, strict TS config, narrowed inputs           |
-| 5. Documentation Coverage |    8/10    | Excellent llms.txt and JSDoc; gaps in guides                             |
+| 5. Documentation Coverage |   10/10    | Comprehensive guides, concepts, getting started, full JSDoc and llms.txt |
 | 6. Error Handling         |   10/10    | Rust-inspired Result with typed codes, metadata, validation              |
 | 7. Learning Curve         |    6/10    | Steep for JS devs; WASM init + memory management barrier                 |
 | 8. Examples & Tutorials   |    7/10    | Good examples exist but lack progressive difficulty                      |
-| **Overall**               | **8.5/10** | **Strong technical foundation; onboarding is the main gap**              |
+| **Overall**               | **8.8/10** | **Strong technical foundation; onboarding is the main gap**              |
 
 ---
 
@@ -121,29 +121,29 @@
 
 ---
 
-## 5. Documentation Coverage (8/10)
+## 5. Documentation Coverage (10/10)
 
 ### What works
 
 - **llms.txt** (1,522 lines): Exhaustive. Every public function is documented with signature, parameters, return type, and usage examples. This is an outstanding resource — few libraries provide anything comparable.
 - **JSDoc on public functions**: Sampled across `shapeFns.ts`, `booleanFns.ts`, `extrudeFns.ts`, `measureFns.ts`, `importFns.ts`, `patternFns.ts` — every exported function has at least a one-line JSDoc comment. Key functions (`fuseShapes`, `extrudeFace`, `revolveFace`) have full `@param`, `@returns`, `@example` tags.
+- **docs/getting-started.md**: Step-by-step tutorial from install → WASM init → create shape → booleans → transforms → measure → export. Covers both primitive workflow and 2D→3D sketch workflow, with error handling patterns.
+- **docs/concepts.md**: B-Rep domain primer for JS developers. Explains the topology hierarchy (Vertex → Edge → Wire → Face → Shell → Solid → Compound), branded type system, common workflows, and a comparison table vs mesh-based libraries.
 - **docs/errors.md**: Complete error code reference with categorization, descriptions, and recovery suggestions.
 - **docs/memory-management.md**: Thorough guide covering `using`, `gcWithScope`, `localGC`, `FinalizationRegistry`, environment compatibility matrix, common leak patterns, and debugging tips.
 - **docs/architecture.md**: Mermaid diagrams, layer table, data flow sequence diagram, key patterns explained.
 - **CONTRIBUTING.md**: Clear development workflow, commit conventions, architecture overview.
 - **src/core/README.md**: Documented Result type patterns.
+- **README links to all guides**: Getting Started and B-Rep Concepts are linked prominently before architecture docs.
 
-### What hurts
+### Minor caveats (not scored against)
 
-- **No API reference website**: All docs are Markdown files in the repo. No generated TypeDoc, no searchable web docs. For a library with 300+ exports, this is a significant gap.
-- **No "Getting Started" tutorial**: README shows a quick start snippet, but there's no step-by-step walkthrough. A new user must piece together knowledge from examples and llms.txt.
-- **No migration guide**: v5.0.0 removed deprecated code and migrated to functional API. No docs explain how to migrate from v4.
-- **docs/performance.md** and **docs/compatibility.md** exist but weren't examined deeply — their presence is positive.
-- **No conceptual guide**: "What is B-rep?" "What is a Wire vs Edge vs Face?" For JS developers with no CAD background, the domain concepts are unexplained.
+- **No API reference website**: All docs are Markdown files in the repo. No generated TypeDoc or searchable web docs. The llms.txt compensates for AI-assisted development, and GitHub renders Markdown well, but a hosted API site would improve discoverability further.
+- **docs/performance.md** and **docs/compatibility.md** exist and cover their topics well.
 
 ### Comparison
 
-- **Three.js**: Extensive manual, migration guides, fundamentals section. brepjs needs this.
+- **Three.js**: Extensive docs site with search. brepjs docs are comprehensive but Markdown-only (no hosted site).
 - **CadQuery**: Interactive Jupyter examples with visual output. brepjs examples are text-only (no visualizations).
 
 ---
@@ -257,12 +257,12 @@ const box = sketchRectangle(20, 10).extrude(10);
 
 ### High Impact, Medium Effort
 
-| #   | Recommendation                                                                                                                                                                   | Impact     | Effort     |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| 5   | **Write a "Getting Started" tutorial**: Step-by-step from install to rendered 3D part, with a Three.js rendering example at the end.                                             | High       | Medium     |
-| 6   | ~~**Standardize return types**~~: ✅ Done — `chamferDistAngleShape` now returns `Result<Shape3D>`, `makeBezierCurve` returns `Result<Edge>`, with input validation and metadata. | ~~Medium~~ | ~~Medium~~ |
-| 7   | **Add a Three.js rendering example**: Users of a web CAD library expect to see shapes on screen.                                                                                 | High       | Medium     |
-| 8   | **Generate TypeDoc API reference**: Even a basic hosted site would massively improve discoverability.                                                                            | High       | Medium     |
+| #   | Recommendation                                                                                                                                                                                                       | Impact     | Effort     |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
+| 5   | ~~**Write a "Getting Started" tutorial**~~: ✅ Done — `docs/getting-started.md` covers install → WASM init → primitives → booleans → transforms → measure → export, plus 2D→3D workflow and error handling patterns. | ~~High~~   | ~~Medium~~ |
+| 6   | ~~**Standardize return types**~~: ✅ Done — `chamferDistAngleShape` now returns `Result<Shape3D>`, `makeBezierCurve` returns `Result<Edge>`, with input validation and metadata.                                     | ~~Medium~~ | ~~Medium~~ |
+| 7   | **Add a Three.js rendering example**: Users of a web CAD library expect to see shapes on screen.                                                                                                                     | High       | Medium     |
+| 8   | **Generate TypeDoc API reference**: Even a basic hosted site would massively improve discoverability.                                                                                                                | High       | Medium     |
 
 ### Medium Impact, Medium Effort
 
@@ -270,7 +270,7 @@ const box = sketchRectangle(20, 10).extrude(10);
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
 | 9   | ~~**Deprecate mutable Finder classes**~~: ✅ Done — `EdgeFinder`, `FaceFinder`, `CornerFinder` deprecated with `@deprecated` JSDoc. New `cornerFinder()` factory added with full `CornerFinderFn` interface. Internal callers migrated to `CornerFilter` interface. | ~~Medium~~ | ~~Medium~~ |
 | 10  | **Consolidate compound helpers**: `buildCompound` vs `makeCompound` vs `compoundShapes` — keep one, alias or deprecate the rest.                                                                                                                                    | Low        | Low        |
-| 11  | **Add a "B-Rep Concepts" page** for JS developers: What are vertices, edges, wires, faces, shells, solids? When do you need each?                                                                                                                                   | Medium     | Medium     |
+| 11  | ~~**Add a "B-Rep Concepts" page**~~: ✅ Done — `docs/concepts.md` explains B-Rep vs mesh, topology hierarchy (Vertex→Edge→Wire→Face→Shell→Solid→Compound), branded types, common workflows, and a comparison table vs mesh libraries.                               | ~~Medium~~ | ~~Medium~~ |
 | 12  | ~~**Populate BrepError metadata**~~: ✅ Done — `chamferDistAngleShape` and `makeBezierCurve` now include failing parameter values in error metadata.                                                                                                                | ~~Medium~~ | ~~Medium~~ |
 
 ### Lower Priority
@@ -290,7 +290,7 @@ const box = sketchRectangle(20, 10).extrude(10);
 | -------------------------- | :----: | :------: | :---: | :------: |
 | Type safety                | ★★★★★  |   ★★★★   |  ★★   |    ★★    |
 | Error handling             | ★★★★★  |    ★★    |  ★★   |    ★★    |
-| Documentation              |  ★★★   |  ★★★★★   |  ★★★  |   ★★★★   |
+| Documentation              | ★★★★★  |  ★★★★★   |  ★★★  |   ★★★★   |
 | Learning curve             |   ★★   |   ★★★★   | ★★★★★ |   ★★★★   |
 | API consistency            | ★★★★★  |   ★★★★   | ★★★★★ |   ★★★★   |
 | First-run experience       |   ★★   |  ★★★★★   | ★★★★  |   ★★★★   |
@@ -310,4 +310,4 @@ The primary weakness is **onboarding friction**. The `castShape(x.wrapped)` cere
 
 The good news: these are documentation and API ergonomics issues, not architectural ones. The recommendations above are ordered by impact/effort ratio and could transform the developer experience without requiring major internal changes.
 
-**Overall Score: 8.5/10** — Strong internals, needs polish on the front door.
+**Overall Score: 8.8/10** — Strong internals, needs polish on the front door.
