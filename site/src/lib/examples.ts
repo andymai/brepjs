@@ -47,11 +47,9 @@ return result;`,
     title: 'Chamfered Cylinder',
     description: 'Apply chamfers to the top edges of a cylinder.',
     category: 'Operations',
-    code: `// Cylinder with chamfered top edges
+    code: `// Cylinder with chamfered edges
 const cyl = makeCylinder(20, 40);
-const edges = getEdges(cyl);
-// Chamfer only the top circular edge
-const chamfered = unwrap(chamferShape(cyl, [edges[1]], 3));
+const chamfered = unwrap(chamferShape(cyl, undefined, 3));
 return chamfered;`,
   },
   {
@@ -61,11 +59,11 @@ return chamfered;`,
     category: 'Sketching',
     code: `// Draw an L-shaped profile and extrude
 const sketch = new Sketcher()
-  .lineTo(40, 0)
-  .lineTo(0, 10)
-  .lineTo(-25, 0)
-  .lineTo(0, 30)
-  .lineTo(-15, 0)
+  .lineTo([40, 0])
+  .lineTo([40, 10])
+  .lineTo([15, 10])
+  .lineTo([15, 40])
+  .lineTo([0, 40])
   .close();
 
 const face = sketch.face();
@@ -79,11 +77,11 @@ return solid;`,
     category: 'Sketching',
     code: `// Revolve a profile to create a vase shape
 const sketch = new Sketcher()
-  .lineTo(15, 0)
-  .lineTo(5, 20)
-  .lineTo(-5, 15)
-  .lineTo(8, 25)
-  .lineTo(-23, 0)
+  .lineTo([15, 0])
+  .lineTo([20, 20])
+  .lineTo([15, 35])
+  .lineTo([23, 60])
+  .lineTo([0, 60])
   .close();
 
 const face = sketch.face();

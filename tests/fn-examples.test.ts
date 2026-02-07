@@ -1,161 +1,97 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+/**
+ * Tests that every playground example code string actually runs successfully.
+ *
+ * This mirrors how the web worker evaluates examples: all brepjs exports are
+ * placed on globalThis, then the code string is executed via `new Function(code)`.
+ * This catches API mismatches that per-function unit tests would miss.
+ */
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { initOC } from './setup.js';
-import {
-  makeBox,
-  makeCylinder,
-  makeSphere,
-  filletShape,
-  chamferShape,
-  cutShape,
-  fuseShapes,
-  translateShape,
-  rotateShape,
-  getEdges,
-  unwrap,
-  isSolid,
-  isShape3D,
-  Sketcher,
-  basicFaceExtrusion,
-  revolveFace,
-} from '../src/index.js';
+import * as brepjs from '../src/index.js';
+
+// Read example code strings from the site source at test time.
+// We parse the JS module as text to extract the code blocks, avoiding a
+// cross-project import that breaks eslint's TypeScript project service.
+function loadExampleCodes(): Array<{ id: string; code: string }> {
+  const src = readFileSync(resolve(import.meta.dirname, '../site/src/lib/examples.ts'), 'utf-8');
+  const constantsSrc = readFileSync(
+    resolve(import.meta.dirname, '../site/src/lib/constants.ts'),
+    'utf-8'
+  );
+
+  // Extract HERO_CODE from constants.ts
+  const heroMatch = constantsSrc.match(/export const HERO_CODE = `([\s\S]*?)`;/);
+  const heroCode = heroMatch ? heroMatch[1] : '';
+
+  // Extract each example's id and code from the examples array
+  const results: Array<{ id: string; code: string }> = [];
+  const exampleRegex = /id:\s*'([^']+)',[\s\S]*?code:\s*(?:`([\s\S]*?)`|HERO_CODE)/g;
+  let match;
+  while ((match = exampleRegex.exec(src)) !== null) {
+    const id = match[1];
+    const code = match[2] ?? heroCode;
+    results.push({ id, code });
+  }
+  return results;
+}
+
+const injectedKeys: string[] = [];
 
 beforeAll(async () => {
   await initOC();
+
+  // Inject all brepjs exports onto globalThis, just like the worker does.
+  const g = globalThis as Record<string, unknown>;
+  for (const [key, value] of Object.entries(brepjs)) {
+    if (key === 'default') continue;
+    g[key] = value;
+    injectedKeys.push(key);
+  }
 }, 30000);
 
-describe('Example 1: Simple Box', () => {
-  it('produces a valid solid', () => {
-    // A simple 40×30×20 box
-    const box = makeBox([0, 0, 0], [40, 30, 20]);
-
-    expect(box).toBeDefined();
-    expect(isSolid(box)).toBe(true);
-  });
+afterAll(() => {
+  const g = globalThis as Record<string, unknown>;
+  for (const key of injectedKeys) {
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete g[key];
+  }
 });
 
-describe('Example 2: Filleted Box', () => {
-  it('produces a valid 3D shape', () => {
-    // Create a box and fillet all edges
-    const box = makeBox([0, 0, 0], [40, 30, 20]);
-    const filleted = unwrap(filletShape(box, undefined, 3));
+/**
+ * Execute an example code string the same way the worker does:
+ * wrap in `new Function()` and call it.
+ */
+function runExample(code: string): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval -- intentional: mirrors worker eval
+  const fn = new Function(code);
+  return fn();
+}
 
-    expect(filleted).toBeDefined();
-    expect(isShape3D(filleted)).toBe(true);
-  });
-});
+describe('playground examples', () => {
+  const examples = loadExampleCodes();
 
-describe('Example 3: Boolean Subtraction', () => {
-  it('produces a valid 3D shape', () => {
-    // Box with a cylindrical hole
-    const box = makeBox([0, 0, 0], [40, 40, 20]);
-    const cyl = translateShape(makeCylinder(10, 30), [20, 20, -5]);
-    const result = unwrap(cutShape(box, cyl));
+  // Spiral staircase (16 steps of boolean fuse) is slow
+  const SLOW_IDS = new Set(['spiral-staircase']);
 
-    expect(result).toBeDefined();
-    expect(isShape3D(result)).toBe(true);
-  });
-});
+  for (const example of examples) {
+    const timeout = SLOW_IDS.has(example.id) ? 60000 : 15000;
 
-describe('Example 4: Chamfered Cylinder', () => {
-  it('produces a valid 3D shape', () => {
-    // Cylinder with chamfered edges
-    const cyl = makeCylinder(20, 40);
-    // Chamfer all edges with a small radius
-    const chamfered = unwrap(chamferShape(cyl, undefined, 2));
+    it(
+      `${example.id}: runs without error and returns geometry`,
+      () => {
+        const result = runExample(example.code);
 
-    expect(chamfered).toBeDefined();
-    expect(isShape3D(chamfered)).toBe(true);
-  });
-});
+        expect(result).toBeDefined();
+        expect(result).not.toBeNull();
 
-describe('Example 5: Extruded L-Shape', () => {
-  it('produces a valid solid', () => {
-    // Draw an L-shaped profile and extrude
-    const sketch = new Sketcher()
-      .lineTo([40, 0])
-      .lineTo([40, 10])
-      .lineTo([15, 10])
-      .lineTo([15, 40])
-      .lineTo([0, 40])
-      .close();
-
-    const face = sketch.face();
-    const solid = basicFaceExtrusion(face, [0, 0, 15]);
-
-    expect(solid).toBeDefined();
-    expect(isSolid(solid)).toBe(true);
-  });
-});
-
-describe('Example 6: Revolved Profile', () => {
-  it('produces a valid solid', () => {
-    // Revolve a profile to create a vase shape
-    const sketch = new Sketcher()
-      .lineTo([15, 0])
-      .lineTo([20, 20])
-      .lineTo([15, 35])
-      .lineTo([23, 60])
-      .lineTo([0, 60])
-      .close();
-
-    const face = sketch.face();
-    const vase = unwrap(revolveFace(face));
-
-    expect(vase).toBeDefined();
-    expect(isSolid(vase)).toBe(true);
-  });
-});
-
-describe('Example 7: Sphere with Holes', () => {
-  it('produces a valid 3D shape', () => {
-    // Sphere with holes along X, Y, and Z axes
-    let shape = makeSphere(25);
-    const hole = makeCylinder(8, 60);
-
-    // Z-axis hole
-    const holeZ = translateShape(hole, [0, 0, -30]);
-    shape = unwrap(cutShape(shape, holeZ));
-
-    // X-axis hole
-    const holeX = rotateShape(translateShape(hole, [0, 0, -30]), 90, [0, 0, 0], [0, 1, 0]);
-    shape = unwrap(cutShape(shape, holeX));
-
-    // Y-axis hole
-    const holeY = rotateShape(translateShape(hole, [0, 0, -30]), 90, [0, 0, 0], [1, 0, 0]);
-    shape = unwrap(cutShape(shape, holeY));
-
-    expect(shape).toBeDefined();
-    expect(isShape3D(shape)).toBe(true);
-  });
-});
-
-describe('Example 8: Spiral Staircase', () => {
-  it('produces a valid 3D shape', () => {
-    // Parametric spiral staircase (cm) - using reduced step count for faster test
-    const steps = 3;
-    const rise = 18; // height per step
-    const twist = 22.5; // degrees per step
-    const width = 70; // tread width
-    const depth = 25; // tread depth
-    const colR = 12; // column radius
-    const thick = 4; // tread thickness
-
-    // Central column + landing pad
-    const column = makeCylinder(colR, steps * rise + thick);
-    const landing = makeCylinder(colR + width, thick);
-    let shape = unwrap(fuseShapes(column, landing));
-
-    // Spiral treads with railing posts
-    for (let i = 0; i < steps; i++) {
-      const tread = makeBox([0, -depth / 2, 0], [colR + width, depth / 2, thick]);
-      const post = translateShape(makeCylinder(1.5, 90), [colR + width - 4, 0, thick]);
-      const step = unwrap(fuseShapes(tread, post));
-      const placed = translateShape(step, [0, 0, rise * (i + 1)]);
-      const rotated = rotateShape(placed, twist * i);
-      shape = unwrap(fuseShapes(shape, rotated));
-    }
-
-    expect(shape).toBeDefined();
-    expect(isShape3D(shape)).toBe(true);
-  });
+        // Every example should return something that brepjs identifies as a 3D shape
+        const is3D = brepjs.isShape3D(result);
+        const isSolid = brepjs.isSolid(result);
+        expect(is3D || isSolid).toBe(true);
+      },
+      timeout
+    );
+  }
 });
