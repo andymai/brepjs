@@ -519,16 +519,18 @@ describe('shapeHelpers', () => {
     ).toBe(true);
   });
   it('makeBezier', () => {
-    expect(
-      isEdge(
-        makeBezierCurve([
-          [0, 0, 0],
-          [3, 5, 0],
-          [7, 5, 0],
-          [10, 0, 0],
-        ])
-      )
-    ).toBe(true);
+    const result = makeBezierCurve([
+      [0, 0, 0],
+      [3, 5, 0],
+      [7, 5, 0],
+      [10, 0, 0],
+    ]);
+    expect(isOk(result)).toBe(true);
+    expect(isEdge(unwrap(result))).toBe(true);
+  });
+  it('makeBezierCurve returns Err for fewer than 2 points', () => {
+    expect(isErr(makeBezierCurve([]))).toBe(true);
+    expect(isErr(makeBezierCurve([[1, 2, 3]]))).toBe(true);
   });
   it('makeTangentArc', () => {
     expect(isEdge(makeTangentArc([0, 0, 0], [1, 0, 0], [5, 5, 0]))).toBe(true);

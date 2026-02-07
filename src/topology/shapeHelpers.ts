@@ -5,7 +5,7 @@ import { toOcPnt, toOcVec, makeOcAx1, makeOcAx2, makeOcAx3 } from '../core/occtB
 import type { Vec3 } from '../core/types.js';
 import { cast, downcast } from './cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
-import { bug, validationError, occtError, typeCastError } from '../core/errors.js';
+import { validationError, occtError, typeCastError } from '../core/errors.js';
 import type {
   AnyShape,
   Shape3D,
@@ -281,10 +281,20 @@ export const makeBSplineApproximation = function makeBSplineApproximation(
  * Create a Bezier curve edge from control points.
  *
  * @param points - Two or more control points defining the curve.
+ * @returns Ok with the edge, or Err if fewer than 2 points are provided.
  */
-export const makeBezierCurve = (points: Vec3[]): Edge => {
+export const makeBezierCurve = (points: Vec3[]): Result<Edge> => {
   if (points.length < 2) {
-    bug('makeBezierCurve', `Need at least 2 points for a Bezier curve, got ${points.length}`);
+    return err(
+      validationError(
+        'BEZIER_MIN_POINTS',
+        `Need at least 2 points for a Bezier curve, got ${points.length}`,
+        undefined,
+        {
+          pointCount: points.length,
+        }
+      )
+    );
   }
   const oc = getKernel().oc;
   const [r, gc] = localGC();
@@ -298,7 +308,7 @@ export const makeBezierCurve = (points: Vec3[]): Edge => {
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_24(curve));
   const edge = createEdge(edgeMaker.Edge());
   gc();
-  return edge;
+  return ok(edge);
 };
 
 /**

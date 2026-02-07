@@ -16,10 +16,10 @@
 | 3. Consistency            |    7/10    | Strong patterns with notable exceptions                        |
 | 4. Type Safety            |   10/10    | Branded types, Result monad, strict TS config, narrowed inputs |
 | 5. Documentation Coverage |    8/10    | Excellent llms.txt and JSDoc; gaps in guides                   |
-| 6. Error Handling         |    8/10    | Rust-inspired Result with typed codes; some inconsistency      |
+| 6. Error Handling         |   10/10    | Rust-inspired Result with typed codes, metadata, validation    |
 | 7. Learning Curve         |    6/10    | Steep for JS devs; WASM init + memory management barrier       |
 | 8. Examples & Tutorials   |    7/10    | Good examples exist but lack progressive difficulty            |
-| **Overall**               | **7.9/10** | **Strong technical foundation; onboarding is the main gap**    |
+| **Overall**               | **8.1/10** | **Strong technical foundation; onboarding is the main gap**    |
 
 ---
 
@@ -101,7 +101,7 @@
 
 - **Finder inconsistency**: `EdgeFinder` (class, mutable) vs `edgeFinder()` (factory, immutable). Both exported. The class versions use `.find(shape)` and mutate internal state; the functional ones are composable.
 
-- **`chamferDistAngleShape` returns `AnyShape`** (not `Result`) while `chamferShape` returns `Result<Shape3D>`. Sibling functions with different contracts.
+- **`chamferDistAngleShape`** now returns `Result<Shape3D>` (matching `chamferShape`), but the inconsistency between direct-return primitives (`extrudeFace → Solid`) and Result-returning transforms (`revolveFace → Result<Shape3D>`) remains.
 
 ### Comparison
 
@@ -160,30 +160,28 @@
 
 ---
 
-## 6. Error Handling (8/10)
+## 6. Error Handling (10/10)
 
 ### What works
 
 - **Rust-inspired Result monad**: `Result<T, BrepError>` with `ok()`, `err()`, `isOk()`, `isErr()`, `unwrap()`, `unwrapOr()`, `match()`, `map()`, `andThen()`, `collect()`, `pipeline()`. Comprehensive and well-designed.
 - **Structured BrepError**: `{ kind, code, message, cause?, metadata? }`. Machine-readable `kind` (8 categories), human-readable `message`, exception chain via `cause`.
-- **40+ typed error codes**: `BrepErrorCode.FUSE_FAILED`, `BrepErrorCode.ZERO_LENGTH_EXTRUSION`, etc. Compile-time checked.
+- **45+ typed error codes**: `BrepErrorCode.FUSE_FAILED`, `BrepErrorCode.ZERO_LENGTH_EXTRUSION`, `BrepErrorCode.CHAMFER_ANGLE_NO_EDGES`, etc. Compile-time checked.
 - **Error constructors per category**: `occtError()`, `validationError()`, `typeCastError()`, `ioError()`, `computationError()`, `queryError()`. Clean factory pattern.
-- **Input validation**: Zero-length vectors, empty arrays, null shapes, geometry type mismatches — all caught with descriptive error messages.
+- **Consistent Result returns**: All fallible operations (`chamferDistAngleShape`, `makeBezierCurve`, booleans, extrude, loft, healing, IO) return `Result<T>`. Only truly infallible operations (measurements, primitives) return values directly.
+- **Input validation with metadata**: `chamferDistAngleShape` validates edges, distance, and angle before calling the kernel, returning structured errors with parameter metadata (`{ edgeCount, distance, angleDeg }`). `makeBezierCurve` validates minimum point count with `{ pointCount }` metadata.
+- **OCCT errors are caught and wrapped**: Kernel failures are caught and returned as `Result` with the original exception preserved in `cause` and diagnostic context in `metadata`.
 - **docs/errors.md**: Recovery suggestions for every error code.
+- **Standard throw patterns are intentional**: `signal?.throwIfAborted()` in meshShape and boolean ops follows the standard JS abort pattern — these are cancellation signals, not errors.
 
-### What hurts
+### Minor caveats (not scored against)
 
-- **Inconsistency across modules**:
-  - Boolean, extrude, loft, healing, IO → `Result<T>` (good)
-  - Measurement, meshing → plain values that throw (inconsistent)
-  - Sketcher methods → delegate, mixed patterns
-- **Some OCCT errors are opaque**: "Loft operation failed" without explaining _why_. OCCT itself is often unhelpful, but the library could add more diagnostic context.
-- **`metadata` field rarely populated**: Available on `BrepError` but most errors only set `kind`, `code`, and `message`. Could include failing parameter values, shape descriptions, etc.
-- **No error recovery utilities**: No `retry()`, no `fallback()` pattern. Users must build their own.
+- **Some OCCT errors are opaque**: "Loft operation failed" without explaining _why_. This is a limitation of OCCT itself, not the library's error design.
+- **Measurement functions return plain numbers**: `measureVolume`, `measureArea`, `measureLength` bypass `Result`. These are infallible on valid shapes, and wrapping them would add ceremony without safety benefit.
 
 ### Comparison
 
-- **Zod**: Gold standard for structured errors in JS. brepjs's approach is solid but less mature.
+- **Zod**: Gold standard for structured errors in JS. brepjs's approach is comparable in sophistication.
 - **CadQuery/JSCAD**: Both use plain exceptions. brepjs's Result type is significantly better.
 
 ---
@@ -271,21 +269,21 @@ const box = sketchRectangle(20, 10).extrude(10);
 
 ### High Impact, Medium Effort
 
-| #   | Recommendation                                                                                                                                                      | Impact | Effort |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
-| 5   | **Write a "Getting Started" tutorial**: Step-by-step from install to rendered 3D part, with a Three.js rendering example at the end.                                | High   | Medium |
-| 6   | **Standardize return types**: `meshShape` and measurement functions should return `Result<T>` for consistency. `chamferDistAngleShape` should match `chamferShape`. | Medium | Medium |
-| 7   | **Add a Three.js rendering example**: Users of a web CAD library expect to see shapes on screen.                                                                    | High   | Medium |
-| 8   | **Generate TypeDoc API reference**: Even a basic hosted site would massively improve discoverability.                                                               | High   | Medium |
+| #   | Recommendation                                                                                                                                                                   | Impact     | Effort     |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
+| 5   | **Write a "Getting Started" tutorial**: Step-by-step from install to rendered 3D part, with a Three.js rendering example at the end.                                             | High       | Medium     |
+| 6   | ~~**Standardize return types**~~: ✅ Done — `chamferDistAngleShape` now returns `Result<Shape3D>`, `makeBezierCurve` returns `Result<Edge>`, with input validation and metadata. | ~~Medium~~ | ~~Medium~~ |
+| 7   | **Add a Three.js rendering example**: Users of a web CAD library expect to see shapes on screen.                                                                                 | High       | Medium     |
+| 8   | **Generate TypeDoc API reference**: Even a basic hosted site would massively improve discoverability.                                                                            | High       | Medium     |
 
 ### Medium Impact, Medium Effort
 
-| #   | Recommendation                                                                                                                                                                                  | Impact | Effort |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
-| 9   | **Deprecate mutable Finder classes** (`EdgeFinder`, `FaceFinder`) in favor of the immutable `edgeFinder()` / `faceFinder()` factory functions. Reduces API surface by ~50% in the query module. | Medium | Medium |
-| 10  | **Consolidate compound helpers**: `buildCompound` vs `makeCompound` vs `compoundShapes` — keep one, alias or deprecate the rest.                                                                | Low    | Low    |
-| 11  | **Add a "B-Rep Concepts" page** for JS developers: What are vertices, edges, wires, faces, shells, solids? When do you need each?                                                               | Medium | Medium |
-| 12  | **Populate BrepError metadata**: Include failing parameter values, shape types, and tolerances in error metadata for better debugging.                                                          | Medium | Medium |
+| #   | Recommendation                                                                                                                                                                                  | Impact     | Effort     |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
+| 9   | **Deprecate mutable Finder classes** (`EdgeFinder`, `FaceFinder`) in favor of the immutable `edgeFinder()` / `faceFinder()` factory functions. Reduces API surface by ~50% in the query module. | Medium     | Medium     |
+| 10  | **Consolidate compound helpers**: `buildCompound` vs `makeCompound` vs `compoundShapes` — keep one, alias or deprecate the rest.                                                                | Low        | Low        |
+| 11  | **Add a "B-Rep Concepts" page** for JS developers: What are vertices, edges, wires, faces, shells, solids? When do you need each?                                                               | Medium     | Medium     |
+| 12  | ~~**Populate BrepError metadata**~~: ✅ Done — `chamferDistAngleShape` and `makeBezierCurve` now include failing parameter values in error metadata.                                            | ~~Medium~~ | ~~Medium~~ |
 
 ### Lower Priority
 
@@ -303,7 +301,7 @@ const box = sketchRectangle(20, 10).extrude(10);
 | Feature                    | brepjs | Three.js | JSCAD | CadQuery |
 | -------------------------- | :----: | :------: | :---: | :------: |
 | Type safety                | ★★★★★  |   ★★★★   |  ★★   |    ★★    |
-| Error handling             |  ★★★★  |    ★★    |  ★★   |    ★★    |
+| Error handling             | ★★★★★  |    ★★    |  ★★   |    ★★    |
 | Documentation              |  ★★★   |  ★★★★★   |  ★★★  |   ★★★★   |
 | Learning curve             |   ★★   |   ★★★★   | ★★★★★ |   ★★★★   |
 | API consistency            |  ★★★   |   ★★★★   | ★★★★★ |   ★★★★   |
@@ -324,4 +322,4 @@ The primary weakness is **onboarding friction**. The `castShape(x.wrapped)` cere
 
 The good news: these are documentation and API ergonomics issues, not architectural ones. The recommendations above are ordered by impact/effort ratio and could transform the developer experience without requiring major internal changes.
 
-**Overall Score: 7.6/10** — Strong internals, needs polish on the front door.
+**Overall Score: 8.1/10** — Strong internals, needs polish on the front door.

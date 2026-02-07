@@ -3,6 +3,7 @@ import { initOC } from './setup.js';
 import {
   chamferDistAngleShape,
   isOk,
+  isErr,
   unwrap,
   measureVolume,
   isShape3D,
@@ -27,11 +28,13 @@ describe('chamferDistAngleShape', () => {
     expect(edges.length).toBe(12);
 
     const result = chamferDistAngleShape(box, [edges[0]!], 1, 45);
-    expect(isShape3D(result)).toBe(true);
+    expect(isOk(result)).toBe(true);
+    const chamfered = unwrap(result);
+    expect(isShape3D(chamfered)).toBe(true);
 
     // Chamfered box should have less volume than original
     const origVol = measureVolume(box);
-    const chamfVol = measureVolume(result);
+    const chamfVol = measureVolume(chamfered);
     expect(chamfVol).toBeLessThan(origVol);
     expect(chamfVol).toBeGreaterThan(0);
   });
@@ -42,10 +45,12 @@ describe('chamferDistAngleShape', () => {
     const selected = edges.slice(0, 4);
 
     const result = chamferDistAngleShape(box, selected, 1, 45);
-    expect(isShape3D(result)).toBe(true);
+    expect(isOk(result)).toBe(true);
+    const chamfered = unwrap(result);
+    expect(isShape3D(chamfered)).toBe(true);
 
     const origVol = measureVolume(box);
-    const chamfVol = measureVolume(result);
+    const chamfVol = measureVolume(chamfered);
     expect(chamfVol).toBeLessThan(origVol);
   });
 
@@ -55,8 +60,8 @@ describe('chamferDistAngleShape', () => {
 
     // A smaller angle should remove less material than a larger angle
     // at the same distance
-    const result30 = chamferDistAngleShape(box, [edges[0]!], 2, 30);
-    const result60 = chamferDistAngleShape(box, [edges[0]!], 2, 60);
+    const result30 = unwrap(chamferDistAngleShape(box, [edges[0]!], 2, 30));
+    const result60 = unwrap(chamferDistAngleShape(box, [edges[0]!], 2, 60));
 
     const vol30 = measureVolume(result30);
     const vol60 = measureVolume(result60);
@@ -75,10 +80,12 @@ describe('chamferDistAngleShape', () => {
     expect(edges.length).toBe(12);
 
     const result = chamferDistAngleShape(box, edges, 1, 45);
-    expect(isShape3D(result)).toBe(true);
+    expect(isOk(result)).toBe(true);
+    const chamfered = unwrap(result);
+    expect(isShape3D(chamfered)).toBe(true);
 
     const origVol = measureVolume(box);
-    const chamfVol = measureVolume(result);
+    const chamfVol = measureVolume(chamfered);
     expect(chamfVol).toBeLessThan(origVol);
     expect(chamfVol).toBeGreaterThan(origVol * 0.8); // Not too much removed
   });
@@ -90,5 +97,26 @@ describe('chamferDistAngleShape', () => {
 
     chamferDistAngleShape(box, [edges[0]!], 1, 45);
     expect(measureVolume(box)).toBeCloseTo(origVol, 6);
+  });
+
+  it('returns Err for empty edges array', () => {
+    const box = makeBox(10, 10, 10);
+    const result = chamferDistAngleShape(box, [], 1, 45);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns Err for non-positive distance', () => {
+    const box = makeBox(10, 10, 10);
+    const edges = getEdges(box);
+    const result = chamferDistAngleShape(box, [edges[0]!], 0, 45);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns Err for angle out of range', () => {
+    const box = makeBox(10, 10, 10);
+    const edges = getEdges(box);
+    expect(isErr(chamferDistAngleShape(box, [edges[0]!], 1, 0))).toBe(true);
+    expect(isErr(chamferDistAngleShape(box, [edges[0]!], 1, 90))).toBe(true);
+    expect(isErr(chamferDistAngleShape(box, [edges[0]!], 1, -10))).toBe(true);
   });
 });
