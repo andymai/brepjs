@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.22.0](https://github.com/andymai/brepjs/compare/brepjs-v4.21.3...brepjs-v4.22.0) (2026-02-07)
+
+
+### Features
+
+* hosted TypeDoc API reference and function lookup table (API Discoverability 8→10) ([#157](https://github.com/andymai/brepjs/issues/157)) ([2d3dd8b](https://github.com/andymai/brepjs/commit/2d3dd8bb12523b97c1d4ab20be103296f7f621a3))
+
 ## [4.21.3](https://github.com/andymai/brepjs/compare/brepjs-v4.21.2...brepjs-v4.21.3) (2026-02-07)
 
 
