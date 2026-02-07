@@ -17,7 +17,7 @@ npm install brepjs brepjs-opencascade
 ```typescript
 import opencascade from 'brepjs-opencascade';
 import {
-  setOC,
+  initFromOC,
   makeBox,
   makeCylinder,
   castShape,
@@ -31,7 +31,7 @@ import {
 
 // Initialize the WASM kernel
 const oc = await opencascade();
-setOC(oc);
+initFromOC(oc);
 
 // Create primitive shapes
 const box = castShape(makeBox([0, 0, 0], [50, 30, 20]).wrapped);

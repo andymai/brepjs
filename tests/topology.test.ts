@@ -42,7 +42,6 @@ import {
   Solid,
   EdgeFinder,
   FaceFinder,
-  registerQueryModule,
   // Functional API imports
   serializeShape,
   getHashCode,
@@ -96,7 +95,6 @@ import { fuseShapes, cutShape, intersectShapes } from '../src/topology/booleanFn
 
 beforeAll(async () => {
   await initOC();
-  registerQueryModule({ EdgeFinder, FaceFinder });
 }, 30000);
 
 describe('Shape base methods', () => {

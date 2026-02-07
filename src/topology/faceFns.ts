@@ -292,17 +292,3 @@ export function innerWires(face: Face): Wire[] {
   const result = allWires.filter((w) => !w.wrapped.IsSame(outer.wrapped));
   return result;
 }
-
-// ---------------------------------------------------------------------------
-// Triangulation types (kept for shapes.ts backward compat, function removed)
-// ---------------------------------------------------------------------------
-
-/** Raw triangulation data for a single face (vertices, triangle indices, normals). */
-export interface FaceTriangulation {
-  /** Flat array of vertex positions (x,y,z interleaved). */
-  vertices: number[];
-  /** Flat array of triangle vertex indices (3 per triangle). */
-  trianglesIndexes: number[];
-  /** Flat array of vertex normals (x,y,z interleaved). */
-  verticesNormals: number[];
-}

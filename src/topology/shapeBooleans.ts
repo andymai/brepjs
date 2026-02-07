@@ -1,17 +1,9 @@
 /**
- * Boolean operations for shapes — standalone functions for fuse/cut operations.
- *
- * These functions are re-exported from shapes.ts for backward compatibility.
+ * Boolean operation helpers — compound builders and glue optimization.
  */
 
 import type { OcShape, OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope } from '../core/memory.js';
-import { typeCastError, validationError } from '../core/errors.js';
-import { type Result, ok, err, isErr, andThen } from '../core/result.js';
-import { cast } from './cast.js';
-import type { AnyShape, Shape3D } from '../core/shapeTypes.js';
-import { isShape3D as isShape3DCheck, getShapeKind } from '../core/shapeTypes.js';
 
 /** Options for boolean operations (fuse, cut, intersect). */
 export type BooleanOperationOptions = {
@@ -19,14 +11,6 @@ export type BooleanOperationOptions = {
   simplify?: boolean;
   strategy?: 'native' | 'pairwise';
 };
-
-// ---------------------------------------------------------------------------
-// Internal: isShape3D check using branded type guard
-// ---------------------------------------------------------------------------
-
-function isShape3DInternal(shape: AnyShape): shape is Shape3D {
-  return isShape3DCheck(shape);
-}
 
 // ---------------------------------------------------------------------------
 // Compound builders
@@ -46,13 +30,6 @@ export function buildCompoundOc(shapes: OcType[]): OcShape {
   }
   builder.delete();
   return compound;
-}
-
-/**
- * Builds a TopoDS_Compound from Shape3D instances.
- */
-export function buildCompound(shapes: Shape3D[]): OcShape {
-  return buildCompoundOc(shapes.map((s) => s.wrapped));
 }
 
 // ---------------------------------------------------------------------------
@@ -76,127 +53,4 @@ export function applyGlue(
   if (optimisation === 'sameFace') {
     op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
   }
-}
-
-// ---------------------------------------------------------------------------
-// Batch boolean operations
-// ---------------------------------------------------------------------------
-
-/**
- * Fuses all given shapes in a single boolean operation.
- *
- * @category Boolean Operations
- */
-export function fuseAll(
-  shapes: Shape3D[],
-  { optimisation = 'none', simplify = false, strategy = 'native' }: BooleanOperationOptions = {}
-): Result<Shape3D> {
-  if (shapes.length === 0)
-    return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  if (shapes.length === 1) return ok(shapes[0]!);
-
-  if (strategy === 'native') {
-    // Delegate to kernel's native N-way fuse via BRepAlgoAPI_BuilderAlgo
-    const result = getKernel().fuseAll(
-      shapes.map((s) => s.wrapped),
-      { optimisation, simplify, strategy }
-    );
-    // Get the raw shape type before casting for better error messages
-    // Emscripten enums are objects with a .value property
-    const shapeTypeEnumRaw: unknown = result.ShapeType();
-    // Emscripten enums are objects with a .value property at runtime
-    const shapeTypeEnum =
-      typeof shapeTypeEnumRaw === 'object' && shapeTypeEnumRaw !== null
-        ? (shapeTypeEnumRaw as { value: number }).value
-        : shapeTypeEnumRaw;
-    const typeNames = [
-      'COMPOUND',
-      'COMPSOLID',
-      'SOLID',
-      'SHELL',
-      'FACE',
-      'WIRE',
-      'EDGE',
-      'VERTEX',
-      'SHAPE',
-    ];
-    const rawTypeName =
-      typeof shapeTypeEnum === 'number'
-        ? (typeNames[shapeTypeEnum] ?? `UNKNOWN(${shapeTypeEnum})`)
-        : 'UNKNOWN';
-
-    return andThen(cast(result), (newShape) => {
-      if (!isShape3DInternal(newShape)) {
-        return err(
-          typeCastError(
-            'FUSE_ALL_NOT_3D',
-            `fuseAll did not produce a 3D shape. Got ${rawTypeName} (${getShapeKind(newShape)}) instead.`
-          )
-        );
-      }
-      return ok(newShape);
-    });
-  }
-
-  // Pairwise fallback: recursive divide-and-conquer
-  // Defer simplification to the final fuse — intermediate simplification is wasted work.
-  const mid = Math.ceil(shapes.length / 2);
-  const leftResult = fuseAll(shapes.slice(0, mid), { optimisation, simplify: false, strategy });
-  if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify: false, strategy });
-  if (isErr(rightResult)) return rightResult;
-
-  // Inline the fuse operation to avoid dependency on _3DShape.fuse()
-  const r = gcWithScope();
-  const progress = r(new (getKernel().oc.Message_ProgressRange_1)());
-  const fuseOp = r(
-    new (getKernel().oc.BRepAlgoAPI_Fuse_3)(
-      leftResult.value.wrapped,
-      rightResult.value.wrapped,
-      progress
-    )
-  );
-  applyGlue(fuseOp, optimisation);
-  fuseOp.Build(progress);
-  if (simplify) fuseOp.SimplifyResult(true, true, 1e-3);
-  return andThen(cast(fuseOp.Shape()), (newShape) => {
-    if (!isShape3DInternal(newShape))
-      return err(
-        typeCastError('FUSE_ALL_NOT_3D', 'fuseAll pairwise fuse did not produce a 3D shape')
-      );
-    return ok(newShape);
-  });
-}
-
-/**
- * Cuts all tool shapes from the base shape in a single boolean operation.
- *
- * @category Boolean Operations
- */
-export function cutAll(
-  base: Shape3D,
-  tools: Shape3D[],
-  { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
-): Result<Shape3D> {
-  if (tools.length === 0) return ok(base);
-
-  const oc = getKernel().oc;
-  const r = gcWithScope();
-
-  const toolCompound = r(buildCompound(tools));
-
-  const progress = r(new oc.Message_ProgressRange_1());
-  const cutOp = r(new oc.BRepAlgoAPI_Cut_3(base.wrapped, toolCompound, progress));
-  applyGlue(cutOp, optimisation);
-  cutOp.Build(progress);
-  if (simplify) {
-    cutOp.SimplifyResult(true, true, 1e-3);
-  }
-
-  return andThen(cast(cutOp.Shape()), (newShape) => {
-    if (!isShape3DInternal(newShape))
-      return err(typeCastError('CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape'));
-    return ok(newShape);
-  });
 }

@@ -12,37 +12,29 @@ npm install brepjs brepjs-opencascade
 Initialize the WASM kernel before any CAD operations:
 ```typescript
 import opencascade from 'brepjs-opencascade';
-import { setOC } from 'brepjs';
+import { initFromOC } from 'brepjs';
 
 const oc = await opencascade();
-setOC(oc);
+initFromOC(oc);
 ```
 
-`setOC(oc)` must be called once before using any brepjs API. All shape-creating functions require the kernel to be initialized.
+`initFromOC(oc)` must be called once before using any brepjs API. All shape-creating functions require the kernel to be initialized.
 
-## Two API Styles
+## API Style
 
-brepjs provides two parallel API styles. Both are fully supported:
+brepjs uses a functional API with branded types (`Solid`, `Face`, `Edge`, etc.) and `Result<T>` for error handling. Functions like `fuseShapes()`, `translateShape()`, `filletShape()` are pure — they never dispose inputs. Use `unwrap()` to extract values from `Result<T>`, or `isOk()`/`isErr()` to check success.
 
-**OOP (class-based)**: Shape classes like `Solid`, `Face`, `Edge` with methods. Created by sketching API and topology helpers. Methods mutate or return new instances. Uses `WrappingObj` base class for WASM handle management.
+### Branded Shape Types
 
-**Functional**: Standalone functions like `fuseShapes()`, `translateShape()`, `filletShape()`. Use branded types (`Solid`, `Face`, etc.) and return `Result<T>` for error handling. Immutable — never dispose inputs.
+Shape types are lightweight branded handles (not classes):
+- `Vertex` — use `vertexPosition(v)` to get coordinates
+- `Edge`, `Wire` — use `curveStartPoint()`, `curveEndPoint()`, `curveLength()`, `getCurveType()`, etc.
+- `Face` — use `normalAt()`, `faceCenter()`, `faceGeomType()`, `uvBounds()`, `pointOnSurface()`, `outerWire()`, `innerWires()`
+- `Shell`, `Solid`, `CompSolid`, `Compound` — 3D shapes for booleans/modifiers
+- `AnyShape` — union of all shape types
+- `Shape3D` — union of Shell | Solid | CompSolid | Compound
 
-Both operate on the same underlying OCCT shapes. OOP shape classes from sketching (`sketchCircle().extrude()`) work with OOP methods (`.fuse()`, `.cut()`). Functional API functions work on shapes from either style.
-
-**IMPORTANT — OOP move semantics**: OOP transform methods (`.translate()`, `.rotate()`, `.mirror()`, `.scale()`) and face extraction methods (`.outerWire()`, `.innerWires()`, `Wire.offset2D()`) **consume (delete) `this`** and return a new shape. After calling `const moved = shape.translate([10, 0, 0])`, `shape` is deleted — use `moved` instead. If you need to keep the original, call `.clone()` first. Boolean and modifier methods (`.fuse()`, `.cut()`, `.fillet()`, `.chamfer()`, `.shell()`) do NOT consume `this`. The Functional API never disposes inputs.
-
-### OOP Shape Classes
-
-All shapes inherit from `Shape`:
-- `Shape` — Base class: `.clone()`, `.serialize()`, `.hashCode`, `.isNull`, `.translate()`, `.rotate()`, `.mirror()`, `.scale()`, `.edges`, `.faces`, `.wires`, `.mesh()`, `.meshEdges()`, `.blobSTEP()`, `.blobSTL()`
-- `Vertex` — `.asTuple(): [number, number, number]`
-- `Edge` extends `_1DShape` — `.startPoint`, `.endPoint`, `.tangentAt(t?)`, `.pointAt(t?)`, `.isClosed`, `.length`, `.geomType`, `.orientation`
-- `Wire` extends `_1DShape` — Same as Edge plus `.offset2D(offset, kind?): Result<Wire>`
-- `Face` — `.normalAt(point?)`, `.center`, `.geomType`, `.UVBounds`, `.pointOnSurface(u, v)`, `.uvCoordinates(point)`, `.outerWire()`, `.innerWires()`, `.orientation`, `.flipOrientation()`
-- `_3DShape` (Shell, Solid, CompSolid, Compound) — `.fuse(other, opts?)`, `.cut(tool, opts?)`, `.intersect(tool, opts?)`, `.fillet(radius, filter?)`, `.chamfer(radius, filter?)`, `.shell(thickness, finderFn, tolerance?)`
-
-These classes are exported as: `Shape`, `Vertex`, `Edge`, `Wire`, `Face`, `Shell`, `Solid`, `CompSolid`, `Compound`
+All shapes have `.wrapped` (OCCT handle) and `.delete()`. Use `using` syntax for auto-cleanup.
 
 Also exported: `Sketch`, `CompoundSketch`, `Sketches` (multi-profile container), `Drawing`, `DrawingPen`, `Blueprint`, `CompoundBlueprint`, `Blueprints`
 
@@ -66,7 +58,7 @@ resolveDirection([a, b, c]): Vec3 // identity
 import { serializeShape, deserializeShape } from 'brepjs';
 
 const brep = serializeShape(shape);    // shape → BREP string
-const restored = deserializeShape(brep); // BREP string → AnyShape (OOP class)
+const restored = deserializeShape(brep); // BREP string → AnyShape
 ```
 
 ## Drawing & Sketching (Primary Entry Point)
@@ -285,15 +277,17 @@ Drawing functional API:
 ### Boolean Operations
 
 ```typescript
+import { fuseShapes, cutShape, intersectShapes, unwrap } from 'brepjs';
+
 const box = sketchRectangle(20, 20).extrude(20);
 const hole = sketchCircle(5).extrude(30);
 
-const withHole = unwrap(box.cut(hole));        // Subtraction → Result<Shape3D>
-const merged = unwrap(box.fuse(hole));         // Union → Result<Shape3D>
-const common = unwrap(box.intersect(hole));    // Intersection → Result<Shape3D>
+const withHole = unwrap(cutShape(box, hole));        // Subtraction → Result<Shape3D>
+const merged = unwrap(fuseShapes(box, hole));        // Union → Result<Shape3D>
+const common = unwrap(intersectShapes(box, hole));   // Intersection → Result<Shape3D>
 ```
 
-Functional API:
+Full boolean API:
 ```typescript
 import { fuseShapes, cutShape, intersectShapes, sectionShape, splitShape, sliceShape } from 'brepjs';
 
@@ -312,17 +306,19 @@ Batch: `fuseAll(shapes, options?): Result<Shape3D>`, `cutAll(base, tools, option
 ### Fillet & Chamfer
 
 ```typescript
-// Fillet all edges — returns Result<Shape3D>
-const rounded = unwrap(box.fillet(2));
+import { filletShape, chamferShape, chamferDistAngleShape, getEdges, edgeFinder } from 'brepjs';
 
-// Fillet specific edges using EdgeFinder
-const selective = unwrap(box.fillet(2, e => e.ofLength(20)));
+// Fillet all edges — returns Result<Shape3D>
+const rounded = unwrap(filletShape(box, getEdges(box), 2));
+
+// Fillet specific edges using edgeFinder
+const selective = unwrap(filletShape(box, edgeFinder().ofLength(20).find(box), 2));
 
 // Chamfer
-const chamfered = unwrap(box.chamfer(1));
+const chamfered = unwrap(chamferShape(box, getEdges(box), 1));
 ```
 
-Functional API:
+Additional functional API:
 ```typescript
 import { filletShape, chamferShape, chamferDistAngleShape } from 'brepjs';
 
@@ -338,11 +334,14 @@ chamferDistAngleShape(shape, edges, distance, angleDeg): AnyShape
 ### Shell (Hollow Out)
 
 ```typescript
+import { shellShape, faceFinder } from 'brepjs';
+
 // Remove top face and shell to 1mm thickness — returns Result<Shape3D>
-const hollowed = unwrap(box.shell(1, f => f.parallelTo('XY')));
+const topFaces = faceFinder().parallelTo('XY').find(box);
+const hollowed = unwrap(shellShape(box, topFaces, 1));
 ```
 
-Functional API: `shellShape(shape, faces, thickness, tolerance?): Result<Shape3D>`
+`shellShape(shape, faces, thickness, tolerance?): Result<Shape3D>`
 
 ### Offset & Thicken
 
@@ -355,18 +354,6 @@ thickenSurface(shape, thickness): Result<AnyShape>
 
 ### Transformations
 
-```typescript
-// OOP style
-shape.translate(10, 0, 0)      // or shape.translate([10, 0, 0])
-shape.translateX(10)
-shape.translateY(5)
-shape.translateZ(-3)
-shape.rotate(45, [0, 0, 0], [0, 0, 1])   // 45 deg around Z axis
-shape.mirror('XY')
-shape.scale(2)
-```
-
-Functional API:
 ```typescript
 import { translateShape, rotateShape, mirrorShape, scaleShape } from 'brepjs';
 
@@ -459,7 +446,7 @@ adjacentFaces(parent, face): Face[]
 sharedEdges(face1, face2): Edge[]
 ```
 
-### EdgeFinder (OOP — mutable)
+### EdgeFinder
 
 ```typescript
 import { EdgeFinder } from 'brepjs';
@@ -473,7 +460,7 @@ finder.inPlane('XY');                  // In a named plane
 const edges = finder.find(shape);      // Returns Edge[]
 ```
 
-### FaceFinder (OOP — mutable)
+### FaceFinder
 
 ```typescript
 import { FaceFinder } from 'brepjs';
@@ -669,11 +656,11 @@ autoHeal(shape, options?): Result<{ shape, report: HealingReport }>
 ```typescript
 import { importSTEP, exportSTEP } from 'brepjs';
 
-// Import (OOP)
+// Import
 const blob = new Blob([stepFileBytes]);
 const result = await importSTEP(blob);   // Result<AnyShape>
 
-// Export with color and names (OOP)
+// Export with color and names
 const stepBlob = exportSTEP([
   { shape: body, color: '#3366cc', name: 'Body' },
   { shape: lid, color: '#cc6633', name: 'Lid' },
@@ -822,9 +809,9 @@ The `Drawing` class supports 2D boolean operations and transformations:
 
 ```typescript
 const plate = drawRectangle(100, 50);
-const hole = drawCircle(10).translate(20, 0);
-const withHole = plate.cut(hole);
-const filleted = withHole.fillet(3);
+const hole = drawCircle(10).translate(20, 0);   // Drawing.translate is still available
+const withHole = plate.cut(hole);               // Drawing.cut is still available
+const filleted = withHole.fillet(3);             // Drawing.fillet is still available
 const svg = filleted.toSVG();
 ```
 
@@ -924,9 +911,9 @@ Additional projection helpers:
 ```typescript
 import { lookFromPlane, isProjectionPlane, makeProjectedEdges } from 'brepjs';
 
-lookFromPlane(projectionPlane): ProjectionCamera   // Create OOP camera from named plane (e.g. 'front', 'XY')
+lookFromPlane(projectionPlane): ProjectionCamera   // Create camera from named plane (e.g. 'front', 'XY')
 isProjectionPlane(plane): plane is ProjectionPlane  // Type guard for ProjectionPlane strings
-makeProjectedEdges(shape, camera, withHiddenLines?): { visible: Edge[], hidden: Edge[] }  // OOP-style HLR projection
+makeProjectedEdges(shape, camera, withHiddenLines?): { visible: Edge[], hidden: Edge[] }  // HLR projection
 ```
 
 ## Text
@@ -1071,7 +1058,7 @@ import { gcWithScope, localGC, GCWithScope } from 'brepjs';
 const result = gcWithScope(() => {
   const a = sketchCircle(10).extrude(20);
   const b = sketchCircle(5).extrude(30);
-  return unwrap(a.cut(b));  // Returned shape survives the scope
+  return unwrap(cutShape(a, b));  // Returned shape survives the scope
 });
 
 // Manual cleanup
@@ -1221,7 +1208,7 @@ resolvePlane(input, origin?): Plane     // PlaneName | Plane → Plane
 translatePlane(plane, offset): Plane
 pivotPlane(plane, angleDeg, axis?): Plane
 
-// Legacy helpers (OOP layer)
+// Additional helpers
 makePlane(plane?, origin?): Plane       // From PlaneName + origin
 makePlaneFromFace(face, originOnSurface?): Plane  // Derive plane from a face (useful for sketching on faces)
 ```
@@ -1309,12 +1296,13 @@ Key types used across the API:
 
 ```typescript
 import {
-  setOC, gcWithScope, unwrap,
+  initFromOC, gcWithScope, unwrap,
   sketchCircle, sketchRectangle, sketchRoundedRectangle,
   Sketcher, draw, drawCircle, drawRectangle,
   makeHelix, makeCylinder, makeSphere,
   exportSTEP, meshShape, exportGlb,
   faceFinder, edgeFinder, getFaces,
+  fuseShapes, cutShape, shellShape, filletShape,
   measureVolume, checkInterference, rotateShape,
 } from 'brepjs';
 
@@ -1327,29 +1315,31 @@ const pipe = gcWithScope(() => {
   const bottomFlange = makeCylinder(30, 5, [0, 0, 0], [0, 0, 1]);
   const topFlange = makeCylinder(30, 5, [0, 0, 95], [0, 0, 1]);
 
-  // Fuse tube + flanges (each .fuse() returns Result<Shape3D>)
-  const step1 = unwrap(tube.fuse(bottomFlange));
-  const body = unwrap(step1.fuse(topFlange));
+  // Fuse tube + flanges
+  const step1 = unwrap(fuseShapes(tube, bottomFlange));
+  const body = unwrap(fuseShapes(step1, topFlange));
 
   // Hollow out: remove top face, shell to 2mm wall thickness
   // parallelTo('XY') finds faces with Z-normal; atDistance selects the one at Z=100
-  const hollowed = unwrap(body.shell(2, f => f.parallelTo('XY').atDistance(100, [0, 0, 0])));
+  const shellFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).find(body);
+  const hollowed = unwrap(shellShape(body, shellFaces, 2));
 
   // Fillet the tube-to-flange transitions
-  const filleted = unwrap(hollowed.fillet(3, e => e.ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15)));
+  const filletEdges = edgeFinder().ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15).find(hollowed);
+  const filleted = unwrap(filletShape(hollowed, filletEdges, 3));
 
-  // Bolt holes in each flange — use functional API to avoid OOP move semantics
+  // Bolt holes in each flange
   let result = filleted;
   for (let i = 0; i < 6; i++) {
     const angle = (360 / 6) * i;
     const hole = rotateShape(makeCylinder(3, 10, [22, 0, -2], [0, 0, 1]), angle, [0, 0, 0], [0, 0, 1]);
-    result = unwrap(result.cut(hole));
+    result = unwrap(cutShape(result, hole));
   }
   // Same holes at top
   for (let i = 0; i < 6; i++) {
     const angle = (360 / 6) * i;
     const hole = rotateShape(makeCylinder(3, 10, [22, 0, 90], [0, 0, 1]), angle, [0, 0, 0], [0, 0, 1]);
-    result = unwrap(result.cut(hole));
+    result = unwrap(cutShape(result, hole));
   }
   return result;
 });
@@ -1365,6 +1355,8 @@ import {
   sketchRoundedRectangle, sketchCircle, sketchRectangle,
   draw, drawText, loadFont, sketchText,
   makeCylinder, compoundSketchExtrude,
+  fuseShapes, cutShape, shellShape, filletShape,
+  faceFinder, edgeFinder, translateShape,
 } from 'brepjs';
 
 await loadFont('/fonts/Roboto-Regular.ttf', 'Roboto');
@@ -1373,12 +1365,14 @@ const enclosure = gcWithScope(() => {
   // Base box with rounded corners — sketch.extrude() returns Shape3D directly (not Result)
   const box = sketchRoundedRectangle(80, 50, 5).extrude(30);
 
-  // Shell: remove top face (OOP shell uses FaceFinder callback)
+  // Shell: remove top face
   // parallelTo accepts StandardPlane strings ('XY', 'XZ', 'YZ') or Plane objects
-  const shelled = unwrap(box.shell(2, f => f.parallelTo('XY')));
+  const shellFaces = faceFinder().parallelTo('XY').find(box);
+  const shelled = unwrap(shellShape(box, shellFaces, 2));
 
-  // Fillet all vertical edges (OOP EdgeFinder: use inDirection for Vec3 directions)
-  const filleted = unwrap(shelled.fillet(1, e => e.inDirection([0, 0, 1])));
+  // Fillet all vertical edges
+  const vertEdges = edgeFinder().inDirection([0, 0, 1]).find(shelled);
+  const filleted = unwrap(filletShape(shelled, vertEdges, 1));
 
   // Mounting bosses: 4 cylinders at corners inside the box
   const bossPositions: [number, number][] = [[30, 18], [-30, 18], [30, -18], [-30, -18]];
@@ -1386,20 +1380,22 @@ const enclosure = gcWithScope(() => {
   for (const [x, y] of bossPositions) {
     const boss = makeCylinder(3, 25, [x, y, 2], [0, 0, 1]);
     const hole = makeCylinder(1.2, 25, [x, y, 2], [0, 0, 1]);
-    result = unwrap(unwrap(result.fuse(boss)).cut(hole));
+    result = unwrap(cutShape(unwrap(fuseShapes(result, boss)), hole));
   }
 
   // Ventilation slots on side face
   for (let i = -2; i <= 2; i++) {
-    const slot = sketchRoundedRectangle(1.5, 10, 0.5, { plane: 'XZ' })
-      .extrude(5).translate(0, -27, 15 + i * 3);
-    result = unwrap(result.cut(slot));
+    const slot = translateShape(
+      sketchRoundedRectangle(1.5, 10, 0.5, { plane: 'XZ' }).extrude(5),
+      [0, -27, 15 + i * 3]
+    );
+    result = unwrap(cutShape(result, slot));
   }
 
   // Embossed text on top — text produces CompoundSketch, use compoundSketchExtrude
   const textSketch = sketchText('brepjs', { fontSize: 8, fontFamily: 'Roboto' }, { plane: 'XY', origin: 30 });
   const textSolid = compoundSketchExtrude(textSketch, 1);
-  result = unwrap(result.fuse(textSolid));
+  result = unwrap(fuseShapes(result, textSolid));
 
   return result;
 });
@@ -1412,7 +1408,7 @@ import {
   gcWithScope, unwrap,
   sketchCircle, sketchHelix,
   Sketcher, makeHelix, makeCylinder,
-  checkInterference,
+  fuseShapes, checkInterference,
   measureLength, describeShape,
   pipe, translateShape,
 } from 'brepjs';
@@ -1430,7 +1426,7 @@ const spring = gcWithScope(() => {
   const bottomEnd = makeCylinder(20, 2, [0, 0, -2], [0, 0, 1]);
   const topEnd = makeCylinder(20, 2, [0, 0, 60], [0, 0, 1]);
 
-  return unwrap(unwrap(coil.fuse(bottomEnd)).fuse(topEnd));
+  return unwrap(fuseShapes(unwrap(fuseShapes(coil, bottomEnd)), topEnd));
 });
 
 // Check if spring fits inside a housing cylinder

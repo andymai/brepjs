@@ -1,53 +1,9 @@
 /**
- * Shape modifier types and query module infrastructure.
- *
- * Contains types for fillet/chamfer operations and the lazy query module loader
- * needed by shell/fillet/chamfer operations.
- *
- * These are re-exported from shapes.ts for backward compatibility.
+ * Shape modifier types for fillet/chamfer operations.
  */
 
-import { bug } from '../core/errors.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
 import type { Edge } from '../core/shapeTypes.js';
-
-// ---------------------------------------------------------------------------
-// Lazy query module loader — avoids hard compile-time dependency on query/
-// while still allowing runtime access to EdgeFinder / FaceFinder constructors.
-// ---------------------------------------------------------------------------
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy-loaded module type
-let _queryModule: any = null;
-
-export function getQueryModule(): {
-  EdgeFinder: new () => EdgeFinder;
-  FaceFinder: new () => FaceFinder;
-} {
-  if (!_queryModule) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy runtime load of optional peer module
-    _queryModule = (globalThis as any).__brepjs_query_module__;
-    if (!_queryModule) {
-      bug(
-        'shapes',
-        'Query module not registered. Call registerQueryModule() or import query/index.js before using shell/fillet/chamfer.'
-      );
-    }
-  }
-  return _queryModule;
-}
-
-/**
- * Register the query module so that shell/fillet/chamfer can construct
- * EdgeFinder and FaceFinder at runtime without a hard import.
- */
-export function registerQueryModule(mod: {
-  EdgeFinder: new () => EdgeFinder;
-  FaceFinder: new () => FaceFinder;
-}): void {
-  _queryModule = mod;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- global registration
-  (globalThis as any).__brepjs_query_module__ = mod;
-}
 
 // ---------------------------------------------------------------------------
 // Fillet / Chamfer types

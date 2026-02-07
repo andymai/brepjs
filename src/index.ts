@@ -90,7 +90,6 @@ export {
   buildCompoundOc,
   applyGlue,
   // shapeModifiers.ts
-  registerQueryModule,
   isNumber,
   isChamferRadius,
   isFilletRadius,

@@ -20,19 +20,11 @@ export {
 
 // ── Boolean operations (OOP layer) ──
 
-export {
-  fuseAll,
-  cutAll,
-  buildCompound,
-  buildCompoundOc,
-  applyGlue,
-  type BooleanOperationOptions,
-} from './shapeBooleans.js';
+export { buildCompoundOc, applyGlue, type BooleanOperationOptions } from './shapeBooleans.js';
 
 // ── Modifier helpers ──
 
 export {
-  registerQueryModule,
   isNumber,
   isChamferRadius,
   isFilletRadius,
@@ -133,8 +125,6 @@ export {
   outerWire,
   innerWires,
   type UVBounds,
-  type FaceTriangulation as FnFaceTriangulation,
-  type SurfaceType as FnSurfaceType,
 } from './faceFns.js';
 
 export {
@@ -142,7 +132,6 @@ export {
   meshShapeEdges,
   exportSTEP,
   exportSTL,
-  type ShapeMesh as FnShapeMesh,
   type EdgeMesh,
   type MeshOptions,
 } from './meshFns.js';
@@ -152,9 +141,6 @@ export {
   cutShape,
   intersectShapes,
   sectionShape,
-  fuseAll as fnFuseAll,
-  cutAll as fnCutAll,
-  buildCompound as fnBuildCompound,
   type BooleanOptions,
 } from './booleanFns.js';
 

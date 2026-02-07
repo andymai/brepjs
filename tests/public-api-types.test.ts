@@ -451,7 +451,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'queryError',
   'registerHandler',
   'registerOperation',
-  'registerQueryModule',
   'registerShape',
   'rejectAll',
   'removeChild',

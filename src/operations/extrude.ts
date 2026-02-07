@@ -1,5 +1,4 @@
 import { getKernel } from '../kernel/index.js';
-import type { OcType } from '../kernel/types.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { makeOcAx1 } from '../core/occtBoundary.js';
@@ -185,36 +184,6 @@ function genericSweep(
 export { genericSweep };
 
 export type { ExtrusionProfile } from './extrudeUtils.js';
-
-/**
- * Extrude a wire along a normal constrained to a support surface (OOP API).
- *
- * @param wire - The profile wire to sweep.
- * @param center - Start point of the extrusion spine.
- * @param normal - Direction and length of the extrusion.
- * @param support - OCCT support surface that constrains the sweep.
- * @returns `Result` containing the swept 3D shape.
- *
- * @see {@link extrudeFns!supportExtrude | supportExtrude (Fns)} for the functional equivalent.
- */
-export const supportExtrude = (
-  wire: Wire,
-  center: PointInput,
-  normal: PointInput,
-  support: OcType
-): Result<Shape3D> => {
-  const [r, gc] = localGC();
-  const centerVec = toVec3(center);
-  const normalVec = toVec3(normal);
-  const endVec = vecAdd(centerVec, normalVec);
-
-  const mainSpineEdge = r(makeLine(centerVec, endVec));
-  const spine = r(unwrap(assembleWire([mainSpineEdge])));
-
-  const result = genericSweep(wire, spine, { support });
-  gc();
-  return result;
-};
 
 function complexExtrude(
   wire: Wire,
