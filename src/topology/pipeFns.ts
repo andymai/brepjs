@@ -51,7 +51,7 @@ export interface ShapePipe<T extends AnyShape> {
   readonly cut: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
 
   /** Intersect with another shape (requires Shape3D). */
-  readonly intersect: (tool: AnyShape) => ShapePipe<Shape3D>;
+  readonly intersect: (tool: Shape3D) => ShapePipe<Shape3D>;
 }
 
 // ---------------------------------------------------------------------------

@@ -139,14 +139,14 @@ export function cutShape(
 /**
  * Compute the intersection of two shapes (boolean common). Returns a new shape.
  *
- * @param a - The first operand (must be a 3D shape).
- * @param b - The second operand (any shape).
+ * @param a - The first operand.
+ * @param b - The second operand.
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
  */
 export function intersectShapes(
   a: Shape3D,
-  b: AnyShape,
+  b: Shape3D,
   { simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
