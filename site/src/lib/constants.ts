@@ -19,8 +19,10 @@ for (let i = 0; i < steps; i++) {
     [0, -depth / 2, 0],
     [colR + width, depth / 2, thick]
   );
-  const post = makeCylinder(1.5, railH)
-    .translate([colR + width - 4, 0, thick]);
+  const post = translateShape(
+    makeCylinder(1.5, railH),
+    [colR + width - 4, 0, thick]
+  );
 
   const step = unwrap(fuseShapes(tread, post));
   const placed = translateShape(
