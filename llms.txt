@@ -26,6 +26,16 @@ initFromOC(oc);
 
 `initFromOC(oc)` must be called once before using any brepjs API. All shape-creating functions require the kernel to be initialized.
 
+Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). For a standalone browser example that generates an HTML file with an embedded Three.js viewer, see `examples/browser-viewer.ts`.
+
+## Examples with Visual Output
+
+Several examples generate SVG and HTML files in `examples/output/`:
+- `examples/2d-to-3d.ts` → `examples/output/2d-profile.svg` (2D profile preview)
+- `examples/mechanical-part.ts` → `examples/output/bracket-front.svg`, `bracket-top.svg` (technical drawings via `drawProjection`)
+- `examples/threejs-rendering.ts` → `examples/output/threejs-part.html` (Three.js 3D viewer)
+- `examples/browser-viewer.ts` → `examples/output/viewer.html` (standalone browser viewer with orbit controls)
+
 ## API Style
 
 brepjs uses a functional API with branded types (`Solid`, `Face`, `Edge`, etc.) and `Result<T>` for error handling. Functions like `fuseShape()`, `translateShape()`, `filletShape()` are pure — they never dispose inputs. Use `unwrap()` to extract values from `Result<T>`, or `isOk()`/`isErr()` to check success.

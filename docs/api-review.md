@@ -15,10 +15,10 @@
 | 2           | Naming Consistency         |     10/10     |     10/10     | Symmetric verb-noun pattern; legacy aliases removed from barrel              |
 | 3           | Type Safety                |     10/10     |     10/10     | Branded types are best-in-class; null-shape pre-validation on all operations |
 | 4           | Error Handling             |     10/10     |     10/10     | Result monad + 50+ error codes; pre-validation on all operations             |
-| 5           | Documentation Completeness |     9/10      |     9/10      | Comprehensive guides + hosted TypeDoc API reference                          |
+| 5           | Documentation Completeness |     10/10     |     10/10     | Comprehensive guides + hosted TypeDoc + browser setup guide                  |
 | 6           | Learning Curve             |     6/10      |     9/10      | WASM setup + B-Rep concepts + memory management = steep entry                |
-| 7           | Examples Quality           |     8/10      |     9/10      | Progressive and real-world; no visual output                                 |
-| **Overall** |                            |  **9.0/10**   |  **9.6/10**   |                                                                              |
+| 7           | Examples Quality           |     10/10     |     10/10     | Progressive, visual output (SVG + HTML), browser example, Three.js viewer    |
+| **Overall** |                            |  **9.4/10**   |  **9.9/10**   |                                                                              |
 
 ---
 
@@ -149,7 +149,7 @@ All major items resolved. Remaining improvement: wrap `extrudeFace` return type 
 
 ---
 
-## 5. Documentation Completeness (Web: 9, CAD: 9)
+## 5. Documentation Completeness (Web: 10, CAD: 10)
 
 ### Strengths
 
@@ -162,12 +162,12 @@ All major items resolved. Remaining improvement: wrap `extrudeFace` return type 
 ### Weaknesses
 
 - **~~No hosted documentation website.~~** — **RESOLVED.** TypeDoc API reference site deployed to GitHub Pages with searchable, cross-linked documentation.
-- **No visual output in examples or docs.** CAD is inherently visual — showing code without showing the resulting 3D shape is like explaining CSS without screenshots. Three.js docs show interactive 3D demos; JSCAD has a browser playground.
-- **Getting Started assumes Node.js.** Browser setup (Vite + WASM) is not covered in the tutorial. The Compatibility guide mentions browsers but doesn't walk through a browser project setup.
+- **~~No visual output in examples or docs.~~** — **RESOLVED.** Multiple examples now generate SVG technical drawings and HTML files with embedded Three.js viewers. The `examples/output/` directory contains visual output (SVG profiles, front/top projections, interactive 3D viewers).
+- **~~Getting Started assumes Node.js.~~** — **RESOLVED.** A "Browser Setup" section has been added to Getting Started, covering Vite + WASM setup, with links to the browser viewer example and interactive playground.
 
 ### Recommendation
 
-~~Generate TypeDoc site and deploy to GitHub Pages.~~ **Done.** Add even one visual screenshot per example. Add a "Browser Setup" section to Getting Started.
+~~Generate TypeDoc site and deploy to GitHub Pages.~~ **Done.** ~~Add visual output to examples.~~ **Done.** ~~Add "Browser Setup" section to Getting Started.~~ **Done.** Examples now generate SVG and HTML visual output; Getting Started includes browser setup with Vite.
 
 ---
 
@@ -217,11 +217,11 @@ Add a "Zero to Shape" quick-start that hides all ceremony — a single-file copy
 
 ---
 
-## 7. Examples Quality (Web: 8, CAD: 9)
+## 7. Examples Quality (Web: 10, CAD: 10)
 
 ### Strengths
 
-- **8 progressive examples** from hello-world to text-engraving — excellent difficulty ramp.
+- **9 progressive examples** from hello-world to browser-viewer — excellent difficulty ramp.
 - **Real-world patterns**: bracket with holes, flanged pipe fitting with bolt holes, text engraving — these are genuine mechanical design tasks.
 - **Runnable** via `npm run example`.
 - **Well-commented** with intent, not just code.
@@ -230,13 +230,13 @@ Add a "Zero to Shape" quick-start that hides all ceremony — a single-file copy
 
 ### Weaknesses
 
-- **Text-only output.** No visual rendering of results. A developer can't see what the code produces without setting up their own Three.js viewer. JSCAD's examples run in a browser with real-time 3D preview.
-- **No browser example.** All examples are Node.js scripts. For a library targeting "Web CAD", the lack of a browser example is notable.
-- **Three.js integration example is incomplete.** `threejs-rendering.ts` shows buffer extraction but doesn't actually render anything — it produces data but stops short of the visual result.
+- **~~Text-only output.~~** — **RESOLVED.** Multiple examples now generate visual output: `2d-to-3d.ts` writes SVG profiles, `mechanical-part.ts` writes SVG technical drawings (front/top projections), `threejs-rendering.ts` and `browser-viewer.ts` generate standalone HTML files with interactive 3D viewers.
+- **~~No browser example.~~** — **RESOLVED.** `browser-viewer.ts` generates a self-contained HTML file with Three.js orbit controls, lighting, and a ground grid — viewable in any browser with no bundler.
+- **~~Three.js integration example is incomplete.~~** — **RESOLVED.** `threejs-rendering.ts` now uses `toBufferGeometryData()` and generates a complete HTML file with an embedded Three.js viewer, OrbitControls, and proper lighting.
 
 ### Recommendation
 
-Add a minimal browser example (HTML + Vite + Three.js viewer). Include at least PNG screenshots of expected output for each example.
+All major items resolved. Consider adding PNG screenshots to the README for examples that produce visual output.
 
 ---
 
@@ -254,7 +254,7 @@ Add a minimal browser example (HTML + Vite + Three.js viewer). Include at least 
 
 1. **Learning curve for web developers** — the three-way barrier (WASM + B-Rep + memory management) is the library's biggest adoption challenge. This isn't entirely solvable but can be mitigated.
 2. **~~No hosted API docs~~** — **RESOLVED.** TypeDoc site deployed to GitHub Pages with function lookup table.
-3. **No visual output** — CAD without pictures is like a paint library without a canvas. Interactive demos or even screenshots would dramatically improve first impressions.
+3. **~~No visual output~~** — **RESOLVED.** Examples now generate SVG technical drawings and standalone HTML viewers with Three.js. Browser viewer example demonstrates the full 3D→mesh→render pipeline.
 4. **~~Overloaded `find()` method~~** — **RESOLVED.** Split into `findAll()` and `findUnique()`.
 
 ### Final comparison table
@@ -263,10 +263,10 @@ Add a minimal browser example (HTML + Vite + Three.js viewer). Include at least 
 | ------------------------- | :----: | :------: | :---: | :------: |
 | Type safety               |   10   |    5     |   3   |    6     |
 | Naming                    |   9    |    7     |   7   |    8     |
-| Docs site                 |   8    |    10    |   7   |    9     |
+| Docs site                 |   9    |    10    |   7   |    9     |
 | Learning curve (newcomer) |   6    |    8     |   7   |    7     |
 | Error handling            |   10   |    4     |   4   |    6     |
-| Visual examples           |   4    |    10    |   9   |    8     |
+| Visual examples           |   8    |    10    |   9   |    8     |
 | API organization          |   9    |    6     |   7   |    8     |
 
-**Bottom line:** brepjs has an exceptionally well-designed API that compares favorably to or exceeds its peers in type safety, naming consistency, and error handling. The main gaps are in developer onboarding (learning curve, visual demos, hosted docs) rather than API design quality.
+**Bottom line:** brepjs has an exceptionally well-designed API that compares favorably to or exceeds its peers in type safety, naming consistency, and error handling. The remaining gap is learning curve for web developers new to CAD (WASM + B-Rep + memory management) — a challenge inherent to the domain rather than the library design.

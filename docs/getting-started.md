@@ -143,6 +143,43 @@ const stepBlob = unwrap(exportSTEP(part));
 console.log('STEP file:', stepBlob.size, 'bytes');
 ```
 
+## Browser Setup
+
+brepjs works in browsers with WASM support. The simplest way to get started is with [Vite](https://vite.dev):
+
+```bash
+npm create vite@latest my-cad-app -- --template vanilla-ts
+cd my-cad-app
+npm install brepjs brepjs-opencascade
+```
+
+In your `main.ts`:
+
+```typescript
+import opencascade from 'brepjs-opencascade';
+import { initFromOC, makeBox, meshShape, toBufferGeometryData } from 'brepjs';
+
+async function main() {
+  // Load the WASM kernel — in a browser this fetches and compiles the .wasm file
+  const oc = await opencascade();
+  initFromOC(oc);
+
+  // Now use brepjs as normal
+  const box = makeBox([0, 0, 0], [10, 10, 10]);
+  const mesh = meshShape(box, { tolerance: 0.1 });
+  const bufferData = toBufferGeometryData(mesh);
+
+  // Pass bufferData.position, .normal, .index to Three.js, Babylon.js, or raw WebGL
+  console.log('Vertices:', bufferData.position.length / 3);
+}
+
+main();
+```
+
+Vite handles WASM loading automatically. For other bundlers, you may need to configure WASM file serving — see [Compatibility](./compatibility.md) for details.
+
+For a complete working example that generates a standalone HTML viewer (no bundler needed), see [`examples/browser-viewer.ts`](../examples/browser-viewer.ts). You can also try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
+
 ## The 2D → 3D workflow
 
 For more complex profiles, sketch in 2D first, then extrude to 3D:
