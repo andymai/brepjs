@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
-      brepjs_release_created: ${{ steps.release.outputs['.--release_created'] }}
+      brepjs_release_created: ${{ steps.release.outputs.release_created }}
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
