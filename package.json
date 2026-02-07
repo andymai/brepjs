@@ -92,6 +92,7 @@
     "bench:json": "BENCH_OUTPUT_JSON=1 vitest run --config vitest.bench.config.ts",
     "check:boundaries:staged": "bash scripts/check-layer-boundaries.sh --staged",
     "check:readme-reminders": "bash scripts/check-readme-reminders.sh",
+    "example": "npx tsx",
     "knip": "knip",
     "prepare": "husky"
   },

@@ -1,73 +1,72 @@
 # Examples
 
-Complete workflow examples demonstrating brepjs capabilities.
+Complete workflow examples demonstrating brepjs capabilities, ordered from beginner to advanced.
 
 ## Running Examples
 
 ```bash
-# Install dependencies
+# Install dependencies (from the repo root)
 npm install
 
-# Run an example with tsx
-npx tsx examples/basic-primitives.ts
+# Run any example
+npm run example examples/hello-world.ts
+npm run example examples/basic-primitives.ts
+npm run example examples/mechanical-part.ts
 ```
 
-## Available Examples
+## Beginner
+
+### [hello-world.ts](./hello-world.ts)
+
+**Start here.** Create a box, measure it, export it — the absolute minimum brepjs program.
+
+**Concepts:** `makeBox`, `measureVolume`, `exportSTEP`, `unwrap`
 
 ### [basic-primitives.ts](./basic-primitives.ts)
 
-Create primitive shapes (box, cylinder, sphere) and perform boolean operations (fuse, cut, intersect).
+Create primitive shapes (box, cylinder, sphere) and combine them with boolean operations.
 
-**Concepts covered:**
+**Concepts:** primitives, `fuseShapes`, `cutShape`, `intersectShapes`, `Result` handling with `isOk`
 
-- Creating primitive shapes
-- Boolean operations
-- Measuring volume
-- Exporting to STEP
+## Intermediate
 
 ### [mechanical-part.ts](./mechanical-part.ts)
 
-Create a bracket with mounting holes and a center slot.
+Build a bracket with 4 mounting holes and a center slot.
 
-**Concepts covered:**
-
-- Building complex parts from primitives
-- Batch boolean operations with `cutAll`
-- Translating shapes
-- Measuring material removal
+**Concepts:** batch booleans with `cutAll`, `translateShape`, material removal calculation
 
 ### [2d-to-3d.ts](./2d-to-3d.ts)
 
-Create a 2D sketch profile and extrude it to a 3D solid.
+Sketch a 2D profile and extrude it to a 3D solid.
 
-**Concepts covered:**
-
-- Drawing API (`draw`, `drawRectangle`, `drawCircle`)
-- Boolean operations on drawings
-- Converting drawings to sketches
-- Extruding sketches
+**Concepts:** `drawRectangle`, `drawCircle`, `drawingCut`, `drawingToSketchOnPlane`, `sketchExtrude`
 
 ### [import-export.ts](./import-export.ts)
 
-Load, modify, and export CAD files in different formats.
+Load a STEP file, modify it, export in multiple formats.
 
-**Concepts covered:**
+**Concepts:** `importSTEP`, `exportSTEP`, `exportSTL`, `scaleShape`, `meshShape`
 
-- Importing STEP files
-- Transforming shapes (scale, translate)
-- Exporting to STEP and STL
-- Generating mesh data
+## Advanced
+
+### [parametric-part.ts](./parametric-part.ts)
+
+Build a configurable flanged pipe fitting with bolt holes. Shows how to wrap brepjs operations into a reusable parametric function.
+
+**Concepts:** parametric design, `shellShape`, `filletShape`, `faceFinder`, `edgeFinder`, `rotateShape`
+
+### [threejs-rendering.ts](./threejs-rendering.ts)
+
+Convert brepjs shapes to mesh data for Three.js or any WebGL renderer.
+
+**Concepts:** `meshShape`, vertex/normal/index buffers, Three.js integration pattern
 
 ### [text-engraving.ts](./text-engraving.ts)
 
 Create a nameplate with engraved text (workflow demonstration).
 
-**Concepts covered:**
-
-- Loading fonts
-- Creating text blueprints
-- Sketching on faces
-- Subtractive operations for engraving
+**Concepts:** `loadFont`, `textBlueprints`, face sketching, subtractive engraving
 
 ## Common Patterns
 
@@ -91,7 +90,7 @@ const fused = unwrap(result);
 
 ### Memory Management
 
-Use `using` for automatic cleanup:
+Use `using` for automatic cleanup of temporary shapes:
 
 ```typescript
 {
@@ -100,18 +99,9 @@ Use `using` for automatic cleanup:
 }
 ```
 
-### Type Casting
-
-Constructors return branded types directly:
-
-```typescript
-// Constructors return properly typed shapes — no wrapping needed
-const box = makeBox([0, 0, 0], [10, 10, 10]); // Returns Solid
-const cylinder = makeCylinder(5, 10); // Returns Solid
-```
+See [Memory Management](../docs/memory-management.md) for details.
 
 ## Requirements
 
 - Node.js 20+
-- brepjs and brepjs-opencascade packages
-- tsx or ts-node for running TypeScript directly
+- brepjs and brepjs-opencascade packages installed
