@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.27.0](https://github.com/andymai/brepjs/compare/brepjs-v4.26.0...brepjs-v4.27.0) (2026-02-07)
+
+
+### Features
+
+* add SVG preview gallery to README (Visual Examples 9→10) ([#168](https://github.com/andymai/brepjs/issues/168)) ([4ebb0a3](https://github.com/andymai/brepjs/commit/4ebb0a3ae1d3bd604332cbc7dbed5104b0bb2f38))
+
 ## [4.26.0](https://github.com/andymai/brepjs/compare/brepjs-v4.25.0...brepjs-v4.26.0) (2026-02-07)
 
 
