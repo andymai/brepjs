@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30000,
-    exclude: ['benchmarks/**', 'node_modules/**', 'site/**'],
+    exclude: ['benchmarks/**', 'node_modules/**', 'site/**', '.worktrees/**'],
     pool: 'forks',
     execArgv: ['--max-old-space-size=6144'],
     coverage: {

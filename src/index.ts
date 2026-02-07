@@ -61,14 +61,7 @@ export { gcWithScope, gcWithObject, localGC, type Deletable } from './core/memor
 // Legacy type exports (kept for compatibility)
 export { isPoint, type Point } from './core/geometry.js';
 
-export {
-  makePlane,
-  makePlaneFromFace,
-  rotate,
-  translate,
-  mirror,
-  scale,
-} from './core/geometryHelpers.js';
+export { makePlane } from './core/geometryHelpers.js';
 
 export { findCurveType } from './core/definitionMaps.js';
 export type { CurveType } from './core/definitionMaps.js';
@@ -93,7 +86,6 @@ export {
   isChamferRadius,
   isFilletRadius,
   type ChamferRadius,
-  type FilletRadius,
   type RadiusConfig,
   // core/shapeTypes.ts (via topology)
   type CurveLike,
@@ -135,8 +127,6 @@ export {
   genericSweep,
   type GenericSweepConfig,
 } from './operations/extrude.js';
-
-export { loft } from './operations/loft.js';
 
 export { type AssemblyExporter, createAssembly } from './operations/exporters.js';
 
@@ -696,3 +686,145 @@ export {
   type OperationHandler,
   type OperationRegistry,
 } from './worker/index.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v5 CLEAN API — Short names, Shapeable<T>, options objects, shape() wrapper
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── API types ──
+
+export type {
+  Shapeable,
+  WrappedMarker,
+  FinderFn,
+  FilletRadius,
+  ChamferDistance,
+  DrawingLike,
+  DrillOptions,
+  PocketOptions,
+  BossOptions,
+  MirrorJoinOptions,
+  RectangularPatternOptions,
+} from './topology/apiTypes.js';
+
+export { resolve, resolve3D } from './topology/apiTypes.js';
+
+// ── Primitives (clean names) ──
+
+export {
+  // Solids
+  box,
+  cylinder,
+  sphere,
+  cone,
+  torus,
+  ellipsoid,
+  // Curves
+  line,
+  circle,
+  ellipse,
+  helix,
+  threePointArc,
+  ellipseArc,
+  bsplineApprox,
+  bezier,
+  tangentArc,
+  // Topology constructors
+  wire,
+  face,
+  filledFace,
+  subFace,
+  polygon,
+  vertex,
+  compound,
+  solid,
+  offsetFace,
+  sewShells,
+  addHoles,
+  // Types
+  type BoxOptions,
+  type CylinderOptions,
+  type SphereOptions,
+  type ConeOptions,
+  type TorusOptions,
+  type EllipsoidOptions,
+  type CircleOptions,
+  type EllipseOptions,
+  type HelixOptions,
+  type EllipseArcOptions,
+} from './topology/primitiveFns.js';
+
+// ── Transforms, booleans, modifiers, utilities (clean names) ──
+
+export {
+  // Transforms
+  translate,
+  rotate,
+  mirror,
+  scale,
+  clone,
+  // Booleans
+  fuse,
+  cut,
+  intersect,
+  section,
+  split,
+  slice,
+  // Modifiers
+  fillet,
+  chamfer,
+  shell,
+  offset,
+  thicken,
+  // Utilities
+  heal,
+  simplify,
+  mesh,
+  meshEdges,
+  describe,
+  toBREP,
+  fromBREP,
+  isValid,
+  isEmpty,
+  // Types
+  type RotateOptions,
+  type MirrorOptions,
+  type ScaleOptions,
+} from './topology/cleanApi.js';
+
+// ── 3D operations (clean names) ──
+
+export {
+  extrude,
+  revolve,
+  loft,
+  type RevolveOptions,
+  type LoftConfig as CleanLoftConfig,
+  type SweepConfig as CleanSweepConfig,
+} from './operations/cleanOpsFns.js';
+
+// ── Compound operations ──
+
+export { drill, pocket, boss, mirrorJoin, rectangularPattern } from './topology/compoundOpsFns.js';
+
+// ── shape() wrapper ──
+
+export {
+  shape,
+  BrepWrapperError,
+  type Wrapped,
+  type Wrapped3D,
+  type WrappedCurve,
+  type WrappedFace,
+} from './topology/wrapperFns.js';
+
+// ── Deprecated aliases (v4 → v5 migration) ──
+
+export {
+  // OcType-level geometry helpers (removed from v5 public API)
+  ocRotate,
+  ocTranslate,
+  ocMirror,
+  ocScale,
+  makePlaneFromFace,
+} from './compat.js';
