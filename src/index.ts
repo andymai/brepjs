@@ -73,7 +73,7 @@ export {
 export { findCurveType } from './core/definitionMaps.js';
 export type { CurveType } from './core/definitionMaps.js';
 
-// ── Layer 2: topology (via barrel — includes initCast wiring) ──
+// ── Layer 2: topology (via barrel) ──
 
 export {
   // cast.ts
@@ -86,44 +86,27 @@ export {
   isWire,
   isCompSolid,
   deserializeShape,
-  initCast,
   type TopoEntity,
   type GenericTopo,
-  // shapes.ts
-  Shape,
-  Vertex,
-  Curve,
-  _1DShape,
-  _1DShape as LinearShape,
-  Edge,
-  Wire,
-  Surface,
-  Face,
-  _3DShape,
-  _3DShape as SolidShape,
-  Shell,
-  Solid,
-  CompSolid,
-  Compound,
+  // shapeBooleans.ts
   fuseAll,
   cutAll,
   buildCompound,
   buildCompoundOc,
   applyGlue,
+  type BooleanOperationOptions,
+  // shapeModifiers.ts
   registerQueryModule,
   isNumber,
   isChamferRadius,
   isFilletRadius,
-  type AnyShape,
-  type Shape3D,
-  type CurveLike,
   type ChamferRadius,
   type FilletRadius,
   type RadiusConfig,
-  type FaceTriangulation,
-  type ShapeMesh,
-  type SurfaceType,
-  type BooleanOperationOptions,
+  // core/shapeTypes.ts (via topology)
+  type AnyShape,
+  type Shape3D,
+  type CurveLike,
   // shapeHelpers.ts
   makeLine,
   makeCircle,

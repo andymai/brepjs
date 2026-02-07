@@ -1,17 +1,8 @@
 /**
- * Topology layer — shape hierarchy, casting, and construction helpers.
- *
- * Exports both legacy class-based API and new functional API.
- * New code should prefer the functional exports (shapeFns, curveFns, faceFns, etc.).
+ * Topology layer — casting, construction helpers, and functional API.
  */
 
-// Eagerly wire up the circular dependency between cast.ts and shapes.ts
-// so that cast() can construct Shape subclasses at runtime.
-import * as shapesModule from './shapes.js';
-import { initCast } from './cast.js';
-initCast(shapesModule);
-
-// ── Legacy class-based API (kept for backward compatibility) ──
+// ── Cast and topology utilities ──
 
 export {
   cast,
@@ -23,48 +14,40 @@ export {
   isWire,
   isCompSolid,
   deserializeShape,
-  initCast,
   type TopoEntity,
   type GenericTopo,
 } from './cast.js';
 
+// ── Boolean operations (OOP layer) ──
+
 export {
-  Shape,
-  Vertex,
-  Curve,
-  _1DShape,
-  _1DShape as LinearShape,
-  Edge,
-  Wire,
-  Surface,
-  Face,
-  _3DShape,
-  _3DShape as SolidShape,
-  Shell,
-  Solid,
-  CompSolid,
-  Compound,
   fuseAll,
   cutAll,
   buildCompound,
   buildCompoundOc,
   applyGlue,
+  type BooleanOperationOptions,
+} from './shapeBooleans.js';
+
+// ── Modifier helpers ──
+
+export {
   registerQueryModule,
   isNumber,
   isChamferRadius,
   isFilletRadius,
-  type AnyShape,
-  type Shape3D,
-  type CurveLike,
   type ChamferRadius,
   type FilletRadius,
   type RadiusConfig,
-  type FaceTriangulation,
-  type ShapeMesh,
-  type SurfaceType,
-  type BooleanOperationOptions,
-  type CurveType,
-} from './shapes.js';
+} from './shapeModifiers.js';
+
+// ── Re-export branded shape types from core ──
+
+export type { AnyShape, Shape3D, CurveLike } from '../core/shapeTypes.js';
+
+// ── Re-export domain types from functional modules ──
+
+export type { CurveType } from '../core/definitionMaps.js';
 
 export {
   makeLine,

@@ -1,7 +1,11 @@
 import { getKernel } from '../kernel/index.js';
 import { gcWithScope } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
-import { applyGlue, buildCompoundOc, type BooleanOperationOptions } from '../topology/shapes.js';
+import {
+  applyGlue,
+  buildCompoundOc,
+  type BooleanOperationOptions,
+} from '../topology/shapeBooleans.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError, occtError } from '../core/errors.js';
 

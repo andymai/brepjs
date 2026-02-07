@@ -5,7 +5,7 @@ import type CompoundBlueprint from './CompoundBlueprint.js';
 import type { DrawingInterface, SketchData } from './lib.js';
 import { asSVG, viewbox } from './svg.js';
 
-import type { AnyShape, Face } from '../../topology/shapes.js';
+import type { AnyShape, Face } from '../../core/shapeTypes.js';
 
 import type { Plane, PlaneName } from '../../core/planeTypes.js';
 import type { PointInput } from '../../core/types.js';

@@ -1,6 +1,14 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, EdgeFinder, FaceFinder, unwrap, isErr } from '../src/index.js';
+import {
+  makeBox,
+  EdgeFinder,
+  FaceFinder,
+  unwrap,
+  isErr,
+  getEdges,
+  curveLength,
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -75,7 +83,7 @@ describe('EdgeFinder', () => {
     const finder = new EdgeFinder().inDirection('X').atDistance(0, [0, 0, 0]);
     const edge = unwrap(finder.find(box, { unique: true }));
     expect(edge).toBeDefined();
-    expect(edge.length).toBeCloseTo(10, 5);
+    expect(curveLength(edge)).toBeCloseTo(10, 5);
   });
 
   it('throws when unique finds multiple', () => {
@@ -87,7 +95,7 @@ describe('EdgeFinder', () => {
 
   it('supports inList filter', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const allEdges = box.edges;
+    const allEdges = getEdges(box);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const subset = [allEdges[0]!, allEdges[1]!];
     const finder = new EdgeFinder().inList(subset);

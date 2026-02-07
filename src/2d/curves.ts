@@ -3,8 +3,10 @@ import { getKernel } from '../kernel/index.js';
 import { gcWithScope, localGC } from '../core/memory.js';
 import type { Plane } from '../core/planeTypes.js';
 import { makeOcAx2 } from '../core/occtBoundary.js';
-import type { Face } from '../topology/shapes.js';
-import { Edge } from '../topology/shapes.js';
+import type { Face, Edge } from '../core/shapeTypes.js';
+import { createEdge } from '../core/shapeTypes.js';
+import { uvBounds, faceGeomType } from '../topology/faceFns.js';
+import { getOrientation } from '../topology/curveFns.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError } from '../core/errors.js';
 import type { Point2D } from './lib/index.js';
@@ -32,7 +34,7 @@ export function curvesAsEdgesOnPlane(curves: Curve2D[], plane: Plane): Edge[] {
   const edges = curves.map((curve: Curve2D) => {
     const curve3d = r(oc.GeomLib.To3d(ax, curve.wrapped));
     const edgeBuilder = r(new oc.BRepBuilderAPI_MakeEdge_24(curve3d));
-    return new Edge(edgeBuilder.Edge());
+    return createEdge(edgeBuilder.Edge());
   });
 
   gc();
@@ -46,7 +48,7 @@ export const curvesAsEdgesOnSurface = (curves: Curve2D[], geomSurf: OcType): Edg
 
   const modifiedCurves = curves.map((curve: Curve2D) => {
     const edgeBuilder = r(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf));
-    return new Edge(edgeBuilder.Edge());
+    return createEdge(edgeBuilder.Edge());
   });
 
   gc();
@@ -172,14 +174,14 @@ export function curvesAsEdgesOnFace(
   const oc = getKernel().oc;
   let geomSurf = r(oc.BRep_Tool.Surface_2(face.wrapped));
 
-  const bounds = face.UVBounds;
+  const bounds = uvBounds(face);
 
   let transformation: OcType = null;
   const uAxis = r(axis2d([0, 0], [0, 1]));
   const _vAxis = r(axis2d([0, 0], [1, 0]));
 
-  if (scale === 'original' && face.geomType !== 'PLANE') {
-    if (face.geomType !== 'CYLINDRE')
+  if (scale === 'original' && faceGeomType(face) !== 'PLANE') {
+    if (faceGeomType(face) !== 'CYLINDRE')
       return err(
         validationError(
           'UNSUPPORTED_FACE_TYPE',
@@ -238,7 +240,7 @@ export function edgeToCurve(e: Edge, face: Face): Curve2D {
     true
   );
 
-  if (e.orientation === 'backward') {
+  if (getOrientation(e) === 'backward') {
     trimmed.Reverse();
   }
 

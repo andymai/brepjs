@@ -2,14 +2,14 @@ import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
 import { gcWithScope } from '../core/memory.js';
 import { makeOcAx2 } from '../core/occtBoundary.js';
-import { cast } from '../topology/cast.js';
-import { unwrap } from '../core/result.js';
-import type { Edge, AnyShape } from '../topology/shapes.js';
+import type { Edge, AnyShape } from '../core/shapeTypes.js';
+import { castShape } from '../core/shapeTypes.js';
+import { getEdges as _getEdges } from '../topology/shapeFns.js';
 import type { Camera } from './cameraFns.js';
 
-const getEdges = (shape: OcType): Edge[] => {
+const getEdgesFromOc = (shape: OcType): Edge[] => {
   if (shape.IsNull()) return [];
-  return unwrap(cast(shape)).edges;
+  return _getEdges(castShape(shape));
 };
 
 /**
@@ -42,18 +42,18 @@ export function makeProjectedEdges(
   );
 
   const visible = [
-    ...getEdges(hlrShapes.VCompound_1()),
-    ...getEdges(hlrShapes.Rg1LineVCompound_1()),
-    ...getEdges(hlrShapes.OutLineVCompound_1()),
+    ...getEdgesFromOc(hlrShapes.VCompound_1()),
+    ...getEdgesFromOc(hlrShapes.Rg1LineVCompound_1()),
+    ...getEdgesFromOc(hlrShapes.OutLineVCompound_1()),
   ];
 
   visible.forEach((e) => oc.BRepLib.BuildCurves3d_2(e.wrapped));
 
   const hidden = withHiddenLines
     ? [
-        ...getEdges(hlrShapes.HCompound_1()),
-        ...getEdges(hlrShapes.Rg1LineHCompound_1()),
-        ...getEdges(hlrShapes.OutLineHCompound_1()),
+        ...getEdgesFromOc(hlrShapes.HCompound_1()),
+        ...getEdgesFromOc(hlrShapes.Rg1LineHCompound_1()),
+        ...getEdgesFromOc(hlrShapes.OutLineHCompound_1()),
       ]
     : [];
 

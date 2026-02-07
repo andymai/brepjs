@@ -17,7 +17,9 @@ import type { SketchInterface } from './sketchLib.js';
 import { cast, downcast } from '../topology/cast.js';
 import { type Result, unwrap, isOk } from '../core/result.js';
 import { bug } from '../core/errors.js';
-import { Face, type Shape3D, type Shell, type Wire } from '../topology/shapes.js';
+import type { Face, Shape3D, Shell, Wire } from '../core/shapeTypes.js';
+import { createFace, isFace } from '../core/shapeTypes.js';
+import { getEdges } from '../topology/shapeFns.js';
 import { getKernel } from '../kernel/index.js';
 
 const guessFaceFromWires = (wires: Wire[]): Face => {
@@ -29,7 +31,7 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
   );
 
   wires.forEach((wire: Wire, wireIndex: number) => {
-    wire.edges.forEach((edge: { wrapped: unknown }) => {
+    getEdges(wire).forEach((edge: { wrapped: unknown }) => {
       faceBuilder.Add_1(edge.wrapped, oc.GeomAbs_Shape.GeomAbs_C0, wireIndex === 0);
     });
   });
@@ -39,7 +41,7 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
   const newFace = unwrap(cast(faceBuilder.Shape()));
   gc();
 
-  if (!(newFace instanceof Face)) {
+  if (!isFace(newFace)) {
     bug('guessFaceFromWires', 'Failed to create a face');
   }
   return newFace;
@@ -231,11 +233,11 @@ export default class CompoundSketch implements SketchInterface {
     const shells: Array<Shell | Face> = this.sketches.map((base, cIndex) => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const outer = otherCompound.sketches[cIndex]!;
-      return base.clone().loftWith(outer.clone(), { ruled: loftConfig.ruled }, true);
+      return base.clone().loftWith(outer.clone(), { ruled: loftConfig.ruled }, true) as Shell;
     });
 
     const baseFaceRaw = this.face();
-    const baseFace = new Face(unwrap(downcast(baseFaceRaw.wrapped)));
+    const baseFace = createFace(unwrap(downcast(baseFaceRaw.wrapped)));
     shells.push(baseFace, otherCompound.face());
 
     return unwrap(makeSolid(shells));

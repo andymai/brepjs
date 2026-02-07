@@ -1,5 +1,5 @@
 import type { Vec3 } from '../core/types.js';
-import type { Face, Edge } from '../topology/shapes.js';
+import type { Face, Edge } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { queryError } from '../core/errors.js';
 

@@ -1,6 +1,13 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, EdgeFinder, fnCreateNamedPlane, unwrap } from '../src/index.js';
+import {
+  makeBox,
+  EdgeFinder,
+  fnCreateNamedPlane,
+  unwrap,
+  getFaces,
+  curveLength,
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -47,7 +54,7 @@ describe('EdgeFinder extra coverage', () => {
 
   it('parallelTo a face', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const topFace = box.faces[0]!;
+    const topFace = getFaces(box)[0]!;
     const edges = new EdgeFinder().parallelTo(topFace).find(box);
     expect(edges.length).toBeGreaterThan(0);
   });
@@ -79,7 +86,7 @@ describe('EdgeFinder extra coverage', () => {
 
   it('when() custom filter', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const edges = new EdgeFinder().when(({ element }) => element.length > 25).find(box);
+    const edges = new EdgeFinder().when(({ element }) => curveLength(element) > 25).find(box);
     expect(edges.length).toBe(4);
   });
 

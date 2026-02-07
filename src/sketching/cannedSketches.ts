@@ -15,7 +15,9 @@ import { vecRotate } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import Sketcher from './Sketcher.js';
 import Sketch from './Sketch.js';
-import type { Face } from '../topology/shapes.js';
+import type { Face } from '../core/shapeTypes.js';
+import { faceCenter, normalAt, outerWire } from '../topology/faceFns.js';
+import { offsetWire2D } from '../topology/curveFns.js';
 import type { Point2D } from '../2d/lib/index.js';
 import { localGC } from '../core/memory.js';
 import { roundedRectangleBlueprint } from '../2d/blueprints/cannedBlueprints.js';
@@ -238,9 +240,9 @@ export const polysideInnerRadius = (
  * @category Sketching
  */
 export const sketchFaceOffset = (face: Face, offset: number): Sketch => {
-  const defaultOrigin: [number, number, number] = [...face.center];
-  const defaultDirection: [number, number, number] = [...face.normalAt()];
-  const wire = unwrap(face.outerWire().offset2D(offset));
+  const defaultOrigin: [number, number, number] = [...faceCenter(face)];
+  const defaultDirection: [number, number, number] = [...normalAt(face)];
+  const wire = unwrap(offsetWire2D(outerWire(face), offset));
 
   const sketch = new Sketch(wire, { defaultOrigin, defaultDirection });
 
@@ -315,6 +317,6 @@ export const sketchHelix = (
   const dirVec3 = toVec3(dir);
 
   return new Sketch(
-    unwrap(assembleWire(makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand).wires))
+    unwrap(assembleWire([makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand)]))
   );
 };

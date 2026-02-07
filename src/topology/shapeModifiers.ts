@@ -9,7 +9,7 @@
 
 import { bug } from '../core/errors.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
-import type { Edge } from './shapes.js';
+import type { Edge } from '../core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Lazy query module loader — avoids hard compile-time dependency on query/

@@ -92,14 +92,13 @@ describe('WrappingObj', () => {
   it('throws after delete', () => {
     const box = makeBox([0, 0, 0], [5, 5, 5]);
     box.delete();
-    expect(() => box.wrapped).toThrow('This object has been deleted');
+    expect(() => box.wrapped).toThrow('Shape handle has been disposed');
   });
 
-  it('replaces wrapped object via setter', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [5, 5, 5]);
-    const original = box1.wrapped;
-    box1.wrapped = box2.wrapped;
-    expect(box1.wrapped).not.toBe(original);
+  it('tracks disposed state', () => {
+    const box = makeBox([0, 0, 0], [5, 5, 5]);
+    expect(box.disposed).toBe(false);
+    box.delete();
+    expect(box.disposed).toBe(true);
   });
 });

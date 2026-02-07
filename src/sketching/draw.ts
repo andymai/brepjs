@@ -27,7 +27,10 @@ import {
 } from '../2d/blueprints/index.js';
 import type { Plane, PlaneName } from '../core/planeTypes.js';
 import type { PointInput } from '../core/types.js';
-import { Face, type AnyShape, type Edge, type Wire } from '../topology/shapes.js';
+import type { AnyShape, Edge, Face, Wire } from '../core/shapeTypes.js';
+import { createFace } from '../core/shapeTypes.js';
+import { outerWire } from '../topology/faceFns.js';
+import { getEdges } from '../topology/shapeFns.js';
 import { makeFace } from '../topology/shapeHelpers.js';
 import { downcast } from '../topology/cast.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
@@ -592,9 +595,9 @@ export function drawProjection(
  */
 export function drawFaceOutline(face: Face): Drawing {
   const [r, gc] = localGC();
-  const clonedFace = r(new Face(unwrap(downcast(face.wrapped))));
-  const outerWire = r(clonedFace.outerWire());
-  const curves = outerWire.edges.map((e) => edgeToCurve(e, face));
+  const clonedFace = r(createFace(unwrap(downcast(face.wrapped))));
+  const faceOuterWire = r(outerWire(clonedFace));
+  const curves = getEdges(faceOuterWire).map((e) => edgeToCurve(e, face));
   gc();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));

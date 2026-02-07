@@ -3,7 +3,7 @@ import { getKernel } from '../kernel/index.js';
 import { gcWithScope } from '../core/memory.js';
 import { type OcHandle, createOcHandle } from '../core/disposal.js';
 import { uuidv } from '../utils/uuid.js';
-import type { AnyShape } from '../topology/shapes.js';
+import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 import { uniqueIOFilename } from '../core/constants.js';

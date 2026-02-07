@@ -33,8 +33,12 @@ import {
   defaultsSplineConfig,
   type GenericSketcher,
 } from './sketcherlib.js';
-import { Wire, type CurveLike, type Edge } from '../topology/shapes.js';
+import type { CurveLike } from '../core/shapeTypes.js';
+import type { Edge, Wire } from '../core/shapeTypes.js';
+import { createWire } from '../core/shapeTypes.js';
+import { curveEndPoint, curveTangentAt, getCurveType } from '../topology/curveFns.js';
 import { downcast } from '../topology/cast.js';
+import { getKernel } from '../kernel/index.js';
 import { mirror as mirrorOcShape } from '../core/geometryHelpers.js';
 import type { OcType } from '../kernel/types.js';
 import Sketch from './Sketch.js';
@@ -165,7 +169,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     if (!previousEdge)
       bug('Sketcher.tangentLine', 'You need a previous edge to create a tangent line');
 
-    const tangent = previousEdge.tangentAt(1);
+    const tangent = curveTangentAt(previousEdge, 1);
     const scaledTangent = vecScale(vecNormalize(tangent), distance);
     const endPoint = vecAdd(scaledTangent, this.pointer);
 
@@ -201,8 +205,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     if (!previousEdge)
       bug('Sketcher.tangentArcTo', 'You need a previous edge to create a tangent arc');
 
-    const prevEnd = previousEdge.endPoint;
-    const prevTangent = previousEdge.tangentAt(1);
+    const prevEnd = curveEndPoint(previousEdge);
+    const prevTangent = curveTangentAt(previousEdge, 1);
     this.pendingEdges.push(makeTangentArc(prevEnd, prevTangent, endPoint));
 
     this._updatePointer(endPoint);
@@ -420,9 +424,11 @@ export default class Sketcher implements GenericSketcher<Sketch> {
         startPoleDirection = planeToWorld(this.plane, startTangent);
       } else if (!previousEdge) {
         startPoleDirection = planeToWorld(this.plane, [1, 0]);
-      } else if (previousEdge.geomType === 'BEZIER_CURVE') {
+      } else if (getCurveType(previousEdge) === 'BEZIER_CURVE') {
+        const oc = getKernel().oc;
+        const adaptor = r(new oc.BRepAdaptor_Curve_2(previousEdge.wrapped));
         const rawCurve = (
-          r(previousEdge.curve).wrapped as CurveLike & {
+          adaptor as CurveLike & {
             Bezier: () => { get: () => OcType };
           }
         )
@@ -432,7 +438,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
         startPoleDirection = vecSub(this.pointer, previousPole);
       } else {
-        startPoleDirection = previousEdge.tangentAt(1);
+        startPoleDirection = curveTangentAt(previousEdge, 1);
       }
 
       const poleDistance = vecScale(
@@ -474,7 +480,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     const clonedWrapped = unwrap(downcast(wire.wrapped));
     const mirroredRaw = mirrorOcShape(clonedWrapped, normal, this.pointer);
     const mirroredWrapped = unwrap(downcast(mirroredRaw));
-    const mirroredWire = new Wire(mirroredWrapped);
+    const mirroredWire = createWire(mirroredWrapped);
 
     const combinedWire = unwrap(assembleWire([wire, mirroredWire]));
 

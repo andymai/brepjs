@@ -6,7 +6,7 @@ import type { Vec3 } from '../core/types.js';
 import { vecCross, vecNormalize, vecSub, vecLength } from '../core/vecOps.js';
 import type { ProjectionPlane } from './projectionPlanes.js';
 import { PROJECTION_PLANES } from './projectionPlanes.js';
-import type { Edge, AnyShape } from '../topology/shapes.js';
+import type { Edge, AnyShape } from '../core/shapeTypes.js';
 import { makeProjectedEdges } from './makeProjectedEdges.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError } from '../core/errors.js';

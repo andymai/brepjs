@@ -3,10 +3,28 @@
  * Each shape type is a branded ShapeHandle to prevent incorrect assignments.
  */
 
-import type { OcShape } from '../kernel/types.js';
+import type { OcShape, OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import type { ShapeHandle } from './disposal.js';
 import { createHandle } from './disposal.js';
+
+// ---------------------------------------------------------------------------
+// CurveLike — OCCT curve adaptor interface
+// ---------------------------------------------------------------------------
+
+/** Interface for OCCT curve adaptors (BRepAdaptor_Curve / CompCurve). */
+export interface CurveLike {
+  delete(): void;
+  Value(v: number): OcType;
+  IsPeriodic(): boolean;
+  Period(): number;
+  IsClosed(): boolean;
+  FirstParameter(): number;
+  LastParameter(): number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum return type
+  GetType?(): any;
+  D1(v: number, p: OcType, vPrime: OcType): void;
+}
 
 // ---------------------------------------------------------------------------
 // Shape kind discriminant

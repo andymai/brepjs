@@ -17,10 +17,15 @@ import {
   getBounds,
   resolvePlane,
   makePlaneFromFace,
+  getEdges,
+  getFaces,
+  fnExportSTEP,
+  fnExportSTL,
 } from '../src/index.js';
 import { translateShape, rotateShape, scaleShape, mirrorShape } from '../src/topology/shapeFns.js';
-import { meshShape } from '../src/topology/meshFns.js';
+import { meshShape, meshShapeEdges } from '../src/topology/meshFns.js';
 import { fuseShapes, cutShape, intersectShapes } from '../src/topology/booleanFns.js';
+import { pointOnSurface, normalAt } from '../src/topology/faceFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -115,7 +120,7 @@ describe('Shape.mesh()', () => {
 describe('Shape.meshEdges()', () => {
   it('produces edge lines for a box', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const { lines, edgeGroups } = box.meshEdges();
+    const { lines, edgeGroups } = meshShapeEdges(box as any);
 
     expect(lines.length).toBeGreaterThan(0);
     expect(lines.length % 3).toBe(0); // x, y, z per point
@@ -126,8 +131,8 @@ describe('Shape.meshEdges()', () => {
 describe('Shape topology accessors', () => {
   it('box has 12 edges, 6 faces, 8 vertices', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(box.edges.length).toBe(12);
-    expect(box.faces.length).toBe(6);
+    expect(getEdges(box).length).toBe(12);
+    expect(getFaces(box).length).toBe(6);
   });
 
   it('bounding box is correct', () => {
@@ -182,8 +187,13 @@ describe('Shape transformations', () => {
 describe('makePlaneFromFace', () => {
   it('creates plane from box face', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const face = box.faces[0];
-    const plane = makePlaneFromFace(face);
+    const face = getFaces(box)[0];
+    // Create adapter object with the methods expected by makePlaneFromFace
+    const faceAdapter = {
+      pointOnSurface: (u: number, v: number) => pointOnSurface(face, u, v),
+      normalAt: (p?: [number, number, number]) => normalAt(face, p),
+    };
+    const plane = makePlaneFromFace(faceAdapter);
     expect(plane).toBeDefined();
     expect(plane.origin).toBeDefined();
     expect(plane.xDir).toBeDefined();
@@ -193,8 +203,13 @@ describe('makePlaneFromFace', () => {
 
   it('creates plane with custom origin on surface', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const face = box.faces[0];
-    const plane = makePlaneFromFace(face, [0.5, 0.5]);
+    const face = getFaces(box)[0];
+    // Create adapter object with the methods expected by makePlaneFromFace
+    const faceAdapter = {
+      pointOnSurface: (u: number, v: number) => pointOnSurface(face, u, v),
+      normalAt: (p?: [number, number, number]) => normalAt(face, p),
+    };
+    const plane = makePlaneFromFace(faceAdapter, [0.5, 0.5]);
     expect(plane).toBeDefined();
   });
 });
@@ -251,13 +266,13 @@ describe('Result error paths', () => {
 
   it('blobSTEP returns Ok for valid shape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = box.blobSTEP();
+    const result = fnExportSTEP(box);
     expect(isOk(result)).toBe(true);
   });
 
   it('blobSTL returns Ok for valid shape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = box.blobSTL();
+    const result = fnExportSTL(box);
     expect(isOk(result)).toBe(true);
   });
 });

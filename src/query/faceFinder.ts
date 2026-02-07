@@ -3,9 +3,11 @@ import type { Vec3, PointInput } from '../core/types.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecProjectToPlane, vecEquals } from '../core/vecOps.js';
 
-import type { Face, AnyShape, SurfaceType } from '../topology/shapes.js';
+import type { Face, AnyShape } from '../core/shapeTypes.js';
+import type { SurfaceType } from '../topology/faceFns.js';
+import { faceGeomType, faceCenter, normalAt } from '../topology/faceFns.js';
+import { getFaces } from '../topology/shapeFns.js';
 import { measureArea } from '../measurement/measureFns.js';
-import type { Face as FnFace } from '../core/shapeTypes.js';
 import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
 import { Finder3d } from './generic3dfinder.js';
 
@@ -41,9 +43,9 @@ export class FaceFinder extends Finder3d<Face> {
       // Functional Plane interface with Vec3 tuples
       return this.atAngleWith(plane.zDir);
     }
-    if (typeof plane !== 'string' && 'normalAt' in plane) {
+    if (typeof plane !== 'string' && 'wrapped' in plane) {
       // Face - normalAt() returns Vec3 tuple
-      const normal = plane.normalAt();
+      const normal = normalAt(plane);
       return this.atAngleWith(normal);
     }
     return this;
@@ -56,7 +58,7 @@ export class FaceFinder extends Finder3d<Face> {
    */
   ofSurfaceType(surfaceType: SurfaceType): this {
     const check = ({ element }: { element: Face }) => {
-      return element.geomType === surfaceType;
+      return faceGeomType(element) === surfaceType;
     };
     this.filters.push(check);
     return this;
@@ -71,8 +73,7 @@ export class FaceFinder extends Finder3d<Face> {
    */
   ofArea(area: number, tolerance = 1e-3): this {
     const check = ({ element }: { element: Face }) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OOP Face → branded Face bridge
-      return Math.abs(measureArea(element as any as FnFace) - area) < tolerance;
+      return Math.abs(measureArea(element) - area) < tolerance;
     };
     this.filters.push(check);
     return this;
@@ -96,7 +97,7 @@ export class FaceFinder extends Finder3d<Face> {
     this.parallelTo(plane);
 
     const centerInPlane = ({ element }: { element: Face }) => {
-      const center = element.center;
+      const center = faceCenter(element);
       const projected = vecProjectToPlane(center, plane.origin, plane.zDir);
       const result = vecEquals(center, projected);
       return result;
@@ -108,13 +109,13 @@ export class FaceFinder extends Finder3d<Face> {
 
   shouldKeep(element: Face): boolean {
     // normalAt() returns Vec3 tuple directly
-    const normal: Vec3 = element.normalAt();
+    const normal: Vec3 = normalAt(element);
     const shouldKeep = this.filters.every((filter) => filter({ normal, element }));
     return shouldKeep;
   }
 
   protected applyFilter(shape: AnyShape): Face[] {
-    return shape.faces.filter((face: Face) => {
+    return getFaces(shape).filter((face: Face) => {
       const shouldKeep = this.shouldKeep(face);
       return shouldKeep;
     });

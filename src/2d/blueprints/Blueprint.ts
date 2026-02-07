@@ -19,10 +19,11 @@ import {
   isPoint2D,
   approximateAsSvgCompatibleCurve,
 } from '../lib/index.js';
-import type { AnyShape, Face } from '../../topology/shapes.js';
-import { Wire } from '../../topology/shapes.js';
+import type { AnyShape, Face, Wire } from '../../core/shapeTypes.js';
+import { createWire } from '../../core/shapeTypes.js';
 import { cast } from '../../topology/cast.js';
 import { unwrap } from '../../core/result.js';
+import { faceCenter, uvCoordinates } from '../../topology/faceFns.js';
 
 import { getKernel } from '../../kernel/index.js';
 import { makeFace } from '../../topology/shapeHelpers.js';
@@ -47,7 +48,7 @@ function assembleWire(listOfEdges: { wrapped: unknown }[]): Wire {
   listOfEdges.forEach((e) => {
     builder.Add_1(e.wrapped);
   });
-  return new Wire(builder.Wire());
+  return createWire(builder.Wire());
 }
 
 /**
@@ -279,9 +280,9 @@ export default class Blueprint implements DrawingInterface {
    * @returns A new Face bounded by the blueprint's profile.
    */
   subFace(face: Face, origin?: PointInput | null): Face {
-    const originPoint = origin || [...face.center];
+    const originPoint = origin || [...faceCenter(face)];
     const originVec3 = toVec3(originPoint);
-    const sketch = this.translate(face.uvCoordinates(originVec3)).sketchOnFace(face, 'original');
+    const sketch = this.translate(uvCoordinates(face, originVec3)).sketchOnFace(face, 'original');
     return unwrap(makeFace(sketch.wire));
   }
 

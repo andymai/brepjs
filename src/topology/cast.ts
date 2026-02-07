@@ -1,34 +1,9 @@
 import type { OcShape, OcType } from '../kernel/types.js';
-import type { AnyShape, CompSolid, Shape3D, Wire } from './shapes.js';
-import type * as ShapesModule from './shapes.js';
+import type { AnyShape, CompSolid, Shape3D, Wire } from '../core/shapeTypes.js';
+import { castShape, isShape3D as _isShape3D, isWire as _isWire } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
-import { bug, typeCastError } from '../core/errors.js';
+import { typeCastError } from '../core/errors.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
-
-// Lazy imports to break circular dependency between cast.ts and shapes.ts.
-// The Shape classes reference cast/downcast, and cast/downcast reference Shape classes.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- lazy-loaded module
-let _shapesModule: any = null;
-
-// Synchronous accessor — assumes shapes module has been loaded already.
-// This is safe because the module is loaded eagerly at first use.
-function getShapesModuleSync(): typeof ShapesModule {
-  if (!_shapesModule) {
-    bug(
-      'cast',
-      'Shapes module not yet loaded. Ensure initCast() has been called or import shapes.js first.'
-    );
-  }
-  return _shapesModule;
-}
-
-/**
- * Initialise the lazy shapes module reference. Call this once at startup
- * (the barrel index.ts does it automatically).
- */
-export function initCast(shapesModule: typeof ShapesModule): void {
-  _shapesModule = shapesModule;
-}
 
 /** String literal identifying a topological entity type for TopExp_Explorer iteration. */
 export type TopoEntity =
@@ -142,67 +117,35 @@ export function downcast(shape: OcShape): Result<GenericTopo> {
   });
 }
 
-// Lazily cached map: TopAbs enum → Shape class constructor
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are opaque
-let _castMap: Map<any, any> | null = null;
-
-function getCastMap() {
-  if (!_castMap) {
-    const oc = getKernel().oc;
-    const ta = oc.TopAbs_ShapeEnum;
-    const mod = getShapesModuleSync();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mapping enum to class constructors
-    _castMap = new Map<any, any>([
-      [ta.TopAbs_VERTEX, mod.Vertex],
-      [ta.TopAbs_EDGE, mod.Edge],
-      [ta.TopAbs_WIRE, mod.Wire],
-      [ta.TopAbs_FACE, mod.Face],
-      [ta.TopAbs_SHELL, mod.Shell],
-      [ta.TopAbs_SOLID, mod.Solid],
-      [ta.TopAbs_COMPSOLID, mod.CompSolid],
-      [ta.TopAbs_COMPOUND, mod.Compound],
-    ]);
-  }
-  return _castMap;
-}
-
 /**
- * Cast a raw OCCT shape to its corresponding brepjs wrapper class (Vertex, Edge, Face, etc.).
+ * Cast a raw OCCT shape to its corresponding branded brepjs type (Vertex, Edge, Face, etc.).
  *
- * Performs downcast + class instantiation in one step.
+ * Performs downcast + branded handle creation in one step.
  *
  * @returns Ok with a typed AnyShape, or Err if the shape type is unknown.
  */
 export function cast(shape: OcShape): Result<AnyShape> {
-  return andThen(shapeType(shape), (st) => {
-    const Klass = getCastMap().get(st);
-    if (!Klass)
-      return err(typeCastError('NO_WRAPPER', 'Could not find a wrapper for this shape type'));
-    return andThen(downcast(shape), (downcasted) => ok(new Klass(downcasted) as AnyShape));
-  });
+  if (shape.IsNull()) {
+    return err(typeCastError('NULL_SHAPE', 'Cannot cast a null shape'));
+  }
+  return ok(castShape(shape));
 }
 
 /** Type guard: return true if the shape is a 3D body (Shell, Solid, CompSolid, or Compound). */
 export function isShape3D(shape: AnyShape): shape is Shape3D {
-  const mod = getShapesModuleSync();
-  return (
-    shape instanceof mod.Shell ||
-    shape instanceof mod.Solid ||
-    shape instanceof mod.CompSolid ||
-    shape instanceof mod.Compound
-  );
+  return _isShape3D(shape);
 }
 
 /** Type guard: return true if the shape is a Wire. */
 export function isWire(shape: AnyShape): shape is Wire {
-  const mod = getShapesModuleSync();
-  return shape instanceof mod.Wire;
+  return _isWire(shape);
 }
 
 /** Type guard: return true if the shape is a CompSolid. */
 export function isCompSolid(shape: AnyShape): shape is CompSolid {
-  const mod = getShapesModuleSync();
-  return shape instanceof mod.CompSolid;
+  const st = shape.wrapped.ShapeType();
+  const oc = getKernel().oc;
+  return st === oc.TopAbs_ShapeEnum.TopAbs_COMPSOLID;
 }
 
 /**

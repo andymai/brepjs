@@ -10,8 +10,8 @@ import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import { typeCastError, occtError } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
-import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
-import { Solid } from '../topology/shapes.js';
+import type { Face, Wire, Edge, Shape3D, Solid } from '../core/shapeTypes.js';
+import { createSolid } from '../core/shapeTypes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
 
 /**
@@ -30,7 +30,7 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid 
   const vec = toVec3(extrusionVec);
   const ocVec = r(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
   const solidBuilder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true));
-  const solid = new Solid(unwrap(downcast(solidBuilder.Shape())));
+  const solid = createSolid(unwrap(downcast(solidBuilder.Shape())));
   gc();
   return solid;
 };

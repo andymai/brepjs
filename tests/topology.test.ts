@@ -43,6 +43,46 @@ import {
   EdgeFinder,
   FaceFinder,
   registerQueryModule,
+  // Functional API imports
+  serializeShape,
+  getHashCode,
+  isShapeNull,
+  isSameShape,
+  isEqualShape,
+  vertexPosition,
+  getEdges,
+  getFaces,
+  getWires,
+  getShapeKind,
+  fnIsEdge,
+  fnIsWire,
+  fnIsFace,
+  fnGetCurveType,
+  curveStartPoint,
+  curveEndPoint,
+  curveLength,
+  curvePointAt,
+  curveTangentAt,
+  curveIsClosed,
+  curveIsPeriodic,
+  curvePeriod,
+  getOrientation,
+  flipOrientation,
+  offsetWire2D,
+  faceGeomType,
+  faceOrientation,
+  flipFaceOrientation,
+  uvBounds,
+  fnPointOnSurface,
+  fnNormalAt,
+  faceCenter,
+  fnOuterWire,
+  fnInnerWires,
+  fnUvCoordinates,
+  getSurfaceType,
+  shellShape,
+  filletShape,
+  chamferShape,
 } from '../src/index.js';
 import {
   cloneShape,
@@ -67,22 +107,22 @@ describe('Shape base methods', () => {
     expect(cloneShape(makeLine([0, 0, 0], [10, 0, 0]) as any)).toBeDefined();
   });
   it('serialize', () => {
-    const s = makeBox([0, 0, 0], [5, 5, 5]).serialize();
+    const s = serializeShape(makeBox([0, 0, 0], [5, 5, 5]));
     expect(s.length).toBeGreaterThan(0);
   });
   it('hashCode', () => {
-    expect(makeBox([0, 0, 0], [10, 10, 10]).hashCode).toBeGreaterThan(0);
+    expect(getHashCode(makeBox([0, 0, 0], [10, 10, 10]))).toBeGreaterThan(0);
   });
   it('isNull', () => {
-    expect(makeBox([0, 0, 0], [10, 10, 10]).isNull).toBe(false);
+    expect(isShapeNull(makeBox([0, 0, 0], [10, 10, 10]))).toBe(false);
   });
   it('isSame', () => {
     const b = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(b.isSame(b)).toBe(true);
+    expect(isSameShape(b, b)).toBe(true);
   });
   it('isEqual', () => {
     const b = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(b.isEqual(b)).toBe(true);
+    expect(isEqualShape(b, b)).toBe(true);
   });
   it('simplify', () => {
     const f = unwrap(
@@ -136,7 +176,7 @@ describe('Shape transforms', () => {
 
 describe('Vertex', () => {
   it('asTuple', () => {
-    const [x, y, z] = makeVertex([1, 2, 3]).asTuple();
+    const [x, y, z] = vertexPosition(makeVertex([1, 2, 3]));
     expect(x).toBeCloseTo(1);
     expect(y).toBeCloseTo(2);
     expect(z).toBeCloseTo(3);
@@ -146,44 +186,36 @@ describe('Vertex', () => {
 describe('Edge', () => {
   it('start/end', () => {
     const e = makeLine([0, 0, 0], [10, 0, 0]);
-    expect(e.startPoint[0]).toBeCloseTo(0);
-    expect(e.endPoint[0]).toBeCloseTo(10);
+    expect(curveStartPoint(e)[0]).toBeCloseTo(0);
+    expect(curveEndPoint(e)[0]).toBeCloseTo(10);
   });
   it('length', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).length).toBeCloseTo(10);
+    expect(curveLength(makeLine([0, 0, 0], [10, 0, 0]))).toBeCloseTo(10);
   });
   it('pointAt', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).pointAt(0.5)[0]).toBeCloseTo(5);
+    expect(curvePointAt(makeLine([0, 0, 0], [10, 0, 0]), 0.5)[0]).toBeCloseTo(5);
   });
   it('tangentAt', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).tangentAt(0.5)).toBeDefined();
+    expect(curveTangentAt(makeLine([0, 0, 0], [10, 0, 0]), 0.5)).toBeDefined();
   });
   it('geomType', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).geomType).toBe('LINE');
-  });
-  it('curve', () => {
-    const c = makeLine([0, 0, 0], [10, 0, 0]).curve;
-    expect(c.curveType).toBe('LINE');
-    c.delete();
-  });
-  it('repr', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).repr).toContain('start');
+    expect(fnGetCurveType(makeLine([0, 0, 0], [10, 0, 0]))).toBe('LINE');
   });
   it('isClosed', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).isClosed).toBe(false);
-    expect(makeCircle(5).isClosed).toBe(true);
+    expect(curveIsClosed(makeLine([0, 0, 0], [10, 0, 0]))).toBe(false);
+    expect(curveIsClosed(makeCircle(5))).toBe(true);
   });
   it('isPeriodic', () => {
-    expect(makeCircle(5).isPeriodic).toBe(true);
+    expect(curveIsPeriodic(makeCircle(5))).toBe(true);
   });
   it('period', () => {
-    expect(makeCircle(5).period).toBeGreaterThan(0);
+    expect(curvePeriod(makeCircle(5))).toBeGreaterThan(0);
   });
   it('orientation', () => {
-    expect(['forward', 'backward']).toContain(makeLine([0, 0, 0], [10, 0, 0]).orientation);
+    expect(['forward', 'backward']).toContain(getOrientation(makeLine([0, 0, 0], [10, 0, 0])));
   });
   it('flipOrientation', () => {
-    expect(makeLine([0, 0, 0], [10, 0, 0]).flipOrientation()).toBeDefined();
+    expect(flipOrientation(makeLine([0, 0, 0], [10, 0, 0]))).toBeDefined();
   });
 });
 
@@ -192,68 +224,66 @@ describe('Wire', () => {
     const w = unwrap(
       assembleWire([makeLine([0, 0, 0], [10, 0, 0]), makeLine([10, 0, 0], [10, 10, 0])])
     );
-    expect(w.startPoint[0]).toBeCloseTo(0);
-    expect(w.endPoint[1]).toBeCloseTo(10);
-    expect(w.length).toBeCloseTo(20);
+    expect(curveStartPoint(w)[0]).toBeCloseTo(0);
+    expect(curveEndPoint(w)[1]).toBeCloseTo(10);
+    expect(curveLength(w)).toBeCloseTo(20);
   });
   it('geomType', () => {
-    expect(unwrap(assembleWire([makeLine([0, 0, 0], [10, 0, 0])])).geomType).toBeDefined();
+    expect(fnGetCurveType(unwrap(assembleWire([makeLine([0, 0, 0], [10, 0, 0])])))).toBeDefined();
   });
   it('offset2D', () => {
-    expect(isOk(sketchRectangle(10, 10).wire.offset2D(1))).toBe(true);
+    expect(isOk(offsetWire2D(sketchRectangle(10, 10).wire, 1))).toBe(true);
   });
 });
 
 describe('Face', () => {
   it('geomType', () => {
-    expect(sketchRectangle(10, 10).face().geomType).toBe('PLANE');
+    expect(faceGeomType(sketchRectangle(10, 10).face())).toBe('PLANE');
   });
   it('surface', () => {
-    const s = sketchRectangle(10, 10).face().surface;
-    expect(unwrap(s.surfaceType)).toBe('PLANE');
-    s.delete();
+    expect(unwrap(getSurfaceType(sketchRectangle(10, 10).face()))).toBe('PLANE');
   });
   it('orientation', () => {
-    expect(['forward', 'backward']).toContain(sketchRectangle(10, 10).face().orientation);
+    expect(['forward', 'backward']).toContain(faceOrientation(sketchRectangle(10, 10).face()));
   });
   it('flip', () => {
-    expect(sketchRectangle(10, 10).face().flipOrientation()).toBeInstanceOf(Face);
+    expect(flipFaceOrientation(sketchRectangle(10, 10).face())).toBeDefined();
   });
   it('UVBounds', () => {
-    const b = sketchRectangle(10, 10).face().UVBounds;
+    const b = uvBounds(sketchRectangle(10, 10).face());
     expect(b.uMax).toBeGreaterThan(b.uMin);
   });
   it('pointOnSurface', () => {
-    const p = sketchRectangle(10, 10).face().pointOnSurface(0.5, 0.5);
+    const p = fnPointOnSurface(sketchRectangle(10, 10).face(), 0.5, 0.5);
     expect(p).toBeDefined();
   });
   it('normalAt', () => {
-    const n = sketchRectangle(10, 10).face().normalAt();
+    const n = fnNormalAt(sketchRectangle(10, 10).face());
     expect(Math.abs(n[2])).toBeCloseTo(1, 1);
   });
   it('normalAt loc', () => {
-    const n = sketchRectangle(10, 10).face().normalAt([0, 0, 0]);
+    const n = fnNormalAt(sketchRectangle(10, 10).face(), [0, 0, 0]);
     expect(n).toBeDefined();
   });
   it('center', () => {
-    const c = sketchRectangle(10, 10).face().center;
+    const c = faceCenter(sketchRectangle(10, 10).face());
     expect(c[0]).toBeCloseTo(0, 0);
   });
   it('outerWire', () => {
-    expect(sketchRectangle(10, 10).face().outerWire()).toBeInstanceOf(Wire);
+    expect(fnOuterWire(sketchRectangle(10, 10).face())).toBeDefined();
   });
   it('innerWires', () => {
-    expect(sketchRectangle(10, 10).face().innerWires()).toHaveLength(0);
+    expect(fnInnerWires(sketchRectangle(10, 10).face())).toHaveLength(0);
   });
   it('uvCoordinates', () => {
-    const [u] = sketchRectangle(10, 10).face().uvCoordinates([0, 0, 0]);
+    const [u] = fnUvCoordinates(sketchRectangle(10, 10).face(), [0, 0, 0]);
     expect(typeof u).toBe('number');
   });
   it('CYLINDRE', () => {
-    expect(makeCylinder(5, 10).faces.map((f) => f.geomType)).toContain('CYLINDRE');
+    expect(getFaces(makeCylinder(5, 10)).map((f) => faceGeomType(f))).toContain('CYLINDRE');
   });
   it('wires', () => {
-    expect(makeBox([0, 0, 0], [10, 10, 10]).wires.length).toBeGreaterThan(0);
+    expect(getWires(makeBox([0, 0, 0], [10, 10, 10])).length).toBeGreaterThan(0);
   });
 });
 
@@ -337,64 +367,56 @@ describe('Boolean opts', () => {
 
 describe('shell', () => {
   it('fn', () => {
-    expect(
-      measureVolume(unwrap(makeBox([0, 0, 0], [10, 10, 10]).shell(1, (f) => f.inPlane('XY', 10))))
-    ).toBeLessThan(1000);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const topFaces = new FaceFinder().inPlane('XY', 10).find(box);
+    expect(measureVolume(unwrap(shellShape(box, topFaces, 1)))).toBeLessThan(1000);
   });
   it('obj', () => {
-    expect(
-      measureVolume(
-        unwrap(
-          makeBox([0, 0, 0], [10, 10, 10]).shell({
-            filter: new FaceFinder().inPlane('XY', 10),
-            thickness: 1,
-          })
-        )
-      )
-    ).toBeLessThan(1000);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const topFaces = new FaceFinder().inPlane('XY', 10).find(box);
+    expect(measureVolume(unwrap(shellShape(box, topFaces, 1)))).toBeLessThan(1000);
   });
 });
 
 describe('fillet', () => {
   it('all', () => {
-    expect(measureVolume(unwrap(makeBox([0, 0, 0], [10, 10, 10]).fillet(1)))).toBeLessThan(1000);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    expect(measureVolume(unwrap(filletShape(box, undefined, 1)))).toBeLessThan(1000);
   });
   it('filter', () => {
-    expect(
-      unwrap(makeBox([0, 0, 0], [10, 10, 10]).fillet(1, (e) => e.inDirection('Z')))
-    ).toBeDefined();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    expect(unwrap(filletShape(box, zEdges, 1))).toBeDefined();
   });
   it('config', () => {
-    expect(
-      unwrap(
-        makeBox([0, 0, 0], [10, 10, 10]).fillet({
-          filter: new EdgeFinder().inDirection('Z'),
-          radius: 1,
-        })
-      )
-    ).toBeDefined();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    expect(unwrap(filletShape(box, zEdges, 1))).toBeDefined();
   });
   it('[r1,r2]', () => {
-    expect(
-      unwrap(makeBox([0, 0, 0], [10, 10, 10]).fillet([1, 2], (e) => e.inDirection('Z')))
-    ).toBeDefined();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    expect(unwrap(filletShape(box, zEdges, [1, 2]))).toBeDefined();
   });
   it('no match', () => {
-    expect(isErr(makeBox([0, 0, 0], [10, 10, 10]).fillet(() => null))).toBe(true);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    expect(isErr(filletShape(box, [], 1))).toBe(true);
   });
 });
 
 describe('chamfer', () => {
   it('all', () => {
-    expect(measureVolume(unwrap(makeBox([0, 0, 0], [10, 10, 10]).chamfer(1)))).toBeLessThan(1000);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    expect(measureVolume(unwrap(chamferShape(box, undefined, 1)))).toBeLessThan(1000);
   });
   it('filter', () => {
-    expect(
-      unwrap(makeBox([0, 0, 0], [10, 10, 10]).chamfer(1, (e) => e.inDirection('Z')))
-    ).toBeDefined();
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    expect(unwrap(chamferShape(box, zEdges, 1))).toBeDefined();
   });
   it('no match', () => {
-    expect(isErr(makeBox([0, 0, 0], [10, 10, 10]).chamfer(() => null))).toBe(true);
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    expect(isErr(chamferShape(box, [], 1))).toBe(true);
   });
 });
 
@@ -459,44 +481,46 @@ describe('type guards', () => {
 
 describe('shapeHelpers', () => {
   it('makeCircle', () => {
-    expect(makeCircle(10).isClosed).toBe(true);
+    expect(curveIsClosed(makeCircle(10))).toBe(true);
   });
   it('makeCircle custom', () => {
-    expect(makeCircle(5, [1, 2, 3], [0, 1, 0])).toBeInstanceOf(Edge);
+    expect(fnIsEdge(makeCircle(5, [1, 2, 3], [0, 1, 0]))).toBe(true);
   });
   it('makeEllipse', () => {
-    expect(unwrap(makeEllipse(10, 5))).toBeInstanceOf(Edge);
+    expect(fnIsEdge(unwrap(makeEllipse(10, 5)))).toBe(true);
   });
   it('makeEllipse err', () => {
     expect(isErr(makeEllipse(5, 10))).toBe(true);
   });
   it('makeHelix', () => {
-    expect(makeHelix(2, 10, 5)).toBeInstanceOf(Wire);
+    expect(fnIsWire(makeHelix(2, 10, 5))).toBe(true);
   });
   it('makeHelix left', () => {
-    expect(makeHelix(2, 10, 5, [0, 0, 0], [0, 0, 1], true)).toBeInstanceOf(Wire);
+    expect(fnIsWire(makeHelix(2, 10, 5, [0, 0, 0], [0, 0, 1], true))).toBe(true);
   });
   it('makeThreePointArc', () => {
-    expect(makeThreePointArc([0, 0, 0], [5, 5, 0], [10, 0, 0])).toBeInstanceOf(Edge);
+    expect(fnIsEdge(makeThreePointArc([0, 0, 0], [5, 5, 0], [10, 0, 0]))).toBe(true);
   });
   it('makeEllipseArc', () => {
-    expect(unwrap(makeEllipseArc(10, 5, 0, Math.PI))).toBeInstanceOf(Edge);
+    expect(fnIsEdge(unwrap(makeEllipseArc(10, 5, 0, Math.PI)))).toBe(true);
   });
   it('makeEllipseArc err', () => {
     expect(isErr(makeEllipseArc(5, 10, 0, Math.PI))).toBe(true);
   });
   it('makeBSpline', () => {
     expect(
-      unwrap(
-        makeBSplineApproximation([
-          [0, 0, 0],
-          [2, 3, 0],
-          [5, 1, 0],
-          [8, 4, 0],
-          [10, 0, 0],
-        ])
+      fnIsEdge(
+        unwrap(
+          makeBSplineApproximation([
+            [0, 0, 0],
+            [2, 3, 0],
+            [5, 1, 0],
+            [8, 4, 0],
+            [10, 0, 0],
+          ])
+        )
       )
-    ).toBeInstanceOf(Edge);
+    ).toBe(true);
   });
   it('makeBSpline smooth', () => {
     expect(
@@ -515,23 +539,25 @@ describe('shapeHelpers', () => {
   });
   it('makeBezier', () => {
     expect(
-      makeBezierCurve([
-        [0, 0, 0],
-        [3, 5, 0],
-        [7, 5, 0],
-        [10, 0, 0],
-      ])
-    ).toBeInstanceOf(Edge);
+      fnIsEdge(
+        makeBezierCurve([
+          [0, 0, 0],
+          [3, 5, 0],
+          [7, 5, 0],
+          [10, 0, 0],
+        ])
+      )
+    ).toBe(true);
   });
   it('makeTangentArc', () => {
-    expect(makeTangentArc([0, 0, 0], [1, 0, 0], [5, 5, 0])).toBeInstanceOf(Edge);
+    expect(fnIsEdge(makeTangentArc([0, 0, 0], [1, 0, 0], [5, 5, 0]))).toBe(true);
   });
   it('makeFace', () => {
     expect(measureArea(unwrap(makeFace(sketchRectangle(10, 10).wire)))).toBeCloseTo(100, 0);
   });
   it('makeFace holes', () => {
     const f = unwrap(makeFace(sketchRectangle(20, 20).wire, [sketchCircle(3).wire]));
-    expect(f).toBeInstanceOf(Face);
+    expect(fnIsFace(f)).toBe(true);
   });
   it('makeNewFace', () => {
     expect(
@@ -547,7 +573,7 @@ describe('shapeHelpers', () => {
         makeLine([0, 10, 0], [0, 0, 0]),
       ])
     );
-    expect(unwrap(makeNonPlanarFace(w))).toBeInstanceOf(Face);
+    expect(fnIsFace(unwrap(makeNonPlanarFace(w)))).toBe(true);
   });
   it('makeEllipsoid', () => {
     expect(measureVolume(makeEllipsoid(10, 8, 5))).toBeCloseTo((4 / 3) * Math.PI * 10 * 8 * 5, -1);
@@ -579,35 +605,31 @@ describe('shapeHelpers', () => {
     ).toBe(true);
   });
   it('weldShellsAndFaces', () => {
-    expect(isOk(weldShellsAndFaces(makeBox([0, 0, 0], [10, 10, 10]).faces))).toBe(true);
+    expect(isOk(weldShellsAndFaces(getFaces(makeBox([0, 0, 0], [10, 10, 10]))))).toBe(true);
   });
   it('makeSolid', () => {
-    expect(measureVolume(unwrap(makeSolid(makeBox([0, 0, 0], [10, 10, 10]).faces)))).toBeCloseTo(
-      1000,
-      0
-    );
+    expect(
+      measureVolume(unwrap(makeSolid(getFaces(makeBox([0, 0, 0], [10, 10, 10])))))
+    ).toBeCloseTo(1000, 0);
   });
   it('addHolesInFace', () => {
     const f = addHolesInFace(sketchRectangle(20, 20).face(), [sketchCircle(3).wire]);
-    expect(f).toBeInstanceOf(Face);
+    expect(fnIsFace(f)).toBe(true);
   });
 });
 
-describe('Curve', () => {
+describe('Curve functional API', () => {
   it('line', () => {
-    const c = makeLine([0, 0, 0], [10, 0, 0]).curve;
-    expect(c.repr).toContain('start');
-    expect(c.curveType).toBe('LINE');
-    expect(c.startPoint[0]).toBeCloseTo(0);
-    expect(c.endPoint[0]).toBeCloseTo(10);
-    expect(c.pointAt(0.5)[0]).toBeCloseTo(5);
-    c.delete();
+    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    expect(fnGetCurveType(edge)).toBe('LINE');
+    expect(curveStartPoint(edge)[0]).toBeCloseTo(0);
+    expect(curveEndPoint(edge)[0]).toBeCloseTo(10);
+    expect(curvePointAt(edge, 0.5)[0]).toBeCloseTo(5);
   });
   it('circle', () => {
-    const c = makeCircle(5).curve;
-    expect(c.isClosed).toBe(true);
-    expect(c.isPeriodic).toBe(true);
-    expect(c.period).toBeGreaterThan(0);
-    c.delete();
+    const edge = makeCircle(5);
+    expect(curveIsClosed(edge)).toBe(true);
+    expect(curveIsPeriodic(edge)).toBe(true);
+    expect(curvePeriod(edge)).toBeGreaterThan(0);
   });
 });

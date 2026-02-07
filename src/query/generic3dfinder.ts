@@ -12,7 +12,8 @@ import { vecDot, vecNormalize } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import { toOcPnt } from '../core/occtBoundary.js';
 
-import type { AnyShape } from '../topology/shapes.js';
+import type { AnyShape } from '../core/shapeTypes.js';
+import { getHashCode, isSameShape } from '../topology/shapeFns.js';
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
 
@@ -103,7 +104,7 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
   inList(elementList: Type[]): this {
     const hashBuckets = new Map<number, Type[]>();
     for (const e of elementList) {
-      const h = e.hashCode;
+      const h = getHashCode(e);
       const bucket = hashBuckets.get(h);
       if (bucket) {
         bucket.push(e);
@@ -112,8 +113,8 @@ export abstract class Finder3d<Type extends FaceOrEdge> extends Finder<Type, Any
       }
     }
     const elementInList = ({ element }: { element: Type }) => {
-      const bucket = hashBuckets.get(element.hashCode);
-      return !!bucket && bucket.some((e) => e.isSame(element));
+      const bucket = hashBuckets.get(getHashCode(element));
+      return !!bucket && bucket.some((e) => isSameShape(e, element));
     };
     this.filters.push(elementInList);
     return this;

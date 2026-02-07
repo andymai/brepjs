@@ -12,7 +12,7 @@ import BlueprintClass from './Blueprint.js';
 import type Blueprint from './Blueprint.js';
 import type { PointInput } from '../../core/types.js';
 import type { Plane, PlaneName } from '../../core/planeTypes.js';
-import type { Face } from '../../topology/shapes.js';
+import type { Face } from '../../core/shapeTypes.js';
 import type { ScaleMode } from '../curves.js';
 
 /**

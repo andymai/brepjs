@@ -10,23 +10,22 @@ import { gcWithScope } from '../core/memory.js';
 import { typeCastError, validationError } from '../core/errors.js';
 import { type Result, ok, err, isErr, andThen } from '../core/result.js';
 import { cast } from './cast.js';
-import type { Shape3D, AnyShape, BooleanOperationOptions } from './shapes.js';
+import type { AnyShape, Shape3D } from '../core/shapeTypes.js';
+import { isShape3D as isShape3DCheck, getShapeKind } from '../core/shapeTypes.js';
+
+/** Options for boolean operations (fuse, cut, intersect). */
+export type BooleanOperationOptions = {
+  optimisation?: 'none' | 'commonFace' | 'sameFace';
+  simplify?: boolean;
+  strategy?: 'native' | 'pairwise';
+};
 
 // ---------------------------------------------------------------------------
-// Internal: isShape3D check (avoids circular import from shapes.ts)
+// Internal: isShape3D check using branded type guard
 // ---------------------------------------------------------------------------
 
 function isShape3DInternal(shape: AnyShape): shape is Shape3D {
-  // Check by OCCT shape type enum to avoid minification issues
-  // COMPOUND=0, COMPSOLID=1, SOLID=2, SHELL=3 are 3D shapes
-  // FACE=4, WIRE=5, EDGE=6, VERTEX=7 are not
-  const shapeTypeRaw: unknown = shape.wrapped.ShapeType();
-  // Emscripten enums are objects with a .value property at runtime
-  const shapeType =
-    typeof shapeTypeRaw === 'object' && shapeTypeRaw !== null
-      ? (shapeTypeRaw as { value: number }).value
-      : shapeTypeRaw;
-  return typeof shapeType === 'number' && shapeType <= 3;
+  return isShape3DCheck(shape);
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +131,7 @@ export function fuseAll(
         return err(
           typeCastError(
             'FUSE_ALL_NOT_3D',
-            `fuseAll did not produce a 3D shape. Got ${rawTypeName} (${newShape.constructor.name}) instead.`
+            `fuseAll did not produce a 3D shape. Got ${rawTypeName} (${getShapeKind(newShape)}) instead.`
           )
         );
       }

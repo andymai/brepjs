@@ -4,7 +4,7 @@
  */
 
 import type { PointInput } from '../core/types.js';
-import type { Face, Shape3D, Wire } from '../topology/shapes.js';
+import type { Face, Shape3D, Wire } from '../core/shapeTypes.js';
 import type { ExtrusionProfile, GenericSweepConfig } from '../operations/extrude.js';
 import type { LoftConfig } from '../operations/loft.js';
 import type Sketch from './Sketch.js';

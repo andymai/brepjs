@@ -1,7 +1,7 @@
 import Flatbush from 'flatbush';
 
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
-import type { Face, Wire } from '../../topology/shapes.js';
+import type { Face, Wire } from '../../core/shapeTypes.js';
 
 import type { Plane, PlaneName } from '../../core/planeTypes.js';
 import type { Vec3, PointInput } from '../../core/types.js';
