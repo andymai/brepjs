@@ -7,10 +7,10 @@
  * use them without imports.
  */
 
-/** @internal */ declare abstract class PhysicalProperties {}
-/** @internal */ interface BlueprintLike {}
-/** @internal */ declare abstract class Finder3d<Type> extends Finder<Type, AnyShape> {}
 /** @internal */ declare abstract class Finder<Type, FilterType> {}
+/** @internal */ declare abstract class Finder3d<Type> extends Finder<Type, AnyShape> {}
+/** @internal */ interface BlueprintLike {}
+/** @internal */ declare abstract class PhysicalProperties {}
 /**
  * Return the singleton kernel adapter.
  *
@@ -22,13 +22,13 @@ declare function getKernel(): KernelAdapter;
 declare function initFromOC(oc: any): void;
 
 interface Ok<T> {
-  readonly ok: true;
-  readonly value: T;
+    readonly ok: true;
+    readonly value: T;
 }
 
 interface Err<E> {
-  readonly ok: false;
-  readonly error: E;
+    readonly ok: false;
+    readonly error: E;
 }
 
 type Result<T, E = BrepError> = Ok<T> | Err<E>;
@@ -49,10 +49,7 @@ declare function map<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result
 
 declare function mapErr<T, E, F>(result: Result<T, E>, fn: (error: E) => F): Result<T, F>;
 
-declare function andThen<T, U, E>(
-  result: Result<T, E>,
-  fn: (value: T) => Result<U, E>
-): Result<U, E>;
+declare function andThen<T, U, E>(result: Result<T, E>, fn: (value: T) => Result<U, E>): Result<U, E>;
 
 /** Alias for andThen */
 declare const flatMap: typeof andThen;
@@ -65,13 +62,10 @@ declare function unwrapOrElse<T, E>(result: Result<T, E>, fn: (error: E) => T): 
 
 declare function unwrapErr<T, E>(result: Result<T, E>): E;
 
-declare function match<T, E, U>(
-  result: Result<T, E>,
-  handlers: {
+declare function match<T, E, U>(result: Result<T, E>, handlers: {
     ok: (value: T) => U;
     err: (error: E) => U;
-  }
-): U;
+}): U;
 
 /**
  * Collects an array of Results into a Result of an array.
@@ -89,17 +83,14 @@ declare function tryCatch<T, E>(fn: () => T, mapError: (error: unknown) => E): R
  * Wraps an async throwing function into a Result.
  * The mapError function converts the caught exception into the error type.
  */
-declare function tryCatchAsync<T, E>(
-  fn: () => Promise<T>,
-  mapError: (error: unknown) => E
-): Promise<Result<T, E>>;
+declare function tryCatchAsync<T, E>(fn: () => Promise<T>, mapError: (error: unknown) => E): Promise<Result<T, E>>;
 
 /** A chainable pipeline that short-circuits on the first Err. */
 interface ResultPipeline<T, E> {
-  /** Chain a Result-returning transform. Short-circuits on Err. */
-  then<U>(fn: (value: T) => Result<U, E>): ResultPipeline<U, E>;
-  /** Extract the final Result. */
-  readonly result: Result<T, E>;
+    /** Chain a Result-returning transform. Short-circuits on Err. */
+    then<U>(fn: (value: T) => Result<U, E>): ResultPipeline<U, E>;
+    /** Extract the final Result. */
+    readonly result: Result<T, E>;
 }
 
 /**
@@ -119,23 +110,13 @@ declare function pipeline<T, E = BrepError>(input: T | Result<T, E>): ResultPipe
  * the result into a branded AnyShape. On exception, returns an Err
  * with the given error code and message.
  */
-declare function kernelCall(
-  fn: () => any,
-  code: string,
-  message: string,
-  kind?: BrepErrorKind
-): Result<AnyShape>;
+declare function kernelCall(fn: () => any, code: string, message: string, kind?: BrepErrorKind): Result<AnyShape>;
 
 /**
  * Wrap a kernel call that returns an arbitrary value. On exception,
  * returns an Err with the given error code and message.
  */
-declare function kernelCallRaw<T>(
-  fn: () => T,
-  code: string,
-  message: string,
-  kind?: BrepErrorKind
-): Result<T>;
+declare function kernelCallRaw<T>(fn: () => T, code: string, message: string, kind?: BrepErrorKind): Result<T>;
 
 /**
  * Bug / panic helper — these throw and should never be caught in normal code.
@@ -143,8 +124,8 @@ declare function kernelCallRaw<T>(
  */
 /** Error thrown for invariant violations / programmer bugs (should never be caught). */
 declare class BrepBugError extends Error {
-  readonly location: string;
-  constructor(location: string, message: string);
+    readonly location: string;
+    constructor(location: string, message: string);
 }
 
 /**
@@ -154,15 +135,7 @@ declare class BrepBugError extends Error {
 declare function bug(location: string, message: string): never;
 
 /** High-level category for a brepjs error. */
-type BrepErrorKind =
-  | 'OCCT_OPERATION'
-  | 'VALIDATION'
-  | 'TYPE_CAST'
-  | 'SKETCHER_STATE'
-  | 'MODULE_INIT'
-  | 'COMPUTATION'
-  | 'IO'
-  | 'QUERY';
+type BrepErrorKind = 'OCCT_OPERATION' | 'VALIDATION' | 'TYPE_CAST' | 'SKETCHER_STATE' | 'MODULE_INIT' | 'COMPUTATION' | 'IO' | 'QUERY';
 
 /**
  * Typed string constants for all known brepjs error codes, grouped by category.
@@ -170,61 +143,69 @@ type BrepErrorKind =
  * Use these instead of raw strings so that typos are caught at compile time.
  */
 declare const BrepErrorCode: {
-  readonly BSPLINE_FAILED: 'BSPLINE_FAILED';
-  readonly FACE_BUILD_FAILED: 'FACE_BUILD_FAILED';
-  readonly SWEEP_FAILED: 'SWEEP_FAILED';
-  readonly LOFT_FAILED: 'LOFT_FAILED';
-  readonly FUSE_FAILED: 'FUSE_FAILED';
-  readonly CUT_FAILED: 'CUT_FAILED';
-  readonly ELLIPSE_RADII: 'ELLIPSE_RADII';
-  readonly FUSE_ALL_EMPTY: 'FUSE_ALL_EMPTY';
-  readonly FILLET_NO_EDGES: 'FILLET_NO_EDGES';
-  readonly CHAMFER_NO_EDGES: 'CHAMFER_NO_EDGES';
-  readonly CHAMFER_ANGLE_NO_EDGES: 'CHAMFER_ANGLE_NO_EDGES';
-  readonly CHAMFER_ANGLE_BAD_DISTANCE: 'CHAMFER_ANGLE_BAD_DISTANCE';
-  readonly CHAMFER_ANGLE_BAD_ANGLE: 'CHAMFER_ANGLE_BAD_ANGLE';
-  readonly BEZIER_MIN_POINTS: 'BEZIER_MIN_POINTS';
-  readonly POLYGON_MIN_POINTS: 'POLYGON_MIN_POINTS';
-  readonly ZERO_LENGTH_EXTRUSION: 'ZERO_LENGTH_EXTRUSION';
-  readonly ZERO_TWIST_ANGLE: 'ZERO_TWIST_ANGLE';
-  readonly LOFT_EMPTY: 'LOFT_EMPTY';
-  readonly UNSUPPORTED_PROFILE: 'UNSUPPORTED_PROFILE';
-  readonly UNKNOWN_PLANE: 'UNKNOWN_PLANE';
-  readonly FUSE_NOT_3D: 'FUSE_NOT_3D';
-  readonly CUT_NOT_3D: 'CUT_NOT_3D';
-  readonly INTERSECT_NOT_3D: 'INTERSECT_NOT_3D';
-  readonly FUSE_ALL_NOT_3D: 'FUSE_ALL_NOT_3D';
-  readonly CUT_ALL_NOT_3D: 'CUT_ALL_NOT_3D';
-  readonly LOFT_NOT_3D: 'LOFT_NOT_3D';
-  readonly SWEEP_NOT_3D: 'SWEEP_NOT_3D';
-  readonly REVOLUTION_NOT_3D: 'REVOLUTION_NOT_3D';
-  readonly FILLET_NOT_3D: 'FILLET_NOT_3D';
-  readonly CHAMFER_NOT_3D: 'CHAMFER_NOT_3D';
-  readonly CHAMFER_ANGLE_NOT_3D: 'CHAMFER_ANGLE_NOT_3D';
-  readonly CHAMFER_ANGLE_FAILED: 'CHAMFER_ANGLE_FAILED';
-  readonly SHELL_NOT_3D: 'SHELL_NOT_3D';
-  readonly OFFSET_NOT_3D: 'OFFSET_NOT_3D';
-  readonly NULL_SHAPE: 'NULL_SHAPE';
-  readonly NO_WRAPPER: 'NO_WRAPPER';
-  readonly WELD_NOT_SHELL: 'WELD_NOT_SHELL';
-  readonly SOLID_BUILD_FAILED: 'SOLID_BUILD_FAILED';
-  readonly OFFSET_NOT_WIRE: 'OFFSET_NOT_WIRE';
-  readonly UNKNOWN_SURFACE_TYPE: 'UNKNOWN_SURFACE_TYPE';
-  readonly UNKNOWN_CURVE_TYPE: 'UNKNOWN_CURVE_TYPE';
-  readonly SWEEP_START_NOT_WIRE: 'SWEEP_START_NOT_WIRE';
-  readonly SWEEP_END_NOT_WIRE: 'SWEEP_END_NOT_WIRE';
-  readonly STEP_EXPORT_FAILED: 'STEP_EXPORT_FAILED';
-  readonly STEP_FILE_READ_ERROR: 'STEP_FILE_READ_ERROR';
-  readonly STL_EXPORT_FAILED: 'STL_EXPORT_FAILED';
-  readonly STL_FILE_READ_ERROR: 'STL_FILE_READ_ERROR';
-  readonly STEP_IMPORT_FAILED: 'STEP_IMPORT_FAILED';
-  readonly STL_IMPORT_FAILED: 'STL_IMPORT_FAILED';
-  readonly IGES_EXPORT_FAILED: 'IGES_EXPORT_FAILED';
-  readonly IGES_IMPORT_FAILED: 'IGES_IMPORT_FAILED';
-  readonly PARAMETER_NOT_FOUND: 'PARAMETER_NOT_FOUND';
-  readonly INTERSECTION_FAILED: 'INTERSECTION_FAILED';
-  readonly SELF_INTERSECTION_FAILED: 'SELF_INTERSECTION_FAILED';
-  readonly FINDER_NOT_UNIQUE: 'FINDER_NOT_UNIQUE';
+    readonly BSPLINE_FAILED: "BSPLINE_FAILED";
+    readonly FACE_BUILD_FAILED: "FACE_BUILD_FAILED";
+    readonly SWEEP_FAILED: "SWEEP_FAILED";
+    readonly LOFT_FAILED: "LOFT_FAILED";
+    readonly FUSE_FAILED: "FUSE_FAILED";
+    readonly CUT_FAILED: "CUT_FAILED";
+    readonly HEAL_NO_EFFECT: "HEAL_NO_EFFECT";
+    readonly ELLIPSE_RADII: "ELLIPSE_RADII";
+    readonly FUSE_ALL_EMPTY: "FUSE_ALL_EMPTY";
+    readonly FILLET_NO_EDGES: "FILLET_NO_EDGES";
+    readonly CHAMFER_NO_EDGES: "CHAMFER_NO_EDGES";
+    readonly CHAMFER_ANGLE_NO_EDGES: "CHAMFER_ANGLE_NO_EDGES";
+    readonly CHAMFER_ANGLE_BAD_DISTANCE: "CHAMFER_ANGLE_BAD_DISTANCE";
+    readonly CHAMFER_ANGLE_BAD_ANGLE: "CHAMFER_ANGLE_BAD_ANGLE";
+    readonly BEZIER_MIN_POINTS: "BEZIER_MIN_POINTS";
+    readonly POLYGON_MIN_POINTS: "POLYGON_MIN_POINTS";
+    readonly ZERO_LENGTH_EXTRUSION: "ZERO_LENGTH_EXTRUSION";
+    readonly ZERO_TWIST_ANGLE: "ZERO_TWIST_ANGLE";
+    readonly LOFT_EMPTY: "LOFT_EMPTY";
+    readonly UNSUPPORTED_PROFILE: "UNSUPPORTED_PROFILE";
+    readonly UNKNOWN_PLANE: "UNKNOWN_PLANE";
+    readonly NULL_SHAPE_INPUT: "NULL_SHAPE_INPUT";
+    readonly INVALID_FILLET_RADIUS: "INVALID_FILLET_RADIUS";
+    readonly INVALID_CHAMFER_DISTANCE: "INVALID_CHAMFER_DISTANCE";
+    readonly INVALID_THICKNESS: "INVALID_THICKNESS";
+    readonly ZERO_OFFSET: "ZERO_OFFSET";
+    readonly NO_EDGES: "NO_EDGES";
+    readonly NO_FACES: "NO_FACES";
+    readonly FUSE_NOT_3D: "FUSE_NOT_3D";
+    readonly CUT_NOT_3D: "CUT_NOT_3D";
+    readonly INTERSECT_NOT_3D: "INTERSECT_NOT_3D";
+    readonly FUSE_ALL_NOT_3D: "FUSE_ALL_NOT_3D";
+    readonly CUT_ALL_NOT_3D: "CUT_ALL_NOT_3D";
+    readonly LOFT_NOT_3D: "LOFT_NOT_3D";
+    readonly SWEEP_NOT_3D: "SWEEP_NOT_3D";
+    readonly REVOLUTION_NOT_3D: "REVOLUTION_NOT_3D";
+    readonly FILLET_NOT_3D: "FILLET_NOT_3D";
+    readonly CHAMFER_NOT_3D: "CHAMFER_NOT_3D";
+    readonly CHAMFER_ANGLE_NOT_3D: "CHAMFER_ANGLE_NOT_3D";
+    readonly CHAMFER_ANGLE_FAILED: "CHAMFER_ANGLE_FAILED";
+    readonly SHELL_NOT_3D: "SHELL_NOT_3D";
+    readonly OFFSET_NOT_3D: "OFFSET_NOT_3D";
+    readonly NULL_SHAPE: "NULL_SHAPE";
+    readonly NO_WRAPPER: "NO_WRAPPER";
+    readonly WELD_NOT_SHELL: "WELD_NOT_SHELL";
+    readonly SOLID_BUILD_FAILED: "SOLID_BUILD_FAILED";
+    readonly OFFSET_NOT_WIRE: "OFFSET_NOT_WIRE";
+    readonly UNKNOWN_SURFACE_TYPE: "UNKNOWN_SURFACE_TYPE";
+    readonly UNKNOWN_CURVE_TYPE: "UNKNOWN_CURVE_TYPE";
+    readonly SWEEP_START_NOT_WIRE: "SWEEP_START_NOT_WIRE";
+    readonly SWEEP_END_NOT_WIRE: "SWEEP_END_NOT_WIRE";
+    readonly STEP_EXPORT_FAILED: "STEP_EXPORT_FAILED";
+    readonly STEP_FILE_READ_ERROR: "STEP_FILE_READ_ERROR";
+    readonly STL_EXPORT_FAILED: "STL_EXPORT_FAILED";
+    readonly STL_FILE_READ_ERROR: "STL_FILE_READ_ERROR";
+    readonly STEP_IMPORT_FAILED: "STEP_IMPORT_FAILED";
+    readonly STL_IMPORT_FAILED: "STL_IMPORT_FAILED";
+    readonly IGES_EXPORT_FAILED: "IGES_EXPORT_FAILED";
+    readonly IGES_IMPORT_FAILED: "IGES_IMPORT_FAILED";
+    readonly PARAMETER_NOT_FOUND: "PARAMETER_NOT_FOUND";
+    readonly INTERSECTION_FAILED: "INTERSECTION_FAILED";
+    readonly SELF_INTERSECTION_FAILED: "SELF_INTERSECTION_FAILED";
+    readonly FINDER_NOT_UNIQUE: "FINDER_NOT_UNIQUE";
 };
 /** Union of all known error code string literals. */
 type BrepErrorCode = (typeof BrepErrorCode)[keyof typeof BrepErrorCode];
@@ -237,76 +218,36 @@ type BrepErrorCode = (typeof BrepErrorCode)[keyof typeof BrepErrorCode];
  * original exception, and `metadata` holds extra context.
  */
 interface BrepError {
-  readonly kind: BrepErrorKind;
-  readonly code: string;
-  readonly message: string;
-  readonly cause?: unknown;
-  readonly metadata?: Readonly<Record<string, unknown>>;
+    readonly kind: BrepErrorKind;
+    readonly code: string;
+    readonly message: string;
+    readonly cause?: unknown;
+    readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 /** Create an error for a failed OCCT kernel operation. */
-declare function occtError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function occtError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Create an error for invalid input parameters. */
-declare function validationError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function validationError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Create an error for a failed shape type cast or conversion. */
-declare function typeCastError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function typeCastError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Create an error for an invalid sketcher state transition. */
-declare function sketcherStateError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function sketcherStateError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Create an error for a module initialisation failure. */
-declare function moduleInitError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function moduleInitError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Create an error for a failed geometric computation. */
-declare function computationError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function computationError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Create an error for a file import/export failure. */
-declare function ioError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function ioError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Create an error for a shape query failure (e.g. finder not unique). */
-declare function queryError(
-  code: string,
-  message: string,
-  cause?: unknown,
-  metadata?: Record<string, unknown>
-): BrepError;
+declare function queryError(code: string, message: string, cause?: unknown, metadata?: Record<string, unknown>): BrepError;
 
 /** Maximum hash code value for OCCT shape hashing (2^31 - 1). */
 declare const HASH_CODE_MAX = 2147483647;
@@ -319,38 +260,20 @@ declare const RAD2DEG: number;
 
 /** Any object that can be cleaned up by calling `delete()` (OCCT WASM objects). */
 interface Deletable {
-  delete: () => void;
+    delete: () => void;
 }
 
 /**
  * Legacy Point type for backward compatibility.
  * Prefer using PointInput or Vec3 from types.ts.
  */
-type Point =
-  | [number, number, number]
-  | [number, number]
-  | {
-      XYZ: () => any;
-      delete: () => void;
-    };
+type Point = [number, number, number] | [number, number] | {
+    XYZ: () => any;
+    delete: () => void;
+};
 
 /** Check whether a value is a valid {@link Point} (tuple or OCCT point-like object). */
 declare function isPoint(p: unknown): p is Point;
-
-/**
- * Derive a {@link Plane} from a face's surface geometry.
- *
- * @param face - Object exposing `pointOnSurface` and `normalAt` (e.g. a Face shape).
- * @param originOnSurface - UV coordinates on the face surface used as the plane origin.
- * @default originOnSurface `[0, 0]`
- */
-declare const makePlaneFromFace: (
-  face: {
-    pointOnSurface: (u: number, v: number) => Vec3;
-    normalAt: (p?: Vec3) => Vec3;
-  },
-  originOnSurface?: [number, number]
-) => Plane;
 
 /**
  * Create or copy a {@link Plane}.
@@ -366,65 +289,8 @@ declare const makePlaneFromFace: (
 declare function makePlane(plane: Plane): Plane;
 declare function makePlane(plane?: PlaneName, origin?: PointInput | number): Plane;
 
-/**
- * Rotate an OCCT shape around an axis.
- *
- * @param shape - Raw OCCT shape to rotate.
- * @param angle - Rotation angle in **degrees**.
- * @param position - Point on the rotation axis.
- * @param direction - Direction vector of the rotation axis.
- * @returns A new rotated OCCT shape (the original is not modified).
- */
-declare function rotate(
-  shape: any,
-  angle: number,
-  position?: PointInput,
-  direction?: PointInput
-): any;
-
-/**
- * Translate an OCCT shape by a displacement vector.
- *
- * @param shape - Raw OCCT shape to translate.
- * @param vector - Translation vector `[dx, dy, dz]`.
- * @returns A new translated OCCT shape.
- */
-declare function translate(shape: any, vector: PointInput): any;
-
-/**
- * Mirror an OCCT shape across a plane.
- *
- * The mirror plane can be specified as a `PlaneName`, a `Plane` object,
- * or a direction vector (used as the plane normal). Defaults to the YZ plane.
- *
- * @param shape - Raw OCCT shape to mirror.
- * @param inputPlane - Mirror plane specification.
- * @param origin - Override origin for the mirror plane.
- * @returns A new mirrored OCCT shape.
- */
-declare function mirror(shape: any, inputPlane?: PlaneInput | PointInput, origin?: PointInput): any;
-
-/**
- * Scale an OCCT shape uniformly around a center point.
- *
- * @param shape - Raw OCCT shape to scale.
- * @param center - Center of scaling.
- * @param scaleFactor - Uniform scale factor (> 0).
- * @returns A new scaled OCCT shape.
- */
-declare function scale(shape: any, center: PointInput, scaleFactor: number): any;
-
 /** Discriminant for the geometric type of a 3D curve. */
-type CurveType =
-  | 'LINE'
-  | 'CIRCLE'
-  | 'ELLIPSE'
-  | 'HYPERBOLA'
-  | 'PARABOLA'
-  | 'BEZIER_CURVE'
-  | 'BSPLINE_CURVE'
-  | 'OFFSET_CURVE'
-  | 'OTHER_CURVE';
+type CurveType = 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'HYPERBOLA' | 'PARABOLA' | 'BEZIER_CURVE' | 'BSPLINE_CURVE' | 'OFFSET_CURVE' | 'OTHER_CURVE';
 
 /**
  * Map an OCCT `GeomAbs_CurveType` enum value to its string discriminant.
@@ -434,16 +300,7 @@ type CurveType =
 declare const findCurveType: (type: any) => Result<CurveType>;
 
 /** String literal identifying a topological entity type for TopExp_Explorer iteration. */
-type TopoEntity =
-  | 'vertex'
-  | 'edge'
-  | 'wire'
-  | 'face'
-  | 'shell'
-  | 'solid'
-  | 'solidCompound'
-  | 'compound'
-  | 'shape';
+type TopoEntity = 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'solidCompound' | 'compound' | 'shape';
 
 /** An OCCT shape after downcast — same underlying type, used for clarity. */
 type GenericTopo = any;
@@ -490,25 +347,14 @@ declare function isCompSolid(shape: AnyShape): shape is CompSolid;
 declare function deserializeShape(data: string): Result<AnyShape>;
 
 /**
- * Builds a TopoDS_Compound from raw OCCT shape handles.
- * Used internally by both high-level (Shape3D[]) and low-level (any[]) APIs.
- *
- * @deprecated Internal utility — use `makeCompound` for public API usage.
- */
-declare function buildCompoundOc(shapes: any[]): any;
-
-/**
  * Applies glue optimization to a boolean operation.
  *
  * @param op - Boolean operation builder with SetGlue method
  * @param optimisation - Optimization level: 'none', 'commonFace', or 'sameFace'
  */
-declare function applyGlue(
-  op: {
+declare function applyGlue(op: {
     SetGlue(glue: any): void;
-  },
-  optimisation: 'none' | 'commonFace' | 'sameFace'
-): void;
+}, optimisation: 'none' | 'commonFace' | 'sameFace'): void;
 
 /**
  * A chamfer radius specification.
@@ -517,31 +363,23 @@ declare function applyGlue(
  * - Two distances for asymmetric chamfer (first distance for the selected face).
  * - A distance and angle for asymmetric chamfer.
  */
-type ChamferRadius =
-  | number
-  | {
-      distances: [number, number];
-      selectedFace: (f: FaceFinder) => FaceFinder;
-    }
-  | {
-      distance: number;
-      angle: number;
-      selectedFace: (f: FaceFinder) => FaceFinder;
-    };
-
-type FilletRadius = number | [number, number];
+type ChamferRadius = number | {
+    distances: [number, number];
+    selectedFace: (f: FaceFinder) => FaceFinder;
+} | {
+    distance: number;
+    angle: number;
+    selectedFace: (f: FaceFinder) => FaceFinder;
+};
 
 /**
  * A generic way to define radii for fillet or chamfer operations.
  */
-type RadiusConfig<R = number> =
-  | ((e: Edge) => R | null)
-  | R
-  | {
-      filter: EdgeFinder;
-      radius: R;
-      keep?: boolean;
-    };
+type RadiusConfig<R = number> = ((e: Edge) => R | null) | R | {
+    filter: EdgeFinder;
+    radius: R;
+    keep?: boolean;
+};
 
 declare function isNumber(r: unknown): r is number;
 
@@ -551,15 +389,15 @@ declare function isFilletRadius(r: unknown): r is FilletRadius;
 
 /** Interface for OCCT curve adaptors (BRepAdaptor_Curve / CompCurve). */
 interface CurveLike {
-  delete(): void;
-  Value(v: number): any;
-  IsPeriodic(): boolean;
-  Period(): number;
-  IsClosed(): boolean;
-  FirstParameter(): number;
-  LastParameter(): number;
-  GetType?(): any;
-  D1(v: number, p: any, vPrime: any): void;
+    delete(): void;
+    Value(v: number): any;
+    IsPeriodic(): boolean;
+    Period(): number;
+    IsClosed(): boolean;
+    FirstParameter(): number;
+    LastParameter(): number;
+    GetType?(): any;
+    D1(v: number, p: any, vPrime: any): void;
 }
 
 /** Create a straight edge between two 3D points. */
@@ -574,13 +412,7 @@ declare const makeCircle: (radius: number, center?: Vec3, normal?: Vec3) => Edge
  * @param xDir - Optional direction for the major axis.
  * @returns An error if `minorRadius` exceeds `majorRadius`.
  */
-declare const makeEllipse: (
-  majorRadius: number,
-  minorRadius: number,
-  center?: Vec3,
-  normal?: Vec3,
-  xDir?: Vec3
-) => Result<Edge>;
+declare const makeEllipse: (majorRadius: number, minorRadius: number, center?: Vec3, normal?: Vec3, xDir?: Vec3) => Result<Edge>;
 
 /**
  * Create a helical wire with the given pitch, height, and radius.
@@ -588,14 +420,7 @@ declare const makeEllipse: (
  * @param pitch - Vertical distance per full turn.
  * @param lefthand - Wind the helix in the left-hand direction.
  */
-declare const makeHelix: (
-  pitch: number,
-  height: number,
-  radius: number,
-  center?: Vec3,
-  dir?: Vec3,
-  lefthand?: boolean
-) => Wire;
+declare const makeHelix: (pitch: number, height: number, radius: number, center?: Vec3, dir?: Vec3, lefthand?: boolean) => Wire;
 
 /**
  * Create a circular arc edge passing through three points.
@@ -614,26 +439,18 @@ declare const makeThreePointArc: (v1: Vec3, v2: Vec3, v3: Vec3) => Edge;
  * @param xDir - Optional direction for the major axis.
  * @returns An error if `minorRadius` exceeds `majorRadius`.
  */
-declare const makeEllipseArc: (
-  majorRadius: number,
-  minorRadius: number,
-  startAngle: number,
-  endAngle: number,
-  center?: Vec3,
-  normal?: Vec3,
-  xDir?: Vec3
-) => Result<Edge>;
+declare const makeEllipseArc: (majorRadius: number, minorRadius: number, startAngle: number, endAngle: number, center?: Vec3, normal?: Vec3, xDir?: Vec3) => Result<Edge>;
 
 /** Configuration for {@link makeBSplineApproximation}. */
 interface BSplineApproximationConfig {
-  /** Maximum allowed distance between the curve and the input points. */
-  tolerance?: number;
-  /** Maximum B-spline degree. */
-  degMax?: number;
-  /** Minimum B-spline degree. */
-  degMin?: number;
-  /** Optional `[weight1, weight2, weight3]` smoothing weights, or `null` to disable. */
-  smoothing?: null | [number, number, number];
+    /** Maximum allowed distance between the curve and the input points. */
+    tolerance?: number;
+    /** Maximum B-spline degree. */
+    degMax?: number;
+    /** Minimum B-spline degree. */
+    degMin?: number;
+    /** Optional `[weight1, weight2, weight3]` smoothing weights, or `null` to disable. */
+    smoothing?: null | [number, number, number];
 }
 
 /**
@@ -641,10 +458,7 @@ interface BSplineApproximationConfig {
  *
  * @returns An error if the OCCT approximation algorithm fails.
  */
-declare const makeBSplineApproximation: (
-  points: Vec3[],
-  { tolerance, smoothing, degMax, degMin }?: BSplineApproximationConfig
-) => Result<Edge>;
+declare const makeBSplineApproximation: (points: Vec3[], { tolerance, smoothing, degMax, degMin }?: BSplineApproximationConfig) => Result<Edge>;
 
 /**
  * Create a Bezier curve edge from control points.
@@ -695,12 +509,7 @@ declare const makeNonPlanarFace: (wire: Wire) => Result<Face>;
  *
  * @category Solids
  */
-declare const makeCylinder: (
-  radius: number,
-  height: number,
-  location?: Vec3,
-  direction?: Vec3
-) => Solid;
+declare const makeCylinder: (radius: number, height: number, location?: Vec3, direction?: Vec3) => Solid;
 
 /**
  * Creates a sphere with the given radius.
@@ -714,25 +523,14 @@ declare const makeSphere: (radius: number) => Solid;
  *
  * @category Solids
  */
-declare const makeCone: (
-  radius1: number,
-  radius2: number,
-  height: number,
-  location?: Vec3,
-  direction?: Vec3
-) => Solid;
+declare const makeCone: (radius1: number, radius2: number, height: number, location?: Vec3, direction?: Vec3) => Solid;
 
 /**
  * Creates a torus with the given major and minor radii.
  *
  * @category Solids
  */
-declare const makeTorus: (
-  majorRadius: number,
-  minorRadius: number,
-  location?: Vec3,
-  direction?: Vec3
-) => Solid;
+declare const makeTorus: (majorRadius: number, minorRadius: number, location?: Vec3, direction?: Vec3) => Solid;
 
 /**
  * Creates an ellipsoid with the given axis lengths.
@@ -768,9 +566,6 @@ declare const makeOffset: (face: Face, offset: number, tolerance?: number) => Re
  */
 declare const makeCompound: (shapeArray: AnyShape[]) => Compound;
 
-/** @deprecated Use {@link makeCompound} instead. */
-declare const compoundShapes: (shapeArray: AnyShape[]) => AnyShape;
-
 /**
  * Welds faces and shells into a single shell.
  *
@@ -778,10 +573,7 @@ declare const compoundShapes: (shapeArray: AnyShape[]) => AnyShape;
  * @param ignoreType - If true, the function will not check if the result is a shell.
  * @returns A shell that contains all the faces and shells.
  */
-declare function weldShellsAndFaces(
-  facesOrShells: Array<Face | Shell>,
-  ignoreType?: boolean
-): Result<Shell>;
+declare function weldShellsAndFaces(facesOrShells: Array<Face | Shell>, ignoreType?: boolean): Result<Shell>;
 
 /**
  * Welds faces and shells into a single shell and then makes a solid.
@@ -829,50 +621,10 @@ declare const basicFaceExtrusion: (face: Face, extrusionVec: PointInput) => Soli
  *
  * @see {@link extrudeFns!revolveFace | revolveFace} for the functional API equivalent.
  */
-declare const revolution: (
-  face: Face,
-  center?: PointInput,
-  direction?: PointInput,
-  angle?: number
-) => Result<Shape3D>;
+declare const revolution: (face: Face, center?: PointInput, direction?: PointInput, angle?: number) => Result<Shape3D>;
 
-declare function genericSweep(
-  wire: Wire,
-  spine: Wire,
-  sweepConfig: GenericSweepConfig,
-  shellMode: true
-): Result<[Shape3D, Wire, Wire]>;
-declare function genericSweep(
-  wire: Wire,
-  spine: Wire,
-  sweepConfig: GenericSweepConfig,
-  shellMode?: false
-): Result<Shape3D>;
-
-/**
- * Loft through a set of wire profiles to create a 3D shape.
- *
- * Builds a `BRepOffsetAPI_ThruSections` surface through the given wires,
- * optionally starting and/or ending at point vertices. Produces a solid
- * by default, or a shell when `returnShell` is `true`.
- *
- * @param wires - Ordered wire profiles to loft through.
- * @param config - Loft configuration (ruled interpolation, start/end points).
- * @param returnShell - When `true`, return a shell instead of a solid.
- * @returns `Result` containing the lofted 3D shape.
- *
- * @example
- * ```ts
- * const result = loft([bottomWire, topWire], { ruled: false });
- * ```
- *
- * @see {@link loftFns!loftWires | loftWires} for the functional API equivalent.
- */
-declare const loft: (
-  wires: Wire[],
-  { ruled, startPoint, endPoint }?: LoftConfig,
-  returnShell?: boolean
-) => Result<Shape3D>;
+declare function genericSweep(wire: Wire, spine: Wire, sweepConfig: GenericSweepConfig, shellMode: true): Result<[Shape3D, Wire, Wire]>;
+declare function genericSweep(wire: Wire, spine: Wire, sweepConfig: GenericSweepConfig, shellMode?: false): Result<Shape3D>;
 
 /** Disposable handle wrapping an XCAF document for STEP assembly export. */
 type AssemblyExporter = OcHandle<any>;
@@ -890,42 +642,6 @@ type AssemblyExporter = OcHandle<any>;
  */
 declare function createAssembly(shapes?: ShapeConfig[]): AssemblyExporter;
 
-/**
- * Fuse an array of shapes into a single united shape.
- *
- * Uses divide-and-conquer when strategy is `'pairwise'`, or delegates to the
- * kernel's N-way `BRepAlgoAPI_BuilderAlgo` when strategy is `'native'`.
- *
- * @deprecated Use `fuseAll` from `booleanFns` instead, which operates on branded Shape3D types.
- * @param shapes - Shapes to fuse together (must contain at least one).
- * @returns `Result` containing the fused shape, or an error if the array is empty or the operation fails.
- *
- * @see {@link cutAllShapes} for the subtraction counterpart.
- */
-declare function fuseAllShapes(
-  shapes: any[],
-  { optimisation, simplify, strategy }?: BooleanOperationOptions
-): Result<any>;
-
-/**
- * Subtract an array of tool shapes from a base shape.
- *
- * Builds a compound from all tools and performs a single boolean cut against the base.
- * Returns the base unchanged when the tools array is empty.
- *
- * @deprecated Use `cutAll` from `booleanFns` instead, which operates on branded Shape3D types.
- * @param base - The shape to cut from.
- * @param tools - Shapes to subtract from the base.
- * @returns `Result` containing the cut shape, or an error if the operation fails.
- *
- * @see {@link fuseAllShapes} for the union counterpart.
- */
-declare function cutAllShapes(
-  base: any,
-  tools: any[],
-  { optimisation, simplify }?: BooleanOperationOptions
-): Result<any>;
-
 /** A 2D point or vector represented as an `[x, y]` tuple. */
 type Point2D = [number, number];
 
@@ -936,33 +652,33 @@ type Point2D = [number, number];
  * spatial indexing of 2D geometry.
  */
 declare class BoundingBox2d {
-  private readonly _wrapped;
-  private _deleted;
-  constructor(wrapped?: any);
-  get wrapped(): any;
-  delete(): void;
-  /** Return a human-readable string of the form `(xMin,yMin) - (xMax,yMax)`. */
-  get repr(): string;
-  /** Return the `[min, max]` corner points of the bounding box. */
-  get bounds(): [Point2D, Point2D];
-  /** Return the center point of the bounding box. */
-  get center(): Point2D;
-  /** Return the width (x-extent) of the bounding box. */
-  get width(): number;
-  /** Return the height (y-extent) of the bounding box. */
-  get height(): number;
-  /**
-   * Return a point guaranteed to lie outside the bounding box.
-   *
-   * @param paddingPercent - Extra padding as a percentage of the box dimensions.
-   */
-  outsidePoint(paddingPercent?: number): Point2D;
-  /** Expand this bounding box to include `other`. */
-  add(other: BoundingBox2d): void;
-  /** Test whether this bounding box and `other` are completely disjoint. */
-  isOut(other: BoundingBox2d): boolean;
-  /** Test whether the given point lies inside (or on the boundary of) this box. */
-  containsPoint(other: Point2D): boolean;
+    private readonly _wrapped;
+    private _deleted;
+    constructor(wrapped?: any);
+    get wrapped(): any;
+    delete(): void;
+    /** Return a human-readable string of the form `(xMin,yMin) - (xMax,yMax)`. */
+    get repr(): string;
+    /** Return the `[min, max]` corner points of the bounding box. */
+    get bounds(): [Point2D, Point2D];
+    /** Return the center point of the bounding box. */
+    get center(): Point2D;
+    /** Return the width (x-extent) of the bounding box. */
+    get width(): number;
+    /** Return the height (y-extent) of the bounding box. */
+    get height(): number;
+    /**
+     * Return a point guaranteed to lie outside the bounding box.
+     *
+     * @param paddingPercent - Extra padding as a percentage of the box dimensions.
+     */
+    outsidePoint(paddingPercent?: number): Point2D;
+    /** Expand this bounding box to include `other`. */
+    add(other: BoundingBox2d): void;
+    /** Test whether this bounding box and `other` are completely disjoint. */
+    isOut(other: BoundingBox2d): boolean;
+    /** Test whether the given point lies inside (or on the boundary of) this box. */
+    containsPoint(other: Point2D): boolean;
 }
 
 /** Create an OCCT `gp_Ax2d` (2D axis) from a point and a direction. */
@@ -975,64 +691,64 @@ declare const axis2d: (point: Point2D, direction: Point2D) => any;
  * computations on a single parametric curve.
  */
 declare class Curve2D {
-  private readonly _wrapped;
-  private _deleted;
-  _boundingBox: null | BoundingBox2d;
-  private _firstPoint;
-  private _lastPoint;
-  constructor(handle: any);
-  get wrapped(): any;
-  delete(): void;
-  /** Compute (and cache) the 2D bounding box of this curve. */
-  get boundingBox(): BoundingBox2d;
-  /** Return a human-readable representation, e.g. `LINE (0,0) - (1,1)`. */
-  get repr(): string;
-  /** Access the underlying OCCT `Geom2d_Curve` (unwrapped from its handle). */
-  get innerCurve(): any;
-  /** Serialize this curve to a string that can be restored with {@link deserializeCurve2D}. */
-  serialize(): string;
-  /** Evaluate the curve at the given parameter, returning the 2D point. */
-  value(parameter: number): Point2D;
-  /** Return the point at the start of the curve (cached after first access). */
-  get firstPoint(): Point2D;
-  /** Return the point at the end of the curve (cached after first access). */
-  get lastPoint(): Point2D;
-  /** Return the parameter value at the start of the curve. */
-  get firstParameter(): number;
-  /** Return the parameter value at the end of the curve. */
-  get lastParameter(): number;
-  /** Create a `Geom2dAdaptor_Curve` for algorithmic queries (caller must delete). */
-  adaptor(): any;
-  /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
-  get geomType(): CurveType;
-  /** Create an independent deep copy of this curve. */
-  clone(): Curve2D;
-  /** Reverse the orientation of this curve in place. */
-  reverse(): void;
-  private distanceFromPoint;
-  private distanceFromCurve;
-  /** Compute the minimum distance from this curve to a point or another curve. */
-  distanceFrom(element: Curve2D | Point2D): number;
-  /** Test whether a point lies on the curve within a tight tolerance (1e-9). */
-  isOnCurve(point: Point2D): boolean;
-  /**
-   * Project a point onto the curve and return its parameter value.
-   *
-   * @returns `Ok(parameter)` when the point is on the curve, or an error result otherwise.
-   */
-  parameter(point: Point2D, precision?: number): Result<number>;
-  /**
-   * Compute the tangent vector at a parameter position or at the projection of a point.
-   *
-   * @param index - A normalized parameter (0..1) or a Point2D to project onto the curve.
-   */
-  tangentAt(index: number | Point2D): Point2D;
-  /**
-   * Split this curve at the given points or parameter values.
-   *
-   * @returns An array of sub-curves whose union covers the original curve.
-   */
-  splitAt(points: Point2D[] | number[], precision?: number): Curve2D[];
+    private readonly _wrapped;
+    private _deleted;
+    _boundingBox: null | BoundingBox2d;
+    private _firstPoint;
+    private _lastPoint;
+    constructor(handle: any);
+    get wrapped(): any;
+    delete(): void;
+    /** Compute (and cache) the 2D bounding box of this curve. */
+    get boundingBox(): BoundingBox2d;
+    /** Return a human-readable representation, e.g. `LINE (0,0) - (1,1)`. */
+    get repr(): string;
+    /** Access the underlying OCCT `Geom2d_Curve` (unwrapped from its handle). */
+    get innerCurve(): any;
+    /** Serialize this curve to a string that can be restored with {@link deserializeCurve2D}. */
+    serialize(): string;
+    /** Evaluate the curve at the given parameter, returning the 2D point. */
+    value(parameter: number): Point2D;
+    /** Return the point at the start of the curve (cached after first access). */
+    get firstPoint(): Point2D;
+    /** Return the point at the end of the curve (cached after first access). */
+    get lastPoint(): Point2D;
+    /** Return the parameter value at the start of the curve. */
+    get firstParameter(): number;
+    /** Return the parameter value at the end of the curve. */
+    get lastParameter(): number;
+    /** Create a `Geom2dAdaptor_Curve` for algorithmic queries (caller must delete). */
+    adaptor(): any;
+    /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
+    get geomType(): CurveType;
+    /** Create an independent deep copy of this curve. */
+    clone(): Curve2D;
+    /** Reverse the orientation of this curve in place. */
+    reverse(): void;
+    private distanceFromPoint;
+    private distanceFromCurve;
+    /** Compute the minimum distance from this curve to a point or another curve. */
+    distanceFrom(element: Curve2D | Point2D): number;
+    /** Test whether a point lies on the curve within a tight tolerance (1e-9). */
+    isOnCurve(point: Point2D): boolean;
+    /**
+     * Project a point onto the curve and return its parameter value.
+     *
+     * @returns `Ok(parameter)` when the point is on the curve, or an error result otherwise.
+     */
+    parameter(point: Point2D, precision?: number): Result<number>;
+    /**
+     * Compute the tangent vector at a parameter position or at the projection of a point.
+     *
+     * @param index - A normalized parameter (0..1) or a Point2D to project onto the curve.
+     */
+    tangentAt(index: number | Point2D): Point2D;
+    /**
+     * Split this curve at the given points or parameter values.
+     *
+     * @returns An array of sub-curves whose union covers the original curve.
+     */
+    splitAt(points: Point2D[] | number[], precision?: number): Curve2D[];
 }
 
 /**
@@ -1047,60 +763,54 @@ declare const organiseBlueprints: (blueprints: Blueprint[]) => Blueprints;
 /** Plain data returned by blueprint sketchOnPlane/sketchOnFace (Layer 2).
  *  Layer 3 wraps this in a Sketch class. */
 interface SketchData {
-  wire: Wire;
-  defaultOrigin?: Vec3;
-  defaultDirection?: Vec3;
-  baseFace?: Face | null;
+    wire: Wire;
+    defaultOrigin?: Vec3;
+    defaultDirection?: Vec3;
+    baseFace?: Face | null;
 }
 
 interface DrawingInterface {
-  clone(): DrawingInterface;
-  boundingBox: BoundingBox2d;
-  stretch(ratio: number, direction: Point2D, origin: Point2D): DrawingInterface;
-  rotate(angle: number, center: Point2D): DrawingInterface;
-  translate(xDist: number, yDist: number): DrawingInterface;
-  translate(translationVector: Point2D): DrawingInterface;
-  /**
-   * Returns the mirror image of this drawing made with a single point (in
-   * center mode, the default, or a plane, (plane mode, with both direction and
-   * origin of the plane).
-   */
-  mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): DrawingInterface;
-  /**
-   * Returns sketch data for the drawing on a plane.
-   */
-  sketchOnPlane(
-    inputPlane?: PlaneName | Plane,
-    origin?: PointInput | number
-  ): SketchData | SketchData[] | (SketchData | SketchData[])[];
-  /**
-   * Returns sketch data for the drawing on a face.
-   *
-   * The scale mode corresponds to the way the coordinates of the drawing are
-   * interpreted match with the face:
-   *
-   * - `original` uses global coordinates (1mm in the drawing is 1mm on the
-   *   face). This is the default, but currently supported only for planar
-   *   and circular faces
-   * - `bounds` normalises the UV parameters on the face to [0,1] intervals.
-   * - `native` uses the default UV parameters of opencascade
-   */
-  sketchOnFace(
-    face: Face,
-    scaleMode: ScaleMode
-  ): SketchData | SketchData[] | (SketchData | SketchData[])[];
-  /**
-   * Formats the drawing as an SVG image
-   */
-  toSVG(margin: number): string;
-  /**
-   * Returns the SVG viewbox that corresponds to this drawing
-   */
-  toSVGViewBox(margin?: number): string;
-  /**
-   * Formats the drawing as a list of SVG paths
-   */
-  toSVGPaths(): string[] | string[][];
+    clone(): DrawingInterface;
+    boundingBox: BoundingBox2d;
+    stretch(ratio: number, direction: Point2D, origin: Point2D): DrawingInterface;
+    rotate(angle: number, center: Point2D): DrawingInterface;
+    translate(xDist: number, yDist: number): DrawingInterface;
+    translate(translationVector: Point2D): DrawingInterface;
+    /**
+     * Returns the mirror image of this drawing made with a single point (in
+     * center mode, the default, or a plane, (plane mode, with both direction and
+     * origin of the plane).
+     */
+    mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): DrawingInterface;
+    /**
+     * Returns sketch data for the drawing on a plane.
+     */
+    sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: PointInput | number): SketchData | SketchData[] | (SketchData | SketchData[])[];
+    /**
+     * Returns sketch data for the drawing on a face.
+     *
+     * The scale mode corresponds to the way the coordinates of the drawing are
+     * interpreted match with the face:
+     *
+     * - `original` uses global coordinates (1mm in the drawing is 1mm on the
+     *   face). This is the default, but currently supported only for planar
+     *   and circular faces
+     * - `bounds` normalises the UV parameters on the face to [0,1] intervals.
+     * - `native` uses the default UV parameters of opencascade
+     */
+    sketchOnFace(face: Face, scaleMode: ScaleMode): SketchData | SketchData[] | (SketchData | SketchData[])[];
+    /**
+     * Formats the drawing as an SVG image
+     */
+    toSVG(margin: number): string;
+    /**
+     * Returns the SVG viewbox that corresponds to this drawing
+     */
+    toSVGViewBox(margin?: number): string;
+    /**
+     * Formats the drawing as a list of SVG paths
+     */
+    toSVGPaths(): string[] | string[][];
 }
 
 /**
@@ -1117,11 +827,7 @@ interface DrawingInterface {
  * const roundedTriangle = polysidesBlueprint(10, 3, 2);
  * ```
  */
-declare const polysidesBlueprint: (
-  radius: number,
-  sidesCount: number,
-  sagitta?: number
-) => Blueprint;
+declare const polysidesBlueprint: (radius: number, sidesCount: number, sagitta?: number) => Blueprint;
 
 /**
  * Create an axis-aligned rectangle blueprint with optional rounded corners.
@@ -1143,16 +849,10 @@ declare const polysidesBlueprint: (
  * const elliptical = roundedRectangleBlueprint(20, 10, { rx: 4, ry: 2 });
  * ```
  */
-declare const roundedRectangleBlueprint: (
-  width: number,
-  height: number,
-  r?:
-    | number
-    | {
-        rx?: number;
-        ry?: number;
-      }
-) => Blueprint;
+declare const roundedRectangleBlueprint: (width: number, height: number, r?: number | {
+    rx?: number;
+    ry?: number;
+}) => Blueprint;
 
 /**
  * Compute the boolean union of two simple blueprints.
@@ -1168,10 +868,7 @@ declare const roundedRectangleBlueprint: (
  * @remarks Both blueprints must be closed. For compound or multi-blueprint
  * inputs, use {@link fuse2D} instead.
  */
-declare const fuseBlueprints: (
-  first: Blueprint,
-  second: Blueprint
-) => null | Blueprint | Blueprints;
+declare const fuseBlueprints: (first: Blueprint, second: Blueprint) => null | Blueprint | Blueprints;
 
 /**
  * Compute the boolean difference of two simple blueprints (first minus second).
@@ -1200,10 +897,7 @@ declare const cutBlueprints: (first: Blueprint, second: Blueprint) => null | Blu
  *
  * @remarks Both blueprints must be closed. For compound inputs use {@link intersect2D}.
  */
-declare const intersectBlueprints: (
-  first: Blueprint,
-  second: Blueprint
-) => null | Blueprint | Blueprints;
+declare const intersectBlueprints: (first: Blueprint, second: Blueprint) => null | Blueprint | Blueprints;
 
 /**
  * Union type for all 2D shape representations, including `null` for empty results.
@@ -1231,10 +925,7 @@ type Shape2D = Blueprint | Blueprints | CompoundBlueprint | null;
  *
  * @see {@link fuseBlueprint2D} for the functional API wrapper.
  */
-declare const fuse2D: (
-  first: Shape2D,
-  second: Shape2D
-) => Blueprint | Blueprints | CompoundBlueprint | null;
+declare const fuse2D: (first: Shape2D, second: Shape2D) => Blueprint | Blueprints | CompoundBlueprint | null;
 
 /**
  * Compute the boolean difference of two 2D shapes (first minus second).
@@ -1254,10 +945,7 @@ declare const fuse2D: (
  *
  * @see {@link cutBlueprint2D} for the functional API wrapper.
  */
-declare const cut2D: (
-  first: Shape2D,
-  second: Shape2D
-) => Blueprint | Blueprints | CompoundBlueprint | null;
+declare const cut2D: (first: Shape2D, second: Shape2D) => Blueprint | Blueprints | CompoundBlueprint | null;
 
 /**
  * Compute the boolean intersection of two 2D shapes.
@@ -1277,10 +965,7 @@ declare const cut2D: (
  *
  * @see {@link intersectBlueprint2D} for the functional API wrapper.
  */
-declare function intersect2D(
-  first: Shape2D,
-  second: Shape2D
-): Blueprint | Blueprints | CompoundBlueprint | null;
+declare function intersect2D(first: Shape2D, second: Shape2D): Blueprint | Blueprints | CompoundBlueprint | null;
 
 /** How to map 2D sketch coordinates onto a face's parametric UV space. */
 type ScaleMode = 'original' | 'bounds' | 'native';
@@ -1307,22 +992,14 @@ declare function curve2dLastPoint(curve: Curve2D): Point2D;
  * @param params - Parameter values or `Point2D` locations at which to split.
  * @returns An ordered array of sub-curves covering the original curve.
  */
-declare function curve2dSplitAt(
-  curve: Curve2D,
-  params: Point2D[] | number[],
-  precision?: number
-): Curve2D[];
+declare function curve2dSplitAt(curve: Curve2D, params: Point2D[] | number[], precision?: number): Curve2D[];
 
 /**
  * Find the parameter on the curve closest to the given point.
  *
  * @returns `Ok(parameter)` when the point is on the curve, or an error result.
  */
-declare function curve2dParameter(
-  curve: Curve2D,
-  point: Point2D,
-  precision?: number
-): Result<number>;
+declare function curve2dParameter(curve: Curve2D, point: Point2D, precision?: number): Result<number>;
 
 /**
  * Get the tangent vector at a parameter position on the curve.
@@ -1391,12 +1068,7 @@ declare function scaleBlueprint(bp: Blueprint, factor: number, center?: Point2D)
  * @returns A new mirrored Blueprint.
  * @see {@link Blueprint.mirror}
  */
-declare function mirrorBlueprint(
-  bp: Blueprint,
-  centerOrDirection: Point2D,
-  origin?: Point2D,
-  mode?: 'center' | 'plane'
-): Blueprint;
+declare function mirrorBlueprint(bp: Blueprint, centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Blueprint;
 
 /**
  * Stretch a blueprint along a direction by a given ratio.
@@ -1404,12 +1076,7 @@ declare function mirrorBlueprint(
  * @returns A new stretched Blueprint.
  * @see {@link Blueprint.stretch}
  */
-declare function stretchBlueprint(
-  bp: Blueprint,
-  ratio: number,
-  direction: Point2D,
-  origin?: Point2D
-): Blueprint;
+declare function stretchBlueprint(bp: Blueprint, ratio: number, direction: Point2D, origin?: Point2D): Blueprint;
 
 /**
  * Convert a blueprint to an SVG path `d` attribute string.
@@ -1431,11 +1098,7 @@ declare function blueprintIsInside(bp: Blueprint, point: Point2D): boolean;
  *
  * @see {@link Blueprint.sketchOnPlane}
  */
-declare function sketchBlueprintOnPlane(
-  bp: Blueprint,
-  inputPlane?: PlaneName | Plane,
-  origin?: PointInput | number
-): any;
+declare function sketchBlueprintOnPlane(bp: Blueprint, inputPlane?: PlaneName | Plane, origin?: PointInput | number): any;
 
 /**
  * Map a blueprint onto a 3D face's UV surface, producing sketch data.
@@ -1455,10 +1118,7 @@ declare function sketchBlueprintOnFace(bp: Blueprint, face: Face, scaleMode?: Sc
  * const union = fuseBlueprint2D(circle, rectangle);
  * ```
  */
-declare function fuseBlueprint2D(
-  a: Blueprint | CompoundBlueprint | Blueprints,
-  b: Blueprint | CompoundBlueprint | Blueprints
-): Shape2D;
+declare function fuseBlueprint2D(a: Blueprint | CompoundBlueprint | Blueprints, b: Blueprint | CompoundBlueprint | Blueprints): Shape2D;
 
 /**
  * Compute the boolean difference of two 2D shapes (base minus tool).
@@ -1473,10 +1133,7 @@ declare function fuseBlueprint2D(
  * const withHole = cutBlueprint2D(outerRect, innerCircle);
  * ```
  */
-declare function cutBlueprint2D(
-  base: Blueprint | CompoundBlueprint | Blueprints,
-  tool: Blueprint | CompoundBlueprint | Blueprints
-): Shape2D;
+declare function cutBlueprint2D(base: Blueprint | CompoundBlueprint | Blueprints, tool: Blueprint | CompoundBlueprint | Blueprints): Shape2D;
 
 /**
  * Compute the boolean intersection of two 2D shapes.
@@ -1489,210 +1146,31 @@ declare function cutBlueprint2D(
  * const overlap = intersectBlueprint2D(circle, rectangle);
  * ```
  */
-declare function intersectBlueprint2D(
-  a: Blueprint | CompoundBlueprint | Blueprints,
-  b: Blueprint | CompoundBlueprint | Blueprints
-): Shape2D;
-
-/**
- * Find edges within a shape by chaining declarative filters.
- *
- * Filters are combined with AND logic by default. Use `.either()` for OR
- * and `.not()` for negation (inherited from {@link Finder3d}).
- *
- * @deprecated Use the immutable {@link edgeFinder} factory from `finderFns` instead.
- *   `edgeFinder().inDirection('Z').ofLength(10).find(box)`
- *
- * @category Finders
- */
-declare class EdgeFinder extends Finder3d<Edge> {
-  /**
-   * Filter to find edges that are aligned with a direction.
-   *
-   * Equivalent to `atAngleWith(direction, 0)`.
-   *
-   * @param direction - An axis name ("X", "Y", "Z") or arbitrary vector.
-   * @category Filter
-   */
-  inDirection(direction: Direction | PointInput): this;
-  /**
-   * Filter to find edges of a certain length.
-   *
-   * @param length - Exact length to match, or a predicate for custom comparison.
-   * @category Filter
-   */
-  ofLength(length: number | ((l: number) => boolean)): this;
-  /**
-   * Filter to find edges that are of a certain curve type.
-   *
-   * @category Filter
-   */
-  ofCurveType(curveType: CurveType): this;
-  /**
-   * Filter to find edges that are parallel to a plane.
-   *
-   * @remarks Only meaningful for linear edges. Non-linear edges may
-   * produce unexpected results because only the tangent direction is tested.
-   *
-   * @param plane - A standard plane name ("XY", "XZ", "YZ"), a Plane object, or a Face.
-   * @category Filter
-   */
-  parallelTo(plane: Plane | StandardPlane | Face): this;
-  /**
-   * Filter to find edges that lie within a plane.
-   *
-   * Checks both that the edge is parallel to the plane and that its
-   * start point projects onto the plane.
-   *
-   * @remarks Only meaningful for linear edges. Non-linear edges may
-   * produce unexpected results.
-   *
-   * @param inputPlane - A plane name or Plane object.
-   * @param origin - Plane origin offset (number for standard planes, or a point).
-   * @category Filter
-   */
-  inPlane(inputPlane: PlaneName | Plane, origin?: PointInput | number): this;
-  shouldKeep(element: Edge): boolean;
-  protected applyFilter(shape: AnyShape): Edge[];
-}
-
-/**
- * Find faces within a shape by chaining declarative filters.
- *
- * Filters are combined with AND logic by default. Use `.either()` for OR
- * and `.not()` for negation (inherited from {@link Finder3d}).
- *
- * @deprecated Use the immutable {@link faceFinder} factory from `finderFns` instead.
- *   `faceFinder().parallelTo('XY').ofArea(100).find(box, { unique: true })`
- *
- * @category Finders
- */
-declare class FaceFinder extends Finder3d<Face> {
-  /**
-   * Filter to find faces whose normal is parallel to a plane's normal or another face's normal.
-   *
-   * @remarks Only meaningful for planar faces. Curved faces use the normal
-   * at the face center, which may not represent the whole surface.
-   *
-   * @param plane - A standard plane name ("XY", "XZ", "YZ"), a Plane object, or a Face.
-   * @category Filter
-   */
-  parallelTo(plane: Plane | StandardPlane | Face): this;
-  /**
-   * Filter to find faces that are of a certain surface type.
-   *
-   * @category Filter
-   */
-  ofSurfaceType(surfaceType: SurfaceType): this;
-  /**
-   * Filter to find faces that have a specific area.
-   *
-   * @param area - Target surface area.
-   * @param tolerance - Absolute tolerance for the area comparison. Default: 1e-3.
-   * @category Filter
-   */
-  ofArea(area: number, tolerance?: number): this;
-  /**
-   * Filter to find faces that lie within a plane.
-   *
-   * Checks both that the face is parallel to the plane and that its
-   * center point projects onto the plane.
-   *
-   * @remarks Only meaningful for planar faces.
-   *
-   * @param inputPlane - A plane name or Plane object.
-   * @param origin - Plane origin offset (number for standard planes, or a point).
-   * @category Filter
-   */
-  inPlane(inputPlane: PlaneName | Plane, origin?: PointInput | number): this;
-  shouldKeep(element: Face): boolean;
-  protected applyFilter(shape: AnyShape): Face[];
-}
+declare function intersectBlueprint2D(a: Blueprint | CompoundBlueprint | Blueprints, b: Blueprint | CompoundBlueprint | Blueprints): Shape2D;
 
 /** A junction between two consecutive curves in a 2D profile. */
 type Corner = {
-  /** The curve arriving at the corner point. */
-  firstCurve: Curve2D;
-  /** The curve departing from the corner point. */
-  secondCurve: Curve2D;
-  /** The shared endpoint where the two curves meet. */
-  point: Point2D;
+    /** The curve arriving at the corner point. */
+    firstCurve: Curve2D;
+    /** The curve departing from the corner point. */
+    secondCurve: Curve2D;
+    /** The shared endpoint where the two curves meet. */
+    point: Point2D;
 };
-
-/**
- * Find corners within a 2D blueprint by chaining declarative filters.
- *
- * A corner is the junction between two consecutive curves.
- * Filters are combined with AND logic by default.
- *
- * @deprecated Use the immutable {@link cornerFinder} factory from `finderFns` instead.
- *   `cornerFinder().ofAngle(90).find(blueprint)`
- *
- * @category Finders
- */
-declare class CornerFinder extends Finder<Corner, BlueprintLike> {
-  /**
-   * Filter to find corners whose point matches one from the list.
-   *
-   * @param elementList - Points to match against using geometric equality.
-   * @category Filter
-   */
-  inList(elementList: Point2D[]): this;
-  /**
-   * Filter to find corners at a specified distance from a point.
-   *
-   * @param distance - Target distance from the reference point.
-   * @param point - Reference point. Default: origin [0, 0].
-   * @category Filter
-   */
-  atDistance(distance: number, point?: Point2D): this;
-  /**
-   * Filter to find corners located at an exact point.
-   *
-   * @param point - The 2D point to match.
-   * @category Filter
-   */
-  atPoint(point: Point2D): this;
-  /**
-   * Filter to find corners within an axis-aligned bounding box.
-   *
-   * @param corner1 - First corner of the bounding box.
-   * @param corner2 - Opposite corner of the bounding box.
-   * @category Filter
-   */
-  inBox(corner1: Point2D, corner2: Point2D): this;
-  /**
-   * Filter to find corners with a specific interior angle (in degrees).
-   *
-   * The angle is measured between the tangent vectors of the two curves
-   * at the corner point and is folded to the range 0--180.
-   *
-   * @param angle - Target angle in degrees (0--180).
-   * @category Filter
-   */
-  ofAngle(angle: number): this;
-  shouldKeep(element: Corner): boolean;
-  protected applyFilter(blueprint: BlueprintLike): Corner[];
-}
 
 /**
  * Input that resolves to a single face — a direct Face, a FaceFinder/FaceFinderFn,
  * or a finder callback.
  */
-type SingleFace =
-  | Face
-  | FaceFinder
-  | FaceFinderFn
-  | ((f: FaceFinderFn) => FaceFinderFn)
-  | ((f: FaceFinder) => FaceFinder);
+type SingleFace = Face | FaceFinder | FaceFinderFn | ((f: FaceFinderFn) => FaceFinderFn) | ((f: FaceFinder) => FaceFinder);
 
 /** Resolve a {@link SingleFace} input to a concrete Face from the given shape. */
 declare function getSingleFace(f: SingleFace, shape: AnyShape): Result<Face>;
 
 /** Element + normal pair passed to each finder filter function. */
 type FilterFcn<Type> = {
-  element: Type;
-  normal: Vec3 | null;
+    element: Type;
+    normal: Vec3 | null;
 };
 
 /**
@@ -1704,12 +1182,10 @@ type FilterFcn<Type> = {
  *
  * @category Finders
  */
-declare const combineFinderFilters: <Type, T, R = number>(
-  filters: {
+declare const combineFinderFilters: <Type, T, R = number>(filters: {
     filter: Finder<Type, T>;
     radius: R;
-  }[]
-) => [(v: Type) => R | null, () => void];
+}[]) => [(v: Type) => R | null, () => void];
 
 /**
  * Export a ShapeMesh as a Wavefront OBJ string.
@@ -1736,13 +1212,13 @@ declare function exportOBJ(mesh: ShapeMesh): string;
  * Assign instances to face IDs via {@link GltfExportOptions.materials}.
  */
 interface GltfMaterial {
-  name?: string;
-  /** RGBA base color factor, each component 0–1. Default: [0.8, 0.8, 0.8, 1.0] */
-  baseColor?: [number, number, number, number];
-  /** Metallic factor 0–1. Default: 0 */
-  metallic?: number;
-  /** Roughness factor 0–1. Default: 0.5 */
-  roughness?: number;
+    name?: string;
+    /** RGBA base color factor, each component 0–1. Default: [0.8, 0.8, 0.8, 1.0] */
+    baseColor?: [number, number, number, number];
+    /** Metallic factor 0–1. Default: 0 */
+    metallic?: number;
+    /** Roughness factor 0–1. Default: 0.5 */
+    roughness?: number;
 }
 
 /**
@@ -1752,8 +1228,8 @@ interface GltfMaterial {
  * glTF primitives by material, enabling per-face coloring.
  */
 interface GltfExportOptions {
-  /** Map of faceId → material. FaceIds come from ShapeMesh.faceGroups[].faceId. */
-  materials?: Map<number, GltfMaterial>;
+    /** Map of faceId → material. FaceIds come from ShapeMesh.faceGroups[].faceId. */
+    materials?: Map<number, GltfMaterial>;
 }
 
 /**
@@ -1803,26 +1279,24 @@ declare function exportGlb(mesh: ShapeMesh, options?: GltfExportOptions): ArrayB
  * LINE maps directly to a DXF LINE entity.
  * POLYLINE maps to an LWPOLYLINE with optional closure.
  */
-type DXFEntity =
-  | {
-      type: 'LINE';
-      start: Point2D;
-      end: Point2D;
-      layer?: string;
-    }
-  | {
-      type: 'POLYLINE';
-      points: Point2D[];
-      closed?: boolean;
-      layer?: string;
-    };
+type DXFEntity = {
+    type: 'LINE';
+    start: Point2D;
+    end: Point2D;
+    layer?: string;
+} | {
+    type: 'POLYLINE';
+    points: Point2D[];
+    closed?: boolean;
+    layer?: string;
+};
 
 /** Options controlling DXF ASCII export formatting. */
 interface DXFExportOptions {
-  /** Default layer name for entities. Default: "0" */
-  layer?: string;
-  /** Number of segments for curve approximation. Default: 32 */
-  curveSegments?: number;
+    /** Default layer name for entities. Default: "0" */
+    layer?: string;
+    /** Number of segments for curve approximation. Default: 32 */
+    curveSegments?: number;
 }
 
 /**
@@ -1864,17 +1338,14 @@ declare function exportDXF(entities: DXFEntity[], options?: DXFExportOptions): s
  *
  * @see {@link exportDXF} for the lower-level entity-based API.
  */
-declare function blueprintToDXF(
-  drawing: Blueprint | CompoundBlueprint | Blueprints,
-  options?: DXFExportOptions
-): string;
+declare function blueprintToDXF(drawing: Blueprint | CompoundBlueprint | Blueprints, options?: DXFExportOptions): string;
 
 /** Options controlling 3MF archive export. */
 interface ThreeMFExportOptions {
-  /** Name of the model object inside the 3MF archive. Default: `"model"`. */
-  name?: string;
-  /** Unit of measurement for vertex coordinates. Default: `"millimeter"`. */
-  unit?: 'micron' | 'millimeter' | 'centimeter' | 'meter' | 'inch' | 'foot';
+    /** Name of the model object inside the 3MF archive. Default: `"model"`. */
+    name?: string;
+    /** Unit of measurement for vertex coordinates. Default: `"millimeter"`. */
+    unit?: 'micron' | 'millimeter' | 'centimeter' | 'meter' | 'inch' | 'foot';
 }
 
 /**
@@ -1902,8 +1373,8 @@ declare function exportThreeMF(mesh: ShapeMesh, options?: ThreeMFExportOptions):
 
 /** Options controlling SVG import behavior. */
 interface SVGImportOptions {
-  /** Whether to flip the Y axis (default: true, since SVG Y is down). */
-  flipY?: boolean;
+    /** Whether to flip the Y axis (default: true, since SVG Y is down). */
+    flipY?: boolean;
 }
 
 /**
@@ -1958,120 +1429,99 @@ declare function importSVG(svgString: string): Result<Blueprint[]>;
  * @category Sketching
  */
 declare class BaseSketcher2d {
-  protected pointer: Point2D;
-  protected firstPoint: Point2D;
-  protected pendingCurves: Curve2D[];
-  protected _nextCorner: null | ((f: Curve2D, s: Curve2D) => Curve2D[]);
-  constructor(origin?: Point2D);
-  protected _convertToUV([x, y]: Point2D): Point2D;
-  protected _convertFromUV([u, v]: Point2D): Point2D;
-  /**
-   * Returns the current pen position as [x, y] coordinates
-   *
-   * @category Drawing State
-   */
-  get penPosition(): Point2D;
-  /**
-   * Returns the current pen angle in degrees
-   *
-   * The angle represents the tangent direction at the current pen position,
-   * based on the last drawing operation (line, arc, bezier, etc.).
-   * Returns 0 if nothing has been drawn yet.
-   *
-   * @category Drawing State
-   */
-  get penAngle(): number;
-  /** Move the pen to an absolute 2D position before drawing any curves. */
-  movePointerTo(point: Point2D): this;
-  protected saveCurve(curve: Curve2D): void;
-  /** Draw a straight line to an absolute 2D point. */
-  lineTo(point: Point2D): this;
-  /** Draw a straight line by relative horizontal and vertical distances. */
-  line(xDist: number, yDist: number): this;
-  /** Draw a vertical line of the given signed distance. */
-  vLine(distance: number): this;
-  /** Draw a horizontal line of the given signed distance. */
-  hLine(distance: number): this;
-  /** Draw a vertical line to an absolute Y coordinate. */
-  vLineTo(yPos: number): this;
-  /** Draw a horizontal line to an absolute X coordinate. */
-  hLineTo(xPos: number): this;
-  /** Draw a line to a point given in polar coordinates [r, theta] from the origin. */
-  polarLineTo([r, theta]: Point2D): this;
-  /** Draw a line in polar coordinates (distance and angle in degrees) from the current point. */
-  polarLine(distance: number, angle: number): this;
-  /** Draw a line tangent to the previous curve, extending by the given distance. */
-  tangentLine(distance: number): this;
-  /** Draw a circular arc passing through a mid-point to an absolute end point. */
-  threePointsArcTo(end: Point2D, midPoint: Point2D): this;
-  /** Draw a circular arc through a via-point to an end point, both as relative distances. */
-  threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this;
-  /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
-  sagittaArcTo(end: Point2D, sagitta: number): this;
-  /** Draw a circular arc to a relative end point, bulging by the given sagitta. */
-  sagittaArc(xDist: number, yDist: number, sagitta: number): this;
-  /** Draw a vertical sagitta arc of the given distance and bulge. */
-  vSagittaArc(distance: number, sagitta: number): this;
-  /** Draw a horizontal sagitta arc of the given distance and bulge. */
-  hSagittaArc(distance: number, sagitta: number): this;
-  /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
-  bulgeArcTo(end: Point2D, bulge: number): this;
-  /** Draw an arc to a relative end point using a bulge factor. */
-  bulgeArc(xDist: number, yDist: number, bulge: number): this;
-  /** Draw a vertical bulge arc of the given distance and bulge factor. */
-  vBulgeArc(distance: number, bulge: number): this;
-  /** Draw a horizontal bulge arc of the given distance and bulge factor. */
-  hBulgeArc(distance: number, bulge: number): this;
-  /** Draw a circular arc tangent to the previous curve, ending at an absolute point. */
-  tangentArcTo(end: Point2D): this;
-  /** Draw a circular arc tangent to the previous curve, ending at a relative offset. */
-  tangentArc(xDist: number, yDist: number): this;
-  /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
-  ellipseTo(
-    end: Point2D,
-    horizontalRadius: number,
-    verticalRadius: number,
-    rotation?: number,
-    longAxis?: boolean,
-    sweep?: boolean
-  ): this;
-  /** Draw an elliptical arc to a relative end point (SVG-style parameters). */
-  ellipse(
-    xDist: number,
-    yDist: number,
-    horizontalRadius: number,
-    verticalRadius: number,
-    rotation?: number,
-    longAxis?: boolean,
-    sweep?: boolean
-  ): this;
-  /** Draw a half-ellipse arc to an absolute end point with a given minor radius. */
-  halfEllipseTo(end: Point2D, minorRadius: number, sweep?: boolean): this;
-  /** Draw a half-ellipse arc to a relative end point with a given minor radius. */
-  halfEllipse(xDist: number, yDist: number, minorRadius: number, sweep?: boolean): this;
-  /** Draw a Bezier curve to an absolute end point through one or more control points. */
-  bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this;
-  /** Draw a quadratic Bezier curve to an absolute end point with a single control point. */
-  quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this;
-  /** Draw a cubic Bezier curve to an absolute end point with start and end control points. */
-  cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this;
-  /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous curve. */
-  smoothSplineTo(end: Point2D, config?: SplineConfig): this;
-  /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous curve. */
-  smoothSpline(xDist: number, yDist: number, splineConfig?: SplineConfig): this;
-  /**
-   * Changes the corner between the previous and next segments.
-   */
-  customCorner(
-    radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]),
-    mode?: 'fillet' | 'chamfer'
-  ): this;
-  protected _customCornerLastWithFirst(
-    radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
-    mode?: 'fillet' | 'chamfer' | 'dogbone'
-  ): void;
-  protected _closeSketch(): void;
-  protected _closeWithMirror(): void;
+    protected pointer: Point2D;
+    protected firstPoint: Point2D;
+    protected pendingCurves: Curve2D[];
+    protected _nextCorner: null | ((f: Curve2D, s: Curve2D) => Curve2D[]);
+    constructor(origin?: Point2D);
+    protected _convertToUV([x, y]: Point2D): Point2D;
+    protected _convertFromUV([u, v]: Point2D): Point2D;
+    /**
+     * Returns the current pen position as [x, y] coordinates
+     *
+     * @category Drawing State
+     */
+    get penPosition(): Point2D;
+    /**
+     * Returns the current pen angle in degrees
+     *
+     * The angle represents the tangent direction at the current pen position,
+     * based on the last drawing operation (line, arc, bezier, etc.).
+     * Returns 0 if nothing has been drawn yet.
+     *
+     * @category Drawing State
+     */
+    get penAngle(): number;
+    /** Move the pen to an absolute 2D position before drawing any curves. */
+    movePointerTo(point: Point2D): this;
+    protected saveCurve(curve: Curve2D): void;
+    /** Draw a straight line to an absolute 2D point. */
+    lineTo(point: Point2D): this;
+    /** Draw a straight line by relative horizontal and vertical distances. */
+    line(xDist: number, yDist: number): this;
+    /** Draw a vertical line of the given signed distance. */
+    vLine(distance: number): this;
+    /** Draw a horizontal line of the given signed distance. */
+    hLine(distance: number): this;
+    /** Draw a vertical line to an absolute Y coordinate. */
+    vLineTo(yPos: number): this;
+    /** Draw a horizontal line to an absolute X coordinate. */
+    hLineTo(xPos: number): this;
+    /** Draw a line to a point given in polar coordinates [r, theta] from the origin. */
+    polarLineTo([r, theta]: Point2D): this;
+    /** Draw a line in polar coordinates (distance and angle in degrees) from the current point. */
+    polarLine(distance: number, angle: number): this;
+    /** Draw a line tangent to the previous curve, extending by the given distance. */
+    tangentLine(distance: number): this;
+    /** Draw a circular arc passing through a mid-point to an absolute end point. */
+    threePointsArcTo(end: Point2D, midPoint: Point2D): this;
+    /** Draw a circular arc through a via-point to an end point, both as relative distances. */
+    threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this;
+    /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
+    sagittaArcTo(end: Point2D, sagitta: number): this;
+    /** Draw a circular arc to a relative end point, bulging by the given sagitta. */
+    sagittaArc(xDist: number, yDist: number, sagitta: number): this;
+    /** Draw a vertical sagitta arc of the given distance and bulge. */
+    vSagittaArc(distance: number, sagitta: number): this;
+    /** Draw a horizontal sagitta arc of the given distance and bulge. */
+    hSagittaArc(distance: number, sagitta: number): this;
+    /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
+    bulgeArcTo(end: Point2D, bulge: number): this;
+    /** Draw an arc to a relative end point using a bulge factor. */
+    bulgeArc(xDist: number, yDist: number, bulge: number): this;
+    /** Draw a vertical bulge arc of the given distance and bulge factor. */
+    vBulgeArc(distance: number, bulge: number): this;
+    /** Draw a horizontal bulge arc of the given distance and bulge factor. */
+    hBulgeArc(distance: number, bulge: number): this;
+    /** Draw a circular arc tangent to the previous curve, ending at an absolute point. */
+    tangentArcTo(end: Point2D): this;
+    /** Draw a circular arc tangent to the previous curve, ending at a relative offset. */
+    tangentArc(xDist: number, yDist: number): this;
+    /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
+    ellipseTo(end: Point2D, horizontalRadius: number, verticalRadius: number, rotation?: number, longAxis?: boolean, sweep?: boolean): this;
+    /** Draw an elliptical arc to a relative end point (SVG-style parameters). */
+    ellipse(xDist: number, yDist: number, horizontalRadius: number, verticalRadius: number, rotation?: number, longAxis?: boolean, sweep?: boolean): this;
+    /** Draw a half-ellipse arc to an absolute end point with a given minor radius. */
+    halfEllipseTo(end: Point2D, minorRadius: number, sweep?: boolean): this;
+    /** Draw a half-ellipse arc to a relative end point with a given minor radius. */
+    halfEllipse(xDist: number, yDist: number, minorRadius: number, sweep?: boolean): this;
+    /** Draw a Bezier curve to an absolute end point through one or more control points. */
+    bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this;
+    /** Draw a quadratic Bezier curve to an absolute end point with a single control point. */
+    quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this;
+    /** Draw a cubic Bezier curve to an absolute end point with start and end control points. */
+    cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this;
+    /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous curve. */
+    smoothSplineTo(end: Point2D, config?: SplineConfig): this;
+    /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous curve. */
+    smoothSpline(xDist: number, yDist: number, splineConfig?: SplineConfig): this;
+    /**
+     * Changes the corner between the previous and next segments.
+     */
+    customCorner(radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]), mode?: 'fillet' | 'chamfer'): this;
+    protected _customCornerLastWithFirst(radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]), mode?: 'fillet' | 'chamfer' | 'dogbone'): void;
+    protected _closeSketch(): void;
+    protected _closeWithMirror(): void;
 }
 
 /**
@@ -2080,14 +1530,12 @@ declare class BaseSketcher2d {
  * Can be a single tangent value (applied to the end), or an object with
  * separate start/end tangents and distance factors.
  */
-type SplineConfig =
-  | SplineTangent
-  | {
-      endTangent?: SplineTangent;
-      startTangent?: StartSplineTangent;
-      startFactor?: number;
-      endFactor?: number;
-    };
+type SplineConfig = SplineTangent | {
+    endTangent?: SplineTangent;
+    startTangent?: StartSplineTangent;
+    startFactor?: number;
+    endFactor?: number;
+};
 
 /**
  * Sketchers allow the user to draw a two dimensional shape using segments of
@@ -2102,342 +1550,321 @@ type SplineConfig =
  * @category Sketching
  */
 interface GenericSketcher<ReturnType> {
-  /**
-   * Changes the point to start your drawing from
-   */
-  movePointerTo(point: Point2D): this;
-  /**
-   * Draws a line from the current point to the point given in argument
-   *
-   * @category Line Segment
-   */
-  lineTo(point: Point2D): this;
-  /**
-   * Draws a line at the horizontal distance xDist and the vertical distance
-   * yDist of the current point
-   *
-   * @category Line Segment
-   */
-  line(xDist: number, yDist: number): this;
-  /**
-   * Draws a vertical line of length distance from the current point
-   *
-   * @category Line Segment
-   */
-  vLine(distance: number): this;
-  /**
-   * Draws an horizontal line of length distance from the current point
-   *
-   * @category Line Segment
-   */
-  hLine(distance: number): this;
-  /**
-   * Draws a vertical line to the y coordinate
-   *
-   * @category Line Segment
-   */
-  vLineTo(yPos: number): this;
-  /**
-   * Draws an horizontal line to the x coordinate
-   *
-   * @category Line Segment
-   */
-  hLineTo(xPos: number): this;
-  /**
-   * Draws a line from the current point to the point defined in polar
-   * coordinates, of radius r and angle theta (in degrees) from the origin
-   *
-   * @category Line Segment
-   */
-  polarLineTo([r, theta]: [number, number]): this;
-  /**
-   * Draws a line from the current point to the point defined in polar
-   * coordinates, of radius r and angle theta (in degrees) from the current
-   * point
-   *
-   * @category Line Segment
-   */
-  polarLine(r: number, theta: number): this;
-  /**
-   * Draws a line from the current point as a tangent to the previous part of
-   * curve drawn. The distance defines how long the line will be.
-   *
-   * @category Line Segment
-   */
-  tangentLine(distance: number): this;
-  /** Draws an arc of circle by defining its end point and a third point
-   * through which the arc will pass.
-   *
-   * @category Arc Segment
-   */
-  threePointsArcTo(end: Point2D, innerPoint: Point2D): this;
-  /** Draws an arc of circle by defining its end point and a third point
-   * through which the arc will pass. Both points are defined in horizontal
-   * (x) and vertical (y) distances from the start point.
-   *
-   * @category Arc Segment
-   */
-  threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this;
-  /** Draws an arc of circle by defining its end point and the sagitta - the
-   * maximum distance between the arc and the straight line going from start to
-   * end point.
-   *
-   * @category Arc Segment
-   */
-  sagittaArcTo(end: Point2D, sagitta: number): this;
-  /** Draws an arc of circle by defining its end point and the sagitta - the
-   * maximum distance between the arc and the straight line going from start to
-   * end point. The end point is defined by its horizontal and vertical
-   * distances from the start point.
-   *
-   * @category Arc Segment
-   */
-  sagittaArc(xDist: number, yDist: number, sagitta: number): this;
-  /** Draws a vertical arc of circle by defining its end point and the sagitta
-   * - the maximum distance between the arc and the straight line going from
-   * start to end point. The end point is defined by its vertical distance from
-   * the start point.
-   *
-   * @category Arc Segment
-   */
-  vSagittaArc(distance: number, sagitta: number): this;
-  /** Draws an horizontal arc of circle by defining its end point and the
-   * sagitta - the maximum distance between the arc and the straight line going
-   * from start to end point. The end point is defined by its horizontal
-   * distance from the start point.
-   *
-   * @category Arc Segment
-   */
-  hSagittaArc(distance: number, sagitta: number): this;
-  /** Draws an arc of circle by defining its end point and the bulge - the
-   * maximum distance between the arc and the straight line going from start to
-   * end point.
-   *
-   * @category Arc Segment
-   */
-  bulgeArcTo(end: Point2D, bulge: number): this;
-  /** Draws an arc of circle by defining its end point and the bulge - the
-   * maximum distance between the arc and the straight line going from start to
-   * end point in units of half the chord. The end point is defined by its horizontal and vertical distances
-   * from the start point.
-   *
-   * @category Arc Segment
-   */
-  bulgeArc(xDist: number, yDist: number, bulge: number): this;
-  /** Draws a vertical arc of circle by defining its end point and the bulge
-   * - the maximum distance between the arc and the straight line going from
-   * start to end point in units of half the chord. The end point is defined by its vertical distance from
-   * the start point.
-   *
-   * @category Arc Segment
-   */
-  vBulgeArc(distance: number, bulge: number): this;
-  /** Draws an horizontal arc of circle by defining its end point and the bulge
-   * - the maximum distance between the arc and the straight line going from
-   * start to end point in units of half the chord. The end point is defined by
-   * its horizontal distance from the start point.
-   *
-   * @category Arc Segment
-   */
-  hBulgeArc(distance: number, bulge: number): this;
-  /**
-   * Draws an arc of circle from the current point as a tangent to the previous
-   * part of curve drawn.
-   *
-   * @category Arc Segment
-   */
-  tangentArcTo(end: Point2D): this;
-  /**
-   * Draws an arc of circle from the current point as a tangent to the previous
-   * part of curve drawn. The end point is defined by its horizontal and vertical
-   * distances from the start point.
-   *
-   * @category Arc Segment
-   */
-  tangentArc(xDist: number, yDist: number): this;
-  /**
-   * Draws an arc of ellipse by defining its end point and an ellipse.
-   *
-   * The shape of the ellipse is defined by both its radiuses, its angle
-   * relative to the current coordinate system, as well as the long and sweep
-   * flags (as defined for SVG paths)
-   *
-   * @category Ellipse Arc Segment
-   */
-  ellipseTo(
-    end: Point2D,
-    horizontalRadius: number,
-    verticalRadius: number,
-    rotation: number,
-    longAxis: boolean,
-    sweep: boolean
-  ): this;
-  /**
-   * Draws an arc of ellipse by defining its end point and an ellipse. The end
-   * point is defined by distances from the start point.
-   *
-   * The shape of the ellipse is defined by both its radiuses, its angle
-   * relative to the current coordinate system, as well as the long and sweep
-   * flags (as defined for SVG paths)
-   *
-   * @category Ellipse Arc Segment
-   */
-  ellipse(
-    xDist: number,
-    yDist: number,
-    horizontalRadius: number,
-    verticalRadius: number,
-    rotation: number,
-    longAxis: boolean,
-    sweep: boolean
-  ): this;
-  /**
-   * Draws an arc as half an ellipse, defined by the sagitta of the ellipse
-   * (which corresponds to the radius in the axe orthogonal to the straight
-   * line).
-   *
-   * The sweep flag is to be understood as defined for SVG paths.
-   *
-   * @category Ellipse Arc Segment
-   */
-  halfEllipseTo(end: Point2D, radius: number, sweep: boolean): this;
-  /**
-   * Draws an arc as half an ellipse, defined by the sagitta of the ellipse
-   * (which corresponds to the radius in the axe orthogonal to the straight
-   * line). The end point is defined by distances from the start point.
-   *
-   * The sweep flag is to be understood as defined for SVG paths.
-   *
-   * @category Ellipse Arc Segment
-   */
-  halfEllipse(xDist: number, yDist: number, radius: number, sweep: boolean): this;
-  /** Draws a generic bezier curve to the end point, going using a set of
-   * control points.
-   *
-   * This is the generic definition of a bezier curve, you might want to use
-   * either the quadratic or cubic (most common) version, unless you know
-   * exactly what you are aiming at.
-   *
-   * @category Bezier Curve
-   */
-  bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this;
-  /** Draws a quadratic bezier curve to the end point, using the single control
-   * point.
-   *
-   * @category Bezier Curve
-   */
-  quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this;
-  /** Draws a cubic bezier curve to the end point, using the start and end
-   * control point to define its shape. This corresponds to the most commonly
-   * used bezier curve.
-   *
-   * If you are struggling setting your control points, the smoothSpline might
-   * be better for your needs.
-   *
-   * @category Bezier Curve
-   */
-  cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this;
-  /** Draws a cubic bezier curve to the end point, attempting to make the line
-   * smooth with the previous segment.
-   *
-   * It will base its first control point so that its tangent is the same as
-   * the previous segment.
-   *
-   * The control point relative to the end is by default set to be in the
-   * direction of the straight line between start and end. You can specify the
-   * `endSkew` either as an angle (in degrees) to this direction, or as an
-   * absolute direction in the coordinate system (a Point).
-   *
-   * The start- and end- factors decide on how far the control point is from
-   * the start and end point. At a factor of 1, the distance corresponds to
-   * a quarter of the straight line distance.
-   *
-   * @category Bezier Curve
-   */
-  smoothSplineTo(end: Point2D, config?: SplineConfig): this;
-  /** Draws a cubic bezier curve to the end point, attempting to make the line
-   * smooth with the previous segment. The end point is defined by its distance
-   * to the first point.
-   *
-   * It will base its first control point so that its tangent is the same as
-   * the previous segment. You can force another tangent by defining
-   * `startTangent`.
-   *
-   * You can configure the tangent of the end point by configuring the
-   * `endTangent`, either as "symmetric" to reproduce the start angle, as an
-   * angle from the X axis (in the coordinate system) or a 2d direction (still
-   * in the coordinate system).
-   *
-   * The start- and end- factors decide on how far the control point is from
-   * the start and end point. At a factor of 1, the distance corresponds to
-   * a quarter of the straight line distance.
-   *
-   * @category Bezier Curve
-   */
-  smoothSpline(xDist: number, yDist: number, splineConfig: SplineConfig): this;
-  /**
-   * Stop drawing and returns the sketch.
-   */
-  done(): ReturnType;
-  /**
-   * Stop drawing, make sure the sketch is closed (by adding a straight line to
-   * from the last point to the first) and returns the sketch.
-   */
-  close(): ReturnType;
-  /**
-   * Stop drawing, make sure the sketch is closed (by mirroring the lines
-   * between the first and last points drawn) and returns the sketch.
-   */
-  closeWithMirror(): ReturnType;
+    /**
+     * Changes the point to start your drawing from
+     */
+    movePointerTo(point: Point2D): this;
+    /**
+     * Draws a line from the current point to the point given in argument
+     *
+     * @category Line Segment
+     */
+    lineTo(point: Point2D): this;
+    /**
+     * Draws a line at the horizontal distance xDist and the vertical distance
+     * yDist of the current point
+     *
+     * @category Line Segment
+     */
+    line(xDist: number, yDist: number): this;
+    /**
+     * Draws a vertical line of length distance from the current point
+     *
+     * @category Line Segment
+     */
+    vLine(distance: number): this;
+    /**
+     * Draws an horizontal line of length distance from the current point
+     *
+     * @category Line Segment
+     */
+    hLine(distance: number): this;
+    /**
+     * Draws a vertical line to the y coordinate
+     *
+     * @category Line Segment
+     */
+    vLineTo(yPos: number): this;
+    /**
+     * Draws an horizontal line to the x coordinate
+     *
+     * @category Line Segment
+     */
+    hLineTo(xPos: number): this;
+    /**
+     * Draws a line from the current point to the point defined in polar
+     * coordinates, of radius r and angle theta (in degrees) from the origin
+     *
+     * @category Line Segment
+     */
+    polarLineTo([r, theta]: [number, number]): this;
+    /**
+     * Draws a line from the current point to the point defined in polar
+     * coordinates, of radius r and angle theta (in degrees) from the current
+     * point
+     *
+     * @category Line Segment
+     */
+    polarLine(r: number, theta: number): this;
+    /**
+     * Draws a line from the current point as a tangent to the previous part of
+     * curve drawn. The distance defines how long the line will be.
+     *
+     * @category Line Segment
+     */
+    tangentLine(distance: number): this;
+    /** Draws an arc of circle by defining its end point and a third point
+     * through which the arc will pass.
+     *
+     * @category Arc Segment
+     */
+    threePointsArcTo(end: Point2D, innerPoint: Point2D): this;
+    /** Draws an arc of circle by defining its end point and a third point
+     * through which the arc will pass. Both points are defined in horizontal
+     * (x) and vertical (y) distances from the start point.
+     *
+     * @category Arc Segment
+     */
+    threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this;
+    /** Draws an arc of circle by defining its end point and the sagitta - the
+     * maximum distance between the arc and the straight line going from start to
+     * end point.
+     *
+     * @category Arc Segment
+     */
+    sagittaArcTo(end: Point2D, sagitta: number): this;
+    /** Draws an arc of circle by defining its end point and the sagitta - the
+     * maximum distance between the arc and the straight line going from start to
+     * end point. The end point is defined by its horizontal and vertical
+     * distances from the start point.
+     *
+     * @category Arc Segment
+     */
+    sagittaArc(xDist: number, yDist: number, sagitta: number): this;
+    /** Draws a vertical arc of circle by defining its end point and the sagitta
+     * - the maximum distance between the arc and the straight line going from
+     * start to end point. The end point is defined by its vertical distance from
+     * the start point.
+     *
+     * @category Arc Segment
+     */
+    vSagittaArc(distance: number, sagitta: number): this;
+    /** Draws an horizontal arc of circle by defining its end point and the
+     * sagitta - the maximum distance between the arc and the straight line going
+     * from start to end point. The end point is defined by its horizontal
+     * distance from the start point.
+     *
+     * @category Arc Segment
+     */
+    hSagittaArc(distance: number, sagitta: number): this;
+    /** Draws an arc of circle by defining its end point and the bulge - the
+     * maximum distance between the arc and the straight line going from start to
+     * end point.
+     *
+     * @category Arc Segment
+     */
+    bulgeArcTo(end: Point2D, bulge: number): this;
+    /** Draws an arc of circle by defining its end point and the bulge - the
+     * maximum distance between the arc and the straight line going from start to
+     * end point in units of half the chord. The end point is defined by its horizontal and vertical distances
+     * from the start point.
+     *
+     * @category Arc Segment
+     */
+    bulgeArc(xDist: number, yDist: number, bulge: number): this;
+    /** Draws a vertical arc of circle by defining its end point and the bulge
+     * - the maximum distance between the arc and the straight line going from
+     * start to end point in units of half the chord. The end point is defined by its vertical distance from
+     * the start point.
+     *
+     * @category Arc Segment
+     */
+    vBulgeArc(distance: number, bulge: number): this;
+    /** Draws an horizontal arc of circle by defining its end point and the bulge
+     * - the maximum distance between the arc and the straight line going from
+     * start to end point in units of half the chord. The end point is defined by
+     * its horizontal distance from the start point.
+     *
+     * @category Arc Segment
+     */
+    hBulgeArc(distance: number, bulge: number): this;
+    /**
+     * Draws an arc of circle from the current point as a tangent to the previous
+     * part of curve drawn.
+     *
+     * @category Arc Segment
+     */
+    tangentArcTo(end: Point2D): this;
+    /**
+     * Draws an arc of circle from the current point as a tangent to the previous
+     * part of curve drawn. The end point is defined by its horizontal and vertical
+     * distances from the start point.
+     *
+     * @category Arc Segment
+     */
+    tangentArc(xDist: number, yDist: number): this;
+    /**
+     * Draws an arc of ellipse by defining its end point and an ellipse.
+     *
+     * The shape of the ellipse is defined by both its radiuses, its angle
+     * relative to the current coordinate system, as well as the long and sweep
+     * flags (as defined for SVG paths)
+     *
+     * @category Ellipse Arc Segment
+     */
+    ellipseTo(end: Point2D, horizontalRadius: number, verticalRadius: number, rotation: number, longAxis: boolean, sweep: boolean): this;
+    /**
+     * Draws an arc of ellipse by defining its end point and an ellipse. The end
+     * point is defined by distances from the start point.
+     *
+     * The shape of the ellipse is defined by both its radiuses, its angle
+     * relative to the current coordinate system, as well as the long and sweep
+     * flags (as defined for SVG paths)
+     *
+     * @category Ellipse Arc Segment
+     */
+    ellipse(xDist: number, yDist: number, horizontalRadius: number, verticalRadius: number, rotation: number, longAxis: boolean, sweep: boolean): this;
+    /**
+     * Draws an arc as half an ellipse, defined by the sagitta of the ellipse
+     * (which corresponds to the radius in the axe orthogonal to the straight
+     * line).
+     *
+     * The sweep flag is to be understood as defined for SVG paths.
+     *
+     * @category Ellipse Arc Segment
+     */
+    halfEllipseTo(end: Point2D, radius: number, sweep: boolean): this;
+    /**
+     * Draws an arc as half an ellipse, defined by the sagitta of the ellipse
+     * (which corresponds to the radius in the axe orthogonal to the straight
+     * line). The end point is defined by distances from the start point.
+     *
+     * The sweep flag is to be understood as defined for SVG paths.
+     *
+     * @category Ellipse Arc Segment
+     */
+    halfEllipse(xDist: number, yDist: number, radius: number, sweep: boolean): this;
+    /** Draws a generic bezier curve to the end point, going using a set of
+     * control points.
+     *
+     * This is the generic definition of a bezier curve, you might want to use
+     * either the quadratic or cubic (most common) version, unless you know
+     * exactly what you are aiming at.
+     *
+     * @category Bezier Curve
+     */
+    bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this;
+    /** Draws a quadratic bezier curve to the end point, using the single control
+     * point.
+     *
+     * @category Bezier Curve
+     */
+    quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this;
+    /** Draws a cubic bezier curve to the end point, using the start and end
+     * control point to define its shape. This corresponds to the most commonly
+     * used bezier curve.
+     *
+     * If you are struggling setting your control points, the smoothSpline might
+     * be better for your needs.
+     *
+     * @category Bezier Curve
+     */
+    cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this;
+    /** Draws a cubic bezier curve to the end point, attempting to make the line
+     * smooth with the previous segment.
+     *
+     * It will base its first control point so that its tangent is the same as
+     * the previous segment.
+     *
+     * The control point relative to the end is by default set to be in the
+     * direction of the straight line between start and end. You can specify the
+     * `endSkew` either as an angle (in degrees) to this direction, or as an
+     * absolute direction in the coordinate system (a Point).
+     *
+     * The start- and end- factors decide on how far the control point is from
+     * the start and end point. At a factor of 1, the distance corresponds to
+     * a quarter of the straight line distance.
+     *
+     * @category Bezier Curve
+     */
+    smoothSplineTo(end: Point2D, config?: SplineConfig): this;
+    /** Draws a cubic bezier curve to the end point, attempting to make the line
+     * smooth with the previous segment. The end point is defined by its distance
+     * to the first point.
+     *
+     * It will base its first control point so that its tangent is the same as
+     * the previous segment. You can force another tangent by defining
+     * `startTangent`.
+     *
+     * You can configure the tangent of the end point by configuring the
+     * `endTangent`, either as "symmetric" to reproduce the start angle, as an
+     * angle from the X axis (in the coordinate system) or a 2d direction (still
+     * in the coordinate system).
+     *
+     * The start- and end- factors decide on how far the control point is from
+     * the start and end point. At a factor of 1, the distance corresponds to
+     * a quarter of the straight line distance.
+     *
+     * @category Bezier Curve
+     */
+    smoothSpline(xDist: number, yDist: number, splineConfig: SplineConfig): this;
+    /**
+     * Stop drawing and returns the sketch.
+     */
+    done(): ReturnType;
+    /**
+     * Stop drawing, make sure the sketch is closed (by adding a straight line to
+     * from the last point to the first) and returns the sketch.
+     */
+    close(): ReturnType;
+    /**
+     * Stop drawing, make sure the sketch is closed (by mirroring the lines
+     * between the first and last points drawn) and returns the sketch.
+     */
+    closeWithMirror(): ReturnType;
 }
 
 /** Common interface for sketch-like objects that can be extruded, revolved, or lofted. */
 interface SketchInterface {
-  /**
-   * Transforms the lines into a face. The lines should be closed.
-   */
-  face(): Face;
-  /**
-   * Revolves the drawing on an axis (defined by its direction and an origin
-   * (defaults to the sketch origin)
-   */
-  revolve(
-    revolutionAxis?: PointInput,
-    config?: {
-      origin?: PointInput;
-    }
-  ): Shape3D;
-  /**
-   * Extrudes the sketch to a certain distance (along the default direction
-   * and origin of the sketch).
-   *
-   * You can define another extrusion direction or origin,
-   *
-   * It is also possible to twist extrude with an angle (in degrees), or to
-   * give a profile to the extrusion (the endFactor will scale the face, and
-   * the profile will define how the scale is applied (either linearly or with
-   * a s-shape).
-   */
-  extrude(
-    extrusionDistance: number,
-    extrusionConfig?: {
-      extrusionDirection?: PointInput;
-      extrusionProfile?: ExtrusionProfile;
-      twistAngle?: number;
-      origin?: PointInput;
-    }
-  ): Shape3D;
-  /**
-   * Loft between this sketch and another sketch (or an array of them)
-   *
-   * You can also define a `startPoint` for the loft (that will be placed
-   * before this sketch) and an `endPoint` after the last one.
-   *
-   * You can also define if you want the loft to result in a ruled surface.
-   *
-   * Note that all sketches will be deleted by this operation
-   */
-  loftWith(otherSketches: this | this[], loftConfig: LoftConfig, returnShell?: boolean): Shape3D;
+    /**
+     * Transforms the lines into a face. The lines should be closed.
+     */
+    face(): Face;
+    /**
+     * Revolves the drawing on an axis (defined by its direction and an origin
+     * (defaults to the sketch origin)
+     */
+    revolve(revolutionAxis?: PointInput, config?: {
+        origin?: PointInput;
+    }): Shape3D;
+    /**
+     * Extrudes the sketch to a certain distance (along the default direction
+     * and origin of the sketch).
+     *
+     * You can define another extrusion direction or origin,
+     *
+     * It is also possible to twist extrude with an angle (in degrees), or to
+     * give a profile to the extrusion (the endFactor will scale the face, and
+     * the profile will define how the scale is applied (either linearly or with
+     * a s-shape).
+     */
+    extrude(extrusionDistance: number, extrusionConfig?: {
+        extrusionDirection?: PointInput;
+        extrusionProfile?: ExtrusionProfile;
+        twistAngle?: number;
+        origin?: PointInput;
+    }): Shape3D;
+    /**
+     * Loft between this sketch and another sketch (or an array of them)
+     *
+     * You can also define a `startPoint` for the loft (that will be placed
+     * before this sketch) and an `endPoint` after the last one.
+     *
+     * You can also define if you want the loft to result in a ruled surface.
+     *
+     * Note that all sketches will be deleted by this operation
+     */
+    loftWith(otherSketches: this | this[], loftConfig: LoftConfig, returnShell?: boolean): Shape3D;
 }
 
 /**
@@ -2449,41 +1876,35 @@ interface SketchInterface {
  * @category Sketching
  */
 declare class Sketches {
-  sketches: Array<Sketch | CompoundSketch>;
-  constructor(sketches: Array<Sketch | CompoundSketch>);
-  /** Return all wires combined into a single compound shape. */
-  wires(): AnyShape;
-  /** Return all sketch faces combined into a single compound shape. */
-  faces(): AnyShape;
-  /** Extrudes the sketch to a certain distance (along the default direction
-   * and origin of the sketch).
-   *
-   * You can define another extrusion direction or origin,
-   *
-   * It is also possible to twist extrude with an angle (in degrees), or to
-   * give a profile to the extrusion (the endFactor will scale the face, and
-   * the profile will define how the scale is applied (either linearly or with
-   * a s-shape).
-   */
-  extrude(
-    extrusionDistance: number,
-    extrusionConfig?: {
-      extrusionDirection?: PointInput;
-      extrusionProfile?: ExtrusionProfile;
-      twistAngle?: number;
-      origin?: PointInput;
-    }
-  ): AnyShape;
-  /**
-   * Revolves the drawing on an axis (defined by its direction and an origin
-   * (defaults to the sketch origin)
-   */
-  revolve(
-    revolutionAxis?: PointInput,
-    config?: {
-      origin?: PointInput;
-    }
-  ): AnyShape;
+    sketches: Array<Sketch | CompoundSketch>;
+    constructor(sketches: Array<Sketch | CompoundSketch>);
+    /** Return all wires combined into a single compound shape. */
+    wires(): AnyShape;
+    /** Return all sketch faces combined into a single compound shape. */
+    faces(): AnyShape;
+    /** Extrudes the sketch to a certain distance (along the default direction
+     * and origin of the sketch).
+     *
+     * You can define another extrusion direction or origin,
+     *
+     * It is also possible to twist extrude with an angle (in degrees), or to
+     * give a profile to the extrusion (the endFactor will scale the face, and
+     * the profile will define how the scale is applied (either linearly or with
+     * a s-shape).
+     */
+    extrude(extrusionDistance: number, extrusionConfig?: {
+        extrusionDirection?: PointInput;
+        extrusionProfile?: ExtrusionProfile;
+        twistAngle?: number;
+        origin?: PointInput;
+    }): AnyShape;
+    /**
+     * Revolves the drawing on an axis (defined by its direction and an origin
+     * (defaults to the sketch origin)
+     */
+    revolve(revolutionAxis?: PointInput, config?: {
+        origin?: PointInput;
+    }): AnyShape;
 }
 
 /**
@@ -2513,11 +1934,7 @@ declare const sketchCircle: (radius: number, planeConfig?: PlaneConfig) => Sketc
  *
  * @category Sketching
  */
-declare const sketchEllipse: (
-  xRadius?: number,
-  yRadius?: number,
-  planeConfig?: PlaneConfig
-) => Sketch;
+declare const sketchEllipse: (xRadius?: number, yRadius?: number, planeConfig?: PlaneConfig) => Sketch;
 
 /**
  * Create a rectangular Sketch centered on a given plane.
@@ -2535,11 +1952,7 @@ declare const sketchEllipse: (
  *
  * @category Sketching
  */
-declare const sketchRectangle: (
-  xLength: number,
-  yLength: number,
-  planeConfig?: PlaneConfig
-) => Sketch;
+declare const sketchRectangle: (xLength: number, yLength: number, planeConfig?: PlaneConfig) => Sketch;
 
 /**
  * Create a rounded-rectangle Sketch centered on a given plane.
@@ -2552,17 +1965,10 @@ declare const sketchRectangle: (
  *
  * @category Sketching
  */
-declare const sketchRoundedRectangle: (
-  width: number,
-  height: number,
-  r?:
-    | number
-    | {
-        rx?: number;
-        ry?: number;
-      },
-  planeConfig?: PlaneConfig
-) => Sketch;
+declare const sketchRoundedRectangle: (width: number, height: number, r?: number | {
+    rx?: number;
+    ry?: number;
+}, planeConfig?: PlaneConfig) => Sketch;
 
 /**
  * Create a regular-polygon Sketch on a given plane.
@@ -2583,12 +1989,7 @@ declare const sketchRoundedRectangle: (
  *
  * @category Sketching
  */
-declare const sketchPolysides: (
-  radius: number,
-  sidesCount: number,
-  sagitta?: number,
-  planeConfig?: PlaneConfig
-) => Sketch;
+declare const sketchPolysides: (radius: number, sidesCount: number, sagitta?: number, planeConfig?: PlaneConfig) => Sketch;
 
 /**
  * Compute the apothem (inner radius) of a regular polygon, accounting for sagitta.
@@ -2598,11 +1999,7 @@ declare const sketchPolysides: (
  * @param sagitta - Arc sagitta per side (0 = straight edges).
  * @returns The inscribed radius (distance from center to the nearest edge midpoint).
  */
-declare const polysideInnerRadius: (
-  outerRadius: number,
-  sidesCount: number,
-  sagitta?: number
-) => number;
+declare const polysideInnerRadius: (outerRadius: number, sidesCount: number, sagitta?: number) => number;
 
 /**
  * Create a Sketch by offsetting the outer wire of a face.
@@ -2630,20 +2027,11 @@ declare const sketchFaceOffset: (face: Face, offset: number) => Sketch;
  *
  * @category Sketching
  */
-declare const sketchParametricFunction: (
-  func: (t: number) => Point2D,
-  planeConfig?: PlaneConfig,
-  {
-    pointsCount,
-    start,
-    stop,
-  }?: {
+declare const sketchParametricFunction: (func: (t: number) => Point2D, planeConfig?: PlaneConfig, { pointsCount, start, stop }?: {
     pointsCount?: number | undefined;
     start?: number | undefined;
     stop?: number | undefined;
-  },
-  approximationConfig?: BSplineApproximationConfig
-) => Sketch;
+}, approximationConfig?: BSplineApproximationConfig) => Sketch;
 
 /**
  * Create a helical Sketch (open wire) with the given pitch, height, and radius.
@@ -2658,14 +2046,7 @@ declare const sketchParametricFunction: (
  *
  * @category Sketching
  */
-declare const sketchHelix: (
-  pitch: number,
-  height: number,
-  radius: number,
-  center?: PointInput,
-  dir?: PointInput,
-  lefthand?: boolean
-) => Sketch;
+declare const sketchHelix: (pitch: number, height: number, radius: number, center?: PointInput, dir?: PointInput, lefthand?: boolean) => Sketch;
 
 /**
  * Create a box centered on the XY plane and extruded along Z.
@@ -2706,88 +2087,84 @@ declare const makeBaseBox: (xLength: number, yLength: number, zLength: number) =
  * @category Drawing
  */
 declare class Drawing {
-  private readonly innerShape;
-  constructor(innerShape?: Shape2D);
-  /** Create an independent deep copy of this drawing. */
-  clone(): Drawing;
-  /** Serialize the drawing to a JSON string for persistence or transfer. */
-  serialize(): string;
-  /** Get the axis-aligned 2D bounding box of this drawing. */
-  get boundingBox(): BoundingBox2d;
-  /** Stretch the drawing by a ratio along a direction from an origin point. */
-  stretch(ratio: number, direction: Point2D, origin: Point2D): Drawing;
-  /** Return a human-readable string representation of the drawing. */
-  get repr(): string;
-  /** Rotate the drawing by an angle (in degrees) around an optional center point. */
-  rotate(angle: number, center?: Point2D): Drawing;
-  /** Translate the drawing by horizontal and vertical distances. */
-  translate(xDist: number, yDist: number): Drawing;
-  /** Translate the drawing by a 2D vector. */
-  translate(translationVector: Point2D): Drawing;
-  /** Uniformly scale the drawing by a factor around an optional center point. */
-  scale(scaleFactor: number, center?: Point2D): Drawing;
-  /** Mirror the drawing about a point or a line defined by direction and origin. */
-  mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Drawing;
-  /**
-   * Builds a new drawing by cutting another drawing into this one
-   *
-   * @category Drawing Modifications
-   */
-  cut(other: Drawing): Drawing;
-  /**
-   * Builds a new drawing by merging another drawing into this one
-   *
-   * @category Drawing Modifications
-   */
-  fuse(other: Drawing): Drawing;
-  /**
-   * Builds a new drawing by intersection this drawing with another
-   *
-   * @category Drawing Modifications
-   */
-  intersect(other: Drawing): Drawing;
-  /**
-   * Creates a new drawing with some corners filleted, as specified by the
-   * radius and the corner finder function
-   *
-   * @category Drawing Modifications
-   */
-  fillet(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
-  /**
-   * Creates a new drawing with some corners chamfered, as specified by the
-   * radius and the corner finder function
-   *
-   * @category Drawing Modifications
-   */
-  chamfer(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
-  /** Project this drawing onto a 3D plane, producing a Sketch or Sketches. */
-  sketchOnPlane(inputPlane: Plane): SketchInterface | Sketches;
-  /** Project this drawing onto a named plane at an optional origin. */
-  sketchOnPlane(inputPlane?: PlaneName, origin?: PointInput | number): SketchInterface | Sketches;
-  /** Project this drawing onto a 3D face surface with the given scale mode. */
-  sketchOnFace(face: Face, scaleMode: ScaleMode): SketchInterface | Sketches;
-  /** Punch the drawing's profile as a hole through a 3D shape on the given face. */
-  punchHole(
-    shape: AnyShape,
-    faceFinder: SingleFace,
-    options?: {
-      height?: number;
-      origin?: PointInput;
-      draftAngle?: number;
-    }
-  ): AnyShape;
-  /** Export the drawing as a complete SVG string. */
-  toSVG(margin?: number): string;
-  /** Return the SVG `viewBox` attribute string for this drawing. */
-  toSVGViewBox(margin?: number): string;
-  /** Return the SVG `<path>` `d` attribute strings for this drawing. */
-  toSVGPaths(): string[] | string[][];
-  /** Offset the drawing contour by a signed distance (positive = outward). */
-  offset(distance: number, offsetConfig?: Offset2DConfig): Drawing;
-  /** Approximate the drawing curves for a target format (currently only `'svg'`). */
-  approximate(target: 'svg' | 'arcs', options?: ApproximationOptions): Drawing;
-  /** Access the underlying {@link Blueprint}, throwing if the drawing is compound. */
-  get blueprint(): Blueprint;
+    private readonly innerShape;
+    constructor(innerShape?: Shape2D);
+    /** Create an independent deep copy of this drawing. */
+    clone(): Drawing;
+    /** Serialize the drawing to a JSON string for persistence or transfer. */
+    serialize(): string;
+    /** Get the axis-aligned 2D bounding box of this drawing. */
+    get boundingBox(): BoundingBox2d;
+    /** Stretch the drawing by a ratio along a direction from an origin point. */
+    stretch(ratio: number, direction: Point2D, origin: Point2D): Drawing;
+    /** Return a human-readable string representation of the drawing. */
+    get repr(): string;
+    /** Rotate the drawing by an angle (in degrees) around an optional center point. */
+    rotate(angle: number, center?: Point2D): Drawing;
+    /** Translate the drawing by horizontal and vertical distances. */
+    translate(xDist: number, yDist: number): Drawing;
+    /** Translate the drawing by a 2D vector. */
+    translate(translationVector: Point2D): Drawing;
+    /** Uniformly scale the drawing by a factor around an optional center point. */
+    scale(scaleFactor: number, center?: Point2D): Drawing;
+    /** Mirror the drawing about a point or a line defined by direction and origin. */
+    mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Drawing;
+    /**
+     * Builds a new drawing by cutting another drawing into this one
+     *
+     * @category Drawing Modifications
+     */
+    cut(other: Drawing): Drawing;
+    /**
+     * Builds a new drawing by merging another drawing into this one
+     *
+     * @category Drawing Modifications
+     */
+    fuse(other: Drawing): Drawing;
+    /**
+     * Builds a new drawing by intersection this drawing with another
+     *
+     * @category Drawing Modifications
+     */
+    intersect(other: Drawing): Drawing;
+    /**
+     * Creates a new drawing with some corners filleted, as specified by the
+     * radius and the corner finder function
+     *
+     * @category Drawing Modifications
+     */
+    fillet(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
+    /**
+     * Creates a new drawing with some corners chamfered, as specified by the
+     * radius and the corner finder function
+     *
+     * @category Drawing Modifications
+     */
+    chamfer(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
+    /** Project this drawing onto a 3D plane, producing a Sketch or Sketches. */
+    sketchOnPlane(inputPlane: Plane): SketchInterface | Sketches;
+    /** Project this drawing onto a named plane at an optional origin. */
+    sketchOnPlane(inputPlane?: PlaneName, origin?: PointInput | number): SketchInterface | Sketches;
+    /** Project this drawing onto a 3D face surface with the given scale mode. */
+    sketchOnFace(face: Face, scaleMode: ScaleMode): SketchInterface | Sketches;
+    /** Punch the drawing's profile as a hole through a 3D shape on the given face. */
+    punchHole(shape: AnyShape, faceFinder: SingleFace, options?: {
+        height?: number;
+        origin?: PointInput;
+        draftAngle?: number;
+    }): AnyShape;
+    /** Export the drawing as a complete SVG string. */
+    toSVG(margin?: number): string;
+    /** Return the SVG `viewBox` attribute string for this drawing. */
+    toSVGViewBox(margin?: number): string;
+    /** Return the SVG `<path>` `d` attribute strings for this drawing. */
+    toSVGPaths(): string[] | string[][];
+    /** Offset the drawing contour by a signed distance (positive = outward). */
+    offset(distance: number, offsetConfig?: Offset2DConfig): Drawing;
+    /** Approximate the drawing curves for a target format (currently only `'svg'`). */
+    approximate(target: 'svg' | 'arcs', options?: ApproximationOptions): Drawing;
+    /** Access the underlying {@link Blueprint}, throwing if the drawing is compound. */
+    get blueprint(): Blueprint;
 }
 
 /**
@@ -2810,16 +2187,10 @@ declare function draw(initialPoint?: Point2D): DrawingPen;
  *
  * @category Drawing
  */
-declare function drawRoundedRectangle(
-  width: number,
-  height: number,
-  r?:
-    | number
-    | {
-        rx?: number;
-        ry?: number;
-      }
-): Drawing;
+declare function drawRoundedRectangle(width: number, height: number, r?: number | {
+    rx?: number;
+    ry?: number;
+}): Drawing;
 
 /** Alias for {@link drawRoundedRectangle}. Creates a rectangle (sharp corners when `r` is 0). */
 declare const drawRectangle: typeof drawRoundedRectangle;
@@ -2876,20 +2247,12 @@ declare function drawPolysides(radius: number, sidesCount: number, sagitta?: num
  *
  * @category Drawing
  */
-declare function drawText(
-  text: string,
-  {
-    startX,
-    startY,
-    fontSize,
-    fontFamily,
-  }?: {
+declare function drawText(text: string, { startX, startY, fontSize, fontFamily }?: {
     startX?: number | undefined;
     startY?: number | undefined;
     fontSize?: number | undefined;
     fontFamily?: string | undefined;
-  }
-): Drawing;
+}): Drawing;
 
 /**
  * Creates the `Drawing` by interpolating points as a curve
@@ -2899,13 +2262,9 @@ declare function drawText(
  *
  * @category Drawing
  */
-declare const drawPointsInterpolation: (
-  points: Point2D[],
-  approximationConfig?: BSplineApproximationConfig,
-  options?: {
+declare const drawPointsInterpolation: (points: Point2D[], approximationConfig?: BSplineApproximationConfig, options?: {
     closeShape?: boolean;
-  }
-) => Drawing;
+}) => Drawing;
 
 /**
  * Creates the `Drawing` of parametric function
@@ -2915,21 +2274,12 @@ declare const drawPointsInterpolation: (
  *
  * @category Drawing
  */
-declare const drawParametricFunction: (
-  func: (t: number) => Point2D,
-  {
-    pointsCount,
-    start,
-    stop,
-    closeShape,
-  }?: {
+declare const drawParametricFunction: (func: (t: number) => Point2D, { pointsCount, start, stop, closeShape }?: {
     pointsCount?: number | undefined;
     start?: number | undefined;
     stop?: number | undefined;
     closeShape?: boolean | undefined;
-  },
-  approximationConfig?: BSplineApproximationConfig
-) => Drawing;
+}, approximationConfig?: BSplineApproximationConfig) => Drawing;
 
 /**
  * Creates the `Drawing` of a projection of a shape on a plane.
@@ -2938,12 +2288,9 @@ declare const drawParametricFunction: (
  *
  * @category Drawing
  */
-declare function drawProjection(
-  shape: AnyShape,
-  projectionCamera?: ProjectionPlane | Camera
-): {
-  visible: Drawing;
-  hidden: Drawing;
+declare function drawProjection(shape: AnyShape, projectionCamera?: ProjectionPlane | Camera): {
+    visible: Drawing;
+    hidden: Drawing;
 };
 
 /**
@@ -2963,16 +2310,12 @@ declare function drawFaceOutline(face: Face): Drawing;
  *
  * @see {@link Sketch.extrude} for the OOP equivalent.
  */
-declare function sketchExtrude(
-  sketch: Sketch,
-  height: number,
-  config?: {
+declare function sketchExtrude(sketch: Sketch, height: number, config?: {
     extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
     origin?: PointInput;
-  }
-): Shape3D;
+}): Shape3D;
 
 /**
  * Revolve a sketch around an axis to produce a solid of revolution.
@@ -2984,13 +2327,9 @@ declare function sketchExtrude(
  *
  * @see {@link Sketch.revolve} for the OOP equivalent.
  */
-declare function sketchRevolve(
-  sketch: Sketch,
-  revolutionAxis?: PointInput,
-  options?: {
+declare function sketchRevolve(sketch: Sketch, revolutionAxis?: PointInput, options?: {
     origin?: PointInput;
-  }
-): Shape3D;
+}): Shape3D;
 
 /**
  * Loft between this sketch and one or more other sketches.
@@ -3003,12 +2342,7 @@ declare function sketchRevolve(
  *
  * @see {@link Sketch.loftWith} for the OOP equivalent.
  */
-declare function sketchLoft(
-  sketch: Sketch,
-  otherSketches: Sketch | Sketch[],
-  loftConfig?: LoftConfig,
-  returnShell?: boolean
-): Shape3D;
+declare function sketchLoft(sketch: Sketch, otherSketches: Sketch | Sketch[], loftConfig?: LoftConfig, returnShell?: boolean): Shape3D;
 
 /**
  * Sweep a profile sketch along this sketch's wire path.
@@ -3020,11 +2354,7 @@ declare function sketchLoft(
  *
  * @see {@link Sketch.sweepSketch} for the OOP equivalent.
  */
-declare function sketchSweep(
-  sketch: Sketch,
-  sketchOnPlane: Parameters<Sketch['sweepSketch']>[0],
-  sweepConfig?: GenericSweepConfig
-): Shape3D;
+declare function sketchSweep(sketch: Sketch, sketchOnPlane: Parameters<Sketch['sweepSketch']>[0], sweepConfig?: GenericSweepConfig): Shape3D;
 
 /**
  * Build a face from a sketch's closed wire.
@@ -3056,16 +2386,12 @@ declare function sketchWires(sketch: Sketch): Wire;
  *
  * @see {@link CompoundSketch.extrude} for the OOP equivalent.
  */
-declare function compoundSketchExtrude(
-  sketch: CompoundSketch,
-  height: number,
-  config?: {
+declare function compoundSketchExtrude(sketch: CompoundSketch, height: number, config?: {
     extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
     origin?: PointInput;
-  }
-): Shape3D;
+}): Shape3D;
 
 /**
  * Revolve a compound sketch around an axis to produce a solid of revolution.
@@ -3077,13 +2403,9 @@ declare function compoundSketchExtrude(
  *
  * @see {@link CompoundSketch.revolve} for the OOP equivalent.
  */
-declare function compoundSketchRevolve(
-  sketch: CompoundSketch,
-  revolutionAxis?: PointInput,
-  options?: {
+declare function compoundSketchRevolve(sketch: CompoundSketch, revolutionAxis?: PointInput, options?: {
     origin?: PointInput;
-  }
-): Shape3D;
+}): Shape3D;
 
 /**
  * Build a face from a compound sketch (outer boundary with holes).
@@ -3105,11 +2427,7 @@ declare function compoundSketchFace(sketch: CompoundSketch): Face;
  *
  * @see {@link CompoundSketch.loftWith} for the OOP equivalent.
  */
-declare function compoundSketchLoft(
-  sketch: CompoundSketch,
-  other: CompoundSketch,
-  loftConfig: LoftConfig
-): Shape3D;
+declare function compoundSketchLoft(sketch: CompoundSketch, other: CompoundSketch, loftConfig: LoftConfig): Shape3D;
 
 /**
  * Sketch a drawing onto a 3D plane, producing a Sketch or Sketches.
@@ -3121,11 +2439,7 @@ declare function compoundSketchLoft(
  *
  * @see {@link Drawing.sketchOnPlane} for the OOP equivalent.
  */
-declare function drawingToSketchOnPlane(
-  drawing: Drawing,
-  inputPlane?: PlaneName | Plane,
-  origin?: PointInput | number
-): any;
+declare function drawingToSketchOnPlane(drawing: Drawing, inputPlane?: PlaneName | Plane, origin?: PointInput | number): any;
 
 /**
  * Fuse two drawings with a Boolean union.
@@ -3170,11 +2484,7 @@ declare function drawingIntersect(a: Drawing, b: Drawing): Drawing;
  *
  * @see {@link Drawing.fillet} for the OOP equivalent.
  */
-declare function drawingFillet(
-  drawing: Drawing,
-  radius: number,
-  filter?: (c: CornerFinderFn) => CornerFinderFn
-): Drawing;
+declare function drawingFillet(drawing: Drawing, radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
 
 /**
  * Chamfer corners of a drawing.
@@ -3186,11 +2496,7 @@ declare function drawingFillet(
  *
  * @see {@link Drawing.chamfer} for the OOP equivalent.
  */
-declare function drawingChamfer(
-  drawing: Drawing,
-  radius: number,
-  filter?: (c: CornerFinderFn) => CornerFinderFn
-): Drawing;
+declare function drawingChamfer(drawing: Drawing, radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
 
 /**
  * Translate a drawing by horizontal and vertical distances.
@@ -3241,12 +2547,7 @@ declare function scaleDrawing(drawing: Drawing, factor: number, center?: Point2D
  *
  * @see {@link Drawing.mirror} for the OOP equivalent.
  */
-declare function mirrorDrawing(
-  drawing: Drawing,
-  centerOrDirection: Point2D,
-  origin?: Point2D,
-  mode?: 'center' | 'plane'
-): Drawing;
+declare function mirrorDrawing(drawing: Drawing, centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Drawing;
 
 /**
  * Load and register an OpenType/TrueType font for use with text drawing functions.
@@ -3260,11 +2561,7 @@ declare function mirrorDrawing(
  * @param force - If true, overwrite a previously loaded font with the same key.
  * @returns The parsed opentype.js Font object.
  */
-declare function loadFont(
-  fontPath: string | ArrayBuffer,
-  fontFamily?: string,
-  force?: boolean
-): Promise<any>;
+declare function loadFont(fontPath: string | ArrayBuffer, fontFamily?: string, force?: boolean): Promise<any>;
 
 /**
  * Retrieve a previously loaded font by family name.
@@ -3285,20 +2582,12 @@ declare const getFont: (fontFamily?: string) => any;
  *
  * @remarks Requires a font to be loaded via {@link loadFont} before use.
  */
-declare function textBlueprints(
-  text: string,
-  {
-    startX,
-    startY,
-    fontSize,
-    fontFamily,
-  }?: {
+declare function textBlueprints(text: string, { startX, startY, fontSize, fontFamily }?: {
     startX?: number | undefined;
     startY?: number | undefined;
     fontSize?: number | undefined;
     fontFamily?: string | undefined;
-  }
-): Blueprints;
+}): Blueprints;
 
 /**
  * Render text as 3D sketch outlines on a plane.
@@ -3318,37 +2607,21 @@ declare function textBlueprints(
  * const solid = textSketches.extrude(2);
  * ```
  */
-declare function sketchText(
-  text: string,
-  textConfig?: {
+declare function sketchText(text: string, textConfig?: {
     startX?: number;
     startY?: number;
     fontSize?: number;
     fontFamily?: string;
-  },
-  planeConfig?: {
+}, planeConfig?: {
     plane?: PlaneName | Plane;
     origin?: PointInput | number;
-  }
-): Sketches;
+}): Sketches;
 
 /** Named face of an axis-aligned bounding cube. */
 type CubeFace = 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right';
 
 /** Named projection plane — axis pairs or cube face names. */
-type ProjectionPlane =
-  | 'XY'
-  | 'XZ'
-  | 'YZ'
-  | 'YX'
-  | 'ZX'
-  | 'ZY'
-  | 'front'
-  | 'back'
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right';
+type ProjectionPlane = 'XY' | 'XZ' | 'YZ' | 'YX' | 'ZX' | 'ZY' | 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right';
 
 /** Type guard — check if a value is a valid {@link ProjectionPlane} name. */
 declare function isProjectionPlane(plane: unknown): plane is ProjectionPlane;
@@ -3360,13 +2633,9 @@ declare function isProjectionPlane(plane: unknown): plane is ProjectionPlane;
  * @param withHiddenLines - If `true`, also returns hidden (occluded) edges.
  * @returns Separate arrays of visible and hidden projected edges.
  */
-declare function makeProjectedEdges(
-  shape: AnyShape,
-  camera: Camera,
-  withHiddenLines?: boolean
-): {
-  visible: Edge[];
-  hidden: Edge[];
+declare function makeProjectedEdges(shape: AnyShape, camera: Camera, withHiddenLines?: boolean): {
+    visible: Edge[];
+    hidden: Edge[];
 };
 
 /**
@@ -3490,42 +2759,42 @@ type ShapeKind = 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'comp
 
 /** A topological vertex (0D point). */
 type Vertex = ShapeHandle & {
-  readonly [__brand]: 'vertex';
+    readonly [__brand]: 'vertex';
 };
 
 /** A topological edge (1D curve segment). */
 type Edge = ShapeHandle & {
-  readonly [__brand]: 'edge';
+    readonly [__brand]: 'edge';
 };
 
 /** An ordered sequence of connected edges forming a path or loop. */
 type Wire = ShapeHandle & {
-  readonly [__brand]: 'wire';
+    readonly [__brand]: 'wire';
 };
 
 /** A bounded portion of a surface. */
 type Face = ShapeHandle & {
-  readonly [__brand]: 'face';
+    readonly [__brand]: 'face';
 };
 
 /** A connected set of faces sharing edges. */
 type Shell = ShapeHandle & {
-  readonly [__brand]: 'shell';
+    readonly [__brand]: 'shell';
 };
 
 /** A closed volume bounded by shells. */
 type Solid = ShapeHandle & {
-  readonly [__brand]: 'solid';
+    readonly [__brand]: 'solid';
 };
 
 /** A set of solids connected by faces. */
 type CompSolid = ShapeHandle & {
-  readonly [__brand]: 'compsolid';
+    readonly [__brand]: 'compsolid';
 };
 
 /** A heterogeneous collection of shapes. */
 type Compound = ShapeHandle & {
-  readonly [__brand]: 'compound';
+    readonly [__brand]: 'compound';
 };
 
 /** Any branded shape type */
@@ -3594,14 +2863,14 @@ declare function castShape(ocShape: any): AnyShape;
 
 /** A shape wrapper with Symbol.dispose for auto-cleanup. */
 interface ShapeHandle {
-  /** The raw OCCT shape handle */
-  readonly wrapped: any;
-  /** Manually dispose the OCCT handle */
-  [Symbol.dispose](): void;
-  /** Alias for Symbol.dispose — required for localGC / Deletable compatibility. */
-  delete(): void;
-  /** Check if this handle has been disposed */
-  readonly disposed: boolean;
+    /** The raw OCCT shape handle */
+    readonly wrapped: any;
+    /** Manually dispose the OCCT handle */
+    [Symbol.dispose](): void;
+    /** Alias for Symbol.dispose — required for localGC / Deletable compatibility. */
+    delete(): void;
+    /** Check if this handle has been disposed */
+    readonly disposed: boolean;
 }
 
 /** Create a disposable shape handle. */
@@ -3613,10 +2882,10 @@ declare function withScope<T>(fn: (scope: DisposalScope) => T): T;
 
 /** Immutable plane defined by origin and three orthogonal direction vectors. */
 interface Plane {
-  readonly origin: Vec3;
-  readonly xDir: Vec3;
-  readonly yDir: Vec3;
-  readonly zDir: Vec3;
+    readonly origin: Vec3;
+    readonly xDir: Vec3;
+    readonly yDir: Vec3;
+    readonly zDir: Vec3;
 }
 
 /**
@@ -3625,19 +2894,7 @@ interface Plane {
  * Axis pairs (`'XY'`, `'YZ'`, …) and view names (`'front'`, `'top'`, …)
  * are both supported. The axis-pair order determines the normal direction.
  */
-type PlaneName =
-  | 'XY'
-  | 'YZ'
-  | 'ZX'
-  | 'XZ'
-  | 'YX'
-  | 'ZY'
-  | 'front'
-  | 'back'
-  | 'left'
-  | 'right'
-  | 'top'
-  | 'bottom';
+type PlaneName = 'XY' | 'YZ' | 'ZX' | 'XZ' | 'YX' | 'ZY' | 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom';
 
 /** Accept either an explicit {@link Plane} object or a {@link PlaneName} string. */
 type PlaneInput = Plane | PlaneName;
@@ -3661,10 +2918,7 @@ declare function createPlane(origin: Vec3, xDirection?: Vec3 | null, normal?: Ve
  * @param sourceOrigin - Origin point, or a scalar offset along the plane normal.
  * @returns `Ok<Plane>` on success, or `Err` if the name is unknown.
  */
-declare function createNamedPlane(
-  name: PlaneName,
-  sourceOrigin?: PointInput | number
-): Result<Plane>;
+declare function createNamedPlane(name: PlaneName, sourceOrigin?: PointInput | number): Result<Plane>;
 
 /**
  * Resolve a {@link PlaneInput} to a concrete {@link Plane}.
@@ -3725,12 +2979,12 @@ declare function iterVertices(shape: AnyShape): Generator<Vertex>;
 
 /** Bounding box as a plain object. */
 interface Bounds3D {
-  readonly xMin: number;
-  readonly xMax: number;
-  readonly yMin: number;
-  readonly yMax: number;
-  readonly zMin: number;
-  readonly zMax: number;
+    readonly xMin: number;
+    readonly xMax: number;
+    readonly yMin: number;
+    readonly yMax: number;
+    readonly zMin: number;
+    readonly zMax: number;
 }
 
 /** Get the axis-aligned bounding box of a shape. */
@@ -3738,13 +2992,13 @@ declare function getBounds(shape: AnyShape): Bounds3D;
 
 /** A summary of a shape's topology, geometry, and validity. */
 interface ShapeDescription {
-  readonly kind: ShapeKind;
-  readonly faceCount: number;
-  readonly edgeCount: number;
-  readonly wireCount: number;
-  readonly vertexCount: number;
-  readonly valid: boolean;
-  readonly bounds: Bounds3D;
+    readonly kind: ShapeKind;
+    readonly faceCount: number;
+    readonly edgeCount: number;
+    readonly wireCount: number;
+    readonly vertexCount: number;
+    readonly valid: boolean;
+    readonly bounds: Bounds3D;
 }
 
 /** Get a quick summary of a shape for debugging and inspection. */
@@ -3767,12 +3021,7 @@ declare function vertexPosition(vertex: Vertex): Vec3;
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
-declare function chamferDistAngleShape(
-  shape: Shape3D,
-  edges: Edge[],
-  distance: number,
-  angleDeg: number
-): Result<Shape3D>;
+declare function chamferDistAngleShape(shape: Shape3D, edges: Edge[], distance: number, angleDeg: number): Result<Shape3D>;
 
 /**
  * Get all faces adjacent to a given edge within a parent shape.
@@ -3874,22 +3123,22 @@ declare function flipOrientation(shape: Edge | Wire): Edge | Wire;
 
 /** Options for BSpline interpolation through points. */
 interface InterpolateCurveOptions {
-  /** If true, create a periodic (closed) BSpline. */
-  periodic?: boolean;
-  /** Fitting tolerance (default varies by kernel). */
-  tolerance?: number;
+    /** If true, create a periodic (closed) BSpline. */
+    periodic?: boolean;
+    /** Fitting tolerance (default varies by kernel). */
+    tolerance?: number;
 }
 
 /** Options for BSpline approximation through points. */
 interface ApproximateCurveOptions {
-  /** Maximum deviation from the input points. */
-  tolerance?: number;
-  /** Minimum BSpline degree. */
-  degMin?: number;
-  /** Maximum BSpline degree. */
-  degMax?: number;
-  /** Smoothing weights `[weight1, weight2, weight3]` or null to disable. */
-  smoothing?: [number, number, number] | null;
+    /** Maximum deviation from the input points. */
+    tolerance?: number;
+    /** Minimum BSpline degree. */
+    degMin?: number;
+    /** Maximum BSpline degree. */
+    degMax?: number;
+    /** Smoothing weights `[weight1, weight2, weight3]` or null to disable. */
+    smoothing?: [number, number, number] | null;
 }
 
 /**
@@ -3918,11 +3167,7 @@ declare function approximateCurve(points: Vec3[], options?: ApproximateCurveOpti
  * @param kind - Join type for offset corners ('arc', 'intersection', or 'tangent').
  * @returns Ok with the offset wire, or Err if the operation fails.
  */
-declare function offsetWire2D(
-  wire: Wire,
-  offset: number,
-  kind?: 'arc' | 'intersection' | 'tangent'
-): Result<Wire>;
+declare function offsetWire2D(wire: Wire, offset: number, kind?: 'arc' | 'intersection' | 'tangent'): Result<Wire>;
 
 /**
  * Get the geometric surface type of a face.
@@ -3942,10 +3187,10 @@ declare function flipFaceOrientation(face: Face): Face;
 
 /** UV parameter bounds of a face. */
 interface UVBounds {
-  readonly uMin: number;
-  readonly uMax: number;
-  readonly vMin: number;
-  readonly vMax: number;
+    readonly uMin: number;
+    readonly uMax: number;
+    readonly vMin: number;
+    readonly vMax: number;
 }
 
 /** Get the UV parameter bounds of a face. */
@@ -3965,12 +3210,12 @@ declare function uvCoordinates(face: Face, point: PointInput): [number, number];
 
 /** Result of projecting a point onto a face surface. */
 interface PointProjectionResult {
-  /** UV coordinates on the surface. */
-  readonly uv: [number, number];
-  /** The closest 3D point on the surface. */
-  readonly point: Vec3;
-  /** Distance from the input point to the projected point. */
-  readonly distance: number;
+    /** UV coordinates on the surface. */
+    readonly uv: [number, number];
+    /** The closest 3D point on the surface. */
+    readonly point: Vec3;
+    /** Distance from the input point to the projected point. */
+    readonly distance: number;
 }
 
 /**
@@ -3993,11 +3238,7 @@ declare function faceCenter(face: Face): Vec3;
  *
  * @returns 'in' if inside, 'on' if on the boundary, 'out' if outside
  */
-declare function classifyPointOnFace(
-  face: Face,
-  point: PointInput,
-  tolerance?: number
-): 'in' | 'on' | 'out';
+declare function classifyPointOnFace(face: Face, point: PointInput, tolerance?: number): 'in' | 'on' | 'out';
 
 /** Get the outer wire of a face. Returns a new Wire. */
 declare function outerWire(face: Face): Wire;
@@ -4007,42 +3248,42 @@ declare function innerWires(face: Face): Wire[];
 
 /** Triangle mesh data extracted from a shape, ready for GPU rendering. */
 interface ShapeMesh {
-  /** Triangle vertex indices (3 per triangle). */
-  triangles: Uint32Array;
-  /** Flat array of vertex positions (x,y,z interleaved). */
-  vertices: Float32Array;
-  /** Flat array of vertex normals (x,y,z interleaved). */
-  normals: Float32Array;
-  /** Flat array of UV coordinates (u,v interleaved), empty if not requested. */
-  uvs: Float32Array;
-  /** Per-face triangle index ranges for multi-material rendering. */
-  faceGroups: {
-    start: number;
-    count: number;
-    faceId: number;
-  }[];
+    /** Triangle vertex indices (3 per triangle). */
+    triangles: Uint32Array;
+    /** Flat array of vertex positions (x,y,z interleaved). */
+    vertices: Float32Array;
+    /** Flat array of vertex normals (x,y,z interleaved). */
+    normals: Float32Array;
+    /** Flat array of UV coordinates (u,v interleaved), empty if not requested. */
+    uvs: Float32Array;
+    /** Per-face triangle index ranges for multi-material rendering. */
+    faceGroups: {
+        start: number;
+        count: number;
+        faceId: number;
+    }[];
 }
 
 /** Line segment mesh data for edge rendering (wireframe). */
 interface EdgeMesh {
-  /** Flat array of line vertex positions (x,y,z interleaved, 2 vertices per segment). */
-  lines: number[];
-  /** Per-edge line segment index ranges for highlighting individual edges. */
-  edgeGroups: {
-    start: number;
-    count: number;
-    edgeId: number;
-  }[];
+    /** Flat array of line vertex positions (x,y,z interleaved, 2 vertices per segment). */
+    lines: number[];
+    /** Per-edge line segment index ranges for highlighting individual edges. */
+    edgeGroups: {
+        start: number;
+        count: number;
+        edgeId: number;
+    }[];
 }
 
 /** Shared options for meshing operations. */
 interface MeshOptions {
-  /** Linear deflection tolerance (default 1e-3). Smaller = finer mesh. */
-  tolerance?: number;
-  /** Angular deflection tolerance in radians (default 0.1). Smaller = finer mesh on curved surfaces. */
-  angularTolerance?: number;
-  /** Abort signal to cancel mesh generation between face iterations. */
-  signal?: AbortSignal;
+    /** Linear deflection tolerance (default 1e-3). Smaller = finer mesh. */
+    tolerance?: number;
+    /** Angular deflection tolerance in radians (default 0.1). Smaller = finer mesh on curved surfaces. */
+    angularTolerance?: number;
+    /** Abort signal to cancel mesh generation between face iterations. */
+    signal?: AbortSignal;
 }
 
 /**
@@ -4054,21 +3295,11 @@ interface MeshOptions {
  * @returns A ShapeMesh containing typed arrays ready for GPU upload.
  * @see toBufferGeometryData — convert to Three.js BufferGeometry format
  */
-declare function meshShape(
-  shape: AnyShape,
-  {
-    tolerance,
-    angularTolerance,
-    skipNormals,
-    includeUVs,
-    cache,
-    signal,
-  }?: MeshOptions & {
+declare function meshShape(shape: AnyShape, { tolerance, angularTolerance, skipNormals, includeUVs, cache, signal, }?: MeshOptions & {
     skipNormals?: boolean;
     includeUVs?: boolean;
     cache?: boolean;
-  }
-): ShapeMesh;
+}): ShapeMesh;
 
 /**
  * Mesh the edges of a shape as line segments for wireframe rendering.
@@ -4078,16 +3309,9 @@ declare function meshShape(
  * @returns An EdgeMesh containing line vertex positions and per-edge groups.
  * @see toLineGeometryData — convert to Three.js LineSegments format
  */
-declare function meshShapeEdges(
-  shape: AnyShape,
-  {
-    tolerance,
-    angularTolerance,
-    cache,
-  }?: MeshOptions & {
+declare function meshShapeEdges(shape: AnyShape, { tolerance, angularTolerance, cache }?: MeshOptions & {
     cache?: boolean;
-  }
-): EdgeMesh;
+}): EdgeMesh;
 
 /**
  * Export a shape as a STEP file Blob.
@@ -4101,16 +3325,9 @@ declare function exportSTEP(shape: AnyShape): Result<Blob>;
  *
  * @returns Ok with a Blob (MIME type `application/sla`), or Err on failure.
  */
-declare function exportSTL(
-  shape: AnyShape,
-  {
-    tolerance,
-    angularTolerance,
-    binary,
-  }?: MeshOptions & {
+declare function exportSTL(shape: AnyShape, { tolerance, angularTolerance, binary, }?: MeshOptions & {
     binary?: boolean;
-  }
-): Result<Blob>;
+}): Result<Blob>;
 
 /**
  * Export a shape as an IGES file Blob.
@@ -4131,11 +3348,11 @@ declare function clearMeshCache(): void;
  * independent state, so multiple viewers can cache independently.
  */
 interface MeshCacheContext {
-  getMesh(shape: any, key: string): ShapeMesh | undefined;
-  setMesh(shape: any, key: string, value: ShapeMesh): void;
-  getEdgeMesh(shape: any, key: string): EdgeMesh | undefined;
-  setEdgeMesh(shape: any, key: string, value: EdgeMesh): void;
-  clear(): void;
+    getMesh(shape: any, key: string): ShapeMesh | undefined;
+    setMesh(shape: any, key: string, value: ShapeMesh): void;
+    getEdgeMesh(shape: any, key: string): EdgeMesh | undefined;
+    setEdgeMesh(shape: any, key: string, value: EdgeMesh): void;
+    clear(): void;
 }
 
 /** Create an isolated mesh cache that doesn't share state with the global cache. */
@@ -4143,18 +3360,18 @@ declare function createMeshCache(): MeshCacheContext;
 
 /** Data ready to be used with THREE.BufferGeometry. */
 interface BufferGeometryData {
-  /** Flat float array of vertex positions (x,y,z interleaved). */
-  position: Float32Array;
-  /** Flat float array of vertex normals (x,y,z interleaved). */
-  normal: Float32Array;
-  /** Triangle index array (3 indices per triangle). */
-  index: Uint32Array;
+    /** Flat float array of vertex positions (x,y,z interleaved). */
+    position: Float32Array;
+    /** Flat float array of vertex normals (x,y,z interleaved). */
+    normal: Float32Array;
+    /** Triangle index array (3 indices per triangle). */
+    index: Uint32Array;
 }
 
 /** Line segment data ready for THREE.LineSegments or THREE.Line. */
 interface LineGeometryData {
-  /** Flat float array of line vertex positions (x,y,z interleaved). */
-  position: Float32Array;
+    /** Flat float array of line vertex positions (x,y,z interleaved). */
+    position: Float32Array;
 }
 
 /**
@@ -4172,14 +3389,14 @@ declare function toBufferGeometryData(mesh: ShapeMesh): BufferGeometryData;
 
 /** A material group entry compatible with THREE.BufferGeometry.addGroup(). */
 interface BufferGeometryGroup {
-  /** Start index in the triangle index buffer. */
-  readonly start: number;
-  /** Number of indices in this group. */
-  readonly count: number;
-  /** Sequential material index (0-based). */
-  readonly materialIndex: number;
-  /** Face topology ID for correlation with the shape's face. */
-  readonly faceId: number;
+    /** Start index in the triangle index buffer. */
+    readonly start: number;
+    /** Number of indices in this group. */
+    readonly count: number;
+    /** Sequential material index (0-based). */
+    readonly materialIndex: number;
+    /** Face topology ID for correlation with the shape's face. */
+    readonly faceId: number;
 }
 
 /**
@@ -4212,14 +3429,14 @@ declare function toLineGeometryData(mesh: EdgeMesh): LineGeometryData;
 
 /** Options shared by all boolean and compound operations. */
 interface BooleanOptions {
-  /** Glue algorithm hint for faces shared between operands. */
-  optimisation?: 'none' | 'commonFace' | 'sameFace';
-  /** Merge same-domain faces/edges after the boolean. */
-  simplify?: boolean;
-  /** Algorithm selection: 'native' uses N-way BRepAlgoAPI_BuilderAlgo; 'pairwise' uses recursive divide-and-conquer. */
-  strategy?: 'native' | 'pairwise';
-  /** Abort signal to cancel long-running operations between steps. */
-  signal?: AbortSignal;
+    /** Glue algorithm hint for faces shared between operands. */
+    optimisation?: 'none' | 'commonFace' | 'sameFace';
+    /** Merge same-domain faces/edges after the boolean. */
+    simplify?: boolean;
+    /** Algorithm selection: 'native' uses N-way BRepAlgoAPI_BuilderAlgo; 'pairwise' uses recursive divide-and-conquer. */
+    strategy?: 'native' | 'pairwise';
+    /** Abort signal to cancel long-running operations between steps. */
+    signal?: AbortSignal;
 }
 
 /**
@@ -4236,11 +3453,7 @@ interface BooleanOptions {
  * if (isOk(result)) console.log(describeShape(result.value));
  * ```
  */
-declare function fuseShape(
-  a: Shape3D,
-  b: Shape3D,
-  { optimisation, simplify, signal }?: BooleanOptions
-): Result<Shape3D>;
+declare function fuseShape(a: Shape3D, b: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Cut a tool shape from a base shape (boolean subtraction). Returns a new shape.
@@ -4255,11 +3468,7 @@ declare function fuseShape(
  * const result = cutShape(box, hole);
  * ```
  */
-declare function cutShape(
-  base: Shape3D,
-  tool: Shape3D,
-  { optimisation, simplify, signal }?: BooleanOptions
-): Result<Shape3D>;
+declare function cutShape(base: Shape3D, tool: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Compute the intersection of two shapes (boolean common). Returns a new shape.
@@ -4269,11 +3478,7 @@ declare function cutShape(
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
  */
-declare function intersectShape(
-  a: Shape3D,
-  b: Shape3D,
-  { simplify, signal }?: BooleanOptions
-): Result<Shape3D>;
+declare function intersectShape(a: Shape3D, b: Shape3D, { simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Fuse all shapes in a single boolean operation.
@@ -4290,10 +3495,7 @@ declare function intersectShape(
  * const result = fuseAll([box1, box2, box3], { simplify: true });
  * ```
  */
-declare function fuseAll(
-  shapes: Shape3D[],
-  { optimisation, simplify, strategy, signal }?: BooleanOptions
-): Result<Shape3D>;
+declare function fuseAll(shapes: Shape3D[], { optimisation, simplify, strategy, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Cut all tool shapes from a base shape in a single boolean operation.
@@ -4306,11 +3508,7 @@ declare function fuseAll(
  * @param options - Boolean operation options.
  * @returns Ok with the cut shape, or the base shape unchanged if tools is empty.
  */
-declare function cutAll(
-  base: Shape3D,
-  tools: Shape3D[],
-  { optimisation, simplify, signal }?: BooleanOptions
-): Result<Shape3D>;
+declare function cutAll(base: Shape3D, tools: Shape3D[], { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Section (cross-section) a shape with a plane, returning the intersection
@@ -4322,17 +3520,10 @@ declare function cutAll(
  * @param options.planeSize Half-size of the cutting plane (default 1e4)
  * @returns The section result as a shape (typically containing wires/edges)
  */
-declare function sectionShape(
-  shape: AnyShape,
-  plane: PlaneInput,
-  {
-    approximation,
-    planeSize,
-  }?: {
+declare function sectionShape(shape: AnyShape, plane: PlaneInput, { approximation, planeSize }?: {
     approximation?: boolean;
     planeSize?: number;
-  }
-): Result<AnyShape>;
+}): Result<AnyShape>;
 
 /**
  * Split a shape with one or more tool shapes using BRepAlgoAPI_Splitter.
@@ -4344,23 +3535,10 @@ declare function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape
  * Slice a shape with multiple planes, returning one cross-section per plane.
  * Each result entry corresponds to the input plane at the same index.
  */
-declare function sliceShape(
-  shape: AnyShape,
-  planes: PlaneInput[],
-  options?: {
+declare function sliceShape(shape: AnyShape, planes: PlaneInput[], options?: {
     approximation?: boolean;
     planeSize?: number;
-  }
-): Result<AnyShape[]>;
-
-/**
- * Build a compound from multiple shapes.
- *
- * @deprecated Use {@link makeCompound} from `topology/shapeHelpers` instead.
- * @param shapes - Shapes to group into a single compound.
- * @returns A new Compound containing all input shapes.
- */
-declare function buildCompound(shapes: AnyShape[]): Compound;
+}): Result<AnyShape[]>;
 
 /**
  * Thickens a surface (face or shell) into a solid by offsetting it.
@@ -4378,11 +3556,7 @@ declare function thickenSurface(shape: Face | Shell, thickness: number): Result<
  * @param edges - Edges to fillet. Pass `undefined` to fillet all edges.
  * @param radius - Constant radius, variable radius `[r1, r2]`, or per-edge callback.
  */
-declare function filletShape(
-  shape: Shape3D,
-  edges: ReadonlyArray<Edge> | undefined,
-  radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
-): Result<Shape3D>;
+declare function filletShape(shape: Shape3D, edges: ReadonlyArray<Edge> | undefined, radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<Shape3D>;
 
 /**
  * Apply a chamfer (beveled edge) to selected edges of a 3D shape.
@@ -4391,11 +3565,7 @@ declare function filletShape(
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
  */
-declare function chamferShape(
-  shape: Shape3D,
-  edges: ReadonlyArray<Edge> | undefined,
-  distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
-): Result<Shape3D>;
+declare function chamferShape(shape: Shape3D, edges: ReadonlyArray<Edge> | undefined, distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<Shape3D>;
 
 /**
  * Create a hollow shell by removing faces and offsetting remaining walls.
@@ -4405,12 +3575,7 @@ declare function chamferShape(
  * @param thickness - Wall thickness.
  * @param tolerance - Shell operation tolerance (default 1e-3).
  */
-declare function shellShape(
-  shape: Shape3D,
-  faces: ReadonlyArray<Face>,
-  thickness: number,
-  tolerance?: number
-): Result<Shape3D>;
+declare function shellShape(shape: Shape3D, faces: ReadonlyArray<Face>, thickness: number, tolerance?: number): Result<Shape3D>;
 
 /**
  * Offset all faces of a shape by a given distance.
@@ -4450,34 +3615,36 @@ declare function healWire(wire: Wire, face?: Face): Result<Wire>;
 
 /** Diagnostic for a single healing step. */
 interface HealingStepDiagnostic {
-  readonly name: string;
-  readonly attempted: boolean;
-  readonly succeeded: boolean;
-  readonly detail?: string;
+    readonly name: string;
+    readonly attempted: boolean;
+    readonly succeeded: boolean;
+    readonly detail?: string;
 }
 
 /** Options for autoHeal. All default to true. */
 interface AutoHealOptions {
-  /** Fix wire issues (gaps, connectivity). Default: true. */
-  fixWires?: boolean;
-  /** Fix face issues (orientation, geometry). Default: true. */
-  fixFaces?: boolean;
-  /** Fix solid issues (shell gaps, orientation). Default: true. */
-  fixSolids?: boolean;
-  /** Tolerance for sewing. If provided, applies sewing as a healing step. */
-  sewTolerance?: number;
-  /** Fix self-intersections in wires. Default: false. */
-  fixSelfIntersection?: boolean;
+    /** Fix wire issues (gaps, connectivity). Default: true. */
+    fixWires?: boolean;
+    /** Fix face issues (orientation, geometry). Default: true. */
+    fixFaces?: boolean;
+    /** Fix solid issues (shell gaps, orientation). Default: true. */
+    fixSolids?: boolean;
+    /** Tolerance for sewing. If provided, applies sewing as a healing step. */
+    sewTolerance?: number;
+    /** Fix self-intersections in wires. Default: false. */
+    fixSelfIntersection?: boolean;
 }
 
 /** Report of what the auto-heal pipeline did. */
 interface HealingReport {
-  readonly isValid: boolean;
-  readonly wiresHealed: number;
-  readonly facesHealed: number;
-  readonly solidHealed: boolean;
-  readonly steps: ReadonlyArray<string>;
-  readonly diagnostics: ReadonlyArray<HealingStepDiagnostic>;
+    readonly isValid: boolean;
+    /** True when the shape was already valid before healing was attempted. */
+    readonly alreadyValid: boolean;
+    readonly wiresHealed: number;
+    readonly facesHealed: number;
+    readonly solidHealed: boolean;
+    readonly steps: ReadonlyArray<string>;
+    readonly diagnostics: ReadonlyArray<HealingStepDiagnostic>;
 }
 
 /**
@@ -4487,40 +3654,37 @@ interface HealingReport {
  * Uses ShapeFix_Solid/Face/Wire depending on shape type, which internally
  * handles sub-shape healing and reconstruction.
  */
-declare function autoHeal(
-  shape: AnyShape,
-  options?: AutoHealOptions
-): Result<{
-  shape: AnyShape;
-  report: HealingReport;
+declare function autoHeal(shape: AnyShape, options?: AutoHealOptions): Result<{
+    shape: AnyShape;
+    report: HealingReport;
 }>;
 
 /** Configuration for sweep/pipe operations along a spine. */
 interface SweepConfig {
-  /** Use Frenet trihedron for profile orientation */
-  frenet?: boolean;
-  /** Auxiliary spine for twist control */
-  auxiliarySpine?: {
-    wrapped: any;
-  };
-  /** Scaling law along the path */
-  law?: any;
-  /** Transition mode at corners: 'right' (sharp), 'transformed', or 'round' */
-  transitionMode?: 'right' | 'transformed' | 'round';
-  /** Enable contact detection */
-  withContact?: boolean;
-  /** Support surface for constrained sweeps */
-  support?: any;
-  /** Force profile to be orthogonal to spine */
-  forceProfileSpineOthogonality?: boolean;
+    /** Use Frenet trihedron for profile orientation */
+    frenet?: boolean;
+    /** Auxiliary spine for twist control */
+    auxiliarySpine?: {
+        wrapped: any;
+    };
+    /** Scaling law along the path */
+    law?: any;
+    /** Transition mode at corners: 'right' (sharp), 'transformed', or 'round' */
+    transitionMode?: 'right' | 'transformed' | 'round';
+    /** Enable contact detection */
+    withContact?: boolean;
+    /** Support surface for constrained sweeps */
+    support?: any;
+    /** Force profile to be orthogonal to spine */
+    forceProfileSpineOthogonality?: boolean;
 }
 
 /** Configuration for extrusion profile scaling along the path. */
 interface ExtrusionProfile {
-  /** Profile curve type: 's-curve' for smooth easing, 'linear' for constant scaling */
-  profile?: 's-curve' | 'linear';
-  /** End scale factor (1 = same size, 0.5 = half size at end) */
-  endFactor?: number;
+    /** Profile curve type: 's-curve' for smooth easing, 'linear' for constant scaling */
+    profile?: 's-curve' | 'linear';
+    /** End scale factor (1 = same size, 0.5 = half size at end) */
+    endFactor?: number;
 }
 
 /**
@@ -4550,12 +3714,7 @@ declare function extrudeFace(face: Face, extrusionVec: Vec3): Solid;
  *
  * @see {@link extrude!revolution | revolution} for the OOP API equivalent.
  */
-declare function revolveFace(
-  face: Face,
-  center?: Vec3,
-  direction?: Vec3,
-  angle?: number
-): Result<Shape3D>;
+declare function revolveFace(face: Face, center?: Vec3, direction?: Vec3, angle?: number): Result<Shape3D>;
 
 /**
  * Sweep a wire profile along a spine wire to create a 3D shape.
@@ -4575,12 +3734,7 @@ declare function revolveFace(
  *
  * @see {@link extrude!genericSweep | genericSweep} for the OOP API equivalent.
  */
-declare function sweep(
-  wire: Wire,
-  spine: Wire,
-  config?: SweepConfig,
-  shellMode?: boolean
-): Result<Shape3D | [Shape3D, Wire, Wire]>;
+declare function sweep(wire: Wire, spine: Wire, config?: SweepConfig, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
 
 /**
  * Extrude a wire along a normal constrained to a support surface.
@@ -4596,12 +3750,7 @@ declare function sweep(
  *
  * @see {@link extrude!supportExtrude | supportExtrude (OOP)} for the class-based equivalent.
  */
-declare function supportExtrude(
-  wire: Wire,
-  center: Vec3,
-  normal: Vec3,
-  support: any
-): Result<Shape3D>;
+declare function supportExtrude(wire: Wire, center: Vec3, normal: Vec3, support: any): Result<Shape3D>;
 
 /**
  * Extrude a wire along a normal with optional profile scaling.
@@ -4626,13 +3775,7 @@ declare function supportExtrude(
  *
  * @see {@link extrude!complexExtrude | complexExtrude (OOP)} for the class-based equivalent.
  */
-declare function complexExtrude(
-  wire: Wire,
-  center: Vec3,
-  normal: Vec3,
-  profileShape?: ExtrusionProfile,
-  shellMode?: boolean
-): Result<Shape3D | [Shape3D, Wire, Wire]>;
+declare function complexExtrude(wire: Wire, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
 
 /**
  * Extrude a wire along a normal with helical twist and optional profile scaling.
@@ -4651,23 +3794,16 @@ declare function complexExtrude(
  *
  * @see {@link extrude!twistExtrude | twistExtrude (OOP)} for the class-based equivalent.
  */
-declare function twistExtrude(
-  wire: Wire,
-  angleDegrees: number,
-  center: Vec3,
-  normal: Vec3,
-  profileShape?: ExtrusionProfile,
-  shellMode?: boolean
-): Result<Shape3D | [Shape3D, Wire, Wire]>;
+declare function twistExtrude(wire: Wire, angleDegrees: number, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
 
 /** Configuration for the functional loft operation. */
 interface LoftConfig {
-  /** Use ruled (straight) interpolation between profiles. Defaults to `true`. */
-  ruled?: boolean;
-  /** Optional start vertex before the first wire profile. */
-  startPoint?: PointInput;
-  /** Optional end vertex after the last wire profile. */
-  endPoint?: PointInput;
+    /** Use ruled (straight) interpolation between profiles. Defaults to `true`. */
+    ruled?: boolean;
+    /** Optional start vertex before the first wire profile. */
+    startPoint?: PointInput;
+    /** Optional end vertex after the last wire profile. */
+    endPoint?: PointInput;
 }
 
 /**
@@ -4689,25 +3825,21 @@ interface LoftConfig {
  *
  * @see {@link loft!loft | loft} for the OOP API equivalent.
  */
-declare function loftWires(
-  wires: Wire[],
-  { ruled, startPoint, endPoint }?: LoftConfig,
-  returnShell?: boolean
-): Result<Shape3D>;
+declare function loftWires(wires: Wire[], { ruled, startPoint, endPoint }?: LoftConfig, returnShell?: boolean): Result<Shape3D>;
 
 /** Supported length units for STEP export. */
 type SupportedUnit = 'M' | 'CM' | 'MM' | 'INCH' | 'FT' | 'm' | 'mm' | 'cm' | 'inch' | 'ft';
 
 /** Configuration for a single shape within a functional assembly export. */
 interface ShapeConfig {
-  /** The branded shape to include in the assembly. */
-  shape: AnyShape;
-  /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
-  color?: string;
-  /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */
-  alpha?: number;
-  /** Display name for the shape node. Auto-generated UUID if omitted. */
-  name?: string;
+    /** The branded shape to include in the assembly. */
+    shape: AnyShape;
+    /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
+    color?: string;
+    /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */
+    alpha?: number;
+    /** Display name for the shape node. Auto-generated UUID if omitted. */
+    name?: string;
 }
 
 /**
@@ -4734,16 +3866,10 @@ interface ShapeConfig {
  *
  * @see {@link exporters!exportSTEP | exportSTEP} for the OOP API equivalent.
  */
-declare function exportAssemblySTEP(
-  shapes?: ShapeConfig[],
-  {
-    unit,
-    modelUnit,
-  }?: {
+declare function exportAssemblySTEP(shapes?: ShapeConfig[], { unit, modelUnit }?: {
     unit?: SupportedUnit;
     modelUnit?: SupportedUnit;
-  }
-): Result<Blob>;
+}): Result<Blob>;
 
 /**
  * Create a linear pattern of a shape along a direction.
@@ -4755,13 +3881,7 @@ declare function exportAssemblySTEP(
  * @param options - Boolean options for the fuse operation
  * @returns Fused shape of all copies
  */
-declare function linearPattern(
-  shape: Shape3D,
-  direction: Vec3,
-  count: number,
-  spacing: number,
-  options?: BooleanOptions
-): Result<Shape3D>;
+declare function linearPattern(shape: Shape3D, direction: Vec3, count: number, spacing: number, options?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Create a circular pattern of a shape around an axis.
@@ -4774,35 +3894,28 @@ declare function linearPattern(
  * @param options - Boolean options for the fuse operation
  * @returns Fused shape of all copies
  */
-declare function circularPattern(
-  shape: Shape3D,
-  axis: Vec3,
-  count: number,
-  fullAngle?: number,
-  center?: Vec3,
-  options?: BooleanOptions
-): Result<Shape3D>;
+declare function circularPattern(shape: Shape3D, axis: Vec3, count: number, fullAngle?: number, center?: Vec3, options?: BooleanOptions): Result<Shape3D>;
 
 interface AssemblyNode {
-  readonly name: string;
-  readonly shape?: AnyShape;
-  readonly translate?: Vec3;
-  readonly rotate?: {
-    angle: number;
-    axis?: Vec3;
-  };
-  readonly metadata?: Readonly<Record<string, unknown>>;
-  readonly children: ReadonlyArray<AssemblyNode>;
+    readonly name: string;
+    readonly shape?: AnyShape;
+    readonly translate?: Vec3;
+    readonly rotate?: {
+        angle: number;
+        axis?: Vec3;
+    };
+    readonly metadata?: Readonly<Record<string, unknown>>;
+    readonly children: ReadonlyArray<AssemblyNode>;
 }
 
 interface AssemblyNodeOptions {
-  shape?: AnyShape;
-  translate?: Vec3;
-  rotate?: {
-    angle: number;
-    axis?: Vec3;
-  };
-  metadata?: Record<string, unknown>;
+    shape?: AnyShape;
+    translate?: Vec3;
+    rotate?: {
+        angle: number;
+        axis?: Vec3;
+    };
+    metadata?: Record<string, unknown>;
 }
 
 /** Create a new assembly node. */
@@ -4815,20 +3928,13 @@ declare function addChild(parent: AssemblyNode, child: AssemblyNode): AssemblyNo
 declare function removeChild(parent: AssemblyNode, childName: string): AssemblyNode;
 
 /** Update a node's properties. Returns a new node. */
-declare function updateNode(
-  node: AssemblyNode,
-  updates: Partial<AssemblyNodeOptions>
-): AssemblyNode;
+declare function updateNode(node: AssemblyNode, updates: Partial<AssemblyNodeOptions>): AssemblyNode;
 
 /** Find a node by name (depth-first). Returns undefined if not found. */
 declare function findNode(root: AssemblyNode, name: string): AssemblyNode | undefined;
 
 /** Walk the tree depth-first, calling visitor for each node. */
-declare function walkAssembly(
-  root: AssemblyNode,
-  visitor: (node: AssemblyNode, depth: number) => void,
-  depth?: number
-): void;
+declare function walkAssembly(root: AssemblyNode, visitor: (node: AssemblyNode, depth: number) => void, depth?: number): void;
 
 /** Count all nodes in the tree. */
 declare function countNodes(root: AssemblyNode): number;
@@ -4837,29 +3943,25 @@ declare function countNodes(root: AssemblyNode): number;
 declare function collectShapes(root: AssemblyNode): AnyShape[];
 
 interface OperationStep {
-  readonly id: string;
-  readonly type: string;
-  readonly parameters: Readonly<Record<string, unknown>>;
-  readonly inputIds: ReadonlyArray<string>;
-  readonly outputId: string;
-  readonly timestamp: number;
-  readonly metadata?: Readonly<Record<string, unknown>>;
+    readonly id: string;
+    readonly type: string;
+    readonly parameters: Readonly<Record<string, unknown>>;
+    readonly inputIds: ReadonlyArray<string>;
+    readonly outputId: string;
+    readonly timestamp: number;
+    readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 interface ModelHistory {
-  readonly steps: ReadonlyArray<OperationStep>;
-  readonly shapes: ReadonlyMap<string, AnyShape>;
+    readonly steps: ReadonlyArray<OperationStep>;
+    readonly shapes: ReadonlyMap<string, AnyShape>;
 }
 
 /** Create a new empty history. */
 declare function createHistory(): ModelHistory;
 
 /** Add a step and its output shape. Returns a new history. */
-declare function addStep(
-  history: ModelHistory,
-  step: Omit<OperationStep, 'timestamp'>,
-  outputShape: AnyShape
-): ModelHistory;
+declare function addStep(history: ModelHistory, step: Omit<OperationStep, 'timestamp'>, outputShape: AnyShape): ModelHistory;
 
 /** Remove the last step and clean up orphaned shapes. Returns a new history. */
 declare function undoLast(history: ModelHistory): ModelHistory;
@@ -4884,18 +3986,14 @@ type OperationFn = (inputs: AnyShape[], params: Record<string, unknown>) => AnyS
 
 /** An immutable registry of named operations. */
 interface OperationRegistry {
-  readonly operations: ReadonlyMap<string, OperationFn>;
+    readonly operations: ReadonlyMap<string, OperationFn>;
 }
 
 /** Create an empty operation registry. */
 declare function createRegistry(): OperationRegistry;
 
 /** Register an operation. Returns a new registry (immutable). */
-declare function registerOperation(
-  registry: OperationRegistry,
-  type: string,
-  fn: OperationFn
-): OperationRegistry;
+declare function registerOperation(registry: OperationRegistry, type: string, fn: OperationFn): OperationRegistry;
 
 /**
  * Replay an entire history from scratch using the given registry.
@@ -4904,10 +4002,7 @@ declare function registerOperation(
  * history's shapes map. Steps are replayed in order. Returns a new history
  * with fresh output shapes.
  */
-declare function replayHistory(
-  history: ModelHistory,
-  registry: OperationRegistry
-): Result<ModelHistory>;
+declare function replayHistory(history: ModelHistory, registry: OperationRegistry): Result<ModelHistory>;
 
 /**
  * Replay history from a specific step onwards.
@@ -4915,11 +4010,7 @@ declare function replayHistory(
  * Steps before `stepId` are kept as-is. Steps from `stepId` onwards are
  * re-executed using the registry.
  */
-declare function replayFrom(
-  history: ModelHistory,
-  stepId: string,
-  registry: OperationRegistry
-): Result<ModelHistory>;
+declare function replayFrom(history: ModelHistory, stepId: string, registry: OperationRegistry): Result<ModelHistory>;
 
 /**
  * Modify a step's parameters and replay from that point.
@@ -4927,34 +4018,29 @@ declare function replayFrom(
  * Creates a new history with the updated parameters for the specified step,
  * then replays from that step onwards.
  */
-declare function modifyStep(
-  history: ModelHistory,
-  stepId: string,
-  newParams: Readonly<Record<string, unknown>>,
-  registry: OperationRegistry
-): Result<ModelHistory>;
+declare function modifyStep(history: ModelHistory, stepId: string, newParams: Readonly<Record<string, unknown>>, registry: OperationRegistry): Result<ModelHistory>;
 
 interface CurvatureResult {
-  /** Mean curvature: H = (k1 + k2) / 2 */
-  mean: number;
-  /** Gaussian curvature: K = k1 * k2 */
-  gaussian: number;
-  /** Maximum principal curvature */
-  maxCurvature: number;
-  /** Minimum principal curvature */
-  minCurvature: number;
-  /** Direction of maximum curvature */
-  maxDirection: [number, number, number];
-  /** Direction of minimum curvature */
-  minDirection: [number, number, number];
+    /** Mean curvature: H = (k1 + k2) / 2 */
+    mean: number;
+    /** Gaussian curvature: K = k1 * k2 */
+    gaussian: number;
+    /** Maximum principal curvature */
+    maxCurvature: number;
+    /** Minimum principal curvature */
+    minCurvature: number;
+    /** Direction of maximum curvature */
+    maxDirection: [number, number, number];
+    /** Direction of minimum curvature */
+    minDirection: [number, number, number];
 }
 
 /** Base physical properties returned by BRepGProp measurements. */
 interface PhysicalProps {
-  /** Raw mass property from BRepGProp (volume, area, or length depending on measurement type). */
-  readonly mass: number;
-  /** Center of mass as an [x, y, z] tuple. */
-  readonly centerOfMass: Vec3;
+    /** Raw mass property from BRepGProp (volume, area, or length depending on measurement type). */
+    readonly mass: number;
+    /** Center of mass as an [x, y, z] tuple. */
+    readonly centerOfMass: Vec3;
 }
 
 /**
@@ -5044,8 +4130,8 @@ declare function measureDistance(shape1: AnyShape, shape2: AnyShape): number;
  * ```
  */
 declare function createDistanceQuery(referenceShape: AnyShape): {
-  distanceTo: (other: AnyShape) => number;
-  dispose: () => void;
+    distanceTo: (other: AnyShape) => number;
+    dispose: () => void;
 };
 
 /**
@@ -5079,24 +4165,24 @@ declare function measureCurvatureAtMid(face: Face): CurvatureResult;
 
 /** Result of a pairwise interference check between two shapes. */
 interface InterferenceResult {
-  /** True if shapes are touching or overlapping (distance within tolerance). */
-  readonly hasInterference: boolean;
-  /** Minimum distance between the shapes. 0 when touching or overlapping. */
-  readonly minDistance: number;
-  /** Closest point on the first shape as [x, y, z]. */
-  readonly pointOnShape1: Vec3;
-  /** Closest point on the second shape as [x, y, z]. */
-  readonly pointOnShape2: Vec3;
+    /** True if shapes are touching or overlapping (distance within tolerance). */
+    readonly hasInterference: boolean;
+    /** Minimum distance between the shapes. 0 when touching or overlapping. */
+    readonly minDistance: number;
+    /** Closest point on the first shape as [x, y, z]. */
+    readonly pointOnShape1: Vec3;
+    /** Closest point on the second shape as [x, y, z]. */
+    readonly pointOnShape2: Vec3;
 }
 
 /** A pair of shapes that were found to interfere during batch checking. */
 interface InterferencePair {
-  /** Index of the first shape in the input array. */
-  readonly i: number;
-  /** Index of the second shape in the input array. */
-  readonly j: number;
-  /** Detailed interference result for this pair. */
-  readonly result: InterferenceResult;
+    /** Index of the first shape in the input array. */
+    readonly i: number;
+    /** Index of the second shape in the input array. */
+    readonly j: number;
+    /** Detailed interference result for this pair. */
+    readonly result: InterferenceResult;
 }
 
 /**
@@ -5119,11 +4205,7 @@ interface InterferencePair {
  * }
  * ```
  */
-declare function checkInterference(
-  shape1: AnyShape,
-  shape2: AnyShape,
-  tolerance?: number
-): Result<InterferenceResult>;
+declare function checkInterference(shape1: AnyShape, shape2: AnyShape, tolerance?: number): Result<InterferenceResult>;
 
 /**
  * Check all pairs in an array of shapes for interference.
@@ -5141,10 +4223,7 @@ declare function checkInterference(
  * collisions.forEach(({ i, j }) => console.log(`Shape ${i} hits shape ${j}`));
  * ```
  */
-declare function checkAllInterferences(
-  shapes: ReadonlyArray<AnyShape>,
-  tolerance?: number
-): InterferencePair[];
+declare function checkAllInterferences(shapes: ReadonlyArray<AnyShape>, tolerance?: number): InterferencePair[];
 
 /**
  * Import a STEP file from a Blob.
@@ -5212,7 +4291,7 @@ declare function vertexFinder(): VertexFinderFn;
 
 /** Common interface satisfied by both CornerFinder class and cornerFinder() factory. */
 interface CornerFilter {
-  readonly shouldKeep: (corner: Corner) => boolean;
+    readonly shouldKeep: (corner: Corner) => boolean;
 }
 
 /** Create an immutable corner finder for 2D blueprint corners. */
@@ -5222,10 +4301,10 @@ declare function cornerFinder(): CornerFinderFn;
  * Immutable plain-object representation of a projection camera.
  */
 interface Camera {
-  readonly position: Vec3;
-  readonly direction: Vec3;
-  readonly xAxis: Vec3;
-  readonly yAxis: Vec3;
+    readonly position: Vec3;
+    readonly direction: Vec3;
+    readonly xAxis: Vec3;
+    readonly yAxis: Vec3;
 }
 
 /**
@@ -5267,13 +4346,9 @@ declare function cameraFromPlane(planeName: ProjectionPlane): Result<Camera>;
  *
  * @see {@link drawProjection} for the higher-level Drawing-based API.
  */
-declare function projectEdges(
-  shape: AnyShape,
-  camera: Camera,
-  withHiddenLines?: boolean
-): {
-  visible: Edge[];
-  hidden: Edge[];
+declare function projectEdges(shape: AnyShape, camera: Camera, withHiddenLines?: boolean): {
+    visible: Edge[];
+    hidden: Edge[];
 };
 
 /**
@@ -5284,18 +4359,18 @@ declare function projectEdges(
  */
 /** Base interface for all messages sent from the main thread to a worker. */
 interface WorkerRequest {
-  /** Unique identifier for correlating requests with responses. */
-  readonly id: string;
-  /** Discriminant indicating the kind of request. */
-  readonly type: 'init' | 'operation' | 'dispose';
+    /** Unique identifier for correlating requests with responses. */
+    readonly id: string;
+    /** Discriminant indicating the kind of request. */
+    readonly type: 'init' | 'operation' | 'dispose';
 }
 
 /** Base interface for all messages sent from a worker back to the main thread. */
 interface WorkerResponse {
-  /** Matches the {@link WorkerRequest.id} of the originating request. */
-  readonly id: string;
-  /** Discriminant: `true` for success, `false` for error. */
-  readonly success: boolean;
+    /** Matches the {@link WorkerRequest.id} of the originating request. */
+    readonly id: string;
+    /** Discriminant: `true` for success, `false` for error. */
+    readonly success: boolean;
 }
 
 /** Narrow a {@link WorkerRequest} to an {@link InitRequest}. */
@@ -5319,15 +4394,15 @@ declare function isErrorResponse(msg: WorkerResponse): msg is ErrorResponse;
  */
 /** A task awaiting a response from the worker. */
 interface PendingTask<T = unknown> {
-  readonly id: string;
-  readonly resolve: (value: T) => void;
-  readonly reject: (reason: unknown) => void;
-  readonly createdAt: number;
+    readonly id: string;
+    readonly resolve: (value: T) => void;
+    readonly reject: (reason: unknown) => void;
+    readonly createdAt: number;
 }
 
 /** Immutable queue of pending worker tasks, keyed by ID. */
 interface TaskQueue<T = unknown> {
-  readonly pending: ReadonlyMap<string, PendingTask<T>>;
+    readonly pending: ReadonlyMap<string, PendingTask<T>>;
 }
 
 /** Create an empty task queue. */
@@ -5337,12 +4412,9 @@ declare function createTaskQueue<T = unknown>(): TaskQueue<T>;
 declare function enqueueTask<T>(queue: TaskQueue<T>, task: PendingTask<T>): TaskQueue<T>;
 
 /** Remove and return a task from the queue. */
-declare function dequeueTask<T>(
-  queue: TaskQueue<T>,
-  taskId: string
-): {
-  queue: TaskQueue<T>;
-  task: PendingTask<T> | undefined;
+declare function dequeueTask<T>(queue: TaskQueue<T>, taskId: string): {
+    queue: TaskQueue<T>;
+    task: PendingTask<T> | undefined;
 };
 
 /** Get the number of pending tasks. */
@@ -5360,29 +4432,25 @@ declare function rejectAll<T>(queue: TaskQueue<T>, reason: unknown): TaskQueue<T
  * Provides a promise-based API over the worker message protocol.
  */
 interface WorkerClientOptions {
-  /** The Worker instance to communicate with. */
-  worker: Worker;
-  /** Optional URL for the WASM binary (passed to the worker on init). */
-  wasmUrl?: string;
+    /** The Worker instance to communicate with. */
+    worker: Worker;
+    /** Optional URL for the WASM binary (passed to the worker on init). */
+    wasmUrl?: string;
 }
 
 /** Result returned from a successful worker operation. */
 interface WorkerResult {
-  resultBrep?: string;
-  resultData?: unknown;
+    resultBrep?: string;
+    resultData?: unknown;
 }
 
 interface WorkerClient {
-  /** Initialize the worker (load WASM). */
-  init(): Promise<void>;
-  /** Execute a named operation with BREP-serialized shapes and parameters. */
-  execute(
-    operation: string,
-    shapesBrep: string[],
-    params: Record<string, unknown>
-  ): Promise<WorkerResult>;
-  /** Dispose the client, rejecting all pending operations. */
-  dispose(): void;
+    /** Initialize the worker (load WASM). */
+    init(): Promise<void>;
+    /** Execute a named operation with BREP-serialized shapes and parameters. */
+    execute(operation: string, shapesBrep: string[], params: Record<string, unknown>): Promise<WorkerResult>;
+    /** Dispose the client, rejecting all pending operations. */
+    dispose(): void;
 }
 
 /** Create a worker client that communicates using the brepjs worker protocol. */
@@ -5394,23 +4462,16 @@ declare function createWorkerClient(options: WorkerClientOptions): WorkerClient;
  * Provides a registry-based approach for defining operation handlers.
  */
 /** Handler function for a single named worker operation. */
-type OperationHandler = (
-  shapesBrep: ReadonlyArray<string>,
-  params: Readonly<Record<string, unknown>>
-) => {
-  resultBrep?: string;
-  resultData?: unknown;
+type OperationHandler = (shapesBrep: ReadonlyArray<string>, params: Readonly<Record<string, unknown>>) => {
+    resultBrep?: string;
+    resultData?: unknown;
 };
 
 /** Create an empty operation registry. */
 declare function createOperationRegistry(): OperationRegistry;
 
 /** Register a named operation handler. Returns a new registry. */
-declare function registerHandler(
-  registry: OperationRegistry,
-  name: string,
-  handler: OperationHandler
-): OperationRegistry;
+declare function registerHandler(registry: OperationRegistry, name: string, handler: OperationHandler): OperationRegistry;
 
 /**
  * Set up message handling in a Web Worker context.
@@ -5418,10 +4479,501 @@ declare function registerHandler(
  * @param registry - The operation registry.
  * @param initFn - Async function called on InitRequest (e.g., to load WASM).
  */
-declare function createWorkerHandler(
-  registry: OperationRegistry,
-  initFn: (wasmUrl?: string) => Promise<void>
-): void;
+declare function createWorkerHandler(registry: OperationRegistry, initFn: (wasmUrl?: string) => Promise<void>): void;
+
+/**
+ * Structural type matching a Drawing's wire-producing interface.
+ * Used in place of importing the actual Drawing class to avoid
+ * Layer 2 → Layer 3 boundary violations.
+ */
+interface DrawingLike {
+    sketchOnPlane(plane: string): {
+        wire: Wire;
+    };
+}
+
+/**
+ * Fillet radius specification.
+ *
+ * - `number` — constant radius on all selected edges
+ * - `[number, number]` — variable radius (start, end)
+ * - callback — per-edge radius; return `null` to skip an edge
+ */
+type FilletRadius = number | [number, number] | ((edge: Edge) => number | [number, number] | null);
+
+/**
+ * Chamfer distance specification.
+ *
+ * - `number` — equal distance
+ * - `[number, number]` — asymmetric distances (dist1, dist2)
+ * - `{ distance, angle }` — distance-angle mode (replaces chamferDistAngleShape)
+ * - callback — per-edge distance; return `null` to skip an edge
+ */
+type ChamferDistance = number | [number, number] | {
+    distance: number;
+    angle: number;
+} | ((edge: Edge) => number | [number, number] | {
+    distance: number;
+    angle: number;
+} | null);
+
+/** Options for the drill() compound operation. */
+interface DrillOptions {
+    /** Position of the hole (Vec2 projects along axis). */
+    at: Vec2 | Vec3;
+    /** Hole radius. */
+    radius: number;
+    /** Hole depth. Omit for through-all (computed from bounds). */
+    depth?: number;
+    /** Drill axis direction. Default: [0, 0, 1] (Z). */
+    axis?: Vec3;
+}
+
+/** Options for the pocket() compound operation. */
+interface PocketOptions {
+    /** 2D profile shape to cut into the face. */
+    profile: DrawingLike | Wire;
+    /** Which face to pocket. Default: top face. */
+    face?: Face | FinderFn<Face>;
+    /** Depth of the pocket cut. */
+    depth: number;
+}
+
+/** Options for the boss() compound operation. */
+interface BossOptions {
+    /** 2D profile shape to extrude onto the face. */
+    profile: DrawingLike | Wire;
+    /** Which face to add onto. Default: top face. */
+    face?: Face | FinderFn<Face>;
+    /** Height of the boss extrusion. */
+    height: number;
+}
+
+/** Options for the mirrorJoin() compound operation. */
+interface MirrorJoinOptions {
+    /** Mirror plane normal. Default: [1, 0, 0] (mirror across YZ plane). */
+    normal?: Vec3;
+    /** Mirror plane origin. Default: [0, 0, 0]. */
+    origin?: Vec3;
+}
+
+/** Options for the rectangularPattern() compound operation. */
+interface RectangularPatternOptions {
+    /** Direction for X repetition. */
+    xDir: Vec3;
+    /** Number of copies in X direction. */
+    xCount: number;
+    /** Spacing between copies in X direction. */
+    xSpacing: number;
+    /** Direction for Y repetition. */
+    yDir: Vec3;
+    /** Number of copies in Y direction. */
+    yCount: number;
+    /** Spacing between copies in Y direction. */
+    ySpacing: number;
+}
+
+/** Extract the raw branded 3D shape from a Shapeable<Shape3D>. */
+declare function resolve3D(s: Shapeable<Shape3D>): Shape3D;
+
+/** Options for {@link box}. */
+interface BoxOptions {
+    /** `true` = centered at origin; `Vec3` = centered at point. Omit = corner at origin. */
+    center?: true | Vec3;
+}
+
+/**
+ * Create a box with the given dimensions.
+ *
+ * @param width  - Size along X.
+ * @param depth  - Size along Y.
+ * @param height - Size along Z.
+ */
+declare function box(width: number, depth: number, height: number, options?: BoxOptions): Solid;
+
+/** Options for {@link cylinder}. */
+interface CylinderOptions {
+    /** Base position. Default: [0, 0, 0]. */
+    at?: Vec3;
+    /** Cylinder axis direction. Default: [0, 0, 1] (Z-up). */
+    axis?: Vec3;
+    /** Center vertically instead of base at origin. */
+    centered?: boolean;
+}
+
+/**
+ * Create a cylinder with the given radius and height.
+ */
+declare function cylinder(radius: number, height: number, options?: CylinderOptions): Solid;
+
+/** Options for {@link sphere}. */
+interface SphereOptions {
+    /** Center position. Default: [0, 0, 0]. */
+    at?: Vec3;
+}
+
+/**
+ * Create a sphere with the given radius.
+ */
+declare function sphere(radius: number, options?: SphereOptions): Solid;
+
+/** Options for {@link cone}. */
+interface ConeOptions {
+    /** Base position. Default: [0, 0, 0]. */
+    at?: Vec3;
+    /** Cone axis direction. Default: [0, 0, 1]. */
+    axis?: Vec3;
+    /** Center vertically instead of base at origin. */
+    centered?: boolean;
+}
+
+/**
+ * Create a cone (or frustum) with the given radii and height.
+ *
+ * @param bottomRadius - Radius at the base.
+ * @param topRadius    - Radius at the top (0 for a full cone).
+ * @param height       - Height of the cone.
+ */
+declare function cone(bottomRadius: number, topRadius: number, height: number, options?: ConeOptions): Solid;
+
+/** Options for {@link torus}. */
+interface TorusOptions {
+    /** Center position. Default: [0, 0, 0]. */
+    at?: Vec3;
+    /** Torus axis direction. Default: [0, 0, 1]. */
+    axis?: Vec3;
+}
+
+/**
+ * Create a torus with the given major and minor radii.
+ */
+declare function torus(majorRadius: number, minorRadius: number, options?: TorusOptions): Solid;
+
+/** Options for {@link ellipsoid}. */
+interface EllipsoidOptions {
+    /** Center position. Default: [0, 0, 0]. */
+    at?: Vec3;
+}
+
+/**
+ * Create an ellipsoid with the given axis half-lengths.
+ *
+ * @param rx - Half-length along X.
+ * @param ry - Half-length along Y.
+ * @param rz - Half-length along Z.
+ */
+declare function ellipsoid(rx: number, ry: number, rz: number, options?: EllipsoidOptions): Solid;
+
+/** Create a straight edge between two 3D points. */
+declare function line(from: Vec3, to: Vec3): Edge;
+
+/** Options for {@link circle}. */
+interface CircleOptions {
+    /** Center. Default: [0, 0, 0]. */
+    at?: Vec3;
+    /** Normal direction. Default: [0, 0, 1]. */
+    normal?: Vec3;
+}
+
+/** Create a circular edge with the given radius. */
+declare function circle(radius: number, options?: CircleOptions): Edge;
+
+/** Options for {@link ellipse}. */
+interface EllipseOptions {
+    /** Center. Default: [0, 0, 0]. */
+    at?: Vec3;
+    /** Normal direction. Default: [0, 0, 1]. */
+    normal?: Vec3;
+    /** Major axis direction. */
+    xDir?: Vec3;
+}
+
+/**
+ * Create an elliptical edge.
+ *
+ * @returns An error if `minorRadius` exceeds `majorRadius`.
+ */
+declare function ellipse(majorRadius: number, minorRadius: number, options?: EllipseOptions): Result<Edge>;
+
+/** Options for {@link helix}. */
+interface HelixOptions {
+    /** Base position. Default: [0, 0, 0]. */
+    at?: Vec3;
+    /** Helix axis. Default: [0, 0, 1]. */
+    axis?: Vec3;
+    /** Wind in left-hand direction. Default: false. */
+    lefthand?: boolean;
+}
+
+/**
+ * Create a helical wire.
+ *
+ * @param pitch  - Vertical distance per full turn.
+ * @param height - Total height.
+ * @param radius - Helix radius.
+ */
+declare function helix(pitch: number, height: number, radius: number, options?: HelixOptions): Wire;
+
+/** Create a circular arc edge passing through three points. */
+declare function threePointArc(p1: Vec3, p2: Vec3, p3: Vec3): Edge;
+
+/** Options for {@link ellipseArc}. */
+interface EllipseArcOptions {
+    /** Center. Default: [0, 0, 0]. */
+    at?: Vec3;
+    /** Normal direction. Default: [0, 0, 1]. */
+    normal?: Vec3;
+    /** Major axis direction. */
+    xDir?: Vec3;
+}
+
+/**
+ * Create an elliptical arc edge between two angles.
+ *
+ * All angles are in **degrees** (unlike the legacy `makeEllipseArc` which used radians).
+ *
+ * @param startAngle - Start angle in degrees.
+ * @param endAngle   - End angle in degrees.
+ */
+declare function ellipseArc(majorRadius: number, minorRadius: number, startAngle: number, endAngle: number, options?: EllipseArcOptions): Result<Edge>;
+
+/**
+ * Create a B-spline edge that approximates a set of 3D points.
+ *
+ * @returns An error if the approximation algorithm fails.
+ */
+declare function bsplineApprox(points: Vec3[], config?: BSplineApproximationConfig): Result<Edge>;
+
+/**
+ * Create a Bezier curve edge from control points.
+ *
+ * @param points - Two or more control points.
+ */
+declare function bezier(points: Vec3[]): Result<Edge>;
+
+/**
+ * Create a circular arc edge tangent to a direction at the start point.
+ */
+declare function tangentArc(startPoint: Vec3, startTgt: Vec3, endPoint: Vec3): Edge;
+
+/**
+ * Assemble edges and/or wires into a single connected wire.
+ */
+declare function wire(listOfEdges: (Edge | Wire)[]): Result<Wire>;
+
+/**
+ * Create a planar face from a closed wire, optionally with holes.
+ */
+declare function face(w: Wire, holes?: Wire[]): Result<Face>;
+
+/**
+ * Create a non-planar face from a wire using surface filling.
+ */
+declare function filledFace(w: Wire): Result<Face>;
+
+/**
+ * Create a face bounded by a wire on an existing face's surface.
+ */
+declare function subFace(originFace: Face, w: Wire): Face;
+
+/**
+ * Create a polygonal face from three or more coplanar points.
+ */
+declare function polygon(points: Vec3[]): Result<Face>;
+
+/** Create a vertex at a 3D point. */
+declare function vertex(point: Vec3): Vertex;
+
+/**
+ * Build a compound from multiple shapes.
+ */
+declare function compound(shapeArray: AnyShape[]): Compound;
+
+/**
+ * Weld faces and shells into a single solid.
+ */
+declare function solid(facesOrShells: Array<Face | Shell>): Result<Solid>;
+
+/**
+ * Create an offset shape from a face.
+ */
+declare function offsetFace(f: Face, distance: number, tolerance?: number): Result<Shape3D>;
+
+/**
+ * Weld faces and shells into a single shell.
+ */
+declare function sewShells(facesOrShells: Array<Face | Shell>, ignoreType?: boolean): Result<Shell>;
+
+/**
+ * Add hole wires to an existing face.
+ */
+declare function addHoles(f: Face, holes: Wire[]): Face;
+
+/** Options for {@link rotate}. */
+interface RotateOptions {
+    /** Pivot point. Default: [0, 0, 0]. */
+    around?: Vec3;
+    /** Rotation axis. Default: [0, 0, 1] (Z). */
+    axis?: Vec3;
+}
+
+/** Options for {@link mirror}. */
+interface MirrorOptions {
+    /** Plane normal. Default: [1, 0, 0]. */
+    normal?: Vec3;
+    /** Plane origin. Default: [0, 0, 0]. */
+    origin?: Vec3;
+}
+
+/** Options for {@link scale}. */
+interface ScaleOptions {
+    /** Center of scaling. Default: [0, 0, 0]. */
+    center?: Vec3;
+}
+
+/** Section (cross-section) a shape with a plane. */
+declare function section(shape: Shapeable<AnyShape>, plane: PlaneInput, options?: {
+    approximation?: boolean;
+    planeSize?: number;
+}): Result<AnyShape>;
+
+/** Split a shape with tool shapes. */
+declare function split(shape: Shapeable<AnyShape>, tools: AnyShape[]): Result<AnyShape>;
+
+/** Slice a shape with multiple planes. */
+declare function slice(shape: Shapeable<AnyShape>, planes: PlaneInput[], options?: {
+    approximation?: boolean;
+    planeSize?: number;
+}): Result<AnyShape[]>;
+
+/** Thicken a surface (face or shell) into a solid. */
+declare function thicken(shape: Shapeable<Face | Shell>, thickness: number): Result<Solid>;
+
+/** Mesh a shape for rendering. */
+declare function mesh(shape: Shapeable<AnyShape>, options?: MeshOptions & {
+    skipNormals?: boolean;
+    includeUVs?: boolean;
+    cache?: boolean;
+}): ShapeMesh;
+
+/** Mesh the edges of a shape for wireframe rendering. */
+declare function meshEdges(shape: Shapeable<AnyShape>, options?: MeshOptions & {
+    cache?: boolean;
+}): EdgeMesh;
+
+/** Get a summary description of a shape. */
+declare function describe(shape: Shapeable<AnyShape>): ShapeDescription;
+
+/** Serialize a shape to BREP format. */
+declare function toBREP(shape: Shapeable<AnyShape>): string;
+
+/** Deserialize a shape from BREP format. */
+declare function fromBREP(data: string): Result<AnyShape>;
+
+/** Check if a shape is valid. */
+declare function isValid(shape: Shapeable<AnyShape>): boolean;
+
+/** Check if a shape is empty (null). */
+declare function isEmpty(shape: Shapeable<AnyShape>): boolean;
+
+/**
+ * Extrude a face to produce a solid.
+ *
+ * @param face   - The face to extrude.
+ * @param height - A number for Z-direction extrusion, or a Vec3 direction vector.
+ */
+declare function extrude(face: Shapeable<Face>, height: number | Vec3): Solid;
+
+/** Options for {@link revolve}. */
+interface RevolveOptions {
+    /** Rotation axis. Default: [0, 0, 1] (Z). */
+    axis?: Vec3;
+    /** Pivot point. Default: [0, 0, 0]. */
+    around?: Vec3;
+    /** Rotation angle in degrees. Default: 360 (full revolution). */
+    angle?: number;
+}
+
+/**
+ * Revolve a face around an axis to create a solid of revolution.
+ */
+declare function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result<Shape3D>;
+
+/**
+ * Loft through a set of wire profiles to create a 3D shape.
+ */
+declare function loft(wires: Shapeable<Wire>[], options?: LoftConfig): Result<Shape3D>;
+
+/**
+ * Error class thrown by the shape() wrapper when a Result<T> contains an Err.
+ * Wraps the structured BrepError for catch-based handling.
+ */
+declare class BrepWrapperError extends Error {
+    readonly code: string;
+    readonly kind: string;
+    readonly metadata?: Record<string, any>;
+    constructor(brepError: {
+        kind: string;
+        code: string;
+        message: string;
+        metadata?: Record<string, unknown>;
+    });
+}
+
+/**
+ * Derive a {@link Plane} from a face's surface geometry.
+ *
+ * @param face - Object exposing `pointOnSurface` and `normalAt` (e.g. a Face shape).
+ * @param originOnSurface - UV coordinates on the face surface used as the plane origin.
+ * @default originOnSurface `[0, 0]`
+ */
+declare const makePlaneFromFace: (face: {
+    pointOnSurface: (u: number, v: number) => Vec3;
+    normalAt: (p?: Vec3) => Vec3;
+}, originOnSurface?: [number, number]) => Plane;
+
+/**
+ * Rotate an OCCT shape around an axis.
+ *
+ * @param shape - Raw OCCT shape to rotate.
+ * @param angle - Rotation angle in **degrees**.
+ * @param position - Point on the rotation axis.
+ * @param direction - Direction vector of the rotation axis.
+ * @returns A new rotated OCCT shape (the original is not modified).
+ */
+declare function rotate(shape: any, angle: number, position?: PointInput, direction?: PointInput): any;
+
+/**
+ * Translate an OCCT shape by a displacement vector.
+ *
+ * @param shape - Raw OCCT shape to translate.
+ * @param vector - Translation vector `[dx, dy, dz]`.
+ * @returns A new translated OCCT shape.
+ */
+declare function translate(shape: any, vector: PointInput): any;
+
+/**
+ * Mirror an OCCT shape across a plane.
+ *
+ * The mirror plane can be specified as a `PlaneName`, a `Plane` object,
+ * or a direction vector (used as the plane normal). Defaults to the YZ plane.
+ *
+ * @param shape - Raw OCCT shape to mirror.
+ * @param inputPlane - Mirror plane specification.
+ * @param origin - Override origin for the mirror plane.
+ * @returns A new mirrored OCCT shape.
+ */
+declare function mirror(shape: any, inputPlane?: PlaneInput | PointInput, origin?: PointInput): any;
+
+/**
+ * Scale an OCCT shape uniformly around a center point.
+ *
+ * @param shape - Raw OCCT shape to scale.
+ * @param center - Center of scaling.
+ * @param scaleFactor - Uniform scale factor (> 0).
+ * @returns A new scaled OCCT shape.
+ */
+declare function scale(shape: any, center: PointInput, scaleFactor: number): any;
 
 /** Register a deletable value for GC when the scope function is collected. */
 declare function gcWithScope(): <T extends Deletable>(value: T) => T;
@@ -5430,15 +4982,13 @@ declare function gcWithScope(): <T extends Deletable>(value: T) => T;
 declare function gcWithObject(obj: any): <T extends Deletable>(value: T) => T;
 
 /** Create a local GC scope. Returns [register, cleanup, debugSet?]. */
-declare function localGC(
-  debug?: boolean
-): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined];
+declare function localGC(debug?: boolean): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined];
 
 /** A disposable wrapper for any OCCT object. */
 interface OcHandle<T extends Deletable> {
-  readonly value: T;
-  readonly disposed: boolean;
-  [Symbol.dispose](): void;
+    readonly value: T;
+    readonly disposed: boolean;
+    [Symbol.dispose](): void;
 }
 
 /** Create a disposable handle for any OCCT object. */
@@ -5446,12 +4996,12 @@ declare function createOcHandle<T extends Deletable>(ocObj: T): OcHandle<T>;
 
 /** Scope for tracking multiple disposable resources. */
 declare class DisposalScope implements Disposable {
-  private readonly handles;
-  /** Register a resource for disposal when scope ends. */
-  register<T extends Deletable>(resource: T): T;
-  /** Register a disposable for disposal when scope ends. */
-  track<T extends Disposable>(disposable: T): T;
-  [Symbol.dispose](): void;
+    private readonly handles;
+    /** Register a resource for disposal when scope ends. */
+    register<T extends Deletable>(resource: T): T;
+    /** Register a disposable for disposal when scope ends. */
+    track<T extends Disposable>(disposable: T): T;
+    [Symbol.dispose](): void;
 }
 
 /**
@@ -5484,159 +5034,151 @@ declare class DisposalScope implements Disposable {
  * @see {@link createBlueprint} for the functional API equivalent.
  */
 declare class Blueprint implements DrawingInterface {
-  /** Ordered 2D curve segments that compose this blueprint. */
-  curves: Curve2D[];
-  protected _boundingBox: null | BoundingBox2d;
-  private readonly _orientation;
-  private _guessedOrientation;
-  /** Create a blueprint from an ordered array of 2D curves.
-   *
-   * @throws Error if the curves array is empty.
-   */
-  constructor(curves: Curve2D[]);
-  /** Release WASM resources held by the underlying curves and bounding box. */
-  delete(): void;
-  /** Return a deep copy of this blueprint. */
-  clone(): Blueprint;
-  /** Return a multi-line string representation for debugging. */
-  get repr(): string;
-  /** Compute (and cache) the axis-aligned bounding box of all curves. */
-  get boundingBox(): BoundingBox2d;
-  /** Determine the winding direction of the blueprint via the shoelace formula.
-   *
-   * @remarks Uses an approximation based on curve midpoints for non-linear
-   * segments. The result is cached after the first call.
-   */
-  get orientation(): 'clockwise' | 'counterClockwise';
-  /**
-   * Stretch the blueprint along a direction by a given ratio.
-   *
-   * @param ratio - Stretch factor (1 = unchanged).
-   * @param direction - Unit direction vector to stretch along.
-   * @param origin - Fixed point of the stretch (defaults to the origin).
-   * @returns A new stretched Blueprint.
-   */
-  stretch(ratio: number, direction: Point2D, origin?: Point2D): Blueprint;
-  /**
-   * Uniformly scale the blueprint around a center point.
-   *
-   * @param scaleFactor - Scale multiplier (>1 enlarges, <1 shrinks).
-   * @param center - Center of scaling (defaults to the bounding box center).
-   * @returns A new scaled Blueprint.
-   */
-  scale(scaleFactor: number, center?: Point2D): Blueprint;
-  /**
-   * Rotate the blueprint by an angle in degrees.
-   *
-   * @param angle - Rotation angle in degrees (positive = counter-clockwise).
-   * @param center - Center of rotation (defaults to the origin).
-   * @returns A new rotated Blueprint.
-   */
-  rotate(angle: number, center?: Point2D): Blueprint;
-  /**
-   * Translate the blueprint by separate x/y distances or a vector.
-   *
-   * @returns A new translated Blueprint.
-   */
-  translate(xDist: number, yDist: number): Blueprint;
-  translate(translationVector: Point2D): Blueprint;
-  /**
-   * Mirror the blueprint across a point or plane.
-   *
-   * @param centerOrDirection - Mirror center (center mode) or plane normal (plane mode).
-   * @param origin - Origin for plane-mode mirroring.
-   * @param mode - `'center'` for point symmetry, `'plane'` for reflection across an axis.
-   * @returns A new mirrored Blueprint.
-   */
-  mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Blueprint;
-  /**
-   * Project this 2D blueprint onto a 3D plane, producing a wire and metadata.
-   *
-   * @param inputPlane - Named plane (`"XY"`, `"XZ"`, etc.) or a custom Plane.
-   * @param origin - Origin offset; a number sets the offset along the plane normal.
-   * @returns Sketch data containing the projected wire and default orientation.
-   */
-  sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: PointInput | number): SketchData;
-  /**
-   * Map this 2D blueprint onto a 3D face's UV surface.
-   *
-   * @param face - Target face to project onto.
-   * @param scaleMode - How UV coordinates are interpreted (`'original'`, `'bounds'`, or `'native'`).
-   * @returns Sketch data containing the wire mapped onto the face.
-   */
-  sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData;
-  /**
-   * Create a face on a target face's surface defined by this blueprint's profile.
-   *
-   * @param face - The face whose surface the sub-face lies on.
-   * @param origin - Optional UV origin offset (defaults to the face center).
-   * @returns A new Face bounded by the blueprint's profile.
-   */
-  subFace(face: Face, origin?: PointInput | null): Face;
-  /**
-   * Cut a prism-shaped hole through a solid along a face using this blueprint.
-   *
-   * @param shape - The solid to punch through.
-   * @param face - The face on which the hole profile is placed.
-   * @param options - Optional hole parameters.
-   * @param options.height - Hole depth; `null` (default) cuts through the entire solid.
-   * @param options.origin - UV origin on the face for the blueprint placement.
-   * @param options.draftAngle - Taper angle in degrees (0 = straight hole).
-   * @returns The modified shape with the hole removed.
-   */
-  punchHole(
-    shape: AnyShape,
-    face: SingleFace,
-    {
-      height,
-      origin,
-      draftAngle,
-    }?: {
-      height?: number | null;
-      origin?: PointInput | null;
-      draftAngle?: number;
-    }
-  ): AnyShape;
-  /** Convert the blueprint to an SVG path `d` attribute string. */
-  toSVGPathD(): string;
-  /** Wrap the SVG path data in a `<path>` element string. */
-  toSVGPath(): string;
-  /**
-   * Compute the SVG `viewBox` attribute for this blueprint.
-   *
-   * @param margin - Extra padding around the bounding box in drawing units.
-   */
-  toSVGViewBox(margin?: number): string;
-  /** Return the SVG path `d` strings for this blueprint as an array. */
-  toSVGPaths(): string[];
-  /**
-   * Render a complete SVG document string for this blueprint.
-   *
-   * @param margin - Extra padding around the bounding box in drawing units.
-   */
-  toSVG(margin?: number): string;
-  /** Get the start point of the first curve. */
-  get firstPoint(): Point2D;
-  /** Get the end point of the last curve. */
-  get lastPoint(): Point2D;
-  /**
-   * Test whether a 2D point lies inside this closed blueprint.
-   *
-   * Uses ray-casting (intersection counting) against a segment from the point
-   * to a location guaranteed to be outside the bounding box.
-   *
-   * @remarks Returns `false` for points on the boundary.
-   * @returns `true` if the point is strictly inside the blueprint.
-   */
-  isInside(point: Point2D): boolean;
-  /** Check whether the first and last points coincide (the profile is closed). */
-  isClosed(): boolean;
-  /**
-   * Test whether this blueprint's curves intersect with another blueprint's curves.
-   *
-   * @remarks Uses bounding-box pre-filtering for early rejection.
-   */
-  intersects(other: Blueprint): boolean;
+    /** Ordered 2D curve segments that compose this blueprint. */
+    curves: Curve2D[];
+    protected _boundingBox: null | BoundingBox2d;
+    private readonly _orientation;
+    private _guessedOrientation;
+    /** Create a blueprint from an ordered array of 2D curves.
+     *
+     * @throws Error if the curves array is empty.
+     */
+    constructor(curves: Curve2D[]);
+    /** Release WASM resources held by the underlying curves and bounding box. */
+    delete(): void;
+    /** Return a deep copy of this blueprint. */
+    clone(): Blueprint;
+    /** Return a multi-line string representation for debugging. */
+    get repr(): string;
+    /** Compute (and cache) the axis-aligned bounding box of all curves. */
+    get boundingBox(): BoundingBox2d;
+    /** Determine the winding direction of the blueprint via the shoelace formula.
+     *
+     * @remarks Uses an approximation based on curve midpoints for non-linear
+     * segments. The result is cached after the first call.
+     */
+    get orientation(): 'clockwise' | 'counterClockwise';
+    /**
+     * Stretch the blueprint along a direction by a given ratio.
+     *
+     * @param ratio - Stretch factor (1 = unchanged).
+     * @param direction - Unit direction vector to stretch along.
+     * @param origin - Fixed point of the stretch (defaults to the origin).
+     * @returns A new stretched Blueprint.
+     */
+    stretch(ratio: number, direction: Point2D, origin?: Point2D): Blueprint;
+    /**
+     * Uniformly scale the blueprint around a center point.
+     *
+     * @param scaleFactor - Scale multiplier (>1 enlarges, <1 shrinks).
+     * @param center - Center of scaling (defaults to the bounding box center).
+     * @returns A new scaled Blueprint.
+     */
+    scale(scaleFactor: number, center?: Point2D): Blueprint;
+    /**
+     * Rotate the blueprint by an angle in degrees.
+     *
+     * @param angle - Rotation angle in degrees (positive = counter-clockwise).
+     * @param center - Center of rotation (defaults to the origin).
+     * @returns A new rotated Blueprint.
+     */
+    rotate(angle: number, center?: Point2D): Blueprint;
+    /**
+     * Translate the blueprint by separate x/y distances or a vector.
+     *
+     * @returns A new translated Blueprint.
+     */
+    translate(xDist: number, yDist: number): Blueprint;
+    translate(translationVector: Point2D): Blueprint;
+    /**
+     * Mirror the blueprint across a point or plane.
+     *
+     * @param centerOrDirection - Mirror center (center mode) or plane normal (plane mode).
+     * @param origin - Origin for plane-mode mirroring.
+     * @param mode - `'center'` for point symmetry, `'plane'` for reflection across an axis.
+     * @returns A new mirrored Blueprint.
+     */
+    mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Blueprint;
+    /**
+     * Project this 2D blueprint onto a 3D plane, producing a wire and metadata.
+     *
+     * @param inputPlane - Named plane (`"XY"`, `"XZ"`, etc.) or a custom Plane.
+     * @param origin - Origin offset; a number sets the offset along the plane normal.
+     * @returns Sketch data containing the projected wire and default orientation.
+     */
+    sketchOnPlane(inputPlane?: PlaneName | Plane, origin?: PointInput | number): SketchData;
+    /**
+     * Map this 2D blueprint onto a 3D face's UV surface.
+     *
+     * @param face - Target face to project onto.
+     * @param scaleMode - How UV coordinates are interpreted (`'original'`, `'bounds'`, or `'native'`).
+     * @returns Sketch data containing the wire mapped onto the face.
+     */
+    sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData;
+    /**
+     * Create a face on a target face's surface defined by this blueprint's profile.
+     *
+     * @param face - The face whose surface the sub-face lies on.
+     * @param origin - Optional UV origin offset (defaults to the face center).
+     * @returns A new Face bounded by the blueprint's profile.
+     */
+    subFace(face: Face, origin?: PointInput | null): Face;
+    /**
+     * Cut a prism-shaped hole through a solid along a face using this blueprint.
+     *
+     * @param shape - The solid to punch through.
+     * @param face - The face on which the hole profile is placed.
+     * @param options - Optional hole parameters.
+     * @param options.height - Hole depth; `null` (default) cuts through the entire solid.
+     * @param options.origin - UV origin on the face for the blueprint placement.
+     * @param options.draftAngle - Taper angle in degrees (0 = straight hole).
+     * @returns The modified shape with the hole removed.
+     */
+    punchHole(shape: AnyShape, face: SingleFace, { height, origin, draftAngle, }?: {
+        height?: number | null;
+        origin?: PointInput | null;
+        draftAngle?: number;
+    }): AnyShape;
+    /** Convert the blueprint to an SVG path `d` attribute string. */
+    toSVGPathD(): string;
+    /** Wrap the SVG path data in a `<path>` element string. */
+    toSVGPath(): string;
+    /**
+     * Compute the SVG `viewBox` attribute for this blueprint.
+     *
+     * @param margin - Extra padding around the bounding box in drawing units.
+     */
+    toSVGViewBox(margin?: number): string;
+    /** Return the SVG path `d` strings for this blueprint as an array. */
+    toSVGPaths(): string[];
+    /**
+     * Render a complete SVG document string for this blueprint.
+     *
+     * @param margin - Extra padding around the bounding box in drawing units.
+     */
+    toSVG(margin?: number): string;
+    /** Get the start point of the first curve. */
+    get firstPoint(): Point2D;
+    /** Get the end point of the last curve. */
+    get lastPoint(): Point2D;
+    /**
+     * Test whether a 2D point lies inside this closed blueprint.
+     *
+     * Uses ray-casting (intersection counting) against a segment from the point
+     * to a location guaranteed to be outside the bounding box.
+     *
+     * @remarks Returns `false` for points on the boundary.
+     * @returns `true` if the point is strictly inside the blueprint.
+     */
+    isInside(point: Point2D): boolean;
+    /** Check whether the first and last points coincide (the profile is closed). */
+    isClosed(): boolean;
+    /**
+     * Test whether this blueprint's curves intersect with another blueprint's curves.
+     *
+     * @remarks Uses bounding-box pre-filtering for early rejection.
+     */
+    intersects(other: Blueprint): boolean;
 }
 
 /**
@@ -5651,73 +5193,65 @@ declare class Blueprint implements DrawingInterface {
  * @see {@link Blueprints} for collections of disjoint profiles.
  */
 declare class CompoundBlueprint implements DrawingInterface {
-  /**
-   * Ordered array where `blueprints[0]` is the outer boundary and the
-   * remaining entries are inner holes.
-   */
-  blueprints: Blueprint[];
-  protected _boundingBox: BoundingBox2d | null;
-  /**
-   * Create a compound blueprint from an outer boundary and optional holes.
-   *
-   * @param blueprints - First element is the outer boundary; subsequent
-   *   elements are holes.
-   * @throws Error if the array is empty.
-   */
-  constructor(blueprints: Blueprint[]);
-  /** Return a deep copy of this compound blueprint and all its children. */
-  clone(): CompoundBlueprint;
-  /** Compute (and cache) the combined bounding box of all child blueprints. */
-  get boundingBox(): BoundingBox2d;
-  /** Return a multi-line debug representation showing outline and holes. */
-  get repr(): string;
-  /** Stretch all child blueprints along a direction by a given ratio. */
-  stretch(ratio: number, direction: Point2D, origin: Point2D): CompoundBlueprint;
-  /** Rotate all child blueprints by an angle in degrees. */
-  rotate(angle: number, center?: Point2D): CompoundBlueprint;
-  /** Uniformly scale all child blueprints around a center point. */
-  scale(scaleFactor: number, center?: Point2D): CompoundBlueprint;
-  /** Translate all child blueprints by separate x/y distances or a vector. */
-  translate(xDist: number, yDist: number): CompoundBlueprint;
-  translate(translationVector: Point2D): CompoundBlueprint;
-  /** Mirror all child blueprints across a point or plane. */
-  mirror(
-    centerOrDirection: Point2D,
-    origin?: Point2D,
-    mode?: 'center' | 'plane'
-  ): CompoundBlueprint;
-  /** Project all child blueprints onto a 3D plane.
-   *
-   * @returns One {@link SketchData} per child blueprint (outer boundary + holes).
-   */
-  sketchOnPlane(plane?: PlaneName | Plane, origin?: PointInput | number): SketchData[];
-  /** Map all child blueprints onto a 3D face's UV surface.
-   *
-   * @returns One {@link SketchData} per child blueprint.
-   */
-  sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData[];
-  /**
-   * Punch a hole through a solid using the outer boundary of this compound.
-   *
-   * @remarks Only the outer boundary (`blueprints[0]`) is used for the hole.
-   */
-  punchHole(
-    shape: AnyShape,
-    face: SingleFace,
-    options?: {
-      height?: number;
-      origin?: PointInput;
-      draftAngle?: number;
-    }
-  ): AnyShape;
-  /** Compute the SVG `viewBox` attribute for this compound blueprint. */
-  toSVGViewBox(margin?: number): string;
-  /** Return SVG path `d` strings for every child blueprint. */
-  toSVGPaths(): string[];
-  /** Wrap all child SVG paths in a `<g>` group element string. */
-  toSVGGroup(): string;
-  /** Render a complete SVG document string for this compound blueprint. */
-  toSVG(margin?: number): string;
+    /**
+     * Ordered array where `blueprints[0]` is the outer boundary and the
+     * remaining entries are inner holes.
+     */
+    blueprints: Blueprint[];
+    protected _boundingBox: BoundingBox2d | null;
+    /**
+     * Create a compound blueprint from an outer boundary and optional holes.
+     *
+     * @param blueprints - First element is the outer boundary; subsequent
+     *   elements are holes.
+     * @throws Error if the array is empty.
+     */
+    constructor(blueprints: Blueprint[]);
+    /** Return a deep copy of this compound blueprint and all its children. */
+    clone(): CompoundBlueprint;
+    /** Compute (and cache) the combined bounding box of all child blueprints. */
+    get boundingBox(): BoundingBox2d;
+    /** Return a multi-line debug representation showing outline and holes. */
+    get repr(): string;
+    /** Stretch all child blueprints along a direction by a given ratio. */
+    stretch(ratio: number, direction: Point2D, origin: Point2D): CompoundBlueprint;
+    /** Rotate all child blueprints by an angle in degrees. */
+    rotate(angle: number, center?: Point2D): CompoundBlueprint;
+    /** Uniformly scale all child blueprints around a center point. */
+    scale(scaleFactor: number, center?: Point2D): CompoundBlueprint;
+    /** Translate all child blueprints by separate x/y distances or a vector. */
+    translate(xDist: number, yDist: number): CompoundBlueprint;
+    translate(translationVector: Point2D): CompoundBlueprint;
+    /** Mirror all child blueprints across a point or plane. */
+    mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): CompoundBlueprint;
+    /** Project all child blueprints onto a 3D plane.
+     *
+     * @returns One {@link SketchData} per child blueprint (outer boundary + holes).
+     */
+    sketchOnPlane(plane?: PlaneName | Plane, origin?: PointInput | number): SketchData[];
+    /** Map all child blueprints onto a 3D face's UV surface.
+     *
+     * @returns One {@link SketchData} per child blueprint.
+     */
+    sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData[];
+    /**
+     * Punch a hole through a solid using the outer boundary of this compound.
+     *
+     * @remarks Only the outer boundary (`blueprints[0]`) is used for the hole.
+     */
+    punchHole(shape: AnyShape, face: SingleFace, options?: {
+        height?: number;
+        origin?: PointInput;
+        draftAngle?: number;
+    }): AnyShape;
+    /** Compute the SVG `viewBox` attribute for this compound blueprint. */
+    toSVGViewBox(margin?: number): string;
+    /** Return SVG path `d` strings for every child blueprint. */
+    toSVGPaths(): string[];
+    /** Wrap all child SVG paths in a `<g>` group element string. */
+    toSVGGroup(): string;
+    /** Render a complete SVG document string for this compound blueprint. */
+    toSVG(margin?: number): string;
 }
 
 /**
@@ -5731,55 +5265,48 @@ declare class CompoundBlueprint implements DrawingInterface {
  * @see {@link CompoundBlueprint} for a profile with holes.
  */
 declare class Blueprints implements DrawingInterface {
-  /** The independent profiles in this collection. */
-  blueprints: Array<Blueprint | CompoundBlueprint>;
-  protected _boundingBox: BoundingBox2d | null;
-  /** Create a collection from an array of blueprints and/or compound blueprints. */
-  constructor(blueprints: Array<Blueprint | CompoundBlueprint>);
-  /** Return a multi-line debug representation of every child blueprint. */
-  get repr(): string;
-  /** Return a deep copy of this collection and all its children. */
-  clone(): Blueprints;
-  /** Compute (and cache) the combined bounding box of all child blueprints. */
-  get boundingBox(): BoundingBox2d;
-  /** Stretch all child blueprints along a direction by a given ratio. */
-  stretch(ratio: number, direction: Point2D, origin: Point2D): Blueprints;
-  /** Rotate all child blueprints by an angle in degrees. */
-  rotate(angle: number, center?: Point2D): Blueprints;
-  /** Uniformly scale all child blueprints around a center point. */
-  scale(scaleFactor: number, center?: Point2D): Blueprints;
-  /** Translate all child blueprints by separate x/y distances or a vector. */
-  translate(xDist: number, yDist: number): Blueprints;
-  translate(translationVector: Point2D): Blueprints;
-  /** Mirror all child blueprints across a point or plane. */
-  mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Blueprints;
-  /** Project all child blueprints onto a 3D plane. */
-  sketchOnPlane(
-    plane?: PlaneName | Plane,
-    origin?: PointInput | number
-  ): (SketchData | SketchData[])[];
-  /** Map all child blueprints onto a 3D face's UV surface. */
-  sketchOnFace(face: Face, scaleMode?: ScaleMode): (SketchData | SketchData[])[];
-  /**
-   * Punch holes through a solid for each child blueprint in sequence.
-   *
-   * @returns The shape with all holes applied.
-   */
-  punchHole(
-    shape: AnyShape,
-    face: SingleFace,
-    options?: {
-      height?: number;
-      origin?: PointInput;
-      draftAngle?: number;
-    }
-  ): AnyShape;
-  /** Compute the SVG `viewBox` attribute for this collection. */
-  toSVGViewBox(margin?: number): string;
-  /** Return nested SVG path `d` string arrays -- one sub-array per child. */
-  toSVGPaths(): string[][];
-  /** Render a complete SVG document string for all child blueprints. */
-  toSVG(margin?: number): string;
+    /** The independent profiles in this collection. */
+    blueprints: Array<Blueprint | CompoundBlueprint>;
+    protected _boundingBox: BoundingBox2d | null;
+    /** Create a collection from an array of blueprints and/or compound blueprints. */
+    constructor(blueprints: Array<Blueprint | CompoundBlueprint>);
+    /** Return a multi-line debug representation of every child blueprint. */
+    get repr(): string;
+    /** Return a deep copy of this collection and all its children. */
+    clone(): Blueprints;
+    /** Compute (and cache) the combined bounding box of all child blueprints. */
+    get boundingBox(): BoundingBox2d;
+    /** Stretch all child blueprints along a direction by a given ratio. */
+    stretch(ratio: number, direction: Point2D, origin: Point2D): Blueprints;
+    /** Rotate all child blueprints by an angle in degrees. */
+    rotate(angle: number, center?: Point2D): Blueprints;
+    /** Uniformly scale all child blueprints around a center point. */
+    scale(scaleFactor: number, center?: Point2D): Blueprints;
+    /** Translate all child blueprints by separate x/y distances or a vector. */
+    translate(xDist: number, yDist: number): Blueprints;
+    translate(translationVector: Point2D): Blueprints;
+    /** Mirror all child blueprints across a point or plane. */
+    mirror(centerOrDirection: Point2D, origin?: Point2D, mode?: 'center' | 'plane'): Blueprints;
+    /** Project all child blueprints onto a 3D plane. */
+    sketchOnPlane(plane?: PlaneName | Plane, origin?: PointInput | number): (SketchData | SketchData[])[];
+    /** Map all child blueprints onto a 3D face's UV surface. */
+    sketchOnFace(face: Face, scaleMode?: ScaleMode): (SketchData | SketchData[])[];
+    /**
+     * Punch holes through a solid for each child blueprint in sequence.
+     *
+     * @returns The shape with all holes applied.
+     */
+    punchHole(shape: AnyShape, face: SingleFace, options?: {
+        height?: number;
+        origin?: PointInput;
+        draftAngle?: number;
+    }): AnyShape;
+    /** Compute the SVG `viewBox` attribute for this collection. */
+    toSVGViewBox(margin?: number): string;
+    /** Return nested SVG path `d` string arrays -- one sub-array per child. */
+    toSVGPaths(): string[][];
+    /** Render a complete SVG document string for all child blueprints. */
+    toSVG(margin?: number): string;
 }
 
 /**
@@ -5803,107 +5330,92 @@ declare class Blueprints implements DrawingInterface {
  * @category Sketching
  */
 declare class Sketcher implements GenericSketcher<Sketch> {
-  protected plane: Plane;
-  protected pointer: Vec3;
-  protected firstPoint: Vec3;
-  protected pendingEdges: Edge[];
-  protected _mirrorWire: boolean;
-  /**
-   * The sketcher can be defined by a plane, or a simple plane definition,
-   * with either a point of origin, or the position on the normal axis from
-   * the coordinates origin
-   */
-  constructor(plane: Plane);
-  constructor(plane?: PlaneName, origin?: PointInput | number);
-  /** Release all OCCT edges held by this sketcher. */
-  delete(): void;
-  protected _updatePointer(newPointer: Vec3): void;
-  /** Move the pen to an absolute 2D position before drawing any edges. */
-  movePointerTo([x, y]: Point2D): this;
-  /** Draw a straight line to an absolute 2D point on the sketch plane. */
-  lineTo([x, y]: Point2D): this;
-  /** Draw a straight line by relative horizontal and vertical distances. */
-  line(xDist: number, yDist: number): this;
-  /** Draw a vertical line of the given signed distance. */
-  vLine(distance: number): this;
-  /** Draw a horizontal line of the given signed distance. */
-  hLine(distance: number): this;
-  /** Draw a vertical line to an absolute Y coordinate. */
-  vLineTo(yPos: number): this;
-  /** Draw a horizontal line to an absolute X coordinate. */
-  hLineTo(xPos: number): this;
-  /** Draw a line in polar coordinates (distance and angle in degrees) from the current point. */
-  polarLine(distance: number, angle: number): this;
-  /** Draw a line to a point given in polar coordinates [r, theta] from the origin. */
-  polarLineTo([r, theta]: [number, number]): this;
-  /** Draw a line tangent to the previous edge, extending by the given distance. */
-  tangentLine(distance: number): this;
-  /** Draw a circular arc passing through an inner point to an absolute end point. */
-  threePointsArcTo(end: Point2D, innerPoint: Point2D): this;
-  /** Draw a circular arc through a via-point to an end point, both given as relative distances. */
-  threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this;
-  /** Draw a circular arc tangent to the previous edge, ending at an absolute point. */
-  tangentArcTo(end: Point2D): this;
-  /** Draw a circular arc tangent to the previous edge, ending at a relative offset. */
-  tangentArc(xDist: number, yDist: number): this;
-  /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
-  sagittaArcTo(end: Point2D, sagitta: number): this;
-  /** Draw a circular arc to a relative end point, bulging by the given sagitta. */
-  sagittaArc(xDist: number, yDist: number, sagitta: number): this;
-  /** Draw a vertical sagitta arc of the given distance and bulge. */
-  vSagittaArc(distance: number, sagitta: number): this;
-  /** Draw a horizontal sagitta arc of the given distance and bulge. */
-  hSagittaArc(distance: number, sagitta: number): this;
-  /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
-  bulgeArcTo(end: Point2D, bulge: number): this;
-  /** Draw an arc to a relative end point using a bulge factor. */
-  bulgeArc(xDist: number, yDist: number, bulge: number): this;
-  /** Draw a vertical bulge arc of the given distance and bulge factor. */
-  vBulgeArc(distance: number, bulge: number): this;
-  /** Draw a horizontal bulge arc of the given distance and bulge factor. */
-  hBulgeArc(distance: number, bulge: number): this;
-  /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
-  ellipseTo(
-    end: Point2D,
-    horizontalRadius: number,
-    verticalRadius: number,
-    rotation?: number,
-    longAxis?: boolean,
-    sweep?: boolean
-  ): this;
-  /** Draw an elliptical arc to a relative end point (SVG-style parameters). */
-  ellipse(
-    xDist: number,
-    yDist: number,
-    horizontalRadius: number,
-    verticalRadius: number,
-    rotation?: number,
-    longAxis?: boolean,
-    sweep?: boolean
-  ): this;
-  /** Draw a half-ellipse arc to an absolute end point with a given minor radius. */
-  halfEllipseTo(end: Point2D, verticalRadius: number, sweep?: boolean): this;
-  /** Draw a half-ellipse arc to a relative end point with a given minor radius. */
-  halfEllipse(xDist: number, yDist: number, verticalRadius: number, sweep?: boolean): this;
-  /** Draw a Bezier curve to an absolute end point through one or more control points. */
-  bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this;
-  /** Draw a quadratic Bezier curve to an absolute end point with a single control point. */
-  quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this;
-  /** Draw a cubic Bezier curve to an absolute end point with start and end control points. */
-  cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this;
-  /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous edge. */
-  smoothSplineTo(end: Point2D, config?: SplineConfig): this;
-  /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous edge. */
-  smoothSpline(xDist: number, yDist: number, splineConfig?: SplineConfig): this;
-  protected _mirrorWireOnStartEnd(wire: Wire): Wire;
-  protected buildWire(): Wire;
-  protected _closeSketch(): void;
-  /** Finish drawing and return the open-wire Sketch (does not close the path). */
-  done(): Sketch;
-  /** Close the path with a straight line to the start point and return the Sketch. */
-  close(): Sketch;
-  /** Close the path by mirroring all edges about the line from first to last point. */
-  closeWithMirror(): Sketch;
+    protected plane: Plane;
+    protected pointer: Vec3;
+    protected firstPoint: Vec3;
+    protected pendingEdges: Edge[];
+    protected _mirrorWire: boolean;
+    /**
+     * The sketcher can be defined by a plane, or a simple plane definition,
+     * with either a point of origin, or the position on the normal axis from
+     * the coordinates origin
+     */
+    constructor(plane: Plane);
+    constructor(plane?: PlaneName, origin?: PointInput | number);
+    /** Release all OCCT edges held by this sketcher. */
+    delete(): void;
+    protected _updatePointer(newPointer: Vec3): void;
+    /** Move the pen to an absolute 2D position before drawing any edges. */
+    movePointerTo([x, y]: Point2D): this;
+    /** Draw a straight line to an absolute 2D point on the sketch plane. */
+    lineTo([x, y]: Point2D): this;
+    /** Draw a straight line by relative horizontal and vertical distances. */
+    line(xDist: number, yDist: number): this;
+    /** Draw a vertical line of the given signed distance. */
+    vLine(distance: number): this;
+    /** Draw a horizontal line of the given signed distance. */
+    hLine(distance: number): this;
+    /** Draw a vertical line to an absolute Y coordinate. */
+    vLineTo(yPos: number): this;
+    /** Draw a horizontal line to an absolute X coordinate. */
+    hLineTo(xPos: number): this;
+    /** Draw a line in polar coordinates (distance and angle in degrees) from the current point. */
+    polarLine(distance: number, angle: number): this;
+    /** Draw a line to a point given in polar coordinates [r, theta] from the origin. */
+    polarLineTo([r, theta]: [number, number]): this;
+    /** Draw a line tangent to the previous edge, extending by the given distance. */
+    tangentLine(distance: number): this;
+    /** Draw a circular arc passing through an inner point to an absolute end point. */
+    threePointsArcTo(end: Point2D, innerPoint: Point2D): this;
+    /** Draw a circular arc through a via-point to an end point, both given as relative distances. */
+    threePointsArc(xDist: number, yDist: number, viaXDist: number, viaYDist: number): this;
+    /** Draw a circular arc tangent to the previous edge, ending at an absolute point. */
+    tangentArcTo(end: Point2D): this;
+    /** Draw a circular arc tangent to the previous edge, ending at a relative offset. */
+    tangentArc(xDist: number, yDist: number): this;
+    /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
+    sagittaArcTo(end: Point2D, sagitta: number): this;
+    /** Draw a circular arc to a relative end point, bulging by the given sagitta. */
+    sagittaArc(xDist: number, yDist: number, sagitta: number): this;
+    /** Draw a vertical sagitta arc of the given distance and bulge. */
+    vSagittaArc(distance: number, sagitta: number): this;
+    /** Draw a horizontal sagitta arc of the given distance and bulge. */
+    hSagittaArc(distance: number, sagitta: number): this;
+    /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
+    bulgeArcTo(end: Point2D, bulge: number): this;
+    /** Draw an arc to a relative end point using a bulge factor. */
+    bulgeArc(xDist: number, yDist: number, bulge: number): this;
+    /** Draw a vertical bulge arc of the given distance and bulge factor. */
+    vBulgeArc(distance: number, bulge: number): this;
+    /** Draw a horizontal bulge arc of the given distance and bulge factor. */
+    hBulgeArc(distance: number, bulge: number): this;
+    /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
+    ellipseTo(end: Point2D, horizontalRadius: number, verticalRadius: number, rotation?: number, longAxis?: boolean, sweep?: boolean): this;
+    /** Draw an elliptical arc to a relative end point (SVG-style parameters). */
+    ellipse(xDist: number, yDist: number, horizontalRadius: number, verticalRadius: number, rotation?: number, longAxis?: boolean, sweep?: boolean): this;
+    /** Draw a half-ellipse arc to an absolute end point with a given minor radius. */
+    halfEllipseTo(end: Point2D, verticalRadius: number, sweep?: boolean): this;
+    /** Draw a half-ellipse arc to a relative end point with a given minor radius. */
+    halfEllipse(xDist: number, yDist: number, verticalRadius: number, sweep?: boolean): this;
+    /** Draw a Bezier curve to an absolute end point through one or more control points. */
+    bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this;
+    /** Draw a quadratic Bezier curve to an absolute end point with a single control point. */
+    quadraticBezierCurveTo(end: Point2D, controlPoint: Point2D): this;
+    /** Draw a cubic Bezier curve to an absolute end point with start and end control points. */
+    cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this;
+    /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous edge. */
+    smoothSplineTo(end: Point2D, config?: SplineConfig): this;
+    /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous edge. */
+    smoothSpline(xDist: number, yDist: number, splineConfig?: SplineConfig): this;
+    protected _mirrorWireOnStartEnd(wire: Wire): Wire;
+    protected buildWire(): Wire;
+    protected _closeSketch(): void;
+    /** Finish drawing and return the open-wire Sketch (does not close the path). */
+    done(): Sketch;
+    /** Close the path with a straight line to the start point and return the Sketch. */
+    close(): Sketch;
+    /** Close the path by mirroring all edges about the line from first to last point. */
+    closeWithMirror(): Sketch;
 }
 
 /**
@@ -5920,33 +5432,30 @@ declare class Sketcher implements GenericSketcher<Sketch> {
  * @category Sketching
  */
 declare class FaceSketcher extends BaseSketcher2d implements GenericSketcher<Sketch> {
-  protected face: Face;
-  protected _bounds: UVBounds;
-  constructor(face: Face, origin?: Point2D);
-  protected _convertToUV([x, y]: Point2D): Point2D;
-  protected _convertFromUV([u, v]: Point2D): Point2D;
-  _adaptSurface(): any;
-  /**
-   * @ignore
-   */
-  protected buildWire(): Wire;
-  /** Finish drawing and return the resulting {@link Sketch} (does not close the path). */
-  done(): Sketch;
-  /** Close the path with a straight line to the start point and return the Sketch. */
-  close(): Sketch;
-  /** Close the path by mirroring all curves about the line from first to last point. */
-  closeWithMirror(): Sketch;
-  /**
-   * Close the path and apply a custom corner treatment between the last and first segments.
-   *
-   * @param radius - Fillet/chamfer radius, or a custom corner function.
-   * @param mode - Corner treatment type.
-   * @returns The closed {@link Sketch}.
-   */
-  closeWithCustomCorner(
-    radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
-    mode?: 'fillet' | 'chamfer' | 'dogbone'
-  ): Sketch;
+    protected face: Face;
+    protected _bounds: UVBounds;
+    constructor(face: Face, origin?: Point2D);
+    protected _convertToUV([x, y]: Point2D): Point2D;
+    protected _convertFromUV([u, v]: Point2D): Point2D;
+    _adaptSurface(): any;
+    /**
+     * @ignore
+     */
+    protected buildWire(): Wire;
+    /** Finish drawing and return the resulting {@link Sketch} (does not close the path). */
+    done(): Sketch;
+    /** Close the path with a straight line to the start point and return the Sketch. */
+    close(): Sketch;
+    /** Close the path by mirroring all curves about the line from first to last point. */
+    closeWithMirror(): Sketch;
+    /**
+     * Close the path and apply a custom corner treatment between the last and first segments.
+     *
+     * @param radius - Fillet/chamfer radius, or a custom corner function.
+     * @param mode - Corner treatment type.
+     * @returns The closed {@link Sketch}.
+     */
+    closeWithCustomCorner(radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]), mode?: 'fillet' | 'chamfer' | 'dogbone'): Sketch;
 }
 
 /**
@@ -5959,21 +5468,21 @@ declare class FaceSketcher extends BaseSketcher2d implements GenericSketcher<Ske
  * @category Sketching
  */
 declare class BlueprintSketcher extends BaseSketcher2d implements GenericSketcher<Blueprint> {
-  constructor(origin?: Point2D);
-  /** Finish drawing and return the resulting {@link Blueprint} (does not close the path). */
-  done(): Blueprint;
-  /** Close the path with a straight line to the start point and return the Blueprint. */
-  close(): Blueprint;
-  /** Close the path by mirroring all curves about the line from first to last point. */
-  closeWithMirror(): Blueprint;
-  /**
-   * Close the path and apply a custom corner treatment between the last and first segments.
-   *
-   * @param radius - Fillet/chamfer radius.
-   * @param mode - Corner treatment type.
-   * @returns The closed {@link Blueprint}.
-   */
-  closeWithCustomCorner(radius: number, mode?: 'fillet' | 'chamfer' | 'dogbone'): Blueprint;
+    constructor(origin?: Point2D);
+    /** Finish drawing and return the resulting {@link Blueprint} (does not close the path). */
+    done(): Blueprint;
+    /** Close the path with a straight line to the start point and return the Blueprint. */
+    close(): Blueprint;
+    /** Close the path by mirroring all curves about the line from first to last point. */
+    closeWithMirror(): Blueprint;
+    /**
+     * Close the path and apply a custom corner treatment between the last and first segments.
+     *
+     * @param radius - Fillet/chamfer radius.
+     * @param mode - Corner treatment type.
+     * @returns The closed {@link Blueprint}.
+     */
+    closeWithCustomCorner(radius: number, mode?: 'fillet' | 'chamfer' | 'dogbone'): Blueprint;
 }
 
 /**
@@ -5984,21 +5493,21 @@ declare class BlueprintSketcher extends BaseSketcher2d implements GenericSketche
  * @category Drawing
  */
 declare class DrawingPen extends BaseSketcher2d implements GenericSketcher<Drawing> {
-  constructor(origin?: Point2D);
-  /** Finish drawing and return the resulting {@link Drawing} (does not close the path). */
-  done(): Drawing;
-  /** Close the path with a straight line to the start point and return the Drawing. */
-  close(): Drawing;
-  /** Close the path by mirroring all curves about the line from first to last point. */
-  closeWithMirror(): Drawing;
-  /**
-   * Close the path and apply a custom corner treatment between the last and first segments.
-   *
-   * @param radius - Fillet/chamfer radius.
-   * @param mode - Corner treatment type.
-   * @returns The closed {@link Drawing}.
-   */
-  closeWithCustomCorner(radius: number, mode?: 'fillet' | 'chamfer'): Drawing;
+    constructor(origin?: Point2D);
+    /** Finish drawing and return the resulting {@link Drawing} (does not close the path). */
+    done(): Drawing;
+    /** Close the path with a straight line to the start point and return the Drawing. */
+    close(): Drawing;
+    /** Close the path by mirroring all curves about the line from first to last point. */
+    closeWithMirror(): Drawing;
+    /**
+     * Close the path and apply a custom corner treatment between the last and first segments.
+     *
+     * @param radius - Fillet/chamfer radius.
+     * @param mode - Corner treatment type.
+     * @returns The closed {@link Drawing}.
+     */
+    closeWithCustomCorner(radius: number, mode?: 'fillet' | 'chamfer'): Drawing;
 }
 
 /**
@@ -6016,102 +5525,80 @@ declare class DrawingPen extends BaseSketcher2d implements GenericSketcher<Drawi
  * @category Sketching
  */
 declare class Sketch implements SketchInterface {
-  wire: Wire;
-  /**
-   * @ignore
-   */
-  _defaultOrigin: Vec3;
-  /**
-   * @ignore
-   */
-  _defaultDirection: Vec3;
-  protected _baseFace: Face | null | undefined;
-  constructor(
-    wire: Wire,
-    {
-      defaultOrigin,
-      defaultDirection,
-    }?: {
-      defaultOrigin?: PointInput;
-      defaultDirection?: PointInput;
-    }
-  );
-  get baseFace(): Face | null | undefined;
-  set baseFace(newFace: Face | null | undefined);
-  /** Release all OCCT resources held by this sketch. */
-  delete(): void;
-  /** Create an independent deep copy of this sketch. */
-  clone(): Sketch;
-  /** Get the 3D origin used as default for extrusion and revolution. */
-  get defaultOrigin(): Vec3;
-  /** Set the 3D origin used as default for extrusion and revolution. */
-  set defaultOrigin(newOrigin: PointInput);
-  /** Get the default extrusion/normal direction. */
-  get defaultDirection(): Vec3;
-  /** Set the default extrusion/normal direction. */
-  set defaultDirection(newDirection: PointInput);
-  /**
-   * Transforms the lines into a face. The lines should be closed.
-   */
-  face(): Face;
-  /** Return a clone of the underlying wire. */
-  wires(): Wire;
-  /** Alias for {@link Sketch.face}. */
-  faces(): Face;
-  /**
-   * Revolves the drawing on an axis (defined by its direction and an origin
-   * (defaults to the sketch origin)
-   */
-  revolve(
-    revolutionAxis?: PointInput,
-    {
-      origin,
-    }?: {
-      origin?: PointInput;
-    }
-  ): Shape3D;
-  /** Extrudes the sketch to a certain distance (along the default direction
-   * and origin of the sketch).
-   *
-   * You can define another extrusion direction or origin,
-   *
-   * It is also possible to twist extrude with an angle (in degrees), or to
-   * give a profile to the extrusion (the endFactor will scale the face, and
-   * the profile will define how the scale is applied (either linearly or with
-   * a s-shape).
-   */
-  extrude(
-    extrusionDistance: number,
-    {
-      extrusionDirection,
-      extrusionProfile,
-      twistAngle,
-      origin,
-    }?: {
-      extrusionDirection?: PointInput;
-      extrusionProfile?: ExtrusionProfile;
-      twistAngle?: number;
-      origin?: PointInput;
-    }
-  ): Shape3D;
-  /**
-   * Sweep along this sketch another sketch defined in the function
-   * `sketchOnPlane`.
-   */
-  sweepSketch(
-    sketchOnPlane: (plane: Plane, origin: Vec3) => this,
-    sweepConfig?: GenericSweepConfig
-  ): Shape3D;
-  /** Loft between this sketch and another sketch (or an array of them)
-   *
-   * You can also define a `startPoint` for the loft (that will be placed
-   * before this sketch) and an `endPoint` after the last one.
-   *
-   * You can also define if you want the loft to result in a ruled surface.
-   *
-   * Note that all sketches will be deleted by this operation
-   */
-  loftWith(otherSketches: this | this[], loftConfig?: LoftConfig, returnShell?: boolean): Shape3D;
+    wire: Wire;
+    /**
+     * @ignore
+     */
+    _defaultOrigin: Vec3;
+    /**
+     * @ignore
+     */
+    _defaultDirection: Vec3;
+    protected _baseFace: Face | null | undefined;
+    constructor(wire: Wire, { defaultOrigin, defaultDirection, }?: {
+        defaultOrigin?: PointInput;
+        defaultDirection?: PointInput;
+    });
+    get baseFace(): Face | null | undefined;
+    set baseFace(newFace: Face | null | undefined);
+    /** Release all OCCT resources held by this sketch. */
+    delete(): void;
+    /** Create an independent deep copy of this sketch. */
+    clone(): Sketch;
+    /** Get the 3D origin used as default for extrusion and revolution. */
+    get defaultOrigin(): Vec3;
+    /** Set the 3D origin used as default for extrusion and revolution. */
+    set defaultOrigin(newOrigin: PointInput);
+    /** Get the default extrusion/normal direction. */
+    get defaultDirection(): Vec3;
+    /** Set the default extrusion/normal direction. */
+    set defaultDirection(newDirection: PointInput);
+    /**
+     * Transforms the lines into a face. The lines should be closed.
+     */
+    face(): Face;
+    /** Return a clone of the underlying wire. */
+    wires(): Wire;
+    /** Alias for {@link Sketch.face}. */
+    faces(): Face;
+    /**
+     * Revolves the drawing on an axis (defined by its direction and an origin
+     * (defaults to the sketch origin)
+     */
+    revolve(revolutionAxis?: PointInput, { origin }?: {
+        origin?: PointInput;
+    }): Shape3D;
+    /** Extrudes the sketch to a certain distance (along the default direction
+     * and origin of the sketch).
+     *
+     * You can define another extrusion direction or origin,
+     *
+     * It is also possible to twist extrude with an angle (in degrees), or to
+     * give a profile to the extrusion (the endFactor will scale the face, and
+     * the profile will define how the scale is applied (either linearly or with
+     * a s-shape).
+     */
+    extrude(extrusionDistance: number, { extrusionDirection, extrusionProfile, twistAngle, origin, }?: {
+        extrusionDirection?: PointInput;
+        extrusionProfile?: ExtrusionProfile;
+        twistAngle?: number;
+        origin?: PointInput;
+    }): Shape3D;
+    /**
+     * Sweep along this sketch another sketch defined in the function
+     * `sketchOnPlane`.
+     */
+    sweepSketch(sketchOnPlane: (plane: Plane, origin: Vec3) => this, sweepConfig?: GenericSweepConfig): Shape3D;
+    /** Loft between this sketch and another sketch (or an array of them)
+     *
+     * You can also define a `startPoint` for the loft (that will be placed
+     * before this sketch) and an `endPoint` after the last one.
+     *
+     * You can also define if you want the loft to result in a ruled surface.
+     *
+     * Note that all sketches will be deleted by this operation
+     */
+    loftWith(otherSketches: this | this[], loftConfig?: LoftConfig, returnShell?: boolean): Shape3D;
 }
 
 /**
@@ -6126,52 +5613,39 @@ declare class Sketch implements SketchInterface {
  * @category Sketching
  */
 declare class CompoundSketch implements SketchInterface {
-  sketches: Sketch[];
-  constructor(sketches: Sketch[]);
-  /** Release all OCCT resources held by every sub-sketch. */
-  delete(): void;
-  /** Get the outer boundary sketch (the first in the array). */
-  get outerSketch(): Sketch;
-  /** Get the hole sketches (all but the first). */
-  get innerSketches(): Sketch[];
-  /** Return all wires (outer + holes) combined into a compound shape. */
-  get wires(): import('../index.js').Compound;
-  /** Build a face from the outer boundary with inner wires subtracted as holes. */
-  face(): Face;
-  /**
-   * Extrude the compound face (with holes) along the default or given direction.
-   *
-   * Supports twist and profile extrusions. For twist/profile modes each
-   * sub-sketch is extruded as a shell, then capped into a solid.
-   */
-  extrude(
-    extrusionDistance: number,
-    {
-      extrusionDirection,
-      extrusionProfile,
-      twistAngle,
-      origin,
-    }?: {
-      extrusionDirection?: PointInput;
-      extrusionProfile?: ExtrusionProfile;
-      twistAngle?: number;
-      origin?: PointInput;
-    }
-  ): Shape3D;
-  /**
-   * Revolves the drawing on an axis (defined by its direction and an origin
-   * (defaults to the sketch origin)
-   */
-  revolve(
-    revolutionAxis?: PointInput,
-    {
-      origin,
-    }?: {
-      origin?: PointInput;
-    }
-  ): Shape3D;
-  /** Loft between this compound sketch and another with matching sub-sketch counts. */
-  loftWith(otherCompound: this, loftConfig: LoftConfig): Shape3D;
+    sketches: Sketch[];
+    constructor(sketches: Sketch[]);
+    /** Release all OCCT resources held by every sub-sketch. */
+    delete(): void;
+    /** Get the outer boundary sketch (the first in the array). */
+    get outerSketch(): Sketch;
+    /** Get the hole sketches (all but the first). */
+    get innerSketches(): Sketch[];
+    /** Return all wires (outer + holes) combined into a compound shape. */
+    get wires(): import('../index.js').Compound;
+    /** Build a face from the outer boundary with inner wires subtracted as holes. */
+    face(): Face;
+    /**
+     * Extrude the compound face (with holes) along the default or given direction.
+     *
+     * Supports twist and profile extrusions. For twist/profile modes each
+     * sub-sketch is extruded as a shell, then capped into a solid.
+     */
+    extrude(extrusionDistance: number, { extrusionDirection, extrusionProfile, twistAngle, origin, }?: {
+        extrusionDirection?: PointInput;
+        extrusionProfile?: ExtrusionProfile;
+        twistAngle?: number;
+        origin?: PointInput;
+    }): Shape3D;
+    /**
+     * Revolves the drawing on an axis (defined by its direction and an origin
+     * (defaults to the sketch origin)
+     */
+    revolve(revolutionAxis?: PointInput, { origin }?: {
+        origin?: PointInput;
+    }): Shape3D;
+    /** Loft between this compound sketch and another with matching sub-sketch counts. */
+    loftWith(otherCompound: this, loftConfig: LoftConfig): Shape3D;
 }
 
 /** Clone a shape (deep copy via TopoDS downcast). */
@@ -6184,19 +5658,10 @@ declare function simplifyShape<T extends AnyShape>(shape: T): T;
 declare function translateShape<T extends AnyShape>(shape: T, v: Vec3): T;
 
 /** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
-declare function rotateShape<T extends AnyShape>(
-  shape: T,
-  angle: number,
-  position?: Vec3,
-  direction?: Vec3
-): T;
+declare function rotateShape<T extends AnyShape>(shape: T, angle: number, position?: Vec3, direction?: Vec3): T;
 
 /** Mirror a shape through a plane defined by origin and normal. Returns a new shape. */
-declare function mirrorShape<T extends AnyShape>(
-  shape: T,
-  planeNormal?: Vec3,
-  planeOrigin?: Vec3
-): T;
+declare function mirrorShape<T extends AnyShape>(shape: T, planeNormal?: Vec3, planeOrigin?: Vec3): T;
 
 /** Scale a shape uniformly. Returns a new shape. */
 declare function scaleShape<T extends AnyShape>(shape: T, factor: number, center?: Vec3): T;
@@ -6207,24 +5672,24 @@ declare function scaleShape<T extends AnyShape>(shape: T, factor: number, center
  * Call `.done()` to extract the final shape from the pipe.
  */
 interface ShapePipe<T extends AnyShape> {
-  /** Get the current shape. */
-  readonly done: () => T;
-  /** Translate the shape by a vector. */
-  readonly translate: (v: Vec3) => ShapePipe<T>;
-  /** Rotate the shape by an angle (degrees) around an axis. */
-  readonly rotate: (angle: number, position?: Vec3, direction?: Vec3) => ShapePipe<T>;
-  /** Mirror the shape across a plane. */
-  readonly mirror: (planeNormal?: Vec3, planeOrigin?: Vec3) => ShapePipe<T>;
-  /** Scale the shape by a factor. */
-  readonly scale: (factor: number, center?: Vec3) => ShapePipe<T>;
-  /** Apply a custom transformation function. */
-  readonly apply: <U extends AnyShape>(fn: (shape: T) => U) => ShapePipe<U>;
-  /** Fuse with another shape (requires Shape3D). */
-  readonly fuse: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
-  /** Cut with another shape (requires Shape3D). */
-  readonly cut: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
-  /** Intersect with another shape (requires Shape3D). */
-  readonly intersect: (tool: Shape3D) => ShapePipe<Shape3D>;
+    /** Get the current shape. */
+    readonly done: () => T;
+    /** Translate the shape by a vector. */
+    readonly translate: (v: Vec3) => ShapePipe<T>;
+    /** Rotate the shape by an angle (degrees) around an axis. */
+    readonly rotate: (angle: number, position?: Vec3, direction?: Vec3) => ShapePipe<T>;
+    /** Mirror the shape across a plane. */
+    readonly mirror: (planeNormal?: Vec3, planeOrigin?: Vec3) => ShapePipe<T>;
+    /** Scale the shape by a factor. */
+    readonly scale: (factor: number, center?: Vec3) => ShapePipe<T>;
+    /** Apply a custom transformation function. */
+    readonly apply: <U extends AnyShape>(fn: (shape: T) => U) => ShapePipe<U>;
+    /** Fuse with another shape (requires Shape3D). */
+    readonly fuse: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
+    /** Cut with another shape (requires Shape3D). */
+    readonly cut: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
+    /** Intersect with another shape (requires Shape3D). */
+    readonly intersect: (tool: Shape3D) => ShapePipe<Shape3D>;
 }
 
 /**
@@ -6250,81 +5715,215 @@ declare function pipe<T extends AnyShape>(shape: T): ShapePipe<T>;
 declare function healShape<T extends AnyShape>(shape: T): Result<T>;
 
 interface ShapeFinder<T extends AnyShape> {
-  /** Add a custom predicate filter. Returns new finder. */
-  readonly when: (predicate: Predicate<T>) => ShapeFinder<T>;
-  /** Filter to elements in a list. Returns new finder. */
-  readonly inList: (elements: T[]) => ShapeFinder<T>;
-  /** Invert a filter. Returns new finder. */
-  readonly not: (builderFn: (f: ShapeFinder<T>) => ShapeFinder<T>) => ShapeFinder<T>;
-  /** Combine filters with OR. Returns new finder. */
-  readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
-  /** Find matching elements from a shape. */
-  readonly find: ((shape: AnyShape) => T[]) &
-    ((
-      shape: AnyShape,
-      opts: {
+    /** Add a custom predicate filter. Returns new finder. */
+    readonly when: (predicate: Predicate<T>) => ShapeFinder<T>;
+    /** Filter to elements in a list. Returns new finder. */
+    readonly inList: (elements: T[]) => ShapeFinder<T>;
+    /** Invert a filter. Returns new finder. */
+    readonly not: (builderFn: (f: ShapeFinder<T>) => ShapeFinder<T>) => ShapeFinder<T>;
+    /** Combine filters with OR. Returns new finder. */
+    readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
+    /** Find all matching elements from a shape. */
+    readonly findAll: (shape: AnyShape) => T[];
+    /** Find exactly one matching element. Returns error if 0 or more than 1 match. */
+    readonly findUnique: (shape: AnyShape) => Result<T>;
+    /**
+     * Find matching elements from a shape.
+     * @deprecated Use {@link findAll} for array results or {@link findUnique} for single-element `Result<T>`.
+     */
+    readonly find: ((shape: AnyShape) => T[]) & ((shape: AnyShape, opts: {
         unique: true;
-      }
-    ) => Result<T>);
-  /** Check if an element passes all filters. */
-  readonly shouldKeep: (element: T) => boolean;
-  readonly _filters: ReadonlyArray<Predicate<T>>;
-  readonly _topoKind: 'edge' | 'face' | 'wire' | 'vertex';
+    }) => Result<T>);
+    /** Check if an element passes all filters. */
+    readonly shouldKeep: (element: T) => boolean;
+    readonly _filters: ReadonlyArray<Predicate<T>>;
+    readonly _topoKind: 'edge' | 'face' | 'wire' | 'vertex';
 }
+
+/** Callback that configures a shape finder for inline use in modifiers. */
+type FinderFn<T extends AnyShape> = (finder: ShapeFinder<T>) => ShapeFinder<T>;
+
+/**
+ * Marker interface for the shape() wrapper.
+ *
+ * Full definition lives in wrapperFns.ts — this minimal interface is enough
+ * for the `resolve()` utility and `Shapeable<T>` type to work without
+ * creating circular imports.
+ */
+interface WrappedMarker<T extends AnyShape> {
+    readonly val: T;
+    /** Brand property to distinguish wrappers from branded shape handles. */
+    readonly __wrapped: true;
+}
+
+/**
+ * Accept either a raw branded shape or a shape() wrapper.
+ *
+ * All functional API functions use this as their shape parameter type,
+ * enabling seamless interop between styles.
+ */
+type Shapeable<T extends AnyShape> = T | WrappedMarker<T>;
+
+/** Extract the raw branded shape from a Shapeable value. */
+declare function resolve<T extends AnyShape>(s: Shapeable<T>): T;
+
+/** Translate a shape by a vector. Returns a new shape. */
+declare function translate<T extends AnyShape>(shape: Shapeable<T>, v: Vec3): T;
+
+/** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
+declare function rotate<T extends AnyShape>(shape: Shapeable<T>, angle: number, options?: RotateOptions): T;
+
+/** Mirror a shape through a plane. Returns a new shape. */
+declare function mirror<T extends AnyShape>(shape: Shapeable<T>, options?: MirrorOptions): T;
+
+/** Scale a shape uniformly. Returns a new shape. */
+declare function scale<T extends AnyShape>(shape: Shapeable<T>, factor: number, options?: ScaleOptions): T;
+
+/** Clone a shape (deep copy). */
+declare function clone<T extends AnyShape>(shape: Shapeable<T>): T;
+
+/** Heal a shape using the appropriate fixer. */
+declare function heal<T extends AnyShape>(shape: Shapeable<T>): Result<T>;
+
+/** Simplify a shape by merging same-domain faces/edges. */
+declare function simplify<T extends AnyShape>(shape: Shapeable<T>): T;
+
+/** Create a typed shape wrapper from a Sketch-like object (converts to Face) or a Face. */
+declare function shape(sketchOrFace: {
+    face(): Face;
+} | Face): WrappedFace;
+/** Create a typed shape wrapper from a Solid. */
+declare function shape(solid: Solid): Wrapped3D<Solid>;
+/** Create a typed shape wrapper from a Shell. */
+declare function shape(shell: Shell): Wrapped3D<Shell>;
+/** Create a typed shape wrapper from an Edge. */
+declare function shape(edge: Edge): WrappedCurve<Edge>;
+/** Create a typed shape wrapper from a Wire. */
+declare function shape(wire: Wire): WrappedCurve<Wire>;
+/** Create a typed shape wrapper from any shape. */
+declare function shape<T extends AnyShape>(s: T): Wrapped<T>;
+
+/** Fuse two 3D shapes (boolean union). */
+declare function fuse<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>, options?: BooleanOptions): Result<T>;
+
+/** Cut a tool from a base shape (boolean subtraction). */
+declare function cut<T extends Shape3D>(base: Shapeable<T>, tool: Shapeable<Shape3D>, options?: BooleanOptions): Result<T>;
+
+/** Compute the intersection of two shapes (boolean common). */
+declare function intersect<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>, options?: BooleanOptions): Result<T>;
+
+/** Apply a fillet to all edges of a 3D shape. */
+declare function fillet<T extends Shape3D>(shape: Shapeable<T>, radius: FilletRadius): Result<T>;
+/** Apply a fillet to selected edges of a 3D shape. */
+declare function fillet<T extends Shape3D>(shape: Shapeable<T>, edges: Edge[] | FinderFn<Edge>, radius: FilletRadius): Result<T>;
+
+/** Apply a chamfer to all edges of a 3D shape. */
+declare function chamfer<T extends Shape3D>(shape: Shapeable<T>, distance: ChamferDistance): Result<T>;
+/** Apply a chamfer to selected edges of a 3D shape. */
+declare function chamfer<T extends Shape3D>(shape: Shapeable<T>, edges: Edge[] | FinderFn<Edge>, distance: ChamferDistance): Result<T>;
+
+/** Create a hollow shell by removing faces and offsetting remaining walls. */
+declare function shell<T extends Shape3D>(shape: Shapeable<T>, faces: Face[] | FinderFn<Face>, thickness: number, options?: {
+    tolerance?: number;
+}): Result<T>;
+
+/** Offset all faces of a shape by a given distance. */
+declare function offset<T extends Shape3D>(shape: Shapeable<T>, distance: number, options?: {
+    tolerance?: number;
+}): Result<T>;
+
+/**
+ * Drill a hole through a 3D shape.
+ *
+ * Creates a cylinder at the specified position and cuts it from the shape.
+ * If no depth is given, cuts all the way through (computed from bounding box).
+ */
+declare function drill<T extends Shape3D>(shape: Shapeable<T>, options: DrillOptions): Result<T>;
+
+/**
+ * Cut a pocket (2D profile extruded inward) into a shape.
+ *
+ * The profile (Drawing or Wire) is positioned on the target face and extruded
+ * inward by the specified depth, then subtracted from the shape.
+ */
+declare function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOptions): Result<T>;
+
+/**
+ * Add a boss (2D profile extruded outward) onto a shape.
+ *
+ * The profile (Drawing or Wire) is positioned on the target face and extruded
+ * outward by the specified height, then fused with the shape.
+ */
+declare function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOptions): Result<T>;
+
+/**
+ * Mirror a shape and fuse it with the original.
+ *
+ * Common pattern: model half a part, then mirror-join for symmetry.
+ */
+declare function mirrorJoin<T extends Shape3D>(shape: Shapeable<T>, options?: MirrorJoinOptions): Result<T>;
+
+/**
+ * Create a rectangular (2D grid) pattern of a shape.
+ *
+ * Replicates the shape along two directions with specified counts and spacings,
+ * then fuses all copies into a single shape.
+ */
+declare function rectangularPattern<T extends Shape3D>(shape: Shapeable<T>, options: RectangularPatternOptions): Result<T>;
 
 /** BufferGeometry data with per-face material groups. */
 interface GroupedBufferGeometryData extends BufferGeometryData {
-  /** Face groups for use with THREE.BufferGeometry.addGroup(). */
-  readonly groups: ReadonlyArray<BufferGeometryGroup>;
+    /** Face groups for use with THREE.BufferGeometry.addGroup(). */
+    readonly groups: ReadonlyArray<BufferGeometryGroup>;
 }
 
 /** Configuration for sweep operations in the OO API. */
 interface GenericSweepConfig extends SweepConfig {
-  /** Auxiliary spine for twist control (Wire or Edge in OO API) */
-  auxiliarySpine?: Wire | Edge;
+    /** Auxiliary spine for twist control (Wire or Edge in OO API) */
+    auxiliarySpine?: Wire | Edge;
 }
 
 /** Volume properties with a domain-specific `volume` alias. */
 interface VolumeProps extends PhysicalProps {
-  readonly volume: number;
+    readonly volume: number;
 }
 
 /** Surface properties with a domain-specific `area` alias. */
 interface SurfaceProps extends PhysicalProps {
-  readonly area: number;
+    readonly area: number;
 }
 
 /** Linear properties with a domain-specific `length` alias. */
 interface LinearProps extends PhysicalProps {
-  readonly length: number;
+    readonly length: number;
 }
 
 interface CornerFinderFn extends CornerFilter {
-  /** Add a custom predicate filter. Returns new finder. */
-  readonly when: (predicate: (corner: Corner) => boolean) => CornerFinderFn;
-  /** Filter to corners whose point matches one from the list. */
-  readonly inList: (points: Point2D[]) => CornerFinderFn;
-  /** Filter to corners at a specific distance from a point. */
-  readonly atDistance: (distance: number, point?: Point2D) => CornerFinderFn;
-  /** Filter to corners at an exact point. */
-  readonly atPoint: (point: Point2D) => CornerFinderFn;
-  /** Filter to corners within an axis-aligned bounding box. */
-  readonly inBox: (corner1: Point2D, corner2: Point2D) => CornerFinderFn;
-  /** Filter to corners with a specific interior angle (in degrees). */
-  readonly ofAngle: (angle: number) => CornerFinderFn;
-  /** Invert a filter. Returns new finder. */
-  readonly not: (fn: (f: CornerFinderFn) => CornerFinderFn) => CornerFinderFn;
-  /** Combine filters with OR. Returns new finder. */
-  readonly either: (fns: ((f: CornerFinderFn) => CornerFinderFn)[]) => CornerFinderFn;
-  /** Find matching corners from a blueprint. */
-  readonly find: (blueprint: BlueprintLike) => Corner[];
+    /** Add a custom predicate filter. Returns new finder. */
+    readonly when: (predicate: (corner: Corner) => boolean) => CornerFinderFn;
+    /** Filter to corners whose point matches one from the list. */
+    readonly inList: (points: Point2D[]) => CornerFinderFn;
+    /** Filter to corners at a specific distance from a point. */
+    readonly atDistance: (distance: number, point?: Point2D) => CornerFinderFn;
+    /** Filter to corners at an exact point. */
+    readonly atPoint: (point: Point2D) => CornerFinderFn;
+    /** Filter to corners within an axis-aligned bounding box. */
+    readonly inBox: (corner1: Point2D, corner2: Point2D) => CornerFinderFn;
+    /** Filter to corners with a specific interior angle (in degrees). */
+    readonly ofAngle: (angle: number) => CornerFinderFn;
+    /** Invert a filter. Returns new finder. */
+    readonly not: (fn: (f: CornerFinderFn) => CornerFinderFn) => CornerFinderFn;
+    /** Combine filters with OR. Returns new finder. */
+    readonly either: (fns: ((f: CornerFinderFn) => CornerFinderFn)[]) => CornerFinderFn;
+    /** Find matching corners from a blueprint. */
+    readonly find: (blueprint: BlueprintLike) => Corner[];
 }
 
 /** Request to initialize the worker (load the WASM/OpenCascade runtime). */
 interface InitRequest extends WorkerRequest {
-  readonly type: 'init';
-  /** Optional URL to the WASM binary; when omitted the worker uses its default. */
-  readonly wasmUrl?: string;
+    readonly type: 'init';
+    /** Optional URL to the WASM binary; when omitted the worker uses its default. */
+    readonly wasmUrl?: string;
 }
 
 /**
@@ -6334,67 +5933,153 @@ interface InitRequest extends WorkerRequest {
  * OpenCascade handles, because handles cannot cross the worker boundary.
  */
 interface OperationRequest extends WorkerRequest {
-  readonly type: 'operation';
-  /** Name of the registered operation to invoke. */
-  readonly operation: string;
-  /** BREP-serialized input shapes. */
-  readonly shapesBrep: ReadonlyArray<string>;
-  /** Arbitrary key/value parameters forwarded to the operation handler. */
-  readonly parameters: Readonly<Record<string, unknown>>;
+    readonly type: 'operation';
+    /** Name of the registered operation to invoke. */
+    readonly operation: string;
+    /** BREP-serialized input shapes. */
+    readonly shapesBrep: ReadonlyArray<string>;
+    /** Arbitrary key/value parameters forwarded to the operation handler. */
+    readonly parameters: Readonly<Record<string, unknown>>;
 }
 
 /** Request to dispose the worker, releasing all resources. */
 interface DisposeRequest extends WorkerRequest {
-  readonly type: 'dispose';
+    readonly type: 'dispose';
 }
 
 /** Response indicating that the requested operation completed successfully. */
 interface SuccessResponse extends WorkerResponse {
-  readonly success: true;
-  /** BREP-serialized result shape, when the operation produces geometry. */
-  readonly resultBrep?: string;
-  /** Arbitrary result data for non-geometric outputs (e.g., measurements). */
-  readonly resultData?: unknown;
+    readonly success: true;
+    /** BREP-serialized result shape, when the operation produces geometry. */
+    readonly resultBrep?: string;
+    /** Arbitrary result data for non-geometric outputs (e.g., measurements). */
+    readonly resultData?: unknown;
 }
 
 /** Response indicating that the requested operation failed. */
 interface ErrorResponse extends WorkerResponse {
-  readonly success: false;
-  /** Human-readable error message describing the failure. */
-  readonly error: string;
+    readonly success: false;
+    /** Human-readable error message describing the failure. */
+    readonly error: string;
 }
 
 interface EdgeFinderFn extends ShapeFinder<Edge> {
-  readonly inDirection: (dir?: 'X' | 'Y' | 'Z' | Vec3, angle?: number) => EdgeFinderFn;
-  readonly ofLength: (length: number, tolerance?: number) => EdgeFinderFn;
-  readonly ofCurveType: (curveType: CurveType) => EdgeFinderFn;
-  readonly parallelTo: (dir?: 'X' | 'Y' | 'Z' | Vec3) => EdgeFinderFn;
-  readonly atDistance: (distance: number, point?: Vec3) => EdgeFinderFn;
+    readonly inDirection: (dir?: 'X' | 'Y' | 'Z' | Vec3, angle?: number) => EdgeFinderFn;
+    readonly ofLength: (length: number, tolerance?: number) => EdgeFinderFn;
+    readonly ofCurveType: (curveType: CurveType) => EdgeFinderFn;
+    readonly parallelTo: (dir?: 'X' | 'Y' | 'Z' | Vec3) => EdgeFinderFn;
+    readonly atDistance: (distance: number, point?: Vec3) => EdgeFinderFn;
 }
 
 interface FaceFinderFn extends ShapeFinder<Face> {
-  readonly inDirection: (dir?: 'X' | 'Y' | 'Z' | Vec3, angle?: number) => FaceFinderFn;
-  readonly parallelTo: (dir?: 'X' | 'Y' | 'Z' | Vec3) => FaceFinderFn;
-  readonly ofSurfaceType: (surfaceType: SurfaceType) => FaceFinderFn;
-  readonly ofArea: (area: number, tolerance?: number) => FaceFinderFn;
-  readonly atDistance: (distance: number, point?: Vec3) => FaceFinderFn;
+    readonly inDirection: (dir?: 'X' | 'Y' | 'Z' | Vec3, angle?: number) => FaceFinderFn;
+    readonly parallelTo: (dir?: 'X' | 'Y' | 'Z' | Vec3) => FaceFinderFn;
+    readonly ofSurfaceType: (surfaceType: SurfaceType) => FaceFinderFn;
+    readonly ofArea: (area: number, tolerance?: number) => FaceFinderFn;
+    readonly atDistance: (distance: number, point?: Vec3) => FaceFinderFn;
 }
 
 interface WireFinderFn extends ShapeFinder<Wire> {
-  readonly isClosed: () => WireFinderFn;
-  readonly isOpen: () => WireFinderFn;
-  readonly ofEdgeCount: (count: number) => WireFinderFn;
+    readonly isClosed: () => WireFinderFn;
+    readonly isOpen: () => WireFinderFn;
+    readonly ofEdgeCount: (count: number) => WireFinderFn;
 }
 
 interface VertexFinderFn extends ShapeFinder<Vertex> {
-  /** Filter vertices nearest to a reference point. Returns a new finder that keeps only the closest vertex. */
-  readonly nearestTo: (point: Vec3) => VertexFinderFn;
-  /** Filter vertices at an exact position (within tolerance). */
-  readonly atPosition: (point: Vec3, tolerance?: number) => VertexFinderFn;
-  /** Filter vertices within an axis-aligned bounding box. */
-  readonly withinBox: (min: Vec3, max: Vec3) => VertexFinderFn;
-  /** Filter vertices at a given distance from a point. */
-  readonly atDistance: (distance: number, point?: Vec3, tolerance?: number) => VertexFinderFn;
+    /** Filter vertices nearest to a reference point. Returns a new finder that keeps only the closest vertex. */
+    readonly nearestTo: (point: Vec3) => VertexFinderFn;
+    /** Filter vertices at an exact position (within tolerance). */
+    readonly atPosition: (point: Vec3, tolerance?: number) => VertexFinderFn;
+    /** Filter vertices within an axis-aligned bounding box. */
+    readonly withinBox: (min: Vec3, max: Vec3) => VertexFinderFn;
+    /** Filter vertices at a given distance from a point. */
+    readonly atDistance: (distance: number, point?: Vec3, tolerance?: number) => VertexFinderFn;
+}
+
+/** Base wrapper — available on all shapes. */
+interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
+    readonly val: T;
+    readonly __wrapped: true;
+    translate(v: Vec3): Wrapped<T>;
+    rotate(angle: number, options?: {
+        around?: Vec3;
+        axis?: Vec3;
+    }): Wrapped<T>;
+    mirror(options?: {
+        normal?: Vec3;
+        origin?: Vec3;
+    }): Wrapped<T>;
+    scale(factor: number, options?: {
+        center?: Vec3;
+    }): Wrapped<T>;
+    moveX(distance: number): Wrapped<T>;
+    moveY(distance: number): Wrapped<T>;
+    moveZ(distance: number): Wrapped<T>;
+    rotateX(angle: number): Wrapped<T>;
+    rotateY(angle: number): Wrapped<T>;
+    rotateZ(angle: number): Wrapped<T>;
+    bounds(): Bounds3D;
+    describe(): ShapeDescription;
+    clone(): Wrapped<T>;
+    apply<U extends AnyShape>(fn: (shape: T) => U): Wrapped<U>;
+    applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Wrapped<U>;
+}
+
+/** 3D wrapper — booleans, modifiers, measurement, queries. */
+interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
+    fuse(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
+    cut(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
+    intersect(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
+    fillet(radius: FilletRadius): Wrapped3D<T>;
+    fillet(edges: Edge[] | FinderFn<Edge>, radius: FilletRadius): Wrapped3D<T>;
+    chamfer(distance: ChamferDistance): Wrapped3D<T>;
+    chamfer(edges: Edge[] | FinderFn<Edge>, distance: ChamferDistance): Wrapped3D<T>;
+    shell(faces: Face[] | FinderFn<Face>, thickness: number, options?: {
+        tolerance?: number;
+    }): Wrapped3D<T>;
+    offset(distance: number, options?: {
+        tolerance?: number;
+    }): Wrapped3D<T>;
+    drill(options: DrillOptions): Wrapped3D<T>;
+    pocket(options: PocketOptions): Wrapped3D<T>;
+    boss(options: BossOptions): Wrapped3D<T>;
+    mirrorJoin(options?: MirrorJoinOptions): Wrapped3D<T>;
+    rectangularPattern(options: RectangularPatternOptions): Wrapped3D<T>;
+    volume(): number;
+    area(): number;
+    edges(): Edge[];
+    faces(): Face[];
+    wires(): Wire[];
+    vertices(): Vertex[];
+    linearPattern(direction: Vec3, count: number, spacing: number): Wrapped3D<T>;
+    circularPattern(axis: Vec3, count: number, angle?: number): Wrapped3D<T>;
+}
+
+/** Curve wrapper — edge/wire introspection. */
+interface WrappedCurve<T extends Edge | Wire> extends Wrapped<T> {
+    length(): number;
+    startPoint(): Vec3;
+    endPoint(): Vec3;
+    pointAt(t?: number): Vec3;
+    tangentAt(t?: number): Vec3;
+    isClosed(): boolean;
+    sweep(spine: Shapeable<Wire>, options?: SweepConfig): Wrapped3D<Shape3D>;
+}
+
+/** Face wrapper — face introspection + 2D→3D transitions. */
+interface WrappedFace extends Wrapped<Face> {
+    area(): number;
+    normalAt(point?: Vec3): Vec3;
+    center(): Vec3;
+    surfaceType(): SurfaceType;
+    outerWire(): Wire;
+    innerWires(): Wire[];
+    extrude(height: number | Vec3): Wrapped3D<Solid>;
+    revolve(options?: {
+        axis?: Vec3;
+        around?: Vec3;
+        angle?: number;
+    }): Wrapped3D<Shape3D>;
 }
 
 // ── Aliases ──
@@ -6402,3 +6087,5 @@ interface VertexFinderFn extends ShapeFinder<Vertex> {
 type DirectionInput = Direction;
 declare const getHistoryShape: typeof getShape;
 type HistoryOperationRegistry = OperationRegistry;
+type CleanLoftConfig = LoftConfig;
+type CleanSweepConfig = SweepConfig;

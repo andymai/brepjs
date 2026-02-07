@@ -16,7 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const BREPJS_DIST = resolve(
   __dirname,
-  '../node_modules/brepjs/dist',
+  '../../node_modules/brepjs/dist',
 );
 const ENTRY = resolve(BREPJS_DIST, 'index.d.ts');
 const OUT = resolve(__dirname, '../src/types/brepjs-ambient.d.ts');
