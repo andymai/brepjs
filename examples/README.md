@@ -4,6 +4,8 @@ Complete workflow examples demonstrating brepjs capabilities, ordered from begin
 
 ## Running Examples
 
+All examples auto-initialize the WASM kernel via `_setup.ts` — just run them directly:
+
 ```bash
 # Install dependencies (from the repo root)
 npm install
@@ -13,6 +15,8 @@ npm run example examples/hello-world.ts
 npm run example examples/basic-primitives.ts
 npm run example examples/mechanical-part.ts
 ```
+
+Each example imports `'./_setup.js'` as its first import, which calls `opencascade()` and `initFromOC()` via top-level await. You don't need to write any initialization code yourself.
 
 ## Beginner
 
@@ -26,7 +30,7 @@ npm run example examples/mechanical-part.ts
 
 Create primitive shapes (box, cylinder, sphere) and combine them with boolean operations.
 
-**Concepts:** primitives, `fuseShapes`, `cutShape`, `intersectShapes`, `Result` handling with `isOk`
+**Concepts:** primitives, `fuseShape`, `cutShape`, `intersectShape`, `Result` handling with `isOk`
 
 ## Intermediate
 
@@ -104,9 +108,9 @@ The `examples/output/` directory is git-ignored. Run the examples to generate th
 All fallible operations return `Result<T, BrepError>`:
 
 ```typescript
-import { fuseShapes, isOk, unwrap } from 'brepjs';
+import { fuseShape, isOk, unwrap } from 'brepjs';
 
-const result = fuseShapes(shape1, shape2);
+const result = fuseShape(shape1, shape2);
 
 // Check before using
 if (isOk(result)) {
@@ -132,5 +136,5 @@ See [Memory Management](../docs/memory-management.md) for details.
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 24+
 - brepjs and brepjs-opencascade packages installed

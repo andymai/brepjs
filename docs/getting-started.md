@@ -1,5 +1,7 @@
 # Getting Started
 
+> **Want the fastest possible start?** See [Zero to Shape](./zero-to-shape.md) — create your first shape in 60 seconds with `brepjs/quick`.
+
 This guide walks you through creating your first 3D part with brepjs — from installation to exported STEP file.
 
 ## Prerequisites
@@ -199,7 +201,7 @@ const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 1
 
 // Project onto XY plane and extrude upward
 const sketch = drawingToSketchOnPlane(profile, 'XY');
-const solid = unwrap(sketchExtrude(sketch, { height: 20 }));
+const solid = sketchExtrude(sketch, 20);
 ```
 
 ## Edge refinement: fillets and chamfers
@@ -207,16 +209,18 @@ const solid = unwrap(sketchExtrude(sketch, { height: 20 }));
 Round or bevel edges on a solid:
 
 ```typescript
-import { filletShape, chamferShape, edgeFinder, unwrap } from 'brepjs';
+import { filletShape, chamferShape, edgeFinder, getEdges, unwrap } from 'brepjs';
 
 // Fillet all edges with 2mm radius
-const rounded = unwrap(filletShape(part, 2));
+const rounded = unwrap(filletShape(part, getEdges(part), 2));
 
 // Fillet only vertical edges
-const selective = unwrap(filletShape(part, 2, (e) => e.inDirection('Z')));
+const vertEdges = edgeFinder().inDirection('Z').findAll(part);
+const selective = unwrap(filletShape(part, vertEdges, 2));
 
-// Chamfer top edges
-const beveled = unwrap(chamferShape(part, 1, (e) => e.inDirection('Z')));
+// Chamfer vertical edges
+const chamferEdges = edgeFinder().inDirection('Z').findAll(part);
+const beveled = unwrap(chamferShape(part, chamferEdges, 1));
 ```
 
 ## Error handling patterns

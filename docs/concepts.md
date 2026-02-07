@@ -142,7 +142,7 @@ const hole = translateShape(makeCylinder(5, 25), [25, 15, -2]);
 const drilled = unwrap(cutShape(block, hole));
 
 // 3. Refine edges
-const filleted = unwrap(filletShape(drilled, 2));
+const filleted = unwrap(filletShape(drilled, getEdges(drilled), 2));
 
 // 4. Export
 const step = unwrap(exportSTEP(filleted));
@@ -158,7 +158,7 @@ const profile = drawRectangle(40, 20);
 
 // Project to 3D plane and extrude
 const sketch = drawingToSketchOnPlane(profile, 'XY');
-const part = unwrap(sketchExtrude(sketch, { height: 15 }));
+const part = sketchExtrude(sketch, 15);
 ```
 
 ### Query → Modify
@@ -167,10 +167,12 @@ Find specific features on a shape and modify them:
 
 ```typescript
 // Find vertical edges and fillet them
-const rounded = unwrap(filletShape(part, 3, (e) => e.inDirection('Z')));
+const vertEdges = edgeFinder().inDirection('Z').findAll(part);
+const rounded = unwrap(filletShape(part, vertEdges, 3));
 
 // Find the top face and shell the part (hollow it out)
-const shelled = unwrap(shellShape(part, 2, (f) => f.inDirection('Z')));
+const topFaces = faceFinder().inDirection('Z').findAll(part);
+const shelled = unwrap(shellShape(part, topFaces, 2));
 ```
 
 ## Key differences from mesh libraries

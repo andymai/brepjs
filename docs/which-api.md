@@ -2,6 +2,8 @@
 
 brepjs offers several API styles. This guide helps you choose the right one for your use case.
 
+> **Recommended starting point:** The **functional API** (`makeBox`, `fuseShape`, `filletShape`) covers the vast majority of use cases and is the simplest to learn. Start there unless you have a specific reason to use the Sketcher or Drawing API.
+
 ## Quick decision
 
 | If you want to...                 | Use                                              |
@@ -41,12 +43,21 @@ const roundedBox = sketchRoundedRectangle(30, 20, 3).extrude(10);
 Best for: **composing operations**, parametric design, and pipeline-style code.
 
 ```typescript
-import { makeBox, makeCylinder, cutShape, filletShape, translateShape, unwrap } from 'brepjs';
+import {
+  makeBox,
+  makeCylinder,
+  cutShape,
+  filletShape,
+  edgeFinder,
+  translateShape,
+  unwrap,
+} from 'brepjs';
 
 const box = makeBox([0, 0, 0], [30, 20, 10]);
 const hole = translateShape(makeCylinder(5, 15), [15, 10, -2]);
 const drilled = unwrap(cutShape(box, hole));
-const filleted = unwrap(filletShape(drilled, 2, (e) => e.inDirection('Z')));
+const vertEdges = edgeFinder().inDirection('Z').findAll(drilled);
+const filleted = unwrap(filletShape(drilled, vertEdges, 2));
 ```
 
 **When to use:** You're modifying shapes (booleans, transforms, fillets, shells), building parametric parts with functions, or chaining operations.
@@ -87,7 +98,7 @@ const rounded = drawingFillet(profile, 3);
 
 // Extrude to 3D
 const sketch = drawingToSketchOnPlane(rounded, 'XY');
-const part = unwrap(sketchExtrude(sketch, { height: 10 }));
+const part = sketchExtrude(sketch, 10);
 ```
 
 **When to use:** Your shape starts as a 2D outline that gets extruded, revolved, or swept into 3D.

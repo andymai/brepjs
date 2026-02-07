@@ -4,13 +4,14 @@
  * Demonstrates creating primitive shapes and performing boolean operations.
  */
 
+import './_setup.js';
 import {
   makeBox,
   makeCylinder,
   makeSphere,
-  fuseShapes,
+  fuseShape,
   cutShape,
-  intersectShapes,
+  intersectShape,
   measureVolume,
   exportSTEP,
   unwrap,
@@ -31,7 +32,7 @@ async function main() {
   // Boolean operations
 
   // 1. Fuse: Combine two shapes
-  const fusedResult = fuseShapes(box, cylinder);
+  const fusedResult = fuseShape(box, cylinder);
   if (isOk(fusedResult)) {
     console.log(`\nFused (box + cylinder): ${measureVolume(fusedResult.value).toFixed(1)} mm³`);
   }
@@ -43,7 +44,7 @@ async function main() {
   }
 
   // 3. Intersect: Common volume of two shapes
-  const intersectResult = intersectShapes(box, sphere);
+  const intersectResult = intersectShape(box, sphere);
   if (isOk(intersectResult)) {
     console.log(
       `Intersect (box ∩ sphere): ${measureVolume(intersectResult.value).toFixed(1)} mm³`
