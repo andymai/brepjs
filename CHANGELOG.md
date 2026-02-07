@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.5](https://github.com/andymai/brepjs/compare/brepjs-v4.18.4...brepjs-v4.18.5) (2026-02-07)
+
+
+### Bug Fixes
+
+* unify finder API with immutable cornerFinder() factory ([#139](https://github.com/andymai/brepjs/issues/139)) ([07fdb8a](https://github.com/andymai/brepjs/commit/07fdb8a77b88700bde03dca7f832332c9c3e870c))
+
 ## [4.18.4](https://github.com/andymai/brepjs/compare/brepjs-v4.18.3...brepjs-v4.18.4) (2026-02-07)
 
 
