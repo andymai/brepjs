@@ -69,6 +69,7 @@ npm run example examples/hello-world.ts
 
 - **[Getting Started](./docs/getting-started.md)** — Step-by-step tutorial from install to first part
 - **[B-Rep Concepts](./docs/concepts.md)** — Vertices, edges, faces, solids explained for JS developers
+- **[Which API?](./docs/which-api.md)** — Sketcher vs functional API vs Drawing — when to use each
 - **[Architecture](./docs/architecture.md)** — Layer diagram and module overview
 - **[Memory Management](./docs/memory-management.md)** — Resource cleanup patterns
 - **[Error Reference](./docs/errors.md)** — Error codes and recovery
@@ -90,11 +91,19 @@ See [docs/architecture.md](./docs/architecture.md) for the full diagram.
 
 ## API Style
 
-brepjs uses an immutable functional API:
+brepjs uses an immutable functional API with [sub-path imports](./docs/which-api.md#sub-path-imports) for focused autocomplete:
 
 ```typescript
-const box = makeBox([0, 0, 0], [10, 10, 10]);
-const moved = translateShape(box, [5, 0, 0]); // Returns new Solid
+import { makeBox, fuseShapes, filletShape } from 'brepjs/topology';
+import { importSTEP, exportSTEP } from 'brepjs/io';
+import { measureVolume } from 'brepjs/measurement';
+```
+
+Or import everything from the main entry:
+
+```typescript
+import { makeBox, translateShape } from 'brepjs';
+const moved = translateShape(makeBox([0, 0, 0], [10, 10, 10]), [5, 0, 0]);
 ```
 
 ## Projects Using brepjs
