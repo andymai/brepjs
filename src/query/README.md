@@ -78,7 +78,7 @@ finder
 ## Gotchas
 
 1. **Immutable finders** — Each filter call returns a new finder instance; chain calls or save intermediate results
-2. **Unique mode errors** — `find(shape, {unique: true})` returns `Result<T>` and errors if 0 or >1 match found
+2. **Unique mode errors** — `findUnique(shape)` returns `Result<T>` and errors if 0 or >1 match found
 3. **CornerFinder operates on 2D** — Works on `BlueprintLike` objects (2D sketches), not 3D shapes
 4. **Direction shortcuts** — Accepts `'X' | 'Y' | 'Z'` strings or `Vec3` tuples like `[1, 0, 0]`
 5. **Query module registration** — Must call `registerQueryModule()` or import `query/index.js` before using topology `fillet()`, `chamfer()`, or `shell()` methods

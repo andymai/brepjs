@@ -22,7 +22,7 @@ export function getSingleFace(f: SingleFace, shape: AnyShape): Result<Face> {
 
   // Handle functional finder instance (has _topoKind property)
   if (typeof f === 'object' && '_topoKind' in f) {
-    return f.find(shape, { unique: true });
+    return f.findUnique(shape);
   }
 
   // Use isFace type guard for proper type discrimination of Face values

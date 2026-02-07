@@ -25,7 +25,7 @@ function fnCylinder(r = 5, h = 20) {
 
 describe('wireFinder', () => {
   it('finds all wires of a box', () => {
-    const wires = wireFinder().find(fnBox());
+    const wires = wireFinder().findAll(fnBox());
     // A box has 6 faces, each with 1 outer wire = 6 wires
     expect(wires.length).toBe(6);
     expect(isWire(wires[0]!)).toBe(true);
@@ -33,32 +33,32 @@ describe('wireFinder', () => {
 
   it('filters closed wires', () => {
     const box = fnBox();
-    const closed = wireFinder().isClosed().find(box);
+    const closed = wireFinder().isClosed().findAll(box);
     // All box wires are closed
     expect(closed.length).toBe(6);
   });
 
   it('filters open wires (box has none)', () => {
     const box = fnBox();
-    const open = wireFinder().isOpen().find(box);
+    const open = wireFinder().isOpen().findAll(box);
     expect(open.length).toBe(0);
   });
 
   it('filters by edge count (box wires have 4 edges each)', () => {
     const box = fnBox();
-    const fourEdge = wireFinder().ofEdgeCount(4).find(box);
+    const fourEdge = wireFinder().ofEdgeCount(4).findAll(box);
     expect(fourEdge.length).toBe(6);
   });
 
   it('ofEdgeCount returns empty for no match', () => {
     const box = fnBox();
-    const threeEdge = wireFinder().ofEdgeCount(3).find(box);
+    const threeEdge = wireFinder().ofEdgeCount(3).findAll(box);
     expect(threeEdge.length).toBe(0);
   });
 
   it('finds wires on a cylinder', () => {
     const cyl = fnCylinder();
-    const wires = wireFinder().find(cyl);
+    const wires = wireFinder().findAll(cyl);
     // Cylinder: 1 top circle + 1 bottom circle + 1 side seam = 3 wires
     expect(wires.length).toBeGreaterThanOrEqual(2);
   });
@@ -67,7 +67,7 @@ describe('wireFinder', () => {
     const box = fnBox();
     const wires = wireFinder()
       .when(() => true)
-      .find(box);
+      .findAll(box);
     expect(wires.length).toBe(6);
   });
 
@@ -76,25 +76,25 @@ describe('wireFinder', () => {
     // not(accept all) = nothing
     const notAll = wireFinder()
       .not((f) => f.when(() => true))
-      .find(box);
+      .findAll(box);
     expect(notAll.length).toBe(0);
   });
 
   it('supports chaining multiple filters', () => {
     const box = fnBox();
-    const result = wireFinder().isClosed().ofEdgeCount(4).find(box);
+    const result = wireFinder().isClosed().ofEdgeCount(4).findAll(box);
     expect(result.length).toBe(6);
   });
 
   it('find with unique returns Ok when exactly one match', () => {
     const box = fnBox(10, 20, 30);
     const allWires = getWires(box);
-    const result = wireFinder().inList([allWires[0]!]).find(box, { unique: true });
+    const result = wireFinder().inList([allWires[0]!]).findUnique(box);
     expect(isOk(result)).toBe(true);
   });
 
   it('find with unique returns Err when multiple matches', () => {
-    const result = wireFinder().find(fnBox(), { unique: true });
+    const result = wireFinder().findUnique(fnBox());
     expect(isErr(result)).toBe(true);
   });
 });

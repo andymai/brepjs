@@ -52,13 +52,13 @@ describe('getVertices / iterVertices', () => {
 
 describe('vertexFinder', () => {
   it('finds all 8 vertices of a box', () => {
-    const vertices = vertexFinder().find(fnBox());
+    const vertices = vertexFinder().findAll(fnBox());
     expect(vertices.length).toBe(8);
     expect(isVertex(vertices[0]!)).toBe(true);
   });
 
   it('atPosition finds origin vertex', () => {
-    const vertices = vertexFinder().atPosition([0, 0, 0]).find(fnBox());
+    const vertices = vertexFinder().atPosition([0, 0, 0]).findAll(fnBox());
     expect(vertices.length).toBe(1);
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(0);
@@ -69,7 +69,7 @@ describe('vertexFinder', () => {
   it('atPosition finds corner vertex', () => {
     const vertices = vertexFinder()
       .atPosition([10, 20, 30])
-      .find(fnBox(10, 20, 30));
+      .findAll(fnBox(10, 20, 30));
     expect(vertices.length).toBe(1);
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(10);
@@ -78,14 +78,14 @@ describe('vertexFinder', () => {
   });
 
   it('atPosition returns empty for non-existent position', () => {
-    const vertices = vertexFinder().atPosition([5, 5, 5]).find(fnBox());
+    const vertices = vertexFinder().atPosition([5, 5, 5]).findAll(fnBox());
     expect(vertices.length).toBe(0);
   });
 
   it('withinBox filters vertices in a sub-region', () => {
     const vertices = vertexFinder()
       .withinBox([-1, -1, -1], [1, 1, 1])
-      .find(fnBox(10, 10, 10));
+      .findAll(fnBox(10, 10, 10));
     // Only the origin vertex (0,0,0) is within the box [-1,-1,-1] to [1,1,1]
     expect(vertices.length).toBe(1);
     const pos = vertexPosition(vertices[0]!);
@@ -95,13 +95,13 @@ describe('vertexFinder', () => {
   });
 
   it('withinBox finds all vertices when box covers entire shape', () => {
-    const vertices = vertexFinder().withinBox([-1, -1, -1], [11, 11, 11]).find(fnBox());
+    const vertices = vertexFinder().withinBox([-1, -1, -1], [11, 11, 11]).findAll(fnBox());
     expect(vertices.length).toBe(8);
   });
 
   it('nearestTo finds closest vertex', () => {
     const box = fnBox(10, 10, 10);
-    const vertices = vertexFinder().nearestTo([11, 11, 11]).find(box);
+    const vertices = vertexFinder().nearestTo([11, 11, 11]).findAll(box);
     expect(vertices.length).toBe(1);
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(10);
@@ -111,7 +111,7 @@ describe('vertexFinder', () => {
 
   it('nearestTo with unique returns Result', () => {
     const box = fnBox(10, 10, 10);
-    const result = vertexFinder().nearestTo([0, 0, 0]).find(box, { unique: true });
+    const result = vertexFinder().nearestTo([0, 0, 0]).findUnique(box);
     expect(isOk(result)).toBe(true);
     const pos = vertexPosition(unwrap(result));
     expect(pos[0]).toBeCloseTo(0);
@@ -122,7 +122,7 @@ describe('vertexFinder', () => {
   it('atDistance finds vertices at a given distance from origin', () => {
     const box = fnBox(10, 10, 10);
     // Distance from origin to (10,0,0) = 10
-    const dist10 = vertexFinder().atDistance(10, [0, 0, 0], 0.01).find(box);
+    const dist10 = vertexFinder().atDistance(10, [0, 0, 0], 0.01).findAll(box);
     // Vertices at distance 10 from origin: (10,0,0), (0,10,0), (0,0,10)
     expect(dist10.length).toBe(3);
   });
@@ -130,7 +130,7 @@ describe('vertexFinder', () => {
   it('atDistance from a non-origin point', () => {
     const box = fnBox(10, 10, 10);
     // Distance from (10,10,10) to (0,10,10) = 10
-    const verts = vertexFinder().atDistance(10, [10, 10, 10], 0.01).find(box);
+    const verts = vertexFinder().atDistance(10, [10, 10, 10], 0.01).findAll(box);
     // 3 vertices are at distance 10 from (10,10,10): (0,10,10), (10,0,10), (10,10,0)
     expect(verts.length).toBe(3);
   });
@@ -138,7 +138,7 @@ describe('vertexFinder', () => {
   it('supports when() custom predicate', () => {
     const vertices = vertexFinder()
       .when((v) => vertexPosition(v)[0] > 5)
-      .find(fnBox());
+      .findAll(fnBox());
     // 4 vertices have x=10
     expect(vertices.length).toBe(4);
   });
@@ -146,7 +146,7 @@ describe('vertexFinder', () => {
   it('supports not() for negation', () => {
     const vertices = vertexFinder()
       .not((f) => f.when((v) => vecDistance(vertexPosition(v), [0, 0, 0]) < 0.01))
-      .find(fnBox());
+      .findAll(fnBox());
     // 8 total minus 1 at origin = 7
     expect(vertices.length).toBe(7);
   });
@@ -157,7 +157,7 @@ describe('vertexFinder', () => {
         (f) => f.when((v) => vecDistance(vertexPosition(v), [0, 0, 0]) < 0.01),
         (f) => f.when((v) => vecDistance(vertexPosition(v), [10, 10, 10]) < 0.01),
       ])
-      .find(fnBox());
+      .findAll(fnBox());
     expect(vertices.length).toBe(2);
   });
 
@@ -165,7 +165,7 @@ describe('vertexFinder', () => {
     const box = fnBox();
     const allVerts = getVertices(box);
     const subset = [allVerts[0]!, allVerts[1]!];
-    const found = vertexFinder().inList(subset).find(box);
+    const found = vertexFinder().inList(subset).findAll(box);
     expect(found.length).toBe(2);
   });
 
@@ -177,12 +177,12 @@ describe('vertexFinder', () => {
   });
 
   it('unique returns error for multiple matches', () => {
-    const result = vertexFinder().find(fnBox(), { unique: true });
+    const result = vertexFinder().findUnique(fnBox());
     expect(isErr(result)).toBe(true);
   });
 
   it('unique returns error for zero matches', () => {
-    const result = vertexFinder().atPosition([999, 999, 999]).find(fnBox(), { unique: true });
+    const result = vertexFinder().atPosition([999, 999, 999]).findUnique(fnBox());
     expect(isErr(result)).toBe(true);
   });
 
@@ -191,7 +191,7 @@ describe('vertexFinder', () => {
     const verts = vertexFinder()
       .withinBox([-1, -1, -1], [1, 21, 31])
       .when((v) => vertexPosition(v)[2] > 15)
-      .find(box);
+      .findAll(box);
     // Within box: x in [-1,1] → x=0 only. z > 15 → z=30.
     // Matching vertices: (0,0,30) and (0,20,30)
     expect(verts.length).toBe(2);
