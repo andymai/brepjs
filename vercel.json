@@ -1,6 +1,6 @@
 {
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build -w site",
+  "buildCommand": "cd site && npm run build",
   "outputDirectory": "site/dist",
   "headers": [
     {
