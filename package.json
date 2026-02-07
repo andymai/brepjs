@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "4.29.1",
+  "version": "4.29.2",
   "description": "Web CAD library built on OpenCascade",
   "keywords": [
     "cad",

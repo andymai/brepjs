@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.29.2](https://github.com/andymai/brepjs/compare/brepjs-v4.29.1...brepjs-v4.29.2) (2026-02-07)
+
+
+### Bug Fixes
+
+* **site:** pin brepjs &gt;=4.29.0 for v5 API ([1291971](https://github.com/andymai/brepjs/commit/12919710b2065c02c0b6163e4d7d863a0d930139))
+
 ## [4.29.1](https://github.com/andymai/brepjs/compare/brepjs-v4.29.0...brepjs-v4.29.1) (2026-02-07)
 
 
