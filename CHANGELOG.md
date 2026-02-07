@@ -1,5 +1,14 @@
 # Changelog
 
+## [4.19.0](https://github.com/andymai/brepjs/compare/brepjs-v4.18.5...brepjs-v4.19.0) (2026-02-07)
+
+
+### Features
+
+* add sub-path imports and Which API guide (Discoverability 7→10) ([#143](https://github.com/andymai/brepjs/issues/143)) ([02e2d14](https://github.com/andymai/brepjs/commit/02e2d14c3c5873cf4e6f9d24820ad26f10277d0f))
+* split find() into findAll() and findUnique() (Type Safety 8→10) ([#147](https://github.com/andymai/brepjs/issues/147)) ([ae0dd9f](https://github.com/andymai/brepjs/commit/ae0dd9f91ae3b129b9b1602fb06ef944108ca4fc))
+* symmetric boolean naming and remove deprecated barrel exports (Naming 9→10) ([#148](https://github.com/andymai/brepjs/issues/148)) ([63444be](https://github.com/andymai/brepjs/commit/63444be0366c96baf7456aff297596749139c901))
+
 ## [4.18.5](https://github.com/andymai/brepjs/compare/brepjs-v4.18.4...brepjs-v4.18.5) (2026-02-07)
 
 
