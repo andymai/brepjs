@@ -53,12 +53,8 @@ const positiveHalfAngle = (angle: number) => {
  * A corner is the junction between two consecutive curves.
  * Filters are combined with AND logic by default.
  *
- * @example
- * ```ts
- * const rightAngles = new CornerFinder()
- *   .ofAngle(90)
- *   .find(blueprint);
- * ```
+ * @deprecated Use the immutable {@link cornerFinder} factory from `finderFns` instead.
+ *   `cornerFinder().ofAngle(90).find(blueprint)`
  *
  * @category Finders
  */

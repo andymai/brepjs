@@ -206,6 +206,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'compoundSketchLoft',
   'compoundSketchRevolve',
   'computationError',
+  'cornerFinder',
   'countNodes',
   'createAssembly',
   'createAssemblyNode',

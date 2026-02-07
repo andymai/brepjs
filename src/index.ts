@@ -650,10 +650,13 @@ export {
   faceFinder,
   wireFinder,
   vertexFinder,
+  cornerFinder,
   type EdgeFinderFn,
   type FaceFinderFn,
   type WireFinderFn,
   type VertexFinderFn,
+  type CornerFinderFn,
+  type CornerFilter,
   type ShapeFinder,
 } from './query/finderFns.js';
 

@@ -136,7 +136,7 @@ Drawing instance methods:
 - `mirror(dirOrCenter, origin?, mode?)` — Mirror. `mode`: `'center'` (default) or `'plane'`
 - `stretch(ratio, direction, origin)` — Non-uniform scaling along a direction
 - `cut(other)`, `fuse(other)`, `intersect(other)` — 2D boolean operations (return new Drawing)
-- `fillet(radius, filter?)`, `chamfer(radius, filter?)` — Corner treatments. `filter`: `(c: CornerFinder) => CornerFinder`
+- `fillet(radius, filter?)`, `chamfer(radius, filter?)` — Corner treatments. `filter`: `(c: CornerFinderFn) => CornerFinderFn`
 - `offset(distance, config?)` — Offset all curves by distance
 - `approximate('svg', options?)` — Approximate curves for SVG compatibility
 - `sketchOnPlane(plane?, origin?)` — Convert to 3D Sketch/Sketches. Returns `SketchInterface | Sketches`
@@ -513,18 +513,23 @@ edgeFinder().when(edge => customPredicate(edge)).find(shape);
 edgeFinder().inList(knownEdges).find(shape);
 ```
 
-### CornerFinder (2D)
+### cornerFinder (2D)
 
 ```typescript
-import { CornerFinder } from 'brepjs';
+import { cornerFinder } from 'brepjs';
 
-const finder = new CornerFinder();
-finder.inList(points);                 // Filter to specific points
-finder.atDistance(dist, point?);        // By distance from point
-finder.atPoint(point);                 // At exact point
-finder.inBox(corner1, corner2);        // Within bounding box
-finder.ofAngle(angle);                 // By corner angle
+// Immutable builder pattern — each method returns a new finder
+cornerFinder().inList(points).find(blueprint);
+cornerFinder().atDistance(dist, point?).find(blueprint);
+cornerFinder().atPoint(point).find(blueprint);
+cornerFinder().inBox(corner1, corner2).find(blueprint);
+cornerFinder().ofAngle(angle).find(blueprint);
+cornerFinder().not(f => f.atPoint([0, 0])).find(blueprint);
+cornerFinder().either([f => f.atPoint([0, 0]), f => f.atPoint([1, 1])]).find(blueprint);
+cornerFinder().when(corner => customPredicate(corner)).find(blueprint);
 ```
+
+> **Note:** `CornerFinder` class is deprecated. Use the `cornerFinder()` factory instead.
 
 ## Curve Operations
 

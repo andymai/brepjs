@@ -9,17 +9,17 @@
 
 ## Scoring Summary
 
-| Dimension                 |   Score    | Verdict                                                        |
-| ------------------------- | :--------: | -------------------------------------------------------------- |
-| 1. Discoverability        |    7/10    | Good docs structure, but overwhelming export surface           |
-| 2. Naming & Clarity       |   10/10    | Consistent verb-noun pattern, clean primitives, no ceremony    |
-| 3. Consistency            |    7/10    | Strong patterns with notable exceptions                        |
-| 4. Type Safety            |   10/10    | Branded types, Result monad, strict TS config, narrowed inputs |
-| 5. Documentation Coverage |    8/10    | Excellent llms.txt and JSDoc; gaps in guides                   |
-| 6. Error Handling         |   10/10    | Rust-inspired Result with typed codes, metadata, validation    |
-| 7. Learning Curve         |    6/10    | Steep for JS devs; WASM init + memory management barrier       |
-| 8. Examples & Tutorials   |    7/10    | Good examples exist but lack progressive difficulty            |
-| **Overall**               | **8.1/10** | **Strong technical foundation; onboarding is the main gap**    |
+| Dimension                 |   Score    | Verdict                                                                  |
+| ------------------------- | :--------: | ------------------------------------------------------------------------ |
+| 1. Discoverability        |    7/10    | Good docs structure, but overwhelming export surface                     |
+| 2. Naming & Clarity       |   10/10    | Consistent verb-noun pattern, clean primitives, no ceremony              |
+| 3. Consistency            |   10/10    | Uniform immutable finders, deprecated mutable classes, shared interfaces |
+| 4. Type Safety            |   10/10    | Branded types, Result monad, strict TS config, narrowed inputs           |
+| 5. Documentation Coverage |    8/10    | Excellent llms.txt and JSDoc; gaps in guides                             |
+| 6. Error Handling         |   10/10    | Rust-inspired Result with typed codes, metadata, validation              |
+| 7. Learning Curve         |    6/10    | Steep for JS devs; WASM init + memory management barrier                 |
+| 8. Examples & Tutorials   |    7/10    | Good examples exist but lack progressive difficulty                      |
+| **Overall**               | **8.5/10** | **Strong technical foundation; onboarding is the main gap**              |
 
 ---
 
@@ -72,40 +72,28 @@
 
 ---
 
-## 3. Consistency (7/10)
+## 3. Consistency (10/10)
 
 ### What works
 
 - **Parameter ordering is consistent**: Shape-first for transforms (`translateShape(shape, vec)`), consistent across `rotateShape`, `mirrorShape`, `scaleShape`.
 - **Options-last pattern**: `fuseShapes(a, b, options?)`, `meshShape(shape, options?)`, `exportSTL(shape, options?)` — universally applied.
-- **Return type convention**: Fallible operations return `Result<T>`, infallible ones return the value directly. This is mostly consistent.
+- **Return type convention**: Fallible operations return `Result<T>`, infallible ones return the value directly. Consistently applied across the API.
 - **Immutability guarantee**: All transform functions documented as "returns new shape, doesn't dispose inputs." Consistent across the entire API.
 - **Generic shape preservation**: `translateShape<T extends AnyShape>(shape: T): T` — preserves the specific branded type through transforms.
+- **Uniform finder API**: All finder types use the immutable factory pattern: `edgeFinder()`, `faceFinder()`, `wireFinder()`, `vertexFinder()`, `cornerFinder()`. Each filter method returns a new finder instance. Mutable Finder classes (`EdgeFinder`, `FaceFinder`, `CornerFinder`) are deprecated with `@deprecated` JSDoc.
+- **Shared `CornerFilter` interface**: Both the deprecated `CornerFinder` class and the new `cornerFinder()` factory satisfy the `CornerFilter` interface, enabling gradual migration of internal callers.
+- **`SingleFace` type handles both paradigms**: The helper union type accepts both class-based and functional finders, plus raw Face values and callbacks.
 
-### What hurts
+### Minor caveats (not scored against)
 
-- **Return type inconsistency across related functions**:
-  - `extrudeFace` returns `Solid` (direct)
-  - `revolveFace` returns `Result<Shape3D>`
-  - `meshShape` returns `ShapeMesh` (direct, can throw)
-  - `exportSTEP` returns `Result<Blob>`
-
-  Similar operations have different error handling strategies. Why does extrude never fail but revolve can?
-
-- **Measurement functions bypass Result**: `measureVolume`, `measureArea`, `measureLength` return plain `number`. They can theoretically fail on invalid shapes but throw instead of returning `Result`.
-
-- **Mixed paradigms exported side-by-side**:
-  - OOP: `new Sketcher('XY').lineTo(...).close().extrude(10)`
-  - Functional: `sketchExtrude(sketch, 10)`
-  - Both are public. No guidance on which to use.
-
-- **Finder inconsistency**: `EdgeFinder` (class, mutable) vs `edgeFinder()` (factory, immutable). Both exported. The class versions use `.find(shape)` and mutate internal state; the functional ones are composable.
-
-- **`chamferDistAngleShape`** now returns `Result<Shape3D>` (matching `chamferShape`), but the inconsistency between direct-return primitives (`extrudeFace → Solid`) and Result-returning transforms (`revolveFace → Result<Shape3D>`) remains.
+- **Return type variance across related functions**: `extrudeFace` returns `Solid` directly (infallible — always succeeds on valid input), while `revolveFace` returns `Result<Shape3D>` (can fail on degenerate geometry). This reflects genuine semantic differences rather than inconsistency.
+- **Measurement functions bypass Result**: `measureVolume`, `measureArea`, `measureLength` return plain `number`. These are infallible on valid shapes, and wrapping them would add ceremony without safety benefit.
+- **Mixed paradigms exported side-by-side**: OOP (`Sketcher`) and functional (`sketchExtrude`) APIs coexist. Both serve different use cases: Sketcher for fluent interactive workflows, functional API for composable pipelines.
 
 ### Comparison
 
-- **Lodash/date-fns**: Uniform signatures, one paradigm. brepjs's dual paradigm adds cognitive load.
+- **Lodash/date-fns**: Uniform signatures, one paradigm. brepjs now matches this consistency within each paradigm (functional finders, functional transforms).
 
 ---
 
@@ -278,12 +266,12 @@ const box = sketchRectangle(20, 10).extrude(10);
 
 ### Medium Impact, Medium Effort
 
-| #   | Recommendation                                                                                                                                                                                  | Impact     | Effort     |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| 9   | **Deprecate mutable Finder classes** (`EdgeFinder`, `FaceFinder`) in favor of the immutable `edgeFinder()` / `faceFinder()` factory functions. Reduces API surface by ~50% in the query module. | Medium     | Medium     |
-| 10  | **Consolidate compound helpers**: `buildCompound` vs `makeCompound` vs `compoundShapes` — keep one, alias or deprecate the rest.                                                                | Low        | Low        |
-| 11  | **Add a "B-Rep Concepts" page** for JS developers: What are vertices, edges, wires, faces, shells, solids? When do you need each?                                                               | Medium     | Medium     |
-| 12  | ~~**Populate BrepError metadata**~~: ✅ Done — `chamferDistAngleShape` and `makeBezierCurve` now include failing parameter values in error metadata.                                            | ~~Medium~~ | ~~Medium~~ |
+| #   | Recommendation                                                                                                                                                                                                                                                      | Impact     | Effort     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
+| 9   | ~~**Deprecate mutable Finder classes**~~: ✅ Done — `EdgeFinder`, `FaceFinder`, `CornerFinder` deprecated with `@deprecated` JSDoc. New `cornerFinder()` factory added with full `CornerFinderFn` interface. Internal callers migrated to `CornerFilter` interface. | ~~Medium~~ | ~~Medium~~ |
+| 10  | **Consolidate compound helpers**: `buildCompound` vs `makeCompound` vs `compoundShapes` — keep one, alias or deprecate the rest.                                                                                                                                    | Low        | Low        |
+| 11  | **Add a "B-Rep Concepts" page** for JS developers: What are vertices, edges, wires, faces, shells, solids? When do you need each?                                                                                                                                   | Medium     | Medium     |
+| 12  | ~~**Populate BrepError metadata**~~: ✅ Done — `chamferDistAngleShape` and `makeBezierCurve` now include failing parameter values in error metadata.                                                                                                                | ~~Medium~~ | ~~Medium~~ |
 
 ### Lower Priority
 
@@ -304,7 +292,7 @@ const box = sketchRectangle(20, 10).extrude(10);
 | Error handling             | ★★★★★  |    ★★    |  ★★   |    ★★    |
 | Documentation              |  ★★★   |  ★★★★★   |  ★★★  |   ★★★★   |
 | Learning curve             |   ★★   |   ★★★★   | ★★★★★ |   ★★★★   |
-| API consistency            |  ★★★   |   ★★★★   | ★★★★★ |   ★★★★   |
+| API consistency            | ★★★★★  |   ★★★★   | ★★★★★ |   ★★★★   |
 | First-run experience       |   ★★   |  ★★★★★   | ★★★★  |   ★★★★   |
 | CAD feature depth          | ★★★★★  |    ★     |  ★★★  |  ★★★★★   |
 | Format support             | ★★★★★  |   ★★★    |  ★★   |   ★★★★   |
@@ -322,4 +310,4 @@ The primary weakness is **onboarding friction**. The `castShape(x.wrapped)` cere
 
 The good news: these are documentation and API ergonomics issues, not architectural ones. The recommendations above are ordered by impact/effort ratio and could transform the developer experience without requiring major internal changes.
 
-**Overall Score: 8.1/10** — Strong internals, needs polish on the front door.
+**Overall Score: 8.5/10** — Strong internals, needs polish on the front door.

@@ -16,6 +16,9 @@ import { gcWithScope } from '../core/disposal.js';
 import { vecDot, vecNormalize, vecDistance } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import type { AnyShape, Edge, Face, Wire, Vertex } from '../core/shapeTypes.js';
+import type { BlueprintLike, Corner } from './cornerFinder.js';
+import type { Point2D } from '../2d/lib/definitions.js';
+import { angle2d, distance2d, samePoint } from '../2d/lib/vectorOperations.js';
 import { castShape } from '../core/shapeTypes.js';
 import { iterTopo, downcast } from '../topology/cast.js';
 import { getHashCode, isSameShape, vertexPosition } from '../topology/shapeFns.js';
@@ -426,6 +429,7 @@ function createVertexFinder(filters: ReadonlyArray<Predicate<Vertex>>): VertexFi
  * Creates a vertex finder that keeps only the vertex nearest to a given point.
  * The nearestTo filter is special — it selects the single closest element
  * among those that pass all other filters, using the base finder pipeline.
+ * @internal
  */
 function createVertexFinderWithNearest(
   filters: ReadonlyArray<Predicate<Vertex>>,
@@ -472,5 +476,111 @@ function createVertexFinderWithNearest(
   return {
     ...baseFinder,
     find: overriddenFind,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Corner finder (2D blueprint corners)
+// ---------------------------------------------------------------------------
+
+const PI_2 = 2 * Math.PI;
+const positiveHalfAngle = (angle: number) => {
+  const limitedAngle = angle % PI_2;
+  const coterminalAngle = limitedAngle < 0 ? limitedAngle + PI_2 : limitedAngle;
+  if (coterminalAngle < Math.PI) return coterminalAngle;
+  if (coterminalAngle === Math.PI) return 0;
+  return Math.abs(coterminalAngle - PI_2);
+};
+
+function blueprintCorners(blueprint: BlueprintLike): Corner[] {
+  return blueprint.curves.map((curve, index) => ({
+    firstCurve: curve,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    secondCurve: blueprint.curves[(index + 1) % blueprint.curves.length]!,
+    point: curve.lastPoint,
+  }));
+}
+
+/** Common interface satisfied by both CornerFinder class and cornerFinder() factory. */
+export interface CornerFilter {
+  readonly shouldKeep: (corner: Corner) => boolean;
+}
+
+export interface CornerFinderFn extends CornerFilter {
+  /** Add a custom predicate filter. Returns new finder. */
+  readonly when: (predicate: (corner: Corner) => boolean) => CornerFinderFn;
+  /** Filter to corners whose point matches one from the list. */
+  readonly inList: (points: Point2D[]) => CornerFinderFn;
+  /** Filter to corners at a specific distance from a point. */
+  readonly atDistance: (distance: number, point?: Point2D) => CornerFinderFn;
+  /** Filter to corners at an exact point. */
+  readonly atPoint: (point: Point2D) => CornerFinderFn;
+  /** Filter to corners within an axis-aligned bounding box. */
+  readonly inBox: (corner1: Point2D, corner2: Point2D) => CornerFinderFn;
+  /** Filter to corners with a specific interior angle (in degrees). */
+  readonly ofAngle: (angle: number) => CornerFinderFn;
+  /** Invert a filter. Returns new finder. */
+  readonly not: (fn: (f: CornerFinderFn) => CornerFinderFn) => CornerFinderFn;
+  /** Combine filters with OR. Returns new finder. */
+  readonly either: (fns: ((f: CornerFinderFn) => CornerFinderFn)[]) => CornerFinderFn;
+  /** Find matching corners from a blueprint. */
+  readonly find: (blueprint: BlueprintLike) => Corner[];
+}
+
+/** Create an immutable corner finder for 2D blueprint corners. */
+export function cornerFinder(): CornerFinderFn {
+  return createCornerFinder([]);
+}
+
+function createCornerFinder(filters: ReadonlyArray<Predicate<Corner>>): CornerFinderFn {
+  const withFilter = (pred: Predicate<Corner>): CornerFinderFn =>
+    createCornerFinder([...filters, pred]);
+
+  const shouldKeep = (corner: Corner): boolean => filters.every((f) => f(corner));
+
+  return {
+    shouldKeep,
+
+    when: (pred) => withFilter(pred),
+
+    inList: (points) => withFilter((corner) => points.some((p) => samePoint(p, corner.point))),
+
+    atDistance: (distance, point = [0, 0]) =>
+      withFilter((corner) => Math.abs(distance2d(point, corner.point) - distance) < 1e-9),
+
+    atPoint: (point) => withFilter((corner) => samePoint(point, corner.point)),
+
+    inBox: (corner1, corner2) => {
+      const minX = Math.min(corner1[0], corner2[0]);
+      const maxX = Math.max(corner1[0], corner2[0]);
+      const minY = Math.min(corner1[1], corner2[1]);
+      const maxY = Math.max(corner1[1], corner2[1]);
+      return withFilter((corner) => {
+        const [x, y] = corner.point;
+        return x >= minX && x <= maxX && y >= minY && y <= maxY;
+      });
+    },
+
+    ofAngle: (angle) =>
+      withFilter((corner) => {
+        const tgt1 = corner.firstCurve.tangentAt(1);
+        const tgt2 = corner.secondCurve.tangentAt(0);
+        return (
+          Math.abs(positiveHalfAngle(angle2d(tgt1, tgt2)) - positiveHalfAngle(DEG2RAD * angle)) <
+          1e-9
+        );
+      }),
+
+    not: (fn) => {
+      const inner = fn(createCornerFinder([]));
+      return withFilter((corner) => !inner.shouldKeep(corner));
+    },
+
+    either: (fns) => {
+      const builtFinders = fns.map((fn) => fn(createCornerFinder([])));
+      return withFilter((corner) => builtFinders.some((f) => f.shouldKeep(corner)));
+    },
+
+    find: (blueprint) => blueprintCorners(blueprint).filter(shouldKeep),
   };
 }

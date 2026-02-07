@@ -43,7 +43,7 @@ import type { ProjectionPlane } from '../projection/projectionPlanes.js';
 import { type Camera, cameraFromPlane, projectEdges } from '../projection/cameraFns.js';
 
 import offsetFn, { type Offset2DConfig } from '../2d/blueprints/offset.js';
-import { CornerFinder } from '../query/cornerFinder.js';
+import { cornerFinder, type CornerFinderFn } from '../query/finderFns.js';
 import { fillet2D, chamfer2D } from '../2d/blueprints/customCorners.js';
 import { edgeToCurve } from '../2d/curves.js';
 import type { BSplineApproximationConfig } from '../topology/shapeHelpers.js';
@@ -215,8 +215,8 @@ export class Drawing {
    *
    * @category Drawing Modifications
    */
-  fillet(radius: number, filter?: (c: CornerFinder) => CornerFinder): Drawing {
-    const finder = filter && filter(new CornerFinder());
+  fillet(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing {
+    const finder = filter && filter(cornerFinder());
     return new Drawing(fillet2D(this.innerShape, radius, finder));
   }
 
@@ -226,8 +226,8 @@ export class Drawing {
    *
    * @category Drawing Modifications
    */
-  chamfer(radius: number, filter?: (c: CornerFinder) => CornerFinder): Drawing {
-    const finder = filter && filter(new CornerFinder());
+  chamfer(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing {
+    const finder = filter && filter(cornerFinder());
     return new Drawing(chamfer2D(this.innerShape, radius, finder));
   }
 
