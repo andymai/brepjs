@@ -8,29 +8,21 @@ const colR  = 12;   // column radius
 const thick = 4;    // tread thickness
 
 // Central column + landing pad
-const column = makeCylinder(colR, steps * rise + thick);
-const landing = makeCylinder(colR + width, thick);
-let shape = unwrap(fuseShape(column, landing));
+const column = cylinder(colR, steps * rise + thick);
+const landing = cylinder(colR + width, thick);
+let stair = unwrap(fuse(column, landing));
 
 // Spiral treads with railing posts
 for (let i = 0; i < steps; i++) {
-  const tread = makeBox(
-    [0, -depth / 2, 0],
-    [colR + width, depth / 2, thick]
-  );
-  const post = translateShape(
-    makeCylinder(1.5, 90),
-    [colR + width - 4, 0, thick]
-  );
-  const step = unwrap(fuseShape(tread, post));
-  const placed = translateShape(step, [0, 0, rise * (i + 1)]);
-  const rotated = rotateShape(placed, twist * i);
-  shape = unwrap(fuseShape(shape, rotated));
+  const tread = translate(box(colR + width, depth, thick), [0, -depth / 2, 0]);
+  const post = translate(cylinder(1.5, 90), [colR + width - 4, 0, thick]);
+  const step = unwrap(fuse(tread, post));
+  const placed = translate(step, [0, 0, rise * (i + 1)]);
+  const rotated = rotate(placed, twist * i);
+  stair = unwrap(fuse(stair, rotated));
 }
 
-return shape;`;
+return stair;`;
 
 export const DEFAULT_CODE = `// A filleted box
-const box = makeBox([0, 0, 0], [40, 30, 20]);
-const filleted = unwrap(filletShape(box, undefined, 3));
-return filleted;`;
+return shape(box(40, 30, 20)).fillet(3).val;`;

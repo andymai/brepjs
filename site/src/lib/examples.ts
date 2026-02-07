@@ -15,8 +15,7 @@ export const examples: Example[] = [
     description: 'A basic box primitive — the simplest possible shape.',
     category: 'Primitives',
     code: `// A simple 40×30×20 box
-const box = makeBox([0, 0, 0], [40, 30, 20]);
-return box;`,
+return box(40, 30, 20);`,
   },
   {
     id: 'filleted-box',
@@ -24,9 +23,7 @@ return box;`,
     description: 'Round all edges of a box with a fillet radius.',
     category: 'Operations',
     code: `// Create a box and fillet all edges
-const box = makeBox([0, 0, 0], [40, 30, 20]);
-const filleted = unwrap(filletShape(box, undefined, 3));
-return filleted;`,
+return shape(box(40, 30, 20)).fillet(3).val;`,
   },
   {
     id: 'boolean-subtraction',
@@ -34,13 +31,8 @@ return filleted;`,
     description: 'Cut a cylinder from a box to create a hole.',
     category: 'Booleans',
     code: `// Box with a cylindrical hole
-const box = makeBox([0, 0, 0], [40, 40, 20]);
-const cyl = translateShape(
-  makeCylinder(10, 30),
-  [20, 20, -5]
-);
-const result = unwrap(cutShape(box, cyl));
-return result;`,
+const hole = cylinder(10, 30, { at: [20, 20, -5] });
+return shape(box(40, 40, 20)).cut(hole).val;`,
   },
   {
     id: 'chamfered-box',
@@ -48,9 +40,7 @@ return result;`,
     description: 'Apply chamfers to all edges of a box — compare with the filleted box.',
     category: 'Operations',
     code: `// Chamfer every edge of a box
-const box = makeBox([0, 0, 0], [40, 30, 20]);
-const chamfered = unwrap(chamferShape(box, undefined, 3));
-return chamfered;`,
+return shape(box(40, 30, 20)).chamfer(3).val;`,
   },
   {
     id: 'extruded-l-shape',
@@ -66,9 +56,7 @@ const sketch = new Sketcher()
   .lineTo([0, 40])
   .close();
 
-const face = sketch.face();
-const solid = basicFaceExtrusion(face, [0, 0, 15]);
-return solid;`,
+return shape(sketch.face()).extrude(15).val;`,
   },
   {
     id: 'revolved-profile',
@@ -86,9 +74,7 @@ const sketch = new Sketcher(plane)
   .lineTo([0, 60])
   .close();
 
-const face = sketch.face();
-const vase = unwrap(revolveFace(face));
-return vase;`,
+return shape(sketch.face()).revolve().val;`,
   },
   {
     id: 'sphere-with-holes',
@@ -96,28 +82,13 @@ return vase;`,
     description: 'Subtract cylinders from a sphere along three axes.',
     category: 'Booleans',
     code: `// Sphere with holes along X, Y, and Z axes
-let shape = makeSphere(25);
-const hole = makeCylinder(8, 60);
+const hole = cylinder(8, 60, { at: [0, 0, -30] });
 
-// Z-axis hole
-const holeZ = translateShape(hole, [0, 0, -30]);
-shape = unwrap(cutShape(shape, holeZ));
-
-// X-axis hole
-const holeX = rotateShape(
-  translateShape(hole, [0, 0, -30]),
-  90, [0, 0, 0], [0, 1, 0]
-);
-shape = unwrap(cutShape(shape, holeX));
-
-// Y-axis hole
-const holeY = rotateShape(
-  translateShape(hole, [0, 0, -30]),
-  90, [0, 0, 0], [1, 0, 0]
-);
-shape = unwrap(cutShape(shape, holeY));
-
-return shape;`,
+return shape(sphere(25))
+  .cut(hole)                                         // Z-axis
+  .cut(rotate(hole, 90, { axis: [0, 1, 0] }))       // X-axis
+  .cut(rotate(hole, 90, { axis: [1, 0, 0] }))       // Y-axis
+  .val;`,
   },
   {
     id: 'spiral-staircase',

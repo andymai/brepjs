@@ -13,24 +13,23 @@ const oc = await opencascade();
 
 const {
   initFromOC,
-  makeBox,
-  makeCylinder,
-  makeSphere,
-  castShape,
-  fuseShape,
-  cloneShape,
-  rotateShape,
-  translateShape,
+  box,
+  cylinder,
+  sphere,
+  fuse,
+  clone,
+  rotate,
+  translate,
   meshShape,
   meshShapeEdges,
   toBufferGeometryData,
   toLineGeometryData,
   unwrap,
   isOk,
-  makeHelix,
-  makeCircle,
-  assembleWire,
-  genericSweep,
+  helix,
+  circle,
+  wire,
+  sweep,
 } = await import('brepjs');
 
 initFromOC(oc);
@@ -49,35 +48,33 @@ const postRadius = 1.5;
 
 // Bottom landing — matches staircase footprint
 const landingRadius = columnRadius + stepWidth;
-const bottomLanding = castShape(makeCylinder(landingRadius, stepThickness).wrapped);
+const bottomLanding = cylinder(landingRadius, stepThickness);
 
 // Central column — from ground to top step surface
 const colHeight = stepCount * stepRise + stepThickness;
-let shape = castShape(makeCylinder(columnRadius, colHeight).wrapped);
-shape = unwrap(fuseShape(shape, bottomLanding));
+let staircase = cylinder(columnRadius, colHeight);
+staircase = unwrap(fuse(staircase, bottomLanding));
 
 // Wind steps + railing posts around the column
 for (let i = 0; i < stepCount; i++) {
   const z = stepRise * (i + 1);
 
   // Step inner edge at x=0 so it fully penetrates the column
-  const step = castShape(
-    makeBox(
-      [0, -stepDepth / 2, 0],
-      [columnRadius + stepWidth, stepDepth / 2, stepThickness]
-    ).wrapped
+  const step = translate(
+    box(columnRadius + stepWidth, stepDepth, stepThickness),
+    [0, -stepDepth / 2, 0]
   );
 
   // Railing post at outer edge of each step
-  const post = castShape(
-    makeCylinder(postRadius, railHeight)
-      .translate([railRadius, 0, stepThickness]).wrapped
+  const post = translate(
+    cylinder(postRadius, railHeight),
+    [railRadius, 0, stepThickness]
   );
 
-  const piece = unwrap(fuseShape(step, post));
-  const lifted = translateShape(piece, [0, 0, z]);
-  const rotated = rotateShape(lifted, rotationPerStep * i, [0, 0, 0], [0, 0, 1]);
-  shape = unwrap(fuseShape(shape, rotated));
+  const piece = unwrap(fuse(step, post));
+  const lifted = translate(piece, [0, 0, z]);
+  const rotated = rotate(lifted, rotationPerStep * i, { around: [0, 0, 0], axis: [0, 0, 1] });
+  staircase = unwrap(fuse(staircase, rotated));
 }
 
 // Handrail: sweep a circle profile along a helical path
@@ -87,32 +84,33 @@ for (let i = 0; i < stepCount; i++) {
 const firstPostTop = stepRise + stepThickness + railHeight;
 const helixPitch = stepCount * stepRise;
 const helixHeight = (stepCount - 1) * stepRise;
-const railProfileEdge = makeCircle(2, [railRadius, 0, firstPostTop], [0, 1, 0]);
-const railProfile = unwrap(assembleWire([railProfileEdge]));
-const helixSpine = makeHelix(helixPitch, helixHeight, railRadius, [0, 0, firstPostTop]);
+const railProfileEdge = circle(2, { at: [railRadius, 0, firstPostTop], normal: [0, 1, 0] });
+const railProfile = unwrap(wire([railProfileEdge]));
+const helixSpine = helix(helixPitch, helixHeight, railRadius, { at: [0, 0, firstPostTop] });
 
-const handrailResult = genericSweep(railProfile, helixSpine, { frenet: true });
+const handrailResult = sweep(railProfile, helixSpine, { frenet: true });
 if (isOk(handrailResult)) {
-  shape = unwrap(fuseShape(shape, castShape((handrailResult.value as any).wrapped)));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- sweep result type union
+  staircase = unwrap(fuse(staircase, handrailResult.value as any));
 } else {
   console.warn('Handrail sweep failed, skipping:', handrailResult.error);
 }
 
 // Ball endcaps on handrail ends
-const ball = castShape(makeSphere(4).wrapped);
-const end1 = translateShape(ball, [railRadius, 0, firstPostTop]);
-shape = unwrap(fuseShape(shape, end1));
+const ball = sphere(4);
+const end1 = translate(ball, [railRadius, 0, firstPostTop]);
+staircase = unwrap(fuse(staircase, end1));
 
 const lastPostTop = firstPostTop + stepRise * (stepCount - 1);
-const end2 = rotateShape(
-  translateShape(cloneShape(ball), [railRadius, 0, lastPostTop]),
-  rotationPerStep * (stepCount - 1), [0, 0, 0], [0, 0, 1]
+const end2 = rotate(
+  translate(clone(ball), [railRadius, 0, lastPostTop]),
+  rotationPerStep * (stepCount - 1), { around: [0, 0, 0], axis: [0, 0, 1] }
 );
-shape = unwrap(fuseShape(shape, end2));
+staircase = unwrap(fuse(staircase, end2));
 
 // Mesh it
-const shapeMesh = meshShape(shape, { tolerance: 2, angularTolerance: 1.5 });
-const edgeMesh = meshShapeEdges(shape, { tolerance: 2, angularTolerance: 1.5 });
+const shapeMesh = meshShape(staircase, { tolerance: 2, angularTolerance: 1.5 });
+const edgeMesh = meshShapeEdges(staircase, { tolerance: 2, angularTolerance: 1.5 });
 
 const bufferData = toBufferGeometryData(shapeMesh);
 const lineData = toLineGeometryData(edgeMesh);
