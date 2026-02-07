@@ -3,7 +3,7 @@ import type { KnipConfig } from 'knip';
 const config: KnipConfig = {
   project: ['src/**/*.ts'],
   ignore: ['src/**/*.test.ts'],
-  ignoreDependencies: ['brepjs-opencascade'],
+  ignoreBinaries: ['tsx'],
   ignoreExportsUsedInFile: true,
   rules: {
     // Intentional API-compat aliases (drawRectangle = drawRoundedRectangle, etc.)
