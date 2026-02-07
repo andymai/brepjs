@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.23.0](https://github.com/andymai/brepjs/compare/brepjs-v4.22.0...brepjs-v4.23.0) (2026-02-07)
+
+
+### Features
+
+* visual output examples and browser viewer (Examples Quality 8→10) ([#160](https://github.com/andymai/brepjs/issues/160)) ([e8d12db](https://github.com/andymai/brepjs/commit/e8d12db91783db4715daf601a234d59d7440c2fc))
+
 ## [4.22.0](https://github.com/andymai/brepjs/compare/brepjs-v4.21.3...brepjs-v4.22.0) (2026-02-07)
 
 
