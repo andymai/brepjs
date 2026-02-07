@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.1](https://github.com/andymai/brepjs/compare/brepjs-v4.18.0...brepjs-v4.18.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* resolve CodeQL security alerts ([#131](https://github.com/andymai/brepjs/issues/131)) ([f13e1a2](https://github.com/andymai/brepjs/commit/f13e1a27b932ea9d3516c4a97e43e16ad688d448))
+
 ## [4.18.0](https://github.com/andymai/brepjs/compare/brepjs-v4.17.1...brepjs-v4.18.0) (2026-02-07)
 
 ### Features
