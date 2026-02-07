@@ -17,6 +17,8 @@ interface PlaygroundState {
   timeMs: number | null;
   isRunning: boolean;
   pendingReview: boolean;
+  isConsoleCollapsed: boolean;
+  isViewerCollapsed: boolean;
 
   setCode: (code: string) => void;
   setMeshes: (meshes: MeshData[]) => void;
@@ -25,6 +27,8 @@ interface PlaygroundState {
   setTimeMs: (ms: number) => void;
   setIsRunning: (running: boolean) => void;
   setPendingReview: (pending: boolean) => void;
+  setConsoleCollapsed: (collapsed: boolean) => void;
+  setViewerCollapsed: (collapsed: boolean) => void;
   clearResults: () => void;
 }
 
@@ -37,6 +41,8 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   timeMs: null,
   isRunning: false,
   pendingReview: false,
+  isConsoleCollapsed: false,
+  isViewerCollapsed: false,
 
   setCode: (code) => set({ code }),
   setMeshes: (meshes) => set({ meshes, error: null, errorLine: null }),
@@ -45,5 +51,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setTimeMs: (timeMs) => set({ timeMs }),
   setIsRunning: (isRunning) => set({ isRunning }),
   setPendingReview: (pendingReview) => set({ pendingReview }),
+  setConsoleCollapsed: (isConsoleCollapsed) => set({ isConsoleCollapsed }),
+  setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
   clearResults: () => set({ meshes: [], error: null, errorLine: null, consoleOutput: [], timeMs: null }),
 }));

@@ -1,15 +1,18 @@
 import { Link } from 'react-router-dom';
 import { useEngineStore } from '../../stores/engineStore';
+import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 
 interface ToolbarProps {
   onRun: () => void;
   onExportSTL: () => void;
+  onExportSTEP: () => void;
   onShare: () => void;
 }
 
 export default function Toolbar({
   onRun,
   onExportSTL,
+  onExportSTEP,
   onShare,
 }: ToolbarProps) {
   const engineReady = useEngineStore((s) => s.status === 'ready');
@@ -33,6 +36,7 @@ export default function Toolbar({
         <button
           onClick={onRun}
           disabled={!engineReady}
+          title={`Run (${formatShortcut(SHORTCUTS.run)})`}
           className="flex items-center gap-1.5 rounded bg-indigo-primary px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-indigo-dark disabled:opacity-40"
         >
           Run
@@ -40,6 +44,7 @@ export default function Toolbar({
         <button
           onClick={onShare}
           disabled={!engineReady}
+          title={`Share (${formatShortcut(SHORTCUTS.share)})`}
           className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
         >
           Share
@@ -47,9 +52,18 @@ export default function Toolbar({
         <button
           onClick={onExportSTL}
           disabled={!engineReady}
+          title={`Export STL (${formatShortcut(SHORTCUTS.exportSTL)})`}
           className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
         >
-          Export STL
+          STL
+        </button>
+        <button
+          onClick={onExportSTEP}
+          disabled={!engineReady}
+          title={`Export STEP (${formatShortcut(SHORTCUTS.exportSTEP)})`}
+          className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
+        >
+          STEP
         </button>
       </div>
     </div>

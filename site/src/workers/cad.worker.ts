@@ -195,6 +195,32 @@ function handleExportSTL(id: string, code: string) {
   }
 }
 
+// ── STEP Export ──
+
+function handleExportSTEP(id: string, code: string) {
+  try {
+    const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
+    let result = fn();
+
+    if (result && typeof result === 'object' && 'wrapped' in result) {
+      result = brepjs.castShape(result.wrapped);
+    }
+
+    const stepResult = brepjs.fnExportSTEP(result);
+
+    if (brepjs.isOk(stepResult)) {
+      const blob: Blob = stepResult.value;
+      blob.arrayBuffer().then((buf: ArrayBuffer) => {
+        post({ type: 'export-step-result', id, step: buf }, [buf]);
+      });
+    } else {
+      post({ type: 'export-error', id, error: 'STEP export failed' });
+    }
+  } catch (e) {
+    post({ type: 'export-error', id, error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 // ── Message handler ──
 
 addEventListener('message', (e: MessageEvent<ToWorker>) => {
@@ -208,6 +234,9 @@ addEventListener('message', (e: MessageEvent<ToWorker>) => {
       break;
     case 'export-stl':
       handleExportSTL(msg.id, msg.code);
+      break;
+    case 'export-step':
+      handleExportSTEP(msg.id, msg.code);
       break;
   }
 });

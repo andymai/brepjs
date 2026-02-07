@@ -1,4 +1,4 @@
-/** Message types for main thread ↔ CAD worker communication. */
+/** Message types for main thread <-> CAD worker communication. */
 
 export interface MeshTransfer {
   position: Float32Array;
@@ -7,14 +7,15 @@ export interface MeshTransfer {
   edges: Float32Array;
 }
 
-// ── Main → Worker ──
+// -- Main -> Worker --
 
 export type ToWorker =
   | { type: 'init' }
   | { type: 'eval'; id: string; code: string }
-  | { type: 'export-stl'; id: string; code: string };
+  | { type: 'export-stl'; id: string; code: string }
+  | { type: 'export-step'; id: string; code: string };
 
-// ── Worker → Main ──
+// -- Worker -> Main --
 
 export type FromWorker =
   | { type: 'init-progress'; stage: string; progress: number }
@@ -23,4 +24,5 @@ export type FromWorker =
   | { type: 'eval-result'; id: string; meshes: MeshTransfer[]; console: string[]; timeMs: number }
   | { type: 'eval-error'; id: string; error: string; line?: number }
   | { type: 'export-result'; id: string; stl: ArrayBuffer }
+  | { type: 'export-step-result'; id: string; step: ArrayBuffer }
   | { type: 'export-error'; id: string; error: string };
