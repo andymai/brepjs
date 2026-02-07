@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.29.3](https://github.com/andymai/brepjs/compare/brepjs-v4.29.2...brepjs-v4.29.3) (2026-02-07)
+
+
+### Bug Fixes
+
+* **site:** regenerate Monaco types with v5 API ([5bad513](https://github.com/andymai/brepjs/commit/5bad513fb42edc2c54cc693650da7ea910450d72))
+
 ## [4.29.2](https://github.com/andymai/brepjs/compare/brepjs-v4.29.1...brepjs-v4.29.2) (2026-02-07)
 
 
