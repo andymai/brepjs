@@ -4,7 +4,7 @@
  * Provides fillet, chamfer, shell, and offset operations
  * for modifying existing 3D shapes.
  *
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape } from './types.js';

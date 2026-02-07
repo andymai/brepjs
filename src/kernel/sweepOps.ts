@@ -4,7 +4,7 @@
  * Provides extrusion, revolution, loft, and pipe sweep operations
  * for creating 3D solids from 2D profiles.
  *
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape, OcType } from './types.js';

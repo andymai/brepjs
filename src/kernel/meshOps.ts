@@ -5,7 +5,7 @@
  * - C++ bulk extraction (MeshExtractor/EdgeMeshExtractor) when available
  * - JS fallback using TopExp_Explorer
  *
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type {

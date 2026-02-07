@@ -2,7 +2,7 @@
  * File I/O operations for OCCT shapes.
  *
  * Provides STEP, STL, and IGES import/export functionality.
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape } from './types.js';

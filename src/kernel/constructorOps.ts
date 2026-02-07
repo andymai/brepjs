@@ -4,7 +4,7 @@
  * Provides factory functions for creating basic shapes:
  * vertices, edges, wires, faces, and primitives (box, cylinder, sphere).
  *
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape, OcType } from './types.js';

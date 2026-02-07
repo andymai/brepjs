@@ -4,7 +4,7 @@
  * Provides shape iteration, type detection, and comparison operations.
  * Has dual implementations: C++ TopologyExtractor when available, JS TopExp_Explorer fallback.
  *
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape, ShapeType } from './types.js';
