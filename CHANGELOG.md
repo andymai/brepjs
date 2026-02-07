@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.21.2](https://github.com/andymai/brepjs/compare/brepjs-v4.21.1...brepjs-v4.21.2) (2026-02-07)
+
+
+### Bug Fixes
+
+* address Vercel build warnings ([d92da72](https://github.com/andymai/brepjs/commit/d92da72e186f1b6d0a6ea64efed98aaca4bbe0e3))
+
 ## [4.21.1](https://github.com/andymai/brepjs/compare/brepjs-v4.21.0...brepjs-v4.21.1) (2026-02-07)
 
 
