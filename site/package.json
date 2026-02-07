@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "precompute-hero": "npx tsx scripts/precompute-hero-mesh.ts",
-    "screenshot-examples": "npx tsx scripts/screenshot-examples.ts"
+    "screenshot-examples": "npx tsx scripts/screenshot-examples.ts",
+    "generate-types": "npx tsx scripts/generate-ambient-types.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

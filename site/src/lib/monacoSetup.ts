@@ -45,6 +45,9 @@ export function setupMonaco(monaco: Monaco) {
   monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
+    // 1108: "A 'return' statement can only be used within a function body"
+    // Playground code is wrapped in a function at runtime, so top-level return is valid.
+    diagnosticCodesToIgnore: [1108],
   });
 
   // Register brepjs ambient type declarations

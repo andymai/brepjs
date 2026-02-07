@@ -5,9 +5,9 @@ const KEYWORDS = new Set([
 ]);
 
 const BREPJS_FNS = new Set([
-  'castShape', 'makeBox', 'makeCylinder', 'makeSphere', 'makeCircle', 'makeHelix',
+  'makeBox', 'makeCylinder', 'makeSphere', 'makeCircle', 'makeHelix',
   'cutShape', 'filletShape', 'fuseShapes', 'intersectShapes',
-  'unwrap', 'translateShape', 'rotateShape', 'assembleWire', 'genericSweep',
+  'unwrap', 'translateShape', 'rotateShape', 'cloneShape', 'assembleWire', 'genericSweep',
 ]);
 
 function highlightLine(line: string): React.ReactNode[] {

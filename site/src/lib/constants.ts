@@ -9,27 +9,18 @@ const railH = 90;   // railing height
 const thick = 4;    // tread thickness
 
 // Base: landing pad + central column
-const column = castShape(
-  makeCylinder(colR, steps * rise + thick).wrapped
-);
-const landing = castShape(
-  makeCylinder(colR + width, thick).wrapped
-);
+const column = makeCylinder(colR, steps * rise + thick);
+const landing = makeCylinder(colR + width, thick);
 let shape = unwrap(fuseShapes(column, landing));
 
 // Spiral: treads with railing posts
 for (let i = 0; i < steps; i++) {
-  const tread = castShape(
-    makeBox(
-      [0, -depth / 2, 0],
-      [colR + width, depth / 2, thick]
-    ).wrapped
+  const tread = makeBox(
+    [0, -depth / 2, 0],
+    [colR + width, depth / 2, thick]
   );
-  const post = castShape(
-    makeCylinder(1.5, railH)
-      .translate([colR + width - 4, 0, thick])
-      .wrapped
-  );
+  const post = makeCylinder(1.5, railH)
+    .translate([colR + width - 4, 0, thick]);
 
   const step = unwrap(fuseShapes(tread, post));
   const placed = translateShape(
@@ -58,7 +49,7 @@ const handrail = unwrap(
 shape = unwrap(fuseShapes(shape, handrail));
 
 // Ball endcaps on handrail ends
-const ball = castShape(makeSphere(4).wrapped);
+const ball = makeSphere(4);
 const end1 = translateShape(
   ball, [railR, 0, railTop]
 );
