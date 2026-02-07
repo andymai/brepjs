@@ -6,7 +6,12 @@ import { type Result, ok, err, unwrap } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';
 import { getKernel } from '../../kernel/index.js';
-import { gcWithScope, localGC, WrappingObj } from '../../core/memory.js';
+import {
+  gcWithScope,
+  localGC,
+  registerForCleanup,
+  unregisterFromCleanup,
+} from '../../core/disposal.js';
 import zip from '../../utils/zip.js';
 
 import { BoundingBox2d } from './BoundingBox2d.js';
@@ -33,17 +38,32 @@ export function deserializeCurve2D(data: string): Curve2D {
  * Provides evaluation, splitting, projection, tangent queries, and distance
  * computations on a single parametric curve.
  */
-export class Curve2D extends WrappingObj<OcType> {
+export class Curve2D {
+  private readonly _wrapped: OcType;
+  private _deleted = false;
   _boundingBox: null | BoundingBox2d;
   private _firstPoint: Point2D | null = null;
   private _lastPoint: Point2D | null = null;
+
   constructor(handle: OcType) {
     const oc = getKernel().oc;
     const inner = handle.get();
-
-    super(new oc.Handle_Geom2d_Curve_2(inner));
-
+    this._wrapped = new oc.Handle_Geom2d_Curve_2(inner);
     this._boundingBox = null;
+    registerForCleanup(this, this._wrapped);
+  }
+
+  get wrapped(): OcType {
+    if (this._deleted) throw new Error('This object has been deleted');
+    return this._wrapped;
+  }
+
+  delete(): void {
+    if (!this._deleted) {
+      this._deleted = true;
+      unregisterFromCleanup(this._wrapped);
+      this._wrapped.delete();
+    }
   }
 
   /** Compute (and cache) the 2D bounding box of this curve. */

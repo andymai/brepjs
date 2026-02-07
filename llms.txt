@@ -121,7 +121,7 @@ Drawing factory functions:
 - `drawText(text, {startX?, startY?, fontSize?, fontFamily?})` — Text outline (requires `loadFont()` first)
 - `drawPointsInterpolation(points, approxConfig?, {closeShape?})` — BSpline through Point2D[]. `approxConfig`: `{tolerance?, degMax?, degMin?, smoothing?}`
 - `drawParametricFunction(fn, {pointsCount?, start?, stop?, closeShape?}, approxConfig?)` — Parametric curve `fn: (t: number) => Point2D`
-- `drawProjection(shape, camera?)` — Project 3D shape to 2D. `camera`: `ProjectionPlane | ProjectionCamera` (default `'front'`). Returns `{visible: Drawing, hidden: Drawing}`
+- `drawProjection(shape, camera?)` — Project 3D shape to 2D. `camera`: `ProjectionPlane | Camera` (default `'front'`). Returns `{visible: Drawing, hidden: Drawing}`
 - `drawFaceOutline(face)` — Extract face outer wire as a 2D Drawing
 - `deserializeDrawing(data)` — Reconstruct from string produced by `drawing.serialize()`
 
@@ -587,16 +587,14 @@ projectPointOnFace(face, point): Result<{ uv, point, distance }>
 ```typescript
 import {
   measureVolume, measureArea, measureLength,
-  measureDistanceBetween
+  measureDistance
 } from 'brepjs';
 
 measureVolume(solid);                           // number
 measureArea(face);                              // number
 measureLength(edge);                            // number
-measureDistanceBetween(shape1, shape2);         // number
+measureDistance(shape1, shape2);                 // number
 ```
-
-Physical properties: `measureShapeVolumeProperties(shape)`, `measureShapeSurfaceProperties(shape)`, `measureShapeLinearProperties(shape)` — return objects with `centerOfMass` and the relevant measurement.
 
 Functional measurement API:
 ```typescript
@@ -883,35 +881,32 @@ import {
 Project 3D shapes to 2D for technical drawings:
 
 ```typescript
-import { drawProjection, ProjectionCamera, lookFromPlane } from 'brepjs';
+import { drawProjection, createCamera, cameraLookAt, unwrap } from 'brepjs';
 
 // Quick projection from a named plane
 const { visible, hidden } = drawProjection(shape, 'front');
 const svg = visible.toSVG();
 
 // Custom camera
-const camera = new ProjectionCamera()
-  .setPosition([100, 100, 100])
-  .lookAt([0, 0, 0]);
-const projected = drawProjection(shape, camera);
+const camera = unwrap(createCamera([100, 100, 100], [0, 0, -1]));
+const lookingAt = unwrap(cameraLookAt(camera, [0, 0, 0]));
+const projected = drawProjection(shape, lookingAt);
 ```
 
-Functional camera API:
+Camera API:
 ```typescript
-import { createCamera, cameraLookAt, cameraFromPlane, projectEdges, cameraToProjectionCamera } from 'brepjs';
+import { createCamera, cameraLookAt, cameraFromPlane, projectEdges } from 'brepjs';
 
 createCamera(position?, direction?, xAxis?): Result<Camera>
 cameraLookAt(camera, target): Result<Camera>
 cameraFromPlane(planeName): Result<Camera>
-cameraToProjectionCamera(camera): ProjectionCamera
 projectEdges(shape, camera, withHiddenLines?): { visible: Edge[], hidden: Edge[] }
 ```
 
 Additional projection helpers:
 ```typescript
-import { lookFromPlane, isProjectionPlane, makeProjectedEdges } from 'brepjs';
+import { isProjectionPlane, makeProjectedEdges } from 'brepjs';
 
-lookFromPlane(projectionPlane): ProjectionCamera   // Create camera from named plane (e.g. 'front', 'XY')
 isProjectionPlane(plane): plane is ProjectionPlane  // Type guard for ProjectionPlane strings
 makeProjectedEdges(shape, camera, withHiddenLines?): { visible: Edge[], hidden: Edge[] }  // HLR projection
 ```
@@ -1052,13 +1047,13 @@ const grouped = toGroupedBufferGeometryData(mesh);
 OCCT objects are allocated in WASM memory and must be cleaned up:
 
 ```typescript
-import { gcWithScope, localGC, GCWithScope } from 'brepjs';
+import { withScope, localGC, createHandle, createOcHandle } from 'brepjs';
 
 // Scope-based cleanup (preferred)
-const result = gcWithScope(() => {
-  const a = sketchCircle(10).extrude(20);
-  const b = sketchCircle(5).extrude(30);
-  return unwrap(cutShape(a, b));  // Returned shape survives the scope
+const result = withScope((scope) => {
+  const a = scope.register(someOcctObject);
+  // a is auto-deleted when scope ends
+  return finalShape;  // returned value survives the scope
 });
 
 // Manual cleanup
@@ -1069,25 +1064,13 @@ try {
 } finally {
   cleanup();
 }
-```
-
-Functional API with `Symbol.dispose`:
-```typescript
-import { withScope, DisposalScope, createHandle, createOcHandle } from 'brepjs';
-
-// Automatic disposal of intermediates
-const result = withScope((scope) => {
-  const handle = scope.register(ocObject);
-  // handle.value for access; auto-deleted when scope ends
-  return finalShape;  // survives the scope
-});
 
 // Explicit handle management
 const handle = createHandle(ocShape);     // ShapeHandle: { wrapped, disposed, [Symbol.dispose] }
 const ocHandle = createOcHandle(ocObj);   // OcHandle<T>: { value, disposed, [Symbol.dispose] }
 ```
 
-`GCWithScope` is a deprecated alias for `gcWithScope`. `gcWithObject(obj)` registers objects on an existing WASM object for lifecycle tracking.
+`gcWithScope()` returns a register function that ties cleanup to FinalizationRegistry (GC-based). `gcWithObject(obj)` registers objects on an existing object for lifecycle tracking. `withScope` / `localGC` are preferred for deterministic cleanup.
 
 ## Error Handling
 

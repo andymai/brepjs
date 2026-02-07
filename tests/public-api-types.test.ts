@@ -164,7 +164,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'Sketch',
   'Sketcher',
   'Sketches',
-  'WrappingObj',
   'addChild',
   'addHolesInFace',
   'addStep',
