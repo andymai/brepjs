@@ -8,10 +8,11 @@
  * CAD pattern that combines extrusion, booleans, finders, fillets, and shelling.
  */
 
+import './_setup.js';
 import {
   makeBox,
   makeCylinder,
-  fuseShapes,
+  fuseShape,
   cutShape,
   shellShape,
   filletShape,
@@ -68,20 +69,24 @@ function buildFlangedPipe(params: PipeParams): Shape3D {
   // Flanges at both ends
   const bottomFlange = makeCylinder(flangeRadius, flangeThickness);
   const topFlange = makeCylinder(flangeRadius, flangeThickness, [0, 0, length - flangeThickness]);
-  const body = unwrap(fuseShapes(unwrap(fuseShapes(tube, bottomFlange)), topFlange));
+  const body = unwrap(fuseShape(unwrap(fuseShape(tube, bottomFlange)), topFlange));
 
   // Hollow out: remove the top face, shell to wall thickness
-  const topFaces = faceFinder().parallelTo('Z').atDistance(length, [0, 0, 0]).find(body);
+  const topFaces = faceFinder().parallelTo('Z').atDistance(length, [0, 0, 0]).findAll(body);
   const hollowed = unwrap(shellShape(body, topFaces, wallThickness));
 
   // Fillet the tube-to-flange transition edges
   const transitionEdges = edgeFinder()
     .ofCurveType('CIRCLE')
     .ofLength(2 * Math.PI * tubeRadius, 0.1)
-    .find(hollowed);
-  let result: Shape3D = transitionEdges.length > 0
-    ? unwrap(filletShape(hollowed, transitionEdges, filletRadius))
-    : hollowed;
+    .findAll(hollowed);
+  let result: Shape3D = hollowed;
+  if (transitionEdges.length > 0) {
+    const filletResult = filletShape(hollowed, transitionEdges, filletRadius);
+    if (isOk(filletResult)) {
+      result = filletResult.value;
+    }
+  }
 
   // Bolt holes in bottom flange
   for (let i = 0; i < boltCount; i++) {

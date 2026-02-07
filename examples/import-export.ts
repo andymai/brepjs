@@ -4,6 +4,7 @@
  * Demonstrates loading STEP files, modifying shapes, and exporting.
  */
 
+import './_setup.js';
 import {
   makeBox,
   importSTEP,
@@ -52,10 +53,10 @@ async function main() {
   }
 
   // Generate mesh for visualization
-  const mesh = meshShape(translated, { linearDeflection: 0.1 });
+  const mesh = meshShape(translated, { tolerance: 0.1 });
   console.log('\nMesh generated:');
   console.log('  Vertices:', mesh.vertices.length / 3);
-  console.log('  Triangles:', mesh.faces.length / 3);
+  console.log('  Triangles:', mesh.triangles.length / 3);
   console.log('  Normals:', mesh.normals.length / 3);
 }
 

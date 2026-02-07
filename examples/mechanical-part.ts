@@ -7,6 +7,7 @@
  * Run:  npm run example examples/mechanical-part.ts
  */
 
+import './_setup.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 import {

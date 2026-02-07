@@ -128,13 +128,19 @@
         "types": "./dist/worker.d.ts",
         "default": "./dist/worker.cjs"
       }
+    },
+    "./quick": {
+      "import": {
+        "types": "./dist/quick.d.ts",
+        "default": "./dist/quick.js"
+      }
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node scripts/build-quick.js",
     "dev": "vite build --watch",
     "prepublishOnly": "npm run build",
     "prepack": "bash scripts/validate-pack.sh",

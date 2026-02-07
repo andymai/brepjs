@@ -7,6 +7,7 @@
  * Run:  npm run example examples/2d-to-3d.ts
  */
 
+import './_setup.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 import {

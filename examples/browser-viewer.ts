@@ -9,6 +9,7 @@
  * Then: open examples/output/viewer.html in a browser
  */
 
+import './_setup.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 import {
@@ -16,6 +17,7 @@ import {
   makeCylinder,
   cutShape,
   filletShape,
+  edgeFinder,
   translateShape,
   meshShape,
   toBufferGeometryData,
@@ -29,7 +31,8 @@ import {
 const box = makeBox([0, 0, 0], [40, 30, 20]);
 const hole = translateShape(makeCylinder(6, 25), [20, 15, -2]);
 const drilled = unwrap(cutShape(box, hole));
-const part = unwrap(filletShape(drilled, 2, (e) => e.inDirection('Z')));
+const verticalEdges = edgeFinder().inDirection('Z').findAll(drilled);
+const part = unwrap(filletShape(drilled, verticalEdges, 2));
 
 const desc = describeShape(part);
 console.log(`Shape: ${desc.faceCount} faces, ${desc.edgeCount} edges`);

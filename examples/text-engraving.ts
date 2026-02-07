@@ -4,6 +4,7 @@
  * Creates a nameplate with engraved text.
  */
 
+import './_setup.js';
 import {
   makeBox,
   cutShape,
@@ -55,7 +56,7 @@ async function main() {
   // Sketch text on top face and extrude downward
   for (const bp of blueprints) {
     const sketch = sketchBlueprintOnPlane(bp, 'XY', plateDepth);
-    const letterResult = sketchExtrude(sketch, { height: -2 }); // 2mm deep engraving
+    const letterResult = sketchExtrude(sketch, -2); // 2mm deep engraving
 
     if (isOk(letterResult)) {
       const letter = translateShape(letterResult.value, [offsetX, offsetY, 0]);

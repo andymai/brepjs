@@ -5,6 +5,7 @@
  * Start here if you're new to brepjs.
  */
 
+import './_setup.js';
 import { makeBox, measureVolume, exportSTEP, unwrap } from 'brepjs';
 
 // Create a box: two corners define the shape

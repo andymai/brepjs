@@ -15,7 +15,17 @@ Install:
 npm install brepjs brepjs-opencascade
 ```
 
-Initialize the WASM kernel before any CAD operations:
+### Quick start (zero ceremony, ESM only)
+
+```typescript
+import { makeBox } from 'brepjs/quick';
+const box = makeBox([0, 0, 0], [10, 10, 10]); // just works
+```
+
+`brepjs/quick` auto-initializes the WASM kernel via top-level await. No setup code needed. Requires ESM (top-level await is incompatible with CJS).
+
+### Standard (explicit init, works with CJS)
+
 ```typescript
 import opencascade from 'brepjs-opencascade';
 import { initFromOC } from 'brepjs';
@@ -25,6 +35,10 @@ initFromOC(oc);
 ```
 
 `initFromOC(oc)` must be called once before using any brepjs API. All shape-creating functions require the kernel to be initialized.
+
+### Quick reference
+
+See `docs/cheat-sheet.md` for a single-page reference covering all common operations (primitives, booleans, transforms, fillets, measurement, export, memory management, error handling).
 
 Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). For a standalone browser example that generates an HTML file with an embedded Three.js viewer, see `examples/browser-viewer.ts`.
 

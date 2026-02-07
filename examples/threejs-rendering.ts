@@ -9,6 +9,7 @@
  * Then: open examples/output/threejs-part.html in a browser
  */
 
+import './_setup.js';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -17,6 +18,7 @@ import {
   makeCylinder,
   cutShape,
   filletShape,
+  edgeFinder,
   translateShape,
   meshShape,
   toBufferGeometryData,
@@ -27,7 +29,8 @@ import {
 const box = makeBox([0, 0, 0], [30, 20, 10]);
 const hole = translateShape(makeCylinder(5, 15), [15, 10, -2]);
 const drilled = unwrap(cutShape(box, hole));
-const part = unwrap(filletShape(drilled, 1.5, (e) => e.inDirection('Z')));
+const verticalEdges = edgeFinder().inDirection('Z').findAll(drilled);
+const part = unwrap(filletShape(drilled, verticalEdges, 1.5));
 
 // Generate mesh data for rendering
 // tolerance controls mesh quality (smaller = finer mesh)
