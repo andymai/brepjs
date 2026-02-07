@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.28.0](https://github.com/andymai/brepjs/compare/brepjs-v4.27.1...brepjs-v4.28.0) (2026-02-07)
+
+
+### Features
+
+* **site:** comprehensive site review overhaul ([#172](https://github.com/andymai/brepjs/issues/172)) ([550636d](https://github.com/andymai/brepjs/commit/550636d66b075d37ef6311774c17d7b1d2a43759))
+
+
+### Bug Fixes
+
+* replace removed API aliases and improve CI portability ([#175](https://github.com/andymai/brepjs/issues/175)) ([9d2254f](https://github.com/andymai/brepjs/commit/9d2254f0a618fe842c6c1f32028a3125121ef796))
+
 ## [4.27.1](https://github.com/andymai/brepjs/compare/brepjs-v4.27.0...brepjs-v4.27.1) (2026-02-07)
 
 
