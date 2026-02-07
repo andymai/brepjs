@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.25.0](https://github.com/andymai/brepjs/compare/brepjs-v4.24.0...brepjs-v4.25.0) (2026-02-07)
+
+
+### Features
+
+* remove legacy aliases from barrel exports (Naming 10/10) ([#164](https://github.com/andymai/brepjs/issues/164)) ([c0a221c](https://github.com/andymai/brepjs/commit/c0a221c79a42b8f746e1f2bbaee66e1eba1e740a))
+
 ## [4.24.0](https://github.com/andymai/brepjs/compare/brepjs-v4.23.0...brepjs-v4.24.0) (2026-02-07)
 
 
