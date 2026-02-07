@@ -23,14 +23,53 @@ Make brepjs the most developer-friendly programmatic CAD API for experienced use
 
 ---
 
+## Scope
+
+This spec covers the **user-facing modeling API**: primitives, transforms, booleans, modifiers, 3D operations, meshing, and utilities. It introduces the `shape()` wrapper and compound operations.
+
+The following categories **retain their current names and signatures unchanged** unless listed in a rename table below:
+
+- **Assembly graph:** `createAssemblyNode`, `addChild`, `removeChild`, `updateNode`, `findNode`, `walkAssembly`, `countNodes`, `collectShapes`
+- **History/parametric:** `createHistory`, `addStep`, `undoLast`, `findStep`, `getHistoryShape`, `stepCount`, `stepsFrom`, `registerShape`, `createRegistry`, `registerOperation`, `replayHistory`, `replayFrom`, `modifyStep`
+- **Projection/camera:** `createCamera`, `cameraLookAt`, `cameraFromPlane`, `projectEdges`
+- **Interference/collision:** `checkInterference`, `checkAllInterferences`
+- **Sketch functional API:** `sketchExtrude`, `sketchRevolve`, `sketchLoft`, `sketchSweep`, `sketchFace`, `sketchWires`, `compoundSketchExtrude`, `compoundSketchRevolve`, `compoundSketchFace`, `compoundSketchLoft`
+- **Canned sketches:** `sketchCircle`, `sketchRectangle`, `sketchRoundedRectangle`, `sketchPolysides`, `sketchEllipse`, `sketchFaceOffset`, `sketchParametricFunction`, `sketchHelix`, `polysideInnerRadius`
+- **Text:** `loadFont`, `getFont`, `textBlueprints`, `sketchText`
+- **Face introspection:** `getSurfaceType`, `faceGeomType`, `faceOrientation`, `flipFaceOrientation`, `uvBounds`, `pointOnSurface`, `uvCoordinates`, `normalAt`, `faceCenter`, `classifyPointOnFace`, `outerWire`, `innerWires`, `projectPointOnFace`
+- **Adjacency queries:** `facesOfEdge`, `edgesOfFace`, `wiresOfFace`, `verticesOfEdge`, `adjacentFaces`, `sharedEdges`
+- **Curve functions:** `getCurveType`, `curveStartPoint`, `curveEndPoint`, `curvePointAt`, `curveTangentAt`, `curveLength`, `curveIsClosed`, `curveIsPeriodic`, `curvePeriod`, `getOrientation`, `flipOrientation`, `offsetWire2D`, `interpolateCurve`, `approximateCurve`
+- **2D blueprint operations:** `createBlueprint`, `blueprintBoundingBox`, `blueprintOrientation`, `translateBlueprint`, `rotateBlueprint`, `scaleBlueprint`, `mirrorBlueprint`, `stretchBlueprint`, `blueprintToSVGPathD`, `blueprintIsInside`, `sketchBlueprintOnPlane`, `sketchBlueprintOnFace`, `fuseBlueprint2D`, `cutBlueprint2D`, `intersectBlueprint2D`
+- **2D curve functions:** `reverseCurve`, `curve2dBoundingBox`, `curve2dFirstPoint`, `curve2dLastPoint`, `curve2dSplitAt`, `curve2dParameter`, `curve2dTangentAt`, `curve2dIsOnCurve`, `curve2dDistanceFrom`
+- **Drawing functions:** `draw`, `drawRectangle`, `drawRoundedRectangle`, `drawCircle`, `drawSingleCircle`, `drawEllipse`, `drawSingleEllipse`, `drawPolysides`, `drawText`, `drawPointsInterpolation`, `drawParametricFunction`, `drawProjection`, `drawFaceOutline`, `deserializeDrawing`, `drawingToSketchOnPlane`, `drawingFuse`, `drawingCut`, `drawingIntersect`, `drawingFillet`, `drawingChamfer`, `translateDrawing`, `rotateDrawing`, `scaleDrawing`, `mirrorDrawing`
+- **Export formats:** `exportOBJ`, `exportGltf`, `exportGlb`, `exportThreeMF`, `exportDXF`, `blueprintToDXF`, `exportAssemblySTEP`
+- **Import formats:** `importSTEP`, `importSTL`, `importIGES`, `importSVGPathD`, `importSVG`
+- **Measurement:** `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, `createDistanceQuery`, `measureVolumeProps`, `measureSurfaceProps`, `measureLinearProps`, `measureCurvatureAt`, `measureCurvatureAtMid`
+- **Three.js integration:** `toBufferGeometryData`, `toLineGeometryData`, `toGroupedBufferGeometryData`
+- **Mesh caching:** `clearMeshCache`, `createMeshCache`
+- **Query helpers:** `combineFinderFilters`, `getSingleFace`
+- **Plane operations:** `createPlane`, `createNamedPlane`, `resolvePlane`, `translatePlane`, `pivotPlane`
+- **Boolean helpers:** `fuseAll`, `cutAll`, `applyGlue`
+- **Disposal/resource management:** `createHandle`, `createOcHandle`, `withScope`, `gcWithScope`, `gcWithObject`, `localGC`
+- **Worker protocol:** All worker types and functions (infrastructure, not modeling API)
+- **Vec operations:** All `vec*` and `vec2*` functions, `toOcVec`, `fromOcVec`, etc.
+- **Result type:** All Result combinators (`ok`, `err`, `isOk`, `isErr`, `map`, `andThen`, `unwrap`, etc.)
+- **Error constructors:** All error factory functions
+- **Type guards:** `isVertex`, `isEdge`, `isWire`, `isFace`, `isShell`, `isSolid`, `isCompound`, `isShape3D`, `isShape1D`, `castShape`, `getShapeKind`
+- **Shape creators:** `createVertex`, `createEdge`, `createWire`, `createFace`, `createShell`, `createSolid`, `createCompound`
+
+---
+
 ## Layer 1: Clean Primitives & Operations
 
 ### 1.1 Naming Convention
 
-Drop the `make*` prefix on primitives and the `*Shape` suffix on operations. These exist to avoid namespace collisions but cost readability on every call.
+Drop the `make*` prefix on primitives, the `*Shape` suffix on operations, and the `*Face`/`*Wires` suffix on 3D operations. These exist to avoid namespace collisions but cost readability on every call.
 
-| Current               | New              | Rationale                                         |
-| --------------------- | ---------------- | ------------------------------------------------- |
+**Primitives:**
+
+| Current               | New              | Rationale                                          |
+| --------------------- | ---------------- | -------------------------------------------------- |
 | `makeBox(...)`        | `box(...)`       | Every CAD API says `box`, not `makeBox`            |
 | `makeCylinder(...)`   | `cylinder(...)`  | Same                                               |
 | `makeSphere(...)`     | `sphere(...)`    | Same                                               |
@@ -39,58 +78,128 @@ Drop the `make*` prefix on primitives and the `*Shape` suffix on operations. The
 | `makeEllipsoid(...)`  | `ellipsoid(...)` | Same                                               |
 | `makeLine(...)`       | `line(...)`      | Same                                               |
 | `makeCircle(...)`     | `circle(...)`    | Same                                               |
+| `makeEllipse(...)`    | `ellipse(...)`   | Same                                               |
 | `makeHelix(...)`      | `helix(...)`     | Same                                               |
 | `makePolygon(...)`    | `polygon(...)`   | Same                                               |
 | `makeVertex(...)`     | `vertex(...)`    | Same                                               |
+
+**Transforms:**
+
+| Current               | New              | Rationale                                          |
+| --------------------- | ---------------- | -------------------------------------------------- |
 | `translateShape(...)` | `translate(...)` | CadQuery: `.translate()`. No suffix needed.        |
 | `rotateShape(...)`    | `rotate(...)`    | Same                                               |
 | `mirrorShape(...)`    | `mirror(...)`    | Same                                               |
 | `scaleShape(...)`     | `scale(...)`     | Same                                               |
+| `cloneShape(...)`     | `clone(...)`     | Same                                               |
+
+> **Breaking note:** The current public API also exports low-level `rotate()`, `translate()`, `mirror()`, `scale()` from `src/core/geometryHelpers.ts`. These operate on raw `OcType` (untyped OCCT shapes) and were never intended as the primary user API. In v5, these low-level versions are **removed from the public API** (internalized). The branded-type versions from `shapeFns.ts` take the clean names. Users who were calling the low-level versions directly should switch to the branded-type equivalents (same behavior, better type safety).
+
+**Booleans:**
+
+| Current               | New              | Rationale                                          |
+| --------------------- | ---------------- | -------------------------------------------------- |
 | `fuseShape(...)`      | `fuse(...)`      | CadQuery: `.union()`. We keep `fuse` (OCCT term).  |
 | `cutShape(...)`       | `cut(...)`       | Same                                               |
 | `intersectShape(...)` | `intersect(...)` | Same                                               |
-| `filletShape(...)`    | `fillet(...)`    | Same                                               |
-| `chamferShape(...)`   | `chamfer(...)`   | Same                                               |
-| `shellShape(...)`     | `shell(...)`     | Same                                               |
-| `offsetShape(...)`    | `offset(...)`    | Same                                               |
-| `cloneShape(...)`     | `clone(...)`     | Same                                               |
+| `sectionShape(...)`   | `section(...)`   | Same                                               |
+| `splitShape(...)`     | `split(...)`     | Same                                               |
+| `sliceShape(...)`     | `slice(...)`     | Same                                               |
+
+**Modifiers:**
+
+| Current                      | New               | Rationale                                          |
+| ---------------------------- | ----------------- | -------------------------------------------------- |
+| `filletShape(...)`           | `fillet(...)`     | Same                                               |
+| `chamferShape(...)`          | `chamfer(...)`    | Same                                               |
+| `chamferDistAngleShape(...)` | `chamfer(...)`    | Merged — distance-angle mode via `ChamferDistance` type union (see [Section 1.3](#13-consistency-fixes)) |
+| `shellShape(...)`            | `shell(...)`      | Same                                               |
+| `offsetShape(...)`           | `offset(...)`     | Same                                               |
+| `thickenSurface(...)`        | `thicken(...)`    | Drop suffix, clear intent                          |
+
+**3D operations (drop type suffix):**
+
+| Current               | New              | Rationale                                          |
+| --------------------- | ---------------- | -------------------------------------------------- |
+| `extrudeFace(...)`    | `extrude(...)`   | The input type makes the operation clear            |
+| `revolveFace(...)`    | `revolve(...)`   | Same                                               |
+| `loftWires(...)`      | `loft(...)`      | Same                                               |
+| `sweep(...)`          | `sweep(...)`     | Already clean                                      |
+| `twistExtrude(...)`   | `twistExtrude(...)` | Already clean                                   |
+| `supportExtrude(...)` | `supportExtrude(...)` | Already clean                                 |
+| `complexExtrude(...)` | `complexExtrude(...)` | Already clean                                 |
+
+**Utilities:**
+
+| Current               | New              | Rationale                                          |
+| --------------------- | ---------------- | -------------------------------------------------- |
 | `healShape(...)`      | `heal(...)`      | Same                                               |
 | `simplifyShape(...)`  | `simplify(...)`  | Same                                               |
 | `meshShape(...)`      | `mesh(...)`      | Same                                               |
+| `meshShapeEdges(...)` | `meshEdges(...)` | Same                                               |
 | `describeShape(...)`  | `describe(...)`  | Same                                               |
+| `serializeShape(...)` | `toBREP(...)`    | Format-specific — avoids collision with generic `serialize` |
+| `deserializeShape(...)` | `fromBREP(...)` | Same                                              |
+| `isShapeValid(...)`   | `isValid(...)`   | Same                                               |
+| `isShapeNull(...)`    | `isEmpty(...)`   | "Empty" is the right concept — avoids confusion with JS `null` |
+
+**Healing variants** (keep their names — they're type-specific overrides):
+
+- `healSolid()`, `healFace()`, `healWire()` — unchanged
+- `autoHeal()` — unchanged (different behavior from `heal()`)
 
 **Functions that keep their names** (already clean):
 
 - `fuseAll()`, `cutAll()`, `linearPattern()`, `circularPattern()`
 - `getEdges()`, `getFaces()`, `getWires()`, `getVertices()`
-- `getBounds()`, `edgeFinder()`, `faceFinder()`
+- `getBounds()`, `edgeFinder()`, `faceFinder()`, `wireFinder()`, `vertexFinder()`, `cornerFinder()`
+- `isSameShape()`, `isEqualShape()` — these describe a comparison, not a property
 - All `measure*()`, `export*()`, `import*()` functions
 - All curve/face introspection: `curveStartPoint()`, `normalAt()`, etc.
 - All `draw*()` 2D functions (see [Section: 2D Drawing Integration](#24-2d-drawing--sketcher-integration))
+- All adjacency queries: `facesOfEdge()`, `edgesOfFace()`, `adjacentFaces()`, etc.
+- All interference: `checkInterference()`, `checkAllInterferences()`
+- See [Scope](#scope) for the complete list
 
 **Deprecated:**
 
-| Current     | Replacement | Rationale                                              |
-| ----------- | ----------- | ------------------------------------------------------ |
-| `pipe()`    | `shape()`   | `shape()` is a superset with better naming             |
-| `makeBaseBox()` | `box()` | Redundant once `box()` takes dimensions directly       |
+| Current        | Replacement | Rationale                                        |
+| -------------- | ----------- | ------------------------------------------------ |
+| `pipe()`       | `shape()`   | `shape()` is a superset with better naming       |
+| `makeBaseBox()` | `box()`    | Redundant once `box()` takes dimensions directly |
+| `chamferDistAngleShape()` | `chamfer()` | Distance-angle mode folded into `ChamferDistance` union |
 
 **Topology constructors that get clearer names:**
 
-| Current                         | New                   | Rationale                                               |
-| ------------------------------- | --------------------- | ------------------------------------------------------- |
-| `makeFace(wire)`                | `face(wire)`          | Short, clear                                            |
-| `makeNonPlanarFace(wire)`       | `nonPlanarFace(wire)` | Keeps qualifier                                         |
-| `makeCompound(shapes)`          | `compound(shapes)`    | Same                                                    |
-| `makeSolid(faces)`              | `weld(faces)`         | `solid()` is ambiguous — "weld" describes the operation |
-| `makeOffset(face, d)`           | `offsetFace(face, d)` | Distinguish from `offset()` (3D offset)                 |
-| `makeBSplineApproximation(...)` | `bspline(...)`        | Concise                                                 |
-| `makeBezierCurve(...)`          | `bezier(...)`         | Concise                                                 |
-| `makeThreePointArc(...)`        | `threePointArc(...)`  | Clear enough                                            |
-| `makeTangentArc(...)`           | `tangentArc(...)`     | Clear enough                                            |
-| `makeEllipseArc(...)`           | `ellipseArc(...)`     | Clear enough                                            |
-| `assembleWire(edges)`           | `wire(edges)`         | Short, matches `face()` pattern                         |
-| `addHolesInFace(...)`           | `faceWithHoles(...)`  | Reads as a constructor                                  |
+| Current                         | New                      | Rationale                                               |
+| ------------------------------- | ------------------------ | ------------------------------------------------------- |
+| `makeFace(wire)`                | `face(wire)`             | Short, clear                                            |
+| `makeNonPlanarFace(wire)`       | `filledFace(wire)`       | Matches OCCT `BRepFill` — "fill the wire boundary with a surface" |
+| `makeCompound(shapes)`          | `compound(shapes)`       | Same                                                    |
+| `makeSolid(faces)`              | `solid(faces)`           | Matches `face(wire)`, `wire(edges)` constructor pattern |
+| `makeOffset(face, d)`           | `offsetFace(face, d)`    | Distinguish from `offset()` (3D offset)                 |
+| `makeBSplineApproximation(...)` | `bsplineApprox(...)`     | Concise, preserves "approximation" to distinguish from `interpolateCurve()` |
+| `makeBezierCurve(...)`          | `bezier(...)`            | Concise                                                 |
+| `makeThreePointArc(...)`        | `threePointArc(...)`     | Clear enough                                            |
+| `makeTangentArc(...)`           | `tangentArc(...)`        | Clear enough                                            |
+| `makeEllipseArc(...)`           | `ellipseArc(...)`        | Clear enough                                            |
+| `assembleWire(edges)`           | `wire(edges)`            | Short, matches `face()` pattern                         |
+| `addHolesInFace(...)`           | `addHoles(...)`          | Shorter, clear: "add these holes to this face"          |
+| `makeNewFaceWithinFace(...)`    | `subFace(...)`           | A face bounded within another face                      |
+| `makeProjectedEdges(...)`       | `projectedEdges(...)`    | Drop `make*` prefix                                     |
+| `weldShellsAndFaces(...)`       | `sewShells(...)`         | Matches OCCT `BRepBuilderAPI_Sewing`, distinct from `solid()` |
+
+**Internalized (removed from public API):**
+
+| Current (from `geometryHelpers.ts`) | Rationale                                                 |
+| ------------------------------------ | --------------------------------------------------------- |
+| `rotate(shape: OcType, ...)`        | Low-level OCCT utility. Replaced by branded `rotate()` from `shapeFns.ts` |
+| `translate(shape: OcType, ...)`     | Same                                                      |
+| `mirror(shape: OcType, ...)`        | Same                                                      |
+| `scale(shape: OcType, ...)`         | Same                                                      |
+| `makePlaneFromFace(...)`             | Internal helper. Users use `resolvePlane()` or `Sketcher` |
+
+> `makePlane()` stays exported — it creates planes, not shapes.
 
 **Migration:** Old names kept as deprecated aliases for one major version. A codemod script provided.
 
@@ -119,6 +228,7 @@ sphere(radius: number, options?: {
 cone(bottomRadius: number, topRadius: number, height: number, options?: {
   at?: Vec3;              // base position
   axis?: Vec3;
+  centered?: boolean;     // center vertically instead of base at origin
 }): Solid
 
 torus(majorRadius: number, minorRadius: number, options?: {
@@ -155,21 +265,23 @@ helix(pitch: number, height: number, radius: number, options?: {
 
 **Positioning semantics by primitive:**
 
-| Primitive  | `at` means        | `center` option? | Rationale                                    |
-| ---------- | ----------------- | ----------------- | -------------------------------------------- |
-| `box`      | N/A — use `center` | Yes              | Box has ambiguous reference point; be explicit |
-| `cylinder` | Base position     | Yes (vertical)    | Base is the natural reference for cylinders    |
-| `cone`     | Base position     | No                | Same as cylinder                               |
-| `sphere`   | Center            | No                | Sphere is inherently centered                  |
-| `torus`    | Center            | No                | Torus is inherently centered                   |
-| `ellipsoid`| Center            | No                | Ellipsoid is inherently centered               |
+| Primitive   | `at` means         | `centered` option? | Rationale                                      |
+| ----------- | ------------------ | ------------------ | ---------------------------------------------- |
+| `box`       | N/A — use `center` | Yes (via `center`) | Box has ambiguous reference point; be explicit  |
+| `cylinder`  | Base position      | Yes (vertical)     | Base is the natural reference for cylinders     |
+| `cone`      | Base position      | Yes (vertical)     | Same geometry as cylinder — same options        |
+| `sphere`    | Center             | No                 | Sphere is inherently centered                   |
+| `torus`     | Center             | No                 | Torus is inherently centered                    |
+| `ellipsoid` | Center             | No                 | Ellipsoid is inherently centered                |
 
 **Key changes from current API:**
 
 - `sphere` gains `at` option (was missing, inconsistent with cylinder/cone/torus)
+- `cone` gains `centered` option (same geometry class as cylinder — same options)
 - `box` uses `center` not `at` to avoid corner-vs-center ambiguity
 - All use `axis` instead of positional `direction` parameters
 - Options objects replace long positional parameter lists
+- `extrude()` accepts `number` as shorthand for Z-direction extrusion (`10` = `[0, 0, 10]`). This is a new convenience not present in current `extrudeFace()`.
 
 ### 1.3 Consistency Fixes
 
@@ -189,6 +301,8 @@ ellipseArc(
 
 No `DEG2RAD` / `RAD2DEG` constants needed in user code. If a user has radians, they multiply by `180/Math.PI` — the standard JS pattern.
 
+**Default rotation axis is Z ([0, 0, 1]).** This matches the convention used by `cylinder`, `cone`, `circularPattern`, and the `Sketcher`. Documented explicitly on all rotation functions.
+
 **Consistent parameter ordering across all operations:**
 
 1. The shape(s) being operated on
@@ -196,11 +310,11 @@ No `DEG2RAD` / `RAD2DEG` constants needed in user code. If a user has radians, t
 3. Options object
 
 ```typescript
-// Transforms: shape, value, options
+// Transforms: shape, value, options — preserve input type T
 translate<T extends AnyShape>(shape: Shapeable<T>, v: Vec3): T
 rotate<T extends AnyShape>(shape: Shapeable<T>, angle: number, options?: {
-  around?: Vec3;   // pivot point
-  axis?: Vec3;     // rotation axis, default Z
+  around?: Vec3;   // pivot point, default [0,0,0]
+  axis?: Vec3;     // rotation axis, default [0,0,1] (Z)
 }): T
 mirror<T extends AnyShape>(shape: Shapeable<T>, options?: {
   normal?: Vec3;   // default [1,0,0]
@@ -210,16 +324,41 @@ scale<T extends AnyShape>(shape: Shapeable<T>, factor: number, options?: {
   center?: Vec3;
 }): T
 
-// Booleans: target, tool, options
-fuse(a: Shapeable<Shape3D>, b: Shapeable<Shape3D>, options?: BooleanOptions): Result<Shape3D>
-cut(base: Shapeable<Shape3D>, tool: Shapeable<Shape3D>, options?: BooleanOptions): Result<Shape3D>
-intersect(a: Shapeable<Shape3D>, b: Shapeable<Shape3D>, options?: BooleanOptions): Result<Shape3D>
+// Booleans: target, tool, options — preserve first operand type T
+fuse<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>, options?: BooleanOptions): Result<T>
+cut<T extends Shape3D>(base: Shapeable<T>, tool: Shapeable<Shape3D>, options?: BooleanOptions): Result<T>
+intersect<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>, options?: BooleanOptions): Result<T>
 
-// Modifiers: shape, what-to-modify, how-much, options
-fillet(shape: Shapeable<Shape3D>, edges: Edge[] | FinderFn<Edge>, radius: FilletRadius): Result<Shape3D>
-chamfer(shape: Shapeable<Shape3D>, edges: Edge[] | FinderFn<Edge>, distance: ChamferDistance): Result<Shape3D>
-shell(shape: Shapeable<Shape3D>, faces: Face[] | FinderFn<Face>, thickness: number): Result<Shape3D>
+// Modifiers: shape, [optional-selection], how-much — preserve input type T
+// Fillet: 2-arg form fillets ALL edges; 3-arg form fillets selected edges
+fillet<T extends Shape3D>(shape: Shapeable<T>, radius: FilletRadius): Result<T>
+fillet<T extends Shape3D>(shape: Shapeable<T>, edges: Edge[] | FinderFn<Edge>, radius: FilletRadius): Result<T>
+
+// Chamfer: same overload pattern. ChamferDistance now includes distance-angle mode.
+chamfer<T extends Shape3D>(shape: Shapeable<T>, distance: ChamferDistance): Result<T>
+chamfer<T extends Shape3D>(shape: Shapeable<T>, edges: Edge[] | FinderFn<Edge>, distance: ChamferDistance): Result<T>
+
+shell<T extends Shape3D>(shape: Shapeable<T>, faces: Face[] | FinderFn<Face>, thickness: number, options?: {
+  tolerance?: number;  // default 1e-3
+}): Result<T>
+offset<T extends Shape3D>(shape: Shapeable<T>, distance: number, options?: {
+  tolerance?: number;  // default 1e-6
+}): Result<T>
+thicken(shape: Shapeable<Face | Shell>, thickness: number): Result<Solid>
+
+// 3D operations
+extrude(face: Shapeable<Face>, height: number | Vec3): Solid
+revolve(face: Shapeable<Face>, options?: {
+  axis?: Vec3;       // default [0,0,1] (Z)
+  around?: Vec3;     // pivot point, default [0,0,0]
+  angle?: number;    // degrees, default 360
+}): Result<Shape3D>
+loft(wires: Shapeable<Wire>[], options?: LoftConfig): Result<Shape3D>
+sweep(profile: Shapeable<Wire>, spine: Shapeable<Wire>, options?: SweepConfig): Result<Shape3D>
+sweep(profile: Shapeable<Wire>, spine: Shapeable<Wire>, options: SweepConfig & { shellMode: true }): Result<[Shape3D, Wire, Wire]>
 ```
+
+> **`sweep` shell mode:** The current `sweep()` accepts a `shellMode` boolean that changes the return type to `[Shape3D, Wire, Wire]` (solid + start/end wires). This is preserved via TypeScript overloads — the return type narrows based on `options.shellMode`. The `shellMode` parameter moves from a positional arg to the options object.
 
 **`Shapeable<T>` utility type** — all functional functions accept both raw branded types and `shape()` wrappers:
 
@@ -258,11 +397,12 @@ type FilletRadius =
   | [number, number]                                 // variable radius (start, end)
   | ((edge: Edge) => number | [number, number] | null);  // per-edge callback
 
-// Chamfer distance types
+// Chamfer distance types — includes distance-angle mode (replaces chamferDistAngleShape)
 type ChamferDistance =
   | number                                           // equal distance
-  | [number, number]                                 // asymmetric distances
-  | ((edge: Edge) => number | [number, number] | null);  // per-edge callback
+  | [number, number]                                 // asymmetric distances (dist1, dist2)
+  | { distance: number; angle: number }              // distance-angle mode (degrees)
+  | ((edge: Edge) => number | [number, number] | { distance: number; angle: number } | null);
 
 // Usage:
 fillet(shape, e => e.inDirection('Z'), 2);                    // constant
@@ -270,6 +410,9 @@ fillet(shape, e => e.inDirection('Z'), [2, 5]);               // variable
 fillet(shape, e => e.inDirection('Z'), (edge) => {            // per-edge
   return measureLength(edge) > 10 ? 3 : 1;
 });
+fillet(shape, 2);                                             // all edges, constant radius
+
+chamfer(shape, e => e.inDirection('Z'), { distance: 2, angle: 45 }); // distance-angle
 ```
 
 ---
@@ -323,7 +466,7 @@ Users rarely write these types — inference handles most cases. But when they d
 
 The wrapper preserves type information through the chain. Methods are gated by shape type.
 
-**Type preservation rule:** Boolean operations preserve the input type. `Wrapped<Solid>.cut()` returns `Wrapped<Solid>`, not `Wrapped<Shape3D>`. This is correct — OCCT booleans return the same topological type as the first operand.
+**Type preservation rule:** Boolean and modifier operations preserve the input type. `Wrapped3D<Solid>.cut()` returns `Wrapped3D<Solid>`, not `Wrapped3D<Shape3D>`. This is correct — OCCT booleans and modifiers return the same topological type as the first operand.
 
 ```typescript
 // ── Available on all shapes ─────────────────────────────────
@@ -341,9 +484,9 @@ interface Wrapped<T extends AnyShape> {
   moveX(distance: number): Wrapped<T>;
   moveY(distance: number): Wrapped<T>;
   moveZ(distance: number): Wrapped<T>;
-  rotateX(angle: number): Wrapped<T>;
-  rotateY(angle: number): Wrapped<T>;
-  rotateZ(angle: number): Wrapped<T>;
+  rotateX(angle: number): Wrapped<T>;  // angle in degrees
+  rotateY(angle: number): Wrapped<T>;  // angle in degrees
+  rotateZ(angle: number): Wrapped<T>;  // angle in degrees
 
   // Introspection
   bounds(): Bounds3D;
@@ -363,15 +506,20 @@ interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
   intersect(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
 
   // Modifiers (full radius/distance support — not simplified)
+  // Overloads: omit edges to modify all, or pass edges/finder for specific
+  fillet(radius: FilletRadius): Wrapped3D<T>;
   fillet(edges: Edge[] | FinderFn<Edge>, radius: FilletRadius): Wrapped3D<T>;
+  chamfer(distance: ChamferDistance): Wrapped3D<T>;
   chamfer(edges: Edge[] | FinderFn<Edge>, distance: ChamferDistance): Wrapped3D<T>;
-  shell(faces: Face[] | FinderFn<Face>, thickness: number): Wrapped3D<T>;
-  offset(distance: number): Wrapped3D<T>;
+  shell(faces: Face[] | FinderFn<Face>, thickness: number, options?: { tolerance?: number }): Wrapped3D<T>;
+  offset(distance: number, options?: { tolerance?: number }): Wrapped3D<T>;
 
   // Compound operations (see Section: Compound Operations)
   drill(options: DrillOptions): Wrapped3D<T>;
   pocket(options: PocketOptions): Wrapped3D<T>;
-  mirrorJoin(options?: { normal?: Vec3; origin?: Vec3 }): Wrapped3D<T>;
+  boss(options: BossOptions): Wrapped3D<T>;
+  mirrorJoin(options?: MirrorJoinOptions): Wrapped3D<T>;
+  rectangularPattern(options: RectangularPatternOptions): Wrapped3D<T>;
 
   // Measurement
   volume(): number;
@@ -383,7 +531,7 @@ interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
   wires(): Wire[];
   vertices(): Vertex[];
 
-  // Patterns
+  // Patterns (existing)
   linearPattern(direction: Vec3, count: number, spacing: number): Wrapped3D<T>;
   circularPattern(axis: Vec3, count: number, angle?: number): Wrapped3D<T>;
 }
@@ -396,6 +544,9 @@ interface WrappedCurve<T extends Edge | Wire> extends Wrapped<T> {
   pointAt(t?: number): Vec3;
   tangentAt(t?: number): Vec3;
   isClosed(): boolean;
+
+  // Wire → 3D transitions
+  sweep(profile: Shapeable<Wire>, options?: SweepConfig): Wrapped3D<Shape3D>;
 }
 
 // ── Additional methods on Face ──────────────────────────────
@@ -409,7 +560,7 @@ interface WrappedFace extends Wrapped<Face> {
 
   // 2D → 3D transitions
   extrude(height: number | Vec3): Wrapped3D<Solid>;
-  revolve(options?: { axis?: Vec3; angle?: number }): Wrapped3D<Shape3D>;
+  revolve(options?: { axis?: Vec3; around?: Vec3; angle?: number }): Wrapped3D<Shape3D>;
 }
 ```
 
@@ -508,22 +659,50 @@ Two styles, two error strategies. User picks per-context.
 
 ## Compound Operations (First-Class)
 
-These are part of the initial redesign, not deferred. They represent how CAD users *think* — in features, not in geometric primitives + boolean sequences.
+These are part of the initial redesign, not deferred. They represent how CAD users *think* — in features, not in geometric primitives + boolean sequences. All compound operations are available as both functional functions and wrapper methods.
 
-### drill — Hole creation
+**Named option types** (referenced in both functional signatures and wrapper interface):
 
 ```typescript
-drill(shape: Shapeable<Shape3D>, options: {
+interface DrillOptions {
   at: Vec2 | Vec3;          // position (Vec2 projects along axis)
   radius: number;
   depth?: number;            // default: through (computed from bounds)
   axis?: Vec3;               // default: [0,0,1] (Z)
-}): Result<Shape3D>
+}
 
-// Usage:
-const plate = drill(box(50, 30, 10), { at: [25, 15], radius: 5 });
+interface PocketOptions {
+  profile: Drawing | Wire;   // 2D shape to cut
+  face?: Face | FinderFn<Face>;  // which face to pocket (default: top)
+  depth: number;
+}
 
-// On wrapper:
+interface BossOptions {
+  profile: Drawing | Wire;
+  face?: Face | FinderFn<Face>;  // which face to add onto (default: top)
+  height: number;
+}
+
+interface MirrorJoinOptions {
+  normal?: Vec3;    // default [1,0,0] (mirror across YZ plane)
+  origin?: Vec3;
+}
+
+interface RectangularPatternOptions {
+  xDir: Vec3; xCount: number; xSpacing: number;
+  yDir: Vec3; yCount: number; ySpacing: number;
+}
+```
+
+### drill — Hole creation
+
+```typescript
+drill<T extends Shape3D>(shape: Shapeable<T>, options: DrillOptions): Result<T>
+
+// Functional usage (returns Result — must handle):
+const plate = unwrap(drill(box(50, 30, 10), { at: [25, 15], radius: 5 }));
+
+// Wrapper usage (auto-throws on error):
 shape(box(50, 30, 10))
   .drill({ at: [25, 15], radius: 5 })
   .drill({ at: [10, 10], radius: 3, depth: 5 });
@@ -532,11 +711,7 @@ shape(box(50, 30, 10))
 ### pocket — 2D profile cut into a face
 
 ```typescript
-pocket(shape: Shapeable<Shape3D>, options: {
-  profile: Drawing | Wire;   // 2D shape to cut
-  face?: Face | FinderFn<Face>;  // which face to pocket (default: top)
-  depth: number;
-}): Result<Shape3D>
+pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOptions): Result<T>
 
 // Usage:
 shape(box(50, 30, 10))
@@ -546,20 +721,13 @@ shape(box(50, 30, 10))
 ### boss — 2D profile extruded onto a face
 
 ```typescript
-boss(shape: Shapeable<Shape3D>, options: {
-  profile: Drawing | Wire;
-  face?: Face | FinderFn<Face>;  // which face to add onto (default: top)
-  height: number;
-}): Result<Shape3D>
+boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOptions): Result<T>
 ```
 
 ### mirrorJoin — Mirror and fuse in one step
 
 ```typescript
-mirrorJoin(shape: Shapeable<Shape3D>, options?: {
-  normal?: Vec3;    // default [1,0,0] (mirror across YZ plane)
-  origin?: Vec3;
-}): Result<Shape3D>
+mirrorJoin<T extends Shape3D>(shape: Shapeable<T>, options?: MirrorJoinOptions): Result<T>
 
 // The most common use: make half a part, mirror to get the whole thing
 shape(halfBracket).mirrorJoin();
@@ -568,13 +736,8 @@ shape(halfBracket).mirrorJoin();
 ### rectangularPattern — 2D array of a shape
 
 ```typescript
-rectangularPattern(shape: Shapeable<Shape3D>, options: {
-  xDir: Vec3; xCount: number; xSpacing: number;
-  yDir: Vec3; yCount: number; ySpacing: number;
-}): Result<Shape3D>
+rectangularPattern<T extends Shape3D>(shape: Shapeable<T>, options: RectangularPatternOptions): Result<T>
 ```
-
-All compound operations are available as both functional functions and wrapper methods.
 
 ---
 
@@ -598,13 +761,15 @@ Boolean fuse failed: shapes do not intersect or touch.
 
 ### Implementation pattern
 
-Error enrichment happens at the public API boundary, not deep in OCCT adapter code:
+Error enrichment happens at the public API boundary, not deep in OCCT adapter code. The public `fuse()` delegates to the kernel adapter's boolean operation, then enriches any error before returning:
 
 ```typescript
-function fuse(a: Shapeable<Shape3D>, b: Shapeable<Shape3D>): Result<Shape3D> {
-  const result = kernel.fuse(resolve(a), resolve(b));
+function fuseImpl<T extends Shape3D>(a: Shapeable<T>, b: Shapeable<Shape3D>): Result<T> {
+  const rawA = resolve(a);
+  const rawB = resolve(b);
+  const result = getKernel().fuse(rawA, rawB);  // kernel adapter call
   if (isErr(result)) {
-    return err(enrichBooleanError(result.error, resolve(a), resolve(b)));
+    return err(enrichBooleanError(result.error, rawA, rawB));
   }
   return result;
 }
@@ -620,13 +785,13 @@ function enrichBooleanError(error: BrepError, a: Shape3D, b: Shape3D): BrepError
 
 ### Priority diagnostics:
 
-| Operation | Common failure | Diagnostic to add |
-| --------- | -------------- | ----------------- |
-| Boolean fuse/cut | Shapes don't intersect | Bounds + distance + suggestion |
-| Fillet | Radius too large | Max feasible radius for that edge |
-| Shell | Thickness exceeds wall | Wall thickness at failure point |
-| Extrude | Zero-length vector | Which component is zero |
-| Loft | Incompatible profiles | Wire edge counts + orientation |
+| Operation        | Common failure               | Diagnostic to add                         |
+| ---------------- | ---------------------------- | ----------------------------------------- |
+| Boolean fuse/cut | Shapes don't intersect       | Bounds + distance + suggestion            |
+| Fillet           | Radius too large             | Max feasible radius for that edge         |
+| Shell            | Thickness exceeds wall       | Wall thickness at failure point           |
+| Extrude          | Zero-length vector           | Which component is zero                   |
+| Loft             | Incompatible profiles        | Wire edge counts + orientation            |
 
 ---
 
@@ -722,6 +887,15 @@ export const cutShape = cut;
 
 /** @deprecated Use shape() instead */
 export const pipe = shape;
+
+/** @deprecated Use chamfer() with { distance, angle } instead */
+export const chamferDistAngleShape = chamfer;
+
+/** @deprecated Use toBREP() instead */
+export const serializeShape = toBREP;
+
+/** @deprecated Use fromBREP() instead */
+export const deserializeShape = fromBREP;
 ```
 
 ### Versioning
@@ -731,9 +905,15 @@ This is a **major version bump** (v5.0.0). The changes are:
 - Renamed primitives (non-breaking via aliases)
 - Renamed operations (non-breaking via aliases)
 - `pipe()` deprecated in favor of `shape()` (non-breaking via alias)
+- `chamferDistAngleShape()` merged into `chamfer()` via `ChamferDistance` type (non-breaking via alias)
+- Low-level `rotate`/`translate`/`mirror`/`scale` (OcType versions) removed from public API (breaking)
+- `makePlaneFromFace()` removed from public API (breaking — use `resolvePlane()` or `Sketcher`)
 - Changed constructor signatures (breaking: positional params → options object)
 - `makeEllipseArc` angles changed from radians to degrees (breaking)
 - `sphere` gains `at` option (non-breaking)
+- `cone` gains `centered` option (non-breaking)
+- `extrude()` accepts `number` shorthand for Z-direction (new feature)
+- `sweep()` `shellMode` moved from positional arg to options object (breaking signature change)
 - New `shape()` wrapper API (additive)
 - New `Shapeable<T>` utility type (additive)
 - New compound operations: `drill`, `pocket`, `boss`, `mirrorJoin`, `rectangularPattern` (additive)
@@ -756,18 +936,20 @@ This is a **major version bump** (v5.0.0). The changes are:
 
 **Primitives returning rich objects directly** — Considered having `box()` return a `Wrapped<Solid>` instead of a `Solid`. Rejected because it couples the wrapper to every function, hurts tree-shaking, and makes the functional API depend on the wrapper layer. The explicit `shape()` entry keeps the layers independent.
 
+**Renaming assembly/history/projection/worker APIs** — These are stable, self-contained subsystems with clean names already. They don't suffer from the `make*`/`*Shape` prefix/suffix problem. Future redesign may address them separately if needed.
+
 ---
 
 ## Summary
 
 The redesign has three layers plus cross-cutting improvements:
 
-| Layer                         | What                                               | Breaking?                 |
-| ----------------------------- | -------------------------------------------------- | ------------------------- |
-| **1. Naming + Defaults**      | Short names, smart defaults, consistency           | Yes (with migration path) |
-| **2. Typed Wrapper**          | `shape()` / `Wrapped<T>` for discoverability       | No (additive)             |
-| **3. Conventions**            | Component pattern docs and examples                | No (documentation)        |
-| **Compound Operations**       | `drill`, `pocket`, `boss`, `mirrorJoin`, patterns  | No (additive)             |
-| **Diagnostic Errors**         | Geometric context + suggestions in error messages  | No (improvement)          |
+| Layer                    | What                                              | Breaking?                 |
+| ------------------------ | ------------------------------------------------- | ------------------------- |
+| **1. Naming + Defaults** | Short names, smart defaults, consistency          | Yes (with migration path) |
+| **2. Typed Wrapper**     | `shape()` / `Wrapped<T>` for discoverability      | No (additive)             |
+| **3. Conventions**       | Component pattern docs and examples               | No (documentation)        |
+| **Compound Operations**  | `drill`, `pocket`, `boss`, `mirrorJoin`, patterns | No (additive)             |
+| **Diagnostic Errors**    | Geometric context + suggestions in error messages | No (improvement)          |
 
 The result: an API where experienced CAD programmers can write `box(30, 20, 10)` on day one, discover operations via `shape(s).`, compose parameterized components using plain TypeScript functions, and get helpful diagnostics when things go wrong.
