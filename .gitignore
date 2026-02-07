@@ -4,6 +4,9 @@ memory/
 # Generated example output (SVG, HTML)
 examples/output/
 
+# Git worktrees
+.worktrees/
+
 node_modules/
 dist/
 docs-api/
