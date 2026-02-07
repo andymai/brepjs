@@ -88,18 +88,43 @@ function HeroAutoFit({ data }: { data: HeroMeshData }) {
   return null;
 }
 
+function ViewerShimmer() {
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <div className="viewer-shimmer absolute inset-0" />
+      <div className="relative flex flex-col items-center gap-3 text-gray-500">
+        <svg className="h-8 w-8 animate-pulse text-teal-primary/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        </svg>
+        <span className="text-xs">Loading geometry&hellip;</span>
+      </div>
+    </div>
+  );
+}
+
 export default function HeroViewer() {
   const mesh = useHeroMesh();
 
   return (
-    <div className="relative h-full w-full rounded-xl border border-border-subtle overflow-hidden">
-      <Canvas camera={{ position: [400, 300, 400], fov: 45, near: 1, far: 5000 }} gl={{ preserveDrawingBuffer: true }}>
-        <SceneSetup autoRotate gridVisible gridProps={{ fadeStart: 100, fadeEnd: 500 }} />
-        {mesh && <HeroAutoFit data={mesh} />}
-        <group rotation={[-Math.PI / 2, 0, 0]}>
-          {mesh && <HeroShape data={mesh} />}
-        </group>
-      </Canvas>
+    <div className="code-frame h-full">
+      <div className="flex h-full w-full flex-col overflow-hidden glass-card !border-0">
+        <div className="flex shrink-0 items-center gap-1.5 border-b border-white/5 px-4 py-2.5">
+          <div className="h-3 w-3 rounded-full bg-red-500/40" />
+          <div className="h-3 w-3 rounded-full bg-yellow-500/40" />
+          <div className="h-3 w-3 rounded-full bg-green-500/40" />
+          <span className="ml-3 text-xs text-gray-500">preview</span>
+        </div>
+        {!mesh && <ViewerShimmer />}
+        <div className="relative flex-1" style={mesh ? undefined : { opacity: 0, position: 'absolute' }}>
+          <Canvas camera={{ position: [400, 300, 400], fov: 45, near: 1, far: 5000 }} gl={{ preserveDrawingBuffer: true }}>
+            <SceneSetup autoRotate gridVisible gridProps={{ fadeStart: 100, fadeEnd: 500 }} />
+            {mesh && <HeroAutoFit data={mesh} />}
+            <group rotation={[-Math.PI / 2, 0, 0]}>
+              {mesh && <HeroShape data={mesh} />}
+            </group>
+          </Canvas>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEngineStore } from '../../stores/engineStore';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
+import Logo from '../shared/Logo';
 
 interface ToolbarProps {
   onRun: () => void;
@@ -21,9 +22,7 @@ export default function Toolbar({
     <div className="flex h-11 items-center justify-between border-b border-border-subtle bg-surface px-3">
       <div className="flex items-center gap-2">
         <Link to="/" className="flex items-center gap-1.5 text-sm font-bold">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-indigo-primary text-xs font-bold text-white">
-            b
-          </span>
+          <Logo className="h-6 w-6" />
           <span className="text-gray-400">brepjs</span>
         </Link>
 
@@ -37,7 +36,7 @@ export default function Toolbar({
           onClick={onRun}
           disabled={!engineReady}
           title={`Run (${formatShortcut(SHORTCUTS.run)})`}
-          className="flex items-center gap-1.5 rounded bg-indigo-primary px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-indigo-dark disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded bg-teal-primary px-3 py-1 text-xs font-semibold text-gray-950 transition-colors hover:bg-teal-dark disabled:opacity-40"
         >
           Run
         </button>

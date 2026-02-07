@@ -40,7 +40,7 @@ function ToolbarButton({
       onClick={onClick}
       className={`pointer-events-auto rounded px-2 py-1 text-xs font-medium transition-colors ${
         active
-          ? 'bg-indigo-primary/20 text-indigo-light'
+          ? 'bg-teal-primary/20 text-teal-light'
           : 'bg-surface/70 text-gray-500 hover:text-gray-300'
       } border border-border-subtle backdrop-blur-sm`}
     >
@@ -65,7 +65,7 @@ function PresetButton({
       onClick={() => onClick(preset)}
       className={`pointer-events-auto rounded px-2 py-1 text-xs font-medium transition-colors ${
         active === preset
-          ? 'bg-indigo-primary/20 text-indigo-light'
+          ? 'bg-teal-primary/20 text-teal-light'
           : 'bg-surface/70 text-gray-500 hover:text-gray-300'
       } border border-border-subtle backdrop-blur-sm`}
     >
