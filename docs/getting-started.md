@@ -111,7 +111,7 @@ const stepBlob = unwrap(exportSTEP(moved));
 // stepBlob is a Blob you can save to disk or send to a viewer
 ```
 
-Other export formats: `exportSTL`, `exportGLTF`, `exportOBJ`, `export3MF`.
+Other export formats: `exportSTL`, `exportGltf`, `exportOBJ`, `exportThreeMF`.
 
 ## Complete example
 

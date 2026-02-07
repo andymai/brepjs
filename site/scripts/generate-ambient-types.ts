@@ -487,7 +487,7 @@ const internalBaseStubs = [
   '/** @internal */ interface BlueprintLike {}',
   '/** @internal */ declare abstract class PhysicalProperties {}',
 ];
-for (const stub of internalBaseStubs) {
+for (const stub of [...internalBaseStubs].reverse()) {
   // Extract the name from the stub
   const nameMatch = stub.match(/(?:class|interface)\s+(\w+)/);
   if (nameMatch && !declarations.has(nameMatch[1])) {

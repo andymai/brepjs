@@ -10,7 +10,6 @@
 
 import './_setup.js';
 import {
-  makeBox,
   makeCylinder,
   fuseShape,
   cutShape,
@@ -28,8 +27,6 @@ import {
 
 /** Parameters for the flanged pipe. */
 interface PipeParams {
-  /** Inner radius of the pipe bore (mm). */
-  boreRadius: number;
   /** Outer radius of the pipe tube (mm). */
   tubeRadius: number;
   /** Length of the pipe (mm). */
@@ -118,7 +115,6 @@ function buildFlangedPipe(params: PipeParams): Shape3D {
 // ─── Build two size variants ────────────────────────────────────
 
 const smallPipe = buildFlangedPipe({
-  boreRadius: 10,
   tubeRadius: 15,
   length: 80,
   flangeRadius: 25,
@@ -131,7 +127,6 @@ const smallPipe = buildFlangedPipe({
 });
 
 const largePipe = buildFlangedPipe({
-  boreRadius: 20,
   tubeRadius: 30,
   length: 120,
   flangeRadius: 50,

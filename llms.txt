@@ -642,7 +642,7 @@ checkAllInterferences(shapes, tolerance?): InterferencePair[]
 // InterferencePair: { i, j, result: InterferenceResult }
 ```
 
-`checkInterference` returns `err(VALIDATION, NULL_SHAPE_INPUT)` if either shape is null. `checkAllInterferences` propagates via `unwrap` (throws on null).
+`checkInterference` returns a `Result` error with `kind: 'VALIDATION'` and `code: 'NULL_SHAPE_INPUT'` if either shape is null. `checkAllInterferences` propagates via `unwrap` (throws on null).
 
 ## Shape Healing & Validation
 
