@@ -16,7 +16,6 @@ import {
   isErr,
   getBounds,
   resolvePlane,
-  makePlaneFromFace,
   getEdges,
   getFaces,
   exportSTEP,
@@ -181,36 +180,6 @@ describe('Shape transformations', () => {
   it('mirror with default (no args)', () => {
     const box = mirrorShape(makeBox([0, 0, 0], [10, 10, 10]) as any);
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
-  });
-});
-
-describe('makePlaneFromFace', () => {
-  it('creates plane from box face', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const face = getFaces(box)[0];
-    // Create adapter object with the methods expected by makePlaneFromFace
-    const faceAdapter = {
-      pointOnSurface: (u: number, v: number) => pointOnSurface(face, u, v),
-      normalAt: (p?: [number, number, number]) => normalAt(face, p),
-    };
-    const plane = makePlaneFromFace(faceAdapter);
-    expect(plane).toBeDefined();
-    expect(plane.origin).toBeDefined();
-    expect(plane.xDir).toBeDefined();
-    expect(plane.yDir).toBeDefined();
-    expect(plane.zDir).toBeDefined();
-  });
-
-  it('creates plane with custom origin on surface', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const face = getFaces(box)[0];
-    // Create adapter object with the methods expected by makePlaneFromFace
-    const faceAdapter = {
-      pointOnSurface: (u: number, v: number) => pointOnSurface(face, u, v),
-      normalAt: (p?: [number, number, number]) => normalAt(face, p),
-    };
-    const plane = makePlaneFromFace(faceAdapter, [0.5, 0.5]);
-    expect(plane).toBeDefined();
   });
 });
 

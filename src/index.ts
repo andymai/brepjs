@@ -184,9 +184,7 @@ export {
 
 // ── Layer 2: query ──
 
-export { type Corner } from './query/cornerFinder.js';
 export { getSingleFace, type SingleFace } from './query/helpers.js';
-export { combineFinderFilters, type FilterFcn } from './query/index.js';
 
 // ── Layer 2: io ──
 
@@ -817,14 +815,3 @@ export {
   type WrappedCurve,
   type WrappedFace,
 } from './topology/wrapperFns.js';
-
-// ── Deprecated aliases (v4 → v5 migration) ──
-
-export {
-  // OcType-level geometry helpers (removed from v5 public API)
-  ocRotate,
-  ocTranslate,
-  ocMirror,
-  ocScale,
-  makePlaneFromFace,
-} from './compat.js';

@@ -1,6 +1,5 @@
 import { bug } from '../../core/errors.js';
-import type { Corner } from '../../query/cornerFinder.js';
-import type { CornerFilter } from '../../query/finderFns.js';
+import type { Corner, CornerFilter } from '../../query/finderFns.js';
 import type { Curve2D } from '../lib/index.js';
 import { chamferCurves, filletCurves, samePoint } from '../lib/index.js';
 import Blueprint from './Blueprint.js';

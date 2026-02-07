@@ -58,7 +58,6 @@ import { filletShape } from 'brepjs/topology';
 | `cloneShape`                  | `brepjs/topology`    | function |
 | `collect`                     | `brepjs/core`        | function |
 | `collectShapes`               | `brepjs/operations`  | function |
-| `combineFinderFilters`        | `brepjs/query`       | function |
 | `complexExtrude`              | `brepjs/operations`  | function |
 | `CompoundBlueprint`           | `brepjs/2d`          | class    |
 | `CompoundSketch`              | `brepjs/sketching`   | class    |
@@ -68,6 +67,8 @@ import { filletShape } from 'brepjs/topology';
 | `compoundSketchRevolve`       | `brepjs/sketching`   | function |
 | `computationError`            | `brepjs/core`        | function |
 | `Corner`                      | `brepjs/query`       | type     |
+| `cornerFinder`                | `brepjs/query`       | function |
+| `CornerFinderFn`              | `brepjs/query`       | type     |
 | `countNodes`                  | `brepjs/operations`  | function |
 | `createAssembly`              | `brepjs/operations`  | function |
 | `createAssemblyNode`          | `brepjs/operations`  | function |
@@ -167,7 +168,6 @@ import { filletShape } from 'brepjs/topology';
 | `FaceSketcher`                | `brepjs/sketching`   | class    |
 | `facesOfEdge`                 | `brepjs/topology`    | function |
 | `filletShape`                 | `brepjs/topology`    | function |
-| `FilterFcn`                   | `brepjs/query`       | type     |
 | `findNode`                    | `brepjs/operations`  | function |
 | `findStep`                    | `brepjs/operations`  | function |
 | `flatMap`                     | `brepjs/core`        | function |
@@ -479,9 +479,9 @@ import { filletShape } from 'brepjs/topology';
 
 ## `brepjs/query`
 
-**Functions** (4): `combineFinderFilters`, `edgeFinder`, `faceFinder`, `getSingleFace`
+**Functions** (4): `cornerFinder`, `edgeFinder`, `faceFinder`, `getSingleFace`
 
-**Types** (6): `Corner`, `EdgeFinderFn`, `FaceFinderFn`, `FilterFcn`, `ShapeFinder`, `SingleFace`
+**Types** (6): `Corner`, `CornerFinderFn`, `EdgeFinderFn`, `FaceFinderFn`, `ShapeFinder`, `SingleFace`
 
 ## `brepjs/measurement`
 

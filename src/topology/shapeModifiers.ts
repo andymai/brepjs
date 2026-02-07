@@ -2,7 +2,7 @@
  * Shape modifier types for fillet/chamfer operations.
  */
 
-import type { EdgeFinder, FaceFinder } from '../query/index.js';
+import type { EdgeFinderFn, FaceFinderFn } from '../query/finderFns.js';
 import type { Edge } from '../core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
@@ -16,17 +16,16 @@ import type { Edge } from '../core/shapeTypes.js';
  * - Two distances for asymmetric chamfer (first distance for the selected face).
  * - A distance and angle for asymmetric chamfer.
  */
-/* eslint-disable @typescript-eslint/no-deprecated -- public API types kept for backward compat */
 export type ChamferRadius =
   | number
   | {
       distances: [number, number];
-      selectedFace: (f: FaceFinder) => FaceFinder;
+      selectedFace: (f: FaceFinderFn) => FaceFinderFn;
     }
   | {
       distance: number;
       angle: number;
-      selectedFace: (f: FaceFinder) => FaceFinder;
+      selectedFace: (f: FaceFinderFn) => FaceFinderFn;
     };
 
 export type FilletRadius = number | [number, number];
@@ -37,8 +36,7 @@ export type FilletRadius = number | [number, number];
 export type RadiusConfig<R = number> =
   | ((e: Edge) => R | null)
   | R
-  | { filter: EdgeFinder; radius: R; keep?: boolean };
-/* eslint-enable @typescript-eslint/no-deprecated */
+  | { filter: EdgeFinderFn; radius: R; keep?: boolean };
 
 // ---------------------------------------------------------------------------
 // Type guards

@@ -20,7 +20,7 @@ export {
 
 // ── Boolean operations (OOP layer) ──
 
-export { applyGlue, type BooleanOperationOptions } from './shapeBooleans.js';
+export { applyGlue } from './shapeBooleans.js';
 
 // ── Modifier helpers ──
 

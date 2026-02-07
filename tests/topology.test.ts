@@ -80,6 +80,9 @@ import {
   shellShape,
   filletShape,
   chamferShape,
+  // Functional finders
+  faceFinder,
+  edgeFinder,
 } from '../src/index.js';
 import {
   cloneShape,
@@ -90,8 +93,6 @@ import {
   scaleShape,
 } from '../src/topology/shapeFns.js';
 import { fuseShape, cutShape, intersectShape } from '../src/topology/booleanFns.js';
-import { EdgeFinder } from '../src/query/edgeFinder.js';
-import { FaceFinder } from '../src/query/faceFinder.js';
 
 beforeAll(async () => {
   await initOC();
@@ -349,12 +350,20 @@ describe('Boolean opts', () => {
 describe('shell', () => {
   it('fn', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const topFaces = new FaceFinder().inPlane('XY', 10).find(box);
+    // Find the top face (parallel to XY, at z=10)
+    const topFaces = faceFinder()
+      .parallelTo('Z')
+      .when((f) => faceCenter(f)[2] > 9)
+      .findAll(box);
     expect(measureVolume(unwrap(shellShape(box, topFaces, 1)))).toBeLessThan(1000);
   });
   it('obj', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const topFaces = new FaceFinder().inPlane('XY', 10).find(box);
+    // Find the top face (parallel to XY, at z=10)
+    const topFaces = faceFinder()
+      .parallelTo('Z')
+      .when((f) => faceCenter(f)[2] > 9)
+      .findAll(box);
     expect(measureVolume(unwrap(shellShape(box, topFaces, 1)))).toBeLessThan(1000);
   });
 });
@@ -366,17 +375,17 @@ describe('fillet', () => {
   });
   it('filter', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    const zEdges = edgeFinder().inDirection('Z').findAll(box);
     expect(unwrap(filletShape(box, zEdges, 1))).toBeDefined();
   });
   it('config', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    const zEdges = edgeFinder().inDirection('Z').findAll(box);
     expect(unwrap(filletShape(box, zEdges, 1))).toBeDefined();
   });
   it('[r1,r2]', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    const zEdges = edgeFinder().inDirection('Z').findAll(box);
     expect(unwrap(filletShape(box, zEdges, [1, 2]))).toBeDefined();
   });
   it('no match', () => {
@@ -392,7 +401,7 @@ describe('chamfer', () => {
   });
   it('filter', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const zEdges = new EdgeFinder().inDirection('Z').find(box);
+    const zEdges = edgeFinder().inDirection('Z').findAll(box);
     expect(unwrap(chamferShape(box, zEdges, 1))).toBeDefined();
   });
   it('no match', () => {

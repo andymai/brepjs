@@ -73,7 +73,7 @@ graph TB
 | `definitionMaps.ts`  | `CurveType` union, lazy OCCT enum mappings                         | None                                                        |
 | `memory.ts`          | Re-export hub for disposal utilities                               | `disposal.ts`                                               |
 | `geometry.ts`        | Re-export hub + legacy `Vector`, `Plane`, `Transformation` classes | All above                                                   |
-| `geometryHelpers.ts` | Legacy wrapper functions (migration support)                       | `geometry.ts`                                               |
+| `geometryHelpers.ts` | `makePlane` factory + `mirror` OCCT helper                         | `planeOps.ts`, `vecOps.ts`                                  |
 
 ## Geometry Primitives (Functional, Immutable)
 
@@ -544,18 +544,12 @@ class BoundingBox {
 }
 ```
 
-### Legacy Helpers (geometryHelpers.ts)
+### Helpers (geometryHelpers.ts)
 
 ```typescript
-makePlane(origin, xDirection, normal): Plane
-makePlaneFromFace(face): Plane
-rotate(angleDegrees, direction): Transformation
-translate(offset): Transformation
-mirror(plane, origin?): Transformation
-scale(factor, center?): Transformation
+makePlane(plane?, origin?): Plane
+mirror(shape, plane?, origin?): OcType
 ```
-
-**Migration Path:** Prefer functional equivalents from `planeOps.ts` and `vecOps.ts`.
 
 ## Gotchas
 

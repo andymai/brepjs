@@ -16,8 +16,8 @@ import { gcWithScope } from '../core/disposal.js';
 import { vecDot, vecNormalize, vecDistance } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import type { AnyShape, Edge, Face, Wire, Vertex } from '../core/shapeTypes.js';
-import type { BlueprintLike, Corner } from './cornerFinder.js';
 import type { Point2D } from '../2d/lib/definitions.js';
+import type { Curve2D } from '../2d/lib/Curve2D.js';
 import { angle2d, distance2d, samePoint } from '../2d/lib/vectorOperations.js';
 import { castShape } from '../core/shapeTypes.js';
 import { iterTopo, downcast } from '../topology/cast.js';
@@ -52,12 +52,6 @@ export interface ShapeFinder<T extends AnyShape> {
   readonly findAll: (shape: AnyShape) => T[];
   /** Find exactly one matching element. Returns error if 0 or more than 1 match. */
   readonly findUnique: (shape: AnyShape) => Result<T>;
-  /**
-   * Find matching elements from a shape.
-   * @deprecated Use {@link findAll} for array results or {@link findUnique} for single-element `Result<T>`.
-   */
-  readonly find: ((shape: AnyShape) => T[]) &
-    ((shape: AnyShape, opts: { unique: true }) => Result<T>);
   /** Check if an element passes all filters. */
   readonly shouldKeep: (element: T) => boolean;
 
@@ -134,12 +128,6 @@ function createFinder<T extends AnyShape>(
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return ok(elements[0]!);
     },
-
-    find: ((shape: AnyShape, opts?: { unique?: boolean }) => {
-      if (opts?.unique) return finder.findUnique(shape);
-      return finder.findAll(shape);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deprecated overload bridge
-    }) as any,
 
     shouldKeep,
   };
@@ -483,11 +471,6 @@ function createVertexFinderWithNearest(
     ...baseFinder,
     findAll: findAllNearest,
     findUnique: findUniqueNearest,
-    find: ((shape: AnyShape, opts?: { unique?: boolean }) => {
-      if (opts?.unique) return findUniqueNearest(shape);
-      return findAllNearest(shape);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- deprecated overload bridge
-    }) as any,
   };
 }
 
@@ -504,6 +487,28 @@ const positiveHalfAngle = (angle: number) => {
   return Math.abs(coterminalAngle - PI_2);
 };
 
+/**
+ * Minimal Blueprint interface for corner extraction.
+ *
+ * The full Blueprint class lives in the sketching layer; this interface
+ * keeps the query layer decoupled from it so that corner finding does
+ * not pull in Layer 3 dependencies.
+ */
+export interface BlueprintLike {
+  /** Ordered sequence of curves forming the profile. */
+  curves: Curve2D[];
+}
+
+/** A junction between two consecutive curves in a 2D profile. */
+export type Corner = {
+  /** The curve arriving at the corner point. */
+  firstCurve: Curve2D;
+  /** The curve departing from the corner point. */
+  secondCurve: Curve2D;
+  /** The shared endpoint where the two curves meet. */
+  point: Point2D;
+};
+
 function blueprintCorners(blueprint: BlueprintLike): Corner[] {
   return blueprint.curves.map((curve, index) => ({
     firstCurve: curve,
@@ -513,7 +518,6 @@ function blueprintCorners(blueprint: BlueprintLike): Corner[] {
   }));
 }
 
-/** Common interface satisfied by both CornerFinder class and cornerFinder() factory. */
 export interface CornerFilter {
   readonly shouldKeep: (corner: Corner) => boolean;
 }
