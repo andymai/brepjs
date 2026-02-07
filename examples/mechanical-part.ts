@@ -2,7 +2,12 @@
  * Mechanical Part Example
  *
  * Creates a bracket with holes, fillets, and chamfers.
+ * Generates SVG technical drawings (front and top projections) in examples/output/.
+ *
+ * Run:  npm run example examples/mechanical-part.ts
  */
+
+import { writeFileSync, mkdirSync } from 'node:fs';
 
 import {
   makeBox,
@@ -11,6 +16,7 @@ import {
   translateShape,
   measureVolume,
   exportSTEP,
+  drawProjection,
   isOk,
   type Shape3D,
 } from 'brepjs';
@@ -63,6 +69,18 @@ async function main() {
   if (isOk(stepResult)) {
     console.log(`  STEP file: ${stepResult.value.size} bytes`);
   }
+
+  // ── Generate SVG technical drawings ────────────────────────────────────
+  const outDir = 'examples/output';
+  mkdirSync(outDir, { recursive: true });
+
+  const frontProjection = drawProjection(bracket, 'front');
+  writeFileSync(`${outDir}/bracket-front.svg`, frontProjection.visible.toSVG(2));
+  console.log(`\nSVG front view written to ${outDir}/bracket-front.svg`);
+
+  const topProjection = drawProjection(bracket, 'top');
+  writeFileSync(`${outDir}/bracket-top.svg`, topProjection.visible.toSVG(2));
+  console.log(`SVG top view written to ${outDir}/bracket-top.svg`);
 }
 
 main().catch(console.error);
