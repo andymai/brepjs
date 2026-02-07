@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.21.3](https://github.com/andymai/brepjs/compare/brepjs-v4.21.2...brepjs-v4.21.3) (2026-02-07)
+
+
+### Bug Fixes
+
+* **ci:** use correct release-please output key for root package ([b5fc4f0](https://github.com/andymai/brepjs/commit/b5fc4f0a5875d7b4f1a49acac3ac1fa5a3df0320))
+
 ## [4.21.2](https://github.com/andymai/brepjs/compare/brepjs-v4.21.1...brepjs-v4.21.2) (2026-02-07)
 
 
