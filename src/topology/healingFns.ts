@@ -9,7 +9,7 @@ import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face, Wire, Solid } from '../core/shapeTypes.js';
 import { castShape, isSolid, isFace, isWire } from '../core/shapeTypes.js';
 import { type Result, ok, err, isOk } from '../core/result.js';
-import { occtError, validationError } from '../core/errors.js';
+import { occtError, validationError, BrepErrorCode } from '../core/errors.js';
 import { getWires, getFaces } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
@@ -37,11 +37,22 @@ export function healSolid(solid: Solid): Result<Solid> {
     return err(validationError('NOT_A_SOLID', 'Input shape is not a solid'));
   }
 
+  const alreadyValid = isShapeValid(solid);
+
   try {
     const result = getKernel().healSolid(solid.wrapped);
     if (!result) {
-      // Perform may return null solid if there's nothing to fix — return original
-      return ok(solid);
+      if (alreadyValid) {
+        // Shape was already valid — nothing to fix, return original
+        return ok(solid);
+      }
+      // Shape was invalid but healer couldn't fix it
+      return err(
+        occtError(
+          BrepErrorCode.HEAL_NO_EFFECT,
+          'Solid healing had no effect — shape is still invalid'
+        )
+      );
     }
     const cast = castShape(result);
     if (!isSolid(cast)) {
@@ -147,6 +158,8 @@ export interface AutoHealOptions {
 /** Report of what the auto-heal pipeline did. */
 export interface HealingReport {
   readonly isValid: boolean;
+  /** True when the shape was already valid before healing was attempted. */
+  readonly alreadyValid: boolean;
   readonly wiresHealed: number;
   readonly facesHealed: number;
   readonly solidHealed: boolean;
@@ -180,6 +193,7 @@ export function autoHeal(
       shape,
       report: {
         isValid: true,
+        alreadyValid: true,
         wiresHealed: 0,
         facesHealed: 0,
         solidHealed: false,
@@ -294,6 +308,7 @@ export function autoHeal(
     shape: current,
     report: {
       isValid: valid,
+      alreadyValid: false,
       wiresHealed,
       facesHealed,
       solidHealed,

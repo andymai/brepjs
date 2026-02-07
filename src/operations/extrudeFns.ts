@@ -16,7 +16,7 @@ import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../cor
 import { gcWithScope } from '../core/disposal.js';
 import { downcast } from '../topology/cast.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
-import { typeCastError, validationError } from '../core/errors.js';
+import { typeCastError, validationError, BrepErrorCode } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
 
 export type { ExtrusionProfile, SweepConfig } from './extrudeUtils.js';
@@ -98,6 +98,12 @@ function makeHelixWire(
  * @see {@link extrude!basicFaceExtrusion | basicFaceExtrusion} for the OOP API equivalent.
  */
 export function extrudeFace(face: Face, extrusionVec: Vec3): Solid {
+  if (face.wrapped.IsNull()) {
+    throw new Error('extrudeFace: face is a null shape');
+  }
+  if (vecLength(extrusionVec) === 0) {
+    throw new Error('extrudeFace: extrusion vector has zero length');
+  }
   const oc = getKernel().oc;
   const r = gcWithScope();
 
@@ -123,6 +129,11 @@ export function revolveFace(
   direction: Vec3 = [0, 0, 1],
   angle = 360
 ): Result<Shape3D> {
+  if (face.wrapped.IsNull()) {
+    return err(
+      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'revolveFace: face is a null shape')
+    );
+  }
   const oc = getKernel().oc;
   const r = gcWithScope();
 

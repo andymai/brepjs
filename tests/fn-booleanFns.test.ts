@@ -15,14 +15,19 @@ import {
   isOk,
   isErr,
   unwrap,
+  unwrapErr,
   isSolid,
   isCompound,
   isShape3D,
   getShapeKind,
   getEdges,
   getWires,
+  getKernel,
+  createSolid,
+  splitShape,
 } from '../src/index.js';
 import { measureVolume } from '../src/index.js';
+import type { Shape3D } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initOC();
@@ -398,5 +403,73 @@ describe('sectionShape', () => {
     const b = box(0, 0, 0, 10, 10, 10);
     const result = sectionShape(b, 'XY', { planeSize: 1e6 });
     expect(isOk(result)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Null-shape pre-validation tests
+// ---------------------------------------------------------------------------
+
+describe('null-shape pre-validation', () => {
+  function makeNullShape(): Shape3D {
+    const oc = getKernel().oc;
+    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+  }
+
+  it('fuseShape rejects null first operand', () => {
+    const result = fuseShape(makeNullShape(), box(0, 0, 0, 10, 10, 10));
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+    expect(unwrapErr(result).message).toContain('first operand');
+  });
+
+  it('fuseShape rejects null second operand', () => {
+    const result = fuseShape(box(0, 0, 0, 10, 10, 10), makeNullShape());
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+    expect(unwrapErr(result).message).toContain('second operand');
+  });
+
+  it('cutShape rejects null base', () => {
+    const result = cutShape(makeNullShape(), box(0, 0, 0, 10, 10, 10));
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('cutShape rejects null tool', () => {
+    const result = cutShape(box(0, 0, 0, 10, 10, 10), makeNullShape());
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('intersectShape rejects null operand', () => {
+    const result = intersectShape(makeNullShape(), box(0, 0, 0, 10, 10, 10));
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('fuseAll rejects null shape in array', () => {
+    const result = fuseAll([box(0, 0, 0, 10, 10, 10), makeNullShape()]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+    expect(unwrapErr(result).message).toContain('index 1');
+  });
+
+  it('cutAll rejects null base', () => {
+    const result = cutAll(makeNullShape(), [box(0, 0, 0, 10, 10, 10)]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('splitShape rejects null shape', () => {
+    const result = splitShape(makeNullShape(), [box(0, 0, 0, 10, 10, 10)]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('sectionShape rejects null shape', () => {
+    const result = sectionShape(makeNullShape(), 'XY');
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 });

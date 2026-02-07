@@ -14,13 +14,16 @@ import {
   isOk,
   isErr,
   unwrap,
+  unwrapErr,
   filletShape,
   chamferShape,
   shellShape,
   offsetShape,
+  getKernel,
+  createSolid,
 } from '../src/index.js';
 import { measureVolume } from '../src/measurement/measureFns.js';
-import type { Face } from '../src/core/shapeTypes.js';
+import type { Face, Shape3D } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initOC();
@@ -181,5 +184,42 @@ describe('offsetShape', () => {
     const sphere = makeSphere(5);
     const result = offsetShape(sphere, 0);
     expect(isErr(result)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Null-shape pre-validation tests
+// ---------------------------------------------------------------------------
+
+describe('null-shape pre-validation', () => {
+  function makeNullShape(): Shape3D {
+    const oc = getKernel().oc;
+    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+  }
+
+  it('filletShape rejects null shape', () => {
+    const result = filletShape(makeNullShape(), undefined, 1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('chamferShape rejects null shape', () => {
+    const result = chamferShape(makeNullShape(), undefined, 1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('shellShape rejects null shape', () => {
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const faces = getFaces(box);
+    const result = shellShape(makeNullShape(), [faces[0]], 1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+
+  it('offsetShape rejects null shape', () => {
+    const result = offsetShape(makeNullShape(), 1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 });

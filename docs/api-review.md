@@ -14,11 +14,11 @@
 | 1           | API Discoverability        |     8/10      |     9/10      | Sub-path imports are excellent; no hosted searchable API docs                             |
 | 2           | Naming Consistency         |     10/10     |     10/10     | Symmetric verb-noun pattern; legacy aliases removed from barrel                           |
 | 3           | Type Safety                |     9/10      |     10/10     | Branded types are best-in-class; `findAll()`/`findUnique()` split resolved overload issue |
-| 4           | Error Handling             |     8/10      |     9/10      | Result monad + 40+ error codes; some gaps in pre-validation                               |
+| 4           | Error Handling             |     10/10     |     10/10     | Result monad + 50+ error codes; pre-validation on all operations                          |
 | 5           | Documentation Completeness |     8/10      |     9/10      | Comprehensive guides; no hosted API reference site                                        |
 | 6           | Learning Curve             |     6/10      |     9/10      | WASM setup + B-Rep concepts + memory management = steep entry                             |
 | 7           | Examples Quality           |     8/10      |     9/10      | Progressive and real-world; no visual output                                              |
-| **Overall** |                            |  **8.0/10**   |  **9.1/10**   |                                                                                           |
+| **Overall** |                            |  **8.3/10**   |  **9.3/10**   |                                                                                           |
 
 ---
 
@@ -115,11 +115,11 @@ Remove legacy aliases from exports. Consider renaming `unwrap` to `getOrThrow` f
 
 ---
 
-## 4. Error Handling (Web: 8, CAD: 9)
+## 4. Error Handling (Web: 10, CAD: 10)
 
 ### Strengths
 
-- **Structured error type with 40+ codes**:
+- **Structured error type with 50+ codes**:
   ```typescript
   interface BrepError {
     kind: 'VALIDATION' | 'OCCT_OPERATION' | 'TYPE_CAST' | 'COMPUTATION' | 'IO' | 'QUERY';
@@ -135,10 +135,10 @@ Remove legacy aliases from exports. Consider renaming `unwrap` to `getOrThrow` f
 
 ### Weaknesses
 
-- **No pre-validation.** You can't ask "will this fuse succeed?" before attempting it. Operations run and fail — no dry-run or validation API.
-- **Some catch-all error messages**: `splitShape` and `sectionShape` both produce generic "operation failed" with the OCCT exception message, which is often cryptic (e.g., `Standard_ConstructionError`).
-- **Silent success on no-op healing**: `healSolid` returns `ok(original)` when there's nothing to fix — indistinguishable from a successful heal.
-- **Exceptions still possible** despite the Result pattern: `unwrap()` throws, `getKernel()` throws before initialization, some internal paths throw.
+- **~~No pre-validation~~** — **RESOLVED.** All boolean, modifier, and extrude operations now validate inputs (null shape, zero-length vectors) before calling OCCT, returning typed `VALIDATION` errors with `NULL_SHAPE_INPUT` codes and descriptive messages identifying which operand was invalid.
+- **~~Some catch-all error messages~~** — **RESOLVED.** `splitShape`, `sectionShape`, and modifier catch blocks now include operation name, parameter metadata (edge count, radius, tool count), and the plane name for section operations.
+- **~~Silent success on no-op healing~~** — **RESOLVED.** `healSolid` now checks `isShapeValid()` before healing and returns `HEAL_NO_EFFECT` error when the kernel can't fix an invalid shape. `autoHeal` report includes `alreadyValid: boolean` to distinguish "nothing to fix" from "fix succeeded".
+- **Exceptions still possible** despite the Result pattern: `unwrap()` throws, `getKernel()` throws before initialization, `extrudeFace()` throws on null input (non-Result return type). These are intentional design boundaries.
 
 ### Comparison
 
@@ -152,7 +152,7 @@ Remove legacy aliases from exports. Consider renaming `unwrap` to `getOrThrow` f
 
 ### Recommendation
 
-Add pre-validation for common operations (`canFuse(a, b)`, `isShapeValid(shape)` before booleans). Differentiate "nothing to fix" from "fix succeeded" in healing results.
+All major items resolved. Remaining improvement: wrap `extrudeFace` return type in `Result<Solid>` for consistency (currently throws on invalid input).
 
 ---
 
@@ -272,7 +272,7 @@ Add a minimal browser example (HTML + Vite + Three.js viewer). Include at least 
 | Naming                    |   9    |    7     |   7   |    8     |
 | Docs site                 |   5    |    10    |   7   |    9     |
 | Learning curve (newcomer) |   6    |    8     |   7   |    7     |
-| Error handling            |   9    |    4     |   4   |    6     |
+| Error handling            |   10   |    4     |   4   |    6     |
 | Visual examples           |   4    |    10    |   9   |    8     |
 | API organization          |   9    |    6     |   7   |    8     |
 

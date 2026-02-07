@@ -8,12 +8,13 @@ beforeAll(async () => {
 }, 30000);
 
 describe('autoHeal', () => {
-  it('returns valid shape unchanged', () => {
+  it('returns valid shape unchanged with alreadyValid: true', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     expect(isShapeValid(box)).toBe(true);
 
     const result = unwrap(autoHeal(box));
     expect(result.report.isValid).toBe(true);
+    expect(result.report.alreadyValid).toBe(true);
     expect(result.report.steps).toContain('Shape already valid');
     expect(result.report.wiresHealed).toBe(0);
     expect(result.report.facesHealed).toBe(0);

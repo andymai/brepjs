@@ -8,10 +8,24 @@
 import { getKernel } from '../kernel/index.js';
 import type { Edge, Face, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { occtError, validationError } from '../core/errors.js';
+import { type Result, ok, err, isErr } from '../core/result.js';
+import { occtError, validationError, BrepErrorCode } from '../core/errors.js';
 import { kernelCall } from '../core/kernelCall.js';
 import { getEdges } from './shapeFns.js';
+
+// ---------------------------------------------------------------------------
+// Pre-validation
+// ---------------------------------------------------------------------------
+
+function validateNotNull(
+  shape: { wrapped: { IsNull(): boolean } },
+  label: string
+): Result<undefined> {
+  if (shape.wrapped.IsNull()) {
+    return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
+  }
+  return ok(undefined);
+}
 
 /**
  * Thickens a surface (face or shell) into a solid by offsetting it.
@@ -21,6 +35,8 @@ import { getEdges } from './shapeFns.js';
  * along the surface normal; negative thickness offsets against it.
  */
 export function thickenSurface(shape: Face | Shell, thickness: number): Result<Solid> {
+  const check = validateNotNull(shape, 'thickenSurface: shape');
+  if (isErr(check)) return check;
   return kernelCall(
     () => getKernel().thicken(shape.wrapped, thickness),
     'THICKEN_FAILED',
@@ -44,6 +60,8 @@ export function filletShape(
   edges: ReadonlyArray<Edge> | undefined,
   radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
 ): Result<Shape3D> {
+  const check = validateNotNull(shape, 'filletShape: shape');
+  if (isErr(check)) return check;
   if (typeof radius === 'number' && radius <= 0) {
     return err(validationError('INVALID_FILLET_RADIUS', 'Fillet radius must be positive'));
   }
@@ -80,7 +98,14 @@ export function filletShape(
     }
     return ok(cast);
   } catch (e) {
-    return err(occtError('FILLET_FAILED', 'Fillet operation failed', e));
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(
+      occtError('FILLET_FAILED', `Fillet operation failed: ${raw}`, e, {
+        operation: 'filletShape',
+        edgeCount: selectedEdges.length,
+        radius,
+      })
+    );
   }
 }
 
@@ -100,6 +125,8 @@ export function chamferShape(
   edges: ReadonlyArray<Edge> | undefined,
   distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
 ): Result<Shape3D> {
+  const check = validateNotNull(shape, 'chamferShape: shape');
+  if (isErr(check)) return check;
   if (typeof distance === 'number' && distance <= 0) {
     return err(validationError('INVALID_CHAMFER_DISTANCE', 'Chamfer distance must be positive'));
   }
@@ -138,7 +165,14 @@ export function chamferShape(
     }
     return ok(cast);
   } catch (e) {
-    return err(occtError('CHAMFER_FAILED', 'Chamfer operation failed', e));
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(
+      occtError('CHAMFER_FAILED', `Chamfer operation failed: ${raw}`, e, {
+        operation: 'chamferShape',
+        edgeCount: selectedEdges.length,
+        distance,
+      })
+    );
   }
 }
 
@@ -160,6 +194,8 @@ export function shellShape(
   thickness: number,
   tolerance = 1e-3
 ): Result<Shape3D> {
+  const check = validateNotNull(shape, 'shellShape: shape');
+  if (isErr(check)) return check;
   if (thickness <= 0) {
     return err(validationError('INVALID_THICKNESS', 'Shell thickness must be positive'));
   }
@@ -181,7 +217,14 @@ export function shellShape(
     }
     return ok(cast);
   } catch (e) {
-    return err(occtError('SHELL_FAILED', 'Shell operation failed', e));
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(
+      occtError('SHELL_FAILED', `Shell operation failed: ${raw}`, e, {
+        operation: 'shellShape',
+        faceCount: faces.length,
+        thickness,
+      })
+    );
   }
 }
 
@@ -197,6 +240,8 @@ export function shellShape(
  * @param tolerance - Offset tolerance (default 1e-6).
  */
 export function offsetShape(shape: Shape3D, distance: number, tolerance = 1e-6): Result<Shape3D> {
+  const check = validateNotNull(shape, 'offsetShape: shape');
+  if (isErr(check)) return check;
   if (distance === 0) {
     return err(validationError('ZERO_OFFSET', 'Offset distance cannot be zero'));
   }

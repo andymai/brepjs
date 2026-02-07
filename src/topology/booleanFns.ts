@@ -11,12 +11,23 @@ import type { AnyShape, Shape3D, Compound } from '../core/shapeTypes.js';
 import { castShape, isShape3D, createCompound } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, typeCastError, occtError } from '../core/errors.js';
+import { validationError, typeCastError, occtError, BrepErrorCode } from '../core/errors.js';
 import type { Plane } from '../core/planeTypes.js';
 import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { applyGlue } from './shapeBooleans.js';
+
+// ---------------------------------------------------------------------------
+// Pre-validation
+// ---------------------------------------------------------------------------
+
+function validateShape3D(shape: Shape3D, label: string): Result<undefined> {
+  if (shape.wrapped.IsNull()) {
+    return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
+  }
+  return ok(undefined);
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,6 +108,10 @@ export function fuseShape(
   { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
+  const checkA = validateShape3D(a, 'fuseShape: first operand');
+  if (isErr(checkA)) return checkA;
+  const checkB = validateShape3D(b, 'fuseShape: second operand');
+  if (isErr(checkB)) return checkB;
   const oc = getKernel().oc;
   const r = gcWithScope();
   const progress = r(new oc.Message_ProgressRange_1());
@@ -126,6 +141,10 @@ export function cutShape(
   { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
+  const checkBase = validateShape3D(base, 'cutShape: base');
+  if (isErr(checkBase)) return checkBase;
+  const checkTool = validateShape3D(tool, 'cutShape: tool');
+  if (isErr(checkTool)) return checkTool;
   const oc = getKernel().oc;
   const r = gcWithScope();
   const progress = r(new oc.Message_ProgressRange_1());
@@ -150,6 +169,10 @@ export function intersectShape(
   { simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
+  const checkA = validateShape3D(a, 'intersectShape: first operand');
+  if (isErr(checkA)) return checkA;
+  const checkB = validateShape3D(b, 'intersectShape: second operand');
+  if (isErr(checkB)) return checkB;
   const oc = getKernel().oc;
   const r = gcWithScope();
   const progress = r(new oc.Message_ProgressRange_1());
@@ -226,6 +249,12 @@ export function fuseAll(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   if (shapes.length === 1) return ok(shapes[0]!);
 
+  for (let i = 0; i < shapes.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const check = validateShape3D(shapes[i]!, `fuseAll: shape at index ${i}`);
+    if (isErr(check)) return check;
+  }
+
   if (strategy === 'native') {
     // Delegate to kernel's native N-way fuse via BRepAlgoAPI_BuilderAlgo
     const result = getKernel().fuseAll(
@@ -258,6 +287,14 @@ export function cutAll(
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   if (tools.length === 0) return ok(base);
+
+  const checkBase = validateShape3D(base, 'cutAll: base');
+  if (isErr(checkBase)) return checkBase;
+  for (let i = 0; i < tools.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const check = validateShape3D(tools[i]!, `cutAll: tool at index ${i}`);
+    if (isErr(check)) return check;
+  }
 
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -347,6 +384,12 @@ export function sectionShape(
   plane: PlaneInput,
   { approximation = true, planeSize = 1e4 }: { approximation?: boolean; planeSize?: number } = {}
 ): Result<AnyShape> {
+  if (shape.wrapped.IsNull()) {
+    return err(
+      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'sectionShape: shape is a null shape')
+    );
+  }
+
   const resolvedPlane: Plane = typeof plane === 'string' ? resolvePlane(plane) : plane;
   const sectionFace = makeSectionFace(resolvedPlane, planeSize);
 
@@ -356,11 +399,13 @@ export function sectionShape(
     const wrapped = castShape(resultOc);
     return ok(wrapped);
   } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    const planeName = typeof plane === 'string' ? plane : 'custom';
     return err(
-      occtError(
-        'SECTION_FAILED',
-        `Section operation failed: ${e instanceof Error ? e.message : String(e)}`
-      )
+      occtError('SECTION_FAILED', `Section with ${planeName} plane failed: ${raw}`, e, {
+        operation: 'sectionShape',
+        plane: planeName,
+      })
     );
   } finally {
     sectionFace.delete();
@@ -378,6 +423,23 @@ export function sectionShape(
 export function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
   if (tools.length === 0) return ok(shape);
 
+  if (shape.wrapped.IsNull()) {
+    return err(
+      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'splitShape: shape is a null shape')
+    );
+  }
+  for (let i = 0; i < tools.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    if (tools[i]!.wrapped.IsNull()) {
+      return err(
+        validationError(
+          BrepErrorCode.NULL_SHAPE_INPUT,
+          `splitShape: tool at index ${i} is a null shape`
+        )
+      );
+    }
+  }
+
   try {
     const result = getKernel().split(
       shape.wrapped,
@@ -385,11 +447,12 @@ export function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape>
     );
     return ok(castShape(result));
   } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
     return err(
-      occtError(
-        'SPLIT_FAILED',
-        `Split operation failed: ${e instanceof Error ? e.message : String(e)}`
-      )
+      occtError('SPLIT_FAILED', `Split operation failed on ${tools.length} tool(s): ${raw}`, e, {
+        operation: 'splitShape',
+        toolCount: tools.length,
+      })
     );
   }
 }

@@ -43,8 +43,9 @@ describe('isShapeValid', () => {
 });
 
 describe('healSolid', () => {
-  it('heals a valid solid (no-op)', () => {
+  it('heals a valid solid (returns original)', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
+    expect(isShapeValid(box)).toBe(true);
     const result = healSolid(box);
     expect(isOk(result)).toBe(true);
     const healed = unwrap(result);
