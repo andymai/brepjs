@@ -8,10 +8,7 @@ export default function CodeDisplay() {
     <div className="code-frame">
       <div className="overflow-hidden glass-card !border-0">
         <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-2.5">
-          <div className="h-3 w-3 rounded-full bg-red-500/40" />
-          <div className="h-3 w-3 rounded-full bg-yellow-500/40" />
-          <div className="h-3 w-3 rounded-full bg-green-500/40" />
-          <span className="ml-3 text-xs text-gray-500">staircase.ts</span>
+          <span className="text-xs text-gray-500">staircase.ts</span>
         </div>
         <pre className="scrollbar-thin max-h-[560px] overflow-auto p-4 text-sm leading-relaxed">
           <code>

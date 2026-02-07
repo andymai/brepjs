@@ -32,14 +32,16 @@ export default function StatusBar() {
   }
 
   return (
-    <div className="flex h-7 items-center justify-between border-t border-border-subtle bg-surface px-3 text-xs">
+    <div
+      className="flex h-7 items-center justify-between border-t border-border-subtle bg-surface px-3 text-xs"
+      role="status"
+    >
       <div className="flex items-center gap-3">
         <span className={statusColor}>{statusText}</span>
-        {timeMs != null && !isRunning && (
+        {timeMs !== null && !isRunning && (
           <span className="text-gray-500">{timeMs.toFixed(0)}ms</span>
         )}
       </div>
-      {error && <span className="truncate text-red-400">{error}</span>}
     </div>
   );
 }

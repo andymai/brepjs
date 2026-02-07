@@ -10,7 +10,12 @@ export default function LoadingOverlay() {
   if (status === 'ready') return null;
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-950/90 backdrop-blur-sm">
+    <div
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-950/90 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Loading CAD engine"
+    >
       <Logo className="h-12 w-12" />
 
       <div className="mt-6 w-64">

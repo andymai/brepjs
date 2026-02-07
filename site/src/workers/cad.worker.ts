@@ -26,6 +26,9 @@ let brepjsGlobalKeys: Set<string> = new Set();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs module
 let brepjs: any = null;
 
+// Cache the last eval result for exports
+let lastEvalResult: unknown[] | null = null;
+
 // ── Init ──
 
 async function handleInit() {
@@ -99,7 +102,13 @@ function handleEval(id: string, code: string) {
     console.warn = origWarn;
 
     if (result == null) {
-      post({ type: 'eval-result', id, meshes: [], console: consoleOutput, timeMs: performance.now() - t0 });
+      post({
+        type: 'eval-result',
+        id,
+        meshes: [],
+        console: consoleOutput,
+        timeMs: performance.now() - t0,
+      });
       return;
     }
 
@@ -108,6 +117,8 @@ function handleEval(id: string, code: string) {
     if (!Array.isArray(result)) {
       result = [result];
     }
+
+    lastEvalResult = result;
 
     const meshes: MeshTransfer[] = [];
     const transferables: Transferable[] = [];
@@ -134,9 +145,16 @@ function handleEval(id: string, code: string) {
         };
 
         meshes.push(mesh);
-        transferables.push(mesh.position.buffer, mesh.normal.buffer, mesh.index.buffer, mesh.edges.buffer);
+        transferables.push(
+          mesh.position.buffer,
+          mesh.normal.buffer,
+          mesh.index.buffer,
+          mesh.edges.buffer
+        );
       } catch (meshErr) {
-        consoleOutput.push(`[mesh error] ${meshErr instanceof Error ? meshErr.message : String(meshErr)}`);
+        consoleOutput.push(
+          `[mesh error] ${meshErr instanceof Error ? meshErr.message : String(meshErr)}`
+        );
       }
     }
 
@@ -173,8 +191,13 @@ function handleEval(id: string, code: string) {
 
 function handleExportSTL(id: string, code: string) {
   try {
-    const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
-    let result = fn();
+    let result: unknown;
+    if (lastEvalResult && lastEvalResult.length > 0) {
+      result = lastEvalResult[0];
+    } else {
+      const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
+      result = fn();
+    }
 
     if (result && typeof result === 'object' && 'wrapped' in result) {
       result = brepjs.castShape(result.wrapped);
@@ -199,8 +222,13 @@ function handleExportSTL(id: string, code: string) {
 
 function handleExportSTEP(id: string, code: string) {
   try {
-    const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
-    let result = fn();
+    let result: unknown;
+    if (lastEvalResult && lastEvalResult.length > 0) {
+      result = lastEvalResult[0];
+    } else {
+      const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
+      result = fn();
+    }
 
     if (result && typeof result === 'object' && 'wrapped' in result) {
       result = brepjs.castShape(result.wrapped);

@@ -19,7 +19,7 @@ export function useUrlState() {
     if (result.type === 'code') {
       setCode(result.code);
       setPendingReview(true); // Don't auto-run shared links — user must review first
-    } else if (result.type === 'example') {
+    } else {
       const ex = findExample(result.id);
       if (ex) setCode(ex.code);
     }
@@ -31,10 +31,24 @@ export function useUrlState() {
     history.replaceState(null, '', hash);
   };
 
-  const copyShareUrl = (code: string) => {
+  const copyShareUrl = async (code: string) => {
     const hash = encodeCode(code);
     const url = `${window.location.origin}${window.location.pathname}${hash}`;
-    navigator.clipboard.writeText(url);
+    history.replaceState(null, '', hash);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Fallback for browsers without clipboard API
+      const textarea = document.createElement('textarea');
+      textarea.value = url;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional fallback for older browsers
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
   };
 
   return { updateUrl, copyShareUrl };

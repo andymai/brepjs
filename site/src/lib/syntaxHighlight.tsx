@@ -1,13 +1,45 @@
 const KEYWORDS = new Set([
-  'const', 'let', 'var', 'return', 'function', 'new', 'if', 'else', 'for', 'while',
-  'import', 'from', 'export', 'await', 'async',
+  'const',
+  'let',
+  'var',
+  'return',
+  'function',
+  'new',
+  'if',
+  'else',
+  'for',
+  'while',
+  'import',
+  'from',
+  'export',
+  'await',
+  'async',
 ]);
 
 export const BREPJS_FNS = new Set([
-  'makeBox', 'makeCylinder', 'makeSphere', 'makeCircle', 'makeHelix',
-  'cutShape', 'filletShape', 'fuseShapes', 'intersectShapes',
-  'unwrap', 'translateShape', 'rotateShape', 'cloneShape', 'assembleWire', 'genericSweep',
-  'setOC', 'castShape',
+  'makeBox',
+  'makeCylinder',
+  'makeSphere',
+  'makeCircle',
+  'makeHelix',
+  'cutShape',
+  'filletShape',
+  'fuseShapes',
+  'intersectShapes',
+  'unwrap',
+  'translateShape',
+  'rotateShape',
+  'cloneShape',
+  'assembleWire',
+  'genericSweep',
+  'setOC',
+  'castShape',
+  'getEdges',
+  'initFromOC',
+  'basicFaceExtrusion',
+  'revolveFace',
+  'chamferShape',
+  'extrudeFace',
 ]);
 
 export function lineHasBrepjsFn(line: string): boolean {
@@ -25,15 +57,35 @@ export function highlightLine(line: string): React.ReactNode[] {
     if (!token) continue;
     const key = i++;
     if (token.startsWith('//')) {
-      parts.push(<span key={key} className="text-gray-500">{token}</span>);
+      parts.push(
+        <span key={key} className="text-gray-500">
+          {token}
+        </span>
+      );
     } else if (KEYWORDS.has(token)) {
-      parts.push(<span key={key} className="text-purple-400">{token}</span>);
+      parts.push(
+        <span key={key} className="text-purple-400">
+          {token}
+        </span>
+      );
     } else if (BREPJS_FNS.has(token)) {
-      parts.push(<span key={key} className="text-teal-light">{token}</span>);
+      parts.push(
+        <span key={key} className="text-teal-light">
+          {token}
+        </span>
+      );
     } else if (/^\d/.test(token)) {
-      parts.push(<span key={key} className="text-amber-400">{token}</span>);
+      parts.push(
+        <span key={key} className="text-amber-400">
+          {token}
+        </span>
+      );
     } else if (/^['"]/.test(token)) {
-      parts.push(<span key={key} className="text-green-400">{token}</span>);
+      parts.push(
+        <span key={key} className="text-green-400">
+          {token}
+        </span>
+      );
     } else {
       parts.push(<span key={key}>{token}</span>);
     }

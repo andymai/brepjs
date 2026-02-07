@@ -12,8 +12,8 @@ function GradientDivider() {
 
 const footerLinks = {
   Docs: [
-    { label: 'API Reference', href: '/api' },
-    { label: 'Getting Started', href: '/#get-started' },
+    { label: 'API Reference', href: 'https://andymai.github.io/brepjs/', target: '_blank' },
+    { label: 'Install', href: '/#get-started' },
   ],
   Community: [
     { label: 'GitHub', href: 'https://github.com/andymai/brepjs' },
@@ -34,8 +34,6 @@ export default function LandingPage() {
     <div className="relative min-h-screen bg-gray-950">
       {/* Full-page dot matrix */}
       <div className="dot-matrix" />
-      {/* Noise grain overlay */}
-      <div className="noise-grain" />
 
       <div className="relative z-10">
         {/* Skip to content (WCAG 2.4.1) */}
@@ -90,8 +88,10 @@ export default function LandingPage() {
                         <li key={link.label}>
                           <a
                             href={link.href}
-                            {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                            className="text-sm text-gray-500 transition-colors hover:text-teal-primary"
+                            {...(isExternal
+                              ? { target: '_blank', rel: 'noopener noreferrer' }
+                              : {})}
+                            className="text-sm text-gray-400 transition-colors hover:text-teal-primary"
                           >
                             {link.label}
                           </a>
@@ -104,7 +104,7 @@ export default function LandingPage() {
             </div>
 
             {/* Bottom bar */}
-            <div className="mt-10 border-t border-border-subtle pt-6 text-center text-xs text-gray-600">
+            <div className="mt-10 border-t border-border-subtle pt-6 text-center text-xs text-gray-500">
               Apache-2.0 License
             </div>
           </div>

@@ -4,7 +4,9 @@ export function encodeCode(code: string): string {
   return `#code/${compressToEncodedURIComponent(code)}`;
 }
 
-export function decodeHash(hash: string): { type: 'code'; code: string } | { type: 'example'; id: string } | null {
+export function decodeHash(
+  hash: string
+): { type: 'code'; code: string } | { type: 'example'; id: string } | null {
   if (!hash || hash === '#') return null;
 
   const stripped = hash.startsWith('#') ? hash.slice(1) : hash;

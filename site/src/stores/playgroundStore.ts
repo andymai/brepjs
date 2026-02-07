@@ -53,5 +53,6 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setPendingReview: (pendingReview) => set({ pendingReview }),
   setConsoleCollapsed: (isConsoleCollapsed) => set({ isConsoleCollapsed }),
   setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
-  clearResults: () => set({ meshes: [], error: null, errorLine: null, consoleOutput: [], timeMs: null }),
+  clearResults: () =>
+    set({ meshes: [], error: null, errorLine: null, consoleOutput: [], timeMs: null }),
 }));

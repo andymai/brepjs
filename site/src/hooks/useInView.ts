@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 export function useInView<T extends HTMLElement = HTMLDivElement>(
-  options: { threshold?: number; once?: boolean } = {},
+  options: { threshold?: number; once?: boolean } = {}
 ): [React.RefObject<T | null>, boolean] {
   const { threshold = 0.1, once = true } = options;
   const ref = useRef<T | null>(null);
@@ -20,7 +20,7 @@ export function useInView<T extends HTMLElement = HTMLDivElement>(
           setInView(false);
         }
       },
-      { threshold },
+      { threshold }
     );
 
     observer.observe(el);

@@ -16,13 +16,19 @@ import ViewerToolbar from './ViewerToolbar';
 function computeBounds(meshes: MeshData[]) {
   if (meshes.length === 0) return null;
 
-  let minX = Infinity, minY = Infinity, minZ = Infinity;
-  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity;
+  let maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
 
   for (const m of meshes) {
     const pos = m.position;
     for (let i = 0; i < pos.length; i += 3) {
-      const x = pos[i], y = pos[i + 1], z = pos[i + 2];
+      const x = pos[i],
+        y = pos[i + 1],
+        z = pos[i + 2];
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;
@@ -53,7 +59,7 @@ function fitCamera(
   bounds: { center: THREE.Vector3; radius: number },
   camera: THREE.Camera,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
-  controls: any,
+  controls: any
 ) {
   const { center, radius } = bounds;
   const fov = (camera as THREE.PerspectiveCamera).fov;
@@ -64,7 +70,7 @@ function fitCamera(
   camera.position.set(
     center.x + dist * Math.cos(angle) * Math.cos(angle),
     center.y + dist * Math.sin(angle),
-    center.z + dist * Math.cos(angle) * Math.sin(angle),
+    center.z + dist * Math.cos(angle) * Math.sin(angle)
   );
 
   if (controls?.target) {
@@ -129,7 +135,7 @@ function CameraPresetBridge({ meshes }: { meshes: MeshData[] }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
     { current: controls } as React.RefObject<any>,
     invalidate,
-    bounds,
+    bounds
   );
 
   return null;
@@ -139,10 +145,10 @@ const CONTROLS_PROPS = {
   enableDamping: true,
   dampingFactor: 0.12,
   rotateSpeed: 0.8,
-  minDistance: 20,
+  minDistance: 5,
   maxDistance: 800,
-  minPolarAngle: Math.PI * 0.05,
-  maxPolarAngle: Math.PI * 0.85,
+  minPolarAngle: 0.001,
+  maxPolarAngle: Math.PI * 0.999,
 } as const;
 
 export default function ViewerPanel() {

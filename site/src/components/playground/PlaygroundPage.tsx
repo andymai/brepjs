@@ -28,6 +28,8 @@ export default function PlaygroundPage() {
   const setConsoleCollapsed = usePlaygroundStore((s) => s.setConsoleCollapsed);
   const isViewerCollapsed = usePlaygroundStore((s) => s.isViewerCollapsed);
   const setViewerCollapsed = usePlaygroundStore((s) => s.setViewerCollapsed);
+  const isRunning = usePlaygroundStore((s) => s.isRunning);
+  const error = usePlaygroundStore((s) => s.error);
   const addToast = useToastStore((s) => s.addToast);
   const { runCode, exportSTL, exportSTEP, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
@@ -54,7 +56,7 @@ export default function PlaygroundPage() {
     (newCode: string) => {
       debouncedRun(newCode);
     },
-    [debouncedRun],
+    [debouncedRun]
   );
 
   const handleRun = useCallback(() => {
@@ -74,9 +76,17 @@ export default function PlaygroundPage() {
   }, [exportSTEP, code, addToast]);
 
   const handleShare = useCallback(() => {
-    copyShareUrl(code);
+    void copyShareUrl(code);
     addToast('Link copied to clipboard');
   }, [copyShareUrl, code, addToast]);
+
+  const handleSelectExample = useCallback(
+    (exampleCode: string) => {
+      runCode(exampleCode);
+      updateUrl(exampleCode);
+    },
+    [runCode, updateUrl]
+  );
 
   const toggleConsole = useCallback(() => {
     const panel = consolePanelRef.current;
@@ -107,14 +117,14 @@ export default function PlaygroundPage() {
       // collapsedSize is 3.5%, detect collapse/expand
       setConsoleCollapsed(size.asPercentage <= 4);
     },
-    [setConsoleCollapsed],
+    [setConsoleCollapsed]
   );
 
   const handleViewerResize = useCallback(
     (size: { asPercentage: number }) => {
       setViewerCollapsed(size.asPercentage <= 1);
     },
-    [setViewerCollapsed],
+    [setViewerCollapsed]
   );
 
   const shortcutActions = useMemo(
@@ -127,10 +137,28 @@ export default function PlaygroundPage() {
       toggleOutput: toggleConsole,
       toggleViewer: toggleViewer,
     }),
-    [handleRun, handleShare, handleExportSTL, handleExportSTEP, handleFormat, toggleConsole, toggleViewer],
+    [
+      handleRun,
+      handleShare,
+      handleExportSTL,
+      handleExportSTEP,
+      handleFormat,
+      toggleConsole,
+      toggleViewer,
+    ]
   );
 
   useKeyboardShortcuts(shortcutActions, shortcutDefs);
+
+  // Auto-expand console when error occurs
+  useEffect(() => {
+    if (error && isConsoleCollapsed) {
+      const panel = consolePanelRef.current;
+      if (panel?.isCollapsed()) {
+        panel.expand();
+      }
+    }
+  }, [error, isConsoleCollapsed, consolePanelRef]);
 
   return (
     <div className="relative flex h-screen flex-col bg-gray-950">
@@ -142,6 +170,8 @@ export default function PlaygroundPage() {
         onExportSTL={handleExportSTL}
         onExportSTEP={handleExportSTEP}
         onShare={handleShare}
+        isRunning={isRunning}
+        onSelectExample={handleSelectExample}
       />
 
       {pendingReview && (
@@ -156,7 +186,9 @@ export default function PlaygroundPage() {
             Run
           </button>
           <button
-            onClick={() => { setPendingReview(false); }}
+            onClick={() => {
+              setPendingReview(false);
+            }}
             className="text-xs text-amber-400 hover:text-amber-200"
           >
             Dismiss
