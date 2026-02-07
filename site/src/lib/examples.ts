@@ -43,13 +43,13 @@ const result = unwrap(cutShape(box, cyl));
 return result;`,
   },
   {
-    id: 'chamfered-cylinder',
-    title: 'Chamfered Cylinder',
-    description: 'Apply chamfers to the top edges of a cylinder.',
+    id: 'chamfered-box',
+    title: 'Chamfered Box',
+    description: 'Apply chamfers to all edges of a box — compare with the filleted box.',
     category: 'Operations',
-    code: `// Cylinder with chamfered edges
-const cyl = makeCylinder(20, 40);
-const chamfered = unwrap(chamferShape(cyl, undefined, 3));
+    code: `// Chamfer every edge of a box
+const box = makeBox([0, 0, 0], [40, 30, 20]);
+const chamfered = unwrap(chamferShape(box, undefined, 3));
 return chamfered;`,
   },
   {
@@ -73,11 +73,12 @@ return solid;`,
   {
     id: 'revolved-profile',
     title: 'Revolved Profile',
-    description: 'Revolve a 2D profile around the Y axis to make a vase.',
+    description: 'Revolve a 2D profile around the Z axis to make a vase.',
     category: 'Sketching',
     code: `// Revolve a profile to create a vase shape
-// Sketch in XY plane — X is radius, Y is height
-const sketch = new Sketcher()
+// Sketch in XZ plane so X = radius, Z = height
+const plane = createPlane([0, 0, 0], [1, 0, 0], [0, -1, 0]);
+const sketch = new Sketcher(plane)
   .lineTo([15, 0])
   .lineTo([20, 20])
   .lineTo([15, 35])
@@ -86,8 +87,7 @@ const sketch = new Sketcher()
   .close();
 
 const face = sketch.face();
-// Revolve around Y axis so Y becomes the vase height
-const vase = unwrap(revolveFace(face, [0, 0, 0], [0, 1, 0]));
+const vase = unwrap(revolveFace(face));
 return vase;`,
   },
   {
@@ -136,7 +136,7 @@ export function findExample(id: string): Example | undefined {
 export const featuredExampleIds: string[] = [
   'filleted-box',
   'boolean-subtraction',
-  'chamfered-cylinder',
+  'chamfered-box',
   'extruded-l-shape',
   'revolved-profile',
   'spiral-staircase',

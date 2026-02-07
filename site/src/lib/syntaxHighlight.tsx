@@ -40,6 +40,7 @@ export const BREPJS_FNS = new Set([
   'revolveFace',
   'chamferShape',
   'extrudeFace',
+  'createPlane',
 ]);
 
 export function lineHasBrepjsFn(line: string): boolean {
