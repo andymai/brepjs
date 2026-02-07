@@ -11,7 +11,7 @@ import {
   getEdges,
   getFaces,
   getWires,
-  fuseShapes,
+  fuseShape,
   isOk,
   unwrap,
   castShape,
@@ -101,11 +101,11 @@ describe('topo caching', () => {
 });
 
 describe('AbortSignal pre-check', () => {
-  it('fuseShapes throws on pre-aborted signal', () => {
+  it('fuseShape throws on pre-aborted signal', () => {
     const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
     const box2 = castShape(makeBox([5, 5, 5], [15, 15, 15]).wrapped);
     const controller = new AbortController();
     controller.abort();
-    expect(() => fuseShapes(box1, box2, { signal: controller.signal })).toThrow();
+    expect(() => fuseShape(box1, box2, { signal: controller.signal })).toThrow();
   });
 });

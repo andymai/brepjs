@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { CornerFinder, roundedRectangleBlueprint, polysidesBlueprint } from '../src/index.js';
+import { roundedRectangleBlueprint, polysidesBlueprint } from '../src/index.js';
+import { CornerFinder } from '../src/query/cornerFinder.js';
 
 beforeAll(async () => {
   await initOC();

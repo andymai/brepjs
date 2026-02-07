@@ -40,8 +40,6 @@ import {
   Wire,
   Face,
   Solid,
-  EdgeFinder,
-  FaceFinder,
   // Functional API imports
   serializeShape,
   getHashCode,
@@ -91,7 +89,9 @@ import {
   mirrorShape,
   scaleShape,
 } from '../src/topology/shapeFns.js';
-import { fuseShapes, cutShape, intersectShapes } from '../src/topology/booleanFns.js';
+import { fuseShape, cutShape, intersectShape } from '../src/topology/booleanFns.js';
+import { EdgeFinder } from '../src/query/edgeFinder.js';
+import { FaceFinder } from '../src/query/faceFinder.js';
 
 beforeAll(async () => {
   await initOC();
@@ -124,7 +124,7 @@ describe('Shape base methods', () => {
   });
   it('simplify', () => {
     const f = unwrap(
-      fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
+      fuseShape(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
         simplify: false,
       })
     );
@@ -293,7 +293,7 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
+          fuseShape(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
             optimisation: 'commonFace',
           })
         )
@@ -304,7 +304,7 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
+          fuseShape(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
             optimisation: 'sameFace',
           })
         )
@@ -315,7 +315,7 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([5, 0, 0], [15, 10, 10]), {
+          fuseShape(makeBox([0, 0, 0], [10, 10, 10]), makeBox([5, 0, 0], [15, 10, 10]), {
             simplify: false,
           })
         )
@@ -337,7 +337,7 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          intersectShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([5, 0, 0], [15, 10, 10]), {
+          intersectShape(makeBox([0, 0, 0], [10, 10, 10]), makeBox([5, 0, 0], [15, 10, 10]), {
             simplify: false,
           })
         )

@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, FaceFinder, getSingleFace, unwrap, isErr, getFaces } from '../src/index.js';
+import { makeBox, getSingleFace, unwrap, isErr, getFaces } from '../src/index.js';
+import { FaceFinder } from '../src/query/faceFinder.js';
 
 beforeAll(async () => {
   await initOC();

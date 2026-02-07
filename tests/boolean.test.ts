@@ -3,7 +3,7 @@ import { initOC } from './setup.js';
 import { makeBox, makeSphere, measureVolume, unwrap } from '../src/index.js';
 import { translateShape } from '../src/topology/shapeFns.js';
 import { cloneShape } from '../src/topology/shapeFns.js';
-import { fuseShapes, cutShape, intersectShapes } from '../src/topology/booleanFns.js';
+import { fuseShape, cutShape, intersectShape } from '../src/topology/booleanFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -13,7 +13,7 @@ describe('Boolean operations', () => {
   it('fuses two boxes', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
     const box2 = translateShape(box1, [5, 0, 0]);
-    const fused = unwrap(fuseShapes(box1, box2));
+    const fused = unwrap(fuseShape(box1, box2));
     expect(fused).toBeDefined();
     const vol = measureVolume(fused);
     // Two 10x10x10 boxes overlapping by 5x10x10 = 2000 - 500 = 1500
@@ -33,7 +33,7 @@ describe('Boolean operations', () => {
   it('intersects two boxes', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
     const box2 = translateShape(box1, [5, 0, 0]);
-    const common = unwrap(intersectShapes(box1, box2));
+    const common = unwrap(intersectShape(box1, box2));
     expect(common).toBeDefined();
     const vol = measureVolume(common);
     // Overlap region is 5x10x10 = 500

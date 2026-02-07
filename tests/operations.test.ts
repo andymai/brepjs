@@ -24,7 +24,7 @@ import {
 } from '../src/index.js';
 import { translateShape, rotateShape, scaleShape, mirrorShape } from '../src/topology/shapeFns.js';
 import { meshShape, meshShapeEdges } from '../src/topology/meshFns.js';
-import { fuseShapes, cutShape, intersectShapes } from '../src/topology/booleanFns.js';
+import { fuseShape, cutShape, intersectShape } from '../src/topology/booleanFns.js';
 import { pointOnSurface, normalAt } from '../src/topology/faceFns.js';
 
 beforeAll(async () => {
@@ -218,7 +218,7 @@ describe('Boolean operations', () => {
   it('fuse increases volume', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
     const box2 = translateShape(box1, [5, 0, 0]);
-    const fused = unwrap(fuseShapes(box1, box2));
+    const fused = unwrap(fuseShape(box1, box2));
     expect(measureVolume(fused)).toBeCloseTo(1500, 0);
   });
 
@@ -232,7 +232,7 @@ describe('Boolean operations', () => {
   it('intersect yields overlap', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
     const box2 = translateShape(box1, [5, 0, 0]);
-    const intersection = unwrap(intersectShapes(box1, box2));
+    const intersection = unwrap(intersectShape(box1, box2));
     expect(measureVolume(intersection)).toBeCloseTo(500, 0);
   });
 });
@@ -260,7 +260,7 @@ describe('Result error paths', () => {
   it('fuse returns Ok for overlapping shapes', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
     const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
-    const result = fuseShapes(box1 as any, box2);
+    const result = fuseShape(box1 as any, box2);
     expect(isOk(result)).toBe(true);
   });
 

@@ -5,9 +5,9 @@ import {
   makeSphere,
   // functional API
   castShape,
-  fuseShapes,
+  fuseShape,
   cutShape,
-  intersectShapes,
+  intersectShape,
   sectionShape,
   fuseAll,
   cutAll,
@@ -32,9 +32,9 @@ function box(x1: number, y1: number, z1: number, x2: number, y2: number, z2: num
   return castShape(makeBox([x1, y1, z1], [x2, y2, z2]).wrapped);
 }
 
-describe('fuseShapes', () => {
+describe('fuseShape', () => {
   it('fuses two boxes', () => {
-    const result = fuseShapes(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10));
+    const result = fuseShape(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10));
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result);
     expect(isShape3D(shape)).toBe(true);
@@ -42,7 +42,7 @@ describe('fuseShapes', () => {
   });
 
   it('fuses overlapping boxes', () => {
-    const result = fuseShapes(box(0, 0, 0, 10, 10, 10), box(5, 0, 0, 15, 10, 10));
+    const result = fuseShape(box(0, 0, 0, 10, 10, 10), box(5, 0, 0, 15, 10, 10));
     expect(isOk(result)).toBe(true);
     expect(measureVolume(unwrap(result))).toBeCloseTo(1500, 0);
   });
@@ -56,9 +56,9 @@ describe('cutShape', () => {
   });
 });
 
-describe('intersectShapes', () => {
+describe('intersectShape', () => {
   it('intersects two overlapping boxes', () => {
-    const result = intersectShapes(box(0, 0, 0, 10, 10, 10), box(5, 0, 0, 15, 10, 10));
+    const result = intersectShape(box(0, 0, 0, 10, 10, 10), box(5, 0, 0, 15, 10, 10));
     expect(isOk(result)).toBe(true);
     expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
   });
@@ -111,14 +111,14 @@ describe('buildCompound', () => {
 describe('boolean edge cases', () => {
   describe('non-overlapping shapes', () => {
     it('fuse disjoint boxes preserves total volume', () => {
-      const result = fuseShapes(box(0, 0, 0, 10, 10, 10), box(100, 0, 0, 110, 10, 10));
+      const result = fuseShape(box(0, 0, 0, 10, 10, 10), box(100, 0, 0, 110, 10, 10));
       expect(isOk(result)).toBe(true);
       // Total volume should be 2000 (two separate 1000 unit boxes)
       expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
     });
 
     it('intersect disjoint boxes produces empty or negligible volume', () => {
-      const result = intersectShapes(box(0, 0, 0, 10, 10, 10), box(100, 0, 0, 110, 10, 10));
+      const result = intersectShape(box(0, 0, 0, 10, 10, 10), box(100, 0, 0, 110, 10, 10));
       // OCCT may return an empty shell or compound
       expect(isOk(result) || isErr(result)).toBe(true);
       if (isOk(result)) {
@@ -137,38 +137,38 @@ describe('boolean edge cases', () => {
   describe('self operations', () => {
     it('fuse shape with itself', () => {
       const b = box(0, 0, 0, 10, 10, 10);
-      const result = fuseShapes(b, b);
+      const result = fuseShape(b, b);
       expect(isOk(result)).toBe(true);
       expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
     });
 
     it('intersect shape with itself preserves volume', () => {
       const b = box(0, 0, 0, 10, 10, 10);
-      const result = intersectShapes(b, b);
+      const result = intersectShape(b, b);
       expect(isOk(result)).toBe(true);
       expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
     });
   });
 
   describe('options', () => {
-    it('fuseShapes with simplify option', () => {
-      const result = fuseShapes(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10), {
+    it('fuseShape with simplify option', () => {
+      const result = fuseShape(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10), {
         simplify: true,
       });
       expect(isOk(result)).toBe(true);
       expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
     });
 
-    it('fuseShapes with commonFace optimisation', () => {
-      const result = fuseShapes(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10), {
+    it('fuseShape with commonFace optimisation', () => {
+      const result = fuseShape(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10), {
         optimisation: 'commonFace',
       });
       expect(isOk(result)).toBe(true);
       expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
     });
 
-    it('fuseShapes with sameFace optimisation', () => {
-      const result = fuseShapes(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10), {
+    it('fuseShape with sameFace optimisation', () => {
+      const result = fuseShape(box(0, 0, 0, 10, 10, 10), box(10, 0, 0, 20, 10, 10), {
         optimisation: 'sameFace',
       });
       expect(isOk(result)).toBe(true);
@@ -183,8 +183,8 @@ describe('boolean edge cases', () => {
       expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
     });
 
-    it('intersectShapes with simplify option', () => {
-      const result = intersectShapes(box(0, 0, 0, 10, 10, 10), box(5, 0, 0, 15, 10, 10), {
+    it('intersectShape with simplify option', () => {
+      const result = intersectShape(box(0, 0, 0, 10, 10, 10), box(5, 0, 0, 15, 10, 10), {
         simplify: true,
       });
       expect(isOk(result)).toBe(true);

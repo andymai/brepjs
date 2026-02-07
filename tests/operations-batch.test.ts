@@ -6,13 +6,12 @@ import {
   makeCylinder,
   fuseAll,
   cutAll,
-  fuseAllShapes,
-  cutAllShapes,
   measureVolume,
   unwrap,
   isOk,
   isErr,
 } from '../src/index.js';
+import { fuseAllShapes, cutAllShapes } from '../src/operations/batchBooleans.js';
 import { translateShape } from '../src/topology/shapeFns.js';
 
 beforeAll(async () => {

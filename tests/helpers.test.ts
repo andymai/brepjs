@@ -1,14 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import {
-  makeBox,
-  EdgeFinder,
-  FaceFinder,
-  unwrap,
-  isErr,
-  getEdges,
-  curveLength,
-} from '../src/index.js';
+import { makeBox, unwrap, isErr, getEdges, curveLength } from '../src/index.js';
+import { EdgeFinder } from '../src/query/edgeFinder.js';
+import { FaceFinder } from '../src/query/faceFinder.js';
 
 beforeAll(async () => {
   await initOC();

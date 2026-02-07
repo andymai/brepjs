@@ -9,7 +9,7 @@ Best practices for achieving optimal performance with brepjs.
 The `gcWithScope` function provides automatic cleanup of OCCT objects within a scope:
 
 ```typescript
-import { gcWithScope, makeBox, fuseShapes } from 'brepjs';
+import { gcWithScope, makeBox, fuseShape } from 'brepjs';
 
 function buildComplexShape() {
   const r = gcWithScope();
@@ -19,7 +19,7 @@ function buildComplexShape() {
   const box2 = r(makeBox([5, 0, 0], [15, 10, 10]));
 
   // Return the result — it escapes the scope
-  return fuseShapes(box1, box2);
+  return fuseShape(box1, box2);
 }
 ```
 
@@ -59,7 +59,7 @@ import { fuseAll, cutAll } from 'brepjs';
 // ❌ Slow — O(n) operations
 let result = shapes[0];
 for (const shape of shapes.slice(1)) {
-  result = fuseShapes(result, shape);
+  result = fuseShape(result, shape);
 }
 
 // ✅ Fast — single N-way operation
@@ -74,7 +74,7 @@ When fusing shapes that share faces, use the `optimisation` option:
 
 ```typescript
 // Adjacent boxes sharing a face
-const result = fuseShapes(box1, box2, {
+const result = fuseShape(box1, box2, {
   optimisation: 'commonFace', // or 'sameFace' for identical faces
 });
 ```

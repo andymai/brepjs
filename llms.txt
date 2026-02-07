@@ -22,7 +22,7 @@ initFromOC(oc);
 
 ## API Style
 
-brepjs uses a functional API with branded types (`Solid`, `Face`, `Edge`, etc.) and `Result<T>` for error handling. Functions like `fuseShapes()`, `translateShape()`, `filletShape()` are pure — they never dispose inputs. Use `unwrap()` to extract values from `Result<T>`, or `isOk()`/`isErr()` to check success.
+brepjs uses a functional API with branded types (`Solid`, `Face`, `Edge`, etc.) and `Result<T>` for error handling. Functions like `fuseShape()`, `translateShape()`, `filletShape()` are pure — they never dispose inputs. Use `unwrap()` to extract values from `Result<T>`, or `isOk()`/`isErr()` to check success.
 
 ### Branded Shape Types
 
@@ -277,23 +277,23 @@ Drawing functional API:
 ### Boolean Operations
 
 ```typescript
-import { fuseShapes, cutShape, intersectShapes, unwrap } from 'brepjs';
+import { fuseShape, cutShape, intersectShape, unwrap } from 'brepjs';
 
 const box = sketchRectangle(20, 20).extrude(20);
 const hole = sketchCircle(5).extrude(30);
 
 const withHole = unwrap(cutShape(box, hole));        // Subtraction → Result<Shape3D>
-const merged = unwrap(fuseShapes(box, hole));        // Union → Result<Shape3D>
-const common = unwrap(intersectShapes(box, hole));   // Intersection → Result<Shape3D>
+const merged = unwrap(fuseShape(box, hole));         // Union → Result<Shape3D>
+const common = unwrap(intersectShape(box, hole));    // Intersection → Result<Shape3D>
 ```
 
 Full boolean API:
 ```typescript
-import { fuseShapes, cutShape, intersectShapes, sectionShape, splitShape, sliceShape } from 'brepjs';
+import { fuseShape, cutShape, intersectShape, sectionShape, splitShape, sliceShape } from 'brepjs';
 
-fuseShapes(a, b, options?): Result<Shape3D>
+fuseShape(a, b, options?): Result<Shape3D>
 cutShape(base, tool, options?): Result<Shape3D>
-intersectShapes(a: Shape3D, b: Shape3D, options?): Result<Shape3D>
+intersectShape(a: Shape3D, b: Shape3D, options?): Result<Shape3D>
 sectionShape(shape, plane, {approximation?, planeSize?}?): Result<AnyShape>
 splitShape(shape, tools): Result<AnyShape>
 sliceShape(shape, planes, options?): Result<AnyShape[]>
@@ -446,33 +446,6 @@ adjacentFaces(parent, face): Face[]
 sharedEdges(face1, face2): Edge[]
 ```
 
-### EdgeFinder
-
-```typescript
-import { EdgeFinder } from 'brepjs';
-
-const finder = new EdgeFinder();
-finder.inDirection([0, 0, 1]);         // Edges in a direction
-finder.ofLength(10);                   // Edges of specific length
-finder.ofCurveType('LINE');            // By curve type
-finder.parallelTo(plane);             // Parallel to a plane
-finder.inPlane('XY');                  // In a named plane
-const edges = finder.find(shape);      // Returns Edge[]
-```
-
-### FaceFinder
-
-```typescript
-import { FaceFinder } from 'brepjs';
-
-const finder = new FaceFinder();
-finder.parallelTo(plane);             // Parallel to plane
-finder.ofSurfaceType('PLANE');         // By surface type
-finder.ofArea(100, tolerance?);        // By area
-finder.inPlane('XY');                  // In a named plane
-const faces = finder.find(shape);      // Returns Face[]
-```
-
 ### Immutable Finders (Functional API)
 
 ```typescript
@@ -529,7 +502,7 @@ cornerFinder().either([f => f.atPoint([0, 0]), f => f.atPoint([1, 1])]).find(blu
 cornerFinder().when(corner => customPredicate(corner)).find(blueprint);
 ```
 
-> **Note:** `CornerFinder` class is deprecated. Use the `cornerFinder()` factory instead.
+> **Note:** `EdgeFinder`, `FaceFinder`, and `CornerFinder` classes are deprecated. Use `edgeFinder()`, `faceFinder()`, and `cornerFinder()` factories instead.
 
 ## Curve Operations
 
@@ -1287,7 +1260,7 @@ import {
   makeHelix, makeCylinder, makeSphere,
   exportSTEP, meshShape, exportGlb,
   faceFinder, edgeFinder, getFaces,
-  fuseShapes, cutShape, shellShape, filletShape,
+  fuseShape, cutShape, shellShape, filletShape,
   measureVolume, checkInterference, rotateShape,
 } from 'brepjs';
 
@@ -1301,8 +1274,8 @@ const pipe = gcWithScope(() => {
   const topFlange = makeCylinder(30, 5, [0, 0, 95], [0, 0, 1]);
 
   // Fuse tube + flanges
-  const step1 = unwrap(fuseShapes(tube, bottomFlange));
-  const body = unwrap(fuseShapes(step1, topFlange));
+  const step1 = unwrap(fuseShape(tube, bottomFlange));
+  const body = unwrap(fuseShape(step1, topFlange));
 
   // Hollow out: remove top face, shell to 2mm wall thickness
   // parallelTo('XY') finds faces with Z-normal; atDistance selects the one at Z=100
@@ -1340,7 +1313,7 @@ import {
   sketchRoundedRectangle, sketchCircle, sketchRectangle,
   draw, drawText, loadFont, sketchText,
   makeCylinder, compoundSketchExtrude,
-  fuseShapes, cutShape, shellShape, filletShape,
+  fuseShape, cutShape, shellShape, filletShape,
   faceFinder, edgeFinder, translateShape,
 } from 'brepjs';
 
@@ -1365,7 +1338,7 @@ const enclosure = gcWithScope(() => {
   for (const [x, y] of bossPositions) {
     const boss = makeCylinder(3, 25, [x, y, 2], [0, 0, 1]);
     const hole = makeCylinder(1.2, 25, [x, y, 2], [0, 0, 1]);
-    result = unwrap(cutShape(unwrap(fuseShapes(result, boss)), hole));
+    result = unwrap(cutShape(unwrap(fuseShape(result, boss)), hole));
   }
 
   // Ventilation slots on side face
@@ -1380,7 +1353,7 @@ const enclosure = gcWithScope(() => {
   // Embossed text on top — text produces CompoundSketch, use compoundSketchExtrude
   const textSketch = sketchText('brepjs', { fontSize: 8, fontFamily: 'Roboto' }, { plane: 'XY', origin: 30 });
   const textSolid = compoundSketchExtrude(textSketch, 1);
-  result = unwrap(fuseShapes(result, textSolid));
+  result = unwrap(fuseShape(result, textSolid));
 
   return result;
 });
@@ -1393,7 +1366,7 @@ import {
   gcWithScope, unwrap,
   sketchCircle, sketchHelix,
   Sketcher, makeHelix, makeCylinder,
-  fuseShapes, checkInterference,
+  fuseShape, checkInterference,
   measureLength, describeShape,
   pipe, translateShape,
 } from 'brepjs';
@@ -1411,7 +1384,7 @@ const spring = gcWithScope(() => {
   const bottomEnd = makeCylinder(20, 2, [0, 0, -2], [0, 0, 1]);
   const topEnd = makeCylinder(20, 2, [0, 0, 60], [0, 0, 1]);
 
-  return unwrap(fuseShapes(unwrap(fuseShapes(coil, bottomEnd)), topEnd));
+  return unwrap(fuseShape(unwrap(fuseShape(coil, bottomEnd)), topEnd));
 });
 
 // Check if spring fits inside a housing cylinder
@@ -1479,7 +1452,7 @@ const bufferData = toGroupedBufferGeometryData(mesh);
 import {
   pipe, unwrap,
   extrudeFace, makeFace, assembleWire, makeLine, makeCircle,
-  fuseShapes, cutShape, filletShape, shellShape,
+  fuseShape, cutShape, filletShape, shellShape,
   getEdges, getFaces, edgeFinder, faceFinder,
   autoHeal, isShapeValid, describeShape,
   translateShape, rotateShape, linearPattern,

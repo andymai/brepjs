@@ -87,11 +87,11 @@ function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Resu
  *
  * @example
  * ```ts
- * const result = fuseShapes(box, cylinder);
+ * const result = fuseShape(box, cylinder);
  * if (isOk(result)) console.log(describeShape(result.value));
  * ```
  */
-export function fuseShapes(
+export function fuseShape(
   a: Shape3D,
   b: Shape3D,
   { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
@@ -144,7 +144,7 @@ export function cutShape(
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
  */
-export function intersectShapes(
+export function intersectShape(
   a: Shape3D,
   b: Shape3D,
   { simplify = false, signal }: BooleanOptions = {}
@@ -181,7 +181,7 @@ function fuseAllPairwise(
   if (count === 1) return ok(shapes[start]!);
   if (count === 2) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start and start+1 are valid indices
-    return fuseShapes(shapes[start]!, shapes[start + 1]!, {
+    return fuseShape(shapes[start]!, shapes[start + 1]!, {
       optimisation,
       simplify: isTopLevel ? simplify : false,
       ...(signal ? { signal } : {}),
@@ -194,7 +194,7 @@ function fuseAllPairwise(
   const rightResult = fuseAllPairwise(shapes, mid, end, optimisation, simplify, false, signal);
   if (isErr(rightResult)) return rightResult;
 
-  return fuseShapes(leftResult.value, rightResult.value, {
+  return fuseShape(leftResult.value, rightResult.value, {
     optimisation,
     simplify: isTopLevel ? simplify : false,
     ...(signal ? { signal } : {}),
@@ -431,3 +431,17 @@ export function buildCompound(shapes: AnyShape[]): Compound {
   const compound = buildCompoundOcInternal(shapes.map((s) => s.wrapped));
   return createCompound(compound);
 }
+
+// ---------------------------------------------------------------------------
+// Deprecated aliases — plural forms
+// ---------------------------------------------------------------------------
+
+/**
+ * @deprecated Renamed to {@link fuseShape} for consistency with `cutShape`. Use `fuseShape` instead.
+ */
+export const fuseShapes = fuseShape;
+
+/**
+ * @deprecated Renamed to {@link intersectShape} for consistency with `cutShape`. Use `intersectShape` instead.
+ */
+export const intersectShapes = intersectShape;

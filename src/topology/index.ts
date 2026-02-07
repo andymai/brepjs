@@ -137,8 +137,10 @@ export {
 } from './meshFns.js';
 
 export {
+  fuseShape,
   fuseShapes,
   cutShape,
+  intersectShape,
   intersectShapes,
   sectionShape,
   type BooleanOptions,

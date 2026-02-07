@@ -12,7 +12,7 @@
 | #           | Factor                     | Web Dev Score | CAD Dev Score | Notes                                                                                     |
 | ----------- | -------------------------- | :-----------: | :-----------: | ----------------------------------------------------------------------------------------- |
 | 1           | API Discoverability        |     8/10      |     9/10      | Sub-path imports are excellent; no hosted searchable API docs                             |
-| 2           | Naming Consistency         |     9/10      |     9/10      | Very strong verb-noun pattern; minor legacy aliases                                       |
+| 2           | Naming Consistency         |     10/10     |     10/10     | Symmetric verb-noun pattern; legacy aliases removed from barrel                           |
 | 3           | Type Safety                |     9/10      |     10/10     | Branded types are best-in-class; `findAll()`/`findUnique()` split resolved overload issue |
 | 4           | Error Handling             |     8/10      |     9/10      | Result monad + 40+ error codes; some gaps in pre-validation                               |
 | 5           | Documentation Completeness |     8/10      |     9/10      | Comprehensive guides; no hosted API reference site                                        |
@@ -43,21 +43,21 @@ Generate and host a TypeDoc API reference site, even if minimal. The JSDoc cover
 
 ---
 
-## 2. Naming Consistency (Web: 9, CAD: 9)
+## 2. Naming Consistency (Web: 10, CAD: 10)
 
 ### Strengths
 
-- **Universal verb-noun pattern** across all 400+ functions: `makeBox`, `fuseShapes`, `cutShape`, `filletShape`, `translateShape`, `measureVolume`, `exportSTEP`, `edgeFinder`. Extremely consistent — among the best in any JS library.
+- **Universal verb-noun pattern** across all 400+ functions: `makeBox`, `fuseShape`, `cutShape`, `filletShape`, `translateShape`, `measureVolume`, `exportSTEP`, `edgeFinder`. Extremely consistent — among the best in any JS library.
 - **Domain-appropriate vocabulary**: `fuse`/`cut`/`intersect` (not "add"/"subtract"/"and"). CAD developers will feel at home immediately.
-- **Minimal OCCT leakage**: Users write `fuseShapes()`, not `BRepAlgoAPI_Fuse`. Internal complexity is well-hidden.
+- **Minimal OCCT leakage**: Users write `fuseShape()`, not `BRepAlgoAPI_Fuse`. Internal complexity is well-hidden.
 - **Adjacency queries read like English**: `facesOfEdge()`, `edgesOfFace()`, `adjacentFaces()`, `sharedEdges()`.
 - **Consistent parameter ordering**: Shape-first for transforms, options-last everywhere.
+- **Symmetric naming**: `fuseShape`, `cutShape`, `intersectShape` — all singular, all take two shapes.
 
 ### Weaknesses
 
 - **Legacy aliases still exported**: `compoundShapes` (legacy) alongside `makeCompound` (canonical). Even if deprecated, they pollute autocomplete.
 - **`unwrap` is Rust idiom, not JS idiom.** JS developers expect `.then()` or `.catch()`, not `unwrap()`. It's well-documented, but the name creates a moment of confusion for the target audience.
-- **Some asymmetric naming**: `fuseShapes` (plural) but `cutShape` (singular). Both take two shapes. Minor, but noticeable.
 
 ### Comparison
 
