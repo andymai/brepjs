@@ -328,7 +328,7 @@ filletShape(shape, edges, radius): Result<Shape3D>
 chamferShape(shape, edges, distance): Result<Shape3D>
 // distance: number | [d1, d2] | (edge => number | [d1, d2] | null)
 
-chamferDistAngleShape(shape, edges, distance, angleDeg): AnyShape
+chamferDistAngleShape(shape, edges, distance, angleDeg): Result<Shape3D>
 ```
 
 ### Shell (Hollow Out)
@@ -769,7 +769,7 @@ makeThreePointArc(v1, v2, v3): Edge
 makeEllipseArc(major, minor, startAngle, endAngle, center?, normal?, xDir?): Result<Edge>
 makeTangentArc(startPoint, startTangent, endPoint): Edge
 makeBSplineApproximation(points, config?): Result<Edge>
-makeBezierCurve(points): Edge
+makeBezierCurve(points): Result<Edge>
 assembleWire(edgesOrWires): Result<Wire>
 
 // 2D faces

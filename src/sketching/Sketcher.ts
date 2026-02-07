@@ -389,7 +389,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     const inWorldPoints = cp.map((p) => planeToWorld(this.plane, p));
     const endPoint = planeToWorld(this.plane, end);
 
-    this.pendingEdges.push(makeBezierCurve([this.pointer, ...inWorldPoints, endPoint]));
+    this.pendingEdges.push(unwrap(makeBezierCurve([this.pointer, ...inWorldPoints, endPoint])));
 
     this._updatePointer(endPoint);
     return this;
@@ -457,7 +457,9 @@ export default class Sketcher implements GenericSketcher<Sketch> {
       const endPoleDistance = vecScale(vecNormalize(endPoleDirection), endFactor * defaultDistance);
       const endControl = vecSub(endPoint, endPoleDistance);
 
-      this.pendingEdges.push(makeBezierCurve([this.pointer, startControl, endControl, endPoint]));
+      this.pendingEdges.push(
+        unwrap(makeBezierCurve([this.pointer, startControl, endControl, endPoint]))
+      );
 
       this._updatePointer(endPoint);
       return this;
