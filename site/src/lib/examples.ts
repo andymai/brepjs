@@ -73,9 +73,10 @@ return solid;`,
   {
     id: 'revolved-profile',
     title: 'Revolved Profile',
-    description: 'Revolve a 2D profile around the Z axis to make a vase.',
+    description: 'Revolve a 2D profile around the Y axis to make a vase.',
     category: 'Sketching',
     code: `// Revolve a profile to create a vase shape
+// Sketch in XY plane — X is radius, Y is height
 const sketch = new Sketcher()
   .lineTo([15, 0])
   .lineTo([20, 20])
@@ -85,7 +86,8 @@ const sketch = new Sketcher()
   .close();
 
 const face = sketch.face();
-const vase = unwrap(revolveFace(face));
+// Revolve around Y axis so Y becomes the vase height
+const vase = unwrap(revolveFace(face, [0, 0, 0], [0, 1, 0]));
 return vase;`,
   },
   {
