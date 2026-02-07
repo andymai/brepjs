@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.18.0](https://github.com/andymai/brepjs/compare/brepjs-v4.17.1...brepjs-v4.18.0) (2026-02-07)
+
+
+### Features
+
+* **site:** playground UX overhaul ([#122](https://github.com/andymai/brepjs/issues/122)) ([ff581c3](https://github.com/andymai/brepjs/commit/ff581c3d5fb77fbe933ba1d4c9eb417cbbb478af))
+
+
+### Bug Fixes
+
+* **site:** address PR [#122](https://github.com/andymai/brepjs/issues/122) feedback ([#125](https://github.com/andymai/brepjs/issues/125)) ([2ba4137](https://github.com/andymai/brepjs/commit/2ba4137035b8f8637fcbf7e082ec0b81685483d2))
+
 ## [4.17.1](https://github.com/andymai/brepjs/compare/brepjs-v4.17.0...brepjs-v4.17.1) (2026-02-06)
 
 
