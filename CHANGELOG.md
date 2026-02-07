@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.29.1](https://github.com/andymai/brepjs/compare/brepjs-v4.29.0...brepjs-v4.29.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
+
 ## [4.29.0](https://github.com/andymai/brepjs/compare/brepjs-v4.28.0...brepjs-v4.29.0) (2026-02-07)
 
 
