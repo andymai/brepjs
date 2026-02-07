@@ -210,10 +210,46 @@ match(result, {
 
 See [errors.md](./errors.md) for the full error code reference.
 
+## Troubleshooting
+
+### "Cannot read properties of undefined" on first API call
+
+You forgot to initialize the WASM kernel. Every brepjs program must call `initFromOC()` before using any shape functions:
+
+```typescript
+const oc = await opencascade();
+initFromOC(oc); // Must happen before makeBox, makeCylinder, etc.
+```
+
+### Boolean operation returns an error
+
+Boolean operations (`fuseShapes`, `cutShape`, `intersectShapes`) can fail when shapes don't overlap, are invalid, or have degenerate geometry. Try:
+
+1. **Check shapes overlap** — `cutShape(a, b)` requires `b` to intersect `a`
+2. **Heal inputs first** — `unwrap(healSolid(shape))` fixes minor geometry issues
+3. **Check the error** — `result.error.code` tells you exactly what failed (see [Error Reference](./errors.md))
+
+### Memory keeps growing
+
+WASM objects aren't garbage-collected like normal JS objects. Use `using` for automatic cleanup:
+
+```typescript
+{
+  using temp = makeBox([0, 0, 0], [10, 10, 10]);
+  // temp is automatically cleaned up at block end
+}
+```
+
+See [Memory Management](./memory-management.md) for full patterns.
+
+### TypeScript errors with `using` syntax
+
+You need TypeScript 5.9+ and `"lib": ["ES2022", "ESNext.Disposable"]` in your tsconfig.json. If you can't upgrade, use `gcWithScope()` or `localGC()` instead — see [Memory Management](./memory-management.md).
+
 ## Next steps
 
+- **[Which API?](./which-api.md)** — Choose between Sketcher, functional API, and Drawing API
 - **[B-Rep Concepts](./concepts.md)** — Understand the geometry model (vertices, edges, faces, solids)
 - **[Memory Management](./memory-management.md)** — How to clean up WASM objects
-- **[Architecture](./architecture.md)** — Library layers and module map
-- **[Examples](../examples/)** — Complete workflow examples
+- **[Examples](../examples/)** — Complete workflow examples from beginner to advanced
 - **[llms.txt](../llms.txt)** — Full API reference (great for AI-assisted development)
