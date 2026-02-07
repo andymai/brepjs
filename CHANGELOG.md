@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.2](https://github.com/andymai/brepjs/compare/brepjs-v4.18.1...brepjs-v4.18.2) (2026-02-07)
+
+
+### Bug Fixes
+
+* narrow AnyShape params to precise branded types ([#133](https://github.com/andymai/brepjs/issues/133)) ([d0ddae7](https://github.com/andymai/brepjs/commit/d0ddae774443e3f3558a6c85dc481fcf255ba535))
+
 ## [4.18.1](https://github.com/andymai/brepjs/compare/brepjs-v4.18.0...brepjs-v4.18.1) (2026-02-07)
 
 
