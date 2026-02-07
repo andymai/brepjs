@@ -56,7 +56,8 @@ export const curvesAsEdgesOnSurface = (curves: Curve2D[], geomSurf: OcType): Edg
 };
 
 /** Apply an OCCT `gp_GTrsf2d` transformation to an array of 2D curves. */
-export const transformCurves = (curves: Curve2D[], transformation: OcType): Curve2D[] => {
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- OcType is any but null is a valid sentinel here
+export const transformCurves = (curves: Curve2D[], transformation: OcType | null): Curve2D[] => {
   const oc = getKernel().oc;
 
   const modifiedCurves = curves.map((curve: Curve2D) => {
@@ -176,7 +177,8 @@ export function curvesAsEdgesOnFace(
 
   const bounds = uvBounds(face);
 
-  let transformation: OcType = null;
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- OcType is any but null is a valid sentinel
+  let transformation: OcType | null = null;
   const uAxis = r(axis2d([0, 0], [0, 1]));
   const _vAxis = r(axis2d([0, 0], [1, 0]));
 
