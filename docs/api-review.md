@@ -11,18 +11,18 @@
 
 | #           | Factor                     | Web Dev Score | CAD Dev Score | Notes                                                                        |
 | ----------- | -------------------------- | :-----------: | :-----------: | ---------------------------------------------------------------------------- |
-| 1           | API Discoverability        |     8/10      |     9/10      | Sub-path imports are excellent; no hosted searchable API docs                |
+| 1           | API Discoverability        |     10/10     |     10/10     | Sub-path imports + hosted TypeDoc + function lookup table                    |
 | 2           | Naming Consistency         |     10/10     |     10/10     | Symmetric verb-noun pattern; legacy aliases removed from barrel              |
 | 3           | Type Safety                |     10/10     |     10/10     | Branded types are best-in-class; null-shape pre-validation on all operations |
 | 4           | Error Handling             |     10/10     |     10/10     | Result monad + 50+ error codes; pre-validation on all operations             |
-| 5           | Documentation Completeness |     8/10      |     9/10      | Comprehensive guides; no hosted API reference site                           |
+| 5           | Documentation Completeness |     9/10      |     9/10      | Comprehensive guides + hosted TypeDoc API reference                          |
 | 6           | Learning Curve             |     6/10      |     9/10      | WASM setup + B-Rep concepts + memory management = steep entry                |
 | 7           | Examples Quality           |     8/10      |     9/10      | Progressive and real-world; no visual output                                 |
-| **Overall** |                            |  **8.6/10**   |  **9.4/10**   |                                                                              |
+| **Overall** |                            |  **9.0/10**   |  **9.6/10**   |                                                                              |
 
 ---
 
-## 1. API Discoverability (Web: 8, CAD: 9)
+## 1. API Discoverability (Web: 10, CAD: 10)
 
 ### Strengths
 
@@ -33,13 +33,13 @@
 
 ### Weaknesses
 
-- **No hosted, searchable API reference.** No TypeDoc, no Storybook-style component browser, no equivalent of threejs.org/docs. Developers must rely on IDE hover tooltips, GitHub file browsing, or the llms.txt. For a 500+ symbol API surface, this is a meaningful gap.
-- **Sub-path boundaries aren't always intuitive.** Example: `filletShape` is in `brepjs/topology` but `extrudeFace` is in `brepjs/operations`. A new user might not know which sub-path to import from. The "Which API?" guide helps, but doesn't cover every function.
-- **`brepjs/core` exports too many things.** Vectors, planes, Result types, error types, disposal utilities, branded types, constants — a user importing `brepjs/core` for `Result` also sees 50+ unrelated symbols.
+- **~~No hosted, searchable API reference.~~** — **RESOLVED.** TypeDoc API reference is generated and deployed to GitHub Pages. Searchable, cross-linked documentation for all 400+ symbols across 10 sub-path modules.
+- **~~Sub-path boundaries aren't always intuitive.~~** — **RESOLVED.** A function lookup table (`docs/function-lookup.md`) maps every exported symbol to its sub-path, with an alphabetical index and per-module groupings. The "Which API?" guide now links to it.
+- **`brepjs/core` exports too many things.** Vectors, planes, Result types, error types, disposal utilities, branded types, constants — a user importing `brepjs/core` for `Result` also sees 50+ unrelated symbols. Mitigated by the function lookup table; structural split deferred.
 
 ### Recommendation
 
-Generate and host a TypeDoc API reference site, even if minimal. The JSDoc coverage is already excellent, so this is mostly a build/deploy step.
+~~Generate and host a TypeDoc API reference site, even if minimal.~~ **Done.** Consider splitting `brepjs/core` into focused sub-paths (`brepjs/result`, `brepjs/vectors`) in a future major version.
 
 ---
 
@@ -149,7 +149,7 @@ All major items resolved. Remaining improvement: wrap `extrudeFace` return type 
 
 ---
 
-## 5. Documentation Completeness (Web: 8, CAD: 9)
+## 5. Documentation Completeness (Web: 9, CAD: 9)
 
 ### Strengths
 
@@ -161,13 +161,13 @@ All major items resolved. Remaining improvement: wrap `extrudeFace` return type 
 
 ### Weaknesses
 
-- **No hosted documentation website.** Everything is GitHub Markdown. For a 500+ symbol API, this is the single biggest documentation gap. Searchable, cross-linked API docs (TypeDoc) would dramatically improve the developer experience.
+- **~~No hosted documentation website.~~** — **RESOLVED.** TypeDoc API reference site deployed to GitHub Pages with searchable, cross-linked documentation.
 - **No visual output in examples or docs.** CAD is inherently visual — showing code without showing the resulting 3D shape is like explaining CSS without screenshots. Three.js docs show interactive 3D demos; JSCAD has a browser playground.
 - **Getting Started assumes Node.js.** Browser setup (Vite + WASM) is not covered in the tutorial. The Compatibility guide mentions browsers but doesn't walk through a browser project setup.
 
 ### Recommendation
 
-Generate TypeDoc site and deploy to GitHub Pages. Add even one visual screenshot per example. Add a "Browser Setup" section to Getting Started.
+~~Generate TypeDoc site and deploy to GitHub Pages.~~ **Done.** Add even one visual screenshot per example. Add a "Browser Setup" section to Getting Started.
 
 ---
 
@@ -253,7 +253,7 @@ Add a minimal browser example (HTML + Vite + Three.js viewer). Include at least 
 ### Where brepjs has room to grow
 
 1. **Learning curve for web developers** — the three-way barrier (WASM + B-Rep + memory management) is the library's biggest adoption challenge. This isn't entirely solvable but can be mitigated.
-2. **No hosted API docs** — the single most impactful improvement would be generating and hosting a TypeDoc site.
+2. **~~No hosted API docs~~** — **RESOLVED.** TypeDoc site deployed to GitHub Pages with function lookup table.
 3. **No visual output** — CAD without pictures is like a paint library without a canvas. Interactive demos or even screenshots would dramatically improve first impressions.
 4. **~~Overloaded `find()` method~~** — **RESOLVED.** Split into `findAll()` and `findUnique()`.
 
@@ -263,7 +263,7 @@ Add a minimal browser example (HTML + Vite + Three.js viewer). Include at least 
 | ------------------------- | :----: | :------: | :---: | :------: |
 | Type safety               |   10   |    5     |   3   |    6     |
 | Naming                    |   9    |    7     |   7   |    8     |
-| Docs site                 |   5    |    10    |   7   |    9     |
+| Docs site                 |   8    |    10    |   7   |    9     |
 | Learning curve (newcomer) |   6    |    8     |   7   |    7     |
 | Error handling            |   10   |    4     |   4   |    6     |
 | Visual examples           |   4    |    10    |   9   |    8     |

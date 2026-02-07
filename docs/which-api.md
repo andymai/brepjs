@@ -113,6 +113,15 @@ import { ok, isOk, unwrap, type Result } from 'brepjs/core';
 
 All sub-paths re-export a subset of the main `brepjs` entry. You can mix and match imports from the main entry and sub-paths.
 
+## Finding functions
+
+Not sure which sub-path exports a specific function?
+
+- **[Function Lookup Table](function-lookup.md)** — Alphabetical index of all 400+ symbols with their sub-path
+- **[Hosted API Reference](https://andymai.github.io/brepjs/)** — Searchable TypeDoc documentation
+
+Example: Looking for `filletShape`? Check the lookup table → `brepjs/topology`.
+
 ## Available sub-paths
 
 | Sub-path             | Contents                                            |

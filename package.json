@@ -154,6 +154,8 @@
     "check:readme-reminders": "bash scripts/check-readme-reminders.sh",
     "example": "npx tsx",
     "knip": "knip",
+    "docs:api": "typedoc",
+    "docs:generate-lookup": "npx tsx scripts/generate-function-lookup.ts",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -168,6 +170,7 @@
     "knip": "5.82.1",
     "lint-staged": "16.2.7",
     "prettier": "3.8.1",
+    "typedoc": "0.28.16",
     "typescript": "5.9.3",
     "typescript-eslint": "8.54.0",
     "vite": "7.3.1",
