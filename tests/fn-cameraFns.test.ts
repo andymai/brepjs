@@ -5,7 +5,6 @@ import {
   createCamera,
   cameraLookAt,
   cameraFromPlane,
-  cameraToProjectionCamera,
   projectEdges,
 } from '../src/projection/cameraFns.js';
 import { vecEquals, vecLength } from '../src/core/vecOps.js';
@@ -93,15 +92,6 @@ describe('cameraFromPlane', () => {
   it('throws for unknown plane', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input
     expect(() => cameraFromPlane('INVALID' as any)).toThrow();
-  });
-});
-
-describe('cameraToProjectionCamera', () => {
-  it('converts to ProjectionCamera', () => {
-    const cam = unwrap(createCamera([0, 0, 10], [0, 0, -1], [1, 0, 0]));
-    const projCam = cameraToProjectionCamera(cam);
-    expect(projCam).toBeDefined();
-    projCam.delete();
   });
 });
 

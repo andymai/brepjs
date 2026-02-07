@@ -349,12 +349,10 @@ export { loadFont, getFont, textBlueprints, sketchText } from './text/textBluepr
 // ── Layer 3: projection ──
 
 export {
-  ProjectionCamera,
-  lookFromPlane,
   isProjectionPlane,
   type ProjectionPlane,
   type CubeFace,
-} from './projection/ProjectionCamera.js';
+} from './projection/projectionPlanes.js';
 
 export { makeProjectedEdges } from './projection/makeProjectedEdges.js';
 
@@ -712,7 +710,6 @@ export {
   createCamera,
   cameraLookAt,
   cameraFromPlane,
-  cameraToProjectionCamera,
   projectEdges,
   type Camera,
 } from './projection/cameraFns.js';

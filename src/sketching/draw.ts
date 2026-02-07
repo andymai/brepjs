@@ -36,9 +36,8 @@ import Sketches from './Sketches.js';
 import type { GenericSketcher } from './sketcherlib.js';
 import type { SketchData } from '../2d/blueprints/lib.js';
 import { textBlueprints } from '../text/textBlueprints.js';
-import { lookFromPlane, ProjectionCamera } from '../projection/ProjectionCamera.js';
-import type { ProjectionPlane } from '../projection/ProjectionCamera.js';
-import { makeProjectedEdges } from '../projection/makeProjectedEdges.js';
+import type { ProjectionPlane } from '../projection/projectionPlanes.js';
+import { type Camera, cameraFromPlane, projectEdges } from '../projection/cameraFns.js';
 
 import offsetFn, { type Offset2DConfig } from '../2d/blueprints/offset.js';
 import { CornerFinder } from '../query/cornerFinder.js';
@@ -569,19 +568,16 @@ const edgesToDrawing = (edges: Edge[]): Drawing => {
  */
 export function drawProjection(
   shape: AnyShape,
-  projectionCamera: ProjectionPlane | ProjectionCamera = 'front'
+  projectionCamera: ProjectionPlane | Camera = 'front'
 ): { visible: Drawing; hidden: Drawing } {
-  const [r, gc] = localGC();
-  let camera: ProjectionCamera;
-  const ownCamera = !(projectionCamera instanceof ProjectionCamera);
-  if (!ownCamera) {
-    camera = projectionCamera;
+  let camera: Camera;
+  if (typeof projectionCamera === 'string') {
+    camera = unwrap(cameraFromPlane(projectionCamera));
   } else {
-    camera = r(lookFromPlane(projectionCamera));
+    camera = projectionCamera;
   }
 
-  const { visible, hidden } = makeProjectedEdges(shape, camera);
-  gc();
+  const { visible, hidden } = projectEdges(shape, camera);
 
   return {
     visible: edgesToDrawing(visible),
