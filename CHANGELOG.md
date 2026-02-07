@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.3](https://github.com/andymai/brepjs/compare/brepjs-v4.18.2...brepjs-v4.18.3) (2026-02-07)
+
+
+### Bug Fixes
+
+* improve naming clarity, remove castShape ceremony ([#135](https://github.com/andymai/brepjs/issues/135)) ([15427fc](https://github.com/andymai/brepjs/commit/15427fc7c8786147aa672e1346b1e8a17e05e351))
+
 ## [4.18.2](https://github.com/andymai/brepjs/compare/brepjs-v4.18.1...brepjs-v4.18.2) (2026-02-07)
 
 
