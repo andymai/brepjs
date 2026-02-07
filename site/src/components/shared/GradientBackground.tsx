@@ -24,8 +24,8 @@ interface GradientBackgroundProps {
 }
 
 export default function GradientBackground({
-  colorTop = '#191920',
-  colorBottom = '#0c0c10',
+  colorTop = '#606068',
+  colorBottom = '#2e2e34',
 }: GradientBackgroundProps) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 

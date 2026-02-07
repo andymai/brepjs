@@ -10,6 +10,7 @@ export const SHORTCUTS: Record<string, ShortcutDef> = {
   run: { id: 'run', key: 'Enter', ctrl: true, shift: false, label: 'Run Code' },
   share: { id: 'share', key: 's', ctrl: true, shift: false, label: 'Share' },
   exportSTL: { id: 'exportSTL', key: 'e', ctrl: true, shift: false, label: 'Export STL' },
+  exportSTEP: { id: 'exportSTEP', key: 'e', ctrl: true, shift: true, label: 'Export STEP' },
   formatCode: { id: 'formatCode', key: 'f', ctrl: true, shift: true, label: 'Format Code' },
   toggleOutput: { id: 'toggleOutput', key: 'b', ctrl: true, shift: false, label: 'Toggle Console' },
   toggleViewer: { id: 'toggleViewer', key: '\\', ctrl: true, shift: false, label: 'Toggle Viewer' },
