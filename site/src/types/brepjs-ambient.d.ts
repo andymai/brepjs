@@ -12,18 +12,14 @@
 /** @internal */ declare abstract class Finder3d<Type> extends Finder<Type, AnyShape> {}
 /** @internal */ declare abstract class Finder<Type, FilterType> {}
 /**
- * Set the OpenCascade WASM instance (backward-compatible shim).
+ * Return the singleton kernel adapter.
  *
- * @see {@link initFromOC} — the preferred kernel initialisation API.
+ * @throws If the kernel has not been initialised via {@link initFromOC}.
  */
-declare const setOC: (oc: any) => void;
+declare function getKernel(): KernelAdapter;
 
-/**
- * Return the raw OpenCascade WASM instance (backward-compatible shim).
- *
- * @see {@link getKernel} — the preferred kernel access API.
- */
-declare const getOC: () => any;
+/** Initialise the brepjs kernel from a loaded OpenCascade WASM instance. */
+declare function initFromOC(oc: any): void;
 
 interface Ok<T> {
     readonly ok: true;
@@ -157,6 +153,10 @@ declare const BrepErrorCode: {
     readonly FUSE_ALL_EMPTY: "FUSE_ALL_EMPTY";
     readonly FILLET_NO_EDGES: "FILLET_NO_EDGES";
     readonly CHAMFER_NO_EDGES: "CHAMFER_NO_EDGES";
+    readonly CHAMFER_ANGLE_NO_EDGES: "CHAMFER_ANGLE_NO_EDGES";
+    readonly CHAMFER_ANGLE_BAD_DISTANCE: "CHAMFER_ANGLE_BAD_DISTANCE";
+    readonly CHAMFER_ANGLE_BAD_ANGLE: "CHAMFER_ANGLE_BAD_ANGLE";
+    readonly BEZIER_MIN_POINTS: "BEZIER_MIN_POINTS";
     readonly POLYGON_MIN_POINTS: "POLYGON_MIN_POINTS";
     readonly ZERO_LENGTH_EXTRUSION: "ZERO_LENGTH_EXTRUSION";
     readonly ZERO_TWIST_ANGLE: "ZERO_TWIST_ANGLE";
@@ -173,6 +173,8 @@ declare const BrepErrorCode: {
     readonly REVOLUTION_NOT_3D: "REVOLUTION_NOT_3D";
     readonly FILLET_NOT_3D: "FILLET_NOT_3D";
     readonly CHAMFER_NOT_3D: "CHAMFER_NOT_3D";
+    readonly CHAMFER_ANGLE_NOT_3D: "CHAMFER_ANGLE_NOT_3D";
+    readonly CHAMFER_ANGLE_FAILED: "CHAMFER_ANGLE_FAILED";
     readonly SHELL_NOT_3D: "SHELL_NOT_3D";
     readonly OFFSET_NOT_3D: "OFFSET_NOT_3D";
     readonly NULL_SHAPE: "NULL_SHAPE";
@@ -254,34 +256,16 @@ interface Deletable {
 }
 
 /**
- * Named standard planes.
- *
- * Axis pairs (`'XY'`, `'YZ'`, …) and view names (`'front'`, `'top'`, …)
- * are both supported. The axis-pair order determines the normal direction.
- */
-type PlaneName = 'XY' | 'YZ' | 'ZX' | 'XZ' | 'YX' | 'ZY' | 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom';
-
-/** @deprecated Use {@link Vec3} from `types.ts` instead. */
-type SimplePoint = [number, number, number];
-
-/**
  * Legacy Point type for backward compatibility.
  * Prefer using PointInput or Vec3 from types.ts.
  */
-type Point = SimplePoint | [number, number] | {
+type Point = [number, number, number] | [number, number] | {
     XYZ: () => any;
     delete: () => void;
 };
 
 /** Check whether a value is a valid {@link Point} (tuple or OCCT point-like object). */
 declare function isPoint(p: unknown): p is Point;
-
-/**
- * Resolve a direction shorthand (`'X'`, `'Y'`, `'Z'`) to a {@link Point} tuple.
- *
- * @deprecated Use {@link resolveDirection} from `types.ts` instead.
- */
-declare function makeDirection(p: Direction): Point;
 
 /**
  * Derive a {@link Plane} from a face's surface geometry.
@@ -362,12 +346,6 @@ type CurveType = 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'HYPERBOLA' | 'PARABOLA' | 'BEZ
  */
 declare const findCurveType: (type: any) => Result<CurveType>;
 
-/**
- * Initialise the lazy shapes module reference. Call this once at startup
- * (the barrel index.ts does it automatically).
- */
-declare function initCast(shapesModule: typeof any): void;
-
 /** String literal identifying a topological entity type for TopExp_Explorer iteration. */
 type TopoEntity = 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'solidCompound' | 'compound' | 'shape';
 
@@ -396,19 +374,13 @@ declare const shapeType: (shape: any) => Result<any>;
 declare function downcast(shape: any): Result<GenericTopo>;
 
 /**
- * Cast a raw OCCT shape to its corresponding brepjs wrapper class (Vertex, Edge, Face, etc.).
+ * Cast a raw OCCT shape to its corresponding branded brepjs type (Vertex, Edge, Face, etc.).
  *
- * Performs downcast + class instantiation in one step.
+ * Performs downcast + branded handle creation in one step.
  *
  * @returns Ok with a typed AnyShape, or Err if the shape type is unknown.
  */
 declare function cast(shape: any): Result<AnyShape>;
-
-/** Type guard: return true if the shape is a 3D body (Shell, Solid, CompSolid, or Compound). */
-declare function isShape3D(shape: AnyShape): shape is Shape3D;
-
-/** Type guard: return true if the shape is a Wire. */
-declare function isWire(shape: AnyShape): shape is Wire;
 
 /** Type guard: return true if the shape is a CompSolid. */
 declare function isCompSolid(shape: AnyShape): shape is CompSolid;
@@ -421,45 +393,23 @@ declare function isCompSolid(shape: AnyShape): shape is CompSolid;
  */
 declare function deserializeShape(data: string): Result<AnyShape>;
 
-/** String literal identifying the geometric type of a face's underlying surface. */
-type SurfaceType = 'PLANE' | 'CYLINDRE' | 'CONE' | 'SPHERE' | 'TORUS' | 'BEZIER_SURFACE' | 'BSPLINE_SURFACE' | 'REVOLUTION_SURFACE' | 'EXTRUSION_SURFACE' | 'OFFSET_SURFACE' | 'OTHER_SURFACE';
-
-/** Raw triangulation data for a single face (vertices, triangle indices, normals). */
-interface FaceTriangulation {
-    /** Flat array of vertex positions (x,y,z interleaved). */
-    vertices: number[];
-    /** Flat array of triangle vertex indices (3 per triangle). */
-    trianglesIndexes: number[];
-    /** Flat array of vertex normals (x,y,z interleaved). */
-    verticesNormals: number[];
-}
-
-/** Triangle mesh data extracted from a shape, ready for GPU rendering. */
-interface ShapeMesh {
-    /** Triangle vertex indices (3 per triangle). */
-    triangles: Uint32Array;
-    /** Flat array of vertex positions (x,y,z interleaved). */
-    vertices: Float32Array;
-    /** Flat array of vertex normals (x,y,z interleaved). */
-    normals: Float32Array;
-    /** Flat array of UV coordinates (u,v interleaved), empty if not requested. */
-    uvs: Float32Array;
-    /** Per-face triangle index ranges for multi-material rendering. */
-    faceGroups: {
-        start: number;
-        count: number;
-        faceId: number;
-    }[];
-}
+/**
+ * Builds a TopoDS_Compound from raw OCCT shape handles.
+ * Used internally by both high-level (Shape3D[]) and low-level (any[]) APIs.
+ *
+ * @deprecated Internal utility — use `makeCompound` for public API usage.
+ */
+declare function buildCompoundOc(shapes: any[]): any;
 
 /**
- * Register the query module so that shell/fillet/chamfer can construct
- * EdgeFinder and FaceFinder at runtime without a hard import.
+ * Applies glue optimization to a boolean operation.
+ *
+ * @param op - Boolean operation builder with SetGlue method
+ * @param optimisation - Optimization level: 'none', 'commonFace', or 'sameFace'
  */
-declare function registerQueryModule(mod: {
-    EdgeFinder: new () => EdgeFinder;
-    FaceFinder: new () => FaceFinder;
-}): void;
+declare function applyGlue(op: {
+    SetGlue(glue: any): void;
+}, optimisation: 'none' | 'commonFace' | 'sameFace'): void;
 
 /**
  * A chamfer radius specification.
@@ -494,47 +444,6 @@ declare function isChamferRadius(r: unknown): r is ChamferRadius;
 
 declare function isFilletRadius(r: unknown): r is FilletRadius;
 
-/**
- * Builds a TopoDS_Compound from raw OCCT shape handles.
- * Used internally by both high-level (Shape3D[]) and low-level (any[]) APIs.
- */
-declare function buildCompoundOc(shapes: any[]): any;
-
-/**
- * Builds a TopoDS_Compound from Shape3D instances.
- */
-declare function buildCompound(shapes: Shape3D[]): any;
-
-/**
- * Applies glue optimization to a boolean operation.
- *
- * @param op - Boolean operation builder with SetGlue method
- * @param optimisation - Optimization level: 'none', 'commonFace', or 'sameFace'
- */
-declare function applyGlue(op: {
-    SetGlue(glue: any): void;
-}, optimisation: 'none' | 'commonFace' | 'sameFace'): void;
-
-/**
- * Fuses all given shapes in a single boolean operation.
- *
- * @category Boolean Operations
- */
-declare function fuseAll(shapes: Shape3D[], { optimisation, simplify, strategy }?: BooleanOperationOptions): Result<Shape3D>;
-
-/**
- * Cuts all tool shapes from the base shape in a single boolean operation.
- *
- * @category Boolean Operations
- */
-declare function cutAll(base: Shape3D, tools: Shape3D[], { optimisation, simplify }?: BooleanOperationOptions): Result<Shape3D>;
-
-/** Union of all concrete shape types in the topology layer. */
-type AnyShape = Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound;
-
-/** Union of shape types that represent 3D bodies (shells, solids, compounds). */
-type Shape3D = Shell | Solid | CompSolid | Compound;
-
 /** Interface for OCCT curve adaptors (BRepAdaptor_Curve / CompCurve). */
 interface CurveLike {
     delete(): void;
@@ -547,13 +456,6 @@ interface CurveLike {
     GetType?(): any;
     D1(v: number, p: any, vPrime: any): void;
 }
-
-/** Options for boolean operations (fuse, cut, intersect) on OOP Shape classes. */
-type BooleanOperationOptions = {
-    optimisation?: 'none' | 'commonFace' | 'sameFace';
-    simplify?: boolean;
-    strategy?: 'native' | 'pairwise';
-};
 
 /** Create a straight edge between two 3D points. */
 declare const makeLine: (v1: Vec3, v2: Vec3) => Edge;
@@ -619,8 +521,9 @@ declare const makeBSplineApproximation: (points: Vec3[], { tolerance, smoothing,
  * Create a Bezier curve edge from control points.
  *
  * @param points - Two or more control points defining the curve.
+ * @returns Ok with the edge, or Err if fewer than 2 points are provided.
  */
-declare const makeBezierCurve: (points: Vec3[]) => Edge;
+declare const makeBezierCurve: (points: Vec3[]) => Result<Edge>;
 
 /**
  * Create a circular arc edge tangent to a direction at the start point.
@@ -712,11 +615,16 @@ declare const makeVertex: (point: Vec3) => Vertex;
  */
 declare const makeOffset: (face: Face, offset: number, tolerance?: number) => Result<Shape3D>;
 
-/** Combine multiple shapes into a single compound shape. */
-declare const compoundShapes: (shapeArray: AnyShape[]) => AnyShape;
+/**
+ * Build a compound from multiple shapes.
+ *
+ * @param shapeArray - Shapes to group into a single compound.
+ * @returns A new Compound containing all input shapes.
+ */
+declare const makeCompound: (shapeArray: AnyShape[]) => Compound;
 
-/** Alias for {@link compoundShapes}. */
-declare const makeCompound: (shapeArray: AnyShape[]) => AnyShape;
+/** @deprecated Use {@link makeCompound} instead. */
+declare const compoundShapes: (shapeArray: AnyShape[]) => AnyShape;
 
 /**
  * Welds faces and shells into a single shell.
@@ -751,14 +659,6 @@ declare const addHolesInFace: (face: Face, holes: Wire[]) => Face;
  */
 declare const makePolygon: (points: Vec3[]) => Result<Face>;
 
-/** Configuration for extrusion profile scaling along the path. */
-interface ExtrusionProfile {
-    /** Profile curve type: 's-curve' for smooth easing, 'linear' for constant scaling */
-    profile?: 's-curve' | 'linear';
-    /** End scale factor (1 = same size, 0.5 = half size at end) */
-    endFactor?: number;
-}
-
 /**
  * Extrude a face along a vector to produce a solid (OOP API).
  *
@@ -787,35 +687,6 @@ declare function genericSweep(wire: Wire, spine: Wire, sweepConfig: GenericSweep
 declare function genericSweep(wire: Wire, spine: Wire, sweepConfig: GenericSweepConfig, shellMode?: false): Result<Shape3D>;
 
 /**
- * Extrude a wire along a normal constrained to a support surface (OOP API).
- *
- * @param wire - The profile wire to sweep.
- * @param center - Start point of the extrusion spine.
- * @param normal - Direction and length of the extrusion.
- * @param support - OCCT support surface that constrains the sweep.
- * @returns `Result` containing the swept 3D shape.
- *
- * @see {@link extrudeFns!supportExtrude | supportExtrude (Fns)} for the functional equivalent.
- */
-declare const supportExtrude: (wire: Wire, center: PointInput, normal: PointInput, support: any) => Result<Shape3D>;
-
-declare function complexExtrude(wire: Wire, center: PointInput, normal: PointInput, profileShape: ExtrusionProfile | undefined, shellMode: true): Result<[Shape3D, Wire, Wire]>;
-declare function complexExtrude(wire: Wire, center: PointInput, normal: PointInput, profileShape?: ExtrusionProfile, shellMode?: false): Result<Shape3D>;
-
-declare function twistExtrude(wire: Wire, angleDegrees: number, center: PointInput, normal: PointInput, profileShape?: ExtrusionProfile, shellMode?: false): Result<Shape3D>;
-declare function twistExtrude(wire: Wire, angleDegrees: number, center: PointInput, normal: PointInput, profileShape: ExtrusionProfile | undefined, shellMode: true): Result<[Shape3D, Wire, Wire]>;
-
-/** Configuration for the OOP loft operation. */
-interface LoftConfig {
-    /** Use ruled (straight) interpolation between profiles. Defaults to `true`. */
-    ruled?: boolean | undefined;
-    /** Optional start vertex before the first wire profile. */
-    startPoint?: PointInput | undefined;
-    /** Optional end vertex after the last wire profile. */
-    endPoint?: PointInput | undefined;
-}
-
-/**
  * Loft through a set of wire profiles to create a 3D shape.
  *
  * Builds a `BRepOffsetAPI_ThruSections` surface through the given wires,
@@ -836,20 +707,8 @@ interface LoftConfig {
  */
 declare const loft: (wires: Wire[], { ruled, startPoint, endPoint }?: LoftConfig, returnShell?: boolean) => Result<Shape3D>;
 
-/** Supported length units for STEP export. */
-type SupportedUnit = 'M' | 'CM' | 'MM' | 'INCH' | 'FT' | 'm' | 'mm' | 'cm' | 'inch' | 'ft';
-
-/** Configuration for a single shape within an assembly export. */
-type ShapeConfig = {
-    /** The shape to include in the assembly. */
-    shape: AnyShape;
-    /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
-    color?: string;
-    /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */
-    alpha?: number;
-    /** Display name for the shape node. Auto-generated UUID if omitted. */
-    name?: string;
-};
+/** Disposable handle wrapping an XCAF document for STEP assembly export. */
+type AssemblyExporter = OcHandle<any>;
 
 /**
  * Create an XCAF assembly document from a list of shape configurations.
@@ -865,46 +724,14 @@ type ShapeConfig = {
 declare function createAssembly(shapes?: ShapeConfig[]): AssemblyExporter;
 
 /**
- * Export shapes as a STEP file blob with optional unit configuration.
- *
- * Builds an XCAF assembly, configures the STEP writer, and writes to an
- * in-memory filesystem. The resulting `Blob` can be saved or downloaded directly.
- *
- * @param shapes - Shapes to include in the STEP file.
- * @param options - Optional unit settings for the STEP writer.
- * @param options.unit - Write unit (e.g. `'MM'`, `'INCH'`).
- * @param options.modelUnit - Model unit; defaults to the write unit.
- * @returns `Result` containing a `Blob` with MIME type `application/STEP`.
- *
- * @example
- * ```ts
- * const result = exportSTEP(
- *   [{ shape: myBox, color: '#00ff00', name: 'box' }],
- *   { unit: 'MM' }
- * );
- * if (result.ok) saveAs(result.value, 'model.step');
- * ```
- *
- * @see {@link exporterFns!exportAssemblySTEP | exportAssemblySTEP} for the functional API equivalent.
- */
-declare function exportSTEP(shapes?: ShapeConfig[], { unit, modelUnit }?: {
-    unit?: SupportedUnit;
-    modelUnit?: SupportedUnit;
-}): Result<Blob>;
-
-/**
  * Fuse an array of shapes into a single united shape.
  *
  * Uses divide-and-conquer when strategy is `'pairwise'`, or delegates to the
  * kernel's N-way `BRepAlgoAPI_BuilderAlgo` when strategy is `'native'`.
  *
+ * @deprecated Use `fuseAll` from `booleanFns` instead, which operates on branded Shape3D types.
  * @param shapes - Shapes to fuse together (must contain at least one).
  * @returns `Result` containing the fused shape, or an error if the array is empty or the operation fails.
- *
- * @example
- * ```ts
- * const result = fuseAllShapes([box, cylinder], { simplify: true });
- * ```
  *
  * @see {@link cutAllShapes} for the subtraction counterpart.
  */
@@ -916,6 +743,7 @@ declare function fuseAllShapes(shapes: any[], { optimisation, simplify, strategy
  * Builds a compound from all tools and performs a single boolean cut against the base.
  * Returns the base unchanged when the tools array is empty.
  *
+ * @deprecated Use `cutAll` from `booleanFns` instead, which operates on branded Shape3D types.
  * @param base - The shape to cut from.
  * @param tools - Shapes to subtract from the base.
  * @returns `Result` containing the cut shape, or an error if the operation fails.
@@ -927,8 +755,111 @@ declare function cutAllShapes(base: any, tools: any[], { optimisation, simplify 
 /** A 2D point or vector represented as an `[x, y]` tuple. */
 type Point2D = [number, number];
 
+/**
+ * Axis-aligned 2D bounding box backed by an OCCT `Bnd_Box2d`.
+ *
+ * Provides bounds queries, containment tests, and union operations for
+ * spatial indexing of 2D geometry.
+ */
+declare class BoundingBox2d {
+    private readonly _wrapped;
+    private _deleted;
+    constructor(wrapped?: any);
+    get wrapped(): any;
+    delete(): void;
+    /** Return a human-readable string of the form `(xMin,yMin) - (xMax,yMax)`. */
+    get repr(): string;
+    /** Return the `[min, max]` corner points of the bounding box. */
+    get bounds(): [Point2D, Point2D];
+    /** Return the center point of the bounding box. */
+    get center(): Point2D;
+    /** Return the width (x-extent) of the bounding box. */
+    get width(): number;
+    /** Return the height (y-extent) of the bounding box. */
+    get height(): number;
+    /**
+     * Return a point guaranteed to lie outside the bounding box.
+     *
+     * @param paddingPercent - Extra padding as a percentage of the box dimensions.
+     */
+    outsidePoint(paddingPercent?: number): Point2D;
+    /** Expand this bounding box to include `other`. */
+    add(other: BoundingBox2d): void;
+    /** Test whether this bounding box and `other` are completely disjoint. */
+    isOut(other: BoundingBox2d): boolean;
+    /** Test whether the given point lies inside (or on the boundary of) this box. */
+    containsPoint(other: Point2D): boolean;
+}
+
 /** Create an OCCT `gp_Ax2d` (2D axis) from a point and a direction. */
 declare const axis2d: (point: Point2D, direction: Point2D) => any;
+
+/**
+ * Handle-wrapped 2D parametric curve backed by an OCCT `Geom2d_Curve`.
+ *
+ * Provides evaluation, splitting, projection, tangent queries, and distance
+ * computations on a single parametric curve.
+ */
+declare class Curve2D {
+    private readonly _wrapped;
+    private _deleted;
+    _boundingBox: null | BoundingBox2d;
+    private _firstPoint;
+    private _lastPoint;
+    constructor(handle: any);
+    get wrapped(): any;
+    delete(): void;
+    /** Compute (and cache) the 2D bounding box of this curve. */
+    get boundingBox(): BoundingBox2d;
+    /** Return a human-readable representation, e.g. `LINE (0,0) - (1,1)`. */
+    get repr(): string;
+    /** Access the underlying OCCT `Geom2d_Curve` (unwrapped from its handle). */
+    get innerCurve(): any;
+    /** Serialize this curve to a string that can be restored with {@link deserializeCurve2D}. */
+    serialize(): string;
+    /** Evaluate the curve at the given parameter, returning the 2D point. */
+    value(parameter: number): Point2D;
+    /** Return the point at the start of the curve (cached after first access). */
+    get firstPoint(): Point2D;
+    /** Return the point at the end of the curve (cached after first access). */
+    get lastPoint(): Point2D;
+    /** Return the parameter value at the start of the curve. */
+    get firstParameter(): number;
+    /** Return the parameter value at the end of the curve. */
+    get lastParameter(): number;
+    /** Create a `Geom2dAdaptor_Curve` for algorithmic queries (caller must delete). */
+    adaptor(): any;
+    /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
+    get geomType(): CurveType;
+    /** Create an independent deep copy of this curve. */
+    clone(): Curve2D;
+    /** Reverse the orientation of this curve in place. */
+    reverse(): void;
+    private distanceFromPoint;
+    private distanceFromCurve;
+    /** Compute the minimum distance from this curve to a point or another curve. */
+    distanceFrom(element: Curve2D | Point2D): number;
+    /** Test whether a point lies on the curve within a tight tolerance (1e-9). */
+    isOnCurve(point: Point2D): boolean;
+    /**
+     * Project a point onto the curve and return its parameter value.
+     *
+     * @returns `Ok(parameter)` when the point is on the curve, or an error result otherwise.
+     */
+    parameter(point: Point2D, precision?: number): Result<number>;
+    /**
+     * Compute the tangent vector at a parameter position or at the projection of a point.
+     *
+     * @param index - A normalized parameter (0..1) or a Point2D to project onto the curve.
+     */
+    tangentAt(index: number | Point2D): Point2D;
+    /**
+     * Split this curve at the given points or parameter values.
+     *
+     * @returns An array of sub-curves whose union covers the original curve.
+     */
+    splitAt(points: Point2D[] | number[], precision?: number): Curve2D[];
+}
 
 /**
  * Groups an array of blueprints such that blueprints that correspond to holes
@@ -1333,13 +1264,8 @@ declare function intersectBlueprint2D(a: Blueprint | CompoundBlueprint | Bluepri
  * Filters are combined with AND logic by default. Use `.either()` for OR
  * and `.not()` for negation (inherited from {@link Finder3d}).
  *
- * @example
- * ```ts
- * const topEdges = new EdgeFinder()
- *   .inDirection("Z")
- *   .ofLength(10)
- *   .find(box);
- * ```
+ * @deprecated Use the immutable {@link edgeFinder} factory from `finderFns` instead.
+ *   `edgeFinder().inDirection('Z').ofLength(10).find(box)`
  *
  * @category Finders
  */
@@ -1400,13 +1326,8 @@ declare class EdgeFinder extends Finder3d<Edge> {
  * Filters are combined with AND logic by default. Use `.either()` for OR
  * and `.not()` for negation (inherited from {@link Finder3d}).
  *
- * @example
- * ```ts
- * const topFace = new FaceFinder()
- *   .parallelTo("XY")
- *   .ofArea(100)
- *   .find(box, { unique: true });
- * ```
+ * @deprecated Use the immutable {@link faceFinder} factory from `finderFns` instead.
+ *   `faceFinder().parallelTo('XY').ofArea(100).find(box, { unique: true })`
  *
  * @category Finders
  */
@@ -1468,12 +1389,8 @@ type Corner = {
  * A corner is the junction between two consecutive curves.
  * Filters are combined with AND logic by default.
  *
- * @example
- * ```ts
- * const rightAngles = new CornerFinder()
- *   .ofAngle(90)
- *   .find(blueprint);
- * ```
+ * @deprecated Use the immutable {@link cornerFinder} factory from `finderFns` instead.
+ *   `cornerFinder().ofAngle(90).find(blueprint)`
  *
  * @category Finders
  */
@@ -1522,8 +1439,11 @@ declare class CornerFinder extends Finder<Corner, BlueprintLike> {
     protected applyFilter(blueprint: BlueprintLike): Corner[];
 }
 
-/** Input that resolves to a single face — a direct Face, a FaceFinder, or a finder callback. */
-type SingleFace = Face | FaceFinder | ((f: FaceFinder) => FaceFinder);
+/**
+ * Input that resolves to a single face — a direct Face, a FaceFinder/FaceFinderFn,
+ * or a finder callback.
+ */
+type SingleFace = Face | FaceFinder | FaceFinderFn | ((f: FaceFinderFn) => FaceFinderFn) | ((f: FaceFinder) => FaceFinder);
 
 /** Resolve a {@link SingleFace} input to a concrete Face from the given shape. */
 declare function getSingleFace(f: SingleFace, shape: AnyShape): Result<Face>;
@@ -1547,98 +1467,6 @@ declare const combineFinderFilters: <Type, T, R = number>(filters: {
     filter: Finder<Type, T>;
     radius: R;
 }[]) => [(v: Type) => R | null, () => void];
-
-/**
- * Volume physical properties wrapper around GProp_GProps.
- *
- * @deprecated Use {@link measureVolumeProps} from `measureFns.ts` instead.
- */
-declare class VolumePhysicalProperties extends PhysicalProperties {
-    get volume(): number;
-}
-
-/**
- * Surface physical properties wrapper around GProp_GProps.
- *
- * @deprecated Use {@link measureSurfaceProps} from `measureFns.ts` instead.
- */
-declare class SurfacePhysicalProperties extends PhysicalProperties {
-    get area(): number;
-}
-
-/**
- * Linear physical properties wrapper around GProp_GProps.
- *
- * @deprecated Use {@link measureLinearProps} from `measureFns.ts` instead.
- */
-declare class LinearPhysicalProperties extends PhysicalProperties {
-    get length(): number;
-}
-
-/**
- * Compute surface properties (area, center of mass) for a face or 3D shape.
- *
- * @see {@link measureSurfaceProps} for the preferred functional API.
- */
-declare function measureShapeSurfaceProperties(shape: Face | Shape3D): SurfacePhysicalProperties;
-
-/**
- * Compute linear properties (length, center of mass) for any shape.
- *
- * @see {@link measureLinearProps} for the preferred functional API.
- */
-declare function measureShapeLinearProperties(shape: AnyShape): LinearPhysicalProperties;
-
-/**
- * Compute volume properties (volume, center of mass) for a 3D shape.
- *
- * @see {@link measureVolumeProps} for the preferred functional API.
- */
-declare function measureShapeVolumeProperties(shape: Shape3D): VolumePhysicalProperties;
-
-/**
- * Get the volume of a 3D shape (OOP measurement API).
- *
- * @see {@link measureVolumeProps} for the preferred functional API.
- */
-declare function measureVolume(shape: Shape3D): number;
-
-/**
- * Get the surface area of a face or 3D shape (OOP measurement API).
- *
- * @see {@link measureSurfaceProps} for the preferred functional API.
- */
-declare function measureArea(shape: Face | Shape3D): number;
-
-/**
- * Get the arc length of a shape (OOP measurement API).
- *
- * @see {@link measureLinearProps} for the preferred functional API.
- */
-declare function measureLength(shape: AnyShape): number;
-
-/**
- * Measure the minimum distance between two shapes.
- *
- * @see {@link measureDistance} from `measureFns.ts` for the preferred functional API.
- */
-declare function measureDistanceBetween(shape1: AnyShape, shape2: AnyShape): number;
-
-/**
- * Import a STEP file from a Blob and return the parsed shape.
- *
- * @remarks Writes the blob to the WASM virtual FS, reads it with OCCT, then cleans up.
- * @see {@link importSTEP} in `importFns.ts` for the functional-API equivalent.
- */
-declare function importSTEP(STEPBlob: Blob): Promise<Result<AnyShape>>;
-
-/**
- * Import an STL file from a Blob and return the parsed solid.
- *
- * @remarks Unifies duplicate faces via `ShapeUpgrade_UnifySameDomain` before solidifying.
- * @see {@link importSTL} in `importFns.ts` for the functional-API equivalent.
- */
-declare function importSTL(STLBlob: Blob): Promise<Result<AnyShape>>;
 
 /**
  * Export a ShapeMesh as a Wavefront OBJ string.
@@ -2586,14 +2414,14 @@ declare class Drawing {
      *
      * @category Drawing Modifications
      */
-    fillet(radius: number, filter?: (c: CornerFinder) => CornerFinder): Drawing;
+    fillet(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
     /**
      * Creates a new drawing with some corners chamfered, as specified by the
      * radius and the corner finder function
      *
      * @category Drawing Modifications
      */
-    chamfer(radius: number, filter?: (c: CornerFinder) => CornerFinder): Drawing;
+    chamfer(radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
     /** Project this drawing onto a 3D plane, producing a Sketch or Sketches. */
     sketchOnPlane(inputPlane: Plane): SketchInterface | Sketches;
     /** Project this drawing onto a named plane at an optional origin. */
@@ -2741,7 +2569,7 @@ declare const drawParametricFunction: (func: (t: number) => Point2D, { pointsCou
  *
  * @category Drawing
  */
-declare function drawProjection(shape: AnyShape, projectionCamera?: ProjectionPlane | ProjectionCamera): {
+declare function drawProjection(shape: AnyShape, projectionCamera?: ProjectionPlane | Camera): {
     visible: Drawing;
     hidden: Drawing;
 };
@@ -2937,7 +2765,7 @@ declare function drawingIntersect(a: Drawing, b: Drawing): Drawing;
  *
  * @see {@link Drawing.fillet} for the OOP equivalent.
  */
-declare function drawingFillet(drawing: Drawing, radius: number, filter?: (c: CornerFinder) => CornerFinder): Drawing;
+declare function drawingFillet(drawing: Drawing, radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
 
 /**
  * Chamfer corners of a drawing.
@@ -2949,7 +2777,7 @@ declare function drawingFillet(drawing: Drawing, radius: number, filter?: (c: Co
  *
  * @see {@link Drawing.chamfer} for the OOP equivalent.
  */
-declare function drawingChamfer(drawing: Drawing, radius: number, filter?: (c: CornerFinder) => CornerFinder): Drawing;
+declare function drawingChamfer(drawing: Drawing, radius: number, filter?: (c: CornerFinderFn) => CornerFinderFn): Drawing;
 
 /**
  * Translate a drawing by horizontal and vertical distances.
@@ -3080,20 +2908,13 @@ type ProjectionPlane = 'XY' | 'XZ' | 'YZ' | 'YX' | 'ZX' | 'ZY' | 'front' | 'back
 declare function isProjectionPlane(plane: unknown): plane is ProjectionPlane;
 
 /**
- * Create a {@link ProjectionCamera} positioned at the origin looking along a named projection plane.
- *
- * @param projectionPlane - Named projection direction (e.g., `'front'`, `'top'`).
- * @returns A new ProjectionCamera configured for that view.
- */
-declare function lookFromPlane(projectionPlane: ProjectionPlane): ProjectionCamera;
-
-/**
  * Project a 3D shape onto a 2D plane using hidden-line removal (HLR).
  *
+ * @param camera - Camera defining the projection plane.
  * @param withHiddenLines - If `true`, also returns hidden (occluded) edges.
  * @returns Separate arrays of visible and hidden projected edges.
  */
-declare function makeProjectedEdges(shape: AnyShape, camera: ProjectionCamera, withHiddenLines?: boolean): {
+declare function makeProjectedEdges(shape: AnyShape, camera: Camera, withHiddenLines?: boolean): {
     visible: Edge[];
     hidden: Edge[];
 };
@@ -3217,8 +3038,54 @@ declare function withOcDir<T>(v: Vec3, fn: (ocDir: any) => T): T;
 /** String discriminant identifying the topological type of a shape. */
 type ShapeKind = 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'compsolid' | 'compound';
 
+/** A topological vertex (0D point). */
+type Vertex = ShapeHandle & {
+    readonly [__brand]: 'vertex';
+};
+
+/** A topological edge (1D curve segment). */
+type Edge = ShapeHandle & {
+    readonly [__brand]: 'edge';
+};
+
+/** An ordered sequence of connected edges forming a path or loop. */
+type Wire = ShapeHandle & {
+    readonly [__brand]: 'wire';
+};
+
+/** A bounded portion of a surface. */
+type Face = ShapeHandle & {
+    readonly [__brand]: 'face';
+};
+
+/** A connected set of faces sharing edges. */
+type Shell = ShapeHandle & {
+    readonly [__brand]: 'shell';
+};
+
+/** A closed volume bounded by shells. */
+type Solid = ShapeHandle & {
+    readonly [__brand]: 'solid';
+};
+
+/** A set of solids connected by faces. */
+type CompSolid = ShapeHandle & {
+    readonly [__brand]: 'compsolid';
+};
+
+/** A heterogeneous collection of shapes. */
+type Compound = ShapeHandle & {
+    readonly [__brand]: 'compound';
+};
+
+/** Any branded shape type */
+type AnyShape = Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound;
+
 /** 1D shapes (edges and wires) */
 type Shape1D = Edge | Wire;
+
+/** 3D shapes (solid-like) */
+type Shape3D = Shell | Solid | CompSolid | Compound;
 
 /** Wrap a raw OCCT shape as a branded {@link Vertex} handle. */
 declare function createVertex(ocShape: any): Vertex;
@@ -3250,6 +3117,9 @@ declare function isVertex(s: AnyShape): s is Vertex;
 /** Type guard — check if a shape is an {@link Edge}. */
 declare function isEdge(s: AnyShape): s is Edge;
 
+/** Type guard — check if a shape is a {@link Wire}. */
+declare function isWire(s: AnyShape): s is Wire;
+
 /** Type guard — check if a shape is a {@link Face}. */
 declare function isFace(s: AnyShape): s is Face;
 
@@ -3261,6 +3131,9 @@ declare function isSolid(s: AnyShape): s is Solid;
 
 /** Type guard — check if a shape is a {@link Compound}. */
 declare function isCompound(s: AnyShape): s is Compound;
+
+/** Type guard — check if a shape is a 3D shape (shell, solid, compsolid, or compound). */
+declare function isShape3D(s: AnyShape): s is Shape3D;
 
 /** Type guard — check if a shape is a 1D shape (edge or wire). */
 declare function isShape1D(s: AnyShape): s is Shape1D;
@@ -3275,6 +3148,8 @@ interface ShapeHandle {
     readonly wrapped: any;
     /** Manually dispose the OCCT handle */
     [Symbol.dispose](): void;
+    /** Alias for Symbol.dispose — required for localGC / Deletable compatibility. */
+    delete(): void;
     /** Check if this handle has been disposed */
     readonly disposed: boolean;
 }
@@ -3293,6 +3168,14 @@ interface Plane {
     readonly yDir: Vec3;
     readonly zDir: Vec3;
 }
+
+/**
+ * Named standard planes.
+ *
+ * Axis pairs (`'XY'`, `'YZ'`, …) and view names (`'front'`, `'top'`, …)
+ * are both supported. The axis-pair order determines the normal direction.
+ */
+type PlaneName = 'XY' | 'YZ' | 'ZX' | 'XZ' | 'YX' | 'ZY' | 'front' | 'back' | 'left' | 'right' | 'top' | 'bottom';
 
 /** Accept either an explicit {@link Plane} object or a {@link PlaneName} string. */
 type PlaneInput = Plane | PlaneName;
@@ -3411,15 +3294,15 @@ declare function vertexPosition(vertex: Vertex): Vec3;
  * The distance is measured along the face that contains the edge, and the
  * angle (in degrees) determines how the chamfer cuts into the adjacent face.
  *
- * @param shape   - The shape to chamfer.
- * @param edges   - Edges to chamfer.
- * @param distance - Chamfer distance along the face.
- * @param angleDeg - Chamfer angle in degrees (typically 0 < angle < 90).
- * @returns A new shape with chamfered edges.
+ * @param shape   - The 3D shape to chamfer.
+ * @param edges   - Edges to chamfer (must not be empty).
+ * @param distance - Chamfer distance along the face (must be positive).
+ * @param angleDeg - Chamfer angle in degrees (must be in range (0, 90)).
+ * @returns Ok with the chamfered shape, or Err on invalid input or kernel failure.
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
-declare function chamferDistAngleShape(shape: AnyShape, edges: Edge[], distance: number, angleDeg: number): AnyShape;
+declare function chamferDistAngleShape(shape: Shape3D, edges: Edge[], distance: number, angleDeg: number): Result<Shape3D>;
 
 /**
  * Get all faces adjacent to a given edge within a parent shape.
@@ -3478,8 +3361,6 @@ declare function sharedEdges(face1: Face, face2: Face): Edge[];
 
 /**
  * Get the geometric curve type of an edge or wire (LINE, CIRCLE, BSPLINE, etc.).
- *
- * @see _1DShape.geomType — OOP equivalent
  */
 declare function getCurveType(shape: Edge | Wire): CurveType;
 
@@ -3566,8 +3447,6 @@ declare function approximateCurve(points: Vec3[], options?: ApproximateCurveOpti
  * @param offset - Offset distance (positive = outward, negative = inward).
  * @param kind - Join type for offset corners ('arc', 'intersection', or 'tangent').
  * @returns Ok with the offset wire, or Err if the operation fails.
- *
- * @see Wire.offset2D — OOP equivalent (deprecated, disposes input)
  */
 declare function offsetWire2D(wire: Wire, offset: number, kind?: 'arc' | 'intersection' | 'tangent'): Result<Wire>;
 
@@ -3575,7 +3454,6 @@ declare function offsetWire2D(wire: Wire, offset: number, kind?: 'arc' | 'inters
  * Get the geometric surface type of a face.
  *
  * @returns Ok with the surface type, or Err for unrecognized OCCT surface types.
- * @see Face.geomType — OOP equivalent
  */
 declare function getSurfaceType(face: Face): Result<SurfaceType>;
 
@@ -3649,11 +3527,23 @@ declare function outerWire(face: Face): Wire;
 /** Get the inner wires (holes) of a face. */
 declare function innerWires(face: Face): Wire[];
 
-/**
- * Triangulate a face. Returns triangulation data or null if unavailable.
- * @deprecated Use meshShape() instead for better performance via bulk C++ extraction.
- */
-declare function triangulateFace(face: Face, index0?: number, skipNormals?: boolean): FaceTriangulation | null;
+/** Triangle mesh data extracted from a shape, ready for GPU rendering. */
+interface ShapeMesh {
+    /** Triangle vertex indices (3 per triangle). */
+    triangles: Uint32Array;
+    /** Flat array of vertex positions (x,y,z interleaved). */
+    vertices: Float32Array;
+    /** Flat array of vertex normals (x,y,z interleaved). */
+    normals: Float32Array;
+    /** Flat array of UV coordinates (u,v interleaved), empty if not requested. */
+    uvs: Float32Array;
+    /** Per-face triangle index ranges for multi-material rendering. */
+    faceGroups: {
+        start: number;
+        count: number;
+        faceId: number;
+    }[];
+}
 
 /** Line segment mesh data for edge rendering (wireframe). */
 interface EdgeMesh {
@@ -3684,7 +3574,6 @@ interface MeshOptions {
  * Delegates to the kernel adapter's bulk C++ mesh extraction for performance.
  *
  * @returns A ShapeMesh containing typed arrays ready for GPU upload.
- * @see Shape.mesh — OOP equivalent (deprecated)
  * @see toBufferGeometryData — convert to Three.js BufferGeometry format
  */
 declare function meshShape(shape: AnyShape, { tolerance, angularTolerance, skipNormals, includeUVs, cache, signal, }?: MeshOptions & {
@@ -3699,7 +3588,6 @@ declare function meshShape(shape: AnyShape, { tolerance, angularTolerance, skipN
  * Results are cached by default (keyed by shape identity + tolerance parameters).
  *
  * @returns An EdgeMesh containing line vertex positions and per-edge groups.
- * @see Shape.meshEdges — OOP equivalent
  * @see toLineGeometryData — convert to Three.js LineSegments format
  */
 declare function meshShapeEdges(shape: AnyShape, { tolerance, angularTolerance, cache }?: MeshOptions & {
@@ -3707,10 +3595,16 @@ declare function meshShapeEdges(shape: AnyShape, { tolerance, angularTolerance, 
 }): EdgeMesh;
 
 /**
+ * Export a shape as a STEP file Blob.
+ *
+ * @returns Ok with a Blob (MIME type `application/STEP`), or Err on failure.
+ */
+declare function exportSTEP(shape: AnyShape): Result<Blob>;
+
+/**
  * Export a shape as an STL file Blob.
  *
  * @returns Ok with a Blob (MIME type `application/sla`), or Err on failure.
- * @see Shape.blobSTL — OOP equivalent
  */
 declare function exportSTL(shape: AnyShape, { tolerance, angularTolerance, binary, }?: MeshOptions & {
     binary?: boolean;
@@ -3727,13 +3621,6 @@ declare function exportIGES(shape: AnyShape): Result<Blob>;
  * Clear all mesh caches. Call this after modifying shapes to avoid stale results.
  */
 declare function clearMeshCache(): void;
-
-/**
- * Set the maximum cache size for the legacy cache.
- * Note: WeakMap caches are automatically managed by GC and don't have a size limit.
- * @deprecated The WeakMap-based cache doesn't use size limits
- */
-declare function setMeshCacheSize(_size: number): void;
 
 /**
  * An isolated mesh cache context for per-viewer or per-worker use.
@@ -3846,8 +3733,6 @@ interface BooleanOptions {
  * const result = fuseShapes(box, cylinder);
  * if (isOk(result)) console.log(describeShape(result.value));
  * ```
- *
- * @see _3DShape.fuse — OOP equivalent (deprecated)
  */
 declare function fuseShapes(a: Shape3D, b: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
@@ -3863,22 +3748,48 @@ declare function fuseShapes(a: Shape3D, b: Shape3D, { optimisation, simplify, si
  * ```ts
  * const result = cutShape(box, hole);
  * ```
- *
- * @see _3DShape.cut — OOP equivalent (deprecated)
  */
 declare function cutShape(base: Shape3D, tool: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Compute the intersection of two shapes (boolean common). Returns a new shape.
  *
- * @param a - The first operand (must be a 3D shape).
- * @param b - The second operand (any shape).
+ * @param a - The first operand.
+ * @param b - The second operand.
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
- *
- * @see _3DShape.intersect — OOP equivalent (deprecated)
  */
-declare function intersectShapes(a: Shape3D, b: AnyShape, { simplify, signal }?: BooleanOptions): Result<Shape3D>;
+declare function intersectShapes(a: Shape3D, b: Shape3D, { simplify, signal }?: BooleanOptions): Result<Shape3D>;
+
+/**
+ * Fuse all shapes in a single boolean operation.
+ *
+ * With `strategy: 'native'` (default), uses N-way BRepAlgoAPI_BuilderAlgo.
+ * With `strategy: 'pairwise'`, uses recursive divide-and-conquer.
+ *
+ * @param shapes - Array of 3D shapes to fuse (at least one required).
+ * @param options - Boolean operation options.
+ * @returns Ok with the fused shape, or Err if the array is empty or the result is not 3D.
+ *
+ * @example
+ * ```ts
+ * const result = fuseAll([box1, box2, box3], { simplify: true });
+ * ```
+ */
+declare function fuseAll(shapes: Shape3D[], { optimisation, simplify, strategy, signal }?: BooleanOptions): Result<Shape3D>;
+
+/**
+ * Cut all tool shapes from a base shape in a single boolean operation.
+ *
+ * Combines all tools into a compound before cutting to avoid accumulated
+ * floating-point drift from sequential pair-wise cuts.
+ *
+ * @param base - The shape to cut from.
+ * @param tools - Array of tool shapes to subtract.
+ * @param options - Boolean operation options.
+ * @returns Ok with the cut shape, or the base shape unchanged if tools is empty.
+ */
+declare function cutAll(base: Shape3D, tools: Shape3D[], { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Section (cross-section) a shape with a plane, returning the intersection
@@ -3911,13 +3822,22 @@ declare function sliceShape(shape: AnyShape, planes: PlaneInput[], options?: {
 }): Result<AnyShape[]>;
 
 /**
+ * Build a compound from multiple shapes.
+ *
+ * @deprecated Use {@link makeCompound} from `topology/shapeHelpers` instead.
+ * @param shapes - Shapes to group into a single compound.
+ * @returns A new Compound containing all input shapes.
+ */
+declare function buildCompound(shapes: AnyShape[]): Compound;
+
+/**
  * Thickens a surface (face or shell) into a solid by offsetting it.
  *
  * Takes a planar or non-planar surface shape and creates a solid
  * by offsetting it by the given thickness. Positive thickness offsets
  * along the surface normal; negative thickness offsets against it.
  */
-declare function thickenSurface(shape: AnyShape, thickness: number): Result<AnyShape>;
+declare function thickenSurface(shape: Face | Shell, thickness: number): Result<Solid>;
 
 /**
  * Apply a fillet (rounded edge) to selected edges of a 3D shape.
@@ -3950,11 +3870,11 @@ declare function shellShape(shape: Shape3D, faces: ReadonlyArray<Face>, thicknes
 /**
  * Offset all faces of a shape by a given distance.
  *
- * @param shape - The shape to offset.
+ * @param shape - The shape to offset (must be a 3D shape with faces).
  * @param distance - Offset distance (positive = outward, negative = inward).
  * @param tolerance - Offset tolerance (default 1e-6).
  */
-declare function offsetShape(shape: AnyShape, distance: number, tolerance?: number): Result<AnyShape>;
+declare function offsetShape(shape: Shape3D, distance: number, tolerance?: number): Result<Shape3D>;
 
 /**
  * Check if a shape is valid according to OCCT geometry and topology checks.
@@ -4047,6 +3967,14 @@ interface SweepConfig {
     forceProfileSpineOthogonality?: boolean;
 }
 
+/** Configuration for extrusion profile scaling along the path. */
+interface ExtrusionProfile {
+    /** Profile curve type: 's-curve' for smooth easing, 'linear' for constant scaling */
+    profile?: 's-curve' | 'linear';
+    /** End scale factor (1 = same size, 0.5 = half size at end) */
+    endFactor?: number;
+}
+
 /**
  * Extrude a face along a vector to produce a solid.
  *
@@ -4097,6 +4025,76 @@ declare function revolveFace(face: Face, center?: Vec3, direction?: Vec3, angle?
 declare function sweep(wire: Wire, spine: Wire, config?: SweepConfig, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
 
 /**
+ * Extrude a wire along a normal constrained to a support surface.
+ *
+ * Constructs a linear spine from `center` to `center + normal` and sweeps
+ * the profile wire along it, constrained by the support surface geometry.
+ *
+ * @param wire - The profile wire to sweep.
+ * @param center - Start point of the extrusion spine.
+ * @param normal - Direction and length of the extrusion.
+ * @param support - OCCT support surface that constrains the sweep.
+ * @returns `Result` containing the swept 3D shape.
+ *
+ * @see {@link extrude!supportExtrude | supportExtrude (OOP)} for the class-based equivalent.
+ */
+declare function supportExtrude(wire: Wire, center: Vec3, normal: Vec3, support: any): Result<Shape3D>;
+
+/**
+ * Extrude a wire along a normal with optional profile scaling.
+ *
+ * Builds a linear spine from `center` to `center + normal` and sweeps the
+ * profile wire. When `profileShape` is provided, a scaling law (s-curve or
+ * linear) modulates the cross-section size along the path.
+ *
+ * @param wire - The profile wire to sweep.
+ * @param center - Start point of the extrusion spine.
+ * @param normal - Direction and length of the extrusion. Must be non-zero.
+ * @param profileShape - Optional scaling profile applied along the extrusion.
+ * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
+ * @returns `Result` containing the extruded shape or a shell tuple.
+ *
+ * @example
+ * ```ts
+ * const tapered = complexExtrude(wire, [0,0,0], [0,0,50], {
+ *   profile: 'linear', endFactor: 0.5
+ * });
+ * ```
+ *
+ * @see {@link extrude!complexExtrude | complexExtrude (OOP)} for the class-based equivalent.
+ */
+declare function complexExtrude(wire: Wire, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
+
+/**
+ * Extrude a wire along a normal with helical twist and optional profile scaling.
+ *
+ * Constructs a helical auxiliary spine that rotates the profile by
+ * `angleDegrees` over the extrusion length. Combines twist with optional
+ * s-curve or linear scaling when `profileShape` is provided.
+ *
+ * @param wire - The profile wire to sweep.
+ * @param angleDegrees - Total twist rotation in degrees. Must be non-zero.
+ * @param center - Start point of the extrusion spine.
+ * @param normal - Direction and length of the extrusion. Must be non-zero.
+ * @param profileShape - Optional scaling profile applied along the extrusion.
+ * @param shellMode - When `true`, return `[shell, startWire, endWire]` instead of a solid.
+ * @returns `Result` containing the twisted extruded shape or a shell tuple.
+ *
+ * @see {@link extrude!twistExtrude | twistExtrude (OOP)} for the class-based equivalent.
+ */
+declare function twistExtrude(wire: Wire, angleDegrees: number, center: Vec3, normal: Vec3, profileShape?: ExtrusionProfile, shellMode?: boolean): Result<Shape3D | [Shape3D, Wire, Wire]>;
+
+/** Configuration for the functional loft operation. */
+interface LoftConfig {
+    /** Use ruled (straight) interpolation between profiles. Defaults to `true`. */
+    ruled?: boolean;
+    /** Optional start vertex before the first wire profile. */
+    startPoint?: PointInput;
+    /** Optional end vertex after the last wire profile. */
+    endPoint?: PointInput;
+}
+
+/**
  * Loft through a set of wire profiles to create a 3D shape.
  *
  * Builds a `BRepOffsetAPI_ThruSections` surface through the given wires,
@@ -4116,6 +4114,21 @@ declare function sweep(wire: Wire, spine: Wire, config?: SweepConfig, shellMode?
  * @see {@link loft!loft | loft} for the OOP API equivalent.
  */
 declare function loftWires(wires: Wire[], { ruled, startPoint, endPoint }?: LoftConfig, returnShell?: boolean): Result<Shape3D>;
+
+/** Supported length units for STEP export. */
+type SupportedUnit = 'M' | 'CM' | 'MM' | 'INCH' | 'FT' | 'm' | 'mm' | 'cm' | 'inch' | 'ft';
+
+/** Configuration for a single shape within a functional assembly export. */
+interface ShapeConfig {
+    /** The branded shape to include in the assembly. */
+    shape: AnyShape;
+    /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
+    color?: string;
+    /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */
+    alpha?: number;
+    /** Display name for the shape node. Auto-generated UUID if omitted. */
+    name?: string;
+}
 
 /**
  * Create an XCAF document from shape configs and export as a STEP blob.
@@ -4355,6 +4368,27 @@ declare function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps;
 declare function measureLinearProps(shape: AnyShape): LinearProps;
 
 /**
+ * Get the volume of a 3D shape.
+ *
+ * @see {@link measureVolumeProps} for the full property set including center of mass.
+ */
+declare function measureVolume(shape: Shape3D): number;
+
+/**
+ * Get the surface area of a face or 3D shape.
+ *
+ * @see {@link measureSurfaceProps} for the full property set including center of mass.
+ */
+declare function measureArea(shape: Face | Shape3D): number;
+
+/**
+ * Get the arc length of a shape.
+ *
+ * @see {@link measureLinearProps} for the full property set including center of mass.
+ */
+declare function measureLength(shape: AnyShape): number;
+
+/**
  * Measure the minimum distance between two shapes.
  *
  * @example
@@ -4480,6 +4514,43 @@ declare function checkInterference(shape1: AnyShape, shape2: AnyShape, tolerance
 declare function checkAllInterferences(shapes: ReadonlyArray<AnyShape>, tolerance?: number): InterferencePair[];
 
 /**
+ * Import a STEP file from a Blob.
+ *
+ * Writes the blob to the WASM virtual filesystem, reads it with
+ * `STEPControl_Reader`, and returns the resulting shape.
+ *
+ * @param blob - A Blob or File containing STEP data (.step / .stp).
+ * @returns A `Result` wrapping the imported shape, or an error if parsing fails.
+ *
+ * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ *
+ * @example
+ * ```ts
+ * const file = new File([stepData], 'part.step');
+ * const shape = unwrap(await importSTEP(file));
+ * ```
+ */
+declare function importSTEP(blob: Blob): Promise<Result<AnyShape>>;
+
+/**
+ * Import an STL file from a Blob.
+ *
+ * Reads the mesh, unifies same-domain faces with `ShapeUpgrade_UnifySameDomain`,
+ * and wraps the result as a solid.
+ *
+ * @param blob - A Blob or File containing STL data (binary or ASCII).
+ * @returns A `Result` wrapping the imported solid, or an error if parsing fails.
+ *
+ * @remarks The temporary file on the WASM FS is cleaned up automatically.
+ *
+ * @example
+ * ```ts
+ * const shape = unwrap(await importSTL(stlBlob));
+ * ```
+ */
+declare function importSTL(blob: Blob): Promise<Result<AnyShape>>;
+
+/**
  * Import an IGES file from a Blob.
  *
  * @param blob - A Blob or File containing IGES data (.iges / .igs).
@@ -4506,10 +4577,16 @@ declare function wireFinder(): WireFinderFn;
 /** Create an immutable vertex finder. */
 declare function vertexFinder(): VertexFinderFn;
 
+/** Common interface satisfied by both CornerFinder class and cornerFinder() factory. */
+interface CornerFilter {
+    readonly shouldKeep: (corner: Corner) => boolean;
+}
+
+/** Create an immutable corner finder for 2D blueprint corners. */
+declare function cornerFinder(): CornerFinderFn;
+
 /**
  * Immutable plain-object representation of a projection camera.
- *
- * @see {@link ProjectionCamera} for the OCCT-backed class equivalent.
  */
 interface Camera {
     readonly position: Vec3;
@@ -4527,8 +4604,6 @@ interface Camera {
  * @param direction - View direction (camera looks along this vector).
  * @param xAxis - Optional horizontal axis; derived automatically if not provided.
  * @returns `Result<Camera>` -- an error if direction is zero-length.
- *
- * @see {@link ProjectionCamera} for the OOP equivalent.
  */
 declare function createCamera(position?: Vec3, direction?: Vec3, xAxis?: Vec3): Result<Camera>;
 
@@ -4538,8 +4613,6 @@ declare function createCamera(position?: Vec3, direction?: Vec3, xAxis?: Vec3): 
  * @param camera - Existing camera whose position is preserved.
  * @param target - World-space point to look at.
  * @returns `Result<Camera>` with updated direction and derived axes.
- *
- * @see {@link ProjectionCamera.lookAt} for the OOP equivalent.
  */
 declare function cameraLookAt(camera: Camera, target: Vec3): Result<Camera>;
 
@@ -4548,21 +4621,8 @@ declare function cameraLookAt(camera: Camera, target: Vec3): Result<Camera>;
  *
  * @param planeName - Named projection direction (e.g., `'front'`, `'top'`).
  * @returns `Result<Camera>` configured for that standard view.
- *
- * @see {@link lookFromPlane} for the OOP equivalent.
  */
 declare function cameraFromPlane(planeName: ProjectionPlane): Result<Camera>;
-
-/**
- * Convert a plain {@link Camera} object to a {@link ProjectionCamera} (OCCT-backed).
- *
- * The caller is responsible for calling `.delete()` on the returned object
- * when it is no longer needed.
- *
- * @param camera - Plain camera data.
- * @returns A new ProjectionCamera instance.
- */
-declare function cameraToProjectionCamera(camera: Camera): ProjectionCamera;
 
 /**
  * Project the edges of a 3D shape onto a 2D plane defined by a {@link Camera}.
@@ -4718,21 +4778,6 @@ declare function gcWithObject(obj: any): <T extends Deletable>(value: T) => T;
 /** Create a local GC scope. Returns [register, cleanup, debugSet?]. */
 declare function localGC(debug?: boolean): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined];
 
-/**
- * Legacy wrapper for OCCT objects with FinalizationRegistry-based GC.
- *
- * @remarks Prefer {@link createHandle} + branded shape types for new code.
- * @deprecated Use `createHandle()` from `disposal.ts` instead.
- */
-declare class WrappingObj<Type extends Deletable> {
-    protected oc: any;
-    private _wrapped;
-    constructor(wrapped: Type);
-    get wrapped(): Type;
-    set wrapped(newWrapped: Type);
-    delete(): void;
-}
-
 /** A disposable wrapper for any OCCT object. */
 interface OcHandle<T extends Deletable> {
     readonly value: T;
@@ -4751,91 +4796,6 @@ declare class DisposalScope implements Disposable {
     /** Register a disposable for disposal when scope ends. */
     track<T extends Disposable>(disposable: T): T;
     [Symbol.dispose](): void;
-}
-
-/** Clone a shape (deep copy via TopoDS downcast). */
-declare function cloneShape<T extends AnyShape>(shape: T): T;
-
-/** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
-declare function simplifyShape<T extends AnyShape>(shape: T): T;
-
-/** Translate a shape by a vector. Returns a new shape. */
-declare function translateShape<T extends AnyShape>(shape: T, v: Vec3): T;
-
-/** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
-declare function rotateShape<T extends AnyShape>(shape: T, angle: number, position?: Vec3, direction?: Vec3): T;
-
-/** Mirror a shape through a plane defined by origin and normal. Returns a new shape. */
-declare function mirrorShape<T extends AnyShape>(shape: T, planeNormal?: Vec3, planeOrigin?: Vec3): T;
-
-/** Scale a shape uniformly. Returns a new shape. */
-declare function scaleShape<T extends AnyShape>(shape: T, factor: number, center?: Vec3): T;
-
-/**
- * Fluent builder interface for chaining immutable shape transformations.
- *
- * Call `.done()` to extract the final shape from the pipe.
- */
-interface ShapePipe<T extends AnyShape> {
-    /** Get the current shape. */
-    readonly done: () => T;
-    /** Translate the shape by a vector. */
-    readonly translate: (v: Vec3) => ShapePipe<T>;
-    /** Rotate the shape by an angle (degrees) around an axis. */
-    readonly rotate: (angle: number, position?: Vec3, direction?: Vec3) => ShapePipe<T>;
-    /** Mirror the shape across a plane. */
-    readonly mirror: (planeNormal?: Vec3, planeOrigin?: Vec3) => ShapePipe<T>;
-    /** Scale the shape by a factor. */
-    readonly scale: (factor: number, center?: Vec3) => ShapePipe<T>;
-    /** Apply a custom transformation function. */
-    readonly apply: <U extends AnyShape>(fn: (shape: T) => U) => ShapePipe<U>;
-    /** Fuse with another shape (requires Shape3D). */
-    readonly fuse: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
-    /** Cut with another shape (requires Shape3D). */
-    readonly cut: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
-    /** Intersect with another shape (requires Shape3D). */
-    readonly intersect: (tool: AnyShape) => ShapePipe<Shape3D>;
-}
-
-/**
- * Create a fluent pipe for chaining immutable shape operations.
- *
- * @example
- * ```ts
- * const result = pipe(box)
- *   .translate([10, 0, 0])
- *   .fuse(cylinder)
- *   .rotate(45)
- *   .done();
- * ```
- */
-declare function pipe<T extends AnyShape>(shape: T): ShapePipe<T>;
-
-/**
- * Attempt to heal any shape by dispatching to the appropriate fixer.
- *
- * Supports solids, faces, and wires. For other shape types, returns the
- * input unchanged.
- */
-declare function healShape<T extends AnyShape>(shape: T): Result<T>;
-
-interface ShapeFinder<T extends AnyShape> {
-    /** Add a custom predicate filter. Returns new finder. */
-    readonly when: (predicate: Predicate<T>) => ShapeFinder<T>;
-    /** Filter to elements in a list. Returns new finder. */
-    readonly inList: (elements: T[]) => ShapeFinder<T>;
-    /** Invert a filter. Returns new finder. */
-    readonly not: (builderFn: (f: ShapeFinder<T>) => ShapeFinder<T>) => ShapeFinder<T>;
-    /** Combine filters with OR. Returns new finder. */
-    readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
-    /** Find matching elements from a shape. */
-    readonly find: ((shape: AnyShape) => T[]) & ((shape: AnyShape, opts: {
-        unique: true;
-    }) => Result<T>);
-    /** Check if an element passes all filters. */
-    readonly shouldKeep: (element: T) => boolean;
-    readonly _filters: ReadonlyArray<Predicate<T>>;
-    readonly _topoKind: 'edge' | 'face' | 'wire' | 'vertex';
 }
 
 /**
@@ -5456,7 +5416,7 @@ declare class CompoundSketch implements SketchInterface {
     /** Get the hole sketches (all but the first). */
     get innerSketches(): Sketch[];
     /** Return all wires (outer + holes) combined into a compound shape. */
-    get wires(): import('../index.js').AnyShape;
+    get wires(): import('../index.js').Compound;
     /** Build a face from the outer boundary with inner wires subtracted as holes. */
     face(): Face;
     /**
@@ -5480,6 +5440,91 @@ declare class CompoundSketch implements SketchInterface {
     }): Shape3D;
     /** Loft between this compound sketch and another with matching sub-sketch counts. */
     loftWith(otherCompound: this, loftConfig: LoftConfig): Shape3D;
+}
+
+/** Clone a shape (deep copy via TopoDS downcast). */
+declare function cloneShape<T extends AnyShape>(shape: T): T;
+
+/** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
+declare function simplifyShape<T extends AnyShape>(shape: T): T;
+
+/** Translate a shape by a vector. Returns a new shape. */
+declare function translateShape<T extends AnyShape>(shape: T, v: Vec3): T;
+
+/** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
+declare function rotateShape<T extends AnyShape>(shape: T, angle: number, position?: Vec3, direction?: Vec3): T;
+
+/** Mirror a shape through a plane defined by origin and normal. Returns a new shape. */
+declare function mirrorShape<T extends AnyShape>(shape: T, planeNormal?: Vec3, planeOrigin?: Vec3): T;
+
+/** Scale a shape uniformly. Returns a new shape. */
+declare function scaleShape<T extends AnyShape>(shape: T, factor: number, center?: Vec3): T;
+
+/**
+ * Fluent builder interface for chaining immutable shape transformations.
+ *
+ * Call `.done()` to extract the final shape from the pipe.
+ */
+interface ShapePipe<T extends AnyShape> {
+    /** Get the current shape. */
+    readonly done: () => T;
+    /** Translate the shape by a vector. */
+    readonly translate: (v: Vec3) => ShapePipe<T>;
+    /** Rotate the shape by an angle (degrees) around an axis. */
+    readonly rotate: (angle: number, position?: Vec3, direction?: Vec3) => ShapePipe<T>;
+    /** Mirror the shape across a plane. */
+    readonly mirror: (planeNormal?: Vec3, planeOrigin?: Vec3) => ShapePipe<T>;
+    /** Scale the shape by a factor. */
+    readonly scale: (factor: number, center?: Vec3) => ShapePipe<T>;
+    /** Apply a custom transformation function. */
+    readonly apply: <U extends AnyShape>(fn: (shape: T) => U) => ShapePipe<U>;
+    /** Fuse with another shape (requires Shape3D). */
+    readonly fuse: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
+    /** Cut with another shape (requires Shape3D). */
+    readonly cut: (tool: Shape3D, options?: BooleanOptions) => ShapePipe<Shape3D>;
+    /** Intersect with another shape (requires Shape3D). */
+    readonly intersect: (tool: Shape3D) => ShapePipe<Shape3D>;
+}
+
+/**
+ * Create a fluent pipe for chaining immutable shape operations.
+ *
+ * @example
+ * ```ts
+ * const result = pipe(box)
+ *   .translate([10, 0, 0])
+ *   .fuse(cylinder)
+ *   .rotate(45)
+ *   .done();
+ * ```
+ */
+declare function pipe<T extends AnyShape>(shape: T): ShapePipe<T>;
+
+/**
+ * Attempt to heal any shape by dispatching to the appropriate fixer.
+ *
+ * Supports solids, faces, and wires. For other shape types, returns the
+ * input unchanged.
+ */
+declare function healShape<T extends AnyShape>(shape: T): Result<T>;
+
+interface ShapeFinder<T extends AnyShape> {
+    /** Add a custom predicate filter. Returns new finder. */
+    readonly when: (predicate: Predicate<T>) => ShapeFinder<T>;
+    /** Filter to elements in a list. Returns new finder. */
+    readonly inList: (elements: T[]) => ShapeFinder<T>;
+    /** Invert a filter. Returns new finder. */
+    readonly not: (builderFn: (f: ShapeFinder<T>) => ShapeFinder<T>) => ShapeFinder<T>;
+    /** Combine filters with OR. Returns new finder. */
+    readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
+    /** Find matching elements from a shape. */
+    readonly find: ((shape: AnyShape) => T[]) & ((shape: AnyShape, opts: {
+        unique: true;
+    }) => Result<T>);
+    /** Check if an element passes all filters. */
+    readonly shouldKeep: (element: T) => boolean;
+    readonly _filters: ReadonlyArray<Predicate<T>>;
+    readonly _topoKind: 'edge' | 'face' | 'wire' | 'vertex';
 }
 
 /** BufferGeometry data with per-face material groups. */
@@ -5507,6 +5552,27 @@ interface SurfaceProps extends PhysicalProps {
 /** Linear properties with a domain-specific `length` alias. */
 interface LinearProps extends PhysicalProps {
     readonly length: number;
+}
+
+interface CornerFinderFn extends CornerFilter {
+    /** Add a custom predicate filter. Returns new finder. */
+    readonly when: (predicate: (corner: Corner) => boolean) => CornerFinderFn;
+    /** Filter to corners whose point matches one from the list. */
+    readonly inList: (points: Point2D[]) => CornerFinderFn;
+    /** Filter to corners at a specific distance from a point. */
+    readonly atDistance: (distance: number, point?: Point2D) => CornerFinderFn;
+    /** Filter to corners at an exact point. */
+    readonly atPoint: (point: Point2D) => CornerFinderFn;
+    /** Filter to corners within an axis-aligned bounding box. */
+    readonly inBox: (corner1: Point2D, corner2: Point2D) => CornerFinderFn;
+    /** Filter to corners with a specific interior angle (in degrees). */
+    readonly ofAngle: (angle: number) => CornerFinderFn;
+    /** Invert a filter. Returns new finder. */
+    readonly not: (fn: (f: CornerFinderFn) => CornerFinderFn) => CornerFinderFn;
+    /** Combine filters with OR. Returns new finder. */
+    readonly either: (fns: ((f: CornerFinderFn) => CornerFinderFn)[]) => CornerFinderFn;
+    /** Find matching corners from a blueprint. */
+    readonly find: (blueprint: BlueprintLike) => Corner[];
 }
 
 /** Request to initialize the worker (load the WASM/OpenCascade runtime). */
@@ -5553,338 +5619,6 @@ interface ErrorResponse extends WorkerResponse {
     readonly error: string;
 }
 
-/**
- * Base class for all BREP topology shapes.
- *
- * Wraps an OCCT any handle with GC support and provides common
- * operations (transform, mesh, export). Concrete subclasses: Vertex, Edge,
- * Wire, Face, Shell, Solid, CompSolid, Compound.
- *
- * @see cloneShape — functional equivalent of clone()
- * @see serializeShape — functional equivalent of serialize()
- */
-declare class Shape<Type extends any = any> extends WrappingObj<Type> {
-    /** @deprecated Use cloneShape() instead. */
-    clone(): this;
-    /**
-     * Serialize the shape to BREP string format.
-     * @see serializeShape — functional equivalent
-     */
-    serialize(): string;
-    /** Get the topology hash code of the underlying OCCT shape. */
-    get hashCode(): number;
-    /** Return true if the underlying OCCT shape handle is null. */
-    get isNull(): boolean;
-    /** Check if two shapes refer to the same topological entity. */
-    isSame(other: AnyShape): boolean;
-    /** Check if two shapes are geometrically equal (same geometry and orientation). */
-    isEqual(other: AnyShape): boolean;
-    /**
-     * Simplifies the shape by removing unnecessary edges and faces.
-     *
-     * @deprecated Use simplifyShape() instead.
-     */
-    simplify(): this;
-    /**
-     * Translates the shape by an arbitrary vector.
-     *
-     * @deprecated Use translateShape() instead.
-     * @category Shape Transformations
-     */
-    translate(xDist: number, yDist: number, zDist: number): this;
-    translate(vector: PointInput): this;
-    /**
-     * Translates the shape on the X axis.
-     *
-     * @category Shape Transformations
-     */
-    translateX(distance: number): this;
-    /**
-     * Translates the shape on the Y axis.
-     *
-     * @category Shape Transformations
-     */
-    translateY(distance: number): this;
-    /**
-     * Translates the shape on the Z axis.
-     *
-     * @category Shape Transformations
-     */
-    translateZ(distance: number): this;
-    /**
-     * Rotates the shape.
-     *
-     * @deprecated Use rotateShape() instead.
-     * @category Shape Transformations
-     */
-    rotate(angle: number, position?: PointInput, direction?: PointInput): this;
-    /**
-     * Mirrors the shape through a plane.
-     *
-     * @deprecated Use mirrorShape() instead.
-     * @category Shape Transformations
-     */
-    mirror(inputPlane?: Plane | PlaneName | PointInput, origin?: PointInput): this;
-    /**
-     * Returns a scaled version of the shape.
-     *
-     * @deprecated Use scaleShape() instead.
-     * @category Shape Transformations
-     */
-    scale(scaleFactor: number, center?: PointInput): this;
-    protected _iterTopo(topo: TopoEntity): IterableIterator<any>;
-    protected _listTopo(topo: TopoEntity): any[];
-    /** Get all edges of this shape. */
-    get edges(): Edge[];
-    /** Get all faces of this shape. */
-    get faces(): Face[];
-    /** Get all wires of this shape. */
-    get wires(): Wire[];
-    protected _mesh({ tolerance, angularTolerance }?: {
-        tolerance?: number | undefined;
-        angularTolerance?: number | undefined;
-    }): void;
-    /**
-     * Exports the current shape as a set of triangles for rendering.
-     *
-     * @deprecated Use meshShape() instead.
-     * @category Shape Export
-     */
-    mesh({ tolerance, angularTolerance, skipNormals, includeUVs, }?: {
-        tolerance?: number;
-        angularTolerance?: number;
-        skipNormals?: boolean;
-        includeUVs?: boolean;
-    }): ShapeMesh;
-    /**
-     * Exports the current shape as a set of lines for edge rendering.
-     *
-     * @category Shape Export
-     */
-    meshEdges({ tolerance, angularTolerance, cache, }?: {
-        tolerance?: number;
-        angularTolerance?: number;
-        cache?: boolean;
-    }): {
-        lines: number[];
-        edgeGroups: {
-            start: number;
-            count: number;
-            edgeId: number;
-        }[];
-    };
-    /**
-     * Exports the current shape as a STEP file Blob.
-     *
-     * @category Shape Export
-     */
-    blobSTEP(): Result<Blob>;
-    /**
-     * Exports the current shape as a STL file Blob.
-     *
-     * @category Shape Export
-     */
-    blobSTL({ tolerance, angularTolerance, binary }?: {
-        tolerance?: number | undefined;
-        angularTolerance?: number | undefined;
-        binary?: boolean | undefined;
-    }): Result<Blob>;
-}
-
-/**
- * Wrapper around an OCCT curve adaptor for evaluating geometry along a 1D parameter space.
- *
- * @see getCurveType — functional equivalent
- */
-declare class Curve extends WrappingObj<CurveLike> {
-    /** Get a human-readable representation showing start and end points. */
-    get repr(): string;
-    /** Get the geometric type of this curve (LINE, CIRCLE, BSPLINE, etc.). */
-    get curveType(): CurveType;
-    /** Get the start point of the curve. */
-    get startPoint(): Vec3;
-    /** Get the end point of the curve. */
-    get endPoint(): Vec3;
-    protected _mapParameter(position: number): number;
-    /**
-     * Evaluate a point on the curve at a normalized position.
-     * @param position - Normalized parameter (0 = start, 1 = end, default 0.5 = midpoint).
-     */
-    pointAt(position?: number): Vec3;
-    /**
-     * Evaluate the tangent vector at a normalized position on the curve.
-     * @param position - Normalized parameter (0 = start, 1 = end, default 0.5 = midpoint).
-     */
-    tangentAt(position?: number): Vec3;
-    /** Return true if the curve forms a closed loop. */
-    get isClosed(): boolean;
-    /** Return true if the curve is periodic (e.g., a full circle). */
-    get isPeriodic(): boolean;
-    /** Get the period length of a periodic curve. */
-    get period(): number;
-}
-
-/** Wrapper around an OCCT surface adaptor for querying surface geometry. */
-declare class Surface extends WrappingObj<any> {
-    /** Get the geometric type of this surface (PLANE, CYLINDRE, SPHERE, etc.). */
-    get surfaceType(): Result<SurfaceType>;
-}
-
-/**
- * Wrapper around an XCAF document used for STEP assembly export.
- *
- * @see {@link createAssembly} to construct an instance.
- */
-declare class AssemblyExporter extends WrappingObj<any> {
-}
-
-/**
- * Axis-aligned 2D bounding box backed by an OCCT `Bnd_Box2d`.
- *
- * Provides bounds queries, containment tests, and union operations for
- * spatial indexing of 2D geometry.
- */
-declare class BoundingBox2d extends WrappingObj<any> {
-    constructor(wrapped?: any);
-    /** Return a human-readable string of the form `(xMin,yMin) - (xMax,yMax)`. */
-    get repr(): string;
-    /** Return the `[min, max]` corner points of the bounding box. */
-    get bounds(): [Point2D, Point2D];
-    /** Return the center point of the bounding box. */
-    get center(): Point2D;
-    /** Return the width (x-extent) of the bounding box. */
-    get width(): number;
-    /** Return the height (y-extent) of the bounding box. */
-    get height(): number;
-    /**
-     * Return a point guaranteed to lie outside the bounding box.
-     *
-     * @param paddingPercent - Extra padding as a percentage of the box dimensions.
-     */
-    outsidePoint(paddingPercent?: number): Point2D;
-    /** Expand this bounding box to include `other`. */
-    add(other: BoundingBox2d): void;
-    /** Test whether this bounding box and `other` are completely disjoint. */
-    isOut(other: BoundingBox2d): boolean;
-    /** Test whether the given point lies inside (or on the boundary of) this box. */
-    containsPoint(other: Point2D): boolean;
-}
-
-/**
- * Handle-wrapped 2D parametric curve backed by an OCCT `Geom2d_Curve`.
- *
- * Provides evaluation, splitting, projection, tangent queries, and distance
- * computations on a single parametric curve.
- */
-declare class Curve2D extends WrappingObj<any> {
-    _boundingBox: null | BoundingBox2d;
-    private _firstPoint;
-    private _lastPoint;
-    constructor(handle: any);
-    /** Compute (and cache) the 2D bounding box of this curve. */
-    get boundingBox(): BoundingBox2d;
-    /** Return a human-readable representation, e.g. `LINE (0,0) - (1,1)`. */
-    get repr(): string;
-    /** Access the underlying OCCT `Geom2d_Curve` (unwrapped from its handle). */
-    get innerCurve(): any;
-    /** Serialize this curve to a string that can be restored with {@link deserializeCurve2D}. */
-    serialize(): string;
-    /** Evaluate the curve at the given parameter, returning the 2D point. */
-    value(parameter: number): Point2D;
-    /** Return the point at the start of the curve (cached after first access). */
-    get firstPoint(): Point2D;
-    /** Return the point at the end of the curve (cached after first access). */
-    get lastPoint(): Point2D;
-    /** Return the parameter value at the start of the curve. */
-    get firstParameter(): number;
-    /** Return the parameter value at the end of the curve. */
-    get lastParameter(): number;
-    /** Create a `Geom2dAdaptor_Curve` for algorithmic queries (caller must delete). */
-    adaptor(): any;
-    /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
-    get geomType(): CurveType;
-    /** Create an independent deep copy of this curve. */
-    clone(): Curve2D;
-    /** Reverse the orientation of this curve in place. */
-    reverse(): void;
-    private distanceFromPoint;
-    private distanceFromCurve;
-    /** Compute the minimum distance from this curve to a point or another curve. */
-    distanceFrom(element: Curve2D | Point2D): number;
-    /** Test whether a point lies on the curve within a tight tolerance (1e-9). */
-    isOnCurve(point: Point2D): boolean;
-    /**
-     * Project a point onto the curve and return its parameter value.
-     *
-     * @returns `Ok(parameter)` when the point is on the curve, or an error result otherwise.
-     */
-    parameter(point: Point2D, precision?: number): Result<number>;
-    /**
-     * Compute the tangent vector at a parameter position or at the projection of a point.
-     *
-     * @param index - A normalized parameter (0..1) or a Point2D to project onto the curve.
-     */
-    tangentAt(index: number | Point2D): Point2D;
-    /**
-     * Split this curve at the given points or parameter values.
-     *
-     * @returns An array of sub-curves whose union covers the original curve.
-     */
-    splitAt(points: Point2D[] | number[], precision?: number): Curve2D[];
-}
-
-/**
- * Stateful distance measurement tool wrapping BRepExtrema_DistShapeShape.
- *
- * @deprecated Use {@link measureDistance} or {@link createDistanceQuery} from `measureFns.ts` instead.
- */
-declare class DistanceTool extends WrappingObj<any> {
-    constructor();
-    distanceBetween(shape1: AnyShape, shape2: AnyShape): number;
-}
-
-/**
- * Reusable distance query that keeps the first shape loaded.
- *
- * @deprecated Use {@link createDistanceQuery} from `measureFns.ts` instead.
- */
-declare class DistanceQuery extends WrappingObj<any> {
-    constructor(shape: AnyShape);
-    distanceTo(shape: AnyShape): number;
-}
-
-/**
- * Camera for projecting 3D shapes onto a 2D plane.
- *
- * Wraps an OCCT `gp_Ax2` coordinate system. Use {@link lookFromPlane} for
- * quick setup from a named view, or construct directly with position,
- * direction, and optional X-axis.
- *
- * @see {@link Camera} and {@link createCamera} for the functional (plain-object) alternative.
- * @category Projection
- */
-declare class ProjectionCamera extends WrappingObj<any> {
-    constructor(position?: PointInput, direction?: PointInput, xAxis?: PointInput);
-    /** Get the camera position in world coordinates. */
-    get position(): Vec3;
-    /** Get the view direction (camera looks along this vector). */
-    get direction(): Vec3;
-    /** Get the camera's local X axis (horizontal in the projected image). */
-    get xAxis(): Vec3;
-    /** Get the camera's local Y axis (vertical in the projected image). */
-    get yAxis(): Vec3;
-    /** Recompute the X and Y axes from the current direction using default up-vector logic. */
-    autoAxes(): void;
-    /** Set the camera position in world coordinates. */
-    setPosition(position: PointInput): this;
-    /** Override the camera's local X axis direction. */
-    setXAxis(xAxis: PointInput): this;
-    /** Override the camera's local Y axis direction. */
-    setYAxis(yAxis: PointInput): this;
-    /** Orient the camera to look at a shape's bounding-box center or a specific point. */
-    lookAt(shape: AnyShape | PointInput): this;
-}
-
 interface EdgeFinderFn extends ShapeFinder<Edge> {
     readonly inDirection: (dir?: 'X' | 'Y' | 'Z' | Vec3, angle?: number) => EdgeFinderFn;
     readonly ofLength: (length: number, tolerance?: number) => EdgeFinderFn;
@@ -5918,266 +5652,8 @@ interface VertexFinderFn extends ShapeFinder<Vertex> {
     readonly atDistance: (distance: number, point?: Vec3, tolerance?: number) => VertexFinderFn;
 }
 
-/** A zero-dimensional topological shape representing a single point. */
-declare class Vertex extends Shape {
-    /** Get the 3D coordinates as a `[x, y, z]` tuple. */
-    asTuple(): [number, number, number];
-}
-
-/**
- * Abstract base for one-dimensional shapes (Edge, Wire).
- *
- * Provides curve evaluation (point/tangent at parameter), length,
- * orientation, and period queries.
- */
-declare abstract class _1DShape<Type extends any = any> extends Shape<Type> {
-    protected abstract _geomAdaptor(): CurveLike;
-    /** Get a human-readable representation showing start and end points. */
-    get repr(): string;
-    /** Get the underlying Curve adaptor for direct parameter evaluation. */
-    get curve(): Curve;
-    /** Get the start point of the edge or wire. */
-    get startPoint(): Vec3;
-    /** Get the end point of the edge or wire. */
-    get endPoint(): Vec3;
-    /**
-     * Evaluate the tangent vector at a normalized position.
-     * @param position - Normalized parameter (0 = start, 1 = end).
-     */
-    tangentAt(position?: number): Vec3;
-    /**
-     * Evaluate a point on the curve at a normalized position.
-     * @param position - Normalized parameter (0 = start, 1 = end).
-     */
-    pointAt(position?: number): Vec3;
-    /** Return true if the curve forms a closed loop. */
-    get isClosed(): boolean;
-    /** Return true if the curve is periodic (e.g., a full circle). */
-    get isPeriodic(): boolean;
-    /** Get the period length of a periodic curve. */
-    get period(): number;
-    /** Get the geometric type of this curve (LINE, CIRCLE, BSPLINE, etc.). */
-    get geomType(): CurveType;
-    /** Get the arc length of the edge or wire. */
-    get length(): number;
-    /** Get the topological orientation ('forward' or 'backward'). */
-    get orientation(): 'forward' | 'backward';
-    /** Return a copy of this shape with reversed orientation. */
-    flipOrientation(): Type;
-}
-
-/**
- * A two-dimensional shape representing a bounded surface.
- *
- * @see getSurfaceType — functional equivalent of geomType
- * @see normalAt — functional equivalent in faceFns.ts
- */
-declare class Face extends Shape {
-    protected _geomAdaptor(): any;
-    /** Get the underlying Surface adaptor for querying surface properties. */
-    get surface(): Surface;
-    /** Get the topological orientation ('forward' or 'backward'). */
-    get orientation(): 'forward' | 'backward';
-    /** Return a copy of this face with reversed orientation. */
-    flipOrientation(): Face;
-    /** Get the geometric surface type (PLANE, CYLINDRE, SPHERE, etc.). */
-    get geomType(): SurfaceType;
-    /** Get the UV parameter bounds of this face's surface. */
-    get UVBounds(): {
-        uMin: number;
-        uMax: number;
-        vMin: number;
-        vMax: number;
-    };
-    /**
-     * Evaluate a 3D point on the surface at normalized UV coordinates (0-1 range).
-     * @param u - Normalized U parameter (0-1).
-     * @param v - Normalized V parameter (0-1).
-     */
-    pointOnSurface(u: number, v: number): Vec3;
-    /**
-     * Project a 3D point onto this face and return its UV coordinates.
-     * @param point - The 3D point to project onto the surface.
-     */
-    uvCoordinates(point: PointInput): [number, number];
-    /**
-     * Compute the surface normal at a given point, or at the face center if omitted.
-     * @param locationVector - Optional 3D point to evaluate the normal at.
-     */
-    normalAt(locationVector?: PointInput): Vec3;
-    /** Get the center of mass of this face. */
-    get center(): Vec3;
-    /**
-     * Extract the outer wire of this face. Deletes the face.
-     * @see outerWire — functional equivalent in faceFns.ts (does not dispose input)
-     */
-    outerWire(): Wire;
-    /**
-     * Extract the inner (hole) wires of this face. Deletes the face.
-     * @see innerWires — functional equivalent in faceFns.ts (does not dispose input)
-     */
-    innerWires(): Wire[];
-    /**
-     * @internal
-     */
-    triangulation(index0?: number, skipNormals?: boolean): FaceTriangulation | null;
-}
-
-/**
- * Abstract base for three-dimensional shapes (Shell, Solid, CompSolid, Compound).
- *
- * Provides boolean operations (fuse, cut, intersect), shell, fillet, and chamfer.
- *
- * @see fuseShapes — functional replacement for fuse()
- * @see cutShape — functional replacement for cut()
- */
-declare class _3DShape<Type extends any = any> extends Shape<Type> {
-    /**
-     * Builds a new shape out of the two fused shapes.
-     *
-     * @deprecated Use fuseShapes() instead.
-     * @category Shape Modifications
-     */
-    fuse(other: Shape3D, { optimisation, simplify }?: BooleanOperationOptions): Result<Shape3D>;
-    /**
-     * Builds a new shape by removing the tool from this shape.
-     *
-     * @deprecated Use cutShape() instead.
-     * @category Shape Modifications
-     */
-    cut(tool: Shape3D, { optimisation, simplify }?: BooleanOperationOptions): Result<Shape3D>;
-    /**
-     * Builds a new shape by intersecting this shape and another.
-     *
-     * @deprecated Use intersectShapes() instead.
-     * @category Shape Modifications
-     */
-    intersect(tool: AnyShape, { simplify }?: {
-        simplify?: boolean;
-    }): Result<Shape3D>;
-    /**
-     * Hollows out the current shape.
-     *
-     * @category Shape Modifications
-     */
-    shell(config: {
-        filter: FaceFinder;
-        thickness: number;
-    }, tolerance?: number): Result<Shape3D>;
-    shell(thickness: number, finderFcn: (f: FaceFinder) => FaceFinder, tolerance?: number): Result<Shape3D>;
-    protected _builderIter<R = number>(radiusConfigInput: RadiusConfig<R>, builderAdd: (radius: R, edge: any) => void, isRadius: (r: unknown) => r is R): number;
-    /**
-     * Creates a new shape with some edges filletted.
-     *
-     * @category Shape Modifications
-     */
-    fillet(radiusConfig: RadiusConfig<FilletRadius>, filter?: (e: EdgeFinder) => EdgeFinder): Result<Shape3D>;
-    /**
-     * Creates a new shape with some edges chamfered.
-     *
-     * @category Shape Modifications
-     */
-    chamfer(radiusConfig: RadiusConfig<ChamferRadius>, filter?: (e: EdgeFinder) => EdgeFinder): Result<Shape3D>;
-}
-
-/** A one-dimensional shape representing a single curve segment between two vertices. */
-declare class Edge extends _1DShape {
-    protected _geomAdaptor(): CurveLike;
-}
-
-/** A one-dimensional shape representing a connected sequence of edges. */
-declare class Wire extends _1DShape {
-    protected _geomAdaptor(): CurveLike;
-    /**
-     * Offset this wire in 2D by a distance. Positive offsets go outward, negative inward.
-     * Disposes this wire and returns a new one.
-     *
-     * @param offset - Offset distance (positive = outward, negative = inward).
-     * @param kind - Join type for offset corners.
-     * @returns The offset wire, or an error if the operation fails.
-     * @see offsetWire2D — functional equivalent (does not dispose input)
-     */
-    offset2D(offset: number, kind?: 'arc' | 'intersection' | 'tangent'): Result<Wire>;
-}
-
-/** A connected set of faces forming a surface (open or closed). */
-declare class Shell extends _3DShape {
-}
-
-/** A closed volume bounded by a shell. The most common 3D shape type. */
-declare class Solid extends _3DShape {
-}
-
-/** A composite solid — a set of solids that share common faces. */
-declare class CompSolid extends _3DShape {
-}
-
-/** A heterogeneous collection of shapes grouped together. */
-declare class Compound extends _3DShape {
-}
-
 // ── Aliases ──
 
-declare const LinearShape: typeof _1DShape;
-declare const SolidShape: typeof _3DShape;
-declare const fnSketchFace: typeof sketchFace;
-declare const fnSketchWires: typeof sketchWires;
 type DirectionInput = Direction;
-type FnVertex = Vertex;
-type FnEdge = Edge;
-type FnWire = Wire;
-type FnFace = Face;
-type FnShell = Shell;
-type FnSolid = Solid;
-type FnCompSolid = CompSolid;
-type FnCompound = Compound;
-type FnAnyShape = AnyShape;
-type FnShape1D = Shape1D;
-type FnShape3D = Shape3D;
-declare const fnCreateVertex: typeof createVertex;
-declare const fnCreateEdge: typeof createEdge;
-declare const fnCreateWire: typeof createWire;
-declare const fnCreateFace: typeof createFace;
-declare const fnCreateShell: typeof createShell;
-declare const fnCreateSolid: typeof createSolid;
-declare const fnCreateCompound: typeof createCompound;
-declare const fnIsVertex: typeof isVertex;
-declare const fnIsEdge: typeof isEdge;
-declare const fnIsWire: typeof isWire;
-declare const fnIsFace: typeof isFace;
-declare const fnIsShell: typeof isShell;
-declare const fnIsSolid: typeof isSolid;
-declare const fnIsCompound: typeof isCompound;
-declare const fnIsShape3D: typeof isShape3D;
-declare const fnIsShape1D: typeof isShape1D;
-type FnPlane = Plane;
-type FnPlaneName = PlaneName;
-declare const fnCreateNamedPlane: typeof createNamedPlane;
-declare const fnGetCurveType: typeof getCurveType;
-declare const fnPointOnSurface: typeof pointOnSurface;
-declare const fnUvCoordinates: typeof uvCoordinates;
-declare const fnNormalAt: typeof normalAt;
-declare const fnOuterWire: typeof outerWire;
-declare const fnInnerWires: typeof innerWires;
-type FnShapeMesh = ShapeMesh;
-declare const fnExportSTEP: typeof exportSTEP;
-declare const fnExportSTL: typeof exportSTL;
-declare const fnExportIGES: typeof exportIGES;
-declare const fnFuseAll: typeof fuseAll;
-declare const fnCutAll: typeof cutAll;
-declare const fnBuildCompound: typeof buildCompound;
-type FnExtrusionProfile = ExtrusionProfile;
-declare const fnSupportExtrude: typeof supportExtrude;
-declare const fnComplexExtrude: typeof complexExtrude;
-declare const fnTwistExtrude: typeof twistExtrude;
-type FnLoftConfig = LoftConfig;
-type FnSupportedUnit = SupportedUnit;
-type FnShapeConfig = ShapeConfig;
 declare const getHistoryShape: typeof getShape;
 type HistoryOperationRegistry = OperationRegistry;
-declare const fnMeasureVolume: typeof measureVolume;
-declare const fnMeasureArea: typeof measureArea;
-declare const fnMeasureLength: typeof measureLength;
-declare const fnImportSTEP: typeof importSTEP;
-declare const fnImportSTL: typeof importSTL;
-declare const fnImportIGES: typeof importIGES;
