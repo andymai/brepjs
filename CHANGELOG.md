@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.26.0](https://github.com/andymai/brepjs/compare/brepjs-v4.25.0...brepjs-v4.26.0) (2026-02-07)
+
+
+### Features
+
+* split brepjs/core into focused sub-paths (API Organization 9→10) ([#166](https://github.com/andymai/brepjs/issues/166)) ([d3abd35](https://github.com/andymai/brepjs/commit/d3abd3547d20199481431cf906790d8a4b1444d7))
+
 ## [4.25.0](https://github.com/andymai/brepjs/compare/brepjs-v4.24.0...brepjs-v4.25.0) (2026-02-07)
 
 
