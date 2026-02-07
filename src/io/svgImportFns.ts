@@ -385,16 +385,22 @@ export function importSVGPathD(pathD: string): Result<Blueprint> {
  */
 export function importSVG(svgString: string): Result<Blueprint[]> {
   try {
-    // Two-step extraction to avoid polynomial regex backtracking:
-    // 1. Find all <path ...> tags (linear — [^>]* is greedy, no ambiguity)
-    // 2. Extract d attribute from each short tag string
-    const tagRe = /<path\s[^>]*>/gi;
+    // indexOf-based tag extraction — O(n) guaranteed, no regex backtracking risk.
     const dAttrRe = /\bd\s*=\s*(?:"([^"]*)"|'([^']*)')/;
     const blueprints: Blueprint[] = [];
-    let match: RegExpExecArray | null;
+    const lower = svgString.toLowerCase();
+    let pos = 0;
 
-    while ((match = tagRe.exec(svgString)) !== null) {
-      const attrMatch = dAttrRe.exec(match[0]);
+    while (pos < lower.length) {
+      const tagStart = lower.indexOf('<path ', pos);
+      if (tagStart === -1) break;
+      const tagEnd = svgString.indexOf('>', tagStart);
+      if (tagEnd === -1) break;
+
+      const tag = svgString.slice(tagStart, tagEnd + 1);
+      pos = tagEnd + 1;
+
+      const attrMatch = dAttrRe.exec(tag);
       const d = attrMatch?.[1] ?? attrMatch?.[2];
       if (!d) continue;
       const result = importSVGPathD(d);
