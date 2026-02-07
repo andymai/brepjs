@@ -20,7 +20,7 @@ export {
 
 // ── Boolean operations (OOP layer) ──
 
-export { buildCompoundOc, applyGlue, type BooleanOperationOptions } from './shapeBooleans.js';
+export { applyGlue, type BooleanOperationOptions } from './shapeBooleans.js';
 
 // ── Modifier helpers ──
 
@@ -63,7 +63,6 @@ export {
   makeBox,
   makeVertex,
   makeOffset,
-  compoundShapes,
   makeCompound,
   weldShellsAndFaces,
   makeSolid,
@@ -138,10 +137,8 @@ export {
 
 export {
   fuseShape,
-  fuseShapes,
   cutShape,
   intersectShape,
-  intersectShapes,
   sectionShape,
   type BooleanOptions,
 } from './booleanFns.js';

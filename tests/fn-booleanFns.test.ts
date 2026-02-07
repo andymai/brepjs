@@ -11,7 +11,7 @@ import {
   sectionShape,
   fuseAll,
   cutAll,
-  buildCompound,
+  makeCompound,
   isOk,
   isErr,
   unwrap,
@@ -102,9 +102,9 @@ describe('cutAll', () => {
   });
 });
 
-describe('buildCompound', () => {
+describe('makeCompound', () => {
   it('builds a compound from shapes', () => {
-    const result = buildCompound([box(0, 0, 0, 10, 10, 10), box(20, 0, 0, 30, 10, 10)]);
+    const result = makeCompound([box(0, 0, 0, 10, 10, 10), box(20, 0, 0, 30, 10, 10)]);
     expect(isCompound(result)).toBe(true);
   });
 });

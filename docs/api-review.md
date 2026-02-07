@@ -56,8 +56,8 @@
 
 ### Weaknesses
 
-- **Legacy aliases still exported**: `compoundShapes` (legacy) alongside `makeCompound` (canonical). Even if deprecated, they pollute autocomplete.
-- **`unwrap` is Rust idiom, not JS idiom.** JS developers expect `.then()` or `.catch()`, not `unwrap()`. It's well-documented, but the name creates a moment of confusion for the target audience.
+- **~~Legacy aliases still exported~~** — **RESOLVED.** `compoundShapes`, `fuseShapes`, `intersectShapes`, `buildCompound`, and `buildCompoundOc` removed from barrel exports. Only canonical names (`makeCompound`, `fuseShape`, `intersectShape`) are exported.
+- **`unwrap` is Rust idiom, not JS idiom.** Intentional: the entire `Result<T, E>` type is a Rust-inspired design, and `unwrap`/`unwrapOr`/`unwrapOrElse`/`unwrapErr` form a coherent family. The naming is self-consistent within the Result module and well-documented.
 
 ### Comparison
 
@@ -70,7 +70,7 @@
 
 ### Recommendation
 
-Remove legacy aliases from exports. Consider renaming `unwrap` to `getOrThrow` for JS-idiomatic clarity (or at least add it as an alias).
+~~Remove legacy aliases from exports.~~ **Done.** ~~Consider renaming `unwrap` to `getOrThrow`.~~ Decided against: `unwrap` is intentionally Rust-inspired as part of the coherent Result monad design.
 
 ---
 
@@ -254,7 +254,7 @@ All major items resolved. Consider adding PNG screenshots to the README for exam
 | Factor                    | brepjs | Three.js | JSCAD | CadQuery |
 | ------------------------- | :----: | :------: | :---: | :------: |
 | Type safety               |   10   |    5     |   3   |    6     |
-| Naming                    |   9    |    7     |   7   |    8     |
+| Naming                    |   10   |    7     |   7   |    8     |
 | Docs site                 |   9    |    10    |   7   |    9     |
 | Learning curve (newcomer) |   9    |    8     |   7   |    7     |
 | Error handling            |   10   |    4     |   4   |    6     |

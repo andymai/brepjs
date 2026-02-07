@@ -7,8 +7,8 @@
 type OcType = any;
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Shape3D, Compound } from '../core/shapeTypes.js';
-import { castShape, isShape3D, createCompound } from '../core/shapeTypes.js';
+import type { AnyShape, Shape3D } from '../core/shapeTypes.js';
+import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { validationError, typeCastError, occtError, BrepErrorCode } from '../core/errors.js';
@@ -478,33 +478,3 @@ export function sliceShape(
   }
   return ok(results);
 }
-
-// ---------------------------------------------------------------------------
-// Compound building
-// ---------------------------------------------------------------------------
-
-/**
- * Build a compound from multiple shapes.
- *
- * @deprecated Use {@link makeCompound} from `topology/shapeHelpers` instead.
- * @param shapes - Shapes to group into a single compound.
- * @returns A new Compound containing all input shapes.
- */
-export function buildCompound(shapes: AnyShape[]): Compound {
-  const compound = buildCompoundOcInternal(shapes.map((s) => s.wrapped));
-  return createCompound(compound);
-}
-
-// ---------------------------------------------------------------------------
-// Deprecated aliases — plural forms
-// ---------------------------------------------------------------------------
-
-/**
- * @deprecated Renamed to {@link fuseShape} for consistency with `cutShape`. Use `fuseShape` instead.
- */
-export const fuseShapes = fuseShape;
-
-/**
- * @deprecated Renamed to {@link intersectShape} for consistency with `cutShape`. Use `intersectShape` instead.
- */
-export const intersectShapes = intersectShape;

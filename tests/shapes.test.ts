@@ -9,7 +9,6 @@ import {
   makeVertex,
   makeLine,
   assembleWire,
-  compoundShapes,
   makeCompound,
   cast,
   downcast,
@@ -95,7 +94,7 @@ describe('Compound shapes', () => {
   it('creates a compound from multiple solids', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
     const box2 = makeBox([0, 0, 0], [5, 5, 5]);
-    const compound = compoundShapes([box1, box2]);
+    const compound = makeCompound([box1, box2]);
     expect(compound).toBeDefined();
   });
 
