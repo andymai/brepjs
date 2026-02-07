@@ -15,6 +15,8 @@ export default defineConfig({
       entry: {
         brepjs: resolve(__dirname, 'src/index.ts'),
         core: resolve(__dirname, 'src/core.ts'),
+        result: resolve(__dirname, 'src/result.ts'),
+        vectors: resolve(__dirname, 'src/vectors.ts'),
         topology: resolve(__dirname, 'src/topology.ts'),
         operations: resolve(__dirname, 'src/operations.ts'),
         '2d': resolve(__dirname, 'src/2d.ts'),

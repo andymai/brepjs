@@ -49,6 +49,26 @@
         "default": "./dist/core.cjs"
       }
     },
+    "./result": {
+      "import": {
+        "types": "./dist/result.d.ts",
+        "default": "./dist/result.js"
+      },
+      "require": {
+        "types": "./dist/result.d.ts",
+        "default": "./dist/result.cjs"
+      }
+    },
+    "./vectors": {
+      "import": {
+        "types": "./dist/vectors.d.ts",
+        "default": "./dist/vectors.js"
+      },
+      "require": {
+        "types": "./dist/vectors.d.ts",
+        "default": "./dist/vectors.cjs"
+      }
+    },
     "./topology": {
       "import": {
         "types": "./dist/topology.d.ts",
