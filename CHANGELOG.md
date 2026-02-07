@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.21.1](https://github.com/andymai/brepjs/compare/brepjs-v4.21.0...brepjs-v4.21.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* **vercel:** use cd instead of -w flag for build command ([60ddc5f](https://github.com/andymai/brepjs/commit/60ddc5f94c46d13a9cb29de94f4d364f4d0251a1))
+
 ## [4.21.0](https://github.com/andymai/brepjs/compare/brepjs-v4.20.0...brepjs-v4.21.0) (2026-02-07)
 
 
