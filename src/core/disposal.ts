@@ -1,6 +1,5 @@
 /**
  * Resource disposal system using Symbol.dispose (TC39 Explicit Resource Management).
- * Replaces the old WrappingObj class hierarchy.
  *
  * All OCCT handles are wrapped in disposable objects:
  *   using solid = createSolid(ocShape);
@@ -45,7 +44,7 @@ const registry = new (globalThis as any).FinalizationRegistry((heldValue: Deleta
 });
 
 // ---------------------------------------------------------------------------
-// Shape wrapper (replaces WrappingObj for shapes)
+// Shape wrapper
 // ---------------------------------------------------------------------------
 
 /** A shape wrapper with Symbol.dispose for auto-cleanup. */

@@ -1,5 +1,5 @@
 /**
- * Shared projection plane definitions used by both ProjectionCamera and cameraFns.
+ * Shared projection plane definitions used by cameraFns and makeProjectedEdges.
  */
 
 import type { Vec3 } from '../core/types.js';

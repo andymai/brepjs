@@ -69,7 +69,7 @@ export const transformCurves = (curves: Curve2D[], transformation: OcType | null
 };
 
 /**
- * Raw OCCT `gp_GTrsf2d` — replaces the old `Transformation2D` WrappingObj class.
+ * Raw OCCT `gp_GTrsf2d` handle.
  * Callers are responsible for lifetime management.
  */
 export type Transformation2D = OcType;
