@@ -21,9 +21,15 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
-        color="#c8c0b8"
-        metalness={0.05}
-        roughness={0.65}
+        color="#d4d0cc"
+        metalness={0.02}
+        roughness={0.55}
+        emissive="#d4d0cc"
+        emissiveIntensity={0.04}
+        side={THREE.DoubleSide}
+        polygonOffset
+        polygonOffsetFactor={1}
+        polygonOffsetUnits={1}
         wireframe={showWireframe}
       />
     </mesh>

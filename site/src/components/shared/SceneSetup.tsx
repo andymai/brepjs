@@ -1,47 +1,62 @@
-import { ContactShadows, Grid, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
+import type { RefObject } from 'react';
 import type { Vector3Tuple } from 'three';
+import GradientBackground from './GradientBackground';
+import InfiniteGrid from './InfiniteGrid';
+import SceneLighting from './SceneLighting';
+
+export interface ControlsProps {
+  enableDamping?: boolean;
+  dampingFactor?: number;
+  rotateSpeed?: number;
+  minDistance?: number;
+  maxDistance?: number;
+  minPolarAngle?: number;
+  maxPolarAngle?: number;
+}
+
+interface GridProps {
+  cellSize?: number;
+  lineColor?: string;
+  lineOpacity?: number;
+  fadeStart?: number;
+  fadeEnd?: number;
+}
 
 interface SceneSetupProps {
   autoRotate?: boolean;
   target?: Vector3Tuple;
   gridVisible?: boolean;
+  gridProps?: GridProps;
+  controlsProps?: ControlsProps;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls ref type
+  controlsRef?: RefObject<any>;
+  onControlsStart?: () => void;
 }
 
-export default function SceneSetup({ autoRotate = false, target, gridVisible = true }: SceneSetupProps) {
+export default function SceneSetup({
+  autoRotate = false,
+  target,
+  gridVisible = true,
+  gridProps,
+  controlsProps,
+  controlsRef,
+  onControlsStart,
+}: SceneSetupProps) {
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 20, 15]} intensity={0.6} />
-      <directionalLight position={[-10, -5, -10]} intensity={0.3} />
-      <ContactShadows
-        position={[0, -0.02, 0]}
-        opacity={0.35}
-        scale={80}
-        blur={2.5}
-        far={20}
-        resolution={512}
-      />
+      <SceneLighting />
+      <GradientBackground />
       <OrbitControls
+        ref={controlsRef}
         makeDefault
         autoRotate={autoRotate}
         autoRotateSpeed={1.5}
         target={target}
+        onStart={onControlsStart}
+        {...controlsProps}
       />
-      {gridVisible && (
-        <Grid
-          args={[100, 100]}
-          position={[0, -0.01, 0]}
-          cellSize={5}
-          cellThickness={0.5}
-          cellColor="#18182a"
-          sectionSize={25}
-          sectionThickness={1}
-          sectionColor="#252545"
-          fadeDistance={80}
-          fadeStrength={1}
-          infiniteGrid
-        />
-      )}
+      {gridVisible && <InfiniteGrid {...gridProps} />}
     </>
   );
 }

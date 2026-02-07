@@ -1,8 +1,9 @@
-import { Canvas, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { usePlaygroundStore, type MeshData } from '../../stores/playgroundStore';
 import { useViewerStore } from '../../stores/viewerStore';
+import { useCameraPresets } from '../../hooks/useCameraPresets';
 import SceneSetup from '../shared/SceneSetup';
 import ShapeRenderer from './ShapeRenderer';
 import EdgeRenderer from './EdgeRenderer';
@@ -85,7 +86,7 @@ function AutoFit({ meshes }: { meshes: MeshData[] }) {
 
   // Auto-fit on mesh change
   useEffect(() => {
-    if (!bounds) return;
+    if (!bounds || !controls) return;
 
     const key = `${bounds.center.x.toFixed(2)},${bounds.center.y.toFixed(2)},${bounds.center.z.toFixed(2)},${bounds.radius.toFixed(2)}`;
     if (key === prevBoundsKey.current) return;
@@ -96,24 +97,81 @@ function AutoFit({ meshes }: { meshes: MeshData[] }) {
 
   // Manual fit on button click
   useEffect(() => {
-    if (fitRequest === 0 || !bounds) return;
+    if (fitRequest === 0 || !bounds || !controls) return;
     fitCamera(bounds, camera, controls);
   }, [fitRequest, bounds, camera, controls]);
 
   return null;
 }
 
+/** Keeps the render loop alive while OrbitControls damping is settling. */
+function Invalidator() {
+  const { controls } = useThree();
+
+  useFrame(({ invalidate }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
+    const ctrl = controls as any;
+    if (ctrl?.enableDamping) {
+      invalidate();
+    }
+  });
+
+  return null;
+}
+
+/** Wires up the camera preset hook to store + controls. */
+function CameraPresetBridge({ meshes }: { meshes: MeshData[] }) {
+  const { invalidate } = useThree();
+  const bounds = useMemo(() => computeBounds(meshes), [meshes]);
+  const { controls } = useThree();
+
+  useCameraPresets(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
+    { current: controls } as React.RefObject<any>,
+    invalidate,
+    bounds,
+  );
+
+  return null;
+}
+
+const CONTROLS_PROPS = {
+  enableDamping: true,
+  dampingFactor: 0.12,
+  rotateSpeed: 0.8,
+  minDistance: 20,
+  maxDistance: 800,
+  minPolarAngle: Math.PI * 0.05,
+  maxPolarAngle: Math.PI * 0.85,
+} as const;
+
 export default function ViewerPanel() {
   const meshes = usePlaygroundStore((s) => s.meshes);
   const showEdges = useViewerStore((s) => s.showEdges);
   const showGrid = useViewerStore((s) => s.showGrid);
+  const clearPreset = useViewerStore((s) => s.clearPreset);
+  const controlsRef = useRef(null);
+
+  const handleControlsStart = useCallback(() => {
+    clearPreset();
+  }, [clearPreset]);
 
   return (
     <div className="relative h-full w-full">
-      <Canvas camera={{ position: [40, 30, 40], fov: 45 }} gl={{ preserveDrawingBuffer: true }}>
-        <color attach="background" args={['#1e1e24']} />
-        <SceneSetup gridVisible={showGrid} />
+      <Canvas
+        camera={{ position: [40, 30, 40], fov: 45 }}
+        frameloop="demand"
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
+      >
+        <SceneSetup
+          gridVisible={showGrid}
+          controlsProps={CONTROLS_PROPS}
+          controlsRef={controlsRef}
+          onControlsStart={handleControlsStart}
+        />
+        <Invalidator />
         <AutoFit meshes={meshes} />
+        <CameraPresetBridge meshes={meshes} />
         <group rotation={[-Math.PI / 2, 0, 0]}>
           {meshes.map((m, i) => (
             <group key={i}>
@@ -124,13 +182,6 @@ export default function ViewerPanel() {
         </group>
       </Canvas>
       <ViewerToolbar />
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse at center, transparent 40%, rgba(15,15,20,0.5) 100%)',
-        }}
-      />
     </div>
   );
 }
