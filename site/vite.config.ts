@@ -45,8 +45,6 @@ export default defineConfig({
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
-      'Content-Security-Policy':
-        "default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' ws: https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:",
     },
   },
   optimizeDeps: {

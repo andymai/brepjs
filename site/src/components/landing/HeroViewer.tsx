@@ -22,10 +22,20 @@ function HeroShape({ data }: { data: HeroMeshData }) {
   return (
     <group>
       <mesh geometry={geometry}>
-        <meshStandardMaterial color="#c8c0b8" metalness={0.05} roughness={0.65} />
+        <meshStandardMaterial
+          color="#d4d0cc"
+          metalness={0.02}
+          roughness={0.55}
+          emissive="#d4d0cc"
+          emissiveIntensity={0.04}
+          side={THREE.DoubleSide}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
+        />
       </mesh>
       <lineSegments geometry={edgeGeometry}>
-        <lineBasicMaterial color="#404040" />
+        <lineBasicMaterial color="#2a2a36" />
       </lineSegments>
     </group>
   );
@@ -84,20 +94,12 @@ export default function HeroViewer() {
   return (
     <div className="relative h-full w-full rounded-xl border border-border-subtle overflow-hidden">
       <Canvas camera={{ position: [400, 300, 400], fov: 45, near: 1, far: 5000 }} gl={{ preserveDrawingBuffer: true }}>
-        <color attach="background" args={['#1e1e24']} />
-        <SceneSetup autoRotate />
+        <SceneSetup autoRotate gridVisible gridProps={{ fadeStart: 100, fadeEnd: 500 }} />
         {mesh && <HeroAutoFit data={mesh} />}
         <group rotation={[-Math.PI / 2, 0, 0]}>
           {mesh && <HeroShape data={mesh} />}
         </group>
       </Canvas>
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse at center, transparent 40%, rgba(15,15,20,0.5) 100%)',
-        }}
-      />
     </div>
   );
 }

@@ -5,9 +5,10 @@ import { setupMonaco } from '../../lib/monacoSetup';
 
 interface EditorPanelProps {
   onCodeChange: (code: string) => void;
+  onFormat?: { current: (() => void) | null };
 }
 
-export default function EditorPanel({ onCodeChange }: EditorPanelProps) {
+export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps) {
   const code = usePlaygroundStore((s) => s.code);
   const setCode = usePlaygroundStore((s) => s.setCode);
   const error = usePlaygroundStore((s) => s.error);
@@ -23,8 +24,15 @@ export default function EditorPanel({ onCodeChange }: EditorPanelProps) {
       monacoRef.current = monaco;
       setupMonaco(monaco);
       monaco.editor.setTheme('brepjs-dark');
+
+      // Register format function for external access
+      if (onFormat) {
+        onFormat.current = () => {
+          void editor.getAction('editor.action.formatDocument')?.run();
+        };
+      }
     },
-    [],
+    [onFormat],
   );
 
   const handleChange = useCallback(

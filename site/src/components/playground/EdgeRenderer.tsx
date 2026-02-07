@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 
 export default function EdgeRenderer({ edges }: { edges: Float32Array }) {
@@ -8,9 +8,13 @@ export default function EdgeRenderer({ edges }: { edges: Float32Array }) {
     return geo;
   }, [edges]);
 
+  useEffect(() => {
+    return () => { geometry.dispose(); };
+  }, [geometry]);
+
   return (
     <lineSegments geometry={geometry}>
-      <lineBasicMaterial color="#404040" />
+      <lineBasicMaterial color="#2a2a36" />
     </lineSegments>
   );
 }
