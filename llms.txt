@@ -536,8 +536,6 @@ cornerFinder().either([f => f.atPoint([0, 0]), f => f.atPoint([1, 1])]).find(blu
 cornerFinder().when(corner => customPredicate(corner)).find(blueprint);
 ```
 
-> **Note:** `EdgeFinder`, `FaceFinder`, and `CornerFinder` classes are deprecated. Use `edgeFinder()`, `faceFinder()`, and `cornerFinder()` factories instead.
-
 ## Curve Operations
 
 ```typescript
@@ -1197,17 +1195,14 @@ vecRepr(v): string                      // e.g. "(1.00, 2.00, 3.00)"
 ## Plane Operations
 
 ```typescript
-import { createPlane, createNamedPlane, resolvePlane, translatePlane, pivotPlane } from 'brepjs';
+import { createPlane, createNamedPlane, resolvePlane, translatePlane, pivotPlane, makePlane } from 'brepjs';
 
 createPlane(origin, xDirection?, normal?): Plane
 createNamedPlane(name, origin?): Result<Plane>
 resolvePlane(input, origin?): Plane     // PlaneName | Plane → Plane
 translatePlane(plane, offset): Plane
 pivotPlane(plane, angleDeg, axis?): Plane
-
-// Additional helpers
 makePlane(plane?, origin?): Plane       // From PlaneName + origin
-makePlaneFromFace(face, originOnSurface?): Plane  // Derive plane from a face (useful for sketching on faces)
 ```
 
 ## Branded Shape Types (Functional API)

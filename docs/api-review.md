@@ -85,7 +85,7 @@
 
 ### Weaknesses
 
-- **~~Overloaded `find()` method uses `as any`~~** — **RESOLVED.** Split into `findAll(): T[]` and `findUnique(): Result<T>`. The deprecated `find()` is retained for backward compatibility but the primary API is now fully type-safe with no `as any` in the consumer-facing path.
+- **~~Overloaded `find()` method uses `as any`~~** — **RESOLVED.** Split into `findAll(): T[]` and `findUnique(): Result<T>`. The API is now fully type-safe with no `as any` in the consumer-facing path.
 
 - **~~Null shape handling is inconsistent~~** — **RESOLVED.** All boolean, modifier, extrude, measurement, and interference functions now validate inputs for null shapes before calling OCCT. Measurement functions throw on null input (consistent with their non-Result return types); interference functions return typed `VALIDATION` errors.
 
@@ -104,7 +104,7 @@
 
 ### Recommendation
 
-~~Split `find()` into `findAll()` and `findUnique()`.~~ **Done.** ~~Wrap measurement functions in `Result` or add input validation.~~ **Done.** All measurement and interference functions now validate null-shape inputs. Consider a lint rule or TS plugin for disposal tracking.
+~~Split `find()` into `findAll()` and `findUnique()`.~~ **Done.** Deprecated `find()` removed. ~~Wrap measurement functions in `Result` or add input validation.~~ **Done.** All measurement and interference functions now validate null-shape inputs. Consider a lint rule or TS plugin for disposal tracking.
 
 ---
 
@@ -247,7 +247,7 @@ All major items resolved. ~~Consider adding PNG screenshots to the README for ex
 1. **~~Learning curve for web developers~~** — **RESOLVED.** `brepjs/quick` eliminates the WASM ceremony, the cheat sheet provides a single-page reference, the zero-to-shape tutorial provides a 60-second on-ramp, and all examples are runnable out of the box.
 2. **~~No hosted API docs~~** — **RESOLVED.** TypeDoc site deployed to GitHub Pages with function lookup table.
 3. **~~No visual output~~** — **RESOLVED.** Examples now generate SVG technical drawings and standalone HTML viewers with Three.js. Browser viewer example demonstrates the full 3D→mesh→render pipeline.
-4. **~~Overloaded `find()` method~~** — **RESOLVED.** Split into `findAll()` and `findUnique()`.
+4. **~~Overloaded `find()` method~~** — **RESOLVED.** Split into `findAll()` and `findUnique()`. Deprecated `find()` removed.
 
 ### Final comparison table
 

@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, getSingleFace, unwrap, isErr, getFaces } from '../src/index.js';
-import { FaceFinder } from '../src/query/faceFinder.js';
+import { makeBox, getSingleFace, unwrap, isErr, getFaces, faceFinder } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -15,24 +14,24 @@ describe('getSingleFace', () => {
     expect(unwrap(result)).toBe(face);
   });
 
-  it('accepts a FaceFinder instance', () => {
+  it('accepts a FaceFinderFn instance', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const finder = new FaceFinder().inPlane('XY', 30);
+    const finder = faceFinder().parallelTo('Z').atDistance(30, [0, 0, 0]);
     const result = getSingleFace(finder, box);
     const face = unwrap(result);
     expect(face).toBeDefined();
   });
 
-  it('accepts a function returning a FaceFinder', () => {
+  it('accepts a function returning a FaceFinderFn', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const result = getSingleFace((f) => f.inPlane('XY', 30), box);
+    const result = getSingleFace((f) => f.parallelTo('Z').atDistance(30, [0, 0, 0]), box);
     const face = unwrap(result);
     expect(face).toBeDefined();
   });
 
   it('returns error when finder matches multiple faces', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const finder = new FaceFinder().ofSurfaceType('PLANE');
+    const finder = faceFinder().ofSurfaceType('PLANE');
     const result = getSingleFace(finder, box);
     expect(isErr(result)).toBe(true);
   });

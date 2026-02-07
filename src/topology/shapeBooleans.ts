@@ -2,37 +2,8 @@
  * Boolean operation helpers — compound builders and glue optimization.
  */
 
-import type { OcShape, OcType } from '../kernel/types.js';
+import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-
-/** Options for boolean operations (fuse, cut, intersect). */
-export type BooleanOperationOptions = {
-  optimisation?: 'none' | 'commonFace' | 'sameFace';
-  simplify?: boolean;
-  strategy?: 'native' | 'pairwise';
-};
-
-// ---------------------------------------------------------------------------
-// Compound builders
-// ---------------------------------------------------------------------------
-
-/**
- * Builds a TopoDS_Compound from raw OCCT shape handles.
- * Used internally by both high-level (Shape3D[]) and low-level (OcType[]) APIs.
- *
- * @deprecated Internal utility — use `makeCompound` for public API usage.
- */
-export function buildCompoundOc(shapes: OcType[]): OcShape {
-  const oc = getKernel().oc;
-  const builder = new oc.TopoDS_Builder();
-  const compound = new oc.TopoDS_Compound();
-  builder.MakeCompound(compound);
-  for (const s of shapes) {
-    builder.Add(compound, s);
-  }
-  builder.delete();
-  return compound;
-}
 
 // ---------------------------------------------------------------------------
 // Glue optimization helper
