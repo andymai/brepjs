@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.24.0](https://github.com/andymai/brepjs/compare/brepjs-v4.23.0...brepjs-v4.24.0) (2026-02-07)
+
+
+### Features
+
+* brepjs/quick auto-init entry point and learning resources (Learning Curve 6→10) ([#162](https://github.com/andymai/brepjs/issues/162)) ([bef5805](https://github.com/andymai/brepjs/commit/bef5805b372ecf94c90ca3c3a0af79c3a64cd428))
+
 ## [4.23.0](https://github.com/andymai/brepjs/compare/brepjs-v4.22.0...brepjs-v4.23.0) (2026-02-07)
 
 
