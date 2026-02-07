@@ -77,8 +77,6 @@ import { normalAt, faceCenter, getSurfaceType, outerWire, innerWires } from './f
 import { linearPattern, circularPattern } from '../operations/patternFns.js';
 import { sweep as _sweep } from '../operations/extrudeFns.js';
 import type { SweepConfig } from '../operations/extrudeFns.js';
-import { sketchFace } from '../sketching/sketchFns.js';
-import type Sketch from '../sketching/Sketch.js';
 import {
   drill as drillFn,
   pocket as pocketFn,
@@ -214,7 +212,7 @@ export interface WrappedCurve<T extends Edge | Wire> extends Wrapped<T> {
 /** Face wrapper — face introspection + 2D→3D transitions. */
 export interface WrappedFace extends Wrapped<Face> {
   area(): number;
-  normalAt(u?: number, v?: number): Vec3;
+  normalAt(point?: Vec3): Vec3;
   center(): Vec3;
   surfaceType(): SurfaceType;
   outerWire(): Wire;
@@ -339,13 +337,7 @@ function createWrappedFace(val: Face): WrappedFace {
   return {
     ...base,
     area: () => measureArea(val),
-    normalAt: (u, v) => {
-      if (u !== undefined && v !== undefined) {
-        // Convert u,v to a point on surface for normalAt
-        return normalAt(val, undefined);
-      }
-      return normalAt(val);
-    },
+    normalAt: (point) => normalAt(val, point),
     center: () => faceCenter(val),
     surfaceType: () => unwrapOrThrow(getSurfaceType(val)),
     outerWire: () => outerWire(val),
@@ -375,8 +367,8 @@ function wrap3D<T extends Shape3D>(val: T): Wrapped3D<T> {
 // shape() — public entry point
 // ---------------------------------------------------------------------------
 
-/** Create a typed shape wrapper from a Sketch (converts to Face) or a Face. */
-export function shape(sketchOrFace: Sketch | Face): WrappedFace;
+/** Create a typed shape wrapper from a Sketch-like object (converts to Face) or a Face. */
+export function shape(sketchOrFace: { face(): Face } | Face): WrappedFace;
 /** Create a typed shape wrapper from a Solid. */
 export function shape(solid: Solid): Wrapped3D<Solid>;
 /** Create a typed shape wrapper from a Shell. */
@@ -392,10 +384,15 @@ export function shape(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overload implementation
   s: any
 ): Wrapped<AnyShape> {
-  // Check if it's a Sketch (has wire + _defaultOrigin properties)
-  if (s && typeof s === 'object' && 'wire' in s && '_defaultOrigin' in s) {
-    const face = sketchFace(s as Sketch);
-    return createWrappedFace(face);
+  // Check if it's a Sketch-like object (has face() method + _defaultOrigin)
+  if (
+    s &&
+    typeof s === 'object' &&
+    'face' in s &&
+    typeof s.face === 'function' &&
+    '_defaultOrigin' in s
+  ) {
+    return createWrappedFace(s.face() as Face);
   }
 
   // Branded shape types

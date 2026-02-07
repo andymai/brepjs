@@ -699,6 +699,7 @@ export type {
   FinderFn,
   FilletRadius,
   ChamferDistance,
+  DrawingLike,
   DrillOptions,
   PocketOptions,
   BossOptions,

@@ -8,7 +8,15 @@
 import type { Vec2, Vec3 } from '../core/types.js';
 import type { AnyShape, Edge, Face, Wire, Shape3D } from '../core/shapeTypes.js';
 import type { ShapeFinder } from '../query/finderFns.js';
-import type { Drawing } from '../sketching/draw.js';
+
+/**
+ * Structural type matching a Drawing's wire-producing interface.
+ * Used in place of importing the actual Drawing class to avoid
+ * Layer 2 → Layer 3 boundary violations.
+ */
+export interface DrawingLike {
+  sketchOnPlane(plane: string): { wire: Wire };
+}
 
 // ---------------------------------------------------------------------------
 // FinderFn — callback that configures a finder
@@ -70,7 +78,7 @@ export interface DrillOptions {
 /** Options for the pocket() compound operation. */
 export interface PocketOptions {
   /** 2D profile shape to cut into the face. */
-  profile: Drawing | Wire;
+  profile: DrawingLike | Wire;
   /** Which face to pocket. Default: top face. */
   face?: Face | FinderFn<Face>;
   /** Depth of the pocket cut. */
@@ -80,7 +88,7 @@ export interface PocketOptions {
 /** Options for the boss() compound operation. */
 export interface BossOptions {
   /** 2D profile shape to extrude onto the face. */
-  profile: Drawing | Wire;
+  profile: DrawingLike | Wire;
   /** Which face to add onto. Default: top face. */
   face?: Face | FinderFn<Face>;
   /** Height of the boss extrusion. */

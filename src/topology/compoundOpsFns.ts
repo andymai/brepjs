@@ -13,6 +13,7 @@ import { vecScale, vecNormalize, vecIsZero } from '../core/vecOps.js';
 import type {
   Shapeable,
   FinderFn,
+  DrawingLike,
   DrillOptions,
   PocketOptions,
   BossOptions,
@@ -62,15 +63,11 @@ function resolveTargetFace(shape: Shape3D, faceSpec: Face | FinderFn<Face> | und
   return faceSpec;
 }
 
-/** Convert a Drawing or Wire to a Wire. */
-function toWire(profile: { sketchOnPlane?: unknown } | Wire): Wire {
-  // If it's a Drawing, call sketchOnPlane() to get a Sketch, then get wire
+/** Convert a DrawingLike or Wire to a Wire. */
+function toWire(profile: DrawingLike | Wire): Wire {
   if ('sketchOnPlane' in profile && typeof profile.sketchOnPlane === 'function') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Drawing type from sketching layer
-    const sketch = (profile as any).sketchOnPlane('XY') as { wire: Wire };
-    return sketch.wire;
+    return profile.sketchOnPlane('XY').wire;
   }
-  // Already a Wire
   return profile as Wire;
 }
 
