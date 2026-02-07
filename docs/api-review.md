@@ -26,7 +26,7 @@
 
 ### Strengths
 
-- **Sub-path imports are genuinely excellent.** 9 focused entry points (`brepjs/topology`, `brepjs/io`, `brepjs/query`, etc.) reduce the autocomplete list from 500+ symbols to 20-40. This is better than Three.js (one giant import) and comparable to CadQuery's module organization.
+- **Sub-path imports are genuinely excellent.** 11 focused entry points (`brepjs/topology`, `brepjs/io`, `brepjs/query`, `brepjs/result`, `brepjs/vectors`, etc.) reduce the autocomplete list from 500+ symbols to 20-40. This is better than Three.js (one giant import) and comparable to CadQuery's module organization.
 - **"Which API?" guide** directly addresses the "where do I start?" question with a decision table. Most CAD libraries lack this kind of meta-documentation.
 - **llms.txt** (1,530 lines) is an innovative AI-friendly reference. Outstanding for Claude/ChatGPT-assisted development workflows.
 - **Section-grouped index.ts** (706 lines) has clear comment headers if users import from the main entry.
@@ -35,11 +35,11 @@
 
 - **~~No hosted, searchable API reference.~~** — **RESOLVED.** TypeDoc API reference is generated and deployed to GitHub Pages. Searchable, cross-linked documentation for all 400+ symbols across 10 sub-path modules.
 - **~~Sub-path boundaries aren't always intuitive.~~** — **RESOLVED.** A function lookup table (`docs/function-lookup.md`) maps every exported symbol to its sub-path, with an alphabetical index and per-module groupings. The "Which API?" guide now links to it.
-- **`brepjs/core` exports too many things.** Vectors, planes, Result types, error types, disposal utilities, branded types, constants — a user importing `brepjs/core` for `Result` also sees 50+ unrelated symbols. Mitigated by the function lookup table; structural split deferred.
+- **~~`brepjs/core` exports too many things.~~** — **RESOLVED.** Two focused sub-paths added: `brepjs/result` (Result monad + error types) and `brepjs/vectors` (Vec3/Vec2 math + plane geometry + angle constants). Users importing only `Result` no longer see 50+ unrelated symbols. `brepjs/core` remains as a backward-compatible superset.
 
 ### Recommendation
 
-~~Generate and host a TypeDoc API reference site, even if minimal.~~ **Done.** Consider splitting `brepjs/core` into focused sub-paths (`brepjs/result`, `brepjs/vectors`) in a future major version.
+~~Generate and host a TypeDoc API reference site, even if minimal.~~ **Done.** ~~Consider splitting `brepjs/core` into focused sub-paths (`brepjs/result`, `brepjs/vectors`).~~ **Done.**
 
 ---
 
@@ -259,6 +259,6 @@ All major items resolved. Consider adding PNG screenshots to the README for exam
 | Learning curve (newcomer) |   9    |    8     |   7   |    7     |
 | Error handling            |   10   |    4     |   4   |    6     |
 | Visual examples           |   9    |    10    |   9   |    8     |
-| API organization          |   9    |    6     |   7   |    8     |
+| API organization          |   10   |    6     |   7   |    8     |
 
 **Bottom line:** brepjs has an exceptionally well-designed API that compares favorably to or exceeds its peers across all factors. The `brepjs/quick` auto-init entry point, cheat sheet, zero-to-shape tutorial, and runnable examples provide a smooth on-ramp even for web developers new to CAD.

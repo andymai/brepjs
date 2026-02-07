@@ -3,6 +3,8 @@
   "entryPoints": [
     "src/index.ts",
     "src/core.ts",
+    "src/result.ts",
+    "src/vectors.ts",
     "src/topology.ts",
     "src/operations.ts",
     "src/2d.ts",

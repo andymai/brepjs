@@ -136,7 +136,8 @@ try {
 ## Error Handling
 
 ```typescript
-import { cutShape, isOk, unwrap, match } from 'brepjs';
+import { cutShape } from 'brepjs';
+import { isOk, unwrap, match } from 'brepjs/result'; // focused import
 
 const result = cutShape(a, b);
 
