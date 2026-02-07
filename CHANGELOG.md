@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.20.0](https://github.com/andymai/brepjs/compare/brepjs-v4.19.0...brepjs-v4.20.0) (2026-02-07)
+
+
+### Features
+
+* add pre-validation and improve error context (Error Handling 8→10) ([#149](https://github.com/andymai/brepjs/issues/149)) ([2cd9ee7](https://github.com/andymai/brepjs/commit/2cd9ee75d547f749bfa0efb2ace1ddf9cce8136d))
+
 ## [4.19.0](https://github.com/andymai/brepjs/compare/brepjs-v4.18.5...brepjs-v4.19.0) (2026-02-07)
 
 
