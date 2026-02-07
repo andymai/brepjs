@@ -191,7 +191,7 @@ export default function PlaygroundPage() {
               {isConsoleCollapsed ? (
                 <CollapsedConsoleBar onExpand={toggleConsole} />
               ) : (
-                <OutputPanel />
+                <OutputPanel onCollapse={toggleConsole} />
               )}
             </Panel>
           </Group>
