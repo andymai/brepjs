@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.0...brepjs-opencascade-v0.7.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
+
 ## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.6.0...brepjs-opencascade-v0.7.0) (2026-02-06)
 
 
