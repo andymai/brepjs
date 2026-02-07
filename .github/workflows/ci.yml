@@ -25,4 +25,5 @@ jobs:
       - run: npm run check:boundaries
       - run: npm run knip
       - run: npm run build
+      - run: npm run docs:api
       - run: npm test

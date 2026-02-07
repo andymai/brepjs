@@ -1,0 +1,28 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/core.ts",
+    "src/topology.ts",
+    "src/operations.ts",
+    "src/2d.ts",
+    "src/sketching.ts",
+    "src/query.ts",
+    "src/measurement.ts",
+    "src/io.ts",
+    "src/worker.ts"
+  ],
+  "entryPointStrategy": "expand",
+  "out": "docs-api",
+  "readme": "docs/api-reference-intro.md",
+  "name": "brepjs API Reference",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "searchInComments": true,
+  "navigationLinks": {
+    "GitHub": "https://github.com/andymai/brepjs",
+    "npm": "https://www.npmjs.com/package/brepjs",
+    "Getting Started": "https://github.com/andymai/brepjs/blob/main/docs/getting-started.md"
+  },
+  "skipErrorChecking": true
+}

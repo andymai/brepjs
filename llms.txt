@@ -2,6 +2,12 @@
 
 > Web CAD library built on OpenCascade with a layered architecture and kernel abstraction layer. Create 2D sketches, extrude/revolve/loft/sweep into 3D solids, apply booleans/fillets/chamfers/shells, query topology, measure geometry, heal shapes, manage assemblies, and import/export STEP, STL, IGES, glTF, DXF, 3MF, OBJ, and SVG.
 
+## API Reference & Discoverability
+
+- **Hosted API docs**: https://andymai.github.io/brepjs/ — searchable TypeDoc reference for all exports
+- **Function lookup table**: `docs/function-lookup.md` — alphabetical index mapping every symbol to its sub-path
+- **Which API guide**: `docs/which-api.md` — choosing between Sketcher, functional API, Drawing
+
 ## Setup & Initialization
 
 Install:
