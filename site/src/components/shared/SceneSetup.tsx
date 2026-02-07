@@ -1,4 +1,4 @@
-import { ContactShadows, Environment, Grid, OrbitControls } from '@react-three/drei';
+import { ContactShadows, Grid, OrbitControls } from '@react-three/drei';
 import type { Vector3Tuple } from 'three';
 
 interface SceneSetupProps {
@@ -10,10 +10,9 @@ interface SceneSetupProps {
 export default function SceneSetup({ autoRotate = false, target, gridVisible = true }: SceneSetupProps) {
   return (
     <>
-      <ambientLight intensity={0.1} />
-      <directionalLight position={[10, 20, 15]} intensity={0.4} />
-      <directionalLight position={[-10, -5, -10]} intensity={0.15} />
-      <Environment preset="studio" background={false} environmentIntensity={0.35} />
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 20, 15]} intensity={0.6} />
+      <directionalLight position={[-10, -5, -10]} intensity={0.3} />
       <ContactShadows
         position={[0, -0.02, 0]}
         opacity={0.35}
