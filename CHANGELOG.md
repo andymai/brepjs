@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.0.0](https://github.com/andymai/brepjs/compare/brepjs-v4.29.3...brepjs-v5.0.0) (2026-02-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* Remove all deprecated code with no migration path.
+
+### Features
+
+* remove all deprecated APIs ([a0a3f6c](https://github.com/andymai/brepjs/commit/a0a3f6c95743dc1716cf1a694c8679376df2cabe))
+
 ## [4.29.3](https://github.com/andymai/brepjs/compare/brepjs-v4.29.2...brepjs-v4.29.3) (2026-02-07)
 
 
