@@ -1,4 +1,4 @@
-import { WrappingObj, gcWithScope } from '../../core/memory.js';
+import { gcWithScope, registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
 import { getKernel } from '../../kernel/index.js';
 import type { OcType } from '../../kernel/types.js';
 
@@ -12,14 +12,27 @@ import { pnt } from './ocWrapper.js';
  * Provides bounds queries, containment tests, and union operations for
  * spatial indexing of 2D geometry.
  */
-export class BoundingBox2d extends WrappingObj<OcType> {
+export class BoundingBox2d {
+  private readonly _wrapped: OcType;
+  private _deleted = false;
+
   constructor(wrapped?: OcType) {
     const oc = getKernel().oc;
-    let boundBox = wrapped;
-    if (!boundBox) {
-      boundBox = new oc.Bnd_Box2d();
+    this._wrapped = wrapped ?? new oc.Bnd_Box2d();
+    registerForCleanup(this, this._wrapped);
+  }
+
+  get wrapped(): OcType {
+    if (this._deleted) throw new Error('This object has been deleted');
+    return this._wrapped;
+  }
+
+  delete(): void {
+    if (!this._deleted) {
+      this._deleted = true;
+      unregisterFromCleanup(this._wrapped);
+      this._wrapped.delete();
     }
-    super(boundBox);
   }
 
   /** Return a human-readable string of the form `(xMin,yMin) - (xMax,yMax)`. */

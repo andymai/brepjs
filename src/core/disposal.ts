@@ -189,6 +189,20 @@ export function withScope<T>(fn: (scope: DisposalScope) => T): T {
 }
 
 // ---------------------------------------------------------------------------
+// FinalizationRegistry helpers for non-branded wrappers (e.g. Curve2D)
+// ---------------------------------------------------------------------------
+
+/** Register `deletable` for GC cleanup when `owner` is collected. */
+export function registerForCleanup(owner: object, deletable: Deletable): void {
+  registry.register(owner, deletable, deletable);
+}
+
+/** Unregister a previously-registered deletable (call before manual delete). */
+export function unregisterFromCleanup(deletable: Deletable): void {
+  registry.unregister(deletable);
+}
+
+// ---------------------------------------------------------------------------
 // GC helpers (backwards-compatible)
 // ---------------------------------------------------------------------------
 

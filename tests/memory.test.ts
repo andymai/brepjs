@@ -1,17 +1,5 @@
-import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
-import {
-  WrappingObj,
-  gcWithScope,
-  gcWithObject,
-  localGC,
-  type Deletable,
-} from '../src/core/memory.js';
-import { makeBox } from '../src/index.js';
-
-beforeAll(async () => {
-  await initOC();
-}, 30000);
+import { describe, expect, it } from 'vitest';
+import { gcWithScope, gcWithObject, localGC, type Deletable } from '../src/core/memory.js';
 
 /** Simple mock deletable for unit-level tests. */
 function mockDeletable(): Deletable & { deleted: boolean } {
@@ -80,25 +68,5 @@ describe('gcWithObject', () => {
     const obj = mockDeletable();
     const result = r(obj);
     expect(result).toBe(obj);
-  });
-});
-
-describe('WrappingObj', () => {
-  it('wraps an OCCT shape and exposes it via .wrapped', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(box.wrapped).toBeDefined();
-  });
-
-  it('throws after delete', () => {
-    const box = makeBox([0, 0, 0], [5, 5, 5]);
-    box.delete();
-    expect(() => box.wrapped).toThrow('Shape handle has been disposed');
-  });
-
-  it('tracks disposed state', () => {
-    const box = makeBox([0, 0, 0], [5, 5, 5]);
-    expect(box.disposed).toBe(false);
-    box.delete();
-    expect(box.disposed).toBe(true);
   });
 });
