@@ -7,12 +7,12 @@
 import {
   makeBox,
   castShape,
-  fnImportSTEP,
-  fnExportSTEP,
-  fnExportSTL,
+  importSTEP,
+  exportSTEP,
+  exportSTL,
   translateShape,
   scaleShape,
-  fnMeasureVolume,
+  measureVolume,
   meshShape,
   isOk,
   unwrap,
@@ -21,33 +21,33 @@ import {
 async function main() {
   // Create a sample shape to export
   const originalBox = castShape(makeBox([0, 0, 0], [50, 30, 20]).wrapped);
-  console.log('Original shape volume:', fnMeasureVolume(originalBox).toFixed(1), 'mm³');
+  console.log('Original shape volume:', measureVolume(originalBox).toFixed(1), 'mm³');
 
   // Export to STEP
-  const stepBlob = unwrap(fnExportSTEP(originalBox));
+  const stepBlob = unwrap(exportSTEP(originalBox));
   console.log('\nExported to STEP:', stepBlob.size, 'bytes');
 
   // Import the STEP file back
-  const importResult = await fnImportSTEP(stepBlob);
+  const importResult = await importSTEP(stepBlob);
   if (!isOk(importResult)) {
     console.error('Import failed:', importResult.error);
     return;
   }
 
   const importedShape = importResult.value;
-  console.log('Imported shape volume:', fnMeasureVolume(importedShape).toFixed(1), 'mm³');
+  console.log('Imported shape volume:', measureVolume(importedShape).toFixed(1), 'mm³');
 
   // Modify the imported shape
   // 1. Scale by 2x
   const scaled = scaleShape(importedShape, 2);
-  console.log('\nScaled 2x volume:', fnMeasureVolume(scaled).toFixed(1), 'mm³');
+  console.log('\nScaled 2x volume:', measureVolume(scaled).toFixed(1), 'mm³');
 
   // 2. Translate to new position
   const translated = translateShape(scaled, [100, 0, 0]);
   console.log('Translated to [100, 0, 0]');
 
   // Export to STL for 3D printing
-  const stlResult = fnExportSTL(translated);
+  const stlResult = exportSTL(translated);
   if (isOk(stlResult)) {
     console.log('\nExported to STL:', stlResult.value.size, 'bytes');
   }

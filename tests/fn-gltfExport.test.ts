@@ -1,13 +1,13 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { makeBox, castShape, meshShape, exportGltf, exportGlb } from '../src/index.js';
-import type { FnShapeMesh, GltfExportOptions } from '../src/index.js';
+import type { ShapeMesh, GltfExportOptions } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
 }, 30000);
 
-function getBoxMesh(): FnShapeMesh {
+function getBoxMesh(): ShapeMesh {
   const box = makeBox([0, 0, 0], [10, 10, 10]);
   const shape = castShape(box.wrapped);
   return meshShape(shape);
@@ -127,7 +127,7 @@ describe('exportGlb', () => {
 });
 
 describe('glTF with materials', () => {
-  function getMeshWithMaterials(): { mesh: FnShapeMesh; options: GltfExportOptions } {
+  function getMeshWithMaterials(): { mesh: ShapeMesh; options: GltfExportOptions } {
     const mesh = getBoxMesh();
     // Assign two different materials to face groups
     const redMat = {

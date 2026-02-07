@@ -10,11 +10,11 @@ import {
   makeBox,
   resolveDirection,
   type PlaneName,
-  fnCreateNamedPlane,
+  createNamedPlane,
 } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
 // Functional plane API
-import { createNamedPlane, resolvePlane } from '../src/core/planeOps.js';
+import { resolvePlane } from '../src/core/planeOps.js';
 // OCCT boundary functions
 import { toOcPnt } from '../src/core/occtBoundary.js';
 

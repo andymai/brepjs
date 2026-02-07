@@ -7,8 +7,8 @@ import {
   castShape,
   meshShape,
   meshShapeEdges,
-  fnExportSTEP,
-  fnExportSTL,
+  exportSTEP,
+  exportSTL,
   isOk,
   unwrap,
   clearMeshCache,
@@ -86,20 +86,20 @@ describe('meshShapeEdges', () => {
   });
 });
 
-describe('fnExportSTEP', () => {
+describe('exportSTEP', () => {
   it('exports a shape to STEP blob', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = fnExportSTEP(castShape(box.wrapped));
+    const result = exportSTEP(castShape(box.wrapped));
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
     expect(blob.size).toBeGreaterThan(0);
   });
 });
 
-describe('fnExportSTL', () => {
+describe('exportSTL', () => {
   it('exports a shape to STL blob', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = fnExportSTL(castShape(box.wrapped));
+    const result = exportSTL(castShape(box.wrapped));
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
     expect(blob.size).toBeGreaterThan(0);

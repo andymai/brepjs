@@ -19,8 +19,8 @@ import {
   makePlaneFromFace,
   getEdges,
   getFaces,
-  fnExportSTEP,
-  fnExportSTL,
+  exportSTEP,
+  exportSTL,
 } from '../src/index.js';
 import { translateShape, rotateShape, scaleShape, mirrorShape } from '../src/topology/shapeFns.js';
 import { meshShape, meshShapeEdges } from '../src/topology/meshFns.js';
@@ -266,13 +266,13 @@ describe('Result error paths', () => {
 
   it('blobSTEP returns Ok for valid shape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = fnExportSTEP(box);
+    const result = exportSTEP(box);
     expect(isOk(result)).toBe(true);
   });
 
   it('blobSTL returns Ok for valid shape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = fnExportSTL(box);
+    const result = exportSTL(box);
     expect(isOk(result)).toBe(true);
   });
 });

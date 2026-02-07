@@ -3,7 +3,7 @@ import { initOC } from './setup.js';
 import {
   makeBox,
   EdgeFinder,
-  fnCreateNamedPlane,
+  createNamedPlane,
   unwrap,
   getFaces,
   curveLength,
@@ -48,7 +48,7 @@ describe('EdgeFinder extra coverage', () => {
 
   it('parallelTo Plane object', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const plane = unwrap(fnCreateNamedPlane('XY'));
+    const plane = unwrap(createNamedPlane('XY'));
     expect(new EdgeFinder().parallelTo(plane).find(box).length).toBe(8);
   });
 
@@ -73,7 +73,7 @@ describe('EdgeFinder extra coverage', () => {
 
   it('inPlane with Plane object', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const plane = unwrap(fnCreateNamedPlane('XY'));
+    const plane = unwrap(createNamedPlane('XY'));
     const edges = new EdgeFinder().inPlane(plane).find(box);
     expect(edges.length).toBe(4);
   });

@@ -7,7 +7,7 @@ import {
   isOk,
   isErr,
   unwrap,
-  fnMeasureVolume,
+  measureVolume,
   translateShape,
 } from '../src/index.js';
 
@@ -23,7 +23,7 @@ describe('linearPattern', () => {
     const pattern = unwrap(result);
     expect(pattern).toBeDefined();
     // 3 non-overlapping boxes (spacing=10 > box width=5)
-    const vol = fnMeasureVolume(pattern);
+    const vol = measureVolume(pattern);
     expect(vol).toBeCloseTo(5 * 5 * 5 * 3, -1);
   });
 
@@ -32,7 +32,7 @@ describe('linearPattern', () => {
     const result = linearPattern(box, [1, 0, 0], 1, 10);
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
-    const vol = fnMeasureVolume(pattern);
+    const vol = measureVolume(pattern);
     expect(vol).toBeCloseTo(5 * 5 * 5, -1);
   });
 
@@ -57,7 +57,7 @@ describe('circularPattern', () => {
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
     expect(pattern).toBeDefined();
-    const vol = fnMeasureVolume(pattern);
+    const vol = measureVolume(pattern);
     expect(vol).toBeCloseTo(2 * 2 * 2 * 4, -1);
   });
 
@@ -67,7 +67,7 @@ describe('circularPattern', () => {
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
     expect(pattern).toBeDefined();
-    const vol = fnMeasureVolume(pattern);
+    const vol = measureVolume(pattern);
     expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
   });
 

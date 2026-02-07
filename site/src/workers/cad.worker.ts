@@ -180,7 +180,7 @@ function handleExportSTL(id: string, code: string) {
       result = brepjs.castShape(result.wrapped);
     }
 
-    const stlResult = brepjs.fnExportSTL(result, { binary: true });
+    const stlResult = brepjs.exportSTL(result, { binary: true });
 
     if (brepjs.isOk(stlResult)) {
       const blob: Blob = stlResult.value;

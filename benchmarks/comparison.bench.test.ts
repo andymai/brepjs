@@ -18,7 +18,6 @@ import {
   castShape,
   meshShape,
   clearMeshCache,
-  fnFuseAll,
 } from '../src/index.js';
 import { translateShape } from '../src/topology/shapeFns.js';
 import { fuseShapes, cutShape } from '../src/topology/booleanFns.js';

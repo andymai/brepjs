@@ -8,7 +8,7 @@ import {
   unwrap,
   // functional API
   castShape,
-  fnGetCurveType,
+  getCurveType,
   curveStartPoint,
   curveEndPoint,
   curvePointAt,
@@ -30,12 +30,12 @@ beforeAll(async () => {
 describe('getCurveType', () => {
   it('returns LINE for a line edge', () => {
     const edge = makeLine([0, 0, 0], [10, 0, 0]);
-    expect(fnGetCurveType(castShape(edge.wrapped))).toBe('LINE');
+    expect(getCurveType(castShape(edge.wrapped))).toBe('LINE');
   });
 
   it('returns CIRCLE for a circle edge', () => {
     const edge = makeCircle(5);
-    expect(fnGetCurveType(castShape(edge.wrapped))).toBe('CIRCLE');
+    expect(getCurveType(castShape(edge.wrapped))).toBe('CIRCLE');
   });
 });
 

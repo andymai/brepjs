@@ -9,9 +9,9 @@ import {
   sketchRectangle,
   // functional API
   castShape,
-  fnMeasureVolume,
-  fnMeasureArea,
-  fnMeasureLength,
+  measureVolume,
+  measureArea,
+  measureLength,
   measureDistance,
   createDistanceQuery,
   measureVolumeProps,
@@ -24,40 +24,40 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-describe('fnMeasureVolume', () => {
+describe('measureVolume', () => {
   it('box volume', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    expect(fnMeasureVolume(castShape(box.wrapped))).toBeCloseTo(6000, 0);
+    expect(measureVolume(castShape(box.wrapped))).toBeCloseTo(6000, 0);
   });
 
   it('sphere volume', () => {
     const sphere = makeSphere(5);
-    expect(fnMeasureVolume(castShape(sphere.wrapped))).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
+    expect(measureVolume(castShape(sphere.wrapped))).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
   });
 });
 
-describe('fnMeasureArea', () => {
+describe('measureArea', () => {
   it('box surface area', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    expect(fnMeasureArea(castShape(box.wrapped))).toBeCloseTo(2200, 0);
+    expect(measureArea(castShape(box.wrapped))).toBeCloseTo(2200, 0);
   });
 
   it('face area', () => {
     const rect = sketchRectangle(10, 20);
     const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    expect(fnMeasureArea(face)).toBeCloseTo(200, 0);
+    expect(measureArea(face)).toBeCloseTo(200, 0);
   });
 });
 
-describe('fnMeasureLength', () => {
+describe('measureLength', () => {
   it('line length', () => {
     const line = makeLine([0, 0, 0], [10, 0, 0]);
-    expect(fnMeasureLength(castShape(line.wrapped))).toBeCloseTo(10, 2);
+    expect(measureLength(castShape(line.wrapped))).toBeCloseTo(10, 2);
   });
 
   it('diagonal line length', () => {
     const line = makeLine([0, 0, 0], [3, 4, 0]);
-    expect(fnMeasureLength(castShape(line.wrapped))).toBeCloseTo(5, 2);
+    expect(measureLength(castShape(line.wrapped))).toBeCloseTo(5, 2);
   });
 });
 

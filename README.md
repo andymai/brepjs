@@ -24,8 +24,8 @@ import {
   fuseShapes,
   cutShape,
   translateShape,
-  fnMeasureVolume,
-  fnExportSTEP,
+  measureVolume,
+  exportSTEP,
   unwrap,
 } from 'brepjs';
 
@@ -44,10 +44,10 @@ const withHole = unwrap(cutShape(box, cylinder));
 const moved = translateShape(withHole, [100, 0, 0]);
 
 // Measure
-console.log('Volume:', fnMeasureVolume(moved), 'mm³');
+console.log('Volume:', measureVolume(moved), 'mm³');
 
 // Export
-const stepBlob = unwrap(fnExportSTEP(moved));
+const stepBlob = unwrap(exportSTEP(moved));
 ```
 
 ## Examples

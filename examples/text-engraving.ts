@@ -13,8 +13,8 @@ import {
   sketchBlueprintOnPlane,
   sketchExtrude,
   translateShape,
-  fnMeasureVolume,
-  fnExportSTEP,
+  measureVolume,
+  exportSTEP,
   unwrap,
   isOk,
 } from 'brepjs';
@@ -33,7 +33,7 @@ async function main() {
 
   console.log('Created nameplate base:');
   console.log(`  Dimensions: ${plateWidth}mm x ${plateHeight}mm x ${plateDepth}mm`);
-  console.log(`  Volume: ${fnMeasureVolume(plate).toFixed(1)} mm³`);
+  console.log(`  Volume: ${measureVolume(plate).toFixed(1)} mm³`);
 
   // Note: Text engraving requires loading a font file
   // This is a demonstration of the workflow
@@ -76,7 +76,7 @@ async function main() {
   console.log('4. Extrude and cut from the base shape');
 
   // Export the plain plate
-  const stepResult = fnExportSTEP(plate);
+  const stepResult = exportSTEP(plate);
   if (isOk(stepResult)) {
     console.log(`\nExported nameplate: ${stepResult.value.size} bytes`);
   }

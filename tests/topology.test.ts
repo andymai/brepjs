@@ -54,10 +54,10 @@ import {
   getFaces,
   getWires,
   getShapeKind,
-  fnIsEdge,
-  fnIsWire,
-  fnIsFace,
-  fnGetCurveType,
+  isEdge,
+  isWire,
+  isFace,
+  getCurveType,
   curveStartPoint,
   curveEndPoint,
   curveLength,
@@ -73,12 +73,12 @@ import {
   faceOrientation,
   flipFaceOrientation,
   uvBounds,
-  fnPointOnSurface,
-  fnNormalAt,
+  pointOnSurface,
+  normalAt,
   faceCenter,
-  fnOuterWire,
-  fnInnerWires,
-  fnUvCoordinates,
+  outerWire,
+  innerWires,
+  uvCoordinates,
   getSurfaceType,
   shellShape,
   filletShape,
@@ -199,7 +199,7 @@ describe('Edge', () => {
     expect(curveTangentAt(makeLine([0, 0, 0], [10, 0, 0]), 0.5)).toBeDefined();
   });
   it('geomType', () => {
-    expect(fnGetCurveType(makeLine([0, 0, 0], [10, 0, 0]))).toBe('LINE');
+    expect(getCurveType(makeLine([0, 0, 0], [10, 0, 0]))).toBe('LINE');
   });
   it('isClosed', () => {
     expect(curveIsClosed(makeLine([0, 0, 0], [10, 0, 0]))).toBe(false);
@@ -229,7 +229,7 @@ describe('Wire', () => {
     expect(curveLength(w)).toBeCloseTo(20);
   });
   it('geomType', () => {
-    expect(fnGetCurveType(unwrap(assembleWire([makeLine([0, 0, 0], [10, 0, 0])])))).toBeDefined();
+    expect(getCurveType(unwrap(assembleWire([makeLine([0, 0, 0], [10, 0, 0])])))).toBeDefined();
   });
   it('offset2D', () => {
     expect(isOk(offsetWire2D(sketchRectangle(10, 10).wire, 1))).toBe(true);
@@ -254,15 +254,15 @@ describe('Face', () => {
     expect(b.uMax).toBeGreaterThan(b.uMin);
   });
   it('pointOnSurface', () => {
-    const p = fnPointOnSurface(sketchRectangle(10, 10).face(), 0.5, 0.5);
+    const p = pointOnSurface(sketchRectangle(10, 10).face(), 0.5, 0.5);
     expect(p).toBeDefined();
   });
   it('normalAt', () => {
-    const n = fnNormalAt(sketchRectangle(10, 10).face());
+    const n = normalAt(sketchRectangle(10, 10).face());
     expect(Math.abs(n[2])).toBeCloseTo(1, 1);
   });
   it('normalAt loc', () => {
-    const n = fnNormalAt(sketchRectangle(10, 10).face(), [0, 0, 0]);
+    const n = normalAt(sketchRectangle(10, 10).face(), [0, 0, 0]);
     expect(n).toBeDefined();
   });
   it('center', () => {
@@ -270,13 +270,13 @@ describe('Face', () => {
     expect(c[0]).toBeCloseTo(0, 0);
   });
   it('outerWire', () => {
-    expect(fnOuterWire(sketchRectangle(10, 10).face())).toBeDefined();
+    expect(outerWire(sketchRectangle(10, 10).face())).toBeDefined();
   });
   it('innerWires', () => {
-    expect(fnInnerWires(sketchRectangle(10, 10).face())).toHaveLength(0);
+    expect(innerWires(sketchRectangle(10, 10).face())).toHaveLength(0);
   });
   it('uvCoordinates', () => {
-    const [u] = fnUvCoordinates(sketchRectangle(10, 10).face(), [0, 0, 0]);
+    const [u] = uvCoordinates(sketchRectangle(10, 10).face(), [0, 0, 0]);
     expect(typeof u).toBe('number');
   });
   it('CYLINDRE', () => {
@@ -484,32 +484,32 @@ describe('shapeHelpers', () => {
     expect(curveIsClosed(makeCircle(10))).toBe(true);
   });
   it('makeCircle custom', () => {
-    expect(fnIsEdge(makeCircle(5, [1, 2, 3], [0, 1, 0]))).toBe(true);
+    expect(isEdge(makeCircle(5, [1, 2, 3], [0, 1, 0]))).toBe(true);
   });
   it('makeEllipse', () => {
-    expect(fnIsEdge(unwrap(makeEllipse(10, 5)))).toBe(true);
+    expect(isEdge(unwrap(makeEllipse(10, 5)))).toBe(true);
   });
   it('makeEllipse err', () => {
     expect(isErr(makeEllipse(5, 10))).toBe(true);
   });
   it('makeHelix', () => {
-    expect(fnIsWire(makeHelix(2, 10, 5))).toBe(true);
+    expect(isWire(makeHelix(2, 10, 5))).toBe(true);
   });
   it('makeHelix left', () => {
-    expect(fnIsWire(makeHelix(2, 10, 5, [0, 0, 0], [0, 0, 1], true))).toBe(true);
+    expect(isWire(makeHelix(2, 10, 5, [0, 0, 0], [0, 0, 1], true))).toBe(true);
   });
   it('makeThreePointArc', () => {
-    expect(fnIsEdge(makeThreePointArc([0, 0, 0], [5, 5, 0], [10, 0, 0]))).toBe(true);
+    expect(isEdge(makeThreePointArc([0, 0, 0], [5, 5, 0], [10, 0, 0]))).toBe(true);
   });
   it('makeEllipseArc', () => {
-    expect(fnIsEdge(unwrap(makeEllipseArc(10, 5, 0, Math.PI)))).toBe(true);
+    expect(isEdge(unwrap(makeEllipseArc(10, 5, 0, Math.PI)))).toBe(true);
   });
   it('makeEllipseArc err', () => {
     expect(isErr(makeEllipseArc(5, 10, 0, Math.PI))).toBe(true);
   });
   it('makeBSpline', () => {
     expect(
-      fnIsEdge(
+      isEdge(
         unwrap(
           makeBSplineApproximation([
             [0, 0, 0],
@@ -539,7 +539,7 @@ describe('shapeHelpers', () => {
   });
   it('makeBezier', () => {
     expect(
-      fnIsEdge(
+      isEdge(
         makeBezierCurve([
           [0, 0, 0],
           [3, 5, 0],
@@ -550,14 +550,14 @@ describe('shapeHelpers', () => {
     ).toBe(true);
   });
   it('makeTangentArc', () => {
-    expect(fnIsEdge(makeTangentArc([0, 0, 0], [1, 0, 0], [5, 5, 0]))).toBe(true);
+    expect(isEdge(makeTangentArc([0, 0, 0], [1, 0, 0], [5, 5, 0]))).toBe(true);
   });
   it('makeFace', () => {
     expect(measureArea(unwrap(makeFace(sketchRectangle(10, 10).wire)))).toBeCloseTo(100, 0);
   });
   it('makeFace holes', () => {
     const f = unwrap(makeFace(sketchRectangle(20, 20).wire, [sketchCircle(3).wire]));
-    expect(fnIsFace(f)).toBe(true);
+    expect(isFace(f)).toBe(true);
   });
   it('makeNewFace', () => {
     expect(
@@ -573,7 +573,7 @@ describe('shapeHelpers', () => {
         makeLine([0, 10, 0], [0, 0, 0]),
       ])
     );
-    expect(fnIsFace(unwrap(makeNonPlanarFace(w)))).toBe(true);
+    expect(isFace(unwrap(makeNonPlanarFace(w)))).toBe(true);
   });
   it('makeEllipsoid', () => {
     expect(measureVolume(makeEllipsoid(10, 8, 5))).toBeCloseTo((4 / 3) * Math.PI * 10 * 8 * 5, -1);
@@ -614,14 +614,14 @@ describe('shapeHelpers', () => {
   });
   it('addHolesInFace', () => {
     const f = addHolesInFace(sketchRectangle(20, 20).face(), [sketchCircle(3).wire]);
-    expect(fnIsFace(f)).toBe(true);
+    expect(isFace(f)).toBe(true);
   });
 });
 
 describe('Curve functional API', () => {
   it('line', () => {
     const edge = makeLine([0, 0, 0], [10, 0, 0]);
-    expect(fnGetCurveType(edge)).toBe('LINE');
+    expect(getCurveType(edge)).toBe('LINE');
     expect(curveStartPoint(edge)[0]).toBeCloseTo(0);
     expect(curveEndPoint(edge)[0]).toBeCloseTo(10);
     expect(curvePointAt(edge, 0.5)[0]).toBeCloseTo(5);

@@ -9,10 +9,10 @@ import {
   makeCylinder,
   castShape,
   cutShape,
-  fnCutAll,
+  cutAll,
   translateShape,
-  fnMeasureVolume,
-  fnExportSTEP,
+  measureVolume,
+  exportSTEP,
   unwrap,
   isOk,
   type Shape3D,
@@ -52,7 +52,7 @@ async function main() {
 
   // Cut all holes and slot from the base plate
   const allCuts = [...holes, slot];
-  const bracketResult = fnCutAll(basePlate, allCuts);
+  const bracketResult = cutAll(basePlate, allCuts);
 
   if (!isOk(bracketResult)) {
     console.error('Failed to create bracket:', bracketResult.error);
@@ -62,13 +62,13 @@ async function main() {
   const bracket = bracketResult.value;
 
   // Measure final part
-  const volume = fnMeasureVolume(bracket);
+  const volume = measureVolume(bracket);
   console.log(`\nFinal bracket:`);
   console.log(`  Volume: ${volume.toFixed(1)} mm³`);
   console.log(`  Material removed: ${(100 * 60 * 10 - volume).toFixed(1)} mm³`);
 
   // Export to STEP
-  const stepResult = fnExportSTEP(bracket);
+  const stepResult = exportSTEP(bracket);
   if (isOk(stepResult)) {
     console.log(`  STEP file: ${stepResult.value.size} bytes`);
   }

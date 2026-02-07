@@ -6,8 +6,8 @@ import {
   // functional API
   castShape,
   loftWires,
-  fnMeasureVolume,
-  fnIsShape3D,
+  measureVolume,
+  isShape3D,
   isOk,
   unwrap,
 } from '../src/index.js';
@@ -28,9 +28,9 @@ describe('loftWires', () => {
     );
     const result = loftWires([w1, w2]);
     expect(isOk(result)).toBe(true);
-    expect(fnIsShape3D(unwrap(result))).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
     // Loft of two identical rectangles at different heights = box-like solid
-    expect(fnMeasureVolume(unwrap(result))).toBeCloseTo(10 * 10 * 20, -1);
+    expect(measureVolume(unwrap(result))).toBeCloseTo(10 * 10 * 20, -1);
   });
 
   it('lofts with startPoint', () => {

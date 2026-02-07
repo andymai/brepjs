@@ -34,12 +34,12 @@ type Vec2 = [number, number];
 
 interface AnyShape { readonly __brand: 'shape'; readonly wrapped: unknown; }
 interface Shape3D extends AnyShape { readonly __brand3d: true; }
-type FnSolid = Shape3D;
-type FnFace = AnyShape;
-type FnEdge = AnyShape;
-type FnWire = AnyShape;
-type FnShell = AnyShape;
-type FnCompound = AnyShape;
+type Solid = Shape3D;
+type Face = AnyShape;
+type Edge = AnyShape;
+type Wire = AnyShape;
+type Shell = AnyShape;
+type Compound = AnyShape;
 
 // ── Casting ──
 
@@ -66,9 +66,9 @@ declare function makeTorus(majorR: number, minorR: number): LegacyShape;
 declare function fuseShapes(a: AnyShape, b: AnyShape): Result<Shape3D>;
 declare function cutShape(a: AnyShape, b: AnyShape): Result<Shape3D>;
 declare function intersectShapes(a: AnyShape, b: AnyShape): Result<Shape3D>;
-declare function fnFuseAll(shapes: AnyShape[]): Result<Shape3D>;
-declare function fnCutAll(base: AnyShape, shapes: AnyShape[]): Result<Shape3D>;
-declare function fnBuildCompound(shapes: AnyShape[]): AnyShape;
+declare function fuseAll(shapes: AnyShape[]): Result<Shape3D>;
+declare function cutAll(base: AnyShape, shapes: AnyShape[]): Result<Shape3D>;
+declare function buildCompound(shapes: AnyShape[]): AnyShape;
 
 // ── Transforms ──
 
@@ -129,15 +129,15 @@ declare function getBounds(shape: AnyShape): { min: Vec3; max: Vec3 };
 
 // ── Measurement ──
 
-declare function fnMeasureVolume(shape: AnyShape): number;
-declare function fnMeasureArea(shape: AnyShape): number;
-declare function fnMeasureLength(shape: AnyShape): number;
+declare function measureVolume(shape: AnyShape): number;
+declare function measureArea(shape: AnyShape): number;
+declare function measureLength(shape: AnyShape): number;
 
 // ── Meshing & Export ──
 
 declare function meshShape(shape: AnyShape, options?: { tolerance?: number; angularTolerance?: number }): unknown;
-declare function fnExportSTEP(shape: AnyShape): Result<Blob>;
-declare function fnExportSTL(shape: AnyShape, options?: { tolerance?: number; binary?: boolean }): Result<Blob>;
+declare function exportSTEP(shape: AnyShape): Result<Blob>;
+declare function exportSTL(shape: AnyShape, options?: { tolerance?: number; binary?: boolean }): Result<Blob>;
 
 // ── 2D Drawing API ──
 

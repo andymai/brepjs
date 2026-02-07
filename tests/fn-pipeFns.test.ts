@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { pipe, castShape, makeBox, fnMeasureVolume, fnIsShape3D, getBounds } from '../src/index.js';
+import { pipe, castShape, makeBox, measureVolume, isShape3D, getBounds } from '../src/index.js';
 import { createSolid } from '../src/core/shapeTypes.js';
 import { getKernel } from '../src/kernel/index.js';
 
@@ -20,8 +20,8 @@ describe('pipe', () => {
   it('done() returns the original shape', () => {
     const box = fnBox();
     const result = pipe(box).done();
-    expect(fnIsShape3D(result)).toBe(true);
-    expect(fnMeasureVolume(result)).toBeCloseTo(1000, 0);
+    expect(isShape3D(result)).toBe(true);
+    expect(measureVolume(result)).toBeCloseTo(1000, 0);
   });
 
   it('translate moves the shape', () => {
@@ -43,20 +43,20 @@ describe('pipe', () => {
   it('rotate rotates the shape', () => {
     const box = fnBox(10, 10, 10);
     const result = pipe(box).rotate(90, [0, 0, 0], [0, 0, 1]).done();
-    expect(fnIsShape3D(result)).toBe(true);
-    expect(fnMeasureVolume(result)).toBeCloseTo(1000, 0);
+    expect(isShape3D(result)).toBe(true);
+    expect(measureVolume(result)).toBeCloseTo(1000, 0);
   });
 
   it('scale scales the shape', () => {
     const box = fnBox(10, 10, 10);
     const result = pipe(box).scale(2, [0, 0, 0]).done();
-    expect(fnMeasureVolume(result)).toBeCloseTo(8000, 0);
+    expect(measureVolume(result)).toBeCloseTo(8000, 0);
   });
 
   it('mirror mirrors the shape', () => {
     const box = fnBox(10, 10, 10);
     const result = pipe(box).mirror([1, 0, 0], [0, 0, 0]).done();
-    expect(fnIsShape3D(result)).toBe(true);
+    expect(isShape3D(result)).toBe(true);
     const bounds = getBounds(result);
     expect(bounds.xMin).toBeCloseTo(-10, 0);
     expect(bounds.xMax).toBeCloseTo(0, 0);
@@ -66,33 +66,33 @@ describe('pipe', () => {
     const box = fnSolid(10, 10, 10);
     const tool = fnSolid(10, 10, 10);
     const result = pipe(box).fuse(tool).done();
-    expect(fnIsShape3D(result)).toBe(true);
-    expect(fnMeasureVolume(result)).toBeCloseTo(1000, 0);
+    expect(isShape3D(result)).toBe(true);
+    expect(measureVolume(result)).toBeCloseTo(1000, 0);
   });
 
   it('cut subtracts a shape', () => {
     const box = fnSolid(10, 10, 10);
     const tool = fnSolid(5, 5, 10);
     const result = pipe(box).cut(tool).done();
-    expect(fnIsShape3D(result)).toBe(true);
-    expect(fnMeasureVolume(result)).toBeCloseTo(750, 0);
+    expect(isShape3D(result)).toBe(true);
+    expect(measureVolume(result)).toBeCloseTo(750, 0);
   });
 
   it('intersect produces intersection', () => {
     const box = fnSolid(10, 10, 10);
     const tool = fnSolid(5, 5, 10);
     const result = pipe(box).intersect(tool).done();
-    expect(fnIsShape3D(result)).toBe(true);
-    expect(fnMeasureVolume(result)).toBeCloseTo(250, 0);
+    expect(isShape3D(result)).toBe(true);
+    expect(measureVolume(result)).toBeCloseTo(250, 0);
   });
 
   it('chains transforms and booleans', () => {
     const box = fnSolid(10, 10, 10);
     const tool = fnSolid(10, 10, 10);
     const result = pipe(box).translate([5, 0, 0]).fuse(tool).done();
-    expect(fnIsShape3D(result)).toBe(true);
+    expect(isShape3D(result)).toBe(true);
     // Overlapping by 5 units in X: total = 10*10*15 = 1500
-    expect(fnMeasureVolume(result)).toBeCloseTo(1500, -1);
+    expect(measureVolume(result)).toBeCloseTo(1500, -1);
   });
 
   it('apply runs a custom function', () => {
@@ -100,6 +100,6 @@ describe('pipe', () => {
     const result = pipe(box)
       .apply((s) => createSolid(getKernel().scale(s.wrapped, [0, 0, 0], 3)))
       .done();
-    expect(fnMeasureVolume(result)).toBeCloseTo(27000, 0);
+    expect(measureVolume(result)).toBeCloseTo(27000, 0);
   });
 });

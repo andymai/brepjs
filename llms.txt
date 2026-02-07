@@ -26,7 +26,7 @@ brepjs provides two parallel API styles. Both are fully supported:
 
 **OOP (class-based)**: Shape classes like `Solid`, `Face`, `Edge` with methods. Created by sketching API and topology helpers. Methods mutate or return new instances. Uses `WrappingObj` base class for WASM handle management.
 
-**Functional**: Standalone functions like `fuseShapes()`, `translateShape()`, `filletShape()`. Use branded types (`FnSolid`, `FnFace`, etc.) and return `Result<T>` for error handling. Immutable — never dispose inputs.
+**Functional**: Standalone functions like `fuseShapes()`, `translateShape()`, `filletShape()`. Use branded types (`Solid`, `Face`, etc.) and return `Result<T>` for error handling. Immutable — never dispose inputs.
 
 Both operate on the same underlying OCCT shapes. OOP shape classes from sketching (`sketchCircle().extrude()`) work with OOP methods (`.fuse()`, `.cut()`). Functional API functions work on shapes from either style.
 
@@ -261,8 +261,8 @@ Functional API:
 - `sketchSweep(sketch, sketchOnPlane, sweepConfig?): Shape3D`
 - `sketchExtrude(sketch, height, config?): Shape3D` — Functional version of `sketch.extrude()`
 - `sketchRevolve(sketch, axis?, {origin?}?): Shape3D` — Functional version of `sketch.revolve()`
-- `fnSketchFace(sketch): Face` — Get the face from a closed sketch
-- `fnSketchWires(sketch): Wire` — Get the wire from a sketch
+- `sketchFace(sketch): Face` — Get the face from a closed sketch
+- `sketchWires(sketch): Wire` — Get the wire from a sketch
 
 CompoundSketch functions (for multi-contour profiles like text):
 - `compoundSketchExtrude(sketch, height, config?): Shape3D`
@@ -307,7 +307,7 @@ sliceShape(shape, planes, options?): Result<AnyShape[]>
 
 Boolean options: `{ optimisation?: 'none' | 'commonFace' | 'sameFace', simplify?: boolean, strategy?: 'native' | 'pairwise', signal?: AbortSignal }`
 
-Batch: `fuseAll(shapes, options?)`, `cutAll(base, tools, options?)`
+Batch: `fuseAll(shapes, options?): Result<Shape3D>`, `cutAll(base, tools, options?): Result<Shape3D>`
 
 ### Fillet & Chamfer
 
@@ -543,14 +543,14 @@ finder.ofAngle(angle);                 // By corner angle
 
 ```typescript
 import {
-  fnGetCurveType, curveStartPoint, curveEndPoint,
+  getCurveType, curveStartPoint, curveEndPoint,
   curvePointAt, curveTangentAt, curveLength,
   curveIsClosed, curveIsPeriodic, curvePeriod,
   getOrientation, flipOrientation, offsetWire2D,
   interpolateCurve, approximateCurve
 } from 'brepjs';
 
-fnGetCurveType(edge): CurveType        // 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'BEZIER_CURVE' | 'BSPLINE_CURVE' | ...
+getCurveType(edge): CurveType        // 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'BEZIER_CURVE' | 'BSPLINE_CURVE' | ...
 curveStartPoint(shape): Vec3
 curveEndPoint(shape): Vec3
 curvePointAt(shape, t?): Vec3           // Point at parameter t (0-1)
@@ -575,8 +575,8 @@ offsetWire2D(wire, offset, kind?): Result<Wire>   // kind: 'arc' | 'intersection
 ```typescript
 import {
   getSurfaceType, faceGeomType, faceOrientation, flipFaceOrientation,
-  uvBounds, fnPointOnSurface, fnUvCoordinates, fnNormalAt,
-  faceCenter, classifyPointOnFace, fnOuterWire, fnInnerWires,
+  uvBounds, pointOnSurface, uvCoordinates, normalAt,
+  faceCenter, classifyPointOnFace, outerWire, innerWires,
   projectPointOnFace
 } from 'brepjs';
 
@@ -585,13 +585,13 @@ faceGeomType(face): SurfaceType
 faceOrientation(face): 'forward' | 'backward'
 flipFaceOrientation(face): Face
 uvBounds(face): { uMin, uMax, vMin, vMax }
-fnPointOnSurface(face, u, v): Vec3
-fnUvCoordinates(face, point): [number, number]
-fnNormalAt(face, point?): Vec3
+pointOnSurface(face, u, v): Vec3
+uvCoordinates(face, point): [number, number]
+normalAt(face, point?): Vec3
 faceCenter(face): Vec3
 classifyPointOnFace(face, point, tolerance?): 'in' | 'on' | 'out'
-fnOuterWire(face): Wire
-fnInnerWires(face): Wire[]
+outerWire(face): Wire
+innerWires(face): Wire[]
 projectPointOnFace(face, point): Result<{ uv, point, distance }>
 ```
 
@@ -614,7 +614,7 @@ Physical properties: `measureShapeVolumeProperties(shape)`, `measureShapeSurface
 Functional measurement API:
 ```typescript
 import {
-  fnMeasureVolume, fnMeasureArea, fnMeasureLength, measureDistance,
+  measureVolume, measureArea, measureLength, measureDistance,
   measureVolumeProps, measureSurfaceProps, measureLinearProps,
   createDistanceQuery, measureCurvatureAt, measureCurvatureAtMid
 } from 'brepjs';
@@ -682,10 +682,10 @@ const stepBlob = exportSTEP([
 
 Functional API:
 ```typescript
-import { fnImportSTEP, fnExportSTEP, exportAssemblySTEP } from 'brepjs';
+import { importSTEP, exportSTEP, exportAssemblySTEP } from 'brepjs';
 
-fnImportSTEP(blob): Promise<Result<AnyShape>>
-fnExportSTEP(shape): Result<Blob>
+importSTEP(blob): Promise<Result<AnyShape>>
+exportSTEP(shape): Result<Blob>
 exportAssemblySTEP(shapes, { unit?, modelUnit? }?): Result<Blob>
 // ShapeConfig: { shape, color?, alpha?, name? }
 // SupportedUnit: 'millimeter' | 'centimeter' | 'meter' | 'inch' | 'foot'
@@ -694,20 +694,19 @@ exportAssemblySTEP(shapes, { unit?, modelUnit? }?): Result<Blob>
 ### STL Files
 
 ```typescript
-import { importSTL, fnImportSTL, fnExportSTL } from 'brepjs';
+import { importSTL, exportSTL } from 'brepjs';
 
-importSTL(blob): Promise<Result<AnyShape>>       // OOP
-fnImportSTL(blob): Promise<Result<AnyShape>>      // Functional
-fnExportSTL(shape, { tolerance?, angularTolerance?, binary? }?): Result<Blob>
+importSTL(blob): Promise<Result<AnyShape>>
+exportSTL(shape, { tolerance?, angularTolerance?, binary? }?): Result<Blob>
 ```
 
 ### IGES Files
 
 ```typescript
-import { fnImportIGES, fnExportIGES } from 'brepjs';
+import { importIGES, exportIGES } from 'brepjs';
 
-fnImportIGES(blob): Promise<Result<AnyShape>>
-fnExportIGES(shape): Result<Blob>
+importIGES(blob): Promise<Result<AnyShape>>
+exportIGES(shape): Result<Blob>
 ```
 
 ### glTF / GLB (with PBR materials)
@@ -1214,10 +1213,10 @@ vecRepr(v): string                      // e.g. "(1.00, 2.00, 3.00)"
 ## Plane Operations
 
 ```typescript
-import { createPlane, fnCreateNamedPlane, resolvePlane, translatePlane, pivotPlane } from 'brepjs';
+import { createPlane, createNamedPlane, resolvePlane, translatePlane, pivotPlane } from 'brepjs';
 
 createPlane(origin, xDirection?, normal?): Plane
-fnCreateNamedPlane(name, origin?): Result<Plane>
+createNamedPlane(name, origin?): Result<Plane>
 resolvePlane(input, origin?): Plane     // PlaneName | Plane → Plane
 translatePlane(plane, offset): Plane
 pivotPlane(plane, angleDeg, axis?): Plane
@@ -1232,13 +1231,13 @@ makePlaneFromFace(face, originOnSurface?): Plane  // Derive plane from a face (u
 ```typescript
 import {
   castShape, getShapeKind,
-  fnCreateVertex, fnCreateEdge, fnCreateWire, fnCreateFace, fnCreateShell, fnCreateSolid, fnCreateCompound,
-  fnIsVertex, fnIsEdge, fnIsWire, fnIsFace, fnIsShell, fnIsSolid, fnIsCompound, fnIsShape3D, fnIsShape1D
+  createVertex, createEdge, createWire, createFace, createShell, createSolid, createCompound,
+  isVertex, isEdge, isWire, isFace, isShell, isSolid, isCompound, isShape3D, isShape1D
 } from 'brepjs';
 
 castShape(ocShape): AnyShape            // Auto-detect and wrap
 getShapeKind(shape): ShapeKind          // 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'compsolid' | 'compound'
-fnIsVertex(s): s is Vertex              // Type guards
+isVertex(s): s is Vertex              // Type guards
 // ... all type guards follow the same pattern
 ```
 
@@ -1448,7 +1447,7 @@ const movedSpring = pipe(spring).translate([100, 0, 0]).rotate(90, [0, 0, 0], [0
 ```typescript
 import {
   meshShape, exportGlb, exportOBJ, exportThreeMF, exportDXF,
-  drawProjection, fnExportSTEP, exportAssemblySTEP,
+  drawProjection, exportSTEP, exportAssemblySTEP,
   toBufferGeometryData, toGroupedBufferGeometryData,
 } from 'brepjs';
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, getEdges, fnMeasureVolume, castShape } from '../src/index.js';
+import { makeBox, getEdges, measureVolume, castShape } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
 
 beforeAll(async () => {
@@ -15,7 +15,7 @@ describe('variable fillet via kernel', () => {
 
     const filleted = kernel.fillet(box.wrapped, [edges[0].wrapped], 1);
     const result = castShape(filleted);
-    const vol = fnMeasureVolume(result);
+    const vol = measureVolume(result);
     // Filleted volume should be less than original box volume (1000)
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(900);
@@ -29,7 +29,7 @@ describe('variable fillet via kernel', () => {
     // Variable radius: starts at 0.5, ends at 2
     const filleted = kernel.fillet(box.wrapped, [edges[0].wrapped], [0.5, 2]);
     const result = castShape(filleted);
-    const vol = fnMeasureVolume(result);
+    const vol = measureVolume(result);
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(900);
   });
@@ -42,8 +42,8 @@ describe('variable fillet via kernel', () => {
     const constFilleted = kernel.fillet(box.wrapped, [edges[0].wrapped], 1.5);
     const varFilleted = kernel.fillet(box.wrapped, [edges[0].wrapped], [0.5, 2.5]);
 
-    const constVol = fnMeasureVolume(castShape(constFilleted));
-    const varVol = fnMeasureVolume(castShape(varFilleted));
+    const constVol = measureVolume(castShape(constFilleted));
+    const varVol = measureVolume(castShape(varFilleted));
 
     // Both should reduce volume but by different amounts
     expect(constVol).toBeLessThan(1000);
@@ -67,7 +67,7 @@ describe('variable fillet via kernel', () => {
     );
 
     const result = castShape(filleted);
-    const vol = fnMeasureVolume(result);
+    const vol = measureVolume(result);
     expect(vol).toBeLessThan(1000);
     expect(callCount).toBe(2);
   });
