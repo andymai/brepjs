@@ -7,7 +7,12 @@ import {
   makeSphere,
   translateShape,
   unwrap,
+  isErr,
+  unwrapErr,
+  getKernel,
+  createSolid,
 } from '../src/index.js';
+import type { Shape3D } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -129,5 +134,32 @@ describe('checkAllInterferences', () => {
   it('handles empty array', () => {
     const pairs = checkAllInterferences([]);
     expect(pairs).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Null-shape pre-validation tests
+// ---------------------------------------------------------------------------
+
+describe('null-shape pre-validation', () => {
+  function makeNullShape(): Shape3D {
+    const oc = getKernel().oc;
+    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+  }
+
+  it('checkInterference returns err for null first shape', () => {
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const result = checkInterference(makeNullShape(), box);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+    expect(unwrapErr(result).message).toContain('first shape');
+  });
+
+  it('checkInterference returns err for null second shape', () => {
+    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const result = checkInterference(box, makeNullShape());
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+    expect(unwrapErr(result).message).toContain('second shape');
   });
 });
