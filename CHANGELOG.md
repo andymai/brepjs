@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.27.1](https://github.com/andymai/brepjs/compare/brepjs-v4.27.0...brepjs-v4.27.1) (2026-02-07)
+
+
+### Bug Fixes
+
+* address PR review comments from PRs [#139](https://github.com/andymai/brepjs/issues/139)–[#166](https://github.com/andymai/brepjs/issues/166) ([#170](https://github.com/andymai/brepjs/issues/170)) ([727c577](https://github.com/andymai/brepjs/commit/727c5778fd6a307eca85f2730d740d56e12218d2))
+
 ## [4.27.0](https://github.com/andymai/brepjs/compare/brepjs-v4.26.0...brepjs-v4.27.0) (2026-02-07)
 
 
