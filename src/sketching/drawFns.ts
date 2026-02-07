@@ -5,7 +5,7 @@
 
 import type { Point2D } from '../2d/lib/definitions.js';
 import type { Drawing } from './draw.js';
-import type { CornerFinder } from '../query/cornerFinder.js';
+import type { CornerFinderFn } from '../query/finderFns.js';
 import type { PointInput } from '../core/types.js';
 import type { Plane, PlaneName } from '../core/planeTypes.js';
 
@@ -84,7 +84,7 @@ export function drawingIntersect(a: Drawing, b: Drawing): Drawing {
 export function drawingFillet(
   drawing: Drawing,
   radius: number,
-  filter?: (c: CornerFinder) => CornerFinder
+  filter?: (c: CornerFinderFn) => CornerFinderFn
 ): Drawing {
   return drawing.fillet(radius, filter);
 }
@@ -102,7 +102,7 @@ export function drawingFillet(
 export function drawingChamfer(
   drawing: Drawing,
   radius: number,
-  filter?: (c: CornerFinder) => CornerFinder
+  filter?: (c: CornerFinderFn) => CornerFinderFn
 ): Drawing {
   return drawing.chamfer(radius, filter);
 }

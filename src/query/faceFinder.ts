@@ -17,13 +17,8 @@ import { Finder3d } from './generic3dfinder.js';
  * Filters are combined with AND logic by default. Use `.either()` for OR
  * and `.not()` for negation (inherited from {@link Finder3d}).
  *
- * @example
- * ```ts
- * const topFace = new FaceFinder()
- *   .parallelTo("XY")
- *   .ofArea(100)
- *   .find(box, { unique: true });
- * ```
+ * @deprecated Use the immutable {@link faceFinder} factory from `finderFns` instead.
+ *   `faceFinder().parallelTo('XY').ofArea(100).find(box, { unique: true })`
  *
  * @category Finders
  */

@@ -1,5 +1,6 @@
 import { bug } from '../../core/errors.js';
-import type { Corner, CornerFinder } from '../../query/cornerFinder.js';
+import type { Corner } from '../../query/cornerFinder.js';
+import type { CornerFilter } from '../../query/finderFns.js';
 import type { Curve2D } from '../lib/index.js';
 import { chamferCurves, filletCurves, samePoint } from '../lib/index.js';
 import Blueprint from './Blueprint.js';
@@ -13,7 +14,7 @@ function modifyCorners(
   makeCorner: CornerMaker,
   blueprint: Blueprint,
   radius: number,
-  finder?: CornerFinder
+  finder?: CornerFilter
 ) {
   let modifyCorner: (c: Corner) => boolean = () => true;
   if (finder) {
@@ -60,7 +61,7 @@ function modifyCorner2D(
   makeCorner: CornerMaker,
   shape: Shape2D,
   radius: number,
-  finder?: CornerFinder
+  finder?: CornerFilter
 ): Shape2D {
   if (shape instanceof Blueprint) {
     return modifyCorners(makeCorner, shape, radius, finder);
@@ -88,15 +89,15 @@ function modifyCorner2D(
  * Apply fillet (rounded) corners to a 2D shape.
  *
  * Replaces sharp junctions between adjacent curves with tangent arcs of the
- * given radius. An optional {@link CornerFinder} can restrict which corners
- * are modified.
+ * given radius. An optional corner filter can restrict which corners
+ * are modified (use {@link cornerFinder} to create one).
  *
  * @param shape - The 2D shape to fillet.
  * @param radius - Fillet arc radius.
  * @param finder - Optional filter to select specific corners.
  * @returns A new shape with filleted corners, or `null` if the input is `null`.
  */
-export function fillet2D(shape: Shape2D, radius: number, finder?: CornerFinder) {
+export function fillet2D(shape: Shape2D, radius: number, finder?: CornerFilter) {
   return modifyCorner2D(filletCurves, shape, radius, finder);
 }
 
@@ -104,14 +105,14 @@ export function fillet2D(shape: Shape2D, radius: number, finder?: CornerFinder) 
  * Apply chamfer (beveled) corners to a 2D shape.
  *
  * Replaces sharp junctions between adjacent curves with straight-line cuts at
- * the given distance from the corner. An optional {@link CornerFinder} can
- * restrict which corners are modified.
+ * the given distance from the corner. An optional corner filter can
+ * restrict which corners are modified (use {@link cornerFinder} to create one).
  *
  * @param shape - The 2D shape to chamfer.
  * @param radius - Chamfer setback distance from the corner.
  * @param finder - Optional filter to select specific corners.
  * @returns A new shape with chamfered corners, or `null` if the input is `null`.
  */
-export function chamfer2D(shape: Shape2D, radius: number, finder?: CornerFinder) {
+export function chamfer2D(shape: Shape2D, radius: number, finder?: CornerFilter) {
   return modifyCorner2D(chamferCurves, shape, radius, finder);
 }

@@ -23,13 +23,8 @@ import { Finder3d } from './generic3dfinder.js';
  * Filters are combined with AND logic by default. Use `.either()` for OR
  * and `.not()` for negation (inherited from {@link Finder3d}).
  *
- * @example
- * ```ts
- * const topEdges = new EdgeFinder()
- *   .inDirection("Z")
- *   .ofLength(10)
- *   .find(box);
- * ```
+ * @deprecated Use the immutable {@link edgeFinder} factory from `finderFns` instead.
+ *   `edgeFinder().inDirection('Z').ofLength(10).find(box)`
  *
  * @category Finders
  */
