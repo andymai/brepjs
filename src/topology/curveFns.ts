@@ -41,8 +41,6 @@ function mapParam(adaptor: CurveAdaptor, t: number): number {
 
 /**
  * Get the geometric curve type of an edge or wire (LINE, CIRCLE, BSPLINE, etc.).
- *
- * @see _1DShape.geomType — OOP equivalent
  */
 export function getCurveType(shape: Edge | Wire): CurveType {
   const adaptor = getAdaptor(shape);
@@ -252,8 +250,6 @@ export function approximateCurve(
  * @param offset - Offset distance (positive = outward, negative = inward).
  * @param kind - Join type for offset corners ('arc', 'intersection', or 'tangent').
  * @returns Ok with the offset wire, or Err if the operation fails.
- *
- * @see Wire.offset2D — OOP equivalent (deprecated, disposes input)
  */
 export function offsetWire2D(
   wire: Wire,

@@ -71,7 +71,7 @@ graph TB
 | `errors.ts`          | `BrepError` types and constructor functions                        | `utils/bug.js`                                              |
 | `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                              | None                                                        |
 | `definitionMaps.ts`  | `CurveType` union, lazy OCCT enum mappings                         | None                                                        |
-| `memory.ts`          | Re-export hub for disposal + legacy `WrappingObj`                  | `disposal.ts`, legacy classes                               |
+| `memory.ts`          | Re-export hub for disposal utilities                               | `disposal.ts`                                               |
 | `geometry.ts`        | Re-export hub + legacy `Vector`, `Plane`, `Transformation` classes | All above                                                   |
 | `geometryHelpers.ts` | Legacy wrapper functions (migration support)                       | `geometry.ts`                                               |
 
@@ -313,19 +313,6 @@ localGC(debug?: boolean): [
   Set<Deletable> | undefined         // debug set
 ]
 ```
-
-### Legacy Support
-
-**WrappingObj base class** (being phased out):
-
-```typescript
-abstract class WrappingObj<T extends Deletable> {
-  protected wrapped: T;
-  [Symbol.dispose](): void;
-}
-```
-
-New code should use `ShapeHandle` and `OcHandle` instead.
 
 ## Shape Types (`shapeTypes.ts`)
 

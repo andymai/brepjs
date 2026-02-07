@@ -63,7 +63,6 @@ export interface MeshOptions {
  * Delegates to the kernel adapter's bulk C++ mesh extraction for performance.
  *
  * @returns A ShapeMesh containing typed arrays ready for GPU upload.
- * @see Shape.mesh — OOP equivalent (deprecated)
  * @see toBufferGeometryData — convert to Three.js BufferGeometry format
  */
 export function meshShape(
@@ -123,7 +122,6 @@ export function meshShape(
  * Results are cached by default (keyed by shape identity + tolerance parameters).
  *
  * @returns An EdgeMesh containing line vertex positions and per-edge groups.
- * @see Shape.meshEdges — OOP equivalent
  * @see toLineGeometryData — convert to Three.js LineSegments format
  */
 export function meshShapeEdges(
@@ -164,7 +162,6 @@ export function meshShapeEdges(
  * Export a shape as a STEP file Blob.
  *
  * @returns Ok with a Blob (MIME type `application/STEP`), or Err on failure.
- * @see Shape.blobSTEP — OOP equivalent
  */
 export function exportSTEP(shape: AnyShape): Result<Blob> {
   const oc = getKernel().oc;
@@ -200,7 +197,6 @@ export function exportSTEP(shape: AnyShape): Result<Blob> {
  * Export a shape as an STL file Blob.
  *
  * @returns Ok with a Blob (MIME type `application/sla`), or Err on failure.
- * @see Shape.blobSTL — OOP equivalent
  */
 export function exportSTL(
   shape: AnyShape,

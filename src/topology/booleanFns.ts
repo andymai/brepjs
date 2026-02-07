@@ -90,8 +90,6 @@ function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Resu
  * const result = fuseShapes(box, cylinder);
  * if (isOk(result)) console.log(describeShape(result.value));
  * ```
- *
- * @see _3DShape.fuse — OOP equivalent (deprecated)
  */
 export function fuseShapes(
   a: Shape3D,
@@ -121,8 +119,6 @@ export function fuseShapes(
  * ```ts
  * const result = cutShape(box, hole);
  * ```
- *
- * @see _3DShape.cut — OOP equivalent (deprecated)
  */
 export function cutShape(
   base: Shape3D,
@@ -147,8 +143,6 @@ export function cutShape(
  * @param b - The second operand (any shape).
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
- *
- * @see _3DShape.intersect — OOP equivalent (deprecated)
  */
 export function intersectShapes(
   a: Shape3D,

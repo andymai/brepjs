@@ -1,6 +1,6 @@
 /**
  * Functional measurement utilities using branded shape types.
- * Standalone functions — no classes, no WrappingObj.
+ * Standalone pure functions returning plain values.
  */
 
 import { getKernel } from '../kernel/index.js';

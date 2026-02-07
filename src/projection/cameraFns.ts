@@ -13,8 +13,6 @@ import { validationError } from '../core/errors.js';
 
 /**
  * Immutable plain-object representation of a projection camera.
- *
- * @see {@link ProjectionCamera} for the OCCT-backed class equivalent.
  */
 export interface Camera {
   readonly position: Vec3;
@@ -32,8 +30,6 @@ export interface Camera {
  * @param direction - View direction (camera looks along this vector).
  * @param xAxis - Optional horizontal axis; derived automatically if not provided.
  * @returns `Result<Camera>` -- an error if direction is zero-length.
- *
- * @see {@link ProjectionCamera} for the OOP equivalent.
  */
 export function createCamera(
   position: Vec3 = [0, 0, 0],
@@ -52,7 +48,7 @@ export function createCamera(
   if (xAxis) {
     resolvedXAxis = vecNormalize(xAxis);
   } else {
-    // Derive xAxis from direction (same logic as ProjectionCamera)
+    // Derive xAxis from direction
     // Try crossing with Z-axis first, then Y-axis, then X-axis as fallbacks
     let cross = vecCross([0, 0, 1], direction);
     if (vecLength(cross) < 1e-12) {
@@ -78,8 +74,6 @@ export function createCamera(
  * @param camera - Existing camera whose position is preserved.
  * @param target - World-space point to look at.
  * @returns `Result<Camera>` with updated direction and derived axes.
- *
- * @see {@link ProjectionCamera.lookAt} for the OOP equivalent.
  */
 export function cameraLookAt(camera: Camera, target: Vec3): Result<Camera> {
   const direction = vecNormalize(vecSub(camera.position, target));
@@ -91,8 +85,6 @@ export function cameraLookAt(camera: Camera, target: Vec3): Result<Camera> {
  *
  * @param planeName - Named projection direction (e.g., `'front'`, `'top'`).
  * @returns `Result<Camera>` configured for that standard view.
- *
- * @see {@link lookFromPlane} for the OOP equivalent.
  */
 export function cameraFromPlane(planeName: ProjectionPlane): Result<Camera> {
   const config = PROJECTION_PLANES[planeName];

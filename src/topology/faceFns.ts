@@ -36,7 +36,6 @@ export type SurfaceType =
  * Get the geometric surface type of a face.
  *
  * @returns Ok with the surface type, or Err for unrecognized OCCT surface types.
- * @see Face.geomType — OOP equivalent
  */
 export function getSurfaceType(face: Face): Result<SurfaceType> {
   const oc = getKernel().oc;
