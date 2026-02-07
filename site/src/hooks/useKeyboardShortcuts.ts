@@ -3,10 +3,7 @@ import type { ShortcutDef } from '../lib/shortcuts';
 
 type ShortcutActions = Record<string, () => void>;
 
-export function useKeyboardShortcuts(
-  actions: ShortcutActions,
-  shortcuts: ShortcutDef[],
-) {
+export function useKeyboardShortcuts(actions: ShortcutActions, shortcuts: ShortcutDef[]) {
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
 

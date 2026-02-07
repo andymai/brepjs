@@ -15,7 +15,9 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
   }, [data]);
 
   useEffect(() => {
-    return () => { geometry.dispose(); };
+    return () => {
+      geometry.dispose();
+    };
   }, [geometry]);
 
   return (

@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#4ACECC" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>brepjs — TypeScript CAD Library for the Browser</title>
     <meta
@@ -17,7 +21,29 @@
     <meta property="og:type" content="website" />
   </head>
   <body class="bg-gray-950 text-gray-100 antialiased">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading skeleton shown until React mounts -->
+      <div
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          background: #0f0f14;
+        "
+      >
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 32 32"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect width="32" height="32" rx="8" fill="#1a1a24" />
+          <path d="M8 24V8h4l4 6 4-6h4v16h-4V14l-4 6-4-6v10H8z" fill="#4ACECC" />
+        </svg>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

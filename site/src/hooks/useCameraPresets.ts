@@ -24,7 +24,7 @@ export function useCameraPresets(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
   controlsRef: React.RefObject<any>,
   invalidate: () => void,
-  bounds: { center: THREE.Vector3; radius: number } | null,
+  bounds: { center: THREE.Vector3; radius: number } | null
 ) {
   const activePreset = useViewerStore((s) => s.activePreset);
   const animFrameRef = useRef<number>(0);

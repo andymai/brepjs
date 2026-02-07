@@ -14,62 +14,59 @@ export function useCodeExecution() {
   // Ref so onMessage can post directly without depending on React state
   const postMessageRef = useRef<(msg: ToWorker) => void>(() => {});
 
-  const onMessage = useCallback(
-    (msg: FromWorker) => {
-      const store = usePlaygroundStore.getState();
-      switch (msg.type) {
-        case 'init-done': {
-          // Auto-run current code the moment engine is ready —
-          // reads directly from store, posts directly to worker,
-          // no dependency on React render cycle.
-          // Skip auto-run for shared links (pendingReview) — user must review first.
-          if (store.code.trim() && !store.pendingReview) {
-            const id = `eval-${++evalCounter}`;
-            latestIdRef.current = id;
-            store.setIsRunning(true);
-            postMessageRef.current({ type: 'eval', id, code: store.code });
-          }
-          break;
+  const onMessage = useCallback((msg: FromWorker) => {
+    const store = usePlaygroundStore.getState();
+    switch (msg.type) {
+      case 'init-done': {
+        // Auto-run current code the moment engine is ready —
+        // reads directly from store, posts directly to worker,
+        // no dependency on React render cycle.
+        // Skip auto-run for shared links (pendingReview) — user must review first.
+        if (store.code.trim() && !store.pendingReview) {
+          const id = `eval-${++evalCounter}`;
+          latestIdRef.current = id;
+          store.setIsRunning(true);
+          postMessageRef.current({ type: 'eval', id, code: store.code });
         }
-        case 'eval-result':
-          if (msg.id !== latestIdRef.current) return;
-          store.setMeshes(msg.meshes);
-          store.setConsoleOutput(msg.console);
-          store.setTimeMs(msg.timeMs);
-          store.setIsRunning(false);
-          break;
-        case 'eval-error':
-          if (msg.id !== latestIdRef.current) return;
-          store.setError(msg.error, msg.line);
-          store.setIsRunning(false);
-          break;
-        case 'export-result': {
-          const stlBlob = new Blob([msg.stl], { type: 'model/stl' });
-          const stlUrl = URL.createObjectURL(stlBlob);
-          const stlLink = document.createElement('a');
-          stlLink.href = stlUrl;
-          stlLink.download = 'model.stl';
-          stlLink.click();
-          URL.revokeObjectURL(stlUrl);
-          break;
-        }
-        case 'export-step-result': {
-          const stepBlob = new Blob([msg.step], { type: 'application/step' });
-          const stepUrl = URL.createObjectURL(stepBlob);
-          const stepLink = document.createElement('a');
-          stepLink.href = stepUrl;
-          stepLink.download = 'model.step';
-          stepLink.click();
-          URL.revokeObjectURL(stepUrl);
-          break;
-        }
-        case 'export-error':
-          store.setError(msg.error);
-          break;
+        break;
       }
-    },
-    [],
-  );
+      case 'eval-result':
+        if (msg.id !== latestIdRef.current) return;
+        store.setMeshes(msg.meshes);
+        store.setConsoleOutput(msg.console);
+        store.setTimeMs(msg.timeMs);
+        store.setIsRunning(false);
+        break;
+      case 'eval-error':
+        if (msg.id !== latestIdRef.current) return;
+        store.setError(msg.error, msg.line);
+        store.setIsRunning(false);
+        break;
+      case 'export-result': {
+        const stlBlob = new Blob([msg.stl], { type: 'model/stl' });
+        const stlUrl = URL.createObjectURL(stlBlob);
+        const stlLink = document.createElement('a');
+        stlLink.href = stlUrl;
+        stlLink.download = 'model.stl';
+        stlLink.click();
+        URL.revokeObjectURL(stlUrl);
+        break;
+      }
+      case 'export-step-result': {
+        const stepBlob = new Blob([msg.step], { type: 'application/step' });
+        const stepUrl = URL.createObjectURL(stepBlob);
+        const stepLink = document.createElement('a');
+        stepLink.href = stepUrl;
+        stepLink.download = 'model.step';
+        stepLink.click();
+        URL.revokeObjectURL(stepUrl);
+        break;
+      }
+      case 'export-error':
+        store.setError(msg.error);
+        break;
+    }
+  }, []);
 
   const { postMessage } = useWorker(onMessage);
 
@@ -86,7 +83,7 @@ export function useCodeExecution() {
       store.setError(null);
       postMessage({ type: 'eval', id, code });
     },
-    [engineStatus, postMessage],
+    [engineStatus, postMessage]
   );
 
   const exportSTL = useCallback(
@@ -95,7 +92,7 @@ export function useCodeExecution() {
       const id = `stl-${++evalCounter}`;
       postMessage({ type: 'export-stl', id, code });
     },
-    [engineStatus, postMessage],
+    [engineStatus, postMessage]
   );
 
   const exportSTEP = useCallback(
@@ -104,15 +101,17 @@ export function useCodeExecution() {
       const id = `step-${++evalCounter}`;
       postMessage({ type: 'export-step', id, code });
     },
-    [engineStatus, postMessage],
+    [engineStatus, postMessage]
   );
 
   const debouncedRun = useCallback(
     (code: string) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => { runCode(code); }, 800);
+      debounceRef.current = setTimeout(() => {
+        runCode(code);
+      }, 800);
     },
-    [runCode],
+    [runCode]
   );
 
   useEffect(() => {

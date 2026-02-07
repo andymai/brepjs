@@ -24,7 +24,7 @@ export default function ExamplePicker({ onClose, onSelect }: ExamplePickerProps)
           className="w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-surface-overlay"
         >
           <div className="flex items-center gap-2">
-            <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[10px] text-indigo-light">
+            <span className="rounded bg-surface-overlay px-1.5 py-0.5 text-[10px] text-teal-light">
               {ex.category}
             </span>
             <span className="text-sm font-medium text-white">{ex.title}</span>

@@ -32,7 +32,7 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
         };
       }
     },
-    [onFormat],
+    [onFormat]
   );
 
   const handleChange = useCallback(
@@ -42,7 +42,7 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
       setCode(newCode);
       onCodeChange(newCode);
     },
-    [setCode, onCodeChange],
+    [setCode, onCodeChange]
   );
 
   // Sync external code changes (example picker, URL state) to editor

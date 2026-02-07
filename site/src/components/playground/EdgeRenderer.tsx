@@ -9,12 +9,14 @@ export default function EdgeRenderer({ edges }: { edges: Float32Array }) {
   }, [edges]);
 
   useEffect(() => {
-    return () => { geometry.dispose(); };
+    return () => {
+      geometry.dispose();
+    };
   }, [geometry]);
 
   return (
     <lineSegments geometry={geometry}>
-      <lineBasicMaterial color="#2a2a36" />
+      <lineBasicMaterial color="#444455" />
     </lineSegments>
   );
 }

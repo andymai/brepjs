@@ -24,10 +24,22 @@ export const useViewerStore = create<ViewerState>((set) => ({
   fitRequest: 0,
   activePreset: null,
 
-  toggleWireframe: () => { set((s) => ({ showWireframe: !s.showWireframe })); },
-  toggleEdges: () => { set((s) => ({ showEdges: !s.showEdges })); },
-  toggleGrid: () => { set((s) => ({ showGrid: !s.showGrid })); },
-  requestFit: () => { set((s) => ({ fitRequest: s.fitRequest + 1 })); },
-  setCameraPreset: (preset) => { set({ activePreset: preset }); },
-  clearPreset: () => { set({ activePreset: null }); },
+  toggleWireframe: () => {
+    set((s) => ({ showWireframe: !s.showWireframe }));
+  },
+  toggleEdges: () => {
+    set((s) => ({ showEdges: !s.showEdges }));
+  },
+  toggleGrid: () => {
+    set((s) => ({ showGrid: !s.showGrid }));
+  },
+  requestFit: () => {
+    set((s) => ({ fitRequest: s.fitRequest + 1 }));
+  },
+  setCameraPreset: (preset) => {
+    set({ activePreset: preset });
+  },
+  clearPreset: () => {
+    set({ activePreset: null });
+  },
 }));

@@ -21,7 +21,12 @@ export default function ViewerToolbar() {
       <PresetButton preset="front" label="Front" active={activePreset} onClick={setCameraPreset} />
       <PresetButton preset="side" label="Side" active={activePreset} onClick={setCameraPreset} />
       <PresetButton preset="top" label="Top" active={activePreset} onClick={setCameraPreset} />
-      <PresetButton preset="isometric" label="Iso" active={activePreset} onClick={setCameraPreset} />
+      <PresetButton
+        preset="isometric"
+        label="Iso"
+        active={activePreset}
+        onClick={setCameraPreset}
+      />
     </div>
   );
 }
@@ -38,9 +43,10 @@ function ToolbarButton({
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className={`pointer-events-auto rounded px-2 py-1 text-xs font-medium transition-colors ${
         active
-          ? 'bg-indigo-primary/20 text-indigo-light'
+          ? 'bg-teal-primary/20 text-teal-light'
           : 'bg-surface/70 text-gray-500 hover:text-gray-300'
       } border border-border-subtle backdrop-blur-sm`}
     >
@@ -62,10 +68,13 @@ function PresetButton({
 }) {
   return (
     <button
-      onClick={() => onClick(preset)}
+      onClick={() => {
+        onClick(preset);
+      }}
+      aria-pressed={active === preset}
       className={`pointer-events-auto rounded px-2 py-1 text-xs font-medium transition-colors ${
         active === preset
-          ? 'bg-indigo-primary/20 text-indigo-light'
+          ? 'bg-teal-primary/20 text-teal-light'
           : 'bg-surface/70 text-gray-500 hover:text-gray-300'
       } border border-border-subtle backdrop-blur-sm`}
     >
