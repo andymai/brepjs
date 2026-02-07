@@ -2,7 +2,7 @@
  * CAD Web Worker — loads WASM, evaluates user code, returns mesh data.
  *
  * All brepjs exports are injected onto globalThis so user code can
- * use them without imports (e.g. `const box = castShape(makeBox(...).wrapped)`).
+ * use them without imports (e.g. `const b = box(40, 30, 20)`).
  */
 import type { ToWorker, FromWorker, MeshTransfer } from './workerProtocol';
 
@@ -125,11 +125,13 @@ function handleEval(id: string, code: string) {
 
     for (const shape of result) {
       try {
-        // Handle both legacy Shape objects (with .wrapped) and functional branded shapes
+        // Handle fluent wrappers (__wrapped), legacy Shape (.wrapped), and branded shapes
         const fnShape =
-          shape && typeof shape === 'object' && 'wrapped' in shape
-            ? brepjs.castShape(shape.wrapped)
-            : shape;
+          shape && typeof shape === 'object' && '__wrapped' in shape
+            ? (shape as unknown as { val: unknown }).val
+            : shape && typeof shape === 'object' && 'wrapped' in shape
+              ? brepjs.castShape(shape.wrapped)
+              : shape;
 
         const shapeMesh = brepjs.meshShape(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
         const edgeMesh = brepjs.meshShapeEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
@@ -199,7 +201,9 @@ function handleExportSTL(id: string, code: string) {
       result = fn();
     }
 
-    if (result && typeof result === 'object' && 'wrapped' in result) {
+    if (result && typeof result === 'object' && '__wrapped' in result) {
+      result = (result as unknown as { val: unknown }).val;
+    } else if (result && typeof result === 'object' && 'wrapped' in result) {
       result = brepjs.castShape(result.wrapped);
     }
 
@@ -230,11 +234,13 @@ function handleExportSTEP(id: string, code: string) {
       result = fn();
     }
 
-    if (result && typeof result === 'object' && 'wrapped' in result) {
+    if (result && typeof result === 'object' && '__wrapped' in result) {
+      result = (result as unknown as { val: unknown }).val;
+    } else if (result && typeof result === 'object' && 'wrapped' in result) {
       result = brepjs.castShape(result.wrapped);
     }
 
-    const stepResult = brepjs.fnExportSTEP(result);
+    const stepResult = brepjs.exportSTEP(result);
 
     if (brepjs.isOk(stepResult)) {
       const blob: Blob = stepResult.value;

@@ -31,9 +31,11 @@ for (const ex of examples) {
 
     // Try to mesh it (same as worker)
     const fnShape =
-      result && typeof result === 'object' && 'wrapped' in result
-        ? brepjs.castShape(result.wrapped)
-        : result;
+      result && typeof result === 'object' && '__wrapped' in result
+        ? (result as unknown as { val: unknown }).val
+        : result && typeof result === 'object' && 'wrapped' in result
+          ? brepjs.castShape(result.wrapped)
+          : result;
 
     const shapeMesh = brepjs.meshShape(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
     const edgeMesh = brepjs.meshShapeEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
