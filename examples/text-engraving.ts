@@ -6,7 +6,6 @@
 
 import {
   makeBox,
-  castShape,
   cutShape,
   textBlueprints,
   loadFont,
@@ -29,7 +28,7 @@ async function main() {
   const plateWidth = 100;
   const plateHeight = 40;
   const plateDepth = 5;
-  const plate = castShape(makeBox([0, 0, 0], [plateWidth, plateHeight, plateDepth]).wrapped);
+  const plate = makeBox([0, 0, 0], [plateWidth, plateHeight, plateDepth]);
 
   console.log('Created nameplate base:');
   console.log(`  Dimensions: ${plateWidth}mm x ${plateHeight}mm x ${plateDepth}mm`);

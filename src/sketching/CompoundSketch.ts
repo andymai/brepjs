@@ -1,4 +1,4 @@
-import { compoundShapes, addHolesInFace, makeSolid, makeFace } from '../topology/shapeHelpers.js';
+import { makeCompound, addHolesInFace, makeSolid, makeFace } from '../topology/shapeHelpers.js';
 import type Sketch from './Sketch.js';
 
 import { localGC } from '../core/memory.js';
@@ -137,7 +137,7 @@ export default class CompoundSketch implements SketchInterface {
   /** Return all wires (outer + holes) combined into a compound shape. */
   get wires() {
     const wires = this.sketches.map((s) => s.wire);
-    return compoundShapes(wires);
+    return makeCompound(wires);
   }
 
   /** Build a face from the outer boundary with inner wires subtracted as holes. */

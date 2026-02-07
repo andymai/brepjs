@@ -6,7 +6,6 @@
 
 import {
   makeBox,
-  castShape,
   importSTEP,
   exportSTEP,
   exportSTL,
@@ -20,7 +19,7 @@ import {
 
 async function main() {
   // Create a sample shape to export
-  const originalBox = castShape(makeBox([0, 0, 0], [50, 30, 20]).wrapped);
+  const originalBox = makeBox([0, 0, 0], [50, 30, 20]);
   console.log('Original shape volume:', measureVolume(originalBox).toFixed(1), 'mm³');
 
   // Export to STEP

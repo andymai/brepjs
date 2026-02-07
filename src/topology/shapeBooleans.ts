@@ -19,6 +19,8 @@ export type BooleanOperationOptions = {
 /**
  * Builds a TopoDS_Compound from raw OCCT shape handles.
  * Used internally by both high-level (Shape3D[]) and low-level (OcType[]) APIs.
+ *
+ * @deprecated Internal utility — use `makeCompound` for public API usage.
  */
 export function buildCompoundOc(shapes: OcType[]): OcShape {
   const oc = getKernel().oc;

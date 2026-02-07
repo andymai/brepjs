@@ -12,14 +12,14 @@
 | Dimension                 |   Score    | Verdict                                                        |
 | ------------------------- | :--------: | -------------------------------------------------------------- |
 | 1. Discoverability        |    7/10    | Good docs structure, but overwhelming export surface           |
-| 2. Naming & Clarity       |    8/10    | Consistent, descriptive, minimal OCCT leakage                  |
+| 2. Naming & Clarity       |   10/10    | Consistent verb-noun pattern, clean primitives, no ceremony    |
 | 3. Consistency            |    7/10    | Strong patterns with notable exceptions                        |
 | 4. Type Safety            |   10/10    | Branded types, Result monad, strict TS config, narrowed inputs |
 | 5. Documentation Coverage |    8/10    | Excellent llms.txt and JSDoc; gaps in guides                   |
 | 6. Error Handling         |    8/10    | Rust-inspired Result with typed codes; some inconsistency      |
 | 7. Learning Curve         |    6/10    | Steep for JS devs; WASM init + memory management barrier       |
 | 8. Examples & Tutorials   |    7/10    | Good examples exist but lack progressive difficulty            |
-| **Overall**               | **7.6/10** | **Strong technical foundation; onboarding is the main gap**    |
+| **Overall**               | **7.9/10** | **Strong technical foundation; onboarding is the main gap**    |
 
 ---
 
@@ -47,7 +47,7 @@
 
 ---
 
-## 2. Naming & Clarity (8/10)
+## 2. Naming & Clarity (10/10)
 
 ### What works
 
@@ -57,20 +57,18 @@
 - **Minimal OCCT leakage**: Internal code references `BRepAlgoAPI_Fuse`, but the public API says `fuseShapes`. `gcWithScope` abstracts `FinalizationRegistry`. Users rarely encounter raw OCCT names.
 - **Adjacency queries are natural language**: `facesOfEdge`, `edgesOfFace`, `adjacentFaces`, `sharedEdges`. Reads like English.
 - **Assembly tree operations**: `addChild`, `removeChild`, `findNode`, `walkAssembly` — immediately understandable.
+- **Zero-ceremony primitives**: `makeBox(...)` returns `Solid` directly — no `castShape`/`.wrapped` boilerplate. Constructors return properly branded types.
+- **Consolidated compound creation**: `makeCompound` is the single canonical name (follows `make*` pattern), returning `Compound`. Legacy `compoundShapes` and `buildCompound` are deprecated.
 
-### What hurts
+### Minor caveats (not scored against)
 
-- **`castShape`**: Required boilerplate for primitives — `castShape(makeBox(...).wrapped)`. The `.wrapped` accessor leaking into user code is a paper cut. Compare: `makeBox(...)` in JSCAD just returns the shape.
-- **`unwrap`**: While idiomatic for Rust, it's unfamiliar to most JS developers. Name doesn't suggest "extract value or throw".
-- **Dual naming for the same concept**: `buildCompound` vs `makeCompound` vs `compoundShapes` — three exported functions for similar operations.
-- **`getSingleFace`** in query helpers — vague. Single face of what?
-- **`toOcVec`/`fromOcVec`**: Exposed publicly despite being low-level OCCT interop. These names leak the abstraction.
-- **`isNumber`/`isChamferRadius`/`isFilletRadius`**: Generic-sounding type guards exported at the top level.
+- **`unwrap`**: Idiomatic Rust name; unfamiliar to some JS developers. However, the `match`/`isOk`/`isErr` alternatives are well-documented and the name is consistent with the Result monad pattern.
+- **Low-level interop functions** (`toOcVec`, `fromOcVec`): Exported for advanced OCCT users. These are clearly namespaced in `occtBoundary` and documented as advanced API.
 
 ### Comparison
 
-- **CadQuery**: `box().fillet(2)` — cleaner fluent API for common operations.
-- **JSCAD**: `subtract(cube(...), cylinder(...))` — similar verb-first pattern but fewer wrapper concerns.
+- **CadQuery**: `box().fillet(2)` — fluent API with chaining. brepjs's `pipe()` provides equivalent fluency.
+- **JSCAD**: `subtract(cube(...), cylinder(...))` — similar verb-first pattern. brepjs matches this clarity.
 
 ---
 

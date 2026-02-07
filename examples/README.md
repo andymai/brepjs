@@ -102,14 +102,12 @@ Use `using` for automatic cleanup:
 
 ### Type Casting
 
-Convert between legacy and functional APIs:
+Constructors return branded types directly:
 
 ```typescript
-// Legacy shape to functional
-const fnShape = castShape(legacyShape.wrapped);
-
-// Create from functional API
-const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+// Constructors return properly typed shapes — no wrapping needed
+const box = makeBox([0, 0, 0], [10, 10, 10]); // Returns Solid
+const cylinder = makeCylinder(5, 10); // Returns Solid
 ```
 
 ## Requirements

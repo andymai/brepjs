@@ -8,7 +8,6 @@ import {
   makeBox,
   makeCylinder,
   makeSphere,
-  castShape,
   fuseShapes,
   cutShape,
   intersectShapes,
@@ -19,10 +18,10 @@ import {
 } from 'brepjs';
 
 async function main() {
-  // Create basic primitives
-  const box = castShape(makeBox([0, 0, 0], [20, 20, 20]).wrapped);
-  const cylinder = castShape(makeCylinder(5, 30).wrapped);
-  const sphere = castShape(makeSphere(8).wrapped);
+  // Create basic primitives — constructors return branded types directly
+  const box = makeBox([0, 0, 0], [20, 20, 20]);
+  const cylinder = makeCylinder(5, 30);
+  const sphere = makeSphere(8);
 
   console.log('Created primitives:');
   console.log(`  Box volume: ${measureVolume(box).toFixed(1)} mm³`);

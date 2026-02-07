@@ -757,8 +757,7 @@ import {
   addHolesInFace, makePolygon,
   makeCylinder, makeSphere, makeCone, makeTorus, makeEllipsoid,
   makeBox, makeVertex, makeOffset, makeBaseBox,
-  compoundShapes, makeCompound, weldShellsAndFaces, makeSolid,
-  buildCompound
+  makeCompound, weldShellsAndFaces, makeSolid
 } from 'brepjs';
 
 // 1D shapes (edges & wires)
@@ -794,9 +793,7 @@ makeSolid(facesOrShells): Result<Solid>
 makeVertex(point): Vertex
 
 // Compound & shell
-compoundShapes(shapes): AnyShape
-makeCompound(shapes): AnyShape          // alias
-buildCompound(shapes): Compound
+makeCompound(shapes): Compound
 weldShellsAndFaces(facesOrShells, ignoreType?): Result<Shell>
 makeOffset(face, offset, tolerance?): Result<Shape3D>
 ```

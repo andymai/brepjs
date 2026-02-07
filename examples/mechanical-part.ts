@@ -7,20 +7,17 @@
 import {
   makeBox,
   makeCylinder,
-  castShape,
-  cutShape,
   cutAll,
   translateShape,
   measureVolume,
   exportSTEP,
-  unwrap,
   isOk,
   type Shape3D,
 } from 'brepjs';
 
 async function main() {
   // Create the base bracket plate (100mm x 60mm x 10mm)
-  const basePlate = castShape(makeBox([0, 0, 0], [100, 60, 10]).wrapped);
+  const basePlate = makeBox([0, 0, 0], [100, 60, 10]);
   console.log('Base plate created');
 
   // Create mounting holes (4x diameter 8mm holes at corners)
@@ -29,16 +26,10 @@ async function main() {
   const holeInset = 15; // Distance from edge
 
   const holes: Shape3D[] = [
-    castShape(makeCylinder(holeRadius, holeHeight).translate([holeInset, holeInset, -2]).wrapped),
-    castShape(
-      makeCylinder(holeRadius, holeHeight).translate([100 - holeInset, holeInset, -2]).wrapped
-    ),
-    castShape(
-      makeCylinder(holeRadius, holeHeight).translate([holeInset, 60 - holeInset, -2]).wrapped
-    ),
-    castShape(
-      makeCylinder(holeRadius, holeHeight).translate([100 - holeInset, 60 - holeInset, -2]).wrapped
-    ),
+    translateShape(makeCylinder(holeRadius, holeHeight), [holeInset, holeInset, -2]),
+    translateShape(makeCylinder(holeRadius, holeHeight), [100 - holeInset, holeInset, -2]),
+    translateShape(makeCylinder(holeRadius, holeHeight), [holeInset, 60 - holeInset, -2]),
+    translateShape(makeCylinder(holeRadius, holeHeight), [100 - holeInset, 60 - holeInset, -2]),
   ];
   console.log(`Created ${holes.length} mounting holes`);
 
@@ -47,7 +38,7 @@ async function main() {
   const slotWidth = 20;
   const slotX = (100 - slotLength) / 2;
   const slotY = (60 - slotWidth) / 2;
-  const slot = castShape(makeBox([slotX, slotY, -2], [slotX + slotLength, slotY + slotWidth, 15]).wrapped);
+  const slot = makeBox([slotX, slotY, -2], [slotX + slotLength, slotY + slotWidth, 15]);
   console.log('Created center slot');
 
   // Cut all holes and slot from the base plate

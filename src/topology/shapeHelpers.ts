@@ -9,6 +9,7 @@ import { bug, validationError, occtError, typeCastError } from '../core/errors.j
 import type {
   AnyShape,
   Shape3D,
+  Compound,
   Edge,
   Face,
   Wire,
@@ -21,6 +22,7 @@ import {
   createFace,
   createWire,
   createSolid,
+  createCompound,
   createVertex,
   isShape3D,
   isEdge,
@@ -676,23 +678,28 @@ export const makeOffset = (face: Face, offset: number, tolerance = 1e-6): Result
   }
 };
 
-/** Combine multiple shapes into a single compound shape. */
-export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => {
+/**
+ * Build a compound from multiple shapes.
+ *
+ * @param shapeArray - Shapes to group into a single compound.
+ * @returns A new Compound containing all input shapes.
+ */
+export const makeCompound = (shapeArray: AnyShape[]): Compound => {
   const oc = getKernel().oc;
   const builder = new oc.TopoDS_Builder();
   const compound = new oc.TopoDS_Compound();
   builder.MakeCompound(compound);
 
-  shapeArray.forEach((s) => {
+  for (const s of shapeArray) {
     builder.Add(compound, s.wrapped);
-  });
+  }
 
-  const newShape = unwrap(cast(compound));
-  return newShape;
+  builder.delete();
+  return createCompound(compound);
 };
 
-/** Alias for {@link compoundShapes}. */
-export const makeCompound = compoundShapes;
+/** @deprecated Use {@link makeCompound} instead. */
+export const compoundShapes = (shapeArray: AnyShape[]): AnyShape => makeCompound(shapeArray);
 
 function _weld(facesOrShells: Array<Face | Shell>): AnyShape {
   const sewn = getKernel().sew(facesOrShells.map((s) => s.wrapped));
