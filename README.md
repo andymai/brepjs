@@ -50,11 +50,18 @@ const stepBlob = unwrap(exportSTEP(moved));
 
 ## Examples
 
-See the [examples/](./examples/) directory for complete workflows:
+See the [examples/](./examples/) directory for complete workflows, ordered from beginner to advanced:
 
-- **[basic-primitives.ts](./examples/basic-primitives.ts)** — Create shapes and boolean operations
-- **[mechanical-part.ts](./examples/mechanical-part.ts)** — Build a bracket with holes
+```bash
+npm run example examples/hello-world.ts
+```
+
+- **[hello-world.ts](./examples/hello-world.ts)** — Your first shape (start here)
+- **[basic-primitives.ts](./examples/basic-primitives.ts)** — Primitives and boolean operations
+- **[mechanical-part.ts](./examples/mechanical-part.ts)** — Bracket with holes and slots
 - **[2d-to-3d.ts](./examples/2d-to-3d.ts)** — Sketch to extrusion workflow
+- **[parametric-part.ts](./examples/parametric-part.ts)** — Configurable flanged pipe fitting
+- **[threejs-rendering.ts](./examples/threejs-rendering.ts)** — Mesh data for Three.js/WebGL
 - **[import-export.ts](./examples/import-export.ts)** — Load, modify, export files
 - **[text-engraving.ts](./examples/text-engraving.ts)** — Engrave text on shapes
 
