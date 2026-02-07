@@ -6,7 +6,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Edge, Face, Shape3D } from '../core/shapeTypes.js';
+import type { Edge, Face, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { occtError, validationError } from '../core/errors.js';
@@ -20,12 +20,12 @@ import { getEdges } from './shapeFns.js';
  * by offsetting it by the given thickness. Positive thickness offsets
  * along the surface normal; negative thickness offsets against it.
  */
-export function thickenSurface(shape: AnyShape, thickness: number): Result<AnyShape> {
+export function thickenSurface(shape: Face | Shell, thickness: number): Result<Solid> {
   return kernelCall(
     () => getKernel().thicken(shape.wrapped, thickness),
     'THICKEN_FAILED',
     'Thicken operation failed'
-  );
+  ) as Result<Solid>;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,11 +192,11 @@ export function shellShape(
 /**
  * Offset all faces of a shape by a given distance.
  *
- * @param shape - The shape to offset.
+ * @param shape - The shape to offset (must be a 3D shape with faces).
  * @param distance - Offset distance (positive = outward, negative = inward).
  * @param tolerance - Offset tolerance (default 1e-6).
  */
-export function offsetShape(shape: AnyShape, distance: number, tolerance = 1e-6): Result<AnyShape> {
+export function offsetShape(shape: Shape3D, distance: number, tolerance = 1e-6): Result<Shape3D> {
   if (distance === 0) {
     return err(validationError('ZERO_OFFSET', 'Offset distance cannot be zero'));
   }
@@ -205,5 +205,5 @@ export function offsetShape(shape: AnyShape, distance: number, tolerance = 1e-6)
     () => getKernel().offset(shape.wrapped, distance, tolerance),
     'OFFSET_FAILED',
     'Offset operation failed'
-  );
+  ) as Result<Shape3D>;
 }

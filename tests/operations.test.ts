@@ -217,22 +217,22 @@ describe('makePlaneFromFace', () => {
 describe('Boolean operations', () => {
   it('fuse increases volume', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
-    const fused = unwrap(fuseShapes(box1 as any, box2));
+    const box2 = translateShape(box1, [5, 0, 0]);
+    const fused = unwrap(fuseShapes(box1, box2));
     expect(measureVolume(fused)).toBeCloseTo(1500, 0);
   });
 
   it('cut decreases volume', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
-    const cut = unwrap(cutShape(box1 as any, box2));
+    const box2 = translateShape(box1, [5, 0, 0]);
+    const cut = unwrap(cutShape(box1, box2));
     expect(measureVolume(cut)).toBeCloseTo(500, 0);
   });
 
   it('intersect yields overlap', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
-    const intersection = unwrap(intersectShapes(box1 as any, box2));
+    const box2 = translateShape(box1, [5, 0, 0]);
+    const intersection = unwrap(intersectShapes(box1, box2));
     expect(measureVolume(intersection)).toBeCloseTo(500, 0);
   });
 });

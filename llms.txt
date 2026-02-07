@@ -293,7 +293,7 @@ import { fuseShapes, cutShape, intersectShapes, sectionShape, splitShape, sliceS
 
 fuseShapes(a, b, options?): Result<Shape3D>
 cutShape(base, tool, options?): Result<Shape3D>
-intersectShapes(a, b, options?): Result<Shape3D>
+intersectShapes(a: Shape3D, b: Shape3D, options?): Result<Shape3D>
 sectionShape(shape, plane, {approximation?, planeSize?}?): Result<AnyShape>
 splitShape(shape, tools): Result<AnyShape>
 sliceShape(shape, planes, options?): Result<AnyShape[]>
@@ -348,8 +348,8 @@ const hollowed = unwrap(shellShape(box, topFaces, 1));
 ```typescript
 import { offsetShape, thickenSurface } from 'brepjs';
 
-offsetShape(shape, distance, tolerance?): Result<AnyShape>
-thickenSurface(shape, thickness): Result<AnyShape>
+offsetShape(shape: Shape3D, distance, tolerance?): Result<Shape3D>
+thickenSurface(shape: Face | Shell, thickness): Result<Solid>
 ```
 
 ### Transformations

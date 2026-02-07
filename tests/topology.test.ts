@@ -99,10 +99,10 @@ beforeAll(async () => {
 
 describe('Shape base methods', () => {
   it('clone solid', () => {
-    expect(measureVolume(cloneShape(makeBox([0, 0, 0], [10, 10, 10]) as any))).toBeCloseTo(1000, 0);
+    expect(measureVolume(cloneShape(makeBox([0, 0, 0], [10, 10, 10])))).toBeCloseTo(1000, 0);
   });
   it('clone edge', () => {
-    expect(cloneShape(makeLine([0, 0, 0], [10, 0, 0]) as any)).toBeDefined();
+    expect(cloneShape(makeLine([0, 0, 0], [10, 0, 0]))).toBeDefined();
   });
   it('serialize', () => {
     const s = serializeShape(makeBox([0, 0, 0], [5, 5, 5]));
@@ -124,51 +124,54 @@ describe('Shape base methods', () => {
   });
   it('simplify', () => {
     const f = unwrap(
-      fuseShapes(
-        makeBox([0, 0, 0], [10, 10, 10]) as any,
-        makeBox([10, 0, 0], [20, 10, 10]) as any,
-        { simplify: false }
-      )
+      fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
+        simplify: false,
+      })
     );
-    expect(measureVolume(simplifyShape(f as any))).toBeCloseTo(2000, 0);
+    expect(measureVolume(simplifyShape(f))).toBeCloseTo(2000, 0);
   });
 });
 
 describe('Shape transforms', () => {
   it('translateX', () => {
-    expect(
-      measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]))
-    ).toBeCloseTo(1000, 0);
+    expect(measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]), [5, 0, 0]))).toBeCloseTo(
+      1000,
+      0
+    );
   });
   it('translateY', () => {
-    expect(
-      measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [0, 5, 0]))
-    ).toBeCloseTo(1000, 0);
+    expect(measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]), [0, 5, 0]))).toBeCloseTo(
+      1000,
+      0
+    );
   });
   it('translateZ', () => {
-    expect(
-      measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [0, 0, 5]))
-    ).toBeCloseTo(1000, 0);
+    expect(measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]), [0, 0, 5]))).toBeCloseTo(
+      1000,
+      0
+    );
   });
   it('translate(x,y,z)', () => {
-    expect(
-      measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [1, 2, 3]))
-    ).toBeCloseTo(1000, 0);
+    expect(measureVolume(translateShape(makeBox([0, 0, 0], [10, 10, 10]), [1, 2, 3]))).toBeCloseTo(
+      1000,
+      0
+    );
   });
   it('rotate', () => {
     expect(
-      measureVolume(rotateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, 90, [0, 0, 0], [1, 0, 0]))
+      measureVolume(rotateShape(makeBox([0, 0, 0], [10, 10, 10]), 90, [0, 0, 0], [1, 0, 0]))
     ).toBeCloseTo(1000, 0);
   });
   it('mirror', () => {
     expect(
-      measureVolume(mirrorShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [0, 1, 0], [0, 0, 0]))
+      measureVolume(mirrorShape(makeBox([0, 0, 0], [10, 10, 10]), [0, 1, 0], [0, 0, 0]))
     ).toBeCloseTo(1000, 0);
   });
   it('scale', () => {
-    expect(
-      measureVolume(scaleShape(makeBox([0, 0, 0], [10, 10, 10]) as any, 0.5, [5, 5, 5]))
-    ).toBeCloseTo(125, 0);
+    expect(measureVolume(scaleShape(makeBox([0, 0, 0], [10, 10, 10]), 0.5, [5, 5, 5]))).toBeCloseTo(
+      125,
+      0
+    );
   });
 });
 
@@ -290,13 +293,9 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          fuseShapes(
-            makeBox([0, 0, 0], [10, 10, 10]) as any,
-            makeBox([10, 0, 0], [20, 10, 10]) as any,
-            {
-              optimisation: 'commonFace',
-            }
-          )
+          fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
+            optimisation: 'commonFace',
+          })
         )
       )
     ).toBeCloseTo(2000, 0);
@@ -305,13 +304,9 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          fuseShapes(
-            makeBox([0, 0, 0], [10, 10, 10]) as any,
-            makeBox([10, 0, 0], [20, 10, 10]) as any,
-            {
-              optimisation: 'sameFace',
-            }
-          )
+          fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([10, 0, 0], [20, 10, 10]), {
+            optimisation: 'sameFace',
+          })
         )
       )
     ).toBeCloseTo(2000, 0);
@@ -320,13 +315,9 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          fuseShapes(
-            makeBox([0, 0, 0], [10, 10, 10]) as any,
-            makeBox([5, 0, 0], [15, 10, 10]) as any,
-            {
-              simplify: false,
-            }
-          )
+          fuseShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([5, 0, 0], [15, 10, 10]), {
+            simplify: false,
+          })
         )
       )
     ).toBeCloseTo(1500, 0);
@@ -335,13 +326,9 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          cutShape(
-            makeBox([0, 0, 0], [10, 10, 10]) as any,
-            makeBox([5, 0, 0], [15, 10, 10]) as any,
-            {
-              optimisation: 'commonFace',
-            }
-          )
+          cutShape(makeBox([0, 0, 0], [10, 10, 10]), makeBox([5, 0, 0], [15, 10, 10]), {
+            optimisation: 'commonFace',
+          })
         )
       )
     ).toBeCloseTo(500, 0);
@@ -350,13 +337,9 @@ describe('Boolean opts', () => {
     expect(
       measureVolume(
         unwrap(
-          intersectShapes(
-            makeBox([0, 0, 0], [10, 10, 10]) as any,
-            makeBox([5, 0, 0], [15, 10, 10]) as any,
-            {
-              simplify: false,
-            }
-          )
+          intersectShapes(makeBox([0, 0, 0], [10, 10, 10]), makeBox([5, 0, 0], [15, 10, 10]), {
+            simplify: false,
+          })
         )
       )
     ).toBeCloseTo(500, 0);

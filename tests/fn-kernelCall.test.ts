@@ -22,7 +22,7 @@ import {
   castShape,
 } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
-import type { Shape3D } from '../src/core/shapeTypes.js';
+import type { Face, Shape3D } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initOC();
@@ -164,7 +164,7 @@ describe('pipeline', () => {
 describe('refactored operations', () => {
   it('thickenSurface works with kernelCall', () => {
     const sketch = sketchRectangle(10, 10);
-    const face = castShape(sketch.face().wrapped);
+    const face = castShape(sketch.face().wrapped) as Face;
     const result = thickenSurface(face, 5);
     expect(isOk(result)).toBe(true);
     expect(isSolid(unwrap(result))).toBe(true);

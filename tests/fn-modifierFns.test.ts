@@ -20,7 +20,7 @@ import {
   offsetShape,
 } from '../src/index.js';
 import { measureVolume } from '../src/measurement/measureFns.js';
-import type { Shape3D } from '../src/core/shapeTypes.js';
+import type { Face } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initOC();
@@ -29,7 +29,7 @@ beforeAll(async () => {
 describe('thickenSurface', () => {
   it('thickens a planar face into a solid', () => {
     const sketch = sketchRectangle(10, 10);
-    const face = castShape(sketch.face().wrapped);
+    const face = castShape(sketch.face().wrapped) as Face;
     const result = thickenSurface(face, 5);
 
     expect(isOk(result)).toBe(true);
@@ -39,7 +39,7 @@ describe('thickenSurface', () => {
 
   it('thickens with negative thickness (offsets in opposite direction)', () => {
     const sketch = sketchRectangle(10, 10);
-    const face = castShape(sketch.face().wrapped);
+    const face = castShape(sketch.face().wrapped) as Face;
     const result = thickenSurface(face, -5);
 
     expect(isOk(result)).toBe(true);
@@ -49,15 +49,14 @@ describe('thickenSurface', () => {
 
   it('produces expected volume for a rectangular face thickened by a known amount', () => {
     const sketch = sketchRectangle(10, 20);
-    const face = castShape(sketch.face().wrapped);
+    const face = castShape(sketch.face().wrapped) as Face;
     const result = thickenSurface(face, 3);
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    // After isSolid check above, safe to assert Shape3D
     expect(isSolid(solid)).toBe(true);
     // 10 x 20 face thickened by 3 => |volume| ≈ 600
-    const vol = measureVolume(solid as Shape3D);
+    const vol = measureVolume(solid);
     expect(Math.abs(vol)).toBeCloseTo(600, 0);
   });
 });
