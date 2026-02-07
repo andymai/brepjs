@@ -4,9 +4,10 @@ import type { Vector3Tuple } from 'three';
 interface SceneSetupProps {
   autoRotate?: boolean;
   target?: Vector3Tuple;
+  gridVisible?: boolean;
 }
 
-export default function SceneSetup({ autoRotate = false, target }: SceneSetupProps) {
+export default function SceneSetup({ autoRotate = false, target, gridVisible = true }: SceneSetupProps) {
   return (
     <>
       <ambientLight intensity={0.1} />
@@ -27,19 +28,21 @@ export default function SceneSetup({ autoRotate = false, target }: SceneSetupPro
         autoRotateSpeed={1.5}
         target={target}
       />
-      <Grid
-        args={[100, 100]}
-        position={[0, -0.01, 0]}
-        cellSize={5}
-        cellThickness={0.5}
-        cellColor="#18182a"
-        sectionSize={25}
-        sectionThickness={1}
-        sectionColor="#252545"
-        fadeDistance={80}
-        fadeStrength={1}
-        infiniteGrid
-      />
+      {gridVisible && (
+        <Grid
+          args={[100, 100]}
+          position={[0, -0.01, 0]}
+          cellSize={5}
+          cellThickness={0.5}
+          cellColor="#18182a"
+          sectionSize={25}
+          sectionThickness={1}
+          sectionColor="#252545"
+          fadeDistance={80}
+          fadeStrength={1}
+          infiniteGrid
+        />
+      )}
     </>
   );
 }

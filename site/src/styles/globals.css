@@ -40,3 +40,27 @@ body,
 .scrollbar-thin::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+/* react-resizable-panels v4 separator */
+[data-separator] {
+  transition: background-color 0.15s;
+}
+[data-separator="hover"],
+[data-separator="active"] {
+  background-color: rgba(99, 102, 241, 0.3);
+}
