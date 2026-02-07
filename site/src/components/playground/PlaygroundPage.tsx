@@ -39,8 +39,9 @@ export default function PlaygroundPage() {
   const editorFormatFnRef = useMemo(() => ({ current: null as (() => void) | null }), []);
 
   // Layout persistence
-  const hLayout = useDefaultLayout({ id: 'playground-h', storage: localStorage });
-  const vLayout = useDefaultLayout({ id: 'playground-v', storage: localStorage });
+  const storage = typeof window !== 'undefined' ? localStorage : undefined;
+  const hLayout = useDefaultLayout({ id: 'playground-h', storage });
+  const vLayout = useDefaultLayout({ id: 'playground-v', storage });
 
   // Seed viewer with pre-computed mesh while WASM engine loads
   useEffect(() => {
@@ -121,11 +122,12 @@ export default function PlaygroundPage() {
       run: handleRun,
       share: handleShare,
       exportSTL: handleExportSTL,
+      exportSTEP: handleExportSTEP,
       formatCode: handleFormat,
       toggleOutput: toggleConsole,
       toggleViewer: toggleViewer,
     }),
-    [handleRun, handleShare, handleExportSTL, handleFormat, toggleConsole, toggleViewer],
+    [handleRun, handleShare, handleExportSTL, handleExportSTEP, handleFormat, toggleConsole, toggleViewer],
   );
 
   useKeyboardShortcuts(shortcutActions, shortcutDefs);

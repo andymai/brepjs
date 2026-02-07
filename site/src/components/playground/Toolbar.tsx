@@ -60,7 +60,7 @@ export default function Toolbar({
         <button
           onClick={onExportSTEP}
           disabled={!engineReady}
-          title="Export STEP"
+          title={`Export STEP (${formatShortcut(SHORTCUTS.exportSTEP)})`}
           className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
         >
           STEP
