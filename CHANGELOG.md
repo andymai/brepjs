@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.21.0](https://github.com/andymai/brepjs/compare/brepjs-v4.20.0...brepjs-v4.21.0) (2026-02-07)
+
+
+### Features
+
+* null-shape pre-validation for measurement and interference (Type Safety 9→10) ([#152](https://github.com/andymai/brepjs/issues/152)) ([1fadec4](https://github.com/andymai/brepjs/commit/1fadec43558e8e6915926df92cd6a5a5aee67d4a))
+
 ## [4.20.0](https://github.com/andymai/brepjs/compare/brepjs-v4.19.0...brepjs-v4.20.0) (2026-02-07)
 
 
