@@ -51,10 +51,11 @@ export default defineConfig({
     exclude: ['brepjs-opencascade'],
   },
   build: {
+    chunkSizeWarningLimit: 1100,
     rollupOptions: {
       output: {
         manualChunks: {
-          monaco: ['monaco-editor'],
+          monaco: ['monaco-editor', '@monaco-editor/react'],
           three: ['three', '@react-three/fiber', '@react-three/drei'],
         },
       },
