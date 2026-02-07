@@ -1,6 +1,6 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope, localGC, WrappingObj } from '../core/memory.js';
+import { gcWithScope, localGC } from '../core/memory.js';
 import { toOcPnt, toOcVec, makeOcAx1, makeOcAx2, makeOcAx3 } from '../core/occtBoundary.js';
 import type { Vec3 } from '../core/types.js';
 import { cast, downcast } from './cast.js';
@@ -502,40 +502,42 @@ export const makeTorus = (
   return solid;
 };
 
-class EllipsoidTransform extends WrappingObj<OcType> {
-  constructor(x: number, y: number, z: number) {
-    const oc = getKernel().oc;
-    const r = gcWithScope();
+/** Build a gp_GTrsf that scales a unit sphere into an ellipsoid. */
+function makeEllipsoidTransform(
+  x: number,
+  y: number,
+  z: number
+): { transform: OcType; applyToPoint: (p: OcType) => OcType } {
+  const oc = getKernel().oc;
+  const r = gcWithScope();
 
-    const xyRatio = Math.sqrt((x * y) / z);
-    const xzRatio = x / xyRatio;
-    const yzRatio = y / xyRatio;
+  const xyRatio = Math.sqrt((x * y) / z);
+  const xzRatio = x / xyRatio;
+  const yzRatio = y / xyRatio;
 
-    const ax1 = r(makeOcAx1([0, 0, 0], [0, 1, 0]));
-    const ax2 = r(makeOcAx1([0, 0, 0], [0, 0, 1]));
-    const ax3 = r(makeOcAx1([0, 0, 0], [1, 0, 0]));
+  const ax1 = r(makeOcAx1([0, 0, 0], [0, 1, 0]));
+  const ax2 = r(makeOcAx1([0, 0, 0], [0, 0, 1]));
+  const ax3 = r(makeOcAx1([0, 0, 0], [1, 0, 0]));
 
-    const transform = new oc.gp_GTrsf_1();
-    transform.SetAffinity_1(ax1, xzRatio);
-    const xy = r(new oc.gp_GTrsf_1());
-    xy.SetAffinity_1(ax2, xyRatio);
-    const yz = r(new oc.gp_GTrsf_1());
-    yz.SetAffinity_1(ax3, yzRatio);
+  const transform = new oc.gp_GTrsf_1();
+  transform.SetAffinity_1(ax1, xzRatio);
+  const xy = r(new oc.gp_GTrsf_1());
+  xy.SetAffinity_1(ax2, xyRatio);
+  const yz = r(new oc.gp_GTrsf_1());
+  yz.SetAffinity_1(ax3, yzRatio);
 
-    transform.Multiply(xy);
-    transform.Multiply(yz);
+  transform.Multiply(xy);
+  transform.Multiply(yz);
 
-    super(transform);
-  }
-
-  applyToPoint(p: OcType): OcType {
-    const oc = getKernel().oc;
-    const r = gcWithScope();
-
-    const coords = r(p.XYZ());
-    this.wrapped.Transforms_1(coords);
-    return new oc.gp_Pnt_2(coords);
-  }
+  return {
+    transform,
+    applyToPoint(p: OcType): OcType {
+      const r2 = gcWithScope();
+      const coords = r2(p.XYZ());
+      transform.Transforms_1(coords);
+      return new oc.gp_Pnt_2(coords);
+    },
+  };
 }
 
 function convertToJSArray(arrayOfPoints: OcType): OcType[][] {
@@ -571,15 +573,16 @@ export const makeEllipsoid = (aLength: number, bLength: number, cLength: number)
 
   try {
     const poles = convertToJSArray(baseSurface.Poles_2());
-    const transform = new EllipsoidTransform(aLength, bLength, cLength);
+    const ellipsoid = makeEllipsoidTransform(aLength, bLength, cLength);
 
     poles.forEach((columns, rowIdx) => {
       columns.forEach((value, colIdx) => {
-        const newPoint = transform.applyToPoint(value);
+        const newPoint = ellipsoid.applyToPoint(value);
         baseSurface.SetPole_1(rowIdx + 1, colIdx + 1, newPoint);
         newPoint.delete();
       });
     });
+    ellipsoid.transform.delete();
     const shell = unwrap(
       cast(r(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
     ) as Shell;

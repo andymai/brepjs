@@ -4,6 +4,7 @@ import {
   curvesAsEdgesOnFace,
   curvesAsEdgesOnPlane,
   curvesBoundingBox,
+  transformCurves,
   mirrorTransform2d,
   rotateTransform2d,
   stretchTransform2d,
@@ -164,7 +165,7 @@ export default class Blueprint implements DrawingInterface {
    * @returns A new stretched Blueprint.
    */
   stretch(ratio: number, direction: Point2D, origin: Point2D = [0, 0]): Blueprint {
-    const curves = stretchTransform2d(ratio, direction, origin).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, stretchTransform2d(ratio, direction, origin));
     return new Blueprint(curves);
   }
 
@@ -177,7 +178,7 @@ export default class Blueprint implements DrawingInterface {
    */
   scale(scaleFactor: number, center?: Point2D): Blueprint {
     const centerPoint = center || this.boundingBox.center;
-    const curves = scaleTransform2d(scaleFactor, centerPoint).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, scaleTransform2d(scaleFactor, centerPoint));
     return new Blueprint(curves);
   }
 
@@ -189,7 +190,7 @@ export default class Blueprint implements DrawingInterface {
    * @returns A new rotated Blueprint.
    */
   rotate(angle: number, center?: Point2D): Blueprint {
-    const curves = rotateTransform2d(angle * DEG2RAD, center).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, rotateTransform2d(angle * DEG2RAD, center));
     return new Blueprint(curves);
   }
 
@@ -204,7 +205,7 @@ export default class Blueprint implements DrawingInterface {
     const translationVector = isPoint2D(xDistOrPoint)
       ? xDistOrPoint
       : ([xDistOrPoint, yDist] as Point2D);
-    const curves = translationTransform2d(translationVector).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, translationTransform2d(translationVector));
     return new Blueprint(curves);
   }
 
@@ -221,7 +222,7 @@ export default class Blueprint implements DrawingInterface {
     origin: Point2D = [0, 0],
     mode: 'center' | 'plane' = 'center'
   ): Blueprint {
-    const curves = mirrorTransform2d(centerOrDirection, origin, mode).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, mirrorTransform2d(centerOrDirection, origin, mode));
     return new Blueprint(curves);
   }
 

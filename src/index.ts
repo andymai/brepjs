@@ -171,7 +171,7 @@ export {
 export { loft, type LoftConfig } from './operations/loft.js';
 
 export {
-  AssemblyExporter,
+  type AssemblyExporter,
   createAssembly,
   exportSTEP,
   type ShapeConfig,

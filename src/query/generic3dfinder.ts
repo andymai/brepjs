@@ -14,7 +14,6 @@ import { toOcPnt } from '../core/occtBoundary.js';
 
 import type { AnyShape } from '../topology/shapes.js';
 import { getKernel } from '../kernel/index.js';
-import { WrappingObj } from '../core/memory.js';
 import type { OcType } from '../kernel/types.js';
 
 /**
@@ -47,28 +46,29 @@ const makeBoxOc = (corner1: PointInput, corner2: PointInput): OcType => {
 };
 
 /**
- * Minimal distance query that wraps BRepExtrema_DistShapeShape.
+ * Minimal distance query wrapping BRepExtrema_DistShapeShape.
  * Keeps the first shape loaded so multiple second-shape queries are efficient.
  */
-class DistanceQueryInternal extends WrappingObj<OcType> {
-  private readonly progress: OcType;
+class DistanceQueryInternal {
+  private readonly _dist: OcType;
+  private readonly _progress: OcType;
 
   constructor(shape1: OcType) {
     const oc = getKernel().oc;
-    super(new oc.BRepExtrema_DistShapeShape_1());
-    this.progress = new oc.Message_ProgressRange_1();
-    this.wrapped.LoadS1(shape1);
+    this._dist = new oc.BRepExtrema_DistShapeShape_1();
+    this._progress = new oc.Message_ProgressRange_1();
+    this._dist.LoadS1(shape1);
   }
 
   distanceTo(shape2Wrapped: OcType): number {
-    this.wrapped.LoadS2(shape2Wrapped);
-    this.wrapped.Perform(this.progress);
-    return this.wrapped.Value();
+    this._dist.LoadS2(shape2Wrapped);
+    this._dist.Perform(this._progress);
+    return this._dist.Value();
   }
 
-  override delete(): void {
-    this.progress.delete();
-    super.delete();
+  delete(): void {
+    this._progress.delete();
+    this._dist.delete();
   }
 }
 

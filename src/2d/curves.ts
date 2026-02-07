@@ -1,6 +1,6 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope, localGC, WrappingObj } from '../core/memory.js';
+import { gcWithScope, localGC } from '../core/memory.js';
 import type { Plane } from '../core/planeTypes.js';
 import { makeOcAx2 } from '../core/occtBoundary.js';
 import type { Face } from '../topology/shapes.js';
@@ -65,12 +65,11 @@ export const transformCurves = (curves: Curve2D[], transformation: OcType): Curv
   return modifiedCurves;
 };
 
-/** Wrapper around an OCCT `gp_GTrsf2d` for transforming 2D curves. */
-export class Transformation2D extends WrappingObj<OcType> {
-  transformCurves(curves: Curve2D[]): Curve2D[] {
-    return transformCurves(curves, this.wrapped);
-  }
-}
+/**
+ * Raw OCCT `gp_GTrsf2d` — replaces the old `Transformation2D` WrappingObj class.
+ * Callers are responsible for lifetime management.
+ */
+export type Transformation2D = OcType;
 
 /** Create a 2D affinity (non-uniform scale) transformation along a direction. */
 export const stretchTransform2d = (
@@ -84,7 +83,7 @@ export const stretchTransform2d = (
   transform.SetAffinity(ax, ratio);
 
   ax.delete();
-  return new Transformation2D(transform);
+  return transform;
 };
 
 /** Create a 2D translation transformation. */
@@ -97,7 +96,7 @@ export const translationTransform2d = (translation: Point2D): Transformation2D =
 
   const transform = new oc.gp_GTrsf2d_2(rotation);
   gc();
-  return new Transformation2D(transform);
+  return transform;
 };
 
 /**
@@ -122,7 +121,7 @@ export const mirrorTransform2d = (
 
   const transform = new oc.gp_GTrsf2d_2(rotation);
   gc();
-  return new Transformation2D(transform);
+  return transform;
 };
 
 /** Create a 2D rotation transformation around a center point (angle in radians). */
@@ -135,7 +134,7 @@ export const rotateTransform2d = (angle: number, center: Point2D = [0, 0]): Tran
 
   const transform = new oc.gp_GTrsf2d_2(rotation);
   gc();
-  return new Transformation2D(transform);
+  return transform;
 };
 
 /** Create a 2D uniform scale transformation around a center point. */
@@ -151,7 +150,7 @@ export const scaleTransform2d = (
 
   const transform = new oc.gp_GTrsf2d_2(scaling);
   gc();
-  return new Transformation2D(transform);
+  return transform;
 };
 
 /** How to map 2D sketch coordinates onto a face's parametric UV space. */
@@ -193,8 +192,7 @@ export function curvesAsEdgesOnFace(
       geomSurf = geomSurf.get().UReversed();
     }
     const radius = cylinder.Radius();
-    const affinity = stretchTransform2d(1 / radius, [0, 1]);
-    transformation = affinity.wrapped;
+    transformation = stretchTransform2d(1 / radius, [0, 1]);
   }
 
   if (scale === 'bounds') {

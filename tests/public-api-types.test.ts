@@ -141,7 +141,6 @@ import type {
  * tests in the sections that follow.
  */
 const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
-  'AssemblyExporter',
   'BaseSketcher2d',
   'Blueprint',
   'BlueprintSketcher',

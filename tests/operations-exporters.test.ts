@@ -20,7 +20,7 @@ describe('createAssembly', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const assembly = createAssembly([{ shape: box, name: 'box', color: '#ff0000' }]);
     expect(assembly).toBeDefined();
-    expect(assembly.wrapped).toBeDefined();
+    expect(assembly.value).toBeDefined();
   });
 
   it('creates an assembly from multiple shapes with colors', () => {
@@ -31,7 +31,7 @@ describe('createAssembly', () => {
       { shape: sphere, name: 'sphere', color: '#00ff00', alpha: 0.5 },
     ]);
     expect(assembly).toBeDefined();
-    expect(assembly.wrapped).toBeDefined();
+    expect(assembly.value).toBeDefined();
   });
 
   it('creates an assembly with default name and color', () => {
