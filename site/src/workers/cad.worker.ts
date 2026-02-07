@@ -52,7 +52,7 @@ async function handleInit() {
 
     // Import brepjs and initialize it
     brepjs = await import('brepjs');
-    brepjs.setOC(oc);
+    brepjs.initFromOC(oc);
 
     // Inject all brepjs exports onto globalThis
     const globalAny = globalThis as Record<string, unknown>;

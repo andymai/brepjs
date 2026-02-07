@@ -4,7 +4,7 @@
 
 // ── Layer 0: kernel / utils ──
 
-export { setOC, getOC } from './oclib.js';
+export { initFromOC, getKernel } from './kernel/index.js';
 
 // ── Result type ──
 
@@ -56,25 +56,10 @@ export {
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
-export {
-  WrappingObj,
-  gcWithScope,
-  gcWithObject,
-  localGC,
-  type Deletable,
-  // Deprecated aliases — use gcWithScope and gcWithObject instead
-  GCWithScope,
-  GCWithObject,
-} from './core/memory.js';
+export { WrappingObj, gcWithScope, gcWithObject, localGC, type Deletable } from './core/memory.js';
 
 // Legacy type exports (kept for compatibility)
-export {
-  makeDirection,
-  isPoint,
-  type Point,
-  type PlaneName,
-  type SimplePoint,
-} from './core/geometry.js';
+export { isPoint, type Point, type PlaneName } from './core/geometry.js';
 
 export {
   makePlane,
@@ -257,24 +242,10 @@ export { combineFinderFilters, type FilterFcn } from './query/index.js';
 
 // ── Layer 2: measurement ──
 
-export {
-  measureVolume,
-  measureArea,
-  measureLength,
-  measureDistanceBetween,
-  measureShapeSurfaceProperties,
-  measureShapeLinearProperties,
-  measureShapeVolumeProperties,
-  DistanceTool,
-  VolumePhysicalProperties,
-  SurfacePhysicalProperties,
-  LinearPhysicalProperties,
-  DistanceQuery,
-} from './measurement/measureShape.js';
+export { measureVolume, measureArea, measureLength } from './measurement/measureFns.js';
 
 // ── Layer 2: io ──
 
-export { importSTEP, importSTL } from './io/importers.js';
 export { exportOBJ } from './io/objExportFns.js';
 
 export {
@@ -557,8 +528,6 @@ export {
   outerWire as fnOuterWire,
   innerWires as fnInnerWires,
   projectPointOnFace,
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- re-export for backward compat
-  triangulateFace,
   type UVBounds,
   type PointProjectionResult,
 } from './topology/faceFns.js';
@@ -577,8 +546,6 @@ export {
 } from './topology/meshFns.js';
 
 export { clearMeshCache, createMeshCache, type MeshCacheContext } from './topology/meshCache.js';
-// eslint-disable-next-line @typescript-eslint/no-deprecated -- Public API, kept for backward compatibility
-export { setMeshCacheSize } from './topology/meshCache.js';
 
 // ── Three.js integration ──
 
@@ -720,6 +687,9 @@ export {
   importSTEP as fnImportSTEP,
   importSTL as fnImportSTL,
   importIGES as fnImportIGES,
+  importSTEP,
+  importSTL,
+  importIGES,
 } from './io/importFns.js';
 
 // ── Query (functional, immutable finders) ──

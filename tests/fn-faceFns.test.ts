@@ -7,7 +7,6 @@ import {
   // functional API
   castShape,
   getFaces,
-  meshShape,
   getSurfaceType,
   faceGeomType,
   faceOrientation,
@@ -19,7 +18,6 @@ import {
   faceCenter,
   fnOuterWire,
   fnInnerWires,
-  triangulateFace,
   unwrap,
   fnIsWire,
 } from '../src/index.js';
@@ -124,20 +122,5 @@ describe('fnOuterWire / fnInnerWires', () => {
     const face = getFaces(castShape(rect.face().wrapped))[0]!;
     const inner = fnInnerWires(face);
     expect(inner).toHaveLength(0);
-  });
-});
-
-describe('triangulateFace', () => {
-  it('returns vertices and triangles after meshing', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const boxShape = castShape(box.wrapped);
-    // Mesh the shape first so face triangulation is available
-    meshShape(boxShape);
-    const face = getFaces(boxShape)[0]!;
-    const tri = triangulateFace(face);
-    expect(tri).not.toBeNull();
-    expect(tri!.vertices.length).toBeGreaterThan(0);
-    expect(tri!.trianglesIndexes.length).toBeGreaterThan(0);
-    expect(tri!.verticesNormals.length).toBeGreaterThan(0);
   });
 });

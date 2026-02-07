@@ -8,7 +8,7 @@ import {
   localGC,
 } from '../src/core/disposal.js';
 import type { Deletable } from '../src/core/disposal.js';
-import { getOC } from '../src/oclib.js';
+import { getKernel } from '../src/kernel/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -16,7 +16,7 @@ beforeAll(async () => {
 
 /** Create a minimal OCCT object for testing handle lifecycle */
 function makeOcPnt(): Deletable {
-  const oc = getOC();
+  const oc = getKernel().oc;
   return new oc.gp_Pnt_3(1, 2, 3);
 }
 
@@ -37,7 +37,7 @@ function mockDeletable(): { deleted: boolean } & Deletable {
 
 describe('createHandle', () => {
   it('creates a handle wrapping an OCCT shape', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(10, 10, 10).Shape();
     const handle = createHandle(ocShape);
     expect(handle.wrapped).toBeDefined();
@@ -45,14 +45,14 @@ describe('createHandle', () => {
   });
 
   it('allows access to wrapped shape', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(5, 5, 5).Shape();
     const handle = createHandle(ocShape);
     expect(handle.wrapped).toBe(ocShape);
   });
 
   it('disposes via Symbol.dispose', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(5, 5, 5).Shape();
     const handle = createHandle(ocShape);
     handle[Symbol.dispose]();
@@ -60,7 +60,7 @@ describe('createHandle', () => {
   });
 
   it('throws on access after dispose', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(5, 5, 5).Shape();
     const handle = createHandle(ocShape);
     handle[Symbol.dispose]();
@@ -68,7 +68,7 @@ describe('createHandle', () => {
   });
 
   it('double dispose is safe', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(5, 5, 5).Shape();
     const handle = createHandle(ocShape);
     handle[Symbol.dispose]();

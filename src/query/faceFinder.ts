@@ -4,7 +4,8 @@ import { resolvePlane } from '../core/planeOps.js';
 import { vecProjectToPlane, vecEquals } from '../core/vecOps.js';
 
 import type { Face, AnyShape, SurfaceType } from '../topology/shapes.js';
-import { measureArea } from '../measurement/measureShape.js';
+import { measureArea } from '../measurement/measureFns.js';
+import type { Face as FnFace } from '../core/shapeTypes.js';
 import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
 import { Finder3d } from './generic3dfinder.js';
 
@@ -70,7 +71,8 @@ export class FaceFinder extends Finder3d<Face> {
    */
   ofArea(area: number, tolerance = 1e-3): this {
     const check = ({ element }: { element: Face }) => {
-      return Math.abs(measureArea(element) - area) < tolerance;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OOP Face → branded Face bridge
+      return Math.abs(measureArea(element as any as FnFace) - area) < tolerance;
     };
     this.filters.push(check);
     return this;

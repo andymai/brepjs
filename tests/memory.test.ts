@@ -2,8 +2,8 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   WrappingObj,
-  GCWithScope,
-  GCWithObject,
+  gcWithScope,
+  gcWithObject,
   localGC,
   type Deletable,
 } from '../src/core/memory.js';
@@ -64,19 +64,19 @@ describe('localGC', () => {
   });
 });
 
-describe('GCWithScope', () => {
+describe('gcWithScope', () => {
   it('returns the value it wraps', () => {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const obj = mockDeletable();
     const result = r(obj);
     expect(result).toBe(obj);
   });
 });
 
-describe('GCWithObject', () => {
+describe('gcWithObject', () => {
   it('returns the value it wraps', () => {
     const holder = {};
-    const r = GCWithObject(holder);
+    const r = gcWithObject(holder);
     const obj = mockDeletable();
     const result = r(obj);
     expect(result).toBe(obj);

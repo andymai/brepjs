@@ -62,15 +62,12 @@ export type { PlaneName } from './planeTypes.js';
 // Legacy Point type (kept for backward compatibility)
 // ---------------------------------------------------------------------------
 
-/** @deprecated Use {@link Vec3} from `types.ts` instead. */
-export type SimplePoint = [number, number, number];
-
 /**
  * Legacy Point type for backward compatibility.
  * Prefer using PointInput or Vec3 from types.ts.
  */
 export type Point =
-  | SimplePoint
+  | [number, number, number]
   | [number, number]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT point-like objects
   | { XYZ: () => any; delete: () => void };
@@ -81,29 +78,4 @@ export function isPoint(p: unknown): p is Point {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT duck typing
   else if (p && typeof (p as any)?.XYZ === 'function') return true;
   return false;
-}
-
-// ---------------------------------------------------------------------------
-// Direction helpers
-// ---------------------------------------------------------------------------
-
-type Direction = Point | 'X' | 'Y' | 'Z';
-
-const DIRECTIONS: Record<string, Point> = {
-  X: [1, 0, 0],
-  Y: [0, 1, 0],
-  Z: [0, 0, 1],
-};
-
-/**
- * Resolve a direction shorthand (`'X'`, `'Y'`, `'Z'`) to a {@link Point} tuple.
- *
- * @deprecated Use {@link resolveDirection} from `types.ts` instead.
- */
-export function makeDirection(p: Direction): Point {
-  if (p === 'X' || p === 'Y' || p === 'Z') {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return DIRECTIONS[p]!;
-  }
-  return p;
 }

@@ -6,7 +6,7 @@ const opencascade = (await import('brepjs-opencascade')).default;
 const oc = await opencascade();
 
 const brepjs = await import('brepjs');
-brepjs.setOC(oc);
+brepjs.initFromOC(oc);
 
 // Inject all brepjs exports onto globalThis (same as worker does)
 const globalAny = globalThis as Record<string, unknown>;
