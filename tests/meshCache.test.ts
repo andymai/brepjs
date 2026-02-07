@@ -1,13 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   buildMeshCacheKey,
-  getMesh,
-  setMesh,
   buildEdgeMeshCacheKey,
-  getEdgeMesh,
-  setEdgeMesh,
   clearMeshCache,
-  setMeshCacheSize,
   getMeshForShape,
   setMeshForShape,
   getEdgeMeshForShape,
@@ -62,48 +57,12 @@ describe('meshCache', () => {
     });
   });
 
-  describe('getMesh / setMesh (legacy API)', () => {
-    it('returns undefined for missing keys', () => {
-      expect(getMesh('nonexistent')).toBeUndefined();
-    });
-
-    it('stores and retrieves a mesh', () => {
-      const mesh = fakeMesh(1);
-      setMesh('key1', mesh);
-      expect(getMesh('key1')).toBe(mesh);
-    });
-
-    it('overwrites existing entry on re-set', () => {
-      setMesh('key1', fakeMesh(1));
-      const mesh2 = fakeMesh(2);
-      setMesh('key1', mesh2);
-      expect(getMesh('key1')).toBe(mesh2);
-    });
-  });
-
   describe('clearMeshCache', () => {
-    it('removes all legacy entries', () => {
-      setMesh('a', fakeMesh(1));
-      setMesh('b', fakeMesh(2));
-      clearMeshCache();
-      expect(getMesh('a')).toBeUndefined();
-      expect(getMesh('b')).toBeUndefined();
-    });
-
     it('removes all WeakMap entries', () => {
       const shape = fakeOcShape(1);
       setMeshForShape(shape, 'key', fakeMesh(1));
       clearMeshCache();
       expect(getMeshForShape(shape, 'key')).toBeUndefined();
-    });
-  });
-
-  describe('setMeshCacheSize (deprecated)', () => {
-    it('is a no-op for backward compatibility', () => {
-      // WeakMap cache doesn't use size limits - entries are GC'd with shapes
-      // This should not throw
-      expect(() => setMeshCacheSize(1)).not.toThrow();
-      expect(() => setMeshCacheSize(1000)).not.toThrow();
     });
   });
 
@@ -118,18 +77,6 @@ describe('meshCache', () => {
       const edgeKey = buildEdgeMeshCacheKey(1, 0.1, 30);
       const triKey = buildMeshCacheKey(1, 0.1, 30, false);
       expect(edgeKey).not.toBe(triKey);
-    });
-  });
-
-  describe('getEdgeMesh / setEdgeMesh (legacy API)', () => {
-    it('returns undefined for missing keys', () => {
-      expect(getEdgeMesh('nonexistent')).toBeUndefined();
-    });
-
-    it('stores and retrieves an edge mesh', () => {
-      const mesh = fakeEdgeMesh(1);
-      setEdgeMesh('ekey1', mesh);
-      expect(getEdgeMesh('ekey1')).toBe(mesh);
     });
   });
 

@@ -1,7 +1,7 @@
 import type { PointInput } from '../core/types.js';
 import { compoundShapes } from '../topology/shapeHelpers.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';
-import type { AnyShape } from '../topology/shapes.js';
+import type { AnyShape } from '../core/shapeTypes.js';
 
 import type CompoundSketch from './CompoundSketch.js';
 import Sketch from './Sketch.js';

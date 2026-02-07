@@ -18,9 +18,6 @@ export {
   type OcHandle,
 } from './disposal.js';
 
-// Legacy aliases (deprecated) — use gcWithScope and gcWithObject instead
-export { gcWithScope as GCWithScope, gcWithObject as GCWithObject } from './disposal.js';
-
 // ---------------------------------------------------------------------------
 // Legacy WrappingObj — kept during migration, will be removed
 // ---------------------------------------------------------------------------
@@ -47,7 +44,6 @@ const deletableRegistry = new (globalThis as any).FinalizationRegistry((heldValu
  * @remarks Prefer {@link createHandle} + branded shape types for new code.
  * @deprecated Use `createHandle()` from `disposal.ts` instead.
  */
-// TODO(functional-rewrite): Replace with createHandle() + branded types
 export class WrappingObj<Type extends Deletable> {
   protected oc: OpenCascadeInstance;
   private _wrapped: Type | null;

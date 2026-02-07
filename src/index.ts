@@ -4,7 +4,7 @@
 
 // ── Layer 0: kernel / utils ──
 
-export { setOC, getOC } from './oclib.js';
+export { initFromOC, getKernel } from './kernel/index.js';
 
 // ── Result type ──
 
@@ -56,25 +56,10 @@ export {
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
-export {
-  WrappingObj,
-  gcWithScope,
-  gcWithObject,
-  localGC,
-  type Deletable,
-  // Deprecated aliases — use gcWithScope and gcWithObject instead
-  GCWithScope,
-  GCWithObject,
-} from './core/memory.js';
+export { WrappingObj, gcWithScope, gcWithObject, localGC, type Deletable } from './core/memory.js';
 
 // Legacy type exports (kept for compatibility)
-export {
-  makeDirection,
-  isPoint,
-  type Point,
-  type PlaneName,
-  type SimplePoint,
-} from './core/geometry.js';
+export { isPoint, type Point } from './core/geometry.js';
 
 export {
   makePlane,
@@ -88,7 +73,7 @@ export {
 export { findCurveType } from './core/definitionMaps.js';
 export type { CurveType } from './core/definitionMaps.js';
 
-// ── Layer 2: topology (via barrel — includes initCast wiring) ──
+// ── Layer 2: topology (via barrel) ──
 
 export {
   // cast.ts
@@ -97,48 +82,22 @@ export {
   shapeType,
   iterTopo,
   asTopo,
-  isShape3D,
-  isWire,
   isCompSolid,
   deserializeShape,
-  initCast,
   type TopoEntity,
   type GenericTopo,
-  // shapes.ts
-  Shape,
-  Vertex,
-  Curve,
-  _1DShape,
-  _1DShape as LinearShape,
-  Edge,
-  Wire,
-  Surface,
-  Face,
-  _3DShape,
-  _3DShape as SolidShape,
-  Shell,
-  Solid,
-  CompSolid,
-  Compound,
-  fuseAll,
-  cutAll,
-  buildCompound,
+  // shapeBooleans.ts
   buildCompoundOc,
   applyGlue,
-  registerQueryModule,
+  // shapeModifiers.ts
   isNumber,
   isChamferRadius,
   isFilletRadius,
-  type AnyShape,
-  type Shape3D,
-  type CurveLike,
   type ChamferRadius,
   type FilletRadius,
   type RadiusConfig,
-  type FaceTriangulation,
-  type ShapeMesh,
-  type SurfaceType,
-  type BooleanOperationOptions,
+  // core/shapeTypes.ts (via topology)
+  type CurveLike,
   // shapeHelpers.ts
   makeLine,
   makeCircle,
@@ -176,22 +135,12 @@ export {
   basicFaceExtrusion,
   revolution,
   genericSweep,
-  complexExtrude,
-  twistExtrude,
-  supportExtrude,
   type GenericSweepConfig,
-  type ExtrusionProfile,
 } from './operations/extrude.js';
 
-export { loft, type LoftConfig } from './operations/loft.js';
+export { loft } from './operations/loft.js';
 
-export {
-  AssemblyExporter,
-  createAssembly,
-  exportSTEP,
-  type ShapeConfig,
-  type SupportedUnit,
-} from './operations/exporters.js';
+export { type AssemblyExporter, createAssembly } from './operations/exporters.js';
 
 export { fuseAllShapes, cutAllShapes } from './operations/batchBooleans.js';
 
@@ -255,26 +204,8 @@ export { CornerFinder, type Corner } from './query/cornerFinder.js';
 export { getSingleFace, type SingleFace } from './query/helpers.js';
 export { combineFinderFilters, type FilterFcn } from './query/index.js';
 
-// ── Layer 2: measurement ──
-
-export {
-  measureVolume,
-  measureArea,
-  measureLength,
-  measureDistanceBetween,
-  measureShapeSurfaceProperties,
-  measureShapeLinearProperties,
-  measureShapeVolumeProperties,
-  DistanceTool,
-  VolumePhysicalProperties,
-  SurfacePhysicalProperties,
-  LinearPhysicalProperties,
-  DistanceQuery,
-} from './measurement/measureShape.js';
-
 // ── Layer 2: io ──
 
-export { importSTEP, importSTL } from './io/importers.js';
 export { exportOBJ } from './io/objExportFns.js';
 
 export {
@@ -350,8 +281,8 @@ export {
   sketchRevolve,
   sketchLoft,
   sketchSweep,
-  sketchFace as fnSketchFace,
-  sketchWires as fnSketchWires,
+  sketchFace,
+  sketchWires,
   compoundSketchExtrude,
   compoundSketchRevolve,
   compoundSketchFace,
@@ -378,17 +309,15 @@ export { loadFont, getFont, textBlueprints, sketchText } from './text/textBluepr
 // ── Layer 3: projection ──
 
 export {
-  ProjectionCamera,
-  lookFromPlane,
   isProjectionPlane,
   type ProjectionPlane,
   type CubeFace,
-} from './projection/ProjectionCamera.js';
+} from './projection/projectionPlanes.js';
 
 export { makeProjectedEdges } from './projection/makeProjectedEdges.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// NEW FUNCTIONAL API — Vec3 tuples, branded types, standalone functions
+// FUNCTIONAL API — Vec3 tuples, branded types, standalone functions
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── Core types ──
@@ -430,38 +359,38 @@ export {
 
 export type {
   ShapeKind,
-  Vertex as FnVertex,
-  Edge as FnEdge,
-  Wire as FnWire,
-  Face as FnFace,
-  Shell as FnShell,
-  Solid as FnSolid,
-  CompSolid as FnCompSolid,
-  Compound as FnCompound,
-  AnyShape as FnAnyShape,
-  Shape1D as FnShape1D,
-  Shape3D as FnShape3D,
+  Vertex,
+  Edge,
+  Wire,
+  Face,
+  Shell,
+  Solid,
+  CompSolid,
+  Compound,
+  AnyShape,
+  Shape1D,
+  Shape3D,
 } from './core/shapeTypes.js';
 
 export {
   castShape,
   getShapeKind,
-  createVertex as fnCreateVertex,
-  createEdge as fnCreateEdge,
-  createWire as fnCreateWire,
-  createFace as fnCreateFace,
-  createShell as fnCreateShell,
-  createSolid as fnCreateSolid,
-  createCompound as fnCreateCompound,
-  isVertex as fnIsVertex,
-  isEdge as fnIsEdge,
-  isWire as fnIsWire,
-  isFace as fnIsFace,
-  isShell as fnIsShell,
-  isSolid as fnIsSolid,
-  isCompound as fnIsCompound,
-  isShape3D as fnIsShape3D,
-  isShape1D as fnIsShape1D,
+  createVertex,
+  createEdge,
+  createWire,
+  createFace,
+  createShell,
+  createSolid,
+  createCompound,
+  isVertex,
+  isEdge,
+  isWire,
+  isFace,
+  isShell,
+  isSolid,
+  isCompound,
+  isShape3D,
+  isShape1D,
 } from './core/shapeTypes.js';
 
 // ── Disposal / resource management ──
@@ -472,11 +401,11 @@ export { createHandle, createOcHandle, DisposalScope, withScope } from './core/d
 
 // ── Plane types ──
 
-export type { Plane as FnPlane, PlaneName as FnPlaneName, PlaneInput } from './core/planeTypes.js';
+export type { Plane, PlaneName, PlaneInput } from './core/planeTypes.js';
 
 export {
   createPlane,
-  createNamedPlane as fnCreateNamedPlane,
+  createNamedPlane,
   resolvePlane,
   translatePlane,
   pivotPlane,
@@ -525,7 +454,7 @@ export {
 } from './topology/adjacencyFns.js';
 
 export {
-  getCurveType as fnGetCurveType,
+  getCurveType,
   curveStartPoint,
   curveEndPoint,
   curvePointAt,
@@ -549,16 +478,14 @@ export {
   faceOrientation,
   flipFaceOrientation,
   uvBounds,
-  pointOnSurface as fnPointOnSurface,
-  uvCoordinates as fnUvCoordinates,
-  normalAt as fnNormalAt,
+  pointOnSurface,
+  uvCoordinates,
+  normalAt,
   faceCenter,
   classifyPointOnFace,
-  outerWire as fnOuterWire,
-  innerWires as fnInnerWires,
+  outerWire,
+  innerWires,
   projectPointOnFace,
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- re-export for backward compat
-  triangulateFace,
   type UVBounds,
   type PointProjectionResult,
 } from './topology/faceFns.js';
@@ -568,17 +495,15 @@ export {
 export {
   meshShape,
   meshShapeEdges,
-  exportSTEP as fnExportSTEP,
-  exportSTL as fnExportSTL,
-  exportIGES as fnExportIGES,
-  type ShapeMesh as FnShapeMesh,
+  exportSTEP,
+  exportSTL,
+  exportIGES,
+  type ShapeMesh,
   type EdgeMesh,
   type MeshOptions,
 } from './topology/meshFns.js';
 
 export { clearMeshCache, createMeshCache, type MeshCacheContext } from './topology/meshCache.js';
-// eslint-disable-next-line @typescript-eslint/no-deprecated -- Public API, kept for backward compatibility
-export { setMeshCacheSize } from './topology/meshCache.js';
 
 // ── Three.js integration ──
 
@@ -601,9 +526,9 @@ export {
   sectionShape,
   splitShape,
   sliceShape,
-  fuseAll as fnFuseAll,
-  cutAll as fnCutAll,
-  buildCompound as fnBuildCompound,
+  fuseAll,
+  cutAll,
+  buildCompound,
   type BooleanOptions,
 } from './topology/booleanFns.js';
 
@@ -637,19 +562,19 @@ export {
   extrudeFace,
   revolveFace,
   sweep,
-  supportExtrude as fnSupportExtrude,
-  complexExtrude as fnComplexExtrude,
-  twistExtrude as fnTwistExtrude,
+  supportExtrude,
+  complexExtrude,
+  twistExtrude,
   type SweepConfig,
-  type ExtrusionProfile as FnExtrusionProfile,
+  type ExtrusionProfile,
 } from './operations/extrudeFns.js';
 
-export { loftWires, type LoftConfig as FnLoftConfig } from './operations/loftFns.js';
+export { loftWires, type LoftConfig } from './operations/loftFns.js';
 
 export {
   exportAssemblySTEP,
-  type ShapeConfig as FnShapeConfig,
-  type SupportedUnit as FnSupportedUnit,
+  type ShapeConfig,
+  type SupportedUnit,
 } from './operations/exporterFns.js';
 
 export { linearPattern, circularPattern } from './operations/patternFns.js';
@@ -690,9 +615,9 @@ export {
 // ── Measurement (functional) ──
 
 export {
-  measureVolume as fnMeasureVolume,
-  measureArea as fnMeasureArea,
-  measureLength as fnMeasureLength,
+  measureVolume,
+  measureArea,
+  measureLength,
   measureDistance,
   createDistanceQuery,
   measureVolumeProps,
@@ -716,11 +641,7 @@ export {
 
 // ── Import (functional) ──
 
-export {
-  importSTEP as fnImportSTEP,
-  importSTL as fnImportSTL,
-  importIGES as fnImportIGES,
-} from './io/importFns.js';
+export { importSTEP, importSTL, importIGES } from './io/importFns.js';
 
 // ── Query (functional, immutable finders) ──
 
@@ -742,7 +663,6 @@ export {
   createCamera,
   cameraLookAt,
   cameraFromPlane,
-  cameraToProjectionCamera,
   projectEdges,
   type Camera,
 } from './projection/cameraFns.js';

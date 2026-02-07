@@ -10,8 +10,8 @@ import {
   isOk,
   isErr,
   unwrap,
-  fnIsEdge,
-  fnIsFace,
+  isEdge,
+  isFace,
   curveLength,
 } from '../src/index.js';
 
@@ -27,7 +27,7 @@ describe('edgeFinder', () => {
   it('finds all 12 edges of a box', () => {
     const edges = edgeFinder().find(fnBox());
     expect(edges.length).toBe(12);
-    expect(fnIsEdge(edges[0]!)).toBe(true);
+    expect(isEdge(edges[0]!)).toBe(true);
   });
 
   it('filters edges by direction', () => {
@@ -129,7 +129,7 @@ describe('faceFinder', () => {
   it('finds all 6 faces of a box', () => {
     const faces = faceFinder().find(fnBox());
     expect(faces.length).toBe(6);
-    expect(fnIsFace(faces[0]!)).toBe(true);
+    expect(isFace(faces[0]!)).toBe(true);
   });
 
   it('filters faces by normal direction', () => {

@@ -52,7 +52,7 @@ async function handleInit() {
 
     // Import brepjs and initialize it
     brepjs = await import('brepjs');
-    brepjs.setOC(oc);
+    brepjs.initFromOC(oc);
 
     // Inject all brepjs exports onto globalThis
     const globalAny = globalThis as Record<string, unknown>;
@@ -180,7 +180,7 @@ function handleExportSTL(id: string, code: string) {
       result = brepjs.castShape(result.wrapped);
     }
 
-    const stlResult = brepjs.fnExportSTL(result, { binary: true });
+    const stlResult = brepjs.exportSTL(result, { binary: true });
 
     if (brepjs.isOk(stlResult)) {
       const blob: Blob = stlResult.value;

@@ -3,6 +3,7 @@ import { createPlane } from '../core/planeOps.js';
 import { localGC } from '../core/memory.js';
 import { makeFace, makeNewFaceWithinFace } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';
+import { downcast } from '../topology/cast.js';
 import { toVec3, type Vec3, type PointInput } from '../core/types.js';
 import { vecScale, vecNormalize, vecCross } from '../core/vecOps.js';
 import {
@@ -15,7 +16,9 @@ import {
   type GenericSweepConfig,
 } from '../operations/extrude.js';
 import { loft, type LoftConfig } from '../operations/loft.js';
-import { type Face, type Shape3D, type Wire } from '../topology/shapes.js';
+import type { Face, Wire, Shape3D } from '../core/shapeTypes.js';
+import { createFace, createWire } from '../core/shapeTypes.js';
+import { curveStartPoint, curveTangentAt } from '../topology/curveFns.js';
 import type { SketchInterface } from './sketchLib.js';
 
 /**
@@ -65,7 +68,7 @@ export default class Sketch implements SketchInterface {
 
   set baseFace(newFace: Face | null | undefined) {
     if (this._baseFace) this._baseFace.delete();
-    this._baseFace = newFace ? newFace.clone() : newFace;
+    this._baseFace = newFace ? createFace(unwrap(downcast(newFace.wrapped))) : newFace;
   }
 
   /** Release all OCCT resources held by this sketch. */
@@ -77,11 +80,11 @@ export default class Sketch implements SketchInterface {
 
   /** Create an independent deep copy of this sketch. */
   clone(): Sketch {
-    const sketch = new Sketch(this.wire.clone(), {
+    const sketch = new Sketch(createWire(unwrap(downcast(this.wire.wrapped))), {
       defaultOrigin: this.defaultOrigin,
       defaultDirection: this.defaultDirection,
     });
-    if (this.baseFace) sketch.baseFace = this.baseFace.clone();
+    if (this.baseFace) sketch.baseFace = createFace(unwrap(downcast(this.baseFace.wrapped)));
     return sketch;
   }
 
@@ -120,7 +123,7 @@ export default class Sketch implements SketchInterface {
 
   /** Return a clone of the underlying wire. */
   wires(): Wire {
-    return this.wire.clone();
+    return createWire(unwrap(downcast(this.wire.wrapped)));
   }
 
   /** Alias for {@link Sketch.face}. */
@@ -205,8 +208,8 @@ export default class Sketch implements SketchInterface {
     sketchOnPlane: (plane: Plane, origin: Vec3) => this,
     sweepConfig: GenericSweepConfig = {}
   ): Shape3D {
-    const startPoint = this.wire.startPoint;
-    const tangent = this.wire.tangentAt(1e-9);
+    const startPoint = curveStartPoint(this.wire);
+    const tangent = curveTangentAt(this.wire, 1e-9);
     const normal = vecNormalize(vecScale(tangent, -1));
     const defaultDir: Vec3 = this.defaultDirection;
     const xDir = vecScale(vecCross(normal, defaultDir), -1);

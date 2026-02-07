@@ -2,7 +2,7 @@
  * Boolean operations for OCCT shapes.
  *
  * Provides fuse, cut, intersect, and batch operations (fuseAll, cutAll).
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape, BooleanOptions } from './types.js';

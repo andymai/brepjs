@@ -1,6 +1,7 @@
 import { describe, it, beforeAll } from 'vitest';
 import { initOC } from '../tests/setup.js';
 import { makeBox, makeCylinder, fuseAll, cutAll, unwrap } from '../src/index.js';
+import { translateShape } from '../src/topology/shapeFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -15,7 +16,7 @@ describe('Scaling benchmarks — fuseAll', () => {
       results.push(
         await bench(`fuseAll N=${n}`, () => {
           const shapes = Array.from({ length: n }, (_, i) =>
-            makeBox([5, 5, 5]).translate([i * 2, 0, 0])
+            translateShape(makeBox([5, 5, 5]) as any, [i * 2, 0, 0])
           );
           unwrap(fuseAll(shapes));
         })
@@ -39,7 +40,7 @@ describe('Scaling benchmarks — cutAll', () => {
           const tools = Array.from({ length: n }, (_, i) => {
             const row = Math.floor(i / 4);
             const col = i % 4;
-            return makeCylinder(1, 10).translate([5 + col * 8, 5 + row * 8, 0]);
+            return translateShape(makeCylinder(1, 10) as any, [5 + col * 8, 5 + row * 8, 0]);
           });
           unwrap(cutAll(base, tools));
         })

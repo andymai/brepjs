@@ -13,11 +13,11 @@ import {
   healShape,
   isOk,
   unwrap,
-  fnMeasureVolume,
-  fnMeasureArea,
-  fnIsSolid,
-  fnIsFace,
-  fnIsWire,
+  measureVolume,
+  measureArea,
+  isSolid,
+  isFace,
+  isWire,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -48,9 +48,9 @@ describe('healSolid', () => {
     const result = healSolid(box);
     expect(isOk(result)).toBe(true);
     const healed = unwrap(result);
-    expect(fnIsSolid(healed)).toBe(true);
+    expect(isSolid(healed)).toBe(true);
     // Volume should be preserved
-    const vol = fnMeasureVolume(healed);
+    const vol = measureVolume(healed);
     expect(vol).toBeCloseTo(1000, 0);
   });
 
@@ -60,7 +60,7 @@ describe('healSolid', () => {
     // ShapeFix_Solid may or may not successfully heal a sphere
     // (spheres have special topology), but it should not crash
     if (isOk(result)) {
-      expect(fnIsSolid(unwrap(result))).toBe(true);
+      expect(isSolid(unwrap(result))).toBe(true);
     }
   });
 });
@@ -72,15 +72,15 @@ describe('healFace', () => {
     const result = healFace(faces[0]!);
     expect(isOk(result)).toBe(true);
     const healed = unwrap(result);
-    expect(fnIsFace(healed)).toBe(true);
+    expect(isFace(healed)).toBe(true);
   });
 
   it('preserves face area', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const faces = getFaces(box);
-    const originalArea = fnMeasureArea(faces[0]!);
+    const originalArea = measureArea(faces[0]!);
     const healed = unwrap(healFace(faces[0]!));
-    const healedArea = fnMeasureArea(healed);
+    const healedArea = measureArea(healed);
     expect(healedArea).toBeCloseTo(originalArea, 2);
   });
 });
@@ -91,7 +91,7 @@ describe('healWire', () => {
     const wires = getWires(box);
     const result = healWire(wires[0]!);
     expect(isOk(result)).toBe(true);
-    expect(fnIsWire(unwrap(result))).toBe(true);
+    expect(isWire(unwrap(result))).toBe(true);
   });
 
   it('heals a wire with face context', () => {
@@ -100,7 +100,7 @@ describe('healWire', () => {
     const wires = getWires(faces[0]!);
     const result = healWire(wires[0]!, faces[0]!);
     expect(isOk(result)).toBe(true);
-    expect(fnIsWire(unwrap(result))).toBe(true);
+    expect(isWire(unwrap(result))).toBe(true);
   });
 });
 
@@ -109,7 +109,7 @@ describe('healShape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = healShape(box);
     expect(isOk(result)).toBe(true);
-    expect(fnIsSolid(unwrap(result))).toBe(true);
+    expect(isSolid(unwrap(result))).toBe(true);
   });
 
   it('dispatches to healFace for faces', () => {
@@ -117,7 +117,7 @@ describe('healShape', () => {
     const faces = getFaces(box);
     const result = healShape(faces[0]!);
     expect(isOk(result)).toBe(true);
-    expect(fnIsFace(unwrap(result))).toBe(true);
+    expect(isFace(unwrap(result))).toBe(true);
   });
 
   it('dispatches to healWire for wires', () => {
@@ -125,7 +125,7 @@ describe('healShape', () => {
     const wires = getWires(box);
     const result = healShape(wires[0]!);
     expect(isOk(result)).toBe(true);
-    expect(fnIsWire(unwrap(result))).toBe(true);
+    expect(isWire(unwrap(result))).toBe(true);
   });
 
   it('returns ok for unsupported shape types (passthrough)', () => {

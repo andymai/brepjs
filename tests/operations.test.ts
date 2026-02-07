@@ -17,7 +17,15 @@ import {
   getBounds,
   resolvePlane,
   makePlaneFromFace,
+  getEdges,
+  getFaces,
+  exportSTEP,
+  exportSTL,
 } from '../src/index.js';
+import { translateShape, rotateShape, scaleShape, mirrorShape } from '../src/topology/shapeFns.js';
+import { meshShape, meshShapeEdges } from '../src/topology/meshFns.js';
+import { fuseShapes, cutShape, intersectShapes } from '../src/topology/booleanFns.js';
+import { pointOnSurface, normalAt } from '../src/topology/faceFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -73,7 +81,7 @@ describe('loft', () => {
 describe('Shape.mesh()', () => {
   it('produces mesh with expected structure', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const mesh = box.mesh();
+    const mesh = meshShape(box as any);
 
     expect(mesh.triangles.length).toBeGreaterThan(0);
     expect(mesh.vertices.length).toBeGreaterThan(0);
@@ -89,7 +97,7 @@ describe('Shape.mesh()', () => {
 
   it('respects skipNormals option', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const mesh = box.mesh({ skipNormals: true });
+    const mesh = meshShape(box as any, { skipNormals: true });
 
     expect(mesh.triangles.length).toBeGreaterThan(0);
     expect(mesh.vertices.length).toBeGreaterThan(0);
@@ -99,7 +107,7 @@ describe('Shape.mesh()', () => {
 
   it('faceGroups cover all triangles', () => {
     const sphere = makeSphere(5);
-    const mesh = sphere.mesh();
+    const mesh = meshShape(sphere as any);
 
     let totalFromGroups = 0;
     for (const group of mesh.faceGroups) {
@@ -112,7 +120,7 @@ describe('Shape.mesh()', () => {
 describe('Shape.meshEdges()', () => {
   it('produces edge lines for a box', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const { lines, edgeGroups } = box.meshEdges();
+    const { lines, edgeGroups } = meshShapeEdges(box as any);
 
     expect(lines.length).toBeGreaterThan(0);
     expect(lines.length % 3).toBe(0); // x, y, z per point
@@ -123,8 +131,8 @@ describe('Shape.meshEdges()', () => {
 describe('Shape topology accessors', () => {
   it('box has 12 edges, 6 faces, 8 vertices', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(box.edges.length).toBe(12);
-    expect(box.faces.length).toBe(6);
+    expect(getEdges(box).length).toBe(12);
+    expect(getFaces(box).length).toBe(6);
   });
 
   it('bounding box is correct', () => {
@@ -139,39 +147,39 @@ describe('Shape topology accessors', () => {
 
 describe('Shape transformations', () => {
   it('translate produces correct volume', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 5, 5]);
+    const box = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 5, 5]);
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
   });
 
   it('rotate preserves volume', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]).rotate(45);
+    const box = rotateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, 45);
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
   });
 
   it('scale changes volume', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]).scale(2);
+    const box = scaleShape(makeBox([0, 0, 0], [10, 10, 10]) as any, 2);
     expect(measureVolume(box)).toBeCloseTo(8000, 0);
   });
 
   it('mirror preserves volume', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]).mirror('XY');
+    const box = mirrorShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [0, 0, 1]);
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
   });
 
   it('mirror with Plane object', () => {
     const plane = resolvePlane('YZ');
-    const box = makeBox([0, 0, 0], [10, 10, 10]).mirror(plane);
+    const box = mirrorShape(makeBox([0, 0, 0], [10, 10, 10]) as any, plane.zDir, plane.origin);
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
   });
 
   it('mirror with Plane and custom origin', () => {
     const plane = resolvePlane('YZ');
-    const box = makeBox([0, 0, 0], [10, 10, 10]).mirror(plane, [5, 0, 0]);
+    const box = mirrorShape(makeBox([0, 0, 0], [10, 10, 10]) as any, plane.zDir, [5, 0, 0]);
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
   });
 
   it('mirror with default (no args)', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]).mirror();
+    const box = mirrorShape(makeBox([0, 0, 0], [10, 10, 10]) as any);
     expect(measureVolume(box)).toBeCloseTo(1000, 0);
   });
 });
@@ -179,8 +187,13 @@ describe('Shape transformations', () => {
 describe('makePlaneFromFace', () => {
   it('creates plane from box face', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const face = box.faces[0];
-    const plane = makePlaneFromFace(face);
+    const face = getFaces(box)[0];
+    // Create adapter object with the methods expected by makePlaneFromFace
+    const faceAdapter = {
+      pointOnSurface: (u: number, v: number) => pointOnSurface(face, u, v),
+      normalAt: (p?: [number, number, number]) => normalAt(face, p),
+    };
+    const plane = makePlaneFromFace(faceAdapter);
     expect(plane).toBeDefined();
     expect(plane.origin).toBeDefined();
     expect(plane.xDir).toBeDefined();
@@ -190,8 +203,13 @@ describe('makePlaneFromFace', () => {
 
   it('creates plane with custom origin on surface', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const face = box.faces[0];
-    const plane = makePlaneFromFace(face, [0.5, 0.5]);
+    const face = getFaces(box)[0];
+    // Create adapter object with the methods expected by makePlaneFromFace
+    const faceAdapter = {
+      pointOnSurface: (u: number, v: number) => pointOnSurface(face, u, v),
+      normalAt: (p?: [number, number, number]) => normalAt(face, p),
+    };
+    const plane = makePlaneFromFace(faceAdapter, [0.5, 0.5]);
     expect(plane).toBeDefined();
   });
 });
@@ -199,22 +217,22 @@ describe('makePlaneFromFace', () => {
 describe('Boolean operations', () => {
   it('fuse increases volume', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
-    const fused = unwrap(box1.fuse(box2));
+    const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
+    const fused = unwrap(fuseShapes(box1 as any, box2));
     expect(measureVolume(fused)).toBeCloseTo(1500, 0);
   });
 
   it('cut decreases volume', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
-    const cut = unwrap(box1.cut(box2));
+    const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
+    const cut = unwrap(cutShape(box1 as any, box2));
     expect(measureVolume(cut)).toBeCloseTo(500, 0);
   });
 
   it('intersect yields overlap', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
-    const intersection = unwrap(box1.intersect(box2));
+    const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
+    const intersection = unwrap(intersectShapes(box1 as any, box2));
     expect(measureVolume(intersection)).toBeCloseTo(500, 0);
   });
 });
@@ -241,20 +259,20 @@ describe('Result error paths', () => {
 
   it('fuse returns Ok for overlapping shapes', () => {
     const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [10, 10, 10]).translate([5, 0, 0]);
-    const result = box1.fuse(box2);
+    const box2 = translateShape(makeBox([0, 0, 0], [10, 10, 10]) as any, [5, 0, 0]);
+    const result = fuseShapes(box1 as any, box2);
     expect(isOk(result)).toBe(true);
   });
 
   it('blobSTEP returns Ok for valid shape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = box.blobSTEP();
+    const result = exportSTEP(box);
     expect(isOk(result)).toBe(true);
   });
 
   it('blobSTL returns Ok for valid shape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = box.blobSTL();
+    const result = exportSTL(box);
     expect(isOk(result)).toBe(true);
   });
 });

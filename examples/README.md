@@ -19,6 +19,7 @@ npx tsx examples/basic-primitives.ts
 Create primitive shapes (box, cylinder, sphere) and perform boolean operations (fuse, cut, intersect).
 
 **Concepts covered:**
+
 - Creating primitive shapes
 - Boolean operations
 - Measuring volume
@@ -29,8 +30,9 @@ Create primitive shapes (box, cylinder, sphere) and perform boolean operations (
 Create a bracket with mounting holes and a center slot.
 
 **Concepts covered:**
+
 - Building complex parts from primitives
-- Batch boolean operations with `fnCutAll`
+- Batch boolean operations with `cutAll`
 - Translating shapes
 - Measuring material removal
 
@@ -39,6 +41,7 @@ Create a bracket with mounting holes and a center slot.
 Create a 2D sketch profile and extrude it to a 3D solid.
 
 **Concepts covered:**
+
 - Drawing API (`draw`, `drawRectangle`, `drawCircle`)
 - Boolean operations on drawings
 - Converting drawings to sketches
@@ -49,6 +52,7 @@ Create a 2D sketch profile and extrude it to a 3D solid.
 Load, modify, and export CAD files in different formats.
 
 **Concepts covered:**
+
 - Importing STEP files
 - Transforming shapes (scale, translate)
 - Exporting to STEP and STL
@@ -59,6 +63,7 @@ Load, modify, and export CAD files in different formats.
 Create a nameplate with engraved text (workflow demonstration).
 
 **Concepts covered:**
+
 - Loading fonts
 - Creating text blueprints
 - Sketching on faces

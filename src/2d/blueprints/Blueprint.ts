@@ -4,6 +4,7 @@ import {
   curvesAsEdgesOnFace,
   curvesAsEdgesOnPlane,
   curvesBoundingBox,
+  transformCurves,
   mirrorTransform2d,
   rotateTransform2d,
   stretchTransform2d,
@@ -18,10 +19,11 @@ import {
   isPoint2D,
   approximateAsSvgCompatibleCurve,
 } from '../lib/index.js';
-import type { AnyShape, Face } from '../../topology/shapes.js';
-import { Wire } from '../../topology/shapes.js';
+import type { AnyShape, Face, Wire } from '../../core/shapeTypes.js';
+import { createWire } from '../../core/shapeTypes.js';
 import { cast } from '../../topology/cast.js';
 import { unwrap } from '../../core/result.js';
+import { faceCenter, uvCoordinates } from '../../topology/faceFns.js';
 
 import { getKernel } from '../../kernel/index.js';
 import { makeFace } from '../../topology/shapeHelpers.js';
@@ -46,7 +48,7 @@ function assembleWire(listOfEdges: { wrapped: unknown }[]): Wire {
   listOfEdges.forEach((e) => {
     builder.Add_1(e.wrapped);
   });
-  return new Wire(builder.Wire());
+  return createWire(builder.Wire());
 }
 
 /**
@@ -164,7 +166,7 @@ export default class Blueprint implements DrawingInterface {
    * @returns A new stretched Blueprint.
    */
   stretch(ratio: number, direction: Point2D, origin: Point2D = [0, 0]): Blueprint {
-    const curves = stretchTransform2d(ratio, direction, origin).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, stretchTransform2d(ratio, direction, origin));
     return new Blueprint(curves);
   }
 
@@ -177,7 +179,7 @@ export default class Blueprint implements DrawingInterface {
    */
   scale(scaleFactor: number, center?: Point2D): Blueprint {
     const centerPoint = center || this.boundingBox.center;
-    const curves = scaleTransform2d(scaleFactor, centerPoint).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, scaleTransform2d(scaleFactor, centerPoint));
     return new Blueprint(curves);
   }
 
@@ -189,7 +191,7 @@ export default class Blueprint implements DrawingInterface {
    * @returns A new rotated Blueprint.
    */
   rotate(angle: number, center?: Point2D): Blueprint {
-    const curves = rotateTransform2d(angle * DEG2RAD, center).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, rotateTransform2d(angle * DEG2RAD, center));
     return new Blueprint(curves);
   }
 
@@ -204,7 +206,7 @@ export default class Blueprint implements DrawingInterface {
     const translationVector = isPoint2D(xDistOrPoint)
       ? xDistOrPoint
       : ([xDistOrPoint, yDist] as Point2D);
-    const curves = translationTransform2d(translationVector).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, translationTransform2d(translationVector));
     return new Blueprint(curves);
   }
 
@@ -221,7 +223,7 @@ export default class Blueprint implements DrawingInterface {
     origin: Point2D = [0, 0],
     mode: 'center' | 'plane' = 'center'
   ): Blueprint {
-    const curves = mirrorTransform2d(centerOrDirection, origin, mode).transformCurves(this.curves);
+    const curves = transformCurves(this.curves, mirrorTransform2d(centerOrDirection, origin, mode));
     return new Blueprint(curves);
   }
 
@@ -278,9 +280,9 @@ export default class Blueprint implements DrawingInterface {
    * @returns A new Face bounded by the blueprint's profile.
    */
   subFace(face: Face, origin?: PointInput | null): Face {
-    const originPoint = origin || [...face.center];
+    const originPoint = origin || [...faceCenter(face)];
     const originVec3 = toVec3(originPoint);
-    const sketch = this.translate(face.uvCoordinates(originVec3)).sketchOnFace(face, 'original');
+    const sketch = this.translate(uvCoordinates(face, originVec3)).sketchOnFace(face, 'original');
     return unwrap(makeFace(sketch.wire));
   }
 

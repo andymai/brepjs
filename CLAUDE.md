@@ -23,10 +23,10 @@ Layered architecture with enforced boundaries (Layer 0 → 3, imports flow downw
 
 ## Key patterns
 
-- `getKernel()` from `src/kernel/index.ts` for OCCT operations (new code)
-- `getOC()` from `src/oclib.ts` for backward compatibility (delegates to kernel)
-- `WrappingObj<T>` base class for OCCT handle wrappers with GC support
-- Shape methods (fuse, cut, mesh, etc.) delegate to standalone functions in `operations/`
+- `getKernel()` from `src/kernel/index.ts` for OCCT operations
+- Branded types (`Edge`, `Wire`, `Face`, `Solid`, etc.) in `src/core/shapeTypes.ts` — lightweight handles, no class hierarchy
+- `createHandle()` / `createOcHandle()` from `src/core/disposal.ts` for OCCT resource management with `using` support
+- Functional API: `*Fns.ts` files (e.g. `shapeFns.ts`, `booleanFns.ts`, `meshFns.ts`) — pure functions that take/return branded types
 - All `.ts` imports use `.js` extensions for ESM compatibility
 - WASM dependency: `brepjs-opencascade` (external, not bundled)
 

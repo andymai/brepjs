@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, FaceFinder, getSingleFace, unwrap, isErr } from '../src/index.js';
+import { makeBox, FaceFinder, getSingleFace, unwrap, isErr, getFaces } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -9,7 +9,7 @@ beforeAll(async () => {
 describe('getSingleFace', () => {
   it('accepts a Face directly', () => {
     const box = makeBox([0, 0, 0], [10, 20, 30]);
-    const face = box.faces[0]!;
+    const face = getFaces(box)[0]!;
     const result = getSingleFace(face, box);
     expect(unwrap(result)).toBe(face);
   });

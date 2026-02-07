@@ -15,7 +15,7 @@ import {
   sketchBlueprintOnPlane,
   sketchBlueprintOnFace,
 } from '../src/2d/blueprints/blueprintFns.js';
-import { makeBox } from '../src/index.js';
+import { makeBox, getFaces } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -152,7 +152,7 @@ describe('sketchBlueprintOnFace', () => {
   it('sketches on a box face', () => {
     const bp = rect(5, 5);
     const box = makeBox([0, 0, 0], [20, 20, 20]);
-    const face = box.faces[0];
+    const face = getFaces(box)[0];
     const sketch = sketchBlueprintOnFace(bp, face, 'original');
     expect(sketch).toBeDefined();
     expect(sketch.wire).toBeDefined();

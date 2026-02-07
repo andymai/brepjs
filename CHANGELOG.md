@@ -2,36 +2,31 @@
 
 ## [4.18.0](https://github.com/andymai/brepjs/compare/brepjs-v4.17.1...brepjs-v4.18.0) (2026-02-07)
 
-
 ### Features
 
-* **site:** playground UX overhaul ([#122](https://github.com/andymai/brepjs/issues/122)) ([ff581c3](https://github.com/andymai/brepjs/commit/ff581c3d5fb77fbe933ba1d4c9eb417cbbb478af))
-
+- **site:** playground UX overhaul ([#122](https://github.com/andymai/brepjs/issues/122)) ([ff581c3](https://github.com/andymai/brepjs/commit/ff581c3d5fb77fbe933ba1d4c9eb417cbbb478af))
 
 ### Bug Fixes
 
-* **site:** address PR [#122](https://github.com/andymai/brepjs/issues/122) feedback ([#125](https://github.com/andymai/brepjs/issues/125)) ([2ba4137](https://github.com/andymai/brepjs/commit/2ba4137035b8f8637fcbf7e082ec0b81685483d2))
+- **site:** address PR [#122](https://github.com/andymai/brepjs/issues/122) feedback ([#125](https://github.com/andymai/brepjs/issues/125)) ([2ba4137](https://github.com/andymai/brepjs/commit/2ba4137035b8f8637fcbf7e082ec0b81685483d2))
 
 ## [4.17.1](https://github.com/andymai/brepjs/compare/brepjs-v4.17.0...brepjs-v4.17.1) (2026-02-06)
 
-
 ### Bug Fixes
 
-* **site:** use npm packages for Vercel deployment ([#120](https://github.com/andymai/brepjs/issues/120)) ([cd03716](https://github.com/andymai/brepjs/commit/cd03716141b5dc33294079af8759fdfb5863db0c))
+- **site:** use npm packages for Vercel deployment ([#120](https://github.com/andymai/brepjs/issues/120)) ([cd03716](https://github.com/andymai/brepjs/commit/cd03716141b5dc33294079af8759fdfb5863db0c))
 
 ## [4.17.0](https://github.com/andymai/brepjs/compare/brepjs-v4.16.0...brepjs-v4.17.0) (2026-02-06)
 
-
 ### Features
 
-* **site:** landing page + playground with spiral staircase hero ([#110](https://github.com/andymai/brepjs/issues/110)) ([55cacd3](https://github.com/andymai/brepjs/commit/55cacd395c29cfdd4447a8072d82325581543325))
+- **site:** landing page + playground with spiral staircase hero ([#110](https://github.com/andymai/brepjs/issues/110)) ([55cacd3](https://github.com/andymai/brepjs/commit/55cacd395c29cfdd4447a8072d82325581543325))
 
 ## [4.16.0](https://github.com/andymai/brepjs/compare/brepjs-v4.15.0...brepjs-v4.16.0) (2026-02-06)
 
-
 ### Features
 
-* quick wins phase 2 + comprehensive llms.txt rewrite ([#111](https://github.com/andymai/brepjs/issues/111)) ([1ff2f30](https://github.com/andymai/brepjs/commit/1ff2f30242e0e03bf3015abddd909435b1a9f879))
+- quick wins phase 2 + comprehensive llms.txt rewrite ([#111](https://github.com/andymai/brepjs/issues/111)) ([1ff2f30](https://github.com/andymai/brepjs/commit/1ff2f30242e0e03bf3015abddd909435b1a9f879))
 
 ## [4.15.0](https://github.com/andymai/brepjs/compare/brepjs-v4.14.0...brepjs-v4.15.0) (2026-02-06)
 

@@ -11,12 +11,13 @@ import {
   measureVolume,
   measureArea,
   measureLength,
-  measureDistanceBetween,
-  measureShapeSurfaceProperties,
-  measureShapeLinearProperties,
-  measureShapeVolumeProperties,
-  DistanceTool,
-  DistanceQuery,
+  measureDistance,
+  measureVolumeProps,
+  measureSurfaceProps,
+  measureLinearProps,
+  createDistanceQuery,
+  castShape,
+  getFaces,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -65,36 +66,36 @@ describe('measureLength', () => {
   });
 });
 
-describe('measureDistanceBetween', () => {
+describe('measureDistance (functional)', () => {
   it('distance between separated boxes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([20, 0, 0], [30, 10, 10]);
-    expect(measureDistanceBetween(box1, box2)).toBeCloseTo(10, 2);
+    const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const box2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
+    expect(measureDistance(box1, box2)).toBeCloseTo(10, 2);
   });
 
   it('distance between vertices', () => {
-    const v1 = makeVertex([0, 0, 0]);
-    const v2 = makeVertex([3, 4, 0]);
-    expect(measureDistanceBetween(v1, v2)).toBeCloseTo(5, 2);
+    const v1 = castShape(makeVertex([0, 0, 0]).wrapped);
+    const v2 = castShape(makeVertex([3, 4, 0]).wrapped);
+    expect(measureDistance(v1, v2)).toBeCloseTo(5, 2);
   });
 
   it('distance between touching shapes is zero', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([10, 0, 0], [20, 10, 10]);
-    expect(measureDistanceBetween(box1, box2)).toBeCloseTo(0, 2);
+    const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const box2 = castShape(makeBox([10, 0, 0], [20, 10, 10]).wrapped);
+    expect(measureDistance(box1, box2)).toBeCloseTo(0, 2);
   });
 });
 
-describe('measureShapeSurfaceProperties', () => {
-  it('returns area', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const props = measureShapeSurfaceProperties(box);
-    expect(props.area).toBeCloseTo(600, 0);
+describe('measureSurfaceProps (functional)', () => {
+  it('returns area (mass)', () => {
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const props = measureSurfaceProps(box);
+    expect(props.mass).toBeCloseTo(600, 0);
   });
 
   it('returns centerOfMass', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const props = measureShapeSurfaceProperties(box);
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const props = measureSurfaceProps(box);
     const com = props.centerOfMass;
     expect(com).toHaveLength(3);
     expect(com[0]).toBeCloseTo(5, 0);
@@ -104,39 +105,41 @@ describe('measureShapeSurfaceProperties', () => {
 
   it('works on a face', () => {
     const sketch = sketchRectangle(10, 20);
-    const face = sketch.face();
-    const props = measureShapeSurfaceProperties(face);
-    expect(props.area).toBeCloseTo(200, 0);
+    const faces = getFaces(castShape(sketch.face().wrapped));
+    const face = faces[0]!;
+    const props = measureSurfaceProps(face);
+    expect(props.mass).toBeCloseTo(200, 0);
   });
 });
 
-describe('measureShapeLinearProperties', () => {
-  it('returns length and centerOfMass for edge', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
-    const props = measureShapeLinearProperties(edge);
-    expect(props.length).toBeCloseTo(10, 2);
+describe('measureLinearProps (functional)', () => {
+  it('returns mass (length) and centerOfMass for edge', () => {
+    const edge = castShape(makeLine([0, 0, 0], [10, 0, 0]).wrapped);
+    const props = measureLinearProps(edge);
+    expect(props.mass).toBeCloseTo(10, 2);
     const com = props.centerOfMass;
     expect(com).toHaveLength(3);
     expect(com[0]).toBeCloseTo(5, 0);
   });
 
-  it('returns length for wire', () => {
+  it('returns mass (length) for wire', () => {
     const circle = sketchCircle(5);
-    const props = measureShapeLinearProperties(circle.wire);
-    expect(props.length).toBeCloseTo(2 * Math.PI * 5, 0);
+    const wire = castShape(circle.wire.wrapped);
+    const props = measureLinearProps(wire);
+    expect(props.mass).toBeCloseTo(2 * Math.PI * 5, 0);
   });
 });
 
-describe('measureShapeVolumeProperties', () => {
-  it('returns volume', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const props = measureShapeVolumeProperties(box);
-    expect(props.volume).toBeCloseTo(1000, 0);
+describe('measureVolumeProps (functional)', () => {
+  it('returns mass (volume)', () => {
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const props = measureVolumeProps(box);
+    expect(props.mass).toBeCloseTo(1000, 0);
   });
 
   it('returns centerOfMass', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const props = measureShapeVolumeProperties(box);
+    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const props = measureVolumeProps(box);
     const com = props.centerOfMass;
     expect(com).toHaveLength(3);
     expect(com[0]).toBeCloseTo(5, 0);
@@ -145,9 +148,9 @@ describe('measureShapeVolumeProperties', () => {
   });
 
   it('sphere volume properties', () => {
-    const sphere = makeSphere(5);
-    const props = measureShapeVolumeProperties(sphere);
-    expect(props.volume).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
+    const sphere = castShape(makeSphere(5).wrapped);
+    const props = measureVolumeProps(sphere);
+    expect(props.mass).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
     const com = props.centerOfMass;
     expect(com[0]).toBeCloseTo(0, 0);
     expect(com[1]).toBeCloseTo(0, 0);
@@ -155,37 +158,19 @@ describe('measureShapeVolumeProperties', () => {
   });
 });
 
-describe('DistanceTool', () => {
-  it('measures distance between shapes', () => {
-    const tool = new DistanceTool();
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([20, 0, 0], [30, 10, 10]);
-    expect(tool.distanceBetween(box1, box2)).toBeCloseTo(10, 2);
-  });
-
-  it('can be reused for multiple measurements', () => {
-    const tool = new DistanceTool();
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([20, 0, 0], [30, 10, 10]);
-    const box3 = makeBox([40, 0, 0], [50, 10, 10]);
-    expect(tool.distanceBetween(box1, box2)).toBeCloseTo(10, 2);
-    expect(tool.distanceBetween(box1, box3)).toBeCloseTo(30, 2);
-  });
-});
-
-describe('DistanceQuery', () => {
+describe('createDistanceQuery (functional)', () => {
   it('measures distance from fixed shape to others', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const query = new DistanceQuery(box1);
-    const box2 = makeBox([20, 0, 0], [30, 10, 10]);
+    const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const query = createDistanceQuery(box1);
+    const box2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
     expect(query.distanceTo(box2)).toBeCloseTo(10, 2);
   });
 
   it('can query multiple targets', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const query = new DistanceQuery(box1);
-    const box2 = makeBox([20, 0, 0], [30, 10, 10]);
-    const box3 = makeBox([40, 0, 0], [50, 10, 10]);
+    const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    const query = createDistanceQuery(box1);
+    const box2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
+    const box3 = castShape(makeBox([40, 0, 0], [50, 10, 10]).wrapped);
     expect(query.distanceTo(box2)).toBeCloseTo(10, 2);
     expect(query.distanceTo(box3)).toBeCloseTo(30, 2);
   });

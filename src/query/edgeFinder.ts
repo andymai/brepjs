@@ -3,7 +3,16 @@ import type { Vec3, PointInput } from '../core/types.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecNormalize, vecProjectToPlane, vecEquals } from '../core/vecOps.js';
 
-import type { Face, AnyShape, Edge, CurveType } from '../topology/shapes.js';
+import type { Face, AnyShape, Edge } from '../core/shapeTypes.js';
+import type { CurveType } from '../core/definitionMaps.js';
+import {
+  curveLength,
+  getCurveType,
+  curveStartPoint,
+  curveTangentAt,
+} from '../topology/curveFns.js';
+import { getEdges } from '../topology/shapeFns.js';
+import { normalAt } from '../topology/faceFns.js';
 import type { Direction } from './definitions.js';
 import { PLANE_TO_DIR, type StandardPlane } from './definitions.js';
 import { Finder3d } from './generic3dfinder.js';
@@ -45,8 +54,8 @@ export class EdgeFinder extends Finder3d<Edge> {
    */
   ofLength(length: number | ((l: number) => boolean)): this {
     const check = ({ element }: { element: Edge }) => {
-      if (typeof length === 'number') return Math.abs(element.length - length) < 1e-9;
-      return length(element.length);
+      if (typeof length === 'number') return Math.abs(curveLength(element) - length) < 1e-9;
+      return length(curveLength(element));
     };
     this.filters.push(check);
     return this;
@@ -59,7 +68,7 @@ export class EdgeFinder extends Finder3d<Edge> {
    */
   ofCurveType(curveType: CurveType): this {
     const check = ({ element }: { element: Edge }) => {
-      return element.geomType === curveType;
+      return getCurveType(element) === curveType;
     };
     this.filters.push(check);
     return this;
@@ -80,9 +89,9 @@ export class EdgeFinder extends Finder3d<Edge> {
       // Functional Plane interface with Vec3 tuples
       return this.atAngleWith(plane.zDir, 90);
     }
-    if (typeof plane !== 'string' && 'normalAt' in plane) {
+    if (typeof plane !== 'string' && 'wrapped' in plane) {
       // Face - normalAt() returns Vec3 tuple
-      const normal = plane.normalAt();
+      const normal = normalAt(plane);
       return this.atAngleWith(normal, 90);
     }
     return this;
@@ -107,7 +116,7 @@ export class EdgeFinder extends Finder3d<Edge> {
     this.parallelTo(plane);
 
     const firstPointInPlane = ({ element }: { element: Edge }) => {
-      const startPoint = element.startPoint;
+      const startPoint = curveStartPoint(element);
       const projected = vecProjectToPlane(startPoint, plane.origin, plane.zDir);
       const result = vecEquals(startPoint, projected);
       return result;
@@ -121,8 +130,8 @@ export class EdgeFinder extends Finder3d<Edge> {
     let normal: Vec3 | null = null;
 
     try {
-      // tangentAt() returns a Vec3 tuple
-      const tangent = element.tangentAt();
+      // curveTangentAt() returns a Vec3 tuple
+      const tangent = curveTangentAt(element);
       normal = vecNormalize(tangent);
     } catch {
       // Degenerate edges may lack a valid tangent — filters should handle null normal
@@ -134,7 +143,7 @@ export class EdgeFinder extends Finder3d<Edge> {
   }
 
   protected applyFilter(shape: AnyShape): Edge[] {
-    return shape.edges.filter((edge: Edge) => {
+    return getEdges(shape).filter((edge: Edge) => {
       const shouldKeep = this.shouldKeep(edge);
       return shouldKeep;
     });

@@ -1,6 +1,9 @@
 import { describe, it, beforeAll } from 'vitest';
 import { initOC } from '../tests/setup.js';
 import { makeBox, makeCylinder, unwrap } from '../src/index.js';
+import { translateShape } from '../src/topology/shapeFns.js';
+import { fuseShapes, cutShape } from '../src/topology/booleanFns.js';
+import { meshShape } from '../src/topology/meshFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -19,18 +22,18 @@ describe('Full model benchmark — bracket', () => {
           const base = makeBox([40, 20, 5]);
 
           // Boss (cylinder on top)
-          const boss = makeCylinder(6, 10).translate([20, 10, 5]);
-          const withBoss = unwrap(base.fuse(boss));
+          const boss = translateShape(makeCylinder(6, 10) as any, [20, 10, 5]);
+          const withBoss = unwrap(fuseShapes(base as any, boss));
 
           // Hole through boss
-          const hole = makeCylinder(3, 15).translate([20, 10, 0]);
-          const withHole = unwrap(withBoss.cut(hole));
+          const hole = translateShape(makeCylinder(3, 15) as any, [20, 10, 0]);
+          const withHole = unwrap(cutShape(withBoss as any, hole));
 
           // Fillet top edges
           const filleted = unwrap(withHole.fillet(1));
 
           // Mesh for rendering
-          filleted.mesh();
+          meshShape(filleted as any);
         },
         { warmup: 1, iterations: 3 }
       )

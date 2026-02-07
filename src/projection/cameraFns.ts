@@ -1,14 +1,12 @@
 /**
- * Functional camera API — plain objects instead of ProjectionCamera class.
- * The ProjectionCamera class is still needed for makeProjectedEdges,
- * so these functions create/convert between the two representations.
+ * Functional camera API — plain immutable Camera objects for 3D projection.
  */
 
 import type { Vec3 } from '../core/types.js';
 import { vecCross, vecNormalize, vecSub, vecLength } from '../core/vecOps.js';
-import { ProjectionCamera, type ProjectionPlane } from './ProjectionCamera.js';
+import type { ProjectionPlane } from './projectionPlanes.js';
 import { PROJECTION_PLANES } from './projectionPlanes.js';
-import type { Edge, AnyShape } from '../topology/shapes.js';
+import type { Edge, AnyShape } from '../core/shapeTypes.js';
 import { makeProjectedEdges } from './makeProjectedEdges.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError } from '../core/errors.js';
@@ -102,24 +100,6 @@ export function cameraFromPlane(planeName: ProjectionPlane): Result<Camera> {
 }
 
 /**
- * Convert a plain {@link Camera} object to a {@link ProjectionCamera} (OCCT-backed).
- *
- * The caller is responsible for calling `.delete()` on the returned object
- * when it is no longer needed.
- *
- * @param camera - Plain camera data.
- * @returns A new ProjectionCamera instance.
- */
-export function cameraToProjectionCamera(camera: Camera): ProjectionCamera {
-  // Cast readonly Vec3 to mutable tuple for ProjectionCamera constructor
-  return new ProjectionCamera(
-    camera.position as [number, number, number],
-    camera.direction as [number, number, number],
-    camera.xAxis as [number, number, number]
-  );
-}
-
-/**
  * Project the edges of a 3D shape onto a 2D plane defined by a {@link Camera}.
  *
  * @param shape - The 3D shape to project.
@@ -134,10 +114,5 @@ export function projectEdges(
   camera: Camera,
   withHiddenLines = true
 ): { visible: Edge[]; hidden: Edge[] } {
-  const projCamera = cameraToProjectionCamera(camera);
-  try {
-    return makeProjectedEdges(shape, projCamera, withHiddenLines);
-  } finally {
-    projCamera.delete();
-  }
+  return makeProjectedEdges(shape, camera, withHiddenLines);
 }

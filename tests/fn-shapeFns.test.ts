@@ -28,12 +28,13 @@ import {
   getBounds,
   vertexPosition,
   castShape,
-  fnIsEdge,
-  fnIsFace,
-  fnIsSolid,
-  fnIsVertex,
-  fnIsWire,
+  isEdge,
+  isFace,
+  isSolid,
+  isVertex,
+  isWire,
 } from '../src/index.js';
+import { fuseShapes } from '../src/topology/booleanFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -84,7 +85,9 @@ describe('simplifyShape', () => {
   it('simplifies a fused shape', () => {
     const a = makeBox([0, 0, 0], [10, 10, 10]);
     // fuse creates extra faces; simplify removes co-planar seams
-    const fused = a.fuse(makeBox([10, 0, 0], [20, 10, 10]), { simplify: false });
+    const fused = fuseShapes(a as any, makeBox([10, 0, 0], [20, 10, 10]) as any, {
+      simplify: false,
+    });
     const simplified = simplifyShape(castShape(fused.value.wrapped));
     expect(simplified).toBeDefined();
   });
@@ -96,7 +99,7 @@ describe('translateShape', () => {
     const translated = translateShape(castShape(box.wrapped), [5, 0, 0]);
     expect(translated).toBeDefined();
     // Type is preserved
-    expect(fnIsSolid(translated)).toBe(true);
+    expect(isSolid(translated)).toBe(true);
   });
 });
 
@@ -105,7 +108,7 @@ describe('rotateShape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const rotated = rotateShape(castShape(box.wrapped), [0, 0, 0], [0, 0, 1], 90);
     expect(rotated).toBeDefined();
-    expect(fnIsSolid(rotated)).toBe(true);
+    expect(isSolid(rotated)).toBe(true);
   });
 });
 
@@ -114,7 +117,7 @@ describe('mirrorShape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const mirrored = mirrorShape(castShape(box.wrapped), [0, 1, 0], [0, 0, 0]);
     expect(mirrored).toBeDefined();
-    expect(fnIsSolid(mirrored)).toBe(true);
+    expect(isSolid(mirrored)).toBe(true);
   });
 });
 
@@ -123,7 +126,7 @@ describe('scaleShape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const scaled = scaleShape(castShape(box.wrapped), [5, 5, 5], 0.5);
     expect(scaled).toBeDefined();
-    expect(fnIsSolid(scaled)).toBe(true);
+    expect(isSolid(scaled)).toBe(true);
   });
 });
 
@@ -132,14 +135,14 @@ describe('getEdges / getFaces / getWires', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const edges = getEdges(castShape(box.wrapped));
     expect(edges.length).toBe(12);
-    expect(fnIsEdge(edges[0]!)).toBe(true);
+    expect(isEdge(edges[0]!)).toBe(true);
   });
 
   it('gets 6 faces from a box', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const faces = getFaces(castShape(box.wrapped));
     expect(faces.length).toBe(6);
-    expect(fnIsFace(faces[0]!)).toBe(true);
+    expect(isFace(faces[0]!)).toBe(true);
   });
 
   it('gets wires from a box', () => {
@@ -189,7 +192,7 @@ describe('iterEdges', () => {
   it('yields branded Edge values', () => {
     const box = castShape(makeBox([0, 0, 0], [5, 5, 5]).wrapped);
     for (const edge of iterEdges(box)) {
-      expect(fnIsEdge(edge)).toBe(true);
+      expect(isEdge(edge)).toBe(true);
     }
   });
 
@@ -217,7 +220,7 @@ describe('iterFaces', () => {
   it('yields branded Face values', () => {
     const box = castShape(makeBox([0, 0, 0], [5, 5, 5]).wrapped);
     for (const face of iterFaces(box)) {
-      expect(fnIsFace(face)).toBe(true);
+      expect(isFace(face)).toBe(true);
     }
   });
 });
@@ -233,7 +236,7 @@ describe('iterWires', () => {
   it('yields branded Wire values', () => {
     const box = castShape(makeBox([0, 0, 0], [5, 5, 5]).wrapped);
     for (const wire of iterWires(box)) {
-      expect(fnIsWire(wire)).toBe(true);
+      expect(isWire(wire)).toBe(true);
     }
   });
 });

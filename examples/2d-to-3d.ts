@@ -11,9 +11,8 @@ import {
   drawingToSketchOnPlane,
   drawingCut,
   sketchExtrude,
-  fnMeasureVolume,
-  fnMeasureArea,
-  fnExportSTEP,
+  measureVolume,
+  exportSTEP,
   unwrap,
   isOk,
 } from 'brepjs';
@@ -48,7 +47,7 @@ async function main() {
   const solid = extrudeResult.value;
 
   // Measure the result
-  const volume = fnMeasureVolume(solid);
+  const volume = measureVolume(solid);
   console.log(`\n3D solid created:`);
   console.log(`  Height: 20 mm`);
   console.log(`  Volume: ${volume.toFixed(1)} mm³`);
@@ -60,7 +59,7 @@ async function main() {
   console.log(`  Expected volume: ${theoreticalVolume.toFixed(1)} mm³`);
 
   // Export
-  const stepResult = fnExportSTEP(solid);
+  const stepResult = exportSTEP(solid);
   if (isOk(stepResult)) {
     console.log(`  STEP file: ${stepResult.value.size} bytes`);
   }

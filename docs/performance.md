@@ -54,7 +54,7 @@ doSomething(box);
 Use batch boolean operations instead of sequential pairwise operations:
 
 ```typescript
-import { fnFuseAll, fnCutAll } from 'brepjs';
+import { fuseAll, cutAll } from 'brepjs';
 
 // ❌ Slow — O(n) operations
 let result = shapes[0];
@@ -63,7 +63,7 @@ for (const shape of shapes.slice(1)) {
 }
 
 // ✅ Fast — single N-way operation
-const result = fnFuseAll(shapes);
+const result = fuseAll(shapes);
 ```
 
 The native N-way operations use `BRepAlgoAPI_BuilderAlgo` which is significantly faster than pairwise operations.

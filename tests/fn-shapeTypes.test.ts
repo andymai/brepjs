@@ -9,19 +9,19 @@ import {
   // functional API
   castShape,
   getShapeKind,
-  fnIsVertex,
-  fnIsEdge,
-  fnIsWire,
-  fnIsFace,
-  fnIsShell,
-  fnIsSolid,
-  fnIsCompound,
-  fnIsShape3D,
-  fnIsShape1D,
-  fnBuildCompound,
+  isVertex,
+  isEdge,
+  isWire,
+  isFace,
+  isShell,
+  isSolid,
+  isCompound,
+  isShape3D,
+  isShape1D,
+  buildCompound,
   getFaces,
   getEdges,
-  type FnAnyShape,
+  type AnyShape,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -47,7 +47,7 @@ describe('getShapeKind', () => {
   it('returns compound for multiple shapes', () => {
     const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
     const box2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
-    const compound = fnBuildCompound([box1, box2]);
+    const compound = buildCompound([box1, box2]);
     expect(getShapeKind(compound)).toBe('compound');
   });
 });
@@ -83,64 +83,64 @@ describe('type guards', () => {
   function createCompound() {
     const s1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
     const s2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
-    return fnBuildCompound([s1, s2]);
+    return buildCompound([s1, s2]);
   }
 
-  describe('fnIsVertex', () => {
-    it('returns true for vertex', () => expect(fnIsVertex(createVertex())).toBe(true));
-    it('returns false for edge', () => expect(fnIsVertex(createEdge())).toBe(false));
-    it('returns false for solid', () => expect(fnIsVertex(createSolid())).toBe(false));
+  describe('isVertex', () => {
+    it('returns true for vertex', () => expect(isVertex(createVertex())).toBe(true));
+    it('returns false for edge', () => expect(isVertex(createEdge())).toBe(false));
+    it('returns false for solid', () => expect(isVertex(createSolid())).toBe(false));
   });
 
-  describe('fnIsEdge', () => {
-    it('returns true for edge', () => expect(fnIsEdge(createEdge())).toBe(true));
-    it('returns false for vertex', () => expect(fnIsEdge(createVertex())).toBe(false));
-    it('returns false for solid', () => expect(fnIsEdge(createSolid())).toBe(false));
+  describe('isEdge', () => {
+    it('returns true for edge', () => expect(isEdge(createEdge())).toBe(true));
+    it('returns false for vertex', () => expect(isEdge(createVertex())).toBe(false));
+    it('returns false for solid', () => expect(isEdge(createSolid())).toBe(false));
   });
 
-  describe('fnIsWire', () => {
-    it('returns true for wire', () => expect(fnIsWire(createWire())).toBe(true));
-    it('returns false for edge', () => expect(fnIsWire(createEdge())).toBe(false));
-    it('returns false for solid', () => expect(fnIsWire(createSolid())).toBe(false));
+  describe('isWire', () => {
+    it('returns true for wire', () => expect(isWire(createWire())).toBe(true));
+    it('returns false for edge', () => expect(isWire(createEdge())).toBe(false));
+    it('returns false for solid', () => expect(isWire(createSolid())).toBe(false));
   });
 
-  describe('fnIsFace', () => {
-    it('returns true for face', () => expect(fnIsFace(createFace())).toBe(true));
-    it('returns false for edge', () => expect(fnIsFace(createEdge())).toBe(false));
-    it('returns false for solid', () => expect(fnIsFace(createSolid())).toBe(false));
+  describe('isFace', () => {
+    it('returns true for face', () => expect(isFace(createFace())).toBe(true));
+    it('returns false for edge', () => expect(isFace(createEdge())).toBe(false));
+    it('returns false for solid', () => expect(isFace(createSolid())).toBe(false));
   });
 
-  describe('fnIsShell', () => {
+  describe('isShell', () => {
     // Shells are harder to create directly, test negative cases
-    it('returns false for solid', () => expect(fnIsShell(createSolid())).toBe(false));
-    it('returns false for face', () => expect(fnIsShell(createFace())).toBe(false));
-    it('returns false for compound', () => expect(fnIsShell(createCompound())).toBe(false));
+    it('returns false for solid', () => expect(isShell(createSolid())).toBe(false));
+    it('returns false for face', () => expect(isShell(createFace())).toBe(false));
+    it('returns false for compound', () => expect(isShell(createCompound())).toBe(false));
   });
 
-  describe('fnIsSolid', () => {
-    it('returns true for solid', () => expect(fnIsSolid(createSolid())).toBe(true));
-    it('returns false for face', () => expect(fnIsSolid(createFace())).toBe(false));
-    it('returns false for compound', () => expect(fnIsSolid(createCompound())).toBe(false));
+  describe('isSolid', () => {
+    it('returns true for solid', () => expect(isSolid(createSolid())).toBe(true));
+    it('returns false for face', () => expect(isSolid(createFace())).toBe(false));
+    it('returns false for compound', () => expect(isSolid(createCompound())).toBe(false));
   });
 
-  describe('fnIsCompound', () => {
-    it('returns true for compound', () => expect(fnIsCompound(createCompound())).toBe(true));
-    it('returns false for solid', () => expect(fnIsCompound(createSolid())).toBe(false));
-    it('returns false for face', () => expect(fnIsCompound(createFace())).toBe(false));
+  describe('isCompound', () => {
+    it('returns true for compound', () => expect(isCompound(createCompound())).toBe(true));
+    it('returns false for solid', () => expect(isCompound(createSolid())).toBe(false));
+    it('returns false for face', () => expect(isCompound(createFace())).toBe(false));
   });
 
-  describe('fnIsShape3D', () => {
-    it('returns true for solid', () => expect(fnIsShape3D(createSolid())).toBe(true));
-    it('returns true for compound', () => expect(fnIsShape3D(createCompound())).toBe(true));
-    it('returns false for edge', () => expect(fnIsShape3D(createEdge())).toBe(false));
-    it('returns false for face', () => expect(fnIsShape3D(createFace())).toBe(false));
+  describe('isShape3D', () => {
+    it('returns true for solid', () => expect(isShape3D(createSolid())).toBe(true));
+    it('returns true for compound', () => expect(isShape3D(createCompound())).toBe(true));
+    it('returns false for edge', () => expect(isShape3D(createEdge())).toBe(false));
+    it('returns false for face', () => expect(isShape3D(createFace())).toBe(false));
   });
 
-  describe('fnIsShape1D', () => {
-    it('returns true for edge', () => expect(fnIsShape1D(createEdge())).toBe(true));
-    it('returns true for wire', () => expect(fnIsShape1D(createWire())).toBe(true));
-    it('returns false for solid', () => expect(fnIsShape1D(createSolid())).toBe(false));
-    it('returns false for face', () => expect(fnIsShape1D(createFace())).toBe(false));
-    it('returns false for vertex', () => expect(fnIsShape1D(createVertex())).toBe(false));
+  describe('isShape1D', () => {
+    it('returns true for edge', () => expect(isShape1D(createEdge())).toBe(true));
+    it('returns true for wire', () => expect(isShape1D(createWire())).toBe(true));
+    it('returns false for solid', () => expect(isShape1D(createSolid())).toBe(false));
+    it('returns false for face', () => expect(isShape1D(createFace())).toBe(false));
+    it('returns false for vertex', () => expect(isShape1D(createVertex())).toBe(false));
   });
 });

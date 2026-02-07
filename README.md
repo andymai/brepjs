@@ -17,21 +17,21 @@ npm install brepjs brepjs-opencascade
 ```typescript
 import opencascade from 'brepjs-opencascade';
 import {
-  setOC,
+  initFromOC,
   makeBox,
   makeCylinder,
   castShape,
   fuseShapes,
   cutShape,
   translateShape,
-  fnMeasureVolume,
-  fnExportSTEP,
+  measureVolume,
+  exportSTEP,
   unwrap,
 } from 'brepjs';
 
 // Initialize the WASM kernel
 const oc = await opencascade();
-setOC(oc);
+initFromOC(oc);
 
 // Create primitive shapes
 const box = castShape(makeBox([0, 0, 0], [50, 30, 20]).wrapped);
@@ -44,10 +44,10 @@ const withHole = unwrap(cutShape(box, cylinder));
 const moved = translateShape(withHole, [100, 0, 0]);
 
 // Measure
-console.log('Volume:', fnMeasureVolume(moved), 'mm³');
+console.log('Volume:', measureVolume(moved), 'mm³');
 
 // Export
-const stepBlob = unwrap(fnExportSTEP(moved));
+const stepBlob = unwrap(exportSTEP(moved));
 ```
 
 ## Examples

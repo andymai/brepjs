@@ -4,8 +4,8 @@ import {
   chamferDistAngleShape,
   isOk,
   unwrap,
-  fnMeasureVolume,
-  fnIsShape3D,
+  measureVolume,
+  isShape3D,
   getEdges,
 } from '../src/index.js';
 import { createSolid } from '../src/core/shapeTypes.js';
@@ -27,11 +27,11 @@ describe('chamferDistAngleShape', () => {
     expect(edges.length).toBe(12);
 
     const result = chamferDistAngleShape(box, [edges[0]!], 1, 45);
-    expect(fnIsShape3D(result)).toBe(true);
+    expect(isShape3D(result)).toBe(true);
 
     // Chamfered box should have less volume than original
-    const origVol = fnMeasureVolume(box);
-    const chamfVol = fnMeasureVolume(result);
+    const origVol = measureVolume(box);
+    const chamfVol = measureVolume(result);
     expect(chamfVol).toBeLessThan(origVol);
     expect(chamfVol).toBeGreaterThan(0);
   });
@@ -42,10 +42,10 @@ describe('chamferDistAngleShape', () => {
     const selected = edges.slice(0, 4);
 
     const result = chamferDistAngleShape(box, selected, 1, 45);
-    expect(fnIsShape3D(result)).toBe(true);
+    expect(isShape3D(result)).toBe(true);
 
-    const origVol = fnMeasureVolume(box);
-    const chamfVol = fnMeasureVolume(result);
+    const origVol = measureVolume(box);
+    const chamfVol = measureVolume(result);
     expect(chamfVol).toBeLessThan(origVol);
   });
 
@@ -58,11 +58,11 @@ describe('chamferDistAngleShape', () => {
     const result30 = chamferDistAngleShape(box, [edges[0]!], 2, 30);
     const result60 = chamferDistAngleShape(box, [edges[0]!], 2, 60);
 
-    const vol30 = fnMeasureVolume(result30);
-    const vol60 = fnMeasureVolume(result60);
+    const vol30 = measureVolume(result30);
+    const vol60 = measureVolume(result60);
 
     // Both should be valid and less than original
-    const origVol = fnMeasureVolume(box);
+    const origVol = measureVolume(box);
     expect(vol30).toBeLessThan(origVol);
     expect(vol60).toBeLessThan(origVol);
     // Different angles produce different volumes
@@ -75,20 +75,20 @@ describe('chamferDistAngleShape', () => {
     expect(edges.length).toBe(12);
 
     const result = chamferDistAngleShape(box, edges, 1, 45);
-    expect(fnIsShape3D(result)).toBe(true);
+    expect(isShape3D(result)).toBe(true);
 
-    const origVol = fnMeasureVolume(box);
-    const chamfVol = fnMeasureVolume(result);
+    const origVol = measureVolume(box);
+    const chamfVol = measureVolume(result);
     expect(chamfVol).toBeLessThan(origVol);
     expect(chamfVol).toBeGreaterThan(origVol * 0.8); // Not too much removed
   });
 
   it('is immutable — does not modify original shape', () => {
     const box = makeBox(10, 10, 10);
-    const origVol = fnMeasureVolume(box);
+    const origVol = measureVolume(box);
     const edges = getEdges(box);
 
     chamferDistAngleShape(box, [edges[0]!], 1, 45);
-    expect(fnMeasureVolume(box)).toBeCloseTo(origVol, 6);
+    expect(measureVolume(box)).toBeCloseTo(origVol, 6);
   });
 });

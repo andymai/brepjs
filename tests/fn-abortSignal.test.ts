@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { fnFuseAll, fnMeasureVolume, meshShape, fnCreateSolid } from '../src/index.js';
+import { fuseAll, measureVolume, meshShape, createSolid } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
 import { unwrap } from '../src/core/result.js';
 
@@ -9,7 +9,7 @@ beforeAll(async () => {
 }, 30000);
 
 function makeBox(w: number, h: number, d: number) {
-  return fnCreateSolid(getKernel().makeBox(w, h, d));
+  return createSolid(getKernel().makeBox(w, h, d));
 }
 
 describe('AbortSignal cancellation', () => {
@@ -18,13 +18,13 @@ describe('AbortSignal cancellation', () => {
     const controller = new AbortController();
     controller.abort();
 
-    expect(() => fnFuseAll(boxes, { strategy: 'pairwise', signal: controller.signal })).toThrow();
+    expect(() => fuseAll(boxes, { strategy: 'pairwise', signal: controller.signal })).toThrow();
   });
 
   it('fuseAll (pairwise) succeeds without signal', () => {
     const boxes = Array.from({ length: 3 }, () => makeBox(10, 10, 10));
-    const result = unwrap(fnFuseAll(boxes, { strategy: 'pairwise' }));
-    expect(fnMeasureVolume(result)).toBeCloseTo(1000, 0);
+    const result = unwrap(fuseAll(boxes, { strategy: 'pairwise' }));
+    expect(measureVolume(result)).toBeCloseTo(1000, 0);
   });
 
   it('fuseAll (native) throws when signal is already aborted', () => {
@@ -32,7 +32,7 @@ describe('AbortSignal cancellation', () => {
     const controller = new AbortController();
     controller.abort();
 
-    expect(() => fnFuseAll(boxes, { strategy: 'native', signal: controller.signal })).toThrow();
+    expect(() => fuseAll(boxes, { strategy: 'native', signal: controller.signal })).toThrow();
   });
 
   it('fuseAll passes signal through to pairwise recursion', () => {
@@ -41,7 +41,7 @@ describe('AbortSignal cancellation', () => {
     const controller = new AbortController();
     controller.abort();
 
-    expect(() => fnFuseAll(boxes, { strategy: 'pairwise', signal: controller.signal })).toThrow();
+    expect(() => fuseAll(boxes, { strategy: 'pairwise', signal: controller.signal })).toThrow();
   });
 
   it('meshShape throws when signal is already aborted', () => {
@@ -65,7 +65,7 @@ describe('AbortSignal cancellation', () => {
     const controller = new AbortController();
     controller.abort(reason);
 
-    expect(() => fnFuseAll(boxes, { strategy: 'pairwise', signal: controller.signal })).toThrow(
+    expect(() => fuseAll(boxes, { strategy: 'pairwise', signal: controller.signal })).toThrow(
       'User cancelled'
     );
   });
@@ -74,7 +74,7 @@ describe('AbortSignal cancellation', () => {
     const boxes = Array.from({ length: 3 }, () => makeBox(10, 10, 10));
     const controller = new AbortController();
     // Don't abort — operation should succeed
-    const result = unwrap(fnFuseAll(boxes, { strategy: 'pairwise', signal: controller.signal }));
-    expect(fnMeasureVolume(result)).toBeCloseTo(1000, 0);
+    const result = unwrap(fuseAll(boxes, { strategy: 'pairwise', signal: controller.signal }));
+    expect(measureVolume(result)).toBeCloseTo(1000, 0);
   });
 });

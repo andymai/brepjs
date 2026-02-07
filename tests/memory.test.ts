@@ -2,8 +2,8 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   WrappingObj,
-  GCWithScope,
-  GCWithObject,
+  gcWithScope,
+  gcWithObject,
   localGC,
   type Deletable,
 } from '../src/core/memory.js';
@@ -64,19 +64,19 @@ describe('localGC', () => {
   });
 });
 
-describe('GCWithScope', () => {
+describe('gcWithScope', () => {
   it('returns the value it wraps', () => {
-    const r = GCWithScope();
+    const r = gcWithScope();
     const obj = mockDeletable();
     const result = r(obj);
     expect(result).toBe(obj);
   });
 });
 
-describe('GCWithObject', () => {
+describe('gcWithObject', () => {
   it('returns the value it wraps', () => {
     const holder = {};
-    const r = GCWithObject(holder);
+    const r = gcWithObject(holder);
     const obj = mockDeletable();
     const result = r(obj);
     expect(result).toBe(obj);
@@ -92,14 +92,13 @@ describe('WrappingObj', () => {
   it('throws after delete', () => {
     const box = makeBox([0, 0, 0], [5, 5, 5]);
     box.delete();
-    expect(() => box.wrapped).toThrow('This object has been deleted');
+    expect(() => box.wrapped).toThrow('Shape handle has been disposed');
   });
 
-  it('replaces wrapped object via setter', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [5, 5, 5]);
-    const original = box1.wrapped;
-    box1.wrapped = box2.wrapped;
-    expect(box1.wrapped).not.toBe(original);
+  it('tracks disposed state', () => {
+    const box = makeBox([0, 0, 0], [5, 5, 5]);
+    expect(box.disposed).toBe(false);
+    box.delete();
+    expect(box.disposed).toBe(true);
   });
 });

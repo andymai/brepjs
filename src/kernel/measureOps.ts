@@ -2,7 +2,7 @@
  * Measurement operations for OCCT shapes.
  *
  * Provides volume, area, length, center of mass, and bounding box calculations.
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape, OcType } from './types.js';

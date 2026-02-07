@@ -1,4 +1,4 @@
-import type { Face, Shape3D } from '../topology/shapes.js';
+import type { Face, Shape3D } from '../core/shapeTypes.js';
 import type { PointInput } from '../core/types.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';
 import type { LoftConfig } from '../operations/loft.js';

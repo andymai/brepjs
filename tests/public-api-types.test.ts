@@ -72,15 +72,15 @@ import type {
   DirectionInput,
 
   // Plane types
-  FnPlane,
-  FnPlaneName,
+  Plane,
+  PlaneName,
   PlaneInput,
 
   // Shape types
   ShapeKind,
-  FnAnyShape,
-  FnShape3D,
-  FnShape1D,
+  AnyShape,
+  Shape3D,
+  Shape1D,
 
   // Disposal
   ShapeHandle,
@@ -91,7 +91,7 @@ import type {
   Result,
 
   // Mesh types
-  FnShapeMesh,
+  ShapeMesh,
   EdgeMesh,
   MeshOptions,
 
@@ -101,7 +101,6 @@ import type {
   // Topology types
   Bounds3D,
   ShapeDescription,
-  SurfaceType,
   CurveType,
 
   // Healing
@@ -141,7 +140,6 @@ import type {
  * tests in the sections that follow.
  */
 const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
-  'AssemblyExporter',
   'BaseSketcher2d',
   'Blueprint',
   'BlueprintSketcher',
@@ -149,47 +147,24 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'BoundingBox2d',
   'BrepBugError',
   'BrepErrorCode',
-  'CompSolid',
-  'Compound',
   'CompoundBlueprint',
   'CompoundSketch',
   'CornerFinder',
-  'Curve',
   'Curve2D',
   'DEG2RAD',
   'DisposalScope',
-  'DistanceQuery',
-  'DistanceTool',
   'Drawing',
   'DrawingPen',
-  'Edge',
   'EdgeFinder',
-  'Face',
   'FaceFinder',
   'FaceSketcher',
-  'GCWithObject',
-  'GCWithScope',
   'HASH_CODE_MAX',
-  'LinearPhysicalProperties',
-  'LinearShape',
   'OK',
-  'ProjectionCamera',
   'RAD2DEG',
-  'Shape',
-  'Shell',
   'Sketch',
   'Sketcher',
   'Sketches',
-  'Solid',
-  'SolidShape',
-  'Surface',
-  'SurfacePhysicalProperties',
-  'Vertex',
-  'VolumePhysicalProperties',
-  'Wire',
   'WrappingObj',
-  '_1DShape',
-  '_3DShape',
   'addChild',
   'addHolesInFace',
   'addStep',
@@ -212,7 +187,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'buildCompoundOc',
   'cameraFromPlane',
   'cameraLookAt',
-  'cameraToProjectionCamera',
   'cast',
   'castShape',
   'chamferDistAngleShape',
@@ -238,15 +212,23 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'createAssemblyNode',
   'createBlueprint',
   'createCamera',
+  'createCompound',
   'createDistanceQuery',
+  'createEdge',
+  'createFace',
   'createHandle',
   'createHistory',
   'createMeshCache',
+  'createNamedPlane',
   'createOcHandle',
   'createOperationRegistry',
   'createPlane',
   'createRegistry',
+  'createShell',
+  'createSolid',
   'createTaskQueue',
+  'createVertex',
+  'createWire',
   'createWorkerClient',
   'createWorkerHandler',
   'curve2dBoundingBox',
@@ -303,8 +285,10 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'exportDXF',
   'exportGlb',
   'exportGltf',
+  'exportIGES',
   'exportOBJ',
   'exportSTEP',
+  'exportSTL',
   'exportThreeMF',
   'extrudeFace',
   'faceCenter',
@@ -319,46 +303,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'flatMap',
   'flipFaceOrientation',
   'flipOrientation',
-  'fnBuildCompound',
-  'fnComplexExtrude',
-  'fnCreateCompound',
-  'fnCreateEdge',
-  'fnCreateFace',
-  'fnCreateNamedPlane',
-  'fnCreateShell',
-  'fnCreateSolid',
-  'fnCreateVertex',
-  'fnCreateWire',
-  'fnCutAll',
-  'fnExportIGES',
-  'fnExportSTEP',
-  'fnExportSTL',
-  'fnFuseAll',
-  'fnGetCurveType',
-  'fnImportIGES',
-  'fnImportSTEP',
-  'fnImportSTL',
-  'fnInnerWires',
-  'fnIsCompound',
-  'fnIsEdge',
-  'fnIsFace',
-  'fnIsShape1D',
-  'fnIsShape3D',
-  'fnIsShell',
-  'fnIsSolid',
-  'fnIsVertex',
-  'fnIsWire',
-  'fnMeasureArea',
-  'fnMeasureLength',
-  'fnMeasureVolume',
-  'fnNormalAt',
-  'fnOuterWire',
-  'fnPointOnSurface',
-  'fnSketchFace',
-  'fnSketchWires',
-  'fnSupportExtrude',
-  'fnTwistExtrude',
-  'fnUvCoordinates',
   'fromOcDir',
   'fromOcPnt',
   'fromOcVec',
@@ -372,12 +316,13 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'gcWithScope',
   'genericSweep',
   'getBounds',
+  'getCurveType',
   'getEdges',
   'getFaces',
   'getFont',
   'getHashCode',
   'getHistoryShape',
-  'getOC',
+  'getKernel',
   'getOrientation',
   'getShapeKind',
   'getSingleFace',
@@ -388,11 +333,13 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'healShape',
   'healSolid',
   'healWire',
+  'importIGES',
   'importSTEP',
   'importSTL',
   'importSVG',
   'importSVGPathD',
-  'initCast',
+  'initFromOC',
+  'innerWires',
   'interpolateCurve',
   'intersect2D',
   'intersectBlueprint2D',
@@ -401,10 +348,13 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'ioError',
   'isChamferRadius',
   'isCompSolid',
+  'isCompound',
   'isDisposeRequest',
+  'isEdge',
   'isEqualShape',
   'isErr',
   'isErrorResponse',
+  'isFace',
   'isFilletRadius',
   'isInitRequest',
   'isNumber',
@@ -414,10 +364,14 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'isProjectionPlane',
   'isQueueEmpty',
   'isSameShape',
+  'isShape1D',
   'isShape3D',
   'isShapeNull',
   'isShapeValid',
+  'isShell',
+  'isSolid',
   'isSuccessResponse',
+  'isVertex',
   'isWire',
   'iterEdges',
   'iterFaces',
@@ -431,7 +385,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'localGC',
   'loft',
   'loftWires',
-  'lookFromPlane',
   'makeBSplineApproximation',
   'makeBaseBox',
   'makeBezierCurve',
@@ -440,7 +393,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'makeCompound',
   'makeCone',
   'makeCylinder',
-  'makeDirection',
   'makeEllipse',
   'makeEllipseArc',
   'makeEllipsoid',
@@ -467,12 +419,8 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'measureCurvatureAt',
   'measureCurvatureAtMid',
   'measureDistance',
-  'measureDistanceBetween',
   'measureLength',
   'measureLinearProps',
-  'measureShapeLinearProperties',
-  'measureShapeSurfaceProperties',
-  'measureShapeVolumeProperties',
   'measureSurfaceProps',
   'measureVolume',
   'measureVolumeProps',
@@ -484,15 +432,18 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'mirrorShape',
   'modifyStep',
   'moduleInitError',
+  'normalAt',
   'occtError',
   'offsetShape',
   'offsetWire2D',
   'ok',
   'organiseBlueprints',
+  'outerWire',
   'pendingCount',
   'pipe',
   'pipeline',
   'pivotPlane',
+  'pointOnSurface',
   'polysideInnerRadius',
   'polysidesBlueprint',
   'projectEdges',
@@ -500,7 +451,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'queryError',
   'registerHandler',
   'registerOperation',
-  'registerQueryModule',
   'registerShape',
   'rejectAll',
   'removeChild',
@@ -522,8 +472,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'scaleShape',
   'sectionShape',
   'serializeShape',
-  'setMeshCacheSize',
-  'setOC',
   'shapeType',
   'sharedEdges',
   'shellShape',
@@ -533,6 +481,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'sketchCircle',
   'sketchEllipse',
   'sketchExtrude',
+  'sketchFace',
   'sketchFaceOffset',
   'sketchHelix',
   'sketchLoft',
@@ -543,6 +492,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'sketchRoundedRectangle',
   'sketchSweep',
   'sketchText',
+  'sketchWires',
   'sketcherStateError',
   'sliceShape',
   'splitShape',
@@ -564,7 +514,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'translateDrawing',
   'translatePlane',
   'translateShape',
-  'triangulateFace',
   'tryCatch',
   'tryCatchAsync',
   'twistExtrude',
@@ -576,6 +525,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'unwrapOrElse',
   'updateNode',
   'uvBounds',
+  'uvCoordinates',
   'validationError',
   'vecAdd',
   'vecAngle',
@@ -741,9 +691,9 @@ describe('Type structures — runtime field verification', () => {
     });
   });
 
-  describe('FnPlane', () => {
+  describe('Plane', () => {
     it('has origin, xDir, yDir, zDir fields', () => {
-      const plane: FnPlane = {
+      const plane: Plane = {
         origin: [0, 0, 0],
         xDir: [1, 0, 0],
         yDir: [0, 1, 0],
@@ -926,9 +876,9 @@ describe('Type structures — runtime field verification', () => {
     });
   });
 
-  describe('ShapeMesh (FnShapeMesh)', () => {
+  describe('ShapeMesh', () => {
     it('has triangles, vertices, normals, uvs, faceGroups', () => {
-      const mesh: FnShapeMesh = {
+      const mesh: ShapeMesh = {
         triangles: new Uint32Array([0, 1, 2]),
         vertices: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
         normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
@@ -1155,9 +1105,9 @@ describe('Union type values', () => {
     });
   });
 
-  describe('FnPlaneName', () => {
+  describe('PlaneName', () => {
     it('includes all 12 documented plane names', () => {
-      const names: FnPlaneName[] = [
+      const names: PlaneName[] = [
         'XY',
         'YZ',
         'ZX',
@@ -1193,26 +1143,6 @@ describe('Union type values', () => {
       expect(new Set(types).size).toBe(9);
     });
   });
-
-  describe('SurfaceType', () => {
-    it('includes all 11 documented surface types', () => {
-      const types: SurfaceType[] = [
-        'PLANE',
-        'CYLINDRE',
-        'CONE',
-        'SPHERE',
-        'TORUS',
-        'BEZIER_SURFACE',
-        'BSPLINE_SURFACE',
-        'REVOLUTION_SURFACE',
-        'EXTRUSION_SURFACE',
-        'OFFSET_SURFACE',
-        'OTHER_SURFACE',
-      ];
-      expect(types).toHaveLength(11);
-      expect(new Set(types).size).toBe(11);
-    });
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1243,23 +1173,23 @@ describe('Type assignability (compile-time checks)', () => {
     expect(keys).toContain('disposed');
   });
 
-  it('FnAnyShape extends ShapeHandle', () => {
-    // FnAnyShape is a union of branded ShapeHandles.
+  it('AnyShape extends ShapeHandle', () => {
+    // AnyShape is a union of branded ShapeHandles.
     // If we can assign a ShapeHandle field, the brand constraint is working.
     // This is a compile-time check — the test passing means the types compile.
-    type HasWrapped = FnAnyShape extends { readonly wrapped: unknown } ? true : false;
+    type HasWrapped = AnyShape extends { readonly wrapped: unknown } ? true : false;
     const check: HasWrapped = true;
     expect(check).toBe(true);
   });
 
-  it('FnShape3D is a subset of FnAnyShape', () => {
-    type IsSubset = FnShape3D extends FnAnyShape ? true : false;
+  it('Shape3D is a subset of AnyShape', () => {
+    type IsSubset = Shape3D extends AnyShape ? true : false;
     const check: IsSubset = true;
     expect(check).toBe(true);
   });
 
-  it('FnShape1D is a subset of FnAnyShape', () => {
-    type IsSubset = FnShape1D extends FnAnyShape ? true : false;
+  it('Shape1D is a subset of AnyShape', () => {
+    type IsSubset = Shape1D extends AnyShape ? true : false;
     const check: IsSubset = true;
     expect(check).toBe(true);
   });
@@ -1310,7 +1240,7 @@ describe('Runtime integration — pure data types', () => {
         wrapped: {},
         disposed: false,
         [Symbol.dispose]() {},
-      } as unknown as FnAnyShape;
+      } as unknown as AnyShape;
 
       h = registerShape(h, 'input-1', mockShape);
       expect(getHistoryShape(h, 'input-1')).toBe(mockShape);

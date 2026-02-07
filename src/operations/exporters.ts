@@ -1,8 +1,9 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope, WrappingObj } from '../core/memory.js';
+import { gcWithScope } from '../core/memory.js';
+import { type OcHandle, createOcHandle } from '../core/disposal.js';
 import { uuidv } from '../utils/uuid.js';
-import type { AnyShape } from '../topology/shapes.js';
+import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 import { uniqueIOFilename } from '../core/constants.js';
@@ -16,12 +17,8 @@ import {
 
 export type { SupportedUnit } from './exporterUtils.js';
 
-/**
- * Wrapper around an XCAF document used for STEP assembly export.
- *
- * @see {@link createAssembly} to construct an instance.
- */
-export class AssemblyExporter extends WrappingObj<OcType> {}
+/** Disposable handle wrapping an XCAF document for STEP assembly export. */
+export type AssemblyExporter = OcHandle<OcType>;
 
 /** Configuration for a single shape within an assembly export. */
 export type ShapeConfig = {
@@ -74,7 +71,7 @@ export function createAssembly(shapes: ShapeConfig[] = []): AssemblyExporter {
 
   tool.UpdateAssemblies();
 
-  return new AssemblyExporter(doc);
+  return createOcHandle(doc);
 }
 
 /**
@@ -120,7 +117,7 @@ export function exportSTEP(
 
     const progress = r(new oc.Message_ProgressRange_1());
     writer.Transfer_1(
-      new oc.Handle_TDocStd_Document_2(doc.wrapped),
+      new oc.Handle_TDocStd_Document_2(doc.value),
       oc.STEPControl_StepModelType.STEPControl_AsIs,
       null,
       progress
@@ -139,6 +136,6 @@ export function exportSTEP(
       return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
     }
   } finally {
-    doc.delete();
+    doc[Symbol.dispose]();
   }
 }

@@ -94,48 +94,12 @@ export function setEdgeMeshForShape(shape: OcShape, key: string, value: EdgeMesh
   shapeCache.set(key, value);
 }
 
-// Legacy API - kept for backward compatibility but deprecated
-// These use hash-based lookup which can collide
-
-let legacyCache: Map<string, ShapeMesh | EdgeMesh> = new Map();
-
-/** @deprecated Use getMeshForShape instead - hash-based keys can collide */
-export function getMesh(key: string): ShapeMesh | undefined {
-  return legacyCache.get(key) as ShapeMesh | undefined;
-}
-
-/** @deprecated Use setMeshForShape instead - hash-based keys can collide */
-export function setMesh(key: string, value: ShapeMesh): void {
-  legacyCache.set(key, value);
-}
-
-/** @deprecated Use getEdgeMeshForShape instead - hash-based keys can collide */
-export function getEdgeMesh(key: string): EdgeMesh | undefined {
-  return legacyCache.get(key) as EdgeMesh | undefined;
-}
-
-/** @deprecated Use setEdgeMeshForShape instead - hash-based keys can collide */
-export function setEdgeMesh(key: string, value: EdgeMesh): void {
-  legacyCache.set(key, value);
-}
-
 /**
  * Clear all mesh caches. Call this after modifying shapes to avoid stale results.
  */
 export function clearMeshCache(): void {
   meshCache = new WeakMap();
   edgeMeshCache = new WeakMap();
-  legacyCache = new Map();
-}
-
-/**
- * Set the maximum cache size for the legacy cache.
- * Note: WeakMap caches are automatically managed by GC and don't have a size limit.
- * @deprecated The WeakMap-based cache doesn't use size limits
- */
-export function setMeshCacheSize(_size: number): void {
-  // WeakMap doesn't support size limits - entries are GC'd when shapes are GC'd
-  // This function is kept for backward compatibility but is now a no-op
 }
 
 // ---------------------------------------------------------------------------

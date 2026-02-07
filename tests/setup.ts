@@ -3,7 +3,7 @@
  * Initializes brepjs-opencascade for integration tests.
  */
 
-import { setOC } from '../src/oclib.js';
+import { initFromOC } from '../src/kernel/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten factory type
 let oc: any = null;
@@ -22,6 +22,6 @@ export async function initOC() {
     },
   });
 
-  setOC(oc);
+  initFromOC(oc);
   return oc;
 }

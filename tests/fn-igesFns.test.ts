@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { fnImportIGES, fnExportIGES } from '../src/index.js';
+import { importIGES, exportIGES } from '../src/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT instance has dynamic members
 let oc: any;
@@ -10,12 +10,12 @@ beforeAll(async () => {
 }, 30000);
 
 describe('IGES module exports', () => {
-  it('exports fnImportIGES function', () => {
-    expect(typeof fnImportIGES).toBe('function');
+  it('exports importIGES function', () => {
+    expect(typeof importIGES).toBe('function');
   });
 
-  it('exports fnExportIGES function', () => {
-    expect(typeof fnExportIGES).toBe('function');
+  it('exports exportIGES function', () => {
+    expect(typeof exportIGES).toBe('function');
   });
 });
 

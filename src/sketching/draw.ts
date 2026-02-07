@@ -27,17 +27,20 @@ import {
 } from '../2d/blueprints/index.js';
 import type { Plane, PlaneName } from '../core/planeTypes.js';
 import type { PointInput } from '../core/types.js';
-import type { AnyShape, Edge, Face, Wire } from '../topology/shapes.js';
+import type { AnyShape, Edge, Face, Wire } from '../core/shapeTypes.js';
+import { createFace } from '../core/shapeTypes.js';
+import { outerWire } from '../topology/faceFns.js';
+import { getEdges } from '../topology/shapeFns.js';
 import { makeFace } from '../topology/shapeHelpers.js';
+import { downcast } from '../topology/cast.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
 import type { SketchInterface } from './sketchLib.js';
 import Sketches from './Sketches.js';
 import type { GenericSketcher } from './sketcherlib.js';
 import type { SketchData } from '../2d/blueprints/lib.js';
 import { textBlueprints } from '../text/textBlueprints.js';
-import { lookFromPlane, ProjectionCamera } from '../projection/ProjectionCamera.js';
-import type { ProjectionPlane } from '../projection/ProjectionCamera.js';
-import { makeProjectedEdges } from '../projection/makeProjectedEdges.js';
+import type { ProjectionPlane } from '../projection/projectionPlanes.js';
+import { type Camera, cameraFromPlane, projectEdges } from '../projection/cameraFns.js';
 
 import offsetFn, { type Offset2DConfig } from '../2d/blueprints/offset.js';
 import { CornerFinder } from '../query/cornerFinder.js';
@@ -568,19 +571,16 @@ const edgesToDrawing = (edges: Edge[]): Drawing => {
  */
 export function drawProjection(
   shape: AnyShape,
-  projectionCamera: ProjectionPlane | ProjectionCamera = 'front'
+  projectionCamera: ProjectionPlane | Camera = 'front'
 ): { visible: Drawing; hidden: Drawing } {
-  const [r, gc] = localGC();
-  let camera: ProjectionCamera;
-  const ownCamera = !(projectionCamera instanceof ProjectionCamera);
-  if (!ownCamera) {
-    camera = projectionCamera;
+  let camera: Camera;
+  if (typeof projectionCamera === 'string') {
+    camera = unwrap(cameraFromPlane(projectionCamera));
   } else {
-    camera = r(lookFromPlane(projectionCamera));
+    camera = projectionCamera;
   }
 
-  const { visible, hidden } = makeProjectedEdges(shape, camera);
-  gc();
+  const { visible, hidden } = projectEdges(shape, camera);
 
   return {
     visible: edgesToDrawing(visible),
@@ -595,9 +595,9 @@ export function drawProjection(
  */
 export function drawFaceOutline(face: Face): Drawing {
   const [r, gc] = localGC();
-  const clonedFace = r(face.clone());
-  const outerWire = r(clonedFace.outerWire());
-  const curves = outerWire.edges.map((e) => edgeToCurve(e, face));
+  const clonedFace = r(createFace(unwrap(downcast(face.wrapped))));
+  const faceOuterWire = r(outerWire(clonedFace));
+  const curves = getEdges(faceOuterWire).map((e) => edgeToCurve(e, face));
   gc();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));

@@ -5,7 +5,7 @@ import { toVec3 } from '../core/types.js';
 import { cast, isShape3D } from '../topology/cast.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
 import { typeCastError, validationError, occtError } from '../core/errors.js';
-import type { Wire, Shape3D } from '../topology/shapes.js';
+import type { Wire, Shape3D } from '../core/shapeTypes.js';
 import { makeVertex } from '../topology/shapeHelpers.js';
 
 /** Configuration for the OOP loft operation. */

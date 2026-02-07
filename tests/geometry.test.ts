@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeDirection,
   isPoint,
   makePlane,
   findCurveType,
@@ -9,12 +8,13 @@ import {
   isOk,
   isErr,
   makeBox,
-  getOC,
+  resolveDirection,
   type PlaneName,
-  fnCreateNamedPlane,
+  createNamedPlane,
 } from '../src/index.js';
+import { getKernel } from '../src/kernel/index.js';
 // Functional plane API
-import { createNamedPlane, resolvePlane } from '../src/core/planeOps.js';
+import { resolvePlane } from '../src/core/planeOps.js';
 // OCCT boundary functions
 import { toOcPnt } from '../src/core/occtBoundary.js';
 
@@ -60,19 +60,18 @@ describe('isPoint', () => {
   });
 });
 
-describe('makeDirection', () => {
+describe('resolveDirection', () => {
   it('returns [1,0,0] for X', () => {
-    expect(makeDirection('X')).toEqual([1, 0, 0]);
+    expect(resolveDirection('X')).toEqual([1, 0, 0]);
   });
   it('returns [0,1,0] for Y', () => {
-    expect(makeDirection('Y')).toEqual([0, 1, 0]);
+    expect(resolveDirection('Y')).toEqual([0, 1, 0]);
   });
   it('returns [0,0,1] for Z', () => {
-    expect(makeDirection('Z')).toEqual([0, 0, 1]);
+    expect(resolveDirection('Z')).toEqual([0, 0, 1]);
   });
-  it('passes through a Point value unchanged', () => {
-    const pt: [number, number, number] = [3, 4, 5];
-    expect(makeDirection(pt)).toBe(pt);
+  it('passes through a Vec3 value', () => {
+    expect(resolveDirection([3, 4, 5])).toEqual([3, 4, 5]);
   });
 });
 
@@ -106,31 +105,31 @@ describe('findCurveType', () => {
     expect(isErr(findCurveType(-9999))).toBe(true);
   });
   it('finds LINE', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const r = findCurveType(oc.GeomAbs_CurveType.GeomAbs_Line);
     expect(isOk(r)).toBe(true);
     expect(unwrap(r)).toBe('LINE');
   });
   it('finds CIRCLE', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const r = findCurveType(oc.GeomAbs_CurveType.GeomAbs_Circle);
     expect(isOk(r)).toBe(true);
     expect(unwrap(r)).toBe('CIRCLE');
   });
   it('finds BSPLINE_CURVE', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const r = findCurveType(oc.GeomAbs_CurveType.GeomAbs_BSplineCurve);
     expect(isOk(r)).toBe(true);
     expect(unwrap(r)).toBe('BSPLINE_CURVE');
   });
   it('finds ELLIPSE', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const r = findCurveType(oc.GeomAbs_CurveType.GeomAbs_Ellipse);
     expect(isOk(r)).toBe(true);
     expect(unwrap(r)).toBe('ELLIPSE');
   });
   it('finds BEZIER_CURVE', () => {
-    const oc = getOC();
+    const oc = getKernel().oc;
     const r = findCurveType(oc.GeomAbs_CurveType.GeomAbs_BezierCurve);
     expect(isOk(r)).toBe(true);
     expect(unwrap(r)).toBe('BEZIER_CURVE');

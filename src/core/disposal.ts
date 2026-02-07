@@ -56,6 +56,9 @@ export interface ShapeHandle {
   /** Manually dispose the OCCT handle */
   [Symbol.dispose](): void;
 
+  /** Alias for Symbol.dispose — required for localGC / Deletable compatibility. */
+  delete(): void;
+
   /** Check if this handle has been disposed */
   readonly disposed: boolean;
 }
@@ -63,6 +66,18 @@ export interface ShapeHandle {
 /** Create a disposable shape handle. */
 export function createHandle(ocShape: OcShape): ShapeHandle {
   let disposed = false;
+
+  const dispose = () => {
+    if (!disposed) {
+      disposed = true;
+      registry.unregister(handle);
+      try {
+        ocShape.delete();
+      } catch {
+        // Already deleted — ignore
+      }
+    }
+  };
 
   const handle: ShapeHandle = {
     get wrapped() {
@@ -75,15 +90,11 @@ export function createHandle(ocShape: OcShape): ShapeHandle {
     },
 
     [Symbol.dispose]() {
-      if (!disposed) {
-        disposed = true;
-        registry.unregister(handle);
-        try {
-          ocShape.delete();
-        } catch {
-          // Already deleted — ignore
-        }
-      }
+      dispose();
+    },
+
+    delete() {
+      dispose();
     },
   };
 

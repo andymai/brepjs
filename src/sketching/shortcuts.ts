@@ -1,4 +1,4 @@
-import type { Shape3D } from '../topology/shapes.js';
+import type { Shape3D } from '../core/shapeTypes.js';
 import Sketcher from './Sketcher.js';
 
 /**

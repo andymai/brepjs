@@ -2,7 +2,7 @@
  * Transform operations for OCCT shapes.
  *
  * Provides translate, rotate, mirror, scale, and generic transform operations.
- * Used by OCCTAdapter - re-exported for backward compatibility.
+ * Used by OCCTAdapter.
  */
 
 import type { OpenCascadeInstance, OcShape, OcType } from './types.js';

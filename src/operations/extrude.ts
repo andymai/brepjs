@@ -1,5 +1,4 @@
 import { getKernel } from '../kernel/index.js';
-import type { OcType } from '../kernel/types.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { makeOcAx1 } from '../core/occtBoundary.js';
@@ -10,8 +9,8 @@ import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import { typeCastError, occtError } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
-import type { Face, Wire, Edge, Shape3D } from '../topology/shapes.js';
-import { Solid } from '../topology/shapes.js';
+import type { Face, Wire, Edge, Shape3D, Solid } from '../core/shapeTypes.js';
+import { createSolid } from '../core/shapeTypes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
 
 /**
@@ -30,7 +29,7 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid 
   const vec = toVec3(extrusionVec);
   const ocVec = r(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
   const solidBuilder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true));
-  const solid = new Solid(unwrap(downcast(solidBuilder.Shape())));
+  const solid = createSolid(unwrap(downcast(solidBuilder.Shape())));
   gc();
   return solid;
 };
@@ -185,36 +184,6 @@ function genericSweep(
 export { genericSweep };
 
 export type { ExtrusionProfile } from './extrudeUtils.js';
-
-/**
- * Extrude a wire along a normal constrained to a support surface (OOP API).
- *
- * @param wire - The profile wire to sweep.
- * @param center - Start point of the extrusion spine.
- * @param normal - Direction and length of the extrusion.
- * @param support - OCCT support surface that constrains the sweep.
- * @returns `Result` containing the swept 3D shape.
- *
- * @see {@link extrudeFns!supportExtrude | supportExtrude (Fns)} for the functional equivalent.
- */
-export const supportExtrude = (
-  wire: Wire,
-  center: PointInput,
-  normal: PointInput,
-  support: OcType
-): Result<Shape3D> => {
-  const [r, gc] = localGC();
-  const centerVec = toVec3(center);
-  const normalVec = toVec3(normal);
-  const endVec = vecAdd(centerVec, normalVec);
-
-  const mainSpineEdge = r(makeLine(centerVec, endVec));
-  const spine = r(unwrap(assembleWire([mainSpineEdge])));
-
-  const result = genericSweep(wire, spine, { support });
-  gc();
-  return result;
-};
 
 function complexExtrude(
   wire: Wire,

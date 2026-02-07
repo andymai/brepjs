@@ -7,7 +7,7 @@ import {
   castShape,
   isOk,
   isErr,
-  fnIsWire,
+  isWire,
   getWires,
 } from '../src/index.js';
 
@@ -28,7 +28,7 @@ describe('wireFinder', () => {
     const wires = wireFinder().find(fnBox());
     // A box has 6 faces, each with 1 outer wire = 6 wires
     expect(wires.length).toBe(6);
-    expect(fnIsWire(wires[0]!)).toBe(true);
+    expect(isWire(wires[0]!)).toBe(true);
   });
 
   it('filters closed wires', () => {

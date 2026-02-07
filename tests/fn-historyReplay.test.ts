@@ -14,7 +14,7 @@ import {
   modifyStep,
   isOk,
   unwrap,
-  fnMeasureVolume,
+  measureVolume,
 } from '../src/index.js';
 import type { AnyShape, ModelHistory, HistoryOperationRegistry } from '../src/index.js';
 
@@ -93,7 +93,7 @@ describe('replayHistory', () => {
     expect(replayed.steps).toHaveLength(1);
     expect(replayed.shapes.has('out-1')).toBe(true);
     // The replayed shape should have the same volume
-    const vol = fnMeasureVolume(replayed.shapes.get('out-1')!);
+    const vol = measureVolume(replayed.shapes.get('out-1')!);
     expect(vol).toBeCloseTo(1000, 0);
   });
 
@@ -250,7 +250,7 @@ describe('replayFrom', () => {
     // Step 'b' output should be a new shape
     const newB = replayed.shapes.get('o-b');
     expect(newB).toBeDefined();
-    expect(fnMeasureVolume(newB!)).toBeCloseTo(8000, 0);
+    expect(measureVolume(newB!)).toBeCloseTo(8000, 0);
   });
 
   it('returns error for missing step ID', () => {
@@ -297,7 +297,7 @@ describe('modifyStep', () => {
     const modified = unwrap(result);
     expect(modified.steps).toHaveLength(1);
     expect(modified.steps[0]?.parameters).toEqual({ w: 5, h: 5, d: 5 });
-    const vol = fnMeasureVolume(modified.shapes.get('out-1')!);
+    const vol = measureVolume(modified.shapes.get('out-1')!);
     expect(vol).toBeCloseTo(125, 0);
   });
 

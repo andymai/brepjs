@@ -6,7 +6,7 @@ import {
   vertexFinder,
   getVertices,
   vertexPosition,
-  fnIsVertex,
+  isVertex,
   isOk,
   isErr,
   unwrap,
@@ -26,7 +26,7 @@ describe('getVertices / iterVertices', () => {
   it('finds all 8 vertices of a box', () => {
     const vertices = getVertices(fnBox());
     expect(vertices.length).toBe(8);
-    expect(fnIsVertex(vertices[0]!)).toBe(true);
+    expect(isVertex(vertices[0]!)).toBe(true);
   });
 
   it('iterVertices yields the same count', () => {
@@ -54,7 +54,7 @@ describe('vertexFinder', () => {
   it('finds all 8 vertices of a box', () => {
     const vertices = vertexFinder().find(fnBox());
     expect(vertices.length).toBe(8);
-    expect(fnIsVertex(vertices[0]!)).toBe(true);
+    expect(isVertex(vertices[0]!)).toBe(true);
   });
 
   it('atPosition finds origin vertex', () => {

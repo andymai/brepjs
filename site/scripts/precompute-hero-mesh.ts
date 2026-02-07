@@ -12,7 +12,7 @@ const opencascade = (await import('brepjs-opencascade')).default;
 const oc = await opencascade();
 
 const {
-  setOC,
+  initFromOC,
   makeBox,
   makeCylinder,
   makeSphere,
@@ -33,7 +33,7 @@ const {
   genericSweep,
 } = await import('brepjs');
 
-setOC(oc);
+initFromOC(oc);
 
 // Parametric spiral staircase (cm) — matches HERO_CODE in constants.ts
 const stepCount = 16;

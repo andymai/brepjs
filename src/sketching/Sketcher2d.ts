@@ -4,8 +4,11 @@ import { localGC } from '../core/memory.js';
 import { getKernel } from '../kernel/index.js';
 import { assembleWire } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';
-import type { Face, Wire } from '../topology/shapes.js';
-import { Edge } from '../topology/shapes.js';
+import type { Wire, Face } from '../core/shapeTypes.js';
+import { createEdge, createFace } from '../core/shapeTypes.js';
+import { uvBounds, pointOnSurface, normalAt } from '../topology/faceFns.js';
+import { curveStartPoint, curveIsClosed } from '../topology/curveFns.js';
+import { downcast } from '../topology/cast.js';
 import {
   convertSvgEllipseParams,
   defaultsSplineConfig,
@@ -561,8 +564,8 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
 
   constructor(face: Face, origin: Point2D = [0, 0]) {
     super(origin);
-    this.face = face.clone();
-    this._bounds = face.UVBounds;
+    this.face = createFace(unwrap(downcast(face.wrapped)));
+    this._bounds = uvBounds(face);
   }
 
   protected override _convertToUV([x, y]: Point2D): Point2D {
@@ -590,7 +593,7 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     const geomSurf = r(this._adaptSurface());
 
     const edges = this.pendingCurves.map((curve) => {
-      return r(new Edge(r(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf)).Edge()));
+      return r(createEdge(r(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf)).Edge()));
     });
     const wire = unwrap(assembleWire(edges));
     oc.BRepLib.BuildCurves3d_2(wire.wrapped);
@@ -605,16 +608,16 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
 
     const wire = this.buildWire();
     const sketch = new Sketch(wire);
-    if (wire.isClosed) {
+    if (curveIsClosed(wire)) {
       const face = r(sketch.clone().face());
-      const origin = face.pointOnSurface(0.5, 0.5);
-      const normal = face.normalAt();
+      const origin = pointOnSurface(face, 0.5, 0.5);
+      const normal = normalAt(face);
       const direction = vecScale(normal, -1);
       sketch.defaultOrigin = [origin[0], origin[1], origin[2]];
       sketch.defaultDirection = [direction[0], direction[1], direction[2]];
     } else {
-      const startPoint = wire.startPoint;
-      const normal = this.face.normalAt([startPoint[0], startPoint[1], startPoint[2]]);
+      const startPoint = curveStartPoint(wire);
+      const normal = normalAt(this.face, [startPoint[0], startPoint[1], startPoint[2]]);
       sketch.defaultOrigin = [startPoint[0], startPoint[1], startPoint[2]];
       sketch.defaultDirection = [normal[0], normal[1], normal[2]];
     }

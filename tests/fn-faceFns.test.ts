@@ -7,21 +7,19 @@ import {
   // functional API
   castShape,
   getFaces,
-  meshShape,
   getSurfaceType,
   faceGeomType,
   faceOrientation,
   flipFaceOrientation,
   uvBounds,
-  fnPointOnSurface,
-  fnUvCoordinates,
-  fnNormalAt,
+  pointOnSurface,
+  uvCoordinates,
+  normalAt,
   faceCenter,
-  fnOuterWire,
-  fnInnerWires,
-  triangulateFace,
+  outerWire,
+  innerWires,
   unwrap,
-  fnIsWire,
+  isWire,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -70,31 +68,31 @@ describe('uvBounds', () => {
   });
 });
 
-describe('fnPointOnSurface', () => {
+describe('pointOnSurface', () => {
   it('returns a Vec3 point', () => {
     const rect = sketchRectangle(10, 10);
     const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const pt = fnPointOnSurface(face, 0.5, 0.5);
+    const pt = pointOnSurface(face, 0.5, 0.5);
     expect(pt).toHaveLength(3);
     expect(typeof pt[0]).toBe('number');
   });
 });
 
-describe('fnUvCoordinates', () => {
+describe('uvCoordinates', () => {
   it('returns [u, v] pair', () => {
     const rect = sketchRectangle(10, 10);
     const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const [u, v] = fnUvCoordinates(face, [0, 0, 0]);
+    const [u, v] = uvCoordinates(face, [0, 0, 0]);
     expect(typeof u).toBe('number');
     expect(typeof v).toBe('number');
   });
 });
 
-describe('fnNormalAt', () => {
+describe('normalAt', () => {
   it('returns normal vector', () => {
     const rect = sketchRectangle(10, 10);
     const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const n = fnNormalAt(face);
+    const n = normalAt(face);
     // Normal of XY plane face should be approx [0,0,±1]
     expect(Math.abs(n[2])).toBeCloseTo(1, 1);
   });
@@ -111,33 +109,18 @@ describe('faceCenter', () => {
   });
 });
 
-describe('fnOuterWire / fnInnerWires', () => {
+describe('outerWire / innerWires', () => {
   it('returns outer wire of a face', () => {
     const rect = sketchRectangle(10, 10);
     const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const wire = fnOuterWire(face);
-    expect(fnIsWire(wire)).toBe(true);
+    const wire = outerWire(face);
+    expect(isWire(wire)).toBe(true);
   });
 
   it('returns empty inner wires for simple face', () => {
     const rect = sketchRectangle(10, 10);
     const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const inner = fnInnerWires(face);
+    const inner = innerWires(face);
     expect(inner).toHaveLength(0);
-  });
-});
-
-describe('triangulateFace', () => {
-  it('returns vertices and triangles after meshing', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const boxShape = castShape(box.wrapped);
-    // Mesh the shape first so face triangulation is available
-    meshShape(boxShape);
-    const face = getFaces(boxShape)[0]!;
-    const tri = triangulateFace(face);
-    expect(tri).not.toBeNull();
-    expect(tri!.vertices.length).toBeGreaterThan(0);
-    expect(tri!.trianglesIndexes.length).toBeGreaterThan(0);
-    expect(tri!.verticesNormals.length).toBeGreaterThan(0);
   });
 });

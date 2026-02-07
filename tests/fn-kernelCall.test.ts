@@ -12,8 +12,8 @@ import {
   kernelCall,
   kernelCallRaw,
   pipeline,
-  fnIsSolid,
-  fnMeasureVolume,
+  isSolid,
+  measureVolume,
   filletShape,
   shellShape,
   thickenSurface,
@@ -40,7 +40,7 @@ describe('kernelCall', () => {
       'Box creation failed'
     );
     expect(isOk(result)).toBe(true);
-    expect(fnIsSolid(unwrap(result))).toBe(true);
+    expect(isSolid(unwrap(result))).toBe(true);
   });
 
   it('catches exceptions and returns Err', () => {
@@ -115,7 +115,7 @@ describe('pipeline', () => {
       .then((s) => shellShape(s, [faces[0]], 0.5)).result;
 
     expect(isOk(result)).toBe(true);
-    const vol = fnMeasureVolume(unwrap(result));
+    const vol = measureVolume(unwrap(result));
     expect(vol).toBeGreaterThan(0);
     expect(vol).toBeLessThan(1000);
   });
@@ -143,7 +143,7 @@ describe('pipeline', () => {
     }).result;
 
     expect(isOk(result)).toBe(true);
-    const vol = fnMeasureVolume(unwrap(result));
+    const vol = measureVolume(unwrap(result));
     expect(vol).toBeLessThan(1000);
   });
 
@@ -167,7 +167,7 @@ describe('refactored operations', () => {
     const face = castShape(sketch.face().wrapped);
     const result = thickenSurface(face, 5);
     expect(isOk(result)).toBe(true);
-    expect(fnIsSolid(unwrap(result))).toBe(true);
+    expect(isSolid(unwrap(result))).toBe(true);
   });
 
   it('offsetShape works with kernelCall', () => {

@@ -4,13 +4,13 @@ import {
   sketchRectangle,
   thickenSurface,
   castShape,
-  fnIsSolid,
+  isSolid,
   makeBox,
   makeSphere,
   getEdges,
   getFaces,
-  fnMeasureVolume,
-  fnMeasureArea,
+  measureVolume,
+  measureArea,
   isOk,
   isErr,
   unwrap,
@@ -34,7 +34,7 @@ describe('thickenSurface', () => {
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    expect(fnIsSolid(solid)).toBe(true);
+    expect(isSolid(solid)).toBe(true);
   });
 
   it('thickens with negative thickness (offsets in opposite direction)', () => {
@@ -44,7 +44,7 @@ describe('thickenSurface', () => {
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    expect(fnIsSolid(solid)).toBe(true);
+    expect(isSolid(solid)).toBe(true);
   });
 
   it('produces expected volume for a rectangular face thickened by a known amount', () => {
@@ -54,8 +54,8 @@ describe('thickenSurface', () => {
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    // After fnIsSolid check above, safe to assert Shape3D
-    expect(fnIsSolid(solid)).toBe(true);
+    // After isSolid check above, safe to assert Shape3D
+    expect(isSolid(solid)).toBe(true);
     // 10 x 20 face thickened by 3 => |volume| ≈ 600
     const vol = measureVolume(solid as Shape3D);
     expect(Math.abs(vol)).toBeCloseTo(600, 0);
@@ -68,7 +68,7 @@ describe('filletShape', () => {
     const result = filletShape(box, undefined, 1);
     expect(isOk(result)).toBe(true);
     const filleted = unwrap(result);
-    const vol = fnMeasureVolume(filleted);
+    const vol = measureVolume(filleted);
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(800);
   });
@@ -78,7 +78,7 @@ describe('filletShape', () => {
     const edges = getEdges(box);
     const result = filletShape(box, [edges[0]], 1);
     expect(isOk(result)).toBe(true);
-    const vol = fnMeasureVolume(unwrap(result));
+    const vol = measureVolume(unwrap(result));
     // Single edge fillet removes less material
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(990);
@@ -114,7 +114,7 @@ describe('chamferShape', () => {
     const box = makeBox([0, 0, 0], [10, 10, 10]);
     const result = chamferShape(box, undefined, 1);
     expect(isOk(result)).toBe(true);
-    const vol = fnMeasureVolume(unwrap(result));
+    const vol = measureVolume(unwrap(result));
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(800);
   });
@@ -139,7 +139,7 @@ describe('shellShape', () => {
     const faces = getFaces(box);
     const result = shellShape(box, [faces[0]], 1);
     expect(isOk(result)).toBe(true);
-    const vol = fnMeasureVolume(unwrap(result));
+    const vol = measureVolume(unwrap(result));
     // Shell removes interior, leaving walls of thickness 1
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(200);
@@ -162,19 +162,19 @@ describe('shellShape', () => {
 describe('offsetShape', () => {
   it('offsets a sphere outward', () => {
     const sphere = makeSphere(5);
-    const originalArea = fnMeasureArea(sphere);
+    const originalArea = measureArea(sphere);
     const result = offsetShape(sphere, 1);
     expect(isOk(result)).toBe(true);
-    const area = fnMeasureArea(unwrap(result));
+    const area = measureArea(unwrap(result));
     expect(area).toBeGreaterThan(originalArea);
   });
 
   it('offsets a sphere inward', () => {
     const sphere = makeSphere(5);
-    const originalArea = fnMeasureArea(sphere);
+    const originalArea = measureArea(sphere);
     const result = offsetShape(sphere, -1);
     expect(isOk(result)).toBe(true);
-    const area = fnMeasureArea(unwrap(result));
+    const area = measureArea(unwrap(result));
     expect(area).toBeLessThan(originalArea);
   });
 
