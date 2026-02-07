@@ -7,11 +7,7 @@ export default defineConfig({
     testTimeout: 30000,
     exclude: ['benchmarks/**', 'node_modules/**', 'site/**'],
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        execArgv: ['--max-old-space-size=6144'],
-      },
-    },
+    execArgv: ['--max-old-space-size=6144'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
