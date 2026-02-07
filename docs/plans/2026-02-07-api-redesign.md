@@ -221,12 +221,12 @@ The modifier internally calls `edgeFinder()`, applies the callback, and executes
 
 ### 2.1 Core Design
 
-A lightweight, typed facade created via `wrap()`. Delegates to Layer 1 functions. Returns new wrappers (immutable). Auto-unwraps `Result<T>` (throws `BrepError` on failure).
+A lightweight, typed facade created via `shape()`. Delegates to Layer 1 functions. Returns new wrappers (immutable). Auto-unwraps `Result<T>` (throws `BrepError` on failure).
 
 ```typescript
-import { wrap, box, cylinder } from 'brepjs';
+import { shape, box, cylinder, exportSTEP } from 'brepjs';
 
-const bracket = wrap(box(30, 20, 10))
+const bracket = shape(box(30, 20, 10))
   .cut(cylinder(5, 15, { at: [15, 10, -1] }))
   .fillet((e) => e.inDirection('Z'), 2)
   .translate([10, 0, 0]);
@@ -234,8 +234,15 @@ const bracket = wrap(box(30, 20, 10))
 bracket.volume(); // number (delegates to measureVolume)
 bracket.area(); // number
 bracket.bounds(); // Bounds3D
-bracket.unwrap(); // Solid (raw branded type for functional API interop)
+bracket.val; // Solid (raw branded type — rarely needed)
+
+// Functional functions accept wrappers directly — no .val needed
+exportSTEP(bracket);
 ```
+
+**Entry:** `shape()` — intuitive, domain-appropriate ("I'm working with a shape").
+
+**Exit:** `.val` property for the rare case you need the raw branded type. But functional functions (`exportSTEP`, `fuse`, `measureVolume`, etc.) accept both raw types and wrappers, so you almost never need it.
 
 ### 2.2 Type-Specific Methods
 
@@ -243,41 +250,41 @@ The wrapper is generic but methods are gated by shape type using conditional typ
 
 ```typescript
 // ── Available on all shapes ─────────────────────────────────
-interface WrappedShape<T extends AnyShape> {
-  // Extract
-  unwrap(): T;
+interface Shape<T extends AnyShape> {
+  // Extract raw branded type (rarely needed — functional functions accept wrappers)
+  val: T;
 
   // Transforms
-  translate(v: Vec3): WrappedShape<T>;
-  rotate(angle: number, options?: { around?: Vec3; axis?: Vec3 }): WrappedShape<T>;
-  mirror(options?: { normal?: Vec3; origin?: Vec3 }): WrappedShape<T>;
-  scale(factor: number, options?: { center?: Vec3 }): WrappedShape<T>;
+  translate(v: Vec3): Shape<T>;
+  rotate(angle: number, options?: { around?: Vec3; axis?: Vec3 }): Shape<T>;
+  mirror(options?: { normal?: Vec3; origin?: Vec3 }): Shape<T>;
+  scale(factor: number, options?: { center?: Vec3 }): Shape<T>;
 
   // Introspection
   bounds(): Bounds3D;
   describe(): ShapeDescription;
-  clone(): WrappedShape<T>;
+  clone(): Shape<T>;
 
   // Escape hatch — apply any function
-  apply<U extends AnyShape>(fn: (shape: T) => U): WrappedShape<U>;
-  applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): WrappedShape<U>;
+  apply<U extends AnyShape>(fn: (shape: T) => U): Shape<U>;
+  applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Shape<U>;
 }
 
 // ── Additional methods on Shape3D (Solid, Shell, Compound) ──
-interface WrappedShape3D<T extends Shape3D> extends WrappedShape<T> {
+interface Shape3D<T extends Shape3D> extends Shape<T> {
   // Booleans
-  fuse(tool: Shape3D | WrappedShape<Shape3D>, options?: BooleanOptions): WrappedShape3D<Shape3D>;
-  cut(tool: Shape3D | WrappedShape<Shape3D>, options?: BooleanOptions): WrappedShape3D<Shape3D>;
+  fuse(tool: Shape3D | Shape<Shape3D>, options?: BooleanOptions): Shape3D<Shape3D>;
+  cut(tool: Shape3D | Shape<Shape3D>, options?: BooleanOptions): Shape3D<Shape3D>;
   intersect(
-    tool: Shape3D | WrappedShape<Shape3D>,
+    tool: Shape3D | Shape<Shape3D>,
     options?: BooleanOptions
-  ): WrappedShape3D<Shape3D>;
+  ): Shape3D<Shape3D>;
 
   // Modifiers
-  fillet(edges: Edge[] | FinderFn<Edge>, radius: number): WrappedShape3D<Shape3D>;
-  chamfer(edges: Edge[] | FinderFn<Edge>, distance: number): WrappedShape3D<Shape3D>;
-  shell(faces: Face[] | FinderFn<Face>, thickness: number): WrappedShape3D<Shape3D>;
-  offset(distance: number): WrappedShape3D<Shape3D>;
+  fillet(edges: Edge[] | FinderFn<Edge>, radius: number): Shape3D<Shape3D>;
+  chamfer(edges: Edge[] | FinderFn<Edge>, distance: number): Shape3D<Shape3D>;
+  shell(faces: Face[] | FinderFn<Face>, thickness: number): Shape3D<Shape3D>;
+  offset(distance: number): Shape3D<Shape3D>;
 
   // Measurement
   volume(): number;
@@ -290,12 +297,12 @@ interface WrappedShape3D<T extends Shape3D> extends WrappedShape<T> {
   vertices(): Vertex[];
 
   // Patterns
-  linearPattern(direction: Vec3, count: number, spacing: number): WrappedShape3D<Shape3D>;
-  circularPattern(axis: Vec3, count: number, angle?: number): WrappedShape3D<Shape3D>;
+  linearPattern(direction: Vec3, count: number, spacing: number): Shape3D<Shape3D>;
+  circularPattern(axis: Vec3, count: number, angle?: number): Shape3D<Shape3D>;
 }
 
 // ── Additional methods on Edge/Wire ─────────────────────────
-interface WrappedCurve<T extends Edge | Wire> extends WrappedShape<T> {
+interface ShapeCurve<T extends Edge | Wire> extends Shape<T> {
   length(): number;
   startPoint(): Vec3;
   endPoint(): Vec3;
@@ -305,7 +312,7 @@ interface WrappedCurve<T extends Edge | Wire> extends WrappedShape<T> {
 }
 
 // ── Additional methods on Face ──────────────────────────────
-interface WrappedFace extends WrappedShape<Face> {
+interface ShapeFace extends Shape<Face> {
   area(): number;
   normalAt(u?: number, v?: number): Vec3;
   center(): Vec3;
@@ -314,36 +321,41 @@ interface WrappedFace extends WrappedShape<Face> {
   innerWires(): Wire[];
 
   // 2D → 3D transitions
-  extrude(height: number | Vec3): WrappedShape3D<Solid>;
-  revolve(options?: { axis?: Vec3; angle?: number }): WrappedShape3D<Shape3D>;
+  extrude(height: number | Vec3): Shape3D<Solid>;
+  revolve(options?: { axis?: Vec3; angle?: number }): Shape3D<Shape3D>;
 }
 ```
 
-### 2.3 Wrapper Accepts Both Raw and Wrapped Arguments
+### 2.3 Seamless Interop — No Unwrapping Needed
 
-Methods accept either raw branded types or other wrappers. No manual unwrapping needed.
+Both wrapper methods AND functional functions accept either raw branded types or shape wrappers. Users almost never need `.val`.
 
 ```typescript
-const base = wrap(box(30, 20, 10));
-const tool = wrap(cylinder(5, 15));
+const base = shape(box(30, 20, 10));
+const tool = shape(cylinder(5, 15));
 
-// Both work:
-base.cut(tool); // wrapped
-base.cut(cylinder(5, 15)); // raw
+// Wrapper methods accept both:
+base.cut(tool);               // wrapper
+base.cut(cylinder(5, 15));    // raw
+
+// Functional functions accept both:
+fuse(base, tool);             // two wrappers
+fuse(base, cylinder(5, 15));  // mixed
+exportSTEP(base);             // wrapper passed directly
+measureVolume(base);          // wrapper passed directly
 ```
 
-Internally: `if (arg && typeof arg === 'object' && 'unwrap' in arg) arg = arg.unwrap()`.
+Internally, functional functions check for a `.val` property and extract the raw type when present. This is implemented once in a shared utility, not per-function.
 
 ### 2.4 Error Handling
 
 The wrapper auto-unwraps `Result<T>`. On failure, it throws `BrepError` with full context.
 
 ```typescript
-// Wrapper: throws on error (CadQuery-style)
+// shape(): throws on error (CadQuery-style)
 try {
-  const result = wrap(box(30, 20, 10))
-    .fillet((e) => e.inDirection('Z'), 100) // radius too large → throws
-    .unwrap();
+  const bracket = shape(box(30, 20, 10))
+    .fillet((e) => e.inDirection('Z'), 100); // radius too large → throws
 } catch (e) {
   if (e instanceof BrepError) {
     console.error(e.code, e.message);
@@ -378,10 +390,10 @@ interface BracketParams {
 }
 
 function bracket({ width, depth, height, holeRadius, filletRadius = 2 }: BracketParams): Solid {
-  return wrap(box(width, depth, height))
+  return shape(box(width, depth, height))
     .cut(cylinder(holeRadius, height + 2, { at: [width / 2, depth / 2, -1] }))
     .fillet((e) => e.inDirection('Z'), filletRadius)
-    .unwrap();
+    .val;
 }
 ```
 
@@ -400,7 +412,7 @@ function motorMount({ shaftDia, boltCircle, boltCount }: MotorMountParams): Soli
     return cylinder(1.5, 10, { at: [30 + x, 20 + y, -1] });
   });
 
-  return wrap(plate).cut(fuseAll(boltHoles)).unwrap();
+  return shape(plate).cut(fuseAll(boltHoles)).val;
 }
 ```
 
@@ -409,21 +421,19 @@ function motorMount({ shaftDia, boltCircle, boltCount }: MotorMountParams): Soli
 The functional and wrapper APIs interop cleanly:
 
 ```typescript
-// Start functional, switch to wrapper
+// Start functional, switch to shape()
 const base = box(30, 20, 10);
-const withFeatures = wrap(base)
+const bracket = shape(base)
   .cut(cylinder(5, 15, { at: [15, 10, -1] }))
-  .fillet((e) => e.inDirection('Z'), 2)
-  .unwrap();
+  .fillet((e) => e.inDirection('Z'), 2);
 
-// Continue functional
-const exported = exportSTEP(withFeatures);
+// Pass wrapper directly to functional API — no .val needed
+exportSTEP(bracket);
 
-// Start with wrapper, use functional mid-chain
-wrap(box(30, 20, 10))
+// Use .apply() mid-chain for operations not on the wrapper
+shape(box(30, 20, 10))
   .apply((s) => translate(s, [10, 0, 0]))
-  .applyResult((s) => fillet(s, (e) => e.inDirection('Z'), 2))
-  .unwrap();
+  .applyResult((s) => fillet(s, (e) => e.inDirection('Z'), 2));
 ```
 
 ---
@@ -487,7 +497,7 @@ This is a **major version bump** (v5.0.0). The changes are:
 - Changed constructor signatures (breaking: `makeBox(corner1, corner2)` → `box(w, d, h)`)
 - `makeEllipseArc` angles changed from radians to degrees (breaking)
 - `sphere` gains `at` option (non-breaking)
-- New `wrap()` API (additive)
+- New `shape()` API (additive)
 - Finder callbacks accepted in modifier parameters (additive)
 
 ---
@@ -513,7 +523,7 @@ The redesign has three layers:
 | Layer                    | What                                      | Breaking?                 |
 | ------------------------ | ----------------------------------------- | ------------------------- |
 | **1. Naming + Defaults** | Short names, smart defaults, consistency  | Yes (with migration path) |
-| **2. Typed Wrapper**     | `wrap()` for discoverability and chaining | No (additive)             |
+| **2. Typed Wrapper**     | `shape()` for discoverability and chaining | No (additive)             |
 | **3. Conventions**       | Component pattern docs and examples       | No (documentation)        |
 
-The result: an API where experienced CAD programmers can write `box(30, 20, 10)` on day one, discover operations via `wrap(shape).`, and compose parameterized components using plain TypeScript functions.
+The result: an API where experienced CAD programmers can write `box(30, 20, 10)` on day one, discover operations via `shape(s).`, and compose parameterized components using plain TypeScript functions.
