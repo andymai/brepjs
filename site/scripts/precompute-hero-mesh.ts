@@ -17,7 +17,7 @@ const {
   makeCylinder,
   makeSphere,
   castShape,
-  fuseShapes,
+  fuseShape,
   cloneShape,
   rotateShape,
   translateShape,
@@ -54,7 +54,7 @@ const bottomLanding = castShape(makeCylinder(landingRadius, stepThickness).wrapp
 // Central column — from ground to top step surface
 const colHeight = stepCount * stepRise + stepThickness;
 let shape = castShape(makeCylinder(columnRadius, colHeight).wrapped);
-shape = unwrap(fuseShapes(shape, bottomLanding));
+shape = unwrap(fuseShape(shape, bottomLanding));
 
 // Wind steps + railing posts around the column
 for (let i = 0; i < stepCount; i++) {
@@ -74,10 +74,10 @@ for (let i = 0; i < stepCount; i++) {
       .translate([railRadius, 0, stepThickness]).wrapped
   );
 
-  const piece = unwrap(fuseShapes(step, post));
+  const piece = unwrap(fuseShape(step, post));
   const lifted = translateShape(piece, [0, 0, z]);
   const rotated = rotateShape(lifted, rotationPerStep * i, [0, 0, 0], [0, 0, 1]);
-  shape = unwrap(fuseShapes(shape, rotated));
+  shape = unwrap(fuseShape(shape, rotated));
 }
 
 // Handrail: sweep a circle profile along a helical path
@@ -93,7 +93,7 @@ const helixSpine = makeHelix(helixPitch, helixHeight, railRadius, [0, 0, firstPo
 
 const handrailResult = genericSweep(railProfile, helixSpine, { frenet: true });
 if (isOk(handrailResult)) {
-  shape = unwrap(fuseShapes(shape, castShape((handrailResult.value as any).wrapped)));
+  shape = unwrap(fuseShape(shape, castShape((handrailResult.value as any).wrapped)));
 } else {
   console.warn('Handrail sweep failed, skipping:', handrailResult.error);
 }
@@ -101,14 +101,14 @@ if (isOk(handrailResult)) {
 // Ball endcaps on handrail ends
 const ball = castShape(makeSphere(4).wrapped);
 const end1 = translateShape(ball, [railRadius, 0, firstPostTop]);
-shape = unwrap(fuseShapes(shape, end1));
+shape = unwrap(fuseShape(shape, end1));
 
 const lastPostTop = firstPostTop + stepRise * (stepCount - 1);
 const end2 = rotateShape(
   translateShape(cloneShape(ball), [railRadius, 0, lastPostTop]),
   rotationPerStep * (stepCount - 1), [0, 0, 0], [0, 0, 1]
 );
-shape = unwrap(fuseShapes(shape, end2));
+shape = unwrap(fuseShape(shape, end2));
 
 // Mesh it
 const shapeMesh = meshShape(shape, { tolerance: 2, angularTolerance: 1.5 });

@@ -8,16 +8,19 @@ import { type Result, ok } from '../core/result.js';
  * Input that resolves to a single face — a direct Face, a FaceFinder/FaceFinderFn,
  * or a finder callback.
  */
+/* eslint-disable @typescript-eslint/no-deprecated -- backward compat: accepts deprecated FaceFinder */
 export type SingleFace =
   | Face
   | FaceFinder
   | FaceFinderFn
   | ((f: FaceFinderFn) => FaceFinderFn)
   | ((f: FaceFinder) => FaceFinder);
+/* eslint-enable @typescript-eslint/no-deprecated */
 
 /** Resolve a {@link SingleFace} input to a concrete Face from the given shape. */
 export function getSingleFace(f: SingleFace, shape: AnyShape): Result<Face> {
   // Handle FaceFinder class instance (deprecated)
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- backward compat bridge
   if (f instanceof FaceFinder) return f.find(shape, { unique: true });
 
   // Handle functional finder instance (has _topoKind property)

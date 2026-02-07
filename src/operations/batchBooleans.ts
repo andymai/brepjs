@@ -42,12 +42,14 @@ export function fuseAllShapes(
   const r = gcWithScope();
 
   const mid = Math.ceil(shapes.length / 2);
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- recursive call within deprecated function
   const leftResult = fuseAllShapes(shapes.slice(0, mid), {
     optimisation,
     simplify: false,
     strategy,
   });
   if (!leftResult.ok) return leftResult;
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- recursive call within deprecated function
   const rightResult = fuseAllShapes(shapes.slice(mid), { optimisation, simplify: false, strategy });
   if (!rightResult.ok) return rightResult;
 
@@ -90,6 +92,7 @@ export function cutAllShapes(
   const oc = getKernel().oc;
   const r = gcWithScope();
 
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- used within deprecated function
   const toolCompound = r(buildCompoundOc(tools));
 
   const progress = r(new oc.Message_ProgressRange_1());

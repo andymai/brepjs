@@ -10,7 +10,8 @@ const config: KnipConfig = {
     '.': {
       project: ['src/**/*.ts'],
       ignore: ['src/**/*.test.ts'],
-      ignoreBinaries: ['tsx'],
+      ignoreBinaries: ['tsx', 'typedoc'],
+      ignoreDependencies: ['typedoc'],
     },
     'packages/*': {
       ignore: ['**'],
