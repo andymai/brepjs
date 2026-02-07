@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.18.4](https://github.com/andymai/brepjs/compare/brepjs-v4.18.3...brepjs-v4.18.4) (2026-02-07)
+
+
+### Bug Fixes
+
+* consistent Result returns for error handling ([#137](https://github.com/andymai/brepjs/issues/137)) ([65cdfd6](https://github.com/andymai/brepjs/commit/65cdfd60bedf3d22e02245d1fc43b11c1091bcc7))
+
 ## [4.18.3](https://github.com/andymai/brepjs/compare/brepjs-v4.18.2...brepjs-v4.18.3) (2026-02-07)
 
 
