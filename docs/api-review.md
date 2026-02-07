@@ -9,16 +9,16 @@
 
 ## Scoring Summary
 
-| #           | Factor                     | Web Dev Score | CAD Dev Score | Notes                                                                                     |
-| ----------- | -------------------------- | :-----------: | :-----------: | ----------------------------------------------------------------------------------------- |
-| 1           | API Discoverability        |     8/10      |     9/10      | Sub-path imports are excellent; no hosted searchable API docs                             |
-| 2           | Naming Consistency         |     10/10     |     10/10     | Symmetric verb-noun pattern; legacy aliases removed from barrel                           |
-| 3           | Type Safety                |     9/10      |     10/10     | Branded types are best-in-class; `findAll()`/`findUnique()` split resolved overload issue |
-| 4           | Error Handling             |     10/10     |     10/10     | Result monad + 50+ error codes; pre-validation on all operations                          |
-| 5           | Documentation Completeness |     8/10      |     9/10      | Comprehensive guides; no hosted API reference site                                        |
-| 6           | Learning Curve             |     6/10      |     9/10      | WASM setup + B-Rep concepts + memory management = steep entry                             |
-| 7           | Examples Quality           |     8/10      |     9/10      | Progressive and real-world; no visual output                                              |
-| **Overall** |                            |  **8.3/10**   |  **9.3/10**   |                                                                                           |
+| #           | Factor                     | Web Dev Score | CAD Dev Score | Notes                                                                        |
+| ----------- | -------------------------- | :-----------: | :-----------: | ---------------------------------------------------------------------------- |
+| 1           | API Discoverability        |     8/10      |     9/10      | Sub-path imports are excellent; no hosted searchable API docs                |
+| 2           | Naming Consistency         |     10/10     |     10/10     | Symmetric verb-noun pattern; legacy aliases removed from barrel              |
+| 3           | Type Safety                |     10/10     |     10/10     | Branded types are best-in-class; null-shape pre-validation on all operations |
+| 4           | Error Handling             |     10/10     |     10/10     | Result monad + 50+ error codes; pre-validation on all operations             |
+| 5           | Documentation Completeness |     8/10      |     9/10      | Comprehensive guides; no hosted API reference site                           |
+| 6           | Learning Curve             |     6/10      |     9/10      | WASM setup + B-Rep concepts + memory management = steep entry                |
+| 7           | Examples Quality           |     8/10      |     9/10      | Progressive and real-world; no visual output                                 |
+| **Overall** |                            |  **8.6/10**   |  **9.4/10**   |                                                                              |
 
 ---
 
@@ -74,7 +74,7 @@ Remove legacy aliases from exports. Consider renaming `unwrap` to `getOrThrow` f
 
 ---
 
-## 3. Type Safety (Web: 8, CAD: 9)
+## 3. Type Safety (Web: 10, CAD: 10)
 
 ### Strengths
 
@@ -87,16 +87,9 @@ Remove legacy aliases from exports. Consider renaming `unwrap` to `getOrThrow` f
 
 - **~~Overloaded `find()` method uses `as any`~~** — **RESOLVED.** Split into `findAll(): T[]` and `findUnique(): Result<T>`. The deprecated `find()` is retained for backward compatibility but the primary API is now fully type-safe with no `as any` in the consumer-facing path.
 
-- **Null shape handling is inconsistent.** `isShapeNull()` exists but most functions don't validate inputs. Null shapes silently propagate until something crashes at the OCCT level.
+- **~~Null shape handling is inconsistent~~** — **RESOLVED.** All boolean, modifier, extrude, measurement, and interference functions now validate inputs for null shapes before calling OCCT. Measurement functions throw on null input (consistent with their non-Result return types); interference functions return typed `VALIDATION` errors.
 
-- **Some measurement functions don't return `Result`**:
-
-  ```typescript
-  measureVolumeProps(shape: Shape3D): VolumeProps  // can fail on invalid shape
-  measureVolume(shape: Shape3D): number             // can fail on invalid shape
-  ```
-
-  These assume valid shapes but don't enforce it at the type level.
+- **~~Some measurement functions don't validate inputs~~** — **RESOLVED.** `measureVolumeProps`, `measureSurfaceProps`, `measureLinearProps`, `measureDistance`, `createDistanceQuery`, `measureCurvatureAt`, and `measureCurvatureAtMid` all throw on null shape input with descriptive messages identifying the function.
 
 - **Disposal is recommended but not enforced.** The `using` pattern is excellent when used, but nothing prevents a developer from forgetting it. Shapes are regular objects — no compile-time warning for missing cleanup.
 
@@ -111,7 +104,7 @@ Remove legacy aliases from exports. Consider renaming `unwrap` to `getOrThrow` f
 
 ### Recommendation
 
-~~Split `find()` into `findAll()` and `findUnique()`.~~ **Done.** Wrap measurement functions in `Result` or add input validation. Consider a lint rule or TS plugin for disposal tracking.
+~~Split `find()` into `findAll()` and `findUnique()`.~~ **Done.** ~~Wrap measurement functions in `Result` or add input validation.~~ **Done.** All measurement and interference functions now validate null-shape inputs. Consider a lint rule or TS plugin for disposal tracking.
 
 ---
 

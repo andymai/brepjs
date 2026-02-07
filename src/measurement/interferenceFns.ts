@@ -8,7 +8,8 @@
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
-import { type Result, ok, unwrap } from '../core/result.js';
+import { type Result, ok, err, unwrap } from '../core/result.js';
+import { validationError, BrepErrorCode } from '../core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,6 +66,22 @@ export function checkInterference(
   shape2: AnyShape,
   tolerance = 1e-6
 ): Result<InterferenceResult> {
+  if (shape1.wrapped.IsNull()) {
+    return err(
+      validationError(
+        BrepErrorCode.NULL_SHAPE_INPUT,
+        'checkInterference: first shape is a null shape'
+      )
+    );
+  }
+  if (shape2.wrapped.IsNull()) {
+    return err(
+      validationError(
+        BrepErrorCode.NULL_SHAPE_INPUT,
+        'checkInterference: second shape is a null shape'
+      )
+    );
+  }
   const dist = getKernel().distance(shape1.wrapped, shape2.wrapped);
 
   return ok({

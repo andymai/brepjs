@@ -17,8 +17,14 @@ import {
   measureVolumeProps,
   measureSurfaceProps,
   measureLinearProps,
+  measureCurvatureAt,
+  measureCurvatureAtMid,
   getFaces,
+  getKernel,
+  createSolid,
+  createFace,
 } from '../src/index.js';
+import type { Shape3D, Face } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -111,5 +117,77 @@ describe('measureVolumeProps / measureSurfaceProps / measureLinearProps', () => 
     const line = makeLine([0, 0, 0], [10, 0, 0]);
     const props = measureLinearProps(castShape(line.wrapped));
     expect(props.mass).toBeCloseTo(10, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Null-shape pre-validation tests
+// ---------------------------------------------------------------------------
+
+describe('null-shape pre-validation', () => {
+  function makeNullSolid(): Shape3D {
+    const oc = getKernel().oc;
+    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+  }
+
+  function makeNullFace(): Face {
+    const oc = getKernel().oc;
+    return createFace(new oc.TopoDS_Face());
+  }
+
+  it('measureVolumeProps throws on null shape', () => {
+    expect(() => measureVolumeProps(makeNullSolid())).toThrow('null shape');
+  });
+
+  it('measureVolume throws on null shape', () => {
+    expect(() => measureVolume(makeNullSolid())).toThrow('null shape');
+  });
+
+  it('measureSurfaceProps throws on null shape', () => {
+    expect(() => measureSurfaceProps(makeNullSolid())).toThrow('null shape');
+  });
+
+  it('measureArea throws on null shape', () => {
+    expect(() => measureArea(makeNullSolid())).toThrow('null shape');
+  });
+
+  it('measureLinearProps throws on null shape', () => {
+    expect(() => measureLinearProps(makeNullSolid())).toThrow('null shape');
+  });
+
+  it('measureLength throws on null shape', () => {
+    expect(() => measureLength(makeNullSolid())).toThrow('null shape');
+  });
+
+  it('measureDistance throws on null first shape', () => {
+    const valid = castShape(makeVertex([0, 0, 0]).wrapped);
+    expect(() => measureDistance(makeNullSolid(), valid)).toThrow('null shape');
+  });
+
+  it('measureDistance throws on null second shape', () => {
+    const valid = castShape(makeVertex([0, 0, 0]).wrapped);
+    expect(() => measureDistance(valid, makeNullSolid())).toThrow('null shape');
+  });
+
+  it('createDistanceQuery throws on null reference', () => {
+    expect(() => createDistanceQuery(makeNullSolid())).toThrow('null shape');
+  });
+
+  it('createDistanceQuery.distanceTo throws on null other', () => {
+    const ref = castShape(makeVertex([0, 0, 0]).wrapped);
+    const query = createDistanceQuery(ref);
+    try {
+      expect(() => query.distanceTo(makeNullSolid())).toThrow('null shape');
+    } finally {
+      query.dispose();
+    }
+  });
+
+  it('measureCurvatureAt throws on null face', () => {
+    expect(() => measureCurvatureAt(makeNullFace(), 0, 0)).toThrow('null shape');
+  });
+
+  it('measureCurvatureAtMid throws on null face', () => {
+    expect(() => measureCurvatureAtMid(makeNullFace())).toThrow('null shape');
   });
 });

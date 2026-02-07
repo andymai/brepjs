@@ -11,6 +11,16 @@ import { uvBounds } from '../topology/faceFns.js';
 import { surfaceCurvature, type CurvatureResult } from '../kernel/measureOps.js';
 
 // ---------------------------------------------------------------------------
+// Pre-validation
+// ---------------------------------------------------------------------------
+
+function assertShapeNotNull(shape: { wrapped: { IsNull(): boolean } }, fn: string): void {
+  if (shape.wrapped.IsNull()) {
+    throw new Error(`${fn}: shape is a null shape`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Volume, area, length
 // ---------------------------------------------------------------------------
 
@@ -51,6 +61,7 @@ export interface LinearProps extends PhysicalProps {
  * ```
  */
 export function measureVolumeProps(shape: Shape3D): VolumeProps {
+  assertShapeNotNull(shape, 'measureVolumeProps');
   const oc = getKernel().oc;
   const r = gcWithScope();
 
@@ -73,6 +84,7 @@ export function measureVolumeProps(shape: Shape3D): VolumeProps {
  * @see {@link measureArea} for a shorthand that returns only the area number.
  */
 export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
+  assertShapeNotNull(shape, 'measureSurfaceProps');
   const oc = getKernel().oc;
   const r = gcWithScope();
 
@@ -98,6 +110,7 @@ export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
  * @see {@link measureLength} for a shorthand that returns only the length number.
  */
 export function measureLinearProps(shape: AnyShape): LinearProps {
+  assertShapeNotNull(shape, 'measureLinearProps');
   const oc = getKernel().oc;
   const r = gcWithScope();
 
@@ -152,6 +165,8 @@ export function measureLength(shape: AnyShape): number {
  * ```
  */
 export function measureDistance(shape1: AnyShape, shape2: AnyShape): number {
+  assertShapeNotNull(shape1, 'measureDistance');
+  assertShapeNotNull(shape2, 'measureDistance');
   return getKernel().distance(shape1.wrapped, shape2.wrapped).value;
 }
 
@@ -178,12 +193,14 @@ export function createDistanceQuery(referenceShape: AnyShape): {
   distanceTo: (other: AnyShape) => number;
   dispose: () => void;
 } {
+  assertShapeNotNull(referenceShape, 'createDistanceQuery');
   const oc = getKernel().oc;
   const distTool = new oc.BRepExtrema_DistShapeShape_1();
   distTool.LoadS1(referenceShape.wrapped);
 
   return {
     distanceTo(other: AnyShape): number {
+      assertShapeNotNull(other, 'createDistanceQuery.distanceTo');
       distTool.LoadS2(other.wrapped);
       const progress = new oc.Message_ProgressRange_1();
       try {
@@ -223,6 +240,7 @@ export type { CurvatureResult } from '../kernel/measureOps.js';
  * ```
  */
 export function measureCurvatureAt(face: Face, u: number, v: number): CurvatureResult {
+  assertShapeNotNull(face, 'measureCurvatureAt');
   const oc = getKernel().oc;
   return surfaceCurvature(oc, face.wrapped, u, v);
 }
@@ -237,6 +255,7 @@ export function measureCurvatureAt(face: Face, u: number, v: number): CurvatureR
  * @see {@link measureCurvatureAt} to evaluate at an arbitrary (u, v) point.
  */
 export function measureCurvatureAtMid(face: Face): CurvatureResult {
+  assertShapeNotNull(face, 'measureCurvatureAtMid');
   const oc = getKernel().oc;
   const bounds = uvBounds(face);
   const uMid = (bounds.uMin + bounds.uMax) / 2;

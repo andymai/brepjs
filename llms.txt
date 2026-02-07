@@ -598,6 +598,8 @@ measureCurvatureAtMid(face): CurvatureResult
 // CurvatureResult: { mean, gaussian, maxCurvature, minCurvature, maxDirection, minDirection }
 ```
 
+All measurement functions throw on null shape input with descriptive messages (e.g. `"measureVolumeProps: shape is a null shape"`). Use `isShapeNull()` to check before measuring if the shape may be null.
+
 ### Interference Detection
 
 ```typescript
@@ -609,6 +611,8 @@ checkInterference(shape1, shape2, tolerance?): Result<InterferenceResult>
 checkAllInterferences(shapes, tolerance?): InterferencePair[]
 // InterferencePair: { i, j, result: InterferenceResult }
 ```
+
+`checkInterference` returns `err(VALIDATION, NULL_SHAPE_INPUT)` if either shape is null. `checkAllInterferences` propagates via `unwrap` (throws on null).
 
 ## Shape Healing & Validation
 
