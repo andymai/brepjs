@@ -3,17 +3,15 @@ import { getKernel } from '../kernel/index.js';
 import { WrappingObj, gcWithScope } from '../core/memory.js';
 import { meshShapeEdges as _meshShapeEdges, type ShapeMesh } from './meshFns.js';
 import { type SurfaceType, type FaceTriangulation } from './faceFns.js';
-import type { Plane, PlaneName } from '../core/planeTypes.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { vecRepr } from '../core/vecOps.js';
 import { fromOcVec, fromOcPnt, toOcPnt } from '../core/occtBoundary.js';
 import { DEG2RAD, HASH_CODE_MAX, uniqueIOFilename } from '../core/constants.js';
-import { rotate, translate, mirror, scale as scaleShape } from '../core/geometryHelpers.js';
 import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { cast, downcast, iterTopo, type TopoEntity } from './cast.js';
 import type { EdgeFinder, FaceFinder } from '../query/index.js';
-import { typeCastError, validationError, ioError, bug } from '../core/errors.js';
+import { typeCastError, validationError, ioError } from '../core/errors.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import {
   fuseAll as _fuseAll,
@@ -81,19 +79,15 @@ export type BooleanOperationOptions = {
  * Base class for all BREP topology shapes.
  *
  * Wraps an OCCT TopoDS_Shape handle with GC support and provides common
- * operations (transform, mesh, export). Concrete subclasses: Vertex, Edge,
+ * operations (export, query). Concrete subclasses: Vertex, Edge,
  * Wire, Face, Shell, Solid, CompSolid, Compound.
  *
- * @see cloneShape — functional equivalent of clone()
+ * @see cloneShape — to deep-copy a shape
  * @see serializeShape — functional equivalent of serialize()
+ * @see translateShape, rotateShape, mirrorShape, scaleShape — transforms
+ * @see meshShape — to mesh a shape for rendering
  */
 export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
-  /** @deprecated Use cloneShape() instead. */
-  clone(): this {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic constructor access
-    return new (this.constructor as any)(unwrap(downcast(this.wrapped)));
-  }
-
   /**
    * Serialize the shape to BREP string format.
    * @see serializeShape — functional equivalent
@@ -121,123 +115,6 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
   /** Check if two shapes are geometrically equal (same geometry and orientation). */
   isEqual(other: AnyShape): boolean {
     return (this.wrapped as OcShape).IsEqual(other.wrapped);
-  }
-
-  /**
-   * Simplifies the shape by removing unnecessary edges and faces.
-   *
-   * @deprecated Use simplifyShape() instead.
-   */
-  simplify(): this {
-    const oc = getKernel().oc;
-    const shapeUpgrader = new oc.ShapeUpgrade_UnifySameDomain_2(this.wrapped, true, true, false);
-    shapeUpgrader.Build();
-    const newShape = unwrap(cast(shapeUpgrader.Shape()));
-    shapeUpgrader.delete();
-
-    if (this.constructor !== newShape.constructor)
-      bug('transform', 'Shape type changed unexpectedly after transformation');
-
-    // @ts-expect-error we actually check just before
-    return newShape as typeof this;
-  }
-
-  /**
-   * Translates the shape by an arbitrary vector.
-   *
-   * @deprecated Use translateShape() instead.
-   * @category Shape Transformations
-   */
-  translate(xDist: number, yDist: number, zDist: number): this;
-  translate(vector: PointInput): this;
-  translate(vectorOrxDist: PointInput | number, yDist = 0, zDist = 0): this {
-    const translation: PointInput =
-      typeof vectorOrxDist === 'number' ? [vectorOrxDist, yDist, zDist] : vectorOrxDist;
-    const newShape = unwrap(cast(translate(this.wrapped, translation)));
-    this.delete();
-
-    if (this.constructor !== newShape.constructor)
-      bug('transform', 'Shape type changed unexpectedly after transformation');
-
-    // @ts-expect-error we actually check just before
-    return newShape as typeof this;
-  }
-
-  /**
-   * Translates the shape on the X axis.
-   *
-   * @category Shape Transformations
-   */
-  translateX(distance: number): this {
-    return this.translate([distance, 0, 0]);
-  }
-
-  /**
-   * Translates the shape on the Y axis.
-   *
-   * @category Shape Transformations
-   */
-  translateY(distance: number): this {
-    return this.translate([0, distance, 0]);
-  }
-
-  /**
-   * Translates the shape on the Z axis.
-   *
-   * @category Shape Transformations
-   */
-  translateZ(distance: number): this {
-    return this.translate([0, 0, distance]);
-  }
-
-  /**
-   * Rotates the shape.
-   *
-   * @deprecated Use rotateShape() instead.
-   * @category Shape Transformations
-   */
-  rotate(angle: number, position: PointInput = [0, 0, 0], direction: PointInput = [0, 0, 1]): this {
-    const newShape = unwrap(cast(rotate(this.wrapped, angle, position, direction)));
-    this.delete();
-    if (this.constructor !== newShape.constructor)
-      bug('transform', 'Shape type changed unexpectedly after transformation');
-
-    // @ts-expect-error we actually check just before
-    return newShape as typeof this;
-  }
-
-  /**
-   * Mirrors the shape through a plane.
-   *
-   * @deprecated Use mirrorShape() instead.
-   * @category Shape Transformations
-   */
-  mirror(inputPlane?: Plane | PlaneName | PointInput, origin?: PointInput): this {
-    const newShape = unwrap(cast(mirror(this.wrapped, inputPlane, origin)));
-    this.delete();
-
-    if (this.constructor !== newShape.constructor)
-      bug('transform', 'Shape type changed unexpectedly after transformation');
-
-    // @ts-expect-error we actually check just before
-    return newShape as typeof this;
-  }
-
-  /**
-   * Returns a scaled version of the shape.
-   *
-   * @deprecated Use scaleShape() instead.
-   * @category Shape Transformations
-   */
-  scale(scaleFactor: number, center: PointInput = [0, 0, 0]): this {
-    const newShape = unwrap(cast(scaleShape(this.wrapped, center, scaleFactor)));
-    this.delete();
-
-    if (this.constructor !== newShape.constructor)
-      bug('transform', 'Shape type changed unexpectedly after transformation');
-
-    // @ts-expect-error we actually check just before
-    return newShape as typeof this;
   }
 
   protected _iterTopo(topo: TopoEntity): IterableIterator<OcShape> {
@@ -274,43 +151,6 @@ export class Shape<Type extends OcShape = OcShape> extends WrappingObj<Type> {
       false
     );
     mesher.delete();
-  }
-
-  /**
-   * Exports the current shape as a set of triangles for rendering.
-   *
-   * @deprecated Use meshShape() instead.
-   * @category Shape Export
-   */
-  mesh({
-    tolerance = 1e-3,
-    angularTolerance = 0.1,
-    skipNormals = false,
-    includeUVs = false,
-  }: {
-    tolerance?: number;
-    angularTolerance?: number;
-    skipNormals?: boolean;
-    includeUVs?: boolean;
-  } = {}): ShapeMesh {
-    const result = getKernel().mesh(this.wrapped, {
-      tolerance,
-      angularTolerance,
-      skipNormals,
-      includeUVs,
-    });
-
-    return {
-      vertices: result.vertices,
-      normals: result.normals,
-      triangles: result.triangles,
-      uvs: result.uvs,
-      faceGroups: result.faceGroups.map((g) => ({
-        start: g.start,
-        count: g.count,
-        faceId: g.faceHash,
-      })),
-    };
   }
 
   /**
@@ -854,7 +694,8 @@ export class Face extends Shape {
    * @see innerWires — functional equivalent in faceFns.ts (does not dispose input)
    */
   innerWires(): Wire[] {
-    const outer = this.clone().outerWire();
+    const cloned = new Face(unwrap(downcast(this.wrapped)));
+    const outer = cloned.outerWire();
     const innerWiresArr = this.wires.filter((w) => !outer.isSame(w));
     outer.delete();
     this.delete();
@@ -936,86 +777,12 @@ export class Face extends Shape {
 /**
  * Abstract base for three-dimensional shapes (Shell, Solid, CompSolid, Compound).
  *
- * Provides boolean operations (fuse, cut, intersect), shell, fillet, and chamfer.
+ * Provides shell, fillet, and chamfer operations.
  *
- * @see fuseShapes — functional replacement for fuse()
- * @see cutShape — functional replacement for cut()
+ * @see fuseShapes — for boolean union
+ * @see cutShape — for boolean subtraction
  */
 export class _3DShape<Type extends OcShape = OcShape> extends Shape<Type> {
-  /**
-   * Builds a new shape out of the two fused shapes.
-   *
-   * @deprecated Use fuseShapes() instead.
-   * @category Shape Modifications
-   */
-  fuse(
-    other: Shape3D,
-    { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
-  ): Result<Shape3D> {
-    const r = gcWithScope();
-    const progress = r(new this.oc.Message_ProgressRange_1());
-    const newBody = r(new this.oc.BRepAlgoAPI_Fuse_3(this.wrapped, other.wrapped, progress));
-    _applyGlue(newBody, optimisation);
-
-    newBody.Build(progress);
-    if (simplify) {
-      newBody.SimplifyResult(true, true, 1e-3);
-    }
-    return andThen(cast(newBody.Shape()), (newShape) => {
-      if (!isShape3D(newShape))
-        return err(typeCastError('FUSE_NOT_3D', 'Fuse did not produce a 3D shape'));
-      return ok(newShape);
-    });
-  }
-
-  /**
-   * Builds a new shape by removing the tool from this shape.
-   *
-   * @deprecated Use cutShape() instead.
-   * @category Shape Modifications
-   */
-  cut(
-    tool: Shape3D,
-    { optimisation = 'none', simplify = false }: BooleanOperationOptions = {}
-  ): Result<Shape3D> {
-    const r = gcWithScope();
-    const progress = r(new this.oc.Message_ProgressRange_1());
-    const cutter = r(new this.oc.BRepAlgoAPI_Cut_3(this.wrapped, tool.wrapped, progress));
-    _applyGlue(cutter, optimisation);
-    cutter.Build(progress);
-    if (simplify) {
-      cutter.SimplifyResult(true, true, 1e-3);
-    }
-
-    return andThen(cast(cutter.Shape()), (newShape) => {
-      if (!isShape3D(newShape))
-        return err(typeCastError('CUT_NOT_3D', 'Cut did not produce a 3D shape'));
-      return ok(newShape);
-    });
-  }
-
-  /**
-   * Builds a new shape by intersecting this shape and another.
-   *
-   * @deprecated Use intersectShapes() instead.
-   * @category Shape Modifications
-   */
-  intersect(tool: AnyShape, { simplify = false }: { simplify?: boolean } = {}): Result<Shape3D> {
-    const r = gcWithScope();
-    const progress = r(new this.oc.Message_ProgressRange_1());
-    const intersector = r(new this.oc.BRepAlgoAPI_Common_3(this.wrapped, tool.wrapped, progress));
-    intersector.Build(progress);
-    if (simplify) {
-      intersector.SimplifyResult(true, true, 1e-3);
-    }
-
-    return andThen(cast(intersector.Shape()), (newShape) => {
-      if (!isShape3D(newShape))
-        return err(typeCastError('INTERSECT_NOT_3D', 'Intersect did not produce a 3D shape'));
-      return ok(newShape);
-    });
-  }
-
   /**
    * Hollows out the current shape.
    *

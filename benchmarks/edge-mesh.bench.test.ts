@@ -1,6 +1,8 @@
 import { describe, it, beforeAll } from 'vitest';
 import { initOC } from '../tests/setup.js';
 import { makeBox, makeCylinder, unwrap, castShape, meshShapeEdges, clearMeshCache } from '../src/index.js';
+import { translateShape } from '../src/topology/shapeFns.js';
+import { fuseShapes } from '../src/topology/booleanFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -22,8 +24,8 @@ describe('Edge mesh benchmarks', () => {
 
   it('edge mesh a fused shape (moderate)', async () => {
     const box = makeBox([10, 10, 10]);
-    const cyl = makeCylinder(3, 10).translate([5, 5, 0]);
-    const fused = unwrap(box.fuse(cyl));
+    const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
+    const fused = unwrap(fuseShapes(box as any, cyl));
     const shape = castShape(fused.wrapped);
     results.push(
       await bench('edge mesh fused', () => {
@@ -35,8 +37,8 @@ describe('Edge mesh benchmarks', () => {
   it('repeated edge mesh of same shape (cache test)', async () => {
     clearMeshCache();
     const box = makeBox([10, 10, 10]);
-    const cyl = makeCylinder(3, 10).translate([5, 5, 0]);
-    const fused = unwrap(box.fuse(cyl));
+    const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
+    const fused = unwrap(fuseShapes(box as any, cyl));
     const shape = castShape(fused.wrapped);
     // First call populates cache
     meshShapeEdges(shape);

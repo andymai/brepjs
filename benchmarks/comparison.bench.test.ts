@@ -20,6 +20,8 @@ import {
   clearMeshCache,
   fnFuseAll,
 } from '../src/index.js';
+import { translateShape } from '../src/topology/shapeFns.js';
+import { fuseShapes, cutShape } from '../src/topology/booleanFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -34,7 +36,7 @@ describe('Native vs Pairwise fuseAll', () => {
       results.push(
         await bench(`native N=${n}`, () => {
           const shapes = Array.from({ length: n }, (_, i) =>
-            makeBox([5, 5, 5]).translate([i * 2, 0, 0])
+            translateShape(makeBox([5, 5, 5]) as any, [i * 2, 0, 0])
           );
           unwrap(fuseAll(shapes, { strategy: 'native' }));
         })
@@ -45,7 +47,7 @@ describe('Native vs Pairwise fuseAll', () => {
       results.push(
         await bench(`pairwise N=${n}`, () => {
           const shapes = Array.from({ length: n }, (_, i) =>
-            makeBox([5, 5, 5]).translate([i * 2, 0, 0])
+            translateShape(makeBox([5, 5, 5]) as any, [i * 2, 0, 0])
           );
           unwrap(fuseAll(shapes, { strategy: 'pairwise' }));
         })
@@ -65,8 +67,8 @@ describe('simplify=false vs simplify=true', () => {
     results.push(
       await bench('fuse simplify=false', () => {
         const box1 = makeBox([10, 10, 10]);
-        const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
-        unwrap(box1.fuse(box2, { simplify: false }));
+        const box2 = translateShape(makeBox([10, 10, 10]) as any, [5, 0, 0]);
+        unwrap(fuseShapes(box1 as any, box2, { simplify: false }));
       })
     );
   });
@@ -75,8 +77,8 @@ describe('simplify=false vs simplify=true', () => {
     results.push(
       await bench('fuse simplify=true', () => {
         const box1 = makeBox([10, 10, 10]);
-        const box2 = makeBox([10, 10, 10]).translate([5, 0, 0]);
-        unwrap(box1.fuse(box2, { simplify: true }));
+        const box2 = translateShape(makeBox([10, 10, 10]) as any, [5, 0, 0]);
+        unwrap(fuseShapes(box1 as any, box2, { simplify: true }));
       })
     );
   });
@@ -85,7 +87,7 @@ describe('simplify=false vs simplify=true', () => {
     results.push(
       await bench('fuseAll(8) simplify=false', () => {
         const shapes = Array.from({ length: 8 }, (_, i) =>
-          makeBox([5, 5, 5]).translate([i * 2, 0, 0])
+          translateShape(makeBox([5, 5, 5]) as any, [i * 2, 0, 0])
         );
         unwrap(fuseAll(shapes, { simplify: false }));
       })
@@ -96,7 +98,7 @@ describe('simplify=false vs simplify=true', () => {
     results.push(
       await bench('fuseAll(8) simplify=true', () => {
         const shapes = Array.from({ length: 8 }, (_, i) =>
-          makeBox([5, 5, 5]).translate([i * 2, 0, 0])
+          translateShape(makeBox([5, 5, 5]) as any, [i * 2, 0, 0])
         );
         unwrap(fuseAll(shapes, { simplify: true }));
       })
@@ -107,8 +109,8 @@ describe('simplify=false vs simplify=true', () => {
     results.push(
       await bench('cut simplify=false', () => {
         const box = makeBox([10, 10, 10]);
-        const sphere = makeSphere(4).translate([5, 5, 5]);
-        unwrap(box.cut(sphere, { simplify: false }));
+        const sphere = translateShape(makeSphere(4) as any, [5, 5, 5]);
+        unwrap(cutShape(box as any, sphere, { simplify: false }));
       })
     );
   });
@@ -117,8 +119,8 @@ describe('simplify=false vs simplify=true', () => {
     results.push(
       await bench('cut simplify=true', () => {
         const box = makeBox([10, 10, 10]);
-        const sphere = makeSphere(4).translate([5, 5, 5]);
-        unwrap(box.cut(sphere, { simplify: true }));
+        const sphere = translateShape(makeSphere(4) as any, [5, 5, 5]);
+        unwrap(cutShape(box as any, sphere, { simplify: true }));
       })
     );
   });

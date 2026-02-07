@@ -14,7 +14,7 @@ import {
 } from '../operations/extrude.js';
 import type { LoftConfig } from '../operations/loft.js';
 import type { SketchInterface } from './sketchLib.js';
-import { cast } from '../topology/cast.js';
+import { cast, downcast } from '../topology/cast.js';
 import { type Result, unwrap, isOk } from '../core/result.js';
 import { bug } from '../core/errors.js';
 import { Face, type Shape3D, type Shell, type Wire } from '../topology/shapes.js';
@@ -234,7 +234,8 @@ export default class CompoundSketch implements SketchInterface {
       return base.clone().loftWith(outer.clone(), { ruled: loftConfig.ruled }, true);
     });
 
-    const baseFace = this.face().clone();
+    const baseFaceRaw = this.face();
+    const baseFace = new Face(unwrap(downcast(baseFaceRaw.wrapped)));
     shells.push(baseFace, otherCompound.face());
 
     return unwrap(makeSolid(shells));

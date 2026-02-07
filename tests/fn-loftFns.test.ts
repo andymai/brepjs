@@ -11,6 +11,7 @@ import {
   isOk,
   unwrap,
 } from '../src/index.js';
+import { translateShape } from '../src/topology/shapeFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -20,7 +21,10 @@ describe('loftWires', () => {
   it('lofts two rectangular wires', () => {
     const w1 = castShape(sketchRectangle(10, 10).wire.wrapped);
     const w2 = castShape(
-      sketchRectangle(10, 10, { origin: [0, 0], plane: 'XY' }).wire.translateZ(20).wrapped
+      translateShape(
+        sketchRectangle(10, 10, { origin: [0, 0], plane: 'XY' }).wire as any,
+        [0, 0, 20]
+      ).wrapped
     );
     const result = loftWires([w1, w2]);
     expect(isOk(result)).toBe(true);
@@ -31,7 +35,7 @@ describe('loftWires', () => {
 
   it('lofts with startPoint', () => {
     const w1 = castShape(sketchCircle(5).wire.wrapped);
-    const w2 = castShape(sketchCircle(5).wire.translate(0, 0, 10).wrapped);
+    const w2 = castShape(translateShape(sketchCircle(5).wire as any, [0, 0, 10]).wrapped);
     const result = loftWires([w1, w2], { startPoint: [0, 0, -5] });
     expect(isOk(result)).toBe(true);
   });

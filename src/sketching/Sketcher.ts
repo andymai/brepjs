@@ -33,7 +33,9 @@ import {
   defaultsSplineConfig,
   type GenericSketcher,
 } from './sketcherlib.js';
-import type { CurveLike, Edge, Wire } from '../topology/shapes.js';
+import { Wire, type CurveLike, type Edge } from '../topology/shapes.js';
+import { downcast } from '../topology/cast.js';
+import { mirror as mirrorOcShape } from '../core/geometryHelpers.js';
 import type { OcType } from '../kernel/types.js';
 import Sketch from './Sketch.js';
 
@@ -469,7 +471,10 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     const startToEndVector = vecNormalize(diff);
     const normal = vecCross(startToEndVector, this.plane.zDir);
 
-    const mirroredWire = wire.clone().mirror(normal, this.pointer);
+    const clonedWrapped = unwrap(downcast(wire.wrapped));
+    const mirroredRaw = mirrorOcShape(clonedWrapped, normal, this.pointer);
+    const mirroredWrapped = unwrap(downcast(mirroredRaw));
+    const mirroredWire = new Wire(mirroredWrapped);
 
     const combinedWire = unwrap(assembleWire([wire, mirroredWire]));
 

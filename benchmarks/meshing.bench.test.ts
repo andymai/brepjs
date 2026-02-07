@@ -1,6 +1,8 @@
 import { describe, it, beforeAll } from 'vitest';
 import { initOC } from '../tests/setup.js';
 import { makeBox, makeSphere, makeCylinder, unwrap, castShape, meshShape } from '../src/index.js';
+import { translateShape } from '../src/topology/shapeFns.js';
+import { fuseShapes } from '../src/topology/booleanFns.js';
 import { bench, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
@@ -14,7 +16,7 @@ describe('Meshing benchmarks', () => {
     const box = makeBox([10, 10, 10]);
     results.push(
       await bench('mesh box', () => {
-        box.mesh();
+        meshShape(box as any);
       })
     );
   });
@@ -23,18 +25,18 @@ describe('Meshing benchmarks', () => {
     const sphere = makeSphere(10);
     results.push(
       await bench('mesh sphere', () => {
-        sphere.mesh();
+        meshShape(sphere as any);
       })
     );
   });
 
   it('mesh a fused result (post-boolean)', async () => {
     const box = makeBox([10, 10, 10]);
-    const cyl = makeCylinder(3, 10).translate([5, 5, 0]);
-    const fused = unwrap(box.fuse(cyl));
+    const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
+    const fused = unwrap(fuseShapes(box as any, cyl));
     results.push(
       await bench('mesh fused', () => {
-        fused.mesh();
+        meshShape(fused as any);
       })
     );
   });
@@ -45,7 +47,7 @@ describe('Meshing benchmarks', () => {
       await bench(
         'mesh sphere fine',
         () => {
-          sphere.mesh({ tolerance: 0.1, angularTolerance: 0.05 });
+          meshShape(sphere as any, { tolerance: 0.1, angularTolerance: 0.05 });
         },
         { warmup: 1, iterations: 3 }
       )

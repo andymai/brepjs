@@ -148,7 +148,26 @@ export function fuseAll(
   const rightResult = fuseAll(shapes.slice(mid), { optimisation, simplify: false, strategy });
   if (isErr(rightResult)) return rightResult;
 
-  return leftResult.value.fuse(rightResult.value, { optimisation, simplify });
+  // Inline the fuse operation to avoid dependency on _3DShape.fuse()
+  const r = gcWithScope();
+  const progress = r(new (getKernel().oc.Message_ProgressRange_1)());
+  const fuseOp = r(
+    new (getKernel().oc.BRepAlgoAPI_Fuse_3)(
+      leftResult.value.wrapped,
+      rightResult.value.wrapped,
+      progress
+    )
+  );
+  applyGlue(fuseOp, optimisation);
+  fuseOp.Build(progress);
+  if (simplify) fuseOp.SimplifyResult(true, true, 1e-3);
+  return andThen(cast(fuseOp.Shape()), (newShape) => {
+    if (!isShape3DInternal(newShape))
+      return err(
+        typeCastError('FUSE_ALL_NOT_3D', 'fuseAll pairwise fuse did not produce a 3D shape')
+      );
+    return ok(newShape);
+  });
 }
 
 /**

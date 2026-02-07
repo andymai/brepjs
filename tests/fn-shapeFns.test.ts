@@ -34,6 +34,7 @@ import {
   fnIsVertex,
   fnIsWire,
 } from '../src/index.js';
+import { fuseShapes } from '../src/topology/booleanFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -84,7 +85,9 @@ describe('simplifyShape', () => {
   it('simplifies a fused shape', () => {
     const a = makeBox([0, 0, 0], [10, 10, 10]);
     // fuse creates extra faces; simplify removes co-planar seams
-    const fused = a.fuse(makeBox([10, 0, 0], [20, 10, 10]), { simplify: false });
+    const fused = fuseShapes(a as any, makeBox([10, 0, 0], [20, 10, 10]) as any, {
+      simplify: false,
+    });
     const simplified = simplifyShape(castShape(fused.value.wrapped));
     expect(simplified).toBeDefined();
   });

@@ -4,8 +4,8 @@ import { localGC } from '../core/memory.js';
 import { getKernel } from '../kernel/index.js';
 import { assembleWire } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';
-import type { Face, Wire } from '../topology/shapes.js';
-import { Edge } from '../topology/shapes.js';
+import { Edge, Face, type Wire } from '../topology/shapes.js';
+import { downcast } from '../topology/cast.js';
 import {
   convertSvgEllipseParams,
   defaultsSplineConfig,
@@ -561,7 +561,7 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
 
   constructor(face: Face, origin: Point2D = [0, 0]) {
     super(origin);
-    this.face = face.clone();
+    this.face = new Face(unwrap(downcast(face.wrapped)));
     this._bounds = face.UVBounds;
   }
 
