@@ -1,4 +1,20 @@
 {
+  "$schema": "https://context7.com/schema/context7.json",
   "url": "https://context7.com/andymai/brepjs",
-  "public_key": "pk_WmPUK3NlUHZYB3un8SqbQ"
+  "public_key": "pk_WmPUK3NlUHZYB3un8SqbQ",
+  "projectTitle": "brepjs",
+  "description": "Web CAD library built on OpenCascade — create, combine, and export 3D shapes with a functional TypeScript API and WASM-powered B-Rep kernel.",
+  "folders": [
+    "docs",
+    "llms.txt"
+  ],
+  "excludeFolders": [],
+  "excludeFiles": [],
+  "rules": [
+    "Always initialize the WASM kernel before using any brepjs function: `const oc = await opencascade(); initFromOC(oc);`",
+    "Boolean operations (fuseShape, cutShape, intersectShape) return Result<Shape3D> — use unwrap() for scripts or isOk()/match() for production error handling",
+    "Use sub-path imports for focused autocomplete: brepjs/topology, brepjs/operations, brepjs/sketching, brepjs/2d, brepjs/query, brepjs/measurement, brepjs/io",
+    "WASM objects are not garbage collected — use `using` keyword (TS 5.9+) or gcWithScope()/localGC() for memory management",
+    "Peer dependency brepjs-opencascade must be installed separately: `npm install brepjs brepjs-opencascade`"
+  ]
 }
