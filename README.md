@@ -20,8 +20,6 @@ import {
   initFromOC,
   makeBox,
   makeCylinder,
-  castShape,
-  fuseShapes,
   cutShape,
   translateShape,
   measureVolume,
@@ -33,9 +31,9 @@ import {
 const oc = await opencascade();
 initFromOC(oc);
 
-// Create primitive shapes
-const box = castShape(makeBox([0, 0, 0], [50, 30, 20]).wrapped);
-const cylinder = castShape(makeCylinder(8, 25).translate([25, 15, -2]).wrapped);
+// Create primitive shapes — makeBox returns Solid, no wrapping needed
+const box = makeBox([0, 0, 0], [50, 30, 20]);
+const cylinder = translateShape(makeCylinder(8, 25), [25, 15, -2]);
 
 // Boolean operations
 const withHole = unwrap(cutShape(box, cylinder));
@@ -86,8 +84,8 @@ See [docs/architecture.md](./docs/architecture.md) for the full diagram.
 brepjs uses an immutable functional API:
 
 ```typescript
-const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-const moved = translateShape(box, [5, 0, 0]); // Returns new shape
+const box = makeBox([0, 0, 0], [10, 10, 10]);
+const moved = translateShape(box, [5, 0, 0]); // Returns new Solid
 ```
 
 ## Projects Using brepjs

@@ -15,13 +15,9 @@ import { validationError, occtError } from '../core/errors.js';
  * Uses divide-and-conquer when strategy is `'pairwise'`, or delegates to the
  * kernel's N-way `BRepAlgoAPI_BuilderAlgo` when strategy is `'native'`.
  *
+ * @deprecated Use `fuseAll` from `booleanFns` instead, which operates on branded Shape3D types.
  * @param shapes - Shapes to fuse together (must contain at least one).
  * @returns `Result` containing the fused shape, or an error if the array is empty or the operation fails.
- *
- * @example
- * ```ts
- * const result = fuseAllShapes([box, cylinder], { simplify: true });
- * ```
  *
  * @see {@link cutAllShapes} for the subtraction counterpart.
  */
@@ -77,6 +73,7 @@ export function fuseAllShapes(
  * Builds a compound from all tools and performs a single boolean cut against the base.
  * Returns the base unchanged when the tools array is empty.
  *
+ * @deprecated Use `cutAll` from `booleanFns` instead, which operates on branded Shape3D types.
  * @param base - The shape to cut from.
  * @param tools - Shapes to subtract from the base.
  * @returns `Result` containing the cut shape, or an error if the operation fails.

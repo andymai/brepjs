@@ -1,5 +1,5 @@
 import type { PointInput } from '../core/types.js';
-import { compoundShapes } from '../topology/shapeHelpers.js';
+import { makeCompound } from '../topology/shapeHelpers.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 
@@ -24,13 +24,13 @@ export default class Sketches {
   /** Return all wires combined into a single compound shape. */
   wires(): AnyShape {
     const wires = this.sketches.map((s) => (s instanceof Sketch ? s.wire : s.wires));
-    return compoundShapes(wires);
+    return makeCompound(wires);
   }
 
   /** Return all sketch faces combined into a single compound shape. */
   faces(): AnyShape {
     const faces = this.sketches.map((s) => s.face());
-    return compoundShapes(faces);
+    return makeCompound(faces);
   }
 
   /** Extrudes the sketch to a certain distance (along the default direction
@@ -54,7 +54,7 @@ export default class Sketches {
   ): AnyShape {
     const extruded = this.sketches.map((s) => s.extrude(extrusionDistance, extrusionConfig));
 
-    return compoundShapes(extruded);
+    return makeCompound(extruded);
   }
 
   /**
@@ -62,6 +62,6 @@ export default class Sketches {
    * (defaults to the sketch origin)
    */
   revolve(revolutionAxis?: PointInput, config?: { origin?: PointInput }): AnyShape {
-    return compoundShapes(this.sketches.map((s) => s.revolve(revolutionAxis, config)));
+    return makeCompound(this.sketches.map((s) => s.revolve(revolutionAxis, config)));
   }
 }

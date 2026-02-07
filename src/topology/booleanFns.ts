@@ -423,6 +423,7 @@ export function sliceShape(
 /**
  * Build a compound from multiple shapes.
  *
+ * @deprecated Use {@link makeCompound} from `topology/shapeHelpers` instead.
  * @param shapes - Shapes to group into a single compound.
  * @returns A new Compound containing all input shapes.
  */
