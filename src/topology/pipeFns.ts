@@ -13,7 +13,7 @@ import type { Vec3 } from '../core/types.js';
 import type { AnyShape, Shape3D } from '../core/shapeTypes.js';
 import { isShape3D } from '../core/shapeTypes.js';
 import { translateShape, rotateShape, mirrorShape, scaleShape } from './shapeFns.js';
-import { fuseShapes, cutShape, intersectShapes, type BooleanOptions } from './booleanFns.js';
+import { fuseShape, cutShape, intersectShape, type BooleanOptions } from './booleanFns.js';
 import { unwrap } from '../core/result.js';
 
 // ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ function createPipe<T extends AnyShape>(shape: T): ShapePipe<T> {
 
     fuse: (tool, options) => {
       if (!isShape3D(shape)) throw new Error('pipe.fuse() requires a 3D shape');
-      return createPipe(unwrap(fuseShapes(shape, tool, options)));
+      return createPipe(unwrap(fuseShape(shape, tool, options)));
     },
 
     cut: (tool, options) => {
@@ -85,7 +85,7 @@ function createPipe<T extends AnyShape>(shape: T): ShapePipe<T> {
 
     intersect: (tool) => {
       if (!isShape3D(shape)) throw new Error('pipe.intersect() requires a 3D shape');
-      return createPipe(unwrap(intersectShapes(shape, tool)));
+      return createPipe(unwrap(intersectShape(shape, tool)));
     },
   };
 }

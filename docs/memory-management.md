@@ -19,7 +19,7 @@ The `using` declaration automatically disposes objects when they go out of scope
 {
   using box = makeBox([10, 10, 10]);
   using cylinder = makeCylinder(5, 20);
-  const result = fuseShapes(box, cylinder);
+  const result = fuseShape(box, cylinder);
   // box and cylinder are automatically disposed at block end
   return result;
 }

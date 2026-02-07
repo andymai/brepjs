@@ -158,7 +158,7 @@ const moved = translateShape(box, [5, 0, 0]); // Returns new shape
 All fallible operations return `Result<T, BrepError>`:
 
 ```typescript
-const result = fuseShapes(a, b);
+const result = fuseShape(a, b);
 if (isOk(result)) {
   // result.value is the fused shape
 }

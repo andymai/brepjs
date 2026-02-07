@@ -142,8 +142,6 @@ export { loft } from './operations/loft.js';
 
 export { type AssemblyExporter, createAssembly } from './operations/exporters.js';
 
-export { fuseAllShapes, cutAllShapes } from './operations/batchBooleans.js';
-
 // ── Layer 2: 2d ──
 
 export { type Point2D, BoundingBox2d, Curve2D, axis2d } from './2d/lib/index.js';
@@ -198,9 +196,7 @@ export {
 
 // ── Layer 2: query ──
 
-export { EdgeFinder } from './query/edgeFinder.js';
-export { FaceFinder } from './query/faceFinder.js';
-export { CornerFinder, type Corner } from './query/cornerFinder.js';
+export { type Corner } from './query/cornerFinder.js';
 export { getSingleFace, type SingleFace } from './query/helpers.js';
 export { combineFinderFilters, type FilterFcn } from './query/index.js';
 
@@ -520,8 +516,10 @@ export {
 // ── Boolean operations (functional) ──
 
 export {
+  fuseShape,
   fuseShapes,
   cutShape,
+  intersectShape,
   intersectShapes,
   sectionShape,
   splitShape,

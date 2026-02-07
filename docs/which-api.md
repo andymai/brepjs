@@ -7,7 +7,7 @@ brepjs offers several API styles. This guide helps you choose the right one for 
 | If you want to...                 | Use                                              |
 | --------------------------------- | ------------------------------------------------ |
 | Create shapes from scratch        | **Sketcher** or **primitives** (`makeBox`)       |
-| Combine/modify shapes             | **Functional API** (`fuseShapes`, `filletShape`) |
+| Combine/modify shapes             | **Functional API** (`fuseShape`, `filletShape`)  |
 | Draw 2D profiles                  | **Drawing API** (`drawRectangle`, `drawCircle`)  |
 | Build parametric/composable parts | **Functional API** with `pipe()` or `pipeline()` |
 | Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)     |
@@ -98,10 +98,10 @@ To reduce autocomplete noise, import from specific modules:
 
 ```typescript
 // Instead of importing everything from 'brepjs':
-import { makeBox, fuseShapes, filletShape } from 'brepjs';
+import { makeBox, fuseShape, filletShape } from 'brepjs';
 
 // Import from focused sub-paths:
-import { makeBox, fuseShapes, filletShape } from 'brepjs/topology';
+import { makeBox, fuseShape, filletShape } from 'brepjs/topology';
 import { extrudeFace, linearPattern } from 'brepjs/operations';
 import { drawRectangle, sketchExtrude } from 'brepjs/sketching';
 import { edgeFinder, faceFinder } from 'brepjs/query';

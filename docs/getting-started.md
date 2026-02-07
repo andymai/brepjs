@@ -72,11 +72,11 @@ if (isOk(result)) {
 
 The three boolean operations are:
 
-| Function               | Operation    | Analogy       |
-| ---------------------- | ------------ | ------------- |
-| `fuseShapes(a,b)`      | Union        | Glue together |
-| `cutShape(a,b)`        | Subtraction  | Drill a hole  |
-| `intersectShapes(a,b)` | Intersection | Common volume |
+| Function              | Operation    | Analogy       |
+| --------------------- | ------------ | ------------- |
+| `fuseShape(a,b)`      | Union        | Glue together |
+| `cutShape(a,b)`       | Subtraction  | Drill a hole  |
+| `intersectShape(a,b)` | Intersection | Common volume |
 
 ## Step 5: Transform
 
@@ -223,7 +223,7 @@ initFromOC(oc); // Must happen before makeBox, makeCylinder, etc.
 
 ### Boolean operation returns an error
 
-Boolean operations (`fuseShapes`, `cutShape`, `intersectShapes`) can fail when shapes don't overlap, are invalid, or have degenerate geometry. Try:
+Boolean operations (`fuseShape`, `cutShape`, `intersectShape`) can fail when shapes don't overlap, are invalid, or have degenerate geometry. Try:
 
 1. **Check shapes overlap** — `cutShape(a, b)` requires `b` to intersect `a`
 2. **Heal inputs first** — `unwrap(healSolid(shape))` fixes minor geometry issues

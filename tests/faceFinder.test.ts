@@ -4,11 +4,11 @@ import {
   makeBox,
   makeCylinder,
   makeSphere,
-  FaceFinder,
   createNamedPlane,
   unwrap,
   isErr,
 } from '../src/index.js';
+import { FaceFinder } from '../src/query/faceFinder.js';
 
 beforeAll(async () => {
   await initOC();

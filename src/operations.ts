@@ -71,10 +71,6 @@ export {
   type OperationRegistry as HistoryOperationRegistry,
 } from './operations/historyFns.js';
 
-// ── Batch booleans ──
-
-export { fuseAllShapes, cutAllShapes } from './operations/batchBooleans.js';
-
 // ── Low-level ──
 
 export {
