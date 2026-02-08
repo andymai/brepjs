@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.2.0](https://github.com/andymai/brepjs/compare/brepjs-v7.1.0...brepjs-v7.2.0) (2026-02-08)
+
+
+### Features
+
+* standardize parameter naming to `at` and `axis` ([#191](https://github.com/andymai/brepjs/issues/191)) ([90a3ace](https://github.com/andymai/brepjs/commit/90a3ace641d656b878cea6a49073b68030cf6d6f))
+* standardize parameter naming to `at` and `axis` ([#191](https://github.com/andymai/brepjs/issues/191)) ([85885c2](https://github.com/andymai/brepjs/commit/85885c27f1761a5bcec8d8877210754536cf53ac))
+
 ## [7.1.0](https://github.com/andymai/brepjs/compare/brepjs-v7.0.0...brepjs-v7.1.0) (2026-02-08)
 
 
