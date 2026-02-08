@@ -209,6 +209,27 @@ npm run test:affected    # Run only tests affected by changes
 - New features should have corresponding tests
 - Tests run in CI and must pass before merge
 
+### Code Coverage Requirements
+
+brepjs enforces minimum coverage thresholds in pre-commit hooks and CI:
+
+| Metric     | Threshold | Why This Threshold?                               |
+|-----------|-----------|---------------------------------------------------|
+| Functions | **83%**   | Ensures all exported APIs are tested             |
+| Statements| **73%**   | Accounts for error handling branches             |
+| Branches  | **64%**   | Allows defensive error paths                     |
+| Lines     | **73%**   | Baseline code execution coverage                 |
+
+Run `npm run test:coverage` to see a detailed coverage report.
+
+**If coverage drops below threshold:**
+
+1. Add tests for new/modified functions
+2. Remove untested code (may be dead code)
+3. Consider if code is intentionally untested (e.g., emergency fallbacks)
+
+**Note:** Pre-commit runs changed tests only for speed; CI runs the full test suite with coverage enforcement.
+
 ## Pull Request Process
 
 ### Before Submitting

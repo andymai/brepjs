@@ -3,6 +3,7 @@
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/brepjs)](https://www.npmjs.com/package/brepjs)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+[![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)](./CONTRIBUTING.md#code-coverage-requirements)
 
 Web CAD library built on OpenCascade with a layered architecture and kernel abstraction layer.
 
