@@ -59,48 +59,72 @@ function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
 
 // ── Init ──
 
+async function loadWasmBuild(buildType: 'threaded' | 'single') {
+  const jsFile = `/wasm/brepjs_${buildType}.js`;
+  const wasmFile = `/wasm/brepjs_${buildType}.wasm`;
+  const workerFile = buildType === 'threaded' ? '/wasm/brepjs_threaded.worker.js' : undefined;
+
+  // Try cache first, fall back to network
+  let resp: Response | undefined;
+  try {
+    if ('caches' in self) {
+      const cache = await caches.open(WASM_CACHE_NAME);
+      resp = await cache.match(jsFile);
+    }
+  } catch (cacheErr) {
+    console.debug('Cache not available:', cacheErr);
+  }
+
+  if (!resp) {
+    resp = await fetch(jsFile);
+  }
+
+  if (!resp || !resp.ok) {
+    throw new Error(`Failed to load ${jsFile}: ${resp?.status || 'no response'}`);
+  }
+
+  const jsText = await resp.text();
+  const blob = new Blob([jsText], { type: 'application/javascript' });
+  const blobUrl = URL.createObjectURL(blob);
+  const ocModule = await import(/* @vite-ignore */ blobUrl);
+  URL.revokeObjectURL(blobUrl);
+  const opencascade = ocModule.default;
+
+  const oc = await opencascade({
+    locateFile: (f: string) => {
+      if (f.endsWith('.wasm')) return wasmFile;
+      if (f.endsWith('.worker.js') && workerFile) return workerFile;
+      return f;
+    },
+  });
+
+  return oc;
+}
+
 async function handleInit() {
   try {
     post({ type: 'init-progress', stage: 'Downloading kernel...', progress: 0.1 });
 
-    // Load the Emscripten-generated WASM JS loader from /wasm/
-    // We fetch + blob URL to avoid Vite/Rollup trying to resolve it at build time
-    // Try cache first (if preloaded on landing page), fall back to network
-    let resp: Response | undefined;
-    try {
-      if ('caches' in self) {
-        const cache = await caches.open(WASM_CACHE_NAME);
-        resp = await cache.match('/wasm/brepjs_threaded.js');
-      }
-    } catch (cacheErr) {
-      // Cache API might not be available in worker context
-      console.debug('Cache not available:', cacheErr);
-    }
-
-    if (!resp) {
-      resp = await fetch('/wasm/brepjs_threaded.js');
-    }
-
-    if (!resp || !resp.ok) {
-      throw new Error(`Failed to load WASM JS loader: ${resp?.status || 'no response'}`);
-    }
-
-    const jsText = await resp.text();
-    const blob = new Blob([jsText], { type: 'application/javascript' });
-    const blobUrl = URL.createObjectURL(blob);
-    const ocModule = await import(/* @vite-ignore */ blobUrl);
-    URL.revokeObjectURL(blobUrl);
-    const opencascade = ocModule.default;
-
     post({ type: 'init-progress', stage: 'Initializing WASM...', progress: 0.4 });
 
-    const oc = await opencascade({
-      locateFile: (f: string) => {
-        if (f.endsWith('.wasm')) return '/wasm/brepjs_threaded.wasm';
-        if (f.endsWith('.worker.js')) return '/wasm/brepjs_threaded.worker.js';
-        return f;
-      },
-    });
+    // Try threaded build first (better performance), fall back to single if it hangs
+    let oc;
+    try {
+      // 10 second timeout for threaded init
+      oc = await Promise.race([
+        loadWasmBuild('threaded'),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Threaded WASM init timeout')), 10000)
+        ),
+      ]);
+    } catch (threadedErr) {
+      console.warn(
+        'Threaded WASM failed, falling back to single-threaded:',
+        threadedErr instanceof Error ? threadedErr.message : String(threadedErr)
+      );
+      post({ type: 'init-progress', stage: 'Loading fallback kernel...', progress: 0.5 });
+      oc = await loadWasmBuild('single');
+    }
 
     post({ type: 'init-progress', stage: 'Loading brepjs...', progress: 0.7 });
 
