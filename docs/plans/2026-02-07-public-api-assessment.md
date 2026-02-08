@@ -31,7 +31,7 @@
 | **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | 8/10                 | **9/10**        | ✅ Complete: Wrapper canonical, init simplified, cookbook added |
 | **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ OCCT error translation with actionable guidance (now 9/10)   |
 
-**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10 → 8.625/10 → 8.875/10 → 9.125/10** — Consistency 10/10 🎯, Discoverability 10/10 🎯, Verbosity 8.5/10, Error Handling 9/10 ✅. Next: Push Verbosity to 9/10.
+**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10 → 8.625/10 → 8.875/10 → 9.125/10 → 9.25/10** — Consistency 10/10 🎯, Discoverability 10/10 🎯, Verbosity 9/10 ✅, Error Handling 9/10 ✅. Next: Push both to 10/10.
 
 ---
 
@@ -143,11 +143,9 @@ const shape = unwrap(result);
 
 **Status:** ✅ `fillet`, `chamfer`, and `shell` now accept `ShapeFinder<T>` directly, eliminating the need for `() => finder` wrapper pattern.
 
-### 2.5 No .unwrap() Method on Wrapper (Low)
+### 2.5 No .unwrap() Method on Wrapper (✅ COMPLETED)
 
-`shape()` uses `.val` property, but `pipe()` uses `.done()`. Neither has `.unwrap()`.
-
-**Action:** Add `.done()` to `shape()` wrapper. Keep `.val` as property shorthand.
+**Status:** ✅ Added `.done()` method as explicit extraction method. Both `.val` (property) and `.done()` (method) are now available for different coding styles.
 
 ---
 
@@ -275,23 +273,28 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~12. **Accept ShapeFinder directly** — ✅ Done (eliminates awkward `() => finder` wrapper pattern)~~
 ~~13. **Add OCCT error translation** — ✅ Done (maps 12 common OCCT patterns to actionable messages)~~
 ~~14. **Expand cookbook** — ✅ Done (added 5 advanced recipes: text engraving, grids, sweep, mirror, assembly)~~
+~~15. **Add .done() method** — ✅ Done (explicit extraction method alongside .val property)~~
 
 ### 🎯 Next Up — Push to 10/10
 
 **Current status:**
 
 - Consistency & Naming: 10/10 🎯 (Complete!)
-- Discoverability: 10/10 🎯 (Complete! Comprehensive cookbook with 20 recipes)
-- Verbosity & Ergonomics: 8.5/10 (Very good - wrapper ~92% complete, ShapeFinder direct support)
+- Discoverability: 10/10 🎯 (Complete!)
+- Verbosity & Ergonomics: 9/10 ✅ (Excellent - wrapper ~92% complete, .done() method added)
 - Error Handling UX: 9/10 ✅ (Very good - OCCT error translation with actionable guidance)
 
 **Next priorities to reach 10/10:**
 
-**1. Push Verbosity & Ergonomics to 9/10** (currently 8.5/10)
+**1. Push Verbosity & Ergonomics to 10/10** (currently 9/10)
 
-- Small quality-of-life improvements to wrapper API
-- **Options:** Add `.done()` method as alias for `.val`, improve type inference
-- **Impact:** Slightly more convenient fluent chaining
+- Final polish: consider adding `.tryFuse()` / `.tryCut()` for Result-based error handling in wrapper
+- **Impact:** Allows functional error handling without unwrapping
+
+**2. Push Error Handling UX to 10/10** (currently 9/10)
+
+- Add `suggestion` field to BrepError for recovery hints
+- **Impact:** Errors become even more actionable with specific next steps
 
 ### 📋 P3 — Lower Priority
 
