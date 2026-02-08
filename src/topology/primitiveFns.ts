@@ -219,21 +219,26 @@ export function line(from: Vec3, to: Vec3): Edge {
 export interface CircleOptions {
   /** Center. Default: [0, 0, 0]. */
   at?: Vec3;
-  /** Normal direction. Default: [0, 0, 1]. */
+  /** @deprecated Use `axis` instead. Will be removed in v8.0.0. */
   normal?: Vec3;
+  /** Axis direction. Default: [0, 0, 1]. */
+  axis?: Vec3;
 }
 
 /** Create a circular edge with the given radius. */
 export function circle(radius: number, options?: CircleOptions): Edge {
-  return _makeCircle(radius, options?.at ?? [0, 0, 0], options?.normal ?? [0, 0, 1]);
+  const axisDir = options?.axis ?? options?.normal ?? [0, 0, 1];
+  return _makeCircle(radius, options?.at ?? [0, 0, 0], axisDir);
 }
 
 /** Options for {@link ellipse}. */
 export interface EllipseOptions {
   /** Center. Default: [0, 0, 0]. */
   at?: Vec3;
-  /** Normal direction. Default: [0, 0, 1]. */
+  /** @deprecated Use `axis` instead. Will be removed in v8.0.0. */
   normal?: Vec3;
+  /** Axis direction. Default: [0, 0, 1]. */
+  axis?: Vec3;
   /** Major axis direction. */
   xDir?: Vec3;
 }
@@ -248,13 +253,8 @@ export function ellipse(
   minorRadius: number,
   options?: EllipseOptions
 ): Result<Edge> {
-  return _makeEllipse(
-    majorRadius,
-    minorRadius,
-    options?.at ?? [0, 0, 0],
-    options?.normal ?? [0, 0, 1],
-    options?.xDir
-  );
+  const axisDir = options?.axis ?? options?.normal ?? [0, 0, 1];
+  return _makeEllipse(majorRadius, minorRadius, options?.at ?? [0, 0, 0], axisDir, options?.xDir);
 }
 
 /** Options for {@link helix}. */
@@ -294,8 +294,10 @@ export function threePointArc(p1: Vec3, p2: Vec3, p3: Vec3): Edge {
 export interface EllipseArcOptions {
   /** Center. Default: [0, 0, 0]. */
   at?: Vec3;
-  /** Normal direction. Default: [0, 0, 1]. */
+  /** @deprecated Use `axis` instead. Will be removed in v8.0.0. */
   normal?: Vec3;
+  /** Axis direction. Default: [0, 0, 1]. */
+  axis?: Vec3;
   /** Major axis direction. */
   xDir?: Vec3;
 }
@@ -315,13 +317,14 @@ export function ellipseArc(
   endAngle: number,
   options?: EllipseArcOptions
 ): Result<Edge> {
+  const axisDir = options?.axis ?? options?.normal ?? [0, 0, 1];
   return _makeEllipseArc(
     majorRadius,
     minorRadius,
     startAngle * DEG2RAD,
     endAngle * DEG2RAD,
     options?.at ?? [0, 0, 0],
-    options?.normal ?? [0, 0, 1],
+    axisDir,
     options?.xDir
   );
 }

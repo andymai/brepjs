@@ -40,8 +40,10 @@ export function extrude(face: Shapeable<Face>, height: number | Vec3): Result<So
 export interface RevolveOptions {
   /** Rotation axis. Default: [0, 0, 1] (Z). */
   axis?: Vec3;
-  /** Pivot point. Default: [0, 0, 0]. */
+  /** @deprecated Use `at` instead. Will be removed in v8.0.0. */
   around?: Vec3;
+  /** Pivot point. Default: [0, 0, 0]. */
+  at?: Vec3;
   /** Rotation angle in degrees. Default: 360 (full revolution). */
   angle?: number;
 }
@@ -50,12 +52,8 @@ export interface RevolveOptions {
  * Revolve a face around an axis to create a solid of revolution.
  */
 export function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result<Shape3D> {
-  return revolveFace(
-    resolve(face),
-    options?.around ?? [0, 0, 0],
-    options?.axis ?? [0, 0, 1],
-    options?.angle ?? 360
-  );
+  const pivotPoint = options?.at ?? options?.around ?? [0, 0, 0];
+  return revolveFace(resolve(face), pivotPoint, options?.axis ?? [0, 0, 1], options?.angle ?? 360);
 }
 
 // ---------------------------------------------------------------------------
