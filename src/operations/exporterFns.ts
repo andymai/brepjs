@@ -24,7 +24,7 @@ import {
 export type { SupportedUnit } from './exporterUtils.js';
 
 /** Configuration for a single shape within a functional assembly export. */
-export interface ShapeConfig {
+export interface ShapeOptions {
   /** The branded shape to include in the assembly. */
   shape: AnyShape;
   /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
@@ -34,6 +34,9 @@ export interface ShapeConfig {
   /** Display name for the shape node. Auto-generated UUID if omitted. */
   name?: string;
 }
+
+/** @deprecated Use ShapeOptions instead. Will be removed in v8.0.0. */
+export type ShapeConfig = ShapeOptions;
 
 /**
  * Create an XCAF document from shape configs and export as a STEP blob.
@@ -60,7 +63,7 @@ export interface ShapeConfig {
  * @see {@link exporters!exportSTEP | exportSTEP} for the OOP API equivalent.
  */
 export function exportAssemblySTEP(
-  shapes: ShapeConfig[] = [],
+  shapes: ShapeOptions[] = [],
   { unit, modelUnit }: { unit?: SupportedUnit; modelUnit?: SupportedUnit } = {}
 ): Result<Blob> {
   const oc = getKernel().oc;

@@ -89,7 +89,7 @@ import {
 import { normalAt, faceCenter, getSurfaceType, outerWire, innerWires } from './faceFns.js';
 import { linearPattern, circularPattern } from '../operations/patternFns.js';
 import { sweep as _sweep } from '../operations/extrudeFns.js';
-import type { SweepConfig } from '../operations/extrudeFns.js';
+import type { SweepOptions } from '../operations/extrudeFns.js';
 import {
   drill as drillFn,
   pocket as pocketFn,
@@ -246,7 +246,7 @@ export interface WrappedCurve<T extends Edge | Wire> extends Wrapped<T> {
   tangentAt(t?: number): Vec3;
   isClosed(): boolean;
 
-  sweep(spine: Shapeable<Wire>, options?: SweepConfig): Wrapped3D<Shape3D>;
+  sweep(spine: Shapeable<Wire>, options?: SweepOptions): Wrapped3D<Shape3D>;
 }
 
 /** Face wrapper — face introspection + 2D→3D transitions. */
@@ -379,7 +379,7 @@ function createWrappedCurve<T extends Edge | Wire>(val: T): WrappedCurve<T> {
     tangentAt: (t) => curveTangentAt(val, t),
     isClosed: () => curveIsClosed(val),
 
-    sweep(spine: Shapeable<Wire>, opts?: SweepConfig): Wrapped3D<Shape3D> {
+    sweep(spine: Shapeable<Wire>, opts?: SweepOptions): Wrapped3D<Shape3D> {
       if (!isWire(val)) throw new Error('sweep requires a Wire');
       const w: Wire = val as unknown as Wire;
       const result = unwrapOrThrow(_sweep(w, resolve(spine), opts));

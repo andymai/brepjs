@@ -27,7 +27,7 @@ import {
   makeThreePointArc as _makeThreePointArc,
   makeEllipseArc as _makeEllipseArc,
   makeBSplineApproximation as _makeBSplineApproximation,
-  type BSplineApproximationConfig,
+  type BSplineApproximationOptions,
   makeBezierCurve as _makeBezierCurve,
   makeTangentArc as _makeTangentArc,
   assembleWire as _assembleWire,
@@ -54,7 +54,7 @@ import { createSolid } from '../core/shapeTypes.js';
 import { translateShape } from './shapeFns.js';
 
 // Re-export the approximation config type
-export type { BSplineApproximationConfig } from './shapeHelpers.js';
+export type { BSplineApproximationOptions, BSplineApproximationConfig } from './shapeHelpers.js';
 
 // ---------------------------------------------------------------------------
 // Solid primitives
@@ -334,7 +334,7 @@ export function ellipseArc(
  *
  * @returns An error if the approximation algorithm fails.
  */
-export function bsplineApprox(points: Vec3[], config?: BSplineApproximationConfig): Result<Edge> {
+export function bsplineApprox(points: Vec3[], config?: BSplineApproximationOptions): Result<Edge> {
   return _makeBSplineApproximation(points, config);
 }
 

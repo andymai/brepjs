@@ -29,7 +29,7 @@ import {
 
 import {
   convertSvgEllipseParams,
-  type SplineConfig,
+  type SplineOptions,
   defaultsSplineConfig,
   type GenericSketcher,
 } from './sketcherlib.js';
@@ -406,7 +406,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous edge. */
-  smoothSplineTo(end: Point2D, config?: SplineConfig): this {
+  smoothSplineTo(end: Point2D, config?: SplineOptions): this {
     const [r, gc] = localGC();
     try {
       const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineConfig(config);
@@ -469,7 +469,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   }
 
   /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous edge. */
-  smoothSpline(xDist: number, yDist: number, splineConfig: SplineConfig = {}): this {
+  smoothSpline(xDist: number, yDist: number, splineConfig: SplineOptions = {}): this {
     const [px, py] = planeToLocal(this.plane, this.pointer);
     return this.smoothSplineTo([xDist + px, yDist + py], splineConfig);
   }

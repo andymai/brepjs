@@ -13,9 +13,9 @@ import {
   revolution,
   genericSweep,
   type ExtrusionProfile,
-  type GenericSweepConfig,
+  type GenericSweepOptions,
 } from '../operations/extrude.js';
-import { loft, type LoftConfig } from '../operations/loft.js';
+import { loft, type LoftOptions } from '../operations/loft.js';
 import type { Face, Wire, Shape3D } from '../core/shapeTypes.js';
 import { createFace, createWire } from '../core/shapeTypes.js';
 import { curveStartPoint, curveTangentAt } from '../topology/curveFns.js';
@@ -206,7 +206,7 @@ export default class Sketch implements SketchInterface {
    */
   sweepSketch(
     sketchOnPlane: (plane: Plane, origin: Vec3) => this,
-    sweepConfig: GenericSweepConfig = {}
+    sweepConfig: GenericSweepOptions = {}
   ): Shape3D {
     const startPoint = curveStartPoint(this.wire);
     const tangent = curveTangentAt(this.wire, 1e-9);
@@ -218,7 +218,7 @@ export default class Sketch implements SketchInterface {
       ...startPoint,
     ]);
 
-    const config: GenericSweepConfig = {
+    const config: GenericSweepOptions = {
       forceProfileSpineOthogonality: true,
       ...sweepConfig,
     };
@@ -242,7 +242,7 @@ export default class Sketch implements SketchInterface {
    */
   loftWith(
     otherSketches: this | this[],
-    loftConfig: LoftConfig = {},
+    loftConfig: LoftOptions = {},
     returnShell = false
   ): Shape3D {
     const sketchArray = Array.isArray(otherSketches)

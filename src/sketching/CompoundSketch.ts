@@ -12,7 +12,7 @@ import {
   revolution,
   type ExtrusionProfile,
 } from '../operations/extrude.js';
-import type { LoftConfig } from '../operations/loft.js';
+import type { LoftOptions } from '../operations/loft.js';
 import type { SketchInterface } from './sketchLib.js';
 import { cast, downcast } from '../topology/cast.js';
 import { type Result, unwrap, isOk } from '../core/result.js';
@@ -223,7 +223,7 @@ export default class CompoundSketch implements SketchInterface {
   }
 
   /** Loft between this compound sketch and another with matching sub-sketch counts. */
-  loftWith(otherCompound: this, loftConfig: LoftConfig): Shape3D {
+  loftWith(otherCompound: this, loftConfig: LoftOptions): Shape3D {
     if (this.sketches.length !== otherCompound.sketches.length)
       bug(
         'CompoundSketch.loftWith',

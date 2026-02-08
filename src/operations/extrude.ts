@@ -8,7 +8,7 @@ import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import { typeCastError, occtError } from '../core/errors.js';
-import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
+import { buildLawFromProfile, type ExtrusionProfile, type SweepOptions } from './extrudeUtils.js';
 import type { Face, Wire, Edge, Shape3D, Solid } from '../core/shapeTypes.js';
 import { createSolid } from '../core/shapeTypes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
@@ -70,21 +70,24 @@ export const revolution = (
 };
 
 /** Configuration for sweep operations in the OO API. */
-export interface GenericSweepConfig extends Omit<SweepConfig, 'auxiliarySpine'> {
+export interface GenericSweepOptions extends Omit<SweepOptions, 'auxiliarySpine'> {
   /** Auxiliary spine for twist control (Wire or Edge in OO API) */
   auxiliarySpine?: Wire | Edge;
 }
 
+/** @deprecated Use GenericSweepOptions instead. Will be removed in v8.0.0. */
+export type GenericSweepConfig = GenericSweepOptions;
+
 function genericSweep(
   wire: Wire,
   spine: Wire,
-  sweepConfig: GenericSweepConfig,
+  sweepConfig: GenericSweepOptions,
   shellMode: true
 ): Result<[Shape3D, Wire, Wire]>;
 function genericSweep(
   wire: Wire,
   spine: Wire,
-  sweepConfig: GenericSweepConfig,
+  sweepConfig: GenericSweepOptions,
   shellMode?: false
 ): Result<Shape3D>;
 function genericSweep(
@@ -98,7 +101,7 @@ function genericSweep(
     withContact,
     support,
     forceProfileSpineOthogonality,
-  }: GenericSweepConfig = {},
+  }: GenericSweepOptions = {},
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const oc = getKernel().oc;

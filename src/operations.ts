@@ -14,6 +14,7 @@ export {
   supportExtrude,
   complexExtrude,
   twistExtrude,
+  type SweepOptions,
   type SweepConfig,
   type ExtrusionProfile,
 } from './operations/extrudeFns.js';
@@ -39,6 +40,7 @@ export {
 
 export {
   exportAssemblySTEP,
+  type ShapeOptions,
   type ShapeConfig,
   type SupportedUnit,
 } from './operations/exporterFns.js';
@@ -71,6 +73,7 @@ export {
   basicFaceExtrusion,
   revolution,
   genericSweep,
+  type GenericSweepOptions,
   type GenericSweepConfig,
 } from './operations/extrude.js';
 

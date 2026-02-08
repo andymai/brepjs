@@ -12,7 +12,7 @@ export type SplineTangent = StartSplineTangent | 'symmetric';
  * Can be a single tangent value (applied to the end), or an object with
  * separate start/end tangents and distance factors.
  */
-export type SplineConfig =
+export type SplineOptions =
   | SplineTangent
   | {
       endTangent?: SplineTangent;
@@ -21,12 +21,15 @@ export type SplineConfig =
       endFactor?: number;
     };
 
+/** @deprecated Use SplineOptions instead. Will be removed in v8.0.0. */
+export type SplineConfig = SplineOptions;
+
 const isTangent = (c: unknown): c is SplineTangent =>
   c === 'symmetric' || typeof c === 'number' || (Array.isArray(c) && c.length === 2);
 
 /** Resolve a {@link SplineConfig} into fully-expanded tangent directions and factors. */
 export const defaultsSplineConfig = (
-  config?: SplineConfig
+  config?: SplineOptions
 ): {
   endTangent: Point2D | 'symmetric';
   startTangent?: Point2D | undefined;
@@ -335,7 +338,7 @@ export interface GenericSketcher<ReturnType> {
    *
    * @category Bezier Curve
    */
-  smoothSplineTo(end: Point2D, config?: SplineConfig): this;
+  smoothSplineTo(end: Point2D, config?: SplineOptions): this;
   /** Draws a cubic bezier curve to the end point, attempting to make the line
    * smooth with the previous segment. The end point is defined by its distance
    * to the first point.
@@ -355,7 +358,7 @@ export interface GenericSketcher<ReturnType> {
    *
    * @category Bezier Curve
    */
-  smoothSpline(xDist: number, yDist: number, splineConfig: SplineConfig): this;
+  smoothSpline(xDist: number, yDist: number, splineConfig: SplineOptions): this;
 
   /**
    * Stop drawing and returns the sketch.

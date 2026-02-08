@@ -12,7 +12,7 @@ import { downcast } from '../topology/cast.js';
 import {
   convertSvgEllipseParams,
   defaultsSplineConfig,
-  type SplineConfig,
+  type SplineOptions,
   type GenericSketcher,
 } from './sketcherlib.js';
 import type { OcType } from '../kernel/types.js';
@@ -440,7 +440,7 @@ export class BaseSketcher2d {
   }
 
   /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous curve. */
-  smoothSplineTo(end: Point2D, config?: SplineConfig): this {
+  smoothSplineTo(end: Point2D, config?: SplineOptions): this {
     const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineConfig(config);
 
     const previousCurve = this.pendingCurves.length
@@ -481,7 +481,7 @@ export class BaseSketcher2d {
   }
 
   /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous curve. */
-  smoothSpline(xDist: number, yDist: number, splineConfig?: SplineConfig): this {
+  smoothSpline(xDist: number, yDist: number, splineConfig?: SplineOptions): this {
     return this.smoothSplineTo([xDist + this.pointer[0], yDist + this.pointer[1]], splineConfig);
   }
 

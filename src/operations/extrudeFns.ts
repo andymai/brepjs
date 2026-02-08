@@ -17,9 +17,9 @@ import { gcWithScope } from '../core/disposal.js';
 import { downcast } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, isErr } from '../core/result.js';
 import { typeCastError, validationError, occtError, BrepErrorCode } from '../core/errors.js';
-import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
+import { buildLawFromProfile, type ExtrusionProfile, type SweepOptions } from './extrudeUtils.js';
 
-export type { ExtrusionProfile, SweepConfig } from './extrudeUtils.js';
+export type { ExtrusionProfile, SweepOptions, SweepConfig } from './extrudeUtils.js';
 
 // ---------------------------------------------------------------------------
 // Internal: spine construction
@@ -198,7 +198,7 @@ export function revolveFace(
 export function sweep(
   wire: Wire,
   spine: Wire,
-  config: SweepConfig = {},
+  config: SweepOptions = {},
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const oc = getKernel().oc;

@@ -16,7 +16,7 @@ import { validationError } from '../core/errors.js';
 // ---------------------------------------------------------------------------
 
 /** Configuration for sweep/pipe operations along a spine. */
-export interface SweepConfig {
+export interface SweepOptions {
   /** Use Frenet trihedron for profile orientation */
   frenet?: boolean;
   /** Auxiliary spine for twist control */
@@ -32,6 +32,9 @@ export interface SweepConfig {
   /** Force profile to be orthogonal to spine */
   forceProfileSpineOthogonality?: boolean;
 }
+
+/** @deprecated Use SweepOptions instead. Will be removed in v8.0.0. */
+export type SweepConfig = SweepOptions;
 
 // ---------------------------------------------------------------------------
 // Extrusion profile types

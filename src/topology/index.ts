@@ -30,6 +30,7 @@ export {
   isFilletRadius,
   type ChamferRadius,
   type FilletRadius,
+  type RadiusOptions,
   type RadiusConfig,
 } from './shapeModifiers.js';
 

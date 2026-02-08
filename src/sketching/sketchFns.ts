@@ -5,8 +5,8 @@
 
 import type { PointInput } from '../core/types.js';
 import type { Face, Shape3D, Wire } from '../core/shapeTypes.js';
-import type { ExtrusionProfile, GenericSweepConfig } from '../operations/extrude.js';
-import type { LoftConfig } from '../operations/loft.js';
+import type { ExtrusionProfile, GenericSweepOptions } from '../operations/extrude.js';
+import type { LoftOptions } from '../operations/loft.js';
 import type Sketch from './Sketch.js';
 import type CompoundSketch from './CompoundSketch.js';
 
@@ -69,7 +69,7 @@ export function sketchRevolve(
 export function sketchLoft(
   sketch: Sketch,
   otherSketches: Sketch | Sketch[],
-  loftConfig?: LoftConfig,
+  loftConfig?: LoftOptions,
   returnShell?: boolean
 ): Shape3D {
   return sketch.loftWith(otherSketches, loftConfig, returnShell);
@@ -88,7 +88,7 @@ export function sketchLoft(
 export function sketchSweep(
   sketch: Sketch,
   sketchOnPlane: Parameters<Sketch['sweepSketch']>[0],
-  sweepConfig?: GenericSweepConfig
+  sweepConfig?: GenericSweepOptions
 ): Shape3D {
   return sketch.sweepSketch(sketchOnPlane, sweepConfig);
 }
@@ -187,7 +187,7 @@ export function compoundSketchFace(sketch: CompoundSketch): Face {
 export function compoundSketchLoft(
   sketch: CompoundSketch,
   other: CompoundSketch,
-  loftConfig: LoftConfig
+  loftConfig: LoftOptions
 ): Shape3D {
   return sketch.loftWith(other, loftConfig);
 }

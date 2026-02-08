@@ -21,7 +21,7 @@ export type { SupportedUnit } from './exporterUtils.js';
 export type AssemblyExporter = OcHandle<OcType>;
 
 /** Configuration for a single shape within an assembly export. */
-export type ShapeConfig = {
+export type ShapeOptions = {
   /** The shape to include in the assembly. */
   shape: AnyShape;
   /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
@@ -31,6 +31,9 @@ export type ShapeConfig = {
   /** Display name for the shape node. Auto-generated UUID if omitted. */
   name?: string;
 };
+
+/** @deprecated Use ShapeOptions instead. Will be removed in v8.0.0. */
+export type ShapeConfig = ShapeOptions;
 
 /**
  * Create an XCAF assembly document from a list of shape configurations.
@@ -43,7 +46,7 @@ export type ShapeConfig = {
  *
  * @see {@link exportSTEP} which calls this internally to produce a STEP blob.
  */
-export function createAssembly(shapes: ShapeConfig[] = []): AssemblyExporter {
+export function createAssembly(shapes: ShapeOptions[] = []): AssemblyExporter {
   const oc = getKernel().oc;
 
   const doc = new oc.TDocStd_Document(wrapString('XmlOcaf'));
@@ -98,7 +101,7 @@ export function createAssembly(shapes: ShapeConfig[] = []): AssemblyExporter {
  * @see {@link exporterFns!exportAssemblySTEP | exportAssemblySTEP} for the functional API equivalent.
  */
 export function exportSTEP(
-  shapes: ShapeConfig[] = [],
+  shapes: ShapeOptions[] = [],
   { unit, modelUnit }: { unit?: SupportedUnit; modelUnit?: SupportedUnit } = {}
 ): Result<Blob> {
   const oc = getKernel().oc;

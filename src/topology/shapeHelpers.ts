@@ -207,7 +207,7 @@ export const makeEllipseArc = (
 };
 
 /** Configuration for {@link makeBSplineApproximation}. */
-export interface BSplineApproximationConfig {
+export interface BSplineApproximationOptions {
   /** Maximum allowed distance between the curve and the input points. */
   tolerance?: number;
   /** Maximum B-spline degree. */
@@ -218,6 +218,9 @@ export interface BSplineApproximationConfig {
   smoothing?: null | [number, number, number];
 }
 
+/** @deprecated Use BSplineApproximationOptions instead. Will be removed in v8.0.0. */
+export type BSplineApproximationConfig = BSplineApproximationOptions;
+
 /**
  * Create a B-spline edge that approximates a set of 3D points.
  *
@@ -225,7 +228,7 @@ export interface BSplineApproximationConfig {
  */
 export const makeBSplineApproximation = function makeBSplineApproximation(
   points: Vec3[],
-  { tolerance = 1e-3, smoothing = null, degMax = 6, degMin = 1 }: BSplineApproximationConfig = {}
+  { tolerance = 1e-3, smoothing = null, degMax = 6, degMin = 1 }: BSplineApproximationOptions = {}
 ): Result<Edge> {
   const oc = getKernel().oc;
   const [r, gc] = localGC();

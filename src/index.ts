@@ -86,6 +86,7 @@ export {
   isChamferRadius,
   isFilletRadius,
   type ChamferRadius,
+  type RadiusOptions,
   type RadiusConfig,
   // core/shapeTypes.ts (via topology)
   type CurveLike,
@@ -97,6 +98,7 @@ export {
   basicFaceExtrusion,
   revolution,
   genericSweep,
+  type GenericSweepOptions,
   type GenericSweepConfig,
 } from './operations/extrude.js';
 
@@ -183,10 +185,14 @@ export { importSVGPathD, importSVG, type SVGImportOptions } from './io/svgImport
 
 import Sketcher from './sketching/Sketcher.js';
 import FaceSketcher, { BaseSketcher2d, BlueprintSketcher } from './sketching/Sketcher2d.js';
-import { type GenericSketcher, type SplineConfig } from './sketching/sketcherlib.js';
+import {
+  type GenericSketcher,
+  type SplineOptions,
+  type SplineConfig,
+} from './sketching/sketcherlib.js';
 
 export { Sketcher, FaceSketcher, BaseSketcher2d, BlueprintSketcher };
-export type { GenericSketcher, SplineConfig };
+export type { GenericSketcher, SplineOptions, SplineConfig };
 export type { SketchInterface } from './sketching/sketchLib.js';
 
 export { default as Sketch } from './sketching/Sketch.js';
@@ -483,12 +489,14 @@ export {
   supportExtrude,
   complexExtrude,
   twistExtrude,
+  type SweepOptions,
   type SweepConfig,
   type ExtrusionProfile,
 } from './operations/extrudeFns.js';
 
 export {
   exportAssemblySTEP,
+  type ShapeOptions,
   type ShapeConfig,
   type SupportedUnit,
 } from './operations/exporterFns.js';
@@ -732,7 +740,9 @@ export {
   revolve,
   loft,
   type RevolveOptions,
+  type LoftOptions as CleanLoftOptions,
   type LoftConfig as CleanLoftConfig,
+  type SweepOptions as CleanSweepOptions,
   type SweepConfig as CleanSweepConfig,
 } from './operations/api.js';
 

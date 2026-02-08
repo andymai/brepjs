@@ -1,7 +1,7 @@
 import { unwrap } from '../core/result.js';
 import {
   assembleWire,
-  type BSplineApproximationConfig,
+  type BSplineApproximationOptions,
   makeBSplineApproximation,
   makeCircle,
   makeEllipse,
@@ -266,7 +266,7 @@ export const sketchParametricFunction = (
   func: (t: number) => Point2D,
   planeConfig: PlaneConfig = {},
   { pointsCount = 400, start = 0, stop = 1 } = {},
-  approximationConfig: BSplineApproximationConfig = {}
+  approximationConfig: BSplineApproximationOptions = {}
 ): Sketch => {
   const [r, gc] = localGC();
   const plane =

@@ -1,7 +1,7 @@
 import type { Face, Shape3D } from '../core/shapeTypes.js';
 import type { PointInput } from '../core/types.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';
-import type { LoftConfig } from '../operations/loft.js';
+import type { LoftOptions } from '../operations/loft.js';
 
 /** Common interface for sketch-like objects that can be extruded, revolved, or lofted. */
 export interface SketchInterface {
@@ -47,5 +47,5 @@ export interface SketchInterface {
    *
    * Note that all sketches will be deleted by this operation
    */
-  loftWith(otherSketches: this | this[], loftConfig: LoftConfig, returnShell?: boolean): Shape3D;
+  loftWith(otherSketches: this | this[], loftConfig: LoftOptions, returnShell?: boolean): Shape3D;
 }

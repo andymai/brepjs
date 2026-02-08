@@ -46,7 +46,7 @@ import offsetFn, { type Offset2DConfig } from '../2d/blueprints/offset.js';
 import { cornerFinder, type CornerFinderFn } from '../query/finderFns.js';
 import { fillet2D, chamfer2D } from '../2d/blueprints/customCorners.js';
 import { edgeToCurve } from '../2d/curves.js';
-import type { BSplineApproximationConfig } from '../topology/shapeHelpers.js';
+import type { BSplineApproximationOptions } from '../topology/shapeHelpers.js';
 import { approximateForSVG } from '../2d/blueprints/approximations.js';
 import type { SingleFace } from '../query/helpers.js';
 import { wrapSketchData, wrapSketchDataArray } from './sketchUtils.js';
@@ -503,7 +503,7 @@ export function drawText(
  */
 export const drawPointsInterpolation = (
   points: Point2D[],
-  approximationConfig: BSplineApproximationConfig = {},
+  approximationConfig: BSplineApproximationOptions = {},
   options: {
     closeShape?: boolean;
   } = {}
@@ -535,7 +535,7 @@ export const drawPointsInterpolation = (
 export const drawParametricFunction = (
   func: (t: number) => Point2D,
   { pointsCount = 400, start = 0, stop = 1, closeShape = false } = {},
-  approximationConfig: BSplineApproximationConfig = {}
+  approximationConfig: BSplineApproximationOptions = {}
 ): Drawing => {
   const stepSize = (stop - start) / pointsCount;
   const points = [...Array(pointsCount + 1).keys()].map((t) => {

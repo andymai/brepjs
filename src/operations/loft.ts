@@ -9,7 +9,7 @@ import type { Wire, Shape3D } from '../core/shapeTypes.js';
 import { makeVertex } from '../topology/shapeHelpers.js';
 
 /** Configuration for the OOP loft operation. */
-export interface LoftConfig {
+export interface LoftOptions {
   /** Use ruled (straight) interpolation between profiles. Defaults to `true`. */
   ruled?: boolean | undefined;
   /** Optional start vertex before the first wire profile. */
@@ -17,6 +17,9 @@ export interface LoftConfig {
   /** Optional end vertex after the last wire profile. */
   endPoint?: PointInput | undefined;
 }
+
+/** @deprecated Use LoftOptions instead. Will be removed in v8.0.0. */
+export type LoftConfig = LoftOptions;
 
 /**
  * Loft through a set of wire profiles to create a 3D shape.
@@ -39,7 +42,7 @@ export interface LoftConfig {
  */
 export const loft = (
   wires: Wire[],
-  { ruled = true, startPoint, endPoint }: LoftConfig = {},
+  { ruled = true, startPoint, endPoint }: LoftOptions = {},
   returnShell = false
 ): Result<Shape3D> => {
   if (wires.length === 0 && !startPoint && !endPoint) {

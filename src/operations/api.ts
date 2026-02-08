@@ -10,10 +10,10 @@ import type { Result } from '../core/result.js';
 import type { Shapeable } from '../topology/apiTypes.js';
 import { resolve } from '../topology/apiTypes.js';
 import { extrudeFace, revolveFace } from './extrudeFns.js';
-import { loftWires, type LoftConfig } from './loftFns.js';
+import { loftWires, type LoftOptions } from './loftFns.js';
 
-export type { LoftConfig } from './loftFns.js';
-export type { SweepConfig } from './extrudeFns.js';
+export type { LoftOptions, LoftConfig } from './loftFns.js';
+export type { SweepOptions, SweepConfig } from './extrudeFns.js';
 
 // ---------------------------------------------------------------------------
 // extrude — accepts number shorthand for Z-direction
@@ -63,7 +63,7 @@ export function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result
 /**
  * Loft through a set of wire profiles to create a 3D shape.
  */
-export function loft(wires: Shapeable<Wire>[], options?: LoftConfig): Result<Shape3D> {
+export function loft(wires: Shapeable<Wire>[], options?: LoftOptions): Result<Shape3D> {
   const resolvedWires = wires.map((w) => resolve(w));
   return loftWires(resolvedWires, options);
 }
