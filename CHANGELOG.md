@@ -1,5 +1,27 @@
 # Changelog
 
+## [7.3.0](https://github.com/andymai/brepjs/compare/brepjs-v7.2.0...brepjs-v7.3.0) (2026-02-08)
+
+
+### Features
+
+* accept ShapeFinder directly in fillet/chamfer/shell ([ac5a0f5](https://github.com/andymai/brepjs/commit/ac5a0f5c207236e033cd03a79ea4d9f9b3760914))
+* add .done() method to wrapper as alias for .val ([042771f](https://github.com/andymai/brepjs/commit/042771fc78bf6e9eb7901f86d94e2947e4e9e087))
+* add clean 2D API naming aliases ([a6b74ba](https://github.com/andymai/brepjs/commit/a6b74ba1194a46f8ce48490e11376854609e1af9))
+* add OCCT error translation layer ([7c665c3](https://github.com/andymai/brepjs/commit/7c665c36f77b2d99747cfec8b221afb85a73ed56))
+* add suggestion field to BrepError ([781ecc9](https://github.com/andymai/brepjs/commit/781ecc9ce9b1a2eecff395d6aec4dc5748869dd4))
+* add volumeProps() and surfaceProps() to wrapper ([85c6f41](https://github.com/andymai/brepjs/commit/85c6f41960096a7875689a32fa7f552efce0cdd5))
+* add white strokes to logo geometric shapes ([#194](https://github.com/andymai/brepjs/issues/194)) ([f7c9cb1](https://github.com/andymai/brepjs/commit/f7c9cb1787c6f8488aa1453b2d79b07db8bff1f1))
+* pre-commit hook improvements to close quality gaps and improve performance ([#195](https://github.com/andymai/brepjs/issues/195)) ([c2fa973](https://github.com/andymai/brepjs/commit/c2fa973482f590843eeeab7c196da99cbb332f70))
+* standardize Config → Options naming for consistency ([fdd8e02](https://github.com/andymai/brepjs/commit/fdd8e02cf8f743976570d0d9781bd444f16efbc5))
+* update loading skeleton logo with geometric design ([25db27a](https://github.com/andymai/brepjs/commit/25db27a32449416d6b692e6d9bfd05d508d46b92))
+
+
+### Bug Fixes
+
+* increase stroke width on PWA icons for better visibility ([898d496](https://github.com/andymai/brepjs/commit/898d496ba641b733d404860d1415e84d6d79a986))
+* regenerate PWA icons with white stroke logo ([f469dc1](https://github.com/andymai/brepjs/commit/f469dc18786ffc666c4bfdb16ae8d02bd57987d5))
+
 ## [7.2.0](https://github.com/andymai/brepjs/compare/brepjs-v7.1.0...brepjs-v7.2.0) (2026-02-08)
 
 
