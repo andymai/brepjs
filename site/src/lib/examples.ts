@@ -18,8 +18,8 @@ export const examples: Example[] = [
     description: 'Parametric spiral staircase with treads and railing posts.',
     category: 'architectural',
     code: HERO_CODE,
-    cameraPosition: [200, 180, 150],
-    cameraTarget: [0, 0, 150],
+    cameraPosition: [150, 150, 200],
+    cameraTarget: [0, 0, 100],
   },
 ];
 
