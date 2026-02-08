@@ -6,7 +6,7 @@
 **Canonical style:** Fluent wrapper (`shape(box(...)).cut(...).fillet(...)`)
 **Audience:** Both web developers new to CAD and experienced CAD engineers
 
-**Status:** v5.0.0 shipped with clean API names. Legacy names removed in PR #186.
+**Status:** v5.0.0 shipped with short API names. Legacy names removed in PR #186.
 
 ---
 
@@ -17,9 +17,9 @@
 - ✅ All legacy API names removed from barrel exports (makeBox, fuseShape, translateShape, etc.)
 - ✅ pipe() fluent wrapper removed (use shape() instead)
 - ✅ Public API reduced from 427 to 370 symbols (13% reduction)
-- ✅ All documentation updated to use clean API names consistently
+- ✅ All documentation updated to use short API names consistently
 - ✅ function-lookup.md regenerated
-- ✅ All 1568 tests passing with clean API
+- ✅ All 1568 tests passing with short API names
 
 **Immediate impact:**
 
@@ -68,8 +68,8 @@ Three names for "which way it points": `axis`, `direction`, `normal`.
 
 - Removed all legacy exports: `makeBox`, `fuseShape`, `filletShape`, `translateShape`, etc.
 - Removed `pipe()` fluent wrapper
-- Updated all tests to use clean API
-- Updated all documentation to use clean API consistently
+- Updated all tests to use short API names
+- Updated all documentation to use short API names consistently
 - Reduced from 427 to 370 exported symbols
 
 **Remaining work:** None for this item.
@@ -86,7 +86,7 @@ Three names for "which way it points": `axis`, `direction`, `normal`.
 
 The `Blueprint2D` / `Blueprint` suffixes are redundant — the type system already distinguishes them.
 
-**Action:** Create clean 2D aliases: `fuse2d`, `cut2d`, `intersect2d` (or overload the clean API functions to accept Blueprint types).
+**Action:** Create 2D aliases: `fuse2d`, `cut2d`, `intersect2d` (or overload the API functions to accept Blueprint types).
 
 ### 1.4 Drawing Transform Inconsistency (Medium)
 
@@ -257,8 +257,8 @@ Users learning from docs never discover it. Users learning from playground can't
 
 **What was done:**
 
-- ✅ All docs now use clean API names (box, fuse, translate)
-- ✅ llms.txt updated with clean API throughout
+- ✅ All docs now use short API names (box, fuse, translate)
+- ✅ llms.txt updated with short API names throughout
 - ✅ function-lookup.md regenerated
 - ✅ All code examples use clean names
 

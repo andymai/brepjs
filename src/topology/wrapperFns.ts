@@ -45,7 +45,7 @@ import type { Bounds3D, ShapeDescription } from './shapeFns.js';
 import type { SurfaceType } from '../topology/faceFns.js';
 
 // Lazy imports to avoid circular dependencies — these are resolved at call time
-// We import the actual functions from the clean API layer
+// We import the actual functions from the public API layer
 
 import {
   translate,
@@ -61,9 +61,22 @@ import {
   shell,
   offset,
   describe,
-} from './cleanApi.js';
+  mesh as meshFn,
+  meshEdges as meshEdgesFn,
+  isValid as isValidFn,
+  isEmpty as isEmptyFn,
+  toBREP as toBREPFn,
+  heal as healFn,
+  simplify as simplifyFn,
+  section as sectionFn,
+  split as splitFn,
+  slice as sliceFn,
+} from './api.js';
 import { getBounds, getEdges, getFaces, getWires, getVertices } from './shapeFns.js';
-import { extrude, revolve } from '../operations/cleanOpsFns.js';
+import type { PlaneInput } from '../core/planeTypes.js';
+import type { ShapeMesh, EdgeMesh, MeshOptions } from './meshFns.js';
+import { cutAll as cutAllFn } from './booleanFns.js';
+import { extrude, revolve } from '../operations/api.js';
 import { measureVolume, measureArea } from '../measurement/measureFns.js';
 import {
   curveStartPoint,
@@ -151,6 +164,19 @@ export interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
   describe(): ShapeDescription;
   clone(): Wrapped<T>;
 
+  // Meshing & Rendering
+  mesh(
+    options?: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean }
+  ): ShapeMesh;
+  meshEdges(options?: MeshOptions & { cache?: boolean }): EdgeMesh;
+
+  // Validation & Utilities
+  isValid(): boolean;
+  isEmpty(): boolean;
+  heal(): Wrapped<T>;
+  simplify(): Wrapped<T>;
+  toBREP(): string;
+
   // Escape hatches
   apply<U extends AnyShape>(fn: (shape: T) => U): Wrapped<U>;
   applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Wrapped<U>;
@@ -162,6 +188,20 @@ export interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
   fuse(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
   cut(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
   intersect(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
+
+  // Batch booleans
+  cutAll(tools: Shape3D[], options?: BooleanOptions): Wrapped3D<T>;
+
+  // Boolean variants
+  section(
+    plane: PlaneInput,
+    options?: { approximation?: boolean; planeSize?: number }
+  ): Wrapped<AnyShape>;
+  split(tools: AnyShape[]): Wrapped<AnyShape>;
+  slice(
+    planes: PlaneInput[],
+    options?: { approximation?: boolean; planeSize?: number }
+  ): AnyShape[];
 
   // Modifiers
   fillet(radius: FilletRadius): Wrapped3D<T>;
@@ -247,6 +287,17 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
     describe: () => describe(val),
     clone: () => wrapAny(clone(val)),
 
+    // Meshing & Rendering
+    mesh: (opts) => meshFn(val, opts),
+    meshEdges: (opts) => meshEdgesFn(val, opts),
+
+    // Validation & Utilities
+    isValid: () => isValidFn(val),
+    isEmpty: () => isEmptyFn(val),
+    heal: () => wrapAny(unwrapOrThrow(healFn(val))),
+    simplify: () => wrapAny(simplifyFn(val)),
+    toBREP: () => toBREPFn(val),
+
     apply: (fn) => wrapAny(fn(val)),
     applyResult: (fn) => wrapAny(unwrapOrThrow(fn(val))),
   };
@@ -264,6 +315,14 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
     cut: (tool, opts) => wrap3D(unwrapOrThrow(cut(val, resolve(tool), opts)) as unknown as T),
     intersect: (tool, opts) =>
       wrap3D(unwrapOrThrow(intersect(val, resolve(tool), opts)) as unknown as T),
+
+    // Batch booleans
+    cutAll: (tools, opts) => wrap3D(unwrapOrThrow(cutAllFn(val, tools, opts)) as unknown as T),
+
+    // Boolean variants
+    section: (plane, opts) => wrapAny(unwrapOrThrow(sectionFn(val, plane, opts))),
+    split: (tools) => wrapAny(unwrapOrThrow(splitFn(val, tools))),
+    slice: (planes, opts) => unwrapOrThrow(sliceFn(val, planes, opts)),
 
     // Modifiers (overloaded — detect by argument types)
     fillet(...args: [FilletRadius] | [Edge[] | FinderFn<Edge>, FilletRadius]): Wrapped3D<T> {
@@ -343,7 +402,7 @@ function createWrappedFace(val: Face): WrappedFace {
     outerWire: () => outerWire(val),
     innerWires: () => innerWires(val),
 
-    extrude: (height) => wrap3D(extrude(val, height)),
+    extrude: (height) => wrap3D(unwrapOrThrow(extrude(val, height))),
     revolve: (opts) => wrap3D(unwrapOrThrow(revolve(val, opts))),
   };
 }

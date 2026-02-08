@@ -462,7 +462,7 @@ export {
 
 export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
 
-// (modifiers available via clean API: fillet, chamfer, shell, offset, thicken)
+// (modifiers available via public API: fillet, chamfer, shell, offset, thicken)
 
 // ── Healing (functional) ──
 
@@ -723,7 +723,7 @@ export {
   type RotateOptions,
   type MirrorOptions,
   type ScaleOptions,
-} from './topology/cleanApi.js';
+} from './topology/api.js';
 
 // ── 3D operations (clean names) ──
 
@@ -734,7 +734,7 @@ export {
   type RevolveOptions,
   type LoftConfig as CleanLoftConfig,
   type SweepConfig as CleanSweepConfig,
-} from './operations/cleanOpsFns.js';
+} from './operations/api.js';
 
 // ── Compound operations ──
 

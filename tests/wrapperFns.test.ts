@@ -1,5 +1,12 @@
 /**
  * shape() wrapper — tests for fluent chaining API.
+ *
+ * Tests all wrapper methods including:
+ * - Transforms, booleans, modifiers
+ * - Meshing and rendering (mesh, meshEdges)
+ * - Validation and utilities (isValid, isEmpty, heal, simplify, toBREP)
+ * - Boolean variants (section, split, slice, cutAll)
+ * - Method chaining and composition
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
@@ -356,5 +363,176 @@ describe('Shapeable interop', () => {
     // Pass wrapper to .cut()
     const result = base.cut(tool);
     expect(measureVolume(result.val)).toBeLessThan(1000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Meshing and rendering
+// ---------------------------------------------------------------------------
+
+describe('Wrapper: meshing and rendering', () => {
+  it('mesh() should return triangle mesh data', () => {
+    const b = box(10, 10, 10);
+    const mesh = shape(b).mesh();
+
+    expect(mesh.vertices).toBeInstanceOf(Float32Array);
+    expect(mesh.normals).toBeInstanceOf(Float32Array);
+    expect(mesh.triangles).toBeInstanceOf(Uint32Array);
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+    expect(mesh.triangles.length).toBeGreaterThan(0);
+    expect(mesh.faceGroups.length).toBe(6); // Box has 6 faces
+  });
+
+  it('meshEdges() should return edge line data', () => {
+    const b = box(10, 10, 10);
+    const edges = shape(b).meshEdges();
+
+    expect(edges.lines).toBeInstanceOf(Array);
+    expect(edges.edgeGroups).toBeInstanceOf(Array);
+    expect(edges.lines.length).toBeGreaterThan(0);
+    expect(edges.edgeGroups.length).toBe(12); // Box has 12 edges
+  });
+
+  it('mesh() should accept options', () => {
+    const b = box(10, 10, 10);
+    const mesh = shape(b).mesh({ tolerance: 0.01, cache: false });
+
+    expect(mesh.vertices.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Validation and utilities
+// ---------------------------------------------------------------------------
+
+describe('Wrapper: validation and utilities', () => {
+  it('isValid() should return true for valid shapes', () => {
+    const b = box(10, 10, 10);
+    expect(shape(b).isValid()).toBe(true);
+  });
+
+  it('isEmpty() should return false for non-empty shapes', () => {
+    const b = box(10, 10, 10);
+    expect(shape(b).isEmpty()).toBe(false);
+  });
+
+  it('heal() should return wrapped shape', () => {
+    const b = box(10, 10, 10);
+    const healed = shape(b).heal();
+
+    expect(healed).toHaveProperty('val');
+    expect(healed.isValid()).toBe(true);
+  });
+
+  it('simplify() should return wrapped shape', () => {
+    const b = box(10, 10, 10);
+    const simplified = shape(b).simplify();
+
+    expect(simplified).toHaveProperty('val');
+    expect(simplified.isValid()).toBe(true);
+  });
+
+  it('toBREP() should return BREP string', () => {
+    const b = box(10, 10, 10);
+    const brep = shape(b).toBREP();
+
+    expect(typeof brep).toBe('string');
+    expect(brep.length).toBeGreaterThan(0);
+    // BREP format contains CASCADE Topology Version
+    expect(brep.substring(0, 100)).toMatch(/CASCADE|Version/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Boolean variants
+// ---------------------------------------------------------------------------
+
+describe('Wrapper: boolean variants', () => {
+  it('section() should slice shape with plane', () => {
+    const b = box(10, 10, 10);
+    const sectioned = shape(b).section('XY');
+
+    expect(sectioned).toHaveProperty('val');
+    expect(sectioned.isEmpty()).toBe(false);
+  });
+
+  it('section() should accept custom plane options', () => {
+    const b = box(10, 10, 10);
+    const sectioned = shape(b).section('XY', { approximation: false });
+
+    expect(sectioned).toHaveProperty('val');
+  });
+
+  it.skip('split() should split shape with tools (WASM limitation)', () => {
+    // BRepAlgoAPI_Splitter not available in current WASM build
+    const b = box(20, 20, 20);
+    const tool = sphere(15, { at: [0, 0, 0] });
+    const split = shape(b).split([tool]);
+
+    expect(split).toHaveProperty('val');
+    expect(split.isEmpty()).toBe(false);
+  });
+
+  it('slice() should slice shape with multiple planes', () => {
+    const b = box(10, 10, 10);
+    const slices = shape(b).slice(['XY', 'XZ', 'YZ']);
+
+    expect(Array.isArray(slices)).toBe(true);
+    expect(slices.length).toBe(3);
+    expect(slices[0]).toHaveProperty('wrapped');
+  });
+
+  it('cutAll() should cut multiple tools from base', () => {
+    const b = box(20, 20, 20);
+    const s1 = sphere(3, { at: [5, 5, 5] });
+    const s2 = sphere(3, { at: [-5, -5, -5] });
+    const result = shape(b).cutAll([s1, s2]);
+
+    expect(result).toHaveProperty('val');
+    expect(result.isValid()).toBe(true);
+  });
+
+  it('cutAll() should accept boolean options', () => {
+    const b = box(20, 20, 20);
+    const c = cylinder(3, 30, { at: [0, 0, -5] });
+    const result = shape(b).cutAll([c], { simplify: true });
+
+    expect(result.isValid()).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Method chaining with extended methods
+// ---------------------------------------------------------------------------
+
+describe('Wrapper: method chaining with extended methods', () => {
+  it('should chain extended methods with transforms', () => {
+    const result = shape(box(10, 10, 10))
+      .moveZ(5)
+      .simplify()
+      .moveX(10);
+
+    expect(result.isValid()).toBe(true);
+
+    const bounds = result.bounds();
+    expect(bounds.xMin).toBeCloseTo(10, 1);
+    expect(bounds.zMin).toBeCloseTo(5, 1); // Z offset
+  });
+
+  it('should chain section with other operations', () => {
+    const result = shape(box(20, 20, 20))
+      .cut(sphere(12, { at: [0, 0, 0] }))
+      .section('XY');
+
+    expect(result).toHaveProperty('val');
+    expect(result.isEmpty()).toBe(false);
+  });
+
+  it('should use mesh after boolean operations', () => {
+    const result = shape(box(10, 10, 10))
+      .cut(sphere(8, { at: [5, 5, 5] }))
+      .mesh();
+
+    expect(result.vertices.length).toBeGreaterThan(0);
   });
 });

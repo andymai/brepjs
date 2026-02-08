@@ -1,8 +1,8 @@
 /**
- * Clean API functions — short names for transforms, booleans, modifiers, and utilities.
+ * Public API functions — short names for transforms, booleans, modifiers, and utilities.
  *
- * Short names, Shapeable<T> support, options objects.
- * Delegates to existing implementations in shapeFns.ts, booleanFns.ts, modifierFns.ts, etc.
+ * These functions provide the primary public API with short names, Shapeable<T> support,
+ * and options objects. They delegate to implementations in shapeFns.ts, booleanFns.ts, etc.
  */
 
 import type { Vec3 } from '../core/types.js';
