@@ -1,7 +1,5 @@
 # Getting Started
 
-> **Want the fastest possible start?** See [Zero to Shape](./zero-to-shape.md) — create your first shape in 60 seconds with `brepjs/quick`.
-
 This guide walks you through creating your first 3D part with brepjs — from installation to exported STEP file.
 
 ## Prerequisites
@@ -17,36 +15,31 @@ npm install brepjs brepjs-opencascade
 
 `brepjs` is the API layer. `brepjs-opencascade` provides the OpenCascade WASM kernel that does the actual geometry computation.
 
-## Step 2: Initialize the WASM kernel
+## Step 2: Import from `brepjs/quick`
 
-Before calling any brepjs function, you must initialize the OpenCascade kernel. This is an async operation that loads and compiles the WASM module:
-
-```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC } from 'brepjs';
-
-const oc = await opencascade();
-initFromOC(oc);
-```
-
-This only needs to happen once per application lifetime. After `initFromOC()`, all brepjs functions are ready to use.
-
-## Step 3: Create a shape
+The easiest way to start is with `brepjs/quick`, which automatically initializes the WASM kernel for you:
 
 ```typescript
-import { box } from 'brepjs';
+import { box, cylinder, shape } from 'brepjs/quick';
 
+// The kernel is auto-initialized via top-level await
+// You can start creating shapes immediately
 const b = box(30, 20, 10);
 ```
 
-`box` takes width, depth, and height and returns a `Solid` — a branded type representing a watertight 3D shape. Other primitives work the same way:
+That's it — no initialization ceremony required. The `brepjs/quick` entry point handles WASM setup automatically using top-level await.
+
+> **Note:** If you need manual control over initialization (for example, in environments without top-level await support), see the [Advanced: Manual Initialization](#advanced-manual-initialization) section below.
+
+## Step 3: Create shapes with primitives
 
 ```typescript
-import { cylinder, sphere } from 'brepjs';
-
+const b = box(30, 20, 10); // width, depth, height
 const cyl = cylinder(5, 20); // radius, height
 const sph = sphere(8); // radius
 ```
+
+`box`, `cylinder`, and `sphere` return `Solid` — a branded type representing a watertight 3D shape. All primitives are available from `brepjs/quick`.
 
 ## Step 4: Combine shapes with the fluent wrapper
 
@@ -150,20 +143,15 @@ const brepString = shape(moved).toBREP();
 ## Complete example
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box, cylinder, shape, exportSTEP, unwrap } from 'brepjs';
+import { box, cylinder, shape, exportSTEP, unwrap } from 'brepjs/quick';
 
-// 1. Initialize
-const oc = await opencascade();
-initFromOC(oc);
-
-// 2. Create a box with a cylindrical hole using the fluent wrapper
+// Create a box with a cylindrical hole using the fluent wrapper
 const part = shape(box(30, 20, 10)).cut(cylinder(4, 15, { at: [15, 10, -2] })).val;
 
-// 3. Measure
+// Measure
 console.log('Volume:', shape(part).volume().toFixed(1), 'mm³');
 
-// 4. Export
+// Export
 const stepBlob = unwrap(exportSTEP(part));
 console.log('STEP file:', stepBlob.size, 'bytes');
 ```
@@ -171,7 +159,7 @@ console.log('STEP file:', stepBlob.size, 'bytes');
 **Alternative functional style:**
 
 ```typescript
-import { box, cylinder, cut, translate, measureVolume, unwrap } from 'brepjs';
+import { box, cylinder, cut, translate, measureVolume, unwrap } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 const hole = translate(cylinder(4, 15), [15, 10, -2]);
@@ -192,27 +180,20 @@ npm install brepjs brepjs-opencascade
 In your `main.ts`:
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box, shape, toBufferGeometryData } from 'brepjs';
+import { box, shape, toBufferGeometryData } from 'brepjs/quick';
 
-async function main() {
-  // Load the WASM kernel — in a browser this fetches and compiles the .wasm file
-  const oc = await opencascade();
-  initFromOC(oc);
+// brepjs/quick auto-initializes the WASM kernel
+const b = box(10, 10, 10);
+const m = shape(b).mesh({ tolerance: 0.1 });
+const bufferData = toBufferGeometryData(m);
 
-  // Now use brepjs as normal - the wrapper makes meshing easy
-  const b = box(10, 10, 10);
-  const m = shape(b).mesh({ tolerance: 0.1 });
-  const bufferData = toBufferGeometryData(m);
-
-  // Pass bufferData.position, .normal, .index to Three.js, Babylon.js, or raw WebGL
-  console.log('Vertices:', bufferData.position.length / 3);
-}
-
-main();
+// Pass bufferData.position, .normal, .index to Three.js, Babylon.js, or raw WebGL
+console.log('Vertices:', bufferData.position.length / 3);
 ```
 
 Vite handles WASM loading automatically. For other bundlers, you may need to configure WASM file serving — see [Compatibility](./compatibility.md) for details.
+
+> **Note:** For manual initialization control in browsers (useful for loading indicators or error handling), see [Advanced: Manual Initialization](#advanced-manual-initialization) below.
 
 For a complete working example that generates a standalone HTML viewer (no bundler needed), see [`examples/browser-viewer.ts`](../examples/browser-viewer.ts). You can also try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
 
@@ -313,16 +294,71 @@ match(result, {
 
 See [errors.md](./errors.md) for the full error code reference.
 
+---
+
+## Advanced: Manual Initialization
+
+Most users should use `brepjs/quick` for automatic initialization. However, if you need manual control over the WASM loading process (for example, to show a loading indicator, handle errors explicitly, or work in environments without top-level await support), you can initialize manually:
+
+```typescript
+import opencascade from 'brepjs-opencascade';
+import { initFromOC, box, cylinder, shape } from 'brepjs';
+
+async function main() {
+  // Load and initialize the WASM kernel manually
+  const oc = await opencascade();
+  initFromOC(oc);
+
+  // Now all brepjs functions are ready to use
+  const part = shape(box(30, 20, 10)).cut(cylinder(5, 15)).val;
+  console.log('Volume:', shape(part).volume());
+}
+
+main().catch(console.error);
+```
+
+**When to use manual initialization:**
+
+- You want to show a loading indicator while the WASM kernel loads
+- You need to handle initialization errors explicitly
+- Your environment doesn't support top-level await (older bundlers, some test frameworks)
+- You're dynamically loading brepjs on demand rather than at startup
+
+**Browser example with loading indicator:**
+
+```typescript
+import opencascade from 'brepjs-opencascade';
+import { initFromOC, box, shape } from 'brepjs';
+
+async function initCAD() {
+  const loader = document.getElementById('loader');
+  loader.textContent = 'Loading CAD kernel...';
+
+  try {
+    const oc = await opencascade();
+    initFromOC(oc);
+    loader.remove();
+
+    // Now ready to use brepjs
+    const b = box(10, 10, 10);
+    console.log('Initialized! Volume:', shape(b).volume());
+  } catch (err) {
+    loader.textContent = 'Failed to load CAD kernel: ' + err.message;
+  }
+}
+
+initCAD();
+```
+
+**Note:** `initFromOC()` only needs to be called once per application lifetime. After initialization, all brepjs functions remain ready to use.
+
+---
+
 ## Troubleshooting
 
 ### "Cannot read properties of undefined" on first API call
 
-You forgot to initialize the WASM kernel. Every brepjs program must call `initFromOC()` before using any shape functions:
-
-```typescript
-const oc = await opencascade();
-initFromOC(oc); // Must happen before box, cylinder, etc.
-```
+If using manual initialization (not `brepjs/quick`), make sure you've called `initFromOC()` before using any shape functions. See [Advanced: Manual Initialization](#advanced-manual-initialization) above.
 
 ### Boolean operation returns an error
 
