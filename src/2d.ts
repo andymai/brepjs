@@ -3,7 +3,11 @@
  *
  * @example
  * ```typescript
- * import { createBlueprint, fuseBlueprint2D, Blueprint } from 'brepjs/2d';
+ * import { createBlueprint, fuse2D, Blueprint } from 'brepjs/2d';
+ *
+ * // Clean 2D API (recommended)
+ * const translated = translate2D(bp, 10, 20);
+ * const union = fuse2D(bp1, bp2);
  * ```
  */
 
@@ -17,6 +21,19 @@ export { default as Blueprints } from './2d/blueprints/Blueprints.js';
 
 export {
   createBlueprint,
+  // Clean 2D aliases (recommended)
+  getBounds2D,
+  getOrientation2D,
+  isInside2D,
+  toSVGPathD,
+  translate2D,
+  rotate2D,
+  scale2D,
+  mirror2D,
+  stretch2D,
+  sketch2DOnPlane,
+  sketch2DOnFace,
+  // Deprecated verbose names (kept for backward compatibility)
   blueprintBoundingBox,
   blueprintOrientation,
   translateBlueprint,
@@ -33,6 +50,7 @@ export {
 // ── 2D booleans ──
 
 export {
+  // Deprecated - use fuse2D, cut2D, intersect2D instead
   fuseBlueprint2D,
   cutBlueprint2D,
   intersectBlueprint2D,

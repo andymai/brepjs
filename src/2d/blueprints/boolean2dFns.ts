@@ -14,12 +14,13 @@ import { fuse2D, cut2D, intersect2D, type Shape2D } from './boolean2D.js';
 /**
  * Compute the boolean union of two 2D shapes.
  *
+ * @deprecated Use fuse2D instead. Will be removed in v8.0.0.
  * @returns The fused shape, or `null` if the result is empty.
  * @see {@link fuse2D}
  *
  * @example
  * ```ts
- * const union = fuseBlueprint2D(circle, rectangle);
+ * const union = fuse2D(circle, rectangle);
  * ```
  */
 export function fuseBlueprint2D(
@@ -32,6 +33,7 @@ export function fuseBlueprint2D(
 /**
  * Compute the boolean difference of two 2D shapes (base minus tool).
  *
+ * @deprecated Use cut2D instead. Will be removed in v8.0.0.
  * @param base - The shape to cut from.
  * @param tool - The shape to subtract.
  * @returns The remaining shape, or `null` if nothing remains.
@@ -39,7 +41,7 @@ export function fuseBlueprint2D(
  *
  * @example
  * ```ts
- * const withHole = cutBlueprint2D(outerRect, innerCircle);
+ * const withHole = cut2D(outerRect, innerCircle);
  * ```
  */
 export function cutBlueprint2D(
@@ -52,12 +54,13 @@ export function cutBlueprint2D(
 /**
  * Compute the boolean intersection of two 2D shapes.
  *
+ * @deprecated Use intersect2D instead. Will be removed in v8.0.0.
  * @returns The overlapping region, or `null` if the shapes do not overlap.
  * @see {@link intersect2D}
  *
  * @example
  * ```ts
- * const overlap = intersectBlueprint2D(circle, rectangle);
+ * const overlap = intersect2D(circle, rectangle);
  * ```
  */
 export function intersectBlueprint2D(

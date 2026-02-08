@@ -137,6 +137,21 @@ export {
 
 export {
   createBlueprint,
+  // Utilities - clean 2D aliases
+  getBounds2D,
+  getOrientation2D,
+  isInside2D,
+  toSVGPathD,
+  // Transforms - clean 2D aliases
+  translate2D,
+  rotate2D,
+  scale2D,
+  mirror2D,
+  stretch2D,
+  // Sketching - clean 2D aliases
+  sketch2DOnPlane,
+  sketch2DOnFace,
+  // Deprecated verbose names (kept for backward compatibility)
   blueprintBoundingBox,
   blueprintOrientation,
   translateBlueprint,
@@ -151,6 +166,8 @@ export {
 } from './2d/blueprints/blueprintFns.js';
 
 export {
+  // Deprecated boolean wrappers (kept for backward compatibility)
+  // Use fuse2D, cut2D, intersect2D from boolean2D.js instead
   fuseBlueprint2D,
   cutBlueprint2D,
   intersectBlueprint2D,
