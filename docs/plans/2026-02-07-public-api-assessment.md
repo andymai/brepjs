@@ -1,12 +1,12 @@
 # Public API Assessment: Friction Points & Action Items
 
 **Date:** 2026-02-07
-**Last Updated:** 2026-02-07 (after which-api.md simplification)
+**Last Updated:** 2026-02-07 (after init simplification)
 **Goal:** Identify actionable friction points in the brepjs public API
 **Canonical style:** Fluent wrapper (`shape(box(...)).cut(...).fillet(...)`)
 **Audience:** Both web developers new to CAD and experienced CAD engineers
 
-**Status:** v7.2.0 shipped with parameter naming standardization (PR #191). Config → Options naming standardization completed. Clean 2D API naming completed. which-api.md simplified to reduce decision paralysis.
+**Status:** v7.2.0 shipped with parameter naming standardization (PR #191). Config → Options naming standardization completed. Clean 2D API naming completed. which-api.md simplified. Initialization story simplified (brepjs/quick as default).
 
 ---
 
@@ -166,6 +166,27 @@
 - ✅ Eliminates decision paralysis for new users
 - ✅ Clear "start here" guidance reduces onboarding friction
 - ✅ Discoverability improvement: reduces confusion about which API to use
+
+---
+
+## ✅ Completed: Simplify Initialization Story
+
+**What was accomplished:**
+
+1. **Promote brepjs/quick as Default (P1 - High Priority)** - Restructured getting-started.md to eliminate initialization confusion:
+   - Step 2 now uses `brepjs/quick` with auto-initialization via top-level await
+   - All code examples updated to import from `brepjs/quick`
+   - Complete Example, Browser Setup, and Troubleshooting sections updated
+   - Manual `initFromOC()` moved to new "Advanced: Manual Initialization" section
+   - ✅ Users now see one clear initialization path by default
+   - ✅ Advanced users can still access manual init when needed (loading indicators, error handling)
+   - ✅ Eliminated three-way choice paralysis (quick vs initFromOC vs \_setup.js)
+
+**Impact:**
+
+- ✅ Faster onboarding - users can start immediately with brepjs/quick
+- ✅ Reduced confusion about which initialization method to use
+- ✅ Discoverability improvement: clearer path to first shape
 
 ---
 
@@ -377,13 +398,19 @@ shape(box).fillet(() => zEdges, 2); // Awkward workaround
 
 **Remaining work:** None for this item. Wrapper is now the documented, canonical API.
 
-### 3.2 Three Initialization Paths (High)
+### 3.2 Three Initialization Paths (✅ COMPLETED)
 
-1. `brepjs/quick` with auto-init (zero-to-shape.md)
-2. Standard `initFromOC()` (getting-started.md)
-3. Hidden `_setup.js` (examples)
+**Status:** ✅ getting-started.md restructured to promote brepjs/quick as the default.
 
-**Action:** Promote `brepjs/quick` as the default. Show standard init only in "Advanced" section.
+**What was done:**
+
+- ✅ Updated Step 2 to use `brepjs/quick` (auto-initialization via top-level await)
+- ✅ All code examples now import from `brepjs/quick`
+- ✅ Moved manual `initFromOC()` to "Advanced: Manual Initialization" section with use cases
+- ✅ Updated Complete Example, Browser Setup, and Troubleshooting sections
+- ✅ Clear guidance: use brepjs/quick by default, manual init for advanced cases only
+
+**Result:** Users now have one clear initialization path with no choice paralysis. Manual initialization documented for advanced use cases (loading indicators, explicit error handling, environments without top-level await).
 
 ### 3.3 API Style Paralysis (✅ COMPLETED)
 
@@ -529,19 +556,21 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~6. **Standardize Options vs Config naming** — ✅ Done (Config → Options for all configuration types)~~
 ~~7. **Clean 2D API naming** — ✅ Done (added `*2D` aliases, deprecated verbose names, Consistency 10/10 achieved)~~
 ~~8. **Simplify which-api.md** — ✅ Done (TL;DR + clear guidance, moved alternatives to Advanced section)~~
+~~9. **Simplify initialization story** — ✅ Done (brepjs/quick as default, manual init in Advanced section)~~
 
-### 🎯 Next Up — P1 High Priority
+### 🎯 Next Up — P2 Medium Priority
 
-**1. Simplify initialization story**
+With Consistency at 10/10 and Discoverability at 8/10 (with clear API and init guidance), the remaining improvements are polish items that will incrementally improve the user experience.
 
-- Promote `brepjs/quick` as the default in docs
-- Move standard `initFromOC()` to "Advanced" section
-- Remove confusing third path (`_setup.js`)
-- **Why:** Three init paths create choice paralysis
-- **Impact:** Faster onboarding, less confusion
+**1. Add cookbook.md** with task-based recipes
+
+- Create practical "How do I..." recipes for common CAD workflows
+- Use canonical wrapper style throughout
+- **Why:** Users learn best from concrete examples
+- **Impact:** Faster time-to-productivity for common tasks
 - **Target:** Discoverability 8/10 → 9/10
 
-### 📋 P2 — Medium Priority
+### 📋 P3 — Lower Priority
 
 **2. Accept ShapeFinder directly** in fillet/chamfer/shell (not just callbacks)
 
