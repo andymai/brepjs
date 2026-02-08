@@ -1,12 +1,12 @@
 # Public API Assessment: Friction Points & Action Items
 
 **Date:** 2026-02-07
-**Last Updated:** 2026-02-07 (after PR #191)
+**Last Updated:** 2026-02-07 (after Config → Options standardization)
 **Goal:** Identify actionable friction points in the brepjs public API
 **Canonical style:** Fluent wrapper (`shape(box(...)).cut(...).fillet(...)`)
 **Audience:** Both web developers new to CAD and experienced CAD engineers
 
-**Status:** v7.1.0 shipped with comprehensive wrapper documentation (PR #190). Parameter naming standardization completed (PR #191).
+**Status:** v7.2.0 shipped with parameter naming standardization (PR #191). Config → Options naming standardization completed (direct commit to main).
 
 ---
 
@@ -106,16 +106,36 @@
 
 ---
 
+## ✅ Completed: Config → Options Standardization
+
+**What was accomplished:**
+
+1. **Configuration Type Naming (P0 #1)** - Standardized all configuration types to `Options` suffix:
+   - Primary scope: `LoftConfig` → `LoftOptions`, `SweepConfig` → `SweepOptions`, `GenericSweepConfig` → `GenericSweepOptions`, `BSplineApproximationConfig` → `BSplineApproximationOptions`
+   - Additional types: `RadiusConfig` → `RadiusOptions`, `ShapeConfig` → `ShapeOptions`, `SplineConfig` → `SplineOptions`
+   - ✅ 100% backward compatible with deprecated type aliases
+   - ✅ All old names work until v8.0.0 with IDE deprecation warnings
+   - ✅ 25 files updated across operations, topology, and sketching
+
+**Impact:**
+
+- ✅ All 1606 tests passing
+- ✅ Function coverage: 87.53% maintained
+- ✅ Consistency & Naming score: 8/10 → **9/10**
+- ✅ Configuration types now have predictable, consistent naming
+
+---
+
 ## Dimension Scores
 
-| Dimension                  | Before | After PR #188 | After PR #190 | After PR #191 | Summary                                                                 |
-| -------------------------- | ------ | ------------- | ------------- | ------------- | ----------------------------------------------------------------------- |
-| **Consistency & Naming**   | 4/10   | 5/10          | 5/10          | **8/10**      | ✅ Position uses `at`, direction uses `axis`; needs 2D naming polish    |
-| **Verbosity & Ergonomics** | 5/10   | 8/10          | 8/10          | 8/10          | ✅ Wrapper ~90% complete; users rarely need to unwrap                   |
-| **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | ✅ Wrapper documented as canonical API; needs cookbook and init clarity |
-| **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | ✅ Consistent Result boundaries; wrapper auto-throws BrepWrapperError   |
+| Dimension                  | Before | After PR #188 | After PR #190 | After PR #191 | After Config→Options | Summary                                                                 |
+| -------------------------- | ------ | ------------- | ------------- | ------------- | -------------------- | ----------------------------------------------------------------------- |
+| **Consistency & Naming**   | 4/10   | 5/10          | 5/10          | **8/10**      | **9/10**             | ✅ Config→Options standardized; only 2D naming polish remains           |
+| **Verbosity & Ergonomics** | 5/10   | 8/10          | 8/10          | 8/10          | 8/10                 | ✅ Wrapper ~90% complete; users rarely need to unwrap                   |
+| **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | 8/10                 | ✅ Wrapper documented as canonical API; needs cookbook and init clarity |
+| **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | 8/10                 | ✅ Consistent Result boundaries; wrapper auto-throws BrepWrapperError   |
 
-**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10** — Parameter naming standardized. Next priorities: 2D API naming, initialization simplification, and cookbook.
+**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10** — Config→Options standardized. Next priority: 2D API naming to reach Consistency 10/10.
 
 ---
 
@@ -188,11 +208,18 @@ Two different patterns for "get related sub-shapes":
 
 **Action:** Add `get` prefix to adjacency: `getFacesOfEdge`, `getEdgesOfFace`. Or drop `get` from extractions: `edges(shape)`, `faces(shape)`.
 
-### 1.6 Options vs Config (Low)
+### 1.6 Options vs Config (✅ COMPLETED)
 
-Mixed suffixes: `BooleanOptions`, `MeshOptions` vs `LoftConfig`, `SweepConfig`.
+**Status:** ✅ All configuration types standardized to use `Options` suffix.
 
-**Action:** Standardize on `Options` everywhere. Rename `LoftConfig` → `LoftOptions`, `SweepConfig` → `SweepOptions`.
+**What was done:**
+
+- ✅ Renamed all Config types to Options: `LoftConfig` → `LoftOptions`, `SweepConfig` → `SweepOptions`, `GenericSweepConfig` → `GenericSweepOptions`, `BSplineApproximationConfig` → `BSplineApproximationOptions`, `RadiusConfig` → `RadiusOptions`, `ShapeConfig` → `ShapeOptions`, `SplineConfig` → `SplineOptions`
+- ✅ All old names preserved as deprecated type aliases with v8.0.0 removal timeline
+- ✅ 100% backward compatible
+- ✅ 25 files updated across operations, topology, and sketching layers
+
+**Remaining work:** None for this item. Score improved from 8/10 → 9/10.
 
 ### 1.7 Outliers (Low)
 
@@ -445,24 +472,18 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 
 ## Prioritized Action Items
 
-### ✅ Completed (PR #188, #190)
+### ✅ Completed
 
-~~1. **Complete the wrapper** — ✅ Done (mesh, heal, section, cutAll, etc.)~~
-~~2. **Make `extrudeFace` return Result** — ✅ Done (consistent with revolve/loft)~~
-~~3. **Remove "clean API" terminology** — ✅ Done (renamed files, updated docs)~~
-~~4. **Document the `shape()` wrapper** — ✅ Done (getting-started, which-api, cheat-sheet)~~
+~~1. **Complete the wrapper** — ✅ Done in PR #188 (mesh, heal, section, cutAll, etc.)~~
+~~2. **Make `extrudeFace` return Result** — ✅ Done in PR #188 (consistent with revolve/loft)~~
+~~3. **Remove "clean API" terminology** — ✅ Done in PR #188 (renamed files, updated docs)~~
+~~4. **Document the `shape()` wrapper** — ✅ Done in PR #190 (getting-started, which-api, cheat-sheet)~~
+~~5. **Standardize parameter naming** — ✅ Done in PR #191 (`at` for position, `axis` for direction)~~
+~~6. **Standardize Options vs Config naming** — ✅ Done (Config → Options for all configuration types)~~
 
 ### 🎯 Next Up — P0 Critical
 
-**1. Standardize Options vs Config naming** (Medium Impact) 🔥 **TOP PRIORITY**
-
-- Rename `LoftConfig` → `LoftOptions`, `SweepConfig` → `SweepOptions`
-- Standardize all configuration types to use `Options` suffix
-- **Why:** Mixed suffixes create inconsistency (BooleanOptions vs LoftConfig)
-- **Impact:** Consistent naming pattern. Estimated improvement: Consistency 8/10 → 9/10
-- **Scope:** ~5 type renames
-
-**2. Clean 2D API naming** (High Impact for 2D users)
+**1. Clean 2D API naming** (High Impact for 2D users) 🔥 **TOP PRIORITY**
 
 - Add 2D aliases: `fuse2d`, `cut2d`, `intersect2d` (or overload main functions)
 - Remove verbose `Blueprint2D` / `Blueprint` suffixes
