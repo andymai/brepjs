@@ -116,6 +116,7 @@ import {
 export class BrepWrapperError extends Error {
   readonly code: string;
   readonly kind: string;
+  readonly suggestion?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- metadata can be anything
   readonly metadata?: Record<string, any>;
 
@@ -123,12 +124,20 @@ export class BrepWrapperError extends Error {
     kind: string;
     code: string;
     message: string;
+    suggestion?: string;
     metadata?: Record<string, unknown>;
   }) {
-    super(brepError.message);
+    // Include suggestion in error message if present
+    const fullMessage = brepError.suggestion
+      ? `${brepError.message}\nSuggestion: ${brepError.suggestion}`
+      : brepError.message;
+    super(fullMessage);
     this.name = 'BrepError';
     this.code = brepError.code;
     this.kind = brepError.kind;
+    if (brepError.suggestion) {
+      this.suggestion = brepError.suggestion;
+    }
     if (brepError.metadata) {
       this.metadata = brepError.metadata;
     }

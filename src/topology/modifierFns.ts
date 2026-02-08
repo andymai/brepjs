@@ -63,15 +63,39 @@ export function filletShape(
   const check = validateNotNull(shape, 'filletShape: shape');
   if (isErr(check)) return check;
   if (typeof radius === 'number' && radius <= 0) {
-    return err(validationError('INVALID_FILLET_RADIUS', 'Fillet radius must be positive'));
+    return err(
+      validationError(
+        'INVALID_FILLET_RADIUS',
+        'Fillet radius must be positive',
+        undefined,
+        undefined,
+        'Provide a positive radius value greater than 0'
+      )
+    );
   }
   if (Array.isArray(radius) && (radius[0] <= 0 || radius[1] <= 0)) {
-    return err(validationError('INVALID_FILLET_RADIUS', 'Fillet radii must both be positive'));
+    return err(
+      validationError(
+        'INVALID_FILLET_RADIUS',
+        'Fillet radii must both be positive',
+        undefined,
+        undefined,
+        'Both radius values must be greater than 0'
+      )
+    );
   }
 
   const selectedEdges = edges ?? getEdges(shape);
   if (selectedEdges.length === 0) {
-    return err(validationError('NO_EDGES', 'No edges found for fillet'));
+    return err(
+      validationError(
+        'NO_EDGES',
+        'No edges found for fillet',
+        undefined,
+        undefined,
+        'Check that the shape has edges, or adjust your edge finder criteria'
+      )
+    );
   }
 
   try {
@@ -128,11 +152,25 @@ export function chamferShape(
   const check = validateNotNull(shape, 'chamferShape: shape');
   if (isErr(check)) return check;
   if (typeof distance === 'number' && distance <= 0) {
-    return err(validationError('INVALID_CHAMFER_DISTANCE', 'Chamfer distance must be positive'));
+    return err(
+      validationError(
+        'INVALID_CHAMFER_DISTANCE',
+        'Chamfer distance must be positive',
+        undefined,
+        undefined,
+        'Provide a positive distance value greater than 0'
+      )
+    );
   }
   if (Array.isArray(distance) && (distance[0] <= 0 || distance[1] <= 0)) {
     return err(
-      validationError('INVALID_CHAMFER_DISTANCE', 'Chamfer distances must both be positive')
+      validationError(
+        'INVALID_CHAMFER_DISTANCE',
+        'Chamfer distances must both be positive',
+        undefined,
+        undefined,
+        'Both distance values must be greater than 0'
+      )
     );
   }
 
