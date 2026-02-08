@@ -29,9 +29,9 @@
 | **Consistency & Naming**   | 4/10   | 5/10          | 5/10          | **8/10**      | **9/10**             | **10/10** 🎯    | ✅ Complete: 2D API now matches 3D naming style                 |
 | **Verbosity & Ergonomics** | 5/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ Wrapper ~90% complete; users rarely need to unwrap           |
 | **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | 8/10                 | **9/10**        | ✅ Complete: Wrapper canonical, init simplified, cookbook added |
-| **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ Consistent Result boundaries; wrapper auto-throws            |
+| **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ OCCT error translation with actionable guidance (now 9/10)   |
 
-**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10 → 8.625/10** — Consistency 10/10 🎯, Discoverability 9/10 ✅, Verbosity 8.5/10. Next: Push Error Handling to 9/10.
+**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10 → 8.625/10 → 8.875/10** — Consistency 10/10 🎯, Discoverability 9/10, Verbosity 8.5/10, Error Handling 9/10 ✅. Next: Push Discoverability to 10/10.
 
 ---
 
@@ -273,6 +273,7 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~10. **Add cookbook.md** — ✅ Done (15 practical recipes using canonical wrapper style)~~
 ~~11. **Add volumeProps/surfaceProps** — ✅ Done (full property methods with centerOfMass)~~
 ~~12. **Accept ShapeFinder directly** — ✅ Done (eliminates awkward `() => finder` wrapper pattern)~~
+~~13. **Add OCCT error translation** — ✅ Done (maps 12 common OCCT patterns to actionable messages)~~
 
 ### 🎯 Next Up — Push to 9-10/10
 
@@ -281,15 +282,15 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 - Consistency & Naming: 10/10 🎯 (Complete!)
 - Discoverability: 9/10 ✅ (Very good - wrapper canonical, init simple, cookbook added)
 - Verbosity & Ergonomics: 8.5/10 (Very good - wrapper ~92% complete, ShapeFinder direct support)
-- Error Handling UX: 8/10 (Good - consistent Result boundaries)
+- Error Handling UX: 9/10 ✅ (Very good - OCCT error translation with actionable guidance)
 
 **Next priorities to reach 9-10/10:**
 
-**1. Add OCCT error translation layer** (Error Handling 8/10 → 9/10)
+**1. Push Discoverability to 10/10** (currently 9/10)
 
-- Map common OCCT exceptions to actionable messages
-- **Why:** "Invalid edge configuration" → "Edges may not form continuous loop. Check that edges connect end-to-end"
-- **Impact:** Helps users fix errors faster without OCCT expertise
+- Add more cookbook recipes for advanced workflows
+- **Why:** Cover remaining common use cases (assemblies, advanced patterns, text/engraving)
+- **Impact:** Comprehensive task-based documentation
 
 ### 📋 P3 — Lower Priority
 
