@@ -14,7 +14,7 @@ export default function CodeDisplay() {
           <code>
             {lines.map((line, i) => (
               <div key={i} className="flex">
-                <span className="mr-4 inline-block w-6 select-none text-right text-gray-600">
+                <span className="mr-4 inline-block w-8 select-none text-right text-gray-600">
                   {i + 1}
                 </span>
                 <span className="text-gray-300">{highlightLine(line)}</span>

@@ -16,7 +16,7 @@ const {
   box,
   cylinder,
   sphere,
-  fuse,
+  shape,
   clone,
   rotate,
   translate,
@@ -25,11 +25,9 @@ const {
   toBufferGeometryData,
   toLineGeometryData,
   unwrap,
-  isOk,
   helix,
   circle,
   wire,
-  sweep,
 } = await import('brepjs');
 
 initFromOC(oc);
@@ -52,8 +50,8 @@ const bottomLanding = cylinder(landingRadius, stepThickness);
 
 // Central column — from ground to top step surface
 const colHeight = stepCount * stepRise + stepThickness;
-let staircase = cylinder(columnRadius, colHeight);
-staircase = unwrap(fuse(staircase, bottomLanding));
+const column = cylinder(columnRadius, colHeight);
+let staircase = shape(column).fuse(bottomLanding).val;
 
 // Wind steps + railing posts around the column
 for (let i = 0; i < stepCount; i++) {
@@ -71,10 +69,10 @@ for (let i = 0; i < stepCount; i++) {
     [railRadius, 0, stepThickness]
   );
 
-  const piece = unwrap(fuse(step, post));
+  const piece = shape(step).fuse(post).val;
   const lifted = translate(piece, [0, 0, z]);
   const rotated = rotate(lifted, rotationPerStep * i, { around: [0, 0, 0], axis: [0, 0, 1] });
-  staircase = unwrap(fuse(staircase, rotated));
+  staircase = shape(staircase).fuse(rotated).val;
 }
 
 // Handrail: sweep a circle profile along a helical path
@@ -88,25 +86,24 @@ const railProfileEdge = circle(2, { at: [railRadius, 0, firstPostTop], normal: [
 const railProfile = unwrap(wire([railProfileEdge]));
 const helixSpine = helix(helixPitch, helixHeight, railRadius, { at: [0, 0, firstPostTop] });
 
-const handrailResult = sweep(railProfile, helixSpine, { frenet: true });
-if (isOk(handrailResult)) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- sweep result type union
-  staircase = unwrap(fuse(staircase, handrailResult.value as any));
-} else {
-  console.warn('Handrail sweep failed, skipping:', handrailResult.error);
+try {
+  const handrail = shape(railProfile).sweep(helixSpine, { frenet: true }).val;
+  staircase = shape(staircase).fuse(handrail).val;
+} catch (error) {
+  console.warn('Handrail sweep failed, skipping:', error);
 }
 
 // Ball endcaps on handrail ends
 const ball = sphere(4);
 const end1 = translate(ball, [railRadius, 0, firstPostTop]);
-staircase = unwrap(fuse(staircase, end1));
+staircase = shape(staircase).fuse(end1).val;
 
 const lastPostTop = firstPostTop + stepRise * (stepCount - 1);
 const end2 = rotate(
   translate(clone(ball), [railRadius, 0, lastPostTop]),
   rotationPerStep * (stepCount - 1), { around: [0, 0, 0], axis: [0, 0, 1] }
 );
-staircase = unwrap(fuse(staircase, end2));
+staircase = shape(staircase).fuse(end2).val;
 
 // Mesh it
 const shapeMesh = meshShape(staircase, { tolerance: 2, angularTolerance: 1.5 });
