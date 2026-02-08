@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/brepjs)](https://www.npmjs.com/package/brepjs)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-A CAD library for JavaScript and TypeScript, built on [OpenCascade](https://dev.opencascade.org/). Create 3D solid models in the browser or Node.js — boxes, cylinders, booleans, fillets, shelling, STEP/STL export — using a functional API.
+A CAD library for JavaScript and TypeScript, powered by [OpenCascade](https://dev.opencascade.org/). Create 3D solid models in the browser or Node.js — sketch 2D profiles, extrude/revolve/loft/sweep them into solids, apply booleans and fillets, query topology, and export to STEP, STL, glTF, and more.
 
 ## Install
 
@@ -12,61 +12,114 @@ A CAD library for JavaScript and TypeScript, built on [OpenCascade](https://dev.
 npm install brepjs brepjs-opencascade
 ```
 
-## Hello World
+## Quick Start
+
+The fastest way to get going — `brepjs/quick` auto-initializes the WASM kernel:
+
+```typescript
+import { box, cut, cylinder, unwrap, exportSTEP } from 'brepjs/quick';
+
+const b = box(30, 20, 10);
+const hole = cylinder(5, 15, { at: [15, 10, -2] });
+const part = unwrap(cut(b, hole));
+const step = unwrap(exportSTEP(part));
+```
+
+> `brepjs/quick` uses top-level await, so it requires ESM. For CJS or more control, use the standard setup:
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
-import { initFromOC, makeBox, measureVolume, exportSTEP, unwrap } from 'brepjs';
+import { initFromOC } from 'brepjs';
 
 const oc = await opencascade();
 initFromOC(oc);
-
-const box = makeBox([0, 0, 0], [30, 20, 10]);
-console.log('Volume:', measureVolume(box), 'mm³'); // 6000
-
-const step = unwrap(exportSTEP(box));
 ```
 
-## A More Realistic Example
+## A Real Example
 
-Cut a hole through a box, fillet the edges, and export it:
+Build a box, drill a hole, fillet the edges, and export:
 
 ```typescript
-import {
-  makeBox, makeCylinder, cutShape,
-  filletShape, edgeFinder, translateShape,
-  exportSTEP, unwrap,
-} from 'brepjs';
+import { box, cylinder, cut, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
 
-// Create a box with a cylindrical hole
-const box = makeBox([0, 0, 0], [30, 20, 10]);
-const hole = translateShape(makeCylinder(5, 15), [15, 10, -2]);
-const drilled = unwrap(cutShape(box, hole));
+const b = box(30, 20, 10);
+const hole = cylinder(5, 15, { at: [15, 10, -2] });
+const drilled = unwrap(cut(b, hole));
 
 // Fillet the vertical edges
 const edges = edgeFinder().inDirection('Z').findAll(drilled);
-const part = unwrap(filletShape(drilled, edges, 1.5));
+const part = unwrap(fillet(drilled, edges, 1.5));
 
-// Export
 const step = unwrap(exportSTEP(part));
+```
+
+Build a parametric flanged pipe with bolt holes:
+
+```typescript
+import {
+  cylinder, fuse, cut, shell, fillet, rotate,
+  faceFinder, edgeFinder, measureVolume, unwrap,
+} from 'brepjs/quick';
+
+// Tube + flanges
+const tube = cylinder(15, 100);
+const body = unwrap(fuse(unwrap(fuse(tube, cylinder(30, 5))), cylinder(30, 5, { at: [0, 0, 95] })));
+
+// Hollow out
+const topFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).findAll(body);
+const hollowed = unwrap(shell(body, topFaces, 2));
+
+// Fillet tube-to-flange transitions
+const filletEdges = edgeFinder().ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15).findAll(hollowed);
+let result = unwrap(fillet(hollowed, filletEdges, 3));
+
+// Bolt holes
+for (let i = 0; i < 6; i++) {
+  const angle = 60 * i;
+  const hole = rotate(cylinder(3, 10, { at: [22, 0, -2] }), angle, { axis: [0, 0, 1] });
+  result = unwrap(cut(result, hole));
+}
+
+console.log('Volume:', measureVolume(result), 'mm³');
 ```
 
 ## What You Can Do
 
-- **Primitives** — `makeBox`, `makeCylinder`, `makeSphere`, `makeCone`, `makeTorus`
-- **Booleans** — `fuseShape`, `cutShape`, `intersectShape`, `cutAll`
-- **Transforms** — `translateShape`, `rotateShape`, `scaleShape`, `mirrorShape`
-- **Modifications** — `filletShape`, `chamferShape`, `shellShape`
-- **2D to 3D** — sketch profiles with `drawRectangle`, `drawCircle`, extrude with `sketchExtrude`
-- **Queries** — `faceFinder`, `edgeFinder` for selecting geometry by type, direction, position
-- **Measurement** — `measureVolume`, `measureArea`, `measureLength`
-- **Import/Export** — `importSTEP`, `exportSTEP`, `exportSTL`
-- **Rendering** — `meshShape` + `toBufferGeometryData` for Three.js / WebGL
-- **Text** — `loadFont`, `textBlueprints` for engraving text on shapes
+**Shape creation**
+- Primitives: `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`
+- Low-level: `line`, `circle`, `wire`, `face`, `polygon`, `solid`, `compound`
+- 2D sketching: `draw`, `drawRectangle`, `drawCircle`, `drawPolysides`, `drawText`
+- 3D sketching: `Sketcher`, `sketchCircle`, `sketchRectangle`, `sketchHelix`
+
+**Operations**
+- Booleans: `fuse`, `cut`, `intersect`, `section`, `split`, `slice`, `fuseAll`, `cutAll`
+- Transforms: `translate`, `rotate`, `mirror`, `scale`
+- Modifiers: `fillet`, `chamfer`, `shell`, `offset`, `thicken`
+- 3D from 2D: `extrude`, `revolve`, `loft`, `sweep`
+- Patterns: `linearPattern`, `circularPattern`
+
+**Queries and measurement**
+- Finders: `edgeFinder`, `faceFinder`, `wireFinder`, `vertexFinder`, `cornerFinder`
+- Topology: `getEdges`, `getFaces`, `getWires`, `getVertices`, `adjacentFaces`, `sharedEdges`
+- Measurement: `measureVolume`, `measureArea`, `measureLength`, `measureDistance`
+- Interference: `checkInterference`, `checkAllInterferences`
+
+**Import / Export**
+- STEP, STL, IGES, glTF/GLB, DXF, 3MF, OBJ, SVG
+- Assembly export with colors and names: `exportAssemblySTEP`
+- Mesh for rendering: `mesh`, `meshEdges`, `toBufferGeometryData`
+- 2D projection: `drawProjection` for technical drawings
+
+**Other**
+- Text: `loadFont`, `drawText`, `sketchText`, `textBlueprints`
+- Healing: `autoHeal`, `healSolid`, `healFace`, `isValid`
+- Assemblies: `createAssemblyNode`, `addChild`, `walkAssembly`, `collectShapes`
+- Parametric history: `createHistory`, `addStep`, `undoLast`, `replayHistory`
+- Web workers: `createWorkerClient`, `createWorkerHandler`
 
 ## Examples
 
-The [`examples/`](./examples/) directory has complete, runnable scripts:
+The [`examples/`](./examples/) directory has runnable scripts:
 
 ```bash
 npm run example examples/hello-world.ts
@@ -84,37 +137,38 @@ npm run example examples/hello-world.ts
 | [import-export.ts](./examples/import-export.ts) | Load, modify, and re-export STEP files |
 | [text-engraving.ts](./examples/text-engraving.ts) | Engrave text on a solid shape |
 
-## How Imports Work
+## Imports
 
 Import everything from the top level:
 
 ```typescript
-import { makeBox, translateShape } from 'brepjs';
+import { box, translate, fuse, exportSTEP } from 'brepjs';
 ```
 
 Or use sub-path imports for smaller bundles:
 
 ```typescript
-import { makeBox, fuseShape, filletShape } from 'brepjs/topology';
+import { box, fuse, fillet } from 'brepjs/topology';
 import { importSTEP, exportSTEP } from 'brepjs/io';
 import { measureVolume } from 'brepjs/measurement';
+import { edgeFinder, faceFinder } from 'brepjs/query';
+import { sketchCircle, draw } from 'brepjs/sketching';
+import { createAssemblyNode } from 'brepjs/operations';
 ```
 
 ## Error Handling
 
-Operations that can fail return a `Result` type instead of throwing:
+Operations that can fail return a `Result` instead of throwing:
 
 ```typescript
-import { fuseShape, isOk, unwrap } from 'brepjs';
-
-const result = fuseShape(a, b);
+const result = fuse(a, b);
 
 if (isOk(result)) {
   const fused = result.value;
 }
 
 // Or throw on failure
-const fused = unwrap(fuseShape(a, b));
+const fused = unwrap(fuse(a, b));
 ```
 
 ## Architecture
@@ -132,9 +186,12 @@ See [docs/architecture.md](./docs/architecture.md) for details.
 
 ## Documentation
 
+- [API Reference](https://andymai.github.io/brepjs/) — Searchable TypeDoc reference
 - [Getting Started](./docs/getting-started.md) — Install to first part
 - [B-Rep Concepts](./docs/concepts.md) — Vertices, edges, faces, solids
+- [Cheat Sheet](./docs/cheat-sheet.md) — Single-page reference for common operations
 - [Which API?](./docs/which-api.md) — Sketcher vs functional vs Drawing
+- [Function Lookup](./docs/function-lookup.md) — Alphabetical index of every export
 - [Memory Management](./docs/memory-management.md) — Resource cleanup patterns
 - [Error Reference](./docs/errors.md) — Error codes and recovery
 - [Performance](./docs/performance.md) — Optimization tips
