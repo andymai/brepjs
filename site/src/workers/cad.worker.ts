@@ -5,6 +5,7 @@
  * use them without imports (e.g. `const b = box(40, 30, 20)`).
  */
 import type { ToWorker, FromWorker, MeshTransfer } from './workerProtocol';
+import { WASM_CACHE_NAME } from '../lib/wasmConfig';
 
 // Worker global scope declarations
 declare function postMessage(message: unknown, transfer?: Transferable[]): void;
@@ -21,13 +22,36 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
 }
 
 // Keep track of which keys we added to globalThis so we can clean up user-added keys
-let brepjsGlobalKeys: Set<string> = new Set();
+const brepjsGlobalKeys: Set<string> = new Set();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs module
 let brepjs: any = null;
 
 // Cache the last eval result for exports
 let lastEvalResult: unknown[] | null = null;
+
+// ── Code Cache ──
+
+interface CachedEval {
+  meshes: MeshTransfer[];
+  console: string[];
+  timeMs: number;
+}
+
+const codeCache = new Map<string, CachedEval>();
+const MAX_CACHE_SIZE = 20;
+
+/**
+ * Clone mesh data for cache storage (since transferables can only be sent once).
+ */
+function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
+  return {
+    position: new Float32Array(mesh.position),
+    normal: new Float32Array(mesh.normal),
+    index: new Uint32Array(mesh.index),
+    edges: new Float32Array(mesh.edges),
+  };
+}
 
 // ── Init ──
 
@@ -37,7 +61,12 @@ async function handleInit() {
 
     // Load the Emscripten-generated WASM JS loader from /wasm/
     // We fetch + blob URL to avoid Vite/Rollup trying to resolve it at build time
-    const resp = await fetch('/wasm/brepjs_single.js');
+    // Try cache first (if preloaded on landing page), fall back to network
+    const cache = await caches.open(WASM_CACHE_NAME);
+    let resp = await cache.match('/wasm/brepjs_threaded.js');
+    if (!resp) {
+      resp = await fetch('/wasm/brepjs_threaded.js');
+    }
     const jsText = await resp.text();
     const blob = new Blob([jsText], { type: 'application/javascript' });
     const blobUrl = URL.createObjectURL(blob);
@@ -48,7 +77,11 @@ async function handleInit() {
     post({ type: 'init-progress', stage: 'Initializing WASM...', progress: 0.4 });
 
     const oc = await opencascade({
-      locateFile: (f: string) => (f.endsWith('.wasm') ? '/wasm/brepjs_single.wasm' : f),
+      locateFile: (f: string) => {
+        if (f.endsWith('.wasm')) return '/wasm/brepjs_threaded.wasm';
+        if (f.endsWith('.worker.js')) return '/wasm/brepjs_threaded.worker.js';
+        return f;
+      },
     });
 
     post({ type: 'init-progress', stage: 'Loading brepjs...', progress: 0.7 });
@@ -76,6 +109,31 @@ async function handleInit() {
 
 function handleEval(id: string, code: string) {
   const t0 = performance.now();
+
+  // Check cache first (use code string directly as key)
+  const cached = codeCache.get(code);
+  if (cached) {
+    // Clone meshes to create new transferable buffers
+    const meshes = cached.meshes.map(cloneMeshTransfer);
+    const transferables = meshes.flatMap((m) => [
+      m.position.buffer,
+      m.normal.buffer,
+      m.index.buffer,
+      m.edges.buffer,
+    ]);
+    post(
+      {
+        type: 'eval-result',
+        id,
+        meshes,
+        console: [...cached.console],
+        timeMs: cached.timeMs,
+      },
+      transferables
+    );
+    return;
+  }
+
   const consoleOutput: string[] = [];
 
   // Capture console.log
@@ -161,6 +219,19 @@ function handleEval(id: string, code: string) {
     }
 
     const timeMs = performance.now() - t0;
+
+    // Cache the result before transferring (clone because we'll transfer ownership)
+    if (codeCache.size >= MAX_CACHE_SIZE) {
+      // Simple FIFO eviction: delete oldest entry
+      const firstKey = codeCache.keys().next().value;
+      if (firstKey) codeCache.delete(firstKey);
+    }
+    codeCache.set(code, {
+      meshes: meshes.map(cloneMeshTransfer),
+      console: [...consoleOutput],
+      timeMs,
+    });
+
     post({ type: 'eval-result', id, meshes, console: consoleOutput, timeMs }, transferables);
   } catch (e) {
     console.log = origLog;

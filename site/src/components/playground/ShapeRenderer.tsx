@@ -12,7 +12,7 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
     geo.setAttribute('normal', new THREE.BufferAttribute(data.normal, 3));
     geo.setIndex(new THREE.BufferAttribute(data.index, 1));
     return geo;
-  }, [data]);
+  }, [data.position, data.normal, data.index]);
 
   useEffect(() => {
     return () => {

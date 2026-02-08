@@ -55,6 +55,15 @@ function computeBounds(meshes: MeshData[]) {
   return { center, radius };
 }
 
+/**
+ * Hook to compute bounds with memoization based on mesh array reference.
+ * Since the store replaces the meshes array on each update, reference
+ * equality is sufficient for cache invalidation.
+ */
+function useBoundsComputation(meshes: MeshData[]) {
+  return useMemo(() => computeBounds(meshes), [meshes]);
+}
+
 function fitCamera(
   bounds: { center: THREE.Vector3; radius: number },
   camera: THREE.Camera,
@@ -86,7 +95,7 @@ function fitCamera(
  */
 function AutoFit({ meshes }: { meshes: MeshData[] }) {
   const { camera, controls } = useThree();
-  const bounds = useMemo(() => computeBounds(meshes), [meshes]);
+  const bounds = useBoundsComputation(meshes);
   const prevBoundsKey = useRef('');
   const fitRequest = useViewerStore((s) => s.fitRequest);
 
@@ -128,7 +137,7 @@ function Invalidator() {
 /** Wires up the camera preset hook to store + controls. */
 function CameraPresetBridge({ meshes }: { meshes: MeshData[] }) {
   const { invalidate } = useThree();
-  const bounds = useMemo(() => computeBounds(meshes), [meshes]);
+  const bounds = useBoundsComputation(meshes);
   const { controls } = useThree();
 
   useCameraPresets(

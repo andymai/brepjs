@@ -109,7 +109,7 @@ export function useCodeExecution() {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         runCode(code);
-      }, 800);
+      }, 450);
     },
     [runCode]
   );
