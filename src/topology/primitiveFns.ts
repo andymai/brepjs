@@ -1,5 +1,5 @@
 /**
- * Clean primitive constructors — v5 API.
+ * Clean primitive constructors.
  *
  * Short names, smart defaults, options objects for uncommon parameters.
  * Delegates to existing implementations in shapeHelpers.ts and kernel layer.

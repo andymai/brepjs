@@ -149,8 +149,8 @@ sequenceDiagram
 brepjs uses an immutable functional API:
 
 ```typescript
-const box = makeBox([0, 0, 0], [10, 10, 10]);
-const moved = translateShape(box, [5, 0, 0]); // Returns new shape
+const myBox = box([0, 0, 0], [10, 10, 10]);
+const moved = translate(myBox, [5, 0, 0]); // Returns new shape
 ```
 
 ### 2. Result Types
@@ -158,7 +158,7 @@ const moved = translateShape(box, [5, 0, 0]); // Returns new shape
 All fallible operations return `Result<T, BrepError>`:
 
 ```typescript
-const result = fuseShape(a, b);
+const result = fuse(a, b);
 if (isOk(result)) {
   // result.value is the fused shape
 }
@@ -184,8 +184,8 @@ OCCT objects are cleaned up via scopes:
 
 ```typescript
 const r = gcWithScope();
-const temp1 = r(makeBox([10, 10, 10]));
-const temp2 = r(makeCylinder(5, 20));
+const temp1 = r(box([10, 10, 10]));
+const temp2 = r(cylinder(5, 20));
 // temp1, temp2 cleaned up when scope exits
 ```
 

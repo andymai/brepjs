@@ -41,50 +41,12 @@ export type { AnyShape, Shape3D, CurveLike } from '../core/shapeTypes.js';
 
 export type { CurveType } from '../core/definitionMaps.js';
 
-export {
-  makeLine,
-  makeCircle,
-  makeEllipse,
-  makeHelix,
-  makeThreePointArc,
-  makeEllipseArc,
-  makeBSplineApproximation,
-  makeBezierCurve,
-  makeTangentArc,
-  assembleWire,
-  makeFace,
-  makeNewFaceWithinFace,
-  makeNonPlanarFace,
-  makeCylinder,
-  makeSphere,
-  makeCone,
-  makeTorus,
-  makeEllipsoid,
-  makeBox,
-  makeVertex,
-  makeOffset,
-  makeCompound,
-  weldShellsAndFaces,
-  makeSolid,
-  addHolesInFace,
-  makePolygon,
-  type BSplineApproximationConfig,
-} from './shapeHelpers.js';
-
-// ── New functional API ──
+// ── Functional API ──
 
 export {
-  cloneShape,
-  serializeShape,
   getHashCode,
-  isShapeNull,
   isSameShape,
   isEqualShape,
-  simplifyShape,
-  translateShape,
-  rotateShape,
-  mirrorShape,
-  scaleShape,
   getEdges,
   getFaces,
   getWires,
@@ -126,22 +88,9 @@ export {
   type UVBounds,
 } from './faceFns.js';
 
-export {
-  meshShape,
-  meshShapeEdges,
-  exportSTEP,
-  exportSTL,
-  type EdgeMesh,
-  type MeshOptions,
-} from './meshFns.js';
+export { exportSTEP, exportSTL, type EdgeMesh, type MeshOptions } from './meshFns.js';
 
-export {
-  fuseShape,
-  cutShape,
-  intersectShape,
-  sectionShape,
-  type BooleanOptions,
-} from './booleanFns.js';
+export { fuseAll, cutAll, type BooleanOptions } from './booleanFns.js';
 
 export {
   toBufferGeometryData,
@@ -149,5 +98,3 @@ export {
   type BufferGeometryData,
   type LineGeometryData,
 } from './threeHelpers.js';
-
-export { thickenSurface } from './modifierFns.js';

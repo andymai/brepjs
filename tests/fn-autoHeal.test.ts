@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, makeSphere, autoHeal, isShapeValid } from '../src/index.js';
-import { unwrap } from '../src/core/result.js';
+import { box, sphere, autoHeal, isValid, unwrap } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -9,10 +8,10 @@ beforeAll(async () => {
 
 describe('autoHeal', () => {
   it('returns valid shape unchanged with alreadyValid: true', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(isShapeValid(box)).toBe(true);
+    const b = box(10, 10, 10);
+    expect(isValid(b)).toBe(true);
 
-    const result = unwrap(autoHeal(box));
+    const result = unwrap(autoHeal(b));
     expect(result.report.isValid).toBe(true);
     expect(result.report.alreadyValid).toBe(true);
     expect(result.report.steps).toContain('Shape already valid');
@@ -22,17 +21,17 @@ describe('autoHeal', () => {
   });
 
   it('returns valid sphere unchanged', () => {
-    const sphere = makeSphere(5);
-    expect(isShapeValid(sphere)).toBe(true);
+    const s = sphere(5);
+    expect(isValid(s)).toBe(true);
 
-    const result = unwrap(autoHeal(sphere));
+    const result = unwrap(autoHeal(s));
     expect(result.report.isValid).toBe(true);
     expect(result.report.steps).toContain('Shape already valid');
   });
 
   it('report has expected structure', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b));
 
     expect(result.report).toHaveProperty('isValid');
     expect(result.report).toHaveProperty('wiresHealed');
@@ -45,17 +44,17 @@ describe('autoHeal', () => {
   });
 
   it('returns shape from result', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b));
 
     // Should return a valid shape
     expect(result.shape).toBeDefined();
-    expect(isShapeValid(result.shape)).toBe(true);
+    expect(isValid(result.shape)).toBe(true);
   });
 
   it('diagnostics contain validation entry for valid shape', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b));
 
     const validationDiag = result.report.diagnostics.find((d) => d.name === 'validation');
     expect(validationDiag).toBeDefined();
@@ -64,33 +63,33 @@ describe('autoHeal', () => {
   });
 
   it('accepts options with fixWires disabled', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box, { fixWires: false }));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b, { fixWires: false }));
     expect(result.report.isValid).toBe(true);
   });
 
   it('accepts options with fixFaces disabled', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box, { fixFaces: false }));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b, { fixFaces: false }));
     expect(result.report.isValid).toBe(true);
   });
 
   it('accepts options with fixSolids disabled', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box, { fixSolids: false }));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b, { fixSolids: false }));
     expect(result.report.isValid).toBe(true);
   });
 
   it('accepts options with sewTolerance', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box, { sewTolerance: 0.01 }));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b, { sewTolerance: 0.01 }));
     // Valid shapes short-circuit before sewing is applied
     expect(result.report.isValid).toBe(true);
   });
 
   it('accepts fixSelfIntersection option', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = unwrap(autoHeal(box, { fixSelfIntersection: true }));
+    const b = box(10, 10, 10);
+    const result = unwrap(autoHeal(b, { fixSelfIntersection: true }));
     // Valid shapes short-circuit
     expect(result.report.isValid).toBe(true);
   });

@@ -1,7 +1,13 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, isProjectionPlane, makeProjectedEdges, unwrap } from '../src/index.js';
-import { createCamera, cameraFromPlane } from '../src/projection/cameraFns.js';
+import {
+  box,
+  isProjectionPlane,
+  makeProjectedEdges,
+  unwrap,
+  createCamera,
+  cameraFromPlane,
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -122,50 +128,50 @@ describe('createCamera', () => {
 
 describe('makeProjectedEdges', () => {
   it('projects a box from front', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('front'));
-    const result = makeProjectedEdges(box, cam);
+    const result = makeProjectedEdges(b, cam);
     expect(result.visible).toBeDefined();
     expect(result.hidden).toBeDefined();
     expect(result.visible.length).toBeGreaterThan(0);
   });
 
   it('projects a box from top', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('top'));
-    const result = makeProjectedEdges(box, cam);
+    const result = makeProjectedEdges(b, cam);
     expect(result.visible.length).toBeGreaterThan(0);
   });
 
   it('without hidden lines', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('front'));
-    const result = makeProjectedEdges(box, cam, false);
+    const result = makeProjectedEdges(b, cam, false);
     expect(result.visible.length).toBeGreaterThan(0);
     expect(result.hidden.length).toBe(0);
   });
 
   it('with hidden lines', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('front'));
-    const result = makeProjectedEdges(box, cam, true);
+    const result = makeProjectedEdges(b, cam, true);
     expect(result.visible.length).toBeGreaterThan(0);
     expect(result.hidden.length).toBeGreaterThan(0);
   });
 
   it('projects with custom camera', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(createCamera([50, 50, 50], [-1, -1, -1]));
-    const result = makeProjectedEdges(box, cam);
+    const result = makeProjectedEdges(b, cam);
     expect(result.visible.length).toBeGreaterThan(0);
   });
 
   it('projects from all standard planes', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const planes = ['XY', 'XZ', 'YZ', 'front', 'back', 'top', 'bottom', 'left', 'right'] as const;
     for (const p of planes) {
       const cam = unwrap(cameraFromPlane(p));
-      const result = makeProjectedEdges(box, cam);
+      const result = makeProjectedEdges(b, cam);
       expect(result.visible.length).toBeGreaterThan(0);
     }
   });

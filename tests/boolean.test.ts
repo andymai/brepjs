@@ -1,9 +1,16 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, makeSphere, measureVolume, unwrap } from '../src/index.js';
-import { translateShape } from '../src/topology/shapeFns.js';
-import { cloneShape } from '../src/topology/shapeFns.js';
-import { fuseShape, cutShape, intersectShape } from '../src/topology/booleanFns.js';
+import {
+  box,
+  sphere,
+  measureVolume,
+  unwrap,
+  translate,
+  clone,
+  fuse,
+  cut,
+  intersect,
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -11,9 +18,9 @@ beforeAll(async () => {
 
 describe('Boolean operations', () => {
   it('fuses two boxes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = translateShape(box1, [5, 0, 0]);
-    const fused = unwrap(fuseShape(box1, box2));
+    const box1 = box(10, 10, 10);
+    const box2 = translate(box1, [5, 0, 0]);
+    const fused = unwrap(fuse(box1, box2));
     expect(fused).toBeDefined();
     const vol = measureVolume(fused);
     // Two 10x10x10 boxes overlapping by 5x10x10 = 2000 - 500 = 1500
@@ -21,19 +28,19 @@ describe('Boolean operations', () => {
   });
 
   it('cuts a box from a box', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = translateShape(box1, [5, 0, 0]);
-    const cut = unwrap(cutShape(box1, box2));
-    expect(cut).toBeDefined();
-    const vol = measureVolume(cut);
+    const box1 = box(10, 10, 10);
+    const box2 = translate(box1, [5, 0, 0]);
+    const c = unwrap(cut(box1, box2));
+    expect(c).toBeDefined();
+    const vol = measureVolume(c);
     // 10x10x10 minus the 5x10x10 overlap = 500
     expect(vol).toBeCloseTo(500, 0);
   });
 
   it('intersects two boxes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = translateShape(box1, [5, 0, 0]);
-    const common = unwrap(intersectShape(box1, box2));
+    const box1 = box(10, 10, 10);
+    const box2 = translate(box1, [5, 0, 0]);
+    const common = unwrap(intersect(box1, box2));
     expect(common).toBeDefined();
     const vol = measureVolume(common);
     // Overlap region is 5x10x10 = 500
@@ -43,16 +50,16 @@ describe('Boolean operations', () => {
 
 describe('Shape transforms', () => {
   it('translates a box', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const translated = translateShape(box, [100, 0, 0]);
+    const b = box(10, 10, 10);
+    const translated = translate(b, [100, 0, 0]);
     expect(translated).toBeDefined();
     const vol = measureVolume(translated);
     expect(vol).toBeCloseTo(1000, 0);
   });
 
   it('clones a box', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const cloned = cloneShape(box);
+    const b = box(10, 10, 10);
+    const cloned = clone(b);
     expect(cloned).toBeDefined();
     const vol = measureVolume(cloned);
     expect(vol).toBeCloseTo(1000, 0);

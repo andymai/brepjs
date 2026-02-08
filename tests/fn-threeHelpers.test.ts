@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
+  box,
   castShape,
-  meshShape,
-  meshShapeEdges,
+  mesh,
+  meshEdges,
   toBufferGeometryData,
   toLineGeometryData,
 } from '../src/index.js';
@@ -15,9 +15,9 @@ beforeAll(async () => {
 
 describe('toBufferGeometryData', () => {
   it('converts a box mesh to BufferGeometry-compatible data', () => {
-    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-    const mesh = meshShape(box, { tolerance: 0.1, angularTolerance: 0.5 });
-    const data = toBufferGeometryData(mesh);
+    const b = castShape(box(10, 10, 10).wrapped);
+    const m = mesh(b, { tolerance: 0.1, angularTolerance: 0.5 });
+    const data = toBufferGeometryData(m);
 
     // Should have position, normal, and index arrays
     expect(data.position).toBeInstanceOf(Float32Array);
@@ -37,20 +37,20 @@ describe('toBufferGeometryData', () => {
   });
 
   it('returns same underlying typed arrays (zero-copy)', () => {
-    const box = castShape(makeBox([0, 0, 0], [5, 5, 5]).wrapped);
-    const mesh = meshShape(box, { tolerance: 0.1, angularTolerance: 0.5 });
-    const data = toBufferGeometryData(mesh);
+    const b = castShape(box(5, 5, 5).wrapped);
+    const m = mesh(b, { tolerance: 0.1, angularTolerance: 0.5 });
+    const data = toBufferGeometryData(m);
 
     // Should reference the same buffers (no copy)
-    expect(data.position.buffer).toBe(mesh.vertices.buffer);
-    expect(data.normal.buffer).toBe(mesh.normals.buffer);
-    expect(data.index.buffer).toBe(mesh.triangles.buffer);
+    expect(data.position.buffer).toBe(m.vertices.buffer);
+    expect(data.normal.buffer).toBe(m.normals.buffer);
+    expect(data.index.buffer).toBe(m.triangles.buffer);
   });
 
   it('vertex count matches normals count', () => {
-    const box = castShape(makeBox([0, 0, 0], [10, 20, 30]).wrapped);
-    const mesh = meshShape(box, { tolerance: 0.1, angularTolerance: 0.5 });
-    const data = toBufferGeometryData(mesh);
+    const b = castShape(box(10, 20, 30).wrapped);
+    const m = mesh(b, { tolerance: 0.1, angularTolerance: 0.5 });
+    const data = toBufferGeometryData(m);
 
     const vertexCount = data.position.length / 3;
     const normalCount = data.normal.length / 3;
@@ -60,8 +60,8 @@ describe('toBufferGeometryData', () => {
 
 describe('toLineGeometryData', () => {
   it('converts edge mesh to line geometry data', () => {
-    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-    const edgeMesh = meshShapeEdges(box, { tolerance: 0.1, angularTolerance: 0.5 });
+    const b = castShape(box(10, 10, 10).wrapped);
+    const edgeMesh = meshEdges(b, { tolerance: 0.1, angularTolerance: 0.5 });
     const data = toLineGeometryData(edgeMesh);
 
     expect(data.position).toBeInstanceOf(Float32Array);

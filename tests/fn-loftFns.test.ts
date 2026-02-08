@@ -3,30 +3,27 @@ import { initOC } from './setup.js';
 import {
   sketchRectangle,
   sketchCircle,
-  // functional API
   castShape,
-  loftWires,
+  translate,
+  loft,
   measureVolume,
   isShape3D,
   isOk,
   unwrap,
 } from '../src/index.js';
-import { translateShape } from '../src/topology/shapeFns.js';
 
 beforeAll(async () => {
   await initOC();
 }, 30000);
 
-describe('loftWires', () => {
+describe('loft', () => {
   it('lofts two rectangular wires', () => {
     const w1 = castShape(sketchRectangle(10, 10).wire.wrapped);
-    const w2 = castShape(
-      translateShape(
-        sketchRectangle(10, 10, { origin: [0, 0], plane: 'XY' }).wire as any,
-        [0, 0, 20]
-      ).wrapped
+    const w2 = translate(
+      castShape(sketchRectangle(10, 10, { origin: [0, 0], plane: 'XY' }).wire.wrapped),
+      [0, 0, 20]
     );
-    const result = loftWires([w1, w2]);
+    const result = loft([w1, w2]);
     expect(isOk(result)).toBe(true);
     expect(isShape3D(unwrap(result))).toBe(true);
     // Loft of two identical rectangles at different heights = box-like solid
@@ -35,8 +32,8 @@ describe('loftWires', () => {
 
   it('lofts with startPoint', () => {
     const w1 = castShape(sketchCircle(5).wire.wrapped);
-    const w2 = castShape(translateShape(sketchCircle(5).wire as any, [0, 0, 10]).wrapped);
-    const result = loftWires([w1, w2], { startPoint: [0, 0, -5] });
+    const w2 = translate(castShape(sketchCircle(5).wire.wrapped), [0, 0, 10]);
+    const result = loft([w1, w2], { startPoint: [0, 0, -5] });
     expect(isOk(result)).toBe(true);
   });
 });

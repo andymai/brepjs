@@ -1,5 +1,5 @@
 /**
- * v5 Compound operations — tests for drill, pocket, boss, mirrorJoin, rectangularPattern.
+ * Compound operations — tests for drill, pocket, boss, mirrorJoin, rectangularPattern.
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';

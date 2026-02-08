@@ -88,10 +88,10 @@ A connected set of faces forming a surface. A closed shell (all faces joined, no
 A watertight 3D volume bounded by a closed shell. This is the primary result type in CAD — it represents a real physical part with definite inside and outside.
 
 ```typescript
-import { makeBox, measureVolume } from 'brepjs';
+import { box, measureVolume } from 'brepjs';
 
-const box = makeBox([0, 0, 0], [10, 10, 10]); // returns Solid
-measureVolume(box); // 1000
+const myBox = box([0, 0, 0], [10, 10, 10]); // returns Solid
+measureVolume(myBox); // 1000
 ```
 
 ### Compound
@@ -99,9 +99,9 @@ measureVolume(box); // 1000
 A collection of shapes that aren't necessarily connected. Useful for grouping parts in an assembly.
 
 ```typescript
-import { makeCompound } from 'brepjs';
+import { compound } from 'brepjs';
 
-const assembly = makeCompound([partA, partB, partC]);
+const assembly = compound([partA, partB, partC]);
 ```
 
 ## How brepjs represents shapes
@@ -135,14 +135,14 @@ The standard CAD workflow:
 
 ```typescript
 // 1. Create primitives
-const block = makeBox([0, 0, 0], [50, 30, 20]);
-const hole = translateShape(makeCylinder(5, 25), [25, 15, -2]);
+const block = box([0, 0, 0], [50, 30, 20]);
+const hole = translate(cylinder(5, 25), [25, 15, -2]);
 
 // 2. Boolean operations
-const drilled = unwrap(cutShape(block, hole));
+const drilled = unwrap(cut(block, hole));
 
 // 3. Refine edges
-const filleted = unwrap(filletShape(drilled, getEdges(drilled), 2));
+const filleted = unwrap(fillet(drilled, getEdges(drilled), 2));
 
 // 4. Export
 const step = unwrap(exportSTEP(filleted));
@@ -168,11 +168,11 @@ Find specific features on a shape and modify them:
 ```typescript
 // Find vertical edges and fillet them
 const vertEdges = edgeFinder().inDirection('Z').findAll(part);
-const rounded = unwrap(filletShape(part, vertEdges, 3));
+const rounded = unwrap(fillet(part, vertEdges, 3));
 
 // Find the top face and shell the part (hollow it out)
 const topFaces = faceFinder().inDirection('Z').findAll(part);
-const shelled = unwrap(shellShape(part, topFaces, 2));
+const shelled = unwrap(shell(part, topFaces, 2));
 ```
 
 ## Key differences from mesh libraries

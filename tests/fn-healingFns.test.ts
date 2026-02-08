@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeSphere,
+  box,
+  sphere,
   getEdges,
   getFaces,
   getWires,
-  isShapeValid,
+  isValid,
   healSolid,
   healFace,
   healWire,
-  healShape,
+  heal,
   isOk,
   unwrap,
   measureVolume,
@@ -24,29 +24,29 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-describe('isShapeValid', () => {
+describe('isValid', () => {
   it('returns true for a valid box', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(isShapeValid(box)).toBe(true);
+    const b = box(10, 10, 10);
+    expect(isValid(b)).toBe(true);
   });
 
   it('returns true for a valid sphere', () => {
-    const sphere = makeSphere(5);
-    expect(isShapeValid(sphere)).toBe(true);
+    const s = sphere(5);
+    expect(isValid(s)).toBe(true);
   });
 
   it('returns true for a valid face', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
-    expect(isShapeValid(faces[0]!)).toBe(true);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    expect(isValid(faces[0]!)).toBe(true);
   });
 });
 
 describe('healSolid', () => {
   it('heals a valid solid (returns original)', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    expect(isShapeValid(box)).toBe(true);
-    const result = healSolid(box);
+    const b = box(10, 10, 10);
+    expect(isValid(b)).toBe(true);
+    const result = healSolid(b);
     expect(isOk(result)).toBe(true);
     const healed = unwrap(result);
     expect(isSolid(healed)).toBe(true);
@@ -56,8 +56,8 @@ describe('healSolid', () => {
   });
 
   it('heals a sphere solid', () => {
-    const sphere = makeSphere(5);
-    const result = healSolid(sphere);
+    const s = sphere(5);
+    const result = healSolid(s);
     // ShapeFix_Solid may or may not successfully heal a sphere
     // (spheres have special topology), but it should not crash
     if (isOk(result)) {
@@ -68,8 +68,8 @@ describe('healSolid', () => {
 
 describe('healFace', () => {
   it('heals a valid face (no-op)', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
     const result = healFace(faces[0]!);
     expect(isOk(result)).toBe(true);
     const healed = unwrap(result);
@@ -77,8 +77,8 @@ describe('healFace', () => {
   });
 
   it('preserves face area', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
     const originalArea = measureArea(faces[0]!);
     const healed = unwrap(healFace(faces[0]!));
     const healedArea = measureArea(healed);
@@ -88,16 +88,16 @@ describe('healFace', () => {
 
 describe('healWire', () => {
   it('heals a valid wire (no-op)', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const wires = getWires(box);
+    const b = box(10, 10, 10);
+    const wires = getWires(b);
     const result = healWire(wires[0]!);
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
 
   it('heals a wire with face context', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
     const wires = getWires(faces[0]!);
     const result = healWire(wires[0]!, faces[0]!);
     expect(isOk(result)).toBe(true);
@@ -105,35 +105,35 @@ describe('healWire', () => {
   });
 });
 
-describe('healShape', () => {
+describe('heal', () => {
   it('dispatches to healSolid for solids', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = healShape(box);
+    const b = box(10, 10, 10);
+    const result = heal(b);
     expect(isOk(result)).toBe(true);
     expect(isSolid(unwrap(result))).toBe(true);
   });
 
   it('dispatches to healFace for faces', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
-    const result = healShape(faces[0]!);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    const result = heal(faces[0]!);
     expect(isOk(result)).toBe(true);
     expect(isFace(unwrap(result))).toBe(true);
   });
 
   it('dispatches to healWire for wires', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const wires = getWires(box);
-    const result = healShape(wires[0]!);
+    const b = box(10, 10, 10);
+    const wires = getWires(b);
+    const result = heal(wires[0]!);
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
 
   it('returns ok for unsupported shape types (passthrough)', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     // An edge is neither solid, face, nor wire — should passthrough
-    const edges = getEdges(box);
-    const result = healShape(edges[0]!);
+    const edges = getEdges(b);
+    const result = heal(edges[0]!);
     expect(isOk(result)).toBe(true);
   });
 });

@@ -20,7 +20,7 @@ import {
   fuse2D,
   cut2D,
   intersect2D,
-  makeBox,
+  box,
   getFaces,
 } from '../src/index.js';
 import { fillet2D, chamfer2D } from '../src/2d/blueprints/customCorners.js';
@@ -491,9 +491,9 @@ describe('offsetBlueprint', () => {
 describe('Blueprints.sketchOnFace', () => {
   it('sketches blueprints on a box face', () => {
     const b = new Blueprints([rect(5, 5), rect(5, 5, 10, 0)]);
-    const box = makeBox([0, 0, 0], [30, 30, 30]);
-    const face = getFaces(box)[0];
-    const sketches = b.sketchOnFace(face, 'original');
+    const solid = box(30, 30, 30);
+    const f = getFaces(solid)[0];
+    const sketches = b.sketchOnFace(f, 'original');
     expect(Array.isArray(sketches)).toBe(true);
     expect(sketches.length).toBe(2);
   });

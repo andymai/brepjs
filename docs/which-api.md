@@ -2,18 +2,18 @@
 
 brepjs offers several API styles. This guide helps you choose the right one for your use case.
 
-> **Recommended starting point:** The **functional API** (`makeBox`, `fuseShape`, `filletShape`) covers the vast majority of use cases and is the simplest to learn. Start there unless you have a specific reason to use the Sketcher or Drawing API.
+> **Recommended starting point:** The **functional API** (`box`, `fuse`, `fillet`) covers the vast majority of use cases and is the simplest to learn. Start there unless you have a specific reason to use the Sketcher or Drawing API.
 
 ## Quick decision
 
-| If you want to...                 | Use                                              |
-| --------------------------------- | ------------------------------------------------ |
-| Create shapes from scratch        | **Sketcher** or **primitives** (`makeBox`)       |
-| Combine/modify shapes             | **Functional API** (`fuseShape`, `filletShape`)  |
-| Draw 2D profiles                  | **Drawing API** (`drawRectangle`, `drawCircle`)  |
-| Build parametric/composable parts | **Functional API** with `pipe()` or `pipeline()` |
-| Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)     |
-| Import/export files               | **IO functions** (`importSTEP`, `exportSTEP`)    |
+| If you want to...                 | Use                                             |
+| --------------------------------- | ----------------------------------------------- |
+| Create shapes from scratch        | **Sketcher** or **primitives** (`box`)          |
+| Combine/modify shapes             | **Functional API** (`fuse`, `fillet`)           |
+| Draw 2D profiles                  | **Drawing API** (`drawRectangle`, `drawCircle`) |
+| Build parametric/composable parts | **Functional API** with `pipeline()`            |
+| Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)    |
+| Import/export files               | **IO functions** (`importSTEP`, `exportSTEP`)   |
 
 ## The Sketcher (fluent chaining)
 
@@ -43,36 +43,27 @@ const roundedBox = sketchRoundedRectangle(30, 20, 3).extrude(10);
 Best for: **composing operations**, parametric design, and pipeline-style code.
 
 ```typescript
-import {
-  makeBox,
-  makeCylinder,
-  cutShape,
-  filletShape,
-  edgeFinder,
-  translateShape,
-  unwrap,
-} from 'brepjs';
+import { box, cylinder, cut, fillet, edgeFinder, translate, unwrap } from 'brepjs';
 
-const box = makeBox([0, 0, 0], [30, 20, 10]);
-const hole = translateShape(makeCylinder(5, 15), [15, 10, -2]);
-const drilled = unwrap(cutShape(box, hole));
+const myBox = box([0, 0, 0], [30, 20, 10]);
+const hole = translate(cylinder(5, 15), [15, 10, -2]);
+const drilled = unwrap(cut(myBox, hole));
 const vertEdges = edgeFinder().inDirection('Z').findAll(drilled);
-const filleted = unwrap(filletShape(drilled, vertEdges, 2));
+const filleted = unwrap(fillet(drilled, vertEdges, 2));
 ```
 
 **When to use:** You're modifying shapes (booleans, transforms, fillets, shells), building parametric parts with functions, or chaining operations.
 
 ### Pipeline style
 
-For complex multi-step operations, `pipe()` provides a fluent functional chain:
+For complex multi-step operations, `pipeline()` provides a fluent functional chain:
 
 ```typescript
-import { pipe, makeBox, cutShape, filletShape } from 'brepjs';
+import { pipeline, box, cylinder } from 'brepjs';
 
-const result = pipe(makeBox([0, 0, 0], [30, 20, 10]))
-  .fuse(makeCylinder(5, 15))
-  .fillet(2, (e) => e.inDirection('Z'))
-  .done();
+const result = pipeline(box([0, 0, 0], [30, 20, 10]))
+  .then((b) => fuse(b, cylinder(5, 15)))
+  .then((s) => fillet(s, edgeFinder().inDirection('Z').findAll(s), 2)).result;
 ```
 
 ## Drawing API (2D profiles)
@@ -109,11 +100,11 @@ To reduce autocomplete noise, import from specific modules:
 
 ```typescript
 // Instead of importing everything from 'brepjs':
-import { makeBox, fuseShape, filletShape } from 'brepjs';
+import { box, fuse, fillet } from 'brepjs';
 
 // Import from focused sub-paths:
-import { makeBox, fuseShape, filletShape } from 'brepjs/topology';
-import { extrudeFace, linearPattern } from 'brepjs/operations';
+import { box, fuse, fillet } from 'brepjs/topology';
+import { extrude, linearPattern } from 'brepjs/operations';
 import { drawRectangle, sketchExtrude } from 'brepjs/sketching';
 import { edgeFinder, faceFinder } from 'brepjs/query';
 import { importSTEP, exportSTEP } from 'brepjs/io';
@@ -131,7 +122,7 @@ Not sure which sub-path exports a specific function?
 - **[Function Lookup Table](function-lookup.md)** — Alphabetical index of all 400+ symbols with their sub-path
 - **[Hosted API Reference](https://andymai.github.io/brepjs/)** — Searchable TypeDoc documentation
 
-Example: Looking for `filletShape`? Check the lookup table → `brepjs/topology`.
+Example: Looking for `fillet`? Check the lookup table → `brepjs/topology`.
 
 ## Available sub-paths
 

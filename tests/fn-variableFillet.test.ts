@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, getEdges, measureVolume, castShape } from '../src/index.js';
+import { box, getEdges, measureVolume, castShape } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
 
 beforeAll(async () => {
@@ -9,11 +9,11 @@ beforeAll(async () => {
 
 describe('variable fillet via kernel', () => {
   it('applies constant fillet via kernel adapter', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
     const kernel = getKernel();
 
-    const filleted = kernel.fillet(box.wrapped, [edges[0].wrapped], 1);
+    const filleted = kernel.fillet(b.wrapped, [edges[0].wrapped], 1);
     const result = castShape(filleted);
     const vol = measureVolume(result);
     // Filleted volume should be less than original box volume (1000)
@@ -22,12 +22,12 @@ describe('variable fillet via kernel', () => {
   });
 
   it('applies variable fillet with [r1, r2] via kernel adapter', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
     const kernel = getKernel();
 
     // Variable radius: starts at 0.5, ends at 2
-    const filleted = kernel.fillet(box.wrapped, [edges[0].wrapped], [0.5, 2]);
+    const filleted = kernel.fillet(b.wrapped, [edges[0].wrapped], [0.5, 2]);
     const result = castShape(filleted);
     const vol = measureVolume(result);
     expect(vol).toBeLessThan(1000);
@@ -35,12 +35,12 @@ describe('variable fillet via kernel', () => {
   });
 
   it('variable fillet produces different result than constant fillet', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
     const kernel = getKernel();
 
-    const constFilleted = kernel.fillet(box.wrapped, [edges[0].wrapped], 1.5);
-    const varFilleted = kernel.fillet(box.wrapped, [edges[0].wrapped], [0.5, 2.5]);
+    const constFilleted = kernel.fillet(b.wrapped, [edges[0].wrapped], 1.5);
+    const varFilleted = kernel.fillet(b.wrapped, [edges[0].wrapped], [0.5, 2.5]);
 
     const constVol = measureVolume(castShape(constFilleted));
     const varVol = measureVolume(castShape(varFilleted));
@@ -52,13 +52,13 @@ describe('variable fillet via kernel', () => {
   });
 
   it('applies per-edge callback returning variable radius', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
     const kernel = getKernel();
 
     let callCount = 0;
     const filleted = kernel.fillet(
-      box.wrapped,
+      b.wrapped,
       edges.slice(0, 2).map((e) => e.wrapped),
       () => {
         callCount++;

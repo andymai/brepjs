@@ -1,5 +1,5 @@
 /**
- * v5 shape() wrapper — tests for fluent chaining API.
+ * shape() wrapper — tests for fluent chaining API.
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';

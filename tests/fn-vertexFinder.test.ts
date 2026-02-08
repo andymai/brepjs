@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
+  box,
   castShape,
   vertexFinder,
   getVertices,
@@ -19,7 +19,7 @@ beforeAll(async () => {
 }, 30000);
 
 function fnBox(x = 10, y = 10, z = 10) {
-  return castShape(makeBox([0, 0, 0], [x, y, z]).wrapped);
+  return castShape(box(x, y, z).wrapped);
 }
 
 describe('getVertices / iterVertices', () => {
@@ -30,9 +30,9 @@ describe('getVertices / iterVertices', () => {
   });
 
   it('iterVertices yields the same count', () => {
-    const box = fnBox();
-    const fromIter = [...iterVertices(box)];
-    const fromArray = getVertices(box);
+    const b = fnBox();
+    const fromIter = [...iterVertices(b)];
+    const fromArray = getVertices(b);
     expect(fromIter.length).toBe(fromArray.length);
   });
 
@@ -100,8 +100,8 @@ describe('vertexFinder', () => {
   });
 
   it('nearestTo finds closest vertex', () => {
-    const box = fnBox(10, 10, 10);
-    const vertices = vertexFinder().nearestTo([11, 11, 11]).findAll(box);
+    const b = fnBox(10, 10, 10);
+    const vertices = vertexFinder().nearestTo([11, 11, 11]).findAll(b);
     expect(vertices.length).toBe(1);
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(10);
@@ -110,8 +110,8 @@ describe('vertexFinder', () => {
   });
 
   it('nearestTo with unique returns Result', () => {
-    const box = fnBox(10, 10, 10);
-    const result = vertexFinder().nearestTo([0, 0, 0]).findUnique(box);
+    const b = fnBox(10, 10, 10);
+    const result = vertexFinder().nearestTo([0, 0, 0]).findUnique(b);
     expect(isOk(result)).toBe(true);
     const pos = vertexPosition(unwrap(result));
     expect(pos[0]).toBeCloseTo(0);
@@ -120,17 +120,17 @@ describe('vertexFinder', () => {
   });
 
   it('atDistance finds vertices at a given distance from origin', () => {
-    const box = fnBox(10, 10, 10);
+    const b = fnBox(10, 10, 10);
     // Distance from origin to (10,0,0) = 10
-    const dist10 = vertexFinder().atDistance(10, [0, 0, 0], 0.01).findAll(box);
+    const dist10 = vertexFinder().atDistance(10, [0, 0, 0], 0.01).findAll(b);
     // Vertices at distance 10 from origin: (10,0,0), (0,10,0), (0,0,10)
     expect(dist10.length).toBe(3);
   });
 
   it('atDistance from a non-origin point', () => {
-    const box = fnBox(10, 10, 10);
+    const b = fnBox(10, 10, 10);
     // Distance from (10,10,10) to (0,10,10) = 10
-    const verts = vertexFinder().atDistance(10, [10, 10, 10], 0.01).findAll(box);
+    const verts = vertexFinder().atDistance(10, [10, 10, 10], 0.01).findAll(b);
     // 3 vertices are at distance 10 from (10,10,10): (0,10,10), (10,0,10), (10,10,0)
     expect(verts.length).toBe(3);
   });
@@ -162,10 +162,10 @@ describe('vertexFinder', () => {
   });
 
   it('supports inList filter', () => {
-    const box = fnBox();
-    const allVerts = getVertices(box);
+    const b = fnBox();
+    const allVerts = getVertices(b);
     const subset = [allVerts[0]!, allVerts[1]!];
-    const found = vertexFinder().inList(subset).findAll(box);
+    const found = vertexFinder().inList(subset).findAll(b);
     expect(found.length).toBe(2);
   });
 
@@ -187,11 +187,11 @@ describe('vertexFinder', () => {
   });
 
   it('combines multiple filters', () => {
-    const box = fnBox(10, 20, 30);
+    const b = fnBox(10, 20, 30);
     const verts = vertexFinder()
       .withinBox([-1, -1, -1], [1, 21, 31])
       .when((v) => vertexPosition(v)[2] > 15)
-      .findAll(box);
+      .findAll(b);
     // Within box: x in [-1,1] → x=0 only. z > 15 → z=30.
     // Matching vertices: (0,0,30) and (0,20,30)
     expect(verts.length).toBe(2);

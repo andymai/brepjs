@@ -1,10 +1,9 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeCylinder,
+  box,
+  cylinder,
   sketchRectangle,
-  // functional API
   castShape,
   getFaces,
   getSurfaceType,
@@ -26,19 +25,19 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-function getFirstFace(shape: ReturnType<typeof makeBox>) {
+function getFirstFace(shape: ReturnType<typeof box>) {
   return getFaces(castShape(shape.wrapped))[0]!;
 }
 
 describe('getSurfaceType / faceGeomType', () => {
   it('returns PLANE for box face', () => {
-    const face = getFirstFace(makeBox([0, 0, 0], [10, 10, 10]));
-    expect(unwrap(getSurfaceType(face))).toBe('PLANE');
-    expect(faceGeomType(face)).toBe('PLANE');
+    const f = getFirstFace(box(10, 10, 10));
+    expect(unwrap(getSurfaceType(f))).toBe('PLANE');
+    expect(faceGeomType(f)).toBe('PLANE');
   });
 
   it('returns CYLINDRE for cylinder face', () => {
-    const cyl = makeCylinder(5, 10);
+    const cyl = cylinder(5, 10);
     const faces = getFaces(castShape(cyl.wrapped));
     const types = faces.map((f) => faceGeomType(f));
     expect(types).toContain('CYLINDRE');
@@ -47,22 +46,22 @@ describe('getSurfaceType / faceGeomType', () => {
 
 describe('faceOrientation / flipFaceOrientation', () => {
   it('returns forward or backward', () => {
-    const face = getFirstFace(makeBox([0, 0, 0], [10, 10, 10]));
-    const o = faceOrientation(face);
+    const f = getFirstFace(box(10, 10, 10));
+    const o = faceOrientation(f);
     expect(['forward', 'backward']).toContain(o);
   });
 
   it('flips orientation', () => {
-    const face = getFirstFace(makeBox([0, 0, 0], [10, 10, 10]));
-    const flipped = flipFaceOrientation(face);
+    const f = getFirstFace(box(10, 10, 10));
+    const flipped = flipFaceOrientation(f);
     expect(flipped).toBeDefined();
   });
 });
 
 describe('uvBounds', () => {
   it('returns valid UV bounds', () => {
-    const face = getFirstFace(makeBox([0, 0, 0], [10, 10, 10]));
-    const b = uvBounds(face);
+    const f = getFirstFace(box(10, 10, 10));
+    const b = uvBounds(f);
     expect(b.uMax).toBeGreaterThan(b.uMin);
     expect(b.vMax).toBeGreaterThan(b.vMin);
   });
@@ -71,8 +70,8 @@ describe('uvBounds', () => {
 describe('pointOnSurface', () => {
   it('returns a Vec3 point', () => {
     const rect = sketchRectangle(10, 10);
-    const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const pt = pointOnSurface(face, 0.5, 0.5);
+    const f = getFaces(castShape(rect.face().wrapped))[0]!;
+    const pt = pointOnSurface(f, 0.5, 0.5);
     expect(pt).toHaveLength(3);
     expect(typeof pt[0]).toBe('number');
   });
@@ -81,8 +80,8 @@ describe('pointOnSurface', () => {
 describe('uvCoordinates', () => {
   it('returns [u, v] pair', () => {
     const rect = sketchRectangle(10, 10);
-    const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const [u, v] = uvCoordinates(face, [0, 0, 0]);
+    const f = getFaces(castShape(rect.face().wrapped))[0]!;
+    const [u, v] = uvCoordinates(f, [0, 0, 0]);
     expect(typeof u).toBe('number');
     expect(typeof v).toBe('number');
   });
@@ -91,9 +90,9 @@ describe('uvCoordinates', () => {
 describe('normalAt', () => {
   it('returns normal vector', () => {
     const rect = sketchRectangle(10, 10);
-    const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const n = normalAt(face);
-    // Normal of XY plane face should be approx [0,0,±1]
+    const f = getFaces(castShape(rect.face().wrapped))[0]!;
+    const n = normalAt(f);
+    // Normal of XY plane face should be approx [0,0,+/-1]
     expect(Math.abs(n[2])).toBeCloseTo(1, 1);
   });
 });
@@ -101,8 +100,8 @@ describe('normalAt', () => {
 describe('faceCenter', () => {
   it('returns center Vec3', () => {
     const rect = sketchRectangle(10, 10);
-    const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const c = faceCenter(face);
+    const f = getFaces(castShape(rect.face().wrapped))[0]!;
+    const c = faceCenter(f);
     expect(c).toHaveLength(3);
     expect(c[0]).toBeCloseTo(0, 0);
     expect(c[1]).toBeCloseTo(0, 0);
@@ -112,15 +111,15 @@ describe('faceCenter', () => {
 describe('outerWire / innerWires', () => {
   it('returns outer wire of a face', () => {
     const rect = sketchRectangle(10, 10);
-    const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const wire = outerWire(face);
-    expect(isWire(wire)).toBe(true);
+    const f = getFaces(castShape(rect.face().wrapped))[0]!;
+    const w = outerWire(f);
+    expect(isWire(w)).toBe(true);
   });
 
   it('returns empty inner wires for simple face', () => {
     const rect = sketchRectangle(10, 10);
-    const face = getFaces(castShape(rect.face().wrapped))[0]!;
-    const inner = innerWires(face);
+    const f = getFaces(castShape(rect.face().wrapped))[0]!;
+    const inner = innerWires(f);
     expect(inner).toHaveLength(0);
   });
 });

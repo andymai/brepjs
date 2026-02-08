@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, castShape, meshShape, exportGltf, exportGlb } from '../src/index.js';
+import { box, castShape, mesh, exportGltf, exportGlb } from '../src/index.js';
 import type { ShapeMesh, GltfExportOptions } from '../src/index.js';
 
 beforeAll(async () => {
@@ -8,23 +8,23 @@ beforeAll(async () => {
 }, 30000);
 
 function getBoxMesh(): ShapeMesh {
-  const box = makeBox([0, 0, 0], [10, 10, 10]);
-  const shape = castShape(box.wrapped);
-  return meshShape(shape);
+  const b = box(10, 10, 10);
+  const shape = castShape(b.wrapped);
+  return mesh(shape);
 }
 
 describe('exportGltf', () => {
   it('produces valid glTF JSON', () => {
-    const mesh = getBoxMesh();
-    const json = exportGltf(mesh);
+    const m = getBoxMesh();
+    const json = exportGltf(m);
     const doc = JSON.parse(json);
     expect(doc.asset.version).toBe('2.0');
     expect(doc.asset.generator).toBe('brepjs');
   });
 
   it('has correct structure', () => {
-    const mesh = getBoxMesh();
-    const json = exportGltf(mesh);
+    const m = getBoxMesh();
+    const json = exportGltf(m);
     const doc = JSON.parse(json);
 
     expect(doc.scenes).toHaveLength(1);
@@ -37,28 +37,28 @@ describe('exportGltf', () => {
   });
 
   it('has correct accessor counts', () => {
-    const mesh = getBoxMesh();
-    const json = exportGltf(mesh);
+    const m = getBoxMesh();
+    const json = exportGltf(m);
     const doc = JSON.parse(json);
 
     // Indices accessor
-    expect(doc.accessors[0].count).toBe(mesh.triangles.length);
+    expect(doc.accessors[0].count).toBe(m.triangles.length);
     expect(doc.accessors[0].type).toBe('SCALAR');
 
     // Position accessor
-    expect(doc.accessors[1].count).toBe(mesh.vertices.length / 3);
+    expect(doc.accessors[1].count).toBe(m.vertices.length / 3);
     expect(doc.accessors[1].type).toBe('VEC3');
     expect(doc.accessors[1].min).toHaveLength(3);
     expect(doc.accessors[1].max).toHaveLength(3);
 
     // Normal accessor
-    expect(doc.accessors[2].count).toBe(mesh.normals.length / 3);
+    expect(doc.accessors[2].count).toBe(m.normals.length / 3);
     expect(doc.accessors[2].type).toBe('VEC3');
   });
 
   it('has embedded base64 buffer', () => {
-    const mesh = getBoxMesh();
-    const json = exportGltf(mesh);
+    const m = getBoxMesh();
+    const json = exportGltf(m);
     const doc = JSON.parse(json);
 
     expect(doc.buffers).toHaveLength(1);
@@ -67,8 +67,8 @@ describe('exportGltf', () => {
   });
 
   it('min/max bounds are correct for a 10x10x10 box', () => {
-    const mesh = getBoxMesh();
-    const json = exportGltf(mesh);
+    const m = getBoxMesh();
+    const json = exportGltf(m);
     const doc = JSON.parse(json);
 
     const min = doc.accessors[1].min;
@@ -84,8 +84,8 @@ describe('exportGltf', () => {
 
 describe('exportGlb', () => {
   it('produces valid GLB binary', () => {
-    const mesh = getBoxMesh();
-    const glb = exportGlb(mesh);
+    const m = getBoxMesh();
+    const glb = exportGlb(m);
     expect(glb).toBeInstanceOf(ArrayBuffer);
 
     const view = new DataView(glb);
@@ -98,8 +98,8 @@ describe('exportGlb', () => {
   });
 
   it('has JSON and BIN chunks', () => {
-    const mesh = getBoxMesh();
-    const glb = exportGlb(mesh);
+    const m = getBoxMesh();
+    const glb = exportGlb(m);
     const view = new DataView(glb);
 
     // First chunk: JSON
@@ -120,15 +120,15 @@ describe('exportGlb', () => {
   });
 
   it('GLB size is > 0', () => {
-    const mesh = getBoxMesh();
-    const glb = exportGlb(mesh);
+    const m = getBoxMesh();
+    const glb = exportGlb(m);
     expect(glb.byteLength).toBeGreaterThan(100);
   });
 });
 
 describe('glTF with materials', () => {
   function getMeshWithMaterials(): { mesh: ShapeMesh; options: GltfExportOptions } {
-    const mesh = getBoxMesh();
+    const m = getBoxMesh();
     // Assign two different materials to face groups
     const redMat = {
       name: 'red',
@@ -144,17 +144,17 @@ describe('glTF with materials', () => {
     };
     const materials = new Map<number, typeof redMat>();
     // Assign first face group to red, second to blue
-    for (let i = 0; i < mesh.faceGroups.length; i++) {
+    for (let i = 0; i < m.faceGroups.length; i++) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i < length
-      const fg = mesh.faceGroups[i]!;
+      const fg = m.faceGroups[i]!;
       materials.set(fg.faceId, i % 2 === 0 ? redMat : blueMat);
     }
-    return { mesh, options: { materials } };
+    return { mesh: m, options: { materials } };
   }
 
   it('exportGltf includes materials array', () => {
-    const { mesh, options } = getMeshWithMaterials();
-    const json = exportGltf(mesh, options);
+    const { mesh: m, options } = getMeshWithMaterials();
+    const json = exportGltf(m, options);
     const doc = JSON.parse(json);
 
     expect(doc.materials).toBeDefined();
@@ -162,8 +162,8 @@ describe('glTF with materials', () => {
   });
 
   it('materials have PBR properties', () => {
-    const { mesh, options } = getMeshWithMaterials();
-    const json = exportGltf(mesh, options);
+    const { mesh: m, options } = getMeshWithMaterials();
+    const json = exportGltf(m, options);
     const doc = JSON.parse(json);
 
     for (const mat of doc.materials) {
@@ -175,8 +175,8 @@ describe('glTF with materials', () => {
   });
 
   it('primitives reference material indices', () => {
-    const { mesh, options } = getMeshWithMaterials();
-    const json = exportGltf(mesh, options);
+    const { mesh: m, options } = getMeshWithMaterials();
+    const json = exportGltf(m, options);
     const doc = JSON.parse(json);
 
     const primitives = doc.meshes[0].primitives;
@@ -188,8 +188,8 @@ describe('glTF with materials', () => {
   });
 
   it('total triangle count matches across primitives', () => {
-    const { mesh, options } = getMeshWithMaterials();
-    const json = exportGltf(mesh, options);
+    const { mesh: m, options } = getMeshWithMaterials();
+    const json = exportGltf(m, options);
     const doc = JSON.parse(json);
 
     let totalIndices = 0;
@@ -197,12 +197,12 @@ describe('glTF with materials', () => {
       const indicesAcc = doc.accessors[prim.indices];
       totalIndices += indicesAcc.count;
     }
-    expect(totalIndices).toBe(mesh.triangles.length);
+    expect(totalIndices).toBe(m.triangles.length);
   });
 
   it('exportGltf has embedded base64 buffer with materials', () => {
-    const { mesh, options } = getMeshWithMaterials();
-    const json = exportGltf(mesh, options);
+    const { mesh: m, options } = getMeshWithMaterials();
+    const json = exportGltf(m, options);
     const doc = JSON.parse(json);
 
     expect(doc.buffers).toHaveLength(1);
@@ -211,8 +211,8 @@ describe('glTF with materials', () => {
   });
 
   it('exportGlb produces valid GLB with materials', () => {
-    const { mesh, options } = getMeshWithMaterials();
-    const glb = exportGlb(mesh, options);
+    const { mesh: m, options } = getMeshWithMaterials();
+    const glb = exportGlb(m, options);
     expect(glb).toBeInstanceOf(ArrayBuffer);
 
     const view = new DataView(glb);

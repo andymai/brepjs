@@ -9,17 +9,17 @@ Best practices for achieving optimal performance with brepjs.
 The `gcWithScope` function provides automatic cleanup of OCCT objects within a scope:
 
 ```typescript
-import { gcWithScope, makeBox, fuseShape } from 'brepjs';
+import { gcWithScope, box, fuse } from 'brepjs';
 
 function buildComplexShape() {
   const r = gcWithScope();
 
   // Intermediate shapes are automatically cleaned up
-  const box1 = r(makeBox([0, 0, 0], [10, 10, 10]));
-  const box2 = r(makeBox([5, 0, 0], [15, 10, 10]));
+  const box1 = r(box([0, 0, 0], [10, 10, 10]));
+  const box2 = r(box([5, 0, 0], [15, 10, 10]));
 
   // Return the result — it escapes the scope
-  return fuseShape(box1, box2);
+  return fuse(box1, box2);
 }
 ```
 
@@ -35,15 +35,15 @@ Modern brepjs uses `Symbol.dispose` and `FinalizationRegistry` for memory manage
 
 ```typescript
 // ❌ Old pattern — error-prone
-const box = makeBox([10, 10, 10]);
+const myBox = box([10, 10, 10]);
 try {
-  doSomething(box);
+  doSomething(myBox);
 } finally {
-  box.delete();
+  myBox.delete();
 }
 
 // ✅ Modern pattern — automatic cleanup (requires TypeScript 5.9+)
-using box = makeBox([10, 10, 10]);
+using myBox = box([10, 10, 10]);
 doSomething(box);
 ```
 
@@ -59,7 +59,7 @@ import { fuseAll, cutAll } from 'brepjs';
 // ❌ Slow — O(n) operations
 let result = shapes[0];
 for (const shape of shapes.slice(1)) {
-  result = fuseShape(result, shape);
+  result = fuse(result, shape);
 }
 
 // ✅ Fast — single N-way operation
@@ -74,7 +74,7 @@ When fusing shapes that share faces, use the `optimisation` option:
 
 ```typescript
 // Adjacent boxes sharing a face
-const result = fuseShape(box1, box2, {
+const result = fuse(box1, box2, {
   optimisation: 'commonFace', // or 'sameFace' for identical faces
 });
 ```
@@ -89,13 +89,13 @@ const result = fuseShape(box1, box2, {
 brepjs caches mesh results for shapes. The cache is keyed by shape hash and mesh options.
 
 ```typescript
-import { meshShape, clearMeshCache } from 'brepjs';
+import { mesh, clearMeshCache } from 'brepjs';
 
 // First call computes the mesh
-const mesh1 = meshShape(shape, { tolerance: 0.1 });
+const mesh1 = mesh(shape, { tolerance: 0.1 });
 
 // Second call returns cached result
-const mesh2 = meshShape(shape, { tolerance: 0.1 });
+const mesh2 = mesh(shape, { tolerance: 0.1 });
 
 // Clear cache if memory is constrained
 clearMeshCache();
@@ -180,15 +180,15 @@ printResults(results);
 ```typescript
 // ❌ Leaks memory
 for (let i = 0; i < 1000; i++) {
-  const box = makeBox([i, 0, 0], [i + 1, 1, 1]);
-  // box is never cleaned up
+  const b = box([i, 0, 0], [i + 1, 1, 1]);
+  // b is never cleaned up
 }
 
 // ✅ Use gcWithScope
 for (let i = 0; i < 1000; i++) {
   const r = gcWithScope();
-  const box = r(makeBox([i, 0, 0], [i + 1, 1, 1]));
-  // Do something with box
+  const b = r(box([i, 0, 0], [i + 1, 1, 1]));
+  // Do something with b
   // Automatically cleaned up at loop iteration end
 }
 ```
@@ -207,10 +207,10 @@ const shape = castShape(operation.Shape());
 
 ```typescript
 // ❌ Unnecessary clone
-const cloned = cloneShape(shape);
-const result = translateShape(cloned, [10, 0, 0]);
+const cloned = clone(shape);
+const result = translate(cloned, [10, 0, 0]);
 
 // ✅ Transform functions return new shapes
-const result = translateShape(shape, [10, 0, 0]);
+const result = translate(shape, [10, 0, 0]);
 // Original shape is unchanged, result is new
 ```

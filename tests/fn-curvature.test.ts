@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import {
-  makeBox,
-  makeSphere,
-  getFaces,
-  measureCurvatureAt,
-  measureCurvatureAtMid,
-} from '../src/index.js';
+import { box, sphere, getFaces, measureCurvatureAt, measureCurvatureAtMid } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -14,13 +8,13 @@ beforeAll(async () => {
 
 describe('measureCurvatureAt', () => {
   it('plane face has zero curvature', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
     expect(faces.length).toBe(6);
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- 6 faces
-    const face = faces[0]!;
-    const result = measureCurvatureAt(face, 0.5, 0.5);
+    const f = faces[0]!;
+    const result = measureCurvatureAt(f, 0.5, 0.5);
 
     expect(result.mean).toBeCloseTo(0, 5);
     expect(result.gaussian).toBeCloseTo(0, 5);
@@ -29,13 +23,13 @@ describe('measureCurvatureAt', () => {
   });
 
   it('sphere face has constant positive curvature', () => {
-    const sphere = makeSphere(5);
-    const faces = getFaces(sphere);
+    const s = sphere(5);
+    const faces = getFaces(s);
     expect(faces.length).toBeGreaterThan(0);
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- at least 1 face
-    const face = faces[0]!;
-    const result = measureCurvatureAtMid(face);
+    const f = faces[0]!;
+    const result = measureCurvatureAtMid(f);
 
     // Sphere of radius R: |k1| = |k2| = 1/R, |mean| = 1/R, gaussian = 1/R²
     // Sign depends on surface normal orientation (inward vs outward)
@@ -47,11 +41,11 @@ describe('measureCurvatureAt', () => {
   });
 
   it('returns direction vectors', () => {
-    const sphere = makeSphere(5);
-    const faces = getFaces(sphere);
+    const s = sphere(5);
+    const faces = getFaces(s);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- at least 1 face
-    const face = faces[0]!;
-    const result = measureCurvatureAtMid(face);
+    const f = faces[0]!;
+    const result = measureCurvatureAtMid(f);
 
     // Direction vectors should be unit vectors
     const maxLen = Math.sqrt(
@@ -67,11 +61,11 @@ describe('measureCurvatureAt', () => {
 
 describe('measureCurvatureAtMid', () => {
   it('works on box faces', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
 
-    for (const face of faces) {
-      const result = measureCurvatureAtMid(face);
+    for (const f of faces) {
+      const result = measureCurvatureAtMid(f);
       // All box faces are planar — zero curvature
       expect(result.mean).toBeCloseTo(0, 5);
       expect(result.gaussian).toBeCloseTo(0, 5);

@@ -203,4 +203,4 @@ function myOperation(value: number): Result<number> {
 2. **Read the message** — it often contains specific details
 3. **Check the cause** — it may contain the underlying exception
 4. **Verify inputs** — most errors result from invalid inputs
-5. **Check geometry validity** — use `isShapeNull()` to verify shapes
+5. **Check geometry validity** — use `isEmpty()` to verify shapes

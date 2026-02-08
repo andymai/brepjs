@@ -1,12 +1,9 @@
-import { describe, expect, it, beforeAll, beforeEach } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeLine,
-  // functional API
-  castShape,
-  meshShape,
-  meshShapeEdges,
+  box,
+  mesh,
+  meshEdges,
   exportSTEP,
   exportSTL,
   isOk,
@@ -18,69 +15,65 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-describe('meshShape', () => {
+describe('mesh', () => {
   it('meshes a box into triangles', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const mesh = meshShape(castShape(box.wrapped));
-    expect(mesh.vertices.length).toBeGreaterThan(0);
-    expect(mesh.triangles.length).toBeGreaterThan(0);
-    expect(mesh.normals.length).toBeGreaterThan(0);
-    expect(mesh.faceGroups.length).toBe(6); // 6 faces
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    expect(m.vertices.length).toBeGreaterThan(0);
+    expect(m.triangles.length).toBeGreaterThan(0);
+    expect(m.normals.length).toBeGreaterThan(0);
+    expect(m.faceGroups.length).toBe(6); // 6 faces
   });
 
   it('respects tolerance option', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const coarse = meshShape(castShape(box.wrapped), { tolerance: 1 });
-    const fine = meshShape(castShape(box.wrapped), { tolerance: 0.01 });
+    const b = box(10, 10, 10);
+    const coarse = mesh(b, { tolerance: 1 });
+    const fine = mesh(b, { tolerance: 0.01 });
     // Fine mesh may have more vertices
     expect(fine.vertices.length).toBeGreaterThanOrEqual(coarse.vertices.length);
   });
 
   it('returns cached result on second call with same parameters', () => {
     clearMeshCache();
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const shape = castShape(box.wrapped);
-    const mesh1 = meshShape(shape, { tolerance: 0.1 });
-    const mesh2 = meshShape(shape, { tolerance: 0.1 });
+    const b = box(10, 10, 10);
+    const mesh1 = mesh(b, { tolerance: 0.1 });
+    const mesh2 = mesh(b, { tolerance: 0.1 });
     // Cached — same object reference
     expect(mesh2).toBe(mesh1);
   });
 
   it('bypasses cache when cache option is false', () => {
     clearMeshCache();
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const shape = castShape(box.wrapped);
-    const mesh1 = meshShape(shape, { tolerance: 0.1 });
-    const mesh2 = meshShape(shape, { tolerance: 0.1, cache: false });
+    const b = box(10, 10, 10);
+    const mesh1 = mesh(b, { tolerance: 0.1 });
+    const mesh2 = mesh(b, { tolerance: 0.1, cache: false });
     // Not cached — different object
     expect(mesh2).not.toBe(mesh1);
   });
 });
 
-describe('meshShapeEdges', () => {
+describe('meshEdges', () => {
   it('meshes edge curves of a box', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edgeMesh = meshShapeEdges(castShape(box.wrapped));
+    const b = box(10, 10, 10);
+    const edgeMesh = meshEdges(b);
     expect(edgeMesh.lines.length).toBeGreaterThan(0);
     expect(edgeMesh.edgeGroups.length).toBe(12); // 12 edges on a box
   });
 
   it('returns cached result on second call with same parameters', () => {
     clearMeshCache();
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const shape = castShape(box.wrapped);
-    const mesh1 = meshShapeEdges(shape, { tolerance: 0.1 });
-    const mesh2 = meshShapeEdges(shape, { tolerance: 0.1 });
+    const b = box(10, 10, 10);
+    const mesh1 = meshEdges(b, { tolerance: 0.1 });
+    const mesh2 = meshEdges(b, { tolerance: 0.1 });
     // Cached — same object reference
     expect(mesh2).toBe(mesh1);
   });
 
   it('bypasses cache when cache option is false', () => {
     clearMeshCache();
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const shape = castShape(box.wrapped);
-    const mesh1 = meshShapeEdges(shape, { tolerance: 0.1 });
-    const mesh2 = meshShapeEdges(shape, { tolerance: 0.1, cache: false });
+    const b = box(10, 10, 10);
+    const mesh1 = meshEdges(b, { tolerance: 0.1 });
+    const mesh2 = meshEdges(b, { tolerance: 0.1, cache: false });
     // Not cached — different object
     expect(mesh2).not.toBe(mesh1);
   });
@@ -88,8 +81,8 @@ describe('meshShapeEdges', () => {
 
 describe('exportSTEP', () => {
   it('exports a shape to STEP blob', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = exportSTEP(castShape(box.wrapped));
+    const b = box(10, 10, 10);
+    const result = exportSTEP(b);
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
     expect(blob.size).toBeGreaterThan(0);
@@ -98,8 +91,8 @@ describe('exportSTEP', () => {
 
 describe('exportSTL', () => {
   it('exports a shape to STL blob', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = exportSTL(castShape(box.wrapped));
+    const b = box(10, 10, 10);
+    const result = exportSTL(b);
     expect(isOk(result)).toBe(true);
     const blob = unwrap(result);
     expect(blob.size).toBeGreaterThan(0);

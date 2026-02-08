@@ -30,11 +30,11 @@ brepjs organizes its API into focused sub-path imports to reduce autocomplete no
 ## Quick Example
 
 ```typescript
-import { makeBox, fuseShape, filletShape, unwrap, edgeFinder } from 'brepjs/topology';
-import { makeCylinder } from 'brepjs/topology';
+import { box, fuse, fillet, unwrap, edgeFinder } from 'brepjs/topology';
+import { cylinder } from 'brepjs/topology';
 
-const box = makeBox([0, 0, 0], [30, 20, 10]);
-const cyl = makeCylinder(5, 15, [15, 10, -2]);
-const fused = unwrap(fuseShape(box, cyl));
-const filleted = unwrap(filletShape(fused, edgeFinder().inDirection('Z').findAll(fused), 2));
+const myBox = box([0, 0, 0], [30, 20, 10]);
+const cyl = cylinder(5, 15, [15, 10, -2]);
+const fused = unwrap(fuse(myBox, cyl));
+const filleted = unwrap(fillet(fused, edgeFinder().inDirection('Z').findAll(fused), 2));
 ```

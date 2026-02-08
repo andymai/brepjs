@@ -89,34 +89,6 @@ export {
   type RadiusConfig,
   // core/shapeTypes.ts (via topology)
   type CurveLike,
-  // shapeHelpers.ts
-  makeLine,
-  makeCircle,
-  makeEllipse,
-  makeHelix,
-  makeThreePointArc,
-  makeEllipseArc,
-  makeBSplineApproximation,
-  makeBezierCurve,
-  makeTangentArc,
-  assembleWire,
-  makeFace,
-  makeNewFaceWithinFace,
-  makeNonPlanarFace,
-  makeCylinder,
-  makeSphere,
-  makeCone,
-  makeTorus,
-  makeEllipsoid,
-  makeBox,
-  makeVertex,
-  makeOffset,
-  makeCompound,
-  weldShellsAndFaces,
-  makeSolid,
-  addHolesInFace,
-  makePolygon,
-  type BSplineApproximationConfig,
 } from './topology/index.js';
 
 // ── Layer 2: operations ──
@@ -396,17 +368,9 @@ export {
 // ── Shape functions (topology) ──
 
 export {
-  cloneShape,
-  serializeShape,
   getHashCode,
-  isShapeNull,
   isSameShape,
   isEqualShape,
-  simplifyShape,
-  translateShape,
-  rotateShape,
-  mirrorShape,
-  scaleShape,
   getEdges,
   getFaces,
   getWires,
@@ -417,14 +381,11 @@ export {
   iterVertices,
   getBounds,
   vertexPosition,
-  describeShape,
   type Bounds3D,
   type ShapeDescription,
 } from './topology/shapeFns.js';
 
 export { chamferDistAngleShape } from './topology/chamferAngleFns.js';
-
-export { pipe, type ShapePipe } from './topology/pipeFns.js';
 
 export {
   facesOfEdge,
@@ -475,8 +436,6 @@ export {
 // ── Meshing and export ──
 
 export {
-  meshShape,
-  meshShapeEdges,
   exportSTEP,
   exportSTL,
   exportIGES,
@@ -501,36 +460,16 @@ export {
 
 // ── Boolean operations (functional) ──
 
-export {
-  fuseShape,
-  cutShape,
-  intersectShape,
-  sectionShape,
-  splitShape,
-  sliceShape,
-  fuseAll,
-  cutAll,
-  type BooleanOptions,
-} from './topology/booleanFns.js';
+export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
 
-// ── Modifier operations (functional) ──
-
-export {
-  thickenSurface,
-  filletShape,
-  chamferShape,
-  shellShape,
-  offsetShape,
-} from './topology/modifierFns.js';
+// (modifiers available via clean API: fillet, chamfer, shell, offset, thicken)
 
 // ── Healing (functional) ──
 
 export {
-  isShapeValid,
   healSolid,
   healFace,
   healWire,
-  healShape,
   autoHeal,
   type HealingReport,
   type AutoHealOptions,
@@ -540,8 +479,6 @@ export {
 // ── Operations (functional) ──
 
 export {
-  extrudeFace,
-  revolveFace,
   sweep,
   supportExtrude,
   complexExtrude,
@@ -549,8 +486,6 @@ export {
   type SweepConfig,
   type ExtrusionProfile,
 } from './operations/extrudeFns.js';
-
-export { loftWires, type LoftConfig } from './operations/loftFns.js';
 
 export {
   exportAssemblySTEP,
@@ -686,7 +621,7 @@ export {
 } from './worker/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// v5 CLEAN API — Short names, Shapeable<T>, options objects, shape() wrapper
+// CLEAN API — Short names, Shapeable<T>, options objects, shape() wrapper
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── API types ──

@@ -1,5 +1,5 @@
 /**
- * Clean 3D operation names — v5 API.
+ * Clean 3D operation names.
  *
  * extrude(), revolve(), loft() — drop type suffix, accept Shapeable, use options.
  */

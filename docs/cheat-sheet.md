@@ -6,11 +6,11 @@ Single-page quick reference for the most common brepjs operations.
 
 ```typescript
 // Quick start (auto-init, ESM only)
-import { makeBox } from 'brepjs/quick';
+import { box } from 'brepjs/quick';
 
 // Standard (explicit init, works with CJS)
 import opencascade from 'brepjs-opencascade';
-import { initFromOC, makeBox } from 'brepjs';
+import { initFromOC, box } from 'brepjs';
 const oc = await opencascade();
 initFromOC(oc);
 ```
@@ -18,54 +18,54 @@ initFromOC(oc);
 ## Shape Creation
 
 ```typescript
-import { makeBox, makeCylinder, makeSphere, makeCone, makeTorus } from 'brepjs';
+import { box, cylinder, sphere, cone, torus } from 'brepjs';
 
-const box = makeBox([0, 0, 0], [30, 20, 10]); // two corners
-const cylinder = makeCylinder(5, 20); // radius, height
-const sphere = makeSphere(8); // radius
-const cone = makeCone(10, 3, 20); // r1, r2, height
-const torus = makeTorus(20, 5); // major, minor
+const b = box(30, 20, 10); // width, depth, height
+const cyl = cylinder(5, 20); // radius, height
+const sph = sphere(8); // radius
+const cn = cone(10, 3, 20); // r1, r2, height
+const tor = torus(20, 5); // major, minor
 ```
 
 ## Boolean Operations
 
 ```typescript
-import { fuseShape, cutShape, intersectShape, unwrap } from 'brepjs';
+import { fuse, cut, intersect, unwrap } from 'brepjs';
 
-const merged = unwrap(fuseShape(a, b)); // union
-const drilled = unwrap(cutShape(a, b)); // subtraction
-const common = unwrap(intersectShape(a, b)); // intersection
+const merged = unwrap(fuse(a, b)); // union
+const drilled = unwrap(cut(a, b)); // subtraction
+const common = unwrap(intersect(a, b)); // intersection
 ```
 
 ## Transforms
 
 ```typescript
-import { translateShape, rotateShape, scaleShape, mirrorShape } from 'brepjs';
+import { translate, rotate, scale, mirror } from 'brepjs';
 
-const moved = translateShape(shape, [10, 0, 0]);
-const rotated = rotateShape(shape, 45, [0, 0, 0], [0, 0, 1]); // angle, center, axis
-const scaled = scaleShape(shape, 2);
-const flipped = mirrorShape(shape, [1, 0, 0]); // mirror across YZ plane
+const moved = translate(shape, [10, 0, 0]);
+const rotated = rotate(shape, 45, { around: [0, 0, 0], axis: [0, 0, 1] }); // angle, options
+const scaled = scale(shape, 2);
+const flipped = mirror(shape, { normal: [1, 0, 0] }); // mirror across YZ plane
 ```
 
 ## Fillets and Chamfers
 
 ```typescript
-import { filletShape, chamferShape, edgeFinder, getEdges, unwrap } from 'brepjs';
+import { fillet, chamfer, edgeFinder, getEdges, unwrap } from 'brepjs';
 
-const rounded = unwrap(filletShape(solid, getEdges(solid), 2)); // all edges, 2mm radius
+const rounded = unwrap(fillet(solid, getEdges(solid), 2)); // all edges, 2mm radius
 const vertEdges = edgeFinder().inDirection('Z').findAll(solid);
-const selective = unwrap(filletShape(solid, vertEdges, 2)); // vertical edges only
-const beveled = unwrap(chamferShape(solid, getEdges(solid), 1)); // all edges, 1mm
+const selective = unwrap(fillet(solid, vertEdges, 2)); // vertical edges only
+const beveled = unwrap(chamfer(solid, getEdges(solid), 1)); // all edges, 1mm
 ```
 
 ## Shell (Hollow Out)
 
 ```typescript
-import { shellShape, faceFinder, unwrap } from 'brepjs';
+import { shell, faceFinder, unwrap } from 'brepjs';
 
 const topFaces = faceFinder().parallelTo('Z').findAll(solid);
-const hollowed = unwrap(shellShape(solid, topFaces, 1)); // 1mm wall thickness
+const hollowed = unwrap(shell(solid, topFaces, 1)); // 1mm wall thickness
 ```
 
 ## Measurement
@@ -98,14 +98,14 @@ const solid = sketchExtrude(sketch, 20);
 ## Export and Import
 
 ```typescript
-import { exportSTEP, exportSTL, importSTEP, meshShape, unwrap, isOk } from 'brepjs';
+import { exportSTEP, exportSTL, importSTEP, mesh, unwrap, isOk } from 'brepjs';
 
 const step = unwrap(exportSTEP(solid)); // Blob
 const stl = unwrap(exportSTL(solid)); // Blob
 const imported = await importSTEP(stepBlob); // Result<AnyShape>
 
-const mesh = meshShape(solid, { tolerance: 0.1 });
-// mesh.vertices, mesh.triangles, mesh.normals
+const m = mesh(solid, { tolerance: 0.1 });
+// m.vertices, m.triangles, m.normals
 ```
 
 ## Memory Management
@@ -115,19 +115,19 @@ import { withScope, localGC } from 'brepjs';
 
 // Option 1: using syntax (TS 5.9+, preferred)
 {
-  using temp = makeBox([0, 0, 0], [10, 10, 10]);
+  using temp = box(10, 10, 10);
 }
 
 // Option 2: withScope (deterministic, returns result)
 const result = withScope((scope) => {
-  const temp = scope.register(makeCylinder(5, 10));
-  return unwrap(cutShape(box, temp)); // returned value survives
+  const temp = scope.register(cylinder(5, 10));
+  return unwrap(cut(b, temp)); // returned value survives
 });
 
 // Option 3: localGC (try/finally)
 const [register, cleanup] = localGC();
 try {
-  register(makeCylinder(5, 10));
+  register(cylinder(5, 10));
 } finally {
   cleanup();
 }
@@ -136,10 +136,10 @@ try {
 ## Error Handling
 
 ```typescript
-import { cutShape } from 'brepjs';
+import { cut } from 'brepjs';
 import { isOk, unwrap, match } from 'brepjs/result'; // focused import
 
-const result = cutShape(a, b);
+const result = cut(a, b);
 
 // Quick: unwrap (throws on error)
 const solid = unwrap(result);
@@ -155,13 +155,13 @@ match(result, { ok: (s) => render(s), err: (e) => log(e.message) });
 
 ## Which API?
 
-**Start with the functional API** (`makeBox`, `fuseShape`, `filletShape`) — it covers 90% of use cases. Use the **Drawing API** for complex 2D profiles, and the **Sketcher** for interactive step-by-step sketching.
+**Start with the functional API** (`box`, `fuse`, `fillet`) -- it covers 90% of use cases. Use the **Drawing API** for complex 2D profiles, and the **Sketcher** for interactive step-by-step sketching.
 
 ## More
 
-- **[Zero to Shape](./zero-to-shape.md)** — 60-second first-shape tutorial
-- **[Getting Started](./getting-started.md)** — Full walkthrough
-- **[Which API?](./which-api.md)** — Detailed API comparison
-- **[Memory Management](./memory-management.md)** — Full patterns for WASM cleanup
-- **[Error Reference](./errors.md)** — All error codes and recovery
-- **[Examples](../examples/)** — 9 runnable examples
+- **[Zero to Shape](./zero-to-shape.md)** -- 60-second first-shape tutorial
+- **[Getting Started](./getting-started.md)** -- Full walkthrough
+- **[Which API?](./which-api.md)** -- Detailed API comparison
+- **[Memory Management](./memory-management.md)** -- Full patterns for WASM cleanup
+- **[Error Reference](./errors.md)** -- All error codes and recovery
+- **[Examples](../examples/)** -- 9 runnable examples

@@ -2,11 +2,10 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   sketchRectangle,
-  thickenSurface,
+  box,
+  sphere,
   castShape,
   isSolid,
-  makeBox,
-  makeSphere,
   getEdges,
   getFaces,
   measureVolume,
@@ -15,25 +14,25 @@ import {
   isErr,
   unwrap,
   unwrapErr,
-  filletShape,
-  chamferShape,
-  shellShape,
-  offsetShape,
+  thicken,
+  fillet,
+  chamfer,
+  shell,
+  offset,
   getKernel,
   createSolid,
 } from '../src/index.js';
-import { measureVolume } from '../src/measurement/measureFns.js';
 import type { Face, Shape3D } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initOC();
 }, 30000);
 
-describe('thickenSurface', () => {
+describe('thicken', () => {
   it('thickens a planar face into a solid', () => {
     const sketch = sketchRectangle(10, 10);
-    const face = castShape(sketch.face().wrapped) as Face;
-    const result = thickenSurface(face, 5);
+    const f = castShape(sketch.face().wrapped) as Face;
+    const result = thicken(f, 5);
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
@@ -42,8 +41,8 @@ describe('thickenSurface', () => {
 
   it('thickens with negative thickness (offsets in opposite direction)', () => {
     const sketch = sketchRectangle(10, 10);
-    const face = castShape(sketch.face().wrapped) as Face;
-    const result = thickenSurface(face, -5);
+    const f = castShape(sketch.face().wrapped) as Face;
+    const result = thicken(f, -5);
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
@@ -52,8 +51,8 @@ describe('thickenSurface', () => {
 
   it('produces expected volume for a rectangular face thickened by a known amount', () => {
     const sketch = sketchRectangle(10, 20);
-    const face = castShape(sketch.face().wrapped) as Face;
-    const result = thickenSurface(face, 3);
+    const f = castShape(sketch.face().wrapped) as Face;
+    const result = thicken(f, 3);
 
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
@@ -64,10 +63,10 @@ describe('thickenSurface', () => {
   });
 });
 
-describe('filletShape', () => {
+describe('fillet', () => {
   it('fillets all edges of a box with constant radius', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = filletShape(box, undefined, 1);
+    const b = box(10, 10, 10);
+    const result = fillet(b, 1);
     expect(isOk(result)).toBe(true);
     const filleted = unwrap(result);
     const vol = measureVolume(filleted);
@@ -76,9 +75,9 @@ describe('filletShape', () => {
   });
 
   it('fillets specific edges', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
-    const result = filletShape(box, [edges[0]], 1);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = fillet(b, [edges[0]!], 1);
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
     // Single edge fillet removes less material
@@ -87,22 +86,22 @@ describe('filletShape', () => {
   });
 
   it('returns error for zero radius', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = filletShape(box, undefined, 0);
+    const b = box(10, 10, 10);
+    const result = fillet(b, 0);
     expect(isErr(result)).toBe(true);
   });
 
   it('returns error for negative radius', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = filletShape(box, undefined, -1);
+    const b = box(10, 10, 10);
+    const result = fillet(b, -1);
     expect(isErr(result)).toBe(true);
   });
 
   it('supports per-edge callback', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
     let callCount = 0;
-    const result = filletShape(box, edges.slice(0, 2), () => {
+    const result = fillet(b, edges.slice(0, 2), () => {
       callCount++;
       return 1;
     });
@@ -111,10 +110,10 @@ describe('filletShape', () => {
   });
 });
 
-describe('chamferShape', () => {
+describe('chamfer', () => {
   it('chamfers all edges of a box', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = chamferShape(box, undefined, 1);
+    const b = box(10, 10, 10);
+    const result = chamfer(b, 1);
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
     expect(vol).toBeLessThan(1000);
@@ -122,24 +121,24 @@ describe('chamferShape', () => {
   });
 
   it('chamfers specific edges', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
-    const result = chamferShape(box, [edges[0]], 1);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = chamfer(b, [edges[0]!], 1);
     expect(isOk(result)).toBe(true);
   });
 
   it('returns error for zero distance', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = chamferShape(box, undefined, 0);
+    const b = box(10, 10, 10);
+    const result = chamfer(b, 0);
     expect(isErr(result)).toBe(true);
   });
 });
 
-describe('shellShape', () => {
+describe('shell', () => {
   it('hollows a box by removing one face', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
-    const result = shellShape(box, [faces[0]], 1);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    const result = shell(b, [faces[0]!], 1);
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
     // Shell removes interior, leaving walls of thickness 1
@@ -148,41 +147,41 @@ describe('shellShape', () => {
   });
 
   it('returns error for zero thickness', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
-    const result = shellShape(box, [faces[0]], 0);
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    const result = shell(b, [faces[0]!], 0);
     expect(isErr(result)).toBe(true);
   });
 
   it('returns error for empty faces list', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = shellShape(box, [], 1);
+    const b = box(10, 10, 10);
+    const result = shell(b, [], 1);
     expect(isErr(result)).toBe(true);
   });
 });
 
-describe('offsetShape', () => {
+describe('offset', () => {
   it('offsets a sphere outward', () => {
-    const sphere = makeSphere(5);
-    const originalArea = measureArea(sphere);
-    const result = offsetShape(sphere, 1);
+    const s = sphere(5);
+    const originalArea = measureArea(s);
+    const result = offset(s, 1);
     expect(isOk(result)).toBe(true);
     const area = measureArea(unwrap(result));
     expect(area).toBeGreaterThan(originalArea);
   });
 
   it('offsets a sphere inward', () => {
-    const sphere = makeSphere(5);
-    const originalArea = measureArea(sphere);
-    const result = offsetShape(sphere, -1);
+    const s = sphere(5);
+    const originalArea = measureArea(s);
+    const result = offset(s, -1);
     expect(isOk(result)).toBe(true);
     const area = measureArea(unwrap(result));
     expect(area).toBeLessThan(originalArea);
   });
 
   it('returns error for zero distance', () => {
-    const sphere = makeSphere(5);
-    const result = offsetShape(sphere, 0);
+    const s = sphere(5);
+    const result = offset(s, 0);
     expect(isErr(result)).toBe(true);
   });
 });
@@ -197,28 +196,28 @@ describe('null-shape pre-validation', () => {
     return createSolid(new oc.TopoDS_Solid()) as Shape3D;
   }
 
-  it('filletShape rejects null shape', () => {
-    const result = filletShape(makeNullShape(), undefined, 1);
+  it('fillet rejects null shape', () => {
+    const result = fillet(makeNullShape(), 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
-  it('chamferShape rejects null shape', () => {
-    const result = chamferShape(makeNullShape(), undefined, 1);
+  it('chamfer rejects null shape', () => {
+    const result = chamfer(makeNullShape(), 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
-  it('shellShape rejects null shape', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const faces = getFaces(box);
-    const result = shellShape(makeNullShape(), [faces[0]], 1);
+  it('shell rejects null shape', () => {
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    const result = shell(makeNullShape(), [faces[0]!], 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
-  it('offsetShape rejects null shape', () => {
-    const result = offsetShape(makeNullShape(), 1);
+  it('offset rejects null shape', () => {
+    const result = offset(makeNullShape(), 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });

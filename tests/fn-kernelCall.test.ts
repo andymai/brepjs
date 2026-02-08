@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeSphere,
+  box,
+  sphere,
   getEdges,
   getFaces,
   isOk,
@@ -14,10 +14,10 @@ import {
   pipeline,
   isSolid,
   measureVolume,
-  filletShape,
-  shellShape,
-  thickenSurface,
-  offsetShape,
+  fillet,
+  shell,
+  thicken,
+  offset,
   sketchRectangle,
   castShape,
 } from '../src/index.js';
@@ -106,13 +106,13 @@ describe('kernelCallRaw', () => {
 
 describe('pipeline', () => {
   it('chains successful operations', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const edges = getEdges(box);
-    const faces = getFaces(box);
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const faces = getFaces(b);
 
-    const result = pipeline(box as Shape3D)
-      .then((s) => filletShape(s, edges.slice(0, 4), 1))
-      .then((s) => shellShape(s, [faces[0]], 0.5)).result;
+    const result = pipeline(b as Shape3D)
+      .then((s) => fillet(s, edges.slice(0, 4), 1))
+      .then((s) => shell(s, [faces[0]], 0.5)).result;
 
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
@@ -121,25 +121,25 @@ describe('pipeline', () => {
   });
 
   it('short-circuits on first error', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]) as Shape3D;
+    const b = box(10, 10, 10) as Shape3D;
 
-    const result = pipeline(box)
-      .then((s) => filletShape(s, undefined, -1)) // invalid radius → Err
-      .then((s) => shellShape(s, [], 1)).result; // should not execute
+    const result = pipeline(b)
+      .then((s) => fillet(s, -1)) // invalid radius → Err
+      .then((s) => shell(s, [], 1)).result; // should not execute
 
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('INVALID_FILLET_RADIUS');
   });
 
   it('accepts a Result as input', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]) as Shape3D;
-    const filletResult = filletShape(box, getEdges(box).slice(0, 2), 1);
+    const b = box(10, 10, 10) as Shape3D;
+    const filletResult = fillet(b, getEdges(b).slice(0, 2), 1);
     expect(isOk(filletResult)).toBe(true);
 
     // Pipeline from a Result, apply another fillet
     const result = pipeline(filletResult).then((s) => {
       const edges = getEdges(s);
-      return filletShape(s, edges.slice(0, 2), 0.5);
+      return fillet(s, edges.slice(0, 2), 0.5);
     }).result;
 
     expect(isOk(result)).toBe(true);
@@ -148,31 +148,31 @@ describe('pipeline', () => {
   });
 
   it('propagates Err input immediately', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]) as Shape3D;
-    const errResult = filletShape(box, undefined, -1); // Err
+    const b = box(10, 10, 10) as Shape3D;
+    const errResult = fillet(b, -1); // Err
 
-    const result = pipeline(errResult).then((s) => shellShape(s, [], 1)).result;
+    const result = pipeline(errResult).then((s) => shell(s, [], 1)).result;
 
     expect(isErr(result)).toBe(true);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Refactored thickenSurface / offsetShape still work
+// Refactored thicken / offset still work
 // ---------------------------------------------------------------------------
 
 describe('refactored operations', () => {
-  it('thickenSurface works with kernelCall', () => {
+  it('thicken works with kernelCall', () => {
     const sketch = sketchRectangle(10, 10);
-    const face = castShape(sketch.face().wrapped) as Face;
-    const result = thickenSurface(face, 5);
+    const f = castShape(sketch.face().wrapped) as Face;
+    const result = thicken(f, 5);
     expect(isOk(result)).toBe(true);
     expect(isSolid(unwrap(result))).toBe(true);
   });
 
-  it('offsetShape works with kernelCall', () => {
-    const sphere = makeSphere(5);
-    const result = offsetShape(sphere, 1);
+  it('offset works with kernelCall', () => {
+    const s = sphere(5);
+    const result = offset(s, 1);
     expect(isOk(result)).toBe(true);
   });
 });
