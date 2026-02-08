@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.1.0](https://github.com/andymai/brepjs/compare/brepjs-v7.0.0...brepjs-v7.1.0) (2026-02-08)
+
+
+### Features
+
+* complete wrapper API and improve consistency ([#188](https://github.com/andymai/brepjs/issues/188)) ([bc180b3](https://github.com/andymai/brepjs/commit/bc180b380fd6dd523f5eb7f38d92c9c717b8c9a0))
+
 ## [7.0.0](https://github.com/andymai/brepjs/compare/brepjs-v6.0.0...brepjs-v7.0.0) (2026-02-08)
 
 
