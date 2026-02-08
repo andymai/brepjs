@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { examples, featuredExampleIds } from '../../lib/examples';
+import { examples } from '../../lib/examples';
 import { useInView } from '../../hooks/useInView';
 
-const featured = examples.filter((e) => featuredExampleIds.includes(e.id));
+// Legacy component - replaced by ExamplesGallery
+const featured = examples.slice(0, 6);
 
 export { featured as featuredExamples };
 

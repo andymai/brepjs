@@ -1,5 +1,5 @@
 import { HERO_CODE } from '../../lib/constants';
-import { highlightLine, lineHasBrepjsFn } from '../../lib/syntaxHighlight';
+import { highlightLine } from '../../lib/syntaxHighlight';
 
 export default function CodeDisplay() {
   const lines = HERO_CODE.split('\n');
@@ -13,14 +13,11 @@ export default function CodeDisplay() {
         <pre className="scrollbar-thin max-h-[560px] overflow-auto p-4 text-sm leading-relaxed">
           <code>
             {lines.map((line, i) => (
-              <div
-                key={i}
-                className={`flex ${lineHasBrepjsFn(line) ? 'syntax-line-highlight' : ''}`}
-              >
-                <span className="mr-4 inline-block w-6 select-none text-right text-gray-600">
+              <div key={i} className="flex">
+                <span className="mr-4 w-8 shrink-0 select-none text-right text-gray-600">
                   {i + 1}
                 </span>
-                <span className="text-gray-300">{highlightLine(line)}</span>
+                <span className="flex-1 text-gray-300">{highlightLine(line)}</span>
               </div>
             ))}
           </code>
