@@ -66,11 +66,25 @@ async function handleInit() {
     // Load the Emscripten-generated WASM JS loader from /wasm/
     // We fetch + blob URL to avoid Vite/Rollup trying to resolve it at build time
     // Try cache first (if preloaded on landing page), fall back to network
-    const cache = await caches.open(WASM_CACHE_NAME);
-    let resp = await cache.match('/wasm/brepjs_threaded.js');
+    let resp: Response | undefined;
+    try {
+      if ('caches' in self) {
+        const cache = await caches.open(WASM_CACHE_NAME);
+        resp = await cache.match('/wasm/brepjs_threaded.js');
+      }
+    } catch (cacheErr) {
+      // Cache API might not be available in worker context
+      console.debug('Cache not available:', cacheErr);
+    }
+
     if (!resp) {
       resp = await fetch('/wasm/brepjs_threaded.js');
     }
+
+    if (!resp || !resp.ok) {
+      throw new Error(`Failed to load WASM JS loader: ${resp?.status || 'no response'}`);
+    }
+
     const jsText = await resp.text();
     const blob = new Blob([jsText], { type: 'application/javascript' });
     const blobUrl = URL.createObjectURL(blob);

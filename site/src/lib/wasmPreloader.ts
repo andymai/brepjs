@@ -23,7 +23,8 @@ export async function preloadWASM(): Promise<void> {
         if (!cached) {
           const response = await fetch(url);
           if (response.ok) {
-            await cache.put(url, response);
+            // Clone response before caching to avoid consuming it
+            await cache.put(url, response.clone());
           }
         }
       })
