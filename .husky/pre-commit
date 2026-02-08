@@ -18,7 +18,7 @@ wait $PID2 || exit 1
 wait $PID3 || exit 1
 
 # Tier 2: Tests (only if Tier 1 passes)
-if [[ "${FULL_TESTS:-0}" == "1" ]]; then
+if [ "${FULL_TESTS:-0}" = "1" ]; then
   npm run test:coverage
 else
   npm run test:coverage:changed
