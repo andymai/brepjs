@@ -103,6 +103,7 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
         tabSize: 2,
         automaticLayout: true,
         suggestOnTriggerCharacters: true,
+        renderLineHighlight: 'none',
       }}
     />
   );
