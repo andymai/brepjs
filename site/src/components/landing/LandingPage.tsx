@@ -1,7 +1,7 @@
 import Header from '../layout/Header';
 import HeroSection from './HeroSection';
 import FeaturesSection from './FeaturesSection';
-import ExamplesPreview, { featuredExamples } from './ExamplesPreview';
+import ExamplesGallery from './ExamplesGallery';
 import InstallSection from './InstallSection';
 import CTASection from './CTASection';
 import Logo from '../shared/Logo';
@@ -28,8 +28,6 @@ const footerLinks = {
 };
 
 export default function LandingPage() {
-  const hasExamples = featuredExamples.length > 0;
-
   return (
     <div className="relative min-h-screen bg-gray-950">
       {/* Full-page dot matrix */}
@@ -49,13 +47,8 @@ export default function LandingPage() {
           <HeroSection />
           <GradientDivider />
           <FeaturesSection />
-          {hasExamples && (
-            <>
-              <ExamplesPreview />
-              <GradientDivider />
-            </>
-          )}
-          {!hasExamples && <GradientDivider />}
+          <ExamplesGallery />
+          <GradientDivider />
           <InstallSection />
           <GradientDivider />
           <CTASection />
