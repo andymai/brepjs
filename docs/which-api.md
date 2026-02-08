@@ -2,18 +2,57 @@
 
 brepjs offers several API styles. This guide helps you choose the right one for your use case.
 
-> **Recommended starting point:** The **functional API** (`box`, `fuse`, `fillet`) covers the vast majority of use cases and is the simplest to learn. Start there unless you have a specific reason to use the Sketcher or Drawing API.
+> **Recommended starting point:** The **fluent wrapper** (`shape().cut().fillet()`) is the canonical brepjs API. It provides the cleanest syntax for most use cases. Use the **Sketcher** for interactive 2D profiles and the **Drawing API** for 2D geometry that needs booleans before extrusion.
 
 ## Quick decision
 
 | If you want to...                 | Use                                             |
 | --------------------------------- | ----------------------------------------------- |
 | Create shapes from scratch        | **Sketcher** or **primitives** (`box`)          |
-| Combine/modify shapes             | **Functional API** (`fuse`, `fillet`)           |
+| Combine/modify shapes             | **Fluent wrapper** (`shape().cut().fillet()`)   |
 | Draw 2D profiles                  | **Drawing API** (`drawRectangle`, `drawCircle`) |
-| Build parametric/composable parts | **Functional API** with `pipeline()`            |
+| Build parametric/composable parts | **Fluent wrapper** or **functional API**        |
 | Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)    |
 | Import/export files               | **IO functions** (`importSTEP`, `exportSTEP`)   |
+
+## The Fluent Wrapper (recommended)
+
+**Best for:** Most use cases — the wrapper provides the cleanest syntax for chaining operations.
+
+The `shape()` wrapper is the **canonical API** for brepjs. It wraps any shape and provides a fluent, chainable interface:
+
+```typescript
+import { shape, box, cylinder } from 'brepjs';
+
+// Create a part with operations chained fluently
+const bracket = shape(box(30, 20, 10))
+  .cut(cylinder(5, 15, { at: [15, 10, -2] }))
+  .fillet((e) => e.inDirection('Z'), 2)
+  .translate([10, 0, 0]).val; // .val extracts the final shape
+```
+
+**Key benefits:**
+
+- **No `unwrap()` calls** — automatically handles `Result` types and throws `BrepWrapperError` on failure
+- **Type-safe chaining** — each method returns the appropriate wrapper type (3D, Face, Edge, Wire)
+- **Cleaner finder integration** — use callbacks directly: `.fillet((e) => e.inDirection('Z'), 2)`
+- **Axis shortcuts** — `.moveX(10)`, `.rotateZ(45)` for common transforms
+- **Built-in methods** — `.volume()`, `.area()`, `.mesh()`, `.toBREP()` without separate imports
+
+**Available wrapper types:**
+
+| Wrapper Type   | Shape Types  | Additional Methods                           |
+| -------------- | ------------ | -------------------------------------------- |
+| `Wrapped3D<T>` | Solid, Shell | Booleans, fillets, shell, offset, patterns   |
+| `WrappedFace`  | Face         | `extrude()`, `revolve()`, `normalAt()`       |
+| `WrappedCurve` | Edge, Wire   | `length()`, `sweep()`, curve introspection   |
+| `Wrapped<T>`   | Any shape    | Transforms, bounds, describe, mesh, validate |
+
+**When to use the functional API instead:**
+
+- You need fine-grained `Result` handling at each operation
+- You're building reusable utility functions that operate on shapes
+- You prefer a more explicit, functional programming style
 
 ## The Sketcher (fluent chaining)
 
@@ -40,7 +79,7 @@ const roundedBox = sketchRoundedRectangle(30, 20, 3).extrude(10);
 
 ## Functional API (standalone functions)
 
-Best for: **composing operations**, parametric design, and pipeline-style code.
+Best for: **building reusable utilities** and when you need explicit `Result` handling.
 
 ```typescript
 import { box, cylinder, cut, fillet, edgeFinder, translate, unwrap } from 'brepjs';
@@ -52,19 +91,13 @@ const vertEdges = edgeFinder().inDirection('Z').findAll(drilled);
 const filleted = unwrap(fillet(drilled, vertEdges, 2));
 ```
 
-**When to use:** You're modifying shapes (booleans, transforms, fillets, shells), building parametric parts with functions, or chaining operations.
+**When to use:**
 
-### Pipeline style
+- You need to check `Result` at each step for fine-grained error handling
+- You're building parametric functions that operate on shapes
+- You prefer an explicit, functional programming style
 
-For complex multi-step operations, `pipeline()` provides a fluent functional chain:
-
-```typescript
-import { pipeline, box, cylinder } from 'brepjs';
-
-const result = pipeline(box([0, 0, 0], [30, 20, 10]))
-  .then((b) => fuse(b, cylinder(5, 15)))
-  .then((s) => fillet(s, edgeFinder().inDirection('Z').findAll(s), 2)).result;
-```
+**Why use the wrapper instead?** The functional API requires `unwrap()` calls and manual error handling. The wrapper does this automatically while providing the same operations in a more concise syntax.
 
 ## Drawing API (2D profiles)
 
