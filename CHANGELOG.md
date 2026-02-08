@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.4.1](https://github.com/andymai/brepjs/compare/brepjs-v7.4.0...brepjs-v7.4.1) (2026-02-08)
+
+
+### Bug Fixes
+
+* **playground:** resolve SharedArrayBuffer and WASM loading issues ([#206](https://github.com/andymai/brepjs/issues/206)) ([84b6123](https://github.com/andymai/brepjs/commit/84b6123fa6399bc00efdebe8c1d52e1ea0e7602d))
+
 ## [7.4.0](https://github.com/andymai/brepjs/compare/brepjs-v7.3.0...brepjs-v7.4.0) (2026-02-08)
 
 
