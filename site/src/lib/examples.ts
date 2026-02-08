@@ -249,14 +249,16 @@ return shape(profile.face()).revolve().val;`,
   {
     id: 'hex-bolt',
     title: 'Hex Head Bolt',
-    description: 'Functional bolt with proper hex head geometry and cylindrical shaft.',
+    description: 'Functional bolt with hex head and simulated thread grooves.',
     category: 'practical',
-    code: `// Hex head bolt with proper geometry
+    code: `// Hex head bolt with thread grooves
 const headH = 10;
 const shaftR = 6;
 const shaftH = 45;
+const threadDepth = 0.6;
+const threadPitch = 2.5;
 
-// Create hex head using proper geometry
+// Create hex head
 const hexPts = [];
 for (let i = 0; i < 6; i++) {
   const a = (i / 6) * Math.PI * 2;
@@ -274,9 +276,25 @@ const hexSketch = new Sketcher()
 
 let bolt = shape(hexSketch.face()).extrude(headH).val;
 
-// Add shaft
+// Add main shaft
 const shaft = cylinder(shaftR, shaftH, { at: [0, 0, -shaftH] });
 bolt = unwrap(fuse(bolt, shaft));
+
+// Create thread grooves using angled rings
+const threadLength = 35;
+const numThreads = Math.floor(threadLength / threadPitch);
+
+for (let i = 0; i < numThreads; i++) {
+  const z = -5 - i * threadPitch;
+  const rotAngle = (i * threadPitch * 360) / (shaftR * 2 * Math.PI * 8);
+
+  // Create thin cutting ring
+  const groove = rotate(
+    cylinder(shaftR + 1, threadDepth, { at: [0, 0, z] }),
+    rotAngle
+  );
+  bolt = unwrap(cut(bolt, groove));
+}
 
 // Add tapered tip
 const tip = cylinder(2, 6, { at: [0, 0, -shaftH - 6] });
