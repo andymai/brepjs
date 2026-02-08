@@ -5,7 +5,6 @@
  */
 
 import type { Vec3 } from '../core/types.js';
-import { vecLength } from '../core/vecOps.js';
 import type { Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
 import type { Result } from '../core/result.js';
 import type { Shapeable } from '../topology/apiTypes.js';
@@ -25,13 +24,11 @@ export type { SweepConfig } from './extrudeFns.js';
  *
  * @param face   - The face to extrude.
  * @param height - A number for Z-direction extrusion, or a Vec3 direction vector.
+ * @returns `Result` containing the extruded solid, or an error if validation or operation fails.
  */
-export function extrude(face: Shapeable<Face>, height: number | Vec3): Solid {
+export function extrude(face: Shapeable<Face>, height: number | Vec3): Result<Solid> {
   const f = resolve(face);
   const vec: Vec3 = typeof height === 'number' ? [0, 0, height] : height;
-  if (vecLength(vec) === 0) {
-    throw new Error('extrude: extrusion height/vector has zero length');
-  }
   return extrudeFace(f, vec);
 }
 

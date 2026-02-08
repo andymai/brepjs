@@ -15,8 +15,8 @@ import type { Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
 import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { downcast } from '../topology/cast.js';
-import { type Result, ok, err, unwrap } from '../core/result.js';
-import { typeCastError, validationError, BrepErrorCode } from '../core/errors.js';
+import { type Result, ok, err, unwrap, isErr } from '../core/result.js';
+import { typeCastError, validationError, occtError, BrepErrorCode } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepConfig } from './extrudeUtils.js';
 
 export type { ExtrusionProfile, SweepConfig } from './extrudeUtils.js';
@@ -88,28 +88,51 @@ function makeHelixWire(
  *
  * @param face - The planar face to extrude.
  * @param extrusionVec - Direction and magnitude of the extrusion as `[x, y, z]`.
- * @returns A new solid created by the linear extrusion.
+ * @returns `Result` containing the extruded solid, or an error if validation or operation fails.
  *
  * @example
  * ```ts
- * const box = extrudeFace(squareFace, [0, 0, 10]);
+ * const result = extrudeFace(squareFace, [0, 0, 10]);
+ * if (isOk(result)) console.log('Extruded:', result.value);
  * ```
  *
  * @see {@link extrude!basicFaceExtrusion | basicFaceExtrusion} for the OOP API equivalent.
  */
-export function extrudeFace(face: Face, extrusionVec: Vec3): Solid {
+export function extrudeFace(face: Face, extrusionVec: Vec3): Result<Solid> {
   if (face.wrapped.IsNull()) {
-    throw new Error('extrudeFace: face is a null shape');
+    return err(
+      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrudeFace: face is a null shape')
+    );
   }
   if (vecLength(extrusionVec) === 0) {
-    throw new Error('extrudeFace: extrusion vector has zero length');
+    return err(
+      validationError('EXTRUDE_ZERO_VECTOR', 'extrudeFace: extrusion vector has zero length')
+    );
   }
-  const oc = getKernel().oc;
-  const r = gcWithScope();
 
-  const vec = r(toOcVec(extrusionVec));
-  const builder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, vec, false, true));
-  return createSolid(unwrap(downcast(builder.Shape())));
+  try {
+    const oc = getKernel().oc;
+    const r = gcWithScope();
+
+    const vec = r(toOcVec(extrusionVec));
+    const builder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, vec, false, true));
+    const shape = builder.Shape();
+
+    const downcastResult = downcast(shape);
+    if (isErr(downcastResult)) {
+      return downcastResult;
+    }
+
+    const solid = createSolid(downcastResult.value);
+    return ok(solid);
+  } catch (e) {
+    return err(
+      occtError('EXTRUDE_FAILED', 'Extrusion operation failed', e, {
+        operation: 'extrudeFace',
+        vectorLength: vecLength(extrusionVec),
+      })
+    );
+  }
 }
 
 /**

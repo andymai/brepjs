@@ -150,9 +150,10 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
 
   // Extrude inward (opposite to face normal)
   const extDir = vecScale(vecNormalize(normal), -depth);
-  const tool = extrudeFace(faceResult.value, extDir);
+  const toolResult = extrudeFace(faceResult.value, extDir);
+  if (isErr(toolResult)) return toolResult as Result<T>;
 
-  return cutShape(s, tool) as Result<T>;
+  return cutShape(s, toolResult.value) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,9 +184,10 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
 
   // Extrude outward (along face normal)
   const extDir = vecScale(vecNormalize(normal), height);
-  const tool = extrudeFace(faceResult.value, extDir);
+  const toolResult = extrudeFace(faceResult.value, extDir);
+  if (isErr(toolResult)) return toolResult as Result<T>;
 
-  return fuseShape(s, tool) as Result<T>;
+  return fuseShape(s, toolResult.value) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------

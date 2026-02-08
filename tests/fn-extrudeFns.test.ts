@@ -27,7 +27,9 @@ describe('extrude', () => {
   it('extrudes a rectangle into a box', () => {
     const rect = sketchRectangle(10, 20);
     const f = castShape(rect.face().wrapped);
-    const solid = extrude(f, [0, 0, 30]);
+    const result = extrude(f, [0, 0, 30]);
+    expect(isOk(result)).toBe(true);
+    const solid = unwrap(result);
     expect(isSolid(solid)).toBe(true);
     expect(measureVolume(solid)).toBeCloseTo(10 * 20 * 30, 0);
   });
@@ -35,8 +37,9 @@ describe('extrude', () => {
   it('extrudes a circle into a cylinder', () => {
     const c = sketchCircle(5);
     const f = castShape(c.face().wrapped);
-    const solid = extrude(f, [0, 0, 10]);
-    expect(measureVolume(solid)).toBeCloseTo(Math.PI * 25 * 10, 0);
+    const result = extrude(f, [0, 0, 10]);
+    expect(isOk(result)).toBe(true);
+    expect(measureVolume(unwrap(result))).toBeCloseTo(Math.PI * 25 * 10, 0);
   });
 });
 

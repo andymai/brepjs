@@ -1,8 +1,8 @@
 /**
- * Clean API — tests for short-name functions.
+ * API tests — tests for core brepjs functions.
  *
- * Exercises the clean API names (box, translate, fuse, fillet, etc.)
- * to ensure they delegate correctly to the underlying implementations.
+ * Exercises the public API (box, translate, fuse, fillet, extrude, etc.)
+ * to ensure functions delegate correctly to underlying implementations.
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
@@ -62,6 +62,7 @@ import {
   // Support
   unwrap,
   isOk,
+  isErr,
   measureVolume,
   measureArea,
   getEdges,
@@ -417,8 +418,9 @@ describe('extrude()', () => {
         [0, 10, 0],
       ])
     );
-    const solid = extrude(f, 5);
-    expect(measureVolume(solid)).toBeCloseTo(500, 0);
+    const result = extrude(f, 5);
+    expect(isOk(result)).toBe(true);
+    expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
   });
 
   it('extrudes with a Vec3 direction', () => {
@@ -430,11 +432,12 @@ describe('extrude()', () => {
         [0, 10, 0],
       ])
     );
-    const solid = extrude(f, [0, 0, 10]);
-    expect(measureVolume(solid)).toBeCloseTo(1000, 0);
+    const result = extrude(f, [0, 0, 10]);
+    expect(isOk(result)).toBe(true);
+    expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
   });
 
-  it('throws on zero-length vector', () => {
+  it('returns error on zero-length vector', () => {
     const f = unwrap(
       polygon([
         [0, 0, 0],
@@ -443,7 +446,8 @@ describe('extrude()', () => {
         [0, 10, 0],
       ])
     );
-    expect(() => extrude(f, 0)).toThrow();
+    const result = extrude(f, 0);
+    expect(isErr(result)).toBe(true);
   });
 });
 

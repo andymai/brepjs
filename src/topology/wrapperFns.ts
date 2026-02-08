@@ -402,7 +402,7 @@ function createWrappedFace(val: Face): WrappedFace {
     outerWire: () => outerWire(val),
     innerWires: () => innerWires(val),
 
-    extrude: (height) => wrap3D(extrude(val, height)),
+    extrude: (height) => wrap3D(unwrapOrThrow(extrude(val, height))),
     revolve: (opts) => wrap3D(unwrapOrThrow(revolve(val, opts))),
   };
 }
