@@ -1,6 +1,6 @@
 {
   "src/**/*.ts": ["eslint --fix", "prettier --write"],
-  "tests/**/*.ts": ["prettier --write"],
+  "tests/**/*.ts": ["eslint --fix", "prettier --write"],
   "*.config.ts": ["prettier --write"],
   "*.md": ["prettier --write"]
 }

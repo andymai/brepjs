@@ -32,9 +32,6 @@ export type ShapeOptions = {
   name?: string;
 };
 
-/** @deprecated Use ShapeOptions instead. Will be removed in v8.0.0. */
-export type ShapeConfig = ShapeOptions;
-
 /**
  * Create an XCAF assembly document from a list of shape configurations.
  *

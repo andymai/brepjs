@@ -171,6 +171,7 @@
     "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts'",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:changed": "vitest run --changed=HEAD --coverage",
     "test:watch": "vitest",
     "test:affected": "vitest run --changed",
     "check:boundaries": "bash scripts/check-layer-boundaries.sh",

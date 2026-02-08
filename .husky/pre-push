@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -e
+
+echo "Running comprehensive checks before push..."
+
+# Full test suite with coverage
+npm run test:coverage
+
+# Detect unused code
+npm run knip
+
+echo "✅ Pre-push checks passed!"
