@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import type { Example } from '../../lib/examples.js';
 import type { SerializedMesh } from './LiveViewer3D';
 import LiveViewer3D from './LiveViewer3D';
-import CodeSnippet from './CodeSnippet';
 
 interface GalleryCardProps {
   example: Example;
@@ -26,7 +25,7 @@ export default function GalleryCard({
   inView,
 }: GalleryCardProps) {
   const [viewerActive, setViewerActive] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLAnchorElement>(null);
 
   // Activate viewer when card is in view
   useEffect(() => {
@@ -38,9 +37,10 @@ export default function GalleryCard({
   const categoryColor = CATEGORY_COLORS[example.category];
 
   return (
-    <div
+    <Link
       ref={cardRef}
-      className={`group relative overflow-hidden rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-md transition-all duration-300 hover:border-teal-light/30 hover:shadow-2xl hover:shadow-teal-light/10 ${
+      to={`/playground#example/${example.id}`}
+      className={`group relative block overflow-hidden rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-md transition-all duration-300 hover:border-teal-light/30 hover:shadow-2xl hover:shadow-teal-light/10 hover:scale-[1.02] ${
         inView ? 'animate-reveal-up' : ''
       }`}
       style={{
@@ -76,18 +76,20 @@ export default function GalleryCard({
       </div>
 
       {/* Example metadata */}
-      <div className="mb-3">
-        <Link
-          to={`/playground#example/${example.id}`}
-          className="group/title mb-1 block text-lg font-semibold text-white transition-colors hover:text-teal-light"
-        >
+      <div>
+        <h3 className="mb-2 text-lg font-semibold text-white transition-colors group-hover:text-teal-light">
           {example.title}
-        </Link>
-        <p className="text-sm text-gray-400">{example.description}</p>
-      </div>
+        </h3>
+        <p className="mb-3 text-sm text-gray-400">{example.description}</p>
 
-      {/* Code snippet */}
-      <CodeSnippet code={example.code} />
-    </div>
+        {/* Click to view hint */}
+        <div className="flex items-center gap-2 text-xs text-teal-light opacity-0 transition-opacity group-hover:opacity-100">
+          <span>Click to view code & edit</span>
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </Link>
   );
 }

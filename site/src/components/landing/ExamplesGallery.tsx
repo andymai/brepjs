@@ -71,7 +71,7 @@ export default function ExamplesGallery() {
           className={`mb-12 text-center text-lg text-gray-400 ${sectionInView ? 'animate-reveal-up' : ''}`}
           style={{ opacity: sectionInView ? undefined : 0, animationDelay: '50ms' }}
         >
-          Jaw-dropping designs. Real code. Click any example to explore in the playground.
+          Jaw-dropping designs powered by code. Click any example to view the source and edit live.
         </p>
 
         {/* Gallery grid */}

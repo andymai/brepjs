@@ -14,171 +14,154 @@ export interface Example {
 export const examples: Example[] = [
   // Organic/Artistic Forms
   {
-    id: 'parametric-vase',
-    title: 'Parametric Vase',
-    description: 'Flowing curved vase using revolved bezier profile with varying radius.',
+    id: 'revolved-vase',
+    title: 'Revolved Vase',
+    description: 'Elegant vase created by revolving a curved profile around the Z axis.',
     category: 'organic',
-    code: `// Parametric vase with flowing curves
+    code: `// Revolve a profile to create a vase shape
 const plane = createPlane([0, 0, 0], [1, 0, 0], [0, -1, 0]);
-const profile = new Sketcher(plane)
-  .lineTo([8, 0])
-  .bezierTo([12, 15], [10, 10], [15, 12])
-  .bezierTo([10, 35], [12, 25], [8, 30])
-  .bezierTo([14, 55], [11, 45], [16, 50])
-  .lineTo([14, 60])
+const sketch = new Sketcher(plane)
+  .lineTo([15, 0])
+  .lineTo([20, 20])
+  .lineTo([15, 35])
+  .lineTo([23, 60])
   .lineTo([0, 60])
   .close();
 
-return shape(profile.face()).revolve().val;`,
+return shape(sketch.face()).revolve().val;`,
     cameraPosition: [80, 60, 50],
-    cameraTarget: [0, 30, 0],
-  },
-  {
-    id: 'abstract-sculpture',
-    title: 'Abstract Sculpture',
-    description: 'Twisted extruded shape with boolean unions — artistic potential.',
-    category: 'organic',
-    code: `// Abstract twisted sculpture
-const base = box(30, 30, 5, { at: [0, 0, 0] });
-const mid1 = rotate(box(25, 25, 15, { at: [0, 0, 10] }), 15);
-const mid2 = rotate(box(20, 20, 15, { at: [0, 0, 25] }), 30);
-const mid3 = rotate(box(18, 18, 15, { at: [0, 0, 40] }), 45);
-const top = rotate(sphere(12, { at: [0, 0, 60] }), 60);
-
-let sculpture = unwrap(fuse(base, mid1));
-sculpture = unwrap(fuse(sculpture, mid2));
-sculpture = unwrap(fuse(sculpture, mid3));
-sculpture = unwrap(fuse(sculpture, top));
-
-return shape(sculpture).fillet(2).val;`,
-    cameraPosition: [100, 80, 80],
     cameraTarget: [0, 0, 30],
   },
   {
-    id: 'spiral-shell',
-    title: 'Nautilus Shell',
-    description: 'Logarithmic spiral shell using parametric helix sweep.',
+    id: 'twisted-tower',
+    title: 'Twisted Tower',
+    description: 'Abstract tower with rotating cross-sections creating a spiral effect.',
     category: 'organic',
-    code: `// Nautilus-style spiral shell
-const turns = 3;
-const points = [];
+    code: `// Twisted tower with rotating levels
+const base = box(30, 30, 5, { at: [0, 0, 0] });
+const mid1 = rotate(box(28, 28, 10, { at: [0, 0, 5] }), 10);
+const mid2 = rotate(box(26, 26, 10, { at: [0, 0, 15] }), 20);
+const mid3 = rotate(box(24, 24, 10, { at: [0, 0, 25] }), 30);
+const top = rotate(box(22, 22, 10, { at: [0, 0, 35] }), 40);
 
-for (let i = 0; i <= turns * 16; i++) {
-  const t = i / 16;
-  const r = 5 * Math.exp(t * 0.3);
-  const angle = t * 2 * Math.PI;
-  const x = r * Math.cos(angle);
-  const y = r * Math.sin(angle);
-  const z = t * 8;
-  points.push([x, y, z]);
-}
+let tower = unwrap(fuse(base, mid1));
+tower = unwrap(fuse(tower, mid2));
+tower = unwrap(fuse(tower, mid3));
+tower = unwrap(fuse(tower, top));
 
-const path = makeWire(points);
-const profile = circle(4);
-const shell = pipe(path, profile);
-
-return shape(shell).val;`,
-    cameraPosition: [120, 100, 60],
-    cameraTarget: [0, 0, 40],
+return tower;`,
+    cameraPosition: [100, 80, 80],
+    cameraTarget: [0, 0, 22],
   },
   {
-    id: 'wavy-bowl',
-    title: 'Wavy Bowl',
-    description: 'Organic bowl with sine wave profile — mathematical curves.',
+    id: 'decorative-cup',
+    title: 'Decorative Cup',
+    description: 'Hollowed cylindrical cup with decorative cutouts.',
     category: 'organic',
-    code: `// Bowl with sine wave ripple
-const plane = createPlane([0, 0, 0], [1, 0, 0], [0, -1, 0]);
-const points = [[0, 0]];
+    code: `// Cup with decorative pattern
+const outerWall = cylinder(25, 50);
+const innerCavity = cylinder(22, 47, { at: [0, 0, 3] });
+let cup = unwrap(cut(outerWall, innerCavity));
 
-for (let i = 0; i <= 20; i++) {
-  const r = 5 + i * 1.5;
-  const z = 5 + i * 1.2 + Math.sin(i * 0.8) * 2;
-  points.push([r, z]);
+// Add decorative holes
+const cutouts = 6;
+for (let i = 0; i < cutouts; i++) {
+  const angle = (i / cutouts) * 360;
+  const hole = rotate(
+    cylinder(3, 60, { at: [27, 0, 20] }),
+    angle
+  );
+  cup = unwrap(cut(cup, hole));
 }
 
-const profile = new Sketcher(plane).polyline(points).lineTo([0, points[points.length - 1][1]]).close();
-const bowl = shape(profile.face()).revolve().val;
+return cup;`,
+    cameraPosition: [100, 90, 70],
+    cameraTarget: [0, 0, 25],
+  },
+  {
+    id: 'rounded-bowl',
+    title: 'Rounded Bowl',
+    description: 'Simple bowl shape with smooth filleted edges.',
+    category: 'organic',
+    code: `// Simple rounded bowl
+const outer = cylinder(35, 15);
+const inner = cylinder(30, 12, { at: [0, 0, 3] });
+const bowl = unwrap(cut(outer, inner));
 
-return bowl;`,
+return shape(bowl).fillet(2).val;`,
     cameraPosition: [80, 80, 60],
-    cameraTarget: [0, 0, 15],
+    cameraTarget: [0, 0, 8],
   },
 
   // Architectural Elements
   {
-    id: 'ionic-column',
-    title: 'Ionic Column',
-    description: 'Classical column with fluted shaft and decorative capital.',
+    id: 'fluted-column',
+    title: 'Fluted Column',
+    description: 'Classical column with vertical grooves and decorative capital.',
     category: 'architectural',
-    code: `// Ionic column with flutes
+    code: `// Column with vertical flutes
 const shaft = cylinder(15, 80, { at: [0, 0, 10] });
-const flutes = 16;
+const flutes = 12;
 
 let column = shaft;
 for (let i = 0; i < flutes; i++) {
   const angle = (i / flutes) * 360;
   const flute = rotate(
-    cylinder(2, 85, { at: [17, 0, 8] }),
+    cylinder(1.5, 85, { at: [16, 0, 8] }),
     angle
   );
   column = unwrap(cut(column, flute));
 }
 
-// Capital and base
-const capital = cylinder(20, 8, { at: [0, 0, 90] });
-const base = cylinder(18, 10, { at: [0, 0, 0] });
+// Add capital and base
+const capital = cylinder(18, 6, { at: [0, 0, 90] });
+const base = cylinder(17, 8, { at: [0, 0, 0] });
 column = unwrap(fuse(column, capital));
 column = unwrap(fuse(column, base));
 
-return shape(column).fillet(0.5).val;`,
+return column;`,
     cameraPosition: [100, 80, 80],
     cameraTarget: [0, 0, 50],
   },
   {
-    id: 'gothic-arch',
-    title: 'Gothic Arch',
-    description: 'Pointed arch with ornamental cutouts and details.',
+    id: 'arched-doorway',
+    title: 'Arched Doorway',
+    description: 'Architectural doorway with rounded arch and decorative elements.',
     category: 'architectural',
-    code: `// Gothic pointed arch
-const width = 40;
-const height = 60;
-const depth = 8;
+    code: `// Arched doorway
+const wall = box(60, 10, 80);
+const opening = box(30, 12, 50, { at: [0, 0, 0] });
+const arch = cylinder(15, 12, { at: [0, 0, 50] });
+const rotatedArch = rotate(arch, 90, { axis: [1, 0, 0] });
 
-// Two circles creating pointed top
-const left = cylinder(width * 0.6, depth, { at: [-width * 0.3, 0, height * 0.3] });
-const right = cylinder(width * 0.6, depth, { at: [width * 0.3, 0, height * 0.3] });
-const base = box(width, depth, height * 0.4, { at: [0, 0, 0] });
+let doorway = unwrap(cut(wall, opening));
+doorway = unwrap(cut(doorway, rotatedArch));
 
-let arch = rotate(unwrap(intersect(left, right)), 90, { axis: [1, 0, 0] });
-arch = unwrap(fuse(arch, rotate(base, 90, { axis: [1, 0, 0] })));
+// Add decorative keystone
+const keystone = box(8, 12, 6, { at: [0, 0, 50] });
+doorway = unwrap(fuse(doorway, keystone));
 
-// Decorative cutout
-const cutout = cylinder(6, 12, { at: [0, 0, height * 0.7] });
-arch = rotate(unwrap(cut(arch, cutout)), -90, { axis: [1, 0, 0] });
-
-return shape(arch).fillet(1).val;`,
-    cameraPosition: [100, 80, 60],
-    cameraTarget: [0, 0, 30],
+return doorway;`,
+    cameraPosition: [120, 100, 80],
+    cameraTarget: [0, 0, 40],
   },
   {
-    id: 'baluster',
-    title: 'Decorative Baluster',
-    description: 'Turned staircase baluster with intricate lathe profile.',
+    id: 'simple-baluster',
+    title: 'Turned Baluster',
+    description: 'Decorative baluster with turned profile for railings.',
     category: 'architectural',
-    code: `// Ornate baluster profile
+    code: `// Baluster with turned profile
 const plane = createPlane([0, 0, 0], [1, 0, 0], [0, -1, 0]);
 const profile = new Sketcher(plane)
   .lineTo([3, 0])
   .lineTo([5, 5])
-  .lineTo([4, 10])
-  .lineTo([6, 15])
-  .lineTo([4.5, 20])
-  .lineTo([5.5, 35])
-  .lineTo([4, 40])
-  .lineTo([3.5, 45])
-  .lineTo([4.5, 50])
-  .lineTo([7, 55])
-  .lineTo([6, 60])
+  .lineTo([4, 12])
+  .lineTo([5, 20])
+  .lineTo([4, 35])
+  .lineTo([5, 43])
+  .lineTo([4, 50])
+  .lineTo([6, 55])
+  .lineTo([5, 60])
   .lineTo([0, 60])
   .close();
 
@@ -189,104 +172,91 @@ return shape(profile.face()).revolve().val;`,
 
   // Practical Objects
   {
-    id: 'threaded-bolt',
-    title: 'Threaded Bolt',
-    description: 'Precision bolt with helical threading and hex head.',
+    id: 'hex-bolt',
+    title: 'Hex Head Bolt',
+    description: 'Functional bolt with hexagonal head and cylindrical shaft.',
     category: 'practical',
-    code: `// Threaded bolt with hex head
+    code: `// Hex bolt with head and shaft
 const headHeight = 8;
 const shaftR = 6;
 const shaftH = 40;
 
-// Hex head
-const hexPoints = [];
+// Create hex head using 6 sides
+const hex = [];
 for (let i = 0; i < 6; i++) {
-  const a = (i / 6) * Math.PI * 2;
-  hexPoints.push([Math.cos(a) * 12, Math.sin(a) * 12]);
+  const angle = (i / 6) * Math.PI * 2;
+  hex.push([Math.cos(angle) * 11, Math.sin(angle) * 11]);
 }
-const hexSketch = new Sketcher().polyline(hexPoints).close();
-const head = shape(hexSketch.face()).extrude(headHeight).val;
 
-// Shaft
+const headSketch = new Sketcher()
+  .lineTo(hex[0])
+  .lineTo(hex[1])
+  .lineTo(hex[2])
+  .lineTo(hex[3])
+  .lineTo(hex[4])
+  .lineTo(hex[5])
+  .close();
+
+const head = shape(headSketch.face()).extrude(headHeight).val;
 const shaft = cylinder(shaftR, shaftH, { at: [0, 0, -shaftH] });
 
-// Helical thread groove
-const threadPoints = [];
-for (let i = 0; i <= 20; i++) {
-  const t = i / 20;
-  const angle = t * 6 * Math.PI;
-  const z = -shaftH + t * (shaftH - 5);
-  threadPoints.push([
-    (shaftR + 1) * Math.cos(angle),
-    (shaftR + 1) * Math.sin(angle),
-    z
-  ]);
-}
-const threadPath = makeWire(threadPoints);
-const threadProfile = circle(1);
-const thread = pipe(threadPath, threadProfile);
-
-let bolt = unwrap(fuse(head, shaft));
-bolt = unwrap(cut(bolt, thread));
-
-return bolt;`,
-    cameraPosition: [80, 70, 40],
+return unwrap(fuse(head, shaft));`,
+    cameraPosition: [70, 60, 30],
     cameraTarget: [0, 0, -10],
   },
   {
-    id: 'storage-container',
-    title: 'Storage Container',
-    description: 'Practical container with snap-fit lid mechanism.',
+    id: 'cylindrical-container',
+    title: 'Cylindrical Container',
+    description: 'Simple storage container with removable lid.',
     category: 'practical',
-    code: `// Container with snap-fit lid
+    code: `// Container with lid
 const wallThick = 2;
-const outerR = 30;
+const outerR = 28;
 const innerR = outerR - wallThick;
-const bodyH = 40;
-const lidH = 8;
+const bodyH = 35;
 
-// Body
+// Container body
 const outer = cylinder(outerR, bodyH);
 const inner = cylinder(innerR, bodyH - 3, { at: [0, 0, 3] });
 const body = unwrap(cut(outer, inner));
 
-// Lid with rim
-const lidOuter = cylinder(outerR + 1, lidH, { at: [0, 0, bodyH + 2] });
-const lidInner = cylinder(outerR - 0.5, lidH - 2, { at: [0, 0, bodyH + 2] });
-const lidRim = cylinder(innerR - 0.2, 4, { at: [0, 0, bodyH - 2] });
-let lid = unwrap(cut(lidOuter, lidInner));
-lid = unwrap(fuse(lid, lidRim));
+// Lid
+const lidH = 6;
+const lid = cylinder(outerR + 0.5, lidH, { at: [0, 0, bodyH + 1] });
+const lidInset = cylinder(innerR - 0.3, 3, { at: [0, 0, bodyH - 1] });
 
-return unwrap(fuse(body, lid));`,
-    cameraPosition: [100, 80, 70],
-    cameraTarget: [0, 0, 25],
+let container = unwrap(fuse(body, lid));
+container = unwrap(fuse(container, lidInset));
+
+return container;`,
+    cameraPosition: [90, 80, 60],
+    cameraTarget: [0, 0, 20],
   },
   {
-    id: 'tool-handle',
-    title: 'Ergonomic Handle',
-    description: 'Comfortable grip with knurling pattern for tools.',
+    id: 'tapered-handle',
+    title: 'Tapered Handle',
+    description: 'Ergonomic tool handle with tapered grip profile.',
     category: 'practical',
-    code: `// Tool handle with grip pattern
+    code: `// Ergonomic tool handle
 const plane = createPlane([0, 0, 0], [1, 0, 0], [0, -1, 0]);
 const profile = new Sketcher(plane)
   .lineTo([6, 0])
-  .lineTo([8, 5])
-  .lineTo([10, 15])
-  .lineTo([11, 35])
-  .lineTo([10, 55])
-  .lineTo([8, 70])
-  .lineTo([6, 80])
-  .lineTo([0, 80])
+  .lineTo([9, 8])
+  .lineTo([11, 20])
+  .lineTo([11, 45])
+  .lineTo([9, 57])
+  .lineTo([6, 65])
+  .lineTo([0, 65])
   .close();
 
 let handle = shape(profile.face()).revolve().val;
 
-// Knurling pattern
-const grooves = 30;
+// Add grip grooves
+const grooves = 8;
 for (let i = 0; i < grooves; i++) {
-  const z = 20 + (i / grooves) * 40;
+  const z = 22 + i * 3;
   const groove = rotate(
-    cylinder(0.5, 25, { at: [12, 0, z] }),
+    cylinder(0.8, 25, { at: [12, 0, z] }),
     90,
     { axis: [0, 0, 1] }
   );
@@ -294,8 +264,8 @@ for (let i = 0; i < grooves; i++) {
 }
 
 return handle;`,
-    cameraPosition: [90, 70, 60],
-    cameraTarget: [0, 0, 40],
+    cameraPosition: [85, 70, 55],
+    cameraTarget: [0, 0, 32],
   },
 
   // Gaming Miniatures
@@ -319,8 +289,8 @@ const entrance = box(20, 20, 15, { at: [0, 0, height - 10] });
 tower = unwrap(cut(tower, entrance));
 
 // Internal ramps
-const ramp1 = rotate(box(width - wallT * 2, 2, 25, { at: [0, 0, 35] }), 30, { axis: [1, 0, 0] });
-const ramp2 = rotate(box(width - wallT * 2, 2, 25, { at: [0, 0, 15] }), -30, { axis: [1, 0, 0] });
+const ramp1 = box(width - wallT * 2, 2, 20, { at: [0, 0, 35] });
+const ramp2 = box(width - wallT * 2, 2, 20, { at: [0, 0, 15] });
 tower = unwrap(fuse(tower, ramp1));
 tower = unwrap(fuse(tower, ramp2));
 
@@ -341,25 +311,27 @@ return tower;`,
 const hexR = 25;
 const height = 8;
 
-// Hex base
-const hexPoints = [];
+// Create hex using 6 points
+const hex = [];
 for (let i = 0; i < 6; i++) {
   const angle = (i / 6) * Math.PI * 2;
-  hexPoints.push([
-    Math.cos(angle) * hexR,
-    Math.sin(angle) * hexR
-  ]);
+  hex.push([Math.cos(angle) * hexR, Math.sin(angle) * hexR]);
 }
 
-const hexSketch = new Sketcher().polyline(hexPoints).close();
+const hexSketch = new Sketcher()
+  .lineTo(hex[0])
+  .lineTo(hex[1])
+  .lineTo(hex[2])
+  .lineTo(hex[3])
+  .lineTo(hex[4])
+  .lineTo(hex[5])
+  .close();
+
 let tile = shape(hexSketch.face()).extrude(height).val;
 
 // Raised hill feature
-const hill = cylinder(12, 6, { at: [0, 0, height] });
+const hill = cylinder(10, 5, { at: [0, 0, height] });
 tile = unwrap(fuse(tile, hill));
-
-// Edge bevels
-tile = shape(tile).chamfer(1).val;
 
 return tile;`,
     cameraPosition: [80, 80, 50],
