@@ -31,7 +31,7 @@
 | **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | 8/10                 | **9/10**        | ✅ Complete: Wrapper canonical, init simplified, cookbook added |
 | **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ Consistent Result boundaries; wrapper auto-throws            |
 
-**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10** — Consistency 10/10 🎯, Discoverability 9/10 ✅. Next: Push remaining dimensions to 9-10/10.
+**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10 → 8.625/10** — Consistency 10/10 🎯, Discoverability 9/10 ✅, Verbosity 8.5/10. Next: Push Error Handling to 9/10.
 
 ---
 
@@ -139,17 +139,9 @@ const shape = unwrap(result);
 
 **Status:** ✅ The `pipe()` API has been removed. Only `shape()` wrapper remains.
 
-### 2.4 Finder Integration Awkwardness (Medium)
+### 2.4 Finder Integration Awkwardness (✅ COMPLETED)
 
-Pre-built finders can't be passed directly:
-
-```ts
-const zEdges = edgeFinder().inDirection('Z');
-shape(box).fillet(zEdges, 2); // Type error
-shape(box).fillet(() => zEdges, 2); // Awkward workaround
-```
-
-**Action:** Accept `ShapeFinder<T>` directly in addition to `FinderFn<T>` callback.
+**Status:** ✅ `fillet`, `chamfer`, and `shell` now accept `ShapeFinder<T>` directly, eliminating the need for `() => finder` wrapper pattern.
 
 ### 2.5 No .unwrap() Method on Wrapper (Low)
 
@@ -280,6 +272,7 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~9. **Simplify initialization story** — ✅ Done (brepjs/quick as default, manual init in Advanced section)~~
 ~~10. **Add cookbook.md** — ✅ Done (15 practical recipes using canonical wrapper style)~~
 ~~11. **Add volumeProps/surfaceProps** — ✅ Done (full property methods with centerOfMass)~~
+~~12. **Accept ShapeFinder directly** — ✅ Done (eliminates awkward `() => finder` wrapper pattern)~~
 
 ### 🎯 Next Up — Push to 9-10/10
 
@@ -287,16 +280,16 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 
 - Consistency & Naming: 10/10 🎯 (Complete!)
 - Discoverability: 9/10 ✅ (Very good - wrapper canonical, init simple, cookbook added)
-- Verbosity & Ergonomics: 8/10 (Good - wrapper ~90% complete, measurement 83%)
+- Verbosity & Ergonomics: 8.5/10 (Very good - wrapper ~92% complete, ShapeFinder direct support)
 - Error Handling UX: 8/10 (Good - consistent Result boundaries)
 
 **Next priorities to reach 9-10/10:**
 
-**1. Accept ShapeFinder directly** (Verbosity 8/10 → 8.5/10)
+**1. Add OCCT error translation layer** (Error Handling 8/10 → 9/10)
 
-- Allow passing `ShapeFinder<T>` directly to fillet/chamfer/shell, not just callbacks
-- **Why:** Eliminates awkward `() => finder` wrapper pattern
-- **Impact:** Cleaner API for common finder workflows
+- Map common OCCT exceptions to actionable messages
+- **Why:** "Invalid edge configuration" → "Edges may not form continuous loop. Check that edges connect end-to-end"
+- **Impact:** Helps users fix errors faster without OCCT expertise
 
 ### 📋 P3 — Lower Priority
 
