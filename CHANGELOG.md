@@ -1,5 +1,23 @@
 # Changelog
 
+## [7.4.0](https://github.com/andymai/brepjs/compare/brepjs-v7.3.0...brepjs-v7.4.0) (2026-02-08)
+
+
+### Features
+
+* **playground:** add automatic worker crash recovery ([0f66d61](https://github.com/andymai/brepjs/commit/0f66d615739f2502fb013ad1d16c1174c34acc3d))
+* **playground:** add execution cancellation for iterative editing ([1d5a1a5](https://github.com/andymai/brepjs/commit/1d5a1a5bf09a5a879b8c7414c908bc3491808527))
+
+
+### Bug Fixes
+
+* **playground:** add runtime safety to WASM preloading and worker init ([f7bf7f8](https://github.com/andymai/brepjs/commit/f7bf7f8f2418635414776211b3f60b0c3aee48c2))
+
+
+### Performance Improvements
+
+* **playground:** optimize code execution speed for iterative development ([c3e3325](https://github.com/andymai/brepjs/commit/c3e33254e63cc9e9265e23410865a39f01e791c8))
+
 ## [7.3.0](https://github.com/andymai/brepjs/compare/brepjs-v7.2.0...brepjs-v7.3.0) (2026-02-08)
 
 
