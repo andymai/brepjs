@@ -11,6 +11,7 @@ import { castShape } from './shapeTypes.js';
 import type { Result } from './result.js';
 import { ok, err } from './result.js';
 import type { BrepErrorKind, BrepError } from './errors.js';
+import { translateOcctError } from './errors.js';
 
 type ErrorFactory = (code: string, message: string, cause?: unknown) => BrepError;
 
@@ -29,6 +30,9 @@ const errorFactories: Record<BrepErrorKind, ErrorFactory> = {
  * Wrap a kernel call that returns an OcShape, automatically casting
  * the result into a branded AnyShape. On exception, returns an Err
  * with the given error code and message.
+ *
+ * OCCT error messages are automatically translated into user-friendly
+ * explanations when the error kind is OCCT_OPERATION.
  */
 export function kernelCall(
   fn: () => OcShape,
@@ -39,15 +43,19 @@ export function kernelCall(
   try {
     return ok(castShape(fn()));
   } catch (e) {
-    return err(
-      errorFactories[kind](code, `${message}: ${e instanceof Error ? e.message : String(e)}`, e)
-    );
+    const rawMessage = e instanceof Error ? e.message : String(e);
+    const translatedMessage =
+      kind === 'OCCT_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
+    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
   }
 }
 
 /**
  * Wrap a kernel call that returns an arbitrary value. On exception,
  * returns an Err with the given error code and message.
+ *
+ * OCCT error messages are automatically translated into user-friendly
+ * explanations when the error kind is OCCT_OPERATION.
  */
 export function kernelCallRaw<T>(
   fn: () => T,
@@ -58,8 +66,9 @@ export function kernelCallRaw<T>(
   try {
     return ok(fn());
   } catch (e) {
-    return err(
-      errorFactories[kind](code, `${message}: ${e instanceof Error ? e.message : String(e)}`, e)
-    );
+    const rawMessage = e instanceof Error ? e.message : String(e);
+    const translatedMessage =
+      kind === 'OCCT_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
+    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
   }
 }
