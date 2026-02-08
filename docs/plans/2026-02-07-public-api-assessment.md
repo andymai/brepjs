@@ -1,12 +1,12 @@
 # Public API Assessment: Friction Points & Action Items
 
 **Date:** 2026-02-07
-**Last Updated:** 2026-02-07 (after Clean 2D API Naming)
+**Last Updated:** 2026-02-07 (after which-api.md simplification)
 **Goal:** Identify actionable friction points in the brepjs public API
 **Canonical style:** Fluent wrapper (`shape(box(...)).cut(...).fillet(...)`)
 **Audience:** Both web developers new to CAD and experienced CAD engineers
 
-**Status:** v7.2.0 shipped with parameter naming standardization (PR #191). Config → Options naming standardization completed. Clean 2D API naming completed.
+**Status:** v7.2.0 shipped with parameter naming standardization (PR #191). Config → Options naming standardization completed. Clean 2D API naming completed. which-api.md simplified to reduce decision paralysis.
 
 ---
 
@@ -145,6 +145,27 @@
 - ✅ Function coverage: 87.62% maintained
 - ✅ Consistency & Naming score: 9/10 → **10/10** 🎯
 - ✅ 2D API now follows same concise naming as 3D API
+
+---
+
+## ✅ Completed: Simplify which-api.md
+
+**What was accomplished:**
+
+1. **Eliminate API Style Paralysis (P1 - High Priority)** - Restructured which-api.md to provide clear, upfront guidance:
+   - TL;DR at top: "Use fluent wrapper for 3D, Sketcher for 2D"
+   - "Start Here: The Two APIs You Need" section with concise examples
+   - Quick Reference table for common tasks
+   - Moved Functional API and Drawing API to "Advanced: Alternative Styles" section
+   - ✅ Users now see clear guidance before being overwhelmed with options
+   - ✅ Primary APIs (wrapper + sketcher) positioned prominently
+   - ✅ Alternative styles available but clearly marked as advanced
+
+**Impact:**
+
+- ✅ Eliminates decision paralysis for new users
+- ✅ Clear "start here" guidance reduces onboarding friction
+- ✅ Discoverability improvement: reduces confusion about which API to use
 
 ---
 
@@ -364,16 +385,19 @@ shape(box).fillet(() => zEdges, 2); // Awkward workaround
 
 **Action:** Promote `brepjs/quick` as the default. Show standard init only in "Advanced" section.
 
-### 3.3 API Style Paralysis (High)
+### 3.3 API Style Paralysis (✅ COMPLETED)
 
-`which-api.md` presents 4+ styles before the user creates a single shape:
+**Status:** ✅ which-api.md restructured to eliminate decision paralysis.
 
-1. Sketcher (fluent chaining)
-2. Functional API (standalone functions)
-3. Pipeline style (pipe wrapper)
-4. Drawing API (2D profiles)
+**What was done:**
 
-**Action:** Restructure to: "Use `shape()` wrapper. For 2D profiles, use Sketcher. That's it." Move other styles to an "Advanced: Alternative Styles" section.
+- ✅ Added TL;DR at top: "Use fluent wrapper for 3D, Sketcher for 2D"
+- ✅ Created "Start Here: The Two APIs You Need" section with clear examples
+- ✅ Moved Functional API and Drawing API to "Advanced: Alternative Styles" section
+- ✅ Added Quick Reference table for common tasks
+- ✅ Primary APIs (wrapper + sketcher) now prominently positioned
+
+**Result:** New users see clear guidance upfront instead of being overwhelmed with 4+ API choices. Alternative styles available for advanced use cases.
 
 ### 3.4 Sub-Path Groupings Not Intuitive (Medium)
 
@@ -503,50 +527,33 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~4. **Document the `shape()` wrapper** — ✅ Done in PR #190 (getting-started, which-api, cheat-sheet)~~
 ~~5. **Standardize parameter naming** — ✅ Done in PR #191 (`at` for position, `axis` for direction)~~
 ~~6. **Standardize Options vs Config naming** — ✅ Done (Config → Options for all configuration types)~~
+~~7. **Clean 2D API naming** — ✅ Done (added `*2D` aliases, deprecated verbose names, Consistency 10/10 achieved)~~
+~~8. **Simplify which-api.md** — ✅ Done (TL;DR + clear guidance, moved alternatives to Advanced section)~~
 
-### 🎯 Next Up — P0 Critical
+### 🎯 Next Up — P1 High Priority
 
-**1. Clean 2D API naming** (High Impact for 2D users) 🔥 **TOP PRIORITY**
-
-- Add 2D aliases: `fuse2d`, `cut2d`, `intersect2d` (or overload main functions)
-- Remove verbose `Blueprint2D` / `Blueprint` suffixes
-- **Why:** 2D operations needlessly verbose compared to 3D
-- **Impact:** More consistent, less typing. Estimated improvement: Consistency 9/10 → 10/10
-- **Scope:** ~10 functions in 2D module
-
-### 🔥 P1 — High Priority
-
-**3. Simplify initialization story**
+**1. Simplify initialization story**
 
 - Promote `brepjs/quick` as the default in docs
 - Move standard `initFromOC()` to "Advanced" section
 - Remove confusing third path (`_setup.js`)
 - **Why:** Three init paths create choice paralysis
 - **Impact:** Faster onboarding, less confusion
-
-**4. Simplify which-api.md**
-
-- Lead with: "Use `shape()` wrapper for 3D, Sketcher for 2D profiles"
-- Move other styles to "Advanced: Alternative Styles" section
-- **Why:** Presenting 4+ styles upfront creates decision paralysis
-- **Impact:** Clearer guidance for new users
+- **Target:** Discoverability 8/10 → 9/10
 
 ### 📋 P2 — Medium Priority
 
-7. **Clean 2D naming** — Add `fuse2d`, `cut2d`, `intersect2d` or overload main functions
-8. **Accept ShapeFinder directly** in fillet/chamfer/shell (not just callbacks)
-9. **Add OCCT error translation layer** for top 10 common failures with actionable messages
-10. **Add `suggestion` field to BrepError** for recovery hints
-11. **Standardize on `Options` suffix** — rename `LoftConfig`, `SweepConfig` to `LoftOptions`, `SweepOptions`
+**2. Accept ShapeFinder directly** in fillet/chamfer/shell (not just callbacks)
+
+**3. Add OCCT error translation layer** for top 10 common failures with actionable messages
+
+**4. Add `suggestion` field to BrepError** for recovery hints
 
 ### 🎨 P3 — Polish / Nice-to-Have
 
-12. **Add cookbook.md** with task-based recipes ("How do I...?")
-13. **Fix adjacency naming** — either add `get` prefix or drop it from both patterns
-14. **Type error metadata** per error code for better DX
-15. **Add `.tryFuse()` / `.tryCut()`** to wrapper for functional error handling
-16. **Remove duplicate exports** — IO functions from both `brepjs/topology` and `brepjs/io`
-17. **Fix Drawing transform naming** — pick one pattern (recommend Noun prefix)
+**5. Add cookbook.md** with task-based recipes ("How do I...?")
+
+**6. Fix adjacency naming** — either add `get` prefix or drop it from both patterns 14. **Type error metadata** per error code for better DX 15. **Add `.tryFuse()` / `.tryCut()`** to wrapper for functional error handling 16. **Remove duplicate exports** — IO functions from both `brepjs/topology` and `brepjs/io` 17. **Fix Drawing transform naming** — pick one pattern (recommend Noun prefix)
 
 ---
 
