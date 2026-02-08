@@ -45,7 +45,7 @@ import type { Bounds3D, ShapeDescription } from './shapeFns.js';
 import type { SurfaceType } from '../topology/faceFns.js';
 
 // Lazy imports to avoid circular dependencies — these are resolved at call time
-// We import the actual functions from the clean API layer
+// We import the actual functions from the public API layer
 
 import {
   translate,
@@ -71,12 +71,12 @@ import {
   section as sectionFn,
   split as splitFn,
   slice as sliceFn,
-} from './cleanApi.js';
+} from './api.js';
 import { getBounds, getEdges, getFaces, getWires, getVertices } from './shapeFns.js';
 import type { PlaneInput } from '../core/planeTypes.js';
 import type { ShapeMesh, EdgeMesh, MeshOptions } from './meshFns.js';
 import { cutAll as cutAllFn } from './booleanFns.js';
-import { extrude, revolve } from '../operations/cleanOpsFns.js';
+import { extrude, revolve } from '../operations/api.js';
 import { measureVolume, measureArea } from '../measurement/measureFns.js';
 import {
   curveStartPoint,

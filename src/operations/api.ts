@@ -1,7 +1,7 @@
 /**
- * Clean 3D operation names.
+ * Public 3D operation API.
  *
- * extrude(), revolve(), loft() — drop type suffix, accept Shapeable, use options.
+ * Provides extrude(), revolve(), loft() with short names, Shapeable support, and options objects.
  */
 
 import type { Vec3 } from '../core/types.js';
