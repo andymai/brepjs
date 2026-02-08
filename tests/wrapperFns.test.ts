@@ -178,13 +178,31 @@ describe('Wrapped3D modifiers', () => {
     expect(measureVolume(s.val)).toBeLessThan(1000);
   });
 
+  it('fillet() accepts ShapeFinder directly', () => {
+    const finder = edgeFinder().inDirection('Z');
+    const s = shape(box(10, 10, 10)).fillet(finder, 1);
+    expect(measureVolume(s.val)).toBeLessThan(1000);
+  });
+
   it('chamfer() all edges', () => {
     const s = shape(box(10, 10, 10)).chamfer(1);
     expect(measureVolume(s.val)).toBeLessThan(1000);
   });
 
+  it('chamfer() accepts ShapeFinder directly', () => {
+    const finder = edgeFinder().inDirection('Z');
+    const s = shape(box(10, 10, 10)).chamfer(finder, 1);
+    expect(measureVolume(s.val)).toBeLessThan(1000);
+  });
+
   it('shell() with FinderFn', () => {
     const s = shape(box(20, 20, 20)).shell((f) => f.inDirection('Z'), 2);
+    expect(measureVolume(s.val)).toBeLessThan(8000);
+  });
+
+  it('shell() accepts ShapeFinder directly', () => {
+    const finder = faceFinder().inDirection('Z');
+    const s = shape(box(20, 20, 20)).shell(finder, 2);
     expect(measureVolume(s.val)).toBeLessThan(8000);
   });
 

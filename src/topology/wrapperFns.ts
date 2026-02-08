@@ -39,6 +39,7 @@ import type {
   MirrorJoinOptions,
   RectangularPatternOptions,
 } from './apiTypes.js';
+import type { ShapeFinder } from '../query/finderFns.js';
 import { resolve } from './apiTypes.js';
 import type { BooleanOptions } from './booleanFns.js';
 import type { Bounds3D, ShapeDescription } from './shapeFns.js';
@@ -211,11 +212,14 @@ export interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
 
   // Modifiers
   fillet(radius: FilletRadius): Wrapped3D<T>;
-  fillet(edges: Edge[] | FinderFn<Edge>, radius: FilletRadius): Wrapped3D<T>;
+  fillet(edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, radius: FilletRadius): Wrapped3D<T>;
   chamfer(distance: ChamferDistance): Wrapped3D<T>;
-  chamfer(edges: Edge[] | FinderFn<Edge>, distance: ChamferDistance): Wrapped3D<T>;
+  chamfer(
+    edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>,
+    distance: ChamferDistance
+  ): Wrapped3D<T>;
   shell(
-    faces: Face[] | FinderFn<Face>,
+    faces: Face[] | FinderFn<Face> | ShapeFinder<Face>,
     thickness: number,
     options?: { tolerance?: number }
   ): Wrapped3D<T>;
@@ -333,13 +337,17 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
     slice: (planes, opts) => unwrapOrThrow(sliceFn(val, planes, opts)),
 
     // Modifiers (overloaded — detect by argument types)
-    fillet(...args: [FilletRadius] | [Edge[] | FinderFn<Edge>, FilletRadius]): Wrapped3D<T> {
+    fillet(
+      ...args: [FilletRadius] | [Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, FilletRadius]
+    ): Wrapped3D<T> {
       if (args.length === 1) {
         return wrap3D(unwrapOrThrow(fillet(val, args[0])) as unknown as T);
       }
       return wrap3D(unwrapOrThrow(fillet(val, args[0], args[1])) as unknown as T);
     },
-    chamfer(...args: [ChamferDistance] | [Edge[] | FinderFn<Edge>, ChamferDistance]): Wrapped3D<T> {
+    chamfer(
+      ...args: [ChamferDistance] | [Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, ChamferDistance]
+    ): Wrapped3D<T> {
       if (args.length === 1) {
         return wrap3D(unwrapOrThrow(chamfer(val, args[0])) as unknown as T);
       }

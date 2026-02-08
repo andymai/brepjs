@@ -10,6 +10,7 @@ import type { Result } from '../core/result.js';
 import type { AnyShape, Edge, Face, Shape3D, Shell, Solid } from '../core/shapeTypes.js';
 import type { Shapeable, FinderFn, FilletRadius, ChamferDistance } from './apiTypes.js';
 import { resolve } from './apiTypes.js';
+import type { ShapeFinder } from '../query/finderFns.js';
 import {
   translateShape,
   rotateShape,
@@ -176,22 +177,37 @@ export function slice(
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve a FinderFn callback into an array of elements.
+ * Resolve a FinderFn callback or ShapeFinder into an array of elements.
  * If the argument is already an array, return it directly.
  */
 function resolveEdges(
-  edgesOrFn: Edge[] | FinderFn<Edge> | undefined,
+  edgesOrFn: Edge[] | FinderFn<Edge> | ShapeFinder<Edge> | undefined,
   shape: Shape3D
 ): ReadonlyArray<Edge> | undefined {
   if (edgesOrFn === undefined) return undefined;
   if (Array.isArray(edgesOrFn)) return edgesOrFn;
+
+  // If it's a ShapeFinder, use it directly
+  if (typeof edgesOrFn === 'object' && 'findAll' in edgesOrFn) {
+    return edgesOrFn.findAll(shape);
+  }
+
   // It's a FinderFn — apply it to edgeFinder() and execute
   const finder = edgesOrFn(edgeFinder());
   return finder.findAll(shape);
 }
 
-function resolveFaces(facesOrFn: Face[] | FinderFn<Face>, shape: Shape3D): ReadonlyArray<Face> {
+function resolveFaces(
+  facesOrFn: Face[] | FinderFn<Face> | ShapeFinder<Face>,
+  shape: Shape3D
+): ReadonlyArray<Face> {
   if (Array.isArray(facesOrFn)) return facesOrFn;
+
+  // If it's a ShapeFinder, use it directly
+  if (typeof facesOrFn === 'object' && 'findAll' in facesOrFn) {
+    return facesOrFn.findAll(shape);
+  }
+
   const finder = facesOrFn(faceFinder());
   return finder.findAll(shape);
 }
@@ -246,12 +262,12 @@ export function fillet<T extends Shape3D>(shape: Shapeable<T>, radius: FilletRad
 /** Apply a fillet to selected edges of a 3D shape. */
 export function fillet<T extends Shape3D>(
   shape: Shapeable<T>,
-  edges: Edge[] | FinderFn<Edge>,
+  edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>,
   radius: FilletRadius
 ): Result<T>;
 export function fillet<T extends Shape3D>(
   shape: Shapeable<T>,
-  edgesOrRadius: Edge[] | FinderFn<Edge> | FilletRadius,
+  edgesOrRadius: Edge[] | FinderFn<Edge> | ShapeFinder<Edge> | FilletRadius,
   maybeRadius?: FilletRadius
 ): Result<T> {
   const s = resolve(shape);
@@ -260,7 +276,7 @@ export function fillet<T extends Shape3D>(
 
   if (maybeRadius !== undefined) {
     // 3-arg form: shape, edges, radius
-    edges = resolveEdges(edgesOrRadius as Edge[] | FinderFn<Edge>, s);
+    edges = resolveEdges(edgesOrRadius as Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, s);
     radius = maybeRadius;
   } else {
     // 2-arg form: shape, radius (fillet all edges)
@@ -279,12 +295,12 @@ export function chamfer<T extends Shape3D>(
 /** Apply a chamfer to selected edges of a 3D shape. */
 export function chamfer<T extends Shape3D>(
   shape: Shapeable<T>,
-  edges: Edge[] | FinderFn<Edge>,
+  edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>,
   distance: ChamferDistance
 ): Result<T>;
 export function chamfer<T extends Shape3D>(
   shape: Shapeable<T>,
-  edgesOrDistance: Edge[] | FinderFn<Edge> | ChamferDistance,
+  edgesOrDistance: Edge[] | FinderFn<Edge> | ShapeFinder<Edge> | ChamferDistance,
   maybeDistance?: ChamferDistance
 ): Result<T> {
   const s = resolve(shape);
@@ -292,7 +308,7 @@ export function chamfer<T extends Shape3D>(
   let distance: ChamferDistance;
 
   if (maybeDistance !== undefined) {
-    edges = resolveEdges(edgesOrDistance as Edge[] | FinderFn<Edge>, s);
+    edges = resolveEdges(edgesOrDistance as Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, s);
     distance = maybeDistance;
   } else {
     edges = undefined;
@@ -317,7 +333,7 @@ export function chamfer<T extends Shape3D>(
 /** Create a hollow shell by removing faces and offsetting remaining walls. */
 export function shell<T extends Shape3D>(
   shape: Shapeable<T>,
-  faces: Face[] | FinderFn<Face>,
+  faces: Face[] | FinderFn<Face> | ShapeFinder<Face>,
   thickness: number,
   options?: { tolerance?: number }
 ): Result<T> {
