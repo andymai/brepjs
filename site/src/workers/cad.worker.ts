@@ -30,6 +30,10 @@ let brepjs: any = null;
 // Cache the last eval result for exports
 let lastEvalResult: unknown[] | null = null;
 
+// Track active execution for cancellation
+let activeEvalId: string | null = null;
+let cancelRequested = false;
+
 // ── Code Cache ──
 
 interface CachedEval {
@@ -110,6 +114,10 @@ async function handleInit() {
 function handleEval(id: string, code: string) {
   const t0 = performance.now();
 
+  // Set as active execution
+  activeEvalId = id;
+  cancelRequested = false;
+
   // Check cache first (use code string directly as key)
   const cached = codeCache.get(code);
   if (cached) {
@@ -159,6 +167,13 @@ function handleEval(id: string, code: string) {
     console.log = origLog;
     console.warn = origWarn;
 
+    // Check if cancelled before proceeding with expensive meshing
+    if (cancelRequested && activeEvalId === id) {
+      post({ type: 'eval-cancelled', id });
+      activeEvalId = null;
+      return;
+    }
+
     if (result == null) {
       post({
         type: 'eval-result',
@@ -167,6 +182,7 @@ function handleEval(id: string, code: string) {
         console: consoleOutput,
         timeMs: performance.now() - t0,
       });
+      activeEvalId = null;
       return;
     }
 
@@ -182,6 +198,13 @@ function handleEval(id: string, code: string) {
     const transferables: Transferable[] = [];
 
     for (const shape of result) {
+      // Check for cancellation before each shape (expensive operation)
+      if (cancelRequested && activeEvalId === id) {
+        post({ type: 'eval-cancelled', id });
+        activeEvalId = null;
+        return;
+      }
+
       try {
         // Handle fluent wrappers (__wrapped), legacy Shape (.wrapped), and branded shapes
         const fnShape =
@@ -220,6 +243,13 @@ function handleEval(id: string, code: string) {
 
     const timeMs = performance.now() - t0;
 
+    // Final cancellation check before sending result
+    if (cancelRequested && activeEvalId === id) {
+      post({ type: 'eval-cancelled', id });
+      activeEvalId = null;
+      return;
+    }
+
     // Cache the result before transferring (clone because we'll transfer ownership)
     if (codeCache.size >= MAX_CACHE_SIZE) {
       // Simple FIFO eviction: delete oldest entry
@@ -233,6 +263,7 @@ function handleEval(id: string, code: string) {
     });
 
     post({ type: 'eval-result', id, meshes, console: consoleOutput, timeMs }, transferables);
+    activeEvalId = null;
   } catch (e) {
     console.log = origLog;
     console.warn = origWarn;
@@ -249,6 +280,7 @@ function handleEval(id: string, code: string) {
     }
 
     post({ type: 'eval-error', id, error: errorMsg, line });
+    activeEvalId = null;
   } finally {
     // Clean up user-added globalThis keys
     const globalAny = globalThis as Record<string, unknown>;
@@ -336,6 +368,12 @@ addEventListener('message', (e: MessageEvent<ToWorker>) => {
       break;
     case 'eval':
       handleEval(msg.id, msg.code);
+      break;
+    case 'cancel':
+      // Mark current execution for cancellation
+      if (activeEvalId === msg.id) {
+        cancelRequested = true;
+      }
       break;
     case 'export-stl':
       handleExportSTL(msg.id, msg.code);

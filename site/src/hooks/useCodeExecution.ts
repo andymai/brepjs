@@ -42,6 +42,10 @@ export function useCodeExecution() {
         store.setError(msg.error, msg.line);
         store.setIsRunning(false);
         break;
+      case 'eval-cancelled':
+        if (msg.id !== latestIdRef.current) return;
+        store.setIsRunning(false);
+        break;
       case 'export-result': {
         const stlBlob = new Blob([msg.stl], { type: 'model/stl' });
         const stlUrl = URL.createObjectURL(stlBlob);
@@ -77,6 +81,12 @@ export function useCodeExecution() {
     (code: string) => {
       if (engineStatus !== 'ready') return;
       const store = usePlaygroundStore.getState();
+
+      // Cancel previous execution if still running
+      if (store.isRunning && latestIdRef.current) {
+        postMessage({ type: 'cancel', id: latestIdRef.current });
+      }
+
       const id = `eval-${++evalCounter}`;
       latestIdRef.current = id;
       store.setIsRunning(true);

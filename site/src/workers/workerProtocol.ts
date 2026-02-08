@@ -12,6 +12,7 @@ export interface MeshTransfer {
 export type ToWorker =
   | { type: 'init' }
   | { type: 'eval'; id: string; code: string }
+  | { type: 'cancel'; id: string }
   | { type: 'export-stl'; id: string; code: string }
   | { type: 'export-step'; id: string; code: string };
 
@@ -23,6 +24,7 @@ export type FromWorker =
   | { type: 'init-error'; error: string }
   | { type: 'eval-result'; id: string; meshes: MeshTransfer[]; console: string[]; timeMs: number }
   | { type: 'eval-error'; id: string; error: string; line?: number }
+  | { type: 'eval-cancelled'; id: string }
   | { type: 'export-result'; id: string; stl: ArrayBuffer }
   | { type: 'export-step-result'; id: string; step: ArrayBuffer }
   | { type: 'export-error'; id: string; error: string };
