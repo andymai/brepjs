@@ -249,13 +249,12 @@ return shape(profile.face()).revolve().val;`,
   {
     id: 'hex-bolt',
     title: 'Hex Head Bolt',
-    description: 'Functional bolt with proper hex head, threaded shaft, and chamfered edges.',
+    description: 'Functional bolt with proper hex head geometry and cylindrical shaft.',
     category: 'practical',
-    code: `// Hex bolt with thread detail and chamfer
+    code: `// Hex head bolt with proper geometry
 const headH = 10;
 const shaftR = 6;
 const shaftH = 45;
-const threadH = 35;
 
 // Create hex head using proper geometry
 const hexPts = [];
@@ -275,21 +274,13 @@ const hexSketch = new Sketcher()
 
 let bolt = shape(hexSketch.face()).extrude(headH).val;
 
-// Add threaded shaft
+// Add shaft
 const shaft = cylinder(shaftR, shaftH, { at: [0, 0, -shaftH] });
 bolt = unwrap(fuse(bolt, shaft));
 
-// Add thread groove pattern
-const grooves = 18;
-for (let i = 0; i < grooves; i++) {
-  const z = -threadH + (i / grooves) * threadH;
-  const groove = rotate(
-    cylinder(0.8, 25, { at: [shaftR + 1, 0, z] }),
-    90,
-    { axis: [0, 0, 1] }
-  );
-  bolt = unwrap(cut(bolt, groove));
-}
+// Add tapered tip
+const tip = cylinder(2, 6, { at: [0, 0, -shaftH - 6] });
+bolt = unwrap(fuse(bolt, tip));
 
 return bolt;`,
     cameraPosition: [70, 60, 30],
