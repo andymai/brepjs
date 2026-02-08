@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, exportSTEP, deserializeShape, serializeShape } from '../src/index.js';
-import { meshShape } from '../src/topology/meshFns.js';
+import { box, exportSTEP, deserializeShape, toBREP, mesh } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -9,8 +8,8 @@ beforeAll(async () => {
 
 describe('Shape serialization', () => {
   it('serializes and deserializes a shape', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const serialized = serializeShape(box);
+    const b = box(10, 10, 10);
+    const serialized = toBREP(b);
     expect(serialized).toBeDefined();
     expect(typeof serialized).toBe('string');
     expect(serialized.length).toBeGreaterThan(0);
@@ -22,12 +21,12 @@ describe('Shape serialization', () => {
 
 describe('Mesh generation', () => {
   it('meshes a box', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const mesh = meshShape(box as any);
-    expect(mesh).toBeDefined();
-    expect(mesh.vertices).toBeDefined();
-    expect(mesh.triangles).toBeDefined();
-    expect(mesh.vertices.length).toBeGreaterThan(0);
-    expect(mesh.triangles.length).toBeGreaterThan(0);
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    expect(m).toBeDefined();
+    expect(m.vertices).toBeDefined();
+    expect(m.triangles).toBeDefined();
+    expect(m.vertices.length).toBeGreaterThan(0);
+    expect(m.triangles.length).toBeGreaterThan(0);
   });
 });

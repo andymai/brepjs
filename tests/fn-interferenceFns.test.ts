@@ -3,9 +3,9 @@ import { initOC } from './setup.js';
 import {
   checkInterference,
   checkAllInterferences,
-  makeBox,
-  makeSphere,
-  translateShape,
+  box,
+  sphere,
+  translate,
   unwrap,
   isErr,
   unwrapErr,
@@ -20,45 +20,45 @@ beforeAll(async () => {
 
 describe('checkInterference', () => {
   it('detects overlapping boxes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([5, 5, 5], [15, 15, 15]);
+    const b1 = box(10, 10, 10);
+    const b2 = translate(box(10, 10, 10), [5, 5, 5]);
 
-    const result = unwrap(checkInterference(box1, box2));
+    const result = unwrap(checkInterference(b1, b2));
     expect(result.hasInterference).toBe(true);
     expect(result.minDistance).toBeCloseTo(0, 5);
   });
 
   it('detects touching boxes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([10, 0, 0], [20, 10, 10]);
+    const b1 = box(10, 10, 10);
+    const b2 = translate(box(10, 10, 10), [10, 0, 0]);
 
-    const result = unwrap(checkInterference(box1, box2));
+    const result = unwrap(checkInterference(b1, b2));
     expect(result.hasInterference).toBe(true);
     expect(result.minDistance).toBeCloseTo(0, 5);
   });
 
   it('detects separated shapes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([20, 0, 0], [30, 10, 10]);
+    const b1 = box(10, 10, 10);
+    const b2 = translate(box(10, 10, 10), [20, 0, 0]);
 
-    const result = unwrap(checkInterference(box1, box2));
+    const result = unwrap(checkInterference(b1, b2));
     expect(result.hasInterference).toBe(false);
     expect(result.minDistance).toBeCloseTo(10, 3);
   });
 
   it('returns closest points on separated shapes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([20, 0, 0], [30, 10, 10]);
+    const b1 = box(10, 10, 10);
+    const b2 = translate(box(10, 10, 10), [20, 0, 0]);
 
-    const result = unwrap(checkInterference(box1, box2));
-    // Closest point on box1 should be near x=10, on box2 near x=20
+    const result = unwrap(checkInterference(b1, b2));
+    // Closest point on b1 should be near x=10, on b2 near x=20
     expect(result.pointOnShape1[0]).toBeCloseTo(10, 3);
     expect(result.pointOnShape2[0]).toBeCloseTo(20, 3);
   });
 
   it('works with spheres', () => {
-    const s1 = makeSphere(5);
-    const s2 = translateShape(makeSphere(5), [3, 0, 0]);
+    const s1 = sphere(5);
+    const s2 = translate(sphere(5), [3, 0, 0]);
 
     const result = unwrap(checkInterference(s1, s2));
     expect(result.hasInterference).toBe(true);
@@ -66,8 +66,8 @@ describe('checkInterference', () => {
   });
 
   it('detects separated spheres', () => {
-    const s1 = makeSphere(5);
-    const s2 = translateShape(makeSphere(5), [20, 0, 0]);
+    const s1 = sphere(5);
+    const s2 = translate(sphere(5), [20, 0, 0]);
 
     const result = unwrap(checkInterference(s1, s2));
     expect(result.hasInterference).toBe(false);
@@ -75,15 +75,15 @@ describe('checkInterference', () => {
   });
 
   it('respects custom tolerance', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([10.005, 0, 0], [20, 10, 10]);
+    const b1 = box(10, 10, 10);
+    const b2 = translate(box(10, 10, 10), [10.005, 0, 0]);
 
     // Default tolerance (1e-6) — should not detect interference
-    const strict = unwrap(checkInterference(box1, box2));
+    const strict = unwrap(checkInterference(b1, b2));
     expect(strict.hasInterference).toBe(false);
 
     // Larger tolerance — should detect as interference
-    const lenient = unwrap(checkInterference(box1, box2, 0.01));
+    const lenient = unwrap(checkInterference(b1, b2, 0.01));
     expect(lenient.hasInterference).toBe(true);
   });
 });
@@ -91,9 +91,9 @@ describe('checkInterference', () => {
 describe('checkAllInterferences', () => {
   it('returns empty array for non-interfering shapes', () => {
     const shapes = [
-      makeBox([0, 0, 0], [5, 5, 5]),
-      makeBox([10, 0, 0], [15, 5, 5]),
-      makeBox([20, 0, 0], [25, 5, 5]),
+      box(5, 5, 5),
+      translate(box(5, 5, 5), [10, 0, 0]),
+      translate(box(5, 5, 5), [20, 0, 0]),
     ];
 
     const pairs = checkAllInterferences(shapes);
@@ -102,9 +102,9 @@ describe('checkAllInterferences', () => {
 
   it('detects interfering pairs in a group', () => {
     const shapes = [
-      makeBox([0, 0, 0], [10, 10, 10]),
-      makeBox([5, 0, 0], [15, 10, 10]), // overlaps with [0]
-      makeBox([30, 0, 0], [40, 10, 10]), // separate
+      box(10, 10, 10),
+      translate(box(10, 10, 10), [5, 0, 0]), // overlaps with [0]
+      translate(box(10, 10, 10), [30, 0, 0]), // separate
     ];
 
     const pairs = checkAllInterferences(shapes);
@@ -116,9 +116,9 @@ describe('checkAllInterferences', () => {
 
   it('returns multiple pairs when multiple shapes interfere', () => {
     const shapes = [
-      makeBox([0, 0, 0], [10, 10, 10]),
-      makeBox([5, 0, 0], [15, 10, 10]),
-      makeBox([8, 0, 0], [18, 10, 10]),
+      box(10, 10, 10),
+      translate(box(10, 10, 10), [5, 0, 0]),
+      translate(box(10, 10, 10), [8, 0, 0]),
     ];
 
     const pairs = checkAllInterferences(shapes);
@@ -127,7 +127,7 @@ describe('checkAllInterferences', () => {
   });
 
   it('handles single shape gracefully', () => {
-    const pairs = checkAllInterferences([makeBox([0, 0, 0], [5, 5, 5])]);
+    const pairs = checkAllInterferences([box(5, 5, 5)]);
     expect(pairs).toHaveLength(0);
   });
 
@@ -148,16 +148,16 @@ describe('null-shape pre-validation', () => {
   }
 
   it('checkInterference returns err for null first shape', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = checkInterference(makeNullShape(), box);
+    const b = box(10, 10, 10);
+    const result = checkInterference(makeNullShape(), b);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
     expect(unwrapErr(result).message).toContain('first shape');
   });
 
   it('checkInterference returns err for null second shape', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const result = checkInterference(box, makeNullShape());
+    const b = box(10, 10, 10);
+    const result = checkInterference(b, makeNullShape());
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
     expect(unwrapErr(result).message).toContain('second shape');

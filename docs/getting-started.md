@@ -34,18 +34,18 @@ This only needs to happen once per application lifetime. After `initFromOC()`, a
 ## Step 3: Create a shape
 
 ```typescript
-import { makeBox } from 'brepjs';
+import { box } from 'brepjs';
 
-const box = makeBox([0, 0, 0], [30, 20, 10]);
+const b = box(30, 20, 10);
 ```
 
-`makeBox` takes two corner points `[x, y, z]` and returns a `Solid` — a branded type representing a watertight 3D shape. Other primitives work the same way:
+`box` takes width, depth, and height and returns a `Solid` — a branded type representing a watertight 3D shape. Other primitives work the same way:
 
 ```typescript
-import { makeCylinder, makeSphere } from 'brepjs';
+import { cylinder, sphere } from 'brepjs';
 
-const cylinder = makeCylinder(5, 20); // radius, height
-const sphere = makeSphere(8); // radius
+const cyl = cylinder(5, 20); // radius, height
+const sph = sphere(8); // radius
 ```
 
 ## Step 4: Combine shapes with booleans
@@ -53,18 +53,18 @@ const sphere = makeSphere(8); // radius
 Boolean operations combine shapes. They return `Result<Shape3D>` because the geometry kernel can fail on degenerate inputs:
 
 ```typescript
-import { cutShape, unwrap } from 'brepjs';
+import { cut, unwrap } from 'brepjs';
 
 // Cut a cylindrical hole through the box
-const withHole = unwrap(cutShape(box, cylinder));
+const withHole = unwrap(cut(b, cyl));
 ```
 
 `unwrap()` extracts the value from a successful `Result`, or throws if it failed. For production code, use `isOk()` to check first:
 
 ```typescript
-import { cutShape, isOk } from 'brepjs';
+import { cut, isOk } from 'brepjs';
 
-const result = cutShape(box, cylinder);
+const result = cut(b, cyl);
 if (isOk(result)) {
   const solid = result.value; // Shape3D
 } else {
@@ -74,22 +74,22 @@ if (isOk(result)) {
 
 The three boolean operations are:
 
-| Function              | Operation    | Analogy       |
-| --------------------- | ------------ | ------------- |
-| `fuseShape(a,b)`      | Union        | Glue together |
-| `cutShape(a,b)`       | Subtraction  | Drill a hole  |
-| `intersectShape(a,b)` | Intersection | Common volume |
+| Function         | Operation    | Analogy       |
+| ---------------- | ------------ | ------------- |
+| `fuse(a,b)`      | Union        | Glue together |
+| `cut(a,b)`       | Subtraction  | Drill a hole  |
+| `intersect(a,b)` | Intersection | Common volume |
 
 ## Step 5: Transform
 
 Transforms return new shapes (nothing is mutated):
 
 ```typescript
-import { translateShape, rotateShape, scaleShape } from 'brepjs';
+import { translate, rotate, scale } from 'brepjs';
 
-const moved = translateShape(withHole, [100, 0, 0]);
-const rotated = rotateShape(moved, [0, 0, 1], 45); // axis, degrees
-const scaled = scaleShape(moved, 2); // uniform scale
+const moved = translate(withHole, [100, 0, 0]);
+const rotated = rotate(moved, 45, { axis: [0, 0, 1] }); // degrees, options
+const scaled = scale(moved, 2); // uniform scale
 ```
 
 ## Step 6: Measure
@@ -119,10 +119,10 @@ Other export formats: `exportSTL`, `exportGltf`, `exportOBJ`, `exportThreeMF`.
 import opencascade from 'brepjs-opencascade';
 import {
   initFromOC,
-  makeBox,
-  makeCylinder,
-  cutShape,
-  translateShape,
+  box,
+  cylinder,
+  cut,
+  translate,
   measureVolume,
   exportSTEP,
   unwrap,
@@ -133,9 +133,9 @@ const oc = await opencascade();
 initFromOC(oc);
 
 // 2. Create a box with a cylindrical hole
-const box = makeBox([0, 0, 0], [30, 20, 10]);
-const hole = translateShape(makeCylinder(4, 15), [15, 10, -2]);
-const part = unwrap(cutShape(box, hole));
+const b = box(30, 20, 10);
+const hole = translate(cylinder(4, 15), [15, 10, -2]);
+const part = unwrap(cut(b, hole));
 
 // 3. Measure
 console.log('Volume:', measureVolume(part).toFixed(1), 'mm³');
@@ -159,7 +159,7 @@ In your `main.ts`:
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
-import { initFromOC, makeBox, meshShape, toBufferGeometryData } from 'brepjs';
+import { initFromOC, box, mesh, toBufferGeometryData } from 'brepjs';
 
 async function main() {
   // Load the WASM kernel — in a browser this fetches and compiles the .wasm file
@@ -167,9 +167,9 @@ async function main() {
   initFromOC(oc);
 
   // Now use brepjs as normal
-  const box = makeBox([0, 0, 0], [10, 10, 10]);
-  const mesh = meshShape(box, { tolerance: 0.1 });
-  const bufferData = toBufferGeometryData(mesh);
+  const b = box(10, 10, 10);
+  const m = mesh(b, { tolerance: 0.1 });
+  const bufferData = toBufferGeometryData(m);
 
   // Pass bufferData.position, .normal, .index to Three.js, Babylon.js, or raw WebGL
   console.log('Vertices:', bufferData.position.length / 3);
@@ -209,18 +209,18 @@ const solid = sketchExtrude(sketch, 20);
 Round or bevel edges on a solid:
 
 ```typescript
-import { filletShape, chamferShape, edgeFinder, getEdges, unwrap } from 'brepjs';
+import { fillet, chamfer, edgeFinder, getEdges, unwrap } from 'brepjs';
 
 // Fillet all edges with 2mm radius
-const rounded = unwrap(filletShape(part, getEdges(part), 2));
+const rounded = unwrap(fillet(part, getEdges(part), 2));
 
 // Fillet only vertical edges
 const vertEdges = edgeFinder().inDirection('Z').findAll(part);
-const selective = unwrap(filletShape(part, vertEdges, 2));
+const selective = unwrap(fillet(part, vertEdges, 2));
 
 // Chamfer vertical edges
 const chamferEdges = edgeFinder().inDirection('Z').findAll(part);
-const beveled = unwrap(chamferShape(part, chamferEdges, 1));
+const beveled = unwrap(chamfer(part, chamferEdges, 1));
 ```
 
 ## Error handling patterns
@@ -228,9 +228,9 @@ const beveled = unwrap(chamferShape(part, chamferEdges, 1));
 brepjs uses a `Result<T, BrepError>` type for all fallible operations. You have several ways to handle results:
 
 ```typescript
-import { cutShape, isOk, unwrap, match } from 'brepjs';
+import { cut, isOk, unwrap, match } from 'brepjs';
 
-const result = cutShape(box, cylinder);
+const result = cut(b, cyl);
 
 // Pattern 1: Quick scripts — unwrap (throws on error)
 const solid = unwrap(result);
@@ -259,14 +259,14 @@ You forgot to initialize the WASM kernel. Every brepjs program must call `initFr
 
 ```typescript
 const oc = await opencascade();
-initFromOC(oc); // Must happen before makeBox, makeCylinder, etc.
+initFromOC(oc); // Must happen before box, cylinder, etc.
 ```
 
 ### Boolean operation returns an error
 
-Boolean operations (`fuseShape`, `cutShape`, `intersectShape`) can fail when shapes don't overlap, are invalid, or have degenerate geometry. Try:
+Boolean operations (`fuse`, `cut`, `intersect`) can fail when shapes don't overlap, are invalid, or have degenerate geometry. Try:
 
-1. **Check shapes overlap** — `cutShape(a, b)` requires `b` to intersect `a`
+1. **Check shapes overlap** — `cut(a, b)` requires `b` to intersect `a`
 2. **Heal inputs first** — `unwrap(healSolid(shape))` fixes minor geometry issues
 3. **Check the error** — `result.error.code` tells you exactly what failed (see [Error Reference](./errors.md))
 
@@ -276,7 +276,7 @@ WASM objects aren't garbage-collected like normal JS objects. Use `using` for au
 
 ```typescript
 {
-  using temp = makeBox([0, 0, 0], [10, 10, 10]);
+  using temp = box(10, 10, 10);
   // temp is automatically cleaned up at block end
 }
 ```

@@ -3,56 +3,16 @@
  *
  * @example
  * ```typescript
- * import { makeBox, fuseShape, filletShape, meshShape } from 'brepjs/topology';
+ * import { box, fuse, fillet, mesh } from 'brepjs/topology';
  * ```
  */
-
-// ── Shape creation ──
-
-export {
-  makeLine,
-  makeCircle,
-  makeEllipse,
-  makeHelix,
-  makeThreePointArc,
-  makeEllipseArc,
-  makeBSplineApproximation,
-  makeBezierCurve,
-  makeTangentArc,
-  assembleWire,
-  makeFace,
-  makeNewFaceWithinFace,
-  makeNonPlanarFace,
-  makeCylinder,
-  makeSphere,
-  makeCone,
-  makeTorus,
-  makeEllipsoid,
-  makeBox,
-  makeVertex,
-  makeOffset,
-  makeCompound,
-  weldShellsAndFaces,
-  makeSolid,
-  addHolesInFace,
-  makePolygon,
-  type BSplineApproximationConfig,
-} from './topology/index.js';
 
 // ── Shape functions ──
 
 export {
-  cloneShape,
-  serializeShape,
   getHashCode,
-  isShapeNull,
   isSameShape,
   isEqualShape,
-  simplifyShape,
-  translateShape,
-  rotateShape,
-  mirrorShape,
-  scaleShape,
   getEdges,
   getFaces,
   getWires,
@@ -63,34 +23,13 @@ export {
   iterVertices,
   getBounds,
   vertexPosition,
-  describeShape,
   type Bounds3D,
   type ShapeDescription,
 } from './topology/shapeFns.js';
 
 // ── Boolean operations ──
 
-export {
-  fuseShape,
-  cutShape,
-  intersectShape,
-  sectionShape,
-  splitShape,
-  sliceShape,
-  fuseAll,
-  cutAll,
-  type BooleanOptions,
-} from './topology/booleanFns.js';
-
-// ── Modifiers ──
-
-export {
-  thickenSurface,
-  filletShape,
-  chamferShape,
-  shellShape,
-  offsetShape,
-} from './topology/modifierFns.js';
+export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
 
 export { chamferDistAngleShape } from './topology/chamferAngleFns.js';
 
@@ -149,8 +88,6 @@ export {
 // ── Meshing and export ──
 
 export {
-  meshShape,
-  meshShapeEdges,
   exportSTEP,
   exportSTL,
   exportIGES,
@@ -176,20 +113,14 @@ export {
 // ── Healing ──
 
 export {
-  isShapeValid,
   healSolid,
   healFace,
   healWire,
-  healShape,
   autoHeal,
   type HealingReport,
   type AutoHealOptions,
   type HealingStepDiagnostic,
 } from './topology/healingFns.js';
-
-// ── Pipe ──
-
-export { pipe, type ShapePipe } from './topology/pipeFns.js';
 
 // ── Cast ──
 

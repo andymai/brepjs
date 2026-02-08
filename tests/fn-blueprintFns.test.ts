@@ -1,7 +1,11 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { drawRectangle, drawCircle, Blueprint } from '../src/index.js';
 import {
+  drawRectangle,
+  drawCircle,
+  Blueprint,
+  box,
+  getFaces,
   createBlueprint,
   blueprintBoundingBox,
   blueprintOrientation,
@@ -14,8 +18,7 @@ import {
   blueprintIsInside,
   sketchBlueprintOnPlane,
   sketchBlueprintOnFace,
-} from '../src/2d/blueprints/blueprintFns.js';
-import { makeBox, getFaces } from '../src/index.js';
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -151,9 +154,9 @@ describe('createBlueprint', () => {
 describe('sketchBlueprintOnFace', () => {
   it('sketches on a box face', () => {
     const bp = rect(5, 5);
-    const box = makeBox([0, 0, 0], [20, 20, 20]);
-    const face = getFaces(box)[0];
-    const sketch = sketchBlueprintOnFace(bp, face, 'original');
+    const b = box(20, 20, 20);
+    const f = getFaces(b)[0];
+    const sketch = sketchBlueprintOnFace(bp, f, 'original');
     expect(sketch).toBeDefined();
     expect(sketch.wire).toBeDefined();
   });

@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeCylinder,
+  box,
+  cylinder,
   castShape,
   createHistory,
   addStep,
@@ -19,12 +19,12 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-function box(): Shape3D {
-  return castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped) as Shape3D;
+function makeBoxShape(): Shape3D {
+  return castShape(box(10, 10, 10).wrapped) as Shape3D;
 }
 
-function cyl(): Shape3D {
-  return castShape(makeCylinder(5, 20).wrapped) as Shape3D;
+function makeCylShape(): Shape3D {
+  return castShape(cylinder(5, 20).wrapped) as Shape3D;
 }
 
 describe('createHistory', () => {
@@ -37,7 +37,7 @@ describe('createHistory', () => {
 
 describe('addStep', () => {
   it('adds a step and stores the shape', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const h = addStep(
       createHistory(),
       {
@@ -61,8 +61,8 @@ describe('addStep', () => {
 
 describe('undoLast', () => {
   it('removes last step and cleans up orphaned shapes', () => {
-    const shape1 = box();
-    const shape2 = cyl();
+    const shape1 = makeBoxShape();
+    const shape2 = makeCylShape();
     let h: ModelHistory = createHistory();
     h = registerShape(h, 'base', shape1);
     h = addStep(
@@ -106,7 +106,7 @@ describe('undoLast', () => {
 
 describe('findStep', () => {
   it('finds existing step by ID', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const h = addStep(
       createHistory(),
       {
@@ -131,7 +131,7 @@ describe('findStep', () => {
 
 describe('getHistoryShape', () => {
   it('retrieves shape by ID', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const h = addStep(
       createHistory(),
       {
@@ -154,7 +154,7 @@ describe('getHistoryShape', () => {
 
 describe('stepCount', () => {
   it('returns correct count', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     let h: ModelHistory = createHistory();
     expect(stepCount(h)).toBe(0);
     h = addStep(h, { id: 's1', type: 'a', parameters: {}, inputIds: [], outputId: 'o1' }, shape);
@@ -166,7 +166,7 @@ describe('stepCount', () => {
 
 describe('stepsFrom', () => {
   it('returns steps from given ID onwards', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     let h: ModelHistory = createHistory();
     h = addStep(h, { id: 's1', type: 'a', parameters: {}, inputIds: [], outputId: 'o1' }, shape);
     h = addStep(h, { id: 's2', type: 'b', parameters: {}, inputIds: [], outputId: 'o2' }, shape);
@@ -186,7 +186,7 @@ describe('stepsFrom', () => {
 
 describe('registerShape', () => {
   it('adds initial shape without a step', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const h = registerShape(createHistory(), 'initial', shape);
     expect(h.shapes.get('initial')).toBe(shape);
     expect(h.steps).toHaveLength(0);
@@ -195,9 +195,9 @@ describe('registerShape', () => {
 
 describe('multiple operations', () => {
   it('builds up correctly with 3 steps', () => {
-    const s1 = box();
-    const s2 = cyl();
-    const s3 = box();
+    const s1 = makeBoxShape();
+    const s2 = makeCylShape();
+    const s3 = makeBoxShape();
     let h: ModelHistory = createHistory();
     h = addStep(
       h,
@@ -225,7 +225,7 @@ describe('multiple operations', () => {
 
 describe('immutability', () => {
   it('original history is unchanged after addStep', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const original = createHistory();
     const updated = addStep(
       original,
@@ -244,7 +244,7 @@ describe('immutability', () => {
   });
 
   it('original history is unchanged after undoLast', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const h = addStep(
       createHistory(),
       {
@@ -263,7 +263,7 @@ describe('immutability', () => {
   });
 
   it('original history is unchanged after registerShape', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const original = createHistory();
     const updated = registerShape(original, 'init', shape);
     expect(original.shapes.size).toBe(0);

@@ -1,12 +1,10 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeLine,
-  makeFace,
-  makeVertex,
-  assembleWire,
-  // functional API
+  box,
+  line,
+  vertex,
+  wire,
   castShape,
   getShapeKind,
   isVertex,
@@ -18,7 +16,7 @@ import {
   isCompound,
   isShape3D,
   isShape1D,
-  makeCompound,
+  compound,
   getFaces,
   getEdges,
   type AnyShape,
@@ -30,71 +28,70 @@ beforeAll(async () => {
 
 describe('getShapeKind', () => {
   it('returns solid for a box', () => {
-    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-    expect(getShapeKind(box)).toBe('solid');
+    const b = castShape(box(10, 10, 10).wrapped);
+    expect(getShapeKind(b)).toBe('solid');
   });
 
   it('returns edge for a line', () => {
-    const line = castShape(makeLine([0, 0, 0], [10, 0, 0]).wrapped);
-    expect(getShapeKind(line)).toBe('edge');
+    const l = castShape(line([0, 0, 0], [10, 0, 0]).wrapped);
+    expect(getShapeKind(l)).toBe('edge');
   });
 
   it('returns vertex for a point', () => {
-    const vertex = castShape(makeVertex([5, 5, 5]).wrapped);
-    expect(getShapeKind(vertex)).toBe('vertex');
+    const v = castShape(vertex([5, 5, 5]).wrapped);
+    expect(getShapeKind(v)).toBe('vertex');
   });
 
   it('returns compound for multiple shapes', () => {
-    const box1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-    const box2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
-    const compound = makeCompound([box1, box2]);
-    expect(getShapeKind(compound)).toBe('compound');
+    const b1 = castShape(box(10, 10, 10).wrapped);
+    const b2 = castShape(box(10, 10, 10).wrapped);
+    const c = compound([b1, b2]);
+    expect(getShapeKind(c)).toBe('compound');
   });
 });
 
 describe('type guards', () => {
   // Create shapes fresh for each test to avoid reuse issues
-  function createVertex() {
-    return castShape(makeVertex([5, 5, 5]).wrapped);
+  function createTestVertex() {
+    return castShape(vertex([5, 5, 5]).wrapped);
   }
 
   function createEdge() {
-    return castShape(makeLine([0, 0, 0], [10, 0, 0]).wrapped);
+    return castShape(line([0, 0, 0], [10, 0, 0]).wrapped);
   }
 
   function createWire() {
-    // assembleWire takes Edge objects and returns Result<Wire>
-    const edge1 = makeLine([0, 0, 0], [10, 0, 0]);
-    const edge2 = makeLine([10, 0, 0], [10, 10, 0]);
-    const wireResult = assembleWire([edge1, edge2]);
+    const edge1 = line([0, 0, 0], [10, 0, 0]);
+    const edge2 = line([10, 0, 0], [10, 10, 0]);
+    const wireResult = wire([edge1, edge2]);
     if (!wireResult.ok) throw new Error('Failed to create wire');
     return castShape(wireResult.value.wrapped);
   }
 
   function createSolid() {
-    return castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
+    return castShape(box(10, 10, 10).wrapped);
   }
 
   function createFace() {
-    const solid = createSolid();
-    return getFaces(solid)[0]!;
+    const s = createSolid();
+    return getFaces(s)[0]!;
   }
 
-  function createCompound() {
-    const s1 = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-    const s2 = castShape(makeBox([20, 0, 0], [30, 10, 10]).wrapped);
-    return makeCompound([s1, s2]);
+  function createTestCompound() {
+    const s1 = castShape(box(10, 10, 10).wrapped);
+    const s2 = castShape(box(10, 10, 10).wrapped);
+    return compound([s1, s2]);
   }
 
   describe('isVertex', () => {
-    it('returns true for vertex', () => expect(isVertex(createVertex())).toBe(true));
+    it('returns true for vertex', () => expect(isVertex(createTestVertex())).toBe(true));
     it('returns false for edge', () => expect(isVertex(createEdge())).toBe(false));
     it('returns false for solid', () => expect(isVertex(createSolid())).toBe(false));
   });
 
   describe('isEdge', () => {
     it('returns true for edge', () => expect(isEdge(createEdge())).toBe(true));
-    it('returns false for vertex', () => expect(isEdge(createVertex())).toBe(false));
+    it('returns false for vertex', () => expect(isEdge(createTestVertex())).toBe(false));
     it('returns false for solid', () => expect(isEdge(createSolid())).toBe(false));
   });
 
@@ -114,24 +111,24 @@ describe('type guards', () => {
     // Shells are harder to create directly, test negative cases
     it('returns false for solid', () => expect(isShell(createSolid())).toBe(false));
     it('returns false for face', () => expect(isShell(createFace())).toBe(false));
-    it('returns false for compound', () => expect(isShell(createCompound())).toBe(false));
+    it('returns false for compound', () => expect(isShell(createTestCompound())).toBe(false));
   });
 
   describe('isSolid', () => {
     it('returns true for solid', () => expect(isSolid(createSolid())).toBe(true));
     it('returns false for face', () => expect(isSolid(createFace())).toBe(false));
-    it('returns false for compound', () => expect(isSolid(createCompound())).toBe(false));
+    it('returns false for compound', () => expect(isSolid(createTestCompound())).toBe(false));
   });
 
   describe('isCompound', () => {
-    it('returns true for compound', () => expect(isCompound(createCompound())).toBe(true));
+    it('returns true for compound', () => expect(isCompound(createTestCompound())).toBe(true));
     it('returns false for solid', () => expect(isCompound(createSolid())).toBe(false));
     it('returns false for face', () => expect(isCompound(createFace())).toBe(false));
   });
 
   describe('isShape3D', () => {
     it('returns true for solid', () => expect(isShape3D(createSolid())).toBe(true));
-    it('returns true for compound', () => expect(isShape3D(createCompound())).toBe(true));
+    it('returns true for compound', () => expect(isShape3D(createTestCompound())).toBe(true));
     it('returns false for edge', () => expect(isShape3D(createEdge())).toBe(false));
     it('returns false for face', () => expect(isShape3D(createFace())).toBe(false));
   });
@@ -141,6 +138,6 @@ describe('type guards', () => {
     it('returns true for wire', () => expect(isShape1D(createWire())).toBe(true));
     it('returns false for solid', () => expect(isShape1D(createSolid())).toBe(false));
     it('returns false for face', () => expect(isShape1D(createFace())).toBe(false));
-    it('returns false for vertex', () => expect(isShape1D(createVertex())).toBe(false));
+    it('returns false for vertex', () => expect(isShape1D(createTestVertex())).toBe(false));
   });
 });

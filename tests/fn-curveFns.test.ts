@@ -1,12 +1,11 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeLine,
-  makeCircle,
-  assembleWire,
+  line,
+  circle,
+  wire,
   sketchRectangle,
   unwrap,
-  // functional API
   castShape,
   getCurveType,
   curveStartPoint,
@@ -29,19 +28,19 @@ beforeAll(async () => {
 
 describe('getCurveType', () => {
   it('returns LINE for a line edge', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     expect(getCurveType(castShape(edge.wrapped))).toBe('LINE');
   });
 
   it('returns CIRCLE for a circle edge', () => {
-    const edge = makeCircle(5);
+    const edge = circle(5);
     expect(getCurveType(castShape(edge.wrapped))).toBe('CIRCLE');
   });
 });
 
 describe('curveStartPoint / curveEndPoint', () => {
   it('returns correct start and end for a line', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     const fn = castShape(edge.wrapped);
     const start = curveStartPoint(fn);
     const end = curveEndPoint(fn);
@@ -52,7 +51,7 @@ describe('curveStartPoint / curveEndPoint', () => {
 
 describe('curvePointAt', () => {
   it('returns midpoint at t=0.5', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     const pt = curvePointAt(castShape(edge.wrapped), 0.5);
     expect(pt[0]).toBeCloseTo(5);
     expect(pt[1]).toBeCloseTo(0);
@@ -62,7 +61,7 @@ describe('curvePointAt', () => {
 
 describe('curveTangentAt', () => {
   it('returns tangent vector', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     const t = curveTangentAt(castShape(edge.wrapped), 0.5);
     expect(t).toBeDefined();
     // Tangent of an X-axis line should be [1,0,0] (or [-1,0,0])
@@ -72,27 +71,27 @@ describe('curveTangentAt', () => {
 
 describe('curveLength', () => {
   it('returns correct length for a line', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     expect(curveLength(castShape(edge.wrapped))).toBeCloseTo(10, 2);
   });
 
   it('returns correct length for a wire', () => {
-    const e1 = makeLine([0, 0, 0], [10, 0, 0]);
-    const e2 = makeLine([10, 0, 0], [10, 10, 0]);
-    const wire = unwrap(assembleWire([e1, e2]));
-    expect(curveLength(castShape(wire.wrapped))).toBeCloseTo(20, 2);
+    const e1 = line([0, 0, 0], [10, 0, 0]);
+    const e2 = line([10, 0, 0], [10, 10, 0]);
+    const w = unwrap(wire([e1, e2]));
+    expect(curveLength(castShape(w.wrapped))).toBeCloseTo(20, 2);
   });
 });
 
 describe('curveIsClosed / isPeriodic / period', () => {
   it('line is not closed', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     expect(curveIsClosed(castShape(edge.wrapped))).toBe(false);
   });
 
   it('circle is closed and periodic', () => {
-    const circle = makeCircle(5);
-    const fn = castShape(circle.wrapped);
+    const c = circle(5);
+    const fn = castShape(c.wrapped);
     expect(curveIsClosed(fn)).toBe(true);
     expect(curveIsPeriodic(fn)).toBe(true);
     expect(curvePeriod(fn)).toBeGreaterThan(0);
@@ -101,13 +100,13 @@ describe('curveIsClosed / isPeriodic / period', () => {
 
 describe('getOrientation / flipOrientation', () => {
   it('returns forward or backward', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     const o = getOrientation(castShape(edge.wrapped));
     expect(['forward', 'backward']).toContain(o);
   });
 
   it('flipOrientation returns a new edge', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     const flipped = flipOrientation(castShape(edge.wrapped));
     expect(flipped).toBeDefined();
   });
@@ -115,8 +114,8 @@ describe('getOrientation / flipOrientation', () => {
 
 describe('offsetWire2D', () => {
   it('offsets a planar wire', () => {
-    const wire = sketchRectangle(10, 10).wire;
-    const result = offsetWire2D(castShape(wire.wrapped), 1);
+    const w = sketchRectangle(10, 10).wire;
+    const result = offsetWire2D(castShape(w.wrapped), 1);
     expect(isOk(result)).toBe(true);
   });
 });

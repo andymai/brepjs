@@ -1,13 +1,16 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, unwrap, isErr } from '../src/index.js';
 import {
+  box,
+  unwrap,
+  isErr,
   createCamera,
   cameraLookAt,
   cameraFromPlane,
   projectEdges,
-} from '../src/projection/cameraFns.js';
-import { vecEquals, vecLength } from '../src/core/vecOps.js';
+  vecEquals,
+  vecLength,
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -97,24 +100,24 @@ describe('cameraFromPlane', () => {
 
 describe('projectEdges', () => {
   it('projects a box', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('front'));
-    const result = projectEdges(box, cam);
+    const result = projectEdges(b, cam);
     expect(result.visible.length).toBeGreaterThan(0);
   });
 
   it('projects with hidden lines', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(createCamera([50, 50, 50], [-1, -1, -1]));
-    const result = projectEdges(box, cam, true);
+    const result = projectEdges(b, cam, true);
     expect(result.visible.length).toBeGreaterThan(0);
     expect(result.hidden.length).toBeGreaterThanOrEqual(0);
   });
 
   it('projects without hidden lines', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
+    const b = box(10, 10, 10);
     const cam = unwrap(cameraFromPlane('XY'));
-    const result = projectEdges(box, cam, false);
+    const result = projectEdges(b, cam, false);
     expect(result.visible.length).toBeGreaterThan(0);
     expect(result.hidden).toEqual([]);
   });

@@ -6,10 +6,10 @@ brepjs wraps OpenCascade (OCCT) objects which require explicit memory management
 
 OCCT objects are allocated in WebAssembly memory and must be explicitly freed. brepjs provides several mechanisms:
 
-1. **`Symbol.dispose`** — Modern TC39 explicit resource management
-2. **`gcWithScope`** — Scoped cleanup for temporary objects
-3. **`FinalizationRegistry`** — Safety net for missed cleanup
-4. **Manual `delete()`** — Legacy explicit cleanup
+1. **`Symbol.dispose`** -- Modern TC39 explicit resource management
+2. **`gcWithScope`** -- Scoped cleanup for temporary objects
+3. **`FinalizationRegistry`** -- Safety net for missed cleanup
+4. **Manual `delete()`** -- Legacy explicit cleanup
 
 ## Symbol.dispose (Recommended)
 
@@ -17,10 +17,10 @@ The `using` declaration automatically disposes objects when they go out of scope
 
 ```typescript
 {
-  using box = makeBox([10, 10, 10]);
-  using cylinder = makeCylinder(5, 20);
-  const result = fuseShape(box, cylinder);
-  // box and cylinder are automatically disposed at block end
+  using b = box(10, 10, 10);
+  using cyl = cylinder(5, 20);
+  const result = fuse(b, cyl);
+  // b and cyl are automatically disposed at block end
   return result;
 }
 ```
@@ -41,19 +41,19 @@ If `Symbol.dispose` is unavailable, brepjs provides a polyfill. Objects will sti
 For scoped cleanup of multiple temporary objects:
 
 ```typescript
-import { gcWithScope, makeBox, makeCircle } from 'brepjs';
+import { gcWithScope, box, circle } from 'brepjs';
 
 function buildPart() {
   const r = gcWithScope();
 
   // Register temporaries for cleanup
-  const box = r(makeBox([10, 10, 10]));
-  const hole = r(makeCylinder(2, 15));
+  const b = r(box(10, 10, 10));
+  const hole = r(cylinder(2, 15));
 
   // Result escapes the scope
-  const result = cutShape(box, hole);
+  const result = cut(b, hole);
 
-  // box and hole are cleaned up when function returns
+  // b and hole are cleaned up when function returns
   return result;
 }
 ```
@@ -80,16 +80,16 @@ import { localGC } from 'brepjs';
 function buildPart() {
   const [register, cleanup] = localGC();
   try {
-    const box = register(makeBox([0, 0, 0], [10, 10, 10]));
-    const hole = register(makeCylinder(2, 15));
-    return cutShape(box, hole);
+    const b = register(box(10, 10, 10));
+    const hole = register(cylinder(2, 15));
+    return cut(b, hole);
   } finally {
     cleanup(); // Immediately disposes all registered objects
   }
 }
 ```
 
-Unlike `gcWithScope`, cleanup is immediate and deterministic — it happens in the `finally` block, not when GC runs.
+Unlike `gcWithScope`, cleanup is immediate and deterministic -- it happens in the `finally` block, not when GC runs.
 
 ## FinalizationRegistry Safety Net
 
@@ -97,7 +97,7 @@ brepjs uses `FinalizationRegistry` as a fallback:
 
 ```typescript
 // If you forget to dispose, the finalizer will eventually clean up
-const shape = makeBox([10, 10, 10]);
+const shape = box(10, 10, 10);
 // ... shape goes out of scope without dispose
 // Eventually GC runs and FinalizationRegistry disposes it
 ```
@@ -113,7 +113,7 @@ const shape = makeBox([10, 10, 10]);
 For explicit control:
 
 ```typescript
-const shape = makeBox([10, 10, 10]);
+const shape = box(10, 10, 10);
 try {
   doSomething(shape);
 } finally {
@@ -150,20 +150,20 @@ if (!hasFinalizationRegistry) {
 ```typescript
 // ❌ Leaks one shape per iteration
 for (let i = 0; i < 1000; i++) {
-  const box = makeBox([i, 0, 0], [i + 1, 1, 1]);
+  const b = box(1, 1, 1);
 }
 
 // ✅ Proper cleanup
 for (let i = 0; i < 1000; i++) {
-  using box = makeBox([i, 0, 0], [i + 1, 1, 1]);
-  processBox(box);
+  using b = box(1, 1, 1);
+  processBox(b);
 }
 
 // ✅ Or with gcWithScope
 for (let i = 0; i < 1000; i++) {
   const r = gcWithScope();
-  const box = r(makeBox([i, 0, 0], [i + 1, 1, 1]));
-  processBox(box);
+  const b = r(box(1, 1, 1));
+  processBox(b);
 }
 ```
 
@@ -173,7 +173,7 @@ for (let i = 0; i < 1000; i++) {
 // ❌ Array prevents cleanup
 const shapes: Shape[] = [];
 for (let i = 0; i < 100; i++) {
-  shapes.push(makeBox([i, 0, 0], [i + 1, 1, 1]));
+  shapes.push(box(1, 1, 1));
 }
 // shapes still holds references
 
@@ -188,14 +188,14 @@ shapes.forEach((s) => s[Symbol.dispose]?.());
 ```typescript
 // ❌ Shape never cleaned up
 button.onclick = () => {
-  const shape = makeBox([10, 10, 10]);
+  const shape = box(10, 10, 10);
   render(shape);
   // shape leaks on every click
 };
 
 // ✅ Clean up after use
 button.onclick = () => {
-  using shape = makeBox([10, 10, 10]);
+  using shape = box(10, 10, 10);
   render(shape);
 };
 ```
@@ -220,10 +220,10 @@ if (performance.memory) {
 ```typescript
 let activeShapes = 0;
 
-const originalMakeBox = makeBox;
-makeBox = (...args) => {
+const originalBox = box;
+box = (...args) => {
   activeShapes++;
-  const shape = originalMakeBox(...args);
+  const shape = originalBox(...args);
   const originalDispose = shape[Symbol.dispose];
   shape[Symbol.dispose] = () => {
     activeShapes--;

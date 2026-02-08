@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeCylinder,
+  box,
+  cylinder,
   castShape,
   createAssemblyNode,
   addChild,
@@ -19,12 +19,12 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-function box(): Shape3D {
-  return castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped) as Shape3D;
+function makeBoxShape(): Shape3D {
+  return castShape(box(10, 10, 10).wrapped) as Shape3D;
 }
 
-function cyl(): Shape3D {
-  return castShape(makeCylinder(5, 20).wrapped) as Shape3D;
+function makeCylShape(): Shape3D {
+  return castShape(cylinder(5, 20).wrapped) as Shape3D;
 }
 
 describe('createAssemblyNode', () => {
@@ -36,7 +36,7 @@ describe('createAssemblyNode', () => {
   });
 
   it('creates a node with a shape', () => {
-    const shape = box();
+    const shape = makeBoxShape();
     const node = createAssemblyNode('part', { shape });
     expect(node.shape).toBe(shape);
   });
@@ -153,8 +153,8 @@ describe('countNodes', () => {
 
 describe('collectShapes', () => {
   it('collects shapes from tree', () => {
-    const boxShape = box();
-    const cylShape = cyl();
+    const boxShape = makeBoxShape();
+    const cylShape = makeCylShape();
     const root = addChild(
       addChild(createAssemblyNode('root'), createAssemblyNode('box', { shape: boxShape })),
       createAssemblyNode('cyl', { shape: cylShape })

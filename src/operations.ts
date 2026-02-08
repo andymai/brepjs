@@ -3,15 +3,13 @@
  *
  * @example
  * ```typescript
- * import { extrudeFace, loftWires, linearPattern } from 'brepjs/operations';
+ * import { sweep, linearPattern } from 'brepjs/operations';
  * ```
  */
 
 // ── Extrude / revolve / sweep ──
 
 export {
-  extrudeFace,
-  revolveFace,
   sweep,
   supportExtrude,
   complexExtrude,
@@ -19,10 +17,6 @@ export {
   type SweepConfig,
   type ExtrusionProfile,
 } from './operations/extrudeFns.js';
-
-// ── Loft ──
-
-export { loftWires, type LoftConfig } from './operations/loftFns.js';
 
 // ── Patterns ──
 

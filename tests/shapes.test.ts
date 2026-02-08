@@ -1,15 +1,15 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeSphere,
-  makeCylinder,
-  makeCone,
-  makeTorus,
-  makeVertex,
-  makeLine,
-  assembleWire,
-  makeCompound,
+  box,
+  sphere,
+  cylinder,
+  cone,
+  torus,
+  vertex,
+  line,
+  wire,
+  compound,
   cast,
   downcast,
   measureVolume,
@@ -21,87 +21,87 @@ beforeAll(async () => {
 
 describe('Shape construction', () => {
   it('creates a box', () => {
-    const box = makeBox([0, 0, 0], [10, 20, 30]);
-    expect(box).toBeDefined();
-    expect(measureVolume(box)).toBeCloseTo(10 * 20 * 30, 0);
+    const b = box(10, 20, 30);
+    expect(b).toBeDefined();
+    expect(measureVolume(b)).toBeCloseTo(10 * 20 * 30, 0);
   });
 
   it('creates a sphere', () => {
-    const sphere = makeSphere(5);
-    expect(sphere).toBeDefined();
-    expect(measureVolume(sphere)).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
+    const s = sphere(5);
+    expect(s).toBeDefined();
+    expect(measureVolume(s)).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
   });
 
   it('creates a cylinder', () => {
-    const cylinder = makeCylinder(5, 10);
-    expect(cylinder).toBeDefined();
-    expect(measureVolume(cylinder)).toBeCloseTo(Math.PI * 25 * 10, 0);
+    const c = cylinder(5, 10);
+    expect(c).toBeDefined();
+    expect(measureVolume(c)).toBeCloseTo(Math.PI * 25 * 10, 0);
   });
 
   it('creates a vertex', () => {
-    const vertex = makeVertex([1, 2, 3]);
-    expect(vertex).toBeDefined();
+    const v = vertex([1, 2, 3]);
+    expect(v).toBeDefined();
   });
 
   it('creates a cone', () => {
-    const cone = makeCone(5, 0, 10);
+    const c = cone(5, 0, 10);
     const expectedVolume = (1 / 3) * Math.PI * 25 * 10;
-    expect(measureVolume(cone)).toBeCloseTo(expectedVolume, 0);
+    expect(measureVolume(c)).toBeCloseTo(expectedVolume, 0);
   });
 
   it('creates a truncated cone', () => {
-    const cone = makeCone(5, 3, 10);
+    const c = cone(5, 3, 10);
     const expectedVolume = (1 / 3) * Math.PI * 10 * (25 + 9 + 15);
-    expect(measureVolume(cone)).toBeCloseTo(expectedVolume, 0);
+    expect(measureVolume(c)).toBeCloseTo(expectedVolume, 0);
   });
 
   it('creates a torus', () => {
-    const torus = makeTorus(10, 3);
+    const t = torus(10, 3);
     const expectedVolume = 2 * Math.PI * Math.PI * 10 * 9;
-    expect(measureVolume(torus)).toBeCloseTo(expectedVolume, 0);
+    expect(measureVolume(t)).toBeCloseTo(expectedVolume, 0);
   });
 });
 
 describe('Edge and wire construction', () => {
   it('creates a line edge', () => {
-    const edge = makeLine([0, 0, 0], [10, 0, 0]);
+    const edge = line([0, 0, 0], [10, 0, 0]);
     expect(edge).toBeDefined();
   });
 
   it('assembles a wire from edges', () => {
-    const e1 = makeLine([0, 0, 0], [10, 0, 0]);
-    const e2 = makeLine([10, 0, 0], [10, 10, 0]);
-    const wire = assembleWire([e1, e2]);
-    expect(wire).toBeDefined();
+    const e1 = line([0, 0, 0], [10, 0, 0]);
+    const e2 = line([10, 0, 0], [10, 10, 0]);
+    const w = wire([e1, e2]);
+    expect(w).toBeDefined();
   });
 });
 
 describe('cast and downcast', () => {
   it('casts a shape to its specific type', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const casted = cast(box.wrapped);
+    const b = box(10, 10, 10);
+    const casted = cast(b.wrapped);
     expect(casted).toBeDefined();
   });
 
   it('downcasts a TopoDS_Shape', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const downcasted = downcast(box.wrapped);
+    const b = box(10, 10, 10);
+    const downcasted = downcast(b.wrapped);
     expect(downcasted).toBeDefined();
   });
 });
 
 describe('Compound shapes', () => {
   it('creates a compound from multiple solids', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [5, 5, 5]);
-    const compound = makeCompound([box1, box2]);
-    expect(compound).toBeDefined();
+    const b1 = box(10, 10, 10);
+    const b2 = box(5, 5, 5);
+    const c = compound([b1, b2]);
+    expect(c).toBeDefined();
   });
 
-  it('makeCompound from shapes', () => {
-    const box1 = makeBox([0, 0, 0], [10, 10, 10]);
-    const box2 = makeBox([0, 0, 0], [5, 5, 5]);
-    const compound = makeCompound([box1, box2]);
-    expect(compound).toBeDefined();
+  it('compound from shapes', () => {
+    const b1 = box(10, 10, 10);
+    const b2 = box(5, 5, 5);
+    const c = compound([b1, b2]);
+    expect(c).toBeDefined();
   });
 });

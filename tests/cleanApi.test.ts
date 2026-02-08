@@ -1,7 +1,7 @@
 /**
- * v5 Clean API — tests for renamed functions.
+ * Clean API — tests for short-name functions.
  *
- * Exercises the new short names (box, translate, fuse, fillet, etc.)
+ * Exercises the clean API names (box, translate, fuse, fillet, etc.)
  * to ensure they delegate correctly to the underlying implementations.
  */
 

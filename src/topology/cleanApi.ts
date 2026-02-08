@@ -1,5 +1,5 @@
 /**
- * Clean API functions — v5 renames for transforms, booleans, modifiers, and utilities.
+ * Clean API functions — short names for transforms, booleans, modifiers, and utilities.
  *
  * Short names, Shapeable<T> support, options objects.
  * Delegates to existing implementations in shapeFns.ts, booleanFns.ts, modifierFns.ts, etc.

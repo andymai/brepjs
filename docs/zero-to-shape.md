@@ -11,16 +11,16 @@ npm install brepjs brepjs-opencascade
 ## Create a shape
 
 ```typescript
-import { makeBox, measureVolume, exportSTEP, unwrap } from 'brepjs/quick';
+import { box, measureVolume, exportSTEP, unwrap } from 'brepjs/quick';
 
 // Create a box — no init needed with brepjs/quick
-const box = makeBox([0, 0, 0], [30, 20, 10]);
+const b = box(30, 20, 10);
 
 // Measure it
-console.log('Volume:', measureVolume(box).toFixed(1), 'mm³');
+console.log('Volume:', measureVolume(b).toFixed(1), 'mm³');
 
 // Export to STEP (industry-standard CAD format)
-const step = unwrap(exportSTEP(box));
+const step = unwrap(exportSTEP(b));
 console.log('STEP file:', step.size, 'bytes');
 ```
 
@@ -29,7 +29,7 @@ That's it. `brepjs/quick` auto-initializes the WASM kernel via top-level await �
 ## What just happened?
 
 1. `brepjs/quick` loaded the OpenCascade WASM module and initialized the kernel automatically
-2. `makeBox` created a B-Rep solid from two corner points
+2. `box(30, 20, 10)` created a B-Rep solid with the given width, depth, and height
 3. `measureVolume` computed the exact volume (6000 mm³)
 4. `exportSTEP` serialized the shape to an industry-standard CAD file
 

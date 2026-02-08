@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  // functional API
+  box,
   castShape,
   exportSTEP,
   exportSTL,
@@ -19,8 +18,8 @@ beforeAll(async () => {
 
 describe('importSTEP', () => {
   it('imports a STEP file exported from a box', async () => {
-    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-    const stepBlob = unwrap(exportSTEP(box));
+    const b = castShape(box(10, 10, 10).wrapped);
+    const stepBlob = unwrap(exportSTEP(b));
 
     const result = await importSTEP(stepBlob);
     expect(isOk(result)).toBe(true);
@@ -38,8 +37,8 @@ describe('importSTEP', () => {
 
 describe('importSTL', () => {
   it('imports an STL file exported from a box', async () => {
-    const box = castShape(makeBox([0, 0, 0], [10, 10, 10]).wrapped);
-    const stlBlob = unwrap(exportSTL(box));
+    const b = castShape(box(10, 10, 10).wrapped);
+    const stlBlob = unwrap(exportSTL(b));
 
     const result = await importSTL(stlBlob);
     expect(isOk(result)).toBe(true);

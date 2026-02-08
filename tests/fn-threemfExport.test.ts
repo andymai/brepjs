@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { makeBox, meshShape, exportThreeMF } from '../src/index.js';
+import { box, mesh, exportThreeMF } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -8,9 +8,9 @@ beforeAll(async () => {
 
 describe('exportThreeMF', () => {
   it('produces valid ZIP with correct magic bytes', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const mesh = meshShape(box);
-    const result = exportThreeMF(mesh);
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    const result = exportThreeMF(m);
 
     expect(result).toBeInstanceOf(ArrayBuffer);
     expect(result.byteLength).toBeGreaterThan(100);
@@ -24,9 +24,9 @@ describe('exportThreeMF', () => {
   });
 
   it('contains expected XML content', () => {
-    const box = makeBox([0, 0, 0], [5, 5, 5]);
-    const mesh = meshShape(box);
-    const result = exportThreeMF(mesh, { name: 'test-box', unit: 'meter' });
+    const b = box(5, 5, 5);
+    const m = mesh(b);
+    const result = exportThreeMF(m, { name: 'test-box', unit: 'meter' });
 
     // Decode the entire ZIP as text to check for XML content
     const text = new TextDecoder().decode(result);
@@ -39,22 +39,22 @@ describe('exportThreeMF', () => {
   });
 
   it('includes correct number of vertices and triangles', () => {
-    const box = makeBox([0, 0, 0], [10, 10, 10]);
-    const mesh = meshShape(box);
-    const result = exportThreeMF(mesh);
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    const result = exportThreeMF(m);
 
     const text = new TextDecoder().decode(result);
     const vertexCount = (text.match(/<vertex /g) ?? []).length;
     const triCount = (text.match(/<triangle /g) ?? []).length;
 
-    expect(vertexCount).toBe(mesh.vertices.length / 3);
-    expect(triCount).toBe(mesh.triangles.length / 3);
+    expect(vertexCount).toBe(m.vertices.length / 3);
+    expect(triCount).toBe(m.triangles.length / 3);
   });
 
   it('defaults to millimeter unit', () => {
-    const box = makeBox([0, 0, 0], [1, 1, 1]);
-    const mesh = meshShape(box);
-    const result = exportThreeMF(mesh);
+    const b = box(1, 1, 1);
+    const m = mesh(b);
+    const result = exportThreeMF(m);
     const text = new TextDecoder().decode(result);
     expect(text).toContain('unit="millimeter"');
   });

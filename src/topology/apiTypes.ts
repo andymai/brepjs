@@ -1,5 +1,5 @@
 /**
- * API types for the v5 redesigned public API.
+ * API types for the public API.
  *
  * Defines `Shapeable`, `Wrapped`, `FinderFn`, and modifier parameter types
  * that are shared across functional functions and the shape() wrapper.

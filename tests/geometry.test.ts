@@ -7,15 +7,13 @@ import {
   unwrap,
   isOk,
   isErr,
-  makeBox,
   resolveDirection,
   type PlaneName,
   createNamedPlane,
+  getKernel,
+  resolvePlane,
 } from '../src/index.js';
-import { getKernel } from '../src/kernel/index.js';
-// Functional plane API
-import { resolvePlane } from '../src/core/planeOps.js';
-// OCCT boundary functions
+// OCCT boundary functions (not in barrel)
 import { toOcPnt } from '../src/core/occtBoundary.js';
 
 beforeAll(async () => {

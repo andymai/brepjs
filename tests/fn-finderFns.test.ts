@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
+  box,
   // functional API
   castShape,
   edgeFinder,
@@ -20,7 +20,7 @@ beforeAll(async () => {
 }, 30000);
 
 function fnBox(x = 10, y = 10, z = 10) {
-  return castShape(makeBox([0, 0, 0], [x, y, z]).wrapped);
+  return castShape(box(x, y, z).wrapped);
 }
 
 describe('edgeFinder', () => {
@@ -83,10 +83,10 @@ describe('edgeFinder', () => {
   });
 
   it('supports inList filter', () => {
-    const box = fnBox();
-    const allEdges = getEdges(box);
+    const b = fnBox();
+    const allEdges = getEdges(b);
     const subset = [allEdges[0]!, allEdges[1]!];
-    const found = edgeFinder().inList(subset).findAll(box);
+    const found = edgeFinder().inList(subset).findAll(b);
     expect(found.length).toBe(2);
   });
 
@@ -98,8 +98,8 @@ describe('edgeFinder', () => {
   });
 
   it('finds unique edge', () => {
-    const box = fnBox(10, 20, 30);
-    const result = edgeFinder().inDirection('X').atDistance(0, [0, 0, 0]).findUnique(box);
+    const b = fnBox(10, 20, 30);
+    const result = edgeFinder().inDirection('X').atDistance(0, [0, 0, 0]).findUnique(b);
     expect(isOk(result)).toBe(true);
   });
 
@@ -182,44 +182,44 @@ describe('faceFinder', () => {
   });
 
   it('supports inList() to filter from specific faces', () => {
-    const box = fnBox();
-    const allFaces = faceFinder().findAll(box);
+    const b = fnBox();
+    const allFaces = faceFinder().findAll(b);
     // Create a list with just the first 2 faces
     const subset = [allFaces[0]!, allFaces[1]!];
-    const filtered = faceFinder().inList(subset).findAll(box);
+    const filtered = faceFinder().inList(subset).findAll(b);
     expect(filtered.length).toBe(2);
   });
 
   it('filters faces by area (10x10 box)', () => {
-    const box = fnBox(10, 10, 10);
+    const b = fnBox(10, 10, 10);
     // A 10x10x10 box has all faces of area 100
-    const faces = faceFinder().ofArea(100).findAll(box);
+    const faces = faceFinder().ofArea(100).findAll(b);
     expect(faces.length).toBe(6);
   });
 
   it('filters faces by area on non-uniform box', () => {
-    const box = fnBox(10, 20, 30);
+    const b = fnBox(10, 20, 30);
     // 10x20 faces (area=200): 2 faces
-    const faces200 = faceFinder().ofArea(200).findAll(box);
+    const faces200 = faceFinder().ofArea(200).findAll(b);
     expect(faces200.length).toBe(2);
     // 10x30 faces (area=300): 2 faces
-    const faces300 = faceFinder().ofArea(300).findAll(box);
+    const faces300 = faceFinder().ofArea(300).findAll(b);
     expect(faces300.length).toBe(2);
     // 20x30 faces (area=600): 2 faces
-    const faces600 = faceFinder().ofArea(600).findAll(box);
+    const faces600 = faceFinder().ofArea(600).findAll(b);
     expect(faces600.length).toBe(2);
   });
 
   it('ofArea returns empty for no match', () => {
-    const box = fnBox(10, 10, 10);
-    const faces = faceFinder().ofArea(999).findAll(box);
+    const b = fnBox(10, 10, 10);
+    const faces = faceFinder().ofArea(999).findAll(b);
     expect(faces.length).toBe(0);
   });
 
   it('ofArea with custom tolerance', () => {
-    const box = fnBox(10, 10, 10);
+    const b = fnBox(10, 10, 10);
     // With very tight tolerance, should still match exactly
-    const faces = faceFinder().ofArea(100, 0.001).findAll(box);
+    const faces = faceFinder().ofArea(100, 0.001).findAll(b);
     expect(faces.length).toBe(6);
   });
 });

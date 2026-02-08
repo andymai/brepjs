@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  makeBox,
-  makeCylinder,
+  box,
+  cylinder,
   castShape,
   createHistory,
   addStep,
@@ -22,12 +22,12 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-function box(w: number, h: number, d: number): AnyShape {
-  return castShape(makeBox([0, 0, 0], [w, h, d]).wrapped);
+function makeBox(w: number, h: number, d: number): AnyShape {
+  return castShape(box(w, d, h).wrapped);
 }
 
-function cyl(r: number, h: number): AnyShape {
-  return castShape(makeCylinder(r, h).wrapped);
+function makeCyl(r: number, h: number): AnyShape {
+  return castShape(cylinder(r, h).wrapped);
 }
 
 describe('createRegistry', () => {
@@ -40,7 +40,7 @@ describe('createRegistry', () => {
 describe('registerOperation', () => {
   it('adds operation immutably', () => {
     const r1 = createRegistry();
-    const r2 = registerOperation(r1, 'box', () => box(10, 10, 10));
+    const r2 = registerOperation(r1, 'box', () => makeBox(10, 10, 10));
     expect(r1.operations.size).toBe(0);
     expect(r2.operations.size).toBe(1);
     expect(r2.operations.has('box')).toBe(true);
@@ -48,8 +48,8 @@ describe('registerOperation', () => {
 
   it('overwrites existing operation', () => {
     let reg = createRegistry();
-    reg = registerOperation(reg, 'box', () => box(10, 10, 10));
-    reg = registerOperation(reg, 'box', () => box(5, 5, 5));
+    reg = registerOperation(reg, 'box', () => makeBox(10, 10, 10));
+    reg = registerOperation(reg, 'box', () => makeBox(5, 5, 5));
     expect(reg.operations.size).toBe(1);
   });
 });
@@ -61,19 +61,19 @@ describe('replayHistory', () => {
       const w = (params['w'] as number) ?? 10;
       const h = (params['h'] as number) ?? 10;
       const d = (params['d'] as number) ?? 10;
-      return box(w, h, d);
+      return makeBox(w, h, d);
     });
     reg = registerOperation(reg, 'makeCyl', (_inputs, params) => {
       const r = (params['r'] as number) ?? 5;
       const height = (params['height'] as number) ?? 20;
-      return cyl(r, height);
+      return makeCyl(r, height);
     });
     return reg;
   }
 
   it('replays a single-step history', () => {
     const reg = buildRegistry();
-    const shape = box(10, 10, 10);
+    const shape = makeBox(10, 10, 10);
     let h: ModelHistory = createHistory();
     h = addStep(
       h,
@@ -99,8 +99,8 @@ describe('replayHistory', () => {
 
   it('replays multi-step history', () => {
     const reg = buildRegistry();
-    const s1 = box(10, 10, 10);
-    const s2 = cyl(5, 20);
+    const s1 = makeBox(10, 10, 10);
+    const s2 = makeCyl(5, 20);
     let h: ModelHistory = createHistory();
     h = addStep(
       h,
@@ -129,7 +129,7 @@ describe('replayHistory', () => {
 
   it('preserves initial shapes', () => {
     const reg = buildRegistry();
-    const initial = box(5, 5, 5);
+    const initial = makeBox(5, 5, 5);
     let h: ModelHistory = createHistory();
     h = registerShape(h, 'init', initial);
     h = addStep(
@@ -141,7 +141,7 @@ describe('replayHistory', () => {
         inputIds: [],
         outputId: 'out-1',
       },
-      box(20, 20, 20)
+      makeBox(20, 20, 20)
     );
 
     const result = replayHistory(h, reg);
@@ -157,7 +157,7 @@ describe('replayHistory', () => {
     h = addStep(
       h,
       { id: 's1', type: 'unknownOp', parameters: {}, inputIds: [], outputId: 'out-1' },
-      box(10, 10, 10)
+      makeBox(10, 10, 10)
     );
 
     const result = replayHistory(h, reg);
@@ -173,7 +173,7 @@ describe('replayHistory', () => {
     h = addStep(
       h,
       { id: 's1', type: 'noop', parameters: {}, inputIds: ['missing'], outputId: 'out-1' },
-      box(10, 10, 10)
+      makeBox(10, 10, 10)
     );
 
     const result = replayHistory(h, reg);
@@ -191,7 +191,7 @@ describe('replayHistory', () => {
     h = addStep(
       h,
       { id: 's1', type: 'fail', parameters: {}, inputIds: [], outputId: 'out-1' },
-      box(10, 10, 10)
+      makeBox(10, 10, 10)
     );
 
     const result = replayHistory(h, reg);
@@ -208,15 +208,15 @@ describe('replayFrom', () => {
       const w = (params['w'] as number) ?? 10;
       const h = (params['h'] as number) ?? 10;
       const d = (params['d'] as number) ?? 10;
-      return box(w, h, d);
+      return makeBox(w, h, d);
     });
     return reg;
   }
 
   it('replays from a specific step', () => {
     const reg = buildRegistry();
-    const s1 = box(10, 10, 10);
-    const s2 = box(20, 20, 20);
+    const s1 = makeBox(10, 10, 10);
+    const s2 = makeBox(20, 20, 20);
     let h: ModelHistory = createHistory();
     h = addStep(
       h,
@@ -270,14 +270,14 @@ describe('modifyStep', () => {
       const w = (params['w'] as number) ?? 10;
       const h = (params['h'] as number) ?? 10;
       const d = (params['d'] as number) ?? 10;
-      return box(w, h, d);
+      return makeBox(w, h, d);
     });
     return reg;
   }
 
   it('modifies step parameters and replays', () => {
     const reg = buildRegistry();
-    const s1 = box(10, 10, 10);
+    const s1 = makeBox(10, 10, 10);
     let h: ModelHistory = createHistory();
     h = addStep(
       h,
