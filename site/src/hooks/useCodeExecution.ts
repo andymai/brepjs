@@ -2,6 +2,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import type { FromWorker, ToWorker } from '../workers/workerProtocol';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useEngineStore } from '../stores/engineStore';
+import { useToastStore } from '../stores/toastStore';
 import { useWorker } from './useWorker';
 
 let evalCounter = 0;
@@ -10,12 +11,15 @@ export function useCodeExecution() {
   const engineStatus = useEngineStore((s) => s.status);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestIdRef = useRef<string>('');
+  const isRecoveringRef = useRef(false);
 
   // Ref so onMessage can post directly without depending on React state
   const postMessageRef = useRef<(msg: ToWorker) => void>(() => {});
+  const restartRef = useRef<(() => Promise<void>) | null>(null);
 
   const onMessage = useCallback((msg: FromWorker) => {
     const store = usePlaygroundStore.getState();
+    const engineStore = useEngineStore.getState();
     switch (msg.type) {
       case 'init-done': {
         // Auto-run current code the moment engine is ready —
@@ -36,6 +40,15 @@ export function useCodeExecution() {
         store.setConsoleOutput(msg.console);
         store.setTimeMs(msg.timeMs);
         store.setIsRunning(false);
+        // Track last successful code execution
+        store.setLastSuccessfulCode(store.code);
+        // Reset recovery attempts on successful execution
+        engineStore.resetRecoveryAttempts();
+        // Show recovery success message if we just recovered
+        if (isRecoveringRef.current) {
+          isRecoveringRef.current = false;
+          useToastStore.getState().addToast('Worker restarted successfully.');
+        }
         break;
       case 'eval-error':
         if (msg.id !== latestIdRef.current) return;
@@ -72,10 +85,50 @@ export function useCodeExecution() {
     }
   }, []);
 
-  const { postMessage } = useWorker(onMessage);
+  const recoverFromCrash = useCallback(async () => {
+    const playgroundStore = usePlaygroundStore.getState();
+    const engineStore = useEngineStore.getState();
+    const toastStore = useToastStore.getState();
 
-  // Keep ref in sync so onMessage can always post
+    // Check recovery attempt limit
+    if (engineStore.recoveryAttempts >= 2) {
+      toastStore.addToast('Worker crashed repeatedly. Please reload page.');
+      return;
+    }
+
+    // Increment counter
+    engineStore.incrementRecoveryAttempts();
+    isRecoveringRef.current = true;
+
+    const { lastSuccessfulCode } = playgroundStore;
+
+    if (!lastSuccessfulCode) {
+      // No previous successful code - just restart worker
+      toastStore.addToast('Worker crashed. Restarting...');
+      if (restartRef.current) {
+        await restartRef.current();
+      }
+      return;
+    }
+
+    // Restore last successful code and re-execute
+    toastStore.addToast('Worker crashed. Restarting and restoring last successful code...');
+    if (restartRef.current) {
+      await restartRef.current();
+      // After restart, restore code and re-execute
+      playgroundStore.setCode(lastSuccessfulCode);
+      const id = `eval-${++evalCounter}`;
+      latestIdRef.current = id;
+      playgroundStore.setIsRunning(true);
+      postMessageRef.current({ type: 'eval', id, code: lastSuccessfulCode });
+    }
+  }, []);
+
+  const { postMessage, restart } = useWorker(onMessage, recoverFromCrash);
+
+  // Keep refs in sync so onMessage can always access them
   postMessageRef.current = postMessage;
+  restartRef.current = restart;
 
   const runCode = useCallback(
     (code: string) => {
