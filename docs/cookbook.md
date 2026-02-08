@@ -339,6 +339,140 @@ const bufferData = toBufferGeometryData(mesh);
 
 ---
 
+## 16. Text Engraving on Surface
+
+**Task:** Engrave text onto a box face.
+
+```typescript
+import { box, shape, text2D, unwrap } from 'brepjs/quick';
+
+// Create base box
+const base = box(100, 50, 10);
+
+// Generate text as 2D wire
+const textWire = unwrap(text2D('BREPJS', { fontSize: 12, font: 'Arial' }));
+
+// Position and extrude text to create cutting tool
+const textSolid = shape(textWire).extrude(3).translate([25, 20, 7]).val; // Position on top face
+
+// Engrave by cutting
+const engraved = shape(base).cut(textSolid).val;
+```
+
+**Key concepts:** Text generation, 2D to 3D extrusion, surface engraving.
+
+---
+
+## 17. Rectangular Pattern (Grid)
+
+**Task:** Create a grid pattern of holes across a surface.
+
+```typescript
+import { box, cylinder, shape, rectangularPattern } from 'brepjs/quick';
+
+const plate = box(100, 80, 5);
+const hole = cylinder(3, 10, { at: [10, 10, 0] });
+
+// Create 5×4 grid with 20mm spacing
+const pattern = rectangularPattern(hole, {
+  xCount: 5,
+  yCount: 4,
+  xSpacing: 20,
+  ySpacing: 20,
+});
+
+// Cut all holes at once
+const perforatedPlate = shape(plate).cutAll(pattern).val;
+```
+
+**Key concepts:** Rectangular patterns, batch boolean operations with `cutAll`.
+
+---
+
+## 18. Sweep Profile Along Path
+
+**Task:** Sweep a circular profile along a curved path to create a pipe or handrail.
+
+```typescript
+import { circle, arc, shape, unwrap } from 'brepjs/quick';
+
+// Create circular profile (10mm diameter)
+const profile = unwrap(circle(5));
+
+// Create curved path (quarter circle arc)
+const path = unwrap(arc([0, 0, 0], [50, 0, 50], [50, 50, 50]));
+
+// Sweep profile along path
+const pipe = unwrap(shape(profile).sweep(path));
+
+console.log('Pipe volume:', shape(pipe).volume());
+```
+
+**Key concepts:** Sweep operations, wire-to-wire sweeping, curved path following.
+
+---
+
+## 19. Mirror and Join for Symmetry
+
+**Task:** Create half a shape, then mirror and fuse for perfect symmetry.
+
+```typescript
+import { box, cylinder, shape } from 'brepjs/quick';
+
+// Create half of a symmetric part
+const half = shape(box(20, 30, 10))
+  .cut(cylinder(5, 15, { at: [10, 10, 5] }))
+  .fillet((e) => e.inDirection('X').max(), 3).val;
+
+// Mirror and join to create full symmetric part
+const full = shape(half).mirrorJoin({ normal: [1, 0, 0], origin: [20, 0, 0] }).val;
+
+console.log('Full volume:', shape(full).volume());
+```
+
+**Key concepts:** Mirror operations, `mirrorJoin` for automatic symmetry, selective filleting.
+
+---
+
+## 20. Complex Assembly with Multiple Parts
+
+**Task:** Build an assembly with multiple positioned components.
+
+```typescript
+import { box, cylinder, sphere, shape } from 'brepjs/quick';
+
+// Base plate
+const base = shape(box(100, 100, 5)).fillet(2).val;
+
+// Mounting posts (4 corners)
+const post = cylinder(3, 20);
+const posts = [
+  shape(post).translate([10, 10, 5]).val,
+  shape(post).translate([90, 10, 5]).val,
+  shape(post).translate([10, 90, 5]).val,
+  shape(post).translate([90, 90, 5]).val,
+];
+
+// Top cover
+const cover = shape(box(80, 80, 3))
+  .translate([10, 10, 25])
+  .fillet(1).val;
+
+// Center sphere decoration
+const decoration = shape(sphere(8)).translate([50, 50, 28]).val;
+
+// Combine all parts (optional - can keep separate for visualization)
+const assembly = shape(base).fuse(posts[0]).fuse(posts[1]).fuse(posts[2]).fuse(posts[3]).val;
+
+// Or export parts separately for multi-part assemblies
+// exportSTEP(base, { filename: 'base.step' });
+// exportSTEP(posts, { filename: 'posts.step' });
+```
+
+**Key concepts:** Multi-part assemblies, component positioning with `translate`, optional fusion.
+
+---
+
 ## Tips for Success
 
 1. **Always use the wrapper** — `shape().cut().fillet()` is cleaner than `unwrap(fillet(unwrap(cut(...))))`
