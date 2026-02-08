@@ -10,4 +10,6 @@ export const WASM_FILES = [
   'brepjs_threaded.js',
   'brepjs_threaded.wasm',
   'brepjs_threaded.worker.js',
+  'brepjs_single.js',
+  'brepjs_single.wasm',
 ] as const;

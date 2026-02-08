@@ -4,7 +4,13 @@ import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 import { createReadStream, existsSync, mkdirSync, copyFileSync } from 'fs';
 
-const WASM_FILES = ['brepjs_threaded.js', 'brepjs_threaded.wasm', 'brepjs_threaded.worker.js'];
+const WASM_FILES = [
+  'brepjs_threaded.js',
+  'brepjs_threaded.wasm',
+  'brepjs_threaded.worker.js',
+  'brepjs_single.js',
+  'brepjs_single.wasm',
+];
 
 function opencascadeWasm(): Plugin {
   // Prefer local monorepo path, fall back to node_modules
@@ -21,6 +27,10 @@ function opencascadeWasm(): Plugin {
         if (!WASM_FILES.includes(file)) return next();
         const filePath = resolve(wasmDir, file);
         if (!existsSync(filePath)) return next();
+
+        // Set COEP/COOP headers required for SharedArrayBuffer
+        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         res.setHeader(
           'Content-Type',
           file.endsWith('.wasm') ? 'application/wasm' : 'application/javascript'
