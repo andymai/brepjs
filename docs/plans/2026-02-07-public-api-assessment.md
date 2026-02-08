@@ -1,11 +1,31 @@
 # Public API Assessment: Friction Points & Action Items
 
 **Date:** 2026-02-07
+**Last Updated:** 2026-02-07 (after PR #186)
 **Goal:** Identify actionable friction points in the brepjs public API
 **Canonical style:** Fluent wrapper (`shape(box(...)).cut(...).fillet(...)`)
 **Audience:** Both web developers new to CAD and experienced CAD engineers
 
-**Context:** v5.0.0 shipped, removing legacy API names. The v5 clean names (`box`, `fuse`, `translate`) and `shape()` wrapper are now the only exported names. Legacy names (`makeBox`, `fuseShape`, `translateShape`, etc.) and `pipe()` API have been removed from all barrel files.
+**Status:** v5.0.0 shipped with clean API names. Legacy names removed in PR #186.
+
+---
+
+## ✅ Completed in PR #186
+
+**What was accomplished:**
+
+- ✅ All legacy API names removed from barrel exports (makeBox, fuseShape, translateShape, etc.)
+- ✅ pipe() fluent wrapper removed (use shape() instead)
+- ✅ Public API reduced from 427 to 370 symbols (13% reduction)
+- ✅ All documentation updated to use clean API names consistently
+- ✅ function-lookup.md regenerated
+- ✅ All 1568 tests passing with clean API
+
+**Immediate impact:**
+
+- Users now see only one name per operation in autocomplete
+- Documentation and examples are consistent
+- Migration path is clear (legacy → clean)
 
 ---
 
@@ -40,13 +60,19 @@ Three names for "which way it points": `axis`, `direction`, `normal`.
 
 **Action:** Standardize on `at` for position and `axis` for direction across all primitives and transforms. Deprecate the others.
 
-### 1.2 Dual Naming Convention (~~Critical~~ COMPLETED)
+### 1.2 Dual Naming Convention (✅ COMPLETED in PR #186)
 
-~~Two complete naming styles exist and are both exported~~
+**Status:** ✅ All legacy names removed. Public API now has single canonical names only.
 
-**Status:** ✅ All legacy names (`makeBox`, `fuseShape`, `filletShape`, `translateShape`, etc.) have been removed from barrel exports. Only v5 clean names are now exported. The `pipe()` fluent API has also been removed.
+**What was done:**
 
-**Remaining:** Documentation still uses legacy style in many places and needs updating to match the clean API.
+- Removed all legacy exports: `makeBox`, `fuseShape`, `filletShape`, `translateShape`, etc.
+- Removed `pipe()` fluent wrapper
+- Updated all tests to use clean API
+- Updated all documentation to use clean API consistently
+- Reduced from 427 to 370 exported symbols
+
+**Remaining work:** None for this item.
 
 ### 1.3 2D Operation Verbosity (High)
 
@@ -135,9 +161,17 @@ const shape = unwrap(result);
 
 **Action:** This is inherent to the functional style and acceptable. The wrapper is the answer — but it needs to be complete (see 2.1).
 
-### 2.3 pipe() vs shape() Confusion (~~Medium~~ COMPLETED)
+### 2.3 pipe() vs shape() Confusion (✅ COMPLETED in PR #186)
 
 **Status:** ✅ The `pipe()` API has been removed. Only `shape()` wrapper remains.
+
+**What was done:**
+
+- Deleted `src/topology/pipeFns.ts`
+- Deleted `tests/fn-pipeFns.test.ts`
+- Removed all pipe exports from barrels
+
+**Remaining work:** Document the `shape()` wrapper (see P0 action item #1).
 
 ### 2.4 Finder Integration Awkwardness (Medium)
 
@@ -206,23 +240,29 @@ Users learning from docs never discover it. Users learning from playground can't
 
 **Action:** Consider a "which sub-path?" quick reference table at the top of which-api.md. Or: stop promoting sub-paths for beginners — just use main entry.
 
-### 3.5 ~~427~~370-Symbol Main Export (~~Medium~~ IMPROVED)
+### 3.5 Export Count Reduction (✅ IMPROVED in PR #186)
 
-**Status:** ✅ Legacy names removed, reducing from 427 to 370 symbols (13% reduction). Typing "fillet" now shows only: `fillet` (the clean function), `drawingFillet`, `FilletRadius` type.
+**Before:** 427 symbols (confusing autocomplete with both `fillet` and `filletShape`)
+**After:** 370 symbols (13% reduction)
 
-**Remaining:** Still a large surface. Sub-path imports help but aren't promoted in docs.
+**What was done:**
 
-### 3.6 Docs and Examples Don't Match (High)
+- Removed 57 legacy name exports
+- Typing "fillet" now shows only: `fillet`, `drawingFillet`, `FilletRadius`
+- function-lookup.md regenerated to reflect new exports
 
-| Source             | API style used                                  |
-| ------------------ | ----------------------------------------------- |
-| getting-started.md | Legacy: `makeBox`, `fuseShape`, `unwrap()`      |
-| cheat-sheet.md     | Legacy: `makeBox`, `fuseShape`, `unwrap()`      |
-| Site playground    | v5 + wrapper: `box()`, `shape().cut().fillet()` |
-| which-api.md       | Legacy functional                               |
-| examples/ folder   | v5 + wrapper                                    |
+**Remaining:** Still a large API surface. Consider promoting sub-path imports in documentation (e.g., `import { fillet } from 'brepjs/topology'` instead of main barrel).
 
-**Action:** Update ALL documentation to use v5 clean names + `shape()` wrapper consistently.
+### 3.6 Docs and Examples Consistency (✅ PARTIALLY COMPLETED in PR #186)
+
+**What was done:**
+
+- ✅ All docs now use clean API names (box, fuse, translate)
+- ✅ llms.txt updated with clean API throughout
+- ✅ function-lookup.md regenerated
+- ✅ All code examples use clean names
+
+**Remaining:** Docs still use functional style (`unwrap(fuse(a, b))`) instead of wrapper style (`shape(a).fuse(b).val`). The wrapper is the canonical API but not promoted in prose documentation. See P0 action item #1.
 
 ### 3.7 No Task-Based Cookbook (Low)
 
@@ -300,37 +340,62 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 
 ## Prioritized Action Items
 
-### P0 — Critical (fix first)
+### 🎯 Next Up — P0 Critical
 
-1. **Document the `shape()` wrapper** — rewrite getting-started.md, cheat-sheet.md, which-api.md to use it as the primary API
-2. **Complete the wrapper** — add `mesh`, `meshEdges`, `isValid`, `heal`, `simplify`, `toBREP`, `section`, `split`, `slice`, `loft`, `fuseAll`, `cutAll`, `thicken`
-3. ~~**Complete legacy deprecation**~~ — ✅ DONE: All legacy names removed from barrel exports
+1. **Document the `shape()` wrapper** (High Impact)
+   - Rewrite getting-started.md to use `shape()` as primary API
+   - Add "Fluent Wrapper" section to which-api.md
+   - Update cheat-sheet.md examples to use wrapper style
+   - **Why:** Wrapper is the canonical API but has zero prose documentation
 
-### P1 — High
+2. **Complete the wrapper** (Critical Gaps)
+   - Add `mesh`, `meshEdges` — can't render without these
+   - Add `isValid`, `heal`, `simplify` — can't validate/fix in-chain
+   - Add `toBREP`, `fromBREP` — can't serialize
+   - Add `section`, `split`, `slice` — common CAD operations
+   - Add `loft`, `fuseAll`, `cutAll`, `thicken`
+   - **Why:** Users forced out of fluent API for basic operations
 
-4. **Standardize position/direction params** — `at` for position, `axis` for direction everywhere
-5. **Update all docs/examples to v5 style** — playground and docs should use the same API
-6. **Simplify initialization** — promote `brepjs/quick` as default
-7. **Make `extrudeFace` return Result** — fix inconsistency with `revolveFace`
-8. ~~**Deprecate `pipe()` in favor of `shape()`**~~ — ✅ DONE: `pipe()` removed
+### 🔥 P1 — High Priority
 
-### P2 — Medium
+3. **Standardize position/direction params**
+   - Use `at` everywhere for position (currently: at, around, origin, center, position)
+   - Use `axis` everywhere for direction (currently: axis, direction, normal)
+   - Add deprecated overloads for old params
+   - **Why:** Inconsistent parameter names create confusion
 
-9. **Clean 2D aliases** — `fuse2d`, `cut2d` or overloaded `fuse(blueprint, blueprint)`
-10. **Accept ShapeFinder directly** in fillet/chamfer/shell (not just callbacks)
-11. **Simplify which-api.md** — "Use shape() wrapper. Period."
-12. **Add OCCT error translation layer** for top 10 common failures
-13. **Add `suggestion` field to BrepError** for recovery hints
-14. **Standardize on `Options` suffix** — rename `LoftConfig`, `SweepConfig`
+4. **Simplify initialization story**
+   - Promote `brepjs/quick` as the default in docs
+   - Move standard `initFromOC()` to "Advanced" section
+   - Remove confusing third path (`_setup.js`)
+   - **Why:** Three init paths create choice paralysis
 
-### P3 — Low / Polish
+5. **Make `extrudeFace` return Result**
+   - Fix inconsistency: `revolveFace` returns `Result`, `extrudeFace` throws
+   - Wrap all transforms in `tryCatch` for predictable errors
+   - **Why:** Inconsistent error boundaries are confusing
 
-15. **Add cookbook.md** with task-based recipes
-16. **Fix adjacency naming** — add `get` prefix or drop it from both patterns
-17. **Type error metadata** per error code
-18. **Add `.tryFuse()` / `.tryCut()`** to wrapper for functional error handling
-19. **Remove duplicate exports** — IO functions from both `brepjs/topology` and `brepjs/io`
-20. **Fix Drawing transform naming** — pick one pattern (Noun prefix)
+6. **Simplify which-api.md**
+   - Lead with: "Use `shape()` wrapper for 3D, Sketcher for 2D profiles"
+   - Move other styles to "Advanced: Alternative Styles" section
+   - **Why:** Presenting 4+ styles upfront creates decision paralysis
+
+### 📋 P2 — Medium Priority
+
+7. **Clean 2D naming** — Add `fuse2d`, `cut2d`, `intersect2d` or overload main functions
+8. **Accept ShapeFinder directly** in fillet/chamfer/shell (not just callbacks)
+9. **Add OCCT error translation layer** for top 10 common failures with actionable messages
+10. **Add `suggestion` field to BrepError** for recovery hints
+11. **Standardize on `Options` suffix** — rename `LoftConfig`, `SweepConfig` to `LoftOptions`, `SweepOptions`
+
+### 🎨 P3 — Polish / Nice-to-Have
+
+12. **Add cookbook.md** with task-based recipes ("How do I...?")
+13. **Fix adjacency naming** — either add `get` prefix or drop it from both patterns
+14. **Type error metadata** per error code for better DX
+15. **Add `.tryFuse()` / `.tryCut()`** to wrapper for functional error handling
+16. **Remove duplicate exports** — IO functions from both `brepjs/topology` and `brepjs/io`
+17. **Fix Drawing transform naming** — pick one pattern (recommend Noun prefix)
 
 ---
 
