@@ -2,22 +2,22 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  cylinder as _cylinder,
+  cylinder,
   sketchRectangle,
   castShape,
-  getFaces as _getFaces,
+  getFaces,
   getSurfaceType,
   faceGeomType,
   faceOrientation,
   flipFaceOrientation,
   uvBounds,
-  pointOnSurface as _pointOnSurface,
+  pointOnSurface,
   uvCoordinates,
-  normalAt as _normalAt,
+  normalAt,
   faceCenter,
   outerWire,
   innerWires,
-  unwrap as _unwrap,
+  unwrap,
   isWire,
 } from '../src/index.js';
 
@@ -26,7 +26,6 @@ beforeAll(async () => {
 }, 30000);
 
 function getFirstFace(shape: ReturnType<typeof box>) {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return getFaces(castShape(shape.wrapped))[0]!;
 }
 
@@ -71,7 +70,6 @@ describe('uvBounds', () => {
 describe('pointOnSurface', () => {
   it('returns a Vec3 point', () => {
     const rect = sketchRectangle(10, 10);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const pt = pointOnSurface(f, 0.5, 0.5);
     expect(pt).toHaveLength(3);
@@ -82,7 +80,6 @@ describe('pointOnSurface', () => {
 describe('uvCoordinates', () => {
   it('returns [u, v] pair', () => {
     const rect = sketchRectangle(10, 10);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const [u, v] = uvCoordinates(f, [0, 0, 0]);
     expect(typeof u).toBe('number');
@@ -93,7 +90,6 @@ describe('uvCoordinates', () => {
 describe('normalAt', () => {
   it('returns normal vector', () => {
     const rect = sketchRectangle(10, 10);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const n = normalAt(f);
     // Normal of XY plane face should be approx [0,0,+/-1]
@@ -104,7 +100,6 @@ describe('normalAt', () => {
 describe('faceCenter', () => {
   it('returns center Vec3', () => {
     const rect = sketchRectangle(10, 10);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const c = faceCenter(f);
     expect(c).toHaveLength(3);
@@ -116,7 +111,6 @@ describe('faceCenter', () => {
 describe('outerWire / innerWires', () => {
   it('returns outer wire of a face', () => {
     const rect = sketchRectangle(10, 10);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const w = outerWire(f);
     expect(isWire(w)).toBe(true);
@@ -124,7 +118,6 @@ describe('outerWire / innerWires', () => {
 
   it('returns empty inner wires for simple face', () => {
     const rect = sketchRectangle(10, 10);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const inner = innerWires(f);
     expect(inner).toHaveLength(0);

@@ -4,7 +4,7 @@ import {
   box,
   isProjectionPlane,
   makeProjectedEdges,
-  unwrap as _unwrap,
+  unwrap,
   createCamera,
   cameraFromPlane,
 } from '../src/index.js';

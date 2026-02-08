@@ -2,10 +2,10 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   drawRectangle,
-  drawCircle as _drawCircle,
+  drawCircle,
   Blueprint,
   box,
-  getFaces as _getFaces,
+  getFaces,
   createBlueprint,
   blueprintBoundingBox,
   blueprintOrientation,

@@ -18,8 +18,8 @@ import {
   err,
   OK,
   isOk,
-  isErr as _isErr,
-  unwrap as _unwrap,
+  isErr,
+  unwrap,
   pipeline,
 
   // Error types
@@ -68,7 +68,7 @@ import type {
   // Core types
   Vec3,
   Vec2,
-  PointInput as _PointInput,
+  PointInput,
   DirectionInput,
 
   // Plane types
@@ -113,7 +113,7 @@ import type {
 
   // Projection
   Camera,
-  ProjectionPlane as _ProjectionPlane,
+  ProjectionPlane,
 
   // Assembly
   AssemblyNode,
@@ -125,7 +125,7 @@ import type {
   HistoryOperationRegistry,
 
   // Legacy
-  Point as _Point,
+  Point,
   Point2D,
 } from '../src/index.js';
 
@@ -728,7 +728,6 @@ describe('Type structures — runtime field verification', () => {
     it('ok() creates Ok variant with .ok=true and .value', () => {
       const r: Result<number> = ok(42);
       expect(r.ok).toBe(true);
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (r.ok) {
         expect(r.value).toBe(42);
       }
@@ -738,7 +737,6 @@ describe('Type structures — runtime field verification', () => {
       const e = validationError('TEST', 'test error');
       const r: Result<number> = err(e);
       expect(r.ok).toBe(false);
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!r.ok) {
         expect(r.error).toHaveProperty('kind', 'VALIDATION');
         expect(r.error).toHaveProperty('code', 'TEST');
@@ -748,7 +746,6 @@ describe('Type structures — runtime field verification', () => {
 
     it('OK is Ok<undefined>', () => {
       expect(OK.ok).toBe(true);
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (OK.ok) {
         expect(OK.value).toBeUndefined();
       }

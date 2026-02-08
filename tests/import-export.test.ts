@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { box, exportSTEP as _exportSTEP, deserializeShape, toBREP, mesh } from '../src/index.js';
+import { box, exportSTEP, deserializeShape, toBREP, mesh } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();

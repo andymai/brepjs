@@ -2,13 +2,13 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   Sketcher,
-  Sketch as _Sketch,
+  Sketch,
   Sketches,
   sketchCircle,
   sketchRectangle,
   makeBaseBox,
-  measureVolume as _measureVolume,
-  measureArea as _measureArea,
+  measureVolume,
+  measureArea,
 } from '../src/index.js';
 
 beforeAll(async () => {

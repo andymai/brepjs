@@ -16,7 +16,6 @@ describe('CornerFinder', () => {
   it('inList filters to specific points', () => {
     const rect = roundedRectangleBlueprint(10, 20);
     const allCorners = cornerFinder().find(rect);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const subset = [allCorners[0]!.point];
     const found = cornerFinder().inList(subset).find(rect);
     expect(found.length).toBe(1);
@@ -34,7 +33,6 @@ describe('CornerFinder', () => {
   it('atDistance with custom point', () => {
     const rect = roundedRectangleBlueprint(10, 20);
     const allCorners = cornerFinder().find(rect);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pt = allCorners[0]!.point;
     const found = cornerFinder().atDistance(0, pt).find(rect);
     expect(found.length).toBe(1);
@@ -43,7 +41,6 @@ describe('CornerFinder', () => {
   it('atPoint finds a specific corner', () => {
     const rect = roundedRectangleBlueprint(10, 20);
     const allCorners = cornerFinder().find(rect);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pt = allCorners[0]!.point;
     const found = cornerFinder().atPoint(pt).find(rect);
     expect(found.length).toBe(1);
@@ -58,7 +55,6 @@ describe('CornerFinder', () => {
   it('inBox filters corners within a bounding box', () => {
     const rect = roundedRectangleBlueprint(10, 20);
     const allCorners = cornerFinder().find(rect);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pt = allCorners[0]!.point;
     const found = cornerFinder()
       .inBox([pt[0] - 0.1, pt[1] - 0.1], [pt[0] + 0.1, pt[1] + 0.1])
@@ -104,7 +100,6 @@ describe('CornerFinder', () => {
   it('not() negation works', () => {
     const rect = roundedRectangleBlueprint(10, 20);
     const allCorners = cornerFinder().find(rect);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pt = allCorners[0]!.point;
     const found = cornerFinder()
       .not((f) => f.atPoint(pt))
@@ -115,9 +110,7 @@ describe('CornerFinder', () => {
   it('either() or logic works', () => {
     const rect = roundedRectangleBlueprint(10, 20);
     const allCorners = cornerFinder().find(rect);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pt0 = allCorners[0]!.point;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pt1 = allCorners[1]!.point;
     const found = cornerFinder()
       .either([(f) => f.atPoint(pt0), (f) => f.atPoint(pt1)])

@@ -1,16 +1,16 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  Sketch as _Sketch,
+  Sketch,
   sketchCircle,
   sketchEllipse,
   sketchRectangle,
   sketchRoundedRectangle,
   sketchPolysides,
   polysideInnerRadius,
-  sketchParametricFunction as _sketchParametricFunction,
-  sketchHelix as _sketchHelix,
-  measureVolume as _measureVolume,
+  sketchParametricFunction,
+  sketchHelix,
+  measureVolume,
 } from '../src/index.js';
 
 beforeAll(async () => {

@@ -3,16 +3,16 @@ import { initOC } from './setup.js';
 import {
   sketchRectangle,
   box,
-  sphere as _sphere,
+  sphere,
   castShape,
-  isSolid as _isSolid,
-  getEdges as _getEdges,
-  getFaces as _getFaces,
-  measureVolume as _measureVolume,
-  measureArea as _measureArea,
+  isSolid,
+  getEdges,
+  getFaces,
+  measureVolume,
+  measureArea,
   isOk,
-  isErr as _isErr,
-  unwrap as _unwrap,
+  isErr,
+  unwrap,
   unwrapErr,
   thicken,
   fillet,
@@ -77,7 +77,6 @@ describe('fillet', () => {
   it('fillets specific edges', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const result = fillet(b, [edges[0]!], 1);
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
@@ -124,7 +123,6 @@ describe('chamfer', () => {
   it('chamfers specific edges', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const result = chamfer(b, [edges[0]!], 1);
     expect(isOk(result)).toBe(true);
   });
@@ -140,7 +138,6 @@ describe('shell', () => {
   it('hollows a box by removing one face', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const result = shell(b, [faces[0]!], 1);
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
@@ -152,7 +149,6 @@ describe('shell', () => {
   it('returns error for zero thickness', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const result = shell(b, [faces[0]!], 0);
     expect(isErr(result)).toBe(true);
   });
@@ -215,7 +211,6 @@ describe('null-shape pre-validation', () => {
   it('shell rejects null shape', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const result = shell(makeNullShape(), [faces[0]!], 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');

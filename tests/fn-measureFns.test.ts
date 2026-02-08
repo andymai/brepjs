@@ -2,14 +2,14 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere as _sphere,
+  sphere,
   line,
   vertex,
   translate,
   sketchRectangle,
   castShape,
-  measureVolume as _measureVolume,
-  measureArea as _measureArea,
+  measureVolume,
+  measureArea,
   measureLength,
   measureDistance,
   createDistanceQuery,
@@ -18,7 +18,7 @@ import {
   measureLinearProps,
   measureCurvatureAt,
   measureCurvatureAtMid,
-  getFaces as _getFaces,
+  getFaces,
   getKernel,
   createSolid,
   createFace,
@@ -49,7 +49,6 @@ describe('measureArea', () => {
 
   it('face area', () => {
     const rect = sketchRectangle(10, 20);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     expect(measureArea(f)).toBeCloseTo(200, 0);
   });

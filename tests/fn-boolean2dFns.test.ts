@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import type { Blueprint } from '../src/index.js';
-import { drawRectangle, drawCircle } from '../src/index.js';
+import { drawRectangle, drawCircle, Blueprint } from '../src/index.js';
 import {
   fuseBlueprint2D,
   cutBlueprint2D,

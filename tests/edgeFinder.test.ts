@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { box, unwrap as _unwrap, getFaces as _getFaces, curveLength, edgeFinder } from '../src/index.js';
+import { box, unwrap, getFaces, curveLength, edgeFinder } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();

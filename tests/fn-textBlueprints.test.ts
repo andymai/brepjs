@@ -52,7 +52,7 @@ describe('loadFont', () => {
   it('does not reload when already cached (force=false)', async ({ skip }) => {
     if (!fontPath) skip();
     const fontBefore = getFont('test');
-    const fontBuffer = await readFile(fontPath as string);
+    const fontBuffer = await readFile(fontPath!);
     await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', false);
     const fontAfter = getFont('test');
     expect(fontAfter).toBe(fontBefore);
@@ -60,7 +60,7 @@ describe('loadFont', () => {
 
   it('reloads when force=true', async ({ skip }) => {
     if (!fontPath) skip();
-    const fontBuffer = await readFile(fontPath as string);
+    const fontBuffer = await readFile(fontPath!);
     const font = await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', true);
     expect(font).toBeDefined();
   });

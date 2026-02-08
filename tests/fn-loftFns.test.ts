@@ -6,10 +6,10 @@ import {
   castShape,
   translate,
   loft,
-  measureVolume as _measureVolume,
+  measureVolume,
   isShape3D,
   isOk,
-  unwrap as _unwrap,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {

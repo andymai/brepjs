@@ -48,7 +48,7 @@ describe('localGC', () => {
 
   it('handles empty cleanup gracefully', () => {
     const [, gc] = localGC();
-    expect(() => { gc(); }).not.toThrow();
+    expect(() => gc()).not.toThrow();
   });
 });
 

@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere as _sphere,
-  getEdges as _getEdges,
-  getFaces as _getFaces,
+  sphere,
+  getEdges,
+  getFaces,
   facesOfEdge,
   edgesOfFace,
   wiresOfFace,
@@ -23,20 +23,14 @@ describe('facesOfEdge', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     // Every edge of a box borders exactly 2 faces
-     
-     
-    const faces = facesOfEdge(b, edges[0]);
+    const faces = facesOfEdge(b, edges[0]!);
     expect(faces).toHaveLength(2);
   });
 
   it('returns faces that are different from each other', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-     
-     
-    const faces = facesOfEdge(b, edges[0]);
-     
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const faces = facesOfEdge(b, edges[0]!);
     expect(isSameShape(faces[0]!, faces[1]!)).toBe(false);
   });
 });
@@ -45,9 +39,7 @@ describe('edgesOfFace', () => {
   it('returns 4 edges for a box face', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-     
-     
-    const edges = edgesOfFace(faces[0]);
+    const edges = edgesOfFace(faces[0]!);
     expect(edges).toHaveLength(4);
   });
 
@@ -55,9 +47,7 @@ describe('edgesOfFace', () => {
     const s = sphere(5);
     const faces = getFaces(s);
     // A sphere typically has a single face with edges
-     
-     
-    const edges = edgesOfFace(faces[0]);
+    const edges = edgesOfFace(faces[0]!);
     expect(edges.length).toBeGreaterThan(0);
   });
 });
@@ -66,9 +56,7 @@ describe('wiresOfFace', () => {
   it('returns exactly 1 wire for a simple box face', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-     
-     
-    const wires = wiresOfFace(faces[0]);
+    const wires = wiresOfFace(faces[0]!);
     expect(wires).toHaveLength(1);
   });
 });
@@ -77,20 +65,14 @@ describe('verticesOfEdge', () => {
   it('returns 2 vertices for a box edge', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-     
-     
-    const verts = verticesOfEdge(edges[0]);
+    const verts = verticesOfEdge(edges[0]!);
     expect(verts).toHaveLength(2);
   });
 
   it('returns distinct vertices', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-     
-     
-    const verts = verticesOfEdge(edges[0]);
-     
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const verts = verticesOfEdge(edges[0]!);
     expect(isSameShape(verts[0]!, verts[1]!)).toBe(false);
   });
 });
@@ -100,17 +82,13 @@ describe('adjacentFaces', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
     // Each face of a box shares edges with exactly 4 other faces
-     
-     
-    const neighbors = adjacentFaces(b, faces[0]);
+    const neighbors = adjacentFaces(b, faces[0]!);
     expect(neighbors).toHaveLength(4);
   });
 
   it('does not include the input face itself', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-     
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = faces[0]!;
     const neighbors = adjacentFaces(b, f);
     for (const n of neighbors) {
@@ -121,16 +99,10 @@ describe('adjacentFaces', () => {
   it('all adjacent faces are unique', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-     
-     
-    const neighbors = adjacentFaces(b, faces[0]);
+    const neighbors = adjacentFaces(b, faces[0]!);
     for (let i = 0; i < neighbors.length; i++) {
       for (let j = i + 1; j < neighbors.length; j++) {
-        const face1 = neighbors[i];
-        const face2 = neighbors[j];
-        if (face1 && face2) {
-          expect(isSameShape(face1, face2)).toBe(false);
-        }
+        expect(isSameShape(neighbors[i]!, neighbors[j]!)).toBe(false);
       }
     }
   });
@@ -140,12 +112,8 @@ describe('sharedEdges', () => {
   it('returns 1 shared edge between two adjacent box faces', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-     
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const face0 = faces[0]!;
     const neighbors = adjacentFaces(b, face0);
-     
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const shared = sharedEdges(face0, neighbors[0]!);
     expect(shared).toHaveLength(1);
   });
@@ -153,8 +121,6 @@ describe('sharedEdges', () => {
   it('returns 0 shared edges between opposite box faces', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-     
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const face0 = faces[0]!;
     const neighbors = adjacentFaces(b, face0);
     // Find a face that is NOT adjacent to face0

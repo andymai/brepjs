@@ -68,10 +68,9 @@ describe('Error suggestions', () => {
       try {
         shape(box(10, 10, 10)).fillet(-1);
         expect.fail('Should have thrown');
-      } catch (e: unknown) {
-        const error = e as { suggestion?: string };
-        expect(error.suggestion).toBeDefined();
-        expect(error.suggestion).toContain('positive');
+      } catch (e: any) {
+        expect(e.suggestion).toBeDefined();
+        expect(e.suggestion).toContain('positive');
       }
     });
   });

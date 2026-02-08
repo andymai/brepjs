@@ -3,8 +3,8 @@ import { initOC } from './setup.js';
 import {
   sketchRectangle,
   sketchCircle,
-  measureVolume as _measureVolume,
-  measureArea as _measureArea,
+  measureVolume,
+  measureArea,
   Sketcher,
   CompoundSketch,
 } from '../src/index.js';

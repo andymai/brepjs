@@ -1,9 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import type { Blueprint } from '../src/index.js';
 import {
+  Blueprint,
   CompoundBlueprint,
   Blueprints,
+  BoundingBox2d,
+  Curve2D,
+  Drawing,
   draw,
   drawRectangle,
   drawCircle,
@@ -18,7 +21,7 @@ import {
   cut2D,
   intersect2D,
   box,
-  getFaces as _getFaces,
+  getFaces,
 } from '../src/index.js';
 import { fillet2D, chamfer2D } from '../src/2d/blueprints/customCorners.js';
 import { offsetBlueprint } from '../src/2d/blueprints/offset.js';
@@ -70,38 +73,38 @@ describe('Blueprint', () => {
   });
 
   it('translate', () => {
-    const t1 = rect(10, 10).translate(5, 5);
+    const t1 = rect(10, 10).translate(5, 5) as Blueprint;
     expect(t1.boundingBox.center[0]).toBeCloseTo(5, 1);
-    const t2 = rect(10, 10).translate([3, 4]);
+    const t2 = rect(10, 10).translate([3, 4]) as Blueprint;
     expect(t2.boundingBox.center[0]).toBeCloseTo(3, 1);
     t1.delete();
     t2.delete();
   });
 
   it('rotate', () => {
-    const r = rect(10, 10).rotate(45);
+    const r = rect(10, 10).rotate(45) as Blueprint;
     expect(r.boundingBox.width).toBeGreaterThan(0);
     r.delete();
   });
 
   it('scale', () => {
-    const s = rect(10, 20).scale(2);
+    const s = rect(10, 20).scale(2) as Blueprint;
     expect(s.boundingBox.width).toBeCloseTo(20, 0);
     expect(s.boundingBox.height).toBeCloseTo(40, 0);
     s.delete();
   });
 
   it('mirror', () => {
-    const m1 = rect(10, 10).mirror([0, 1], [0, 0], 'plane');
+    const m1 = rect(10, 10).mirror([0, 1], [0, 0], 'plane') as Blueprint;
     expect(m1).toBeDefined();
-    const m2 = rect(10, 10).mirror([5, 5]);
+    const m2 = rect(10, 10).mirror([5, 5]) as Blueprint;
     expect(m2).toBeDefined();
     m1.delete();
     m2.delete();
   });
 
   it('stretch', () => {
-    const s = rect(10, 10).stretch(2, [1, 0], [0, 0]);
+    const s = rect(10, 10).stretch(2, [1, 0], [0, 0]) as Blueprint;
     expect(s.boundingBox.width).toBeGreaterThan(0);
     expect(s.boundingBox.height).toBeGreaterThan(0);
     s.delete();
@@ -170,8 +173,8 @@ describe('BoundingBox2d', () => {
 
 describe('Curve2D', () => {
   it('basic properties', () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bp = rect();    const curve = bp.curves[0]!;
+    const bp = rect();
+    const curve = bp.curves[0]!;
     expect(curve.firstPoint).toHaveLength(2);
     expect(curve.lastPoint).toHaveLength(2);
     expect(curve.firstParameter).toBeLessThanOrEqual(curve.lastParameter);
@@ -183,8 +186,8 @@ describe('Curve2D', () => {
   });
 
   it('clone and reverse', () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bp = rect();    const cloned = bp.curves[0]!.clone();
+    const bp = rect();
+    const cloned = bp.curves[0]!.clone();
     const fp = cloned.firstPoint;
     const lp = cloned.lastPoint;
     cloned.reverse();
@@ -194,16 +197,16 @@ describe('Curve2D', () => {
   });
 
   it('serialize', () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bp = rect();    const data = bp.curves[0]!.serialize();
+    const bp = rect();
+    const data = bp.curves[0]!.serialize();
     expect(typeof data).toBe('string');
     expect(data.length).toBeGreaterThan(0);
     bp.delete();
   });
 
   it('isOnCurve and parameter', () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bp = rect();    const curve = bp.curves[0]!;
+    const bp = rect();
+    const curve = bp.curves[0]!;
     expect(curve.isOnCurve(curve.firstPoint)).toBe(true);
     expect(curve.isOnCurve([1000, 1000])).toBe(false);
     const result = curve.parameter(curve.firstPoint);
@@ -214,8 +217,8 @@ describe('Curve2D', () => {
   });
 
   it('tangentAt', () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bp = rect();    const curve = bp.curves[0]!;
+    const bp = rect();
+    const curve = bp.curves[0]!;
     expect(curve.tangentAt(0.5)).toHaveLength(2);
     const mid = curve.value((curve.firstParameter + curve.lastParameter) / 2);
     expect(curve.tangentAt(mid)).toHaveLength(2);
@@ -223,8 +226,8 @@ describe('Curve2D', () => {
   });
 
   it('splitAt', () => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bp = rect();    const curve = bp.curves[0]!;
+    const bp = rect();
+    const curve = bp.curves[0]!;
     const midParam = (curve.firstParameter + curve.lastParameter) / 2;
     expect(curve.splitAt([midParam]).length).toBe(2);
     expect(curve.splitAt([curve.value(midParam)]).length).toBe(2);
@@ -233,11 +236,11 @@ describe('Curve2D', () => {
 
   it('distanceFrom', () => {
     const bp1 = rect(10, 10);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bp2 = rect(10, 10, 100, 100);    const curve = bp1.curves[0]!;
+    const bp2 = rect(10, 10, 100, 100);
+    const curve = bp1.curves[0]!;
     expect(curve.distanceFrom([1000, 1000])).toBeGreaterThan(0);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    expect(curve.distanceFrom(curve.firstPoint)).toBeCloseTo(0, 5);    expect(curve.distanceFrom(bp2.curves[0]!)).toBeGreaterThan(0);
+    expect(curve.distanceFrom(curve.firstPoint)).toBeCloseTo(0, 5);
+    expect(curve.distanceFrom(bp2.curves[0]!)).toBeGreaterThan(0);
     bp1.delete();
     bp2.delete();
   });

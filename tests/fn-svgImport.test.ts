@@ -102,7 +102,7 @@ describe('importSVGPathD', () => {
     expect(curve).toBeDefined();
     // First point: [0, 0] → [0, -0] = [0, 0]
     // End point: [10, 5] → [10, -5]
-    const lastPoint = curve?.lastPoint ?? [0, 0];
+    const lastPoint = curve!.lastPoint;
     expect(lastPoint[0]).toBeCloseTo(10);
     expect(lastPoint[1]).toBeCloseTo(-5);
   });

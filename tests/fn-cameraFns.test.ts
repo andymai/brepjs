@@ -2,8 +2,8 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  unwrap as _unwrap,
-  isErr as _isErr,
+  unwrap,
+  isErr,
   createCamera,
   cameraLookAt,
   cameraFromPlane,

@@ -4,12 +4,12 @@ import {
   err,
   OK,
   isOk,
-  isErr as _isErr,
+  isErr,
   map,
   mapErr,
   andThen,
   flatMap,
-  unwrap as _unwrap,
+  unwrap,
   unwrapOr,
   unwrapOrElse,
   unwrapErr,
@@ -131,7 +131,7 @@ describe('Pattern matching', () => {
   it('match calls ok handler for Ok', () => {
     const result = match(ok(5), {
       ok: (v) => `value: ${v}`,
-      err: (e) => `error: ${String(e)}`,
+      err: (e) => `error: ${e}`,
     });
     expect(result).toBe('value: 5');
   });
@@ -186,7 +186,6 @@ describe('tryCatch', () => {
 describe('tryCatchAsync', () => {
   it('returns Ok when async function succeeds', async () => {
     const result = await tryCatchAsync(
-      // eslint-disable-next-line @typescript-eslint/require-await
       async () => 42,
       (e) => String(e)
     );
@@ -195,7 +194,7 @@ describe('tryCatchAsync', () => {
 
   it('returns Err when async function throws', async () => {
     const result = await tryCatchAsync(
-      () => {
+      async () => {
         throw new Error('async boom');
       },
       (e) => (e instanceof Error ? e.message : 'unknown')

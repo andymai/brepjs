@@ -58,9 +58,7 @@ describe('autoHeal', () => {
 
     const validationDiag = result.report.diagnostics.find((d) => d.name === 'validation');
     expect(validationDiag).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(validationDiag!.attempted).toBe(true);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(validationDiag!.succeeded).toBe(true);
   });
 

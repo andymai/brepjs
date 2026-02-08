@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere as _sphere,
+  sphere,
   translate,
   compound,
   fuse,
@@ -13,18 +13,18 @@ import {
   fuseAll,
   cutAll,
   isOk,
-  isErr as _isErr,
-  unwrap as _unwrap,
+  isErr,
+  unwrap,
   unwrapErr,
-  isSolid as _isSolid,
+  isSolid,
   isCompound,
   isShape3D,
-  getShapeKind as _getShapeKind,
-  getEdges as _getEdges,
-  getWires as _getWires,
+  getShapeKind,
+  getEdges,
+  getWires,
   getKernel,
   createSolid,
-  measureVolume as _measureVolume,
+  measureVolume,
 } from '../src/index.js';
 import type { Shape3D } from '../src/core/shapeTypes.js';
 

@@ -55,16 +55,13 @@ describe('createWorkerClient', () => {
     // Simulate worker response
     const handler = getHandler();
     expect(handler).not.toBeNull();
-    const postMessage = vi.mocked(worker.postMessage.bind(worker));
+    const postMessage = vi.mocked(worker.postMessage);
     expect(postMessage).toHaveBeenCalledTimes(1);
-
-    const sentMsg = postMessage.mock.calls[0]?.[0] as { id: string; type: string };
+    const sentMsg = postMessage.mock.calls[0]![0] as { id: string; type: string };
     expect(sentMsg.type).toBe('init');
 
     // Reply with success
-    if (handler) {
-      handler({ data: { id: sentMsg.id, success: true } } as MessageEvent);
-    }
+    handler!({ data: { id: sentMsg.id, success: true } } as MessageEvent);
 
     await expect(initPromise).resolves.toBeUndefined();
   });
@@ -76,9 +73,8 @@ describe('createWorkerClient', () => {
     const execPromise = client.execute('fuse', ['brep1', 'brep2'], { tolerance: 0.1 });
 
     const handler = getHandler();
-    const postMessage = vi.mocked(worker.postMessage.bind(worker));
-
-    const sentMsg = postMessage.mock.calls[0]?.[0] as {
+    const postMessage = vi.mocked(worker.postMessage);
+    const sentMsg = postMessage.mock.calls[0]![0] as {
       id: string;
       type: string;
       operation: string;
@@ -87,11 +83,9 @@ describe('createWorkerClient', () => {
     expect(sentMsg.operation).toBe('fuse');
 
     // Reply
-    if (handler) {
-      handler({
-        data: { id: sentMsg.id, success: true, resultBrep: 'output-brep' },
-      } as MessageEvent);
-    }
+    handler!({
+      data: { id: sentMsg.id, success: true, resultBrep: 'output-brep' },
+    } as MessageEvent);
 
     const result = await execPromise;
     expect(result.resultBrep).toBe('output-brep');
@@ -104,21 +98,18 @@ describe('createWorkerClient', () => {
     const execPromise = client.execute('bad-op', [], {});
 
     const handler = getHandler();
-    const postMessage = vi.mocked(worker.postMessage.bind(worker));
+    const postMessage = vi.mocked(worker.postMessage);
+    const sentMsg = postMessage.mock.calls[0]![0] as { id: string };
 
-    const sentMsg = postMessage.mock.calls[0]?.[0] as { id: string };
-
-    if (handler) {
-      handler({
-        data: { id: sentMsg.id, success: false, error: 'Unknown operation' },
-      } as MessageEvent);
-    }
+    handler!({
+      data: { id: sentMsg.id, success: false, error: 'Unknown operation' },
+    } as MessageEvent);
 
     await expect(execPromise).rejects.toThrow('Unknown operation');
   });
 
   it('dispose rejects pending operations', async () => {
-    const { worker, getHandler: _getHandler } = createMockWorker();
+    const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
 
     // Start an operation but don't reply

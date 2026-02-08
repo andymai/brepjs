@@ -72,7 +72,7 @@ describe('createHandle', () => {
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(5, 5, 5).Shape();
     const handle = createHandle(ocShape);
     handle[Symbol.dispose]();
-    expect(() => { handle[Symbol.dispose](); }).not.toThrow();
+    expect(() => handle[Symbol.dispose]()).not.toThrow();
   });
 });
 
@@ -106,7 +106,7 @@ describe('createOcHandle', () => {
     const pnt = makeOcPnt();
     const handle = createOcHandle(pnt);
     handle[Symbol.dispose]();
-    expect(() => { handle[Symbol.dispose](); }).not.toThrow();
+    expect(() => handle[Symbol.dispose]()).not.toThrow();
   });
 });
 
@@ -170,7 +170,7 @@ describe('DisposalScope', () => {
       },
     });
     // Should not throw
-    expect(() => { scope[Symbol.dispose](); }).not.toThrow();
+    expect(() => scope[Symbol.dispose]()).not.toThrow();
   });
 
   it('can be disposed multiple times safely', () => {
@@ -179,7 +179,7 @@ describe('DisposalScope', () => {
     scope.register(obj);
     scope[Symbol.dispose]();
     // Second dispose should be safe (handles array cleared)
-    expect(() => { scope[Symbol.dispose](); }).not.toThrow();
+    expect(() => scope[Symbol.dispose]()).not.toThrow();
   });
 });
 
