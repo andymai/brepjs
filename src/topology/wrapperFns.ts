@@ -187,6 +187,9 @@ export interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
   // Escape hatches
   apply<U extends AnyShape>(fn: (shape: T) => U): Wrapped<U>;
   applyResult<U extends AnyShape>(fn: (shape: T) => Result<U>): Wrapped<U>;
+
+  // Extraction
+  done(): T;
 }
 
 /** 3D wrapper — booleans, modifiers, measurement, queries. */
@@ -312,6 +315,9 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
 
     apply: (fn) => wrapAny(fn(val)),
     applyResult: (fn) => wrapAny(unwrapOrThrow(fn(val))),
+
+    // Extraction
+    done: () => val,
   };
   return self;
 }

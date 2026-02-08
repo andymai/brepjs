@@ -46,6 +46,21 @@ describe('shape() factory', () => {
     expect(s.__wrapped).toBe(true);
   });
 
+  it('.done() extracts the unwrapped shape', () => {
+    const s = shape(box(10, 10, 10));
+    const unwrapped = s.done();
+    expect(unwrapped).toBe(s.val);
+    expect(measureVolume(unwrapped)).toBeCloseTo(1000, 0);
+  });
+
+  it('.done() works after chaining operations', () => {
+    const result = shape(box(10, 10, 10))
+      .fillet(1)
+      .done();
+    expect(measureVolume(result)).toBeLessThan(1000);
+    expect(measureVolume(result)).toBeGreaterThan(0);
+  });
+
   it('wraps a Face into WrappedFace', () => {
     const f = unwrap(
       polygon([
