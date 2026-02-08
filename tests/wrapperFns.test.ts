@@ -206,6 +206,26 @@ describe('Wrapped3D measurement', () => {
   it('area() returns surface area', () => {
     expect(shape(box(10, 10, 10)).area()).toBeCloseTo(600, 0);
   });
+
+  it('volumeProps() returns full volume properties', () => {
+    const props = shape(box(10, 10, 10)).volumeProps();
+    expect(props.volume).toBeCloseTo(1000, 0);
+    expect(props.mass).toBeCloseTo(1000, 0);
+    expect(props.centerOfMass).toHaveLength(3);
+    expect(props.centerOfMass[0]).toBeCloseTo(5, 1);
+    expect(props.centerOfMass[1]).toBeCloseTo(5, 1);
+    expect(props.centerOfMass[2]).toBeCloseTo(5, 1);
+  });
+
+  it('surfaceProps() returns full surface properties', () => {
+    const props = shape(box(10, 10, 10)).surfaceProps();
+    expect(props.area).toBeCloseTo(600, 0);
+    expect(props.mass).toBeCloseTo(600, 0);
+    expect(props.centerOfMass).toHaveLength(3);
+    expect(props.centerOfMass[0]).toBeCloseTo(5, 1);
+    expect(props.centerOfMass[1]).toBeCloseTo(5, 1);
+    expect(props.centerOfMass[2]).toBeCloseTo(5, 1);
+  });
 });
 
 describe('Wrapped3D queries', () => {

@@ -77,7 +77,13 @@ import type { PlaneInput } from '../core/planeTypes.js';
 import type { ShapeMesh, EdgeMesh, MeshOptions } from './meshFns.js';
 import { cutAll as cutAllFn } from './booleanFns.js';
 import { extrude, revolve } from '../operations/api.js';
-import { measureVolume, measureArea } from '../measurement/measureFns.js';
+import {
+  measureVolume,
+  measureArea,
+  measureVolumeProps,
+  measureSurfaceProps,
+} from '../measurement/measureFns.js';
+import type { VolumeProps, SurfaceProps } from '../measurement/measureFns.js';
 import {
   curveStartPoint,
   curveEndPoint,
@@ -225,6 +231,8 @@ export interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
   // Measurement
   volume(): number;
   area(): number;
+  volumeProps(): VolumeProps;
+  surfaceProps(): SurfaceProps;
 
   // Queries
   edges(): Edge[];
@@ -351,6 +359,8 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
     // Measurement
     volume: () => measureVolume(val),
     area: () => measureArea(val),
+    volumeProps: () => measureVolumeProps(val),
+    surfaceProps: () => measureSurfaceProps(val),
 
     // Queries
     edges: () => getEdges(val),
