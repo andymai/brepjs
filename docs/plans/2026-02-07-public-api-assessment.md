@@ -1,192 +1,22 @@
 # Public API Assessment: Friction Points & Action Items
 
 **Date:** 2026-02-07
-**Last Updated:** 2026-02-07 (after init simplification)
+**Last Updated:** 2026-02-07
 **Goal:** Identify actionable friction points in the brepjs public API
 **Canonical style:** Fluent wrapper (`shape(box(...)).cut(...).fillet(...)`)
-**Audience:** Both web developers new to CAD and experienced CAD engineers
-
-**Status:** v7.2.0 shipped with parameter naming standardization (PR #191). Config → Options naming standardization completed. Clean 2D API naming completed. which-api.md simplified. Initialization story simplified (brepjs/quick as default).
 
 ---
 
-## ✅ Completed in PR #186
+## ✅ Completed Work (Condensed)
 
-**What was accomplished:**
-
-- ✅ All legacy API names removed from barrel exports (makeBox, fuseShape, translateShape, etc.)
-- ✅ pipe() fluent wrapper removed (use shape() instead)
-- ✅ Public API reduced from 427 to 370 symbols (13% reduction)
-- ✅ All documentation updated to use short API names consistently
-- ✅ function-lookup.md regenerated
-- ✅ All 1568 tests passing with short API names
-
-**Immediate impact:**
-
-- Users now see only one name per operation in autocomplete
-- Documentation and examples are consistent
-- Migration path is clear (legacy → short names)
-
----
-
-## ✅ Completed in PR #188
-
-**What was accomplished:**
-
-1. **Completed wrapper API (P0 #2)** - Added 12 critical missing methods:
-   - Base wrapper: `mesh()`, `meshEdges()`, `isValid()`, `isEmpty()`, `heal()`, `simplify()`, `toBREP()`
-   - 3D wrapper: `cutAll()`, `section()`, `split()`, `slice()`
-   - ✅ Users can now render, validate, serialize without unwrapping
-   - ✅ Wrapper completion: ~40% → ~90%
-
-2. **Consistent Result handling (P1 #5)** - Made `extrude()` return `Result<Solid>`:
-   - Fixed inconsistency where `extrudeFace()` threw but `revolveFace()` returned `Result`
-   - ✅ All operation functions now have predictable Result-based error boundaries
-   - ✅ Updated compound ops (pocket, boss) to handle Result
-
-3. **Removed "clean API" terminology** - Cleaner naming throughout:
-   - Renamed `cleanApi.ts` → `api.ts`, `cleanOpsFns.ts` → `api.ts`
-   - Renamed `cleanApi.test.ts` → `api.test.ts`
-   - ✅ File naming is now intuitive and consistent
-
-**Impact:**
-
-- ✅ 1584 tests passing (up from 1568)
-- ✅ 87.53% function coverage
-- ✅ Wrapper is now production-ready for complete workflows
-- ✅ No more forced unwrapping for basic operations (mesh, validate, serialize)
-
----
-
-## ✅ Completed in PR #190
-
-**What was accomplished:**
-
-1. **Documented shape() wrapper as canonical API (P0 #1)** - Complete documentation overhaul:
-   - getting-started.md: Complete rewrite with wrapper as primary API throughout
-   - which-api.md: New "Fluent Wrapper" section positioned prominently
-   - cheat-sheet.md: All examples converted to wrapper style
-   - ✅ Wrapper is now the documented, canonical API for brepjs
-   - ✅ Functional API positioned as alternative for explicit error handling
-
-**Key changes:**
-
-- **getting-started.md**: Step 4 introduces `shape()` first, shows chaining, demonstrates axis shortcuts
-- **which-api.md**: Added comprehensive "Fluent Wrapper" section with benefits table and wrapper types
-- **cheat-sheet.md**: Converted all examples (booleans, transforms, fillets, measurement) to wrapper style
-- **Error handling**: Documented both `BrepWrapperError` (wrapper) and `Result<T>` (functional) patterns
-
-**Impact:**
-
-- ✅ Wrapper is now documented as the **canonical API** across all major docs
-- ✅ Users discovering brepjs immediately see the cleanest, most ergonomic API
-- ✅ Discoverability dramatically improved: 3/10 → 8/10
-- ✅ Zero friction for new users to discover and use the wrapper
-
----
-
-## ✅ Completed in PR #191
-
-**What was accomplished:**
-
-1. **Parameter Naming Standardization (P0 #1)** - Consistent position and direction parameters:
-   - Position: Standardized to `at` (deprecated `around`, `origin`)
-   - Direction: Standardized to `axis` (deprecated `normal` in primitives)
-   - Functions updated: `rotate()`, `revolve()`, `mirror()`, `mirrorJoin()`, `circle()`, `ellipse()`, `ellipseArc()`
-   - ✅ 100% backward compatible with deprecation warnings
-   - ✅ Comprehensive migration guide at docs/migration/v7.2-parameter-naming.md
-   - ✅ 22 new tests verifying canonical and deprecated names both work
-
-**Impact:**
-
-- ✅ All 1606 tests passing (1584 + 22 new)
-- ✅ 87.53% function coverage maintained
-- ✅ Consistency & Naming score: 5/10 → **8/10**
-- ✅ Parameter names are now predictable and learnable
-
----
-
-## ✅ Completed: Config → Options Standardization
-
-**What was accomplished:**
-
-1. **Configuration Type Naming (P0 #1)** - Standardized all configuration types to `Options` suffix:
-   - Primary scope: `LoftConfig` → `LoftOptions`, `SweepConfig` → `SweepOptions`, `GenericSweepConfig` → `GenericSweepOptions`, `BSplineApproximationConfig` → `BSplineApproximationOptions`
-   - Additional types: `RadiusConfig` → `RadiusOptions`, `ShapeConfig` → `ShapeOptions`, `SplineConfig` → `SplineOptions`
-   - ✅ 100% backward compatible with deprecated type aliases
-   - ✅ All old names work until v8.0.0 with IDE deprecation warnings
-   - ✅ 25 files updated across operations, topology, and sketching
-
-**Impact:**
-
-- ✅ All 1606 tests passing
-- ✅ Function coverage: 87.53% maintained
-- ✅ Consistency & Naming score: 8/10 → **9/10**
-- ✅ Configuration types now have predictable, consistent naming
-
----
-
-## ✅ Completed: Clean 2D API Naming
-
-**What was accomplished:**
-
-1. **2D Operation Naming (P0 #1)** - Added clean `*2D` aliases for all 2D blueprint operations:
-   - Transform functions: `translate2D`, `rotate2D`, `scale2D`, `mirror2D`, `stretch2D`
-   - Utility functions: `getBounds2D`, `getOrientation2D`, `isInside2D`, `toSVGPathD`
-   - Sketching functions: `sketch2DOnPlane`, `sketch2DOnFace`
-   - ✅ All 11 new clean aliases match the concise 3D API naming style
-   - ✅ Verbose names (`translateBlueprint`, `blueprintBoundingBox`, etc.) deprecated
-   - ✅ Redundant boolean wrappers deprecated (`fuseBlueprint2D` → use `fuse2D` directly)
-   - ✅ 100% backward compatible with deprecation warnings
-
-**Impact:**
-
-- ✅ All 1606 tests passing
-- ✅ Function coverage: 87.62% maintained
-- ✅ Consistency & Naming score: 9/10 → **10/10** 🎯
-- ✅ 2D API now follows same concise naming as 3D API
-
----
-
-## ✅ Completed: Simplify which-api.md
-
-**What was accomplished:**
-
-1. **Eliminate API Style Paralysis (P1 - High Priority)** - Restructured which-api.md to provide clear, upfront guidance:
-   - TL;DR at top: "Use fluent wrapper for 3D, Sketcher for 2D"
-   - "Start Here: The Two APIs You Need" section with concise examples
-   - Quick Reference table for common tasks
-   - Moved Functional API and Drawing API to "Advanced: Alternative Styles" section
-   - ✅ Users now see clear guidance before being overwhelmed with options
-   - ✅ Primary APIs (wrapper + sketcher) positioned prominently
-   - ✅ Alternative styles available but clearly marked as advanced
-
-**Impact:**
-
-- ✅ Eliminates decision paralysis for new users
-- ✅ Clear "start here" guidance reduces onboarding friction
-- ✅ Discoverability improvement: reduces confusion about which API to use
-
----
-
-## ✅ Completed: Simplify Initialization Story
-
-**What was accomplished:**
-
-1. **Promote brepjs/quick as Default (P1 - High Priority)** - Restructured getting-started.md to eliminate initialization confusion:
-   - Step 2 now uses `brepjs/quick` with auto-initialization via top-level await
-   - All code examples updated to import from `brepjs/quick`
-   - Complete Example, Browser Setup, and Troubleshooting sections updated
-   - Manual `initFromOC()` moved to new "Advanced: Manual Initialization" section
-   - ✅ Users now see one clear initialization path by default
-   - ✅ Advanced users can still access manual init when needed (loading indicators, error handling)
-   - ✅ Eliminated three-way choice paralysis (quick vs initFromOC vs \_setup.js)
-
-**Impact:**
-
-- ✅ Faster onboarding - users can start immediately with brepjs/quick
-- ✅ Reduced confusion about which initialization method to use
-- ✅ Discoverability improvement: clearer path to first shape
+1. **PR #186** - Removed legacy API names, cleaned up exports (427 → 370 symbols)
+2. **PR #188** - Completed wrapper API (~40% → ~90%), made extrude() return Result
+3. **PR #190** - Documented shape() wrapper as canonical API across all docs
+4. **PR #191** - Standardized parameter naming (`at` for position, `axis` for direction)
+5. **Config → Options** - Renamed all configuration types for consistency
+6. **Clean 2D API** - Added `*2D` aliases (translate2D, getBounds2D, etc.), deprecated verbose names
+7. **Simplify which-api.md** - Restructured with TL;DR, moved alternatives to Advanced section
+8. **Simplify init** - Promoted brepjs/quick as default, moved initFromOC() to Advanced section
 
 ---
 
@@ -209,51 +39,13 @@
 
 **Status:** ✅ Position and direction parameters standardized to `at` and `axis`.
 
-**What was done:**
-
-- ✅ Standardized position to `at`: Updated `rotate()`, `revolve()`, `mirror()`, `mirrorJoin()`
-- ✅ Standardized direction to `axis`: Updated `circle()`, `ellipse()`, `ellipseArc()`
-- ✅ Deprecated old names (`around`, `origin`, `normal`) with IDE warnings
-- ✅ 100% backward compatible - old names still work until v8.0.0
-- ✅ Migration guide created: docs/migration/v7.2-parameter-naming.md
-- ✅ 22 new tests verifying both canonical and deprecated names work
-
-**Semantic exceptions preserved:**
-
-- `center` in `scale()` - semantically correct (center of scaling, not a position)
-- `center` in `box()` - special ergonomic feature (`center: true | Vec3`)
-- `normal` in plane operations (`mirror()`, `createPlane()`) - mathematically correct term
-
-**Remaining work:** None for this item. Score improved from 5/10 → 8/10.
-
 ### 1.2 Dual Naming Convention (✅ COMPLETED in PR #186)
 
 **Status:** ✅ All legacy names removed. Public API now has single canonical names only.
 
-**What was done:**
-
-- Removed all legacy exports: `makeBox`, `fuseShape`, `filletShape`, `translateShape`, etc.
-- Removed `pipe()` fluent wrapper
-- Updated all tests to use short API names
-- Updated all documentation to use short API names consistently
-- Reduced from 427 to 370 exported symbols
-
-**Remaining work:** None for this item.
-
 ### 1.3 2D Operation Verbosity (✅ COMPLETED)
 
 **Status:** ✅ Clean 2D API naming implemented. All 2D operations now have concise `*2D` aliases.
-
-**What was done:**
-
-- ✅ Added clean aliases: `translate2D`, `rotate2D`, `scale2D`, `mirror2D`, `stretch2D`
-- ✅ Added utility aliases: `getBounds2D`, `getOrientation2D`, `isInside2D`, `toSVGPathD`
-- ✅ Added sketching aliases: `sketch2DOnPlane`, `sketch2DOnFace`
-- ✅ Deprecated verbose names: `translateBlueprint`, `blueprintBoundingBox`, etc.
-- ✅ Deprecated redundant wrappers: `fuseBlueprint2D`, `cutBlueprint2D`, `intersectBlueprint2D`
-- ✅ 100% backward compatible - old names work until v8.0.0
-
-**Result:** 2D API now matches 3D API naming style. Score improved from 9/10 → 10/10.
 
 ### 1.4 Drawing Transform Inconsistency (Medium)
 
@@ -276,15 +68,6 @@ Two different patterns for "get related sub-shapes":
 ### 1.6 Options vs Config (✅ COMPLETED)
 
 **Status:** ✅ All configuration types standardized to use `Options` suffix.
-
-**What was done:**
-
-- ✅ Renamed all Config types to Options: `LoftConfig` → `LoftOptions`, `SweepConfig` → `SweepOptions`, `GenericSweepConfig` → `GenericSweepOptions`, `BSplineApproximationConfig` → `BSplineApproximationOptions`, `RadiusConfig` → `RadiusOptions`, `ShapeConfig` → `ShapeOptions`, `SplineConfig` → `SplineOptions`
-- ✅ All old names preserved as deprecated type aliases with v8.0.0 removal timeline
-- ✅ 100% backward compatible
-- ✅ 25 files updated across operations, topology, and sketching layers
-
-**Remaining work:** None for this item. Score improved from 8/10 → 9/10.
 
 ### 1.7 Outliers (Low)
 
@@ -354,14 +137,6 @@ const shape = unwrap(result);
 
 **Status:** ✅ The `pipe()` API has been removed. Only `shape()` wrapper remains.
 
-**What was done:**
-
-- Deleted `src/topology/pipeFns.ts`
-- Deleted `tests/fn-pipeFns.test.ts`
-- Removed all pipe exports from barrels
-
-**Remaining work:** Document the `shape()` wrapper (see P0 action item #1).
-
 ### 2.4 Finder Integration Awkwardness (Medium)
 
 Pre-built finders can't be passed directly:
@@ -388,43 +163,13 @@ shape(box).fillet(() => zEdges, 2); // Awkward workaround
 
 **Status:** ✅ The `shape()` wrapper is now comprehensively documented as the canonical API.
 
-**What was done:**
-
-- ✅ getting-started.md: Complete rewrite with wrapper as primary API
-- ✅ which-api.md: New "Fluent Wrapper" section with benefits table and wrapper types
-- ✅ cheat-sheet.md: All examples converted to wrapper style
-- ✅ Wrapper positioned as the recommended starting point throughout
-- ✅ Functional API documented as alternative for explicit error handling
-
-**Remaining work:** None for this item. Wrapper is now the documented, canonical API.
-
 ### 3.2 Three Initialization Paths (✅ COMPLETED)
 
 **Status:** ✅ getting-started.md restructured to promote brepjs/quick as the default.
 
-**What was done:**
-
-- ✅ Updated Step 2 to use `brepjs/quick` (auto-initialization via top-level await)
-- ✅ All code examples now import from `brepjs/quick`
-- ✅ Moved manual `initFromOC()` to "Advanced: Manual Initialization" section with use cases
-- ✅ Updated Complete Example, Browser Setup, and Troubleshooting sections
-- ✅ Clear guidance: use brepjs/quick by default, manual init for advanced cases only
-
-**Result:** Users now have one clear initialization path with no choice paralysis. Manual initialization documented for advanced use cases (loading indicators, explicit error handling, environments without top-level await).
-
 ### 3.3 API Style Paralysis (✅ COMPLETED)
 
 **Status:** ✅ which-api.md restructured to eliminate decision paralysis.
-
-**What was done:**
-
-- ✅ Added TL;DR at top: "Use fluent wrapper for 3D, Sketcher for 2D"
-- ✅ Created "Start Here: The Two APIs You Need" section with clear examples
-- ✅ Moved Functional API and Drawing API to "Advanced: Alternative Styles" section
-- ✅ Added Quick Reference table for common tasks
-- ✅ Primary APIs (wrapper + sketcher) now prominently positioned
-
-**Result:** New users see clear guidance upfront instead of being overwhelmed with 4+ API choices. Alternative styles available for advanced use cases.
 
 ### 3.4 Sub-Path Groupings Not Intuitive (Medium)
 
@@ -475,26 +220,6 @@ Missing "I want to..." recipes:
 ### 4.1 Inconsistent Result vs Throw Boundary (✅ COMPLETED in PR #188)
 
 **Status:** ✅ `extrude()` and `extrudeFace()` now return `Result<Solid>`, consistent with `revolve()` and `loft()`.
-
-**What was done:**
-
-- Changed `extrudeFace(face, vec): Solid` → `Result<Solid>`
-- Changed `extrude(face, height): Solid` → `Result<Solid>`
-- Updated compound operations (pocket, boss) to handle Result
-- Updated wrapper to unwrap Result automatically
-- All tests updated to handle Result
-
-**Current Pattern:**
-
-| Pattern             | Functions                                               |
-| ------------------- | ------------------------------------------------------- |
-| Returns `Result<T>` | ✅ Booleans, modifiers, extrude, revolve, loft, healing |
-| Returns raw value   | Transforms, `getEdges`, `meshShape`, simple primitives  |
-
-**Remaining work:**
-
-- Wrap OCCT calls in transforms with `tryCatch` to prevent unexpected throws
-- This is lower priority since transforms rarely fail in practice
 
 ### 4.2 OCCT Error Messages Are Opaque (Medium)
 
