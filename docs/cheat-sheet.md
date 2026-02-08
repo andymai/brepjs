@@ -30,81 +30,96 @@ const tor = torus(20, 5); // major, minor
 ## Boolean Operations
 
 ```typescript
-import { fuse, cut, intersect, unwrap } from 'brepjs';
+import { shape } from 'brepjs';
 
-const merged = unwrap(fuse(a, b)); // union
-const drilled = unwrap(cut(a, b)); // subtraction
-const common = unwrap(intersect(a, b)); // intersection
+const merged = shape(a).fuse(b).val; // union
+const drilled = shape(a).cut(b).val; // subtraction
+const common = shape(a).intersect(b).val; // intersection
+
+// Batch operations
+const cut3holes = shape(plate).cutAll([hole1, hole2, hole3]).val;
 ```
 
 ## Transforms
 
 ```typescript
-import { translate, rotate, scale, mirror } from 'brepjs';
+import { shape } from 'brepjs';
 
-const moved = translate(shape, [10, 0, 0]);
-const rotated = rotate(shape, 45, { around: [0, 0, 0], axis: [0, 0, 1] }); // angle, options
-const scaled = scale(shape, 2);
-const flipped = mirror(shape, { normal: [1, 0, 0] }); // mirror across YZ plane
+const moved = shape(myShape).translate([10, 0, 0]).val;
+const rotated = shape(myShape).rotate(45, { around: [0, 0, 0], axis: [0, 0, 1] }).val;
+const scaled = shape(myShape).scale(2).val;
+const flipped = shape(myShape).mirror({ normal: [1, 0, 0] }).val; // mirror across YZ plane
+
+// Axis shortcuts
+const positioned = shape(myShape).moveX(10).rotateZ(45).val;
 ```
 
 ## Fillets and Chamfers
 
 ```typescript
-import { fillet, chamfer, edgeFinder, getEdges, unwrap } from 'brepjs';
+import { shape } from 'brepjs';
 
-const rounded = unwrap(fillet(solid, getEdges(solid), 2)); // all edges, 2mm radius
-const vertEdges = edgeFinder().inDirection('Z').findAll(solid);
-const selective = unwrap(fillet(solid, vertEdges, 2)); // vertical edges only
-const beveled = unwrap(chamfer(solid, getEdges(solid), 1)); // all edges, 1mm
+const rounded = shape(solid).fillet(2).val; // all edges, 2mm radius
+const selective = shape(solid).fillet((e) => e.inDirection('Z'), 2).val; // vertical edges only
+const beveled = shape(solid).chamfer((e) => e.inDirection('Z'), 1).val; // vertical edges, 1mm
+
+// Variable radius filleting
+const variable = shape(solid).fillet(
+  (e) => e.inDirection('Z'),
+  (edge) => (edge.length() > 50 ? 5 : 2)
+).val;
 ```
 
 ## Shell (Hollow Out)
 
 ```typescript
-import { shell, faceFinder, unwrap } from 'brepjs';
+import { shape } from 'brepjs';
 
-const topFaces = faceFinder().parallelTo('Z').findAll(solid);
-const hollowed = unwrap(shell(solid, topFaces, 1)); // 1mm wall thickness
+const hollowed = shape(solid).shell((f) => f.parallelTo('Z'), 1).val; // remove top faces, 1mm wall thickness
 ```
 
 ## Measurement
 
 ```typescript
-import { measureVolume, measureArea, measureLength, measureDistance } from 'brepjs';
+import { shape } from 'brepjs';
 
-const vol = measureVolume(solid); // mm³
-const area = measureArea(face); // mm²
-const len = measureLength(edge); // mm
+const vol = shape(solid).volume(); // mm³
+const area = shape(face).area(); // mm²
+const len = shape(edge).length(); // mm
+
+// For distance between shapes, use the functional API
+import { measureDistance } from 'brepjs';
 const dist = measureDistance(shape1, shape2); // mm
 ```
 
 ## 2D to 3D
 
 ```typescript
-import {
-  drawRectangle,
-  drawCircle,
-  drawingCut,
-  drawingToSketchOnPlane,
-  sketchExtrude,
-} from 'brepjs';
+import { drawRectangle, drawCircle, drawingCut, drawingToSketchOnPlane, shape } from 'brepjs';
 
 const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 15]));
 const sketch = drawingToSketchOnPlane(profile, 'XY');
-const solid = sketchExtrude(sketch, 20);
+const solid = shape(sketch.face()).extrude(20).val;
+
+// Or revolve around an axis
+const revolved = shape(sketch.face()).revolve({ axis: [0, 1, 0], angle: 270 }).val;
 ```
 
 ## Export and Import
 
 ```typescript
-import { exportSTEP, exportSTL, importSTEP, mesh, unwrap, isOk } from 'brepjs';
+import { exportSTEP, exportSTL, importSTEP, shape, unwrap, isOk } from 'brepjs';
 
+// Export (use functional API for file formats)
 const step = unwrap(exportSTEP(solid)); // Blob
 const stl = unwrap(exportSTL(solid)); // Blob
 const imported = await importSTEP(stepBlob); // Result<AnyShape>
 
-const m = mesh(solid, { tolerance: 0.1 });
+// BREP serialization (use wrapper)
+const brepString = shape(solid).toBREP();
+
+// Meshing for rendering
+const m = shape(solid).mesh({ tolerance: 0.1 });
 // m.vertices, m.triangles, m.normals
 ```
 
@@ -136,26 +151,32 @@ try {
 ## Error Handling
 
 ```typescript
-import { cut } from 'brepjs';
-import { isOk, unwrap, match } from 'brepjs/result'; // focused import
+import { shape, BrepWrapperError } from 'brepjs';
 
-const result = cut(a, b);
-
-// Quick: unwrap (throws on error)
-const solid = unwrap(result);
-
-// Safe: check first
-if (isOk(result)) {
-  use(result.value);
+// Wrapper style - throws BrepWrapperError on failure
+try {
+  const part = shape(box).cut(hole).fillet(2).val;
+  render(part);
+} catch (error) {
+  if (error instanceof BrepWrapperError) {
+    console.error(error.code, error.message);
+  }
 }
 
-// Pattern match
-match(result, { ok: (s) => render(s), err: (e) => log(e.message) });
+// Functional API - returns Result<T> for explicit error handling
+import { cut, isOk, unwrap, match } from 'brepjs';
+
+const result = cut(a, b);
+if (isOk(result)) {
+  use(result.value);
+} else {
+  console.error(result.error.message);
+}
 ```
 
 ## Which API?
 
-**Start with the functional API** (`box`, `fuse`, `fillet`) -- it covers 90% of use cases. Use the **Drawing API** for complex 2D profiles, and the **Sketcher** for interactive step-by-step sketching.
+**Start with the fluent wrapper** (`shape().cut().fillet()`) — it's the canonical brepjs API and provides the cleanest syntax. Use the **Drawing API** for complex 2D profiles, and the **Sketcher** for interactive step-by-step sketching. Only use the **functional API** when you need explicit `Result` handling at each step.
 
 ## More
 
