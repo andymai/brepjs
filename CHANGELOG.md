@@ -1,5 +1,16 @@
 # Changelog
 
+## [7.0.0](https://github.com/andymai/brepjs/compare/brepjs-v6.0.0...brepjs-v7.0.0) (2026-02-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove all legacy API names and pipe() wrapper ([#186](https://github.com/andymai/brepjs/issues/186))
+
+### Features
+
+* remove all legacy API names and pipe() wrapper ([#186](https://github.com/andymai/brepjs/issues/186)) ([7d2f06c](https://github.com/andymai/brepjs/commit/7d2f06ca0f31c8555cc4e64ff71f5935580ed9a2)), closes [#183](https://github.com/andymai/brepjs/issues/183)
+
 ## [6.0.0](https://github.com/andymai/brepjs/compare/brepjs-v5.0.0...brepjs-v6.0.0) (2026-02-07)
 
 
