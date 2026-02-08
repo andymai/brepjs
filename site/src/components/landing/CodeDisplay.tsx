@@ -13,10 +13,7 @@ export default function CodeDisplay() {
         <pre className="scrollbar-thin max-h-[560px] overflow-auto p-4 text-sm leading-relaxed">
           <code>
             {lines.map((line, i) => (
-              <div
-                key={i}
-                className={`flex ${lineHasBrepjsFn(line) ? 'syntax-line-highlight' : ''}`}
-              >
+              <div key={i} className="flex">
                 <span className="mr-4 inline-block w-6 select-none text-right text-gray-600">
                   {i + 1}
                 </span>
