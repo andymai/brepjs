@@ -1,5 +1,28 @@
-npx lint-staged
-npm run typecheck
-npm run check:boundaries:staged
-npm run test:coverage
+#!/usr/bin/env bash
+set -e
+
+# Show helpful error message on failure
+trap 'bash scripts/pre-commit-help.sh 2>/dev/null || true' EXIT
+
+# Tier 1: Fast, independent checks (parallel)
+npx lint-staged &
+PID1=$!
+npm run typecheck &
+PID2=$!
+npm run check:boundaries:staged &
+PID3=$!
+
+# Wait for all to complete, fail if any failed
+wait $PID1 || exit 1
+wait $PID2 || exit 1
+wait $PID3 || exit 1
+
+# Tier 2: Tests (only if Tier 1 passes)
+if [[ "${FULL_TESTS:-0}" == "1" ]]; then
+  npm run test:coverage
+else
+  npm run test:coverage:changed
+fi
+
+# Tier 3: Non-blocking reminders
 npm run check:readme-reminders
