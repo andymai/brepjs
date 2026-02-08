@@ -3,12 +3,12 @@ import { initOC } from './setup.js';
 import {
   wireFinder,
   box,
-  cylinder,
+  cylinder as _cylinder,
   castShape,
   isOk,
-  isErr,
+  isErr as _isErr,
   isWire,
-  getWires,
+  getWires as _getWires,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -28,6 +28,7 @@ describe('wireFinder', () => {
     const wires = wireFinder().findAll(fnBox());
     // A box has 6 faces, each with 1 outer wire = 6 wires
     expect(wires.length).toBe(6);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(isWire(wires[0]!)).toBe(true);
   });
 
@@ -89,6 +90,7 @@ describe('wireFinder', () => {
   it('find with unique returns Ok when exactly one match', () => {
     const b = fnBox(10, 20, 30);
     const allWires = getWires(b);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const result = wireFinder().inList([allWires[0]!]).findUnique(b);
     expect(isOk(result)).toBe(true);
   });

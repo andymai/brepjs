@@ -22,7 +22,7 @@ function rect(w = 10, h = 20): Drawing {
   return drawRectangle(w, h);
 }
 
-function circ(r = 5): Drawing {
+function _circ(r = 5): Drawing {
   return drawCircle(r);
 }
 

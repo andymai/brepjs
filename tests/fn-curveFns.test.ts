@@ -2,10 +2,10 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   line,
-  circle,
+  circle as _circle,
   wire,
   sketchRectangle,
-  unwrap,
+  unwrap as _unwrap,
   castShape,
   getCurveType,
   curveStartPoint,

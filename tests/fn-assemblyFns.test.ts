@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  cylinder,
+  cylinder as _cylinder,
   castShape,
   createAssemblyNode,
   addChild,

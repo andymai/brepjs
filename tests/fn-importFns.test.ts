@@ -7,9 +7,9 @@ import {
   exportSTL,
   importSTEP,
   importSTL,
-  measureVolume,
+  measureVolume as _measureVolume,
   isOk,
-  unwrap,
+  unwrap as _unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -28,7 +28,7 @@ describe('importSTEP', () => {
     expect(measureVolume(imported)).toBeCloseTo(1000, -1);
   });
 
-  it('returns error for invalid STEP data', async () => {
+  it('returns error for invalid STEP data', () => {
     const invalidBlob = new Blob(['not a valid STEP file'], { type: 'application/octet-stream' });
     const result = await importSTEP(invalidBlob);
     expect(isOk(result)).toBe(false);
@@ -46,7 +46,7 @@ describe('importSTL', () => {
     expect(imported).toBeDefined();
   });
 
-  it('returns error for invalid STL data', async () => {
+  it('returns error for invalid STL data', () => {
     const invalidBlob = new Blob(['not a valid STL file'], { type: 'application/octet-stream' });
     const result = await importSTL(invalidBlob);
     expect(isOk(result)).toBe(false);

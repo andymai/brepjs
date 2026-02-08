@@ -2,9 +2,9 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere,
-  measureVolume,
-  unwrap,
+  sphere as _sphere,
+  measureVolume as _measureVolume,
+  unwrap as _unwrap,
   translate,
   clone,
   fuse,

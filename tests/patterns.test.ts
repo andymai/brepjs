@@ -5,9 +5,9 @@ import {
   linearPattern,
   circularPattern,
   isOk,
-  isErr,
-  unwrap,
-  measureVolume,
+  isErr as _isErr,
+  unwrap as _unwrap,
+  measureVolume as _measureVolume,
   translate,
 } from '../src/index.js';
 

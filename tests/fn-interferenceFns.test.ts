@@ -4,10 +4,10 @@ import {
   checkInterference,
   checkAllInterferences,
   box,
-  sphere,
+  sphere as _sphere,
   translate,
-  unwrap,
-  isErr,
+  unwrap as _unwrap,
+  isErr as _isErr,
   unwrapErr,
   getKernel,
   createSolid,
@@ -109,8 +109,11 @@ describe('checkAllInterferences', () => {
 
     const pairs = checkAllInterferences(shapes);
     expect(pairs).toHaveLength(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(pairs[0]!.i).toBe(0);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(pairs[0]!.j).toBe(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(pairs[0]!.result.hasInterference).toBe(true);
   });
 

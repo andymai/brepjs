@@ -2,15 +2,15 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere,
-  cylinder,
+  sphere as _sphere,
+  cylinder as _cylinder,
   line,
   vertex,
   translate,
   sketchCircle,
   sketchRectangle,
-  measureVolume,
-  measureArea,
+  measureVolume as _measureVolume,
+  measureArea as _measureArea,
   measureLength,
   measureDistance,
   measureVolumeProps,
@@ -18,7 +18,7 @@ import {
   measureLinearProps,
   createDistanceQuery,
   castShape,
-  getFaces,
+  getFaces as _getFaces,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -107,6 +107,7 @@ describe('measureSurfaceProps (functional)', () => {
   it('works on a face', () => {
     const sketch = sketchRectangle(10, 20);
     const faces = getFaces(castShape(sketch.face().wrapped));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = faces[0]!;
     const props = measureSurfaceProps(f);
     expect(props.mass).toBeCloseTo(200, 0);

@@ -2,13 +2,13 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere,
-  cylinder,
+  sphere as _sphere,
+  cylinder as _cylinder,
   exportAssemblySTEP,
   createAssembly,
   isOk,
-  isErr,
-  unwrap,
+  isErr as _isErr,
+  unwrap as _unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {

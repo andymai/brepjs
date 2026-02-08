@@ -7,7 +7,7 @@ import {
   exportSTEP,
   exportSTL,
   isOk,
-  unwrap,
+  unwrap as _unwrap,
   clearMeshCache,
 } from '../src/index.js';
 

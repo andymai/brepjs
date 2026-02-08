@@ -4,12 +4,12 @@ import {
   box,
   // functional API
   castShape,
-  edgeFinder,
+  edgeFinder as _edgeFinder,
   faceFinder,
-  getEdges,
+  getEdges as _getEdges,
   isOk,
-  isErr,
-  unwrap,
+  isErr as _isErr,
+  unwrap as _unwrap,
   isEdge,
   isFace,
   curveLength,
@@ -27,7 +27,9 @@ describe('edgeFinder', () => {
   it('finds all 12 edges of a box', () => {
     const edges = edgeFinder().findAll(fnBox());
     expect(edges.length).toBe(12);
-    expect(isEdge(edges[0]!)).toBe(true);
+     
+     
+    expect(isEdge(edges[0])).toBe(true);
   });
 
   it('filters edges by direction', () => {
@@ -85,6 +87,8 @@ describe('edgeFinder', () => {
   it('supports inList filter', () => {
     const b = fnBox();
     const allEdges = getEdges(b);
+     
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const subset = [allEdges[0]!, allEdges[1]!];
     const found = edgeFinder().inList(subset).findAll(b);
     expect(found.length).toBe(2);
@@ -126,6 +130,8 @@ describe('faceFinder', () => {
   it('finds all 6 faces of a box', () => {
     const faces = faceFinder().findAll(fnBox());
     expect(faces.length).toBe(6);
+     
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(isFace(faces[0]!)).toBe(true);
   });
 
@@ -172,7 +178,7 @@ describe('faceFinder', () => {
   it('supports when() with custom predicate', () => {
     let callCount = 0;
     const faces = faceFinder()
-      .when((face) => {
+      .when((_face) => {
         callCount++;
         return true; // Accept all faces
       })
@@ -185,6 +191,8 @@ describe('faceFinder', () => {
     const b = fnBox();
     const allFaces = faceFinder().findAll(b);
     // Create a list with just the first 2 faces
+     
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const subset = [allFaces[0]!, allFaces[1]!];
     const filtered = faceFinder().inList(subset).findAll(b);
     expect(filtered.length).toBe(2);

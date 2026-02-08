@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  cylinder,
+  cylinder as _cylinder,
   castShape,
   createHistory,
   addStep,
@@ -13,8 +13,8 @@ import {
   replayFrom,
   modifyStep,
   isOk,
-  unwrap,
-  measureVolume,
+  unwrap as _unwrap,
+  measureVolume as _measureVolume,
 } from '../src/index.js';
 import type { AnyShape, ModelHistory, HistoryOperationRegistry } from '../src/index.js';
 
@@ -58,14 +58,14 @@ describe('replayHistory', () => {
   function buildRegistry(): HistoryOperationRegistry {
     let reg = createRegistry();
     reg = registerOperation(reg, 'makeBox', (_inputs, params) => {
-      const w = (params['w'] as number) ?? 10;
-      const h = (params['h'] as number) ?? 10;
-      const d = (params['d'] as number) ?? 10;
+      const w = (params['w'] ?? 10) as number;
+      const h = (params['h'] ?? 10) as number;
+      const d = (params['d'] ?? 10) as number;
       return makeBox(w, h, d);
     });
     reg = registerOperation(reg, 'makeCyl', (_inputs, params) => {
-      const r = (params['r'] as number) ?? 5;
-      const height = (params['height'] as number) ?? 20;
+      const r = (params['r'] ?? 5) as number;
+      const height = (params['height'] ?? 20) as number;
       return makeCyl(r, height);
     });
     return reg;
@@ -93,7 +93,7 @@ describe('replayHistory', () => {
     expect(replayed.steps).toHaveLength(1);
     expect(replayed.shapes.has('out-1')).toBe(true);
     // The replayed shape should have the same volume
-    const vol = measureVolume(replayed.shapes.get('out-1')!);
+    const vol = measureVolume(replayed.shapes.get('out-1'));
     expect(vol).toBeCloseTo(1000, 0);
   });
 
@@ -168,6 +168,8 @@ describe('replayHistory', () => {
 
   it('returns error for missing input shape', () => {
     let reg = createRegistry();
+     
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     reg = registerOperation(reg, 'noop', (inputs) => inputs[0]!);
     let h: ModelHistory = createHistory();
     h = addStep(
@@ -205,9 +207,9 @@ describe('replayFrom', () => {
   function buildRegistry(): HistoryOperationRegistry {
     let reg = createRegistry();
     reg = registerOperation(reg, 'makeBox', (_inputs, params) => {
-      const w = (params['w'] as number) ?? 10;
-      const h = (params['h'] as number) ?? 10;
-      const d = (params['d'] as number) ?? 10;
+      const w = (params['w'] ?? 10) as number;
+      const h = (params['h'] ?? 10) as number;
+      const d = (params['d'] ?? 10) as number;
       return makeBox(w, h, d);
     });
     return reg;
@@ -250,7 +252,7 @@ describe('replayFrom', () => {
     // Step 'b' output should be a new shape
     const newB = replayed.shapes.get('o-b');
     expect(newB).toBeDefined();
-    expect(measureVolume(newB!)).toBeCloseTo(8000, 0);
+    expect(measureVolume(newB)).toBeCloseTo(8000, 0);
   });
 
   it('returns error for missing step ID', () => {
@@ -267,9 +269,9 @@ describe('modifyStep', () => {
   function buildRegistry(): HistoryOperationRegistry {
     let reg = createRegistry();
     reg = registerOperation(reg, 'makeBox', (_inputs, params) => {
-      const w = (params['w'] as number) ?? 10;
-      const h = (params['h'] as number) ?? 10;
-      const d = (params['d'] as number) ?? 10;
+      const w = (params['w'] ?? 10) as number;
+      const h = (params['h'] ?? 10) as number;
+      const d = (params['d'] ?? 10) as number;
       return makeBox(w, h, d);
     });
     return reg;
@@ -297,7 +299,7 @@ describe('modifyStep', () => {
     const modified = unwrap(result);
     expect(modified.steps).toHaveLength(1);
     expect(modified.steps[0]?.parameters).toEqual({ w: 5, h: 5, d: 5 });
-    const vol = measureVolume(modified.shapes.get('out-1')!);
+    const vol = measureVolume(modified.shapes.get('out-1'));
     expect(vol).toBeCloseTo(125, 0);
   });
 

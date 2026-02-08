@@ -2,14 +2,14 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere,
-  cylinder,
+  sphere as _sphere,
+  cylinder as _cylinder,
   fuseAll,
   cutAll,
-  measureVolume,
-  unwrap,
+  measureVolume as _measureVolume,
+  unwrap as _unwrap,
   isOk,
-  isErr,
+  isErr as _isErr,
   translate,
 } from '../src/index.js';
 

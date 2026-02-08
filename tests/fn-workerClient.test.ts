@@ -46,7 +46,7 @@ function createMockWorker(): {
 // ---------------------------------------------------------------------------
 
 describe('createWorkerClient', () => {
-  it('sends init request', async () => {
+  it('sends init request', () => {
     const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker, wasmUrl: '/test.wasm' });
 
@@ -55,26 +55,30 @@ describe('createWorkerClient', () => {
     // Simulate worker response
     const handler = getHandler();
     expect(handler).not.toBeNull();
-    const postMessage = vi.mocked(worker.postMessage);
+    const postMessage = vi.mocked(worker.postMessage.bind(worker));
     expect(postMessage).toHaveBeenCalledTimes(1);
-    const sentMsg = postMessage.mock.calls[0]![0] as { id: string; type: string };
+
+    const sentMsg = postMessage.mock.calls[0]?.[0] as { id: string; type: string };
     expect(sentMsg.type).toBe('init');
 
     // Reply with success
-    handler!({ data: { id: sentMsg.id, success: true } } as MessageEvent);
+    if (handler) {
+      handler({ data: { id: sentMsg.id, success: true } } as MessageEvent);
+    }
 
     await expect(initPromise).resolves.toBeUndefined();
   });
 
-  it('sends operation request and receives result', async () => {
+  it('sends operation request and receives result', () => {
     const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
 
     const execPromise = client.execute('fuse', ['brep1', 'brep2'], { tolerance: 0.1 });
 
     const handler = getHandler();
-    const postMessage = vi.mocked(worker.postMessage);
-    const sentMsg = postMessage.mock.calls[0]![0] as {
+    const postMessage = vi.mocked(worker.postMessage.bind(worker));
+
+    const sentMsg = postMessage.mock.calls[0]?.[0] as {
       id: string;
       type: string;
       operation: string;
@@ -83,33 +87,38 @@ describe('createWorkerClient', () => {
     expect(sentMsg.operation).toBe('fuse');
 
     // Reply
-    handler!({
-      data: { id: sentMsg.id, success: true, resultBrep: 'output-brep' },
-    } as MessageEvent);
+    if (handler) {
+      handler({
+        data: { id: sentMsg.id, success: true, resultBrep: 'output-brep' },
+      } as MessageEvent);
+    }
 
     const result = await execPromise;
     expect(result.resultBrep).toBe('output-brep');
   });
 
-  it('rejects on error response', async () => {
+  it('rejects on error response', () => {
     const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
 
     const execPromise = client.execute('bad-op', [], {});
 
     const handler = getHandler();
-    const postMessage = vi.mocked(worker.postMessage);
-    const sentMsg = postMessage.mock.calls[0]![0] as { id: string };
+    const postMessage = vi.mocked(worker.postMessage.bind(worker));
 
-    handler!({
-      data: { id: sentMsg.id, success: false, error: 'Unknown operation' },
-    } as MessageEvent);
+    const sentMsg = postMessage.mock.calls[0]?.[0] as { id: string };
+
+    if (handler) {
+      handler({
+        data: { id: sentMsg.id, success: false, error: 'Unknown operation' },
+      } as MessageEvent);
+    }
 
     await expect(execPromise).rejects.toThrow('Unknown operation');
   });
 
-  it('dispose rejects pending operations', async () => {
-    const { worker, getHandler } = createMockWorker();
+  it('dispose rejects pending operations', () => {
+    const { worker, getHandler: _getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
 
     // Start an operation but don't reply
@@ -121,7 +130,7 @@ describe('createWorkerClient', () => {
     await expect(execPromise).rejects.toThrow('disposed');
   });
 
-  it('rejects new operations after dispose', async () => {
+  it('rejects new operations after dispose', () => {
     const { worker } = createMockWorker();
     const client = createWorkerClient({ worker });
     client.dispose();

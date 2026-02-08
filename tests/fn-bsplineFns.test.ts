@@ -7,8 +7,8 @@ import {
   curveEndPoint,
   curveLength,
   isOk,
-  isErr,
-  unwrap,
+  isErr as _isErr,
+  unwrap as _unwrap,
   type Vec3,
 } from '../src/index.js';
 

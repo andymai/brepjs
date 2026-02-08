@@ -9,6 +9,7 @@ beforeAll(async () => {
 describe('getSingleFace', () => {
   it('accepts a Face directly', () => {
     const b = box(10, 20, 30);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(b)[0]!;
     const result = getSingleFace(f, b);
     expect(unwrap(result)).toBe(f);

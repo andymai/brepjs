@@ -7,15 +7,15 @@ import { initOC } from './setup.js';
 import {
   shape,
   box,
-  cylinder,
+  cylinder as _cylinder,
   translate,
   drill,
   mirrorJoin,
   rectangularPattern,
-  measureVolume,
-  unwrap,
+  measureVolume as _measureVolume,
+  unwrap as _unwrap,
   isOk,
-  isErr,
+  isErr as _isErr,
 } from '../src/index.js';
 
 beforeAll(async () => {

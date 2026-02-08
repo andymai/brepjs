@@ -2,13 +2,13 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   BlueprintSketcher,
-  Drawing,
+  Drawing as _Drawing,
   draw,
-  drawRoundedRectangle,
+  drawRoundedRectangle as _drawRoundedRectangle,
   drawRectangle,
   drawSingleCircle,
   drawSingleEllipse,
-  drawCircle,
+  drawCircle as _drawCircle,
   drawEllipse,
   drawPolysides,
   drawPointsInterpolation,

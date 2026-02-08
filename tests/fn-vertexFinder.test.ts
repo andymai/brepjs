@@ -8,8 +8,8 @@ import {
   vertexPosition,
   isVertex,
   isOk,
-  isErr,
-  unwrap,
+  isErr as _isErr,
+  unwrap as _unwrap,
   iterVertices,
 } from '../src/index.js';
 import { vecDistance } from '../src/core/vecOps.js';
@@ -26,6 +26,7 @@ describe('getVertices / iterVertices', () => {
   it('finds all 8 vertices of a box', () => {
     const vertices = getVertices(fnBox());
     expect(vertices.length).toBe(8);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(isVertex(vertices[0]!)).toBe(true);
   });
 
@@ -54,12 +55,14 @@ describe('vertexFinder', () => {
   it('finds all 8 vertices of a box', () => {
     const vertices = vertexFinder().findAll(fnBox());
     expect(vertices.length).toBe(8);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     expect(isVertex(vertices[0]!)).toBe(true);
   });
 
   it('atPosition finds origin vertex', () => {
     const vertices = vertexFinder().atPosition([0, 0, 0]).findAll(fnBox());
     expect(vertices.length).toBe(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(0);
     expect(pos[1]).toBeCloseTo(0);
@@ -71,6 +74,7 @@ describe('vertexFinder', () => {
       .atPosition([10, 20, 30])
       .findAll(fnBox(10, 20, 30));
     expect(vertices.length).toBe(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(10);
     expect(pos[1]).toBeCloseTo(20);
@@ -88,6 +92,7 @@ describe('vertexFinder', () => {
       .findAll(fnBox(10, 10, 10));
     // Only the origin vertex (0,0,0) is within the box [-1,-1,-1] to [1,1,1]
     expect(vertices.length).toBe(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(0);
     expect(pos[1]).toBeCloseTo(0);
@@ -103,6 +108,7 @@ describe('vertexFinder', () => {
     const b = fnBox(10, 10, 10);
     const vertices = vertexFinder().nearestTo([11, 11, 11]).findAll(b);
     expect(vertices.length).toBe(1);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const pos = vertexPosition(vertices[0]!);
     expect(pos[0]).toBeCloseTo(10);
     expect(pos[1]).toBeCloseTo(10);
@@ -164,6 +170,7 @@ describe('vertexFinder', () => {
   it('supports inList filter', () => {
     const b = fnBox();
     const allVerts = getVertices(b);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const subset = [allVerts[0]!, allVerts[1]!];
     const found = vertexFinder().inList(subset).findAll(b);
     expect(found.length).toBe(2);

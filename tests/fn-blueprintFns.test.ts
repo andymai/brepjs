@@ -2,10 +2,10 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   drawRectangle,
-  drawCircle,
+  drawCircle as _drawCircle,
   Blueprint,
   box,
-  getFaces,
+  getFaces as _getFaces,
   createBlueprint,
   blueprintBoundingBox,
   blueprintOrientation,
@@ -28,7 +28,7 @@ function rect(w = 10, h = 20): Blueprint {
   return drawRectangle(w, h).blueprint;
 }
 
-function circ(r = 5): Blueprint {
+function _circ(r = 5): Blueprint {
   return drawCircle(r).blueprint;
 }
 

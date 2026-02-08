@@ -2,8 +2,8 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere,
-  cylinder,
+  sphere as _sphere,
+  cylinder as _cylinder,
   cone,
   torus,
   vertex,
@@ -12,7 +12,7 @@ import {
   compound,
   cast,
   downcast,
-  measureVolume,
+  measureVolume as _measureVolume,
 } from '../src/index.js';
 
 beforeAll(async () => {

@@ -3,13 +3,13 @@ import { initOC } from './setup.js';
 import {
   box,
   translate,
-  getFaces,
-  getEdges,
+  getFaces as _getFaces,
+  getEdges as _getEdges,
   classifyPointOnFace,
   split,
   isOk,
-  isErr,
-  unwrap,
+  isErr as _isErr,
+  unwrap as _unwrap,
   castShape,
   sketchRectangle,
 } from '../src/index.js';
@@ -25,6 +25,7 @@ describe('classifyPointOnFace', () => {
   it('classifies a point inside a face as "in"', () => {
     if (!oc.BRepClass_FaceClassifier) return; // skip if not in WASM build
     const rect = sketchRectangle(10, 10);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const result = classifyPointOnFace(f, [0, 0, 0]);
     expect(result).toBe('in');
@@ -33,6 +34,7 @@ describe('classifyPointOnFace', () => {
   it('classifies a point outside a face as "out"', () => {
     if (!oc.BRepClass_FaceClassifier) return;
     const rect = sketchRectangle(10, 10);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const result = classifyPointOnFace(f, [100, 100, 0]);
     expect(result).toBe('out');
@@ -41,6 +43,7 @@ describe('classifyPointOnFace', () => {
   it('classifies a point on the boundary as "on"', () => {
     if (!oc.BRepClass_FaceClassifier) return;
     const rect = sketchRectangle(10, 10);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     const result = classifyPointOnFace(f, [5, 0, 0]);
     expect(result).toBe('on');
@@ -49,6 +52,7 @@ describe('classifyPointOnFace', () => {
   it('throws when BRepClass_FaceClassifier is unavailable', () => {
     if (oc.BRepClass_FaceClassifier) return; // skip if available
     const rect = sketchRectangle(10, 10);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = getFaces(castShape(rect.face().wrapped))[0]!;
     expect(() => classifyPointOnFace(f, [0, 0, 0])).toThrow(
       'BRepClass_FaceClassifier not available'

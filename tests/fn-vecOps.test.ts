@@ -24,7 +24,7 @@ import {
   vec2Normalize,
   vec2Equals,
 } from '../src/core/vecOps.js';
-import type { Vec3, Vec2 } from '../src/core/types.js';
+import type { Vec3, Vec2 as _Vec2 } from '../src/core/types.js';
 
 // ---------------------------------------------------------------------------
 // 3D Arithmetic

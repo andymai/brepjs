@@ -11,10 +11,10 @@ import {
   sweep,
   complexExtrude,
   twistExtrude,
-  measureVolume,
+  measureVolume as _measureVolume,
   isOk,
-  unwrap,
-  isSolid,
+  unwrap as _unwrap,
+  isSolid as _isSolid,
   isShape3D,
 } from '../src/index.js';
 import type { Wire } from '../src/core/shapeTypes.js';

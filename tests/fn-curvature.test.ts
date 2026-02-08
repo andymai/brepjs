@@ -12,7 +12,9 @@ describe('measureCurvatureAt', () => {
     const faces = getFaces(b);
     expect(faces.length).toBe(6);
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- 6 faces
+     
+     
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = faces[0]!;
     const result = measureCurvatureAt(f, 0.5, 0.5);
 
@@ -27,7 +29,9 @@ describe('measureCurvatureAt', () => {
     const faces = getFaces(s);
     expect(faces.length).toBeGreaterThan(0);
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- at least 1 face
+     
+     
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = faces[0]!;
     const result = measureCurvatureAtMid(f);
 
@@ -43,7 +47,9 @@ describe('measureCurvatureAt', () => {
   it('returns direction vectors', () => {
     const s = sphere(5);
     const faces = getFaces(s);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- at least 1 face
+     
+     
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const f = faces[0]!;
     const result = measureCurvatureAtMid(f);
 

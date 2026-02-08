@@ -10,13 +10,13 @@ import { initOC } from './setup.js';
 import {
   // Primitives
   box,
-  cylinder,
-  sphere,
+  cylinder as _cylinder,
+  sphere as _sphere,
   cone,
   torus,
   ellipsoid,
   line,
-  circle,
+  circle as _circle,
   ellipse,
   helix,
   threePointArc,
@@ -25,7 +25,7 @@ import {
   tangentArc,
   wire,
   face,
-  filledFace,
+  filledFace as _filledFace,
   polygon,
   vertex,
   compound,
@@ -60,18 +60,18 @@ import {
   isValid,
   isEmpty,
   // Support
-  unwrap,
+  unwrap as _unwrap,
   isOk,
-  isErr,
-  measureVolume,
-  measureArea,
-  getEdges,
-  getFaces,
+  isErr as _isErr,
+  measureVolume as _measureVolume,
+  measureArea as _measureArea,
+  getEdges as _getEdges,
+  getFaces as _getFaces,
   faceFinder,
-  edgeFinder,
+  edgeFinder as _edgeFinder,
   sketchCircle,
 } from '../src/index.js';
-import type { Face, Edge, Solid, Wire } from '../src/index.js';
+import type { Face as _Face, Edge as _Edge, Solid as _Solid, Wire as _Wire } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();

@@ -4,14 +4,14 @@ import {
   isPoint,
   makePlane,
   findCurveType,
-  unwrap,
+  unwrap as _unwrap,
   isOk,
-  isErr,
+  isErr as _isErr,
   resolveDirection,
-  type PlaneName,
-  createNamedPlane,
+  type PlaneName as _PlaneName,
+  createNamedPlane as _createNamedPlane,
   getKernel,
-  resolvePlane,
+  resolvePlane as _resolvePlane,
 } from '../src/index.js';
 // OCCT boundary functions (not in barrel)
 import { toOcPnt } from '../src/core/occtBoundary.js';

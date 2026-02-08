@@ -2,20 +2,20 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
-  sphere,
-  getEdges,
-  getFaces,
-  getWires,
+  sphere as _sphere,
+  getEdges as _getEdges,
+  getFaces as _getFaces,
+  getWires as _getWires,
   isValid,
   healSolid,
   healFace,
   healWire,
   heal,
   isOk,
-  unwrap,
-  measureVolume,
-  measureArea,
-  isSolid,
+  unwrap as _unwrap,
+  measureVolume as _measureVolume,
+  measureArea as _measureArea,
+  isSolid as _isSolid,
   isFace,
   isWire,
 } from '../src/index.js';
@@ -38,7 +38,9 @@ describe('isValid', () => {
   it('returns true for a valid face', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    expect(isValid(faces[0]!)).toBe(true);
+     
+     
+    expect(isValid(faces[0])).toBe(true);
   });
 });
 
@@ -70,7 +72,9 @@ describe('healFace', () => {
   it('heals a valid face (no-op)', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const result = healFace(faces[0]!);
+     
+     
+    const result = healFace(faces[0]);
     expect(isOk(result)).toBe(true);
     const healed = unwrap(result);
     expect(isFace(healed)).toBe(true);
@@ -79,8 +83,12 @@ describe('healFace', () => {
   it('preserves face area', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const originalArea = measureArea(faces[0]!);
-    const healed = unwrap(healFace(faces[0]!));
+     
+     
+    const originalArea = measureArea(faces[0]);
+     
+     
+    const healed = unwrap(healFace(faces[0]));
     const healedArea = measureArea(healed);
     expect(healedArea).toBeCloseTo(originalArea, 2);
   });
@@ -90,7 +98,9 @@ describe('healWire', () => {
   it('heals a valid wire (no-op)', () => {
     const b = box(10, 10, 10);
     const wires = getWires(b);
-    const result = healWire(wires[0]!);
+     
+     
+    const result = healWire(wires[0]);
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
@@ -98,8 +108,12 @@ describe('healWire', () => {
   it('heals a wire with face context', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const wires = getWires(faces[0]!);
-    const result = healWire(wires[0]!, faces[0]!);
+     
+     
+    const wires = getWires(faces[0]);
+     
+     
+    const result = healWire(wires[0], faces[0]);
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
@@ -116,7 +130,9 @@ describe('heal', () => {
   it('dispatches to healFace for faces', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const result = heal(faces[0]!);
+     
+     
+    const result = heal(faces[0]);
     expect(isOk(result)).toBe(true);
     expect(isFace(unwrap(result))).toBe(true);
   });
@@ -124,7 +140,9 @@ describe('heal', () => {
   it('dispatches to healWire for wires', () => {
     const b = box(10, 10, 10);
     const wires = getWires(b);
-    const result = heal(wires[0]!);
+     
+     
+    const result = heal(wires[0]);
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
   });
@@ -133,7 +151,9 @@ describe('heal', () => {
     const b = box(10, 10, 10);
     // An edge is neither solid, face, nor wire — should passthrough
     const edges = getEdges(b);
-    const result = heal(edges[0]!);
+     
+     
+    const result = heal(edges[0]);
     expect(isOk(result)).toBe(true);
   });
 });

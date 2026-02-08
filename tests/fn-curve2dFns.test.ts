@@ -20,12 +20,16 @@ beforeAll(async () => {
 /** Get the first curve from a rectangle drawing */
 function getLineCurve() {
   const drawing = drawRectangle(10, 10);
+   
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return drawing.blueprint.curves[0]!;
 }
 
 /** Get a circular curve */
-function getCircleCurve() {
+function _getCircleCurve() {
   const drawing = drawCircle(5);
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return drawing.blueprint.curves[0]!;
 }
 

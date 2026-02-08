@@ -3,7 +3,7 @@ import { initOC } from './setup.js';
 import {
   box,
   vertex,
-  measureVolume,
+  measureVolume as _measureVolume,
   // functional API
   clone,
   toBREP,
@@ -17,9 +17,9 @@ import {
   mirror,
   scale,
   fuse,
-  getEdges,
-  getFaces,
-  getWires,
+  getEdges as _getEdges,
+  getFaces as _getFaces,
+  getWires as _getWires,
   iterEdges,
   iterFaces,
   iterWires,
@@ -27,7 +27,7 @@ import {
   vertexPosition,
   isEdge,
   isFace,
-  isSolid,
+  isSolid as _isSolid,
   isWire,
 } from '../src/index.js';
 
@@ -129,14 +129,18 @@ describe('getEdges / getFaces / getWires', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     expect(edges.length).toBe(12);
-    expect(isEdge(edges[0]!)).toBe(true);
+     
+     
+    expect(isEdge(edges[0])).toBe(true);
   });
 
   it('gets 6 faces from a box', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
     expect(faces.length).toBe(6);
-    expect(isFace(faces[0]!)).toBe(true);
+     
+     
+    expect(isFace(faces[0])).toBe(true);
   });
 
   it('gets wires from a box', () => {

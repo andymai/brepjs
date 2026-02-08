@@ -3,12 +3,12 @@ import { initOC } from './setup.js';
 import {
   draw,
   drawRectangle,
-  drawCircle,
-  drawRoundedRectangle,
+  drawCircle as _drawCircle,
+  drawRoundedRectangle as _drawRoundedRectangle,
   sketchRectangle,
   sketchCircle,
-  measureVolume,
-  measureArea,
+  measureVolume as _measureVolume,
+  measureArea as _measureArea,
 } from '../src/index.js';
 
 beforeAll(async () => {

@@ -7,8 +7,8 @@ import {
   genericSweep,
   complexExtrude,
   twistExtrude,
-  measureVolume,
-  unwrap,
+  measureVolume as _measureVolume,
+  unwrap as _unwrap,
   isOk,
 } from '../src/index.js';
 

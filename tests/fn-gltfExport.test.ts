@@ -194,8 +194,8 @@ describe('glTF with materials', () => {
 
     let totalIndices = 0;
     for (const prim of doc.meshes[0].primitives) {
-      const indicesAcc = doc.accessors[prim.indices];
-      totalIndices += indicesAcc.count;
+      const indicesAcc = doc.accessors[prim.indices as number];
+      totalIndices += (indicesAcc?.count as number | undefined) ?? 0;
     }
     expect(totalIndices).toBe(m.triangles.length);
   });
