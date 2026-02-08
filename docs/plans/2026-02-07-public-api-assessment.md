@@ -31,7 +31,7 @@
 | **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | 8/10                 | **9/10**        | ✅ Complete: Wrapper canonical, init simplified, cookbook added |
 | **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ OCCT error translation with actionable guidance (now 9/10)   |
 
-**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10 → 8.625/10 → 8.875/10** — Consistency 10/10 🎯, Discoverability 9/10, Verbosity 8.5/10, Error Handling 9/10 ✅. Next: Push Discoverability to 10/10.
+**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10 → 8.625/10 → 8.875/10 → 9.125/10** — Consistency 10/10 🎯, Discoverability 10/10 🎯, Verbosity 8.5/10, Error Handling 9/10 ✅. Next: Push Verbosity to 9/10.
 
 ---
 
@@ -274,23 +274,24 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~11. **Add volumeProps/surfaceProps** — ✅ Done (full property methods with centerOfMass)~~
 ~~12. **Accept ShapeFinder directly** — ✅ Done (eliminates awkward `() => finder` wrapper pattern)~~
 ~~13. **Add OCCT error translation** — ✅ Done (maps 12 common OCCT patterns to actionable messages)~~
+~~14. **Expand cookbook** — ✅ Done (added 5 advanced recipes: text engraving, grids, sweep, mirror, assembly)~~
 
-### 🎯 Next Up — Push to 9-10/10
+### 🎯 Next Up — Push to 10/10
 
 **Current status:**
 
 - Consistency & Naming: 10/10 🎯 (Complete!)
-- Discoverability: 9/10 ✅ (Very good - wrapper canonical, init simple, cookbook added)
+- Discoverability: 10/10 🎯 (Complete! Comprehensive cookbook with 20 recipes)
 - Verbosity & Ergonomics: 8.5/10 (Very good - wrapper ~92% complete, ShapeFinder direct support)
 - Error Handling UX: 9/10 ✅ (Very good - OCCT error translation with actionable guidance)
 
-**Next priorities to reach 9-10/10:**
+**Next priorities to reach 10/10:**
 
-**1. Push Discoverability to 10/10** (currently 9/10)
+**1. Push Verbosity & Ergonomics to 9/10** (currently 8.5/10)
 
-- Add more cookbook recipes for advanced workflows
-- **Why:** Cover remaining common use cases (assemblies, advanced patterns, text/engraving)
-- **Impact:** Comprehensive task-based documentation
+- Small quality-of-life improvements to wrapper API
+- **Options:** Add `.done()` method as alias for `.val`, improve type inference
+- **Impact:** Slightly more convenient fluent chaining
 
 ### 📋 P3 — Lower Priority
 
