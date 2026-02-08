@@ -1,122 +1,193 @@
 # brepjs
 
-[![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
+CAD modeling for JavaScript. Build 3D geometry with code.
+
 [![npm](https://img.shields.io/npm/v/brepjs)](https://www.npmjs.com/package/brepjs)
+[![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
-[![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)](./CONTRIBUTING.md#code-coverage-requirements)
 
-Web CAD library built on OpenCascade with a layered architecture and kernel abstraction layer.
+**[Docs](https://andymai.github.io/brepjs/)** · **[Examples](./examples/)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Getting Started](./docs/getting-started.md)**
 
-## Installation
+```typescript
+import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
+
+const b = box(30, 20, 10);
+const hole = cylinder(5, 15, { at: [15, 10, -2] });
+const drilled = unwrap(cut(b, hole));
+
+const edges = edgeFinder().inDirection('Z').findAll(drilled);
+const part = unwrap(fillet(drilled, edges, 1.5));
+
+const step = unwrap(exportSTEP(part));
+```
+
+## Why brepjs?
+
+Most CAD libraries for the web are mesh-based — they work with triangles, not real geometry. brepjs gives you boundary representation (B-Rep) modeling powered by OpenCascade's WASM build. That means exact geometry, proper booleans, fillets that actually work, and export to formats that real CAD software can open.
+
+Use it for parametric modeling, 3D configurators, CAD file processing, or anywhere you need solid geometry in JavaScript.
+
+## Install
 
 ```bash
 npm install brepjs brepjs-opencascade
 ```
 
-## Quick Start
+`brepjs/quick` auto-initializes the WASM kernel via top-level await (ESM only). For CJS or manual control:
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
-import {
-  initFromOC,
-  makeBox,
-  makeCylinder,
-  cutShape,
-  translateShape,
-  measureVolume,
-  exportSTEP,
-  unwrap,
-} from 'brepjs';
+import { initFromOC } from 'brepjs';
 
-// Initialize the WASM kernel
 const oc = await opencascade();
 initFromOC(oc);
+```
 
-// Create primitive shapes — makeBox returns Solid, no wrapping needed
-const box = makeBox([0, 0, 0], [50, 30, 20]);
-const cylinder = translateShape(makeCylinder(8, 25), [25, 15, -2]);
+## Features
 
-// Boolean operations
-const withHole = unwrap(cutShape(box, cylinder));
+**Modeling** — `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid` plus `extrude`, `revolve`, `loft`, `sweep` from 2D sketches
 
-// Transform
-const moved = translateShape(withHole, [100, 0, 0]);
+**Booleans** — `fuse`, `cut`, `intersect`, `section`, `split`, `slice` with batch variants `fuseAll`, `cutAll`
 
-// Measure
-console.log('Volume:', measureVolume(moved), 'mm³');
+**Modifiers** — `fillet`, `chamfer`, `shell`, `offset`, `thicken` on any solid
 
-// Export
-const stepBlob = unwrap(exportSTEP(moved));
+**Sketching** — `draw`, `drawRectangle`, `drawCircle`, `Sketcher`, `sketchCircle`, `sketchHelix` for 2D-to-3D workflows
+
+**Queries** — `edgeFinder`, `faceFinder`, `wireFinder`, `vertexFinder` with composable filters like `.inDirection('Z')`, `.ofCurveType('CIRCLE')`, `.ofLength(10)`
+
+**Measurement** — `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, `checkInterference`
+
+**Import/Export** — STEP, STL, IGES, glTF/GLB, DXF, 3MF, OBJ, SVG. Assembly export with colors and names via `exportAssemblySTEP`
+
+**Rendering** — `mesh` and `toBufferGeometryData` for Three.js / WebGL integration
+
+**Text** — `loadFont`, `drawText`, `sketchText` for text outlines and engraving
+
+**Healing** — `autoHeal`, `healSolid`, `healFace`, `isValid` for fixing imported geometry
+
+**Patterns** — `linearPattern`, `circularPattern` for arraying shapes
+
+**Assemblies** — `createAssemblyNode`, `addChild`, `walkAssembly`, `collectShapes` for hierarchical models
+
+**Workers** — `createWorkerClient`, `createWorkerHandler` for off-main-thread operations
+
+**History** — `createHistory`, `addStep`, `undoLast`, `replayHistory` for parametric undo/replay
+
+## A Larger Example
+
+A flanged pipe with bolt holes — showing booleans, shelling, fillets, and finders:
+
+```typescript
+import {
+  cylinder, fuse, cut, shell, fillet, rotate,
+  faceFinder, edgeFinder, measureVolume, unwrap,
+} from 'brepjs/quick';
+
+// Tube + flanges
+const tube = cylinder(15, 100);
+const body = unwrap(fuse(unwrap(fuse(tube, cylinder(30, 5))), cylinder(30, 5, { at: [0, 0, 95] })));
+
+// Hollow out — find top face, shell to 2mm walls
+const topFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).findAll(body);
+const hollowed = unwrap(shell(body, topFaces, 2));
+
+// Fillet the tube-to-flange transitions
+const filletEdges = edgeFinder().ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15).findAll(hollowed);
+let result = unwrap(fillet(hollowed, filletEdges, 3));
+
+// Bolt holes around each flange
+for (let i = 0; i < 6; i++) {
+  const angle = 60 * i;
+  const hole = rotate(cylinder(3, 10, { at: [22, 0, -2] }), angle, { axis: [0, 0, 1] });
+  result = unwrap(cut(result, hole));
+}
+
+console.log('Volume:', measureVolume(result), 'mm³');
 ```
 
 ## Examples
-
-See the [examples/](./examples/) directory for complete workflows, ordered from beginner to advanced:
 
 ```bash
 npm run example examples/hello-world.ts
 ```
 
-- **[hello-world.ts](./examples/hello-world.ts)** — Your first shape (start here)
-- **[basic-primitives.ts](./examples/basic-primitives.ts)** — Primitives and boolean operations
-- **[mechanical-part.ts](./examples/mechanical-part.ts)** — Bracket with holes and slots
-- **[2d-to-3d.ts](./examples/2d-to-3d.ts)** — Sketch to extrusion workflow
-- **[parametric-part.ts](./examples/parametric-part.ts)** — Configurable flanged pipe fitting
-- **[threejs-rendering.ts](./examples/threejs-rendering.ts)** — Mesh data for Three.js/WebGL
-- **[import-export.ts](./examples/import-export.ts)** — Load, modify, export files
-- **[text-engraving.ts](./examples/text-engraving.ts)** — Engrave text on shapes
+| Example | What it does |
+|---|---|
+| [hello-world.ts](./examples/hello-world.ts) | Create a box, measure it, export it |
+| [basic-primitives.ts](./examples/basic-primitives.ts) | Primitives and boolean operations |
+| [mechanical-part.ts](./examples/mechanical-part.ts) | Bracket with holes, slots, and SVG drawings |
+| [2d-to-3d.ts](./examples/2d-to-3d.ts) | Sketch a profile, extrude to 3D |
+| [parametric-part.ts](./examples/parametric-part.ts) | Configurable flanged pipe fitting |
+| [threejs-rendering.ts](./examples/threejs-rendering.ts) | Generate mesh data for Three.js |
+| [browser-viewer.ts](./examples/browser-viewer.ts) | Standalone HTML viewer with orbit controls |
+| [import-export.ts](./examples/import-export.ts) | Load, modify, and re-export STEP files |
+| [text-engraving.ts](./examples/text-engraving.ts) | Engrave text on a solid shape |
 
-## Gallery
+## Imports
 
-<p align="center">
-  <img src="docs/images/examples/hello-world.svg" alt="Box" width="120" />
-  <img src="docs/images/examples/boolean-ops.svg" alt="Boolean cut" width="120" />
-  <img src="docs/images/examples/bracket.svg" alt="Bracket" width="120" />
-  <img src="docs/images/examples/2d-profile.svg" alt="2D profile" width="120" />
-  <img src="docs/images/examples/pipe-fitting.svg" alt="Pipe fitting" width="120" />
-</p>
-<p align="center"><em>Box · Boolean cut · Bracket · 2D profile · Pipe fitting — see <a href="./examples/">examples/</a></em></p>
+Everything is available from the top level:
 
-## Documentation
+```typescript
+import { box, translate, fuse, exportSTEP } from 'brepjs';
+```
 
-- **[Getting Started](./docs/getting-started.md)** — Step-by-step tutorial from install to first part
-- **[B-Rep Concepts](./docs/concepts.md)** — Vertices, edges, faces, solids explained for JS developers
-- **[Which API?](./docs/which-api.md)** — Sketcher vs functional API vs Drawing — when to use each
-- **[Architecture](./docs/architecture.md)** — Layer diagram and module overview
-- **[Memory Management](./docs/memory-management.md)** — Resource cleanup patterns
-- **[Error Reference](./docs/errors.md)** — Error codes and recovery
-- **[Performance](./docs/performance.md)** — Optimization best practices
-- **[Compatibility](./docs/compatibility.md)** — Tested environments
+Sub-path imports for tree-shaking:
+
+```typescript
+import { box, fuse, fillet } from 'brepjs/topology';
+import { importSTEP, exportSTEP } from 'brepjs/io';
+import { measureVolume } from 'brepjs/measurement';
+import { edgeFinder, faceFinder } from 'brepjs/query';
+import { sketchCircle, draw } from 'brepjs/sketching';
+import { createAssemblyNode } from 'brepjs/operations';
+```
+
+## Error Handling
+
+Operations that can fail return a `Result` instead of throwing:
+
+```typescript
+const result = fuse(a, b);
+
+if (isOk(result)) {
+  const fused = result.value;
+}
+
+// Or throw on failure
+const fused = unwrap(fuse(a, b));
+```
 
 ## Architecture
 
-Four-layer architecture with enforced import boundaries:
+Four layers with enforced import boundaries (imports flow downward only):
 
 ```
-Layer 3: sketching/, text/, projection/     (High-level API)
-Layer 2: topology/, operations/, 2d/, ...   (Domain)
-Layer 1: core/                               (Types, memory, errors)
-Layer 0: kernel/, utils/                     (WASM bindings)
+Layer 3  sketching/, text/, projection/   High-level API
+Layer 2  topology/, operations/, 2d/ ...  Domain logic
+Layer 1  core/                            Types, memory, errors
+Layer 0  kernel/, utils/                  WASM bindings
 ```
 
-See [docs/architecture.md](./docs/architecture.md) for the full diagram.
+## Documentation
 
-## API Style
+- [API Reference](https://andymai.github.io/brepjs/) — Searchable TypeDoc reference
+- [Getting Started](./docs/getting-started.md) — Install to first part
+- [B-Rep Concepts](./docs/concepts.md) — Vertices, edges, faces, solids
+- [Cheat Sheet](./docs/cheat-sheet.md) — Single-page reference for common operations
+- [Which API?](./docs/which-api.md) — Sketcher vs functional vs Drawing
+- [Function Lookup](./docs/function-lookup.md) — Alphabetical index of every export
+- [Memory Management](./docs/memory-management.md) — Resource cleanup patterns
+- [Error Reference](./docs/errors.md) — Error codes and recovery
+- [Architecture](./docs/architecture.md) — Layer diagram and module overview
+- [Performance](./docs/performance.md) — Optimization tips
+- [Compatibility](./docs/compatibility.md) — Tested environments
 
-brepjs uses an immutable functional API with [sub-path imports](./docs/which-api.md#sub-path-imports) for focused autocomplete:
+## Packages
 
-```typescript
-import { makeBox, fuseShape, filletShape } from 'brepjs/topology';
-import { importSTEP, exportSTEP } from 'brepjs/io';
-import { measureVolume } from 'brepjs/measurement';
-```
-
-Or import everything from the main entry:
-
-```typescript
-import { makeBox, translateShape } from 'brepjs';
-const moved = translateShape(makeBox([0, 0, 0], [10, 10, 10]), [5, 0, 0]);
-```
+| Package | Description |
+|---|---|
+| [brepjs](https://www.npmjs.com/package/brepjs) | Core library |
+| [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | OpenCascade WASM build |
 
 ## Projects Using brepjs
 
@@ -126,16 +197,14 @@ const moved = translateShape(makeBox([0, 0, 0], [10, 10, 10]), [5, 0, 0]);
 
 ```bash
 npm install
-npm run build        # Build library
+npm run build        # Build library (ES + CJS)
 npm run test         # Run tests
-npm run typecheck    # Type check
-npm run lint         # Lint
-npm run bench        # Run benchmarks
+npm run typecheck    # TypeScript strict check
+npm run lint         # ESLint
+npm run format:check # Prettier
 ```
 
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development guidelines.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
