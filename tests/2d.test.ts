@@ -2,15 +2,11 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import type { Blueprint } from '../src/index.js';
 import {
-  Blueprint as _Blueprint,
   CompoundBlueprint,
   Blueprints,
-  BoundingBox2d as _BoundingBox2d,
-  Curve2D as _Curve2D,
-  Drawing as _Drawing,
   draw,
   drawRectangle,
-  drawCircle as _drawCircle,
+  drawCircle,
   drawPolysides,
   polysidesBlueprint,
   roundedRectangleBlueprint,

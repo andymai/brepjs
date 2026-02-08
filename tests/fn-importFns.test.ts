@@ -28,7 +28,7 @@ describe('importSTEP', () => {
     expect(measureVolume(imported)).toBeCloseTo(1000, -1);
   });
 
-  it('returns error for invalid STEP data', () => {
+  it('returns error for invalid STEP data', async () => {
     const invalidBlob = new Blob(['not a valid STEP file'], { type: 'application/octet-stream' });
     const result = await importSTEP(invalidBlob);
     expect(isOk(result)).toBe(false);

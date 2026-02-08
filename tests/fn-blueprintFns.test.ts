@@ -28,7 +28,7 @@ function rect(w = 10, h = 20): Blueprint {
   return drawRectangle(w, h).blueprint;
 }
 
-function _circ(r = 5): Blueprint {
+function circ(r = 5): Blueprint {
   return drawCircle(r).blueprint;
 }
 

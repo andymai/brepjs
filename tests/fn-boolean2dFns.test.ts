@@ -16,7 +16,7 @@ function rect(w = 10, h = 10, cx = 0, cy = 0): Blueprint {
   return drawRectangle(w, h).translate(cx, cy).blueprint;
 }
 
-function _circ(r = 5, cx = 0, cy = 0): Blueprint {
+function circ(r = 5, cx = 0, cy = 0): Blueprint {
   return drawCircle(r).translate(cx, cy).blueprint;
 }
 

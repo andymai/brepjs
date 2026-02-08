@@ -46,7 +46,7 @@ function createMockWorker(): {
 // ---------------------------------------------------------------------------
 
 describe('createWorkerClient', () => {
-  it('sends init request', () => {
+  it('sends init request', async () => {
     const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker, wasmUrl: '/test.wasm' });
 
@@ -69,7 +69,7 @@ describe('createWorkerClient', () => {
     await expect(initPromise).resolves.toBeUndefined();
   });
 
-  it('sends operation request and receives result', () => {
+  it('sends operation request and receives result', async () => {
     const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
 
@@ -97,7 +97,7 @@ describe('createWorkerClient', () => {
     expect(result.resultBrep).toBe('output-brep');
   });
 
-  it('rejects on error response', () => {
+  it('rejects on error response', async () => {
     const { worker, getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
 
@@ -117,7 +117,7 @@ describe('createWorkerClient', () => {
     await expect(execPromise).rejects.toThrow('Unknown operation');
   });
 
-  it('dispose rejects pending operations', () => {
+  it('dispose rejects pending operations', async () => {
     const { worker, getHandler: _getHandler } = createMockWorker();
     const client = createWorkerClient({ worker });
 
@@ -130,7 +130,7 @@ describe('createWorkerClient', () => {
     await expect(execPromise).rejects.toThrow('disposed');
   });
 
-  it('rejects new operations after dispose', () => {
+  it('rejects new operations after dispose', async () => {
     const { worker } = createMockWorker();
     const client = createWorkerClient({ worker });
     client.dispose();

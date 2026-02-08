@@ -26,7 +26,7 @@ function getLineCurve() {
 }
 
 /** Get a circular curve */
-function _getCircleCurve() {
+function getCircleCurve() {
   const drawing = drawCircle(5);
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
