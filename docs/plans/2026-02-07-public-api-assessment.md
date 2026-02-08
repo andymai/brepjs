@@ -18,6 +18,7 @@
 7. **Simplify which-api.md** - Restructured with TL;DR, moved alternatives to Advanced section
 8. **Simplify init** - Promoted brepjs/quick as default, moved initFromOC() to Advanced section
 9. **Add cookbook.md** - Created 15 practical "How do I..." recipes using canonical wrapper style
+10. **Add volumeProps/surfaceProps** - Added full property methods to wrapper (includes centerOfMass)
 
 ---
 
@@ -109,7 +110,7 @@ Two different patterns for "get related sub-shapes":
 | Meshing     | 0%     | 100%  | ✅ Complete                                                |
 | Validation  | 0%     | 100%  | ✅ Complete                                                |
 | 3D Ops      | 40%    | 50%   | `loft`, `twistExtrude`, `supportExtrude`, `complexExtrude` |
-| Measurement | 50%    | 50%   | `volumeProps`, `surfaceProps`, `checkInterference`         |
+| Measurement | 50%    | 83%   | `checkInterference` (volumeProps/surfaceProps ✅ added)    |
 | Adjacency   | 0%     | 0%    | `edgesOfFace`, `facesOfEdge` etc.                          |
 | IO/Export   | 0%     | 0%    | `exportGltf`, `exportOBJ`, `exportDXF`, `exportThreeMF`    |
 | 2D          | 0%     | 0%    | All blueprint operations                                   |
@@ -117,7 +118,7 @@ Two different patterns for "get related sub-shapes":
 **Remaining work (lower priority):**
 
 - Advanced 3D ops: `loft()`, `twistExtrude()`, `supportExtrude()`, `complexExtrude()`
-- Measurement details: `volumeProps()`, `surfaceProps()`, `checkInterference()`
+- Measurement: `checkInterference()` (volumeProps/surfaceProps ✅ added)
 - Adjacency queries: `edgesOfFace()`, `facesOfEdge()` (can use escape hatch)
 - Export functions: These are better as standalone functions, not instance methods
 - 2D blueprint wrapper: Separate concern, may need dedicated 2D wrapper
@@ -278,6 +279,7 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~8. **Simplify which-api.md** — ✅ Done (TL;DR + clear guidance, moved alternatives to Advanced section)~~
 ~~9. **Simplify initialization story** — ✅ Done (brepjs/quick as default, manual init in Advanced section)~~
 ~~10. **Add cookbook.md** — ✅ Done (15 practical recipes using canonical wrapper style)~~
+~~11. **Add volumeProps/surfaceProps** — ✅ Done (full property methods with centerOfMass)~~
 
 ### 🎯 Next Up — Push to 9-10/10
 
@@ -285,16 +287,16 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 
 - Consistency & Naming: 10/10 🎯 (Complete!)
 - Discoverability: 9/10 ✅ (Very good - wrapper canonical, init simple, cookbook added)
-- Verbosity & Ergonomics: 8/10 (Good - wrapper ~90% complete)
+- Verbosity & Ergonomics: 8/10 (Good - wrapper ~90% complete, measurement 83%)
 - Error Handling UX: 8/10 (Good - consistent Result boundaries)
 
 **Next priorities to reach 9-10/10:**
 
-**1. Complete remaining wrapper methods** (Verbosity 8/10 → 9/10)
+**1. Accept ShapeFinder directly** (Verbosity 8/10 → 8.5/10)
 
-- Add `loft()`, `twistExtrude()`, `supportExtrude()` to wrapper
-- **Why:** Users occasionally need these advanced operations
-- **Impact:** Reduces need to unwrap for edge cases
+- Allow passing `ShapeFinder<T>` directly to fillet/chamfer/shell, not just callbacks
+- **Why:** Eliminates awkward `() => finder` wrapper pattern
+- **Impact:** Cleaner API for common finder workflows
 
 ### 📋 P3 — Lower Priority
 
@@ -326,7 +328,7 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 | fuseAll                       |         Y         |     N      | Batch (not fit)   |
 | loft                          |         Y         |     N      | P2 (multi-arg)    |
 | thicken                       |         Y         |     N      | P2 (via offset)   |
-| volumeProps / surfaceProps    |         Y         |     N      | P2                |
+| volumeProps / surfaceProps    |         Y         |  **✅ Y**  | ✅ Added          |
 | checkInterference             |         Y         |     N      | P2                |
 | edgesOfFace / facesOfEdge     |         Y         |     N      | P3 (use escape)   |
 | twistExtrude / supportExtrude |         Y         |     N      | P3 (advanced)     |
