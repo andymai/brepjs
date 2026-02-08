@@ -193,7 +193,7 @@
     "@types/opentype.js": "1.3.9",
     "@vitest/coverage-v8": "4.0.18",
     "brepjs-opencascade": "*",
-    "eslint": "9.39.2",
+    "eslint": "10.0.0",
     "husky": "9.1.7",
     "knip": "5.82.1",
     "lint-staged": "16.2.7",
