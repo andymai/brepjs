@@ -46,7 +46,7 @@ const cut3holes = shape(plate).cutAll([hole1, hole2, hole3]).val;
 import { shape } from 'brepjs';
 
 const moved = shape(myShape).translate([10, 0, 0]).val;
-const rotated = shape(myShape).rotate(45, { around: [0, 0, 0], axis: [0, 0, 1] }).val;
+const rotated = shape(myShape).rotate(45, { at: [0, 0, 0], axis: [0, 0, 1] }).val;
 const scaled = shape(myShape).scale(2).val;
 const flipped = shape(myShape).mirror({ normal: [1, 0, 0] }).val; // mirror across YZ plane
 

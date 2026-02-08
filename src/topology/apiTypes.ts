@@ -99,8 +99,10 @@ export interface BossOptions {
 export interface MirrorJoinOptions {
   /** Mirror plane normal. Default: [1, 0, 0] (mirror across YZ plane). */
   normal?: Vec3;
-  /** Mirror plane origin. Default: [0, 0, 0]. */
+  /** @deprecated Use `at` instead. Will be removed in v8.0.0. */
   origin?: Vec3;
+  /** Mirror plane origin. Default: [0, 0, 0]. */
+  at?: Vec3;
 }
 
 /** Options for the rectangularPattern() compound operation. */
