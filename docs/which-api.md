@@ -1,35 +1,48 @@
 # Which API Should I Use?
 
-brepjs offers several API styles. This guide helps you choose the right one for your use case.
+> **TL;DR:** Use the **fluent wrapper** (`shape().cut().fillet()`) for 3D operations and the **Sketcher** for 2D profiles. That's it — these two APIs cover 95% of use cases.
 
-> **Recommended starting point:** The **fluent wrapper** (`shape().cut().fillet()`) is the canonical brepjs API. It provides the cleanest syntax for most use cases. Use the **Sketcher** for interactive 2D profiles and the **Drawing API** for 2D geometry that needs booleans before extrusion.
+## Start Here: The Two APIs You Need
 
-## Quick decision
-
-| If you want to...                 | Use                                             |
-| --------------------------------- | ----------------------------------------------- |
-| Create shapes from scratch        | **Sketcher** or **primitives** (`box`)          |
-| Combine/modify shapes             | **Fluent wrapper** (`shape().cut().fillet()`)   |
-| Draw 2D profiles                  | **Drawing API** (`drawRectangle`, `drawCircle`) |
-| Build parametric/composable parts | **Fluent wrapper** or **functional API**        |
-| Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)    |
-| Import/export files               | **IO functions** (`importSTEP`, `exportSTEP`)   |
-
-## The Fluent Wrapper (recommended)
-
-**Best for:** Most use cases — the wrapper provides the cleanest syntax for chaining operations.
-
-The `shape()` wrapper is the **canonical API** for brepjs. It wraps any shape and provides a fluent, chainable interface:
+### For 3D: Use the Fluent Wrapper
 
 ```typescript
 import { shape, box, cylinder } from 'brepjs';
 
-// Create a part with operations chained fluently
+// Everything you need — clean, chainable, type-safe
 const bracket = shape(box(30, 20, 10))
   .cut(cylinder(5, 15, { at: [15, 10, -2] }))
-  .fillet((e) => e.inDirection('Z'), 2)
-  .translate([10, 0, 0]).val; // .val extracts the final shape
+  .fillet((e) => e.inDirection('Z'), 2).val; // Extract the final shape
 ```
+
+### For 2D: Use the Sketcher
+
+```typescript
+import { Sketcher, sketchCircle } from 'brepjs';
+
+// Build 2D profiles and extrude them
+const cylinder = sketchCircle(10).extrude(20);
+const roundedBox = sketchRoundedRectangle(30, 20, 3).extrude(10);
+```
+
+**That's the core API.** If you're just getting started, stick with these two patterns. They provide everything you need for typical CAD workflows.
+
+---
+
+## Quick Reference
+
+| If you want to...                 | Use                                           |
+| --------------------------------- | --------------------------------------------- |
+| Create 3D primitives              | `box()`, `cylinder()`, `sphere()`             |
+| Combine/modify shapes             | **Fluent wrapper** (`shape().cut().fillet()`) |
+| Create 2D profiles                | **Sketcher** (`sketchCircle`, `sketchRect`)   |
+| Build parametric/composable parts | **Fluent wrapper**                            |
+| Query shape features              | **Finders** (`edgeFinder()`, `faceFinder()`)  |
+| Import/export files               | **IO functions** (`importSTEP`, `exportSTEP`) |
+
+## Fluent Wrapper Details
+
+The `shape()` wrapper is the **canonical API** for brepjs. It wraps any shape and provides a fluent, chainable interface.
 
 **Key benefits:**
 
@@ -38,6 +51,17 @@ const bracket = shape(box(30, 20, 10))
 - **Cleaner finder integration** — use callbacks directly: `.fillet((e) => e.inDirection('Z'), 2)`
 - **Axis shortcuts** — `.moveX(10)`, `.rotateZ(45)` for common transforms
 - **Built-in methods** — `.volume()`, `.area()`, `.mesh()`, `.toBREP()` without separate imports
+
+**Example with multiple operations:**
+
+```typescript
+import { shape, box, cylinder } from 'brepjs';
+
+const bracket = shape(box(30, 20, 10))
+  .cut(cylinder(5, 15, { at: [15, 10, -2] }))
+  .fillet((e) => e.inDirection('Z'), 2)
+  .translate([10, 0, 0]).val; // Extract the final shape
+```
 
 **Available wrapper types:**
 
@@ -48,20 +72,16 @@ const bracket = shape(box(30, 20, 10))
 | `WrappedCurve` | Edge, Wire   | `length()`, `sweep()`, curve introspection   |
 | `Wrapped<T>`   | Any shape    | Transforms, bounds, describe, mesh, validate |
 
-**When to use the functional API instead:**
+## Sketcher Details
 
-- You need fine-grained `Result` handling at each operation
-- You're building reusable utility functions that operate on shapes
-- You prefer a more explicit, functional programming style
+The Sketcher provides a builder pattern for creating 2D profiles and extruding them to 3D.
 
-## The Sketcher (fluent chaining)
-
-Best for: **interactive shape creation** where you're building geometry step by step.
+**Interactive sketching:**
 
 ```typescript
-import { Sketcher, sketchRectangle } from 'brepjs';
+import { Sketcher } from 'brepjs';
 
-// Fluent chaining — each method returns the sketcher
+// Build profiles line-by-line
 const box = new Sketcher('XY')
   .movePointerTo([0, 0])
   .lineTo([20, 0])
@@ -69,17 +89,28 @@ const box = new Sketcher('XY')
   .lineTo([0, 10])
   .close()
   .extrude(5);
+```
 
-// Or use canned sketches for common shapes
+**Canned shapes (recommended for common profiles):**
+
+```typescript
+import { sketchCircle, sketchRoundedRectangle } from 'brepjs';
+
 const cylinder = sketchCircle(10).extrude(20);
 const roundedBox = sketchRoundedRectangle(30, 20, 3).extrude(10);
 ```
 
-**When to use:** You're creating profiles interactively (lines, arcs, splines) and want a builder pattern. The Sketcher handles the sketch-to-3D conversion for you.
+The Sketcher handles the sketch-to-3D conversion automatically, making it perfect for profiles that get extruded, revolved, or swept.
 
-## Functional API (standalone functions)
+---
 
-Best for: **building reusable utilities** and when you need explicit `Result` handling.
+## Advanced: Alternative API Styles
+
+The fluent wrapper and Sketcher cover 95% of use cases. However, brepjs also provides alternative API styles for specific scenarios.
+
+### Functional API (for explicit error handling)
+
+The functional API uses standalone functions and returns `Result<T>` types for explicit error handling.
 
 ```typescript
 import { box, cylinder, cut, fillet, edgeFinder, translate, unwrap } from 'brepjs';
@@ -91,17 +122,17 @@ const vertEdges = edgeFinder().inDirection('Z').findAll(drilled);
 const filleted = unwrap(fillet(drilled, vertEdges, 2));
 ```
 
-**When to use:**
+**Use this when:**
 
-- You need to check `Result` at each step for fine-grained error handling
-- You're building parametric functions that operate on shapes
-- You prefer an explicit, functional programming style
+- You need to check `Result` at each step for custom error recovery
+- You're building reusable utility functions that operate on shapes
+- You prefer explicit, functional programming style
 
-**Why use the wrapper instead?** The functional API requires `unwrap()` calls and manual error handling. The wrapper does this automatically while providing the same operations in a more concise syntax.
+**Trade-off:** Requires `unwrap()` calls and manual error handling. The fluent wrapper handles this automatically with cleaner syntax.
 
-## Drawing API (2D profiles)
+### Drawing API (for 2D boolean operations)
 
-Best for: **2D geometry** — profiles with booleans, fillets, chamfers — before extruding to 3D.
+The Drawing API provides 2D geometry operations (booleans, fillets, chamfers) before extrusion.
 
 ```typescript
 import {
@@ -111,21 +142,22 @@ import {
   drawingFillet,
   drawingToSketchOnPlane,
   sketchExtrude,
-  unwrap,
 } from 'brepjs';
 
-// Build a 2D profile
 const plate = drawRectangle(50, 30);
 const hole = drawCircle(8).translate([25, 15]);
 const profile = drawingCut(plate, hole);
 const rounded = drawingFillet(profile, 3);
 
-// Extrude to 3D
 const sketch = drawingToSketchOnPlane(rounded, 'XY');
 const part = sketchExtrude(sketch, 10);
 ```
 
-**When to use:** Your shape starts as a 2D outline that gets extruded, revolved, or swept into 3D.
+**Use this when:** You need 2D boolean operations or advanced 2D features before converting to 3D.
+
+**Note:** For most 2D profiles, the Sketcher is simpler. Use the Drawing API only when you need 2D booleans or complex 2D operations.
+
+---
 
 ## Sub-path imports
 
