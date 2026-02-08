@@ -10,6 +10,7 @@ export interface SerializedMesh {
   position: Float32Array;
   normal: Float32Array;
   index: Uint32Array;
+  edges?: Float32Array;
 }
 
 interface LiveViewer3DProps {
@@ -66,7 +67,7 @@ function computeBounds(mesh: SerializedMesh) {
 }
 
 /**
- * Shape mesh renderer with same material as playground.
+ * Shape mesh renderer with same material as playground and hero.
  */
 function ShapeMesh({ mesh }: { mesh: SerializedMesh }) {
   const geometry = useMemo(() => {
@@ -77,26 +78,41 @@ function ShapeMesh({ mesh }: { mesh: SerializedMesh }) {
     return geo;
   }, [mesh]);
 
+  const edgeGeometry = useMemo(() => {
+    if (!mesh.edges) return null;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(mesh.edges, 3));
+    return geo;
+  }, [mesh.edges]);
+
   useEffect(() => {
     return () => {
       geometry.dispose();
+      edgeGeometry?.dispose();
     };
-  }, [geometry]);
+  }, [geometry, edgeGeometry]);
 
   return (
-    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]}>
-      <meshStandardMaterial
-        color="#d4d0cc"
-        metalness={0.02}
-        roughness={0.55}
-        emissive="#d4d0cc"
-        emissiveIntensity={0.04}
-        side={THREE.DoubleSide}
-        polygonOffset
-        polygonOffsetFactor={1}
-        polygonOffsetUnits={1}
-      />
-    </mesh>
+    <group rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh geometry={geometry}>
+        <meshStandardMaterial
+          color="#d4d0cc"
+          metalness={0.02}
+          roughness={0.55}
+          emissive="#d4d0cc"
+          emissiveIntensity={0.04}
+          side={THREE.DoubleSide}
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
+        />
+      </mesh>
+      {edgeGeometry && (
+        <lineSegments geometry={edgeGeometry}>
+          <lineBasicMaterial color="#2a2a36" />
+        </lineSegments>
+      )}
+    </group>
   );
 }
 
@@ -128,18 +144,18 @@ function CameraFit({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
       (controls as any).update();
     } else {
-      // Auto-fit to bounds using playground's fitCamera logic
+      // Auto-fit to bounds using hero's 15-degree side profile
       const bounds = computeBounds(mesh);
       const { center, radius } = bounds;
       const fov = (camera as THREE.PerspectiveCamera).fov;
       const fovRad = (fov / 2) * (Math.PI / 180);
       const dist = (radius / Math.sin(fovRad)) * 1.2;
 
-      const angle = Math.PI / 4;
+      const elevation = Math.PI / 12; // 15° — same as hero side profile
       camera.position.set(
-        center.x + dist * Math.cos(angle) * Math.cos(angle),
-        center.y + dist * Math.sin(angle),
-        center.z + dist * Math.cos(angle) * Math.sin(angle)
+        center.x + dist * Math.cos(elevation),
+        center.y + dist * Math.sin(elevation),
+        center.z
       );
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
@@ -161,7 +177,7 @@ function Scene({
   mesh,
   cameraPosition,
   cameraTarget,
-  autoRotateSpeed = 0.5,
+  autoRotateSpeed = 0.3,
 }: {
   mesh: SerializedMesh;
   cameraPosition?: [number, number, number];
