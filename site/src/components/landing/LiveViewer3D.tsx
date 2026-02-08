@@ -1,8 +1,10 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
+import SceneLighting from '../shared/SceneLighting';
+import GradientBackground from '../shared/GradientBackground';
 
 export interface SerializedMesh {
   position: Float32Array;
@@ -21,7 +23,9 @@ interface LiveViewer3DProps {
 }
 
 /**
- * Compute bounding box from mesh position data and return center + radius.
+ * Compute bounding box from mesh position data in CAD coordinates,
+ * then return center and radius in display coordinates (Z-up -> Y-up).
+ * This matches the playground's computeBounds exactly.
  */
 function computeBounds(mesh: SerializedMesh) {
   const pos = mesh.position;
@@ -44,13 +48,15 @@ function computeBounds(mesh: SerializedMesh) {
     if (z > maxZ) maxZ = z;
   }
 
+  // CAD center
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   const cz = (minZ + maxZ) / 2;
 
-  // Convert from CAD coords (Z-up) to display coords (Y-up)
+  // Rotated center (after -90deg X): x stays, y' = z, z' = -y
   const center = new THREE.Vector3(cx, cz, -cy);
 
+  // Bounding sphere radius (half-diagonal of axis-aligned box)
   const dx = maxX - minX;
   const dy = maxY - minY;
   const dz = maxZ - minZ;
@@ -86,26 +92,17 @@ function ShapeMesh({ mesh }: { mesh: SerializedMesh }) {
         emissive="#d4d0cc"
         emissiveIntensity={0.04}
         side={THREE.DoubleSide}
+        polygonOffset
+        polygonOffsetFactor={1}
+        polygonOffsetUnits={1}
       />
     </mesh>
   );
 }
 
 /**
- * Three-point lighting setup.
- */
-function Lighting() {
-  return (
-    <>
-      <hemisphereLight args={['#fafafa', '#111118', 0.6]} />
-      <directionalLight position={[-50, 60, 80]} intensity={0.9} color="#ffffff" />
-      <directionalLight position={[40, -40, 30]} intensity={0.25} color="#d4d8f8" />
-    </>
-  );
-}
-
-/**
  * Auto-fit camera to mesh bounds on mount.
+ * Uses the same fitCamera logic as the playground.
  */
 function CameraFit({
   mesh,
@@ -131,12 +128,12 @@ function CameraFit({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
       (controls as any).update();
     } else {
-      // Auto-fit to bounds
+      // Auto-fit to bounds using playground's fitCamera logic
       const bounds = computeBounds(mesh);
       const { center, radius } = bounds;
       const fov = (camera as THREE.PerspectiveCamera).fov;
       const fovRad = (fov / 2) * (Math.PI / 180);
-      const dist = (radius / Math.sin(fovRad)) * 1.4;
+      const dist = (radius / Math.sin(fovRad)) * 1.2;
 
       const angle = Math.PI / 4;
       camera.position.set(
@@ -158,35 +155,7 @@ function CameraFit({
 }
 
 /**
- * Gradient background.
- */
-function Background() {
-  return (
-    <mesh position={[0, 0, -200]}>
-      <planeGeometry args={[500, 500]} />
-      <shaderMaterial
-        vertexShader={`
-          varying vec2 vUv;
-          void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        `}
-        fragmentShader={`
-          varying vec2 vUv;
-          void main() {
-            vec3 top = vec3(0.06, 0.06, 0.08);
-            vec3 bottom = vec3(0.02, 0.02, 0.03);
-            gl_FragColor = vec4(mix(bottom, top, vUv.y), 1.0);
-          }
-        `}
-      />
-    </mesh>
-  );
-}
-
-/**
- * Main scene content.
+ * Main scene content using playground's SceneLighting and GradientBackground.
  */
 function Scene({
   mesh,
@@ -201,8 +170,8 @@ function Scene({
 }) {
   return (
     <>
-      <Lighting />
-      <Background />
+      <SceneLighting />
+      <GradientBackground />
       <ShapeMesh mesh={mesh} />
       <OrbitControls
         makeDefault
@@ -224,6 +193,7 @@ function Scene({
 /**
  * Live 3D viewer for gallery cards.
  * Displays a mesh with auto-rotation and click-to-playground navigation.
+ * Uses the same scene setup as the playground's spiral staircase.
  */
 export default function LiveViewer3D({
   exampleId,
