@@ -17,6 +17,7 @@
 6. **Clean 2D API** - Added `*2D` aliases (translate2D, getBounds2D, etc.), deprecated verbose names
 7. **Simplify which-api.md** - Restructured with TL;DR, moved alternatives to Advanced section
 8. **Simplify init** - Promoted brepjs/quick as default, moved initFromOC() to Advanced section
+9. **Add cookbook.md** - Created 15 practical "How do I..." recipes using canonical wrapper style
 
 ---
 
@@ -26,10 +27,10 @@
 | -------------------------- | ------ | ------------- | ------------- | ------------- | -------------------- | --------------- | --------------------------------------------------------------- |
 | **Consistency & Naming**   | 4/10   | 5/10          | 5/10          | **8/10**      | **9/10**             | **10/10** 🎯    | ✅ Complete: 2D API now matches 3D naming style                 |
 | **Verbosity & Ergonomics** | 5/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ Wrapper ~90% complete; users rarely need to unwrap           |
-| **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | 8/10                 | 8/10            | ✅ Wrapper is canonical; needs cookbook and init simplification |
+| **Discoverability**        | 3/10   | 3/10          | **8/10**      | 8/10          | 8/10                 | **9/10**        | ✅ Complete: Wrapper canonical, init simplified, cookbook added |
 | **Error Handling UX**      | 6/10   | 8/10          | 8/10          | 8/10          | 8/10                 | 8/10            | ✅ Consistent Result boundaries; wrapper auto-throws            |
 
-**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10** — Consistency & Naming achieved 10/10 🎯. Next priority: Discoverability improvements (cookbook, init simplification).
+**Overall: 4.5/10 → 6/10 → 7.25/10 → 7.75/10 → 8.0/10 → 8.25/10 → 8.5/10** — Consistency 10/10 🎯, Discoverability 9/10 ✅. Next: Push remaining dimensions to 9-10/10.
 
 ---
 
@@ -203,15 +204,9 @@ shape(box).fillet(() => zEdges, 2); // Awkward workaround
 
 **Remaining:** Docs still use functional style (`unwrap(fuse(a, b))`) instead of wrapper style (`shape(a).fuse(b).val`). The wrapper is the canonical API but not promoted in prose documentation. See P0 action item #1.
 
-### 3.7 No Task-Based Cookbook (Low)
+### 3.7 No Task-Based Cookbook (✅ COMPLETED)
 
-Missing "I want to..." recipes:
-
-- "Make a box with rounded corners and a hole" → direct recipe
-- "Import STL and measure volume" → direct recipe
-- "Create a parametric bracket" → direct recipe
-
-**Action:** Add a `docs/cookbook.md` with 10-15 common task recipes using the canonical wrapper style.
+**Status:** ✅ Created cookbook.md with 15 practical "How do I..." recipes using canonical wrapper style.
 
 ---
 
@@ -282,18 +277,24 @@ If step 3 of a 5-step chain fails, all intermediate shapes are lost.
 ~~7. **Clean 2D API naming** — ✅ Done (added `*2D` aliases, deprecated verbose names, Consistency 10/10 achieved)~~
 ~~8. **Simplify which-api.md** — ✅ Done (TL;DR + clear guidance, moved alternatives to Advanced section)~~
 ~~9. **Simplify initialization story** — ✅ Done (brepjs/quick as default, manual init in Advanced section)~~
+~~10. **Add cookbook.md** — ✅ Done (15 practical recipes using canonical wrapper style)~~
 
-### 🎯 Next Up — P2 Medium Priority
+### 🎯 Next Up — Push to 9-10/10
 
-With Consistency at 10/10 and Discoverability at 8/10 (with clear API and init guidance), the remaining improvements are polish items that will incrementally improve the user experience.
+**Current status:**
 
-**1. Add cookbook.md** with task-based recipes
+- Consistency & Naming: 10/10 🎯 (Complete!)
+- Discoverability: 9/10 ✅ (Very good - wrapper canonical, init simple, cookbook added)
+- Verbosity & Ergonomics: 8/10 (Good - wrapper ~90% complete)
+- Error Handling UX: 8/10 (Good - consistent Result boundaries)
 
-- Create practical "How do I..." recipes for common CAD workflows
-- Use canonical wrapper style throughout
-- **Why:** Users learn best from concrete examples
-- **Impact:** Faster time-to-productivity for common tasks
-- **Target:** Discoverability 8/10 → 9/10
+**Next priorities to reach 9-10/10:**
+
+**1. Complete remaining wrapper methods** (Verbosity 8/10 → 9/10)
+
+- Add `loft()`, `twistExtrude()`, `supportExtrude()` to wrapper
+- **Why:** Users occasionally need these advanced operations
+- **Impact:** Reduces need to unwrap for edge cases
 
 ### 📋 P3 — Lower Priority
 
