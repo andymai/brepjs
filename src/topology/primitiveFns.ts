@@ -54,7 +54,7 @@ import { createSolid } from '../core/shapeTypes.js';
 import { translateShape } from './shapeFns.js';
 
 // Re-export the approximation config type
-export type { BSplineApproximationOptions, BSplineApproximationConfig } from './shapeHelpers.js';
+export type { BSplineApproximationOptions } from './shapeHelpers.js';
 
 // ---------------------------------------------------------------------------
 // Solid primitives

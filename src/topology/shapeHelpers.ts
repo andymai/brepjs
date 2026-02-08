@@ -218,9 +218,6 @@ export interface BSplineApproximationOptions {
   smoothing?: null | [number, number, number];
 }
 
-/** @deprecated Use BSplineApproximationOptions instead. Will be removed in v8.0.0. */
-export type BSplineApproximationConfig = BSplineApproximationOptions;
-
 /**
  * Create a B-spline edge that approximates a set of 3D points.
  *
