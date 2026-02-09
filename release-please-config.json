@@ -11,6 +11,12 @@
       "changelog-path": "CHANGELOG.md",
       "component": "brepjs-opencascade",
       "bump-minor-pre-major": true
+    },
+    "brepjs-plugin": {
+      "release-type": "node",
+      "changelog-path": "CHANGELOG.md",
+      "component": "brepjs-plugin",
+      "bump-minor-pre-major": true
     }
   },
   "separate-pull-requests": true

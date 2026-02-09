@@ -4,8 +4,27 @@ Generate CAD models using expert methodology.
 
 ## Installation
 
+### From npm (recommended)
+
+```bash
+claude-code plugins add brepjs-claude-plugin
+```
+
+### From GitHub
+
+```bash
+claude-code plugins add https://github.com/andymai/brepjs/tree/main/brepjs-plugin
+```
+
+### Local development
+
 ```bash
 claude-code plugins add ./brepjs-plugin
+```
+
+Verify installation:
+
+```bash
 claude-code plugins list | grep brepjs
 ```
 

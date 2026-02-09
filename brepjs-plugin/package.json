@@ -1,6 +1,45 @@
 {
-  "name": "brepjs-plugin",
+  "name": "brepjs-claude-plugin",
   "version": "1.0.0",
-  "description": "Claude Code plugin for brepjs",
-  "dependencies": {}
+  "description": "Claude Code plugin for expert CAD generation with brepjs",
+  "keywords": [
+    "claude-code",
+    "claude-plugin",
+    "cad",
+    "3d-modeling",
+    "mechanical-design",
+    "brepjs",
+    "opencascade",
+    "parametric"
+  ],
+  "author": "Andy Mai",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "brepjs-plugin"
+  },
+  "homepage": "https://github.com/andymai/brepjs/tree/main/brepjs-plugin",
+  "bugs": {
+    "url": "https://github.com/andymai/brepjs/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    ".claude-plugin/",
+    "commands/",
+    "agents/",
+    "hooks/",
+    "scripts/",
+    "examples/",
+    "README.md",
+    "ARCHITECTURE.md"
+  ],
+  "scripts": {
+    "prepack": "bash scripts/validate-plugin.sh"
+  },
+  "peerDependencies": {
+    "brepjs": ">=7.0.0"
+  }
 }

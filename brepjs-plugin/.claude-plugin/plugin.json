@@ -2,7 +2,17 @@
   "name": "brepjs",
   "version": "1.0.0",
   "description": "Generate production-ready CAD models using expert methodology",
-  "author": "brepjs team",
+  "author": {
+    "name": "brepjs team",
+    "url": "https://github.com/andymai/brepjs"
+  },
+  "homepage": "https://github.com/andymai/brepjs/tree/main/brepjs-plugin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "brepjs-plugin"
+  },
+  "license": "Apache-2.0",
   "commands": [
     "brepjs",
     "brepjs:analyze",
