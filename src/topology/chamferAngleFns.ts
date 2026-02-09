@@ -1,7 +1,7 @@
 /**
  * Chamfer with distance + angle — functional API.
  *
- * Provides chamferDistAngleShape() which chamfers edges using a distance
+ * Provides chamferDistAngle() which chamfers edges using a distance
  * measured along one face and an angle to determine the chamfer on the other.
  */
 
@@ -26,7 +26,7 @@ import { validationError, typeCastError, occtError } from '../core/errors.js';
  *
  * @remarks Uses `BRepFilletAPI_MakeChamfer.AddDA(dist, angle, edge, face)` internally.
  */
-export function chamferDistAngleShape(
+export function chamferDistAngle(
   shape: Shape3D,
   edges: Edge[],
   distance: number,
@@ -36,7 +36,7 @@ export function chamferDistAngleShape(
     return err(
       validationError(
         'CHAMFER_ANGLE_NO_EDGES',
-        'chamferDistAngleShape requires at least one edge',
+        'chamferDistAngle requires at least one edge',
         undefined,
         {
           edgeCount: 0,
@@ -76,7 +76,7 @@ export function chamferDistAngleShape(
     return err(
       occtError(
         'CHAMFER_ANGLE_FAILED',
-        `chamferDistAngleShape kernel call failed: ${e instanceof Error ? e.message : String(e)}`,
+        `chamferDistAngle kernel call failed: ${e instanceof Error ? e.message : String(e)}`,
         e,
         { distance, angleDeg, edgeCount: edges.length }
       )
@@ -90,7 +90,7 @@ export function chamferDistAngleShape(
   if (!isShape3D(wrapped)) {
     wrapped[Symbol.dispose]();
     return err(
-      typeCastError('CHAMFER_ANGLE_NOT_3D', 'chamferDistAngleShape did not produce a 3D shape')
+      typeCastError('CHAMFER_ANGLE_NOT_3D', 'chamferDistAngle did not produce a 3D shape')
     );
   }
   return ok(wrapped);

@@ -65,7 +65,7 @@ export interface MeshOptions {
  * @returns A ShapeMesh containing typed arrays ready for GPU upload.
  * @see toBufferGeometryData — convert to Three.js BufferGeometry format
  */
-export function meshShape(
+export function mesh(
   shape: AnyShape,
   {
     tolerance = 1e-3,
@@ -124,7 +124,7 @@ export function meshShape(
  * @returns An EdgeMesh containing line vertex positions and per-edge groups.
  * @see toLineGeometryData — convert to Three.js LineSegments format
  */
-export function meshShapeEdges(
+export function meshEdges(
   shape: AnyShape,
   { tolerance = 1e-3, angularTolerance = 0.1, cache = true }: MeshOptions & { cache?: boolean } = {}
 ): EdgeMesh {

@@ -35,7 +35,7 @@ export interface LoftOptions {
  * const result = loft([bottomWire, topWire], { ruled: false });
  * ```
  *
- * @see {@link loftFns!loftWires | loftWires} for the functional API equivalent.
+ * @see {@link loftFns!loft | loft} for the functional API equivalent.
  */
 export const loft = (
   wires: Wire[],

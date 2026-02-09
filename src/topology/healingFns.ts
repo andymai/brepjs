@@ -19,7 +19,7 @@ import { getWires, getFaces } from './shapeFns.js';
 /**
  * Check if a shape is valid according to OCCT geometry and topology checks.
  */
-export function isShapeValid(shape: AnyShape): boolean {
+export function isValid(shape: AnyShape): boolean {
   return getKernel().isValid(shape.wrapped);
 }
 
@@ -37,7 +37,7 @@ export function healSolid(solid: Solid): Result<Solid> {
     return err(validationError('NOT_A_SOLID', 'Input shape is not a solid'));
   }
 
-  const alreadyValid = isShapeValid(solid);
+  const alreadyValid = isValid(solid);
 
   try {
     const result = getKernel().healSolid(solid.wrapped);
@@ -115,7 +115,7 @@ export function healWire(wire: Wire, face?: Face): Result<Wire> {
  * Supports solids, faces, and wires. For other shape types, returns the
  * input unchanged.
  */
-export function healShape<T extends AnyShape>(shape: T): Result<T> {
+export function heal<T extends AnyShape>(shape: T): Result<T> {
   if (isSolid(shape)) {
     return healSolid(shape) as Result<T>;
   }
@@ -188,7 +188,7 @@ export function autoHeal(
   const diagnostics: HealingStepDiagnostic[] = [];
 
   // First check — if already valid, short-circuit
-  if (isShapeValid(shape)) {
+  if (isValid(shape)) {
     return ok({
       shape,
       report: {
@@ -263,7 +263,7 @@ export function autoHeal(
     (isWire(current) && fixWires);
 
   if (shouldHealShape) {
-    const healResult = healShape(current);
+    const healResult = heal(current);
     if (isOk(healResult)) {
       current = healResult.value;
       if (isSolid(shape)) {
@@ -300,7 +300,7 @@ export function autoHeal(
   if (facesHealed > 0) steps.push(`Face count changed by ${facesHealed}`);
 
   // Final validation
-  const valid = isShapeValid(current);
+  const valid = isValid(current);
   steps.push(valid ? 'Final validation: valid' : 'Final validation: still invalid');
   diagnostics.push({ name: 'finalValidation', attempted: true, succeeded: valid });
 

@@ -92,22 +92,18 @@ function makeHelixWire(
  *
  * @example
  * ```ts
- * const result = extrudeFace(squareFace, [0, 0, 10]);
+ * const result = extrude(squareFace, [0, 0, 10]);
  * if (isOk(result)) console.log('Extruded:', result.value);
  * ```
  *
  * @see {@link extrude!basicFaceExtrusion | basicFaceExtrusion} for the OOP API equivalent.
  */
-export function extrudeFace(face: Face, extrusionVec: Vec3): Result<Solid> {
+export function extrude(face: Face, extrusionVec: Vec3): Result<Solid> {
   if (face.wrapped.IsNull()) {
-    return err(
-      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrudeFace: face is a null shape')
-    );
+    return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrude: face is a null shape'));
   }
   if (vecLength(extrusionVec) === 0) {
-    return err(
-      validationError('EXTRUDE_ZERO_VECTOR', 'extrudeFace: extrusion vector has zero length')
-    );
+    return err(validationError('EXTRUDE_ZERO_VECTOR', 'extrude: extrusion vector has zero length'));
   }
 
   try {
@@ -128,7 +124,7 @@ export function extrudeFace(face: Face, extrusionVec: Vec3): Result<Solid> {
   } catch (e) {
     return err(
       occtError('EXTRUDE_FAILED', 'Extrusion operation failed', e, {
-        operation: 'extrudeFace',
+        operation: 'extrude',
         vectorLength: vecLength(extrusionVec),
       })
     );
@@ -146,16 +142,14 @@ export function extrudeFace(face: Face, extrusionVec: Vec3): Result<Solid> {
  *
  * @see {@link extrude!revolution | revolution} for the OOP API equivalent.
  */
-export function revolveFace(
+export function revolve(
   face: Face,
   center: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
   angle = 360
 ): Result<Shape3D> {
   if (face.wrapped.IsNull()) {
-    return err(
-      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'revolveFace: face is a null shape')
-    );
+    return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'revolve: face is a null shape'));
   }
   const oc = getKernel().oc;
   const r = gcWithScope();

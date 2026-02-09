@@ -31,7 +31,7 @@ export {
 
 export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
 
-export { chamferDistAngleShape } from './topology/chamferAngleFns.js';
+export { chamferDistAngle as chamferDistAngleShape } from './topology/chamferAngleFns.js';
 
 // ── Curves ──
 

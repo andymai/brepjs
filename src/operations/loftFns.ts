@@ -39,12 +39,12 @@ export type LoftConfig = LoftOptions;
  *
  * @example
  * ```ts
- * const result = loftWires([bottomWire, topWire], { ruled: false });
+ * const result = loft([bottomWire, topWire], { ruled: false });
  * ```
  *
  * @see {@link loft!loft | loft} for the OOP API equivalent.
  */
-export function loftWires(
+export function loft(
   wires: Wire[],
   { ruled = true, startPoint, endPoint }: LoftOptions = {},
   returnShell = false

@@ -17,12 +17,12 @@ import { unwrap } from '../core/result.js';
 // ---------------------------------------------------------------------------
 
 /** Clone a shape (deep copy via TopoDS downcast). */
-export function cloneShape<T extends AnyShape>(shape: T): T {
+export function clone<T extends AnyShape>(shape: T): T {
   return castShape(unwrap(downcast(shape.wrapped))) as T;
 }
 
 /** Serialize a shape to BREP string format. */
-export function serializeShape(shape: AnyShape): string {
+export function toBREP(shape: AnyShape): string {
   const oc = getKernel().oc;
   return oc.BRepToolsWrapper.Write(shape.wrapped);
 }
@@ -33,7 +33,7 @@ export function getHashCode(shape: AnyShape): number {
 }
 
 /** Check if a shape is null. */
-export function isShapeNull(shape: AnyShape): boolean {
+export function isEmpty(shape: AnyShape): boolean {
   return shape.wrapped.IsNull();
 }
 
@@ -48,7 +48,7 @@ export function isEqualShape(a: AnyShape, b: AnyShape): boolean {
 }
 
 /** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
-export function simplifyShape<T extends AnyShape>(shape: T): T {
+export function simplify<T extends AnyShape>(shape: T): T {
   const oc = getKernel().oc;
   const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(shape.wrapped, true, true, false);
   upgrader.Build();
@@ -62,7 +62,7 @@ export function simplifyShape<T extends AnyShape>(shape: T): T {
 // ---------------------------------------------------------------------------
 
 /** Translate a shape by a vector. Returns a new shape. */
-export function translateShape<T extends AnyShape>(shape: T, v: Vec3): T {
+export function translate<T extends AnyShape>(shape: T, v: Vec3): T {
   const oc = getKernel().oc;
   const trsf = new oc.gp_Trsf_1();
   const vec = toOcVec(v);
@@ -77,7 +77,7 @@ export function translateShape<T extends AnyShape>(shape: T, v: Vec3): T {
 }
 
 /** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
-export function rotateShape<T extends AnyShape>(
+export function rotate<T extends AnyShape>(
   shape: T,
   angle: number,
   position: Vec3 = [0, 0, 0],
@@ -97,7 +97,7 @@ export function rotateShape<T extends AnyShape>(
 }
 
 /** Mirror a shape through a plane defined by origin and normal. Returns a new shape. */
-export function mirrorShape<T extends AnyShape>(
+export function mirror<T extends AnyShape>(
   shape: T,
   planeNormal: Vec3 = [0, 1, 0],
   planeOrigin: Vec3 = [0, 0, 0]
@@ -116,11 +116,7 @@ export function mirrorShape<T extends AnyShape>(
 }
 
 /** Scale a shape uniformly. Returns a new shape. */
-export function scaleShape<T extends AnyShape>(
-  shape: T,
-  factor: number,
-  center: Vec3 = [0, 0, 0]
-): T {
+export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3 = [0, 0, 0]): T {
   const oc = getKernel().oc;
   const trsf = new oc.gp_Trsf_1();
   const pnt = toOcPnt(center);
@@ -272,7 +268,7 @@ export interface ShapeDescription {
 }
 
 /** Get a quick summary of a shape for debugging and inspection. */
-export function describeShape(shape: AnyShape): ShapeDescription {
+export function describe(shape: AnyShape): ShapeDescription {
   return {
     kind: getShapeKind(shape),
     faceCount: getFaces(shape).length,

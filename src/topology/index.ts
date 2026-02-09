@@ -13,7 +13,7 @@ export {
   isShape3D,
   isWire,
   isCompSolid,
-  deserializeShape,
+  fromBREP as deserializeShape,
   type TopoEntity,
   type GenericTopo,
 } from './cast.js';

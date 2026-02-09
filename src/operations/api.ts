@@ -9,8 +9,8 @@ import type { Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
 import type { Result } from '../core/result.js';
 import type { Shapeable } from '../topology/apiTypes.js';
 import { resolve } from '../topology/apiTypes.js';
-import { extrudeFace, revolveFace } from './extrudeFns.js';
-import { loftWires, type LoftOptions } from './loftFns.js';
+import * as extruding from './extrudeFns.js';
+import * as lofting from './loftFns.js';
 
 export type { LoftOptions, LoftConfig } from './loftFns.js';
 export type { SweepOptions, SweepConfig } from './extrudeFns.js';
@@ -29,7 +29,7 @@ export type { SweepOptions, SweepConfig } from './extrudeFns.js';
 export function extrude(face: Shapeable<Face>, height: number | Vec3): Result<Solid> {
   const f = resolve(face);
   const vec: Vec3 = typeof height === 'number' ? [0, 0, height] : height;
-  return extrudeFace(f, vec);
+  return extruding.extrude(f, vec);
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +53,12 @@ export interface RevolveOptions {
  */
 export function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result<Shape3D> {
   const pivotPoint = options?.at ?? options?.around ?? [0, 0, 0];
-  return revolveFace(resolve(face), pivotPoint, options?.axis ?? [0, 0, 1], options?.angle ?? 360);
+  return extruding.revolve(
+    resolve(face),
+    pivotPoint,
+    options?.axis ?? [0, 0, 1],
+    options?.angle ?? 360
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -63,7 +68,7 @@ export function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result
 /**
  * Loft through a set of wire profiles to create a 3D shape.
  */
-export function loft(wires: Shapeable<Wire>[], options?: LoftOptions): Result<Shape3D> {
+export function loft(wires: Shapeable<Wire>[], options?: lofting.LoftOptions): Result<Shape3D> {
   const resolvedWires = wires.map((w) => resolve(w));
-  return loftWires(resolvedWires, options);
+  return lofting.loft(resolvedWires, options);
 }
