@@ -1,4 +1,5 @@
 {
   ".": "7.4.1",
-  "packages/brepjs-opencascade": "0.7.1"
+  "packages/brepjs-opencascade": "0.7.1",
+  "brepjs-plugin": "1.0.0"
 }

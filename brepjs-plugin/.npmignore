@@ -1,0 +1,11 @@
+# Development files
+.git/
+.gitignore
+node_modules/
+*.log
+
+# Test output
+examples/output/
+*.stl
+*.step
+*.gltf

@@ -1,0 +1,40 @@
+{
+  "name": "brepjs",
+  "version": "1.0.0",
+  "description": "Generate production-ready CAD models using expert methodology",
+  "author": {
+    "name": "brepjs team",
+    "url": "https://github.com/andymai/brepjs"
+  },
+  "homepage": "https://github.com/andymai/brepjs/tree/main/brepjs-plugin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "brepjs-plugin"
+  },
+  "license": "Apache-2.0",
+  "commands": [
+    "brepjs",
+    "brepjs:analyze",
+    "brepjs:validate",
+    "brepjs:export"
+  ],
+  "agents": [
+    "brepjs-modeler",
+    "brepjs-validator"
+  ],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "command": "sh ${CLAUDE_PLUGIN_ROOT}/scripts/validate-brepjs-file.sh"
+      }
+    ]
+  },
+  "requirements": {
+    "brepjs": ">=7.0.0",
+    "node": ">=18",
+    "typescript": ">=5.0.0"
+  },
+  "keywords": ["cad", "3d-modeling", "mechanical-design", "brepjs", "opencascade", "parametric"]
+}
