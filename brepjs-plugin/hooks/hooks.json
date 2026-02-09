@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "tool": "Write",
+        "pattern": "*.ts",
+        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-brepjs-file.sh",
+        "description": "Auto-validate brepjs models after generation"
+      }
+    ]
+  }
+}

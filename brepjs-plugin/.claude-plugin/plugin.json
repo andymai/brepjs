@@ -1,0 +1,30 @@
+{
+  "name": "brepjs",
+  "version": "1.0.0",
+  "description": "Generate production-ready CAD models using expert methodology",
+  "author": "brepjs team",
+  "commands": [
+    "brepjs",
+    "brepjs:analyze",
+    "brepjs:validate",
+    "brepjs:export"
+  ],
+  "agents": [
+    "brepjs-modeler",
+    "brepjs-validator"
+  ],
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "command": "sh ${CLAUDE_PLUGIN_ROOT}/scripts/validate-brepjs-file.sh"
+      }
+    ]
+  },
+  "requirements": {
+    "brepjs": ">=1.0.0",
+    "node": ">=18",
+    "typescript": ">=5.0.0"
+  },
+  "keywords": ["cad", "3d-modeling", "mechanical-design", "brepjs", "opencascade", "parametric"]
+}
