@@ -1,5 +1,18 @@
 # Changelog
 
+## [7.4.2](https://github.com/andymai/brepjs/compare/brepjs-v7.4.1...brepjs-v7.4.2) (2026-02-09)
+
+
+### Bug Fixes
+
+* **plugin:** resolve critical issues for publication ([#208](https://github.com/andymai/brepjs/issues/208)) ([01df4d6](https://github.com/andymai/brepjs/commit/01df4d6567a595ceef5dd0548a3e32d721578079))
+* **plugin:** simplify plugin.json to match Claude Code schema ([#211](https://github.com/andymai/brepjs/issues/211)) ([c834d85](https://github.com/andymai/brepjs/commit/c834d8546d45bc936b2501313b925118d69b3c7e))
+
+
+### Reverts
+
+* remove brepjs-plugin (not ready) ([#213](https://github.com/andymai/brepjs/issues/213)) ([18a2b3a](https://github.com/andymai/brepjs/commit/18a2b3ae6e9d4d0216a1fb63a859a4603a081ac6))
+
 ## [7.4.1](https://github.com/andymai/brepjs/compare/brepjs-v7.4.0...brepjs-v7.4.1) (2026-02-08)
 
 
