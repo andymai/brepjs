@@ -23,8 +23,7 @@
   "packageManager": "npm@11.6.1",
   "workspaces": [
     "packages/*",
-    "site",
-    "brepjs-plugin"
+    "site"
   ],
   "main": "./dist/brepjs.cjs",
   "module": "./dist/brepjs.js",

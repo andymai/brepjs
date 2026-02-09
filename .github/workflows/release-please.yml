@@ -14,7 +14,6 @@ jobs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       brepjs_release_created: ${{ steps.release.outputs.release_created }}
       brepjs_opencascade_release_created: ${{ steps.release.outputs['packages/brepjs-opencascade--release_created'] }}
-      brepjs_plugin_release_created: ${{ steps.release.outputs['brepjs-plugin--release_created'] }}
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
     steps:
@@ -49,9 +48,9 @@ jobs:
           if [ -n "$prs" ] && [ "$prs" != "null" ]; then
             pr_number=$(echo "$prs" | jq -r '.number')
             pr_title=$(echo "$prs" | jq -r '.title')
-            # Skip brepjs-opencascade and brepjs-plugin PRs - they need manual review
-            if [[ "$pr_title" == *"brepjs-opencascade"* ]] || [[ "$pr_title" == *"brepjs-plugin"* ]]; then
-              echo "Skipping auto-merge for $pr_title (requires manual review)"
+            # Skip brepjs-opencascade PRs - they need manual review due to expensive WASM build
+            if [[ "$pr_title" == *"brepjs-opencascade"* ]]; then
+              echo "Skipping auto-merge for brepjs-opencascade PR #$pr_number (requires manual review)"
               exit 0
             fi
             if [ -n "$pr_number" ] && [ "$pr_number" != "null" ]; then
@@ -95,34 +94,6 @@ jobs:
       - run: npm ci
       - name: Publish brepjs-opencascade
         working-directory: packages/brepjs-opencascade
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  publish-plugin:
-    runs-on: ubuntu-latest
-    needs: [release-please, build]
-    if: ${{ needs.release-please.outputs.brepjs_plugin_release_created == 'true' }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-          cache: npm
-      - run: npm ci
-      - name: Remove .git from plugin directory
-        working-directory: brepjs-plugin
-        run: |
-          if [ -d .git ]; then
-            echo "Removing .git directory from plugin"
-            rm -rf .git
-          fi
-      - name: Publish brepjs-claude-plugin
-        working-directory: brepjs-plugin
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

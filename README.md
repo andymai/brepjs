@@ -43,16 +43,6 @@ const oc = await opencascade();
 initFromOC(oc);
 ```
 
-## Claude Code Plugin
-
-Expert CAD generation plugin for Claude Code. Adds commands for generating, analyzing, and validating brepjs models.
-
-```bash
-claude-code plugins add brepjs-claude-plugin
-```
-
-See [brepjs-plugin documentation](./brepjs-plugin/README.md) for details.
-
 ## Features
 
 **Modeling** — `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid` plus `extrude`, `revolve`, `loft`, `sweep` from 2D sketches
@@ -89,16 +79,8 @@ A flanged pipe with bolt holes — showing booleans, shelling, fillets, and find
 
 ```typescript
 import {
-  cylinder,
-  fuse,
-  cut,
-  shell,
-  fillet,
-  rotate,
-  faceFinder,
-  edgeFinder,
-  measureVolume,
-  unwrap,
+  cylinder, fuse, cut, shell, fillet, rotate,
+  faceFinder, edgeFinder, measureVolume, unwrap,
 } from 'brepjs/quick';
 
 // Tube + flanges
@@ -110,10 +92,7 @@ const topFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).findAl
 const hollowed = unwrap(shell(body, topFaces, 2));
 
 // Fillet the tube-to-flange transitions
-const filletEdges = edgeFinder()
-  .ofCurveType('CIRCLE')
-  .ofLength(2 * Math.PI * 15)
-  .findAll(hollowed);
+const filletEdges = edgeFinder().ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15).findAll(hollowed);
 let result = unwrap(fillet(hollowed, filletEdges, 3));
 
 // Bolt holes around each flange
@@ -132,17 +111,17 @@ console.log('Volume:', measureVolume(result), 'mm³');
 npm run example examples/hello-world.ts
 ```
 
-| Example                                                 | What it does                                |
-| ------------------------------------------------------- | ------------------------------------------- |
-| [hello-world.ts](./examples/hello-world.ts)             | Create a box, measure it, export it         |
-| [basic-primitives.ts](./examples/basic-primitives.ts)   | Primitives and boolean operations           |
-| [mechanical-part.ts](./examples/mechanical-part.ts)     | Bracket with holes, slots, and SVG drawings |
-| [2d-to-3d.ts](./examples/2d-to-3d.ts)                   | Sketch a profile, extrude to 3D             |
-| [parametric-part.ts](./examples/parametric-part.ts)     | Configurable flanged pipe fitting           |
-| [threejs-rendering.ts](./examples/threejs-rendering.ts) | Generate mesh data for Three.js             |
-| [browser-viewer.ts](./examples/browser-viewer.ts)       | Standalone HTML viewer with orbit controls  |
-| [import-export.ts](./examples/import-export.ts)         | Load, modify, and re-export STEP files      |
-| [text-engraving.ts](./examples/text-engraving.ts)       | Engrave text on a solid shape               |
+| Example | What it does |
+|---|---|
+| [hello-world.ts](./examples/hello-world.ts) | Create a box, measure it, export it |
+| [basic-primitives.ts](./examples/basic-primitives.ts) | Primitives and boolean operations |
+| [mechanical-part.ts](./examples/mechanical-part.ts) | Bracket with holes, slots, and SVG drawings |
+| [2d-to-3d.ts](./examples/2d-to-3d.ts) | Sketch a profile, extrude to 3D |
+| [parametric-part.ts](./examples/parametric-part.ts) | Configurable flanged pipe fitting |
+| [threejs-rendering.ts](./examples/threejs-rendering.ts) | Generate mesh data for Three.js |
+| [browser-viewer.ts](./examples/browser-viewer.ts) | Standalone HTML viewer with orbit controls |
+| [import-export.ts](./examples/import-export.ts) | Load, modify, and re-export STEP files |
+| [text-engraving.ts](./examples/text-engraving.ts) | Engrave text on a solid shape |
 
 ## Imports
 
@@ -205,9 +184,9 @@ Layer 0  kernel/, utils/                  WASM bindings
 
 ## Packages
 
-| Package                                                                | Description            |
-| ---------------------------------------------------------------------- | ---------------------- |
-| [brepjs](https://www.npmjs.com/package/brepjs)                         | Core library           |
+| Package | Description |
+|---|---|
+| [brepjs](https://www.npmjs.com/package/brepjs) | Core library |
 | [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | OpenCascade WASM build |
 
 ## Projects Using brepjs
