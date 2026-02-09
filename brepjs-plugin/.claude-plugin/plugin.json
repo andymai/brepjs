@@ -1,9 +1,0 @@
-{
-  "name": "brepjs",
-  "version": "1.0.0",
-  "description": "Generate production-ready CAD models using expert methodology",
-  "author": {
-    "name": "Andy Mai",
-    "email": "andy@example.com"
-  }
-}

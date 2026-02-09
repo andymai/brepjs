@@ -2,7 +2,7 @@
 # Publish brepjs packages to npm
 # Usage: ./scripts/publish-all.sh [--otp CODE] [--dry-run]
 #
-# Publishes 3 packages in order: brepjs-opencascade -> brepjs-plugin -> brepjs
+# Publishes in order: brepjs-opencascade -> brepjs (respecting peer deps)
 # Prompts for OTP if not provided via --otp flag
 
 set -e
@@ -72,14 +72,8 @@ publish_package "$ROOT_DIR/packages/brepjs-opencascade" "brepjs-opencascade"
 
 echo ""
 
-# 2. Publish brepjs-plugin
-echo -e "${YELLOW}Step 2: Publishing brepjs-claude-plugin${NC}"
-publish_package "$ROOT_DIR/brepjs-plugin" "brepjs-claude-plugin"
-
-echo ""
-
-# 3. Publish brepjs
-echo -e "${YELLOW}Step 3: Publishing brepjs${NC}"
+# 2. Publish brepjs
+echo -e "${YELLOW}Step 2: Publishing brepjs${NC}"
 publish_package "$ROOT_DIR" "brepjs"
 
 echo ""
