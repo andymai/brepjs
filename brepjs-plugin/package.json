@@ -30,14 +30,15 @@
     ".claude-plugin/",
     "commands/",
     "agents/",
-    "hooks/",
     "scripts/",
     "examples/",
-    "README.md",
-    "ARCHITECTURE.md"
+    "README.md"
   ],
   "scripts": {
     "prepack": "bash scripts/validate-plugin.sh"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
   },
   "peerDependencies": {
     "brepjs": ">=7.0.0"

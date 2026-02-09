@@ -7,7 +7,7 @@ PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 echo "Validating plugin structure..."
 
 # Check required directories
-for dir in .claude-plugin commands agents hooks scripts examples; do
+for dir in .claude-plugin commands agents scripts examples; do
   if [ ! -d "$PLUGIN_DIR/$dir" ]; then
     echo "ERROR: Missing required directory: $dir"
     exit 1
