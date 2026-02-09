@@ -1,6 +1,6 @@
 {
   "name": "brepjs-claude-plugin",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Claude Code plugin for expert CAD generation with brepjs",
   "keywords": [
     "claude-code",
