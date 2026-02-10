@@ -195,7 +195,7 @@
     "brepjs-opencascade": "*",
     "eslint": "9.39.2",
     "husky": "9.1.7",
-    "knip": "5.82.1",
+    "knip": "5.83.1",
     "lint-staged": "16.2.7",
     "prettier": "3.8.1",
     "typedoc": "0.28.16",
