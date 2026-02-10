@@ -85,10 +85,10 @@ resolveDirection([a, b, c]): Vec3 // identity
 ### Shape Serialization
 
 ```typescript
-import { toBREP, deserializeShape } from 'brepjs';
+import { toBREP, fromBREP } from 'brepjs';
 
 const brep = toBREP(shape);              // shape → BREP string
-const restored = deserializeShape(brep); // BREP string → AnyShape
+const restored = fromBREP(brep);         // BREP string → AnyShape
 ```
 
 ## Drawing & Sketching (Primary Entry Point)
