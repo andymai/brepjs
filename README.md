@@ -79,8 +79,16 @@ A flanged pipe with bolt holes — showing booleans, shelling, fillets, and find
 
 ```typescript
 import {
-  cylinder, fuse, cut, shell, fillet, rotate,
-  faceFinder, edgeFinder, measureVolume, unwrap,
+  cylinder,
+  fuse,
+  cut,
+  shell,
+  fillet,
+  rotate,
+  faceFinder,
+  edgeFinder,
+  measureVolume,
+  unwrap,
 } from 'brepjs/quick';
 
 // Tube + flanges
@@ -92,7 +100,10 @@ const topFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).findAl
 const hollowed = unwrap(shell(body, topFaces, 2));
 
 // Fillet the tube-to-flange transitions
-const filletEdges = edgeFinder().ofCurveType('CIRCLE').ofLength(2 * Math.PI * 15).findAll(hollowed);
+const filletEdges = edgeFinder()
+  .ofCurveType('CIRCLE')
+  .ofLength(2 * Math.PI * 15)
+  .findAll(hollowed);
 let result = unwrap(fillet(hollowed, filletEdges, 3));
 
 // Bolt holes around each flange
@@ -105,23 +116,174 @@ for (let i = 0; i < 6; i++) {
 console.log('Volume:', measureVolume(result), 'mm³');
 ```
 
+## Common Patterns
+
+### Memory cleanup
+
+WASM objects aren't garbage-collected. Use `using` (TS 5.9+) for automatic cleanup, or `gcWithScope()`/`localGC()` for explicit control:
+
+```typescript
+import { box, cylinder, cut, unwrap, gcWithScope, localGC } from 'brepjs/quick';
+
+// Option 1: using keyword — auto-disposed at block end
+{
+  using temp = box(10, 10, 10);
+  using hole = cylinder(3, 15);
+  const result = unwrap(cut(temp, hole));
+  // temp and hole freed here; result survives
+}
+
+// Option 2: gcWithScope — GC-based cleanup
+function buildPart() {
+  const r = gcWithScope();
+  const b = r(box(10, 10, 10));
+  const hole = r(cylinder(3, 15));
+  return unwrap(cut(b, hole)); // b and hole cleaned up when r is GC'd
+}
+
+// Option 3: localGC — deterministic cleanup
+const [register, cleanup] = localGC();
+try {
+  const b = register(box(10, 10, 10));
+  return unwrap(cut(b, register(cylinder(3, 15))));
+} finally {
+  cleanup(); // immediate disposal
+}
+```
+
+### Immutability
+
+All operations return new shapes — the original is never modified:
+
+```typescript
+import { box, translate, rotate, measureVolume } from 'brepjs/quick';
+
+const original = box(30, 20, 10);
+const moved = translate(original, [100, 0, 0]);
+const rotated = rotate(moved, 45, { axis: [0, 0, 1] });
+
+// original is unchanged
+console.log(measureVolume(original) === measureVolume(moved)); // true — same geometry, different position
+```
+
+### Chaining transforms
+
+Apply translation then rotation (functional or wrapper style):
+
+```typescript
+import { box, translate, rotate, shape } from 'brepjs/quick';
+
+// Functional — each call returns a new shape
+const b = box(30, 20, 10);
+const moved = translate(b, [50, 0, 0]);
+const result = rotate(moved, 45, { axis: [0, 0, 1] });
+
+// Wrapper — fluent chaining
+const same = shape(box(30, 20, 10))
+  .translate([50, 0, 0])
+  .rotate(45, { axis: [0, 0, 1] }).val;
+```
+
+### 2D sketch to 3D extrusion
+
+Draw a 2D profile, then extrude it to create a solid:
+
+```typescript
+import { drawRectangle, drawCircle, drawingCut, drawingToSketchOnPlane, shape } from 'brepjs/quick';
+
+// Draw 2D rectangle with a hole
+const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 15]));
+
+// Convert to sketch on XY plane, extrude 20mm
+const sketch = drawingToSketchOnPlane(profile, 'XY');
+const solid = shape(sketch.face()).extrude(20).val;
+
+// Or use the sketch shortcut directly
+import { sketchRectangle } from 'brepjs/quick';
+const quickBox = sketchRectangle(50, 30).extrude(20);
+```
+
+### STEP import and export
+
+Load a STEP file, modify it, and re-export:
+
+```typescript
+import { importSTEP, exportSTEP, shape, unwrap } from 'brepjs/quick';
+
+// Import from Blob (e.g., from file input or fs.readFileSync)
+const imported = unwrap(await importSTEP(stepBlob));
+
+// Modify the imported shape
+const modified = shape(imported).fillet(2).translate([0, 0, 10]).val;
+
+// Export back to STEP
+const outputBlob = unwrap(exportSTEP(modified));
+
+// Save to disk (Node.js)
+import { writeFileSync } from 'fs';
+writeFileSync('output.step', Buffer.from(await outputBlob.arrayBuffer()));
+```
+
+### Custom WASM kernel
+
+`initFromOC()` accepts any OpenCascade WASM instance, enabling custom builds:
+
+```typescript
+import { initFromOC, box } from 'brepjs';
+
+// Standard build
+import opencascade from 'brepjs-opencascade';
+const oc = await opencascade();
+initFromOC(oc);
+
+// Or use a custom/alternative OpenCascade WASM build
+import customOC from 'my-custom-opencascade';
+const customKernel = await customOC({ locateFile: (f) => `/wasm/${f}` });
+initFromOC(customKernel); // same API — any compatible OC instance works
+```
+
+The kernel abstraction layer in `src/kernel/` translates brepjs calls to OCCT operations, so any WASM build exposing the standard OpenCascade API is compatible.
+
+### Parametric variations
+
+Generate multiple part variations by iterating over dimensions:
+
+```typescript
+import { box, cylinder, cut, fillet, edgeFinder, unwrap, exportSTEP } from 'brepjs/quick';
+
+function makeBracket(width: number, holeRadius: number) {
+  const base = box(width, 20, 10);
+  const hole = cylinder(holeRadius, 15, { at: [width / 2, 10, -2] });
+  const drilled = unwrap(cut(base, hole));
+  const edges = edgeFinder().inDirection('Z').findAll(drilled);
+  return unwrap(fillet(drilled, edges, 1.5));
+}
+
+// Generate variants
+for (const width of [30, 40, 50, 60]) {
+  const part = makeBracket(width, width / 10);
+  const step = unwrap(exportSTEP(part));
+  console.log(`${width}mm bracket: ${step.size} bytes`);
+}
+```
+
 ## Examples
 
 ```bash
 npm run example examples/hello-world.ts
 ```
 
-| Example | What it does |
-|---|---|
-| [hello-world.ts](./examples/hello-world.ts) | Create a box, measure it, export it |
-| [basic-primitives.ts](./examples/basic-primitives.ts) | Primitives and boolean operations |
-| [mechanical-part.ts](./examples/mechanical-part.ts) | Bracket with holes, slots, and SVG drawings |
-| [2d-to-3d.ts](./examples/2d-to-3d.ts) | Sketch a profile, extrude to 3D |
-| [parametric-part.ts](./examples/parametric-part.ts) | Configurable flanged pipe fitting |
-| [threejs-rendering.ts](./examples/threejs-rendering.ts) | Generate mesh data for Three.js |
-| [browser-viewer.ts](./examples/browser-viewer.ts) | Standalone HTML viewer with orbit controls |
-| [import-export.ts](./examples/import-export.ts) | Load, modify, and re-export STEP files |
-| [text-engraving.ts](./examples/text-engraving.ts) | Engrave text on a solid shape |
+| Example                                                 | What it does                                |
+| ------------------------------------------------------- | ------------------------------------------- |
+| [hello-world.ts](./examples/hello-world.ts)             | Create a box, measure it, export it         |
+| [basic-primitives.ts](./examples/basic-primitives.ts)   | Primitives and boolean operations           |
+| [mechanical-part.ts](./examples/mechanical-part.ts)     | Bracket with holes, slots, and SVG drawings |
+| [2d-to-3d.ts](./examples/2d-to-3d.ts)                   | Sketch a profile, extrude to 3D             |
+| [parametric-part.ts](./examples/parametric-part.ts)     | Configurable flanged pipe fitting           |
+| [threejs-rendering.ts](./examples/threejs-rendering.ts) | Generate mesh data for Three.js             |
+| [browser-viewer.ts](./examples/browser-viewer.ts)       | Standalone HTML viewer with orbit controls  |
+| [import-export.ts](./examples/import-export.ts)         | Load, modify, and re-export STEP files      |
+| [text-engraving.ts](./examples/text-engraving.ts)       | Engrave text on a solid shape               |
 
 ## Imports
 
@@ -184,9 +346,9 @@ Layer 0  kernel/, utils/                  WASM bindings
 
 ## Packages
 
-| Package | Description |
-|---|---|
-| [brepjs](https://www.npmjs.com/package/brepjs) | Core library |
+| Package                                                                | Description            |
+| ---------------------------------------------------------------------- | ---------------------- |
+| [brepjs](https://www.npmjs.com/package/brepjs)                         | Core library           |
 | [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | OpenCascade WASM build |
 
 ## Projects Using brepjs

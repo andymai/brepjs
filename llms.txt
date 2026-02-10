@@ -36,6 +36,24 @@ initFromOC(oc);
 
 `initFromOC(oc)` must be called once before using any brepjs API. All shape-creating functions require the kernel to be initialized.
 
+### Custom or alternative WASM build
+
+`initFromOC(oc)` accepts any OpenCascade WASM instance — it is not tied to `brepjs-opencascade`. You can use a custom or alternative WASM build as long as it exposes the standard OpenCascade API:
+
+```typescript
+import { initFromOC, box } from 'brepjs';
+
+// Use a custom OpenCascade WASM build
+import customOC from 'my-custom-opencascade';
+const oc = await customOC({ locateFile: (file) => `/custom-wasm/${file}` });
+initFromOC(oc);
+
+// All brepjs functions now use the custom kernel
+const b = box(10, 10, 10);
+```
+
+The kernel abstraction layer (`src/kernel/`) translates all brepjs calls into OCCT operations. Any WASM build exposing the standard OpenCascade C++ API (via Emscripten bindings) is compatible. This enables: custom WASM builds with additional OCCT modules, builds optimized for specific use cases (smaller footprint, specific features), and self-hosted WASM files served from your own CDN.
+
 ### Quick reference
 
 See `docs/cheat-sheet.md` for a single-page reference covering all common operations (primitives, booleans, transforms, fillets, measurement, export, memory management, error handling).
@@ -53,6 +71,26 @@ Several examples generate SVG and HTML files in `examples/output/`:
 ## API Style
 
 brepjs uses a functional API with branded types (`Solid`, `Face`, `Edge`, etc.) and `Result<T>` for error handling. Functions like `fuse()`, `translate()`, `fillet()` are pure — they never dispose inputs. Use `unwrap()` to extract values from `Result<T>`, or `isOk()`/`isErr()` to check success.
+
+### Immutability
+
+All brepjs operations are immutable — they return new shapes and never modify the original:
+
+```typescript
+import { box, translate, rotate, fuse, cylinder, measureVolume, unwrap } from 'brepjs';
+
+const original = box(30, 20, 10);
+const moved = translate(original, [100, 0, 0]);
+const rotated = rotate(moved, 45, { axis: [0, 0, 1] });
+const combined = unwrap(fuse(original, cylinder(5, 15)));
+
+// original is unchanged after all operations
+console.log(measureVolume(original)); // still the original box volume
+console.log(measureVolume(moved));    // same volume, different position
+console.log(measureVolume(rotated));  // same volume, different orientation
+```
+
+This means you can safely chain multiple transformations while preserving access to intermediate and original shapes. Each call produces a new independent shape.
 
 ### Branded Shape Types
 
@@ -223,11 +261,23 @@ Sketch instance methods:
 
 ### Drawing to 3D
 
+Extrude a 2D rectangular sketch into a 3D solid:
 ```typescript
-// Drawing → Sketch → 3D
-const profile = drawRectangle(20, 10);
-const sketch = profile.sketchOnPlane('XY');
-const solid = sketch.extrude(5);
+import { drawRectangle, drawCircle, drawingCut, drawingToSketchOnPlane, shape } from 'brepjs';
+
+// Simple rectangle → extrude to box
+const rect = drawRectangle(50, 30);
+const sketch = rect.sketchOnPlane('XY');
+const solid = sketch.extrude(20);  // 20mm height → Solid
+
+// Complex profile: rectangle with circular cutout → extrude
+const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 15]));
+const profileSketch = drawingToSketchOnPlane(profile, 'XY');
+const complexSolid = shape(profileSketch.face()).extrude(20).val;
+
+// Or use the sketchRectangle shortcut
+import { sketchRectangle } from 'brepjs';
+const quickBox = sketchRectangle(50, 30).extrude(20);
 ```
 
 Plane names: `'XY'`, `'XZ'`, `'YZ'`, `'ZX'`, `'YX'`, `'ZY'`, `'front'`, `'back'`, `'top'`, `'bottom'`, `'left'`, `'right'`
@@ -388,6 +438,8 @@ thicken(shape: Face | Shell, thickness): Result<Solid>
 
 ### Transformations
 
+All transforms return new shapes — the original is never modified.
+
 ```typescript
 import { translate, rotate, mirror, scale } from 'brepjs';
 
@@ -395,6 +447,28 @@ translate(shape, [10, 0, 0]): T
 rotate(shape, angle, { around?, axis? }?): T
 mirror(shape, { normal?, origin? }?): T
 scale(shape, factor, { center? }?): T
+```
+
+Sequential transforms (functional API):
+```typescript
+import { box, translate, rotate, scale } from 'brepjs';
+
+const b = box(30, 20, 10);
+const moved = translate(b, [50, 0, 0]);                    // translate first
+const rotated = rotate(moved, 45, { axis: [0, 0, 1] });   // then rotate
+const scaled = scale(rotated, 2);                           // then scale
+// b is unchanged; each step produces a new shape
+```
+
+Sequential transforms (wrapper API):
+```typescript
+import { box, shape } from 'brepjs';
+
+const result = shape(box(30, 20, 10))
+  .translate([50, 0, 0])
+  .rotate(45, { axis: [0, 0, 1] })
+  .scale(2)
+  .val;
 ```
 
 ### Patterns
@@ -651,18 +725,32 @@ autoHeal(shape, options?): Result<{ shape, report: HealingReport }>
 
 ### STEP Files
 
+End-to-end import → modify → export:
 ```typescript
-import { importSTEP, exportSTEP } from 'brepjs';
+import { importSTEP, exportSTEP, shape, unwrap } from 'brepjs';
+import { readFileSync, writeFileSync } from 'fs';
 
-// Import
-const blob = new Blob([stepFileBytes]);
-const result = await importSTEP(blob);   // Result<AnyShape>
+// Import a STEP file
+const stepBytes = readFileSync('input.step');
+const stepBlob = new Blob([stepBytes]);
+const imported = unwrap(await importSTEP(stepBlob));  // Result<AnyShape>
 
-// Export with color and names
-const stepBlob = exportSTEP([
+// Modify the imported shape
+const modified = shape(imported).fillet(2).translate([0, 0, 10]).val;
+
+// Export back to STEP
+const outputBlob = unwrap(exportSTEP(modified));  // Result<Blob>
+writeFileSync('output.step', Buffer.from(await outputBlob.arrayBuffer()));
+```
+
+Export assembly with colors and names:
+```typescript
+import { exportAssemblySTEP, unwrap } from 'brepjs';
+
+const stepBlob = unwrap(exportAssemblySTEP([
   { shape: body, color: '#3366cc', name: 'Body' },
   { shape: lid, color: '#cc6633', name: 'Lid' },
-], { unit: 'MM' });
+], { unit: 'millimeter' }));
 ```
 
 Functional API:
@@ -1041,33 +1129,83 @@ const grouped = toGroupedBufferGeometryData(mesh);
 
 ## Memory Management
 
-OCCT objects are allocated in WASM memory and must be cleaned up:
+OCCT objects are allocated in WASM memory and are **not** garbage-collected by the JavaScript engine. You must explicitly clean them up. brepjs provides four cleanup patterns:
+
+### Pattern 1: `using` keyword (recommended, TS 5.9+)
+
+The `using` declaration automatically disposes shapes when they go out of scope via TC39 `Symbol.dispose`:
 
 ```typescript
-import { withScope, localGC, createHandle, createOcHandle } from 'brepjs';
+import { box, cylinder, cut, unwrap } from 'brepjs';
 
-// Scope-based cleanup (preferred)
-const result = withScope((scope) => {
-  const a = scope.register(someOcctObject);
-  // a is auto-deleted when scope ends
-  return finalShape;  // returned value survives the scope
-});
-
-// Manual cleanup
-const [register, cleanup] = localGC();
-try {
-  const shape = register(sketchCircle(10).extrude(20));
-  // ... use shape ...
-} finally {
-  cleanup();
+{
+  using b = box(10, 10, 10);
+  using hole = cylinder(3, 15);
+  const result = unwrap(cut(b, hole));
+  // b and hole are automatically freed at block end
+  // result survives because it was not declared with `using`
 }
 
-// Explicit handle management
+// Works in loops too
+for (let i = 0; i < 100; i++) {
+  using temp = box(1, 1, 1);
+  processBox(temp);
+  // temp freed each iteration — no memory leak
+}
+```
+
+Requires TypeScript 5.9+ with `"lib": ["ES2022", "ESNext.Disposable"]` and Node.js 20+ or modern browsers.
+
+### Pattern 2: `gcWithScope()` (GC-based)
+
+```typescript
+import { gcWithScope, box, cylinder, cut, unwrap } from 'brepjs';
+
+function buildPart() {
+  const r = gcWithScope();
+  const b = r(box(10, 10, 10));       // register for cleanup
+  const hole = r(cylinder(3, 15));     // register for cleanup
+  return unwrap(cut(b, hole));         // result escapes; b and hole cleaned up when r is GC'd
+}
+```
+
+### Pattern 3: `localGC()` (deterministic)
+
+```typescript
+import { localGC, box, cylinder, cut, unwrap } from 'brepjs';
+
+const [register, cleanup] = localGC();
+try {
+  const b = register(box(10, 10, 10));
+  const hole = register(cylinder(3, 15));
+  return unwrap(cut(b, hole));
+} finally {
+  cleanup(); // immediate disposal of all registered objects
+}
+```
+
+### Pattern 4: `withScope()` (scoped, returns result)
+
+```typescript
+import { withScope, box, cylinder, cut, unwrap } from 'brepjs';
+
+const result = withScope((scope) => {
+  const b = scope.register(box(10, 10, 10));
+  const hole = scope.register(cylinder(3, 15));
+  return unwrap(cut(b, hole));  // returned value survives the scope
+});
+```
+
+### Low-level handles
+
+```typescript
+import { createHandle, createOcHandle } from 'brepjs';
+
 const handle = createHandle(ocShape);     // ShapeHandle: { wrapped, disposed, [Symbol.dispose] }
 const ocHandle = createOcHandle(ocObj);   // OcHandle<T>: { value, disposed, [Symbol.dispose] }
 ```
 
-`gcWithScope()` returns a register function that ties cleanup to FinalizationRegistry (GC-based). `gcWithObject(obj)` registers objects on an existing object for lifecycle tracking. `withScope` / `localGC` are preferred for deterministic cleanup.
+`FinalizationRegistry` provides a safety net for missed cleanup, but relying on it is not recommended because GC timing is unpredictable. Always use one of the explicit patterns above.
 
 ## Error Handling
 
