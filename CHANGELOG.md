@@ -1,5 +1,17 @@
 # Changelog
 
+## [7.5.0](https://github.com/andymai/brepjs/compare/brepjs-v7.4.2...brepjs-v7.5.0) (2026-02-10)
+
+
+### Features
+
+* **box:** add `at` and `centered` options, deprecate `center` ([#216](https://github.com/andymai/brepjs/issues/216)) ([9c2496e](https://github.com/andymai/brepjs/commit/9c2496e8236a461f576b7eb89732ca2dc633e3a4))
+
+
+### Bug Fixes
+
+* **lint:** use strict equality in box() center normalization ([1204a95](https://github.com/andymai/brepjs/commit/1204a95d18afa5bb835953b36b5d4ee45f5122e3))
+
 ## [7.4.2](https://github.com/andymai/brepjs/compare/brepjs-v7.4.1...brepjs-v7.4.2) (2026-02-09)
 
 
