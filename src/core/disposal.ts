@@ -202,7 +202,7 @@ export function unregisterFromCleanup(deletable: Deletable): void {
 }
 
 // ---------------------------------------------------------------------------
-// GC helpers (backwards-compatible)
+// GC helpers
 // ---------------------------------------------------------------------------
 
 /** Register a deletable value for GC when the scope function is collected. */
