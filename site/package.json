@@ -34,7 +34,7 @@
     "@types/react": "19.2.13",
     "@types/react-dom": "19.2.3",
     "@types/three": "0.182.0",
-    "@vitejs/plugin-react": "4.7.0",
+    "@vitejs/plugin-react": "5.1.4",
     "puppeteer": "24.37.2",
     "tailwindcss": "4.1.18",
     "tsx": "4.21.0",
