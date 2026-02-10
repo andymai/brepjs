@@ -68,7 +68,7 @@ import type {
   // Core types
   Vec3,
   Vec2,
-  _PointInput,
+  PointInput as _PointInput,
   DirectionInput,
 
   // Plane types
@@ -113,7 +113,7 @@ import type {
 
   // Projection
   Camera,
-  _ProjectionPlane,
+  ProjectionPlane as _ProjectionPlane,
 
   // Assembly
   AssemblyNode,
@@ -123,9 +123,6 @@ import type {
   OperationStep,
   OperationFn,
   HistoryOperationRegistry,
-
-  // Legacy
-  _Point,
   Point2D,
 } from '../src/index.js';
 
@@ -364,7 +361,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'isNumber',
   'isOk',
   'isOperationRequest',
-  'isPoint',
   'isProjectionPlane',
   'isQueueEmpty',
   'isSameShape',

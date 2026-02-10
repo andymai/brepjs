@@ -38,22 +38,14 @@ describe('meshCache', () => {
 
   describe('buildMeshCacheKey', () => {
     it('produces a deterministic key from parameters', () => {
-      // shapeHash parameter is kept for API compatibility but no longer used
-      const key = buildMeshCacheKey(123, 0.1, 30, false);
+      const key = buildMeshCacheKey(0.1, 30, false);
       expect(key).toBe('0.1:30:false');
     });
 
     it('distinguishes skipNormals', () => {
-      const a = buildMeshCacheKey(1, 0.1, 30, false);
-      const b = buildMeshCacheKey(1, 0.1, 30, true);
+      const a = buildMeshCacheKey(0.1, 30, false);
+      const b = buildMeshCacheKey(0.1, 30, true);
       expect(a).not.toBe(b);
-    });
-
-    it('ignores shapeHash parameter (no longer used)', () => {
-      // Different hashes should produce the same key since identity is via WeakMap
-      const a = buildMeshCacheKey(123, 0.1, 30, false);
-      const b = buildMeshCacheKey(456, 0.1, 30, false);
-      expect(a).toBe(b);
     });
   });
 
@@ -68,14 +60,13 @@ describe('meshCache', () => {
 
   describe('buildEdgeMeshCacheKey', () => {
     it('produces a deterministic key with edge prefix', () => {
-      // shapeHash parameter is kept for API compatibility but no longer used
-      const key = buildEdgeMeshCacheKey(123, 0.1, 30);
+      const key = buildEdgeMeshCacheKey(0.1, 30);
       expect(key).toBe('edge:0.1:30');
     });
 
     it('differs from triangle mesh key for same params', () => {
-      const edgeKey = buildEdgeMeshCacheKey(1, 0.1, 30);
-      const triKey = buildMeshCacheKey(1, 0.1, 30, false);
+      const edgeKey = buildEdgeMeshCacheKey(0.1, 30);
+      const triKey = buildMeshCacheKey(0.1, 30, false);
       expect(edgeKey).not.toBe(triKey);
     });
   });

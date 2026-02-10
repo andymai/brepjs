@@ -2,11 +2,6 @@
  * Core geometry — functional API.
  *
  * Primary exports are Vec3 tuples and pure functions.
- * Legacy class exports have been removed. Use:
- * - Vec3 tuples with vecOps functions instead of Vector class
- * - Plane interface from planeTypes.ts with planeOps functions instead of Plane class
- * - getBounds() from shapeFns.ts instead of BoundingBox class
- * - standalone transform functions from geometryHelpers.ts instead of Transformation class
  */
 
 // ── Functional API re-exports ──
@@ -55,27 +50,4 @@ export {
   makeOcAx3 as makeOcAx3Vec3,
 } from './occtBoundary.js';
 
-// Re-export plane types for backward compatibility
 export type { PlaneName } from './planeTypes.js';
-
-// ---------------------------------------------------------------------------
-// Legacy Point type (kept for backward compatibility)
-// ---------------------------------------------------------------------------
-
-/**
- * Legacy Point type for backward compatibility.
- * Prefer using PointInput or Vec3 from types.ts.
- */
-export type Point =
-  | [number, number, number]
-  | [number, number]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT point-like objects
-  | { XYZ: () => any; delete: () => void };
-
-/** Check whether a value is a valid {@link Point} (tuple or OCCT point-like object). */
-export function isPoint(p: unknown): p is Point {
-  if (Array.isArray(p)) return p.length === 3 || p.length === 2;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT duck typing
-  else if (p && typeof (p as any)?.XYZ === 'function') return true;
-  return false;
-}

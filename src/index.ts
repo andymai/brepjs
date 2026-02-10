@@ -58,9 +58,6 @@ export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
 export { gcWithScope, gcWithObject, localGC, type Deletable } from './core/memory.js';
 
-// Legacy type exports (kept for compatibility)
-export { isPoint, type Point } from './core/geometry.js';
-
 export { makePlane } from './core/geometryHelpers.js';
 
 export { findCurveType } from './core/definitionMaps.js';
