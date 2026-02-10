@@ -10,13 +10,15 @@ const config: KnipConfig = {
     '.': {
       project: ['src/**/*.ts'],
       ignore: ['src/**/*.test.ts'],
-      ignoreBinaries: ['tsx', 'typedoc'],
-      ignoreDependencies: ['typedoc'],
+      ignoreBinaries: ['tsx'],
     },
     'packages/*': {
       ignore: ['**'],
     },
     site: {
+      ignore: ['**'],
+    },
+    'brepjs-plugin': {
       ignore: ['**'],
     },
   },
