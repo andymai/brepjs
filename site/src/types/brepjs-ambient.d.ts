@@ -403,8 +403,6 @@ interface CurveLike {
 /** Create a straight edge between two 3D points. */
 declare const makeLine: (v1: Vec3, v2: Vec3) => Edge;
 
-/** Create a circular edge with the given radius, center, and normal. */
-declare const makeCircle: (radius: number, center?: Vec3, normal?: Vec3) => Edge;
 
 /**
  * Create an elliptical edge with the given radii.
@@ -414,13 +412,6 @@ declare const makeCircle: (radius: number, center?: Vec3, normal?: Vec3) => Edge
  */
 declare const makeEllipse: (majorRadius: number, minorRadius: number, center?: Vec3, normal?: Vec3, xDir?: Vec3) => Result<Edge>;
 
-/**
- * Create a helical wire with the given pitch, height, and radius.
- *
- * @param pitch - Vertical distance per full turn.
- * @param lefthand - Wind the helix in the left-hand direction.
- */
-declare const makeHelix: (pitch: number, height: number, radius: number, center?: Vec3, dir?: Vec3, lefthand?: boolean) => Wire;
 
 /**
  * Create a circular arc edge passing through three points.
@@ -504,19 +495,7 @@ declare const makeNewFaceWithinFace: (originFace: Face, wire: Wire) => Face;
  */
 declare const makeNonPlanarFace: (wire: Wire) => Result<Face>;
 
-/**
- * Creates a cylinder with the given radius and height.
- *
- * @category Solids
- */
-declare const makeCylinder: (radius: number, height: number, location?: Vec3, direction?: Vec3) => Solid;
 
-/**
- * Creates a sphere with the given radius.
- *
- * @category Solids
- */
-declare const makeSphere: (radius: number) => Solid;
 
 /**
  * Creates a cone (or frustum) with the given radii and height.
@@ -539,12 +518,6 @@ declare const makeTorus: (majorRadius: number, minorRadius: number, location?: V
  */
 declare const makeEllipsoid: (aLength: number, bLength: number, cLength: number) => Solid;
 
-/**
- * Creates a box with the given corner points.
- *
- * @category Solids
- */
-declare const makeBox: (corner1: Vec3, corner2: Vec3) => Solid;
 
 /** Create a vertex at a 3D point. */
 declare const makeVertex: (point: Vec3) => Vertex;

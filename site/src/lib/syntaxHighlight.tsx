@@ -17,6 +17,11 @@ const KEYWORDS = new Set([
 ]);
 
 export const BREPJS_FNS = new Set([
+  'box',
+  'cylinder',
+  'sphere',
+  'circle',
+  'helix',
   'makeBox',
   'makeCylinder',
   'makeSphere',
