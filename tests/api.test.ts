@@ -141,6 +141,11 @@ describe('cone()', () => {
     const c = cone(5, 3, 10);
     expect(measureVolume(c)).toBeGreaterThan(0);
   });
+
+  it('creates a centered cone', () => {
+    const c = cone(5, 0, 10, { centered: true });
+    expect(measureVolume(c)).toBeCloseTo((1 / 3) * Math.PI * 25 * 10, 0);
+  });
 });
 
 describe('torus()', () => {
@@ -153,6 +158,11 @@ describe('torus()', () => {
 describe('ellipsoid()', () => {
   it('creates an ellipsoid', () => {
     const e = ellipsoid(10, 5, 3);
+    expect(measureVolume(e)).toBeGreaterThan(0);
+  });
+
+  it('creates an ellipsoid at a position', () => {
+    const e = ellipsoid(10, 5, 3, { at: [20, 30, 40] });
     expect(measureVolume(e)).toBeGreaterThan(0);
   });
 });

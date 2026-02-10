@@ -86,7 +86,9 @@ export function box(width: number, depth: number, height: number, options?: BoxO
   gc();
 
   // Normalize deprecated `center` into `at` / `centered`.
-  const at = options?.at ?? (options?.center != null && options.center !== true ? options.center : undefined);
+  const at =
+    options?.at ??
+    (options?.center !== undefined && options.center !== true ? options.center : undefined);
   const centered = options?.centered ?? options?.center === true;
 
   if (at) {
