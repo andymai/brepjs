@@ -1,6 +1,6 @@
 # Examples
 
-Complete workflow examples demonstrating brepjs capabilities, ordered from beginner to advanced.
+Workflow examples demonstrating brepjs capabilities, ordered from beginner to advanced. Each example builds on patterns proven in production CAD applications (gridfinity bin generation).
 
 ## Running Examples
 
@@ -11,95 +11,48 @@ All examples auto-initialize the WASM kernel via `_setup.ts` — just run them d
 npm install
 
 # Run any example
-npm run example examples/hello-world.ts
-npm run example examples/basic-primitives.ts
-npm run example examples/mechanical-part.ts
+npm run example examples/mounting-block.ts
+npm run example examples/pen-cup.ts
+npm run example examples/compartment-tray.ts
 ```
 
 Each example imports `'./_setup.js'` as its first import, which calls `opencascade()` and `initFromOC()` via top-level await. You don't need to write any initialization code yourself.
 
 ## Beginner
 
-### [hello-world.ts](./hello-world.ts)
+### [mounting-block.ts](./mounting-block.ts) — Game Die
 
-**Start here.** Create a box, measure it, export it — the absolute minimum brepjs program.
+A six-sided die: rounded cube with spherical dot indentations on all six faces. Demonstrates batch boolean cuts with `cutAll`.
 
-**Concepts:** `makeBox`, `measureVolume`, `exportSTEP`, `unwrap`
-
-### [basic-primitives.ts](./basic-primitives.ts)
-
-Create primitive shapes (box, cylinder, sphere) and combine them with boolean operations.
-
-**Concepts:** primitives, `fuseShape`, `cutShape`, `intersectShape`, `Result` handling with `isOk`
+**Concepts:** `box`, `sphere`, `fillet`, `cutAll`, `shape()` builder
 
 ## Intermediate
 
-### [mechanical-part.ts](./mechanical-part.ts)
+### [shelf-bracket.ts](./shelf-bracket.ts) — Spur Gear
 
-Build a bracket with 4 mounting holes and a center slot. Generates SVG technical drawings (front and top views).
+A spur gear with teeth around the perimeter and a center bore. Shows circular patterning with `rotate` and batch fusion with `fuseAll`.
 
-**Concepts:** batch booleans with `cutAll`, `translateShape`, `drawProjection`, SVG output
+**Concepts:** `cylinder`, `box`, `rotate`, `fuseAll`, `cut`
 
-**Visual output:** `examples/output/bracket-front.svg`, `examples/output/bracket-top.svg`
+### [pen-cup.ts](./pen-cup.ts) — Pen Cup
 
-### [2d-to-3d.ts](./2d-to-3d.ts)
+A container with rounded corners, hollowed using the shell operation. Mirrors the gridfinity bin pattern: sketch → extrude → shell → fillet.
 
-Sketch a 2D profile and extrude it to a 3D solid. Exports the 2D profile as SVG.
-
-**Concepts:** `drawRectangle`, `drawCircle`, `drawingCut`, `drawingToSketchOnPlane`, `sketchExtrude`, `toSVG`
-
-**Visual output:** `examples/output/2d-profile.svg`
-
-### [import-export.ts](./import-export.ts)
-
-Load a STEP file, modify it, export in multiple formats.
-
-**Concepts:** `importSTEP`, `exportSTEP`, `exportSTL`, `scaleShape`, `meshShape`
+**Concepts:** `sketchRoundedRectangle`, `.extrude()`, `shell`, `faceFinder`, `fillet`
 
 ## Advanced
 
-### [parametric-part.ts](./parametric-part.ts)
+### [lofted-vase.ts](./lofted-vase.ts) — Lofted Vase
 
-Build a configurable flanged pipe fitting with bolt holes. Shows how to wrap brepjs operations into a reusable parametric function.
+A vase shaped by lofting through circular cross-sections at different heights, then shelled to thin walls. Uses the same multi-section loft technique as gridfinity socket profiles.
 
-**Concepts:** parametric design, `shellShape`, `filletShape`, `faceFinder`, `edgeFinder`, `rotateShape`
+**Concepts:** `sketchCircle`, `.loftWith()`, `shell`, `faceFinder`
 
-### [threejs-rendering.ts](./threejs-rendering.ts)
+### [compartment-tray.ts](./compartment-tray.ts) — Compartment Tray
 
-Convert brepjs shapes to mesh data for Three.js, then generate a standalone HTML file with an interactive 3D viewer.
+A storage tray with dividers and drain holes. Demonstrates the full gridfinity pattern: extrude → shell → batch fuse dividers (`fuseAll`) → clip to inner boundary (`intersect`) → batch cut holes (`cutAll`).
 
-**Concepts:** `meshShape`, `toBufferGeometryData`, Three.js integration, HTML generation
-
-**Visual output:** `examples/output/threejs-part.html`
-
-### [browser-viewer.ts](./browser-viewer.ts)
-
-Self-contained browser example: builds a shape, meshes it, and generates a standalone HTML file with Three.js orbit controls, lighting, and a ground grid. No bundler required.
-
-**Concepts:** `meshShape`, `toBufferGeometryData`, `describeShape`, standalone HTML viewer
-
-**Visual output:** `examples/output/viewer.html`
-
-### [text-engraving.ts](./text-engraving.ts)
-
-Create a nameplate with engraved text (workflow demonstration).
-
-**Concepts:** `loadFont`, `textBlueprints`, face sketching, subtractive engraving
-
-## Visual Output
-
-Several examples generate SVG and HTML files in `examples/output/`:
-
-| Example                | Output File(s)                                         | Type |
-| ---------------------- | ------------------------------------------------------ | ---- |
-| `2d-to-3d.ts`          | `examples/output/2d-profile.svg`                       | SVG  |
-| `mechanical-part.ts`   | `examples/output/bracket-front.svg`, `bracket-top.svg` | SVG  |
-| `threejs-rendering.ts` | `examples/output/threejs-part.html`                    | HTML |
-| `browser-viewer.ts`    | `examples/output/viewer.html`                          | HTML |
-
-SVG files can be opened in any browser or image viewer. HTML files contain embedded Three.js viewers with orbit controls — just open them in a browser.
-
-The `examples/output/` directory is git-ignored. Run the examples to generate the files.
+**Concepts:** `sketchRoundedRectangle`, `shell`, `fuseAll`, `intersect`, `cutAll`, `faceFinder`
 
 ## Common Patterns
 
@@ -108,9 +61,9 @@ The `examples/output/` directory is git-ignored. Run the examples to generate th
 All fallible operations return `Result<T, BrepError>`:
 
 ```typescript
-import { fuseShape, isOk, unwrap } from 'brepjs';
+import { fuse, isOk, unwrap } from 'brepjs';
 
-const result = fuseShape(shape1, shape2);
+const result = fuse(shape1, shape2);
 
 // Check before using
 if (isOk(result)) {
@@ -121,18 +74,52 @@ if (isOk(result)) {
 const fused = unwrap(result);
 ```
 
-### Memory Management
+### shape() Builder
 
-Use `using` for automatic cleanup of temporary shapes:
+The `shape()` wrapper provides fluent chaining that auto-unwraps results:
 
 ```typescript
-{
-  using tempShape = makeBox([10, 10, 10]);
-  // tempShape automatically disposed at block end
-}
+import { box, cylinder, shape } from 'brepjs';
+
+const result = shape(box(60, 40, 12))
+  .cut(cylinder(3, 20))
+  .fillet(2).val;
 ```
 
-See [Memory Management](../docs/memory-management.md) for details.
+### Shell Pattern (from Gridfinity)
+
+The shell operation hollows a solid by removing specified faces:
+
+```typescript
+import { sketchRoundedRectangle, shell, faceFinder, unwrap } from 'brepjs';
+
+let solid = sketchRoundedRectangle(50, 35, 8).extrude(80);
+const topFaces = faceFinder().parallelTo('Z').atDistance(80, [0, 0, 0]).findAll(solid);
+solid = unwrap(shell(solid, topFaces, 2)); // 2mm walls
+```
+
+### Batch Booleans (from Gridfinity)
+
+Use `fuseAll` and `cutAll` for multiple operations in a single pass:
+
+```typescript
+import { fuseAll, cutAll, unwrap } from 'brepjs';
+
+const combined = unwrap(fuseAll([base, wall1, wall2, wall3]));
+const withHoles = unwrap(cutAll(combined, [hole1, hole2, hole3]));
+```
+
+### Clipping to Rounded Boundaries (from Gridfinity)
+
+Use `intersect` to trim features that would protrude through curved walls:
+
+```typescript
+import { fuseAll, intersect, sketchRoundedRectangle, unwrap } from 'brepjs';
+
+const dividers = unwrap(fuseAll([wall1, wall2]));
+const innerBound = sketchRoundedRectangle(innerW, innerD, innerR).extrude(h);
+const clipped = unwrap(intersect(dividers, innerBound));
+```
 
 ## Requirements
 

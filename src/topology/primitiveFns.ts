@@ -62,8 +62,12 @@ export type { BSplineApproximationOptions } from './shapeHelpers.js';
 
 /** Options for {@link box}. */
 export interface BoxOptions {
-  /** `true` = centered at origin; `Vec3` = centered at point. Omit = corner at origin. */
+  /** @deprecated Use `centered` or `at` instead. Will be removed in v8.0.0. */
   center?: true | Vec3;
+  /** Center at this point (center semantics, like {@link sphere}). */
+  at?: Vec3;
+  /** Center the box at the origin (or at the `at` point). Default: false. */
+  centered?: boolean;
 }
 
 /**
@@ -81,9 +85,14 @@ export function box(width: number, depth: number, height: number, options?: BoxO
   let solid = createSolid(maker.Solid());
   gc();
 
-  if (options?.center) {
-    const c: Vec3 = options.center === true ? [0, 0, 0] : options.center;
-    solid = translate(solid, [c[0] - width / 2, c[1] - depth / 2, c[2] - height / 2]);
+  // Normalize deprecated `center` into `at` / `centered`.
+  const at = options?.at ?? (options?.center != null && options.center !== true ? options.center : undefined);
+  const centered = options?.centered ?? options?.center === true;
+
+  if (at) {
+    solid = translate(solid, [at[0] - width / 2, at[1] - depth / 2, at[2] - height / 2]);
+  } else if (centered) {
+    solid = translate(solid, [-width / 2, -depth / 2, -height / 2]);
   }
   return solid;
 }

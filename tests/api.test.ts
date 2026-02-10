@@ -25,7 +25,6 @@ import {
   tangentArc,
   wire,
   face,
-  filledFace,
   polygon,
   vertex,
   compound,
@@ -65,13 +64,9 @@ import {
   isErr,
   measureVolume,
   measureArea,
-  getEdges,
-  getFaces,
   faceFinder,
-  edgeFinder,
   sketchCircle,
 } from '../src/index.js';
-import type { Face, Edge, Solid, Wire } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -94,6 +89,16 @@ describe('box()', () => {
 
   it('centers a box at a specific point', () => {
     const b = box(10, 10, 10, { center: [5, 5, 5] });
+    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+  });
+
+  it('positions a box via at (center semantics)', () => {
+    const b = box(10, 10, 10, { at: [5, 5, 5] });
+    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+  });
+
+  it('supports centered option (matches cylinder/cone)', () => {
+    const b = box(10, 10, 10, { centered: true });
     expect(measureVolume(b)).toBeCloseTo(1000, 0);
   });
 });
