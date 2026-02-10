@@ -743,14 +743,14 @@ const outputBlob = unwrap(exportSTEP(modified));  // Result<Blob>
 writeFileSync('output.step', Buffer.from(await outputBlob.arrayBuffer()));
 ```
 
-Export with color and names:
+Export assembly with colors and names:
 ```typescript
-import { importSTEP, exportSTEP } from 'brepjs';
+import { exportAssemblySTEP, unwrap } from 'brepjs';
 
-const stepBlob = exportSTEP([
+const stepBlob = unwrap(exportAssemblySTEP([
   { shape: body, color: '#3366cc', name: 'Body' },
   { shape: lid, color: '#cc6633', name: 'Lid' },
-], { unit: 'MM' });
+], { unit: 'millimeter' }));
 ```
 
 Functional API:
