@@ -11,45 +11,13 @@ import type { AnyShape, Edge, Face, Shape3D, Shell, Solid } from '../core/shapeT
 import type { Shapeable, FinderFn, FilletRadius, ChamferDistance } from './apiTypes.js';
 import { resolve } from './apiTypes.js';
 import type { ShapeFinder } from '../query/finderFns.js';
-import {
-  translateShape,
-  rotateShape,
-  mirrorShape,
-  scaleShape,
-  cloneShape,
-  serializeShape,
-  simplifyShape,
-  describeShape,
-  isShapeNull,
-  getEdges,
-  type ShapeDescription,
-} from './shapeFns.js';
-import {
-  fuseShape,
-  cutShape,
-  intersectShape,
-  sectionShape,
-  splitShape,
-  sliceShape,
-  type BooleanOptions,
-} from './booleanFns.js';
-import {
-  filletShape,
-  chamferShape,
-  shellShape,
-  offsetShape,
-  thickenSurface,
-} from './modifierFns.js';
-import { chamferDistAngleShape } from './chamferAngleFns.js';
-import { isShapeValid, healShape } from './healingFns.js';
-import {
-  meshShape,
-  meshShapeEdges,
-  type ShapeMesh,
-  type EdgeMesh,
-  type MeshOptions,
-} from './meshFns.js';
-import { deserializeShape } from './cast.js';
+import * as transforms from './shapeFns.js';
+import * as booleans from './booleanFns.js';
+import * as modifiers from './modifierFns.js';
+import * as angles from './chamferAngleFns.js';
+import * as healing from './healingFns.js';
+import * as meshing from './meshFns.js';
+import * as casting from './cast.js';
 import { edgeFinder, faceFinder } from '../query/finderFns.js';
 import type { PlaneInput } from '../core/planeTypes.js';
 
@@ -59,7 +27,7 @@ import type { PlaneInput } from '../core/planeTypes.js';
 
 /** Translate a shape by a vector. Returns a new shape. */
 export function translate<T extends AnyShape>(shape: Shapeable<T>, v: Vec3): T {
-  return translateShape(resolve(shape), v);
+  return transforms.translate(resolve(shape), v);
 }
 
 /** Options for {@link rotate}. */
@@ -79,7 +47,7 @@ export function rotate<T extends AnyShape>(
   options?: RotateOptions
 ): T {
   const pivotPoint = options?.at ?? options?.around;
-  return rotateShape(resolve(shape), angle, pivotPoint, options?.axis);
+  return transforms.rotate(resolve(shape), angle, pivotPoint, options?.axis);
 }
 
 /** Options for {@link mirror}. */
@@ -95,7 +63,7 @@ export interface MirrorOptions {
 /** Mirror a shape through a plane. Returns a new shape. */
 export function mirror<T extends AnyShape>(shape: Shapeable<T>, options?: MirrorOptions): T {
   const planeOrigin = options?.at ?? options?.origin;
-  return mirrorShape(resolve(shape), options?.normal ?? [1, 0, 0], planeOrigin);
+  return transforms.mirror(resolve(shape), options?.normal ?? [1, 0, 0], planeOrigin);
 }
 
 /** Options for {@link scale}. */
@@ -110,12 +78,12 @@ export function scale<T extends AnyShape>(
   factor: number,
   options?: ScaleOptions
 ): T {
-  return scaleShape(resolve(shape), factor, options?.center);
+  return transforms.scale(resolve(shape), factor, options?.center);
 }
 
 /** Clone a shape (deep copy). */
 export function clone<T extends AnyShape>(shape: Shapeable<T>): T {
-  return cloneShape(resolve(shape));
+  return transforms.clone(resolve(shape));
 }
 
 // ---------------------------------------------------------------------------
@@ -126,27 +94,27 @@ export function clone<T extends AnyShape>(shape: Shapeable<T>): T {
 export function fuse<T extends Shape3D>(
   a: Shapeable<T>,
   b: Shapeable<Shape3D>,
-  options?: BooleanOptions
+  options?: booleans.BooleanOptions
 ): Result<T> {
-  return fuseShape(resolve(a), resolve(b), options) as Result<T>;
+  return booleans.fuse(resolve(a), resolve(b), options) as Result<T>;
 }
 
 /** Cut a tool from a base shape (boolean subtraction). */
 export function cut<T extends Shape3D>(
   base: Shapeable<T>,
   tool: Shapeable<Shape3D>,
-  options?: BooleanOptions
+  options?: booleans.BooleanOptions
 ): Result<T> {
-  return cutShape(resolve(base), resolve(tool), options) as Result<T>;
+  return booleans.cut(resolve(base), resolve(tool), options) as Result<T>;
 }
 
 /** Compute the intersection of two shapes (boolean common). */
 export function intersect<T extends Shape3D>(
   a: Shapeable<T>,
   b: Shapeable<Shape3D>,
-  options?: BooleanOptions
+  options?: booleans.BooleanOptions
 ): Result<T> {
-  return intersectShape(resolve(a), resolve(b), options) as Result<T>;
+  return booleans.intersect(resolve(a), resolve(b), options) as Result<T>;
 }
 
 /** Section (cross-section) a shape with a plane. */
@@ -155,12 +123,12 @@ export function section(
   plane: PlaneInput,
   options?: { approximation?: boolean; planeSize?: number }
 ): Result<AnyShape> {
-  return sectionShape(resolve(shape), plane, options);
+  return booleans.section(resolve(shape), plane, options);
 }
 
 /** Split a shape with tool shapes. */
 export function split(shape: Shapeable<AnyShape>, tools: AnyShape[]): Result<AnyShape> {
-  return splitShape(resolve(shape), tools);
+  return booleans.split(resolve(shape), tools);
 }
 
 /** Slice a shape with multiple planes. */
@@ -169,7 +137,7 @@ export function slice(
   planes: PlaneInput[],
   options?: { approximation?: boolean; planeSize?: number }
 ): Result<AnyShape[]> {
-  return sliceShape(resolve(shape), planes, options);
+  return booleans.slice(resolve(shape), planes, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -284,7 +252,7 @@ export function fillet<T extends Shape3D>(
     radius = edgesOrRadius as FilletRadius;
   }
 
-  return filletShape(s, edges, normalizeFilletRadius(radius)) as Result<T>;
+  return modifiers.fillet(s, edges, normalizeFilletRadius(radius)) as Result<T>;
 }
 
 /** Apply a chamfer to all edges of a 3D shape. */
@@ -317,9 +285,9 @@ export function chamfer<T extends Shape3D>(
 
   const normalized = normalizeChamferDistance(distance);
   if (normalized.mode === 'distAngle') {
-    // Use chamferDistAngleShape for distance-angle mode
-    const selectedEdges = edges ?? getEdges(s);
-    return chamferDistAngleShape(
+    // Use chamferDistAngle for distance-angle mode
+    const selectedEdges = edges ?? transforms.getEdges(s);
+    return angles.chamferDistAngle(
       s,
       [...selectedEdges],
       normalized.distance,
@@ -327,7 +295,7 @@ export function chamfer<T extends Shape3D>(
     ) as Result<T>;
   }
 
-  return chamferShape(s, edges, normalized.distance) as Result<T>;
+  return modifiers.chamfer(s, edges, normalized.distance) as Result<T>;
 }
 
 /** Create a hollow shell by removing faces and offsetting remaining walls. */
@@ -339,7 +307,7 @@ export function shell<T extends Shape3D>(
 ): Result<T> {
   const s = resolve(shape);
   const resolvedFaces = resolveFaces(faces, s);
-  return shellShape(s, resolvedFaces, thickness, options?.tolerance) as Result<T>;
+  return modifiers.shell(s, resolvedFaces, thickness, options?.tolerance) as Result<T>;
 }
 
 /** Offset all faces of a shape by a given distance. */
@@ -348,12 +316,12 @@ export function offset<T extends Shape3D>(
   distance: number,
   options?: { tolerance?: number }
 ): Result<T> {
-  return offsetShape(resolve(shape), distance, options?.tolerance) as Result<T>;
+  return modifiers.offset(resolve(shape), distance, options?.tolerance) as Result<T>;
 }
 
 /** Thicken a surface (face or shell) into a solid. */
 export function thicken(shape: Shapeable<Face | Shell>, thickness: number): Result<Solid> {
-  return thickenSurface(resolve(shape), thickness);
+  return modifiers.thicken(resolve(shape), thickness);
 }
 
 // ---------------------------------------------------------------------------
@@ -362,51 +330,51 @@ export function thicken(shape: Shapeable<Face | Shell>, thickness: number): Resu
 
 /** Heal a shape using the appropriate fixer. */
 export function heal<T extends AnyShape>(shape: Shapeable<T>): Result<T> {
-  return healShape(resolve(shape));
+  return healing.heal(resolve(shape));
 }
 
 /** Simplify a shape by merging same-domain faces/edges. */
 export function simplify<T extends AnyShape>(shape: Shapeable<T>): T {
-  return simplifyShape(resolve(shape));
+  return transforms.simplify(resolve(shape));
 }
 
 /** Mesh a shape for rendering. */
 export function mesh(
   shape: Shapeable<AnyShape>,
-  options?: MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean }
-): ShapeMesh {
-  return meshShape(resolve(shape), options);
+  options?: meshing.MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean }
+): meshing.ShapeMesh {
+  return meshing.mesh(resolve(shape), options);
 }
 
 /** Mesh the edges of a shape for wireframe rendering. */
 export function meshEdges(
   shape: Shapeable<AnyShape>,
-  options?: MeshOptions & { cache?: boolean }
-): EdgeMesh {
-  return meshShapeEdges(resolve(shape), options);
+  options?: meshing.MeshOptions & { cache?: boolean }
+): meshing.EdgeMesh {
+  return meshing.meshEdges(resolve(shape), options);
 }
 
 /** Get a summary description of a shape. */
-export function describe(shape: Shapeable<AnyShape>): ShapeDescription {
-  return describeShape(resolve(shape));
+export function describe(shape: Shapeable<AnyShape>): transforms.ShapeDescription {
+  return transforms.describe(resolve(shape));
 }
 
 /** Serialize a shape to BREP format. */
 export function toBREP(shape: Shapeable<AnyShape>): string {
-  return serializeShape(resolve(shape));
+  return transforms.toBREP(resolve(shape));
 }
 
 /** Deserialize a shape from BREP format. */
 export function fromBREP(data: string): Result<AnyShape> {
-  return deserializeShape(data);
+  return casting.fromBREP(data);
 }
 
 /** Check if a shape is valid. */
 export function isValid(shape: Shapeable<AnyShape>): boolean {
-  return isShapeValid(resolve(shape));
+  return healing.isValid(resolve(shape));
 }
 
 /** Check if a shape is empty (null). */
 export function isEmpty(shape: Shapeable<AnyShape>): boolean {
-  return isShapeNull(resolve(shape));
+  return transforms.isEmpty(resolve(shape));
 }

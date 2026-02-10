@@ -8,7 +8,7 @@ import type { Shape3D } from '../core/shapeTypes.js';
 import type { Result } from '../core/result.js';
 import { ok, err } from '../core/result.js';
 import { vecScale, vecNormalize, vecIsZero } from '../core/vecOps.js';
-import { translateShape, rotateShape } from '../topology/shapeFns.js';
+import { translate, rotate } from '../topology/shapeFns.js';
 import { fuseAll, type BooleanOptions } from '../topology/booleanFns.js';
 import { validationError } from '../core/errors.js';
 
@@ -40,7 +40,7 @@ export function linearPattern(
 
   for (let i = 1; i < count; i++) {
     const offset = vecScale(dir, spacing * i);
-    copies.push(translateShape(shape, offset));
+    copies.push(translate(shape, offset));
   }
 
   return fuseAll(copies, options);
@@ -75,7 +75,7 @@ export function circularPattern(
   const copies: Shape3D[] = [shape];
 
   for (let i = 1; i < count; i++) {
-    copies.push(rotateShape(shape, angleStep * i, center, axis));
+    copies.push(rotate(shape, angleStep * i, center, axis));
   }
 
   return fuseAll(copies, options);

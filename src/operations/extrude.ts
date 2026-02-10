@@ -20,7 +20,7 @@ import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
  * @param extrusionVec - Direction and magnitude of the extrusion.
  * @returns A new {@link Solid} created by the linear extrusion.
  *
- * @see {@link extrudeFns!extrudeFace | extrudeFace} for the functional API equivalent.
+ * @see {@link extrudeFns!extrude | extrude} for the functional API equivalent.
  */
 export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid => {
   const oc = getKernel().oc;
@@ -43,7 +43,7 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid 
  * @param angle - Rotation angle in degrees (0-360). Defaults to a full revolution.
  * @returns `Result` containing the revolved 3D shape, or an error if the result is not 3D.
  *
- * @see {@link extrudeFns!revolveFace | revolveFace} for the functional API equivalent.
+ * @see {@link extrudeFns!revolve | revolve} for the functional API equivalent.
  */
 export const revolution = (
   face: Face,

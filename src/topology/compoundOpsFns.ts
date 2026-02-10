@@ -21,9 +21,9 @@ import type {
   RectangularPatternOptions,
 } from './apiTypes.js';
 import { resolve } from './apiTypes.js';
-import { getBounds, getFaces, translateShape, mirrorShape } from './shapeFns.js';
-import { fuseShape, cutShape } from './booleanFns.js';
-import { extrudeFace } from '../operations/extrudeFns.js';
+import { getBounds, getFaces, translate, mirror } from './shapeFns.js';
+import { fuse, cut } from './booleanFns.js';
+import { extrude } from '../operations/extrudeFns.js';
 import { faceFinder } from '../query/finderFns.js';
 import { normalAt, faceCenter } from './faceFns.js';
 import { makeFace as _makeFace, makeCylinder as _makeCylinder } from './shapeHelpers.js';
@@ -116,10 +116,10 @@ export function drill<T extends Shape3D>(shape: Shapeable<T>, options: DrillOpti
   const startOffset: Vec3 = options.depth === undefined ? vecScale(dir, -depth / 2) : [0, 0, 0];
   const tool =
     startOffset[0] !== 0 || startOffset[1] !== 0 || startOffset[2] !== 0
-      ? translateShape(cyl, startOffset)
+      ? translate(cyl, startOffset)
       : cyl;
 
-  return cutShape(s, tool) as Result<T>;
+  return cut(s, tool) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,10 +150,10 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
 
   // Extrude inward (opposite to face normal)
   const extDir = vecScale(vecNormalize(normal), -depth);
-  const toolResult = extrudeFace(faceResult.value, extDir);
+  const toolResult = extrude(faceResult.value, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
 
-  return cutShape(s, toolResult.value) as Result<T>;
+  return cut(s, toolResult.value) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,10 +184,10 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
 
   // Extrude outward (along face normal)
   const extDir = vecScale(vecNormalize(normal), height);
-  const toolResult = extrudeFace(faceResult.value, extDir);
+  const toolResult = extrude(faceResult.value, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
 
-  return fuseShape(s, toolResult.value) as Result<T>;
+  return fuse(s, toolResult.value) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,8 +207,8 @@ export function mirrorJoin<T extends Shape3D>(
   const normal = options?.normal ?? [1, 0, 0];
   const planeOrigin = options?.at ?? options?.origin;
 
-  const mirrored = mirrorShape(s, normal, planeOrigin);
-  return fuseShape(s, mirrored) as Result<T>;
+  const mirrored = mirror(s, normal, planeOrigin);
+  return fuse(s, mirrored) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,8 +253,8 @@ export function rectangularPattern<T extends Shape3D>(
         xNorm[1] * xSpacing * xi + yNorm[1] * ySpacing * yi,
         xNorm[2] * xSpacing * xi + yNorm[2] * ySpacing * yi,
       ];
-      const copy = translateShape(s, offset);
-      const fuseResult = fuseShape(result, copy);
+      const copy = translate(s, offset);
+      const fuseResult = fuse(result, copy);
       if (isErr(fuseResult)) return fuseResult as Result<T>;
       result = fuseResult.value;
     }

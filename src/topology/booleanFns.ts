@@ -98,19 +98,19 @@ function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Resu
  *
  * @example
  * ```ts
- * const result = fuseShape(box, cylinder);
- * if (isOk(result)) console.log(describeShape(result.value));
+ * const result = fuse(box, cylinder);
+ * if (isOk(result)) console.log(describe(result.value));
  * ```
  */
-export function fuseShape(
+export function fuse(
   a: Shape3D,
   b: Shape3D,
   { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
-  const checkA = validateShape3D(a, 'fuseShape: first operand');
+  const checkA = validateShape3D(a, 'fuse: first operand');
   if (isErr(checkA)) return checkA;
-  const checkB = validateShape3D(b, 'fuseShape: second operand');
+  const checkB = validateShape3D(b, 'fuse: second operand');
   if (isErr(checkB)) return checkB;
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -132,18 +132,18 @@ export function fuseShape(
  *
  * @example
  * ```ts
- * const result = cutShape(box, hole);
+ * const result = cut(box, hole);
  * ```
  */
-export function cutShape(
+export function cut(
   base: Shape3D,
   tool: Shape3D,
   { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
-  const checkBase = validateShape3D(base, 'cutShape: base');
+  const checkBase = validateShape3D(base, 'cut: base');
   if (isErr(checkBase)) return checkBase;
-  const checkTool = validateShape3D(tool, 'cutShape: tool');
+  const checkTool = validateShape3D(tool, 'cut: tool');
   if (isErr(checkTool)) return checkTool;
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -163,15 +163,15 @@ export function cutShape(
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
  */
-export function intersectShape(
+export function intersect(
   a: Shape3D,
   b: Shape3D,
   { simplify = false, signal }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
-  const checkA = validateShape3D(a, 'intersectShape: first operand');
+  const checkA = validateShape3D(a, 'intersect: first operand');
   if (isErr(checkA)) return checkA;
-  const checkB = validateShape3D(b, 'intersectShape: second operand');
+  const checkB = validateShape3D(b, 'intersect: second operand');
   if (isErr(checkB)) return checkB;
   const oc = getKernel().oc;
   const r = gcWithScope();
@@ -204,7 +204,7 @@ function fuseAllPairwise(
   if (count === 1) return ok(shapes[start]!);
   if (count === 2) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start and start+1 are valid indices
-    return fuseShape(shapes[start]!, shapes[start + 1]!, {
+    return fuse(shapes[start]!, shapes[start + 1]!, {
       optimisation,
       simplify: isTopLevel ? simplify : false,
       ...(signal ? { signal } : {}),
@@ -217,7 +217,7 @@ function fuseAllPairwise(
   const rightResult = fuseAllPairwise(shapes, mid, end, optimisation, simplify, false, signal);
   if (isErr(rightResult)) return rightResult;
 
-  return fuseShape(leftResult.value, rightResult.value, {
+  return fuse(leftResult.value, rightResult.value, {
     optimisation,
     simplify: isTopLevel ? simplify : false,
     ...(signal ? { signal } : {}),
@@ -379,15 +379,13 @@ function makeSectionFace(plane: Plane, size: number): OcType {
  * @param options.planeSize Half-size of the cutting plane (default 1e4)
  * @returns The section result as a shape (typically containing wires/edges)
  */
-export function sectionShape(
+export function section(
   shape: AnyShape,
   plane: PlaneInput,
   { approximation = true, planeSize = 1e4 }: { approximation?: boolean; planeSize?: number } = {}
 ): Result<AnyShape> {
   if (shape.wrapped.IsNull()) {
-    return err(
-      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'sectionShape: shape is a null shape')
-    );
+    return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'section: shape is a null shape'));
   }
 
   const resolvedPlane: Plane = typeof plane === 'string' ? resolvePlane(plane) : plane;
@@ -403,7 +401,7 @@ export function sectionShape(
     const planeName = typeof plane === 'string' ? plane : 'custom';
     return err(
       occtError('SECTION_FAILED', `Section with ${planeName} plane failed: ${raw}`, e, {
-        operation: 'sectionShape',
+        operation: 'section',
         plane: planeName,
       })
     );
@@ -420,13 +418,11 @@ export function sectionShape(
  * Split a shape with one or more tool shapes using BRepAlgoAPI_Splitter.
  * Returns all pieces from the split as a compound.
  */
-export function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
+export function split(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
   if (tools.length === 0) return ok(shape);
 
   if (shape.wrapped.IsNull()) {
-    return err(
-      validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'splitShape: shape is a null shape')
-    );
+    return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'split: shape is a null shape'));
   }
   for (let i = 0; i < tools.length; i++) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -450,7 +446,7 @@ export function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape>
     const raw = e instanceof Error ? e.message : String(e);
     return err(
       occtError('SPLIT_FAILED', `Split operation failed on ${tools.length} tool(s): ${raw}`, e, {
-        operation: 'splitShape',
+        operation: 'split',
         toolCount: tools.length,
       })
     );
@@ -465,16 +461,16 @@ export function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape>
  * Slice a shape with multiple planes, returning one cross-section per plane.
  * Each result entry corresponds to the input plane at the same index.
  */
-export function sliceShape(
+export function slice(
   shape: AnyShape,
   planes: PlaneInput[],
   options: { approximation?: boolean; planeSize?: number } = {}
 ): Result<AnyShape[]> {
   const results: AnyShape[] = [];
   for (const plane of planes) {
-    const section = sectionShape(shape, plane, options);
-    if (isErr(section)) return section as Result<AnyShape[]>;
-    results.push(section.value);
+    const result = section(shape, plane, options);
+    if (isErr(result)) return result as Result<AnyShape[]>;
+    results.push(result.value);
   }
   return ok(results);
 }

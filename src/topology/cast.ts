@@ -151,10 +151,10 @@ export function isCompSolid(shape: AnyShape): shape is CompSolid {
 /**
  * Deserialize a shape from a BREP string representation.
  *
- * @param data - BREP string produced by serializeShape().
+ * @param data - BREP string produced by toBREP().
  * @returns Ok with the deserialized shape, or Err if parsing fails.
  */
-export function deserializeShape(data: string): Result<AnyShape> {
+export function fromBREP(data: string): Result<AnyShape> {
   const oc = getKernel().oc;
   return cast(oc.BRepToolsWrapper.Read(data));
 }

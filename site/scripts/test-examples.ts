@@ -37,8 +37,8 @@ for (const ex of examples) {
           ? brepjs.castShape(result.wrapped)
           : result;
 
-    const shapeMesh = brepjs.meshShape(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
-    const edgeMesh = brepjs.meshShapeEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
+    const shapeMesh = brepjs.mesh(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
+    const edgeMesh = brepjs.meshEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.5 });
     const bufData = brepjs.toBufferGeometryData(shapeMesh);
     const lineData = brepjs.toLineGeometryData(edgeMesh);
 

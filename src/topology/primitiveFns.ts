@@ -51,7 +51,7 @@ import {
 import { getKernel } from '../kernel/index.js';
 import { localGC } from '../core/memory.js';
 import { createSolid } from '../core/shapeTypes.js';
-import { translateShape } from './shapeFns.js';
+import { translate } from './shapeFns.js';
 
 // Re-export the approximation config type
 export type { BSplineApproximationOptions } from './shapeHelpers.js';
@@ -83,7 +83,7 @@ export function box(width: number, depth: number, height: number, options?: BoxO
 
   if (options?.center) {
     const c: Vec3 = options.center === true ? [0, 0, 0] : options.center;
-    solid = translateShape(solid, [c[0] - width / 2, c[1] - depth / 2, c[2] - height / 2]);
+    solid = translate(solid, [c[0] - width / 2, c[1] - depth / 2, c[2] - height / 2]);
   }
   return solid;
 }
@@ -111,7 +111,7 @@ export function cylinder(radius: number, height: number, options?: CylinderOptio
       -axis[1] * height * 0.5,
       -axis[2] * height * 0.5,
     ];
-    solid = translateShape(solid, halfShift);
+    solid = translate(solid, halfShift);
   }
   return solid;
 }
@@ -128,7 +128,7 @@ export interface SphereOptions {
 export function sphere(radius: number, options?: SphereOptions): Solid {
   let solid = _makeSphere(radius);
   if (options?.at) {
-    solid = translateShape(solid, options.at);
+    solid = translate(solid, options.at);
   }
   return solid;
 }
@@ -165,7 +165,7 @@ export function cone(
       -axis[1] * height * 0.5,
       -axis[2] * height * 0.5,
     ];
-    solid = translateShape(solid, halfShift);
+    solid = translate(solid, halfShift);
   }
   return solid;
 }
@@ -201,7 +201,7 @@ export interface EllipsoidOptions {
 export function ellipsoid(rx: number, ry: number, rz: number, options?: EllipsoidOptions): Solid {
   let solid = _makeEllipsoid(rx, ry, rz);
   if (options?.at) {
-    solid = translateShape(solid, options.at);
+    solid = translate(solid, options.at);
   }
   return solid;
 }

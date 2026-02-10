@@ -98,8 +98,8 @@ interface ResultPipeline<T, E> {
  *
  * ```ts
  * pipeline(shape)
- *   .then(s => filletShape(s, edges, 2))
- *   .then(s => shellShape(s, [topFace], 1))
+ *   .then(s => fillet(s, edges, 2))
+ *   .then(s => shell(s, [topFace], 1))
  *   .result  // → Result<Shape3D>
  * ```
  */
@@ -341,10 +341,10 @@ declare function isCompSolid(shape: AnyShape): shape is CompSolid;
 /**
  * Deserialize a shape from a BREP string representation.
  *
- * @param data - BREP string produced by serializeShape().
+ * @param data - BREP string produced by toBREP().
  * @returns Ok with the deserialized shape, or Err if parsing fails.
  */
-declare function deserializeShape(data: string): Result<AnyShape>;
+declare function fromBREP(data: string): Result<AnyShape>;
 
 /**
  * Applies glue optimization to a boolean operation.
@@ -403,8 +403,6 @@ interface CurveLike {
 /** Create a straight edge between two 3D points. */
 declare const makeLine: (v1: Vec3, v2: Vec3) => Edge;
 
-/** Create a circular edge with the given radius, center, and normal. */
-declare const makeCircle: (radius: number, center?: Vec3, normal?: Vec3) => Edge;
 
 /**
  * Create an elliptical edge with the given radii.
@@ -414,13 +412,6 @@ declare const makeCircle: (radius: number, center?: Vec3, normal?: Vec3) => Edge
  */
 declare const makeEllipse: (majorRadius: number, minorRadius: number, center?: Vec3, normal?: Vec3, xDir?: Vec3) => Result<Edge>;
 
-/**
- * Create a helical wire with the given pitch, height, and radius.
- *
- * @param pitch - Vertical distance per full turn.
- * @param lefthand - Wind the helix in the left-hand direction.
- */
-declare const makeHelix: (pitch: number, height: number, radius: number, center?: Vec3, dir?: Vec3, lefthand?: boolean) => Wire;
 
 /**
  * Create a circular arc edge passing through three points.
@@ -504,19 +495,7 @@ declare const makeNewFaceWithinFace: (originFace: Face, wire: Wire) => Face;
  */
 declare const makeNonPlanarFace: (wire: Wire) => Result<Face>;
 
-/**
- * Creates a cylinder with the given radius and height.
- *
- * @category Solids
- */
-declare const makeCylinder: (radius: number, height: number, location?: Vec3, direction?: Vec3) => Solid;
 
-/**
- * Creates a sphere with the given radius.
- *
- * @category Solids
- */
-declare const makeSphere: (radius: number) => Solid;
 
 /**
  * Creates a cone (or frustum) with the given radii and height.
@@ -539,12 +518,6 @@ declare const makeTorus: (majorRadius: number, minorRadius: number, location?: V
  */
 declare const makeEllipsoid: (aLength: number, bLength: number, cLength: number) => Solid;
 
-/**
- * Creates a box with the given corner points.
- *
- * @category Solids
- */
-declare const makeBox: (corner1: Vec3, corner2: Vec3) => Solid;
 
 /** Create a vertex at a 3D point. */
 declare const makeVertex: (point: Vec3) => Vertex;
@@ -606,7 +579,7 @@ declare const makePolygon: (points: Vec3[]) => Result<Face>;
  * @param extrusionVec - Direction and magnitude of the extrusion.
  * @returns A new {@link Solid} created by the linear extrusion.
  *
- * @see {@link extrudeFns!extrudeFace | extrudeFace} for the functional API equivalent.
+ * @see {@link extrudeFns!extrude | extrude} for the functional API equivalent.
  */
 declare const basicFaceExtrusion: (face: Face, extrusionVec: PointInput) => Solid;
 
@@ -619,7 +592,7 @@ declare const basicFaceExtrusion: (face: Face, extrusionVec: PointInput) => Soli
  * @param angle - Rotation angle in degrees (0-360). Defaults to a full revolution.
  * @returns `Result` containing the revolved 3D shape, or an error if the result is not 3D.
  *
- * @see {@link extrudeFns!revolveFace | revolveFace} for the functional API equivalent.
+ * @see {@link extrudeFns!revolve | revolve} for the functional API equivalent.
  */
 declare const revolution: (face: Face, center?: PointInput, direction?: PointInput, angle?: number) => Result<Shape3D>;
 
@@ -1194,12 +1167,12 @@ declare const combineFinderFilters: <Type, T, R = number>(filters: {
  * OBJ's 1-based indexing. When `faceGroups` are present, each group
  * becomes a named OBJ group (`g face_<id>`).
  *
- * @param mesh - Triangulated mesh from `meshShape()`.
+ * @param mesh - Triangulated mesh from `mesh()`.
  * @returns A Wavefront OBJ string ready to save as a `.obj` file.
  *
  * @example
  * ```ts
- * const mesh = meshShape(solid);
+ * const mesh = mesh(solid);
  * const objString = exportOBJ(mesh);
  * ```
  */
@@ -1238,13 +1211,13 @@ interface GltfExportOptions {
  * The resulting string is a self-contained `.gltf` file that can be loaded
  * directly by three.js, Babylon.js, or any glTF viewer.
  *
- * @param mesh - Triangulated mesh from `meshShape()`.
+ * @param mesh - Triangulated mesh from `mesh()`.
  * @param options - Optional material assignments.
  * @returns A JSON string representing the complete glTF document.
  *
  * @example
  * ```ts
- * const mesh = meshShape(solid);
+ * const mesh = mesh(solid);
  * const gltfJson = exportGltf(mesh);
  * ```
  *
@@ -1258,13 +1231,13 @@ declare function exportGltf(mesh: ShapeMesh, options?: GltfExportOptions): strin
  * GLB packs the JSON header and binary buffer into a single file,
  * which is more efficient for network transfer than base64-encoded glTF.
  *
- * @param mesh - Triangulated mesh from `meshShape()`.
+ * @param mesh - Triangulated mesh from `mesh()`.
  * @param options - Optional material assignments.
  * @returns An ArrayBuffer containing the complete GLB binary.
  *
  * @example
  * ```ts
- * const mesh = meshShape(solid);
+ * const mesh = mesh(solid);
  * const glbBuffer = exportGlb(mesh);
  * const blob = new Blob([glbBuffer], { type: 'model/gltf-binary' });
  * ```
@@ -1355,7 +1328,7 @@ interface ThreeMFExportOptions {
  * (PrusaSlicer, Cura, etc.). The output is a store-only ZIP archive
  * containing the OPC content types, relationships, and 3D model XML.
  *
- * @param mesh - Triangulated mesh from `meshShape()`.
+ * @param mesh - Triangulated mesh from `mesh()`.
  * @param options - Model name and unit settings.
  * @returns An ArrayBuffer containing the 3MF ZIP archive.
  *
@@ -1364,7 +1337,7 @@ interface ThreeMFExportOptions {
  *
  * @example
  * ```ts
- * const mesh = meshShape(solid);
+ * const mesh = mesh(solid);
  * const buf = exportThreeMF(mesh, { unit: 'millimeter' });
  * const blob = new Blob([buf], { type: 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml' });
  * ```
@@ -2939,13 +2912,13 @@ declare function translatePlane(plane: Plane, offset: Vec3): Plane;
 declare function pivotPlane(plane: Plane, angleDeg: number, axis?: Vec3): Plane;
 
 /** Serialize a shape to BREP string format. */
-declare function serializeShape(shape: AnyShape): string;
+declare function toBREP(shape: AnyShape): string;
 
 /** Get the topology hash code of a shape. */
 declare function getHashCode(shape: AnyShape): number;
 
 /** Check if a shape is null. */
-declare function isShapeNull(shape: AnyShape): boolean;
+declare function isEmpty(shape: AnyShape): boolean;
 
 /** Check if two shapes are the same topological entity. */
 declare function isSameShape(a: AnyShape, b: AnyShape): boolean;
@@ -3002,7 +2975,7 @@ interface ShapeDescription {
 }
 
 /** Get a quick summary of a shape for debugging and inspection. */
-declare function describeShape(shape: AnyShape): ShapeDescription;
+declare function describe(shape: AnyShape): ShapeDescription;
 
 /** Get the position of a vertex as a Vec3 tuple. */
 declare function vertexPosition(vertex: Vertex): Vec3;
@@ -3295,7 +3268,7 @@ interface MeshOptions {
  * @returns A ShapeMesh containing typed arrays ready for GPU upload.
  * @see toBufferGeometryData — convert to Three.js BufferGeometry format
  */
-declare function meshShape(shape: AnyShape, { tolerance, angularTolerance, skipNormals, includeUVs, cache, signal, }?: MeshOptions & {
+declare function mesh(shape: AnyShape, { tolerance, angularTolerance, skipNormals, includeUVs, cache, signal, }?: MeshOptions & {
     skipNormals?: boolean;
     includeUVs?: boolean;
     cache?: boolean;
@@ -3309,7 +3282,7 @@ declare function meshShape(shape: AnyShape, { tolerance, angularTolerance, skipN
  * @returns An EdgeMesh containing line vertex positions and per-edge groups.
  * @see toLineGeometryData — convert to Three.js LineSegments format
  */
-declare function meshShapeEdges(shape: AnyShape, { tolerance, angularTolerance, cache }?: MeshOptions & {
+declare function meshEdges(shape: AnyShape, { tolerance, angularTolerance, cache }?: MeshOptions & {
     cache?: boolean;
 }): EdgeMesh;
 
@@ -3449,11 +3422,11 @@ interface BooleanOptions {
  *
  * @example
  * ```ts
- * const result = fuseShape(box, cylinder);
- * if (isOk(result)) console.log(describeShape(result.value));
+ * const result = fuse(box, cylinder);
+ * if (isOk(result)) console.log(describe(result.value));
  * ```
  */
-declare function fuseShape(a: Shape3D, b: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
+declare function fuse(a: Shape3D, b: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Cut a tool shape from a base shape (boolean subtraction). Returns a new shape.
@@ -3465,10 +3438,10 @@ declare function fuseShape(a: Shape3D, b: Shape3D, { optimisation, simplify, sig
  *
  * @example
  * ```ts
- * const result = cutShape(box, hole);
+ * const result = cut(box, hole);
  * ```
  */
-declare function cutShape(base: Shape3D, tool: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
+declare function cut(base: Shape3D, tool: Shape3D, { optimisation, simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Compute the intersection of two shapes (boolean common). Returns a new shape.
@@ -3478,7 +3451,7 @@ declare function cutShape(base: Shape3D, tool: Shape3D, { optimisation, simplify
  * @param options - Boolean operation options.
  * @returns Ok with the intersection, or Err if the result is not 3D.
  */
-declare function intersectShape(a: Shape3D, b: Shape3D, { simplify, signal }?: BooleanOptions): Result<Shape3D>;
+declare function intersect(a: Shape3D, b: Shape3D, { simplify, signal }?: BooleanOptions): Result<Shape3D>;
 
 /**
  * Fuse all shapes in a single boolean operation.
@@ -3520,7 +3493,7 @@ declare function cutAll(base: Shape3D, tools: Shape3D[], { optimisation, simplif
  * @param options.planeSize Half-size of the cutting plane (default 1e4)
  * @returns The section result as a shape (typically containing wires/edges)
  */
-declare function sectionShape(shape: AnyShape, plane: PlaneInput, { approximation, planeSize }?: {
+declare function section(shape: AnyShape, plane: PlaneInput, { approximation, planeSize }?: {
     approximation?: boolean;
     planeSize?: number;
 }): Result<AnyShape>;
@@ -3529,13 +3502,13 @@ declare function sectionShape(shape: AnyShape, plane: PlaneInput, { approximatio
  * Split a shape with one or more tool shapes using BRepAlgoAPI_Splitter.
  * Returns all pieces from the split as a compound.
  */
-declare function splitShape(shape: AnyShape, tools: AnyShape[]): Result<AnyShape>;
+declare function split(shape: AnyShape, tools: AnyShape[]): Result<AnyShape>;
 
 /**
  * Slice a shape with multiple planes, returning one cross-section per plane.
  * Each result entry corresponds to the input plane at the same index.
  */
-declare function sliceShape(shape: AnyShape, planes: PlaneInput[], options?: {
+declare function slice(shape: AnyShape, planes: PlaneInput[], options?: {
     approximation?: boolean;
     planeSize?: number;
 }): Result<AnyShape[]>;
@@ -3547,7 +3520,7 @@ declare function sliceShape(shape: AnyShape, planes: PlaneInput[], options?: {
  * by offsetting it by the given thickness. Positive thickness offsets
  * along the surface normal; negative thickness offsets against it.
  */
-declare function thickenSurface(shape: Face | Shell, thickness: number): Result<Solid>;
+declare function thicken(shape: Face | Shell, thickness: number): Result<Solid>;
 
 /**
  * Apply a fillet (rounded edge) to selected edges of a 3D shape.
@@ -3556,7 +3529,7 @@ declare function thickenSurface(shape: Face | Shell, thickness: number): Result<
  * @param edges - Edges to fillet. Pass `undefined` to fillet all edges.
  * @param radius - Constant radius, variable radius `[r1, r2]`, or per-edge callback.
  */
-declare function filletShape(shape: Shape3D, edges: ReadonlyArray<Edge> | undefined, radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<Shape3D>;
+declare function fillet(shape: Shape3D, edges: ReadonlyArray<Edge> | undefined, radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<Shape3D>;
 
 /**
  * Apply a chamfer (beveled edge) to selected edges of a 3D shape.
@@ -3565,7 +3538,7 @@ declare function filletShape(shape: Shape3D, edges: ReadonlyArray<Edge> | undefi
  * @param edges - Edges to chamfer. Pass `undefined` to chamfer all edges.
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
  */
-declare function chamferShape(shape: Shape3D, edges: ReadonlyArray<Edge> | undefined, distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<Shape3D>;
+declare function chamfer(shape: Shape3D, edges: ReadonlyArray<Edge> | undefined, distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)): Result<Shape3D>;
 
 /**
  * Create a hollow shell by removing faces and offsetting remaining walls.
@@ -3575,7 +3548,7 @@ declare function chamferShape(shape: Shape3D, edges: ReadonlyArray<Edge> | undef
  * @param thickness - Wall thickness.
  * @param tolerance - Shell operation tolerance (default 1e-3).
  */
-declare function shellShape(shape: Shape3D, faces: ReadonlyArray<Face>, thickness: number, tolerance?: number): Result<Shape3D>;
+declare function shell(shape: Shape3D, faces: ReadonlyArray<Face>, thickness: number, tolerance?: number): Result<Shape3D>;
 
 /**
  * Offset all faces of a shape by a given distance.
@@ -3584,12 +3557,12 @@ declare function shellShape(shape: Shape3D, faces: ReadonlyArray<Face>, thicknes
  * @param distance - Offset distance (positive = outward, negative = inward).
  * @param tolerance - Offset tolerance (default 1e-6).
  */
-declare function offsetShape(shape: Shape3D, distance: number, tolerance?: number): Result<Shape3D>;
+declare function offset(shape: Shape3D, distance: number, tolerance?: number): Result<Shape3D>;
 
 /**
  * Check if a shape is valid according to OCCT geometry and topology checks.
  */
-declare function isShapeValid(shape: AnyShape): boolean;
+declare function isValid(shape: AnyShape): boolean;
 
 /**
  * Attempt to heal/fix a solid shape.
@@ -3696,12 +3669,12 @@ interface ExtrusionProfile {
  *
  * @example
  * ```ts
- * const box = extrudeFace(squareFace, [0, 0, 10]);
+ * const box = extrude(squareFace, [0, 0, 10]);
  * ```
  *
  * @see {@link extrude!basicFaceExtrusion | basicFaceExtrusion} for the OOP API equivalent.
  */
-declare function extrudeFace(face: Face, extrusionVec: Vec3): Solid;
+declare function extrude(face: Face, extrusionVec: Vec3): Solid;
 
 /**
  * Revolve a face around an axis to create a solid of revolution.
@@ -3714,7 +3687,7 @@ declare function extrudeFace(face: Face, extrusionVec: Vec3): Solid;
  *
  * @see {@link extrude!revolution | revolution} for the OOP API equivalent.
  */
-declare function revolveFace(face: Face, center?: Vec3, direction?: Vec3, angle?: number): Result<Shape3D>;
+declare function revolve(face: Face, center?: Vec3, direction?: Vec3, angle?: number): Result<Shape3D>;
 
 /**
  * Sweep a wire profile along a spine wire to create a 3D shape.
@@ -3820,12 +3793,12 @@ interface LoftConfig {
  *
  * @example
  * ```ts
- * const result = loftWires([bottomWire, topWire], { ruled: false });
+ * const result = loft([bottomWire, topWire], { ruled: false });
  * ```
  *
  * @see {@link loft!loft | loft} for the OOP API equivalent.
  */
-declare function loftWires(wires: Wire[], { ruled, startPoint, endPoint }?: LoftConfig, returnShell?: boolean): Result<Shape3D>;
+declare function loft(wires: Wire[], { ruled, startPoint, endPoint }?: LoftConfig, returnShell?: boolean): Result<Shape3D>;
 
 /** Supported length units for STEP export. */
 type SupportedUnit = 'M' | 'CM' | 'MM' | 'INCH' | 'FT' | 'm' | 'mm' | 'cm' | 'inch' | 'ft';
@@ -5649,22 +5622,22 @@ declare class CompoundSketch implements SketchInterface {
 }
 
 /** Clone a shape (deep copy via TopoDS downcast). */
-declare function cloneShape<T extends AnyShape>(shape: T): T;
+declare function clone<T extends AnyShape>(shape: T): T;
 
 /** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
-declare function simplifyShape<T extends AnyShape>(shape: T): T;
+declare function simplify<T extends AnyShape>(shape: T): T;
 
 /** Translate a shape by a vector. Returns a new shape. */
-declare function translateShape<T extends AnyShape>(shape: T, v: Vec3): T;
+declare function translate<T extends AnyShape>(shape: T, v: Vec3): T;
 
 /** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
-declare function rotateShape<T extends AnyShape>(shape: T, angle: number, position?: Vec3, direction?: Vec3): T;
+declare function rotate<T extends AnyShape>(shape: T, angle: number, position?: Vec3, direction?: Vec3): T;
 
 /** Mirror a shape through a plane defined by origin and normal. Returns a new shape. */
-declare function mirrorShape<T extends AnyShape>(shape: T, planeNormal?: Vec3, planeOrigin?: Vec3): T;
+declare function mirror<T extends AnyShape>(shape: T, planeNormal?: Vec3, planeOrigin?: Vec3): T;
 
 /** Scale a shape uniformly. Returns a new shape. */
-declare function scaleShape<T extends AnyShape>(shape: T, factor: number, center?: Vec3): T;
+declare function scale<T extends AnyShape>(shape: T, factor: number, center?: Vec3): T;
 
 /**
  * Fluent builder interface for chaining immutable shape transformations.
@@ -5712,7 +5685,7 @@ declare function pipe<T extends AnyShape>(shape: T): ShapePipe<T>;
  * Supports solids, faces, and wires. For other shape types, returns the
  * input unchanged.
  */
-declare function healShape<T extends AnyShape>(shape: T): Result<T>;
+declare function heal<T extends AnyShape>(shape: T): Result<T>;
 
 interface ShapeFinder<T extends AnyShape> {
     /** Add a custom predicate filter. Returns new finder. */
