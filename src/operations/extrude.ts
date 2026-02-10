@@ -75,9 +75,6 @@ export interface GenericSweepOptions extends Omit<SweepOptions, 'auxiliarySpine'
   auxiliarySpine?: Wire | Edge;
 }
 
-/** @deprecated Use GenericSweepOptions instead. Will be removed in v8.0.0. */
-export type GenericSweepConfig = GenericSweepOptions;
-
 function genericSweep(
   wire: Wire,
   spine: Wire,

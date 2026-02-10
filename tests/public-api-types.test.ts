@@ -68,7 +68,7 @@ import type {
   // Core types
   Vec3,
   Vec2,
-  PointInput,
+  _PointInput,
   DirectionInput,
 
   // Plane types
@@ -113,7 +113,7 @@ import type {
 
   // Projection
   Camera,
-  ProjectionPlane,
+  _ProjectionPlane,
 
   // Assembly
   AssemblyNode,
@@ -125,7 +125,7 @@ import type {
   HistoryOperationRegistry,
 
   // Legacy
-  Point,
+  _Point,
   Point2D,
 } from '../src/index.js';
 
@@ -174,11 +174,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'axis2d',
   'basicFaceExtrusion',
   'bezier',
-  'blueprintBoundingBox',
-  'blueprintIsInside',
-  'blueprintOrientation',
   'blueprintToDXF',
-  'blueprintToSVGPathD',
   'boss',
   'box',
   'bsplineApprox',
@@ -250,7 +246,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'cut',
   'cut2D',
   'cutAll',
-  'cutBlueprint2D',
   'cutBlueprints',
   'cylinder',
   'dequeueTask',
@@ -316,7 +311,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'fuse',
   'fuse2D',
   'fuseAll',
-  'fuseBlueprint2D',
   'fuseBlueprints',
   'gcWithObject',
   'gcWithScope',
@@ -352,7 +346,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'interpolateCurve',
   'intersect',
   'intersect2D',
-  'intersectBlueprint2D',
   'intersectBlueprints',
   'ioError',
   'isChamferRadius',
@@ -414,7 +407,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'meshEdges',
   'mirror',
   'mirror2D',
-  'mirrorBlueprint',
   'mirrorDrawing',
   'mirrorJoin',
   'modifyStep',
@@ -455,12 +447,10 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'revolve',
   'rotate',
   'rotate2D',
-  'rotateBlueprint',
   'rotateDrawing',
   'roundedRectangleBlueprint',
   'scale',
   'scale2D',
-  'scaleBlueprint',
   'scaleDrawing',
   'section',
   'sewShells',
@@ -471,8 +461,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'simplify',
   'sketch2DOnFace',
   'sketch2DOnPlane',
-  'sketchBlueprintOnFace',
-  'sketchBlueprintOnPlane',
   'sketchCircle',
   'sketchEllipse',
   'sketchExtrude',
@@ -496,7 +484,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'stepCount',
   'stepsFrom',
   'stretch2D',
-  'stretchBlueprint',
   'subFace',
   'supportExtrude',
   'sweep',
@@ -515,7 +502,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'torus',
   'translate',
   'translate2D',
-  'translateBlueprint',
   'translateDrawing',
   'translatePlane',
   'tryCatch',
@@ -728,27 +714,21 @@ describe('Type structures — runtime field verification', () => {
     it('ok() creates Ok variant with .ok=true and .value', () => {
       const r: Result<number> = ok(42);
       expect(r.ok).toBe(true);
-      if (r.ok) {
-        expect(r.value).toBe(42);
-      }
+      expect(r.value).toBe(42);
     });
 
     it('err() creates Err variant with .ok=false and .error', () => {
       const e = validationError('TEST', 'test error');
       const r: Result<number> = err(e);
       expect(r.ok).toBe(false);
-      if (!r.ok) {
-        expect(r.error).toHaveProperty('kind', 'VALIDATION');
-        expect(r.error).toHaveProperty('code', 'TEST');
-        expect(r.error).toHaveProperty('message', 'test error');
-      }
+      expect(r.error).toHaveProperty('kind', 'VALIDATION');
+      expect(r.error).toHaveProperty('code', 'TEST');
+      expect(r.error).toHaveProperty('message', 'test error');
     });
 
     it('OK is Ok<undefined>', () => {
       expect(OK.ok).toBe(true);
-      if (OK.ok) {
-        expect(OK.value).toBeUndefined();
-      }
+      expect(OK.value).toBeUndefined();
     });
 
     it('isOk / isErr guard correctly', () => {

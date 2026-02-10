@@ -12,8 +12,8 @@ import { resolve } from '../topology/apiTypes.js';
 import * as extruding from './extrudeFns.js';
 import * as lofting from './loftFns.js';
 
-export type { LoftOptions, LoftConfig } from './loftFns.js';
-export type { SweepOptions, SweepConfig } from './extrudeFns.js';
+export type { LoftOptions } from './loftFns.js';
+export type { SweepOptions } from './extrudeFns.js';
 
 // ---------------------------------------------------------------------------
 // extrude — accepts number shorthand for Z-direction
@@ -40,8 +40,6 @@ export function extrude(face: Shapeable<Face>, height: number | Vec3): Result<So
 export interface RevolveOptions {
   /** Rotation axis. Default: [0, 0, 1] (Z). */
   axis?: Vec3;
-  /** @deprecated Use `at` instead. Will be removed in v8.0.0. */
-  around?: Vec3;
   /** Pivot point. Default: [0, 0, 0]. */
   at?: Vec3;
   /** Rotation angle in degrees. Default: 360 (full revolution). */
@@ -52,7 +50,7 @@ export interface RevolveOptions {
  * Revolve a face around an axis to create a solid of revolution.
  */
 export function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result<Shape3D> {
-  const pivotPoint = options?.at ?? options?.around ?? [0, 0, 0];
+  const pivotPoint = options?.at ?? [0, 0, 0];
   return extruding.revolve(
     resolve(face),
     pivotPoint,

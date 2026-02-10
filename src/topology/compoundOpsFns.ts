@@ -205,7 +205,7 @@ export function mirrorJoin<T extends Shape3D>(
 ): Result<T> {
   const s = resolve(shape);
   const normal = options?.normal ?? [1, 0, 0];
-  const planeOrigin = options?.at ?? options?.origin;
+  const planeOrigin = options?.at;
 
   const mirrored = mirror(s, normal, planeOrigin);
   return fuse(s, mirrored) as Result<T>;

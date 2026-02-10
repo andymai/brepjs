@@ -11,14 +11,10 @@
 
 import Sketcher from './sketching/Sketcher.js';
 import FaceSketcher, { BaseSketcher2d, BlueprintSketcher } from './sketching/Sketcher2d.js';
-import {
-  type GenericSketcher,
-  type SplineOptions,
-  type SplineConfig,
-} from './sketching/sketcherlib.js';
+import { type GenericSketcher, type SplineOptions } from './sketching/sketcherlib.js';
 
 export { Sketcher, FaceSketcher, BaseSketcher2d, BlueprintSketcher };
-export type { GenericSketcher, SplineOptions, SplineConfig };
+export type { GenericSketcher, SplineOptions };
 export type { SketchInterface } from './sketching/sketchLib.js';
 
 export { default as Sketch } from './sketching/Sketch.js';

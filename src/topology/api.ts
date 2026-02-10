@@ -32,8 +32,6 @@ export function translate<T extends AnyShape>(shape: Shapeable<T>, v: Vec3): T {
 
 /** Options for {@link rotate}. */
 export interface RotateOptions {
-  /** @deprecated Use `at` instead. Will be removed in v8.0.0. */
-  around?: Vec3;
   /** Pivot point. Default: [0, 0, 0]. */
   at?: Vec3;
   /** Rotation axis. Default: [0, 0, 1] (Z). */
@@ -46,7 +44,7 @@ export function rotate<T extends AnyShape>(
   angle: number,
   options?: RotateOptions
 ): T {
-  const pivotPoint = options?.at ?? options?.around;
+  const pivotPoint = options?.at;
   return transforms.rotate(resolve(shape), angle, pivotPoint, options?.axis);
 }
 
@@ -54,15 +52,13 @@ export function rotate<T extends AnyShape>(
 export interface MirrorOptions {
   /** Plane normal. Default: [1, 0, 0]. */
   normal?: Vec3;
-  /** @deprecated Use `at` instead. Will be removed in v8.0.0. */
-  origin?: Vec3;
   /** Plane origin. Default: [0, 0, 0]. */
   at?: Vec3;
 }
 
 /** Mirror a shape through a plane. Returns a new shape. */
 export function mirror<T extends AnyShape>(shape: Shapeable<T>, options?: MirrorOptions): T {
-  const planeOrigin = options?.at ?? options?.origin;
+  const planeOrigin = options?.at;
   return transforms.mirror(resolve(shape), options?.normal ?? [1, 0, 0], planeOrigin);
 }
 
