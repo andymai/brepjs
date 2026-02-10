@@ -33,23 +33,22 @@ initFromOC(oc);
 
 // Now that WASM is ready, import shape-building APIs
 const {
-  makeBox,
-  makeCylinder,
-  fuseShape,
-  cutShape,
+  box,
+  cylinder,
+  sphere,
+  rotate,
+  fuse,
+  cut,
+  shell,
+  intersect,
+  fuseAll,
   cutAll,
-  shellShape,
-  filletShape,
-  translateShape,
-  rotateShape,
-  drawProjection,
-  drawRectangle,
-  drawCircle,
-  drawingCut,
+  sketchRoundedRectangle,
+  sketchCircle,
   faceFinder,
-  edgeFinder,
+  shape,
+  drawProjection,
   unwrap,
-  isOk,
 } = await import('brepjs');
 
 // ── SVG styling ─────────────────────────────────────────────────────────
@@ -90,118 +89,117 @@ function flatPaths(raw: string[] | string[][]): string[] {
 
 // ── Shape builders ──────────────────────────────────────────────────────
 
-function buildHelloWorld(): string {
-  const box = makeBox([0, 0, 0], [30, 20, 10]);
-  const proj = drawProjection(box, 'front');
-  const paths = flatPaths(proj.visible.toSVGPaths());
-  const viewBox = proj.visible.toSVGViewBox(3);
-  return styledSVG(viewBox, paths);
-}
+function buildGameDie(): string {
+  const size = 20, dotR = 2, s = 5;
+  const half = size / 2;
 
-function buildBooleanOps(): string {
-  const box = makeBox([0, 0, 0], [30, 20, 15]);
-  const cylinder = translateShape(makeCylinder(6, 20), [15, 10, -2]);
-  const withHole = unwrap(cutShape(box, cylinder));
-  const proj = drawProjection(withHole, 'top');
-  const paths = flatPaths(proj.visible.toSVGPaths());
-  const viewBox = proj.visible.toSVGViewBox(3);
-  return styledSVG(viewBox, paths);
-}
+  let die = shape(box(size, size, size, { centered: true })).fillet(3).val;
 
-function buildBracket(): string {
-  const basePlate = makeBox([0, 0, 0], [100, 60, 10]);
-  const holeRadius = 4;
-  const holeHeight = 15;
-  const holeInset = 15;
-
-  const holes = [
-    translateShape(makeCylinder(holeRadius, holeHeight), [holeInset, holeInset, -2]),
-    translateShape(makeCylinder(holeRadius, holeHeight), [100 - holeInset, holeInset, -2]),
-    translateShape(makeCylinder(holeRadius, holeHeight), [holeInset, 60 - holeInset, -2]),
-    translateShape(makeCylinder(holeRadius, holeHeight), [100 - holeInset, 60 - holeInset, -2]),
-  ];
-
-  const slotLength = 60;
-  const slotWidth = 20;
-  const slotX = (100 - slotLength) / 2;
-  const slotY = (60 - slotWidth) / 2;
-  const slot = makeBox([slotX, slotY, -2], [slotX + slotLength, slotY + slotWidth, 15]);
-
-  const bracket = unwrap(cutAll(basePlate, [...holes, slot]));
-  const proj = drawProjection(bracket, 'top');
-  const paths = flatPaths(proj.visible.toSVGPaths());
-  const viewBox = proj.visible.toSVGViewBox(3);
-  return styledSVG(viewBox, paths);
-}
-
-function build2dProfile(): string {
-  const outer = drawRectangle(50, 30);
-  const hole1 = drawCircle(4).translate([12, 15]);
-  const hole2 = drawCircle(4).translate([38, 15]);
-  const profile = drawingCut(drawingCut(outer, hole1), hole2);
-  const paths = flatPaths(profile.toSVGPaths());
-  const viewBox = profile.toSVGViewBox(3);
-  return styledSVG(viewBox, paths);
-}
-
-function buildPipeFitting(): string {
-  const tubeRadius = 15;
-  const length = 80;
-  const flangeRadius = 25;
-  const flangeThickness = 5;
-  const wallThickness = 2;
-  const boltCount = 4;
-  const boltRadius = 2.5;
-  const boltCircleRadius = 20;
-
-  const tube = makeCylinder(tubeRadius, length);
-  const bottomFlange = makeCylinder(flangeRadius, flangeThickness);
-  const topFlange = makeCylinder(flangeRadius, flangeThickness, [0, 0, length - flangeThickness]);
-  const body = unwrap(fuseShape(unwrap(fuseShape(tube, bottomFlange)), topFlange));
-
-  const topFaces = faceFinder().parallelTo('Z').atDistance(length, [0, 0, 0]).findAll(body);
-  const hollowed = unwrap(shellShape(body, topFaces, wallThickness));
-
-  const transitionEdges = edgeFinder()
-    .ofCurveType('CIRCLE')
-    .ofLength(2 * Math.PI * tubeRadius, 0.1)
-    .findAll(hollowed);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Shape3D type
-  let result: any = hollowed;
-  if (transitionEdges.length > 0) {
-    const filletResult = filletShape(hollowed, transitionEdges, 2);
-    if (isOk(filletResult)) {
-      result = filletResult.value;
+  const dots = [];
+  dots.push(sphere(dotR, { at: [0, 0, half] }));
+  for (const x of [-s, s]) {
+    for (const y of [-s, 0, s]) {
+      dots.push(sphere(dotR, { at: [x, y, -half] }));
     }
   }
-
-  for (let i = 0; i < boltCount; i++) {
-    const angle = (360 / boltCount) * i;
-    const hole = rotateShape(
-      makeCylinder(boltRadius, flangeThickness + 4, [boltCircleRadius, 0, -2]),
-      angle,
-      [0, 0, 0],
-      [0, 0, 1]
-    );
-    result = unwrap(cutShape(result, hole));
+  dots.push(sphere(dotR, { at: [half, -s, s] }));
+  dots.push(sphere(dotR, { at: [half, s, -s] }));
+  dots.push(sphere(dotR, { at: [-half, 0, 0] }));
+  for (const [y, z] of [[-s, -s], [s, -s], [-s, s], [s, s]] as [number, number][]) {
+    dots.push(sphere(dotR, { at: [-half, y, z] }));
+  }
+  for (const [x, z] of [[-s, -s], [0, 0], [s, s]] as [number, number][]) {
+    dots.push(sphere(dotR, { at: [x, half, z] }));
+  }
+  for (const [x, z] of [[-s, -s], [s, -s], [-s, s], [s, s]] as [number, number][]) {
+    dots.push(sphere(dotR, { at: [x, -half, z] }));
   }
 
-  for (let i = 0; i < boltCount; i++) {
-    const angle = (360 / boltCount) * i;
-    const hole = rotateShape(
-      makeCylinder(boltRadius, flangeThickness + 4, [boltCircleRadius, 0, length - flangeThickness - 2]),
-      angle,
-      [0, 0, 0],
-      [0, 0, 1]
-    );
-    result = unwrap(cutShape(result, hole));
-  }
-
+  const result = unwrap(cutAll(die, dots));
   const proj = drawProjection(result, 'front');
   const paths = flatPaths(proj.visible.toSVGPaths());
-  const viewBox = proj.visible.toSVGViewBox(3);
-  return styledSVG(viewBox, paths);
+  return styledSVG(proj.visible.toSVGViewBox(3), paths);
+}
+
+function buildSpurGear(): string {
+  const teeth = 16, pitchR = 25, addendum = 4;
+  const toothW = 4.5, thick = 10, boreR = 8;
+
+  let gear = cylinder(pitchR, thick);
+  const toothShapes = [];
+  for (let i = 0; i < teeth; i++) {
+    toothShapes.push(rotate(
+      box(addendum * 2, toothW, thick, { at: [pitchR + addendum, 0, thick / 2] }),
+      (360 / teeth) * i
+    ));
+  }
+  gear = unwrap(fuseAll([gear, ...toothShapes]));
+  gear = unwrap(cut(gear, cylinder(boreR, thick + 4, { at: [0, 0, -2] })));
+
+  const proj = drawProjection(gear, 'top');
+  const paths = flatPaths(proj.visible.toSVGPaths());
+  return styledSVG(proj.visible.toSVGViewBox(3), paths);
+}
+
+function buildPenCup(): string {
+  let cup = sketchRoundedRectangle(50, 35, 8).extrude(80);
+  const topFaces = faceFinder().parallelTo('Z').atDistance(80, [0, 0, 0]).findAll(cup);
+  cup = unwrap(shell(cup, topFaces, 2));
+  const result = shape(cup).fillet(0.8).val;
+  const proj = drawProjection(result, 'front');
+  const paths = flatPaths(proj.visible.toSVGPaths());
+  return styledSVG(proj.visible.toSVGViewBox(3), paths);
+}
+
+function buildLoftedVase(): string {
+  const profile: [number, number][] = [[0, 25], [30, 38], [55, 30], [80, 22], [90, 28]];
+  const base = sketchCircle(profile[0][1], { plane: 'XY', origin: [0, 0, profile[0][0]] });
+  const sections = profile.slice(1).map(([z, r]) => sketchCircle(r, { plane: 'XY', origin: [0, 0, z] }));
+  let vase = base.loftWith(sections);
+  const topFaces = faceFinder().parallelTo('Z').atDistance(90, [0, 0, 0]).findAll(vase);
+  vase = unwrap(shell(vase, topFaces, 2));
+  const proj = drawProjection(vase, 'front');
+  const paths = flatPaths(proj.visible.toSVGPaths());
+  return styledSVG(proj.visible.toSVGViewBox(3), paths);
+}
+
+function buildCompartmentTray(): string {
+  const w = 120, d = 80, h = 30, t = 2.5, r = 6;
+  const cols = 3, rows = 2;
+
+  let tray = sketchRoundedRectangle(w, d, r).extrude(h);
+  const topFaces = faceFinder().parallelTo('Z').atDistance(h, [0, 0, 0]).findAll(tray);
+  tray = unwrap(shell(tray, topFaces, t));
+
+  const innerW = w - t * 2, innerD = d - t * 2;
+  const innerR = Math.max(r - t, 0.5);
+  const divH = h - t, divZ = t + divH / 2;
+  const dividers = [];
+  for (let i = 1; i < cols; i++) {
+    dividers.push(box(t, innerD, divH, { at: [-innerW / 2 + (innerW / cols) * i, 0, divZ] }));
+  }
+  for (let j = 1; j < rows; j++) {
+    dividers.push(box(innerW, t, divH, { at: [0, -innerD / 2 + (innerD / rows) * j, divZ] }));
+  }
+
+  if (dividers.length > 0) {
+    const innerBound = sketchRoundedRectangle(innerW, innerD, innerR).extrude(h);
+    let clipped = unwrap(fuseAll(dividers));
+    clipped = unwrap(intersect(clipped, innerBound));
+    tray = unwrap(fuse(tray, clipped));
+  }
+
+  const holes = [];
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      holes.push(cylinder(1.5, t + 2, { at: [-innerW / 2 + innerW / (2 * cols) + i * (innerW / cols), -innerD / 2 + innerD / (2 * rows) + j * (innerD / rows), -1] }));
+    }
+  }
+  tray = unwrap(cutAll(tray, holes));
+
+  const proj = drawProjection(tray, 'top');
+  const paths = flatPaths(proj.visible.toSVGPaths());
+  return styledSVG(proj.visible.toSVGViewBox(3), paths);
 }
 
 // ── Main ────────────────────────────────────────────────────────────────
@@ -209,11 +207,11 @@ function buildPipeFitting(): string {
 mkdirSync(OUT_DIR, { recursive: true });
 
 const previews: [string, () => string][] = [
-  ['hello-world.svg', buildHelloWorld],
-  ['boolean-ops.svg', buildBooleanOps],
-  ['bracket.svg', buildBracket],
-  ['2d-profile.svg', build2dProfile],
-  ['pipe-fitting.svg', buildPipeFitting],
+  ['game-die.svg', buildGameDie],
+  ['spur-gear.svg', buildSpurGear],
+  ['pen-cup.svg', buildPenCup],
+  ['lofted-vase.svg', buildLoftedVase],
+  ['compartment-tray.svg', buildCompartmentTray],
 ];
 
 for (const [filename, builder] of previews) {
