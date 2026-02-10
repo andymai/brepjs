@@ -4,13 +4,13 @@ import { useInView } from '../../hooks/useInView';
 import { highlightLine, lineHasBrepjsFn } from '../../lib/syntaxHighlight';
 
 const codeSnippet = `import opencascade from 'brepjs-opencascade';
-import { initFromOC, makeBox, filletShape, unwrap } from 'brepjs';
+import { initFromOC, box, fillet, unwrap } from 'brepjs';
 
 const oc = await opencascade();
 initFromOC(oc);
 
-const box = makeBox([0, 0, 0], [10, 10, 10]);
-const filleted = unwrap(filletShape(box, undefined, 1));`;
+const b = box(10, 10, 10);
+const filleted = unwrap(fillet(b, undefined, 1));`;
 
 export default function InstallSection() {
   const [copied, setCopied] = useState(false);

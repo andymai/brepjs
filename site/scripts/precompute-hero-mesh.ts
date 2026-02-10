@@ -20,8 +20,8 @@ const {
   clone,
   rotate,
   translate,
-  meshShape,
-  meshShapeEdges,
+  mesh,
+  meshEdges,
   toBufferGeometryData,
   toLineGeometryData,
   unwrap,
@@ -106,8 +106,8 @@ const end2 = rotate(
 staircase = shape(staircase).fuse(end2).val;
 
 // Mesh it
-const shapeMesh = meshShape(staircase, { tolerance: 2, angularTolerance: 1.5 });
-const edgeMesh = meshShapeEdges(staircase, { tolerance: 2, angularTolerance: 1.5 });
+const shapeMesh = mesh(staircase, { tolerance: 2, angularTolerance: 1.5 });
+const edgeMesh = meshEdges(staircase, { tolerance: 2, angularTolerance: 1.5 });
 
 const bufferData = toBufferGeometryData(shapeMesh);
 const lineData = toLineGeometryData(edgeMesh);
