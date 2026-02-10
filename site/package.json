@@ -16,7 +16,7 @@
     "@monaco-editor/react": "4.7.0",
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.5.0",
-    "brepjs": "^4.29.0",
+    "brepjs": "^7.4.2",
     "brepjs-opencascade": "*",
     "lz-string": "1.5.0",
     "monaco-editor": "0.55.1",
