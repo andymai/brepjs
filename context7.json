@@ -5,16 +5,29 @@
   "projectTitle": "brepjs",
   "description": "Web CAD library built on OpenCascade — create, combine, and export 3D shapes with a functional TypeScript API and WASM-powered B-Rep kernel.",
   "folders": [
+    ".",
     "docs",
-    "llms.txt"
+    "examples"
   ],
-  "excludeFolders": [],
-  "excludeFiles": [],
+  "excludeFolders": [
+    "src",
+    "tests",
+    "scripts",
+    "node_modules",
+    "dist",
+    ".github"
+  ],
+  "excludeFiles": [
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE"
+  ],
   "rules": [
-    "Always initialize the WASM kernel before using any brepjs function: `const oc = await opencascade(); initFromOC(oc);`",
-    "Boolean operations (fuseShape, cutShape, intersectShape) return Result<Shape3D> — use unwrap() for scripts or isOk()/match() for production error handling",
-    "Use sub-path imports for focused autocomplete: brepjs/topology, brepjs/operations, brepjs/sketching, brepjs/2d, brepjs/query, brepjs/measurement, brepjs/io",
-    "WASM objects are not garbage collected — use `using` keyword (TS 5.9+) or gcWithScope()/localGC() for memory management",
+    "Initialize the WASM kernel before using any brepjs function: use `import { box } from 'brepjs/quick'` for auto-init, or `const oc = await opencascade(); initFromOC(oc);` for manual control",
+    "All shape operations are immutable — they return new shapes and never modify the original. `translate(myBox, [10, 0, 0])` returns a new shape; `myBox` is unchanged",
+    "Boolean operations (fuse, cut, intersect) return Result<Shape3D> — use unwrap() for scripts or isOk()/match() for production error handling",
+    "WASM objects require explicit cleanup — use `using` keyword (TS 5.9+), gcWithScope(), localGC(), or withScope() for memory management",
+    "initFromOC(oc) accepts any OpenCascade WASM instance, enabling custom or alternative WASM builds",
     "Peer dependency brepjs-opencascade must be installed separately: `npm install brepjs brepjs-opencascade`"
   ]
 }
