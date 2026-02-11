@@ -76,7 +76,7 @@ import {
 import { getBounds, getEdges, getFaces, getWires, getVertices } from './shapeFns.js';
 import type { PlaneInput } from '../core/planeTypes.js';
 import type { ShapeMesh, EdgeMesh, MeshOptions } from './meshFns.js';
-import { cutAll as cutAllFn } from './booleanFns.js';
+import { cutAll as cutAllFn, fuseAll as fuseAllFn } from './booleanFns.js';
 import { extrude, revolve } from '../operations/api.js';
 import {
   measureVolume,
@@ -209,6 +209,7 @@ export interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
   intersect(tool: Shapeable<Shape3D>, options?: BooleanOptions): Wrapped3D<T>;
 
   // Batch booleans
+  fuseAll(tools: Shapeable<Shape3D>[], options?: BooleanOptions): Wrapped3D<T>;
   cutAll(tools: Shape3D[], options?: BooleanOptions): Wrapped3D<T>;
 
   // Boolean variants
@@ -344,6 +345,8 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
       wrap3D(unwrapOrThrow(intersect(val, resolve(tool), opts)) as unknown as T),
 
     // Batch booleans
+    fuseAll: (tools, opts) =>
+      wrap3D(unwrapOrThrow(fuseAllFn([val, ...tools.map(resolve)], opts)) as unknown as T),
     cutAll: (tools, opts) => wrap3D(unwrapOrThrow(cutAllFn(val, tools, opts)) as unknown as T),
 
     // Boolean variants

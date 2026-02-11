@@ -71,6 +71,7 @@ import {
   revolve as _revolve,
   loft as _loft,
   sweep as _sweep,
+  simplePipe as _simplePipe,
 } from './sweepOps.js';
 import {
   healSolid as _healSolid,
@@ -201,6 +202,10 @@ export class OCCTAdapter implements KernelAdapter {
 
   sweep(wire: OcShape, spine: OcShape, options: { transitionMode?: number } = {}): OcShape {
     return _sweep(this.oc, wire, spine, options);
+  }
+
+  simplePipe(profile: OcShape, spine: OcShape): OcShape {
+    return _simplePipe(this.oc, profile, spine);
   }
 
   // --- Modification (delegates to modifierOps.ts) ---

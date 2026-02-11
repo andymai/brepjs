@@ -195,6 +195,17 @@ export function sweep(
   config: SweepOptions = {},
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
+  // Fast path: simple pipe mode (BRepOffsetAPI_MakePipe)
+  if (config.mode === 'simple' && !shellMode) {
+    const kernel = getKernel();
+    const resultOc = kernel.simplePipe(wire.wrapped, spine.wrapped);
+    const shape = castShape(resultOc);
+    if (!isShape3D(shape)) {
+      return err(typeCastError('SWEEP_NOT_3D', 'Simple pipe did not produce a 3D shape'));
+    }
+    return ok(shape);
+  }
+
   const oc = getKernel().oc;
   const r = gcWithScope();
 
@@ -206,10 +217,26 @@ export function sweep(
     withContact,
     support,
     forceProfileSpineOthogonality,
+    tolerance,
+    boundTolerance,
+    angularTolerance,
+    maxDegree,
+    maxSegments,
   } = config;
 
   const withCorrection = transitionMode === 'round' ? true : !!forceProfileSpineOthogonality;
   const builder = r(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
+
+  // Apply performance tuning parameters
+  if (tolerance !== undefined) {
+    builder.SetTolerance(tolerance, boundTolerance ?? tolerance, angularTolerance ?? 1e-7);
+  }
+  if (maxDegree !== undefined) {
+    builder.SetMaxDegree(maxDegree);
+  }
+  if (maxSegments !== undefined) {
+    builder.SetMaxSegments(maxSegments);
+  }
 
   {
     const mode = {

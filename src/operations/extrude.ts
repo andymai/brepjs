@@ -98,14 +98,43 @@ function genericSweep(
     withContact,
     support,
     forceProfileSpineOthogonality,
+    mode: sweepMode,
+    tolerance,
+    boundTolerance,
+    angularTolerance,
+    maxDegree,
+    maxSegments,
   }: GenericSweepOptions = {},
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
+  // Fast path: simple pipe mode (BRepOffsetAPI_MakePipe)
+  if (sweepMode === 'simple' && !shellMode) {
+    const kernel = getKernel();
+    const resultOc = kernel.simplePipe(wire.wrapped, spine.wrapped);
+    const result = andThen(cast(resultOc), (shape) => {
+      if (!isShape3D(shape))
+        return err(typeCastError('SWEEP_NOT_3D', 'Simple pipe did not produce a 3D shape'));
+      return ok(shape);
+    });
+    return result;
+  }
+
   const oc = getKernel().oc;
   const [r, gc] = localGC();
 
   const withCorrection = transitionMode === 'round' ? true : !!forceProfileSpineOthogonality;
   const sweepBuilder = r(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
+
+  // Apply performance tuning parameters
+  if (tolerance !== undefined) {
+    sweepBuilder.SetTolerance(tolerance, boundTolerance ?? tolerance, angularTolerance ?? 1e-7);
+  }
+  if (maxDegree !== undefined) {
+    sweepBuilder.SetMaxDegree(maxDegree);
+  }
+  if (maxSegments !== undefined) {
+    sweepBuilder.SetMaxSegments(maxSegments);
+  }
 
   {
     const mode = {
