@@ -1,5 +1,16 @@
 # Changelog
 
+## [8.0.0](https://github.com/andymai/brepjs/compare/brepjs-v7.5.0...brepjs-v8.0.0) (2026-02-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove deprecated APIs and legacy types for v8.0.0
+
+### Features
+
+* remove deprecated APIs and legacy types for v8.0.0 ([a0a0995](https://github.com/andymai/brepjs/commit/a0a0995153573ebc69ea10f91c6418a916ef9afb))
+
 ## [7.5.0](https://github.com/andymai/brepjs/compare/brepjs-v7.4.2...brepjs-v7.5.0) (2026-02-10)
 
 
