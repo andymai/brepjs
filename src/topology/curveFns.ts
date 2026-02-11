@@ -14,6 +14,7 @@ import { findCurveType, type CurveType } from '../core/definitionMaps.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
 import { isWire as isWireGuard, isEdge } from '../core/shapeTypes.js';
+import { gcWithScope } from '../core/disposal.js';
 
 // ---------------------------------------------------------------------------
 // Internal: adaptor creation
@@ -43,31 +44,26 @@ function mapParam(adaptor: CurveAdaptor, t: number): number {
  * Get the geometric curve type of an edge or wire (LINE, CIRCLE, BSPLINE, etc.).
  */
 export function getCurveType(shape: Edge | Wire): CurveType {
-  const adaptor = getAdaptor(shape);
+  const r = gcWithScope();
+  const adaptor = r(getAdaptor(shape));
   const technicalType = adaptor.GetType && adaptor.GetType();
-  const result = unwrap(findCurveType(technicalType));
-  adaptor.delete();
-  return result;
+  return unwrap(findCurveType(technicalType));
 }
 
 /** Get the start point of a curve. */
 export function curveStartPoint(shape: Edge | Wire): Vec3 {
-  const adaptor = getAdaptor(shape);
-  const pnt = adaptor.Value(adaptor.FirstParameter());
-  const result: Vec3 = [pnt.X(), pnt.Y(), pnt.Z()];
-  pnt.delete();
-  adaptor.delete();
-  return result;
+  const r = gcWithScope();
+  const adaptor = r(getAdaptor(shape));
+  const pnt = r(adaptor.Value(adaptor.FirstParameter()));
+  return [pnt.X(), pnt.Y(), pnt.Z()];
 }
 
 /** Get the end point of a curve. */
 export function curveEndPoint(shape: Edge | Wire): Vec3 {
-  const adaptor = getAdaptor(shape);
-  const pnt = adaptor.Value(adaptor.LastParameter());
-  const result: Vec3 = [pnt.X(), pnt.Y(), pnt.Z()];
-  pnt.delete();
-  adaptor.delete();
-  return result;
+  const r = gcWithScope();
+  const adaptor = r(getAdaptor(shape));
+  const pnt = r(adaptor.Value(adaptor.LastParameter()));
+  return [pnt.X(), pnt.Y(), pnt.Z()];
 }
 
 /**
@@ -76,12 +72,10 @@ export function curveEndPoint(shape: Edge | Wire): Vec3 {
  * @param position - Normalized parameter (0 = start, 0.5 = midpoint, 1 = end).
  */
 export function curvePointAt(shape: Edge | Wire, position = 0.5): Vec3 {
-  const adaptor = getAdaptor(shape);
-  const pnt = adaptor.Value(mapParam(adaptor, position));
-  const result: Vec3 = [pnt.X(), pnt.Y(), pnt.Z()];
-  pnt.delete();
-  adaptor.delete();
-  return result;
+  const r = gcWithScope();
+  const adaptor = r(getAdaptor(shape));
+  const pnt = r(adaptor.Value(mapParam(adaptor, position)));
+  return [pnt.X(), pnt.Y(), pnt.Z()];
 }
 
 /**
@@ -91,44 +85,38 @@ export function curvePointAt(shape: Edge | Wire, position = 0.5): Vec3 {
  */
 export function curveTangentAt(shape: Edge | Wire, position = 0.5): Vec3 {
   const oc = getKernel().oc;
-  const adaptor = getAdaptor(shape);
+  const r = gcWithScope();
+  const adaptor = r(getAdaptor(shape));
   const param = mapParam(adaptor, position);
 
-  const tmpPnt = new oc.gp_Pnt_1();
-  const tmpVec = new oc.gp_Vec_1();
+  const tmpPnt = r(new oc.gp_Pnt_1());
+  const tmpVec = r(new oc.gp_Vec_1());
   adaptor.D1(param, tmpPnt, tmpVec);
 
-  const result: Vec3 = [tmpVec.X(), tmpVec.Y(), tmpVec.Z()];
-  tmpPnt.delete();
-  tmpVec.delete();
-  adaptor.delete();
-  return result;
+  return [tmpVec.X(), tmpVec.Y(), tmpVec.Z()];
 }
 
 /** Get the arc length of an edge or wire. */
 export function curveLength(shape: Edge | Wire): number {
   const oc = getKernel().oc;
-  const props = new oc.GProp_GProps_1();
+  const r = gcWithScope();
+  const props = r(new oc.GProp_GProps_1());
   oc.BRepGProp.LinearProperties(shape.wrapped, props, true, false);
-  const len = props.Mass();
-  props.delete();
-  return len;
+  return props.Mass();
 }
 
 /** Check if the curve is closed. */
 export function curveIsClosed(shape: Edge | Wire): boolean {
-  const adaptor = getAdaptor(shape);
-  const result = adaptor.IsClosed();
-  adaptor.delete();
-  return result;
+  const r = gcWithScope();
+  const adaptor = r(getAdaptor(shape));
+  return adaptor.IsClosed();
 }
 
 /** Check if the curve is periodic. */
 export function curveIsPeriodic(shape: Edge | Wire): boolean {
-  const adaptor = getAdaptor(shape);
-  const result = adaptor.IsPeriodic();
-  adaptor.delete();
-  return result;
+  const r = gcWithScope();
+  const adaptor = r(getAdaptor(shape));
+  return adaptor.IsPeriodic();
 }
 
 /** Get the period of a periodic curve. */

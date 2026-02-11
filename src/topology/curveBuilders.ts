@@ -4,7 +4,7 @@
 
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { localGC } from '../core/memory.js';
+import { gcWithScope } from '../core/disposal.js';
 import { toOcPnt, toOcVec, makeOcAx2, makeOcAx3 } from '../core/occtBoundary.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -15,14 +15,12 @@ import { createEdge, createWire, isEdge, isWire } from '../core/shapeTypes.js';
 /** Create a straight edge between two 3D points. */
 export function makeLine(v1: Vec3, v2: Vec3): Edge {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const p1 = r(toOcPnt(v1));
   const p2 = r(toOcPnt(v2));
   const maker = r(new oc.BRepBuilderAPI_MakeEdge_3(p1, p2));
-  const edge = createEdge(maker.Edge());
-  gc();
-  return edge;
+  return createEdge(maker.Edge());
 }
 
 /** Create a circular edge with the given radius, center, and normal. */
@@ -32,15 +30,12 @@ export function makeCircle(
   normal: Vec3 = [0, 0, 1]
 ): Edge {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const ax = r(makeOcAx2(center, normal));
   const circleGp = r(new oc.gp_Circ_2(ax, radius));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_8(circleGp));
-  const shape = createEdge(edgeMaker.Edge());
-  gc();
-
-  return shape;
+  return createEdge(edgeMaker.Edge());
 }
 
 /**
@@ -56,23 +51,19 @@ export function makeEllipse(
   normal: Vec3 = [0, 0, 1],
   xDir?: Vec3
 ): Result<Edge> {
-  const oc = getKernel().oc;
-  const [r, gc] = localGC();
-
-  const ax = r(makeOcAx2(center, normal, xDir));
-
   if (minorRadius > majorRadius) {
-    gc();
     return err(
       validationError('ELLIPSE_RADII', 'The minor radius must be smaller than the major one')
     );
   }
+
+  const oc = getKernel().oc;
+  const r = gcWithScope();
+
+  const ax = r(makeOcAx2(center, normal, xDir));
   const ellipseGp = r(new oc.gp_Elips_2(ax, majorRadius, minorRadius));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_12(ellipseGp));
-  const shape = createEdge(edgeMaker.Edge());
-  gc();
-
-  return ok(shape);
+  return ok(createEdge(edgeMaker.Edge()));
 }
 
 /**
@@ -90,7 +81,7 @@ export function makeHelix(
   lefthand = false
 ): Wire {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
   const angularStep = lefthand ? -2 * Math.PI : 2 * Math.PI;
 
   const geomLine = r(
@@ -115,8 +106,6 @@ export function makeHelix(
   const w = r(new oc.BRepBuilderAPI_MakeWire_2(e)).Wire();
   oc.BRepLib.BuildCurves3d_2(w);
 
-  gc();
-
   return createWire(w);
 }
 
@@ -129,7 +118,7 @@ export function makeHelix(
  */
 export function makeThreePointArc(v1: Vec3, v2: Vec3, v3: Vec3): Edge {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const p1 = r(toOcPnt(v1));
   const p2 = r(toOcPnt(v2));
@@ -139,9 +128,7 @@ export function makeThreePointArc(v1: Vec3, v2: Vec3, v3: Vec3): Edge {
 
   const curve = r(new oc.Handle_Geom_Curve_2(circleGeom.get()));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_24(curve));
-  const edge = createEdge(edgeMaker.Edge());
-  gc();
-  return edge;
+  return createEdge(edgeMaker.Edge());
 }
 
 /**
@@ -161,23 +148,19 @@ export function makeEllipseArc(
   normal: Vec3 = [0, 0, 1],
   xDir?: Vec3
 ): Result<Edge> {
-  const oc = getKernel().oc;
-  const [r, gc] = localGC();
-
-  const ax = r(makeOcAx2(center, normal, xDir));
   if (minorRadius > majorRadius) {
-    gc();
     return err(
       validationError('ELLIPSE_RADII', 'The minor radius must be smaller than the major one')
     );
   }
 
+  const oc = getKernel().oc;
+  const r = gcWithScope();
+
+  const ax = r(makeOcAx2(center, normal, xDir));
   const ellipseGp = r(new oc.gp_Elips_2(ax, majorRadius, minorRadius));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_13(ellipseGp, startAngle, endAngle));
-  const shape = createEdge(edgeMaker.Edge());
-  gc();
-
-  return ok(shape);
+  return ok(createEdge(edgeMaker.Edge()));
 }
 
 /** Configuration for {@link makeBSplineApproximation}. */
@@ -202,7 +185,7 @@ export function makeBSplineApproximation(
   { tolerance = 1e-3, smoothing = null, degMax = 6, degMin = 1 }: BSplineApproximationOptions = {}
 ): Result<Edge> {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const pnts = r(new oc.TColgp_Array1OfPnt_2(1, points.length));
 
@@ -239,16 +222,12 @@ export function makeBSplineApproximation(
   }
 
   if (!splineBuilder.IsDone()) {
-    gc();
     return err(occtError('BSPLINE_FAILED', 'B-spline approximation failed'));
   }
 
   const splineGeom = r(splineBuilder.Curve());
-
   const curve = r(new oc.Handle_Geom_Curve_2(splineGeom.get()));
-  const edge = createEdge(new oc.BRepBuilderAPI_MakeEdge_24(curve).Edge());
-  gc();
-  return ok(edge);
+  return ok(createEdge(new oc.BRepBuilderAPI_MakeEdge_24(curve).Edge()));
 }
 
 /**
@@ -271,7 +250,7 @@ export function makeBezierCurve(points: Vec3[]): Result<Edge> {
     );
   }
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
   const arrayOfPoints = r(new oc.TColgp_Array1OfPnt_2(1, points.length));
   points.forEach((p, i) => {
     arrayOfPoints.SetValue(i + 1, r(toOcPnt(p)));
@@ -280,9 +259,7 @@ export function makeBezierCurve(points: Vec3[]): Result<Edge> {
 
   const curve = r(new oc.Handle_Geom_Curve_2(bezCurve));
   const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_24(curve));
-  const edge = createEdge(edgeMaker.Edge());
-  gc();
-  return ok(edge);
+  return ok(createEdge(edgeMaker.Edge()));
 }
 
 /**
@@ -292,7 +269,7 @@ export function makeBezierCurve(points: Vec3[]): Result<Edge> {
  */
 export function makeTangentArc(startPoint: Vec3, startTgt: Vec3, endPoint: Vec3): Edge {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
   const circleGeom = r(
     new oc.GC_MakeArcOfCircle_5(
       r(toOcPnt(startPoint)),
@@ -302,9 +279,8 @@ export function makeTangentArc(startPoint: Vec3, startTgt: Vec3, endPoint: Vec3)
   );
 
   const curve = r(new oc.Handle_Geom_Curve_2(circleGeom.get()));
-  const edge = createEdge(r(new oc.BRepBuilderAPI_MakeEdge_24(curve)).Edge());
-  gc();
-  return edge;
+  const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_24(curve));
+  return createEdge(edgeMaker.Edge());
 }
 
 /**
@@ -314,7 +290,7 @@ export function makeTangentArc(startPoint: Vec3, startTgt: Vec3, endPoint: Vec3)
  */
 export function assembleWire(listOfEdges: (Edge | Wire)[]): Result<Wire> {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const wireBuilder = r(new oc.BRepBuilderAPI_MakeWire_1());
   listOfEdges.forEach((e) => {
@@ -335,7 +311,6 @@ export function assembleWire(listOfEdges: (Edge | Wire)[]): Result<Wire> {
       [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_NonManifoldWire, 'non manifold wire'],
       [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_DisconnectedWire, 'disconnected wire'],
     ]);
-    gc();
     return err(
       occtError(
         'WIRE_BUILD_FAILED',
@@ -344,7 +319,5 @@ export function assembleWire(listOfEdges: (Edge | Wire)[]): Result<Wire> {
     );
   }
 
-  const wire = createWire(wireBuilder.Wire());
-  gc();
-  return ok(wire);
+  return ok(createWire(wireBuilder.Wire()));
 }

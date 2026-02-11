@@ -332,39 +332,36 @@ function makeSectionFace(plane: Plane, size: number): OcType {
     vecAdd(vecAdd(o, nhx), hy),
   ];
 
+  const r = gcWithScope();
+
   // Build 4 OCCT points
-  const pts = corners.map((c) => new oc.gp_Pnt_3(c[0], c[1], c[2]));
+  const pts = corners.map((c) => r(new oc.gp_Pnt_3(c[0], c[1], c[2])));
 
   // Build 4 edges forming a closed rectangle
   const edges = [
-    new oc.BRepBuilderAPI_MakeEdge_3(pts[0], pts[1]),
-    new oc.BRepBuilderAPI_MakeEdge_3(pts[1], pts[2]),
-    new oc.BRepBuilderAPI_MakeEdge_3(pts[2], pts[3]),
-    new oc.BRepBuilderAPI_MakeEdge_3(pts[3], pts[0]),
+    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[0], pts[1])),
+    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[1], pts[2])),
+    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[2], pts[3])),
+    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[3], pts[0])),
   ];
 
   // Build wire from edges
-  const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
+  const wireBuilder = r(new oc.BRepBuilderAPI_MakeWire_1());
   for (const e of edges) {
     const edge = e.Edge();
     wireBuilder.Add_1(edge);
     edge.delete();
   }
-  const progress = new oc.Message_ProgressRange_1();
+  const progress = r(new oc.Message_ProgressRange_1());
   wireBuilder.Build(progress);
   const wire = wireBuilder.Wire();
 
   // Build planar face from wire
-  const faceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wire, true);
+  const faceBuilder = r(new oc.BRepBuilderAPI_MakeFace_15(wire, true));
   const face = faceBuilder.Face();
 
-  // Cleanup temporaries
-  faceBuilder.delete();
+  // Cleanup wire (other temporaries cleaned via gcWithScope)
   wire.delete();
-  wireBuilder.delete();
-  progress.delete();
-  for (const e of edges) e.delete();
-  for (const p of pts) p.delete();
 
   return face;
 }
