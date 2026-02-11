@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.1](https://github.com/andymai/brepjs/compare/brepjs-v8.0.0...brepjs-v8.0.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* **site:** use correct CodeQL inline suppression format ([#221](https://github.com/andymai/brepjs/issues/221)) ([a2b3c3d](https://github.com/andymai/brepjs/commit/a2b3c3de05bb8b2a9174795e7851bfe6a9ce58e3))
+
 ## [8.0.0](https://github.com/andymai/brepjs/compare/brepjs-v7.5.0...brepjs-v8.0.0) (2026-02-11)
 
 
