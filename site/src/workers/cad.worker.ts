@@ -198,7 +198,7 @@ function handleEval(id: string, code: string) {
   try {
     // Intentional: playground evaluates user-authored scripts in a sandboxed Web Worker
     // with no access to DOM, cookies, or storage.
-    const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
+    const fn = new Function(code); // codeql[js/code-injection] Playground evaluates user-authored scripts in sandboxed Web Worker
     let result = fn();
 
     // Restore console
@@ -338,7 +338,7 @@ function handleExportSTL(id: string, code: string) {
     if (lastEvalResult && lastEvalResult.length > 0) {
       result = lastEvalResult[0];
     } else {
-      const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
+      const fn = new Function(code); // codeql[js/code-injection] Playground evaluates user-authored scripts in sandboxed Web Worker
       result = fn();
     }
 
@@ -371,7 +371,7 @@ function handleExportSTEP(id: string, code: string) {
     if (lastEvalResult && lastEvalResult.length > 0) {
       result = lastEvalResult[0];
     } else {
-      const fn = new Function(code); // CodeQL [js/code-injection] Playground code execution
+      const fn = new Function(code); // codeql[js/code-injection] Playground evaluates user-authored scripts in sandboxed Web Worker
       result = fn();
     }
 
