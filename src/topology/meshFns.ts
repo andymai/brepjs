@@ -7,6 +7,29 @@ import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 import { uniqueIOFilename } from '../core/constants.js';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT types are dynamic
+type OcAny = any;
+
+/** Check if a shape already has face triangulation from a prior mesh call. */
+function shapeHasTriangulation(oc: OcAny, shape: OcAny): boolean {
+  const explorer = new oc.TopExp_Explorer_2(
+    shape,
+    oc.TopAbs_ShapeEnum.TopAbs_FACE,
+    oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
+  let hasTri = false;
+  if (explorer.More()) {
+    const face = oc.TopoDS.Face_1(explorer.Current());
+    const loc = new oc.TopLoc_Location_1();
+    const tri = oc.BRep_Tool.Triangulation(face, loc, 0);
+    hasTri = !tri.IsNull();
+    loc.delete();
+    tri.delete();
+  }
+  explorer.delete();
+  return hasTri;
+}
+
 import {
   buildMeshCacheKey,
   getMeshForShape,
@@ -207,14 +230,17 @@ export function exportSTL(
   }: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
   const oc = getKernel().oc;
-  const mesher = new oc.BRepMesh_IncrementalMesh_2(
-    shape.wrapped,
-    tolerance,
-    false,
-    angularTolerance,
-    false
-  );
-  mesher.delete();
+  // Only mesh if shape doesn't already have triangulation (e.g. from prior mesh() call)
+  if (!shapeHasTriangulation(oc, shape.wrapped)) {
+    const mesher = new oc.BRepMesh_IncrementalMesh_2(
+      shape.wrapped,
+      tolerance,
+      false,
+      angularTolerance,
+      false
+    );
+    mesher.delete();
+  }
   const filename = uniqueIOFilename('_blob', 'stl');
   const done = oc.StlAPI.Write(shape.wrapped, filename, !binary);
 

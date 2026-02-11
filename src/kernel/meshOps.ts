@@ -18,6 +18,29 @@ import type {
 import { HASH_CODE_MAX } from './measureOps.js';
 
 /**
+ * Check if a shape already has face triangulation (from a prior mesh call).
+ * Avoids redundant BRepMesh_IncrementalMesh creation.
+ */
+function hasTriangulation(oc: OpenCascadeInstance, shape: OcShape): boolean {
+  const explorer = new oc.TopExp_Explorer_2(
+    shape,
+    oc.TopAbs_ShapeEnum.TopAbs_FACE,
+    oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
+  let hasTri = false;
+  if (explorer.More()) {
+    const face = oc.TopoDS.Face_1(explorer.Current());
+    const loc = new oc.TopLoc_Location_1();
+    const tri = oc.BRep_Tool.Triangulation(face, loc, 0);
+    hasTri = !tri.IsNull();
+    loc.delete();
+    tri.delete();
+  }
+  explorer.delete();
+  return hasTri;
+}
+
+/**
  * Meshes a shape using C++ bulk extraction.
  */
 export function meshBulk(
@@ -279,15 +302,17 @@ export function meshEdgesJS(
   tolerance: number,
   angularTolerance: number
 ): KernelEdgeMeshResult {
-  // Ensure triangulation exists
-  const mesher = new oc.BRepMesh_IncrementalMesh_2(
-    shape,
-    tolerance,
-    false,
-    angularTolerance,
-    false
-  );
-  mesher.delete();
+  // Only mesh if triangulation doesn't already exist (e.g. from a prior mesh() call)
+  if (!hasTriangulation(oc, shape)) {
+    const mesher = new oc.BRepMesh_IncrementalMesh_2(
+      shape,
+      tolerance,
+      false,
+      angularTolerance,
+      false
+    );
+    mesher.delete();
+  }
 
   const lines: number[] = [];
   const edgeGroups: KernelEdgeMeshResult['edgeGroups'] = [];
