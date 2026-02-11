@@ -58,9 +58,6 @@ export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
 export { gcWithScope, gcWithObject, localGC, type Deletable } from './core/memory.js';
 
-// Legacy type exports (kept for compatibility)
-export { isPoint, type Point } from './core/geometry.js';
-
 export { makePlane } from './core/geometryHelpers.js';
 
 export { findCurveType } from './core/definitionMaps.js';
@@ -87,7 +84,6 @@ export {
   isFilletRadius,
   type ChamferRadius,
   type RadiusOptions,
-  type RadiusConfig,
   // core/shapeTypes.ts (via topology)
   type CurveLike,
 } from './topology/index.js';
@@ -99,7 +95,6 @@ export {
   revolution,
   genericSweep,
   type GenericSweepOptions,
-  type GenericSweepConfig,
 } from './operations/extrude.js';
 
 export { type AssemblyExporter, createAssembly } from './operations/exporters.js';
@@ -151,27 +146,7 @@ export {
   // Sketching - clean 2D aliases
   sketch2DOnPlane,
   sketch2DOnFace,
-  // Deprecated verbose names (kept for backward compatibility)
-  blueprintBoundingBox,
-  blueprintOrientation,
-  translateBlueprint,
-  rotateBlueprint,
-  scaleBlueprint,
-  mirrorBlueprint,
-  stretchBlueprint,
-  blueprintToSVGPathD,
-  blueprintIsInside,
-  sketchBlueprintOnPlane,
-  sketchBlueprintOnFace,
 } from './2d/blueprints/blueprintFns.js';
-
-export {
-  // Deprecated boolean wrappers (kept for backward compatibility)
-  // Use fuse2D, cut2D, intersect2D from boolean2D.js instead
-  fuseBlueprint2D,
-  cutBlueprint2D,
-  intersectBlueprint2D,
-} from './2d/blueprints/boolean2dFns.js';
 
 // ── Layer 2: query ──
 
@@ -202,14 +177,10 @@ export { importSVGPathD, importSVG, type SVGImportOptions } from './io/svgImport
 
 import Sketcher from './sketching/Sketcher.js';
 import FaceSketcher, { BaseSketcher2d, BlueprintSketcher } from './sketching/Sketcher2d.js';
-import {
-  type GenericSketcher,
-  type SplineOptions,
-  type SplineConfig,
-} from './sketching/sketcherlib.js';
+import { type GenericSketcher, type SplineOptions } from './sketching/sketcherlib.js';
 
 export { Sketcher, FaceSketcher, BaseSketcher2d, BlueprintSketcher };
-export type { GenericSketcher, SplineOptions, SplineConfig };
+export type { GenericSketcher, SplineOptions };
 export type { SketchInterface } from './sketching/sketchLib.js';
 
 export { default as Sketch } from './sketching/Sketch.js';
@@ -507,14 +478,12 @@ export {
   complexExtrude,
   twistExtrude,
   type SweepOptions,
-  type SweepConfig,
   type ExtrusionProfile,
 } from './operations/extrudeFns.js';
 
 export {
   exportAssemblySTEP,
   type ShapeOptions,
-  type ShapeConfig,
   type SupportedUnit,
 } from './operations/exporterFns.js';
 
@@ -758,9 +727,7 @@ export {
   loft,
   type RevolveOptions,
   type LoftOptions as CleanLoftOptions,
-  type LoftConfig as CleanLoftConfig,
   type SweepOptions as CleanSweepOptions,
-  type SweepConfig as CleanSweepConfig,
 } from './operations/api.js';
 
 // ── Compound operations ──

@@ -18,7 +18,6 @@ type OcShape = any;
  * Shape identity is handled by the WeakMap outer layer.
  */
 export function buildMeshCacheKey(
-  _shapeHash: number, // Kept for API compatibility but no longer used
   tolerance: number,
   angularTolerance: number,
   skipNormals: boolean
@@ -30,11 +29,7 @@ export function buildMeshCacheKey(
  * Build a parameter key for edge mesh cache lookup (excludes shape identity).
  * Shape identity is handled by the WeakMap outer layer.
  */
-export function buildEdgeMeshCacheKey(
-  _shapeHash: number, // Kept for API compatibility but no longer used
-  tolerance: number,
-  angularTolerance: number
-): string {
+export function buildEdgeMeshCacheKey(tolerance: number, angularTolerance: number): string {
   return `edge:${tolerance}:${angularTolerance}`;
 }
 

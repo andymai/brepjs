@@ -78,7 +78,7 @@ export function mesh(
 ): ShapeMesh {
   signal?.throwIfAborted();
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
-  const cacheKey = buildMeshCacheKey(0, tolerance, angularTolerance, skipNormals);
+  const cacheKey = buildMeshCacheKey(tolerance, angularTolerance, skipNormals);
   if (cache && !includeUVs) {
     const cached = getMeshForShape(shape.wrapped, cacheKey);
     if (cached) return cached;
@@ -129,7 +129,7 @@ export function meshEdges(
   { tolerance = 1e-3, angularTolerance = 0.1, cache = true }: MeshOptions & { cache?: boolean } = {}
 ): EdgeMesh {
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
-  const cacheKey = buildEdgeMeshCacheKey(0, tolerance, angularTolerance);
+  const cacheKey = buildEdgeMeshCacheKey(tolerance, angularTolerance);
   if (cache) {
     const cached = getEdgeMeshForShape(shape.wrapped, cacheKey);
     if (cached) return cached;

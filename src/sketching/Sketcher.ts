@@ -30,7 +30,7 @@ import {
 import {
   convertSvgEllipseParams,
   type SplineOptions,
-  defaultsSplineConfig,
+  defaultsSplineOptions,
   type GenericSketcher,
 } from './sketcherlib.js';
 import type { CurveLike } from '../core/shapeTypes.js';
@@ -409,7 +409,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
   smoothSplineTo(end: Point2D, config?: SplineOptions): this {
     const [r, gc] = localGC();
     try {
-      const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineConfig(config);
+      const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineOptions(config);
 
       const endPoint = planeToWorld(this.plane, end);
       const previousEdge = this.pendingEdges.length

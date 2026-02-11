@@ -217,7 +217,7 @@ const fuseCompoundWithCompound = (first: CompoundBlueprint, second: CompoundBlue
  * const union = fuse2D(circleBlueprint, squareBlueprint);
  * ```
  *
- * @see {@link fuseBlueprint2D} for the functional API wrapper.
+ * @see {@link fuse2D} for the functional API.
  */
 export const fuse2D = (
   first: Shape2D,
@@ -304,7 +304,7 @@ const mergeNonIntersecting = (shapes: Shape2D[]) => {
  * const withHole = cut2D(outerRect, innerCircle);
  * ```
  *
- * @see {@link cutBlueprint2D} for the functional API wrapper.
+ * @see {@link cut2D} for the functional API.
  */
 export const cut2D = (
   first: Shape2D,
@@ -373,7 +373,7 @@ export const cut2D = (
  * const overlap = intersect2D(circle, rectangle);
  * ```
  *
- * @see {@link intersectBlueprint2D} for the functional API wrapper.
+ * @see {@link intersect2D} for the functional API.
  */
 export function intersect2D(
   first: Shape2D,

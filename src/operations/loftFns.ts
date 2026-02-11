@@ -22,9 +22,6 @@ export interface LoftOptions {
   endPoint?: PointInput;
 }
 
-/** @deprecated Use LoftOptions instead. Will be removed in v8.0.0. */
-export type LoftConfig = LoftOptions;
-
 /**
  * Loft through a set of wire profiles to create a 3D shape.
  *

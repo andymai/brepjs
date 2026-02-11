@@ -33,9 +33,6 @@ export interface SweepOptions {
   forceProfileSpineOthogonality?: boolean;
 }
 
-/** @deprecated Use SweepOptions instead. Will be removed in v8.0.0. */
-export type SweepConfig = SweepOptions;
-
 // ---------------------------------------------------------------------------
 // Extrusion profile types
 // ---------------------------------------------------------------------------

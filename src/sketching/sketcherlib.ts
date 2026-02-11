@@ -21,14 +21,11 @@ export type SplineOptions =
       endFactor?: number;
     };
 
-/** @deprecated Use SplineOptions instead. Will be removed in v8.0.0. */
-export type SplineConfig = SplineOptions;
-
 const isTangent = (c: unknown): c is SplineTangent =>
   c === 'symmetric' || typeof c === 'number' || (Array.isArray(c) && c.length === 2);
 
-/** Resolve a {@link SplineConfig} into fully-expanded tangent directions and factors. */
-export const defaultsSplineConfig = (
+/** Resolve a {@link SplineOptions} into fully-expanded tangent directions and factors. */
+export const defaultsSplineOptions = (
   config?: SplineOptions
 ): {
   endTangent: Point2D | 'symmetric';

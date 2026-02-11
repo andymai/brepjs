@@ -19,7 +19,7 @@ import { type Result, ok, err, unwrap, isErr } from '../core/result.js';
 import { typeCastError, validationError, occtError, BrepErrorCode } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepOptions } from './extrudeUtils.js';
 
-export type { ExtrusionProfile, SweepOptions, SweepConfig } from './extrudeUtils.js';
+export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
 
 // ---------------------------------------------------------------------------
 // Internal: spine construction

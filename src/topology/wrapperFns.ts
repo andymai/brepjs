@@ -163,8 +163,8 @@ export interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
 
   // Transforms
   translate(v: Vec3): Wrapped<T>;
-  rotate(angle: number, options?: { around?: Vec3; axis?: Vec3 }): Wrapped<T>;
-  mirror(options?: { normal?: Vec3; origin?: Vec3 }): Wrapped<T>;
+  rotate(angle: number, options?: { at?: Vec3; axis?: Vec3 }): Wrapped<T>;
+  mirror(options?: { normal?: Vec3; at?: Vec3 }): Wrapped<T>;
   scale(factor: number, options?: { center?: Vec3 }): Wrapped<T>;
 
   // Axis shortcuts
@@ -283,7 +283,7 @@ export interface WrappedFace extends Wrapped<Face> {
   innerWires(): Wire[];
 
   extrude(height: number | Vec3): Wrapped3D<Solid>;
-  revolve(options?: { axis?: Vec3; around?: Vec3; angle?: number }): Wrapped3D<Shape3D>;
+  revolve(options?: { axis?: Vec3; at?: Vec3; angle?: number }): Wrapped3D<Shape3D>;
 }
 
 // ---------------------------------------------------------------------------

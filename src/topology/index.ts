@@ -31,7 +31,6 @@ export {
   type ChamferRadius,
   type FilletRadius,
   type RadiusOptions,
-  type RadiusConfig,
 } from './shapeModifiers.js';
 
 // ── Re-export branded shape types from core ──

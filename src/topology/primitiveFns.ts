@@ -62,8 +62,6 @@ export type { BSplineApproximationOptions } from './shapeHelpers.js';
 
 /** Options for {@link box}. */
 export interface BoxOptions {
-  /** @deprecated Use `centered` or `at` instead. Will be removed in v8.0.0. */
-  center?: true | Vec3;
   /** Center at this point (center semantics, like {@link sphere}). */
   at?: Vec3;
   /** Center the box at the origin (or at the `at` point). Default: false. */
@@ -85,16 +83,13 @@ export function box(width: number, depth: number, height: number, options?: BoxO
   let solid = createSolid(maker.Solid());
   gc();
 
-  // Normalize deprecated `center` into `at` / `centered`.
-  const at =
-    options?.at ??
-    (options?.center !== undefined && options.center !== true ? options.center : undefined);
-  const centered = options?.centered ?? options?.center === true;
-
-  if (at) {
-    solid = translate(solid, [at[0] - width / 2, at[1] - depth / 2, at[2] - height / 2]);
-  } else if (centered) {
-    solid = translate(solid, [-width / 2, -depth / 2, -height / 2]);
+  const center = options?.at ?? (options?.centered ? ([0, 0, 0] as Vec3) : undefined);
+  if (center) {
+    solid = translate(solid, [
+      center[0] - width / 2,
+      center[1] - depth / 2,
+      center[2] - height / 2,
+    ]);
   }
   return solid;
 }
@@ -230,15 +225,13 @@ export function line(from: Vec3, to: Vec3): Edge {
 export interface CircleOptions {
   /** Center. Default: [0, 0, 0]. */
   at?: Vec3;
-  /** @deprecated Use `axis` instead. Will be removed in v8.0.0. */
-  normal?: Vec3;
   /** Axis direction. Default: [0, 0, 1]. */
   axis?: Vec3;
 }
 
 /** Create a circular edge with the given radius. */
 export function circle(radius: number, options?: CircleOptions): Edge {
-  const axisDir = options?.axis ?? options?.normal ?? [0, 0, 1];
+  const axisDir = options?.axis ?? [0, 0, 1];
   return _makeCircle(radius, options?.at ?? [0, 0, 0], axisDir);
 }
 
@@ -246,8 +239,6 @@ export function circle(radius: number, options?: CircleOptions): Edge {
 export interface EllipseOptions {
   /** Center. Default: [0, 0, 0]. */
   at?: Vec3;
-  /** @deprecated Use `axis` instead. Will be removed in v8.0.0. */
-  normal?: Vec3;
   /** Axis direction. Default: [0, 0, 1]. */
   axis?: Vec3;
   /** Major axis direction. */
@@ -264,7 +255,7 @@ export function ellipse(
   minorRadius: number,
   options?: EllipseOptions
 ): Result<Edge> {
-  const axisDir = options?.axis ?? options?.normal ?? [0, 0, 1];
+  const axisDir = options?.axis ?? [0, 0, 1];
   return _makeEllipse(majorRadius, minorRadius, options?.at ?? [0, 0, 0], axisDir, options?.xDir);
 }
 
@@ -305,8 +296,6 @@ export function threePointArc(p1: Vec3, p2: Vec3, p3: Vec3): Edge {
 export interface EllipseArcOptions {
   /** Center. Default: [0, 0, 0]. */
   at?: Vec3;
-  /** @deprecated Use `axis` instead. Will be removed in v8.0.0. */
-  normal?: Vec3;
   /** Axis direction. Default: [0, 0, 1]. */
   axis?: Vec3;
   /** Major axis direction. */
@@ -328,7 +317,7 @@ export function ellipseArc(
   endAngle: number,
   options?: EllipseArcOptions
 ): Result<Edge> {
-  const axisDir = options?.axis ?? options?.normal ?? [0, 0, 1];
+  const axisDir = options?.axis ?? [0, 0, 1];
   return _makeEllipseArc(
     majorRadius,
     minorRadius,

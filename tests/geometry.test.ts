@@ -1,62 +1,18 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
-  isPoint,
   makePlane,
   findCurveType,
   unwrap,
   isOk,
   isErr,
   resolveDirection,
-  type PlaneName,
-  createNamedPlane,
   getKernel,
-  resolvePlane,
 } from '../src/index.js';
-// OCCT boundary functions (not in barrel)
-import { toOcPnt } from '../src/core/occtBoundary.js';
 
 beforeAll(async () => {
   await initOC();
 }, 30000);
-
-describe('isPoint', () => {
-  it('returns true for a 3-element array', () => {
-    expect(isPoint([1, 2, 3])).toBe(true);
-  });
-  it('returns true for a 2-element array', () => {
-    expect(isPoint([1, 2])).toBe(true);
-  });
-  it('returns true for an OCCT duck-typed object with XYZ', () => {
-    const pnt = toOcPnt([1, 2, 3]);
-    expect(isPoint(pnt)).toBe(true);
-    pnt.delete();
-  });
-  it('returns false for a number', () => {
-    expect(isPoint(42)).toBe(false);
-  });
-  it('returns false for a string', () => {
-    expect(isPoint('hello')).toBe(false);
-  });
-  it('returns false for null', () => {
-    expect(isPoint(null)).toBe(false);
-  });
-  it('returns false for undefined', () => {
-    expect(isPoint(undefined)).toBe(false);
-  });
-  it('returns false for a 1-element array', () => {
-    expect(isPoint([1])).toBe(false);
-  });
-  it('returns false for a 4-element array', () => {
-    expect(isPoint([1, 2, 3, 4])).toBe(false);
-  });
-  it('returns false for an empty array', () => {
-    expect(isPoint([])).toBe(false);
-  });
-  it('returns false for a plain object without XYZ', () => {
-    expect(isPoint({ x: 1, y: 2 })).toBe(false);
-  });
-});
 
 describe('resolveDirection', () => {
   it('returns [1,0,0] for X', () => {

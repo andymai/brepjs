@@ -33,28 +33,9 @@ export {
   stretch2D,
   sketch2DOnPlane,
   sketch2DOnFace,
-  // Deprecated verbose names (kept for backward compatibility)
-  blueprintBoundingBox,
-  blueprintOrientation,
-  translateBlueprint,
-  rotateBlueprint,
-  scaleBlueprint,
-  mirrorBlueprint,
-  stretchBlueprint,
-  blueprintToSVGPathD,
-  blueprintIsInside,
-  sketchBlueprintOnPlane,
-  sketchBlueprintOnFace,
 } from './2d/blueprints/blueprintFns.js';
 
 // ── 2D booleans ──
-
-export {
-  // Deprecated - use fuse2D, cut2D, intersect2D instead
-  fuseBlueprint2D,
-  cutBlueprint2D,
-  intersectBlueprint2D,
-} from './2d/blueprints/boolean2dFns.js';
 
 export {
   fuseBlueprints,

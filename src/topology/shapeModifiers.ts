@@ -38,9 +38,6 @@ export type RadiusOptions<R = number> =
   | R
   | { filter: EdgeFinderFn; radius: R; keep?: boolean };
 
-/** @deprecated Use RadiusOptions instead. Will be removed in v8.0.0. */
-export type RadiusConfig<R = number> = RadiusOptions<R>;
-
 // ---------------------------------------------------------------------------
 // Type guards
 // ---------------------------------------------------------------------------
