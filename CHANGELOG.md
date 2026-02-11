@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.2](https://github.com/andymai/brepjs/compare/brepjs-v8.0.1...brepjs-v8.0.2) (2026-02-11)
+
+
+### Performance Improvements
+
+* add simplePipe, sweep tuning, and .fuseAll() chain API ([#225](https://github.com/andymai/brepjs/issues/225)) ([060dfe7](https://github.com/andymai/brepjs/commit/060dfe7cf4ea7d8c3a85d47eb991817987371b0b))
+
 ## [8.0.1](https://github.com/andymai/brepjs/compare/brepjs-v8.0.0...brepjs-v8.0.1) (2026-02-11)
 
 
