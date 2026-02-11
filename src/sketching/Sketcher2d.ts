@@ -9,12 +9,8 @@ import { createEdge, createFace } from '../core/shapeTypes.js';
 import { uvBounds, pointOnSurface, normalAt } from '../topology/faceFns.js';
 import { curveStartPoint, curveIsClosed } from '../topology/curveFns.js';
 import { downcast } from '../topology/cast.js';
-import {
-  convertSvgEllipseParams,
-  defaultsSplineOptions,
-  type SplineOptions,
-  type GenericSketcher,
-} from './sketcherlib.js';
+import { defaultsSplineOptions } from './sketcherlib.js';
+import type { SplineOptions, GenericSketcher } from './sketcherlib.js';
 import type { OcType } from '../kernel/types.js';
 import { chamferCurves, Curve2D, dogboneFilletCurves, filletCurves } from '../2d/lib/index.js';
 import { bug } from '../core/errors.js';
@@ -25,33 +21,36 @@ import {
   samePoint,
   distance2d,
   axis2d,
-  rotate2d,
   polarToCartesian,
-  cartesianToPolar,
   make2dSegmentCurve,
   make2dTangentArc,
   make2dThreePointArc,
   make2dBezierCurve,
-  make2dEllipseArc,
-  type Point2D,
 } from '../2d/lib/index.js';
+import type { Point2D } from '../2d/lib/index.js';
 import { vecScale } from '../core/vecOps.js';
 import Blueprint from '../2d/blueprints/Blueprint.js';
+import { normalizeEllipseRadii, makeEllipseArcFromSvgParams } from './ellipseUtils.js';
 
 type UVBounds = {
-  uMin: number;
-  uMax: number;
-  vMin: number;
-  vMax: number;
+  readonly uMin: number;
+  readonly uMax: number;
+  readonly vMin: number;
+  readonly vMax: number;
 };
+
+const cornerModeFns = {
+  chamfer: chamferCurves,
+  dogbone: dogboneFilletCurves,
+  fillet: filletCurves,
+} as const;
 
 function buildCornerFunction(
   radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]),
   mode: 'chamfer' | 'fillet' | 'dogbone'
 ): (first: Curve2D, second: Curve2D) => Curve2D[] {
   if (typeof radius === 'function') return radius;
-  const makeFn =
-    mode === 'chamfer' ? chamferCurves : mode === 'dogbone' ? dogboneFilletCurves : filletCurves;
+  const makeFn = cornerModeFns[mode];
   return (first: Curve2D, second: Curve2D) => makeFn(first, second, radius);
 }
 
@@ -78,6 +77,8 @@ export class BaseSketcher2d {
     this.pendingCurves = [];
   }
 
+  // ── Coordinate conversion (overridden by FaceSketcher for UV mapping) ──
+
   protected _convertToUV([x, y]: Point2D): Point2D {
     return [x, y];
   }
@@ -85,6 +86,36 @@ export class BaseSketcher2d {
   protected _convertFromUV([u, v]: Point2D): Point2D {
     return [u, v];
   }
+
+  // ── Internal helpers ──
+
+  /** Return the last curve in the pending list, or null if empty. */
+  protected _lastCurve(): Curve2D | null {
+    const len = this.pendingCurves.length;
+    if (len === 0) return null;
+    return this.pendingCurves[len - 1] as Curve2D;
+  }
+
+  /** Require that a previous curve exists, returning it or throwing. */
+  protected _requireLastCurve(caller: string, action: string): Curve2D {
+    const curve = this._lastCurve();
+    if (!curve) bug(caller, `You need a previous curve to ${action}`);
+    return curve;
+  }
+
+  /** Resolve a relative offset from the current pointer position. */
+  protected _resolveRelative(xDist: number, yDist: number): Point2D {
+    return [this.pointer[0] + xDist, this.pointer[1] + yDist];
+  }
+
+  /** Save a curve, advance the pointer to the given end point, and return `this`. */
+  protected _saveCurveAndAdvance(curve: Curve2D, end: Point2D): this {
+    this.saveCurve(curve);
+    this.pointer = end;
+    return this;
+  }
+
+  // ── Drawing state ──
 
   /**
    * Returns the current pen position as [x, y] coordinates
@@ -105,14 +136,11 @@ export class BaseSketcher2d {
    * @category Drawing State
    */
   get penAngle(): number {
-    if (this.pendingCurves.length === 0) return 0;
+    const lastCurve = this._lastCurve();
+    if (!lastCurve) return 0;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const lastCurve = this.pendingCurves[this.pendingCurves.length - 1]!;
     const [dx, dy] = lastCurve.tangentAt(1);
-    const angleInRadians = Math.atan2(dy, dx);
-
-    return angleInRadians * RAD2DEG;
+    return Math.atan2(dy, dx) * RAD2DEG;
   }
 
   /** Move the pen to an absolute 2D position before drawing any curves. */
@@ -125,7 +153,7 @@ export class BaseSketcher2d {
     return this;
   }
 
-  protected saveCurve(curve: Curve2D) {
+  protected saveCurve(curve: Curve2D): void {
     if (!this._nextCorner) {
       this.pendingCurves.push(curve);
       return;
@@ -139,17 +167,17 @@ export class BaseSketcher2d {
     this._nextCorner = null;
   }
 
+  // ── Line segments ──
+
   /** Draw a straight line to an absolute 2D point. */
   lineTo(point: Point2D): this {
     const curve = make2dSegmentCurve(this._convertToUV(this.pointer), this._convertToUV(point));
-    this.pointer = point;
-    this.saveCurve(curve);
-    return this;
+    return this._saveCurveAndAdvance(curve, point);
   }
 
   /** Draw a straight line by relative horizontal and vertical distances. */
   line(xDist: number, yDist: number): this {
-    return this.lineTo([this.pointer[0] + xDist, this.pointer[1] + yDist]);
+    return this.lineTo(this._resolveRelative(xDist, yDist));
   }
 
   /** Draw a vertical line of the given signed distance. */
@@ -174,42 +202,32 @@ export class BaseSketcher2d {
 
   /** Draw a line to a point given in polar coordinates [r, theta] from the origin. */
   polarLineTo([r, theta]: Point2D): this {
-    const angleInRads = theta * DEG2RAD;
-    const point = polarToCartesian(r, angleInRads);
-    return this.lineTo(point);
+    return this.lineTo(polarToCartesian(r, theta * DEG2RAD));
   }
 
   /** Draw a line in polar coordinates (distance and angle in degrees) from the current point. */
   polarLine(distance: number, angle: number): this {
-    const angleInRads = angle * DEG2RAD;
-    const [x, y] = polarToCartesian(distance, angleInRads);
+    const [x, y] = polarToCartesian(distance, angle * DEG2RAD);
     return this.line(x, y);
   }
 
   /** Draw a line tangent to the previous curve, extending by the given distance. */
   tangentLine(distance: number): this {
-    const previousCurve = this.pendingCurves.length
-      ? this.pendingCurves[this.pendingCurves.length - 1]
-      : null;
-
-    if (!previousCurve)
-      bug('Sketcher2d.tangentLine', 'You need a previous curve to sketch a tangent line');
-
+    const previousCurve = this._requireLastCurve('Sketcher2d.tangentLine', 'sketch a tangent line');
     const direction = normalize2d(this._convertFromUV(previousCurve.tangentAt(1)));
     return this.line(direction[0] * distance, direction[1] * distance);
   }
 
+  // ── Three-point arcs ──
+
   /** Draw a circular arc passing through a mid-point to an absolute end point. */
   threePointsArcTo(end: Point2D, midPoint: Point2D): this {
-    this.saveCurve(
-      make2dThreePointArc(
-        this._convertToUV(this.pointer),
-        this._convertToUV(midPoint),
-        this._convertToUV(end)
-      )
+    const curve = make2dThreePointArc(
+      this._convertToUV(this.pointer),
+      this._convertToUV(midPoint),
+      this._convertToUV(end)
     );
-    this.pointer = end;
-    return this;
+    return this._saveCurveAndAdvance(curve, end);
   }
 
   /** Draw a circular arc through a via-point to an end point, both as relative distances. */
@@ -217,6 +235,8 @@ export class BaseSketcher2d {
     const [x0, y0] = this.pointer;
     return this.threePointsArcTo([x0 + xDist, y0 + yDist], [x0 + viaXDist, y0 + viaYDist]);
   }
+
+  // ── Sagitta arcs ──
 
   /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
   sagittaArcTo(end: Point2D, sagitta: number): this {
@@ -226,7 +246,6 @@ export class BaseSketcher2d {
     const midX = (x0 + x1) / 2;
     const midY = (y0 + y1) / 2;
 
-    // perpendicular vector of B - A
     const sagDirX = -(y1 - y0);
     const sagDirY = x1 - x0;
     const sagDirLen = Math.sqrt(sagDirX ** 2 + sagDirY ** 2);
@@ -240,21 +259,17 @@ export class BaseSketcher2d {
       midY + (sagDirY / sagDirLen) * sagitta,
     ];
 
-    this.saveCurve(
-      make2dThreePointArc(
-        this._convertToUV(this.pointer),
-        this._convertToUV(sagPoint),
-        this._convertToUV(end)
-      )
+    const curve = make2dThreePointArc(
+      this._convertToUV(this.pointer),
+      this._convertToUV(sagPoint),
+      this._convertToUV(end)
     );
-    this.pointer = end;
-
-    return this;
+    return this._saveCurveAndAdvance(curve, end);
   }
 
   /** Draw a circular arc to a relative end point, bulging by the given sagitta. */
   sagittaArc(xDist: number, yDist: number, sagitta: number): this {
-    return this.sagittaArcTo([xDist + this.pointer[0], yDist + this.pointer[1]], sagitta);
+    return this.sagittaArcTo(this._resolveRelative(xDist, yDist), sagitta);
   }
 
   /** Draw a vertical sagitta arc of the given distance and bulge. */
@@ -267,18 +282,18 @@ export class BaseSketcher2d {
     return this.sagittaArc(distance, 0, sagitta);
   }
 
+  // ── Bulge arcs ──
+
   /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
   bulgeArcTo(end: Point2D, bulge: number): this {
     if (!bulge) return this.lineTo(end);
     const halfChord = distance2d(this.pointer, end) / 2;
-    const bulgeAsSagitta = -bulge * halfChord;
-
-    return this.sagittaArcTo(end, bulgeAsSagitta);
+    return this.sagittaArcTo(end, -bulge * halfChord);
   }
 
   /** Draw an arc to a relative end point using a bulge factor. */
   bulgeArc(xDist: number, yDist: number, bulge: number): this {
-    return this.bulgeArcTo([xDist + this.pointer[0], yDist + this.pointer[1]], bulge);
+    return this.bulgeArcTo(this._resolveRelative(xDist, yDist), bulge);
   }
 
   /** Draw a vertical bulge arc of the given distance and bulge factor. */
@@ -291,32 +306,25 @@ export class BaseSketcher2d {
     return this.bulgeArc(distance, 0, bulge);
   }
 
+  // ── Tangent arcs ──
+
   /** Draw a circular arc tangent to the previous curve, ending at an absolute point. */
   tangentArcTo(end: Point2D): this {
-    const previousCurve = this.pendingCurves.length
-      ? this.pendingCurves[this.pendingCurves.length - 1]
-      : null;
-
-    if (!previousCurve)
-      bug('Sketcher2d.tangentArc', 'You need a previous curve to sketch a tangent arc');
-
-    this.saveCurve(
-      make2dTangentArc(
-        this._convertToUV(this.pointer),
-        previousCurve.tangentAt(1),
-        this._convertToUV(end)
-      )
+    const previousCurve = this._requireLastCurve('Sketcher2d.tangentArc', 'sketch a tangent arc');
+    const curve = make2dTangentArc(
+      this._convertToUV(this.pointer),
+      previousCurve.tangentAt(1),
+      this._convertToUV(end)
     );
-
-    this.pointer = end;
-    return this;
+    return this._saveCurveAndAdvance(curve, end);
   }
 
   /** Draw a circular arc tangent to the previous curve, ending at a relative offset. */
   tangentArc(xDist: number, yDist: number): this {
-    const [x0, y0] = this.pointer;
-    return this.tangentArcTo([xDist + x0, yDist + y0]);
+    return this.tangentArcTo(this._resolveRelative(xDist, yDist));
   }
+
+  // ── Ellipse arcs ──
 
   /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
   ellipseTo(
@@ -327,50 +335,24 @@ export class BaseSketcher2d {
     longAxis = false,
     sweep = false
   ): this {
-    let rotationAngle = rotation;
-    let majorRadius = horizontalRadius;
-    let minorRadius = verticalRadius;
+    const { majorRadius, minorRadius, rotationAngle } = normalizeEllipseRadii(
+      horizontalRadius,
+      verticalRadius,
+      rotation
+    );
 
-    if (horizontalRadius < verticalRadius) {
-      rotationAngle = rotation + 90;
-      majorRadius = verticalRadius;
-      minorRadius = horizontalRadius;
-    }
-    const radRotationAngle = rotationAngle * DEG2RAD;
-
-    const convertAxis = (ax: Point2D) => distance2d(this._convertToUV(ax));
-    const r1 = convertAxis(polarToCartesian(majorRadius, radRotationAngle));
-    const r2 = convertAxis(polarToCartesian(minorRadius, radRotationAngle + Math.PI / 2));
-
-    const xDir = normalize2d(this._convertToUV(rotate2d([1, 0], radRotationAngle)));
-    const [, newRotationAngle] = cartesianToPolar(xDir);
-
-    const { cx, cy, startAngle, endAngle, clockwise, rx, ry } = convertSvgEllipseParams(
+    const arc = makeEllipseArcFromSvgParams(
       this._convertToUV(this.pointer),
       this._convertToUV(end),
-      r1,
-      r2,
-      newRotationAngle,
+      majorRadius,
+      minorRadius,
+      rotationAngle,
       longAxis,
-      sweep
+      sweep,
+      (p) => this._convertToUV(p)
     );
 
-    const arc = make2dEllipseArc(
-      rx,
-      ry,
-      clockwise ? startAngle : endAngle,
-      clockwise ? endAngle : startAngle,
-      [cx, cy],
-      xDir
-    );
-
-    if (!clockwise) {
-      arc.reverse();
-    }
-
-    this.saveCurve(arc);
-    this.pointer = end;
-    return this;
+    return this._saveCurveAndAdvance(arc, end);
   }
 
   /** Draw an elliptical arc to a relative end point (SVG-style parameters). */
@@ -383,9 +365,8 @@ export class BaseSketcher2d {
     longAxis = false,
     sweep = false
   ): this {
-    const [x0, y0] = this.pointer;
     return this.ellipseTo(
-      [xDist + x0, yDist + y0],
+      this._resolveRelative(xDist, yDist),
       horizontalRadius,
       verticalRadius,
       rotation,
@@ -398,35 +379,29 @@ export class BaseSketcher2d {
   halfEllipseTo(end: Point2D, minorRadius: number, sweep = false): this {
     const angle = polarAngle2d(end, this.pointer);
     const dist = distance2d(end, this.pointer);
-
     return this.ellipseTo(end, dist / 2, minorRadius, angle * RAD2DEG, true, sweep);
   }
 
   /** Draw a half-ellipse arc to a relative end point with a given minor radius. */
   halfEllipse(xDist: number, yDist: number, minorRadius: number, sweep = false): this {
-    const [x0, y0] = this.pointer;
-    return this.halfEllipseTo([x0 + xDist, y0 + yDist], minorRadius, sweep);
+    return this.halfEllipseTo(this._resolveRelative(xDist, yDist), minorRadius, sweep);
   }
+
+  // ── Bezier curves ──
 
   /** Draw a Bezier curve to an absolute end point through one or more control points. */
   bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this {
-    let cp: Point2D[];
-    if (controlPoints.length === 2 && !Array.isArray(controlPoints[0])) {
-      cp = [controlPoints as Point2D];
-    } else {
-      cp = controlPoints as Point2D[];
-    }
+    const cp: Point2D[] =
+      controlPoints.length === 2 && !Array.isArray(controlPoints[0])
+        ? [controlPoints as Point2D]
+        : (controlPoints as Point2D[]);
 
-    this.saveCurve(
-      make2dBezierCurve(
-        this._convertToUV(this.pointer),
-        cp.map((point) => this._convertToUV(point)),
-        this._convertToUV(end)
-      )
+    const curve = make2dBezierCurve(
+      this._convertToUV(this.pointer),
+      cp.map((point) => this._convertToUV(point)),
+      this._convertToUV(end)
     );
-
-    this.pointer = end;
-    return this;
+    return this._saveCurveAndAdvance(curve, end);
   }
 
   /** Draw a quadratic Bezier curve to an absolute end point with a single control point. */
@@ -439,14 +414,13 @@ export class BaseSketcher2d {
     return this.bezierCurveTo(end, [startControlPoint, endControlPoint]);
   }
 
+  // ── Smooth splines ──
+
   /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous curve. */
   smoothSplineTo(end: Point2D, config?: SplineOptions): this {
     const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineOptions(config);
 
-    const previousCurve = this.pendingCurves.length
-      ? this.pendingCurves[this.pendingCurves.length - 1]
-      : null;
-
+    const previousCurve = this._lastCurve();
     const defaultDistance = distance2d(this.pointer, end) * 0.25;
 
     let startPoleDirection: Point2D;
@@ -482,8 +456,10 @@ export class BaseSketcher2d {
 
   /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous curve. */
   smoothSpline(xDist: number, yDist: number, splineConfig?: SplineOptions): this {
-    return this.smoothSplineTo([xDist + this.pointer[0], yDist + this.pointer[1]], splineConfig);
+    return this.smoothSplineTo(this._resolveRelative(xDist, yDist), splineConfig);
   }
+
+  // ── Corner treatments ──
 
   /**
    * Changes the corner between the previous and next segments.
@@ -491,7 +467,7 @@ export class BaseSketcher2d {
   customCorner(
     radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]),
     mode: 'fillet' | 'chamfer' = 'fillet'
-  ) {
+  ): this {
     if (!this.pendingCurves.length)
       bug('Sketcher2d.customCorner', 'You need a curve defined to fillet the angle');
 
@@ -502,7 +478,7 @@ export class BaseSketcher2d {
   protected _customCornerLastWithFirst(
     radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
     mode: 'fillet' | 'chamfer' | 'dogbone' = 'fillet'
-  ) {
+  ): void {
     if (!radius) return;
 
     const previousCurve = this.pendingCurves.pop();
@@ -514,13 +490,15 @@ export class BaseSketcher2d {
     this.pendingCurves.push(...buildCornerFunction(radius, mode)(previousCurve, curve));
   }
 
+  // ── Close / mirror helpers ──
+
   protected _closeSketch(): void {
     if (!samePoint(this.pointer, this.firstPoint)) {
       this.lineTo(this.firstPoint);
     }
   }
 
-  protected _closeWithMirror() {
+  protected _closeWithMirror(): void {
     if (samePoint(this.pointer, this.firstPoint))
       bug(
         'Sketcher2d._closeWithMirror',
@@ -537,9 +515,9 @@ export class BaseSketcher2d {
       (c) => new Curve2D(c.innerCurve.Mirrored_2(mirrorAxis))
     );
     mirroredCurves.reverse();
-    mirroredCurves.forEach((c) => {
+    for (const c of mirroredCurves) {
       c.reverse();
-    });
+    }
     this.pendingCurves.push(...mirroredCurves);
     this.pointer = this.firstPoint;
   }
