@@ -23,19 +23,26 @@ export interface Deletable {
 // FinalizationRegistry safety net
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- FinalizationRegistry polyfill for environments without it
-if (!(globalThis as any).FinalizationRegistry) {
-  console.warn('brepjs: FinalizationRegistry unavailable — garbage collection will not work');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- polyfill shim
-  (globalThis as any).FinalizationRegistry = (() => ({
-    register: () => null,
-    unregister: () => null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- polyfill shim
-  })) as any;
+interface GlobalWithRegistry {
+  FinalizationRegistry?: typeof FinalizationRegistry;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- FinalizationRegistry generic typing
-const registry = new (globalThis as any).FinalizationRegistry((heldValue: Deletable) => {
+const globalWithRegistry = globalThis as GlobalWithRegistry;
+
+if (!globalWithRegistry.FinalizationRegistry) {
+  console.warn('brepjs: FinalizationRegistry unavailable — garbage collection will not work');
+  globalWithRegistry.FinalizationRegistry = class NoOpFinalizationRegistry {
+    register(_target: object, _heldValue: unknown, _unregisterToken?: object): void {
+      // no-op
+    }
+
+    unregister(_unregisterToken: object): boolean {
+      return false;
+    }
+  } as unknown as typeof FinalizationRegistry;
+}
+
+const registry = new FinalizationRegistry<Deletable>((heldValue) => {
   try {
     heldValue.delete();
   } catch {
@@ -215,8 +222,7 @@ export function gcWithScope(): <T extends Deletable>(value: T) => T {
 }
 
 /** Register a deletable value for GC when the given object is collected. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- obj can be any reference holder
-export function gcWithObject(obj: any): <T extends Deletable>(value: T) => T {
+export function gcWithObject(obj: object): <T extends Deletable>(value: T) => T {
   function registerForGC<T extends Deletable>(value: T): T {
     registry.register(obj, value);
     return value;
@@ -230,17 +236,21 @@ export function localGC(
 ): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined] {
   const cleaner = new Set<Deletable>();
 
-  return [
-    <T extends Deletable>(v: T): T => {
-      cleaner.add(v);
-      return v;
-    },
-    () => {
-      cleaner.forEach((d) => {
+  const register = <T extends Deletable>(v: T): T => {
+    cleaner.add(v);
+    return v;
+  };
+
+  const cleanup = () => {
+    for (const d of cleaner) {
+      try {
         d.delete();
-      });
-      cleaner.clear();
-    },
-    debug ? cleaner : undefined,
-  ];
+      } catch {
+        // Already deleted or invalid — ignore
+      }
+    }
+    cleaner.clear();
+  };
+
+  return [register, cleanup, debug ? cleaner : undefined];
 }

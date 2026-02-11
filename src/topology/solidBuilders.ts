@@ -5,7 +5,7 @@
 
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope, localGC } from '../core/memory.js';
+import { gcWithScope } from '../core/disposal.js';
 import { toOcPnt, makeOcAx1, makeOcAx2 } from '../core/occtBoundary.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err, andThen, unwrap } from '../core/result.js';
@@ -41,13 +41,11 @@ export function makeCylinder(
   direction: Vec3 = [0, 0, 1]
 ): Solid {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const axis = r(makeOcAx2(location, direction));
   const cylinder = r(new oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height));
-  const solid = createSolid(cylinder.Shape());
-  gc();
-  return solid;
+  return createSolid(cylinder.Shape());
 }
 
 /**
@@ -57,12 +55,10 @@ export function makeCylinder(
  */
 export function makeSphere(radius: number): Solid {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const sphereMaker = r(new oc.BRepPrimAPI_MakeSphere_1(radius));
-  const sphere = createSolid(sphereMaker.Shape());
-  gc();
-  return sphere;
+  return createSolid(sphereMaker.Shape());
 }
 
 /**
@@ -78,13 +74,11 @@ export function makeCone(
   direction: Vec3 = [0, 0, 1]
 ): Solid {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const axis = r(makeOcAx2(location, direction));
   const coneMaker = r(new oc.BRepPrimAPI_MakeCone_3(axis, radius1, radius2, height));
-  const solid = createSolid(coneMaker.Shape());
-  gc();
-  return solid;
+  return createSolid(coneMaker.Shape());
 }
 
 /**
@@ -99,13 +93,11 @@ export function makeTorus(
   direction: Vec3 = [0, 0, 1]
 ): Solid {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const axis = r(makeOcAx2(location, direction));
   const torusMaker = r(new oc.BRepPrimAPI_MakeTorus_5(axis, majorRadius, minorRadius));
-  const solid = createSolid(torusMaker.Shape());
-  gc();
-  return solid;
+  return createSolid(torusMaker.Shape());
 }
 
 // ---------------------------------------------------------------------------
@@ -215,27 +207,22 @@ export function makeEllipsoid(aLength: number, bLength: number, cLength: number)
  */
 export function makeBox(corner1: Vec3, corner2: Vec3): Solid {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const p1 = r(toOcPnt(corner1));
   const p2 = r(toOcPnt(corner2));
   const boxMaker = r(new oc.BRepPrimAPI_MakeBox_4(p1, p2));
-  const box = createSolid(boxMaker.Solid());
-  gc();
-  return box;
+  return createSolid(boxMaker.Solid());
 }
 
 /** Create a vertex at a 3D point. */
 export function makeVertex(point: Vec3): Vertex {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const pnt = r(toOcPnt(point));
   const vertexMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
-  const vertex = vertexMaker.Vertex();
-  gc();
-
-  return createVertex(vertex);
+  return createVertex(vertexMaker.Vertex());
 }
 
 /**

@@ -292,7 +292,6 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     longAxis = false,
     sweep = false
   ): this {
-    const [, gc] = localGC();
     const [startX, startY] = planeToLocal(this.plane, this.pointer);
 
     let rotationAngle = rotation;
@@ -335,7 +334,6 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
     this.pendingEdges.push(arc);
     this._updatePointer(planeToWorld(this.plane, end));
-    gc();
     return this;
   }
 

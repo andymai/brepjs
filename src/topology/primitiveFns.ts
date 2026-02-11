@@ -49,7 +49,7 @@ import {
   makePolygon as _makePolygon,
 } from './shapeHelpers.js';
 import { getKernel } from '../kernel/index.js';
-import { localGC } from '../core/memory.js';
+import { gcWithScope } from '../core/disposal.js';
 import { createSolid } from '../core/shapeTypes.js';
 import { translate } from './shapeFns.js';
 
@@ -77,19 +77,14 @@ export interface BoxOptions {
  */
 export function box(width: number, depth: number, height: number, options?: BoxOptions): Solid {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  const r = gcWithScope();
 
   const maker = r(new oc.BRepPrimAPI_MakeBox_2(width, depth, height));
-  let solid = createSolid(maker.Solid());
-  gc();
+  const solid = createSolid(maker.Solid());
 
   const center = options?.at ?? (options?.centered ? ([0, 0, 0] as Vec3) : undefined);
   if (center) {
-    solid = translate(solid, [
-      center[0] - width / 2,
-      center[1] - depth / 2,
-      center[2] - height / 2,
-    ]);
+    return translate(solid, [center[0] - width / 2, center[1] - depth / 2, center[2] - height / 2]);
   }
   return solid;
 }
