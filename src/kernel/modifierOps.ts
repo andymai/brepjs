@@ -56,43 +56,39 @@ export function chamfer(
 ): OcShape {
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
 
-  // Lazily collect faces only if asymmetric distances are needed
-  let faces: OcShape[] | null = null;
-  function getFaces(): OcShape[] {
-    if (faces) return faces;
-    faces = [];
-    const explorer = new oc.TopExp_Explorer_2(
+  // Build edge→face map lazily (O(faces×edges_per_face) once, then O(1) per lookup)
+  let edgeFaceMap: Map<number, OcShape> | null = null;
+  function getEdgeFaceMap(): Map<number, OcShape> {
+    if (edgeFaceMap) return edgeFaceMap;
+    edgeFaceMap = new Map();
+    const faceExp = new oc.TopExp_Explorer_2(
       shape,
       oc.TopAbs_ShapeEnum.TopAbs_FACE,
       oc.TopAbs_ShapeEnum.TopAbs_SHAPE
     );
-    while (explorer.More()) {
-      faces.push(oc.TopoDS.Face_1(explorer.Current()));
-      explorer.Next();
-    }
-    explorer.delete();
-    return faces;
-  }
-
-  function findContainingFace(edge: OcShape): OcShape | null {
-    for (const face of getFaces()) {
-      const edgeExplorer = new oc.TopExp_Explorer_2(
+    while (faceExp.More()) {
+      const face = oc.TopoDS.Face_1(faceExp.Current());
+      const edgeExp = new oc.TopExp_Explorer_2(
         face,
         oc.TopAbs_ShapeEnum.TopAbs_EDGE,
         oc.TopAbs_ShapeEnum.TopAbs_SHAPE
       );
-      let found = false;
-      while (edgeExplorer.More()) {
-        if (edgeExplorer.Current().IsSame(edge)) {
-          found = true;
-          break;
+      while (edgeExp.More()) {
+        const hash = edgeExp.Current().HashCode(2147483647);
+        if (!edgeFaceMap.has(hash)) {
+          edgeFaceMap.set(hash, face);
         }
-        edgeExplorer.Next();
+        edgeExp.Next();
       }
-      edgeExplorer.delete();
-      if (found) return face;
+      edgeExp.delete();
+      faceExp.Next();
     }
-    return null;
+    faceExp.delete();
+    return edgeFaceMap;
+  }
+
+  function findContainingFace(edge: OcShape): OcShape | null {
+    return getEdgeFaceMap().get(edge.HashCode(2147483647)) ?? null;
   }
 
   for (const edge of edges) {
@@ -181,42 +177,34 @@ export function chamferDistAngle(
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
   const angleRad = (angleDeg * Math.PI) / 180;
 
-  // Collect faces as properly downcast TopoDS_Face instances
-  const faces: OcShape[] = [];
+  // Build edge→face map once (O(faces×edges_per_face)), then O(1) per lookup
+  const edgeFaceMap = new Map<number, OcShape>();
   const faceExplorer = new oc.TopExp_Explorer_2(
     shape,
     oc.TopAbs_ShapeEnum.TopAbs_FACE,
     oc.TopAbs_ShapeEnum.TopAbs_SHAPE
   );
   while (faceExplorer.More()) {
-    faces.push(oc.TopoDS.Face_1(faceExplorer.Current()));
+    const face = oc.TopoDS.Face_1(faceExplorer.Current());
+    const edgeExp = new oc.TopExp_Explorer_2(
+      face,
+      oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+    while (edgeExp.More()) {
+      const hash = edgeExp.Current().HashCode(2147483647);
+      if (!edgeFaceMap.has(hash)) {
+        edgeFaceMap.set(hash, face);
+      }
+      edgeExp.Next();
+    }
+    edgeExp.delete();
     faceExplorer.Next();
   }
   faceExplorer.delete();
 
   for (const edge of edges) {
-    // Find a face containing this edge
-    let containingFace: OcShape | null = null;
-    for (const face of faces) {
-      const edgeExplorer = new oc.TopExp_Explorer_2(
-        face,
-        oc.TopAbs_ShapeEnum.TopAbs_EDGE,
-        oc.TopAbs_ShapeEnum.TopAbs_SHAPE
-      );
-      let found = false;
-      while (edgeExplorer.More()) {
-        if (edgeExplorer.Current().IsSame(edge)) {
-          found = true;
-          break;
-        }
-        edgeExplorer.Next();
-      }
-      edgeExplorer.delete();
-      if (found) {
-        containingFace = face;
-        break;
-      }
-    }
+    const containingFace = edgeFaceMap.get(edge.HashCode(2147483647)) ?? null;
     if (containingFace && distance > 0) {
       // Edge must also be downcast to TopoDS_Edge for the AddDA binding
       builder.AddDA(distance, angleRad, oc.TopoDS.Edge_1(edge), containingFace);

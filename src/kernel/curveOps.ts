@@ -34,12 +34,13 @@ export function interpolatePoints(
 
   // Use high-precision approximation to effectively interpolate
   const pnts = new oc.TColgp_Array1OfPnt_2(1, points.length);
+  const reusePnt = new oc.gp_Pnt_1();
   let idx = 1;
   for (const pt of points) {
-    const pnt = new oc.gp_Pnt_3(pt[0], pt[1], pt[2]);
-    pnts.SetValue(idx++, pnt);
-    pnt.delete();
+    reusePnt.SetCoord_2(pt[0], pt[1], pt[2]);
+    pnts.SetValue(idx++, reusePnt);
   }
+  reusePnt.delete();
 
   const splineBuilder = new oc.GeomAPI_PointsToBSpline_2(
     pnts,
@@ -77,12 +78,13 @@ export function approximatePoints(
   const { tolerance = 1e-3, degMin = 1, degMax = 6, smoothing = null } = options;
 
   const pnts = new oc.TColgp_Array1OfPnt_2(1, points.length);
+  const reusePnt = new oc.gp_Pnt_1();
   let idx = 1;
   for (const pt of points) {
-    const pnt = new oc.gp_Pnt_3(pt[0], pt[1], pt[2]);
-    pnts.SetValue(idx++, pnt);
-    pnt.delete();
+    reusePnt.SetCoord_2(pt[0], pt[1], pt[2]);
+    pnts.SetValue(idx++, reusePnt);
   }
+  reusePnt.delete();
 
   let splineBuilder: OcType;
   if (smoothing) {
