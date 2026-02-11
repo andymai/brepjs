@@ -106,6 +106,7 @@ export interface KernelAdapter {
   revolve(shape: OcShape, axis: OcType, angle: number): OcShape;
   loft(wires: OcShape[], ruled?: boolean, startShape?: OcShape, endShape?: OcShape): OcShape;
   sweep(wire: OcShape, spine: OcShape, options?: { transitionMode?: number }): OcShape;
+  simplePipe(profile: OcShape, spine: OcShape): OcShape;
 
   // --- Modification ---
   fillet(

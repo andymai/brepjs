@@ -88,3 +88,33 @@ export function sweep(
   sweepBuilder.delete();
   return result;
 }
+
+/**
+ * Simple pipe sweep using BRepOffsetAPI_MakePipe.
+ *
+ * Faster than MakePipeShell for constant cross-section profiles (especially
+ * rotationally symmetric ones like circles) because it skips Frenet frame
+ * computation and profile orientation interpolation.
+ */
+export function simplePipe(oc: OpenCascadeInstance, profile: OcShape, spine: OcShape): OcShape {
+  const maker = new oc.BRepOffsetAPI_MakePipe_1(spine, profile);
+  const progress = new oc.Message_ProgressRange_1();
+  maker.Build(progress);
+  progress.delete();
+
+  // MakePipe produces a shell by default — solidify it
+  const shellShape = maker.Shape();
+  const solidMaker = new oc.BRepBuilderAPI_MakeSolid_1();
+  const shellDowncast = oc.TopoDS.Shell_1(shellShape);
+  solidMaker.Add(shellDowncast);
+  const solidProgress = new oc.Message_ProgressRange_1();
+  solidMaker.Build(solidProgress);
+  solidProgress.delete();
+
+  const result = solidMaker.IsDone() ? solidMaker.Solid() : shellShape;
+
+  shellDowncast.delete();
+  solidMaker.delete();
+  maker.delete();
+  return result;
+}

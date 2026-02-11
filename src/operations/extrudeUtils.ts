@@ -31,6 +31,26 @@ export interface SweepOptions {
   support?: OcType;
   /** Force profile to be orthogonal to spine */
   forceProfileSpineOthogonality?: boolean;
+
+  // --- Performance tuning ---
+
+  /**
+   * Use BRepOffsetAPI_MakePipe (simple pipe) instead of MakePipeShell.
+   * Much faster for constant cross-section profiles, especially rotationally
+   * symmetric ones (circles, regular polygons) where orientation doesn't matter.
+   * Incompatible with frenet, auxiliarySpine, law, and support options.
+   */
+  mode?: 'general' | 'simple';
+  /** 3D approximation tolerance for MakePipeShell (default: OCCT default ~1e-7). */
+  tolerance?: number;
+  /** Boundary tolerance for MakePipeShell. Defaults to `tolerance` if set. */
+  boundTolerance?: number;
+  /** Angular tolerance in radians for MakePipeShell. */
+  angularTolerance?: number;
+  /** Maximum B-spline degree for pipe surface approximation. */
+  maxDegree?: number;
+  /** Maximum number of approximation segments. */
+  maxSegments?: number;
 }
 
 // ---------------------------------------------------------------------------
