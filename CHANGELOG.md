@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.4](https://github.com/andymai/brepjs/compare/brepjs-v8.0.3...brepjs-v8.0.4) (2026-02-12)
+
+
+### Performance Improvements
+
+* optimize adjacency, distance queries, and rectangular pattern ([#229](https://github.com/andymai/brepjs/issues/229)) ([02c4645](https://github.com/andymai/brepjs/commit/02c46457c85477f2ec2f6fa5238c2c61b7dfd5da))
+
 ## [8.0.3](https://github.com/andymai/brepjs/compare/brepjs-v8.0.2...brepjs-v8.0.3) (2026-02-12)
 
 
