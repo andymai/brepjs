@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.3](https://github.com/andymai/brepjs/compare/brepjs-v8.0.2...brepjs-v8.0.3) (2026-02-12)
+
+
+### Performance Improvements
+
+* optimize OCCT engine internals ([#227](https://github.com/andymai/brepjs/issues/227)) ([ac46a92](https://github.com/andymai/brepjs/commit/ac46a928398f24e5fefd7aaccdd356634ef89bdc))
+
 ## [8.0.2](https://github.com/andymai/brepjs/compare/brepjs-v8.0.1...brepjs-v8.0.2) (2026-02-11)
 
 
