@@ -20,22 +20,24 @@ export function distanceFromPointFilter<T extends AnyShape>(
   point: Vec3,
   tolerance: number
 ): Predicate<T> {
+  // Hoist WASM object creation outside the predicate — these are reused
+  // for every element tested, avoiding N alloc/delete cycles.
+  const oc = getKernel().oc;
+  const r = gcWithScope();
+
+  const pnt = r(toOcPnt(point));
+  const vtxMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
+  const vtx = vtxMaker.Vertex();
+
+  const distTool = r(new oc.BRepExtrema_DistShapeShape_1());
+  distTool.LoadS1(vtx);
+
+  const progress = r(new oc.Message_ProgressRange_1());
+
   return (element: T): boolean => {
-    const oc = getKernel().oc;
-    const r = gcWithScope();
-
-    const pnt = r(toOcPnt(point));
-    const vtxMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
-    const vtx = vtxMaker.Vertex();
-
-    const distTool = r(new oc.BRepExtrema_DistShapeShape_1());
-    distTool.LoadS1(vtx);
     distTool.LoadS2(element.wrapped);
-
-    const progress = r(new oc.Message_ProgressRange_1());
     distTool.Perform(progress);
     const d = distTool.Value();
-
     return Math.abs(d - distance) < tolerance;
   };
 }

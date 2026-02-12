@@ -190,28 +190,55 @@ export function verticesOfEdge(edge: Edge): Vertex[] {
  */
 export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
   const oc = getKernel().oc;
-  const faceEdges = findChildren(face.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
+  const shapeEnum = oc.TopAbs_ShapeEnum.TopAbs_SHAPE;
 
-  // Collect all faces that share any edge with the input face
+  // Build edge→faces map in a single pass over all faces in parent.
+  // This replaces the O(E_face × F × E_per_face) nested exploration with
+  // O(F × E_per_face) to build + O(E_face) to query.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collections
+  const edgeToFaces = new Map<number, any[]>();
+  const faceExp = new oc.TopExp_Explorer_2(
+    parent.wrapped,
+    oc.TopAbs_ShapeEnum.TopAbs_FACE,
+    shapeEnum
+  );
+  while (faceExp.More()) {
+    const f = faceExp.Current();
+    const edgeExp = new oc.TopExp_Explorer_2(f, oc.TopAbs_ShapeEnum.TopAbs_EDGE, shapeEnum);
+    while (edgeExp.More()) {
+      const hash = edgeExp.Current().HashCode(HASH_CODE_MAX);
+      let bucket = edgeToFaces.get(hash);
+      if (!bucket) {
+        bucket = [];
+        edgeToFaces.set(hash, bucket);
+      }
+      // Dedup faces within the same hash bucket
+      if (!bucket.some((existing) => existing.IsSame(f))) {
+        bucket.push(f);
+      }
+      edgeExp.Next();
+    }
+    edgeExp.delete();
+    faceExp.Next();
+  }
+  faceExp.delete();
+
+  // For each edge of the input face, look up adjacent faces from the map
+  const faceEdges = findChildren(face.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
   const neighborRaw: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shapes for IsSame dedup
   const seen = new Map<number, any[]>();
 
   for (const edgeOc of faceEdges) {
-    const edgeFaces = findAncestors(
-      parent.wrapped,
-      edgeOc,
-      oc.TopAbs_ShapeEnum.TopAbs_FACE,
-      oc.TopAbs_ShapeEnum.TopAbs_EDGE
-    );
-    for (const f of edgeFaces) {
-      // Skip the input face itself
+    const hash = edgeOc.HashCode(HASH_CODE_MAX);
+    const facesForEdge = edgeToFaces.get(hash) ?? [];
+    for (const f of facesForEdge) {
       if (f.IsSame(face.wrapped)) continue;
-      const hash = f.HashCode(HASH_CODE_MAX);
-      const bucket = seen.get(hash);
+      const fHash = f.HashCode(HASH_CODE_MAX);
+      const bucket = seen.get(fHash);
       if (!bucket) {
-        seen.set(hash, [f]);
+        seen.set(fHash, [f]);
         neighborRaw.push(f);
       } else if (!bucket.some((r) => r.IsSame(f))) {
         bucket.push(f);

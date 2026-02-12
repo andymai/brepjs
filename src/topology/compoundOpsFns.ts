@@ -22,7 +22,7 @@ import type {
 } from './apiTypes.js';
 import { resolve } from './apiTypes.js';
 import { getBounds, getFaces, translate, mirror } from './shapeFns.js';
-import { fuse, cut } from './booleanFns.js';
+import { fuse, cut, fuseAll } from './booleanFns.js';
 import { extrude } from '../operations/extrudeFns.js';
 import { faceFinder } from '../query/finderFns.js';
 import { normalAt, faceCenter } from './faceFns.js';
@@ -243,8 +243,10 @@ export function rectangularPattern<T extends Shape3D>(
   const xNorm = vecNormalize(xDir);
   const yNorm = vecNormalize(yDir);
 
-  // Build all copies (skip origin copy at [0,0])
-  let result: Shape3D = s;
+  // Collect all copies first, then batch-fuse with native N-way boolean.
+  // This replaces sequential fuse() (N-1 pairwise operations on growing shapes)
+  // with a single BRepAlgoAPI_BuilderAlgo call.
+  const copies: Shape3D[] = [s];
   for (let xi = 0; xi < xCount; xi++) {
     for (let yi = 0; yi < yCount; yi++) {
       if (xi === 0 && yi === 0) continue; // skip original
@@ -253,12 +255,9 @@ export function rectangularPattern<T extends Shape3D>(
         xNorm[1] * xSpacing * xi + yNorm[1] * ySpacing * yi,
         xNorm[2] * xSpacing * xi + yNorm[2] * ySpacing * yi,
       ];
-      const copy = translate(s, offset);
-      const fuseResult = fuse(result, copy);
-      if (isErr(fuseResult)) return fuseResult as Result<T>;
-      result = fuseResult.value;
+      copies.push(translate(s, offset));
     }
   }
 
-  return ok(result) as Result<T>;
+  return fuseAll(copies) as Result<T>;
 }
