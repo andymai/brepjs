@@ -82,6 +82,20 @@ export function clone<T extends AnyShape>(shape: Shapeable<T>): T {
   return transforms.clone(resolve(shape));
 }
 
+export type { TransformOp, ComposedTransform } from './shapeFns.js';
+export { composeTransforms } from './shapeFns.js';
+
+/**
+ * Clone a shape and apply a pre-composed transform in a single OCCT operation.
+ * Much faster than separate clone() + translate() + rotate() calls for batch patterns.
+ */
+export function transformCopy<T extends AnyShape>(
+  shape: Shapeable<T>,
+  composed: transforms.ComposedTransform
+): T {
+  return transforms.transformCopy(resolve(shape), composed);
+}
+
 // ---------------------------------------------------------------------------
 // Booleans — accept Shapeable, preserve first operand type T
 // ---------------------------------------------------------------------------

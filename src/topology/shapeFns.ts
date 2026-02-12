@@ -131,6 +131,66 @@ export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3
 }
 
 // ---------------------------------------------------------------------------
+// Composed transform + copy
+// ---------------------------------------------------------------------------
+
+/** A single transform operation: translate or rotate. */
+export type TransformOp =
+  | { readonly type: 'translate'; readonly v: Vec3 }
+  | {
+      readonly type: 'rotate';
+      readonly angle: number;
+      readonly axis?: Vec3;
+      readonly center?: Vec3;
+    };
+
+/** An OCCT gp_Trsf with a cleanup function. Call `cleanup()` when done. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT WASM type
+export interface ComposedTransform {
+  readonly trsf: any;
+  readonly cleanup: () => void;
+}
+
+/**
+ * Compose multiple translate/rotate operations into a single OCCT gp_Trsf.
+ * Operations are applied in order (first element applied first).
+ * Call `.cleanup()` on the result when done to free the OCCT object.
+ */
+export function composeTransforms(ops: readonly TransformOp[]): ComposedTransform {
+  const oc = getKernel().oc;
+  const result = new oc.gp_Trsf_1();
+
+  for (const op of ops) {
+    const step = new oc.gp_Trsf_1();
+    if (op.type === 'translate') {
+      const vec = toOcVec(op.v);
+      step.SetTranslation_1(vec);
+      vec.delete();
+    } else {
+      const ax1 = makeOcAx1(op.center ?? [0, 0, 0], op.axis ?? [0, 0, 1]);
+      step.SetRotation_1(ax1, op.angle * DEG2RAD);
+      ax1.delete();
+    }
+    result.PreMultiply(step);
+    step.delete();
+  }
+
+  return { trsf: result, cleanup: () => result.delete() };
+}
+
+/**
+ * Clone a shape and apply a pre-composed transform in a single OCCT operation.
+ * Much faster than separate clone() + translate() + rotate() calls.
+ */
+export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTransform): T {
+  const oc = getKernel().oc;
+  const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, composed.trsf, true);
+  const result = castShape(transformer.Shape()) as T;
+  transformer.delete();
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Topology queries (with lazy caching)
 // ---------------------------------------------------------------------------
 

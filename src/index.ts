@@ -690,6 +690,10 @@ export {
   mirror,
   scale,
   clone,
+  composeTransforms,
+  transformCopy,
+  type TransformOp,
+  type ComposedTransform,
   // Booleans
   fuse,
   cut,
