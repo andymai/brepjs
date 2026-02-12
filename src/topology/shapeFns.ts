@@ -145,8 +145,8 @@ export type TransformOp =
     };
 
 /** An OCCT gp_Trsf with a cleanup function. Call `cleanup()` when done. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT WASM type
 export interface ComposedTransform {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT WASM type
   readonly trsf: any;
   readonly cleanup: () => void;
 }
