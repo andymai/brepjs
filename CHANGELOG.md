@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.1.0](https://github.com/andymai/brepjs/compare/brepjs-v8.0.4...brepjs-v8.1.0) (2026-02-12)
+
+
+### Features
+
+* add composeTransforms and transformCopy API ([#231](https://github.com/andymai/brepjs/issues/231)) ([b4acf4e](https://github.com/andymai/brepjs/commit/b4acf4e1a7da25de6ad3ccc6a329eb8ace138e1d))
+
 ## [8.0.4](https://github.com/andymai/brepjs/compare/brepjs-v8.0.3...brepjs-v8.0.4) (2026-02-12)
 
 
