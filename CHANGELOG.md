@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.1.1](https://github.com/andymai/brepjs/compare/brepjs-v8.1.0...brepjs-v8.1.1) (2026-02-13)
+
+
+### Bug Fixes
+
+* add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
+
 ## [8.1.0](https://github.com/andymai/brepjs/compare/brepjs-v8.0.4...brepjs-v8.1.0) (2026-02-12)
 
 
