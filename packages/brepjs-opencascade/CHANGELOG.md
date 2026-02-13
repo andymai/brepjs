@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.1...brepjs-opencascade-v0.7.2) (2026-02-13)
+
+
+### Bug Fixes
+
+* add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
+
 ## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.0...brepjs-opencascade-v0.7.1) (2026-02-07)
 
 
