@@ -9142,6 +9142,12 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   OCJS: typeof OCJS;
 };
 
-declare function init(): Promise<OpenCascadeInstance>;
+/** Emscripten module configuration passed to the WASM factory function. */
+interface EmscriptenModuleConfig {
+  locateFile?: (path: string) => string;
+  mainScriptUrlOrBlob?: string;
+}
+
+declare function init(config?: EmscriptenModuleConfig): Promise<OpenCascadeInstance>;
 
 export default init;
