@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.3.0](https://github.com/andymai/brepjs/compare/brepjs-v8.2.0...brepjs-v8.3.0) (2026-02-16)
+
+
+### Features
+
+* add face origin provenance tracking ([#248](https://github.com/andymai/brepjs/issues/248)) ([f01e856](https://github.com/andymai/brepjs/commit/f01e8569e627795440e40983cc2b0d87293041f6))
+
 ## [8.2.0](https://github.com/andymai/brepjs/compare/brepjs-v8.1.1...brepjs-v8.2.0) (2026-02-16)
 
 
