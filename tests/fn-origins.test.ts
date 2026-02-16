@@ -14,6 +14,7 @@ import {
   cutAll,
   unwrap,
   fillet,
+  mesh,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -259,5 +260,40 @@ describe('origin propagation through modifiers', () => {
       if (o !== undefined) originValues.add(o);
     }
     expect(originValues.has(8)).toBe(true);
+  });
+});
+
+describe('mesh origin output', () => {
+  it('includes origin in faceGroups for tagged shapes', () => {
+    const b = box(10, 10, 10);
+    setShapeOrigin(b, 42);
+
+    const m = mesh(b);
+    expect(m.faceGroups.length).toBe(6);
+    for (const g of m.faceGroups) {
+      expect(g.origin).toBe(42);
+    }
+  });
+
+  it('defaults origin to 0 for untagged shapes', () => {
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    for (const g of m.faceGroups) {
+      expect(g.origin).toBe(0);
+    }
+  });
+
+  it('includes correct origins for fused shapes', () => {
+    const a = box(10, 10, 10);
+    const b = translate(box(10, 10, 10), [10, 0, 0]);
+    setShapeOrigin(a, 1);
+    setShapeOrigin(b, 2);
+
+    const result = unwrap(fuse(a, b));
+    const m = mesh(result);
+
+    const originValues = new Set(m.faceGroups.map((g) => g.origin));
+    expect(originValues.has(1)).toBe(true);
+    expect(originValues.has(2)).toBe(true);
   });
 });

@@ -38,6 +38,7 @@ import {
   getEdgeMeshForShape,
   setEdgeMeshForShape,
 } from './meshCache.js';
+import { getFaceOrigins } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Mesh types
@@ -54,7 +55,7 @@ export interface ShapeMesh {
   /** Flat array of UV coordinates (u,v interleaved), empty if not requested. */
   uvs: Float32Array;
   /** Per-face triangle index ranges for multi-material rendering. */
-  faceGroups: { start: number; count: number; faceId: number }[];
+  faceGroups: { start: number; count: number; faceId: number; origin: number }[];
 }
 
 /** Line segment mesh data for edge rendering (wireframe). */
@@ -115,6 +116,7 @@ export function mesh(
     ...(signal ? { signal } : {}),
   });
 
+  const origins = getFaceOrigins(shape);
   const mesh: ShapeMesh = {
     vertices: result.vertices,
     normals: result.normals,
@@ -124,6 +126,7 @@ export function mesh(
       start: g.start,
       count: g.count,
       faceId: g.faceHash,
+      origin: origins?.get(g.faceHash) ?? 0,
     })),
   };
 
