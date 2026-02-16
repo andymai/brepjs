@@ -406,12 +406,13 @@ export function getFaceOrigins(shape: AnyShape): Map<number, number> | undefined
 // Origin propagation
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT types are dynamic
+/* eslint-disable @typescript-eslint/no-explicit-any -- OCCT WASM types are dynamically typed */
 type OcMakeShapeLike = {
   Modified(s: any): any;
   Generated(s: any): any;
   IsDeleted?(s: any): boolean;
 };
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Iterate a TopTools_ListOfShape by copying it and consuming the copy.
@@ -478,6 +479,36 @@ export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result
           resultMap.set(hash, 0);
         }
       });
+    }
+  }
+
+  if (resultMap.size > 0) {
+    const cache = getOrCreateCache(result);
+    cache.faceOrigins = resultMap;
+  }
+}
+
+/**
+ * Fallback origin propagation when no OCCT op object is available.
+ * Matches result faces to input faces by hash code (works for unmodified faces only).
+ */
+export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): void {
+  const lookup = new Map<number, number>();
+  for (const input of inputs) {
+    const origins = getFaceOrigins(input);
+    if (!origins) continue;
+    for (const [hash, origin] of origins) {
+      lookup.set(hash, origin);
+    }
+  }
+  if (lookup.size === 0) return;
+
+  const resultMap = new Map<number, number>();
+  for (const f of getFaces(result)) {
+    const hash = f.wrapped.HashCode(HASH_CODE_MAX);
+    const origin = lookup.get(hash);
+    if (origin !== undefined) {
+      resultMap.set(hash, origin);
     }
   }
 

@@ -8,6 +8,9 @@ import {
   getFaceOrigins,
   translate,
   fuse,
+  cut,
+  fuseAll,
+  cutAll,
   unwrap,
 } from '../src/index.js';
 
@@ -104,5 +107,96 @@ describe('origin propagation through fuse', () => {
     const b = translate(box(10, 10, 10), [10, 0, 0]);
     const result = unwrap(fuse(a, b));
     expect(getFaceOrigins(result)).toBeUndefined();
+  });
+});
+
+describe('origin propagation through cut', () => {
+  it('propagates origins from base shape', () => {
+    const base = box(20, 20, 20);
+    const tool = translate(box(10, 10, 30), [5, 5, -5]);
+    setShapeOrigin(base, 1);
+    setShapeOrigin(tool, 2);
+
+    const result = unwrap(cut(base, tool));
+    const origins = getFaceOrigins(result);
+    expect(origins).toBeDefined();
+    if (!origins) return;
+
+    const originValues = new Set<number>();
+    for (const f of getFaces(result)) {
+      originValues.add(origins.get(getHashCode(f)) ?? -1);
+    }
+    expect(originValues.has(1)).toBe(true);
+  });
+});
+
+describe('origin propagation through fuseAll', () => {
+  it('propagates origins from all inputs (pairwise)', () => {
+    const shapes = [
+      box(10, 10, 10),
+      translate(box(10, 10, 10), [10, 0, 0]),
+      translate(box(10, 10, 10), [20, 0, 0]),
+    ];
+    for (let i = 0; i < shapes.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      setShapeOrigin(shapes[i]!, i + 1);
+    }
+
+    const result = unwrap(fuseAll(shapes, { strategy: 'pairwise' }));
+    const origins = getFaceOrigins(result);
+    expect(origins).toBeDefined();
+    if (!origins) return;
+
+    const originValues = new Set<number>();
+    for (const f of getFaces(result)) {
+      originValues.add(origins.get(getHashCode(f)) ?? -1);
+    }
+    expect(originValues.has(1)).toBe(true);
+    expect(originValues.has(2)).toBe(true);
+    expect(originValues.has(3)).toBe(true);
+  });
+
+  it('propagates some origins via native strategy (hash fallback)', () => {
+    const shapes = [
+      box(10, 10, 10),
+      translate(box(10, 10, 10), [10, 0, 0]),
+      translate(box(10, 10, 10), [20, 0, 0]),
+    ];
+    for (let i = 0; i < shapes.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      setShapeOrigin(shapes[i]!, i + 1);
+    }
+
+    const result = unwrap(fuseAll(shapes, { strategy: 'native' }));
+    const origins = getFaceOrigins(result);
+    // Native path uses hash fallback — at least some faces should have origins
+    expect(origins).toBeDefined();
+    if (!origins) return;
+    expect(origins.size).toBeGreaterThan(0);
+  });
+});
+
+describe('origin propagation through cutAll', () => {
+  it('propagates origins from base and tools', () => {
+    const base = box(30, 30, 30);
+    const tools = [
+      translate(box(10, 10, 40), [0, 0, -5]),
+      translate(box(10, 10, 40), [15, 15, -5]),
+    ];
+    setShapeOrigin(base, 1);
+    for (const [i, t] of tools.entries()) {
+      setShapeOrigin(t, i + 2);
+    }
+
+    const result = unwrap(cutAll(base, tools));
+    const origins = getFaceOrigins(result);
+    expect(origins).toBeDefined();
+    if (!origins) return;
+
+    const originValues = new Set<number>();
+    for (const f of getFaces(result)) {
+      originValues.add(origins.get(getHashCode(f)) ?? -1);
+    }
+    expect(originValues.has(1)).toBe(true);
   });
 });

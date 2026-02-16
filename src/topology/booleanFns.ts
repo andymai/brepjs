@@ -17,7 +17,7 @@ import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { applyGlue } from './shapeBooleans.js';
-import { propagateOrigins } from './shapeFns.js';
+import { propagateOrigins, propagateOriginsByHash } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -161,7 +161,11 @@ export function cut(
   applyGlue(cutOp, optimisation);
   cutOp.Build(progress);
   if (simplify) cutOp.SimplifyResult(true, true, 1e-3);
-  return castToShape3D(cutOp.Shape(), 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
+  const cutResult = castToShape3D(cutOp.Shape(), 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
+  if (cutResult.ok) {
+    propagateOrigins(cutOp, [base, tool], cutResult.value);
+  }
+  return cutResult;
 }
 
 /**
@@ -188,7 +192,15 @@ export function intersect(
   const intOp = r(new oc.BRepAlgoAPI_Common_3(a.wrapped, b.wrapped, progress));
   intOp.Build(progress);
   if (simplify) intOp.SimplifyResult(true, true, 1e-3);
-  return castToShape3D(intOp.Shape(), 'INTERSECT_NOT_3D', 'Intersect did not produce a 3D shape');
+  const intResult = castToShape3D(
+    intOp.Shape(),
+    'INTERSECT_NOT_3D',
+    'Intersect did not produce a 3D shape'
+  );
+  if (intResult.ok) {
+    propagateOrigins(intOp, [a, b], intResult.value);
+  }
+  return intResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -270,7 +282,15 @@ export function fuseAll(
       shapes.map((s) => s.wrapped),
       { optimisation, simplify, strategy, ...(signal ? { signal } : {}) }
     );
-    return castToShape3D(result, 'FUSE_ALL_NOT_3D', 'fuseAll did not produce a 3D shape');
+    const fuseAllResult = castToShape3D(
+      result,
+      'FUSE_ALL_NOT_3D',
+      'fuseAll did not produce a 3D shape'
+    );
+    if (fuseAllResult.ok) {
+      propagateOriginsByHash(shapes, fuseAllResult.value);
+    }
+    return fuseAllResult;
   }
 
   // Pairwise fallback: recursive divide-and-conquer with index ranges
@@ -314,7 +334,15 @@ export function cutAll(
   applyGlue(cutOp, optimisation);
   cutOp.Build(progress);
   if (simplify) cutOp.SimplifyResult(true, true, 1e-3);
-  return castToShape3D(cutOp.Shape(), 'CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape');
+  const cutAllResult = castToShape3D(
+    cutOp.Shape(),
+    'CUT_ALL_NOT_3D',
+    'cutAll did not produce a 3D shape'
+  );
+  if (cutAllResult.ok) {
+    propagateOrigins(cutOp, [base, ...tools], cutAllResult.value);
+  }
+  return cutAllResult;
 }
 
 // ---------------------------------------------------------------------------
