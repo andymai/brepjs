@@ -334,9 +334,12 @@ export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTr
 // Topology queries (with lazy caching)
 // ---------------------------------------------------------------------------
 
-const topoCache = new WeakMap<object, { edges?: Edge[]; faces?: Face[]; wires?: Wire[] }>();
+const topoCache = new WeakMap<
+  object,
+  { edges?: Edge[]; faces?: Face[]; wires?: Wire[]; faceOrigins?: Map<number, number> }
+>();
 
-function getOrCreateCache(shape: AnyShape): { edges?: Edge[]; faces?: Face[]; wires?: Wire[] } {
+function getOrCreateCache(shape: AnyShape) {
   let entry = topoCache.get(shape.wrapped);
   if (!entry) {
     entry = {};
@@ -376,6 +379,27 @@ export function getWires(shape: AnyShape): Wire[] {
   );
   cache.wires = wires;
   return wires;
+}
+
+/**
+ * Tag all faces of a shape with an opaque integer origin.
+ * Consumers assign meaning (e.g., source line number).
+ */
+export function setShapeOrigin(shape: AnyShape, origin: number): void {
+  const cache = getOrCreateCache(shape);
+  const map = new Map<number, number>();
+  for (const f of getFaces(shape)) {
+    map.set(f.wrapped.HashCode(HASH_CODE_MAX), origin);
+  }
+  cache.faceOrigins = map;
+}
+
+/**
+ * Get the face origin map for a shape (faceHash → originTag).
+ * Returns undefined if no origins have been set or propagated.
+ */
+export function getFaceOrigins(shape: AnyShape): Map<number, number> | undefined {
+  return topoCache.get(shape.wrapped)?.faceOrigins;
 }
 
 /** Get all vertices of a shape as branded Vertex handles. */
