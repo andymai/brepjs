@@ -183,6 +183,7 @@ mainBuild:
   - symbol: BRepBuilderAPI_MakeShape
   - symbol: BRepBuilderAPI_Command
   - symbol: BRepBuilderAPI_Transform
+  - symbol: BRepBuilderAPI_GTransform
   - symbol: BRepBuilderAPI_MakeEdge
   - symbol: BRepBuilderAPI_MakeWire
   - symbol: BRepBuilderAPI_MakeFace
