@@ -53,3 +53,34 @@ export function resolveDirection(d: Direction): Vec3 {
   }
   return d;
 }
+
+// ---------------------------------------------------------------------------
+// Matrix types for applyMatrix (OpenSCAD multmatrix equivalent)
+// ---------------------------------------------------------------------------
+
+/** A row of a 4x4 matrix. */
+type Row4 = [number, number, number, number];
+
+/** 4x4 affine transformation matrix in row-major order. Bottom row must be [0,0,0,1]. */
+export type Matrix4x4 = [Row4, Row4, Row4, Row4];
+
+/** Structured matrix input: 3x3 linear part + translation vector. */
+export interface MatrixTransform {
+  /** 3x3 linear part in row-major order: [r00, r01, r02, r10, r11, r12, r20, r21, r22]. */
+  readonly linear: readonly [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  /** Translation vector [tx, ty, tz]. */
+  readonly translation: Vec3;
+}
+
+/** Input accepted by `applyMatrix`: either a raw 4x4 array or a structured object. */
+export type MatrixInput = Matrix4x4 | MatrixTransform;

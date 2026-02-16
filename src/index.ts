@@ -270,7 +270,15 @@ export { makeProjectedEdges } from './projection/makeProjectedEdges.js';
 
 // ── Core types ──
 
-export type { Vec3, Vec2, PointInput, Direction as DirectionInput } from './core/types.js';
+export type {
+  Vec3,
+  Vec2,
+  PointInput,
+  Direction as DirectionInput,
+  Matrix4x4,
+  MatrixTransform,
+  MatrixInput,
+} from './core/types.js';
 
 export { toVec3, toVec2, resolveDirection } from './core/types.js';
 
