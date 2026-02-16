@@ -5,7 +5,7 @@
  * and options objects. They delegate to implementations in shapeFns.ts, booleanFns.ts, etc.
  */
 
-import type { Vec3 } from '../core/types.js';
+import type { Vec3, MatrixInput } from '../core/types.js';
 import type { Result } from '../core/result.js';
 import type { AnyShape, Edge, Face, Shape3D, Shell, Solid } from '../core/shapeTypes.js';
 import type { Shapeable, FinderFn, FilletRadius, ChamferDistance } from './apiTypes.js';
@@ -80,6 +80,17 @@ export function scale<T extends AnyShape>(
 /** Clone a shape (deep copy). */
 export function clone<T extends AnyShape>(shape: Shapeable<T>): T {
   return transforms.clone(resolve(shape));
+}
+
+/**
+ * Apply a 4x4 affine transformation matrix to a shape.
+ * Equivalent to OpenSCAD's `multmatrix`.
+ *
+ * Accepts either a raw `Matrix4x4` (4 rows of 4 numbers, row-major) or a structured
+ * `MatrixTransform` with explicit `linear` and `translation` fields.
+ */
+export function applyMatrix<T extends AnyShape>(shape: Shapeable<T>, matrix: MatrixInput): T {
+  return transforms.applyMatrix(resolve(shape), matrix);
 }
 
 export type { TransformOp, ComposedTransform } from './shapeFns.js';

@@ -698,6 +698,7 @@ export {
   mirror,
   scale,
   clone,
+  applyMatrix,
   composeTransforms,
   transformCopy,
   type TransformOp,

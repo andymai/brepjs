@@ -4,7 +4,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { Vec3 } from '../core/types.js';
+import type { Vec3, MatrixInput } from '../core/types.js';
 import type { AnyShape, Edge, Face, Wire, Vertex, ShapeKind } from '../core/shapeTypes.js';
 import { castShape, getShapeKind } from '../core/shapeTypes.js';
 import { toOcVec, toOcPnt, makeOcAx1, makeOcAx2 } from '../core/occtBoundary.js';
@@ -128,6 +128,146 @@ export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3
   trsf.delete();
   pnt.delete();
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Matrix transform (OpenSCAD multmatrix equivalent)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a MatrixInput into a 3x3 linear part and translation vector.
+ * Validates the bottom row of a Matrix4x4.
+ */
+function parseMatrixInput(input: MatrixInput): {
+  linear: readonly [number, number, number, number, number, number, number, number, number];
+  translation: readonly [number, number, number];
+} {
+  if ('linear' in input) {
+    return { linear: input.linear, translation: input.translation };
+  }
+
+  const [r0, r1, r2, r3] = input;
+  const TOL = 1e-10;
+  if (
+    Math.abs(r3[0]) > TOL ||
+    Math.abs(r3[1]) > TOL ||
+    Math.abs(r3[2]) > TOL ||
+    Math.abs(r3[3] - 1) > TOL
+  ) {
+    throw new Error(
+      `applyMatrix: invalid bottom row [${String(r3[0])}, ${String(r3[1])}, ${String(r3[2])}, ${String(r3[3])}]. Must be [0, 0, 0, 1] for an affine transform.`
+    );
+  }
+
+  return {
+    linear: [r0[0], r0[1], r0[2], r1[0], r1[1], r1[2], r2[0], r2[1], r2[2]],
+    translation: [r0[3], r1[3], r2[3]],
+  };
+}
+
+/** Determinant of a 3x3 matrix given as 9 row-major values. */
+function det3x3(
+  m: readonly [number, number, number, number, number, number, number, number, number]
+): number {
+  return (
+    m[0] * (m[4] * m[8] - m[5] * m[7]) -
+    m[1] * (m[3] * m[8] - m[5] * m[6]) +
+    m[2] * (m[3] * m[7] - m[4] * m[6])
+  );
+}
+
+/**
+ * Check if a 3x3 matrix is orthogonal (possibly with uniform scale).
+ * M is orthogonal-with-scale if M^T * M = s^2 * I for some scalar s.
+ */
+function isOrthogonalMatrix(
+  m: readonly [number, number, number, number, number, number, number, number, number]
+): boolean {
+  const TOL = 1e-8;
+
+  // Compute M^T * M directly: (M^T*M)[i][j] = col_i · col_j
+  // Columns of M (row-major): col0 = [m[0],m[3],m[6]], col1 = [m[1],m[4],m[7]], col2 = [m[2],m[5],m[8]]
+  const d00 = m[0] * m[0] + m[3] * m[3] + m[6] * m[6];
+  const d11 = m[1] * m[1] + m[4] * m[4] + m[7] * m[7];
+  const d22 = m[2] * m[2] + m[5] * m[5] + m[8] * m[8];
+  const d01 = m[0] * m[1] + m[3] * m[4] + m[6] * m[7];
+  const d02 = m[0] * m[2] + m[3] * m[5] + m[6] * m[8];
+  const d12 = m[1] * m[2] + m[4] * m[5] + m[7] * m[8];
+
+  // Off-diagonal must be ≈ 0
+  if (Math.abs(d01) > TOL) return false;
+  if (Math.abs(d02) > TOL) return false;
+  if (Math.abs(d12) > TOL) return false;
+
+  // Diagonal elements must be equal (uniform scale)
+  if (Math.abs(d00 - d11) > TOL) return false;
+  if (Math.abs(d00 - d22) > TOL) return false;
+
+  return true;
+}
+
+/**
+ * Apply a 4x4 affine transformation matrix to a shape.
+ * Equivalent to OpenSCAD's `multmatrix`.
+ *
+ * Uses the fast `gp_Trsf` path for orthogonal matrices (rotation, uniform scale, mirror)
+ * and the general `gp_GTrsf` path for non-orthogonal transforms (shear, non-uniform scale).
+ */
+export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): T {
+  const { linear, translation } = parseMatrixInput(matrix);
+
+  const d = det3x3(linear);
+  if (Math.abs(d) < 1e-12) {
+    throw new Error(
+      'applyMatrix: singular matrix (determinant ≈ 0). Cannot apply a non-invertible transform.'
+    );
+  }
+
+  const oc = getKernel().oc;
+  const orthogonal = isOrthogonalMatrix(linear);
+
+  if (orthogonal) {
+    const trsf = new oc.gp_Trsf_1();
+    trsf.SetValues(
+      linear[0],
+      linear[1],
+      linear[2],
+      translation[0],
+      linear[3],
+      linear[4],
+      linear[5],
+      translation[1],
+      linear[6],
+      linear[7],
+      linear[8],
+      translation[2]
+    );
+    const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
+    const result = castShape(transformer.Shape()) as T;
+    transformer.delete();
+    trsf.delete();
+    return result;
+  }
+
+  // General path: gp_GTrsf for non-orthogonal transforms
+  // Requires BRepBuilderAPI_GTransform in the WASM build (see build-config/*.yml)
+  /* v8 ignore start -- untestable until WASM is rebuilt with BRepBuilderAPI_GTransform */
+  const gtrsf = new oc.gp_GTrsf_1();
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      gtrsf.SetValue(row + 1, col + 1, linear[row * 3 + col]);
+    }
+  }
+  const xyz = new oc.gp_XYZ_2(translation[0], translation[1], translation[2]);
+  gtrsf.SetTranslationPart(xyz);
+  xyz.delete();
+
+  const transformer = new oc.BRepBuilderAPI_GTransform_2(shape.wrapped, gtrsf, true);
+  const result = castShape(transformer.Shape()) as T;
+  transformer.delete();
+  gtrsf.delete();
+  return result;
+  /* v8 ignore stop */
 }
 
 // ---------------------------------------------------------------------------

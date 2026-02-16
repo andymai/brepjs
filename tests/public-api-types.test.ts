@@ -165,6 +165,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'adjacentFaces',
   'andThen',
   'applyGlue',
+  'applyMatrix',
   'approximateCurve',
   'asTopo',
   'autoHeal',

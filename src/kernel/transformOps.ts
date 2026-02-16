@@ -136,6 +136,7 @@ export function generalTransform(
     return result;
   }
 
+  /* v8 ignore start -- untestable until WASM is rebuilt with BRepBuilderAPI_GTransform */
   const gtrsf = new oc.gp_GTrsf_1();
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
@@ -151,6 +152,7 @@ export function generalTransform(
   transformer.delete();
   gtrsf.delete();
   return result;
+  /* v8 ignore stop */
 }
 
 /**

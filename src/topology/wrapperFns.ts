@@ -13,7 +13,7 @@
  * ```
  */
 
-import type { Vec3 } from '../core/types.js';
+import type { Vec3, MatrixInput } from '../core/types.js';
 import type { Result } from '../core/result.js';
 import { isErr } from '../core/result.js';
 import type {
@@ -54,6 +54,7 @@ import {
   mirror,
   scale,
   clone,
+  applyMatrix,
   fuse,
   cut,
   intersect,
@@ -166,6 +167,7 @@ export interface Wrapped<T extends AnyShape> extends WrappedMarker<T> {
   rotate(angle: number, options?: { at?: Vec3; axis?: Vec3 }): Wrapped<T>;
   mirror(options?: { normal?: Vec3; at?: Vec3 }): Wrapped<T>;
   scale(factor: number, options?: { center?: Vec3 }): Wrapped<T>;
+  applyMatrix(matrix: MatrixInput): Wrapped<T>;
 
   // Axis shortcuts
   moveX(distance: number): Wrapped<T>;
@@ -300,6 +302,7 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
     rotate: (angle, opts) => wrapAny(rotate(val, angle, opts)),
     mirror: (opts) => wrapAny(mirror(val, opts)),
     scale: (factor, opts) => wrapAny(scale(val, factor, opts)),
+    applyMatrix: (matrix) => wrapAny(applyMatrix(val, matrix)),
 
     moveX: (d) => wrapAny(translate(val, [d, 0, 0])),
     moveY: (d) => wrapAny(translate(val, [0, d, 0])),
