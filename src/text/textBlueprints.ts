@@ -43,7 +43,8 @@ export async function loadFont(
       response = await fetch(fontPath);
     } catch (e) {
       throw new Error(
-        `Failed to fetch font from ${fontPath}: ${e instanceof Error ? e.message : String(e)}`
+        `Failed to fetch font from ${fontPath}: ${e instanceof Error ? e.message : String(e)}`,
+        { cause: e }
       );
     }
     if (!response.ok) {
@@ -60,7 +61,9 @@ export async function loadFont(
   try {
     font = opentype.parse(fontData);
   } catch (e) {
-    throw new Error(`Failed to parse font data: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(`Failed to parse font data: ${e instanceof Error ? e.message : String(e)}`, {
+      cause: e,
+    });
   }
   FONT_REGISTER[fontFamily] = font;
   if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = font;

@@ -166,7 +166,7 @@ export class Curve2D {
 
     const projector = r(new oc.Geom2dAPI_ProjectPointOnCurve_2(r(pnt(point)), this.wrapped));
 
-    let curveToPoint = Infinity;
+    let curveToPoint;
 
     try {
       curveToPoint = projector.LowerDistance();
@@ -185,7 +185,7 @@ export class Curve2D {
     const oc = getKernel().oc;
     const r = gcWithScope();
 
-    let curveDistance = Infinity;
+    let curveDistance;
     const projector = r(
       new oc.Geom2dAPI_ExtremaCurveCurve(
         this.wrapped,
@@ -355,7 +355,10 @@ export class Curve2D {
         const trimmed = new oc.Geom2d_TrimmedCurve(this.wrapped, first, last, true, true);
         return new Curve2D(new oc.Handle_Geom2d_Curve_2(trimmed));
       } catch (e) {
-        throw new Error(`Failed to split the curve: ${e instanceof Error ? e.message : String(e)}`);
+        throw new Error(
+          `Failed to split the curve: ${e instanceof Error ? e.message : String(e)}`,
+          { cause: e }
+        );
       }
     });
   }
