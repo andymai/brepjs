@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.2.0](https://github.com/andymai/brepjs/compare/brepjs-v8.1.1...brepjs-v8.2.0) (2026-02-16)
+
+
+### Features
+
+* add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
+
 ## [8.1.1](https://github.com/andymai/brepjs/compare/brepjs-v8.1.0...brepjs-v8.1.1) (2026-02-13)
 
 
