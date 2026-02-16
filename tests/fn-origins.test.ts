@@ -13,6 +13,7 @@ import {
   fuseAll,
   cutAll,
   unwrap,
+  fillet,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -237,5 +238,26 @@ describe('origin propagation through transforms', () => {
     for (const f of getFaces(result)) {
       expect(origins.get(getHashCode(f))).toBe(3);
     }
+  });
+});
+
+describe('origin propagation through modifiers', () => {
+  it('preserves origins through fillet', () => {
+    const b = box(20, 20, 20);
+    setShapeOrigin(b, 8);
+
+    const result = unwrap(fillet(b, undefined, 2));
+    const origins = getFaceOrigins(result);
+    expect(origins).toBeDefined();
+    if (!origins) return;
+
+    // Original box faces (modified by fillet) should keep origin 8
+    // Fillet surfaces (generated) may get origin 0
+    const originValues = new Set<number>();
+    for (const f of getFaces(result)) {
+      const o = origins.get(getHashCode(f));
+      if (o !== undefined) originValues.add(o);
+    }
+    expect(originValues.has(8)).toBe(true);
   });
 });

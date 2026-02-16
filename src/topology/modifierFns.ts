@@ -10,8 +10,8 @@ import type { Edge, Face, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { occtError, validationError, BrepErrorCode } from '../core/errors.js';
-import { kernelCall } from '../core/kernelCall.js';
-import { getEdges } from './shapeFns.js';
+import { gcWithScope } from '../core/disposal.js';
+import { getEdges, propagateOrigins } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -37,11 +37,23 @@ function validateNotNull(
 export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
   const check = validateNotNull(shape, 'thicken: shape');
   if (isErr(check)) return check;
-  return kernelCall(
-    () => getKernel().thicken(shape.wrapped, thickness),
-    'THICKEN_FAILED',
-    'Thicken operation failed'
-  ) as Result<Solid>;
+
+  try {
+    const oc = getKernel().oc;
+    const r = gcWithScope();
+    const builder = r(new oc.BRepOffsetAPI_MakeThickSolid());
+    builder.MakeThickSolidBySimple(shape.wrapped, thickness);
+    const progress = r(new oc.Message_ProgressRange_1());
+    builder.Build(progress);
+
+    const resultOc = builder.Shape();
+    const cast = castShape(resultOc) as Solid;
+    propagateOrigins(builder, [shape], cast);
+    return ok(cast);
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(occtError('THICKEN_FAILED', `Thicken operation failed: ${raw}`, e));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -99,27 +111,28 @@ export function fillet(
   }
 
   try {
-    const kernel = getKernel();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel expects OcShape callback
-    const kernelRadius: any =
-      typeof radius === 'function'
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel expects OcShape callback
-          (ocEdge: any) => {
-            const edgeWrapped = castShape(ocEdge) as Edge;
-            return radius(edgeWrapped) ?? 0;
-          }
-        : radius;
-
-    const result = kernel.fillet(
-      shape.wrapped,
-      selectedEdges.map((e) => e.wrapped),
-      kernelRadius
+    const oc = getKernel().oc;
+    const r = gcWithScope();
+    const builder = r(
+      new oc.BRepFilletAPI_MakeFillet(shape.wrapped, oc.ChFi3d_FilletShape.ChFi3d_Rational)
     );
 
-    const cast = castShape(result);
+    for (const edge of selectedEdges) {
+      const rad = typeof radius === 'function' ? (radius(edge) ?? 0) : radius;
+      if (typeof rad === 'number') {
+        if (rad > 0) builder.Add_2(rad, edge.wrapped);
+      } else {
+        const [r1, r2] = rad;
+        if (r1 > 0 && r2 > 0) builder.Add_3(r1, r2, edge.wrapped);
+      }
+    }
+
+    const resultOc = builder.Shape();
+    const cast = castShape(resultOc);
     if (!isShape3D(cast)) {
       return err(occtError('FILLET_RESULT_NOT_3D', 'Fillet result is not a 3D shape'));
     }
+    propagateOrigins(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -180,27 +193,62 @@ export function chamfer(
   }
 
   try {
-    const kernel = getKernel();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel expects OcShape callback
-    const kernelDistance: any =
-      typeof distance === 'function'
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel expects OcShape callback
-          (ocEdge: any) => {
-            const edgeWrapped = castShape(ocEdge) as Edge;
-            return distance(edgeWrapped) ?? 0;
+    const oc = getKernel().oc;
+    const r = gcWithScope();
+    const builder = r(new oc.BRepFilletAPI_MakeChamfer(shape.wrapped));
+
+    // Build edge→face map lazily for asymmetric chamfers
+    let edgeFaceMap: Map<number, { HashCode(max: number): number }> | null = null;
+    function getEdgeFaceMap() {
+      if (edgeFaceMap) return edgeFaceMap;
+      edgeFaceMap = new Map();
+      const faceExp = new oc.TopExp_Explorer_2(
+        shape.wrapped,
+        oc.TopAbs_ShapeEnum.TopAbs_FACE,
+        oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+      );
+      while (faceExp.More()) {
+        const face = oc.TopoDS.Face_1(faceExp.Current());
+        const edgeExp = new oc.TopExp_Explorer_2(
+          face,
+          oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+          oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+        );
+        while (edgeExp.More()) {
+          const hash = edgeExp.Current().HashCode(2147483647);
+          if (!edgeFaceMap.has(hash)) {
+            edgeFaceMap.set(hash, face);
           }
-        : distance;
+          edgeExp.Next();
+        }
+        edgeExp.delete();
+        faceExp.Next();
+      }
+      faceExp.delete();
+      return edgeFaceMap;
+    }
 
-    const result = kernel.chamfer(
-      shape.wrapped,
-      selectedEdges.map((e) => e.wrapped),
-      kernelDistance
-    );
+    for (const edge of selectedEdges) {
+      const d = typeof distance === 'function' ? (distance(edge) ?? 0) : distance;
+      if (typeof d === 'number') {
+        if (d > 0) builder.Add_2(d, edge.wrapped);
+      } else {
+        const [d1, d2] = d;
+        if (d1 > 0 && d2 > 0) {
+          const face = getEdgeFaceMap().get(edge.wrapped.HashCode(2147483647));
+          if (face) {
+            builder.Add_3(d1, d2, oc.TopoDS.Edge_1(edge.wrapped), face);
+          }
+        }
+      }
+    }
 
-    const cast = castShape(result);
+    const resultOc = builder.Shape();
+    const cast = castShape(resultOc);
     if (!isShape3D(cast)) {
       return err(occtError('CHAMFER_RESULT_NOT_3D', 'Chamfer result is not a 3D shape'));
     }
+    propagateOrigins(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -242,17 +290,33 @@ export function shell(
   }
 
   try {
-    const result = getKernel().shell(
+    const oc = getKernel().oc;
+    const r = gcWithScope();
+    const facesToRemove = r(new oc.TopTools_ListOfShape_1());
+    for (const face of faces) {
+      facesToRemove.Append_1(face.wrapped);
+    }
+    const progress = r(new oc.Message_ProgressRange_1());
+    const builder = r(new oc.BRepOffsetAPI_MakeThickSolid());
+    builder.MakeThickSolidByJoin(
       shape.wrapped,
-      faces.map((f) => f.wrapped),
-      thickness,
-      tolerance
+      facesToRemove,
+      -thickness,
+      tolerance,
+      oc.BRepOffset_Mode.BRepOffset_Skin,
+      false,
+      false,
+      oc.GeomAbs_JoinType.GeomAbs_Arc,
+      false,
+      progress
     );
 
-    const cast = castShape(result);
+    const resultOc = builder.Shape();
+    const cast = castShape(resultOc);
     if (!isShape3D(cast)) {
       return err(occtError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }
+    propagateOrigins(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -284,9 +348,32 @@ export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Resu
     return err(validationError('ZERO_OFFSET', 'Offset distance cannot be zero'));
   }
 
-  return kernelCall(
-    () => getKernel().offset(shape.wrapped, distance, tolerance),
-    'OFFSET_FAILED',
-    'Offset operation failed'
-  ) as Result<Shape3D>;
+  try {
+    const oc = getKernel().oc;
+    const r = gcWithScope();
+    const progress = r(new oc.Message_ProgressRange_1());
+    const builder = r(new oc.BRepOffsetAPI_MakeOffsetShape());
+    builder.PerformByJoin(
+      shape.wrapped,
+      distance,
+      tolerance,
+      oc.BRepOffset_Mode.BRepOffset_Skin,
+      false,
+      false,
+      oc.GeomAbs_JoinType.GeomAbs_Arc,
+      false,
+      progress
+    );
+
+    const resultOc = builder.Shape();
+    const cast = castShape(resultOc);
+    if (!isShape3D(cast)) {
+      return err(occtError('OFFSET_RESULT_NOT_3D', 'Offset result is not a 3D shape'));
+    }
+    propagateOrigins(builder, [shape], cast);
+    return ok(cast);
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(occtError('OFFSET_FAILED', `Offset operation failed: ${raw}`, e));
+  }
 }
