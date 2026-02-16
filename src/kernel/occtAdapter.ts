@@ -33,6 +33,7 @@ import {
   rotate as _rotate,
   mirror as _mirror,
   scale as _scale,
+  generalTransform as _generalTransform,
   simplify as _simplify,
 } from './transformOps.js';
 import {
@@ -271,6 +272,15 @@ export class OCCTAdapter implements KernelAdapter {
 
   scale(shape: OcShape, center: [number, number, number], factor: number): OcShape {
     return _scale(this.oc, shape, center, factor);
+  }
+
+  generalTransform(
+    shape: OcShape,
+    linear: readonly [number, number, number, number, number, number, number, number, number],
+    translation: readonly [number, number, number],
+    isOrthogonal: boolean
+  ): OcShape {
+    return _generalTransform(this.oc, shape, linear, translation, isOrthogonal);
   }
 
   // --- Meshing (delegates to meshOps.ts) ---

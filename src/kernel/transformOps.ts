@@ -100,6 +100,60 @@ export function scale(
 }
 
 /**
+ * Applies a general affine transform (3x3 linear + translation) to a shape.
+ *
+ * If `isOrthogonal` is true, uses the fast gp_Trsf + BRepBuilderAPI_Transform path.
+ * Otherwise uses gp_GTrsf + BRepBuilderAPI_GTransform for non-orthogonal transforms
+ * (shear, non-uniform scale).
+ */
+export function generalTransform(
+  oc: OpenCascadeInstance,
+  shape: OcShape,
+  linear: readonly [number, number, number, number, number, number, number, number, number],
+  translation: readonly [number, number, number],
+  isOrthogonal: boolean
+): OcShape {
+  if (isOrthogonal) {
+    const trsf = new oc.gp_Trsf_1();
+    trsf.SetValues(
+      linear[0],
+      linear[1],
+      linear[2],
+      translation[0],
+      linear[3],
+      linear[4],
+      linear[5],
+      translation[1],
+      linear[6],
+      linear[7],
+      linear[8],
+      translation[2]
+    );
+    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
+    const result = transformer.ModifiedShape(shape);
+    transformer.delete();
+    trsf.delete();
+    return result;
+  }
+
+  const gtrsf = new oc.gp_GTrsf_1();
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      gtrsf.SetValue(row + 1, col + 1, linear[row * 3 + col]);
+    }
+  }
+  const xyz = new oc.gp_XYZ_2(translation[0], translation[1], translation[2]);
+  gtrsf.SetTranslationPart(xyz);
+  xyz.delete();
+
+  const transformer = new oc.BRepBuilderAPI_GTransform_2(shape, gtrsf, true);
+  const result = transformer.ModifiedShape(shape);
+  transformer.delete();
+  gtrsf.delete();
+  return result;
+}
+
+/**
  * Simplifies a shape by unifying same-domain surfaces.
  */
 export function simplify(oc: OpenCascadeInstance, shape: OcShape): OcShape {

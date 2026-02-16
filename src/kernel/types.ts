@@ -139,6 +139,12 @@ export interface KernelAdapter {
     normal: [number, number, number]
   ): OcShape;
   scale(shape: OcShape, center: [number, number, number], factor: number): OcShape;
+  generalTransform(
+    shape: OcShape,
+    linear: readonly [number, number, number, number, number, number, number, number, number],
+    translation: readonly [number, number, number],
+    isOrthogonal: boolean
+  ): OcShape;
 
   // --- Meshing ---
   mesh(shape: OcShape, options: MeshOptions): KernelMeshResult;
