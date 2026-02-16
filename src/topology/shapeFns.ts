@@ -70,6 +70,7 @@ export function translate<T extends AnyShape>(shape: T, v: Vec3): T {
 
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
   const result = castShape(transformer.Shape()) as T;
+  propagateOrigins(transformer, [shape], result);
   transformer.delete();
   trsf.delete();
   vec.delete();
@@ -90,6 +91,7 @@ export function rotate<T extends AnyShape>(
 
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
   const result = castShape(transformer.Shape()) as T;
+  propagateOrigins(transformer, [shape], result);
   transformer.delete();
   trsf.delete();
   ax1.delete();
@@ -109,6 +111,7 @@ export function mirror<T extends AnyShape>(
 
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
   const result = castShape(transformer.Shape()) as T;
+  propagateOrigins(transformer, [shape], result);
   transformer.delete();
   trsf.delete();
   ax2.delete();
@@ -124,6 +127,7 @@ export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3
 
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
   const result = castShape(transformer.Shape()) as T;
+  propagateOrigins(transformer, [shape], result);
   transformer.delete();
   trsf.delete();
   pnt.delete();
@@ -244,6 +248,7 @@ export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): 
     );
     const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
     const result = castShape(transformer.Shape()) as T;
+    propagateOrigins(transformer, [shape], result);
     transformer.delete();
     trsf.delete();
     return result;
@@ -264,6 +269,7 @@ export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): 
 
   const transformer = new oc.BRepBuilderAPI_GTransform_2(shape.wrapped, gtrsf, true);
   const result = castShape(transformer.Shape()) as T;
+  propagateOrigins(transformer, [shape], result);
   transformer.delete();
   gtrsf.delete();
   return result;
@@ -326,6 +332,7 @@ export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTr
   const oc = getKernel().oc;
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, composed.trsf, true);
   const result = castShape(transformer.Shape()) as T;
+  propagateOrigins(transformer, [shape], result);
   transformer.delete();
   return result;
 }

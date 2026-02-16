@@ -7,6 +7,7 @@ import {
   setShapeOrigin,
   getFaceOrigins,
   translate,
+  rotate,
   fuse,
   cut,
   fuseAll,
@@ -198,5 +199,43 @@ describe('origin propagation through cutAll', () => {
       originValues.add(origins.get(getHashCode(f)) ?? -1);
     }
     expect(originValues.has(1)).toBe(true);
+  });
+});
+
+describe('origin propagation through transforms', () => {
+  it('preserves origins through translate', () => {
+    const b = box(10, 10, 10);
+    setShapeOrigin(b, 5);
+    const moved = translate(b, [100, 0, 0]);
+    const origins = getFaceOrigins(moved);
+    expect(origins).toBeDefined();
+    if (!origins) return;
+    for (const f of getFaces(moved)) {
+      expect(origins.get(getHashCode(f))).toBe(5);
+    }
+  });
+
+  it('preserves origins through rotate', () => {
+    const b = box(10, 10, 10);
+    setShapeOrigin(b, 7);
+    const rotated = rotate(b, 45);
+    const origins = getFaceOrigins(rotated);
+    expect(origins).toBeDefined();
+    if (!origins) return;
+    for (const f of getFaces(rotated)) {
+      expect(origins.get(getHashCode(f))).toBe(7);
+    }
+  });
+
+  it('preserves origins through chained transforms', () => {
+    const b = box(10, 10, 10);
+    setShapeOrigin(b, 3);
+    const result = translate(rotate(b, 90), [50, 0, 0]);
+    const origins = getFaceOrigins(result);
+    expect(origins).toBeDefined();
+    if (!origins) return;
+    for (const f of getFaces(result)) {
+      expect(origins.get(getHashCode(f))).toBe(3);
+    }
   });
 });
