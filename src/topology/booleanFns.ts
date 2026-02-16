@@ -17,6 +17,7 @@ import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { applyGlue } from './shapeBooleans.js';
+import { propagateOrigins } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -119,7 +120,15 @@ export function fuse(
   applyGlue(fuseOp, optimisation);
   fuseOp.Build(progress);
   if (simplify) fuseOp.SimplifyResult(true, true, 1e-3);
-  return castToShape3D(fuseOp.Shape(), 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
+  const fuseResult = castToShape3D(
+    fuseOp.Shape(),
+    'FUSE_NOT_3D',
+    'Fuse did not produce a 3D shape'
+  );
+  if (fuseResult.ok) {
+    propagateOrigins(fuseOp, [a, b], fuseResult.value);
+  }
+  return fuseResult;
 }
 
 /**

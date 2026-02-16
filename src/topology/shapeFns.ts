@@ -402,6 +402,91 @@ export function getFaceOrigins(shape: AnyShape): Map<number, number> | undefined
   return topoCache.get(shape.wrapped)?.faceOrigins;
 }
 
+// ---------------------------------------------------------------------------
+// Origin propagation
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT types are dynamic
+type OcMakeShapeLike = {
+  Modified(s: any): any;
+  Generated(s: any): any;
+  IsDeleted?(s: any): boolean;
+};
+
+/**
+ * Iterate a TopTools_ListOfShape by copying it and consuming the copy.
+ * This avoids needing TopTools_ListIteratorOfListOfShape (not in WASM bindings).
+ */
+function iterOcList(
+  list: { Size(): number; First_1(): { HashCode(max: number): number } },
+  callback: (item: { HashCode(max: number): number }) => void
+): void {
+  const oc = getKernel().oc;
+  const copy = new oc.TopTools_ListOfShape_3(list);
+  while (copy.Size() > 0) {
+    callback(copy.First_1());
+    copy.RemoveFirst();
+  }
+  copy.delete();
+}
+
+/**
+ * Propagate face origins from input shapes to a result shape
+ * using an OCCT operation's Modified/Generated history.
+ *
+ * @param op - OCCT operation with Modified/Generated methods (alive, not yet deleted)
+ * @param inputs - Source shapes whose face origins should propagate
+ * @param result - The result shape to populate origins on
+ */
+export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result: AnyShape): void {
+  // Collect all input face origins
+  const inputOrigins: Array<{ face: { HashCode(max: number): number }; origin: number }> = [];
+  for (const input of inputs) {
+    const origins = getFaceOrigins(input);
+    if (!origins) continue;
+    for (const f of getFaces(input)) {
+      const hash = f.wrapped.HashCode(HASH_CODE_MAX);
+      const origin = origins.get(hash);
+      if (origin !== undefined) {
+        inputOrigins.push({ face: f.wrapped, origin });
+      }
+    }
+  }
+
+  if (inputOrigins.length === 0) return;
+
+  const resultMap = new Map<number, number>();
+
+  for (const { face, origin } of inputOrigins) {
+    if (op.IsDeleted?.(face)) continue;
+
+    const modifiedList = op.Modified(face);
+    if (modifiedList.Size() > 0) {
+      iterOcList(modifiedList, (modFace) => {
+        resultMap.set(modFace.HashCode(HASH_CODE_MAX), origin);
+      });
+    } else {
+      // Face was not modified — use its original hash (it may survive unchanged)
+      resultMap.set(face.HashCode(HASH_CODE_MAX), origin);
+    }
+
+    const generatedList = op.Generated(face);
+    if (generatedList.Size() > 0) {
+      iterOcList(generatedList, (genFace) => {
+        const hash = genFace.HashCode(HASH_CODE_MAX);
+        if (!resultMap.has(hash)) {
+          resultMap.set(hash, 0);
+        }
+      });
+    }
+  }
+
+  if (resultMap.size > 0) {
+    const cache = getOrCreateCache(result);
+    cache.faceOrigins = resultMap;
+  }
+}
+
 /** Get all vertices of a shape as branded Vertex handles. */
 export function getVertices(shape: AnyShape): Vertex[] {
   return Array.from(iterTopo(shape.wrapped, 'vertex')).map(
