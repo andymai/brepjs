@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.7.1](https://github.com/andymai/brepjs/compare/brepjs-v8.7.0...brepjs-v8.7.1) (2026-02-17)
+
+
+### Bug Fixes
+
+* **ci:** add WASM download step to release-please workflow ([#264](https://github.com/andymai/brepjs/issues/264)) ([8b77ad3](https://github.com/andymai/brepjs/commit/8b77ad3a9b94d7b2b77a0e1b58a94bee0142cb7a))
+
 ## [8.7.0](https://github.com/andymai/brepjs/compare/brepjs-v8.6.2...brepjs-v8.7.0) (2026-02-17)
 
 
