@@ -31,4 +31,12 @@ describe('importOBJ', () => {
     const result = await importOBJ(blob);
     expect(result.ok).toBe(true);
   });
+
+  it('handles negative (relative) face indices', async () => {
+    // 4 vertices, face uses negative indices: -4 -3 -2 means "last 4, last 3, last 2"
+    const obj = 'v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 0 1\nf -4 -3 -2\nf -4 -2 -1\n';
+    const blob = new Blob([obj]);
+    const result = await importOBJ(blob);
+    expect(result.ok).toBe(true);
+  });
 });

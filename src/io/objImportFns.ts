@@ -76,9 +76,13 @@ function buildSolidFromMesh(
     for (const face of faces) {
       // Fan triangulation: vertex 0, then pairs (i, i+1)
       for (let i = 1; i < face.length - 1; i++) {
-        const ai = (face[0] ?? 0) - 1; // OBJ is 1-based
-        const bi = (face[i] ?? 0) - 1;
-        const ci = (face[i + 1] ?? 0) - 1;
+        const rawA = face[0] ?? 0;
+        const rawB = face[i] ?? 0;
+        const rawC = face[i + 1] ?? 0;
+        // OBJ is 1-based; negative indices count backward from current vertex list end
+        const ai = rawA > 0 ? rawA - 1 : vertices.length + rawA;
+        const bi = rawB > 0 ? rawB - 1 : vertices.length + rawB;
+        const ci = rawC > 0 ? rawC - 1 : vertices.length + rawC;
 
         const va = vertices[ai];
         const vb = vertices[bi];

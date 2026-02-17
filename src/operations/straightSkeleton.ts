@@ -102,14 +102,6 @@ function bisector(poly: SkPoint2D[], i: number): { dx: number; dy: number } {
   return { dx: bx * speed, dy: by * speed };
 }
 
-/** Is vertex at index i reflex (interior angle > 180 degrees)? */
-function isReflex(poly: SkPoint2D[], i: number): boolean {
-  const prev = polyAt(poly, i - 1);
-  const cur = polyAt(poly, i);
-  const next = polyAt(poly, i + 1);
-  return cross2(cur.x - prev.x, cur.y - prev.y, next.x - cur.x, next.y - cur.y) < -EPS;
-}
-
 // ---------------------------------------------------------------------------
 // LAV (List of Active Vertices)
 // ---------------------------------------------------------------------------
@@ -123,6 +115,13 @@ interface LavNode {
   prev: LavNode;
   next: LavNode;
   active: boolean;
+}
+
+/** Is a LAV node reflex based on current LAV positions? */
+function isLavNodeReflex(node: LavNode): boolean {
+  const prev = node.prev;
+  const next = node.next;
+  return cross2(node.x - prev.x, node.y - prev.y, next.x - node.x, next.y - node.y) < -EPS;
 }
 
 function createLav(poly: SkPoint2D[]): LavNode[] {
@@ -245,7 +244,7 @@ function raySplitTime(node: LavNode, eA: LavNode, eB: LavNode): number | null {
   return t;
 }
 
-function computeEvents(lavNodes: LavNode[], poly: SkPoint2D[]): SkEvent[] {
+function computeEvents(lavNodes: LavNode[]): SkEvent[] {
   const events: SkEvent[] = [];
 
   for (const node of lavNodes) {
@@ -258,7 +257,7 @@ function computeEvents(lavNodes: LavNode[], poly: SkPoint2D[]): SkEvent[] {
       events.push({ time: t, x, y, nodeA: node, nodeB: node.next, type: 'edge' });
     }
 
-    if (isReflex(poly, node.origIdx)) {
+    if (isLavNodeReflex(node)) {
       let cur = node.next.next;
       let count = 0;
       while (cur !== node.prev && cur !== node && count < 1000) {
@@ -344,7 +343,7 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
     }
 
     const activeNodes = lavNodes.filter((nd) => nd.active);
-    const events = computeEvents(activeNodes, poly);
+    const events = computeEvents(activeNodes);
 
     if (events.length === 0) {
       for (const nd of activeNodes) {
@@ -388,27 +387,71 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
       a.bx = bDir.dx;
       a.by = bDir.dy;
     } else {
+      // Split event: reflex vertex `a` reaches opposite edge (nodeB, nodeB.next)
+      // Must split the LAV into two independent sub-LAVs
       const a = ev.nodeA;
-      if (!a.active) continue;
+      const b = ev.nodeB; // start of the opposite edge
+      if (!a.active || !b.active) continue;
 
       const nodeIdx = skeletonNodes.length;
       skeletonNodes.push({ x: ev.x, y: ev.y, height: ev.time });
       const aNodes = vertexToSkelNodes[a.origIdx];
       if (aNodes) aNodes.push(nodeIdx);
+      const bNodes = vertexToSkelNodes[b.origIdx];
+      if (bNodes) bNodes.push(nodeIdx);
 
+      // Create a copy of `a` at the split point for the second sub-LAV
+      const aCopy: LavNode = {
+        x: ev.x,
+        y: ev.y,
+        bx: 0,
+        by: 0,
+        origIdx: a.origIdx,
+        prev: null as unknown as LavNode,
+        next: null as unknown as LavNode,
+        active: true,
+      };
+      lavNodes.push(aCopy);
+
+      // Move `a` to the split point
       a.x = ev.x;
       a.y = ev.y;
 
-      const lavPoly: SkPoint2D[] = [];
-      let cur = a;
-      do {
-        lavPoly.push({ x: cur.x, y: cur.y });
-        cur = cur.next;
-      } while (cur !== a);
+      // Rewire: LAV 1 runs a -> b.next -> ... -> a.prev -> a
+      // Rewire: LAV 2 runs aCopy -> a.next -> ... -> b -> aCopy
+      const aNext = a.next;
+      const bNext = b.next;
 
-      const bDir = bisector(lavPoly, 0);
-      a.bx = bDir.dx;
-      a.by = bDir.dy;
+      // LAV 1: a connects to b.next on the forward side
+      a.next = bNext;
+      bNext.prev = a;
+
+      // LAV 2: aCopy connects to a's old next on the forward side, b on the back
+      aCopy.next = aNext;
+      aNext.prev = aCopy;
+      aCopy.prev = b;
+      b.next = aCopy;
+
+      // Recompute bisectors for both split-point nodes
+      const buildLavPoly = (start: LavNode): SkPoint2D[] => {
+        const poly: SkPoint2D[] = [];
+        let c = start;
+        do {
+          poly.push({ x: c.x, y: c.y });
+          c = c.next;
+        } while (c !== start);
+        return poly;
+      };
+
+      const lav1Poly = buildLavPoly(a);
+      const bDir1 = bisector(lav1Poly, 0);
+      a.bx = bDir1.dx;
+      a.by = bDir1.dy;
+
+      const lav2Poly = buildLavPoly(aCopy);
+      const bDir2 = bisector(lav2Poly, 0);
+      aCopy.bx = bDir2.dx;
+      aCopy.by = bDir2.dy;
     }
   }
 
