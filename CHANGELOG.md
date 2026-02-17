@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.5.0](https://github.com/andymai/brepjs/compare/brepjs-v8.4.0...brepjs-v8.5.0) (2026-02-17)
+
+
+### Features
+
+* add polyhedron, sweep extensions, face tags, assembly mates ([#253](https://github.com/andymai/brepjs/issues/253)) ([3e07a16](https://github.com/andymai/brepjs/commit/3e07a1647c59a32da6de45d9729dbd5b48aca823))
+
 ## [8.4.0](https://github.com/andymai/brepjs/compare/brepjs-v8.3.0...brepjs-v8.4.0) (2026-02-17)
 
 
