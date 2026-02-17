@@ -4,7 +4,7 @@ export interface Example {
   id: string;
   title: string;
   description: string;
-  category: 'organic' | 'architectural' | 'practical' | 'gaming';
+  category: 'organic' | 'architectural' | 'practical';
   code: string;
   cameraPosition?: [number, number, number];
   cameraTarget?: [number, number, number];
@@ -19,81 +19,6 @@ export const examples: Example[] = [
     category: 'architectural',
     code: HERO_CODE,
     autoRotateSpeed: 0.3,
-  },
-  {
-    id: 'game-die',
-    title: 'Game Die',
-    description: 'Rounded cube with dot indentations on all six faces.',
-    category: 'gaming',
-    code: `// Six-sided die (mm)
-const size = 20, dotR = 2, s = 5;
-const half = size / 2;
-
-// Rounded cube
-let die = shape(box(size, size, size, { centered: true })).fillet(3).val;
-
-// Dot spheres for all 6 faces (opposite faces sum to 7)
-const dots = [];
-
-// Face 1 (+Z): center
-dots.push(sphere(dotR, { at: [0, 0, half] }));
-
-// Face 6 (-Z): 2×3 grid
-for (const x of [-s, s]) {
-  for (const y of [-s, 0, s]) {
-    dots.push(sphere(dotR, { at: [x, y, -half] }));
-  }
-}
-
-// Face 2 (+X): diagonal pair
-dots.push(sphere(dotR, { at: [half, -s, s] }));
-dots.push(sphere(dotR, { at: [half, s, -s] }));
-
-// Face 5 (-X): center + 4 corners
-dots.push(sphere(dotR, { at: [-half, 0, 0] }));
-for (const [y, z] of [[-s,-s],[s,-s],[-s,s],[s,s]]) {
-  dots.push(sphere(dotR, { at: [-half, y, z] }));
-}
-
-// Face 3 (+Y): diagonal triple
-for (const [x, z] of [[-s,-s],[0,0],[s,s]]) {
-  dots.push(sphere(dotR, { at: [x, half, z] }));
-}
-
-// Face 4 (-Y): 4 corners
-for (const [x, z] of [[-s,-s],[s,-s],[-s,s],[s,s]]) {
-  dots.push(sphere(dotR, { at: [x, -half, z] }));
-}
-
-return unwrap(cutAll(die, dots));`,
-  },
-  {
-    id: 'spur-gear',
-    title: 'Spur Gear',
-    description: 'Gear with teeth around the perimeter built using rotate and fuseAll.',
-    category: 'practical',
-    code: `// Spur gear (mm)
-const teeth = 16, pitchR = 25, addendum = 4;
-const toothW = 4.5, thick = 10, boreR = 8;
-
-// Gear blank
-let gear = cylinder(pitchR, thick);
-
-// Teeth: rotate a box to each angular position, then batch fuse
-const toothShapes = [];
-for (let i = 0; i < teeth; i++) {
-  const angle = (360 / teeth) * i;
-  toothShapes.push(rotate(
-    box(addendum * 2, toothW, thick, { at: [pitchR + addendum, 0, thick / 2] }),
-    angle
-  ));
-}
-gear = unwrap(fuseAll([gear, ...toothShapes]));
-
-// Center bore
-gear = unwrap(cut(gear, cylinder(boreR, thick + 4, { at: [0, 0, -2] })));
-
-return gear;`,
   },
   {
     id: 'pen-cup',

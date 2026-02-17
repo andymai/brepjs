@@ -1,384 +1,345 @@
 # Changelog
 
-## [8.6.0](https://github.com/andymai/brepjs/compare/brepjs-v8.5.0...brepjs-v8.6.0) (2026-02-17)
+## [8.6.2](https://github.com/andymai/brepjs/compare/brepjs-v8.6.1...brepjs-v8.6.2) (2026-02-17)
 
+### Bug Fixes
+
+- **site:** remove broken playground demos, improve mesh quality ([#259](https://github.com/andymai/brepjs/issues/259)) ([64a917c](https://github.com/andymai/brepjs/commit/64a917c3ab3bd35dce5ca65d5c23e0cd6a03a12f))
+
+## [8.6.1](https://github.com/andymai/brepjs/compare/brepjs-v8.6.0...brepjs-v8.6.1) (2026-02-17)
+
+### Bug Fixes
+
+- **brepjs-opencascade:** correct license to LGPL-2.1-only ([#257](https://github.com/andymai/brepjs/issues/257)) ([a828529](https://github.com/andymai/brepjs/commit/a828529a92ba3252c62d743acbd088746305d703))
+
+## [8.6.0](https://github.com/andymai/brepjs/compare/brepjs-v8.5.0...brepjs-v8.6.0) (2026-02-17)
 
 ### Features
 
-* add chamfer join type to offsetWire2D ([0612820](https://github.com/andymai/brepjs/commit/06128209d5fffd6eec704a06f62b39efd8010554))
-* add DXF import for LINE, CIRCLE, ARC entities ([57e664a](https://github.com/andymai/brepjs/commit/57e664a1cf10bb4b4ba25ae02ca36ca3309b1cff))
-* add resize() for dimension-based scaling ([89344ad](https://github.com/andymai/brepjs/commit/89344ad81a8e29b43c01b348826db13bd95c60e9))
-* add shape-attached colors with propagation ([06b9ca7](https://github.com/andymai/brepjs/commit/06b9ca71599f06a67fffc38e7e2a863ae1b94412))
-* add surfaceFromGrid for height-map surfaces ([bca5d9f](https://github.com/andymai/brepjs/commit/bca5d9fcfcfe958899d12e931155b90f1e76846c))
+- add chamfer join type to offsetWire2D ([0612820](https://github.com/andymai/brepjs/commit/06128209d5fffd6eec704a06f62b39efd8010554))
+- add DXF import for LINE, CIRCLE, ARC entities ([57e664a](https://github.com/andymai/brepjs/commit/57e664a1cf10bb4b4ba25ae02ca36ca3309b1cff))
+- add resize() for dimension-based scaling ([89344ad](https://github.com/andymai/brepjs/commit/89344ad81a8e29b43c01b348826db13bd95c60e9))
+- add shape-attached colors with propagation ([06b9ca7](https://github.com/andymai/brepjs/commit/06b9ca71599f06a67fffc38e7e2a863ae1b94412))
+- add surfaceFromGrid for height-map surfaces ([bca5d9f](https://github.com/andymai/brepjs/commit/bca5d9fcfcfe958899d12e931155b90f1e76846c))
 
 ## [8.5.0](https://github.com/andymai/brepjs/compare/brepjs-v8.4.0...brepjs-v8.5.0) (2026-02-17)
 
-
 ### Features
 
-* add polyhedron, sweep extensions, face tags, assembly mates ([#253](https://github.com/andymai/brepjs/issues/253)) ([3e07a16](https://github.com/andymai/brepjs/commit/3e07a1647c59a32da6de45d9729dbd5b48aca823))
+- add polyhedron, sweep extensions, face tags, assembly mates ([#253](https://github.com/andymai/brepjs/issues/253)) ([3e07a16](https://github.com/andymai/brepjs/commit/3e07a1647c59a32da6de45d9729dbd5b48aca823))
 
 ## [8.4.0](https://github.com/andymai/brepjs/compare/brepjs-v8.3.0...brepjs-v8.4.0) (2026-02-17)
 
-
 ### Features
 
-* add hull and minkowski operations ([#251](https://github.com/andymai/brepjs/issues/251)) ([a5571fd](https://github.com/andymai/brepjs/commit/a5571fda422cd6781e1b16bd16deabdd379dc551))
+- add hull and minkowski operations ([#251](https://github.com/andymai/brepjs/issues/251)) ([a5571fd](https://github.com/andymai/brepjs/commit/a5571fda422cd6781e1b16bd16deabdd379dc551))
 
 ## [8.3.0](https://github.com/andymai/brepjs/compare/brepjs-v8.2.0...brepjs-v8.3.0) (2026-02-16)
 
-
 ### Features
 
-* add face origin provenance tracking ([#248](https://github.com/andymai/brepjs/issues/248)) ([f01e856](https://github.com/andymai/brepjs/commit/f01e8569e627795440e40983cc2b0d87293041f6))
+- add face origin provenance tracking ([#248](https://github.com/andymai/brepjs/issues/248)) ([f01e856](https://github.com/andymai/brepjs/commit/f01e8569e627795440e40983cc2b0d87293041f6))
 
 ## [8.2.0](https://github.com/andymai/brepjs/compare/brepjs-v8.1.1...brepjs-v8.2.0) (2026-02-16)
 
-
 ### Features
 
-* add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
+- add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
 
 ## [8.1.1](https://github.com/andymai/brepjs/compare/brepjs-v8.1.0...brepjs-v8.1.1) (2026-02-13)
 
-
 ### Bug Fixes
 
-* add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
+- add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
 
 ## [8.1.0](https://github.com/andymai/brepjs/compare/brepjs-v8.0.4...brepjs-v8.1.0) (2026-02-12)
 
-
 ### Features
 
-* add composeTransforms and transformCopy API ([#231](https://github.com/andymai/brepjs/issues/231)) ([b4acf4e](https://github.com/andymai/brepjs/commit/b4acf4e1a7da25de6ad3ccc6a329eb8ace138e1d))
+- add composeTransforms and transformCopy API ([#231](https://github.com/andymai/brepjs/issues/231)) ([b4acf4e](https://github.com/andymai/brepjs/commit/b4acf4e1a7da25de6ad3ccc6a329eb8ace138e1d))
 
 ## [8.0.4](https://github.com/andymai/brepjs/compare/brepjs-v8.0.3...brepjs-v8.0.4) (2026-02-12)
 
-
 ### Performance Improvements
 
-* optimize adjacency, distance queries, and rectangular pattern ([#229](https://github.com/andymai/brepjs/issues/229)) ([02c4645](https://github.com/andymai/brepjs/commit/02c46457c85477f2ec2f6fa5238c2c61b7dfd5da))
+- optimize adjacency, distance queries, and rectangular pattern ([#229](https://github.com/andymai/brepjs/issues/229)) ([02c4645](https://github.com/andymai/brepjs/commit/02c46457c85477f2ec2f6fa5238c2c61b7dfd5da))
 
 ## [8.0.3](https://github.com/andymai/brepjs/compare/brepjs-v8.0.2...brepjs-v8.0.3) (2026-02-12)
 
-
 ### Performance Improvements
 
-* optimize OCCT engine internals ([#227](https://github.com/andymai/brepjs/issues/227)) ([ac46a92](https://github.com/andymai/brepjs/commit/ac46a928398f24e5fefd7aaccdd356634ef89bdc))
+- optimize OCCT engine internals ([#227](https://github.com/andymai/brepjs/issues/227)) ([ac46a92](https://github.com/andymai/brepjs/commit/ac46a928398f24e5fefd7aaccdd356634ef89bdc))
 
 ## [8.0.2](https://github.com/andymai/brepjs/compare/brepjs-v8.0.1...brepjs-v8.0.2) (2026-02-11)
 
-
 ### Performance Improvements
 
-* add simplePipe, sweep tuning, and .fuseAll() chain API ([#225](https://github.com/andymai/brepjs/issues/225)) ([060dfe7](https://github.com/andymai/brepjs/commit/060dfe7cf4ea7d8c3a85d47eb991817987371b0b))
+- add simplePipe, sweep tuning, and .fuseAll() chain API ([#225](https://github.com/andymai/brepjs/issues/225)) ([060dfe7](https://github.com/andymai/brepjs/commit/060dfe7cf4ea7d8c3a85d47eb991817987371b0b))
 
 ## [8.0.1](https://github.com/andymai/brepjs/compare/brepjs-v8.0.0...brepjs-v8.0.1) (2026-02-11)
 
-
 ### Bug Fixes
 
-* **site:** use correct CodeQL inline suppression format ([#221](https://github.com/andymai/brepjs/issues/221)) ([a2b3c3d](https://github.com/andymai/brepjs/commit/a2b3c3de05bb8b2a9174795e7851bfe6a9ce58e3))
+- **site:** use correct CodeQL inline suppression format ([#221](https://github.com/andymai/brepjs/issues/221)) ([a2b3c3d](https://github.com/andymai/brepjs/commit/a2b3c3de05bb8b2a9174795e7851bfe6a9ce58e3))
 
 ## [8.0.0](https://github.com/andymai/brepjs/compare/brepjs-v7.5.0...brepjs-v8.0.0) (2026-02-11)
 
-
 ### ⚠ BREAKING CHANGES
 
-* remove deprecated APIs and legacy types for v8.0.0
+- remove deprecated APIs and legacy types for v8.0.0
 
 ### Features
 
-* remove deprecated APIs and legacy types for v8.0.0 ([a0a0995](https://github.com/andymai/brepjs/commit/a0a0995153573ebc69ea10f91c6418a916ef9afb))
+- remove deprecated APIs and legacy types for v8.0.0 ([a0a0995](https://github.com/andymai/brepjs/commit/a0a0995153573ebc69ea10f91c6418a916ef9afb))
 
 ## [7.5.0](https://github.com/andymai/brepjs/compare/brepjs-v7.4.2...brepjs-v7.5.0) (2026-02-10)
 
-
 ### Features
 
-* **box:** add `at` and `centered` options, deprecate `center` ([#216](https://github.com/andymai/brepjs/issues/216)) ([9c2496e](https://github.com/andymai/brepjs/commit/9c2496e8236a461f576b7eb89732ca2dc633e3a4))
-
+- **box:** add `at` and `centered` options, deprecate `center` ([#216](https://github.com/andymai/brepjs/issues/216)) ([9c2496e](https://github.com/andymai/brepjs/commit/9c2496e8236a461f576b7eb89732ca2dc633e3a4))
 
 ### Bug Fixes
 
-* **lint:** use strict equality in box() center normalization ([1204a95](https://github.com/andymai/brepjs/commit/1204a95d18afa5bb835953b36b5d4ee45f5122e3))
+- **lint:** use strict equality in box() center normalization ([1204a95](https://github.com/andymai/brepjs/commit/1204a95d18afa5bb835953b36b5d4ee45f5122e3))
 
 ## [7.4.2](https://github.com/andymai/brepjs/compare/brepjs-v7.4.1...brepjs-v7.4.2) (2026-02-09)
 
-
 ### Bug Fixes
 
-* **plugin:** resolve critical issues for publication ([#208](https://github.com/andymai/brepjs/issues/208)) ([01df4d6](https://github.com/andymai/brepjs/commit/01df4d6567a595ceef5dd0548a3e32d721578079))
-* **plugin:** simplify plugin.json to match Claude Code schema ([#211](https://github.com/andymai/brepjs/issues/211)) ([c834d85](https://github.com/andymai/brepjs/commit/c834d8546d45bc936b2501313b925118d69b3c7e))
-
+- **plugin:** resolve critical issues for publication ([#208](https://github.com/andymai/brepjs/issues/208)) ([01df4d6](https://github.com/andymai/brepjs/commit/01df4d6567a595ceef5dd0548a3e32d721578079))
+- **plugin:** simplify plugin.json to match Claude Code schema ([#211](https://github.com/andymai/brepjs/issues/211)) ([c834d85](https://github.com/andymai/brepjs/commit/c834d8546d45bc936b2501313b925118d69b3c7e))
 
 ### Reverts
 
-* remove brepjs-plugin (not ready) ([#213](https://github.com/andymai/brepjs/issues/213)) ([18a2b3a](https://github.com/andymai/brepjs/commit/18a2b3ae6e9d4d0216a1fb63a859a4603a081ac6))
+- remove brepjs-plugin (not ready) ([#213](https://github.com/andymai/brepjs/issues/213)) ([18a2b3a](https://github.com/andymai/brepjs/commit/18a2b3ae6e9d4d0216a1fb63a859a4603a081ac6))
 
 ## [7.4.1](https://github.com/andymai/brepjs/compare/brepjs-v7.4.0...brepjs-v7.4.1) (2026-02-08)
 
-
 ### Bug Fixes
 
-* **playground:** resolve SharedArrayBuffer and WASM loading issues ([#206](https://github.com/andymai/brepjs/issues/206)) ([84b6123](https://github.com/andymai/brepjs/commit/84b6123fa6399bc00efdebe8c1d52e1ea0e7602d))
+- **playground:** resolve SharedArrayBuffer and WASM loading issues ([#206](https://github.com/andymai/brepjs/issues/206)) ([84b6123](https://github.com/andymai/brepjs/commit/84b6123fa6399bc00efdebe8c1d52e1ea0e7602d))
 
 ## [7.4.0](https://github.com/andymai/brepjs/compare/brepjs-v7.3.0...brepjs-v7.4.0) (2026-02-08)
 
-
 ### Features
 
-* **playground:** add automatic worker crash recovery ([0f66d61](https://github.com/andymai/brepjs/commit/0f66d615739f2502fb013ad1d16c1174c34acc3d))
-* **playground:** add execution cancellation for iterative editing ([1d5a1a5](https://github.com/andymai/brepjs/commit/1d5a1a5bf09a5a879b8c7414c908bc3491808527))
-
+- **playground:** add automatic worker crash recovery ([0f66d61](https://github.com/andymai/brepjs/commit/0f66d615739f2502fb013ad1d16c1174c34acc3d))
+- **playground:** add execution cancellation for iterative editing ([1d5a1a5](https://github.com/andymai/brepjs/commit/1d5a1a5bf09a5a879b8c7414c908bc3491808527))
 
 ### Bug Fixes
 
-* **playground:** add runtime safety to WASM preloading and worker init ([f7bf7f8](https://github.com/andymai/brepjs/commit/f7bf7f8f2418635414776211b3f60b0c3aee48c2))
-
+- **playground:** add runtime safety to WASM preloading and worker init ([f7bf7f8](https://github.com/andymai/brepjs/commit/f7bf7f8f2418635414776211b3f60b0c3aee48c2))
 
 ### Performance Improvements
 
-* **playground:** optimize code execution speed for iterative development ([c3e3325](https://github.com/andymai/brepjs/commit/c3e33254e63cc9e9265e23410865a39f01e791c8))
+- **playground:** optimize code execution speed for iterative development ([c3e3325](https://github.com/andymai/brepjs/commit/c3e33254e63cc9e9265e23410865a39f01e791c8))
 
 ## [7.3.0](https://github.com/andymai/brepjs/compare/brepjs-v7.2.0...brepjs-v7.3.0) (2026-02-08)
 
-
 ### Features
 
-* accept ShapeFinder directly in fillet/chamfer/shell ([ac5a0f5](https://github.com/andymai/brepjs/commit/ac5a0f5c207236e033cd03a79ea4d9f9b3760914))
-* add .done() method to wrapper as alias for .val ([042771f](https://github.com/andymai/brepjs/commit/042771fc78bf6e9eb7901f86d94e2947e4e9e087))
-* add clean 2D API naming aliases ([a6b74ba](https://github.com/andymai/brepjs/commit/a6b74ba1194a46f8ce48490e11376854609e1af9))
-* add OCCT error translation layer ([7c665c3](https://github.com/andymai/brepjs/commit/7c665c36f77b2d99747cfec8b221afb85a73ed56))
-* add suggestion field to BrepError ([781ecc9](https://github.com/andymai/brepjs/commit/781ecc9ce9b1a2eecff395d6aec4dc5748869dd4))
-* add volumeProps() and surfaceProps() to wrapper ([85c6f41](https://github.com/andymai/brepjs/commit/85c6f41960096a7875689a32fa7f552efce0cdd5))
-* add white strokes to logo geometric shapes ([#194](https://github.com/andymai/brepjs/issues/194)) ([f7c9cb1](https://github.com/andymai/brepjs/commit/f7c9cb1787c6f8488aa1453b2d79b07db8bff1f1))
-* pre-commit hook improvements to close quality gaps and improve performance ([#195](https://github.com/andymai/brepjs/issues/195)) ([c2fa973](https://github.com/andymai/brepjs/commit/c2fa973482f590843eeeab7c196da99cbb332f70))
-* standardize Config → Options naming for consistency ([fdd8e02](https://github.com/andymai/brepjs/commit/fdd8e02cf8f743976570d0d9781bd444f16efbc5))
-* update loading skeleton logo with geometric design ([25db27a](https://github.com/andymai/brepjs/commit/25db27a32449416d6b692e6d9bfd05d508d46b92))
-
+- accept ShapeFinder directly in fillet/chamfer/shell ([ac5a0f5](https://github.com/andymai/brepjs/commit/ac5a0f5c207236e033cd03a79ea4d9f9b3760914))
+- add .done() method to wrapper as alias for .val ([042771f](https://github.com/andymai/brepjs/commit/042771fc78bf6e9eb7901f86d94e2947e4e9e087))
+- add clean 2D API naming aliases ([a6b74ba](https://github.com/andymai/brepjs/commit/a6b74ba1194a46f8ce48490e11376854609e1af9))
+- add OCCT error translation layer ([7c665c3](https://github.com/andymai/brepjs/commit/7c665c36f77b2d99747cfec8b221afb85a73ed56))
+- add suggestion field to BrepError ([781ecc9](https://github.com/andymai/brepjs/commit/781ecc9ce9b1a2eecff395d6aec4dc5748869dd4))
+- add volumeProps() and surfaceProps() to wrapper ([85c6f41](https://github.com/andymai/brepjs/commit/85c6f41960096a7875689a32fa7f552efce0cdd5))
+- add white strokes to logo geometric shapes ([#194](https://github.com/andymai/brepjs/issues/194)) ([f7c9cb1](https://github.com/andymai/brepjs/commit/f7c9cb1787c6f8488aa1453b2d79b07db8bff1f1))
+- pre-commit hook improvements to close quality gaps and improve performance ([#195](https://github.com/andymai/brepjs/issues/195)) ([c2fa973](https://github.com/andymai/brepjs/commit/c2fa973482f590843eeeab7c196da99cbb332f70))
+- standardize Config → Options naming for consistency ([fdd8e02](https://github.com/andymai/brepjs/commit/fdd8e02cf8f743976570d0d9781bd444f16efbc5))
+- update loading skeleton logo with geometric design ([25db27a](https://github.com/andymai/brepjs/commit/25db27a32449416d6b692e6d9bfd05d508d46b92))
 
 ### Bug Fixes
 
-* increase stroke width on PWA icons for better visibility ([898d496](https://github.com/andymai/brepjs/commit/898d496ba641b733d404860d1415e84d6d79a986))
-* regenerate PWA icons with white stroke logo ([f469dc1](https://github.com/andymai/brepjs/commit/f469dc18786ffc666c4bfdb16ae8d02bd57987d5))
+- increase stroke width on PWA icons for better visibility ([898d496](https://github.com/andymai/brepjs/commit/898d496ba641b733d404860d1415e84d6d79a986))
+- regenerate PWA icons with white stroke logo ([f469dc1](https://github.com/andymai/brepjs/commit/f469dc18786ffc666c4bfdb16ae8d02bd57987d5))
 
 ## [7.2.0](https://github.com/andymai/brepjs/compare/brepjs-v7.1.0...brepjs-v7.2.0) (2026-02-08)
 
-
 ### Features
 
-* standardize parameter naming to `at` and `axis` ([#191](https://github.com/andymai/brepjs/issues/191)) ([90a3ace](https://github.com/andymai/brepjs/commit/90a3ace641d656b878cea6a49073b68030cf6d6f))
-* standardize parameter naming to `at` and `axis` ([#191](https://github.com/andymai/brepjs/issues/191)) ([85885c2](https://github.com/andymai/brepjs/commit/85885c27f1761a5bcec8d8877210754536cf53ac))
+- standardize parameter naming to `at` and `axis` ([#191](https://github.com/andymai/brepjs/issues/191)) ([90a3ace](https://github.com/andymai/brepjs/commit/90a3ace641d656b878cea6a49073b68030cf6d6f))
+- standardize parameter naming to `at` and `axis` ([#191](https://github.com/andymai/brepjs/issues/191)) ([85885c2](https://github.com/andymai/brepjs/commit/85885c27f1761a5bcec8d8877210754536cf53ac))
 
 ## [7.1.0](https://github.com/andymai/brepjs/compare/brepjs-v7.0.0...brepjs-v7.1.0) (2026-02-08)
 
-
 ### Features
 
-* complete wrapper API and improve consistency ([#188](https://github.com/andymai/brepjs/issues/188)) ([bc180b3](https://github.com/andymai/brepjs/commit/bc180b380fd6dd523f5eb7f38d92c9c717b8c9a0))
+- complete wrapper API and improve consistency ([#188](https://github.com/andymai/brepjs/issues/188)) ([bc180b3](https://github.com/andymai/brepjs/commit/bc180b380fd6dd523f5eb7f38d92c9c717b8c9a0))
 
 ## [7.0.0](https://github.com/andymai/brepjs/compare/brepjs-v6.0.0...brepjs-v7.0.0) (2026-02-08)
 
-
 ### ⚠ BREAKING CHANGES
 
-* remove all legacy API names and pipe() wrapper ([#186](https://github.com/andymai/brepjs/issues/186))
+- remove all legacy API names and pipe() wrapper ([#186](https://github.com/andymai/brepjs/issues/186))
 
 ### Features
 
-* remove all legacy API names and pipe() wrapper ([#186](https://github.com/andymai/brepjs/issues/186)) ([7d2f06c](https://github.com/andymai/brepjs/commit/7d2f06ca0f31c8555cc4e64ff71f5935580ed9a2)), closes [#183](https://github.com/andymai/brepjs/issues/183)
+- remove all legacy API names and pipe() wrapper ([#186](https://github.com/andymai/brepjs/issues/186)) ([7d2f06c](https://github.com/andymai/brepjs/commit/7d2f06ca0f31c8555cc4e64ff71f5935580ed9a2)), closes [#183](https://github.com/andymai/brepjs/issues/183)
 
 ## [6.0.0](https://github.com/andymai/brepjs/compare/brepjs-v5.0.0...brepjs-v6.0.0) (2026-02-07)
 
-
 ### ⚠ BREAKING CHANGES
 
-* remove all deprecated APIs ([#183](https://github.com/andymai/brepjs/issues/183))
+- remove all deprecated APIs ([#183](https://github.com/andymai/brepjs/issues/183))
 
 ### Features
 
-* remove all deprecated APIs ([#183](https://github.com/andymai/brepjs/issues/183)) ([8e7ee85](https://github.com/andymai/brepjs/commit/8e7ee8525b50ee85271d7d59eae7df83191ce209))
+- remove all deprecated APIs ([#183](https://github.com/andymai/brepjs/issues/183)) ([8e7ee85](https://github.com/andymai/brepjs/commit/8e7ee8525b50ee85271d7d59eae7df83191ce209))
 
 ## [5.0.0](https://github.com/andymai/brepjs/compare/brepjs-v4.29.3...brepjs-v5.0.0) (2026-02-07)
 
-
 ### ⚠ BREAKING CHANGES
 
-* Remove all deprecated code with no migration path.
+- Remove all deprecated code with no migration path.
 
 ### Features
 
-* remove all deprecated APIs ([a0a3f6c](https://github.com/andymai/brepjs/commit/a0a3f6c95743dc1716cf1a694c8679376df2cabe))
+- remove all deprecated APIs ([a0a3f6c](https://github.com/andymai/brepjs/commit/a0a3f6c95743dc1716cf1a694c8679376df2cabe))
 
 ## [4.29.3](https://github.com/andymai/brepjs/compare/brepjs-v4.29.2...brepjs-v4.29.3) (2026-02-07)
 
-
 ### Bug Fixes
 
-* **site:** regenerate Monaco types with v5 API ([5bad513](https://github.com/andymai/brepjs/commit/5bad513fb42edc2c54cc693650da7ea910450d72))
+- **site:** regenerate Monaco types with v5 API ([5bad513](https://github.com/andymai/brepjs/commit/5bad513fb42edc2c54cc693650da7ea910450d72))
 
 ## [4.29.2](https://github.com/andymai/brepjs/compare/brepjs-v4.29.1...brepjs-v4.29.2) (2026-02-07)
 
-
 ### Bug Fixes
 
-* **site:** pin brepjs &gt;=4.29.0 for v5 API ([1291971](https://github.com/andymai/brepjs/commit/12919710b2065c02c0b6163e4d7d863a0d930139))
+- **site:** pin brepjs &gt;=4.29.0 for v5 API ([1291971](https://github.com/andymai/brepjs/commit/12919710b2065c02c0b6163e4d7d863a0d930139))
 
 ## [4.29.1](https://github.com/andymai/brepjs/compare/brepjs-v4.29.0...brepjs-v4.29.1) (2026-02-07)
 
-
 ### Bug Fixes
 
-* trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
+- trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
 
 ## [4.29.0](https://github.com/andymai/brepjs/compare/brepjs-v4.28.0...brepjs-v4.29.0) (2026-02-07)
 
-
 ### Features
 
-* **site:** update playground examples to v5 API ([#177](https://github.com/andymai/brepjs/issues/177)) ([c1c2a0c](https://github.com/andymai/brepjs/commit/c1c2a0c1e7b911fda540b07c7e79ce719449fed0))
+- **site:** update playground examples to v5 API ([#177](https://github.com/andymai/brepjs/issues/177)) ([c1c2a0c](https://github.com/andymai/brepjs/commit/c1c2a0c1e7b911fda540b07c7e79ce719449fed0))
 
 ## [4.28.0](https://github.com/andymai/brepjs/compare/brepjs-v4.27.1...brepjs-v4.28.0) (2026-02-07)
 
-
 ### Features
 
-* **site:** comprehensive site review overhaul ([#172](https://github.com/andymai/brepjs/issues/172)) ([550636d](https://github.com/andymai/brepjs/commit/550636d66b075d37ef6311774c17d7b1d2a43759))
-
+- **site:** comprehensive site review overhaul ([#172](https://github.com/andymai/brepjs/issues/172)) ([550636d](https://github.com/andymai/brepjs/commit/550636d66b075d37ef6311774c17d7b1d2a43759))
 
 ### Bug Fixes
 
-* replace removed API aliases and improve CI portability ([#175](https://github.com/andymai/brepjs/issues/175)) ([9d2254f](https://github.com/andymai/brepjs/commit/9d2254f0a618fe842c6c1f32028a3125121ef796))
+- replace removed API aliases and improve CI portability ([#175](https://github.com/andymai/brepjs/issues/175)) ([9d2254f](https://github.com/andymai/brepjs/commit/9d2254f0a618fe842c6c1f32028a3125121ef796))
 
 ## [4.27.1](https://github.com/andymai/brepjs/compare/brepjs-v4.27.0...brepjs-v4.27.1) (2026-02-07)
 
-
 ### Bug Fixes
 
-* address PR review comments from PRs [#139](https://github.com/andymai/brepjs/issues/139)–[#166](https://github.com/andymai/brepjs/issues/166) ([#170](https://github.com/andymai/brepjs/issues/170)) ([727c577](https://github.com/andymai/brepjs/commit/727c5778fd6a307eca85f2730d740d56e12218d2))
+- address PR review comments from PRs [#139](https://github.com/andymai/brepjs/issues/139)–[#166](https://github.com/andymai/brepjs/issues/166) ([#170](https://github.com/andymai/brepjs/issues/170)) ([727c577](https://github.com/andymai/brepjs/commit/727c5778fd6a307eca85f2730d740d56e12218d2))
 
 ## [4.27.0](https://github.com/andymai/brepjs/compare/brepjs-v4.26.0...brepjs-v4.27.0) (2026-02-07)
 
-
 ### Features
 
-* add SVG preview gallery to README (Visual Examples 9→10) ([#168](https://github.com/andymai/brepjs/issues/168)) ([4ebb0a3](https://github.com/andymai/brepjs/commit/4ebb0a3ae1d3bd604332cbc7dbed5104b0bb2f38))
+- add SVG preview gallery to README (Visual Examples 9→10) ([#168](https://github.com/andymai/brepjs/issues/168)) ([4ebb0a3](https://github.com/andymai/brepjs/commit/4ebb0a3ae1d3bd604332cbc7dbed5104b0bb2f38))
 
 ## [4.26.0](https://github.com/andymai/brepjs/compare/brepjs-v4.25.0...brepjs-v4.26.0) (2026-02-07)
 
-
 ### Features
 
-* split brepjs/core into focused sub-paths (API Organization 9→10) ([#166](https://github.com/andymai/brepjs/issues/166)) ([d3abd35](https://github.com/andymai/brepjs/commit/d3abd3547d20199481431cf906790d8a4b1444d7))
+- split brepjs/core into focused sub-paths (API Organization 9→10) ([#166](https://github.com/andymai/brepjs/issues/166)) ([d3abd35](https://github.com/andymai/brepjs/commit/d3abd3547d20199481431cf906790d8a4b1444d7))
 
 ## [4.25.0](https://github.com/andymai/brepjs/compare/brepjs-v4.24.0...brepjs-v4.25.0) (2026-02-07)
 
-
 ### Features
 
-* remove legacy aliases from barrel exports (Naming 10/10) ([#164](https://github.com/andymai/brepjs/issues/164)) ([c0a221c](https://github.com/andymai/brepjs/commit/c0a221c79a42b8f746e1f2bbaee66e1eba1e740a))
+- remove legacy aliases from barrel exports (Naming 10/10) ([#164](https://github.com/andymai/brepjs/issues/164)) ([c0a221c](https://github.com/andymai/brepjs/commit/c0a221c79a42b8f746e1f2bbaee66e1eba1e740a))
 
 ## [4.24.0](https://github.com/andymai/brepjs/compare/brepjs-v4.23.0...brepjs-v4.24.0) (2026-02-07)
 
-
 ### Features
 
-* brepjs/quick auto-init entry point and learning resources (Learning Curve 6→10) ([#162](https://github.com/andymai/brepjs/issues/162)) ([bef5805](https://github.com/andymai/brepjs/commit/bef5805b372ecf94c90ca3c3a0af79c3a64cd428))
+- brepjs/quick auto-init entry point and learning resources (Learning Curve 6→10) ([#162](https://github.com/andymai/brepjs/issues/162)) ([bef5805](https://github.com/andymai/brepjs/commit/bef5805b372ecf94c90ca3c3a0af79c3a64cd428))
 
 ## [4.23.0](https://github.com/andymai/brepjs/compare/brepjs-v4.22.0...brepjs-v4.23.0) (2026-02-07)
 
-
 ### Features
 
-* visual output examples and browser viewer (Examples Quality 8→10) ([#160](https://github.com/andymai/brepjs/issues/160)) ([e8d12db](https://github.com/andymai/brepjs/commit/e8d12db91783db4715daf601a234d59d7440c2fc))
+- visual output examples and browser viewer (Examples Quality 8→10) ([#160](https://github.com/andymai/brepjs/issues/160)) ([e8d12db](https://github.com/andymai/brepjs/commit/e8d12db91783db4715daf601a234d59d7440c2fc))
 
 ## [4.22.0](https://github.com/andymai/brepjs/compare/brepjs-v4.21.3...brepjs-v4.22.0) (2026-02-07)
 
-
 ### Features
 
-* hosted TypeDoc API reference and function lookup table (API Discoverability 8→10) ([#157](https://github.com/andymai/brepjs/issues/157)) ([2d3dd8b](https://github.com/andymai/brepjs/commit/2d3dd8bb12523b97c1d4ab20be103296f7f621a3))
+- hosted TypeDoc API reference and function lookup table (API Discoverability 8→10) ([#157](https://github.com/andymai/brepjs/issues/157)) ([2d3dd8b](https://github.com/andymai/brepjs/commit/2d3dd8bb12523b97c1d4ab20be103296f7f621a3))
 
 ## [4.21.3](https://github.com/andymai/brepjs/compare/brepjs-v4.21.2...brepjs-v4.21.3) (2026-02-07)
 
-
 ### Bug Fixes
 
-* **ci:** use correct release-please output key for root package ([b5fc4f0](https://github.com/andymai/brepjs/commit/b5fc4f0a5875d7b4f1a49acac3ac1fa5a3df0320))
+- **ci:** use correct release-please output key for root package ([b5fc4f0](https://github.com/andymai/brepjs/commit/b5fc4f0a5875d7b4f1a49acac3ac1fa5a3df0320))
 
 ## [4.21.2](https://github.com/andymai/brepjs/compare/brepjs-v4.21.1...brepjs-v4.21.2) (2026-02-07)
 
-
 ### Bug Fixes
 
-* address Vercel build warnings ([d92da72](https://github.com/andymai/brepjs/commit/d92da72e186f1b6d0a6ea64efed98aaca4bbe0e3))
+- address Vercel build warnings ([d92da72](https://github.com/andymai/brepjs/commit/d92da72e186f1b6d0a6ea64efed98aaca4bbe0e3))
 
 ## [4.21.1](https://github.com/andymai/brepjs/compare/brepjs-v4.21.0...brepjs-v4.21.1) (2026-02-07)
 
-
 ### Bug Fixes
 
-* **vercel:** use cd instead of -w flag for build command ([60ddc5f](https://github.com/andymai/brepjs/commit/60ddc5f94c46d13a9cb29de94f4d364f4d0251a1))
+- **vercel:** use cd instead of -w flag for build command ([60ddc5f](https://github.com/andymai/brepjs/commit/60ddc5f94c46d13a9cb29de94f4d364f4d0251a1))
 
 ## [4.21.0](https://github.com/andymai/brepjs/compare/brepjs-v4.20.0...brepjs-v4.21.0) (2026-02-07)
 
-
 ### Features
 
-* null-shape pre-validation for measurement and interference (Type Safety 9→10) ([#152](https://github.com/andymai/brepjs/issues/152)) ([1fadec4](https://github.com/andymai/brepjs/commit/1fadec43558e8e6915926df92cd6a5a5aee67d4a))
+- null-shape pre-validation for measurement and interference (Type Safety 9→10) ([#152](https://github.com/andymai/brepjs/issues/152)) ([1fadec4](https://github.com/andymai/brepjs/commit/1fadec43558e8e6915926df92cd6a5a5aee67d4a))
 
 ## [4.20.0](https://github.com/andymai/brepjs/compare/brepjs-v4.19.0...brepjs-v4.20.0) (2026-02-07)
 
-
 ### Features
 
-* add pre-validation and improve error context (Error Handling 8→10) ([#149](https://github.com/andymai/brepjs/issues/149)) ([2cd9ee7](https://github.com/andymai/brepjs/commit/2cd9ee75d547f749bfa0efb2ace1ddf9cce8136d))
+- add pre-validation and improve error context (Error Handling 8→10) ([#149](https://github.com/andymai/brepjs/issues/149)) ([2cd9ee7](https://github.com/andymai/brepjs/commit/2cd9ee75d547f749bfa0efb2ace1ddf9cce8136d))
 
 ## [4.19.0](https://github.com/andymai/brepjs/compare/brepjs-v4.18.5...brepjs-v4.19.0) (2026-02-07)
 
-
 ### Features
 
-* add sub-path imports and Which API guide (Discoverability 7→10) ([#143](https://github.com/andymai/brepjs/issues/143)) ([02e2d14](https://github.com/andymai/brepjs/commit/02e2d14c3c5873cf4e6f9d24820ad26f10277d0f))
-* split find() into findAll() and findUnique() (Type Safety 8→10) ([#147](https://github.com/andymai/brepjs/issues/147)) ([ae0dd9f](https://github.com/andymai/brepjs/commit/ae0dd9f91ae3b129b9b1602fb06ef944108ca4fc))
-* symmetric boolean naming and remove deprecated barrel exports (Naming 9→10) ([#148](https://github.com/andymai/brepjs/issues/148)) ([63444be](https://github.com/andymai/brepjs/commit/63444be0366c96baf7456aff297596749139c901))
+- add sub-path imports and Which API guide (Discoverability 7→10) ([#143](https://github.com/andymai/brepjs/issues/143)) ([02e2d14](https://github.com/andymai/brepjs/commit/02e2d14c3c5873cf4e6f9d24820ad26f10277d0f))
+- split find() into findAll() and findUnique() (Type Safety 8→10) ([#147](https://github.com/andymai/brepjs/issues/147)) ([ae0dd9f](https://github.com/andymai/brepjs/commit/ae0dd9f91ae3b129b9b1602fb06ef944108ca4fc))
+- symmetric boolean naming and remove deprecated barrel exports (Naming 9→10) ([#148](https://github.com/andymai/brepjs/issues/148)) ([63444be](https://github.com/andymai/brepjs/commit/63444be0366c96baf7456aff297596749139c901))
 
 ## [4.18.5](https://github.com/andymai/brepjs/compare/brepjs-v4.18.4...brepjs-v4.18.5) (2026-02-07)
 
-
 ### Bug Fixes
 
-* unify finder API with immutable cornerFinder() factory ([#139](https://github.com/andymai/brepjs/issues/139)) ([07fdb8a](https://github.com/andymai/brepjs/commit/07fdb8a77b88700bde03dca7f832332c9c3e870c))
+- unify finder API with immutable cornerFinder() factory ([#139](https://github.com/andymai/brepjs/issues/139)) ([07fdb8a](https://github.com/andymai/brepjs/commit/07fdb8a77b88700bde03dca7f832332c9c3e870c))
 
 ## [4.18.4](https://github.com/andymai/brepjs/compare/brepjs-v4.18.3...brepjs-v4.18.4) (2026-02-07)
 
-
 ### Bug Fixes
 
-* consistent Result returns for error handling ([#137](https://github.com/andymai/brepjs/issues/137)) ([65cdfd6](https://github.com/andymai/brepjs/commit/65cdfd60bedf3d22e02245d1fc43b11c1091bcc7))
+- consistent Result returns for error handling ([#137](https://github.com/andymai/brepjs/issues/137)) ([65cdfd6](https://github.com/andymai/brepjs/commit/65cdfd60bedf3d22e02245d1fc43b11c1091bcc7))
 
 ## [4.18.3](https://github.com/andymai/brepjs/compare/brepjs-v4.18.2...brepjs-v4.18.3) (2026-02-07)
 
-
 ### Bug Fixes
 
-* improve naming clarity, remove castShape ceremony ([#135](https://github.com/andymai/brepjs/issues/135)) ([15427fc](https://github.com/andymai/brepjs/commit/15427fc7c8786147aa672e1346b1e8a17e05e351))
+- improve naming clarity, remove castShape ceremony ([#135](https://github.com/andymai/brepjs/issues/135)) ([15427fc](https://github.com/andymai/brepjs/commit/15427fc7c8786147aa672e1346b1e8a17e05e351))
 
 ## [4.18.2](https://github.com/andymai/brepjs/compare/brepjs-v4.18.1...brepjs-v4.18.2) (2026-02-07)
 
-
 ### Bug Fixes
 
-* narrow AnyShape params to precise branded types ([#133](https://github.com/andymai/brepjs/issues/133)) ([d0ddae7](https://github.com/andymai/brepjs/commit/d0ddae774443e3f3558a6c85dc481fcf255ba535))
+- narrow AnyShape params to precise branded types ([#133](https://github.com/andymai/brepjs/issues/133)) ([d0ddae7](https://github.com/andymai/brepjs/commit/d0ddae774443e3f3558a6c85dc481fcf255ba535))
 
 ## [4.18.1](https://github.com/andymai/brepjs/compare/brepjs-v4.18.0...brepjs-v4.18.1) (2026-02-07)
 
-
 ### Bug Fixes
 
-* resolve CodeQL security alerts ([#131](https://github.com/andymai/brepjs/issues/131)) ([f13e1a2](https://github.com/andymai/brepjs/commit/f13e1a27b932ea9d3516c4a97e43e16ad688d448))
+- resolve CodeQL security alerts ([#131](https://github.com/andymai/brepjs/issues/131)) ([f13e1a2](https://github.com/andymai/brepjs/commit/f13e1a27b932ea9d3516c4a97e43e16ad688d448))
 
 ## [4.18.0](https://github.com/andymai/brepjs/compare/brepjs-v4.17.1...brepjs-v4.18.0) (2026-02-07)
 
