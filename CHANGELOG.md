@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.4.0](https://github.com/andymai/brepjs/compare/brepjs-v8.3.0...brepjs-v8.4.0) (2026-02-17)
+
+
+### Features
+
+* add hull and minkowski operations ([#251](https://github.com/andymai/brepjs/issues/251)) ([a5571fd](https://github.com/andymai/brepjs/commit/a5571fda422cd6781e1b16bd16deabdd379dc551))
+
 ## [8.3.0](https://github.com/andymai/brepjs/compare/brepjs-v8.2.0...brepjs-v8.3.0) (2026-02-16)
 
 
