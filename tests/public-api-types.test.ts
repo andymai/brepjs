@@ -354,6 +354,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'importSTL',
   'importSVG',
   'importSVGPathD',
+  'importThreeMF',
   'initFromOC',
   'innerWires',
   'interpolateCurve',
