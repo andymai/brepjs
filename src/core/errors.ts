@@ -104,6 +104,17 @@ export const BrepErrorCode = {
 
   // Query errors
   FINDER_NOT_UNIQUE: 'FINDER_NOT_UNIQUE',
+
+  // Hull errors
+  HULL_EMPTY_INPUT: 'HULL_EMPTY_INPUT',
+  HULL_FAILED: 'HULL_FAILED',
+  HULL_DEGENERATE: 'HULL_DEGENERATE',
+  HULL_NOT_3D: 'HULL_NOT_3D',
+
+  // Minkowski errors
+  MINKOWSKI_FAILED: 'MINKOWSKI_FAILED',
+  MINKOWSKI_NULL_TOOL: 'MINKOWSKI_NULL_TOOL',
+  MINKOWSKI_NOT_3D: 'MINKOWSKI_NOT_3D',
 } as const;
 
 /** Union of all known error code string literals. */
