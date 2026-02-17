@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.0...brepjs-opencascade-v0.8.1) (2026-02-17)
+
+
+### Bug Fixes
+
+* **brepjs-opencascade:** correct license to LGPL-2.1-only ([#257](https://github.com/andymai/brepjs/issues/257)) ([a828529](https://github.com/andymai/brepjs/commit/a828529a92ba3252c62d743acbd088746305d703))
+
 ## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.2...brepjs-opencascade-v0.8.0) (2026-02-17)
 
 
