@@ -468,6 +468,8 @@ export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
 
 export { hull, type HullOptions } from './topology/hullFns.js';
 
+export { minkowski, type MinkowskiOptions } from './topology/minkowskiFns.js';
+
 // (modifiers available via public API: fillet, chamfer, shell, offset, thicken)
 
 // ── Healing (functional) ──

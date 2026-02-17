@@ -581,3 +581,27 @@ export function hull(oc: OpenCascadeInstance, shapes: OcShape[], tolerance: numb
 
   return reconstructBrep(oc, hullResult, tolerance);
 }
+
+/**
+ * Compute the 3D convex hull from raw 3D point coordinates.
+ *
+ * Runs QuickHull on the supplied points and reconstructs a BREP solid.
+ * Used by minkowski to avoid meshing bare vertex shapes.
+ */
+export function hullFromPoints(
+  oc: OpenCascadeInstance,
+  points: Vec3[],
+  tolerance: number
+): OcShape {
+  if (points.length < 4) {
+    throw new Error('hullFromPoints: fewer than 4 points');
+  }
+
+  const hullResult = quickHull(points, tolerance);
+
+  if (hullResult.faces.length < 4) {
+    throw new Error('hullFromPoints: degenerate hull (fewer than 4 faces)');
+  }
+
+  return reconstructBrep(oc, hullResult, tolerance);
+}

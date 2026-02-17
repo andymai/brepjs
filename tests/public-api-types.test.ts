@@ -405,6 +405,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'measureVolumeProps',
   'mesh',
   'meshEdges',
+  'minkowski',
   'mirror',
   'mirror2D',
   'mirrorDrawing',

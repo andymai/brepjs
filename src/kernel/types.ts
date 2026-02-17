@@ -76,6 +76,7 @@ export interface KernelAdapter {
 
   // --- Convex hull ---
   hull(shapes: OcShape[], tolerance: number): OcShape;
+  hullFromPoints(points: Array<{ x: number; y: number; z: number }>, tolerance: number): OcShape;
 
   // --- Shape construction ---
   makeVertex(x: number, y: number, z: number): OcShape;
