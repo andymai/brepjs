@@ -1,7 +1,7 @@
 /**
  * Generates styled SVG preview images for the README gallery.
  *
- * Initializes WASM, builds 5 representative shapes, projects them to 2D,
+ * Initializes WASM, builds 3 representative shapes, projects them to 2D,
  * and writes styled SVG files to docs/images/examples/.
  *
  * Usage: npx tsx scripts/generate-example-previews.ts
@@ -35,7 +35,6 @@ initFromOC(oc);
 const {
   box,
   cylinder,
-  cut,
   fuse,
   shell,
   intersect,
@@ -86,36 +85,6 @@ function flatPaths(raw: string[] | string[][]): string[] {
 }
 
 // ── Shape builders ──────────────────────────────────────────────────────
-
-function buildGameDie(): string {
-  const size = 20, r = 2.5, depth = 2, s = 5;
-  const H = size / 2;
-
-  let die = shape(box(size, size, size, { centered: true })).fillet(3).val;
-
-  function cutPip(x: number, y: number, z: number, axis: [number, number, number]) {
-    const c = cylinder(r, depth + 2, { at: [x, y, z], axis, centered: true });
-    die = unwrap(cut(die, c));
-  }
-
-  cutPip(0, 0, H, [0, 0, 1]);
-  for (const dx of [-s, s])
-    for (const dy of [-s, 0, s])
-      cutPip(dx, dy, -H, [0, 0, 1]);
-  cutPip(H, -s, s, [1, 0, 0]);
-  cutPip(H, s, -s, [1, 0, 0]);
-  cutPip(-H, 0, 0, [1, 0, 0]);
-  for (const [dy, dz] of [[-s, -s], [s, -s], [-s, s], [s, s]] as [number, number][])
-    cutPip(-H, dy, dz, [1, 0, 0]);
-  for (const [dx, dz] of [[-s, -s], [0, 0], [s, s]] as [number, number][])
-    cutPip(dx, H, dz, [0, 1, 0]);
-  for (const [dx, dz] of [[-s, -s], [s, -s], [-s, s], [s, s]] as [number, number][])
-    cutPip(dx, -H, dz, [0, 1, 0]);
-
-  const proj = drawProjection(die, 'front');
-  const paths = flatPaths(proj.visible.toSVGPaths());
-  return styledSVG(proj.visible.toSVGViewBox(3), paths);
-}
 
 function buildPenCup(): string {
   let cup = sketchRoundedRectangle(50, 35, 8).extrude(80);
@@ -183,7 +152,6 @@ function buildCompartmentTray(): string {
 mkdirSync(OUT_DIR, { recursive: true });
 
 const previews: [string, () => string][] = [
-  ['game-die.svg', buildGameDie],
   ['pen-cup.svg', buildPenCup],
   ['lofted-vase.svg', buildLoftedVase],
   ['compartment-tray.svg', buildCompartmentTray],

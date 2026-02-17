@@ -4,7 +4,7 @@ export interface Example {
   id: string;
   title: string;
   description: string;
-  category: 'organic' | 'architectural' | 'practical' | 'gaming';
+  category: 'organic' | 'architectural' | 'practical';
   code: string;
   cameraPosition?: [number, number, number];
   cameraTarget?: [number, number, number];
@@ -19,45 +19,6 @@ export const examples: Example[] = [
     category: 'architectural',
     code: HERO_CODE,
     autoRotateSpeed: 0.3,
-  },
-  {
-    id: 'game-die',
-    title: 'Game Die',
-    description: 'Rounded cube with dot indentations on all six faces.',
-    category: 'gaming',
-    code: `// Six-sided die (mm)
-const size = 20, r = 2.5, depth = 2, gap = 5;
-const H = size / 2;
-
-let die = shape(box(size, size, size, { centered: true })).fillet(3).val;
-
-// Cut a single pip: cylinder starts outside the face, goes inward
-function cutPip(x, y, z, axis) {
-  const c = cylinder(r, depth + 2, { at: [x, y, z], axis, centered: true });
-  die = unwrap(cut(die, c));
-}
-
-// Face 1 (+Z): center
-cutPip(0, 0, H, [0,0,1]);
-// Face 6 (-Z): 2×3
-for (const dx of [-gap, gap])
-  for (const dy of [-gap, 0, gap])
-    cutPip(dx, dy, -H, [0,0,1]);
-// Face 2 (+X): diagonal pair
-cutPip(H, -gap, gap, [1,0,0]);
-cutPip(H, gap, -gap, [1,0,0]);
-// Face 5 (-X): center + 4 corners
-cutPip(-H, 0, 0, [1,0,0]);
-for (const [dy, dz] of [[-gap,-gap],[gap,-gap],[-gap,gap],[gap,gap]])
-  cutPip(-H, dy, dz, [1,0,0]);
-// Face 3 (+Y): diagonal triple
-for (const [dx, dz] of [[-gap,-gap],[0,0],[gap,gap]])
-  cutPip(dx, H, dz, [0,1,0]);
-// Face 4 (-Y): 4 corners
-for (const [dx, dz] of [[-gap,-gap],[gap,-gap],[-gap,gap],[gap,gap]])
-  cutPip(dx, -H, dz, [0,1,0]);
-
-return die;`,
   },
   {
     id: 'pen-cup',
