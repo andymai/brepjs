@@ -535,6 +535,14 @@ export {
 } from './operations/assemblyFns.js';
 
 export {
+  addMate,
+  solveAssembly,
+  type MateConstraint,
+  type MateEntity,
+  type AssemblySolveResult,
+} from './operations/mateFns.js';
+
+export {
   createHistory,
   addStep,
   undoLast,

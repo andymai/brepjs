@@ -25,6 +25,7 @@ export interface AssemblyNode {
   readonly rotate?: { angle: number; axis?: Vec3 };
   readonly metadata?: Readonly<Record<string, unknown>>;
   readonly children: ReadonlyArray<AssemblyNode>;
+  readonly mates?: readonly unknown[];
 }
 
 export interface AssemblyNodeOptions {
