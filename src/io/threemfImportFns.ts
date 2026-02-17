@@ -221,15 +221,16 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<AnyShape> {
     const sewn = sewing.SewedShape();
 
     // Try to make a solid from the sewn shell, fixing orientation
+    const fixer = new oc.ShapeFix_Solid_1();
     try {
       const shell = oc.TopoDS.Shell_1(sewn);
-      const fixer = new oc.ShapeFix_Solid_1();
       const solid = fixer.SolidFromShell(shell);
-      fixer.delete();
       return ok(castShape(solid));
     } catch {
       // If solid creation fails, return the sewn shape as-is
       return ok(castShape(sewn));
+    } finally {
+      fixer.delete();
     }
   } finally {
     sewing.delete();

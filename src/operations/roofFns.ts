@@ -207,24 +207,27 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
       const sewn = sewing.SewedShape();
 
       // Try to make a solid from the sewn shell, fixing orientation
+      const fixer = new oc.ShapeFix_Solid_1();
       try {
         const shell = oc.TopoDS.Shell_1(sewn);
-        const fixer = new oc.ShapeFix_Solid_1();
         const solid = fixer.SolidFromShell(shell);
-        fixer.delete();
 
         // Fix face orientation so volume is positive
         const shapeFixer = new oc.ShapeFix_Shape_1(solid);
         const shapeFixProgress = new oc.Message_ProgressRange_1();
-        shapeFixer.Perform(shapeFixProgress);
-        shapeFixProgress.delete();
-        const fixed = shapeFixer.Shape();
-        shapeFixer.delete();
-
-        return ok(createSolid(fixed));
+        try {
+          shapeFixer.Perform(shapeFixProgress);
+          const fixed = shapeFixer.Shape();
+          return ok(createSolid(fixed));
+        } finally {
+          shapeFixProgress.delete();
+          shapeFixer.delete();
+        }
       } catch {
         // If solid creation fails, return the sewn shape cast as solid
         return ok(castShape(sewn) as Solid);
+      } finally {
+        fixer.delete();
       }
     } finally {
       sewing.delete();

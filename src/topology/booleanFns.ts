@@ -276,11 +276,11 @@ export function fuseAll(
   if (signal?.aborted) throw signal.reason;
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
   if (shapes.length === 1) return ok(shapes[0]!);
 
   for (let i = 0; i < shapes.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
     const check = validateShape3D(shapes[i]!, `fuseAll: shape at index ${i}`);
     if (isErr(check)) return check;
   }
@@ -329,7 +329,7 @@ export function cutAll(
   const checkBase = validateShape3D(base, 'cutAll: base');
   if (isErr(checkBase)) return checkBase;
   for (let i = 0; i < tools.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
     const check = validateShape3D(tools[i]!, `cutAll: tool at index ${i}`);
     if (isErr(check)) return check;
   }
@@ -538,7 +538,7 @@ export function sectionToFace(
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- outerIdx set from valid wires index
   const outer = wires[outerIdx]!;
   const holes = wires.filter((_, i) => i !== outerIdx);
   return makeFace(outer, holes.length > 0 ? holes : undefined);
@@ -559,7 +559,7 @@ export function split(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'split: shape is a null shape'));
   }
   for (let i = 0; i < tools.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
     if (tools[i]!.wrapped.IsNull()) {
       return err(
         validationError(
