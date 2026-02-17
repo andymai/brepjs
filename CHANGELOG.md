@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.7.2](https://github.com/andymai/brepjs/compare/brepjs-v8.7.1...brepjs-v8.7.2) (2026-02-17)
+
+
+### Bug Fixes
+
+* **ci:** add postinstall script to ensure WASM runtime files ([#266](https://github.com/andymai/brepjs/issues/266)) ([fd38cd3](https://github.com/andymai/brepjs/commit/fd38cd3a093e0516f95156a169913b53cd9e1680))
+
 ## [8.7.1](https://github.com/andymai/brepjs/compare/brepjs-v8.7.0...brepjs-v8.7.1) (2026-02-17)
 
 
