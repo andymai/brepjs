@@ -19,14 +19,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Download WASM runtime files (not tracked in git)
-        run: |
-          if [ ! -f packages/brepjs-opencascade/src/brepjs_single.js ]; then
-            npm pack brepjs-opencascade --pack-destination /tmp
-            tar -xzf /tmp/brepjs-opencascade-*.tgz -C /tmp
-            cp /tmp/package/src/*.js /tmp/package/src/*.wasm packages/brepjs-opencascade/src/
-            rm -rf /tmp/package /tmp/brepjs-opencascade-*.tgz
-          fi
+      - name: Ensure WASM runtime files exist
+        run: bash scripts/ensure-wasm.sh
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
