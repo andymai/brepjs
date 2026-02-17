@@ -1,0 +1,19 @@
+brepjs-opencascade
+Copyright 2024-2026 Andy Aragon
+
+This package contains precompiled WebAssembly binaries built from:
+
+  opencascade.js — https://github.com/donalffons/opencascade.js
+  Copyright Sebastian Alff
+  Licensed under LGPL-2.1-only
+
+Which is itself a WebAssembly port of:
+
+  Open CASCADE Technology (OCCT) — https://dev.opencascade.org
+  Copyright Open CASCADE SAS
+  Licensed under LGPL-2.1 with the Open CASCADE Exception 1.0
+
+The WASM binaries and JavaScript wrappers in this package are distributed
+under the terms of the GNU Lesser General Public License v2.1 (see LICENSE).
+
+Source code for the upstream libraries is available at the URLs listed above.
