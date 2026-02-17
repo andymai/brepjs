@@ -74,8 +74,8 @@ function parseModelXml(xml: string): ParsedMesh {
   const triangles: Array<[number, number, number]> = [];
 
   // Attribute-order-independent: extract x/y/z from any attribute order
-  const vertexTagRe = /<vertex\s+[^>]*?\/?>/g;
-  const attrRe = /(\w+)="([^"]+)"/g;
+  const vertexTagRe = /<vertex\s[^>]*>/g;
+  const attrRe = /([a-z]\w*)="([^"]*)"/g;
   let m: RegExpExecArray | null;
   while ((m = vertexTagRe.exec(xml)) !== null) {
     const tag = m[0];
@@ -91,7 +91,7 @@ function parseModelXml(xml: string): ParsedMesh {
   }
 
   // Attribute-order-independent for triangles too
-  const triTagRe = /<triangle\s+[^>]*?\/?>/g;
+  const triTagRe = /<triangle\s[^>]*>/g;
   while ((m = triTagRe.exec(xml)) !== null) {
     const tag = m[0];
     const attrs: Record<string, string> = {};

@@ -2,6 +2,8 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { polygon, outerWire, measureVolume, roof } from '../src/index.js';
 import { unwrap } from '../src/core/result.js';
+import { makeLine } from '../src/topology/curveBuilders.js';
+import { wire } from '../src/topology/primitiveFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -44,5 +46,50 @@ describe('roof', () => {
     expect(r2.ok).toBe(true);
     if (!r1.ok || !r2.ok) return;
     expect(measureVolume(r2.value)).toBeGreaterThan(measureVolume(r1.value));
+  });
+
+  it('returns error for wire with fewer than 3 edges', () => {
+    const e1 = makeLine([0, 0, 0], [10, 0, 0]);
+    const e2 = makeLine([10, 0, 0], [0, 0, 0]);
+    const w = unwrap(wire([e1, e2]));
+    const result = roof(w);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain('at least 3 edges');
+    }
+  });
+
+  it('creates a roof from a triangular wire', () => {
+    const face = unwrap(
+      polygon([
+        [0, 0, 0],
+        [10, 0, 0],
+        [5, 8, 0],
+      ])
+    );
+    const wire = outerWire(face);
+    const result = roof(wire);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const vol = measureVolume(result.value);
+    expect(vol).toBeGreaterThan(0);
+  });
+
+  it('creates a roof from a pentagonal wire', () => {
+    const face = unwrap(
+      polygon([
+        [0, 0, 0],
+        [10, 0, 0],
+        [12, 8, 0],
+        [5, 12, 0],
+        [-2, 8, 0],
+      ])
+    );
+    const wire = outerWire(face);
+    const result = roof(wire);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const vol = measureVolume(result.value);
+    expect(vol).toBeGreaterThan(0);
   });
 });

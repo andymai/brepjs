@@ -76,4 +76,54 @@ describe('computeStraightSkeleton', () => {
     expect(skeleton.faces.length).toBe(3);
     expect(skeleton.nodes.length).toBe(1);
   });
+
+  it('computes skeleton for a cross/plus shape (triggers split events)', () => {
+    // Plus sign shape — concave vertices create reflex angles that trigger split events
+    const polygon = [
+      { x: 3, y: 0 },
+      { x: 7, y: 0 },
+      { x: 7, y: 3 },
+      { x: 10, y: 3 },
+      { x: 10, y: 7 },
+      { x: 7, y: 7 },
+      { x: 7, y: 10 },
+      { x: 3, y: 10 },
+      { x: 3, y: 7 },
+      { x: 0, y: 7 },
+      { x: 0, y: 3 },
+      { x: 3, y: 3 },
+    ];
+    const skeleton = computeStraightSkeleton(polygon);
+    expect(skeleton.faces.length).toBe(12);
+    expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('computes skeleton for a pentagon', () => {
+    const polygon = [
+      { x: 5, y: 0 },
+      { x: 10, y: 3.5 },
+      { x: 8, y: 9 },
+      { x: 2, y: 9 },
+      { x: 0, y: 3.5 },
+    ];
+    const skeleton = computeStraightSkeleton(polygon);
+    expect(skeleton.faces.length).toBe(5);
+    expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('computes skeleton for arrow shape (reflex vertex)', () => {
+    // Arrow pointing right — has one reflex vertex
+    const polygon = [
+      { x: 0, y: 2 },
+      { x: 6, y: 2 },
+      { x: 6, y: 0 },
+      { x: 10, y: 4 },
+      { x: 6, y: 8 },
+      { x: 6, y: 6 },
+      { x: 0, y: 6 },
+    ];
+    const skeleton = computeStraightSkeleton(polygon);
+    expect(skeleton.faces.length).toBe(7);
+    expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
+  });
 });

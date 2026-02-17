@@ -215,7 +215,9 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
 
         // Fix face orientation so volume is positive
         const shapeFixer = new oc.ShapeFix_Shape_1(solid);
-        shapeFixer.Perform(new oc.Message_ProgressRange_1());
+        const shapeFixProgress = new oc.Message_ProgressRange_1();
+        shapeFixer.Perform(shapeFixProgress);
+        shapeFixProgress.delete();
         const fixed = shapeFixer.Shape();
         shapeFixer.delete();
 

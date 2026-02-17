@@ -30,4 +30,17 @@ describe('sectionToFace', () => {
     const area = measureArea(result.value);
     expect(area).toBeCloseTo(300, 0);
   });
+
+  it('sections at XZ and YZ planes', () => {
+    const b = box(10, 20, 30);
+    const xzResult = sectionToFace(b, 'XZ');
+    expect(xzResult.ok).toBe(true);
+    if (!xzResult.ok) return;
+    expect(measureArea(xzResult.value)).toBeCloseTo(300, 0);
+
+    const yzResult = sectionToFace(b, 'YZ');
+    expect(yzResult.ok).toBe(true);
+    if (!yzResult.ok) return;
+    expect(measureArea(yzResult.value)).toBeCloseTo(600, 0);
+  });
 });

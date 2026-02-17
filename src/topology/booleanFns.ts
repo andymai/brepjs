@@ -478,21 +478,38 @@ export function sectionToFace(
     const oc = getKernel().oc;
     const remaining = [...edges];
     while (remaining.length > 0) {
-      const wb = new oc.BRepBuilderAPI_MakeWire_1();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      wb.Add_1(remaining.shift()!.wrapped);
+      // Collect edges for this wire by testing connectivity with a probe builder
+      const first = remaining.shift();
+      if (!first) break;
+      const wireEdges = [first];
+
       let added = true;
       while (added && remaining.length > 0) {
         added = false;
         for (let i = 0; i < remaining.length; i++) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          wb.Add_1(remaining[i]!.wrapped);
-          if (wb.Error() === oc.BRepBuilderAPI_WireError.BRepBuilderAPI_WireDone) {
+          const candidate = remaining[i];
+          if (!candidate) continue;
+          // Probe: create a temporary builder to test if edge connects
+          const probe = new oc.BRepBuilderAPI_MakeWire_1();
+          for (const e of wireEdges) {
+            probe.Add_1(e.wrapped);
+          }
+          probe.Add_1(candidate.wrapped);
+          const connects = probe.Error() === oc.BRepBuilderAPI_WireError.BRepBuilderAPI_WireDone;
+          probe.delete();
+          if (connects) {
+            wireEdges.push(candidate);
             remaining.splice(i, 1);
             added = true;
             break;
           }
         }
+      }
+
+      // Build the final wire from collected edges
+      const wb = new oc.BRepBuilderAPI_MakeWire_1();
+      for (const e of wireEdges) {
+        wb.Add_1(e.wrapped);
       }
       if (wb.IsDone()) {
         wires.push(castShape(wb.Wire()) as Wire);
