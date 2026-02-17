@@ -504,15 +504,19 @@ export function sectionToFace(
     return err(occtError('SECTION_FAILED', 'sectionToFace: section produced no usable geometry'));
   }
 
-  // Find outermost wire (largest bounding box area)
+  // Find outermost wire (largest bounding box diagonal — works for any plane orientation)
   let outerIdx = 0;
-  let maxArea = -1;
+  let maxDiag = -1;
   for (let i = 0; i < wires.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const bb = getKernel().boundingBox(wires[i]!.wrapped);
-    const area = (bb.max[0] - bb.min[0]) * (bb.max[1] - bb.min[1]);
-    if (area > maxArea) {
-      maxArea = area;
+    const w = wires[i];
+    if (!w) continue;
+    const bb = getKernel().boundingBox(w.wrapped);
+    const dx = bb.max[0] - bb.min[0];
+    const dy = bb.max[1] - bb.min[1];
+    const dz = bb.max[2] - bb.min[2];
+    const diag = dx * dx + dy * dy + dz * dz;
+    if (diag > maxDiag) {
+      maxDiag = diag;
       outerIdx = i;
     }
   }

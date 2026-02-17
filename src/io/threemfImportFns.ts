@@ -43,6 +43,10 @@ function extractFromZip(data: Uint8Array, target: string): Uint8Array | null {
 
     if (name === target) {
       // Read from local file header
+      const compressionMethod = view.getUint16(localOffset + 8, true);
+      if (compressionMethod !== 0) {
+        return null; // Compressed entry — only store (method 0) is supported
+      }
       const localNameLen = view.getUint16(localOffset + 26, true);
       const localExtraLen = view.getUint16(localOffset + 28, true);
       const compressedSize = view.getUint32(localOffset + 18, true);
@@ -69,15 +73,40 @@ function parseModelXml(xml: string): ParsedMesh {
   const vertices: Array<[number, number, number]> = [];
   const triangles: Array<[number, number, number]> = [];
 
-  const vertexRe = /<vertex\s+x="([^"]+)"\s+y="([^"]+)"\s+z="([^"]+)"/g;
+  // Attribute-order-independent: extract x/y/z from any attribute order
+  const vertexTagRe = /<vertex\s+[^>]*?\/?>/g;
+  const attrRe = /(\w+)="([^"]+)"/g;
   let m: RegExpExecArray | null;
-  while ((m = vertexRe.exec(xml)) !== null) {
-    vertices.push([parseFloat(m[1] ?? ''), parseFloat(m[2] ?? ''), parseFloat(m[3] ?? '')]);
+  while ((m = vertexTagRe.exec(xml)) !== null) {
+    const tag = m[0];
+    const attrs: Record<string, string> = {};
+    let am: RegExpExecArray | null;
+    attrRe.lastIndex = 0;
+    while ((am = attrRe.exec(tag)) !== null) {
+      attrs[am[1] ?? ''] = am[2] ?? '';
+    }
+    if (attrs['x'] !== undefined && attrs['y'] !== undefined && attrs['z'] !== undefined) {
+      vertices.push([parseFloat(attrs['x']), parseFloat(attrs['y']), parseFloat(attrs['z'])]);
+    }
   }
 
-  const triRe = /<triangle\s+v1="(\d+)"\s+v2="(\d+)"\s+v3="(\d+)"/g;
-  while ((m = triRe.exec(xml)) !== null) {
-    triangles.push([parseInt(m[1] ?? '', 10), parseInt(m[2] ?? '', 10), parseInt(m[3] ?? '', 10)]);
+  // Attribute-order-independent for triangles too
+  const triTagRe = /<triangle\s+[^>]*?\/?>/g;
+  while ((m = triTagRe.exec(xml)) !== null) {
+    const tag = m[0];
+    const attrs: Record<string, string> = {};
+    let am: RegExpExecArray | null;
+    attrRe.lastIndex = 0;
+    while ((am = attrRe.exec(tag)) !== null) {
+      attrs[am[1] ?? ''] = am[2] ?? '';
+    }
+    if (attrs['v1'] !== undefined && attrs['v2'] !== undefined && attrs['v3'] !== undefined) {
+      triangles.push([
+        parseInt(attrs['v1'], 10),
+        parseInt(attrs['v2'], 10),
+        parseInt(attrs['v3'], 10),
+      ]);
+    }
   }
 
   return { vertices, triangles };
@@ -148,7 +177,6 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<AnyShape> {
     }
 
     if (faceCount === 0) {
-      sewing.delete();
       return err(
         ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, 'No valid triangular faces could be built')
       );
@@ -205,7 +233,7 @@ export async function importThreeMF(blob: Blob): Promise<Result<AnyShape>> {
       return err(
         ioError(
           BrepErrorCode.THREEMF_IMPORT_FAILED,
-          '3MF archive does not contain 3D/3dmodel.model'
+          '3MF archive does not contain 3D/3dmodel.model (or uses unsupported compression)'
         )
       );
     }

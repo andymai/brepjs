@@ -94,7 +94,6 @@ function buildSolidFromMesh(
     }
 
     if (faceCount === 0) {
-      sewing.delete();
       return err(
         ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'No valid triangular faces could be built')
       );
@@ -122,8 +121,8 @@ function buildSolidFromMesh(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT kernel type
 function buildTriFace(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT kernel type
   oc: any,
   a: [number, number, number],
   b: [number, number, number],

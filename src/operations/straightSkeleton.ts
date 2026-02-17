@@ -309,7 +309,7 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
     if (!activeStart) break;
 
     const sz = lavSize(activeStart);
-    if (sz < 3) {
+    if (sz <= 3) {
       if (sz === 3) {
         const a = activeStart;
         const b = a.next;

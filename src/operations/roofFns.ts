@@ -195,7 +195,6 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
       }
 
       if (faceCount === 0) {
-        sewing.delete();
         return err(
           occtError(BrepErrorCode.ROOF_FAILED, 'No valid triangular faces could be built')
         );
@@ -213,7 +212,14 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
         const fixer = new oc.ShapeFix_Solid_1();
         const solid = fixer.SolidFromShell(shell);
         fixer.delete();
-        return ok(createSolid(solid));
+
+        // Fix face orientation so volume is positive
+        const shapeFixer = new oc.ShapeFix_Shape_1(solid);
+        shapeFixer.Perform(new oc.Message_ProgressRange_1());
+        const fixed = shapeFixer.Shape();
+        shapeFixer.delete();
+
+        return ok(createSolid(fixed));
       } catch {
         // If solid creation fails, return the sewn shape cast as solid
         return ok(castShape(sewn) as Solid);
