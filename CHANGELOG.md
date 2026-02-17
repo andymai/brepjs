@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.6.2](https://github.com/andymai/brepjs/compare/brepjs-v8.6.1...brepjs-v8.6.2) (2026-02-17)
+
+
+### Bug Fixes
+
+* **site:** remove broken playground demos, improve mesh quality ([#259](https://github.com/andymai/brepjs/issues/259)) ([64a917c](https://github.com/andymai/brepjs/commit/64a917c3ab3bd35dce5ca65d5c23e0cd6a03a12f))
+
 ## [8.6.1](https://github.com/andymai/brepjs/compare/brepjs-v8.6.0...brepjs-v8.6.1) (2026-02-17)
 
 
