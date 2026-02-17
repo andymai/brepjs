@@ -468,6 +468,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'scale2D',
   'scaleDrawing',
   'section',
+  'sectionToFace',
   'setShapeOrigin',
   'setTagMetadata',
   'sewShells',

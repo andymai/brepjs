@@ -750,6 +750,7 @@ export {
   cut,
   intersect,
   section,
+  sectionToFace,
   split,
   slice,
   // Modifiers

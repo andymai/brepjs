@@ -147,6 +147,15 @@ export function section(
   return booleans.section(resolve(shape), plane, options);
 }
 
+/** Section a shape with a plane and return a filled Face. */
+export function sectionToFace(
+  shape: Shapeable<AnyShape>,
+  plane: PlaneInput,
+  options?: { approximation?: boolean; planeSize?: number }
+): Result<Face> {
+  return booleans.sectionToFace(resolve(shape), plane, options);
+}
+
 /** Split a shape with tool shapes. */
 export function split(shape: Shapeable<AnyShape>, tools: AnyShape[]): Result<AnyShape> {
   return booleans.split(resolve(shape), tools);

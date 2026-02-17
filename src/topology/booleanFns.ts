@@ -7,7 +7,7 @@
 type OcType = any;
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Shape3D } from '../core/shapeTypes.js';
+import type { AnyShape, Face, Shape3D, Wire } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { gcWithScope } from '../core/disposal.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
@@ -17,7 +17,8 @@ import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { applyGlue } from './shapeBooleans.js';
-import { propagateOrigins, propagateOriginsByHash } from './shapeFns.js';
+import { propagateOrigins, propagateOriginsByHash, getWires, getEdges } from './shapeFns.js';
+import { makeFace } from './surfaceBuilders.js';
 import { propagateFaceTags } from './faceTagFns.js';
 import { propagateColors } from './colorFns.js';
 
@@ -452,6 +453,74 @@ export function section(
   } finally {
     sectionFace.delete();
   }
+}
+
+/**
+ * Section a shape with a plane and return a filled Face.
+ * The outermost wire (largest bounding-box area) becomes the outer boundary;
+ * any remaining wires are treated as holes.
+ */
+export function sectionToFace(
+  shape: AnyShape,
+  plane: PlaneInput,
+  options: { approximation?: boolean; planeSize?: number } = {}
+): Result<Face> {
+  const sectionResult = section(shape, plane, options);
+  if (!sectionResult.ok) return sectionResult;
+
+  const wires = getWires(sectionResult.value);
+  if (wires.length === 0) {
+    // Section may return loose edges — assemble them into wires
+    const edges = getEdges(sectionResult.value);
+    if (edges.length === 0) {
+      return err(occtError('SECTION_FAILED', 'sectionToFace: section produced no geometry'));
+    }
+    const oc = getKernel().oc;
+    const remaining = [...edges];
+    while (remaining.length > 0) {
+      const wb = new oc.BRepBuilderAPI_MakeWire_1();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      wb.Add_1(remaining.shift()!.wrapped);
+      let added = true;
+      while (added && remaining.length > 0) {
+        added = false;
+        for (let i = 0; i < remaining.length; i++) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          wb.Add_1(remaining[i]!.wrapped);
+          if (wb.Error() === oc.BRepBuilderAPI_WireError.BRepBuilderAPI_WireDone) {
+            remaining.splice(i, 1);
+            added = true;
+            break;
+          }
+        }
+      }
+      if (wb.IsDone()) {
+        wires.push(castShape(wb.Wire()) as Wire);
+      }
+      wb.delete();
+    }
+  }
+  if (wires.length === 0) {
+    return err(occtError('SECTION_FAILED', 'sectionToFace: section produced no usable geometry'));
+  }
+
+  // Find outermost wire (largest bounding box area)
+  let outerIdx = 0;
+  let maxArea = -1;
+  for (let i = 0; i < wires.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const bb = getKernel().boundingBox(wires[i]!.wrapped);
+    const area = (bb.max[0] - bb.min[0]) * (bb.max[1] - bb.min[1]);
+    if (area > maxArea) {
+      maxArea = area;
+      outerIdx = i;
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const outer = wires[outerIdx]!;
+  const holes = wires.filter((_, i) => i !== outerIdx);
+  return makeFace(outer, holes.length > 0 ? holes : undefined);
 }
 
 // ---------------------------------------------------------------------------
