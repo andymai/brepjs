@@ -487,7 +487,12 @@ export {
 
 export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
 
-export { surfaceFromGrid, type SurfaceFromGridOptions } from './topology/surfaceFns.js';
+export {
+  surfaceFromGrid,
+  surfaceFromImage,
+  type SurfaceFromGridOptions,
+  type SurfaceFromImageOptions,
+} from './topology/surfaceFns.js';
 
 export { hull, type HullOptions } from './topology/hullFns.js';
 

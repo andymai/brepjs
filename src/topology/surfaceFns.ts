@@ -6,7 +6,7 @@ import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { castShape, isFace, isShell } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError, occtError, BrepErrorCode } from '../core/errors.js';
+import { validationError, occtError, ioError, BrepErrorCode } from '../core/errors.js';
 
 export interface SurfaceFromGridOptions {
   /** Physical width in X direction. Default: number of columns - 1. */
@@ -258,4 +258,130 @@ function buildTriangulatedSurface(
   } finally {
     sewing.delete();
   }
+}
+
+// ---------------------------------------------------------------------------
+// surfaceFromImage
+// ---------------------------------------------------------------------------
+
+export interface SurfaceFromImageOptions extends SurfaceFromGridOptions {
+  /** Which channel to use for height. Default: 'luminance'. */
+  channel?: 'r' | 'g' | 'b' | 'luminance';
+  /** Downsample factor — use every Nth pixel. Default: 1 (no downsampling). */
+  downsample?: number;
+}
+
+/**
+ * Create a surface from an image blob by interpreting pixel brightness as height.
+ * Requires `createImageBitmap` and `OffscreenCanvas` (available in browsers and
+ * some worker environments; not available in Node.js).
+ *
+ * @param blob - Image data as a Blob
+ * @param options - Channel selection, downsampling, and grid options
+ * @returns A Result containing the surface shape
+ */
+export async function surfaceFromImage(
+  blob: Blob,
+  options: SurfaceFromImageOptions = {}
+): Promise<Result<AnyShape>> {
+  const channel = options.channel ?? 'luminance';
+  const downsample = Math.max(1, Math.round(options.downsample ?? 1));
+
+  // Check for browser APIs
+  if (typeof createImageBitmap !== 'function') {
+    return err(
+      ioError(
+        BrepErrorCode.SURFACE_FAILED,
+        'surfaceFromImage requires createImageBitmap (not available in this environment)'
+      )
+    );
+  }
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch (e) {
+    return err(
+      ioError(
+        BrepErrorCode.SURFACE_FAILED,
+        `surfaceFromImage: failed to decode image — ${e instanceof Error ? e.message : String(e)}`
+      )
+    );
+  }
+
+  const w = bitmap.width;
+  const h = bitmap.height;
+
+  if (w < 2 || h < 2) {
+    bitmap.close();
+    return err(
+      validationError(
+        BrepErrorCode.SURFACE_GRID_TOO_SMALL,
+        `surfaceFromImage: image too small (${w}x${h}), need at least 2x2`
+      )
+    );
+  }
+
+  // Use OffscreenCanvas to read pixel data
+  if (typeof OffscreenCanvas !== 'function') {
+    bitmap.close();
+    return err(
+      ioError(
+        BrepErrorCode.SURFACE_FAILED,
+        'surfaceFromImage requires OffscreenCanvas (not available in this environment)'
+      )
+    );
+  }
+
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    bitmap.close();
+    return err(
+      ioError(BrepErrorCode.SURFACE_FAILED, 'surfaceFromImage: could not get 2D canvas context')
+    );
+  }
+
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+
+  // Build height grid
+  const rows: number[][] = [];
+  for (let y = 0; y < h; y += downsample) {
+    const row: number[] = [];
+    for (let x = 0; x < w; x += downsample) {
+      const idx = (y * w + x) * 4;
+      const r = data[idx] ?? 0;
+      const g = data[idx + 1] ?? 0;
+      const b = data[idx + 2] ?? 0;
+
+      let value: number;
+      switch (channel) {
+        case 'r':
+          value = r / 255;
+          break;
+        case 'g':
+          value = g / 255;
+          break;
+        case 'b':
+          value = b / 255;
+          break;
+        default:
+          value = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          break;
+      }
+      row.push(value);
+    }
+    rows.push(row);
+  }
+
+  const gridOpts: SurfaceFromGridOptions = {};
+  if (options.width !== undefined) gridOpts.width = options.width;
+  if (options.depth !== undefined) gridOpts.depth = options.depth;
+  if (options.scaleZ !== undefined) gridOpts.scaleZ = options.scaleZ;
+
+  return surfaceFromGrid(rows, gridOpts);
 }

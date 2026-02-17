@@ -511,6 +511,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'subFace',
   'supportExtrude',
   'surfaceFromGrid',
+  'surfaceFromImage',
   'sweep',
   'tagFaces',
   'tangentArc',

@@ -29,6 +29,43 @@ describe('computeStraightSkeleton', () => {
     expect(skeleton.faces.length).toBe(6);
   });
 
+  it('computes skeleton for a rectangle (non-square)', () => {
+    const polygon = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 20, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    const skeleton = computeStraightSkeleton(polygon);
+    expect(skeleton.faces.length).toBe(4);
+    // Rectangle produces 2 ridge nodes (not 1 center like a square)
+    expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('handles degenerate input (fewer than 3 vertices)', () => {
+    expect(computeStraightSkeleton([]).faces.length).toBe(0);
+    expect(computeStraightSkeleton([{ x: 0, y: 0 }]).faces.length).toBe(0);
+    expect(
+      computeStraightSkeleton([
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+      ]).faces.length
+    ).toBe(0);
+  });
+
+  it('handles CW polygon (auto-reverses to CCW)', () => {
+    // CW square (reversed winding)
+    const polygon = [
+      { x: 0, y: 10 },
+      { x: 10, y: 10 },
+      { x: 10, y: 0 },
+      { x: 0, y: 0 },
+    ];
+    const skeleton = computeStraightSkeleton(polygon);
+    expect(skeleton.faces.length).toBe(4);
+    expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('computes skeleton for a triangle', () => {
     const polygon = [
       { x: 0, y: 0 },
