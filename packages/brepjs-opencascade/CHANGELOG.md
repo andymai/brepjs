@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.2...brepjs-opencascade-v0.8.0) (2026-02-17)
+
+
+### Features
+
+* add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
+
 ## [0.7.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.1...brepjs-opencascade-v0.7.2) (2026-02-13)
 
 
