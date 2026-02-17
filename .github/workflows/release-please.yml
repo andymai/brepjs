@@ -77,35 +77,13 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  publish-brepjs-opencascade:
-    runs-on: ubuntu-latest
-    needs: [release-please, build]
-    if: ${{ needs.release-please.outputs.brepjs_opencascade_release_created == 'true' }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-          cache: npm
-      - run: npm ci
-      - name: Publish brepjs-opencascade
-        working-directory: packages/brepjs-opencascade
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  # brepjs-opencascade is published via the dedicated publish-opencascade.yml
+  # workflow (manual dispatch) which handles the Docker WASM build.
 
   publish-brepjs:
     runs-on: ubuntu-latest
-    needs: [release-please, build, publish-brepjs-opencascade]
-    # Run if brepjs release created, even if opencascade publish was skipped
-    if: |
-      always() &&
-      needs.release-please.outputs.brepjs_release_created == 'true' &&
-      (needs.publish-brepjs-opencascade.result == 'success' || needs.publish-brepjs-opencascade.result == 'skipped')
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.brepjs_release_created == 'true' }}
     permissions:
       contents: read
       id-token: write
