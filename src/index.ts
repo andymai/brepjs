@@ -503,6 +503,8 @@ export {
   type MultiSweepOptions,
 } from './operations/multiSweepFns.js';
 
+export { guidedSweep, type GuidedSweepOptions } from './operations/guidedSweepFns.js';
+
 export {
   exportAssemblySTEP,
   type ShapeOptions,

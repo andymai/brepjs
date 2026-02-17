@@ -331,6 +331,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'getSurfaceType',
   'getVertices',
   'getWires',
+  'guidedSweep',
   'heal',
   'healFace',
   'healSolid',
