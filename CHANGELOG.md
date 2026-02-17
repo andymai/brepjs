@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.7.0](https://github.com/andymai/brepjs/compare/brepjs-v8.6.2...brepjs-v8.7.0) (2026-02-17)
+
+
+### Features
+
+* add fill, section, imports, text metrics, roof, and heightmap ([#256](https://github.com/andymai/brepjs/issues/256)) ([8a55157](https://github.com/andymai/brepjs/commit/8a5515733349932f08b144f570d467046f8b5782))
+
 ## [8.6.2](https://github.com/andymai/brepjs/compare/brepjs-v8.6.1...brepjs-v8.6.2) (2026-02-17)
 
 ### Bug Fixes
