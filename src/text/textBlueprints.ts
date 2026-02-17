@@ -193,3 +193,83 @@ export function sketchText(
     )
   );
 }
+
+// ---------------------------------------------------------------------------
+// Text & font metrics
+// ---------------------------------------------------------------------------
+
+export interface TextMetricsResult {
+  /** Total advance width of the text string. */
+  width: number;
+  /** Height from descender to ascender. */
+  height: number;
+  /** Distance from baseline to top of tallest glyph (positive). */
+  ascender: number;
+  /** Distance from baseline to bottom of lowest glyph (negative). */
+  descender: number;
+}
+
+export interface FontMetricsResult {
+  /** Ascender in font units scaled to fontSize. */
+  ascender: number;
+  /** Descender in font units scaled to fontSize (negative). */
+  descender: number;
+  /** Units per em of the font. */
+  unitsPerEm: number;
+  /** Total line height (ascender - descender + line gap). */
+  lineHeight: number;
+}
+
+/**
+ * Measure the dimensions of a text string without generating geometry.
+ *
+ * Requires a font to be loaded via {@link loadFont} first.
+ */
+export function textMetrics(
+  text: string,
+  options?: { fontSize?: number; fontFamily?: string }
+): TextMetricsResult {
+  const fontSize = options?.fontSize ?? 1;
+  const font = getFont(options?.fontFamily);
+  if (!font) throw new Error('No font loaded. Call loadFont() first.');
+
+  const width: number = font.getAdvanceWidth(text, fontSize) as number;
+
+  const scale = fontSize / (font.unitsPerEm as number);
+
+  const ascender = (font.ascender as number) * scale;
+
+  const descender = (font.descender as number) * scale;
+
+  return { width, height: ascender - descender, ascender, descender };
+}
+
+/**
+ * Retrieve font-level metrics without referencing specific text.
+ *
+ * Requires a font to be loaded via {@link loadFont} first.
+ */
+export function fontMetrics(options?: {
+  fontSize?: number;
+  fontFamily?: string;
+}): FontMetricsResult {
+  const fontSize = options?.fontSize ?? 1;
+  const font = getFont(options?.fontFamily);
+  if (!font) throw new Error('No font loaded. Call loadFont() first.');
+
+  const scale = fontSize / (font.unitsPerEm as number);
+
+  const ascender = (font.ascender as number) * scale;
+
+  const descender = (font.descender as number) * scale;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- opentype Font, value may be undefined at runtime
+  const lineGap = ((font.tables?.os2?.sTypoLineGap as number) ?? 0) * scale;
+
+  return {
+    ascender,
+    descender,
+
+    unitsPerEm: font.unitsPerEm as number,
+    lineHeight: ascender - descender + lineGap,
+  };
+}

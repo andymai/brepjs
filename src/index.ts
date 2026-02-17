@@ -252,7 +252,16 @@ export {
 
 // ── Layer 3: text ──
 
-export { loadFont, getFont, textBlueprints, sketchText } from './text/textBlueprints.js';
+export {
+  loadFont,
+  getFont,
+  textBlueprints,
+  sketchText,
+  textMetrics,
+  fontMetrics,
+  type TextMetricsResult,
+  type FontMetricsResult,
+} from './text/textBlueprints.js';
 
 // ── Layer 3: projection ──
 
