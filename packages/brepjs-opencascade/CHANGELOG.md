@@ -1,46 +1,46 @@
 # Changelog
 
-## [0.8.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.0...brepjs-opencascade-v0.8.1) (2026-02-17)
-
+## [0.8.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.1...brepjs-opencascade-v0.8.2) (2026-02-17)
 
 ### Bug Fixes
 
-* **brepjs-opencascade:** correct license to LGPL-2.1-only ([#257](https://github.com/andymai/brepjs/issues/257)) ([a828529](https://github.com/andymai/brepjs/commit/a828529a92ba3252c62d743acbd088746305d703))
+- **deps:** trigger release for brepjs-opencascade 0.8.x peer dep support ([#269](https://github.com/andymai/brepjs/issues/269)) ([68d09ef](https://github.com/andymai/brepjs/commit/68d09ef9dd27096bf7b4c768de4e6314a68d7574))
+
+## [0.8.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.0...brepjs-opencascade-v0.8.1) (2026-02-17)
+
+### Bug Fixes
+
+- **brepjs-opencascade:** correct license to LGPL-2.1-only ([#257](https://github.com/andymai/brepjs/issues/257)) ([a828529](https://github.com/andymai/brepjs/commit/a828529a92ba3252c62d743acbd088746305d703))
 
 ## [0.8.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.2...brepjs-opencascade-v0.8.0) (2026-02-17)
 
-
 ### Features
 
-* add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
+- add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
 
 ## [0.7.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.1...brepjs-opencascade-v0.7.2) (2026-02-13)
 
-
 ### Bug Fixes
 
-* add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
+- add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
 
 ## [0.7.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.7.0...brepjs-opencascade-v0.7.1) (2026-02-07)
 
-
 ### Bug Fixes
 
-* trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
+- trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
 
 ## [0.7.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.6.0...brepjs-opencascade-v0.7.0) (2026-02-06)
 
-
 ### Features
 
-* add IGES import/export support ([#90](https://github.com/andymai/brepjs/issues/90)) ([e6b75d4](https://github.com/andymai/brepjs/commit/e6b75d432180ec1a380d58b8ed3fd86401bd94b3))
+- add IGES import/export support ([#90](https://github.com/andymai/brepjs/issues/90)) ([e6b75d4](https://github.com/andymai/brepjs/commit/e6b75d432180ec1a380d58b8ed3fd86401bd94b3))
 
 ## [0.6.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.5.1...brepjs-opencascade-v0.6.0) (2026-02-06)
 
-
 ### Features
 
-* add cone and torus primitive constructors ([#56](https://github.com/andymai/brepjs/issues/56)) ([61a488d](https://github.com/andymai/brepjs/commit/61a488d79c6f1d8da1ac596e39e03babacb90242))
+- add cone and torus primitive constructors ([#56](https://github.com/andymai/brepjs/issues/56)) ([61a488d](https://github.com/andymai/brepjs/commit/61a488d79c6f1d8da1ac596e39e03babacb90242))
 
 ## [0.5.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.5.0...brepjs-opencascade-v0.5.1) (2026-02-04)
 
