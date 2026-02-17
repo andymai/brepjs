@@ -412,6 +412,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'mirrorJoin',
   'modifyStep',
   'moduleInitError',
+  'multiSectionSweep',
   'normalAt',
   'occtError',
   'offset',

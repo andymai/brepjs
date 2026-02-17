@@ -498,6 +498,12 @@ export {
 } from './operations/extrudeFns.js';
 
 export {
+  multiSectionSweep,
+  type SweepSectionConfig,
+  type MultiSweepOptions,
+} from './operations/multiSweepFns.js';
+
+export {
   exportAssemblySTEP,
   type ShapeOptions,
   type SupportedUnit,
