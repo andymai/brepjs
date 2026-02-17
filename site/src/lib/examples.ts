@@ -26,48 +26,38 @@ export const examples: Example[] = [
     description: 'Rounded cube with dot indentations on all six faces.',
     category: 'gaming',
     code: `// Six-sided die (mm)
-const size = 20, dotR = 2, s = 5;
-const half = size / 2;
-const inset = 0.5; // push dot centers inside faces for clean booleans
+const size = 20, r = 2.5, depth = 2, gap = 5;
+const H = size / 2;
 
-// Rounded cube
 let die = shape(box(size, size, size, { centered: true })).fillet(3).val;
 
-// Dot spheres for all 6 faces (opposite faces sum to 7)
-const dots = [];
-const h = half - inset;
+// Cut a single pip: cylinder starts outside the face, goes inward
+function cutPip(x, y, z, axis) {
+  const c = cylinder(r, depth + 2, { at: [x, y, z], axis, centered: true });
+  die = unwrap(cut(die, c));
+}
 
 // Face 1 (+Z): center
-dots.push(sphere(dotR, { at: [0, 0, h] }));
-
-// Face 6 (-Z): 2x3 grid
-for (const x of [-s, s]) {
-  for (const y of [-s, 0, s]) {
-    dots.push(sphere(dotR, { at: [x, y, -h] }));
-  }
-}
-
+cutPip(0, 0, H, [0,0,1]);
+// Face 6 (-Z): 2×3
+for (const dx of [-gap, gap])
+  for (const dy of [-gap, 0, gap])
+    cutPip(dx, dy, -H, [0,0,1]);
 // Face 2 (+X): diagonal pair
-dots.push(sphere(dotR, { at: [h, -s, s] }));
-dots.push(sphere(dotR, { at: [h, s, -s] }));
-
+cutPip(H, -gap, gap, [1,0,0]);
+cutPip(H, gap, -gap, [1,0,0]);
 // Face 5 (-X): center + 4 corners
-dots.push(sphere(dotR, { at: [-h, 0, 0] }));
-for (const [y, z] of [[-s,-s],[s,-s],[-s,s],[s,s]]) {
-  dots.push(sphere(dotR, { at: [-h, y, z] }));
-}
-
+cutPip(-H, 0, 0, [1,0,0]);
+for (const [dy, dz] of [[-gap,-gap],[gap,-gap],[-gap,gap],[gap,gap]])
+  cutPip(-H, dy, dz, [1,0,0]);
 // Face 3 (+Y): diagonal triple
-for (const [x, z] of [[-s,-s],[0,0],[s,s]]) {
-  dots.push(sphere(dotR, { at: [x, h, z] }));
-}
-
+for (const [dx, dz] of [[-gap,-gap],[0,0],[gap,gap]])
+  cutPip(dx, H, dz, [0,1,0]);
 // Face 4 (-Y): 4 corners
-for (const [x, z] of [[-s,-s],[s,-s],[-s,s],[s,s]]) {
-  dots.push(sphere(dotR, { at: [x, -h, z] }));
-}
+for (const [dx, dz] of [[-gap,-gap],[gap,-gap],[-gap,gap],[gap,gap]])
+  cutPip(dx, -H, dz, [0,1,0]);
 
-return unwrap(cutAll(die, dots));`,
+return die;`,
   },
   {
     id: 'pen-cup',
