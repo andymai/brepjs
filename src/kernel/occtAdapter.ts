@@ -92,7 +92,11 @@ import {
   interpolatePoints as _interpolatePoints,
   approximatePoints as _approximatePoints,
 } from './curveOps.js';
-import { hull as _hull, hullFromPoints as _hullFromPoints } from './hullOps.js';
+import {
+  hull as _hull,
+  hullFromPoints as _hullFromPoints,
+  buildSolidFromFaces as _buildSolidFromFaces,
+} from './hullOps.js';
 
 /**
  * OpenCascade implementation of KernelAdapter.
@@ -144,6 +148,19 @@ export class OCCTAdapter implements KernelAdapter {
     return _hullFromPoints(
       this.oc,
       points.map((p) => ({ x: p.x, y: p.y, z: p.z })),
+      tolerance
+    );
+  }
+
+  buildSolidFromFaces(
+    points: Array<{ x: number; y: number; z: number }>,
+    faces: Array<readonly [number, number, number]>,
+    tolerance: number
+  ): OcShape {
+    return _buildSolidFromFaces(
+      this.oc,
+      points.map((p) => ({ x: p.x, y: p.y, z: p.z })),
+      faces,
       tolerance
     );
   }

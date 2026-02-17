@@ -588,6 +588,16 @@ export function hull(oc: OpenCascadeInstance, shapes: OcShape[], tolerance: numb
  * Runs QuickHull on the supplied points and reconstructs a BREP solid.
  * Used by minkowski to avoid meshing bare vertex shapes.
  */
+export function buildSolidFromFaces(
+  oc: OpenCascadeInstance,
+  points: Vec3[],
+  faces: Array<readonly [number, number, number]>,
+  tolerance: number
+): OcShape {
+  const hullResult: HullResult = { points, faces };
+  return reconstructBrep(oc, hullResult, tolerance);
+}
+
 export function hullFromPoints(
   oc: OpenCascadeInstance,
   points: Vec3[],

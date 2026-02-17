@@ -426,6 +426,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'pocket',
   'pointOnSurface',
   'polygon',
+  'polyhedron',
   'polysideInnerRadius',
   'polysidesBlueprint',
   'projectEdges',

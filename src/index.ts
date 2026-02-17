@@ -470,6 +470,8 @@ export { hull, type HullOptions } from './topology/hullFns.js';
 
 export { minkowski, type MinkowskiOptions } from './topology/minkowskiFns.js';
 
+export { polyhedron, type PolyhedronOptions } from './topology/polyhedronFns.js';
+
 // (modifiers available via public API: fillet, chamfer, shell, offset, thicken)
 
 // ── Healing (functional) ──
