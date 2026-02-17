@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.7.3](https://github.com/andymai/brepjs/compare/brepjs-v8.7.2...brepjs-v8.7.3) (2026-02-17)
+
+
+### Bug Fixes
+
+* **deps:** trigger release for brepjs-opencascade 0.8.x peer dep support ([#269](https://github.com/andymai/brepjs/issues/269)) ([68d09ef](https://github.com/andymai/brepjs/commit/68d09ef9dd27096bf7b4c768de4e6314a68d7574))
+
 ## [8.7.2](https://github.com/andymai/brepjs/compare/brepjs-v8.7.1...brepjs-v8.7.2) (2026-02-17)
 
 
