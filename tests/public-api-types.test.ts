@@ -298,6 +298,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'faceGeomType',
   'faceOrientation',
   'facesOfEdge',
+  'fill',
   'filledFace',
   'fillet',
   'findCurveType',

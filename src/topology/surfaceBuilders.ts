@@ -10,6 +10,7 @@ import { validationError, occtError } from '../core/errors.js';
 import type { Edge, Face, Wire } from '../core/shapeTypes.js';
 import { createFace, isFace } from '../core/shapeTypes.js';
 import { getEdges } from './shapeFns.js';
+import { outerWire } from './faceFns.js';
 import { cast } from './cast.js';
 import zip from '../utils/zip.js';
 import { makeLine, assembleWire } from './curveBuilders.js';
@@ -35,6 +36,17 @@ export function makeFace(wire: Wire, holes?: Wire[]): Result<Face> {
   faceBuilder.delete();
 
   return ok(createFace(face));
+}
+
+/**
+ * Remove holes from a face by rebuilding it from only the outer wire.
+ *
+ * Equivalent to OpenSCAD's `fill()` — takes a 2D face with holes and returns
+ * a solid face with all internal cutouts filled in.
+ */
+export function fill(face: Face): Result<Face> {
+  const outer = outerWire(face);
+  return makeFace(outer);
 }
 
 /**

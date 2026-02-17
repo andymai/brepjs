@@ -729,6 +729,8 @@ export {
   type EllipseArcOptions,
 } from './topology/primitiveFns.js';
 
+export { fill } from './topology/surfaceBuilders.js';
+
 // ── Transforms, booleans, modifiers, utilities (clean names) ──
 
 export {
