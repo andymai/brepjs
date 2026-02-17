@@ -12,6 +12,7 @@ import { type Result, ok, err, isErr } from '../core/result.js';
 import { occtError, validationError, BrepErrorCode } from '../core/errors.js';
 import { gcWithScope } from '../core/disposal.js';
 import { getEdges, propagateOrigins } from './shapeFns.js';
+import { propagateFaceTags } from './faceTagFns.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -49,6 +50,7 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
     const resultOc = builder.Shape();
     const cast = castShape(resultOc) as Solid;
     propagateOrigins(builder, [shape], cast);
+    propagateFaceTags(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -133,6 +135,7 @@ export function fillet(
       return err(occtError('FILLET_RESULT_NOT_3D', 'Fillet result is not a 3D shape'));
     }
     propagateOrigins(builder, [shape], cast);
+    propagateFaceTags(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -249,6 +252,7 @@ export function chamfer(
       return err(occtError('CHAMFER_RESULT_NOT_3D', 'Chamfer result is not a 3D shape'));
     }
     propagateOrigins(builder, [shape], cast);
+    propagateFaceTags(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -317,6 +321,7 @@ export function shell(
       return err(occtError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }
     propagateOrigins(builder, [shape], cast);
+    propagateFaceTags(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -371,6 +376,7 @@ export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Resu
       return err(occtError('OFFSET_RESULT_NOT_3D', 'Offset result is not a 3D shape'));
     }
     propagateOrigins(builder, [shape], cast);
+    propagateFaceTags(builder, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);

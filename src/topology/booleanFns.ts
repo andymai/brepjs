@@ -18,6 +18,7 @@ import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { applyGlue } from './shapeBooleans.js';
 import { propagateOrigins, propagateOriginsByHash } from './shapeFns.js';
+import { propagateFaceTags } from './faceTagFns.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -127,6 +128,7 @@ export function fuse(
   );
   if (fuseResult.ok) {
     propagateOrigins(fuseOp, [a, b], fuseResult.value);
+    propagateFaceTags(fuseOp, [a, b], fuseResult.value);
   }
   return fuseResult;
 }
@@ -164,6 +166,7 @@ export function cut(
   const cutResult = castToShape3D(cutOp.Shape(), 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
   if (cutResult.ok) {
     propagateOrigins(cutOp, [base, tool], cutResult.value);
+    propagateFaceTags(cutOp, [base, tool], cutResult.value);
   }
   return cutResult;
 }
@@ -199,6 +202,7 @@ export function intersect(
   );
   if (intResult.ok) {
     propagateOrigins(intOp, [a, b], intResult.value);
+    propagateFaceTags(intOp, [a, b], intResult.value);
   }
   return intResult;
 }
@@ -341,6 +345,7 @@ export function cutAll(
   );
   if (cutAllResult.ok) {
     propagateOrigins(cutOp, [base, ...tools], cutAllResult.value);
+    propagateFaceTags(cutOp, [base, ...tools], cutAllResult.value);
   }
   return cutAllResult;
 }

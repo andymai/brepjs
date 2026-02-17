@@ -389,6 +389,14 @@ export {
   type ShapeDescription,
 } from './topology/shapeFns.js';
 
+export {
+  tagFaces,
+  findFacesByTag,
+  getFaceTags,
+  setTagMetadata,
+  getTagMetadata,
+} from './topology/faceTagFns.js';
+
 export { chamferDistAngle as chamferDistAngleShape } from './topology/chamferAngleFns.js';
 
 export {
