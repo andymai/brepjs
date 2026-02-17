@@ -528,6 +528,16 @@ export {
 
 export { guidedSweep, type GuidedSweepOptions } from './operations/guidedSweepFns.js';
 
+export { roof, type RoofOptions } from './operations/roofFns.js';
+
+export {
+  computeStraightSkeleton,
+  type SkPoint2D,
+  type SkeletonNode,
+  type SkeletonFace,
+  type StraightSkeleton,
+} from './operations/straightSkeleton.js';
+
 export {
   exportAssemblySTEP,
   type ShapeOptions,
