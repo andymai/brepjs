@@ -1,0 +1,34 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it, beforeAll } from 'vitest';
+import { initOC } from './setup.js';
+import { importOBJ, measureVolume } from '../src/index.js';
+
+beforeAll(async () => {
+  await initOC();
+}, 30000);
+
+describe('importOBJ', () => {
+  it('imports a cube from OBJ', async () => {
+    const buf = readFileSync(join(__dirname, 'fixtures/test-cube.obj'));
+    const blob = new Blob([buf]);
+    const result = await importOBJ(blob);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const vol = measureVolume(result.value);
+    expect(vol).toBeCloseTo(1, 1);
+  });
+
+  it('fails on empty input', async () => {
+    const blob = new Blob(['']);
+    const result = await importOBJ(blob);
+    expect(result.ok).toBe(false);
+  });
+
+  it('handles triangulated faces', async () => {
+    const obj = 'v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 0 1\nf 1 2 3\nf 1 3 4\n';
+    const blob = new Blob([obj]);
+    const result = await importOBJ(blob);
+    expect(result.ok).toBe(true);
+  });
+});

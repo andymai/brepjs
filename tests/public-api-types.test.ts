@@ -349,6 +349,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'hull',
   'importDXF',
   'importIGES',
+  'importOBJ',
   'importSTEP',
   'importSTL',
   'importSVG',
