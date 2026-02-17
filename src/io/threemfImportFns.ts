@@ -61,7 +61,7 @@ function extractFromZip(data: Uint8Array, target: string): Uint8Array | null {
 }
 
 // ---------------------------------------------------------------------------
-// XML parsing (regex-based)
+// XML parsing (indexOf-based, no regex — CodeQL safe)
 // ---------------------------------------------------------------------------
 
 interface ParsedMesh {
@@ -69,43 +69,75 @@ interface ParsedMesh {
   triangles: Array<[number, number, number]>;
 }
 
+/** Check if a char code is a valid XML attribute name character [a-zA-Z0-9_]. */
+function isAttrChar(code: number): boolean {
+  return (
+    (code >= 97 && code <= 122) || // a-z
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 48 && code <= 57) || // 0-9
+    code === 95 // _
+  );
+}
+
+/** Extract name="value" attributes from an XML tag string using indexOf (no regex). */
+function parseTagAttrs(tag: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  let pos = 0;
+  while (pos < tag.length) {
+    const eq = tag.indexOf('="', pos);
+    if (eq < 0) break;
+
+    // Walk backward to find attribute name start
+    let nameStart = eq;
+    while (nameStart > 0 && isAttrChar(tag.charCodeAt(nameStart - 1))) nameStart--;
+    if (nameStart === eq) {
+      pos = eq + 2;
+      continue;
+    }
+    const name = tag.slice(nameStart, eq);
+
+    const valStart = eq + 2;
+    const closeQuote = tag.indexOf('"', valStart);
+    if (closeQuote < 0) break;
+    attrs[name] = tag.slice(valStart, closeQuote);
+    pos = closeQuote + 1;
+  }
+  return attrs;
+}
+
+/** Collect all tags matching `<tagName ...>` using indexOf (O(n), no regex). */
+function findTags(xml: string, tagName: string): string[] {
+  const tags: string[] = [];
+  const needle = `<${tagName} `;
+  let pos = 0;
+  while (pos < xml.length) {
+    const start = xml.indexOf(needle, pos);
+    if (start < 0) break;
+    const end = xml.indexOf('>', start);
+    if (end < 0) break;
+    tags.push(xml.slice(start, end + 1));
+    pos = end + 1;
+  }
+  return tags;
+}
+
 function parseModelXml(xml: string): ParsedMesh {
   const vertices: Array<[number, number, number]> = [];
   const triangles: Array<[number, number, number]> = [];
 
-  // Attribute-order-independent: extract x/y/z from any attribute order
-  const vertexTagRe = /<vertex\s[^>]*>/g;
-  const attrRe = /([a-z]\w*)="([^"]*)"/g;
-  let m: RegExpExecArray | null;
-  while ((m = vertexTagRe.exec(xml)) !== null) {
-    const tag = m[0];
-    const attrs: Record<string, string> = {};
-    let am: RegExpExecArray | null;
-    attrRe.lastIndex = 0;
-    while ((am = attrRe.exec(tag)) !== null) {
-      attrs[am[1] ?? ''] = am[2] ?? '';
-    }
-    if (attrs['x'] !== undefined && attrs['y'] !== undefined && attrs['z'] !== undefined) {
-      vertices.push([parseFloat(attrs['x']), parseFloat(attrs['y']), parseFloat(attrs['z'])]);
+  // Attribute-order-independent vertex extraction (no regex — CodeQL safe)
+  for (const tag of findTags(xml, 'vertex')) {
+    const a = parseTagAttrs(tag);
+    if (a['x'] !== undefined && a['y'] !== undefined && a['z'] !== undefined) {
+      vertices.push([parseFloat(a['x']), parseFloat(a['y']), parseFloat(a['z'])]);
     }
   }
 
-  // Attribute-order-independent for triangles too
-  const triTagRe = /<triangle\s[^>]*>/g;
-  while ((m = triTagRe.exec(xml)) !== null) {
-    const tag = m[0];
-    const attrs: Record<string, string> = {};
-    let am: RegExpExecArray | null;
-    attrRe.lastIndex = 0;
-    while ((am = attrRe.exec(tag)) !== null) {
-      attrs[am[1] ?? ''] = am[2] ?? '';
-    }
-    if (attrs['v1'] !== undefined && attrs['v2'] !== undefined && attrs['v3'] !== undefined) {
-      triangles.push([
-        parseInt(attrs['v1'], 10),
-        parseInt(attrs['v2'], 10),
-        parseInt(attrs['v3'], 10),
-      ]);
+  // Attribute-order-independent triangle extraction
+  for (const tag of findTags(xml, 'triangle')) {
+    const a = parseTagAttrs(tag);
+    if (a['v1'] !== undefined && a['v2'] !== undefined && a['v3'] !== undefined) {
+      triangles.push([parseInt(a['v1'], 10), parseInt(a['v2'], 10), parseInt(a['v3'], 10)]);
     }
   }
 
