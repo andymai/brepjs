@@ -1,5 +1,16 @@
 # Changelog
 
+## [8.6.0](https://github.com/andymai/brepjs/compare/brepjs-v8.5.0...brepjs-v8.6.0) (2026-02-17)
+
+
+### Features
+
+* add chamfer join type to offsetWire2D ([0612820](https://github.com/andymai/brepjs/commit/06128209d5fffd6eec704a06f62b39efd8010554))
+* add DXF import for LINE, CIRCLE, ARC entities ([57e664a](https://github.com/andymai/brepjs/commit/57e664a1cf10bb4b4ba25ae02ca36ca3309b1cff))
+* add resize() for dimension-based scaling ([89344ad](https://github.com/andymai/brepjs/commit/89344ad81a8e29b43c01b348826db13bd95c60e9))
+* add shape-attached colors with propagation ([06b9ca7](https://github.com/andymai/brepjs/commit/06b9ca71599f06a67fffc38e7e2a863ae1b94412))
+* add surfaceFromGrid for height-map surfaces ([bca5d9f](https://github.com/andymai/brepjs/commit/bca5d9fcfcfe958899d12e931155b90f1e76846c))
+
 ## [8.5.0](https://github.com/andymai/brepjs/compare/brepjs-v8.4.0...brepjs-v8.5.0) (2026-02-17)
 
 
