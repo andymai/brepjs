@@ -36,9 +36,7 @@ const {
   box,
   cylinder,
   sphere,
-  rotate,
   fuse,
-  cut,
   shell,
   intersect,
   fuseAll,
@@ -92,51 +90,33 @@ function flatPaths(raw: string[] | string[][]): string[] {
 function buildGameDie(): string {
   const size = 20, dotR = 2, s = 5;
   const half = size / 2;
+  const inset = 0.5; // push dot centers inside faces for clean booleans
+  const h = half - inset;
 
   let die = shape(box(size, size, size, { centered: true })).fillet(3).val;
 
   const dots = [];
-  dots.push(sphere(dotR, { at: [0, 0, half] }));
+  dots.push(sphere(dotR, { at: [0, 0, h] }));
   for (const x of [-s, s]) {
     for (const y of [-s, 0, s]) {
-      dots.push(sphere(dotR, { at: [x, y, -half] }));
+      dots.push(sphere(dotR, { at: [x, y, -h] }));
     }
   }
-  dots.push(sphere(dotR, { at: [half, -s, s] }));
-  dots.push(sphere(dotR, { at: [half, s, -s] }));
-  dots.push(sphere(dotR, { at: [-half, 0, 0] }));
+  dots.push(sphere(dotR, { at: [h, -s, s] }));
+  dots.push(sphere(dotR, { at: [h, s, -s] }));
+  dots.push(sphere(dotR, { at: [-h, 0, 0] }));
   for (const [y, z] of [[-s, -s], [s, -s], [-s, s], [s, s]] as [number, number][]) {
-    dots.push(sphere(dotR, { at: [-half, y, z] }));
+    dots.push(sphere(dotR, { at: [-h, y, z] }));
   }
   for (const [x, z] of [[-s, -s], [0, 0], [s, s]] as [number, number][]) {
-    dots.push(sphere(dotR, { at: [x, half, z] }));
+    dots.push(sphere(dotR, { at: [x, h, z] }));
   }
   for (const [x, z] of [[-s, -s], [s, -s], [-s, s], [s, s]] as [number, number][]) {
-    dots.push(sphere(dotR, { at: [x, -half, z] }));
+    dots.push(sphere(dotR, { at: [x, -h, z] }));
   }
 
   const result = unwrap(cutAll(die, dots));
   const proj = drawProjection(result, 'front');
-  const paths = flatPaths(proj.visible.toSVGPaths());
-  return styledSVG(proj.visible.toSVGViewBox(3), paths);
-}
-
-function buildSpurGear(): string {
-  const teeth = 16, pitchR = 25, addendum = 4;
-  const toothW = 4.5, thick = 10, boreR = 8;
-
-  let gear = cylinder(pitchR, thick);
-  const toothShapes = [];
-  for (let i = 0; i < teeth; i++) {
-    toothShapes.push(rotate(
-      box(addendum * 2, toothW, thick, { at: [pitchR + addendum, 0, thick / 2] }),
-      (360 / teeth) * i
-    ));
-  }
-  gear = unwrap(fuseAll([gear, ...toothShapes]));
-  gear = unwrap(cut(gear, cylinder(boreR, thick + 4, { at: [0, 0, -2] })));
-
-  const proj = drawProjection(gear, 'top');
   const paths = flatPaths(proj.visible.toSVGPaths());
   return styledSVG(proj.visible.toSVGViewBox(3), paths);
 }
@@ -208,7 +188,6 @@ mkdirSync(OUT_DIR, { recursive: true });
 
 const previews: [string, () => string][] = [
   ['game-die.svg', buildGameDie],
-  ['spur-gear.svg', buildSpurGear],
   ['pen-cup.svg', buildPenCup],
   ['lofted-vase.svg', buildLoftedVase],
   ['compartment-tray.svg', buildCompartmentTray],
