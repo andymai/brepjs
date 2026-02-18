@@ -13,16 +13,31 @@ Layered architecture with enforced boundaries (imports flow downward only):
 
 Boundaries enforced by `npm run check:boundaries` (runs in pre-commit and CI).
 
+## Packages
+
+Monorepo with two publishable packages:
+
+- `brepjs` (root) — Core library
+- `packages/brepjs-opencascade` — OpenCascade WASM build
+
 ## Commands
 
 - `npm run build` — Vite library build (ES + CJS)
 - `npm run typecheck` — TypeScript strict check
 - `npm run lint` / `npm run lint:fix` — ESLint
 - `npm run format` / `npm run format:check` — Prettier
-- `npm run test` — Vitest
+- `npm run test` — Vitest (all tests)
 - `npm run test:affected` — Tests for changed files only
+- `npm run test:coverage` — Full test suite with coverage
 - `npm run check:boundaries` — Layer boundary enforcement
 - `npm run knip` — Unused code detection
+- `npx vitest run tests/fn-booleanFns.test.ts` — Run a single test file
+
+## Git hooks
+
+- **Pre-commit**: lint-staged + typecheck + boundary check (parallel), then `test:coverage:changed`. Set `FULL_TESTS=1` for full coverage run
+- **Pre-push**: Full `test:coverage` + `knip` (~30s)
+- Bypass: `--no-verify` (not recommended)
 
 ## Key patterns
 
@@ -46,7 +61,8 @@ Boundaries enforced by `npm run check:boundaries` (runs in pre-commit and CI).
 
 - Tests in `/tests/`, setup in `tests/setup.ts` (WASM init)
 - Test naming: `fn-*.test.ts` for functional API, `api*.test.ts` for public API
-- Vitest globals enabled, 30s timeout, forked pool
+- Vitest globals enabled, 30s timeout, forks pool, `--max-old-space-size=6144`
+- Coverage thresholds: statements 73%, branches 64%, functions 83%, lines 73%
 
 ## Commits
 
