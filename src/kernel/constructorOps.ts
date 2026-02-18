@@ -158,9 +158,6 @@ export function makeCone(
 }
 
 /**
- * Creates a torus primitive.
- */
-/**
  * Build a triangular face from 3 points. Returns null if degenerate.
  *
  * This is a low-level helper used by importers, hull, roof, and surface builders.
@@ -204,6 +201,9 @@ export function makeTriFace(
   return face;
 }
 
+/**
+ * Creates a torus primitive.
+ */
 export function makeTorus(
   oc: OpenCascadeInstance,
   majorRadius: number,
