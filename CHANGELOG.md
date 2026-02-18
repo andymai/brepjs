@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.7.4](https://github.com/andymai/brepjs/compare/brepjs-v8.7.3...brepjs-v8.7.4) (2026-02-18)
+
+
+### Bug Fixes
+
+* **ci:** bump validate-pack MAX_FILES to 450 for publish ([f293ef9](https://github.com/andymai/brepjs/commit/f293ef9ade2b832f18c4afb8d62e87bbf8c90b6f))
+
 ## [8.7.3](https://github.com/andymai/brepjs/compare/brepjs-v8.7.2...brepjs-v8.7.3) (2026-02-17)
 
 
