@@ -99,6 +99,7 @@ jobs:
             node-24-${{ runner.os }}-
       - if: steps.cache.outputs.cache-hit != 'true'
         run: npm ci
+      - run: bash scripts/ensure-wasm.sh
       - run: npm run check:boundaries
       - run: npm run knip
 
