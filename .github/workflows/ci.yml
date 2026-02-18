@@ -6,26 +6,154 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
 
 jobs:
-  build:
+  changes:
+    runs-on: ubuntu-22.04
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'tests/**'
+              - 'packages/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig*.json'
+              - 'vitest*.config.ts'
+              - 'vite.config.ts'
+              - '.eslintrc*'
+              - '.prettierrc*'
+              - '.github/workflows/ci.yml'
+
+  typecheck:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Ensure WASM runtime files exist
-        run: bash scripts/ensure-wasm.sh
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: node_modules
+          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-24-${{ runner.os }}-
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+      - run: bash scripts/ensure-wasm.sh
       - run: npm run typecheck
+
+  lint:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: node_modules
+          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-24-${{ runner.os }}-
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+      - run: bash scripts/ensure-wasm.sh
       - run: npm run lint
       - run: npm run format:check
+
+  quality:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: node_modules
+          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-24-${{ runner.os }}-
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run check:boundaries
       - run: npm run knip
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: node_modules
+          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-24-${{ runner.os }}-
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+      - run: bash scripts/ensure-wasm.sh
       - run: npm run build
       - run: npm run docs:api
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: node_modules
+          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-24-${{ runner.os }}-
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+      - run: bash scripts/ensure-wasm.sh
       - run: npm run test:coverage
+
+  ci-pass:
+    if: always()
+    needs: [changes, typecheck, lint, quality, build, test]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Fail if any upstream job failed or was cancelled
+        if: >-
+          contains(needs.*.result, 'failure') ||
+          contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: All CI jobs passed
+        run: echo "All CI jobs passed"
