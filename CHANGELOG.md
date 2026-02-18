@@ -1,5 +1,15 @@
 # Changelog
 
+## [8.7.5](https://github.com/andymai/brepjs/compare/brepjs-v8.7.4...brepjs-v8.7.5) (2026-02-18)
+
+
+### Performance Improvements
+
+* **boolean:** enable OCCT-internal parallelism via SetRunParallel(true) ([9b36bcd](https://github.com/andymai/brepjs/commit/9b36bcdaf69f9a01da39eaa4131a634b8d57b695))
+* **gltf:** pre-allocate index arrays in computeMaterialLayout ([6aa09a5](https://github.com/andymai/brepjs/commit/6aa09a503336e210e4de3ac37f8569ab05591b52))
+* **measurement:** cache measureVolumeProps/SurfaceProps/LinearProps results ([c8e327d](https://github.com/andymai/brepjs/commit/c8e327d14184c86aacc117dd496c23d8290b907c))
+* **mesh:** change EdgeMesh.lines from number[] to Float32Array ([6275442](https://github.com/andymai/brepjs/commit/627544203ed1cfb2ae423429d60ba465d82d32f0))
+
 ## [8.7.4](https://github.com/andymai/brepjs/compare/brepjs-v8.7.3...brepjs-v8.7.4) (2026-02-18)
 
 
