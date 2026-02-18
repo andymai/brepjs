@@ -47,35 +47,35 @@ initFromOC(oc);
 
 **Modeling** — `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`, `polyhedron` plus `extrude`, `revolve`, `loft`, `sweep` from 2D sketches
 
-**Booleans** — `fuse`, `cut`, `intersect`, `section`, `split`, `slice` with batch variants `fuseAll`, `cutAll`. OCCT-internal parallelism enabled by default
+**Booleans** — `fuse`, `cut`, `intersect`, `section`, `split`, `slice` with batch variants `fuseAll`, `cutAll`
 
-**Modifiers** — `fillet`, `chamfer`, `shell`, `offset`, `thicken`, `resize` on any solid. Pass a `ShapeFinder` directly to `fillet`/`chamfer`/`shell`
+**Modifiers** — `fillet`, `chamfer`, `shell`, `offset`, `thicken`, `resize`. Accepts `ShapeFinder` directly
 
-**Transforms** — `translate`, `rotate`, `mirror`, `scale`, `applyMatrix` (4x4 affine), `composeTransforms`, `transformCopy`
+**Transforms** — `translate`, `rotate`, `mirror`, `scale`, `applyMatrix`, `composeTransforms`, `transformCopy`
 
 **Sketching** — `draw`, `drawRectangle`, `drawCircle`, `Sketcher`, `sketchCircle`, `sketchHelix` for 2D-to-3D workflows
 
 **Queries** — `edgeFinder`, `faceFinder`, `wireFinder`, `vertexFinder` with composable filters like `.inDirection('Z')`, `.ofCurveType('CIRCLE')`, `.ofLength(10)`
 
-**Measurement** — `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, `checkInterference` with automatic result caching
+**Measurement** — `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, `checkInterference`
 
 **Import/Export** — STEP, STL, glTF/GLB, DXF (import + export), 3MF, OBJ, SVG (import). Assembly export with colors and names via `exportAssemblySTEP`
 
-**Advanced Geometry** — `hull`, `minkowski`, `fill`, `roof`, `surfaceFromGrid` (height-map surfaces)
+**Advanced Geometry** — `hull`, `minkowski`, `fill`, `roof`, `surfaceFromGrid`
 
-**Colors** — Shape-attached colors with propagation through boolean and modifier operations
+**Colors** — Per-shape colors that propagate through booleans and modifiers
 
 **Rendering** — `mesh` and `toBufferGeometryData` for Three.js / WebGL integration
 
-**Text** — `loadFont`, `drawText`, `sketchText` for text outlines and engraving, plus `textMetrics` for measurement
+**Text** — `loadFont`, `drawText`, `sketchText`, `textMetrics`
 
 **Healing** — `autoHeal`, `healSolid`, `healFace`, `isValid` for fixing imported geometry
 
 **Patterns** — `linearPattern`, `circularPattern` for arraying shapes
 
-**Assemblies** — `createAssemblyNode`, `addChild`, `walkAssembly`, `collectShapes` with assembly mates for constrained positioning
+**Assemblies** — `createAssemblyNode`, `addChild`, `walkAssembly`, `collectShapes`, assembly mates
 
-**Face Tracking** — Face origin provenance tracking and face tags for identifying features across operations
+**Face Tracking** — Face origin tracking and face tags across boolean operations
 
 **Workers** — `createWorkerClient`, `createWorkerHandler` for off-main-thread operations
 
@@ -304,9 +304,8 @@ import { box, fuse, fillet } from 'brepjs/topology';
 import { importSTEP, exportSTEP } from 'brepjs/io';
 import { measureVolume } from 'brepjs/measurement';
 import { edgeFinder, faceFinder } from 'brepjs/query';
-import { sketchCircle, draw } from 'brepjs/sketching';
+import { sketchCircle, draw, drawRectangle, drawCircle } from 'brepjs/sketching';
 import { createAssemblyNode } from 'brepjs/operations';
-import { drawRectangle, drawCircle } from 'brepjs/sketching';
 import { createWorkerClient } from 'brepjs/worker';
 import { Result, isOk, unwrap } from 'brepjs/result';
 import { toVec3, vecAdd, vecNormalize } from 'brepjs/vectors';
