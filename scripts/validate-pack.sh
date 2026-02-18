@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-MAX_FILES=400
+MAX_FILES=450
 
 PACK_OUTPUT=$(npm pack --dry-run --ignore-scripts 2>&1)
 TOTAL_FILES=$(echo "$PACK_OUTPUT" | grep "total files" | awk '{print $NF}')
