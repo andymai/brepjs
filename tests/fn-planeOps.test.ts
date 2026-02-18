@@ -6,12 +6,8 @@ import {
   resolvePlane,
   planeToWorld,
   planeToLocal,
-  planeToWorldVec3,
-  planeToLocalVec3,
   translatePlane,
-  translatePlaneTo,
   pivotPlane,
-  rotatePlane2DAxes,
 } from '../src/core/planeOps.js';
 import { vecEquals, vecLength, vecDot } from '../src/core/vecOps.js';
 
@@ -161,51 +157,6 @@ describe('planeToWorld / planeToLocal', () => {
   });
 });
 
-describe('planeToWorldVec3 / planeToLocalVec3', () => {
-  it('converts 3D local to world on XY plane', () => {
-    const plane = resolvePlane('XY');
-    const world = planeToWorldVec3(plane, [3, 4, 5]);
-    expect(world[0]).toBeCloseTo(3);
-    expect(world[1]).toBeCloseTo(4);
-    expect(world[2]).toBeCloseTo(5);
-  });
-
-  it('converts 3D world to local on XY plane', () => {
-    const plane = resolvePlane('XY');
-    const local = planeToLocalVec3(plane, [3, 4, 5]);
-    expect(local[0]).toBeCloseTo(3);
-    expect(local[1]).toBeCloseTo(4);
-    expect(local[2]).toBeCloseTo(5);
-  });
-
-  it('round-trips correctly with 3D coordinates', () => {
-    const plane = resolvePlane('XY');
-    const local = [7, 11, 13] as const;
-    const world = planeToWorldVec3(plane, local);
-    const backToLocal = planeToLocalVec3(plane, world);
-    expect(backToLocal[0]).toBeCloseTo(local[0]);
-    expect(backToLocal[1]).toBeCloseTo(local[1]);
-    expect(backToLocal[2]).toBeCloseTo(local[2]);
-  });
-
-  it('works with rotated plane', () => {
-    const plane = resolvePlane('YZ'); // Normal along X
-    const world = planeToWorldVec3(plane, [1, 2, 3]);
-    // YZ plane: x maps to Y, y maps to Z, z maps to X
-    expect(world[0]).toBeCloseTo(3); // z component along X
-    expect(world[1]).toBeCloseTo(1); // x component along Y
-    expect(world[2]).toBeCloseTo(2); // y component along Z
-  });
-
-  it('works with offset plane', () => {
-    const plane = resolvePlane('XY', 10);
-    const world = planeToWorldVec3(plane, [1, 2, 3]);
-    expect(world[0]).toBeCloseTo(1);
-    expect(world[1]).toBeCloseTo(2);
-    expect(world[2]).toBeCloseTo(13); // 10 + 3
-  });
-});
-
 describe('translatePlane', () => {
   it('translates origin by vector', () => {
     const plane = resolvePlane('XY');
@@ -215,15 +166,6 @@ describe('translatePlane', () => {
     expect(vecEquals(translated.xDir, plane.xDir)).toBe(true);
     expect(vecEquals(translated.yDir, plane.yDir)).toBe(true);
     expect(vecEquals(translated.zDir, plane.zDir)).toBe(true);
-  });
-});
-
-describe('translatePlaneTo', () => {
-  it('moves plane to new origin', () => {
-    const plane = resolvePlane('XY');
-    const moved = translatePlaneTo(plane, [100, 200, 300]);
-    expect(vecEquals(moved.origin, [100, 200, 300])).toBe(true);
-    expect(vecEquals(moved.zDir, plane.zDir)).toBe(true);
   });
 });
 
@@ -237,7 +179,7 @@ describe('pivotPlane', () => {
   });
 
   it('preserves origin', () => {
-    const plane = translatePlaneTo(resolvePlane('XY'), [5, 5, 5]);
+    const plane = createPlane([5, 5, 5], null, [0, 0, 1]);
     const pivoted = pivotPlane(plane, 45);
     expect(vecEquals(pivoted.origin, [5, 5, 5])).toBe(true);
   });
@@ -247,27 +189,5 @@ describe('pivotPlane', () => {
     expect(vecLength(pivoted.xDir)).toBeCloseTo(1);
     expect(vecLength(pivoted.yDir)).toBeCloseTo(1);
     expect(vecLength(pivoted.zDir)).toBeCloseTo(1);
-  });
-});
-
-describe('rotatePlane2DAxes', () => {
-  it('rotates x/y around normal', () => {
-    const plane = resolvePlane('XY');
-    const rotated = rotatePlane2DAxes(plane, 90);
-    // After 90deg rotation on XY plane: xDir should become Y direction
-    expect(rotated.xDir[0]).toBeCloseTo(0, 3);
-    expect(rotated.xDir[1]).toBeCloseTo(1, 3);
-  });
-
-  it('preserves normal direction', () => {
-    const plane = resolvePlane('XY');
-    const rotated = rotatePlane2DAxes(plane, 45);
-    expect(vecEquals(rotated.zDir, plane.zDir)).toBe(true);
-  });
-
-  it('preserves origin', () => {
-    const plane = translatePlaneTo(resolvePlane('XY'), [5, 5, 5]);
-    const rotated = rotatePlane2DAxes(plane, 30);
-    expect(vecEquals(rotated.origin, [5, 5, 5])).toBe(true);
   });
 });

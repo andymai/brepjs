@@ -249,7 +249,7 @@ function complexExtrude(
 
   const result = shellMode
     ? genericSweep(wire, spine, { law }, shellMode)
-    : genericSweep(wire, spine, { law }, shellMode);
+    : genericSweep(wire, spine, { law });
 
   gc();
   return result;
@@ -308,7 +308,7 @@ function twistExtrude(
 
   const result = shellMode
     ? genericSweep(wire, spine, { auxiliarySpine, law }, shellMode)
-    : genericSweep(wire, spine, { auxiliarySpine, law }, shellMode);
+    : genericSweep(wire, spine, { auxiliarySpine, law });
 
   gc();
   return result;

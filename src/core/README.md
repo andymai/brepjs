@@ -134,8 +134,6 @@ vecProjectToPlane(v, origin, normal); // Project onto plane
 vecRotate(v, axis, angleRad); // Rodrigues rotation formula
 ```
 
-**2D variants:** `vec2Add`, `vec2Sub`, `vec2Scale`, `vec2Length`, `vec2Distance`, `vec2Normalize`, `vec2Equals`
-
 ### Plane Types (`planeTypes.ts`)
 
 ```typescript
@@ -193,9 +191,7 @@ planeToLocal(plane: Plane, world: Vec3): Vec2    // 3D → 2D projection
 
 ```typescript
 translatePlane(plane, offset); // Move by vector
-translatePlaneTo(plane, newOrigin); // Move to position
 pivotPlane(plane, angleDeg, axis); // Rotate plane around axis
-rotatePlane2DAxes(plane, angleDeg); // Rotate 2D coords around normal
 ```
 
 ## OCCT Boundary Layer (`occtBoundary.ts`)
@@ -208,8 +204,6 @@ Bridges brepjs functional geometry with OCCT's mutable gp\_\* types. **Critical:
 toOcVec(v: Vec3): gp_Vec          // Caller must call .delete()
 toOcPnt(v: Vec3): gp_Pnt          // Caller must call .delete()
 toOcDir(v: Vec3): gp_Dir          // Caller must call .delete()
-pointToOcPnt(p: PointInput): gp_Pnt
-pointToOcDir(p: PointInput): gp_Dir
 ```
 
 ### Extraction (No Cleanup Needed)

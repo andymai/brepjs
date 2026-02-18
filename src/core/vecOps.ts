@@ -4,7 +4,7 @@
  * Zero dependencies — pure math functions.
  */
 
-import type { Vec3, Vec2 } from './types.js';
+import type { Vec3 } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Arithmetic
@@ -153,50 +153,4 @@ const round3 = (v: number): number => Math.round(v * 1000) / 1000;
 /** Format a Vec3 as a human-readable string rounded to 3 decimal places. */
 export function vecRepr(v: Vec3): string {
   return `x: ${round3(v[0])}, y: ${round3(v[1])}, z: ${round3(v[2])}`;
-}
-
-// ---------------------------------------------------------------------------
-// 2D operations
-// ---------------------------------------------------------------------------
-
-/** Add two 2D vectors component-wise. */
-export function vec2Add(a: Vec2, b: Vec2): Vec2 {
-  return [a[0] + b[0], a[1] + b[1]];
-}
-
-/** Subtract vector `b` from vector `a` in 2D. */
-export function vec2Sub(a: Vec2, b: Vec2): Vec2 {
-  return [a[0] - b[0], a[1] - b[1]];
-}
-
-/** Multiply each component of a 2D vector by a scalar. */
-export function vec2Scale(v: Vec2, s: number): Vec2 {
-  return [v[0] * s, v[1] * s];
-}
-
-/** Compute the Euclidean length of a 2D vector. */
-export function vec2Length(v: Vec2): number {
-  return Math.sqrt(v[0] * v[0] + v[1] * v[1]);
-}
-
-/** Compute the Euclidean distance between two 2D points. */
-export function vec2Distance(a: Vec2, b: Vec2): number {
-  return vec2Length(vec2Sub(a, b));
-}
-
-/** Return a unit-length 2D vector in the same direction, or `[0,0]` for zero input. */
-export function vec2Normalize(v: Vec2): Vec2 {
-  const len = vec2Length(v);
-  if (len === 0) return [0, 0];
-  return [v[0] / len, v[1] / len];
-}
-
-/**
- * Test whether two 2D vectors are approximately equal.
- *
- * @param tolerance - Per-component absolute tolerance.
- * @default tolerance `1e-5`
- */
-export function vec2Equals(a: Vec2, b: Vec2, tolerance = 1e-5): boolean {
-  return Math.abs(a[0] - b[0]) < tolerance && Math.abs(a[1] - b[1]) < tolerance;
 }

@@ -134,21 +134,6 @@ export function planeToLocal(plane: Plane, world: Vec3): Vec2 {
   return [vecDot(relative, plane.xDir), vecDot(relative, plane.yDir)];
 }
 
-/** Convert 3D local coordinates to 3D world coordinates on the plane. */
-export function planeToWorldVec3(plane: Plane, local: Vec3): Vec3 {
-  const [u, v, w] = local;
-  return vecAdd(
-    vecAdd(vecAdd(plane.origin, vecScale(plane.xDir, u)), vecScale(plane.yDir, v)),
-    vecScale(plane.zDir, w)
-  );
-}
-
-/** Convert 3D world coordinates to 3D local coordinates on the plane. */
-export function planeToLocalVec3(plane: Plane, world: Vec3): Vec3 {
-  const relative = vecSub(world, plane.origin);
-  return [vecDot(relative, plane.xDir), vecDot(relative, plane.yDir), vecDot(relative, plane.zDir)];
-}
-
 // ---------------------------------------------------------------------------
 // Plane transformations (all return new Plane)
 // ---------------------------------------------------------------------------
@@ -156,11 +141,6 @@ export function planeToLocalVec3(plane: Plane, world: Vec3): Vec3 {
 /** Translate a plane by a vector. */
 export function translatePlane(plane: Plane, offset: Vec3): Plane {
   return { ...plane, origin: vecAdd(plane.origin, offset) };
-}
-
-/** Translate a plane to a new origin. */
-export function translatePlaneTo(plane: Plane, newOrigin: Vec3): Plane {
-  return { ...plane, origin: newOrigin };
 }
 
 /**
@@ -175,16 +155,4 @@ export function pivotPlane(plane: Plane, angleDeg: number, axis: Vec3 = [1, 0, 0
   const newXDir = vecRotate(plane.xDir, axis, angleRad);
   const newYDir = vecNormalize(vecCross(newZDir, newXDir));
   return { origin: plane.origin, xDir: newXDir, yDir: newYDir, zDir: newZDir };
-}
-
-/**
- * Rotate the X/Y axes of a plane around its normal (Z direction).
- *
- * @param angleDeg - Rotation angle in **degrees**.
- */
-export function rotatePlane2DAxes(plane: Plane, angleDeg: number): Plane {
-  const angleRad = angleDeg * DEG2RAD;
-  const newXDir = vecRotate(plane.xDir, plane.zDir, angleRad);
-  const newYDir = vecNormalize(vecCross(plane.zDir, newXDir));
-  return { ...plane, xDir: newXDir, yDir: newYDir };
 }

@@ -16,15 +16,8 @@ import {
   vecProjectToPlane,
   vecRotate,
   vecRepr,
-  vec2Add,
-  vec2Sub,
-  vec2Scale,
-  vec2Length,
-  vec2Distance,
-  vec2Normalize,
-  vec2Equals,
 } from '../src/core/vecOps.js';
-import type { Vec3, Vec2 } from '../src/core/types.js';
+import type { Vec3 } from '../src/core/types.js';
 
 // ---------------------------------------------------------------------------
 // 3D Arithmetic
@@ -305,71 +298,5 @@ describe('vecRepr', () => {
 
   it('rounds to 3 decimal places', () => {
     expect(vecRepr([1.23456, 0, 0])).toBe('x: 1.235, y: 0, z: 0');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 2D Operations
-// ---------------------------------------------------------------------------
-
-describe('vec2Add', () => {
-  it('adds two 2D vectors', () => {
-    expect(vec2Add([1, 2], [3, 4])).toEqual([4, 6]);
-  });
-});
-
-describe('vec2Sub', () => {
-  it('subtracts two 2D vectors', () => {
-    expect(vec2Sub([5, 7], [3, 4])).toEqual([2, 3]);
-  });
-});
-
-describe('vec2Scale', () => {
-  it('scales a 2D vector', () => {
-    expect(vec2Scale([3, 4], 2)).toEqual([6, 8]);
-  });
-});
-
-describe('vec2Length', () => {
-  it('computes 2D length', () => {
-    expect(vec2Length([3, 4])).toBe(5);
-  });
-
-  it('zero vector has zero length', () => {
-    expect(vec2Length([0, 0])).toBe(0);
-  });
-});
-
-describe('vec2Distance', () => {
-  it('computes 2D distance', () => {
-    expect(vec2Distance([0, 0], [3, 4])).toBe(5);
-  });
-});
-
-describe('vec2Normalize', () => {
-  it('normalizes to unit length', () => {
-    const n = vec2Normalize([3, 4]);
-    expect(vec2Length(n)).toBeCloseTo(1);
-    expect(n[0]).toBeCloseTo(0.6);
-    expect(n[1]).toBeCloseTo(0.8);
-  });
-
-  it('zero vector returns zero', () => {
-    expect(vec2Normalize([0, 0])).toEqual([0, 0]);
-  });
-});
-
-describe('vec2Equals', () => {
-  it('equal vectors return true', () => {
-    expect(vec2Equals([1, 2], [1, 2])).toBe(true);
-  });
-
-  it('different vectors return false', () => {
-    expect(vec2Equals([1, 2], [1, 3])).toBe(false);
-  });
-
-  it('respects tolerance', () => {
-    expect(vec2Equals([1, 2], [1.0001, 2], 0.001)).toBe(true);
-    expect(vec2Equals([1, 2], [1.01, 2], 0.001)).toBe(false);
   });
 });

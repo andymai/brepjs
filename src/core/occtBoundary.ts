@@ -4,8 +4,7 @@
  * Use withOcVec/withOcPnt/withOcDir for scoped conversions.
  */
 
-import type { Vec3, PointInput } from './types.js';
-import { toVec3 } from './types.js';
+import type { Vec3 } from './types.js';
 import { getKernel } from '../kernel/index.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT types are dynamic
 type OcType = any;
@@ -30,16 +29,6 @@ export function toOcPnt(v: Vec3): OcType {
 export function toOcDir(v: Vec3): OcType {
   const oc = getKernel().oc;
   return new oc.gp_Dir_4(v[0], v[1], v[2]);
-}
-
-/** Convert PointInput to OCCT gp_Pnt. Caller must call .delete() when done. */
-export function pointToOcPnt(p: PointInput): OcType {
-  return toOcPnt(toVec3(p));
-}
-
-/** Convert PointInput to OCCT gp_Dir. Caller must call .delete() when done. */
-export function pointToOcDir(p: PointInput): OcType {
-  return toOcDir(toVec3(p));
 }
 
 // ---------------------------------------------------------------------------

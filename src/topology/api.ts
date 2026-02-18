@@ -211,15 +211,6 @@ function resolveFaces(
 }
 
 /**
- * Normalize a FilletRadius to the format the kernel expects.
- */
-function normalizeFilletRadius(
-  radius: FilletRadius
-): number | [number, number] | ((edge: Edge) => number | [number, number] | null) {
-  return radius;
-}
-
-/**
  * Normalize a ChamferDistance, handling the {distance, angle} case.
  * Returns either a kernel-compatible distance or signals distance-angle mode.
  */
@@ -282,7 +273,7 @@ export function fillet<T extends Shape3D>(
     radius = edgesOrRadius as FilletRadius;
   }
 
-  return modifiers.fillet(s, edges, normalizeFilletRadius(radius)) as Result<T>;
+  return modifiers.fillet(s, edges, radius) as Result<T>;
 }
 
 /** Apply a chamfer to all edges of a 3D shape. */

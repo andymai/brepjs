@@ -4,8 +4,6 @@ import {
   toOcVec,
   toOcPnt,
   toOcDir,
-  pointToOcPnt,
-  pointToOcDir,
   fromOcVec,
   fromOcPnt,
   fromOcDir,
@@ -86,29 +84,6 @@ describe('toOcDir / fromOcDir', () => {
     const back = fromOcDir(ocDir);
     ocDir.delete();
     expect(vecEquals(back, d)).toBe(true);
-  });
-});
-
-describe('pointToOcPnt / pointToOcDir', () => {
-  it('converts Vec2 to gp_Pnt with z=0', () => {
-    const ocPnt = pointToOcPnt([5, 10]);
-    const back = fromOcPnt(ocPnt);
-    ocPnt.delete();
-    expect(vecEquals(back, [5, 10, 0])).toBe(true);
-  });
-
-  it('converts Vec3 to gp_Pnt', () => {
-    const ocPnt = pointToOcPnt([1, 2, 3]);
-    const back = fromOcPnt(ocPnt);
-    ocPnt.delete();
-    expect(vecEquals(back, [1, 2, 3])).toBe(true);
-  });
-
-  it('converts PointInput to gp_Dir', () => {
-    const ocDir = pointToOcDir([0, 0, 1]);
-    const back = fromOcDir(ocDir);
-    ocDir.delete();
-    expect(vecEquals(back, [0, 0, 1])).toBe(true);
   });
 });
 
