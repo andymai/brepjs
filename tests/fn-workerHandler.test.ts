@@ -250,7 +250,8 @@ describe('createWorkerHandler', () => {
     it('posts ErrorResponse with stringified non-Error throw from handler', async () => {
       let registry = createOperationRegistry();
       registry = registerHandler(registry, 'throws-string', () => {
-        throw new Error('42');
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- testing non-Error throw path
+        throw '42';
       });
       createWorkerHandler(registry, vi.fn());
 

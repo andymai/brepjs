@@ -211,7 +211,7 @@ describe('cameraLookAt', () => {
   it('adjusts camera direction to look at a target', () => {
     const cam = unwrap(createCamera([10, 0, 0], [0, 0, -1]));
     const updated = unwrap(cameraLookAt(cam, [0, 0, 0]));
-    // Direction should point from position toward target (normalized)
+    // Direction is the eye vector (position − target), pointing away from target per OpenGL convention
     expect(updated.direction[0]).toBeGreaterThan(0);
     expect(updated.position[0]).toBeCloseTo(10);
   });
