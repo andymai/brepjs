@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
@@ -183,6 +184,103 @@ describe('offset', () => {
     const s = sphere(5);
     const result = offset(s, 0);
     expect(isErr(result)).toBe(true);
+  });
+});
+
+describe('fillet with array radius', () => {
+  it('fillets a specific edge with variable radius [r1, r2]', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = fillet(b, [edges[0]!], [1, 2]);
+    expect(isOk(result)).toBe(true);
+    const vol = measureVolume(unwrap(result));
+    expect(vol).toBeLessThan(1000);
+    expect(vol).toBeGreaterThan(900);
+  });
+
+  it('returns error when one radius in array is zero', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = fillet(b, [edges[0]!], [1, 0]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_FILLET_RADIUS');
+  });
+
+  it('returns error when one radius in array is negative', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = fillet(b, [edges[0]!], [0, -1]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_FILLET_RADIUS');
+  });
+});
+
+describe('fillet with callback returning null or array', () => {
+  it('callback returning null skips all edges (OCCT errors with no edges added)', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = fillet(b, edges, () => null);
+    // When all edges are skipped (null -> 0, which fails the > 0 check),
+    // OCCT builder has no edges and throws on Shape()
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('FILLET_FAILED');
+  });
+
+  it('callback returning [r1, r2] applies variable fillet', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = fillet(b, edges.slice(0, 2), () => [1, 2]);
+    expect(isOk(result)).toBe(true);
+    const vol = measureVolume(unwrap(result));
+    expect(vol).toBeLessThan(1000);
+  });
+});
+
+describe('chamfer with array distance', () => {
+  it('chamfers a specific edge with asymmetric distances [d1, d2]', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = chamfer(b, [edges[0]!], [1, 2]);
+    expect(isOk(result)).toBe(true);
+    const vol = measureVolume(unwrap(result));
+    expect(vol).toBeLessThan(1000);
+  });
+
+  it('returns error when one distance in array is zero', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = chamfer(b, [edges[0]!], [0, 1]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_CHAMFER_DISTANCE');
+  });
+
+  it('returns error when one distance in array is negative', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = chamfer(b, [edges[0]!], [-1, 1]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_CHAMFER_DISTANCE');
+  });
+});
+
+describe('chamfer with callback returning null or array', () => {
+  it('callback returning null skips all edges (OCCT errors with no edges added)', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = chamfer(b, edges, () => null);
+    // When all edges are skipped (null -> 0, which fails the > 0 check),
+    // OCCT builder has no edges and throws on Shape()
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('CHAMFER_FAILED');
+  });
+
+  it('callback returning [d1, d2] applies asymmetric chamfer', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = chamfer(b, edges.slice(0, 2), () => [1, 2]);
+    expect(isOk(result)).toBe(true);
+    const vol = measureVolume(unwrap(result));
+    expect(vol).toBeLessThan(1000);
   });
 });
 

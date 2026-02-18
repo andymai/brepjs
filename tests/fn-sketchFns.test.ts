@@ -7,6 +7,7 @@ import {
   measureArea,
   Sketcher,
   CompoundSketch,
+  isCompound,
 } from '../src/index.js';
 import {
   sketchExtrude,
@@ -143,5 +144,71 @@ describe('compoundSketchLoft', () => {
     const solid = compoundSketchLoft(compound1, compound2, { ruled: true });
     expect(solid).toBeDefined();
     expect(measureVolume(solid)).toBeGreaterThan(0);
+  });
+});
+
+describe('CompoundSketch getters', () => {
+  it('outerSketch returns the first sketch', () => {
+    const outer = sketchRectangle(20, 20);
+    const inner = sketchCircle(3);
+    const compound = new CompoundSketch([outer, inner]);
+    expect(compound.outerSketch).toBe(outer);
+  });
+
+  it('innerSketches returns all but the first sketch', () => {
+    const outer = sketchRectangle(20, 20);
+    const inner1 = sketchCircle(3);
+    const inner2 = sketchCircle(2, { origin: [5, 5, 0] });
+    const compound = new CompoundSketch([outer, inner1, inner2]);
+    expect(compound.innerSketches).toHaveLength(2);
+    expect(compound.innerSketches[0]).toBe(inner1);
+    expect(compound.innerSketches[1]).toBe(inner2);
+  });
+
+  it('wires returns a compound of all sketch wires', () => {
+    const outer = sketchRectangle(20, 20);
+    const inner = sketchCircle(3);
+    const compound = new CompoundSketch([outer, inner]);
+    const wires = compound.wires;
+    expect(isCompound(wires)).toBe(true);
+  });
+});
+
+describe('CompoundSketch extrude options', () => {
+  it('extrudes with custom extrusionDirection', () => {
+    const outer = sketchRectangle(20, 20);
+    const inner = sketchCircle(3);
+    const compound = new CompoundSketch([outer, inner]);
+    const solid = compound.extrude(10, { extrusionDirection: [0, 0, 1] });
+    expect(solid).toBeDefined();
+    expect(measureVolume(solid)).toBeGreaterThan(0);
+  });
+
+  it('extrudes with twistAngle', () => {
+    const outer = sketchRectangle(10, 10);
+    const inner = sketchCircle(2);
+    const compound = new CompoundSketch([outer, inner]);
+    const solid = compound.extrude(10, { twistAngle: 30 });
+    expect(solid).toBeDefined();
+    expect(measureVolume(solid)).toBeGreaterThan(0);
+  });
+
+  it('extrudes with extrusionProfile', () => {
+    const outer = sketchRectangle(10, 10);
+    const inner = sketchCircle(2);
+    const compound = new CompoundSketch([outer, inner]);
+    const solid = compound.extrude(10, {
+      extrusionProfile: { profile: 'linear', endFactor: 0.5 },
+    });
+    expect(solid).toBeDefined();
+    expect(measureVolume(solid)).toBeGreaterThan(0);
+  });
+});
+
+describe('CompoundSketch loftWith mismatch', () => {
+  it('throws on mismatched sketch counts', () => {
+    const c1 = new CompoundSketch([sketchRectangle(10, 10), sketchCircle(2)]);
+    const c2 = new CompoundSketch([sketchRectangle(10, 10, { plane: 'XY', origin: 10 })]);
+    expect(() => c1.loftWith(c2, { ruled: true })).toThrow();
   });
 });

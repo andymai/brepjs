@@ -9,22 +9,24 @@ import {
   cut,
   intersect,
   section,
+  sectionToFace,
   split,
+  slice,
   fuseAll,
   cutAll,
   isOk,
   isErr,
   unwrap,
   unwrapErr,
-  isSolid,
+  isFace,
   isCompound,
   isShape3D,
   getShapeKind,
   getEdges,
-  getWires,
   getKernel,
   createSolid,
   measureVolume,
+  measureArea,
 } from '../src/index.js';
 import type { Shape3D } from '../src/core/shapeTypes.js';
 
@@ -472,5 +474,67 @@ describe('null-shape pre-validation', () => {
     const result = section(makeNullShape(), 'XY');
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+  });
+});
+
+describe('sectionToFace', () => {
+  it('sections a box at mid-height and returns a face', () => {
+    const b = box(10, 10, 10);
+    const result = sectionToFace(b, 'XY', { planeSize: 100 });
+    expect(isOk(result)).toBe(true);
+    const face = unwrap(result);
+    expect(isFace(face)).toBe(true);
+    expect(measureArea(face)).toBeGreaterThan(0);
+  });
+
+  it('sections a sphere producing a circular face', () => {
+    const s = sphere(10);
+    const result = sectionToFace(s, 'XY', { planeSize: 100 });
+    expect(isOk(result)).toBe(true);
+    const face = unwrap(result);
+    // Cross-section of sphere at origin is a circle with radius 10
+    expect(measureArea(face)).toBeCloseTo(Math.PI * 100, -1);
+  });
+});
+
+describe('slice', () => {
+  it('slices a box at multiple planes', () => {
+    const b = box(10, 10, 20);
+    const result = slice(b, ['XY', 'XZ']);
+    expect(isOk(result)).toBe(true);
+    const sections = unwrap(result);
+    expect(sections).toHaveLength(2);
+  });
+
+  it('slices with a single plane', () => {
+    const b = box(10, 10, 10);
+    const result = slice(b, ['XY']);
+    expect(isOk(result)).toBe(true);
+    const sections = unwrap(result);
+    expect(sections).toHaveLength(1);
+  });
+
+  it('empty planes array returns empty result', () => {
+    const b = box(10, 10, 10);
+    const result = slice(b, []);
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result)).toHaveLength(0);
+  });
+});
+
+describe('split', () => {
+  it('returns base shape when tools array is empty', () => {
+    const b = box(10, 10, 10);
+    const result = split(b, []);
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result)).toBe(b);
+  });
+});
+
+describe('section with approximation: false', () => {
+  it('sections without curve approximation', () => {
+    const b = box(10, 10, 10);
+    const result = section(b, 'XY', { approximation: false });
+    expect(isOk(result)).toBe(true);
   });
 });

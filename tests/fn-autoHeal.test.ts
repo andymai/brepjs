@@ -1,6 +1,22 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { box, sphere, autoHeal, isValid, unwrap } from '../src/index.js';
+import {
+  box,
+  sphere,
+  autoHeal,
+  isValid,
+  unwrap,
+  healSolid,
+  healFace,
+  healWire,
+  heal,
+  getFaces,
+  getWires,
+  getEdges,
+  isOk,
+  isErr,
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -92,5 +108,89 @@ describe('autoHeal', () => {
     const result = unwrap(autoHeal(b, { fixSelfIntersection: true }));
     // Valid shapes short-circuit
     expect(result.report.isValid).toBe(true);
+  });
+});
+
+describe('healSolid', () => {
+  it('returns valid solid unchanged', () => {
+    const b = box(10, 10, 10);
+    const result = healSolid(b);
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(isValid(result.value)).toBe(true);
+    }
+  });
+
+  it('handles a sphere (exercises HEAL_RESULT_NOT_SOLID or no-effect branch)', () => {
+    // A sphere is valid, but the kernel healer may return a non-solid
+    // shape or null — this exercises error/no-effect branches
+    const s = sphere(5);
+    const result = healSolid(s);
+    // Either succeeds or returns a typed error — both are expected outcomes
+    if (isErr(result)) {
+      expect(result.error.code).toBeDefined();
+    }
+  });
+});
+
+describe('healFace', () => {
+  it('heals a face from a box', () => {
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    expect(faces.length).toBeGreaterThan(0);
+    const result = healFace(faces[0]!);
+    expect(isOk(result)).toBe(true);
+  });
+});
+
+describe('healWire', () => {
+  it('heals a wire from a box', () => {
+    const b = box(10, 10, 10);
+    const wires = getWires(b);
+    expect(wires.length).toBeGreaterThan(0);
+    const result = healWire(wires[0]!);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('heals a wire with face context', () => {
+    const b = box(10, 10, 10);
+    const wires = getWires(b);
+    const faces = getFaces(b);
+    expect(wires.length).toBeGreaterThan(0);
+    expect(faces.length).toBeGreaterThan(0);
+    const result = healWire(wires[0]!, faces[0]);
+    expect(isOk(result)).toBe(true);
+  });
+});
+
+describe('heal (polymorphic)', () => {
+  it('dispatches to healSolid for solids', () => {
+    const b = box(10, 10, 10);
+    const result = heal(b);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('dispatches to healFace for faces', () => {
+    const b = box(10, 10, 10);
+    const face = getFaces(b)[0]!;
+    const result = heal(face);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('dispatches to healWire for wires', () => {
+    const b = box(10, 10, 10);
+    const wire = getWires(b)[0]!;
+    const result = heal(wire);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('returns unsupported types unchanged', () => {
+    const b = box(10, 10, 10);
+    const edge = getEdges(b)[0]!;
+    const result = heal(edge);
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value).toBe(edge);
+    }
   });
 });

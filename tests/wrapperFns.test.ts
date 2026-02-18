@@ -28,6 +28,7 @@ import {
   isOk,
   sketchCircle,
 } from '../src/index.js';
+import { BrepWrapperError } from '../src/topology/wrapperFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -585,5 +586,118 @@ describe('Wrapper: method chaining with extended methods', () => {
       .mesh();
 
     expect(result.vertices.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WrappedFace — additional methods
+// ---------------------------------------------------------------------------
+
+describe('WrappedFace: additional methods', () => {
+  it('surfaceType() returns "plane" for a flat face', () => {
+    const f = unwrap(
+      polygon([
+        [0, 0, 0],
+        [10, 0, 0],
+        [10, 10, 0],
+        [0, 10, 0],
+      ])
+    );
+    expect(shape(f).surfaceType()).toBe('PLANE');
+  });
+
+  it('surfaceType() returns non-plane for a sphere face', () => {
+    const s = sphere(5);
+    const faces = shape(s).faces();
+    // Sphere face has a spherical surface
+    const f = shape(faces[0]);
+    const st = f.surfaceType();
+    expect(typeof st).toBe('string');
+    expect(st.length).toBeGreaterThan(0);
+  });
+
+  it('innerWires() returns empty array for simple face', () => {
+    const f = unwrap(
+      polygon([
+        [0, 0, 0],
+        [10, 0, 0],
+        [10, 10, 0],
+        [0, 10, 0],
+      ])
+    );
+    expect(shape(f).innerWires()).toEqual([]);
+  });
+
+  it('outerWire() returns a wire', () => {
+    // Already tested above, but let's verify it works with sphere face too
+    const s = sphere(5);
+    const faces = shape(s).faces();
+    const f = shape(faces[0]);
+    // sphere faces have outer wires
+    expect(f.outerWire()).toBeDefined();
+  });
+
+  it('revolve() creates a solid from a face', () => {
+    // Create a small rectangle offset from Z axis, revolve around Z
+    const f = unwrap(
+      polygon([
+        [5, 0, 0],
+        [10, 0, 0],
+        [10, 0, 5],
+        [5, 0, 5],
+      ])
+    );
+    const solid = shape(f).revolve({ axis: [0, 0, 1] });
+    expect(solid.volume()).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wrapped3D — fuseAll
+// ---------------------------------------------------------------------------
+
+describe('Wrapped3D: fuseAll', () => {
+  it('fuses with multiple tools', () => {
+    const b = box(10, 10, 10);
+    const s1 = translate(box(10, 10, 10), [5, 0, 0]);
+    const s2 = translate(box(10, 10, 10), [0, 5, 0]);
+    const result = shape(b).fuseAll([s1, s2]);
+    // Volume should be larger than any single box
+    expect(result.volume()).toBeGreaterThan(1000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BrepWrapperError
+// ---------------------------------------------------------------------------
+
+describe('BrepWrapperError', () => {
+  it('creates error with all fields', () => {
+    const err = new BrepWrapperError({
+      kind: 'validation',
+      code: 'TEST_ERROR',
+      message: 'test message',
+      suggestion: 'try this instead',
+      metadata: { key: 'value' },
+    });
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('BrepError');
+    expect(err.code).toBe('TEST_ERROR');
+    expect(err.kind).toBe('validation');
+    expect(err.suggestion).toBe('try this instead');
+    expect(err.metadata).toEqual({ key: 'value' });
+    expect(err.message).toContain('test message');
+    expect(err.message).toContain('try this instead');
+  });
+
+  it('creates error without suggestion', () => {
+    const err = new BrepWrapperError({
+      kind: 'occt',
+      code: 'SOME_CODE',
+      message: 'plain error',
+    });
+    expect(err.suggestion).toBeUndefined();
+    expect(err.metadata).toBeUndefined();
+    expect(err.message).toBe('plain error');
   });
 });

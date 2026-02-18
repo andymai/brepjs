@@ -9,8 +9,10 @@ import {
   measureVolume,
   isShape3D,
   isOk,
+  isErr,
   unwrap,
 } from '../src/index.js';
+import { loft as loftDirect } from '../src/operations/loftFns.js';
 
 beforeAll(async () => {
   await initOC();
@@ -35,5 +37,42 @@ describe('loft', () => {
     const w2 = translate(castShape(sketchCircle(5).wire.wrapped), [0, 0, 10]);
     const result = loft([w1, w2], { startPoint: [0, 0, -5] });
     expect(isOk(result)).toBe(true);
+  });
+
+  it('lofts with endPoint', () => {
+    const w1 = castShape(sketchCircle(5).wire.wrapped);
+    const w2 = translate(castShape(sketchCircle(5).wire.wrapped), [0, 0, 10]);
+    const result = loft([w1, w2], { endPoint: [0, 0, 15] });
+    expect(isOk(result)).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
+  });
+
+  it('lofts with ruled: false', () => {
+    const w1 = castShape(sketchCircle(5).wire.wrapped);
+    const w2 = translate(castShape(sketchCircle(5).wire.wrapped), [0, 0, 10]);
+    const result = loft([w1, w2], { ruled: false });
+    expect(isOk(result)).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
+  });
+
+  it('returns error for empty wires', () => {
+    const result = loft([]);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('lofts with startPoint and endPoint', () => {
+    const w1 = castShape(sketchCircle(5).wire.wrapped);
+    const w2 = translate(castShape(sketchCircle(5).wire.wrapped), [0, 0, 10]);
+    const result = loft([w1, w2], { startPoint: [0, 0, -5], endPoint: [0, 0, 15] });
+    expect(isOk(result)).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
+  });
+
+  it('lofts with returnShell', () => {
+    const w1 = castShape(sketchCircle(5).wire.wrapped);
+    const w2 = translate(castShape(sketchCircle(5).wire.wrapped), [0, 0, 10]);
+    const result = loftDirect([w1, w2], {}, true);
+    expect(isOk(result)).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
   });
 });

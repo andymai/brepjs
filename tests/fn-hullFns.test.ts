@@ -11,6 +11,8 @@ import {
   unwrapErr,
   isSolid,
   measureVolume,
+  getKernel,
+  createSolid,
 } from '../src/index.js';
 import type { Shape3D } from '../src/core/shapeTypes.js';
 
@@ -74,5 +76,34 @@ describe('hull', () => {
     const vol = measureVolume(solid);
     // Should form a roughly tetrahedral shape — volume well above sum of small boxes (4)
     expect(vol).toBeGreaterThan(1000);
+  });
+
+  it('returns error when array contains a null shape', () => {
+    const oc = getKernel().oc;
+    const nullShape = createSolid(new oc.TopoDS_Solid()) as Shape3D;
+    const result = hull([nullShape]);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('respects custom tolerance option', () => {
+    const b = box(10, 10, 10);
+    const result = hull([b], { tolerance: 0.01 });
+    expect(isOk(result)).toBe(true);
+    const solid = unwrap(result);
+    expect(isSolid(solid)).toBe(true);
+    const vol = measureVolume(solid);
+    expect(vol).toBeCloseTo(1000, 0);
+  });
+
+  it('hull of mixed shape types (box and sphere)', () => {
+    const b = box(5, 5, 5);
+    const s = sphere(3);
+    const result = hull([b, s]);
+    expect(isOk(result)).toBe(true);
+    const solid = unwrap(result);
+    expect(isSolid(solid)).toBe(true);
+    const vol = measureVolume(solid);
+    // Hull should be at least as large as the box
+    expect(vol).toBeGreaterThanOrEqual(125);
   });
 });

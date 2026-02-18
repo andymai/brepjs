@@ -2,11 +2,13 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   box,
+  sphere,
   isProjectionPlane,
   makeProjectedEdges,
   unwrap,
   createCamera,
   cameraFromPlane,
+  cameraLookAt,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -166,13 +168,51 @@ describe('makeProjectedEdges', () => {
     expect(result.visible.length).toBeGreaterThan(0);
   });
 
-  it('projects from all standard planes', () => {
+  it('projects from all 12 standard planes', () => {
     const b = box(10, 10, 10);
-    const planes = ['XY', 'XZ', 'YZ', 'front', 'back', 'top', 'bottom', 'left', 'right'] as const;
+    const planes = [
+      'XY',
+      'XZ',
+      'YZ',
+      'YX',
+      'ZX',
+      'ZY',
+      'front',
+      'back',
+      'top',
+      'bottom',
+      'left',
+      'right',
+    ] as const;
     for (const p of planes) {
       const cam = unwrap(cameraFromPlane(p));
       const result = makeProjectedEdges(b, cam);
       expect(result.visible.length).toBeGreaterThan(0);
     }
+  });
+
+  it('projects a sphere (curved edges)', () => {
+    const s = sphere(10);
+    const cam = unwrap(cameraFromPlane('front'));
+    const result = makeProjectedEdges(s, cam);
+    expect(result.visible.length).toBeGreaterThan(0);
+  });
+
+  it('projects a sphere without hidden lines', () => {
+    const s = sphere(10);
+    const cam = unwrap(cameraFromPlane('front'));
+    const result = makeProjectedEdges(s, cam, false);
+    expect(result.visible.length).toBeGreaterThan(0);
+    expect(result.hidden.length).toBe(0);
+  });
+});
+
+describe('cameraLookAt', () => {
+  it('adjusts camera direction to look at a target', () => {
+    const cam = unwrap(createCamera([10, 0, 0], [0, 0, -1]));
+    const updated = unwrap(cameraLookAt(cam, [0, 0, 0]));
+    // Direction should point from position toward target (normalized)
+    expect(updated.direction[0]).toBeGreaterThan(0);
+    expect(updated.position[0]).toBeCloseTo(10);
   });
 });

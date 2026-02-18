@@ -4,11 +4,9 @@ import {
   BlueprintSketcher,
   Drawing,
   draw,
-  drawRoundedRectangle,
   drawRectangle,
   drawSingleCircle,
   drawSingleEllipse,
-  drawCircle,
   drawEllipse,
   drawPolysides,
   drawPointsInterpolation,
@@ -431,5 +429,64 @@ describe('Projection and face outline', () => {
 
   it('drawFaceOutline returns a drawing from a face', () => {
     expect(drawFaceOutline(sketchRectangle(10, 10).face())).toBeInstanceOf(Drawing);
+  });
+});
+
+describe('BlueprintSketcher penAngle and movePointerTo', () => {
+  it('penAngle returns 0 when no curves have been drawn', () => {
+    const sketcher = new BlueprintSketcher();
+    expect(sketcher.penAngle).toBe(0);
+  });
+
+  it('penAngle returns angle after drawing a line', () => {
+    const sketcher = new BlueprintSketcher().lineTo([10, 0]);
+    // Horizontal line → angle should be 0
+    expect(sketcher.penAngle).toBeCloseTo(0, 5);
+  });
+
+  it('penAngle returns correct angle for diagonal line', () => {
+    const sketcher = new BlueprintSketcher().lineTo([10, 10]);
+    // 45-degree line
+    expect(sketcher.penAngle).toBeCloseTo(45, 0);
+  });
+
+  it('movePointerTo throws when curves already exist', () => {
+    const sketcher = new BlueprintSketcher().lineTo([10, 0]);
+    expect(() => sketcher.movePointerTo([5, 5])).toThrow();
+  });
+});
+
+describe('BlueprintSketcher ellipse methods', () => {
+  it('ellipseTo with longAxis flag', () => {
+    const bp = new BlueprintSketcher().ellipseTo([10, 0], 3, 8, 0, true).close();
+    expect(bp).toBeDefined();
+    expect(bp.curves.length).toBeGreaterThan(0);
+  });
+
+  it('halfEllipseTo with sweep', () => {
+    const bp = new BlueprintSketcher().halfEllipseTo([10, 0], 5, true).close();
+    expect(bp).toBeDefined();
+  });
+});
+
+describe('BlueprintSketcher closeWithCustomCorner', () => {
+  it('closeWithCustomCorner with dogbone mode', () => {
+    const bp = new BlueprintSketcher()
+      .lineTo([10, 0])
+      .lineTo([10, 10])
+      .lineTo([0, 10])
+      .closeWithCustomCorner(1, 'dogbone');
+    expect(bp).toBeDefined();
+    expect(bp.curves.length).toBeGreaterThan(0);
+  });
+});
+
+describe('BlueprintSketcher smoothSplineTo', () => {
+  it('smoothSplineTo with explicit start tangent', () => {
+    const bp = new BlueprintSketcher()
+      .smoothSplineTo([10, 5], { startTangent: [1, 0] })
+      .lineTo([10, 0])
+      .close();
+    expect(bp).toBeDefined();
   });
 });

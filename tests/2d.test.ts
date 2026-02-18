@@ -1,12 +1,10 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
+import type { Blueprint } from '../src/index.js';
 import {
-  Blueprint,
   CompoundBlueprint,
   Blueprints,
-  BoundingBox2d,
-  Curve2D,
-  Drawing,
   draw,
   drawRectangle,
   drawCircle,
@@ -25,6 +23,7 @@ import {
 } from '../src/index.js';
 import { fillet2D, chamfer2D } from '../src/2d/blueprints/customCorners.js';
 import { offsetBlueprint } from '../src/2d/blueprints/offset.js';
+import offset from '../src/2d/blueprints/offset.js';
 import { approximateForSVG } from '../src/2d/blueprints/approximations.js';
 
 beforeAll(async () => {
@@ -73,38 +72,38 @@ describe('Blueprint', () => {
   });
 
   it('translate', () => {
-    const t1 = rect(10, 10).translate(5, 5) as Blueprint;
+    const t1 = rect(10, 10).translate(5, 5);
     expect(t1.boundingBox.center[0]).toBeCloseTo(5, 1);
-    const t2 = rect(10, 10).translate([3, 4]) as Blueprint;
+    const t2 = rect(10, 10).translate([3, 4]);
     expect(t2.boundingBox.center[0]).toBeCloseTo(3, 1);
     t1.delete();
     t2.delete();
   });
 
   it('rotate', () => {
-    const r = rect(10, 10).rotate(45) as Blueprint;
+    const r = rect(10, 10).rotate(45);
     expect(r.boundingBox.width).toBeGreaterThan(0);
     r.delete();
   });
 
   it('scale', () => {
-    const s = rect(10, 20).scale(2) as Blueprint;
+    const s = rect(10, 20).scale(2);
     expect(s.boundingBox.width).toBeCloseTo(20, 0);
     expect(s.boundingBox.height).toBeCloseTo(40, 0);
     s.delete();
   });
 
   it('mirror', () => {
-    const m1 = rect(10, 10).mirror([0, 1], [0, 0], 'plane') as Blueprint;
+    const m1 = rect(10, 10).mirror([0, 1], [0, 0], 'plane');
     expect(m1).toBeDefined();
-    const m2 = rect(10, 10).mirror([5, 5]) as Blueprint;
+    const m2 = rect(10, 10).mirror([5, 5]);
     expect(m2).toBeDefined();
     m1.delete();
     m2.delete();
   });
 
   it('stretch', () => {
-    const s = rect(10, 10).stretch(2, [1, 0], [0, 0]) as Blueprint;
+    const s = rect(10, 10).stretch(2, [1, 0], [0, 0]);
     expect(s.boundingBox.width).toBeGreaterThan(0);
     expect(s.boundingBox.height).toBeGreaterThan(0);
     s.delete();
@@ -496,6 +495,149 @@ describe('Blueprints.sketchOnFace', () => {
     const sketches = b.sketchOnFace(f, 'original');
     expect(Array.isArray(sketches)).toBe(true);
     expect(sketches.length).toBe(2);
+  });
+});
+
+describe('fuse2D extended', () => {
+  it('fuses Blueprints with Blueprints', () => {
+    const a = new Blueprints([rect(10, 10, -3, 0)]);
+    const b = new Blueprints([rect(10, 10, 3, 0)]);
+    const result = fuse2D(a, b);
+    expect(result).not.toBeNull();
+  });
+
+  it('fuses CompoundBlueprint with CompoundBlueprint', () => {
+    const a = new CompoundBlueprint([rect(20, 20), circ(3)]);
+    const b = new CompoundBlueprint([rect(20, 20, 10, 0), circ(3, 10, 0)]);
+    const result = fuse2D(a, b);
+    expect(result).not.toBeNull();
+  });
+
+  it('fuses Blueprint with Blueprints', () => {
+    const a = rect(10, 10);
+    const b = new Blueprints([rect(10, 10, 5, 0)]);
+    const result = fuse2D(a, b);
+    expect(result).not.toBeNull();
+  });
+
+  it('fuses Blueprints with Blueprint', () => {
+    const a = new Blueprints([rect(10, 10)]);
+    const b = rect(10, 10, 5, 0);
+    const result = fuse2D(a, b);
+    expect(result).not.toBeNull();
+  });
+});
+
+describe('cut2D extended', () => {
+  it('cuts Blueprints from Blueprint', () => {
+    const base = rect(20, 20);
+    const tool = new Blueprints([rect(5, 5, 3, 3)]);
+    const result = cut2D(base, tool);
+    expect(result).not.toBeNull();
+  });
+
+  it('cuts Blueprint from Blueprints', () => {
+    const base = new Blueprints([rect(20, 20)]);
+    const tool = rect(5, 5);
+    const result = cut2D(base, tool);
+    expect(result).not.toBeNull();
+  });
+
+  it('cuts CompoundBlueprint tool from Blueprint', () => {
+    const base = rect(30, 30);
+    const tool = new CompoundBlueprint([rect(20, 20), circ(3)]);
+    const result = cut2D(base, tool);
+    expect(result).not.toBeNull();
+  });
+});
+
+describe('intersect2D extended', () => {
+  it('intersects Blueprints with Blueprint', () => {
+    const a = new Blueprints([rect(10, 10)]);
+    const b = rect(10, 10, 3, 3);
+    const result = intersect2D(a, b);
+    expect(result).not.toBeNull();
+  });
+
+  it('intersects Blueprint with Blueprints', () => {
+    const a = rect(10, 10);
+    const b = new Blueprints([rect(10, 10, 3, 3)]);
+    const result = intersect2D(a, b);
+    expect(result).not.toBeNull();
+  });
+
+  it('returns null for non-overlapping shapes', () => {
+    const a = rect(5, 5);
+    const b = rect(5, 5, 100, 100);
+    const result = intersect2D(a, b);
+    expect(result).toBeNull();
+  });
+});
+
+describe('customCorners extended', () => {
+  it('fillet2D on null returns null', () => {
+    const result = fillet2D(null, 1);
+    expect(result).toBeNull();
+  });
+
+  it('chamfer2D on null returns null', () => {
+    const result = chamfer2D(null, 1);
+    expect(result).toBeNull();
+  });
+
+  it('fillet2D on CompoundBlueprint', () => {
+    const compound = new CompoundBlueprint([rect(30, 30), rect(10, 10)]);
+    const result = fillet2D(compound, 1);
+    expect(result).toBeInstanceOf(CompoundBlueprint);
+  });
+
+  it('chamfer2D on CompoundBlueprint', () => {
+    const compound = new CompoundBlueprint([rect(30, 30), rect(10, 10)]);
+    const result = chamfer2D(compound, 1);
+    expect(result).toBeInstanceOf(CompoundBlueprint);
+  });
+
+  it('fillet2D on Blueprints', () => {
+    const bps = new Blueprints([rect(10, 10, -10, 0), rect(10, 10, 10, 0)]);
+    const result = fillet2D(bps, 1);
+    expect(result).toBeInstanceOf(Blueprints);
+  });
+
+  it('chamfer2D on Blueprints', () => {
+    const bps = new Blueprints([rect(10, 10, -10, 0), rect(10, 10, 10, 0)]);
+    const result = chamfer2D(bps, 1);
+    expect(result).toBeInstanceOf(Blueprints);
+  });
+});
+
+describe('offset extended', () => {
+  it('offsets Blueprint with lineJoinType bevel', () => {
+    const bp = rect(10, 10);
+    const result = offsetBlueprint(bp, 2, { lineJoinType: 'bevel' });
+    expect(result).not.toBeNull();
+  });
+
+  it('offsets Blueprint with lineJoinType miter', () => {
+    const bp = rect(10, 10);
+    const result = offsetBlueprint(bp, 2, { lineJoinType: 'miter' });
+    expect(result).not.toBeNull();
+  });
+
+  it('offset default export with null input returns null', () => {
+    const result = offset(null, 5);
+    expect(result).toBeNull();
+  });
+
+  it('offset default export with Blueprints input', () => {
+    const bps = new Blueprints([rect(10, 10, -15, 0), rect(10, 10, 15, 0)]);
+    const result = offset(bps, 1);
+    expect(result).not.toBeNull();
+  });
+
+  it('offset default export with CompoundBlueprint input', () => {
+    const compound = new CompoundBlueprint([rect(30, 30), circ(3)]);
+    const result = offset(compound, 1);
+    expect(result).not.toBeNull();
   });
 });
 

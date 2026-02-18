@@ -5,6 +5,7 @@ import {
   sphere,
   cylinder,
   exportAssemblySTEP,
+  exportSTEP,
   createAssembly,
   isOk,
   isErr,
@@ -108,5 +109,36 @@ describe('exportAssemblySTEP', () => {
   it('exports an empty shapes array returns error', () => {
     const result = exportAssemblySTEP([]);
     expect(isErr(result)).toBe(true);
+  });
+
+  it('STEP blob has correct MIME type', () => {
+    const b = box(5, 5, 5);
+    const result = exportAssemblySTEP([{ shape: b, name: 'test' }]);
+    expect(isOk(result)).toBe(true);
+    const blob = unwrap(result);
+    // Blob constructor lowercases MIME types
+    expect(blob.type).toBe('application/step');
+  });
+});
+
+describe('exportSTEP (single-shape)', () => {
+  it('exports a box to STEP', () => {
+    const b = box(10, 10, 10);
+    const result = exportSTEP(b);
+    expect(isOk(result)).toBe(true);
+    const blob = unwrap(result);
+    expect(blob.size).toBeGreaterThan(0);
+  });
+
+  it('exports a sphere to STEP', () => {
+    const s = sphere(5);
+    const result = exportSTEP(s);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('exports a cylinder to STEP', () => {
+    const c = cylinder(3, 10);
+    const result = exportSTEP(c);
+    expect(isOk(result)).toBe(true);
   });
 });
