@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.0](https://github.com/andymai/brepjs/compare/brepjs-v8.7.6...brepjs-v8.8.0) (2026-02-18)
+
+
+### Features
+
+* **build:** add bundle size tracking with size-limit ([#283](https://github.com/andymai/brepjs/issues/283)) ([ce0daf8](https://github.com/andymai/brepjs/commit/ce0daf8708db2cdf15db43b75260107c1c59e1b7))
+
 ## [8.7.6](https://github.com/andymai/brepjs/compare/brepjs-v8.7.5...brepjs-v8.7.6) (2026-02-18)
 
 
