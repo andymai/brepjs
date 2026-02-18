@@ -1,0 +1,16 @@
+[
+  { "name": "total (all JS)", "path": "dist/*.js", "limit": "130 kB" },
+  { "name": "brepjs", "path": "dist/brepjs.js" },
+  { "name": "brepjs/core", "path": "dist/core.js" },
+  { "name": "brepjs/result", "path": "dist/result.js" },
+  { "name": "brepjs/vectors", "path": "dist/vectors.js" },
+  { "name": "brepjs/topology", "path": "dist/topology.js" },
+  { "name": "brepjs/operations", "path": "dist/operations.js" },
+  { "name": "brepjs/2d", "path": "dist/2d.js" },
+  { "name": "brepjs/sketching", "path": "dist/sketching.js" },
+  { "name": "brepjs/query", "path": "dist/query.js" },
+  { "name": "brepjs/measurement", "path": "dist/measurement.js" },
+  { "name": "brepjs/io", "path": "dist/io.js" },
+  { "name": "brepjs/worker", "path": "dist/worker.js" },
+  { "name": "brepjs/quick", "path": "dist/quick.js" }
+]
