@@ -1,39 +1,43 @@
 # Changelog
 
-## [8.7.4](https://github.com/andymai/brepjs/compare/brepjs-v8.7.3...brepjs-v8.7.4) (2026-02-18)
+## [8.7.5](https://github.com/andymai/brepjs/compare/brepjs-v8.7.4...brepjs-v8.7.5) (2026-02-18)
 
+### Performance Improvements
+
+- **boolean:** enable OCCT-internal parallelism via SetRunParallel(true) ([9b36bcd](https://github.com/andymai/brepjs/commit/9b36bcdaf69f9a01da39eaa4131a634b8d57b695))
+- **gltf:** pre-allocate index arrays in computeMaterialLayout ([6aa09a5](https://github.com/andymai/brepjs/commit/6aa09a503336e210e4de3ac37f8569ab05591b52))
+- **measurement:** cache measureVolumeProps/SurfaceProps/LinearProps results ([c8e327d](https://github.com/andymai/brepjs/commit/c8e327d14184c86aacc117dd496c23d8290b907c))
+- **mesh:** change EdgeMesh.lines from number[] to Float32Array ([6275442](https://github.com/andymai/brepjs/commit/627544203ed1cfb2ae423429d60ba465d82d32f0))
+
+## [8.7.4](https://github.com/andymai/brepjs/compare/brepjs-v8.7.3...brepjs-v8.7.4) (2026-02-18)
 
 ### Bug Fixes
 
-* **ci:** bump validate-pack MAX_FILES to 450 for publish ([f293ef9](https://github.com/andymai/brepjs/commit/f293ef9ade2b832f18c4afb8d62e87bbf8c90b6f))
+- **ci:** bump validate-pack MAX_FILES to 450 for publish ([f293ef9](https://github.com/andymai/brepjs/commit/f293ef9ade2b832f18c4afb8d62e87bbf8c90b6f))
 
 ## [8.7.3](https://github.com/andymai/brepjs/compare/brepjs-v8.7.2...brepjs-v8.7.3) (2026-02-17)
 
-
 ### Bug Fixes
 
-* **deps:** trigger release for brepjs-opencascade 0.8.x peer dep support ([#269](https://github.com/andymai/brepjs/issues/269)) ([68d09ef](https://github.com/andymai/brepjs/commit/68d09ef9dd27096bf7b4c768de4e6314a68d7574))
+- **deps:** trigger release for brepjs-opencascade 0.8.x peer dep support ([#269](https://github.com/andymai/brepjs/issues/269)) ([68d09ef](https://github.com/andymai/brepjs/commit/68d09ef9dd27096bf7b4c768de4e6314a68d7574))
 
 ## [8.7.2](https://github.com/andymai/brepjs/compare/brepjs-v8.7.1...brepjs-v8.7.2) (2026-02-17)
 
-
 ### Bug Fixes
 
-* **ci:** add postinstall script to ensure WASM runtime files ([#266](https://github.com/andymai/brepjs/issues/266)) ([fd38cd3](https://github.com/andymai/brepjs/commit/fd38cd3a093e0516f95156a169913b53cd9e1680))
+- **ci:** add postinstall script to ensure WASM runtime files ([#266](https://github.com/andymai/brepjs/issues/266)) ([fd38cd3](https://github.com/andymai/brepjs/commit/fd38cd3a093e0516f95156a169913b53cd9e1680))
 
 ## [8.7.1](https://github.com/andymai/brepjs/compare/brepjs-v8.7.0...brepjs-v8.7.1) (2026-02-17)
 
-
 ### Bug Fixes
 
-* **ci:** add WASM download step to release-please workflow ([#264](https://github.com/andymai/brepjs/issues/264)) ([8b77ad3](https://github.com/andymai/brepjs/commit/8b77ad3a9b94d7b2b77a0e1b58a94bee0142cb7a))
+- **ci:** add WASM download step to release-please workflow ([#264](https://github.com/andymai/brepjs/issues/264)) ([8b77ad3](https://github.com/andymai/brepjs/commit/8b77ad3a9b94d7b2b77a0e1b58a94bee0142cb7a))
 
 ## [8.7.0](https://github.com/andymai/brepjs/compare/brepjs-v8.6.2...brepjs-v8.7.0) (2026-02-17)
 
-
 ### Features
 
-* add fill, section, imports, text metrics, roof, and heightmap ([#256](https://github.com/andymai/brepjs/issues/256)) ([8a55157](https://github.com/andymai/brepjs/commit/8a5515733349932f08b144f570d467046f8b5782))
+- add fill, section, imports, text metrics, roof, and heightmap ([#256](https://github.com/andymai/brepjs/issues/256)) ([8a55157](https://github.com/andymai/brepjs/commit/8a5515733349932f08b144f570d467046f8b5782))
 
 ## [8.6.2](https://github.com/andymai/brepjs/compare/brepjs-v8.6.1...brepjs-v8.6.2) (2026-02-17)
 
