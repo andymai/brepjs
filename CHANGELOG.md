@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.7.6](https://github.com/andymai/brepjs/compare/brepjs-v8.7.5...brepjs-v8.7.6) (2026-02-18)
+
+
+### Bug Fixes
+
+* **test:** correct vitest 4 config and relocate benchmark ([#281](https://github.com/andymai/brepjs/issues/281)) ([424d8f9](https://github.com/andymai/brepjs/commit/424d8f94c76352ca6038b16ea70005804fff6b58))
+
 ## [8.7.5](https://github.com/andymai/brepjs/compare/brepjs-v8.7.4...brepjs-v8.7.5) (2026-02-18)
 
 ### Performance Improvements
