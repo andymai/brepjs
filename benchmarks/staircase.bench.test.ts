@@ -4,7 +4,7 @@
  */
 /* eslint-disable no-console -- benchmark output */
 import { describe, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initOC } from '../tests/setup.js';
 import {
   box,
   cylinder,

@@ -6,11 +6,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 120000,
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        execArgv: ['--max-old-space-size=6144'],
-      },
-    },
+    execArgv: ['--max-old-space-size=6144'],
     include: ['benchmarks/**/*.bench.test.ts'],
   },
 });

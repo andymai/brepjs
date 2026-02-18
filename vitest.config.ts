@@ -8,6 +8,7 @@ export default defineConfig({
     exclude: ['benchmarks/**', 'node_modules/**', 'site/**', '.worktrees/**'],
     pool: 'forks',
     execArgv: ['--max-old-space-size=6144'],
+    maxWorkers: 4,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
