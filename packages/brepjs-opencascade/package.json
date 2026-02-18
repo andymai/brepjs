@@ -2,11 +2,21 @@
   "name": "brepjs-opencascade",
   "version": "0.8.3",
   "description": "OpenCascade.js custom WASM build for brepjs",
+  "keywords": [
+    "opencascade",
+    "wasm",
+    "cad",
+    "brep"
+  ],
+  "author": "Andy Mai",
   "license": "LGPL-2.1-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/andymai/brepjs",
     "directory": "packages/brepjs-opencascade"
+  },
+  "engines": {
+    "node": ">=24 <25"
   },
   "sideEffects": false,
   "main": "src/brepjs_single.js",

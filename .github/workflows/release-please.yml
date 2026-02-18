@@ -59,32 +59,12 @@ jobs:
             fi
           fi
 
-  build:
-    runs-on: ubuntu-latest
-    needs: [release-please]
-    if: ${{ needs.release-please.outputs.releases_created == 'true' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Ensure WASM runtime files exist
-        run: bash scripts/ensure-wasm.sh
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm run check:boundaries
-      - run: npm run build
-      - run: npm test
-
   # brepjs-opencascade is published via the dedicated publish-opencascade.yml
   # workflow (manual dispatch) which handles the Docker WASM build.
 
   publish-brepjs:
     runs-on: ubuntu-latest
-    needs: [release-please, build]
+    needs: [release-please]
     if: ${{ needs.release-please.outputs.brepjs_release_created == 'true' }}
     permissions:
       contents: read
@@ -99,6 +79,6 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Publish brepjs
-        run: npm publish
+        run: npm publish --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

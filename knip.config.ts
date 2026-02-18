@@ -18,9 +18,6 @@ const config: KnipConfig = {
     site: {
       ignore: ['**'],
     },
-    'brepjs-plugin': {
-      ignore: ['**'],
-    },
   },
 };
 
