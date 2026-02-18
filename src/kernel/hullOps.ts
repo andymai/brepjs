@@ -5,6 +5,7 @@
  */
 
 import type { OpenCascadeInstance, OcShape } from './types.js';
+import { makeTriFace } from './constructorOps.js';
 
 // ---------------------------------------------------------------------------
 // Point type
@@ -442,40 +443,6 @@ function extractVertices(oc: OpenCascadeInstance, shapes: OcShape[], tolerance: 
 // BREP reconstruction from hull facets
 // ---------------------------------------------------------------------------
 
-function buildTriFace(oc: OpenCascadeInstance, pa: Vec3, pb: Vec3, pc: Vec3): OcShape | null {
-  const gpA = new oc.gp_Pnt_3(pa.x, pa.y, pa.z);
-  const gpB = new oc.gp_Pnt_3(pb.x, pb.y, pb.z);
-  const gpC = new oc.gp_Pnt_3(pc.x, pc.y, pc.z);
-
-  const e1 = new oc.BRepBuilderAPI_MakeEdge_3(gpA, gpB);
-  const e2 = new oc.BRepBuilderAPI_MakeEdge_3(gpB, gpC);
-  const e3 = new oc.BRepBuilderAPI_MakeEdge_3(gpC, gpA);
-
-  const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
-  wireBuilder.Add_1(e1.Edge());
-  wireBuilder.Add_1(e2.Edge());
-  wireBuilder.Add_1(e3.Edge());
-
-  let face: OcShape | null = null;
-  if (wireBuilder.IsDone()) {
-    const makeFaceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wireBuilder.Wire(), false);
-    if (makeFaceBuilder.IsDone()) {
-      face = makeFaceBuilder.Face();
-    }
-    makeFaceBuilder.delete();
-  }
-
-  wireBuilder.delete();
-  e1.delete();
-  e2.delete();
-  e3.delete();
-  gpA.delete();
-  gpB.delete();
-  gpC.delete();
-
-  return face;
-}
-
 function reconstructBrep(
   oc: OpenCascadeInstance,
   hullResult: HullResult,
@@ -486,7 +453,10 @@ function reconstructBrep(
   // Phase 1: Build all triangular faces
   const ocFaces: OcShape[] = [];
   for (const [ia, ib, ic] of hullFaces) {
-    const face = buildTriFace(oc, at(points, ia), at(points, ib), at(points, ic));
+    const pa = at(points, ia),
+      pb = at(points, ib),
+      pc = at(points, ic);
+    const face = makeTriFace(oc, [pa.x, pa.y, pa.z], [pb.x, pb.y, pb.z], [pc.x, pc.y, pc.z]);
     if (face !== null) {
       ocFaces.push(face);
     }

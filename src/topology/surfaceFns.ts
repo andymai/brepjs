@@ -3,6 +3,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import { makeTriFace } from '../kernel/constructorOps.js';
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { castShape, isFace, isShell } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -156,50 +157,10 @@ function buildTriangulatedSurface(
 ): Result<AnyShape> {
   const oc = getKernel().oc;
 
-  function pt(r: number, c: number): { x: number; y: number; z: number } {
+  function pt(r: number, c: number): [number, number, number] {
     const row = heights[r];
     const z = (row ? (row[c] ?? 0) : 0) * scaleZ;
-    return { x: c * dx, y: r * dy, z };
-  }
-
-  function buildTriFace(
-    a: { x: number; y: number; z: number },
-    b: { x: number; y: number; z: number },
-    c: { x: number; y: number; z: number }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT face type
-  ): any {
-    const gpA = new oc.gp_Pnt_3(a.x, a.y, a.z);
-    const gpB = new oc.gp_Pnt_3(b.x, b.y, b.z);
-    const gpC = new oc.gp_Pnt_3(c.x, c.y, c.z);
-
-    const e1 = new oc.BRepBuilderAPI_MakeEdge_3(gpA, gpB);
-    const e2 = new oc.BRepBuilderAPI_MakeEdge_3(gpB, gpC);
-    const e3 = new oc.BRepBuilderAPI_MakeEdge_3(gpC, gpA);
-
-    const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
-    wireBuilder.Add_1(e1.Edge());
-    wireBuilder.Add_1(e2.Edge());
-    wireBuilder.Add_1(e3.Edge());
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT face type
-    let face: any = null;
-    if (wireBuilder.IsDone()) {
-      const makeFace = new oc.BRepBuilderAPI_MakeFace_15(wireBuilder.Wire(), false);
-      if (makeFace.IsDone()) {
-        face = makeFace.Face();
-      }
-      makeFace.delete();
-    }
-
-    wireBuilder.delete();
-    e1.delete();
-    e2.delete();
-    e3.delete();
-    gpA.delete();
-    gpB.delete();
-    gpC.delete();
-
-    return face;
+    return [c * dx, r * dy, z];
   }
 
   const sewing = new oc.BRepBuilderAPI_Sewing(1e-6, true, true, true, false);
@@ -214,14 +175,14 @@ function buildTriangulatedSurface(
         const p01 = pt(r, c + 1);
 
         // Triangle 1: (r,c), (r+1,c), (r+1,c+1)
-        const f1 = buildTriFace(p00, p10, p11);
+        const f1 = makeTriFace(oc, p00, p10, p11);
         if (f1 !== null) {
           sewing.Add(f1);
           faceCount++;
         }
 
         // Triangle 2: (r,c), (r+1,c+1), (r,c+1)
-        const f2 = buildTriFace(p00, p11, p01);
+        const f2 = makeTriFace(oc, p00, p11, p01);
         if (f2 !== null) {
           sewing.Add(f2);
           faceCount++;

@@ -4,6 +4,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import { makeTriFace } from '../kernel/constructorOps.js';
 import type { Wire, Solid } from '../core/shapeTypes.js';
 import { createSolid } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
@@ -55,49 +56,6 @@ function fanTriangulate(count: number): Array<[number, number, number]> {
     tris.push([0, i, i + 1]);
   }
   return tris;
-}
-
-/** Build a triangular OCCT face from 3 points. Returns null if degenerate. */
-function buildTriFace(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT kernel type
-  oc: any,
-  a: [number, number, number],
-  b: [number, number, number],
-  c: [number, number, number]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT face type
-): any {
-  const gpA = new oc.gp_Pnt_3(a[0], a[1], a[2]);
-  const gpB = new oc.gp_Pnt_3(b[0], b[1], b[2]);
-  const gpC = new oc.gp_Pnt_3(c[0], c[1], c[2]);
-
-  const e1 = new oc.BRepBuilderAPI_MakeEdge_3(gpA, gpB);
-  const e2 = new oc.BRepBuilderAPI_MakeEdge_3(gpB, gpC);
-  const e3 = new oc.BRepBuilderAPI_MakeEdge_3(gpC, gpA);
-
-  const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
-  wireBuilder.Add_1(e1.Edge());
-  wireBuilder.Add_1(e2.Edge());
-  wireBuilder.Add_1(e3.Edge());
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT face type
-  let face: any = null;
-  if (wireBuilder.IsDone()) {
-    const makeFace = new oc.BRepBuilderAPI_MakeFace_15(wireBuilder.Wire(), false);
-    if (makeFace.IsDone()) {
-      face = makeFace.Face();
-    }
-    makeFace.delete();
-  }
-
-  wireBuilder.delete();
-  e1.delete();
-  e2.delete();
-  e3.delete();
-  gpA.delete();
-  gpB.delete();
-  gpC.delete();
-
-  return face;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +125,7 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
           const areaSq = nx * nx + ny * ny + nz * nz;
           if (areaSq < 1e-20) continue;
 
-          const triFace = buildTriFace(oc, va, vb, vc);
+          const triFace = makeTriFace(oc, va, vb, vc);
           if (triFace !== null) {
             sewing.Add(triFace);
             faceCount++;
@@ -186,7 +144,7 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
           const va: [number, number, number] = [p0.x, p0.y, 0];
           const vb: [number, number, number] = [pi.x, pi.y, 0];
           const vc: [number, number, number] = [pi1.x, pi1.y, 0];
-          const triFace = buildTriFace(oc, va, vc, vb); // reversed winding for bottom
+          const triFace = makeTriFace(oc, va, vc, vb); // reversed winding for bottom
           if (triFace !== null) {
             sewing.Add(triFace);
             faceCount++;

@@ -37,7 +37,7 @@ function parseSlice(hex: string, index: number): number {
  * @param hex - Hex color string (e.g. `'#ff8800'` or `'f80'`).
  * @returns A 3-element tuple `[red, green, blue]` with integer values 0-255.
  */
-export function colorFromHex(hex: string): [number, number, number] {
+function colorFromHex(hex: string): [number, number, number] {
   let color = hex;
   if (color.indexOf('#') === 0) color = color.slice(1);
   if (color.length === 3) {

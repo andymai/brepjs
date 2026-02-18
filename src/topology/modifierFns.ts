@@ -105,7 +105,7 @@ export function fillet(
   if (selectedEdges.length === 0) {
     return err(
       validationError(
-        'NO_EDGES',
+        BrepErrorCode.FILLET_NO_EDGES,
         'No edges found for fillet',
         undefined,
         undefined,
@@ -134,7 +134,7 @@ export function fillet(
     const resultOc = builder.Shape();
     const cast = castShape(resultOc);
     if (!isShape3D(cast)) {
-      return err(occtError('FILLET_RESULT_NOT_3D', 'Fillet result is not a 3D shape'));
+      return err(occtError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
     }
     propagateOrigins(builder, [shape], cast);
     propagateFaceTags(builder, [shape], cast);
@@ -195,7 +195,7 @@ export function chamfer(
 
   const selectedEdges = edges ?? getEdges(shape);
   if (selectedEdges.length === 0) {
-    return err(validationError('NO_EDGES', 'No edges found for chamfer'));
+    return err(validationError(BrepErrorCode.CHAMFER_NO_EDGES, 'No edges found for chamfer'));
   }
 
   try {
@@ -252,7 +252,7 @@ export function chamfer(
     const resultOc = builder.Shape();
     const cast = castShape(resultOc);
     if (!isShape3D(cast)) {
-      return err(occtError('CHAMFER_RESULT_NOT_3D', 'Chamfer result is not a 3D shape'));
+      return err(occtError(BrepErrorCode.CHAMFER_NOT_3D, 'Chamfer result is not a 3D shape'));
     }
     propagateOrigins(builder, [shape], cast);
     propagateFaceTags(builder, [shape], cast);

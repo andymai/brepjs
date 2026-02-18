@@ -3,6 +3,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import { makeTriFace } from '../kernel/constructorOps.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -89,7 +90,7 @@ function buildSolidFromMesh(
         const vc = vertices[ci];
         if (!va || !vb || !vc) continue;
 
-        const triFace = buildTriFace(oc, va, vb, vc);
+        const triFace = makeTriFace(oc, va, vb, vc);
         if (triFace !== null) {
           sewing.Add(triFace);
           faceCount++;
@@ -124,45 +125,4 @@ function buildSolidFromMesh(
   } finally {
     sewing.delete();
   }
-}
-
-function buildTriFace(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT kernel type
-  oc: any,
-  a: [number, number, number],
-  b: [number, number, number],
-  c: [number, number, number]
-) {
-  const gpA = new oc.gp_Pnt_3(a[0], a[1], a[2]);
-  const gpB = new oc.gp_Pnt_3(b[0], b[1], b[2]);
-  const gpC = new oc.gp_Pnt_3(c[0], c[1], c[2]);
-
-  const e1 = new oc.BRepBuilderAPI_MakeEdge_3(gpA, gpB);
-  const e2 = new oc.BRepBuilderAPI_MakeEdge_3(gpB, gpC);
-  const e3 = new oc.BRepBuilderAPI_MakeEdge_3(gpC, gpA);
-
-  const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
-  wireBuilder.Add_1(e1.Edge());
-  wireBuilder.Add_1(e2.Edge());
-  wireBuilder.Add_1(e3.Edge());
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT face type
-  let face: any = null;
-  if (wireBuilder.IsDone()) {
-    const makeFace = new oc.BRepBuilderAPI_MakeFace_15(wireBuilder.Wire(), false);
-    if (makeFace.IsDone()) {
-      face = makeFace.Face();
-    }
-    makeFace.delete();
-  }
-
-  wireBuilder.delete();
-  e1.delete();
-  e2.delete();
-  e3.delete();
-  gpA.delete();
-  gpB.delete();
-  gpC.delete();
-
-  return face;
 }

@@ -1,4 +1,4 @@
-import type { Matrix2X2, Point2D } from './definitions.js';
+import type { Point2D } from './definitions.js';
 import { PRECISION_POINT } from './precision.js';
 import { bug } from '../../core/errors.js';
 
@@ -110,9 +110,4 @@ export const cartesianToPolar = ([x, y]: Point2D): [number, number] => {
   const theta = Math.atan2(y, x);
 
   return [r, theta];
-};
-
-/** Compute the determinant of a 2x2 matrix. */
-export const determinant2x2 = (matrix: Matrix2X2) => {
-  return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
 };

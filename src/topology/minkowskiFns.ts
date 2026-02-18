@@ -109,7 +109,7 @@ function minkowskiSphere(shape: Shape3D, radius: number, tolerance: number): Res
  * of {a + b : a ∈ vertices(A), b ∈ vertices(B)}. We build a vertex for each
  * such sum point and pass them to the QuickHull-based hull() function.
  */
-function minkowskiGeneral(shape: Shape3D, tool: Shape3D, _tolerance: number): Result<Solid> {
+function minkowskiGeneral(shape: Shape3D, tool: Shape3D, tolerance: number): Result<Solid> {
   const oc = getKernel().oc;
 
   try {
@@ -150,7 +150,7 @@ function minkowskiGeneral(shape: Shape3D, tool: Shape3D, _tolerance: number): Re
 
     // Compute convex hull of all sum points
     const kernel = getKernel();
-    const hullShape = kernel.hullFromPoints(sumPoints, _tolerance);
+    const hullShape = kernel.hullFromPoints(sumPoints, tolerance);
     const wrapped = castShape(hullShape);
     if (!isShape3D(wrapped)) {
       wrapped[Symbol.dispose]();

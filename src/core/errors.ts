@@ -135,9 +135,6 @@ export const BrepErrorCode = {
   // Guide curve sweep errors
   GUIDED_SWEEP_FAILED: 'GUIDED_SWEEP_FAILED',
 
-  // Face tagging errors
-  FACE_TAG_INVALID: 'FACE_TAG_INVALID',
-
   // Surface errors
   SURFACE_GRID_TOO_SMALL: 'SURFACE_GRID_TOO_SMALL',
   SURFACE_GRID_JAGGED: 'SURFACE_GRID_JAGGED',

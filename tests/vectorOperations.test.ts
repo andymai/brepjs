@@ -14,7 +14,6 @@ import {
   rotate2d,
   polarToCartesian,
   cartesianToPolar,
-  determinant2x2,
 } from '../src/2d/lib/vectorOperations.js';
 
 const closeTo = (a: number, b: number, eps = 1e-9) => Math.abs(a - b) < eps;
@@ -159,34 +158,5 @@ describe('polarToCartesian / cartesianToPolar', () => {
     const [x, y] = polarToCartesian(5, Math.PI / 2);
     expect(closeTo(x, 0)).toBe(true);
     expect(closeTo(y, 5)).toBe(true);
-  });
-});
-
-describe('determinant2x2', () => {
-  it('computes determinant of identity', () => {
-    expect(
-      determinant2x2([
-        [1, 0],
-        [0, 1],
-      ])
-    ).toBe(1);
-  });
-
-  it('computes determinant of arbitrary matrix', () => {
-    expect(
-      determinant2x2([
-        [2, 3],
-        [4, 5],
-      ])
-    ).toBe(-2);
-  });
-
-  it('returns 0 for singular matrix', () => {
-    expect(
-      determinant2x2([
-        [2, 4],
-        [1, 2],
-      ])
-    ).toBe(0);
   });
 });
