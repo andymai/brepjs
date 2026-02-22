@@ -29,7 +29,7 @@
     "zustand": "5.0.11"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.1.18",
+    "@tailwindcss/vite": "4.2.0",
     "@types/lz-string": "1.5.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
