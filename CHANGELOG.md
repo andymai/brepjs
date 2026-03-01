@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.1](https://github.com/andymai/brepjs/compare/brepjs-v8.8.0...brepjs-v8.8.1) (2026-03-01)
+
+
+### Bug Fixes
+
+* **site:** fix 403 on site.webmanifest ([#299](https://github.com/andymai/brepjs/issues/299)) ([53ed288](https://github.com/andymai/brepjs/commit/53ed2883fc668dae5527aec741188dbfd4ae0aca))
+
 ## [8.8.0](https://github.com/andymai/brepjs/compare/brepjs-v8.7.6...brepjs-v8.8.0) (2026-02-18)
 
 
