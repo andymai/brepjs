@@ -13,7 +13,7 @@ import { vecAdd, vecLength } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import type { Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
 import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { downcast } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, isErr } from '../core/result.js';
 import { typeCastError, validationError, occtError, BrepErrorCode } from '../core/errors.js';
@@ -28,12 +28,12 @@ export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
 /** Build a wire spine from start to end point (line segment). */
 function makeSpineWire(start: Vec3, end: Vec3): Wire {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const pnt1 = r(toOcPnt(start));
-  const pnt2 = r(toOcPnt(end));
-  const edgeMaker = r(new oc.BRepBuilderAPI_MakeEdge_3(pnt1, pnt2));
-  const wireMaker = r(new oc.BRepBuilderAPI_MakeWire_2(edgeMaker.Edge()));
+  const pnt1 = scope.register(toOcPnt(start));
+  const pnt2 = scope.register(toOcPnt(end));
+  const edgeMaker = scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pnt1, pnt2));
+  const wireMaker = scope.register(new oc.BRepBuilderAPI_MakeWire_2(edgeMaker.Edge()));
   return castShape(wireMaker.Wire()) as Wire;
 }
 
@@ -47,33 +47,33 @@ function makeHelixWire(
   lefthand = false
 ): Wire {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   let myDir = 2 * Math.PI;
   if (lefthand) myDir = -2 * Math.PI;
 
-  const geomLine = r(
-    new oc.Geom2d_Line_3(r(new oc.gp_Pnt2d_3(0.0, 0.0)), r(new oc.gp_Dir2d_4(myDir, pitch)))
+  const geomLine = scope.register(
+    new oc.Geom2d_Line_3(scope.register(new oc.gp_Pnt2d_3(0.0, 0.0)), scope.register(new oc.gp_Dir2d_4(myDir, pitch)))
   );
 
   const nTurns = height / pitch;
-  const uStart = r(geomLine.Value(0.0));
-  const uStop = r(geomLine.Value(nTurns * Math.sqrt((2 * Math.PI) ** 2 + pitch ** 2)));
-  const geomSeg = r(new oc.GCE2d_MakeSegment_1(uStart, uStop));
+  const uStart = scope.register(geomLine.Value(0.0));
+  const uStop = scope.register(geomLine.Value(nTurns * Math.sqrt((2 * Math.PI) ** 2 + pitch ** 2)));
+  const geomSeg = scope.register(new oc.GCE2d_MakeSegment_1(uStart, uStop));
 
   const ax3 = makeOcAx3(center, dir);
   // We do not GC this surface (or it can break for some reason)
   const geomSurf = new oc.Geom_CylindricalSurface_1(ax3, radius);
   ax3.delete();
 
-  const e = r(
+  const e = scope.register(
     new oc.BRepBuilderAPI_MakeEdge_30(
-      r(new oc.Handle_Geom2d_Curve_2(geomSeg.Value().get())),
-      r(new oc.Handle_Geom_Surface_2(geomSurf))
+      scope.register(new oc.Handle_Geom2d_Curve_2(geomSeg.Value().get())),
+      scope.register(new oc.Handle_Geom_Surface_2(geomSurf))
     )
   ).Edge();
 
-  const w = r(new oc.BRepBuilderAPI_MakeWire_2(e)).Wire();
+  const w = scope.register(new oc.BRepBuilderAPI_MakeWire_2(e)).Wire();
   oc.BRepLib.BuildCurves3d_2(w);
 
   return castShape(w) as Wire;
@@ -108,10 +108,10 @@ export function extrude(face: Face, extrusionVec: Vec3): Result<Solid> {
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
+    using scope = new DisposalScope();
 
-    const vec = r(toOcVec(extrusionVec));
-    const builder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, vec, false, true));
+    const vec = scope.register(toOcVec(extrusionVec));
+    const builder = scope.register(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, vec, false, true));
     const shape = builder.Shape();
 
     const downcastResult = downcast(shape);
@@ -152,13 +152,13 @@ export function revolve(
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'revolve: face is a null shape'));
   }
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const pnt = r(new oc.gp_Pnt_3(center[0], center[1], center[2]));
-  const dir = r(new oc.gp_Dir_4(direction[0], direction[1], direction[2]));
-  const ax = r(new oc.gp_Ax1_2(pnt, dir));
+  const pnt = scope.register(new oc.gp_Pnt_3(center[0], center[1], center[2]));
+  const dir = scope.register(new oc.gp_Dir_4(direction[0], direction[1], direction[2]));
+  const ax = scope.register(new oc.gp_Ax1_2(pnt, dir));
 
-  const builder = r(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
+  const builder = scope.register(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
   const result = castShape(builder.Shape());
 
   if (!isShape3D(result)) {
@@ -207,7 +207,7 @@ export function sweep(
   }
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   const {
     frenet = false,
@@ -225,7 +225,7 @@ export function sweep(
   } = config;
 
   const withCorrection = transitionMode === 'round' ? true : !!forceProfileSpineOthogonality;
-  const builder = r(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
+  const builder = scope.register(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
 
   // Apply performance tuning parameters
   if (tolerance !== undefined) {
@@ -259,7 +259,7 @@ export function sweep(
   if (!law) builder.Add_1(wire.wrapped, !!withContact, withCorrection);
   else builder.SetLaw_1(wire.wrapped, law, !!withContact, withCorrection);
 
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = scope.register(new oc.Message_ProgressRange_1());
   builder.Build(progress);
   if (!shellMode) builder.MakeSolid();
 

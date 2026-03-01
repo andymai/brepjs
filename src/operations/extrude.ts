@@ -3,7 +3,7 @@ import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { makeOcAx1 } from '../core/occtBoundary.js';
 import { vecAdd, vecLength } from '../core/vecOps.js';
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
@@ -24,13 +24,12 @@ import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
  */
 export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const vec = toVec3(extrusionVec);
-  const ocVec = r(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
-  const solidBuilder = r(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true));
+  const ocVec = scope.register(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
+  const solidBuilder = scope.register(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true));
   const solid = createSolid(unwrap(downcast(solidBuilder.Shape())));
-  gc();
   return solid;
 };
 
@@ -52,19 +51,18 @@ export const revolution = (
   angle = 360
 ): Result<Shape3D> => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const centerVec = toVec3(center);
   const directionVec = toVec3(direction);
-  const ax = r(makeOcAx1(centerVec, directionVec));
-  const revolBuilder = r(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
+  const ax = scope.register(makeOcAx1(centerVec, directionVec));
+  const revolBuilder = scope.register(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
 
   const result = andThen(cast(revolBuilder.Shape()), (shape) => {
     if (!isShape3D(shape))
       return err(typeCastError('REVOLUTION_NOT_3D', 'Revolution did not produce a 3D shape'));
     return ok(shape);
   });
-  gc();
 
   return result;
 };
@@ -120,10 +118,10 @@ function genericSweep(
   }
 
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const withCorrection = transitionMode === 'round' ? true : !!forceProfileSpineOthogonality;
-  const sweepBuilder = r(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
+  const sweepBuilder = scope.register(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
 
   // Apply performance tuning parameters
   if (tolerance !== undefined) {
@@ -161,11 +159,10 @@ function genericSweep(
   if (!law) sweepBuilder.Add_1(wire.wrapped, !!withContact, withCorrection);
   else sweepBuilder.SetLaw_1(wire.wrapped, law, !!withContact, withCorrection);
 
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = scope.register(new oc.Message_ProgressRange_1());
   sweepBuilder.Build(progress);
 
   if (!sweepBuilder.IsDone()) {
-    gc();
     return err(occtError('SWEEP_FAILED', 'Sweep operation failed'));
   }
 
@@ -174,7 +171,6 @@ function genericSweep(
   }
   const shape = unwrap(cast(sweepBuilder.Shape()));
   if (!isShape3D(shape)) {
-    gc();
     return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
   }
 
@@ -182,18 +178,14 @@ function genericSweep(
     const startWire = unwrap(cast(sweepBuilder.FirstShape()));
     const endWire = unwrap(cast(sweepBuilder.LastShape()));
     if (!isWire(startWire)) {
-      gc();
       return err(typeCastError('SWEEP_START_NOT_WIRE', 'Sweep did not produce a start Wire'));
     }
     if (!isWire(endWire)) {
-      gc();
       return err(typeCastError('SWEEP_END_NOT_WIRE', 'Sweep did not produce an end Wire'));
     }
-    gc();
     return ok([shape, startWire, endWire] as [Shape3D, Wire, Wire]);
   }
 
-  gc();
   return ok(shape);
 }
 
@@ -235,23 +227,22 @@ function complexExtrude(
   profileShape?: ExtrusionProfile,
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
   const centerVec = toVec3(center);
   const normalVec = toVec3(normal);
   const endVec = vecAdd(centerVec, normalVec);
 
-  const mainSpineEdge = r(makeLine(centerVec, endVec));
-  const spine = r(unwrap(assembleWire([mainSpineEdge])));
+  const mainSpineEdge = scope.register(makeLine(centerVec, endVec));
+  const spine = scope.register(unwrap(assembleWire([mainSpineEdge])));
 
   const law = profileShape
-    ? r(unwrap(buildLawFromProfile(vecLength(normalVec), profileShape)))
+    ? scope.register(unwrap(buildLawFromProfile(vecLength(normalVec), profileShape)))
     : null;
 
   const result = shellMode
     ? genericSweep(wire, spine, { law }, shellMode)
     : genericSweep(wire, spine, { law });
 
-  gc();
   return result;
 }
 
@@ -290,27 +281,26 @@ function twistExtrude(
   profileShape?: ExtrusionProfile,
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
   const centerVec = toVec3(center);
   const normalVec = toVec3(normal);
   const endVec = vecAdd(centerVec, normalVec);
 
-  const mainSpineEdge = r(makeLine(centerVec, endVec));
-  const spine = r(unwrap(assembleWire([mainSpineEdge])));
+  const mainSpineEdge = scope.register(makeLine(centerVec, endVec));
+  const spine = scope.register(unwrap(assembleWire([mainSpineEdge])));
 
   const extrusionLength = vecLength(normalVec);
   const pitch = (360.0 / angleDegrees) * extrusionLength;
   const radius = 1;
 
-  const auxiliarySpine = r(makeHelix(pitch, extrusionLength, radius, centerVec, normalVec));
+  const auxiliarySpine = scope.register(makeHelix(pitch, extrusionLength, radius, centerVec, normalVec));
 
-  const law = profileShape ? r(unwrap(buildLawFromProfile(extrusionLength, profileShape))) : null;
+  const law = profileShape ? scope.register(unwrap(buildLawFromProfile(extrusionLength, profileShape))) : null;
 
   const result = shellMode
     ? genericSweep(wire, spine, { auxiliarySpine, law }, shellMode)
     : genericSweep(wire, spine, { auxiliarySpine, law });
 
-  gc();
   return result;
 }
 /**

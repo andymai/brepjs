@@ -1,5 +1,5 @@
 import { getKernel } from '../kernel/index.js';
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { cast, isShape3D } from '../topology/cast.js';
@@ -47,23 +47,22 @@ export const loft = (
   }
 
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const loftBuilder = r(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, 1e-6));
+  const loftBuilder = scope.register(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, 1e-6));
 
   if (startPoint) {
-    loftBuilder.AddVertex(r(makeVertex(toVec3(startPoint))).wrapped);
+    loftBuilder.AddVertex(scope.register(makeVertex(toVec3(startPoint))).wrapped);
   }
   wires.forEach((w) => loftBuilder.AddWire(w.wrapped));
   if (endPoint) {
-    loftBuilder.AddVertex(r(makeVertex(toVec3(endPoint))).wrapped);
+    loftBuilder.AddVertex(scope.register(makeVertex(toVec3(endPoint))).wrapped);
   }
 
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = scope.register(new oc.Message_ProgressRange_1());
   loftBuilder.Build(progress);
 
   if (!loftBuilder.IsDone()) {
-    gc();
     return err(occtError('LOFT_FAILED', 'Loft operation failed'));
   }
 
@@ -72,7 +71,6 @@ export const loft = (
       return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
     return ok(shape);
   });
-  gc();
 
   return result;
 };

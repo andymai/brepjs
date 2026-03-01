@@ -8,7 +8,7 @@ import { toVec3 } from '../core/types.js';
 import { toOcPnt } from '../core/occtBoundary.js';
 import type { Wire, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { typeCastError, validationError, occtError } from '../core/errors.js';
 
@@ -51,25 +51,25 @@ export function loft(
   }
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const builder = r(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, 1e-6));
+  const builder = scope.register(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, 1e-6));
 
   if (startPoint) {
-    const pnt = r(toOcPnt(toVec3(startPoint)));
-    const vMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
+    const pnt = scope.register(toOcPnt(toVec3(startPoint)));
+    const vMaker = scope.register(new oc.BRepBuilderAPI_MakeVertex(pnt));
     builder.AddVertex(vMaker.Vertex());
   }
   for (const w of wires) {
     builder.AddWire(w.wrapped);
   }
   if (endPoint) {
-    const pnt = r(toOcPnt(toVec3(endPoint)));
-    const vMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
+    const pnt = scope.register(toOcPnt(toVec3(endPoint)));
+    const vMaker = scope.register(new oc.BRepBuilderAPI_MakeVertex(pnt));
     builder.AddVertex(vMaker.Vertex());
   }
 
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = scope.register(new oc.Message_ProgressRange_1());
   builder.Build(progress);
 
   if (!builder.IsDone()) {

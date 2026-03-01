@@ -8,7 +8,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { Wire, Solid, Shell } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError, occtError, typeCastError, BrepErrorCode } from '../core/errors.js';
 
@@ -60,10 +60,10 @@ export function multiSectionSweep(
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
+    using scope = new DisposalScope();
 
     // Get spine parameterization via BRepAdaptor_CompCurve
-    const adaptor = r(new oc.BRepAdaptor_CompCurve_2(spine.wrapped, false));
+    const adaptor = scope.register(new oc.BRepAdaptor_CompCurve_2(spine.wrapped, false));
     const uFirst = Number(adaptor.FirstParameter());
     const uLast = Number(adaptor.LastParameter());
     const uRange = uLast - uFirst;
@@ -78,7 +78,7 @@ export function multiSectionSweep(
     });
 
     // Build ThruSections loft with positioned wires
-    const builder = r(new oc.BRepOffsetAPI_ThruSections(solid, ruled, tolerance));
+    const builder = scope.register(new oc.BRepOffsetAPI_ThruSections(solid, ruled, tolerance));
 
     for (let i = 0; i < sections.length; i++) {
       const param = params[i];
@@ -86,29 +86,29 @@ export function multiSectionSweep(
       if (param === undefined || section === undefined) continue;
 
       // Get point and tangent at this parameter
-      const pnt = r(new oc.gp_Pnt_1());
-      const tangent = r(new oc.gp_Vec_1());
+      const pnt = scope.register(new oc.gp_Pnt_1());
+      const tangent = scope.register(new oc.gp_Vec_1());
       adaptor.D1(param, pnt, tangent);
 
       // Build the target coordinate system at the spine point
-      const tangentDir = r(new oc.gp_Dir_2(tangent));
-      const toAx3 = r(new oc.gp_Ax3_4(pnt, tangentDir));
+      const tangentDir = scope.register(new oc.gp_Dir_2(tangent));
+      const toAx3 = scope.register(new oc.gp_Ax3_4(pnt, tangentDir));
 
       // SetTransformation_2(ax3) computes transform FROM ax3 TO standard coords.
       // We want FROM standard (origin/Z-up) TO toAx3, so invert.
-      const trsf = r(new oc.gp_Trsf_1());
+      const trsf = scope.register(new oc.gp_Trsf_1());
       trsf.SetTransformation_2(toAx3);
       trsf.Invert();
 
       // Apply transform to the profile wire
-      const transformer = r(new oc.BRepBuilderAPI_Transform_2(section.wire.wrapped, trsf, true));
+      const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(section.wire.wrapped, trsf, true));
       const transformedShape = transformer.Shape();
       const transformedWire = oc.TopoDS.Wire_1(transformedShape);
 
       builder.AddWire(transformedWire);
     }
 
-    const progress = r(new oc.Message_ProgressRange_1());
+    const progress = scope.register(new oc.Message_ProgressRange_1());
     builder.Build(progress);
 
     if (!builder.IsDone()) {

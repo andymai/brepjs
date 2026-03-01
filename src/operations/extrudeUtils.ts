@@ -7,7 +7,7 @@
 type OcType = any;
 
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError } from '../core/errors.js';
 
@@ -86,14 +86,14 @@ export function buildLawFromProfile(
   { profile, endFactor = 1 }: ExtrusionProfile
 ): Result<OcType> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   let law: OcType;
   if (profile === 's-curve') {
-    law = r(new oc.Law_S());
+    law = scope.register(new oc.Law_S());
     law.Set_1(0, 1, extrusionLength, endFactor);
   } else if (profile === 'linear') {
-    law = r(new oc.Law_Linear());
+    law = scope.register(new oc.Law_Linear());
     law.Set(0, 1, extrusionLength, endFactor);
   } else {
     return err(

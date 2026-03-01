@@ -4,7 +4,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { AnyShape } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { uuidv } from '../utils/uuid.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
@@ -64,7 +64,7 @@ export function exportAssemblySTEP(
   { unit, modelUnit }: { unit?: SupportedUnit; modelUnit?: SupportedUnit } = {}
 ): Result<Blob> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   // Build XCAF document
   const doc = new oc.TDocStd_Document(wrapString('XmlOcaf'));
@@ -89,15 +89,15 @@ export function exportAssemblySTEP(
     tool.UpdateAssemblies();
 
     // Configure writer
-    configureStepUnits(unit, modelUnit, r);
+    configureStepUnits(unit, modelUnit, scope);
 
-    const session = r(new oc.XSControl_WorkSession());
-    const writer = r(
-      new oc.STEPCAFControl_Writer_2(r(new oc.Handle_XSControl_WorkSession_2(session)), false)
+    const session = scope.register(new oc.XSControl_WorkSession());
+    const writer = scope.register(
+      new oc.STEPCAFControl_Writer_2(scope.register(new oc.Handle_XSControl_WorkSession_2(session)), false)
     );
     configureStepWriter(writer);
 
-    const progress = r(new oc.Message_ProgressRange_1());
+    const progress = scope.register(new oc.Message_ProgressRange_1());
     writer.Transfer_1(
       new oc.Handle_TDocStd_Document_2(doc),
       oc.STEPControl_StepModelType.STEPControl_AsIs,

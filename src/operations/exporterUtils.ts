@@ -7,7 +7,7 @@
 type OcType = any;
 
 import { getKernel } from '../kernel/index.js';
-import type { Deletable } from '../core/disposal.js';
+import type { DisposalScope } from '../core/disposal.js';
 
 // ---------------------------------------------------------------------------
 // String and color utilities
@@ -78,17 +78,17 @@ export type SupportedUnit = 'M' | 'CM' | 'MM' | 'INCH' | 'FT' | 'm' | 'mm' | 'cm
  *
  * @param unit - Write unit (e.g. `'MM'`). Falls back to `modelUnit`.
  * @param modelUnit - Model unit. Falls back to `unit`.
- * @param r - GC registration function for the temporary writer instance.
+ * @param scope - Disposal scope for the temporary writer instance.
  */
 export function configureStepUnits(
   unit: SupportedUnit | undefined,
   modelUnit: SupportedUnit | undefined,
-  r: <T extends Deletable>(v: T) => T
+  scope: DisposalScope
 ): void {
   if (!unit && !modelUnit) return;
 
   const oc = getKernel().oc;
-  r(new oc.STEPCAFControl_Writer_1());
+  scope.register(new oc.STEPCAFControl_Writer_1());
   oc.Interface_Static.SetCVal('xstep.cascade.unit', (modelUnit || unit || 'MM').toUpperCase());
   oc.Interface_Static.SetCVal('write.step.unit', (unit || modelUnit || 'MM').toUpperCase());
 }

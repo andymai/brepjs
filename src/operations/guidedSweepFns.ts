@@ -7,7 +7,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { Wire, Solid, Shell } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { occtError, typeCastError, BrepErrorCode } from '../core/errors.js';
 
@@ -43,9 +43,9 @@ export function guidedSweep(
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
+    using scope = new DisposalScope();
 
-    const builder = r(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
+    const builder = scope.register(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
 
     const modeMap = {
       transformed: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_Transformed,
@@ -67,7 +67,7 @@ export function guidedSweep(
 
     builder.Add_1(profile.wrapped, false, false);
 
-    const progress = r(new oc.Message_ProgressRange_1());
+    const progress = scope.register(new oc.Message_ProgressRange_1());
     builder.Build(progress);
 
     if (!builder.IsDone()) {
