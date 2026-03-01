@@ -8,7 +8,7 @@ import type { Vec3 } from '../core/types.js';
 import type { Result } from '../core/result.js';
 import { ok, err, isErr } from '../core/result.js';
 import type { Face, Shape3D, Wire } from '../core/shapeTypes.js';
-import { validationError } from '../core/errors.js';
+import { validationError, queryError, BrepErrorCode } from '../core/errors.js';
 import { vecScale, vecNormalize, vecIsZero } from '../core/vecOps.js';
 import type {
   Shapeable,
@@ -33,12 +33,17 @@ import { makeFace as _makeFace, makeCylinder as _makeCylinder } from './shapeHel
 // ---------------------------------------------------------------------------
 
 /** Resolve a face selection: Face, FinderFn, or default (top Z-facing face). */
-function resolveTargetFace(shape: Shape3D, faceSpec: Face | FinderFn<Face> | undefined): Face {
+function resolveTargetFace(
+  shape: Shape3D,
+  faceSpec: Face | FinderFn<Face> | undefined
+): Result<Face> {
   if (faceSpec === undefined) {
     // Default: top face — face whose center has the highest Z
     const faces = getFaces(shape);
     if (faces.length === 0) {
-      throw new Error('compoundOps: shape has no faces');
+      return err(
+        validationError(BrepErrorCode.COMPOUND_NO_FACES, 'compoundOps: shape has no faces')
+      );
     }
     let best = faces[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion -- checked length > 0
     let bestZ = faceCenter(best)[2];
@@ -50,17 +55,22 @@ function resolveTargetFace(shape: Shape3D, faceSpec: Face | FinderFn<Face> | und
         bestZ = z;
       }
     }
-    return best;
+    return ok(best);
   }
   if (typeof faceSpec === 'function') {
     const finder = faceSpec(faceFinder());
     const found = finder.findAll(shape);
     if (found.length === 0) {
-      throw new Error('compoundOps: face finder matched no faces');
+      return err(
+        queryError(
+          BrepErrorCode.COMPOUND_FACE_NOT_FOUND,
+          'compoundOps: face finder matched no faces'
+        )
+      );
     }
-    return found[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion -- checked length > 0
+    return ok(found[0]!); // eslint-disable-line @typescript-eslint/no-non-null-assertion -- checked length > 0
   }
-  return faceSpec;
+  return ok(faceSpec);
 }
 
 /** Convert a DrawingLike or Wire to a Wire. */
@@ -140,7 +150,9 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
     return err(validationError('POCKET_INVALID_DEPTH', 'Pocket depth must be positive'));
   }
 
-  const targetFace = resolveTargetFace(s, options.face);
+  const faceResult2 = resolveTargetFace(s, options.face);
+  if (isErr(faceResult2)) return faceResult2 as Result<T>;
+  const targetFace = faceResult2.value;
   const normal = normalAt(targetFace);
   const w = toWire(profile);
 
@@ -174,7 +186,9 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
     return err(validationError('BOSS_INVALID_HEIGHT', 'Boss height must be positive'));
   }
 
-  const targetFace = resolveTargetFace(s, options.face);
+  const faceResult2 = resolveTargetFace(s, options.face);
+  if (isErr(faceResult2)) return faceResult2 as Result<T>;
+  const targetFace = faceResult2.value;
   const normal = normalAt(targetFace);
   const w = toWire(profile);
 
