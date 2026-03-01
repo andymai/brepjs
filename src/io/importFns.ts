@@ -6,7 +6,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 import { uniqueId } from '../core/constants.js';
@@ -30,19 +30,19 @@ import { uniqueId } from '../core/constants.js';
  */
 export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const fileName = uniqueId();
 
   try {
     const bufferView = new Uint8Array(await blob.arrayBuffer());
     oc.FS.writeFile(`/${fileName}`, bufferView);
 
-    const reader = r(new oc.STEPControl_Reader_1());
+    const reader = scope.register(new oc.STEPControl_Reader_1());
     if (!reader.ReadFile(fileName)) {
       return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
     }
 
-    reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
+    reader.TransferRoots(scope.register(new oc.Message_ProgressRange_1()));
     const stepShape = reader.OneShape();
 
     if (stepShape.IsNull()) {
@@ -78,25 +78,25 @@ export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
  */
 export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const fileName = uniqueId();
 
   try {
     const bufferView = new Uint8Array(await blob.arrayBuffer());
     oc.FS.writeFile(`/${fileName}`, bufferView);
 
-    const reader = r(new oc.StlAPI_Reader());
-    const readShape = r(new oc.TopoDS_Shell());
+    const reader = scope.register(new oc.StlAPI_Reader());
+    const readShape = scope.register(new oc.TopoDS_Shell());
 
     if (!reader.Read(readShape, fileName)) {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
     }
 
-    const upgrader = r(new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false));
+    const upgrader = scope.register(new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false));
     upgrader.Build();
-    const upgraded = r(upgrader.Shape());
+    const upgraded = scope.register(upgrader.Shape());
 
-    const solidBuilder = r(new oc.BRepBuilderAPI_MakeSolid_1());
+    const solidBuilder = scope.register(new oc.BRepBuilderAPI_MakeSolid_1());
     solidBuilder.Add(oc.TopoDS.Shell_1(upgraded));
 
     const solid = solidBuilder.Solid();
@@ -130,20 +130,20 @@ export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
  */
 export async function importIGES(blob: Blob): Promise<Result<AnyShape>> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const fileName = uniqueId();
 
   try {
     const bufferView = new Uint8Array(await blob.arrayBuffer());
     oc.FS.writeFile(`/${fileName}`, bufferView);
 
-    const reader = r(new oc.IGESControl_Reader_1());
+    const reader = scope.register(new oc.IGESControl_Reader_1());
     const status = reader.ReadFile(fileName);
     if (status !== oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
       return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file'));
     }
 
-    reader.TransferRoots(r(new oc.Message_ProgressRange_1()));
+    reader.TransferRoots(scope.register(new oc.Message_ProgressRange_1()));
     const igesShape = reader.OneShape();
 
     if (igesShape.IsNull()) {

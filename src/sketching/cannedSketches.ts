@@ -19,7 +19,7 @@ import type { Face } from '../core/shapeTypes.js';
 import { faceCenter, normalAt, outerWire } from '../topology/faceFns.js';
 import { offsetWire2D } from '../topology/curveFns.js';
 import type { Point2D } from '../2d/lib/index.js';
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import { roundedRectangleBlueprint } from '../2d/blueprints/cannedBlueprints.js';
 
 interface PlaneConfig {
@@ -268,7 +268,7 @@ export const sketchParametricFunction = (
   { pointsCount = 400, start = 0, stop = 1 } = {},
   approximationConfig: BSplineApproximationOptions = {}
 ): Sketch => {
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
   const plane =
     planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? { ...planeConfig.plane }
@@ -281,14 +281,13 @@ export const sketchParametricFunction = (
   });
 
   const wire = unwrap(
-    assembleWire([r(unwrap(makeBSplineApproximation(points, approximationConfig)))])
+    assembleWire([scope.register(unwrap(makeBSplineApproximation(points, approximationConfig)))])
   );
 
   const sketch = new Sketch(wire, {
     defaultOrigin: [...plane.origin],
     defaultDirection: [...plane.zDir],
   });
-  gc();
   return sketch;
 };
 

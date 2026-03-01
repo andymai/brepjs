@@ -6,7 +6,7 @@ import type { Vec3 } from '../core/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
 import { toOcPnt } from '../core/occtBoundary.js';
-import { gcWithScope } from '../core/disposal.js';
+import { registerForCleanup } from '../core/disposal.js';
 import type { Predicate } from './finderCore.js';
 
 /**
@@ -23,21 +23,28 @@ export function distanceFromPointFilter<T extends AnyShape>(
   // Hoist WASM object creation outside the predicate — these are reused
   // for every element tested, avoiding N alloc/delete cycles.
   const oc = getKernel().oc;
-  const r = gcWithScope();
 
-  const pnt = r(toOcPnt(point));
-  const vtxMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
+  const pnt = toOcPnt(point);
+  const vtxMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
   const vtx = vtxMaker.Vertex();
 
-  const distTool = r(new oc.BRepExtrema_DistShapeShape_1());
+  const distTool = new oc.BRepExtrema_DistShapeShape_1();
   distTool.LoadS1(vtx);
 
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = new oc.Message_ProgressRange_1();
 
-  return (element: T): boolean => {
+  // Objects must outlive the predicate: tie cleanup to predicate's GC lifetime.
+  const predicate = (element: T): boolean => {
     distTool.LoadS2(element.wrapped);
     distTool.Perform(progress);
     const d = distTool.Value();
     return Math.abs(d - distance) < tolerance;
   };
+
+  registerForCleanup(predicate, pnt);
+  registerForCleanup(predicate, vtxMaker);
+  registerForCleanup(predicate, distTool);
+  registerForCleanup(predicate, progress);
+
+  return predicate;
 }

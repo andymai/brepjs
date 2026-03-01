@@ -4,7 +4,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import type { Vec3 } from '../core/types.js';
 import type { AnyShape, Face, Shape3D } from '../core/shapeTypes.js';
 import { uvBounds } from '../topology/faceFns.js';
@@ -67,11 +67,11 @@ export function measureVolumeProps(shape: Shape3D): VolumeProps {
   if (cached) return cached;
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const props = r(new oc.GProp_GProps_1());
+  const props = scope.register(new oc.GProp_GProps_1());
   oc.BRepGProp.VolumeProperties_1(shape.wrapped, props, false, false, false);
-  const pnt = r(props.CentreOfMass());
+  const pnt = scope.register(props.CentreOfMass());
   const m = props.Mass();
   const result: VolumeProps = {
     mass: m,
@@ -95,11 +95,11 @@ export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
   if (cached) return cached;
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const props = r(new oc.GProp_GProps_1());
+  const props = scope.register(new oc.GProp_GProps_1());
   oc.BRepGProp.SurfaceProperties_1(shape.wrapped, props, false, false);
-  const pnt = r(props.CentreOfMass());
+  const pnt = scope.register(props.CentreOfMass());
   const m = props.Mass();
   const result: SurfaceProps = {
     mass: m,
@@ -126,11 +126,11 @@ export function measureLinearProps(shape: AnyShape): LinearProps {
   if (cached) return cached;
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const props = r(new oc.GProp_GProps_1());
+  const props = scope.register(new oc.GProp_GProps_1());
   oc.BRepGProp.LinearProperties(shape.wrapped, props, false, false);
-  const pnt = r(props.CentreOfMass());
+  const pnt = scope.register(props.CentreOfMass());
   const m = props.Mass();
   const result: LinearProps = {
     mass: m,

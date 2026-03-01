@@ -1,6 +1,6 @@
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope, localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import type { Plane } from '../core/planeTypes.js';
 import { makeOcAx2 } from '../core/occtBoundary.js';
 import type { Face, Edge } from '../core/shapeTypes.js';
@@ -26,32 +26,30 @@ export const curvesBoundingBox = (curves: Curve2D[]): BoundingBox2d => {
 
 /** Convert 2D curves to 3D edges by projecting them onto a plane. */
 export function curvesAsEdgesOnPlane(curves: Curve2D[], plane: Plane): Edge[] {
-  const [r, gc] = localGC();
-  const ax = r(makeOcAx2(plane.origin, plane.zDir, plane.xDir));
+  using scope = new DisposalScope();
+  const ax = scope.register(makeOcAx2(plane.origin, plane.zDir, plane.xDir));
 
   const oc = getKernel().oc;
 
   const edges = curves.map((curve: Curve2D) => {
-    const curve3d = r(oc.GeomLib.To3d(ax, curve.wrapped));
-    const edgeBuilder = r(new oc.BRepBuilderAPI_MakeEdge_24(curve3d));
+    const curve3d = scope.register(oc.GeomLib.To3d(ax, curve.wrapped));
+    const edgeBuilder = scope.register(new oc.BRepBuilderAPI_MakeEdge_24(curve3d));
     return createEdge(edgeBuilder.Edge());
   });
 
-  gc();
   return edges;
 }
 
 /** Convert 2D curves to 3D edges by mapping them onto a parametric surface. */
 export const curvesAsEdgesOnSurface = (curves: Curve2D[], geomSurf: OcType): Edge[] => {
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
   const oc = getKernel().oc;
 
   const modifiedCurves = curves.map((curve: Curve2D) => {
-    const edgeBuilder = r(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf));
+    const edgeBuilder = scope.register(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf));
     return createEdge(edgeBuilder.Edge());
   });
 
-  gc();
   return modifiedCurves;
 };
 
@@ -92,13 +90,12 @@ export const stretchTransform2d = (
 /** Create a 2D translation transformation. */
 export const translationTransform2d = (translation: Point2D): Transformation2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const rotation = new oc.gp_Trsf2d_1();
-  rotation.SetTranslation_1(r(vec(translation)));
+  rotation.SetTranslation_1(scope.register(vec(translation)));
 
   const transform = new oc.gp_GTrsf2d_2(rotation);
-  gc();
   return transform;
 };
 
@@ -113,30 +110,28 @@ export const mirrorTransform2d = (
   mode = 'center'
 ): Transformation2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const rotation = new oc.gp_Trsf2d_1();
   if (mode === 'center') {
-    rotation.SetMirror_1(r(pnt(centerOrDirection)));
+    rotation.SetMirror_1(scope.register(pnt(centerOrDirection)));
   } else {
-    rotation.SetMirror_2(r(axis2d(origin, centerOrDirection)));
+    rotation.SetMirror_2(scope.register(axis2d(origin, centerOrDirection)));
   }
 
   const transform = new oc.gp_GTrsf2d_2(rotation);
-  gc();
   return transform;
 };
 
 /** Create a 2D rotation transformation around a center point (angle in radians). */
 export const rotateTransform2d = (angle: number, center: Point2D = [0, 0]): Transformation2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const rotation = new oc.gp_Trsf2d_1();
-  rotation.SetRotation(r(pnt(center)), angle);
+  rotation.SetRotation(scope.register(pnt(center)), angle);
 
   const transform = new oc.gp_GTrsf2d_2(rotation);
-  gc();
   return transform;
 };
 
@@ -146,13 +141,12 @@ export const scaleTransform2d = (
   center: Point2D = [0, 0]
 ): Transformation2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const scaling = new oc.gp_Trsf2d_1();
-  scaling.SetScale(r(pnt(center)), scaleFactor);
+  scaling.SetScale(scope.register(pnt(center)), scaleFactor);
 
   const transform = new oc.gp_GTrsf2d_2(scaling);
-  gc();
   return transform;
 };
 
@@ -170,17 +164,17 @@ export function curvesAsEdgesOnFace(
   face: Face,
   scale: ScaleMode = 'original'
 ): Result<Edge[]> {
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   const oc = getKernel().oc;
-  let geomSurf = r(oc.BRep_Tool.Surface_2(face.wrapped));
+  let geomSurf = scope.register(oc.BRep_Tool.Surface_2(face.wrapped));
 
   const bounds = uvBounds(face);
 
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- OcType is any but null is a valid sentinel
   let transformation: OcType | null = null;
-  const uAxis = r(axis2d([0, 0], [0, 1]));
-  const _vAxis = r(axis2d([0, 0], [1, 0]));
+  const uAxis = scope.register(axis2d([0, 0], [0, 1]));
+  const _vAxis = scope.register(axis2d([0, 0], [1, 0]));
 
   if (scale === 'original' && faceGeomType(face) !== 'PLANE') {
     if (faceGeomType(face) !== 'CYLINDRE')
@@ -191,7 +185,7 @@ export function curvesAsEdgesOnFace(
         )
       );
 
-    const cylinder = r(geomSurf.get().Cylinder());
+    const cylinder = scope.register(geomSurf.get().Cylinder());
     if (!cylinder.Direct()) {
       geomSurf = geomSurf.get().UReversed();
     }
@@ -200,22 +194,22 @@ export function curvesAsEdgesOnFace(
   }
 
   if (scale === 'bounds') {
-    transformation = r(new oc.gp_GTrsf2d_1());
+    transformation = scope.register(new oc.gp_GTrsf2d_1());
     transformation.SetAffinity(uAxis, bounds.uMax - bounds.uMin);
 
     if (bounds.uMin !== 0) {
-      const trans = r(new oc.gp_GTrsf2d_1());
+      const trans = scope.register(new oc.gp_GTrsf2d_1());
       trans.SetTranslationPart(new oc.gp_XY_2(0, -bounds.uMin));
       transformation.Multiply(trans);
     }
 
-    const vTransformation = r(new oc.gp_GTrsf2d_1());
+    const vTransformation = scope.register(new oc.gp_GTrsf2d_1());
     vTransformation.SetAffinity(_vAxis, bounds.vMax - bounds.vMin);
     transformation.Multiply(vTransformation);
 
     if (bounds.vMin !== 0) {
-      const trans = r(new oc.gp_GTrsf2d_1());
-      trans.SetTranslationPart(r(new oc.gp_XY_2(0, -bounds.vMin)));
+      const trans = scope.register(new oc.gp_GTrsf2d_1());
+      trans.SetTranslationPart(scope.register(new oc.gp_XY_2(0, -bounds.vMin)));
       transformation.Multiply(trans);
     }
   }
@@ -223,16 +217,15 @@ export function curvesAsEdgesOnFace(
   const modifiedCurves = transformCurves(curves, transformation);
   const edges = curvesAsEdgesOnSurface(modifiedCurves, geomSurf);
 
-  gc();
   return ok(edges);
 }
 
 /** Extract the 2D parametric curve of an edge on a face's surface. */
 export function edgeToCurve(e: Edge, face: Face): Curve2D {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const adaptor = r(new oc.BRepAdaptor_Curve2d_2(e.wrapped, face.wrapped));
+  const adaptor = scope.register(new oc.BRepAdaptor_Curve2d_2(e.wrapped, face.wrapped));
 
   const trimmed = new oc.Geom2d_TrimmedCurve(
     adaptor.Curve(),

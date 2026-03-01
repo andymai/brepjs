@@ -7,7 +7,7 @@ import { getKernel } from '../../kernel/index.js';
 import round2 from '../../utils/round2.js';
 import round5 from '../../utils/round5.js';
 import type { Point2D } from './definitions.js';
-import { gcWithScope } from '../../core/disposal.js';
+import { DisposalScope } from '../../core/disposal.js';
 
 const fromPnt = (pnt: OcType) => `${round2(pnt.X())} ${round2(pnt.Y())}`;
 
@@ -24,7 +24,7 @@ const fromPnt = (pnt: OcType) => `${round2(pnt.X())} ${round2(pnt.Y())}`;
  */
 export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): string => {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const curveType = unwrap(findCurveType(adaptor.GetType()));
 
   const [endX, endY] = lastPoint;
@@ -33,7 +33,7 @@ export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): str
     return `L ${endpoint}`;
   }
   if (curveType === 'BEZIER_CURVE') {
-    const bezierHandle = r(adaptor.Bezier());
+    const bezierHandle = scope.register(adaptor.Bezier());
     const curve = bezierHandle.get();
     const deg = curve.Degree();
 
@@ -42,20 +42,20 @@ export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): str
     }
 
     if (deg === 2) {
-      const pole2 = r(curve.Pole(2));
+      const pole2 = scope.register(curve.Pole(2));
       return `Q ${fromPnt(pole2)} ${endpoint}`;
     }
 
     if (deg === 3) {
-      const pole2 = r(curve.Pole(2));
-      const pole3 = r(curve.Pole(3));
+      const pole2 = scope.register(curve.Pole(2));
+      const pole3 = scope.register(curve.Pole(3));
       const p1 = fromPnt(pole2);
       const p2 = fromPnt(pole3);
       return `C ${p1} ${p2} ${endpoint}`;
     }
   }
   if (curveType === 'CIRCLE') {
-    const curve = r(adaptor.Circle());
+    const curve = scope.register(adaptor.Circle());
     const radius = curve.Radius();
 
     const p1 = adaptor.FirstParameter();
@@ -71,7 +71,7 @@ export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): str
   }
 
   if (curveType === 'ELLIPSE') {
-    const curve = r(adaptor.Ellipse());
+    const curve = scope.register(adaptor.Ellipse());
     const rx = curve.MajorRadius();
     const ry = curve.MinorRadius();
 
@@ -82,9 +82,9 @@ export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): str
 
     const end = paramAngle !== 360 ? endpoint : `${round5(endX)} ${round5(endY + 0.0001)}`;
 
-    const dir0 = r(new oc.gp_Dir2d_1());
-    const xAxis = r(curve.XAxis());
-    const xDir = r(xAxis.Direction());
+    const dir0 = scope.register(new oc.gp_Dir2d_1());
+    const xAxis = scope.register(curve.XAxis());
+    const xDir = scope.register(xAxis.Direction());
     const angle = 180 - xDir.Angle(dir0) * RAD2DEG;
 
     return `A ${round5(rx)} ${round5(ry)} ${round5(angle)} ${

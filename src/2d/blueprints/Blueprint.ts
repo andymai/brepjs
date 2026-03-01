@@ -34,7 +34,7 @@ import { DEG2RAD } from '../../core/constants.js';
 import type { DrawingInterface, SketchData } from './lib.js';
 import round5 from '../../utils/round5.js';
 import { asSVG, viewbox } from './svg.js';
-import { gcWithScope } from '../../core/memory.js';
+import { DisposalScope } from '../../core/memory.js';
 import type { SingleFace } from '../../query/helpers.js';
 import { getSingleFace } from '../../query/helpers.js';
 
@@ -311,12 +311,12 @@ export default class Blueprint implements DrawingInterface {
     } = {}
   ) {
     const oc = getKernel().oc;
-    const gc = gcWithScope();
+    using scope = new DisposalScope();
 
     const foundFace = unwrap(getSingleFace(face, shape));
     const hole = this.subFace(foundFace, origin);
 
-    const maker = gc(
+    const maker = scope.register(
       new oc.BRepFeat_MakeDPrism_1(
         shape.wrapped,
         hole.wrapped,
@@ -336,13 +336,13 @@ export default class Blueprint implements DrawingInterface {
 
   /** Convert the blueprint to an SVG path `d` attribute string. */
   toSVGPathD() {
-    const r = gcWithScope();
+    using scope = new DisposalScope();
     const bp = this.clone().mirror([1, 0], [0, 0], 'plane');
 
     const compatibleCurves = approximateAsSvgCompatibleCurve(bp.curves);
 
     const path = compatibleCurves.flatMap((c) => {
-      return adaptedCurveToPathElem(r(c.adaptor()), c.lastPoint);
+      return adaptedCurveToPathElem(scope.register(c.adaptor()), c.lastPoint);
     });
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

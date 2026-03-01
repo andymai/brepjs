@@ -1,6 +1,6 @@
 import type { Plane, PlaneName, PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane, planeToWorld, planeToLocal } from '../core/planeOps.js';
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import { DEG2RAD, RAD2DEG } from '../core/constants.js';
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
@@ -405,9 +405,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous edge. */
   smoothSplineTo(end: Point2D, config?: SplineOptions): this {
-    const [r, gc] = localGC();
-    try {
-      const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineOptions(config);
+    using scope = new DisposalScope();
+    const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineOptions(config);
 
       const endPoint = planeToWorld(this.plane, end);
       const previousEdge = this.pendingEdges.length
@@ -424,7 +423,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
         startPoleDirection = planeToWorld(this.plane, [1, 0]);
       } else if (getCurveType(previousEdge) === 'BEZIER_CURVE') {
         const oc = getKernel().oc;
-        const adaptor = r(new oc.BRepAdaptor_Curve_2(previousEdge.wrapped));
+        const adaptor = scope.register(new oc.BRepAdaptor_Curve_2(previousEdge.wrapped));
         const rawCurve = (
           adaptor as CurveLike & {
             Bezier: () => { get: () => OcType };
@@ -459,11 +458,8 @@ export default class Sketcher implements GenericSketcher<Sketch> {
         unwrap(makeBezierCurve([this.pointer, startControl, endControl, endPoint]))
       );
 
-      this._updatePointer(endPoint);
-      return this;
-    } finally {
-      gc();
-    }
+    this._updatePointer(endPoint);
+    return this;
   }
 
   /** Draw a smooth cubic Bezier spline to a relative end point, blending tangent with the previous edge. */

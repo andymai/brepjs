@@ -1,4 +1,4 @@
-import { gcWithScope, registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
+import { DisposalScope, registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
 import { getKernel } from '../../kernel/index.js';
 import type { OcType } from '../../kernel/types.js';
 
@@ -101,8 +101,8 @@ export class BoundingBox2d {
 
   /** Test whether the given point lies inside (or on the boundary of) this box. */
   containsPoint(other: Point2D): boolean {
-    const r = gcWithScope();
-    const point = r(pnt(other));
+    using scope = new DisposalScope();
+    const point = scope.register(pnt(other));
     return !this.wrapped.IsOut_1(point);
   }
 }

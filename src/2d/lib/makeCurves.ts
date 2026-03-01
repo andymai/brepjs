@@ -1,6 +1,6 @@
 import type { OcType } from '../../kernel/types.js';
 import { getKernel } from '../../kernel/index.js';
-import { gcWithScope, localGC } from '../../core/memory.js';
+import { DisposalScope } from '../../core/memory.js';
 import { type Result, ok, err } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 
@@ -29,16 +29,15 @@ import {
  */
 export const make2dSegmentCurve = (startPoint: Point2D, endPoint: Point2D): Curve2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const segment = r(new oc.GCE2d_MakeSegment_1(r(pnt(startPoint)), r(pnt(endPoint)))).Value();
+  const segment = scope.register(new oc.GCE2d_MakeSegment_1(scope.register(pnt(startPoint)), scope.register(pnt(endPoint)))).Value();
   const curve = new Curve2D(segment);
 
   if (!samePoint(curve.firstPoint, startPoint)) {
     curve.reverse();
   }
 
-  gc();
   return curve;
 };
 
@@ -59,12 +58,11 @@ export const make2dThreePointArc = (
   endPoint: Point2D
 ): Curve2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const segment = r(
-    new oc.GCE2d_MakeArcOfCircle_4(r(pnt(startPoint)), r(pnt(midPoint)), r(pnt(endPoint)))
+  const segment = scope.register(
+    new oc.GCE2d_MakeArcOfCircle_4(scope.register(pnt(startPoint)), scope.register(pnt(midPoint)), scope.register(pnt(endPoint)))
   ).Value();
-  gc();
 
   const curve = new Curve2D(segment);
   if (!samePoint(curve.firstPoint, startPoint)) {
@@ -90,12 +88,11 @@ export const make2dTangentArc = (
   endPoint: Point2D
 ): Curve2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const segment = r(
-    new oc.GCE2d_MakeArcOfCircle_5(r(pnt(startPoint)), r(vec(tangent)), r(pnt(endPoint)))
+  const segment = scope.register(
+    new oc.GCE2d_MakeArcOfCircle_5(scope.register(pnt(startPoint)), scope.register(vec(tangent)), scope.register(pnt(endPoint)))
   ).Value();
-  gc();
 
   const curve = new Curve2D(segment);
   if (!samePoint(curve.firstPoint, startPoint)) {
@@ -116,10 +113,9 @@ export const make2dTangentArc = (
  */
 export const make2dCircle = (radius: number, center: Point2D = [0, 0]): Curve2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const segment = r(new oc.GCE2d_MakeCircle_7(r(pnt(center)), radius, true)).Value();
-  gc();
+  const segment = scope.register(new oc.GCE2d_MakeCircle_7(scope.register(pnt(center)), radius, true)).Value();
 
   return new Curve2D(segment as unknown as OcType);
 };
@@ -145,11 +141,10 @@ export const make2dEllipse = (
   direct = true
 ): Curve2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
-  const ellipse = r(new oc.gp_Elips2d_2(r(axis2d(center, xDir)), majorRadius, minorRadius, direct));
+  using scope = new DisposalScope();
+  const ellipse = scope.register(new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, direct));
 
-  const segment = r(new oc.GCE2d_MakeEllipse_1(ellipse)).Value();
-  gc();
+  const segment = scope.register(new oc.GCE2d_MakeEllipse_1(ellipse)).Value();
 
   return new Curve2D(segment as unknown as OcType);
 };
@@ -179,11 +174,10 @@ export const make2dEllipseArc = (
   direct = true
 ): Curve2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
-  const ellipse = r(new oc.gp_Elips2d_2(r(axis2d(center, xDir)), majorRadius, minorRadius, true));
+  using scope = new DisposalScope();
+  const ellipse = scope.register(new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, true));
 
-  const segment = r(new oc.GCE2d_MakeArcOfEllipse_1(ellipse, startAngle, endAngle, direct)).Value();
-  gc();
+  const segment = scope.register(new oc.GCE2d_MakeArcOfEllipse_1(ellipse, startAngle, endAngle, direct)).Value();
 
   return new Curve2D(segment);
 };
@@ -205,19 +199,18 @@ export const make2dBezierCurve = (
   endPoint: Point2D
 ): Curve2D => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const arrayOfPoints = r(new oc.TColgp_Array1OfPnt2d_2(1, controls.length + 2));
-  arrayOfPoints.SetValue(1, r(pnt(startPoint)));
+  const arrayOfPoints = scope.register(new oc.TColgp_Array1OfPnt2d_2(1, controls.length + 2));
+  arrayOfPoints.SetValue(1, scope.register(pnt(startPoint)));
 
   controls.forEach((p, i) => {
-    arrayOfPoints.SetValue(i + 2, r(pnt(p)));
+    arrayOfPoints.SetValue(i + 2, scope.register(pnt(p)));
   });
 
-  arrayOfPoints.SetValue(controls.length + 2, r(pnt(endPoint)));
+  arrayOfPoints.SetValue(controls.length + 2, scope.register(pnt(endPoint)));
 
   const bezCurve = new oc.Geom2d_BezierCurve_1(arrayOfPoints);
-  gc();
 
   return new Curve2D(new oc.Handle_Geom2d_Curve_2(bezCurve));
 };
@@ -260,19 +253,19 @@ export function make2dInerpolatedBSplineCurve(
     degMin?: number;
   } = {}
 ): Result<Curve2D> {
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const oc = getKernel().oc;
 
-  const pnts = r(new oc.TColgp_Array1OfPnt2d_2(1, points.length));
+  const pnts = scope.register(new oc.TColgp_Array1OfPnt2d_2(1, points.length));
 
   points.forEach((point, index) => {
-    pnts.SetValue(index + 1, r(pnt(point)));
+    pnts.SetValue(index + 1, scope.register(pnt(point)));
   });
 
   let splineBuilder: OcType;
 
   if (smoothing) {
-    splineBuilder = r(
+    splineBuilder = scope.register(
       new oc.Geom2dAPI_PointsToBSpline_6(
         pnts,
         smoothing[0],
@@ -285,7 +278,7 @@ export function make2dInerpolatedBSplineCurve(
       )
     );
   } else {
-    splineBuilder = r(
+    splineBuilder = scope.register(
       new oc.Geom2dAPI_PointsToBSpline_2(
         pnts,
         degMin,

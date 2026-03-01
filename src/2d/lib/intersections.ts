@@ -1,6 +1,6 @@
 import type { OcType } from '../../kernel/types.js';
 import { getKernel } from '../../kernel/index.js';
-import { gcWithScope } from '../../core/disposal.js';
+import { DisposalScope } from '../../core/disposal.js';
 import { Curve2D } from './Curve2D.js';
 import type { Point2D } from './definitions.js';
 import { samePoint } from './vectorOperations.js';
@@ -22,11 +22,11 @@ function* commonSegmentsIteration(intersector: OcType): Generator<Curve2D> {
   if (!nSegments) return;
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   for (let i = 1; i <= nSegments; i++) {
     const h1 = new oc.Handle_Geom2d_Curve_1();
-    const h2 = r(new oc.Handle_Geom2d_Curve_1());
+    const h2 = scope.register(new oc.Handle_Geom2d_Curve_1());
     try {
       // Known OCCT bug: NbSegments() may report segments that Segment() cannot fetch.
       // This occurs with certain curve intersection configurations. We skip unfetchable
@@ -74,9 +74,9 @@ export const intersectCurves = (
     return ok({ intersections: [], commonSegments: [], commonSegmentsPoints: [] });
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const intersector = r(new oc.Geom2dAPI_InterCurveCurve_1());
+  const intersector = scope.register(new oc.Geom2dAPI_InterCurveCurve_1());
 
   let intersections;
   let commonSegments;
@@ -111,9 +111,9 @@ export const intersectCurves = (
  */
 export const selfIntersections = (curve: Curve2D, precision = 1e-9): Result<Point2D[]> => {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const intersector = r(new oc.Geom2dAPI_InterCurveCurve_1());
+  const intersector = scope.register(new oc.Geom2dAPI_InterCurveCurve_1());
 
   let intersections;
 

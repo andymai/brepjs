@@ -1,6 +1,6 @@
 import Sketch from './Sketch.js';
 import { DEG2RAD, RAD2DEG } from '../core/constants.js';
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import { getKernel } from '../kernel/index.js';
 import { assembleWire } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';
@@ -565,29 +565,28 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
    * @ignore
    */
   protected buildWire(): Wire {
-    const [r, gc] = localGC();
+    using scope = new DisposalScope();
     const oc = getKernel().oc;
 
-    const geomSurf = r(this._adaptSurface());
+    const geomSurf = scope.register(this._adaptSurface());
 
     const edges = this.pendingCurves.map((curve) => {
-      return r(createEdge(r(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf)).Edge()));
+      return scope.register(createEdge(scope.register(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf)).Edge()));
     });
     const wire = unwrap(assembleWire(edges));
     oc.BRepLib.BuildCurves3d_2(wire.wrapped);
 
-    gc();
     return wire;
   }
 
   /** Finish drawing and return the resulting {@link Sketch} (does not close the path). */
   done(): Sketch {
-    const [r, gc] = localGC();
+    using scope = new DisposalScope();
 
     const wire = this.buildWire();
     const sketch = new Sketch(wire);
     if (curveIsClosed(wire)) {
-      const face = r(sketch.clone().face());
+      const face = scope.register(sketch.clone().face());
       const origin = pointOnSurface(face, 0.5, 0.5);
       const normal = normalAt(face);
       const direction = vecScale(normal, -1);
@@ -600,7 +599,6 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
       sketch.defaultDirection = [normal[0], normal[1], normal[2]];
     }
     sketch.baseFace = this.face;
-    gc();
     return sketch;
   }
 

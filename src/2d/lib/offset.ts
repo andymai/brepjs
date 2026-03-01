@@ -1,5 +1,5 @@
 import { getKernel } from '../../kernel/index.js';
-import { gcWithScope } from '../../core/memory.js';
+import { DisposalScope } from '../../core/memory.js';
 import { approximateAsBSpline } from './approximations.js';
 import { Curve2D } from './Curve2D.js';
 import type { Point2D } from './definitions.js';
@@ -47,11 +47,11 @@ export const make2dOffset = (
   curve: Curve2D,
   offset: number
 ): Curve2D | { collapsed: true; firstPoint: Point2D; lastPoint: Point2D } => {
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const curveType = curve.geomType;
 
   if (curveType === 'CIRCLE') {
-    const circle = r(r(curve.adaptor()).Circle());
+    const circle = scope.register(scope.register(curve.adaptor()).Circle());
     const radius = circle.Radius();
 
     const orientationCorrection = circle.IsDirect() ? 1 : -1;
@@ -60,7 +60,7 @@ export const make2dOffset = (
     const newRadius = Number(radius) + orientedOffset;
 
     if (newRadius < 1e-10) {
-      const centerPos = r(circle.Location());
+      const centerPos = scope.register(circle.Location());
       const center: Point2D = [centerPos.X(), centerPos.Y()];
 
       // We replace collapsed arcs by a segment of line

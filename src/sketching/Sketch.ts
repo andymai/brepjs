@@ -1,6 +1,5 @@
 import type { Plane } from '../core/planeTypes.js';
 import { createPlane } from '../core/planeOps.js';
-import { localGC } from '../core/memory.js';
 import { makeFace, makeNewFaceWithinFace } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';
 import { downcast } from '../topology/cast.js';
@@ -167,7 +166,6 @@ export default class Sketch implements SketchInterface {
       origin?: PointInput;
     } = {}
   ): Shape3D {
-    const gc = localGC()[1];
 
     const direction: Vec3 = extrusionDirection ? toVec3(extrusionDirection) : this.defaultDirection;
     const extrusionVec = vecScale(vecNormalize(direction), extrusionDistance);
@@ -178,7 +176,6 @@ export default class Sketch implements SketchInterface {
       const solid = unwrap(
         complexExtrude(this.wire, [...originVec], [...extrusionVec], extrusionProfile)
       );
-      gc();
       this.delete();
       return solid;
     }
@@ -187,7 +184,6 @@ export default class Sketch implements SketchInterface {
       const solid = unwrap(
         twistExtrude(this.wire, twistAngle, [...originVec], [...extrusionVec], extrusionProfile)
       );
-      gc();
       this.delete();
       return solid;
     }
@@ -195,7 +191,6 @@ export default class Sketch implements SketchInterface {
     const face = unwrap(makeFace(this.wire));
     const solid = basicFaceExtrusion(face, [...extrusionVec]);
 
-    gc();
     this.delete();
     return solid;
   }

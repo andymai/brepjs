@@ -1,7 +1,7 @@
 import { makeCompound, addHolesInFace, makeSolid, makeFace } from '../topology/shapeHelpers.js';
 import type Sketch from './Sketch.js';
 
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { vecNormalize, vecScale } from '../core/vecOps.js';
@@ -24,9 +24,9 @@ import { getKernel } from '../kernel/index.js';
 
 const guessFaceFromWires = (wires: Wire[]): Face => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const faceBuilder = r(
+  const faceBuilder = scope.register(
     new oc.BRepOffsetAPI_MakeFilling(3, 15, 2, false, 1e-5, 1e-4, 1e-2, 0.1, 8, 9)
   );
 
@@ -36,10 +36,9 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
     });
   });
 
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = scope.register(new oc.Message_ProgressRange_1());
   faceBuilder.Build(progress);
   const newFace = unwrap(cast(faceBuilder.Shape()));
-  gc();
 
   if (!isFace(newFace)) {
     bug('guessFaceFromWires', 'Failed to create a face');
@@ -49,11 +48,10 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
 
 const fixWire = (wire: Wire, baseFace: Face): Wire => {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const wireFixer = r(new oc.ShapeFix_Wire_2(wire.wrapped, baseFace.wrapped, 1e-9));
+  const wireFixer = scope.register(new oc.ShapeFix_Wire_2(wire.wrapped, baseFace.wrapped, 1e-9));
   wireFixer.FixEdgeCurves();
-  gc();
   return wire;
 };
 
@@ -171,7 +169,6 @@ export default class CompoundSketch implements SketchInterface {
       origin?: PointInput;
     } = {}
   ): Shape3D {
-    const [, gc] = localGC();
     const rawVec: Vec3 = extrusionDirection
       ? toVec3(extrusionDirection)
       : this.outerSketch.defaultDirection;
@@ -204,7 +201,6 @@ export default class CompoundSketch implements SketchInterface {
       result = basicFaceExtrusion(this.face(), extrusionVec);
     }
 
-    gc();
     return result;
   }
 

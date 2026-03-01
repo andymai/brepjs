@@ -1,6 +1,6 @@
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import type { ApproximationOptions } from '../2d/lib/index.js';
 import {
   BoundingBox2d,
@@ -546,14 +546,13 @@ export const drawParametricFunction = (
 };
 
 const edgesToDrawing = (edges: Edge[]): Drawing => {
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
   const planeSketch = drawRectangle(1000, 1000).sketchOnPlane() as SketchInterface & {
     wire: Wire;
   };
-  const planeFace = r(unwrap(makeFace(planeSketch.wire)));
+  const planeFace = scope.register(unwrap(makeFace(planeSketch.wire)));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
-  gc();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));
   if (stitchedCurves.length === 0) return new Drawing();
@@ -594,11 +593,10 @@ export function drawProjection(
  * @category Drawing
  */
 export function drawFaceOutline(face: Face): Drawing {
-  const [r, gc] = localGC();
-  const clonedFace = r(createFace(unwrap(downcast(face.wrapped))));
-  const faceOuterWire = r(outerWire(clonedFace));
+  using scope = new DisposalScope();
+  const clonedFace = scope.register(createFace(unwrap(downcast(face.wrapped))));
+  const faceOuterWire = scope.register(outerWire(clonedFace));
   const curves = getEdges(faceOuterWire).map((e) => edgeToCurve(e, face));
-  gc();
 
   const stitchedCurves = stitchCurves(curves).map((s) => new Blueprint(s));
   if (stitchedCurves.length === 0) return new Drawing();

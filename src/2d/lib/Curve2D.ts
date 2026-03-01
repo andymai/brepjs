@@ -7,8 +7,7 @@ import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';
 import { getKernel } from '../../kernel/index.js';
 import {
-  gcWithScope,
-  localGC,
+  DisposalScope,
   registerForCleanup,
   unregisterFromCleanup,
 } from '../../core/disposal.js';
@@ -162,9 +161,9 @@ export class Curve2D {
 
   private distanceFromPoint(point: Point2D): number {
     const oc = getKernel().oc;
-    const r = gcWithScope();
+    using scope = new DisposalScope();
 
-    const projector = r(new oc.Geom2dAPI_ProjectPointOnCurve_2(r(pnt(point)), this.wrapped));
+    const projector = scope.register(new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped));
 
     let curveToPoint;
 
@@ -183,10 +182,10 @@ export class Curve2D {
 
   private distanceFromCurve(curve: Curve2D): number {
     const oc = getKernel().oc;
-    const r = gcWithScope();
+    using scope = new DisposalScope();
 
     let curveDistance;
-    const projector = r(
+    const projector = scope.register(
       new oc.Geom2dAPI_ExtremaCurveCurve(
         this.wrapped,
         curve.wrapped,
@@ -234,12 +233,12 @@ export class Curve2D {
    */
   parameter(point: Point2D, precision = 1e-9): Result<number> {
     const oc = getKernel().oc;
-    const r = gcWithScope();
+    using scope = new DisposalScope();
 
     let lowerDistance;
     let lowerDistanceParameter;
     try {
-      const projector = r(new oc.Geom2dAPI_ProjectPointOnCurve_2(r(pnt(point)), this.wrapped));
+      const projector = scope.register(new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped));
       lowerDistance = projector.LowerDistance();
       lowerDistanceParameter = projector.LowerDistanceParameter();
     } catch {
@@ -268,7 +267,7 @@ export class Curve2D {
    */
   tangentAt(index: number | Point2D): Point2D {
     const oc = getKernel().oc;
-    const [r, gc] = localGC();
+    using scope = new DisposalScope();
 
     let param;
 
@@ -279,13 +278,12 @@ export class Curve2D {
       param = paramLength * index + Number(this.innerCurve.FirstParameter());
     }
 
-    const point = r(new oc.gp_Pnt2d_1());
-    const dir = r(new oc.gp_Vec2d_1());
+    const point = scope.register(new oc.gp_Pnt2d_1());
+    const dir = scope.register(new oc.gp_Vec2d_1());
 
     this.innerCurve.D1(param, point, dir);
 
     const tgtVec = [dir.X(), dir.Y()] as Point2D;
-    gc();
 
     return tgtVec;
   }
@@ -297,7 +295,7 @@ export class Curve2D {
    */
   splitAt(points: Point2D[] | number[], precision = 1e-9): Curve2D[] {
     const oc = getKernel().oc;
-    const r = gcWithScope();
+    using scope = new DisposalScope();
 
     let parameters = points.map((point: Point2D | number) => {
       if (isPoint2D(point)) return unwrap(this.parameter(point, precision));
@@ -334,12 +332,12 @@ export class Curve2D {
     ]).map(([first, last]) => {
       try {
         if (this.geomType === 'BEZIER_CURVE') {
-          const curveCopy = new oc.Geom2d_BezierCurve_1(r(this.adaptor()).Bezier().get().Poles_2());
+          const curveCopy = new oc.Geom2d_BezierCurve_1(scope.register(this.adaptor()).Bezier().get().Poles_2());
           curveCopy.Segment(first, last);
           return new Curve2D(new oc.Handle_Geom2d_Curve_2(curveCopy));
         }
         if (this.geomType === 'BSPLINE_CURVE') {
-          const adapted = r(this.adaptor()).BSpline().get();
+          const adapted = scope.register(this.adaptor()).BSpline().get();
 
           const curveCopy = new oc.Geom2d_BSplineCurve_1(
             adapted.Poles_2(),

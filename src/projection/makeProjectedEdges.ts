@@ -1,6 +1,6 @@
 import { getKernel } from '../kernel/index.js';
 import type { OcType } from '../kernel/types.js';
-import { gcWithScope } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import { makeOcAx2 } from '../core/occtBoundary.js';
 import type { Edge, AnyShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
@@ -25,20 +25,20 @@ export function makeProjectedEdges(
   withHiddenLines = true
 ): { visible: Edge[]; hidden: Edge[] } {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const hiddenLineRemoval = r(new oc.HLRBRep_Algo_1());
+  const hiddenLineRemoval = scope.register(new oc.HLRBRep_Algo_1());
   hiddenLineRemoval.Add_2(shape.wrapped, 0);
 
-  const ax2 = r(makeOcAx2(camera.position, camera.direction, camera.xAxis));
-  const projector = r(new oc.HLRAlgo_Projector_2(ax2));
+  const ax2 = scope.register(makeOcAx2(camera.position, camera.direction, camera.xAxis));
+  const projector = scope.register(new oc.HLRAlgo_Projector_2(ax2));
   hiddenLineRemoval.Projector_1(projector);
 
   hiddenLineRemoval.Update();
   hiddenLineRemoval.Hide_1();
 
-  const hlrShapes = r(
-    new oc.HLRBRep_HLRToShape(r(new oc.Handle_HLRBRep_Algo_2(hiddenLineRemoval)))
+  const hlrShapes = scope.register(
+    new oc.HLRBRep_HLRToShape(scope.register(new oc.Handle_HLRBRep_Algo_2(hiddenLineRemoval)))
   );
 
   const visible = [
