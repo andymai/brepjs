@@ -59,7 +59,9 @@ export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
   const oc = getKernel().oc;
   using scope = new DisposalScope();
   const surface = scope.register(oc.BRep_Tool.Surface_2(originFace.wrapped));
-  const faceBuilder = scope.register(new oc.BRepBuilderAPI_MakeFace_21(surface, wire.wrapped, true));
+  const faceBuilder = scope.register(
+    new oc.BRepBuilderAPI_MakeFace_21(surface, wire.wrapped, true)
+  );
   const face = faceBuilder.Face();
 
   return createFace(face);

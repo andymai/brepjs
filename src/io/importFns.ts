@@ -92,7 +92,9 @@ export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
     }
 
-    const upgrader = scope.register(new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false));
+    const upgrader = scope.register(
+      new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false)
+    );
     upgrader.Build();
     const upgraded = scope.register(upgrader.Shape());
 

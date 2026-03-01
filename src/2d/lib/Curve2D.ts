@@ -6,11 +6,7 @@ import { type Result, ok, err, unwrap } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';
 import { getKernel } from '../../kernel/index.js';
-import {
-  DisposalScope,
-  registerForCleanup,
-  unregisterFromCleanup,
-} from '../../core/disposal.js';
+import { DisposalScope, registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
 import zip from '../../utils/zip.js';
 
 import { BoundingBox2d } from './BoundingBox2d.js';
@@ -163,7 +159,9 @@ export class Curve2D {
     const oc = getKernel().oc;
     using scope = new DisposalScope();
 
-    const projector = scope.register(new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped));
+    const projector = scope.register(
+      new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped)
+    );
 
     let curveToPoint;
 
@@ -238,7 +236,9 @@ export class Curve2D {
     let lowerDistance;
     let lowerDistanceParameter;
     try {
-      const projector = scope.register(new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped));
+      const projector = scope.register(
+        new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped)
+      );
       lowerDistance = projector.LowerDistance();
       lowerDistanceParameter = projector.LowerDistanceParameter();
     } catch {
@@ -332,7 +332,9 @@ export class Curve2D {
     ]).map(([first, last]) => {
       try {
         if (this.geomType === 'BEZIER_CURVE') {
-          const curveCopy = new oc.Geom2d_BezierCurve_1(scope.register(this.adaptor()).Bezier().get().Poles_2());
+          const curveCopy = new oc.Geom2d_BezierCurve_1(
+            scope.register(this.adaptor()).Bezier().get().Poles_2()
+          );
           curveCopy.Segment(first, last);
           return new Curve2D(new oc.Handle_Geom2d_Curve_2(curveCopy));
         }

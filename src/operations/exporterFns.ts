@@ -93,7 +93,10 @@ export function exportAssemblySTEP(
 
     const session = scope.register(new oc.XSControl_WorkSession());
     const writer = scope.register(
-      new oc.STEPCAFControl_Writer_2(scope.register(new oc.Handle_XSControl_WorkSession_2(session)), false)
+      new oc.STEPCAFControl_Writer_2(
+        scope.register(new oc.Handle_XSControl_WorkSession_2(session)),
+        false
+      )
     );
     configureStepWriter(writer);
 

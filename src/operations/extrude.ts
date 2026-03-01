@@ -28,7 +28,9 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid 
 
   const vec = toVec3(extrusionVec);
   const ocVec = scope.register(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
-  const solidBuilder = scope.register(new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true));
+  const solidBuilder = scope.register(
+    new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true)
+  );
   const solid = createSolid(unwrap(downcast(solidBuilder.Shape())));
   return solid;
 };
@@ -56,7 +58,9 @@ export const revolution = (
   const centerVec = toVec3(center);
   const directionVec = toVec3(direction);
   const ax = scope.register(makeOcAx1(centerVec, directionVec));
-  const revolBuilder = scope.register(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
+  const revolBuilder = scope.register(
+    new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false)
+  );
 
   const result = andThen(cast(revolBuilder.Shape()), (shape) => {
     if (!isShape3D(shape))
@@ -293,9 +297,13 @@ function twistExtrude(
   const pitch = (360.0 / angleDegrees) * extrusionLength;
   const radius = 1;
 
-  const auxiliarySpine = scope.register(makeHelix(pitch, extrusionLength, radius, centerVec, normalVec));
+  const auxiliarySpine = scope.register(
+    makeHelix(pitch, extrusionLength, radius, centerVec, normalVec)
+  );
 
-  const law = profileShape ? scope.register(unwrap(buildLawFromProfile(extrusionLength, profileShape))) : null;
+  const law = profileShape
+    ? scope.register(unwrap(buildLawFromProfile(extrusionLength, profileShape)))
+    : null;
 
   const result = shellMode
     ? genericSweep(wire, spine, { auxiliarySpine, law }, shellMode)

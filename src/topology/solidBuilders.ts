@@ -191,7 +191,9 @@ export function makeEllipsoid(aLength: number, bLength: number, cLength: number)
     ellipsoidTrsf.transform.delete();
 
     const shell = unwrap(
-      cast(scope.register(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
+      cast(
+        scope.register(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell()
+      )
     ) as Shell;
 
     return unwrap(makeSolid([shell]));
@@ -297,9 +299,14 @@ export function makeSolid(facesOrShells: Array<Face | Shell>): Result<Solid> {
   using scope = new DisposalScope();
   const oc = getKernel().oc;
   const shell = weldShapes(facesOrShells);
-  return andThen(cast(scope.register(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)), (solid) => {
-    if (!isSolid(solid))
-      return err(typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells'));
-    return ok(solid);
-  });
+  return andThen(
+    cast(scope.register(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)),
+    (solid) => {
+      if (!isSolid(solid))
+        return err(
+          typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells')
+        );
+      return ok(solid);
+    }
+  );
 }

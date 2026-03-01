@@ -571,7 +571,11 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     const geomSurf = scope.register(this._adaptSurface());
 
     const edges = this.pendingCurves.map((curve) => {
-      return scope.register(createEdge(scope.register(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf)).Edge()));
+      return scope.register(
+        createEdge(
+          scope.register(new oc.BRepBuilderAPI_MakeEdge_30(curve.wrapped, geomSurf)).Edge()
+        )
+      );
     });
     const wire = unwrap(assembleWire(edges));
     oc.BRepLib.BuildCurves3d_2(wire.wrapped);

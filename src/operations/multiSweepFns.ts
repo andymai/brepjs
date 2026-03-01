@@ -101,7 +101,9 @@ export function multiSectionSweep(
       trsf.Invert();
 
       // Apply transform to the profile wire
-      const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(section.wire.wrapped, trsf, true));
+      const transformer = scope.register(
+        new oc.BRepBuilderAPI_Transform_2(section.wire.wrapped, trsf, true)
+      );
       const transformedShape = transformer.Shape();
       const transformedWire = oc.TopoDS.Wire_1(transformedShape);
 

@@ -408,55 +408,52 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     using scope = new DisposalScope();
     const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineOptions(config);
 
-      const endPoint = planeToWorld(this.plane, end);
-      const previousEdge = this.pendingEdges.length
-        ? this.pendingEdges[this.pendingEdges.length - 1]
-        : null;
+    const endPoint = planeToWorld(this.plane, end);
+    const previousEdge = this.pendingEdges.length
+      ? this.pendingEdges[this.pendingEdges.length - 1]
+      : null;
 
-      const diff = vecSub(endPoint, this.pointer);
-      const defaultDistance = vecLength(diff) * 0.25;
+    const diff = vecSub(endPoint, this.pointer);
+    const defaultDistance = vecLength(diff) * 0.25;
 
-      let startPoleDirection: Vec3;
-      if (startTangent) {
-        startPoleDirection = planeToWorld(this.plane, startTangent);
-      } else if (!previousEdge) {
-        startPoleDirection = planeToWorld(this.plane, [1, 0]);
-      } else if (getCurveType(previousEdge) === 'BEZIER_CURVE') {
-        const oc = getKernel().oc;
-        const adaptor = scope.register(new oc.BRepAdaptor_Curve_2(previousEdge.wrapped));
-        const rawCurve = (
-          adaptor as CurveLike & {
-            Bezier: () => { get: () => OcType };
-          }
-        )
-          .Bezier()
-          .get();
-        const previousPole = toVec3(rawCurve.Pole(rawCurve.NbPoles() - 1));
+    let startPoleDirection: Vec3;
+    if (startTangent) {
+      startPoleDirection = planeToWorld(this.plane, startTangent);
+    } else if (!previousEdge) {
+      startPoleDirection = planeToWorld(this.plane, [1, 0]);
+    } else if (getCurveType(previousEdge) === 'BEZIER_CURVE') {
+      const oc = getKernel().oc;
+      const adaptor = scope.register(new oc.BRepAdaptor_Curve_2(previousEdge.wrapped));
+      const rawCurve = (
+        adaptor as CurveLike & {
+          Bezier: () => { get: () => OcType };
+        }
+      )
+        .Bezier()
+        .get();
+      const previousPole = toVec3(rawCurve.Pole(rawCurve.NbPoles() - 1));
 
-        startPoleDirection = vecSub(this.pointer, previousPole);
-      } else {
-        startPoleDirection = curveTangentAt(previousEdge, 1);
-      }
+      startPoleDirection = vecSub(this.pointer, previousPole);
+    } else {
+      startPoleDirection = curveTangentAt(previousEdge, 1);
+    }
 
-      const poleDistance = vecScale(
-        vecNormalize(startPoleDirection),
-        startFactor * defaultDistance
-      );
-      const startControl = vecAdd(this.pointer, poleDistance);
+    const poleDistance = vecScale(vecNormalize(startPoleDirection), startFactor * defaultDistance);
+    const startControl = vecAdd(this.pointer, poleDistance);
 
-      let endPoleDirection: Vec3;
-      if (endTangent === 'symmetric') {
-        endPoleDirection = vecScale(startPoleDirection, -1);
-      } else {
-        endPoleDirection = planeToWorld(this.plane, endTangent);
-      }
+    let endPoleDirection: Vec3;
+    if (endTangent === 'symmetric') {
+      endPoleDirection = vecScale(startPoleDirection, -1);
+    } else {
+      endPoleDirection = planeToWorld(this.plane, endTangent);
+    }
 
-      const endPoleDistance = vecScale(vecNormalize(endPoleDirection), endFactor * defaultDistance);
-      const endControl = vecSub(endPoint, endPoleDistance);
+    const endPoleDistance = vecScale(vecNormalize(endPoleDirection), endFactor * defaultDistance);
+    const endControl = vecSub(endPoint, endPoleDistance);
 
-      this.pendingEdges.push(
-        unwrap(makeBezierCurve([this.pointer, startControl, endControl, endPoint]))
-      );
+    this.pendingEdges.push(
+      unwrap(makeBezierCurve([this.pointer, startControl, endControl, endPoint]))
+    );
 
     this._updatePointer(endPoint);
     return this;

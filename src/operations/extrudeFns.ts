@@ -53,7 +53,10 @@ function makeHelixWire(
   if (lefthand) myDir = -2 * Math.PI;
 
   const geomLine = scope.register(
-    new oc.Geom2d_Line_3(scope.register(new oc.gp_Pnt2d_3(0.0, 0.0)), scope.register(new oc.gp_Dir2d_4(myDir, pitch)))
+    new oc.Geom2d_Line_3(
+      scope.register(new oc.gp_Pnt2d_3(0.0, 0.0)),
+      scope.register(new oc.gp_Dir2d_4(myDir, pitch))
+    )
   );
 
   const nTurns = height / pitch;
@@ -66,12 +69,14 @@ function makeHelixWire(
   const geomSurf = new oc.Geom_CylindricalSurface_1(ax3, radius);
   ax3.delete();
 
-  const e = scope.register(
-    new oc.BRepBuilderAPI_MakeEdge_30(
-      scope.register(new oc.Handle_Geom2d_Curve_2(geomSeg.Value().get())),
-      scope.register(new oc.Handle_Geom_Surface_2(geomSurf))
+  const e = scope
+    .register(
+      new oc.BRepBuilderAPI_MakeEdge_30(
+        scope.register(new oc.Handle_Geom2d_Curve_2(geomSeg.Value().get())),
+        scope.register(new oc.Handle_Geom_Surface_2(geomSurf))
+      )
     )
-  ).Edge();
+    .Edge();
 
   const w = scope.register(new oc.BRepBuilderAPI_MakeWire_2(e)).Wire();
   oc.BRepLib.BuildCurves3d_2(w);
@@ -158,7 +163,9 @@ export function revolve(
   const dir = scope.register(new oc.gp_Dir_4(direction[0], direction[1], direction[2]));
   const ax = scope.register(new oc.gp_Ax1_2(pnt, dir));
 
-  const builder = scope.register(new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false));
+  const builder = scope.register(
+    new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false)
+  );
   const result = castShape(builder.Shape());
 
   if (!isShape3D(result)) {

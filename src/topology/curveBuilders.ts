@@ -85,7 +85,10 @@ export function makeHelix(
   const angularStep = lefthand ? -2 * Math.PI : 2 * Math.PI;
 
   const geomLine = scope.register(
-    new oc.Geom2d_Line_3(scope.register(new oc.gp_Pnt2d_3(0.0, 0.0)), scope.register(new oc.gp_Dir2d_4(angularStep, pitch)))
+    new oc.Geom2d_Line_3(
+      scope.register(new oc.gp_Pnt2d_3(0.0, 0.0)),
+      scope.register(new oc.gp_Dir2d_4(angularStep, pitch))
+    )
   );
 
   const nTurns = height / pitch;
@@ -96,12 +99,14 @@ export function makeHelix(
   // We do not register this surface with the scope (or it can break for some reason)
   const geomSurf = new oc.Geom_CylindricalSurface_1(scope.register(makeOcAx3(center, dir)), radius);
 
-  const e = scope.register(
-    new oc.BRepBuilderAPI_MakeEdge_30(
-      scope.register(new oc.Handle_Geom2d_Curve_2(geomSeg.Value().get())),
-      scope.register(new oc.Handle_Geom_Surface_2(geomSurf))
+  const e = scope
+    .register(
+      new oc.BRepBuilderAPI_MakeEdge_30(
+        scope.register(new oc.Handle_Geom2d_Curve_2(geomSeg.Value().get())),
+        scope.register(new oc.Handle_Geom_Surface_2(geomSurf))
+      )
     )
-  ).Edge();
+    .Edge();
 
   const w = scope.register(new oc.BRepBuilderAPI_MakeWire_2(e)).Wire();
   oc.BRepLib.BuildCurves3d_2(w);
@@ -159,7 +164,9 @@ export function makeEllipseArc(
 
   const ax = scope.register(makeOcAx2(center, normal, xDir));
   const ellipseGp = scope.register(new oc.gp_Elips_2(ax, majorRadius, minorRadius));
-  const edgeMaker = scope.register(new oc.BRepBuilderAPI_MakeEdge_13(ellipseGp, startAngle, endAngle));
+  const edgeMaker = scope.register(
+    new oc.BRepBuilderAPI_MakeEdge_13(ellipseGp, startAngle, endAngle)
+  );
   return ok(createEdge(edgeMaker.Edge()));
 }
 

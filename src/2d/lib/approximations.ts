@@ -147,6 +147,9 @@ export function approximateAsSvgCompatibleCurve(
       options.continuity,
       options.maxSegments
     );
-    return approximateAsSvgCompatibleCurve(BSplineToBezier(scope.register(bspline.adaptor())), options);
+    return approximateAsSvgCompatibleCurve(
+      BSplineToBezier(scope.register(bspline.adaptor())),
+      options
+    );
   });
 }

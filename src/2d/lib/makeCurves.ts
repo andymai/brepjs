@@ -31,7 +31,11 @@ export const make2dSegmentCurve = (startPoint: Point2D, endPoint: Point2D): Curv
   const oc = getKernel().oc;
   using scope = new DisposalScope();
 
-  const segment = scope.register(new oc.GCE2d_MakeSegment_1(scope.register(pnt(startPoint)), scope.register(pnt(endPoint)))).Value();
+  const segment = scope
+    .register(
+      new oc.GCE2d_MakeSegment_1(scope.register(pnt(startPoint)), scope.register(pnt(endPoint)))
+    )
+    .Value();
   const curve = new Curve2D(segment);
 
   if (!samePoint(curve.firstPoint, startPoint)) {
@@ -60,9 +64,15 @@ export const make2dThreePointArc = (
   const oc = getKernel().oc;
   using scope = new DisposalScope();
 
-  const segment = scope.register(
-    new oc.GCE2d_MakeArcOfCircle_4(scope.register(pnt(startPoint)), scope.register(pnt(midPoint)), scope.register(pnt(endPoint)))
-  ).Value();
+  const segment = scope
+    .register(
+      new oc.GCE2d_MakeArcOfCircle_4(
+        scope.register(pnt(startPoint)),
+        scope.register(pnt(midPoint)),
+        scope.register(pnt(endPoint))
+      )
+    )
+    .Value();
 
   const curve = new Curve2D(segment);
   if (!samePoint(curve.firstPoint, startPoint)) {
@@ -90,9 +100,15 @@ export const make2dTangentArc = (
   const oc = getKernel().oc;
   using scope = new DisposalScope();
 
-  const segment = scope.register(
-    new oc.GCE2d_MakeArcOfCircle_5(scope.register(pnt(startPoint)), scope.register(vec(tangent)), scope.register(pnt(endPoint)))
-  ).Value();
+  const segment = scope
+    .register(
+      new oc.GCE2d_MakeArcOfCircle_5(
+        scope.register(pnt(startPoint)),
+        scope.register(vec(tangent)),
+        scope.register(pnt(endPoint))
+      )
+    )
+    .Value();
 
   const curve = new Curve2D(segment);
   if (!samePoint(curve.firstPoint, startPoint)) {
@@ -115,7 +131,9 @@ export const make2dCircle = (radius: number, center: Point2D = [0, 0]): Curve2D 
   const oc = getKernel().oc;
   using scope = new DisposalScope();
 
-  const segment = scope.register(new oc.GCE2d_MakeCircle_7(scope.register(pnt(center)), radius, true)).Value();
+  const segment = scope
+    .register(new oc.GCE2d_MakeCircle_7(scope.register(pnt(center)), radius, true))
+    .Value();
 
   return new Curve2D(segment as unknown as OcType);
 };
@@ -142,7 +160,9 @@ export const make2dEllipse = (
 ): Curve2D => {
   const oc = getKernel().oc;
   using scope = new DisposalScope();
-  const ellipse = scope.register(new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, direct));
+  const ellipse = scope.register(
+    new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, direct)
+  );
 
   const segment = scope.register(new oc.GCE2d_MakeEllipse_1(ellipse)).Value();
 
@@ -175,9 +195,13 @@ export const make2dEllipseArc = (
 ): Curve2D => {
   const oc = getKernel().oc;
   using scope = new DisposalScope();
-  const ellipse = scope.register(new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, true));
+  const ellipse = scope.register(
+    new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, true)
+  );
 
-  const segment = scope.register(new oc.GCE2d_MakeArcOfEllipse_1(ellipse, startAngle, endAngle, direct)).Value();
+  const segment = scope
+    .register(new oc.GCE2d_MakeArcOfEllipse_1(ellipse, startAngle, endAngle, direct))
+    .Value();
 
   return new Curve2D(segment);
 };

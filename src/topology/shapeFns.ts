@@ -52,7 +52,9 @@ export function isEqualShape(a: AnyShape, b: AnyShape): boolean {
 export function simplify<T extends AnyShape>(shape: T): T {
   const oc = getKernel().oc;
   using scope = new DisposalScope();
-  const upgrader = scope.register(new oc.ShapeUpgrade_UnifySameDomain_2(shape.wrapped, true, true, false));
+  const upgrader = scope.register(
+    new oc.ShapeUpgrade_UnifySameDomain_2(shape.wrapped, true, true, false)
+  );
   upgrader.Build();
   return castShape(upgrader.Shape()) as T;
 }

@@ -166,7 +166,6 @@ export default class Sketch implements SketchInterface {
       origin?: PointInput;
     } = {}
   ): Shape3D {
-
     const direction: Vec3 = extrusionDirection ? toVec3(extrusionDirection) : this.defaultDirection;
     const extrusionVec = vecScale(vecNormalize(direction), extrusionDistance);
 

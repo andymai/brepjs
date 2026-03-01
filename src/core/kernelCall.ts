@@ -99,12 +99,5 @@ export function kernelCallScoped(
   kind: BrepErrorKind = 'OCCT_OPERATION'
 ): Result<AnyShape> {
   using scope = new DisposalScope();
-  try {
-    return ok(castShape(fn(scope)));
-  } catch (e) {
-    const rawMessage = e instanceof Error ? e.message : String(e);
-    const translatedMessage =
-      kind === 'OCCT_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
-    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
-  }
+  return kernelCall(() => fn(scope), code, message, kind);
 }
