@@ -398,6 +398,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'iterWires',
   'kernelCall',
   'kernelCallRaw',
+  'kernelCallScoped',
   'line',
   'linearPattern',
   'loadFont',
