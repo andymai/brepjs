@@ -8,8 +8,14 @@ export {
   createOcHandle,
   DisposalScope,
   withScope,
+  withScopeResult,
+  withScopeResultAsync,
+  isLive,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional: re-exporting for backward compat, callers should migrate
   gcWithScope,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional: re-exporting for backward compat, callers should migrate
   gcWithObject,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional: re-exporting for backward compat, callers should migrate
   localGC,
   registerForCleanup,
   unregisterFromCleanup,

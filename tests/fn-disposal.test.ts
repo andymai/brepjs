@@ -5,8 +5,12 @@ import {
   createOcHandle,
   DisposalScope,
   withScope,
+  withScopeResult,
+  withScopeResultAsync,
+  isLive,
   localGC,
 } from '../src/core/disposal.js';
+import { ok, err } from '../src/core/result.js';
 import type { Deletable } from '../src/core/disposal.js';
 import { getKernel } from '../src/kernel/index.js';
 
@@ -262,5 +266,121 @@ describe('localGC', () => {
     objs.forEach((o) => gc(o));
     cleanup();
     expect(objs.every((o) => o.deleted)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// withScopeResult
+// ---------------------------------------------------------------------------
+
+describe('withScopeResult', () => {
+  it('disposes scope and returns Ok', () => {
+    const obj = mockDeletable();
+    const result = withScopeResult((scope) => {
+      scope.register(obj);
+      return ok(42);
+    });
+    expect(result).toEqual({ ok: true, value: 42 });
+    expect(obj.deleted).toBe(true);
+  });
+
+  it('disposes scope on Err return', () => {
+    const obj = mockDeletable();
+    const result = withScopeResult((scope) => {
+      scope.register(obj);
+      return err({ kind: 'VALIDATION' as const, code: 'TEST', message: 'test' });
+    });
+    expect(result.ok).toBe(false);
+    expect(obj.deleted).toBe(true);
+  });
+
+  it('disposes scope when fn throws', () => {
+    const obj = mockDeletable();
+    expect(() =>
+      withScopeResult<number>((scope) => {
+        scope.register(obj);
+        throw new Error('boom');
+      })
+    ).toThrow('boom');
+    expect(obj.deleted).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// withScopeResultAsync
+// ---------------------------------------------------------------------------
+
+describe('withScopeResultAsync', () => {
+  it('disposes scope and returns Ok', async () => {
+    const obj = mockDeletable();
+    const result = await withScopeResultAsync(async (scope) => {
+      scope.register(obj);
+      return ok(99);
+    });
+    expect(result).toEqual({ ok: true, value: 99 });
+    expect(obj.deleted).toBe(true);
+  });
+
+  it('disposes scope on Err return', async () => {
+    const obj = mockDeletable();
+    const result = await withScopeResultAsync(async (scope) => {
+      scope.register(obj);
+      return err({ kind: 'VALIDATION' as const, code: 'ASYNC_TEST', message: 'async test' });
+    });
+    expect(result.ok).toBe(false);
+    expect(obj.deleted).toBe(true);
+  });
+
+  it('disposes scope when fn throws', async () => {
+    const obj = mockDeletable();
+    await expect(
+      withScopeResultAsync<number>(async (scope) => {
+        scope.register(obj);
+        throw new Error('async boom');
+      })
+    ).rejects.toThrow('async boom');
+    expect(obj.deleted).toBe(true);
+  });
+
+  it('resources remain live throughout async fn execution', async () => {
+    const obj = mockDeletable();
+    const result = await withScopeResultAsync(async (scope) => {
+      scope.register(obj);
+      // Simulate an async step mid-execution
+      await Promise.resolve();
+      // Resource must still be live after the await
+      expect(obj.deleted).toBe(false);
+      return ok(42);
+    });
+    expect(result).toEqual({ ok: true, value: 42 });
+    expect(obj.deleted).toBe(true); // disposed after fn resolves
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isLive
+// ---------------------------------------------------------------------------
+
+describe('isLive', () => {
+  it('returns true for a live OcHandle', () => {
+    const pnt = makeOcPnt();
+    const handle = createOcHandle(pnt);
+    expect(isLive(handle)).toBe(true);
+  });
+
+  it('returns false for a disposed OcHandle', () => {
+    const pnt = makeOcPnt();
+    const handle = createOcHandle(pnt);
+    handle[Symbol.dispose]();
+    expect(isLive(handle)).toBe(false);
+  });
+
+  it('returns true for a live ShapeHandle, false after dispose', () => {
+    const oc = getKernel().oc;
+    const ocShape = new oc.BRepPrimAPI_MakeBox_2(1, 1, 1).Shape();
+    const handle = createHandle(ocShape);
+    expect(isLive(handle)).toBe(true);
+    handle[Symbol.dispose]();
+    expect(isLive(handle)).toBe(false);
   });
 });

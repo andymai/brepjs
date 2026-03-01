@@ -9,6 +9,8 @@
  */
 
 import type { OcShape } from '../kernel/types.js';
+import type { BrepError } from './errors.js';
+import type { Result } from './result.js';
 
 // ---------------------------------------------------------------------------
 // Deletable interface (same as before)
@@ -212,7 +214,11 @@ export function unregisterFromCleanup(deletable: Deletable): void {
 // GC helpers
 // ---------------------------------------------------------------------------
 
-/** Register a deletable value for GC when the scope function is collected. */
+/**
+ * @deprecated Use `using scope = new DisposalScope()` + `scope.register()` instead.
+ * DisposalScope provides deterministic cleanup on all exit paths including throws.
+ * @see DisposalScope
+ */
 export function gcWithScope(): <T extends Deletable>(value: T) => T {
   function gc<T extends Deletable>(value: T): T {
     registry.register(gc, value);
@@ -221,7 +227,11 @@ export function gcWithScope(): <T extends Deletable>(value: T) => T {
   return gc;
 }
 
-/** Register a deletable value for GC when the given object is collected. */
+/**
+ * @deprecated Use `using scope = new DisposalScope()` + `scope.register()` instead.
+ * DisposalScope provides deterministic cleanup on all exit paths including throws.
+ * @see DisposalScope
+ */
 export function gcWithObject(obj: object): <T extends Deletable>(value: T) => T {
   function registerForGC<T extends Deletable>(value: T): T {
     registry.register(obj, value);
@@ -230,7 +240,11 @@ export function gcWithObject(obj: object): <T extends Deletable>(value: T) => T 
   return registerForGC;
 }
 
-/** Create a local GC scope. Returns [register, cleanup, debugSet?]. */
+/**
+ * @deprecated Use `using scope = new DisposalScope()` + `scope.register()` instead.
+ * DisposalScope provides deterministic cleanup on all exit paths including throws.
+ * @see DisposalScope
+ */
 export function localGC(
   debug?: boolean
 ): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined] {
@@ -253,4 +267,54 @@ export function localGC(
   };
 
   return [register, cleanup, debug ? cleaner : undefined];
+}
+
+// ---------------------------------------------------------------------------
+// Result-aware scope helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Run fn inside a DisposalScope. The scope is disposed on all exit paths:
+ * Ok return, Err return, and throw. Use in any function that allocates
+ * OCCT objects and returns Result<T>.
+ *
+ * ```ts
+ * return withScopeResult((scope) => {
+ *   const axis = scope.register(makeOcAx1(origin, dir));
+ *   return ok(castShape(getKernel().makeSomething(axis)) as Solid);
+ * });
+ * ```
+ */
+export function withScopeResult<T, E = BrepError>(
+  fn: (scope: DisposalScope) => Result<T, E>
+): Result<T, E> {
+  using scope = new DisposalScope();
+  return fn(scope);
+}
+
+/**
+ * Async variant of withScopeResult. The scope is disposed after the
+ * returned promise settles (resolved or rejected).
+ */
+export async function withScopeResultAsync<T, E = BrepError>(
+  fn: (scope: DisposalScope) => Promise<Result<T, E>>
+): Promise<Result<T, E>> {
+  using scope = new DisposalScope();
+  return await fn(scope);
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle guard
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the handle has not been disposed.
+ * Provides a named alternative to checking `.disposed` directly.
+ *
+ * ```ts
+ * if (!isLive(handle)) return err(validationError('DISPOSED_HANDLE', '...'));
+ * ```
+ */
+export function isLive(handle: ShapeHandle | OcHandle<Deletable>): boolean {
+  return !handle.disposed;
 }
