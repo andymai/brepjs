@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.4](https://github.com/andymai/brepjs/compare/brepjs-v8.8.3...brepjs-v8.8.4) (2026-03-01)
+
+
+### Bug Fixes
+
+* **topology:** Result adoption, DisposalScope safety, compound ops tests ([#307](https://github.com/andymai/brepjs/issues/307)) ([1ad35d9](https://github.com/andymai/brepjs/commit/1ad35d9a29dab90557ea6983d7cf726e3768347f))
+
 ## [8.8.3](https://github.com/andymai/brepjs/compare/brepjs-v8.8.2...brepjs-v8.8.3) (2026-03-01)
 
 
