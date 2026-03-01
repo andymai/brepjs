@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.3](https://github.com/andymai/brepjs/compare/brepjs-v8.8.2...brepjs-v8.8.3) (2026-03-01)
+
+
+### Bug Fixes
+
+* **deps:** resolve npm audit security vulnerabilities ([#305](https://github.com/andymai/brepjs/issues/305)) ([1588306](https://github.com/andymai/brepjs/commit/15883065ca1eb8b6be76fbdea36af41423874aac))
+
 ## [8.8.2](https://github.com/andymai/brepjs/compare/brepjs-v8.8.1...brepjs-v8.8.2) (2026-03-01)
 
 
