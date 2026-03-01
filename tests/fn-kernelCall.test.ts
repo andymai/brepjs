@@ -11,6 +11,7 @@ import {
   unwrapErr,
   kernelCall,
   kernelCallRaw,
+  kernelCallScoped,
   pipeline,
   isSolid,
   measureVolume,
@@ -174,5 +175,52 @@ describe('refactored operations', () => {
     const s = sphere(5);
     const result = offset(s, 1);
     expect(isOk(result)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// kernelCallScoped
+// ---------------------------------------------------------------------------
+
+describe('kernelCallScoped', () => {
+  it('returns Ok and disposes scope on success', () => {
+    let deleted = false;
+    const result = kernelCallScoped(
+      (scope) => {
+        scope.register({ delete: () => { deleted = true; } });
+        return getKernel().makeBox(1, 1, 1);
+      },
+      'BOX_FAILED',
+      'Box failed'
+    );
+    expect(isOk(result)).toBe(true);
+    expect(deleted).toBe(true);
+  });
+
+  it('returns Err and disposes scope on throw', () => {
+    let deleted = false;
+    const result = kernelCallScoped(
+      (scope) => {
+        scope.register({ delete: () => { deleted = true; } });
+        throw new Error('simulated kernel failure');
+      },
+      'TEST_FAILED',
+      'Test failed'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('TEST_FAILED');
+    expect(unwrapErr(result).kind).toBe('OCCT_OPERATION');
+    expect(deleted).toBe(true);
+  });
+
+  it('respects custom kind parameter', () => {
+    const result = kernelCallScoped(
+      () => { throw new Error('validation error'); },
+      'INVALID_INPUT',
+      'Input was invalid',
+      'VALIDATION'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('VALIDATION');
   });
 });

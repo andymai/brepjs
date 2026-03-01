@@ -12,6 +12,7 @@ import type { Result } from './result.js';
 import { ok, err } from './result.js';
 import type { BrepErrorKind, BrepError } from './errors.js';
 import { translateOcctError } from './errors.js';
+import { DisposalScope } from './disposal.js';
 
 type ErrorFactory = (code: string, message: string, cause?: unknown) => BrepError;
 
@@ -65,6 +66,41 @@ export function kernelCallRaw<T>(
 ): Result<T> {
   try {
     return ok(fn());
+  } catch (e) {
+    const rawMessage = e instanceof Error ? e.message : String(e);
+    const translatedMessage =
+      kind === 'OCCT_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
+    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
+  }
+}
+
+/**
+ * Wrap a kernel call that needs intermediate OCCT allocations.
+ *
+ * A DisposalScope is created and passed to fn. The scope is disposed
+ * deterministically after fn returns or throws — ensuring no intermediate
+ * handles are leaked even on error paths.
+ *
+ * ```ts
+ * return kernelCallScoped(
+ *   (scope) => {
+ *     const axis = scope.register(makeOcAx1(origin, dir));
+ *     return getKernel().oc.BRepBuilderAPI_MakeRevol_1(shape.wrapped, axis).Shape();
+ *   },
+ *   BrepErrorCode.REVOLUTION_NOT_3D,
+ *   'Revolution failed'
+ * );
+ * ```
+ */
+export function kernelCallScoped(
+  fn: (scope: DisposalScope) => OcShape,
+  code: string,
+  message: string,
+  kind: BrepErrorKind = 'OCCT_OPERATION'
+): Result<AnyShape> {
+  using scope = new DisposalScope();
+  try {
+    return ok(castShape(fn(scope)));
   } catch (e) {
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =

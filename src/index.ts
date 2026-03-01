@@ -34,7 +34,7 @@ export {
   type ResultPipeline,
 } from './core/result.js';
 
-export { kernelCall, kernelCallRaw } from './core/kernelCall.js';
+export { kernelCall, kernelCallRaw, kernelCallScoped } from './core/kernelCall.js';
 
 export {
   type BrepError,
