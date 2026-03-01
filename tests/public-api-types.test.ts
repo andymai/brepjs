@@ -377,6 +377,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'isFilletRadius',
   'isInitRequest',
   'isInside2D',
+  'isLive',
   'isNumber',
   'isOk',
   'isOperationRequest',
@@ -575,6 +576,8 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'withOcPnt',
   'withOcVec',
   'withScope',
+  'withScopeResult',
+  'withScopeResultAsync',
 ];
 
 describe('Public API export surface', () => {

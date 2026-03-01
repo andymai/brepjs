@@ -175,7 +175,11 @@ export class DisposalScope implements Disposable {
   /** Register a disposable for disposal when scope ends. */
   track<T extends Disposable>(disposable: T): T {
     this.handles.push(() => {
-      disposable[Symbol.dispose]();
+      try {
+        disposable[Symbol.dispose]();
+      } catch {
+        // Already disposed or invalid — ignore
+      }
     });
     return disposable;
   }

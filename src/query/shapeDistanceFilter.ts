@@ -41,10 +41,9 @@ export function distanceFromPointFilter<T extends AnyShape>(
     return Math.abs(d - distance) < tolerance;
   };
 
-  registerForCleanup(predicate, pnt);
-  registerForCleanup(predicate, vtxMaker);
-  registerForCleanup(predicate, distTool);
-  registerForCleanup(predicate, progress);
+  for (const obj of [pnt, vtxMaker, distTool, progress]) {
+    registerForCleanup(predicate, obj);
+  }
 
   return predicate;
 }

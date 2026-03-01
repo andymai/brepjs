@@ -106,4 +106,12 @@ export {
 } from './core/shapeTypes.js';
 
 export type { ShapeHandle, OcHandle } from './core/disposal.js';
-export { createHandle, createOcHandle, DisposalScope, withScope } from './core/disposal.js';
+export {
+  createHandle,
+  createOcHandle,
+  DisposalScope,
+  withScope,
+  withScopeResult,
+  withScopeResultAsync,
+  isLive,
+} from './core/disposal.js';

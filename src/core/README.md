@@ -71,6 +71,7 @@ graph TB
 | `errors.ts`          | `BrepError` types and constructor functions                        | `utils/bug.js`                                              |
 | `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                              | None                                                        |
 | `definitionMaps.ts`  | `CurveType` union, lazy OCCT enum mappings                         | None                                                        |
+| `kernelCall.ts`      | `kernelCall`, `kernelCallRaw`, `kernelCallScoped` wrappers         | `kernel/`, `disposal.ts`, `result.ts`                       |
 | `memory.ts`          | Re-export hub for disposal utilities                               | `disposal.ts`                                               |
 | `geometry.ts`        | Re-export hub + legacy `Vector`, `Plane`, `Transformation` classes | All above                                                   |
 | `geometryHelpers.ts` | `makePlane` factory + `mirror` OCCT helper                         | `planeOps.ts`, `vecOps.ts`                                  |
@@ -283,20 +284,99 @@ class DisposalScope {
 }
 
 function withScope<T>(fn: (scope: DisposalScope) => T): T;
+function withScopeResult<T, E = BrepError>(fn: (scope: DisposalScope) => Result<T, E>): Result<T, E>;
+function withScopeResultAsync<T, E = BrepError>(fn: (scope: DisposalScope) => Promise<Result<T, E>>): Promise<Result<T, E>>;
+```
+
+**`using` declaration (preferred — auto-disposes at block end):**
+
+```typescript
+using scope = new DisposalScope();
+const pnt = scope.register(new oc.gp_Pnt_3(0, 0, 0));
+// scope.delete() called automatically, pnt deleted
+```
+
+**`withScopeResult` — for Result-returning functions:**
+
+```typescript
+return withScopeResult((scope) => {
+  const axis = scope.register(makeOcAx1(origin, dir));
+  return ok(castShape(getKernel().makeSomething(axis)) as Solid);
+  // axis deleted automatically on both ok() and err() paths
+});
+```
+
+**`withScopeResultAsync` — for async Result-returning functions:**
+
+```typescript
+return withScopeResultAsync(async (scope) => {
+  const buf = scope.register(allocateBuffer());
+  const data = await loadAsync();
+  return ok(processBuffer(buf, data));
+  // buf deleted after promise settles
+});
+```
+
+> **Note:** The `await` in `return await fn(scope)` inside `withScopeResultAsync` is intentional — the TC39 `using` block is synchronous; without `await`, the scope would be disposed before the promise resolves.
+
+### Lifecycle Guard
+
+```typescript
+function isLive(handle: ShapeHandle | OcHandle<Deletable>): boolean;
+```
+
+Named alternative to `!handle.disposed`. Use for validation at function boundaries:
+
+```typescript
+if (!isLive(handle)) return err(validationError('DISPOSED_HANDLE', '...'));
+```
+
+### Closure Cleanup (FinalizationRegistry)
+
+For objects that must **outlive their creating function** (e.g., objects captured by a returned closure), use `registerForCleanup` instead of `DisposalScope`:
+
+```typescript
+const predicate = (shape: AnyShape) => distTool.distance(shape) < threshold;
+
+for (const obj of [pnt, vtxMaker, distTool, progress]) {
+  registerForCleanup(predicate, obj);
+}
+// Each obj is deleted by GC when predicate is collected
+return predicate;
+```
+
+### Kernel Call Wrappers (`kernelCall.ts`)
+
+Thin wrappers that run OCCT operations inside `Result<AnyShape>` and handle errors uniformly:
+
+```typescript
+// Wraps an OCCT call; catches exceptions and wraps in BrepError.
+kernelCall(fn: () => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<AnyShape>
+
+// Like kernelCall but returns the raw OcShape (no branded wrapping).
+kernelCallRaw(fn: () => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<OcShape>
+
+// Like kernelCall but provides a DisposalScope — for operations that need intermediate OCCT objects.
+kernelCallScoped(fn: (scope: DisposalScope) => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<AnyShape>
 ```
 
 **Example:**
 
 ```typescript
-withScope((scope) => {
-  const pnt1 = scope.register(new oc.gp_Pnt_3(0, 0, 0));
-  const pnt2 = scope.register(new oc.gp_Pnt_3(1, 1, 1));
-  return distance(pnt1, pnt2);
-  // Both points auto-deleted when scope ends
-});
+return kernelCallScoped(
+  (scope) => {
+    const axis = scope.register(makeOcAx1(origin, dir));
+    return oc.BRepBuilderAPI_MakeRevol_1(shape.wrapped, axis).Shape();
+    // axis deleted automatically even if Shape() throws
+  },
+  'REVOLUTION_FAILED',
+  'Revolution failed'
+);
 ```
 
 ### Backward-Compatible GC Helpers
+
+> **Deprecated.** Use `using scope = new DisposalScope()` instead.
 
 ```typescript
 gcWithScope(): <T extends Deletable>(value: T) => T
