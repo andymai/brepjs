@@ -187,7 +187,11 @@ describe('kernelCallScoped', () => {
     let deleted = false;
     const result = kernelCallScoped(
       (scope) => {
-        scope.register({ delete: () => { deleted = true; } });
+        scope.register({
+          delete: () => {
+            deleted = true;
+          },
+        });
         return getKernel().makeBox(1, 1, 1);
       },
       'BOX_FAILED',
@@ -201,7 +205,11 @@ describe('kernelCallScoped', () => {
     let deleted = false;
     const result = kernelCallScoped(
       (scope) => {
-        scope.register({ delete: () => { deleted = true; } });
+        scope.register({
+          delete: () => {
+            deleted = true;
+          },
+        });
         throw new Error('simulated kernel failure');
       },
       'TEST_FAILED',
@@ -215,7 +223,9 @@ describe('kernelCallScoped', () => {
 
   it('respects custom kind parameter', () => {
     const result = kernelCallScoped(
-      () => { throw new Error('validation error'); },
+      () => {
+        throw new Error('validation error');
+      },
       'INVALID_INPUT',
       'Input was invalid',
       'VALIDATION'
