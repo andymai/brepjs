@@ -5,7 +5,7 @@
 
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { toOcPnt, makeOcAx1, makeOcAx2 } from '../core/occtBoundary.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err, andThen, unwrap } from '../core/result.js';
@@ -41,10 +41,10 @@ export function makeCylinder(
   direction: Vec3 = [0, 0, 1]
 ): Solid {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const axis = r(makeOcAx2(location, direction));
-  const cylinder = r(new oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height));
+  const axis = scope.register(makeOcAx2(location, direction));
+  const cylinder = scope.register(new oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height));
   return createSolid(cylinder.Shape());
 }
 
@@ -55,9 +55,9 @@ export function makeCylinder(
  */
 export function makeSphere(radius: number): Solid {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const sphereMaker = r(new oc.BRepPrimAPI_MakeSphere_1(radius));
+  const sphereMaker = scope.register(new oc.BRepPrimAPI_MakeSphere_1(radius));
   return createSolid(sphereMaker.Shape());
 }
 
@@ -74,10 +74,10 @@ export function makeCone(
   direction: Vec3 = [0, 0, 1]
 ): Solid {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const axis = r(makeOcAx2(location, direction));
-  const coneMaker = r(new oc.BRepPrimAPI_MakeCone_3(axis, radius1, radius2, height));
+  const axis = scope.register(makeOcAx2(location, direction));
+  const coneMaker = scope.register(new oc.BRepPrimAPI_MakeCone_3(axis, radius1, radius2, height));
   return createSolid(coneMaker.Shape());
 }
 
@@ -93,10 +93,10 @@ export function makeTorus(
   direction: Vec3 = [0, 0, 1]
 ): Solid {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const axis = r(makeOcAx2(location, direction));
-  const torusMaker = r(new oc.BRepPrimAPI_MakeTorus_5(axis, majorRadius, minorRadius));
+  const axis = scope.register(makeOcAx2(location, direction));
+  const torusMaker = scope.register(new oc.BRepPrimAPI_MakeTorus_5(axis, majorRadius, minorRadius));
   return createSolid(torusMaker.Shape());
 }
 
@@ -111,21 +111,21 @@ function makeEllipsoidTransform(
   z: number
 ): { transform: OcType; applyToPoint: (p: OcType) => OcType } {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   const xyRatio = Math.sqrt((x * y) / z);
   const xzRatio = x / xyRatio;
   const yzRatio = y / xyRatio;
 
-  const ax1 = r(makeOcAx1([0, 0, 0], [0, 1, 0]));
-  const ax2 = r(makeOcAx1([0, 0, 0], [0, 0, 1]));
-  const ax3 = r(makeOcAx1([0, 0, 0], [1, 0, 0]));
+  const ax1 = scope.register(makeOcAx1([0, 0, 0], [0, 1, 0]));
+  const ax2 = scope.register(makeOcAx1([0, 0, 0], [0, 0, 1]));
+  const ax3 = scope.register(makeOcAx1([0, 0, 0], [1, 0, 0]));
 
   const transform = new oc.gp_GTrsf_1();
   transform.SetAffinity_1(ax1, xzRatio);
-  const xy = r(new oc.gp_GTrsf_1());
+  const xy = scope.register(new oc.gp_GTrsf_1());
   xy.SetAffinity_1(ax2, xyRatio);
-  const yz = r(new oc.gp_GTrsf_1());
+  const yz = scope.register(new oc.gp_GTrsf_1());
   yz.SetAffinity_1(ax3, yzRatio);
 
   transform.Multiply(xy);
@@ -134,8 +134,8 @@ function makeEllipsoidTransform(
   return {
     transform,
     applyToPoint(p: OcType): OcType {
-      const r2 = gcWithScope();
-      const coords = r2(p.XYZ());
+      using scope2 = new DisposalScope();
+      const coords = scope2.register(p.XYZ());
       transform.Transforms_1(coords);
       return new oc.gp_Pnt_2(coords);
     },
@@ -169,12 +169,12 @@ function convertToJSArray(arrayOfPoints: OcType): OcType[][] {
  */
 export function makeEllipsoid(aLength: number, bLength: number, cLength: number): Solid {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const sphere = r(new oc.gp_Sphere_1());
+  const sphere = scope.register(new oc.gp_Sphere_1());
   sphere.SetRadius(1);
 
-  const sphericalSurface = r(new oc.Geom_SphericalSurface_2(sphere));
+  const sphericalSurface = scope.register(new oc.Geom_SphericalSurface_2(sphere));
   const baseSurface = oc.GeomConvert.SurfaceToBSplineSurface(sphericalSurface.UReversed()).get();
 
   try {
@@ -191,7 +191,7 @@ export function makeEllipsoid(aLength: number, bLength: number, cLength: number)
     ellipsoidTrsf.transform.delete();
 
     const shell = unwrap(
-      cast(r(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
+      cast(scope.register(new oc.BRepBuilderAPI_MakeShell_2(baseSurface.UReversed(), false)).Shell())
     ) as Shell;
 
     return unwrap(makeSolid([shell]));
@@ -207,21 +207,21 @@ export function makeEllipsoid(aLength: number, bLength: number, cLength: number)
  */
 export function makeBox(corner1: Vec3, corner2: Vec3): Solid {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const p1 = r(toOcPnt(corner1));
-  const p2 = r(toOcPnt(corner2));
-  const boxMaker = r(new oc.BRepPrimAPI_MakeBox_4(p1, p2));
+  const p1 = scope.register(toOcPnt(corner1));
+  const p2 = scope.register(toOcPnt(corner2));
+  const boxMaker = scope.register(new oc.BRepPrimAPI_MakeBox_4(p1, p2));
   return createSolid(boxMaker.Solid());
 }
 
 /** Create a vertex at a 3D point. */
 export function makeVertex(point: Vec3): Vertex {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const pnt = r(toOcPnt(point));
-  const vertexMaker = r(new oc.BRepBuilderAPI_MakeVertex(pnt));
+  const pnt = scope.register(toOcPnt(point));
+  const vertexMaker = scope.register(new oc.BRepBuilderAPI_MakeVertex(pnt));
   return createVertex(vertexMaker.Vertex());
 }
 
@@ -294,10 +294,10 @@ export function makeCompound(shapeArray: AnyShape[]): Compound {
  * @category Solids
  */
 export function makeSolid(facesOrShells: Array<Face | Shell>): Result<Solid> {
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const oc = getKernel().oc;
   const shell = weldShapes(facesOrShells);
-  return andThen(cast(r(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)), (solid) => {
+  return andThen(cast(scope.register(new oc.ShapeFix_Solid_1()).SolidFromShell(shell.wrapped)), (solid) => {
     if (!isSolid(solid))
       return err(typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells'));
     return ok(solid);

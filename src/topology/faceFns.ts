@@ -9,7 +9,7 @@ import { toVec3 } from '../core/types.js';
 import type { Face, Wire } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { toOcPnt } from '../core/occtBoundary.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
 import { iterTopo, downcast } from './cast.js';
@@ -39,9 +39,9 @@ export type SurfaceType =
  */
 export function getSurfaceType(face: Face): Result<SurfaceType> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const adaptor = r(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
+  const adaptor = scope.register(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
   const ga = oc.GeomAbs_SurfaceType;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are dynamic
@@ -127,11 +127,11 @@ export function uvBounds(face: Face): UVBounds {
  */
 export function pointOnSurface(face: Face, u: number, v: number): Vec3 {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   const bounds = uvBounds(face);
-  const adaptor = r(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
-  const p = r(new oc.gp_Pnt_1());
+  const adaptor = scope.register(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
+  const p = scope.register(new oc.gp_Pnt_1());
 
   const absU = u * (bounds.uMax - bounds.uMin) + bounds.uMin;
   const absV = v * (bounds.vMax - bounds.vMin) + bounds.vMin;
@@ -143,13 +143,13 @@ export function pointOnSurface(face: Face, u: number, v: number): Vec3 {
 /** Get the UV coordinates on a face for a given 3D point. */
 export function uvCoordinates(face: Face, point: PointInput): [number, number] {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const v = toVec3(point);
-  const surface = r(oc.BRep_Tool.Surface_2(face.wrapped));
+  const surface = scope.register(oc.BRep_Tool.Surface_2(face.wrapped));
 
-  const projected = r(
+  const projected = scope.register(
     new oc.GeomAPI_ProjectPointOnSurf_2(
-      r(toOcPnt(v)),
+      scope.register(toOcPnt(v)),
       surface,
       oc.Extrema_ExtAlgo.Extrema_ExtAlgo_Grad
     )
@@ -179,14 +179,14 @@ export interface PointProjectionResult {
  */
 export function projectPointOnFace(face: Face, point: PointInput): Result<PointProjectionResult> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
   const v = toVec3(point);
 
   try {
-    const surface = r(oc.BRep_Tool.Surface_2(face.wrapped));
-    const projected = r(
+    const surface = scope.register(oc.BRep_Tool.Surface_2(face.wrapped));
+    const projected = scope.register(
       new oc.GeomAPI_ProjectPointOnSurf_2(
-        r(toOcPnt(v)),
+        scope.register(toOcPnt(v)),
         surface,
         oc.Extrema_ExtAlgo.Extrema_ExtAlgo_Grad
       )
@@ -200,7 +200,7 @@ export function projectPointOnFace(face: Face, point: PointInput): Result<PointP
     const vPtr = { current: 0 };
     projected.LowerDistanceParameters(uPtr, vPtr);
 
-    const nearestPnt = r(projected.NearestPoint());
+    const nearestPnt = scope.register(projected.NearestPoint());
     const projectedPoint: Vec3 = [nearestPnt.X(), nearestPnt.Y(), nearestPnt.Z()];
 
     return ok({
@@ -221,7 +221,7 @@ export function projectPointOnFace(face: Face, point: PointInput): Result<PointP
 /** Get the surface normal at a point (or at the center if no point given). */
 export function normalAt(face: Face, locationPoint?: PointInput): Vec3 {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   let u: number;
   let v: number;
@@ -234,9 +234,9 @@ export function normalAt(face: Face, locationPoint?: PointInput): Vec3 {
     [u, v] = uvCoordinates(face, locationPoint);
   }
 
-  const p = r(new oc.gp_Pnt_1());
-  const vn = r(new oc.gp_Vec_1());
-  const props = r(new oc.BRepGProp_Face_2(face.wrapped, false));
+  const p = scope.register(new oc.gp_Pnt_1());
+  const vn = scope.register(new oc.gp_Vec_1());
+  const props = scope.register(new oc.BRepGProp_Face_2(face.wrapped, false));
   props.Normal(u, v, p, vn);
 
   return [vn.X(), vn.Y(), vn.Z()];
@@ -245,11 +245,11 @@ export function normalAt(face: Face, locationPoint?: PointInput): Vec3 {
 /** Get the center of mass of a face. */
 export function faceCenter(face: Face): Vec3 {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const props = r(new oc.GProp_GProps_1());
+  const props = scope.register(new oc.GProp_GProps_1());
   oc.BRepGProp.SurfaceProperties_2(face.wrapped, props, 1e-7, true);
-  const center = r(props.CentreOfMass());
+  const center = scope.register(props.CentreOfMass());
   return [center.X(), center.Y(), center.Z()];
 }
 

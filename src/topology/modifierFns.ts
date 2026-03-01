@@ -10,7 +10,7 @@ import type { Edge, Face, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { occtError, validationError, BrepErrorCode } from '../core/errors.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { getEdges, propagateOrigins } from './shapeFns.js';
 import { propagateFaceTags } from './faceTagFns.js';
 import { propagateColors } from './colorFns.js';
@@ -42,10 +42,10 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
-    const builder = r(new oc.BRepOffsetAPI_MakeThickSolid());
+    using scope = new DisposalScope();
+    const builder = scope.register(new oc.BRepOffsetAPI_MakeThickSolid());
     builder.MakeThickSolidBySimple(shape.wrapped, thickness);
-    const progress = r(new oc.Message_ProgressRange_1());
+    const progress = scope.register(new oc.Message_ProgressRange_1());
     builder.Build(progress);
 
     const resultOc = builder.Shape();
@@ -116,8 +116,8 @@ export function fillet(
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
-    const builder = r(
+    using scope = new DisposalScope();
+    const builder = scope.register(
       new oc.BRepFilletAPI_MakeFillet(shape.wrapped, oc.ChFi3d_FilletShape.ChFi3d_Rational)
     );
 
@@ -200,8 +200,8 @@ export function chamfer(
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
-    const builder = r(new oc.BRepFilletAPI_MakeChamfer(shape.wrapped));
+    using scope = new DisposalScope();
+    const builder = scope.register(new oc.BRepFilletAPI_MakeChamfer(shape.wrapped));
 
     // Build edge→face map lazily for asymmetric chamfers
     let edgeFaceMap: Map<number, { HashCode(max: number): number }> | null = null;
@@ -299,13 +299,13 @@ export function shell(
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
-    const facesToRemove = r(new oc.TopTools_ListOfShape_1());
+    using scope = new DisposalScope();
+    const facesToRemove = scope.register(new oc.TopTools_ListOfShape_1());
     for (const face of faces) {
       facesToRemove.Append_1(face.wrapped);
     }
-    const progress = r(new oc.Message_ProgressRange_1());
-    const builder = r(new oc.BRepOffsetAPI_MakeThickSolid());
+    const progress = scope.register(new oc.Message_ProgressRange_1());
+    const builder = scope.register(new oc.BRepOffsetAPI_MakeThickSolid());
     builder.MakeThickSolidByJoin(
       shape.wrapped,
       facesToRemove,
@@ -360,9 +360,9 @@ export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Resu
 
   try {
     const oc = getKernel().oc;
-    const r = gcWithScope();
-    const progress = r(new oc.Message_ProgressRange_1());
-    const builder = r(new oc.BRepOffsetAPI_MakeOffsetShape());
+    using scope = new DisposalScope();
+    const progress = scope.register(new oc.Message_ProgressRange_1());
+    const builder = scope.register(new oc.BRepOffsetAPI_MakeOffsetShape());
     builder.PerformByJoin(
       shape.wrapped,
       distance,

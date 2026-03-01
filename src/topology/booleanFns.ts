@@ -9,7 +9,7 @@ type OcType = any;
 import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face, Shape3D, Wire } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { validationError, typeCastError, occtError, BrepErrorCode } from '../core/errors.js';
 import type { Plane } from '../core/planeTypes.js';
@@ -117,9 +117,9 @@ export function fuse(
   const checkB = validateShape3D(b, 'fuse: second operand');
   if (isErr(checkB)) return checkB;
   const oc = getKernel().oc;
-  const r = gcWithScope();
-  const progress = r(new oc.Message_ProgressRange_1());
-  const fuseOp = r(new oc.BRepAlgoAPI_Fuse_3(a.wrapped, b.wrapped, progress));
+  using scope = new DisposalScope();
+  const progress = scope.register(new oc.Message_ProgressRange_1());
+  const fuseOp = scope.register(new oc.BRepAlgoAPI_Fuse_3(a.wrapped, b.wrapped, progress));
   applyGlue(fuseOp, optimisation);
   fuseOp.SetRunParallel(true);
   fuseOp.Build(progress);
@@ -161,9 +161,9 @@ export function cut(
   const checkTool = validateShape3D(tool, 'cut: tool');
   if (isErr(checkTool)) return checkTool;
   const oc = getKernel().oc;
-  const r = gcWithScope();
-  const progress = r(new oc.Message_ProgressRange_1());
-  const cutOp = r(new oc.BRepAlgoAPI_Cut_3(base.wrapped, tool.wrapped, progress));
+  using scope = new DisposalScope();
+  const progress = scope.register(new oc.Message_ProgressRange_1());
+  const cutOp = scope.register(new oc.BRepAlgoAPI_Cut_3(base.wrapped, tool.wrapped, progress));
   applyGlue(cutOp, optimisation);
   cutOp.SetRunParallel(true);
   cutOp.Build(progress);
@@ -196,9 +196,9 @@ export function intersect(
   const checkB = validateShape3D(b, 'intersect: second operand');
   if (isErr(checkB)) return checkB;
   const oc = getKernel().oc;
-  const r = gcWithScope();
-  const progress = r(new oc.Message_ProgressRange_1());
-  const intOp = r(new oc.BRepAlgoAPI_Common_3(a.wrapped, b.wrapped, progress));
+  using scope = new DisposalScope();
+  const progress = scope.register(new oc.Message_ProgressRange_1());
+  const intOp = scope.register(new oc.BRepAlgoAPI_Common_3(a.wrapped, b.wrapped, progress));
   intOp.SetRunParallel(true);
   intOp.Build(progress);
   if (simplify) intOp.SimplifyResult(true, true, 1e-3);
@@ -338,11 +338,11 @@ export function cutAll(
   }
 
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
-  const toolCompound = r(buildCompoundOcInternal(tools.map((s) => s.wrapped)));
-  const progress = r(new oc.Message_ProgressRange_1());
-  const cutOp = r(new oc.BRepAlgoAPI_Cut_3(base.wrapped, toolCompound, progress));
+  const toolCompound = scope.register(buildCompoundOcInternal(tools.map((s) => s.wrapped)));
+  const progress = scope.register(new oc.Message_ProgressRange_1());
+  const cutOp = scope.register(new oc.BRepAlgoAPI_Cut_3(base.wrapped, toolCompound, progress));
   applyGlue(cutOp, optimisation);
   cutOp.SetRunParallel(true);
   cutOp.Build(progress);
@@ -384,35 +384,35 @@ function makeSectionFace(plane: Plane, size: number): OcType {
     vecAdd(vecAdd(o, nhx), hy),
   ];
 
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   // Build 4 OCCT points
-  const pts = corners.map((c) => r(new oc.gp_Pnt_3(c[0], c[1], c[2])));
+  const pts = corners.map((c) => scope.register(new oc.gp_Pnt_3(c[0], c[1], c[2])));
 
   // Build 4 edges forming a closed rectangle
   const edges = [
-    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[0], pts[1])),
-    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[1], pts[2])),
-    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[2], pts[3])),
-    r(new oc.BRepBuilderAPI_MakeEdge_3(pts[3], pts[0])),
+    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[0], pts[1])),
+    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[1], pts[2])),
+    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[2], pts[3])),
+    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[3], pts[0])),
   ];
 
   // Build wire from edges
-  const wireBuilder = r(new oc.BRepBuilderAPI_MakeWire_1());
+  const wireBuilder = scope.register(new oc.BRepBuilderAPI_MakeWire_1());
   for (const e of edges) {
     const edge = e.Edge();
     wireBuilder.Add_1(edge);
     edge.delete();
   }
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = scope.register(new oc.Message_ProgressRange_1());
   wireBuilder.Build(progress);
   const wire = wireBuilder.Wire();
 
   // Build planar face from wire
-  const faceBuilder = r(new oc.BRepBuilderAPI_MakeFace_15(wire, true));
+  const faceBuilder = scope.register(new oc.BRepBuilderAPI_MakeFace_15(wire, true));
   const face = faceBuilder.Face();
 
-  // Cleanup wire (other temporaries cleaned via gcWithScope)
+  // Cleanup wire (other temporaries cleaned via DisposalScope)
   wire.delete();
 
   return face;

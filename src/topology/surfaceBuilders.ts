@@ -3,7 +3,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { localGC } from '../core/memory.js';
+import { DisposalScope } from '../core/memory.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
 import { validationError, occtError } from '../core/errors.js';
@@ -57,11 +57,10 @@ export function fill(face: Face): Result<Face> {
  */
 export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
-  const surface = r(oc.BRep_Tool.Surface_2(originFace.wrapped));
-  const faceBuilder = r(new oc.BRepBuilderAPI_MakeFace_21(surface, wire.wrapped, true));
+  using scope = new DisposalScope();
+  const surface = scope.register(oc.BRep_Tool.Surface_2(originFace.wrapped));
+  const faceBuilder = scope.register(new oc.BRepBuilderAPI_MakeFace_21(surface, wire.wrapped, true));
   const face = faceBuilder.Face();
-  gc();
 
   return createFace(face);
 }
@@ -73,9 +72,9 @@ export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
  */
 export function makeNonPlanarFace(wire: Wire): Result<Face> {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const faceBuilder = r(
+  const faceBuilder = scope.register(
     new oc.BRepOffsetAPI_MakeFilling(3, 15, 2, false, 1e-5, 1e-4, 1e-2, 0.1, 8, 9)
   );
   getEdges(wire).forEach((edge: Edge) => {
@@ -87,11 +86,10 @@ export function makeNonPlanarFace(wire: Wire): Result<Face> {
     );
   });
 
-  const progress = r(new oc.Message_ProgressRange_1());
+  const progress = scope.register(new oc.Message_ProgressRange_1());
   faceBuilder.Build(progress);
 
   return andThen(cast(faceBuilder.Shape()), (newFace) => {
-    gc();
     if (!isFace(newFace)) {
       return err(occtError('FACE_BUILD_FAILED', 'Failed to create a face'));
     }
@@ -106,20 +104,19 @@ export function makeNonPlanarFace(wire: Wire): Result<Face> {
  */
 export function addHolesInFace(face: Face, holes: Wire[]): Face {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
-  const faceMaker = r(new oc.BRepBuilderAPI_MakeFace_2(face.wrapped));
+  const faceMaker = scope.register(new oc.BRepBuilderAPI_MakeFace_2(face.wrapped));
   holes.forEach((wire) => {
     faceMaker.Add(wire.wrapped);
   });
 
-  const builtFace = r(faceMaker.Face());
+  const builtFace = scope.register(faceMaker.Face());
 
-  const fixer = r(new oc.ShapeFix_Face_2(builtFace));
+  const fixer = scope.register(new oc.ShapeFix_Face_2(builtFace));
   fixer.FixOrientation_1();
   const newFace = fixer.Face();
 
-  gc();
   return createFace(newFace);
 }
 

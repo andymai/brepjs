@@ -11,7 +11,7 @@ import { toOcVec, toOcPnt, makeOcAx1, makeOcAx2 } from '../core/occtBoundary.js'
 import { HASH_CODE_MAX, DEG2RAD } from '../core/constants.js';
 import { downcast, iterTopo } from './cast.js';
 import { unwrap } from '../core/result.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 
 // ---------------------------------------------------------------------------
 // Identity / introspection
@@ -51,8 +51,8 @@ export function isEqualShape(a: AnyShape, b: AnyShape): boolean {
 /** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
 export function simplify<T extends AnyShape>(shape: T): T {
   const oc = getKernel().oc;
-  const r = gcWithScope();
-  const upgrader = r(new oc.ShapeUpgrade_UnifySameDomain_2(shape.wrapped, true, true, false));
+  using scope = new DisposalScope();
+  const upgrader = scope.register(new oc.ShapeUpgrade_UnifySameDomain_2(shape.wrapped, true, true, false));
   upgrader.Build();
   return castShape(upgrader.Shape()) as T;
 }

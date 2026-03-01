@@ -8,7 +8,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { Shape3D, Solid, Face } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { gcWithScope } from '../core/disposal.js';
+import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError, occtError, typeCastError, BrepErrorCode } from '../core/errors.js';
 import { getFaces, getVertices } from './shapeFns.js';
@@ -39,8 +39,8 @@ function detectSphere(shape: Shape3D): number | null {
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const face = faces[0]!;
-  const r = gcWithScope();
-  const adaptor = r(new oc.BRepAdaptor_Surface_2(face.wrapped, true));
+  using scope = new DisposalScope();
+  const adaptor = scope.register(new oc.BRepAdaptor_Surface_2(face.wrapped, true));
   const surfType = adaptor.GetType();
 
   if (surfType !== oc.GeomAbs_SurfaceType.GeomAbs_Sphere) return null;
@@ -57,11 +57,11 @@ function detectSphere(shape: Shape3D): number | null {
 
 function minkowskiSphere(shape: Shape3D, radius: number, tolerance: number): Result<Solid> {
   const oc = getKernel().oc;
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   try {
-    const offsetMaker = r(new oc.BRepOffsetAPI_MakeOffsetShape());
-    const progress = r(new oc.Message_ProgressRange_1());
+    const offsetMaker = scope.register(new oc.BRepOffsetAPI_MakeOffsetShape());
+    const progress = scope.register(new oc.Message_ProgressRange_1());
 
     offsetMaker.PerformByJoin(
       shape.wrapped,
@@ -132,15 +132,15 @@ function minkowskiGeneral(shape: Shape3D, tool: Shape3D, tolerance: number): Res
     // Build pairwise sum points a+b
     const sumPoints: Array<{ x: number; y: number; z: number }> = [];
     for (const sv of shapeVerts) {
-      const r1 = gcWithScope();
-      const pa = r1(oc.BRep_Tool.Pnt(sv.wrapped));
+      using scope1 = new DisposalScope();
+      const pa = scope1.register(oc.BRep_Tool.Pnt(sv.wrapped));
       const ax = pa.X() as number,
         ay = pa.Y() as number,
         az = pa.Z() as number;
 
       for (const tv of toolVerts) {
-        const r2 = gcWithScope();
-        const pb = r2(oc.BRep_Tool.Pnt(tv.wrapped));
+        using scope2 = new DisposalScope();
+        const pb = scope2.register(oc.BRep_Tool.Pnt(tv.wrapped));
         const bx = pb.X() as number,
           by = pb.Y() as number,
           bz = pb.Z() as number;
