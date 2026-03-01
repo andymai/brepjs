@@ -2,7 +2,7 @@ import type { Plane, PlaneName, PlaneInput } from './planeTypes.js';
 import { resolvePlane } from './planeOps.js';
 import type { Vec3, PointInput } from './types.js';
 import { toVec3 } from './types.js';
-import { localGC } from './memory.js';
+import { DisposalScope } from './memory.js';
 import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { makeOcAx2 } from './occtBoundary.js';
@@ -48,7 +48,7 @@ export function mirror(
   origin?: PointInput
 ): OcType {
   const oc = getKernel().oc;
-  const [r, gc] = localGC();
+  using scope = new DisposalScope();
 
   let originVec: Vec3;
   let directionVec: Vec3;
@@ -78,14 +78,13 @@ export function mirror(
     directionVec = plane.zDir;
   }
 
-  const mirrorAxis = r(makeOcAx2(originVec, directionVec));
+  const mirrorAxis = scope.register(makeOcAx2(originVec, directionVec));
 
-  const trsf = r(new oc.gp_Trsf_1());
+  const trsf = scope.register(new oc.gp_Trsf_1());
   trsf.SetMirror_3(mirrorAxis);
 
-  const transformer = r(new oc.BRepBuilderAPI_Transform_2(shape, trsf, true));
+  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape, trsf, true));
   const newShape = transformer.ModifiedShape(shape);
 
-  gc();
   return newShape;
 }
