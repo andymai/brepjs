@@ -7,6 +7,9 @@
 
 import type { OpenCascadeInstance, OcShape, BooleanOptions } from './types.js';
 
+/** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
+const SIMPLIFY_TOLERANCE = 1e-3;
+
 /**
  * Applies glue optimization to a boolean operation builder.
  */
@@ -52,7 +55,7 @@ export function fuse(
   applyGlue(oc, fuseOp, optimisation);
   fuseOp.SetRunParallel(true);
   fuseOp.Build(progress);
-  if (simplify) fuseOp.SimplifyResult(true, true, 1e-3);
+  if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const result = fuseOp.Shape();
   fuseOp.delete();
   progress.delete();
@@ -74,7 +77,7 @@ export function cut(
   applyGlue(oc, cutOp, optimisation);
   cutOp.SetRunParallel(true);
   cutOp.Build(progress);
-  if (simplify) cutOp.SimplifyResult(true, true, 1e-3);
+  if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const result = cutOp.Shape();
   cutOp.delete();
   progress.delete();
@@ -96,7 +99,7 @@ export function intersect(
   applyGlue(oc, commonOp, optimisation);
   commonOp.SetRunParallel(true);
   commonOp.Build(progress);
-  if (simplify) commonOp.SimplifyResult(true, true, 1e-3);
+  if (simplify) commonOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const result = commonOp.Shape();
   commonOp.delete();
   progress.delete();

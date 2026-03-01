@@ -22,6 +22,9 @@ import { makeFace } from './surfaceBuilders.js';
 import { propagateFaceTags } from './faceTagFns.js';
 import { propagateColors } from './colorFns.js';
 
+/** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
+const SIMPLIFY_TOLERANCE = 1e-3;
+
 // ---------------------------------------------------------------------------
 // Pre-validation
 // ---------------------------------------------------------------------------
@@ -123,7 +126,7 @@ export function fuse(
   applyGlue(fuseOp, optimisation);
   fuseOp.SetRunParallel(true);
   fuseOp.Build(progress);
-  if (simplify) fuseOp.SimplifyResult(true, true, 1e-3);
+  if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const fuseResult = castToShape3D(
     fuseOp.Shape(),
     'FUSE_NOT_3D',
@@ -167,7 +170,7 @@ export function cut(
   applyGlue(cutOp, optimisation);
   cutOp.SetRunParallel(true);
   cutOp.Build(progress);
-  if (simplify) cutOp.SimplifyResult(true, true, 1e-3);
+  if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const cutResult = castToShape3D(cutOp.Shape(), 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
   if (cutResult.ok) {
     propagateOrigins(cutOp, [base, tool], cutResult.value);
@@ -201,7 +204,7 @@ export function intersect(
   const intOp = scope.register(new oc.BRepAlgoAPI_Common_3(a.wrapped, b.wrapped, progress));
   intOp.SetRunParallel(true);
   intOp.Build(progress);
-  if (simplify) intOp.SimplifyResult(true, true, 1e-3);
+  if (simplify) intOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const intResult = castToShape3D(
     intOp.Shape(),
     'INTERSECT_NOT_3D',
@@ -346,7 +349,7 @@ export function cutAll(
   applyGlue(cutOp, optimisation);
   cutOp.SetRunParallel(true);
   cutOp.Build(progress);
-  if (simplify) cutOp.SimplifyResult(true, true, 1e-3);
+  if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const cutAllResult = castToShape3D(
     cutOp.Shape(),
     'CUT_ALL_NOT_3D',

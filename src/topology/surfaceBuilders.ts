@@ -22,18 +22,17 @@ import { makeLine, assembleWire } from './curveBuilders.js';
  */
 export function makeFace(wire: Wire, holes?: Wire[]): Result<Face> {
   const oc = getKernel().oc;
-  const faceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wire.wrapped, false);
+  using scope = new DisposalScope();
+  const faceBuilder = scope.register(new oc.BRepBuilderAPI_MakeFace_15(wire.wrapped, false));
   holes?.forEach((hole) => {
     faceBuilder.Add(hole.wrapped);
   });
   if (!faceBuilder.IsDone()) {
-    faceBuilder.delete();
     return err(
       occtError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
     );
   }
   const face = faceBuilder.Face();
-  faceBuilder.delete();
 
   return ok(createFace(face));
 }
