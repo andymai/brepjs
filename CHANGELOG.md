@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.2](https://github.com/andymai/brepjs/compare/brepjs-v8.8.1...brepjs-v8.8.2) (2026-03-01)
+
+
+### Reverts
+
+* **site:** remove static asset exclusions from SPA rewrite ([#301](https://github.com/andymai/brepjs/issues/301)) ([8e36342](https://github.com/andymai/brepjs/commit/8e3634207bd1e00ec4ee26dae09258ea0c5beeee))
+
 ## [8.8.1](https://github.com/andymai/brepjs/compare/brepjs-v8.8.0...brepjs-v8.8.1) (2026-03-01)
 
 
