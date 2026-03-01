@@ -36,7 +36,6 @@ describe('drill()', () => {
     const b = box(50, 50, 20);
     const r = 5;
     const d = 10;
-    // Position at center-top, axis pointing down into the box
     const result = drill(b, { at: [25, 25, 20], radius: r, depth: d, axis: [0, 0, -1] });
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
@@ -50,7 +49,6 @@ describe('drill()', () => {
     const result = drill(b, { at: [25, 25], radius: r });
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
-    // Through-all removes a full cylinder: original - pi*r^2*height
     const originalVol = 50 * 50 * 20;
     const cylinderVol = Math.PI * r * r * 20;
     expect(vol).toBeLessThan(originalVol);
@@ -77,16 +75,12 @@ describe('drill()', () => {
 // ---------------------------------------------------------------------------
 
 describe('pocket()', () => {
-  it('pockets into box top face — volume decreases', () => {
+  it('pockets into box top face — succeeds and volume does not increase', () => {
     const b = box(50, 50, 20);
     const profile = drawRectangle(20, 10);
     const result = pocket(b, { profile, depth: 5 });
-    // pocket may or may not succeed depending on profile positioning
-    // but if it does, volume must decrease
-    expect(result).toBeDefined();
-    if (isOk(result)) {
-      expect(measureVolume(unwrap(result))).toBeLessThanOrEqual(50 * 50 * 20);
-    }
+    expect(isOk(result)).toBe(true);
+    expect(measureVolume(unwrap(result))).toBeLessThanOrEqual(50 * 50 * 20);
   });
 
   it('returns Err with POCKET_INVALID_DEPTH for depth <= 0', () => {
@@ -98,7 +92,6 @@ describe('pocket()', () => {
   });
 
   it('returns Err with COMPOUND_NO_FACES for shape with no faces', () => {
-    // An edge has no faces — resolveTargetFace should return Err
     const oc = getKernel().oc;
     const p1 = new oc.gp_Pnt_3(0, 0, 0);
     const p2 = new oc.gp_Pnt_3(10, 0, 0);
@@ -118,7 +111,6 @@ describe('pocket()', () => {
   it('returns Err with COMPOUND_FACE_NOT_FOUND when finder matches nothing', () => {
     const b = box(50, 50, 20);
     const profile = drawRectangle(20, 10);
-    // Finder filtering by absurd distance — will match nothing
     const result = pocket(b, {
       profile,
       depth: 5,
@@ -138,10 +130,8 @@ describe('boss()', () => {
     const b = box(50, 50, 20);
     const profile = drawRectangle(20, 10);
     const result = boss(b, { profile, height: 5 });
-    // If boss succeeds, volume must exceed original
-    if (isOk(result)) {
-      expect(measureVolume(unwrap(result))).toBeGreaterThan(50 * 50 * 20);
-    }
+    expect(isOk(result)).toBe(true);
+    expect(measureVolume(unwrap(result))).toBeGreaterThan(50 * 50 * 20);
   });
 
   it('returns Err with BOSS_INVALID_HEIGHT for height <= 0', () => {
@@ -163,8 +153,6 @@ describe('mirrorJoin()', () => {
     const result = mirrorJoin(b);
     expect(isOk(result)).toBe(true);
     const vol = measureVolume(unwrap(result));
-    // Default mirrors across YZ plane (normal [1,0,0])
-    // A box centered at origin half-widths: mirror doubles the X extent
     expect(vol).toBeCloseTo(2000, -1);
   });
 });
@@ -210,6 +198,20 @@ describe('rectangularPattern()', () => {
       xCount: 2,
       xSpacing: 10,
       yDir: [0, 1, 0],
+      yCount: 2,
+      ySpacing: 10,
+    });
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('PATTERN_ZERO_DIRECTION');
+  });
+
+  it('returns Err with PATTERN_ZERO_DIRECTION for zero yDir', () => {
+    const b = box(5, 5, 5);
+    const result = rectangularPattern(b, {
+      xDir: [1, 0, 0],
+      xCount: 2,
+      xSpacing: 10,
+      yDir: [0, 0, 0],
       yCount: 2,
       ySpacing: 10,
     });

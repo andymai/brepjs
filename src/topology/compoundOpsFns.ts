@@ -150,17 +150,15 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
     return err(validationError('POCKET_INVALID_DEPTH', 'Pocket depth must be positive'));
   }
 
-  const faceResult2 = resolveTargetFace(s, options.face);
-  if (isErr(faceResult2)) return faceResult2 as Result<T>;
-  const targetFace = faceResult2.value;
+  const targetResult = resolveTargetFace(s, options.face);
+  if (isErr(targetResult)) return targetResult as Result<T>;
+  const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
   const w = toWire(profile);
 
-  // Create a face from the wire
   const faceResult = _makeFace(w);
   if (isErr(faceResult)) return faceResult as Result<T>;
 
-  // Extrude inward (opposite to face normal)
   const extDir = vecScale(vecNormalize(normal), -depth);
   const toolResult = extrude(faceResult.value, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
@@ -186,17 +184,15 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
     return err(validationError('BOSS_INVALID_HEIGHT', 'Boss height must be positive'));
   }
 
-  const faceResult2 = resolveTargetFace(s, options.face);
-  if (isErr(faceResult2)) return faceResult2 as Result<T>;
-  const targetFace = faceResult2.value;
+  const targetResult = resolveTargetFace(s, options.face);
+  if (isErr(targetResult)) return targetResult as Result<T>;
+  const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
   const w = toWire(profile);
 
-  // Create a face from the wire
   const faceResult = _makeFace(w);
   if (isErr(faceResult)) return faceResult as Result<T>;
 
-  // Extrude outward (along face normal)
   const extDir = vecScale(vecNormalize(normal), height);
   const toolResult = extrude(faceResult.value, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
