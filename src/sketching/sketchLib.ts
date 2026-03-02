@@ -1,3 +1,4 @@
+/* v8 ignore file -- interface definitions only, no executable code */
 import type { Face, Shape3D } from '../core/shapeTypes.js';
 import type { PointInput } from '../core/types.js';
 import type { ExtrusionProfile } from '../operations/extrude.js';

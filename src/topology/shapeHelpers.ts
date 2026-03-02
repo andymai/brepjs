@@ -1,3 +1,4 @@
+/* v8 ignore file -- barrel re-export, no executable code */
 /**
  * Barrel re-export — keeps `import { ... } from './shapeHelpers.js'` working
  * after the split into focused modules.

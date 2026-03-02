@@ -7,8 +7,7 @@
 
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
-import { getKernel } from '../kernel/index.js';
-import { getFaces } from './shapeFns.js';
+import { getFaces, iterOcList } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -149,15 +148,9 @@ export function propagateColors(
       const modifiedList = op.Modified(face.wrapped);
       const modSize = modifiedList.Size?.() ?? 0;
       if (modSize > 0) {
-        const oc = getKernel().oc;
-        const copy = new oc.TopTools_ListOfShape_3(modifiedList);
-        while (copy.Size() > 0) {
-          const modFace = copy.First_1();
-          const modHash = modFace.HashCode(HASH_CODE_MAX);
-          resultFaceMap.set(modHash, color);
-          copy.RemoveFirst();
-        }
-        copy.delete();
+        iterOcList(modifiedList, (modFace) => {
+          resultFaceMap.set(modFace.HashCode(HASH_CODE_MAX), color);
+        });
       } else {
         // Face survived unmodified
         resultFaceMap.set(hash, color);

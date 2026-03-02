@@ -395,7 +395,13 @@ export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTr
 
 const topoCache = new WeakMap<
   object,
-  { edges?: Edge[]; faces?: Face[]; wires?: Wire[]; faceOrigins?: Map<number, number> }
+  {
+    edges?: Edge[];
+    faces?: Face[];
+    wires?: Wire[];
+    vertices?: Vertex[];
+    faceOrigins?: Map<number, number>;
+  }
 >();
 
 function getOrCreateCache(shape: AnyShape) {
@@ -477,7 +483,7 @@ type OcMakeShapeLike = {
  * Iterate a TopTools_ListOfShape using the native iterator when available,
  * falling back to copying the list (for older WASM builds without the iterator binding).
  */
-function iterOcList(
+export function iterOcList(
   list: { Size(): number; First_1(): { HashCode(max: number): number } },
   callback: (item: { HashCode(max: number): number }) => void
 ): void {
@@ -590,11 +596,15 @@ export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): vo
   }
 }
 
-/** Get all vertices of a shape as branded Vertex handles. */
+/** Get all vertices of a shape as branded Vertex handles. Results are cached per shape. */
 export function getVertices(shape: AnyShape): Vertex[] {
-  return Array.from(iterTopo(shape.wrapped, 'vertex')).map(
+  const cache = getOrCreateCache(shape);
+  if (cache.vertices) return cache.vertices;
+  const vertices = Array.from(iterTopo(shape.wrapped, 'vertex')).map(
     (e) => castShape(unwrap(downcast(e))) as Vertex
   );
+  cache.vertices = vertices;
+  return vertices;
 }
 
 // ---------------------------------------------------------------------------

@@ -7,8 +7,7 @@
 
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
-import { getKernel } from '../kernel/index.js';
-import { getFaces } from './shapeFns.js';
+import { getFaces, iterOcList } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Internal storage
@@ -182,19 +181,14 @@ export function propagateFaceTags(
       const modifiedList = op.Modified(face.wrapped);
       const modSize = modifiedList.Size?.() ?? 0;
       if (modSize > 0) {
-        const oc = getKernel().oc;
-        const copy = new oc.TopTools_ListOfShape_3(modifiedList);
-        while (copy.Size() > 0) {
-          const modFace = copy.First_1();
+        iterOcList(modifiedList, (modFace) => {
           const modHash = modFace.HashCode(HASH_CODE_MAX);
           for (const tag of tags) {
             const set = resultTagMap.get(tag) ?? new Set<number>();
             set.add(modHash);
             resultTagMap.set(tag, set);
           }
-          copy.RemoveFirst();
-        }
-        copy.delete();
+        });
       } else {
         // Face survived unmodified
         for (const tag of tags) {

@@ -8,6 +8,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { Edge, Face, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
+import { HASH_CODE_MAX } from '../core/constants.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { occtError, validationError, BrepErrorCode } from '../core/errors.js';
 import { DisposalScope } from '../core/disposal.js';
@@ -221,7 +222,7 @@ export function chamfer(
           oc.TopAbs_ShapeEnum.TopAbs_SHAPE
         );
         while (edgeExp.More()) {
-          const hash = edgeExp.Current().HashCode(2147483647);
+          const hash = edgeExp.Current().HashCode(HASH_CODE_MAX);
           if (!edgeFaceMap.has(hash)) {
             edgeFaceMap.set(hash, face);
           }
@@ -241,7 +242,7 @@ export function chamfer(
       } else {
         const [d1, d2] = d;
         if (d1 > 0 && d2 > 0) {
-          const face = getEdgeFaceMap().get(edge.wrapped.HashCode(2147483647));
+          const face = getEdgeFaceMap().get(edge.wrapped.HashCode(HASH_CODE_MAX));
           if (face) {
             builder.Add_3(d1, d2, oc.TopoDS.Edge_1(edge.wrapped), face);
           }

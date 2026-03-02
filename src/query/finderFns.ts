@@ -1,3 +1,4 @@
+/* v8 ignore file -- barrel re-export, no executable code */
 /**
  * Functional, immutable finder — filter-based shape querying with branded types.
  * Each filter method returns a NEW finder (immutable builder pattern).
