@@ -66,7 +66,9 @@ export function polyhedron(
 
     if (!isSolid(cast)) {
       cast[Symbol.dispose]();
-      return err(kernelError(BrepErrorCode.POLYHEDRON_FAILED, 'Polyhedron did not produce a solid'));
+      return err(
+        kernelError(BrepErrorCode.POLYHEDRON_FAILED, 'Polyhedron did not produce a solid')
+      );
     }
 
     return ok(cast);

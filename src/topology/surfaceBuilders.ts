@@ -80,7 +80,12 @@ export function makeNonPlanarFace(wire: Wire): Result<Face> {
  * Orientation of the holes is automatically fixed.
  */
 export function addHolesInFace(face: Face, holes: Wire[]): Face {
-  return createFace(getKernel().addHolesInFace(face.wrapped, holes.map((h) => h.wrapped)));
+  return createFace(
+    getKernel().addHolesInFace(
+      face.wrapped,
+      holes.map((h) => h.wrapped)
+    )
+  );
 }
 
 /**

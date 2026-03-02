@@ -106,9 +106,7 @@ function buildSolidFromMesh(
     try {
       return ok(castShape(kernel.sew(triFaces, 1e-6)));
     } catch {
-      return err(
-        ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'Failed to sew triangular faces')
-      );
+      return err(ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'Failed to sew triangular faces'));
     }
   }
 }

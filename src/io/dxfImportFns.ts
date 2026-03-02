@@ -78,7 +78,6 @@ function getNum(data: Map<number, string>, code: number, fallback = 0): number {
   return isNaN(n) ? fallback : n;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types
 function entityToEdge(entity: DXFEntity): unknown {
   const { type, data } = entity;
   const kernel = getKernel();

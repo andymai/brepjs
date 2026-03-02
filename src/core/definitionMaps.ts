@@ -19,15 +19,15 @@ export type CurveType =
  * BezierCurve=5, BSplineCurve=6, OffsetCurve=7, OtherCurve=8.
  */
 const CURVE_TYPE_BY_INT: CurveType[] = [
-  'LINE',           // 0
-  'CIRCLE',         // 1
-  'ELLIPSE',        // 2
-  'HYPERBOLA',      // 3
-  'PARABOLA',       // 4
-  'BEZIER_CURVE',   // 5
-  'BSPLINE_CURVE',  // 6
-  'OFFSET_CURVE',   // 7
-  'OTHER_CURVE',    // 8
+  'LINE', // 0
+  'CIRCLE', // 1
+  'ELLIPSE', // 2
+  'HYPERBOLA', // 3
+  'PARABOLA', // 4
+  'BEZIER_CURVE', // 5
+  'BSPLINE_CURVE', // 6
+  'OFFSET_CURVE', // 7
+  'OTHER_CURVE', // 8
 ];
 
 /**

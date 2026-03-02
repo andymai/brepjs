@@ -59,7 +59,11 @@ export function exportAssemblySTEP(
     let h = hex;
     if (h.indexOf('#') === 0) h = h.slice(1);
     if (h.length === 3) h = h.replace(/([0-9a-f])/gi, '$1$1');
-    return [parseInt(h.substring(0, 2), 16), parseInt(h.substring(2, 4), 16), parseInt(h.substring(4, 6), 16)];
+    return [
+      parseInt(h.substring(0, 2), 16),
+      parseInt(h.substring(2, 4), 16),
+      parseInt(h.substring(4, 6), 16),
+    ];
   };
 
   const kernel = getKernel();

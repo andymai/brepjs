@@ -33,7 +33,7 @@ export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
     if (shapes.length === 0) {
       return err(ioError('STEP_IMPORT_FAILED', 'STEP file contains no valid geometry'));
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
     return ok(castShape(shapes[0]));
   } catch {
     return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
@@ -89,7 +89,7 @@ export async function importIGES(blob: Blob): Promise<Result<AnyShape>> {
     if (shapes.length === 0) {
       return err(ioError('IGES_IMPORT_FAILED', 'IGES file contains no valid geometry'));
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
     return ok(castShape(shapes[0]));
   } catch {
     return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file'));

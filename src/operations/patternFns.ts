@@ -69,7 +69,13 @@ export function circularPattern(
     return err(validationError('PATTERN_ZERO_AXIS', 'Pattern axis cannot be zero'));
 
   const angleStep = fullAngle / count;
-  const ocShapes = getKernel().circularPattern(shape.wrapped, [...center], [...axis], angleStep, count);
+  const ocShapes = getKernel().circularPattern(
+    shape.wrapped,
+    [...center],
+    [...axis],
+    angleStep,
+    count
+  );
   const copies = ocShapes.map((s) => castShape(s) as Shape3D);
 
   return fuseAll(copies, options);

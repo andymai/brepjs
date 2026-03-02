@@ -52,9 +52,8 @@ export function guidedSweep(
       ...(tolerance !== undefined ? { tolerance, boundTolerance: tolerance } : {}),
     });
 
-    const ocShape = typeof sweepResult === 'object' && 'shape' in sweepResult
-      ? sweepResult.shape
-      : sweepResult;
+    const ocShape =
+      typeof sweepResult === 'object' && 'shape' in sweepResult ? sweepResult.shape : sweepResult;
 
     const result = castShape(ocShape);
     if (!isShape3D(result)) {

@@ -77,7 +77,10 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
     const polygon = extractPolygon(w);
     if (polygon.length < 3) {
       return err(
-        kernelError(BrepErrorCode.ROOF_FAILED, 'Wire must have at least 3 edges for roof generation')
+        kernelError(
+          BrepErrorCode.ROOF_FAILED,
+          'Wire must have at least 3 edges for roof generation'
+        )
       );
     }
 

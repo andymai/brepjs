@@ -194,6 +194,8 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
     });
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
-    return err(kernelError(BrepErrorCode.ASSEMBLY_SOLVE_FAILED, `Assembly solve failed: ${raw}`, e));
+    return err(
+      kernelError(BrepErrorCode.ASSEMBLY_SOLVE_FAILED, `Assembly solve failed: ${raw}`, e)
+    );
   }
 }

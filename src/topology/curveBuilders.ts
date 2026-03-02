@@ -42,10 +42,17 @@ export function makeEllipse(
     );
   }
 
-  return ok(createEdge(getKernel().makeEllipseEdge(
-    [...center], [...normal], majorRadius, minorRadius,
-    xDir ? [...xDir] : undefined
-  )));
+  return ok(
+    createEdge(
+      getKernel().makeEllipseEdge(
+        [...center],
+        [...normal],
+        majorRadius,
+        minorRadius,
+        xDir ? [...xDir] : undefined
+      )
+    )
+  );
 }
 
 /**
@@ -62,7 +69,9 @@ export function makeHelix(
   dir: Vec3 = [0, 0, 1],
   lefthand = false
 ): Wire {
-  return createWire(getKernel().makeHelixWire(pitch, height, radius, [...center], [...dir], lefthand));
+  return createWire(
+    getKernel().makeHelixWire(pitch, height, radius, [...center], [...dir], lefthand)
+  );
 }
 
 /**
@@ -99,10 +108,19 @@ export function makeEllipseArc(
     );
   }
 
-  return ok(createEdge(getKernel().makeEllipseArc(
-    [...center], [...normal], majorRadius, minorRadius, startAngle, endAngle,
-    xDir ? [...xDir] : undefined
-  )));
+  return ok(
+    createEdge(
+      getKernel().makeEllipseArc(
+        [...center],
+        [...normal],
+        majorRadius,
+        minorRadius,
+        startAngle,
+        endAngle,
+        xDir ? [...xDir] : undefined
+      )
+    )
+  );
 }
 
 /** Configuration for {@link makeBSplineApproximation}. */
@@ -128,7 +146,11 @@ export function makeBSplineApproximation(
 ): Result<Edge> {
   try {
     const mutablePoints: [number, number, number][] = points.map((p) => [...p]);
-    return ok(createEdge(getKernel().approximatePoints(mutablePoints, { tolerance, degMin, degMax, smoothing })));
+    return ok(
+      createEdge(
+        getKernel().approximatePoints(mutablePoints, { tolerance, degMin, degMax, smoothing })
+      )
+    );
   } catch {
     return err(kernelError('BSPLINE_FAILED', 'B-spline approximation failed'));
   }

@@ -24,10 +24,7 @@ export interface HullOptions {
 // Pre-validation
 // ---------------------------------------------------------------------------
 
-function validateNotNull(
-  shape: { wrapped: KernelShape },
-  label: string
-): Result<undefined> {
+function validateNotNull(shape: { wrapped: KernelShape }, label: string): Result<undefined> {
   if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
   }
@@ -74,7 +71,10 @@ export function hull(shapes: ReadonlyArray<AnyShape>, options: HullOptions = {})
 
     if (!isSolid(cast)) {
       return err(
-        kernelError(BrepErrorCode.HULL_NOT_3D, 'Hull result is not a solid; input may be degenerate')
+        kernelError(
+          BrepErrorCode.HULL_NOT_3D,
+          'Hull result is not a solid; input may be degenerate'
+        )
       );
     }
 

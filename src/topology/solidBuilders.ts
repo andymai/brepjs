@@ -37,9 +37,7 @@ export function makeCylinder(
   location: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1]
 ): Solid {
-  return createSolid(
-    getKernel().makeCylinder(radius, height, [...location], [...direction])
-  );
+  return createSolid(getKernel().makeCylinder(radius, height, [...location], [...direction]));
 }
 
 /**
@@ -63,9 +61,7 @@ export function makeCone(
   location: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1]
 ): Solid {
-  return createSolid(
-    getKernel().makeCone(radius1, radius2, height, [...location], [...direction])
-  );
+  return createSolid(getKernel().makeCone(radius1, radius2, height, [...location], [...direction]));
 }
 
 /**
@@ -137,9 +133,7 @@ export function makeOffset(face: Face, offset: number, tolerance = 1e-6): Result
  * @returns A new Compound containing all input shapes.
  */
 export function makeCompound(shapeArray: AnyShape[]): Compound {
-  return createCompound(
-    getKernel().makeCompound(shapeArray.map((s) => s.wrapped))
-  );
+  return createCompound(getKernel().makeCompound(shapeArray.map((s) => s.wrapped)));
 }
 
 /**
@@ -152,14 +146,9 @@ export function makeCompound(shapeArray: AnyShape[]): Compound {
  */
 export function makeSolid(facesOrShells: Array<Face | Shell>): Result<Solid> {
   const shell = weldShapes(facesOrShells);
-  return andThen(
-    cast(getKernel().solidFromShell(shell.wrapped)),
-    (solid) => {
-      if (!isSolid(solid))
-        return err(
-          typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells')
-        );
-      return ok(solid);
-    }
-  );
+  return andThen(cast(getKernel().solidFromShell(shell.wrapped)), (solid) => {
+    if (!isSolid(solid))
+      return err(typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells'));
+    return ok(solid);
+  });
 }
