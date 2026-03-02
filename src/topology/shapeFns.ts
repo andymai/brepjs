@@ -474,20 +474,29 @@ type OcMakeShapeLike = {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
- * Iterate a TopTools_ListOfShape by copying it and consuming the copy.
- * This avoids needing TopTools_ListIteratorOfListOfShape (not in WASM bindings).
+ * Iterate a TopTools_ListOfShape using the native iterator when available,
+ * falling back to copying the list (for older WASM builds without the iterator binding).
  */
 function iterOcList(
   list: { Size(): number; First_1(): { HashCode(max: number): number } },
   callback: (item: { HashCode(max: number): number }) => void
 ): void {
   const oc = getKernel().oc;
-  const copy = new oc.TopTools_ListOfShape_3(list);
-  while (copy.Size() > 0) {
-    callback(copy.First_1());
-    copy.RemoveFirst();
+  if (oc.TopTools_ListIteratorOfListOfShape) {
+    const iter = new oc.TopTools_ListIteratorOfListOfShape(list);
+    while (iter.More()) {
+      callback(iter.Value());
+      iter.Next();
+    }
+    iter.delete();
+  } else {
+    const copy = new oc.TopTools_ListOfShape_3(list);
+    while (copy.Size() > 0) {
+      callback(copy.First_1());
+      copy.RemoveFirst();
+    }
+    copy.delete();
   }
-  copy.delete();
 }
 
 /**
@@ -499,8 +508,12 @@ function iterOcList(
  * @param result - The result shape to populate origins on
  */
 export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result: AnyShape): void {
-  // Collect all input face origins
-  const inputOrigins: Array<{ face: { HashCode(max: number): number }; origin: number }> = [];
+  // Collect all input face origins, caching each face's hash to avoid redundant WASM calls
+  const inputOrigins: Array<{
+    face: { HashCode(max: number): number };
+    hash: number;
+    origin: number;
+  }> = [];
   for (const input of inputs) {
     const origins = getFaceOrigins(input);
     if (!origins) continue;
@@ -508,7 +521,7 @@ export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result
       const hash = f.wrapped.HashCode(HASH_CODE_MAX);
       const origin = origins.get(hash);
       if (origin !== undefined) {
-        inputOrigins.push({ face: f.wrapped, origin });
+        inputOrigins.push({ face: f.wrapped, hash, origin });
       }
     }
   }
@@ -517,7 +530,7 @@ export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result
 
   const resultMap = new Map<number, number>();
 
-  for (const { face, origin } of inputOrigins) {
+  for (const { face, hash, origin } of inputOrigins) {
     if (op.IsDeleted?.(face)) continue;
 
     const modifiedList = op.Modified(face);
@@ -526,8 +539,8 @@ export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result
         resultMap.set(modFace.HashCode(HASH_CODE_MAX), origin);
       });
     } else {
-      // Face was not modified — use its original hash (it may survive unchanged)
-      resultMap.set(face.HashCode(HASH_CODE_MAX), origin);
+      // Face was not modified — reuse cached hash (it may survive unchanged)
+      resultMap.set(hash, origin);
     }
 
     const generatedList = op.Generated(face);

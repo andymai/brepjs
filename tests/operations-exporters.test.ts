@@ -11,6 +11,7 @@ import {
   isErr,
   unwrap,
 } from '../src/index.js';
+import { exportSTEP as exportAssemblySTEPOop } from '../src/operations/exporters.js';
 
 beforeAll(async () => {
   await initOC();
@@ -140,5 +141,86 @@ describe('exportSTEP (single-shape)', () => {
     const c = cylinder(3, 10);
     const result = exportSTEP(c);
     expect(isOk(result)).toBe(true);
+  });
+});
+
+describe('exportSTEP (OOP assembly, exporters.ts)', () => {
+  it('exports a single named shape to STEP blob', () => {
+    const b = box(10, 10, 10);
+    const result = exportAssemblySTEPOop([{ shape: b, name: 'box', color: '#ff0000' }]);
+    expect(isOk(result)).toBe(true);
+    const blob = unwrap(result);
+    expect(blob.size).toBeGreaterThan(0);
+    expect(blob.type).toBe('application/step');
+  });
+
+  it('exports multiple shapes to STEP blob', () => {
+    const b = box(10, 10, 10);
+    const s = sphere(5);
+    const result = exportAssemblySTEPOop([
+      { shape: b, name: 'box', color: '#00ff00', alpha: 1 },
+      { shape: s, name: 'sphere', color: '#0000ff', alpha: 0.5 },
+    ]);
+    expect(isOk(result)).toBe(true);
+    const blob = unwrap(result);
+    expect(blob.size).toBeGreaterThan(0);
+  });
+
+  it('exports with auto-generated name when name is omitted', () => {
+    const b = box(5, 5, 5);
+    const result = exportAssemblySTEPOop([{ shape: b }]);
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result).size).toBeGreaterThan(0);
+  });
+
+  it('exports with default red color when color is omitted', () => {
+    const b = box(5, 5, 5);
+    const result = exportAssemblySTEPOop([{ shape: b, name: 'nocolor' }]);
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result).size).toBeGreaterThan(0);
+  });
+
+  it('exports with 3-char hex color shorthand', () => {
+    const b = box(5, 5, 5);
+    const result = exportAssemblySTEPOop([{ shape: b, name: 'shortcolor', color: '#abc' }]);
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result).size).toBeGreaterThan(0);
+  });
+
+  it('exports empty shapes array', () => {
+    const result = exportAssemblySTEPOop([]);
+    // empty assembly may succeed or fail depending on OCCT writer; just verify Result type
+    expect(result).toHaveProperty('ok');
+  });
+
+  it('exports with MM unit option', () => {
+    const b = box(10, 10, 10);
+    const result = exportAssemblySTEPOop([{ shape: b, name: 'box' }], { unit: 'MM' });
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result).size).toBeGreaterThan(0);
+  });
+
+  it('exports with modelUnit option', () => {
+    const b = box(10, 10, 10);
+    const result = exportAssemblySTEPOop([{ shape: b, name: 'box' }], { modelUnit: 'CM' });
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result).size).toBeGreaterThan(0);
+  });
+
+  it('exports with both unit and modelUnit options', () => {
+    const b = box(10, 10, 10);
+    const result = exportAssemblySTEPOop([{ shape: b, name: 'box' }], {
+      unit: 'INCH',
+      modelUnit: 'MM',
+    });
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result).size).toBeGreaterThan(0);
+  });
+
+  it('exports a cylinder to STEP', () => {
+    const c = cylinder(3, 10);
+    const result = exportAssemblySTEPOop([{ shape: c, name: 'cyl' }]);
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result).size).toBeGreaterThan(0);
   });
 });

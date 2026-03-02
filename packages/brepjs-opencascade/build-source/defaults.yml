@@ -121,6 +121,7 @@
 - symbol: TopoDS_Builder
 - symbol: TopAbs_ShapeEnum
 - symbol: TopTools_ListOfShape
+- symbol: TopTools_ListIteratorOfListOfShape
 - symbol: TopAbs_Orientation
 - symbol: TopLoc_Location
 - symbol: TopExp_Explorer
@@ -179,6 +180,7 @@
 - symbol: BOPAlgo_Options
 - symbol: BRepAlgoAPI_Section
 - symbol: BRepAlgoAPI_Common
+- symbol: BRepAlgoAPI_Splitter
 - symbol: BRepExtrema_DistShapeShape
 - symbol: BRepBuilderAPI_ModifyShape
 - symbol: BRepBuilderAPI_MakeShape
@@ -276,6 +278,7 @@
 #@ def emccFlags():
 - -flto
 - -fexceptions
+- -msimd128
 - -sEXPORT_ES6=1
 - -sUSE_ES6_IMPORT_META=0
 - -sALLOW_MEMORY_GROWTH=1
