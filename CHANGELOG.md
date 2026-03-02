@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.8](https://github.com/andymai/brepjs/compare/brepjs-v8.8.7...brepjs-v8.8.8) (2026-03-02)
+
+
+### Bug Fixes
+
+* **topology:** use DisposalScope in buildBSplineSurface ([#319](https://github.com/andymai/brepjs/issues/319)) ([df7b536](https://github.com/andymai/brepjs/commit/df7b536135e283b0a2e223c42cd8285401b6db7a))
+
 ## [8.8.7](https://github.com/andymai/brepjs/compare/brepjs-v8.8.6...brepjs-v8.8.7) (2026-03-02)
 
 
