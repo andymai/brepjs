@@ -262,11 +262,24 @@ export function sharedEdges(face1: Face, face2: Face): Edge[] {
   const edges1 = findChildren(face1.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
   const edges2 = findChildren(face2.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
 
-  // Find edges that exist in both faces using IsSame
+  // Build hash-bucket index of edges2 for O(1) average lookup instead of O(n×m) IsSame scans
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
+  const edge2Map = new Map<number, any[]>();
+  for (const e2 of edges2) {
+    const hash = e2.HashCode(HASH_CODE_MAX);
+    let bucket = edge2Map.get(hash);
+    if (!bucket) {
+      bucket = [];
+      edge2Map.set(hash, bucket);
+    }
+    bucket.push(e2);
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
   const shared: any[] = [];
   for (const e1 of edges1) {
-    if (edges2.some((e2) => e1.IsSame(e2))) {
+    const bucket = edge2Map.get(e1.HashCode(HASH_CODE_MAX));
+    if (bucket?.some((e2) => e1.IsSame(e2))) {
       shared.push(e1);
     }
   }

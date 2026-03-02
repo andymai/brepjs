@@ -8,4 +8,6 @@ mainBuild:
   - #@ flag
   #@ end
   - -sDISABLE_EXCEPTION_CATCHING=1
+  - -sINITIAL_MEMORY=67108864
+  - -sMAXIMUM_MEMORY=4294967296
 additionalCppCode: #@ additionalCppCode()
