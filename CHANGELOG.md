@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.10](https://github.com/andymai/brepjs/compare/brepjs-v8.8.9...brepjs-v8.8.10) (2026-03-02)
+
+
+### Bug Fixes
+
+* **core:** polyfill Symbol.dispose for Safari and older browsers ([#327](https://github.com/andymai/brepjs/issues/327)) ([6cb73a7](https://github.com/andymai/brepjs/commit/6cb73a75c01d39eb2c6843e226b7c2ab8684e113)), closes [#326](https://github.com/andymai/brepjs/issues/326)
+
 ## [8.8.9](https://github.com/andymai/brepjs/compare/brepjs-v8.8.8...brepjs-v8.8.9) (2026-03-02)
 
 
