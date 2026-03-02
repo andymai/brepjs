@@ -13,6 +13,18 @@ import type { BrepError } from './errors.js';
 import type { Result } from './result.js';
 
 // ---------------------------------------------------------------------------
+// Symbol.dispose polyfill — Safari and older browsers lack the well-known
+// symbol. esbuild's `using` transform falls back to Symbol.for("Symbol.dispose"),
+// but [Symbol.dispose]() property keys use the raw symbol. This polyfill
+// bridges the gap so both resolve to the same key.  (#326)
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- patching global Symbol
+const S = Symbol as any;
+S.dispose ??= Symbol.for('Symbol.dispose');
+S.asyncDispose ??= Symbol.for('Symbol.asyncDispose');
+
+// ---------------------------------------------------------------------------
 // Deletable interface (same as before)
 // ---------------------------------------------------------------------------
 
