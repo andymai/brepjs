@@ -191,7 +191,6 @@ function buildTriangulatedSurface(
     }
 
     if (faceCount === 0) {
-      sewing.delete();
       return err(
         occtError(BrepErrorCode.SURFACE_FAILED, 'surfaceFromGrid: no valid triangular faces built')
       );

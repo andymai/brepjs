@@ -121,10 +121,9 @@ export function curveIsPeriodic(shape: Edge | Wire): boolean {
 
 /** Get the period of a periodic curve. */
 export function curvePeriod(shape: Edge | Wire): number {
-  const adaptor = getAdaptor(shape);
-  const result = adaptor.Period();
-  adaptor.delete();
-  return result;
+  using scope = new DisposalScope();
+  const adaptor = scope.register(getAdaptor(shape));
+  return adaptor.Period();
 }
 
 /** Get the topological orientation of an edge or wire. */

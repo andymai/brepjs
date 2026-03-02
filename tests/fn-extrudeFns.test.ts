@@ -13,15 +13,23 @@ import {
   twistExtrude,
   measureVolume,
   isOk,
+  isErr,
   unwrap,
   isSolid,
   isShape3D,
 } from '../src/index.js';
 import type { Wire } from '../src/core/shapeTypes.js';
+import { createFace } from '../src/core/shapeTypes.js';
+import { getKernel } from '../src/kernel/index.js';
 
 beforeAll(async () => {
   await initOC();
 }, 30000);
+
+function makeNullFace() {
+  const oc = getKernel().oc;
+  return createFace(new oc.TopoDS_Face());
+}
 
 describe('extrude', () => {
   it('extrudes a rectangle into a box', () => {
@@ -43,11 +51,24 @@ describe('extrude', () => {
   });
 });
 
+describe('extrude error paths', () => {
+  it('returns error for null face', () => {
+    const result = extrude(makeNullFace(), [0, 0, 10]);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns error for zero-length extrusion vector', () => {
+    const f = castShape(sketchRectangle(10, 10).face().wrapped);
+    const result = extrude(f, [0, 0, 0]);
+    expect(isErr(result)).toBe(true);
+  });
+});
+
 describe('revolve', () => {
   it('revolves a rectangle 360 degrees into a cylinder', () => {
     const rect = sketchRectangle(2, 5, { origin: [6, 0] });
     const f = castShape(rect.face().wrapped);
-    const result = revolve(f, { around: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
+    const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
     expect(isOk(result)).toBe(true);
     expect(isShape3D(unwrap(result))).toBe(true);
   });
@@ -55,8 +76,15 @@ describe('revolve', () => {
   it('revolves a rectangle 90 degrees', () => {
     const rect = sketchRectangle(2, 5, { origin: [6, 0] });
     const f = castShape(rect.face().wrapped);
-    const result = revolve(f, { around: [0, 0, 0], axis: [0, 1, 0], angle: 90 });
+    const result = revolve(f, { at: [0, 0, 0], axis: [0, 1, 0], angle: 90 });
     expect(isOk(result)).toBe(true);
+  });
+});
+
+describe('revolve error paths', () => {
+  it('returns error for null face', () => {
+    const result = revolve(makeNullFace(), { at: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
+    expect(isErr(result)).toBe(true);
   });
 });
 
@@ -67,6 +95,18 @@ describe('sweep', () => {
     const e = line([0, 0, 0], [0, 0, 20]);
     const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
     const result = sweep(profile, spine);
+    expect(isOk(result)).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
+  });
+});
+
+describe('sweep simple mode', () => {
+  it('sweeps in simple pipe mode', () => {
+    const c = sketchCircle(2);
+    const profile = castShape(c.wire.wrapped) as Wire;
+    const e = line([0, 0, 0], [0, 0, 20]);
+    const spine = castShape(unwrap(wire([e])).wrapped) as Wire;
+    const result = sweep(profile, spine, { mode: 'simple' });
     expect(isOk(result)).toBe(true);
     expect(isShape3D(unwrap(result))).toBe(true);
   });
@@ -109,5 +149,28 @@ describe('twistExtrude', () => {
     const result = twistExtrude(w, 90, [0, 0, 0], [0, 0, 20]);
     expect(isOk(result)).toBe(true);
     expect(isShape3D(unwrap(result))).toBe(true);
+  });
+
+  it('returns error for zero twist angle', () => {
+    const rect = sketchRectangle(6, 6);
+    const w = castShape(rect.wire.wrapped) as Wire;
+    const result = twistExtrude(w, 0, [0, 0, 0], [0, 0, 20]);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns error for zero-length normal', () => {
+    const rect = sketchRectangle(6, 6);
+    const w = castShape(rect.wire.wrapped) as Wire;
+    const result = twistExtrude(w, 90, [0, 0, 0], [0, 0, 0]);
+    expect(isErr(result)).toBe(true);
+  });
+});
+
+describe('complexExtrude error paths', () => {
+  it('returns error for zero-length extrusion normal', () => {
+    const c = sketchCircle(5);
+    const w = castShape(c.wire.wrapped) as Wire;
+    const result = complexExtrude(w, [0, 0, 0], [0, 0, 0]);
+    expect(isErr(result)).toBe(true);
   });
 });
