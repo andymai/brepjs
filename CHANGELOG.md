@@ -1,5 +1,16 @@
 # Changelog
 
+## [9.0.0](https://github.com/andymai/brepjs/compare/brepjs-v8.8.11...brepjs-v9.0.0) (2026-03-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove deprecated gcWithScope, gcWithObject, localGC ([#331](https://github.com/andymai/brepjs/issues/331))
+
+### Features
+
+* remove deprecated gcWithScope, gcWithObject, localGC ([#331](https://github.com/andymai/brepjs/issues/331)) ([d7e33e5](https://github.com/andymai/brepjs/commit/d7e33e50ad8225ff4fbafbf6adc82731e525b9c7))
+
 ## [8.8.11](https://github.com/andymai/brepjs/compare/brepjs-v8.8.10...brepjs-v8.8.11) (2026-03-02)
 
 
