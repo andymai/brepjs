@@ -27,6 +27,9 @@ import {
   faceFinder,
   isOk,
   sketchCircle,
+  getFaces,
+  getEdges,
+  getVertices,
 } from '../src/index.js';
 import { BrepWrapperError } from '../src/topology/wrapperFns.js';
 
@@ -393,6 +396,115 @@ describe('WrappedFace', () => {
     const sketch = sketchCircle(5);
     const solid = shape(sketch).extrude(10);
     expect(measureVolume(solid.val)).toBeCloseTo(Math.PI * 25 * 10, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WrappedCurve — method invocations
+// ---------------------------------------------------------------------------
+
+describe('WrappedCurve methods', () => {
+  it('length() returns edge length', () => {
+    const s = shape(line([0, 0, 0], [10, 0, 0]));
+    expect(s.length()).toBeCloseTo(10, 1);
+  });
+
+  it('startPoint() and endPoint() on an edge', () => {
+    const s = shape(line([0, 0, 0], [10, 0, 0]));
+    const start = s.startPoint();
+    const end = s.endPoint();
+    expect(start[0]).toBeCloseTo(0, 1);
+    expect(end[0]).toBeCloseTo(10, 1);
+  });
+
+  it('pointAt() returns a point on the curve', () => {
+    const pt = shape(line([0, 0, 0], [10, 0, 0])).pointAt(0.5);
+    expect(pt[0]).toBeCloseTo(5, 1);
+  });
+
+  it('tangentAt() returns a tangent vector', () => {
+    const t = shape(line([0, 0, 0], [10, 0, 0])).tangentAt(0);
+    expect(t).toHaveLength(3);
+  });
+
+  it('isClosed() returns false for an open edge', () => {
+    expect(shape(line([0, 0, 0], [10, 0, 0])).isClosed()).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WrappedFace — normalAt
+// ---------------------------------------------------------------------------
+
+describe('WrappedFace normalAt', () => {
+  it('normalAt() returns normal vector for a planar face', () => {
+    const f = unwrap(
+      polygon([
+        [0, 0, 0],
+        [10, 0, 0],
+        [10, 10, 0],
+        [0, 10, 0],
+      ])
+    );
+    const normal = shape(f).normalAt([5, 5, 0]);
+    // XY plane face normal should point in Z
+    expect(Math.abs(normal[2])).toBeCloseTo(1, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Base wrapper — applyMatrix
+// ---------------------------------------------------------------------------
+
+describe('Wrapped applyMatrix', () => {
+  it('applyMatrix() applies a 4x4 identity matrix', () => {
+    const identity: [
+      [number, number, number, number],
+      [number, number, number, number],
+      [number, number, number, number],
+      [number, number, number, number],
+    ] = [
+      [1, 0, 0, 0],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1],
+    ];
+    const s = shape(box(10, 10, 10)).applyMatrix(identity);
+    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// wrapAny dispatch — Face, Edge/Wire, Vertex branches
+// ---------------------------------------------------------------------------
+
+describe('wrapAny dispatch branches', () => {
+  it('apply() returning a Face dispatches to WrappedFace', () => {
+    const wrapped = shape(box(10, 10, 10)).apply((s) => getFaces(s)[0]);
+    expect(typeof wrapped.area).toBe('function');
+  });
+
+  it('apply() returning an Edge dispatches to WrappedCurve', () => {
+    const wrapped = shape(box(10, 10, 10)).apply((s) => getEdges(s)[0]);
+    expect(typeof wrapped.length).toBe('function');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// shape() factory — vertex and error paths
+// ---------------------------------------------------------------------------
+
+describe('shape() factory edge cases', () => {
+  it('wraps a Vertex into base Wrapped', () => {
+    const verts = getVertices(box(10, 10, 10));
+    const wrapped = shape(verts[0]);
+    expect(wrapped.val).toBeDefined();
+    expect(wrapped.__wrapped).toBe(true);
+  });
+
+  it('throws on invalid input', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing error path
+    expect(() => shape({} as any)).toThrow();
   });
 });
 
