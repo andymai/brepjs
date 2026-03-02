@@ -76,7 +76,7 @@ export interface ShapeHandle {
   /** Manually dispose the kernel handle */
   [Symbol.dispose](): void;
 
-  /** Alias for Symbol.dispose — required for localGC / Deletable compatibility. */
+  /** Alias for Symbol.dispose — required for Deletable compatibility. */
   delete(): void;
 
   /** Check if this handle has been disposed */
@@ -224,65 +224,6 @@ export function registerForCleanup(owner: object, deletable: Deletable): void {
 /** Unregister a previously-registered deletable (call before manual delete). */
 export function unregisterFromCleanup(deletable: Deletable): void {
   registry.unregister(deletable);
-}
-
-// ---------------------------------------------------------------------------
-// GC helpers
-// ---------------------------------------------------------------------------
-
-/**
- * @deprecated Use `using scope = new DisposalScope()` + `scope.register()` instead.
- * DisposalScope provides deterministic cleanup on all exit paths including throws.
- * @see DisposalScope
- */
-export function gcWithScope(): <T extends Deletable>(value: T) => T {
-  function gc<T extends Deletable>(value: T): T {
-    registry.register(gc, value);
-    return value;
-  }
-  return gc;
-}
-
-/**
- * @deprecated Use `using scope = new DisposalScope()` + `scope.register()` instead.
- * DisposalScope provides deterministic cleanup on all exit paths including throws.
- * @see DisposalScope
- */
-export function gcWithObject(obj: object): <T extends Deletable>(value: T) => T {
-  function registerForGC<T extends Deletable>(value: T): T {
-    registry.register(obj, value);
-    return value;
-  }
-  return registerForGC;
-}
-
-/**
- * @deprecated Use `using scope = new DisposalScope()` + `scope.register()` instead.
- * DisposalScope provides deterministic cleanup on all exit paths including throws.
- * @see DisposalScope
- */
-export function localGC(
-  debug?: boolean
-): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined] {
-  const cleaner = new Set<Deletable>();
-
-  const register = <T extends Deletable>(v: T): T => {
-    cleaner.add(v);
-    return v;
-  };
-
-  const cleanup = () => {
-    for (const d of cleaner) {
-      try {
-        d.delete();
-      } catch {
-        // Already deleted or invalid — ignore
-      }
-    }
-    cleaner.clear();
-  };
-
-  return [register, cleanup, debug ? cleaner : undefined];
 }
 
 // ---------------------------------------------------------------------------

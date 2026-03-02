@@ -126,10 +126,10 @@ console.log('Volume:', measureVolume(result), 'mm³');
 
 ### Memory cleanup
 
-WASM objects aren't garbage-collected. Use `using` (TS 5.9+) for automatic cleanup, or `gcWithScope()`/`localGC()` for explicit control:
+WASM objects aren't garbage-collected. Use `using` (TS 5.9+) or `DisposalScope` for deterministic cleanup:
 
 ```typescript
-import { box, cylinder, cut, unwrap, gcWithScope, localGC } from 'brepjs/quick';
+import { box, cylinder, cut, unwrap, DisposalScope } from 'brepjs/quick';
 
 // Option 1: using keyword — auto-disposed at block end
 {
@@ -139,21 +139,12 @@ import { box, cylinder, cut, unwrap, gcWithScope, localGC } from 'brepjs/quick';
   // temp and hole freed here; result survives
 }
 
-// Option 2: gcWithScope — GC-based cleanup
+// Option 2: DisposalScope — deterministic cleanup
 function buildPart() {
-  const r = gcWithScope();
-  const b = r(box(10, 10, 10));
-  const hole = r(cylinder(3, 15));
-  return unwrap(cut(b, hole)); // b and hole cleaned up when r is GC'd
-}
-
-// Option 3: localGC — deterministic cleanup
-const [register, cleanup] = localGC();
-try {
-  const b = register(box(10, 10, 10));
-  return unwrap(cut(b, register(cylinder(3, 15))));
-} finally {
-  cleanup(); // immediate disposal
+  using scope = new DisposalScope();
+  const b = scope.register(box(10, 10, 10));
+  const hole = scope.register(cylinder(3, 15));
+  return unwrap(cut(b, hole)); // b and hole freed when scope exits
 }
 ```
 

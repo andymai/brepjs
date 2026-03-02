@@ -26,7 +26,7 @@
     "Initialize the WASM kernel before using any brepjs function: use `import { box } from 'brepjs/quick'` for auto-init, or `const oc = await opencascade(); initFromOC(oc);` for manual control",
     "All shape operations are immutable — they return new shapes and never modify the original. `translate(myBox, [10, 0, 0])` returns a new shape; `myBox` is unchanged",
     "Boolean operations (fuse, cut, intersect) return Result<Shape3D> — use unwrap() for scripts or isOk()/match() for production error handling",
-    "WASM objects require explicit cleanup — use `using` keyword (TS 5.9+), gcWithScope(), localGC(), or withScope() for memory management",
+    "WASM objects require explicit cleanup — use `using` keyword (TS 5.9+), DisposalScope, or withScope() for memory management",
     "initFromOC(oc) accepts any OpenCascade WASM instance, enabling custom or alternative WASM builds",
     "Peer dependency brepjs-opencascade must be installed separately: `npm install brepjs brepjs-opencascade`"
   ]

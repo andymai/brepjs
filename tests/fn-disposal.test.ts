@@ -8,7 +8,6 @@ import {
   withScopeResult,
   withScopeResultAsync,
   isLive,
-  localGC,
 } from '../src/core/disposal.js';
 import { ok, err } from '../src/core/result.js';
 import type { Deletable } from '../src/core/disposal.js';
@@ -76,7 +75,9 @@ describe('createHandle', () => {
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(5, 5, 5).Shape();
     const handle = createHandle(ocShape);
     handle[Symbol.dispose]();
-    expect(() => handle[Symbol.dispose]()).not.toThrow();
+    expect(() => {
+      handle[Symbol.dispose]();
+    }).not.toThrow();
   });
 });
 
@@ -110,7 +111,9 @@ describe('createKernelHandle', () => {
     const pnt = makeOcPnt();
     const handle = createKernelHandle(pnt);
     handle[Symbol.dispose]();
-    expect(() => handle[Symbol.dispose]()).not.toThrow();
+    expect(() => {
+      handle[Symbol.dispose]();
+    }).not.toThrow();
   });
 });
 
@@ -174,7 +177,9 @@ describe('DisposalScope', () => {
       },
     });
     // Should not throw
-    expect(() => scope[Symbol.dispose]()).not.toThrow();
+    expect(() => {
+      scope[Symbol.dispose]();
+    }).not.toThrow();
   });
 
   it('can be disposed multiple times safely', () => {
@@ -183,7 +188,9 @@ describe('DisposalScope', () => {
     scope.register(obj);
     scope[Symbol.dispose]();
     // Second dispose should be safe (handles array cleared)
-    expect(() => scope[Symbol.dispose]()).not.toThrow();
+    expect(() => {
+      scope[Symbol.dispose]();
+    }).not.toThrow();
   });
 });
 
@@ -220,52 +227,6 @@ describe('withScope', () => {
       return true;
     });
     expect(result).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// localGC
-// ---------------------------------------------------------------------------
-
-describe('localGC', () => {
-  it('registers and cleans up', () => {
-    const [gc, cleanup] = localGC();
-    const obj = mockDeletable();
-    gc(obj);
-    expect(obj.deleted).toBe(false);
-    cleanup();
-    expect(obj.deleted).toBe(true);
-  });
-
-  it('returns the registered object', () => {
-    const [gc, cleanup] = localGC();
-    const obj = mockDeletable();
-    const returned = gc(obj);
-    expect(returned).toBe(obj);
-    cleanup();
-  });
-
-  it('returns debug set when debug=true', () => {
-    const [gc, cleanup, debugSet] = localGC(true);
-    expect(debugSet).toBeInstanceOf(Set);
-    const obj = mockDeletable();
-    gc(obj);
-    expect(debugSet?.size).toBe(1);
-    cleanup();
-    expect(debugSet?.size).toBe(0);
-  });
-
-  it('returns undefined debug set when debug=false', () => {
-    const [, , debugSet] = localGC(false);
-    expect(debugSet).toBeUndefined();
-  });
-
-  it('cleans up multiple objects', () => {
-    const [gc, cleanup] = localGC();
-    const objs = [mockDeletable(), mockDeletable(), mockDeletable()];
-    objs.forEach((o) => gc(o));
-    cleanup();
-    expect(objs.every((o) => o.deleted)).toBe(true);
   });
 });
 
@@ -315,6 +276,7 @@ describe('withScopeResultAsync', () => {
     const obj = mockDeletable();
     const result = await withScopeResultAsync(async (scope) => {
       scope.register(obj);
+      await Promise.resolve();
       return ok(99);
     });
     expect(result).toEqual({ ok: true, value: 99 });
@@ -325,6 +287,7 @@ describe('withScopeResultAsync', () => {
     const obj = mockDeletable();
     const result = await withScopeResultAsync(async (scope) => {
       scope.register(obj);
+      await Promise.resolve();
       return err({ kind: 'VALIDATION' as const, code: 'ASYNC_TEST', message: 'async test' });
     });
     expect(result.ok).toBe(false);
@@ -336,6 +299,7 @@ describe('withScopeResultAsync', () => {
     await expect(
       withScopeResultAsync<number>(async (scope) => {
         scope.register(obj);
+        await Promise.resolve();
         throw new Error('async boom');
       })
     ).rejects.toThrow('async boom');

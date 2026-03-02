@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import { guidedSweep, isOk, unwrap, isSolid, measureVolume, getKernel } from '../src/index.js';
 import { castShape } from '../src/core/shapeTypes.js';
-import { gcWithScope } from '../src/core/disposal.js';
+import { DisposalScope } from '../src/core/disposal.js';
 import type { Wire } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
@@ -11,11 +11,16 @@ beforeAll(async () => {
 
 function makeCircleWire(radius: number): Wire {
   const oc = getKernel().oc;
-  const r = gcWithScope();
-  const ax = r(new oc.gp_Ax2_3(r(new oc.gp_Pnt_3(0, 0, 0)), r(new oc.gp_Dir_4(0, 0, 1))));
-  const circ = r(new oc.gp_Circ_2(ax, radius));
-  const em = r(new oc.BRepBuilderAPI_MakeEdge_8(circ));
-  const wm = r(new oc.BRepBuilderAPI_MakeWire_2(em.Edge()));
+  const scope = new DisposalScope();
+  const ax = scope.register(
+    new oc.gp_Ax2_3(
+      scope.register(new oc.gp_Pnt_3(0, 0, 0)),
+      scope.register(new oc.gp_Dir_4(0, 0, 1))
+    )
+  );
+  const circ = scope.register(new oc.gp_Circ_2(ax, radius));
+  const em = scope.register(new oc.BRepBuilderAPI_MakeEdge_8(circ));
+  const wm = scope.register(new oc.BRepBuilderAPI_MakeWire_2(em.Edge()));
   return castShape(wm.Wire()) as Wire;
 }
 
@@ -28,11 +33,14 @@ function makeLineWire(
   z2: number
 ): Wire {
   const oc = getKernel().oc;
-  const r = gcWithScope();
-  const em = r(
-    new oc.BRepBuilderAPI_MakeEdge_3(r(new oc.gp_Pnt_3(x1, y1, z1)), r(new oc.gp_Pnt_3(x2, y2, z2)))
+  const scope = new DisposalScope();
+  const em = scope.register(
+    new oc.BRepBuilderAPI_MakeEdge_3(
+      scope.register(new oc.gp_Pnt_3(x1, y1, z1)),
+      scope.register(new oc.gp_Pnt_3(x2, y2, z2))
+    )
   );
-  const wm = r(new oc.BRepBuilderAPI_MakeWire_2(em.Edge()));
+  const wm = scope.register(new oc.BRepBuilderAPI_MakeWire_2(em.Edge()));
   return castShape(wm.Wire()) as Wire;
 }
 

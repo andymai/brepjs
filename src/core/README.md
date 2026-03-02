@@ -27,9 +27,8 @@ graph TB
         errors[errors.ts<br/>BrepError types]
     end
 
-    subgraph "Legacy Migration"
-        geometry[geometry.ts<br/>Vector/Plane classes]
-        geometryHelpers[geometryHelpers.ts<br/>Legacy wrappers]
+    subgraph "Helpers"
+        geometryHelpers[geometryHelpers.ts<br/>makePlane + mirror]
     end
 
     types --> vecOps
@@ -38,6 +37,7 @@ graph TB
     vecOps --> planeOps
     vecOps --> kernelBoundary
     planeOps --> kernelBoundary
+    planeOps --> geometryHelpers
     kernelBoundary --> kernel([kernel/])
     disposal --> shapeTypes
     result --> errors
@@ -52,29 +52,27 @@ graph TB
     style shapeTypes fill:#e8f5e9
     style result fill:#fce4ec
     style errors fill:#fce4ec
-    style geometry fill:#f5f5f5
     style geometryHelpers fill:#f5f5f5
 ```
 
 ## Key Files
 
-| File                 | Purpose                                                            | Dependencies                                                  |
-| -------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------- |
-| `types.ts`           | Core geometry types: `Vec3`, `Vec2`, `PointInput`, `Direction`     | None                                                          |
-| `vecOps.ts`          | Pure vector math operations (add, cross, normalize, etc.)          | `types.ts`                                                    |
-| `planeTypes.ts`      | `Plane` interface, `PlaneName` union, `PlaneInput`                 | `types.ts`                                                    |
-| `planeOps.ts`        | Pure plane operations (create, transform, coord conversion)        | `types.ts`, `planeTypes.ts`, `vecOps.ts`, `kernelBoundary.ts` |
-| `kernelBoundary.ts`  | Bridge between Vec3/Plane and kernel geometry types                | `types.ts`, `kernel/`                                         |
-| `disposal.ts`        | TC39 `Symbol.dispose` resource management + GC safety net          | `kernel/types.js`                                             |
-| `shapeTypes.ts`      | Branded shape types (`Vertex`, `Edge`, `Solid`, etc.)              | `disposal.ts`, `kernel/`                                      |
-| `result.ts`          | Rust-style `Result<T,E>` for error handling                        | None                                                          |
-| `errors.ts`          | `BrepError` types and constructor functions                        | `utils/bug.js`                                                |
-| `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                              | None                                                          |
-| `definitionMaps.ts`  | `CurveType` union, lazy kernel enum mappings                       | None                                                          |
-| `kernelCall.ts`      | `kernelCall`, `kernelCallRaw`, `kernelCallScoped` wrappers         | `kernel/`, `disposal.ts`, `result.ts`                         |
-| `memory.ts`          | Re-export hub for disposal utilities                               | `disposal.ts`                                                 |
-| `geometry.ts`        | Re-export hub + legacy `Vector`, `Plane`, `Transformation` classes | All above                                                     |
-| `geometryHelpers.ts` | `makePlane` factory + `mirror` kernel helper                       | `planeOps.ts`, `vecOps.ts`                                    |
+| File                 | Purpose                                                        | Dependencies                                                  |
+| -------------------- | -------------------------------------------------------------- | ------------------------------------------------------------- |
+| `types.ts`           | Core geometry types: `Vec3`, `Vec2`, `PointInput`, `Direction` | None                                                          |
+| `vecOps.ts`          | Pure vector math operations (add, cross, normalize, etc.)      | `types.ts`                                                    |
+| `planeTypes.ts`      | `Plane` interface, `PlaneName` union, `PlaneInput`             | `types.ts`                                                    |
+| `planeOps.ts`        | Pure plane operations (create, transform, coord conversion)    | `types.ts`, `planeTypes.ts`, `vecOps.ts`, `kernelBoundary.ts` |
+| `kernelBoundary.ts`  | Bridge between Vec3/Plane and kernel geometry types            | `types.ts`, `kernel/`                                         |
+| `disposal.ts`        | TC39 `Symbol.dispose` resource management + GC safety net      | `kernel/types.js`                                             |
+| `shapeTypes.ts`      | Branded shape types (`Vertex`, `Edge`, `Solid`, etc.)          | `disposal.ts`, `kernel/`                                      |
+| `result.ts`          | Rust-style `Result<T,E>` for error handling                    | None                                                          |
+| `errors.ts`          | `BrepError` types and constructor functions                    | `utils/bug.js`                                                |
+| `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                          | None                                                          |
+| `definitionMaps.ts`  | `CurveType` union, lazy kernel enum mappings                   | None                                                          |
+| `kernelCall.ts`      | `kernelCall`, `kernelCallRaw`, `kernelCallScoped` wrappers     | `kernel/`, `disposal.ts`, `result.ts`                         |
+| `memory.ts`          | Re-export hub for disposal utilities                           | `disposal.ts`                                                 |
+| `geometryHelpers.ts` | `makePlane` factory + `mirror` kernel helper                   | `planeOps.ts`, `vecOps.ts`                                    |
 
 ## Geometry Primitives (Functional, Immutable)
 
@@ -378,20 +376,6 @@ return kernelCallScoped(
 );
 ```
 
-### Backward-Compatible GC Helpers
-
-> **Deprecated.** Use `using scope = new DisposalScope()` instead.
-
-```typescript
-gcWithScope(): <T extends Deletable>(value: T) => T
-gcWithObject(obj: any): <T extends Deletable>(value: T) => T
-localGC(debug?: boolean): [
-  <T extends Deletable>(v: T) => T,  // register
-  () => void,                        // cleanup
-  Set<Deletable> | undefined         // debug set
-]
-```
-
 ## Shape Types (`shapeTypes.ts`)
 
 **Branded types** for type-safe shape discrimination without class hierarchies.
@@ -595,40 +579,6 @@ type CurveType =
 
 Kernel enum mappings are created lazily on first access.
 
-## Legacy Migration (`geometry.ts`, `geometryHelpers.ts`)
-
-**These are being phased out in favor of functional API.**
-
-### Legacy Classes (geometry.ts)
-
-```typescript
-class Vector {
-  constructor(x, y, z);
-  toXYZ(): readonly [number, number, number];
-  // ... mutable methods
-}
-
-class Plane {
-  constructor(origin, xDir, normal);
-  localToWorld(u, v): Vector;
-  // ... mutable methods
-}
-
-class Transformation {
-  /* ... */
-}
-class BoundingBox {
-  /* ... */
-}
-```
-
-### Helpers (geometryHelpers.ts)
-
-```typescript
-makePlane(plane?, origin?): Plane
-mirror(shape, plane?, origin?): OcType
-```
-
 ## Gotchas
 
 1. **Vec3/Vec2 are readonly tuples** - Never mutate. Always create new tuples:
@@ -662,19 +612,7 @@ mirror(shape, plane?, origin?): OcType
    withOcPnt([0, 0, 0], (pnt) => someOperation(pnt));
    ```
 
-3. **Legacy class coexistence** - During migration, both functional and class-based APIs coexist:
-
-   ```typescript
-   // Old (being phased out):
-   const v = new Vector(1, 2, 3);
-   const len = v.Length();
-
-   // New (preferred):
-   const v: Vec3 = [1, 2, 3];
-   const len = vecLength(v);
-   ```
-
-4. **FinalizationRegistry is safety net, not primary cleanup** - Always dispose explicitly:
+3. **FinalizationRegistry is safety net, not primary cleanup** - Always dispose explicitly:
 
    ```typescript
    // Risky (relies on GC):
@@ -686,7 +624,7 @@ mirror(shape, plane?, origin?): OcType
    using solid = createSolid(ocShape); // Deterministic cleanup
    ```
 
-5. **Branded types use unique symbols** - Don't bypass type system:
+4. **Branded types use unique symbols** - Don't bypass type system:
 
    ```typescript
    // Wrong:
@@ -698,39 +636,39 @@ mirror(shape, plane?, origin?): OcType
    const shape = castShape(ocShape); // Auto-detects type
    ```
 
-6. **Tolerance defaults differ by use case**:
+5. **Tolerance defaults differ by use case**:
 
    ```typescript
    vecEquals(a, b); // Default: 1e-5 (geometric equality)
    vecIsZero(v); // Default: 1e-10 (stricter for zero check)
    ```
 
-7. **Plane normal auto-normalization** - `createPlane` normalizes inputs:
+6. **Plane normal auto-normalization** - `createPlane` normalizes inputs:
 
    ```typescript
    const plane = createPlane([0, 0, 0], null, [0, 0, 5]);
    // plane.zDir === [0, 0, 1] (normalized)
    ```
 
-8. **Named plane origin offsets** - Number argument offsets along normal:
+7. **Named plane origin offsets** - Number argument offsets along normal:
 
    ```typescript
    createNamedPlane('XY', 5); // Plane at z=5
    createNamedPlane('XY', [1, 2, 3]); // Plane at [1,2,3]
    ```
 
-9. **Result type short-circuits** - `collect()` stops at first error:
+8. **Result type short-circuits** - `collect()` stops at first error:
 
    ```typescript
    const results = [ok(1), err('fail'), ok(3)];
    const combined = collect(results); // Err('fail'), never evaluates ok(3)
    ```
 
-10. **Disposal order matters** - `DisposalScope` disposes in **reverse order (LIFO)**:
-    ```typescript
-    withScope((scope) => {
-      const a = scope.register(makeA()); // Registered first
-      const b = scope.register(makeB()); // Registered second
-      // b disposed first, then a
-    });
-    ```
+9. **Disposal order matters** - `DisposalScope` disposes in **reverse order (LIFO)**:
+   ```typescript
+   withScope((scope) => {
+     const a = scope.register(makeA()); // Registered first
+     const b = scope.register(makeB()); // Registered second
+     // b disposed first, then a
+   });
+   ```

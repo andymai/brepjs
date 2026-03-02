@@ -59,8 +59,7 @@ export {
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-export { gcWithScope, gcWithObject, localGC, type Deletable } from './core/memory.js';
+export { type Deletable } from './core/memory.js';
 
 export { makePlane } from './core/geometryHelpers.js';
 

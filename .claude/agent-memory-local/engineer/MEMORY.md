@@ -10,4 +10,3 @@
 ## Disposal Patterns
 
 - Use `using scope = new DisposalScope()` + `scope.register(x)` for kernel object cleanup
-- `gcWithScope()`/`localGC()` are deprecated — use DisposalScope

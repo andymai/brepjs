@@ -126,26 +126,25 @@ const m = shape(solid).mesh({ tolerance: 0.1 });
 ## Memory Management
 
 ```typescript
-import { withScope, localGC } from 'brepjs';
+import { DisposalScope, withScope } from 'brepjs';
 
 // Option 1: using syntax (TS 5.9+, preferred)
 {
   using temp = box(10, 10, 10);
 }
 
-// Option 2: withScope (deterministic, returns result)
-const result = withScope((scope) => {
+// Option 2: DisposalScope (deterministic, multiple temporaries)
+function buildPart() {
+  using scope = new DisposalScope();
   const temp = scope.register(cylinder(5, 10));
   return unwrap(cut(b, temp)); // returned value survives
-});
-
-// Option 3: localGC (try/finally)
-const [register, cleanup] = localGC();
-try {
-  register(cylinder(5, 10));
-} finally {
-  cleanup();
 }
+
+// Option 3: withScope (deterministic, returns result)
+const result = withScope((scope) => {
+  const temp = scope.register(cylinder(5, 10));
+  return unwrap(cut(b, temp));
+});
 ```
 
 ## Error Handling

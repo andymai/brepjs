@@ -2840,7 +2840,7 @@ interface ShapeHandle {
     readonly wrapped: any;
     /** Manually dispose the OCCT handle */
     [Symbol.dispose](): void;
-    /** Alias for Symbol.dispose — required for localGC / Deletable compatibility. */
+    /** Alias for Symbol.dispose — required for Deletable compatibility. */
     delete(): void;
     /** Check if this handle has been disposed */
     readonly disposed: boolean;
@@ -4947,15 +4947,6 @@ declare function mirror(shape: any, inputPlane?: PlaneInput | PointInput, origin
  * @returns A new scaled OCCT shape.
  */
 declare function scale(shape: any, center: PointInput, scaleFactor: number): any;
-
-/** Register a deletable value for GC when the scope function is collected. */
-declare function gcWithScope(): <T extends Deletable>(value: T) => T;
-
-/** Register a deletable value for GC when the given object is collected. */
-declare function gcWithObject(obj: any): <T extends Deletable>(value: T) => T;
-
-/** Create a local GC scope. Returns [register, cleanup, debugSet?]. */
-declare function localGC(debug?: boolean): [<T extends Deletable>(v: T) => T, () => void, Set<Deletable> | undefined];
 
 /** A disposable wrapper for any OCCT object. */
 interface OcHandle<T extends Deletable> {

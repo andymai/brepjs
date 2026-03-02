@@ -7,7 +7,7 @@ brepjs wraps kernel objects allocated in WebAssembly memory which require explic
 Kernel objects are allocated in WASM linear memory and must be explicitly freed. brepjs provides several mechanisms:
 
 1. **`Symbol.dispose`** -- Modern TC39 explicit resource management
-2. **`gcWithScope`** -- Scoped cleanup for temporary objects
+2. **`DisposalScope`** -- Scoped cleanup for multiple temporaries
 3. **`FinalizationRegistry`** -- Safety net for missed cleanup
 4. **Manual `delete()`** -- Legacy explicit cleanup
 
@@ -34,62 +34,41 @@ The `using` declaration automatically disposes objects when they go out of scope
 
 ### Polyfill
 
-If `Symbol.dispose` is unavailable, brepjs provides a polyfill. Objects will still work but won't auto-dispose. Use `gcWithScope` instead.
+If `Symbol.dispose` is unavailable, brepjs provides a polyfill. Objects will still work but won't auto-dispose. Use `DisposalScope` instead.
 
-## gcWithScope
+## DisposalScope
 
 For scoped cleanup of multiple temporary objects:
 
 ```typescript
-import { gcWithScope, box, circle } from 'brepjs';
+import { DisposalScope, box, cylinder, cut } from 'brepjs';
 
 function buildPart() {
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   // Register temporaries for cleanup
-  const b = r(box(10, 10, 10));
-  const hole = r(cylinder(2, 15));
+  const b = scope.register(box(10, 10, 10));
+  const hole = scope.register(cylinder(2, 15));
 
   // Result escapes the scope
-  const result = cut(b, hole);
-
-  // b and hole are cleaned up when function returns
-  return result;
+  return cut(b, hole);
+  // b and hole are freed when scope exits
 }
 ```
 
 ### How It Works
 
-1. `gcWithScope()` returns a register function backed by `FinalizationRegistry`
-2. `r(obj)` registers an object for cleanup and returns it
-3. When the register function is garbage collected, all registered objects are disposed
+1. `new DisposalScope()` creates a scope that tracks resources
+2. `scope.register(obj)` registers an object for cleanup and returns it
+3. When the scope is disposed (via `using` or `scope[Symbol.dispose]()`), all registered objects are freed in LIFO order
+4. Cleanup is deterministic — it happens at scope exit, not when GC runs
 
 ### Best Practices
 
 - Register **only** intermediate objects you won't return
 - Don't register objects you need to keep
+- Use `using scope = new DisposalScope()` for automatic cleanup at block exit
 - Nest scopes for complex operations
-
-## localGC (Deterministic Cleanup)
-
-For explicit, deterministic cleanup without relying on garbage collection:
-
-```typescript
-import { localGC } from 'brepjs';
-
-function buildPart() {
-  const [register, cleanup] = localGC();
-  try {
-    const b = register(box(10, 10, 10));
-    const hole = register(cylinder(2, 15));
-    return cut(b, hole);
-  } finally {
-    cleanup(); // Immediately disposes all registered objects
-  }
-}
-```
-
-Unlike `gcWithScope`, cleanup is immediate and deterministic -- it happens in the `finally` block, not when GC runs.
 
 ## FinalizationRegistry Safety Net
 
@@ -123,14 +102,14 @@ try {
 
 ## Environment Compatibility
 
-| Environment    | Symbol.dispose | FinalizationRegistry | Recommendation               |
-| -------------- | -------------- | -------------------- | ---------------------------- |
-| Node.js 20+    | ✅             | ✅                   | Use `using` declaration      |
-| Node.js 18-19  | ❌             | ✅                   | Use `gcWithScope`            |
-| Chrome 117+    | ✅             | ✅                   | Use `using` declaration      |
-| Firefox 115+   | ✅             | ✅                   | Use `using` declaration      |
-| Safari 16.4+   | ✅             | ✅                   | Use `using` declaration      |
-| Older browsers | ❌             | ⚠️                   | Use `gcWithScope` + polyfill |
+| Environment    | Symbol.dispose | FinalizationRegistry | Recommendation          |
+| -------------- | -------------- | -------------------- | ----------------------- |
+| Node.js 20+    | ✅             | ✅                   | Use `using` declaration |
+| Node.js 18-19  | ❌             | ✅                   | Use `DisposalScope`     |
+| Chrome 117+    | ✅             | ✅                   | Use `using` declaration |
+| Firefox 115+   | ✅             | ✅                   | Use `using` declaration |
+| Safari 16.4+   | ✅             | ✅                   | Use `using` declaration |
+| Older browsers | ❌             | ⚠️                   | Use `DisposalScope`     |
 
 ### Checking Support
 
@@ -159,10 +138,10 @@ for (let i = 0; i < 1000; i++) {
   processBox(b);
 }
 
-// ✅ Or with gcWithScope
+// ✅ Or with DisposalScope
 for (let i = 0; i < 1000; i++) {
-  const r = gcWithScope();
-  const b = r(box(1, 1, 1));
+  using scope = new DisposalScope();
+  const b = scope.register(box(1, 1, 1));
   processBox(b);
 }
 ```
@@ -238,11 +217,10 @@ console.log(`Active shapes: ${activeShapes}`);
 
 ## Summary
 
-| Scenario             | Recommended Approach                           |
-| -------------------- | ---------------------------------------------- |
-| Simple temporary     | `using shape = makeShape()`                    |
-| Multiple temporaries | `const [r, cleanup] = localGC()` + `cleanup()` |
-| GC-based cleanup     | `const r = gcWithScope()`                      |
-| Long-lived objects   | Store reference, dispose when done             |
-| Loops                | `using` in loop body                           |
-| Legacy code          | `try/finally` with `delete()`                  |
+| Scenario             | Recommended Approach                             |
+| -------------------- | ------------------------------------------------ |
+| Simple temporary     | `using shape = makeShape()`                      |
+| Multiple temporaries | `using scope = new DisposalScope()` + `register` |
+| Long-lived objects   | Store reference, dispose when done               |
+| Loops                | `using` in loop body                             |
+| Legacy code          | `try/finally` with `delete()`                    |

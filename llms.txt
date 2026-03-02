@@ -1156,35 +1156,20 @@ for (let i = 0; i < 100; i++) {
 
 Requires TypeScript 5.9+ with `"lib": ["ES2022", "ESNext.Disposable"]` and Node.js 20+ or modern browsers.
 
-### Pattern 2: `gcWithScope()` (GC-based)
+### Pattern 2: `DisposalScope` (deterministic, multiple temporaries)
 
 ```typescript
-import { gcWithScope, box, cylinder, cut, unwrap } from 'brepjs';
+import { DisposalScope, box, cylinder, cut, unwrap } from 'brepjs';
 
 function buildPart() {
-  const r = gcWithScope();
-  const b = r(box(10, 10, 10));       // register for cleanup
-  const hole = r(cylinder(3, 15));     // register for cleanup
-  return unwrap(cut(b, hole));         // result escapes; b and hole cleaned up when r is GC'd
+  using scope = new DisposalScope();
+  const b = scope.register(box(10, 10, 10));       // register for cleanup
+  const hole = scope.register(cylinder(3, 15));     // register for cleanup
+  return unwrap(cut(b, hole));         // result escapes; b and hole freed when scope exits
 }
 ```
 
-### Pattern 3: `localGC()` (deterministic)
-
-```typescript
-import { localGC, box, cylinder, cut, unwrap } from 'brepjs';
-
-const [register, cleanup] = localGC();
-try {
-  const b = register(box(10, 10, 10));
-  const hole = register(cylinder(3, 15));
-  return unwrap(cut(b, hole));
-} finally {
-  cleanup(); // immediate disposal of all registered objects
-}
-```
-
-### Pattern 4: `withScope()` (scoped, returns result)
+### Pattern 3: `withScope()` (scoped, returns result)
 
 ```typescript
 import { withScope, box, cylinder, cut, unwrap } from 'brepjs';
@@ -1411,7 +1396,7 @@ Key types used across the API:
 
 ```typescript
 import {
-  initFromOC, gcWithScope, unwrap,
+  initFromOC, DisposalScope, unwrap,
   sketchCircle, sketchRectangle, sketchRoundedRectangle,
   Sketcher, draw, drawCircle, drawRectangle,
   helix, cylinder, sphere,
@@ -1422,7 +1407,8 @@ import {
 } from 'brepjs';
 
 // 1. Flanged pipe: main tube + two flanges, hollowed out
-const pipeFitting = gcWithScope(() => {
+const pipeFitting = (() => {
+  using _scope = new DisposalScope();
   // Main tube body
   const tube = cylinder(15, 100);
 
@@ -1466,7 +1452,7 @@ console.log('Volume:', measureVolume(pipeFitting));
 
 ```typescript
 import {
-  gcWithScope, unwrap,
+  DisposalScope, unwrap,
   sketchRoundedRectangle, sketchCircle, sketchRectangle,
   draw, drawText, loadFont, sketchText,
   cylinder, compoundSketchExtrude,
@@ -1476,7 +1462,8 @@ import {
 
 await loadFont('/fonts/Roboto-Regular.ttf', 'Roboto');
 
-const enclosure = gcWithScope(() => {
+const enclosure = (() => {
+  using _scope = new DisposalScope();
   // Base box with rounded corners — sketch.extrude() returns Shape3D directly (not Result)
   const b = sketchRoundedRectangle(80, 50, 5).extrude(30);
 
@@ -1520,7 +1507,7 @@ const enclosure = gcWithScope(() => {
 
 ```typescript
 import {
-  gcWithScope, unwrap,
+  DisposalScope, unwrap,
   sketchCircle, sketchHelix,
   Sketcher, helix, cylinder,
   fuse, checkInterference,
@@ -1528,7 +1515,8 @@ import {
   translate, rotate,
 } from 'brepjs';
 
-const spring = gcWithScope(() => {
+const spring = (() => {
+  using _scope = new DisposalScope();
   // Helix spine: pitch=8, height=60, radius=20
   const helixSketch = sketchHelix(8, 60, 20);
 

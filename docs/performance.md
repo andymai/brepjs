@@ -4,19 +4,19 @@ Best practices for achieving optimal performance with brepjs.
 
 ## Memory Management
 
-### Use gcWithScope for Scoped Cleanup
+### Use DisposalScope for Scoped Cleanup
 
-The `gcWithScope` function provides automatic cleanup of kernel objects within a scope:
+`DisposalScope` provides deterministic cleanup of kernel objects:
 
 ```typescript
-import { gcWithScope, box, fuse } from 'brepjs';
+import { DisposalScope, box, fuse } from 'brepjs';
 
 function buildComplexShape() {
-  const r = gcWithScope();
+  using scope = new DisposalScope();
 
   // Intermediate shapes are automatically cleaned up
-  const box1 = r(box([0, 0, 0], [10, 10, 10]));
-  const box2 = r(box([5, 0, 0], [15, 10, 10]));
+  const box1 = scope.register(box([0, 0, 0], [10, 10, 10]));
+  const box2 = scope.register(box([5, 0, 0], [15, 10, 10]));
 
   // Return the result — it escapes the scope
   return fuse(box1, box2);
@@ -25,9 +25,9 @@ function buildComplexShape() {
 
 **Key patterns:**
 
-- Wrap intermediate kernel objects with `r()` to register them for cleanup
+- Register intermediate kernel objects with `scope.register()` for cleanup
 - Objects returned from the function escape the scope and remain valid
-- Cleanup happens automatically when the scope exits
+- Cleanup happens deterministically when the scope exits
 
 ### Avoid Manual delete() Calls
 
@@ -184,10 +184,10 @@ for (let i = 0; i < 1000; i++) {
   // b is never cleaned up
 }
 
-// ✅ Use gcWithScope
+// ✅ Use DisposalScope
 for (let i = 0; i < 1000; i++) {
-  const r = gcWithScope();
-  const b = r(box([i, 0, 0], [i + 1, 1, 1]));
+  using scope = new DisposalScope();
+  const b = scope.register(box([i, 0, 0], [i + 1, 1, 1]));
   // Do something with b
   // Automatically cleaned up at loop iteration end
 }

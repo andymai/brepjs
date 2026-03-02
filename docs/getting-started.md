@@ -383,7 +383,7 @@ See [Memory Management](./memory-management.md) for full patterns.
 
 ### TypeScript errors with `using` syntax
 
-You need TypeScript 5.9+ and `"lib": ["ES2022", "ESNext.Disposable"]` in your tsconfig.json. If you can't upgrade, use `gcWithScope()` or `localGC()` instead — see [Memory Management](./memory-management.md).
+You need TypeScript 5.9+ and `"lib": ["ES2022", "ESNext.Disposable"]` in your tsconfig.json. If you can't upgrade, use `DisposalScope` instead — see [Memory Management](./memory-management.md).
 
 ## Next steps
 
