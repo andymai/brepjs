@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.7](https://github.com/andymai/brepjs/compare/brepjs-v8.8.6...brepjs-v8.8.7) (2026-03-02)
+
+
+### Bug Fixes
+
+* **topology:** double-free in surfaceFns, resource leak in curveFns, extrude coverage ([#317](https://github.com/andymai/brepjs/issues/317)) ([bb5d050](https://github.com/andymai/brepjs/commit/bb5d0503eb9dbf6fb7df18770a55e3b4c068a69e))
+
 ## [8.8.6](https://github.com/andymai/brepjs/compare/brepjs-v8.8.5...brepjs-v8.8.6) (2026-03-02)
 
 
