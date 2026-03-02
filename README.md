@@ -346,10 +346,10 @@ Layer 0  kernel/, utils/                  WASM bindings
 
 ## Packages
 
-| Package                                                                | Description            |
-| ---------------------------------------------------------------------- | ---------------------- |
-| [brepjs](https://www.npmjs.com/package/brepjs)                         | Core library           |
-| [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | OpenCascade WASM build |
+| Package                                                                | Description                    |
+| ---------------------------------------------------------------------- | ------------------------------ |
+| [brepjs](https://www.npmjs.com/package/brepjs)                         | Core library                   |
+| [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | Default geometry kernel (WASM) |
 
 ## Projects Using brepjs
 

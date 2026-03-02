@@ -39,9 +39,9 @@ export const curvesAsEdgesOnSurface = (curves: Curve2D[], geomSurf: KernelType):
 };
 
 /** Apply an opaque gp_GTrsf2d transformation to an array of 2D curves. */
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- KernelType is any but null is a valid sentinel here
 export const transformCurves = (
   curves: Curve2D[],
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- KernelType is any but null is a valid sentinel
   transformation: KernelType | null
 ): Curve2D[] => {
   const kernel = getKernel();

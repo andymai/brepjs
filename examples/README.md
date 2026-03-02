@@ -16,7 +16,7 @@ npm run example examples/pen-cup.ts
 npm run example examples/compartment-tray.ts
 ```
 
-Each example imports `'./_setup.js'` as its first import, which calls `opencascade()` and `initFromOC()` via top-level await. You don't need to write any initialization code yourself.
+Each example imports `'./_setup.js'` as its first import, which loads the geometry kernel and calls `initFromOC()` via top-level await. You don't need to write any initialization code yourself.
 
 ## Beginner
 

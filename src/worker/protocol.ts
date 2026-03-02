@@ -17,7 +17,7 @@ export interface WorkerRequest {
   readonly type: 'init' | 'operation' | 'dispose';
 }
 
-/** Request to initialize the worker (load the WASM/OpenCascade runtime). */
+/** Request to initialize the worker (load the WASM geometry kernel). */
 export interface InitRequest extends WorkerRequest {
   readonly type: 'init';
   /** Optional URL to the WASM binary; when omitted the worker uses its default. */
@@ -28,7 +28,7 @@ export interface InitRequest extends WorkerRequest {
  * Request to execute a named CAD operation inside the worker.
  *
  * @remarks Shapes are transferred as BREP-serialized strings, not as live
- * OpenCascade handles, because handles cannot cross the worker boundary.
+ * kernel handles, because handles cannot cross the worker boundary.
  */
 export interface OperationRequest extends WorkerRequest {
   readonly type: 'operation';
