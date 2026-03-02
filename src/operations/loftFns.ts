@@ -20,6 +20,8 @@ export interface LoftOptions {
   startPoint?: PointInput;
   /** Optional end vertex after the last wire profile. */
   endPoint?: PointInput;
+  /** Sewing tolerance for ThruSections builder. Defaults to `1e-6`. */
+  tolerance?: number;
 }
 
 /**
@@ -43,7 +45,7 @@ export interface LoftOptions {
  */
 export function loft(
   wires: Wire[],
-  { ruled = true, startPoint, endPoint }: LoftOptions = {},
+  { ruled = true, startPoint, endPoint, tolerance = 1e-6 }: LoftOptions = {},
   returnShell = false
 ): Result<Shape3D> {
   if (wires.length === 0 && !startPoint && !endPoint) {
@@ -53,7 +55,7 @@ export function loft(
   const oc = getKernel().oc;
   using scope = new DisposalScope();
 
-  const builder = scope.register(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, 1e-6));
+  const builder = scope.register(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, tolerance));
 
   if (startPoint) {
     const pnt = scope.register(toOcPnt(toVec3(startPoint)));

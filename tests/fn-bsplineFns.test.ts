@@ -56,6 +56,15 @@ describe('approximateCurve', () => {
     });
     expect(isOk(result)).toBe(true);
   });
+
+  it('accepts smoothing weights', () => {
+    const result = approximateCurve(samplePoints, {
+      smoothing: [1, 1, 1],
+    });
+    expect(isOk(result)).toBe(true);
+    const edge = unwrap(result);
+    expect(curveLength(edge)).toBeGreaterThan(15);
+  });
 });
 
 describe('interpolateCurve', () => {
@@ -82,5 +91,17 @@ describe('interpolateCurve', () => {
   it('returns error for fewer than 2 points', () => {
     const result = interpolateCurve([[0, 0, 0]]);
     expect(isErr(result)).toBe(true);
+  });
+
+  it('creates a curve with periodic option', () => {
+    const closedPoints: Vec3[] = [
+      [10, 0, 0],
+      [0, 10, 0],
+      [-10, 0, 0],
+      [0, -10, 0],
+    ];
+    const result = interpolateCurve(closedPoints, { periodic: true });
+    expect(isOk(result)).toBe(true);
+    expect(curveLength(unwrap(result))).toBeGreaterThan(0);
   });
 });

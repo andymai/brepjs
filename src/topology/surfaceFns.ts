@@ -10,6 +10,11 @@ import { type Result, ok, err } from '../core/result.js';
 import { validationError, occtError, ioError, BrepErrorCode } from '../core/errors.js';
 import { DisposalScope } from '../core/disposal.js';
 
+/** Rec. 601 luma coefficients for luminance calculation. */
+const REC601_R = 0.299;
+const REC601_G = 0.587;
+const REC601_B = 0.114;
+
 export interface SurfaceFromGridOptions {
   /** Physical width in X direction. Default: number of columns - 1. */
   width?: number;
@@ -314,7 +319,7 @@ export async function surfaceFromImage(
           value = b / 255;
           break;
         default:
-          value = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          value = (REC601_R * r + REC601_G * g + REC601_B * b) / 255;
           break;
       }
       row.push(value);

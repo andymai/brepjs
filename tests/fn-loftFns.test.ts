@@ -75,4 +75,12 @@ describe('loft', () => {
     expect(isOk(result)).toBe(true);
     expect(isShape3D(unwrap(result))).toBe(true);
   });
+
+  it('lofts with custom tolerance', () => {
+    const w1 = castShape(sketchCircle(5).wire.wrapped);
+    const w2 = translate(castShape(sketchCircle(5).wire.wrapped), [0, 0, 10]);
+    const result = loft([w1, w2], { tolerance: 1e-4 });
+    expect(isOk(result)).toBe(true);
+    expect(isShape3D(unwrap(result))).toBe(true);
+  });
 });
