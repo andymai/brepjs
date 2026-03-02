@@ -4,10 +4,11 @@
 
 import { getKernel } from '../kernel/index.js';
 import { makeTriFace } from '../kernel/constructorOps.js';
-import type { AnyShape, Face } from '../core/shapeTypes.js';
+import type { AnyShape } from '../core/shapeTypes.js';
 import { castShape, isFace, isShell } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError, occtError, ioError, BrepErrorCode } from '../core/errors.js';
+import { DisposalScope } from '../core/disposal.js';
 
 export interface SurfaceFromGridOptions {
   /** Physical width in X direction. Default: number of columns - 1. */
@@ -97,53 +98,36 @@ function buildBSplineSurface(
   scaleZ: number
 ): Result<AnyShape> {
   const oc = getKernel().oc;
-
-  const OC = oc;
+  using scope = new DisposalScope();
 
   // This will throw if the types are not bound
-  const pntArray = new OC.TColgp_Array2OfPnt_2(1, rows, 1, cols);
+  const pntArray = scope.register(new oc.TColgp_Array2OfPnt_2(1, rows, 1, cols));
 
-  try {
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const row = heights[r];
-        const z = (row ? (row[c] ?? 0) : 0) * scaleZ;
-        const pnt = new oc.gp_Pnt_3(c * dx, r * dy, z);
-        pntArray.SetValue(r + 1, c + 1, pnt);
-        pnt.delete();
-      }
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const row = heights[r];
+      const z = (row ? (row[c] ?? 0) : 0) * scaleZ;
+      const pnt = new oc.gp_Pnt_3(c * dx, r * dy, z);
+      pntArray.SetValue(r + 1, c + 1, pnt);
+      pnt.delete();
     }
-
-    const fitter = new OC.GeomAPI_PointsToBSplineSurface_2(pntArray, 3, 8, 0, 1e-3);
-    const surface = fitter.Surface();
-    const faceMaker = new OC.BRepBuilderAPI_MakeFace_8(surface, 1e-6);
-
-    let result: Result<Face>;
-    if (faceMaker.IsDone()) {
-      const shape = castShape(faceMaker.Face());
-      if (isFace(shape)) {
-        result = ok(shape);
-      } else {
-        shape[Symbol.dispose]();
-        result = err(
-          occtError(BrepErrorCode.SURFACE_FAILED, 'B-spline surface did not produce a face')
-        );
-      }
-    } else {
-      result = err(
-        occtError(
-          BrepErrorCode.SURFACE_FAILED,
-          'BRepBuilderAPI_MakeFace failed for B-spline surface'
-        )
-      );
-    }
-
-    faceMaker.delete();
-    fitter.delete();
-    return result;
-  } finally {
-    pntArray.delete();
   }
+
+  const fitter = scope.register(new oc.GeomAPI_PointsToBSplineSurface_2(pntArray, 3, 8, 0, 1e-3));
+  const surface = fitter.Surface();
+  const faceMaker = scope.register(new oc.BRepBuilderAPI_MakeFace_8(surface, 1e-6));
+
+  if (faceMaker.IsDone()) {
+    const shape = castShape(faceMaker.Face());
+    if (isFace(shape)) {
+      return ok(shape);
+    }
+    shape[Symbol.dispose]();
+    return err(occtError(BrepErrorCode.SURFACE_FAILED, 'B-spline surface did not produce a face'));
+  }
+  return err(
+    occtError(BrepErrorCode.SURFACE_FAILED, 'BRepBuilderAPI_MakeFace failed for B-spline surface')
+  );
 }
 
 /** Build a triangulated surface by sewing triangular faces. */
