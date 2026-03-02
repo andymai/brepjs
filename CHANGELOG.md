@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.6](https://github.com/andymai/brepjs/compare/brepjs-v8.8.5...brepjs-v8.8.6) (2026-03-02)
+
+
+### Performance Improvements
+
+* **topology:** optimize sectionToFace O(n³)→O(n), healing/color test coverage ([#314](https://github.com/andymai/brepjs/issues/314)) ([1c497ce](https://github.com/andymai/brepjs/commit/1c497ce4341fa135083294ae5219a64c067ab465))
+
 ## [8.8.5](https://github.com/andymai/brepjs/compare/brepjs-v8.8.4...brepjs-v8.8.5) (2026-03-02)
 
 
