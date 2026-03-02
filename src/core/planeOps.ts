@@ -17,7 +17,6 @@ import {
   vecRotate,
 } from './vecOps.js';
 import { DEG2RAD } from './constants.js';
-// occtBoundary import removed — xDir derivation is now pure math
 import { type Result, ok, err } from './result.js';
 import { validationError } from './errors.js';
 
@@ -47,7 +46,9 @@ export function createPlane(
   if (!xDirection) {
     // Derive xDir perpendicular to zDir (same algorithm as kernel gp_Ax3)
     const [nx, ny, nz] = zDir;
-    const absX = Math.abs(nx), absY = Math.abs(ny), absZ = Math.abs(nz);
+    const absX = Math.abs(nx),
+      absY = Math.abs(ny),
+      absZ = Math.abs(nz);
     // Pick the axis least aligned with zDir to cross-product with
     let candidate: Vec3;
     if (absX <= absY && absX <= absZ) candidate = [1, 0, 0];

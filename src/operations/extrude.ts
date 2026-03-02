@@ -1,7 +1,6 @@
 import { getKernel } from '../kernel/index.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
-// occtBoundary import removed — revolve uses kernel.revolveVec
 import { vecAdd, vecLength } from '../core/vecOps.js';
 import { DisposalScope } from '../core/memory.js';
 import { DEG2RAD } from '../core/constants.js';
@@ -26,7 +25,8 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid 
   const kernel = getKernel();
   const vec = toVec3(extrusionVec);
   const len = vecLength(vec);
-  const dir: [number, number, number] = len > 0 ? [vec[0] / len, vec[1] / len, vec[2] / len] : [0, 0, 1];
+  const dir: [number, number, number] =
+    len > 0 ? [vec[0] / len, vec[1] / len, vec[2] / len] : [0, 0, 1];
   const shape = kernel.extrude(face.wrapped, dir, len);
   const solid = createSolid(unwrap(downcast(shape)));
   return solid;
@@ -53,7 +53,12 @@ export const revolution = (
   const directionVec = toVec3(direction);
 
   const kernel = getKernel();
-  const revolShape = kernel.revolveVec(face.wrapped, [...centerVec], [...directionVec], angle * DEG2RAD);
+  const revolShape = kernel.revolveVec(
+    face.wrapped,
+    [...centerVec],
+    [...directionVec],
+    angle * DEG2RAD
+  );
 
   const result = andThen(cast(revolShape), (shape) => {
     if (!isShape3D(shape))
