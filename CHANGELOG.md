@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.9](https://github.com/andymai/brepjs/compare/brepjs-v8.8.8...brepjs-v8.8.9) (2026-03-02)
+
+
+### Bug Fixes
+
+* postinstall breaks consumer npm install ([#323](https://github.com/andymai/brepjs/issues/323)) ([9df2e10](https://github.com/andymai/brepjs/commit/9df2e1083d1727b1d5a0b936ef49a84e54e91810))
+
 ## [8.8.8](https://github.com/andymai/brepjs/compare/brepjs-v8.8.7...brepjs-v8.8.8) (2026-03-02)
 
 
