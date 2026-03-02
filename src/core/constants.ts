@@ -1,4 +1,4 @@
-/** Maximum hash code value for OCCT shape hashing (2^31 - 1). */
+/** Maximum hash code value for kernel shape hashing (2^31 - 1). */
 export const HASH_CODE_MAX = 2147483647;
 
 /** Multiply degrees by this constant to convert to radians. */
@@ -8,4 +8,4 @@ export const DEG2RAD = Math.PI / 180;
 export const RAD2DEG = 180 / Math.PI;
 
 // Re-export from utils (Layer 0) so existing imports continue to work.
-export { uniqueIOFilename, uniqueId } from '../utils/ioFilename.js';
+export { uniqueIOFilename, _uniqueId } from '../utils/ioFilename.js';

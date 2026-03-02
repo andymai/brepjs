@@ -5,7 +5,7 @@
  * into a single call.
  */
 
-import type { OcShape } from '../kernel/types.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { AnyShape } from './shapeTypes.js';
 import { castShape } from './shapeTypes.js';
 import type { Result } from './result.js';
@@ -17,7 +17,7 @@ import { DisposalScope } from './disposal.js';
 type ErrorFactory = (code: string, message: string, cause?: unknown) => BrepError;
 
 const errorFactories: Record<BrepErrorKind, ErrorFactory> = {
-  OCCT_OPERATION: (code, message, cause) => ({ kind: 'OCCT_OPERATION', code, message, cause }),
+  KERNEL_OPERATION: (code, message, cause) => ({ kind: 'KERNEL_OPERATION', code, message, cause }),
   VALIDATION: (code, message, cause) => ({ kind: 'VALIDATION', code, message, cause }),
   TYPE_CAST: (code, message, cause) => ({ kind: 'TYPE_CAST', code, message, cause }),
   SKETCHER_STATE: (code, message, cause) => ({ kind: 'SKETCHER_STATE', code, message, cause }),
@@ -28,25 +28,25 @@ const errorFactories: Record<BrepErrorKind, ErrorFactory> = {
 };
 
 /**
- * Wrap a kernel call that returns an OcShape, automatically casting
+ * Wrap a kernel call that returns an KernelShape, automatically casting
  * the result into a branded AnyShape. On exception, returns an Err
  * with the given error code and message.
  *
- * OCCT error messages are automatically translated into user-friendly
- * explanations when the error kind is OCCT_OPERATION.
+ * kernel error messages are automatically translated into user-friendly
+ * explanations when the error kind is KERNEL_OPERATION.
  */
 export function kernelCall(
-  fn: () => OcShape,
+  fn: () => KernelShape,
   code: string,
   message: string,
-  kind: BrepErrorKind = 'OCCT_OPERATION'
+  kind: BrepErrorKind = 'KERNEL_OPERATION'
 ): Result<AnyShape> {
   try {
     return ok(castShape(fn()));
   } catch (e) {
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =
-      kind === 'OCCT_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
+      kind === 'KERNEL_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
     return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
   }
 }
@@ -55,27 +55,27 @@ export function kernelCall(
  * Wrap a kernel call that returns an arbitrary value. On exception,
  * returns an Err with the given error code and message.
  *
- * OCCT error messages are automatically translated into user-friendly
- * explanations when the error kind is OCCT_OPERATION.
+ * kernel error messages are automatically translated into user-friendly
+ * explanations when the error kind is KERNEL_OPERATION.
  */
 export function kernelCallRaw<T>(
   fn: () => T,
   code: string,
   message: string,
-  kind: BrepErrorKind = 'OCCT_OPERATION'
+  kind: BrepErrorKind = 'KERNEL_OPERATION'
 ): Result<T> {
   try {
     return ok(fn());
   } catch (e) {
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =
-      kind === 'OCCT_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
+      kind === 'KERNEL_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
     return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
   }
 }
 
 /**
- * Wrap a kernel call that needs intermediate OCCT allocations.
+ * Wrap a kernel call that needs intermediate kernel allocations.
  *
  * A DisposalScope is created and passed to fn. The scope is disposed
  * deterministically after fn returns or throws — ensuring no intermediate
@@ -84,8 +84,8 @@ export function kernelCallRaw<T>(
  * ```ts
  * return kernelCallScoped(
  *   (scope) => {
- *     const axis = scope.register(makeOcAx1(origin, dir));
- *     return getKernel().oc.BRepBuilderAPI_MakeRevol_1(shape.wrapped, axis).Shape();
+ *     const axis = scope.register(makeKernelAx1(origin, dir));
+ *     return getKernel().revolveVec(...) // was: oc.BRepBuilderAPI_MakeRevol_1(shape.wrapped, axis).Shape();
  *   },
  *   BrepErrorCode.REVOLUTION_NOT_3D,
  *   'Revolution failed'
@@ -93,10 +93,10 @@ export function kernelCallRaw<T>(
  * ```
  */
 export function kernelCallScoped(
-  fn: (scope: DisposalScope) => OcShape,
+  fn: (scope: DisposalScope) => KernelShape,
   code: string,
   message: string,
-  kind: BrepErrorKind = 'OCCT_OPERATION'
+  kind: BrepErrorKind = 'KERNEL_OPERATION'
 ): Result<AnyShape> {
   using scope = new DisposalScope();
   return kernelCall(() => fn(scope), code, message, kind);

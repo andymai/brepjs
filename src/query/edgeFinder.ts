@@ -5,7 +5,6 @@
 import type { Vec3 } from '../core/types.js';
 import type { Edge } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
-import { DisposalScope } from '../core/disposal.js';
 import { vecDot, vecNormalize } from '../core/vecOps.js';
 import { DEG2RAD } from '../core/constants.js';
 import { getCurveType, curveLength } from '../topology/curveFns.js';
@@ -33,15 +32,11 @@ export interface EdgeFinderFn extends ShapeFinder<Edge> {
 function edgeDirectionFilter(dir: DirectionInput, angle: number): Predicate<Edge> {
   const d = vecNormalize(resolveDir(dir));
   return (edge: Edge): boolean => {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
-
-    const adaptor = scope.register(new oc.BRepAdaptor_Curve_2(edge.wrapped));
-    const tmpPnt = scope.register(new oc.gp_Pnt_1());
-    const tmpVec = scope.register(new oc.gp_Vec_1());
-    const mid = (Number(adaptor.FirstParameter()) + Number(adaptor.LastParameter())) / 2;
-    adaptor.D1(mid, tmpPnt, tmpVec);
-    const tangent: Vec3 = vecNormalize([tmpVec.X(), tmpVec.Y(), tmpVec.Z()]);
+    const kernel = getKernel();
+    const [firstParam, lastParam] = kernel.curveParameters(edge.wrapped);
+    const midParam = (firstParam + lastParam) / 2;
+    const { tangent: rawTangent } = kernel.curveTangent(edge.wrapped, midParam);
+    const tangent: Vec3 = vecNormalize(rawTangent);
     const ang = Math.acos(Math.min(1, Math.abs(vecDot(tangent, d))));
     return Math.abs(ang - DEG2RAD * angle) < 1e-6;
   };

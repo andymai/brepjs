@@ -2,25 +2,16 @@
  * Curve construction helpers — lines, arcs, circles, ellipses, splines, and wire assembly.
  */
 
-import type { OcType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { DisposalScope } from '../core/disposal.js';
-import { toOcPnt, toOcVec, makeOcAx2, makeOcAx3 } from '../core/occtBoundary.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError, occtError } from '../core/errors.js';
+import { validationError, kernelError } from '../core/errors.js';
 import type { Edge, Wire } from '../core/shapeTypes.js';
-import { createEdge, createWire, isEdge, isWire } from '../core/shapeTypes.js';
+import { createEdge, createWire } from '../core/shapeTypes.js';
 
 /** Create a straight edge between two 3D points. */
 export function makeLine(v1: Vec3, v2: Vec3): Edge {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const p1 = scope.register(toOcPnt(v1));
-  const p2 = scope.register(toOcPnt(v2));
-  const maker = scope.register(new oc.BRepBuilderAPI_MakeEdge_3(p1, p2));
-  return createEdge(maker.Edge());
+  return createEdge(getKernel().makeLineEdge([...v1], [...v2]));
 }
 
 /** Create a circular edge with the given radius, center, and normal. */
@@ -29,13 +20,7 @@ export function makeCircle(
   center: Vec3 = [0, 0, 0],
   normal: Vec3 = [0, 0, 1]
 ): Edge {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const ax = scope.register(makeOcAx2(center, normal));
-  const circleGp = scope.register(new oc.gp_Circ_2(ax, radius));
-  const edgeMaker = scope.register(new oc.BRepBuilderAPI_MakeEdge_8(circleGp));
-  return createEdge(edgeMaker.Edge());
+  return createEdge(getKernel().makeCircleEdge([...center], [...normal], radius));
 }
 
 /**
@@ -57,13 +42,10 @@ export function makeEllipse(
     );
   }
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const ax = scope.register(makeOcAx2(center, normal, xDir));
-  const ellipseGp = scope.register(new oc.gp_Elips_2(ax, majorRadius, minorRadius));
-  const edgeMaker = scope.register(new oc.BRepBuilderAPI_MakeEdge_12(ellipseGp));
-  return ok(createEdge(edgeMaker.Edge()));
+  return ok(createEdge(getKernel().makeEllipseEdge(
+    [...center], [...normal], majorRadius, minorRadius,
+    xDir ? [...xDir] : undefined
+  )));
 }
 
 /**
@@ -80,38 +62,7 @@ export function makeHelix(
   dir: Vec3 = [0, 0, 1],
   lefthand = false
 ): Wire {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const angularStep = lefthand ? -2 * Math.PI : 2 * Math.PI;
-
-  const geomLine = scope.register(
-    new oc.Geom2d_Line_3(
-      scope.register(new oc.gp_Pnt2d_3(0.0, 0.0)),
-      scope.register(new oc.gp_Dir2d_4(angularStep, pitch))
-    )
-  );
-
-  const nTurns = height / pitch;
-  const uStart = scope.register(geomLine.Value(0.0));
-  const uStop = scope.register(geomLine.Value(nTurns * Math.sqrt((2 * Math.PI) ** 2 + pitch ** 2)));
-  const geomSeg = scope.register(new oc.GCE2d_MakeSegment_1(uStart, uStop));
-
-  // We do not register this surface with the scope (or it can break for some reason)
-  const geomSurf = new oc.Geom_CylindricalSurface_1(scope.register(makeOcAx3(center, dir)), radius);
-
-  const e = scope
-    .register(
-      new oc.BRepBuilderAPI_MakeEdge_30(
-        scope.register(new oc.Handle_Geom2d_Curve_2(geomSeg.Value().get())),
-        scope.register(new oc.Handle_Geom_Surface_2(geomSurf))
-      )
-    )
-    .Edge();
-
-  const w = scope.register(new oc.BRepBuilderAPI_MakeWire_2(e)).Wire();
-  oc.BRepLib.BuildCurves3d_2(w);
-
-  return createWire(w);
+  return createWire(getKernel().makeHelixWire(pitch, height, radius, [...center], [...dir], lefthand));
 }
 
 /**
@@ -122,18 +73,7 @@ export function makeHelix(
  * @param v3 - End point.
  */
 export function makeThreePointArc(v1: Vec3, v2: Vec3, v3: Vec3): Edge {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const p1 = scope.register(toOcPnt(v1));
-  const p2 = scope.register(toOcPnt(v2));
-  const p3 = scope.register(toOcPnt(v3));
-  const arcMaker = scope.register(new oc.GC_MakeArcOfCircle_4(p1, p2, p3));
-  const circleGeom = scope.register(arcMaker.Value());
-
-  const curve = scope.register(new oc.Handle_Geom_Curve_2(circleGeom.get()));
-  const edgeMaker = scope.register(new oc.BRepBuilderAPI_MakeEdge_24(curve));
-  return createEdge(edgeMaker.Edge());
+  return createEdge(getKernel().makeArcEdge([...v1], [...v2], [...v3]));
 }
 
 /**
@@ -159,15 +99,10 @@ export function makeEllipseArc(
     );
   }
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const ax = scope.register(makeOcAx2(center, normal, xDir));
-  const ellipseGp = scope.register(new oc.gp_Elips_2(ax, majorRadius, minorRadius));
-  const edgeMaker = scope.register(
-    new oc.BRepBuilderAPI_MakeEdge_13(ellipseGp, startAngle, endAngle)
-  );
-  return ok(createEdge(edgeMaker.Edge()));
+  return ok(createEdge(getKernel().makeEllipseArc(
+    [...center], [...normal], majorRadius, minorRadius, startAngle, endAngle,
+    xDir ? [...xDir] : undefined
+  )));
 }
 
 /** Configuration for {@link makeBSplineApproximation}. */
@@ -185,56 +120,18 @@ export interface BSplineApproximationOptions {
 /**
  * Create a B-spline edge that approximates a set of 3D points.
  *
- * @returns An error if the OCCT approximation algorithm fails.
+ * @returns An error if the kernel approximation algorithm fails.
  */
 export function makeBSplineApproximation(
   points: Vec3[],
   { tolerance = 1e-3, smoothing = null, degMax = 6, degMin = 1 }: BSplineApproximationOptions = {}
 ): Result<Edge> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const pnts = scope.register(new oc.TColgp_Array1OfPnt_2(1, points.length));
-
-  points.forEach((point, index) => {
-    pnts.SetValue(index + 1, scope.register(toOcPnt(point)));
-  });
-
-  let splineBuilder: OcType;
-
-  if (smoothing) {
-    splineBuilder = scope.register(
-      new oc.GeomAPI_PointsToBSpline_5(
-        pnts,
-        smoothing[0],
-        smoothing[1],
-        smoothing[2],
-        degMax,
-
-        oc.GeomAbs_Shape.GeomAbs_C2,
-        tolerance
-      )
-    );
-  } else {
-    splineBuilder = scope.register(
-      new oc.GeomAPI_PointsToBSpline_2(
-        pnts,
-        degMin,
-        degMax,
-
-        oc.GeomAbs_Shape.GeomAbs_C2,
-        tolerance
-      )
-    );
+  try {
+    const mutablePoints: [number, number, number][] = points.map((p) => [...p]);
+    return ok(createEdge(getKernel().approximatePoints(mutablePoints, { tolerance, degMin, degMax, smoothing })));
+  } catch {
+    return err(kernelError('BSPLINE_FAILED', 'B-spline approximation failed'));
   }
-
-  if (!splineBuilder.IsDone()) {
-    return err(occtError('BSPLINE_FAILED', 'B-spline approximation failed'));
-  }
-
-  const splineGeom = scope.register(splineBuilder.Curve());
-  const curve = scope.register(new oc.Handle_Geom_Curve_2(splineGeom.get()));
-  return ok(createEdge(new oc.BRepBuilderAPI_MakeEdge_24(curve).Edge()));
 }
 
 /**
@@ -256,17 +153,8 @@ export function makeBezierCurve(points: Vec3[]): Result<Edge> {
       )
     );
   }
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const arrayOfPoints = scope.register(new oc.TColgp_Array1OfPnt_2(1, points.length));
-  points.forEach((p, i) => {
-    arrayOfPoints.SetValue(i + 1, scope.register(toOcPnt(p)));
-  });
-  const bezCurve = new oc.Geom_BezierCurve_1(arrayOfPoints);
-
-  const curve = scope.register(new oc.Handle_Geom_Curve_2(bezCurve));
-  const edgeMaker = scope.register(new oc.BRepBuilderAPI_MakeEdge_24(curve));
-  return ok(createEdge(edgeMaker.Edge()));
+  const mutablePoints: [number, number, number][] = points.map((p) => [...p]);
+  return ok(createEdge(getKernel().makeBezierEdge(mutablePoints)));
 }
 
 /**
@@ -275,19 +163,7 @@ export function makeBezierCurve(points: Vec3[]): Result<Edge> {
  * @param startTgt - Tangent direction at the start point.
  */
 export function makeTangentArc(startPoint: Vec3, startTgt: Vec3, endPoint: Vec3): Edge {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const circleGeom = scope.register(
-    new oc.GC_MakeArcOfCircle_5(
-      scope.register(toOcPnt(startPoint)),
-      scope.register(toOcVec(startTgt)),
-      scope.register(toOcPnt(endPoint))
-    ).Value()
-  );
-
-  const curve = scope.register(new oc.Handle_Geom_Curve_2(circleGeom.get()));
-  const edgeMaker = scope.register(new oc.BRepBuilderAPI_MakeEdge_24(curve));
-  return createEdge(edgeMaker.Edge());
+  return createEdge(getKernel().makeTangentArc([...startPoint], [...startTgt], [...endPoint]));
 }
 
 /**
@@ -296,35 +172,14 @@ export function makeTangentArc(startPoint: Vec3, startTgt: Vec3, endPoint: Vec3)
  * @returns An error if the edges cannot form a valid wire (e.g. disconnected).
  */
 export function assembleWire(listOfEdges: (Edge | Wire)[]): Result<Wire> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const wireBuilder = scope.register(new oc.BRepBuilderAPI_MakeWire_1());
-  listOfEdges.forEach((e) => {
-    if (isEdge(e)) {
-      wireBuilder.Add_1(e.wrapped);
-    }
-    if (isWire(e)) {
-      wireBuilder.Add_2(e.wrapped);
-    }
-  });
-
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  wireBuilder.Build(progress);
-  const res = wireBuilder.Error();
-  if (res !== oc.BRepBuilderAPI_WireError.BRepBuilderAPI_WireDone) {
-    const errorNames = new Map([
-      [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_EmptyWire, 'empty wire'],
-      [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_NonManifoldWire, 'non manifold wire'],
-      [oc.BRepBuilderAPI_WireError.BRepBuilderAPI_DisconnectedWire, 'disconnected wire'],
-    ]);
+  try {
+    return ok(createWire(getKernel().makeWireFromMixed(listOfEdges.map((e) => e.wrapped))));
+  } catch (e) {
     return err(
-      occtError(
+      kernelError(
         'WIRE_BUILD_FAILED',
-        `Failed to build the wire, ${errorNames.get(res) || 'unknown error'}`
+        `Failed to build the wire: ${e instanceof Error ? e.message : 'unknown error'}`
       )
     );
   }
-
-  return ok(createWire(wireBuilder.Wire()));
 }

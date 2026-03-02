@@ -404,8 +404,8 @@ describe('fuseAll/cutAll', () => {
     expect(isErr(fuseAll([]))).toBe(true);
   });
   it('fuseAll disjoint boxes returns valid Shape3D', () => {
-    // Verifies that isShape3D check works by OCCT shape type (not class names).
-    // When fusing disjoint boxes, OCCT returns a COMPOUND which must be
+    // Verifies that isShape3D check works by kernel shape type (not class names).
+    // When fusing disjoint boxes, kernel returns a COMPOUND which must be
     // correctly identified as a 3D shape even when class names are minified.
     const result = fuseAll([box(10, 10, 10), translate(box(10, 10, 10), [100, 0, 0])]);
     expect(isOk(result)).toBe(true);
@@ -458,7 +458,7 @@ describe('shapeHelpers', () => {
     expect(isWire(helix(2, 10, 5))).toBe(true);
   });
   it('makeHelix left', () => {
-    expect(isWire(helix(2, 10, 5, [0, 0, 0], [0, 0, 1], true))).toBe(true);
+    expect(isWire(helix(2, 10, 5, { at: [0, 0, 0], axis: [0, 0, 1], lefthand: true }))).toBe(true);
   });
   it('makeThreePointArc', () => {
     expect(isEdge(threePointArc([0, 0, 0], [5, 5, 0], [10, 0, 0]))).toBe(true);

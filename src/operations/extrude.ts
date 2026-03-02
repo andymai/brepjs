@@ -1,13 +1,13 @@
 import { getKernel } from '../kernel/index.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
-import { makeOcAx1 } from '../core/occtBoundary.js';
+// occtBoundary import removed — revolve uses kernel.revolveVec
 import { vecAdd, vecLength } from '../core/vecOps.js';
 import { DisposalScope } from '../core/memory.js';
 import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
-import { typeCastError, occtError } from '../core/errors.js';
+import { typeCastError } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepOptions } from './extrudeUtils.js';
 import type { Face, Wire, Edge, Shape3D, Solid } from '../core/shapeTypes.js';
 import { createSolid } from '../core/shapeTypes.js';
@@ -23,15 +23,12 @@ import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
  * @see {@link extrudeFns!extrude | extrude} for the functional API equivalent.
  */
 export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
+  const kernel = getKernel();
   const vec = toVec3(extrusionVec);
-  const ocVec = scope.register(new oc.gp_Vec_4(vec[0], vec[1], vec[2]));
-  const solidBuilder = scope.register(
-    new oc.BRepPrimAPI_MakePrism_1(face.wrapped, ocVec, false, true)
-  );
-  const solid = createSolid(unwrap(downcast(solidBuilder.Shape())));
+  const len = vecLength(vec);
+  const dir: [number, number, number] = len > 0 ? [vec[0] / len, vec[1] / len, vec[2] / len] : [0, 0, 1];
+  const shape = kernel.extrude(face.wrapped, dir, len);
+  const solid = createSolid(unwrap(downcast(shape)));
   return solid;
 };
 
@@ -52,17 +49,13 @@ export const revolution = (
   direction: PointInput = [0, 0, 1],
   angle = 360
 ): Result<Shape3D> => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
   const centerVec = toVec3(center);
   const directionVec = toVec3(direction);
-  const ax = scope.register(makeOcAx1(centerVec, directionVec));
-  const revolBuilder = scope.register(
-    new oc.BRepPrimAPI_MakeRevol_1(face.wrapped, ax, angle * DEG2RAD, false)
-  );
 
-  const result = andThen(cast(revolBuilder.Shape()), (shape) => {
+  const kernel = getKernel();
+  const revolShape = kernel.revolveVec(face.wrapped, [...centerVec], [...directionVec], angle * DEG2RAD);
+
+  const result = andThen(cast(revolShape), (shape) => {
     if (!isShape3D(shape))
       return err(typeCastError('REVOLUTION_NOT_3D', 'Revolution did not produce a 3D shape'));
     return ok(shape);
@@ -121,66 +114,32 @@ function genericSweep(
     return result;
   }
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
+  const kernel = getKernel();
   const withCorrection = transitionMode === 'round' ? true : !!forceProfileSpineOthogonality;
-  const sweepBuilder = scope.register(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
 
-  // Apply performance tuning parameters
-  if (tolerance !== undefined) {
-    sweepBuilder.SetTolerance(tolerance, boundTolerance ?? tolerance, angularTolerance ?? 1e-7);
-  }
-  if (maxDegree !== undefined) {
-    sweepBuilder.SetMaxDegree(maxDegree);
-  }
-  if (maxSegments !== undefined) {
-    sweepBuilder.SetMaxSegments(maxSegments);
-  }
+  const result = kernel.sweepPipeShell(wire.wrapped, spine.wrapped, {
+    transitionMode,
+    contact: !!withContact,
+    correction: withCorrection,
+    frenet,
+    shellMode,
+    ...(auxiliarySpine?.wrapped ? { auxiliary: auxiliarySpine.wrapped } : {}),
+    ...(law !== null ? { law } : {}),
+    ...(support !== null ? { support } : {}),
+    tolerance,
+    boundTolerance,
+    angularTolerance,
+    maxDegree,
+    maxSegments,
+  });
 
-  {
-    const mode = {
-      transformed: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_Transformed,
-      round: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_RoundCorner,
-      right: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_RightCorner,
-    }[transitionMode];
-    if (mode) sweepBuilder.SetTransitionMode(mode);
-  }
-
-  if (support) {
-    sweepBuilder.SetMode_4(support);
-  } else if (frenet) {
-    sweepBuilder.SetMode_1(frenet);
-  }
-  if (auxiliarySpine) {
-    sweepBuilder.SetMode_5(
-      auxiliarySpine.wrapped,
-      false,
-      oc.BRepFill_TypeOfContact.BRepFill_NoContact
-    );
-  }
-
-  if (!law) sweepBuilder.Add_1(wire.wrapped, !!withContact, withCorrection);
-  else sweepBuilder.SetLaw_1(wire.wrapped, law, !!withContact, withCorrection);
-
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  sweepBuilder.Build(progress);
-
-  if (!sweepBuilder.IsDone()) {
-    return err(occtError('SWEEP_FAILED', 'Sweep operation failed'));
-  }
-
-  if (!shellMode) {
-    sweepBuilder.MakeSolid();
-  }
-  const shape = unwrap(cast(sweepBuilder.Shape()));
-  if (!isShape3D(shape)) {
-    return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
-  }
-
-  if (shellMode) {
-    const startWire = unwrap(cast(sweepBuilder.FirstShape()));
-    const endWire = unwrap(cast(sweepBuilder.LastShape()));
+  if (shellMode && typeof result === 'object' && 'firstShape' in result) {
+    const shape = unwrap(cast(result.shape));
+    if (!isShape3D(shape)) {
+      return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
+    }
+    const startWire = unwrap(cast(result.firstShape));
+    const endWire = unwrap(cast(result.lastShape));
     if (!isWire(startWire)) {
       return err(typeCastError('SWEEP_START_NOT_WIRE', 'Sweep did not produce a start Wire'));
     }
@@ -190,6 +149,10 @@ function genericSweep(
     return ok([shape, startWire, endWire] as [Shape3D, Wire, Wire]);
   }
 
+  const shape = unwrap(cast(result));
+  if (!isShape3D(shape)) {
+    return err(typeCastError('SWEEP_NOT_3D', 'Sweep did not produce a 3D shape'));
+  }
   return ok(shape);
 }
 

@@ -5,9 +5,10 @@
  * Built on the existing face hash / origin propagation system in shapeFns.ts.
  */
 
+import type { ShapeEvolution } from '../kernel/types.js';
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
-import { getFaces, iterOcList } from './shapeFns.js';
+import { getFaces } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Internal storage
@@ -139,17 +140,11 @@ export function getTagMetadata(shape: AnyShape, tag: string): Record<string, unk
 }
 
 /**
- * Propagate face tags from input shapes to a result shape.
- *
- * Call this after any operation that creates a new shape from existing shapes
- * (booleans, fillets, chamfers, etc.) to preserve face tags.
- *
- * Uses OCCT's Modified()/Generated() to track which input faces
- * became which result faces.
+ * Propagate face tags from input shapes to a result shape using a
+ * kernel-provided ShapeEvolution record (no direct kernel op access needed).
  */
-export function propagateFaceTags(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT WASM type gaps
-  op: { Modified(s: any): any; Generated(s: any): any; IsDeleted?(s: any): boolean },
+export function propagateFaceTagsFromEvolution(
+  evolution: ShapeEvolution,
   inputs: readonly AnyShape[],
   result: AnyShape
 ): void {
@@ -169,26 +164,19 @@ export function propagateFaceTags(
       }
     }
 
-    // For each tagged face in the input, find its descendants in the result
-    for (const face of getFaces(input)) {
-      const hash = face.wrapped.HashCode(HASH_CODE_MAX);
-      const tags = hashToTags.get(hash);
-      if (!tags) continue;
+    // For each tagged face hash, use the evolution to find result hashes
+    for (const [hash, tags] of hashToTags) {
+      if (evolution.deleted.has(hash)) continue;
 
-      if (op.IsDeleted?.(face.wrapped)) continue;
-
-      // Check Modified faces
-      const modifiedList = op.Modified(face.wrapped);
-      const modSize = modifiedList.Size?.() ?? 0;
-      if (modSize > 0) {
-        iterOcList(modifiedList, (modFace) => {
-          const modHash = modFace.HashCode(HASH_CODE_MAX);
+      const modifiedHashes = evolution.modified.get(hash);
+      if (modifiedHashes && modifiedHashes.length > 0) {
+        for (const modHash of modifiedHashes) {
           for (const tag of tags) {
             const set = resultTagMap.get(tag) ?? new Set<number>();
             set.add(modHash);
             resultTagMap.set(tag, set);
           }
-        });
+        }
       } else {
         // Face survived unmodified
         for (const tag of tags) {

@@ -1,5 +1,5 @@
 /**
- * DXF file import -- parse ASCII DXF entities into OCCT wires.
+ * DXF file import -- parse ASCII DXF entities into kernel wires.
  */
 
 import { getKernel } from '../kernel/index.js';
@@ -78,70 +78,36 @@ function getNum(data: Map<number, string>, code: number, fallback = 0): number {
   return isNaN(n) ? fallback : n;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT types
-function entityToEdge(entity: DXFEntity, oc: any): unknown {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types
+function entityToEdge(entity: DXFEntity): unknown {
   const { type, data } = entity;
+  const kernel = getKernel();
 
   if (type === 'LINE') {
-    const p1 = new oc.gp_Pnt_3(getNum(data, 10), getNum(data, 20), getNum(data, 30));
-    const p2 = new oc.gp_Pnt_3(getNum(data, 11), getNum(data, 21), getNum(data, 31));
-    try {
-      const builder = new oc.BRepBuilderAPI_MakeEdge_3(p1, p2);
-      const edge = builder.Edge();
-      builder.delete();
-      return edge;
-    } finally {
-      p1.delete();
-      p2.delete();
-    }
+    return kernel.makeLineEdge(
+      [getNum(data, 10), getNum(data, 20), getNum(data, 30)],
+      [getNum(data, 11), getNum(data, 21), getNum(data, 31)]
+    );
   }
 
   if (type === 'CIRCLE') {
-    const cx = getNum(data, 10);
-    const cy = getNum(data, 20);
-    const cz = getNum(data, 30);
-    const radius = getNum(data, 40);
-    const center = new oc.gp_Pnt_3(cx, cy, cz);
-    const dir = new oc.gp_Dir_4(0, 0, 1);
-    const ax2 = new oc.gp_Ax2_3(center, dir);
-    const circ = new oc.gp_Circ_2(ax2, radius);
-    try {
-      const builder = new oc.BRepBuilderAPI_MakeEdge_8(circ);
-      const edge = builder.Edge();
-      builder.delete();
-      return edge;
-    } finally {
-      center.delete();
-      dir.delete();
-      ax2.delete();
-      circ.delete();
-    }
+    return kernel.makeCircleEdge(
+      [getNum(data, 10), getNum(data, 20), getNum(data, 30)],
+      [0, 0, 1],
+      getNum(data, 40)
+    );
   }
 
   if (type === 'ARC') {
-    const cx = getNum(data, 10);
-    const cy = getNum(data, 20);
-    const cz = getNum(data, 30);
-    const radius = getNum(data, 40);
-    const startAngleDeg = getNum(data, 50);
-    const endAngleDeg = getNum(data, 51);
-    const startAngle = (startAngleDeg * Math.PI) / 180;
-    const endAngle = (endAngleDeg * Math.PI) / 180;
-    const center = new oc.gp_Pnt_3(cx, cy, cz);
-    const dir = new oc.gp_Dir_4(0, 0, 1);
-    const ax2 = new oc.gp_Ax2_3(center, dir);
-    const circ = new oc.gp_Circ_2(ax2, radius);
-    try {
-      const builder = new oc.BRepBuilderAPI_MakeEdge_9(circ, startAngle, endAngle);
-      const edge = builder.Edge();
-      builder.delete();
-      return edge;
-    } finally {
-      center.delete();
-      dir.delete();
-      ax2.delete();
-      circ.delete();
-    }
+    const startAngle = (getNum(data, 50) * Math.PI) / 180;
+    const endAngle = (getNum(data, 51) * Math.PI) / 180;
+    return kernel.makeCircleArc(
+      [getNum(data, 10), getNum(data, 20), getNum(data, 30)],
+      [0, 0, 1],
+      getNum(data, 40),
+      startAngle,
+      endAngle
+    );
   }
 
   return undefined;
@@ -152,7 +118,7 @@ function entityToEdge(entity: DXFEntity, oc: any): unknown {
 // ---------------------------------------------------------------------------
 
 /**
- * Import a DXF file from a Blob, returning OCCT wires.
+ * Import a DXF file from a Blob, returning kernel wires.
  *
  * Parses ASCII DXF LINE, CIRCLE, and ARC entities.
  * Edges are assembled into wires using `BRepBuilderAPI_MakeWire`.
@@ -162,8 +128,6 @@ function entityToEdge(entity: DXFEntity, oc: any): unknown {
  * @returns A `Result` wrapping an array of wires.
  */
 export async function importDXF(blob: Blob, options?: DXFImportOptions): Promise<Result<Wire[]>> {
-  const oc = getKernel().oc;
-
   let text: string;
   try {
     text = await blob.text();
@@ -181,11 +145,11 @@ export async function importDXF(blob: Blob, options?: DXFImportOptions): Promise
     return ok([]);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT edge types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel edge types
   const edges: Array<any> = [];
   try {
     for (const entity of entities) {
-      const edge = entityToEdge(entity, oc);
+      const edge = entityToEdge(entity);
       if (edge !== undefined) {
         edges.push(edge);
       }
@@ -195,23 +159,8 @@ export async function importDXF(blob: Blob, options?: DXFImportOptions): Promise
       return ok([]);
     }
 
-    const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
-    try {
-      for (const edge of edges) {
-        wireBuilder.Add_1(edge);
-      }
-
-      if (wireBuilder.IsDone()) {
-        const wire = wireBuilder.Wire();
-        return ok([createWire(wire)]);
-      }
-
-      return err(
-        ioError(BrepErrorCode.DXF_IMPORT_FAILED, 'Failed to assemble DXF edges into a wire')
-      );
-    } finally {
-      wireBuilder.delete();
-    }
+    const wire = getKernel().makeWire(edges);
+    return ok([createWire(wire)]);
   } catch (cause: unknown) {
     return err(
       ioError(BrepErrorCode.DXF_IMPORT_FAILED, 'Failed to convert DXF entities to geometry', cause)

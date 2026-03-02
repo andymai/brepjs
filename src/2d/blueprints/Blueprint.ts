@@ -1,3 +1,4 @@
+import type { KernelShape } from '../../kernel/types.js';
 import { makePlane } from '../../core/geometryHelpers.js';
 import type { ScaleMode } from '../curves.js';
 import {
@@ -40,15 +41,10 @@ import { getSingleFace } from '../../query/helpers.js';
 
 /**
  * Assembles a list of edges into a wire.
- * Temporary inline implementation until shapeHelpers is ported.
  */
 function assembleWire(listOfEdges: { wrapped: unknown }[]): Wire {
-  const oc = getKernel().oc;
-  const builder = new oc.BRepBuilderAPI_MakeWire_1();
-  listOfEdges.forEach((e) => {
-    builder.Add_1(e.wrapped);
-  });
-  return createWire(builder.Wire());
+  const edgeShapes = listOfEdges.map((e) => e.wrapped) as KernelShape[];
+  return createWire(getKernel().makeWire(edgeShapes));
 }
 
 /**
@@ -258,16 +254,13 @@ export default class Blueprint implements DrawingInterface {
    * @returns Sketch data containing the wire mapped onto the face.
    */
   sketchOnFace(face: Face, scaleMode?: ScaleMode): SketchData {
-    const oc = getKernel().oc;
+    const kernel = getKernel();
 
     const edges = unwrap(curvesAsEdgesOnFace(this.curves, face, scaleMode));
     const wire = assembleWire(edges);
 
-    oc.BRepLib.BuildCurves3d_2(wire.wrapped);
-
-    const wireFixer = new oc.ShapeFix_Wire_2(wire.wrapped, face.wrapped, 1e-9);
-    wireFixer.FixEdgeCurves();
-    wireFixer.delete();
+    kernel.buildCurves3d(wire.wrapped);
+    kernel.fixWireOnFace(wire.wrapped, face.wrapped, 1e-9);
 
     return { wire, baseFace: face };
   }
@@ -310,28 +303,18 @@ export default class Blueprint implements DrawingInterface {
       draftAngle?: number;
     } = {}
   ) {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
-
     const foundFace = unwrap(getSingleFace(face, shape));
     const hole = this.subFace(foundFace, origin);
 
-    const maker = scope.register(
-      new oc.BRepFeat_MakeDPrism_1(
-        shape.wrapped,
-        hole.wrapped,
-        foundFace.wrapped,
-        draftAngle * DEG2RAD,
-        0,
-        false
-      )
+    const result = getKernel().draftPrism(
+      shape.wrapped,
+      hole.wrapped,
+      foundFace.wrapped,
+      height,
+      draftAngle,
+      false
     );
-    if (height) {
-      maker.Perform_1(height);
-    } else {
-      maker.PerformThruAll();
-    }
-    return unwrap(cast(maker.Shape()));
+    return unwrap(cast(result));
   }
 
   /** Convert the blueprint to an SVG path `d` attribute string. */
@@ -402,26 +385,20 @@ export default class Blueprint implements DrawingInterface {
   isInside(point: Point2D): boolean {
     if (!this.boundingBox.containsPoint(point)) return false;
 
-    const oc = getKernel().oc;
-    const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
+    const kernel = getKernel();
+    const segment = make2dSegmentCurve(point, this.boundingBox.outsidePoint());
+    let crossCounts = 0;
 
-    try {
-      const segment = make2dSegmentCurve(point, this.boundingBox.outsidePoint());
-      let crossCounts = 0;
+    const onCurve = this.curves.find((c) => c.isOnCurve(point));
+    if (onCurve) return false;
 
-      const onCurve = this.curves.find((c) => c.isOnCurve(point));
-      if (onCurve) return false;
+    this.curves.forEach((c) => {
+      if (c.boundingBox.isOut(segment.boundingBox)) return;
+      const result = kernel.intersectCurves2d(segment.wrapped, c.wrapped, 1e-9);
+      crossCounts += result.points.length;
+    });
 
-      this.curves.forEach((c) => {
-        if (c.boundingBox.isOut(segment.boundingBox)) return;
-        intersector.Init_1(segment.wrapped, c.wrapped, 1e-9);
-        crossCounts += Number(intersector.NbPoints());
-      });
-
-      return !!(crossCounts % 2);
-    } finally {
-      intersector.delete();
-    }
+    return !!(crossCounts % 2);
   }
 
   /** Check whether the first and last points coincide (the profile is closed). */
@@ -437,21 +414,15 @@ export default class Blueprint implements DrawingInterface {
   intersects(other: Blueprint) {
     if (this.boundingBox.isOut(other.boundingBox)) return false;
 
-    const oc = getKernel().oc;
-    const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
+    const kernel = getKernel();
+    for (const myCurve of this.curves) {
+      for (const otherCurve of other.curves) {
+        if (myCurve.boundingBox.isOut(otherCurve.boundingBox)) continue;
 
-    try {
-      for (const myCurve of this.curves) {
-        for (const otherCurve of other.curves) {
-          if (myCurve.boundingBox.isOut(otherCurve.boundingBox)) continue;
-
-          intersector.Init_1(myCurve.wrapped, otherCurve.wrapped, 1e-9);
-          if (intersector.NbPoints() || intersector.NbSegments()) return true;
-        }
+        const result = kernel.intersectCurves2d(myCurve.wrapped, otherCurve.wrapped, 1e-9);
+        if (result.points.length || result.segments.length) return true;
       }
-      return false;
-    } finally {
-      intersector.delete();
     }
+    return false;
   }
 }

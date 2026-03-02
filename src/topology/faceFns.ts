@@ -4,12 +4,11 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import type { SurfaceType as KernelSurfaceType } from '../kernel/index.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import type { Face, Wire } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
-import { toOcPnt } from '../core/occtBoundary.js';
-import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
 import { iterTopo, downcast } from './cast.js';
@@ -32,41 +31,29 @@ export type SurfaceType =
   | 'OFFSET_SURFACE'
   | 'OTHER_SURFACE';
 
+/** Map kernel surface type strings to the public API surface type constants. */
+const KERNEL_TO_PUBLIC_SURFACE_TYPE: Record<KernelSurfaceType, SurfaceType> = {
+  plane: 'PLANE',
+  cylinder: 'CYLINDRE',
+  cone: 'CONE',
+  sphere: 'SPHERE',
+  torus: 'TORUS',
+  bezier: 'BEZIER_SURFACE',
+  bspline: 'BSPLINE_SURFACE',
+  revolution: 'REVOLUTION_SURFACE',
+  extrusion: 'EXTRUSION_SURFACE',
+  offset: 'OFFSET_SURFACE',
+  other: 'OTHER_SURFACE',
+};
+
 /**
  * Get the geometric surface type of a face.
  *
- * @returns Ok with the surface type, or Err for unrecognized OCCT surface types.
+ * @returns Ok with the surface type, or Err for unrecognized kernel surface types.
  */
 export function getSurfaceType(face: Face): Result<SurfaceType> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const adaptor = scope.register(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
-  const ga = oc.GeomAbs_SurfaceType;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are dynamic
-  const CAST_MAP: Map<any, SurfaceType> = new Map([
-    [ga.GeomAbs_Plane, 'PLANE'],
-    [ga.GeomAbs_Cylinder, 'CYLINDRE'],
-    [ga.GeomAbs_Cone, 'CONE'],
-    [ga.GeomAbs_Sphere, 'SPHERE'],
-    [ga.GeomAbs_Torus, 'TORUS'],
-    [ga.GeomAbs_BezierSurface, 'BEZIER_SURFACE'],
-    [ga.GeomAbs_BSplineSurface, 'BSPLINE_SURFACE'],
-    [ga.GeomAbs_SurfaceOfRevolution, 'REVOLUTION_SURFACE'],
-    [ga.GeomAbs_SurfaceOfExtrusion, 'EXTRUSION_SURFACE'],
-    [ga.GeomAbs_OffsetSurface, 'OFFSET_SURFACE'],
-    [ga.GeomAbs_OtherSurface, 'OTHER_SURFACE'],
-  ]);
-
-  const surfType = CAST_MAP.get(adaptor.GetType());
-
-  if (!surfType) {
-    return err(
-      typeCastError('UNKNOWN_SURFACE_TYPE', 'Unrecognized surface type from OCCT adapter')
-    );
-  }
-  return ok(surfType);
+  const kernelType = getKernel().surfaceType(face.wrapped);
+  return ok(KERNEL_TO_PUBLIC_SURFACE_TYPE[kernelType]);
 }
 
 /** Get the surface type of a face (unwrapped convenience). */
@@ -80,13 +67,13 @@ export function faceGeomType(face: Face): SurfaceType {
 
 /** Get the topological orientation of a face. */
 export function faceOrientation(face: Face): 'forward' | 'backward' {
-  const oc = getKernel().oc;
-  const orient = face.wrapped.Orientation_1();
-  return orient === oc.TopAbs_Orientation.TopAbs_FORWARD ? 'forward' : 'backward';
+  const orient = getKernel().shapeOrientation(face.wrapped);
+  return orient === 'forward' ? 'forward' : 'backward';
 }
 
 /** Flip the orientation of a face. Returns a new face. */
 export function flipFaceOrientation(face: Face): Face {
+   
   return castShape(face.wrapped.Reversed()) as Face;
 }
 
@@ -104,18 +91,7 @@ export interface UVBounds {
 
 /** Get the UV parameter bounds of a face. */
 export function uvBounds(face: Face): UVBounds {
-  const oc = getKernel().oc;
-  const uMin = { current: 0 };
-  const uMax = { current: 0 };
-  const vMin = { current: 0 };
-  const vMax = { current: 0 };
-  oc.BRepTools.UVBounds_1(face.wrapped, uMin, uMax, vMin, vMax);
-  return {
-    uMin: uMin.current,
-    uMax: uMax.current,
-    vMin: vMin.current,
-    vMax: vMax.current,
-  };
+  return getKernel().uvBounds(face.wrapped);
 }
 
 /**
@@ -126,39 +102,22 @@ export function uvBounds(face: Face): UVBounds {
  * @param v - Normalized V parameter (0-1).
  */
 export function pointOnSurface(face: Face, u: number, v: number): Vec3 {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
   const bounds = uvBounds(face);
-  const adaptor = scope.register(new oc.BRepAdaptor_Surface_2(face.wrapped, false));
-  const p = scope.register(new oc.gp_Pnt_1());
-
   const absU = u * (bounds.uMax - bounds.uMin) + bounds.uMin;
   const absV = v * (bounds.vMax - bounds.vMin) + bounds.vMin;
-
-  adaptor.D0(absU, absV, p);
-  return [p.X(), p.Y(), p.Z()];
+  return getKernel().pointOnSurface(face.wrapped, absU, absV);
 }
 
 /** Get the UV coordinates on a face for a given 3D point. */
 export function uvCoordinates(face: Face, point: PointInput): [number, number] {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
   const v = toVec3(point);
-  const surface = scope.register(oc.BRep_Tool.Surface_2(face.wrapped));
-
-  const projected = scope.register(
-    new oc.GeomAPI_ProjectPointOnSurf_2(
-      scope.register(toOcPnt(v)),
-      surface,
-      oc.Extrema_ExtAlgo.Extrema_ExtAlgo_Grad
-    )
-  );
-
-  const uPtr = { current: 0 };
-  const vPtr = { current: 0 };
-  projected.LowerDistanceParameters(uPtr, vPtr);
-  return [uPtr.current, vPtr.current];
+  const result = getKernel().uvFromPoint(face.wrapped, v as [number, number, number]);
+  if (!result) {
+    // Fallback: return [0, 0] if projection fails (matches previous behavior where
+    // LowerDistanceParameters would return default values)
+    return [0, 0];
+  }
+  return result;
 }
 
 /** Result of projecting a point onto a face surface. */
@@ -178,35 +137,27 @@ export interface PointProjectionResult {
  * from the original point to the surface.
  */
 export function projectPointOnFace(face: Face, point: PointInput): Result<PointProjectionResult> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
   const v = toVec3(point);
 
   try {
-    const surface = scope.register(oc.BRep_Tool.Surface_2(face.wrapped));
-    const projected = scope.register(
-      new oc.GeomAPI_ProjectPointOnSurf_2(
-        scope.register(toOcPnt(v)),
-        surface,
-        oc.Extrema_ExtAlgo.Extrema_ExtAlgo_Grad
-      )
-    );
-
-    if (projected.NbPoints() === 0) {
+    const vMut = v as [number, number, number];
+    const uvResult = getKernel().uvFromPoint(face.wrapped, vMut);
+    if (!uvResult) {
       return err(typeCastError('PROJECTION_FAILED', 'No projection found on the face'));
     }
 
-    const uPtr = { current: 0 };
-    const vPtr = { current: 0 };
-    projected.LowerDistanceParameters(uPtr, vPtr);
+    const projectedPoint = getKernel().projectPointOnFace(face.wrapped, vMut);
 
-    const nearestPnt = scope.register(projected.NearestPoint());
-    const projectedPoint: Vec3 = [nearestPnt.X(), nearestPnt.Y(), nearestPnt.Z()];
+    // Compute distance between input point and projected point
+    const dx = v[0] - projectedPoint[0];
+    const dy = v[1] - projectedPoint[1];
+    const dz = v[2] - projectedPoint[2];
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
     return ok({
-      uv: [uPtr.current, vPtr.current],
+      uv: uvResult,
       point: projectedPoint,
-      distance: projected.LowerDistance(),
+      distance,
     });
   } catch (e) {
     return err(
@@ -220,9 +171,6 @@ export function projectPointOnFace(face: Face, point: PointInput): Result<PointP
 
 /** Get the surface normal at a point (or at the center if no point given). */
 export function normalAt(face: Face, locationPoint?: PointInput): Vec3 {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
   let u: number;
   let v: number;
 
@@ -234,23 +182,12 @@ export function normalAt(face: Face, locationPoint?: PointInput): Vec3 {
     [u, v] = uvCoordinates(face, locationPoint);
   }
 
-  const p = scope.register(new oc.gp_Pnt_1());
-  const vn = scope.register(new oc.gp_Vec_1());
-  const props = scope.register(new oc.BRepGProp_Face_2(face.wrapped, false));
-  props.Normal(u, v, p, vn);
-
-  return [vn.X(), vn.Y(), vn.Z()];
+  return getKernel().surfaceNormal(face.wrapped, u, v);
 }
 
 /** Get the center of mass of a face. */
 export function faceCenter(face: Face): Vec3 {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const props = scope.register(new oc.GProp_GProps_1());
-  oc.BRepGProp.SurfaceProperties_2(face.wrapped, props, 1e-7, true);
-  const center = scope.register(props.CentreOfMass());
-  return [center.X(), center.Y(), center.Z()];
+  return getKernel().surfaceCenterOfMass(face.wrapped);
 }
 
 // ---------------------------------------------------------------------------
@@ -278,8 +215,7 @@ export function classifyPointOnFace(
 
 /** Get the outer wire of a face. Returns a new Wire. */
 export function outerWire(face: Face): Wire {
-  const oc = getKernel().oc;
-  return castShape(oc.BRepTools.OuterWire(face.wrapped)) as Wire;
+  return castShape(getKernel().outerWire(face.wrapped)) as Wire;
 }
 
 /** Get the inner wires (holes) of a face. */
@@ -288,6 +224,6 @@ export function innerWires(face: Face): Wire[] {
   const allWires = Array.from(iterTopo(face.wrapped, 'wire')).map(
     (w) => castShape(unwrap(downcast(w))) as Wire
   );
-  const result = allWires.filter((w) => !w.wrapped.IsSame(outer.wrapped));
+  const result = allWires.filter((w) => !getKernel().isSame(w.wrapped, outer.wrapped));
   return result;
 }

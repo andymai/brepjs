@@ -3,7 +3,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { makeTriFace } from '../kernel/constructorOps.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -150,50 +150,37 @@ function parseModelXml(xml: string): ParsedMesh {
 // ---------------------------------------------------------------------------
 
 function buildSolidFromMesh(mesh: ParsedMesh): Result<AnyShape> {
-  const oc = getKernel().oc;
-  const sewing = new oc.BRepBuilderAPI_Sewing(1e-6, true, true, true, false);
-  let faceCount = 0;
+  const kernel = getKernel();
+  const triFaces: KernelShape[] = [];
+
+  for (const [v1, v2, v3] of mesh.triangles) {
+    const va = mesh.vertices[v1];
+    const vb = mesh.vertices[v2];
+    const vc = mesh.vertices[v3];
+    if (!va || !vb || !vc) continue;
+
+    const triFace = kernel.buildTriFace(va, vb, vc);
+    if (triFace !== null) {
+      triFaces.push(triFace);
+    }
+  }
+
+  if (triFaces.length === 0) {
+    return err(
+      ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, 'No valid triangular faces could be built')
+    );
+  }
 
   try {
-    for (const [v1, v2, v3] of mesh.triangles) {
-      const va = mesh.vertices[v1];
-      const vb = mesh.vertices[v2];
-      const vc = mesh.vertices[v3];
-      if (!va || !vb || !vc) continue;
-
-      const triFace = makeTriFace(oc, va, vb, vc);
-      if (triFace !== null) {
-        sewing.Add(triFace);
-        faceCount++;
-      }
-    }
-
-    if (faceCount === 0) {
+    return ok(castShape(kernel.sewAndSolidify(triFaces, 1e-6)));
+  } catch {
+    try {
+      return ok(castShape(kernel.sew(triFaces, 1e-6)));
+    } catch {
       return err(
-        ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, 'No valid triangular faces could be built')
+        ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, 'Failed to sew triangular faces')
       );
     }
-
-    const progress = new oc.Message_ProgressRange_1();
-    sewing.Perform(progress);
-    progress.delete();
-
-    const sewn = sewing.SewedShape();
-
-    // Try to make a solid from the sewn shell, fixing orientation
-    const fixer = new oc.ShapeFix_Solid_1();
-    try {
-      const shell = oc.TopoDS.Shell_1(sewn);
-      const solid = fixer.SolidFromShell(shell);
-      return ok(castShape(solid));
-    } catch {
-      // If solid creation fails, return the sewn shape as-is
-      return ok(castShape(sewn));
-    } finally {
-      fixer.delete();
-    }
-  } finally {
-    sewing.delete();
   }
 }
 

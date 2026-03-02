@@ -1,11 +1,12 @@
 /**
  * Topology adjacency queries — find related sub-shapes within a parent shape.
  *
- * Uses TopExp_Explorer to discover ancestor/descendant relationships
+ * Uses kernel iterShapes to discover ancestor/descendant relationships
  * without requiring TopExp::MapShapesAndAncestors (not available in WASM).
  */
 
 import { getKernel } from '../kernel/index.js';
+import type { ShapeType } from '../kernel/index.js';
 import type { AnyShape, Edge, Face, Vertex, Wire } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
@@ -18,103 +19,82 @@ import { downcast } from './cast.js';
 
 /**
  * Find all unique sub-shapes of `targetType` within `parent` that contain `child`.
- * Uses TopExp_Explorer to iterate `targetType` sub-shapes of `parent`,
- * then for each candidate, explores its children of `child`'s type to check
- * if `child` is among them (via IsSame).
+ * Iterates `targetType` sub-shapes of `parent`, then for each candidate,
+ * explores its children of `childType` to check if `child` is among them (via isSame).
  */
 function findAncestors(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape type
   parent: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape type
   child: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value
-  targetType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value
-  childType: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns OCCT shapes
+  targetType: ShapeType,
+  childType: ShapeType
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns kernel shapes
 ): any[] {
-  const oc = getKernel().oc;
-  const shapeEnum = oc.TopAbs_ShapeEnum.TopAbs_SHAPE;
+  const kernel = getKernel();
+  const candidates = kernel.iterShapes(parent, targetType);
 
-  // Iterate all sub-shapes of targetType within parent
-  const outerExplorer = new oc.TopExp_Explorer_2(parent, targetType, shapeEnum);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
   const results: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shapes for IsSame dedup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shapes for isSame dedup
   const seen = new Map<number, any[]>();
 
-  while (outerExplorer.More()) {
-    const candidate = outerExplorer.Current();
-
+  for (const candidate of candidates) {
     // Check if child is a sub-shape of candidate
-    const innerExplorer = new oc.TopExp_Explorer_2(candidate, childType, shapeEnum);
-    let found = false;
-    while (innerExplorer.More()) {
-      if (innerExplorer.Current().IsSame(child)) {
-        found = true;
-        break;
-      }
-      innerExplorer.Next();
-    }
-    innerExplorer.delete();
+    const children = kernel.iterShapes(candidate, childType);
+    const found = children.some((c) => kernel.isSame(c, child));
 
     if (found) {
-      // Deduplicate using hash + IsSame within bucket
-      const hash = candidate.HashCode(HASH_CODE_MAX);
+      // Deduplicate using hash + isSame within bucket
+      const hash = kernel.hashCode(candidate, HASH_CODE_MAX);
       const bucket = seen.get(hash);
       if (!bucket) {
         seen.set(hash, [candidate]);
         results.push(candidate);
-      } else if (!bucket.some((r) => r.IsSame(candidate))) {
+      } else if (!bucket.some((r) => kernel.isSame(r, candidate))) {
         bucket.push(candidate);
         results.push(candidate);
       }
     }
-
-    outerExplorer.Next();
   }
-  outerExplorer.delete();
 
   return results;
 }
 
 /**
  * Find all unique sub-shapes of `childType` within `parent`.
- * Simple wrapper around TopExp_Explorer with deduplication.
+ * Simple wrapper around iterShapes with deduplication.
  */
 function findChildren(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape type
   parent: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value
-  childType: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns OCCT shapes
+  childType: ShapeType
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns kernel shapes
 ): any[] {
-  const oc = getKernel().oc;
-  const explorer = new oc.TopExp_Explorer_2(parent, childType, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
+  const kernel = getKernel();
+  const items = kernel.iterShapes(parent, childType);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
   const results: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shapes for IsSame dedup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shapes for isSame dedup
   const seen = new Map<number, any[]>();
 
-  while (explorer.More()) {
-    const item = explorer.Current();
-    const hash = item.HashCode(HASH_CODE_MAX);
+  for (const item of items) {
+    const hash = kernel.hashCode(item, HASH_CODE_MAX);
     const bucket = seen.get(hash);
     if (!bucket) {
       seen.set(hash, [item]);
       results.push(item);
-    } else if (!bucket.some((r) => r.IsSame(item))) {
+    } else if (!bucket.some((r) => kernel.isSame(r, item))) {
       bucket.push(item);
       results.push(item);
     }
-    explorer.Next();
   }
-  explorer.delete();
 
   return results;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- wraps OCCT shapes to branded types
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- wraps kernel shapes to branded types
 function wrapAll<T extends AnyShape>(shapes: any[]): T[] {
   return shapes.map((s) => castShape(unwrap(downcast(s))) as T);
 }
@@ -134,13 +114,7 @@ function wrapAll<T extends AnyShape>(shapes: any[]): T[] {
  * @returns Array of unique faces containing the given edge.
  */
 export function facesOfEdge(parent: AnyShape, edge: Edge): Face[] {
-  const oc = getKernel().oc;
-  const raw = findAncestors(
-    parent.wrapped,
-    edge.wrapped,
-    oc.TopAbs_ShapeEnum.TopAbs_FACE,
-    oc.TopAbs_ShapeEnum.TopAbs_EDGE
-  );
+  const raw = findAncestors(parent.wrapped, edge.wrapped, 'face', 'edge');
   return wrapAll<Face>(raw);
 }
 
@@ -151,8 +125,7 @@ export function facesOfEdge(parent: AnyShape, edge: Edge): Face[] {
  * @returns Array of unique edges forming the face boundary.
  */
 export function edgesOfFace(face: Face): Edge[] {
-  const oc = getKernel().oc;
-  const raw = findChildren(face.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
+  const raw = findChildren(face.wrapped, 'edge');
   return wrapAll<Edge>(raw);
 }
 
@@ -162,8 +135,7 @@ export function edgesOfFace(face: Face): Edge[] {
  * @param face - The face whose wires to enumerate.
  */
 export function wiresOfFace(face: Face): Wire[] {
-  const oc = getKernel().oc;
-  const raw = findChildren(face.wrapped, oc.TopAbs_ShapeEnum.TopAbs_WIRE);
+  const raw = findChildren(face.wrapped, 'wire');
   return wrapAll<Wire>(raw);
 }
 
@@ -174,8 +146,7 @@ export function wiresOfFace(face: Face): Wire[] {
  * @returns Array of 1-2 vertices (1 if degenerate/closed, 2 otherwise).
  */
 export function verticesOfEdge(edge: Edge): Vertex[] {
-  const oc = getKernel().oc;
-  const raw = findChildren(edge.wrapped, oc.TopAbs_ShapeEnum.TopAbs_VERTEX);
+  const raw = findChildren(edge.wrapped, 'vertex');
   return wrapAll<Vertex>(raw);
 }
 
@@ -189,58 +160,49 @@ export function verticesOfEdge(edge: Edge): Vertex[] {
  * @returns Array of unique adjacent faces (excluding the input face).
  */
 export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
-  const oc = getKernel().oc;
-  const shapeEnum = oc.TopAbs_ShapeEnum.TopAbs_SHAPE;
+  const kernel = getKernel();
 
-  // Build edge→faces map in a single pass over all faces in parent.
-  // This replaces the O(E_face × F × E_per_face) nested exploration with
-  // O(F × E_per_face) to build + O(E_face) to query.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collections
+  // Build edge->faces map in a single pass over all faces in parent.
+  // This replaces the O(E_face x F x E_per_face) nested exploration with
+  // O(F x E_per_face) to build + O(E_face) to query.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collections
   const edgeToFaces = new Map<number, any[]>();
-  const faceExp = new oc.TopExp_Explorer_2(
-    parent.wrapped,
-    oc.TopAbs_ShapeEnum.TopAbs_FACE,
-    shapeEnum
-  );
-  while (faceExp.More()) {
-    const f = faceExp.Current();
-    const edgeExp = new oc.TopExp_Explorer_2(f, oc.TopAbs_ShapeEnum.TopAbs_EDGE, shapeEnum);
-    while (edgeExp.More()) {
-      const hash = edgeExp.Current().HashCode(HASH_CODE_MAX);
+  const allFaces = kernel.iterShapes(parent.wrapped, 'face');
+
+  for (const f of allFaces) {
+    const edges = kernel.iterShapes(f, 'edge');
+    for (const e of edges) {
+      const hash = kernel.hashCode(e, HASH_CODE_MAX);
       let bucket = edgeToFaces.get(hash);
       if (!bucket) {
         bucket = [];
         edgeToFaces.set(hash, bucket);
       }
       // Dedup faces within the same hash bucket
-      if (!bucket.some((existing) => existing.IsSame(f))) {
+      if (!bucket.some((existing) => kernel.isSame(existing, f))) {
         bucket.push(f);
       }
-      edgeExp.Next();
     }
-    edgeExp.delete();
-    faceExp.Next();
   }
-  faceExp.delete();
 
   // For each edge of the input face, look up adjacent faces from the map
-  const faceEdges = findChildren(face.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
+  const faceEdges = findChildren(face.wrapped, 'edge');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
   const neighborRaw: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shapes for IsSame dedup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shapes for isSame dedup
   const seen = new Map<number, any[]>();
 
   for (const edgeOc of faceEdges) {
-    const hash = edgeOc.HashCode(HASH_CODE_MAX);
+    const hash = kernel.hashCode(edgeOc, HASH_CODE_MAX);
     const facesForEdge = edgeToFaces.get(hash) ?? [];
     for (const f of facesForEdge) {
-      if (f.IsSame(face.wrapped)) continue;
-      const fHash = f.HashCode(HASH_CODE_MAX);
+      if (kernel.isSame(f, face.wrapped)) continue;
+      const fHash = kernel.hashCode(f, HASH_CODE_MAX);
       const bucket = seen.get(fHash);
       if (!bucket) {
         seen.set(fHash, [f]);
         neighborRaw.push(f);
-      } else if (!bucket.some((r) => r.IsSame(f))) {
+      } else if (!bucket.some((r) => kernel.isSame(r, f))) {
         bucket.push(f);
         neighborRaw.push(f);
       }
@@ -255,18 +217,18 @@ export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
  *
  * @param face1 - The first face.
  * @param face2 - The second face.
- * @returns Array of edges present in both faces (via IsSame comparison).
+ * @returns Array of edges present in both faces (via isSame comparison).
  */
 export function sharedEdges(face1: Face, face2: Face): Edge[] {
-  const oc = getKernel().oc;
-  const edges1 = findChildren(face1.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
-  const edges2 = findChildren(face2.wrapped, oc.TopAbs_ShapeEnum.TopAbs_EDGE);
+  const kernel = getKernel();
+  const edges1 = findChildren(face1.wrapped, 'edge');
+  const edges2 = findChildren(face2.wrapped, 'edge');
 
-  // Build hash-bucket index of edges2 for O(1) average lookup instead of O(n×m) IsSame scans
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
+  // Build hash-bucket index of edges2 for O(1) average lookup instead of O(nxm) isSame scans
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
   const edge2Map = new Map<number, any[]>();
   for (const e2 of edges2) {
-    const hash = e2.HashCode(HASH_CODE_MAX);
+    const hash = kernel.hashCode(e2, HASH_CODE_MAX);
     let bucket = edge2Map.get(hash);
     if (!bucket) {
       bucket = [];
@@ -275,11 +237,11 @@ export function sharedEdges(face1: Face, face2: Face): Edge[] {
     bucket.push(e2);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT shape collection
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
   const shared: any[] = [];
   for (const e1 of edges1) {
-    const bucket = edge2Map.get(e1.HashCode(HASH_CODE_MAX));
-    if (bucket?.some((e2) => e1.IsSame(e2))) {
+    const bucket = edge2Map.get(kernel.hashCode(e1, HASH_CODE_MAX));
+    if (bucket?.some((e2) => kernel.isSame(e1, e2))) {
       shared.push(e1);
     }
   }

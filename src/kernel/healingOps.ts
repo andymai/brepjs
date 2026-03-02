@@ -5,13 +5,13 @@
  * Used by OCCTAdapter — follows the established ops file pattern.
  */
 
-import type { OpenCascadeInstance, OcShape } from './types.js';
+import type { OpenCascadeInstance, KernelShape } from './types.js';
 
 /**
  * Heals a solid shape using ShapeFix_Solid.
  * Returns the healed solid, or null if the fixer produced a null result.
  */
-export function healSolid(oc: OpenCascadeInstance, shape: OcShape): OcShape | null {
+export function healSolid(oc: OpenCascadeInstance, shape: KernelShape): KernelShape | null {
   const fixer = new oc.ShapeFix_Solid_2(shape);
   const progress = new oc.Message_ProgressRange_1();
   fixer.Perform(progress);
@@ -26,7 +26,7 @@ export function healSolid(oc: OpenCascadeInstance, shape: OcShape): OcShape | nu
  * Heals a face shape using ShapeFix_Face.
  * Returns the healed face.
  */
-export function healFace(oc: OpenCascadeInstance, shape: OcShape): OcShape {
+export function healFace(oc: OpenCascadeInstance, shape: KernelShape): KernelShape {
   const fixer = new oc.ShapeFix_Face_2(shape);
   fixer.Perform();
   const result = fixer.Face();
@@ -39,7 +39,7 @@ export function healFace(oc: OpenCascadeInstance, shape: OcShape): OcShape {
  * If a face is provided, it's used for surface context.
  * Returns the healed wire.
  */
-export function healWire(oc: OpenCascadeInstance, wire: OcShape, face?: OcShape): OcShape {
+export function healWire(oc: OpenCascadeInstance, wire: KernelShape, face?: KernelShape): KernelShape {
   let fixer;
   if (face) {
     fixer = new oc.ShapeFix_Wire_2(wire, face, 1e-6);

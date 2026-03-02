@@ -3,12 +3,10 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { makeTriFace } from '../kernel/constructorOps.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { castShape, isFace, isShell } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError, occtError, ioError, BrepErrorCode } from '../core/errors.js';
-import { DisposalScope } from '../core/disposal.js';
+import { validationError, kernelError, ioError, BrepErrorCode } from '../core/errors.js';
 
 /** Rec. 601 luma coefficients for luminance calculation. */
 const REC601_R = 0.299;
@@ -89,7 +87,7 @@ export function surfaceFromGrid(
     return buildTriangulatedSurface(heights, rows, cols, dx, dy, scaleZ);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
-    return err(occtError(BrepErrorCode.SURFACE_FAILED, `surfaceFromGrid failed: ${raw}`, e));
+    return err(kernelError(BrepErrorCode.SURFACE_FAILED, `surfaceFromGrid failed: ${raw}`, e));
   }
 }
 
@@ -102,37 +100,22 @@ function buildBSplineSurface(
   dy: number,
   scaleZ: number
 ): Result<AnyShape> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  // This will throw if the types are not bound
-  const pntArray = scope.register(new oc.TColgp_Array2OfPnt_2(1, rows, 1, cols));
-
+  const points: [number, number, number][] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const row = heights[r];
       const z = (row ? (row[c] ?? 0) : 0) * scaleZ;
-      const pnt = new oc.gp_Pnt_3(c * dx, r * dy, z);
-      pntArray.SetValue(r + 1, c + 1, pnt);
-      pnt.delete();
+      points.push([c * dx, r * dy, z]);
     }
   }
 
-  const fitter = scope.register(new oc.GeomAPI_PointsToBSplineSurface_2(pntArray, 3, 8, 0, 1e-3));
-  const surface = fitter.Surface();
-  const faceMaker = scope.register(new oc.BRepBuilderAPI_MakeFace_8(surface, 1e-6));
-
-  if (faceMaker.IsDone()) {
-    const shape = castShape(faceMaker.Face());
-    if (isFace(shape)) {
-      return ok(shape);
-    }
-    shape[Symbol.dispose]();
-    return err(occtError(BrepErrorCode.SURFACE_FAILED, 'B-spline surface did not produce a face'));
+  const faceShape = getKernel().bsplineSurface(points, rows, cols);
+  const shape = castShape(faceShape);
+  if (isFace(shape)) {
+    return ok(shape);
   }
-  return err(
-    occtError(BrepErrorCode.SURFACE_FAILED, 'BRepBuilderAPI_MakeFace failed for B-spline surface')
-  );
+  shape[Symbol.dispose]();
+  return err(kernelError(BrepErrorCode.SURFACE_FAILED, 'B-spline surface did not produce a face'));
 }
 
 /** Build a triangulated surface by sewing triangular faces. */
@@ -144,69 +127,30 @@ function buildTriangulatedSurface(
   dy: number,
   scaleZ: number
 ): Result<AnyShape> {
-  const oc = getKernel().oc;
-
-  function pt(r: number, c: number): [number, number, number] {
-    const row = heights[r];
-    const z = (row ? (row[c] ?? 0) : 0) * scaleZ;
-    return [c * dx, r * dy, z];
+  const points: [number, number, number][] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const row = heights[r];
+      const z = (row ? (row[c] ?? 0) : 0) * scaleZ;
+      points.push([c * dx, r * dy, z]);
+    }
   }
 
-  const sewing = new oc.BRepBuilderAPI_Sewing(1e-6, true, true, true, false);
-  let faceCount = 0;
+  const resultShape = getKernel().triangulatedSurface(points, rows, cols);
+  const shape = castShape(resultShape);
 
-  try {
-    for (let r = 0; r < rows - 1; r++) {
-      for (let c = 0; c < cols - 1; c++) {
-        const p00 = pt(r, c);
-        const p10 = pt(r + 1, c);
-        const p11 = pt(r + 1, c + 1);
-        const p01 = pt(r, c + 1);
-
-        // Triangle 1: (r,c), (r+1,c), (r+1,c+1)
-        const f1 = makeTriFace(oc, p00, p10, p11);
-        if (f1 !== null) {
-          sewing.Add(f1);
-          faceCount++;
-        }
-
-        // Triangle 2: (r,c), (r+1,c+1), (r,c+1)
-        const f2 = makeTriFace(oc, p00, p11, p01);
-        if (f2 !== null) {
-          sewing.Add(f2);
-          faceCount++;
-        }
-      }
-    }
-
-    if (faceCount === 0) {
-      return err(
-        occtError(BrepErrorCode.SURFACE_FAILED, 'surfaceFromGrid: no valid triangular faces built')
-      );
-    }
-
-    const sewProgress = new oc.Message_ProgressRange_1();
-    sewing.Perform(sewProgress);
-    sewProgress.delete();
-
-    const sewn = sewing.SewedShape();
-    const shape = castShape(sewn);
-
-    if (isFace(shape)) {
-      return ok(shape);
-    }
-
-    if (isShell(shape)) {
-      return ok(shape);
-    }
-
-    shape[Symbol.dispose]();
-    return err(
-      occtError(BrepErrorCode.SURFACE_FAILED, 'surfaceFromGrid: unexpected shape type from sewing')
-    );
-  } finally {
-    sewing.delete();
+  if (isFace(shape)) {
+    return ok(shape);
   }
+
+  if (isShell(shape)) {
+    return ok(shape);
+  }
+
+  shape[Symbol.dispose]();
+  return err(
+    kernelError(BrepErrorCode.SURFACE_FAILED, 'surfaceFromGrid: unexpected shape type from sewing')
+  );
 }
 
 // ---------------------------------------------------------------------------

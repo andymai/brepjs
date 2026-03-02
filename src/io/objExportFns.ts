@@ -1,6 +1,6 @@
 /**
  * Wavefront OBJ export from ShapeMesh data.
- * Pure string formatting — no OCCT dependency.
+ * Pure string formatting — no kernel dependency.
  */
 
 import type { ShapeMesh } from '../topology/meshFns.js';

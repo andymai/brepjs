@@ -6,7 +6,7 @@ import { getKernel } from '../kernel/index.js';
 import type { Solid } from '../core/shapeTypes.js';
 import { castShape, isSolid } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError, occtError, BrepErrorCode } from '../core/errors.js';
+import { validationError, kernelError, BrepErrorCode } from '../core/errors.js';
 import type { Vec3 } from '../core/types.js';
 
 export interface PolyhedronOptions {
@@ -66,12 +66,12 @@ export function polyhedron(
 
     if (!isSolid(cast)) {
       cast[Symbol.dispose]();
-      return err(occtError(BrepErrorCode.POLYHEDRON_FAILED, 'Polyhedron did not produce a solid'));
+      return err(kernelError(BrepErrorCode.POLYHEDRON_FAILED, 'Polyhedron did not produce a solid'));
     }
 
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
-    return err(occtError(BrepErrorCode.POLYHEDRON_FAILED, `Polyhedron failed: ${raw}`, e));
+    return err(kernelError(BrepErrorCode.POLYHEDRON_FAILED, `Polyhedron failed: ${raw}`, e));
   }
 }

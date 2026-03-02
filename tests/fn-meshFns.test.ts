@@ -140,7 +140,7 @@ describe('exportSTL', () => {
   });
 
   it('skips re-meshing when shape already has triangulation', () => {
-    // mesh() populates triangulation on the shape's underlying OCCT object;
+    // mesh() populates triangulation on the shape's underlying kernel object;
     // exportSTL should detect that and skip the BRepMesh step.
     const b = box(10, 10, 10);
     mesh(b); // populate triangulation

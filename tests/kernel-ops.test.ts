@@ -30,7 +30,7 @@ beforeAll(async () => {
   kernel = getKernel();
 }, 30000);
 
-// Helper: get the underlying OcShape from a high-level shape
+// Helper: get the underlying KernelShape from a high-level shape
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unwrap branded shape
 function oc(shape: any): any {
   return shape.wrapped;

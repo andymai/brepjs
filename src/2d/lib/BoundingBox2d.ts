@@ -1,28 +1,27 @@
 import { DisposalScope, registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
-import { getKernel } from '../../kernel/index.js';
-import type { OcType } from '../../kernel/types.js';
+import { getKernel2D } from '../../kernel/index.js';
+import type { KernelType } from '../../kernel/types.js';
 
 import type { Point2D } from './definitions.js';
 import { reprPnt } from './utils.js';
 import { pnt } from './ocWrapper.js';
 
 /**
- * Axis-aligned 2D bounding box backed by an OCCT `Bnd_Box2d`.
+ * Axis-aligned 2D bounding box backed by an kernel `Bnd_Box2d`.
  *
  * Provides bounds queries, containment tests, and union operations for
  * spatial indexing of 2D geometry.
  */
 export class BoundingBox2d {
-  private readonly _wrapped: OcType;
+  private readonly _wrapped: KernelType;
   private _deleted = false;
 
-  constructor(wrapped?: OcType) {
-    const oc = getKernel().oc;
-    this._wrapped = wrapped ?? new oc.Bnd_Box2d();
+  constructor(wrapped?: KernelType) {
+    this._wrapped = wrapped ?? getKernel2D().createBoundingBox2d();
     registerForCleanup(this, this._wrapped);
   }
 
-  get wrapped(): OcType {
+  get wrapped(): KernelType {
     if (this._deleted) throw new Error('This object has been deleted');
     return this._wrapped;
   }

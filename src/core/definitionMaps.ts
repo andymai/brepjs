@@ -1,4 +1,3 @@
-import { getKernel } from '../kernel/index.js';
 import { type Result, ok, err } from './result.js';
 import { typeCastError } from './errors.js';
 
@@ -14,38 +13,32 @@ export type CurveType =
   | 'OFFSET_CURVE'
   | 'OTHER_CURVE';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum keys are dynamic
-let CURVE_TYPES_MAP: Map<any, CurveType> | null = null;
-
-const getCurveTypesMap = (refresh?: boolean): Map<unknown, CurveType> => {
-  if (CURVE_TYPES_MAP && !refresh) return CURVE_TYPES_MAP;
-
-  const oc = getKernel().oc;
-  const ga = oc.GeomAbs_CurveType;
-
-  CURVE_TYPES_MAP = new Map([
-    [ga.GeomAbs_Line, 'LINE'],
-    [ga.GeomAbs_Circle, 'CIRCLE'],
-    [ga.GeomAbs_Ellipse, 'ELLIPSE'],
-    [ga.GeomAbs_Hyperbola, 'HYPERBOLA'],
-    [ga.GeomAbs_Parabola, 'PARABOLA'],
-    [ga.GeomAbs_BezierCurve, 'BEZIER_CURVE'],
-    [ga.GeomAbs_BSplineCurve, 'BSPLINE_CURVE'],
-    [ga.GeomAbs_OffsetCurve, 'OFFSET_CURVE'],
-    [ga.GeomAbs_OtherCurve, 'OTHER_CURVE'],
-  ]);
-  return CURVE_TYPES_MAP;
-};
+/**
+ * GeomAbs_CurveType integer constants (stable across kernel versions).
+ * Line=0, Circle=1, Ellipse=2, Hyperbola=3, Parabola=4,
+ * BezierCurve=5, BSplineCurve=6, OffsetCurve=7, OtherCurve=8.
+ */
+const CURVE_TYPE_BY_INT: CurveType[] = [
+  'LINE',           // 0
+  'CIRCLE',         // 1
+  'ELLIPSE',        // 2
+  'HYPERBOLA',      // 3
+  'PARABOLA',       // 4
+  'BEZIER_CURVE',   // 5
+  'BSPLINE_CURVE',  // 6
+  'OFFSET_CURVE',   // 7
+  'OTHER_CURVE',    // 8
+];
 
 /**
- * Map an OCCT `GeomAbs_CurveType` enum value to its string discriminant.
+ * Map a kernel curve type enum value to its string discriminant.
  *
  * @returns `Ok<CurveType>` on success, or `Err` if the enum value is unrecognised.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kernel enum value type
 export const findCurveType = (type: any): Result<CurveType> => {
-  let shapeType = getCurveTypesMap().get(type);
-  if (!shapeType) shapeType = getCurveTypesMap(true).get(type);
-  if (!shapeType) return err(typeCastError('UNKNOWN_CURVE_TYPE', 'Unknown curve type'));
-  return ok(shapeType);
+  const idx = typeof type === 'number' ? type : Number(type?.value ?? type);
+  const curveType = CURVE_TYPE_BY_INT[idx];
+  if (!curveType) return err(typeCastError('UNKNOWN_CURVE_TYPE', 'Unknown curve type'));
+  return ok(curveType);
 };

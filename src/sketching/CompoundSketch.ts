@@ -1,7 +1,6 @@
 import { makeCompound, addHolesInFace, makeSolid, makeFace } from '../topology/shapeHelpers.js';
 import type Sketch from './Sketch.js';
 
-import { DisposalScope } from '../core/memory.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { vecNormalize, vecScale } from '../core/vecOps.js';
@@ -19,26 +18,11 @@ import { type Result, unwrap, isOk } from '../core/result.js';
 import { bug } from '../core/errors.js';
 import type { Face, Shape3D, Shell, Wire } from '../core/shapeTypes.js';
 import { createFace, isFace } from '../core/shapeTypes.js';
-import { getEdges } from '../topology/shapeFns.js';
 import { getKernel } from '../kernel/index.js';
 
 const guessFaceFromWires = (wires: Wire[]): Face => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const faceBuilder = scope.register(
-    new oc.BRepOffsetAPI_MakeFilling(3, 15, 2, false, 1e-5, 1e-4, 1e-2, 0.1, 8, 9)
-  );
-
-  wires.forEach((wire: Wire, wireIndex: number) => {
-    getEdges(wire).forEach((edge: { wrapped: unknown }) => {
-      faceBuilder.Add_1(edge.wrapped, oc.GeomAbs_Shape.GeomAbs_C0, wireIndex === 0);
-    });
-  });
-
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  faceBuilder.Build(progress);
-  const newFace = unwrap(cast(faceBuilder.Shape()));
+  const wireShapes = wires.map((w) => w.wrapped);
+  const newFace = unwrap(cast(getKernel().fillSurface(wireShapes)));
 
   if (!isFace(newFace)) {
     bug('guessFaceFromWires', 'Failed to create a face');
@@ -47,11 +31,7 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
 };
 
 const fixWire = (wire: Wire, baseFace: Face): Wire => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const wireFixer = scope.register(new oc.ShapeFix_Wire_2(wire.wrapped, baseFace.wrapped, 1e-9));
-  wireFixer.FixEdgeCurves();
+  getKernel().fixWireOnFace(wire.wrapped, baseFace.wrapped, 1e-9);
   return wire;
 };
 
@@ -114,7 +94,7 @@ export default class CompoundSketch implements SketchInterface {
     this.sketches = sketches;
   }
 
-  /** Release all OCCT resources held by every sub-sketch. */
+  /** Release all kernel resources held by every sub-sketch. */
   delete() {
     this.sketches.forEach((sketch) => {
       sketch.delete();

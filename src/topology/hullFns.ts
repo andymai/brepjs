@@ -5,10 +5,11 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { Solid, AnyShape } from '../core/shapeTypes.js';
 import { castShape, isSolid } from '../core/shapeTypes.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, occtError, BrepErrorCode } from '../core/errors.js';
+import { validationError, kernelError, BrepErrorCode } from '../core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -24,10 +25,10 @@ export interface HullOptions {
 // ---------------------------------------------------------------------------
 
 function validateNotNull(
-  shape: { wrapped: { IsNull(): boolean } },
+  shape: { wrapped: KernelShape },
   label: string
 ): Result<undefined> {
-  if (shape.wrapped.IsNull()) {
+  if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
   }
   return ok(undefined);
@@ -73,7 +74,7 @@ export function hull(shapes: ReadonlyArray<AnyShape>, options: HullOptions = {})
 
     if (!isSolid(cast)) {
       return err(
-        occtError(BrepErrorCode.HULL_NOT_3D, 'Hull result is not a solid; input may be degenerate')
+        kernelError(BrepErrorCode.HULL_NOT_3D, 'Hull result is not a solid; input may be degenerate')
       );
     }
 
@@ -83,9 +84,9 @@ export function hull(shapes: ReadonlyArray<AnyShape>, options: HullOptions = {})
 
     // Distinguish degenerate from general failures
     if (raw.includes('coplanar') || raw.includes('fewer than') || raw.includes('degenerate')) {
-      return err(occtError(BrepErrorCode.HULL_DEGENERATE, `Hull degenerate: ${raw}`, e));
+      return err(kernelError(BrepErrorCode.HULL_DEGENERATE, `Hull degenerate: ${raw}`, e));
     }
 
-    return err(occtError(BrepErrorCode.HULL_FAILED, `Hull operation failed: ${raw}`, e));
+    return err(kernelError(BrepErrorCode.HULL_FAILED, `Hull operation failed: ${raw}`, e));
   }
 }

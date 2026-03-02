@@ -4,28 +4,26 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import type { ShapeEvolution } from '../kernel/types.js';
 import type { Vec3, MatrixInput } from '../core/types.js';
 import type { AnyShape, Edge, Face, Wire, Vertex, ShapeKind } from '../core/shapeTypes.js';
 import { castShape, getShapeKind } from '../core/shapeTypes.js';
-import { toOcVec, toOcPnt, makeOcAx1, makeOcAx2 } from '../core/occtBoundary.js';
 import { HASH_CODE_MAX, DEG2RAD } from '../core/constants.js';
 import { downcast, iterTopo } from './cast.js';
 import { unwrap } from '../core/result.js';
-import { DisposalScope } from '../core/disposal.js';
 
 // ---------------------------------------------------------------------------
 // Identity / introspection
 // ---------------------------------------------------------------------------
 
-/** Clone a shape (deep copy via TopoDS downcast). */
+/** Clone a shape (deep copy via kernel topology downcast). */
 export function clone<T extends AnyShape>(shape: T): T {
   return castShape(unwrap(downcast(shape.wrapped))) as T;
 }
 
 /** Serialize a shape to BREP string format. */
 export function toBREP(shape: AnyShape): string {
-  const oc = getKernel().oc;
-  return oc.BRepToolsWrapper.Write(shape.wrapped);
+  return getKernel().toBREP(shape.wrapped);
 }
 
 /** Get the topology hash code of a shape. */
@@ -50,13 +48,24 @@ export function isEqualShape(a: AnyShape, b: AnyShape): boolean {
 
 /** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
 export function simplify<T extends AnyShape>(shape: T): T {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const upgrader = scope.register(
-    new oc.ShapeUpgrade_UnifySameDomain_2(shape.wrapped, true, true, false)
-  );
-  upgrader.Build();
-  return castShape(upgrader.Shape()) as T;
+  return castShape(getKernel().simplify(shape.wrapped)) as T;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: collect tracked face hashes from input shapes
+// ---------------------------------------------------------------------------
+
+/** Collect all face hashes that have origin tracking, for passing to WithHistory kernel methods. */
+function collectInputFaceHashes(inputs: AnyShape[]): number[] {
+  const hashes: number[] = [];
+  for (const input of inputs) {
+    const origins = getFaceOrigins(input);
+    if (!origins) continue;
+    for (const hash of origins.keys()) {
+      hashes.push(hash);
+    }
+  }
+  return hashes;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,14 +74,12 @@ export function simplify<T extends AnyShape>(shape: T): T {
 
 /** Translate a shape by a vector. Returns a new shape. */
 export function translate<T extends AnyShape>(shape: T, v: Vec3): T {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const trsf = scope.register(new oc.gp_Trsf_1());
-  const vec = scope.register(toOcVec(v));
-  trsf.SetTranslation_1(vec);
-  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
-  const result = castShape(transformer.Shape()) as T;
-  propagateOrigins(transformer, [shape], result);
+  const inputFaceHashes = collectInputFaceHashes([shape]);
+  const { shape: resultShape, evolution } = getKernel().translateWithHistory(
+    shape.wrapped, v[0], v[1], v[2], inputFaceHashes, HASH_CODE_MAX
+  );
+  const result = castShape(resultShape) as T;
+  propagateOriginsFromEvolution(evolution, [shape], result);
   return result;
 }
 
@@ -83,14 +90,13 @@ export function rotate<T extends AnyShape>(
   position: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1]
 ): T {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const trsf = scope.register(new oc.gp_Trsf_1());
-  const ax1 = scope.register(makeOcAx1(position, direction));
-  trsf.SetRotation_1(ax1, angle * DEG2RAD);
-  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
-  const result = castShape(transformer.Shape()) as T;
-  propagateOrigins(transformer, [shape], result);
+  const inputFaceHashes = collectInputFaceHashes([shape]);
+  const { shape: resultShape, evolution } = getKernel().rotateWithHistory(
+    shape.wrapped, angle * DEG2RAD, inputFaceHashes, HASH_CODE_MAX,
+    [...direction], [...position]
+  );
+  const result = castShape(resultShape) as T;
+  propagateOriginsFromEvolution(evolution, [shape], result);
   return result;
 }
 
@@ -100,27 +106,23 @@ export function mirror<T extends AnyShape>(
   planeNormal: Vec3 = [0, 1, 0],
   planeOrigin: Vec3 = [0, 0, 0]
 ): T {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const trsf = scope.register(new oc.gp_Trsf_1());
-  const ax2 = scope.register(makeOcAx2(planeOrigin, planeNormal));
-  trsf.SetMirror_3(ax2);
-  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
-  const result = castShape(transformer.Shape()) as T;
-  propagateOrigins(transformer, [shape], result);
+  const inputFaceHashes = collectInputFaceHashes([shape]);
+  const { shape: resultShape, evolution } = getKernel().mirrorWithHistory(
+    shape.wrapped, [...planeOrigin], [...planeNormal], inputFaceHashes, HASH_CODE_MAX
+  );
+  const result = castShape(resultShape) as T;
+  propagateOriginsFromEvolution(evolution, [shape], result);
   return result;
 }
 
 /** Scale a shape uniformly. Returns a new shape. */
 export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3 = [0, 0, 0]): T {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const trsf = scope.register(new oc.gp_Trsf_1());
-  const pnt = scope.register(toOcPnt(center));
-  trsf.SetScale(pnt, factor);
-  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
-  const result = castShape(transformer.Shape()) as T;
-  propagateOrigins(transformer, [shape], result);
+  const inputFaceHashes = collectInputFaceHashes([shape]);
+  const { shape: resultShape, evolution } = getKernel().scaleWithHistory(
+    shape.wrapped, [...center], factor, inputFaceHashes, HASH_CODE_MAX
+  );
+  const result = castShape(resultShape) as T;
+  propagateOriginsFromEvolution(evolution, [shape], result);
   return result;
 }
 
@@ -160,7 +162,7 @@ export function resize<T extends AnyShape>(
   ];
 
   // Check if all factors are approximately equal (uniform scale)
-  // Use relative tolerance since OCCT bounding box has floating-point noise
+  // Use relative tolerance since kernel bounding box has floating-point noise
   const isUniform =
     Math.abs(factors[0] - factors[1]) < 1e-6 && Math.abs(factors[1] - factors[2]) < 1e-6;
 
@@ -254,7 +256,7 @@ function isOrthogonalMatrix(
  * Apply a 4x4 affine transformation matrix to a shape.
  * Equivalent to OpenSCAD's `multmatrix`.
  *
- * Uses the fast `gp_Trsf` path for orthogonal matrices (rotation, uniform scale, mirror)
+ * Uses the fast `kernel transform` path for orthogonal matrices (rotation, uniform scale, mirror)
  * and the general `gp_GTrsf` path for non-orthogonal transforms (shear, non-uniform scale).
  */
 export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): T {
@@ -267,52 +269,24 @@ export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): 
     );
   }
 
-  const oc = getKernel().oc;
   const orthogonal = isOrthogonalMatrix(linear);
 
   if (orthogonal) {
-    using scope = new DisposalScope();
-    const trsf = scope.register(new oc.gp_Trsf_1());
-    trsf.SetValues(
-      linear[0],
-      linear[1],
-      linear[2],
-      translation[0],
-      linear[3],
-      linear[4],
-      linear[5],
-      translation[1],
-      linear[6],
-      linear[7],
-      linear[8],
-      translation[2]
+    const inputFaceHashes = collectInputFaceHashes([shape]);
+    const { shape: resultShape, evolution } = getKernel().generalTransformWithHistory(
+      shape.wrapped, linear, translation, true, inputFaceHashes, HASH_CODE_MAX
     );
-    const transformer = scope.register(
-      new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true)
-    );
-    const result = castShape(transformer.Shape()) as T;
-    propagateOrigins(transformer, [shape], result);
+    const result = castShape(resultShape) as T;
+    propagateOriginsFromEvolution(evolution, [shape], result);
     return result;
   }
 
   // General path: gp_GTrsf for non-orthogonal transforms
   // Requires BRepBuilderAPI_GTransform in the WASM build (see build-config/*.yml)
   /* v8 ignore start -- untestable until WASM is rebuilt with BRepBuilderAPI_GTransform */
-  const gtrsf = new oc.gp_GTrsf_1();
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      gtrsf.SetValue(row + 1, col + 1, linear[row * 3 + col]);
-    }
-  }
-  const xyz = new oc.gp_XYZ_2(translation[0], translation[1], translation[2]);
-  gtrsf.SetTranslationPart(xyz);
-  xyz.delete();
-
-  const transformer = new oc.BRepBuilderAPI_GTransform_2(shape.wrapped, gtrsf, true);
-  const result = castShape(transformer.Shape()) as T;
-  propagateOrigins(transformer, [shape], result);
-  transformer.delete();
-  gtrsf.delete();
+  const resultShape = getKernel().generalTransformNonOrthogonal(shape.wrapped, linear, translation);
+  const result = castShape(resultShape) as T;
+  propagateOriginsByHash([shape], result);
   return result;
   /* v8 ignore stop */
 }
@@ -331,52 +305,45 @@ export type TransformOp =
       readonly center?: Vec3;
     };
 
-/** An OCCT gp_Trsf with a cleanup function. Call `cleanup()` when done. */
+/** An kernel kernel transform with a cleanup function. Call `cleanup()` when done. */
 export interface ComposedTransform {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT WASM type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel WASM type
   readonly trsf: any;
   readonly cleanup: () => void;
 }
 
 /**
- * Compose multiple translate/rotate operations into a single OCCT gp_Trsf.
+ * Compose multiple translate/rotate operations into a single kernel kernel transform.
  * Operations are applied in order (first element applied first).
- * Call `.cleanup()` on the result when done to free the OCCT object.
+ * Call `.cleanup()` on the result when done to free the kernel object.
  */
 export function composeTransforms(ops: readonly TransformOp[]): ComposedTransform {
-  const oc = getKernel().oc;
-  const result = new oc.gp_Trsf_1();
-
-  for (const op of ops) {
-    const step = new oc.gp_Trsf_1();
+  const kernelOps = ops.map((op) => {
     if (op.type === 'translate') {
-      const vec = toOcVec(op.v);
-      step.SetTranslation_1(vec);
-      vec.delete();
-    } else {
-      const ax1 = makeOcAx1(op.center ?? [0, 0, 0], op.axis ?? [0, 0, 1]);
-      step.SetRotation_1(ax1, op.angle * DEG2RAD);
-      ax1.delete();
+      return { type: 'translate' as const, x: op.v[0], y: op.v[1], z: op.v[2] };
     }
-    result.PreMultiply(step);
-    step.delete();
-  }
-
-  return { trsf: result, cleanup: () => result.delete() };
+    return {
+      type: 'rotate' as const,
+      angle: op.angle,
+      axis: op.axis ? [...op.axis] as [number, number, number] : undefined,
+      center: op.center ? [...op.center] as [number, number, number] : undefined,
+    };
+  });
+  const { handle, dispose } = getKernel().composeTransform(kernelOps);
+  return { trsf: handle, cleanup: dispose };
 }
 
 /**
- * Clone a shape and apply a pre-composed transform in a single OCCT operation.
+ * Clone a shape and apply a pre-composed transform in a single kernel operation.
  * Much faster than separate clone() + translate() + rotate() calls.
  */
 export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTransform): T {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const transformer = scope.register(
-    new oc.BRepBuilderAPI_Transform_2(shape.wrapped, composed.trsf, true)
+  const inputFaceHashes = collectInputFaceHashes([shape]);
+  const { shape: resultShape, evolution } = getKernel().applyComposedTransformWithHistory(
+    shape.wrapped, composed.trsf, inputFaceHashes, HASH_CODE_MAX
   );
-  const result = castShape(transformer.Shape()) as T;
-  propagateOrigins(transformer, [shape], result);
+  const result = castShape(resultShape) as T;
+  propagateOriginsFromEvolution(evolution, [shape], result);
   return result;
 }
 
@@ -462,8 +429,8 @@ export function getFaceOrigins(shape: AnyShape): Map<number, number> | undefined
 // Origin propagation
 // ---------------------------------------------------------------------------
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- OCCT WASM types are dynamically typed */
-type OcMakeShapeLike = {
+/* eslint-disable @typescript-eslint/no-explicit-any -- kernel WASM types are dynamically typed */
+type KernelMakeShapeLike = {
   Modified(s: any): any;
   Generated(s: any): any;
   IsDeleted?(s: any): boolean;
@@ -474,37 +441,22 @@ type OcMakeShapeLike = {
  * Iterate a TopTools_ListOfShape using the native iterator when available,
  * falling back to copying the list (for older WASM builds without the iterator binding).
  */
-export function iterOcList(
+export function iterKernelList(
   list: { Size(): number; First_1(): { HashCode(max: number): number } },
   callback: (item: { HashCode(max: number): number }) => void
 ): void {
-  const oc = getKernel().oc;
-  if (oc.TopTools_ListIteratorOfListOfShape) {
-    const iter = new oc.TopTools_ListIteratorOfListOfShape(list);
-    while (iter.More()) {
-      callback(iter.Value());
-      iter.Next();
-    }
-    iter.delete();
-  } else {
-    const copy = new oc.TopTools_ListOfShape_3(list);
-    while (copy.Size() > 0) {
-      callback(copy.First_1());
-      copy.RemoveFirst();
-    }
-    copy.delete();
-  }
+  getKernel().iterShapeList(list, callback);
 }
 
 /**
  * Propagate face origins from input shapes to a result shape
- * using an OCCT operation's Modified/Generated history.
+ * using an kernel operation's Modified/Generated history.
  *
- * @param op - OCCT operation with Modified/Generated methods (alive, not yet deleted)
+ * @param op - kernel operation with Modified/Generated methods (alive, not yet deleted)
  * @param inputs - Source shapes whose face origins should propagate
  * @param result - The result shape to populate origins on
  */
-export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result: AnyShape): void {
+export function propagateOrigins(op: KernelMakeShapeLike, inputs: AnyShape[], result: AnyShape): void {
   // Collect all input face origins, caching each face's hash to avoid redundant WASM calls
   const inputOrigins: Array<{
     face: { HashCode(max: number): number };
@@ -532,7 +484,7 @@ export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result
 
     const modifiedList = op.Modified(face);
     if (modifiedList.Size() > 0) {
-      iterOcList(modifiedList, (modFace) => {
+      iterKernelList(modifiedList, (modFace) => {
         resultMap.set(modFace.HashCode(HASH_CODE_MAX), origin);
       });
     } else {
@@ -542,7 +494,7 @@ export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result
 
     const generatedList = op.Generated(face);
     if (generatedList.Size() > 0) {
-      iterOcList(generatedList, (genFace) => {
+      iterKernelList(generatedList, (genFace) => {
         const hash = genFace.HashCode(HASH_CODE_MAX);
         if (!resultMap.has(hash)) {
           resultMap.set(hash, 0);
@@ -558,7 +510,58 @@ export function propagateOrigins(op: OcMakeShapeLike, inputs: AnyShape[], result
 }
 
 /**
- * Fallback origin propagation when no OCCT op object is available.
+ * Propagate face origins using a kernel-provided ShapeEvolution record.
+ * This is the kernel-agnostic alternative to propagateOrigins.
+ */
+export function propagateOriginsFromEvolution(
+  evolution: ShapeEvolution,
+  inputs: AnyShape[],
+  result: AnyShape
+): void {
+  // Collect all input face origins
+  const inputOrigins = new Map<number, number>();
+  for (const input of inputs) {
+    const origins = getFaceOrigins(input);
+    if (!origins) continue;
+    for (const [hash, origin] of origins) {
+      inputOrigins.set(hash, origin);
+    }
+  }
+  if (inputOrigins.size === 0) return;
+
+  const resultMap = new Map<number, number>();
+
+  for (const [hash, origin] of inputOrigins) {
+    if (evolution.deleted.has(hash)) continue;
+
+    const modifiedHashes = evolution.modified.get(hash);
+    if (modifiedHashes && modifiedHashes.length > 0) {
+      for (const modHash of modifiedHashes) {
+        resultMap.set(modHash, origin);
+      }
+    } else {
+      // Face was not modified — reuse original hash
+      resultMap.set(hash, origin);
+    }
+
+    const generatedHashes = evolution.generated.get(hash);
+    if (generatedHashes) {
+      for (const genHash of generatedHashes) {
+        if (!resultMap.has(genHash)) {
+          resultMap.set(genHash, 0);
+        }
+      }
+    }
+  }
+
+  if (resultMap.size > 0) {
+    const cache = getOrCreateCache(result);
+    cache.faceOrigins = resultMap;
+  }
+}
+
+/**
+ * Fallback origin propagation when no kernel op object is available.
  * Matches result faces to input faces by hash code (works for unmodified faces only).
  */
 export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): void {
@@ -642,26 +645,14 @@ export interface Bounds3D {
 
 /** Get the axis-aligned bounding box of a shape. */
 export function getBounds(shape: AnyShape): Bounds3D {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const bbox = scope.register(new oc.Bnd_Box_1());
-  oc.BRepBndLib.Add(shape.wrapped, bbox, true);
-
-  const xMin = { current: 0 };
-  const yMin = { current: 0 };
-  const zMin = { current: 0 };
-  const xMax = { current: 0 };
-  const yMax = { current: 0 };
-  const zMax = { current: 0 };
-  bbox.Get(xMin, yMin, zMin, xMax, yMax, zMax);
-
+  const { min, max } = getKernel().boundingBox(shape.wrapped);
   return {
-    xMin: xMin.current,
-    xMax: xMax.current,
-    yMin: yMin.current,
-    yMax: yMax.current,
-    zMin: zMin.current,
-    zMax: zMax.current,
+    xMin: min[0],
+    xMax: max[0],
+    yMin: min[1],
+    yMax: max[1],
+    zMin: min[2],
+    zMax: max[2],
   };
 }
 
@@ -699,8 +690,5 @@ export function describe(shape: AnyShape): ShapeDescription {
 
 /** Get the position of a vertex as a Vec3 tuple. */
 export function vertexPosition(vertex: Vertex): Vec3 {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const pnt = scope.register(oc.BRep_Tool.Pnt(vertex.wrapped));
-  return [pnt.X(), pnt.Y(), pnt.Z()];
+  return getKernel().vertexPosition(vertex.wrapped);
 }

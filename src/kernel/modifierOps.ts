@@ -7,12 +7,12 @@
  * Used by OCCTAdapter.
  */
 
-import type { OpenCascadeInstance, OcShape } from './types.js';
+import type { OpenCascadeInstance, KernelShape } from './types.js';
 
 export type FilletRadiusSpec =
   | number
   | [number, number]
-  | ((edge: OcShape) => number | [number, number]);
+  | ((edge: KernelShape) => number | [number, number]);
 
 /**
  * Applies a fillet (rounded edge) to selected edges of a shape.
@@ -20,10 +20,10 @@ export type FilletRadiusSpec =
  */
 export function fillet(
   oc: OpenCascadeInstance,
-  shape: OcShape,
-  edges: OcShape[],
+  shape: KernelShape,
+  edges: KernelShape[],
   radius: FilletRadiusSpec
-): OcShape {
+): KernelShape {
   const builder = new oc.BRepFilletAPI_MakeFillet(shape, oc.ChFi3d_FilletShape.ChFi3d_Rational);
   for (const edge of edges) {
     const r = typeof radius === 'function' ? radius(edge) : radius;
@@ -42,7 +42,7 @@ export function fillet(
 export type ChamferDistSpec =
   | number
   | [number, number]
-  | ((edge: OcShape) => number | [number, number]);
+  | ((edge: KernelShape) => number | [number, number]);
 
 /**
  * Applies a chamfer (beveled edge) to selected edges of a shape.
@@ -50,15 +50,15 @@ export type ChamferDistSpec =
  */
 export function chamfer(
   oc: OpenCascadeInstance,
-  shape: OcShape,
-  edges: OcShape[],
+  shape: KernelShape,
+  edges: KernelShape[],
   distance: ChamferDistSpec
-): OcShape {
+): KernelShape {
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
 
   // Build edge→face map lazily (O(faces×edges_per_face) once, then O(1) per lookup)
-  let edgeFaceMap: Map<number, OcShape> | null = null;
-  function getEdgeFaceMap(): Map<number, OcShape> {
+  let edgeFaceMap: Map<number, KernelShape> | null = null;
+  function getEdgeFaceMap(): Map<number, KernelShape> {
     if (edgeFaceMap) return edgeFaceMap;
     edgeFaceMap = new Map();
     const faceExp = new oc.TopExp_Explorer_2(
@@ -87,7 +87,7 @@ export function chamfer(
     return edgeFaceMap;
   }
 
-  function findContainingFace(edge: OcShape): OcShape | null {
+  function findContainingFace(edge: KernelShape): KernelShape | null {
     return getEdgeFaceMap().get(edge.HashCode(2147483647)) ?? null;
   }
 
@@ -116,11 +116,11 @@ export function chamfer(
  */
 export function shell(
   oc: OpenCascadeInstance,
-  shape: OcShape,
-  faces: OcShape[],
+  shape: KernelShape,
+  faces: KernelShape[],
   thickness: number,
   tolerance = 1e-3
-): OcShape {
+): KernelShape {
   const facesToRemove = new oc.TopTools_ListOfShape_1();
   for (const face of faces) {
     facesToRemove.Append_1(face);
@@ -150,7 +150,7 @@ export function shell(
  * Thickens a surface (face/shell) into a solid by offsetting it.
  * Uses the simple offset approach (BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple).
  */
-export function thicken(oc: OpenCascadeInstance, shape: OcShape, thickness: number): OcShape {
+export function thicken(oc: OpenCascadeInstance, shape: KernelShape, thickness: number): KernelShape {
   const builder = new oc.BRepOffsetAPI_MakeThickSolid();
   builder.MakeThickSolidBySimple(shape, thickness);
   const progress = new oc.Message_ProgressRange_1();
@@ -169,16 +169,16 @@ export function thicken(oc: OpenCascadeInstance, shape: OcShape, thickness: numb
  */
 export function chamferDistAngle(
   oc: OpenCascadeInstance,
-  shape: OcShape,
-  edges: OcShape[],
+  shape: KernelShape,
+  edges: KernelShape[],
   distance: number,
   angleDeg: number
-): OcShape {
+): KernelShape {
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
   const angleRad = (angleDeg * Math.PI) / 180;
 
   // Build edge→face map once (O(faces×edges_per_face)), then O(1) per lookup
-  const edgeFaceMap = new Map<number, OcShape>();
+  const edgeFaceMap = new Map<number, KernelShape>();
   const faceExplorer = new oc.TopExp_Explorer_2(
     shape,
     oc.TopAbs_ShapeEnum.TopAbs_FACE,
@@ -222,10 +222,10 @@ export function chamferDistAngle(
  */
 export function offsetWire2D(
   oc: OpenCascadeInstance,
-  wire: OcShape,
+  wire: KernelShape,
   offsetVal: number,
   joinType?: number
-): OcShape {
+): KernelShape {
   // Default to GeomAbs_Arc if no joinType provided
   const jt = joinType ?? oc.GeomAbs_JoinType.GeomAbs_Arc;
   const offsetter = new oc.BRepOffsetAPI_MakeOffset_3(wire, jt, false);
@@ -240,10 +240,10 @@ export function offsetWire2D(
  */
 export function offset(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   distance: number,
   tolerance = 1e-6
-): OcShape {
+): KernelShape {
   const progress = new oc.Message_ProgressRange_1();
   const builder = new oc.BRepOffsetAPI_MakeOffsetShape();
   builder.PerformByJoin(

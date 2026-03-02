@@ -4,7 +4,7 @@
  * Used by OCCTAdapter.
  */
 
-import type { OpenCascadeInstance, OcShape } from './types.js';
+import type { OpenCascadeInstance, KernelShape } from './types.js';
 import { makeTriFace } from './constructorOps.js';
 
 // ---------------------------------------------------------------------------
@@ -377,7 +377,7 @@ function quickHull(inputPoints: Vec3[], tolerance: number): HullResult {
 // Vertex extraction from OCCT shapes
 // ---------------------------------------------------------------------------
 
-function extractVertices(oc: OpenCascadeInstance, shapes: OcShape[], tolerance: number): Vec3[] {
+function extractVertices(oc: OpenCascadeInstance, shapes: KernelShape[], tolerance: number): Vec3[] {
   const vertices: Vec3[] = [];
   // Use a coarser mesh for hull vertex extraction to avoid excessive point counts.
   // For curved surfaces, fine meshes generate thousands of points which makes
@@ -447,11 +447,11 @@ function reconstructBrep(
   oc: OpenCascadeInstance,
   hullResult: HullResult,
   tolerance: number
-): OcShape {
+): KernelShape {
   const { faces: hullFaces, points } = hullResult;
 
   // Phase 1: Build all triangular faces
-  const ocFaces: OcShape[] = [];
+  const ocFaces: KernelShape[] = [];
   for (const [ia, ib, ic] of hullFaces) {
     const pa = at(points, ia),
       pb = at(points, ib),
@@ -532,7 +532,7 @@ function reconstructBrep(
  * Extracts mesh vertices from all input shapes, runs QuickHull,
  * and reconstructs a BREP solid from the hull facets.
  */
-export function hull(oc: OpenCascadeInstance, shapes: OcShape[], tolerance: number): OcShape {
+export function hull(oc: OpenCascadeInstance, shapes: KernelShape[], tolerance: number): KernelShape {
   if (shapes.length === 0) {
     throw new Error('hull: no shapes provided');
   }
@@ -563,7 +563,7 @@ export function buildSolidFromFaces(
   points: Vec3[],
   faces: Array<readonly [number, number, number]>,
   tolerance: number
-): OcShape {
+): KernelShape {
   const hullResult: HullResult = { points, faces };
   return reconstructBrep(oc, hullResult, tolerance);
 }
@@ -572,7 +572,7 @@ export function hullFromPoints(
   oc: OpenCascadeInstance,
   points: Vec3[],
   tolerance: number
-): OcShape {
+): KernelShape {
   if (points.length < 4) {
     throw new Error('hullFromPoints: fewer than 4 points');
   }

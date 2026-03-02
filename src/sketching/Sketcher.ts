@@ -6,7 +6,7 @@ import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
 import { distance2d, polarAngle2d, polarToCartesian, type Point2D } from '../2d/lib/index.js';
 import type { Vec3, PointInput } from '../core/types.js';
-import { toVec3 } from '../core/types.js';
+// toVec3 no longer needed — bezier pole extraction uses kernel method
 import {
   vecAdd,
   vecSub,
@@ -33,14 +33,12 @@ import {
   defaultsSplineOptions,
   type GenericSketcher,
 } from './sketcherlib.js';
-import type { CurveLike } from '../core/shapeTypes.js';
 import type { Edge, Wire } from '../core/shapeTypes.js';
 import { createWire } from '../core/shapeTypes.js';
 import { curveEndPoint, curveTangentAt, getCurveType } from '../topology/curveFns.js';
 import { downcast } from '../topology/cast.js';
 import { getKernel } from '../kernel/index.js';
-import { mirror as mirrorOcShape } from '../core/geometryHelpers.js';
-import type { OcType } from '../kernel/types.js';
+import { mirror as mirrorKernelShape } from '../core/geometryHelpers.js';
 import Sketch from './Sketch.js';
 
 /**
@@ -88,7 +86,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     this._mirrorWire = false;
   }
 
-  /** Release all OCCT edges held by this sketcher. */
+  /** Release all kernel edges held by this sketcher. */
   delete(): void {
     // plane is now a plain object - no need to delete
     for (const edge of this.pendingEdges) {
@@ -405,7 +403,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
   /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous edge. */
   smoothSplineTo(end: Point2D, config?: SplineOptions): this {
-    using scope = new DisposalScope();
+    using _scope = new DisposalScope();
     const { endTangent, startTangent, startFactor, endFactor } = defaultsSplineOptions(config);
 
     const endPoint = planeToWorld(this.plane, end);
@@ -422,18 +420,12 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     } else if (!previousEdge) {
       startPoleDirection = planeToWorld(this.plane, [1, 0]);
     } else if (getCurveType(previousEdge) === 'BEZIER_CURVE') {
-      const oc = getKernel().oc;
-      const adaptor = scope.register(new oc.BRepAdaptor_Curve_2(previousEdge.wrapped));
-      const rawCurve = (
-        adaptor as CurveLike & {
-          Bezier: () => { get: () => OcType };
-        }
-      )
-        .Bezier()
-        .get();
-      const previousPole = toVec3(rawCurve.Pole(rawCurve.NbPoles() - 1));
-
-      startPoleDirection = vecSub(this.pointer, previousPole);
+      const previousPole = getKernel().getBezierPenultimatePole(previousEdge.wrapped);
+      if (previousPole) {
+        startPoleDirection = vecSub(this.pointer, previousPole);
+      } else {
+        startPoleDirection = curveTangentAt(previousEdge, 1);
+      }
     } else {
       startPoleDirection = curveTangentAt(previousEdge, 1);
     }
@@ -471,7 +463,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     const normal = vecCross(startToEndVector, this.plane.zDir);
 
     const clonedWrapped = unwrap(downcast(wire.wrapped));
-    const mirroredRaw = mirrorOcShape(clonedWrapped, normal, this.pointer);
+    const mirroredRaw = mirrorKernelShape(clonedWrapped, normal, this.pointer);
     const mirroredWrapped = unwrap(downcast(mirroredRaw));
     const mirroredWire = createWire(mirroredWrapped);
 

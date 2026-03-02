@@ -17,7 +17,7 @@ import {
   vecRotate,
 } from './vecOps.js';
 import { DEG2RAD } from './constants.js';
-import { makeOcAx3 } from './occtBoundary.js';
+// occtBoundary import removed — xDir derivation is now pure math
 import { type Result, ok, err } from './result.js';
 import { validationError } from './errors.js';
 
@@ -28,7 +28,7 @@ import { validationError } from './errors.js';
 /**
  * Create a {@link Plane} from an origin, optional X direction, and a normal.
  *
- * If `xDirection` is omitted, the X axis is derived automatically via OCCT `gp_Ax3`.
+ * If `xDirection` is omitted, the X axis is derived automatically via kernel `gp_Ax3`.
  *
  * @param origin - Origin point of the plane.
  * @param xDirection - Explicit X axis direction, or `null` to auto-derive.
@@ -45,12 +45,20 @@ export function createPlane(
 
   let xDir: Vec3;
   if (!xDirection) {
-    // Derive xDir from OCCT Ax3
-    const ax3 = makeOcAx3(origin, zDir);
-    const ocXDir = ax3.XDirection();
-    xDir = vecNormalize([ocXDir.X(), ocXDir.Y(), ocXDir.Z()]);
-    ocXDir.delete();
-    ax3.delete();
+    // Derive xDir perpendicular to zDir (same algorithm as kernel gp_Ax3)
+    const [nx, ny, nz] = zDir;
+    const absX = Math.abs(nx), absY = Math.abs(ny), absZ = Math.abs(nz);
+    // Pick the axis least aligned with zDir to cross-product with
+    let candidate: Vec3;
+    if (absX <= absY && absX <= absZ) candidate = [1, 0, 0];
+    else if (absY <= absZ) candidate = [0, 1, 0];
+    else candidate = [0, 0, 1];
+    // xDir = normalize(candidate × zDir)
+    const cx = candidate[1] * nz - candidate[2] * ny;
+    const cy = candidate[2] * nx - candidate[0] * nz;
+    const cz = candidate[0] * ny - candidate[1] * nx;
+    const len = Math.sqrt(cx * cx + cy * cy + cz * cz);
+    xDir = len > 1e-12 ? vecNormalize([cx, cy, cz]) : [1, 0, 0];
   } else {
     xDir = vecNormalize(xDirection);
   }

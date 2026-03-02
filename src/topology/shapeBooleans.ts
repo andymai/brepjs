@@ -2,8 +2,11 @@
  * Boolean operation helpers — compound builders and glue optimization.
  */
 
-import type { OcType } from '../kernel/types.js';
-import { getKernel } from '../kernel/index.js';
+import type { KernelType } from '../kernel/types.js';
+
+// BOPAlgo_GlueEnum integer constants
+const BOPAlgo_GlueShift = 1;
+const BOPAlgo_GlueFull = 2;
 
 // ---------------------------------------------------------------------------
 // Glue optimization helper
@@ -16,14 +19,13 @@ import { getKernel } from '../kernel/index.js';
  * @param optimisation - Optimization level: 'none', 'commonFace', or 'sameFace'
  */
 export function applyGlue(
-  op: { SetGlue(glue: OcType): void },
+  op: { SetGlue(glue: KernelType): void },
   optimisation: 'none' | 'commonFace' | 'sameFace'
 ): void {
-  const oc = getKernel().oc;
   if (optimisation === 'commonFace') {
-    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueShift);
+    op.SetGlue(BOPAlgo_GlueShift);
   }
   if (optimisation === 'sameFace') {
-    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
+    op.SetGlue(BOPAlgo_GlueFull);
   }
 }

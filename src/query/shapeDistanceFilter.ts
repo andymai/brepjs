@@ -5,45 +5,26 @@
 import type { Vec3 } from '../core/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
-import { toOcPnt } from '../core/occtBoundary.js';
-import { registerForCleanup } from '../core/disposal.js';
 import type { Predicate } from './finderCore.js';
 
 /**
  * Create a predicate that checks whether a shape element's minimum distance
  * from `point` equals `distance` (within `tolerance`).
  *
- * Uses OCCT's `BRepExtrema_DistShapeShape` and works for any shape type.
+ * Uses the kernel's `distance()` method to compute minimum distance,
+ * with a vertex constructed at the reference point.
  */
 export function distanceFromPointFilter<T extends AnyShape>(
   distance: number,
   point: Vec3,
   tolerance: number
 ): Predicate<T> {
-  // Hoist WASM object creation outside the predicate — these are reused
-  // for every element tested, avoiding N alloc/delete cycles.
-  const oc = getKernel().oc;
+  // Create a vertex at the reference point for distance calculations.
+  const kernel = getKernel();
+  const vtx = kernel.makeVertex(point[0], point[1], point[2]);
 
-  const pnt = toOcPnt(point);
-  const vtxMaker = new oc.BRepBuilderAPI_MakeVertex(pnt);
-  const vtx = vtxMaker.Vertex();
-
-  const distTool = new oc.BRepExtrema_DistShapeShape_1();
-  distTool.LoadS1(vtx);
-
-  const progress = new oc.Message_ProgressRange_1();
-
-  // Objects must outlive the predicate: tie cleanup to predicate's GC lifetime.
-  const predicate = (element: T): boolean => {
-    distTool.LoadS2(element.wrapped);
-    distTool.Perform(progress);
-    const d = distTool.Value();
+  return (element: T): boolean => {
+    const d = kernel.distance(vtx, element.wrapped).value;
     return Math.abs(d - distance) < tolerance;
   };
-
-  for (const obj of [pnt, vtxMaker, distTool, progress]) {
-    registerForCleanup(predicate, obj);
-  }
-
-  return predicate;
 }

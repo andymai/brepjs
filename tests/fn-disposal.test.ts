@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
 import {
   createHandle,
-  createOcHandle,
+  createKernelHandle,
   DisposalScope,
   withScope,
   withScopeResult,
@@ -18,13 +18,13 @@ beforeAll(async () => {
   await initOC();
 }, 30000);
 
-/** Create a minimal OCCT object for testing handle lifecycle */
+/** Create a minimal kernel object for testing handle lifecycle */
 function makeOcPnt(): Deletable {
   const oc = getKernel().oc;
   return new oc.gp_Pnt_3(1, 2, 3);
 }
 
-/** Create a mock deletable for unit tests that don't need OCCT */
+/** Create a mock deletable for unit tests that don't need kernel */
 function mockDeletable(): { deleted: boolean } & Deletable {
   const obj = {
     deleted: false,
@@ -40,7 +40,7 @@ function mockDeletable(): { deleted: boolean } & Deletable {
 // ---------------------------------------------------------------------------
 
 describe('createHandle', () => {
-  it('creates a handle wrapping an OCCT shape', () => {
+  it('creates a handle wrapping an kernel shape', () => {
     const oc = getKernel().oc;
     const ocShape = new oc.BRepPrimAPI_MakeBox_2(10, 10, 10).Shape();
     const handle = createHandle(ocShape);
@@ -81,34 +81,34 @@ describe('createHandle', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createOcHandle
+// createKernelHandle
 // ---------------------------------------------------------------------------
 
-describe('createOcHandle', () => {
-  it('wraps any OCCT object', () => {
+describe('createKernelHandle', () => {
+  it('wraps any kernel object', () => {
     const pnt = makeOcPnt();
-    const handle = createOcHandle(pnt);
+    const handle = createKernelHandle(pnt);
     expect(handle.value).toBe(pnt);
     expect(handle.disposed).toBe(false);
   });
 
   it('disposes via Symbol.dispose', () => {
     const pnt = makeOcPnt();
-    const handle = createOcHandle(pnt);
+    const handle = createKernelHandle(pnt);
     handle[Symbol.dispose]();
     expect(handle.disposed).toBe(true);
   });
 
   it('throws on access after dispose', () => {
     const pnt = makeOcPnt();
-    const handle = createOcHandle(pnt);
+    const handle = createKernelHandle(pnt);
     handle[Symbol.dispose]();
-    expect(() => handle.value).toThrow('OCCT handle has been disposed');
+    expect(() => handle.value).toThrow('kernel handle has been disposed');
   });
 
   it('double dispose is safe', () => {
     const pnt = makeOcPnt();
-    const handle = createOcHandle(pnt);
+    const handle = createKernelHandle(pnt);
     handle[Symbol.dispose]();
     expect(() => handle[Symbol.dispose]()).not.toThrow();
   });
@@ -213,7 +213,7 @@ describe('withScope', () => {
     expect(obj.deleted).toBe(true);
   });
 
-  it('works with OCCT objects', () => {
+  it('works with kernel objects', () => {
     const result = withScope((scope) => {
       const pnt = makeOcPnt();
       scope.register(pnt);
@@ -362,15 +362,15 @@ describe('withScopeResultAsync', () => {
 // ---------------------------------------------------------------------------
 
 describe('isLive', () => {
-  it('returns true for a live OcHandle', () => {
+  it('returns true for a live KernelHandle', () => {
     const pnt = makeOcPnt();
-    const handle = createOcHandle(pnt);
+    const handle = createKernelHandle(pnt);
     expect(isLive(handle)).toBe(true);
   });
 
-  it('returns false for a disposed OcHandle', () => {
+  it('returns false for a disposed KernelHandle', () => {
     const pnt = makeOcPnt();
-    const handle = createOcHandle(pnt);
+    const handle = createKernelHandle(pnt);
     handle[Symbol.dispose]();
     expect(isLive(handle)).toBe(false);
   });

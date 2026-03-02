@@ -5,12 +5,12 @@
  * Used by OCCTAdapter.
  */
 
-import type { OpenCascadeInstance, OcShape, OcType } from './types.js';
+import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
 
 /**
  * Applies a transformation matrix to a shape.
  */
-export function transform(oc: OpenCascadeInstance, shape: OcShape, trsf: OcType): OcShape {
+export function transform(oc: OpenCascadeInstance, shape: KernelShape, trsf: KernelType): KernelShape {
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
   const result = transformer.ModifiedShape(shape);
   transformer.delete();
@@ -22,11 +22,11 @@ export function transform(oc: OpenCascadeInstance, shape: OcShape, trsf: OcType)
  */
 export function translate(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   x: number,
   y: number,
   z: number
-): OcShape {
+): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const vec = new oc.gp_Vec_4(x, y, z);
   trsf.SetTranslation_1(vec);
@@ -41,11 +41,11 @@ export function translate(
  */
 export function rotate(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   angle: number,
   axis: [number, number, number] = [0, 0, 1],
   center: [number, number, number] = [0, 0, 0]
-): OcShape {
+): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const origin = new oc.gp_Pnt_3(...center);
   const dir = new oc.gp_Dir_4(...axis);
@@ -64,10 +64,10 @@ export function rotate(
  */
 export function mirror(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   origin: [number, number, number],
   normal: [number, number, number]
-): OcShape {
+): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const pnt = new oc.gp_Pnt_3(...origin);
   const dir = new oc.gp_Dir_4(...normal);
@@ -86,10 +86,10 @@ export function mirror(
  */
 export function scale(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   center: [number, number, number],
   factor: number
-): OcShape {
+): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const pnt = new oc.gp_Pnt_3(...center);
   trsf.SetScale(pnt, factor);
@@ -108,11 +108,11 @@ export function scale(
  */
 export function generalTransform(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   linear: readonly [number, number, number, number, number, number, number, number, number],
   translation: readonly [number, number, number],
   isOrthogonal: boolean
-): OcShape {
+): KernelShape {
   if (isOrthogonal) {
     const trsf = new oc.gp_Trsf_1();
     trsf.SetValues(
@@ -158,7 +158,7 @@ export function generalTransform(
 /**
  * Simplifies a shape by unifying same-domain surfaces.
  */
-export function simplify(oc: OpenCascadeInstance, shape: OcShape): OcShape {
+export function simplify(oc: OpenCascadeInstance, shape: KernelShape): KernelShape {
   const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(shape, true, true, false);
   upgrader.Build();
   const result = upgrader.Shape();

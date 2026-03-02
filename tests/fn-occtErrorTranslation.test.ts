@@ -1,7 +1,7 @@
 /**
- * Tests for OCCT error message translation.
+ * Tests for kernel error message translation.
  *
- * Verifies that common OCCT error patterns are translated into
+ * Verifies that common kernel error patterns are translated into
  * user-friendly messages with actionable guidance.
  */
 
@@ -84,15 +84,15 @@ describe('translateOcctError', () => {
   });
 
   it('preserves original message when no pattern matches', () => {
-    const original = 'Some unknown OCCT error';
+    const original = 'Some unknown kernel error';
     const result = translateOcctError(original);
     expect(result).toBe(original);
   });
 
-  it('includes original OCCT message for reference', () => {
+  it('includes original kernel message for reference', () => {
     const original = 'fillet failed';
     const result = translateOcctError(original);
-    expect(result).toContain('OCCT:');
+    expect(result).toContain('kernel:');
     expect(result).toContain(original);
   });
 

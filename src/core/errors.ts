@@ -11,7 +11,7 @@ export { bug, BrepBugError } from '../utils/bug.js';
 
 /** High-level category for a brepjs error. */
 export type BrepErrorKind =
-  | 'OCCT_OPERATION'
+  | 'KERNEL_OPERATION'
   | 'VALIDATION'
   | 'TYPE_CAST'
   | 'SKETCHER_STATE'
@@ -30,7 +30,7 @@ export type BrepErrorKind =
  * Use these instead of raw strings so that typos are caught at compile time.
  */
 export const BrepErrorCode = {
-  // OCCT operation errors
+  // kernel operation errors
   BSPLINE_FAILED: 'BSPLINE_FAILED',
   FACE_BUILD_FAILED: 'FACE_BUILD_FAILED',
   SWEEP_FAILED: 'SWEEP_FAILED',
@@ -197,15 +197,15 @@ function makeError(
   return base;
 }
 
-/** Create an error for a failed OCCT kernel operation. */
-export function occtError(
+/** Create an error for a failed kernel kernel operation. */
+export function kernelError(
   code: string,
   message: string,
   cause?: unknown,
   metadata?: Record<string, unknown>,
   suggestion?: string
 ): BrepError {
-  return makeError('OCCT_OPERATION', code, message, cause, metadata, suggestion);
+  return makeError('KERNEL_OPERATION', code, message, cause, metadata, suggestion);
 }
 
 /** Create an error for invalid input parameters. */
@@ -286,14 +286,14 @@ export function queryError(
 }
 
 // ---------------------------------------------------------------------------
-// OCCT Error Translation — maps cryptic OCCT messages to user-friendly explanations
+// kernel Error Translation — maps cryptic kernel messages to user-friendly explanations
 // ---------------------------------------------------------------------------
 
 /**
- * Common OCCT error patterns and their user-friendly translations.
+ * Common kernel error patterns and their user-friendly translations.
  * Used by kernelCall to provide actionable error messages.
  */
-const OCCT_ERROR_PATTERNS: Array<{ pattern: RegExp; translation: string }> = [
+const kernel_ERROR_PATTERNS: Array<{ pattern: RegExp; translation: string }> = [
   {
     pattern: /invalid edge configuration|edges?.*(not|fail|invalid)/i,
     translation:
@@ -357,16 +357,16 @@ const OCCT_ERROR_PATTERNS: Array<{ pattern: RegExp; translation: string }> = [
 ];
 
 /**
- * Translate an OCCT error message into a user-friendly explanation.
+ * Translate an kernel error message into a user-friendly explanation.
  * If no pattern matches, returns the original message.
  *
- * @param occtMessage - The raw error message from OCCT
+ * @param occtMessage - The raw error message from kernel
  * @returns User-friendly error message with actionable guidance
  */
 export function translateOcctError(occtMessage: string): string {
-  for (const { pattern, translation } of OCCT_ERROR_PATTERNS) {
+  for (const { pattern, translation } of kernel_ERROR_PATTERNS) {
     if (pattern.test(occtMessage)) {
-      return `${translation} (OCCT: ${occtMessage})`;
+      return `${translation} (kernel: ${occtMessage})`;
     }
   }
   // No pattern matched — return original message

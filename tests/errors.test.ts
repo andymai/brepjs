@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  occtError,
+  kernelError,
   validationError,
   typeCastError,
   sketcherStateError,
@@ -14,9 +14,9 @@ import {
 } from '../src/core/errors.js';
 
 describe('Error constructors', () => {
-  it('occtError creates correct shape', () => {
-    const e = occtError('FUSE_FAILED', 'Fuse did not produce a 3D shape');
-    expect(e.kind).toBe('OCCT_OPERATION');
+  it('kernelError creates correct shape', () => {
+    const e = kernelError('FUSE_FAILED', 'Fuse did not produce a 3D shape');
+    expect(e.kind).toBe('KERNEL_OPERATION');
     expect(e.code).toBe('FUSE_FAILED');
     expect(e.message).toBe('Fuse did not produce a 3D shape');
     expect(e.cause).toBeUndefined();
@@ -59,19 +59,19 @@ describe('Error constructors', () => {
   });
 
   it('preserves cause when provided', () => {
-    const original = new Error('OCCT internal');
-    const e = occtError('FUSE_FAILED', 'Fuse failed', original);
+    const original = new Error('kernel internal');
+    const e = kernelError('FUSE_FAILED', 'Fuse failed', original);
     expect(e.cause).toBe(original);
   });
 
   it('metadata is undefined when not provided', () => {
-    const e = occtError('FUSE_FAILED', 'Fuse failed');
+    const e = kernelError('FUSE_FAILED', 'Fuse failed');
     expect(e.metadata).toBeUndefined();
   });
 
   it('preserves metadata when provided', () => {
     const meta = { operation: 'fuse', tolerance: 1e-3, inputTypes: ['solid', 'solid'] };
-    const e = occtError('FUSE_FAILED', 'Fuse failed', undefined, meta);
+    const e = kernelError('FUSE_FAILED', 'Fuse failed', undefined, meta);
     expect(e.metadata).toEqual(meta);
     expect(e.metadata?.operation).toBe('fuse');
     expect(e.metadata?.tolerance).toBe(1e-3);
@@ -114,7 +114,7 @@ describe('BrepErrorCode', () => {
   });
 
   it('works with error constructors', () => {
-    const e = occtError(BrepErrorCode.FUSE_FAILED, 'Fuse operation failed');
+    const e = kernelError(BrepErrorCode.FUSE_FAILED, 'Fuse operation failed');
     expect(e.code).toBe('FUSE_FAILED');
   });
 });

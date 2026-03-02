@@ -5,7 +5,7 @@
 import type { Face, Edge } from '../core/shapeTypes.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError, occtError, BrepErrorCode } from '../core/errors.js';
+import { validationError, kernelError, BrepErrorCode } from '../core/errors.js';
 import type { AssemblyNode } from './assemblyFns.js';
 import { walkAssembly } from './assemblyFns.js';
 import { faceCenter, normalAt } from '../topology/faceFns.js';
@@ -180,7 +180,7 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
 
     if (!result.converged) {
       return err(
-        occtError(
+        kernelError(
           BrepErrorCode.ASSEMBLY_NOT_CONVERGED,
           'Assembly constraint solver did not converge'
         )
@@ -194,6 +194,6 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
     });
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
-    return err(occtError(BrepErrorCode.ASSEMBLY_SOLVE_FAILED, `Assembly solve failed: ${raw}`, e));
+    return err(kernelError(BrepErrorCode.ASSEMBLY_SOLVE_FAILED, `Assembly solve failed: ${raw}`, e));
   }
 }

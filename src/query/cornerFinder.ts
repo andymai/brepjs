@@ -1,7 +1,7 @@
 /**
  * Corner finder — 2D blueprint corner filtering.
  *
- * Unlike the shape finders, corners are not OCCT topology objects.
+ * Unlike the shape finders, corners are not kernel topology objects.
  * They live in the 2D world and operate on `BlueprintLike` profiles.
  */
 

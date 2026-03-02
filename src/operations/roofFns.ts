@@ -4,12 +4,11 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { makeTriFace } from '../kernel/constructorOps.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { Wire, Solid } from '../core/shapeTypes.js';
 import { createSolid } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
-import { occtError, BrepErrorCode } from '../core/errors.js';
+import { kernelError, BrepErrorCode } from '../core/errors.js';
 import { getEdges } from '../topology/shapeFns.js';
 import { curveStartPoint } from '../topology/curveFns.js';
 import { computeStraightSkeleton } from './straightSkeleton.js';
@@ -78,120 +77,94 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
     const polygon = extractPolygon(w);
     if (polygon.length < 3) {
       return err(
-        occtError(BrepErrorCode.ROOF_FAILED, 'Wire must have at least 3 edges for roof generation')
+        kernelError(BrepErrorCode.ROOF_FAILED, 'Wire must have at least 3 edges for roof generation')
       );
     }
 
     const skeleton = computeStraightSkeleton(polygon);
     if (skeleton.faces.length === 0) {
       return err(
-        occtError(BrepErrorCode.ROOF_FAILED, 'Straight skeleton computation produced no faces')
+        kernelError(BrepErrorCode.ROOF_FAILED, 'Straight skeleton computation produced no faces')
       );
     }
 
-    const oc = getKernel().oc;
-    const sewing = new oc.BRepBuilderAPI_Sewing(1e-6, true, true, true, false);
-    let faceCount = 0;
+    const kernel = getKernel();
+    const triFaces: KernelShape[] = [];
+
+    // For each skeleton face, build triangles
+    for (const skFace of skeleton.faces) {
+      const verts3d: Array<[number, number, number]> = skFace.vertices.map(
+        (v: SkPoint2D, i: number): [number, number, number] => [
+          v.x,
+          v.y,
+          (skFace.heights[i] ?? 0) * tanAngle,
+        ]
+      );
+
+      const tris = fanTriangulate(verts3d.length);
+
+      for (const [ai, bi, ci] of tris) {
+        const va = verts3d[ai];
+        const vb = verts3d[bi];
+        const vc = verts3d[ci];
+        if (!va || !vb || !vc) continue;
+
+        // Skip degenerate triangles
+        const abx = vb[0] - va[0];
+        const aby = vb[1] - va[1];
+        const abz = vb[2] - va[2];
+        const acx = vc[0] - va[0];
+        const acy = vc[1] - va[1];
+        const acz = vc[2] - va[2];
+        const nx = aby * acz - abz * acy;
+        const ny = abz * acx - abx * acz;
+        const nz = abx * acy - aby * acx;
+        const areaSq = nx * nx + ny * ny + nz * nz;
+        if (areaSq < 1e-20) continue;
+
+        const triFace = kernel.buildTriFace(va, vb, vc);
+        if (triFace !== null) {
+          triFaces.push(triFace);
+        }
+      }
+    }
+
+    // Also add the bottom face (the original polygon at z=0)
+    const p0 = polygon[0];
+    if (p0) {
+      for (let i = 1; i < polygon.length - 1; i++) {
+        const pi = polygon[i];
+        const pi1 = polygon[i + 1];
+        if (!pi || !pi1) continue;
+        const va: [number, number, number] = [p0.x, p0.y, 0];
+        const vb: [number, number, number] = [pi.x, pi.y, 0];
+        const vc: [number, number, number] = [pi1.x, pi1.y, 0];
+        const triFace = kernel.buildTriFace(va, vc, vb); // reversed winding for bottom
+        if (triFace !== null) {
+          triFaces.push(triFace);
+        }
+      }
+    }
+
+    if (triFaces.length === 0) {
+      return err(
+        kernelError(BrepErrorCode.ROOF_FAILED, 'No valid triangular faces could be built')
+      );
+    }
 
     try {
-      // For each skeleton face, build triangles and add to sewing
-      for (const skFace of skeleton.faces) {
-        const verts3d: Array<[number, number, number]> = skFace.vertices.map(
-          (v: SkPoint2D, i: number): [number, number, number] => [
-            v.x,
-            v.y,
-            (skFace.heights[i] ?? 0) * tanAngle,
-          ]
-        );
-
-        const tris = fanTriangulate(verts3d.length);
-
-        for (const [ai, bi, ci] of tris) {
-          const va = verts3d[ai];
-          const vb = verts3d[bi];
-          const vc = verts3d[ci];
-          if (!va || !vb || !vc) continue;
-
-          // Skip degenerate triangles
-          const abx = vb[0] - va[0];
-          const aby = vb[1] - va[1];
-          const abz = vb[2] - va[2];
-          const acx = vc[0] - va[0];
-          const acy = vc[1] - va[1];
-          const acz = vc[2] - va[2];
-          const nx = aby * acz - abz * acy;
-          const ny = abz * acx - abx * acz;
-          const nz = abx * acy - aby * acx;
-          const areaSq = nx * nx + ny * ny + nz * nz;
-          if (areaSq < 1e-20) continue;
-
-          const triFace = makeTriFace(oc, va, vb, vc);
-          if (triFace !== null) {
-            sewing.Add(triFace);
-            faceCount++;
-          }
-        }
-      }
-
-      // Also add the bottom face (the original polygon at z=0)
-      // Build it via fan triangulation too
-      const p0 = polygon[0];
-      if (p0) {
-        for (let i = 1; i < polygon.length - 1; i++) {
-          const pi = polygon[i];
-          const pi1 = polygon[i + 1];
-          if (!pi || !pi1) continue;
-          const va: [number, number, number] = [p0.x, p0.y, 0];
-          const vb: [number, number, number] = [pi.x, pi.y, 0];
-          const vc: [number, number, number] = [pi1.x, pi1.y, 0];
-          const triFace = makeTriFace(oc, va, vc, vb); // reversed winding for bottom
-          if (triFace !== null) {
-            sewing.Add(triFace);
-            faceCount++;
-          }
-        }
-      }
-
-      if (faceCount === 0) {
-        return err(
-          occtError(BrepErrorCode.ROOF_FAILED, 'No valid triangular faces could be built')
-        );
-      }
-
-      const progress = new oc.Message_ProgressRange_1();
-      sewing.Perform(progress);
-      progress.delete();
-
-      const sewn = sewing.SewedShape();
-
-      // Try to make a solid from the sewn shell, fixing orientation
-      const fixer = new oc.ShapeFix_Solid_1();
+      const solid = kernel.sewAndSolidify(triFaces, 1e-6);
+      const fixed = kernel.fixShape(solid);
+      return ok(createSolid(fixed));
+    } catch {
       try {
-        const shell = oc.TopoDS.Shell_1(sewn);
-        const solid = fixer.SolidFromShell(shell);
-
-        // Fix face orientation so volume is positive
-        const shapeFixer = new oc.ShapeFix_Shape_1(solid);
-        const shapeFixProgress = new oc.Message_ProgressRange_1();
-        try {
-          shapeFixer.Perform(shapeFixProgress);
-          const fixed = shapeFixer.Shape();
-          return ok(createSolid(fixed));
-        } finally {
-          shapeFixProgress.delete();
-          shapeFixer.delete();
-        }
+        return ok(createSolid(kernel.sew(triFaces, 1e-6)));
       } catch {
-        // If solid creation fails, return the sewn shape cast as solid
-        return ok(castShape(sewn) as Solid);
-      } finally {
-        fixer.delete();
+        return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Failed to sew roof faces'));
       }
-    } finally {
-      sewing.delete();
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return err(occtError(BrepErrorCode.ROOF_FAILED, `Roof generation failed: ${msg}`, e));
+    return err(kernelError(BrepErrorCode.ROOF_FAILED, `Roof generation failed: ${msg}`, e));
   }
 }

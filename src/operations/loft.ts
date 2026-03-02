@@ -1,10 +1,9 @@
 import { getKernel } from '../kernel/index.js';
-import { DisposalScope } from '../core/memory.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { cast, isShape3D } from '../topology/cast.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
-import { typeCastError, validationError, occtError } from '../core/errors.js';
+import { typeCastError, validationError, kernelError } from '../core/errors.js';
 import type { Wire, Shape3D } from '../core/shapeTypes.js';
 import { makeVertex } from '../topology/shapeHelpers.js';
 
@@ -46,31 +45,30 @@ export const loft = (
     return err(validationError('LOFT_EMPTY', 'Loft requires at least one wire or start/end point'));
   }
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
+  const kernel = getKernel();
 
-  const loftBuilder = scope.register(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, 1e-6));
+  const startVertex = startPoint ? makeVertex(toVec3(startPoint)).wrapped : undefined;
+  const endVertex = endPoint ? makeVertex(toVec3(endPoint)).wrapped : undefined;
 
-  if (startPoint) {
-    loftBuilder.AddVertex(scope.register(makeVertex(toVec3(startPoint))).wrapped);
+  try {
+    const shape = kernel.loftAdvanced(
+      wires.map((w) => w.wrapped),
+      {
+        solid: !returnShell,
+        ruled,
+        ...(startVertex ? { startVertex } : {}),
+        ...(endVertex ? { endVertex } : {}),
+      }
+    );
+
+    const result = andThen(cast(shape), (s) => {
+      if (!isShape3D(s))
+        return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
+      return ok(s);
+    });
+
+    return result;
+  } catch {
+    return err(kernelError('LOFT_FAILED', 'Loft operation failed'));
   }
-  wires.forEach((w) => loftBuilder.AddWire(w.wrapped));
-  if (endPoint) {
-    loftBuilder.AddVertex(scope.register(makeVertex(toVec3(endPoint))).wrapped);
-  }
-
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  loftBuilder.Build(progress);
-
-  if (!loftBuilder.IsDone()) {
-    return err(occtError('LOFT_FAILED', 'Loft operation failed'));
-  }
-
-  const result = andThen(cast(loftBuilder.Shape()), (shape) => {
-    if (!isShape3D(shape))
-      return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
-    return ok(shape);
-  });
-
-  return result;
 };

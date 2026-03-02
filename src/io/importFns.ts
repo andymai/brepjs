@@ -6,10 +6,8 @@
 import { getKernel } from '../kernel/index.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
-import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
-import { uniqueId } from '../core/constants.js';
 
 /**
  * Import a STEP file from a Blob.
@@ -29,34 +27,16 @@ import { uniqueId } from '../core/constants.js';
  * ```
  */
 export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const fileName = uniqueId();
-
   try {
-    const bufferView = new Uint8Array(await blob.arrayBuffer());
-    oc.FS.writeFile(`/${fileName}`, bufferView);
-
-    const reader = scope.register(new oc.STEPControl_Reader_1());
-    if (!reader.ReadFile(fileName)) {
-      return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
-    }
-
-    reader.TransferRoots(scope.register(new oc.Message_ProgressRange_1()));
-    const stepShape = reader.OneShape();
-
-    if (stepShape.IsNull()) {
+    const data = await blob.arrayBuffer();
+    const shapes = getKernel().importSTEP(data);
+    if (shapes.length === 0) {
       return err(ioError('STEP_IMPORT_FAILED', 'STEP file contains no valid geometry'));
     }
-
-    return ok(castShape(stepShape));
-  } finally {
-    try {
-      oc.FS.unlink('/' + fileName);
-    } catch {
-      // Cleanup failure is non-critical — file may not exist if writeFile failed,
-      // or may already be removed. WASM FS is ephemeral anyway.
-    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return ok(castShape(shapes[0]));
+  } catch {
+    return err(ioError('STEP_IMPORT_FAILED', 'Failed to load STEP file'));
   }
 }
 
@@ -77,43 +57,15 @@ export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
  * ```
  */
 export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const fileName = uniqueId();
-
   try {
-    const bufferView = new Uint8Array(await blob.arrayBuffer());
-    oc.FS.writeFile(`/${fileName}`, bufferView);
-
-    const reader = scope.register(new oc.StlAPI_Reader());
-    const readShape = scope.register(new oc.TopoDS_Shell());
-
-    if (!reader.Read(readShape, fileName)) {
-      return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
-    }
-
-    const upgrader = scope.register(
-      new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false)
-    );
-    upgrader.Build();
-    const upgraded = scope.register(upgrader.Shape());
-
-    const solidBuilder = scope.register(new oc.BRepBuilderAPI_MakeSolid_1());
-    solidBuilder.Add(oc.TopoDS.Shell_1(upgraded));
-
-    const solid = solidBuilder.Solid();
-    if (solid.IsNull()) {
+    const data = await blob.arrayBuffer();
+    const shape = getKernel().importSTL(data);
+    if (shape.IsNull()) {
       return err(ioError('STL_IMPORT_FAILED', 'Failed to create solid from STL mesh'));
     }
-
-    return ok(castShape(solid));
-  } finally {
-    try {
-      oc.FS.unlink('/' + fileName);
-    } catch {
-      // Cleanup failure is non-critical — file may not exist if writeFile failed,
-      // or may already be removed. WASM FS is ephemeral anyway.
-    }
+    return ok(castShape(shape));
+  } catch {
+    return err(ioError('STL_IMPORT_FAILED', 'Failed to load STL file'));
   }
 }
 
@@ -131,33 +83,15 @@ export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
  * ```
  */
 export async function importIGES(blob: Blob): Promise<Result<AnyShape>> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const fileName = uniqueId();
-
   try {
-    const bufferView = new Uint8Array(await blob.arrayBuffer());
-    oc.FS.writeFile(`/${fileName}`, bufferView);
-
-    const reader = scope.register(new oc.IGESControl_Reader_1());
-    const status = reader.ReadFile(fileName);
-    if (status !== oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
-      return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file'));
-    }
-
-    reader.TransferRoots(scope.register(new oc.Message_ProgressRange_1()));
-    const igesShape = reader.OneShape();
-
-    if (igesShape.IsNull()) {
+    const data = await blob.arrayBuffer();
+    const shapes = getKernel().importIGES(data);
+    if (shapes.length === 0) {
       return err(ioError('IGES_IMPORT_FAILED', 'IGES file contains no valid geometry'));
     }
-
-    return ok(castShape(igesShape));
-  } finally {
-    try {
-      oc.FS.unlink('/' + fileName);
-    } catch {
-      // Cleanup failure is non-critical
-    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return ok(castShape(shapes[0]));
+  } catch {
+    return err(ioError('IGES_IMPORT_FAILED', 'Failed to load IGES file'));
   }
 }

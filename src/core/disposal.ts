@@ -1,14 +1,14 @@
 /**
  * Resource disposal system using Symbol.dispose (TC39 Explicit Resource Management).
  *
- * All OCCT handles are wrapped in disposable objects:
+ * All kernel handles are wrapped in disposable objects:
  *   using solid = createSolid(ocShape);
  *   // auto-disposed at end of scope
  *
  * FinalizationRegistry serves as a safety net for handles not explicitly disposed.
  */
 
-import type { OcShape } from '../kernel/types.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { BrepError } from './errors.js';
 import type { Result } from './result.js';
 
@@ -16,7 +16,7 @@ import type { Result } from './result.js';
 // Deletable interface (same as before)
 // ---------------------------------------------------------------------------
 
-/** Any object that can be cleaned up by calling `delete()` (OCCT WASM objects). */
+/** Any object that can be cleaned up by calling `delete()` (kernel WASM objects). */
 export interface Deletable {
   delete: () => void;
 }
@@ -58,10 +58,10 @@ const registry = new FinalizationRegistry<Deletable>((heldValue) => {
 
 /** A shape wrapper with Symbol.dispose for auto-cleanup. */
 export interface ShapeHandle {
-  /** The raw OCCT shape handle */
-  readonly wrapped: OcShape;
+  /** The raw kernel shape handle */
+  readonly wrapped: KernelShape;
 
-  /** Manually dispose the OCCT handle */
+  /** Manually dispose the kernel handle */
   [Symbol.dispose](): void;
 
   /** Alias for Symbol.dispose — required for localGC / Deletable compatibility. */
@@ -72,7 +72,7 @@ export interface ShapeHandle {
 }
 
 /** Create a disposable shape handle. */
-export function createHandle(ocShape: OcShape): ShapeHandle {
+export function createHandle(ocShape: KernelShape): ShapeHandle {
   let disposed = false;
 
   const dispose = () => {
@@ -111,23 +111,23 @@ export function createHandle(ocShape: OcShape): ShapeHandle {
 }
 
 // ---------------------------------------------------------------------------
-// Generic OCCT object wrapper
+// Generic kernel object wrapper
 // ---------------------------------------------------------------------------
 
-/** A disposable wrapper for any OCCT object. */
-export interface OcHandle<T extends Deletable> {
+/** A disposable wrapper for any kernel object. */
+export interface KernelHandle<T extends Deletable> {
   readonly value: T;
   readonly disposed: boolean;
   [Symbol.dispose](): void;
 }
 
-/** Create a disposable handle for any OCCT object. */
-export function createOcHandle<T extends Deletable>(ocObj: T): OcHandle<T> {
+/** Create a disposable handle for any kernel object. */
+export function createKernelHandle<T extends Deletable>(ocObj: T): KernelHandle<T> {
   let disposed = false;
 
-  const handle: OcHandle<T> = {
+  const handle: KernelHandle<T> = {
     get value() {
-      if (disposed) throw new Error('OCCT handle has been disposed');
+      if (disposed) throw new Error('kernel handle has been disposed');
       return ocObj;
     },
 
@@ -280,11 +280,11 @@ export function localGC(
 /**
  * Run fn inside a DisposalScope. The scope is disposed on all exit paths:
  * Ok return, Err return, and throw. Use in any function that allocates
- * OCCT objects and returns Result<T>.
+ * kernel objects and returns Result<T>.
  *
  * ```ts
  * return withScopeResult((scope) => {
- *   const axis = scope.register(makeOcAx1(origin, dir));
+ *   const axis = scope.register(makeKernelAx1(origin, dir));
  *   return ok(castShape(getKernel().makeSomething(axis)) as Solid);
  * });
  * ```
@@ -319,6 +319,6 @@ export async function withScopeResultAsync<T, E = BrepError>(
  * if (!isLive(handle)) return err(validationError('DISPOSED_HANDLE', '...'));
  * ```
  */
-export function isLive(handle: ShapeHandle | OcHandle<Deletable>): boolean {
+export function isLive(handle: ShapeHandle | KernelHandle<Deletable>): boolean {
   return !handle.disposed;
 }

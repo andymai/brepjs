@@ -70,7 +70,7 @@ export default class Sketch implements SketchInterface {
     this._baseFace = newFace ? createFace(unwrap(downcast(newFace.wrapped))) : newFace;
   }
 
-  /** Release all OCCT resources held by this sketch. */
+  /** Release all kernel resources held by this sketch. */
   delete(): void {
     this.wire.delete();
     // _defaultOrigin and _defaultDirection are Vec3 tuples - no need to delete

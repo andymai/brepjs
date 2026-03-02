@@ -4,7 +4,7 @@
  * Provides BSpline interpolation and approximation from point sets.
  */
 
-import type { OpenCascadeInstance, OcShape, OcType } from './types.js';
+import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
 
 export interface InterpolateOptions {
   periodic?: boolean;
@@ -29,7 +29,7 @@ export function interpolatePoints(
   oc: OpenCascadeInstance,
   points: [number, number, number][],
   options: InterpolateOptions = {}
-): OcShape {
+): KernelShape {
   const { tolerance = 1e-8 } = options;
 
   // Use high-precision approximation to effectively interpolate
@@ -56,7 +56,7 @@ export function interpolatePoints(
     throw new Error('Interpolation failed — GeomAPI_PointsToBSpline did not converge');
   }
 
-  const curve: OcType = splineBuilder.Curve();
+  const curve: KernelType = splineBuilder.Curve();
   const geomHandle = new oc.Handle_Geom_Curve_2(curve.get());
   const builder = new oc.BRepBuilderAPI_MakeEdge_24(geomHandle);
   const edge = builder.Edge();
@@ -74,7 +74,7 @@ export function approximatePoints(
   oc: OpenCascadeInstance,
   points: [number, number, number][],
   options: ApproximateOptions = {}
-): OcShape {
+): KernelShape {
   const { tolerance = 1e-3, degMin = 1, degMax = 6, smoothing = null } = options;
 
   const pnts = new oc.TColgp_Array1OfPnt_2(1, points.length);
@@ -86,7 +86,7 @@ export function approximatePoints(
   }
   reusePnt.delete();
 
-  let splineBuilder: OcType;
+  let splineBuilder: KernelType;
   if (smoothing) {
     splineBuilder = new oc.GeomAPI_PointsToBSpline_5(
       pnts,

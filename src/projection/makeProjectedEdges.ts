@@ -1,13 +1,11 @@
 import { getKernel } from '../kernel/index.js';
-import type { OcType } from '../kernel/types.js';
-import { DisposalScope } from '../core/memory.js';
-import { makeOcAx2 } from '../core/occtBoundary.js';
+import type { KernelType } from '../kernel/types.js';
 import type { Edge, AnyShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { getEdges as _getEdges } from '../topology/shapeFns.js';
 import type { Camera } from './cameraFns.js';
 
-const getEdgesFromOc = (shape: OcType): Edge[] => {
+const getEdgesFromOc = (shape: KernelType): Edge[] => {
   if (shape.IsNull()) return [];
   return _getEdges(castShape(shape));
 };
@@ -24,40 +22,26 @@ export function makeProjectedEdges(
   camera: Camera,
   withHiddenLines = true
 ): { visible: Edge[]; hidden: Edge[] } {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const hiddenLineRemoval = scope.register(new oc.HLRBRep_Algo_1());
-  hiddenLineRemoval.Add_2(shape.wrapped, 0);
-
-  const ax2 = scope.register(makeOcAx2(camera.position, camera.direction, camera.xAxis));
-  const projector = scope.register(new oc.HLRAlgo_Projector_2(ax2));
-  hiddenLineRemoval.Projector_1(projector);
-
-  hiddenLineRemoval.Update();
-  hiddenLineRemoval.Hide_1();
-
-  const hlrShapes = scope.register(
-    new oc.HLRBRep_HLRToShape(scope.register(new oc.Handle_HLRBRep_Algo_2(hiddenLineRemoval)))
+  const projected = getKernel().projectEdges(
+    shape.wrapped,
+    [...camera.position],
+    [...camera.direction],
+    [...camera.xAxis]
   );
 
   const visible = [
-    ...getEdgesFromOc(hlrShapes.VCompound_1()),
-    ...getEdgesFromOc(hlrShapes.Rg1LineVCompound_1()),
-    ...getEdgesFromOc(hlrShapes.OutLineVCompound_1()),
+    ...getEdgesFromOc(projected.visible.sharp),
+    ...getEdgesFromOc(projected.visible.smooth),
+    ...getEdgesFromOc(projected.visible.outline),
   ];
-
-  visible.forEach((e) => oc.BRepLib.BuildCurves3d_2(e.wrapped));
 
   const hidden = withHiddenLines
     ? [
-        ...getEdgesFromOc(hlrShapes.HCompound_1()),
-        ...getEdgesFromOc(hlrShapes.Rg1LineHCompound_1()),
-        ...getEdgesFromOc(hlrShapes.OutLineHCompound_1()),
+        ...getEdgesFromOc(projected.hidden.sharp),
+        ...getEdgesFromOc(projected.hidden.smooth),
+        ...getEdgesFromOc(projected.hidden.outline),
       ]
     : [];
-
-  hidden.forEach((e) => oc.BRepLib.BuildCurves3d_2(e.wrapped));
 
   return { visible, hidden };
 }

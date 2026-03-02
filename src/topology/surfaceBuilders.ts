@@ -3,15 +3,14 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { DisposalScope } from '../core/memory.js';
+
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
-import { validationError, occtError } from '../core/errors.js';
-import type { Edge, Face, Wire } from '../core/shapeTypes.js';
+import { validationError, kernelError } from '../core/errors.js';
+import type { Face, Wire } from '../core/shapeTypes.js';
 import { createFace, isFace } from '../core/shapeTypes.js';
-import { getEdges } from './shapeFns.js';
-import { outerWire } from './faceFns.js';
 import { cast } from './cast.js';
+import { outerWire } from './faceFns.js';
 import zip from '../utils/zip.js';
 import { makeLine, assembleWire } from './curveBuilders.js';
 
@@ -21,20 +20,18 @@ import { makeLine, assembleWire } from './curveBuilders.js';
  * @returns An error if the wire is non-planar or the face cannot be built.
  */
 export function makeFace(wire: Wire, holes?: Wire[]): Result<Face> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const faceBuilder = scope.register(new oc.BRepBuilderAPI_MakeFace_15(wire.wrapped, false));
-  holes?.forEach((hole) => {
-    faceBuilder.Add(hole.wrapped);
-  });
-  if (!faceBuilder.IsDone()) {
+  try {
+    const faceShape = getKernel().makeFace(wire.wrapped, true);
+    if (holes && holes.length > 0) {
+      // Add holes using the existing addHolesInFace helper which handles orientation fixing
+      return ok(addHolesInFace(createFace(faceShape), holes));
+    }
+    return ok(createFace(faceShape));
+  } catch {
     return err(
-      occtError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
+      kernelError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
     );
   }
-  const face = faceBuilder.Face();
-
-  return ok(createFace(face));
 }
 
 /**
@@ -55,15 +52,7 @@ export function fill(face: Face): Result<Face> {
  * @param wire - Wire that defines the boundary on that surface.
  */
 export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const surface = scope.register(oc.BRep_Tool.Surface_2(originFace.wrapped));
-  const faceBuilder = scope.register(
-    new oc.BRepBuilderAPI_MakeFace_21(surface, wire.wrapped, true)
-  );
-  const face = faceBuilder.Face();
-
-  return createFace(face);
+  return createFace(getKernel().makeFaceOnSurface(originFace.wrapped, wire.wrapped));
 }
 
 /**
@@ -72,30 +61,17 @@ export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
  * @returns An error if the filling algorithm fails to produce a face.
  */
 export function makeNonPlanarFace(wire: Wire): Result<Face> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const faceBuilder = scope.register(
-    new oc.BRepOffsetAPI_MakeFilling(3, 15, 2, false, 1e-5, 1e-4, 1e-2, 0.1, 8, 9)
-  );
-  getEdges(wire).forEach((edge: Edge) => {
-    faceBuilder.Add_1(
-      edge.wrapped,
-
-      oc.GeomAbs_Shape.GeomAbs_C0,
-      true
-    );
-  });
-
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  faceBuilder.Build(progress);
-
-  return andThen(cast(faceBuilder.Shape()), (newFace) => {
-    if (!isFace(newFace)) {
-      return err(occtError('FACE_BUILD_FAILED', 'Failed to create a face'));
-    }
-    return ok(newFace);
-  });
+  try {
+    const shape = getKernel().makeNonPlanarFace(wire.wrapped);
+    return andThen(cast(shape), (newFace) => {
+      if (!isFace(newFace)) {
+        return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face'));
+      }
+      return ok(newFace);
+    });
+  } catch {
+    return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face'));
+  }
 }
 
 /**
@@ -104,21 +80,7 @@ export function makeNonPlanarFace(wire: Wire): Result<Face> {
  * Orientation of the holes is automatically fixed.
  */
 export function addHolesInFace(face: Face, holes: Wire[]): Face {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const faceMaker = scope.register(new oc.BRepBuilderAPI_MakeFace_2(face.wrapped));
-  holes.forEach((wire) => {
-    faceMaker.Add(wire.wrapped);
-  });
-
-  const builtFace = scope.register(faceMaker.Face());
-
-  const fixer = scope.register(new oc.ShapeFix_Face_2(builtFace));
-  fixer.FixOrientation_1();
-  const newFace = fixer.Face();
-
-  return createFace(newFace);
+  return createFace(getKernel().addHolesInFace(face.wrapped, holes.map((h) => h.wrapped)));
 }
 
 /**

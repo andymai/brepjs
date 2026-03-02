@@ -38,7 +38,7 @@ describe('importSTEP', () => {
   });
 
   it('returns error for empty blob (ReadFile failure path)', async () => {
-    // An empty file causes OCCT STEPControl_Reader.ReadFile to return false,
+    // An empty file causes kernel STEPControl_Reader.ReadFile to return false,
     // covering the line 42 error branch distinct from the null-shape branch.
     const emptyBlob = new Blob([new Uint8Array(0)]);
     const result = await importSTEP(emptyBlob);

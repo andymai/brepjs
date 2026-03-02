@@ -18,11 +18,11 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'ioError',
   'isErr',
   'isOk',
+  'kernelError',
   'map',
   'mapErr',
   'match',
   'moduleInitError',
-  'occtError',
   'ok',
   'pipeline',
   'queryError',
@@ -53,7 +53,7 @@ describe('brepjs/result export surface', () => {
   });
 
   it('error constructors produce correct kinds', () => {
-    expect(ResultAPI.occtError('C', 'm').kind).toBe('OCCT_OPERATION');
+    expect(ResultAPI.kernelError('C', 'm').kind).toBe('KERNEL_OPERATION');
     expect(ResultAPI.validationError('C', 'm').kind).toBe('VALIDATION');
     expect(ResultAPI.typeCastError('C', 'm').kind).toBe('TYPE_CAST');
     expect(ResultAPI.ioError('C', 'm').kind).toBe('IO');

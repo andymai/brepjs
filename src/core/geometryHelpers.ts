@@ -2,10 +2,8 @@ import type { Plane, PlaneName, PlaneInput } from './planeTypes.js';
 import { resolvePlane } from './planeOps.js';
 import type { Vec3, PointInput } from './types.js';
 import { toVec3 } from './types.js';
-import { DisposalScope } from './memory.js';
-import type { OcType } from '../kernel/types.js';
+import type { KernelType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import { makeOcAx2 } from './occtBoundary.js';
 
 /**
  * Create or copy a {@link Plane}.
@@ -32,24 +30,21 @@ function makePlane(plane?: PlaneInput, origin?: PointInput | number): Plane {
 export { makePlane };
 
 /**
- * Mirror an OCCT shape across a plane.
+ * Mirror an kernel shape across a plane.
  *
  * The mirror plane can be specified as a `PlaneName`, a `Plane` object,
  * or a direction vector (used as the plane normal). Defaults to the YZ plane.
  *
- * @param shape - Raw OCCT shape to mirror.
+ * @param shape - Raw kernel shape to mirror.
  * @param inputPlane - Mirror plane specification.
  * @param origin - Override origin for the mirror plane.
- * @returns A new mirrored OCCT shape.
+ * @returns A new mirrored kernel shape.
  */
 export function mirror(
-  shape: OcType,
+  shape: KernelType,
   inputPlane?: PlaneInput | PointInput,
   origin?: PointInput
-): OcType {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
+): KernelType {
   let originVec: Vec3;
   let directionVec: Vec3;
 
@@ -78,13 +73,7 @@ export function mirror(
     directionVec = plane.zDir;
   }
 
-  const mirrorAxis = scope.register(makeOcAx2(originVec, directionVec));
-
-  const trsf = scope.register(new oc.gp_Trsf_1());
-  trsf.SetMirror_3(mirrorAxis);
-
-  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape, trsf, true));
-  const newShape = transformer.ModifiedShape(shape);
+  const newShape = getKernel().mirror(shape, [...originVec], [...directionVec]);
 
   return newShape;
 }

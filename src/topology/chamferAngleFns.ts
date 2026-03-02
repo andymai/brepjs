@@ -10,7 +10,7 @@ import type { Edge, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { downcast } from './cast.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, typeCastError, occtError } from '../core/errors.js';
+import { validationError, typeCastError, kernelError } from '../core/errors.js';
 
 /**
  * Chamfer edges of a shape using distance + angle.
@@ -74,7 +74,7 @@ export function chamferDistAngle(
     raw = kernel.chamferDistAngle(shape.wrapped, rawEdges, distance, angleDeg);
   } catch (e) {
     return err(
-      occtError(
+      kernelError(
         'CHAMFER_ANGLE_FAILED',
         `chamferDistAngle kernel call failed: ${e instanceof Error ? e.message : String(e)}`,
         e,

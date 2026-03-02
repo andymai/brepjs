@@ -3,27 +3,27 @@
  * Each shape type is a branded ShapeHandle to prevent incorrect assignments.
  */
 
-import type { OcShape, OcType } from '../kernel/types.js';
+import type { KernelShape, KernelType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import type { ShapeHandle } from './disposal.js';
 import { createHandle } from './disposal.js';
 
 // ---------------------------------------------------------------------------
-// CurveLike — OCCT curve adaptor interface
+// CurveLike — kernel curve adaptor interface
 // ---------------------------------------------------------------------------
 
-/** Interface for OCCT curve adaptors (BRepAdaptor_Curve / CompCurve). */
+/** Interface for kernel curve adaptors (BRepAdaptor_Curve / CompCurve). */
 export interface CurveLike {
   delete(): void;
-  Value(v: number): OcType;
+  Value(v: number): KernelType;
   IsPeriodic(): boolean;
   Period(): number;
   IsClosed(): boolean;
   FirstParameter(): number;
   LastParameter(): number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum return type
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel enum return type
   GetType?(): any;
-  D1(v: number, p: OcType, vPrime: OcType): void;
+  D1(v: number, p: KernelType, vPrime: KernelType): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,64 +81,53 @@ function brandHandle(handle: ShapeHandle): AnyShape {
   return handle as AnyShape;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link Vertex} handle. */
-export function createVertex(ocShape: OcShape): Vertex {
+/** Wrap a raw kernel shape as a branded {@link Vertex} handle. */
+export function createVertex(ocShape: KernelShape): Vertex {
   return brandHandle(createHandle(ocShape)) as Vertex;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link Edge} handle. */
-export function createEdge(ocShape: OcShape): Edge {
+/** Wrap a raw kernel shape as a branded {@link Edge} handle. */
+export function createEdge(ocShape: KernelShape): Edge {
   return brandHandle(createHandle(ocShape)) as Edge;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link Wire} handle. */
-export function createWire(ocShape: OcShape): Wire {
+/** Wrap a raw kernel shape as a branded {@link Wire} handle. */
+export function createWire(ocShape: KernelShape): Wire {
   return brandHandle(createHandle(ocShape)) as Wire;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link Face} handle. */
-export function createFace(ocShape: OcShape): Face {
+/** Wrap a raw kernel shape as a branded {@link Face} handle. */
+export function createFace(ocShape: KernelShape): Face {
   return brandHandle(createHandle(ocShape)) as Face;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link Shell} handle. */
-export function createShell(ocShape: OcShape): Shell {
+/** Wrap a raw kernel shape as a branded {@link Shell} handle. */
+export function createShell(ocShape: KernelShape): Shell {
   return brandHandle(createHandle(ocShape)) as Shell;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link Solid} handle. */
-export function createSolid(ocShape: OcShape): Solid {
+/** Wrap a raw kernel shape as a branded {@link Solid} handle. */
+export function createSolid(ocShape: KernelShape): Solid {
   return brandHandle(createHandle(ocShape)) as Solid;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link CompSolid} handle. */
-export function createCompSolid(ocShape: OcShape): CompSolid {
+/** Wrap a raw kernel shape as a branded {@link CompSolid} handle. */
+export function createCompSolid(ocShape: KernelShape): CompSolid {
   return brandHandle(createHandle(ocShape)) as CompSolid;
 }
 
-/** Wrap a raw OCCT shape as a branded {@link Compound} handle. */
-export function createCompound(ocShape: OcShape): Compound {
+/** Wrap a raw kernel shape as a branded {@link Compound} handle. */
+export function createCompound(ocShape: KernelShape): Compound {
   return brandHandle(createHandle(ocShape)) as Compound;
 }
 
 // ---------------------------------------------------------------------------
-// Type guards (runtime checks via OCCT ShapeType)
+// Type guards (runtime checks via kernel ShapeType)
 // ---------------------------------------------------------------------------
 
-/** Query the OCCT runtime for the topological type of a shape. */
+/** Query the kernel for the topological type of a shape. */
 export function getShapeKind(shape: AnyShape): ShapeKind {
-  const oc = getKernel().oc;
-  const st = shape.wrapped.ShapeType();
-  const e = oc.TopAbs_ShapeEnum;
-
-  if (st === e.TopAbs_VERTEX) return 'vertex';
-  if (st === e.TopAbs_EDGE) return 'edge';
-  if (st === e.TopAbs_WIRE) return 'wire';
-  if (st === e.TopAbs_FACE) return 'face';
-  if (st === e.TopAbs_SHELL) return 'shell';
-  if (st === e.TopAbs_SOLID) return 'solid';
-  if (st === e.TopAbs_COMPSOLID) return 'compsolid';
-  return 'compound';
+  return getKernel().shapeType(shape.wrapped);
 }
 
 /** Type guard — check if a shape is a {@link Vertex}. */
@@ -189,39 +178,26 @@ export function isShape1D(s: AnyShape): s is Shape1D {
 }
 
 // ---------------------------------------------------------------------------
-// Cast utility — wraps an OCCT shape into the correct branded type
+// Cast utility — wraps an kernel shape into the correct branded type
 // ---------------------------------------------------------------------------
 
-/** Downcast a raw OCCT shape to its specific TopoDS subtype. */
-function downcastOc(ocShape: OcShape): OcShape {
-  const oc = getKernel().oc;
-  const st = ocShape.ShapeType();
-  const e = oc.TopAbs_ShapeEnum;
-
-  if (st === e.TopAbs_VERTEX) return oc.TopoDS.Vertex_1(ocShape);
-  if (st === e.TopAbs_EDGE) return oc.TopoDS.Edge_1(ocShape);
-  if (st === e.TopAbs_WIRE) return oc.TopoDS.Wire_1(ocShape);
-  if (st === e.TopAbs_FACE) return oc.TopoDS.Face_1(ocShape);
-  if (st === e.TopAbs_SHELL) return oc.TopoDS.Shell_1(ocShape);
-  if (st === e.TopAbs_SOLID) return oc.TopoDS.Solid_1(ocShape);
-  if (st === e.TopAbs_COMPSOLID) return oc.TopoDS.CompSolid_1(ocShape);
-  return oc.TopoDS.Compound_1(ocShape);
+/** Downcast a raw kernel shape to its concrete subtype. */
+function downcastShape(shape: KernelShape): KernelShape {
+  return getKernel().downcast(shape);
 }
 
-/** Wrap a raw OCCT shape handle into a properly branded type.
- *  Performs a TopoDS downcast and wraps in a disposable handle. */
-export function castShape(ocShape: OcShape): AnyShape {
-  const oc = getKernel().oc;
-  const st = ocShape.ShapeType();
-  const e = oc.TopAbs_ShapeEnum;
-  const dc = downcastOc(ocShape);
+/** Wrap a raw kernel shape into a properly branded type.
+ *  Performs a downcast and wraps in a disposable handle. */
+export function castShape(ocShape: KernelShape): AnyShape {
+  const st = getKernel().shapeType(ocShape);
+  const dc = downcastShape(ocShape);
 
-  if (st === e.TopAbs_VERTEX) return createVertex(dc);
-  if (st === e.TopAbs_EDGE) return createEdge(dc);
-  if (st === e.TopAbs_WIRE) return createWire(dc);
-  if (st === e.TopAbs_FACE) return createFace(dc);
-  if (st === e.TopAbs_SHELL) return createShell(dc);
-  if (st === e.TopAbs_SOLID) return createSolid(dc);
-  if (st === e.TopAbs_COMPSOLID) return createCompSolid(dc);
+  if (st === 'vertex') return createVertex(dc);
+  if (st === 'edge') return createEdge(dc);
+  if (st === 'wire') return createWire(dc);
+  if (st === 'face') return createFace(dc);
+  if (st === 'shell') return createShell(dc);
+  if (st === 'solid') return createSolid(dc);
+  if (st === 'compsolid') return createCompSolid(dc);
   return createCompound(dc);
 }

@@ -6,11 +6,11 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { Wire, Solid, Shell } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError, occtError, typeCastError, BrepErrorCode } from '../core/errors.js';
+import { validationError, kernelError, typeCastError, BrepErrorCode } from '../core/errors.js';
 
 /** Configuration for a single sweep section (profile wire + optional location). */
 export interface SweepSectionConfig {
@@ -56,16 +56,13 @@ export function multiSectionSweep(
     );
   }
 
-  const { solid = true, ruled = false, tolerance = 1e-6 } = options ?? {};
+  const { solid = true, ruled = false, tolerance: _tolerance = 1e-6 } = options ?? {};
 
   try {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
+    const kernel = getKernel();
 
-    // Get spine parameterization via BRepAdaptor_CompCurve
-    const adaptor = scope.register(new oc.BRepAdaptor_CompCurve_2(spine.wrapped, false));
-    const uFirst = Number(adaptor.FirstParameter());
-    const uLast = Number(adaptor.LastParameter());
+    // Get spine parameterization
+    const [uFirst, uLast] = kernel.curveParameters(spine.wrapped);
     const uRange = uLast - uFirst;
 
     // Compute parameter for each section
@@ -77,47 +74,20 @@ export function multiSectionSweep(
       return uFirst + (i / (sections.length - 1)) * uRange;
     });
 
-    // Build ThruSections loft with positioned wires
-    const builder = scope.register(new oc.BRepOffsetAPI_ThruSections(solid, ruled, tolerance));
-
+    // Position each profile wire along the spine and loft
+    const positionedWires: KernelShape[] = [];
     for (let i = 0; i < sections.length; i++) {
       const param = params[i];
       const section = sections[i];
       if (param === undefined || section === undefined) continue;
 
-      // Get point and tangent at this parameter
-      const pnt = scope.register(new oc.gp_Pnt_1());
-      const tangent = scope.register(new oc.gp_Vec_1());
-      adaptor.D1(param, pnt, tangent);
-
-      // Build the target coordinate system at the spine point
-      const tangentDir = scope.register(new oc.gp_Dir_2(tangent));
-      const toAx3 = scope.register(new oc.gp_Ax3_4(pnt, tangentDir));
-
-      // SetTransformation_2(ax3) computes transform FROM ax3 TO standard coords.
-      // We want FROM standard (origin/Z-up) TO toAx3, so invert.
-      const trsf = scope.register(new oc.gp_Trsf_1());
-      trsf.SetTransformation_2(toAx3);
-      trsf.Invert();
-
-      // Apply transform to the profile wire
-      const transformer = scope.register(
-        new oc.BRepBuilderAPI_Transform_2(section.wire.wrapped, trsf, true)
-      );
-      const transformedShape = transformer.Shape();
-      const transformedWire = oc.TopoDS.Wire_1(transformedShape);
-
-      builder.AddWire(transformedWire);
+      const positioned = kernel.positionOnCurve(section.wire.wrapped, spine.wrapped, param);
+      positionedWires.push(kernel.downcast(positioned, 'wire'));
     }
 
-    const progress = scope.register(new oc.Message_ProgressRange_1());
-    builder.Build(progress);
+    const loftResult = kernel.loftAdvanced(positionedWires, { solid, ruled });
 
-    if (!builder.IsDone()) {
-      return err(occtError(BrepErrorCode.MULTI_SWEEP_FAILED, 'Multi-section sweep build failed'));
-    }
-
-    const result = castShape(builder.Shape());
+    const result = castShape(loftResult);
     if (!isShape3D(result)) {
       return err(
         typeCastError('MULTI_SWEEP_NOT_3D', 'Multi-section sweep did not produce a 3D shape')
@@ -127,7 +97,7 @@ export function multiSectionSweep(
   } catch (e: unknown) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
-      occtError(BrepErrorCode.MULTI_SWEEP_FAILED, `Multi-section sweep failed: ${raw}`, e)
+      kernelError(BrepErrorCode.MULTI_SWEEP_FAILED, `Multi-section sweep failed: ${raw}`, e)
     );
   }
 }

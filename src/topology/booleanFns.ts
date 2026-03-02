@@ -3,34 +3,29 @@
  * All functions are immutable: they return new shapes without disposing inputs.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT types are dynamic
-type OcType = any;
-
 import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face, Shape3D, Wire } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, typeCastError, occtError, BrepErrorCode } from '../core/errors.js';
+import { validationError, typeCastError, kernelError, BrepErrorCode } from '../core/errors.js';
 import type { Plane } from '../core/planeTypes.js';
 import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
-import { applyGlue } from './shapeBooleans.js';
+import { HASH_CODE_MAX } from '../core/constants.js';
 import {
-  propagateOrigins,
+  propagateOriginsFromEvolution,
   propagateOriginsByHash,
   getWires,
   getEdges,
   getVertices,
 } from './shapeFns.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
+import { propagateFaceTagsFromEvolution } from './faceTagFns.js';
+import { propagateColorsFromEvolution } from './colorFns.js';
 import { makeFace } from './surfaceBuilders.js';
-import { propagateFaceTags } from './faceTagFns.js';
-import { propagateColors } from './colorFns.js';
 
-/** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
-const SIMPLIFY_TOLERANCE = 1e-3;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
+type KernelType = any;
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -63,19 +58,11 @@ export interface BooleanOptions {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function buildCompoundOcInternal(shapes: OcType[]): OcType {
-  const oc = getKernel().oc;
-  const builder = new oc.TopoDS_Builder();
-  const compound = new oc.TopoDS_Compound();
-  builder.MakeCompound(compound);
-  for (const s of shapes) {
-    builder.Add(compound, s);
-  }
-  builder.delete();
-  return compound;
+function buildCompoundInternal(shapes: KernelType[]): KernelType {
+  return getKernel().makeCompound(shapes);
 }
 
-function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Result<Shape3D> {
+function castToShape3D(shape: KernelType, errorCode: string, errorMsg: string): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
     // Include actual shape type in error for debugging
@@ -96,6 +83,18 @@ function castToShape3D(shape: OcType, errorCode: string, errorMsg: string): Resu
     return err(typeCastError(errorCode, `${errorMsg}. Got ${typeName} instead.`));
   }
   return ok(wrapped);
+}
+
+/** Collect ALL face hashes from input shapes for WithHistory kernel methods. */
+function collectInputFaceHashes(inputs: AnyShape[]): number[] {
+  const hashes: number[] = [];
+  for (const input of inputs) {
+    const faces = getKernel().iterShapes(input.wrapped, 'face');
+    for (const face of faces) {
+      hashes.push(face.HashCode(HASH_CODE_MAX));
+    }
+  }
+  return hashes;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,23 +125,19 @@ export function fuse(
   if (isErr(checkA)) return checkA;
   const checkB = validateShape3D(b, 'fuse: second operand');
   if (isErr(checkB)) return checkB;
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  const fuseOp = scope.register(new oc.BRepAlgoAPI_Fuse_3(a.wrapped, b.wrapped, progress));
-  applyGlue(fuseOp, optimisation);
-  fuseOp.SetRunParallel(true);
-  fuseOp.Build(progress);
-  if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+  const inputFaceHashes = collectInputFaceHashes([a, b]);
+  const { shape: resultShape, evolution } = getKernel().fuseWithHistory(
+    a.wrapped, b.wrapped, inputFaceHashes, HASH_CODE_MAX, { optimisation, simplify }
+  );
   const fuseResult = castToShape3D(
-    fuseOp.Shape(),
+    resultShape,
     'FUSE_NOT_3D',
     'Fuse did not produce a 3D shape'
   );
   if (fuseResult.ok) {
-    propagateOrigins(fuseOp, [a, b], fuseResult.value);
-    propagateFaceTags(fuseOp, [a, b], fuseResult.value);
-    propagateColors(fuseOp, [a, b], fuseResult.value);
+    propagateOriginsFromEvolution(evolution, [a, b], fuseResult.value);
+    propagateFaceTagsFromEvolution(evolution, [a, b], fuseResult.value);
+    propagateColorsFromEvolution(evolution, [a, b], fuseResult.value);
   }
   return fuseResult;
 }
@@ -170,19 +165,15 @@ export function cut(
   if (isErr(checkBase)) return checkBase;
   const checkTool = validateShape3D(tool, 'cut: tool');
   if (isErr(checkTool)) return checkTool;
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  const cutOp = scope.register(new oc.BRepAlgoAPI_Cut_3(base.wrapped, tool.wrapped, progress));
-  applyGlue(cutOp, optimisation);
-  cutOp.SetRunParallel(true);
-  cutOp.Build(progress);
-  if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
-  const cutResult = castToShape3D(cutOp.Shape(), 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
+  const inputFaceHashes = collectInputFaceHashes([base, tool]);
+  const { shape: resultShape, evolution } = getKernel().cutWithHistory(
+    base.wrapped, tool.wrapped, inputFaceHashes, HASH_CODE_MAX, { optimisation, simplify }
+  );
+  const cutResult = castToShape3D(resultShape, 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
   if (cutResult.ok) {
-    propagateOrigins(cutOp, [base, tool], cutResult.value);
-    propagateFaceTags(cutOp, [base, tool], cutResult.value);
-    propagateColors(cutOp, [base, tool], cutResult.value);
+    propagateOriginsFromEvolution(evolution, [base, tool], cutResult.value);
+    propagateFaceTagsFromEvolution(evolution, [base, tool], cutResult.value);
+    propagateColorsFromEvolution(evolution, [base, tool], cutResult.value);
   }
   return cutResult;
 }
@@ -205,22 +196,19 @@ export function intersect(
   if (isErr(checkA)) return checkA;
   const checkB = validateShape3D(b, 'intersect: second operand');
   if (isErr(checkB)) return checkB;
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  const intOp = scope.register(new oc.BRepAlgoAPI_Common_3(a.wrapped, b.wrapped, progress));
-  intOp.SetRunParallel(true);
-  intOp.Build(progress);
-  if (simplify) intOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+  const inputFaceHashes = collectInputFaceHashes([a, b]);
+  const { shape: resultShape, evolution } = getKernel().intersectWithHistory(
+    a.wrapped, b.wrapped, inputFaceHashes, HASH_CODE_MAX, { simplify }
+  );
   const intResult = castToShape3D(
-    intOp.Shape(),
+    resultShape,
     'INTERSECT_NOT_3D',
     'Intersect did not produce a 3D shape'
   );
   if (intResult.ok) {
-    propagateOrigins(intOp, [a, b], intResult.value);
-    propagateFaceTags(intOp, [a, b], intResult.value);
-    propagateColors(intOp, [a, b], intResult.value);
+    propagateOriginsFromEvolution(evolution, [a, b], intResult.value);
+    propagateFaceTagsFromEvolution(evolution, [a, b], intResult.value);
+    propagateColorsFromEvolution(evolution, [a, b], intResult.value);
   }
   return intResult;
 }
@@ -347,25 +335,23 @@ export function cutAll(
     if (isErr(check)) return check;
   }
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const toolCompound = scope.register(buildCompoundOcInternal(tools.map((s) => s.wrapped)));
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  const cutOp = scope.register(new oc.BRepAlgoAPI_Cut_3(base.wrapped, toolCompound, progress));
-  applyGlue(cutOp, optimisation);
-  cutOp.SetRunParallel(true);
-  cutOp.Build(progress);
-  if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+  const toolCompound = buildCompoundInternal(tools.map((s) => s.wrapped));
+  const allInputs = [base, ...tools];
+  const inputFaceHashes = collectInputFaceHashes(allInputs);
+  const { shape: resultShape, evolution } = getKernel().cutWithHistory(
+    base.wrapped, toolCompound, inputFaceHashes, HASH_CODE_MAX, { optimisation, simplify }
+  );
+  // Dispose the temporary compound
+  toolCompound.delete();
   const cutAllResult = castToShape3D(
-    cutOp.Shape(),
+    resultShape,
     'CUT_ALL_NOT_3D',
     'cutAll did not produce a 3D shape'
   );
   if (cutAllResult.ok) {
-    propagateOrigins(cutOp, [base, ...tools], cutAllResult.value);
-    propagateFaceTags(cutOp, [base, ...tools], cutAllResult.value);
-    propagateColors(cutOp, [base, ...tools], cutAllResult.value);
+    propagateOriginsFromEvolution(evolution, allInputs, cutAllResult.value);
+    propagateFaceTagsFromEvolution(evolution, allInputs, cutAllResult.value);
+    propagateColorsFromEvolution(evolution, allInputs, cutAllResult.value);
   }
   return cutAllResult;
 }
@@ -376,10 +362,10 @@ export function cutAll(
 
 /**
  * Build a large bounded planar face from a Plane definition.
- * The face extends ±size along xDir and yDir from the origin.
+ * The face extends +/-size along xDir and yDir from the origin.
  */
-function makeSectionFace(plane: Plane, size: number): OcType {
-  const oc = getKernel().oc;
+function makeSectionFace(plane: Plane, size: number): KernelType {
+  const kernel = getKernel();
 
   // Compute 4 corners of a large rectangle on the plane
   const hx = vecScale(plane.xDir, size);
@@ -387,42 +373,25 @@ function makeSectionFace(plane: Plane, size: number): OcType {
   const nhx = vecScale(plane.xDir, -size);
   const nhy = vecScale(plane.yDir, -size);
   const o = plane.origin;
-  const corners = [
-    vecAdd(vecAdd(o, nhx), nhy),
-    vecAdd(vecAdd(o, hx), nhy),
-    vecAdd(vecAdd(o, hx), hy),
-    vecAdd(vecAdd(o, nhx), hy),
-  ];
-
-  using scope = new DisposalScope();
-
-  // Build 4 OCCT points
-  const pts = corners.map((c) => scope.register(new oc.gp_Pnt_3(c[0], c[1], c[2])));
+  const c0: [number, number, number] = [...vecAdd(vecAdd(o, nhx), nhy)];
+  const c1: [number, number, number] = [...vecAdd(vecAdd(o, hx), nhy)];
+  const c2: [number, number, number] = [...vecAdd(vecAdd(o, hx), hy)];
+  const c3: [number, number, number] = [...vecAdd(vecAdd(o, nhx), hy)];
 
   // Build 4 edges forming a closed rectangle
   const edges = [
-    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[0], pts[1])),
-    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[1], pts[2])),
-    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[2], pts[3])),
-    scope.register(new oc.BRepBuilderAPI_MakeEdge_3(pts[3], pts[0])),
+    kernel.makeLineEdge(c0, c1),
+    kernel.makeLineEdge(c1, c2),
+    kernel.makeLineEdge(c2, c3),
+    kernel.makeLineEdge(c3, c0),
   ];
 
-  // Build wire from edges
-  const wireBuilder = scope.register(new oc.BRepBuilderAPI_MakeWire_1());
-  for (const e of edges) {
-    const edge = e.Edge();
-    wireBuilder.Add_1(edge);
-    edge.delete();
-  }
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  wireBuilder.Build(progress);
-  const wire = wireBuilder.Wire();
+  // Build wire from edges, then face
+  const wire = kernel.makeWire(edges);
+  const face = kernel.makeFace(wire, true);
 
-  // Build planar face from wire
-  const faceBuilder = scope.register(new oc.BRepBuilderAPI_MakeFace_15(wire, true));
-  const face = faceBuilder.Face();
-
-  // Cleanup wire (other temporaries cleaned via DisposalScope)
+  // Cleanup temporaries
+  for (const e of edges) e.delete();
   wire.delete();
 
   return face;
@@ -459,7 +428,7 @@ export function section(
     const raw = e instanceof Error ? e.message : String(e);
     const planeName = typeof plane === 'string' ? plane : 'custom';
     return err(
-      occtError('SECTION_FAILED', `Section with ${planeName} plane failed: ${raw}`, e, {
+      kernelError('SECTION_FAILED', `Section with ${planeName} plane failed: ${raw}`, e, {
         operation: 'section',
         plane: planeName,
       })
@@ -487,12 +456,12 @@ export function sectionToFace(
     // Section may return loose edges — assemble them into wires
     const edges = getEdges(sectionResult.value);
     if (edges.length === 0) {
-      return err(occtError('SECTION_FAILED', 'sectionToFace: section produced no geometry'));
+      return err(kernelError('SECTION_FAILED', 'sectionToFace: section produced no geometry'));
     }
-    const oc = getKernel().oc;
+    const kernel = getKernel();
 
-    // Build vertex-hash → edge adjacency map for O(n) wire assembly
-    // (replaces the previous O(n³) probe-builder approach)
+    // Build vertex-hash -> edge adjacency map for O(n) wire assembly
+    // (replaces the previous O(n^3) probe-builder approach)
     const vertexToEdges = new Map<number, typeof edges>();
     const edgeVertexHashes = new Map<(typeof edges)[number], [number, number]>();
     for (const edge of edges) {
@@ -541,19 +510,17 @@ export function sectionToFace(
         }
       }
 
-      // Build wire from collected edges
-      const wb = new oc.BRepBuilderAPI_MakeWire_1();
-      for (const e of wireEdges) {
-        wb.Add_1(e.wrapped);
+      // Build wire from collected edges via kernel
+      try {
+        const wireOc = kernel.makeWire(wireEdges.map((e) => e.wrapped));
+        wires.push(castShape(wireOc) as Wire);
+      } catch {
+        // Skip malformed wire components
       }
-      if (wb.IsDone()) {
-        wires.push(castShape(wb.Wire()) as Wire);
-      }
-      wb.delete();
     }
   }
   if (wires.length === 0) {
-    return err(occtError('SECTION_FAILED', 'sectionToFace: section produced no usable geometry'));
+    return err(kernelError('SECTION_FAILED', 'sectionToFace: section produced no usable geometry'));
   }
 
   // Find outermost wire (largest bounding box diagonal — works for any plane orientation)
@@ -614,7 +581,7 @@ export function split(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
-      occtError('SPLIT_FAILED', `Split operation failed on ${tools.length} tool(s): ${raw}`, e, {
+      kernelError('SPLIT_FAILED', `Split operation failed on ${tools.length} tool(s): ${raw}`, e, {
         operation: 'split',
         toolCount: tools.length,
       })

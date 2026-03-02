@@ -4,7 +4,10 @@
 
 // ── Layer 0: kernel / utils ──
 
-export { initFromOC, getKernel } from './kernel/index.js';
+export { initFromOC, getKernel, registerKernel, withKernel } from './kernel/index.js';
+export type { KernelAdapter, SurfaceType, ShapeOrientation, ShapeType } from './kernel/index.js';
+export { supportsProjection } from './kernel/index.js';
+export type { ProjectionCapability } from './kernel/index.js';
 
 // ── Result type ──
 
@@ -40,7 +43,7 @@ export {
   type BrepError,
   type BrepErrorKind,
   BrepErrorCode,
-  occtError,
+  kernelError,
   validationError,
   typeCastError,
   sketcherStateError,
@@ -312,13 +315,13 @@ export {
 } from './core/vecOps.js';
 
 export {
-  toOcVec,
-  fromOcVec,
-  fromOcPnt,
-  fromOcDir,
-  withOcVec,
-  withOcPnt,
-  withOcDir,
+  toKernelVec,
+  fromKernelVec,
+  fromKernelPnt,
+  fromKernelDir,
+  withKernelVec,
+  withKernelPnt,
+  withKernelDir,
 } from './core/occtBoundary.js';
 
 // ── Branded shape types ──
@@ -361,11 +364,11 @@ export {
 
 // ── Disposal / resource management ──
 
-export type { ShapeHandle, OcHandle } from './core/disposal.js';
+export type { ShapeHandle, KernelHandle } from './core/disposal.js';
 
 export {
   createHandle,
-  createOcHandle,
+  createKernelHandle,
   DisposalScope,
   withScope,
   withScopeResult,

@@ -190,7 +190,7 @@ export interface DrawingInterface {
    *   face). This is the default, but currently supported only for planar
    *   and circular faces
    * - `bounds` normalises the UV parameters on the face to [0,1] intervals.
-   * - `native` uses the default UV parameters of opencascade
+   * - `native` uses the default UV parameters of kernel
    */
   sketchOnFace(
     face: Face,

@@ -1,6 +1,6 @@
 /**
  * Pure TypeScript straight skeleton algorithm for simple polygons.
- * No OCCT dependency — operates on 2D point arrays.
+ * No kernel dependency — operates on 2D point arrays.
  */
 
 // ---------------------------------------------------------------------------

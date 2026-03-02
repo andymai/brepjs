@@ -10,7 +10,7 @@
 
 import type {
   OpenCascadeInstance,
-  OcShape,
+  KernelShape,
   MeshOptions,
   KernelMeshResult,
   KernelEdgeMeshResult,
@@ -21,7 +21,7 @@ import { HASH_CODE_MAX } from './measureOps.js';
  * Check if a shape already has face triangulation (from a prior mesh call).
  * Avoids redundant BRepMesh_IncrementalMesh creation.
  */
-function hasTriangulation(oc: OpenCascadeInstance, shape: OcShape): boolean {
+function hasTriangulation(oc: OpenCascadeInstance, shape: KernelShape): boolean {
   const explorer = new oc.TopExp_Explorer_2(
     shape,
     oc.TopAbs_ShapeEnum.TopAbs_FACE,
@@ -45,7 +45,7 @@ function hasTriangulation(oc: OpenCascadeInstance, shape: OcShape): boolean {
  */
 export function meshBulk(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
   // Single WASM call: mesh + extract all data in C++
@@ -102,7 +102,7 @@ export function meshBulk(
  */
 export function meshJS(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
   const mesher = new oc.BRepMesh_IncrementalMesh_2(
@@ -244,7 +244,7 @@ export function meshJS(
  */
 export function mesh(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
   // C++ bulk path doesn't support UV extraction — fall back to JS
@@ -259,7 +259,7 @@ export function mesh(
  */
 export function meshEdgesBulk(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   tolerance: number,
   angularTolerance: number
 ): KernelEdgeMeshResult {
@@ -298,7 +298,7 @@ export function meshEdgesBulk(
  */
 export function meshEdgesJS(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   tolerance: number,
   angularTolerance: number
 ): KernelEdgeMeshResult {
@@ -447,7 +447,7 @@ export function meshEdgesJS(
  */
 export function meshEdges(
   oc: OpenCascadeInstance,
-  shape: OcShape,
+  shape: KernelShape,
   tolerance: number,
   angularTolerance: number
 ): KernelEdgeMeshResult {

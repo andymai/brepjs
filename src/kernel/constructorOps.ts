@@ -7,13 +7,13 @@
  * Used by OCCTAdapter.
  */
 
-import type { OpenCascadeInstance, OcShape, OcType } from './types.js';
+import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
 import { iterShapes } from './topologyOps.js';
 
 /**
  * Creates a vertex at the given coordinates.
  */
-export function makeVertex(oc: OpenCascadeInstance, x: number, y: number, z: number): OcShape {
+export function makeVertex(oc: OpenCascadeInstance, x: number, y: number, z: number): KernelShape {
   const pnt = new oc.gp_Pnt_3(x, y, z);
   const maker = new oc.BRepBuilderAPI_MakeVertex(pnt);
   const vertex = maker.Vertex();
@@ -27,10 +27,10 @@ export function makeVertex(oc: OpenCascadeInstance, x: number, y: number, z: num
  */
 export function makeEdge(
   oc: OpenCascadeInstance,
-  curve: OcType,
+  curve: KernelType,
   start?: number,
   end?: number
-): OcShape {
+): KernelShape {
   const maker =
     start !== undefined && end !== undefined
       ? new oc.BRepBuilderAPI_MakeEdge_24(curve, start, end)
@@ -43,7 +43,7 @@ export function makeEdge(
 /**
  * Creates a wire from a list of edges.
  */
-export function makeWire(oc: OpenCascadeInstance, edges: OcShape[]): OcShape {
+export function makeWire(oc: OpenCascadeInstance, edges: KernelShape[]): KernelShape {
   const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
   for (const edge of edges) {
     wireBuilder.Add_1(edge);
@@ -60,7 +60,7 @@ export function makeWire(oc: OpenCascadeInstance, edges: OcShape[]): OcShape {
  * Creates a face from a wire.
  * If planar is true, creates a planar face. Otherwise creates a non-planar filling surface.
  */
-export function makeFace(oc: OpenCascadeInstance, wire: OcShape, planar = true): OcShape {
+export function makeFace(oc: OpenCascadeInstance, wire: KernelShape, planar = true): KernelShape {
   if (planar) {
     const builder = new oc.BRepBuilderAPI_MakeFace_15(wire, false);
     const face = builder.Face();
@@ -89,7 +89,7 @@ export function makeBox(
   width: number,
   height: number,
   depth: number
-): OcShape {
+): KernelShape {
   const maker = new oc.BRepPrimAPI_MakeBox_2(width, height, depth);
   const solid = maker.Solid();
   maker.delete();
@@ -105,7 +105,7 @@ export function makeCylinder(
   height: number,
   center: [number, number, number] = [0, 0, 0],
   direction: [number, number, number] = [0, 0, 1]
-): OcShape {
+): KernelShape {
   const origin = new oc.gp_Pnt_3(...center);
   const dir = new oc.gp_Dir_4(...direction);
   const axis = new oc.gp_Ax2_3(origin, dir);
@@ -125,7 +125,14 @@ export function makeSphere(
   oc: OpenCascadeInstance,
   radius: number,
   center: [number, number, number] = [0, 0, 0]
-): OcShape {
+): KernelShape {
+  const isOrigin = center[0] === 0 && center[1] === 0 && center[2] === 0;
+  if (isOrigin) {
+    const maker = new oc.BRepPrimAPI_MakeSphere_1(radius);
+    const solid = maker.Shape();
+    maker.delete();
+    return solid;
+  }
   const origin = new oc.gp_Pnt_3(...center);
   const maker = new oc.BRepPrimAPI_MakeSphere_2(origin, radius);
   const solid = maker.Shape();
@@ -144,7 +151,7 @@ export function makeCone(
   height: number,
   center: [number, number, number] = [0, 0, 0],
   direction: [number, number, number] = [0, 0, 1]
-): OcShape {
+): KernelShape {
   const origin = new oc.gp_Pnt_3(...center);
   const dir = new oc.gp_Dir_4(...direction);
   const axis = new oc.gp_Ax2_3(origin, dir);
@@ -167,7 +174,7 @@ export function makeTriFace(
   a: [number, number, number],
   b: [number, number, number],
   c: [number, number, number]
-): OcShape | null {
+): KernelShape | null {
   const gpA = new oc.gp_Pnt_3(a[0], a[1], a[2]);
   const gpB = new oc.gp_Pnt_3(b[0], b[1], b[2]);
   const gpC = new oc.gp_Pnt_3(c[0], c[1], c[2]);
@@ -181,7 +188,7 @@ export function makeTriFace(
   wireBuilder.Add_1(e2.Edge());
   wireBuilder.Add_1(e3.Edge());
 
-  let face: OcShape | null = null;
+  let face: KernelShape | null = null;
   if (wireBuilder.IsDone()) {
     const makeFaceBuilder = new oc.BRepBuilderAPI_MakeFace_15(wireBuilder.Wire(), false);
     if (makeFaceBuilder.IsDone()) {
@@ -202,6 +209,28 @@ export function makeTriFace(
 }
 
 /**
+ * Build a wire from a mix of edges and wires.
+ * Checks each item's shape type and calls Add_1 for edges, Add_2 for wires.
+ */
+export function makeWireFromMixed(oc: OpenCascadeInstance, items: KernelShape[]): KernelShape {
+  const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
+  for (const item of items) {
+    const st = item.ShapeType();
+    if (st === oc.TopAbs_ShapeEnum.TopAbs_EDGE) {
+      wireBuilder.Add_1(item);
+    } else if (st === oc.TopAbs_ShapeEnum.TopAbs_WIRE) {
+      wireBuilder.Add_2(item);
+    }
+  }
+  const progress = new oc.Message_ProgressRange_1();
+  wireBuilder.Build(progress);
+  const wire = wireBuilder.Wire();
+  wireBuilder.delete();
+  progress.delete();
+  return wire;
+}
+
+/**
  * Creates a torus primitive.
  */
 export function makeTorus(
@@ -210,7 +239,7 @@ export function makeTorus(
   minorRadius: number,
   center: [number, number, number] = [0, 0, 0],
   direction: [number, number, number] = [0, 0, 1]
-): OcShape {
+): KernelShape {
   const origin = new oc.gp_Pnt_3(...center);
   const dir = new oc.gp_Dir_4(...direction);
   const axis = new oc.gp_Ax2_3(origin, dir);

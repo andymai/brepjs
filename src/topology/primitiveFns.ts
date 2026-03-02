@@ -49,7 +49,6 @@ import {
   makePolygon as _makePolygon,
 } from './shapeHelpers.js';
 import { getKernel } from '../kernel/index.js';
-import { DisposalScope } from '../core/disposal.js';
 import { createSolid } from '../core/shapeTypes.js';
 import { translate } from './shapeFns.js';
 
@@ -76,11 +75,7 @@ export interface BoxOptions {
  * @param height - Size along Z.
  */
 export function box(width: number, depth: number, height: number, options?: BoxOptions): Solid {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const maker = scope.register(new oc.BRepPrimAPI_MakeBox_2(width, depth, height));
-  const solid = createSolid(maker.Solid());
+  const solid = createSolid(getKernel().makeBox(width, depth, height));
 
   const center = options?.at ?? (options?.centered ? ([0, 0, 0] as Vec3) : undefined);
   if (center) {

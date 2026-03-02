@@ -9,7 +9,7 @@ import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face, Wire, Solid } from '../core/shapeTypes.js';
 import { castShape, isSolid, isFace, isWire } from '../core/shapeTypes.js';
 import { type Result, ok, err, isOk } from '../core/result.js';
-import { occtError, validationError, BrepErrorCode } from '../core/errors.js';
+import { kernelError, validationError, BrepErrorCode } from '../core/errors.js';
 import { getWires, getFaces } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ import { getWires, getFaces } from './shapeFns.js';
 // ---------------------------------------------------------------------------
 
 /**
- * Check if a shape is valid according to OCCT geometry and topology checks.
+ * Check if a shape is valid according to kernel geometry and topology checks.
  */
 export function isValid(shape: AnyShape): boolean {
   return getKernel().isValid(shape.wrapped);
@@ -48,7 +48,7 @@ export function healSolid(solid: Solid): Result<Solid> {
       }
       // Shape was invalid but healer couldn't fix it
       return err(
-        occtError(
+        kernelError(
           BrepErrorCode.HEAL_NO_EFFECT,
           'Solid healing had no effect — shape is still invalid'
         )
@@ -56,11 +56,11 @@ export function healSolid(solid: Solid): Result<Solid> {
     }
     const cast = castShape(result);
     if (!isSolid(cast)) {
-      return err(occtError('HEAL_RESULT_NOT_SOLID', 'Healed result is not a solid'));
+      return err(kernelError('HEAL_RESULT_NOT_SOLID', 'Healed result is not a solid'));
     }
     return ok(cast);
   } catch (e) {
-    return err(occtError('HEAL_SOLID_FAILED', 'Solid healing failed', e));
+    return err(kernelError('HEAL_SOLID_FAILED', 'Solid healing failed', e));
   }
 }
 
@@ -78,11 +78,11 @@ export function healFace(face: Face): Result<Face> {
     const result = getKernel().healFace(face.wrapped);
     const cast = castShape(result);
     if (!isFace(cast)) {
-      return err(occtError('HEAL_RESULT_NOT_FACE', 'Healed result is not a face'));
+      return err(kernelError('HEAL_RESULT_NOT_FACE', 'Healed result is not a face'));
     }
     return ok(cast);
   } catch (e) {
-    return err(occtError('HEAL_FACE_FAILED', 'Face healing failed', e));
+    return err(kernelError('HEAL_FACE_FAILED', 'Face healing failed', e));
   }
 }
 
@@ -101,11 +101,11 @@ export function healWire(wire: Wire, face?: Face): Result<Wire> {
     const result = getKernel().healWire(wire.wrapped, face?.wrapped);
     const cast = castShape(result);
     if (!isWire(cast)) {
-      return err(occtError('HEAL_RESULT_NOT_WIRE', 'Healed result is not a wire'));
+      return err(kernelError('HEAL_RESULT_NOT_WIRE', 'Healed result is not a wire'));
     }
     return ok(cast);
   } catch (e) {
-    return err(occtError('HEAL_WIRE_FAILED', 'Wire healing failed', e));
+    return err(kernelError('HEAL_WIRE_FAILED', 'Wire healing failed', e));
   }
 }
 
@@ -237,12 +237,8 @@ export function autoHeal(
     let fixCount = 0;
     for (const wire of wires) {
       try {
-        const oc = getKernel().oc;
-        const fixer = new oc.ShapeFix_Wire_1();
-        fixer.Load_1(wire.wrapped);
-        const fixed = fixer.FixSelfIntersection();
-        if (fixed) fixCount++;
-        fixer.delete();
+        getKernel().fixSelfIntersection(wire.wrapped);
+        fixCount++;
       } catch {
         // Ignore individual wire failures
       }

@@ -216,14 +216,14 @@ describe('fillet with array radius', () => {
 });
 
 describe('fillet with callback returning null or array', () => {
-  it('callback returning null skips all edges (OCCT errors with no edges added)', () => {
+  it('callback returning null skips all edges (kernel errors with no edges added)', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = fillet(b, edges, () => null);
     // When all edges are skipped (null -> 0, which fails the > 0 check),
-    // OCCT builder has no edges and throws on Shape()
+    // kernel builder has no edges and throws on Shape()
     expect(isErr(result)).toBe(true);
-    expect(unwrapErr(result).code).toBe('FILLET_FAILED');
+    expect(unwrapErr(result).code).toBe('FILLET_NO_EDGES');
   });
 
   it('callback returning [r1, r2] applies variable fillet', () => {
@@ -264,14 +264,14 @@ describe('chamfer with array distance', () => {
 });
 
 describe('chamfer with callback returning null or array', () => {
-  it('callback returning null skips all edges (OCCT errors with no edges added)', () => {
+  it('callback returning null skips all edges (kernel errors with no edges added)', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = chamfer(b, edges, () => null);
     // When all edges are skipped (null -> 0, which fails the > 0 check),
-    // OCCT builder has no edges and throws on Shape()
+    // kernel builder has no edges and throws on Shape()
     expect(isErr(result)).toBe(true);
-    expect(unwrapErr(result).code).toBe('CHAMFER_FAILED');
+    expect(unwrapErr(result).code).toBe('CHAMFER_NO_EDGES');
   });
 
   it('callback returning [d1, d2] applies asymmetric chamfer', () => {

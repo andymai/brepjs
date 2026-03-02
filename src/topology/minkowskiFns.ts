@@ -8,9 +8,8 @@
 import { getKernel } from '../kernel/index.js';
 import type { Shape3D, Solid, Face } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
-import { validationError, occtError, typeCastError, BrepErrorCode } from '../core/errors.js';
+import { validationError, kernelError, typeCastError, BrepErrorCode } from '../core/errors.js';
 import { getFaces, getVertices } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------
@@ -30,24 +29,21 @@ export interface MinkowskiOptions {
 /**
  * Check if a shape is a sphere. Returns the radius if so, or null.
  * A sphere is detected as a shape with exactly one face whose surface
- * type is GeomAbs_Sphere (enum value 5).
+ * type is 'sphere'.
  */
 function detectSphere(shape: Shape3D): number | null {
-  const oc = getKernel().oc;
   const faces: Face[] = getFaces(shape);
   if (faces.length !== 1) return null;
 
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const face = faces[0]!;
-  using scope = new DisposalScope();
-  const adaptor = scope.register(new oc.BRepAdaptor_Surface_2(face.wrapped, true));
-  const surfType = adaptor.GetType();
+  const surfType = getKernel().surfaceType(face.wrapped);
 
-  if (surfType !== oc.GeomAbs_SurfaceType.GeomAbs_Sphere) return null;
+  if (surfType !== 'sphere') return null;
 
-  const ocSphere = adaptor.Sphere();
-  const radius = ocSphere.Radius();
-  ocSphere.delete();
+  // For a sphere with 1 face, area = 4*pi*r^2, so r = sqrt(area / (4*pi))
+  const faceArea = getKernel().area(face.wrapped);
+  const radius = Math.sqrt(faceArea / (4 * Math.PI));
   return radius;
 }
 
@@ -56,26 +52,8 @@ function detectSphere(shape: Shape3D): number | null {
 // ---------------------------------------------------------------------------
 
 function minkowskiSphere(shape: Shape3D, radius: number, tolerance: number): Result<Solid> {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
   try {
-    const offsetMaker = scope.register(new oc.BRepOffsetAPI_MakeOffsetShape());
-    const progress = scope.register(new oc.Message_ProgressRange_1());
-
-    offsetMaker.PerformByJoin(
-      shape.wrapped,
-      radius,
-      tolerance,
-      oc.BRepOffset_Mode.BRepOffset_Skin as never,
-      false,
-      false,
-      oc.GeomAbs_JoinType.GeomAbs_Arc as never,
-      false,
-      progress
-    );
-
-    const resultShape = offsetMaker.Shape();
+    const resultShape = getKernel().offset(shape.wrapped, radius, tolerance);
     const wrapped = castShape(resultShape);
     if (!isShape3D(wrapped)) {
       wrapped[Symbol.dispose]();
@@ -90,7 +68,7 @@ function minkowskiSphere(shape: Shape3D, radius: number, tolerance: number): Res
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
-      occtError(BrepErrorCode.MINKOWSKI_FAILED, `Minkowski sphere offset failed: ${raw}`, e, {
+      kernelError(BrepErrorCode.MINKOWSKI_FAILED, `Minkowski sphere offset failed: ${raw}`, e, {
         operation: 'minkowski',
         fastPath: 'sphere',
       })
@@ -106,11 +84,11 @@ function minkowskiSphere(shape: Shape3D, radius: number, tolerance: number): Res
  * General Minkowski sum via convex hull of pairwise vertex sums.
  *
  * For two convex polyhedra A and B, their Minkowski sum equals the convex hull
- * of {a + b : a ∈ vertices(A), b ∈ vertices(B)}. We build a vertex for each
+ * of {a + b : a in vertices(A), b in vertices(B)}. We build a vertex for each
  * such sum point and pass them to the QuickHull-based hull() function.
  */
 function minkowskiGeneral(shape: Shape3D, tool: Shape3D, tolerance: number): Result<Solid> {
-  const oc = getKernel().oc;
+  const kernel = getKernel();
 
   try {
     const shapeVerts = getVertices(shape);
@@ -118,7 +96,7 @@ function minkowskiGeneral(shape: Shape3D, tool: Shape3D, tolerance: number): Res
 
     if (shapeVerts.length === 0 || toolVerts.length === 0) {
       return err(
-        occtError(
+        kernelError(
           BrepErrorCode.MINKOWSKI_FAILED,
           'Minkowski sum: one or both shapes have no vertices',
           undefined,
@@ -132,24 +110,15 @@ function minkowskiGeneral(shape: Shape3D, tool: Shape3D, tolerance: number): Res
     // Build pairwise sum points a+b
     const sumPoints: Array<{ x: number; y: number; z: number }> = [];
     for (const sv of shapeVerts) {
-      using scope1 = new DisposalScope();
-      const pa = scope1.register(oc.BRep_Tool.Pnt(sv.wrapped));
-      const ax = pa.X() as number,
-        ay = pa.Y() as number,
-        az = pa.Z() as number;
+      const [ax, ay, az] = kernel.vertexPosition(sv.wrapped);
 
       for (const tv of toolVerts) {
-        using scope2 = new DisposalScope();
-        const pb = scope2.register(oc.BRep_Tool.Pnt(tv.wrapped));
-        const bx = pb.X() as number,
-          by = pb.Y() as number,
-          bz = pb.Z() as number;
+        const [bx, by, bz] = kernel.vertexPosition(tv.wrapped);
         sumPoints.push({ x: ax + bx, y: ay + by, z: az + bz });
       }
     }
 
     // Compute convex hull of all sum points
-    const kernel = getKernel();
     const hullShape = kernel.hullFromPoints(sumPoints, tolerance);
     const wrapped = castShape(hullShape);
     if (!isShape3D(wrapped)) {
@@ -162,7 +131,7 @@ function minkowskiGeneral(shape: Shape3D, tool: Shape3D, tolerance: number): Res
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
-      occtError(BrepErrorCode.MINKOWSKI_FAILED, `Minkowski general path failed: ${raw}`, e, {
+      kernelError(BrepErrorCode.MINKOWSKI_FAILED, `Minkowski general path failed: ${raw}`, e, {
         operation: 'minkowski',
       })
     );
@@ -192,10 +161,10 @@ export function minkowski(
   const { tolerance = 1e-6 } = options;
 
   // Validate inputs
-  if (shape.wrapped.IsNull()) {
+  if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'minkowski: shape is a null shape'));
   }
-  if (tool.wrapped.IsNull()) {
+  if (getKernel().isNull(tool.wrapped)) {
     return err(
       validationError(BrepErrorCode.MINKOWSKI_NULL_TOOL, 'minkowski: tool is a null shape')
     );

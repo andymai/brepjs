@@ -7,6 +7,6 @@ export function uniqueIOFilename(prefix: string, ext: string): string {
 }
 
 /** Generate a unique ID string for temporary file operations. */
-export function uniqueId(): string {
+export function _uniqueId(): string {
   return `_io_${++_counter}`;
 }

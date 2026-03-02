@@ -1,4 +1,4 @@
-import { getKernel } from '../../kernel/index.js';
+import { getKernel2D } from '../../kernel/index.js';
 import { DisposalScope } from '../../core/memory.js';
 import { approximateAsBSpline } from './approximations.js';
 import { Curve2D } from './Curve2D.js';
@@ -76,19 +76,20 @@ export const make2dOffset = (
       };
     }
 
-    const oc = getKernel().oc;
-    const newCircle = new oc.gp_Circ2d_3(circle.Axis(), newRadius);
-    const newInnerCurve = new oc.Geom2d_Circle_1(newCircle);
-    newCircle.delete();
-    const newCurve = new oc.Geom2d_TrimmedCurve(
-      new oc.Handle_Geom2d_Curve_2(newInnerCurve),
-      curve.firstParameter,
-      curve.lastParameter,
-      true,
-      true
-    );
+    const kernel = getKernel2D();
+    const isDirect = circle.IsDirect();
+    const centerPos = scope.register(circle.Location());
+    const cx = centerPos.X();
+    const cy = centerPos.Y();
 
-    return new Curve2D(new oc.Handle_Geom2d_Curve_2(newCurve));
+    const circleHandle = kernel.makeCircle2d(cx, cy, newRadius, isDirect);
+    // makeCircle2d returns Handle_Geom2d_Circle; wrap in Curve2D to upcast
+    // to Handle_kernel 2D curve, then trim using the upcast handle.
+    const fullCircle = new Curve2D(circleHandle);
+    const trimmedHandle = kernel.trimCurve2d(fullCircle.wrapped, curve.firstParameter, curve.lastParameter);
+    circleHandle.delete();
+
+    return new Curve2D(trimmedHandle);
   }
 
   if (curveType === 'LINE') {
@@ -98,17 +99,15 @@ export const make2dOffset = (
   }
 
   // We should compute the analytic offset for a curve
+  const kernel = getKernel2D();
+  const offsetHandle = kernel.offsetCurve2d(curve.wrapped, offset);
 
-  const oc = getKernel().oc;
+  const offsetCurve = new Curve2D(offsetHandle);
 
-  const offsetCurve = new Curve2D(
-    new oc.Handle_Geom2d_Curve_2(new oc.Geom2d_OffsetCurve(curve.wrapped, offset, true))
-  );
-
-  // While return the offset curve itself would be the more correct thing to do,
-  // opencascade does some weird stuff with it (for instance after mirroring it)
+  // While returning the offset curve itself would be the more correct thing to do,
+  // kernel does some weird stuff with it (for instance after mirroring it)
   // This approximates it with a continuous bspline
-  const approximation = approximateAsBSpline(offsetCurve.adaptor());
+  const approximation = approximateAsBSpline(offsetCurve);
 
   // We need a better way to handle curves that self intersect, for now we
   // replace them with a line

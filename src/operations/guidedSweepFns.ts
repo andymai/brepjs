@@ -7,9 +7,8 @@
 import { getKernel } from '../kernel/index.js';
 import type { Wire, Solid, Shell } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
-import { occtError, typeCastError, BrepErrorCode } from '../core/errors.js';
+import { kernelError, typeCastError, BrepErrorCode } from '../core/errors.js';
 
 /** Options for guide curve sweep. */
 export interface GuidedSweepOptions {
@@ -42,49 +41,28 @@ export function guidedSweep(
   const { transition = 'transformed', solid = true, tolerance } = options;
 
   try {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
+    const kernel = getKernel();
+    const shellMode = !solid;
 
-    const builder = scope.register(new oc.BRepOffsetAPI_MakePipeShell(spine.wrapped));
+    const auxiliary = guides.length > 0 ? guides[0]?.wrapped : undefined;
+    const sweepResult = kernel.sweepPipeShell(profile.wrapped, spine.wrapped, {
+      transitionMode: transition,
+      ...(auxiliary ? { auxiliary } : {}),
+      shellMode,
+      ...(tolerance !== undefined ? { tolerance, boundTolerance: tolerance } : {}),
+    });
 
-    const modeMap = {
-      transformed: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_Transformed,
-      round: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_RoundCorner,
-      right: oc.BRepBuilderAPI_TransitionMode.BRepBuilderAPI_RightCorner,
-    } as const;
-    builder.SetTransitionMode(modeMap[transition]);
+    const ocShape = typeof sweepResult === 'object' && 'shape' in sweepResult
+      ? sweepResult.shape
+      : sweepResult;
 
-    if (tolerance !== undefined) {
-      builder.SetTolerance(tolerance, tolerance, 1e-7);
-    }
-
-    // Use first guide as auxiliary spine to control profile evolution
-    if (guides.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked
-      const firstGuide = guides[0]!;
-      builder.SetMode_5(firstGuide.wrapped, false, oc.BRepFill_TypeOfContact.BRepFill_NoContact);
-    }
-
-    builder.Add_1(profile.wrapped, false, false);
-
-    const progress = scope.register(new oc.Message_ProgressRange_1());
-    builder.Build(progress);
-
-    if (!builder.IsDone()) {
-      return err(occtError(BrepErrorCode.GUIDED_SWEEP_FAILED, 'Guided sweep build failed'));
-    }
-
-    if (solid) {
-      builder.MakeSolid();
-    }
-
-    const result = castShape(builder.Shape());
+    const result = castShape(ocShape);
     if (!isShape3D(result)) {
       return err(typeCastError('GUIDED_SWEEP_NOT_3D', 'Guided sweep did not produce a 3D shape'));
     }
     return ok(result as Solid | Shell);
   } catch (e: unknown) {
     const raw = e instanceof Error ? e.message : String(e);
-    return err(occtError(BrepErrorCode.GUIDED_SWEEP_FAILED, `Guided sweep failed: ${raw}`, e));
+    return err(kernelError(BrepErrorCode.GUIDED_SWEEP_FAILED, `Guided sweep failed: ${raw}`, e));
   }
 }

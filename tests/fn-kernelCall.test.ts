@@ -56,7 +56,7 @@ describe('kernelCall', () => {
     const error = unwrapErr(result);
     expect(error.code).toBe('TEST_FAILED');
     expect(error.message).toContain('simulated failure');
-    expect(error.kind).toBe('OCCT_OPERATION');
+    expect(error.kind).toBe('KERNEL_OPERATION');
   });
 
   it('supports custom error kind', () => {
@@ -217,7 +217,7 @@ describe('kernelCallScoped', () => {
     );
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('TEST_FAILED');
-    expect(unwrapErr(result).kind).toBe('OCCT_OPERATION');
+    expect(unwrapErr(result).kind).toBe('KERNEL_OPERATION');
     expect(deleted).toBe(true);
   });
 

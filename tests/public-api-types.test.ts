@@ -24,7 +24,7 @@ import {
 
   // Error types
   BrepErrorCode,
-  occtError,
+  kernelError,
   validationError,
   typeCastError,
   sketcherStateError,
@@ -217,9 +217,9 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'createFace',
   'createHandle',
   'createHistory',
+  'createKernelHandle',
   'createMeshCache',
   'createNamedPlane',
-  'createOcHandle',
   'createOperationRegistry',
   'createPlane',
   'createRegistry',
@@ -311,9 +311,9 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'flipOrientation',
   'fontMetrics',
   'fromBREP',
-  'fromOcDir',
-  'fromOcPnt',
-  'fromOcVec',
+  'fromKernelDir',
+  'fromKernelPnt',
+  'fromKernelVec',
   'fuse',
   'fuse2D',
   'fuseAll',
@@ -400,6 +400,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'kernelCall',
   'kernelCallRaw',
   'kernelCallScoped',
+  'kernelError',
   'line',
   'linearPattern',
   'loadFont',
@@ -431,7 +432,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'moduleInitError',
   'multiSectionSweep',
   'normalAt',
-  'occtError',
   'offset',
   'offsetFace',
   'offsetWire2D',
@@ -452,6 +452,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'queryError',
   'rectangularPattern',
   'registerHandler',
+  'registerKernel',
   'registerOperation',
   'registerShape',
   'rejectAll',
@@ -512,6 +513,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'stretch2D',
   'subFace',
   'supportExtrude',
+  'supportsProjection',
   'surfaceFromGrid',
   'surfaceFromImage',
   'sweep',
@@ -524,8 +526,8 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'toBREP',
   'toBufferGeometryData',
   'toGroupedBufferGeometryData',
+  'toKernelVec',
   'toLineGeometryData',
-  'toOcVec',
   'toSVGPathD',
   'toVec2',
   'toVec3',
@@ -572,9 +574,10 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'wire',
   'wireFinder',
   'wiresOfFace',
-  'withOcDir',
-  'withOcPnt',
-  'withOcVec',
+  'withKernel',
+  'withKernelDir',
+  'withKernelPnt',
+  'withKernelVec',
   'withScope',
   'withScopeResult',
   'withScopeResultAsync',
@@ -622,7 +625,7 @@ describe('Public API exports — runtime values', () => {
   });
 
   it('exports error constructors', () => {
-    expect(occtError).toBeTypeOf('function');
+    expect(kernelError).toBeTypeOf('function');
     expect(validationError).toBeTypeOf('function');
     expect(typeCastError).toBeTypeOf('function');
     expect(sketcherStateError).toBeTypeOf('function');
@@ -784,8 +787,8 @@ describe('Type structures — runtime field verification', () => {
 
   describe('BrepError', () => {
     it('has kind, code, message fields', () => {
-      const e: BrepError = occtError('TEST_CODE', 'Test message');
-      expect(e.kind).toBe('OCCT_OPERATION');
+      const e: BrepError = kernelError('TEST_CODE', 'Test message');
+      expect(e.kind).toBe('KERNEL_OPERATION');
       expect(e.code).toBe('TEST_CODE');
       expect(e.message).toBe('Test message');
     });
@@ -793,14 +796,14 @@ describe('Type structures — runtime field verification', () => {
     it('optionally has cause and metadata', () => {
       const cause = new Error('underlying');
       const meta = { detail: 'extra' };
-      const e: BrepError = occtError('C', 'msg', cause, meta);
+      const e: BrepError = kernelError('C', 'msg', cause, meta);
       expect(e.cause).toBe(cause);
       expect(e.metadata).toEqual({ detail: 'extra' });
     });
 
     it('constructors produce correct BrepErrorKind', () => {
-      const kindMap: [typeof occtError, BrepErrorKind][] = [
-        [occtError, 'OCCT_OPERATION'],
+      const kindMap: [typeof kernelError, BrepErrorKind][] = [
+        [kernelError, 'KERNEL_OPERATION'],
         [validationError, 'VALIDATION'],
         [typeCastError, 'TYPE_CAST'],
         [sketcherStateError, 'SKETCHER_STATE'],
@@ -1109,7 +1112,7 @@ describe('Union type values', () => {
   describe('BrepErrorKind', () => {
     it('includes all 8 documented kinds', () => {
       const kinds: BrepErrorKind[] = [
-        'OCCT_OPERATION',
+        'KERNEL_OPERATION',
         'VALIDATION',
         'TYPE_CAST',
         'SKETCHER_STATE',
@@ -1295,7 +1298,7 @@ describe('Runtime integration — pure data types', () => {
   describe('Error construction', () => {
     it('all 8 error kinds produce valid BrepError', () => {
       const constructors = [
-        occtError,
+        kernelError,
         validationError,
         typeCastError,
         sketcherStateError,

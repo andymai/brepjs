@@ -31,7 +31,7 @@ describe('cast()', () => {
     expect(unwrap(result)).toBeDefined();
   });
 
-  it('returns Err with NULL_SHAPE for a null OcShape', () => {
+  it('returns Err with NULL_SHAPE for a null KernelShape', () => {
     const oc = getKernel().oc;
     const nullShape = new oc.TopoDS_Solid();
     const result = cast(nullShape);
@@ -48,7 +48,7 @@ describe('downcast()', () => {
     expect(unwrap(result)).toBeDefined();
   });
 
-  it('returns Err for a null OcShape', () => {
+  it('returns Err for a null KernelShape', () => {
     const oc = getKernel().oc;
     const nullShape = new oc.TopoDS_Solid();
     const result = downcast(nullShape);
@@ -89,7 +89,7 @@ describe('asTopo()', () => {
     ] as const;
 
     const values = distinctEntities.map((e) => asTopo(e));
-    // OCCT enum values are WASM objects — compare with !== to verify uniqueness
+    // kernel enum values are WASM objects — compare with !== to verify uniqueness
     for (let i = 0; i < values.length; i++) {
       for (let j = i + 1; j < values.length; j++) {
         expect(values[i]).not.toBe(values[j]);
@@ -131,7 +131,7 @@ describe('fromBREP()', () => {
   it('does not throw for garbage input', () => {
     expect(() => {
       const result = fromBREP('this is not valid BREP data');
-      // Result may be ok or err depending on OCCT behavior, but it must not throw
+      // Result may be ok or err depending on kernel behavior, but it must not throw
       expect(isOk(result) || isErr(result)).toBe(true);
     }).not.toThrow();
   });

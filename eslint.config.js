@@ -40,6 +40,13 @@ export default tseslint.config(
       'no-console': ['warn', { allow: ['error', 'warn'] }],
     },
   },
+  // Kernel internal: suppress redundant-type-constituents since KernelShape=any is intentional
+  {
+    files: ['src/kernel/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
+    },
+  },
   {
     files: ['tests/**/*.ts'],
     languageOptions: {
@@ -74,6 +81,31 @@ export default tseslint.config(
       eqeqeq: 'error',
       'no-var': 'error',
       'no-console': ['warn', { allow: ['error', 'warn'] }],
+    },
+  },
+  // Kernel abstraction boundary: ban direct .oc access outside kernel/ and core/
+  {
+    files: [
+      'src/topology/**/*.ts',
+      'src/operations/**/*.ts',
+      'src/measurement/**/*.ts',
+      'src/query/**/*.ts',
+      'src/io/**/*.ts',
+      'src/2d/**/*.ts',
+      'src/sketching/**/*.ts',
+      'src/projection/**/*.ts',
+      'src/text/**/*.ts',
+      'src/worker/**/*.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'MemberExpression[property.name="oc"]',
+          message:
+            'Direct .oc access is banned in Layer 2+ code. Use KernelAdapter methods from getKernel() instead. See kernel/types.ts for available methods.',
+        },
+      ],
     },
   },
   {

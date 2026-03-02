@@ -189,7 +189,7 @@ describe('exportSTEP (OOP assembly, exporters.ts)', () => {
 
   it('exports empty shapes array', () => {
     const result = exportAssemblySTEPOop([]);
-    // empty assembly may succeed or fail depending on OCCT writer; just verify Result type
+    // empty assembly may succeed or fail depending on kernel writer; just verify Result type
     expect(result).toHaveProperty('ok');
   });
 

@@ -26,7 +26,7 @@ function fakeEdgeMesh(id: number): EdgeMesh {
   };
 }
 
-// Mock OCCT shape object for WeakMap testing
+// Mock kernel shape object for WeakMap testing
 function fakeOcShape(id: number): object {
   return { _id: id };
 }

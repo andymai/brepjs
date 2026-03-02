@@ -1,6 +1,6 @@
 /**
  * brepjs/core — Core types, vectors, results, and plane operations.
- * Lightweight subpath export with no OCCT dependency.
+ * Lightweight subpath export with no kernel dependency.
  */
 
 export type { Vec3, Vec2, PointInput, Direction as DirectionInput } from './core/types.js';
@@ -52,7 +52,7 @@ export {
 export {
   type BrepError,
   type BrepErrorKind,
-  occtError,
+  kernelError,
   validationError,
   typeCastError,
   sketcherStateError,
@@ -105,10 +105,10 @@ export {
   isShape1D,
 } from './core/shapeTypes.js';
 
-export type { ShapeHandle, OcHandle } from './core/disposal.js';
+export type { ShapeHandle, KernelHandle } from './core/disposal.js';
 export {
   createHandle,
-  createOcHandle,
+  createKernelHandle,
   DisposalScope,
   withScope,
   withScopeResult,

@@ -1,15 +1,15 @@
-import type { OcType } from '../../kernel/types.js';
+import type { KernelType } from '../../kernel/types.js';
 import { RAD2DEG } from '../../core/constants.js';
 import { findCurveType } from '../../core/definitionMaps.js';
 import { unwrap } from '../../core/result.js';
 import { bug } from '../../core/errors.js';
-import { getKernel } from '../../kernel/index.js';
+import { getKernel2D } from '../../kernel/index.js';
 import round2 from '../../utils/round2.js';
 import round5 from '../../utils/round5.js';
 import type { Point2D } from './definitions.js';
 import { DisposalScope } from '../../core/disposal.js';
 
-const fromPnt = (pnt: OcType) => `${round2(pnt.X())} ${round2(pnt.Y())}`;
+const fromPnt = (pnt: KernelType) => `${round2(pnt.X())} ${round2(pnt.Y())}`;
 
 /**
  * Convert an adapted 2D curve to an SVG path command string.
@@ -22,8 +22,8 @@ const fromPnt = (pnt: OcType) => `${round2(pnt.X())} ${round2(pnt.Y())}`;
  * @param lastPoint - The endpoint of the curve, used as the SVG command target.
  * @returns An SVG path command such as `L`, `Q`, `C`, or `A`.
  */
-export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): string => {
-  const oc = getKernel().oc;
+export const adaptedCurveToPathElem = (adaptor: KernelType, lastPoint: Point2D): string => {
+  const k2d = getKernel2D();
   using scope = new DisposalScope();
   const curveType = unwrap(findCurveType(adaptor.GetType()));
 
@@ -82,7 +82,7 @@ export const adaptedCurveToPathElem = (adaptor: OcType, lastPoint: Point2D): str
 
     const end = paramAngle !== 360 ? endpoint : `${round5(endX)} ${round5(endY + 0.0001)}`;
 
-    const dir0 = scope.register(new oc.gp_Dir2d_1());
+    const dir0 = scope.register(k2d.createDirection2d(1, 0));
     const xAxis = scope.register(curve.XAxis());
     const xDir = scope.register(xAxis.Direction());
     const angle = 180 - xDir.Angle(dir0) * RAD2DEG;

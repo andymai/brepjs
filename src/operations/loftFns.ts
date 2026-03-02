@@ -5,12 +5,10 @@
 import { getKernel } from '../kernel/index.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
-import { toOcPnt } from '../core/occtBoundary.js';
 import type { Wire, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { DisposalScope } from '../core/disposal.js';
 import { type Result, ok, err } from '../core/result.js';
-import { typeCastError, validationError, occtError } from '../core/errors.js';
+import { typeCastError, validationError, kernelError } from '../core/errors.js';
 
 /** Configuration for the functional loft operation. */
 export interface LoftOptions {
@@ -52,35 +50,28 @@ export function loft(
     return err(validationError('LOFT_EMPTY', 'Loft requires at least one wire or start/end point'));
   }
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
+  const kernel = getKernel();
 
-  const builder = scope.register(new oc.BRepOffsetAPI_ThruSections(!returnShell, ruled, tolerance));
+  const startVertex = startPoint ? kernel.makeVertex(...toVec3(startPoint)) : undefined;
+  const endVertex = endPoint ? kernel.makeVertex(...toVec3(endPoint)) : undefined;
 
-  if (startPoint) {
-    const pnt = scope.register(toOcPnt(toVec3(startPoint)));
-    const vMaker = scope.register(new oc.BRepBuilderAPI_MakeVertex(pnt));
-    builder.AddVertex(vMaker.Vertex());
-  }
-  for (const w of wires) {
-    builder.AddWire(w.wrapped);
-  }
-  if (endPoint) {
-    const pnt = scope.register(toOcPnt(toVec3(endPoint)));
-    const vMaker = scope.register(new oc.BRepBuilderAPI_MakeVertex(pnt));
-    builder.AddVertex(vMaker.Vertex());
-  }
+  try {
+    const shape = kernel.loftAdvanced(
+      wires.map((w) => w.wrapped),
+      {
+        solid: !returnShell,
+        ruled,
+        ...(startVertex ? { startVertex } : {}),
+        ...(endVertex ? { endVertex } : {}),
+      }
+    );
 
-  const progress = scope.register(new oc.Message_ProgressRange_1());
-  builder.Build(progress);
-
-  if (!builder.IsDone()) {
-    return err(occtError('LOFT_FAILED', 'Loft operation failed'));
+    const result = castShape(shape);
+    if (!isShape3D(result)) {
+      return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
+    }
+    return ok(result);
+  } catch {
+    return err(kernelError('LOFT_FAILED', 'Loft operation failed'));
   }
-
-  const result = castShape(builder.Shape());
-  if (!isShape3D(result)) {
-    return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
-  }
-  return ok(result);
 }

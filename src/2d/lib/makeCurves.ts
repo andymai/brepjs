@@ -1,11 +1,8 @@
-import type { OcType } from '../../kernel/types.js';
 import { getKernel } from '../../kernel/index.js';
-import { DisposalScope } from '../../core/memory.js';
 import { type Result, ok, err } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 
 import type { Point2D } from './definitions.js';
-import { axis2d, pnt, vec } from './ocWrapper.js';
 
 import { Curve2D } from './Curve2D.js';
 import {
@@ -20,39 +17,20 @@ import {
 /**
  * Creates a 2D segment curve between two points.
  *
- * @param startPoint - The starting point of the segment.
- * @param endPoint - The ending point of the segment.
- *
- * @returns A Curve2D object representing the segment.
- *
  * @category Planar curves
  */
 export const make2dSegmentCurve = (startPoint: Point2D, endPoint: Point2D): Curve2D => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const segment = scope
-    .register(
-      new oc.GCE2d_MakeSegment_1(scope.register(pnt(startPoint)), scope.register(pnt(endPoint)))
-    )
-    .Value();
-  const curve = new Curve2D(segment);
-
+  const curve = new Curve2D(
+    getKernel().makeLine2d(startPoint[0], startPoint[1], endPoint[0], endPoint[1])
+  );
   if (!samePoint(curve.firstPoint, startPoint)) {
     curve.reverse();
   }
-
   return curve;
 };
 
 /**
  * Creates a 2D arc curve defined by three points.
- *
- * @param startPoint - The starting point of the arc.
- * @param midPoint - The midpoint of the arc.
- * @param endPoint - The ending point of the arc.
- *
- * @returns A Curve2D object representing the arc.
  *
  * @category Planar curves
  */
@@ -61,20 +39,12 @@ export const make2dThreePointArc = (
   midPoint: Point2D,
   endPoint: Point2D
 ): Curve2D => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const segment = scope
-    .register(
-      new oc.GCE2d_MakeArcOfCircle_4(
-        scope.register(pnt(startPoint)),
-        scope.register(pnt(midPoint)),
-        scope.register(pnt(endPoint))
-      )
-    )
-    .Value();
-
-  const curve = new Curve2D(segment);
+  const handle = getKernel().makeArc2dThreePoints(
+    startPoint[0], startPoint[1],
+    midPoint[0], midPoint[1],
+    endPoint[0], endPoint[1]
+  );
+  const curve = new Curve2D(handle);
   if (!samePoint(curve.firstPoint, startPoint)) {
     curve.wrapped.get().SetTrim(curve.lastParameter, curve.firstParameter, true, true);
   }
@@ -82,13 +52,7 @@ export const make2dThreePointArc = (
 };
 
 /**
- * Creates a 2D tangent arc curve defined by three points.
- *
- * @param startPoint - The starting point of the arc.
- * @param tangent - The tangent vector at the starting point.
- * @param endPoint - The ending point of the arc.
- *
- * @returns A Curve2D object representing the tangent arc.
+ * Creates a 2D tangent arc curve.
  *
  * @category Planar curves
  */
@@ -97,20 +61,12 @@ export const make2dTangentArc = (
   tangent: Point2D,
   endPoint: Point2D
 ): Curve2D => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const segment = scope
-    .register(
-      new oc.GCE2d_MakeArcOfCircle_5(
-        scope.register(pnt(startPoint)),
-        scope.register(vec(tangent)),
-        scope.register(pnt(endPoint))
-      )
-    )
-    .Value();
-
-  const curve = new Curve2D(segment);
+  const handle = getKernel().makeArc2dTangent(
+    startPoint[0], startPoint[1],
+    tangent[0], tangent[1],
+    endPoint[0], endPoint[1]
+  );
+  const curve = new Curve2D(handle);
   if (!samePoint(curve.firstPoint, startPoint)) {
     curve.wrapped.get().SetTrim(curve.lastParameter, curve.firstParameter, true, true);
   }
@@ -120,34 +76,14 @@ export const make2dTangentArc = (
 /**
  * Creates a 2D circle curve.
  *
- * @param radius - The radius of the circle.
- * @param center - The center point of the circle (default is [0, 0]).
- *
- * @returns A Curve2D object representing the circle.
- *
  * @category Planar curves
  */
 export const make2dCircle = (radius: number, center: Point2D = [0, 0]): Curve2D => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const segment = scope
-    .register(new oc.GCE2d_MakeCircle_7(scope.register(pnt(center)), radius, true))
-    .Value();
-
-  return new Curve2D(segment as unknown as OcType);
+  return new Curve2D(getKernel().makeCircle2d(center[0], center[1], radius, true));
 };
 
 /**
  * Creates a 2D ellipse curve.
- *
- * @param majorRadius - The major radius of the ellipse.
- * @param minorRadius - The minor radius of the ellipse.
- * @param xDir - The direction vector for the major axis (default is [1, 0]).
- * @param center - The center point of the ellipse (default is [0, 0]).
- * @param direct - Whether the ellipse is direct (default is true).
- *
- * @returns A Curve2D object representing the ellipse.
  *
  * @category Planar curves
  */
@@ -158,29 +94,13 @@ export const make2dEllipse = (
   center: Point2D = [0, 0],
   direct = true
 ): Curve2D => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const ellipse = scope.register(
-    new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, direct)
+  return new Curve2D(
+    getKernel().makeEllipse2d(center[0], center[1], majorRadius, minorRadius, xDir[0], xDir[1], direct)
   );
-
-  const segment = scope.register(new oc.GCE2d_MakeEllipse_1(ellipse)).Value();
-
-  return new Curve2D(segment as unknown as OcType);
 };
 
 /**
  * Creates a 2D ellipse arc curve.
- *
- * @param majorRadius - The major radius of the ellipse.
- * @param minorRadius - The minor radius of the ellipse.
- * @param startAngle - The starting angle of the arc.
- * @param endAngle - The ending angle of the arc.
- * @param center - The center point of the ellipse (default is [0, 0]).
- * @param xDir - The direction vector for the major axis (default is [1, 0]).
- * @param direct - Whether the ellipse is direct (default is true).
- *
- * @returns A Curve2D object representing the ellipse arc.
  *
  * @category Planar curves
  */
@@ -193,27 +113,16 @@ export const make2dEllipseArc = (
   xDir: Point2D,
   direct = true
 ): Curve2D => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-  const ellipse = scope.register(
-    new oc.gp_Elips2d_2(scope.register(axis2d(center, xDir)), majorRadius, minorRadius, true)
+  return new Curve2D(
+    getKernel().makeEllipseArc2d(
+      center[0], center[1], majorRadius, minorRadius,
+      startAngle, endAngle, xDir[0], xDir[1], direct
+    )
   );
-
-  const segment = scope
-    .register(new oc.GCE2d_MakeArcOfEllipse_1(ellipse, startAngle, endAngle, direct))
-    .Value();
-
-  return new Curve2D(segment);
 };
 
 /**
  * Creates a 2D Bezier curve defined by a start point, control points, and an end point.
- *
- * @param startPoint - The starting point of the Bezier curve.
- * @param controls - An array of control points for the Bezier curve.
- * @param endPoint - The ending point of the Bezier curve.
- *
- * @returns A Curve2D object representing the Bezier curve.
  *
  * @category Planar curves
  */
@@ -222,44 +131,16 @@ export const make2dBezierCurve = (
   controls: Point2D[],
   endPoint: Point2D
 ): Curve2D => {
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const arrayOfPoints = scope.register(new oc.TColgp_Array1OfPnt2d_2(1, controls.length + 2));
-  arrayOfPoints.SetValue(1, scope.register(pnt(startPoint)));
-
-  controls.forEach((p, i) => {
-    arrayOfPoints.SetValue(i + 2, scope.register(pnt(p)));
-  });
-
-  arrayOfPoints.SetValue(controls.length + 2, scope.register(pnt(endPoint)));
-
-  const bezCurve = new oc.Geom2d_BezierCurve_1(arrayOfPoints);
-
-  return new Curve2D(new oc.Handle_Geom2d_Curve_2(bezCurve));
+  const allPoints: [number, number][] = [
+    [startPoint[0], startPoint[1]],
+    ...controls.map((p): [number, number] => [p[0], p[1]]),
+    [endPoint[0], endPoint[1]],
+  ];
+  return new Curve2D(getKernel().makeBezier2d(allPoints));
 };
 
 /**
  * Create a 2D interpolated B-spline curve through the given points.
- *
- * @param points - Ordered through-points for the spline.
- * @param options - Options for the B-spline curve.
- * @param options.tolerance - Maximum deviation from the input points (default 1e-3).
- * @param options.smoothing - Optional `[weight1, weight2, weight3]` smoothing
- *   weights. When provided, the `Geom2dAPI_PointsToBSpline` smoothing
- *   constructor is used instead of the standard one.
- * @param options.degMax - Maximum polynomial degree (default 3).
- * @param options.degMin - Minimum polynomial degree (default 1).
- *
- * @returns `Ok(Curve2D)` on success, or an error result if the approximation fails.
- *
- * @example
- * ```ts
- * const spline = unwrap(make2dInerpolatedBSplineCurve(
- *   [[0, 0], [1, 2], [3, 1]],
- *   { degMax: 3 }
- * ));
- * ```
  *
  * @category Planar curves
  */
@@ -277,58 +158,23 @@ export function make2dInerpolatedBSplineCurve(
     degMin?: number;
   } = {}
 ): Result<Curve2D> {
-  using scope = new DisposalScope();
-  const oc = getKernel().oc;
-
-  const pnts = scope.register(new oc.TColgp_Array1OfPnt2d_2(1, points.length));
-
-  points.forEach((point, index) => {
-    pnts.SetValue(index + 1, scope.register(pnt(point)));
-  });
-
-  let splineBuilder: OcType;
-
-  if (smoothing) {
-    splineBuilder = scope.register(
-      new oc.Geom2dAPI_PointsToBSpline_6(
-        pnts,
-        smoothing[0],
-        smoothing[1],
-        smoothing[2],
-        degMax,
-
-        oc.GeomAbs_Shape.GeomAbs_C2,
-        tolerance
-      )
-    );
-  } else {
-    splineBuilder = scope.register(
-      new oc.Geom2dAPI_PointsToBSpline_2(
-        pnts,
-        degMin,
-        degMax,
-
-        oc.GeomAbs_Shape.GeomAbs_C2,
-        tolerance
-      )
-    );
-  }
-
-  if (!splineBuilder.IsDone()) {
+  try {
+    const pts: [number, number][] = points.map((p) => [p[0], p[1]]);
+    const handle = getKernel().makeBSpline2d(pts, {
+      tolerance,
+      smoothing: smoothing,
+      degMax,
+      degMin,
+      continuity: 'C2',
+    });
+    return ok(new Curve2D(handle));
+  } catch {
     return err(computationError('BSPLINE_2D_FAILED', 'B-spline approximation failed'));
   }
-
-  return ok(new Curve2D(splineBuilder.Curve()));
 }
 
 /**
  * Create a 2D arc given its endpoints and center point.
- *
- * Both `startPoint` and `endPoint` must lie at the circle's radius distance
- * from `center`. The arc passes through the midpoint of the chord unless
- * `longArc` is `true`, in which case the major arc is produced.
- *
- * @param longArc - When `true`, produce the major arc (greater than 180 degrees).
  *
  * @category Planar curves
  */
@@ -340,7 +186,6 @@ export const make2dArcFromCenter = (
 ) => {
   const midChord = scalarMultiply2d(add2d(startPoint, endPoint), 0.5);
   const orientedRadius = distance2d(center, startPoint) * (longArc ? -1 : 1);
-
   const midChordDir = normalize2d(subtract2d(midChord, center));
 
   return make2dThreePointArc(

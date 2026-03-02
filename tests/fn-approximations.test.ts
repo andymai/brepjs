@@ -14,7 +14,6 @@ import {
   make2dEllipseArc,
   make2dInerpolatedBSplineCurve,
 } from '../src/2d/lib/makeCurves.js';
-import { DisposalScope } from '../src/core/disposal.js';
 import { unwrap } from '../src/core/result.js';
 import type { Curve2D } from '../src/2d/lib/Curve2D.js';
 
@@ -78,19 +77,15 @@ function makeBSpline(): Curve2D {
 
 describe('approximateAsBSpline', () => {
   it('converts a circular arc to a BSpline with default options', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const adaptor = arc.adaptor();
-    const result = approximateAsBSpline(adaptor);
+    const result = approximateAsBSpline(arc);
     expect(result).toBeDefined();
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 
   it('converts a line to a BSpline', () => {
-    using _scope = new DisposalScope();
     const line = makeLine();
-    const adaptor = line.adaptor();
-    const result = approximateAsBSpline(adaptor);
+    const result = approximateAsBSpline(line);
     expect(result).toBeDefined();
     expect(result.geomType).toBe('BSPLINE_CURVE');
     // Should be geometrically close to the original endpoints
@@ -99,58 +94,44 @@ describe('approximateAsBSpline', () => {
   });
 
   it('respects a tight tolerance (1e-6)', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const adaptor = arc.adaptor();
-    const result = approximateAsBSpline(adaptor, 1e-6);
+    const result = approximateAsBSpline(arc, 1e-6);
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 
   it('respects a loose tolerance (1)', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const adaptor = arc.adaptor();
-    const result = approximateAsBSpline(adaptor, 1);
+    const result = approximateAsBSpline(arc, 1);
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 
   it('uses C1 continuity', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const adaptor = arc.adaptor();
-    const result = approximateAsBSpline(adaptor, 1e-4, 'C1');
+    const result = approximateAsBSpline(arc, 1e-4, 'C1');
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 
   it('uses C2 continuity', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const adaptor = arc.adaptor();
-    const result = approximateAsBSpline(adaptor, 1e-4, 'C2');
+    const result = approximateAsBSpline(arc, 1e-4, 'C2');
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 
   it('uses C0 continuity (explicit)', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const adaptor = arc.adaptor();
-    const result = approximateAsBSpline(adaptor, 1e-4, 'C0');
+    const result = approximateAsBSpline(arc, 1e-4, 'C0');
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 
   it('respects custom maxSegments', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const adaptor = arc.adaptor();
-    const result = approximateAsBSpline(adaptor, 1e-4, 'C1', 50);
+    const result = approximateAsBSpline(arc, 1e-4, 'C1', 50);
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 
   it('handles a full circle as input', () => {
-    using _scope = new DisposalScope();
     const circle = makeFullCircle();
-    const adaptor = circle.adaptor();
-    const result = approximateAsBSpline(adaptor);
+    const result = approximateAsBSpline(circle);
     expect(result.geomType).toBe('BSPLINE_CURVE');
   });
 });
@@ -161,10 +142,8 @@ describe('approximateAsBSpline', () => {
 
 describe('BSplineToBezier', () => {
   it('decomposes a BSpline into Bezier arcs', () => {
-    using _scope = new DisposalScope();
     const bspline = makeBSpline();
-    const adaptor = bspline.adaptor();
-    const beziers = BSplineToBezier(adaptor);
+    const beziers = BSplineToBezier(bspline);
     expect(beziers).toBeInstanceOf(Array);
     expect(beziers.length).toBeGreaterThan(0);
     for (const b of beziers) {
@@ -172,27 +151,20 @@ describe('BSplineToBezier', () => {
     }
   });
 
-  it('throws when passed a non-BSpline adaptor', () => {
-    using _scope = new DisposalScope();
+  it('throws when passed a non-BSpline curve', () => {
     const line = makeLine();
-    const adaptor = line.adaptor();
-    expect(() => BSplineToBezier(adaptor)).toThrow();
+    expect(() => BSplineToBezier(line)).toThrow();
   });
 
-  it('throws when passed a circle adaptor', () => {
-    using _scope = new DisposalScope();
+  it('throws when passed a circle curve', () => {
     const circle = makeFullCircle();
-    const adaptor = circle.adaptor();
-    expect(() => BSplineToBezier(adaptor)).toThrow();
+    expect(() => BSplineToBezier(circle)).toThrow();
   });
 
   it('decomposes an approximated BSpline (from approximateAsBSpline)', () => {
-    using _scope = new DisposalScope();
     const arc = makeArc();
-    const arcAdaptor = arc.adaptor();
-    const bspline = approximateAsBSpline(arcAdaptor);
-    const bsplineAdaptor = bspline.adaptor();
-    const beziers = BSplineToBezier(bsplineAdaptor);
+    const bspline = approximateAsBSpline(arc);
+    const beziers = BSplineToBezier(bspline);
     expect(beziers.length).toBeGreaterThan(0);
     for (const b of beziers) {
       expect(b.geomType).toBe('BEZIER_CURVE');

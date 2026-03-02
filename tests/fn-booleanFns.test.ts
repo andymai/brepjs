@@ -127,7 +127,7 @@ describe('boolean edge cases', () => {
 
     it('intersect disjoint boxes produces empty or negligible volume', () => {
       const result = intersect(boxAt(0, 0, 0, 10, 10, 10), boxAt(100, 0, 0, 110, 10, 10));
-      // OCCT may return an empty shell or compound
+      // kernel may return an empty shell or compound
       expect(isOk(result) || isErr(result)).toBe(true);
       if (isOk(result)) {
         const vol = measureVolume(unwrap(result));
@@ -222,7 +222,7 @@ describe('boolean edge cases', () => {
 
     it('fuseAll native strategy correctly identifies result as Shape3D', () => {
       // This test verifies that the isShape3D check works correctly by using
-      // the OCCT shape type enum (not constructor.name which gets minified).
+      // the kernel shape type enum (not constructor.name which gets minified).
       // When fusing disjoint boxes, native strategy returns a COMPOUND, which
       // must be correctly identified as a 3D shape.
       const result = fuseAll(

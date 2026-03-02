@@ -4,11 +4,10 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { DisposalScope } from '../core/disposal.js';
 import type { Vec3 } from '../core/types.js';
 import type { AnyShape, Face, Shape3D } from '../core/shapeTypes.js';
 import { uvBounds } from '../topology/faceFns.js';
-import { surfaceCurvature, type CurvatureResult } from '../kernel/measureOps.js';
+import type { CurvatureResult } from '../kernel/measureOps.js';
 import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
 
 // ---------------------------------------------------------------------------
@@ -66,17 +65,13 @@ export function measureVolumeProps(shape: Shape3D): VolumeProps {
   const cached = getCachedMeasurement(shape.wrapped, 'volume') as VolumeProps | undefined;
   if (cached) return cached;
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const props = scope.register(new oc.GProp_GProps_1());
-  oc.BRepGProp.VolumeProperties_1(shape.wrapped, props, false, false, false);
-  const pnt = scope.register(props.CentreOfMass());
-  const m = props.Mass();
+  const kernel = getKernel();
+  const m = kernel.volume(shape.wrapped);
+  const com = kernel.centerOfMass(shape.wrapped);
   const result: VolumeProps = {
     mass: m,
     volume: m,
-    centerOfMass: [pnt.X(), pnt.Y(), pnt.Z()],
+    centerOfMass: com,
   };
   setCachedMeasurement(shape.wrapped, 'volume', result);
   return result;
@@ -94,17 +89,13 @@ export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
   const cached = getCachedMeasurement(shape.wrapped, 'surface') as SurfaceProps | undefined;
   if (cached) return cached;
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const props = scope.register(new oc.GProp_GProps_1());
-  oc.BRepGProp.SurfaceProperties_1(shape.wrapped, props, false, false);
-  const pnt = scope.register(props.CentreOfMass());
-  const m = props.Mass();
+  const kernel = getKernel();
+  const m = kernel.area(shape.wrapped);
+  const com = kernel.centerOfMass(shape.wrapped);
   const result: SurfaceProps = {
     mass: m,
     area: m,
-    centerOfMass: [pnt.X(), pnt.Y(), pnt.Z()],
+    centerOfMass: com,
   };
   setCachedMeasurement(shape.wrapped, 'surface', result);
   return result;
@@ -125,17 +116,13 @@ export function measureLinearProps(shape: AnyShape): LinearProps {
   const cached = getCachedMeasurement(shape.wrapped, 'linear') as LinearProps | undefined;
   if (cached) return cached;
 
-  const oc = getKernel().oc;
-  using scope = new DisposalScope();
-
-  const props = scope.register(new oc.GProp_GProps_1());
-  oc.BRepGProp.LinearProperties(shape.wrapped, props, false, false);
-  const pnt = scope.register(props.CentreOfMass());
-  const m = props.Mass();
+  const kernel = getKernel();
+  const m = kernel.length(shape.wrapped);
+  const com = kernel.linearCenterOfMass(shape.wrapped);
   const result: LinearProps = {
     mass: m,
     length: m,
-    centerOfMass: [pnt.X(), pnt.Y(), pnt.Z()],
+    centerOfMass: com,
   };
   setCachedMeasurement(shape.wrapped, 'linear', result);
   return result;
@@ -189,7 +176,7 @@ export function measureDistance(shape1: AnyShape, shape2: AnyShape): number {
 /**
  * Create a reusable distance query from a reference shape.
  *
- * Keeps the reference shape loaded in the OCCT distance tool so that
+ * Keeps the reference shape loaded in the kernel distance tool so that
  * multiple `distanceTo` calls avoid re-loading overhead.
  *
  * @remarks Call `dispose()` when done to free the WASM-allocated distance tool.
@@ -210,24 +197,15 @@ export function createDistanceQuery(referenceShape: AnyShape): {
   dispose: () => void;
 } {
   assertShapeNotNull(referenceShape, 'createDistanceQuery');
-  const oc = getKernel().oc;
-  const distTool = new oc.BRepExtrema_DistShapeShape_1();
-  distTool.LoadS1(referenceShape.wrapped);
+  const query = getKernel().createDistanceQuery(referenceShape.wrapped);
 
   return {
     distanceTo(other: AnyShape): number {
       assertShapeNotNull(other, 'createDistanceQuery.distanceTo');
-      distTool.LoadS2(other.wrapped);
-      const progress = new oc.Message_ProgressRange_1();
-      try {
-        distTool.Perform(progress);
-        return distTool.Value();
-      } finally {
-        progress.delete();
-      }
+      return query.distanceTo(other.wrapped).value;
     },
     dispose(): void {
-      distTool.delete();
+      query.dispose();
     },
   };
 }
@@ -257,8 +235,15 @@ export type { CurvatureResult } from '../kernel/measureOps.js';
  */
 export function measureCurvatureAt(face: Face, u: number, v: number): CurvatureResult {
   assertShapeNotNull(face, 'measureCurvatureAt');
-  const oc = getKernel().oc;
-  return surfaceCurvature(oc, face.wrapped, u, v);
+  const result = getKernel().surfaceCurvature(face.wrapped, u, v);
+  return {
+    mean: result.mean,
+    gaussian: result.gaussian,
+    maxCurvature: result.max,
+    minCurvature: result.min,
+    maxDirection: result.maxDirection,
+    minDirection: result.minDirection,
+  };
 }
 
 /**
@@ -272,9 +257,16 @@ export function measureCurvatureAt(face: Face, u: number, v: number): CurvatureR
  */
 export function measureCurvatureAtMid(face: Face): CurvatureResult {
   assertShapeNotNull(face, 'measureCurvatureAtMid');
-  const oc = getKernel().oc;
   const bounds = uvBounds(face);
   const uMid = (bounds.uMin + bounds.uMax) / 2;
   const vMid = (bounds.vMin + bounds.vMax) / 2;
-  return surfaceCurvature(oc, face.wrapped, uMid, vMid);
+  const result = getKernel().surfaceCurvature(face.wrapped, uMid, vMid);
+  return {
+    mean: result.mean,
+    gaussian: result.gaussian,
+    maxCurvature: result.max,
+    minCurvature: result.min,
+    maxDirection: result.maxDirection,
+    minDirection: result.minDirection,
+  };
 }

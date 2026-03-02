@@ -1,4 +1,4 @@
-import type { OcType } from '../../kernel/types.js';
+import type { KernelType } from '../../kernel/types.js';
 
 import type { CurveType } from '../../core/definitionMaps.js';
 import { findCurveType } from '../../core/definitionMaps.js';
@@ -6,13 +6,12 @@ import { type Result, ok, err, unwrap } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';
 import { getKernel } from '../../kernel/index.js';
-import { DisposalScope, registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
-import zip from '../../utils/zip.js';
+import { registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
 
 import { BoundingBox2d } from './BoundingBox2d.js';
 import type { Point2D } from './definitions.js';
 import { isPoint2D } from './definitions.js';
-import { pnt } from './ocWrapper.js';
+// pnt import removed — projection/distance now use kernel methods
 import { reprPnt } from './utils.js';
 import { distance2d, samePoint } from './vectorOperations.js';
 
@@ -22,33 +21,29 @@ import { distance2d, samePoint } from './vectorOperations.js';
  * @returns A new `Curve2D` restored from the serialized data.
  */
 export function deserializeCurve2D(data: string): Curve2D {
-  const oc = getKernel().oc;
-  const handle = oc.GeomToolsWrapper.Read(data);
-  return new Curve2D(handle);
+  return new Curve2D(getKernel().deserializeCurve2d(data));
 }
 
 /**
- * Handle-wrapped 2D parametric curve backed by an OCCT `Geom2d_Curve`.
+ * Handle-wrapped 2D parametric curve backed by an kernel `kernel 2D curve`.
  *
  * Provides evaluation, splitting, projection, tangent queries, and distance
  * computations on a single parametric curve.
  */
 export class Curve2D {
-  private readonly _wrapped: OcType;
+  private readonly _wrapped: KernelType;
   private _deleted = false;
   _boundingBox: null | BoundingBox2d;
   private _firstPoint: Point2D | null = null;
   private _lastPoint: Point2D | null = null;
 
-  constructor(handle: OcType) {
-    const oc = getKernel().oc;
-    const inner = handle.get();
-    this._wrapped = new oc.Handle_Geom2d_Curve_2(inner);
+  constructor(handle: KernelType) {
+    this._wrapped = getKernel().wrapCurve2dHandle(handle);
     this._boundingBox = null;
     registerForCleanup(this, this._wrapped);
   }
 
-  get wrapped(): OcType {
+  get wrapped(): KernelType {
     if (this._deleted) throw new Error('This object has been deleted');
     return this._wrapped;
   }
@@ -64,11 +59,9 @@ export class Curve2D {
   /** Compute (and cache) the 2D bounding box of this curve. */
   get boundingBox() {
     if (this._boundingBox) return this._boundingBox;
-    const oc = getKernel().oc;
-    const boundBox = new oc.Bnd_Box2d();
-
-    oc.BndLib_Add2dCurve.Add_3(this.wrapped, 1e-6, boundBox);
-
+    const kernel = getKernel();
+    const boundBox = kernel.createBoundingBox2d();
+    kernel.addCurveToBBox2d(boundBox, this.wrapped, 1e-6);
     this._boundingBox = new BoundingBox2d(boundBox);
     return this._boundingBox;
   }
@@ -78,15 +71,14 @@ export class Curve2D {
     return `${this.geomType} ${reprPnt(this.firstPoint)} - ${reprPnt(this.lastPoint)}`;
   }
 
-  /** Access the underlying OCCT `Geom2d_Curve` (unwrapped from its handle). */
-  get innerCurve(): OcType {
+  /** Access the underlying kernel `kernel 2D curve` (unwrapped from its handle). */
+  get innerCurve(): KernelType {
     return this.wrapped.get();
   }
 
   /** Serialize this curve to a string that can be restored with {@link deserializeCurve2D}. */
   serialize(): string {
-    const oc = getKernel().oc;
-    return oc.GeomToolsWrapper.Write(this.wrapped);
+    return getKernel().serializeCurve2d(this.wrapped);
   }
 
   /** Evaluate the curve at the given parameter, returning the 2D point. */
@@ -124,9 +116,8 @@ export class Curve2D {
   }
 
   /** Create a `Geom2dAdaptor_Curve` for algorithmic queries (caller must delete). */
-  adaptor(): OcType {
-    const oc = getKernel().oc;
-    return new oc.Geom2dAdaptor_Curve_2(this.wrapped);
+  adaptor(): KernelType {
+    return getKernel().createCurve2dAdaptor(this.wrapped);
   }
 
   /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
@@ -156,20 +147,8 @@ export class Curve2D {
   }
 
   private distanceFromPoint(point: Point2D): number {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
-
-    const projector = scope.register(
-      new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped)
-    );
-
-    let curveToPoint;
-
-    try {
-      curveToPoint = projector.LowerDistance();
-    } catch {
-      curveToPoint = Infinity;
-    }
+    const proj = getKernel().projectPointOnCurve2d(this.wrapped, point[0], point[1]);
+    const curveToPoint = proj ? proj.distance : Infinity;
 
     return Math.min(
       curveToPoint,
@@ -179,23 +158,13 @@ export class Curve2D {
   }
 
   private distanceFromCurve(curve: Curve2D): number {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
-
     let curveDistance;
-    const projector = scope.register(
-      new oc.Geom2dAPI_ExtremaCurveCurve(
-        this.wrapped,
-        curve.wrapped,
-        this.firstParameter,
-        this.lastParameter,
-        curve.firstParameter,
-        curve.lastParameter
-      )
-    );
-
     try {
-      curveDistance = projector.LowerDistance();
+      curveDistance = getKernel().distanceBetweenCurves2d(
+        this.wrapped, curve.wrapped,
+        this.firstParameter, this.lastParameter,
+        curve.firstParameter, curve.lastParameter
+      );
     } catch {
       curveDistance = Infinity;
     }
@@ -230,17 +199,13 @@ export class Curve2D {
    * @returns `Ok(parameter)` when the point is on the curve, or an error result otherwise.
    */
   parameter(point: Point2D, precision = 1e-9): Result<number> {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
-
     let lowerDistance;
     let lowerDistanceParameter;
     try {
-      const projector = scope.register(
-        new oc.Geom2dAPI_ProjectPointOnCurve_2(scope.register(pnt(point)), this.wrapped)
-      );
-      lowerDistance = projector.LowerDistance();
-      lowerDistanceParameter = projector.LowerDistanceParameter();
+      const proj = getKernel().projectPointOnCurve2d(this.wrapped, point[0], point[1]);
+      if (!proj) throw new Error('projection failed');
+      lowerDistance = proj.distance;
+      lowerDistanceParameter = proj.param;
     } catch {
       // Perhaps it failed because it is on an extremity
       if (samePoint(point, this.firstPoint, precision)) return ok(this.firstParameter);
@@ -266,26 +231,18 @@ export class Curve2D {
    * @param index - A normalized parameter (0..1) or a Point2D to project onto the curve.
    */
   tangentAt(index: number | Point2D): Point2D {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
-
     let param;
 
     if (Array.isArray(index)) {
       param = unwrap(this.parameter(index));
     } else {
-      const paramLength = this.innerCurve.LastParameter() - this.innerCurve.FirstParameter();
-      param = paramLength * index + Number(this.innerCurve.FirstParameter());
+      const bounds = getKernel().getCurve2dBounds(this.wrapped);
+      const paramLength = bounds.last - bounds.first;
+      param = paramLength * index + bounds.first;
     }
 
-    const point = scope.register(new oc.gp_Pnt2d_1());
-    const dir = scope.register(new oc.gp_Vec2d_1());
-
-    this.innerCurve.D1(param, point, dir);
-
-    const tgtVec = [dir.X(), dir.Y()] as Point2D;
-
-    return tgtVec;
+    const result = getKernel().evaluateCurve2dD1(this.wrapped, param);
+    return result.tangent;
   }
 
   /**
@@ -294,9 +251,6 @@ export class Curve2D {
    * @returns An array of sub-curves whose union covers the original curve.
    */
   splitAt(points: Point2D[] | number[], precision = 1e-9): Curve2D[] {
-    const oc = getKernel().oc;
-    using scope = new DisposalScope();
-
     let parameters = points.map((point: Point2D | number) => {
       if (isPoint2D(point)) return unwrap(this.parameter(point, precision));
       return point;
@@ -326,40 +280,7 @@ export class Curve2D {
       parameters = parameters.slice(0, -1);
     if (!parameters.length) return [this];
 
-    return zip([
-      [firstParam, ...parameters],
-      [...parameters, lastParam],
-    ]).map(([first, last]) => {
-      try {
-        if (this.geomType === 'BEZIER_CURVE') {
-          const curveCopy = new oc.Geom2d_BezierCurve_1(
-            scope.register(this.adaptor()).Bezier().get().Poles_2()
-          );
-          curveCopy.Segment(first, last);
-          return new Curve2D(new oc.Handle_Geom2d_Curve_2(curveCopy));
-        }
-        if (this.geomType === 'BSPLINE_CURVE') {
-          const adapted = scope.register(this.adaptor()).BSpline().get();
-
-          const curveCopy = new oc.Geom2d_BSplineCurve_1(
-            adapted.Poles_2(),
-            adapted.Knots_2(),
-            adapted.Multiplicities_2(),
-            adapted.Degree(),
-            adapted.IsPeriodic()
-          );
-          curveCopy.Segment(first, last, precision);
-          return new Curve2D(new oc.Handle_Geom2d_Curve_2(curveCopy));
-        }
-
-        const trimmed = new oc.Geom2d_TrimmedCurve(this.wrapped, first, last, true, true);
-        return new Curve2D(new oc.Handle_Geom2d_Curve_2(trimmed));
-      } catch (e) {
-        throw new Error(
-          `Failed to split the curve: ${e instanceof Error ? e.message : String(e)}`,
-          { cause: e }
-        );
-      }
-    });
+    const handles = getKernel().splitCurve2d(this.wrapped, parameters);
+    return handles.map((h) => new Curve2D(h));
   }
 }

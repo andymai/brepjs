@@ -3,7 +3,7 @@
  *
  * An assembly is a tree of nodes. Each node has an optional shape,
  * a local transform (translation + rotation), optional metadata,
- * and child nodes. This is a pure data structure with no OCCT calls.
+ * and child nodes. This is a pure data structure with no kernel calls.
  *
  * Usage:
  *   const asm = createAssemblyNode('root')

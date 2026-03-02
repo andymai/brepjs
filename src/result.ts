@@ -33,7 +33,7 @@ export {
   type BrepError,
   type BrepErrorKind,
   BrepErrorCode,
-  occtError,
+  kernelError,
   validationError,
   typeCastError,
   sketcherStateError,

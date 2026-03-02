@@ -6,29 +6,6 @@ import { getKernel } from '../kernel/index.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
-import { uniqueIOFilename } from '../core/constants.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT types are dynamic
-type OcAny = any;
-
-/** Check if a shape already has face triangulation from a prior mesh call. */
-function shapeHasTriangulation(oc: OcAny, shape: OcAny): boolean {
-  const explorer = new oc.TopExp_Explorer_2(
-    shape,
-    oc.TopAbs_ShapeEnum.TopAbs_FACE,
-    oc.TopAbs_ShapeEnum.TopAbs_SHAPE
-  );
-  let hasTri = false;
-  if (explorer.More()) {
-    const face = oc.TopoDS.Face_1(explorer.Current());
-    const loc = new oc.TopLoc_Location_1();
-    const tri = oc.BRep_Tool.Triangulation(face, loc, 0);
-    hasTri = !tri.IsNull();
-    loc.delete();
-    tri.delete();
-  }
-  explorer.delete();
-  return hasTri;
-}
 
 import {
   buildMeshCacheKey,
@@ -190,32 +167,17 @@ export function meshEdges(
  * @returns Ok with a Blob (MIME type `application/STEP`), or Err on failure.
  */
 export function exportSTEP(shape: AnyShape): Result<Blob> {
-  const oc = getKernel().oc;
-  const filename = uniqueIOFilename('_blob', 'step');
-  const writer = new oc.STEPControl_Writer_1();
-  const progress = new oc.Message_ProgressRange_1();
-
   try {
-    oc.Interface_Static.SetIVal('write.step.schema', 5);
-    writer.Model(true).delete();
-
-    writer.Transfer(shape.wrapped, oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
-
-    const done = writer.Write(filename);
-
-    if (done === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
-      try {
-        const file = oc.FS.readFile('/' + filename);
-        oc.FS.unlink('/' + filename);
-        return ok(new Blob([file], { type: 'application/STEP' }));
-      } catch (e) {
-        return err(ioError('STEP_FILE_READ_ERROR', 'Failed to read exported STEP file', e));
-      }
-    }
-    return err(ioError('STEP_EXPORT_FAILED', 'Failed to write STEP file'));
-  } finally {
-    writer.delete();
-    progress.delete();
+    const stepString = getKernel().exportSTEP([shape.wrapped]);
+    return ok(new Blob([stepString], { type: 'application/STEP' }));
+  } catch (e) {
+    // Distinguish FS read errors from write/transfer failures.
+    // The kernel throws with "STEP export failed:" when the writer itself fails;
+    // any other error (e.g. FS.readFile throwing) is a file-read issue.
+    const isWriteFailure = e instanceof Error && e.message.startsWith('STEP export failed');
+    const code = isWriteFailure ? 'STEP_EXPORT_FAILED' : 'STEP_FILE_READ_ERROR';
+    const msg = isWriteFailure ? 'Failed to write STEP file' : 'Failed to read exported STEP file';
+    return err(ioError(code, msg, e));
   }
 }
 
@@ -232,31 +194,19 @@ export function exportSTL(
     binary = false,
   }: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
-  const oc = getKernel().oc;
-  // Only mesh if shape doesn't already have triangulation (e.g. from prior mesh() call)
-  if (!shapeHasTriangulation(oc, shape.wrapped)) {
-    const mesher = new oc.BRepMesh_IncrementalMesh_2(
-      shape.wrapped,
-      tolerance,
-      false,
-      angularTolerance,
-      false
-    );
-    mesher.delete();
-  }
-  const filename = uniqueIOFilename('_blob', 'stl');
-  const done = oc.StlAPI.Write(shape.wrapped, filename, !binary);
-
-  if (done) {
-    try {
-      const file = oc.FS.readFile('/' + filename);
-      oc.FS.unlink('/' + filename);
-      return ok(new Blob([file], { type: 'application/sla' }));
-    } catch (e) {
-      return err(ioError('STL_FILE_READ_ERROR', 'Failed to read exported STL file', e));
+  try {
+    // Ensure shape has triangulation before export
+    if (!getKernel().hasTriangulation(shape.wrapped)) {
+      getKernel().meshShape(shape.wrapped, tolerance, angularTolerance);
     }
+    const stlData = getKernel().exportSTL(shape.wrapped, binary);
+    return ok(new Blob([stlData], { type: 'application/sla' }));
+  } catch (e) {
+    const isWriteFailure = e instanceof Error && e.message.startsWith('STL export failed');
+    const code = isWriteFailure ? 'STL_EXPORT_FAILED' : 'STL_FILE_READ_ERROR';
+    const msg = isWriteFailure ? 'Failed to write STL file' : 'Failed to read exported STL file';
+    return err(ioError(code, msg, e));
   }
-  return err(ioError('STL_EXPORT_FAILED', 'Failed to write STL file'));
 }
 
 /**
@@ -265,27 +215,10 @@ export function exportSTL(
  * @returns Ok with a Blob (MIME type `application/iges`), or Err on failure.
  */
 export function exportIGES(shape: AnyShape): Result<Blob> {
-  const oc = getKernel().oc;
-  const filename = uniqueIOFilename('_blob', 'iges');
-  const writer = new oc.IGESControl_Writer_1();
-
   try {
-    writer.AddShape(shape.wrapped);
-    writer.ComputeModel();
-
-    const done = writer.Write_2(filename);
-
-    if (done) {
-      try {
-        const file = oc.FS.readFile('/' + filename);
-        oc.FS.unlink('/' + filename);
-        return ok(new Blob([file], { type: 'application/iges' }));
-      } catch (e) {
-        return err(ioError('IGES_EXPORT_FAILED', 'Failed to read exported IGES file', e));
-      }
-    }
-    return err(ioError('IGES_EXPORT_FAILED', 'Failed to write IGES file'));
-  } finally {
-    writer.delete();
+    const igesString = getKernel().exportIGES([shape.wrapped]);
+    return ok(new Blob([igesString], { type: 'application/iges' }));
+  } catch (e) {
+    return err(ioError('IGES_EXPORT_FAILED', 'Failed to write IGES file', e));
   }
 }

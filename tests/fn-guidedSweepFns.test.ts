@@ -53,7 +53,7 @@ describe('guidedSweep', () => {
     const spine = makeLineWire(0, 0, 0, 0, 0, 20);
     const guide = makeLineWire(5, 0, 0, 8, 0, 20);
     const result = guidedSweep(profile, spine, [guide]);
-    // May succeed or fail depending on OCCT WASM guide support
+    // May succeed or fail depending on kernel WASM guide support
     // At minimum, the function should not crash
     if (isOk(result)) {
       expect(isSolid(unwrap(result))).toBe(true);

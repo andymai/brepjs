@@ -403,7 +403,7 @@ describe('autoHeal', () => {
     it('autoHeal on an edge (unsupported type) short-circuits or passes through', () => {
       const b = box(10, 10, 10);
       const edge = getEdges(b)[0];
-      // Edges may or may not be "valid" in OCCT — autoHeal either short-circuits
+      // Edges may or may not be "valid" in kernel — autoHeal either short-circuits
       // (already valid) or applies the unsupported-type passthrough. Either way ok.
       const result = autoHeal(edge);
       expect(isOk(result)).toBe(true);
@@ -456,7 +456,7 @@ describe('autoHeal', () => {
 
   describe('report.alreadyValid flag', () => {
     it('alreadyValid is false when autoHeal pipeline runs (shape was invalid or not short-circuited)', () => {
-      // A fused shape is typically valid in OCCT, so it may short-circuit.
+      // A fused shape is typically valid in kernel, so it may short-circuit.
       // The important thing: alreadyValid is always a boolean.
       const b = box(10, 10, 10);
       const { report } = unwrap(autoHeal(b));

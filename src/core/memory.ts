@@ -5,7 +5,7 @@
 export type { Deletable } from './disposal.js';
 export {
   createHandle,
-  createOcHandle,
+  createKernelHandle,
   DisposalScope,
   withScope,
   withScopeResult,
@@ -20,5 +20,5 @@ export {
   registerForCleanup,
   unregisterFromCleanup,
   type ShapeHandle,
-  type OcHandle,
+  type KernelHandle,
 } from './disposal.js';

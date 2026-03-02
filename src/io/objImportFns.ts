@@ -3,7 +3,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import { makeTriFace } from '../kernel/constructorOps.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -69,60 +69,46 @@ function buildSolidFromMesh(
   vertices: Array<[number, number, number]>,
   faces: Array<number[]>
 ): Result<AnyShape> {
-  const oc = getKernel().oc;
-  const sewing = new oc.BRepBuilderAPI_Sewing(1e-6, true, true, true, false);
-  let faceCount = 0;
+  const kernel = getKernel();
+  const triFaces: KernelShape[] = [];
 
-  try {
-    for (const face of faces) {
-      // Fan triangulation: vertex 0, then pairs (i, i+1)
-      for (let i = 1; i < face.length - 1; i++) {
-        const rawA = face[0] ?? 0;
-        const rawB = face[i] ?? 0;
-        const rawC = face[i + 1] ?? 0;
-        // OBJ is 1-based; negative indices count backward from current vertex list end
-        const ai = rawA > 0 ? rawA - 1 : vertices.length + rawA;
-        const bi = rawB > 0 ? rawB - 1 : vertices.length + rawB;
-        const ci = rawC > 0 ? rawC - 1 : vertices.length + rawC;
+  for (const face of faces) {
+    for (let i = 1; i < face.length - 1; i++) {
+      const rawA = face[0] ?? 0;
+      const rawB = face[i] ?? 0;
+      const rawC = face[i + 1] ?? 0;
+      const ai = rawA > 0 ? rawA - 1 : vertices.length + rawA;
+      const bi = rawB > 0 ? rawB - 1 : vertices.length + rawB;
+      const ci = rawC > 0 ? rawC - 1 : vertices.length + rawC;
 
-        const va = vertices[ai];
-        const vb = vertices[bi];
-        const vc = vertices[ci];
-        if (!va || !vb || !vc) continue;
+      const va = vertices[ai];
+      const vb = vertices[bi];
+      const vc = vertices[ci];
+      if (!va || !vb || !vc) continue;
 
-        const triFace = makeTriFace(oc, va, vb, vc);
-        if (triFace !== null) {
-          sewing.Add(triFace);
-          faceCount++;
-        }
+      const triFace = kernel.buildTriFace(va, vb, vc);
+      if (triFace !== null) {
+        triFaces.push(triFace);
       }
     }
+  }
 
-    if (faceCount === 0) {
+  if (triFaces.length === 0) {
+    return err(
+      ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'No valid triangular faces could be built')
+    );
+  }
+
+  try {
+    return ok(castShape(kernel.sewAndSolidify(triFaces, 1e-6)));
+  } catch {
+    // If sewing/solid fails, try sewing alone
+    try {
+      return ok(castShape(kernel.sew(triFaces, 1e-6)));
+    } catch {
       return err(
-        ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'No valid triangular faces could be built')
+        ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'Failed to sew triangular faces')
       );
     }
-
-    const progress = new oc.Message_ProgressRange_1();
-    sewing.Perform(progress);
-    progress.delete();
-
-    const sewn = sewing.SewedShape();
-
-    // Try to make a solid from the sewn shell, fixing orientation
-    const fixer = new oc.ShapeFix_Solid_1();
-    try {
-      const shell = oc.TopoDS.Shell_1(sewn);
-      const solid = fixer.SolidFromShell(shell);
-      return ok(castShape(solid));
-    } catch {
-      // If solid creation fails, return the sewn shape as-is
-      return ok(castShape(sewn));
-    } finally {
-      fixer.delete();
-    }
-  } finally {
-    sewing.delete();
   }
 }

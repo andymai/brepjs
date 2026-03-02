@@ -5,14 +5,14 @@
  * Used by OCCTAdapter.
  */
 
-import type { OpenCascadeInstance, OcShape, OcType } from './types.js';
+import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
 
 const HASH_CODE_MAX = 2147483647;
 
 /**
  * Calculates the volume of a shape.
  */
-export function volume(oc: OpenCascadeInstance, shape: OcShape): number {
+export function volume(oc: OpenCascadeInstance, shape: KernelShape): number {
   const props = new oc.GProp_GProps_1();
   oc.BRepGProp.VolumeProperties_1(shape, props, true, false, false);
   const vol = props.Mass();
@@ -23,7 +23,7 @@ export function volume(oc: OpenCascadeInstance, shape: OcShape): number {
 /**
  * Calculates the surface area of a shape.
  */
-export function area(oc: OpenCascadeInstance, shape: OcShape): number {
+export function area(oc: OpenCascadeInstance, shape: KernelShape): number {
   const props = new oc.GProp_GProps_1();
   oc.BRepGProp.SurfaceProperties_2(shape, props, 1e-7, true);
   const a = props.Mass();
@@ -34,7 +34,7 @@ export function area(oc: OpenCascadeInstance, shape: OcShape): number {
 /**
  * Calculates the length of a 1D shape (edge/wire).
  */
-export function length(oc: OpenCascadeInstance, shape: OcShape): number {
+export function length(oc: OpenCascadeInstance, shape: KernelShape): number {
   const props = new oc.GProp_GProps_1();
   oc.BRepGProp.LinearProperties(shape, props, true, false);
   const len = props.Mass();
@@ -43,11 +43,24 @@ export function length(oc: OpenCascadeInstance, shape: OcShape): number {
 }
 
 /**
- * Calculates the center of mass of a shape.
+ * Calculates the center of mass of a shape using volume properties.
  */
-export function centerOfMass(oc: OpenCascadeInstance, shape: OcShape): [number, number, number] {
+export function centerOfMass(oc: OpenCascadeInstance, shape: KernelShape): [number, number, number] {
   const props = new oc.GProp_GProps_1();
   oc.BRepGProp.VolumeProperties_1(shape, props, true, false, false);
+  const center = props.CentreOfMass();
+  const result: [number, number, number] = [center.X(), center.Y(), center.Z()];
+  center.delete();
+  props.delete();
+  return result;
+}
+
+/**
+ * Calculates the center of mass of a 1D shape (edge/wire) using linear properties.
+ */
+export function linearCenterOfMass(oc: OpenCascadeInstance, shape: KernelShape): [number, number, number] {
+  const props = new oc.GProp_GProps_1();
+  oc.BRepGProp.LinearProperties(shape, props, true, false);
   const center = props.CentreOfMass();
   const result: [number, number, number] = [center.X(), center.Y(), center.Z()];
   center.delete();
@@ -60,7 +73,7 @@ export function centerOfMass(oc: OpenCascadeInstance, shape: OcShape): [number, 
  */
 export function boundingBox(
   oc: OpenCascadeInstance,
-  shape: OcShape
+  shape: KernelShape
 ): {
   min: [number, number, number];
   max: [number, number, number];
@@ -86,8 +99,8 @@ export function boundingBox(
  */
 export function distance(
   oc: OpenCascadeInstance,
-  shape1: OcShape,
-  shape2: OcShape
+  shape1: KernelShape,
+  shape2: KernelShape
 ): { value: number; point1: [number, number, number]; point2: [number, number, number] } {
   const distTool = new oc.BRepExtrema_DistShapeShape_1();
   distTool.LoadS1(shape1);
@@ -124,7 +137,7 @@ export function distance(
  */
 export function classifyPointOnFace(
   oc: OpenCascadeInstance,
-  face: OcShape,
+  face: KernelShape,
   u: number,
   v: number,
   tolerance = 1e-6
@@ -172,7 +185,7 @@ export interface CurvatureResult {
  */
 export function surfaceCurvature(
   oc: OpenCascadeInstance,
-  face: OcShape,
+  face: KernelShape,
   u: number,
   v: number
 ): CurvatureResult {
@@ -300,8 +313,8 @@ export function surfaceCurvature(
 }
 
 function computeDirection(
-  D1U: OcType,
-  D1V: OcType,
+  D1U: KernelType,
+  D1V: KernelType,
   du: number,
   dv: number
 ): [number, number, number] {

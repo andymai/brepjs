@@ -7,7 +7,7 @@ import type { Vec3 } from '../core/types.js';
 import type { Shape3D } from '../core/shapeTypes.js';
 import type { Result } from '../core/result.js';
 import { ok, err } from '../core/result.js';
-import { vecScale, vecNormalize, vecIsZero } from '../core/vecOps.js';
+import { vecNormalize, vecIsZero } from '../core/vecOps.js';
 import { fuseAll, type BooleanOptions } from '../topology/booleanFns.js';
 import { validationError } from '../core/errors.js';
 import { getKernel } from '../kernel/index.js';
@@ -37,23 +37,8 @@ export function linearPattern(
     return err(validationError('PATTERN_ZERO_DIRECTION', 'Pattern direction cannot be zero'));
 
   const dir = vecNormalize(direction);
-  const copies: Shape3D[] = [shape];
-
-  // Pool WASM transform objects across iterations to avoid repeated alloc/delete
-  const oc = getKernel().oc;
-  const trsf = new oc.gp_Trsf_1();
-  const vec = new oc.gp_Vec_4(0, 0, 0);
-  for (let i = 1; i < count; i++) {
-    const offset = vecScale(dir, spacing * i);
-    vec.SetCoord_2(offset[0], offset[1], offset[2]);
-    trsf.SetTranslation_1(vec);
-    const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
-    const result = transformer.ModifiedShape(shape.wrapped);
-    transformer.delete();
-    copies.push(castShape(result) as Shape3D);
-  }
-  trsf.delete();
-  vec.delete();
+  const ocShapes = getKernel().linearPattern(shape.wrapped, [...dir], spacing, count);
+  const copies = ocShapes.map((s) => castShape(s) as Shape3D);
 
   return fuseAll(copies, options);
 }
@@ -84,25 +69,8 @@ export function circularPattern(
     return err(validationError('PATTERN_ZERO_AXIS', 'Pattern axis cannot be zero'));
 
   const angleStep = fullAngle / count;
-  const copies: Shape3D[] = [shape];
-
-  // Pool WASM transform objects across iterations to avoid repeated alloc/delete
-  const oc = getKernel().oc;
-  const trsf = new oc.gp_Trsf_1();
-  const origin = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(axis[0], axis[1], axis[2]);
-  const ax1 = new oc.gp_Ax1_2(origin, dir);
-  for (let i = 1; i < count; i++) {
-    trsf.SetRotation_1(ax1, (angleStep * i * Math.PI) / 180);
-    const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
-    const result = transformer.ModifiedShape(shape.wrapped);
-    transformer.delete();
-    copies.push(castShape(result) as Shape3D);
-  }
-  trsf.delete();
-  ax1.delete();
-  origin.delete();
-  dir.delete();
+  const ocShapes = getKernel().circularPattern(shape.wrapped, [...center], [...axis], angleStep, count);
+  const copies = ocShapes.map((s) => castShape(s) as Shape3D);
 
   return fuseAll(copies, options);
 }

@@ -3,7 +3,7 @@
  *
  * Records a sequence of operation steps. Each step captures the operation
  * type, parameters, and references to input/output shapes by ID. The
- * history is a pure data structure with no OCCT dependency.
+ * history is a pure data structure with no kernel dependency.
  *
  * Also provides an operation registry and replay mechanism for parametric CAD.
  */
