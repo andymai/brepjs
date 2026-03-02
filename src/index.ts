@@ -105,7 +105,7 @@ export { type AssemblyExporter, createAssembly } from './operations/exporters.js
 
 // ── Layer 2: 2d ──
 
-export { type Point2D, BoundingBox2d, Curve2D, axis2d } from './2d/lib/index.js';
+export { type Point2D, BoundingBox2d, Curve2D } from './2d/lib/index.js';
 
 export { default as Blueprint } from './2d/blueprints/Blueprint.js';
 export { default as CompoundBlueprint } from './2d/blueprints/CompoundBlueprint.js';

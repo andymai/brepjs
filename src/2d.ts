@@ -61,7 +61,7 @@ export {
 
 // ── Utilities ──
 
-export { type Point2D, BoundingBox2d, Curve2D, axis2d } from './2d/lib/index.js';
+export { type Point2D, BoundingBox2d, Curve2D } from './2d/lib/index.js';
 export { organiseBlueprints } from './2d/blueprints/lib.js';
 export { polysidesBlueprint, roundedRectangleBlueprint } from './2d/blueprints/cannedBlueprints.js';
 export type { ScaleMode } from './2d/curves.js';

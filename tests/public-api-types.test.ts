@@ -170,7 +170,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'approximateCurve',
   'asTopo',
   'autoHeal',
-  'axis2d',
   'basicFaceExtrusion',
   'bezier',
   'blueprintToDXF',

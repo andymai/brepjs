@@ -43,7 +43,7 @@ export interface LoftOptions {
  */
 export function loft(
   wires: Wire[],
-  { ruled = true, startPoint, endPoint, tolerance = 1e-6 }: LoftOptions = {},
+  { ruled = true, startPoint, endPoint, tolerance: _tolerance = 1e-6 }: LoftOptions = {},
   returnShell = false
 ): Result<Shape3D> {
   if (wires.length === 0 && !startPoint && !endPoint) {

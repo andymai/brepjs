@@ -2,7 +2,6 @@ export * from './precision.js';
 export * from './definitions.js';
 export * from './approximations.js';
 export * from './BoundingBox2d.js';
-export * from './ocWrapper.js';
 export * from './vectorOperations.js';
 export * from './intersections.js';
 export * from './Curve2D.js';
