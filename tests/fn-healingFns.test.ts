@@ -16,6 +16,7 @@ import {
   heal,
   autoHeal,
   isOk,
+  isErr,
   unwrap,
   measureVolume,
   measureArea,
@@ -23,7 +24,7 @@ import {
   isFace,
   isWire,
 } from '../src/index.js';
-import type { AutoHealOptions } from '../src/index.js';
+import type { AutoHealOptions, Solid, Face, Wire } from '../src/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -107,6 +108,35 @@ describe('healWire', () => {
     const result = healWire(wires[0], faces[0]);
     expect(isOk(result)).toBe(true);
     expect(isWire(unwrap(result))).toBe(true);
+  });
+});
+
+describe('type-guard error branches', () => {
+  it('healSolid returns NOT_A_SOLID when given a face', () => {
+    const faces = getFaces(box(10, 10, 10));
+    const result = healSolid(faces[0] as unknown as Solid);
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('NOT_A_SOLID');
+    }
+  });
+
+  it('healFace returns NOT_A_FACE when given a wire', () => {
+    const wires = getWires(box(10, 10, 10));
+    const result = healFace(wires[0] as unknown as Face);
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('NOT_A_FACE');
+    }
+  });
+
+  it('healWire returns NOT_A_WIRE when given a face', () => {
+    const faces = getFaces(box(10, 10, 10));
+    const result = healWire(faces[0] as unknown as Wire);
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('NOT_A_WIRE');
+    }
   });
 });
 

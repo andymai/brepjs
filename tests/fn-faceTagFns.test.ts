@@ -93,6 +93,19 @@ describe('face tagging', () => {
     expect(getTagMetadata(b, 'nope')).toBeUndefined();
   });
 
+  it('tag metadata propagates through boolean fuse', () => {
+    const b1 = box(10, 10, 10);
+    const topFaces = faceFinder().inDirection([0, 0, 1]).findAll(b1);
+    const tagged = tagFaces(b1, topFaces, 'top');
+    setTagMetadata(tagged, 'top', { material: 'steel', thickness: 2 });
+
+    const b2 = box(5, 5, 5);
+    const fused = unwrap(fuse(tagged, b2));
+
+    const meta = getTagMetadata(fused, 'top');
+    expect(meta).toEqual({ material: 'steel', thickness: 2 });
+  });
+
   it('supports callback selector', () => {
     const b = box(10, 10, 10);
     const allFaces = getFaces(b);

@@ -17,7 +17,14 @@ import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { applyGlue } from './shapeBooleans.js';
-import { propagateOrigins, propagateOriginsByHash, getWires, getEdges } from './shapeFns.js';
+import {
+  propagateOrigins,
+  propagateOriginsByHash,
+  getWires,
+  getEdges,
+  getVertices,
+} from './shapeFns.js';
+import { HASH_CODE_MAX } from '../core/constants.js';
 import { makeFace } from './surfaceBuilders.js';
 import { propagateFaceTags } from './faceTagFns.js';
 import { propagateColors } from './colorFns.js';
@@ -483,37 +490,58 @@ export function sectionToFace(
       return err(occtError('SECTION_FAILED', 'sectionToFace: section produced no geometry'));
     }
     const oc = getKernel().oc;
-    const remaining = [...edges];
-    while (remaining.length > 0) {
-      // Collect edges for this wire by testing connectivity with a probe builder
-      const first = remaining.shift();
-      if (!first) break;
-      const wireEdges = [first];
 
-      let added = true;
-      while (added && remaining.length > 0) {
-        added = false;
-        for (let i = 0; i < remaining.length; i++) {
-          const candidate = remaining[i];
-          if (!candidate) continue;
-          // Probe: create a temporary builder to test if edge connects
-          const probe = new oc.BRepBuilderAPI_MakeWire_1();
-          for (const e of wireEdges) {
-            probe.Add_1(e.wrapped);
-          }
-          probe.Add_1(candidate.wrapped);
-          const connects = probe.Error() === oc.BRepBuilderAPI_WireError.BRepBuilderAPI_WireDone;
-          probe.delete();
-          if (connects) {
-            wireEdges.push(candidate);
-            remaining.splice(i, 1);
-            added = true;
+    // Build vertex-hash → edge adjacency map for O(n) wire assembly
+    // (replaces the previous O(n³) probe-builder approach)
+    const vertexToEdges = new Map<number, typeof edges>();
+    const edgeVertexHashes = new Map<(typeof edges)[number], [number, number]>();
+    for (const edge of edges) {
+      const verts = getVertices(edge);
+      const h0 = verts[0] ? verts[0].wrapped.HashCode(HASH_CODE_MAX) : -1;
+      const h1 = verts.length > 1 && verts[1] ? verts[1].wrapped.HashCode(HASH_CODE_MAX) : h0;
+      edgeVertexHashes.set(edge, [h0, h1]);
+      for (const h of [h0, h1]) {
+        const bucket = vertexToEdges.get(h) ?? [];
+        bucket.push(edge);
+        vertexToEdges.set(h, bucket);
+      }
+    }
+
+    // Walk connected components via adjacency map
+    const visited = new Set<(typeof edges)[number]>();
+    for (const startEdge of edges) {
+      if (visited.has(startEdge)) continue;
+      const wireEdges = [startEdge];
+      visited.add(startEdge);
+
+      // Walk from both endpoints of the growing chain
+      const hashes = edgeVertexHashes.get(startEdge);
+      if (!hashes) continue;
+      const endpoints = [hashes[1], hashes[0]]; // [forward tip, backward tip]
+      for (let dir = 0; dir < 2; dir++) {
+        let tip = endpoints[dir];
+        if (tip === undefined) continue;
+        let found = true;
+        while (found) {
+          found = false;
+          const bucket = vertexToEdges.get(tip);
+          if (!bucket) break;
+          for (const candidate of bucket) {
+            if (visited.has(candidate)) continue;
+            const ch = edgeVertexHashes.get(candidate);
+            if (!ch) continue;
+            visited.add(candidate);
+            if (dir === 0) wireEdges.push(candidate);
+            else wireEdges.unshift(candidate);
+            // Advance tip to the other endpoint of the candidate
+            tip = ch[0] === tip ? ch[1] : ch[0];
+            found = true;
             break;
           }
         }
       }
 
-      // Build the final wire from collected edges
+      // Build wire from collected edges
       const wb = new oc.BRepBuilderAPI_MakeWire_1();
       for (const e of wireEdges) {
         wb.Add_1(e.wrapped);

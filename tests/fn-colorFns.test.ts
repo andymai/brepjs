@@ -28,6 +28,26 @@ describe('shape colors', () => {
     expect(c?.[3]).toBeCloseTo(1, 1);
   });
 
+  it('assigns color with 3-char hex shorthand', () => {
+    const b = box(10, 10, 10);
+    const colored = colorShape(b, '#f00');
+    const c = getShapeColor(colored);
+    expect(c).toBeDefined();
+    expect(c?.[0]).toBeCloseTo(1, 1);
+    expect(c?.[1]).toBeCloseTo(0, 1);
+    expect(c?.[2]).toBeCloseTo(0, 1);
+    expect(c?.[3]).toBeCloseTo(1, 1);
+  });
+
+  it('parses hex without # prefix', () => {
+    const b = box(10, 10, 10);
+    const colored = colorShape(b, '00ff00');
+    const c = getShapeColor(colored);
+    expect(c?.[0]).toBeCloseTo(0, 1);
+    expect(c?.[1]).toBeCloseTo(1, 1);
+    expect(c?.[2]).toBeCloseTo(0, 1);
+  });
+
   it('assigns color with RGB tuple', () => {
     const b = box(10, 10, 10);
     const colored = colorShape(b, [0.5, 0.5, 0.5]);
