@@ -28,22 +28,22 @@ export function toBREP(shape: AnyShape): string {
 
 /** Get the topology hash code of a shape. */
 export function getHashCode(shape: AnyShape): number {
-  return shape.wrapped.HashCode(HASH_CODE_MAX);
+  return getKernel().hashCode(shape.wrapped, HASH_CODE_MAX);
 }
 
 /** Check if a shape is null. */
 export function isEmpty(shape: AnyShape): boolean {
-  return shape.wrapped.IsNull();
+  return getKernel().isNull(shape.wrapped);
 }
 
 /** Check if two shapes are the same topological entity. */
 export function isSameShape(a: AnyShape, b: AnyShape): boolean {
-  return a.wrapped.IsSame(b.wrapped);
+  return getKernel().isSame(a.wrapped, b.wrapped);
 }
 
 /** Check if two shapes are geometrically equal. */
 export function isEqualShape(a: AnyShape, b: AnyShape): boolean {
-  return a.wrapped.IsEqual(b.wrapped);
+  return getKernel().isEqual(a.wrapped, b.wrapped);
 }
 
 /** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
@@ -76,7 +76,12 @@ function collectInputFaceHashes(inputs: AnyShape[]): number[] {
 export function translate<T extends AnyShape>(shape: T, v: Vec3): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().translateWithHistory(
-    shape.wrapped, v[0], v[1], v[2], inputFaceHashes, HASH_CODE_MAX
+    shape.wrapped,
+    v[0],
+    v[1],
+    v[2],
+    inputFaceHashes,
+    HASH_CODE_MAX
   );
   const result = castShape(resultShape) as T;
   propagateOriginsFromEvolution(evolution, [shape], result);
@@ -92,8 +97,12 @@ export function rotate<T extends AnyShape>(
 ): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().rotateWithHistory(
-    shape.wrapped, angle * DEG2RAD, inputFaceHashes, HASH_CODE_MAX,
-    [...direction], [...position]
+    shape.wrapped,
+    angle * DEG2RAD,
+    inputFaceHashes,
+    HASH_CODE_MAX,
+    [...direction],
+    [...position]
   );
   const result = castShape(resultShape) as T;
   propagateOriginsFromEvolution(evolution, [shape], result);
@@ -108,7 +117,11 @@ export function mirror<T extends AnyShape>(
 ): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().mirrorWithHistory(
-    shape.wrapped, [...planeOrigin], [...planeNormal], inputFaceHashes, HASH_CODE_MAX
+    shape.wrapped,
+    [...planeOrigin],
+    [...planeNormal],
+    inputFaceHashes,
+    HASH_CODE_MAX
   );
   const result = castShape(resultShape) as T;
   propagateOriginsFromEvolution(evolution, [shape], result);
@@ -119,7 +132,11 @@ export function mirror<T extends AnyShape>(
 export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3 = [0, 0, 0]): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().scaleWithHistory(
-    shape.wrapped, [...center], factor, inputFaceHashes, HASH_CODE_MAX
+    shape.wrapped,
+    [...center],
+    factor,
+    inputFaceHashes,
+    HASH_CODE_MAX
   );
   const result = castShape(resultShape) as T;
   propagateOriginsFromEvolution(evolution, [shape], result);
@@ -274,7 +291,12 @@ export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): 
   if (orthogonal) {
     const inputFaceHashes = collectInputFaceHashes([shape]);
     const { shape: resultShape, evolution } = getKernel().generalTransformWithHistory(
-      shape.wrapped, linear, translation, true, inputFaceHashes, HASH_CODE_MAX
+      shape.wrapped,
+      linear,
+      translation,
+      true,
+      inputFaceHashes,
+      HASH_CODE_MAX
     );
     const result = castShape(resultShape) as T;
     propagateOriginsFromEvolution(evolution, [shape], result);
@@ -325,8 +347,8 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
     return {
       type: 'rotate' as const,
       angle: op.angle,
-      axis: op.axis ? [...op.axis] as [number, number, number] : undefined,
-      center: op.center ? [...op.center] as [number, number, number] : undefined,
+      axis: op.axis ? ([...op.axis] as [number, number, number]) : undefined,
+      center: op.center ? ([...op.center] as [number, number, number]) : undefined,
     };
   });
   const { handle, dispose } = getKernel().composeTransform(kernelOps);
@@ -340,7 +362,10 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
 export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTransform): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().applyComposedTransformWithHistory(
-    shape.wrapped, composed.trsf, inputFaceHashes, HASH_CODE_MAX
+    shape.wrapped,
+    composed.trsf,
+    inputFaceHashes,
+    HASH_CODE_MAX
   );
   const result = castShape(resultShape) as T;
   propagateOriginsFromEvolution(evolution, [shape], result);
@@ -412,7 +437,7 @@ export function setShapeOrigin(shape: AnyShape, origin: number): void {
   const cache = getOrCreateCache(shape);
   const map = new Map<number, number>();
   for (const f of getFaces(shape)) {
-    map.set(f.wrapped.HashCode(HASH_CODE_MAX), origin);
+    map.set(getKernel().hashCode(f.wrapped, HASH_CODE_MAX), origin);
   }
   cache.faceOrigins = map;
 }
@@ -456,7 +481,11 @@ export function iterKernelList(
  * @param inputs - Source shapes whose face origins should propagate
  * @param result - The result shape to populate origins on
  */
-export function propagateOrigins(op: KernelMakeShapeLike, inputs: AnyShape[], result: AnyShape): void {
+export function propagateOrigins(
+  op: KernelMakeShapeLike,
+  inputs: AnyShape[],
+  result: AnyShape
+): void {
   // Collect all input face origins, caching each face's hash to avoid redundant WASM calls
   const inputOrigins: Array<{
     face: { HashCode(max: number): number };
@@ -467,7 +496,7 @@ export function propagateOrigins(op: KernelMakeShapeLike, inputs: AnyShape[], re
     const origins = getFaceOrigins(input);
     if (!origins) continue;
     for (const f of getFaces(input)) {
-      const hash = f.wrapped.HashCode(HASH_CODE_MAX);
+      const hash = getKernel().hashCode(f.wrapped, HASH_CODE_MAX);
       const origin = origins.get(hash);
       if (origin !== undefined) {
         inputOrigins.push({ face: f.wrapped, hash, origin });
@@ -577,7 +606,7 @@ export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): vo
 
   const resultMap = new Map<number, number>();
   for (const f of getFaces(result)) {
-    const hash = f.wrapped.HashCode(HASH_CODE_MAX);
+    const hash = getKernel().hashCode(f.wrapped, HASH_CODE_MAX);
     const origin = lookup.get(hash);
     if (origin !== undefined) {
       resultMap.set(hash, origin);

@@ -40,13 +40,22 @@ export const make2dThreePointArc = (
   endPoint: Point2D
 ): Curve2D => {
   const handle = getKernel().makeArc2dThreePoints(
-    startPoint[0], startPoint[1],
-    midPoint[0], midPoint[1],
-    endPoint[0], endPoint[1]
+    startPoint[0],
+    startPoint[1],
+    midPoint[0],
+    midPoint[1],
+    endPoint[0],
+    endPoint[1]
   );
-  const curve = new Curve2D(handle);
+  let curve = new Curve2D(handle);
   if (!samePoint(curve.firstPoint, startPoint)) {
-    curve.wrapped.get().SetTrim(curve.lastParameter, curve.firstParameter, true, true);
+    const trimmed = getKernel().trimCurve2d(
+      curve.wrapped,
+      curve.lastParameter,
+      curve.firstParameter
+    );
+    curve.delete();
+    curve = new Curve2D(trimmed);
   }
   return curve;
 };
@@ -62,13 +71,22 @@ export const make2dTangentArc = (
   endPoint: Point2D
 ): Curve2D => {
   const handle = getKernel().makeArc2dTangent(
-    startPoint[0], startPoint[1],
-    tangent[0], tangent[1],
-    endPoint[0], endPoint[1]
+    startPoint[0],
+    startPoint[1],
+    tangent[0],
+    tangent[1],
+    endPoint[0],
+    endPoint[1]
   );
-  const curve = new Curve2D(handle);
+  let curve = new Curve2D(handle);
   if (!samePoint(curve.firstPoint, startPoint)) {
-    curve.wrapped.get().SetTrim(curve.lastParameter, curve.firstParameter, true, true);
+    const trimmed = getKernel().trimCurve2d(
+      curve.wrapped,
+      curve.lastParameter,
+      curve.firstParameter
+    );
+    curve.delete();
+    curve = new Curve2D(trimmed);
   }
   return curve;
 };
@@ -95,7 +113,15 @@ export const make2dEllipse = (
   direct = true
 ): Curve2D => {
   return new Curve2D(
-    getKernel().makeEllipse2d(center[0], center[1], majorRadius, minorRadius, xDir[0], xDir[1], direct)
+    getKernel().makeEllipse2d(
+      center[0],
+      center[1],
+      majorRadius,
+      minorRadius,
+      xDir[0],
+      xDir[1],
+      direct
+    )
   );
 };
 
@@ -115,8 +141,15 @@ export const make2dEllipseArc = (
 ): Curve2D => {
   return new Curve2D(
     getKernel().makeEllipseArc2d(
-      center[0], center[1], majorRadius, minorRadius,
-      startAngle, endAngle, xDir[0], xDir[1], direct
+      center[0],
+      center[1],
+      majorRadius,
+      minorRadius,
+      startAngle,
+      endAngle,
+      xDir[0],
+      xDir[1],
+      direct
     )
   );
 };

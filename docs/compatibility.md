@@ -112,7 +112,7 @@ brepjs requires WebAssembly support:
 
 ### 2. Threading
 
-- Default (`brepjs_single`): OCCT operations are single-threaded and block the main thread
+- Default (`brepjs_single`): Kernel operations are single-threaded and block the main thread
 - Multi-threaded (`brepjs_threaded`): Parallel operations available, requires SharedArrayBuffer and cross-origin isolation (COOP/COEP headers)
 - Consider Web Workers for heavy computation in single-threaded mode
 

@@ -1,8 +1,5 @@
-import { findCurveType } from '../../core/definitionMaps.js';
-import { unwrap } from '../../core/result.js';
 import { bug } from '../../core/errors.js';
 import { getKernel2D } from '../../kernel/index.js';
-import { DisposalScope } from '../../core/memory.js';
 import { Curve2D } from './Curve2D.js';
 import { samePoint } from './vectorOperations.js';
 
@@ -27,7 +24,12 @@ export const approximateAsBSpline = (
   maxSegments = 200
 ): Curve2D => {
   const kernel = getKernel2D();
-  const handle = kernel.approximateCurve2dAsBSpline(curve.wrapped, tolerance, continuity, maxSegments);
+  const handle = kernel.approximateCurve2dAsBSpline(
+    curve.wrapped,
+    tolerance,
+    continuity,
+    maxSegments
+  );
   return new Curve2D(handle);
 };
 
@@ -38,11 +40,7 @@ export const approximateAsBSpline = (
  * @returns An array of Bezier `Curve2D` segments covering the original B-spline.
  */
 export const BSplineToBezier = (curve: Curve2D): Curve2D[] => {
-  using scope = new DisposalScope();
-  const adaptor = scope.register(curve.adaptor());
-
-  if (unwrap(findCurveType(adaptor.GetType())) !== 'BSPLINE_CURVE')
-    bug('BSplineToBezier', 'You can only convert a Bspline');
+  if (curve.geomType !== 'BSPLINE_CURVE') bug('BSplineToBezier', 'You can only convert a Bspline');
 
   const kernel = getKernel2D();
   const handles = kernel.decomposeBSpline2dToBeziers(curve.wrapped);
@@ -80,11 +78,10 @@ export function approximateAsSvgCompatibleCurve(
     maxSegments: 300,
   }
 ): Curve2D[] {
-  using scope = new DisposalScope();
+  const kernel = getKernel2D();
 
   return curves.flatMap((curve) => {
-    const adaptor = scope.register(curve.adaptor());
-    const curveType = unwrap(findCurveType(adaptor.GetType()));
+    const curveType = curve.geomType;
 
     if (
       curveType === 'ELLIPSE' ||
@@ -98,10 +95,9 @@ export function approximateAsSvgCompatibleCurve(
     }
 
     if (curveType === 'BEZIER_CURVE') {
-      const b = adaptor.Bezier().get();
-      const deg = b.Degree();
+      const deg = kernel.getCurve2dBezierDegree(curve.wrapped);
 
-      if ([1, 2, 3].includes(deg)) {
+      if (deg !== null && [1, 2, 3].includes(deg)) {
         return curve;
       }
     }
@@ -117,9 +113,6 @@ export function approximateAsSvgCompatibleCurve(
       options.continuity,
       options.maxSegments
     );
-    return approximateAsSvgCompatibleCurve(
-      BSplineToBezier(bspline),
-      options
-    );
+    return approximateAsSvgCompatibleCurve(BSplineToBezier(bspline), options);
   });
 }

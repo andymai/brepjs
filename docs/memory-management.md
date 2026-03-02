@@ -1,10 +1,10 @@
 # Memory Management
 
-brepjs wraps OpenCascade (OCCT) objects which require explicit memory management. This guide explains how memory is handled and how to avoid leaks.
+brepjs wraps kernel objects allocated in WebAssembly memory which require explicit cleanup. This guide explains how memory is handled and how to avoid leaks.
 
 ## Overview
 
-OCCT objects are allocated in WebAssembly memory and must be explicitly freed. brepjs provides several mechanisms:
+Kernel objects are allocated in WASM linear memory and must be explicitly freed. brepjs provides several mechanisms:
 
 1. **`Symbol.dispose`** -- Modern TC39 explicit resource management
 2. **`gcWithScope`** -- Scoped cleanup for temporary objects

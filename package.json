@@ -1,10 +1,10 @@
 {
   "name": "brepjs",
   "version": "8.8.9",
-  "description": "Web CAD library built on OpenCascade",
+  "description": "Web CAD library with pluggable geometry kernel",
   "keywords": [
     "cad",
-    "opencascade",
+    "geometry-kernel",
     "brep",
     "STEP",
     "STL"
@@ -210,6 +210,11 @@
   },
   "peerDependencies": {
     "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0"
+  },
+  "peerDependenciesMeta": {
+    "brepjs-opencascade": {
+      "optional": true
+    }
   },
   "dependencies": {
     "flatbush": "4.5.0",

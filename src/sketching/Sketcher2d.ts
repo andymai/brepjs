@@ -20,7 +20,6 @@ import {
   polarAngle2d,
   samePoint,
   distance2d,
-  axis2d,
   polarToCartesian,
   make2dSegmentCurve,
   make2dTangentArc,
@@ -509,10 +508,20 @@ export class BaseSketcher2d {
       this.pointer[1] - this.firstPoint[1],
     ];
 
-    const mirrorAxis = axis2d(this._convertToUV(this.pointer), this._convertToUV(startToEndVector));
+    const uvOrigin = this._convertToUV(this.pointer);
+    const uvDir = this._convertToUV(startToEndVector);
 
     const mirroredCurves = this.pendingCurves.map(
-      (c) => new Curve2D(c.innerCurve.Mirrored_2(mirrorAxis))
+      (c) =>
+        new Curve2D(
+          getKernel().mirrorCurve2dAcrossAxis(
+            c.wrapped,
+            uvOrigin[0],
+            uvOrigin[1],
+            uvDir[0],
+            uvDir[1]
+          )
+        )
     );
     mirroredCurves.reverse();
     for (const c of mirroredCurves) {

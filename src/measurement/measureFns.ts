@@ -15,7 +15,7 @@ import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
 // ---------------------------------------------------------------------------
 
 function assertShapeNotNull(shape: { wrapped: { IsNull(): boolean } }, fn: string): void {
-  if (shape.wrapped.IsNull()) {
+  if (getKernel().isNull(shape.wrapped)) {
     throw new Error(`${fn}: shape is a null shape`);
   }
 }

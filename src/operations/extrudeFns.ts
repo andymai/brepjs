@@ -62,7 +62,7 @@ function makeHelixWire(
  * @see {@link extrude!basicFaceExtrusion | basicFaceExtrusion} for the OOP API equivalent.
  */
 export function extrude(face: Face, extrusionVec: Vec3): Result<Solid> {
-  if (face.wrapped.IsNull()) {
+  if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrude: face is a null shape'));
   }
   if (vecLength(extrusionVec) === 0) {
@@ -104,7 +104,7 @@ export function revolve(
   direction: Vec3 = [0, 0, 1],
   angle = 360
 ): Result<Shape3D> {
-  if (face.wrapped.IsNull()) {
+  if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'revolve: face is a null shape'));
   }
 

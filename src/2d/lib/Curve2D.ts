@@ -1,7 +1,6 @@
 import type { KernelType } from '../../kernel/types.js';
 
 import type { CurveType } from '../../core/definitionMaps.js';
-import { findCurveType } from '../../core/definitionMaps.js';
 import { type Result, ok, err, unwrap } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';
@@ -71,11 +70,6 @@ export class Curve2D {
     return `${this.geomType} ${reprPnt(this.firstPoint)} - ${reprPnt(this.lastPoint)}`;
   }
 
-  /** Access the underlying kernel `kernel 2D curve` (unwrapped from its handle). */
-  get innerCurve(): KernelType {
-    return this.wrapped.get();
-  }
-
   /** Serialize this curve to a string that can be restored with {@link deserializeCurve2D}. */
   serialize(): string {
     return getKernel().serializeCurve2d(this.wrapped);
@@ -83,10 +77,7 @@ export class Curve2D {
 
   /** Evaluate the curve at the given parameter, returning the 2D point. */
   value(parameter: number): Point2D {
-    const p = this.innerCurve.Value(parameter);
-    const v: Point2D = [p.X(), p.Y()];
-    p.delete();
-    return v;
+    return getKernel().evaluateCurve2d(this.wrapped, parameter);
   }
 
   /** Return the point at the start of the curve (cached after first access). */
@@ -107,30 +98,22 @@ export class Curve2D {
 
   /** Return the parameter value at the start of the curve. */
   get firstParameter(): number {
-    return this.innerCurve.FirstParameter();
+    return getKernel().getCurve2dBounds(this.wrapped).first;
   }
 
   /** Return the parameter value at the end of the curve. */
   get lastParameter(): number {
-    return this.innerCurve.LastParameter();
-  }
-
-  /** Create a `Geom2dAdaptor_Curve` for algorithmic queries (caller must delete). */
-  adaptor(): KernelType {
-    return getKernel().createCurve2dAdaptor(this.wrapped);
+    return getKernel().getCurve2dBounds(this.wrapped).last;
   }
 
   /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
   get geomType(): CurveType {
-    const adaptor = this.adaptor();
-    const curveType = unwrap(findCurveType(adaptor.GetType()));
-    adaptor.delete();
-    return curveType;
+    return getKernel().getCurve2dType(this.wrapped) as CurveType;
   }
 
   /** Create an independent deep copy of this curve. */
   clone(): Curve2D {
-    const cloned = new Curve2D(this.innerCurve.Copy());
+    const cloned = new Curve2D(getKernel().copyCurve2d(this.wrapped));
     // Copy cached endpoint values to avoid redundant recalculation
     cloned._firstPoint = this._firstPoint;
     cloned._lastPoint = this._lastPoint;
@@ -139,7 +122,7 @@ export class Curve2D {
 
   /** Reverse the orientation of this curve in place. */
   reverse(): void {
-    this.innerCurve.Reverse();
+    getKernel().reverseCurve2d(this.wrapped);
     // Swap cached points (first becomes last, last becomes first)
     const tmp = this._firstPoint;
     this._firstPoint = this._lastPoint;
@@ -161,9 +144,12 @@ export class Curve2D {
     let curveDistance;
     try {
       curveDistance = getKernel().distanceBetweenCurves2d(
-        this.wrapped, curve.wrapped,
-        this.firstParameter, this.lastParameter,
-        curve.firstParameter, curve.lastParameter
+        this.wrapped,
+        curve.wrapped,
+        this.firstParameter,
+        this.lastParameter,
+        curve.firstParameter,
+        curve.lastParameter
       );
     } catch {
       curveDistance = Infinity;

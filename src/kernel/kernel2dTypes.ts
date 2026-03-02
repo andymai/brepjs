@@ -42,26 +42,39 @@ export interface Kernel2DCapability {
   makeLine2d(x1: number, y1: number, x2: number, y2: number): Curve2dHandle;
   makeCircle2d(cx: number, cy: number, radius: number, sense?: boolean): Curve2dHandle;
   makeArc2dThreePoints(
-    x1: number, y1: number,
-    xm: number, ym: number,
-    x2: number, y2: number
+    x1: number,
+    y1: number,
+    xm: number,
+    ym: number,
+    x2: number,
+    y2: number
   ): Curve2dHandle;
   makeArc2dTangent(
-    startX: number, startY: number,
-    tangentX: number, tangentY: number,
-    endX: number, endY: number
+    startX: number,
+    startY: number,
+    tangentX: number,
+    tangentY: number,
+    endX: number,
+    endY: number
   ): Curve2dHandle;
   makeEllipse2d(
-    cx: number, cy: number,
-    majorRadius: number, minorRadius: number,
-    xDirX?: number, xDirY?: number,
+    cx: number,
+    cy: number,
+    majorRadius: number,
+    minorRadius: number,
+    xDirX?: number,
+    xDirY?: number,
     sense?: boolean
   ): Curve2dHandle;
   makeEllipseArc2d(
-    cx: number, cy: number,
-    majorRadius: number, minorRadius: number,
-    startAngle: number, endAngle: number,
-    xDirX?: number, xDirY?: number,
+    cx: number,
+    cy: number,
+    majorRadius: number,
+    minorRadius: number,
+    startAngle: number,
+    endAngle: number,
+    xDirX?: number,
+    xDirY?: number,
     sense?: boolean
   ): Curve2dHandle;
   makeBezier2d(points: [number, number][]): Curve2dHandle;
@@ -98,13 +111,17 @@ export interface Kernel2DCapability {
   mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle;
   mirrorCurve2dAcrossAxis(
     curve: Curve2dHandle,
-    originX: number, originY: number,
-    dirX: number, dirY: number
+    originX: number,
+    originY: number,
+    dirX: number,
+    dirY: number
   ): Curve2dHandle;
   affinityTransform2d(
     curve: Curve2dHandle,
-    axisOriginX: number, axisOriginY: number,
-    axisDirX: number, axisDirY: number,
+    axisOriginX: number,
+    axisOriginY: number,
+    axisDirX: number,
+    axisDirY: number,
     ratio: number
   ): Curve2dHandle;
 
@@ -113,18 +130,23 @@ export interface Kernel2DCapability {
   createIdentityGTrsf2d(): KernelType;
   /** Create a gp_GTrsf2d with affinity along an axis. Caller must dispose. */
   createAffinityGTrsf2d(
-    originX: number, originY: number,
-    dirX: number, dirY: number,
+    originX: number,
+    originY: number,
+    dirX: number,
+    dirY: number,
     ratio: number
   ): KernelType;
   /** Create a gp_GTrsf2d from a translation. Caller must dispose. */
   createTranslationGTrsf2d(dx: number, dy: number): KernelType;
   /** Create a gp_GTrsf2d from a point or axis mirror. Caller must dispose. */
   createMirrorGTrsf2d(
-    cx: number, cy: number,
+    cx: number,
+    cy: number,
     mode: 'point' | 'axis',
-    originX?: number, originY?: number,
-    dirX?: number, dirY?: number
+    originX?: number,
+    originY?: number,
+    dirX?: number,
+    dirY?: number
   ): KernelType;
   /** Create a gp_GTrsf2d from a rotation. Caller must dispose. */
   createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType;
@@ -148,12 +170,16 @@ export interface Kernel2DCapability {
   };
   projectPointOnCurve2d(
     curve: Curve2dHandle,
-    x: number, y: number
+    x: number,
+    y: number
   ): { param: number; distance: number } | null;
   distanceBetweenCurves2d(
-    c1: Curve2dHandle, c2: Curve2dHandle,
-    p1Start: number, p1End: number,
-    p2Start: number, p2End: number
+    c1: Curve2dHandle,
+    c2: Curve2dHandle,
+    p1Start: number,
+    p1End: number,
+    p2Start: number,
+    p2End: number
   ): number;
 
   // --- 2D Approximation ---
@@ -169,18 +195,30 @@ export interface Kernel2DCapability {
   createBoundingBox2d(): BBox2dHandle;
   addCurveToBBox2d(bbox: BBox2dHandle, curve: Curve2dHandle, tolerance: number): void;
   getBBox2dBounds(bbox: BBox2dHandle): {
-    xMin: number; yMin: number; xMax: number; yMax: number;
+    xMin: number;
+    yMin: number;
+    xMax: number;
+    yMax: number;
   };
+  mergeBBox2d(target: BBox2dHandle, other: BBox2dHandle): void;
+  isBBox2dOut(a: BBox2dHandle, b: BBox2dHandle): boolean;
+  isBBox2dOutPoint(bbox: BBox2dHandle, x: number, y: number): boolean;
 
   // --- 2D Type extraction ---
   getCurve2dCircleData(curve: Curve2dHandle): {
-    cx: number; cy: number; radius: number; isDirect: boolean;
+    cx: number;
+    cy: number;
+    radius: number;
+    isDirect: boolean;
   } | null;
   getCurve2dEllipseData(curve: Curve2dHandle): {
-    majorRadius: number; minorRadius: number;
-    xAxisAngle: number; isDirect: boolean;
+    majorRadius: number;
+    minorRadius: number;
+    xAxisAngle: number;
+    isDirect: boolean;
   } | null;
   getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null;
+  getCurve2dBezierDegree(curve: Curve2dHandle): number | null;
   getCurve2dBSplineData(curve: Curve2dHandle): {
     poles: [number, number][];
     knots: number[];
@@ -203,10 +241,7 @@ export interface Kernel2DCapability {
     planeZ: [number, number, number],
     planeX: [number, number, number]
   ): KernelShape;
-  buildEdgeOnSurface(
-    curve: Curve2dHandle,
-    surface: KernelType
-  ): KernelShape;
+  buildEdgeOnSurface(curve: Curve2dHandle, surface: KernelType): KernelShape;
   extractSurfaceFromFace(face: KernelShape): KernelType;
   extractCurve2dFromEdge(edge: KernelShape, face: KernelShape): Curve2dHandle;
   buildCurves3d(wire: KernelShape): void;
@@ -232,8 +267,8 @@ export interface Kernel2DCapability {
 // ---------------------------------------------------------------------------
 
 /** Check if the kernel supports 2D geometry operations. */
-export function supportsKernel2D(
-  kernel: { oc?: unknown }
-): kernel is { oc: unknown } & Kernel2DCapability {
+export function supportsKernel2D(kernel: {
+  oc?: unknown;
+}): kernel is { oc: unknown } & Kernel2DCapability {
   return 'makeLine2d' in kernel;
 }

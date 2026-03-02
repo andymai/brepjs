@@ -23,9 +23,7 @@ const step = unwrap(exportSTEP(part));
 
 ## Why brepjs?
 
-Most CAD libraries for the web are mesh-based — they work with triangles, not real geometry. brepjs gives you boundary representation (B-Rep) modeling powered by OpenCascade's WASM build. That means exact geometry, proper booleans, fillets that actually work, and export to formats that real CAD software can open.
-
-Use it for parametric modeling, 3D configurators, CAD file processing, or anywhere you need solid geometry in JavaScript.
+Most CAD libraries for the web are mesh-based — they work with triangles, not real geometry. brepjs gives you boundary representation (B-Rep) modeling with a pluggable geometry kernel. Exact booleans, fillets, and export to formats real CAD software can open.
 
 ## Install
 
@@ -232,25 +230,18 @@ import { writeFileSync } from 'fs';
 writeFileSync('output.step', Buffer.from(await outputBlob.arrayBuffer()));
 ```
 
-### Custom WASM kernel
+### Custom geometry kernel
 
-`initFromOC()` accepts any OpenCascade WASM instance, enabling custom builds:
+brepjs is kernel-agnostic — you can register alternative geometry kernels at runtime:
 
 ```typescript
-import { initFromOC, box } from 'brepjs';
+import { registerKernel, withKernel, box } from 'brepjs';
 
-// Standard build
-import opencascade from 'brepjs-opencascade';
-const oc = await opencascade();
-initFromOC(oc);
-
-// Or use a custom/alternative OpenCascade WASM build
-import customOC from 'my-custom-opencascade';
-const customKernel = await customOC({ locateFile: (f) => `/wasm/${f}` });
-initFromOC(customKernel); // same API — any compatible OC instance works
+registerKernel('my-kernel', myAdapter);
+const result = box(10, 10, 10); // uses your kernel
 ```
 
-The kernel abstraction layer in `src/kernel/` translates brepjs calls to OCCT operations, so any WASM build exposing the standard OpenCascade API is compatible.
+The kernel abstraction layer in `src/kernel/` ensures brepjs code never touches kernel internals directly. See the [Custom Kernel Guide](docs/kernel-swap.md) for writing your own `KernelAdapter`.
 
 ### Parametric variations
 

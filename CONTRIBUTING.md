@@ -1,6 +1,6 @@
 # Contributing to brepjs
 
-Thank you for your interest in contributing to brepjs, a Web CAD library built on OpenCascade! This guide will help you get started.
+Thank you for your interest in contributing to brepjs, a kernel-agnostic Web CAD library! This guide will help you get started.
 
 ## Getting Started
 
@@ -31,12 +31,12 @@ brepjs uses a four-layer architecture with enforced import boundaries to maintai
 
 ### Layer Structure
 
-| Layer | Directories | Purpose | Can Import From |
-|-------|------------|---------|-----------------|
-| 0 | `kernel/`, `utils/` | Foundation & WASM bindings | External only |
-| 1 | `core/` | Memory management, geometry constants | Layers 0 |
-| 2 | `topology/`, `operations/`, `2d/`, `query/`, `measurement/`, `io/` | Domain logic & features | Layers 0-2 |
-| 3 | `sketching/`, `text/`, `projection/` | High-level API | Layers 0-3 |
+| Layer | Directories                                                        | Purpose                               | Can Import From |
+| ----- | ------------------------------------------------------------------ | ------------------------------------- | --------------- |
+| 0     | `kernel/`, `utils/`                                                | Foundation & WASM bindings            | External only   |
+| 1     | `core/`                                                            | Memory management, geometry constants | Layers 0        |
+| 2     | `topology/`, `operations/`, `2d/`, `query/`, `measurement/`, `io/` | Domain logic & features               | Layers 0-2      |
+| 3     | `sketching/`, `text/`, `projection/`                               | High-level API                        | Layers 0-3      |
 
 **Key principle**: Imports flow **downward only** (higher layers can import from lower layers, never the reverse).
 
@@ -127,10 +127,10 @@ git commit -m "docs: update architecture guide"
 
 ### TypeScript Strict Mode
 
-- **No `any`** — Use proper types. If you must use `any` for OCCT type gaps, add an ESLint disable comment with a reason:
+- **No `any`** — Use proper types. If you must use `any` for WASM type gaps, add an ESLint disable comment with a reason:
 
 ```typescript
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT doesn't export geometry type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel WASM binding lacks type
 const shape: any = getKernel().BRepBuilderAPI_Box(...);
 ```
 
@@ -213,12 +213,12 @@ npm run test:affected    # Run only tests affected by changes
 
 brepjs enforces minimum coverage thresholds in pre-commit hooks and CI:
 
-| Metric     | Threshold | Why This Threshold?                               |
-|-----------|-----------|---------------------------------------------------|
-| Functions | **83%**   | Ensures all exported APIs are tested             |
-| Statements| **73%**   | Accounts for error handling branches             |
-| Branches  | **64%**   | Allows defensive error paths                     |
-| Lines     | **73%**   | Baseline code execution coverage                 |
+| Metric     | Threshold | Why This Threshold?                  |
+| ---------- | --------- | ------------------------------------ |
+| Functions  | **83%**   | Ensures all exported APIs are tested |
+| Statements | **73%**   | Accounts for error handling branches |
+| Branches   | **64%**   | Allows defensive error paths         |
+| Lines      | **73%**   | Baseline code execution coverage     |
 
 Run `npm run test:coverage` to see a detailed coverage report.
 
@@ -261,39 +261,44 @@ When writing code, follow these established patterns:
 
 ### Kernel Access
 
-Use `getKernel()` from `src/kernel/index.ts` for new OCCT operations:
+All kernel operations go through `getKernel()` from `src/kernel/index.ts`:
 
 ```typescript
 import { getKernel } from '../kernel/index.js';
 
 const kernel = getKernel();
-const box = kernel.BRepBuilderAPI_Box(x, y, z);
+const box = kernel.makeBox(10, 10, 10);
+const hash = kernel.hashCode(shape.wrapped, HASH_CODE_MAX);
 ```
 
-For backward compatibility, `getOC()` from `src/oclib.ts` delegates to the kernel.
+**Layer 2+ code must never call methods on `.wrapped` directly** — always pass handles to `getKernel()` methods. This is enforced by an ESLint rule. Only code in `src/kernel/` may access raw kernel APIs.
 
-### Shape Methods
+### Functional API
 
-Shape methods (e.g., `fuse`, `cut`) should delegate to standalone functions in the `operations/` layer:
+Prefer standalone functions in `*Fns.ts` files over class methods:
 
 ```typescript
-// In core/shape.ts
-cut(other: Shape): Shape {
-  return cut(this, other);  // Delegates to operations/cut.ts
-}
+// ✅ Preferred — functional API
+import { fuse } from '../topology/booleanFns.js';
+const result = fuse(solid1, solid2);
+
+// ❌ Avoid — class API (legacy)
+solid1.fuse(solid2);
 ```
 
 ### WASM Dependency
 
-The WASM binding (`brepjs-opencascade`) is an external peer dependency, not bundled. It's initialized at runtime by users:
+The WASM binding (`brepjs-opencascade`) is an external peer dependency, not bundled. It's initialized at runtime:
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
-import { setOC } from 'brepjs';
+import { initFromOC } from 'brepjs';
 
 const oc = await opencascade();
-setOC(oc);  // Initialize the kernel
+initFromOC(oc); // Registers default kernel
 ```
+
+Custom kernels can be registered with `registerKernel()` — see [Custom Kernel Guide](docs/kernel-swap.md).
 
 ## Where to Ask Questions
 

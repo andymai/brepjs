@@ -32,7 +32,7 @@ type KernelType = any;
 // ---------------------------------------------------------------------------
 
 function validateShape3D(shape: Shape3D, label: string): Result<undefined> {
-  if (shape.wrapped.IsNull()) {
+  if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
   }
   return ok(undefined);
@@ -127,13 +127,13 @@ export function fuse(
   if (isErr(checkB)) return checkB;
   const inputFaceHashes = collectInputFaceHashes([a, b]);
   const { shape: resultShape, evolution } = getKernel().fuseWithHistory(
-    a.wrapped, b.wrapped, inputFaceHashes, HASH_CODE_MAX, { optimisation, simplify }
+    a.wrapped,
+    b.wrapped,
+    inputFaceHashes,
+    HASH_CODE_MAX,
+    { optimisation, simplify }
   );
-  const fuseResult = castToShape3D(
-    resultShape,
-    'FUSE_NOT_3D',
-    'Fuse did not produce a 3D shape'
-  );
+  const fuseResult = castToShape3D(resultShape, 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
   if (fuseResult.ok) {
     propagateOriginsFromEvolution(evolution, [a, b], fuseResult.value);
     propagateFaceTagsFromEvolution(evolution, [a, b], fuseResult.value);
@@ -167,7 +167,11 @@ export function cut(
   if (isErr(checkTool)) return checkTool;
   const inputFaceHashes = collectInputFaceHashes([base, tool]);
   const { shape: resultShape, evolution } = getKernel().cutWithHistory(
-    base.wrapped, tool.wrapped, inputFaceHashes, HASH_CODE_MAX, { optimisation, simplify }
+    base.wrapped,
+    tool.wrapped,
+    inputFaceHashes,
+    HASH_CODE_MAX,
+    { optimisation, simplify }
   );
   const cutResult = castToShape3D(resultShape, 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
   if (cutResult.ok) {
@@ -198,7 +202,11 @@ export function intersect(
   if (isErr(checkB)) return checkB;
   const inputFaceHashes = collectInputFaceHashes([a, b]);
   const { shape: resultShape, evolution } = getKernel().intersectWithHistory(
-    a.wrapped, b.wrapped, inputFaceHashes, HASH_CODE_MAX, { simplify }
+    a.wrapped,
+    b.wrapped,
+    inputFaceHashes,
+    HASH_CODE_MAX,
+    { simplify }
   );
   const intResult = castToShape3D(
     resultShape,
@@ -339,7 +347,11 @@ export function cutAll(
   const allInputs = [base, ...tools];
   const inputFaceHashes = collectInputFaceHashes(allInputs);
   const { shape: resultShape, evolution } = getKernel().cutWithHistory(
-    base.wrapped, toolCompound, inputFaceHashes, HASH_CODE_MAX, { optimisation, simplify }
+    base.wrapped,
+    toolCompound,
+    inputFaceHashes,
+    HASH_CODE_MAX,
+    { optimisation, simplify }
   );
   // Dispose the temporary compound
   toolCompound.delete();
@@ -412,7 +424,7 @@ export function section(
   plane: PlaneInput,
   { approximation = true, planeSize = 1e4 }: { approximation?: boolean; planeSize?: number } = {}
 ): Result<AnyShape> {
-  if (shape.wrapped.IsNull()) {
+  if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'section: shape is a null shape'));
   }
 
@@ -466,8 +478,9 @@ export function sectionToFace(
     const edgeVertexHashes = new Map<(typeof edges)[number], [number, number]>();
     for (const edge of edges) {
       const verts = getVertices(edge);
-      const h0 = verts[0] ? verts[0].wrapped.HashCode(HASH_CODE_MAX) : -1;
-      const h1 = verts.length > 1 && verts[1] ? verts[1].wrapped.HashCode(HASH_CODE_MAX) : h0;
+      const h0 = verts[0] ? getKernel().hashCode(verts[0].wrapped, HASH_CODE_MAX) : -1;
+      const h1 =
+        verts.length > 1 && verts[1] ? getKernel().hashCode(verts[1].wrapped, HASH_CODE_MAX) : h0;
       edgeVertexHashes.set(edge, [h0, h1]);
       for (const h of [h0, h1]) {
         const bucket = vertexToEdges.get(h) ?? [];
@@ -557,12 +570,12 @@ export function sectionToFace(
 export function split(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
   if (tools.length === 0) return ok(shape);
 
-  if (shape.wrapped.IsNull()) {
+  if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'split: shape is a null shape'));
   }
   for (let i = 0; i < tools.length; i++) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
-    if (tools[i]!.wrapped.IsNull()) {
+    if (getKernel().isNull(tools[i]!.wrapped)) {
       return err(
         validationError(
           BrepErrorCode.NULL_SHAPE_INPUT,

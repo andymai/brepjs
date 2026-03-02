@@ -6,7 +6,7 @@ Best practices for achieving optimal performance with brepjs.
 
 ### Use gcWithScope for Scoped Cleanup
 
-The `gcWithScope` function provides automatic cleanup of OCCT objects within a scope:
+The `gcWithScope` function provides automatic cleanup of kernel objects within a scope:
 
 ```typescript
 import { gcWithScope, box, fuse } from 'brepjs';
@@ -25,7 +25,7 @@ function buildComplexShape() {
 
 **Key patterns:**
 
-- Wrap intermediate OCCT objects with `r()` to register them for cleanup
+- Wrap intermediate kernel objects with `r()` to register them for cleanup
 - Objects returned from the function escape the scope and remain valid
 - Cleanup happens automatically when the scope exits
 
@@ -193,7 +193,7 @@ for (let i = 0; i < 1000; i++) {
 }
 ```
 
-### 2. Storing Raw OCCT Objects
+### 2. Storing Raw Kernel Objects
 
 ```typescript
 // ❌ Raw objects may be garbage collected

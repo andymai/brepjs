@@ -1,10 +1,9 @@
-import { DisposalScope, registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
+import { registerForCleanup, unregisterFromCleanup } from '../../core/disposal.js';
 import { getKernel2D } from '../../kernel/index.js';
 import type { KernelType } from '../../kernel/types.js';
 
 import type { Point2D } from './definitions.js';
 import { reprPnt } from './utils.js';
-import { pnt } from './ocWrapper.js';
 
 /**
  * Axis-aligned 2D bounding box backed by an kernel `Bnd_Box2d`.
@@ -42,15 +41,10 @@ export class BoundingBox2d {
 
   /** Return the `[min, max]` corner points of the bounding box. */
   get bounds(): [Point2D, Point2D] {
-    const xMin = { current: 0 };
-    const yMin = { current: 0 };
-    const xMax = { current: 0 };
-    const yMax = { current: 0 };
-
-    this.wrapped.Get(xMin, yMin, xMax, yMax);
+    const { xMin, yMin, xMax, yMax } = getKernel2D().getBBox2dBounds(this.wrapped);
     return [
-      [xMin.current, yMin.current],
-      [xMax.current, yMax.current],
+      [xMin, yMin],
+      [xMax, yMax],
     ];
   }
 
@@ -90,18 +84,16 @@ export class BoundingBox2d {
 
   /** Expand this bounding box to include `other`. */
   add(other: BoundingBox2d) {
-    this.wrapped.Add_1(other.wrapped);
+    getKernel2D().mergeBBox2d(this.wrapped, other.wrapped);
   }
 
   /** Test whether this bounding box and `other` are completely disjoint. */
   isOut(other: BoundingBox2d): boolean {
-    return this.wrapped.IsOut_4(other.wrapped);
+    return getKernel2D().isBBox2dOut(this.wrapped, other.wrapped);
   }
 
   /** Test whether the given point lies inside (or on the boundary of) this box. */
   containsPoint(other: Point2D): boolean {
-    using scope = new DisposalScope();
-    const point = scope.register(pnt(other));
-    return !this.wrapped.IsOut_1(point);
+    return !getKernel2D().isBBox2dOutPoint(this.wrapped, other[0], other[1]);
   }
 }

@@ -73,8 +73,7 @@ export function faceOrientation(face: Face): 'forward' | 'backward' {
 
 /** Flip the orientation of a face. Returns a new face. */
 export function flipFaceOrientation(face: Face): Face {
-   
-  return castShape(face.wrapped.Reversed()) as Face;
+  return castShape(getKernel().reverseShape(face.wrapped)) as Face;
 }
 
 // ---------------------------------------------------------------------------

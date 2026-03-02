@@ -1,6 +1,6 @@
 # Core
 
-Layer 1 foundation providing memory management, immutable geometry primitives, Result types, error handling, and OCCT boundary conversions.
+Layer 1 foundation providing memory management, immutable geometry primitives, Result types, error handling, and kernel boundary conversions.
 
 ## Architecture
 
@@ -13,8 +13,8 @@ graph TB
         planeOps[planeOps.ts<br/>Pure plane operations]
     end
 
-    subgraph "OCCT Boundary"
-        occtBoundary[occtBoundary.ts<br/>Vec3 ↔ gp_* conversions]
+    subgraph "Kernel Boundary"
+        occtBoundary[occtBoundary.ts<br/>Vec3 ↔ kernel type conversions<br/><i>internal to abstraction layer</i>]
     end
 
     subgraph "Memory Management"
@@ -64,17 +64,17 @@ graph TB
 | `vecOps.ts`          | Pure vector math operations (add, cross, normalize, etc.)          | `types.ts`                                                  |
 | `planeTypes.ts`      | `Plane` interface, `PlaneName` union, `PlaneInput`                 | `types.ts`                                                  |
 | `planeOps.ts`        | Pure plane operations (create, transform, coord conversion)        | `types.ts`, `planeTypes.ts`, `vecOps.ts`, `occtBoundary.ts` |
-| `occtBoundary.ts`    | Bridge between Vec3/Plane and OCCT gp\_\* types                    | `types.ts`, `kernel/`                                       |
+| `occtBoundary.ts`    | Bridge between Vec3/Plane and kernel geometry types                | `types.ts`, `kernel/`                                       |
 | `disposal.ts`        | TC39 `Symbol.dispose` resource management + GC safety net          | `kernel/types.js`                                           |
 | `shapeTypes.ts`      | Branded shape types (`Vertex`, `Edge`, `Solid`, etc.)              | `disposal.ts`, `kernel/`                                    |
 | `result.ts`          | Rust-style `Result<T,E>` for error handling                        | None                                                        |
 | `errors.ts`          | `BrepError` types and constructor functions                        | `utils/bug.js`                                              |
 | `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                              | None                                                        |
-| `definitionMaps.ts`  | `CurveType` union, lazy OCCT enum mappings                         | None                                                        |
+| `definitionMaps.ts`  | `CurveType` union, lazy kernel enum mappings                       | None                                                        |
 | `kernelCall.ts`      | `kernelCall`, `kernelCallRaw`, `kernelCallScoped` wrappers         | `kernel/`, `disposal.ts`, `result.ts`                       |
 | `memory.ts`          | Re-export hub for disposal utilities                               | `disposal.ts`                                               |
 | `geometry.ts`        | Re-export hub + legacy `Vector`, `Plane`, `Transformation` classes | All above                                                   |
-| `geometryHelpers.ts` | `makePlane` factory + `mirror` OCCT helper                         | `planeOps.ts`, `vecOps.ts`                                  |
+| `geometryHelpers.ts` | `makePlane` factory + `mirror` kernel helper                       | `planeOps.ts`, `vecOps.ts`                                  |
 
 ## Geometry Primitives (Functional, Immutable)
 
@@ -169,7 +169,7 @@ type PlaneInput = Plane | PlaneName;
 ```typescript
 createPlane(
   origin: Vec3,
-  xDirection: Vec3 | null = null,  // Auto-derived from OCCT if null
+  xDirection: Vec3 | null = null,  // Auto-derived from kernel if null
   normal: Vec3 = [0, 0, 1]
 ): Plane
 
@@ -195,9 +195,9 @@ translatePlane(plane, offset); // Move by vector
 pivotPlane(plane, angleDeg, axis); // Rotate plane around axis
 ```
 
-## OCCT Boundary Layer (`occtBoundary.ts`)
+## Kernel Boundary Layer (`occtBoundary.ts`)
 
-Bridges brepjs functional geometry with OCCT's mutable gp\_\* types. **Critical:** All OCCT objects are temporary and require manual cleanup.
+Bridges brepjs functional geometry with kernel-internal mutable types. **Critical:** All kernel boundary objects are temporary and require manual cleanup.
 
 ### Direct Conversions (Caller Must Delete)
 
@@ -228,7 +228,7 @@ withOcDir<T>(v: Vec3, fn: (ocDir: gp_Dir) => T): T
 ```typescript
 const result = withOcPnt([1, 2, 3], (pnt) => {
   // Use pnt here
-  return someOcctOperation(pnt);
+  return someKernelOperation(pnt);
 }); // pnt.delete() called automatically
 ```
 
@@ -248,7 +248,7 @@ Uses **TC39 Explicit Resource Management** (`Symbol.dispose`) with `Finalization
 
 ```typescript
 interface ShapeHandle {
-  readonly wrapped: OcShape; // Raw OCCT shape
+  readonly wrapped: OcShape; // Raw kernel shape
   readonly disposed: boolean;
   [Symbol.dispose](): void;
 }
@@ -284,8 +284,12 @@ class DisposalScope {
 }
 
 function withScope<T>(fn: (scope: DisposalScope) => T): T;
-function withScopeResult<T, E = BrepError>(fn: (scope: DisposalScope) => Result<T, E>): Result<T, E>;
-function withScopeResultAsync<T, E = BrepError>(fn: (scope: DisposalScope) => Promise<Result<T, E>>): Promise<Result<T, E>>;
+function withScopeResult<T, E = BrepError>(
+  fn: (scope: DisposalScope) => Result<T, E>
+): Result<T, E>;
+function withScopeResultAsync<T, E = BrepError>(
+  fn: (scope: DisposalScope) => Promise<Result<T, E>>
+): Promise<Result<T, E>>;
 ```
 
 **`using` declaration (preferred — auto-disposes at block end):**
@@ -347,16 +351,16 @@ return predicate;
 
 ### Kernel Call Wrappers (`kernelCall.ts`)
 
-Thin wrappers that run OCCT operations inside `Result<AnyShape>` and handle errors uniformly:
+Thin wrappers that run kernel operations inside `Result<AnyShape>` and handle errors uniformly:
 
 ```typescript
-// Wraps an OCCT call; catches exceptions and wraps in BrepError.
+// Wraps a kernel call; catches exceptions and wraps in BrepError.
 kernelCall(fn: () => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<AnyShape>
 
 // Like kernelCall but returns the raw OcShape (no branded wrapping).
 kernelCallRaw(fn: () => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<OcShape>
 
-// Like kernelCall but provides a DisposalScope — for operations that need intermediate OCCT objects.
+// Like kernelCall but provides a DisposalScope — for operations that need intermediate kernel objects.
 kernelCallScoped(fn: (scope: DisposalScope) => OcShape, code: string, message: string, kind?: BrepErrorKind): Result<AnyShape>
 ```
 
@@ -448,7 +452,7 @@ isShape1D(s: AnyShape): s is Shape1D
 castShape(ocShape: OcShape): AnyShape
 ```
 
-Performs OCCT `TopoDS` downcast and wraps in correct branded type.
+Performs kernel topology downcast and wraps in correct branded type.
 
 ## Error Handling (`result.ts`, `errors.ts`)
 
@@ -527,7 +531,7 @@ tryCatchAsync<T, E>(fn: () => Promise<T>, mapError: (error: unknown) => E): Prom
 
 ```typescript
 type BrepErrorKind =
-  | 'OCCT_OPERATION' // OCCT API failures
+  | 'OCCT_OPERATION' // Kernel API failures
   | 'VALIDATION' // Invalid input/state
   | 'TYPE_CAST' // Shape type mismatches
   | 'SKETCHER_STATE' // Sketcher workflow errors
@@ -567,14 +571,14 @@ class BrepBugError extends Error
 ## Constants (`constants.ts`)
 
 ```typescript
-export const HASH_CODE_MAX = 2147483647; // Max int32 for OCCT hash codes
+export const HASH_CODE_MAX = 2147483647; // Max int32 for kernel hash codes
 export const DEG2RAD = Math.PI / 180;
 export const RAD2DEG = 180 / Math.PI;
 ```
 
 ## Definition Maps (`definitionMaps.ts`)
 
-Lazy mappings between brepjs types and OCCT enums.
+Lazy mappings between brepjs types and kernel enums.
 
 ```typescript
 type CurveType =
@@ -589,7 +593,7 @@ type CurveType =
   | 'OTHER_CURVE';
 ```
 
-OCCT enum mappings are created lazily on first access.
+Kernel enum mappings are created lazily on first access.
 
 ## Legacy Migration (`geometry.ts`, `geometryHelpers.ts`)
 
@@ -638,7 +642,7 @@ mirror(shape, plane?, origin?): OcType
    const v2 = vecAdd(v, [4, 0, 0]);
    ```
 
-2. **OCCT cleanup responsibility** - Direct conversions require manual cleanup:
+2. **Kernel cleanup responsibility** - Direct conversions require manual cleanup:
 
    ```typescript
    // Wrong (memory leak):

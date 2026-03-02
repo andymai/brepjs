@@ -6,7 +6,7 @@ This guide introduces Boundary Representation (B-Rep) modeling for JavaScript de
 
 **Mesh** (Three.js, Babylon.js): A shape is a bag of triangles. A cube is 12 triangles. There's no concept of "this is a flat face" or "this edge is where two faces meet." Great for rendering, but lacks geometric precision.
 
-**B-Rep** (brepjs, OpenCascade, SolidWorks): A shape is defined by its _boundaries_ — faces, edges, and vertices — plus the mathematical surfaces and curves that define them exactly. A cube has 6 faces (each an infinite plane, trimmed), 12 edges (each a line segment), and 8 vertices. Booleans, fillets, and measurements work on exact geometry, not approximations.
+**B-Rep** (brepjs, SolidWorks, CATIA): A shape is defined by its _boundaries_ — faces, edges, and vertices — plus the mathematical surfaces and curves that define them exactly. A cube has 6 faces (each an infinite plane, trimmed), 12 edges (each a line segment), and 8 vertices. Booleans, fillets, and measurements work on exact geometry, not approximations.
 
 ```
 Mesh:   triangles → visual approximation
@@ -106,7 +106,7 @@ const assembly = compound([partA, partB, partC]);
 
 ## How brepjs represents shapes
 
-brepjs uses **branded types** — lightweight TypeScript type tags on top of the raw OpenCascade WASM handle:
+brepjs uses **branded types** — lightweight TypeScript type tags on top of the raw kernel WASM handle:
 
 ```typescript
 type Edge = OcShape & { readonly [__brand]: 'edge' };
@@ -181,7 +181,7 @@ const shelled = unwrap(shell(part, topFaces, 2));
 | --------------------- | ---------------------- | ------------------------------ |
 | Shape representation  | Triangles              | Faces, edges, vertices         |
 | Precision             | Approximate            | Exact (mathematical curves)    |
-| Boolean operations    | Unreliable (CSG hacks) | Exact (OpenCascade kernel)     |
+| Boolean operations    | Unreliable (CSG hacks) | Exact (geometry kernel)        |
 | Fillets/chamfers      | Not available          | Built-in, on exact edges       |
 | Measurement           | Approximate            | Exact (volume, area, length)   |
 | Export to CAD formats | Not possible           | STEP, IGES (industry standard) |

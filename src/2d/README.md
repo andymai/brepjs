@@ -75,4 +75,5 @@ graph TB
 2. **Bridge to 3D** — `Blueprint.sketchOnPlane()` bridges 2D→3D by creating a `Sketch` on a plane; use this to convert 2D drawings to 3D geometry
 3. **Compound blueprints** — `CompoundBlueprint` has outer + inner contours; inner contours become holes when extruded to 3D
 4. **2D booleans** — `fuse2D()`/`cut2D()`/`intersect2D()` operate on blueprints, not 3D shapes; use before 3D conversion
-5. **Serialization** — `Curve2D.serialize()` enables persistence; curves can be saved and restored without OCCT dependencies
+5. **Serialization** — `Curve2D.serialize()` enables persistence; curves can be saved and restored
+6. **Kernel-abstracted** — All 2D curve operations (evaluation, type queries, circle/ellipse data, Bezier poles, bounding boxes) go through `getKernel()` / `getKernel2D()` methods. No direct kernel API calls in this module.

@@ -24,7 +24,7 @@ function validateNotNull(
   shape: { wrapped: { IsNull(): boolean } },
   label: string
 ): Result<undefined> {
-  if (shape.wrapped.IsNull()) {
+  if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
   }
   return ok(undefined);
@@ -57,7 +57,10 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
   try {
     const inputFaceHashes = collectInputFaceHashes([shape]);
     const { shape: resultShape, evolution } = getKernel().thickenWithHistory(
-      shape.wrapped, thickness, inputFaceHashes, HASH_CODE_MAX
+      shape.wrapped,
+      thickness,
+      inputFaceHashes,
+      HASH_CODE_MAX
     );
     const cast = castShape(resultShape) as Solid;
     propagateOriginsFromEvolution(evolution, [shape], cast);
@@ -127,7 +130,10 @@ export function fillet(
   try {
     // Pre-filter edges when using a callback: skip null/zero results
     let filteredEdges: Edge[];
-    let kernelRadius: number | [number, number] | ((edge: { HashCode(max: number): number }) => number | [number, number]);
+    let kernelRadius:
+      | number
+      | [number, number]
+      | ((edge: { HashCode(max: number): number }) => number | [number, number]);
 
     if (typeof radius === 'function') {
       filteredEdges = [];
@@ -142,7 +148,7 @@ export function fillet(
       // Build a lookup by hash for the kernel callback
       const hashToRad = new Map<number, number | [number, number]>();
       for (const [edge, rad] of radMap) {
-        hashToRad.set(edge.wrapped.HashCode(HASH_CODE_MAX), rad);
+        hashToRad.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), rad);
       }
       kernelRadius = (ocEdge) => {
         const r = hashToRad.get(ocEdge.HashCode(HASH_CODE_MAX));
@@ -243,7 +249,10 @@ export function chamfer(
   try {
     // Pre-filter edges when using a callback: skip null/zero results
     let filteredEdges: Edge[];
-    let kernelDistance: number | [number, number] | ((edge: { HashCode(max: number): number }) => number | [number, number]);
+    let kernelDistance:
+      | number
+      | [number, number]
+      | ((edge: { HashCode(max: number): number }) => number | [number, number]);
 
     if (typeof distance === 'function') {
       filteredEdges = [];
@@ -257,7 +266,7 @@ export function chamfer(
       }
       const hashToDist = new Map<number, number | [number, number]>();
       for (const [edge, d] of distMap) {
-        hashToDist.set(edge.wrapped.HashCode(HASH_CODE_MAX), d);
+        hashToDist.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), d);
       }
       kernelDistance = (ocEdge) => {
         const d = hashToDist.get(ocEdge.HashCode(HASH_CODE_MAX));

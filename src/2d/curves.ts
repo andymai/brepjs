@@ -24,12 +24,9 @@ export const curvesBoundingBox = (curves: Curve2D[]): BoundingBox2d => {
 export function curvesAsEdgesOnPlane(curves: Curve2D[], plane: Plane): Edge[] {
   const kernel = getKernel();
   return curves.map((curve: Curve2D) =>
-    createEdge(kernel.liftCurve2dToPlane(
-      curve.wrapped,
-      [...plane.origin],
-      [...plane.zDir],
-      [...plane.xDir]
-    ))
+    createEdge(
+      kernel.liftCurve2dToPlane(curve.wrapped, [...plane.origin], [...plane.zDir], [...plane.xDir])
+    )
   );
 }
 
@@ -43,7 +40,10 @@ export const curvesAsEdgesOnSurface = (curves: Curve2D[], geomSurf: KernelType):
 
 /** Apply an opaque gp_GTrsf2d transformation to an array of 2D curves. */
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents -- KernelType is any but null is a valid sentinel here
-export const transformCurves = (curves: Curve2D[], transformation: KernelType | null): Curve2D[] => {
+export const transformCurves = (
+  curves: Curve2D[],
+  transformation: KernelType | null
+): Curve2D[] => {
   const kernel = getKernel();
   return curves.map((curve: Curve2D) => {
     if (!transformation) return curve.clone();
@@ -82,14 +82,16 @@ export const mirrorTransform2d = (
   mode = 'center'
 ): Transformation2D => {
   if (mode === 'center') {
-    return getKernel().createMirrorGTrsf2d(
-      centerOrDirection[0], centerOrDirection[1], 'point'
-    );
+    return getKernel().createMirrorGTrsf2d(centerOrDirection[0], centerOrDirection[1], 'point');
   }
   return getKernel().createMirrorGTrsf2d(
-    0, 0, 'axis',
-    origin[0], origin[1],
-    centerOrDirection[0], centerOrDirection[1]
+    0,
+    0,
+    'axis',
+    origin[0],
+    origin[1],
+    centerOrDirection[0],
+    centerOrDirection[1]
   );
 };
 
@@ -137,13 +139,19 @@ export function curvesAsEdgesOnFace(
         )
       );
 
-    const cylinder = geomSurf.get().Cylinder();
-    if (!cylinder.Direct()) {
-      geomSurf = geomSurf.get().UReversed();
+    const cylData = kernel.getSurfaceCylinderData(geomSurf);
+    if (!cylData) {
+      return err(
+        validationError(
+          'UNSUPPORTED_FACE_TYPE',
+          'Could not extract cylinder data from face surface'
+        )
+      );
     }
-    const radius = cylinder.Radius();
-    transformation = stretchTransform2d(1 / radius, [0, 1]);
-    cylinder.delete();
+    if (!cylData.isDirect) {
+      geomSurf = kernel.reverseSurfaceU(geomSurf);
+    }
+    transformation = stretchTransform2d(1 / cylData.radius, [0, 1]);
   }
 
   if (scale === 'bounds') {

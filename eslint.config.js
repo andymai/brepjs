@@ -105,6 +105,12 @@ export default tseslint.config(
           message:
             'Direct .oc access is banned in Layer 2+ code. Use KernelAdapter methods from getKernel() instead. See kernel/types.ts for available methods.',
         },
+        {
+          selector:
+            'CallExpression[callee.type="MemberExpression"][callee.object.type="MemberExpression"][callee.object.property.name="wrapped"]',
+          message:
+            'Direct method calls on .wrapped are banned in Layer 2+ code. Use getKernel() methods instead. Shapes are opaque handles — pass them to kernel adapter methods.',
+        },
       ],
     },
   },

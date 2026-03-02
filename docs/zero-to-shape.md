@@ -28,7 +28,7 @@ That's it. `brepjs/quick` auto-initializes the WASM kernel via top-level await â
 
 ## What just happened?
 
-1. `brepjs/quick` loaded the OpenCascade WASM module and initialized the kernel automatically
+1. `brepjs/quick` loaded the WASM geometry kernel and initialized it automatically
 2. `box(30, 20, 10)` created a B-Rep solid with the given width, depth, and height
 3. `measureVolume` computed the exact volume (6000 mmÂ³)
 4. `exportSTEP` serialized the shape to an industry-standard CAD file

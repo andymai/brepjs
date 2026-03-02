@@ -32,7 +32,7 @@ graph TB
     end
 
     subgraph "External"
-        OCCT["brepjs-opencascade<br/>(WASM)"]
+        WASM_EXT["Geometry Kernel<br/>(WASM)"]
     end
 
     %% Layer 3 imports
@@ -61,7 +61,7 @@ graph TB
     Core --> Utils
 
     %% Layer 0 imports
-    Kernel --> OCCT
+    Kernel --> WASM_EXT
 
     classDef l3 fill:#e1f5fe
     classDef l2 fill:#fff3e0
@@ -73,7 +73,7 @@ graph TB
     class Topology,Operations,TwoD,Query,Measurement,IO,Worker l2
     class Core l1
     class Kernel,Utils l0
-    class OCCT ext
+    class WASM_EXT ext
 ```
 
 ## Layers
@@ -82,10 +82,10 @@ graph TB
 
 No internal imports allowed.
 
-| Module    | Purpose                          |
-| --------- | -------------------------------- |
-| `kernel/` | WASM adapter, OCCT bindings      |
-| `utils/`  | Pure utilities (no dependencies) |
+| Module    | Purpose                                           |
+| --------- | ------------------------------------------------- |
+| `kernel/` | Kernel adapter interface + default implementation |
+| `utils/`  | Pure utilities (no dependencies)                  |
 
 ### Layer 1: Core
 
@@ -128,12 +128,12 @@ sequenceDiagram
     participant Domain as Domain Layer
     participant Core
     participant Kernel
-    participant WASM as OCCT WASM
+    participant WASM as Kernel WASM
 
     User->>API: Create sketch
     API->>Domain: Build wire/face
     Domain->>Core: Cast shapes
-    Core->>Kernel: OCCT operation
+    Core->>Kernel: Kernel operation
     Kernel->>WASM: Execute
     WASM-->>Kernel: Result
     Kernel-->>Core: Wrapped handle
@@ -180,27 +180,44 @@ takeSolid(face); // Error: Face not assignable to Solid
 
 ### 4. Scoped Resource Management
 
-OCCT objects are cleaned up via scopes:
+Kernel objects are cleaned up via scopes:
 
 ```typescript
-const r = gcWithScope();
-const temp1 = r(box([10, 10, 10]));
-const temp2 = r(cylinder(5, 20));
-// temp1, temp2 cleaned up when scope exits
+using scope = new DisposalScope();
+const temp = scope.register(someKernelHelper());
+// temp cleaned up when scope exits
 ```
+
+### 5. Kernel Abstraction
+
+All geometry operations go through `KernelAdapter` (defined in `kernel/types.ts`). Layer 2+ code treats shapes as opaque handles — it never calls methods on them directly.
+
+```typescript
+// ✅ Correct — pass handle to kernel method
+const hash = getKernel().hashCode(shape.wrapped, HASH_CODE_MAX);
+const type = getKernel().shapeType(shape.wrapped);
+
+// ❌ Banned — direct method call on handle
+const hash = shape.wrapped.HashCode(max);
+```
+
+The default kernel implementation delegates to specialized `*Ops.ts` files that contain all raw kernel API calls. A different kernel replaces these files while Layer 2+ code remains unchanged.
+
+See [Custom Kernel Guide](./kernel-swap.md) for writing alternative kernel implementations.
 
 ## Boundary Enforcement
 
-Import boundaries are enforced by:
+Import and abstraction boundaries are enforced by:
 
-1. **`scripts/check-layer-boundaries.sh`** — Pre-commit hook
+1. **`scripts/check-layer-boundaries.sh`** — Pre-commit hook checks import direction
 2. **CI workflow** — Runs on every PR
-3. **ESLint rules** — Prevents upward imports
+3. **ESLint `no-restricted-syntax`** — Bans `.oc` access and `.wrapped.method()` calls in Layer 2+
 
 To check manually:
 
 ```bash
 npm run check:boundaries
+npx eslint src/ --quiet
 ```
 
 ## Module Index

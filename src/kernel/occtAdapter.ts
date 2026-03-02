@@ -123,6 +123,14 @@ import {
   meshShape as _meshShape,
   getBezierPenultimatePole as _getBezierPenultimatePole,
   createCurveAdaptor as _createCurveAdaptor,
+  reverseShape as _reverseShape,
+  curvePointAtParam as _curvePointAtParam,
+  curveIsClosed as _curveIsClosed,
+  curveIsPeriodic as _curveIsPeriodic,
+  curvePeriod as _curvePeriod,
+  curveType as _curveType,
+  getSurfaceCylinderData as _getSurfaceCylinderData,
+  reverseSurfaceU as _reverseSurfaceU,
 } from './geometryQueryOps.js';
 import {
   wrapString as _wrapString,
@@ -195,9 +203,13 @@ import {
   createBoundingBox2d as _createBoundingBox2d,
   addCurveToBBox2d as _addCurveToBBox2d,
   getBBox2dBounds as _getBBox2dBounds,
+  mergeBBox2d as _mergeBBox2d,
+  isBBox2dOut as _isBBox2dOut,
+  isBBox2dOutPoint as _isBBox2dOutPoint,
   getCurve2dCircleData as _getCurve2dCircleData,
   getCurve2dEllipseData as _getCurve2dEllipseData,
   getCurve2dBezierPoles as _getCurve2dBezierPoles,
+  getCurve2dBezierDegree as _getCurve2dBezierDegree,
   getCurve2dBSplineData as _getCurve2dBSplineData,
   serializeCurve2d as _serializeCurve2d,
   deserializeCurve2d as _deserializeCurve2d,
@@ -301,7 +313,10 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _hull(this.oc, shapes, tolerance);
   }
 
-  hullFromPoints(points: Array<{ x: number; y: number; z: number }>, tolerance: number): KernelShape {
+  hullFromPoints(
+    points: Array<{ x: number; y: number; z: number }>,
+    tolerance: number
+  ): KernelShape {
     return _hullFromPoints(
       this.oc,
       points.map((p) => ({ x: p.x, y: p.y, z: p.z })),
@@ -435,7 +450,16 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     endAngle: number,
     xDir?: [number, number, number]
   ): KernelShape {
-    return _makeEllipseArc(this.oc, center, normal, majorRadius, minorRadius, startAngle, endAngle, xDir);
+    return _makeEllipseArc(
+      this.oc,
+      center,
+      normal,
+      majorRadius,
+      minorRadius,
+      startAngle,
+      endAngle,
+      xDir
+    );
   }
 
   makeBezierEdge(points: [number, number, number][]): KernelShape {
@@ -465,10 +489,7 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _makeCompound(this.oc, shapes);
   }
 
-  makeBoxFromCorners(
-    p1: [number, number, number],
-    p2: [number, number, number]
-  ): KernelShape {
+  makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape {
     return _makeBoxFromCorners(this.oc, p1, p2);
   }
 
@@ -486,11 +507,20 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _revolve(this.oc, shape, axis, angle);
   }
 
-  loft(wires: KernelShape[], ruled = false, startShape?: KernelShape, endShape?: KernelShape): KernelShape {
+  loft(
+    wires: KernelShape[],
+    ruled = false,
+    startShape?: KernelShape,
+    endShape?: KernelShape
+  ): KernelShape {
     return _loft(this.oc, wires, ruled, startShape, endShape);
   }
 
-  sweep(wire: KernelShape, spine: KernelShape, options: { transitionMode?: number } = {}): KernelShape {
+  sweep(
+    wire: KernelShape,
+    spine: KernelShape,
+    options: { transitionMode?: number } = {}
+  ): KernelShape {
     return _sweep(this.oc, wire, spine, options);
   }
 
@@ -516,11 +546,21 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _chamfer(this.oc, shape, edges, distance);
   }
 
-  chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape {
+  chamferDistAngle(
+    shape: KernelShape,
+    edges: KernelShape[],
+    distance: number,
+    angleDeg: number
+  ): KernelShape {
     return _chamferDistAngle(this.oc, shape, edges, distance, angleDeg);
   }
 
-  shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance = 1e-3): KernelShape {
+  shell(
+    shape: KernelShape,
+    faces: KernelShape[],
+    thickness: number,
+    tolerance = 1e-3
+  ): KernelShape {
     return _shell(this.oc, shape, faces, thickness, tolerance);
   }
 
@@ -616,10 +656,7 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _importIGES(this.oc, data);
   }
 
-  exportSTEPAssembly(
-    parts: StepAssemblyPart[],
-    options: { unit?: string } = {}
-  ): string {
+  exportSTEPAssembly(parts: StepAssemblyPart[], options: { unit?: string } = {}): string {
     return _exportSTEPAssembly(this.oc, parts, options);
   }
 
@@ -690,6 +727,10 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _shapeOrientation(this.oc, shape);
   }
 
+  reverseShape(shape: KernelShape): KernelShape {
+    return _reverseShape(this.oc, shape);
+  }
+
   // --- Geometry queries: vertex ---
 
   vertexPosition(vertex: KernelShape): [number, number, number] {
@@ -718,17 +759,11 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _pointOnSurface(this.oc, face, u, v);
   }
 
-  uvFromPoint(
-    face: KernelShape,
-    point: [number, number, number]
-  ): [number, number] | null {
+  uvFromPoint(face: KernelShape, point: [number, number, number]): [number, number] | null {
     return _uvFromPoint(this.oc, face, point);
   }
 
-  projectPointOnFace(
-    face: KernelShape,
-    point: [number, number, number]
-  ): [number, number, number] {
+  projectPointOnFace(face: KernelShape, point: [number, number, number]): [number, number, number] {
     return _projectPointOnFace(this.oc, face, point);
   }
 
@@ -743,6 +778,34 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
 
   curveParameters(shape: KernelShape): [number, number] {
     return _curveParameters(this.oc, shape);
+  }
+
+  curvePointAtParam(shape: KernelShape, param: number): [number, number, number] {
+    return _curvePointAtParam(this.oc, shape, param);
+  }
+
+  curveIsClosed(shape: KernelShape): boolean {
+    return _curveIsClosed(this.oc, shape);
+  }
+
+  curveIsPeriodic(shape: KernelShape): boolean {
+    return _curveIsPeriodic(this.oc, shape);
+  }
+
+  curvePeriod(shape: KernelShape): number {
+    return _curvePeriod(this.oc, shape);
+  }
+
+  curveType(shape: KernelShape): string {
+    return _curveType(this.oc, shape);
+  }
+
+  getSurfaceCylinderData(surface: KernelType): { radius: number; isDirect: boolean } | null {
+    return _getSurfaceCylinderData(this.oc, surface);
+  }
+
+  reverseSurfaceU(surface: KernelType): KernelType {
+    return _reverseSurfaceU(this.oc, surface);
   }
 
   // --- Simplification ---
@@ -775,7 +838,11 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
 
   // --- 2D offset ---
 
-  offsetWire2D(wire: KernelShape, offset: number, joinType?: number | 'arc' | 'intersection' | 'tangent'): KernelShape {
+  offsetWire2D(
+    wire: KernelShape,
+    offset: number,
+    joinType?: number | 'arc' | 'intersection' | 'tangent'
+  ): KernelShape {
     let jt = joinType;
     if (typeof joinType === 'string') {
       const oc = this.oc;
@@ -797,7 +864,12 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
 
   // --- Classification ---
 
-  classifyPointOnFace(face: KernelShape, u: number, v: number, tolerance = 1e-6): 'in' | 'on' | 'out' {
+  classifyPointOnFace(
+    face: KernelShape,
+    u: number,
+    v: number,
+    tolerance = 1e-6
+  ): 'in' | 'on' | 'out' {
     return _classifyPointOnFace(this.oc, face, u, v, tolerance);
   }
 
@@ -851,30 +923,43 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
   // --- Operations with shape evolution tracking ---
 
   translateWithHistory(
-    shape: KernelShape, x: number, y: number, z: number,
-    inputFaceHashes: number[], hashUpperBound: number
+    shape: KernelShape,
+    x: number,
+    y: number,
+    z: number,
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
     return _translateWithHistory(this.oc, shape, x, y, z, inputFaceHashes, hashUpperBound);
   }
 
   rotateWithHistory(
-    shape: KernelShape, angle: number,
-    inputFaceHashes: number[], hashUpperBound: number,
-    axis?: [number, number, number], center?: [number, number, number]
+    shape: KernelShape,
+    angle: number,
+    inputFaceHashes: number[],
+    hashUpperBound: number,
+    axis?: [number, number, number],
+    center?: [number, number, number]
   ): OperationResult {
     return _rotateWithHistory(this.oc, shape, angle, inputFaceHashes, hashUpperBound, axis, center);
   }
 
   mirrorWithHistory(
-    shape: KernelShape, origin: [number, number, number], normal: [number, number, number],
-    inputFaceHashes: number[], hashUpperBound: number
+    shape: KernelShape,
+    origin: [number, number, number],
+    normal: [number, number, number],
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
     return _mirrorWithHistory(this.oc, shape, origin, normal, inputFaceHashes, hashUpperBound);
   }
 
   scaleWithHistory(
-    shape: KernelShape, center: [number, number, number], factor: number,
-    inputFaceHashes: number[], hashUpperBound: number
+    shape: KernelShape,
+    center: [number, number, number],
+    factor: number,
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
     return _scaleWithHistory(this.oc, shape, center, factor, inputFaceHashes, hashUpperBound);
   }
@@ -884,69 +969,103 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     linear: readonly [number, number, number, number, number, number, number, number, number],
     translation: readonly [number, number, number],
     isOrthogonal: boolean,
-    inputFaceHashes: number[], hashUpperBound: number
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
-    return _generalTransformWithHistory(this.oc, shape, linear, translation, isOrthogonal, inputFaceHashes, hashUpperBound);
+    return _generalTransformWithHistory(
+      this.oc,
+      shape,
+      linear,
+      translation,
+      isOrthogonal,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   fuseWithHistory(
-    shape: KernelShape, tool: KernelShape,
-    inputFaceHashes: number[], hashUpperBound: number,
+    shape: KernelShape,
+    tool: KernelShape,
+    inputFaceHashes: number[],
+    hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
     return _fuseWithHistory(this.oc, shape, tool, inputFaceHashes, hashUpperBound, options);
   }
 
   cutWithHistory(
-    shape: KernelShape, tool: KernelShape,
-    inputFaceHashes: number[], hashUpperBound: number,
+    shape: KernelShape,
+    tool: KernelShape,
+    inputFaceHashes: number[],
+    hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
     return _cutWithHistory(this.oc, shape, tool, inputFaceHashes, hashUpperBound, options);
   }
 
   intersectWithHistory(
-    shape: KernelShape, tool: KernelShape,
-    inputFaceHashes: number[], hashUpperBound: number,
+    shape: KernelShape,
+    tool: KernelShape,
+    inputFaceHashes: number[],
+    hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
     return _intersectWithHistory(this.oc, shape, tool, inputFaceHashes, hashUpperBound, options);
   }
 
   filletWithHistory(
-    shape: KernelShape, edges: KernelShape[],
+    shape: KernelShape,
+    edges: KernelShape[],
     radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]),
-    inputFaceHashes: number[], hashUpperBound: number
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
     return _filletWithHistory(this.oc, shape, edges, radius, inputFaceHashes, hashUpperBound);
   }
 
   chamferWithHistory(
-    shape: KernelShape, edges: KernelShape[],
+    shape: KernelShape,
+    edges: KernelShape[],
     distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]),
-    inputFaceHashes: number[], hashUpperBound: number
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
     return _chamferWithHistory(this.oc, shape, edges, distance, inputFaceHashes, hashUpperBound);
   }
 
   shellWithHistory(
-    shape: KernelShape, faces: KernelShape[], thickness: number,
-    inputFaceHashes: number[], hashUpperBound: number,
+    shape: KernelShape,
+    faces: KernelShape[],
+    thickness: number,
+    inputFaceHashes: number[],
+    hashUpperBound: number,
     tolerance?: number
   ): OperationResult {
-    return _shellWithHistory(this.oc, shape, faces, thickness, inputFaceHashes, hashUpperBound, tolerance);
+    return _shellWithHistory(
+      this.oc,
+      shape,
+      faces,
+      thickness,
+      inputFaceHashes,
+      hashUpperBound,
+      tolerance
+    );
   }
 
   thickenWithHistory(
-    shape: KernelShape, thickness: number,
-    inputFaceHashes: number[], hashUpperBound: number
+    shape: KernelShape,
+    thickness: number,
+    inputFaceHashes: number[],
+    hashUpperBound: number
   ): OperationResult {
     return _thickenWithHistory(this.oc, shape, thickness, inputFaceHashes, hashUpperBound);
   }
 
   offsetWithHistory(
-    shape: KernelShape, distance: number,
-    inputFaceHashes: number[], hashUpperBound: number,
+    shape: KernelShape,
+    distance: number,
+    inputFaceHashes: number[],
+    hashUpperBound: number,
     tolerance?: number
   ): OperationResult {
     return _offsetWithHistory(this.oc, shape, distance, inputFaceHashes, hashUpperBound, tolerance);
@@ -1019,11 +1138,7 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _loftAdvanced(this.oc, wires, options);
   }
 
-  buildExtrusionLaw(
-    profile: 'linear' | 's-curve',
-    length: number,
-    endFactor: number
-  ): KernelType {
+  buildExtrusionLaw(profile: 'linear' | 's-curve', length: number, endFactor: number): KernelType {
     return _buildExtrusionLaw(this.oc, profile, length, endFactor);
   }
 
@@ -1077,19 +1192,11 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _makeFaceOnSurface(this.oc, surface, wire);
   }
 
-  bsplineSurface(
-    points: [number, number, number][],
-    rows: number,
-    cols: number
-  ): KernelShape {
+  bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
     return _bsplineSurface(this.oc, points, rows, cols);
   }
 
-  triangulatedSurface(
-    points: [number, number, number][],
-    rows: number,
-    cols: number
-  ): KernelShape {
+  triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
     return _triangulatedSurface(this.oc, points, rows, cols);
   }
 
@@ -1190,10 +1297,7 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return _createXCAFDocument(this.oc, shapes);
   }
 
-  writeXCAFToSTEP(
-    doc: KernelType,
-    options: { unit?: string; modelUnit?: string } = {}
-  ): string {
+  writeXCAFToSTEP(doc: KernelType, options: { unit?: string; modelUnit?: string } = {}): string {
     return _writeXCAFToSTEP(this.oc, doc, options);
   }
 
@@ -1249,38 +1353,62 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   makeArc2dThreePoints(
-    x1: number, y1: number,
-    xm: number, ym: number,
-    x2: number, y2: number
+    x1: number,
+    y1: number,
+    xm: number,
+    ym: number,
+    x2: number,
+    y2: number
   ): Curve2dHandle {
     return _makeArc2dThreePoints(this.oc, x1, y1, xm, ym, x2, y2);
   }
 
   makeArc2dTangent(
-    startX: number, startY: number,
-    tangentX: number, tangentY: number,
-    endX: number, endY: number
+    startX: number,
+    startY: number,
+    tangentX: number,
+    tangentY: number,
+    endX: number,
+    endY: number
   ): Curve2dHandle {
     return _makeArc2dTangent(this.oc, startX, startY, tangentX, tangentY, endX, endY);
   }
 
   makeEllipse2d(
-    cx: number, cy: number,
-    majorRadius: number, minorRadius: number,
-    xDirX?: number, xDirY?: number,
+    cx: number,
+    cy: number,
+    majorRadius: number,
+    minorRadius: number,
+    xDirX?: number,
+    xDirY?: number,
     sense?: boolean
   ): Curve2dHandle {
     return _makeEllipse2d(this.oc, cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense);
   }
 
   makeEllipseArc2d(
-    cx: number, cy: number,
-    majorRadius: number, minorRadius: number,
-    startAngle: number, endAngle: number,
-    xDirX?: number, xDirY?: number,
+    cx: number,
+    cy: number,
+    majorRadius: number,
+    minorRadius: number,
+    startAngle: number,
+    endAngle: number,
+    xDirX?: number,
+    xDirY?: number,
     sense?: boolean
   ): Curve2dHandle {
-    return _makeEllipseArc2d(this.oc, cx, cy, majorRadius, minorRadius, startAngle, endAngle, xDirX, xDirY, sense);
+    return _makeEllipseArc2d(
+      this.oc,
+      cx,
+      cy,
+      majorRadius,
+      minorRadius,
+      startAngle,
+      endAngle,
+      xDirX,
+      xDirY,
+      sense
+    );
   }
 
   makeBezier2d(points: [number, number][]): Curve2dHandle {
@@ -1359,19 +1487,31 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
 
   mirrorCurve2dAcrossAxis(
     curve: Curve2dHandle,
-    originX: number, originY: number,
-    dirX: number, dirY: number
+    originX: number,
+    originY: number,
+    dirX: number,
+    dirY: number
   ): Curve2dHandle {
     return _mirrorCurve2dAcrossAxis(this.oc, curve, originX, originY, dirX, dirY);
   }
 
   affinityTransform2d(
     curve: Curve2dHandle,
-    axisOriginX: number, axisOriginY: number,
-    axisDirX: number, axisDirY: number,
+    axisOriginX: number,
+    axisOriginY: number,
+    axisDirX: number,
+    axisDirY: number,
     ratio: number
   ): Curve2dHandle {
-    return _affinityTransform2d(this.oc, curve, axisOriginX, axisOriginY, axisDirX, axisDirY, ratio);
+    return _affinityTransform2d(
+      this.oc,
+      curve,
+      axisOriginX,
+      axisOriginY,
+      axisDirX,
+      axisDirY,
+      ratio
+    );
   }
 
   // --- 2D General transforms (gp_GTrsf2d) (delegates to kernel2dOps.ts) ---
@@ -1381,8 +1521,10 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   createAffinityGTrsf2d(
-    originX: number, originY: number,
-    dirX: number, dirY: number,
+    originX: number,
+    originY: number,
+    dirX: number,
+    dirY: number,
     ratio: number
   ): KernelType {
     return _createAffinityGTrsf2d(this.oc, originX, originY, dirX, dirY, ratio);
@@ -1393,10 +1535,13 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   createMirrorGTrsf2d(
-    cx: number, cy: number,
+    cx: number,
+    cy: number,
     mode: 'point' | 'axis',
-    originX?: number, originY?: number,
-    dirX?: number, dirY?: number
+    originX?: number,
+    originY?: number,
+    dirX?: number,
+    dirY?: number
   ): KernelType {
     return _createMirrorGTrsf2d(this.oc, cx, cy, mode, originX, originY, dirX, dirY);
   }
@@ -1433,15 +1578,19 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
 
   projectPointOnCurve2d(
     curve: Curve2dHandle,
-    x: number, y: number
+    x: number,
+    y: number
   ): { param: number; distance: number } | null {
     return _projectPointOnCurve2d(this.oc, curve, x, y);
   }
 
   distanceBetweenCurves2d(
-    c1: Curve2dHandle, c2: Curve2dHandle,
-    p1Start: number, p1End: number,
-    p2Start: number, p2End: number
+    c1: Curve2dHandle,
+    c2: Curve2dHandle,
+    p1Start: number,
+    p1End: number,
+    p2Start: number,
+    p2End: number
   ): number {
     return _distanceBetweenCurves2d(this.oc, c1, c2, p1Start, p1End, p2Start, p2End);
   }
@@ -1472,28 +1621,52 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   getBBox2dBounds(bbox: BBox2dHandle): {
-    xMin: number; yMin: number; xMax: number; yMax: number;
+    xMin: number;
+    yMin: number;
+    xMax: number;
+    yMax: number;
   } {
     return _getBBox2dBounds(this.oc, bbox);
+  }
+
+  mergeBBox2d(target: BBox2dHandle, other: BBox2dHandle): void {
+    _mergeBBox2d(this.oc, target, other);
+  }
+
+  isBBox2dOut(a: BBox2dHandle, b: BBox2dHandle): boolean {
+    return _isBBox2dOut(this.oc, a, b);
+  }
+
+  isBBox2dOutPoint(bbox: BBox2dHandle, x: number, y: number): boolean {
+    return _isBBox2dOutPoint(this.oc, bbox, x, y);
   }
 
   // --- 2D Type extraction (delegates to kernel2dOps.ts) ---
 
   getCurve2dCircleData(curve: Curve2dHandle): {
-    cx: number; cy: number; radius: number; isDirect: boolean;
+    cx: number;
+    cy: number;
+    radius: number;
+    isDirect: boolean;
   } | null {
     return _getCurve2dCircleData(this.oc, curve);
   }
 
   getCurve2dEllipseData(curve: Curve2dHandle): {
-    majorRadius: number; minorRadius: number;
-    xAxisAngle: number; isDirect: boolean;
+    majorRadius: number;
+    minorRadius: number;
+    xAxisAngle: number;
+    isDirect: boolean;
   } | null {
     return _getCurve2dEllipseData(this.oc, curve);
   }
 
   getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
     return _getCurve2dBezierPoles(this.oc, curve);
+  }
+
+  getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
+    return _getCurve2dBezierDegree(this.oc, curve);
   }
 
   getCurve2dBSplineData(curve: Curve2dHandle): {
@@ -1572,7 +1745,7 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
 
   // --- Bezier pole extraction (3D) ---
 
-    // --- Export helpers ---
+  // --- Export helpers ---
 
   wrapString(str: string): KernelType {
     return _wrapString(this.oc, str);
@@ -1621,7 +1794,17 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return ax;
   }
 
-  createAxis2(ox: number, oy: number, oz: number, zx: number, zy: number, zz: number, xx?: number, xy?: number, xz?: number): KernelType {
+  createAxis2(
+    ox: number,
+    oy: number,
+    oz: number,
+    zx: number,
+    zy: number,
+    zz: number,
+    xx?: number,
+    xy?: number,
+    xz?: number
+  ): KernelType {
     const pnt = new this.oc.gp_Pnt_3(ox, oy, oz);
     const z = new this.oc.gp_Dir_4(zx, zy, zz);
     let ax;
@@ -1637,7 +1820,17 @@ export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
     return ax;
   }
 
-  createAxis3(ox: number, oy: number, oz: number, zx: number, zy: number, zz: number, xx?: number, xy?: number, xz?: number): KernelType {
+  createAxis3(
+    ox: number,
+    oy: number,
+    oz: number,
+    zx: number,
+    zy: number,
+    zz: number,
+    xx?: number,
+    xy?: number,
+    xz?: number
+  ): KernelType {
     const pnt = new this.oc.gp_Pnt_3(ox, oy, oz);
     const z = new this.oc.gp_Dir_4(zx, zy, zz);
     let ax;

@@ -13,7 +13,7 @@ This guide walks you through creating your first 3D part with brepjs — from in
 npm install brepjs brepjs-opencascade
 ```
 
-`brepjs` is the API layer. `brepjs-opencascade` provides the OpenCascade WASM kernel that does the actual geometry computation.
+`brepjs` is the API layer. `brepjs-opencascade` provides the default WASM geometry kernel.
 
 ## Step 2: Import from `brepjs/quick`
 

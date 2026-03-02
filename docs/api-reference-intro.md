@@ -1,6 +1,6 @@
 # brepjs API Reference
 
-Web CAD library built on OpenCascade with a layered architecture and kernel abstraction layer.
+Web CAD library with a layered architecture and pluggable kernel abstraction layer.
 
 ## Sub-path Modules
 

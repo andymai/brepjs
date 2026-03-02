@@ -66,7 +66,7 @@ export function checkInterference(
   shape2: AnyShape,
   tolerance = 1e-6
 ): Result<InterferenceResult> {
-  if (shape1.wrapped.IsNull()) {
+  if (getKernel().isNull(shape1.wrapped)) {
     return err(
       validationError(
         BrepErrorCode.NULL_SHAPE_INPUT,
@@ -74,7 +74,7 @@ export function checkInterference(
       )
     );
   }
-  if (shape2.wrapped.IsNull()) {
+  if (getKernel().isNull(shape2.wrapped)) {
     return err(
       validationError(
         BrepErrorCode.NULL_SHAPE_INPUT,

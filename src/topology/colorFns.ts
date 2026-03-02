@@ -6,6 +6,7 @@
  */
 
 import type { ShapeEvolution } from '../kernel/types.js';
+import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 
@@ -86,7 +87,7 @@ export function colorFaces<T extends AnyShape>(shape: T, faces: Face[], color: C
   const parsed = parseColor(color);
   const map = getFaceColorMap(shape);
   for (const face of faces) {
-    map.set(face.wrapped.HashCode(HASH_CODE_MAX), parsed);
+    map.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), parsed);
   }
   return shape;
 }
@@ -104,7 +105,7 @@ export function getShapeColor(shape: AnyShape): Color | undefined {
 export function getFaceColor(shape: AnyShape, face: Face): Color | undefined {
   const map = faceColorStore.get(shape.wrapped);
   if (!map) return undefined;
-  return map.get(face.wrapped.HashCode(HASH_CODE_MAX));
+  return map.get(getKernel().hashCode(face.wrapped, HASH_CODE_MAX));
 }
 
 /**

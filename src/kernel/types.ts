@@ -150,7 +150,10 @@ export interface KernelAdapter extends Kernel2DCapability {
 
   // --- Convex hull ---
   hull(shapes: KernelShape[], tolerance: number): KernelShape;
-  hullFromPoints(points: Array<{ x: number; y: number; z: number }>, tolerance: number): KernelShape;
+  hullFromPoints(
+    points: Array<{ x: number; y: number; z: number }>,
+    tolerance: number
+  ): KernelShape;
   buildSolidFromFaces(
     points: Array<{ x: number; y: number; z: number }>,
     faces: Array<readonly [number, number, number]>,
@@ -188,10 +191,7 @@ export interface KernelAdapter extends Kernel2DCapability {
   makeEllipsoid(aLength: number, bLength: number, cLength: number): KernelShape;
 
   // --- Extended construction (kernel-agnostic curve/edge builders) ---
-  makeLineEdge(
-    p1: [number, number, number],
-    p2: [number, number, number]
-  ): KernelShape;
+  makeLineEdge(p1: [number, number, number], p2: [number, number, number]): KernelShape;
   makeCircleEdge(
     center: [number, number, number],
     normal: [number, number, number],
@@ -242,16 +242,18 @@ export interface KernelAdapter extends Kernel2DCapability {
   /** Build a wire from a mix of edges and wires (uses Add_1 for edges, Add_2 for wires). */
   makeWireFromMixed(items: KernelShape[]): KernelShape;
   makeCompound(shapes: KernelShape[]): KernelShape;
-  makeBoxFromCorners(
-    p1: [number, number, number],
-    p2: [number, number, number]
-  ): KernelShape;
+  makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape;
   solidFromShell(shell: KernelShape): KernelShape;
 
   // --- Extrusion / sweep / loft / revolution ---
   extrude(face: KernelShape, direction: [number, number, number], length: number): KernelShape;
   revolve(shape: KernelShape, axis: KernelType, angle: number): KernelShape;
-  loft(wires: KernelShape[], ruled?: boolean, startShape?: KernelShape, endShape?: KernelShape): KernelShape;
+  loft(
+    wires: KernelShape[],
+    ruled?: boolean,
+    startShape?: KernelShape,
+    endShape?: KernelShape
+  ): KernelShape;
   sweep(wire: KernelShape, spine: KernelShape, options?: { transitionMode?: number }): KernelShape;
   simplePipe(profile: KernelShape, spine: KernelShape): KernelShape;
 
@@ -266,8 +268,18 @@ export interface KernelAdapter extends Kernel2DCapability {
     edges: KernelShape[],
     distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])
   ): KernelShape;
-  chamferDistAngle(shape: KernelShape, edges: KernelShape[], distance: number, angleDeg: number): KernelShape;
-  shell(shape: KernelShape, faces: KernelShape[], thickness: number, tolerance?: number): KernelShape;
+  chamferDistAngle(
+    shape: KernelShape,
+    edges: KernelShape[],
+    distance: number,
+    angleDeg: number
+  ): KernelShape;
+  shell(
+    shape: KernelShape,
+    faces: KernelShape[],
+    thickness: number,
+    tolerance?: number
+  ): KernelShape;
   thicken(shape: KernelShape, thickness: number): KernelShape;
   offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
 
@@ -306,7 +318,9 @@ export interface KernelAdapter extends Kernel2DCapability {
   // and other shape history tracking systems.
   translateWithHistory(
     shape: KernelShape,
-    x: number, y: number, z: number,
+    x: number,
+    y: number,
+    z: number,
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult;
@@ -408,10 +422,7 @@ export interface KernelAdapter extends Kernel2DCapability {
   importSTL(data: string | ArrayBuffer): KernelShape;
   exportIGES(shapes: KernelShape[]): string;
   importIGES(data: string | ArrayBuffer): KernelShape[];
-  exportSTEPAssembly(
-    parts: StepAssemblyPart[],
-    options?: { unit?: string }
-  ): string;
+  exportSTEPAssembly(parts: StepAssemblyPart[], options?: { unit?: string }): string;
 
   // --- Measurement ---
   volume(shape: KernelShape): number;
@@ -445,14 +456,8 @@ export interface KernelAdapter extends Kernel2DCapability {
   outerWire(face: KernelShape): KernelShape;
   surfaceNormal(face: KernelShape, u: number, v: number): [number, number, number];
   pointOnSurface(face: KernelShape, u: number, v: number): [number, number, number];
-  uvFromPoint(
-    face: KernelShape,
-    point: [number, number, number]
-  ): [number, number] | null;
-  projectPointOnFace(
-    face: KernelShape,
-    point: [number, number, number]
-  ): [number, number, number];
+  uvFromPoint(face: KernelShape, point: [number, number, number]): [number, number] | null;
+  projectPointOnFace(face: KernelShape, point: [number, number, number]): [number, number, number];
 
   // --- Geometry queries: edge / curve ---
   curveTangent(
@@ -460,6 +465,16 @@ export interface KernelAdapter extends Kernel2DCapability {
     param: number
   ): { point: [number, number, number]; tangent: [number, number, number] };
   curveParameters(shape: KernelShape): [number, number];
+  /** Evaluate a point at a raw parameter value on a curve. */
+  curvePointAtParam(shape: KernelShape, param: number): [number, number, number];
+  /** Check if a curve is closed. */
+  curveIsClosed(shape: KernelShape): boolean;
+  /** Check if a curve is periodic. */
+  curveIsPeriodic(shape: KernelShape): boolean;
+  /** Get the period of a periodic curve. */
+  curvePeriod(shape: KernelShape): number;
+  /** Get the geometric curve type (LINE, CIRCLE, BSPLINE, etc.). */
+  curveType(shape: KernelShape): string;
 
   // --- Simplification ---
   simplify(shape: KernelShape): KernelShape;
@@ -472,13 +487,22 @@ export interface KernelAdapter extends Kernel2DCapability {
   healWire(wire: KernelShape, face?: KernelShape): KernelShape;
 
   // --- 2D offset ---
-  offsetWire2D(wire: KernelShape, offset: number, joinType?: number | 'arc' | 'intersection' | 'tangent'): KernelShape;
+  offsetWire2D(
+    wire: KernelShape,
+    offset: number,
+    joinType?: number | 'arc' | 'intersection' | 'tangent'
+  ): KernelShape;
 
   // --- Distance ---
   distance(shape1: KernelShape, shape2: KernelShape): DistanceResult;
 
   // --- Classification ---
-  classifyPointOnFace(face: KernelShape, u: number, v: number, tolerance?: number): 'in' | 'on' | 'out';
+  classifyPointOnFace(
+    face: KernelShape,
+    u: number,
+    v: number,
+    tolerance?: number
+  ): 'in' | 'on' | 'out';
 
   // --- Splitting ---
   split(shape: KernelShape, tools: KernelShape[]): KernelShape;
@@ -559,11 +583,7 @@ export interface KernelAdapter extends Kernel2DCapability {
     }
   ): KernelShape;
   /** Build an extrusion scaling law (s-curve or linear). */
-  buildExtrusionLaw(
-    profile: 'linear' | 's-curve',
-    length: number,
-    endFactor: number
-  ): KernelType;
+  buildExtrusionLaw(profile: 'linear' | 's-curve', length: number, endFactor: number): KernelType;
   /** Revolve a shape around an axis defined by center+direction (Vec3s, not KernelType axis). */
   revolveVec(
     shape: KernelShape,
@@ -601,17 +621,9 @@ export interface KernelAdapter extends Kernel2DCapability {
   /** Build a face on an existing surface bounded by a wire. */
   makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape;
   /** Fit a B-spline surface through a grid of Z-heights. */
-  bsplineSurface(
-    points: [number, number, number][],
-    rows: number,
-    cols: number
-  ): KernelShape;
+  bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
   /** Build a triangulated surface from a height grid. */
-  triangulatedSurface(
-    points: [number, number, number][],
-    rows: number,
-    cols: number
-  ): KernelShape;
+  triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
 
   // --- Mesh sewing -> solid ---
   /**
@@ -706,7 +718,11 @@ export interface KernelAdapter extends Kernel2DCapability {
       name?: string | undefined;
       color?: [number, number, number, number] | undefined;
     }>,
-    options?: { unit?: string | undefined; modelUnit?: string | undefined; schema?: number | undefined }
+    options?: {
+      unit?: string | undefined;
+      modelUnit?: string | undefined;
+      schema?: number | undefined;
+    }
   ): string;
 
   // --- Export helpers ---
@@ -727,13 +743,43 @@ export interface KernelAdapter extends Kernel2DCapability {
   /** Get the second-to-last Bezier control pole of a 3D edge curve. */
   getBezierPenultimatePole(edge: KernelShape): [number, number, number] | null;
 
+  // --- Surface geometry extraction ---
+  /** Extract cylinder data from a surface handle. Returns null if not a cylinder. */
+  getSurfaceCylinderData(surface: KernelType): { radius: number; isDirect: boolean } | null;
+  /** Reverse the U direction of a surface. Returns a new surface handle. */
+  reverseSurfaceU(surface: KernelType): KernelType;
+
   // --- 3D Geometry primitive factories ---
   createPoint3d(x: number, y: number, z: number): KernelType;
   createDirection3d(x: number, y: number, z: number): KernelType;
   createVector3d(x: number, y: number, z: number): KernelType;
   createAxis1(cx: number, cy: number, cz: number, dx: number, dy: number, dz: number): KernelType;
-  createAxis2(ox: number, oy: number, oz: number, zx: number, zy: number, zz: number, xx?: number, xy?: number, xz?: number): KernelType;
-  createAxis3(ox: number, oy: number, oz: number, zx: number, zy: number, zz: number, xx?: number, xy?: number, xz?: number): KernelType;
+  createAxis2(
+    ox: number,
+    oy: number,
+    oz: number,
+    zx: number,
+    zy: number,
+    zz: number,
+    xx?: number,
+    xy?: number,
+    xz?: number
+  ): KernelType;
+  createAxis3(
+    ox: number,
+    oy: number,
+    oz: number,
+    zx: number,
+    zy: number,
+    zz: number,
+    xx?: number,
+    xy?: number,
+    xz?: number
+  ): KernelType;
+
+  // --- Shape reversal ---
+  /** Return a copy of the shape with reversed orientation. */
+  reverseShape(shape: KernelShape): KernelShape;
 
   // --- Dispose ---
   dispose(handle: { delete(): void }): void;

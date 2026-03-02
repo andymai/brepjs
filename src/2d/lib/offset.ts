@@ -1,5 +1,4 @@
 import { getKernel2D } from '../../kernel/index.js';
-import { DisposalScope } from '../../core/memory.js';
 import { approximateAsBSpline } from './approximations.js';
 import { Curve2D } from './Curve2D.js';
 import type { Point2D } from './definitions.js';
@@ -47,21 +46,22 @@ export const make2dOffset = (
   curve: Curve2D,
   offset: number
 ): Curve2D | { collapsed: true; firstPoint: Point2D; lastPoint: Point2D } => {
-  using scope = new DisposalScope();
   const curveType = curve.geomType;
+  const kernel = getKernel2D();
 
   if (curveType === 'CIRCLE') {
-    const circle = scope.register(scope.register(curve.adaptor()).Circle());
-    const radius = circle.Radius();
+    const circleData = kernel.getCurve2dCircleData(curve.wrapped);
+    if (!circleData) return make2dSegmentCurve(curve.firstPoint, curve.lastPoint);
 
-    const orientationCorrection = circle.IsDirect() ? 1 : -1;
+    const { cx, cy, radius, isDirect } = circleData;
+
+    const orientationCorrection = isDirect ? 1 : -1;
     const orientedOffset = offset * orientationCorrection;
 
-    const newRadius = Number(radius) + orientedOffset;
+    const newRadius = radius + orientedOffset;
 
     if (newRadius < 1e-10) {
-      const centerPos = scope.register(circle.Location());
-      const center: Point2D = [centerPos.X(), centerPos.Y()];
+      const center: Point2D = [cx, cy];
 
       // We replace collapsed arcs by a segment of line
       const offsetViaCenter = (point: Point2D): Point2D => {
@@ -76,18 +76,14 @@ export const make2dOffset = (
       };
     }
 
-    const kernel = getKernel2D();
-    const isDirect = circle.IsDirect();
-    const centerPos = scope.register(circle.Location());
-    const cx = centerPos.X();
-    const cy = centerPos.Y();
-
     const circleHandle = kernel.makeCircle2d(cx, cy, newRadius, isDirect);
-    // makeCircle2d returns Handle_Geom2d_Circle; wrap in Curve2D to upcast
-    // to Handle_kernel 2D curve, then trim using the upcast handle.
     const fullCircle = new Curve2D(circleHandle);
-    const trimmedHandle = kernel.trimCurve2d(fullCircle.wrapped, curve.firstParameter, curve.lastParameter);
-    circleHandle.delete();
+    const trimmedHandle = kernel.trimCurve2d(
+      fullCircle.wrapped,
+      curve.firstParameter,
+      curve.lastParameter
+    );
+    fullCircle.delete();
 
     return new Curve2D(trimmedHandle);
   }
@@ -99,7 +95,6 @@ export const make2dOffset = (
   }
 
   // We should compute the analytic offset for a curve
-  const kernel = getKernel2D();
   const offsetHandle = kernel.offsetCurve2d(curve.wrapped, offset);
 
   const offsetCurve = new Curve2D(offsetHandle);

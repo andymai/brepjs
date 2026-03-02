@@ -6,6 +6,7 @@
  */
 
 import type { ShapeEvolution } from '../kernel/types.js';
+import { getKernel } from '../kernel/index.js';
 import type { AnyShape, Face } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { getFaces } from './shapeFns.js';
@@ -61,7 +62,7 @@ export function tagFaces(
   const existing = tagMap.get(tag) ?? new Set<number>();
 
   for (const face of faces) {
-    existing.add(face.wrapped.HashCode(HASH_CODE_MAX));
+    existing.add(getKernel().hashCode(face.wrapped, HASH_CODE_MAX));
   }
 
   tagMap.set(tag, existing);
@@ -83,7 +84,7 @@ export function findFacesByTag(shape: AnyShape, tag: string): Face[] {
 
   const result: Face[] = [];
   for (const face of getFaces(shape)) {
-    const hash = face.wrapped.HashCode(HASH_CODE_MAX);
+    const hash = getKernel().hashCode(face.wrapped, HASH_CODE_MAX);
     if (hashes.has(hash)) {
       result.push(face);
     }
@@ -102,7 +103,7 @@ export function getFaceTags(shape: AnyShape): Map<string, Face[]> {
   const faces = getFaces(shape);
   const faceByHash = new Map<number, Face>();
   for (const face of faces) {
-    faceByHash.set(face.wrapped.HashCode(HASH_CODE_MAX), face);
+    faceByHash.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), face);
   }
 
   for (const [tag, hashes] of tagMap) {

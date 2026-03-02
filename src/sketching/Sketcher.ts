@@ -35,7 +35,12 @@ import {
 } from './sketcherlib.js';
 import type { Edge, Wire } from '../core/shapeTypes.js';
 import { createWire } from '../core/shapeTypes.js';
-import { curveEndPoint, curveTangentAt, getCurveType } from '../topology/curveFns.js';
+import {
+  curveEndPoint,
+  curveTangentAt,
+  getCurveType,
+  flipOrientation,
+} from '../topology/curveFns.js';
 import { downcast } from '../topology/cast.js';
 import { getKernel } from '../kernel/index.js';
 import { mirror as mirrorKernelShape } from '../core/geometryHelpers.js';
@@ -314,7 +319,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
 
     const xDir = vecRotate(this.plane.xDir, this.plane.zDir, rotationAngle * DEG2RAD);
 
-    const arc = unwrap(
+    let arc: Edge = unwrap(
       makeEllipseArc(
         rx,
         ry,
@@ -327,7 +332,7 @@ export default class Sketcher implements GenericSketcher<Sketch> {
     );
 
     if (!clockwise) {
-      arc.wrapped.Reverse();
+      arc = flipOrientation(arc) as Edge;
     }
 
     this.pendingEdges.push(arc);

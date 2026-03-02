@@ -1,6 +1,6 @@
 # brepjs
 
-Web CAD library built on OpenCascade with a layered architecture and kernel abstraction layer.
+Web CAD library with a layered architecture and pluggable kernel abstraction layer.
 
 ## Architecture
 
@@ -41,9 +41,11 @@ Monorepo with two publishable packages:
 
 ## Key patterns
 
-- `getKernel()` from `src/kernel/index.ts` for OCCT operations; `initFromOC(oc)` must be called first
+- `getKernel()` from `src/kernel/index.ts` for all kernel operations; `initFromOC(oc)` must be called first
+- `registerKernel(id, adapter)` / `withKernel(id, fn)` for custom or dual kernel usage
+- **Layer 2+ code must never call methods on `.wrapped`** — always use `getKernel().method(shape.wrapped)`. ESLint enforces this.
 - Branded types (`Edge`, `Wire`, `Face`, `Solid`, etc.) in `src/core/shapeTypes.ts` — lightweight handles, no class hierarchy
-- `createHandle()` / `createOcHandle()` from `src/core/disposal.ts` — use `using` keyword for OCCT resource cleanup
+- `createHandle()` / `createKernelHandle()` from `src/core/disposal.ts` — use `using` keyword for resource cleanup
 - Functional API in `*Fns.ts` files — pure functions taking/returning branded types; prefer over OO API for new code
 - `Result<T,E>` in `src/core/result.ts` — prefer over throwing in layers 2-3
 - All `.ts` imports must use `.js` extensions for ESM compatibility
@@ -51,11 +53,12 @@ Monorepo with two publishable packages:
 
 ## Lint rules
 
-- No `any` — use `// eslint-disable-next-line @typescript-eslint/no-explicit-any -- [reason]` for OCCT type gaps
+- No `any` — use `// eslint-disable-next-line @typescript-eslint/no-explicit-any -- [reason]` for WASM type gaps
 - No non-null assertions (`!`)
 - Consistent type imports (`import type` enforced)
 - No `var`, strict equality, `prefer-const`, `prefer-readonly`
 - `no-unsafe-*` rules disabled due to WASM type gaps
+- `no-restricted-syntax` bans `.oc` access and `.wrapped.method()` calls in Layer 2+ code
 
 ## Testing
 

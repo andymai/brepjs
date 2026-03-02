@@ -55,7 +55,7 @@ const value = unwrap(result);
 
 ### OCCT_OPERATION
 
-Errors from OpenCascade operations.
+Errors from kernel geometry operations.
 
 | Code                    | Description                        | Recovery                         |
 | ----------------------- | ---------------------------------- | -------------------------------- |
