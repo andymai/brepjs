@@ -7,7 +7,7 @@ examples/output/
 # Git worktrees
 .worktrees/
 
-node_modules/
+node_modules
 dist/
 docs-api/
 coverage/
