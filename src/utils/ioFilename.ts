@@ -5,8 +5,3 @@ let _counter = 0;
 export function uniqueIOFilename(prefix: string, ext: string): string {
   return `${prefix}_${++_counter}.${ext}`;
 }
-
-/** Generate a unique ID string for temporary file operations. */
-export function _uniqueId(): string {
-  return `_io_${++_counter}`;
-}

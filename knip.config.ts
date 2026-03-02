@@ -5,13 +5,13 @@ const config: KnipConfig = {
   rules: {
     // Intentional API-compat aliases (drawRectangle = drawRoundedRectangle, etc.)
     duplicates: 'off',
+    // brepjs-opencascade is an intentional optional peerDependency
+    optionalPeerDependencies: 'off',
   },
   workspaces: {
     '.': {
       project: ['src/**/*.ts'],
-      ignore: ['src/**/*.test.ts'],
-      ignoreBinaries: ['tsx', 'size-limit'],
-      ignoreDependencies: ['size-limit'],
+      ignoreBinaries: ['tsx'],
     },
     'packages/*': {
       ignore: ['**'],
