@@ -66,16 +66,13 @@ export function simplify<T extends AnyShape>(shape: T): T {
 /** Translate a shape by a vector. Returns a new shape. */
 export function translate<T extends AnyShape>(shape: T, v: Vec3): T {
   const oc = getKernel().oc;
-  const trsf = new oc.gp_Trsf_1();
-  const vec = toOcVec(v);
+  using scope = new DisposalScope();
+  const trsf = scope.register(new oc.gp_Trsf_1());
+  const vec = scope.register(toOcVec(v));
   trsf.SetTranslation_1(vec);
-
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
+  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
   const result = castShape(transformer.Shape()) as T;
   propagateOrigins(transformer, [shape], result);
-  transformer.delete();
-  trsf.delete();
-  vec.delete();
   return result;
 }
 
@@ -87,16 +84,13 @@ export function rotate<T extends AnyShape>(
   direction: Vec3 = [0, 0, 1]
 ): T {
   const oc = getKernel().oc;
-  const trsf = new oc.gp_Trsf_1();
-  const ax1 = makeOcAx1(position, direction);
+  using scope = new DisposalScope();
+  const trsf = scope.register(new oc.gp_Trsf_1());
+  const ax1 = scope.register(makeOcAx1(position, direction));
   trsf.SetRotation_1(ax1, angle * DEG2RAD);
-
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
+  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
   const result = castShape(transformer.Shape()) as T;
   propagateOrigins(transformer, [shape], result);
-  transformer.delete();
-  trsf.delete();
-  ax1.delete();
   return result;
 }
 
@@ -107,32 +101,26 @@ export function mirror<T extends AnyShape>(
   planeOrigin: Vec3 = [0, 0, 0]
 ): T {
   const oc = getKernel().oc;
-  const trsf = new oc.gp_Trsf_1();
-  const ax2 = makeOcAx2(planeOrigin, planeNormal);
+  using scope = new DisposalScope();
+  const trsf = scope.register(new oc.gp_Trsf_1());
+  const ax2 = scope.register(makeOcAx2(planeOrigin, planeNormal));
   trsf.SetMirror_3(ax2);
-
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
+  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
   const result = castShape(transformer.Shape()) as T;
   propagateOrigins(transformer, [shape], result);
-  transformer.delete();
-  trsf.delete();
-  ax2.delete();
   return result;
 }
 
 /** Scale a shape uniformly. Returns a new shape. */
 export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3 = [0, 0, 0]): T {
   const oc = getKernel().oc;
-  const trsf = new oc.gp_Trsf_1();
-  const pnt = toOcPnt(center);
+  using scope = new DisposalScope();
+  const trsf = scope.register(new oc.gp_Trsf_1());
+  const pnt = scope.register(toOcPnt(center));
   trsf.SetScale(pnt, factor);
-
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
+  const transformer = scope.register(new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true));
   const result = castShape(transformer.Shape()) as T;
   propagateOrigins(transformer, [shape], result);
-  transformer.delete();
-  trsf.delete();
-  pnt.delete();
   return result;
 }
 
@@ -283,7 +271,8 @@ export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): 
   const orthogonal = isOrthogonalMatrix(linear);
 
   if (orthogonal) {
-    const trsf = new oc.gp_Trsf_1();
+    using scope = new DisposalScope();
+    const trsf = scope.register(new oc.gp_Trsf_1());
     trsf.SetValues(
       linear[0],
       linear[1],
@@ -298,11 +287,11 @@ export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): 
       linear[8],
       translation[2]
     );
-    const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true);
+    const transformer = scope.register(
+      new oc.BRepBuilderAPI_Transform_2(shape.wrapped, trsf, true)
+    );
     const result = castShape(transformer.Shape()) as T;
     propagateOrigins(transformer, [shape], result);
-    transformer.delete();
-    trsf.delete();
     return result;
   }
 
@@ -382,10 +371,12 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
  */
 export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTransform): T {
   const oc = getKernel().oc;
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape.wrapped, composed.trsf, true);
+  using scope = new DisposalScope();
+  const transformer = scope.register(
+    new oc.BRepBuilderAPI_Transform_2(shape.wrapped, composed.trsf, true)
+  );
   const result = castShape(transformer.Shape()) as T;
   propagateOrigins(transformer, [shape], result);
-  transformer.delete();
   return result;
 }
 
@@ -652,7 +643,8 @@ export interface Bounds3D {
 /** Get the axis-aligned bounding box of a shape. */
 export function getBounds(shape: AnyShape): Bounds3D {
   const oc = getKernel().oc;
-  const bbox = new oc.Bnd_Box_1();
+  using scope = new DisposalScope();
+  const bbox = scope.register(new oc.Bnd_Box_1());
   oc.BRepBndLib.Add(shape.wrapped, bbox, true);
 
   const xMin = { current: 0 };
@@ -662,7 +654,6 @@ export function getBounds(shape: AnyShape): Bounds3D {
   const yMax = { current: 0 };
   const zMax = { current: 0 };
   bbox.Get(xMin, yMin, zMin, xMax, yMax, zMax);
-  bbox.delete();
 
   return {
     xMin: xMin.current,
@@ -709,8 +700,7 @@ export function describe(shape: AnyShape): ShapeDescription {
 /** Get the position of a vertex as a Vec3 tuple. */
 export function vertexPosition(vertex: Vertex): Vec3 {
   const oc = getKernel().oc;
-  const pnt = oc.BRep_Tool.Pnt(vertex.wrapped);
-  const result: Vec3 = [pnt.X(), pnt.Y(), pnt.Z()];
-  pnt.delete();
-  return result;
+  using scope = new DisposalScope();
+  const pnt = scope.register(oc.BRep_Tool.Pnt(vertex.wrapped));
+  return [pnt.X(), pnt.Y(), pnt.Z()];
 }
