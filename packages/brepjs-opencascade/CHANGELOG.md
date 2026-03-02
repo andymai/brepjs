@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.4](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.3...brepjs-opencascade-v0.8.4) (2026-03-02)
+
+
+### Performance Improvements
+
+* **wasm,topology:** enable simd, memory tuning, iterator optimization, and test coverage ([#309](https://github.com/andymai/brepjs/issues/309)) ([c0f1e1a](https://github.com/andymai/brepjs/commit/c0f1e1a2ac6fcf0ec8df751cafd24f57ddb4b04b))
+
 ## [0.8.3](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.2...brepjs-opencascade-v0.8.3) (2026-02-18)
 
 

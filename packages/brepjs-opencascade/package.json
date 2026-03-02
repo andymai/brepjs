@@ -1,6 +1,6 @@
 {
   "name": "brepjs-opencascade",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "OpenCascade.js custom WASM build for brepjs",
   "keywords": [
     "opencascade",
