@@ -14,7 +14,7 @@ graph TB
     end
 
     subgraph "Kernel Boundary"
-        occtBoundary[occtBoundary.ts<br/>Vec3 ↔ kernel type conversions<br/><i>internal to abstraction layer</i>]
+        kernelBoundary[kernelBoundary.ts<br/>Vec3 ↔ kernel type conversions<br/><i>internal to abstraction layer</i>]
     end
 
     subgraph "Memory Management"
@@ -36,9 +36,9 @@ graph TB
     types --> planeOps
     planeTypes --> planeOps
     vecOps --> planeOps
-    vecOps --> occtBoundary
-    planeOps --> occtBoundary
-    occtBoundary --> kernel([kernel/])
+    vecOps --> kernelBoundary
+    planeOps --> kernelBoundary
+    kernelBoundary --> kernel([kernel/])
     disposal --> shapeTypes
     result --> errors
     errors --> utils([utils/bug.ts])
@@ -47,7 +47,7 @@ graph TB
     style vecOps fill:#e1f5ff
     style planeTypes fill:#e1f5ff
     style planeOps fill:#e1f5ff
-    style occtBoundary fill:#fff4e1
+    style kernelBoundary fill:#fff4e1
     style disposal fill:#e8f5e9
     style shapeTypes fill:#e8f5e9
     style result fill:#fce4ec
@@ -58,23 +58,23 @@ graph TB
 
 ## Key Files
 
-| File                 | Purpose                                                            | Dependencies                                                |
-| -------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------- |
-| `types.ts`           | Core geometry types: `Vec3`, `Vec2`, `PointInput`, `Direction`     | None                                                        |
-| `vecOps.ts`          | Pure vector math operations (add, cross, normalize, etc.)          | `types.ts`                                                  |
-| `planeTypes.ts`      | `Plane` interface, `PlaneName` union, `PlaneInput`                 | `types.ts`                                                  |
-| `planeOps.ts`        | Pure plane operations (create, transform, coord conversion)        | `types.ts`, `planeTypes.ts`, `vecOps.ts`, `occtBoundary.ts` |
-| `occtBoundary.ts`    | Bridge between Vec3/Plane and kernel geometry types                | `types.ts`, `kernel/`                                       |
-| `disposal.ts`        | TC39 `Symbol.dispose` resource management + GC safety net          | `kernel/types.js`                                           |
-| `shapeTypes.ts`      | Branded shape types (`Vertex`, `Edge`, `Solid`, etc.)              | `disposal.ts`, `kernel/`                                    |
-| `result.ts`          | Rust-style `Result<T,E>` for error handling                        | None                                                        |
-| `errors.ts`          | `BrepError` types and constructor functions                        | `utils/bug.js`                                              |
-| `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                              | None                                                        |
-| `definitionMaps.ts`  | `CurveType` union, lazy kernel enum mappings                       | None                                                        |
-| `kernelCall.ts`      | `kernelCall`, `kernelCallRaw`, `kernelCallScoped` wrappers         | `kernel/`, `disposal.ts`, `result.ts`                       |
-| `memory.ts`          | Re-export hub for disposal utilities                               | `disposal.ts`                                               |
-| `geometry.ts`        | Re-export hub + legacy `Vector`, `Plane`, `Transformation` classes | All above                                                   |
-| `geometryHelpers.ts` | `makePlane` factory + `mirror` kernel helper                       | `planeOps.ts`, `vecOps.ts`                                  |
+| File                 | Purpose                                                            | Dependencies                                                  |
+| -------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `types.ts`           | Core geometry types: `Vec3`, `Vec2`, `PointInput`, `Direction`     | None                                                          |
+| `vecOps.ts`          | Pure vector math operations (add, cross, normalize, etc.)          | `types.ts`                                                    |
+| `planeTypes.ts`      | `Plane` interface, `PlaneName` union, `PlaneInput`                 | `types.ts`                                                    |
+| `planeOps.ts`        | Pure plane operations (create, transform, coord conversion)        | `types.ts`, `planeTypes.ts`, `vecOps.ts`, `kernelBoundary.ts` |
+| `kernelBoundary.ts`  | Bridge between Vec3/Plane and kernel geometry types                | `types.ts`, `kernel/`                                         |
+| `disposal.ts`        | TC39 `Symbol.dispose` resource management + GC safety net          | `kernel/types.js`                                             |
+| `shapeTypes.ts`      | Branded shape types (`Vertex`, `Edge`, `Solid`, etc.)              | `disposal.ts`, `kernel/`                                      |
+| `result.ts`          | Rust-style `Result<T,E>` for error handling                        | None                                                          |
+| `errors.ts`          | `BrepError` types and constructor functions                        | `utils/bug.js`                                                |
+| `constants.ts`       | `HASH_CODE_MAX`, `DEG2RAD`, `RAD2DEG`                              | None                                                          |
+| `definitionMaps.ts`  | `CurveType` union, lazy kernel enum mappings                       | None                                                          |
+| `kernelCall.ts`      | `kernelCall`, `kernelCallRaw`, `kernelCallScoped` wrappers         | `kernel/`, `disposal.ts`, `result.ts`                         |
+| `memory.ts`          | Re-export hub for disposal utilities                               | `disposal.ts`                                                 |
+| `geometry.ts`        | Re-export hub + legacy `Vector`, `Plane`, `Transformation` classes | All above                                                     |
+| `geometryHelpers.ts` | `makePlane` factory + `mirror` kernel helper                       | `planeOps.ts`, `vecOps.ts`                                    |
 
 ## Geometry Primitives (Functional, Immutable)
 
@@ -195,7 +195,7 @@ translatePlane(plane, offset); // Move by vector
 pivotPlane(plane, angleDeg, axis); // Rotate plane around axis
 ```
 
-## Kernel Boundary Layer (`occtBoundary.ts`)
+## Kernel Boundary Layer (`kernelBoundary.ts`)
 
 Bridges brepjs functional geometry with kernel-internal mutable types. **Critical:** All kernel boundary objects are temporary and require manual cleanup.
 

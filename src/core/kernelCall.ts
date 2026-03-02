@@ -11,7 +11,7 @@ import { castShape } from './shapeTypes.js';
 import type { Result } from './result.js';
 import { ok, err } from './result.js';
 import type { BrepErrorKind, BrepError } from './errors.js';
-import { translateOcctError } from './errors.js';
+import { translateKernelError } from './errors.js';
 import { DisposalScope } from './disposal.js';
 
 type ErrorFactory = (code: string, message: string, cause?: unknown) => BrepError;
@@ -46,7 +46,7 @@ export function kernelCall(
   } catch (e) {
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =
-      kind === 'KERNEL_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
+      kind === 'KERNEL_OPERATION' ? translateKernelError(rawMessage) : rawMessage;
     return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
   }
 }
@@ -69,7 +69,7 @@ export function kernelCallRaw<T>(
   } catch (e) {
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =
-      kind === 'KERNEL_OPERATION' ? translateOcctError(rawMessage) : rawMessage;
+      kind === 'KERNEL_OPERATION' ? translateKernelError(rawMessage) : rawMessage;
     return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
   }
 }

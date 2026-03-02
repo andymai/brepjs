@@ -4,7 +4,7 @@
  * Provides BSpline interpolation and approximation from point sets.
  */
 
-import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
+import type { KernelInstance, KernelShape, KernelType } from './types.js';
 
 export interface InterpolateOptions {
   periodic?: boolean;
@@ -26,7 +26,7 @@ export interface ApproximateOptions {
  * which may not be available in all WASM builds.
  */
 export function interpolatePoints(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   points: [number, number, number][],
   options: InterpolateOptions = {}
 ): KernelShape {
@@ -71,7 +71,7 @@ export function interpolatePoints(
  * Uses GeomAPI_PointsToBSpline.
  */
 export function approximatePoints(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   points: [number, number, number][],
   options: ApproximateOptions = {}
 ): KernelShape {

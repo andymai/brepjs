@@ -27,16 +27,16 @@ This is enforced by an ESLint `no-restricted-syntax` rule that bans `x.wrapped.m
 
 ## Key Files
 
-| File               | Purpose                                                                                                                           |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`         | Kernel registry: `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                               |
-| `types.ts`         | `KernelAdapter` interface (~120 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
-| `kernel2dTypes.ts` | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
-| `occtAdapter.ts`   | Default adapter class — thin delegation layer implementing both interfaces                                                        |
+| File                | Purpose                                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`          | Kernel registry: `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                               |
+| `types.ts`          | `KernelAdapter` interface (~120 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
+| `kernel2dTypes.ts`  | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
+| `defaultAdapter.ts` | Default adapter class — thin delegation layer implementing both interfaces                                                        |
 
 ### Operation Modules (kernel-specific)
 
-All raw kernel API calls are isolated in these files. A new kernel replaces `occtAdapter.ts` and these modules.
+All raw kernel API calls are isolated in these files. A new kernel replaces `defaultAdapter.ts` and these modules.
 
 | File                        | Purpose                                                                                                                                                         |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -5,24 +5,27 @@
  * needed by XCAF-based STEP assembly exporters.
  */
 
-import type { OpenCascadeInstance, KernelType } from './types.js';
+import type { KernelInstance, KernelType } from './types.js';
 
 /** Wrap a JS string as an OCCT TCollection_ExtendedString. */
-export function wrapString(oc: OpenCascadeInstance, str: string): KernelType {
+export function wrapString(oc: KernelInstance, str: string): KernelType {
   return new oc.TCollection_ExtendedString_2(str, true);
 }
 
 /** Create an OCCT Quantity_ColorRGBA from RGB 0-255 values and alpha 0-1. */
 export function wrapColorRGBA(
-  oc: OpenCascadeInstance,
-  red: number, green: number, blue: number, alpha: number
+  oc: KernelInstance,
+  red: number,
+  green: number,
+  blue: number,
+  alpha: number
 ): KernelType {
   return new oc.Quantity_ColorRGBA_5(red / 255, green / 255, blue / 255, alpha);
 }
 
 /** Configure STEP writer unit settings via OCCT Interface_Static. */
 export function configureStepUnits(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   unit: string | undefined,
   modelUnit: string | undefined
 ): void {
@@ -35,7 +38,7 @@ export function configureStepUnits(
 }
 
 /** Configure STEP writer standard settings (color, layer, name, schema). */
-export function configureStepWriter(oc: OpenCascadeInstance, writer: KernelType): void {
+export function configureStepWriter(oc: KernelInstance, writer: KernelType): void {
   writer.SetColorMode(true);
   writer.SetLayerMode(true);
   writer.SetNameMode(true);

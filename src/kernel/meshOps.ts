@@ -5,11 +5,11 @@
  * - C++ bulk extraction (MeshExtractor/EdgeMeshExtractor) when available
  * - JS fallback using TopExp_Explorer
  *
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
 import type {
-  OpenCascadeInstance,
+  KernelInstance,
   KernelShape,
   MeshOptions,
   KernelMeshResult,
@@ -21,7 +21,7 @@ import { HASH_CODE_MAX } from './measureOps.js';
  * Check if a shape already has face triangulation (from a prior mesh call).
  * Avoids redundant BRepMesh_IncrementalMesh creation.
  */
-function hasTriangulation(oc: OpenCascadeInstance, shape: KernelShape): boolean {
+function hasTriangulation(oc: KernelInstance, shape: KernelShape): boolean {
   const explorer = new oc.TopExp_Explorer_2(
     shape,
     oc.TopAbs_ShapeEnum.TopAbs_FACE,
@@ -44,7 +44,7 @@ function hasTriangulation(oc: OpenCascadeInstance, shape: KernelShape): boolean 
  * Meshes a shape using C++ bulk extraction.
  */
 export function meshBulk(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
@@ -101,7 +101,7 @@ export function meshBulk(
  * Meshes a shape using JS-side TopExp_Explorer extraction.
  */
 export function meshJS(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
@@ -243,7 +243,7 @@ export function meshJS(
  * Meshes a shape, using C++ bulk extraction when available.
  */
 export function mesh(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
@@ -258,7 +258,7 @@ export function mesh(
  * Extracts edge meshes using C++ bulk extraction.
  */
 export function meshEdgesBulk(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tolerance: number,
   angularTolerance: number
@@ -297,7 +297,7 @@ export function meshEdgesBulk(
  * Extracts edge meshes using JS-side extraction.
  */
 export function meshEdgesJS(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tolerance: number,
   angularTolerance: number
@@ -446,7 +446,7 @@ export function meshEdgesJS(
  * Extracts edge meshes, using C++ bulk extraction when available.
  */
 export function meshEdges(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tolerance: number,
   angularTolerance: number

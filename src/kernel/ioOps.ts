@@ -2,16 +2,16 @@
  * File I/O operations for OCCT shapes.
  *
  * Provides STEP, STL, and IGES import/export functionality.
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape } from './types.js';
+import type { KernelInstance, KernelShape } from './types.js';
 import { uniqueIOFilename } from '../utils/ioFilename.js';
 
 /**
  * Exports shapes to STEP format.
  */
-export function exportSTEP(oc: OpenCascadeInstance, shapes: KernelShape[]): string {
+export function exportSTEP(oc: KernelInstance, shapes: KernelShape[]): string {
   const writer = new oc.STEPControl_Writer_1();
   oc.Interface_Static.SetIVal('write.step.schema', 5);
   writer.Model(true).delete();
@@ -38,7 +38,7 @@ export function exportSTEP(oc: OpenCascadeInstance, shapes: KernelShape[]): stri
  * Exports a shape to STL format.
  */
 export function exportSTL(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   binary = false
 ): string | ArrayBuffer {
@@ -57,7 +57,7 @@ export function exportSTL(
 /**
  * Exports shapes to IGES format.
  */
-export function exportIGES(oc: OpenCascadeInstance, shapes: KernelShape[]): string {
+export function exportIGES(oc: KernelInstance, shapes: KernelShape[]): string {
   const writer = new oc.IGESControl_Writer_1();
 
   for (const shape of shapes) {
@@ -80,7 +80,7 @@ export function exportIGES(oc: OpenCascadeInstance, shapes: KernelShape[]): stri
 /**
  * Imports shapes from STEP data.
  */
-export function importSTEP(oc: OpenCascadeInstance, data: string | ArrayBuffer): KernelShape[] {
+export function importSTEP(oc: KernelInstance, data: string | ArrayBuffer): KernelShape[] {
   const filename = uniqueIOFilename('_import', 'step');
   const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
   oc.FS.writeFile('/' + filename, buffer);
@@ -103,7 +103,7 @@ export function importSTEP(oc: OpenCascadeInstance, data: string | ArrayBuffer):
 /**
  * Imports a shape from STL data.
  */
-export function importSTL(oc: OpenCascadeInstance, data: string | ArrayBuffer): KernelShape {
+export function importSTL(oc: KernelInstance, data: string | ArrayBuffer): KernelShape {
   const filename = uniqueIOFilename('_import', 'stl');
   const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
   oc.FS.writeFile('/' + filename, buffer);
@@ -134,7 +134,7 @@ export function importSTL(oc: OpenCascadeInstance, data: string | ArrayBuffer): 
 /**
  * Imports shapes from IGES data.
  */
-export function importIGES(oc: OpenCascadeInstance, data: string | ArrayBuffer): KernelShape[] {
+export function importIGES(oc: KernelInstance, data: string | ArrayBuffer): KernelShape[] {
   const filename = uniqueIOFilename('_import', 'iges');
   const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
   oc.FS.writeFile('/' + filename, buffer);

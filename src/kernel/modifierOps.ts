@@ -4,10 +4,10 @@
  * Provides fillet, chamfer, shell, and offset operations
  * for modifying existing 3D shapes.
  *
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape } from './types.js';
+import type { KernelInstance, KernelShape } from './types.js';
 
 export type FilletRadiusSpec =
   | number
@@ -19,7 +19,7 @@ export type FilletRadiusSpec =
  * Supports constant radius, variable radius [r1, r2], and per-edge callbacks.
  */
 export function fillet(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   edges: KernelShape[],
   radius: FilletRadiusSpec
@@ -49,7 +49,7 @@ export type ChamferDistSpec =
  * Supports symmetric distance, asymmetric `[d1, d2]`, and per-edge callbacks.
  */
 export function chamfer(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   edges: KernelShape[],
   distance: ChamferDistSpec
@@ -115,7 +115,7 @@ export function chamfer(
  * Creates a shell (hollow shape) by removing faces and offsetting the remaining walls.
  */
 export function shell(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   faces: KernelShape[],
   thickness: number,
@@ -150,7 +150,7 @@ export function shell(
  * Thickens a surface (face/shell) into a solid by offsetting it.
  * Uses the simple offset approach (BRepOffsetAPI_MakeThickSolid.MakeThickSolidBySimple).
  */
-export function thicken(oc: OpenCascadeInstance, shape: KernelShape, thickness: number): KernelShape {
+export function thicken(oc: KernelInstance, shape: KernelShape, thickness: number): KernelShape {
   const builder = new oc.BRepOffsetAPI_MakeThickSolid();
   builder.MakeThickSolidBySimple(shape, thickness);
   const progress = new oc.Message_ProgressRange_1();
@@ -168,7 +168,7 @@ export function thicken(oc: OpenCascadeInstance, shape: KernelShape, thickness: 
  * to find a containing face for each edge.
  */
 export function chamferDistAngle(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   edges: KernelShape[],
   distance: number,
@@ -221,7 +221,7 @@ export function chamferDistAngle(
  * joinType: the raw OCCT GeomAbs_JoinType enum value.
  */
 export function offsetWire2D(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   wire: KernelShape,
   offsetVal: number,
   joinType?: number
@@ -239,7 +239,7 @@ export function offsetWire2D(
  * Offsets all faces of a shape by a given distance.
  */
 export function offset(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   distance: number,
   tolerance = 1e-6

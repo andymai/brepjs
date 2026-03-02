@@ -5,10 +5,10 @@
  * surface construction, mesh sewing, repair, measurement, projection,
  * draft, and configured STEP export operations.
  *
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape, KernelType, OperationResult } from './types.js';
+import type { KernelInstance, KernelShape, KernelType, OperationResult } from './types.js';
 import { transformWithEvolution } from './evolutionOps.js';
 import { uniqueIOFilename } from '../utils/ioFilename.js';
 
@@ -23,7 +23,7 @@ import { uniqueIOFilename } from '../utils/ioFilename.js';
  */
 /* v8 ignore start -- untestable until WASM is rebuilt with BRepBuilderAPI_GTransform */
 export function generalTransformNonOrthogonal(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   linear: readonly [number, number, number, number, number, number, number, number, number],
   translation: readonly [number, number, number]
@@ -52,10 +52,15 @@ export function generalTransformNonOrthogonal(
 
 /** Create a composed gp_Trsf from a sequence of translate/rotate operations. */
 export function composeTransform(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   ops: Array<
     | { type: 'translate'; x: number; y: number; z: number }
-    | { type: 'rotate'; angle: number; axis?: [number, number, number]; center?: [number, number, number] }
+    | {
+        type: 'rotate';
+        angle: number;
+        axis?: [number, number, number];
+        center?: [number, number, number];
+      }
   >
 ): { handle: KernelType; dispose: () => void } {
   const trsf = new oc.gp_Trsf_1();
@@ -86,7 +91,7 @@ export function composeTransform(
 
 /** Apply a composed transform to a shape with evolution tracking. */
 export function applyComposedTransformWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   transformHandle: KernelType,
   inputFaceHashes: number[],
@@ -101,22 +106,25 @@ export function applyComposedTransformWithHistory(
 
 /** Map string transition mode to OCCT enum value. */
 function getTransitionMode(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   mode?: 'transformed' | 'round' | 'right'
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value
 ): any {
   if (!mode) return undefined;
   const modes = oc.BRepBuilderAPI_TransitionMode;
   switch (mode) {
-    case 'transformed': return modes.BRepBuilderAPI_Transformed;
-    case 'round': return modes.BRepBuilderAPI_RoundCorner;
-    case 'right': return modes.BRepBuilderAPI_RightCorner;
+    case 'transformed':
+      return modes.BRepBuilderAPI_Transformed;
+    case 'round':
+      return modes.BRepBuilderAPI_RoundCorner;
+    case 'right':
+      return modes.BRepBuilderAPI_RightCorner;
   }
 }
 
 /** Sweep a profile along a spine with advanced options. */
 export function sweepPipeShell(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   profile: KernelShape,
   spine: KernelShape,
   options: {
@@ -164,11 +172,7 @@ export function sweepPipeShell(
   }
 
   if (options.auxiliary) {
-    builder.SetMode_5(
-      options.auxiliary,
-      false,
-      oc.BRepFill_TypeOfContact.BRepFill_NoContact
-    );
+    builder.SetMode_5(options.auxiliary, false, oc.BRepFill_TypeOfContact.BRepFill_NoContact);
   }
 
   const withContact = !!options.contact;
@@ -200,9 +204,14 @@ export function sweepPipeShell(
 
 /** Loft through wires with advanced options. */
 export function loftAdvanced(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   wires: KernelShape[],
-  options: { solid?: boolean; ruled?: boolean; startVertex?: KernelShape; endVertex?: KernelShape } = {}
+  options: {
+    solid?: boolean;
+    ruled?: boolean;
+    startVertex?: KernelShape;
+    endVertex?: KernelShape;
+  } = {}
 ): KernelShape {
   const solid = options.solid ?? true;
   const ruled = options.ruled ?? false;
@@ -231,7 +240,7 @@ export function loftAdvanced(
 
 /** Build an extrusion scaling law (linear or s-curve). */
 export function buildExtrusionLaw(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   profile: 'linear' | 's-curve',
   length: number,
   endFactor: number
@@ -249,7 +258,7 @@ export function buildExtrusionLaw(
 
 /** Revolve a shape around an axis defined by center + direction vectors. */
 export function revolveVec(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   center: [number, number, number],
   direction: [number, number, number],
@@ -273,7 +282,7 @@ export function revolveVec(
 
 /** Generate a linear pattern of shapes with pooled transforms. */
 export function linearPattern(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   direction: [number, number, number],
   spacing: number,
@@ -301,7 +310,7 @@ export function linearPattern(
 
 /** Generate a circular pattern of shapes. */
 export function circularPattern(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   center: [number, number, number],
   axis: [number, number, number],
@@ -341,7 +350,7 @@ export function circularPattern(
  * then transforms the shape from standard coordinates (origin, Z-up) to that frame.
  */
 export function positionOnCurve(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   spine: KernelShape,
   param: number
@@ -387,10 +396,7 @@ export function positionOnCurve(
 // ---------------------------------------------------------------------------
 
 /** Build a non-planar face by filling a wire boundary. */
-export function makeNonPlanarFace(
-  oc: OpenCascadeInstance,
-  wire: KernelShape
-): KernelShape {
+export function makeNonPlanarFace(oc: KernelInstance, wire: KernelShape): KernelShape {
   const filler = new oc.BRepOffsetAPI_MakeFilling(3, 15, 2, false, 1e-5, 1e-4, 1e-2, 0.1, 8, 9);
   // Add edges from the wire as boundary constraints
   const explorer = new oc.TopExp_Explorer_2(
@@ -416,7 +422,7 @@ export function makeNonPlanarFace(
 
 /** Add hole wires to an existing face. */
 export function addHolesInFace(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape,
   holeWires: KernelShape[]
 ): KernelShape {
@@ -443,7 +449,7 @@ export function addHolesInFace(
 
 /** Build a face on an existing surface bounded by a wire. Accepts a Geom_Surface handle or a TopoDS_Face (surface is extracted automatically). */
 export function makeFaceOnSurface(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   surfaceOrFace: KernelType,
   wire: KernelShape
 ): KernelShape {
@@ -468,7 +474,7 @@ export function makeFaceOnSurface(
 
 /** Fit a B-spline surface through a grid of points. */
 export function bsplineSurface(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   points: [number, number, number][],
   rows: number,
   cols: number
@@ -486,7 +492,13 @@ export function bsplineSurface(
     }
   }
 
-  const fitter = new oc.GeomAPI_PointsToBSplineSurface_2(arr, 3, 8, oc.GeomAbs_Shape.GeomAbs_C2, 1e-3);
+  const fitter = new oc.GeomAPI_PointsToBSplineSurface_2(
+    arr,
+    3,
+    8,
+    oc.GeomAbs_Shape.GeomAbs_C2,
+    1e-3
+  );
   const surface = fitter.Surface();
   arr.delete();
 
@@ -499,7 +511,7 @@ export function bsplineSurface(
 
 /** Build a triangulated surface from a height grid. */
 export function triangulatedSurface(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   points: [number, number, number][],
   rows: number,
   cols: number
@@ -544,7 +556,7 @@ export function triangulatedSurface(
 
 /** Helper: create a triangular face from three points. */
 function makeTriFace(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   p1: [number, number, number],
   p2: [number, number, number],
   p3: [number, number, number]
@@ -581,7 +593,7 @@ function makeTriFace(
 
 /** Sew faces into a shell and convert to solid. */
 export function sewAndSolidify(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   faces: KernelShape[],
   tolerance: number
 ): KernelShape {
@@ -617,10 +629,7 @@ export function sewAndSolidify(
 // ---------------------------------------------------------------------------
 
 /** Run ShapeFix_Shape on a shape (fixes orientation, etc.). */
-export function fixShape(
-  oc: OpenCascadeInstance,
-  shape: KernelShape
-): KernelShape {
+export function fixShape(oc: KernelInstance, shape: KernelShape): KernelShape {
   const fixer = new oc.ShapeFix_Shape_1(shape);
   const progress = new oc.Message_ProgressRange_1();
   fixer.Perform(progress);
@@ -631,10 +640,7 @@ export function fixShape(
 }
 
 /** Fix self-intersections in a wire. */
-export function fixSelfIntersection(
-  oc: OpenCascadeInstance,
-  wire: KernelShape
-): KernelShape {
+export function fixSelfIntersection(oc: KernelInstance, wire: KernelShape): KernelShape {
   const fixer = new oc.ShapeFix_Wire_1();
   fixer.Load_1(wire);
   fixer.FixSelfIntersection();
@@ -649,13 +655,17 @@ export function fixSelfIntersection(
 
 /** Compute surface curvature at a UV point on a face. */
 export function surfaceCurvature(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape,
   u: number,
   v: number
 ): {
-  gaussian: number; mean: number; max: number; min: number;
-  maxDirection: [number, number, number]; minDirection: [number, number, number];
+  gaussian: number;
+  mean: number;
+  max: number;
+  min: number;
+  maxDirection: [number, number, number];
+  minDirection: [number, number, number];
 } {
   const adaptor = new oc.BRepAdaptor_Surface_2(face, false);
 
@@ -678,14 +688,22 @@ export function surfaceCurvature(
   const nLen = N.Magnitude();
 
   let result: {
-    gaussian: number; mean: number; max: number; min: number;
-    maxDirection: [number, number, number]; minDirection: [number, number, number];
+    gaussian: number;
+    mean: number;
+    max: number;
+    min: number;
+    maxDirection: [number, number, number];
+    minDirection: [number, number, number];
   };
 
   if (nLen < 1e-15) {
     result = {
-      gaussian: 0, mean: 0, max: 0, min: 0,
-      maxDirection: [1, 0, 0], minDirection: [0, 1, 0],
+      gaussian: 0,
+      mean: 0,
+      max: 0,
+      min: 0,
+      maxDirection: [1, 0, 0],
+      minDirection: [0, 1, 0],
     };
   } else {
     N.Divide(nLen);
@@ -696,12 +714,21 @@ export function surfaceCurvature(
     const denom = E * G - F * F;
 
     if (Math.abs(denom) < 1e-15) {
-      P.delete(); D1U.delete(); D1V.delete();
-      D2U.delete(); D2V.delete(); D2UV.delete();
-      N.delete(); adaptor.delete();
+      P.delete();
+      D1U.delete();
+      D1V.delete();
+      D2U.delete();
+      D2V.delete();
+      D2UV.delete();
+      N.delete();
+      adaptor.delete();
       return {
-        gaussian: 0, mean: 0, max: 0, min: 0,
-        maxDirection: [1, 0, 0], minDirection: [0, 1, 0],
+        gaussian: 0,
+        mean: 0,
+        max: 0,
+        min: 0,
+        maxDirection: [1, 0, 0],
+        minDirection: [0, 1, 0],
       };
     }
 
@@ -734,21 +761,32 @@ export function surfaceCurvature(
     const minDir = dirFromUV(D1U, D1V, -dv1, du1);
 
     result = {
-      gaussian, mean,
-      max: k1, min: k2,
-      maxDirection: maxDir, minDirection: minDir,
+      gaussian,
+      mean,
+      max: k1,
+      min: k2,
+      maxDirection: maxDir,
+      minDirection: minDir,
     };
   }
 
-  P.delete(); D1U.delete(); D1V.delete();
-  D2U.delete(); D2V.delete(); D2UV.delete();
-  N.delete(); adaptor.delete();
+  P.delete();
+  D1U.delete();
+  D1V.delete();
+  D2U.delete();
+  D2V.delete();
+  D2UV.delete();
+  N.delete();
+  adaptor.delete();
 
   return result;
 }
 
 function dirFromUV(
-  D1U: KernelType, D1V: KernelType, du: number, dv: number
+  D1U: KernelType,
+  D1V: KernelType,
+  du: number,
+  dv: number
 ): [number, number, number] {
   const x = du * D1U.X() + dv * D1V.X();
   const y = du * D1U.Y() + dv * D1V.Y();
@@ -760,7 +798,7 @@ function dirFromUV(
 
 /** Surface-based center of mass. */
 export function surfaceCenterOfMass(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape
 ): [number, number, number] {
   const props = new oc.GProp_GProps_1();
@@ -774,10 +812,14 @@ export function surfaceCenterOfMass(
 
 /** Create a persistent distance query tool. */
 export function createDistanceQuery(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   referenceShape: KernelShape
 ): {
-  distanceTo(shape: KernelShape): { value: number; point1: [number, number, number]; point2: [number, number, number] };
+  distanceTo(shape: KernelShape): {
+    value: number;
+    point1: [number, number, number];
+    point2: [number, number, number];
+  };
   dispose(): void;
 } {
   const distTool = new oc.BRepExtrema_DistShapeShape_1();
@@ -820,7 +862,7 @@ export function createDistanceQuery(
 
 /** Project 3D edges onto a 2D plane (hidden line removal). */
 export function projectEdges(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   cameraOrigin: [number, number, number],
   cameraDirection: [number, number, number],
@@ -890,7 +932,7 @@ export function projectEdges(
 
 /** Create a draft prism (tapered extrusion with draft angle). */
 export function draftPrism(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   face: KernelShape,
   baseFace: KernelShape,
@@ -919,7 +961,7 @@ export function draftPrism(
 
 /** Create an XCAF document with named, colored shape nodes. */
 export function createXCAFDocument(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shapes: Array<{ shape: KernelShape; name: string; color?: [number, number, number, number] }>
 ): KernelType {
   const nameStr = new oc.TCollection_ExtendedString_2('XmlOcaf', true);
@@ -955,7 +997,7 @@ export function createXCAFDocument(
 
 /** Write an XCAF document to STEP format and return the string. */
 export function writeXCAFToSTEP(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   doc: KernelType,
   options: { unit?: string; modelUnit?: string } = {}
 ): string {
@@ -1009,7 +1051,7 @@ export function writeXCAFToSTEP(
 
 /** Export shapes to STEP with full configuration. */
 export function exportSTEPConfigured(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shapes: Array<{ shape: KernelShape; name?: string; color?: [number, number, number, number] }>,
   options: { unit?: string; modelUnit?: string; schema?: number } = {}
 ): string {

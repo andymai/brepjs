@@ -360,17 +360,17 @@ const kernel_ERROR_PATTERNS: Array<{ pattern: RegExp; translation: string }> = [
  * Translate an kernel error message into a user-friendly explanation.
  * If no pattern matches, returns the original message.
  *
- * @param occtMessage - The raw error message from kernel
+ * @param kernelMessage - The raw error message from kernel
  * @returns User-friendly error message with actionable guidance
  */
-export function translateOcctError(occtMessage: string): string {
+export function translateKernelError(kernelMessage: string): string {
   for (const { pattern, translation } of kernel_ERROR_PATTERNS) {
-    if (pattern.test(occtMessage)) {
-      return `${translation} (kernel: ${occtMessage})`;
+    if (pattern.test(kernelMessage)) {
+      return `${translation} (kernel: ${kernelMessage})`;
     }
   }
   // No pattern matched — return original message
-  return occtMessage;
+  return kernelMessage;
 }
 
 // ---------------------------------------------------------------------------

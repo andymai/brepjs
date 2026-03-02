@@ -13,7 +13,7 @@ import {
   makeKernelAx1,
   makeKernelAx2,
   makeKernelAx3,
-} from '../src/core/occtBoundary.js';
+} from '../src/core/kernelBoundary.js';
 import { vecEquals } from '../src/core/vecOps.js';
 import type { Vec3 } from '../src/core/types.js';
 

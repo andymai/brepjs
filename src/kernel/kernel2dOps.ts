@@ -4,17 +4,17 @@
  * Provides 2D curve construction, transformation, querying, intersection,
  * bounding box, and 2D-to-3D projection operations.
  *
- * Used by OCCTAdapter to implement Kernel2DCapability.
+ * Used by DefaultAdapter to implement Kernel2DCapability.
  */
 
-import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
+import type { KernelInstance, KernelShape, KernelType } from './types.js';
 import { iterShapes } from './topologyOps.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function mapContinuity(oc: OpenCascadeInstance, continuity: 'C0' | 'C1' | 'C2' | 'C3'): KernelType {
+function mapContinuity(oc: KernelInstance, continuity: 'C0' | 'C1' | 'C2' | 'C3'): KernelType {
   switch (continuity) {
     case 'C0':
       return oc.GeomAbs_Shape.GeomAbs_C0;
@@ -32,13 +32,13 @@ function mapContinuity(oc: OpenCascadeInstance, continuity: 'C0' | 'C1' | 'C2' |
 // ---------------------------------------------------------------------------
 
 /** Wrap a raw Geom2d_Curve in a Handle_Geom2d_Curve. */
-export function wrapCurve2dHandle(oc: OpenCascadeInstance, handle: KernelType): KernelType {
+export function wrapCurve2dHandle(oc: KernelInstance, handle: KernelType): KernelType {
   const inner = handle.get();
   return new oc.Handle_Geom2d_Curve_2(inner);
 }
 
 /** Create a Geom2dAdaptor_Curve for algorithmic queries. Caller must delete. */
-export function createCurve2dAdaptor(oc: OpenCascadeInstance, handle: KernelType): KernelType {
+export function createCurve2dAdaptor(oc: KernelInstance, handle: KernelType): KernelType {
   return new oc.Geom2dAdaptor_Curve_2(handle);
 }
 
@@ -46,20 +46,20 @@ export function createCurve2dAdaptor(oc: OpenCascadeInstance, handle: KernelType
 // 2D Point/Vector factories
 // ---------------------------------------------------------------------------
 
-export function createPoint2d(oc: OpenCascadeInstance, x: number, y: number): KernelType {
+export function createPoint2d(oc: KernelInstance, x: number, y: number): KernelType {
   return new oc.gp_Pnt2d_3(x, y);
 }
 
-export function createDirection2d(oc: OpenCascadeInstance, x: number, y: number): KernelType {
+export function createDirection2d(oc: KernelInstance, x: number, y: number): KernelType {
   return new oc.gp_Dir2d_4(x, y);
 }
 
-export function createVector2d(oc: OpenCascadeInstance, x: number, y: number): KernelType {
+export function createVector2d(oc: KernelInstance, x: number, y: number): KernelType {
   return new oc.gp_Vec2d_4(x, y);
 }
 
 export function createAxis2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   px: number,
   py: number,
   dx: number,
@@ -78,7 +78,7 @@ export function createAxis2d(
 // ---------------------------------------------------------------------------
 
 export function makeLine2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   x1: number,
   y1: number,
   x2: number,
@@ -95,7 +95,7 @@ export function makeLine2d(
 }
 
 export function makeCircle2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   cx: number,
   cy: number,
   radius: number,
@@ -110,7 +110,7 @@ export function makeCircle2d(
 }
 
 export function makeArc2dThreePoints(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   x1: number,
   y1: number,
   xm: number,
@@ -131,7 +131,7 @@ export function makeArc2dThreePoints(
 }
 
 export function makeArc2dTangent(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   startX: number,
   startY: number,
   tangentX: number,
@@ -152,7 +152,7 @@ export function makeArc2dTangent(
 }
 
 export function makeEllipse2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   cx: number,
   cy: number,
   majorRadius: number,
@@ -176,7 +176,7 @@ export function makeEllipse2d(
 }
 
 export function makeEllipseArc2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   cx: number,
   cy: number,
   majorRadius: number,
@@ -201,7 +201,7 @@ export function makeEllipseArc2d(
   return curve;
 }
 
-export function makeBezier2d(oc: OpenCascadeInstance, points: [number, number][]): KernelType {
+export function makeBezier2d(oc: KernelInstance, points: [number, number][]): KernelType {
   const arr = new oc.TColgp_Array1OfPnt2d_2(1, points.length);
   for (let i = 0; i < points.length; i++) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -218,7 +218,7 @@ export function makeBezier2d(oc: OpenCascadeInstance, points: [number, number][]
 }
 
 export function makeBSpline2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   points: [number, number][],
   options: {
     degMin?: number;
@@ -276,7 +276,7 @@ export function makeBSpline2d(
 // ---------------------------------------------------------------------------
 
 export function evaluateCurve2d(
-  _oc: OpenCascadeInstance,
+  _oc: KernelInstance,
   curve: KernelType,
   param: number
 ): [number, number] {
@@ -288,7 +288,7 @@ export function evaluateCurve2d(
 }
 
 export function evaluateCurve2dD1(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   param: number
 ): { point: [number, number]; tangent: [number, number] } {
@@ -306,7 +306,7 @@ export function evaluateCurve2dD1(
 }
 
 export function getCurve2dBounds(
-  _oc: OpenCascadeInstance,
+  _oc: KernelInstance,
   curve: KernelType
 ): { first: number; last: number } {
   const inner = curve.get();
@@ -316,7 +316,7 @@ export function getCurve2dBounds(
   };
 }
 
-export function getCurve2dType(oc: OpenCascadeInstance, curve: KernelType): string {
+export function getCurve2dType(oc: KernelInstance, curve: KernelType): string {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
   const typeVal = adaptor.GetType();
   adaptor.delete();
@@ -344,7 +344,7 @@ export function getCurve2dType(oc: OpenCascadeInstance, curve: KernelType): stri
 // ---------------------------------------------------------------------------
 
 export function trimCurve2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   start: number,
   end: number
@@ -353,19 +353,15 @@ export function trimCurve2d(
   return new oc.Handle_Geom2d_Curve_2(trimmed);
 }
 
-export function reverseCurve2d(_oc: OpenCascadeInstance, curve: KernelType): void {
+export function reverseCurve2d(_oc: KernelInstance, curve: KernelType): void {
   curve.get().Reverse();
 }
 
-export function copyCurve2d(_oc: OpenCascadeInstance, curve: KernelType): KernelType {
+export function copyCurve2d(_oc: KernelInstance, curve: KernelType): KernelType {
   return curve.get().Copy();
 }
 
-export function offsetCurve2d(
-  oc: OpenCascadeInstance,
-  curve: KernelType,
-  offset: number
-): KernelType {
+export function offsetCurve2d(oc: KernelInstance, curve: KernelType, offset: number): KernelType {
   const offsetCurve = new oc.Geom2d_OffsetCurve(curve, offset, true);
   return new oc.Handle_Geom2d_Curve_2(offsetCurve);
 }
@@ -374,7 +370,7 @@ export function offsetCurve2d(
 // 2D Transformations
 // ---------------------------------------------------------------------------
 
-function transformCurve(oc: OpenCascadeInstance, curve: KernelType, trsf: KernelType): KernelType {
+function transformCurve(oc: KernelInstance, curve: KernelType, trsf: KernelType): KernelType {
   const gtrsf = new oc.gp_GTrsf2d_2(trsf);
   const result = oc.GeomLib.GTransform(curve, gtrsf);
   gtrsf.delete();
@@ -383,7 +379,7 @@ function transformCurve(oc: OpenCascadeInstance, curve: KernelType, trsf: Kernel
 }
 
 export function translateCurve2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   dx: number,
   dy: number
@@ -396,7 +392,7 @@ export function translateCurve2d(
 }
 
 export function rotateCurve2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   angle: number,
   cx: number,
@@ -410,7 +406,7 @@ export function rotateCurve2d(
 }
 
 export function scaleCurve2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   factor: number,
   cx: number,
@@ -424,7 +420,7 @@ export function scaleCurve2d(
 }
 
 export function mirrorCurve2dAtPoint(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   cx: number,
   cy: number
@@ -437,7 +433,7 @@ export function mirrorCurve2dAtPoint(
 }
 
 export function mirrorCurve2dAcrossAxis(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   originX: number,
   originY: number,
@@ -456,7 +452,7 @@ export function mirrorCurve2dAcrossAxis(
 }
 
 export function affinityTransform2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   axisOriginX: number,
   axisOriginY: number,
@@ -482,18 +478,18 @@ export function affinityTransform2d(
 // ---------------------------------------------------------------------------
 
 /** Helper: wrap a gp_Trsf2d in a gp_GTrsf2d and delete the trsf. */
-function wrapTrsf2dAsGTrsf2d(oc: OpenCascadeInstance, trsf: KernelType): KernelType {
+function wrapTrsf2dAsGTrsf2d(oc: KernelInstance, trsf: KernelType): KernelType {
   const gtrsf = new oc.gp_GTrsf2d_2(trsf);
   trsf.delete();
   return gtrsf;
 }
 
-export function createIdentityGTrsf2d(oc: OpenCascadeInstance): KernelType {
+export function createIdentityGTrsf2d(oc: KernelInstance): KernelType {
   return new oc.gp_GTrsf2d_1();
 }
 
 export function createAffinityGTrsf2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   originX: number,
   originY: number,
   dirX: number,
@@ -511,11 +507,7 @@ export function createAffinityGTrsf2d(
   return gtrsf;
 }
 
-export function createTranslationGTrsf2d(
-  oc: OpenCascadeInstance,
-  dx: number,
-  dy: number
-): KernelType {
+export function createTranslationGTrsf2d(oc: KernelInstance, dx: number, dy: number): KernelType {
   const v = new oc.gp_Vec2d_4(dx, dy);
   const trsf = new oc.gp_Trsf2d_1();
   trsf.SetTranslation_1(v);
@@ -524,7 +516,7 @@ export function createTranslationGTrsf2d(
 }
 
 export function createMirrorGTrsf2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   cx: number,
   cy: number,
   mode: 'point' | 'axis',
@@ -551,7 +543,7 @@ export function createMirrorGTrsf2d(
 }
 
 export function createRotationGTrsf2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   angle: number,
   cx: number,
   cy: number
@@ -564,7 +556,7 @@ export function createRotationGTrsf2d(
 }
 
 export function createScaleGTrsf2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   factor: number,
   cx: number,
   cy: number
@@ -577,7 +569,7 @@ export function createScaleGTrsf2d(
 }
 
 export function setGTrsf2dTranslationPart(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   gtrsf: KernelType,
   dx: number,
   dy: number
@@ -587,16 +579,12 @@ export function setGTrsf2dTranslationPart(
   xy.delete();
 }
 
-export function multiplyGTrsf2d(
-  _oc: OpenCascadeInstance,
-  base: KernelType,
-  other: KernelType
-): void {
+export function multiplyGTrsf2d(_oc: KernelInstance, base: KernelType, other: KernelType): void {
   base.Multiply(other);
 }
 
 export function transformCurve2dGeneral(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   gtrsf: KernelType
 ): KernelType {
@@ -608,7 +596,7 @@ export function transformCurve2dGeneral(
 // ---------------------------------------------------------------------------
 
 export function intersectCurves2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   c1: KernelType,
   c2: KernelType,
   tolerance: number
@@ -645,7 +633,7 @@ export function intersectCurves2d(
 }
 
 export function projectPointOnCurve2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   x: number,
   y: number
@@ -671,7 +659,7 @@ export function projectPointOnCurve2d(
 }
 
 export function distanceBetweenCurves2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   c1: KernelType,
   c2: KernelType,
   p1Start: number,
@@ -697,7 +685,7 @@ export function distanceBetweenCurves2d(
 // ---------------------------------------------------------------------------
 
 export function approximateCurve2dAsBSpline(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   tolerance: number,
   continuity: 'C0' | 'C1' | 'C2' | 'C3',
@@ -717,10 +705,7 @@ export function approximateCurve2dAsBSpline(
   return result;
 }
 
-export function decomposeBSpline2dToBeziers(
-  oc: OpenCascadeInstance,
-  curve: KernelType
-): KernelType[] {
+export function decomposeBSpline2dToBeziers(oc: KernelInstance, curve: KernelType): KernelType[] {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
   const handle = adaptor.BSpline();
   adaptor.delete();
@@ -739,12 +724,12 @@ export function decomposeBSpline2dToBeziers(
 // 2D Bounding box
 // ---------------------------------------------------------------------------
 
-export function createBoundingBox2d(oc: OpenCascadeInstance): KernelType {
+export function createBoundingBox2d(oc: KernelInstance): KernelType {
   return new oc.Bnd_Box2d();
 }
 
 export function addCurveToBBox2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   bbox: KernelType,
   curve: KernelType,
   tolerance: number
@@ -753,7 +738,7 @@ export function addCurveToBBox2d(
 }
 
 export function getBBox2dBounds(
-  _oc: OpenCascadeInstance,
+  _oc: KernelInstance,
   bbox: KernelType
 ): { xMin: number; yMin: number; xMax: number; yMax: number } {
   const xMin = { current: 0 };
@@ -769,16 +754,16 @@ export function getBBox2dBounds(
   };
 }
 
-export function mergeBBox2d(_oc: OpenCascadeInstance, target: KernelType, other: KernelType): void {
+export function mergeBBox2d(_oc: KernelInstance, target: KernelType, other: KernelType): void {
   target.Add_1(other);
 }
 
-export function isBBox2dOut(_oc: OpenCascadeInstance, a: KernelType, b: KernelType): boolean {
+export function isBBox2dOut(_oc: KernelInstance, a: KernelType, b: KernelType): boolean {
   return a.IsOut_4(b);
 }
 
 export function isBBox2dOutPoint(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   bbox: KernelType,
   x: number,
   y: number
@@ -794,7 +779,7 @@ export function isBBox2dOutPoint(
 // ---------------------------------------------------------------------------
 
 export function getCurve2dCircleData(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType
 ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
@@ -821,7 +806,7 @@ export function getCurve2dCircleData(
 }
 
 export function getCurve2dEllipseData(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType
 ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
@@ -847,7 +832,7 @@ export function getCurve2dEllipseData(
 }
 
 export function getCurve2dBezierPoles(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType
 ): [number, number][] | null {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
@@ -870,7 +855,7 @@ export function getCurve2dBezierPoles(
   return poles;
 }
 
-export function getCurve2dBezierDegree(oc: OpenCascadeInstance, curve: KernelType): number | null {
+export function getCurve2dBezierDegree(oc: KernelInstance, curve: KernelType): number | null {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
   const typeVal = adaptor.GetType();
   const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
@@ -886,7 +871,7 @@ export function getCurve2dBezierDegree(oc: OpenCascadeInstance, curve: KernelTyp
 }
 
 export function getCurve2dBSplineData(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType
 ): {
   poles: [number, number][];
@@ -938,11 +923,11 @@ export function getCurve2dBSplineData(
 // 2D Serialization
 // ---------------------------------------------------------------------------
 
-export function serializeCurve2d(oc: OpenCascadeInstance, curve: KernelType): string {
+export function serializeCurve2d(oc: KernelInstance, curve: KernelType): string {
   return oc.GeomToolsWrapper.Write(curve);
 }
 
-export function deserializeCurve2d(oc: OpenCascadeInstance, data: string): KernelType {
+export function deserializeCurve2d(oc: KernelInstance, data: string): KernelType {
   return oc.GeomToolsWrapper.Read(data);
 }
 
@@ -951,7 +936,7 @@ export function deserializeCurve2d(oc: OpenCascadeInstance, data: string): Kerne
 // ---------------------------------------------------------------------------
 
 export function splitCurve2d(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   params: number[]
 ): KernelType[] {
@@ -1009,7 +994,7 @@ export function splitCurve2d(
 // ---------------------------------------------------------------------------
 
 export function liftCurve2dToPlane(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   planeOrigin: [number, number, number],
   planeZ: [number, number, number],
@@ -1034,7 +1019,7 @@ export function liftCurve2dToPlane(
 }
 
 export function buildEdgeOnSurface(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   surface: KernelType
 ): KernelShape {
@@ -1044,12 +1029,12 @@ export function buildEdgeOnSurface(
   return edge;
 }
 
-export function extractSurfaceFromFace(oc: OpenCascadeInstance, face: KernelShape): KernelType {
+export function extractSurfaceFromFace(oc: KernelInstance, face: KernelShape): KernelType {
   return oc.BRep_Tool.Surface_2(face);
 }
 
 export function extractCurve2dFromEdge(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   edge: KernelShape,
   face: KernelShape
 ): KernelType {
@@ -1063,12 +1048,12 @@ export function extractCurve2dFromEdge(
   return new oc.Handle_Geom2d_Curve_2(trimmed);
 }
 
-export function buildCurves3d(oc: OpenCascadeInstance, wire: KernelShape): void {
+export function buildCurves3d(oc: KernelInstance, wire: KernelShape): void {
   oc.BRepLib.BuildCurves3d_2(wire);
 }
 
 export function fixWireOnFace(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   wire: KernelShape,
   face: KernelShape,
   tolerance: number
@@ -1085,7 +1070,7 @@ export function fixWireOnFace(
 // ---------------------------------------------------------------------------
 
 export function fillSurface(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   wires: KernelShape[],
   options: {
     order?: number;

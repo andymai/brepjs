@@ -2,10 +2,10 @@
  * Boolean operations for OCCT shapes.
  *
  * Provides fuse, cut, intersect, and batch operations (fuseAll, cutAll).
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape, BooleanOptions } from './types.js';
+import type { KernelInstance, KernelShape, BooleanOptions } from './types.js';
 
 /** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
 const SIMPLIFY_TOLERANCE = 1e-3;
@@ -14,7 +14,7 @@ const SIMPLIFY_TOLERANCE = 1e-3;
  * Applies glue optimization to a boolean operation builder.
  */
 export function applyGlue(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   op: { SetGlue(glue: unknown): void },
   optimisation?: string
 ): void {
@@ -29,7 +29,7 @@ export function applyGlue(
 /**
  * Builds a compound from multiple shapes.
  */
-export function buildCompound(oc: OpenCascadeInstance, shapes: KernelShape[]): KernelShape {
+export function buildCompound(oc: KernelInstance, shapes: KernelShape[]): KernelShape {
   const builder = new oc.TopoDS_Builder();
   const compound = new oc.TopoDS_Compound();
   builder.MakeCompound(compound);
@@ -44,7 +44,7 @@ export function buildCompound(oc: OpenCascadeInstance, shapes: KernelShape[]): K
  * Fuses two shapes together.
  */
 export function fuse(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tool: KernelShape,
   options: BooleanOptions = {}
@@ -66,7 +66,7 @@ export function fuse(
  * Cuts a tool shape from a base shape.
  */
 export function cut(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tool: KernelShape,
   options: BooleanOptions = {}
@@ -88,7 +88,7 @@ export function cut(
  * Intersects two shapes.
  */
 export function intersect(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tool: KernelShape,
   options: BooleanOptions = {}
@@ -111,7 +111,7 @@ export function intersect(
  * the intersection edges/wires.
  */
 export function section(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tool: KernelShape,
   approximation: boolean = true
@@ -136,7 +136,7 @@ export function section(
  * Fuses multiple shapes using C++ batch operation.
  */
 function fuseAllBatch(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shapes: KernelShape[],
   options: BooleanOptions = {}
 ): KernelShape {
@@ -155,7 +155,7 @@ function fuseAllBatch(
  * Fuses multiple shapes using native OCCT N-way general fuse.
  */
 function fuseAllNative(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shapes: KernelShape[],
   options: BooleanOptions = {}
 ): KernelShape {
@@ -193,7 +193,7 @@ function fuseAllNative(
  * Uses start/end indices to avoid array allocations on each recursive call.
  */
 function fuseAllPairwiseRange(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shapes: KernelShape[],
   start: number,
   end: number,
@@ -204,7 +204,6 @@ function fuseAllPairwiseRange(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
   if (count === 1) return shapes[start]!;
   if (count === 2) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
     return fuse(oc, shapes[start], shapes[start + 1], { ...options, simplify: false });
   }
 
@@ -218,7 +217,7 @@ function fuseAllPairwiseRange(
  * Fuses multiple shapes using recursive pairwise fusion.
  */
 function fuseAllPairwise(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shapes: KernelShape[],
   options: BooleanOptions = {}
 ): KernelShape {
@@ -238,7 +237,7 @@ function fuseAllPairwise(
  * Fuses all given shapes in a single operation.
  */
 export function fuseAll(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shapes: KernelShape[],
   options: BooleanOptions = {}
 ): KernelShape {
@@ -263,7 +262,7 @@ export function fuseAll(
  * Splits a shape using one or more tool shapes via BRepAlgoAPI_Splitter.
  * The result contains all the pieces from the split.
  */
-export function split(oc: OpenCascadeInstance, shape: KernelShape, tools: KernelShape[]): KernelShape {
+export function split(oc: KernelInstance, shape: KernelShape, tools: KernelShape[]): KernelShape {
   if (!oc.BRepAlgoAPI_Splitter) {
     throw new Error('BRepAlgoAPI_Splitter not available in this WASM build');
   }
@@ -296,7 +295,7 @@ export function split(oc: OpenCascadeInstance, shape: KernelShape, tools: Kernel
  * Cuts all tool shapes from a base shape using C++ batch operation.
  */
 function cutAllBatch(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tools: KernelShape[],
   options: BooleanOptions = {}
@@ -316,7 +315,7 @@ function cutAllBatch(
  * Cuts all tool shapes from a base shape.
  */
 export function cutAll(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tools: KernelShape[],
   options: BooleanOptions = {}

@@ -3,10 +3,10 @@
  *
  * Provides higher-level construction functions that replace common
  * multi-step OCCT patterns (circle edges, arcs, Bezier curves, helices,
- * compounds, etc.). Used by OCCTAdapter.
+ * compounds, etc.). Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape } from './types.js';
+import type { KernelInstance, KernelShape } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Edge builders
@@ -14,7 +14,7 @@ import type { OpenCascadeInstance, KernelShape } from './types.js';
 
 /** Create a straight edge between two 3D points. */
 export function makeLineEdge(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   p1: [number, number, number],
   p2: [number, number, number]
 ): KernelShape {
@@ -30,7 +30,7 @@ export function makeLineEdge(
 
 /** Create a full circle edge. */
 export function makeCircleEdge(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   center: [number, number, number],
   normal: [number, number, number],
   radius: number
@@ -51,7 +51,7 @@ export function makeCircleEdge(
 
 /** Create a circular arc edge from center, normal, radius, and angle range (radians). */
 export function makeCircleArc(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   center: [number, number, number],
   normal: [number, number, number],
   radius: number,
@@ -74,7 +74,7 @@ export function makeCircleArc(
 
 /** Create a three-point arc edge. */
 export function makeArcEdge(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   p1: [number, number, number],
   p2: [number, number, number],
   p3: [number, number, number]
@@ -97,7 +97,7 @@ export function makeArcEdge(
 
 /** Create a tangent arc from start point + tangent direction to end point. */
 export function makeTangentArc(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   startPoint: [number, number, number],
   startTangent: [number, number, number],
   endPoint: [number, number, number]
@@ -120,7 +120,7 @@ export function makeTangentArc(
 
 /** Create a full ellipse edge. */
 export function makeEllipseEdge(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   center: [number, number, number],
   normal: [number, number, number],
   majorRadius: number,
@@ -150,7 +150,7 @@ export function makeEllipseEdge(
 
 /** Create an elliptical arc edge. Angles are in radians. */
 export function makeEllipseArc(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   center: [number, number, number],
   normal: [number, number, number],
   majorRadius: number,
@@ -182,7 +182,7 @@ export function makeEllipseArc(
 
 /** Create a Bezier curve edge from control points. */
 export function makeBezierEdge(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   points: [number, number, number][]
 ): KernelShape {
   const arr = new oc.TColgp_Array1OfPnt_2(1, points.length);
@@ -215,7 +215,7 @@ export function makeBezierEdge(
  * step and pitch; the segment length encodes the number of turns.
  */
 export function makeHelixWire(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   pitch: number,
   height: number,
   radius: number,
@@ -278,7 +278,7 @@ export function makeHelixWire(
 
 /** Build a gp_GTrsf that scales a unit sphere into an ellipsoid with the given axis half-lengths. */
 function makeEllipsoidGTrsf(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   x: number,
   y: number,
   z: number
@@ -340,7 +340,7 @@ function makeEllipsoidGTrsf(
  * poles with an affinity matrix, then sews the result into a solid.
  */
 export function makeEllipsoidSolid(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   aLength: number,
   bLength: number,
   cLength: number
@@ -389,7 +389,7 @@ export function makeEllipsoidSolid(
 // ---------------------------------------------------------------------------
 
 /** Build a compound from multiple shapes. */
-export function makeCompound(oc: OpenCascadeInstance, shapes: KernelShape[]): KernelShape {
+export function makeCompound(oc: KernelInstance, shapes: KernelShape[]): KernelShape {
   const builder = new oc.TopoDS_Builder();
   const compound = new oc.TopoDS_Compound();
   builder.MakeCompound(compound);
@@ -402,7 +402,7 @@ export function makeCompound(oc: OpenCascadeInstance, shapes: KernelShape[]): Ke
 
 /** Create a box from two corner points. */
 export function makeBoxFromCorners(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   p1: [number, number, number],
   p2: [number, number, number]
 ): KernelShape {
@@ -417,7 +417,7 @@ export function makeBoxFromCorners(
 }
 
 /** Build a solid from a closed shell using ShapeFix_Solid. */
-export function solidFromShell(oc: OpenCascadeInstance, shell: KernelShape): KernelShape {
+export function solidFromShell(oc: KernelInstance, shell: KernelShape): KernelShape {
   const fixer = new oc.ShapeFix_Solid_1();
   const solid = fixer.SolidFromShell(oc.TopoDS.Shell_1(shell));
   fixer.delete();
@@ -429,12 +429,12 @@ export function solidFromShell(oc: OpenCascadeInstance, shell: KernelShape): Ker
 // ---------------------------------------------------------------------------
 
 /** Serialize a shape to BREP string format. */
-export function toBREP(oc: OpenCascadeInstance, shape: KernelShape): string {
+export function toBREP(oc: KernelInstance, shape: KernelShape): string {
   return oc.BRepToolsWrapper.Write(shape);
 }
 
 /** Deserialize a shape from a BREP string. */
-export function fromBREP(oc: OpenCascadeInstance, data: string): KernelShape {
+export function fromBREP(oc: KernelInstance, data: string): KernelShape {
   return oc.BRepToolsWrapper.Read(data);
 }
 
@@ -446,7 +446,7 @@ export function fromBREP(oc: OpenCascadeInstance, data: string): KernelShape {
  * Export shapes with names and colors as a STEP assembly via XCAF.
  */
 export function exportSTEPAssembly(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   parts: Array<{ shape: KernelShape; name: string; color?: [number, number, number, number] }>,
   options: { unit?: string } = {}
 ): string {
@@ -523,7 +523,7 @@ export function exportSTEPAssembly(
 // ---------------------------------------------------------------------------
 
 /** Dispose a kernel object by calling its delete() method. */
-export function dispose(_oc: OpenCascadeInstance, handle: { delete(): void }): void {
+export function dispose(_oc: KernelInstance, handle: { delete(): void }): void {
   try {
     handle.delete();
   } catch {

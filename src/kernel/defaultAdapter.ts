@@ -4,7 +4,7 @@ import type {
   KernelEdgeMeshResult,
   DistanceResult,
   OperationResult,
-  OpenCascadeInstance,
+  KernelInstance,
   KernelShape,
   KernelType,
   BooleanOptions,
@@ -267,17 +267,13 @@ import {
 } from './historyOps.js';
 
 /**
- * OpenCascade implementation of KernelAdapter.
- *
- * Centralizes scattered getOC() patterns from the codebase into organized methods.
- * Shapes still hold raw TopoDS_* types internally — this adapter provides factory
- * methods and operations.
+ * Default implementation of KernelAdapter.
  */
-export class OCCTAdapter implements KernelAdapter, Kernel2DCapability {
-  readonly oc: OpenCascadeInstance;
+export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
+  readonly oc: KernelInstance;
   readonly kernelId = 'occt';
 
-  constructor(oc: OpenCascadeInstance) {
+  constructor(oc: KernelInstance) {
     this.oc = oc;
   }
 

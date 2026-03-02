@@ -1,7 +1,7 @@
-import type { KernelAdapter, OpenCascadeInstance } from './types.js';
+import type { KernelAdapter, KernelInstance } from './types.js';
 import type { Kernel2DCapability } from './kernel2dTypes.js';
 import { supportsKernel2D } from './kernel2dTypes.js';
-import { OCCTAdapter } from './occtAdapter.js';
+import { DefaultAdapter } from './defaultAdapter.js';
 
 // ---------------------------------------------------------------------------
 // Kernel registry — supports multiple kernels for gradual migration
@@ -59,7 +59,10 @@ export function getKernel2D(id?: string): KernelAdapter & Kernel2DCapability {
  * restored synchronously in `finally`, so any `getKernel()` call after
  * the first `await` inside `fn` would observe the wrong kernel.
  */
-export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(id: string, fn: () => T): T {
+export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
+  id: string,
+  fn: () => T
+): T {
   const prev = _defaultKernelId;
   _defaultKernelId = id;
   try {
@@ -69,9 +72,9 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(id: str
   }
 }
 
-/** Initialise the brepjs kernel from a loaded OpenCascade WASM instance. */
-export function initFromOC(oc: OpenCascadeInstance): void {
-  const adapter = new OCCTAdapter(oc);
+/** Initialise the brepjs kernel from a loaded WASM instance. */
+export function initFromOC(oc: KernelInstance): void {
+  const adapter = new DefaultAdapter(oc);
   registerKernel('occt', adapter);
   _defaultKernelId = 'occt';
 }
@@ -80,7 +83,8 @@ export type {
   KernelAdapter,
   KernelMeshResult,
   DistanceResult,
-  OpenCascadeInstance,
+  KernelInstance,
+  KernelInstance as OpenCascadeInstance,
   BooleanOptions,
   ShapeType,
   SurfaceType,

@@ -4,10 +4,10 @@
  * Provides shape iteration, type detection, and comparison operations.
  * Has dual implementations: C++ TopologyExtractor when available, JS TopExp_Explorer fallback.
  *
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape, ShapeType } from './types.js';
+import type { KernelInstance, KernelShape, ShapeType } from './types.js';
 import { HASH_CODE_MAX } from './measureOps.js';
 
 // Static type enum map for bulk extraction (TopologyExtractor uses integer types)
@@ -26,7 +26,7 @@ const BULK_TYPE_ENUM_MAP: Record<ShapeType, number> = {
  * Iterates shapes using C++ bulk extraction.
  */
 export function iterShapesBulk(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   type: ShapeType
 ): KernelShape[] {
@@ -41,12 +41,16 @@ export function iterShapesBulk(
 }
 
 // Cached type enum maps for JS-side iteration, keyed by OC instance
-const jsTypeEnumMaps = new WeakMap<OpenCascadeInstance, Record<ShapeType, unknown>>();
+const jsTypeEnumMaps = new WeakMap<KernelInstance, Record<ShapeType, unknown>>();
 
 /**
  * Iterates shapes using JS-side TopExp_Explorer.
  */
-export function iterShapesJS(oc: OpenCascadeInstance, shape: KernelShape, type: ShapeType): KernelShape[] {
+export function iterShapesJS(
+  oc: KernelInstance,
+  shape: KernelShape,
+  type: ShapeType
+): KernelShape[] {
   // Get or create cached type enum map for this OC instance
   let typeMap = jsTypeEnumMaps.get(oc);
   if (!typeMap) {
@@ -87,7 +91,7 @@ export function iterShapesJS(oc: OpenCascadeInstance, shape: KernelShape, type: 
 /**
  * Iterates sub-shapes of a given type, using C++ bulk extraction when available.
  */
-export function iterShapes(oc: OpenCascadeInstance, shape: KernelShape, type: ShapeType): KernelShape[] {
+export function iterShapes(oc: KernelInstance, shape: KernelShape, type: ShapeType): KernelShape[] {
   if (oc.TopologyExtractor) {
     return iterShapesBulk(oc, shape, type);
   }
@@ -95,12 +99,12 @@ export function iterShapes(oc: OpenCascadeInstance, shape: KernelShape, type: Sh
 }
 
 // Cached shape type map per OC instance
-const shapeTypeMaps = new WeakMap<OpenCascadeInstance, Map<unknown, ShapeType>>();
+const shapeTypeMaps = new WeakMap<KernelInstance, Map<unknown, ShapeType>>();
 
 /**
  * Gets or creates the shape type enum-to-string map for an OC instance.
  */
-function getShapeTypeMap(oc: OpenCascadeInstance): Map<unknown, ShapeType> {
+function getShapeTypeMap(oc: KernelInstance): Map<unknown, ShapeType> {
   let map = shapeTypeMaps.get(oc);
   if (!map) {
     const ta = oc.TopAbs_ShapeEnum;
@@ -122,7 +126,7 @@ function getShapeTypeMap(oc: OpenCascadeInstance): Map<unknown, ShapeType> {
 /**
  * Returns the shape type string for a given shape.
  */
-export function shapeType(oc: OpenCascadeInstance, shape: KernelShape): ShapeType {
+export function shapeType(oc: KernelInstance, shape: KernelShape): ShapeType {
   if (shape.IsNull()) throw new Error('Cannot determine shape type: shape is null');
   const result = getShapeTypeMap(oc).get(shape.ShapeType());
   if (!result) throw new Error('Unknown shape type enum value');
@@ -132,7 +136,7 @@ export function shapeType(oc: OpenCascadeInstance, shape: KernelShape): ShapeTyp
 /**
  * Checks if a shape is valid according to OCCT geometry and topology checks.
  */
-export function isValid(oc: OpenCascadeInstance, shape: KernelShape): boolean {
+export function isValid(oc: KernelInstance, shape: KernelShape): boolean {
   const analyzer = new oc.BRepCheck_Analyzer(shape, true, false);
   const valid = analyzer.IsValid_2();
   analyzer.delete();
@@ -142,7 +146,7 @@ export function isValid(oc: OpenCascadeInstance, shape: KernelShape): boolean {
 /**
  * Sews shapes together using BRepBuilderAPI_Sewing.
  */
-export function sew(oc: OpenCascadeInstance, shapes: KernelShape[], tolerance = 1e-6): KernelShape {
+export function sew(oc: KernelInstance, shapes: KernelShape[], tolerance = 1e-6): KernelShape {
   const builder = new oc.BRepBuilderAPI_Sewing(tolerance, true, true, true, false);
   for (const shape of shapes) {
     builder.Add(shape);
@@ -160,7 +164,7 @@ export function sew(oc: OpenCascadeInstance, shapes: KernelShape[], tolerance = 
  * Uses the native iterator when available, falling back to copy-and-consume.
  */
 export function iterShapeList(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   list: KernelShape,
   callback: (item: KernelShape) => void
 ): void {
@@ -194,5 +198,3 @@ export function isSame(a: KernelShape, b: KernelShape): boolean {
 export function isEqual(a: KernelShape, b: KernelShape): boolean {
   return a.IsEqual(b);
 }
-
-

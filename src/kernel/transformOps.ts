@@ -2,15 +2,15 @@
  * Transform operations for OCCT shapes.
  *
  * Provides translate, rotate, mirror, scale, and generic transform operations.
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
+import type { KernelInstance, KernelShape, KernelType } from './types.js';
 
 /**
  * Applies a transformation matrix to a shape.
  */
-export function transform(oc: OpenCascadeInstance, shape: KernelShape, trsf: KernelType): KernelShape {
+export function transform(oc: KernelInstance, shape: KernelShape, trsf: KernelType): KernelShape {
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
   const result = transformer.ModifiedShape(shape);
   transformer.delete();
@@ -21,7 +21,7 @@ export function transform(oc: OpenCascadeInstance, shape: KernelShape, trsf: Ker
  * Translates a shape by the given offset.
  */
 export function translate(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   x: number,
   y: number,
@@ -40,7 +40,7 @@ export function translate(
  * Rotates a shape around an axis.
  */
 export function rotate(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   angle: number,
   axis: [number, number, number] = [0, 0, 1],
@@ -63,7 +63,7 @@ export function rotate(
  * Mirrors a shape through a plane.
  */
 export function mirror(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   origin: [number, number, number],
   normal: [number, number, number]
@@ -85,7 +85,7 @@ export function mirror(
  * Scales a shape uniformly around a center point.
  */
 export function scale(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   center: [number, number, number],
   factor: number
@@ -107,7 +107,7 @@ export function scale(
  * (shear, non-uniform scale).
  */
 export function generalTransform(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   linear: readonly [number, number, number, number, number, number, number, number, number],
   translation: readonly [number, number, number],
@@ -158,7 +158,7 @@ export function generalTransform(
 /**
  * Simplifies a shape by unifying same-domain surfaces.
  */
-export function simplify(oc: OpenCascadeInstance, shape: KernelShape): KernelShape {
+export function simplify(oc: KernelInstance, shape: KernelShape): KernelShape {
   const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(shape, true, true, false);
   upgrader.Build();
   const result = upgrader.Shape();

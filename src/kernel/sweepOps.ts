@@ -4,16 +4,16 @@
  * Provides extrusion, revolution, loft, and pipe sweep operations
  * for creating 3D solids from 2D profiles.
  *
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
+import type { KernelInstance, KernelShape, KernelType } from './types.js';
 
 /**
  * Extrudes a face along a direction.
  */
 export function extrude(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape,
   direction: [number, number, number],
   length: number
@@ -30,7 +30,7 @@ export function extrude(
  * Revolves a shape around an axis.
  */
 export function revolve(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   axis: KernelType,
   angle: number
@@ -45,7 +45,7 @@ export function revolve(
  * Creates a loft through multiple wires.
  */
 export function loft(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   wires: KernelShape[],
   ruled = false,
   startShape?: KernelShape,
@@ -69,7 +69,7 @@ export function loft(
  * Sweeps a wire along a spine.
  */
 export function sweep(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   wire: KernelShape,
   spine: KernelShape,
   options: { transitionMode?: number } = {}
@@ -96,7 +96,11 @@ export function sweep(
  * rotationally symmetric ones like circles) because it skips Frenet frame
  * computation and profile orientation interpolation.
  */
-export function simplePipe(oc: OpenCascadeInstance, profile: KernelShape, spine: KernelShape): KernelShape {
+export function simplePipe(
+  oc: KernelInstance,
+  profile: KernelShape,
+  spine: KernelShape
+): KernelShape {
   const maker = new oc.BRepOffsetAPI_MakePipe_1(spine, profile);
   const progress = new oc.Message_ProgressRange_1();
   maker.Build(progress);

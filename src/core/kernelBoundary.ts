@@ -95,7 +95,17 @@ export function makeKernelAx1(center: Vec3, dir: Vec3): KernelType {
 /** Create a kernel 3D axis-2 from origin and z direction (+optional x direction). Caller must delete. */
 export function makeKernelAx2(origin: Vec3, zDir: Vec3, xDir?: Vec3): KernelType {
   if (xDir) {
-    return getKernel().createAxis2(origin[0], origin[1], origin[2], zDir[0], zDir[1], zDir[2], xDir[0], xDir[1], xDir[2]);
+    return getKernel().createAxis2(
+      origin[0],
+      origin[1],
+      origin[2],
+      zDir[0],
+      zDir[1],
+      zDir[2],
+      xDir[0],
+      xDir[1],
+      xDir[2]
+    );
   }
   return getKernel().createAxis2(origin[0], origin[1], origin[2], zDir[0], zDir[1], zDir[2]);
 }
@@ -103,7 +113,17 @@ export function makeKernelAx2(origin: Vec3, zDir: Vec3, xDir?: Vec3): KernelType
 /** Create a kernel 3D axis-3 from origin, z direction, and optional x direction. Caller must delete. */
 export function makeKernelAx3(origin: Vec3, zDir: Vec3, xDir?: Vec3): KernelType {
   if (xDir) {
-    return getKernel().createAxis3(origin[0], origin[1], origin[2], zDir[0], zDir[1], zDir[2], xDir[0], xDir[1], xDir[2]);
+    return getKernel().createAxis3(
+      origin[0],
+      origin[1],
+      origin[2],
+      zDir[0],
+      zDir[1],
+      zDir[2],
+      xDir[0],
+      xDir[1],
+      xDir[2]
+    );
   }
   return getKernel().createAxis3(origin[0], origin[1], origin[2], zDir[0], zDir[1], zDir[2]);
 }

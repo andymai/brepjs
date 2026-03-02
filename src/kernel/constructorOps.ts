@@ -4,16 +4,16 @@
  * Provides factory functions for creating basic shapes:
  * vertices, edges, wires, faces, and primitives (box, cylinder, sphere).
  *
- * Used by OCCTAdapter.
+ * Used by DefaultAdapter.
  */
 
-import type { OpenCascadeInstance, KernelShape, KernelType } from './types.js';
+import type { KernelInstance, KernelShape, KernelType } from './types.js';
 import { iterShapes } from './topologyOps.js';
 
 /**
  * Creates a vertex at the given coordinates.
  */
-export function makeVertex(oc: OpenCascadeInstance, x: number, y: number, z: number): KernelShape {
+export function makeVertex(oc: KernelInstance, x: number, y: number, z: number): KernelShape {
   const pnt = new oc.gp_Pnt_3(x, y, z);
   const maker = new oc.BRepBuilderAPI_MakeVertex(pnt);
   const vertex = maker.Vertex();
@@ -26,7 +26,7 @@ export function makeVertex(oc: OpenCascadeInstance, x: number, y: number, z: num
  * Creates an edge from a curve, optionally trimmed to start/end parameters.
  */
 export function makeEdge(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   curve: KernelType,
   start?: number,
   end?: number
@@ -43,7 +43,7 @@ export function makeEdge(
 /**
  * Creates a wire from a list of edges.
  */
-export function makeWire(oc: OpenCascadeInstance, edges: KernelShape[]): KernelShape {
+export function makeWire(oc: KernelInstance, edges: KernelShape[]): KernelShape {
   const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
   for (const edge of edges) {
     wireBuilder.Add_1(edge);
@@ -60,7 +60,7 @@ export function makeWire(oc: OpenCascadeInstance, edges: KernelShape[]): KernelS
  * Creates a face from a wire.
  * If planar is true, creates a planar face. Otherwise creates a non-planar filling surface.
  */
-export function makeFace(oc: OpenCascadeInstance, wire: KernelShape, planar = true): KernelShape {
+export function makeFace(oc: KernelInstance, wire: KernelShape, planar = true): KernelShape {
   if (planar) {
     const builder = new oc.BRepBuilderAPI_MakeFace_15(wire, false);
     const face = builder.Face();
@@ -85,7 +85,7 @@ export function makeFace(oc: OpenCascadeInstance, wire: KernelShape, planar = tr
  * Creates a box primitive.
  */
 export function makeBox(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   width: number,
   height: number,
   depth: number
@@ -100,7 +100,7 @@ export function makeBox(
  * Creates a cylinder primitive.
  */
 export function makeCylinder(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   radius: number,
   height: number,
   center: [number, number, number] = [0, 0, 0],
@@ -122,7 +122,7 @@ export function makeCylinder(
  * Creates a sphere primitive.
  */
 export function makeSphere(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   radius: number,
   center: [number, number, number] = [0, 0, 0]
 ): KernelShape {
@@ -145,7 +145,7 @@ export function makeSphere(
  * Creates a cone primitive (full cone or frustum).
  */
 export function makeCone(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   radius1: number,
   radius2: number,
   height: number,
@@ -170,7 +170,7 @@ export function makeCone(
  * This is a low-level helper used by importers, hull, roof, and surface builders.
  */
 export function makeTriFace(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   a: [number, number, number],
   b: [number, number, number],
   c: [number, number, number]
@@ -212,7 +212,7 @@ export function makeTriFace(
  * Build a wire from a mix of edges and wires.
  * Checks each item's shape type and calls Add_1 for edges, Add_2 for wires.
  */
-export function makeWireFromMixed(oc: OpenCascadeInstance, items: KernelShape[]): KernelShape {
+export function makeWireFromMixed(oc: KernelInstance, items: KernelShape[]): KernelShape {
   const wireBuilder = new oc.BRepBuilderAPI_MakeWire_1();
   for (const item of items) {
     const st = item.ShapeType();
@@ -234,7 +234,7 @@ export function makeWireFromMixed(oc: OpenCascadeInstance, items: KernelShape[])
  * Creates a torus primitive.
  */
 export function makeTorus(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   majorRadius: number,
   minorRadius: number,
   center: [number, number, number] = [0, 0, 0],

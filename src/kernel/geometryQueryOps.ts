@@ -2,11 +2,11 @@
  * Geometry query operations for OCCT — surface, curve, and vertex queries.
  *
  * These operations extract geometric information from topology shapes
- * without modifying them. Used by OCCTAdapter.
+ * without modifying them. Used by DefaultAdapter.
  */
 
 import type {
-  OpenCascadeInstance,
+  KernelInstance,
   KernelShape,
   KernelType,
   SurfaceType,
@@ -18,10 +18,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 /** Extract the 3D position of a vertex. */
-export function vertexPosition(
-  oc: OpenCascadeInstance,
-  vertex: KernelShape
-): [number, number, number] {
+export function vertexPosition(oc: KernelInstance, vertex: KernelShape): [number, number, number] {
   const pnt = oc.BRep_Tool.Pnt(vertex);
   const result: [number, number, number] = [pnt.X(), pnt.Y(), pnt.Z()];
   pnt.delete();
@@ -33,7 +30,7 @@ export function vertexPosition(
 // ---------------------------------------------------------------------------
 
 /** Map from OCCT GeomAbs_SurfaceType enum value to SurfaceType string. */
-function buildSurfaceTypeMap(oc: OpenCascadeInstance): Map<number, SurfaceType> {
+function buildSurfaceTypeMap(oc: KernelInstance): Map<number, SurfaceType> {
   const e = oc.GeomAbs_SurfaceType;
   return new Map<number, SurfaceType>([
     [e.GeomAbs_Plane, 'plane'],
@@ -54,7 +51,7 @@ function buildSurfaceTypeMap(oc: OpenCascadeInstance): Map<number, SurfaceType> 
 const _surfaceTypeMaps = new WeakMap<object, Map<number, SurfaceType>>();
 
 /** Get the geometric surface type of a face. */
-export function surfaceType(oc: OpenCascadeInstance, face: KernelShape): SurfaceType {
+export function surfaceType(oc: KernelInstance, face: KernelShape): SurfaceType {
   let map = _surfaceTypeMaps.get(oc);
   if (!map) {
     map = buildSurfaceTypeMap(oc);
@@ -68,7 +65,7 @@ export function surfaceType(oc: OpenCascadeInstance, face: KernelShape): Surface
 
 /** Get the UV parameter bounds of a face. */
 export function uvBounds(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape
 ): { uMin: number; uMax: number; vMin: number; vMax: number } {
   const uMin = { current: 0 };
@@ -85,13 +82,13 @@ export function uvBounds(
 }
 
 /** Get the outer wire of a face. */
-export function outerWire(oc: OpenCascadeInstance, face: KernelShape): KernelShape {
+export function outerWire(oc: KernelInstance, face: KernelShape): KernelShape {
   return oc.BRepTools.OuterWire(face);
 }
 
 /** Get the surface normal at a UV parameter on a face. */
 export function surfaceNormal(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape,
   u: number,
   v: number
@@ -109,7 +106,7 @@ export function surfaceNormal(
 
 /** Evaluate a point at UV parameters on a face's surface. */
 export function pointOnSurface(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape,
   u: number,
   v: number
@@ -125,7 +122,7 @@ export function pointOnSurface(
 
 /** Project a 3D point onto a face and return UV coordinates. Null if projection fails. */
 export function uvFromPoint(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape,
   point: [number, number, number]
 ): [number, number] | null {
@@ -153,7 +150,7 @@ export function uvFromPoint(
 
 /** Project a 3D point onto a face and return the closest 3D point. */
 export function projectPointOnFace(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   face: KernelShape,
   point: [number, number, number]
 ): [number, number, number] {
@@ -188,7 +185,7 @@ export function projectPointOnFace(
  * Uses BRepAdaptor_CompCurve for wires, BRepAdaptor_Curve for edges.
  */
 export function curveTangent(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   param: number
 ): { point: [number, number, number]; tangent: [number, number, number] } {
@@ -213,7 +210,7 @@ export function curveTangent(
 }
 
 /** Get the first and last parameter values of a curve (edge or wire). */
-export function curveParameters(oc: OpenCascadeInstance, shape: KernelShape): [number, number] {
+export function curveParameters(oc: KernelInstance, shape: KernelShape): [number, number] {
   const isWire = shape.ShapeType() === oc.TopAbs_ShapeEnum.TopAbs_WIRE;
   const adaptor = isWire
     ? new oc.BRepAdaptor_CompCurve_2(shape, false)
@@ -226,7 +223,7 @@ export function curveParameters(oc: OpenCascadeInstance, shape: KernelShape): [n
 
 /** Evaluate a point at a raw parameter value on a curve (edge or wire). */
 export function curvePointAtParam(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   param: number
 ): [number, number, number] {
@@ -243,7 +240,7 @@ export function curvePointAtParam(
 }
 
 /** Check if a curve (edge or wire) is closed. */
-export function curveIsClosed(oc: OpenCascadeInstance, shape: KernelShape): boolean {
+export function curveIsClosed(oc: KernelInstance, shape: KernelShape): boolean {
   const isWire = shape.ShapeType() === oc.TopAbs_ShapeEnum.TopAbs_WIRE;
   const adaptor = isWire
     ? new oc.BRepAdaptor_CompCurve_2(shape, false)
@@ -255,7 +252,7 @@ export function curveIsClosed(oc: OpenCascadeInstance, shape: KernelShape): bool
 }
 
 /** Check if a curve (edge or wire) is periodic. */
-export function curveIsPeriodic(oc: OpenCascadeInstance, shape: KernelShape): boolean {
+export function curveIsPeriodic(oc: KernelInstance, shape: KernelShape): boolean {
   const isWire = shape.ShapeType() === oc.TopAbs_ShapeEnum.TopAbs_WIRE;
   const adaptor = isWire
     ? new oc.BRepAdaptor_CompCurve_2(shape, false)
@@ -267,7 +264,7 @@ export function curveIsPeriodic(oc: OpenCascadeInstance, shape: KernelShape): bo
 }
 
 /** Get the period of a periodic curve (edge or wire). */
-export function curvePeriod(oc: OpenCascadeInstance, shape: KernelShape): number {
+export function curvePeriod(oc: KernelInstance, shape: KernelShape): number {
   const isWire = shape.ShapeType() === oc.TopAbs_ShapeEnum.TopAbs_WIRE;
   const adaptor = isWire
     ? new oc.BRepAdaptor_CompCurve_2(shape, false)
@@ -279,7 +276,7 @@ export function curvePeriod(oc: OpenCascadeInstance, shape: KernelShape): number
 }
 
 /** Get the geometric curve type of an edge or wire. */
-export function curveType(oc: OpenCascadeInstance, shape: KernelShape): string {
+export function curveType(oc: KernelInstance, shape: KernelShape): string {
   const isWire = shape.ShapeType() === oc.TopAbs_ShapeEnum.TopAbs_WIRE;
   const adaptor = isWire
     ? new oc.BRepAdaptor_CompCurve_2(shape, false)
@@ -310,7 +307,7 @@ export function curveType(oc: OpenCascadeInstance, shape: KernelShape): string {
 // ---------------------------------------------------------------------------
 
 /** Get the orientation of a shape. */
-export function shapeOrientation(oc: OpenCascadeInstance, shape: KernelShape): ShapeOrientation {
+export function shapeOrientation(oc: KernelInstance, shape: KernelShape): ShapeOrientation {
   const orient = shape.Orientation_1();
   const ta = oc.TopAbs_Orientation;
   if (orient === ta.TopAbs_FORWARD) return 'forward';
@@ -320,7 +317,7 @@ export function shapeOrientation(oc: OpenCascadeInstance, shape: KernelShape): S
 }
 
 /** Downcast a generic TopoDS_Shape to its concrete subtype. */
-export function downcast(oc: OpenCascadeInstance, shape: KernelShape, type?: string): KernelShape {
+export function downcast(oc: KernelInstance, shape: KernelShape, type?: string): KernelShape {
   const st = type ?? shapeTypeStr(oc, shape);
   switch (st) {
     case 'vertex':
@@ -343,7 +340,7 @@ export function downcast(oc: OpenCascadeInstance, shape: KernelShape, type?: str
 }
 
 /** Internal helper — get shape type as string. */
-function shapeTypeStr(oc: OpenCascadeInstance, shape: KernelShape): string {
+function shapeTypeStr(oc: KernelInstance, shape: KernelShape): string {
   const st = shape.ShapeType();
   const e = oc.TopAbs_ShapeEnum;
   if (st === e.TopAbs_VERTEX) return 'vertex';
@@ -357,22 +354,22 @@ function shapeTypeStr(oc: OpenCascadeInstance, shape: KernelShape): string {
 }
 
 /** Get the hash code of a shape. */
-export function hashCode(_oc: OpenCascadeInstance, shape: KernelShape, upperBound: number): number {
+export function hashCode(_oc: KernelInstance, shape: KernelShape, upperBound: number): number {
   return shape.HashCode(upperBound);
 }
 
 /** Check if a shape is null. */
-export function isNull(_oc: OpenCascadeInstance, shape: KernelShape): boolean {
+export function isNull(_oc: KernelInstance, shape: KernelShape): boolean {
   return shape.IsNull();
 }
 
 /** Return a copy of the shape with reversed orientation. */
-export function reverseShape(_oc: OpenCascadeInstance, shape: KernelShape): KernelShape {
+export function reverseShape(_oc: KernelInstance, shape: KernelShape): KernelShape {
   return shape.Reversed();
 }
 
 /** Check if a shape has triangulation data. */
-export function hasTriangulation(oc: OpenCascadeInstance, shape: KernelShape): boolean {
+export function hasTriangulation(oc: KernelInstance, shape: KernelShape): boolean {
   const explorer = new oc.TopExp_Explorer_2(
     shape,
     oc.TopAbs_ShapeEnum.TopAbs_FACE,
@@ -399,7 +396,7 @@ export function hasTriangulation(oc: OpenCascadeInstance, shape: KernelShape): b
  * This modifies the shape's internal triangulation data in place.
  */
 export function meshShape(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tolerance: number,
   angularTolerance: number
@@ -416,7 +413,7 @@ export function meshShape(
 
 /** Extract the second-to-last Bezier control pole from a 3D edge curve. */
 export function getBezierPenultimatePole(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   edge: KernelShape
 ): [number, number, number] | null {
   const adaptor = new oc.BRepAdaptor_Curve_2(edge);
@@ -439,7 +436,7 @@ export function getBezierPenultimatePole(
  * Create a BRepAdaptor for curve evaluation.
  * Returns CompCurve for wires, Curve for edges. Caller must delete.
  */
-export function createCurveAdaptor(oc: OpenCascadeInstance, shape: KernelShape): KernelType {
+export function createCurveAdaptor(oc: KernelInstance, shape: KernelShape): KernelType {
   const isWire = shape.ShapeType() === oc.TopAbs_ShapeEnum.TopAbs_WIRE;
   return isWire ? new oc.BRepAdaptor_CompCurve_2(shape, false) : new oc.BRepAdaptor_Curve_2(shape);
 }
@@ -450,7 +447,7 @@ export function createCurveAdaptor(oc: OpenCascadeInstance, shape: KernelShape):
 
 /** Extract cylinder data from a surface handle. Returns null if not a cylinder. */
 export function getSurfaceCylinderData(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   surface: KernelType
 ): { radius: number; isDirect: boolean } | null {
   const adaptor = new oc.GeomAdaptor_Surface_2(surface);
@@ -472,6 +469,6 @@ export function getSurfaceCylinderData(
 }
 
 /** Reverse the U direction of a surface. Returns a new surface handle. */
-export function reverseSurfaceU(_oc: OpenCascadeInstance, surface: KernelType): KernelType {
+export function reverseSurfaceU(_oc: KernelInstance, surface: KernelType): KernelType {
   return surface.get().UReversed();
 }

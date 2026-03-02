@@ -11,8 +11,8 @@
 
 import type { Kernel2DCapability } from './kernel2dTypes.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kernel instance type (OCCT WASM, Rust WASM, etc.)
-export type OpenCascadeInstance = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kernel WASM instance type
+export type KernelInstance = any;
 
 /**
  * Opaque shape handle — the kernel-level shape representation.
@@ -127,12 +127,12 @@ export interface StepAssemblyPart {
 
 export interface KernelAdapter extends Kernel2DCapability {
   /**
-   * The raw kernel instance (OCCT WASM module, Rust WASM exports, etc.).
+   * The raw kernel WASM instance.
    *
    * @internal Only code in `kernel/` and `core/` may access this property.
    * Layer 2+ code must use typed adapter methods instead.
    */
-  readonly oc: OpenCascadeInstance;
+  readonly oc: KernelInstance;
 
   /**
    * Unique string identifying this kernel implementation.
@@ -726,9 +726,9 @@ export interface KernelAdapter extends Kernel2DCapability {
   ): string;
 
   // --- Export helpers ---
-  /** Wrap a JS string as an OCCT TCollection_ExtendedString. */
+  /** Wrap a JS string as a kernel extended string. */
   wrapString(str: string): KernelType;
-  /** Create an OCCT Quantity_ColorRGBA from RGB 0-255 and alpha 0-1. */
+  /** Create a kernel color from RGB 0-255 and alpha 0-1. */
   wrapColor(red: number, green: number, blue: number, alpha: number): KernelType;
   /** Configure STEP writer unit settings. */
   configureStepUnits(unit: string | undefined, modelUnit: string | undefined): void;

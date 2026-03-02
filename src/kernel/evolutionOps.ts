@@ -5,7 +5,7 @@
  * OCCT operation builders that expose Modified()/Generated()/IsDeleted().
  */
 
-import type { OpenCascadeInstance, KernelShape, ShapeEvolution, OperationResult } from './types.js';
+import type { KernelInstance, KernelShape, ShapeEvolution, OperationResult } from './types.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT operation builders are dynamically typed
 type OcBuilder = any;
@@ -13,7 +13,7 @@ type OcBuilder = any;
 /**
  * Iterate an OCCT TopTools_ListOfShape, extracting hash codes.
  */
-function iterListHashes(oc: OpenCascadeInstance, list: OcBuilder, hashUpperBound: number): number[] {
+function iterListHashes(oc: KernelInstance, list: OcBuilder, hashUpperBound: number): number[] {
   const result: number[] = [];
   if (list.Size() === 0) return result;
 
@@ -46,7 +46,7 @@ function iterListHashes(oc: OpenCascadeInstance, list: OcBuilder, hashUpperBound
  * @param hashUpperBound - Upper bound for hash code computation
  */
 export function buildEvolution(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   op: OcBuilder,
   shapes: KernelShape | KernelShape[],
   inputFaceHashes: number[],
@@ -103,7 +103,7 @@ export function buildEvolution(
  * Wrap a transform operation with shape evolution tracking.
  */
 export function transformWithEvolution(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT gp_Trsf
   trsf: any,
@@ -121,7 +121,7 @@ export function transformWithEvolution(
  * Wrap a boolean operation with shape evolution tracking.
  */
 export function booleanWithEvolution(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT boolean operation builder
   boolOp: any,
   inputShapes: KernelShape | KernelShape[],
@@ -140,7 +140,7 @@ export function booleanWithEvolution(
  * with shape evolution tracking.
  */
 export function modifierWithEvolution(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT modifier builder
   builder: any,
   inputShape: KernelShape,

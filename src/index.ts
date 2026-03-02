@@ -322,7 +322,7 @@ export {
   withKernelVec,
   withKernelPnt,
   withKernelDir,
-} from './core/occtBoundary.js';
+} from './core/kernelBoundary.js';
 
 // ── Branded shape types ──
 

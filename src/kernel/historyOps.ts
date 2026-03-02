@@ -6,13 +6,12 @@
  * input face hashes to output face hashes.
  */
 
-import type {
-  OpenCascadeInstance,
-  KernelShape,
-  BooleanOptions,
-  OperationResult,
-} from './types.js';
-import { transformWithEvolution, modifierWithEvolution, booleanWithEvolution } from './evolutionOps.js';
+import type { KernelInstance, KernelShape, BooleanOptions, OperationResult } from './types.js';
+import {
+  transformWithEvolution,
+  modifierWithEvolution,
+  booleanWithEvolution,
+} from './evolutionOps.js';
 import { applyGlue } from './booleanOps.js';
 
 // ---------------------------------------------------------------------------
@@ -20,9 +19,11 @@ import { applyGlue } from './booleanOps.js';
 // ---------------------------------------------------------------------------
 
 export function translateWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
-  x: number, y: number, z: number,
+  x: number,
+  y: number,
+  z: number,
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
@@ -36,7 +37,7 @@ export function translateWithHistory(
 }
 
 export function rotateWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   angle: number,
   inputFaceHashes: number[],
@@ -58,7 +59,7 @@ export function rotateWithHistory(
 }
 
 export function mirrorWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   origin: [number, number, number],
   normal: [number, number, number],
@@ -79,7 +80,7 @@ export function mirrorWithHistory(
 }
 
 export function scaleWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   center: [number, number, number],
   factor: number,
@@ -96,7 +97,7 @@ export function scaleWithHistory(
 }
 
 export function generalTransformWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   linear: readonly [number, number, number, number, number, number, number, number, number],
   translation: readonly [number, number, number],
@@ -106,9 +107,18 @@ export function generalTransformWithHistory(
 ): OperationResult {
   const trsf = new oc.gp_Trsf_1();
   trsf.SetValues(
-    linear[0], linear[1], linear[2], translation[0],
-    linear[3], linear[4], linear[5], translation[1],
-    linear[6], linear[7], linear[8], translation[2]
+    linear[0],
+    linear[1],
+    linear[2],
+    translation[0],
+    linear[3],
+    linear[4],
+    linear[5],
+    translation[1],
+    linear[6],
+    linear[7],
+    linear[8],
+    translation[2]
   );
   const result = transformWithEvolution(oc, shape, trsf, inputFaceHashes, hashUpperBound);
   trsf.delete();
@@ -120,7 +130,7 @@ export function generalTransformWithHistory(
 // ---------------------------------------------------------------------------
 
 export function fuseWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tool: KernelShape,
   inputFaceHashes: number[],
@@ -132,14 +142,21 @@ export function fuseWithHistory(
   applyGlue(oc, fuseOp, options.optimisation ?? 'none');
   fuseOp.SetRunParallel(true);
   fuseOp.Build(progress);
-  const result = booleanWithEvolution(oc, fuseOp, [shape, tool], inputFaceHashes, hashUpperBound, options.simplify ?? false);
+  const result = booleanWithEvolution(
+    oc,
+    fuseOp,
+    [shape, tool],
+    inputFaceHashes,
+    hashUpperBound,
+    options.simplify ?? false
+  );
   fuseOp.delete();
   progress.delete();
   return result;
 }
 
 export function cutWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tool: KernelShape,
   inputFaceHashes: number[],
@@ -151,14 +168,21 @@ export function cutWithHistory(
   applyGlue(oc, cutOp, options.optimisation ?? 'none');
   cutOp.SetRunParallel(true);
   cutOp.Build(progress);
-  const result = booleanWithEvolution(oc, cutOp, [shape, tool], inputFaceHashes, hashUpperBound, options.simplify ?? false);
+  const result = booleanWithEvolution(
+    oc,
+    cutOp,
+    [shape, tool],
+    inputFaceHashes,
+    hashUpperBound,
+    options.simplify ?? false
+  );
   cutOp.delete();
   progress.delete();
   return result;
 }
 
 export function intersectWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   tool: KernelShape,
   inputFaceHashes: number[],
@@ -170,7 +194,14 @@ export function intersectWithHistory(
   applyGlue(oc, intOp, options.optimisation ?? 'none');
   intOp.SetRunParallel(true);
   intOp.Build(progress);
-  const result = booleanWithEvolution(oc, intOp, [shape, tool], inputFaceHashes, hashUpperBound, options.simplify ?? false);
+  const result = booleanWithEvolution(
+    oc,
+    intOp,
+    [shape, tool],
+    inputFaceHashes,
+    hashUpperBound,
+    options.simplify ?? false
+  );
   intOp.delete();
   progress.delete();
   return result;
@@ -181,7 +212,7 @@ export function intersectWithHistory(
 // ---------------------------------------------------------------------------
 
 export function filletWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   edges: KernelShape[],
   radius: number | [number, number] | ((edge: KernelShape) => number | [number, number]),
@@ -206,7 +237,7 @@ export function filletWithHistory(
 }
 
 export function chamferWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   edges: KernelShape[],
   distance: number | [number, number] | ((edge: KernelShape) => number | [number, number]),
@@ -216,11 +247,19 @@ export function chamferWithHistory(
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
 
   // Build edge→face map for chamfer Add_3
-  const faceExplorer = new oc.TopExp_Explorer_2(shape, oc.TopAbs_ShapeEnum.TopAbs_FACE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const faceExplorer = new oc.TopExp_Explorer_2(
+    shape,
+    oc.TopAbs_ShapeEnum.TopAbs_FACE,
+    oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
   const edgeFaceMap = new Map<number, KernelShape>();
   while (faceExplorer.More()) {
     const face = oc.TopoDS.Face_1(faceExplorer.Current());
-    const edgeExplorer = new oc.TopExp_Explorer_2(face, oc.TopAbs_ShapeEnum.TopAbs_EDGE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
+    const edgeExplorer = new oc.TopExp_Explorer_2(
+      face,
+      oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
     while (edgeExplorer.More()) {
       edgeFaceMap.set(edgeExplorer.Current().HashCode(hashUpperBound), face);
       edgeExplorer.Next();
@@ -250,7 +289,7 @@ export function chamferWithHistory(
 }
 
 export function shellWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   faces: KernelShape[],
   thickness: number,
@@ -263,9 +302,16 @@ export function shellWithHistory(
   for (const face of faces) faceList.Append_1(face);
   const progress = new oc.Message_ProgressRange_1();
   builder.MakeThickSolidByJoin(
-    shape, faceList, -thickness, tolerance,
-    oc.BRepOffset_Mode.BRepOffset_Skin, false, false,
-    oc.GeomAbs_JoinType.GeomAbs_Arc, false, progress
+    shape,
+    faceList,
+    -thickness,
+    tolerance,
+    oc.BRepOffset_Mode.BRepOffset_Skin,
+    false,
+    false,
+    oc.GeomAbs_JoinType.GeomAbs_Arc,
+    false,
+    progress
   );
   progress.delete();
   faceList.delete();
@@ -275,7 +321,7 @@ export function shellWithHistory(
 }
 
 export function thickenWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   thickness: number,
   inputFaceHashes: number[],
@@ -292,7 +338,7 @@ export function thickenWithHistory(
 }
 
 export function offsetWithHistory(
-  oc: OpenCascadeInstance,
+  oc: KernelInstance,
   shape: KernelShape,
   distance: number,
   inputFaceHashes: number[],
@@ -302,9 +348,15 @@ export function offsetWithHistory(
   const builder = new oc.BRepOffsetAPI_MakeOffsetShape();
   const progress = new oc.Message_ProgressRange_1();
   builder.PerformByJoin(
-    shape, distance, tolerance,
-    oc.BRepOffset_Mode.BRepOffset_Skin, false, false,
-    oc.GeomAbs_JoinType.GeomAbs_Arc, false, progress
+    shape,
+    distance,
+    tolerance,
+    oc.BRepOffset_Mode.BRepOffset_Skin,
+    false,
+    false,
+    oc.GeomAbs_JoinType.GeomAbs_Arc,
+    false,
+    progress
   );
   progress.delete();
   const result = modifierWithEvolution(oc, builder, shape, inputFaceHashes, hashUpperBound);
