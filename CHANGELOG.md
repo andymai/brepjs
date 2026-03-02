@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.8.11](https://github.com/andymai/brepjs/compare/brepjs-v8.8.10...brepjs-v8.8.11) (2026-03-02)
+
+
+### Bug Fixes
+
+* remove accidentally committed node_modules symlink ([#329](https://github.com/andymai/brepjs/issues/329)) ([121a656](https://github.com/andymai/brepjs/commit/121a656127b785801397f0171f5c5cc850963351))
+
 ## [8.8.10](https://github.com/andymai/brepjs/compare/brepjs-v8.8.9...brepjs-v8.8.10) (2026-03-02)
 
 
