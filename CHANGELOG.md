@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.2](https://github.com/andymai/brepjs/compare/brepjs-v9.3.1...brepjs-v9.3.2) (2026-03-03)
+
+
+### Bug Fixes
+
+* **kernel:** improve 2D curve methods with Newton refinement ([#350](https://github.com/andymai/brepjs/issues/350)) ([5b51e0d](https://github.com/andymai/brepjs/commit/5b51e0d0913e5026412b1028960c68c055665d7a))
+
 ## [9.3.1](https://github.com/andymai/brepjs/compare/brepjs-v9.3.0...brepjs-v9.3.1) (2026-03-03)
 
 
