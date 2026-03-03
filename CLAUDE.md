@@ -31,7 +31,9 @@ Monorepo with two publishable packages:
 - `npm run test:coverage` — Full test suite with coverage
 - `npm run check:boundaries` — Layer boundary enforcement
 - `npm run knip` — Unused code detection
+- `npm run validate` — typecheck + lint + boundaries + format + affected tests (in order)
 - `npx vitest run tests/fn-booleanFns.test.ts` — Run a single test file
+- `npm run docs:generate-lookup` — Regenerate `docs/function-lookup.md`
 
 ## Git hooks
 
@@ -43,10 +45,12 @@ Monorepo with two publishable packages:
 
 - `getKernel()` from `src/kernel/index.ts` for all kernel operations; `initFromOC(oc)` must be called first
 - `registerKernel(id, adapter)` / `withKernel(id, fn)` for custom or dual kernel usage
+- `withKernel(id, fn)` is **sync-only** — async callbacks silently use the wrong kernel after the first `await`. Use `getKernel(id)` directly for async code.
 - **Layer 2+ code must never call methods on `.wrapped`** — always use `getKernel().method(shape.wrapped)`. ESLint enforces this.
 - Branded types (`Edge`, `Wire`, `Face`, `Solid`, etc.) in `src/core/shapeTypes.ts` — lightweight handles, no class hierarchy
 - `createHandle()` / `createKernelHandle()` from `src/core/disposal.ts` — use `using` keyword for resource cleanup
 - Functional API in `*Fns.ts` files — pure functions taking/returning branded types; prefer over OO API for new code
+- **Never add new methods to class-based wrappers** (e.g. `Shape`, `Solid`, `Edge` classes in `src/topology/`). These are legacy OO wrappers. All new functionality goes in `*Fns.ts` files.
 - `Result<T,E>` in `src/core/result.ts` — prefer over throwing in layers 2-3
 - All `.ts` imports must use `.js` extensions for ESM compatibility
 - Unused variables must be prefixed with `_`
@@ -70,3 +74,27 @@ Monorepo with two publishable packages:
 ## Commits
 
 Conventional Commits enforced: `type(scope): subject`
+
+## Common tasks
+
+### Writing a test
+
+1. File: extend existing `tests/fn-<module>.test.ts` or create new `tests/fn-<name>.test.ts`
+2. Import from `../src/index.js` (always `.js` extension)
+3. Add `beforeAll(async () => { await initOC(); }, 30000)` and import `initOC` from `./setup.js`
+4. Use `toBeCloseTo(expected, precision)` for geometry — never exact equality for floating point
+5. Use `unwrap(result)` in tests; use `isOk()`/`match()` in production code
+6. Assert shape types with `isSolid()`, `isFace()`, `isWire()`, etc.
+7. Validate geometry with `measureVolume()`, `measureArea()`
+
+For adding a new operation or kernel method, see `.claude/commands/`.
+
+## Gotchas
+
+- OCCT Emscripten returns enum objects with `.value` — extract with: `typeof val === 'number' ? val : Number(val?.value ?? val)`
+- `autoHeal` short-circuits valid shapes: `report.alreadyValid=true`, no sew/heal diagnostics run
+- Assembly solver uses original face coordinates — distance constraints don't compose across multiple mates
+- `Uint32Array` WASM interop: always convert to regular `Array` before passing to kernel methods
+- `DisposalScope` disposes in LIFO order — register dependencies after their dependees
+- `noUncheckedIndexedAccess` is enabled — array indexing returns `T | undefined`, add bounds checks or use `!` with eslint-disable
+- `exactOptionalPropertyTypes` is enabled — `undefined` and missing are distinct; use `prop?: T | undefined` in optional fields

@@ -181,6 +181,7 @@
     "check:readme-reminders": "bash scripts/check-readme-reminders.sh",
     "example": "npx tsx",
     "knip": "knip",
+    "validate": "bash scripts/validate-change.sh",
     "size": "size-limit",
     "docs:api": "typedoc",
     "docs:generate-lookup": "npx tsx scripts/generate-function-lookup.ts",

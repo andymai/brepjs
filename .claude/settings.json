@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "rm -rf",
+      "git push --force",
+      "git reset --hard",
+      "git clean -f"
+    ]
+  }
+}

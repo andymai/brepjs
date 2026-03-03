@@ -26,3 +26,4 @@ fi
 
 # Tier 3: Non-blocking reminders
 npm run check:readme-reminders
+bash scripts/check-function-lookup.sh
