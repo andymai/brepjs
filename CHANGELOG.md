@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.2.2](https://github.com/andymai/brepjs/compare/brepjs-v9.2.1...brepjs-v9.2.2) (2026-03-03)
+
+
+### Bug Fixes
+
+* **kernel:** replace bare catch blocks with diagnostic logging ([#340](https://github.com/andymai/brepjs/issues/340)) ([3c7346b](https://github.com/andymai/brepjs/commit/3c7346bbd152995b4a453f13d4d9f4ef44312fd7))
+
 ## [9.2.1](https://github.com/andymai/brepjs/compare/brepjs-v9.2.0...brepjs-v9.2.1) (2026-03-03)
 
 
