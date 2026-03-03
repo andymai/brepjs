@@ -1363,8 +1363,12 @@ export class BrepkitAdapter implements KernelAdapter {
 
   exportIGES(shapes: KernelShape[]): string {
     if (shapes.length === 0) return '';
-    const bytes: Uint8Array = this.bk.exportIges(unwrap(shapes[0], 'solid'));
-    return new TextDecoder().decode(bytes);
+    const parts: string[] = [];
+    for (const shape of shapes) {
+      const bytes: Uint8Array = this.bk.exportIges(unwrap(shape, 'solid'));
+      parts.push(new TextDecoder().decode(bytes));
+    }
+    return parts.join('\n');
   }
 
   importIGES(data: string | ArrayBuffer): KernelShape[] {
@@ -2135,14 +2139,27 @@ export class BrepkitAdapter implements KernelAdapter {
       (pvv[2]! - 2 * pv[2]! + p00[2]!) / (h * h),
     ];
 
-    // Second fundamental form coefficients
-    const L = duu[0]! * n[0]! + duu[1]! * n[1]! + duu[2]! * n[2]!;
-    const N = dvv[0]! * n[0]! + dvv[1]! * n[1]! + dvv[2]! * n[2]!;
+    // Mixed partial d²S/dudv via finite difference
+    const puv: number[] = this.bk.evaluateSurface(unwrap(face, 'face'), u + h, v + h);
+    const duv = [
+      (puv[0]! - pu[0]! - pv[0]! + p00[0]!) / (h * h),
+      (puv[1]! - pu[1]! - pv[1]! + p00[1]!) / (h * h),
+      (puv[2]! - pu[2]! - pv[2]! + p00[2]!) / (h * h),
+    ];
+
+    // First fundamental form: E, F, G
     const E = du[0]! ** 2 + du[1]! ** 2 + du[2]! ** 2;
+    const F = du[0]! * dv[0]! + du[1]! * dv[1]! + du[2]! * dv[2]!;
     const G = dv[0]! ** 2 + dv[1]! ** 2 + dv[2]! ** 2;
 
-    const gaussian = (L * N) / Math.max(E * G, 1e-20);
-    const mean = (L * G + N * E) / (2 * Math.max(E * G, 1e-20));
+    // Second fundamental form: L, M, N
+    const L = duu[0]! * n[0]! + duu[1]! * n[1]! + duu[2]! * n[2]!;
+    const M = duv[0]! * n[0]! + duv[1]! * n[1]! + duv[2]! * n[2]!;
+    const N = dvv[0]! * n[0]! + dvv[1]! * n[1]! + dvv[2]! * n[2]!;
+
+    const denom = Math.max(E * G - F * F, 1e-20);
+    const gaussian = (L * N - M * M) / denom;
+    const mean = (L * G - 2 * M * F + N * E) / (2 * denom);
     const disc = Math.sqrt(Math.max(0, mean ** 2 - gaussian));
     const k1 = mean + disc;
     const k2 = mean - disc;
@@ -2474,13 +2491,40 @@ export class BrepkitAdapter implements KernelAdapter {
     x2: number,
     y2: number
   ): Curve2dHandle {
-    // Approximate: create circle through 3 points, then trim
-    const circle = bk2d.makeCircle2d(
-      (x1 + xm + x2) / 3,
-      (y1 + ym + y2) / 3,
-      Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) / 2
-    );
-    return { __bk2d: 'trimmed', basis: circle, tStart: 0, tEnd: Math.PI } as Curve2dObj;
+    // Circumscribed circle through 3 points
+    const d = 2 * (x1 * (ym - y2) + xm * (y2 - y1) + x2 * (y1 - ym));
+    if (Math.abs(d) < 1e-12) {
+      // Degenerate (collinear): return a line
+      return bk2d.makeLine2d(x1, y1, x2, y2);
+    }
+    const cx =
+      ((x1 * x1 + y1 * y1) * (ym - y2) +
+        (xm * xm + ym * ym) * (y2 - y1) +
+        (x2 * x2 + y2 * y2) * (y1 - ym)) / d;
+    const cy =
+      ((x1 * x1 + y1 * y1) * (x2 - xm) +
+        (xm * xm + ym * ym) * (x1 - x2) +
+        (x2 * x2 + y2 * y2) * (xm - x1)) / d;
+    const radius = Math.sqrt((x1 - cx) ** 2 + (y1 - cy) ** 2);
+
+    // Compute angles for start (p1), mid (pm), and end (p2)
+    const a1 = Math.atan2(y1 - cy, x1 - cx);
+    const am = Math.atan2(ym - cy, xm - cx);
+    let a2 = Math.atan2(y2 - cy, x2 - cx);
+
+    // Determine sense: CCW if mid-point angle is between start and end going CCW
+    let da1m = am - a1;
+    if (da1m < 0) da1m += 2 * Math.PI;
+    let da12 = a2 - a1;
+    if (da12 < 0) da12 += 2 * Math.PI;
+    const sense = da1m < da12; // CCW if midpoint comes before endpoint
+
+    const circle = bk2d.makeCircle2d(cx, cy, radius, sense);
+    if (!sense) {
+      // CW: swap start/end for trimming
+      a2 = a1;
+    }
+    return { __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd: a2 } as Curve2dObj;
   }
   makeArc2dTangent(
     sx: number,
@@ -2490,13 +2534,18 @@ export class BrepkitAdapter implements KernelAdapter {
     ex: number,
     ey: number
   ): Curve2dHandle {
+    // Place midpoint offset along tangent direction from chord midpoint
+    const len = Math.sqrt(tx * tx + ty * ty);
+    const ntx = len > 0 ? tx / len : 0;
+    const nty = len > 0 ? ty / len : 0;
+    // Offset proportional to chord length for a reasonable arc
+    const chord = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2);
+    const offset = chord * 0.25;
     return this.makeArc2dThreePoints(
-      sx,
-      sy,
-      (sx + ex) / 2 + ty * 0.1,
-      (sy + ey) / 2 - tx * 0.1,
-      ex,
-      ey
+      sx, sy,
+      (sx + ex) / 2 + nty * offset,
+      (sy + ey) / 2 - ntx * offset,
+      ex, ey
     );
   }
   makeEllipse2d(
@@ -2674,12 +2723,29 @@ export class BrepkitAdapter implements KernelAdapter {
   createMirrorGTrsf2d(
     cx: number,
     cy: number,
-    _mode: 'point' | 'axis',
-    _ox?: number,
-    _oy?: number,
-    _dx?: number,
-    _dy?: number
+    mode: 'point' | 'axis',
+    ox?: number,
+    oy?: number,
+    dx?: number,
+    dy?: number
   ): KernelType {
+    if (mode === 'axis' && dx !== undefined && dy !== undefined) {
+      // Mirror across axis through (ox ?? cx, oy ?? cy) with direction (dx, dy)
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const nx = dx / len, ny = dy / len;
+      // Reflection matrix: R = 2*n*nT - I
+      const m = [
+        2 * nx * nx - 1, 2 * nx * ny, 0,
+        2 * nx * ny, 2 * ny * ny - 1, 0,
+        0, 0, 1,
+      ];
+      const px = ox ?? cx, py = oy ?? cy;
+      // Translation: p - R*p
+      const txv = px - m[0]! * px - m[1]! * py;
+      const tyv = py - m[3]! * px - m[4]! * py;
+      return { m, tx: txv, ty: tyv };
+    }
+    // Point mirror at (cx, cy)
     return { m: [-1, 0, 0, 0, -1, 0, 0, 0, 1], tx: 2 * cx, ty: 2 * cy };
   }
   createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType {
