@@ -236,7 +236,7 @@ export interface BrepkitKernel {
     nx: number,
     ny: number,
     nz: number
-  ): number[];
+  ): Uint32Array;
 
   /** Split a solid along a plane. Returns `[positive, negative]` solid handles. */
   split(
@@ -247,7 +247,7 @@ export interface BrepkitKernel {
     nx: number,
     ny: number,
     nz: number
-  ): number[];
+  ): Uint32Array;
 
   // ── Transform / Copy / Mirror / Pattern ────────────────────────
 
@@ -298,19 +298,19 @@ export interface BrepkitKernel {
   // ── Topology queries ───────────────────────────────────────────
 
   /** Get face handles of a solid. */
-  getSolidFaces(solid: number): number[];
+  getSolidFaces(solid: number): Uint32Array;
 
   /** Get edge handles of a solid. */
-  getSolidEdges(solid: number): number[];
+  getSolidEdges(solid: number): Uint32Array;
 
   /** Get vertex handles of a solid. */
-  getSolidVertices(solid: number): number[];
+  getSolidVertices(solid: number): Uint32Array;
 
   /** Get edge handles of a face. */
-  getFaceEdges(face: number): number[];
+  getFaceEdges(face: number): Uint32Array;
 
   /** Get vertex handles of a face. */
-  getFaceVertices(face: number): number[];
+  getFaceVertices(face: number): Uint32Array;
 
   /** Get the outer wire of a face. */
   getFaceOuterWire(face: number): number;
@@ -480,16 +480,16 @@ export interface BrepkitKernel {
   // ── Import ─────────────────────────────────────────────────────
 
   /** Import from STEP. Returns solid handle array. */
-  importStep(data: Uint8Array): number[];
+  importStep(data: Uint8Array): Uint32Array;
 
   /** Import from STL. Returns solid handle. */
   importStl(data: Uint8Array): number;
 
   /** Import from IGES. Returns solid handle array. */
-  importIges(data: Uint8Array): number[];
+  importIges(data: Uint8Array): Uint32Array;
 
   /** Import from 3MF. Returns solid handle array. */
-  import3mf(data: Uint8Array): number[];
+  import3mf(data: Uint8Array): Uint32Array;
 
   /** Import from OBJ. Returns solid handle. */
   importObj(data: Uint8Array): number;
@@ -644,13 +644,13 @@ export interface BrepkitKernel {
   // These are planned for Themes A, C, G, F
 
   /** Get solids within a compound. (Theme A) */
-  getCompoundSolids?(compound: number): number[];
+  getCompoundSolids?(compound: number): Uint32Array;
 
   /** Get faces of a shell. (Theme A) */
-  getShellFaces?(shell: number): number[];
+  getShellFaces?(shell: number): Uint32Array;
 
   /** Get edges of a wire. (Theme A) */
-  getWireEdges?(wire: number): number[];
+  getWireEdges?(wire: number): Uint32Array;
 
   /** Classify a point on a face (trim-aware). (Theme G) */
   classifyPointOnFace?(face: number, u: number, v: number, tolerance: number): number;

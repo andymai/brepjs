@@ -112,8 +112,8 @@ function unwrap(shape: KernelShape, expected?: ShapeType): number {
   return shape.id;
 }
 
-/** WASM may return Uint32Array — convert to regular Array for .map/.filter/.flatMap. */
-function toArray(ids: ArrayLike<number>): number[] {
+/** Convert a WASM Uint32Array of handles to a plain number[] for use with .map/.filter/.flatMap. */
+function toArray(ids: Uint32Array): number[] {
   return Array.from(ids);
 }
 
@@ -1443,7 +1443,7 @@ export class BrepkitAdapter implements KernelAdapter {
       // tessellateEdge returns proper curve samples for NURBS edges
       const pts: number[] = this.bk.tessellateEdge(edgeId, numPoints);
       const pointCount = pts.length / 3;
-      linePoints.push(...pts);
+      for (const p of pts) linePoints.push(p);
       edgeGroups.push({ start, count: pointCount, edgeHash: edgeId });
     }
 
@@ -1756,7 +1756,7 @@ export class BrepkitAdapter implements KernelAdapter {
             const seen = new Set<string>();
             const results: KernelShape[] = [];
             for (const eid of edgeIds) {
-              const verts = toArray(this.bk.getEdgeVertices(eid));
+              const verts = this.bk.getEdgeVertices(eid);
               const coords = [
                 [verts[0]!, verts[1]!, verts[2]!],
                 [verts[3]!, verts[4]!, verts[5]!],
@@ -1780,7 +1780,7 @@ export class BrepkitAdapter implements KernelAdapter {
         if (type === 'vertex') {
           // getEdgeVertices returns coordinates, not arena IDs — each call to
           // makeVertex allocates a new arena entry (no stable vertex ID API yet)
-          const verts = toArray(this.bk.getEdgeVertices(h));
+          const verts = this.bk.getEdgeVertices(h);
           const v1 = this.bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
           const v2 = this.bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);
           return [vertexHandle(v1), vertexHandle(v2)];
@@ -3679,8 +3679,8 @@ export class BrepkitAdapter implements KernelAdapter {
 
         const triStart = allTriangles.length / 3;
 
-        allVertices.push(...positions);
-        allNormals.push(...normals);
+        for (const v of positions) allVertices.push(v);
+        for (const n of normals) allNormals.push(n);
 
         for (const idx of indices) {
           allTriangles.push(idx + vertexOffset);
