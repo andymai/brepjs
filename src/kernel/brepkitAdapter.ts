@@ -1719,9 +1719,12 @@ export class BrepkitAdapter implements KernelAdapter {
     return !shape || !isBrepkitHandle(shape);
   }
 
-  shapeOrientation(_shape: KernelShape): ShapeOrientation {
-    // Edges can be queried for orientation within their parent wire
-    // For shapes without explicit orientation, default to 'forward'
+  shapeOrientation(shape: KernelShape): ShapeOrientation {
+    if (typeof this.bk.getShapeOrientation === 'function') {
+      const h = unwrap(shape);
+      const orient = this.bk.getShapeOrientation(h);
+      return orient as ShapeOrientation;
+    }
     return 'forward';
   }
 
@@ -2657,7 +2660,19 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   reverseShape(shape: KernelShape): KernelShape {
-    // brepkit doesn't expose orientation reversal — return same handle
+    if (typeof this.bk.reverseShape === 'function') {
+      const h = shape as BrepkitHandle;
+      const newId = this.bk.reverseShape(h.id);
+      // Return same type as input but with new ID
+      switch (h.type) {
+        case 'face':
+          return faceHandle(newId);
+        case 'edge':
+          return edgeHandle(newId);
+        default:
+          return { ...h, id: newId };
+      }
+    }
     return shape;
   }
 
