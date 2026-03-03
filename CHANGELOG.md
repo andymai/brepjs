@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.3](https://github.com/andymai/brepjs/compare/brepjs-v9.3.2...brepjs-v9.3.3) (2026-03-03)
+
+
+### Bug Fixes
+
+* **kernel:** fix 14 brepkit adapter test failures ([#353](https://github.com/andymai/brepjs/issues/353)) ([eafd9b5](https://github.com/andymai/brepjs/commit/eafd9b544dd0d1d92af502a05cbc520925fd2f06))
+
 ## [9.3.2](https://github.com/andymai/brepjs/compare/brepjs-v9.3.1...brepjs-v9.3.2) (2026-03-03)
 
 
