@@ -348,12 +348,23 @@ export function mirrorAcrossAxis(
       const [ncx, ncy] = reflectPoint(c.cx, c.cy);
       return { ...c, cx: ncx, cy: ncy, sense: !c.sense };
     }
+    case 'ellipse': {
+      const [ncx, ncy] = reflectPoint(c.cx, c.cy);
+      // Reflect the major-axis direction angle across the mirror axis
+      const cos2 = nx * nx - ny * ny;
+      const sin2 = 2 * nx * ny;
+      const newAngle = Math.atan2(
+        sin2 * Math.cos(c.xDirAngle) - cos2 * Math.sin(c.xDirAngle),
+        cos2 * Math.cos(c.xDirAngle) + sin2 * Math.sin(c.xDirAngle),
+      );
+      return { ...c, cx: ncx, cy: ncy, xDirAngle: newAngle, sense: !c.sense };
+    }
     case 'bezier':
       return { ...c, poles: c.poles.map(([x, y]) => reflectPoint(x, y)) };
     case 'bspline':
       return { ...c, poles: c.poles.map(([x, y]) => reflectPoint(x, y)) };
-    default:
-      return c;
+    case 'trimmed':
+      return { ...c, basis: mirrorAcrossAxis(c.basis, ox, oy, dx, dy) };
   }
 }
 
@@ -379,6 +390,8 @@ export function createBBox2d(): BBox2d {
 
 export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void {
   const bounds = curveBounds(c);
+  // Guard against infinite-extent curves (e.g. untrimmed Line2d)
+  if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
   const nSamples = 20;
   const dt = (bounds.last - bounds.first) / nSamples;
   for (let i = 0; i <= nSamples; i++) {

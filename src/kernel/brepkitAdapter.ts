@@ -535,8 +535,7 @@ export class BrepkitAdapter implements KernelAdapter {
     p3: [number, number, number]
   ): KernelShape {
     // Three-point arc: compute center, normal, radius, then make NURBS arc
-    // _midAB, _midBC removed (unused, center computed via circumscribed circle instead)
-    // Compute normal from cross product
+    // Compute normal from cross product of (p2-p1) × (p3-p1)
     const ab: [number, number, number] = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
     const ac: [number, number, number] = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
     const normal: [number, number, number] = [
@@ -544,43 +543,66 @@ export class BrepkitAdapter implements KernelAdapter {
       ab[2] * ac[0] - ab[0] * ac[2],
       ab[0] * ac[1] - ab[1] * ac[0],
     ];
-    // Approximate: use 3-point circle center via circumscribed circle
-    const d = 2 * (p1[0] * (p2[1] - p3[1]) + p2[0] * (p3[1] - p1[1]) + p3[0] * (p1[1] - p2[1]));
-    if (Math.abs(d) < 1e-12) {
+    const nLen = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
+    if (nLen < 1e-12) {
       // Degenerate (collinear): fall back to line
       return this.makeLineEdge(p1, p3);
     }
-    const cx =
-      ((p1[0] ** 2 + p1[1] ** 2) * (p2[1] - p3[1]) +
-        (p2[0] ** 2 + p2[1] ** 2) * (p3[1] - p1[1]) +
-        (p3[0] ** 2 + p3[1] ** 2) * (p1[1] - p2[1])) /
-      d;
-    const cy =
-      ((p1[0] ** 2 + p1[1] ** 2) * (p3[0] - p2[0]) +
-        (p2[0] ** 2 + p2[1] ** 2) * (p1[0] - p3[0]) +
-        (p3[0] ** 2 + p3[1] ** 2) * (p2[0] - p1[0])) /
-      d;
-    const cz = (p1[2] + p2[2] + p3[2]) / 3;
-    const radius = Math.sqrt((p1[0] - cx) ** 2 + (p1[1] - cy) ** 2 + (p1[2] - cz) ** 2);
-    const center: [number, number, number] = [cx, cy, cz];
-
-    // Compute proper start/end angles relative to center in the plane
-    const nLen = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
     const nz: [number, number, number] = [normal[0] / nLen, normal[1] / nLen, normal[2] / nLen];
-    // Build local x-axis from center→p1
-    const lx: [number, number, number] = [p1[0] - cx, p1[1] - cy, p1[2] - cz];
-    const lxLen = Math.sqrt(lx[0] ** 2 + lx[1] ** 2 + lx[2] ** 2);
-    const ux: [number, number, number] = [lx[0] / lxLen, lx[1] / lxLen, lx[2] / lxLen];
-    // y-axis = normal × x-axis
+
+    // Build local 2D frame in the arc plane: ux = normalized(p2-p1), uy = nz × ux
+    const abLen = Math.sqrt(ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2);
+    const ux: [number, number, number] = [ab[0] / abLen, ab[1] / abLen, ab[2] / abLen];
     const uy: [number, number, number] = [
       nz[1] * ux[2] - nz[2] * ux[1],
       nz[2] * ux[0] - nz[0] * ux[2],
       nz[0] * ux[1] - nz[1] * ux[0],
     ];
+
+    // Project p1, p2, p3 into the local 2D frame (relative to p1 as origin)
+    const proj = (p: [number, number, number]): [number, number] => {
+      const dx = p[0] - p1[0], dy = p[1] - p1[1], dz = p[2] - p1[2];
+      return [dx * ux[0] + dy * ux[1] + dz * ux[2], dx * uy[0] + dy * uy[1] + dz * uy[2]];
+    };
+    const [ax2, ay2] = proj(p1); // (0, 0)
+    const [bx2, by2] = proj(p2);
+    const [cx2, cy2] = proj(p3);
+
+    // 2D circumscribed circle center
+    const d = 2 * (ax2 * (by2 - cy2) + bx2 * (cy2 - ay2) + cx2 * (ay2 - by2));
+    if (Math.abs(d) < 1e-12) {
+      return this.makeLineEdge(p1, p3);
+    }
+    const ccx =
+      ((ax2 ** 2 + ay2 ** 2) * (by2 - cy2) +
+        (bx2 ** 2 + by2 ** 2) * (cy2 - ay2) +
+        (cx2 ** 2 + cy2 ** 2) * (ay2 - by2)) / d;
+    const ccy =
+      ((ax2 ** 2 + ay2 ** 2) * (cx2 - bx2) +
+        (bx2 ** 2 + by2 ** 2) * (ax2 - cx2) +
+        (cx2 ** 2 + cy2 ** 2) * (bx2 - ax2)) / d;
+
+    // Lift 2D center back to 3D
+    const center: [number, number, number] = [
+      p1[0] + ccx * ux[0] + ccy * uy[0],
+      p1[1] + ccx * ux[1] + ccy * uy[1],
+      p1[2] + ccx * ux[2] + ccy * uy[2],
+    ];
+    const radius = Math.sqrt((p1[0] - center[0]) ** 2 + (p1[1] - center[1]) ** 2 + (p1[2] - center[2]) ** 2);
+
+    // Build local frame for angle computation: x-axis from center→p1
+    const lx: [number, number, number] = [p1[0] - center[0], p1[1] - center[1], p1[2] - center[2]];
+    const lxLen = Math.sqrt(lx[0] ** 2 + lx[1] ** 2 + lx[2] ** 2);
+    const uxA: [number, number, number] = [lx[0] / lxLen, lx[1] / lxLen, lx[2] / lxLen];
+    const uyA: [number, number, number] = [
+      nz[1] * uxA[2] - nz[2] * uxA[1],
+      nz[2] * uxA[0] - nz[0] * uxA[2],
+      nz[0] * uxA[1] - nz[1] * uxA[0],
+    ];
     // Compute angle of p3 relative to center in the local frame
-    const v3: [number, number, number] = [p3[0] - cx, p3[1] - cy, p3[2] - cz];
-    const dotX = v3[0] * ux[0] + v3[1] * ux[1] + v3[2] * ux[2];
-    const dotY = v3[0] * uy[0] + v3[1] * uy[1] + v3[2] * uy[2];
+    const v3: [number, number, number] = [p3[0] - center[0], p3[1] - center[1], p3[2] - center[2]];
+    const dotX = v3[0] * uxA[0] + v3[1] * uxA[1] + v3[2] * uxA[2];
+    const dotY = v3[0] * uyA[0] + v3[1] * uyA[1] + v3[2] * uyA[2];
     let endAngle = Math.atan2(dotY, dotX);
     if (endAngle <= 0) endAngle += 2 * Math.PI;
     return this.makeCircleNurbs(center, normal, radius, 0, endAngle);
@@ -1311,10 +1333,14 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   exportSTEP(shapes: KernelShape[]): string {
-    // brepkit exports one solid at a time — concatenate for multi-shape
     if (shapes.length === 0) return '';
-    const bytes: Uint8Array = this.bk.exportStep(unwrap(shapes[0], 'solid'));
-    return new TextDecoder().decode(bytes);
+    // brepkit exports one solid at a time — concatenate for multi-shape
+    const parts: string[] = [];
+    for (const shape of shapes) {
+      const bytes: Uint8Array = this.bk.exportStep(unwrap(shape, 'solid'));
+      parts.push(new TextDecoder().decode(bytes));
+    }
+    return parts.join('\n');
   }
 
   exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer {
@@ -3005,11 +3031,36 @@ export class BrepkitAdapter implements KernelAdapter {
   // Private helpers
   // ═══════════════════════════════════════════════════════════════════════
 
-  /** Copy a solid, then apply a 4×4 row-major matrix transform. */
+  /** Copy a shape, then apply a 4×4 row-major matrix transform. */
   private applyMatrix(shape: KernelShape, matrix: number[]): KernelShape {
-    const copy = this.bk.copySolid(unwrap(shape, 'solid'));
-    this.bk.transformSolid(copy, matrix);
-    return solidHandle(copy);
+    const h = shape as BrepkitHandle;
+    if (!isBrepkitHandle(shape)) {
+      throw new Error('brepkit: applyMatrix requires a BrepkitHandle');
+    }
+    switch (h.type) {
+      case 'solid': {
+        const copy = this.bk.copySolid(h.id);
+        this.bk.transformSolid(copy, matrix);
+        return solidHandle(copy);
+      }
+      case 'face': {
+        const copy = this.bk.copyFace(h.id);
+        this.bk.transformFace(copy, matrix);
+        return faceHandle(copy);
+      }
+      case 'wire': {
+        const copy = this.bk.copyWire(h.id);
+        this.bk.transformWire(copy, matrix);
+        return wireHandle(copy);
+      }
+      case 'edge': {
+        const copy = this.bk.copyEdge(h.id);
+        this.bk.transformEdge(copy, matrix);
+        return edgeHandle(copy);
+      }
+      default:
+        throw new Error(`brepkit: applyMatrix does not support '${h.type}' shapes`);
+    }
   }
 
   /** Check if we need to transform from default placement (origin, +Z). */
