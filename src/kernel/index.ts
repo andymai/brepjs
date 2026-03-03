@@ -102,3 +102,6 @@ export type { ProjectionCapability } from './types.js';
 
 export { supportsKernel2D } from './kernel2dTypes.js';
 export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2dTypes.js';
+
+export { BrepkitAdapter } from './brepkitAdapter.js';
+export type { BrepkitHandle } from './brepkitAdapter.js';
