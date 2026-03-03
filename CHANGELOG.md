@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.2.1](https://github.com/andymai/brepjs/compare/brepjs-v9.2.0...brepjs-v9.2.1) (2026-03-03)
+
+
+### Bug Fixes
+
+* **kernel:** update makeBoxFromCorners for origin-corner convention ([#343](https://github.com/andymai/brepjs/issues/343)) ([801d653](https://github.com/andymai/brepjs/commit/801d653ee4af4beda645d8a1ec3307aeba0c4603))
+
 ## [9.2.0](https://github.com/andymai/brepjs/compare/brepjs-v9.1.0...brepjs-v9.2.0) (2026-03-03)
 
 
