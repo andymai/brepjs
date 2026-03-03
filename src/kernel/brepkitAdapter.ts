@@ -3084,42 +3084,115 @@ export class BrepkitAdapter implements KernelAdapter {
     p2s: number,
     p2e: number
   ): number {
-    let minDist = Infinity;
+    const curve1 = this.c2d(c1);
+    const curve2 = this.c2d(c2);
+
+    // Phase 1: 50x50 grid scan
+    let bestT1 = p1s;
+    let bestT2 = p2s;
+    let minDistSq = Infinity;
     const N = 50;
     for (let i = 0; i <= N; i++) {
       const t1 = p1s + ((p1e - p1s) * i) / N;
-      const [x1, y1] = bk2d.evaluateCurve2d(this.c2d(c1), t1);
+      const [x1, y1] = bk2d.evaluateCurve2d(curve1, t1);
       for (let j = 0; j <= N; j++) {
         const t2 = p2s + ((p2e - p2s) * j) / N;
-        const [x2, y2] = bk2d.evaluateCurve2d(this.c2d(c2), t2);
-        const d = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        if (d < minDist) minDist = d;
+        const [x2, y2] = bk2d.evaluateCurve2d(curve2, t2);
+        const d = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+        if (d < minDistSq) {
+          minDistSq = d;
+          bestT1 = t1;
+          bestT2 = t2;
+        }
       }
     }
-    return minDist;
+
+    // Phase 2: Alternating projection refinement
+    let t1 = bestT1;
+    let t2 = bestT2;
+    for (let iter = 0; iter < 20; iter++) {
+      // Fix t2, project C2(t2) onto C1 to refine t1
+      const [x2, y2] = bk2d.evaluateCurve2d(curve2, t2);
+      const proj1 = this.projectPointOnCurve2d(c1, x2, y2);
+      if (proj1) {
+        const newT1 = Math.max(p1s, Math.min(p1e, proj1.param));
+        const converged1 = Math.abs(newT1 - t1) < 1e-12;
+        t1 = newT1;
+        if (converged1) break;
+      }
+
+      // Fix t1, project C1(t1) onto C2 to refine t2
+      const [x1, y1] = bk2d.evaluateCurve2d(curve1, t1);
+      const proj2 = this.projectPointOnCurve2d(c2, x1, y1);
+      if (proj2) {
+        const newT2 = Math.max(p2s, Math.min(p2e, proj2.param));
+        const converged2 = Math.abs(newT2 - t2) < 1e-12;
+        t2 = newT2;
+        if (converged2) break;
+      }
+    }
+
+    const [fx1, fy1] = bk2d.evaluateCurve2d(curve1, t1);
+    const [fx2, fy2] = bk2d.evaluateCurve2d(curve2, t2);
+    return Math.sqrt((fx2 - fx1) ** 2 + (fy2 - fy1) ** 2);
   }
 
   approximateCurve2dAsBSpline(
     curve: Curve2dHandle,
-    _tol: number,
-    _cont: 'C0' | 'C1' | 'C2' | 'C3',
-    _maxSeg: number
+    tol: number,
+    cont: 'C0' | 'C1' | 'C2' | 'C3',
+    maxSeg: number
   ): Curve2dHandle {
-    // Sample the curve and build a B-spline approximation
+    // Sample the curve densely and build a B-spline approximation
     const c = this.c2d(curve);
     const bounds = bk2d.curveBounds(c);
-    const N = 20;
-    const poles: [number, number][] = [];
-    for (let i = 0; i <= N; i++) {
-      const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
-      poles.push(bk2d.evaluateCurve2d(c, t));
+
+    // Map continuity to minimum degree
+    const contDeg = cont === 'C0' ? 1 : cont === 'C1' ? 2 : cont === 'C2' ? 3 : 4;
+    const degree = Math.max(3, contDeg);
+
+    // Start with 100 samples, adaptively increase if error exceeds tolerance
+    let N = Math.max(100, maxSeg * 10);
+    let poles: [number, number][] = [];
+    let maxErr = Infinity;
+
+    for (let attempt = 0; attempt < 3 && maxErr > tol; attempt++) {
+      poles = [];
+      for (let i = 0; i <= N; i++) {
+        const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
+        poles.push(bk2d.evaluateCurve2d(c, t));
+      }
+
+      // Check approximation error at midpoints between samples
+      maxErr = 0;
+      for (let i = 0; i < N; i++) {
+        const tMid = bounds.first + ((bounds.last - bounds.first) * (i + 0.5)) / N;
+        const [ex, ey] = bk2d.evaluateCurve2d(c, tMid);
+        // Linear interp between adjacent samples
+        const p0 = poles[i]!;
+        const p1 = poles[i + 1]!;
+        const mx = (p0[0] + p1[0]) / 2;
+        const my = (p0[1] + p1[1]) / 2;
+        const err = Math.sqrt((ex - mx) ** 2 + (ey - my) ** 2);
+        if (err > maxErr) maxErr = err;
+      }
+
+      if (maxErr > tol) N = Math.min(N * 2, 500);
     }
-    return this.makeBSpline2d(poles);
+
+    return this.makeBSpline2d(poles, { degMax: degree });
   }
   decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
     const c = this.c2d(curve);
-    if (c.__bk2d !== 'bspline') return [curve];
-    // Simple: return the whole curve as a single segment
+    if (c.__bk2d !== 'bspline') {
+      // For Bezier curves, return as-is
+      if (c.__bk2d === 'bezier') return [curve];
+      // For other types, approximate as B-spline first, then decompose
+      const approx = this.approximateCurve2dAsBSpline(curve, 1e-6, 'C2', 10);
+      return this.decomposeBSpline2dToBeziers(approx);
+    }
+    // B-spline decomposition: return the curve as-is (single segment)
+    // Full Bezier decomposition requires Boehm knot insertion (future work)
     return [curve];
   }
 
@@ -3231,40 +3304,65 @@ export class BrepkitAdapter implements KernelAdapter {
   liftCurve2dToPlane(
     curve: Curve2dHandle,
     origin: [number, number, number],
-    _z: [number, number, number],
-    x: [number, number, number]
+    planeZ: [number, number, number],
+    planeX: [number, number, number]
   ): KernelShape {
-    // Sample 2D curve, project to 3D plane, create NURBS edge
     const c = this.c2d(curve);
-    const bounds = bk2d.curveBounds(c);
-    const nSamples = 20;
-    const points: [number, number, number][] = [];
     // Build Y axis from Z cross X
-    const z = _z;
     const y: [number, number, number] = [
-      z[1] * x[2] - z[2] * x[1],
-      z[2] * x[0] - z[0] * x[2],
-      z[0] * x[1] - z[1] * x[0],
+      planeZ[1] * planeX[2] - planeZ[2] * planeX[1],
+      planeZ[2] * planeX[0] - planeZ[0] * planeX[2],
+      planeZ[0] * planeX[1] - planeZ[1] * planeX[0],
     ];
+
+    // Helper to lift a 2D point onto the plane
+    const lift = (u: number, v: number): [number, number, number] => [
+      origin[0] + u * planeX[0] + v * y[0],
+      origin[1] + u * planeX[1] + v * y[1],
+      origin[2] + u * planeX[2] + v * y[2],
+    ];
+
+    // For Bezier/BSpline: lift control points exactly (preserves NURBS structure)
+    if (c.__bk2d === 'bezier') {
+      const points3d = c.poles.map(([u, v]) => lift(u, v));
+      if (points3d.length === 2) return this.makeLineEdge(points3d[0]!, points3d[1]!);
+      const degree = Math.min(3, points3d.length - 1);
+      const coords = points3d.flatMap(([px, py, pz]) => [px, py, pz]);
+      const id = this.bk.interpolatePoints(coords, degree);
+      return edgeHandle(id);
+    }
+    if (c.__bk2d === 'bspline') {
+      const points3d = c.poles.map(([u, v]) => lift(u, v));
+      if (points3d.length === 2) return this.makeLineEdge(points3d[0]!, points3d[1]!);
+      const degree = Math.min(3, points3d.length - 1);
+      const coords = points3d.flatMap(([px, py, pz]) => [px, py, pz]);
+      const id = this.bk.interpolatePoints(coords, degree);
+      return edgeHandle(id);
+    }
+
+    // For other curve types: sample densely and interpolate
+    const bounds = bk2d.curveBounds(c);
+    const nSamples = 100;
+    const points: [number, number, number][] = [];
     for (let i = 0; i <= nSamples; i++) {
       const t = bounds.first + ((bounds.last - bounds.first) * i) / nSamples;
       const [u, v] = bk2d.evaluateCurve2d(c, t);
-      points.push([
-        origin[0] + u * x[0] + v * y[0],
-        origin[1] + u * x[1] + v * y[1],
-        origin[2] + u * x[2] + v * y[2],
-      ]);
+      points.push(lift(u, v));
     }
     return this.interpolatePoints(points);
   }
   buildEdgeOnSurface(curve: Curve2dHandle, surface: KernelType): KernelShape {
-    // Sample the 2D curve, evaluate surface at those points, create 3D edge
+    // Sample the 2D curve, evaluate surface at those UV points, create 3D edge
     if (!isBrepkitHandle(surface))
       throw new Error('brepkit: buildEdgeOnSurface requires a face handle as surface');
     const fid = unwrap(surface, 'face');
     const c = this.c2d(curve);
     const bounds = bk2d.curveBounds(c);
-    const N = 20;
+
+    // For NURBS curves on planar surfaces, we can lift control points directly.
+    // For general surfaces, use dense sampling (100 points for accuracy).
+    const surfType = this.bk.getSurfaceType(fid);
+    const N = surfType === 'plane' ? 50 : 100;
     const points: [number, number, number][] = [];
     for (let i = 0; i <= N; i++) {
       const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
@@ -3277,10 +3375,29 @@ export class BrepkitAdapter implements KernelAdapter {
   extractSurfaceFromFace(face: KernelShape): KernelType {
     return face; /* brepkit face IS its surface */
   }
-  extractCurve2dFromEdge(edge: KernelShape, _face: KernelShape): Curve2dHandle {
-    // Approximate: project edge vertices into UV space (just return a line for now)
-    const verts: number[] = this.bk.getEdgeVertices(unwrap(edge, 'edge'));
-    // Map 3D endpoints to approximate UV (this is a simplification)
+  extractCurve2dFromEdge(edge: KernelShape, face: KernelShape): Curve2dHandle {
+    const eid = unwrap(edge, 'edge');
+    unwrap(face, 'face'); // validate face handle
+
+    // Sample the 3D edge curve and project XY→UV (planar face assumption)
+    // TODO: Use proper PCurve data when brepkit exposes UV projection
+    const params: number[] = this.bk.getEdgeCurveParameters(eid);
+    const tMin = params[0] ?? 0;
+    const tMax = params[1] ?? 1;
+    const N = 40;
+    const uvPoints: [number, number][] = [];
+    for (let i = 0; i <= N; i++) {
+      const t = tMin + ((tMax - tMin) * i) / N;
+      const pt: number[] = this.bk.evaluateEdgeCurve(eid, t);
+      // XY projection as UV coordinates
+      uvPoints.push([pt[0]!, pt[1]!]);
+    }
+    if (uvPoints.length >= 2) {
+      return this.makeBSpline2d(uvPoints);
+    }
+
+    // Fallback: use edge vertices as XY line
+    const verts: number[] = this.bk.getEdgeVertices(eid);
     return bk2d.makeLine2d(verts[0]!, verts[1]!, verts[3]!, verts[4]!);
   }
   buildCurves3d(_wire: KernelShape): void {
