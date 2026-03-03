@@ -7,6 +7,7 @@
 
 export interface BenchResult {
   name: string;
+  kernel?: string; // 'occt' | 'brepkit'
   min: number;
   median: number;
   mean: number;
