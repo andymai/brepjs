@@ -489,6 +489,16 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     return _makeBoxFromCorners(this.oc, p1, p2);
   }
 
+  makeRectangle(width: number, height: number): KernelShape {
+    // Build a rectangular face on the XY plane
+    const e1 = this.makeLineEdge([0, 0, 0], [width, 0, 0]);
+    const e2 = this.makeLineEdge([width, 0, 0], [width, height, 0]);
+    const e3 = this.makeLineEdge([width, height, 0], [0, height, 0]);
+    const e4 = this.makeLineEdge([0, height, 0], [0, 0, 0]);
+    const wire = this.makeWire([e1, e2, e3, e4]);
+    return this.makeFace(wire);
+  }
+
   solidFromShell(shell: KernelShape): KernelShape {
     return _solidFromShell(this.oc, shell);
   }

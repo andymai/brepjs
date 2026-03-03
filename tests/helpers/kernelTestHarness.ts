@@ -56,15 +56,19 @@ export async function initAllKernels(): Promise<void> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WASM module type
     const brepkitWasm: any = await import('brepkit-wasm');
-    if (brepkitWasm.default) {
+    // wasm-pack nodejs target: default may be a WASM init function or a re-export object
+    if (typeof brepkitWasm.default === 'function') {
       await brepkitWasm.default();
     }
-    const bk = new brepkitWasm.BrepKernel();
+    const BK = brepkitWasm.BrepKernel;
+    if (!BK) throw new Error('BrepKernel not found in brepkit-wasm module');
+    const bk = new BK();
     const adapter = new BrepkitAdapter(bk);
     registerKernel('brepkit', adapter);
     adapters.brepkit = adapter;
-  } catch {
+  } catch (e: unknown) {
     console.warn('[test] brepkit WASM not available — brepkit tests will be skipped');
+    console.warn('[test] brepkit init error:', e);
   }
 }
 

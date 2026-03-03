@@ -243,6 +243,7 @@ export interface KernelAdapter extends Kernel2DCapability {
   makeWireFromMixed(items: KernelShape[]): KernelShape;
   makeCompound(shapes: KernelShape[]): KernelShape;
   makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape;
+  makeRectangle(width: number, height: number): KernelShape;
   solidFromShell(shell: KernelShape): KernelShape;
 
   // --- Extrusion / sweep / loft / revolution ---
