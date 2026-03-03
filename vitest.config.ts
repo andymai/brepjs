@@ -12,7 +12,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'src/**/index.ts'],
+      exclude: ['src/**/*.d.ts', 'src/**/index.ts', 'src/kernel/brepkit*.ts'],
       reporter: ['text', 'text-summary', 'lcov'],
       reportsDirectory: './coverage',
       thresholds: {
