@@ -643,13 +643,13 @@ export interface BrepkitKernel {
   // ── Not yet exposed (future PRs) ──────────────────────────────
   // These are planned for Themes A, C, G, F
 
-  /** Get solids within a compound. (Theme A) */
+  /** Get solids within a compound. (requires brepkit >= PR-A) */
   getCompoundSolids?(compound: number): number[];
 
-  /** Get faces of a shell. (Theme A) */
+  /** Get faces of a shell. (requires brepkit >= PR-A) */
   getShellFaces?(shell: number): number[];
 
-  /** Get edges of a wire. (Theme A) */
+  /** Get edges of a wire. (requires brepkit >= PR-A) */
   getWireEdges?(wire: number): number[];
 
   /** Classify a point on a face (trim-aware). (Theme G) */
