@@ -1,5 +1,17 @@
 # Changelog
 
+## [9.2.0](https://github.com/andymai/brepjs/compare/brepjs-v9.1.0...brepjs-v9.2.0) (2026-03-03)
+
+
+### Features
+
+* **kernel:** add BrepkitKernel type interface for WASM exports ([#336](https://github.com/andymai/brepjs/issues/336)) ([b57ebab](https://github.com/andymai/brepjs/commit/b57ebabbbd1bd405f43f3e2c09eb1ec890d96ba7))
+
+
+### Bug Fixes
+
+* **kernel:** remove solid-only constraints from 19 brepkit methods ([#338](https://github.com/andymai/brepjs/issues/338)) ([97415ff](https://github.com/andymai/brepjs/commit/97415ff45d73c81c2a4ea6ea86cba4cb695adf77))
+
 ## [9.1.0](https://github.com/andymai/brepjs/compare/brepjs-v9.0.0...brepjs-v9.1.0) (2026-03-03)
 
 
