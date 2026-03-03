@@ -1747,19 +1747,22 @@ export class BrepkitAdapter implements KernelAdapter {
         if (type === 'vertex') {
           if (typeof this.bk.getWireEdges === 'function') {
             const edgeIds = toArray(this.bk.getWireEdges(h));
-            const seen = new Set<number>();
+            // Deduplicate on coordinates — makeVertex allocates fresh arena IDs
+            // so ID-based dedup would never match shared corners
+            const seen = new Set<string>();
             const results: KernelShape[] = [];
             for (const eid of edgeIds) {
               const verts = toArray(this.bk.getEdgeVertices(eid));
-              const v1 = this.bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
-              const v2 = this.bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);
-              if (!seen.has(v1)) {
-                seen.add(v1);
-                results.push(vertexHandle(v1));
-              }
-              if (!seen.has(v2)) {
-                seen.add(v2);
-                results.push(vertexHandle(v2));
+              const coords = [
+                [verts[0]!, verts[1]!, verts[2]!],
+                [verts[3]!, verts[4]!, verts[5]!],
+              ] as const;
+              for (const [x, y, z] of coords) {
+                const key = `${x},${y},${z}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  results.push(vertexHandle(this.bk.makeVertex(x, y, z)));
+                }
               }
             }
             return results;
@@ -1771,6 +1774,8 @@ export class BrepkitAdapter implements KernelAdapter {
 
       case 'edge': {
         if (type === 'vertex') {
+          // getEdgeVertices returns coordinates, not arena IDs — each call to
+          // makeVertex allocates a new arena entry (no stable vertex ID API yet)
           const verts = toArray(this.bk.getEdgeVertices(h));
           const v1 = this.bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
           const v2 = this.bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);
