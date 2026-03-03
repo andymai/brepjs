@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.1](https://github.com/andymai/brepjs/compare/brepjs-v9.3.0...brepjs-v9.3.1) (2026-03-03)
+
+
+### Bug Fixes
+
+* **kernel:** improve geometric fidelity for ellipses and surfaces ([#348](https://github.com/andymai/brepjs/issues/348)) ([cfcc5ab](https://github.com/andymai/brepjs/commit/cfcc5ab1108823111b670feafdd6ffb930f67da7))
+
 ## [9.3.0](https://github.com/andymai/brepjs/compare/brepjs-v9.2.2...brepjs-v9.3.0) (2026-03-03)
 
 
