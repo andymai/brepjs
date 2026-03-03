@@ -1555,22 +1555,37 @@ export class BrepkitAdapter implements KernelAdapter {
           return [];
         }
         if (type === 'vertex') {
-          // wire → vertex: create vertices from edge endpoint positions
+          // wire → vertex: collect unique vertex handles from all edges
           if (typeof this.bk.getWireEdges === 'function') {
             const edgeIds = this.bk.getWireEdges(h);
-            const seen = new Set<string>();
+            const seen = new Set<number>();
             const results: KernelShape[] = [];
-            for (const eid of edgeIds) {
-              const verts = this.bk.getEdgeVertices(eid);
-              const positions = [
-                [verts[0]!, verts[1]!, verts[2]!] as const,
-                [verts[3]!, verts[4]!, verts[5]!] as const,
-              ];
-              for (const [x, y, z] of positions) {
-                const key = `${x},${y},${z}`;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  results.push(vertexHandle(this.bk.makeVertex(x, y, z)));
+
+            if (typeof this.bk.getEdgeVertexHandles === 'function') {
+              // Use stable vertex IDs from topology (no arena allocation)
+              for (const eid of edgeIds) {
+                for (const vid of this.bk.getEdgeVertexHandles(eid)) {
+                  if (!seen.has(vid)) {
+                    seen.add(vid);
+                    results.push(vertexHandle(vid));
+                  }
+                }
+              }
+            } else {
+              // Fallback: create vertices from positions (allocates new arena IDs)
+              const posSeen = new Set<string>();
+              for (const eid of edgeIds) {
+                const verts = this.bk.getEdgeVertices(eid);
+                const positions = [
+                  [verts[0]!, verts[1]!, verts[2]!] as const,
+                  [verts[3]!, verts[4]!, verts[5]!] as const,
+                ];
+                for (const [x, y, z] of positions) {
+                  const key = `${x},${y},${z}`;
+                  if (!posSeen.has(key)) {
+                    posSeen.add(key);
+                    results.push(vertexHandle(this.bk.makeVertex(x, y, z)));
+                  }
                 }
               }
             }
@@ -1583,8 +1598,11 @@ export class BrepkitAdapter implements KernelAdapter {
 
       case 'edge': {
         if (type === 'vertex') {
-          // Edge vertices are returned as positions [x,y,z,x,y,z]
-          // We need vertex handles — create them from positions
+          if (typeof this.bk.getEdgeVertexHandles === 'function') {
+            // Use stable vertex IDs from topology (no arena allocation)
+            return this.bk.getEdgeVertexHandles(h).map(vertexHandle);
+          }
+          // Fallback: create vertices from positions (allocates new arena IDs)
           const verts = this.bk.getEdgeVertices(h);
           const v1 = this.bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
           const v2 = this.bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);

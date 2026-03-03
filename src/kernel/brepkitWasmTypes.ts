@@ -324,6 +324,13 @@ export interface BrepkitKernel {
    */
   getEdgeVertices(edge: number): number[];
 
+  /**
+   * Get vertex handles (not positions) of an edge.
+   * Returns `[startVertexHandle, endVertexHandle]`.
+   * (requires brepkit >= PR-A)
+   */
+  getEdgeVertexHandles?(edge: number): number[];
+
   /** Get vertex position `[x, y, z]`. */
   getVertexPosition(vertex: number): number[];
 
