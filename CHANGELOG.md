@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.0](https://github.com/andymai/brepjs/compare/brepjs-v9.2.2...brepjs-v9.3.0) (2026-03-03)
+
+
+### Features
+
+* **tests:** add cross-kernel test harness and agreement tests ([#346](https://github.com/andymai/brepjs/issues/346)) ([0d2ccbc](https://github.com/andymai/brepjs/commit/0d2ccbc49454174975261c8c0c3448100f7c27d9))
+
 ## [9.2.2](https://github.com/andymai/brepjs/compare/brepjs-v9.2.1...brepjs-v9.2.2) (2026-03-03)
 
 
