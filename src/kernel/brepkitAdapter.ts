@@ -45,6 +45,7 @@ import type {
   MeshOptions,
   StepAssemblyPart,
 } from './types.js';
+import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { Curve2dHandle, BBox2dHandle } from './kernel2dTypes.js';
 import * as bk2d from './brepkit2d.js';
 import type { Curve2dObj, BBox2d as BkBBox2d } from './brepkit2d.js';
@@ -237,11 +238,11 @@ export class BrepkitAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'brepkit';
 
-  /** The underlying brepkit WASM kernel instance. */
-  private readonly bk: KernelInstance;
+  /** The underlying brepkit WASM kernel instance (typed). */
+  private readonly bk: BrepkitKernel;
 
   constructor(brepkitKernel: KernelInstance) {
-    this.bk = brepkitKernel;
+    this.bk = brepkitKernel as BrepkitKernel;
     // `oc` is the escape hatch — expose the raw kernel for advanced usage
     this.oc = brepkitKernel;
   }
@@ -561,7 +562,9 @@ export class BrepkitAdapter implements KernelAdapter {
 
     // Project p1, p2, p3 into the local 2D frame (relative to p1 as origin)
     const proj = (p: [number, number, number]): [number, number] => {
-      const dx = p[0] - p1[0], dy = p[1] - p1[1], dz = p[2] - p1[2];
+      const dx = p[0] - p1[0],
+        dy = p[1] - p1[1],
+        dz = p[2] - p1[2];
       return [dx * ux[0] + dy * ux[1] + dz * ux[2], dx * uy[0] + dy * uy[1] + dz * uy[2]];
     };
     const [ax2, ay2] = proj(p1); // (0, 0)
@@ -576,11 +579,13 @@ export class BrepkitAdapter implements KernelAdapter {
     const ccx =
       ((ax2 ** 2 + ay2 ** 2) * (by2 - cy2) +
         (bx2 ** 2 + by2 ** 2) * (cy2 - ay2) +
-        (cx2 ** 2 + cy2 ** 2) * (ay2 - by2)) / d;
+        (cx2 ** 2 + cy2 ** 2) * (ay2 - by2)) /
+      d;
     const ccy =
       ((ax2 ** 2 + ay2 ** 2) * (cx2 - bx2) +
         (bx2 ** 2 + by2 ** 2) * (ax2 - cx2) +
-        (cx2 ** 2 + cy2 ** 2) * (bx2 - ax2)) / d;
+        (cx2 ** 2 + cy2 ** 2) * (bx2 - ax2)) /
+      d;
 
     // Lift 2D center back to 3D
     const center: [number, number, number] = [
@@ -588,7 +593,9 @@ export class BrepkitAdapter implements KernelAdapter {
       p1[1] + ccx * ux[1] + ccy * uy[1],
       p1[2] + ccx * ux[2] + ccy * uy[2],
     ];
-    const radius = Math.sqrt((p1[0] - center[0]) ** 2 + (p1[1] - center[1]) ** 2 + (p1[2] - center[2]) ** 2);
+    const radius = Math.sqrt(
+      (p1[0] - center[0]) ** 2 + (p1[1] - center[1]) ** 2 + (p1[2] - center[2]) ** 2
+    );
 
     // Build local frame for angle computation: x-axis from center→p1
     const lx: [number, number, number] = [p1[0] - center[0], p1[1] - center[1], p1[2] - center[2]];
@@ -1737,10 +1744,10 @@ export class BrepkitAdapter implements KernelAdapter {
     // Point to solid
     if (h1.type === 'vertex' && h2.type === 'solid') {
       const pos = this.bk.getVertexPosition(h1.id);
-      const result: number[] = this.bk.pointToSolidDistance(pos[0], pos[1], pos[2], h2.id);
+      const result: number[] = this.bk.pointToSolidDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
       return {
         value: result[0]!,
-        point1: [pos[0], pos[1], pos[2]],
+        point1: [pos[0]!, pos[1]!, pos[2]!],
         point2: [result[1]!, result[2]!, result[3]!],
       };
     }
@@ -1749,7 +1756,7 @@ export class BrepkitAdapter implements KernelAdapter {
     const getPos = (s: BrepkitHandle): [number, number, number] => {
       if (s.type === 'vertex') {
         const p = this.bk.getVertexPosition(s.id);
-        return [p[0], p[1], p[2]];
+        return [p[0]!, p[1]!, p[2]!];
       }
       // Use bounding box center as approximation
       if (s.type === 'solid') {
@@ -2500,11 +2507,13 @@ export class BrepkitAdapter implements KernelAdapter {
     const cx =
       ((x1 * x1 + y1 * y1) * (ym - y2) +
         (xm * xm + ym * ym) * (y2 - y1) +
-        (x2 * x2 + y2 * y2) * (y1 - ym)) / d;
+        (x2 * x2 + y2 * y2) * (y1 - ym)) /
+      d;
     const cy =
       ((x1 * x1 + y1 * y1) * (x2 - xm) +
         (xm * xm + ym * ym) * (x1 - x2) +
-        (x2 * x2 + y2 * y2) * (xm - x1)) / d;
+        (x2 * x2 + y2 * y2) * (xm - x1)) /
+      d;
     const radius = Math.sqrt((x1 - cx) ** 2 + (y1 - cy) ** 2);
 
     // Compute angles for start (p1), mid (pm), and end (p2)
@@ -2542,10 +2551,12 @@ export class BrepkitAdapter implements KernelAdapter {
     const chord = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2);
     const offset = chord * 0.25;
     return this.makeArc2dThreePoints(
-      sx, sy,
+      sx,
+      sy,
       (sx + ex) / 2 + nty * offset,
       (sy + ey) / 2 - ntx * offset,
-      ex, ey
+      ex,
+      ey
     );
   }
   makeEllipse2d(
@@ -2732,14 +2743,12 @@ export class BrepkitAdapter implements KernelAdapter {
     if (mode === 'axis' && dx !== undefined && dy !== undefined) {
       // Mirror across axis through (ox ?? cx, oy ?? cy) with direction (dx, dy)
       const len = Math.sqrt(dx * dx + dy * dy);
-      const nx = dx / len, ny = dy / len;
+      const nx = dx / len,
+        ny = dy / len;
       // Reflection matrix: R = 2*n*nT - I
-      const m = [
-        2 * nx * nx - 1, 2 * nx * ny, 0,
-        2 * nx * ny, 2 * ny * ny - 1, 0,
-        0, 0, 1,
-      ];
-      const px = ox ?? cx, py = oy ?? cy;
+      const m = [2 * nx * nx - 1, 2 * nx * ny, 0, 2 * nx * ny, 2 * ny * ny - 1, 0, 0, 0, 1];
+      const px = ox ?? cx,
+        py = oy ?? cy;
       // Translation: p - R*p
       const txv = px - m[0]! * px - m[1]! * py;
       const tyv = py - m[3]! * px - m[4]! * py;
@@ -3110,16 +3119,31 @@ export class BrepkitAdapter implements KernelAdapter {
         return solidHandle(copy);
       }
       case 'face': {
+        if (typeof this.bk.copyFace !== 'function' || typeof this.bk.transformFace !== 'function') {
+          throw new Error(
+            'brepkit: applyMatrix for faces requires copyFace/transformFace WASM exports'
+          );
+        }
         const copy = this.bk.copyFace(h.id);
         this.bk.transformFace(copy, matrix);
         return faceHandle(copy);
       }
       case 'wire': {
+        if (typeof this.bk.copyWire !== 'function' || typeof this.bk.transformWire !== 'function') {
+          throw new Error(
+            'brepkit: applyMatrix for wires requires copyWire/transformWire WASM exports'
+          );
+        }
         const copy = this.bk.copyWire(h.id);
         this.bk.transformWire(copy, matrix);
         return wireHandle(copy);
       }
       case 'edge': {
+        if (typeof this.bk.copyEdge !== 'function' || typeof this.bk.transformEdge !== 'function') {
+          throw new Error(
+            'brepkit: applyMatrix for edges requires copyEdge/transformEdge WASM exports'
+          );
+        }
         const copy = this.bk.copyEdge(h.id);
         this.bk.transformEdge(copy, matrix);
         return edgeHandle(copy);
@@ -3341,12 +3365,12 @@ export class BrepkitAdapter implements KernelAdapter {
     const endPt = controlPoints.slice(-3);
 
     const id = this.bk.makeNurbsEdge(
-      startPt[0],
-      startPt[1],
-      startPt[2],
-      endPt[0],
-      endPt[1],
-      endPt[2],
+      startPt[0]!,
+      startPt[1]!,
+      startPt[2]!,
+      endPt[0]!,
+      endPt[1]!,
+      endPt[2]!,
       degree,
       knots,
       controlPoints,
@@ -3368,7 +3392,7 @@ export class BrepkitAdapter implements KernelAdapter {
 
     // Try to get NURBS data from the edge
     const nurbsJson = this.bk.getEdgeNurbsData(h.id);
-    if (nurbsJson && nurbsJson !== null && typeof nurbsJson === 'string') {
+    if (nurbsJson) {
       const data = JSON.parse(nurbsJson);
       return {
         degree: data.degree,
@@ -3452,12 +3476,12 @@ export class BrepkitAdapter implements KernelAdapter {
     const endPt = controlPoints.slice(-3);
 
     const id = this.bk.makeNurbsEdge(
-      startPt[0],
-      startPt[1],
-      startPt[2],
-      endPt[0],
-      endPt[1],
-      endPt[2],
+      startPt[0]!,
+      startPt[1]!,
+      startPt[2]!,
+      endPt[0]!,
+      endPt[1]!,
+      endPt[2]!,
       degree,
       knots,
       controlPoints,
