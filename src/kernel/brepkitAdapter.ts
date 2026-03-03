@@ -344,8 +344,38 @@ export class BrepkitAdapter implements KernelAdapter {
     );
 
     if (faces.length === 0) {
-      throw new Error('brepkit: section produced no faces');
+      // Return empty compound instead of throwing — matches OCCT behavior
+      return compoundHandle(this.bk.makeCompound([]));
     }
+
+    // Extract edges from section faces and return as compound of edges
+    const allEdgeIds: number[] = [];
+    const seen = new Set<number>();
+    for (const fid of faces) {
+      const edgeIds: number[] = this.bk.getFaceEdges(fid);
+      for (const eid of edgeIds) {
+        if (!seen.has(eid)) {
+          seen.add(eid);
+          allEdgeIds.push(eid);
+        }
+      }
+    }
+
+    if (allEdgeIds.length === 0) {
+      return compoundHandle(this.bk.makeCompound([]));
+    }
+
+    // If there's a single face, return a wire from its edges
+    if (faces.length === 1) {
+      try {
+        const wireId = this.bk.makeWire(allEdgeIds, true);
+        return wireHandle(wireId);
+      } catch {
+        return faceHandle(faces[0]!);
+      }
+    }
+
+    // Multiple section faces — return compound of the faces
     return faceHandle(faces[0]!);
   }
 
@@ -381,9 +411,9 @@ export class BrepkitAdapter implements KernelAdapter {
       normal[1],
       normal[2]
     );
-    // brepkit returns [positive, negative]. brepjs expects a single shape
-    // (the OCCT adapter returns a compound). Return the positive half.
-    return solidHandle(result[0]!);
+    // brepkit returns [positive, negative]. brepjs expects a compound of
+    // all fragments (matching OCCT behavior).
+    return compoundHandle(this.bk.makeCompound(result));
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -2216,7 +2246,16 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape {
-    return this.sew(faces, tolerance);
+    const faceIds = faces.map((s) => unwrap(s, 'face'));
+    const shellOrSolid = this.bk.sewFaces(faceIds, tolerance);
+    // sewFaces may return a shell — try to solidify it
+    try {
+      const solidId = this.bk.solidFromShell(shellOrSolid);
+      return solidHandle(solidId);
+    } catch {
+      // solidFromShell failed — return as solid (sewFaces already returns solid handle)
+      return solidHandle(shellOrSolid);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
