@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.4](https://github.com/andymai/brepjs/compare/brepjs-v9.3.3...brepjs-v9.3.4) (2026-03-03)
+
+
+### Bug Fixes
+
+* systematic Uint32Array WASM interop bugs ([#355](https://github.com/andymai/brepjs/issues/355)) ([2eed241](https://github.com/andymai/brepjs/commit/2eed24134ce335056d6efc0489830fc812847e11))
+
 ## [9.3.3](https://github.com/andymai/brepjs/compare/brepjs-v9.3.2...brepjs-v9.3.3) (2026-03-03)
 
 
