@@ -1869,7 +1869,7 @@ export class BrepkitAdapter implements KernelAdapter {
       this.bk.healSolid(unwrap(shape));
       return shape; // Healing modifies in-place; return same handle
     } catch (e: unknown) {
-      console.warn('brepkit: healShape failed:', e);
+      console.warn('brepkit: healSolid failed:', e);
       return null;
     }
   }
@@ -3441,7 +3441,7 @@ export class BrepkitAdapter implements KernelAdapter {
 
         vertexOffset += vertCount;
       } catch (e: unknown) {
-        console.warn('brepkit: face tessellation failed:', e);
+        console.warn(`brepkit: face tessellation failed (faceId=${faceId}):`, e);
       }
     }
 
