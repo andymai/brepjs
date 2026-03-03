@@ -1567,7 +1567,7 @@ const pipeFitting = (() => {
     result = unwrap(cut(result, hole));
   }
   return result;
-});
+})();
 
 console.log('Volume:', measureVolume(pipeFitting));
 ```
@@ -1624,7 +1624,7 @@ const enclosure = (() => {
   result = unwrap(fuse(result, textSolid));
 
   return result;
-});
+})();
 ```
 
 ### Parametric spring with sweep and interference check
@@ -1654,7 +1654,7 @@ const spring = (() => {
   const topEnd = cylinder(20, 2, { at: [0, 0, 60] });
 
   return unwrap(fuse(unwrap(fuse(coil, bottomEnd)), topEnd));
-});
+})();
 
 // Check if spring fits inside a housing cylinder
 const housing = cylinder(25, 70, { at: [0, 0, -5] });
