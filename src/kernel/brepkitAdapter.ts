@@ -853,12 +853,12 @@ export class BrepkitAdapter implements KernelAdapter {
     const h = Math.abs(p2[1] - p1[1]);
     const d = Math.abs(p2[2] - p1[2]);
     const box = this.makeBox(w, h, d);
-    // brepkit boxes are centered at origin, so translate to midpoint
-    const cx = (p1[0] + p2[0]) / 2;
-    const cy = (p1[1] + p2[1]) / 2;
-    const cz = (p1[2] + p2[2]) / 2;
-    if (cx !== 0 || cy !== 0 || cz !== 0) {
-      return this.translate(box, cx, cy, cz);
+    // brepkit boxes have corner at origin — translate to min corner
+    const minX = Math.min(p1[0], p2[0]);
+    const minY = Math.min(p1[1], p2[1]);
+    const minZ = Math.min(p1[2], p2[2]);
+    if (minX !== 0 || minY !== 0 || minZ !== 0) {
+      return this.translate(box, minX, minY, minZ);
     }
     return box;
   }
