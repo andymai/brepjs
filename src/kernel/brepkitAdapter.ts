@@ -2207,8 +2207,20 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
-    // Build a triangulated mesh from the grid, then sew into a face
-    return this.triangulatedSurface(points, rows, cols);
+    // Use WASM NURBS surface interpolation for a proper B-spline surface
+    const coords: number[] = [];
+    for (const [x, y, z] of points) {
+      coords.push(x, y, z);
+    }
+    const degreeU = Math.min(3, rows - 1);
+    const degreeV = Math.min(3, cols - 1);
+    try {
+      const faceId = this.bk.interpolateSurface(coords, rows, cols, degreeU, degreeV);
+      return faceHandle(faceId);
+    } catch {
+      // Fall back to triangulated mesh if surface interpolation fails
+      return this.triangulatedSurface(points, rows, cols);
+    }
   }
 
   triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
@@ -3659,27 +3671,60 @@ export class BrepkitAdapter implements KernelAdapter {
       nz[0]! * xAxis[1]! - nz[1]! * xAxis[0]!,
     ];
 
-    // Sample ellipse points and fit as NURBS
-    const nSamples = 32;
-    const dAngle = (endAngle - startAngle) / nSamples;
+    // Exact rational degree-2 NURBS ellipse using weighted quadratic arcs.
+    // Same approach as makeCircleNurbs but with anisotropic radii.
+    const nSegments = Math.ceil(Math.abs(endAngle - startAngle) / (Math.PI / 2));
+    const dAngle = (endAngle - startAngle) / nSegments;
+
     const controlPoints: number[] = [];
-    for (let i = 0; i <= nSamples; i++) {
+    const weights: number[] = [];
+
+    for (let i = 0; i <= nSegments; i++) {
       const angle = startAngle + i * dAngle;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
       const px = center[0] + majorRadius * cos * xAxis[0]! + minorRadius * sin * yAxis[0]!;
       const py = center[1] + majorRadius * cos * xAxis[1]! + minorRadius * sin * yAxis[1]!;
       const pz = center[2] + majorRadius * cos * xAxis[2]! + minorRadius * sin * yAxis[2]!;
+
+      if (i > 0) {
+        // Off-curve weighted midpoint (tangent intersection)
+        const midAngle = startAngle + (i - 0.5) * dAngle;
+        const midCos = Math.cos(midAngle);
+        const midSin = Math.sin(midAngle);
+        const scale = 1 / Math.cos(dAngle / 2);
+        const mx =
+          center[0] +
+          majorRadius * scale * midCos * xAxis[0]! +
+          minorRadius * scale * midSin * yAxis[0]!;
+        const my =
+          center[1] +
+          majorRadius * scale * midCos * xAxis[1]! +
+          minorRadius * scale * midSin * yAxis[1]!;
+        const mz =
+          center[2] +
+          majorRadius * scale * midCos * xAxis[2]! +
+          minorRadius * scale * midSin * yAxis[2]!;
+        controlPoints.push(mx, my, mz);
+        weights.push(Math.cos(dAngle / 2));
+      }
+
       controlPoints.push(px, py, pz);
+      weights.push(1);
     }
 
-    const nPts = nSamples + 1;
-    const degree = Math.min(3, nPts - 1);
+    const degree = 2;
     const knots: number[] = Array(degree + 1).fill(0);
-    const nInternal = nPts - degree - 1;
-    for (let i = 1; i <= nInternal; i++) knots.push(i / (nInternal + 1));
-    knots.push(...Array(degree + 1).fill(1));
-    const weights = Array(nPts).fill(1);
+    for (let i = 1; i < nSegments; i++) {
+      knots.push(i, i);
+    }
+    knots.push(...Array(degree + 1).fill(nSegments));
+
+    // Normalize knots to [0, 1]
+    const kMax = knots[knots.length - 1]!;
+    for (let i = 0; i < knots.length; i++) {
+      knots[i] = knots[i]! / kMax;
+    }
 
     const startPt = controlPoints.slice(0, 3);
     const endPt = controlPoints.slice(-3);
