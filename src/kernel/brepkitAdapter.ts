@@ -1459,42 +1459,161 @@ export class BrepkitAdapter implements KernelAdapter {
     const h = unwrap(shape);
     const bkHandle = shape as BrepkitHandle;
 
-    if (bkHandle.type === 'solid') {
-      switch (type) {
-        case 'face': {
-          const ids: number[] = this.bk.getSolidFaces(h);
-          return ids.map(faceHandle);
-        }
-        case 'edge': {
-          const ids: number[] = this.bk.getSolidEdges(h);
-          return ids.map(edgeHandle);
-        }
-        case 'vertex': {
-          const ids: number[] = this.bk.getSolidVertices(h);
-          return ids.map(vertexHandle);
-        }
-        default:
+    switch (bkHandle.type) {
+      case 'compound': {
+        // compound → solid: direct children
+        if (type === 'solid') {
+          if (typeof this.bk.getCompoundSolids === 'function') {
+            return this.bk.getCompoundSolids(h).map(solidHandle);
+          }
           return [];
+        }
+        // compound → face/edge/vertex: recursive via solids
+        if (type === 'face' || type === 'edge' || type === 'vertex') {
+          if (typeof this.bk.getCompoundSolids === 'function') {
+            const solids = this.bk.getCompoundSolids(h).map(solidHandle);
+            return solids.flatMap(s => this.iterShapes(s, type));
+          }
+          return [];
+        }
+        return [];
       }
-    }
 
-    // For faces, extract edges or vertices via WASM bindings
-    if (bkHandle.type === 'face') {
-      if (type === 'edge') {
-        const ids: number[] = this.bk.getFaceEdges(h);
-        return ids.map(edgeHandle);
+      case 'solid': {
+        switch (type) {
+          case 'face':
+            return this.bk.getSolidFaces(h).map(faceHandle);
+          case 'edge':
+            return this.bk.getSolidEdges(h).map(edgeHandle);
+          case 'vertex':
+            return this.bk.getSolidVertices(h).map(vertexHandle);
+          case 'wire':
+            // solid → wire: collect all wires from all faces
+            return this.bk.getSolidFaces(h).flatMap(faceId => {
+              if (typeof this.bk.faceWires === 'function') {
+                return this.bk.faceWires(faceId).map(wireHandle);
+              }
+              return [wireHandle(this.bk.getFaceOuterWire(faceId))];
+            });
+          default:
+            return [];
+        }
       }
-      if (type === 'vertex') {
-        const ids: number[] = this.bk.getFaceVertices(h);
-        return ids.map(vertexHandle);
-      }
-      if (type === 'wire') {
-        const wireId: number = this.bk.getFaceOuterWire(h);
-        return [wireHandle(wireId)];
-      }
-    }
 
-    return [];
+      case 'shell': {
+        if (type === 'face') {
+          if (typeof this.bk.getShellFaces === 'function') {
+            return this.bk.getShellFaces(h).map(faceHandle);
+          }
+          return [];
+        }
+        // shell → edge/vertex: derive through faces
+        if (type === 'edge' || type === 'vertex') {
+          if (typeof this.bk.getShellFaces === 'function') {
+            const faces = this.bk.getShellFaces(h).map(faceHandle);
+            const seen = new Set<number>();
+            const results: KernelShape[] = [];
+            for (const face of faces) {
+              for (const child of this.iterShapes(face, type)) {
+                const childId = unwrap(child);
+                if (!seen.has(childId)) {
+                  seen.add(childId);
+                  results.push(child);
+                }
+              }
+            }
+            return results;
+          }
+          return [];
+        }
+        return [];
+      }
+
+      case 'face': {
+        if (type === 'edge') {
+          return this.bk.getFaceEdges(h).map(edgeHandle);
+        }
+        if (type === 'vertex') {
+          return this.bk.getFaceVertices(h).map(vertexHandle);
+        }
+        if (type === 'wire') {
+          // Return ALL wires (outer + inner holes), not just outer
+          if (typeof this.bk.faceWires === 'function') {
+            return this.bk.faceWires(h).map(wireHandle);
+          }
+          // Fallback: outer wire only
+          return [wireHandle(this.bk.getFaceOuterWire(h))];
+        }
+        return [];
+      }
+
+      case 'wire': {
+        if (type === 'edge') {
+          if (typeof this.bk.getWireEdges === 'function') {
+            return this.bk.getWireEdges(h).map(edgeHandle);
+          }
+          return [];
+        }
+        if (type === 'vertex') {
+          // wire → vertex: collect unique vertex handles from all edges
+          if (typeof this.bk.getWireEdges === 'function') {
+            const edgeIds = this.bk.getWireEdges(h);
+            const seen = new Set<number>();
+            const results: KernelShape[] = [];
+
+            if (typeof this.bk.getEdgeVertexHandles === 'function') {
+              // Use stable vertex IDs from topology (no arena allocation)
+              for (const eid of edgeIds) {
+                for (const vid of this.bk.getEdgeVertexHandles(eid)) {
+                  if (!seen.has(vid)) {
+                    seen.add(vid);
+                    results.push(vertexHandle(vid));
+                  }
+                }
+              }
+            } else {
+              // Fallback: create vertices from positions (allocates new arena IDs)
+              const posSeen = new Set<string>();
+              for (const eid of edgeIds) {
+                const verts = this.bk.getEdgeVertices(eid);
+                const positions = [
+                  [verts[0]!, verts[1]!, verts[2]!] as const,
+                  [verts[3]!, verts[4]!, verts[5]!] as const,
+                ];
+                for (const [x, y, z] of positions) {
+                  const key = `${x},${y},${z}`;
+                  if (!posSeen.has(key)) {
+                    posSeen.add(key);
+                    results.push(vertexHandle(this.bk.makeVertex(x, y, z)));
+                  }
+                }
+              }
+            }
+            return results;
+          }
+          return [];
+        }
+        return [];
+      }
+
+      case 'edge': {
+        if (type === 'vertex') {
+          if (typeof this.bk.getEdgeVertexHandles === 'function') {
+            // Use stable vertex IDs from topology (no arena allocation)
+            return this.bk.getEdgeVertexHandles(h).map(vertexHandle);
+          }
+          // Fallback: create vertices from positions (allocates new arena IDs)
+          const verts = this.bk.getEdgeVertices(h);
+          const v1 = this.bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
+          const v2 = this.bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);
+          return [vertexHandle(v1), vertexHandle(v2)];
+        }
+        return [];
+      }
+
+      default:
+        return [];
+    }
   }
 
   iterShapeList(list: KernelShape, callback: (item: KernelShape) => void): void {
