@@ -145,9 +145,7 @@ function unwrapSolidsForExport(
   if (shape.type === 'compound' && bk.getCompoundSolids) {
     const ids = bk.getCompoundSolids(shape.id);
     if (ids.length > 0) return ids;
-    throw new Error(
-      `brepkit: ${methodName} received a compound with no solids.`
-    );
+    throw new Error(`brepkit: ${methodName} received a compound with no solids.`);
   }
   throw new Error(
     `brepkit: ${methodName} requires a solid or compound of solids, got ${shape.type}.`
@@ -315,7 +313,10 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   fuse(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    const result = this.bk.fuse(unwrapSolidOrThrow(shape, 'fuse'), unwrapSolidOrThrow(tool, 'fuse'));
+    const result = this.bk.fuse(
+      unwrapSolidOrThrow(shape, 'fuse'),
+      unwrapSolidOrThrow(tool, 'fuse')
+    );
     return solidHandle(result);
   }
 
@@ -325,7 +326,10 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    const result = this.bk.intersect(unwrapSolidOrThrow(shape, 'intersect'), unwrapSolidOrThrow(tool, 'intersect'));
+    const result = this.bk.intersect(
+      unwrapSolidOrThrow(shape, 'intersect'),
+      unwrapSolidOrThrow(tool, 'intersect')
+    );
     return solidHandle(result);
   }
 
@@ -1575,10 +1579,14 @@ export class BrepkitAdapter implements KernelAdapter {
     // Fallback for compounds, shells, wires: average vertex positions
     const vertices = this.iterShapes(shape, 'vertex');
     if (vertices.length > 0) {
-      let sx = 0, sy = 0, sz = 0;
+      let sx = 0,
+        sy = 0,
+        sz = 0;
       for (const v of vertices) {
         const p = this.vertexPosition(v);
-        sx += p[0]; sy += p[1]; sz += p[2];
+        sx += p[0];
+        sy += p[1];
+        sz += p[2];
       }
       return [sx / vertices.length, sy / vertices.length, sz / vertices.length];
     }
@@ -1622,13 +1630,20 @@ export class BrepkitAdapter implements KernelAdapter {
       return { min: [0, 0, 0], max: [0, 0, 0] };
     }
     const first = this.vertexPosition(vertices[0]);
-    let minX = first[0], minY = first[1], minZ = first[2];
-    let maxX = first[0], maxY = first[1], maxZ = first[2];
+    let minX = first[0],
+      minY = first[1],
+      minZ = first[2];
+    let maxX = first[0],
+      maxY = first[1],
+      maxZ = first[2];
     for (let i = 1; i < vertices.length; i++) {
       const p = this.vertexPosition(vertices[i]);
-      if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
-      if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
-      if (p[2] < minZ) minZ = p[2]; if (p[2] > maxZ) maxZ = p[2];
+      if (p[0] < minX) minX = p[0];
+      if (p[0] > maxX) maxX = p[0];
+      if (p[1] < minY) minY = p[1];
+      if (p[1] > maxY) maxY = p[1];
+      if (p[2] < minZ) minZ = p[2];
+      if (p[2] > maxZ) maxZ = p[2];
     }
     return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
   }
@@ -1657,7 +1672,7 @@ export class BrepkitAdapter implements KernelAdapter {
         if (type === 'face' || type === 'edge' || type === 'vertex') {
           if (typeof this.bk.getCompoundSolids === 'function') {
             const solids = toArray(this.bk.getCompoundSolids(h)).map(solidHandle);
-            return solids.flatMap(s => this.iterShapes(s, type));
+            return solids.flatMap((s) => this.iterShapes(s, type));
           }
           return [];
         }
@@ -1673,8 +1688,8 @@ export class BrepkitAdapter implements KernelAdapter {
           case 'vertex':
             return toArray(this.bk.getSolidVertices(h)).map(vertexHandle);
           case 'wire':
-            return toArray(this.bk.getSolidFaces(h)).map(
-              (faceId: number) => wireHandle(this.bk.getFaceOuterWire(faceId))
+            return toArray(this.bk.getSolidFaces(h)).map((faceId: number) =>
+              wireHandle(this.bk.getFaceOuterWire(faceId))
             );
           default:
             return [];
@@ -1738,8 +1753,14 @@ export class BrepkitAdapter implements KernelAdapter {
               const verts = toArray(this.bk.getEdgeVertices(eid));
               const v1 = this.bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
               const v2 = this.bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);
-              if (!seen.has(v1)) { seen.add(v1); results.push(vertexHandle(v1)); }
-              if (!seen.has(v2)) { seen.add(v2); results.push(vertexHandle(v2)); }
+              if (!seen.has(v1)) {
+                seen.add(v1);
+                results.push(vertexHandle(v1));
+              }
+              if (!seen.has(v2)) {
+                seen.add(v2);
+                results.push(vertexHandle(v2));
+              }
             }
             return results;
           }

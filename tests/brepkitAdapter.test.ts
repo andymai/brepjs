@@ -186,7 +186,7 @@ describe('BrepkitAdapter', () => {
       const faces = adapter.iterShapes(box, 'face');
 
       // Trying to fuse a face (not a solid) should fail
-      expect(() => adapter.fuse(faces[0], box)).toThrow('expected solid handle');
+      expect(() => adapter.fuse(faces[0], box)).toThrow('requires a solid');
     });
 
     it('isNull returns true for non-handles', () => {

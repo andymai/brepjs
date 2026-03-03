@@ -355,7 +355,7 @@ export function mirrorAcrossAxis(
       const sin2 = 2 * nx * ny;
       const newAngle = Math.atan2(
         sin2 * Math.cos(c.xDirAngle) - cos2 * Math.sin(c.xDirAngle),
-        cos2 * Math.cos(c.xDirAngle) + sin2 * Math.sin(c.xDirAngle),
+        cos2 * Math.cos(c.xDirAngle) + sin2 * Math.sin(c.xDirAngle)
       );
       return { ...c, cx: ncx, cy: ncy, xDirAngle: newAngle, sense: !c.sense };
     }

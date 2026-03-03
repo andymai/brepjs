@@ -94,7 +94,7 @@ export function availableKernels(): KernelId[] {
 export function forEachKernel(
   callback: (kernelId: KernelId, getAdapter: () => KernelAdapter) => void
 ): void {
-  for (const id of (['occt', 'brepkit'] as const)) {
+  for (const id of ['occt', 'brepkit'] as const) {
     callback(id, () => {
       const adapter = adapters[id];
       if (!adapter) {
@@ -127,12 +127,7 @@ export function skipForKernel(
  * Assert a value is close to expected within tolerance.
  * Supports both relative and absolute tolerance.
  */
-export function expectClose(
-  actual: number,
-  expected: number,
-  relTol = 1e-4,
-  absTol = 1e-10
-): void {
+export function expectClose(actual: number, expected: number, relTol = 1e-4, absTol = 1e-10): void {
   const diff = Math.abs(actual - expected);
   const tol = Math.max(absTol, Math.abs(expected) * relTol);
   expect(diff).toBeLessThanOrEqual(tol);

@@ -8,6 +8,10 @@ const config: KnipConfig = {
     // brepjs-opencascade is an intentional optional peerDependency
     optionalPeerDependencies: 'off',
   },
+  ignoreDependencies: [
+    // brepkit-wasm is linked locally for testing, not published as a dependency
+    'brepkit-wasm',
+  ],
   workspaces: {
     '.': {
       project: ['src/**/*.ts'],
