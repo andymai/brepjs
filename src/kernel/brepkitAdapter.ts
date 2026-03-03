@@ -1759,7 +1759,8 @@ export class BrepkitAdapter implements KernelAdapter {
         point[2]
       );
       return [result[0]!, result[1]!];
-    } catch {
+    } catch (e: unknown) {
+      console.warn('brepkit: uvFromPoint failed:', e);
       return null;
     }
   }
@@ -1830,8 +1831,9 @@ export class BrepkitAdapter implements KernelAdapter {
     if ((shape as BrepkitHandle).type === 'solid') {
       try {
         this.bk.healSolid(unwrap(shape));
-      } catch {
+      } catch (e: unknown) {
         // Healing can fail on complex topologies — return unchanged
+        console.warn('brepkit: healing failed in simplify:', e);
       }
     }
     return shape;
@@ -1843,7 +1845,8 @@ export class BrepkitAdapter implements KernelAdapter {
     try {
       const errors: number = this.bk.validateSolid(shape.id);
       return errors === 0;
-    } catch {
+    } catch (e: unknown) {
+      console.warn('brepkit: isValid check failed:', e);
       return false;
     }
   }
@@ -1865,7 +1868,8 @@ export class BrepkitAdapter implements KernelAdapter {
     try {
       this.bk.healSolid(unwrap(shape));
       return shape; // Healing modifies in-place; return same handle
-    } catch {
+    } catch (e: unknown) {
+      console.warn('brepkit: healShape failed:', e);
       return null;
     }
   }
@@ -2240,7 +2244,8 @@ export class BrepkitAdapter implements KernelAdapter {
       const e3 = this.makeLineEdge(c, a);
       const wire = this.makeWire([e1, e2, e3]);
       return this.makeFace(wire);
-    } catch {
+    } catch (e: unknown) {
+      console.warn('brepkit: makeNonPlanarFace failed:', e);
       return null;
     }
   }
@@ -3285,8 +3290,8 @@ export class BrepkitAdapter implements KernelAdapter {
         try {
           const faceId: number = this.bk.fillCoonsPatch(allCoords, curveLengths);
           return faceHandle(faceId);
-        } catch {
-          // Fall back to non-planar face
+        } catch (e: unknown) {
+          console.warn('brepkit: Coons patch failed, falling back:', e);
         }
       }
     }
@@ -3435,8 +3440,8 @@ export class BrepkitAdapter implements KernelAdapter {
         });
 
         vertexOffset += vertCount;
-      } catch {
-        // Skip faces that fail to tessellate
+      } catch (e: unknown) {
+        console.warn('brepkit: face tessellation failed:', e);
       }
     }
 
