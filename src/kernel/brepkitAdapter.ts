@@ -238,6 +238,27 @@ function affineMatrix(
   ];
 }
 
+/** Build a 4×4 reflection matrix for a plane defined by origin + normal. */
+function mirrorMatrix(
+  origin: [number, number, number],
+  normal: [number, number, number]
+): number[] {
+  const [ox, oy, oz] = origin;
+  const len = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
+  const nx = normal[0] / len;
+  const ny = normal[1] / len;
+  const nz = normal[2] / len;
+  // Householder reflection: I - 2*n*n^T, translated to origin
+  const d = 2 * (ox * nx + oy * ny + oz * nz);
+  // prettier-ignore
+  return [
+    1 - 2*nx*nx,  -2*nx*ny,     -2*nx*nz,     d*nx,
+    -2*ny*nx,     1 - 2*ny*ny,  -2*ny*nz,     d*ny,
+    -2*nz*nx,     -2*nz*ny,     1 - 2*nz*nz,  d*nz,
+    0,            0,            0,             1,
+  ];
+}
+
 // ---------------------------------------------------------------------------
 // Deflection defaults
 // ---------------------------------------------------------------------------
@@ -1035,16 +1056,21 @@ export class BrepkitAdapter implements KernelAdapter {
     origin: [number, number, number],
     normal: [number, number, number]
   ): KernelShape {
-    const id = this.bk.mirror(
-      unwrap(shape, 'solid'),
-      origin[0],
-      origin[1],
-      origin[2],
-      normal[0],
-      normal[1],
-      normal[2]
-    );
-    return solidHandle(id);
+    const h = shape as BrepkitHandle;
+    if (h.type === 'solid') {
+      const id = this.bk.mirror(
+        h.id,
+        origin[0],
+        origin[1],
+        origin[2],
+        normal[0],
+        normal[1],
+        normal[2]
+      );
+      return solidHandle(id);
+    }
+    // Non-solids: construct mirror reflection matrix and use applyMatrix
+    return this.applyMatrix(shape, mirrorMatrix(origin, normal));
   }
 
   scale(shape: KernelShape, center: [number, number, number], factor: number): KernelShape {
