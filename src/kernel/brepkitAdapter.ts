@@ -381,11 +381,24 @@ export class BrepkitAdapter implements KernelAdapter {
 
   fuseAll(shapes: KernelShape[], options?: BooleanOptions): KernelShape {
     if (shapes.length === 0) throw new Error('brepkit: fuseAll requires at least one shape');
-    let result = shapes[0]!;
-    for (let i = 1; i < shapes.length; i++) {
-      result = this.fuse(result, shapes[i], options);
+    if (shapes.length === 1) return shapes[0]!;
+
+    // Balanced binary tree reduction: fuse(fuse(a,b), fuse(c,d)) instead of
+    // sequential fuse(fuse(fuse(a,b),c),d). This keeps intermediate solids
+    // roughly equal in complexity and reduces O(n) depth to O(log n).
+    let current = [...shapes];
+    while (current.length > 1) {
+      const next: KernelShape[] = [];
+      for (let i = 0; i < current.length; i += 2) {
+        if (i + 1 < current.length) {
+          next.push(this.fuse(current[i], current[i + 1], options));
+        } else {
+          next.push(current[i]);
+        }
+      }
+      current = next;
     }
-    return result;
+    return current[0]!;
   }
 
   cutAll(shape: KernelShape, tools: KernelShape[], options?: BooleanOptions): KernelShape {
