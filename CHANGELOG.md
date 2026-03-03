@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.5](https://github.com/andymai/brepjs/compare/brepjs-v9.3.4...brepjs-v9.3.5) (2026-03-03)
+
+
+### Bug Fixes
+
+* **ci:** exclude brepkit adapter from coverage thresholds ([#357](https://github.com/andymai/brepjs/issues/357)) ([f490cef](https://github.com/andymai/brepjs/commit/f490cefa8c36d46fb650a1a32cb76a6a112f9c71))
+
 ## [9.3.4](https://github.com/andymai/brepjs/compare/brepjs-v9.3.3...brepjs-v9.3.4) (2026-03-03)
 
 
