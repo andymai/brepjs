@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.1.0](https://github.com/andymai/brepjs/compare/brepjs-v9.0.0...brepjs-v9.1.0) (2026-03-03)
+
+
+### Features
+
+* **kernel:** add BrepkitAdapter for brepkit WASM kernel ([#334](https://github.com/andymai/brepjs/issues/334)) ([e015434](https://github.com/andymai/brepjs/commit/e0154349be8fe4569f3c88344d1878d5bd35220c))
+
 ## [9.0.0](https://github.com/andymai/brepjs/compare/brepjs-v8.8.11...brepjs-v9.0.0) (2026-03-02)
 
 
