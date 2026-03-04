@@ -210,7 +210,7 @@
     "vitest": "4.0.18"
   },
   "peerDependencies": {
-    "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0"
+    "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0"
   },
   "peerDependenciesMeta": {
     "brepjs-opencascade": {
