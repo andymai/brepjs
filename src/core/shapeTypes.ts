@@ -181,16 +181,13 @@ export function isShape1D(s: AnyShape): s is Shape1D {
 // Cast utility — wraps an kernel shape into the correct branded type
 // ---------------------------------------------------------------------------
 
-/** Downcast a raw kernel shape to its concrete subtype. */
-function downcastShape(shape: KernelShape): KernelShape {
-  return getKernel().downcast(shape);
-}
-
 /** Wrap a raw kernel shape into a properly branded type.
  *  Performs a downcast and wraps in a disposable handle. */
 export function castShape(ocShape: KernelShape): AnyShape {
-  const st = getKernel().shapeType(ocShape);
-  const dc = downcastShape(ocShape);
+  const kernel = getKernel();
+  const st = kernel.shapeType(ocShape);
+  // Pass type to downcast to avoid recomputing ShapeType() in WASM
+  const dc = kernel.downcast(ocShape, st);
 
   if (st === 'vertex') return createVertex(dc);
   if (st === 'edge') return createEdge(dc);

@@ -43,23 +43,24 @@ export const asTopo = (entity: TopoEntity): KernelType => {
  *
  * @remarks Uses the kernel adapter's iterShapes rather than direct TopExp_Explorer.
  */
+// Static map: TopoEntity → ShapeType for kernel adapter
+const TOPO_TO_SHAPE_TYPE: Readonly<Record<string, string>> = {
+  vertex: 'vertex',
+  edge: 'edge',
+  wire: 'wire',
+  face: 'face',
+  shell: 'shell',
+  solid: 'solid',
+  solidCompound: 'compsolid',
+  compound: 'compound',
+  shape: 'compound', // fallback; 'shape' isn't used in iterShapes
+};
+
 export const iterTopo = function* iterTopo(
   shape: KernelShape,
   topo: TopoEntity
 ): IterableIterator<KernelShape> {
-  // Map TopoEntity to ShapeType for kernel adapter
-  const topoToShapeType: Record<string, string> = {
-    vertex: 'vertex',
-    edge: 'edge',
-    wire: 'wire',
-    face: 'face',
-    shell: 'shell',
-    solid: 'solid',
-    solidCompound: 'compsolid',
-    compound: 'compound',
-    shape: 'compound', // fallback; 'shape' isn't used in iterShapes
-  };
-  const shapeType = topoToShapeType[topo];
+  const shapeType = TOPO_TO_SHAPE_TYPE[topo];
   if (shapeType) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ShapeType string mapping
     const shapes = getKernel().iterShapes(shape, shapeType as any);

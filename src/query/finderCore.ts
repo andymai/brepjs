@@ -125,17 +125,27 @@ export function createTypedFinder<T extends AnyShape, F extends ShapeFinder<T>>(
     findAll: (shape) => extractElements(shape),
 
     findUnique: (shape) => {
-      const elements = extractElements(shape);
-      if (elements.length !== 1) {
+      // Early-termination: stop iterating once we find more than 1 match
+      let match: T | undefined;
+      let count = 0;
+      for (const raw of iterTopo(shape.wrapped, topoKind)) {
+        const element = castShape(unwrap(downcast(raw))) as T;
+        if (shouldKeep(element)) {
+          count++;
+          if (count === 1) match = element;
+          else break; // More than 1 match — no need to continue
+        }
+      }
+      if (count !== 1) {
         return err(
           queryError(
             'FINDER_NOT_UNIQUE',
-            `Finder expected a unique match but found ${elements.length} element(s)`
+            `Finder expected a unique match but found ${count === 0 ? 0 : '2+'} element(s)`
           )
         );
       }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by length === 1
-      return ok(elements[0]!);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by count === 1
+      return ok(match!);
     },
 
     shouldKeep,

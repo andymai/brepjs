@@ -384,6 +384,7 @@ const topoCache = new WeakMap<
     wires?: Wire[];
     vertices?: Vertex[];
     faceOrigins?: Map<number, number>;
+    bounds?: Bounds3D;
   }
 >();
 
@@ -587,10 +588,12 @@ export interface Bounds3D {
   readonly zMax: number;
 }
 
-/** Get the axis-aligned bounding box of a shape. */
+/** Get the axis-aligned bounding box of a shape. Cached per shape. */
 export function getBounds(shape: AnyShape): Bounds3D {
+  const cache = getOrCreateCache(shape);
+  if (cache.bounds) return cache.bounds;
   const { min, max } = getKernel().boundingBox(shape.wrapped);
-  return {
+  const bounds: Bounds3D = {
     xMin: min[0],
     xMax: max[0],
     yMin: min[1],
@@ -598,6 +601,8 @@ export function getBounds(shape: AnyShape): Bounds3D {
     zMin: min[2],
     zMax: max[2],
   };
+  cache.bounds = bounds;
+  return bounds;
 }
 
 // ---------------------------------------------------------------------------

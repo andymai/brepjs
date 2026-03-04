@@ -16,12 +16,13 @@ import { HASH_CODE_MAX } from '../core/constants.js';
 import {
   propagateOriginsFromEvolution,
   propagateOriginsByHash,
+  getFaceOrigins,
   getWires,
   getEdges,
   getVertices,
 } from './shapeFns.js';
-import { propagateFaceTagsFromEvolution } from './faceTagFns.js';
-import { propagateColorsFromEvolution } from './colorFns.js';
+import { propagateFaceTagsFromEvolution, hasFaceTags } from './faceTagFns.js';
+import { propagateColorsFromEvolution, hasColorMetadata } from './colorFns.js';
 import { makeFace } from './surfaceBuilders.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
@@ -85,8 +86,16 @@ function castToShape3D(shape: KernelType, errorCode: string, errorMsg: string): 
   return ok(wrapped);
 }
 
-/** Collect ALL face hashes from input shapes for WithHistory kernel methods. */
+/** Collect ALL face hashes from input shapes for WithHistory kernel methods.
+ *  Fast-path: returns empty array when no inputs have metadata to propagate,
+ *  avoiding expensive WASM topology exploration. */
 function collectInputFaceHashes(inputs: AnyShape[]): number[] {
+  // O(1) check: skip expensive face iteration when no metadata exists
+  const hasMetadata = inputs.some(
+    (s) => getFaceOrigins(s) !== undefined || hasFaceTags(s) || hasColorMetadata(s)
+  );
+  if (!hasMetadata) return [];
+
   const hashes: number[] = [];
   for (const input of inputs) {
     const faces = getKernel().iterShapes(input.wrapped, 'face');

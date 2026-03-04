@@ -10,6 +10,14 @@ import type { KernelInstance, KernelShape, ShapeEvolution, OperationResult } fro
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT operation builders are dynamically typed
 type OcBuilder = any;
 
+/** Shared empty evolution object for operations with no face tracking.
+ *  Avoids allocating new Map/Set instances on every transform. */
+const EMPTY_EVOLUTION: ShapeEvolution = {
+  modified: new Map<number, number[]>(),
+  generated: new Map<number, number[]>(),
+  deleted: new Set<number>(),
+};
+
 /**
  * Iterate an OCCT TopTools_ListOfShape, extracting hash codes.
  */
@@ -57,7 +65,7 @@ export function buildEvolution(
   const deleted = new Set<number>();
 
   if (inputFaceHashes.length === 0) {
-    return { modified, generated, deleted };
+    return EMPTY_EVOLUTION;
   }
 
   // Build a map from hash → face for the input faces across all input shapes
@@ -118,11 +126,7 @@ export function transformWithEvolution(
   const resultShape = transformer.Shape();
   const evolution =
     inputFaceHashes.length === 0
-      ? {
-          modified: new Map<number, number[]>(),
-          generated: new Map<number, number[]>(),
-          deleted: new Set<number>(),
-        }
+      ? EMPTY_EVOLUTION
       : buildEvolution(oc, transformer, shape, inputFaceHashes, hashUpperBound);
   transformer.delete();
   return { shape: resultShape, evolution };

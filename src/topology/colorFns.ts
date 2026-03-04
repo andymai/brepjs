@@ -30,6 +30,11 @@ const shapeColorStore = new WeakMap<object, Color>();
 // Per-face colors: shape.wrapped → face hash → color
 const faceColorStore = new WeakMap<object, Map<number, Color>>();
 
+/** O(1) check whether a shape has any color metadata (shape or face level). */
+export function hasColorMetadata(shape: AnyShape): boolean {
+  return shapeColorStore.has(shape.wrapped) || faceColorStore.has(shape.wrapped);
+}
+
 function getFaceColorMap(shape: AnyShape): Map<number, Color> {
   let map = faceColorStore.get(shape.wrapped);
   if (!map) {

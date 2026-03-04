@@ -40,7 +40,9 @@ export function linearPattern(
   const ocShapes = getKernel().linearPattern(shape.wrapped, [...dir], spacing, count);
   const copies = ocShapes.map((s) => castShape(s) as Shape3D);
 
-  return fuseAll(copies, options);
+  // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
+  // expensive intersection calculations (default unless caller overrides)
+  return fuseAll(copies, { optimisation: 'sameFace', ...options });
 }
 
 /**
@@ -78,5 +80,7 @@ export function circularPattern(
   );
   const copies = ocShapes.map((s) => castShape(s) as Shape3D);
 
-  return fuseAll(copies, options);
+  // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
+  // expensive intersection calculations (default unless caller overrides)
+  return fuseAll(copies, { optimisation: 'sameFace', ...options });
 }

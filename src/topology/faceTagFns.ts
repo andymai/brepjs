@@ -21,6 +21,11 @@ const shapeTagStore = new WeakMap<object, Map<string, Set<number>>>();
 // Maps shape (by identity) → tag name → metadata
 const tagMetadataStore = new WeakMap<object, Map<string, Record<string, unknown>>>();
 
+/** O(1) check whether a shape has any face tags attached. */
+export function hasFaceTags(shape: AnyShape): boolean {
+  return shapeTagStore.has(shape.wrapped);
+}
+
 function getTagMap(shape: AnyShape): Map<string, Set<number>> {
   let map = shapeTagStore.get(shape.wrapped);
   if (!map) {
