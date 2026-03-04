@@ -40,10 +40,13 @@ beforeAll(async () => {
   try {
     // Dynamic import — will fail if WASM not available
     const brepkitWasm = await import('brepkit-wasm');
-    if (brepkitWasm.default) {
-      await brepkitWasm.default(); // init WASM
+    // wasm-pack --target nodejs initializes synchronously (no init function).
+    // wasm-pack --target web/bundler exports an async default init().
+    if (typeof brepkitWasm.default === 'function') {
+      await brepkitWasm.default();
     }
-    const kernel = new brepkitWasm.BrepKernel();
+    const BrepKernel = brepkitWasm.BrepKernel ?? brepkitWasm.default?.BrepKernel;
+    const kernel = new BrepKernel();
     registerKernel('brepkit', new BrepkitAdapter(kernel));
     hasBrepkit = true;
     console.log('[benchmark] brepkit WASM loaded successfully');
