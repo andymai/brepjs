@@ -60,13 +60,13 @@ export function buildEvolution(
   inputFaceHashes: number[],
   hashUpperBound: number
 ): ShapeEvolution {
-  const modified = new Map<number, number[]>();
-  const generated = new Map<number, number[]>();
-  const deleted = new Set<number>();
-
   if (inputFaceHashes.length === 0) {
     return EMPTY_EVOLUTION;
   }
+
+  const modified = new Map<number, number[]>();
+  const generated = new Map<number, number[]>();
+  const deleted = new Set<number>();
 
   // Build a map from hash → face for the input faces across all input shapes
   const inputHashSet = new Set(inputFaceHashes);
