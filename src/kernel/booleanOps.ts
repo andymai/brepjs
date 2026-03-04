@@ -27,6 +27,31 @@ export function applyGlue(
 }
 
 /**
+ * Applies common OCCT boolean algorithm settings for performance.
+ *
+ * - SetRunParallel: enables multi-threaded intersection computation.
+ * - SetUseOBB: Oriented Bounding Boxes give tighter spatial rejection than AABBs.
+ * - SetFuzzyValue: when provided, merges nearly-coincident vertices/edges early,
+ *   reducing intersection computation complexity.
+ */
+export function applyBooleanDefaults(
+  // All OCCT boolean algo classes inherit these from BRepAlgoAPI_Algo / BOPAlgo_Options.
+  // Optional markers are defensive — the WASM bridge is untyped (KernelInstance = any).
+  op: {
+    SetRunParallel(flag: boolean): void;
+    SetUseOBB?(flag: boolean): void;
+    SetFuzzyValue?(fuzz: number): void;
+  },
+  fuzzyValue?: number
+): void {
+  op.SetRunParallel(true);
+  op.SetUseOBB?.(true);
+  if (fuzzyValue !== undefined && fuzzyValue > 0) {
+    op.SetFuzzyValue?.(fuzzyValue);
+  }
+}
+
+/**
  * Builds a compound from multiple shapes.
  */
 export function buildCompound(oc: KernelInstance, shapes: KernelShape[]): KernelShape {
@@ -49,11 +74,11 @@ export function fuse(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false } = options;
+  const { optimisation, simplify = false, fuzzyValue } = options;
   const progress = new oc.Message_ProgressRange_1();
   const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
   applyGlue(oc, fuseOp, optimisation);
-  fuseOp.SetRunParallel(true);
+  applyBooleanDefaults(fuseOp, fuzzyValue);
   fuseOp.Build(progress);
   if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const result = fuseOp.Shape();
@@ -71,11 +96,11 @@ export function cut(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false } = options;
+  const { optimisation, simplify = false, fuzzyValue } = options;
   const progress = new oc.Message_ProgressRange_1();
   const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
   applyGlue(oc, cutOp, optimisation);
-  cutOp.SetRunParallel(true);
+  applyBooleanDefaults(cutOp, fuzzyValue);
   cutOp.Build(progress);
   if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const result = cutOp.Shape();
@@ -93,11 +118,11 @@ export function intersect(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false } = options;
+  const { optimisation, simplify = false, fuzzyValue } = options;
   const progress = new oc.Message_ProgressRange_1();
   const commonOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
   applyGlue(oc, commonOp, optimisation);
-  commonOp.SetRunParallel(true);
+  applyBooleanDefaults(commonOp, fuzzyValue);
   commonOp.Build(progress);
   if (simplify) commonOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
   const result = commonOp.Shape();
@@ -119,7 +144,7 @@ export function section(
   const progress = new oc.Message_ProgressRange_1();
   const sectionOp = new oc.BRepAlgoAPI_Section_3(shape, tool, false);
   sectionOp.Approximation(approximation);
-  sectionOp.SetRunParallel(true);
+  applyBooleanDefaults(sectionOp);
   sectionOp.Build(progress);
   if (!sectionOp.IsDone()) {
     sectionOp.delete();
@@ -133,25 +158,6 @@ export function section(
 }
 
 /**
- * Fuses multiple shapes using C++ batch operation.
- */
-function fuseAllBatch(
-  oc: KernelInstance,
-  shapes: KernelShape[],
-  options: BooleanOptions = {}
-): KernelShape {
-  const { optimisation, simplify = false } = options;
-  const batch = new oc.BooleanBatch();
-  for (const s of shapes) {
-    batch.addShape(s);
-  }
-  const glueMode = optimisation === 'commonFace' ? 1 : optimisation === 'sameFace' ? 2 : 0;
-  const result = batch.fuseAll(glueMode, simplify);
-  batch.delete();
-  return result;
-}
-
-/**
  * Fuses multiple shapes using native OCCT N-way general fuse.
  */
 function fuseAllNative(
@@ -159,7 +165,7 @@ function fuseAllNative(
   shapes: KernelShape[],
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false } = options;
+  const { optimisation, simplify = false, fuzzyValue } = options;
 
   const argList = new oc.TopTools_ListOfShape_1();
   for (const s of shapes) {
@@ -169,7 +175,7 @@ function fuseAllNative(
   const builder = new oc.BRepAlgoAPI_BuilderAlgo_1();
   builder.SetArguments(argList);
   applyGlue(oc, builder, optimisation);
-  builder.SetRunParallel(true);
+  applyBooleanDefaults(builder, fuzzyValue);
 
   const progress = new oc.Message_ProgressRange_1();
   builder.Build(progress);
@@ -250,11 +256,6 @@ export function fuseAll(
     return fuseAllPairwise(oc, shapes, options);
   }
 
-  // Prefer C++ BooleanBatch (single WASM call) when available
-  if (oc.BooleanBatch) {
-    return fuseAllBatch(oc, shapes, options);
-  }
-
   return fuseAllNative(oc, shapes, options);
 }
 
@@ -278,7 +279,7 @@ export function split(oc: KernelInstance, shape: KernelShape, tools: KernelShape
   const splitter = new oc.BRepAlgoAPI_Splitter();
   splitter.SetArguments(argList);
   splitter.SetTools(toolList);
-  splitter.SetRunParallel(true);
+  applyBooleanDefaults(splitter);
 
   const progress = new oc.Message_ProgressRange_1();
   splitter.Build(progress);
@@ -292,26 +293,6 @@ export function split(oc: KernelInstance, shape: KernelShape, tools: KernelShape
 }
 
 /**
- * Cuts all tool shapes from a base shape using C++ batch operation.
- */
-function cutAllBatch(
-  oc: KernelInstance,
-  shape: KernelShape,
-  tools: KernelShape[],
-  options: BooleanOptions = {}
-): KernelShape {
-  const { optimisation, simplify = false } = options;
-  const batch = new oc.BooleanBatch();
-  for (const t of tools) {
-    batch.addShape(t);
-  }
-  const glueMode = optimisation === 'commonFace' ? 1 : optimisation === 'sameFace' ? 2 : 0;
-  const result = batch.cutAll(shape, glueMode, simplify);
-  batch.delete();
-  return result;
-}
-
-/**
  * Cuts all tool shapes from a base shape.
  */
 export function cutAll(
@@ -321,11 +302,6 @@ export function cutAll(
   options: BooleanOptions = {}
 ): KernelShape {
   if (tools.length === 0) return shape;
-
-  // Prefer C++ BooleanBatch (single WASM call) when available
-  if (oc.BooleanBatch) {
-    return cutAllBatch(oc, shape, tools, options);
-  }
 
   const toolCompound = buildCompound(oc, tools);
   const result = cut(oc, shape, toolCompound, options);

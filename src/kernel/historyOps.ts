@@ -12,7 +12,7 @@ import {
   modifierWithEvolution,
   booleanWithEvolution,
 } from './evolutionOps.js';
-import { applyGlue } from './booleanOps.js';
+import { applyGlue, applyBooleanDefaults } from './booleanOps.js';
 
 // ---------------------------------------------------------------------------
 // Transform with history
@@ -139,8 +139,8 @@ export function fuseWithHistory(
 ): OperationResult {
   const progress = new oc.Message_ProgressRange_1();
   const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
-  applyGlue(oc, fuseOp, options.optimisation ?? 'none');
-  fuseOp.SetRunParallel(true);
+  applyGlue(oc, fuseOp, options.optimisation);
+  applyBooleanDefaults(fuseOp, options.fuzzyValue);
   fuseOp.Build(progress);
   const result = booleanWithEvolution(
     oc,
@@ -165,8 +165,8 @@ export function cutWithHistory(
 ): OperationResult {
   const progress = new oc.Message_ProgressRange_1();
   const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
-  applyGlue(oc, cutOp, options.optimisation ?? 'none');
-  cutOp.SetRunParallel(true);
+  applyGlue(oc, cutOp, options.optimisation);
+  applyBooleanDefaults(cutOp, options.fuzzyValue);
   cutOp.Build(progress);
   const result = booleanWithEvolution(
     oc,
@@ -191,8 +191,8 @@ export function intersectWithHistory(
 ): OperationResult {
   const progress = new oc.Message_ProgressRange_1();
   const intOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
-  applyGlue(oc, intOp, options.optimisation ?? 'none');
-  intOp.SetRunParallel(true);
+  applyGlue(oc, intOp, options.optimisation);
+  applyBooleanDefaults(intOp, options.fuzzyValue);
   intOp.Build(progress);
   const result = booleanWithEvolution(
     oc,

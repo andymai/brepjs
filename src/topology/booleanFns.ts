@@ -43,17 +43,8 @@ function validateShape3D(shape: Shape3D, label: string): Result<undefined> {
 // Types
 // ---------------------------------------------------------------------------
 
-/** Options shared by all boolean and compound operations. */
-export interface BooleanOptions {
-  /** Glue algorithm hint for faces shared between operands. */
-  optimisation?: 'none' | 'commonFace' | 'sameFace';
-  /** Merge same-domain faces/edges after the boolean. */
-  simplify?: boolean;
-  /** Algorithm selection: 'native' uses N-way BRepAlgoAPI_BuilderAlgo; 'pairwise' uses recursive divide-and-conquer. */
-  strategy?: 'native' | 'pairwise';
-  /** Abort signal to cancel long-running operations between steps. */
-  signal?: AbortSignal;
-}
+import type { BooleanOptions } from '../kernel/types.js';
+export type { BooleanOptions };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -127,7 +118,7 @@ function collectInputFaceHashes(inputs: AnyShape[]): number[] {
 export function fuse(
   a: Shape3D,
   b: Shape3D,
-  { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, signal, fuzzyValue }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const checkA = validateShape3D(a, 'fuse: first operand');
@@ -140,7 +131,7 @@ export function fuse(
     b.wrapped,
     inputFaceHashes,
     HASH_CODE_MAX,
-    { optimisation, simplify }
+    { optimisation, simplify, fuzzyValue }
   );
   const fuseResult = castToShape3D(resultShape, 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
   if (fuseResult.ok) {
@@ -167,7 +158,7 @@ export function fuse(
 export function cut(
   base: Shape3D,
   tool: Shape3D,
-  { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, signal, fuzzyValue }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const checkBase = validateShape3D(base, 'cut: base');
@@ -180,7 +171,7 @@ export function cut(
     tool.wrapped,
     inputFaceHashes,
     HASH_CODE_MAX,
-    { optimisation, simplify }
+    { optimisation, simplify, fuzzyValue }
   );
   const cutResult = castToShape3D(resultShape, 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
   if (cutResult.ok) {
@@ -202,7 +193,7 @@ export function cut(
 export function intersect(
   a: Shape3D,
   b: Shape3D,
-  { simplify = false, signal }: BooleanOptions = {}
+  { simplify = false, signal, fuzzyValue }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const checkA = validateShape3D(a, 'intersect: first operand');
@@ -215,7 +206,7 @@ export function intersect(
     b.wrapped,
     inputFaceHashes,
     HASH_CODE_MAX,
-    { simplify }
+    { simplify, fuzzyValue }
   );
   const intResult = castToShape3D(
     resultShape,
@@ -244,7 +235,8 @@ function fuseAllPairwise(
   optimisation: 'none' | 'commonFace' | 'sameFace',
   simplify: boolean,
   isTopLevel: boolean,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  fuzzyValue?: number
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const count = end - start;
@@ -255,19 +247,39 @@ function fuseAllPairwise(
     return fuse(shapes[start]!, shapes[start + 1]!, {
       optimisation,
       simplify: isTopLevel ? simplify : false,
+      fuzzyValue,
       ...(signal ? { signal } : {}),
     });
   }
 
   const mid = start + Math.ceil(count / 2);
-  const leftResult = fuseAllPairwise(shapes, start, mid, optimisation, simplify, false, signal);
+  const leftResult = fuseAllPairwise(
+    shapes,
+    start,
+    mid,
+    optimisation,
+    simplify,
+    false,
+    signal,
+    fuzzyValue
+  );
   if (isErr(leftResult)) return leftResult;
-  const rightResult = fuseAllPairwise(shapes, mid, end, optimisation, simplify, false, signal);
+  const rightResult = fuseAllPairwise(
+    shapes,
+    mid,
+    end,
+    optimisation,
+    simplify,
+    false,
+    signal,
+    fuzzyValue
+  );
   if (isErr(rightResult)) return rightResult;
 
   return fuse(leftResult.value, rightResult.value, {
     optimisation,
     simplify: isTopLevel ? simplify : false,
+    fuzzyValue,
     ...(signal ? { signal } : {}),
   });
 }
@@ -289,7 +301,13 @@ function fuseAllPairwise(
  */
 export function fuseAll(
   shapes: Shape3D[],
-  { optimisation = 'none', simplify = false, strategy = 'native', signal }: BooleanOptions = {}
+  {
+    optimisation = 'none',
+    simplify = false,
+    strategy = 'native',
+    signal,
+    fuzzyValue,
+  }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   if (shapes.length === 0)
@@ -307,7 +325,7 @@ export function fuseAll(
     // Delegate to kernel's native N-way fuse via BRepAlgoAPI_BuilderAlgo
     const result = getKernel().fuseAll(
       shapes.map((s) => s.wrapped),
-      { optimisation, simplify, strategy, ...(signal ? { signal } : {}) }
+      { optimisation, simplify, strategy, fuzzyValue, ...(signal ? { signal } : {}) }
     );
     const fuseAllResult = castToShape3D(
       result,
@@ -322,7 +340,16 @@ export function fuseAll(
 
   // Pairwise fallback: recursive divide-and-conquer with index ranges
   // Uses index ranges instead of slice() to avoid array allocations
-  return fuseAllPairwise(shapes, 0, shapes.length, optimisation, simplify, true, signal);
+  return fuseAllPairwise(
+    shapes,
+    0,
+    shapes.length,
+    optimisation,
+    simplify,
+    true,
+    signal,
+    fuzzyValue
+  );
 }
 
 /**
@@ -339,7 +366,7 @@ export function fuseAll(
 export function cutAll(
   base: Shape3D,
   tools: Shape3D[],
-  { optimisation = 'none', simplify = false, signal }: BooleanOptions = {}
+  { optimisation = 'none', simplify = false, signal, fuzzyValue }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   if (tools.length === 0) return ok(base);
@@ -360,7 +387,7 @@ export function cutAll(
     toolCompound,
     inputFaceHashes,
     HASH_CODE_MAX,
-    { optimisation, simplify }
+    { optimisation, simplify, fuzzyValue }
   );
   // Dispose the temporary compound
   toolCompound.delete();

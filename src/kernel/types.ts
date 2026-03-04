@@ -28,12 +28,23 @@ export type KernelShape = any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Opaque kernel type
 export type KernelType = any;
 
+/** Options shared by all boolean and compound operations. */
 export interface BooleanOptions {
+  /** Glue algorithm hint for faces shared between operands. */
   optimisation?: 'none' | 'commonFace' | 'sameFace';
+  /** Merge same-domain faces/edges after the boolean. */
   simplify?: boolean;
+  /** Algorithm selection: 'native' uses N-way BRepAlgoAPI_BuilderAlgo; 'pairwise' uses recursive divide-and-conquer. */
   strategy?: 'native' | 'pairwise';
   /** Abort signal to cancel long-running operations between steps. */
   signal?: AbortSignal;
+  /**
+   * Fuzzy tolerance for boolean operations. When set to a small positive value
+   * (e.g., 1e-5), OCCT merges nearly-coincident vertices and edges early,
+   * reducing intersection computation. Useful for 3D printing workflows where
+   * sub-micron precision is not needed. Default: 0 (exact geometry).
+   */
+  fuzzyValue?: number | undefined;
 }
 
 export type ShapeType =
