@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.8](https://github.com/andymai/brepjs/compare/brepjs-v9.3.7...brepjs-v9.3.8) (2026-03-04)
+
+
+### Performance Improvements
+
+* **wasm:** C++ extractors, build flags, and UV mesh support ([#364](https://github.com/andymai/brepjs/issues/364)) ([4f2546b](https://github.com/andymai/brepjs/commit/4f2546b79221a4de126dac680b1b4c13a407a0f6))
+
 ## [9.3.7](https://github.com/andymai/brepjs/compare/brepjs-v9.3.6...brepjs-v9.3.7) (2026-03-04)
 
 
