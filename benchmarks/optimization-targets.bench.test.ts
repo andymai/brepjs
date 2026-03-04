@@ -10,12 +10,17 @@ import {
   cylinder,
   sphere,
   translate,
+  rotate,
   fuse,
   cut,
+  fillet,
   getKernel,
   unwrap,
   mesh,
   meshEdges,
+  measureVolume,
+  measureArea,
+  checkAllInterferences,
 } from '../src/index.js';
 import { castShape } from '../src/core/shapeTypes.js';
 import { getFaces, getEdges, getBounds } from '../src/topology/shapeFns.js';
@@ -167,6 +172,90 @@ describe('Optimization target benchmarks', () => {
           getEdges(fresh);
         },
         { warmup: 2, iterations: 5 }
+      )
+    );
+  });
+
+  // --- Fillet with no metadata (modifierFns fast-path) ---
+  it('fillet x10 (no metadata)', async () => {
+    const b = box(10, 10, 10);
+    results.push(
+      await bench(
+        'fillet x10 no-metadata',
+        () => {
+          for (let i = 0; i < 10; i++) {
+            unwrap(fillet(b, undefined, 0.5));
+          }
+        },
+        { warmup: 1, iterations: 3 }
+      )
+    );
+  });
+
+  // --- UV mesh caching ---
+  it('mesh with UVs x5 (should cache)', async () => {
+    const b = box(10, 10, 10);
+    mesh(b, { includeUVs: true }); // prime cache
+    results.push(
+      await bench(
+        'mesh UV x5 cached',
+        () => {
+          for (let i = 0; i < 5; i++) {
+            mesh(b, { includeUVs: true });
+          }
+        },
+        { warmup: 1, iterations: 5 }
+      )
+    );
+  });
+
+  // --- Measurement caching (cache-first path) ---
+  it('measureVolume+Area x100 cached', async () => {
+    const b = box(10, 10, 10);
+    measureVolume(b); // prime cache
+    measureArea(b);
+    results.push(
+      await bench(
+        'measure x100 cached',
+        () => {
+          for (let i = 0; i < 100; i++) {
+            measureVolume(b);
+            measureArea(b);
+          }
+        },
+        { warmup: 2, iterations: 5 }
+      )
+    );
+  });
+
+  // --- rotate/scale without spread overhead ---
+  it('rotate x100', async () => {
+    const b = box(10, 10, 10);
+    results.push(
+      await bench(
+        'rotate x100',
+        () => {
+          for (let i = 0; i < 100; i++) {
+            rotate(b, 5 * i, [0, 0, 0], [0, 0, 1]);
+          }
+        },
+        { warmup: 1, iterations: 3 }
+      )
+    );
+  });
+
+  // --- Interference checking with AABB pre-filter ---
+  it('checkAllInterferences 10 shapes', async () => {
+    const shapes = Array.from({ length: 10 }, (_, i) =>
+      translate(box(5, 5, 5), [i * 20, 0, 0])
+    );
+    results.push(
+      await bench(
+        'interference 10 separated',
+        () => {
+          checkAllInterferences(shapes);
+        },
+        { warmup: 1, iterations: 5 }
       )
     );
   });

@@ -12,9 +12,9 @@ import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '../core/errors.js';
-import { getEdges, propagateOriginsFromEvolution } from './shapeFns.js';
-import { propagateFaceTagsFromEvolution } from './faceTagFns.js';
-import { propagateColorsFromEvolution } from './colorFns.js';
+import { getEdges, getFaceOrigins, propagateOriginsFromEvolution } from './shapeFns.js';
+import { propagateFaceTagsFromEvolution, hasFaceTags } from './faceTagFns.js';
+import { propagateColorsFromEvolution, hasColorMetadata } from './colorFns.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -30,11 +30,19 @@ function validateNotNull(
   return ok(undefined);
 }
 
-/** Collect tracked face hashes from input shapes for WithHistory kernel methods. */
+/** Collect tracked face hashes from input shapes for WithHistory kernel methods.
+ *  Fast-path: returns empty array when no inputs have metadata to propagate,
+ *  avoiding expensive WASM topology exploration. */
 function collectInputFaceHashes(inputs: { wrapped: { IsNull(): boolean } }[]): number[] {
+  // O(1) check: skip expensive face iteration when no metadata exists
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inputs are AnyShape-compatible
+  const hasMetadata = inputs.some((s: any) => {
+    return getFaceOrigins(s) !== undefined || hasFaceTags(s) || hasColorMetadata(s);
+  });
+  if (!hasMetadata) return [];
+
   const hashes: number[] = [];
   for (const input of inputs) {
-    // Collect ALL face hashes — needed for origin, tag, and color propagation
     const faces = getKernel().iterShapes(input.wrapped as KernelShape, 'face');
     for (const face of faces) {
       hashes.push(face.HashCode(HASH_CODE_MAX));

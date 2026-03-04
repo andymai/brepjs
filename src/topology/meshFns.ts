@@ -79,8 +79,8 @@ export function mesh(
 ): ShapeMesh {
   signal?.throwIfAborted();
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
-  const cacheKey = buildMeshCacheKey(tolerance, angularTolerance, skipNormals);
-  if (cache && !includeUVs) {
+  const cacheKey = buildMeshCacheKey(tolerance, angularTolerance, skipNormals, includeUVs);
+  if (cache) {
     const cached = getMeshForShape(shape.wrapped, cacheKey);
     if (cached) return cached;
   }

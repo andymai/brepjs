@@ -20,9 +20,10 @@ type KernelShape = any;
 export function buildMeshCacheKey(
   tolerance: number,
   angularTolerance: number,
-  skipNormals: boolean
+  skipNormals: boolean,
+  includeUVs = false
 ): string {
-  return `${tolerance}:${angularTolerance}:${skipNormals}`;
+  return `${tolerance}:${angularTolerance}:${skipNormals}:${includeUVs}`;
 }
 
 /**

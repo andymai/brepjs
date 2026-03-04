@@ -352,8 +352,10 @@ export function meshEdgesJS(
               prevY = 0,
               prevZ = 0;
             let hasPrev = false;
+            // Hoist Transformation() outside the loop — same for all nodes of this edge
+            const trsf = edgeLoc.Transformation();
             for (let i = edgeNodes.Lower(); i <= edgeNodes.Upper(); i++) {
-              const p = triObj.Node(edgeNodes.Value(i)).Transformed(edgeLoc.Transformation());
+              const p = triObj.Node(edgeNodes.Value(i)).Transformed(trsf);
               const x = p.X(),
                 y = p.Y(),
                 z = p.Z();
@@ -366,6 +368,7 @@ export function meshEdgesJS(
               hasPrev = true;
               p.delete();
             }
+            trsf.delete();
             edgeGroups.push({
               start: lineStart,
               count: lines.length / 3 - lineStart,

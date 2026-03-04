@@ -61,9 +61,9 @@ export interface LinearProps extends PhysicalProps {
  * ```
  */
 export function measureVolumeProps(shape: Shape3D): VolumeProps {
-  assertShapeNotNull(shape, 'measureVolumeProps');
   const cached = getCachedMeasurement(shape.wrapped, 'volume') as VolumeProps | undefined;
   if (cached) return cached;
+  assertShapeNotNull(shape, 'measureVolumeProps');
 
   const kernel = getKernel();
   const m = kernel.volume(shape.wrapped);
@@ -85,9 +85,9 @@ export function measureVolumeProps(shape: Shape3D): VolumeProps {
  * @see {@link measureArea} for a shorthand that returns only the area number.
  */
 export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
-  assertShapeNotNull(shape, 'measureSurfaceProps');
   const cached = getCachedMeasurement(shape.wrapped, 'surface') as SurfaceProps | undefined;
   if (cached) return cached;
+  assertShapeNotNull(shape, 'measureSurfaceProps');
 
   const kernel = getKernel();
   const m = kernel.area(shape.wrapped);
@@ -112,9 +112,9 @@ export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
  * @see {@link measureLength} for a shorthand that returns only the length number.
  */
 export function measureLinearProps(shape: AnyShape): LinearProps {
-  assertShapeNotNull(shape, 'measureLinearProps');
   const cached = getCachedMeasurement(shape.wrapped, 'linear') as LinearProps | undefined;
   if (cached) return cached;
+  assertShapeNotNull(shape, 'measureLinearProps');
 
   const kernel = getKernel();
   const m = kernel.length(shape.wrapped);

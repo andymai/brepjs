@@ -39,7 +39,7 @@ describe('meshCache', () => {
   describe('buildMeshCacheKey', () => {
     it('produces a deterministic key from parameters', () => {
       const key = buildMeshCacheKey(0.1, 30, false);
-      expect(key).toBe('0.1:30:false');
+      expect(key).toBe('0.1:30:false:false');
     });
 
     it('distinguishes skipNormals', () => {

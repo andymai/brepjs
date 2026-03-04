@@ -10,6 +10,7 @@ import type { Vec3 } from '../core/types.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { validationError, BrepErrorCode } from '../core/errors.js';
+import { getBounds, type Bounds3D } from '../topology/shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,8 +119,13 @@ export function checkAllInterferences(
 ): InterferencePair[] {
   const pairs: InterferencePair[] = [];
 
+  // Pre-compute bounding boxes for cheap AABB rejection
+  const boxes = shapes.map((s) => getBounds(s));
+
   shapes.forEach((si, i) => {
     for (let j = i + 1; j < shapes.length; j++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j is bounds-checked
+      if (aabbDisjoint(boxes[i]!, boxes[j]!, tolerance)) continue;
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j is bounds-checked
       const result = unwrap(checkInterference(si, shapes[j]!, tolerance));
       if (result.hasInterference) {
@@ -129,4 +135,16 @@ export function checkAllInterferences(
   });
 
   return pairs;
+}
+
+/** Fast AABB disjointness check — returns true if boxes are separated by more than tolerance. */
+function aabbDisjoint(a: Bounds3D, b: Bounds3D, tolerance: number): boolean {
+  return (
+    a.xMax + tolerance < b.xMin ||
+    b.xMax + tolerance < a.xMin ||
+    a.yMax + tolerance < b.yMin ||
+    b.yMax + tolerance < a.yMin ||
+    a.zMax + tolerance < b.zMin ||
+    b.zMax + tolerance < a.zMin
+  );
 }

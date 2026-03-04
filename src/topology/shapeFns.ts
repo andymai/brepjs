@@ -101,8 +101,8 @@ export function rotate<T extends AnyShape>(
     angle * DEG2RAD,
     inputFaceHashes,
     HASH_CODE_MAX,
-    [...direction],
-    [...position]
+    direction as [number, number, number],
+    position as [number, number, number]
   );
   const result = castShape(resultShape) as T;
   propagateOriginsFromEvolution(evolution, [shape], result);
@@ -118,8 +118,8 @@ export function mirror<T extends AnyShape>(
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().mirrorWithHistory(
     shape.wrapped,
-    [...planeOrigin],
-    [...planeNormal],
+    planeOrigin as [number, number, number],
+    planeNormal as [number, number, number],
     inputFaceHashes,
     HASH_CODE_MAX
   );
@@ -133,7 +133,7 @@ export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().scaleWithHistory(
     shape.wrapped,
-    [...center],
+    center as [number, number, number],
     factor,
     inputFaceHashes,
     HASH_CODE_MAX
