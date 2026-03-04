@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "9.3.9",
+  "version": "9.3.10",
   "description": "Web CAD library with pluggable geometry kernel",
   "keywords": [
     "cad",

@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.10](https://github.com/andymai/brepjs/compare/brepjs-v9.3.9...brepjs-v9.3.10) (2026-03-04)
+
+
+### Performance Improvements
+
+* **wasm:** build flags, C++ extractors, and command buffer design ([#371](https://github.com/andymai/brepjs/issues/371)) ([5c591a1](https://github.com/andymai/brepjs/commit/5c591a1767d3ac80921ff38ab55273f76bfdfa81))
+
 ## [9.3.9](https://github.com/andymai/brepjs/compare/brepjs-v9.3.8...brepjs-v9.3.9) (2026-03-04)
 
 
