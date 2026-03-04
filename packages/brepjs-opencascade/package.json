@@ -41,6 +41,6 @@
     "buildSingle": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js custom_build_single.yml && mv brepjs_single* ../src && cd -",
     "buildWithExceptions": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js custom_build_with_exceptions.yml && mv brepjs_with_exceptions* ../src && cd -",
     "buildThreaded": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) donalffons/opencascade.js:multi-threaded custom_build_threaded.yml && mv brepjs_threaded* ../src && cd -",
-    "optimizeWasm": "npx wasm-opt -O3 --strip-debug --strip-producers src/brepjs_single.wasm -o src/brepjs_single.wasm && npx wasm-opt -O3 --strip-debug --strip-producers src/brepjs_threaded.wasm -o src/brepjs_threaded.wasm && npx wasm-opt -O3 --strip-debug --strip-producers src/brepjs_with_exceptions.wasm -o src/brepjs_with_exceptions.wasm"
+    "optimizeWasm": "npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_single.wasm -o src/brepjs_single.wasm && npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_threaded.wasm -o src/brepjs_threaded.wasm && npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_with_exceptions.wasm -o src/brepjs_with_exceptions.wasm"
   }
 }

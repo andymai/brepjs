@@ -17,6 +17,13 @@ import type {
 } from './types.js';
 import { HASH_CODE_MAX } from './measureOps.js';
 
+/** Slice a Float32Array from the WASM heap, or return empty if size is 0. */
+function sliceF32(heap: Float32Array, ptr: number, size: number): Float32Array {
+  if (size === 0) return new Float32Array(0);
+  const offset = ptr / 4;
+  return heap.slice(offset, offset + size) as Float32Array;
+}
+
 /**
  * Check if a shape already has face triangulation (from a prior mesh call).
  * Avoids redundant BRepMesh_IncrementalMesh creation.
@@ -40,6 +47,30 @@ function hasTriangulation(oc: KernelInstance, shape: KernelShape): boolean {
   return hasTri;
 }
 
+/** Cached flag: does the WASM MeshExtractor support the 5-arg includeUVs signature? */
+let meshExtractorHasUVs: boolean | undefined;
+
+/** Reset detection cache (called when kernel is re-initialized). */
+export function resetMeshDetectionCache(): void {
+  meshExtractorHasUVs = undefined;
+}
+
+function detectMeshExtractorUVs(oc: KernelInstance): void {
+  try {
+    // Use a minimal empty shape to detect signature support without meshing the user's shape
+    const emptyShape = new oc.TopoDS_Shape();
+    try {
+      const probe = oc.MeshExtractor.extract(emptyShape, 0.1, 0.5, true, false);
+      meshExtractorHasUVs = typeof probe.getUvsSize === 'function';
+      probe.delete();
+    } finally {
+      emptyShape.delete();
+    }
+  } catch {
+    meshExtractorHasUVs = false;
+  }
+}
+
 /**
  * Meshes a shape using C++ bulk extraction.
  */
@@ -48,34 +79,46 @@ export function meshBulk(
   shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
+  // Detect 5-arg signature support once, then cache
+  if (meshExtractorHasUVs === undefined) {
+    detectMeshExtractorUVs(oc);
+  }
+
   // Single WASM call: mesh + extract all data in C++
-  const raw = oc.MeshExtractor.extract(
-    shape,
-    options.tolerance,
-    options.angularTolerance,
-    !!options.skipNormals
-  );
+  const raw = meshExtractorHasUVs
+    ? oc.MeshExtractor.extract(
+        shape,
+        options.tolerance,
+        options.angularTolerance,
+        !!options.skipNormals,
+        !!options.includeUVs
+      )
+    : oc.MeshExtractor.extract(
+        shape,
+        options.tolerance,
+        options.angularTolerance,
+        !!options.skipNormals
+      );
 
   const verticesSize = raw.getVerticesSize() as number;
   const normalsSize = raw.getNormalsSize() as number;
   const trianglesSize = raw.getTrianglesSize() as number;
   const faceGroupsSize = raw.getFaceGroupsSize() as number;
+  const uvsSize = meshExtractorHasUVs ? (raw.getUvsSize() as number) : 0;
 
   // Copy from WASM heap into owned TypedArrays.
   // Must .slice() before any other WASM call could grow/relocate the heap.
-  const verticesPtr = (raw.getVerticesPtr() as number) / 4;
-  const vertices = oc.HEAPF32.slice(verticesPtr, verticesPtr + verticesSize) as Float32Array;
-
-  let normals: Float32Array;
-  if (options.skipNormals || normalsSize === 0) {
-    normals = new Float32Array(0);
-  } else {
-    const normalsPtr = (raw.getNormalsPtr() as number) / 4;
-    normals = oc.HEAPF32.slice(normalsPtr, normalsPtr + normalsSize) as Float32Array;
-  }
+  const vertices = sliceF32(oc.HEAPF32, raw.getVerticesPtr() as number, verticesSize);
+  const normals =
+    options.skipNormals || normalsSize === 0
+      ? new Float32Array(0)
+      : sliceF32(oc.HEAPF32, raw.getNormalsPtr() as number, normalsSize);
 
   const trianglesPtr = (raw.getTrianglesPtr() as number) / 4;
   const triangles = oc.HEAPU32.slice(trianglesPtr, trianglesPtr + trianglesSize) as Uint32Array;
+
+  const uvs =
+    uvsSize > 0 ? sliceF32(oc.HEAPF32, raw.getUvsPtr() as number, uvsSize) : new Float32Array(0);
 
   // Parse face groups from packed [start, count, faceHash, ...] triples
   const faceGroups: KernelMeshResult['faceGroups'] = [];
@@ -94,7 +137,7 @@ export function meshBulk(
   // Free C++ allocated memory (destructor frees internal buffers)
   raw.delete();
 
-  return { vertices, normals, triangles, uvs: new Float32Array(0), faceGroups };
+  return { vertices, normals, triangles, uvs, faceGroups };
 }
 
 /**
@@ -247,8 +290,15 @@ export function mesh(
   shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
-  // C++ bulk path doesn't support UV extraction — fall back to JS
-  if (oc.MeshExtractor && !options.includeUVs) {
+  if (oc.MeshExtractor) {
+    // Ensure UV capability is detected before routing
+    if (meshExtractorHasUVs === undefined) {
+      detectMeshExtractorUVs(oc);
+    }
+    // If UVs are requested but C++ doesn't support them, fall back to JS
+    if (options.includeUVs && !meshExtractorHasUVs) {
+      return meshJS(oc, shape, options);
+    }
     return meshBulk(oc, shape, options);
   }
   return meshJS(oc, shape, options);
@@ -268,13 +318,7 @@ export function meshEdgesBulk(
   const linesSize = raw.getLinesSize() as number;
   const edgeGroupsSize = raw.getEdgeGroupsSize() as number;
 
-  let lines: Float32Array;
-  if (linesSize > 0) {
-    const linesPtr = (raw.getLinesPtr() as number) / 4;
-    lines = oc.HEAPF32.slice(linesPtr, linesPtr + linesSize) as Float32Array;
-  } else {
-    lines = new Float32Array(0);
-  }
+  const lines = sliceF32(oc.HEAPF32, raw.getLinesPtr() as number, linesSize);
 
   const edgeGroups: KernelEdgeMeshResult['edgeGroups'] = [];
   if (edgeGroupsSize > 0) {

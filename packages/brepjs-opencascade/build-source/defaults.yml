@@ -271,6 +271,8 @@
 - symbol: BooleanBatch
 - symbol: EdgeMeshData
 - symbol: EdgeMeshExtractor
+- symbol: EvolutionData
+- symbol: EvolutionExtractor
 - symbol: TopologyResult
 - symbol: TopologyExtractor
 #@ end
@@ -279,10 +281,13 @@
 - -flto
 - -fexceptions
 - -msimd128
+- -mrelaxed-simd
 - -sEXPORT_ES6=1
 - -sUSE_ES6_IMPORT_META=0
 - -sALLOW_MEMORY_GROWTH=1
 - -sEXPORTED_RUNTIME_METHODS=["FS"]
+- -sWASM_BIGINT
+- -sEVAL_CTORS=2
 - -O3
 #@ end
 
@@ -325,15 +330,16 @@ class MeshData {
 public:
   MeshData()
     : verticesPtr_(nullptr), normalsPtr_(nullptr),
-      trianglesPtr_(nullptr), faceGroupsPtr_(nullptr),
+      trianglesPtr_(nullptr), faceGroupsPtr_(nullptr), uvsPtr_(nullptr),
       verticesSize_(0), normalsSize_(0),
-      trianglesSize_(0), faceGroupsSize_(0) {}
+      trianglesSize_(0), faceGroupsSize_(0), uvsSize_(0) {}
 
   ~MeshData() {
     std::free(verticesPtr_);
     std::free(normalsPtr_);
     std::free(trianglesPtr_);
     std::free(faceGroupsPtr_);
+    std::free(uvsPtr_);
   }
 
   // Embind requires a copy constructor; implement as ownership transfer
@@ -341,35 +347,42 @@ public:
   MeshData(const MeshData& other)
     : verticesPtr_(other.verticesPtr_), normalsPtr_(other.normalsPtr_),
       trianglesPtr_(other.trianglesPtr_), faceGroupsPtr_(other.faceGroupsPtr_),
+      uvsPtr_(other.uvsPtr_),
       verticesSize_(other.verticesSize_), normalsSize_(other.normalsSize_),
-      trianglesSize_(other.trianglesSize_), faceGroupsSize_(other.faceGroupsSize_) {
+      trianglesSize_(other.trianglesSize_), faceGroupsSize_(other.faceGroupsSize_),
+      uvsSize_(other.uvsSize_) {
     auto& mutable_other = const_cast<MeshData&>(other);
     mutable_other.verticesPtr_ = nullptr;
     mutable_other.normalsPtr_ = nullptr;
     mutable_other.trianglesPtr_ = nullptr;
     mutable_other.faceGroupsPtr_ = nullptr;
+    mutable_other.uvsPtr_ = nullptr;
   }
 
   int getVerticesPtr() const  { return static_cast<int>(reinterpret_cast<uintptr_t>(verticesPtr_)); }
   int getNormalsPtr() const   { return static_cast<int>(reinterpret_cast<uintptr_t>(normalsPtr_)); }
   int getTrianglesPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(trianglesPtr_)); }
   int getFaceGroupsPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(faceGroupsPtr_)); }
+  int getUvsPtr() const       { return static_cast<int>(reinterpret_cast<uintptr_t>(uvsPtr_)); }
 
   int getVerticesSize() const   { return verticesSize_; }
   int getNormalsSize() const    { return normalsSize_; }
   int getTrianglesSize() const  { return trianglesSize_; }
   int getFaceGroupsSize() const { return faceGroupsSize_; }
+  int getUvsSize() const        { return uvsSize_; }
 
 private:
   float*    verticesPtr_;
   float*    normalsPtr_;
   uint32_t* trianglesPtr_;
   int32_t*  faceGroupsPtr_;
+  float*    uvsPtr_;
 
   int verticesSize_;
   int normalsSize_;
   int trianglesSize_;
   int faceGroupsSize_;
+  int uvsSize_;
 
   friend class MeshExtractor;
 };
@@ -380,7 +393,8 @@ public:
     const TopoDS_Shape& shape,
     double tolerance,
     double angularTolerance,
-    bool skipNormals
+    bool skipNormals,
+    bool includeUVs
   ) {
     BRepMesh_IncrementalMesh mesher(shape, tolerance, Standard_False, angularTolerance, Standard_False);
 
@@ -422,6 +436,13 @@ public:
       std::malloc(result.faceGroupsSize_ * sizeof(int32_t)));
     if (!result.faceGroupsPtr_ && result.faceGroupsSize_ > 0) throw std::bad_alloc();
 
+    if (includeUVs) {
+      result.uvsSize_ = totalNodes * 2;
+      result.uvsPtr_ = static_cast<float*>(
+        std::malloc(result.uvsSize_ * sizeof(float)));
+      if (!result.uvsPtr_ && result.uvsSize_ > 0) throw std::bad_alloc();
+    }
+
     int vertexOffset = 0;
     int triOffset = 0;
     int faceGroupIdx = 0;
@@ -455,6 +476,21 @@ public:
           result.normalsPtr_[base + 0] = static_cast<float>(d.X());
           result.normalsPtr_[base + 1] = static_cast<float>(d.Y());
           result.normalsPtr_[base + 2] = static_cast<float>(d.Z());
+        }
+      }
+
+      if (includeUVs) {
+        bool hasUV = tri->HasUVNodes();
+        for (int i = 1; i <= nbNodes; i++) {
+          int base = (vertexOffset + i - 1) * 2;
+          if (hasUV) {
+            gp_Pnt2d uv = tri->UVNode(i);
+            result.uvsPtr_[base + 0] = static_cast<float>(uv.X());
+            result.uvsPtr_[base + 1] = static_cast<float>(uv.Y());
+          } else {
+            result.uvsPtr_[base + 0] = 0.0f;
+            result.uvsPtr_[base + 1] = 0.0f;
+          }
         }
       }
 
@@ -497,7 +533,7 @@ public:
   void clear() { shapes_.Clear(); }
   int count() const { return shapes_.Size(); }
 
-  TopoDS_Shape fuseAll(int glueMode, bool simplify) {
+  TopoDS_Shape fuseAll(int glueMode, bool simplify, double fuzzyValue) {
     if (shapes_.Size() == 0) return TopoDS_Shape();
     if (shapes_.Size() == 1) return shapes_.First();
 
@@ -505,6 +541,9 @@ public:
     builder.SetArguments(shapes_);
     if (glueMode == 1) builder.SetGlue(BOPAlgo_GlueShift);
     if (glueMode == 2) builder.SetGlue(BOPAlgo_GlueFull);
+    builder.SetRunParallel(Standard_True);
+    builder.SetUseOBB(Standard_True);
+    if (fuzzyValue > 0.0) builder.SetFuzzyValue(fuzzyValue);
 
     Message_ProgressRange progress;
     builder.Build(progress);
@@ -518,20 +557,27 @@ public:
     return result;
   }
 
-  TopoDS_Shape cutAll(const TopoDS_Shape& base, int glueMode, bool simplify) {
+  TopoDS_Shape cutAll(const TopoDS_Shape& base, int glueMode, bool simplify, double fuzzyValue) {
     if (shapes_.Size() == 0) return base;
 
-    TopoDS_Builder compBuilder;
-    TopoDS_Compound toolCompound;
-    compBuilder.MakeCompound(toolCompound);
+    TopTools_ListOfShape argList;
+    argList.Append(base);
+
+    TopTools_ListOfShape toolList;
     for (TopTools_ListIteratorOfListOfShape it(shapes_); it.More(); it.Next()) {
-      compBuilder.Add(toolCompound, it.Value());
+      toolList.Append(it.Value());
     }
 
-    Message_ProgressRange progress;
-    BRepAlgoAPI_Cut cutter(base, toolCompound, progress);
+    BRepAlgoAPI_Cut cutter;
+    cutter.SetArguments(argList);
+    cutter.SetTools(toolList);
     if (glueMode == 1) cutter.SetGlue(BOPAlgo_GlueShift);
     if (glueMode == 2) cutter.SetGlue(BOPAlgo_GlueFull);
+    cutter.SetRunParallel(Standard_True);
+    cutter.SetUseOBB(Standard_True);
+    if (fuzzyValue > 0.0) cutter.SetFuzzyValue(fuzzyValue);
+
+    Message_ProgressRange progress;
     cutter.Build(progress);
 
     TopoDS_Shape result = cutter.Shape();
@@ -589,12 +635,83 @@ public:
   ) {
     BRepMesh_IncrementalMesh mesher(shape, tolerance, Standard_False, angularTolerance, Standard_False);
 
-    // Collect lines and edge groups
-    std::vector<float> lines;
-    std::vector<int32_t> edgeGroups;
     NCollection_Map<TopoDS_Shape, TopTools_ShapeMapHasher> seenEdges;
 
-    // Pass 1: edges from face triangulations (polygon on triangulation)
+    // --- Pass 1: count segments and edges ---
+    int totalSegments = 0;
+    int totalEdges = 0;
+
+    // Pass 1a: edges from face triangulations
+    for (TopExp_Explorer faceEx(shape, TopAbs_FACE); faceEx.More(); faceEx.Next()) {
+      const TopoDS_Face& face = TopoDS::Face(faceEx.Current());
+      TopLoc_Location faceLoc;
+      Handle(Poly_Triangulation) tri = BRep_Tool::Triangulation(face, faceLoc);
+      if (tri.IsNull()) continue;
+
+      for (TopExp_Explorer edgeEx(face, TopAbs_EDGE); edgeEx.More(); edgeEx.Next()) {
+        const TopoDS_Edge& edge = TopoDS::Edge(edgeEx.Current());
+        if (seenEdges.Contains(edge)) continue;
+        seenEdges.Add(edge);
+
+        TopLoc_Location edgeLoc;
+        Handle(Poly_PolygonOnTriangulation) polygon =
+          BRep_Tool::PolygonOnTriangulation(edge, tri, edgeLoc);
+        if (polygon.IsNull()) continue;
+
+        int nNodes = polygon->Nodes().Length();
+        if (nNodes < 2) continue;
+        totalSegments += (nNodes - 1);
+        totalEdges++;
+      }
+    }
+
+    // Pass 1b: remaining edges via curve tessellation (count only)
+    // We need to store the tessellation results since GCPnts_TangentialDeflection is expensive.
+    // Use a small helper struct to cache the results.
+    struct CurveTessInfo {
+      TopoDS_Edge edge;
+      int nbPts;
+    };
+    std::vector<CurveTessInfo> curveEdges;
+
+    for (TopExp_Explorer edgeEx(shape, TopAbs_EDGE); edgeEx.More(); edgeEx.Next()) {
+      const TopoDS_Edge& edge = TopoDS::Edge(edgeEx.Current());
+      if (seenEdges.Contains(edge)) continue;
+      seenEdges.Add(edge);
+
+      BRepAdaptor_Curve adaptor(edge);
+      GCPnts_TangentialDeflection tangDef(adaptor, tolerance, angularTolerance, 2, 1e-9, 1e-7);
+      int nbPts = tangDef.NbPoints();
+      if (nbPts < 2) continue;
+
+      totalSegments += (nbPts - 1);
+      totalEdges++;
+      curveEdges.push_back({edge, nbPts});
+    }
+
+    // --- Allocate exact-size buffers ---
+    EdgeMeshData result;
+
+    // Each segment = 2 endpoints × 3 floats = 6 floats
+    result.linesSize_ = totalSegments * 6;
+    if (result.linesSize_ > 0) {
+      result.linesPtr_ = static_cast<float*>(std::malloc(result.linesSize_ * sizeof(float)));
+      if (!result.linesPtr_) throw std::bad_alloc();
+    }
+
+    // Each edge group = [start, count, hash] = 3 int32s
+    result.edgeGroupsSize_ = totalEdges * 3;
+    if (result.edgeGroupsSize_ > 0) {
+      result.edgeGroupsPtr_ = static_cast<int32_t*>(std::malloc(result.edgeGroupsSize_ * sizeof(int32_t)));
+      if (!result.edgeGroupsPtr_) throw std::bad_alloc();
+    }
+
+    // --- Pass 2: fill buffers ---
+    int lineOffset = 0;
+    int groupOffset = 0;
+    seenEdges.Clear();
+
+    // Pass 2a: edges from face triangulations
     for (TopExp_Explorer faceEx(shape, TopAbs_FACE); faceEx.More(); faceEx.Next()) {
       const TopoDS_Face& face = TopoDS::Face(faceEx.Current());
       TopLoc_Location faceLoc;
@@ -614,87 +731,184 @@ public:
         const TColStd_Array1OfInteger& nodes = polygon->Nodes();
         if (nodes.Length() < 2) continue;
 
-        int lineStart = static_cast<int>(lines.size()) / 3;
+        int lineStart = lineOffset / 3;
         int pointCount = 0;
+        const gp_Trsf& trsf = edgeLoc.Transformation();
 
         gp_Pnt prevPt;
         bool hasPrev = false;
 
         for (int i = nodes.Lower(); i <= nodes.Upper(); i++) {
-          gp_Pnt p = tri->Node(nodes.Value(i)).Transformed(edgeLoc.Transformation());
+          gp_Pnt p = tri->Node(nodes.Value(i)).Transformed(trsf);
           if (hasPrev) {
-            lines.push_back(static_cast<float>(prevPt.X()));
-            lines.push_back(static_cast<float>(prevPt.Y()));
-            lines.push_back(static_cast<float>(prevPt.Z()));
-            lines.push_back(static_cast<float>(p.X()));
-            lines.push_back(static_cast<float>(p.Y()));
-            lines.push_back(static_cast<float>(p.Z()));
+            result.linesPtr_[lineOffset++] = static_cast<float>(prevPt.X());
+            result.linesPtr_[lineOffset++] = static_cast<float>(prevPt.Y());
+            result.linesPtr_[lineOffset++] = static_cast<float>(prevPt.Z());
+            result.linesPtr_[lineOffset++] = static_cast<float>(p.X());
+            result.linesPtr_[lineOffset++] = static_cast<float>(p.Y());
+            result.linesPtr_[lineOffset++] = static_cast<float>(p.Z());
             pointCount += 2;
           }
           prevPt = p;
           hasPrev = true;
         }
 
-        int edgeHash = edge.HashCode(2147483647);
-        edgeGroups.push_back(lineStart);
-        edgeGroups.push_back(pointCount);
-        edgeGroups.push_back(edgeHash);
+        result.edgeGroupsPtr_[groupOffset++] = lineStart;
+        result.edgeGroupsPtr_[groupOffset++] = pointCount;
+        result.edgeGroupsPtr_[groupOffset++] = edge.HashCode(2147483647);
       }
     }
 
-    // Pass 2: remaining edges via curve tessellation
-    for (TopExp_Explorer edgeEx(shape, TopAbs_EDGE); edgeEx.More(); edgeEx.Next()) {
-      const TopoDS_Edge& edge = TopoDS::Edge(edgeEx.Current());
-      if (seenEdges.Contains(edge)) continue;
-      seenEdges.Add(edge);
-
-      BRepAdaptor_Curve adaptor(edge);
+    // Pass 2b: remaining edges via curve tessellation
+    for (const auto& info : curveEdges) {
+      BRepAdaptor_Curve adaptor(info.edge);
       GCPnts_TangentialDeflection tangDef(adaptor, tolerance, angularTolerance, 2, 1e-9, 1e-7);
-      int nbPts = tangDef.NbPoints();
-      if (nbPts < 2) continue;
 
-      int lineStart = static_cast<int>(lines.size()) / 3;
+      int lineStart = lineOffset / 3;
       int pointCount = 0;
 
       gp_Pnt prevPt;
       bool hasPrev = false;
 
-      for (int j = 1; j <= nbPts; j++) {
+      for (int j = 1; j <= info.nbPts; j++) {
         gp_Pnt p = tangDef.Value(j);
         if (hasPrev) {
-          lines.push_back(static_cast<float>(prevPt.X()));
-          lines.push_back(static_cast<float>(prevPt.Y()));
-          lines.push_back(static_cast<float>(prevPt.Z()));
-          lines.push_back(static_cast<float>(p.X()));
-          lines.push_back(static_cast<float>(p.Y()));
-          lines.push_back(static_cast<float>(p.Z()));
+          result.linesPtr_[lineOffset++] = static_cast<float>(prevPt.X());
+          result.linesPtr_[lineOffset++] = static_cast<float>(prevPt.Y());
+          result.linesPtr_[lineOffset++] = static_cast<float>(prevPt.Z());
+          result.linesPtr_[lineOffset++] = static_cast<float>(p.X());
+          result.linesPtr_[lineOffset++] = static_cast<float>(p.Y());
+          result.linesPtr_[lineOffset++] = static_cast<float>(p.Z());
           pointCount += 2;
         }
         prevPt = p;
         hasPrev = true;
       }
 
-      int edgeHash = edge.HashCode(2147483647);
-      edgeGroups.push_back(lineStart);
-      edgeGroups.push_back(pointCount);
-      edgeGroups.push_back(edgeHash);
+      result.edgeGroupsPtr_[groupOffset++] = lineStart;
+      result.edgeGroupsPtr_[groupOffset++] = pointCount;
+      result.edgeGroupsPtr_[groupOffset++] = info.edge.HashCode(2147483647);
     }
 
-    // Pack into EdgeMeshData
-    EdgeMeshData result;
+    return result;
+  }
+};
 
-    result.linesSize_ = static_cast<int>(lines.size());
-    if (result.linesSize_ > 0) {
-      result.linesPtr_ = static_cast<float*>(std::malloc(result.linesSize_ * sizeof(float)));
-      if (!result.linesPtr_) throw std::bad_alloc();
-      std::memcpy(result.linesPtr_, lines.data(), result.linesSize_ * sizeof(float));
+class EvolutionData {
+public:
+  EvolutionData()
+    : modifiedPtr_(nullptr), generatedPtr_(nullptr), deletedPtr_(nullptr),
+      modifiedSize_(0), generatedSize_(0), deletedSize_(0) {}
+
+  ~EvolutionData() {
+    std::free(modifiedPtr_);
+    std::free(generatedPtr_);
+    std::free(deletedPtr_);
+  }
+
+  EvolutionData(const EvolutionData& other)
+    : modifiedPtr_(other.modifiedPtr_), generatedPtr_(other.generatedPtr_),
+      deletedPtr_(other.deletedPtr_),
+      modifiedSize_(other.modifiedSize_), generatedSize_(other.generatedSize_),
+      deletedSize_(other.deletedSize_) {
+    auto& mutable_other = const_cast<EvolutionData&>(other);
+    mutable_other.modifiedPtr_ = nullptr;
+    mutable_other.generatedPtr_ = nullptr;
+    mutable_other.deletedPtr_ = nullptr;
+  }
+
+  int getModifiedPtr() const  { return static_cast<int>(reinterpret_cast<uintptr_t>(modifiedPtr_)); }
+  int getGeneratedPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(generatedPtr_)); }
+  int getDeletedPtr() const   { return static_cast<int>(reinterpret_cast<uintptr_t>(deletedPtr_)); }
+
+  int getModifiedSize() const  { return modifiedSize_; }
+  int getGeneratedSize() const { return generatedSize_; }
+  int getDeletedSize() const   { return deletedSize_; }
+
+private:
+  int32_t* modifiedPtr_;
+  int32_t* generatedPtr_;
+  int32_t* deletedPtr_;
+
+  int modifiedSize_;
+  int generatedSize_;
+  int deletedSize_;
+
+  friend class EvolutionExtractor;
+};
+
+class EvolutionExtractor {
+public:
+  static EvolutionData extract(
+    BRepBuilderAPI_MakeShape& builder,
+    const TopoDS_Shape& inputShape,
+    int hashUpperBound
+  ) {
+    // Collect input faces and their hashes
+    NCollection_DataMap<int, TopoDS_Shape> facesByHash;
+    for (TopExp_Explorer ex(inputShape, TopAbs_FACE); ex.More(); ex.Next()) {
+      const TopoDS_Face& face = TopoDS::Face(ex.Current());
+      int hash = face.HashCode(hashUpperBound);
+      if (!facesByHash.IsBound(hash)) {
+        facesByHash.Bind(hash, face);
+      }
     }
 
-    result.edgeGroupsSize_ = static_cast<int>(edgeGroups.size());
-    if (result.edgeGroupsSize_ > 0) {
-      result.edgeGroupsPtr_ = static_cast<int32_t*>(std::malloc(result.edgeGroupsSize_ * sizeof(int32_t)));
-      if (!result.edgeGroupsPtr_) throw std::bad_alloc();
-      std::memcpy(result.edgeGroupsPtr_, edgeGroups.data(), result.edgeGroupsSize_ * sizeof(int32_t));
+    // Temporary buffers for packed data
+    std::vector<int32_t> modifiedBuf;
+    std::vector<int32_t> generatedBuf;
+    std::vector<int32_t> deletedBuf;
+
+    for (NCollection_DataMap<int, TopoDS_Shape>::Iterator it(facesByHash); it.More(); it.Next()) {
+      int inputHash = it.Key();
+      const TopoDS_Shape& face = it.Value();
+
+      if (builder.IsDeleted(face)) {
+        deletedBuf.push_back(inputHash);
+        continue;
+      }
+
+      const TopTools_ListOfShape& modList = builder.Modified(face);
+      if (modList.Size() > 0) {
+        modifiedBuf.push_back(inputHash);
+        modifiedBuf.push_back(modList.Size());
+        for (TopTools_ListIteratorOfListOfShape lit(modList); lit.More(); lit.Next()) {
+          modifiedBuf.push_back(lit.Value().HashCode(hashUpperBound));
+        }
+      }
+
+      const TopTools_ListOfShape& genList = builder.Generated(face);
+      if (genList.Size() > 0) {
+        generatedBuf.push_back(inputHash);
+        generatedBuf.push_back(genList.Size());
+        for (TopTools_ListIteratorOfListOfShape lit(genList); lit.More(); lit.Next()) {
+          generatedBuf.push_back(lit.Value().HashCode(hashUpperBound));
+        }
+      }
+    }
+
+    // Pack into EvolutionData
+    EvolutionData result;
+
+    result.modifiedSize_ = static_cast<int>(modifiedBuf.size());
+    if (result.modifiedSize_ > 0) {
+      result.modifiedPtr_ = static_cast<int32_t*>(std::malloc(result.modifiedSize_ * sizeof(int32_t)));
+      if (!result.modifiedPtr_) throw std::bad_alloc();
+      std::memcpy(result.modifiedPtr_, modifiedBuf.data(), result.modifiedSize_ * sizeof(int32_t));
+    }
+
+    result.generatedSize_ = static_cast<int>(generatedBuf.size());
+    if (result.generatedSize_ > 0) {
+      result.generatedPtr_ = static_cast<int32_t*>(std::malloc(result.generatedSize_ * sizeof(int32_t)));
+      if (!result.generatedPtr_) throw std::bad_alloc();
+      std::memcpy(result.generatedPtr_, generatedBuf.data(), result.generatedSize_ * sizeof(int32_t));
+    }
+
+    result.deletedSize_ = static_cast<int>(deletedBuf.size());
+    if (result.deletedSize_ > 0) {
+      result.deletedPtr_ = static_cast<int32_t*>(std::malloc(result.deletedSize_ * sizeof(int32_t)));
+      if (!result.deletedPtr_) throw std::bad_alloc();
+      std::memcpy(result.deletedPtr_, deletedBuf.data(), result.deletedSize_ * sizeof(int32_t));
     }
 
     return result;

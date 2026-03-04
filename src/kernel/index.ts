@@ -2,6 +2,7 @@ import type { KernelAdapter, KernelInstance } from './types.js';
 import type { Kernel2DCapability } from './kernel2dTypes.js';
 import { supportsKernel2D } from './kernel2dTypes.js';
 import { DefaultAdapter } from './defaultAdapter.js';
+import { resetMeshDetectionCache } from './meshOps.js';
 
 // ---------------------------------------------------------------------------
 // Kernel registry — supports multiple kernels for gradual migration
@@ -81,6 +82,7 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
 
 /** Initialise the brepjs kernel from a loaded WASM instance. */
 export function initFromOC(oc: KernelInstance): void {
+  resetMeshDetectionCache();
   const adapter = new DefaultAdapter(oc);
   registerKernel('occt', adapter);
   _defaultKernelId = 'occt';

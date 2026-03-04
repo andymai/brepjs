@@ -19,6 +19,64 @@ const EMPTY_EVOLUTION: ShapeEvolution = {
 };
 
 /**
+ * Parse a packed [inputHash, count, out1, out2, ...] buffer into a Map.
+ * Shared by modified and generated evolution parsing.
+ */
+function parsePackedMap(heap: Int32Array, ptr: number, size: number): Map<number, number[]> {
+  const map = new Map<number, number[]>();
+  if (size === 0) return map;
+
+  const data = heap.slice(ptr / 4, ptr / 4 + size) as Int32Array;
+  let i = 0;
+  while (i + 1 < data.length) {
+    const inputHash = data[i++] as number;
+    const count = data[i++] as number;
+    if (count < 0 || i + count > data.length) break;
+    const outputs: number[] = [];
+    for (let j = 0; j < count; j++) {
+      outputs.push(data[i++] as number);
+    }
+    map.set(inputHash, outputs);
+  }
+  return map;
+}
+
+/**
+ * Parse packed evolution data from C++ EvolutionExtractor into ShapeEvolution.
+ *
+ * Modified/Generated format: [inputHash, count, out1, out2, ..., nextInputHash, count, ...]
+ * Deleted format: flat [hash1, hash2, ...]
+ */
+function parseEvolutionData(oc: KernelInstance, raw: OcBuilder): ShapeEvolution {
+  try {
+    const modified = parsePackedMap(
+      oc.HEAP32,
+      raw.getModifiedPtr() as number,
+      raw.getModifiedSize() as number
+    );
+    const generated = parsePackedMap(
+      oc.HEAP32,
+      raw.getGeneratedPtr() as number,
+      raw.getGeneratedSize() as number
+    );
+
+    const deleted = new Set<number>();
+    const deletedSize = raw.getDeletedSize() as number;
+    if (deletedSize > 0) {
+      const ptr = (raw.getDeletedPtr() as number) / 4;
+      const data = oc.HEAP32.slice(ptr, ptr + deletedSize) as Int32Array;
+      for (let i = 0; i < data.length; i++) {
+        deleted.add(data[i] as number);
+      }
+    }
+
+    return { modified, generated, deleted };
+  } finally {
+    raw.delete();
+  }
+}
+
+/**
  * Iterate an OCCT TopTools_ListOfShape, extracting hash codes.
  */
 function iterListHashes(oc: KernelInstance, list: OcBuilder, hashUpperBound: number): number[] {
@@ -64,14 +122,48 @@ export function buildEvolution(
     return EMPTY_EVOLUTION;
   }
 
+  const shapeArray = Array.isArray(shapes) ? shapes : [shapes];
+
+  // Try C++ bulk extraction — single WASM call for all faces
+  if (oc.EvolutionExtractor) {
+    let inputShape: KernelShape;
+    let compBuilder: OcBuilder | undefined;
+    let compound: OcBuilder | undefined;
+    if (shapeArray.length === 1) {
+      inputShape = shapeArray[0];
+    } else {
+      compBuilder = new oc.TopoDS_Builder();
+      compound = new oc.TopoDS_Compound();
+      compBuilder.MakeCompound(compound);
+      for (const s of shapeArray) {
+        compBuilder.Add(compound, s);
+      }
+      inputShape = compound;
+    }
+
+    // Narrow catch to only the extract() call — embind may not handle all builder types
+    let raw: OcBuilder | undefined;
+    try {
+      raw = oc.EvolutionExtractor.extract(op, inputShape, hashUpperBound);
+    } catch {
+      // Fall through to JS path if embind can't upcast this builder type
+    } finally {
+      compBuilder?.delete();
+    }
+
+    // If extract() succeeded, parse results (let errors propagate — they indicate real bugs)
+    if (raw !== undefined) {
+      return parseEvolutionData(oc, raw);
+    }
+  }
+
+  // JS fallback path
   const modified = new Map<number, number[]>();
   const generated = new Map<number, number[]>();
   const deleted = new Set<number>();
 
-  // Build a map from hash → face for the input faces across all input shapes
   const inputHashSet = new Set(inputFaceHashes);
   const facesById = new Map<number, KernelShape>();
-  const shapeArray = Array.isArray(shapes) ? shapes : [shapes];
 
   for (const shape of shapeArray) {
     const faceExplorer = new oc.TopExp_Explorer_2(
