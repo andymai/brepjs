@@ -56,6 +56,10 @@ export function buildEvolution(
   const generated = new Map<number, number[]>();
   const deleted = new Set<number>();
 
+  if (inputFaceHashes.length === 0) {
+    return { modified, generated, deleted };
+  }
+
   // Build a map from hash → face for the input faces across all input shapes
   const inputHashSet = new Set(inputFaceHashes);
   const facesById = new Map<number, KernelShape>();
@@ -112,7 +116,14 @@ export function transformWithEvolution(
 ): OperationResult {
   const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
   const resultShape = transformer.Shape();
-  const evolution = buildEvolution(oc, transformer, shape, inputFaceHashes, hashUpperBound);
+  const evolution =
+    inputFaceHashes.length === 0
+      ? {
+          modified: new Map<number, number[]>(),
+          generated: new Map<number, number[]>(),
+          deleted: new Set<number>(),
+        }
+      : buildEvolution(oc, transformer, shape, inputFaceHashes, hashUpperBound);
   transformer.delete();
   return { shape: resultShape, evolution };
 }

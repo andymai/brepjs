@@ -9,6 +9,7 @@ import { DefaultAdapter } from './defaultAdapter.js';
 
 const _kernels = new Map<string, KernelAdapter>();
 let _defaultKernelId: string | null = null;
+let _cachedDefault: KernelAdapter | null = null;
 
 /**
  * Register a kernel adapter under a unique identifier.
@@ -17,6 +18,7 @@ let _defaultKernelId: string | null = null;
 export function registerKernel(id: string, adapter: KernelAdapter): void {
   _kernels.set(id, adapter);
   if (!_defaultKernelId) _defaultKernelId = id;
+  if (id === _defaultKernelId) _cachedDefault = adapter;
 }
 
 /**
@@ -25,6 +27,8 @@ export function registerKernel(id: string, adapter: KernelAdapter): void {
  * @throws If no kernel has been registered via {@link registerKernel} or {@link initFromOC}.
  */
 export function getKernel(id?: string): KernelAdapter {
+  if (!id && _cachedDefault) return _cachedDefault;
+
   const targetId = id ?? _defaultKernelId;
   if (!targetId) {
     throw new Error(
@@ -64,11 +68,14 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
   fn: () => T
 ): T {
   const prev = _defaultKernelId;
+  const prevCached = _cachedDefault;
   _defaultKernelId = id;
+  _cachedDefault = _kernels.get(id) ?? null;
   try {
     return fn();
   } finally {
     _defaultKernelId = prev;
+    _cachedDefault = prevCached;
   }
 }
 
@@ -77,6 +84,7 @@ export function initFromOC(oc: KernelInstance): void {
   const adapter = new DefaultAdapter(oc);
   registerKernel('occt', adapter);
   _defaultKernelId = 'occt';
+  _cachedDefault = adapter;
 }
 
 export type {
