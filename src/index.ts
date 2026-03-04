@@ -604,8 +604,11 @@ export {
   replayHistory,
   replayFrom,
   modifyStep,
+  serializeHistory,
+  deserializeHistory,
   type OperationStep,
   type ModelHistory,
+  type SerializedHistory,
   type OperationFn,
   type OperationRegistry as HistoryOperationRegistry,
 } from './operations/historyFns.js';

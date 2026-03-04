@@ -11,6 +11,8 @@
 import type { AnyShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { computationError } from '../core/errors.js';
+import { toBREP } from '../topology/shapeFns.js';
+import { fromBREP } from '../topology/cast.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -307,4 +309,42 @@ export function modifyStep(
   const modifiedHistory: ModelHistory = { steps: modifiedSteps, shapes: history.shapes };
 
   return replayFrom(modifiedHistory, stepId, registry);
+}
+
+// ---------------------------------------------------------------------------
+// Serialization
+// ---------------------------------------------------------------------------
+
+/** JSON-safe representation of a ModelHistory. */
+export interface SerializedHistory {
+  readonly steps: ReadonlyArray<OperationStep>;
+  /** Shape ID → BREP string. */
+  readonly shapes: Readonly<Record<string, string>>;
+}
+
+/** Serialize a history to a JSON-safe object (shapes converted via toBREP). */
+export function serializeHistory(history: ModelHistory): SerializedHistory {
+  const shapes: Record<string, string> = {};
+  for (const [id, shape] of history.shapes) {
+    shapes[id] = toBREP(shape);
+  }
+  return { steps: history.steps, shapes };
+}
+
+/** Deserialize a history from a JSON-safe object (shapes reconstructed via fromBREP). */
+export function deserializeHistory(data: SerializedHistory): Result<ModelHistory> {
+  const shapes = new Map<string, AnyShape>();
+  for (const [id, brep] of Object.entries(data.shapes)) {
+    const result = fromBREP(brep);
+    if (!result.ok) {
+      return err(
+        computationError(
+          'DESERIALIZE_SHAPE_FAILED',
+          `Failed to deserialize shape "${id}": ${result.error.message}`
+        )
+      );
+    }
+    shapes.set(id, result.value);
+  }
+  return ok({ steps: data.steps, shapes });
 }

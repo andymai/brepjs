@@ -12,6 +12,15 @@ import {
   stepCount,
   stepsFrom,
   registerShape,
+  serializeHistory,
+  deserializeHistory,
+  createRegistry,
+  registerOperation,
+  replayHistory,
+  measureVolume,
+  isOk,
+  unwrap,
+  fuse,
 } from '../src/index.js';
 import type { Shape3D, ModelHistory } from '../src/index.js';
 
@@ -268,5 +277,115 @@ describe('immutability', () => {
     const updated = registerShape(original, 'init', shape);
     expect(original.shapes.size).toBe(0);
     expect(updated.shapes.size).toBe(1);
+  });
+});
+
+describe('serializeHistory / deserializeHistory', () => {
+  it('round-trips a single-step history preserving geometry', () => {
+    const shape = makeBoxShape();
+    let h: ModelHistory = createHistory();
+    h = addStep(
+      h,
+      { id: 's1', type: 'box', parameters: { w: 10 }, inputIds: [], outputId: 'box-1' },
+      shape
+    );
+
+    const serialized = serializeHistory(h);
+
+    // Serialized shapes should be strings (BREP)
+    expect(typeof serialized.shapes['box-1']).toBe('string');
+    expect(serialized.steps).toHaveLength(1);
+
+    // Round-trip through JSON to simulate save/load
+    const json = JSON.parse(JSON.stringify(serialized)) as typeof serialized;
+    const result = deserializeHistory(json);
+    expect(isOk(result)).toBe(true);
+
+    const restored = unwrap(result);
+    expect(restored.steps).toHaveLength(1);
+    expect(restored.steps[0]?.id).toBe('s1');
+    expect(restored.shapes.size).toBe(1);
+
+    // Volume should match the original shape
+    const restoredShape = restored.shapes.get('box-1');
+    expect(restoredShape).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above guarantees defined
+    expect(measureVolume(restoredShape!)).toBeCloseTo(measureVolume(shape), 0);
+  });
+
+  it('round-trips a 3-step history and replay produces identical geometry', () => {
+    // Step 1: create a box
+    const boxShape = castShape(box(10, 10, 10).wrapped) as Shape3D;
+    // Step 2: create a cylinder
+    const cylShape = castShape(cylinder(3, 10).wrapped) as Shape3D;
+    // Step 3: fuse them
+    const fusedShape = unwrap(fuse(boxShape, cylShape)) as Shape3D;
+
+    let h: ModelHistory = createHistory();
+    h = registerShape(h, 'base-box', boxShape);
+    h = registerShape(h, 'base-cyl', cylShape);
+    h = addStep(
+      h,
+      { id: 's1', type: 'box', parameters: { w: 10, h: 10, d: 10 }, inputIds: [], outputId: 'box' },
+      boxShape
+    );
+    h = addStep(
+      h,
+      { id: 's2', type: 'cylinder', parameters: { r: 3, h: 10 }, inputIds: [], outputId: 'cyl' },
+      cylShape
+    );
+    h = addStep(
+      h,
+      { id: 's3', type: 'fuse', parameters: {}, inputIds: ['box', 'cyl'], outputId: 'fused' },
+      fusedShape
+    );
+
+    const originalVolume = measureVolume(fusedShape);
+
+    // Serialize → JSON → Deserialize
+    const serialized = serializeHistory(h);
+    const json = JSON.parse(JSON.stringify(serialized)) as typeof serialized;
+    const result = deserializeHistory(json);
+    expect(isOk(result)).toBe(true);
+
+    const restored = unwrap(result);
+    expect(restored.steps).toHaveLength(3);
+    expect(restored.shapes.size).toBe(5); // base-box, base-cyl, box, cyl, fused
+
+    // Verify fused shape volume matches
+    const restoredFused = restored.shapes.get('fused');
+    expect(restoredFused).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above
+    expect(measureVolume(restoredFused!)).toBeCloseTo(originalVolume, 0);
+
+    // Verify replay with registry also produces matching geometry
+    let registry = createRegistry();
+    registry = registerOperation(registry, 'box', (_inputs, params) =>
+      castShape(box(params.w as number, params.h as number, params.d as number).wrapped)
+    );
+    registry = registerOperation(registry, 'cylinder', (_inputs, params) =>
+      castShape(cylinder(params.r as number, params.h as number).wrapped)
+    );
+    registry = registerOperation(registry, 'fuse', (inputs) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test array indexing
+      return unwrap(fuse(inputs[0]!, inputs[1]!));
+    });
+
+    const replayResult = replayHistory(restored, registry);
+    expect(isOk(replayResult)).toBe(true);
+    const replayed = unwrap(replayResult);
+    const replayedFused = replayed.shapes.get('fused');
+    expect(replayedFused).toBeDefined();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above
+    expect(measureVolume(replayedFused!)).toBeCloseTo(originalVolume, 0);
+  });
+
+  it('returns error for corrupted BREP data', () => {
+    const data = {
+      steps: [],
+      shapes: { 'bad-shape': 'not-valid-brep-data' },
+    };
+    const result = deserializeHistory(data);
+    expect(isOk(result)).toBe(false);
   });
 });
