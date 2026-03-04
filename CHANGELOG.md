@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.6](https://github.com/andymai/brepjs/compare/brepjs-v9.3.5...brepjs-v9.3.6) (2026-03-04)
+
+
+### Performance Improvements
+
+* **kernel:** cache default kernel lookup and skip empty evolution tracking ([#360](https://github.com/andymai/brepjs/issues/360)) ([d490601](https://github.com/andymai/brepjs/commit/d490601c49aa1680da688215d6e9ddfc80ef38fb))
+
 ## [9.3.5](https://github.com/andymai/brepjs/compare/brepjs-v9.3.4...brepjs-v9.3.5) (2026-03-03)
 
 
