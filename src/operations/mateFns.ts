@@ -47,7 +47,6 @@ function extractEntity(mate: MateEntity): SolverEntity | null {
   if (mate.face) {
     const origin = faceCenter(mate.face);
     const normal = normalAt(mate.face);
-    // Use face center + normal for both plane and cylindrical faces
     return { type: 'plane', origin, normal };
   }
 
@@ -56,6 +55,30 @@ function extractEntity(mate: MateEntity): SolverEntity | null {
   }
 
   return null;
+}
+
+/** Extract and validate a pair of MateEntities into a partial SolverConstraint. */
+function extractPair(
+  a: MateEntity,
+  b: MateEntity
+): Result<{
+  entityA: { node: string; entity: SolverEntity };
+  entityB: { node: string; entity: SolverEntity };
+}> {
+  const entA = extractEntity(a);
+  const entB = extractEntity(b);
+  if (!entA || !entB) {
+    return err(
+      validationError(
+        BrepErrorCode.ASSEMBLY_MATE_INVALID,
+        'solveAssembly: could not extract geometry from mate entities'
+      )
+    );
+  }
+  return ok({
+    entityA: { node: a.node, entity: entA },
+    entityB: { node: b.node, entity: entB },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -102,77 +125,21 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
       }
 
       if (mate.type === 'coincident') {
-        const entA = extractEntity(mate.entityA);
-        const entB = extractEntity(mate.entityB);
-        if (!entA || !entB) {
-          return err(
-            validationError(
-              BrepErrorCode.ASSEMBLY_MATE_INVALID,
-              'solveAssembly: could not extract geometry from mate entities'
-            )
-          );
-        }
-        solverConstraints.push({
-          type: 'coincident',
-          entityA: { node: mate.entityA.node, entity: entA },
-          entityB: { node: mate.entityB.node, entity: entB },
-        });
-      }
-
-      if (mate.type === 'distance') {
-        const entA = extractEntity(mate.entityA);
-        const entB = extractEntity(mate.entityB);
-        if (!entA || !entB) {
-          return err(
-            validationError(
-              BrepErrorCode.ASSEMBLY_MATE_INVALID,
-              'solveAssembly: could not extract geometry from mate entities'
-            )
-          );
-        }
-        solverConstraints.push({
-          type: 'distance',
-          entityA: { node: mate.entityA.node, entity: entA },
-          entityB: { node: mate.entityB.node, entity: entB },
-          value: mate.distance,
-        });
-      }
-
-      if (mate.type === 'angle') {
-        const entA = extractEntity(mate.entityA);
-        const entB = extractEntity(mate.entityB);
-        if (!entA || !entB) {
-          return err(
-            validationError(
-              BrepErrorCode.ASSEMBLY_MATE_INVALID,
-              'solveAssembly: could not extract geometry from mate entities'
-            )
-          );
-        }
-        solverConstraints.push({
-          type: 'angle',
-          entityA: { node: mate.entityA.node, entity: entA },
-          entityB: { node: mate.entityB.node, entity: entB },
-          value: mate.angle,
-        });
-      }
-
-      if (mate.type === 'concentric') {
-        const entA = extractEntity(mate.axisA);
-        const entB = extractEntity(mate.axisB);
-        if (!entA || !entB) {
-          return err(
-            validationError(
-              BrepErrorCode.ASSEMBLY_MATE_INVALID,
-              'solveAssembly: could not extract geometry from mate entities'
-            )
-          );
-        }
-        solverConstraints.push({
-          type: 'concentric',
-          entityA: { node: mate.axisA.node, entity: entA },
-          entityB: { node: mate.axisB.node, entity: entB },
-        });
+        const pair = extractPair(mate.entityA, mate.entityB);
+        if (!pair.ok) return pair;
+        solverConstraints.push({ type: 'coincident', ...pair.value });
+      } else if (mate.type === 'distance') {
+        const pair = extractPair(mate.entityA, mate.entityB);
+        if (!pair.ok) return pair;
+        solverConstraints.push({ type: 'distance', ...pair.value, value: mate.distance });
+      } else if (mate.type === 'angle') {
+        const pair = extractPair(mate.entityA, mate.entityB);
+        if (!pair.ok) return pair;
+        solverConstraints.push({ type: 'angle', ...pair.value, value: mate.angle });
+      } else {
+        const pair = extractPair(mate.axisA, mate.axisB);
+        if (!pair.ok) return pair;
+        solverConstraints.push({ type: 'concentric', ...pair.value });
       }
     }
 

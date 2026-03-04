@@ -290,7 +290,9 @@ describe('serializeHistory / deserializeHistory', () => {
       shape
     );
 
-    const serialized = serializeHistory(h);
+    const serResult = serializeHistory(h);
+    expect(isOk(serResult)).toBe(true);
+    const serialized = unwrap(serResult);
 
     // Serialized shapes should be strings (BREP)
     expect(typeof serialized.shapes['box-1']).toBe('string');
@@ -343,7 +345,9 @@ describe('serializeHistory / deserializeHistory', () => {
     const originalVolume = measureVolume(fusedShape);
 
     // Serialize → JSON → Deserialize
-    const serialized = serializeHistory(h);
+    const serResult = serializeHistory(h);
+    expect(isOk(serResult)).toBe(true);
+    const serialized = unwrap(serResult);
     const json = JSON.parse(JSON.stringify(serialized)) as typeof serialized;
     const result = deserializeHistory(json);
     expect(isOk(result)).toBe(true);

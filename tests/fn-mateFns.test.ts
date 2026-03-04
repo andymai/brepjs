@@ -332,7 +332,7 @@ describe('solveAssembly — angle mate', () => {
 });
 
 describe('solveAssembly — coincident with point entity', () => {
-  it('coincident mate using point entities solves successfully', () => {
+  it('coincident mate using point entities returns error (point-point unsupported)', () => {
     let assembly = createAssemblyNode('root');
     assembly = addChild(assembly, createAssemblyNode('a', { shape: box(10, 10, 10) }));
     assembly = addChild(assembly, createAssemblyNode('b', { shape: box(5, 5, 5) }));
@@ -345,11 +345,10 @@ describe('solveAssembly — coincident with point entity', () => {
     });
 
     const result = solveAssembly(assembly);
-    expect(isOk(result)).toBe(true);
-    const solved = unwrap(result);
-    expect(solved.converged).toBe(true);
-    // Point entities produce { type: 'point' } solver entities — solver sets transform for node 'b'
-    expect(solved.transforms.has('b')).toBe(true);
+    // Point-point coincident is not implemented — solver reports as unsupported
+    expect(isErr(result)).toBe(true);
+    const error = unwrapErr(result);
+    expect(error.message).toContain('coincident(point-point)');
   });
 
   it('coincident mate with no geometry returns error', () => {
@@ -494,6 +493,39 @@ describe('solveConstraints — unsupported constraint honesty', () => {
     expect(result.converged).toBe(false);
     expect(result.dof).toBe(5); // 4 (concentric) + 1 (angle)
     expect(result.unsupported).toEqual(['concentric', 'angle']);
+  });
+
+  it('reports non-plane entity combinations as unsupported for coincident', () => {
+    const result = solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type: 'coincident',
+          entityA: { node: 'a', entity: { type: 'point', origin: [0, 0, 10] } },
+          entityB: { node: 'b', entity: { type: 'point', origin: [0, 0, 0] } },
+        },
+      ]
+    );
+    expect(result.converged).toBe(false);
+    expect(result.unsupported).toEqual(['coincident(point-point)']);
+    expect(result.dof).toBe(3);
+  });
+
+  it('reports non-plane entity combinations as unsupported for distance', () => {
+    const result = solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type: 'distance',
+          entityA: { node: 'a', entity: { type: 'point', origin: [0, 0, 0] } },
+          entityB: { node: 'b', entity: { type: 'axis', origin: [0, 0, 0], direction: [0, 0, 1] } },
+          value: 5,
+        },
+      ]
+    );
+    expect(result.converged).toBe(false);
+    expect(result.unsupported).toEqual(['distance(point-axis)']);
+    expect(result.dof).toBe(1);
   });
 
   it('still solves supported constraints alongside unsupported ones', () => {

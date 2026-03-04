@@ -323,28 +323,46 @@ export interface SerializedHistory {
 }
 
 /** Serialize a history to a JSON-safe object (shapes converted via toBREP). */
-export function serializeHistory(history: ModelHistory): SerializedHistory {
+export function serializeHistory(history: ModelHistory): Result<SerializedHistory> {
   const shapes: Record<string, string> = {};
   for (const [id, shape] of history.shapes) {
-    shapes[id] = toBREP(shape);
+    try {
+      shapes[id] = toBREP(shape);
+    } catch (e) {
+      return err(
+        computationError(
+          'SERIALIZE_SHAPE_FAILED',
+          `Failed to serialize shape "${id}": ${e instanceof Error ? e.message : String(e)}`
+        )
+      );
+    }
   }
-  return { steps: history.steps, shapes };
+  return ok({ steps: history.steps, shapes });
 }
 
 /** Deserialize a history from a JSON-safe object (shapes reconstructed via fromBREP). */
 export function deserializeHistory(data: SerializedHistory): Result<ModelHistory> {
   const shapes = new Map<string, AnyShape>();
   for (const [id, brep] of Object.entries(data.shapes)) {
-    const result = fromBREP(brep);
-    if (!result.ok) {
+    try {
+      const result = fromBREP(brep);
+      if (!result.ok) {
+        return err(
+          computationError(
+            'DESERIALIZE_SHAPE_FAILED',
+            `Failed to deserialize shape "${id}": ${result.error.message}`
+          )
+        );
+      }
+      shapes.set(id, result.value);
+    } catch (e) {
       return err(
         computationError(
           'DESERIALIZE_SHAPE_FAILED',
-          `Failed to deserialize shape "${id}": ${result.error.message}`
+          `Failed to deserialize shape "${id}": ${e instanceof Error ? e.message : String(e)}`
         )
       );
     }
-    shapes.set(id, result.value);
   }
   return ok({ steps: data.steps, shapes });
 }

@@ -29,10 +29,17 @@ export interface SolverResult {
 
 /**
  * Standard degrees of freedom left unresolved by each unsupported constraint type.
+ * coincident: 3 translational (plane normal alignment + contact)
  * concentric: 2 rotational (axis alignment) + 2 translational (axis centering) = 4
+ * distance: 1 translational (offset along normal)
  * angle: 1 rotational
  */
-const UNSUPPORTED_DOF: Readonly<Record<string, number>> = { concentric: 4, angle: 1 };
+const UNSUPPORTED_DOF: Readonly<Record<string, number>> = {
+  coincident: 3,
+  concentric: 4,
+  distance: 1,
+  angle: 1,
+};
 
 /**
  * Solve assembly constraints analytically.
@@ -75,6 +82,8 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
 
         const pos: Vec3 = [dot * aNormal[0], dot * aNormal[1], dot * aNormal[2]];
         transforms.set(b.node, { position: pos, rotation: [1, 0, 0, 0] });
+      } else {
+        unsupported.push(`coincident(${a.entity.type}-${b.entity.type})`);
       }
     } else if (c.type === 'distance' && c.entityA && c.entityB && c.value !== undefined) {
       const a = c.entityA;
@@ -93,6 +102,8 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
         const offset = currentDist + c.value;
         const pos: Vec3 = [offset * aNormal[0], offset * aNormal[1], offset * aNormal[2]];
         transforms.set(b.node, { position: pos, rotation: [1, 0, 0, 0] });
+      } else {
+        unsupported.push(`distance(${a.entity.type}-${b.entity.type})`);
       }
     } else if (c.type === 'concentric' || c.type === 'angle') {
       unsupported.push(c.type);
@@ -100,7 +111,11 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
     // 'fixed' is a no-op — node stays at origin (handled by initialization)
   }
 
-  const dof = unsupported.reduce((sum, type) => sum + (UNSUPPORTED_DOF[type] ?? 0), 0);
+  const dof = unsupported.reduce((sum, type) => {
+    // Look up by exact key first, then by base type (before parenthesis)
+    const baseDof = UNSUPPORTED_DOF[type] ?? UNSUPPORTED_DOF[type.split('(')[0] ?? ''] ?? 0;
+    return sum + baseDof;
+  }, 0);
 
   return { transforms, dof, converged: unsupported.length === 0, unsupported };
 }
