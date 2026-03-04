@@ -9,6 +9,13 @@ import {
   mapErr,
   andThen,
   flatMap,
+  or,
+  orElse,
+  zip,
+  all,
+  tap,
+  tapErr,
+  fromNullable,
   unwrap,
   unwrapOr,
   unwrapOrElse,
@@ -130,15 +137,15 @@ describe('Extraction', () => {
 describe('Pattern matching', () => {
   it('match calls ok handler for Ok', () => {
     const result = match(ok(5), {
-      ok: (v) => `value: ${v}`,
-      err: (e) => `error: ${e}`,
+      ok: (v) => `value: ${String(v)}`,
+      err: (e) => `error: ${String(e)}`,
     });
     expect(result).toBe('value: 5');
   });
 
   it('match calls err handler for Err', () => {
     const result = match(err('oops') as Result<number, string>, {
-      ok: (v) => `value: ${v}`,
+      ok: (v) => `value: ${String(v)}`,
       err: (e) => `error: ${e}`,
     });
     expect(result).toBe('error: oops');
@@ -186,7 +193,7 @@ describe('tryCatch', () => {
 describe('tryCatchAsync', () => {
   it('returns Ok when async function succeeds', async () => {
     const result = await tryCatchAsync(
-      async () => 42,
+      () => Promise.resolve(42),
       (e) => String(e)
     );
     expect(unwrap(result)).toBe(42);
@@ -194,11 +201,130 @@ describe('tryCatchAsync', () => {
 
   it('returns Err when async function throws', async () => {
     const result = await tryCatchAsync(
-      async () => {
-        throw new Error('async boom');
-      },
+      () => Promise.reject(new Error('async boom')),
       (e) => (e instanceof Error ? e.message : 'unknown')
     );
     expect(unwrapErr(result)).toBe('async boom');
+  });
+});
+
+describe('or', () => {
+  it('returns first if Ok', () => {
+    expect(unwrap(or(ok(1), ok(2)))).toBe(1);
+  });
+
+  it('returns second if first is Err', () => {
+    expect(unwrap(or(err('a') as Result<number, string>, ok(2)))).toBe(2);
+  });
+
+  it('returns second Err if both are Err', () => {
+    expect(unwrapErr(or(err('a'), err('b')))).toBe('b');
+  });
+});
+
+describe('orElse', () => {
+  it('returns result if Ok', () => {
+    expect(unwrap(orElse(ok(1) as Result<number, string>, () => ok(99)))).toBe(1);
+  });
+
+  it('calls fn if Err', () => {
+    expect(unwrap(orElse(err('x') as Result<number, string>, (e) => ok(e.length)))).toBe(1);
+  });
+
+  it('can return Err from fn', () => {
+    expect(unwrapErr(orElse(err('x'), () => err('y')))).toBe('y');
+  });
+});
+
+describe('zip', () => {
+  it('combines two Ok values into a tuple', () => {
+    expect(unwrap(zip(ok(1), ok('a')))).toEqual([1, 'a']);
+  });
+
+  it('returns first Err if first is Err', () => {
+    expect(unwrapErr(zip(err('e1') as Result<number, string>, ok('a')))).toBe('e1');
+  });
+
+  it('returns second Err if second is Err', () => {
+    expect(unwrapErr(zip(ok(1), err('e2') as Result<string, string>))).toBe('e2');
+  });
+
+  it('returns first Err if both are Err', () => {
+    expect(unwrapErr(zip(err('e1'), err('e2')))).toBe('e1');
+  });
+});
+
+describe('all', () => {
+  it('is an alias for collect', () => {
+    expect(all).toBe(collect);
+  });
+
+  it('collects Ok values', () => {
+    expect(unwrap(all([ok(1), ok(2), ok(3)]))).toEqual([1, 2, 3]);
+  });
+
+  it('short-circuits on first Err', () => {
+    const results: Result<number, string>[] = [ok(1), err('fail'), ok(3)];
+    expect(unwrapErr(all(results))).toBe('fail');
+  });
+});
+
+describe('tap', () => {
+  it('runs side-effect on Ok', () => {
+    let captured = 0;
+    const result = tap(ok(42), (v) => {
+      captured = v;
+    });
+    expect(captured).toBe(42);
+    expect(unwrap(result)).toBe(42);
+  });
+
+  it('skips side-effect on Err', () => {
+    let called = false;
+    const result = tap(err('x') as Result<number, string>, () => {
+      called = true;
+    });
+    expect(called).toBe(false);
+    expect(isErr(result)).toBe(true);
+  });
+});
+
+describe('tapErr', () => {
+  it('runs side-effect on Err', () => {
+    let captured = '';
+    const result = tapErr(err('oops') as Result<number, string>, (e) => {
+      captured = e;
+    });
+    expect(captured).toBe('oops');
+    expect(unwrapErr(result)).toBe('oops');
+  });
+
+  it('skips side-effect on Ok', () => {
+    let called = false;
+    const result = tapErr(ok(1) as Result<number, string>, () => {
+      called = true;
+    });
+    expect(called).toBe(false);
+    expect(unwrap(result)).toBe(1);
+  });
+});
+
+describe('fromNullable', () => {
+  it('returns Ok for non-null value', () => {
+    expect(unwrap(fromNullable(42, () => 'was null'))).toBe(42);
+  });
+
+  it('returns Ok for falsy non-null values', () => {
+    expect(unwrap(fromNullable(0, () => 'was null'))).toBe(0);
+    expect(unwrap(fromNullable('', () => 'was null'))).toBe('');
+    expect(unwrap(fromNullable(false, () => 'was null'))).toBe(false);
+  });
+
+  it('returns Err for null', () => {
+    expect(unwrapErr(fromNullable(null, () => 'was null'))).toBe('was null');
+  });
+
+  it('returns Err for undefined', () => {
+    expect(unwrapErr(fromNullable(undefined, () => 'was undef'))).toBe('was undef');
   });
 });

@@ -164,6 +164,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'addMate',
   'addStep',
   'adjacentFaces',
+  'all',
   'andThen',
   'applyGlue',
   'applyMatrix',
@@ -313,6 +314,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'fromKernelDir',
   'fromKernelPnt',
   'fromKernelVec',
+  'fromNullable',
   'fuse',
   'fuse2D',
   'fuseAll',
@@ -432,6 +434,8 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'offsetFace',
   'offsetWire2D',
   'ok',
+  'or',
+  'orElse',
   'organiseBlueprints',
   'outerWire',
   'pendingCount',
@@ -515,6 +519,8 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'sweep',
   'tagFaces',
   'tangentArc',
+  'tap',
+  'tapErr',
   'textBlueprints',
   'textMetrics',
   'thicken',
@@ -577,6 +583,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'withScope',
   'withScopeResult',
   'withScopeResultAsync',
+  'zipResults',
 ];
 
 describe('Public API export surface', () => {

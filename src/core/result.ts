@@ -74,6 +74,49 @@ export function andThen<T, U, E>(
 /** Alias for andThen */
 export const flatMap = andThen;
 
+/** Return `a` if Ok, otherwise return `b`. */
+export function or<T, E, F>(a: Result<T, E>, b: Result<T, F>): Result<T, F> {
+  if (a.ok) return a;
+  return b;
+}
+
+/** Return `result` if Ok, otherwise call `fn` with the error and return its result. */
+export function orElse<T, E, F>(
+  result: Result<T, E>,
+  fn: (error: E) => Result<T, F>
+): Result<T, F> {
+  if (result.ok) return result;
+  return fn(result.error);
+}
+
+/** Combine two independent Results into a Result of a tuple. */
+export function zip<A, B, E>(a: Result<A, E>, b: Result<B, E>): Result<[A, B], E> {
+  if (!a.ok) return a;
+  if (!b.ok) return b;
+  return ok([a.value, b.value]);
+}
+
+/** Collect an array of Results into a Result of an array. Alias for {@link collect}. */
+export const all = collect;
+
+/** Run a side-effect on an Ok value without transforming the result. */
+export function tap<T, E>(result: Result<T, E>, fn: (value: T) => void): Result<T, E> {
+  if (result.ok) fn(result.value);
+  return result;
+}
+
+/** Run a side-effect on an Err value without transforming the result. */
+export function tapErr<T, E>(result: Result<T, E>, fn: (error: E) => void): Result<T, E> {
+  if (!result.ok) fn(result.error);
+  return result;
+}
+
+/** Convert a nullable value to a Result, using `errorFn` to produce the error for null/undefined. */
+export function fromNullable<T, E>(value: T | null | undefined, errorFn: () => E): Result<T, E> {
+  if (value === null || value === undefined) return err(errorFn());
+  return ok(value);
+}
+
 // ---------------------------------------------------------------------------
 // Extraction
 // ---------------------------------------------------------------------------
