@@ -158,7 +158,7 @@ function splitCurvesAtIntersections(curves: Curve2D[], curvePoints: Point2D[][])
  * Check whether a segment's start/end points match one of the common segment
  * point pairs.
  */
-function isCommonSegmentMatch(
+export function isCommonSegmentMatch(
   commonSegmentsPoints: Point2D[][],
   segmentStart: Point2D,
   segmentEnd: Point2D
@@ -167,7 +167,7 @@ function isCommonSegmentMatch(
     if (startPoint === undefined || endPoint === undefined) return false;
     return (
       (samePoint(startPoint, segmentStart) && samePoint(endPoint, segmentEnd)) ||
-      (samePoint(startPoint, segmentEnd) && samePoint(startPoint, segmentStart))
+      (samePoint(startPoint, segmentEnd) && samePoint(endPoint, segmentStart))
     );
   });
 }

@@ -25,6 +25,10 @@ import { fillet2D, chamfer2D } from '../src/2d/blueprints/customCorners.js';
 import { offsetBlueprint } from '../src/2d/blueprints/offset.js';
 import offset from '../src/2d/blueprints/offset.js';
 import { approximateForSVG } from '../src/2d/blueprints/approximations.js';
+import {
+  blueprintsIntersectionSegments,
+  isCommonSegmentMatch,
+} from '../src/2d/blueprints/intersectionSegments.js';
 
 beforeAll(async () => {
   await initOC();
@@ -571,6 +575,35 @@ describe('intersect2D extended', () => {
     const b = rect(5, 5, 100, 100);
     const result = intersect2D(a, b);
     expect(result).toBeNull();
+  });
+});
+
+describe('isCommonSegmentMatch (reverse-oriented common segments)', () => {
+  it('matches forward-oriented common segment', () => {
+    const commonSegmentsPoints = [[[0, 0] as [number, number], [10, 0] as [number, number]]];
+    expect(isCommonSegmentMatch(commonSegmentsPoints, [0, 0], [10, 0])).toBe(true);
+  });
+
+  it('matches reverse-oriented common segment', () => {
+    // The segment runs (10,0)→(0,0) but the common segment was detected as (0,0)→(10,0).
+    // This exercises the reverse-orientation branch fixed by the copy-paste bug.
+    const commonSegmentsPoints = [[[0, 0] as [number, number], [10, 0] as [number, number]]];
+    expect(isCommonSegmentMatch(commonSegmentsPoints, [10, 0], [0, 0])).toBe(true);
+  });
+
+  it('rejects non-matching segment', () => {
+    const commonSegmentsPoints = [[[0, 0] as [number, number], [10, 0] as [number, number]]];
+    expect(isCommonSegmentMatch(commonSegmentsPoints, [0, 0], [5, 5])).toBe(false);
+  });
+
+  it('edge-adjacent rectangles detect common segments', () => {
+    const a = drawRectangle(10, 10).blueprint;
+    const b = drawRectangle(10, 10).translate(10, 0).blueprint;
+
+    const segments = blueprintsIntersectionSegments(a, b);
+    expect(segments).not.toBeNull();
+    const sameCount = segments!.filter(([, second]) => second === 'same').length;
+    expect(sameCount).toBeGreaterThan(0);
   });
 });
 
