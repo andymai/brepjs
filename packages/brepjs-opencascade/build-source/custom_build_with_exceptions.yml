@@ -10,7 +10,9 @@ mainBuild:
   - symbol: Standard_Failure
   emccFlags:
   #@ for flag in emccFlags():
+  #@ if flag != "-fwasm-exceptions":
   - #@ flag
+  #@ end
   #@ end
   - -fexceptions
   - -sINITIAL_MEMORY=67108864
