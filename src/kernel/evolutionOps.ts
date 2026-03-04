@@ -149,6 +149,7 @@ export function buildEvolution(
       // Fall through to JS path if embind can't upcast this builder type
     } finally {
       compBuilder?.delete();
+      compound?.delete();
     }
 
     // If extract() succeeded, parse results (let errors propagate — they indicate real bugs)
