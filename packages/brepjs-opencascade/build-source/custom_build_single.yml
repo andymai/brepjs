@@ -7,7 +7,6 @@ mainBuild:
   #@ for flag in emccFlags():
   - #@ flag
   #@ end
-  - -sDISABLE_EXCEPTION_CATCHING=1
-  - -sINITIAL_MEMORY=67108864
+  - -sINITIAL_MEMORY=134217728
   - -sMAXIMUM_MEMORY=4294967296
 additionalCppCode: #@ additionalCppCode()

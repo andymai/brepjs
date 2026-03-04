@@ -7,6 +7,97 @@
 
 import type { KernelInstance, KernelShape, KernelType } from './types.js';
 
+// ---------------------------------------------------------------------------
+// Batch transform (C++ extractor)
+// ---------------------------------------------------------------------------
+
+export type TransformEntry =
+  | { type: 'translate'; shape: KernelShape; x: number; y: number; z: number }
+  | {
+      type: 'rotate';
+      shape: KernelShape;
+      angle: number;
+      axis: [number, number, number];
+      center: [number, number, number];
+    }
+  | { type: 'scale'; shape: KernelShape; center: [number, number, number]; factor: number }
+  | {
+      type: 'mirror';
+      shape: KernelShape;
+      origin: [number, number, number];
+      normal: [number, number, number];
+    };
+
+/** Cached flag: does the WASM build include TransformBatch? */
+let hasCppTransformBatch: boolean | undefined;
+
+/** Reset detection cache (called when kernel is re-initialized). */
+export function resetTransformDetectionCache(): void {
+  hasCppTransformBatch = undefined;
+}
+
+function detectCppTransformBatch(oc: KernelInstance): boolean {
+  hasCppTransformBatch ??= typeof oc.TransformBatch === 'function';
+  return hasCppTransformBatch;
+}
+
+/**
+ * Apply N transforms in a single WASM call (when C++ TransformBatch is available).
+ * Falls back to individual JS calls otherwise.
+ */
+export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): KernelShape[] {
+  if (entries.length === 0) return [];
+
+  /* v8 ignore start -- C++ extractor not available in test WASM build */
+  if (detectCppTransformBatch(oc)) {
+    const batch = new oc.TransformBatch();
+    try {
+      for (const e of entries) {
+        switch (e.type) {
+          case 'translate':
+            batch.addTranslate(e.shape, e.x, e.y, e.z);
+            break;
+          case 'rotate':
+            batch.addRotate(e.shape, (e.angle * Math.PI) / 180, ...e.axis, ...e.center);
+            break;
+          case 'scale':
+            batch.addScale(e.shape, ...e.center, e.factor);
+            break;
+          case 'mirror':
+            batch.addMirror(e.shape, ...e.origin, ...e.normal);
+            break;
+        }
+      }
+
+      const result = batch.execute();
+      try {
+        const count = result.getShapesCount() as number;
+        const shapes: KernelShape[] = Array.from({ length: count }, (_, i) => result.getShape(i));
+        return shapes;
+      } finally {
+        result.delete();
+      }
+    } finally {
+      batch.delete();
+    }
+  }
+  /* v8 ignore stop */
+
+  // JS fallback — individual calls
+  return entries.map((e) => {
+    switch (e.type) {
+      case 'translate':
+        return translate(oc, e.shape, e.x, e.y, e.z);
+      case 'rotate':
+        return rotate(oc, e.shape, e.angle, e.axis, e.center);
+      case 'scale':
+        return scale(oc, e.shape, e.center, e.factor);
+      case 'mirror':
+        return mirror(oc, e.shape, e.origin, e.normal);
+    }
+  });
+}
+
 /**
  * Applies a transformation matrix to a shape.
  */

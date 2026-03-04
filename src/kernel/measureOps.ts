@@ -9,6 +9,78 @@ import type { KernelInstance, KernelShape } from './types.js';
 
 const HASH_CODE_MAX = 2147483647;
 
+// ---------------------------------------------------------------------------
+// Bulk measurement (C++ extractor)
+// ---------------------------------------------------------------------------
+
+export interface BulkMeasurement {
+  volume: number;
+  area: number;
+  length: number;
+  centerOfMass: [number, number, number];
+  boundingBox: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
+}
+
+/** Cached flag: does the WASM build include MeasurementExtractor? */
+let hasCppMeasurement: boolean | undefined;
+
+/** Reset detection cache (called when kernel is re-initialized). */
+export function resetMeasureDetectionCache(): void {
+  hasCppMeasurement = undefined;
+}
+
+function detectCppMeasurement(oc: KernelInstance): boolean {
+  hasCppMeasurement ??= typeof oc.MeasurementExtractor?.extract === 'function';
+  return hasCppMeasurement;
+}
+
+/**
+ * Computes volume, area, length, center-of-mass, and bounding box in a single
+ * WASM call (when the C++ MeasurementExtractor is available). Falls back to
+ * individual JS calls otherwise.
+ */
+export function measureBulk(
+  oc: KernelInstance,
+  shape: KernelShape,
+  includeLinear = false
+): BulkMeasurement {
+  /* v8 ignore start -- C++ extractor not available in test WASM build */
+  if (detectCppMeasurement(oc)) {
+    const data = oc.MeasurementExtractor.extract(shape, includeLinear);
+    try {
+      const offset = (data.getDataPtr() as number) / 8; // HEAPF64 is indexed by double (8 bytes)
+      const size = data.getDataSize() as number;
+      const buf = oc.HEAPF64.slice(offset, offset + size);
+
+      return {
+        volume: buf[0] ?? 0,
+        area: buf[1] ?? 0,
+        length: buf[2] ?? 0,
+        centerOfMass: [buf[3] ?? 0, buf[4] ?? 0, buf[5] ?? 0],
+        boundingBox: {
+          min: [buf[6] ?? 0, buf[7] ?? 0, buf[8] ?? 0],
+          max: [buf[9] ?? 0, buf[10] ?? 0, buf[11] ?? 0],
+        },
+      };
+    } finally {
+      data.delete();
+    }
+  }
+  /* v8 ignore stop */
+
+  // JS fallback — individual calls
+  return {
+    volume: volume(oc, shape),
+    area: area(oc, shape),
+    length: includeLinear ? length(oc, shape) : 0,
+    centerOfMass: centerOfMass(oc, shape),
+    boundingBox: boundingBox(oc, shape),
+  };
+}
+
 /**
  * Calculates the volume of a shape.
  */

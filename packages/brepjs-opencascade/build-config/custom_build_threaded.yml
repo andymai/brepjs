@@ -227,6 +227,7 @@ mainBuild:
   - symbol: ShapeFix_Face
   - symbol: ShapeFix_Wire
   - symbol: STEPControl_Reader
+  - symbol: STEPCAFControl_Reader
   - symbol: XSControl_Reader
   - symbol: StlAPI_Reader
   - symbol: ShapeUpgrade_UnifySameDomain
@@ -271,6 +272,10 @@ mainBuild:
   - symbol: EvolutionExtractor
   - symbol: TopologyResult
   - symbol: TopologyExtractor
+  - symbol: MeasurementData
+  - symbol: MeasurementExtractor
+  - symbol: TransformBatch
+  - symbol: TransformBatchResult
   emccFlags:
   - -O3
   - -sEXPORT_ES6=1
@@ -281,8 +286,8 @@ mainBuild:
   - -sALLOW_MEMORY_GROWTH=1
   - -sLLD_REPORT_UNDEFINED
   - --no-entry
-  - -sDISABLE_EXCEPTION_CATCHING=1
   - -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
+  - -sMALLOC=mimalloc
 additionalCppCode: |
   class BRepToolsWrapper {
   public:
@@ -955,5 +960,205 @@ additionalCppCode: |
       }
       return result;
     }
+  };
+
+  class MeasurementData {
+  public:
+    MeasurementData()
+      : dataPtr_(nullptr), dataSize_(0) {}
+
+    ~MeasurementData() {
+      std::free(dataPtr_);
+    }
+
+    MeasurementData(const MeasurementData& other)
+      : dataPtr_(other.dataPtr_), dataSize_(other.dataSize_) {
+      auto& mutable_other = const_cast<MeasurementData&>(other);
+      mutable_other.dataPtr_ = nullptr;
+    }
+
+    int getDataPtr() const { return static_cast<int>(reinterpret_cast<uintptr_t>(dataPtr_)); }
+    int getDataSize() const { return dataSize_; }
+
+  private:
+    double* dataPtr_;
+    int dataSize_;
+
+    friend class MeasurementExtractor;
+  };
+
+  class MeasurementExtractor {
+  public:
+    static MeasurementData extract(const TopoDS_Shape& shape, bool includeLinear) {
+      MeasurementData result;
+      result.dataSize_ = 12;
+      result.dataPtr_ = static_cast<double*>(std::malloc(12 * sizeof(double)));
+      if (!result.dataPtr_) throw std::bad_alloc();
+
+      GProp_GProps volProps;
+      BRepGProp::VolumeProperties(shape, volProps, Standard_True, Standard_False, Standard_False);
+      result.dataPtr_[0] = volProps.Mass();
+
+      GProp_GProps surfProps;
+      BRepGProp::SurfaceProperties(shape, surfProps, 1e-7, Standard_True);
+      result.dataPtr_[1] = surfProps.Mass();
+
+      if (includeLinear) {
+        GProp_GProps linProps;
+        BRepGProp::LinearProperties(shape, linProps, Standard_True, Standard_False);
+        result.dataPtr_[2] = linProps.Mass();
+      } else {
+        result.dataPtr_[2] = 0.0;
+      }
+
+      gp_Pnt center = volProps.CentreOfMass();
+      result.dataPtr_[3] = center.X();
+      result.dataPtr_[4] = center.Y();
+      result.dataPtr_[5] = center.Z();
+
+      Bnd_Box box;
+      BRepBndLib::Add(shape, box, Standard_True);
+      if (!box.IsVoid()) {
+        double xMin, yMin, zMin, xMax, yMax, zMax;
+        box.Get(xMin, yMin, zMin, xMax, yMax, zMax);
+        result.dataPtr_[6] = xMin;
+        result.dataPtr_[7] = yMin;
+        result.dataPtr_[8] = zMin;
+        result.dataPtr_[9] = xMax;
+        result.dataPtr_[10] = yMax;
+        result.dataPtr_[11] = zMax;
+      } else {
+        for (int k = 6; k < 12; k++) result.dataPtr_[k] = 0.0;
+      }
+
+      return result;
+    }
+  };
+
+  class TransformBatchResult {
+  public:
+    TransformBatchResult() : shapesPtr_(nullptr), shapesCount_(0) {}
+
+    ~TransformBatchResult() {
+      delete[] shapesPtr_;
+    }
+
+    TransformBatchResult(const TransformBatchResult& other)
+      : shapesPtr_(other.shapesPtr_), shapesCount_(other.shapesCount_) {
+      auto& mutable_other = const_cast<TransformBatchResult&>(other);
+      mutable_other.shapesPtr_ = nullptr;
+    }
+
+    int getShapesCount() const { return shapesCount_; }
+    TopoDS_Shape getShape(int index) const {
+      if (index < 0 || index >= shapesCount_ || !shapesPtr_) return TopoDS_Shape();
+      return shapesPtr_[index];
+    }
+
+  private:
+    TopoDS_Shape* shapesPtr_;
+    int shapesCount_;
+
+    friend class TransformBatch;
+  };
+
+  class TransformBatch {
+  public:
+    void addTranslate(const TopoDS_Shape& shape, double x, double y, double z) {
+      Entry e;
+      e.shape = shape;
+      e.type = TRANSLATE;
+      e.params[0] = x; e.params[1] = y; e.params[2] = z;
+      entries_.push_back(e);
+    }
+
+    void addRotate(const TopoDS_Shape& shape, double angle,
+                   double axX, double axY, double axZ,
+                   double cX, double cY, double cZ) {
+      Entry e;
+      e.shape = shape;
+      e.type = ROTATE;
+      e.params[0] = angle;
+      e.params[1] = axX; e.params[2] = axY; e.params[3] = axZ;
+      e.params[4] = cX;  e.params[5] = cY;  e.params[6] = cZ;
+      entries_.push_back(e);
+    }
+
+    void addScale(const TopoDS_Shape& shape, double cX, double cY, double cZ, double factor) {
+      Entry e;
+      e.shape = shape;
+      e.type = SCALE;
+      e.params[0] = cX; e.params[1] = cY; e.params[2] = cZ;
+      e.params[3] = factor;
+      entries_.push_back(e);
+    }
+
+    void addMirror(const TopoDS_Shape& shape,
+                   double oX, double oY, double oZ,
+                   double nX, double nY, double nZ) {
+      Entry e;
+      e.shape = shape;
+      e.type = MIRROR;
+      e.params[0] = oX; e.params[1] = oY; e.params[2] = oZ;
+      e.params[3] = nX; e.params[4] = nY; e.params[5] = nZ;
+      entries_.push_back(e);
+    }
+
+    void clear() { entries_.clear(); }
+    int count() const { return static_cast<int>(entries_.size()); }
+
+    TransformBatchResult execute() {
+      TransformBatchResult result;
+      result.shapesCount_ = static_cast<int>(entries_.size());
+      if (result.shapesCount_ == 0) return result;
+
+      result.shapesPtr_ = new TopoDS_Shape[result.shapesCount_];
+
+      for (int i = 0; i < result.shapesCount_; i++) {
+        const Entry& e = entries_[i];
+        gp_Trsf trsf;
+
+        switch (e.type) {
+          case TRANSLATE: {
+            gp_Vec vec(e.params[0], e.params[1], e.params[2]);
+            trsf.SetTranslation(vec);
+            break;
+          }
+          case ROTATE: {
+            gp_Pnt center(e.params[4], e.params[5], e.params[6]);
+            gp_Dir dir(e.params[1], e.params[2], e.params[3]);
+            gp_Ax1 ax(center, dir);
+            trsf.SetRotation(ax, e.params[0]);
+            break;
+          }
+          case SCALE: {
+            gp_Pnt center(e.params[0], e.params[1], e.params[2]);
+            trsf.SetScale(center, e.params[3]);
+            break;
+          }
+          case MIRROR: {
+            gp_Pnt origin(e.params[0], e.params[1], e.params[2]);
+            gp_Dir normal(e.params[3], e.params[4], e.params[5]);
+            gp_Ax2 plane(origin, normal);
+            trsf.SetMirror(plane);
+            break;
+          }
+        }
+
+        BRepBuilderAPI_Transform transformer(e.shape, trsf, Standard_True);
+        result.shapesPtr_[i] = transformer.ModifiedShape(e.shape);
+      }
+
+      return result;
+    }
+
+  private:
+    enum TransformType { TRANSLATE, ROTATE, SCALE, MIRROR };
+    struct Entry {
+      TopoDS_Shape shape;
+      TransformType type;
+      double params[7];
+    };
+    std::vector<Entry> entries_;
   };
 

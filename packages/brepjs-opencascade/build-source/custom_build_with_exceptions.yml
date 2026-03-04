@@ -12,6 +12,7 @@ mainBuild:
   #@ for flag in emccFlags():
   - #@ flag
   #@ end
+  - -fexceptions
   - -sINITIAL_MEMORY=67108864
   - -sMAXIMUM_MEMORY=4294967296
 additionalCppCode: |
