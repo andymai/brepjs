@@ -94,18 +94,23 @@ export const make2dOffset = (
     return make2dSegmentCurve(firstPoint, lastPoint);
   }
 
-  // We should compute the analytic offset for a curve
+  // Compute the analytic offset, then approximate as a B-spline (the kernel
+  // misbehaves on the raw offset handle after transforms like mirroring).
   const offsetHandle = kernel.offsetCurve2d(curve.wrapped, offset);
-
   const offsetCurve = new Curve2D(offsetHandle);
-
-  // While returning the offset curve itself would be the more correct thing to do,
-  // kernel does some weird stuff with it (for instance after mirroring it)
-  // This approximates it with a continuous bspline
   const approximation = approximateAsBSpline(offsetCurve);
 
-  // We need a better way to handle curves that self intersect, for now we
-  // replace them with a line
+  // Self-intersecting single-curve offsets are collapsed to a straight-line
+  // sentinel rather than trimmed. This happens when a concave region is offset
+  // outward (or convex inward) by more than the local radius of curvature,
+  // producing a loop in the offset curve.
+  //
+  // The blueprint-level Cavalier-Contours algorithm (blueprints/offset.ts →
+  // offsetBlueprint) DOES handle multi-curve self-intersections via
+  // split/prune/stitch. However, single-curve self-intersections are collapsed
+  // here before reaching that stage. Routing self-intersecting curves through
+  // the blueprint trimmer would require not collapsing + propagating the raw
+  // curve upward — a non-trivial architectural change.
   const selfIntersects = unwrap(selfIntersections(approximation));
   if (selfIntersects.length) {
     return {

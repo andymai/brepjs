@@ -121,5 +121,35 @@ describe('make2dOffset', () => {
         expect(result).toHaveProperty('lastPoint');
       }
     });
+
+    it('self-intersecting offset returns collapsed sentinel or a curve (regression baseline)', () => {
+      // A sharp V-shaped spline offset inward by more than its curvature
+      // radius may produce a self-intersecting loop. The current
+      // implementation collapses detected self-intersections to a line
+      // sentinel instead of trimming the loop (see src/2d/lib/offset.ts).
+      //
+      // Whether `selfIntersections()` actually detects the loop depends on
+      // the B-spline approximation precision. This test documents both
+      // possible outcomes as valid current behavior.
+      const sharpV = unwrap(
+        make2dInerpolatedBSplineCurve([
+          [0, 0],
+          [5, 10],
+          [10, 0],
+        ])
+      );
+      const result = make2dOffset(sharpV, -20);
+      if (result instanceof Curve2D) {
+        // Self-intersection was NOT detected — offset returned as-is.
+        // This is the "gap" in single-curve offset: the loop is present
+        // in the geometry but selfIntersections() didn't catch it.
+        expect(result.geomType).toBe('BSPLINE_CURVE');
+      } else {
+        // Self-intersection WAS detected and collapsed.
+        expect(result).toHaveProperty('collapsed', true);
+        expect(result).toHaveProperty('firstPoint');
+        expect(result).toHaveProperty('lastPoint');
+      }
+    });
   });
 });
