@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.7](https://github.com/andymai/brepjs/compare/brepjs-v9.3.6...brepjs-v9.3.7) (2026-03-04)
+
+
+### Performance Improvements
+
+* batch performance optimizations for gridfinity workloads ([#362](https://github.com/andymai/brepjs/issues/362)) ([d1602bd](https://github.com/andymai/brepjs/commit/d1602bd9038c68130c2555a72d5abe80bd6b6d4e))
+
 ## [9.3.6](https://github.com/andymai/brepjs/compare/brepjs-v9.3.5...brepjs-v9.3.6) (2026-03-04)
 
 
