@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.3.9](https://github.com/andymai/brepjs/compare/brepjs-v9.3.8...brepjs-v9.3.9) (2026-03-04)
+
+
+### Bug Fixes
+
+* **deps:** declare brepjs-opencascade ^0.9.0 peer compatibility ([#368](https://github.com/andymai/brepjs/issues/368)) ([79eeb78](https://github.com/andymai/brepjs/commit/79eeb78d601c7f819b086a4123e904c0e4d8d760))
+
 ## [9.3.8](https://github.com/andymai/brepjs/compare/brepjs-v9.3.7...brepjs-v9.3.8) (2026-03-04)
 
 
