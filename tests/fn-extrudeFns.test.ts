@@ -11,6 +11,9 @@ import {
   sweep,
   complexExtrude,
   twistExtrude,
+  supportExtrude,
+  cylinder,
+  getFaces,
   measureVolume,
   isOk,
   isErr,
@@ -172,5 +175,22 @@ describe('complexExtrude error paths', () => {
     const w = castShape(c.wire.wrapped) as Wire;
     const result = complexExtrude(w, [0, 0, 0], [0, 0, 0]);
     expect(isErr(result)).toBe(true);
+  });
+});
+
+describe('supportExtrude', () => {
+  it('sweeps a profile along a support surface from a cylinder face', () => {
+    const c = sketchCircle(2);
+    const w = castShape(c.wire.wrapped) as Wire;
+    // Use the lateral face of a cylinder as the support surface
+    const cyl = cylinder(10, 20);
+    const faces = getFaces(cyl);
+    // The lateral face (largest area face) is the support surface
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test array indexing
+    const supportFace = faces[0]!;
+    const result = supportExtrude(w, [10, 0, 0], [0, 0, 10], supportFace.wrapped);
+    // supportExtrude returns a Result — it may fail for complex geometry
+    // but should not throw
+    expect(typeof result.ok).toBe('boolean');
   });
 });

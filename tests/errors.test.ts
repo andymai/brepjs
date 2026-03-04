@@ -11,6 +11,7 @@ import {
   bug,
   BrepBugError,
   BrepErrorCode,
+  translateKernelError,
 } from '../src/core/errors.js';
 
 describe('Error constructors', () => {
@@ -116,6 +117,39 @@ describe('BrepErrorCode', () => {
   it('works with error constructors', () => {
     const e = kernelError(BrepErrorCode.FUSE_FAILED, 'Fuse operation failed');
     expect(e.code).toBe('FUSE_FAILED');
+  });
+});
+
+describe('translateKernelError', () => {
+  it('translates invalid edge messages', () => {
+    const result = translateKernelError('invalid edge configuration detected');
+    expect(result).toContain('edges may not form a continuous loop');
+    expect(result).toContain('(kernel: invalid edge configuration detected)');
+  });
+
+  it('translates boolean operation failure', () => {
+    const result = translateKernelError('BRepAlgoAPI_Fuse failed');
+    expect(result).toContain('Boolean operation failed');
+  });
+
+  it('translates fillet failure', () => {
+    const result = translateKernelError('fillet radius too large for edge');
+    expect(result).toContain('Fillet operation failed');
+  });
+
+  it('translates shell/offset failure', () => {
+    const result = translateKernelError('offset failed on shape');
+    expect(result).toContain('Shell/offset operation failed');
+  });
+
+  it('translates degenerate geometry', () => {
+    const result = translateKernelError('degenerate edge found');
+    expect(result).toContain('Degenerate geometry detected');
+  });
+
+  it('passes through unrecognized messages unchanged', () => {
+    const msg = 'some completely unknown error message xyz123';
+    expect(translateKernelError(msg)).toBe(msg);
   });
 });
 
