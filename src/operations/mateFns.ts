@@ -137,6 +137,7 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
         if (!pair.ok) return pair;
         solverConstraints.push({ type: 'angle', ...pair.value, value: mate.angle });
       } else {
+        // concentric — only remaining type after fixed/coincident/distance/angle
         const pair = extractPair(mate.axisA, mate.axisB);
         if (!pair.ok) return pair;
         solverConstraints.push({ type: 'concentric', ...pair.value });
@@ -148,7 +149,7 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
     if (!result.converged) {
       const detail =
         result.unsupported.length > 0
-          ? `Unsupported constraint types: ${result.unsupported.join(', ')}`
+          ? `Unsupported constraint types: ${result.unsupported.join(', ')} (${result.dof} DOF unresolved)`
           : 'Assembly constraint solver did not converge';
       return err(kernelError(BrepErrorCode.ASSEMBLY_NOT_CONVERGED, detail));
     }
