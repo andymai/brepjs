@@ -179,12 +179,11 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
     const result = solveConstraints(nodes, solverConstraints);
 
     if (!result.converged) {
-      return err(
-        kernelError(
-          BrepErrorCode.ASSEMBLY_NOT_CONVERGED,
-          'Assembly constraint solver did not converge'
-        )
-      );
+      const detail =
+        result.unsupported.length > 0
+          ? `Unsupported constraint types: ${result.unsupported.join(', ')}`
+          : 'Assembly constraint solver did not converge';
+      return err(kernelError(BrepErrorCode.ASSEMBLY_NOT_CONVERGED, detail));
     }
 
     return ok({

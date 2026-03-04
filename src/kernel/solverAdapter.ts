@@ -23,12 +23,22 @@ export interface SolverResult {
   transforms: Map<string, { position: Vec3; rotation: [number, number, number, number] }>;
   dof: number;
   converged: boolean;
+  /** Constraint types that were passed in but not solved (not yet implemented). */
+  unsupported: string[];
 }
+
+/**
+ * Standard degrees of freedom left unresolved by each unsupported constraint type.
+ * concentric: 2 rotational (axis alignment) + 2 translational (axis centering) = 4
+ * angle: 1 rotational
+ */
+const UNSUPPORTED_DOF: Readonly<Record<string, number>> = { concentric: 4, angle: 1 };
 
 /**
  * Solve assembly constraints analytically.
  *
- * Handles: fixed, coincident planes, distance between planes, concentric axes.
+ * Currently handles: fixed, coincident (plane-plane), distance (plane-plane).
+ * Returns `converged: false` with unsupported constraint details for concentric and angle.
  */
 export function solveConstraints(nodes: string[], constraints: SolverConstraint[]): SolverResult {
   const transforms = new Map<
@@ -43,6 +53,8 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
       rotation: [1, 0, 0, 0],
     });
   }
+
+  const unsupported: string[] = [];
 
   // Process fixed constraints first (no-ops, node stays at origin)
   // Then process positioning constraints
@@ -64,9 +76,7 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
         const pos: Vec3 = [dot * aNormal[0], dot * aNormal[1], dot * aNormal[2]];
         transforms.set(b.node, { position: pos, rotation: [1, 0, 0, 0] });
       }
-    }
-
-    if (c.type === 'distance' && c.entityA && c.entityB && c.value !== undefined) {
+    } else if (c.type === 'distance' && c.entityA && c.entityB && c.value !== undefined) {
       const a = c.entityA;
       const b = c.entityB;
 
@@ -84,8 +94,13 @@ export function solveConstraints(nodes: string[], constraints: SolverConstraint[
         const pos: Vec3 = [offset * aNormal[0], offset * aNormal[1], offset * aNormal[2]];
         transforms.set(b.node, { position: pos, rotation: [1, 0, 0, 0] });
       }
+    } else if (c.type === 'concentric' || c.type === 'angle') {
+      unsupported.push(c.type);
     }
+    // 'fixed' is a no-op — node stays at origin (handled by initialization)
   }
 
-  return { transforms, dof: 0, converged: true };
+  const dof = unsupported.reduce((sum, type) => sum + (UNSUPPORTED_DOF[type] ?? 0), 0);
+
+  return { transforms, dof, converged: unsupported.length === 0, unsupported };
 }

@@ -10,10 +10,12 @@ import {
   isOk,
   isErr,
   unwrap,
+  unwrapErr,
   getFaces,
   faceCenter,
 } from '../src/index.js';
 import type { MateConstraint } from '../src/index.js';
+import { solveConstraints } from '../src/kernel/solverAdapter.js';
 
 beforeAll(async () => {
   await initOC();
@@ -250,11 +252,10 @@ describe('solveAssembly — fixed-only', () => {
 });
 
 describe('solveAssembly — concentric mate', () => {
-  it('concentric mate solves with cylinder faces', () => {
+  it('concentric mate returns error (not yet implemented)', () => {
     const cyl1 = cylinder(5, 20);
     const cyl2 = cylinder(3, 15);
 
-    // Use the cylindrical (side) face of each cylinder as the axis entity
     const cylFace1 = cylindricalFace(cyl1);
     const cylFace2 = cylindricalFace(cyl2);
 
@@ -269,17 +270,15 @@ describe('solveAssembly — concentric mate', () => {
     });
 
     const result = solveAssembly(assembly);
-    expect(isOk(result)).toBe(true);
-    const solved = unwrap(result);
-    expect(solved.converged).toBe(true);
-    expect(solved.transforms.has('sleeve')).toBe(true);
+    expect(isErr(result)).toBe(true);
+    const error = unwrapErr(result);
+    expect(error.message).toContain('concentric');
   });
 
   it('concentric mate with no geometry returns error', () => {
     let assembly = createAssemblyNode('root');
     assembly = addChild(assembly, createAssemblyNode('a', { shape: box(5, 5, 5) }));
     assembly = addChild(assembly, createAssemblyNode('b', { shape: box(5, 5, 5) }));
-    // Neither axisA nor axisB have face or point — extractEntity returns null
     assembly = addMate(assembly, {
       type: 'concentric',
       axisA: { node: 'a' },
@@ -292,7 +291,7 @@ describe('solveAssembly — concentric mate', () => {
 });
 
 describe('solveAssembly — angle mate', () => {
-  it('angle mate solves between two box faces', () => {
+  it('angle mate returns error (not yet implemented)', () => {
     const b1 = box(10, 10, 10);
     const b2 = box(10, 10, 10);
 
@@ -311,10 +310,9 @@ describe('solveAssembly — angle mate', () => {
     });
 
     const result = solveAssembly(assembly);
-    expect(isOk(result)).toBe(true);
-    const solved = unwrap(result);
-    expect(solved.converged).toBe(true);
-    expect(solved.transforms.has('tilted')).toBe(true);
+    expect(isErr(result)).toBe(true);
+    const error = unwrapErr(result);
+    expect(error.message).toContain('angle');
   });
 
   it('angle mate with no geometry returns error', () => {
@@ -429,5 +427,95 @@ describe('solveAssembly — combined mates', () => {
     // currentDist = 1*(5-0) = 5, offset = 5 + 3 = 8 → top.position[2] = 8
     const topZ = solved.transforms.get('top')?.position[2];
     expect(topZ).toBeCloseTo(8, 0);
+  });
+});
+
+describe('solveConstraints — unsupported constraint honesty', () => {
+  it('returns converged=true and dof=0 when all constraints are supported', () => {
+    const result = solveConstraints(
+      ['a', 'b'],
+      [{ type: 'fixed', entityA: { node: 'a', entity: { type: 'point', origin: [0, 0, 0] } } }]
+    );
+    expect(result.converged).toBe(true);
+    expect(result.dof).toBe(0);
+    expect(result.unsupported).toEqual([]);
+  });
+
+  it('returns converged=false and dof=4 for unsupported concentric', () => {
+    const result = solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type: 'concentric',
+          entityA: { node: 'a', entity: { type: 'axis', origin: [0, 0, 0], direction: [0, 0, 1] } },
+          entityB: { node: 'b', entity: { type: 'axis', origin: [1, 0, 0], direction: [0, 0, 1] } },
+        },
+      ]
+    );
+    expect(result.converged).toBe(false);
+    expect(result.dof).toBe(4);
+    expect(result.unsupported).toEqual(['concentric']);
+  });
+
+  it('returns converged=false and dof=1 for unsupported angle', () => {
+    const result = solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type: 'angle',
+          entityA: { node: 'a', entity: { type: 'plane', origin: [0, 0, 0], normal: [0, 0, 1] } },
+          entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0], normal: [0, 1, 0] } },
+          value: 45,
+        },
+      ]
+    );
+    expect(result.converged).toBe(false);
+    expect(result.dof).toBe(1);
+    expect(result.unsupported).toEqual(['angle']);
+  });
+
+  it('accumulates DOF from multiple unsupported constraints', () => {
+    const result = solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type: 'concentric',
+          entityA: { node: 'a', entity: { type: 'axis', origin: [0, 0, 0] } },
+          entityB: { node: 'b', entity: { type: 'axis', origin: [0, 0, 0] } },
+        },
+        {
+          type: 'angle',
+          entityA: { node: 'a', entity: { type: 'plane', origin: [0, 0, 0] } },
+          entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0] } },
+          value: 90,
+        },
+      ]
+    );
+    expect(result.converged).toBe(false);
+    expect(result.dof).toBe(5); // 4 (concentric) + 1 (angle)
+    expect(result.unsupported).toEqual(['concentric', 'angle']);
+  });
+
+  it('still solves supported constraints alongside unsupported ones', () => {
+    const result = solveConstraints(
+      ['a', 'b'],
+      [
+        {
+          type: 'coincident',
+          entityA: { node: 'a', entity: { type: 'plane', origin: [0, 0, 10], normal: [0, 0, 1] } },
+          entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0], normal: [0, 0, 1] } },
+        },
+        {
+          type: 'angle',
+          entityA: { node: 'a', entity: { type: 'plane', origin: [0, 0, 0] } },
+          entityB: { node: 'b', entity: { type: 'plane', origin: [0, 0, 0] } },
+          value: 45,
+        },
+      ]
+    );
+    // Coincident is solved even though angle is not
+    expect(result.transforms.get('b')?.position[2]).toBeCloseTo(10, 0);
+    expect(result.converged).toBe(false);
+    expect(result.unsupported).toEqual(['angle']);
   });
 });
