@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.10.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.9.0...brepjs-opencascade-v0.10.0) (2026-03-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* boolean operation and meshing performance optimizations ([#21](https://github.com/andymai/brepjs/issues/21))
+
+### Features
+
+* add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
+* add cone and torus primitive constructors ([#56](https://github.com/andymai/brepjs/issues/56)) ([61a488d](https://github.com/andymai/brepjs/commit/61a488d79c6f1d8da1ac596e39e03babacb90242))
+* add IGES import/export support ([#90](https://github.com/andymai/brepjs/issues/90)) ([e6b75d4](https://github.com/andymai/brepjs/commit/e6b75d432180ec1a380d58b8ed3fd86401bd94b3))
+* **opencascade:** add multi-threaded WASM build ([e042efd](https://github.com/andymai/brepjs/commit/e042efd61cd2d296576798f56fa24ff761ab4d51))
+
+
+### Bug Fixes
+
+* add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
+* **brepjs-opencascade:** add repository field for npm provenance ([5f9edf7](https://github.com/andymai/brepjs/commit/5f9edf76f593dabb4702d5264550291d4231df7d))
+* **brepjs-opencascade:** correct license to LGPL-2.1-only ([#257](https://github.com/andymai/brepjs/issues/257)) ([a828529](https://github.com/andymai/brepjs/commit/a828529a92ba3252c62d743acbd088746305d703))
+* **ci:** bump validate-pack MAX_FILES to 450 for publish ([f293ef9](https://github.com/andymai/brepjs/commit/f293ef9ade2b832f18c4afb8d62e87bbf8c90b6f))
+* **deps:** declare brepjs-opencascade ^0.9.0 peer compatibility ([#368](https://github.com/andymai/brepjs/issues/368)) ([79eeb78](https://github.com/andymai/brepjs/commit/79eeb78d601c7f819b086a4123e904c0e4d8d760))
+* **deps:** trigger release for brepjs-opencascade 0.8.x peer dep support ([#269](https://github.com/andymai/brepjs/issues/269)) ([68d09ef](https://github.com/andymai/brepjs/commit/68d09ef9dd27096bf7b4c768de4e6314a68d7574))
+* make MeshData compatible with embind copy semantics ([#15](https://github.com/andymai/brepjs/issues/15)) ([5d7cb66](https://github.com/andymai/brepjs/commit/5d7cb665afc561f21add1ffb24fa62276d51bb2e))
+* **opencascade:** disable exception catching in threaded build ([c316b93](https://github.com/andymai/brepjs/commit/c316b93ae6d200cad5716299390c25069a6a63da))
+* trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
+
+
+### Performance Improvements
+
+* boolean operation and meshing performance optimizations ([#21](https://github.com/andymai/brepjs/issues/21)) ([f7ce008](https://github.com/andymai/brepjs/commit/f7ce00802d23174b3d29f189554f5cc9ba8f41c6))
+* bulk C++ mesh extraction with unified APIs ([#9](https://github.com/andymai/brepjs/issues/9)) ([65709bf](https://github.com/andymai/brepjs/commit/65709bf7f19eaf454da1491279e77b820409b86a))
+* edge mesh caching and bulk C++ extractors ([#23](https://github.com/andymai/brepjs/issues/23)) ([347f5a3](https://github.com/andymai/brepjs/commit/347f5a35fec301a608cbdf0cad5d2c83a50d2d65))
+* **wasm,topology:** enable simd, memory tuning, iterator optimization, and test coverage ([#309](https://github.com/andymai/brepjs/issues/309)) ([c0f1e1a](https://github.com/andymai/brepjs/commit/c0f1e1a2ac6fcf0ec8df751cafd24f57ddb4b04b))
+* **wasm:** build flags, C++ extractors, and command buffer design ([#371](https://github.com/andymai/brepjs/issues/371)) ([5c591a1](https://github.com/andymai/brepjs/commit/5c591a1767d3ac80921ff38ab55273f76bfdfa81))
+* **wasm:** C++ extractors, build flags, and UV mesh support ([#364](https://github.com/andymai/brepjs/issues/364)) ([4f2546b](https://github.com/andymai/brepjs/commit/4f2546b79221a4de126dac680b1b4c13a407a0f6))
+
 ## [0.8.4](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.3...brepjs-opencascade-v0.8.4) (2026-03-02)
 
 
