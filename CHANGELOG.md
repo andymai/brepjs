@@ -1,5 +1,13 @@
 # Changelog
 
+## [9.3.11](https://github.com/andymai/brepjs/compare/brepjs-v9.3.10...brepjs-v9.3.11) (2026-03-05)
+
+
+### Bug Fixes
+
+* **deps:** correct brepkit-wasm version to ^0.1.0 ([#378](https://github.com/andymai/brepjs/issues/378)) ([17feeac](https://github.com/andymai/brepjs/commit/17feeac59a5fb4e116dd4f9fff736ae2c1cb7e1a))
+* reconcile release-please manifest for brepjs-opencascade to 0.9.0 ([#375](https://github.com/andymai/brepjs/issues/375)) ([cb4b3ca](https://github.com/andymai/brepjs/commit/cb4b3ca5d30219fcebf5a2f15e764d73e8e78762)), closes [#374](https://github.com/andymai/brepjs/issues/374)
+
 ## [9.3.10](https://github.com/andymai/brepjs/compare/brepjs-v9.3.9...brepjs-v9.3.10) (2026-03-04)
 
 
