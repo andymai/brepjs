@@ -83,16 +83,28 @@ function pointInTriangle(
 
 /**
  * Ear-clip triangulate a simple polygon into index triples.
- * Handles convex and concave polygons correctly.
- * Falls back to fan triangulation if no ear is found (degenerate polygon).
+ * Handles convex and concave polygons correctly, and normalises CW-wound
+ * polygons to CCW traversal so the algorithm always finds ears regardless
+ * of the input wire's orientation. Output triangles are always CCW-wound.
+ * Returns an empty array for degenerate polygons where no ear is found.
  */
 function earClipTriangulate(poly: SkPoint2D[]): Array<[number, number, number]> {
   const n = poly.length;
   if (n < 3) return [];
   if (n === 3) return [[0, 1, 2]];
 
+  // Shoelace signed area: positive → CCW, negative → CW.
+  // If CW, reverse the traversal index order to normalise to CCW so the
+  // cross-product ear test works correctly without modifying poly itself.
+  let area2 = 0;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % n];
+    if (a && b) area2 += a.x * b.y - b.x * a.y;
+  }
   const tris: Array<[number, number, number]> = [];
   const idx: number[] = Array.from({ length: n }, (_, i) => i);
+  if (area2 < 0) idx.reverse();
 
   const isEar = (prev: number, curr: number, next: number): boolean => {
     const a = poly[prev];
