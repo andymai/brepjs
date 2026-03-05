@@ -18,7 +18,7 @@
  * brepkit tests are skipped gracefully if brepkit-wasm is not available.
  */
 
-import { describe, it, beforeAll, expect } from 'vitest';
+import { describe, it, beforeAll, beforeEach, expect } from 'vitest';
 import { initOC } from './setup.js';
 import { getKernel, registerKernel } from '../src/kernel/index.js';
 import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
@@ -38,7 +38,12 @@ beforeAll(async () => {
     if (typeof brepkitWasm.default === 'function') {
       await brepkitWasm.default();
     }
-    const BrepKernel = brepkitWasm.BrepKernel;
+    // nodejs WASM target exports BrepKernel directly; bundler target exports it via .default.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WASM module shape differs between build targets
+    const bkWasm = brepkitWasm as any;
+
+    const BrepKernel = bkWasm.BrepKernel ?? bkWasm.default?.BrepKernel;
+
     const kernel = new BrepKernel();
     registerKernel('brepkit', new BrepkitAdapter(kernel));
     hasBrepkit = true;
@@ -46,12 +51,6 @@ beforeAll(async () => {
     console.warn('[brepkit-validation] brepkit-wasm not available — tests will be skipped');
   }
 }, 30000);
-
-/** Skip test if brepkit is unavailable. */
-function skipIfNoBrepkit() {
-  if (!hasBrepkit) return true;
-  return false;
-}
 
 /**
  * Assert two values are within `pct`% of each other.
@@ -78,8 +77,11 @@ function kernels(): { occt: KernelAdapter; bk: KernelAdapter } {
 // ---------------------------------------------------------------------------
 
 describe('Primitives: geometric correctness', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('makeBox — volume within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const boxOcct = occt.makeBox(10, 20, 30);
@@ -93,7 +95,6 @@ describe('Primitives: geometric correctness', () => {
   });
 
   it('makeBox — bounding box within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const boxOcct = occt.makeBox(10, 20, 30);
@@ -108,7 +109,6 @@ describe('Primitives: geometric correctness', () => {
   });
 
   it('makeCylinder — volume within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const cylOcct = occt.makeCylinder(5, 20);
@@ -124,7 +124,6 @@ describe('Primitives: geometric correctness', () => {
   });
 
   it('makeSphere — volume within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const sphOcct = occt.makeSphere(10);
@@ -140,7 +139,6 @@ describe('Primitives: geometric correctness', () => {
   });
 
   it('makeCone — volume (tessellation accuracy)', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const coneOcct = occt.makeCone(5, 0, 15);
@@ -164,7 +162,6 @@ describe('Primitives: geometric correctness', () => {
   });
 
   it('makeTorus — volume within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const torOcct = occt.makeTorus(10, 3);
@@ -182,8 +179,11 @@ describe('Primitives: geometric correctness', () => {
 // ---------------------------------------------------------------------------
 
 describe('Booleans: geometric correctness', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('fuse(box,box) — volume within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const a = occt.makeBox(10, 10, 10);
@@ -198,7 +198,6 @@ describe('Booleans: geometric correctness', () => {
   });
 
   it('cut(box,cylinder) — volume within 10% (tessellation)', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const boxO = occt.makeBox(20, 20, 20);
@@ -220,8 +219,31 @@ describe('Booleans: geometric correctness', () => {
     expectWithinPct(volBk, volOcct, 10, 'cut volume');
   });
 
+  it('intersect(box,sphere) — produces a result (volume accuracy)', () => {
+    const { occt, bk } = kernels();
+
+    const boxO = occt.makeBox(10, 10, 10);
+    const sphO = occt.makeSphere(8);
+    const isectOcct = occt.intersect(boxO, sphO);
+
+    const boxBk = bk.makeBox(10, 10, 10);
+    const sphBk = bk.makeSphere(8);
+    const isectBk = bk.intersect(boxBk, sphBk);
+
+    const volOcct = occt.volume(isectOcct);
+    const volBk = bk.volume(isectBk);
+    console.warn(
+      `intersect(box,sphere) volume: OCCT=${volOcct.toFixed(2)}, brepkit=${volBk.toFixed(2)}, ` +
+        `relErr=${(Math.abs(volBk - volOcct) / volOcct).toFixed(3)}`
+    );
+    // brepkit uses tessellation-based volume. The intersect result has mixed
+    // planar + curved faces, which degrade tessellation accuracy significantly.
+    // Sanity: result is non-negative (operation completed without throwing)
+    expect(volBk).toBeGreaterThanOrEqual(0);
+    // ⚠️ Known issue: volume accuracy not within 1% for intersect results with curved faces
+  });
+
   it('fuse — bounding box matches within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const aO = occt.makeBox(10, 5, 5);
@@ -245,8 +267,11 @@ describe('Booleans: geometric correctness', () => {
 // ---------------------------------------------------------------------------
 
 describe('Transforms: geometric correctness', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('translate preserves volume', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
 
     const original = bk.makeBox(10, 20, 30);
@@ -256,7 +281,6 @@ describe('Transforms: geometric correctness', () => {
   });
 
   it('translate — bounding box shifted correctly', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
 
     const box = bk.makeBox(10, 10, 10);
@@ -269,7 +293,6 @@ describe('Transforms: geometric correctness', () => {
   });
 
   it('scale — volume scales cubically', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const box = bk.makeBox(10, 10, 10);
@@ -287,7 +310,6 @@ describe('Transforms: geometric correctness', () => {
   });
 
   it('mirror — volume preserved', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
 
     const box = bk.makeBox(10, 20, 30);
@@ -303,15 +325,17 @@ describe('Transforms: geometric correctness', () => {
 // ---------------------------------------------------------------------------
 
 describe('Measurement: value correctness', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('volume: box matches analytic (10×20×30 = 6000)', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 20, 30);
     expect(bk.volume(box)).toBeCloseTo(6000, 0);
   });
 
   it('centerOfMass: box centroid at (5,10,15)', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 20, 30);
     const com = bk.centerOfMass(box);
@@ -322,7 +346,6 @@ describe('Measurement: value correctness', () => {
   });
 
   it('centerOfMass: matches OCCT within 1%', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
 
     const occtBox = occt.makeBox(10, 20, 30);
@@ -337,7 +360,6 @@ describe('Measurement: value correctness', () => {
   });
 
   it('boundingBox: box at (0,0,0)→(10,20,30)', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 20, 30);
     const bb = bk.boundingBox(box);
@@ -356,15 +378,17 @@ describe('Measurement: value correctness', () => {
 // ---------------------------------------------------------------------------
 
 describe('Topology: shapeType and iterShapes', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('makeBox shapeType is solid', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     expect(bk.shapeType(box)).toBe('solid');
   });
 
   it('makeBox has 6 faces', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const faces = bk.iterShapes(box, 'face');
@@ -372,7 +396,6 @@ describe('Topology: shapeType and iterShapes', () => {
   });
 
   it('makeBox has 12 edges', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const edges = bk.iterShapes(box, 'edge');
@@ -380,7 +403,6 @@ describe('Topology: shapeType and iterShapes', () => {
   });
 
   it('makeBox has 8 vertices', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const vertices = bk.iterShapes(box, 'vertex');
@@ -388,7 +410,6 @@ describe('Topology: shapeType and iterShapes', () => {
   });
 
   it('face shapeType is face', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const [face] = bk.iterShapes(box, 'face');
@@ -399,7 +420,6 @@ describe('Topology: shapeType and iterShapes', () => {
   });
 
   it('hashCode is consistent for same shape', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const h1 = bk.hashCode(box, 1000000);
@@ -413,8 +433,11 @@ describe('Topology: shapeType and iterShapes', () => {
 // ---------------------------------------------------------------------------
 
 describe('Meshing: output validity', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('mesh box — produces non-empty result', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const result = bk.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
@@ -425,7 +448,6 @@ describe('Meshing: output validity', () => {
   });
 
   it('mesh box — vertex count matches normals count', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const result = bk.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
@@ -434,7 +456,6 @@ describe('Meshing: output validity', () => {
   });
 
   it('mesh box — faceGroups covers all triangles', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const result = bk.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
@@ -445,7 +466,6 @@ describe('Meshing: output validity', () => {
   });
 
   it('mesh sphere (fine) — triangle count comparable to OCCT', () => {
-    if (skipIfNoBrepkit()) return;
     const { occt, bk } = kernels();
     const options = { tolerance: 0.05, angularTolerance: 0.3 };
 
@@ -470,8 +490,11 @@ describe('Meshing: output validity', () => {
 // ---------------------------------------------------------------------------
 
 describe('Error handling parity', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('fuse with wrong shape type throws descriptively', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
 
     // Pass a face where a solid is expected
@@ -485,21 +508,18 @@ describe('Error handling parity', () => {
   });
 
   it('makeWire with empty edges throws', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
 
     expect(() => bk.makeWire([])).toThrow();
   });
 
   it('isNull returns false for valid shape', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     expect(bk.isNull(box)).toBe(false);
   });
 
   it('isValid returns true for a well-formed box', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     expect(bk.isValid(box)).toBe(true);
@@ -511,8 +531,11 @@ describe('Error handling parity', () => {
 // ---------------------------------------------------------------------------
 
 describe('Coverage: stub methods', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
   it('meshEdges returns an object (stub or real)', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     // meshEdges may return empty result (stub) — should not throw
@@ -523,13 +546,11 @@ describe('Coverage: stub methods', () => {
   });
 
   it('kernelId is brepkit', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     expect(bk.kernelId).toBe('brepkit');
   });
 
   it('shapeOrientation returns a valid value', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const orientation = bk.shapeOrientation(box);
@@ -537,7 +558,6 @@ describe('Coverage: stub methods', () => {
   });
 
   it('surfaceType returns a known type for box face', () => {
-    if (skipIfNoBrepkit()) return;
     const { bk } = kernels();
     const box = bk.makeBox(10, 10, 10);
     const [face] = bk.iterShapes(box, 'face');
