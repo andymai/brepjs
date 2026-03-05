@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.4.1](https://github.com/andymai/brepjs/compare/brepjs-v9.4.0...brepjs-v9.4.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* **kernel:** brepkit adapter loft, sweep, and handle fixes ([#382](https://github.com/andymai/brepjs/issues/382)) ([f25bd51](https://github.com/andymai/brepjs/commit/f25bd51c55156568cdfe0bedd62f78275c1f6c48))
+
 ## [9.4.0](https://github.com/andymai/brepjs/compare/brepjs-v9.3.10...brepjs-v9.4.0) (2026-03-05)
 
 
