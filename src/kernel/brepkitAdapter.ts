@@ -1968,15 +1968,24 @@ export class BrepkitAdapter implements KernelAdapter {
     }
     try {
       // repairSolid is the comprehensive healer (0.4.3+), healSolid is the legacy in-place version
-      this.bk.repairSolid(unwrap(shape));
+      const remaining = this.bk.repairSolid(unwrap(shape));
+      if (remaining > 0) {
+        console.warn(`brepkit: repairSolid left ${remaining} error(s) on solid.`);
+      }
       return shape;
     } catch (e: unknown) {
       // Fall back to basic healSolid if repairSolid fails
       try {
         this.bk.healSolid(unwrap(shape));
         return shape;
-      } catch {
-        console.warn('brepkit: healSolid failed:', e);
+      } catch (healErr: unknown) {
+        console.warn(
+          'brepkit: healSolid failed (repairSolid error:',
+          e,
+          ', healSolid error:',
+          healErr,
+          ')'
+        );
         return null;
       }
     }
@@ -2213,8 +2222,9 @@ export class BrepkitAdapter implements KernelAdapter {
         );
         const shape = solidHandle(id);
         return { shape, firstShape: profile, lastShape: profile };
-      } catch {
+      } catch (e: unknown) {
         // Fall back to simplePipe for non-NURBS or failed cases
+        console.warn('brepkit: sweepSmooth failed, falling back to simplePipe:', e);
       }
     }
     const shape = this.simplePipe(profile, spine);
@@ -2236,8 +2246,9 @@ export class BrepkitAdapter implements KernelAdapter {
         const faceIds = wires.map((w) => unwrap(w));
         const id = this.bk.loftSmooth(faceIds);
         return solidHandle(id);
-      } catch {
+      } catch (e: unknown) {
         // Fall back to regular loft
+        console.warn('brepkit: loftSmooth failed, falling back to regular loft:', e);
       }
     }
     return this.loft(wires);

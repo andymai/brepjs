@@ -242,6 +242,17 @@ describe('Booleans: geometric correctness', () => {
     expect(volBk).toBeGreaterThan(100);
   });
 
+  it('intersect(box,sphere) — completes without throwing', () => {
+    const { bk } = kernels();
+    const boxBk = bk.makeBox(10, 10, 10);
+    const sphBk = bk.makeSphere(8);
+    const isectBk = bk.intersect(boxBk, sphBk);
+    const volBk = bk.volume(isectBk);
+    // Operation completes and returns a measurable result (volume accuracy for
+    // curved-face intersections is a known limitation — tracked separately)
+    expect(volBk).toBeGreaterThanOrEqual(0);
+  });
+
   it('fuse — bounding box matches within 1%', () => {
     const { occt, bk } = kernels();
 
