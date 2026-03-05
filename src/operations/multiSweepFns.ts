@@ -56,7 +56,32 @@ export function multiSectionSweep(
     );
   }
 
-  const { solid = true, ruled = false, tolerance: _tolerance = 1e-6 } = options ?? {};
+  const { solid = true, ruled = false, tolerance = 1e-6 } = options ?? {};
+
+  // Validate explicit locations
+  const explicitLocations = sections.map((s) => s.location);
+  for (let i = 0; i < explicitLocations.length; i++) {
+    const loc = explicitLocations[i];
+    if (loc !== undefined && (loc < 0 || loc > 1)) {
+      return err(
+        validationError(
+          BrepErrorCode.MULTI_SWEEP_FAILED,
+          `Section ${i} location ${loc} is out of range [0, 1]`
+        )
+      );
+    }
+  }
+  const definedLocs = explicitLocations.filter((l): l is number => l !== undefined);
+  for (let i = 1; i < definedLocs.length; i++) {
+    if ((definedLocs[i] ?? 0) <= (definedLocs[i - 1] ?? 0)) {
+      return err(
+        validationError(
+          BrepErrorCode.MULTI_SWEEP_FAILED,
+          'Section locations must be strictly increasing'
+        )
+      );
+    }
+  }
 
   try {
     const kernel = getKernel();
@@ -85,7 +110,7 @@ export function multiSectionSweep(
       positionedWires.push(kernel.downcast(positioned, 'wire'));
     }
 
-    const loftResult = kernel.loftAdvanced(positionedWires, { solid, ruled });
+    const loftResult = kernel.loftAdvanced(positionedWires, { solid, ruled, tolerance });
 
     const result = castShape(loftResult);
     if (!isShape3D(result)) {

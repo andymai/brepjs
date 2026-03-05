@@ -209,13 +209,14 @@ export function loftAdvanced(
   options: {
     solid?: boolean;
     ruled?: boolean;
+    tolerance?: number;
     startVertex?: KernelShape;
     endVertex?: KernelShape;
   } = {}
 ): KernelShape {
   const solid = options.solid ?? true;
   const ruled = options.ruled ?? false;
-  const builder = new oc.BRepOffsetAPI_ThruSections(solid, ruled, 1e-6);
+  const builder = new oc.BRepOffsetAPI_ThruSections(solid, ruled, options.tolerance ?? 1e-6);
 
   if (options.startVertex) {
     builder.AddVertex(options.startVertex);

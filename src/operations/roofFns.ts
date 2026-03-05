@@ -48,11 +48,86 @@ function extractPolygon(w: Wire): SkPoint2D[] {
   return pts;
 }
 
-/** Fan-triangulate a polygon into triangles (index triples). */
+/** Fan-triangulate a convex polygon into triangles (index triples). */
 function fanTriangulate(count: number): Array<[number, number, number]> {
   const tris: Array<[number, number, number]> = [];
   for (let i = 1; i < count - 1; i++) {
     tris.push([0, i, i + 1]);
+  }
+  return tris;
+}
+
+/** Signed area cross product for three 2D points (positive = CCW). */
+function cross2d(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
+  return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+}
+
+/** Check if point (px,py) is strictly inside triangle (a,b,c). */
+function pointInTriangle(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number
+): boolean {
+  const d1 = cross2d(ax, ay, bx, by, px, py);
+  const d2 = cross2d(bx, by, cx, cy, px, py);
+  const d3 = cross2d(cx, cy, ax, ay, px, py);
+  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
+  const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
+  return !(hasNeg && hasPos);
+}
+
+/**
+ * Ear-clip triangulate a simple polygon into index triples.
+ * Handles convex and concave polygons correctly.
+ * Falls back to fan triangulation if no ear is found (degenerate polygon).
+ */
+function earClipTriangulate(poly: SkPoint2D[]): Array<[number, number, number]> {
+  const n = poly.length;
+  if (n < 3) return [];
+  if (n === 3) return [[0, 1, 2]];
+
+  const tris: Array<[number, number, number]> = [];
+  const idx: number[] = Array.from({ length: n }, (_, i) => i);
+
+  const isEar = (prev: number, curr: number, next: number): boolean => {
+    const a = poly[prev];
+    const b = poly[curr];
+    const c = poly[next];
+    if (!a || !b || !c) return false;
+    if (cross2d(a.x, a.y, b.x, b.y, c.x, c.y) <= 0) return false;
+    for (const vi of idx) {
+      if (vi === prev || vi === curr || vi === next) continue;
+      const p = poly[vi];
+      if (!p) continue;
+      if (pointInTriangle(p.x, p.y, a.x, a.y, b.x, b.y, c.x, c.y)) return false;
+    }
+    return true;
+  };
+
+  while (idx.length > 3) {
+    let clipped = false;
+    for (let i = 0; i < idx.length; i++) {
+      const prev = idx[(i - 1 + idx.length) % idx.length];
+      const curr = idx[i];
+      const next = idx[(i + 1) % idx.length];
+      if (prev === undefined || curr === undefined || next === undefined) continue;
+      if (isEar(prev, curr, next)) {
+        tris.push([prev, curr, next]);
+        idx.splice(i, 1);
+        clipped = true;
+        break;
+      }
+    }
+    if (!clipped) break; // degenerate polygon, bail out
+  }
+  if (idx.length === 3) {
+    const [a, b, c] = idx;
+    if (a !== undefined && b !== undefined && c !== undefined) tris.push([a, b, c]);
   }
   return tris;
 }
@@ -132,20 +207,19 @@ export function roof(w: Wire, options?: RoofOptions): Result<Solid> {
       }
     }
 
-    // Also add the bottom face (the original polygon at z=0)
-    const p0 = polygon[0];
-    if (p0) {
-      for (let i = 1; i < polygon.length - 1; i++) {
-        const pi = polygon[i];
-        const pi1 = polygon[i + 1];
-        if (!pi || !pi1) continue;
-        const va: [number, number, number] = [p0.x, p0.y, 0];
-        const vb: [number, number, number] = [pi.x, pi.y, 0];
-        const vc: [number, number, number] = [pi1.x, pi1.y, 0];
-        const triFace = kernel.buildTriFace(va, vc, vb); // reversed winding for bottom
-        if (triFace !== null) {
-          triFaces.push(triFace);
-        }
+    // Also add the bottom face (the original polygon at z=0).
+    // Use ear-clip triangulation to correctly handle concave footprints.
+    for (const [ai, bi, ci] of earClipTriangulate(polygon)) {
+      const pa = polygon[ai];
+      const pb = polygon[bi];
+      const pc = polygon[ci];
+      if (!pa || !pb || !pc) continue;
+      const va: [number, number, number] = [pa.x, pa.y, 0];
+      const vb: [number, number, number] = [pb.x, pb.y, 0];
+      const vc: [number, number, number] = [pc.x, pc.y, 0];
+      const triFace = kernel.buildTriFace(va, vc, vb); // reversed winding for bottom face
+      if (triFace !== null) {
+        triFaces.push(triFace);
       }
     }
 

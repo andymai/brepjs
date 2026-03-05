@@ -1137,6 +1137,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     options: {
       solid?: boolean;
       ruled?: boolean;
+      tolerance?: number;
       startVertex?: KernelShape;
       endVertex?: KernelShape;
     } = {}

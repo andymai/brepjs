@@ -272,6 +272,15 @@ function parseSVGPathToCurves(d: string): Curve2D[] {
             const dx = x - cx;
             const dy = y - cy;
             const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 1e-10) {
+              // Coincident endpoints (full-circle arc) — cannot approximate; treat as no-op
+              cx = x;
+              cy = y;
+              i += 7;
+              continue;
+            }
+
             const r = Math.max(rx, ry);
             const halfChord = dist / 2;
             const sagitta = halfChord < r ? r - Math.sqrt(r * r - halfChord * halfChord) : r;

@@ -590,6 +590,7 @@ export interface KernelAdapter extends Kernel2DCapability {
     options?: {
       solid?: boolean;
       ruled?: boolean;
+      tolerance?: number;
       startVertex?: KernelShape;
       endVertex?: KernelShape;
     }

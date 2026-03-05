@@ -3553,7 +3553,9 @@ export class BrepkitAdapter implements KernelAdapter {
         }
       }
     }
-    return this.makeNonPlanarFace(wires[0]);
+    const outerWire = wires[0];
+    if (!outerWire) throw new Error('fillSurface: no wires provided');
+    return this.makeNonPlanarFace(outerWire);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
