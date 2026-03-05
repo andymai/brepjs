@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.5](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.4...brepjs-opencascade-v0.8.5) (2026-03-05)
+
+
+### Bug Fixes
+
+* **deps:** declare brepjs-opencascade ^0.9.0 peer compatibility ([#368](https://github.com/andymai/brepjs/issues/368)) ([79eeb78](https://github.com/andymai/brepjs/commit/79eeb78d601c7f819b086a4123e904c0e4d8d760))
+
+
+### Performance Improvements
+
+* **wasm:** build flags, C++ extractors, and command buffer design ([#371](https://github.com/andymai/brepjs/issues/371)) ([5c591a1](https://github.com/andymai/brepjs/commit/5c591a1767d3ac80921ff38ab55273f76bfdfa81))
+* **wasm:** C++ extractors, build flags, and UV mesh support ([#364](https://github.com/andymai/brepjs/issues/364)) ([4f2546b](https://github.com/andymai/brepjs/commit/4f2546b79221a4de126dac680b1b4c13a407a0f6))
+
 ## [0.8.4](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.8.3...brepjs-opencascade-v0.8.4) (2026-03-02)
 
 
