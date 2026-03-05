@@ -19,6 +19,7 @@ export interface Line2d {
   readonly oy: number;
   readonly dx: number;
   readonly dy: number;
+  readonly len: number;
 }
 
 export interface Circle2d {
@@ -152,7 +153,7 @@ export function tangentCurve2d(c: Curve2dObj, t: number): [number, number] {
 export function curveBounds(c: Curve2dObj): { first: number; last: number } {
   switch (c.__bk2d) {
     case 'line':
-      return { first: -1e10, last: 1e10 };
+      return { first: 0, last: c.len };
     case 'circle':
     case 'ellipse':
       return { first: 0, last: 2 * Math.PI };
@@ -196,6 +197,7 @@ export function makeLine2d(x1: number, y1: number, x2: number, y2: number): Line
     oy: y1,
     dx: len > 0 ? dx / len : 1,
     dy: len > 0 ? dy / len : 0,
+    len,
   };
 }
 

@@ -65,6 +65,9 @@ export interface BrepkitHandle {
   readonly type: ShapeType;
   /** Raw u32 arena index. */
   readonly id: number;
+  /** No-op — arena-based allocation doesn't free individual handles.
+   *  Present for compatibility with OCCT's wasm-bindgen `.delete()` convention. */
+  delete(): void;
 }
 
 /** Type guard: is this shape a brepkit handle? */
@@ -77,8 +80,11 @@ function isBrepkitHandle(shape: unknown): shape is BrepkitHandle {
   );
 }
 
+/** Shared no-op delete — one function instance for all handles. */
+const noop = () => {};
+
 function handle(type: ShapeType, id: number): BrepkitHandle {
-  return { __brepkit: true, type, id };
+  return { __brepkit: true, type, id, delete: noop };
 }
 
 function solidHandle(id: number): BrepkitHandle {
@@ -326,7 +332,19 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   cut(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    const result = this.bk.cut(unwrapSolidOrThrow(shape, 'cut'), unwrapSolidOrThrow(tool, 'cut'));
+    const baseId = unwrapSolidOrThrow(shape, 'cut');
+    // If tool is a compound (e.g. from cutAll's buildCompound), iteratively
+    // cut each child solid from the base.
+    const toolHandle = tool as BrepkitHandle;
+    if (toolHandle.type === 'compound') {
+      const toolSolidIds: number[] = toArray(this.bk.getCompoundSolids(toolHandle.id));
+      let currentId = baseId;
+      for (const toolSolidId of toolSolidIds) {
+        currentId = this.bk.cut(currentId, toolSolidId);
+      }
+      return solidHandle(currentId);
+    }
+    const result = this.bk.cut(baseId, unwrapSolidOrThrow(tool, 'cut'));
     return solidHandle(result);
   }
 
@@ -526,7 +544,19 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   makeWire(edges: KernelShape[]): KernelShape {
-    const edgeIds = edges.map((e) => unwrap(e, 'edge'));
+    // Flatten: if any element is a wire (e.g. from liftCurve2dToPlane splitting
+    // a circle into multiple arcs), extract its constituent edges.
+    const edgeIds: number[] = [];
+    for (const e of edges) {
+      const h = e as BrepkitHandle;
+      if (h.type === 'wire') {
+        for (const childEdgeId of toArray(this.bk.getWireEdges(h.id))) {
+          edgeIds.push(childEdgeId);
+        }
+      } else {
+        edgeIds.push(unwrap(e, 'edge'));
+      }
+    }
     const id = this.bk.makeWire(edgeIds, true);
     return wireHandle(id);
   }
@@ -952,8 +982,14 @@ export class BrepkitAdapter implements KernelAdapter {
     _startShape?: KernelShape,
     _endShape?: KernelShape
   ): KernelShape {
-    // brepkit's loft takes face handles
-    const faceIds = wires.map((w) => unwrap(w));
+    // brepkit's loft takes face handles — convert wires to faces first
+    const faceIds = wires.map((w) => {
+      const h = w as BrepkitHandle;
+      if (h.type === 'wire') {
+        return this.bk.makeFaceFromWire(h.id);
+      }
+      return unwrap(w, 'face');
+    });
     const id = this.bk.loft(faceIds);
     return solidHandle(id);
   }
@@ -989,12 +1025,19 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   simplePipe(profile: KernelShape, spine: KernelShape): KernelShape {
+    // If profile is a wire, convert to face first
+    const profileHandle = profile as BrepkitHandle;
+    const faceId =
+      profileHandle.type === 'wire'
+        ? this.bk.makeFaceFromWire(profileHandle.id)
+        : unwrap(profile, 'face');
+
     const spineHandle = spine as BrepkitHandle;
 
     if (spineHandle.type === 'wire') {
       const edges = this.iterShapes(spine, 'edge');
       const edgeIds = edges.map((e) => unwrap(e, 'edge'));
-      const id = this.bk.sweepAlongEdges(unwrap(profile, 'face'), edgeIds);
+      const id = this.bk.sweepAlongEdges(faceId, edgeIds);
       return solidHandle(id);
     }
 
@@ -1003,7 +1046,7 @@ export class BrepkitAdapter implements KernelAdapter {
       throw new Error('brepkit: pipe spine must be an edge or wire');
     }
     const id = this.bk.pipe(
-      unwrap(profile, 'face'),
+      faceId,
       nurbsData.degree,
       nurbsData.knots,
       nurbsData.controlPoints,
@@ -1884,7 +1927,8 @@ export class BrepkitAdapter implements KernelAdapter {
     shape: KernelShape,
     param: number
   ): { point: [number, number, number]; tangent: [number, number, number] } {
-    const result: number[] = this.bk.evaluateEdgeCurveD1(unwrap(shape, 'edge'), param);
+    const edgeId = this.unwrapEdgeOrFirstOfWire(shape);
+    const result: number[] = this.bk.evaluateEdgeCurveD1(edgeId, param);
     return {
       point: [result[0]!, result[1]!, result[2]!],
       tangent: [result[3]!, result[4]!, result[5]!],
@@ -1892,16 +1936,31 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   curveParameters(shape: KernelShape): [number, number] {
-    const params: number[] = this.bk.getEdgeCurveParameters(unwrap(shape, 'edge'));
+    const edgeId = this.unwrapEdgeOrFirstOfWire(shape);
+    const params: number[] = this.bk.getEdgeCurveParameters(edgeId);
     return [params[0]!, params[1]!];
   }
 
   curvePointAtParam(shape: KernelShape, param: number): [number, number, number] {
-    const p: number[] = this.bk.evaluateEdgeCurve(unwrap(shape, 'edge'), param);
+    const edgeId = this.unwrapEdgeOrFirstOfWire(shape);
+    const p: number[] = this.bk.evaluateEdgeCurve(edgeId, param);
     return [p[0]!, p[1]!, p[2]!];
   }
 
   curveIsClosed(shape: KernelShape): boolean {
+    // For wires, check if the first vertex of the first edge matches the
+    // last vertex of the last edge
+    const h = shape as BrepkitHandle;
+    if (h.type === 'wire') {
+      const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
+      if (edgeIds.length === 0) return false;
+      const firstVerts: number[] = this.bk.getEdgeVertices(edgeIds[0]!);
+      const lastVerts: number[] = this.bk.getEdgeVertices(edgeIds[edgeIds.length - 1]!);
+      const dx = firstVerts[0]! - lastVerts[3]!;
+      const dy = firstVerts[1]! - lastVerts[4]!;
+      const dz = firstVerts[2]! - lastVerts[5]!;
+      return Math.sqrt(dx * dx + dy * dy + dz * dz) < 1e-7;
+    }
     // Check if edge start == end vertex
     const verts: number[] = this.bk.getEdgeVertices(unwrap(shape, 'edge'));
     const dx = verts[0]! - verts[3]!;
@@ -2207,28 +2266,39 @@ export class BrepkitAdapter implements KernelAdapter {
   sweepPipeShell(
     profile: KernelShape,
     spine: KernelShape,
-    _options?: Record<string, unknown>
+    options?: Record<string, unknown>
   ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
+    // If profile is a wire, convert to face first
+    const profileHandle = profile as BrepkitHandle;
+    const faceId =
+      profileHandle.type === 'wire'
+        ? this.bk.makeFaceFromWire(profileHandle.id)
+        : unwrap(profile, 'face');
+
+    const shellMode = !!(options && options['shellMode']);
+
     // Try smooth NURBS sweep if spine has NURBS data
     const nurbsData = this.extractNurbsFromEdge(spine);
     if (nurbsData && nurbsData.degree > 1) {
       try {
         const id = this.bk.sweepSmooth(
-          unwrap(profile, 'face'),
+          faceId,
           nurbsData.degree,
           nurbsData.knots,
           nurbsData.controlPoints,
           nurbsData.weights
         );
         const shape = solidHandle(id);
-        return { shape, firstShape: profile, lastShape: profile };
+        if (shellMode) return { shape, firstShape: profile, lastShape: profile };
+        return shape;
       } catch (e: unknown) {
         // Fall back to simplePipe for non-NURBS or failed cases
         console.warn('brepkit: sweepSmooth failed, falling back to simplePipe:', e);
       }
     }
     const shape = this.simplePipe(profile, spine);
-    return { shape, firstShape: profile, lastShape: profile };
+    if (shellMode) return { shape, firstShape: profile, lastShape: profile };
+    return shape;
   }
 
   loftAdvanced(
@@ -2243,7 +2313,13 @@ export class BrepkitAdapter implements KernelAdapter {
     // Use smooth NURBS surface fitting when not ruled
     if (!options?.ruled) {
       try {
-        const faceIds = wires.map((w) => unwrap(w));
+        const faceIds = wires.map((w) => {
+          const h = w as BrepkitHandle;
+          if (h.type === 'wire') {
+            return this.bk.makeFaceFromWire(h.id);
+          }
+          return unwrap(w, 'face');
+        });
         const id = this.bk.loftSmooth(faceIds);
         return solidHandle(id);
       } catch (e: unknown) {
@@ -2897,7 +2973,7 @@ export class BrepkitAdapter implements KernelAdapter {
     // Compute angles for start (p1), mid (pm), and end (p2)
     const a1 = Math.atan2(y1 - cy, x1 - cx);
     const am = Math.atan2(ym - cy, xm - cx);
-    let a2 = Math.atan2(y2 - cy, x2 - cx);
+    const a2 = Math.atan2(y2 - cy, x2 - cx);
 
     // Determine sense: CCW if mid-point angle is between start and end going CCW
     let da1m = am - a1;
@@ -2908,8 +2984,9 @@ export class BrepkitAdapter implements KernelAdapter {
 
     const circle = bk2d.makeCircle2d(cx, cy, radius, sense);
     if (!sense) {
-      // CW: swap start/end for trimming
-      a2 = a1;
+      // CW circle evaluates angle = -t, so parameter t = -angle.
+      // Map start/end angles to the CW parameter space.
+      return { __bk2d: 'trimmed', basis: circle, tStart: -a1, tEnd: -a2 } as Curve2dObj;
     }
     return { __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd: a2 } as Curve2dObj;
   }
@@ -3479,6 +3556,59 @@ export class BrepkitAdapter implements KernelAdapter {
       origin[2] + u * planeX[2] + v * y[2],
     ];
 
+    // Lines: exact 3D line edge (no NURBS interpolation needed)
+    if (c.__bk2d === 'line') {
+      const p1 = lift(c.ox, c.oy);
+      const p2 = lift(c.ox + c.dx * c.len, c.oy + c.dy * c.len);
+      return this.makeLineEdge(p1, p2);
+    }
+
+    // Circles/arcs: split into multiple arc edges so wires have ≥3 edges
+    // (required by brepkit's makeFaceFromWire for plane normal computation).
+    if (c.__bk2d === 'circle' || c.__bk2d === 'trimmed') {
+      const bounds = bk2d.curveBounds(c);
+      // Compute the actual angular span in radians (not normalized [0,1])
+      let angularSpan: number;
+      if (c.__bk2d === 'trimmed') {
+        angularSpan = Math.abs(c.tEnd - c.tStart);
+      } else {
+        angularSpan = 2 * Math.PI;
+      }
+      // Full/near-full circles → 4 arcs; large arcs → 2; small arcs → 1
+      const nSegments = angularSpan > Math.PI ? 4 : angularSpan > Math.PI / 2 ? 2 : 1;
+      const segmentSpan = (bounds.last - bounds.first) / nSegments;
+      const samplesPerSegment = Math.max(12, Math.ceil(angularSpan / nSegments / (Math.PI / 45)));
+
+      if (nSegments === 1) {
+        const points: [number, number, number][] = [];
+        for (let i = 0; i <= samplesPerSegment; i++) {
+          const t = bounds.first + ((bounds.last - bounds.first) * i) / samplesPerSegment;
+          const [u, v] = bk2d.evaluateCurve2d(c, t);
+          points.push(lift(u, v));
+        }
+        return this.interpolatePoints(points);
+      }
+
+      // Build multiple arc edges and return as a wire.
+      // makeWire can now flatten wire children into edges.
+      const edgeIds: number[] = [];
+      for (let seg = 0; seg < nSegments; seg++) {
+        const segStart = bounds.first + seg * segmentSpan;
+        const segEnd = bounds.first + (seg + 1) * segmentSpan;
+        const points: [number, number, number][] = [];
+        for (let i = 0; i <= samplesPerSegment; i++) {
+          const t = segStart + ((segEnd - segStart) * i) / samplesPerSegment;
+          const [u, v] = bk2d.evaluateCurve2d(c, t);
+          points.push(lift(u, v));
+        }
+        const coords = points.flatMap(([px, py, pz]) => [px, py, pz]);
+        const degree = Math.min(3, points.length - 1);
+        edgeIds.push(this.bk.interpolatePoints(coords, degree));
+      }
+      const wireId = this.bk.makeWire(edgeIds, false);
+      return wireHandle(wireId);
+    }
+
     // For Bezier/BSpline: lift control points exactly (preserves NURBS structure)
     if (c.__bk2d === 'bezier') {
       const points3d = c.poles.map(([u, v]) => lift(u, v));
@@ -3497,7 +3627,7 @@ export class BrepkitAdapter implements KernelAdapter {
       return edgeHandle(id);
     }
 
-    // For other curve types: sample densely and interpolate
+    // For unknown curve types: sample densely and interpolate
     const bounds = bk2d.curveBounds(c);
     const nSamples = 100;
     const points: [number, number, number][] = [];
@@ -3604,6 +3734,23 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   /** Copy a shape, then apply a 4×4 row-major matrix transform. */
+  /**
+   * Unwrap a shape to an edge ID. If the shape is a wire, extract its first edge.
+   * This mirrors OCCT's behavior where wire-level curve queries operate on
+   * a concatenated curve starting from the first edge.
+   */
+  private unwrapEdgeOrFirstOfWire(shape: KernelShape): number {
+    const h = shape as BrepkitHandle;
+    if (h.type === 'wire') {
+      const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
+      if (edgeIds.length === 0) {
+        throw new Error('brepkit: wire has no edges for curve query');
+      }
+      return edgeIds[0]!;
+    }
+    return unwrap(shape, 'edge');
+  }
+
   private applyMatrix(shape: KernelShape, matrix: number[]): KernelShape {
     const h = shape as BrepkitHandle;
     if (!isBrepkitHandle(shape)) {
