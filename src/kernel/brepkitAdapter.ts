@@ -147,7 +147,7 @@ function unwrapSolidsForExport(
   if (shape.type === 'solid') {
     return [shape.id];
   }
-  if (shape.type === 'compound' && bk.getCompoundSolids) {
+  if (shape.type === 'compound') {
     const ids = toArray(bk.getCompoundSolids(shape.id));
     if (ids.length > 0) return ids;
     throw new Error(`brepkit: ${methodName} received a compound with no solids.`);
@@ -1431,24 +1431,22 @@ export class BrepkitAdapter implements KernelAdapter {
       return { lines: new Float32Array(0), edgeGroups: [] };
     }
 
-    const edgeIds = toArray(this.bk.getSolidEdges(bkHandle.id));
-    const linePoints: number[] = [];
+    // Use native meshEdges — returns JsEdgeLines with positions/offsets/edgeCount
+    const edgeLines = this.bk.meshEdges(bkHandle.id, Math.max(tolerance, 0.001));
+    const positions = edgeLines.positions;
+    const offsets = edgeLines.offsets;
+    const edgeCount = edgeLines.edgeCount;
+
     const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
-
-    // Determine sample count from tolerance (more samples for tighter tolerance)
-    const numPoints = Math.max(2, Math.ceil(1.0 / Math.max(tolerance, 0.001)));
-
-    for (const edgeId of edgeIds) {
-      const start = linePoints.length / 3;
-      // tessellateEdge returns proper curve samples for NURBS edges
-      const pts: number[] = this.bk.tessellateEdge(edgeId, numPoints);
-      const pointCount = pts.length / 3;
-      for (const p of pts) linePoints.push(p);
-      edgeGroups.push({ start, count: pointCount, edgeHash: edgeId });
+    for (let i = 0; i < edgeCount; i++) {
+      const startIdx = offsets[i]!;
+      const endIdx = i + 1 < edgeCount ? offsets[i + 1]! : positions.length;
+      const pointCount = (endIdx - startIdx) / 3;
+      edgeGroups.push({ start: startIdx / 3, count: pointCount, edgeHash: i });
     }
 
     return {
-      lines: new Float32Array(linePoints),
+      lines: new Float32Array(positions),
       edgeGroups,
     };
   }
@@ -1667,18 +1665,12 @@ export class BrepkitAdapter implements KernelAdapter {
       case 'compound': {
         // compound → solid: direct children
         if (type === 'solid') {
-          if (typeof this.bk.getCompoundSolids === 'function') {
-            return toArray(this.bk.getCompoundSolids(h)).map(solidHandle);
-          }
-          return [];
+          return toArray(this.bk.getCompoundSolids(h)).map(solidHandle);
         }
         // compound → face/edge/vertex: recursive via solids
         if (type === 'face' || type === 'edge' || type === 'vertex') {
-          if (typeof this.bk.getCompoundSolids === 'function') {
-            const solids = toArray(this.bk.getCompoundSolids(h)).map(solidHandle);
-            return solids.flatMap((s) => this.iterShapes(s, type));
-          }
-          return [];
+          const solids = toArray(this.bk.getCompoundSolids(h)).map(solidHandle);
+          return solids.flatMap((s) => this.iterShapes(s, type));
         }
         return [];
       }
@@ -1702,28 +1694,22 @@ export class BrepkitAdapter implements KernelAdapter {
 
       case 'shell': {
         if (type === 'face') {
-          if (typeof this.bk.getShellFaces === 'function') {
-            return toArray(this.bk.getShellFaces(h)).map(faceHandle);
-          }
-          return [];
+          return toArray(this.bk.getShellFaces(h)).map(faceHandle);
         }
         if (type === 'edge' || type === 'vertex') {
-          if (typeof this.bk.getShellFaces === 'function') {
-            const faces = toArray(this.bk.getShellFaces(h)).map(faceHandle);
-            const seen = new Set<number>();
-            const results: KernelShape[] = [];
-            for (const face of faces) {
-              for (const child of this.iterShapes(face, type)) {
-                const childId = unwrap(child);
-                if (!seen.has(childId)) {
-                  seen.add(childId);
-                  results.push(child);
-                }
+          const faces = toArray(this.bk.getShellFaces(h)).map(faceHandle);
+          const seen = new Set<number>();
+          const results: KernelShape[] = [];
+          for (const face of faces) {
+            for (const child of this.iterShapes(face, type)) {
+              const childId = unwrap(child);
+              if (!seen.has(childId)) {
+                seen.add(childId);
+                results.push(child);
               }
             }
-            return results;
           }
-          return [];
+          return results;
         }
         return [];
       }
@@ -1743,35 +1729,29 @@ export class BrepkitAdapter implements KernelAdapter {
 
       case 'wire': {
         if (type === 'edge') {
-          if (typeof this.bk.getWireEdges === 'function') {
-            return toArray(this.bk.getWireEdges(h)).map(edgeHandle);
-          }
-          return [];
+          return toArray(this.bk.getWireEdges(h)).map(edgeHandle);
         }
         if (type === 'vertex') {
-          if (typeof this.bk.getWireEdges === 'function') {
-            const edgeIds = toArray(this.bk.getWireEdges(h));
-            // Deduplicate on coordinates — makeVertex allocates fresh arena IDs
-            // so ID-based dedup would never match shared corners
-            const seen = new Set<string>();
-            const results: KernelShape[] = [];
-            for (const eid of edgeIds) {
-              const verts = this.bk.getEdgeVertices(eid);
-              const coords = [
-                [verts[0]!, verts[1]!, verts[2]!],
-                [verts[3]!, verts[4]!, verts[5]!],
-              ] as const;
-              for (const [x, y, z] of coords) {
-                const key = `${x},${y},${z}`;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  results.push(vertexHandle(this.bk.makeVertex(x, y, z)));
-                }
+          const edgeIds = toArray(this.bk.getWireEdges(h));
+          // Deduplicate on coordinates — makeVertex allocates fresh arena IDs
+          // so ID-based dedup would never match shared corners
+          const seen = new Set<string>();
+          const results: KernelShape[] = [];
+          for (const eid of edgeIds) {
+            const verts = this.bk.getEdgeVertices(eid);
+            const coords = [
+              [verts[0]!, verts[1]!, verts[2]!],
+              [verts[3]!, verts[4]!, verts[5]!],
+            ] as const;
+            for (const [x, y, z] of coords) {
+              const key = `${x},${y},${z}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                results.push(vertexHandle(this.bk.makeVertex(x, y, z)));
               }
             }
-            return results;
           }
-          return [];
+          return results;
         }
         return [];
       }
@@ -1828,12 +1808,9 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   shapeOrientation(shape: KernelShape): ShapeOrientation {
-    if (typeof this.bk.getShapeOrientation === 'function') {
-      const h = unwrap(shape);
-      const orient = this.bk.getShapeOrientation(h);
-      return orient as ShapeOrientation;
-    }
-    return 'forward';
+    const h = unwrap(shape);
+    const orient = this.bk.getShapeOrientation(h);
+    return orient as ShapeOrientation;
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1990,11 +1967,18 @@ export class BrepkitAdapter implements KernelAdapter {
       );
     }
     try {
-      this.bk.healSolid(unwrap(shape));
-      return shape; // Healing modifies in-place; return same handle
+      // repairSolid is the comprehensive healer (0.4.3+), healSolid is the legacy in-place version
+      this.bk.repairSolid(unwrap(shape));
+      return shape;
     } catch (e: unknown) {
-      console.warn('brepkit: healSolid failed:', e);
-      return null;
+      // Fall back to basic healSolid if repairSolid fails
+      try {
+        this.bk.healSolid(unwrap(shape));
+        return shape;
+      } catch {
+        console.warn('brepkit: healSolid failed:', e);
+        return null;
+      }
     }
   }
 
@@ -2216,21 +2200,46 @@ export class BrepkitAdapter implements KernelAdapter {
     spine: KernelShape,
     _options?: Record<string, unknown>
   ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
-    // Delegate to simplePipe — brepkit's sweep_with_options supports
-    // contact modes but not all OCCT sweep options
+    // Try smooth NURBS sweep if spine has NURBS data
+    const nurbsData = this.extractNurbsFromEdge(spine);
+    if (nurbsData && nurbsData.degree > 1) {
+      try {
+        const id = this.bk.sweepSmooth(
+          unwrap(profile, 'face'),
+          nurbsData.degree,
+          nurbsData.knots,
+          nurbsData.controlPoints,
+          nurbsData.weights
+        );
+        const shape = solidHandle(id);
+        return { shape, firstShape: profile, lastShape: profile };
+      } catch {
+        // Fall back to simplePipe for non-NURBS or failed cases
+      }
+    }
     const shape = this.simplePipe(profile, spine);
     return { shape, firstShape: profile, lastShape: profile };
   }
 
   loftAdvanced(
     wires: KernelShape[],
-    _options?: {
+    options?: {
       solid?: boolean;
       ruled?: boolean;
       startVertex?: KernelShape;
       endVertex?: KernelShape;
     }
   ): KernelShape {
+    // Use smooth NURBS surface fitting when not ruled
+    if (!options?.ruled) {
+      try {
+        const faceIds = wires.map((w) => unwrap(w));
+        const id = this.bk.loftSmooth(faceIds);
+        return solidHandle(id);
+      } catch {
+        // Fall back to regular loft
+      }
+    }
     return this.loft(wires);
   }
 
@@ -2295,6 +2304,31 @@ export class BrepkitAdapter implements KernelAdapter {
       results.push(this.rotate(shape, angleStep * i, axis, center));
     }
     return results;
+  }
+
+  gridPattern(
+    shape: KernelShape,
+    directionX: [number, number, number],
+    directionY: [number, number, number],
+    spacingX: number,
+    spacingY: number,
+    countX: number,
+    countY: number
+  ): KernelShape {
+    const id = this.bk.gridPattern(
+      unwrapSolidOrThrow(shape, 'gridPattern'),
+      directionX[0],
+      directionX[1],
+      directionX[2],
+      directionY[0],
+      directionY[1],
+      directionY[2],
+      spacingX,
+      spacingY,
+      countX,
+      countY
+    );
+    return compoundHandle(id);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -2768,13 +2802,9 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   reverseShape(shape: KernelShape): KernelShape {
-    if (typeof this.bk.reverseShape === 'function') {
-      const h = shape as BrepkitHandle;
-      const newId = this.bk.reverseShape(h.id);
-      // Use handle() to preserve __brepkit marker
-      return handle(h.type, newId);
-    }
-    return shape;
+    const h = shape as BrepkitHandle;
+    const newId = this.bk.reverseShape(h.id);
+    return handle(h.type, newId);
   }
 
   // ═══════════════════════════════════════════════════════════════════════

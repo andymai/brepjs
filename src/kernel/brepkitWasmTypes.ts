@@ -29,6 +29,16 @@ export interface BrepkitMesh {
   packedBuffer(): Uint8Array;
 }
 
+/** Edge polylines returned by `meshEdges`. */
+export interface BrepkitEdgeLines {
+  /** Flattened vertex positions `[x, y, z, ...]`. */
+  readonly positions: number[];
+  /** Start index into positions for each edge polyline (already ×3). */
+  readonly offsets: number[];
+  /** Number of edges. */
+  readonly edgeCount: number;
+}
+
 // ── Main kernel interface ────────────────────────────────────────
 
 /**
@@ -153,6 +163,18 @@ export interface BrepkitKernel {
 
   /** Loft through an array of face profiles. Returns solid handle. */
   loft(faceIds: number[]): number;
+
+  /** Loft with smooth NURBS surface fitting. Returns solid handle. */
+  loftSmooth(faceIds: number[]): number;
+
+  /** Sweep with smooth NURBS surface fitting along a path. Returns solid handle. */
+  sweepSmooth(
+    face: number,
+    pathDegree: number,
+    pathKnots: number[],
+    pathControlPoints: number[],
+    pathWeights: number[]
+  ): number;
 
   /** Pipe sweep along a NURBS path. Returns solid handle. */
   pipe(
@@ -283,6 +305,21 @@ export interface BrepkitKernel {
 
   /** Circular pattern around axis. Returns compound handle. */
   circularPattern(solid: number, ax: number, ay: number, az: number, count: number): number;
+
+  /** 2D grid pattern. Returns compound handle. */
+  gridPattern(
+    solid: number,
+    dirXx: number,
+    dirXy: number,
+    dirXz: number,
+    dirYx: number,
+    dirYy: number,
+    dirYz: number,
+    spacingX: number,
+    spacingY: number,
+    countX: number,
+    countY: number
+  ): number;
 
   // ── Sewing / Fill ──────────────────────────────────────────────
 
@@ -440,6 +477,9 @@ export interface BrepkitKernel {
   /** Fix face orientations for consistent normals. Returns fix count. */
   fixFaceOrientations(solid: number): number;
 
+  /** Repair a solid (comprehensive healing). Returns error count after repair. */
+  repairSolid(solid: number): number;
+
   // ── Tessellation ───────────────────────────────────────────────
 
   /** Tessellate a face into a triangle mesh. */
@@ -450,6 +490,9 @@ export interface BrepkitKernel {
 
   /** Tessellate an edge into polyline points. Returns flat `[x,y,z,...]`. */
   tessellateEdge(edge: number, numPoints: number): number[];
+
+  /** Sample all edges of a solid into polylines. Returns JsEdgeLines. */
+  meshEdges(solid: number, deflection: number): BrepkitEdgeLines;
 
   /** Convex hull from flat coords. Returns solid handle. */
   convexHull(coords: number[]): number;
@@ -640,26 +683,30 @@ export interface BrepkitKernel {
   /** Execute a batch of operations from JSON. Returns JSON result. */
   executeBatch(json: string): string;
 
+  // ── Topology queries (promoted from optional) ─────────────────
+
+  /** Get solids within a compound. */
+  getCompoundSolids(compound: number): Uint32Array;
+
+  /** Get faces of a shell. */
+  getShellFaces(shell: number): Uint32Array;
+
+  /** Get edges of a wire. */
+  getWireEdges(wire: number): Uint32Array;
+
+  /** Get shape orientation flag. */
+  getShapeOrientation(id: number): string;
+
+  /** Reverse shape orientation. */
+  reverseShape(id: number): number;
+
+  /** Get edge start/end vertex arena handles. */
+  getEdgeVertexHandles(edge: number): Uint32Array;
+
   // ── Not yet exposed (future PRs) ──────────────────────────────
-  // These are planned for Themes A, C, G, F
-
-  /** Get solids within a compound. (Theme A) */
-  getCompoundSolids?(compound: number): Uint32Array;
-
-  /** Get faces of a shell. (Theme A) */
-  getShellFaces?(shell: number): Uint32Array;
-
-  /** Get edges of a wire. (Theme A) */
-  getWireEdges?(wire: number): Uint32Array;
 
   /** Classify a point on a face (trim-aware). (Theme G) */
   classifyPointOnFace?(face: number, u: number, v: number, tolerance: number): number;
-
-  /** Get shape orientation flag. (Theme G) */
-  getShapeOrientation?(id: number): string;
-
-  /** Reverse shape orientation. (Theme G) */
-  reverseShape?(id: number): number;
 
   /** Distance between two arbitrary shapes. (Theme G) */
   shapeToShapeDistance?(id1: number, id2: number): number[];

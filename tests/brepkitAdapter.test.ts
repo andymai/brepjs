@@ -145,6 +145,23 @@ function createMockBrepKernel() {
       return pts;
     }),
     isEdgeForwardInWire: vi.fn(() => true),
+
+    // Promoted-to-required methods (brepkit-wasm 0.4.3)
+    getCompoundSolids: vi.fn(() => []),
+    getShellFaces: vi.fn(() => []),
+    getWireEdges: vi.fn((_wire: number) => [200, 201]),
+    getShapeOrientation: vi.fn(() => 'forward'),
+    reverseShape: vi.fn((_id: number) => allocId()),
+    getEdgeVertexHandles: vi.fn(() => new Uint32Array([300, 301])),
+    repairSolid: vi.fn(() => 0),
+    gridPattern: vi.fn(() => allocId()),
+    loftSmooth: vi.fn(() => allocId()),
+    sweepSmooth: vi.fn(() => allocId()),
+    meshEdges: vi.fn((_solid: number, _deflection: number) => ({
+      positions: [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+      offsets: [0, 6],
+      edgeCount: 2,
+    })),
   };
 }
 
@@ -1010,33 +1027,28 @@ describe('BrepkitAdapter', () => {
     });
   });
 
-  describe('curved edge tessellation (Phase 15)', () => {
-    it('meshEdges uses tessellateEdge for proper curve sampling', () => {
+  describe('native meshEdges (0.4.3)', () => {
+    it('meshEdges delegates to native WASM meshEdges', () => {
       const mock = createMockBrepKernel();
       const adapter = new BrepkitAdapter(mock);
       const box = adapter.makeBox(1, 1, 1);
       const result = adapter.meshEdges(box, 0.1, 0.5);
 
-      // Should call tessellateEdge for each edge (not just getEdgeVertices)
-      expect(mock.tessellateEdge).toHaveBeenCalled();
+      // Should call native meshEdges (not tessellateEdge)
+      expect(mock.meshEdges).toHaveBeenCalled();
       expect(result.lines.length).toBeGreaterThan(0);
       expect(result.edgeGroups.length).toBe(2); // mock returns 2 edges
     });
 
-    it('meshEdges samples more points for tighter tolerance', () => {
+    it('meshEdges passes tolerance to native method', () => {
       const mock = createMockBrepKernel();
       const adapter = new BrepkitAdapter(mock);
       const box = adapter.makeBox(1, 1, 1);
 
-      adapter.meshEdges(box, 0.01, 0.5);
-      const callArgs1 = mock.tessellateEdge.mock.calls[0];
+      adapter.meshEdges(box, 0.05, 0.5);
 
-      mock.tessellateEdge.mockClear();
-      adapter.meshEdges(box, 0.1, 0.5);
-      const callArgs2 = mock.tessellateEdge.mock.calls[0];
-
-      // Tighter tolerance (0.01) should request more points than loose (0.1)
-      expect(callArgs1[1]).toBeGreaterThan(callArgs2[1]);
+      // Should pass deflection to native meshEdges
+      expect(mock.meshEdges).toHaveBeenCalledWith(expect.any(Number), 0.05);
     });
   });
 

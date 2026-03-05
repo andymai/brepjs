@@ -1,5 +1,5 @@
 /**
- * Pattern operations — linear and circular array replication.
+ * Pattern operations — linear, circular, and grid array replication.
  * Composes translate/rotate transforms with boolean fuse.
  */
 
@@ -83,4 +83,59 @@ export function circularPattern(
   // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
   // expensive intersection calculations (default unless caller overrides)
   return fuseAll(copies, { optimisation: 'sameFace', ...options });
+}
+
+/**
+ * Create a 2D grid pattern of a shape along two directions.
+ *
+ * @param shape - The shape to replicate
+ * @param directionX - First direction vector for the grid
+ * @param directionY - Second direction vector for the grid
+ * @param countX - Number of copies along directionX
+ * @param countY - Number of copies along directionY
+ * @param spacingX - Distance between copies along directionX
+ * @param spacingY - Distance between copies along directionY
+ * @param options - Boolean options for the fuse operation (used in fallback path)
+ * @returns Compound shape containing all copies, or fused result
+ */
+export function gridPattern(
+  shape: Shape3D,
+  directionX: Vec3,
+  directionY: Vec3,
+  countX: number,
+  countY: number,
+  spacingX: number,
+  spacingY: number,
+  options?: BooleanOptions
+): Result<Shape3D> {
+  if (countX < 1 || countY < 1)
+    return err(validationError('PATTERN_INVALID_COUNT', 'Grid pattern counts must be at least 1'));
+  if (countX === 1 && countY === 1) return ok(shape);
+  if (vecIsZero(directionX))
+    return err(validationError('PATTERN_ZERO_DIRECTION', 'Grid directionX cannot be zero'));
+  if (vecIsZero(directionY))
+    return err(validationError('PATTERN_ZERO_DIRECTION', 'Grid directionY cannot be zero'));
+
+  const kernel = getKernel();
+  const dirX = vecNormalize(directionX);
+  const dirY = vecNormalize(directionY);
+
+  // Use native gridPattern if available (brepkit), otherwise fall back to nested linearPattern
+  if (typeof kernel.gridPattern === 'function') {
+    const compound = kernel.gridPattern(
+      shape.wrapped,
+      [...dirX],
+      [...dirY],
+      spacingX,
+      spacingY,
+      countX,
+      countY
+    );
+    return ok(castShape(compound) as Shape3D);
+  }
+
+  // Fallback: nested linearPattern
+  const rowResult = linearPattern(shape, directionX, countX, spacingX, options);
+  if (!rowResult.ok) return rowResult;
+  return linearPattern(rowResult.value, directionY, countY, spacingY, options);
 }

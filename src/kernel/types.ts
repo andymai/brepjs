@@ -625,6 +625,16 @@ export interface KernelAdapter extends Kernel2DCapability {
     angleStep: number,
     count: number
   ): KernelShape[];
+  /** Generate a 2D grid pattern (brepkit-native). Returns a compound. */
+  gridPattern?(
+    shape: KernelShape,
+    directionX: [number, number, number],
+    directionY: [number, number, number],
+    spacingX: number,
+    spacingY: number,
+    countX: number,
+    countY: number
+  ): KernelShape;
 
   // --- Surface construction ---
   /** Build a non-planar face by filling a wire's boundary. */

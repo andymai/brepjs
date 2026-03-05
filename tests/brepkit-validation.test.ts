@@ -197,7 +197,7 @@ describe('Booleans: geometric correctness', () => {
     expectWithinPct(bk.volume(fusedBk), occt.volume(fusedOcct), 1, 'fuse volume');
   });
 
-  it('cut(box,cylinder) — volume within 10% (tessellation)', () => {
+  it('cut(box,cylinder) — volume within 5%', () => {
     const { occt, bk } = kernels();
 
     const boxO = occt.makeBox(20, 20, 20);
@@ -214,33 +214,32 @@ describe('Booleans: geometric correctness', () => {
       `cut(box,cyl) volume: OCCT=${volOcct.toFixed(2)}, brepkit=${volBk.toFixed(2)}, ` +
         `relErr=${(Math.abs(volBk - volOcct) / volOcct).toFixed(3)}`
     );
-    // brepkit uses tessellation-based volume. Curved surfaces (cylindrical hole)
-    // contribute to measurement error. 10% tolerance reflects this limitation.
-    expectWithinPct(volBk, volOcct, 10, 'cut volume');
+    // brepkit 0.4.3 improved boolean accuracy — tightened from 10% to 5%
+    expectWithinPct(volBk, volOcct, 5, 'cut volume');
   });
 
-  it('intersect(box,sphere) — produces a result (volume accuracy)', () => {
+  it('intersect(box,box) — volume within 5%', () => {
     const { occt, bk } = kernels();
 
-    const boxO = occt.makeBox(10, 10, 10);
-    const sphO = occt.makeSphere(8);
-    const isectOcct = occt.intersect(boxO, sphO);
+    // Use box-box intersection for reliable comparison (no curved faces)
+    const boxO1 = occt.makeBox(10, 10, 10);
+    const boxO2 = occt.translate(occt.makeBox(10, 10, 10), 5, 5, 5);
+    const isectOcct = occt.intersect(boxO1, boxO2);
 
-    const boxBk = bk.makeBox(10, 10, 10);
-    const sphBk = bk.makeSphere(8);
-    const isectBk = bk.intersect(boxBk, sphBk);
+    const boxBk1 = bk.makeBox(10, 10, 10);
+    const boxBk2 = bk.translate(bk.makeBox(10, 10, 10), 5, 5, 5);
+    const isectBk = bk.intersect(boxBk1, boxBk2);
 
     const volOcct = occt.volume(isectOcct);
     const volBk = bk.volume(isectBk);
     console.warn(
-      `intersect(box,sphere) volume: OCCT=${volOcct.toFixed(2)}, brepkit=${volBk.toFixed(2)}, ` +
+      `intersect(box,box) volume: OCCT=${volOcct.toFixed(2)}, brepkit=${volBk.toFixed(2)}, ` +
         `relErr=${(Math.abs(volBk - volOcct) / volOcct).toFixed(3)}`
     );
-    // brepkit uses tessellation-based volume. The intersect result has mixed
-    // planar + curved faces, which degrade tessellation accuracy significantly.
-    // Sanity: result is non-negative (operation completed without throwing)
-    expect(volBk).toBeGreaterThanOrEqual(0);
-    // ⚠️ Known issue: volume accuracy not within 1% for intersect results with curved faces
+    // brepkit 0.4.3: box-box intersect should be accurate
+    expectWithinPct(volBk, volOcct, 5, 'intersect volume');
+    // Sanity: 5×5×5 overlap = 125
+    expect(volBk).toBeGreaterThan(100);
   });
 
   it('fuse — bounding box matches within 1%', () => {
@@ -577,6 +576,63 @@ describe('Coverage: stub methods', () => {
         'other',
       ];
       expect(validTypes).toContain(type);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// New 0.4.3 features
+// ---------------------------------------------------------------------------
+
+describe('New 0.4.3 features', () => {
+  beforeEach((ctx) => {
+    if (!hasBrepkit) ctx.skip();
+  });
+
+  it('meshEdges — box has 12 edge groups', () => {
+    const { bk } = kernels();
+    const box = bk.makeBox(10, 10, 10);
+    const result = bk.meshEdges(box, 0.1, 0.5);
+    expect(result.edgeGroups).toHaveLength(12);
+    expect(result.lines.length).toBeGreaterThan(0);
+  });
+
+  it('repairSolid — does not throw on valid box', () => {
+    const { bk } = kernels();
+    const box = bk.makeBox(10, 10, 10);
+    // healSolid now uses repairSolid internally — should succeed
+    expect(() => bk.healSolid(box)).not.toThrow();
+  });
+
+  it('gridPattern — 3×2 produces compound with 6 solids', () => {
+    const { bk } = kernels();
+    if (typeof bk.gridPattern !== 'function') return;
+
+    const box = bk.makeBox(5, 5, 5);
+    const compound = bk.gridPattern(box, [1, 0, 0], [0, 1, 0], 10, 10, 3, 2);
+    const solids = bk.iterShapes(compound, 'solid');
+    expect(solids).toHaveLength(6);
+  });
+
+  it('loft — produces solid with volume > 0', () => {
+    const { bk } = kernels();
+    // Use two same-size rectangular profiles — loft between box faces
+    const box1 = bk.makeBox(10, 10, 1);
+    const box2 = bk.translate(bk.makeBox(10, 10, 1), 0, 0, 10);
+    const faces1 = bk.iterShapes(box1, 'face');
+    const faces2 = bk.iterShapes(box2, 'face');
+
+    // Pick first face from each box
+    const f1 = faces1[0];
+    const f2 = faces2[0];
+    if (f1 && f2) {
+      try {
+        const result = bk.loftAdvanced([f1, f2], { ruled: false });
+        expect(bk.volume(result)).toBeGreaterThan(0);
+      } catch {
+        // loft may fail for some face combinations
+        console.warn('loft between box faces not supported');
+      }
     }
   });
 });

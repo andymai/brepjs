@@ -20,7 +20,7 @@ export {
 
 // ── Patterns ──
 
-export { linearPattern, circularPattern } from './operations/patternFns.js';
+export { linearPattern, circularPattern, gridPattern } from './operations/patternFns.js';
 
 // ── Assembly ──
 
