@@ -291,13 +291,18 @@ describe('5. Boolean pipeline', () => {
 
   it('fuseAll multiple solids', () => {
     const result = bk(() => {
-      const solids = [0, 10, 20].map(
-        () => drawRectangle(10, 10).sketchOnPlane('XY').extrude(5) as Shape3D
+      const solids = [0, 5, 10].map(
+        (dx) =>
+          translate(drawRectangle(10, 10).sketchOnPlane('XY').extrude(5) as AnyShape, [
+            dx,
+            0,
+            0,
+          ]) as Shape3D
       );
       return unwrap(fuseAll(solids));
     });
     const s = bk(() => boundsSize(getBounds(result as AnyShape)));
-    expect(s.width).toBeGreaterThan(0);
+    expect(s.width).toBeCloseTo(20, 0); // 3 boxes offset by 5 each: 0..10 + 5..15 + 10..20
   });
 
   it('cut (box from box)', () => {

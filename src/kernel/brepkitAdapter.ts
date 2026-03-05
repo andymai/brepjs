@@ -3733,7 +3733,6 @@ export class BrepkitAdapter implements KernelAdapter {
   // Private helpers
   // ═══════════════════════════════════════════════════════════════════════
 
-  /** Copy a shape, then apply a 4×4 row-major matrix transform. */
   /**
    * Unwrap a shape to an edge ID. If the shape is a wire, extract its first edge.
    * This mirrors OCCT's behavior where wire-level curve queries operate on
