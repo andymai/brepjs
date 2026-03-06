@@ -3540,9 +3540,11 @@ export class BrepkitAdapter implements KernelAdapter {
     }
     // Convert B-spline to cubic Bezier(s) via Hermite interpolation.
     // For multi-span B-splines, split at internal knots.
-    const bounds = bk2d.curveBounds(c);
-    const first = bounds.first;
-    const last = bounds.last;
+    // Use the original (possibly trimmed) curve bounds, not the basis bounds,
+    // so only Bezier segments within the trim range are emitted.
+    const trimBounds = bk2d.curveBounds(this.c2d(curve));
+    const first = trimBounds.first;
+    const last = trimBounds.last;
     // Collect unique internal knots
     const internalKnots: number[] = [];
     for (const k of c.knots) {
