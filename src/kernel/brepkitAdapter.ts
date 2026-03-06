@@ -1217,32 +1217,32 @@ export class BrepkitAdapter implements KernelAdapter {
         deleted: number[];
       };
     };
+    const evo = parsed.evolution;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime guard for external WASM JSON
+    if (!evo || typeof evo.modified !== 'object' || typeof evo.generated !== 'object') {
+      throw new Error('brepkit: invalid evolution JSON structure');
+    }
     const resultShape = solidHandle(parsed.solid);
-    const modified = new Map<number, number[]>();
-    const generated = new Map<number, number[]>();
-    const deleted = new Set<number>();
 
-    for (const [inputId, outputIds] of Object.entries(parsed.evolution.modified)) {
-      const inputHash = Number(inputId) % hashUpperBound;
-      const outputHashes = outputIds.map((id) => id % hashUpperBound);
-      const existing = modified.get(inputHash);
-      if (existing) {
-        existing.push(...outputHashes);
-      } else {
-        modified.set(inputHash, outputHashes);
+    const collectHashes = (entries: Record<string, number[]>): Map<number, number[]> => {
+      const map = new Map<number, number[]>();
+      for (const [inputId, outputIds] of Object.entries(entries)) {
+        const inputHash = Number(inputId) % hashUpperBound;
+        const outputHashes = outputIds.map((id) => id % hashUpperBound);
+        const existing = map.get(inputHash);
+        if (existing) {
+          existing.push(...outputHashes);
+        } else {
+          map.set(inputHash, outputHashes);
+        }
       }
-    }
-    for (const [inputId, outputIds] of Object.entries(parsed.evolution.generated)) {
-      const inputHash = Number(inputId) % hashUpperBound;
-      const outputHashes = outputIds.map((id) => id % hashUpperBound);
-      const existing = generated.get(inputHash);
-      if (existing) {
-        existing.push(...outputHashes);
-      } else {
-        generated.set(inputHash, outputHashes);
-      }
-    }
-    for (const id of parsed.evolution.deleted) {
+      return map;
+    };
+
+    const modified = collectHashes(evo.modified);
+    const generated = collectHashes(evo.generated);
+    const deleted = new Set<number>();
+    for (const id of evo.deleted) {
       deleted.add(id % hashUpperBound);
     }
 
@@ -1386,6 +1386,28 @@ export class BrepkitAdapter implements KernelAdapter {
     );
   }
 
+  private booleanWithHistoryImpl(
+    shape: KernelShape,
+    tool: KernelShape,
+    inputFaceHashes: number[],
+    hashUpperBound: number,
+    options: BooleanOptions | undefined,
+    nativeFn: (a: number, b: number) => string,
+    fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
+    label: string
+  ): OperationResult {
+    if (inputFaceHashes.length > 0) {
+      const json = nativeFn(unwrapSolidOrThrow(shape, label), unwrapSolidOrThrow(tool, label));
+      return this.parseNativeEvolution(json, hashUpperBound);
+    }
+    return this.buildEvolution(
+      fallbackFn(shape, tool, options),
+      inputFaceHashes,
+      hashUpperBound,
+      false
+    );
+  }
+
   fuseWithHistory(
     shape: KernelShape,
     tool: KernelShape,
@@ -1393,18 +1415,15 @@ export class BrepkitAdapter implements KernelAdapter {
     hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
-    if (inputFaceHashes.length > 0) {
-      const json = this.bk.fuseWithEvolution(
-        unwrapSolidOrThrow(shape, 'fuseWithHistory'),
-        unwrapSolidOrThrow(tool, 'fuseWithHistory')
-      );
-      return this.parseNativeEvolution(json, hashUpperBound);
-    }
-    return this.buildEvolution(
-      this.fuse(shape, tool, options),
+    return this.booleanWithHistoryImpl(
+      shape,
+      tool,
       inputFaceHashes,
       hashUpperBound,
-      false
+      options,
+      (a, b) => this.bk.fuseWithEvolution(a, b),
+      (s, t, o) => this.fuse(s, t, o),
+      'fuseWithHistory'
     );
   }
 
@@ -1415,18 +1434,15 @@ export class BrepkitAdapter implements KernelAdapter {
     hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
-    if (inputFaceHashes.length > 0) {
-      const json = this.bk.cutWithEvolution(
-        unwrapSolidOrThrow(shape, 'cutWithHistory'),
-        unwrapSolidOrThrow(tool, 'cutWithHistory')
-      );
-      return this.parseNativeEvolution(json, hashUpperBound);
-    }
-    return this.buildEvolution(
-      this.cut(shape, tool, options),
+    return this.booleanWithHistoryImpl(
+      shape,
+      tool,
       inputFaceHashes,
       hashUpperBound,
-      false
+      options,
+      (a, b) => this.bk.cutWithEvolution(a, b),
+      (s, t, o) => this.cut(s, t, o),
+      'cutWithHistory'
     );
   }
 
@@ -1437,18 +1453,15 @@ export class BrepkitAdapter implements KernelAdapter {
     hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
-    if (inputFaceHashes.length > 0) {
-      const json = this.bk.intersectWithEvolution(
-        unwrapSolidOrThrow(shape, 'intersectWithHistory'),
-        unwrapSolidOrThrow(tool, 'intersectWithHistory')
-      );
-      return this.parseNativeEvolution(json, hashUpperBound);
-    }
-    return this.buildEvolution(
-      this.intersect(shape, tool, options),
+    return this.booleanWithHistoryImpl(
+      shape,
+      tool,
       inputFaceHashes,
       hashUpperBound,
-      false
+      options,
+      (a, b) => this.bk.intersectWithEvolution(a, b),
+      (s, t, o) => this.intersect(s, t, o),
+      'intersectWithHistory'
     );
   }
 
@@ -2177,8 +2190,8 @@ export class BrepkitAdapter implements KernelAdapter {
     try {
       const id = this.bk.weldShellsAndFaces(new Uint32Array(faceIds), tol);
       return solidHandle(id);
-    } catch {
-      // Fall back to legacy sewFaces
+    } catch (e: unknown) {
+      console.warn('brepkit: weldShellsAndFaces failed, falling back to sewFaces:', e);
     }
     const id = this.bk.sewFaces(faceIds, tol);
     return solidHandle(id);
@@ -2745,6 +2758,11 @@ export class BrepkitAdapter implements KernelAdapter {
     const fid = unwrap(face, 'face');
     // Native API: [k1, k2, d1x, d1y, d1z, d2x, d2y, d2z]
     const data: Float64Array = this.bk.measureCurvatureAtSurface(fid, u, v);
+    if (data.length < 8) {
+      throw new Error(
+        `brepkit: measureCurvatureAtSurface returned ${data.length} values, expected 8`
+      );
+    }
     const k1 = data[0]!;
     const k2 = data[1]!;
     const gaussian = k1 * k2;
