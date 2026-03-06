@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.5.0](https://github.com/andymai/brepjs/compare/brepjs-v9.4.1...brepjs-v9.5.0) (2026-03-06)
+
+
+### Features
+
+* **tests:** dual-kernel test matrix + brepkit-wasm 0.5.0 ([#384](https://github.com/andymai/brepjs/issues/384)) ([b9f5579](https://github.com/andymai/brepjs/commit/b9f5579e766d3eaae6ff5dcd06630311f0f8cc9c))
+
 ## [9.4.1](https://github.com/andymai/brepjs/compare/brepjs-v9.4.0...brepjs-v9.4.1) (2026-03-05)
 
 
