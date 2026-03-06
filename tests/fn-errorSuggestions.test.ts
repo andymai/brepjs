@@ -68,8 +68,8 @@ describe('Error suggestions', () => {
       try {
         shape(box(10, 10, 10)).fillet(-1);
         expect.fail('Should have thrown');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- need to access .suggestion on thrown error
       } catch (e: any) {
-        // eslint-disable-line @typescript-eslint/no-explicit-any
         expect(e.suggestion).toBeDefined();
         expect(e.suggestion).toContain('positive');
       }

@@ -11,6 +11,7 @@ import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten instance
 let _oc: any = null;
+let _bkInitialized = false;
 
 /**
  * Initialise whichever kernel `TEST_KERNEL` selects (default: occt).
@@ -21,13 +22,18 @@ export async function initKernel(): Promise<void> {
   const kernel = process.env['TEST_KERNEL'] ?? 'occt';
 
   if (kernel === 'brepkit') {
+    if (_bkInitialized) return;
+    _bkInitialized = true;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic WASM import
     const bk: any = await import('brepkit-wasm');
     if (typeof bk.default === 'function') await bk.default();
     const BrepKernel = bk.BrepKernel ?? bk.default?.BrepKernel;
+    if (!BrepKernel) throw new Error('brepkit-wasm: could not resolve BrepKernel constructor');
     registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
-  } else {
+  } else if (kernel === 'occt') {
     await initOCCT();
+  } else {
+    throw new Error(`Unknown TEST_KERNEL value: "${kernel}". Expected "occt" or "brepkit".`);
   }
 }
 
