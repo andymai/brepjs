@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.6.0](https://github.com/andymai/brepjs/compare/brepjs-v9.5.1...brepjs-v9.6.0) (2026-03-06)
+
+
+### Features
+
+* **kernel:** integrate brepkit-wasm 0.5.2 — 89 remaining failures ([#389](https://github.com/andymai/brepjs/issues/389)) ([a93e336](https://github.com/andymai/brepjs/commit/a93e3360c1a56c3e05595b5402d389e332d61097))
+
 ## [9.5.1](https://github.com/andymai/brepjs/compare/brepjs-v9.5.0...brepjs-v9.5.1) (2026-03-06)
 
 
