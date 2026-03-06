@@ -1397,6 +1397,8 @@ export class BrepkitAdapter implements KernelAdapter {
     label: string
   ): OperationResult {
     if (inputFaceHashes.length > 0) {
+      // Note: native *WithEvolution APIs do not accept BooleanOptions (e.g. fuzzyValue).
+      // Options are silently ignored when the native evolution path is used.
       const json = nativeFn(unwrapSolidOrThrow(shape, label), unwrapSolidOrThrow(tool, label));
       return this.parseNativeEvolution(json, hashUpperBound);
     }
@@ -2188,7 +2190,7 @@ export class BrepkitAdapter implements KernelAdapter {
     const tol = tolerance ?? 1e-7;
     // Try native weldShellsAndFaces first (better tolerance-based welding)
     try {
-      const id = this.bk.weldShellsAndFaces(new Uint32Array(faceIds), tol);
+      const id = this.bk.weldShellsAndFaces(faceIds, tol);
       return solidHandle(id);
     } catch (e: unknown) {
       console.warn('brepkit: weldShellsAndFaces failed, falling back to sewFaces:', e);
@@ -2491,20 +2493,21 @@ export class BrepkitAdapter implements KernelAdapter {
       tolerance?: number;
     }
   ): KernelShape {
-    // Convert wires to face handles for brepkit loft API
-    const faceIds = wires.map((w) => {
-      const h = w as BrepkitHandle;
-      if (h.type === 'wire') return this.bk.makeFaceFromWire(h.id);
-      return unwrap(w, 'face');
-    });
+    const buildFaceIds = (): number[] =>
+      wires.map((w) => {
+        const h = w as BrepkitHandle;
+        if (h.type === 'wire') return this.bk.makeFaceFromWire(h.id);
+        return unwrap(w, 'face');
+      });
 
     // Try the native loftWithOptions API which supports ruled, solid, tolerance
     try {
+      const faceIds = buildFaceIds();
       const opts: Record<string, unknown> = {};
       if (options?.ruled !== undefined) opts['ruled'] = options.ruled;
       if (options?.solid !== undefined) opts['solid'] = options.solid;
       if (options?.tolerance !== undefined) opts['tolerance'] = options.tolerance;
-      const id = this.bk.loftWithOptions(new Uint32Array(faceIds), JSON.stringify(opts));
+      const id = this.bk.loftWithOptions(faceIds, JSON.stringify(opts));
       return solidHandle(id);
     } catch {
       // Fall back to smooth/basic loft
@@ -2512,6 +2515,7 @@ export class BrepkitAdapter implements KernelAdapter {
 
     if (!options?.ruled) {
       try {
+        const faceIds = buildFaceIds();
         const id = this.bk.loftSmooth(faceIds);
         return solidHandle(id);
       } catch {
@@ -3960,7 +3964,7 @@ export class BrepkitAdapter implements KernelAdapter {
           );
         }
         const copy = this.bk.copyWire(h.id);
-        this.bk.transformWire(copy, new Float64Array(matrix));
+        this.bk.transformWire(copy, matrix);
         return wireHandle(copy);
       }
       case 'edge': {

@@ -177,7 +177,7 @@ export interface BrepkitKernel {
   loftSmooth(faceIds: number[]): number;
 
   /** Loft with configurable options (JSON string). Returns solid handle. */
-  loftWithOptions(faces: Uint32Array, options: string): number;
+  loftWithOptions(faces: number[], options: string): number;
 
   /** Thicken a face into a solid by offsetting along its normal. */
   thicken(face: number, thickness: number): number;
@@ -189,7 +189,7 @@ export interface BrepkitKernel {
   makeSolid(faceHandles: Uint32Array): number;
 
   /** Weld shells and faces into a solid. Returns solid handle. */
-  weldShellsAndFaces(faceHandles: Uint32Array, tolerance: number): number;
+  weldShellsAndFaces(faceHandles: number[], tolerance: number): number;
 
   /** Sweep with smooth NURBS surface fitting along a path. Returns solid handle. */
   sweepSmooth(
@@ -416,7 +416,7 @@ export interface BrepkitKernel {
   copyWire(wire: number): number;
 
   /** Transform a wire in place with a 4x4 matrix. */
-  transformWire(wire: number, matrix: Float64Array): void;
+  transformWire(wire: number, matrix: number[]): void;
 
   /** Measure curvature at parameter t on an edge. Returns [kappa, tx, ty, tz, nx, ny, nz, bx, by, bz]. */
   measureCurvatureAtEdge(edge: number, t: number): Float64Array;
