@@ -637,13 +637,12 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   makeEllipsoid(aLength: number, bLength: number, cLength: number): KernelShape {
-    // Build a sphere and scale non-uniformly
+    // brepkit 0.5.2 makeEllipsoid ignores radii — build via sphere + non-uniform scale
     const maxR = Math.max(aLength, bLength, cLength);
     const sphere = this.makeSphere(maxR);
     const scaleX = aLength / maxR;
     const scaleY = bLength / maxR;
     const scaleZ = cLength / maxR;
-    // Non-uniform scale via generalTransform
     return this.generalTransform(
       sphere,
       [scaleX, 0, 0, 0, scaleY, 0, 0, 0, scaleZ],
@@ -1110,11 +1109,10 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   thicken(shape: KernelShape, thickness: number): KernelShape {
-    // Thicken a face by extruding it along its normal
     const h = shape as BrepkitHandle;
     if (h.type === 'face') {
-      const normal = this.surfaceNormal(shape, 0, 0);
-      return this.extrude(shape, normal, thickness);
+      const id = this.bk.thicken(h.id, thickness);
+      return solidHandle(id);
     }
     throw new Error('brepkit: thicken() requires a face');
   }
@@ -1198,8 +1196,58 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // Operations with shape evolution tracking (stubs)
+  // Operations with shape evolution tracking
   // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Parse native brepkit evolution JSON and convert face IDs to hash-based
+   * evolution that the brepjs propagation system expects.
+   *
+   * The native API returns:
+   *   `{"solid": u32, "evolution": {"modified": {inputFaceId: [outputFaceIds]}, "generated": {}, "deleted": [faceIds]}}`
+   *
+   * We convert face IDs → hashes via `id % hashUpperBound`.
+   */
+  private parseNativeEvolution(json: string, hashUpperBound: number): OperationResult {
+    const parsed = JSON.parse(json) as {
+      solid: number;
+      evolution: {
+        modified: Record<string, number[]>;
+        generated: Record<string, number[]>;
+        deleted: number[];
+      };
+    };
+    const resultShape = solidHandle(parsed.solid);
+    const modified = new Map<number, number[]>();
+    const generated = new Map<number, number[]>();
+    const deleted = new Set<number>();
+
+    for (const [inputId, outputIds] of Object.entries(parsed.evolution.modified)) {
+      const inputHash = Number(inputId) % hashUpperBound;
+      const outputHashes = outputIds.map((id) => id % hashUpperBound);
+      const existing = modified.get(inputHash);
+      if (existing) {
+        existing.push(...outputHashes);
+      } else {
+        modified.set(inputHash, outputHashes);
+      }
+    }
+    for (const [inputId, outputIds] of Object.entries(parsed.evolution.generated)) {
+      const inputHash = Number(inputId) % hashUpperBound;
+      const outputHashes = outputIds.map((id) => id % hashUpperBound);
+      const existing = generated.get(inputHash);
+      if (existing) {
+        existing.push(...outputHashes);
+      } else {
+        generated.set(inputHash, outputHashes);
+      }
+    }
+    for (const id of parsed.evolution.deleted) {
+      deleted.add(id % hashUpperBound);
+    }
+
+    return { shape: resultShape, evolution: { modified, generated, deleted } };
+  }
 
   /**
    * Build a ShapeEvolution by comparing input face hashes to output face hashes.
@@ -1345,6 +1393,13 @@ export class BrepkitAdapter implements KernelAdapter {
     hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
+    if (inputFaceHashes.length > 0) {
+      const json = this.bk.fuseWithEvolution(
+        unwrapSolidOrThrow(shape, 'fuseWithHistory'),
+        unwrapSolidOrThrow(tool, 'fuseWithHistory')
+      );
+      return this.parseNativeEvolution(json, hashUpperBound);
+    }
     return this.buildEvolution(
       this.fuse(shape, tool, options),
       inputFaceHashes,
@@ -1360,6 +1415,13 @@ export class BrepkitAdapter implements KernelAdapter {
     hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
+    if (inputFaceHashes.length > 0) {
+      const json = this.bk.cutWithEvolution(
+        unwrapSolidOrThrow(shape, 'cutWithHistory'),
+        unwrapSolidOrThrow(tool, 'cutWithHistory')
+      );
+      return this.parseNativeEvolution(json, hashUpperBound);
+    }
     return this.buildEvolution(
       this.cut(shape, tool, options),
       inputFaceHashes,
@@ -1375,6 +1437,13 @@ export class BrepkitAdapter implements KernelAdapter {
     hashUpperBound: number,
     options?: BooleanOptions
   ): OperationResult {
+    if (inputFaceHashes.length > 0) {
+      const json = this.bk.intersectWithEvolution(
+        unwrapSolidOrThrow(shape, 'intersectWithHistory'),
+        unwrapSolidOrThrow(tool, 'intersectWithHistory')
+      );
+      return this.parseNativeEvolution(json, hashUpperBound);
+    }
     return this.buildEvolution(
       this.intersect(shape, tool, options),
       inputFaceHashes,
@@ -1621,14 +1690,8 @@ export class BrepkitAdapter implements KernelAdapter {
     if (h.type === 'face') {
       return this.bk.facePerimeter(unwrap(shape));
     }
-    // For wires, sum the lengths of all edges
     if (h.type === 'wire') {
-      const edges = this.iterShapes(shape, 'edge');
-      let total = 0;
-      for (const e of edges) {
-        total += this.bk.edgeLength(unwrap(e));
-      }
-      return total;
+      return this.bk.wireLength(h.id);
     }
     throw new Error('brepkit: length() requires an edge, wire, or face');
   }
@@ -2109,7 +2172,15 @@ export class BrepkitAdapter implements KernelAdapter {
 
   sew(shapes: KernelShape[], tolerance?: number): KernelShape {
     const faceIds = shapes.map((s) => unwrap(s, 'face'));
-    const id = this.bk.sewFaces(faceIds, tolerance ?? 1e-7);
+    const tol = tolerance ?? 1e-7;
+    // Try native weldShellsAndFaces first (better tolerance-based welding)
+    try {
+      const id = this.bk.weldShellsAndFaces(new Uint32Array(faceIds), tol);
+      return solidHandle(id);
+    } catch {
+      // Fall back to legacy sewFaces
+    }
+    const id = this.bk.sewFaces(faceIds, tol);
     return solidHandle(id);
   }
 
@@ -2404,23 +2475,34 @@ export class BrepkitAdapter implements KernelAdapter {
       ruled?: boolean;
       startVertex?: KernelShape;
       endVertex?: KernelShape;
+      tolerance?: number;
     }
   ): KernelShape {
-    // Use smooth NURBS surface fitting when not ruled
+    // Convert wires to face handles for brepkit loft API
+    const faceIds = wires.map((w) => {
+      const h = w as BrepkitHandle;
+      if (h.type === 'wire') return this.bk.makeFaceFromWire(h.id);
+      return unwrap(w, 'face');
+    });
+
+    // Try the native loftWithOptions API which supports ruled, solid, tolerance
+    try {
+      const opts: Record<string, unknown> = {};
+      if (options?.ruled !== undefined) opts['ruled'] = options.ruled;
+      if (options?.solid !== undefined) opts['solid'] = options.solid;
+      if (options?.tolerance !== undefined) opts['tolerance'] = options.tolerance;
+      const id = this.bk.loftWithOptions(new Uint32Array(faceIds), JSON.stringify(opts));
+      return solidHandle(id);
+    } catch {
+      // Fall back to smooth/basic loft
+    }
+
     if (!options?.ruled) {
       try {
-        const faceIds = wires.map((w) => {
-          const h = w as BrepkitHandle;
-          if (h.type === 'wire') {
-            return this.bk.makeFaceFromWire(h.id);
-          }
-          return unwrap(w, 'face');
-        });
         const id = this.bk.loftSmooth(faceIds);
         return solidHandle(id);
-      } catch (e: unknown) {
-        // Fall back to regular loft
-        console.warn('brepkit: loftSmooth failed, falling back to regular loft:', e);
+      } catch {
+        // Fall back to basic loft
       }
     }
     return this.loft(wires);
@@ -2660,84 +2742,20 @@ export class BrepkitAdapter implements KernelAdapter {
     maxDirection: [number, number, number];
     minDirection: [number, number, number];
   } {
-    // Numerical curvature via finite differences on surface
-    const h = 1e-5;
     const fid = unwrap(face, 'face');
-    const p00: number[] = this.bk.evaluateSurface(fid, u, v);
-    const pu: number[] = this.bk.evaluateSurface(fid, u + h, v);
-    const pv: number[] = this.bk.evaluateSurface(fid, u, v + h);
-    const puu: number[] = this.bk.evaluateSurface(fid, u + 2 * h, v);
-    const pvv: number[] = this.bk.evaluateSurface(fid, u, v + 2 * h);
-
-    // First fundamental form coefficients (E, F, G)
-    const du = [(pu[0]! - p00[0]!) / h, (pu[1]! - p00[1]!) / h, (pu[2]! - p00[2]!) / h];
-    const dv = [(pv[0]! - p00[0]!) / h, (pv[1]! - p00[1]!) / h, (pv[2]! - p00[2]!) / h];
-
-    // Normal
-    const n = [
-      du[1]! * dv[2]! - du[2]! * dv[1]!,
-      du[2]! * dv[0]! - du[0]! * dv[2]!,
-      du[0]! * dv[1]! - du[1]! * dv[0]!,
-    ];
-    const nLen = Math.sqrt(n[0]! ** 2 + n[1]! ** 2 + n[2]! ** 2);
-    if (nLen < 1e-12) {
-      return {
-        gaussian: 0,
-        mean: 0,
-        max: 0,
-        min: 0,
-        maxDirection: [1, 0, 0],
-        minDirection: [0, 1, 0],
-      };
-    }
-    n[0]! /= nLen;
-    n[1]! /= nLen;
-    n[2]! /= nLen;
-
-    // Second derivatives
-    const duu = [
-      (puu[0]! - 2 * pu[0]! + p00[0]!) / (h * h),
-      (puu[1]! - 2 * pu[1]! + p00[1]!) / (h * h),
-      (puu[2]! - 2 * pu[2]! + p00[2]!) / (h * h),
-    ];
-    const dvv = [
-      (pvv[0]! - 2 * pv[0]! + p00[0]!) / (h * h),
-      (pvv[1]! - 2 * pv[1]! + p00[1]!) / (h * h),
-      (pvv[2]! - 2 * pv[2]! + p00[2]!) / (h * h),
-    ];
-
-    // Mixed partial d²S/dudv via finite difference
-    const puv: number[] = this.bk.evaluateSurface(unwrap(face, 'face'), u + h, v + h);
-    const duv = [
-      (puv[0]! - pu[0]! - pv[0]! + p00[0]!) / (h * h),
-      (puv[1]! - pu[1]! - pv[1]! + p00[1]!) / (h * h),
-      (puv[2]! - pu[2]! - pv[2]! + p00[2]!) / (h * h),
-    ];
-
-    // First fundamental form: E, F, G
-    const E = du[0]! ** 2 + du[1]! ** 2 + du[2]! ** 2;
-    const F = du[0]! * dv[0]! + du[1]! * dv[1]! + du[2]! * dv[2]!;
-    const G = dv[0]! ** 2 + dv[1]! ** 2 + dv[2]! ** 2;
-
-    // Second fundamental form: L, M, N
-    const L = duu[0]! * n[0]! + duu[1]! * n[1]! + duu[2]! * n[2]!;
-    const M = duv[0]! * n[0]! + duv[1]! * n[1]! + duv[2]! * n[2]!;
-    const N = dvv[0]! * n[0]! + dvv[1]! * n[1]! + dvv[2]! * n[2]!;
-
-    const denom = Math.max(E * G - F * F, 1e-20);
-    const gaussian = (L * N - M * M) / denom;
-    const mean = (L * G - 2 * M * F + N * E) / (2 * denom);
-    const disc = Math.sqrt(Math.max(0, mean ** 2 - gaussian));
-    const k1 = mean + disc;
-    const k2 = mean - disc;
-
+    // Native API: [k1, k2, d1x, d1y, d1z, d2x, d2y, d2z]
+    const data: Float64Array = this.bk.measureCurvatureAtSurface(fid, u, v);
+    const k1 = data[0]!;
+    const k2 = data[1]!;
+    const gaussian = k1 * k2;
+    const mean = (k1 + k2) / 2;
     return {
       gaussian,
       mean,
       max: Math.max(k1, k2),
       min: Math.min(k1, k2),
-      maxDirection: du as [number, number, number],
-      minDirection: dv as [number, number, number],
+      maxDirection: [data[2]!, data[3]!, data[4]!],
+      minDirection: [data[5]!, data[6]!, data[7]!],
     };
   }
 
@@ -3924,7 +3942,7 @@ export class BrepkitAdapter implements KernelAdapter {
           );
         }
         const copy = this.bk.copyWire(h.id);
-        this.bk.transformWire(copy, matrix);
+        this.bk.transformWire(copy, new Float64Array(matrix));
         return wireHandle(copy);
       }
       case 'edge': {

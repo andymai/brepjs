@@ -132,6 +132,15 @@ export interface BrepkitKernel {
   /** Intersect two solids. Returns new solid handle. */
   intersect(a: number, b: number): number;
 
+  /** Fuse with evolution tracking. Returns JSON string. */
+  fuseWithEvolution(a: number, b: number): string;
+
+  /** Cut with evolution tracking. Returns JSON string. */
+  cutWithEvolution(a: number, b: number): string;
+
+  /** Intersect with evolution tracking. Returns JSON string. */
+  intersectWithEvolution(a: number, b: number): string;
+
   // ── Sweep / Loft / Extrude ─────────────────────────────────────
 
   /** Extrude a face along direction. Returns solid handle. */
@@ -166,6 +175,21 @@ export interface BrepkitKernel {
 
   /** Loft with smooth NURBS surface fitting. Returns solid handle. */
   loftSmooth(faceIds: number[]): number;
+
+  /** Loft with configurable options (JSON string). Returns solid handle. */
+  loftWithOptions(faces: Uint32Array, options: string): number;
+
+  /** Thicken a face into a solid by offsetting along its normal. */
+  thicken(face: number, thickness: number): number;
+
+  /** Create an ellipsoid primitive. Returns solid handle. */
+  makeEllipsoid(rx: number, ry: number, rz: number): number;
+
+  /** Build a solid from an array of face handles. Returns solid handle. */
+  makeSolid(faceHandles: Uint32Array): number;
+
+  /** Weld shells and faces into a solid. Returns solid handle. */
+  weldShellsAndFaces(faceHandles: Uint32Array, tolerance: number): number;
 
   /** Sweep with smooth NURBS surface fitting along a path. Returns solid handle. */
   sweepSmooth(
@@ -381,6 +405,24 @@ export interface BrepkitKernel {
 
   /** Check if an edge is forward in its parent wire. */
   isEdgeForwardInWire(edge: number, wire: number): boolean;
+
+  /** Check if a wire is closed. */
+  isWireClosed(wire: number): boolean;
+
+  /** Compute total arc-length of a wire. */
+  wireLength(wire: number): number;
+
+  /** Deep copy a wire. Returns new wire handle. */
+  copyWire(wire: number): number;
+
+  /** Transform a wire in place with a 4x4 matrix. */
+  transformWire(wire: number, matrix: Float64Array): void;
+
+  /** Measure curvature at parameter t on an edge. Returns [kappa, tx, ty, tz, nx, ny, nz, bx, by, bz]. */
+  measureCurvatureAtEdge(edge: number, t: number): Float64Array;
+
+  /** Measure principal curvatures at (u,v) on a face. Returns [k1, k2, d1x, d1y, d1z, d2x, d2y, d2z]. */
+  measureCurvatureAtSurface(face: number, u: number, v: number): Float64Array;
 
   // ── Geometry queries ───────────────────────────────────────────
 
@@ -627,17 +669,11 @@ export interface BrepkitKernel {
   /** Deep copy a face. Returns new face handle. */
   copyFace?(face: number): number;
 
-  /** Deep copy a wire. Returns new wire handle. */
-  copyWire?(wire: number): number;
-
   /** Transform an edge in-place. */
   transformEdge?(edge: number, matrix: number[]): void;
 
   /** Transform a face in-place. */
   transformFace?(face: number, matrix: number[]): void;
-
-  /** Transform a wire in-place. */
-  transformWire?(wire: number, matrix: number[]): void;
 
   // ── Sketch ─────────────────────────────────────────────────────
 
@@ -723,81 +759,8 @@ export interface BrepkitKernel {
   /** Reverse a 2D curve. (Theme F) */
   reverseCurve2d?(...args: number[]): number[];
 
-  // ── Evolution tracking (Theme C — 15 methods) ──────────────────
-
-  /** Fuse with evolution tracking. Returns `{ solid, evolution_json }`. */
-  fuseWithEvolution?(a: number, b: number): BrepkitEvolutionResult;
-  /** Cut with evolution tracking. */
-  cutWithEvolution?(a: number, b: number): BrepkitEvolutionResult;
-  /** Intersect with evolution tracking. */
-  intersectWithEvolution?(a: number, b: number): BrepkitEvolutionResult;
-  /** Fillet with evolution tracking. */
-  filletWithEvolution?(solid: number, edgeIds: number[], radius: number): BrepkitEvolutionResult;
-  /** Chamfer with evolution tracking. */
-  chamferWithEvolution?(solid: number, edgeIds: number[], distance: number): BrepkitEvolutionResult;
-  /** Shell with evolution tracking. */
-  shellWithEvolution?(solid: number, thickness: number, faceIds: number[]): BrepkitEvolutionResult;
-  /** Offset with evolution tracking. */
-  offsetSolidWithEvolution?(solid: number, distance: number): BrepkitEvolutionResult;
-  /** Thicken with evolution tracking. */
-  thickenWithEvolution?(face: number, distance: number): BrepkitEvolutionResult;
-  /** Draft with evolution tracking. */
-  draftWithEvolution?(
-    solid: number,
-    faceHandles: number[],
-    pullX: number,
-    pullY: number,
-    pullZ: number,
-    neutralX: number,
-    neutralY: number,
-    neutralZ: number,
-    angleDegrees: number
-  ): BrepkitEvolutionResult;
-  /** Translate with evolution tracking. */
-  translateWithEvolution?(
-    solid: number,
-    dx: number,
-    dy: number,
-    dz: number
-  ): BrepkitEvolutionResult;
-  /** Rotate with evolution tracking. */
-  rotateWithEvolution?(
-    solid: number,
-    ox: number,
-    oy: number,
-    oz: number,
-    dx: number,
-    dy: number,
-    dz: number,
-    angleDegrees: number
-  ): BrepkitEvolutionResult;
-  /** Mirror with evolution tracking. */
-  mirrorWithEvolution?(
-    solid: number,
-    px: number,
-    py: number,
-    pz: number,
-    nx: number,
-    ny: number,
-    nz: number
-  ): BrepkitEvolutionResult;
-  /** Scale with evolution tracking. */
-  scaleWithEvolution?(solid: number, factor: number): BrepkitEvolutionResult;
-  /** General transform with evolution tracking. */
-  generalTransformWithEvolution?(solid: number, matrix: number[]): BrepkitEvolutionResult;
-  /** Copy with evolution tracking. */
-  copyWithEvolution?(solid: number): BrepkitEvolutionResult;
-
   // ── wasm-bindgen destructor ────────────────────────────────────
 
   /** Release the entire arena. */
   free(): void;
-}
-
-/** Result from `*WithEvolution` WASM methods (Theme C). */
-export interface BrepkitEvolutionResult {
-  /** The resulting solid handle. */
-  readonly solid: number;
-  /** JSON-encoded evolution map. */
-  readonly evolution_json: string;
 }
