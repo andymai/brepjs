@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "id": "worker-async-kernel",
+      "rule": "withKernel(id, fn) is SYNC-ONLY. Async callbacks silently use the wrong kernel after the first await. For async code in workers, use getKernel(id) directly instead of withKernel().",
+      "severity": "high"
+    },
+    {
+      "id": "worker-message-serialization",
+      "rule": "Worker messages cross a serialization boundary. Kernel handles (branded types) cannot be sent across workers — only serializable data (numbers, strings, arrays, plain objects). Extract data before posting messages.",
+      "severity": "high"
+    },
+    {
+      "id": "worker-task-queue",
+      "rule": "Use the taskQueue pattern from taskQueue.ts for managing async worker operations. Don't implement custom queuing logic.",
+      "severity": "high"
+    }
+  ]
+}

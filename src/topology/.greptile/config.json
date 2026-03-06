@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "id": "topology-no-new-class-methods",
+      "rule": "Never add new methods to legacy class-based wrappers (Shape, Solid, Edge, Face, Wire, Shell, Compound, CompSolid classes). These are frozen OO wrappers. All new functionality goes in *Fns.ts files (e.g. wrapperFns.ts, compoundOpsFns.ts).",
+      "severity": "high"
+    },
+    {
+      "id": "topology-wrapper-fns",
+      "rule": "New topology operations should be pure functions in *Fns.ts files that take/return branded types. Follow the pattern in wrapperFns.ts and compoundOpsFns.ts.",
+      "severity": "high"
+    },
+    {
+      "id": "topology-cast-shape",
+      "rule": "Use castShape from topology/cast.ts for shape type narrowing. Prefer isSolid(), isFace(), isWire() etc. type guards over manual type checks.",
+      "severity": "high"
+    }
+  ]
+}

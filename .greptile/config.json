@@ -1,0 +1,45 @@
+{
+  "strictness": 1,
+  "triggerOnUpdates": true,
+  "patternRepositories": ["andymai/brepkit"],
+  "ignorePatterns": "dist/**\nnode_modules/**\ncoverage/**\ndocs/function-lookup.md\n**/*.generated.*",
+  "rules": [
+    {
+      "id": "layer-boundary",
+      "rule": "Imports must flow downward only: Layer 3 -> Layer 2 -> Layer 1 -> Layer 0. Layer 0 (kernel/, utils/) has no internal imports. Layer 1 (core/) imports only kernel/utils. Layer 2 modules import layers 0-1 and each other. Layer 3 (sketching/, text/, projection/) imports all lower layers. Flag any upward import.",
+      "severity": "high"
+    },
+    {
+      "id": "no-wrapped-access",
+      "rule": "Never call methods directly on .wrapped handles. Always use getKernel().method(shape.wrapped) instead of shape.wrapped.SomeMethod(). Direct .wrapped method calls bypass the kernel abstraction layer.",
+      "scope": ["src/topology/**", "src/operations/**", "src/2d/**", "src/query/**", "src/measurement/**", "src/io/**", "src/worker/**", "src/sketching/**", "src/text/**", "src/projection/**"],
+      "severity": "high"
+    },
+    {
+      "id": "use-kernel-abstraction",
+      "rule": "All geometry operations must go through getKernel() from src/kernel/index.ts. Never access the raw OpenCascade 'oc' object directly. Layer 2+ code treats shapes as opaque handles.",
+      "scope": ["src/core/**", "src/topology/**", "src/operations/**", "src/2d/**", "src/query/**", "src/measurement/**", "src/io/**", "src/worker/**", "src/sketching/**", "src/text/**", "src/projection/**"],
+      "severity": "high"
+    },
+    {
+      "id": "disposal-required",
+      "rule": "Kernel objects allocated in WASM memory require explicit cleanup. Use 'using' keyword with Symbol.dispose, or DisposalScope with register(). Temporaries in loops must be disposed each iteration. Watch for shapes stored in arrays without cleanup. DisposalScope disposes in LIFO order — register dependencies after their dependees.",
+      "severity": "high"
+    },
+    {
+      "id": "result-type",
+      "rule": "Prefer Result<T, BrepError> over throwing exceptions in Layer 2-3 code. Use isOk()/match() for Result handling in production code. unwrap() is acceptable only in tests.",
+      "severity": "high"
+    },
+    {
+      "id": "functional-api",
+      "rule": "All new functionality must go in *Fns.ts files as pure functions taking/returning branded types. Never add new methods to legacy class-based wrappers (Shape, Solid, Edge classes in src/topology/). The OO API is frozen.",
+      "severity": "high"
+    },
+    {
+      "id": "branded-types",
+      "rule": "Use branded types (Edge, Wire, Face, Solid, etc.) from src/core/shapeTypes.ts for type safety. These are lightweight handles, not a class hierarchy. Use isSolid(), isFace(), isWire() etc. for type checking at runtime. Don't use raw ShapeHandle or KernelShape where a specific branded type is appropriate.",
+      "severity": "high"
+    }
+  ]
+}

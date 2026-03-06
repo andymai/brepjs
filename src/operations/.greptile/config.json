@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "id": "ops-boolean-defaults",
+      "rule": "Boolean operations should use applyBooleanDefaults() helper for consistent SetUseOBB/SetRunParallel settings. Don't configure these per-call — use the centralized defaults.",
+      "severity": "high"
+    },
+    {
+      "id": "ops-boolean-patterns",
+      "rule": "Boolean operations (fuse, cut, common) return Result<T>. The boolean functional API lives in topology/booleanFns.ts, not operations/. cutAll goes through cutWithHistory for shape provenance. Preserve evolution/history tracking.",
+      "severity": "high"
+    },
+    {
+      "id": "ops-fillet-api",
+      "rule": "fillet(shape, radius) takes FilletRadius type (number | [number, number] | function), NOT an object like {radius: n}. Check the type signature before modifying fillet-related code.",
+      "severity": "high"
+    },
+    {
+      "id": "ops-batch-operations",
+      "rule": "Batch operations should minimize WASM boundary crossings. Use C++ extractors where available. Follow the two-pass pre-allocation pattern for bulk data extraction.",
+      "severity": "high"
+    }
+  ]
+}

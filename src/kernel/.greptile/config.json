@@ -1,0 +1,29 @@
+{
+  "rules": [
+    {
+      "id": "kernel-no-internal-imports",
+      "rule": "kernel/ is Layer 0 — it must not import from any other src/ module (core/, topology/, operations/, etc.). Only external dependencies and local kernel/ files are allowed.",
+      "severity": "high"
+    },
+    {
+      "id": "kernel-enum-extraction",
+      "rule": "OCCT Emscripten returns enum objects with .value property. Always extract with: typeof val === 'number' ? val : Number(val?.value ?? val). Never assume enums are raw numbers.",
+      "severity": "high"
+    },
+    {
+      "id": "kernel-init-guard",
+      "rule": "initFromOC(oc) must be called before any kernel operation. Kernel methods should not assume initialization. New kernel adapter methods must be added to the KernelAdapter interface in kernel/types.ts.",
+      "severity": "high"
+    },
+    {
+      "id": "kernel-wasm-cleanup",
+      "rule": "WASM-allocated objects must be cleaned up in try-finally blocks. Use const_cast copy constructor for ownership transfer in C++ extractors. Two-pass pre-allocation pattern for C++ extractors.",
+      "severity": "high"
+    },
+    {
+      "id": "kernel-uint32array",
+      "rule": "Always convert Uint32Array to regular Array before passing to kernel methods. WASM interop does not handle typed arrays correctly in all cases.",
+      "severity": "high"
+    }
+  ]
+}

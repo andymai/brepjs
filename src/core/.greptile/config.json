@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "id": "core-import-boundary",
+      "rule": "core/ is Layer 1 — it may only import from kernel/ and utils/. Never import from topology/, operations/, 2d/, query/, measurement/, io/, worker/, sketching/, text/, or projection/.",
+      "severity": "high"
+    },
+    {
+      "id": "core-handle-creation",
+      "rule": "Use createHandle() or createKernelHandle() from src/core/disposal.ts for resource management. Handles must support the 'using' keyword for automatic disposal.",
+      "severity": "high"
+    },
+    {
+      "id": "core-disposal-lifo",
+      "rule": "DisposalScope disposes in LIFO order. Register dependencies AFTER their dependees to ensure correct teardown ordering.",
+      "severity": "high"
+    },
+    {
+      "id": "core-exact-optional",
+      "rule": "exactOptionalPropertyTypes is enabled. undefined and missing are distinct. Use 'prop?: T | undefined' for optional fields that can be explicitly set to undefined.",
+      "severity": "high"
+    }
+  ]
+}

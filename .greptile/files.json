@@ -1,0 +1,20 @@
+{
+  "files": [
+    {
+      "path": "docs/architecture.md",
+      "description": "Layered architecture diagram and boundary rules — the most important structural reference for this codebase."
+    },
+    {
+      "path": "docs/memory-management.md",
+      "description": "WASM memory management patterns: using keyword, DisposalScope, FinalizationRegistry, common leak patterns."
+    },
+    {
+      "path": "docs/performance.md",
+      "description": "Performance patterns: SetUseOBB, fuzzyValue, batch operations, caching strategies."
+    },
+    {
+      "path": "CLAUDE.md",
+      "description": "Comprehensive project conventions: key patterns, gotchas, testing patterns, lint rules, commit format."
+    }
+  ]
+}

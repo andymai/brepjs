@@ -1,0 +1,14 @@
+{
+  "rules": [
+    {
+      "id": "query-finder-pattern",
+      "rule": "Shape finders (faceFinder, edgeFinder, vertexFinder, wireFinder, cornerFinder) follow a consistent pattern. Shared finder logic lives in finderCore.ts. Public API entry point is finderFns.ts. Direction utilities are in directionUtils.ts. Distance filtering uses shapeDistanceFilter.ts.",
+      "severity": "high"
+    },
+    {
+      "id": "query-helpers",
+      "rule": "Shared query logic belongs in helpers.ts and finderCore.ts. Don't duplicate distance calculations, bounding box checks, or normal comparisons across individual finder files.",
+      "severity": "high"
+    }
+  ]
+}

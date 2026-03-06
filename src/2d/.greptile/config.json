@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "id": "2d-precision",
+      "rule": "Floating-point comparisons in 2D geometry must use precision-aware utilities from src/2d/lib/precision.ts. Never use exact equality (===) for geometric values. Use toBeCloseTo() in tests.",
+      "severity": "high"
+    },
+    {
+      "id": "2d-vector-ops",
+      "rule": "Use vector operations from src/2d/lib/vectorOperations.ts for 2D math. Don't reimplement dot product, cross product, normalization, etc.",
+      "severity": "high"
+    },
+    {
+      "id": "2d-blueprint-pattern",
+      "rule": "Blueprint operations should follow the functional pattern in blueprintFns.ts. CompoundBlueprint handles multi-contour shapes. Boolean2D operations handle winding rules.",
+      "severity": "high"
+    }
+  ]
+}

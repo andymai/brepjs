@@ -1,0 +1,14 @@
+{
+  "rules": [
+    {
+      "id": "io-kernel-boundary",
+      "rule": "IO operations (STEP, STL, IGES, glTF, DXF, 3MF, OBJ, SVG) must go through the kernel abstraction. Don't access OCCT reader/writer APIs directly.",
+      "severity": "high"
+    },
+    {
+      "id": "io-format-patterns",
+      "rule": "Export functions live in *ExportFns.ts files (dxfExportFns, threemfExportFns, gltfExportFns, objExportFns). Import functions live in *ImportFns.ts files (importFns, dxfImportFns, objImportFns, threemfImportFns, svgImportFns). Follow existing patterns: functional API, Result return type, proper WASM resource cleanup.",
+      "severity": "high"
+    }
+  ]
+}

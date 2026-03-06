@@ -1,0 +1,19 @@
+{
+  "rules": [
+    {
+      "id": "measurement-cache-first",
+      "rule": "Always check measureCache before computing. Use the cache-before-assertNull pattern: check cache, return if cached, then compute and cache the result. See measureCache.ts for the caching API.",
+      "severity": "high"
+    },
+    {
+      "id": "measurement-float-compare",
+      "rule": "Never use exact equality for measurement results. Use toBeCloseTo(expected, precision) in tests. Measurement functions return numbers that may have floating-point imprecision from WASM.",
+      "severity": "high"
+    },
+    {
+      "id": "measurement-interference",
+      "rule": "Interference detection in interferenceFns.ts uses AABB pre-filtering for performance. Always check bounding box overlap before running expensive OCCT interference checks.",
+      "severity": "high"
+    }
+  ]
+}

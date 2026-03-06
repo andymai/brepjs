@@ -1,0 +1,15 @@
+{
+  "disabledRules": ["disposal-required", "result-type", "branded-types"],
+  "rules": [
+    {
+      "id": "utils-no-internal-imports",
+      "rule": "utils/ is Layer 0 — it must not import from any other src/ module. Only external dependencies and local utils/ files are allowed. These are pure utilities with zero internal dependencies.",
+      "severity": "high"
+    },
+    {
+      "id": "utils-pure-functions",
+      "rule": "All utility functions must be pure — no side effects, no state mutation, no kernel calls. These are generic helpers usable outside of brepjs.",
+      "severity": "high"
+    }
+  ]
+}
