@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.5.1](https://github.com/andymai/brepjs/compare/brepjs-v9.5.0...brepjs-v9.5.1) (2026-03-06)
+
+
+### Bug Fixes
+
+* **kernel:** brepkit adapter round 2 — 97 remaining failures ([#387](https://github.com/andymai/brepjs/issues/387)) ([59d5784](https://github.com/andymai/brepjs/commit/59d578423203cf1482a217082cad6cebb8fbc85c))
+
 ## [9.5.0](https://github.com/andymai/brepjs/compare/brepjs-v9.4.1...brepjs-v9.5.0) (2026-03-06)
 
 
