@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   ellipsoid,
   filledFace,
@@ -23,7 +23,7 @@ import {
 import type { Wire, Face } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('ellipsoid', () => {

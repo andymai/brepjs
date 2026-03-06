@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -31,7 +31,7 @@ import {
 import type { Shape3D } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function boxAt(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): Shape3D {

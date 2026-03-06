@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, polygon } from '../src/topology/primitiveFns.js';
 import { rotate, mirror } from '../src/topology/api.js';
 import { revolve } from '../src/operations/api.js';
@@ -16,7 +16,7 @@ import { getBounds } from '../src/topology/shapeFns.js';
 import { isErr, unwrap } from '../src/core/result.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('Canonical parameter names', () => {

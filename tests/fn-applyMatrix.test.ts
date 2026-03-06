@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   translate,
@@ -15,7 +15,7 @@ import {
 let hasGTransform = false;
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
   // Check if BRepBuilderAPI_GTransform is available in the WASM build
 
   hasGTransform = typeof getKernel().oc.BRepBuilderAPI_GTransform_2 === 'function';

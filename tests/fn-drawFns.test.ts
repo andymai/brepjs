@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { drawRectangle, drawCircle, Drawing } from '../src/index.js';
 import {
   drawingToSketchOnPlane,
@@ -15,14 +15,14 @@ import {
 } from '../src/sketching/drawFns.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function rect(w = 10, h = 20): Drawing {
   return drawRectangle(w, h);
 }
 
-function circ(r = 5): Drawing {
+function _circ(r = 5): Drawing {
   return drawCircle(r);
 }
 

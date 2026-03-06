@@ -1,20 +1,17 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
-  Sketch,
   sketchCircle,
   sketchEllipse,
   sketchRectangle,
   sketchRoundedRectangle,
   sketchPolysides,
   polysideInnerRadius,
-  sketchParametricFunction,
-  sketchHelix,
   measureVolume,
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('Canned sketches', () => {

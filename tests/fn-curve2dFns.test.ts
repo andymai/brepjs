@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { drawRectangle, drawCircle } from '../src/index.js';
 import {
   reverseCurve,
@@ -14,19 +14,19 @@ import {
 } from '../src/2d/lib/curve2dFns.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 /** Get the first curve from a rectangle drawing */
 function getLineCurve() {
   const drawing = drawRectangle(10, 10);
-  return drawing.blueprint.curves[0]!;
+  return drawing.blueprint.curves[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
 }
 
 /** Get a circular curve */
-function getCircleCurve() {
+function _getCircleCurve() {
   const drawing = drawCircle(5);
-  return drawing.blueprint.curves[0]!;
+  return drawing.blueprint.curves[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
 }
 
 describe('reverseCurve', () => {

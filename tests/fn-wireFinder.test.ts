@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   wireFinder,
   box,
@@ -12,7 +12,7 @@ import {
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function fnBox(x = 10, y = 10, z = 10) {
@@ -28,7 +28,7 @@ describe('wireFinder', () => {
     const wires = wireFinder().findAll(fnBox());
     // A box has 6 faces, each with 1 outer wire = 6 wires
     expect(wires.length).toBe(6);
-    expect(isWire(wires[0]!)).toBe(true);
+    expect(isWire(wires[0]!)).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
 
   it('filters closed wires', () => {
@@ -89,7 +89,7 @@ describe('wireFinder', () => {
   it('find with unique returns Ok when exactly one match', () => {
     const b = fnBox(10, 20, 30);
     const allWires = getWires(b);
-    const result = wireFinder().inList([allWires[0]!]).findUnique(b);
+    const result = wireFinder().inList([allWires[0]!]).findUnique(b); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(isOk(result)).toBe(true);
   });
 

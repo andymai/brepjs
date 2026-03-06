@@ -63,19 +63,19 @@ describe('brepkit adapter', () => {
     it('face → edges', () => {
       if (skip()) return;
       const box = k.makeBox(2, 3, 4);
-      const face = k.iterShapes(box, 'face')[0]!;
+      const face = k.iterShapes(box, 'face')[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
       expect(k.iterShapes(face, 'edge').length).toBeGreaterThanOrEqual(3);
     });
     it('face → wire', () => {
       if (skip()) return;
       const box = k.makeBox(2, 3, 4);
-      const face = k.iterShapes(box, 'face')[0]!;
+      const face = k.iterShapes(box, 'face')[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
       expect(k.iterShapes(face, 'wire').length).toBeGreaterThanOrEqual(1);
     });
     it('edge → vertex', () => {
       if (skip()) return;
       const box = k.makeBox(2, 3, 4);
-      const edge = k.iterShapes(box, 'edge')[0]!;
+      const edge = k.iterShapes(box, 'edge')[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
       expect(k.iterShapes(edge, 'vertex').length).toBe(2);
     });
   });
@@ -186,9 +186,9 @@ describe('brepkit adapter', () => {
       const a = k.makeBox(2, 2, 2);
       const b = k.translate(k.makeBox(2, 2, 2), 1, 0, 0);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const aId = (a as any).id;
+      const aId = (a as any).id; // eslint-disable-line @typescript-eslint/no-unnecessary-type-assertion
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const bId = (b as any).id;
+      const bId = (b as any).id; // eslint-disable-line @typescript-eslint/no-unnecessary-type-assertion
       const json = bk.fuseWithEvolution(aId, bId);
       const parsed = JSON.parse(json);
       expect(parsed.solid).toBeGreaterThan(0);
@@ -204,7 +204,7 @@ describe('brepkit adapter', () => {
     });
     it('reverseShape on face returns face', () => {
       if (skip()) return;
-      const face = k.iterShapes(k.makeBox(2, 2, 2), 'face')[0]!;
+      const face = k.iterShapes(k.makeBox(2, 2, 2), 'face')[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
       const reversed = k.reverseShape(face);
       expect(k.shapeType(reversed)).toBe('face');
     });

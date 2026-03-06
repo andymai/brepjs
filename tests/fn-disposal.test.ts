@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   createHandle,
   createKernelHandle,
@@ -14,7 +14,7 @@ import type { Deletable } from '../src/core/disposal.js';
 import { getKernel } from '../src/kernel/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 /** Create a minimal kernel object for testing handle lifecycle */

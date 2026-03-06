@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   draw,
   drawRectangle,
@@ -8,11 +8,10 @@ import {
   sketchRectangle,
   sketchCircle,
   measureVolume,
-  measureArea,
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('Drawing API', () => {

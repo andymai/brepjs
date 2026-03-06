@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   checkInterference,
   checkAllInterferences,
@@ -15,7 +15,7 @@ import {
 import type { Shape3D } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('checkInterference', () => {
@@ -109,9 +109,9 @@ describe('checkAllInterferences', () => {
 
     const pairs = checkAllInterferences(shapes);
     expect(pairs).toHaveLength(1);
-    expect(pairs[0]!.i).toBe(0);
-    expect(pairs[0]!.j).toBe(1);
-    expect(pairs[0]!.result.hasInterference).toBe(true);
+    expect(pairs[0]!.i).toBe(0); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    expect(pairs[0]!.j).toBe(1); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    expect(pairs[0]!.result.hasInterference).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
 
   it('returns multiple pairs when multiple shapes interfere', () => {

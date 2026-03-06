@@ -2,13 +2,13 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { importDXF, isOk, unwrap, curveLength } from '../src/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('importDXF', () => {

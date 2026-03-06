@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initOCCT } from './setup.js';
 import { importIGES, exportIGES } from '../src/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel instance has dynamic members
 let oc: any;
 
 beforeAll(async () => {
-  oc = await initOC();
+  oc = await initOCCT();
 }, 30000);
 
 describe('IGES module exports', () => {

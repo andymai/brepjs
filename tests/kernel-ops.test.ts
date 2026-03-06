@@ -7,26 +7,15 @@
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { getKernel } from '../src/kernel/index.js';
 import type { KernelAdapter } from '../src/kernel/types.js';
-import {
-  box,
-  sphere,
-  cylinder,
-  cone,
-  torus,
-  translate,
-  getEdges,
-  getFaces,
-  getWires,
-  getVertices,
-} from '../src/index.js';
+import { box, sphere, cone, torus, translate, getEdges, getFaces, getWires } from '../src/index.js';
 
 let kernel: KernelAdapter;
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
   kernel = getKernel();
 }, 30000);
 
@@ -188,7 +177,7 @@ describe('sweepOps', () => {
     const wires1 = getWires(face1);
     const wires2 = getWires(face2);
     if (wires1.length > 0 && wires2.length > 0) {
-      const lofted = kernel.loft([oc(wires1[0]!), oc(wires2[0]!)]);
+      const lofted = kernel.loft([oc(wires1[0]!), oc(wires2[0]!)]); // eslint-disable-line @typescript-eslint/no-non-null-assertion
       expect(lofted).toBeDefined();
       expect(kernel.volume(lofted)).toBeGreaterThan(0);
     }
@@ -320,7 +309,7 @@ describe('modifierOps', () => {
   it('fillet', () => {
     const b = box(20, 20, 20);
     const edges = getEdges(b);
-    const filleted = kernel.fillet(oc(b), [oc(edges[0]!)], 2);
+    const filleted = kernel.fillet(oc(b), [oc(edges[0]!)], 2); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(kernel.isValid(filleted)).toBe(true);
     expect(kernel.volume(filleted)).toBeLessThan(8000);
     expect(kernel.volume(filleted)).toBeGreaterThan(7000);
@@ -329,7 +318,7 @@ describe('modifierOps', () => {
   it('fillet variable radius', () => {
     const b = box(20, 20, 20);
     const edges = getEdges(b);
-    const filleted = kernel.fillet(oc(b), [oc(edges[0]!)], [1, 3]);
+    const filleted = kernel.fillet(oc(b), [oc(edges[0]!)], [1, 3]); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(kernel.isValid(filleted)).toBe(true);
     expect(kernel.volume(filleted)).toBeLessThan(8000);
   });
@@ -337,7 +326,7 @@ describe('modifierOps', () => {
   it('chamfer', () => {
     const b = box(20, 20, 20);
     const edges = getEdges(b);
-    const chamfered = kernel.chamfer(oc(b), [oc(edges[0]!)], 2);
+    const chamfered = kernel.chamfer(oc(b), [oc(edges[0]!)], 2); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(kernel.isValid(chamfered)).toBe(true);
     expect(kernel.volume(chamfered)).toBeLessThan(8000);
   });
@@ -345,7 +334,7 @@ describe('modifierOps', () => {
   it('chamfer asymmetric', () => {
     const b = box(20, 20, 20);
     const edges = getEdges(b);
-    const chamfered = kernel.chamfer(oc(b), [oc(edges[0]!)], [2, 4]);
+    const chamfered = kernel.chamfer(oc(b), [oc(edges[0]!)], [2, 4]); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(kernel.isValid(chamfered)).toBe(true);
     expect(kernel.volume(chamfered)).toBeLessThan(8000);
   });
@@ -353,7 +342,7 @@ describe('modifierOps', () => {
   it('shell', () => {
     const b = box(20, 20, 20);
     const faces = getFaces(b);
-    const shelled = kernel.shell(oc(b), [oc(faces[0]!)], 1);
+    const shelled = kernel.shell(oc(b), [oc(faces[0]!)], 1); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(kernel.isValid(shelled)).toBe(true);
     expect(kernel.volume(shelled)).toBeLessThan(8000);
     expect(kernel.volume(shelled)).toBeGreaterThan(0);
@@ -378,7 +367,7 @@ describe('modifierOps', () => {
   it('chamferDistAngle', () => {
     const b = box(20, 20, 20);
     const edges = getEdges(b);
-    const chamfered = kernel.chamferDistAngle(oc(b), [oc(edges[0]!)], 2, 45);
+    const chamfered = kernel.chamferDistAngle(oc(b), [oc(edges[0]!)], 2, 45); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(kernel.isValid(chamfered)).toBe(true);
   });
 
@@ -406,22 +395,22 @@ describe('healingOps', () => {
   it('healFace', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const healed = kernel.healFace(oc(faces[0]!));
+    const healed = kernel.healFace(oc(faces[0]!)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(healed).toBeDefined();
   });
 
   it('healWire', () => {
     const b = box(10, 10, 10);
     const wires = getWires(b);
-    const healed = kernel.healWire(oc(wires[0]!));
+    const healed = kernel.healWire(oc(wires[0]!)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(healed).toBeDefined();
   });
 
   it('healWire with face context', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const wires = getWires(faces[0]!);
-    const healed = kernel.healWire(oc(wires[0]!), oc(faces[0]!));
+    const wires = getWires(faces[0]!); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const healed = kernel.healWire(oc(wires[0]!), oc(faces[0]!)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(healed).toBeDefined();
   });
 
@@ -457,7 +446,7 @@ describe('measureOps', () => {
   it('length of edge', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-    const len = kernel.length(oc(edges[0]!));
+    const len = kernel.length(oc(edges[0]!)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(len).toBeCloseTo(10, 1);
   });
 

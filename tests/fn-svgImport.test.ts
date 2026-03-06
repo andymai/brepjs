@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { importSVGPathD, importSVG } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('importSVGPathD', () => {
@@ -102,7 +102,7 @@ describe('importSVGPathD', () => {
     expect(curve).toBeDefined();
     // First point: [0, 0] → [0, -0] = [0, 0]
     // End point: [10, 5] → [10, -5]
-    const lastPoint = curve!.lastPoint;
+    const lastPoint = curve!.lastPoint; // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(lastPoint[0]).toBeCloseTo(10);
     expect(lastPoint[1]).toBeCloseTo(-5);
   });

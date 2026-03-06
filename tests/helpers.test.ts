@@ -1,15 +1,15 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, getSingleFace, unwrap, isErr, getFaces, faceFinder } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('getSingleFace', () => {
   it('accepts a Face directly', () => {
     const b = box(10, 20, 30);
-    const f = getFaces(b)[0]!;
+    const f = getFaces(b)[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
     const result = getSingleFace(f, b);
     expect(unwrap(result)).toBe(f);
   });

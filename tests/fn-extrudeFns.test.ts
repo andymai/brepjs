@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   sketchRectangle,
   sketchCircle,
@@ -26,7 +26,7 @@ import { createFace } from '../src/core/shapeTypes.js';
 import { getKernel } from '../src/kernel/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function makeNullFace() {

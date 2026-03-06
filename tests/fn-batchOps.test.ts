@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { getKernel } from '../src/kernel/index.js';
 import type { KernelAdapter } from '../src/kernel/types.js';
 import { measureBulk, resetMeasureDetectionCache } from '../src/kernel/measureOps.js';
@@ -27,7 +27,7 @@ function getOcInstance(): any {
 }
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
   kernel = getKernel();
 }, 30000);
 

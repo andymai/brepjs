@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -17,7 +17,7 @@ import {
 import type { Shape3D } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('hull', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { loadFont, getFont, textBlueprints, sketchText } from '../src/text/textBlueprints.js';
 import { readFile, access } from 'node:fs/promises';
 
@@ -26,7 +26,7 @@ async function findMonoFont(): Promise<string | undefined> {
 let fontPath: string | undefined;
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
   fontPath = await findMonoFont();
   if (!fontPath) {
     console.warn('No suitable TTF font found — skipping text blueprint tests');
@@ -52,7 +52,7 @@ describe('loadFont', () => {
   it('does not reload when already cached (force=false)', async ({ skip }) => {
     if (!fontPath) skip();
     const fontBefore = getFont('test');
-    const fontBuffer = await readFile(fontPath!);
+    const fontBuffer = await readFile(fontPath!); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', false);
     const fontAfter = getFont('test');
     expect(fontAfter).toBe(fontBefore);
@@ -60,7 +60,7 @@ describe('loadFont', () => {
 
   it('reloads when force=true', async ({ skip }) => {
     if (!fontPath) skip();
-    const fontBuffer = await readFile(fontPath!);
+    const fontBuffer = await readFile(fontPath!); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     const font = await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', true);
     expect(font).toBeDefined();
   });

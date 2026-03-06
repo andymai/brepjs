@@ -1,9 +1,9 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, getFaces, getWires, offsetWire2D, isOk, unwrap, curveLength } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('offsetWire2D chamfer join', () => {

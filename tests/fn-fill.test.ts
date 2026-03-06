@@ -1,11 +1,11 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { fill, getWires, measureArea, polygon } from '../src/index.js';
 import { makeFace } from '../src/topology/surfaceBuilders.js';
 import { outerWire } from '../src/topology/faceFns.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('fill', () => {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import type { Blueprint } from '../src/index.js';
 import {
   CompoundBlueprint,
@@ -31,7 +31,7 @@ import {
 } from '../src/2d/blueprints/intersectionSegments.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function rect(w = 10, h = 20, cx = 0, cy = 0): Blueprint {

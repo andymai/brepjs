@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   chamferDistAngleShape,
@@ -12,7 +12,7 @@ import {
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('chamferDistAngleShape', () => {
@@ -21,7 +21,7 @@ describe('chamferDistAngleShape', () => {
     const edges = getEdges(b);
     expect(edges.length).toBe(12);
 
-    const result = chamferDistAngleShape(b, [edges[0]!], 1, 45);
+    const result = chamferDistAngleShape(b, [edges[0]!], 1, 45); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(isOk(result)).toBe(true);
     const chamfered = unwrap(result);
     expect(isShape3D(chamfered)).toBe(true);
@@ -54,8 +54,8 @@ describe('chamferDistAngleShape', () => {
 
     // A smaller angle should remove less material than a larger angle
     // at the same distance
-    const result30 = unwrap(chamferDistAngleShape(b, [edges[0]!], 2, 30));
-    const result60 = unwrap(chamferDistAngleShape(b, [edges[0]!], 2, 60));
+    const result30 = unwrap(chamferDistAngleShape(b, [edges[0]!], 2, 30)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const result60 = unwrap(chamferDistAngleShape(b, [edges[0]!], 2, 60)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
 
     const vol30 = measureVolume(result30);
     const vol60 = measureVolume(result60);
@@ -89,7 +89,7 @@ describe('chamferDistAngleShape', () => {
     const origVol = measureVolume(b);
     const edges = getEdges(b);
 
-    chamferDistAngleShape(b, [edges[0]!], 1, 45);
+    chamferDistAngleShape(b, [edges[0]!], 1, 45); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(measureVolume(b)).toBeCloseTo(origVol, 6);
   });
 
@@ -102,15 +102,15 @@ describe('chamferDistAngleShape', () => {
   it('returns Err for non-positive distance', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-    const result = chamferDistAngleShape(b, [edges[0]!], 0, 45);
+    const result = chamferDistAngleShape(b, [edges[0]!], 0, 45); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     expect(isErr(result)).toBe(true);
   });
 
   it('returns Err for angle out of range', () => {
     const b = box(10, 10, 10);
     const edges = getEdges(b);
-    expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, 0))).toBe(true);
-    expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, 90))).toBe(true);
-    expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, -10))).toBe(true);
+    expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, 0))).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, 90))).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    expect(isErr(chamferDistAngleShape(b, [edges[0]!], 1, -10))).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
 });

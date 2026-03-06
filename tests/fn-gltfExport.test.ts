@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, castShape, mesh, exportGltf, exportGlb } from '../src/index.js';
 import type { ShapeMesh, GltfExportOptions } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function getBoxMesh(): ShapeMesh {
@@ -195,7 +195,7 @@ describe('glTF with materials', () => {
     let totalIndices = 0;
     for (const prim of doc.meshes[0].primitives) {
       const indicesAcc = doc.accessors[prim.indices];
-      totalIndices += indicesAcc.count;
+      totalIndices += indicesAcc.count; // eslint-disable-line @typescript-eslint/restrict-plus-operands
     }
     expect(totalIndices).toBe(m.triangles.length);
   });

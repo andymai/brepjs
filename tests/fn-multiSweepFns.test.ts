@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { multiSectionSweep } from '../src/index.js';
 import type { Wire } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
@@ -33,7 +33,7 @@ function makeLineSpine(length: number): Wire {
 }
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 });
 
 describe('multiSectionSweep', () => {

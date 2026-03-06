@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   // functional API
@@ -9,14 +9,13 @@ import {
   getEdges,
   isOk,
   isErr,
-  unwrap,
   isEdge,
   isFace,
   curveLength,
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function fnBox(x = 10, y = 10, z = 10) {
@@ -27,7 +26,7 @@ describe('edgeFinder', () => {
   it('finds all 12 edges of a box', () => {
     const edges = edgeFinder().findAll(fnBox());
     expect(edges.length).toBe(12);
-    expect(isEdge(edges[0]!)).toBe(true);
+    expect(isEdge(edges[0]!)).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
 
   it('filters edges by direction', () => {
@@ -85,7 +84,7 @@ describe('edgeFinder', () => {
   it('supports inList filter', () => {
     const b = fnBox();
     const allEdges = getEdges(b);
-    const subset = [allEdges[0]!, allEdges[1]!];
+    const subset = [allEdges[0]!, allEdges[1]!]; // eslint-disable-line @typescript-eslint/no-non-null-assertion
     const found = edgeFinder().inList(subset).findAll(b);
     expect(found.length).toBe(2);
   });
@@ -126,7 +125,7 @@ describe('faceFinder', () => {
   it('finds all 6 faces of a box', () => {
     const faces = faceFinder().findAll(fnBox());
     expect(faces.length).toBe(6);
-    expect(isFace(faces[0]!)).toBe(true);
+    expect(isFace(faces[0]!)).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
   });
 
   it('filters faces by normal direction', () => {
@@ -172,7 +171,7 @@ describe('faceFinder', () => {
   it('supports when() with custom predicate', () => {
     let callCount = 0;
     const faces = faceFinder()
-      .when((face) => {
+      .when((_face) => {
         callCount++;
         return true; // Accept all faces
       })
@@ -185,7 +184,7 @@ describe('faceFinder', () => {
     const b = fnBox();
     const allFaces = faceFinder().findAll(b);
     // Create a list with just the first 2 faces
-    const subset = [allFaces[0]!, allFaces[1]!];
+    const subset = [allFaces[0]!, allFaces[1]!]; // eslint-disable-line @typescript-eslint/no-non-null-assertion
     const filtered = faceFinder().inList(subset).findAll(b);
     expect(filtered.length).toBe(2);
   });

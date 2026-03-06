@@ -46,7 +46,7 @@ describe('brepjs/result export surface', () => {
   it('Result constructors work', () => {
     const good = ResultAPI.ok(42);
     expect(good.ok).toBe(true);
-    if (good.ok) expect(good.value).toBe(42);
+    if (good.ok) expect(good.value).toBe(42); // eslint-disable-line @typescript-eslint/no-unnecessary-condition
 
     const bad = ResultAPI.err(ResultAPI.validationError('TEST', 'msg'));
     expect(bad.ok).toBe(false);

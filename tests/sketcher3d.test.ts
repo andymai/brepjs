@@ -1,8 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   Sketcher,
-  Sketch,
   Sketches,
   sketchCircle,
   sketchRectangle,
@@ -12,7 +11,7 @@ import {
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('Sketcher 3D', () => {

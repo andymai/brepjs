@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   approximateAsBSpline,
   BSplineToBezier,
@@ -18,7 +18,7 @@ import { unwrap } from '../src/core/result.js';
 import type { Curve2D } from '../src/2d/lib/Curve2D.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 // ---------------------------------------------------------------------------

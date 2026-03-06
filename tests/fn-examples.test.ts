@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import * as brepjs from '../src/index.js';
 
 // Read example code strings from the site source at test time.
@@ -40,7 +40,7 @@ function loadExampleCodes(): Array<{ id: string; code: string }> {
 const injectedKeys: string[] = [];
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 
   // Inject all brepjs exports onto globalThis, just like the worker does.
   const g = globalThis as Record<string, unknown>;

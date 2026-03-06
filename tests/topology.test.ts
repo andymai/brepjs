@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   cylinder,
@@ -36,20 +36,14 @@ import {
   unwrap,
   isOk,
   isErr,
-  Edge,
-  Wire,
-  Face,
-  Solid,
   toBREP,
   getHashCode,
   isEmpty,
   isSameShape,
   isEqualShape,
   vertexPosition,
-  getEdges,
   getFaces,
   getWires,
-  getShapeKind,
   isEdge,
   isWire,
   isFace,
@@ -93,7 +87,7 @@ import {
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('Shape base methods', () => {

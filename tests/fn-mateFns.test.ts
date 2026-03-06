@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   cylinder,
@@ -18,7 +18,7 @@ import type { MateConstraint } from '../src/index.js';
 import { solveConstraints } from '../src/kernel/solverAdapter.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 /** Find the face whose center has the highest Z. */

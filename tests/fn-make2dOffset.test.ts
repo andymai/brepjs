@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { make2dOffset } from '../src/2d/lib/offset.js';
 import {
   make2dSegmentCurve,
@@ -11,7 +11,7 @@ import { Curve2D } from '../src/2d/lib/Curve2D.js';
 import { unwrap } from '../src/core/result.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('make2dOffset', () => {

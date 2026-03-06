@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -9,7 +9,6 @@ import {
   translate,
   sketchCircle,
   sketchRectangle,
-  measureVolume,
   measureArea,
   measureLength,
   measureDistance,
@@ -22,7 +21,7 @@ import {
 } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('measureArea', () => {
@@ -107,7 +106,7 @@ describe('measureSurfaceProps (functional)', () => {
   it('works on a face', () => {
     const sketch = sketchRectangle(10, 20);
     const faces = getFaces(castShape(sketch.face().wrapped));
-    const f = faces[0]!;
+    const f = faces[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
     const props = measureSurfaceProps(f);
     expect(props.mass).toBeCloseTo(200, 0);
   });

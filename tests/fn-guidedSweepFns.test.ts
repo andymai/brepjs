@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { guidedSweep, isOk, unwrap, isSolid, measureVolume, getKernel } from '../src/index.js';
 import { castShape } from '../src/core/shapeTypes.js';
 import { DisposalScope } from '../src/core/disposal.js';
 import type { Wire } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 function makeCircleWire(radius: number): Wire {

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { adaptedCurveToPathElem } from '../src/2d/lib/svgPath.js';
 import { approximateAsSvgCompatibleCurve } from '../src/2d/lib/approximations.js';
 import {
@@ -12,7 +12,7 @@ import {
 } from '../src/2d/lib/makeCurves.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('adaptedCurveToPathElem', () => {

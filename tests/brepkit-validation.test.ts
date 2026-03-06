@@ -19,7 +19,7 @@
  */
 
 import { describe, it, beforeAll, beforeEach, expect } from 'vitest';
-import { initOC } from './setup.js';
+import { initOCCT } from './setup.js';
 import { getKernel, registerKernel } from '../src/kernel/index.js';
 import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
 import type { KernelAdapter } from '../src/kernel/types.js';
@@ -31,7 +31,7 @@ import type { KernelAdapter } from '../src/kernel/types.js';
 let hasBrepkit = false;
 
 beforeAll(async () => {
-  await initOC();
+  await initOCCT();
 
   try {
     const brepkitWasm = await import('brepkit-wasm');

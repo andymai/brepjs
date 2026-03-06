@@ -6,11 +6,11 @@
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initOC } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, shape, fillet, chamfer, isErr } from '../src/index.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('Error suggestions', () => {
@@ -69,6 +69,7 @@ describe('Error suggestions', () => {
         shape(box(10, 10, 10)).fillet(-1);
         expect.fail('Should have thrown');
       } catch (e: any) {
+        // eslint-disable-line @typescript-eslint/no-explicit-any
         expect(e.suggestion).toBeDefined();
         expect(e.suggestion).toContain('positive');
       }
