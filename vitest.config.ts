@@ -31,6 +31,8 @@ const occtOnlyTests = [
   'tests/fn-offsetWire2D.test.ts',
   'tests/fn-sectionToFace.test.ts',
   'tests/fn-variableFillet.test.ts',
+  // --- Direct kernel-ops imports (OCCT-specific transformOps/measureOps) ---
+  'tests/fn-batchOps.test.ts',
 ];
 
 /**

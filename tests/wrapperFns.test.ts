@@ -602,8 +602,8 @@ describe('Wrapper: validation and utilities', () => {
 
     expect(typeof brep).toBe('string');
     expect(brep.length).toBeGreaterThan(0);
-    // BREP format contains CASCADE Topology Version
-    expect(brep.substring(0, 100)).toMatch(/CASCADE|Version/i);
+    // BREP/STEP format header — OCCT uses "CASCADE", brepkit uses "ISO-10303"
+    expect(brep.substring(0, 100)).toMatch(/CASCADE|Version|ISO-10303/i);
   });
 });
 

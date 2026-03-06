@@ -505,6 +505,9 @@ export interface BrepkitKernel {
   /** Export to binary STL. Returns bytes. */
   exportStl(solid: number, deflection: number): Uint8Array;
 
+  /** Export to ASCII STL. Returns bytes. */
+  exportStlAscii(solid: number, deflection: number): Uint8Array;
+
   /** Export to IGES format. Returns bytes. */
   exportIges(solid: number): Uint8Array;
 

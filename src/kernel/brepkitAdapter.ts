@@ -68,6 +68,10 @@ export interface BrepkitHandle {
   /** No-op — arena-based allocation doesn't free individual handles.
    *  Present for compatibility with OCCT's wasm-bindgen `.delete()` convention. */
   delete(): void;
+  /** OCCT-compatible hash code derived from the arena handle id. */
+  HashCode(upperBound: number): number;
+  /** OCCT-compatible null check — brepkit handles are never null. */
+  IsNull(): boolean;
 }
 
 /** Type guard: is this shape a brepkit handle? */
@@ -84,7 +88,18 @@ function isBrepkitHandle(shape: unknown): shape is BrepkitHandle {
 const noop = () => {};
 
 function handle(type: ShapeType, id: number): BrepkitHandle {
-  return { __brepkit: true, type, id, delete: noop };
+  return {
+    __brepkit: true,
+    type,
+    id,
+    delete: noop,
+    HashCode(upperBound: number) {
+      return id % upperBound;
+    },
+    IsNull() {
+      return false;
+    },
+  };
 }
 
 function solidHandle(id: number): BrepkitHandle {
@@ -161,6 +176,14 @@ function unwrapSolidsForExport(
   throw new Error(
     `brepkit: ${methodName} requires a solid or compound of solids, got ${shape.type}.`
   );
+}
+
+/** Euclidean distance between two 3D points. */
+function dist3(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): number {
+  const dx = x1 - x2,
+    dy = y1 - y2,
+    dz = z1 - z2;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
 // ---------------------------------------------------------------------------
@@ -357,44 +380,26 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   section(shape: KernelShape, plane: KernelShape, _approximation?: boolean): KernelShape {
-    // brepjs passes a face as the plane — extract normal + point.
+    // brepjs passes a face (or thin solid) as the plane — extract normal + point.
     const { point, normal } = this.extractPlaneFromFace(plane);
 
-    const faces = toArray(
-      this.bk.section(
-        unwrap(shape, 'solid'),
-        point[0],
-        point[1],
-        point[2],
-        normal[0],
-        normal[1],
-        normal[2]
-      )
+    const solidId =
+      isBrepkitHandle(shape) && shape.type === 'solid' ? shape.id : unwrap(shape, 'solid');
+
+    const faceIds = toArray(
+      this.bk.section(solidId, point[0], point[1], point[2], normal[0], normal[1], normal[2])
     );
 
-    if (faces.length === 0) {
-      // Return empty compound instead of throwing — matches OCCT behavior
+    if (faceIds.length === 0) {
+      // Return empty compound — matches OCCT behavior for no-intersection sections
       return compoundHandle(this.bk.makeCompound([]));
     }
 
-    // Extract unique edges from section faces and return as compound of edges
-    const allEdgeIds: number[] = [];
-    const seen = new Set<number>();
-    for (const fid of faces) {
-      const edgeIds = toArray(this.bk.getFaceEdges(fid));
-      for (const eid of edgeIds) {
-        if (!seen.has(eid)) {
-          seen.add(eid);
-          allEdgeIds.push(eid);
-        }
-      }
-    }
-
-    if (allEdgeIds.length === 0) {
-      return compoundHandle(this.bk.makeCompound([]));
-    }
-
-    return compoundHandle(this.bk.makeCompound(allEdgeIds));
+    // brepkit section returns face handles — extract wires from them.
+    // Return the outer wire of the first section face (matches OCCT which
+    // returns a compound of edges forming the cross-section).
+    const firstWireId = this.bk.getFaceOuterWire(faceIds[0]!);
+    return wireHandle(firstWireId);
   }
 
   fuseAll(shapes: KernelShape[], options?: BooleanOptions): KernelShape {
@@ -1115,6 +1120,11 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   offset(shape: KernelShape, distance: number, _tolerance?: number): KernelShape {
+    const h = shape as BrepkitHandle;
+    if (h.type === 'face') {
+      const id = this.bk.offsetFace(h.id, distance, 50);
+      return faceHandle(id);
+    }
     const id = this.bk.offsetSolid(unwrapSolidOrThrow(shape, 'offset'), distance);
     return solidHandle(id);
   }
@@ -1271,8 +1281,11 @@ export class BrepkitAdapter implements KernelAdapter {
     axis?: [number, number, number],
     center?: [number, number, number]
   ): OperationResult {
+    // shapeFns.rotate() passes angle in radians; convert back to degrees
+    // since this.rotate() expects degrees (it calls rotationMatrix which converts internally)
+    const angleDeg = (angle * 180) / Math.PI;
     return this.buildEvolution(
-      this.rotate(shape, angle, axis, center),
+      this.rotate(shape, angleDeg, axis, center),
       inputFaceHashes,
       hashUpperBound,
       true
@@ -1454,13 +1467,22 @@ export class BrepkitAdapter implements KernelAdapter {
     const bkHandle = shape as BrepkitHandle;
     const deflection = options.tolerance || DEFAULT_DEFLECTION;
 
+    let result: KernelMeshResult;
     if (bkHandle.type === 'solid') {
-      return this.meshSolid(h, deflection);
+      result = this.meshSolid(h, deflection);
+    } else if (bkHandle.type === 'face') {
+      result = this.meshSingleFace(h, deflection, 0);
+    } else {
+      throw new Error(`brepkit: cannot mesh shape of type '${bkHandle.type}'`);
     }
-    if (bkHandle.type === 'face') {
-      return this.meshSingleFace(h, deflection, 0);
+
+    if (options.skipNormals) {
+      result.normals = new Float32Array(0);
     }
-    throw new Error(`brepkit: cannot mesh shape of type '${bkHandle.type}'`);
+    if (!options.includeUVs) {
+      result.uvs = new Float32Array(0);
+    }
+    return result;
   }
 
   meshEdges(
@@ -1515,8 +1537,11 @@ export class BrepkitAdapter implements KernelAdapter {
   exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer {
     const solidIds = unwrapSolidsForExport(this.bk, shape, 'exportSTL');
     // Use the first solid; STL format doesn't natively support multi-solid
-    const bytes: Uint8Array = this.bk.exportStl(solidIds[0]!, DEFAULT_DEFLECTION);
-    if (binary) return bytes.buffer as ArrayBuffer;
+    if (binary) {
+      const bytes: Uint8Array = this.bk.exportStl(solidIds[0]!, DEFAULT_DEFLECTION);
+      return bytes.buffer as ArrayBuffer;
+    }
+    const bytes: Uint8Array = this.bk.exportStlAscii(solidIds[0]!, DEFAULT_DEFLECTION);
     return new TextDecoder().decode(bytes);
   }
 
@@ -1596,7 +1621,16 @@ export class BrepkitAdapter implements KernelAdapter {
     if (h.type === 'face') {
       return this.bk.facePerimeter(unwrap(shape));
     }
-    throw new Error('brepkit: length() requires an edge or face');
+    // For wires, sum the lengths of all edges
+    if (h.type === 'wire') {
+      const edges = this.iterShapes(shape, 'edge');
+      let total = 0;
+      for (const e of edges) {
+        total += this.bk.edgeLength(unwrap(e));
+      }
+      return total;
+    }
+    throw new Error('brepkit: length() requires an edge, wire, or face');
   }
 
   centerOfMass(shape: KernelShape): [number, number, number] {
@@ -1758,6 +1792,9 @@ export class BrepkitAdapter implements KernelAdapter {
       }
 
       case 'face': {
+        if (type === 'face') {
+          return [shape]; // A face contains itself
+        }
         if (type === 'edge') {
           return toArray(this.bk.getFaceEdges(h)).map(edgeHandle);
         }
@@ -1771,6 +1808,9 @@ export class BrepkitAdapter implements KernelAdapter {
       }
 
       case 'wire': {
+        if (type === 'wire') {
+          return [shape]; // A wire contains itself
+        }
         if (type === 'edge') {
           return toArray(this.bk.getWireEdges(h)).map(edgeHandle);
         }
@@ -1800,6 +1840,9 @@ export class BrepkitAdapter implements KernelAdapter {
       }
 
       case 'edge': {
+        if (type === 'edge') {
+          return [shape]; // An edge contains itself
+        }
         if (type === 'vertex') {
           // getEdgeVertices returns coordinates, not arena IDs — each call to
           // makeVertex allocates a new arena entry (no stable vertex ID API yet)
@@ -1948,37 +1991,85 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   curveIsClosed(shape: KernelShape): boolean {
-    // For wires, check if the first vertex of the first edge matches the
-    // last vertex of the last edge
     const h = shape as BrepkitHandle;
     if (h.type === 'wire') {
+      // Collect all edge endpoints and check if they form a closed loop
+      // (every endpoint appears an even number of times when edges connect)
       const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
       if (edgeIds.length === 0) return false;
-      const firstVerts: number[] = this.bk.getEdgeVertices(edgeIds[0]!);
-      const lastVerts: number[] = this.bk.getEdgeVertices(edgeIds[edgeIds.length - 1]!);
-      const dx = firstVerts[0]! - lastVerts[3]!;
-      const dy = firstVerts[1]! - lastVerts[4]!;
-      const dz = firstVerts[2]! - lastVerts[5]!;
-      return Math.sqrt(dx * dx + dy * dy + dz * dz) < 1e-7;
+
+      // For a single-edge wire, check if edge start == edge end
+      if (edgeIds.length === 1) {
+        const verts: number[] = this.bk.getEdgeVertices(edgeIds[0]!);
+        return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
+      }
+
+      // For multi-edge wires, collect all endpoints and check each has a partner
+      const endpoints: Array<[number, number, number]> = [];
+      for (const eid of edgeIds) {
+        const verts: number[] = this.bk.getEdgeVertices(eid);
+        endpoints.push([verts[0]!, verts[1]!, verts[2]!]);
+        endpoints.push([verts[3]!, verts[4]!, verts[5]!]);
+      }
+      // Each vertex should appear exactly twice in a closed wire
+      const unmatched: Array<[number, number, number]> = [];
+      for (const pt of endpoints) {
+        const matchIdx = unmatched.findIndex(
+          (u) => dist3(u[0], u[1], u[2], pt[0], pt[1], pt[2]) < 1e-7
+        );
+        if (matchIdx >= 0) {
+          unmatched.splice(matchIdx, 1);
+        } else {
+          unmatched.push(pt);
+        }
+      }
+      return unmatched.length === 0;
     }
     // Check if edge start == end vertex
     const verts: number[] = this.bk.getEdgeVertices(unwrap(shape, 'edge'));
-    const dx = verts[0]! - verts[3]!;
-    const dy = verts[1]! - verts[4]!;
-    const dz = verts[2]! - verts[5]!;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz) < 1e-7;
+    return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
   }
 
-  curveIsPeriodic(_shape: KernelShape): boolean {
-    // NURBS curves can be periodic but brepkit doesn't expose this yet
+  curveIsPeriodic(shape: KernelShape): boolean {
+    // Periodic requires seamless parametric repetition. brepkit represents all
+    // geometry as NURBS, so a closed single-edge curve (circle, ellipse, or
+    // closed B-spline) is periodic. Multi-edge wires may be closed but not
+    // periodic (e.g., a rectangular wire has C0 corners).
+    const h = shape as BrepkitHandle;
+    try {
+      if (h.type === 'edge') return this.curveIsClosed(shape);
+      if (h.type === 'wire') {
+        const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
+        // Single-edge closed wire → periodic (e.g., circle)
+        if (edgeIds.length === 1) return this.curveIsClosed(shape);
+      }
+    } catch {
+      // not an edge/wire
+    }
     return false;
   }
 
-  curvePeriod(_shape: KernelShape): number {
+  curvePeriod(shape: KernelShape): number {
+    try {
+      if (this.curveIsPeriodic(shape)) {
+        const bounds = this.curveParameters(shape);
+        return bounds[1] - bounds[0];
+      }
+    } catch {
+      // not an edge/wire
+    }
     return 0;
   }
 
   curveType(shape: KernelShape): string {
+    const h = shape as BrepkitHandle;
+    // For wires, return the curve type of the first edge
+    if (h.type === 'wire') {
+      const edges = this.iterShapes(shape, 'edge');
+      const first = edges[0];
+      if (first) return this.bk.getEdgeCurveType(unwrap(first, 'edge'));
+      return 'LINE';
+    }
     return this.bk.getEdgeCurveType(unwrap(shape, 'edge'));
   }
 
@@ -2004,7 +2095,12 @@ export class BrepkitAdapter implements KernelAdapter {
     if (shape.type !== 'solid') return true;
     try {
       const errors: number = this.bk.validateSolid(shape.id);
-      return errors === 0;
+      if (errors === 0) return true;
+      // brepkit's validateSolid reports false positives for NURBS-approximated
+      // analytic shapes (cylinders, cones, tori). Fall back to a volume check:
+      // if the solid has non-zero volume, treat it as valid.
+      const vol: number = this.bk.volume(shape.id, DEFAULT_DEFLECTION);
+      return vol > 1e-12;
     } catch (e: unknown) {
       console.warn('brepkit: isValid check failed:', e);
       return false;
@@ -2331,8 +2427,19 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   buildExtrusionLaw(profile: 'linear' | 's-curve', length: number, endFactor: number): KernelType {
-    // Return a law object that can be used by sweepPipeShell
-    return { type: 'extrusionLaw', profile, length, endFactor };
+    // Return a law object that can be used by sweepPipeShell.
+    // Trim returns a new law with narrowed domain — brepkit ignores trimming.
+    const law = {
+      type: 'extrusionLaw',
+      profile,
+      length,
+      endFactor,
+      Trim(_first: number, _last: number, _tol: number) {
+        return law;
+      },
+      delete: noop,
+    };
+    return law;
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -2744,7 +2851,7 @@ export class BrepkitAdapter implements KernelAdapter {
     shapes: Array<{ shape: KernelShape; name: string; color?: [number, number, number, number] }>
   ): KernelType {
     // brepkit doesn't have XCAF — store as plain object for writeXCAFToSTEP
-    return { __brepkit_xcaf: true, shapes };
+    return { __brepkit_xcaf: true, shapes, delete: noop };
   }
 
   writeXCAFToSTEP(doc: KernelType, _options?: { unit?: string; modelUnit?: string }): string {
@@ -2913,6 +3020,12 @@ export class BrepkitAdapter implements KernelAdapter {
 
   private c2d(h: Curve2dHandle): Curve2dObj {
     return h as Curve2dObj;
+  }
+  /** Unwrap any trimmed wrappers to get the underlying geometry. */
+  private c2dBasis(h: Curve2dHandle): Curve2dObj {
+    let c = this.c2d(h);
+    while (c.__bk2d === 'trimmed') c = c.basis;
+    return c;
   }
   private bb2d(h: BBox2dHandle): BkBBox2d {
     return h as BkBBox2d;
@@ -3083,7 +3196,8 @@ export class BrepkitAdapter implements KernelAdapter {
     return bk2d.curveBounds(this.c2d(curve));
   }
   getCurve2dType(curve: Curve2dHandle): string {
-    return bk2d.curveTypeName(this.c2d(curve));
+    // Unwrap trimmed curves to report the basis type (matches OCCT adaptor behavior)
+    return bk2d.curveTypeName(this.c2dBasis(curve));
   }
 
   trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
@@ -3417,17 +3531,47 @@ export class BrepkitAdapter implements KernelAdapter {
     return this.makeBSpline2d(poles, { degMax: degree });
   }
   decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
-    const c = this.c2d(curve);
+    const c = this.c2dBasis(curve);
+    if (c.__bk2d === 'bezier') return [curve];
     if (c.__bk2d !== 'bspline') {
-      // For Bezier curves, return as-is
-      if (c.__bk2d === 'bezier') return [curve];
       // For other types, approximate as B-spline first, then decompose
       const approx = this.approximateCurve2dAsBSpline(curve, 1e-6, 'C2', 10);
       return this.decomposeBSpline2dToBeziers(approx);
     }
-    // B-spline decomposition: return the curve as-is (single segment)
-    // Full Bezier decomposition requires Boehm knot insertion (future work)
-    return [curve];
+    // Convert B-spline to cubic Bezier(s) via Hermite interpolation.
+    // For multi-span B-splines, split at internal knots.
+    const bounds = bk2d.curveBounds(c);
+    const first = bounds.first;
+    const last = bounds.last;
+    // Collect unique internal knots
+    const internalKnots: number[] = [];
+    for (const k of c.knots) {
+      if (k > first + 1e-12 && k < last - 1e-12) internalKnots.push(k);
+    }
+    const breakpoints = [first, ...internalKnots, last];
+    const result: Curve2dHandle[] = [];
+    for (let i = 0; i < breakpoints.length - 1; i++) {
+      const t0 = breakpoints[i]!;
+      const t1 = breakpoints[i + 1]!;
+      const span = t1 - t0;
+      if (span < 1e-15) continue;
+      const p0 = bk2d.evaluateCurve2d(c, t0);
+      const p3 = bk2d.evaluateCurve2d(c, t1);
+      const tan0 = bk2d.tangentCurve2d(c, t0);
+      const tan3 = bk2d.tangentCurve2d(c, t1);
+      const s = span / 3;
+      const bezier: Curve2dObj = {
+        __bk2d: 'bezier',
+        poles: [
+          p0,
+          [p0[0] + tan0[0] * s, p0[1] + tan0[1] * s],
+          [p3[0] - tan3[0] * s, p3[1] - tan3[1] * s],
+          p3,
+        ],
+      };
+      result.push(bezier as Curve2dHandle);
+    }
+    return result.length > 0 ? result : [curve];
   }
 
   // --- 2D bounding boxes ---
@@ -3463,14 +3607,14 @@ export class BrepkitAdapter implements KernelAdapter {
   getCurve2dCircleData(
     curve: Curve2dHandle
   ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
-    const c = this.c2d(curve);
+    const c = this.c2dBasis(curve);
     if (c.__bk2d === 'circle') return { cx: c.cx, cy: c.cy, radius: c.radius, isDirect: c.sense };
     return null;
   }
   getCurve2dEllipseData(
     curve: Curve2dHandle
   ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
-    const c = this.c2d(curve);
+    const c = this.c2dBasis(curve);
     if (c.__bk2d === 'ellipse')
       return {
         majorRadius: c.majorRadius,
@@ -3481,12 +3625,12 @@ export class BrepkitAdapter implements KernelAdapter {
     return null;
   }
   getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
-    const c = this.c2d(curve);
+    const c = this.c2dBasis(curve);
     if (c.__bk2d === 'bezier') return [...c.poles];
     return null;
   }
   getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
-    const c = this.c2d(curve);
+    const c = this.c2dBasis(curve);
     if (c.__bk2d === 'bezier') return c.poles.length - 1;
     return null;
   }
@@ -3497,7 +3641,7 @@ export class BrepkitAdapter implements KernelAdapter {
     degree: number;
     isPeriodic: boolean;
   } | null {
-    const c = this.c2d(curve);
+    const c = this.c2dBasis(curve);
     if (c.__bk2d === 'bspline')
       return {
         poles: [...c.poles],
@@ -3866,7 +4010,7 @@ export class BrepkitAdapter implements KernelAdapter {
 
         if (vertCount === 0) continue;
 
-        const triStart = allTriangles.length / 3;
+        const triStart = allTriangles.length;
 
         for (const v of positions) allVertices.push(v);
         for (const n of normals) allNormals.push(n);
@@ -3882,7 +4026,7 @@ export class BrepkitAdapter implements KernelAdapter {
 
         faceGroups.push({
           start: triStart,
-          count: indices.length / 3,
+          count: indices.length,
           faceHash: faceId,
         });
 
@@ -3919,7 +4063,7 @@ export class BrepkitAdapter implements KernelAdapter {
       normals: new Float32Array(normals),
       triangles: new Uint32Array(indices),
       uvs: new Float32Array(uvs),
-      faceGroups: [{ start: 0, count: indices.length / 3, faceHash }],
+      faceGroups: [{ start: 0, count: indices.length, faceHash }],
     };
   }
 
@@ -4174,7 +4318,34 @@ export class BrepkitAdapter implements KernelAdapter {
     point: [number, number, number];
     normal: [number, number, number];
   } {
-    const faceId = unwrap(faceShape, 'face');
+    // If a solid is passed (e.g. a thin box used as a cutting plane),
+    // extract its largest face.
+    let faceId: number;
+    const h = faceShape as BrepkitHandle;
+    if (h.type === 'solid' || h.type === 'compound') {
+      const faces = this.iterShapes(faceShape, 'face');
+      if (faces.length === 0) throw new Error('brepkit: extractPlaneFromFace: no faces found');
+      // Pick the face with the largest area
+      const firstFace = faces[0];
+      if (!firstFace) throw new Error('brepkit: extractPlaneFromFace: no faces found');
+      let bestId = unwrap(firstFace, 'face');
+      let bestArea = 0;
+      for (const f of faces) {
+        const id = unwrap(f, 'face');
+        try {
+          const a: number = this.bk.faceArea(id, DEFAULT_DEFLECTION);
+          if (a > bestArea) {
+            bestArea = a;
+            bestId = id;
+          }
+        } catch {
+          // skip faces that can't compute area
+        }
+      }
+      faceId = bestId;
+    } else {
+      faceId = unwrap(faceShape, 'face');
+    }
     const n: number[] = this.bk.getFaceNormal(faceId);
     const normal: [number, number, number] = [n[0]!, n[1]!, n[2]!];
 

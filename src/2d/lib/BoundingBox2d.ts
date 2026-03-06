@@ -29,7 +29,7 @@ export class BoundingBox2d {
     if (!this._deleted) {
       this._deleted = true;
       unregisterFromCleanup(this._wrapped);
-      this._wrapped.delete();
+      if (typeof this._wrapped.delete === 'function') this._wrapped.delete();
     }
   }
 

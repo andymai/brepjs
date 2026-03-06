@@ -175,9 +175,9 @@ export function curveTypeName(c: Curve2dObj): string {
     case 'ellipse':
       return 'ELLIPSE';
     case 'bezier':
-      return 'BEZIER';
+      return 'BEZIER_CURVE';
     case 'bspline':
-      return 'BSPLINE';
+      return 'BSPLINE_CURVE';
     case 'trimmed':
       return 'TRIMMED_' + curveTypeName(c.basis);
   }
