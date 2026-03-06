@@ -1,4 +1,5 @@
 {
+  "disabledRules": ["result-type", "branded-types", "functional-api"],
   "rules": [
     {
       "id": "kernel-no-internal-imports",
