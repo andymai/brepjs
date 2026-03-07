@@ -3574,24 +3574,53 @@ export class BrepkitAdapter implements KernelAdapter {
 
   // --- 2D intersection & distance ---
   intersectCurves2d(
-    _c1: Curve2dHandle,
-    _c2: Curve2dHandle,
-    _tolerance: number
+    c1: Curve2dHandle,
+    c2: Curve2dHandle,
+    tolerance: number
   ): { points: [number, number][]; segments: Curve2dHandle[] } {
-    // Full curve-curve intersection requires dedicated algorithm — return empty for now
-    return { points: [], segments: [] };
+    const result = bk2d.intersectCurves2dFn(this.c2d(c1), this.c2d(c2), tolerance);
+    // Wrap segment Curve2dObj as Curve2dHandle (add no-op delete for OCCT compat)
+    const segments: Curve2dHandle[] = result.segments.map((s) =>
+      Object.assign(s, {
+        delete() {
+          /* no-op */
+        },
+      })
+    );
+    return { points: result.points, segments };
   }
   projectPointOnCurve2d(
     curve: Curve2dHandle,
     x: number,
     y: number
   ): { param: number; distance: number } | null {
-    // Brute-force sampling
     const c = this.c2d(curve);
     const bounds = bk2d.curveBounds(c);
-    let bestT = bounds.first,
-      bestDist = Infinity;
-    const N = 100;
+
+    // Analytic projection for untrimmed lines
+    if (c.__bk2d === 'line') {
+      const dx = x - c.ox;
+      const dy = y - c.oy;
+      const t = Math.max(bounds.first, Math.min(bounds.last, dx * c.dx + dy * c.dy));
+      const [px, py] = bk2d.evaluateCurve2d(c, t);
+      return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
+    }
+
+    // Analytic projection for untrimmed circles
+    if (c.__bk2d === 'circle') {
+      const angle = Math.atan2(y - c.cy, x - c.cx);
+      let t = c.sense ? angle : -angle;
+      while (t < 0) t += 2 * Math.PI;
+      while (t > 2 * Math.PI) t -= 2 * Math.PI;
+      const [px, py] = bk2d.evaluateCurve2d(c, t);
+      return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
+    }
+
+    // General: brute-force + Newton refinement (handles trimmed, ellipse, bezier, bspline)
+    if (!isFinite(bounds.first) || !isFinite(bounds.last)) return null;
+    let bestT = bounds.first;
+    let bestDist = Infinity;
+    const N = 200;
     const dt = (bounds.last - bounds.first) / N;
     for (let i = 0; i <= N; i++) {
       const t = bounds.first + i * dt;
@@ -3602,7 +3631,21 @@ export class BrepkitAdapter implements KernelAdapter {
         bestT = t;
       }
     }
-    return { param: bestT, distance: Math.sqrt(bestDist) };
+    // Newton refinement: minimize f(t) = |C(t) - P|^2
+    // f'(t) = 2 * dot(C(t) - P, C'(t))
+    for (let iter = 0; iter < 10; iter++) {
+      const [px, py] = bk2d.evaluateCurve2d(c, bestT);
+      const [tx, ty] = bk2d.tangentCurve2d(c, bestT);
+      const dot = (px - x) * tx + (py - y) * ty;
+      const denom = tx * tx + ty * ty;
+      if (denom < 1e-20) break;
+      const step = dot / denom;
+      const newT = Math.max(bounds.first, Math.min(bounds.last, bestT - step));
+      if (Math.abs(newT - bestT) < 1e-14) break;
+      bestT = newT;
+    }
+    const [fx, fy] = bk2d.evaluateCurve2d(c, bestT);
+    return { param: bestT, distance: Math.sqrt((fx - x) ** 2 + (fy - y) ** 2) };
   }
   distanceBetweenCurves2d(
     c1: Curve2dHandle,
