@@ -303,6 +303,15 @@ const DEFAULT_DEFLECTION = 0.01;
 /** Default sphere/torus segment count (brepkit requires explicit segments). */
 const DEFAULT_SEGMENTS = 32;
 
+/**
+ * Counter for synthetic compound IDs (non-solid compounds stored JS-side).
+ * Starts high to avoid colliding with WASM arena indices.
+ */
+let syntheticCompoundCounter = 900_000;
+
+/** JS-side storage for compound children (wires, faces, edges). */
+const syntheticCompounds = new Map<number, BrepkitHandle[]>();
+
 // NotImplementedError removed (unused)
 
 // ---------------------------------------------------------------------------
@@ -578,6 +587,13 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   makeFace(wire: KernelShape, _planar?: boolean): KernelShape {
+    const h = wire as BrepkitHandle;
+    // If given an edge (e.g. a closed circle), wrap it in a wire first
+    if (h.type === 'edge') {
+      const wireId = this.bk.makeWire([h.id], true);
+      const id = this.bk.makeFaceFromWire(wireId);
+      return faceHandle(id);
+    }
     const id = this.bk.makeFaceFromWire(unwrap(wire, 'wire'));
     return faceHandle(id);
   }
@@ -891,9 +907,9 @@ export class BrepkitAdapter implements KernelAdapter {
       if (h.type === 'edge') {
         edgeIds.push(h.id);
       } else if (h.type === 'wire') {
-        // Get edges from the wire (via face edge extraction is indirect,
-        // but we can use the wire directly in many cases)
-        // For now, skip wires — only direct edges are supported
+        for (const childEdgeId of toArray(this.bk.getWireEdges(h.id))) {
+          edgeIds.push(childEdgeId);
+        }
       }
     }
     if (edgeIds.length === 0)
@@ -903,13 +919,19 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   makeCompound(shapes: KernelShape[]): KernelShape {
-    const solidIds = shapes
-      .filter((s) => isBrepkitHandle(s) && s.type === 'solid')
-      .map((s) => unwrap(s));
-    if (solidIds.length === 0) {
-      throw new Error('brepkit: makeCompound requires at least one solid');
+    const handles = shapes.filter(isBrepkitHandle);
+    if (handles.length === 0) {
+      throw new Error('brepkit: makeCompound requires at least one shape');
     }
-    const id = this.bk.makeCompound(solidIds);
+    // If all shapes are solids, use the native WASM compound
+    const allSolids = handles.every((h) => h.type === 'solid');
+    if (allSolids) {
+      const id = this.bk.makeCompound(handles.map((h) => h.id));
+      return compoundHandle(id);
+    }
+    // Mixed types: store children JS-side
+    const id = syntheticCompoundCounter++;
+    syntheticCompounds.set(id, handles);
     return compoundHandle(id);
   }
 
@@ -1843,12 +1865,26 @@ export class BrepkitAdapter implements KernelAdapter {
 
     switch (bkHandle.type) {
       case 'compound': {
-        // compound → solid: direct children
+        // Check for JS-side synthetic compound first
+        const children = syntheticCompounds.get(h);
+        if (children) {
+          // Return children matching the requested type, or recurse
+          const results: KernelShape[] = [];
+          for (const child of children) {
+            if (child.type === type) {
+              results.push(child);
+            } else {
+              results.push(...this.iterShapes(child, type));
+            }
+          }
+          return results;
+        }
+        // Native compound → solid: direct children
         if (type === 'solid') {
           return toArray(this.bk.getCompoundSolids(h)).map(solidHandle);
         }
-        // compound → face/edge/vertex: recursive via solids
-        if (type === 'face' || type === 'edge' || type === 'vertex') {
+        // compound → face/edge/vertex/wire: recursive via solids
+        if (type === 'face' || type === 'edge' || type === 'vertex' || type === 'wire') {
           const solids = toArray(this.bk.getCompoundSolids(h)).map(solidHandle);
           return solids.flatMap((s) => this.iterShapes(s, type));
         }
@@ -1864,8 +1900,8 @@ export class BrepkitAdapter implements KernelAdapter {
           case 'vertex':
             return toArray(this.bk.getSolidVertices(h)).map(vertexHandle);
           case 'wire':
-            return toArray(this.bk.getSolidFaces(h)).map((faceId: number) =>
-              wireHandle(this.bk.getFaceOuterWire(faceId))
+            return toArray(this.bk.getSolidFaces(h)).flatMap((faceId: number) =>
+              toArray(this.bk.getFaceWires(faceId)).map(wireHandle)
             );
           default:
             return [];
@@ -1905,7 +1941,7 @@ export class BrepkitAdapter implements KernelAdapter {
           return toArray(this.bk.getFaceVertices(h)).map(vertexHandle);
         }
         if (type === 'wire') {
-          return [wireHandle(this.bk.getFaceOuterWire(h))];
+          return toArray(this.bk.getFaceWires(h)).map(wireHandle);
         }
         return [];
       }
@@ -2242,7 +2278,22 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   sew(shapes: KernelShape[], tolerance?: number): KernelShape {
-    const faceIds = shapes.map((s) => unwrap(s, 'face'));
+    // Extract face IDs, expanding solids/shells to their constituent faces
+    const faceIds: number[] = [];
+    for (const s of shapes) {
+      const h = s as BrepkitHandle;
+      if (h.type === 'face') {
+        faceIds.push(h.id);
+      } else if (h.type === 'solid') {
+        for (const fid of toArray(this.bk.getSolidFaces(h.id))) {
+          faceIds.push(fid);
+        }
+      } else if (h.type === 'shell') {
+        for (const fid of toArray(this.bk.getShellFaces(h.id))) {
+          faceIds.push(fid);
+        }
+      }
+    }
     const tol = tolerance ?? 1e-7;
     // brepkit's sew produces a solid directly, but callers like
     // weldShellsAndFaces() check isShell(). Return as shell so that both

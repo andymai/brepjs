@@ -377,7 +377,7 @@ export interface BrepkitKernel {
   getFaceOuterWire(face: number): number;
 
   /** Get all wires (outer + inner) of a face. */
-  faceWires(face: number): number[];
+  getFaceWires(face: number): Uint32Array;
 
   /**
    * Get vertex positions of an edge.
