@@ -358,10 +358,17 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   fuse(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    const result = this.bk.fuse(
-      unwrapSolidOrThrow(shape, 'fuse'),
-      unwrapSolidOrThrow(tool, 'fuse')
-    );
+    const baseId = unwrapSolidOrThrow(shape, 'fuse');
+    const toolHandle = tool as BrepkitHandle;
+    if (toolHandle.type === 'compound') {
+      const toolSolidIds: number[] = toArray(this.bk.getCompoundSolids(toolHandle.id));
+      let currentId = baseId;
+      for (const toolSolidId of toolSolidIds) {
+        currentId = this.bk.fuse(currentId, toolSolidId);
+      }
+      return solidHandle(currentId);
+    }
+    const result = this.bk.fuse(baseId, unwrapSolidOrThrow(tool, 'fuse'));
     return solidHandle(result);
   }
 
@@ -954,6 +961,19 @@ export class BrepkitAdapter implements KernelAdapter {
     const h = shell as BrepkitHandle;
     // brepkit's sew already produces a solid, so if we receive one, just return it.
     if (h.type === 'solid') return shell;
+    // brepkit's sew returns solid IDs wrapped as shell handles. Try as
+    // solid first (check if it resolves), then fall back to solidFromShell.
+    if (h.type === 'shell') {
+      try {
+        // If the ID is actually a solid, just re-wrap it
+        this.bk.getSolidFaces(h.id);
+        return solidHandle(h.id);
+      } catch {
+        // Genuine shell handle — convert to solid
+      }
+      const id = this.bk.solidFromShell(h.id);
+      return solidHandle(id);
+    }
     const id = this.bk.solidFromShell(unwrap(shell, 'shell'));
     return solidHandle(id);
   }
@@ -1443,12 +1463,46 @@ export class BrepkitAdapter implements KernelAdapter {
     fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
     label: string
   ): OperationResult {
-    if (inputFaceHashes.length > 0) {
-      // Note: native *WithEvolution APIs do not accept BooleanOptions (e.g. fuzzyValue).
-      // Options are silently ignored when the native evolution path is used.
-      const json = nativeFn(unwrapSolidOrThrow(shape, label), unwrapSolidOrThrow(tool, label));
-      return this.parseNativeEvolution(json, hashUpperBound);
+    const sh = shape as BrepkitHandle;
+    const th = tool as BrepkitHandle;
+    if (inputFaceHashes.length > 0 && sh.type === 'solid') {
+      if (th.type === 'solid') {
+        // Native *WithEvolution APIs require solid handles and do not accept
+        // BooleanOptions (e.g. fuzzyValue). Options are silently ignored.
+        const json = nativeFn(sh.id, th.id);
+        return this.parseNativeEvolution(json, hashUpperBound);
+      }
+      if (th.type === 'compound') {
+        // Iteratively apply native evolution for each solid in the compound
+        const childSolidIds: number[] = toArray(this.bk.getCompoundSolids(th.id));
+        let currentShape: KernelShape = shape;
+        let combinedEvolution: OperationResult['evolution'] = {
+          modified: new Map(),
+          generated: new Map(),
+          deleted: new Set(),
+        };
+        for (const childId of childSolidIds) {
+          const ch = currentShape as BrepkitHandle;
+          if (ch.type !== 'solid') break;
+          const json = nativeFn(ch.id, childId);
+          const result = this.parseNativeEvolution(json, hashUpperBound);
+          currentShape = result.shape;
+          // Merge evolution data
+          for (const [k, v] of result.evolution.modified) {
+            combinedEvolution.modified.set(k, v);
+          }
+          for (const [k, v] of result.evolution.generated) {
+            const existing = combinedEvolution.generated.get(k) ?? [];
+            combinedEvolution.generated.set(k, [...existing, ...v]);
+          }
+          for (const d of result.evolution.deleted) {
+            combinedEvolution.deleted.add(d);
+          }
+        }
+        return { shape: currentShape, evolution: combinedEvolution };
+      }
     }
+    // Fallback: non-solid shapes or no face hashes
     return this.buildEvolution(
       fallbackFn(shape, tool, options),
       inputFaceHashes,
@@ -2295,10 +2349,9 @@ export class BrepkitAdapter implements KernelAdapter {
       }
     }
     const tol = tolerance ?? 1e-7;
-    // brepkit's sew produces a solid directly, but callers like
-    // weldShellsAndFaces() check isShell(). Return as shell so that both
-    // weldShellsAndFaces (wants shell) and solidFromShell (accepts solid
-    // or shell) work correctly.
+    // brepkit's sew produces a solid directly. Return as shell handle so
+    // callers expecting shell (weldShellsAndFaces) work. The solidFromShell
+    // adapter method handles shell handles that are actually solid IDs.
     try {
       const id = this.bk.weldShellsAndFaces(faceIds, tol);
       return shellHandle(id);
