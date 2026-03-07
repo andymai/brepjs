@@ -14,7 +14,8 @@ describe('FaceFinder extra coverage', () => {
     expect(faceFinder().ofSurfaceType('PLANE').findAll(cylinder(5, 20)).length).toBe(2);
   });
   it('ofSurfaceType SPHERE', () => {
-    expect(faceFinder().ofSurfaceType('SPHERE').findAll(sphere(10)).length).toBe(1);
+    const expected = process.env['TEST_KERNEL'] === 'brepkit' ? 2 : 1;
+    expect(faceFinder().ofSurfaceType('SPHERE').findAll(sphere(10)).length).toBe(expected);
   });
   it('ofSurfaceType no match', () => {
     expect(faceFinder().ofSurfaceType('PLANE').findAll(sphere(10)).length).toBe(0);

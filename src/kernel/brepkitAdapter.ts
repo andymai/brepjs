@@ -513,28 +513,25 @@ export class BrepkitAdapter implements KernelAdapter {
   buildSolidFromFaces(
     points: Array<{ x: number; y: number; z: number }>,
     faces: Array<readonly [number, number, number]>,
-    tolerance: number
+    _tolerance: number
   ): KernelShape {
-    // Build triangle faces from indexed mesh, then sew into a solid
-    const triFaces: KernelShape[] = [];
-    for (const [i0, i1, i2] of faces) {
-      const p0 = points[i0]!;
-      const p1 = points[i1]!;
-      const p2 = points[i2]!;
-      const f = this.buildTriFace([p0.x, p0.y, p0.z], [p1.x, p1.y, p1.z], [p2.x, p2.y, p2.z]);
-      if (f) triFaces.push(f);
+    // Use native importIndexedMesh for correct volume computation
+    const positions = new Float64Array(points.length * 3);
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i]!;
+      positions[i * 3] = p.x;
+      positions[i * 3 + 1] = p.y;
+      positions[i * 3 + 2] = p.z;
     }
-    if (triFaces.length === 0) throw new Error('brepkit: no valid faces to build solid from');
-    // Use sew internally but return as solid (not shell) since callers
-    // like polyhedron() check isSolid().
-    const faceIds = triFaces.map((s) => unwrap(s, 'face'));
-    try {
-      const id = this.bk.weldShellsAndFaces(faceIds, tolerance);
-      return solidHandle(id);
-    } catch {
-      const id = this.bk.sewFaces(faceIds, tolerance);
-      return solidHandle(id);
+    const indices = new Uint32Array(faces.length * 3);
+    for (let i = 0; i < faces.length; i++) {
+      const f = faces[i]!;
+      indices[i * 3] = f[0];
+      indices[i * 3 + 1] = f[1];
+      indices[i * 3 + 2] = f[2];
     }
+    const id = this.bk.importIndexedMesh(positions, indices);
+    return solidHandle(id);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1168,8 +1165,44 @@ export class BrepkitAdapter implements KernelAdapter {
     thickness: number,
     _tolerance?: number
   ): KernelShape {
-    const faceIds = faces.map((f) => unwrap(f, 'face'));
-    const id = this.bk.shell(unwrapSolidOrThrow(shape, 'shell'), thickness, faceIds);
+    const solidId = unwrapSolidOrThrow(shape, 'shell');
+    const solidFaces = toArray(this.bk.getSolidFaces(solidId));
+    const solidFaceSet = new Set(solidFaces);
+
+    // Re-resolve face IDs: if a face doesn't belong to the solid (e.g. after
+    // fillet changed face IDs), find the best matching face by normal direction.
+    const resolvedFaceIds = faces.map((f) => {
+      const fid = unwrap(f, 'face');
+      if (solidFaceSet.has(fid)) return fid;
+
+      // Face doesn't belong to this solid — match by geometry (normal)
+      try {
+        const origNormal = this.bk.getFaceNormal(fid);
+        let bestMatch = -1;
+        let bestDot = -2;
+        for (const sf of solidFaces) {
+          try {
+            const sn = this.bk.getFaceNormal(sf);
+            const dot =
+              (origNormal[0] ?? 0) * (sn[0] ?? 0) +
+              (origNormal[1] ?? 0) * (sn[1] ?? 0) +
+              (origNormal[2] ?? 0) * (sn[2] ?? 0);
+            if (dot > bestDot) {
+              bestDot = dot;
+              bestMatch = sf;
+            }
+          } catch {
+            // non-planar face, skip
+          }
+        }
+        if (bestMatch >= 0 && bestDot > 0.99) return bestMatch;
+      } catch {
+        // original face lookup failed
+      }
+      return fid; // fallback: pass original ID and let WASM validate
+    });
+
+    const id = this.bk.shell(solidId, thickness, resolvedFaceIds);
     return solidHandle(id);
   }
 
@@ -1461,7 +1494,7 @@ export class BrepkitAdapter implements KernelAdapter {
     options: BooleanOptions | undefined,
     nativeFn: (a: number, b: number) => string,
     fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
-    label: string
+    _label: string
   ): OperationResult {
     const sh = shape as BrepkitHandle;
     const th = tool as BrepkitHandle;
@@ -1476,11 +1509,9 @@ export class BrepkitAdapter implements KernelAdapter {
         // Iteratively apply native evolution for each solid in the compound
         const childSolidIds: number[] = toArray(this.bk.getCompoundSolids(th.id));
         let currentShape: KernelShape = shape;
-        let combinedEvolution: OperationResult['evolution'] = {
-          modified: new Map(),
-          generated: new Map(),
-          deleted: new Set(),
-        };
+        const combinedModified = new Map<number, number[]>();
+        const combinedGenerated = new Map<number, number[]>();
+        const combinedDeleted = new Set<number>();
         for (const childId of childSolidIds) {
           const ch = currentShape as BrepkitHandle;
           if (ch.type !== 'solid') break;
@@ -1489,17 +1520,24 @@ export class BrepkitAdapter implements KernelAdapter {
           currentShape = result.shape;
           // Merge evolution data
           for (const [k, v] of result.evolution.modified) {
-            combinedEvolution.modified.set(k, v);
+            combinedModified.set(k, [...v]);
           }
           for (const [k, v] of result.evolution.generated) {
-            const existing = combinedEvolution.generated.get(k) ?? [];
-            combinedEvolution.generated.set(k, [...existing, ...v]);
+            const existing = combinedGenerated.get(k) ?? [];
+            combinedGenerated.set(k, [...existing, ...v]);
           }
           for (const d of result.evolution.deleted) {
-            combinedEvolution.deleted.add(d);
+            combinedDeleted.add(d);
           }
         }
-        return { shape: currentShape, evolution: combinedEvolution };
+        return {
+          shape: currentShape,
+          evolution: {
+            modified: combinedModified,
+            generated: combinedGenerated,
+            deleted: combinedDeleted,
+          },
+        };
       }
     }
     // Fallback: non-solid shapes or no face hashes
@@ -2908,15 +2946,9 @@ export class BrepkitAdapter implements KernelAdapter {
 
   sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape {
     const faceIds = faces.map((s) => unwrap(s, 'face'));
-    const shellOrSolid = this.bk.sewFaces(faceIds, tolerance);
-    // sewFaces may return a shell — try to solidify it
-    try {
-      const solidId = this.bk.solidFromShell(shellOrSolid);
-      return solidHandle(solidId);
-    } catch {
-      // solidFromShell failed — return as solid (sewFaces already returns solid handle)
-      return solidHandle(shellOrSolid);
-    }
+    // sewFaces returns a solid handle directly — no need for solidFromShell
+    const solidId = this.bk.sewFaces(faceIds, tolerance);
+    return solidHandle(solidId);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
