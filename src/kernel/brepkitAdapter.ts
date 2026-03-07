@@ -114,7 +114,9 @@ function edgeHandle(id: number): BrepkitHandle {
 function wireHandle(id: number): BrepkitHandle {
   return handle('wire', id);
 }
-// _shellHandle removed (unused)
+function shellHandle(id: number): BrepkitHandle {
+  return handle('shell', id);
+}
 function compoundHandle(id: number): BrepkitHandle {
   return handle('compound', id);
 }
@@ -507,7 +509,16 @@ export class BrepkitAdapter implements KernelAdapter {
       if (f) triFaces.push(f);
     }
     if (triFaces.length === 0) throw new Error('brepkit: no valid faces to build solid from');
-    return this.sew(triFaces, tolerance);
+    // Use sew internally but return as solid (not shell) since callers
+    // like polyhedron() check isSolid().
+    const faceIds = triFaces.map((s) => unwrap(s, 'face'));
+    try {
+      const id = this.bk.weldShellsAndFaces(faceIds, tolerance);
+      return solidHandle(id);
+    } catch {
+      const id = this.bk.sewFaces(faceIds, tolerance);
+      return solidHandle(id);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -918,6 +929,9 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   solidFromShell(shell: KernelShape): KernelShape {
+    const h = shell as BrepkitHandle;
+    // brepkit's sew already produces a solid, so if we receive one, just return it.
+    if (h.type === 'solid') return shell;
     const id = this.bk.solidFromShell(unwrap(shell, 'shell'));
     return solidHandle(id);
   }
@@ -1129,8 +1143,10 @@ export class BrepkitAdapter implements KernelAdapter {
   offset(shape: KernelShape, distance: number, _tolerance?: number): KernelShape {
     const h = shape as BrepkitHandle;
     if (h.type === 'face') {
-      const id = this.bk.offsetFace(h.id, distance, 50);
-      return faceHandle(id);
+      // OCCT's BRepOffset_MakeOffset creates a solid from an offset face.
+      // Use thicken (which creates a solid from a face + distance).
+      const id = this.bk.thicken(h.id, distance);
+      return solidHandle(id);
     }
     const id = this.bk.offsetSolid(unwrapSolidOrThrow(shape, 'offset'), distance);
     return solidHandle(id);
@@ -2228,15 +2244,18 @@ export class BrepkitAdapter implements KernelAdapter {
   sew(shapes: KernelShape[], tolerance?: number): KernelShape {
     const faceIds = shapes.map((s) => unwrap(s, 'face'));
     const tol = tolerance ?? 1e-7;
-    // Try native weldShellsAndFaces first (better tolerance-based welding)
+    // brepkit's sew produces a solid directly, but callers like
+    // weldShellsAndFaces() check isShell(). Return as shell so that both
+    // weldShellsAndFaces (wants shell) and solidFromShell (accepts solid
+    // or shell) work correctly.
     try {
       const id = this.bk.weldShellsAndFaces(faceIds, tol);
-      return solidHandle(id);
+      return shellHandle(id);
     } catch (e: unknown) {
       console.warn('brepkit: weldShellsAndFaces failed, falling back to sewFaces:', e);
     }
     const id = this.bk.sewFaces(faceIds, tol);
-    return solidHandle(id);
+    return shellHandle(id);
   }
 
   healSolid(shape: KernelShape): KernelShape | null {
