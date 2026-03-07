@@ -946,6 +946,10 @@ export class BrepkitAdapter implements KernelAdapter {
         origin: [number, number, number];
         direction: [number, number, number];
       };
+      // brepjs passes angle in radians; brepkit WASM expects degrees.
+      // Clamp to (0, 360] for full revolution safety.
+      let angleDeg = angle * (180 / Math.PI);
+      if (angleDeg > 360) angleDeg = 360;
       const id = this.bk.revolve(
         unwrap(shape, 'face'),
         origin[0],
@@ -954,7 +958,7 @@ export class BrepkitAdapter implements KernelAdapter {
         direction[0],
         direction[1],
         direction[2],
-        angle
+        angleDeg
       );
       return solidHandle(id);
     }
@@ -967,6 +971,11 @@ export class BrepkitAdapter implements KernelAdapter {
     direction: [number, number, number],
     angle: number
   ): KernelShape {
+    // brepjs passes angle in radians; brepkit WASM expects degrees.
+    // Clamp to (0, 360] — angles > 2π (e.g. 360 passed as raw degrees)
+    // are treated as a full revolution.
+    let angleDeg = angle * (180 / Math.PI);
+    if (angleDeg > 360) angleDeg = 360;
     const id = this.bk.revolve(
       unwrap(shape, 'face'),
       center[0],
@@ -975,7 +984,7 @@ export class BrepkitAdapter implements KernelAdapter {
       direction[0],
       direction[1],
       direction[2],
-      angle
+      angleDeg
     );
     return solidHandle(id);
   }
@@ -2057,13 +2066,44 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   curveParameters(shape: KernelShape): [number, number] {
-    const edgeId = this.unwrapEdgeOrFirstOfWire(shape);
+    const h = shape as BrepkitHandle;
+    if (h.type === 'wire') {
+      // For wires, compose a cumulative parameter range over all edges
+      const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
+      if (edgeIds.length === 0) return [0, 0];
+      let total = 0;
+      for (const eid of edgeIds) {
+        const p: number[] = this.bk.getEdgeCurveParameters(eid);
+        total += p[1]! - p[0]!;
+      }
+      return [0, total];
+    }
+    const edgeId = unwrap(shape, 'edge');
     const params: number[] = this.bk.getEdgeCurveParameters(edgeId);
     return [params[0]!, params[1]!];
   }
 
   curvePointAtParam(shape: KernelShape, param: number): [number, number, number] {
-    const edgeId = this.unwrapEdgeOrFirstOfWire(shape);
+    const h = shape as BrepkitHandle;
+    if (h.type === 'wire') {
+      // Walk edges to find the right one for the composite parameter
+      const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
+      let cumulative = 0;
+      for (const eid of edgeIds) {
+        const p: number[] = this.bk.getEdgeCurveParameters(eid);
+        const span = p[1]! - p[0]!;
+        if (param <= cumulative + span || eid === edgeIds[edgeIds.length - 1]) {
+          const localParam = p[0]! + (param - cumulative);
+          const pt: number[] = this.bk.evaluateEdgeCurve(eid, Math.min(localParam, p[1]!));
+          return [pt[0]!, pt[1]!, pt[2]!];
+        }
+        cumulative += span;
+      }
+      // Fallback: evaluate first edge at param
+      const pt: number[] = this.bk.evaluateEdgeCurve(edgeIds[0]!, param);
+      return [pt[0]!, pt[1]!, pt[2]!];
+    }
+    const edgeId = unwrap(shape, 'edge');
     const p: number[] = this.bk.evaluateEdgeCurve(edgeId, param);
     return [p[0]!, p[1]!, p[2]!];
   }
@@ -2296,6 +2336,28 @@ export class BrepkitAdapter implements KernelAdapter {
       };
     }
 
+    // Point-to-face distance
+    if (h1.type === 'vertex' && h2.type === 'face') {
+      const pos = this.bk.getVertexPosition(h1.id);
+      const result: number[] = this.bk.pointToFaceDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+      return {
+        value: result[0]!,
+        point1: [pos[0]!, pos[1]!, pos[2]!],
+        point2: [result[1]!, result[2]!, result[3]!],
+      };
+    }
+
+    // Point-to-edge distance
+    if (h1.type === 'vertex' && h2.type === 'edge') {
+      const pos = this.bk.getVertexPosition(h1.id);
+      const result: number[] = this.bk.pointToEdgeDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+      return {
+        value: result[0]!,
+        point1: [pos[0]!, pos[1]!, pos[2]!],
+        point2: [result[1]!, result[2]!, result[3]!],
+      };
+    }
+
     // Fallback: use vertex positions for unsupported pairs
     const getPos = (s: BrepkitHandle): [number, number, number] => {
       if (s.type === 'vertex') {
@@ -2507,6 +2569,14 @@ export class BrepkitAdapter implements KernelAdapter {
       if (options?.ruled !== undefined) opts['ruled'] = options.ruled;
       if (options?.solid !== undefined) opts['solid'] = options.solid;
       if (options?.tolerance !== undefined) opts['tolerance'] = options.tolerance;
+      if (options?.startVertex) {
+        const pos = this.bk.getVertexPosition(unwrap(options.startVertex, 'vertex'));
+        opts['startPoint'] = [pos[0], pos[1], pos[2]];
+      }
+      if (options?.endVertex) {
+        const pos = this.bk.getVertexPosition(unwrap(options.endVertex, 'vertex'));
+        opts['endPoint'] = [pos[0], pos[1], pos[2]];
+      }
       const id = this.bk.loftWithOptions(faceIds, JSON.stringify(opts));
       return solidHandle(id);
     } catch {

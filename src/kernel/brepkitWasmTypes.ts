@@ -499,6 +499,18 @@ export interface BrepkitKernel {
    */
   pointToSolidDistance(px: number, py: number, pz: number, solid: number): number[];
 
+  /**
+   * Minimum distance from a point to a face.
+   * Returns `[distance, closestX, closestY, closestZ]`.
+   */
+  pointToFaceDistance(px: number, py: number, pz: number, face: number): number[];
+
+  /**
+   * Minimum distance from a point to an edge.
+   * Returns `[distance, closestX, closestY, closestZ]`.
+   */
+  pointToEdgeDistance(px: number, py: number, pz: number, edge: number): number[];
+
   /** Minimum distance between two solids. */
   solidToSolidDistance(a: number, b: number): number;
 
