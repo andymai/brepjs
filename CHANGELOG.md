@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.6.4](https://github.com/andymai/brepjs/compare/brepjs-v9.6.3...brepjs-v9.6.4) (2026-03-08)
+
+
+### Bug Fixes
+
+* overhaul benchmark suite and fix fillet/chamfer BindingError ([#409](https://github.com/andymai/brepjs/issues/409)) ([f899dc8](https://github.com/andymai/brepjs/commit/f899dc83b986fd8d0c226ee357e8f12827a7b938))
+
 ## [9.6.3](https://github.com/andymai/brepjs/compare/brepjs-v9.6.2...brepjs-v9.6.3) (2026-03-08)
 
 
