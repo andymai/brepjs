@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.6.2](https://github.com/andymai/brepjs/compare/brepjs-v9.6.1...brepjs-v9.6.2) (2026-03-08)
+
+
+### Bug Fixes
+
+* lower line coverage threshold to 84% ([#401](https://github.com/andymai/brepjs/issues/401)) ([aa9dcec](https://github.com/andymai/brepjs/commit/aa9dcec32fd6e3911e38b760764ec6acaea5e6cf))
+
 ## [9.6.1](https://github.com/andymai/brepjs/compare/brepjs-v9.6.0...brepjs-v9.6.1) (2026-03-08)
 
 
