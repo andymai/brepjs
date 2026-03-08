@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.6.3](https://github.com/andymai/brepjs/compare/brepjs-v9.6.2...brepjs-v9.6.3) (2026-03-08)
+
+
+### Bug Fixes
+
+* address unreviewed PR comments from past week ([#407](https://github.com/andymai/brepjs/issues/407)) ([d6694b1](https://github.com/andymai/brepjs/commit/d6694b1f066dd36accab5ed211d74c9394940f31))
+
 ## [9.6.2](https://github.com/andymai/brepjs/compare/brepjs-v9.6.1...brepjs-v9.6.2) (2026-03-08)
 
 
