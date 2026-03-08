@@ -1353,13 +1353,15 @@ export class BrepkitAdapter implements KernelAdapter {
    * Build a ShapeEvolution by comparing input face hashes to output face hashes.
    *
    * For transforms: 1:1 mapping (modified = identity, no generated/deleted).
-   * For booleans/modifiers: compare sets to detect changes.
+   * For booleans/modifiers: compare sets to detect changes, with geometric
+   * fallback when hash matching fails (brepkit always creates new face IDs).
    */
   private buildEvolution(
     resultShape: KernelShape,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    isTransform: boolean
+    isTransform: boolean,
+    originalShape?: KernelShape
   ): OperationResult {
     const h = resultShape as BrepkitHandle;
     const modified = new Map<number, number[]>();
@@ -1378,31 +1380,196 @@ export class BrepkitAdapter implements KernelAdapter {
       } else {
         // Boolean/modifier: compare face hash sets
         const inputSet = new Set(inputFaceHashes);
-        const outputSet = new Set(outputHashes);
 
-        // Faces in output that match an input hash → modified
+        // Check if any output hash matches an input hash
+        let hasOverlap = false;
         for (const hash of outputHashes) {
           if (inputSet.has(hash)) {
-            modified.set(hash, [hash]);
+            hasOverlap = true;
+            break;
           }
         }
 
-        // Faces in output that don't match any input → generated (attributed to first input face)
-        const newFaces = outputHashes.filter((h) => !inputSet.has(h));
-        if (newFaces.length > 0 && inputFaceHashes.length > 0) {
-          generated.set(inputFaceHashes[0]!, newFaces);
-        }
-
-        // Faces in input that don't appear in output → deleted
-        for (const hash of inputFaceHashes) {
-          if (!outputSet.has(hash)) {
-            deleted.add(hash);
+        if (hasOverlap) {
+          // Hash-based matching (OCCT-like behavior)
+          const outputSet = new Set(outputHashes);
+          for (const hash of outputHashes) {
+            if (inputSet.has(hash)) {
+              modified.set(hash, [hash]);
+            }
+          }
+          const newFaces = outputHashes.filter((fh) => !inputSet.has(fh));
+          if (newFaces.length > 0 && inputFaceHashes.length > 0) {
+            generated.set(inputFaceHashes[0]!, newFaces);
+          }
+          for (const hash of inputFaceHashes) {
+            if (!outputSet.has(hash)) {
+              deleted.add(hash);
+            }
+          }
+        } else if (originalShape) {
+          // No hash overlap — use geometric matching (normal + centroid)
+          this.matchFacesGeometrically(
+            originalShape,
+            resultShape,
+            inputFaceHashes,
+            outputFaces,
+            hashUpperBound,
+            modified,
+            generated,
+            deleted
+          );
+        } else {
+          // No original shape available — positional fallback
+          for (let i = 0; i < inputFaceHashes.length && i < outputHashes.length; i++) {
+            modified.set(inputFaceHashes[i]!, [outputHashes[i]!]);
+          }
+          if (outputHashes.length > inputFaceHashes.length && inputFaceHashes.length > 0) {
+            generated.set(inputFaceHashes[0]!, outputHashes.slice(inputFaceHashes.length));
           }
         }
       }
     }
 
     return { shape: resultShape, evolution: { modified, generated, deleted } };
+  }
+
+  /** Compute face centroid from tessellation for a raw face ID. */
+  private faceCentroidById(faceId: number): [number, number, number] {
+    try {
+      const mesh = this.bk.tessellateFace(faceId, 1.0);
+      const pos: number[] = mesh.positions;
+      if (pos.length < 3) return [0, 0, 0];
+      // Simple average of vertices (fast approximation)
+      let cx = 0,
+        cy = 0,
+        cz = 0;
+      const nVerts = pos.length / 3;
+      for (let i = 0; i < pos.length; i += 3) {
+        cx += pos[i]!;
+        cy += pos[i + 1]!;
+        cz += pos[i + 2]!;
+      }
+      return [cx / nVerts, cy / nVerts, cz / nVerts];
+    } catch {
+      return [0, 0, 0];
+    }
+  }
+
+  /**
+   * Match input→output faces geometrically using normal dot product and centroid distance.
+   * Mirrors the algorithm in brepkit's `boolean_with_evolution`.
+   */
+  private matchFacesGeometrically(
+    originalShape: KernelShape,
+    _resultShape: KernelShape,
+    inputFaceHashes: number[],
+    outputFaceIds: number[],
+    hashUpperBound: number,
+    modified: Map<number, number[]>,
+    generated: Map<number, number[]>,
+    deleted: Set<number>
+  ): void {
+    const orig = originalShape as BrepkitHandle;
+    if (orig.type !== 'solid') return;
+
+    const inputFaceIds = toArray(this.bk.getSolidFaces(orig.id));
+
+    // Snapshot input face signatures (skip faces where normal can't be computed)
+    const inputSigs: { hash: number; normal: number[]; centroid: [number, number, number] }[] = [];
+    for (let i = 0; i < inputFaceIds.length; i++) {
+      const fid = inputFaceIds[i]!;
+      try {
+        const normal = this.bk.getFaceNormal(fid);
+        const centroid = this.faceCentroidById(fid);
+        inputSigs.push({ hash: inputFaceHashes[i] ?? fid % hashUpperBound, normal, centroid });
+      } catch {
+        // Non-planar faces can't compute normal via getFaceNormal — skip
+        inputSigs.push({
+          hash: inputFaceHashes[i] ?? fid % hashUpperBound,
+          normal: [0, 0, 0],
+          centroid: this.faceCentroidById(fid),
+        });
+      }
+    }
+
+    // Snapshot output face signatures (skip faces where normal can't be computed)
+    const outputSigs: { hash: number; normal: number[]; centroid: [number, number, number] }[] = [];
+    for (const fid of outputFaceIds) {
+      try {
+        const normal = this.bk.getFaceNormal(fid);
+        const centroid = this.faceCentroidById(fid);
+        outputSigs.push({ hash: fid % hashUpperBound, normal, centroid });
+      } catch {
+        outputSigs.push({
+          hash: fid % hashUpperBound,
+          normal: [0, 0, 0],
+          centroid: this.faceCentroidById(fid),
+        });
+      }
+    }
+
+    const NORMAL_THRESHOLD = 0.707; // cos(45°)
+    const CENTROID_DIST_SQ_MAX = 100.0;
+    const matchedInputs = new Set<number>();
+
+    for (const out of outputSigs) {
+      let bestScore = -Infinity;
+      let bestInput: (typeof inputSigs)[0] | undefined;
+
+      for (const inp of inputSigs) {
+        const dot =
+          (out.normal[0] ?? 0) * (inp.normal[0] ?? 0) +
+          (out.normal[1] ?? 0) * (inp.normal[1] ?? 0) +
+          (out.normal[2] ?? 0) * (inp.normal[2] ?? 0);
+        if (dot < NORMAL_THRESHOLD) continue;
+
+        const dx = out.centroid[0] - inp.centroid[0];
+        const dy = out.centroid[1] - inp.centroid[1];
+        const dz = out.centroid[2] - inp.centroid[2];
+        const distSq = dx * dx + dy * dy + dz * dz;
+        if (distSq > CENTROID_DIST_SQ_MAX) continue;
+
+        const score = dot - distSq / CENTROID_DIST_SQ_MAX;
+        if (score > bestScore) {
+          bestScore = score;
+          bestInput = inp;
+        }
+      }
+
+      if (bestInput) {
+        const existing = modified.get(bestInput.hash) ?? [];
+        existing.push(out.hash);
+        modified.set(bestInput.hash, existing);
+        matchedInputs.add(bestInput.hash);
+      } else {
+        // Unmatched output → generated from nearest input
+        let bestDistSq = Infinity;
+        let nearestInput: (typeof inputSigs)[0] | undefined;
+        for (const inp of inputSigs) {
+          const dx = out.centroid[0] - inp.centroid[0];
+          const dy = out.centroid[1] - inp.centroid[1];
+          const dz = out.centroid[2] - inp.centroid[2];
+          const distSq = dx * dx + dy * dy + dz * dz;
+          if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            nearestInput = inp;
+          }
+        }
+        if (nearestInput) {
+          const existing = generated.get(nearestInput.hash) ?? [];
+          existing.push(out.hash);
+          generated.set(nearestInput.hash, existing);
+        }
+      }
+    }
+
+    // Input faces not matched → deleted
+    for (const inp of inputSigs) {
+      if (!matchedInputs.has(inp.hash)) {
+        deleted.add(inp.hash);
+      }
+    }
   }
 
   translateWithHistory(
@@ -1507,7 +1674,9 @@ export class BrepkitAdapter implements KernelAdapter {
         return result;
       }
       if (th.type === 'compound') {
-        // Iteratively apply native evolution for each solid in the compound
+        // Iteratively apply native evolution for each solid in the compound,
+        // chaining evolution maps so that original input face hashes map to
+        // final output face hashes (not intermediate ones).
         const childSolidIds: number[] = toArray(this.bk.getCompoundSolids(th.id));
         let currentShape: KernelShape = shape;
         const combinedModified = new Map<number, number[]>();
@@ -1519,16 +1688,58 @@ export class BrepkitAdapter implements KernelAdapter {
           const json = nativeFn(ch.id, childId);
           const result = this.parseNativeEvolution(json, hashUpperBound);
           currentShape = result.shape;
-          // Merge evolution data
-          for (const [k, v] of result.evolution.modified) {
-            combinedModified.set(k, [...v]);
+
+          // Chain evolution: update existing combined entries to follow through
+          // intermediate face hashes to final output hashes.
+          // For each entry in combinedModified, if its output hashes appear as
+          // inputs in this step's evolution, replace with the new outputs.
+          for (const [origKey, prevOutputs] of combinedModified) {
+            const chainedOutputs: number[] = [];
+            for (const prevOut of prevOutputs) {
+              const nextOutputs = result.evolution.modified.get(prevOut);
+              if (nextOutputs) {
+                chainedOutputs.push(...nextOutputs);
+              } else if (result.evolution.deleted.has(prevOut)) {
+                // This intermediate face was deleted in this step
+              } else {
+                // Face unchanged in this step — keep it
+                chainedOutputs.push(prevOut);
+              }
+            }
+            if (chainedOutputs.length > 0) {
+              combinedModified.set(origKey, chainedOutputs);
+            } else {
+              combinedModified.delete(origKey);
+              combinedDeleted.add(origKey);
+            }
           }
+
+          // Add new entries from this step that aren't chained from previous
+          for (const [k, v] of result.evolution.modified) {
+            if (!combinedModified.has(k)) {
+              // Check if k was an intermediate output — find original key
+              let foundOriginal = false;
+              for (const [, outputs] of combinedModified) {
+                if (outputs.includes(k)) {
+                  foundOriginal = true;
+                  break;
+                }
+              }
+              if (!foundOriginal) {
+                combinedModified.set(k, [...v]);
+              }
+            }
+          }
+
           for (const [k, v] of result.evolution.generated) {
             const existing = combinedGenerated.get(k) ?? [];
             combinedGenerated.set(k, [...existing, ...v]);
           }
           for (const d of result.evolution.deleted) {
-            combinedDeleted.add(d);
+            // Only add to combined deleted if it was an original input face
+            if (inputFaceHashes.includes(d)) {
+              combinedDeleted.add(d);
+            }
           }
         }
         return {
@@ -1543,7 +1754,7 @@ export class BrepkitAdapter implements KernelAdapter {
     }
     // Fallback: non-solid shapes or no face hashes
     const fallbackResult = fallbackFn(shape, tool, options);
-    return this.buildEvolution(fallbackResult, inputFaceHashes, hashUpperBound, false);
+    return this.buildEvolution(fallbackResult, inputFaceHashes, hashUpperBound, false, shape);
   }
 
   fuseWithHistory(
@@ -1614,7 +1825,8 @@ export class BrepkitAdapter implements KernelAdapter {
       this.fillet(shape, edges, radius),
       inputFaceHashes,
       hashUpperBound,
-      false
+      false,
+      shape
     );
   }
 
@@ -1629,7 +1841,8 @@ export class BrepkitAdapter implements KernelAdapter {
       this.chamfer(shape, edges, distance),
       inputFaceHashes,
       hashUpperBound,
-      false
+      false,
+      shape
     );
   }
 
@@ -1645,7 +1858,8 @@ export class BrepkitAdapter implements KernelAdapter {
       this.shell(shape, faces, thickness, tolerance),
       inputFaceHashes,
       hashUpperBound,
-      false
+      false,
+      shape
     );
   }
 
@@ -1659,7 +1873,8 @@ export class BrepkitAdapter implements KernelAdapter {
       this.thicken(shape, thickness),
       inputFaceHashes,
       hashUpperBound,
-      false
+      false,
+      shape
     );
   }
 
@@ -1674,7 +1889,8 @@ export class BrepkitAdapter implements KernelAdapter {
       this.offset(shape, distance, tolerance),
       inputFaceHashes,
       hashUpperBound,
-      false
+      false,
+      shape
     );
   }
 

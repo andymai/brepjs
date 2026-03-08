@@ -507,7 +507,8 @@ export function propagateOriginsFromEvolution(
 
 /**
  * Fallback origin propagation when no kernel op object is available.
- * Matches result faces to input faces by hash code (works for unmodified faces only).
+ * Matches result faces to input faces by hash code first; if no hash matches
+ * are found, falls back to geometric matching (normal + centroid comparison).
  */
 export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): void {
   const lookup = new Map<number, number>();
@@ -520,14 +521,92 @@ export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): vo
   }
   if (lookup.size === 0) return;
 
+  const kernel = getKernel();
   const resultMap = new Map<number, number>();
-  for (const f of getFaces(result)) {
-    const hash = getKernel().hashCode(f.wrapped, HASH_CODE_MAX);
+  const resultFaces = getFaces(result);
+
+  // Try hash-based matching first
+  for (const f of resultFaces) {
+    const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
     const origin = lookup.get(hash);
     if (origin !== undefined) {
       resultMap.set(hash, origin);
     }
   }
+
+  // Geometric fallback: when hash matching finds nothing, match by normal + centroid
+  // This path only triggers with brepkit (arena-based face IDs) — not covered by OCCT tests
+  /* v8 ignore start */
+  if (resultMap.size === 0) {
+    // Collect input face signatures
+    const inputSigs: {
+      origin: number;
+      normal: [number, number, number];
+      centroid: [number, number, number];
+    }[] = [];
+    for (const input of inputs) {
+      const origins = getFaceOrigins(input);
+      if (!origins) continue;
+      for (const f of getFaces(input)) {
+        const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
+        const origin = origins.get(hash);
+        if (origin === undefined) continue;
+        try {
+          const bounds = kernel.uvBounds(f.wrapped);
+          const normal = kernel.surfaceNormal(
+            f.wrapped,
+            0.5 * (bounds.uMin + bounds.uMax),
+            0.5 * (bounds.vMin + bounds.vMax)
+          );
+          const centroid = kernel.surfaceCenterOfMass(f.wrapped);
+          inputSigs.push({ origin, normal, centroid });
+        } catch {
+          // skip faces that can't compute normal/centroid
+        }
+      }
+    }
+
+    if (inputSigs.length > 0) {
+      for (const f of resultFaces) {
+        const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
+        try {
+          const outBounds = kernel.uvBounds(f.wrapped);
+          const outNormal = kernel.surfaceNormal(
+            f.wrapped,
+            0.5 * (outBounds.uMin + outBounds.uMax),
+            0.5 * (outBounds.vMin + outBounds.vMax)
+          );
+          const outCentroid = kernel.surfaceCenterOfMass(f.wrapped);
+
+          let bestScore = -Infinity;
+          let bestOrigin: number | undefined;
+          for (const inp of inputSigs) {
+            const dot =
+              outNormal[0] * inp.normal[0] +
+              outNormal[1] * inp.normal[1] +
+              outNormal[2] * inp.normal[2];
+            if (dot < 0.707) continue;
+            const dx = outCentroid[0] - inp.centroid[0];
+            const dy = outCentroid[1] - inp.centroid[1];
+            const dz = outCentroid[2] - inp.centroid[2];
+            const distSq = dx * dx + dy * dy + dz * dz;
+            if (distSq > 100) continue;
+            const score = dot - distSq / 100;
+            if (score > bestScore) {
+              bestScore = score;
+              bestOrigin = inp.origin;
+            }
+          }
+          if (bestOrigin !== undefined) {
+            resultMap.set(hash, bestOrigin);
+          }
+        } catch {
+          // skip faces that can't compute normal/centroid
+        }
+      }
+    }
+  }
+  /* v8 ignore stop */
 
   if (resultMap.size > 0) {
     const cache = getOrCreateCache(result);
