@@ -173,7 +173,7 @@ describe('Optimization target benchmarks', () => {
       'fillet x10 no-metadata',
       () => {
         for (let i = 0; i < 10; i++) {
-          unwrap(fillet(b, undefined, 0.5));
+          unwrap(fillet(b, 0.5));
         }
       },
       { warmup: 1, iterations: 3 }

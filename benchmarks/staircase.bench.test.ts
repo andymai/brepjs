@@ -61,7 +61,7 @@ describe('staircase benchmark', () => {
       const piece = shape(step).fuse(post).val;
       const lifted = translate(piece, [0, 0, stepRise * (i + 1)]);
       const rotated = rotate(lifted, rotationPerStep * i, {
-        around: [0, 0, 0],
+        at: [0, 0, 0],
         axis: [0, 0, 1],
       });
       transformedPieces.push(rotated);
@@ -250,7 +250,7 @@ describe('staircase benchmark', () => {
         const end2 = rotate(
           translate(clone(ball), [railRadius, 0, lastPostTop]),
           rotationPerStep * (stepCount - 1),
-          { around: [0, 0, 0], axis: [0, 0, 1] }
+          { at: [0, 0, 0], axis: [0, 0, 1] }
         );
         staircase = shape(staircase).fuse(end2).val;
 
@@ -278,7 +278,7 @@ describe('staircase benchmark', () => {
       const end2 = rotate(
         translate(clone(ball), [railRadius, 0, lastPostTop]),
         rotationPerStep * (stepCount - 1),
-        { around: [0, 0, 0], axis: [0, 0, 1] }
+        { at: [0, 0, 0], axis: [0, 0, 1] }
       );
 
       const allParts: Shape3D[] = [column, bottomLanding, ...transformedPieces, end1, end2];
