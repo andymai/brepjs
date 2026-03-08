@@ -1411,7 +1411,6 @@ export class BrepkitAdapter implements KernelAdapter {
           // No hash overlap — use geometric matching (normal + centroid)
           this.matchFacesGeometrically(
             originalShape,
-            resultShape,
             inputFaceHashes,
             outputFaces,
             hashUpperBound,
@@ -1434,16 +1433,58 @@ export class BrepkitAdapter implements KernelAdapter {
     return { shape: resultShape, evolution: { modified, generated, deleted } };
   }
 
-  /** Compute face centroid from tessellation for a raw face ID. */
+  /**
+   * Chain an evolution map (modified or generated) through one step of a multi-step
+   * boolean. For each entry, each previous output hash is resolved against this
+   * step's evolution: if it was further modified, follow to the new outputs; if
+   * deleted, drop it; otherwise keep it unchanged.
+   *
+   * Mutates `map` in-place and records each resolved prevOut in `intermediateOutputs`.
+   * When `deleteOnEmpty` is provided, entries that reduce to no outputs are added to it.
+   */
+  private static chainEvolutionMap(
+    map: Map<number, number[]>,
+    stepModified: ReadonlyMap<number, readonly number[]>,
+    stepDeleted: ReadonlySet<number>,
+    intermediateOutputs: Set<number>,
+    deleteOnEmpty?: Set<number>
+  ): void {
+    for (const [origKey, prevOutputs] of map) {
+      const chainedOutputs: number[] = [];
+      for (const prevOut of prevOutputs) {
+        intermediateOutputs.add(prevOut);
+        const nextOutputs = stepModified.get(prevOut);
+        if (nextOutputs) {
+          chainedOutputs.push(...nextOutputs);
+        } else if (!stepDeleted.has(prevOut)) {
+          chainedOutputs.push(prevOut);
+        }
+      }
+      if (chainedOutputs.length > 0) {
+        map.set(origKey, chainedOutputs);
+      } else {
+        map.delete(origKey);
+        deleteOnEmpty?.add(origKey);
+      }
+    }
+  }
+
+  /** Squared Euclidean distance between two 3-component centroids. */
+  private static centroidDistSq(a: [number, number, number], b: [number, number, number]): number {
+    const dx = a[0] - b[0];
+    const dy = a[1] - b[1];
+    const dz = a[2] - b[2];
+    return dx * dx + dy * dy + dz * dz;
+  }
+
+  /** Compute face centroid as the average of tessellation vertices. */
   private faceCentroidById(faceId: number): [number, number, number] {
     try {
-      const mesh = this.bk.tessellateFace(faceId, 1.0);
-      const pos: number[] = mesh.positions;
+      const pos: number[] = this.bk.tessellateFace(faceId, 1.0).positions;
       if (pos.length < 3) return [0, 0, 0];
-      // Simple average of vertices (fast approximation)
-      let cx = 0,
-        cy = 0,
-        cz = 0;
+      let cx = 0;
+      let cy = 0;
+      let cz = 0;
       const nVerts = pos.length / 3;
       for (let i = 0; i < pos.length; i += 3) {
         cx += pos[i]!;
@@ -1462,7 +1503,6 @@ export class BrepkitAdapter implements KernelAdapter {
    */
   private matchFacesGeometrically(
     originalShape: KernelShape,
-    _resultShape: KernelShape,
     inputFaceHashes: number[],
     outputFaceIds: number[],
     hashUpperBound: number,
@@ -1474,10 +1514,11 @@ export class BrepkitAdapter implements KernelAdapter {
     if (orig.type !== 'solid') return;
 
     const inputFaceIds = toArray(this.bk.getSolidFaces(orig.id));
+    const hashCount = Math.min(inputFaceIds.length, inputFaceHashes.length);
 
     // Snapshot input face signatures (skip faces where normal can't be computed)
     const inputSigs: { hash: number; normal: number[]; centroid: [number, number, number] }[] = [];
-    for (let i = 0; i < inputFaceIds.length; i++) {
+    for (let i = 0; i < hashCount; i++) {
       const fid = inputFaceIds[i]!;
       try {
         const normal = this.bk.getFaceNormal(fid);
@@ -1511,46 +1552,42 @@ export class BrepkitAdapter implements KernelAdapter {
 
     const NORMAL_THRESHOLD = 0.707; // cos(45°)
     const CENTROID_DIST_SQ_MAX = 100.0;
-    const matchedInputs = new Set<number>();
+    const matchedInputIndices = new Set<number>();
 
     for (const out of outputSigs) {
       let bestScore = -Infinity;
-      let bestInput: (typeof inputSigs)[0] | undefined;
+      let bestIdx = -1;
 
-      for (const inp of inputSigs) {
+      for (let i = 0; i < inputSigs.length; i++) {
+        const inp = inputSigs[i]!;
         const dot =
           (out.normal[0] ?? 0) * (inp.normal[0] ?? 0) +
           (out.normal[1] ?? 0) * (inp.normal[1] ?? 0) +
           (out.normal[2] ?? 0) * (inp.normal[2] ?? 0);
         if (dot < NORMAL_THRESHOLD) continue;
 
-        const dx = out.centroid[0] - inp.centroid[0];
-        const dy = out.centroid[1] - inp.centroid[1];
-        const dz = out.centroid[2] - inp.centroid[2];
-        const distSq = dx * dx + dy * dy + dz * dz;
+        const distSq = BrepkitAdapter.centroidDistSq(out.centroid, inp.centroid);
         if (distSq > CENTROID_DIST_SQ_MAX) continue;
 
         const score = dot - distSq / CENTROID_DIST_SQ_MAX;
         if (score > bestScore) {
           bestScore = score;
-          bestInput = inp;
+          bestIdx = i;
         }
       }
 
-      if (bestInput) {
+      if (bestIdx >= 0) {
+        const bestInput = inputSigs[bestIdx]!;
         const existing = modified.get(bestInput.hash) ?? [];
         existing.push(out.hash);
         modified.set(bestInput.hash, existing);
-        matchedInputs.add(bestInput.hash);
+        matchedInputIndices.add(bestIdx);
       } else {
         // Unmatched output → generated from nearest input
         let bestDistSq = Infinity;
         let nearestInput: (typeof inputSigs)[0] | undefined;
         for (const inp of inputSigs) {
-          const dx = out.centroid[0] - inp.centroid[0];
-          const dy = out.centroid[1] - inp.centroid[1];
-          const dz = out.centroid[2] - inp.centroid[2];
-          const distSq = dx * dx + dy * dy + dz * dz;
+          const distSq = BrepkitAdapter.centroidDistSq(out.centroid, inp.centroid);
           if (distSq < bestDistSq) {
             bestDistSq = distSq;
             nearestInput = inp;
@@ -1565,9 +1602,9 @@ export class BrepkitAdapter implements KernelAdapter {
     }
 
     // Input faces not matched → deleted
-    for (const inp of inputSigs) {
-      if (!matchedInputs.has(inp.hash)) {
-        deleted.add(inp.hash);
+    for (let i = 0; i < inputSigs.length; i++) {
+      if (!matchedInputIndices.has(i)) {
+        deleted.add(inputSigs[i]!.hash);
       }
     }
   }
@@ -1670,8 +1707,7 @@ export class BrepkitAdapter implements KernelAdapter {
         // Native *WithEvolution APIs require solid handles and do not accept
         // BooleanOptions (e.g. fuzzyValue). Options are silently ignored.
         const json = nativeFn(sh.id, th.id);
-        const result = this.parseNativeEvolution(json, hashUpperBound);
-        return result;
+        return this.parseNativeEvolution(json, hashUpperBound);
       }
       if (th.type === 'compound') {
         // Iteratively apply native evolution for each solid in the compound,
@@ -1682,6 +1718,7 @@ export class BrepkitAdapter implements KernelAdapter {
         const combinedModified = new Map<number, number[]>();
         const combinedGenerated = new Map<number, number[]>();
         const combinedDeleted = new Set<number>();
+        const inputFaceHashSet = new Set(inputFaceHashes);
         for (const childId of childSolidIds) {
           const ch = currentShape as BrepkitHandle;
           if (ch.type !== 'solid') break;
@@ -1691,53 +1728,41 @@ export class BrepkitAdapter implements KernelAdapter {
 
           // Chain evolution: update existing combined entries to follow through
           // intermediate face hashes to final output hashes.
-          // For each entry in combinedModified, if its output hashes appear as
-          // inputs in this step's evolution, replace with the new outputs.
-          for (const [origKey, prevOutputs] of combinedModified) {
-            const chainedOutputs: number[] = [];
-            for (const prevOut of prevOutputs) {
-              const nextOutputs = result.evolution.modified.get(prevOut);
-              if (nextOutputs) {
-                chainedOutputs.push(...nextOutputs);
-              } else if (result.evolution.deleted.has(prevOut)) {
-                // This intermediate face was deleted in this step
-              } else {
-                // Face unchanged in this step — keep it
-                chainedOutputs.push(prevOut);
-              }
-            }
-            if (chainedOutputs.length > 0) {
-              combinedModified.set(origKey, chainedOutputs);
-            } else {
-              combinedModified.delete(origKey);
-              combinedDeleted.add(origKey);
-            }
-          }
+          // Track which face hashes were intermediate outputs (inputs to this
+          // step) so we can skip them when merging new entries below.
+          const intermediateOutputs = new Set<number>();
 
-          // Add new entries from this step that aren't chained from previous
+          // Chain combinedModified and combinedGenerated through this step.
+          // Modified entries that reduce to no outputs become deleted.
+          BrepkitAdapter.chainEvolutionMap(
+            combinedModified,
+            result.evolution.modified,
+            result.evolution.deleted,
+            intermediateOutputs,
+            combinedDeleted
+          );
+          BrepkitAdapter.chainEvolutionMap(
+            combinedGenerated,
+            result.evolution.modified,
+            result.evolution.deleted,
+            intermediateOutputs
+          );
+
+          // Add new entries from this step that aren't already chained
           for (const [k, v] of result.evolution.modified) {
-            if (!combinedModified.has(k)) {
-              // Check if k was an intermediate output — find original key
-              let foundOriginal = false;
-              for (const [, outputs] of combinedModified) {
-                if (outputs.includes(k)) {
-                  foundOriginal = true;
-                  break;
-                }
-              }
-              if (!foundOriginal) {
-                combinedModified.set(k, [...v]);
-              }
+            if (!combinedModified.has(k) && !intermediateOutputs.has(k)) {
+              combinedModified.set(k, [...v]);
             }
           }
 
           for (const [k, v] of result.evolution.generated) {
-            const existing = combinedGenerated.get(k) ?? [];
-            combinedGenerated.set(k, [...existing, ...v]);
+            if (!intermediateOutputs.has(k)) {
+              const existing = combinedGenerated.get(k) ?? [];
+              combinedGenerated.set(k, [...existing, ...v]);
+            }
           }
           for (const d of result.evolution.deleted) {
-            // Only add to combined deleted if it was an original input face
-            if (inputFaceHashes.includes(d)) {
+            if (inputFaceHashSet.has(d)) {
               combinedDeleted.add(d);
             }
           }
@@ -2025,8 +2050,7 @@ export class BrepkitAdapter implements KernelAdapter {
   volume(shape: KernelShape): number {
     const h = shape as BrepkitHandle;
     if (h.type !== 'solid') return 0;
-    const id = unwrap(shape);
-    return this.bk.volume(id, DEFAULT_DEFLECTION);
+    return this.bk.volume(unwrap(shape), DEFAULT_DEFLECTION);
   }
 
   area(shape: KernelShape): number {
