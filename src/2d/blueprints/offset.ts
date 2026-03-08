@@ -22,7 +22,7 @@ import CompoundBlueprint from './CompoundBlueprint.js';
 import type { Shape2D } from './boolean2D.js';
 import { fuse2D, cut2D } from './boolean2D.js';
 
-const samePoint = (x: Point2D, y: Point2D) => defaultSamePoint(x, y, PRECISION_OFFSET * 10);
+const samePoint = (x: Point2D, y: Point2D) => defaultSamePoint(x, y, PRECISION_OFFSET * 100);
 
 const getIntersectionPoint = (
   line1Start: Point2D,
