@@ -1,0 +1,35 @@
+name: Setup Node & Dependencies
+description: Setup Node.js, restore cache, install deps, and restore WASM files. Requires actions/checkout first.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: 24
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      id: cache
+      with:
+        path: node_modules
+        key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          node-24-${{ runner.os }}-
+    - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        for i in 1 2 3; do
+          npm ci && exit 0
+          echo "::warning::npm ci failed (attempt $i/3), retrying in 5s..."
+          sleep 5
+        done
+        exit 1
+    - name: Restore WASM files
+      shell: bash
+      run: |
+        for i in 1 2 3; do
+          bash scripts/ensure-wasm.sh && exit 0
+          echo "::warning::ensure-wasm.sh failed (attempt $i/3), retrying in 5s..."
+          sleep 5
+        done
+        exit 1

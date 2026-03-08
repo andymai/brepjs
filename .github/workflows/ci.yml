@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,12 +16,13 @@ permissions:
 
 jobs:
   changes:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
         id: filter
         with:
           filters: |
@@ -34,148 +36,85 @@ jobs:
               - 'tsconfig*.json'
               - 'vitest*.config.ts'
               - 'vite.config.ts'
-              - '.eslintrc*'
+              - 'eslint.config.*'
+              - 'knip.config.*'
               - '.prettierrc*'
               - '.github/workflows/ci.yml'
+              - '.github/actions/**'
 
   typecheck:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-24-${{ runner.os }}-
-      - if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: bash scripts/ensure-wasm.sh
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup
       - run: npm run typecheck
 
   lint:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-24-${{ runner.os }}-
-      - if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: bash scripts/ensure-wasm.sh
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup
       - run: npm run lint
       - run: npm run format:check
 
   quality:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-24-${{ runner.os }}-
-      - if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: bash scripts/ensure-wasm.sh
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup
       - run: npm run check:boundaries
       - run: npm run knip
 
   build:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-24-${{ runner.os }}-
-      - if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: bash scripts/ensure-wasm.sh
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup
       - run: npm run build
       - run: npm run docs:api
 
   test:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-24-${{ runner.os }}-
-      - if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: bash scripts/ensure-wasm.sh
-      - run: npm run test:coverage
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup
+      - run: npm run test:coverage -- --reporter=default --reporter=github-actions
 
   size:
     needs: changes
     if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - uses: actions/cache@v4
-        id: cache
-        with:
-          path: node_modules
-          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-24-${{ runner.os }}-
-      - if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: bash scripts/ensure-wasm.sh
-      - uses: andresz1/size-limit-action@v1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: ./.github/actions/setup
+      - uses: andresz1/size-limit-action@e7493a72a44b113341c0cf6186ab49c17c4b65c1 # v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           build_script: "build"
 
   ci-pass:
     if: always()
-    needs: [changes, typecheck, lint, quality, build, test]
-    runs-on: ubuntu-22.04
+    needs: [changes, typecheck, lint, quality, build, test, size]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Fail if any upstream job failed or was cancelled
         if: >-

@@ -9,7 +9,8 @@ permissions:
 
 jobs:
   release-please:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       brepjs_release_created: ${{ steps.release.outputs.release_created }}
@@ -17,12 +18,12 @@ jobs:
       prs_created: ${{ steps.release.outputs.prs_created }}
       pr: ${{ steps.release.outputs.pr }}
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         id: app-token
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
           private-key: ${{ secrets.BREPJS_BOT_PRIVATE_KEY }}
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4
         id: release
         with:
           token: ${{ steps.app-token.outputs.token }}
@@ -31,11 +32,12 @@ jobs:
 
   # Only auto-merge brepjs PRs, NOT brepjs-opencascade (expensive WASM build needs manual review)
   auto-merge:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     needs: [release-please]
     if: ${{ needs.release-please.outputs.prs_created == 'true' }}
     steps:
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         id: app-token
         with:
           app-id: ${{ secrets.BREPJS_BOT_APP_ID }}
@@ -43,35 +45,37 @@ jobs:
       - name: Enable auto-merge for brepjs PRs only
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_DATA: ${{ needs.release-please.outputs.pr }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          prs='${{ needs.release-please.outputs.pr }}'
-          if [ -n "$prs" ] && [ "$prs" != "null" ]; then
-            pr_number=$(echo "$prs" | jq -r '.number')
-            pr_title=$(echo "$prs" | jq -r '.title')
-            # Skip brepjs-opencascade PRs - they need manual review due to expensive WASM build
-            if [[ "$pr_title" == *"brepjs-opencascade"* ]]; then
-              echo "Skipping auto-merge for brepjs-opencascade PR #$pr_number (requires manual review)"
-              exit 0
-            fi
-            if [ -n "$pr_number" ] && [ "$pr_number" != "null" ]; then
-              echo "Enabling auto-merge for brepjs PR #$pr_number"
-              gh pr merge "$pr_number" --auto --squash --repo ${{ github.repository }}
-            fi
+          pr_number=$(echo "$PR_DATA" | jq -r '.number // empty')
+          pr_title=$(echo "$PR_DATA" | jq -r '.title // empty')
+          if [ -z "$pr_number" ]; then
+            echo "No PR number found, skipping"
+            exit 0
           fi
+          # Skip brepjs-opencascade PRs — they need manual review due to expensive WASM build
+          if [[ "$pr_title" == *"brepjs-opencascade"* ]]; then
+            echo "Skipping auto-merge for brepjs-opencascade PR #$pr_number (requires manual review)"
+            exit 0
+          fi
+          echo "Enabling auto-merge for brepjs PR #$pr_number"
+          gh pr merge "$pr_number" --auto --squash --repo "$GH_REPO"
 
   # brepjs-opencascade is published via the dedicated publish-opencascade.yml
   # workflow (manual dispatch) which handles the Docker WASM build.
 
   publish-brepjs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     needs: [release-please]
     if: ${{ needs.release-please.outputs.brepjs_release_created == 'true' }}
     permissions:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
