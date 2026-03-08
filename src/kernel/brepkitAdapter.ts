@@ -118,7 +118,12 @@ function shellHandle(id: number): BrepkitHandle {
   return handle('shell', id);
 }
 function compoundHandle(id: number): BrepkitHandle {
-  return handle('compound', id);
+  const h = handle('compound', id);
+  // Clean up JS-side synthetic compound storage on delete
+  if (syntheticCompounds.has(id)) {
+    return { ...h, delete: () => syntheticCompounds.delete(id) };
+  }
+  return h;
 }
 function vertexHandle(id: number): BrepkitHandle {
   return handle('vertex', id);
