@@ -4,7 +4,8 @@
  */
 /* eslint-disable no-console -- benchmark output */
 import { describe, it, beforeAll } from 'vitest';
-import { initOC } from '../tests/setup.js';
+import { initBothKernels, benchBoth } from './setup.js';
+import { bench, collectResults, printResults, type BenchResult } from './harness.js';
 import {
   box,
   cylinder,
@@ -25,11 +26,11 @@ import {
 import type { Shape3D } from '../src/index.js';
 import { sweep } from '../src/operations/extrudeFns.js';
 
-describe('staircase benchmark', () => {
-  beforeAll(async () => {
-    await initOC();
-  });
+beforeAll(async () => {
+  await initBothKernels();
+}, 30000);
 
+describe('staircase benchmark', () => {
   // Shared parameters
   const stepCount = 16;
   const stepRise = 18;
@@ -84,171 +85,182 @@ describe('staircase benchmark', () => {
     return { railProfile, helixSpine, firstPostTop };
   }
 
-  it('compares boolean strategies: sequential vs fuseAll', () => {
-    const timings: Record<string, number> = {};
+  it('compares boolean strategies: sequential vs fuseAll', async () => {
+    const results: BenchResult[] = [];
 
-    // Build parts once
-    const { column, bottomLanding, transformedPieces } = buildParts();
-
-    // --- Sequential fuse (BEFORE) ---
-    let t0 = performance.now();
-    let staircaseSeq = shape(column).fuse(bottomLanding).val;
-    for (let i = 0; i < stepCount; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      staircaseSeq = shape(staircaseSeq).fuse(transformedPieces[i]!).val;
-    }
-    timings['sequential .fuse() chain'] = performance.now() - t0;
-
-    // --- fuseAll native (AFTER) ---
-    const parts2 = buildParts();
-    t0 = performance.now();
-    const nativeResult = fuseAll(
-      [parts2.column, parts2.bottomLanding, ...parts2.transformedPieces],
-      { strategy: 'native' }
+    // --- Sequential fuse ---
+    results.push(
+      await bench('sequential .fuse() chain', () => {
+        const { column, bottomLanding, transformedPieces } = buildParts();
+        let staircaseSeq = shape(column).fuse(bottomLanding).val;
+        for (let i = 0; i < stepCount; i++) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          staircaseSeq = shape(staircaseSeq).fuse(transformedPieces[i]!).val;
+        }
+      }, { warmup: 1, iterations: 3 })
     );
-    if (!nativeResult.ok) throw new Error('fuseAll native failed');
-    timings['fuseAll({ strategy: "native" })'] = performance.now() - t0;
 
-    // --- fuseAll pairwise (AFTER) ---
-    const parts3 = buildParts();
-    t0 = performance.now();
-    const pairwiseResult = fuseAll(
-      [parts3.column, parts3.bottomLanding, ...parts3.transformedPieces],
-      { strategy: 'pairwise' }
+    // --- fuseAll native ---
+    results.push(
+      await bench('fuseAll({ strategy: "native" })', () => {
+        const parts = buildParts();
+        const nativeResult = fuseAll(
+          [parts.column, parts.bottomLanding, ...parts.transformedPieces],
+          { strategy: 'native' }
+        );
+        if (!nativeResult.ok) throw new Error('fuseAll native failed');
+      }, { warmup: 1, iterations: 3 })
     );
-    if (!pairwiseResult.ok) throw new Error('fuseAll pairwise failed');
-    timings['fuseAll({ strategy: "pairwise" })'] = performance.now() - t0;
 
-    // --- chain .fuseAll() (AFTER) ---
-    const parts4 = buildParts();
-    t0 = performance.now();
-    const _chainResult = shape(parts4.column).fuseAll([
-      parts4.bottomLanding,
-      ...parts4.transformedPieces,
-    ]).val;
-    timings['shape().fuseAll([...])'] = performance.now() - t0;
+    // --- fuseAll pairwise ---
+    results.push(
+      await bench('fuseAll({ strategy: "pairwise" })', () => {
+        const parts = buildParts();
+        const pairwiseResult = fuseAll(
+          [parts.column, parts.bottomLanding, ...parts.transformedPieces],
+          { strategy: 'pairwise' }
+        );
+        if (!pairwiseResult.ok) throw new Error('fuseAll pairwise failed');
+      }, { warmup: 1, iterations: 3 })
+    );
 
-    printTable('Boolean Operation Comparison', timings);
-    const seqTime = timings['sequential .fuse() chain'];
-    const natTime = timings['fuseAll({ strategy: "native" })'];
+    // --- chain .fuseAll() ---
+    results.push(
+      await bench('shape().fuseAll([...])', () => {
+        const parts = buildParts();
+        const _chainResult = shape(parts.column).fuseAll([
+          parts.bottomLanding,
+          ...parts.transformedPieces,
+        ]).val;
+      }, { warmup: 1, iterations: 3 })
+    );
+
+    printResults(results);
+
+    const seqTime = results[0]?.median ?? 0;
+    const natTime = results[1]?.median ?? 1;
     console.log(
-      `\nSpeedup: sequential → fuseAll native = ${(seqTime / natTime).toFixed(1)}x faster\n`
+      `\nSpeedup: sequential -> fuseAll native = ${(seqTime / natTime).toFixed(1)}x faster\n`
     );
   });
 
-  it('compares sweep strategies: MakePipeShell vs simple pipe vs tuned', () => {
-    const timings: Record<string, number> = {};
-    const { railProfile, helixSpine } = buildSweepInputs();
+  it('compares sweep strategies: MakePipeShell vs simple pipe vs tuned', async () => {
+    const results: BenchResult[] = [];
+    const sweepResults: Record<string, boolean> = {};
 
-    // --- MakePipeShell + frenet (BEFORE) ---
-    let t0 = performance.now();
-    let handrailShell: Shape3D | undefined;
-    try {
-      const result = sweep(railProfile, helixSpine, { frenet: true });
-      if (result.ok) handrailShell = result.value as Shape3D;
-    } catch {
-      /* sweep may fail */
-    }
-    timings['MakePipeShell + frenet: true'] = performance.now() - t0;
+    // --- MakePipeShell + frenet ---
+    results.push(
+      await bench('MakePipeShell + frenet: true', () => {
+        const { railProfile, helixSpine } = buildSweepInputs();
+        try {
+          const result = sweep(railProfile, helixSpine, { frenet: true });
+          sweepResults['MakePipeShell+frenet'] = result.ok;
+        } catch {
+          sweepResults['MakePipeShell+frenet'] = false;
+        }
+      }, { warmup: 1, iterations: 3 })
+    );
 
-    // --- MakePipeShell no frenet (intermediate) ---
-    t0 = performance.now();
-    let handrailNoFrenet: Shape3D | undefined;
-    try {
-      const result = sweep(railProfile, helixSpine);
-      if (result.ok) handrailNoFrenet = result.value as Shape3D;
-    } catch {
-      /* sweep may fail */
-    }
-    timings['MakePipeShell (no frenet)'] = performance.now() - t0;
+    // --- MakePipeShell no frenet ---
+    results.push(
+      await bench('MakePipeShell (no frenet)', () => {
+        const { railProfile, helixSpine } = buildSweepInputs();
+        try {
+          const result = sweep(railProfile, helixSpine);
+          sweepResults['MakePipeShell no frenet'] = result.ok;
+        } catch {
+          sweepResults['MakePipeShell no frenet'] = false;
+        }
+      }, { warmup: 1, iterations: 3 })
+    );
 
-    // --- MakePipeShell tuned tolerances (AFTER) ---
-    t0 = performance.now();
-    let handrailTuned: Shape3D | undefined;
-    try {
-      const result = sweep(railProfile, helixSpine, {
-        tolerance: 0.01,
-        maxDegree: 5,
-        maxSegments: 100,
-      });
-      if (result.ok) handrailTuned = result.value as Shape3D;
-    } catch {
-      /* sweep may fail */
-    }
-    timings['MakePipeShell (tuned tol/deg/seg)'] = performance.now() - t0;
+    // --- MakePipeShell tuned tolerances ---
+    results.push(
+      await bench('MakePipeShell (tuned tol/deg/seg)', () => {
+        const { railProfile, helixSpine } = buildSweepInputs();
+        try {
+          const result = sweep(railProfile, helixSpine, {
+            tolerance: 0.01,
+            maxDegree: 5,
+            maxSegments: 100,
+          });
+          sweepResults['Tuned MakePipeShell'] = result.ok;
+        } catch {
+          sweepResults['Tuned MakePipeShell'] = false;
+        }
+      }, { warmup: 1, iterations: 3 })
+    );
 
-    // --- Simple pipe (AFTER) ---
-    t0 = performance.now();
-    let handrailSimple: Shape3D | undefined;
-    try {
-      const result = sweep(railProfile, helixSpine, { mode: 'simple' });
-      if (result.ok) {
-        handrailSimple = result.value as Shape3D;
-        console.log('Simple pipe shape:', describeShape(handrailSimple));
-      }
-    } catch {
-      /* sweep may fail */
-    }
-    timings['BRepOffsetAPI_MakePipe (simple)'] = performance.now() - t0;
+    // --- Simple pipe ---
+    results.push(
+      await bench('BRepOffsetAPI_MakePipe (simple)', () => {
+        const { railProfile, helixSpine } = buildSweepInputs();
+        try {
+          const result = sweep(railProfile, helixSpine, { mode: 'simple' });
+          sweepResults['Simple pipe'] = result.ok;
+          if (result.ok) {
+            console.log('Simple pipe shape:', describeShape(result.value as Shape3D));
+          }
+        } catch {
+          sweepResults['Simple pipe'] = false;
+        }
+      }, { warmup: 1, iterations: 3 })
+    );
 
-    printTable('Sweep Operation Comparison', timings);
+    printResults(results);
 
-    const shellTime = timings['MakePipeShell + frenet: true'];
-    for (const [label, time] of Object.entries(timings)) {
-      if (label !== 'MakePipeShell + frenet: true' && time > 0) {
-        console.log(`  ${label}: ${(shellTime / time).toFixed(1)}x vs frenet`);
-      }
+    const frenetTime = results[0]?.median ?? 1;
+    for (const r of results.slice(1)) {
+      console.log(`  ${r.name}: ${(frenetTime / r.median).toFixed(1)}x vs frenet`);
     }
 
     console.log('\nHandrail results:');
-    console.log(`  MakePipeShell+frenet:    ${handrailShell ? 'OK' : 'FAILED'}`);
-    console.log(`  MakePipeShell no frenet: ${handrailNoFrenet ? 'OK' : 'FAILED'}`);
-    console.log(`  Tuned MakePipeShell:     ${handrailTuned ? 'OK' : 'FAILED'}`);
-    console.log(`  Simple pipe:             ${handrailSimple ? 'OK' : 'FAILED'}`);
+    for (const [label, ok] of Object.entries(sweepResults)) {
+      console.log(`  ${label}: ${ok ? 'OK' : 'FAILED'}`);
+    }
     console.log('');
   });
 
-  it('full staircase end-to-end (optimized vs original)', () => {
-    const timings: Record<string, number> = {};
+  it('full staircase end-to-end (optimized vs original)', async () => {
+    const results: BenchResult[] = [];
 
-    // ── ORIGINAL APPROACH ──
-    const origStart = performance.now();
-    {
-      const { column, bottomLanding, transformedPieces } = buildParts();
-      const ball = sphere(4);
-      const { railProfile, helixSpine, firstPostTop } = buildSweepInputs();
+    // --- ORIGINAL APPROACH (OCCT-only, sequential fuse is too slow for dual-kernel) ---
+    results.push(
+      await bench('ORIGINAL (sequential fuse)', () => {
+        const { column, bottomLanding, transformedPieces } = buildParts();
+        const ball = sphere(4);
+        const { railProfile, helixSpine, firstPostTop } = buildSweepInputs();
 
-      let staircase = shape(column).fuse(bottomLanding).val;
-      for (let i = 0; i < stepCount; i++) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        staircase = shape(staircase).fuse(transformedPieces[i]!).val;
-      }
+        let staircase = shape(column).fuse(bottomLanding).val;
+        for (let i = 0; i < stepCount; i++) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          staircase = shape(staircase).fuse(transformedPieces[i]!).val;
+        }
 
-      try {
-        const handrail = shape(railProfile).sweep(helixSpine, { frenet: true }).val;
-        staircase = shape(staircase).fuse(handrail).val;
-      } catch {
-        /* skip */
-      }
+        try {
+          const handrail = shape(railProfile).sweep(helixSpine, { frenet: true }).val;
+          staircase = shape(staircase).fuse(handrail).val;
+        } catch {
+          /* skip */
+        }
 
-      const end1 = translate(ball, [railRadius, 0, firstPostTop]);
-      staircase = shape(staircase).fuse(end1).val;
-      const lastPostTop = firstPostTop + stepRise * (stepCount - 1);
-      const end2 = rotate(
-        translate(clone(ball), [railRadius, 0, lastPostTop]),
-        rotationPerStep * (stepCount - 1),
-        { around: [0, 0, 0], axis: [0, 0, 1] }
-      );
-      staircase = shape(staircase).fuse(end2).val;
+        const end1 = translate(ball, [railRadius, 0, firstPostTop]);
+        staircase = shape(staircase).fuse(end1).val;
+        const lastPostTop = firstPostTop + stepRise * (stepCount - 1);
+        const end2 = rotate(
+          translate(clone(ball), [railRadius, 0, lastPostTop]),
+          rotationPerStep * (stepCount - 1),
+          { around: [0, 0, 0], axis: [0, 0, 1] }
+        );
+        staircase = shape(staircase).fuse(end2).val;
 
-      mesh(staircase, { tolerance: 2, angularTolerance: 1.5 });
-      meshEdges(staircase, { tolerance: 2, angularTolerance: 1.5 });
-    }
-    timings['ORIGINAL (sequential fuse)'] = performance.now() - origStart;
+        mesh(staircase, { tolerance: 2, angularTolerance: 1.5 });
+        meshEdges(staircase, { tolerance: 2, angularTolerance: 1.5 });
+      }, { warmup: 0, iterations: 2 })
+    );
 
-    // ── OPTIMIZED APPROACH ──
-    const optStart = performance.now();
-    {
+    // --- OPTIMIZED via dual-kernel ---
+    const { occt, brepkit } = await benchBoth('OPTIMIZED (fuseAll native)', () => {
       const { column, bottomLanding, transformedPieces } = buildParts();
       const ball = sphere(4);
       const { railProfile, helixSpine, firstPostTop } = buildSweepInputs();
@@ -278,28 +290,13 @@ describe('staircase benchmark', () => {
 
       mesh(staircase, { tolerance: 2, angularTolerance: 1.5 });
       meshEdges(staircase, { tolerance: 2, angularTolerance: 1.5 });
-    }
-    timings['OPTIMIZED (fuseAll native)'] = performance.now() - optStart;
+    }, { warmup: 0, iterations: 2 });
+    collectResults(results, { occt, brepkit });
 
-    printTable('Full Staircase: Original vs Optimized', timings);
-    const orig = timings['ORIGINAL (sequential fuse)'];
-    const opt = timings['OPTIMIZED (fuseAll native)'];
+    printResults(results);
+
+    const orig = results[0]?.median ?? 1;
+    const opt = results[1]?.median ?? 1;
     console.log(`\nSpeedup: ${(orig / opt).toFixed(1)}x faster\n`);
   });
 });
-
-function printTable(title: string, timings: Record<string, number>) {
-  const maxLabel = Math.max(...Object.keys(timings).map((k) => k.length), title.length);
-  const width = maxLabel + 2;
-  const line = '─'.repeat(width);
-
-  console.log(`\n┌─${line}─┬────────────┐`);
-  console.log(`│ ${title.padEnd(width)} │   Time (s) │`);
-  console.log(`├─${line}─┼────────────┤`);
-  for (const [phase, ms] of Object.entries(timings)) {
-    const label = phase.padEnd(width);
-    const time = (ms / 1000).toFixed(3).padStart(10);
-    console.log(`│ ${label} │ ${time} │`);
-  }
-  console.log(`└─${line}─┴────────────┘`);
-}

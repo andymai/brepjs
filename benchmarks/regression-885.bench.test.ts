@@ -8,7 +8,7 @@
  * 5. propagateOrigins hash caching (v8.8.5 #309)
  */
 import { describe, it, beforeAll } from 'vitest';
-import { initOC } from '../tests/setup.js';
+import { initBothKernels, benchBoth } from './setup.js';
 import {
   box,
   cylinder,
@@ -23,10 +23,10 @@ import {
 } from '../src/index.js';
 import { sharedEdges } from '../src/topology/adjacencyFns.js';
 import { getFaces, getEdges, getBounds } from '../src/topology/shapeFns.js';
-import { bench, printResults, type BenchResult } from './harness.js';
+import { bench, collectResults, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initBothKernels();
 }, 30000);
 
 describe('Regression benchmarks (v8.8.5+ changes)', () => {
@@ -50,83 +50,71 @@ describe('Regression benchmarks (v8.8.5+ changes)', () => {
   // --- Transform overhead (DisposalScope wrapping) ---
   it('translate 100x', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'translate x100',
-        () => {
-          for (let i = 0; i < 100; i++) {
-            translate(b, [i * 0.01, 0, 0]);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'translate x100',
+      () => {
+        for (let i = 0; i < 100; i++) {
+          translate(b, [i * 0.01, 0, 0]);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   it('rotate 100x', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'rotate x100',
-        () => {
-          for (let i = 0; i < 100; i++) {
-            rotate(b, i * 0.1);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'rotate x100',
+      () => {
+        for (let i = 0; i < 100; i++) {
+          rotate(b, i * 0.1);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   it('scale 100x', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'scale x100',
-        () => {
-          for (let i = 0; i < 100; i++) {
-            scale(b, 1 + i * 0.001);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'scale x100',
+      () => {
+        for (let i = 0; i < 100; i++) {
+          scale(b, 1 + i * 0.001);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   it('getBounds 200x', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'getBounds x200',
-        () => {
-          for (let i = 0; i < 200; i++) {
-            getBounds(b);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'getBounds x200',
+      () => {
+        for (let i = 0; i < 200; i++) {
+          getBounds(b);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   // --- Boolean ops (tests propagateOrigins, iterOcList) ---
   it('box + cylinder fuse', async () => {
-    results.push(
-      await bench('box+cyl fuse', () => {
-        const b = box(10, 10, 10);
-        const c = translate(cylinder(3, 10), [5, 5, 0]);
-        unwrap(fuse(b, c));
-      })
-    );
+    collectResults(results, await benchBoth('box+cyl fuse', () => {
+      const b = box(10, 10, 10);
+      const c = translate(cylinder(3, 10), [5, 5, 0]);
+      unwrap(fuse(b, c));
+    }));
   });
 
   it('box - sphere cut', async () => {
-    results.push(
-      await bench('box-sphere cut', () => {
-        const b = box(10, 10, 10);
-        const s = translate(sphere(4), [5, 5, 5]);
-        unwrap(cut(b, s));
-      })
-    );
+    collectResults(results, await benchBoth('box-sphere cut', () => {
+      const b = box(10, 10, 10);
+      const s = translate(sphere(4), [5, 5, 5]);
+      unwrap(cut(b, s));
+    }));
   });
 
   // --- sharedEdges (hash-bucket optimization) ---
@@ -154,22 +142,20 @@ describe('Regression benchmarks (v8.8.5+ changes)', () => {
 
   // --- Topology iteration (getEdges, getFaces on complex shape) ---
   it('getFaces + getEdges on complex shape', async () => {
-    results.push(
-      await bench(
-        'getFaces+getEdges x50',
-        () => {
-          for (let i = 0; i < 50; i++) {
-            // Force uncached by creating new cut each time
-            const b = box(10 + i * 0.001, 10, 10);
-            const s = translate(sphere(4), [5, 5, 5]);
-            const r = unwrap(cut(b, s));
-            getFaces(r);
-            getEdges(r);
-          }
-        },
-        { warmup: 1, iterations: 3 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'getFaces+getEdges x50',
+      () => {
+        for (let i = 0; i < 50; i++) {
+          // Force uncached by creating new cut each time
+          const b = box(10 + i * 0.001, 10, 10);
+          const s = translate(sphere(4), [5, 5, 5]);
+          const r = unwrap(cut(b, s));
+          getFaces(r);
+          getEdges(r);
+        }
+      },
+      { warmup: 1, iterations: 3 }
+    ));
   });
 
   it('prints results', () => {

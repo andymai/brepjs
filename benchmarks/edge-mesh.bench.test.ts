@@ -1,52 +1,41 @@
 import { describe, it, beforeAll } from 'vitest';
-import { initOC } from '../tests/setup.js';
-import { makeBox, makeCylinder, unwrap, castShape, meshShapeEdges, clearMeshCache } from '../src/index.js';
-import { translateShape } from '../src/topology/shapeFns.js';
-import { fuseShape } from '../src/topology/booleanFns.js';
-import { bench, printResults, type BenchResult } from './harness.js';
+import { box, cylinder, translate, fuse, meshEdges, clearMeshCache, unwrap } from '../src/index.js';
+import { initBothKernels, benchBoth } from './setup.js';
+import { collectResults, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initBothKernels();
 }, 30000);
 
 describe('Edge mesh benchmarks', () => {
   const results: BenchResult[] = [];
 
   it('edge mesh a box (trivial)', async () => {
-    const box = makeBox([10, 10, 10]);
-    const shape = castShape(box.wrapped);
-    results.push(
-      await bench('edge mesh box', () => {
-        meshShapeEdges(shape, { cache: false });
-      })
-    );
+    const b = box(10, 10, 10);
+    collectResults(results, await benchBoth('edge mesh box', () => {
+      meshEdges(b, { cache: false });
+    }));
   });
 
   it('edge mesh a fused shape (moderate)', async () => {
-    const box = makeBox([10, 10, 10]);
-    const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
-    const fused = unwrap(fuseShape(box as any, cyl));
-    const shape = castShape(fused.wrapped);
-    results.push(
-      await bench('edge mesh fused', () => {
-        meshShapeEdges(shape, { cache: false });
-      })
-    );
+    const b = box(10, 10, 10);
+    const cyl = translate(cylinder(3, 10), [5, 5, 0]);
+    const fused = unwrap(fuse(b, cyl));
+    collectResults(results, await benchBoth('edge mesh fused', () => {
+      meshEdges(fused, { cache: false });
+    }));
   });
 
   it('repeated edge mesh of same shape (cache test)', async () => {
     clearMeshCache();
-    const box = makeBox([10, 10, 10]);
-    const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
-    const fused = unwrap(fuseShape(box as any, cyl));
-    const shape = castShape(fused.wrapped);
+    const b = box(10, 10, 10);
+    const cyl = translate(cylinder(3, 10), [5, 5, 0]);
+    const fused = unwrap(fuse(b, cyl));
     // First call populates cache
-    meshShapeEdges(shape);
-    results.push(
-      await bench('edge mesh cached', () => {
-        meshShapeEdges(shape);
-      })
-    );
+    meshEdges(fused);
+    collectResults(results, await benchBoth('edge mesh cached', () => {
+      meshEdges(fused);
+    }));
   });
 
   it('prints results', () => {

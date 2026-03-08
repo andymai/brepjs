@@ -22,7 +22,7 @@
   },
   "packageManager": "npm@11.6.1",
   "workspaces": [
-    "packages/*",
+    "packages/brepjs-opencascade",
     "site"
   ],
   "main": "./dist/brepjs.cjs",
@@ -178,7 +178,8 @@
     "test:all": "vitest run",
     "check:boundaries": "bash scripts/check-layer-boundaries.sh",
     "bench": "vitest run --config vitest.bench.config.ts",
-    "bench:json": "BENCH_OUTPUT_JSON=1 vitest run --config vitest.bench.config.ts",
+    "bench:compare": "BENCH_KERNELS=both vitest run --config vitest.bench.config.ts",
+    "bench:json": "BENCH_KERNELS=both BENCH_OUTPUT_JSON=1 vitest run --config vitest.bench.config.ts",
     "check:boundaries:staged": "bash scripts/check-layer-boundaries.sh --staged",
     "check:readme-reminders": "bash scripts/check-readme-reminders.sh",
     "example": "npx tsx",
@@ -198,7 +199,7 @@
     "@types/opentype.js": "1.3.9",
     "@vitest/coverage-v8": "4.0.18",
     "brepjs-opencascade": "*",
-    "brepkit-wasm": "0.7.1",
+    "brepkit-wasm": "0.7.3",
     "eslint": "10.0.3",
     "husky": "9.1.7",
     "knip": "5.86.0",

@@ -1,76 +1,45 @@
 import { describe, it, beforeAll } from 'vitest';
-import { initOC } from '../tests/setup.js';
-import { makeBox, makeCylinder, unwrap, castShape, getEdges, getFaces } from '../src/index.js';
-import { translateShape } from '../src/topology/shapeFns.js';
-import { fuseShape } from '../src/topology/booleanFns.js';
-import { bench, printResults, type BenchResult } from './harness.js';
+import { box, cylinder, translate, fuse, unwrap, getEdges, getFaces } from '../src/index.js';
+import { initBothKernels, benchBoth } from './setup.js';
+import { collectResults, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initBothKernels();
 }, 30000);
 
 describe('Topology iteration benchmarks', () => {
   const results: BenchResult[] = [];
 
-  it('.edges on a box (12 edges)', async () => {
-    const box = makeBox([10, 10, 10]);
-    results.push(
-      await bench('box .edges', () => {
-        box.edges;
-      })
-    );
+  it('getEdges() on a box (12 edges)', async () => {
+    collectResults(results, await benchBoth('getEdges(box)', () => {
+      const b = box(10, 10, 10);
+      getEdges(b);
+    }));
   });
 
-  it('.faces on a box (6 faces)', async () => {
-    const box = makeBox([10, 10, 10]);
-    results.push(
-      await bench('box .faces', () => {
-        box.faces;
-      })
-    );
+  it('getFaces() on a box (6 faces)', async () => {
+    collectResults(results, await benchBoth('getFaces(box)', () => {
+      const b = box(10, 10, 10);
+      getFaces(b);
+    }));
   });
 
-  it('.edges on a fused complex shape', async () => {
-    const box = makeBox([10, 10, 10]);
-    const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
-    const fused = unwrap(fuseShape(box as any, cyl));
-    results.push(
-      await bench('fused .edges', () => {
-        fused.edges;
-      })
-    );
+  it('getEdges() on a fused complex shape', async () => {
+    collectResults(results, await benchBoth('getEdges(fused)', () => {
+      const b = box(10, 10, 10);
+      const cyl = translate(cylinder(3, 10), [5, 5, 0]);
+      const fused = unwrap(fuse(b, cyl));
+      getEdges(fused);
+    }));
   });
 
-  it('getEdges() standalone on a box', async () => {
-    const box = makeBox([10, 10, 10]);
-    const shape = castShape(box.wrapped);
-    results.push(
-      await bench('getEdges(box)', () => {
-        getEdges(shape);
-      })
-    );
-  });
-
-  it('getFaces() standalone on a box', async () => {
-    const box = makeBox([10, 10, 10]);
-    const shape = castShape(box.wrapped);
-    results.push(
-      await bench('getFaces(box)', () => {
-        getFaces(shape);
-      })
-    );
-  });
-
-  it('getEdges() on fused complex shape', async () => {
-    const box = makeBox([10, 10, 10]);
-    const cyl = translateShape(makeCylinder(3, 10) as any, [5, 5, 0]);
-    const fused = unwrap(fuseShape(box as any, cyl));
-    const shape = castShape(fused.wrapped);
-    results.push(
-      await bench('getEdges(fused)', () => {
-        getEdges(shape);
-      })
-    );
+  it('getFaces() on a fused complex shape', async () => {
+    collectResults(results, await benchBoth('getFaces(fused)', () => {
+      const b = box(10, 10, 10);
+      const cyl = translate(cylinder(3, 10), [5, 5, 0]);
+      const fused = unwrap(fuse(b, cyl));
+      getFaces(fused);
+    }));
   });
 
   it('prints results', () => {

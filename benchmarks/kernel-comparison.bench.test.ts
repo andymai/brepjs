@@ -21,74 +21,38 @@
  * If brepkit WASM is not available, brepkit benchmarks are skipped gracefully.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it, beforeAll, afterAll } from 'vitest';
-import { initOC } from '../tests/setup.js';
-import { getKernel, registerKernel, withKernel } from '../src/kernel/index.js';
-import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
-import { bench, printResults, writeResultsJSON, type BenchResult } from './harness.js';
+import { getKernel } from '../src/kernel/index.js';
+import {
+  collectResults,
+  printResults,
+  writeResultsJSON,
+  generateReport,
+  type BenchResult,
+  type ReportSection,
+} from './harness.js';
+import { initBothKernels, benchBoth, hasBrepkit, getBrepkitVersion } from './setup.js';
 
 // Accumulate all results for JSON output
 const ALL_RESULTS: BenchResult[] = [];
 
-let hasBrepkit = false;
+/** Run benchBoth and collect results into both a local array and ALL_RESULTS. */
+async function benchAndCollect(
+  target: BenchResult[],
+  name: string,
+  fn: () => void
+): Promise<void> {
+  const result = await benchBoth(name, fn);
+  collectResults(target, result);
+  collectResults(ALL_RESULTS, result);
+}
 
 beforeAll(async () => {
-  // Always init OCCT
-  await initOC();
-
-  // Try to init brepkit
-  try {
-    // Dynamic import — will fail if WASM not available
-    const brepkitWasm = await import('brepkit-wasm');
-    // wasm-pack --target nodejs initializes synchronously (no init function).
-    // wasm-pack --target web/bundler exports an async default init().
-    if (typeof brepkitWasm.default === 'function') {
-      await brepkitWasm.default();
-    }
-    const BrepKernel = brepkitWasm.BrepKernel ?? brepkitWasm.default?.BrepKernel;
-    const kernel = new BrepKernel();
-    registerKernel('brepkit', new BrepkitAdapter(kernel));
-    hasBrepkit = true;
-    console.log('[benchmark] brepkit WASM loaded successfully');
-  } catch {
-    console.log('[benchmark] brepkit WASM not available — brepkit benchmarks will be skipped');
-  }
+  await initBothKernels();
 }, 30000);
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-type KernelId = 'occt' | 'brepkit';
-
-async function benchKernel(
-  kernelId: KernelId,
-  name: string,
-  fn: () => void
-): Promise<BenchResult | null> {
-  if (kernelId === 'brepkit' && !hasBrepkit) return null;
-
-  return bench(`[${kernelId}] ${name}`, () => {
-    withKernel(kernelId, fn);
-  });
-}
-
-async function benchBoth(
-  name: string,
-  fn: () => void
-): Promise<{ occt: BenchResult; brepkit: BenchResult | null }> {
-  const occt = (await benchKernel('occt', name, fn))!;
-  occt.kernel = 'occt';
-  ALL_RESULTS.push(occt);
-
-  const brepkit = await benchKernel('brepkit', name, fn);
-  if (brepkit) {
-    brepkit.kernel = 'brepkit';
-    ALL_RESULTS.push(brepkit);
-  }
-
-  return { occt, brepkit };
-}
 
 // ---------------------------------------------------------------------------
 // Primitive construction benchmarks
@@ -98,36 +62,30 @@ describe('Kernel comparison: Primitives', () => {
   const results: BenchResult[] = [];
 
   it('makeBox', async () => {
-    const { occt, brepkit } = await benchBoth('makeBox(10,20,30)', () => {
+    await benchAndCollect(results, 'makeBox(10,20,30)', () => {
       const k = getKernel();
       for (let i = 0; i < 100; i++) {
         k.makeBox(10, 20, 30);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('makeCylinder', async () => {
-    const { occt, brepkit } = await benchBoth('makeCylinder(5,20)', () => {
+    await benchAndCollect(results, 'makeCylinder(5,20)', () => {
       const k = getKernel();
       for (let i = 0; i < 100; i++) {
         k.makeCylinder(5, 20);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('makeSphere', async () => {
-    const { occt, brepkit } = await benchBoth('makeSphere(10)', () => {
+    await benchAndCollect(results, 'makeSphere(10)', () => {
       const k = getKernel();
       for (let i = 0; i < 100; i++) {
         k.makeSphere(10);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('print primitive results', () => {
@@ -143,7 +101,7 @@ describe('Kernel comparison: Booleans', () => {
   const results: BenchResult[] = [];
 
   it('fuse (box ∪ box)', async () => {
-    const { occt, brepkit } = await benchBoth('fuse(box,box)', () => {
+    await benchAndCollect(results, 'fuse(box,box)', () => {
       const k = getKernel();
       for (let i = 0; i < 10; i++) {
         const a = k.makeBox(10, 10, 10);
@@ -151,12 +109,10 @@ describe('Kernel comparison: Booleans', () => {
         k.fuse(a, b);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('cut (box - cylinder)', async () => {
-    const { occt, brepkit } = await benchBoth('cut(box,cyl)', () => {
+    await benchAndCollect(results, 'cut(box,cyl)', () => {
       const k = getKernel();
       for (let i = 0; i < 10; i++) {
         const box = k.makeBox(10, 10, 10);
@@ -164,12 +120,10 @@ describe('Kernel comparison: Booleans', () => {
         k.cut(box, cyl);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('intersect (box ∩ sphere)', async () => {
-    const { occt, brepkit } = await benchBoth('intersect(box,sphere)', () => {
+    await benchAndCollect(results, 'intersect(box,sphere)', () => {
       const k = getKernel();
       for (let i = 0; i < 10; i++) {
         const box = k.makeBox(10, 10, 10);
@@ -177,8 +131,6 @@ describe('Kernel comparison: Booleans', () => {
         k.intersect(box, sph);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('print boolean results', () => {
@@ -194,27 +146,23 @@ describe('Kernel comparison: Transforms', () => {
   const results: BenchResult[] = [];
 
   it('translate ×1000', async () => {
-    const { occt, brepkit } = await benchBoth('translate ×1000', () => {
+    await benchAndCollect(results, 'translate ×1000', () => {
       const k = getKernel();
       let shape = k.makeBox(1, 1, 1);
       for (let i = 0; i < 1000; i++) {
         shape = k.translate(shape, 0.01, 0, 0);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('rotate ×100', async () => {
-    const { occt, brepkit } = await benchBoth('rotate ×100', () => {
+    await benchAndCollect(results, 'rotate ×100', () => {
       const k = getKernel();
       let shape = k.makeBox(5, 5, 5);
       for (let i = 0; i < 100; i++) {
         shape = k.rotate(shape, 3.6, [0, 0, 1]);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('print transform results', () => {
@@ -230,23 +178,19 @@ describe('Kernel comparison: Meshing', () => {
   const results: BenchResult[] = [];
 
   it('mesh box (coarse)', async () => {
-    const { occt, brepkit } = await benchBoth('mesh box (tol=0.1)', () => {
+    await benchAndCollect(results, 'mesh box (tol=0.1)', () => {
       const k = getKernel();
       const box = k.makeBox(10, 10, 10);
       k.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('mesh sphere (fine)', async () => {
-    const { occt, brepkit } = await benchBoth('mesh sphere (tol=0.01)', () => {
+    await benchAndCollect(results, 'mesh sphere (tol=0.01)', () => {
       const k = getKernel();
       const sph = k.makeSphere(10);
       k.mesh(sph, { tolerance: 0.01, angularTolerance: 0.1 });
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('print meshing results', () => {
@@ -262,27 +206,23 @@ describe('Kernel comparison: Measurement', () => {
   const results: BenchResult[] = [];
 
   it('volume ×100', async () => {
-    const { occt, brepkit } = await benchBoth('volume ×100', () => {
+    await benchAndCollect(results, 'volume ×100', () => {
       const k = getKernel();
       const box = k.makeBox(10, 10, 10);
       for (let i = 0; i < 100; i++) {
         k.volume(box);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('boundingBox ×100', async () => {
-    const { occt, brepkit } = await benchBoth('boundingBox ×100', () => {
+    await benchAndCollect(results, 'boundingBox ×100', () => {
       const k = getKernel();
       const box = k.makeBox(10, 10, 10);
       for (let i = 0; i < 100; i++) {
         k.boundingBox(box);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('print measurement results', () => {
@@ -298,15 +238,13 @@ describe('Kernel comparison: I/O', () => {
   const results: BenchResult[] = [];
 
   it('exportSTEP ×10', async () => {
-    const { occt, brepkit } = await benchBoth('exportSTEP ×10', () => {
+    await benchAndCollect(results, 'exportSTEP ×10', () => {
       const k = getKernel();
       const box = k.makeBox(10, 10, 10);
       for (let i = 0; i < 10; i++) {
         k.exportSTEP([box]);
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('print I/O results', () => {
@@ -322,29 +260,25 @@ describe('Kernel comparison: End-to-end model', () => {
   const results: BenchResult[] = [];
 
   it('box with chamfered edges', async () => {
-    const { occt, brepkit } = await benchBoth('box+chamfer', () => {
+    await benchAndCollect(results, 'box+chamfer', () => {
       const k = getKernel();
       const box = k.makeBox(20, 20, 20);
       const edges = k.iterShapes(box, 'edge');
       k.chamfer(box, edges, 1);
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('box with filleted edges', async () => {
-    const { occt, brepkit } = await benchBoth('box+fillet', () => {
+    await benchAndCollect(results, 'box+fillet', () => {
       const k = getKernel();
       const box = k.makeBox(20, 20, 20);
       const edges = k.iterShapes(box, 'edge');
       k.fillet(box, edges, 1);
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('box - holes + fuse', async () => {
-    const { occt, brepkit } = await benchBoth('multi-boolean model', () => {
+    await benchAndCollect(results, 'multi-boolean model', () => {
       const k = getKernel();
       let result = k.makeBox(50, 50, 10);
 
@@ -356,8 +290,6 @@ describe('Kernel comparison: End-to-end model', () => {
         }
       }
     });
-    results.push(occt);
-    if (brepkit) results.push(brepkit);
   });
 
   it('print end-to-end results', () => {
@@ -372,5 +304,39 @@ describe('Kernel comparison: End-to-end model', () => {
 afterAll(() => {
   if (process.env.BENCH_OUTPUT_JSON) {
     writeResultsJSON(ALL_RESULTS);
+  }
+
+  // Auto-generate latest.md when brepkit is available
+  if (hasBrepkit()) {
+    const sectionDefs = [
+      { title: 'Primitives', names: ['makeBox', 'makeCylinder', 'makeSphere'] },
+      { title: 'Booleans', names: ['fuse', 'cut', 'intersect'] },
+      { title: 'Transforms', names: ['translate', 'rotate'] },
+      { title: 'Meshing', names: ['mesh box', 'mesh sphere'] },
+      { title: 'Measurement', names: ['volume', 'boundingBox'] },
+      { title: 'I/O', names: ['exportSTEP'] },
+      { title: 'End-to-end', names: ['box+chamfer', 'box+fillet', 'multi-boolean'] },
+    ];
+
+    const sections: ReportSection[] = sectionDefs.map(({ title }) => ({
+      title,
+      results: [],
+    }));
+
+    for (const r of ALL_RESULTS) {
+      const baseName = r.name.replace(/^\[(occt|brepkit)] /, '');
+      const idx = sectionDefs.findIndex((s) => s.names.some((n) => baseName.includes(n)));
+      sections[idx === -1 ? sections.length - 1 : idx]!.results.push(r); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    }
+
+    const nonEmptySections = sections.filter((s) => s.results.length > 0);
+    const version = getBrepkitVersion();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const report = generateReport(nonEmptySections, version, dateStr);
+
+    const dir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
+    const outPath = path.resolve(dir, 'results/latest.md');
+    fs.writeFileSync(outPath, report, 'utf-8');
+    console.log(`\n[benchmark] Report written to ${outPath}`);
   }
 });

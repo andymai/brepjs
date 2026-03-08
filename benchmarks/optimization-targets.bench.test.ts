@@ -4,7 +4,7 @@
  * meshEdges pre-allocation, and evolution object reuse.
  */
 import { describe, it, beforeAll } from 'vitest';
-import { initOC } from '../tests/setup.js';
+import { initBothKernels, benchBoth } from './setup.js';
 import {
   box,
   cylinder,
@@ -25,16 +25,17 @@ import {
 import { castShape } from '../src/core/shapeTypes.js';
 import { getFaces, getEdges, getBounds } from '../src/topology/shapeFns.js';
 import { faceFinder } from '../src/query/faceFinder.js';
-import { bench, printResults, type BenchResult } from './harness.js';
+import { bench, collectResults, printResults, type BenchResult } from './harness.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initBothKernels();
 }, 30000);
 
 describe('Optimization target benchmarks', () => {
   const results: BenchResult[] = [];
 
   // --- castShape overhead (called per sub-shape in topology iteration) ---
+  // OCCT-only: uses getKernel().iterShapes which is kernel-internal
   it('castShape x500 (on raw kernel shapes)', async () => {
     const b = box(10, 10, 10);
     // Get raw faces from kernel to benchmark pure castShape cost
@@ -57,32 +58,28 @@ describe('Optimization target benchmarks', () => {
   // --- getBounds repeated calls (should be cacheable) ---
   it('getBounds x1000 on same shape (cache hit scenario)', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'getBounds x1000 same',
-        () => {
-          for (let i = 0; i < 1000; i++) {
-            getBounds(b);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'getBounds x1000 same',
+      () => {
+        for (let i = 0; i < 1000; i++) {
+          getBounds(b);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   it('getBounds on 50 unique shapes', async () => {
     const shapes = Array.from({ length: 50 }, (_, i) => box(10 + i * 0.01, 10, 10));
-    results.push(
-      await bench(
-        'getBounds x50 unique',
-        () => {
-          for (const s of shapes) {
-            getBounds(s);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'getBounds x50 unique',
+      () => {
+        for (const s of shapes) {
+          getBounds(s);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   // --- findUnique early termination ---
@@ -92,15 +89,13 @@ describe('Optimization target benchmarks', () => {
     const fused = unwrap(fuse(b, c));
     // Find faces using geometry filter — tests findAll/findUnique overhead
     const f = faceFinder().parallelTo([0, 0, 1]);
-    results.push(
-      await bench(
-        'faceFinder.findAll',
-        () => {
-          f.findAll(fused);
-        },
-        { warmup: 2, iterations: 10 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'faceFinder.findAll',
+      () => {
+        f.findAll(fused);
+      },
+      { warmup: 2, iterations: 10 }
+    ));
   });
 
   // --- meshEdges performance ---
@@ -110,15 +105,13 @@ describe('Optimization target benchmarks', () => {
     const fused = unwrap(fuse(b, c));
     // Mesh first (face mesh), then edge mesh
     mesh(fused, { tolerance: 1, angularTolerance: 0.5 });
-    results.push(
-      await bench(
-        'meshEdges fused',
-        () => {
-          meshEdges(fused, { tolerance: 1, angularTolerance: 0.5 });
-        },
-        { warmup: 1, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'meshEdges fused',
+      () => {
+        meshEdges(fused, { tolerance: 1, angularTolerance: 0.5 });
+      },
+      { warmup: 1, iterations: 5 }
+    ));
   });
 
   it('meshEdges on complex cut shape', async () => {
@@ -126,39 +119,36 @@ describe('Optimization target benchmarks', () => {
     const holes = Array.from({ length: 4 }, (_, i) =>
       translate(cylinder(2, 10), [5 + i * 4, 10, 0])
     );
-    let shape = b;
+    let s = b;
     for (const h of holes) {
-      shape = unwrap(cut(shape, h));
+      s = unwrap(cut(s, h));
     }
-    mesh(shape, { tolerance: 1, angularTolerance: 0.5 });
-    results.push(
-      await bench(
-        'meshEdges 4-hole',
-        () => {
-          meshEdges(shape, { tolerance: 1, angularTolerance: 0.5 });
-        },
-        { warmup: 1, iterations: 3 }
-      )
-    );
+    mesh(s, { tolerance: 1, angularTolerance: 0.5 });
+    collectResults(results, await benchBoth(
+      'meshEdges 4-hole',
+      () => {
+        meshEdges(s, { tolerance: 1, angularTolerance: 0.5 });
+      },
+      { warmup: 1, iterations: 3 }
+    ));
   });
 
   // --- Transform with no origin tracking (empty evolution fast path) ---
   it('translate x200 (no origins)', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'translate x200 no-origins',
-        () => {
-          for (let i = 0; i < 200; i++) {
-            translate(b, [i * 0.01, 0, 0]);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'translate x200 no-origins',
+      () => {
+        for (let i = 0; i < 200; i++) {
+          translate(b, [i * 0.01, 0, 0]);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   // --- Topology iteration (getEdges/getFaces) on shapes of increasing complexity ---
+  // OCCT-only: uses castShape on raw .wrapped handle
   it('getEdges on sphere (many edges)', async () => {
     const s = sphere(10);
     const c = translate(cylinder(3, 20), [0, 0, -10]);
@@ -179,34 +169,30 @@ describe('Optimization target benchmarks', () => {
   // --- Fillet with no metadata (modifierFns fast-path) ---
   it('fillet x10 (no metadata)', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'fillet x10 no-metadata',
-        () => {
-          for (let i = 0; i < 10; i++) {
-            unwrap(fillet(b, undefined, 0.5));
-          }
-        },
-        { warmup: 1, iterations: 3 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'fillet x10 no-metadata',
+      () => {
+        for (let i = 0; i < 10; i++) {
+          unwrap(fillet(b, undefined, 0.5));
+        }
+      },
+      { warmup: 1, iterations: 3 }
+    ));
   });
 
   // --- UV mesh caching ---
   it('mesh with UVs x5 (should cache)', async () => {
     const b = box(10, 10, 10);
     mesh(b, { includeUVs: true }); // prime cache
-    results.push(
-      await bench(
-        'mesh UV x5 cached',
-        () => {
-          for (let i = 0; i < 5; i++) {
-            mesh(b, { includeUVs: true });
-          }
-        },
-        { warmup: 1, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'mesh UV x5 cached',
+      () => {
+        for (let i = 0; i < 5; i++) {
+          mesh(b, { includeUVs: true });
+        }
+      },
+      { warmup: 1, iterations: 5 }
+    ));
   });
 
   // --- Measurement caching (cache-first path) ---
@@ -214,34 +200,30 @@ describe('Optimization target benchmarks', () => {
     const b = box(10, 10, 10);
     measureVolume(b); // prime cache
     measureArea(b);
-    results.push(
-      await bench(
-        'measure x100 cached',
-        () => {
-          for (let i = 0; i < 100; i++) {
-            measureVolume(b);
-            measureArea(b);
-          }
-        },
-        { warmup: 2, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'measure x100 cached',
+      () => {
+        for (let i = 0; i < 100; i++) {
+          measureVolume(b);
+          measureArea(b);
+        }
+      },
+      { warmup: 2, iterations: 5 }
+    ));
   });
 
   // --- rotate/scale without spread overhead ---
   it('rotate x100', async () => {
     const b = box(10, 10, 10);
-    results.push(
-      await bench(
-        'rotate x100',
-        () => {
-          for (let i = 0; i < 100; i++) {
-            rotate(b, 5 * i, [0, 0, 0], [0, 0, 1]);
-          }
-        },
-        { warmup: 1, iterations: 3 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'rotate x100',
+      () => {
+        for (let i = 0; i < 100; i++) {
+          rotate(b, 5 * i, { at: [0, 0, 0], axis: [0, 0, 1] });
+        }
+      },
+      { warmup: 1, iterations: 3 }
+    ));
   });
 
   // --- Interference checking with AABB pre-filter ---
@@ -249,15 +231,13 @@ describe('Optimization target benchmarks', () => {
     const shapes = Array.from({ length: 10 }, (_, i) =>
       translate(box(5, 5, 5), [i * 20, 0, 0])
     );
-    results.push(
-      await bench(
-        'interference 10 separated',
-        () => {
-          checkAllInterferences(shapes);
-        },
-        { warmup: 1, iterations: 5 }
-      )
-    );
+    collectResults(results, await benchBoth(
+      'interference 10 separated',
+      () => {
+        checkAllInterferences(shapes);
+      },
+      { warmup: 1, iterations: 5 }
+    ));
   });
 
   it('prints results', () => {

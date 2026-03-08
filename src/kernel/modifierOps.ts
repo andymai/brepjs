@@ -27,16 +27,49 @@ export function fillet(
   const builder = new oc.BRepFilletAPI_MakeFillet(shape, oc.ChFi3d_FilletShape.ChFi3d_Rational);
   for (const edge of edges) {
     const r = typeof radius === 'function' ? radius(edge) : radius;
+    const downcast = oc.TopoDS.Edge_1(edge);
     if (typeof r === 'number') {
-      if (r > 0) builder.Add_2(r, edge);
+      if (r > 0) builder.Add_2(r, downcast);
     } else {
       const [r1, r2] = r;
-      if (r1 > 0 && r2 > 0) builder.Add_3(r1, r2, edge);
+      if (r1 > 0 && r2 > 0) builder.Add_3(r1, r2, downcast);
     }
   }
   const result = builder.Shape();
   builder.delete();
   return result;
+}
+
+/**
+ * Builds a map from edge hash to a containing face.
+ * Used by chamfer operations that require a face reference per edge.
+ */
+function buildEdgeFaceMap(oc: KernelInstance, shape: KernelShape): Map<number, KernelShape> {
+  const map = new Map<number, KernelShape>();
+  const faceExp = new oc.TopExp_Explorer_2(
+    shape,
+    oc.TopAbs_ShapeEnum.TopAbs_FACE,
+    oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+  );
+  while (faceExp.More()) {
+    const face = oc.TopoDS.Face_1(faceExp.Current());
+    const edgeExp = new oc.TopExp_Explorer_2(
+      face,
+      oc.TopAbs_ShapeEnum.TopAbs_EDGE,
+      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
+    );
+    while (edgeExp.More()) {
+      const hash = edgeExp.Current().HashCode(2147483647);
+      if (!map.has(hash)) {
+        map.set(hash, face);
+      }
+      edgeExp.Next();
+    }
+    edgeExp.delete();
+    faceExp.Next();
+  }
+  faceExp.delete();
+  return map;
 }
 
 export type ChamferDistSpec =
@@ -56,51 +89,21 @@ export function chamfer(
 ): KernelShape {
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
 
-  // Build edge→face map lazily (O(faces×edges_per_face) once, then O(1) per lookup)
-  let edgeFaceMap: Map<number, KernelShape> | null = null;
-  function getEdgeFaceMap(): Map<number, KernelShape> {
-    if (edgeFaceMap) return edgeFaceMap;
-    edgeFaceMap = new Map();
-    const faceExp = new oc.TopExp_Explorer_2(
-      shape,
-      oc.TopAbs_ShapeEnum.TopAbs_FACE,
-      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
-    );
-    while (faceExp.More()) {
-      const face = oc.TopoDS.Face_1(faceExp.Current());
-      const edgeExp = new oc.TopExp_Explorer_2(
-        face,
-        oc.TopAbs_ShapeEnum.TopAbs_EDGE,
-        oc.TopAbs_ShapeEnum.TopAbs_SHAPE
-      );
-      while (edgeExp.More()) {
-        const hash = edgeExp.Current().HashCode(2147483647);
-        if (!edgeFaceMap.has(hash)) {
-          edgeFaceMap.set(hash, face);
-        }
-        edgeExp.Next();
-      }
-      edgeExp.delete();
-      faceExp.Next();
-    }
-    faceExp.delete();
-    return edgeFaceMap;
-  }
-
-  function findContainingFace(edge: KernelShape): KernelShape | null {
-    return getEdgeFaceMap().get(edge.HashCode(2147483647)) ?? null;
-  }
+  // Build the edge→face map lazily — only when an asymmetric [d1, d2] distance is first encountered
+  let edgeFaceMap: Map<number, KernelShape> | undefined;
 
   for (const edge of edges) {
     const d = typeof distance === 'function' ? distance(edge) : distance;
+    const downcast = oc.TopoDS.Edge_1(edge);
     if (typeof d === 'number') {
-      if (d > 0) builder.Add_2(d, edge);
+      if (d > 0) builder.Add_2(d, downcast);
     } else {
       const [d1, d2] = d;
       if (d1 > 0 && d2 > 0) {
-        const face = findContainingFace(edge);
+        edgeFaceMap ??= buildEdgeFaceMap(oc, shape);
+        const face = edgeFaceMap.get(edge.HashCode(2147483647));
         if (face) {
-          builder.Add_3(d1, d2, oc.TopoDS.Edge_1(edge), face);
+          builder.Add_3(d1, d2, downcast, face);
         }
       }
     }
@@ -176,38 +179,13 @@ export function chamferDistAngle(
 ): KernelShape {
   const builder = new oc.BRepFilletAPI_MakeChamfer(shape);
   const angleRad = (angleDeg * Math.PI) / 180;
-
-  // Build edge→face map once (O(faces×edges_per_face)), then O(1) per lookup
-  const edgeFaceMap = new Map<number, KernelShape>();
-  const faceExplorer = new oc.TopExp_Explorer_2(
-    shape,
-    oc.TopAbs_ShapeEnum.TopAbs_FACE,
-    oc.TopAbs_ShapeEnum.TopAbs_SHAPE
-  );
-  while (faceExplorer.More()) {
-    const face = oc.TopoDS.Face_1(faceExplorer.Current());
-    const edgeExp = new oc.TopExp_Explorer_2(
-      face,
-      oc.TopAbs_ShapeEnum.TopAbs_EDGE,
-      oc.TopAbs_ShapeEnum.TopAbs_SHAPE
-    );
-    while (edgeExp.More()) {
-      const hash = edgeExp.Current().HashCode(2147483647);
-      if (!edgeFaceMap.has(hash)) {
-        edgeFaceMap.set(hash, face);
-      }
-      edgeExp.Next();
-    }
-    edgeExp.delete();
-    faceExplorer.Next();
-  }
-  faceExplorer.delete();
+  const edgeFaceMap = buildEdgeFaceMap(oc, shape);
 
   for (const edge of edges) {
-    const containingFace = edgeFaceMap.get(edge.HashCode(2147483647)) ?? null;
-    if (containingFace && distance > 0) {
+    const face = edgeFaceMap.get(edge.HashCode(2147483647));
+    if (face && distance > 0) {
       // Edge must also be downcast to TopoDS_Edge for the AddDA binding
-      builder.AddDA(distance, angleRad, oc.TopoDS.Edge_1(edge), containingFace);
+      builder.AddDA(distance, angleRad, oc.TopoDS.Edge_1(edge), face);
     }
   }
 
