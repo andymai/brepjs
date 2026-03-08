@@ -103,8 +103,21 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      # size-limit-action manages its own checkout/build cycle — cannot use composite action
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: ./.github/actions/setup
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        id: cache
+        with:
+          path: node_modules
+          key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-24-${{ runner.os }}-
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci
+      - run: bash scripts/ensure-wasm.sh
       - uses: andresz1/size-limit-action@e7493a72a44b113341c0cf6186ab49c17c4b65c1 # v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

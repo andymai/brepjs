@@ -12,6 +12,7 @@ BRANCH="main"
 
 echo "Configuring branch protection for $REPO ($BRANCH)..."
 
+# enforce_admins is false: intentional admin bypass for emergency hotfixes
 gh api --method PUT "repos/$REPO/branches/$BRANCH/protection" \
   --input - <<'EOF'
 {

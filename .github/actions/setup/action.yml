@@ -20,8 +20,10 @@ runs:
       run: |
         for i in 1 2 3; do
           npm ci && exit 0
-          echo "::warning::npm ci failed (attempt $i/3), retrying in 5s..."
-          sleep 5
+          if [ "$i" -lt 3 ]; then
+            echo "::warning::npm ci failed (attempt $i/3), retrying in 5s..."
+            sleep 5
+          fi
         done
         exit 1
     - name: Restore WASM files
@@ -29,7 +31,9 @@ runs:
       run: |
         for i in 1 2 3; do
           bash scripts/ensure-wasm.sh && exit 0
-          echo "::warning::ensure-wasm.sh failed (attempt $i/3), retrying in 5s..."
-          sleep 5
+          if [ "$i" -lt 3 ]; then
+            echo "::warning::ensure-wasm.sh failed (attempt $i/3), retrying in 5s..."
+            sleep 5
+          fi
         done
         exit 1

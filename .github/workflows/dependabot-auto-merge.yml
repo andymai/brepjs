@@ -17,6 +17,8 @@ jobs:
     steps:
       - uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2
         id: metadata
+      # Intentionally auto-approves patch/minor deps without human review.
+      # --auto waits for CI to pass before merging. Major updates require manual review.
       - name: Auto-approve and merge patch/minor updates
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         env:

@@ -19,8 +19,10 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    # workflow_dispatch bypasses CI gate (intentional for emergency redeploys, restricted to main)
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' &&
+        github.ref == 'refs/heads/main') ||
       github.event.workflow_run.conclusion == 'success'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
