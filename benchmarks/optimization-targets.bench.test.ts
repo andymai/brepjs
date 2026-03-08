@@ -166,10 +166,10 @@ describe('Optimization target benchmarks', () => {
 
   // --- Fillet with no metadata (modifierFns fast-path) ---
   it('fillet x10 (no metadata)', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'fillet x10 no-metadata',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 10; i++) {
           unwrap(fillet(b, 0.5));
         }
@@ -180,11 +180,11 @@ describe('Optimization target benchmarks', () => {
 
   // --- UV mesh caching ---
   it('mesh with UVs x5 (should cache)', async () => {
-    const b = box(10, 10, 10);
-    mesh(b, { includeUVs: true }); // prime cache
     collectResults(results, await benchBoth(
       'mesh UV x5 cached',
       () => {
+        const b = box(10, 10, 10);
+        mesh(b, { includeUVs: true }); // prime cache
         for (let i = 0; i < 5; i++) {
           mesh(b, { includeUVs: true });
         }
@@ -195,12 +195,12 @@ describe('Optimization target benchmarks', () => {
 
   // --- Measurement caching (cache-first path) ---
   it('measureVolume+Area x100 cached', async () => {
-    const b = box(10, 10, 10);
-    measureVolume(b); // prime cache
-    measureArea(b);
     collectResults(results, await benchBoth(
       'measure x100 cached',
       () => {
+        const b = box(10, 10, 10);
+        measureVolume(b); // prime cache
+        measureArea(b);
         for (let i = 0; i < 100; i++) {
           measureVolume(b);
           measureArea(b);
@@ -212,10 +212,10 @@ describe('Optimization target benchmarks', () => {
 
   // --- rotate/scale without spread overhead ---
   it('rotate x100', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'rotate x100',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 100; i++) {
           rotate(b, 5 * i, { at: [0, 0, 0], axis: [0, 0, 1] });
         }
@@ -226,12 +226,12 @@ describe('Optimization target benchmarks', () => {
 
   // --- Interference checking with AABB pre-filter ---
   it('checkAllInterferences 10 shapes', async () => {
-    const shapes = Array.from({ length: 10 }, (_, i) =>
-      translate(box(5, 5, 5), [i * 20, 0, 0])
-    );
     collectResults(results, await benchBoth(
       'interference 10 separated',
       () => {
+        const shapes = Array.from({ length: 10 }, (_, i) =>
+          translate(box(5, 5, 5), [i * 20, 0, 0])
+        );
         checkAllInterferences(shapes);
       },
       { warmup: 1, iterations: 5 }
