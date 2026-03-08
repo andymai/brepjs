@@ -1503,7 +1503,8 @@ export class BrepkitAdapter implements KernelAdapter {
         // Native *WithEvolution APIs require solid handles and do not accept
         // BooleanOptions (e.g. fuzzyValue). Options are silently ignored.
         const json = nativeFn(sh.id, th.id);
-        return this.parseNativeEvolution(json, hashUpperBound);
+        const result = this.parseNativeEvolution(json, hashUpperBound);
+        return result;
       }
       if (th.type === 'compound') {
         // Iteratively apply native evolution for each solid in the compound
@@ -1541,12 +1542,8 @@ export class BrepkitAdapter implements KernelAdapter {
       }
     }
     // Fallback: non-solid shapes or no face hashes
-    return this.buildEvolution(
-      fallbackFn(shape, tool, options),
-      inputFaceHashes,
-      hashUpperBound,
-      false
-    );
+    const fallbackResult = fallbackFn(shape, tool, options);
+    return this.buildEvolution(fallbackResult, inputFaceHashes, hashUpperBound, false);
   }
 
   fuseWithHistory(
@@ -1812,7 +1809,8 @@ export class BrepkitAdapter implements KernelAdapter {
   volume(shape: KernelShape): number {
     const h = shape as BrepkitHandle;
     if (h.type !== 'solid') return 0;
-    return this.bk.volume(unwrap(shape), DEFAULT_DEFLECTION);
+    const id = unwrap(shape);
+    return this.bk.volume(id, DEFAULT_DEFLECTION);
   }
 
   area(shape: KernelShape): number {

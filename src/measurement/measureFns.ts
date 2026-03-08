@@ -67,7 +67,14 @@ export function measureVolumeProps(shape: Shape3D): VolumeProps {
 
   const kernel = getKernel();
   const m = kernel.volume(shape.wrapped);
-  const com = kernel.centerOfMass(shape.wrapped);
+  let com: [number, number, number];
+  try {
+    com = kernel.centerOfMass(shape.wrapped);
+  } catch {
+    // centerOfMass can fail for hollow/complex solids — fall back to bbox center
+    const bb = kernel.boundingBox(shape.wrapped);
+    com = [(bb.min[0] + bb.max[0]) / 2, (bb.min[1] + bb.max[1]) / 2, (bb.min[2] + bb.max[2]) / 2];
+  }
   const result: VolumeProps = {
     mass: m,
     volume: m,

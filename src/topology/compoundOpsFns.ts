@@ -108,26 +108,41 @@ export function drill<T extends Shape3D>(shape: Shapeable<T>, options: DrillOpti
   // Resolve position — Vec2 projects onto axis origin
   const pos: Vec3 = at.length === 2 ? [at[0], at[1], 0] : [at[0], at[1], at[2]];
 
-  // Compute depth
-  let depth = options.depth;
-  if (depth === undefined) {
-    // Through-all: use bounding box diagonal as a safe overshoot
+  // Compute depth and starting position
+  let tool: Shape3D;
+  if (options.depth !== undefined) {
+    // Explicit depth: cylinder starts at pos, extends along dir
+    tool = _makeCylinder(radius, options.depth, pos, dir);
+  } else {
+    // Through-all: project bounding box onto drill axis to find exact extent,
+    // then add a small overshoot. This avoids creating an oversized tool that
+    // confuses the mesh boolean's inside/outside classification.
     const b = getBounds(s);
-    const dx = b.xMax - b.xMin;
-    const dy = b.yMax - b.yMin;
-    const dz = b.zMax - b.zMin;
-    depth = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1;
+    const corners: Vec3[] = [
+      [b.xMin, b.yMin, b.zMin],
+      [b.xMax, b.yMin, b.zMin],
+      [b.xMin, b.yMax, b.zMin],
+      [b.xMax, b.yMax, b.zMin],
+      [b.xMin, b.yMin, b.zMax],
+      [b.xMax, b.yMin, b.zMax],
+      [b.xMin, b.yMax, b.zMax],
+      [b.xMax, b.yMax, b.zMax],
+    ];
+    // Project each corner onto the drill axis relative to pos
+    let tMin = Infinity;
+    let tMax = -Infinity;
+    for (const c of corners) {
+      const t = (c[0] - pos[0]) * dir[0] + (c[1] - pos[1]) * dir[1] + (c[2] - pos[2]) * dir[2];
+      if (t < tMin) tMin = t;
+      if (t > tMax) tMax = t;
+    }
+    const overshoot = 1;
+    tMin -= overshoot;
+    tMax += overshoot;
+    const depth = tMax - tMin;
+    const startPos: Vec3 = [pos[0] + dir[0] * tMin, pos[1] + dir[1] * tMin, pos[2] + dir[2] * tMin];
+    tool = _makeCylinder(radius, depth, startPos, dir);
   }
-
-  const cyl = _makeCylinder(radius, depth, pos, dir);
-
-  // Also shift cylinder backwards by half depth along axis to ensure through-cut
-  // when no explicit depth is given
-  const startOffset: Vec3 = options.depth === undefined ? vecScale(dir, -depth / 2) : [0, 0, 0];
-  const tool =
-    startOffset[0] !== 0 || startOffset[1] !== 0 || startOffset[2] !== 0
-      ? translate(cyl, startOffset)
-      : cyl;
 
   return cut(s, tool) as Result<T>;
 }

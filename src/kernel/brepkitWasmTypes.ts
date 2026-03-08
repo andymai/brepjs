@@ -591,6 +591,9 @@ export interface BrepkitKernel {
   /** Import from 3MF. Returns solid handle array. */
   import3mf(data: Uint8Array): Uint32Array;
 
+  /** Import from flat vertex/index arrays. Returns solid handle. */
+  importIndexedMesh(positions: Float64Array, indices: Uint32Array): number;
+
   /** Import from OBJ. Returns solid handle. */
   importObj(data: Uint8Array): number;
 
