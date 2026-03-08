@@ -11,29 +11,29 @@ describe('Edge mesh benchmarks', () => {
   const results: BenchResult[] = [];
 
   it('edge mesh a box (trivial)', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth('edge mesh box', () => {
+      const b = box(10, 10, 10);
       meshEdges(b, { cache: false });
     }));
   });
 
   it('edge mesh a fused shape (moderate)', async () => {
-    const b = box(10, 10, 10);
-    const cyl = translate(cylinder(3, 10), [5, 5, 0]);
-    const fused = unwrap(fuse(b, cyl));
     collectResults(results, await benchBoth('edge mesh fused', () => {
+      const b = box(10, 10, 10);
+      const cyl = translate(cylinder(3, 10), [5, 5, 0]);
+      const fused = unwrap(fuse(b, cyl));
       meshEdges(fused, { cache: false });
     }));
   });
 
   it('repeated edge mesh of same shape (cache test)', async () => {
-    clearMeshCache();
-    const b = box(10, 10, 10);
-    const cyl = translate(cylinder(3, 10), [5, 5, 0]);
-    const fused = unwrap(fuse(b, cyl));
-    // First call populates cache
-    meshEdges(fused);
     collectResults(results, await benchBoth('edge mesh cached', () => {
+      clearMeshCache();
+      const b = box(10, 10, 10);
+      const cyl = translate(cylinder(3, 10), [5, 5, 0]);
+      const fused = unwrap(fuse(b, cyl));
+      // First call populates cache, second tests cache hit
+      meshEdges(fused);
       meshEdges(fused);
     }));
   });

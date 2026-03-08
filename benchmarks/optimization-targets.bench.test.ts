@@ -57,10 +57,10 @@ describe('Optimization target benchmarks', () => {
 
   // --- getBounds repeated calls (should be cacheable) ---
   it('getBounds x1000 on same shape (cache hit scenario)', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'getBounds x1000 same',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 1000; i++) {
           getBounds(b);
         }
@@ -70,10 +70,10 @@ describe('Optimization target benchmarks', () => {
   });
 
   it('getBounds on 50 unique shapes', async () => {
-    const shapes = Array.from({ length: 50 }, (_, i) => box(10 + i * 0.01, 10, 10));
     collectResults(results, await benchBoth(
       'getBounds x50 unique',
       () => {
+        const shapes = Array.from({ length: 50 }, (_, i) => box(10 + i * 0.01, 10, 10));
         for (const s of shapes) {
           getBounds(s);
         }
@@ -84,14 +84,13 @@ describe('Optimization target benchmarks', () => {
 
   // --- findUnique early termination ---
   it('findUnique on complex shape (should match 1)', async () => {
-    const b = box(20, 10, 10);
-    const c = translate(cylinder(3, 10), [10, 5, 0]);
-    const fused = unwrap(fuse(b, c));
-    // Find faces using geometry filter — tests findAll/findUnique overhead
-    const f = faceFinder().parallelTo([0, 0, 1]);
     collectResults(results, await benchBoth(
       'faceFinder.findAll',
       () => {
+        const b = box(20, 10, 10);
+        const c = translate(cylinder(3, 10), [10, 5, 0]);
+        const fused = unwrap(fuse(b, c));
+        const f = faceFinder().parallelTo([0, 0, 1]);
         f.findAll(fused);
       },
       { warmup: 2, iterations: 10 }
@@ -100,14 +99,13 @@ describe('Optimization target benchmarks', () => {
 
   // --- meshEdges performance ---
   it('meshEdges on fused shape', async () => {
-    const b = box(10, 10, 10);
-    const c = translate(cylinder(3, 10), [5, 5, 0]);
-    const fused = unwrap(fuse(b, c));
-    // Mesh first (face mesh), then edge mesh
-    mesh(fused, { tolerance: 1, angularTolerance: 0.5 });
     collectResults(results, await benchBoth(
       'meshEdges fused',
       () => {
+        const b = box(10, 10, 10);
+        const c = translate(cylinder(3, 10), [5, 5, 0]);
+        const fused = unwrap(fuse(b, c));
+        mesh(fused, { tolerance: 1, angularTolerance: 0.5 });
         meshEdges(fused, { tolerance: 1, angularTolerance: 0.5 });
       },
       { warmup: 1, iterations: 5 }
@@ -115,18 +113,18 @@ describe('Optimization target benchmarks', () => {
   });
 
   it('meshEdges on complex cut shape', async () => {
-    const b = box(20, 20, 10);
-    const holes = Array.from({ length: 4 }, (_, i) =>
-      translate(cylinder(2, 10), [5 + i * 4, 10, 0])
-    );
-    let s = b;
-    for (const h of holes) {
-      s = unwrap(cut(s, h));
-    }
-    mesh(s, { tolerance: 1, angularTolerance: 0.5 });
     collectResults(results, await benchBoth(
       'meshEdges 4-hole',
       () => {
+        const b = box(20, 20, 10);
+        const holes = Array.from({ length: 4 }, (_, i) =>
+          translate(cylinder(2, 10), [5 + i * 4, 10, 0])
+        );
+        let s = b;
+        for (const h of holes) {
+          s = unwrap(cut(s, h));
+        }
+        mesh(s, { tolerance: 1, angularTolerance: 0.5 });
         meshEdges(s, { tolerance: 1, angularTolerance: 0.5 });
       },
       { warmup: 1, iterations: 3 }
@@ -135,10 +133,10 @@ describe('Optimization target benchmarks', () => {
 
   // --- Transform with no origin tracking (empty evolution fast path) ---
   it('translate x200 (no origins)', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'translate x200 no-origins',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 200; i++) {
           translate(b, [i * 0.01, 0, 0]);
         }

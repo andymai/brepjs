@@ -48,11 +48,12 @@ describe('Regression benchmarks (v8.8.5+ changes)', () => {
   });
 
   // --- Transform overhead (DisposalScope wrapping) ---
+  // NOTE: shape must be created inside the closure so each kernel gets its own handle.
   it('translate 100x', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'translate x100',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 100; i++) {
           translate(b, [i * 0.01, 0, 0]);
         }
@@ -62,10 +63,10 @@ describe('Regression benchmarks (v8.8.5+ changes)', () => {
   });
 
   it('rotate 100x', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'rotate x100',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 100; i++) {
           rotate(b, i * 0.1);
         }
@@ -75,10 +76,10 @@ describe('Regression benchmarks (v8.8.5+ changes)', () => {
   });
 
   it('scale 100x', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'scale x100',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 100; i++) {
           scale(b, 1 + i * 0.001);
         }
@@ -88,10 +89,10 @@ describe('Regression benchmarks (v8.8.5+ changes)', () => {
   });
 
   it('getBounds 200x', async () => {
-    const b = box(10, 10, 10);
     collectResults(results, await benchBoth(
       'getBounds x200',
       () => {
+        const b = box(10, 10, 10);
         for (let i = 0; i < 200; i++) {
           getBounds(b);
         }
