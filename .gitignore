@@ -21,3 +21,10 @@ packages/brepjs-opencascade/build-config/*.wasm
 packages/brepjs-opencascade/build-config/*.d.ts
 packages/brepjs-opencascade/src/*.js
 packages/brepjs-opencascade/src/*.wasm
+
+# brepkit WASM build artifacts
+packages/brepkit-wasm/
+src/kernel/wasm/
+
+# Ad-hoc test scripts
+test-*.mjs
