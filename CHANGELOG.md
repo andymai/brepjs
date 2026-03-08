@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.6.5](https://github.com/andymai/brepjs/compare/brepjs-v9.6.4...brepjs-v9.6.5) (2026-03-08)
+
+
+### Bug Fixes
+
+* move shape creation inside benchBoth closures ([#411](https://github.com/andymai/brepjs/issues/411)) ([c036c11](https://github.com/andymai/brepjs/commit/c036c11df4340620ccc0f6f435ea834302a07740))
+
 ## [9.6.4](https://github.com/andymai/brepjs/compare/brepjs-v9.6.3...brepjs-v9.6.4) (2026-03-08)
 
 
