@@ -71,14 +71,15 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
   fn: () => T
 ): T {
   const prev = _defaultKernelId;
-  const prevCached = _cachedDefault;
   _defaultKernelId = id;
   _cachedDefault = _kernels.get(id) ?? null;
   try {
     return fn();
   } finally {
     _defaultKernelId = prev;
-    _cachedDefault = prevCached;
+    // Re-lookup rather than restoring prevCached: a registerKernel() call
+    // inside fn may have replaced the adapter for the original default id.
+    _cachedDefault = prev ? (_kernels.get(prev) ?? null) : null;
   }
 }
 

@@ -437,7 +437,18 @@ function refineParam(c: Curve2dObj, px: number, py: number): number | null {
       bestT = t;
     }
   }
-  return bestD < 1 ? bestT : null;
+  // bestD is squared geometric distance. Derive a scale-relative threshold
+  // from the curve's geometric extent (not parameter span, which has different units).
+  const [sx, sy] = evaluateCurve2d(c, bounds.first);
+  const [ex, ey] = evaluateCurve2d(c, bounds.last);
+  const [mx, my] = evaluateCurve2d(c, (bounds.first + bounds.last) / 2);
+  const geomExtent = Math.max(
+    Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2),
+    Math.sqrt((mx - sx) ** 2 + (my - sy) ** 2),
+    1e-6
+  );
+  const maxDist = geomExtent * 0.1;
+  return bestD < maxDist * maxDist ? bestT : null;
 }
 
 function intersectLineLine(
@@ -557,8 +568,10 @@ function intersectCircleCircle(
     if (t1 === null || t2 === null) continue;
     const [x1, y1] = evaluateCurve2d(c1, t1);
     const [x2, y2] = evaluateCurve2d(c2, t2);
-    if ((x1 - px) ** 2 + (y1 - py) ** 2 > tol * 100) continue;
-    if ((x2 - px) ** 2 + (y2 - py) ** 2 > tol * 100) continue;
+    // Compare squared distances against squared tolerance to avoid sqrt
+    const tolSq = (tol * 10) ** 2;
+    if ((x1 - px) ** 2 + (y1 - py) ** 2 > tolSq) continue;
+    if ((x2 - px) ** 2 + (y2 - py) ** 2 > tolSq) continue;
     results.push([px, py]);
   }
   return results;

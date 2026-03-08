@@ -274,7 +274,27 @@ function parseSVGPathToCurves(d: string): Curve2D[] {
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist < 1e-10) {
-              // Coincident endpoints (full-circle arc) — cannot approximate; treat as no-op
+              // Coincident endpoints (full-circle arc) — split into two semi-arcs.
+              // A three-point arc cannot represent a full circle, so we create two
+              // 180° arcs via perpendicular midpoints on opposite sides of the center.
+              const r = Math.max(rx, ry);
+              const s = sweepFlag ? 1 : -1;
+              // Center is r above/below start; opposite point is r further
+              const oppositeY = cy + 2 * s * r;
+              // Semi-arc midpoints sit at 90° offsets from the circle center
+              const semi1Mid: [number, number] = [cx - s * r, cy + s * r];
+              const semi2Mid: [number, number] = [cx + s * r, cy + s * r];
+
+              try {
+                curves.push(
+                  make2dThreePointArc(flipY([cx, cy]), flipY(semi1Mid), flipY([cx, oppositeY]))
+                );
+                curves.push(
+                  make2dThreePointArc(flipY([cx, oppositeY]), flipY(semi2Mid), flipY([cx, cy]))
+                );
+              } catch {
+                // If arc construction fails, skip (degenerate circle)
+              }
               cx = x;
               cy = y;
               i += 7;

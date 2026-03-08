@@ -2444,8 +2444,30 @@ export class BrepkitAdapter implements KernelAdapter {
     shape: KernelShape,
     param: number
   ): { point: [number, number, number]; tangent: [number, number, number] } {
-    const edgeId = this.unwrapEdgeOrFirstOfWire(shape);
-    const result: number[] = this.bk.evaluateEdgeCurveD1(edgeId, param);
+    const h = shape as BrepkitHandle;
+    let edgeId: number;
+    let evalParam = param;
+
+    if (h.type === 'wire') {
+      // Walk edges to find the right one for the composite parameter
+      const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
+      edgeId = edgeIds[edgeIds.length - 1]!; // fallback to last edge
+      let cumulative = 0;
+      for (const eid of edgeIds) {
+        const p: number[] = this.bk.getEdgeCurveParameters(eid);
+        const span = p[1]! - p[0]!;
+        if (param <= cumulative + span || eid === edgeId) {
+          edgeId = eid;
+          evalParam = Math.min(p[0]! + (param - cumulative), p[1]!);
+          break;
+        }
+        cumulative += span;
+      }
+    } else {
+      edgeId = unwrap(shape, 'edge');
+    }
+
+    const result: number[] = this.bk.evaluateEdgeCurveD1(edgeId, evalParam);
     return {
       point: [result[0]!, result[1]!, result[2]!],
       tangent: [result[3]!, result[4]!, result[5]!],
@@ -2959,16 +2981,16 @@ export class BrepkitAdapter implements KernelAdapter {
       tolerance?: number;
     }
   ): KernelShape {
-    const buildFaceIds = (): number[] =>
-      wires.map((w) => {
-        const h = w as BrepkitHandle;
-        if (h.type === 'wire') return this.bk.makeFaceFromWire(h.id);
-        return unwrap(w, 'face');
-      });
+    // Build face IDs once and reuse across attempts to avoid leaking
+    // WASM face handles from makeFaceFromWire on each failed path.
+    const faceIds: number[] = wires.map((w) => {
+      const h = w as BrepkitHandle;
+      if (h.type === 'wire') return this.bk.makeFaceFromWire(h.id);
+      return unwrap(w, 'face');
+    });
 
     // Try the native loftWithOptions API which supports ruled, solid, tolerance
     try {
-      const faceIds = buildFaceIds();
       const opts: Record<string, unknown> = {};
       if (options?.ruled !== undefined) opts['ruled'] = options.ruled;
       if (options?.solid !== undefined) opts['solid'] = options.solid;
@@ -2983,17 +3005,16 @@ export class BrepkitAdapter implements KernelAdapter {
       }
       const id = this.bk.loftWithOptions(faceIds, JSON.stringify(opts));
       return solidHandle(id);
-    } catch {
-      // Fall back to smooth/basic loft
+    } catch (e: unknown) {
+      console.warn('brepkit: loftWithOptions failed, falling back to smooth/basic loft:', e);
     }
 
     if (!options?.ruled) {
       try {
-        const faceIds = buildFaceIds();
         const id = this.bk.loftSmooth(faceIds);
         return solidHandle(id);
-      } catch {
-        // Fall back to basic loft
+      } catch (e: unknown) {
+        console.warn('brepkit: loftSmooth failed, falling back to basic loft:', e);
       }
     }
     return this.loft(wires);
@@ -4429,23 +4450,6 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════════════════════════════════════
-
-  /**
-   * Unwrap a shape to an edge ID. If the shape is a wire, extract its first edge.
-   * This mirrors OCCT's behavior where wire-level curve queries operate on
-   * a concatenated curve starting from the first edge.
-   */
-  private unwrapEdgeOrFirstOfWire(shape: KernelShape): number {
-    const h = shape as BrepkitHandle;
-    if (h.type === 'wire') {
-      const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
-      if (edgeIds.length === 0) {
-        throw new Error('brepkit: wire has no edges for curve query');
-      }
-      return edgeIds[0]!;
-    }
-    return unwrap(shape, 'edge');
-  }
 
   private applyMatrix(shape: KernelShape, matrix: number[]): KernelShape {
     const h = shape as BrepkitHandle;
