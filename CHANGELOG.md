@@ -1,5 +1,12 @@
 # Changelog
 
+## [9.6.1](https://github.com/andymai/brepjs/compare/brepjs-v9.6.0...brepjs-v9.6.1) (2026-03-08)
+
+
+### Bug Fixes
+
+* improve evolution chaining and geometric face matching ([#391](https://github.com/andymai/brepjs/issues/391)) ([e534472](https://github.com/andymai/brepjs/commit/e5344729171101dbcc77fa86fe1c273502898e33))
+
 ## [9.6.0](https://github.com/andymai/brepjs/compare/brepjs-v9.5.1...brepjs-v9.6.0) (2026-03-06)
 
 
