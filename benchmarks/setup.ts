@@ -58,7 +58,8 @@ export function getBrepkitVersion(): string {
     const pkgPath = path.resolve(dir, '../package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as Record<string, unknown>;
     const deps = pkg.dependencies as Record<string, string> | undefined;
-    return deps?.['brepkit-wasm'] ?? 'unknown';
+    const devDeps = pkg.devDependencies as Record<string, string> | undefined;
+    return deps?.['brepkit-wasm'] ?? devDeps?.['brepkit-wasm'] ?? 'unknown';
   } catch {
     return 'unknown';
   }
