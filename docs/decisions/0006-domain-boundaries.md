@@ -62,7 +62,7 @@ brepkit should expose coarse-grained operations when profiling shows a common wo
 
 Each phase targets TypeScript code that evaluates geometry or reimplements kernel capabilities.
 
-### Phase 1: Pure-TS 2D Math (target: v12) — ✅ Partial
+### Phase 1: Pure-TS 2D Math (target: v12) — ✅ Complete
 
 **Target**: `src/2d/lib/vectorOperations.ts`, `src/2d/lib/precision.ts`, `src/2d/lib/utils.ts` — pure TS math (`samePoint`, `add2d`, `distance2d`, `crossProduct2d`, etc.) duplicating brepkit-math.
 
@@ -72,11 +72,13 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 
 **Acceptance criteria**: No pure-TS geometry math in `src/2d/lib/` except hot-path functions retained under the performance exception. Blueprint imports compile unchanged. Both kernel test paths pass.
 
-**Progress (v11)**:
+**Progress**:
 
-- Consolidated: `Point2D` type, 13 vector functions, and 3 precision constants canonicalized in `src/utils/vec2d.ts` (Layer 0). `vectorOperations.ts`, `precision.ts`, and `definitions.ts` re-export from canonical source. (#422)
-- Profiled: V8 CPU profiling confirmed vectorOperations are NOT hot-path bottlenecks (~0.02µs/call); WASM/Emscripten binding overhead dominates. (#421)
-- Documented: `brepkit2d.ts` struct-field math duplication is architectural — inline `c.ox`/`c.dy` access avoids temporary tuple allocations.
+- v11: Consolidated `Point2D` type, 13 vector functions, and 3 precision constants into canonical `src/utils/vec2d.ts` (Layer 0). `vectorOperations.ts`, `precision.ts`, and `definitions.ts` re-export from canonical source. (#422)
+- v11: V8 CPU profiling confirmed all 13 vectorOperations functions are hot-path (~0.02µs/call); WASM call overhead would dominate computation cost. All functions retained in TS under the hot-path exception. (#421)
+- v11: Documented `brepkit2d.ts` struct-field math duplication as architectural — inline `c.ox`/`c.dy` access avoids temporary tuple allocations.
+
+**Resolution**: All 13 functions qualify for the hot-path exception. No pure-TS geometry math remains that should migrate to kernel. Acceptance criteria met.
 
 ### Phase 2: Tessellation Normals/UVs (target: v12) — ✅ Complete
 

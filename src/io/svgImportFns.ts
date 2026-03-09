@@ -3,6 +3,10 @@
  *
  * Supports: M, L, H, V, C, S, Q, T, A, Z (absolute and relative).
  * Y-axis is flipped to match brepjs coordinate system (SVG Y is down).
+ *
+ * ADR-0006: SVG tokenization, path command parsing, and coordinate-system
+ * adaptation (Y-flip) stay in TypeScript — this is structured text processing
+ * and format-specific logic, not geometric computation.
  */
 
 import type { Point2D } from '../2d/lib/definitions.js';

@@ -1,5 +1,9 @@
 /**
  * Edge-specific finder -- filters edges by direction, length, curve type, etc.
+ *
+ * ADR-0006: direction filtering (dot product, angle comparison) stays in
+ * TypeScript — kernel provides the tangent vectors, TS does lightweight
+ * filtering on pre-extracted data.
  */
 
 import type { Vec3 } from '../core/types.js';

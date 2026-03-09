@@ -1,5 +1,9 @@
 /**
  * Face-specific finder -- filters faces by normal direction, surface type, area, etc.
+ *
+ * ADR-0006: normal direction filtering (dot product, angle comparison) stays
+ * in TypeScript — kernel provides the face normals, TS does lightweight
+ * filtering on pre-extracted data.
  */
 
 import type { Vec3 } from '../core/types.js';

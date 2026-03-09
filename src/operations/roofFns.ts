@@ -1,6 +1,10 @@
 /**
  * Roof generation from a wire using straight skeleton extrusion.
  * Produces a solid roof shape where each edge slopes inward at a given angle.
+ *
+ * ADR-0006: ear-clip triangulation and 2D geometry helpers stay in TypeScript —
+ * these are orchestration for assembling kernel faces, not core geometric
+ * evaluation. The kernel builds the actual B-Rep faces and solid.
  */
 
 import { getKernel } from '../kernel/index.js';

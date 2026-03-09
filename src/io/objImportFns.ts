@@ -1,5 +1,9 @@
 /**
  * OBJ mesh import — parses Wavefront OBJ text and builds a solid via sewing.
+ *
+ * ADR-0006: OBJ text parsing and fan triangulation stay in TypeScript —
+ * this is format-specific text processing. The kernel builds B-Rep faces
+ * from the parsed vertex/index data.
  */
 
 import { getKernel } from '../kernel/index.js';
