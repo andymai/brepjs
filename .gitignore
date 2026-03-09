@@ -9,6 +9,10 @@ examples/output/
 
 node_modules
 dist/
+
+# V8 profiling artifacts
+*.cpuprofile
+isolate-*.log
 docs-api/
 coverage/
 *.tsbuildinfo
