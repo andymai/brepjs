@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.1](https://github.com/andymai/brepjs/compare/brepjs-v12.2.0...brepjs-v12.2.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* **kernel:** warn on cross-kernel BREP format incompatibility (ADR-0006) ([#437](https://github.com/andymai/brepjs/issues/437)) ([a52342d](https://github.com/andymai/brepjs/commit/a52342d537d4f854ccd43442735383f03dba4036))
+
 ## [12.2.0](https://github.com/andymai/brepjs/compare/brepjs-v12.1.0...brepjs-v12.2.0) (2026-03-09)
 
 
