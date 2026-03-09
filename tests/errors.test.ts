@@ -65,6 +65,7 @@ describe('Error constructors', () => {
     expect(e.kind).toBe('UNSUPPORTED');
     expect(e.code).toBe('UNSUPPORTED_CAPABILITY');
     expect(e.message).toBe('Convex hull not supported');
+    expect(e.cause).toBeUndefined();
   });
 
   it('preserves cause when provided', () => {

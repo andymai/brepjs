@@ -25,6 +25,8 @@ const errorFactories: Record<BrepErrorKind, ErrorFactory> = {
   COMPUTATION: (code, message, cause) => ({ kind: 'COMPUTATION', code, message, cause }),
   IO: (code, message, cause) => ({ kind: 'IO', code, message, cause }),
   QUERY: (code, message, cause) => ({ kind: 'QUERY', code, message, cause }),
+  // NB: UNSUPPORTED exists for Record<BrepErrorKind> exhaustiveness.
+  // Prefer explicit `return err(unsupportedError(...))` in adapter code (ADR-0006).
   UNSUPPORTED: (code, message, cause) => ({ kind: 'UNSUPPORTED', code, message, cause }),
 };
 
