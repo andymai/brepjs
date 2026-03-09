@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.3](https://github.com/andymai/brepjs/compare/brepjs-v12.2.2...brepjs-v12.2.3) (2026-03-09)
+
+
+### Bug Fixes
+
+* honor caller-provided tolerances in brepkit adapter ([#441](https://github.com/andymai/brepjs/issues/441)) ([b3d0fb9](https://github.com/andymai/brepjs/commit/b3d0fb972702b825eae96ed616011400b1ab562e))
+
 ## [12.2.2](https://github.com/andymai/brepjs/compare/brepjs-v12.2.1...brepjs-v12.2.2) (2026-03-09)
 
 
