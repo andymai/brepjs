@@ -6,6 +6,12 @@
  * All 2D curves are represented as plain objects with a `type` discriminant
  * and `evaluate(t)` method. No WASM boundary crossing required.
  *
+ * ADR-0006: Inline math here (distance, rotation, normalization, dot/cross
+ * products) operates on curve struct fields, not Point2D tuples. The canonical
+ * tuple-based functions live in src/utils/vec2d.ts. The struct-field patterns
+ * are not worth converting to tuple form — the temporary array allocations
+ * would degrade both readability and performance.
+ *
  * @module
  */
 

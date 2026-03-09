@@ -1,5 +1,7 @@
+import type { Point2D } from '../../utils/vec2d.js';
+
 /** A 2D point or vector represented as an `[x, y]` tuple. */
-export type Point2D = [number, number];
+export type { Point2D } from '../../utils/vec2d.js';
 
 /** Type guard that checks whether a value is a `Point2D`. */
 export function isPoint2D(point: unknown): point is Point2D {
