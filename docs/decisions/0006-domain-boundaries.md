@@ -1,6 +1,6 @@
 # ADR-0006: Domain Boundaries Between brepjs and brepkit
 
-**Status**: Proposed
+**Status**: Accepted
 **Date**: 2026-03-09
 
 ## Context
@@ -62,7 +62,7 @@ brepkit should expose coarse-grained operations when profiling shows a common wo
 
 Each phase targets TypeScript code that evaluates geometry or reimplements kernel capabilities.
 
-### Phase 1: Pure-TS 2D Math (target: v12)
+### Phase 1: Pure-TS 2D Math (target: v12) — ✅ Partial
 
 **Target**: `src/2d/lib/vectorOperations.ts`, `src/2d/lib/precision.ts`, `src/2d/lib/utils.ts` — pure TS math (`samePoint`, `add2d`, `distance2d`, `crossProduct2d`, etc.) duplicating brepkit-math.
 
@@ -72,7 +72,13 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 
 **Acceptance criteria**: No pure-TS geometry math in `src/2d/lib/` except hot-path functions retained under the performance exception. Blueprint imports compile unchanged. Both kernel test paths pass.
 
-### Phase 2: Tessellation Normals/UVs (target: v12)
+**Progress (v11)**:
+
+- Consolidated: `Point2D` type, 13 vector functions, and 3 precision constants canonicalized in `src/utils/vec2d.ts` (Layer 0). `vectorOperations.ts`, `precision.ts`, and `definitions.ts` re-export from canonical source. (#422)
+- Profiled: V8 CPU profiling confirmed vectorOperations are NOT hot-path bottlenecks (~0.02µs/call); WASM/Emscripten binding overhead dominates. (#421)
+- Documented: `brepkit2d.ts` struct-field math duplication is architectural — inline `c.ox`/`c.dy` access avoids temporary tuple allocations.
+
+### Phase 2: Tessellation Normals/UVs (target: v12) — ✅ Partial
 
 **Target**: OCCT mesh path in `src/kernel/meshOps.ts` that builds normals via low-level OCCT API orchestration (`Poly_Connect`, `StdPrs_ToolTriangulatedShape.Normal()`). brepkit already returns normals/UVs. Migrate the OCCT adapter to a single higher-level call matching brepkit's interface.
 
@@ -80,17 +86,25 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 
 **Acceptance criteria**: Both adapters return normals and UVs as part of `KernelMeshResult`. No TS code iterates triangulation data to compute normals. Formatters and Three.js helpers work unchanged.
 
+**Progress (v11)**:
+
+- Refactored: extracted per-face mesh logic into `_meshFace()` helper, isolating normal computation (`Poly_Connect` + `StdPrs_ToolTriangulatedShape.Normal()`) into a single function mirroring brepkit's `meshSingleFace()`. (#426)
+
 ### Phase 3: Ongoing Boundary Cleanup
 
-- **Projection**: `projectionPlanes.ts` is pure data/type definitions (lookup table, type guard) — stays in TS. `cameraFns.ts` (~110 lines) performs 3D vector math for view setup — evaluate against heuristic to determine if computation should move to kernel.
+- **Projection**: `projectionPlanes.ts` is pure data/type definitions (lookup table, type guard) — stays in TS. `cameraFns.ts` (~110 lines) performs 3D vector math for view setup — evaluated against heuristic: stays in TS (pure coordinate math on Vec3 tuples, no topology/geometry, no WASM benefit). Citation added in v11 (#427).
 - **Color storage**: Migrate from TS-side `Map` to kernel storage if brepkit adds native per-shape color.
 - **New capabilities**: Evaluate against decision heuristic before implementation.
 
-### Phase 4: OCCT Adapter Alignment (Ongoing)
+### Phase 4: OCCT Adapter Alignment (Ongoing) — ✅ Partial
 
 - Core operations (booleans, extrude, fillet, measurement, IO) — OCCT adapter must implement.
 - New `KernelAdapter` methods after migration — OCCT adapter may throw "capability not supported" `BrepError`.
 - `TEST_KERNEL` dual-test matrix continues. brepkit-only tests use `describe.skipIf(kernel === 'occt')`.
+
+**Progress (v11)**:
+
+- Added `UNSUPPORTED` error kind, `UNSUPPORTED_CAPABILITY` error code, and `unsupportedError()` constructor for kernel adapters to signal missing capabilities. (#424)
 
 ### Migration Protocol
 
