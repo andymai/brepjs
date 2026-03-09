@@ -30,7 +30,7 @@ export interface SurfaceFromGridOptions {
  *
  * @param heights - 2D array of Z values, at least 2x2
  * @param options - Physical dimensions and Z scaling
- * @returns A Face representing the surface
+ * @returns Result containing the surface shape (may be a Face or Shell depending on grid complexity)
  */
 export function surfaceFromGrid(
   heights: ReadonlyArray<ReadonlyArray<number>>,

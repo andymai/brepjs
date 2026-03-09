@@ -17,7 +17,7 @@ import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
  *
  * @param face - The planar face to extrude.
  * @param extrusionVec - Direction and magnitude of the extrusion.
- * @returns A new {@link Solid} created by the linear extrusion.
+ * @returns A new Solid created by the linear extrusion.
  *
  * @see {@link extrudeFns!extrude | extrude} for the functional API equivalent.
  */
