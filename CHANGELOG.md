@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.1.0](https://github.com/andymai/brepjs/compare/brepjs-v12.0.0...brepjs-v12.1.0) (2026-03-09)
+
+
+### Features
+
+* phase 4 capability audit with behavioral diff matrix and parity tests (ADR-0006) ([#433](https://github.com/andymai/brepjs/issues/433)) ([664a5af](https://github.com/andymai/brepjs/commit/664a5af55cedeb61ff855102ca7a6cc616af0fb4))
+
 ## [12.0.0](https://github.com/andymai/brepjs/compare/brepjs-v11.1.0...brepjs-v12.0.0) (2026-03-09)
 
 
