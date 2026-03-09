@@ -1,5 +1,11 @@
 /**
  * Functional camera API — plain immutable Camera objects for 3D projection.
+ *
+ * ADR-0006 Phase 3: this module performs 3D vector math (cross products,
+ * normalization) for view setup — pure coordinate math with no topology
+ * or geometry evaluation. Stays in TypeScript: the computation is trivial,
+ * operates on plain Vec3 tuples, and would gain no benefit from WASM
+ * round-trip overhead.
  */
 
 import type { Vec3 } from '../core/types.js';
