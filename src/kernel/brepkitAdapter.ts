@@ -345,6 +345,20 @@ const syntheticCompounds = new Map<number, BrepkitHandle[]>();
  * - Convex hull, projection, BREP serialization
  * - Composed transforms
  */
+
+// ---------------------------------------------------------------------------
+// One-time degradation warnings (ADR-0006 Phase 4)
+// ---------------------------------------------------------------------------
+
+const _warned = new Set<string>();
+
+/** Emit a console.warn once per key per session. */
+function warnOnce(key: string, message: string): void {
+  if (_warned.has(key)) return;
+  _warned.add(key);
+  console.warn(`brepkit: ${message}`);
+}
+
 export class BrepkitAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'brepkit';
@@ -363,6 +377,12 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   fuse(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
+    if (_options) {
+      warnOnce(
+        'boolean-options',
+        'BooleanOptions (optimisation, simplify, algorithm) not supported; ignored.'
+      );
+    }
     const baseId = unwrapSolidOrThrow(shape, 'fuse');
     const toolHandle = tool as BrepkitHandle;
     if (toolHandle.type === 'compound') {
@@ -378,6 +398,12 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   cut(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
+    if (_options) {
+      warnOnce(
+        'boolean-options',
+        'BooleanOptions (optimisation, simplify, algorithm) not supported; ignored.'
+      );
+    }
     const baseId = unwrapSolidOrThrow(shape, 'cut');
     // If tool is a compound (e.g. from cutAll's buildCompound), iteratively
     // cut each child solid from the base.
@@ -395,6 +421,12 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
+    if (_options) {
+      warnOnce(
+        'boolean-options',
+        'BooleanOptions (optimisation, simplify, algorithm) not supported; ignored.'
+      );
+    }
     const result = this.bk.intersect(
       unwrapSolidOrThrow(shape, 'intersect'),
       unwrapSolidOrThrow(tool, 'intersect')
@@ -1053,6 +1085,12 @@ export class BrepkitAdapter implements KernelAdapter {
     _startShape?: KernelShape,
     _endShape?: KernelShape
   ): KernelShape {
+    if (_ruled !== undefined || _startShape !== undefined || _endShape !== undefined) {
+      warnOnce(
+        'loft-options',
+        'Loft options (ruled, startShape, endShape) not supported; ignored.'
+      );
+    }
     // brepkit's loft takes face handles — convert wires to faces first
     const faceIds = wires.map((w) => {
       const h = w as BrepkitHandle;
@@ -1070,6 +1108,9 @@ export class BrepkitAdapter implements KernelAdapter {
     spine: KernelShape,
     _options?: { transitionMode?: number }
   ): KernelShape {
+    if (_options?.transitionMode !== undefined) {
+      warnOnce('sweep-transition', 'Sweep transition mode not supported; ignored.');
+    }
     const spineHandle = spine as BrepkitHandle;
 
     // If spine is a wire, get its edges and use sweepAlongEdges
@@ -1136,6 +1177,9 @@ export class BrepkitAdapter implements KernelAdapter {
     radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])
   ): KernelShape {
     const r = typeof radius === 'number' ? radius : Array.isArray(radius) ? radius[0] : 1;
+    if (typeof radius !== 'number') {
+      warnOnce('fillet-variable', 'Variable-radius fillet not supported; using constant radius.');
+    }
     const edgeIds = edges.map((e) => unwrap(e, 'edge'));
     const id = this.bk.fillet(unwrapSolidOrThrow(shape, 'fillet'), edgeIds, r);
     return solidHandle(id);
@@ -1147,6 +1191,12 @@ export class BrepkitAdapter implements KernelAdapter {
     distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])
   ): KernelShape {
     const d = typeof distance === 'number' ? distance : Array.isArray(distance) ? distance[0] : 1;
+    if (typeof distance !== 'number') {
+      warnOnce(
+        'chamfer-asymmetric',
+        'Asymmetric chamfer not supported; using first distance only.'
+      );
+    }
     const edgeIds = edges.map((e) => unwrap(e, 'edge'));
     const id = this.bk.chamfer(unwrapSolidOrThrow(shape, 'chamfer'), edgeIds, d);
     return solidHandle(id);
@@ -1159,6 +1209,7 @@ export class BrepkitAdapter implements KernelAdapter {
     angleDeg: number
   ): KernelShape {
     // Approximate: compute second distance from angle and use uniform chamfer
+    warnOnce('chamfer-dist-angle', 'Distance-angle chamfer approximated as uniform chamfer.');
     const d2 = distance * Math.tan((angleDeg * Math.PI) / 180);
     const avgDist = (distance + d2) / 2;
     return this.chamfer(shape, edges, avgDist);
