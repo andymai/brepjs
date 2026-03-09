@@ -1,5 +1,16 @@
 # Changelog
 
+## [11.0.0](https://github.com/andymai/brepjs/compare/brepjs-v10.0.0...brepjs-v11.0.0) (2026-03-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* topological validity phantom types for compile-time safety ([#416](https://github.com/andymai/brepjs/issues/416))
+
+### Features
+
+* topological validity phantom types for compile-time safety ([#416](https://github.com/andymai/brepjs/issues/416)) ([0b5245e](https://github.com/andymai/brepjs/commit/0b5245ea35a832a82e95514c28df63e4e77c4b0b))
+
 ## [10.0.0](https://github.com/andymai/brepjs/compare/brepjs-v9.6.5...brepjs-v10.0.0) (2026-03-09)
 
 
