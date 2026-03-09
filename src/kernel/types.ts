@@ -492,6 +492,15 @@ export interface KernelAdapter extends Kernel2DCapability {
   simplify(shape: KernelShape): KernelShape;
 
   // --- Validation & repair ---
+  /**
+   * Check if a shape is topologically and geometrically valid.
+   *
+   * **Cross-kernel note**: Strictness differs between kernels. OCCT uses
+   * `BRepCheck_Analyzer` (strict geometry + topology check). brepkit uses
+   * `validateSolid()` which may report false negatives for NURBS-approximated
+   * analytic shapes (cylinders, cones, tori). Do not rely on identical
+   * results across kernels.
+   */
   isValid(shape: KernelShape): boolean;
   sew(shapes: KernelShape[], tolerance?: number): KernelShape;
   healSolid(shape: KernelShape): KernelShape | null;

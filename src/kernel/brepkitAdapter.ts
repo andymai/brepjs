@@ -2690,12 +2690,14 @@ export class BrepkitAdapter implements KernelAdapter {
     if (shape.type !== 'solid') return true;
     try {
       const errors: number = this.bk.validateSolid(shape.id);
-      if (errors === 0) return true;
-      // brepkit's validateSolid reports false positives for NURBS-approximated
-      // analytic shapes (cylinders, cones, tori). Fall back to a volume check:
-      // if the solid has non-zero volume, treat it as valid.
-      const vol: number = this.bk.volume(shape.id, DEFAULT_DEFLECTION);
-      return vol > 1e-12;
+      if (errors > 0) {
+        warnOnce(
+          'isvalid-strict',
+          `validateSolid reported ${errors} error(s). ` +
+            'NURBS-approximated analytic shapes (cylinders, cones, tori) may report false negatives.'
+        );
+      }
+      return errors === 0;
     } catch (e: unknown) {
       console.warn('brepkit: isValid check failed:', e);
       return false;
