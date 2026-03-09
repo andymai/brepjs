@@ -340,10 +340,13 @@ export function isClosedWire<D extends Dimension>(wire: Wire<D>): wire is Closed
 }
 
 /**
- * Type guard — check if a face has consistent normal orientation.
- * A face is oriented if its outer wire and surface normal are consistent.
- * Currently checks kernel validity of the face — faces from kernel operations
- * are oriented by construction, but imported/reconstructed faces may not be.
+ * Type guard — check if a face is valid and thus safe to use in operations.
+ *
+ * Uses kernel validity (BRepCheck_Analyzer) which verifies geometric and
+ * topological correctness. Faces produced by kernel operations (makeFace,
+ * extrude, revolve, boolean ops) are oriented by construction. For faces
+ * from STEP/IGES imports or external sources, validity does not guarantee
+ * consistent normal orientation — use with caution or re-orient first.
  */
 export function isOrientedFace<D extends Dimension>(face: Face<D>): face is OrientedFace<D> {
   return getKernel().isValid(face.wrapped);
@@ -353,6 +356,9 @@ export function isOrientedFace<D extends Dimension>(face: Face<D>): face is Orie
  * Type guard — check if a shell is manifold (watertight, no dangling faces).
  * Checks kernel validity, then attempts `solidFromShell` — if the shell
  * can form a valid solid, it is manifold by definition.
+ *
+ * The temporary solid created for the proof is disposed immediately to avoid
+ * WASM memory leaks.
  */
 export function isManifoldShell(shell: Shell): shell is ManifoldShell {
   const kernel = getKernel();
@@ -360,7 +366,14 @@ export function isManifoldShell(shell: Shell): shell is ManifoldShell {
   // A manifold shell can be converted to a solid — try it as a proof
   try {
     const solid = kernel.solidFromShell(shell.wrapped);
-    return kernel.isValid(solid);
+    const valid = kernel.isValid(solid);
+    // Dispose the temporary solid to prevent WASM memory leaks
+    try {
+      kernel.dispose(solid);
+    } catch {
+      /* best-effort cleanup */
+    }
+    return valid;
   } catch {
     return false;
   }

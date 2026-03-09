@@ -11,7 +11,6 @@ import type {
   Dimension,
   Edge,
   Face,
-  OrientedFace,
   Wire,
   Vertex,
   ShapeKind,
@@ -424,12 +423,17 @@ export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[] {
   return edges;
 }
 
-/** Get all faces of a shape as branded OrientedFace handles. Results are cached per shape. */
-export function getFaces<D extends Dimension>(shape: AnyShape<D>): OrientedFace<D>[] {
+/**
+ * Get all faces of a shape. Results are cached per shape.
+ *
+ * Returns `Face[]` — use `isOrientedFace()` or `orientedFace()` to narrow
+ * individual faces to `OrientedFace` when the orientation guarantee is needed.
+ */
+export function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[] {
   const cache = getOrCreateCache(shape);
-  if (cache.faces) return cache.faces as OrientedFace<D>[];
+  if (cache.faces) return cache.faces as Face<D>[];
   const faces = Array.from(iterTopo(shape.wrapped, 'face')).map(
-    (e) => castShape(unwrap(downcast(e))) as OrientedFace<D>
+    (e) => castShape(unwrap(downcast(e))) as Face<D>
   );
   cache.faces = faces;
   return faces;

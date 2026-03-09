@@ -120,6 +120,11 @@ Validity types are **subtypes** with two tiers:
 - **Brand stacking complexity**: `ClosedWire<'2D'>` is readable; more brands could become unwieldy
 - **Cannot express all invariants**: Some properties (e.g., "wire lies on this face") are relational and don't fit single-shape branding
 
+### Known Limitations
+
+- **`isOrientedFace` checks validity, not orientation direction**: The type guard uses `kernel.isValid()` (BRepCheck_Analyzer), which checks geometric/topological correctness but does not verify that the face normal is consistently oriented w.r.t. an enclosing solid. Faces from kernel operations are oriented by construction; faces from STEP/IGES imports may pass the check despite having inverted normals. This is documented in the type guard's JSDoc.
+- **`getFaces()` returns `Face[]`, not `OrientedFace[]`**: To avoid over-branding faces from arbitrary sources (imports, compounds), `getFaces()` returns plain `Face[]`. Callers should use `isOrientedFace()` or `orientedFace()` to narrow when needed.
+
 ## Alternatives Considered
 
 ### A: Wrapper Classes

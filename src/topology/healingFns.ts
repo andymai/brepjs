@@ -58,6 +58,13 @@ export function healSolid(solid: Solid): Result<ValidSolid> {
     if (!isSolid(cast)) {
       return err(kernelError('HEAL_RESULT_NOT_SOLID', 'Healed result is not a solid'));
     }
+    // Verify the healed solid actually passes BRepCheck — ShapeFix_Solid
+    // makes a best-effort attempt but does not guarantee full repair.
+    if (!isValid(cast)) {
+      return err(
+        kernelError('HEAL_SOLID_INCOMPLETE', 'Healed result is still invalid after ShapeFix_Solid')
+      );
+    }
     return ok(cast as ValidSolid);
   } catch (e) {
     return err(kernelError('HEAL_SOLID_FAILED', 'Solid healing failed', e));
