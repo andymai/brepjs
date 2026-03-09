@@ -29,5 +29,6 @@ Introduce a `KernelAdapter` interface that abstracts all kernel operations. Doma
 ## Related
 
 - ADR-0001 (kernel is Layer 0)
+- ADR-0006 (narrows strategic direction — brepkit is the primary kernel)
 - `src/kernel/types.ts` — `KernelAdapter` interface
 - `docs/kernel-swap.md` — user-facing guide
