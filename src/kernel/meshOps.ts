@@ -141,6 +141,120 @@ export function meshBulk(
 }
 
 /**
+ * Mutable write positions for pre-allocated mesh arrays.
+ *
+ * Passed into `_meshFace` so each face writes at the correct offset
+ * within the shared pre-allocated buffers.
+ */
+interface MeshWriteState {
+  vIdx: number;
+  nIdx: number;
+  uvIdx: number;
+  tIdx: number;
+}
+
+/**
+ * Extract mesh data for a single OCCT face into pre-allocated arrays.
+ *
+ * Encapsulates per-face vertex, normal, UV, and triangle extraction
+ * — including the normal computation via Poly_Connect +
+ * StdPrs_ToolTriangulatedShape.Normal().
+ *
+ * ADR-0006 Phase 2: isolates the OCCT normal-computation orchestration
+ * into a single function, mirroring brepkit's meshSingleFace() pattern.
+ * When the C++ MeshExtractor is available, this function is not called
+ * (meshBulk handles everything in a single WASM call).
+ */
+function _meshFace(
+  oc: KernelInstance,
+  face: KernelShape,
+  triangulation: { IsNull(): boolean; get(): KernelShape },
+  location: KernelShape,
+  options: MeshOptions,
+  vertices: Float32Array,
+  normals: Float32Array,
+  uvs: Float32Array,
+  triangles: Uint32Array,
+  state: MeshWriteState,
+  faceGroups: KernelMeshResult['faceGroups']
+): void {
+  const tri = triangulation.get();
+  const transformation = location.Transformation();
+  const nbNodes = tri.NbNodes();
+  const vertexOffset = state.vIdx / 3;
+  const triStart = state.tIdx;
+
+  // Vertices
+  for (let i = 1; i <= nbNodes; i++) {
+    const p = tri.Node(i).Transformed(transformation);
+    vertices[state.vIdx++] = p.X();
+    vertices[state.vIdx++] = p.Y();
+    vertices[state.vIdx++] = p.Z();
+    p.delete();
+  }
+
+  // Normals — computed from triangulation connectivity via OCCT
+  if (!options.skipNormals) {
+    const normalsArray = new oc.TColgp_Array1OfDir_2(1, nbNodes);
+    const pc = new oc.Poly_Connect_2(triangulation);
+    oc.StdPrs_ToolTriangulatedShape.Normal(face, pc, normalsArray);
+    for (let i = normalsArray.Lower(); i <= normalsArray.Upper(); i++) {
+      const d = normalsArray.Value(i).Transformed(transformation);
+      normals[state.nIdx++] = d.X();
+      normals[state.nIdx++] = d.Y();
+      normals[state.nIdx++] = d.Z();
+      d.delete();
+    }
+    normalsArray.delete();
+    pc.delete();
+  }
+
+  // UVs
+  if (options.includeUVs && tri.HasUVNodes()) {
+    for (let i = 1; i <= nbNodes; i++) {
+      const uv = tri.UVNode(i);
+      uvs[state.uvIdx++] = uv.X();
+      uvs[state.uvIdx++] = uv.Y();
+      uv.delete();
+    }
+  } else if (options.includeUVs) {
+    // No UV data for this face — fill with zeros
+    for (let i = 0; i < nbNodes; i++) {
+      uvs[state.uvIdx++] = 0;
+      uvs[state.uvIdx++] = 0;
+    }
+  }
+
+  // Triangles — reverse winding for non-forward faces
+  const orient = face.Orientation_1();
+  const isForward = orient === oc.TopAbs_Orientation.TopAbs_FORWARD;
+  const nbTriangles = tri.NbTriangles();
+
+  for (let nt = 1; nt <= nbTriangles; nt++) {
+    const t = tri.Triangle(nt);
+    let n1 = t.Value(1);
+    let n2 = t.Value(2);
+    const n3 = t.Value(3);
+    if (!isForward) {
+      const tmp = n1;
+      n1 = n2;
+      n2 = tmp;
+    }
+    triangles[state.tIdx++] = n1 - 1 + vertexOffset;
+    triangles[state.tIdx++] = n2 - 1 + vertexOffset;
+    triangles[state.tIdx++] = n3 - 1 + vertexOffset;
+    t.delete();
+  }
+
+  faceGroups.push({
+    start: triStart,
+    count: state.tIdx - triStart,
+    faceHash: face.HashCode(HASH_CODE_MAX),
+  });
+  transformation.delete();
+}
+
+/**
  * Meshes a shape using JS-side TopExp_Explorer extraction.
  */
 export function meshJS(
@@ -180,17 +294,13 @@ export function meshJS(
     explorer.Next();
   }
 
-  // Pass 2: fill pre-allocated arrays
+  // Pass 2: fill pre-allocated arrays via _meshFace
   const vertices = new Float32Array(totalNodes * 3);
   const normals = options.skipNormals ? new Float32Array(0) : new Float32Array(totalNodes * 3);
   const uvs = options.includeUVs ? new Float32Array(totalNodes * 2) : new Float32Array(0);
   const triangles = new Uint32Array(totalTris * 3);
   const faceGroups: KernelMeshResult['faceGroups'] = [];
-
-  let vIdx = 0;
-  let nIdx = 0;
-  let uvIdx = 0;
-  let tIdx = 0;
+  const state: MeshWriteState = { vIdx: 0, nIdx: 0, uvIdx: 0, tIdx: 0 };
 
   explorer.Init(shape, oc.TopAbs_ShapeEnum.TopAbs_FACE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
 
@@ -201,76 +311,19 @@ export function meshJS(
     const triangulation = oc.BRep_Tool.Triangulation(face, location, 0);
 
     if (!triangulation.IsNull()) {
-      const tri = triangulation.get();
-      const transformation = location.Transformation();
-      const nbNodes = tri.NbNodes();
-      const vertexOffset = vIdx / 3;
-      const triStart = tIdx;
-
-      for (let i = 1; i <= nbNodes; i++) {
-        const p = tri.Node(i).Transformed(transformation);
-        vertices[vIdx++] = p.X();
-        vertices[vIdx++] = p.Y();
-        vertices[vIdx++] = p.Z();
-        p.delete();
-      }
-
-      if (!options.skipNormals) {
-        const normalsArray = new oc.TColgp_Array1OfDir_2(1, nbNodes);
-        const pc = new oc.Poly_Connect_2(triangulation);
-        oc.StdPrs_ToolTriangulatedShape.Normal(face, pc, normalsArray);
-        for (let i = normalsArray.Lower(); i <= normalsArray.Upper(); i++) {
-          const d = normalsArray.Value(i).Transformed(transformation);
-          normals[nIdx++] = d.X();
-          normals[nIdx++] = d.Y();
-          normals[nIdx++] = d.Z();
-          d.delete();
-        }
-        normalsArray.delete();
-        pc.delete();
-      }
-
-      if (options.includeUVs && tri.HasUVNodes()) {
-        for (let i = 1; i <= nbNodes; i++) {
-          const uv = tri.UVNode(i);
-          uvs[uvIdx++] = uv.X();
-          uvs[uvIdx++] = uv.Y();
-          uv.delete();
-        }
-      } else if (options.includeUVs) {
-        // No UV data for this face — fill with zeros
-        for (let i = 0; i < nbNodes; i++) {
-          uvs[uvIdx++] = 0;
-          uvs[uvIdx++] = 0;
-        }
-      }
-
-      const orient = face.Orientation_1();
-      const isForward = orient === oc.TopAbs_Orientation.TopAbs_FORWARD;
-      const nbTriangles = tri.NbTriangles();
-
-      for (let nt = 1; nt <= nbTriangles; nt++) {
-        const t = tri.Triangle(nt);
-        let n1 = t.Value(1);
-        let n2 = t.Value(2);
-        const n3 = t.Value(3);
-        if (!isForward) {
-          const tmp = n1;
-          n1 = n2;
-          n2 = tmp;
-        }
-        triangles[tIdx++] = n1 - 1 + vertexOffset;
-        triangles[tIdx++] = n2 - 1 + vertexOffset;
-        triangles[tIdx++] = n3 - 1 + vertexOffset;
-        t.delete();
-      }
-
-      faceGroups.push({
-        start: triStart,
-        count: tIdx - triStart,
-        faceHash: face.HashCode(HASH_CODE_MAX),
-      });
-      transformation.delete();
+      _meshFace(
+        oc,
+        face,
+        triangulation,
+        location,
+        options,
+        vertices,
+        normals,
+        uvs,
+        triangles,
+        state,
+        faceGroups
+      );
     }
 
     location.delete();
