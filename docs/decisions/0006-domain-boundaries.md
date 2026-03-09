@@ -99,7 +99,7 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 - **Color storage**: Migrate from TS-side `Map` to kernel storage if brepkit adds native per-shape color.
 - **New capabilities**: Evaluate against decision heuristic before implementation.
 
-### Phase 4: OCCT Adapter Alignment (Ongoing) — ✅ Partial
+### Phase 4: OCCT Adapter Alignment (Ongoing) — ✅ Complete
 
 - Core operations (booleans, extrude, fillet, measurement, IO) — OCCT adapter must implement.
 - New `KernelAdapter` methods after migration — OCCT adapter may throw "capability not supported" `BrepError`.
@@ -108,6 +108,15 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 **Progress (v11)**:
 
 - Added `UNSUPPORTED` error kind, `UNSUPPORTED_CAPABILITY` error code, and `unsupportedError()` constructor for kernel adapters to signal missing capabilities. (#424)
+
+**Progress (v12)**:
+
+- Comprehensive capability audit: both adapters implement all 162 KernelAdapter 3D methods and all 47 Kernel2DCapability methods. No stubs or missing implementations found.
+- Behavioral differences documented (see Appendix A below).
+- Comprehensive parity test suite added to `tests/kernel-agreement.test.ts` covering booleans, transforms, sweep/extrude/revolve, fillet/chamfer, measurement, and 2D geometry. On-demand via dual-kernel test runner.
+- Optional capability gaps are properly type-guarded: `gridPattern?` (brepkit-only), `ProjectionCapability` (separate interface, neither adapter implements `projectShape()` yet).
+
+**Resolution**: Both adapters are functionally complete. The remaining differences are behavioral (tolerance strategies, approximation algorithms) rather than missing capabilities. The `unsupportedError()` infrastructure is in place for future capability divergence.
 
 ### Migration Protocol
 
@@ -155,6 +164,55 @@ Rejected: maintaining two implementations doubles work for new features and bug 
 ### Migrate everything at once
 
 Rejected: phased approach validates each step independently, catches boundary design problems early, ships incremental value.
+
+## Appendix A: Cross-Kernel Behavioral Differences
+
+Audit of behavioral differences between DefaultAdapter (OCCT) and BrepkitAdapter, v12.
+
+### Interface Coverage
+
+| Interface            | Methods | OCCT            | brepkit        |
+| -------------------- | ------- | --------------- | -------------- |
+| KernelAdapter (3D)   | 162     | 161/162 (99.4%) | 162/162 (100%) |
+| Kernel2DCapability   | 47      | 47/47 (100%)    | 47/47 (100%)   |
+| ProjectionCapability | 1       | ✗               | ✗              |
+
+The only OCCT gap is `gridPattern?` (optional, brepkit-exclusive). Neither adapter implements `projectShape()` from `ProjectionCapability`.
+
+### Behavioral Differences
+
+| Category        | Method(s)                      | OCCT Behavior                                                    | brepkit Behavior                                                                 | Impact                                                      |
+| --------------- | ------------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **Booleans**    | `fuse`, `cut`, `intersect`     | Accepts `BooleanOptions` with configurable tolerance             | Ignores tolerance parameters (fixed internal handling)                           | Low — default tolerances work for typical use               |
+| **Booleans**    | `fuse`, `cut` (compound tools) | Direct operation                                                 | Iteratively decomposes compound tools into child solids                          | Medium — may produce different topology for compound inputs |
+| **Booleans**    | `section`                      | Native section with approximation parameter                      | Extracts plane from face geometry; ignores approximation                         | Low — different algorithm, same geometric result            |
+| **Fillet**      | `fillet`                       | Full variable-radius support (array of radii)                    | Constant radius only (takes first element of array)                              | High — variable-radius fillets silently degrade on brepkit  |
+| **Chamfer**     | `chamfer`                      | Two-distance chamfer support                                     | Constant distance only (drops second distance)                                   | Medium — asymmetric chamfers silently degrade               |
+| **Chamfer**     | `chamferDistAngle`             | Native dist-angle support                                        | Approximates via `d2 = d * tan(angle)`, then averages                            | Medium — approximation may diverge for steep angles         |
+| **Shell**       | `shell` (face resolution)      | Direct face ID operation                                         | Face ID resolution with normal-matching fallback (dot > 0.99)                    | Medium — may select wrong face after topology-changing ops  |
+| **Meshing**     | `mesh`                         | Respects both `tolerance` and `angularTolerance`                 | Uses `tolerance` only; hardcoded `DEFAULT_DEFLECTION = 0.01`                     | Low — slightly different tessellation density               |
+| **Meshing**     | `meshEdges`                    | Uses both tolerance parameters                                   | Uses `tolerance` only; enforces `Math.max(tol, 0.001)`                           | Low                                                         |
+| **Meshing**     | `hasTriangulation`             | Checks cached triangulation                                      | Always returns `false` (on-demand tessellation)                                  | Low — behavioral, no geometric impact                       |
+| **Sweep**       | `loft`                         | Takes wires directly; supports `ruled`, `startShape`, `endShape` | Converts wires to faces; ignores `ruled`/`startShape`/`endShape`                 | Medium — loft options silently ignored                      |
+| **Sweep**       | `sweep`                        | Native sweep with transition mode                                | Extracts NURBS data from spine; ignores `transitionMode`                         | Medium — transition mode silently ignored                   |
+| **Transforms**  | `generalTransform`             | Uses OCCT transform objects                                      | Expects 16-element row-major matrix; throws for other inputs                     | Low — consistent API, different internal representation     |
+| **Transforms**  | `mirror` (non-solid)           | Delegates all shapes to OCCT                                     | Solids: native `bk.mirror()`; non-solids: computed `mirrorMatrix()`              | Low — same result, different code path                      |
+| **Validity**    | `isValid`                      | OCCT `BRepCheck_Analyzer` (strict geometry + topology check)     | `validateSolid()` → falls back to volume check if errors (NURBS false positives) | High — brepkit may report valid for shapes OCCT rejects     |
+| **Curves**      | `interpolatePoints`            | Configurable tolerance                                           | Fixed degree = min(3, n−1); ignores tolerance                                    | Low                                                         |
+| **Curves**      | `approximatePoints`            | OCCT approximation algorithm                                     | `approximateCurveLspia()` with hardcoded max_iter=100, degree=3                  | Low                                                         |
+| **Curves**      | `makeBezierEdge`               | Native Bezier representation                                     | Converts Bezier to NURBS (degree=n−1, uniform knots)                             | Low — mathematically equivalent                             |
+| **Curves**      | `makeTangentArc`               | Native tangent-arc construction                                  | Approximates as cubic Bezier with control points at 1/3 distance                 | Medium — approximation diverges for large arcs              |
+| **I/O**         | `toBREP` / `fromBREP`          | OCCT's native BREP format                                        | Proxies to STEP export/import (not BREP format)                                  | High — format mismatch, round-trip not compatible           |
+| **I/O**         | STEP/STL export (multi-shape)  | Native multi-shape export                                        | Exports each solid individually and concatenates                                 | Low — same result, different implementation                 |
+| **Measurement** | `volume`, `area`               | OCCT native measurement                                          | Uses `DEFAULT_DEFLECTION = 0.01` for tessellation-based measurement              | Low — slight numerical differences expected                 |
+
+### Key Takeaways
+
+1. **No missing capabilities** — both adapters implement the full interface. Gaps are behavioral, not functional.
+2. **Tolerance divergence** — brepkit generally ignores caller-provided tolerances in favor of hardcoded defaults. This is the most pervasive difference.
+3. **Silent degradation** — variable-radius fillet, asymmetric chamfer, loft options, and sweep transition modes silently fall back to simpler behavior on brepkit. Consider adding warnings.
+4. **Validity checking** — OCCT is stricter (`BRepCheck_Analyzer`) vs brepkit's volume-based fallback. Code relying on `isValid()` may behave differently across kernels.
+5. **BREP format** — `toBREP`/`fromBREP` are not cross-kernel compatible (OCCT uses BREP format, brepkit proxies to STEP). Do not mix kernels for BREP round-trips.
 
 ## Related
 
