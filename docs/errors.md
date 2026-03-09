@@ -14,7 +14,7 @@ interface BrepError {
 }
 
 type BrepErrorKind =
-  | 'OCCT_OPERATION'
+  | 'KERNEL_OPERATION'
   | 'VALIDATION'
   | 'TYPE_CAST'
   | 'SKETCHER_STATE'
@@ -53,7 +53,7 @@ const value = unwrap(result);
 
 ## Error Codes by Kind
 
-### OCCT_OPERATION
+### KERNEL_OPERATION
 
 Errors from kernel geometry operations.
 

@@ -545,7 +545,7 @@ tryCatchAsync<T, E>(fn: () => Promise<T>, mapError: (error: unknown) => E): Prom
 
 ```typescript
 type BrepErrorKind =
-  | 'OCCT_OPERATION' // Kernel API failures
+  | 'KERNEL_OPERATION' // Kernel API failures
   | 'VALIDATION' // Invalid input/state
   | 'TYPE_CAST' // Shape type mismatches
   | 'SKETCHER_STATE' // Sketcher workflow errors

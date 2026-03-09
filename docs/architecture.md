@@ -82,10 +82,10 @@ graph TB
 
 No internal imports allowed.
 
-| Module    | Purpose                                           |
-| --------- | ------------------------------------------------- |
-| `kernel/` | Kernel adapter interface + default implementation |
-| `utils/`  | Pure utilities (no dependencies)                  |
+| Module    | Purpose                                                                    |
+| --------- | -------------------------------------------------------------------------- |
+| `kernel/` | Kernel adapter interface + built-in implementations (OpenCascade, brepkit) |
+| `utils/`  | Pure utilities (no dependencies)                                           |
 
 ### Layer 1: Core
 

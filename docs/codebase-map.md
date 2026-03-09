@@ -27,9 +27,10 @@ Quick reference for navigating the brepjs source. See `CLAUDE.md` for rules and 
 | Module     | Key Files                                | Purpose                                           |
 | ---------- | ---------------------------------------- | ------------------------------------------------- |
 | **kernel** | `types.ts`                               | `KernelAdapter` interface (~120 methods)          |
-|            | `DefaultAdapter.ts`                      | OCCT implementation wiring                        |
+|            | `DefaultAdapter.ts`                      | OpenCascade kernel adapter                        |
+|            | `brepkitAdapter.ts`                      | brepkit kernel adapter                            |
 |            | `index.ts`                               | `getKernel()`, `initFromOC()`, `registerKernel()` |
-|            | `*Ops.ts` (19 files)                     | Raw OCCT API calls grouped by domain              |
+|            | `*Ops.ts` (19 files)                     | Raw kernel API calls grouped by domain            |
 | **utils**  | `bug.ts`, `precisionRound.ts`, `uuid.ts` | Shared utilities                                  |
 
 ### Layer 1: Core
@@ -43,7 +44,7 @@ Quick reference for navigating the brepjs source. See `CLAUDE.md` for rules and 
 |          | `types.ts`          | `Vec3`, `Vec2`, `PointInput`, `Direction`                           |
 |          | `vecOps.ts`         | Pure vector math: add, cross, normalize, etc.                       |
 |          | `planeOps.ts`       | Pure plane operations: create, transform, project                   |
-|          | `kernelBoundary.ts` | Vec3 ↔ OCCT geometry conversions                                    |
+|          | `kernelBoundary.ts` | Vec3 ↔ kernel geometry conversions                                  |
 |          | `kernelCall.ts`     | `kernelCall()`, `kernelCallScoped()` wrappers                       |
 
 ### Layer 2: Domain
