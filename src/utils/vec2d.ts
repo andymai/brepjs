@@ -87,18 +87,6 @@ export const polarAngle2d = ([x0, y0]: Point2D, [x1, y1]: Point2D = [0, 0]): num
 };
 
 /**
- * Normalize a 2D vector to unit length.
- *
- * Returns `[0, 0]` for zero-length vectors (no-throw variant).
- * Callers that need a throw-on-zero-length guard should check the result.
- */
-export const normalize2d = ([x0, y0]: Point2D): Point2D => {
-  const l = Math.sqrt(x0 * x0 + y0 * y0);
-  if (l < 1e-12) return [0, 0];
-  return [x0 / l, y0 / l];
-};
-
-/**
  * Rotate a 2D point around a center by a given angle (in radians).
  *
  * @example

@@ -8,7 +8,7 @@
 
 import type { Point2D } from './definitions.js';
 import { bug } from '../../core/errors.js';
-import { distance2d, normalize2d as _normalize2dBase } from '../../utils/vec2d.js';
+import { distance2d } from '../../utils/vec2d.js';
 
 export {
   samePoint,
