@@ -33,8 +33,8 @@ brepjs organizes its API into focused sub-path imports to reduce autocomplete no
 import { box, fuse, fillet, unwrap, edgeFinder } from 'brepjs/topology';
 import { cylinder } from 'brepjs/topology';
 
-const myBox = box([0, 0, 0], [30, 20, 10]);
-const cyl = cylinder(5, 15, [15, 10, -2]);
+const myBox = box(30, 20, 10);
+const cyl = cylinder(5, 15, { at: [15, 10, -2] });
 const fused = unwrap(fuse(myBox, cyl));
 const filleted = unwrap(fillet(fused, edgeFinder().inDirection('Z').findAll(fused), 2));
 ```

@@ -149,7 +149,7 @@ sequenceDiagram
 brepjs uses an immutable functional API:
 
 ```typescript
-const myBox = box([0, 0, 0], [10, 10, 10]);
+const myBox = box(10, 10, 10);
 const moved = translate(myBox, [5, 0, 0]); // Returns new shape
 ```
 
@@ -171,12 +171,25 @@ Shapes use branded types for type safety:
 ```typescript
 declare const __brand: unique symbol;
 type Solid = ShapeHandle & { readonly [__brand]: 'solid' };
-type Face = ShapeHandle & { readonly [__brand]: 'face' };
+type Face<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'face'; ... };
 
 // Compiler prevents mixing
 function takeSolid(s: Solid) {}
 takeSolid(face); // Error: Face not assignable to Solid
 ```
+
+**Validity brands** add a second layer of compile-time safety:
+
+```typescript
+type ClosedWire<D> = Wire<D> & { readonly [__closed]: true };
+type OrientedFace<D> = Face<D> & { readonly [__oriented]: true };
+type ValidSolid = Solid & { readonly [__valid]: true };
+
+// face() requires ClosedWire — passing a plain Wire is a compile error
+function face(wire: ClosedWire): Result<OrientedFace>;
+```
+
+See [B-Rep Concepts](./concepts.md#validity-types) for usage patterns.
 
 ### 4. Scoped Resource Management
 

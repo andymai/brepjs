@@ -90,7 +90,7 @@ A watertight 3D volume bounded by a closed shell. This is the primary result typ
 ```typescript
 import { box, measureVolume } from 'brepjs';
 
-const myBox = box([0, 0, 0], [10, 10, 10]); // returns Solid
+const myBox = box(10, 10, 10); // returns ValidSolid (a Solid that passes BRepCheck)
 measureVolume(myBox); // 1000
 ```
 
@@ -109,9 +109,9 @@ const assembly = compound([partA, partB, partC]);
 brepjs uses **branded types** — lightweight TypeScript type tags on top of the raw kernel WASM handle:
 
 ```typescript
-type Edge = OcShape & { readonly [__brand]: 'edge' };
-type Face = OcShape & { readonly [__brand]: 'face' };
-type Solid = OcShape & { readonly [__brand]: 'solid' };
+type Edge<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'edge'; ... };
+type Face<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'face'; ... };
+type Solid = ShapeHandle & { readonly [__brand]: 'solid' };
 ```
 
 This means:
@@ -119,6 +119,51 @@ This means:
 - **No class hierarchy** — shapes are plain handles, not class instances
 - **Compile-time safety** — you can't accidentally pass an `Edge` to a function expecting a `Face`
 - **Zero runtime cost** — the brand exists only at the type level
+
+### Phantom dimension types
+
+Shape types carry a phantom `D` parameter (`'2D' | '3D'`) that prevents mixing 2D and 3D geometry at compile time:
+
+```typescript
+type Edge<'2D'>  // A 2D edge — cannot be passed to a 3D operation
+type Wire<'3D'>  // A 3D wire — the default
+```
+
+The default is `'3D'`, so existing code is unaffected. The dimension parameter has zero runtime cost — it exists only in the type system.
+
+### Validity types
+
+Some operations require shapes with stronger invariants. brepjs encodes these as **validity brands** — phantom tags layered on top of base types:
+
+```typescript
+type ClosedWire<D> = Wire<D> & { readonly [__closed]: true }; // Wire that forms a loop
+type OrientedFace<D> = Face<D> & { readonly [__oriented]: true }; // Face with consistent normal
+type ValidSolid = Solid & { readonly [__valid]: true }; // Solid passing BRepCheck
+```
+
+Functions declare exactly what they need:
+
+```typescript
+face(wire: ClosedWire): Result<OrientedFace>    // Requires a closed wire
+extrude(face: OrientedFace, height: number): Result<Solid>  // Requires an oriented face
+```
+
+**Creating branded shapes:**
+
+```typescript
+// Option 1: Smart constructors (runtime validation)
+const result = closedWire(myWire); // ValidityResult<ClosedWire>
+if (result.valid) use(result.shape); // Proven ClosedWire
+
+// Option 2: Type guards (narrow in-place)
+if (isClosedWire(myWire)) {
+  // myWire is now ClosedWire
+}
+
+// Option 3: Convenience builders that return branded types directly
+const cw = unwrap(wireLoop([e1, e2, e3, e4])); // ClosedWire
+const f = unwrap(face(cw)); // OrientedFace
+```
 
 Related types group shapes by dimensionality:
 
@@ -135,7 +180,7 @@ The standard CAD workflow:
 
 ```typescript
 // 1. Create primitives
-const block = box([0, 0, 0], [50, 30, 20]);
+const block = box(50, 30, 20);
 const hole = translate(cylinder(5, 25), [25, 15, -2]);
 
 // 2. Boolean operations
@@ -191,5 +236,6 @@ const shelled = unwrap(shell(part, topFaces, 2));
 ## Next steps
 
 - **[Getting Started](./getting-started.md)** — Build your first part step by step
+- **[Architecture](./architecture.md)** — Layer diagram and type system design
 - **[Memory Management](./memory-management.md)** — Cleaning up WASM objects
 - **[Error Reference](./errors.md)** — Error codes and recovery patterns

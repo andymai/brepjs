@@ -39,7 +39,7 @@ const cyl = cylinder(5, 20); // radius, height
 const sph = sphere(8); // radius
 ```
 
-`box`, `cylinder`, and `sphere` return `Solid` — a branded type representing a watertight 3D shape. All primitives are available from `brepjs/quick`.
+`box`, `cylinder`, and `sphere` return `ValidSolid` — a branded type representing a watertight 3D shape that passes BRepCheck validation. All primitives are available from `brepjs/quick`.
 
 ## Step 4: Combine shapes with the fluent wrapper
 
@@ -293,6 +293,48 @@ match(result, {
 **Which to use?** The wrapper is more concise for most use cases. Use the functional API when you need fine-grained control over error handling at each step.
 
 See [errors.md](./errors.md) for the full error code reference.
+
+## Type safety: validity types
+
+brepjs uses the TypeScript type system to prevent common modeling errors at compile time. Key operations require **validity-branded** types:
+
+- **`ClosedWire`** — a wire that forms a closed loop. Required by `face()`.
+- **`OrientedFace`** — a face with consistent normal orientation. Required by `extrude()` and `revolve()`.
+- **`ValidSolid`** — a solid that passes BRepCheck validation. Returned by `box()`, `cylinder()`, `extrude()`, etc.
+
+The easiest way to get a `ClosedWire` is with `wireLoop()`:
+
+```typescript
+import { line, wireLoop, face, extrude, unwrap } from 'brepjs/quick';
+
+// wireLoop assembles edges and verifies closure → Result<ClosedWire>
+const cw = unwrap(
+  wireLoop([
+    line([0, 0, 0], [10, 0, 0]),
+    line([10, 0, 0], [10, 10, 0]),
+    line([10, 10, 0], [0, 10, 0]),
+    line([0, 10, 0], [0, 0, 0]),
+  ])
+);
+
+const f = unwrap(face(cw)); // face() requires ClosedWire, returns OrientedFace
+const s = unwrap(extrude(f, 10)); // extrude() requires OrientedFace, returns Solid
+```
+
+For runtime validation of existing shapes, use **smart constructors**:
+
+```typescript
+import { closedWire, orientedFace } from 'brepjs';
+
+const result = closedWire(someWire);
+if (result.valid) {
+  // result.shape is ClosedWire — pass to face()
+} else {
+  console.error(result.reason); // explains why validation failed
+}
+```
+
+These types are all subtypes of their base types — a `ClosedWire` works anywhere a `Wire` is accepted, and a `ValidSolid` works anywhere a `Solid` is accepted. See [B-Rep Concepts](./concepts.md#validity-types) for details.
 
 ---
 

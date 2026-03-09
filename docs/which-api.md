@@ -115,7 +115,7 @@ The functional API uses standalone functions and returns `Result<T>` types for e
 ```typescript
 import { box, cylinder, cut, fillet, edgeFinder, translate, unwrap } from 'brepjs';
 
-const myBox = box([0, 0, 0], [30, 20, 10]);
+const myBox = box(30, 20, 10);
 const hole = translate(cylinder(5, 15), [15, 10, -2]);
 const drilled = unwrap(cut(myBox, hole));
 const vertEdges = edgeFinder().inDirection('Z').findAll(drilled);

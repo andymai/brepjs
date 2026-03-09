@@ -139,6 +139,57 @@ registerKernel('test', myKernelAdapter);
 // All 2023 tests should pass with your kernel
 ```
 
+## Dual-Kernel Testing
+
+brepjs tests run against both OpenCascade (OCCT) and brepkit WASM backends in CI. This is configured via vitest projects:
+
+```typescript
+// vitest.config.ts (simplified)
+export default defineConfig({
+  test: {
+    projects: [
+      { name: 'occt', env: { TEST_KERNEL: 'occt' } },
+      { name: 'brepkit', env: { TEST_KERNEL: 'brepkit' } },
+    ],
+  },
+});
+```
+
+The test setup (`tests/setup.ts`) reads `TEST_KERNEL` and initializes the correct adapter:
+
+```typescript
+export async function initKernel() {
+  const kernel = process.env.TEST_KERNEL ?? 'occt';
+  if (kernel === 'brepkit') {
+    const bk = await import('brepjs-opencascade/brepkit');
+    initFromBrepkit(await bk.default());
+  } else {
+    const oc = await import('brepjs-opencascade');
+    initFromOC(await oc.default());
+  }
+}
+```
+
+### Running tests against a specific kernel
+
+```bash
+# Run all tests with both kernels (default)
+npm run test
+
+# Run a single kernel
+npx vitest run --project occt
+npx vitest run --project brepkit
+
+# Run a single test file on both kernels
+npx vitest run tests/fn-booleanFns.test.ts
+```
+
+Some tests are OCCT-only (e.g., tests for OCCT-specific features). These are listed in `vitest.config.ts` under `occtOnlyTests`.
+
+### Testing your custom kernel
+
+To test a custom kernel, add a vitest project that sets `TEST_KERNEL` to your kernel ID, then update `tests/setup.ts` to handle the new case.
+
 ## Architecture Reference
 
 See [Architecture](./architecture.md) for the full layer diagram and how the kernel fits into the boundary system.

@@ -15,8 +15,8 @@ function buildComplexShape() {
   using scope = new DisposalScope();
 
   // Intermediate shapes are automatically cleaned up
-  const box1 = scope.register(box([0, 0, 0], [10, 10, 10]));
-  const box2 = scope.register(box([5, 0, 0], [15, 10, 10]));
+  const box1 = scope.register(box(10, 10, 10));
+  const box2 = scope.register(box(10, 10, 10, { at: [5, 0, 0] }));
 
   // Return the result — it escapes the scope
   return fuse(box1, box2);
@@ -35,7 +35,7 @@ Modern brepjs uses `Symbol.dispose` and `FinalizationRegistry` for memory manage
 
 ```typescript
 // ❌ Old pattern — error-prone
-const myBox = box([10, 10, 10]);
+const myBox = box(10, 10, 10);
 try {
   doSomething(myBox);
 } finally {
@@ -43,7 +43,7 @@ try {
 }
 
 // ✅ Modern pattern — automatic cleanup (requires TypeScript 5.9+)
-using myBox = box([10, 10, 10]);
+using myBox = box(10, 10, 10);
 doSomething(box);
 ```
 
@@ -180,14 +180,14 @@ printResults(results);
 ```typescript
 // ❌ Leaks memory
 for (let i = 0; i < 1000; i++) {
-  const b = box([i, 0, 0], [i + 1, 1, 1]);
+  const b = box(1, 1, 1, { at: [i, 0, 0] });
   // b is never cleaned up
 }
 
 // ✅ Use DisposalScope
 for (let i = 0; i < 1000; i++) {
   using scope = new DisposalScope();
-  const b = scope.register(box([i, 0, 0], [i + 1, 1, 1]));
+  const b = scope.register(box(1, 1, 1, { at: [i, 0, 0] }));
   // Do something with b
   // Automatically cleaned up at loop iteration end
 }
