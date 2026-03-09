@@ -2,7 +2,6 @@ import type { KernelAdapter, KernelInstance } from './types.js';
 import type { Kernel2DCapability } from './kernel2dTypes.js';
 import { supportsKernel2D } from './kernel2dTypes.js';
 import { DefaultAdapter } from './defaultAdapter.js';
-import { resetMeshDetectionCache } from './meshOps.js';
 import { resetMeasureDetectionCache } from './measureOps.js';
 import { resetTransformDetectionCache } from './transformOps.js';
 
@@ -85,7 +84,6 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
 
 /** Initialise the brepjs kernel from a loaded WASM instance. */
 export function initFromOC(oc: KernelInstance): void {
-  resetMeshDetectionCache();
   resetMeasureDetectionCache();
   resetTransformDetectionCache();
   const adapter = new DefaultAdapter(oc);

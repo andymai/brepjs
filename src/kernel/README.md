@@ -51,7 +51,7 @@ All raw kernel API calls are isolated in these files. A new kernel replaces `def
 | `transformOps.ts`           | `translate`, `rotate`, `mirror`, `scale`, `generalTransform`, `simplify`                                                                                        |
 | `measureOps.ts`             | `volume`, `area`, `length`, `centerOfMass`, `boundingBox`, `distance`, `classifyPointOnFace`                                                                    |
 | `geometryQueryOps.ts`       | `hashCode`, `isNull`, `shapeType`, `surfaceType`, `vertexPosition`, `curvePointAtParam`, `curveIsClosed`, `curveType`, `reverseShape`, `getSurfaceCylinderData` |
-| `meshOps.ts`                | `mesh`, `meshEdges` (dual path: C++ bulk extractor or JS fallback)                                                                                              |
+| `meshOps.ts`                | `mesh`, `meshEdges` (C++ bulk extraction via MeshExtractor/EdgeMeshExtractor)                                                                                   |
 | `topologyOps.ts`            | `iterShapes`, `iterShapeList`, `isSame`, `isEqual`, `isValid`, `sew`                                                                                            |
 | `ioOps.ts`                  | `exportSTEP`, `exportSTL`, `importSTEP`, `importSTL`, `exportIGES`, `importIGES`                                                                                |
 | `exportOps.ts`              | `wrapString`, `wrapColorRGBA`, `configureStepUnits`, `configureStepWriter`                                                                                      |
@@ -91,7 +91,7 @@ See [Custom Kernel Guide](../../docs/kernel-swap.md) for writing your own kernel
 1. **Must initialize first** — `getKernel()` throws if no kernel has been registered
 2. **Manual memory management** — All intermediate kernel objects need `.delete()` inside ops modules; only final shapes are returned
 3. **WASM enum values** — Emscripten returns enum objects with `.value` property, not raw numbers. Use `typeof val === 'number' ? val : Number(val?.value ?? val)` pattern
-4. **Dual mesh path** — `meshOps.ts` has bulk C++ `MeshExtractor` if available, JS `TopExp_Explorer` fallback
+4. **C++ mesh extraction** — `meshOps.ts` uses `MeshExtractor`/`EdgeMeshExtractor` for all mesh operations (normals, UVs, face groups computed in C++)
 5. **Virtual filesystem** — File I/O uses Emscripten virtual filesystem, not real disk paths
 6. **Degree conversion** — `rotate()` takes degrees, converts internally to radians
 7. **withKernel is sync-only** — The kernel override is restored in `finally`, so async functions would observe the wrong kernel after `await`
