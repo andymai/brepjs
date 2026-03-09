@@ -1,5 +1,16 @@
 # Changelog
 
+## [10.0.0](https://github.com/andymai/brepjs/compare/brepjs-v9.6.5...brepjs-v10.0.0) (2026-03-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* phantom dimension types for compile-time 2D/3D safety ([#414](https://github.com/andymai/brepjs/issues/414))
+
+### Features
+
+* phantom dimension types for compile-time 2D/3D safety ([#414](https://github.com/andymai/brepjs/issues/414)) ([5542915](https://github.com/andymai/brepjs/commit/5542915759feea35dc1f5c7e99e540341dec2138))
+
 ## [9.6.5](https://github.com/andymai/brepjs/compare/brepjs-v9.6.4...brepjs-v9.6.5) (2026-03-08)
 
 
