@@ -1,5 +1,16 @@
 # Changelog
 
+## [12.0.0](https://github.com/andymai/brepjs/compare/brepjs-v11.1.0...brepjs-v12.0.0) (2026-03-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove JS mesh fallback, require C++ MeshExtractor ([#429](https://github.com/andymai/brepjs/issues/429))
+
+### Features
+
+* remove JS mesh fallback, require C++ MeshExtractor ([#429](https://github.com/andymai/brepjs/issues/429)) ([73c32a7](https://github.com/andymai/brepjs/commit/73c32a70b3e0025a857b007e0bcb09e46d4faff7))
+
 ## [11.1.0](https://github.com/andymai/brepjs/compare/brepjs-v11.0.1...brepjs-v11.1.0) (2026-03-09)
 
 
