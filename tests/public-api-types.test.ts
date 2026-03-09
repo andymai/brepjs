@@ -184,6 +184,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'cameraLookAt',
   'cast',
   'castShape',
+  'castShape3D',
   'chamfer',
   'chamferDistAngleShape',
   'checkAllInterferences',

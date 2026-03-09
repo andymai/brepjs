@@ -351,6 +351,7 @@ export type {
 
 export {
   castShape,
+  castShape3D,
   getShapeKind,
   createVertex,
   createEdge,

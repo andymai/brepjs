@@ -2,7 +2,7 @@ import type { KernelType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import { type KernelHandle, createKernelHandle } from '../core/disposal.js';
 import { uuidv } from '../utils/uuid.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 import type { SupportedUnit } from './exporterUtils.js';
@@ -15,7 +15,7 @@ export type AssemblyExporter = KernelHandle<KernelType>;
 /** Configuration for a single shape within an assembly export. */
 export type ShapeOptions = {
   /** The shape to include in the assembly. */
-  shape: AnyShape;
+  shape: AnyShape<Dimension>;
   /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
   color?: string;
   /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */

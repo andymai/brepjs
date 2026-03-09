@@ -3,7 +3,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { uuidv } from '../utils/uuid.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
@@ -18,7 +18,7 @@ export type { SupportedUnit } from './exporterUtils.js';
 /** Configuration for a single shape within a functional assembly export. */
 export interface ShapeOptions {
   /** The branded shape to include in the assembly. */
-  shape: AnyShape;
+  shape: AnyShape<Dimension>;
   /** Hex color string (e.g. `'#ff0000'`). Defaults to red. */
   color?: string;
   /** Opacity from 0 (transparent) to 1 (opaque). Defaults to 1. */

@@ -3,7 +3,7 @@
  */
 
 import type { Vec3 } from '../core/types.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
 import type { Predicate } from './finderCore.js';
 
@@ -14,7 +14,7 @@ import type { Predicate } from './finderCore.js';
  * Uses the kernel's `distance()` method to compute minimum distance,
  * with a vertex constructed at the reference point.
  */
-export function distanceFromPointFilter<T extends AnyShape>(
+export function distanceFromPointFilter<T extends AnyShape<Dimension>>(
   distance: number,
   point: Vec3,
   tolerance: number

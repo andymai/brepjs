@@ -217,10 +217,13 @@ export function isCompound<D extends Dimension>(s: AnyShape<D>): s is Compound<D
   return getShapeKind(s) === 'compound';
 }
 
-/** Type guard — check if a shape is a 3D shape (shell, solid, compsolid, or compound). */
+/** Type guard — check if a shape is a 3D shape (shell, solid, compsolid, or 3D compound). */
 export function isShape3D(s: AnyShape<Dimension>): s is Shape3D {
   const kind = getShapeKind(s);
-  return kind === 'shell' || kind === 'solid' || kind === 'compsolid' || kind === 'compound';
+  if (kind === 'shell' || kind === 'solid' || kind === 'compsolid') return true;
+  // Compounds can be 2D or 3D — check the runtime dimension marker
+  if (kind === 'compound') return is3D(s);
+  return false;
 }
 
 /** Type guard — check if a shape is a 1D shape (edge or wire). */
@@ -236,7 +239,11 @@ export function isShape1D<D extends Dimension>(s: AnyShape<D>): s is Shape1D<D> 
 /**
  * Narrow an unknown-dimension shape to 3D.
  * All shapes from the kernel default to 3D embedding.
- * 2D shapes only exist when explicitly created via 2D API paths.
+ * 2D shapes only exist when explicitly created via 2D API paths
+ * that set the `__is2D` runtime marker on the handle.
+ *
+ * **Note**: Currently no production code path creates 2D-marked shapes.
+ * This guard is provided for forward compatibility with future 2D API work.
  */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- explicit '3D' for narrowing clarity
 export function is3D(s: AnyShape<Dimension>): s is AnyShape<'3D'> {
@@ -246,6 +253,9 @@ export function is3D(s: AnyShape<Dimension>): s is AnyShape<'3D'> {
 
 /**
  * Narrow an unknown-dimension shape to 2D.
+ *
+ * **Note**: Currently no production code path creates 2D-marked shapes.
+ * This guard is provided for forward compatibility with future 2D API work.
  */
 export function is2D(s: AnyShape<Dimension>): s is AnyShape<'2D'> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime dimension marker
@@ -275,8 +285,16 @@ export function as2D(s: AnyShape<Dimension>): AnyShape<'2D'> {
 // Cast utility — wraps an kernel shape into the correct branded type
 // ---------------------------------------------------------------------------
 
-/** Wrap a raw kernel shape into a properly branded type.
- *  Performs a downcast and wraps in a disposable handle. */
+/**
+ * Wrap a raw kernel shape into a properly branded type.
+ * Performs a downcast and wraps in a disposable handle.
+ *
+ * **Note**: When `D` is `'2D'`, Shell/Solid/CompSolid are not valid members
+ * of `AnyShape<'2D'>`. If the kernel shape happens to be one of these types,
+ * they will be cast unsoundly. Prefer {@link castShape3D} for shapes known
+ * to be 3D, and use the default `castShape()` (which defaults to `'3D'`)
+ * for normal usage.
+ */
 export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape): AnyShape<D> {
   const kernel = getKernel();
   const st = kernel.shapeType(ocShape);
@@ -291,4 +309,9 @@ export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape): Any
   if (st === 'solid') return createSolid(dc) as AnyShape<D>;
   if (st === 'compsolid') return createCompSolid(dc) as AnyShape<D>;
   return createCompound<D>(dc) as AnyShape<D>;
+}
+
+/** Type-safe cast for shapes known to be 3D. */
+export function castShape3D(ocShape: KernelShape): AnyShape {
+  return castShape(ocShape);
 }

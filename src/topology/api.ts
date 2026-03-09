@@ -149,8 +149,8 @@ export function section(
   shape: Shapeable<AnyShape<Dimension>>,
   plane: PlaneInput,
   options?: { approximation?: boolean; planeSize?: number }
-): Result<AnyShape> {
-  return booleans.section(resolve(shape) as AnyShape, plane, options);
+): Result<AnyShape<Dimension>> {
+  return booleans.section(resolve(shape), plane, options);
 }
 
 /** Section a shape with a plane and return a filled Face. */
@@ -159,15 +159,15 @@ export function sectionToFace(
   plane: PlaneInput,
   options?: { approximation?: boolean; planeSize?: number }
 ): Result<Face> {
-  return booleans.sectionToFace(resolve(shape) as AnyShape, plane, options);
+  return booleans.sectionToFace(resolve(shape), plane, options);
 }
 
 /** Split a shape with tool shapes. */
 export function split(
   shape: Shapeable<AnyShape<Dimension>>,
   tools: AnyShape<Dimension>[]
-): Result<AnyShape> {
-  return booleans.split(resolve(shape) as AnyShape, tools as AnyShape[]);
+): Result<AnyShape<Dimension>> {
+  return booleans.split(resolve(shape), tools);
 }
 
 /** Slice a shape with multiple planes. */
@@ -175,8 +175,8 @@ export function slice(
   shape: Shapeable<AnyShape<Dimension>>,
   planes: PlaneInput[],
   options?: { approximation?: boolean; planeSize?: number }
-): Result<AnyShape[]> {
-  return booleans.slice(resolve(shape) as AnyShape, planes, options);
+): Result<AnyShape<Dimension>[]> {
+  return booleans.slice(resolve(shape), planes, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -363,12 +363,12 @@ export function thicken(
 
 /** Heal a shape using the appropriate fixer. */
 export function heal<T extends AnyShape<Dimension>>(shape: Shapeable<T>): Result<T> {
-  return healing.heal(resolve(shape) as AnyShape) as Result<T>;
+  return healing.heal(resolve(shape));
 }
 
 /** Simplify a shape by merging same-domain faces/edges. */
 export function simplify<T extends AnyShape<Dimension>>(shape: Shapeable<T>): T {
-  return transforms.simplify(resolve(shape) as AnyShape) as T;
+  return transforms.simplify(resolve(shape));
 }
 
 /** Mesh a shape for rendering. */
@@ -376,7 +376,7 @@ export function mesh(
   shape: Shapeable<AnyShape<Dimension>>,
   options?: meshing.MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean }
 ): meshing.ShapeMesh {
-  return meshing.mesh(resolve(shape) as AnyShape, options);
+  return meshing.mesh(resolve(shape), options);
 }
 
 /** Mesh the edges of a shape for wireframe rendering. */
@@ -384,17 +384,17 @@ export function meshEdges(
   shape: Shapeable<AnyShape<Dimension>>,
   options?: meshing.MeshOptions & { cache?: boolean }
 ): meshing.EdgeMesh {
-  return meshing.meshEdges(resolve(shape) as AnyShape, options);
+  return meshing.meshEdges(resolve(shape), options);
 }
 
 /** Get a summary description of a shape. */
 export function describe(shape: Shapeable<AnyShape<Dimension>>): transforms.ShapeDescription {
-  return transforms.describe(resolve(shape) as AnyShape);
+  return transforms.describe(resolve(shape));
 }
 
 /** Serialize a shape to BREP format. */
 export function toBREP(shape: Shapeable<AnyShape<Dimension>>): string {
-  return transforms.toBREP(resolve(shape) as AnyShape);
+  return transforms.toBREP(resolve(shape));
 }
 
 /** Deserialize a shape from BREP format. */
@@ -404,10 +404,10 @@ export function fromBREP(data: string): Result<AnyShape<Dimension>> {
 
 /** Check if a shape is valid. */
 export function isValid(shape: Shapeable<AnyShape<Dimension>>): boolean {
-  return healing.isValid(resolve(shape) as AnyShape);
+  return healing.isValid(resolve(shape));
 }
 
 /** Check if a shape is empty (null). */
 export function isEmpty(shape: Shapeable<AnyShape<Dimension>>): boolean {
-  return transforms.isEmpty(resolve(shape) as AnyShape);
+  return transforms.isEmpty(resolve(shape));
 }

@@ -27,7 +27,7 @@ export interface RoofOptions {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractPolygon(w: Wire): SkPoint2D[] {
+function extractPolygon(w: Wire<Dimension>): SkPoint2D[] {
   const edges = getEdges(w);
   const pts = edges.map((e) => {
     const pt = curveStartPoint(e);
@@ -161,7 +161,7 @@ export function roof(w: Wire<Dimension>, options?: RoofOptions): Result<Solid> {
   const tanAngle = Math.tan(angle);
 
   try {
-    const polygon = extractPolygon(w as Wire);
+    const polygon = extractPolygon(w);
     if (polygon.length < 3) {
       return err(
         kernelError(

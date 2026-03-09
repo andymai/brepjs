@@ -9,6 +9,7 @@ import { type Result, ok, err, andThen } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
 import type {
   AnyShape,
+  Dimension,
   Shape3D,
   Compound,
   Face,
@@ -132,7 +133,7 @@ export function makeOffset(face: Face, offset: number, tolerance = 1e-6): Result
  * @param shapeArray - Shapes to group into a single compound.
  * @returns A new Compound containing all input shapes.
  */
-export function makeCompound(shapeArray: AnyShape[]): Compound {
+export function makeCompound(shapeArray: AnyShape<Dimension>[]): Compound {
   return createCompound(getKernel().makeCompound(shapeArray.map((s) => s.wrapped)));
 }
 

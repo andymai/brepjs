@@ -40,7 +40,7 @@ export function curveEndPoint(shape: Edge<Dimension> | Wire<Dimension>): Vec3 {
  * @param shape - Edge or wire to evaluate.
  * @param position - Normalized parameter (0 = start, 0.5 = midpoint, 1 = end).
  */
-export function curvePointAt(shape: Edge | Wire, position = 0.5): Vec3 {
+export function curvePointAt(shape: Edge<Dimension> | Wire<Dimension>, position = 0.5): Vec3 {
   const [first, last] = getKernel().curveParameters(shape.wrapped);
   const param = first + (last - first) * position;
   return getKernel().curvePointAtParam(shape.wrapped, param);
@@ -51,7 +51,7 @@ export function curvePointAt(shape: Edge | Wire, position = 0.5): Vec3 {
  * @param shape - Edge or wire to evaluate.
  * @param position - Normalized parameter (0 = start, 0.5 = midpoint, 1 = end).
  */
-export function curveTangentAt(shape: Edge | Wire, position = 0.5): Vec3 {
+export function curveTangentAt(shape: Edge<Dimension> | Wire<Dimension>, position = 0.5): Vec3 {
   const [first, last] = getKernel().curveParameters(shape.wrapped);
   const param = first + (last - first) * position;
   return getKernel().curveTangent(shape.wrapped, param).tangent;
@@ -83,13 +83,9 @@ export function getOrientation(shape: Edge<Dimension> | Wire<Dimension>): 'forwa
   return orient === 'forward' ? 'forward' : 'backward';
 }
 
-/** Flip the orientation of an edge or wire. Returns a new shape. */
-export function flipOrientation(
-  shape: Edge<Dimension> | Wire<Dimension>
-): Edge<Dimension> | Wire<Dimension> {
-  return castShape<Dimension>(getKernel().reverseShape(shape.wrapped)) as
-    | Edge<Dimension>
-    | Wire<Dimension>;
+/** Flip the orientation of an edge or wire. Returns a new shape with the same dimension. */
+export function flipOrientation<D extends Dimension>(shape: Edge<D> | Wire<D>): Edge<D> | Wire<D> {
+  return castShape<D>(getKernel().reverseShape(shape.wrapped)) as Edge<D> | Wire<D>;
 }
 
 // ---------------------------------------------------------------------------

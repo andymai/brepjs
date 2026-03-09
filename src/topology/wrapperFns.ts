@@ -352,10 +352,10 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
       wrap3D(unwrapOrThrow(fuseAllFn([val, ...tools.map(resolve)], opts)) as unknown as T),
     cutAll: (tools, opts) => wrap3D(unwrapOrThrow(cutAllFn(val, tools, opts)) as unknown as T),
 
-    // Boolean variants
-    section: (plane, opts) => wrapAny(unwrapOrThrow(sectionFn(val, plane, opts))),
-    split: (tools) => wrapAny(unwrapOrThrow(splitFn(val, tools))),
-    slice: (planes, opts) => unwrapOrThrow(sliceFn(val, planes, opts)),
+    // Boolean variants — wrappers are always 3D context, safe to narrow
+    section: (plane, opts) => wrapAny(unwrapOrThrow(sectionFn(val, plane, opts)) as AnyShape),
+    split: (tools) => wrapAny(unwrapOrThrow(splitFn(val, tools)) as AnyShape),
+    slice: (planes, opts) => unwrapOrThrow(sliceFn(val, planes, opts)) as AnyShape[],
 
     // Modifiers (overloaded — detect by argument types)
     fillet(

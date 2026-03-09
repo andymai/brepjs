@@ -120,7 +120,7 @@ export function checkAllInterferences(
   const pairs: InterferencePair[] = [];
 
   // Pre-compute bounding boxes for cheap AABB rejection
-  const boxes = shapes.map((s) => getBounds(s as AnyShape));
+  const boxes = shapes.map((s) => getBounds(s));
 
   shapes.forEach((si, i) => {
     for (let j = i + 1; j < shapes.length; j++) {

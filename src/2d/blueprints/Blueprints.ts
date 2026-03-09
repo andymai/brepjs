@@ -114,7 +114,7 @@ export default class Blueprints implements DrawingInterface {
       draftAngle?: number;
     } = {}
   ) {
-    let outShape: AnyShape<Dimension> = shape;
+    let outShape = shape;
     this.blueprints.forEach((b) => {
       outShape = b.punchHole(outShape, face, options);
     });

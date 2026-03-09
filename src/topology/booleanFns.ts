@@ -4,7 +4,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Face, Shape3D, Wire } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, Shape3D, Wire } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '../core/errors.js';
@@ -456,10 +456,10 @@ function makeSectionFace(plane: Plane, size: number): KernelType {
  * @returns The section result as a shape (typically containing wires/edges)
  */
 export function section(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   plane: PlaneInput,
   { approximation = true, planeSize = 1e4 }: { approximation?: boolean; planeSize?: number } = {}
-): Result<AnyShape> {
+): Result<AnyShape<Dimension>> {
   if (getKernel().isNull(shape.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'section: shape is a null shape'));
   }
@@ -492,7 +492,7 @@ export function section(
  * any remaining wires are treated as holes.
  */
 export function sectionToFace(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   plane: PlaneInput,
   options: { approximation?: boolean; planeSize?: number } = {}
 ): Result<Face> {
@@ -592,7 +592,8 @@ export function sectionToFace(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- outerIdx set from valid wires index
   const outer = wires[outerIdx]!;
   const holes = wires.filter((_, i) => i !== outerIdx);
-  return makeFace(outer, holes.length > 0 ? holes : undefined);
+  // Section results are always 3D — safe to narrow from Face<Dimension> to Face
+  return makeFace(outer, holes.length > 0 ? holes : undefined) as Result<Face>;
 }
 
 // ---------------------------------------------------------------------------
@@ -603,7 +604,10 @@ export function sectionToFace(
  * Split a shape with one or more tool shapes using BRepAlgoAPI_Splitter.
  * Returns all pieces from the split as a compound.
  */
-export function split(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
+export function split(
+  shape: AnyShape<Dimension>,
+  tools: AnyShape<Dimension>[]
+): Result<AnyShape<Dimension>> {
   if (tools.length === 0) return ok(shape);
 
   if (getKernel().isNull(shape.wrapped)) {
@@ -647,14 +651,14 @@ export function split(shape: AnyShape, tools: AnyShape[]): Result<AnyShape> {
  * Each result entry corresponds to the input plane at the same index.
  */
 export function slice(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   planes: PlaneInput[],
   options: { approximation?: boolean; planeSize?: number } = {}
-): Result<AnyShape[]> {
-  const results: AnyShape[] = [];
+): Result<AnyShape<Dimension>[]> {
+  const results: AnyShape<Dimension>[] = [];
   for (const plane of planes) {
     const result = section(shape, plane, options);
-    if (isErr(result)) return result as Result<AnyShape[]>;
+    if (isErr(result)) return result as Result<AnyShape<Dimension>[]>;
     results.push(result.value);
   }
   return ok(results);

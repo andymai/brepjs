@@ -16,6 +16,7 @@ import type {
   Shell,
   Compound,
   AnyShape,
+  Dimension,
   Shape3D,
 } from '../core/shapeTypes.js';
 import { DEG2RAD } from '../core/constants.js';
@@ -391,7 +392,7 @@ export function vertex(point: Vec3): Vertex {
 /**
  * Build a compound from multiple shapes.
  */
-export function compound(shapeArray: AnyShape[]): Compound {
+export function compound(shapeArray: AnyShape<Dimension>[]): Compound {
   return _makeCompound(shapeArray);
 }
 
