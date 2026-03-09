@@ -18,7 +18,8 @@ export type BrepErrorKind =
   | 'MODULE_INIT'
   | 'COMPUTATION'
   | 'IO'
-  | 'QUERY';
+  | 'QUERY'
+  | 'UNSUPPORTED';
 
 // ---------------------------------------------------------------------------
 // Error codes — typed constants for all known error code strings
@@ -148,6 +149,9 @@ export const BrepErrorCode = {
   ASSEMBLY_MATE_INVALID: 'ASSEMBLY_MATE_INVALID',
   ASSEMBLY_SOLVE_FAILED: 'ASSEMBLY_SOLVE_FAILED',
   ASSEMBLY_NOT_CONVERGED: 'ASSEMBLY_NOT_CONVERGED',
+
+  // Unsupported capability errors (ADR-0006 Phase 4)
+  UNSUPPORTED_CAPABILITY: 'UNSUPPORTED_CAPABILITY',
 } as const;
 
 /** Union of all known error code string literals. */
@@ -283,6 +287,17 @@ export function queryError(
   suggestion?: string
 ): BrepError {
   return makeError('QUERY', code, message, cause, metadata, suggestion);
+}
+
+/** Create an error for a capability not supported by the current kernel (ADR-0006 Phase 4). */
+export function unsupportedError(
+  code: string,
+  message: string,
+  cause?: unknown,
+  metadata?: Record<string, unknown>,
+  suggestion?: string
+): BrepError {
+  return makeError('UNSUPPORTED', code, message, cause, metadata, suggestion);
 }
 
 // ---------------------------------------------------------------------------

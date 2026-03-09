@@ -32,6 +32,7 @@ import {
   computationError,
   ioError,
   queryError,
+  unsupportedError,
 
   // Core value helpers
   toVec3,
@@ -558,6 +559,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'twistExtrude',
   'typeCastError',
   'undoLast',
+  'unsupportedError',
   'unwrap',
   'unwrapErr',
   'unwrapOr',
@@ -652,6 +654,7 @@ describe('Public API exports — runtime values', () => {
     expect(computationError).toBeTypeOf('function');
     expect(ioError).toBeTypeOf('function');
     expect(queryError).toBeTypeOf('function');
+    expect(unsupportedError).toBeTypeOf('function');
   });
 
   it('exports core value helpers', () => {
@@ -830,6 +833,7 @@ describe('Type structures — runtime field verification', () => {
         [computationError, 'COMPUTATION'],
         [ioError, 'IO'],
         [queryError, 'QUERY'],
+        [unsupportedError, 'UNSUPPORTED'],
       ];
       for (const [ctor, expectedKind] of kindMap) {
         const e = ctor('CODE', 'msg');
@@ -1325,6 +1329,7 @@ describe('Runtime integration — pure data types', () => {
         computationError,
         ioError,
         queryError,
+        unsupportedError,
       ];
       for (const ctor of constructors) {
         const e = ctor('CODE', 'message');

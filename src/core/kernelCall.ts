@@ -25,6 +25,7 @@ const errorFactories: Record<BrepErrorKind, ErrorFactory> = {
   COMPUTATION: (code, message, cause) => ({ kind: 'COMPUTATION', code, message, cause }),
   IO: (code, message, cause) => ({ kind: 'IO', code, message, cause }),
   QUERY: (code, message, cause) => ({ kind: 'QUERY', code, message, cause }),
+  UNSUPPORTED: (code, message, cause) => ({ kind: 'UNSUPPORTED', code, message, cause }),
 };
 
 /**

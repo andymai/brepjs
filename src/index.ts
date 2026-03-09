@@ -58,6 +58,7 @@ export {
   computationError,
   ioError,
   queryError,
+  unsupportedError,
   bug,
   BrepBugError,
 } from './core/errors.js';

@@ -8,6 +8,7 @@ import {
   computationError,
   ioError,
   queryError,
+  unsupportedError,
   bug,
   BrepBugError,
   BrepErrorCode,
@@ -59,6 +60,13 @@ describe('Error constructors', () => {
     expect(e.kind).toBe('QUERY');
   });
 
+  it('unsupportedError creates correct shape', () => {
+    const e = unsupportedError('UNSUPPORTED_CAPABILITY', 'Convex hull not supported');
+    expect(e.kind).toBe('UNSUPPORTED');
+    expect(e.code).toBe('UNSUPPORTED_CAPABILITY');
+    expect(e.message).toBe('Convex hull not supported');
+  });
+
   it('preserves cause when provided', () => {
     const original = new Error('kernel internal');
     const e = kernelError('FUSE_FAILED', 'Fuse failed', original);
@@ -87,6 +95,7 @@ describe('Error constructors', () => {
     expect(computationError('C1', 'msg', undefined, meta).metadata).toEqual(meta);
     expect(ioError('I1', 'msg', undefined, meta).metadata).toEqual(meta);
     expect(queryError('Q1', 'msg', undefined, meta).metadata).toEqual(meta);
+    expect(unsupportedError('U1', 'msg', undefined, meta).metadata).toEqual(meta);
   });
 
   it('preserves both cause and metadata together', () => {
@@ -106,6 +115,7 @@ describe('BrepErrorCode', () => {
     expect(BrepErrorCode.NULL_SHAPE).toBe('NULL_SHAPE');
     expect(BrepErrorCode.PARAMETER_NOT_FOUND).toBe('PARAMETER_NOT_FOUND');
     expect(BrepErrorCode.ELLIPSE_RADII).toBe('ELLIPSE_RADII');
+    expect(BrepErrorCode.UNSUPPORTED_CAPABILITY).toBe('UNSUPPORTED_CAPABILITY');
   });
 
   it('has key names matching their values', () => {
