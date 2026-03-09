@@ -384,19 +384,49 @@ return kernelCallScoped(
 
 ```typescript
 type ShapeKind = 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'compsolid' | 'compound';
+type Dimension = '2D' | '3D';
 
-type Vertex = ShapeHandle & { readonly [__brand]: 'vertex' };
-type Edge = ShapeHandle & { readonly [__brand]: 'edge' };
-type Wire = ShapeHandle & { readonly [__brand]: 'wire' };
-type Face = ShapeHandle & { readonly [__brand]: 'face' };
-type Shell = ShapeHandle & { readonly [__brand]: 'shell' };
-type Solid = ShapeHandle & { readonly [__brand]: 'solid' };
-type CompSolid = ShapeHandle & { readonly [__brand]: 'compsolid' };
-type Compound = ShapeHandle & { readonly [__brand]: 'compound' };
+// Base types carry a phantom D parameter (default '3D') for compile-time 2D/3D safety
+type Vertex<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'vertex'; readonly [__dim]: D };
+type Edge<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'edge'; readonly [__dim]: D };
+type Wire<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'wire'; readonly [__dim]: D };
+type Face<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'face'; readonly [__dim]: D };
+type Shell = ShapeHandle & { readonly [__brand]: 'shell'; readonly [__dim]: '3D' };
+type Solid = ShapeHandle & { readonly [__brand]: 'solid'; readonly [__dim]: '3D' };
+type CompSolid = ShapeHandle & { readonly [__brand]: 'compsolid'; readonly [__dim]: '3D' };
+type Compound<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'compound'; readonly [__dim]: D };
 
-type AnyShape = Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound;
-type Shape1D = Edge | Wire;
-type Shape3D = Shell | Solid | CompSolid | Compound;
+type AnyShape<D extends Dimension = '3D'> = Vertex<D> | Edge<D> | Wire<D> | Face<D> | Shell | Solid | ...;
+type Shape1D<D extends Dimension = '3D'> = Edge<D> | Wire<D>;
+type Shape3D = Shell | Solid | CompSolid | Compound<'3D'>;
+```
+
+### Validity Brands
+
+Layered on top of base types to express stronger invariants at compile time:
+
+```typescript
+type ClosedWire<D extends Dimension = '3D'> = Wire<D> & { readonly [__closed]: true };
+type OrientedFace<D extends Dimension = '3D'> = Face<D> & { readonly [__oriented]: true };
+type ManifoldShell = Shell & { readonly [__manifold]: true };
+type ValidSolid = Solid & { readonly [__valid]: true };
+```
+
+Functions declare exactly what they need:
+
+```typescript
+face(wire: ClosedWire): Result<OrientedFace>     // Requires a closed wire
+extrude(face: OrientedFace, height: number): ...  // Requires an oriented face
+```
+
+Smart constructors and type guards for runtime validation:
+
+```typescript
+closedWire(w: Wire): ValidityResult<ClosedWire>   // Runtime check
+isClosedWire(w: Wire): w is ClosedWire             // Type guard
+isOrientedFace(f: Face): f is OrientedFace
+isManifoldShell(s: Shell): s is ManifoldShell
+isValidSolid(s: Solid): s is ValidSolid
 ```
 
 ### Factory Functions

@@ -1,10 +1,10 @@
 # Kernel
 
-Kernel abstraction layer — all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Ships with a default implementation; alternative kernels can be registered at runtime.
+Kernel abstraction layer — all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Ships with two built-in implementations (OpenCascade WASM and brepkit WASM); additional kernels can be registered at runtime.
 
 ```mermaid
 graph TD
-    A[initFromOC / registerKernel] -->|creates| B[KernelAdapter]
+    A[initFromOC / initFromBrepkit / registerKernel] -->|creates| B[KernelAdapter]
     B -->|stored in| C[kernel registry]
     C -->|accessed via| D[getKernel]
     D -->|used by| E[Layer 2+ code]
@@ -27,12 +27,15 @@ This is enforced by an ESLint `no-restricted-syntax` rule that bans `x.wrapped.m
 
 ## Key Files
 
-| File                | Purpose                                                                                                                           |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`          | Kernel registry: `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                               |
-| `types.ts`          | `KernelAdapter` interface (~120 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
-| `kernel2dTypes.ts`  | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
-| `defaultAdapter.ts` | Default adapter class — thin delegation layer implementing both interfaces                                                        |
+| File                  | Purpose                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`            | Kernel registry: `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                               |
+| `types.ts`            | `KernelAdapter` interface (~120 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
+| `kernel2dTypes.ts`    | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
+| `defaultAdapter.ts`   | Default OCCT adapter class — thin delegation layer implementing both interfaces                                                   |
+| `brepkitAdapter.ts`   | brepkit WASM adapter (`BrepkitAdapter`) — alternative kernel with growing operation coverage                                      |
+| `brepkit2d.ts`        | brepkit 2D capability implementation                                                                                              |
+| `brepkitWasmTypes.ts` | TypeScript type definitions for the brepkit WASM module                                                                           |
 
 ### Operation Modules (kernel-specific)
 
@@ -56,20 +59,29 @@ All raw kernel API calls are isolated in these files. A new kernel replaces `def
 | `advancedOps.ts`            | Patterns, XCAF documents, projection, surface construction, curvature                                                                                           |
 | `healingOps.ts`             | `healSolid`, `healFace`, `healWire`                                                                                                                             |
 | `curveOps.ts`               | `interpolatePoints`, `approximatePoints`                                                                                                                        |
+| `evolutionOps.ts`           | `buildEvolution`, `transformWithEvolution`, `booleanWithEvolution`, `modifierWithEvolution` — face-tracking evolution for topology history                      |
 | `hullOps.ts`                | `hull`, `hullFromPoints`, `buildSolidFromFaces`                                                                                                                 |
 | `kernel2dOps.ts`            | All 2D curve operations: creation, evaluation, transforms, bounding boxes, circle/ellipse/bezier data extraction                                                |
 
 ## Kernel Registration
 
 ```typescript
-// Default kernel
+// Default kernel (OpenCascade WASM)
+import opencascade from 'brepjs-opencascade';
+const oc = await opencascade();
 initFromOC(oc);
+
+// Built-in alternative (brepkit WASM)
+import { BrepkitAdapter } from 'brepjs';
+import brepkit from 'brepjs-opencascade/brepkit';
+const bk = await brepkit();
+registerKernel('brepkit', new BrepkitAdapter(bk));
 
 // Custom kernel
 registerKernel('rust', new RustAdapter(wasm));
 
-// Temporary kernel switch
-withKernel('rust', () => makeBox(10, 10, 10));
+// Temporary kernel switch (sync-only)
+withKernel('brepkit', () => makeBox(10, 10, 10));
 ```
 
 See [Custom Kernel Guide](../../docs/kernel-swap.md) for writing your own kernel.

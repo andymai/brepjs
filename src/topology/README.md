@@ -36,11 +36,27 @@ graph TD
 | `booleanFns.ts`     | Functional: `fuseShape`, `cutShape`, `intersectShape`, `fuseAll`, `cutAll`, `buildCompound`                                                                                                                                                                                                                                                                                                                                                                  |
 | `shapeBooleans.ts`  | Standalone boolean operations: `fuseAll`, `cutAll`, `buildCompound`, `applyGlue` — extracted from shapes.ts                                                                                                                                                                                                                                                                                                                                                  |
 | `shapeModifiers.ts` | Modifier types and query infrastructure: `ChamferRadius`, `FilletRadius`, `RadiusConfig`, type guards, `getQueryModule`, `registerQueryModule` — extracted from shapes.ts, re-exported for backward compat                                                                                                                                                                                                                                                   |
-| `shapeHelpers.ts`   | Constructors: curves (makeLine, makeCircle, makeEllipse, makeHelix, makeThreePointArc, makeBSplineApproximation, makeBezierCurve, makeTangentArc), wires (assembleWire), faces (makeFace, makeNonPlanarFace, addHolesInFace), solids (makeCylinder, makeSphere, makeEllipsoid, makeBox), compound (compoundShapes, weldShellsAndFaces, makeSolid), polygon (makePolygon), offset (makeOffset)                                                                |
+| `primitiveFns.ts`   | Functional: `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid` (→ `ValidSolid`), `line`, `circle`, `ellipse`, `helix`, `threePointArc`, `ellipseArc`, `bezier`, `bsplineApprox`, `tangentArc` (→ `Edge`), `wire`, `wireLoop` (→ `ClosedWire`), `face`, `filledFace`, `polygon` (→ `OrientedFace`), `solid` (→ `ValidSolid`), `vertex`, `compound`, `sewShells`, `offsetFace`, `addHoles`                                                              |
+| `shapeHelpers.ts`   | Legacy OO constructors: makeLine, makeCircle, makeEllipse, makeHelix, makeThreePointArc, makeBSplineApproximation, makeBezierCurve, makeTangentArc, assembleWire, makeFace, makeNonPlanarFace, addHolesInFace, makeCylinder, makeSphere, makeEllipsoid, makeBox, compoundShapes, weldShellsAndFaces, makeSolid, makePolygon, makeOffset                                                                                                                      |
+
+## Validity Types
+
+`primitiveFns.ts` uses validity-branded return types to encode invariants at compile time:
+
+- **`ValidSolid`** — returned by `box()`, `cylinder()`, `sphere()`, `cone()`, `torus()`, `ellipsoid()`, `solid()`
+- **`ClosedWire`** — returned by `wireLoop()` (assembles edges and verifies closure)
+- **`OrientedFace`** — returned by `face()`, `filledFace()`, `polygon()`, `subFace()`, `addHoles()`
+
+Functions that need stronger guarantees require these branded types:
+
+```typescript
+face(w: ClosedWire): Result<OrientedFace>     // Won't accept a plain Wire
+extrude(f: OrientedFace, h: number): ...      // Won't accept a plain Face
+```
 
 ## Gotchas
 
-1. **Dual API** — Class methods mutate (`shape.translate()`), functional API is immutable (`translateShape(shape, v)`)
+1. **Dual API** — Class methods mutate (`shape.translate()`), functional API is immutable (`translateShape(shape, v)`). Prefer functional API for new code.
 2. **Circular dependency** — `initCast()` must be called at module load to break shapes↔cast circular dependency
 3. **Hash deduplication** — `iterTopo()` deduplicates via hash codes — same shape won't appear twice
 4. **Boolean operations** — On classes return `Result<Shape3D>` — always handle errors
@@ -48,3 +64,4 @@ graph TD
 6. **Chainable transforms** — Shape transforms in class API return `this` (chainable but mutating)
 7. **Flat mesh data** — `meshShape` returns flat typed arrays (Float32Array/Uint32Array) — not nested objects
 8. **Consolidated types** — `ShapeMesh`, `FaceTriangulation`, `SurfaceType` are defined in functional files (`meshFns.ts`, `faceFns.ts`) and re-exported from `shapes.ts` for backward compatibility
+9. **Never add new methods to class wrappers** — All new functionality goes in `*Fns.ts` files; the class-based wrappers in `shapes.ts` are legacy
