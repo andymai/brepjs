@@ -7,7 +7,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { ShapeType } from '../kernel/index.js';
-import type { AnyShape, Dimension, Edge, Face, Vertex, Wire } from '../core/shapeTypes.js';
+import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { unwrap } from '../core/result.js';
@@ -131,12 +131,13 @@ export function edgesOfFace<D extends Dimension>(face: Face<D>): Edge<D>[] {
 
 /**
  * Get all wires of a face (outer wire + inner hole wires).
+ * All wires bounding a face are closed by definition.
  *
  * @param face - The face whose wires to enumerate.
  */
-export function wiresOfFace<D extends Dimension>(face: Face<D>): Wire<D>[] {
+export function wiresOfFace<D extends Dimension>(face: Face<D>): ClosedWire<D>[] {
   const raw = findChildren(face.wrapped, 'wire');
-  return wrapAll<Wire<D>>(raw);
+  return wrapAll<ClosedWire<D>>(raw);
 }
 
 /**

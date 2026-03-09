@@ -6,12 +6,16 @@
  */
 
 import type { Vec3 } from '../core/types.js';
-import type { Result } from '../core/result.js';
+import { type Result, ok as _ok, err as _err, andThen } from '../core/result.js';
+import { isClosedWire as _isClosedWire, createSolid } from '../core/shapeTypes.js';
+import { validationError as _validationError } from '../core/errors.js';
 import type {
   Edge,
+  ClosedWire,
   Wire,
   Face,
-  Solid,
+  OrientedFace,
+  ValidSolid,
   Vertex,
   Shell,
   Compound,
@@ -50,7 +54,6 @@ import {
   makePolygon as _makePolygon,
 } from './shapeHelpers.js';
 import { getKernel } from '../kernel/index.js';
-import { createSolid } from '../core/shapeTypes.js';
 import { translate } from './shapeFns.js';
 
 // Re-export the approximation config type
@@ -75,8 +78,13 @@ export interface BoxOptions {
  * @param depth  - Size along Y.
  * @param height - Size along Z.
  */
-export function box(width: number, depth: number, height: number, options?: BoxOptions): Solid {
-  const solid = createSolid(getKernel().makeBox(width, depth, height));
+export function box(
+  width: number,
+  depth: number,
+  height: number,
+  options?: BoxOptions
+): ValidSolid {
+  const solid = createSolid(getKernel().makeBox(width, depth, height)) as ValidSolid;
 
   const center = options?.at ?? (options?.centered ? ([0, 0, 0] as Vec3) : undefined);
   if (center) {
@@ -98,7 +106,7 @@ export interface CylinderOptions {
 /**
  * Create a cylinder with the given radius and height.
  */
-export function cylinder(radius: number, height: number, options?: CylinderOptions): Solid {
+export function cylinder(radius: number, height: number, options?: CylinderOptions): ValidSolid {
   const at = options?.at ?? [0, 0, 0];
   const axis = options?.axis ?? [0, 0, 1];
   let solid = _makeCylinder(radius, height, at, axis);
@@ -122,7 +130,7 @@ export interface SphereOptions {
 /**
  * Create a sphere with the given radius.
  */
-export function sphere(radius: number, options?: SphereOptions): Solid {
+export function sphere(radius: number, options?: SphereOptions): ValidSolid {
   let solid = _makeSphere(radius);
   if (options?.at) {
     solid = translate(solid, options.at);
@@ -152,7 +160,7 @@ export function cone(
   topRadius: number,
   height: number,
   options?: ConeOptions
-): Solid {
+): ValidSolid {
   const at = options?.at ?? [0, 0, 0];
   const axis = options?.axis ?? [0, 0, 1];
   let solid = _makeCone(bottomRadius, topRadius, height, at, axis);
@@ -178,7 +186,11 @@ export interface TorusOptions {
 /**
  * Create a torus with the given major and minor radii.
  */
-export function torus(majorRadius: number, minorRadius: number, options?: TorusOptions): Solid {
+export function torus(
+  majorRadius: number,
+  minorRadius: number,
+  options?: TorusOptions
+): ValidSolid {
   return _makeTorus(majorRadius, minorRadius, options?.at ?? [0, 0, 0], options?.axis ?? [0, 0, 1]);
 }
 
@@ -195,7 +207,12 @@ export interface EllipsoidOptions {
  * @param ry - Half-length along Y.
  * @param rz - Half-length along Z.
  */
-export function ellipsoid(rx: number, ry: number, rz: number, options?: EllipsoidOptions): Solid {
+export function ellipsoid(
+  rx: number,
+  ry: number,
+  rz: number,
+  options?: EllipsoidOptions
+): ValidSolid {
   let solid = _makeEllipsoid(rx, ry, rz);
   if (options?.at) {
     solid = translate(solid, options.at);
@@ -357,30 +374,58 @@ export function wire(listOfEdges: (Edge | Wire)[]): Result<Wire> {
 }
 
 /**
- * Create a planar face from a closed wire, optionally with holes.
+ * Assemble edges into a wire and verify it forms a closed loop.
+ *
+ * Combines {@link wire} + the `closedWire` smart constructor in a single step.
+ * Returns an error if the edges cannot be assembled or the wire is not closed.
+ *
+ * @example
+ * ```ts
+ * const cw = unwrap(wireLoop([e1, e2, e3, e4]));
+ * const f = unwrap(face(cw)); // ClosedWire accepted directly
+ * ```
  */
-export function face(w: Wire, holes?: Wire[]): Result<Face> {
+export function wireLoop(listOfEdges: (Edge | Wire)[]): Result<ClosedWire> {
+  return andThen(_assembleWire(listOfEdges), (w) => {
+    if (_isClosedWire(w)) return _ok(w);
+    return _err(
+      _validationError(
+        'WIRE_NOT_CLOSED',
+        'Assembled wire is not closed: start and end points do not coincide'
+      )
+    );
+  });
+}
+
+/**
+ * Create a planar face from a closed wire, optionally with holes.
+ * The resulting face is always oriented (consistent normal direction).
+ */
+export function face(w: ClosedWire, holes?: ClosedWire[]): Result<OrientedFace> {
   return _makeFace(w, holes);
 }
 
 /**
  * Create a non-planar face from a wire using surface filling.
+ * The resulting face is always oriented.
  */
-export function filledFace(w: Wire): Result<Face> {
+export function filledFace(w: ClosedWire): Result<OrientedFace> {
   return _makeNonPlanarFace(w);
 }
 
 /**
  * Create a face bounded by a wire on an existing face's surface.
+ * The resulting face inherits orientation from the origin face.
  */
-export function subFace(originFace: Face, w: Wire): Face {
+export function subFace(originFace: Face, w: ClosedWire): OrientedFace {
   return _makeNewFaceWithinFace(originFace, w);
 }
 
 /**
  * Create a polygonal face from three or more coplanar points.
+ * The resulting face is always oriented.
  */
-export function polygon(points: Vec3[]): Result<Face> {
+export function polygon(points: Vec3[]): Result<OrientedFace> {
   return _makePolygon(points);
 }
 
@@ -398,8 +443,9 @@ export function compound(shapeArray: AnyShape<Dimension>[]): Compound {
 
 /**
  * Weld faces and shells into a single solid.
+ * The resulting solid is always validated.
  */
-export function solid(facesOrShells: Array<Face | Shell>): Result<Solid> {
+export function solid(facesOrShells: Array<Face | Shell>): Result<ValidSolid> {
   return _makeSolid(facesOrShells);
 }
 
@@ -419,7 +465,8 @@ export function sewShells(facesOrShells: Array<Face | Shell>, ignoreType?: boole
 
 /**
  * Add hole wires to an existing face.
+ * The resulting face preserves orientation.
  */
-export function addHoles(f: Face, holes: Wire[]): Face {
+export function addHoles(f: Face, holes: ClosedWire[]): OrientedFace {
   return _addHolesInFace(f, holes);
 }

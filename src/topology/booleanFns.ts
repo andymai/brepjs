@@ -4,7 +4,14 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Dimension, Face, Shape3D, Wire } from '../core/shapeTypes.js';
+import type {
+  AnyShape,
+  ClosedWire,
+  Dimension,
+  OrientedFace,
+  Shape3D,
+  Wire,
+} from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '../core/errors.js';
@@ -495,7 +502,7 @@ export function sectionToFace(
   shape: AnyShape<Dimension>,
   plane: PlaneInput,
   options: { approximation?: boolean; planeSize?: number } = {}
-): Result<Face> {
+): Result<OrientedFace> {
   const sectionResult = section(shape, plane, options);
   if (!sectionResult.ok) return sectionResult;
 
@@ -592,8 +599,11 @@ export function sectionToFace(
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- outerIdx set from valid wires index
   const outer = wires[outerIdx]!;
   const holes = wires.filter((_, i) => i !== outerIdx);
-  // Section results are always 3D — safe to narrow from Face<Dimension> to Face
-  return makeFace(outer, holes.length > 0 ? holes : undefined) as Result<Face>;
+  // Section result wires are always closed boundary loops
+  return makeFace(
+    outer as ClosedWire,
+    holes.length > 0 ? (holes as ClosedWire[]) : undefined
+  ) as Result<OrientedFace>;
 }
 
 // ---------------------------------------------------------------------------

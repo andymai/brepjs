@@ -16,7 +16,7 @@ import type { SketchInterface } from './sketchLib.js';
 import { cast, downcast } from '../topology/cast.js';
 import { type Result, unwrap, isOk } from '../core/result.js';
 import { bug } from '../core/errors.js';
-import type { Face, Shape3D, Shell, Wire } from '../core/shapeTypes.js';
+import type { ClosedWire, Face, Shape3D, Shell, Wire } from '../core/shapeTypes.js';
 import { createFace, isFace } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
 
@@ -37,16 +37,17 @@ const fixWire = (wire: Wire, baseFace: Face): Wire => {
 
 const faceFromWires = (wires: Wire[]): Face => {
   let baseFace: Face;
-  let holeWires: Wire[];
+  let holeWires: ClosedWire[];
 
+  // Sweep end-cap wires are always closed boundaries
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const faceResult = makeFace(wires[0]!);
+  const faceResult = makeFace(wires[0]! as ClosedWire);
   if (isOk(faceResult)) {
     baseFace = faceResult.value;
-    holeWires = wires.slice(1);
+    holeWires = wires.slice(1) as ClosedWire[];
   } else {
     baseFace = guessFaceFromWires(wires);
-    holeWires = wires.slice(1).map((w) => fixWire(w, baseFace));
+    holeWires = wires.slice(1).map((w) => fixWire(w, baseFace)) as ClosedWire[];
   }
 
   return addHolesInFace(baseFace, holeWires);
@@ -121,9 +122,10 @@ export default class CompoundSketch implements SketchInterface {
   /** Build a face from the outer boundary with inner wires subtracted as holes. */
   face() {
     const baseFace = this.outerSketch.face();
+    // Sketch wires are always closed by construction
     const newFace = addHolesInFace(
       baseFace,
-      this.innerSketches.map((s) => s.wire)
+      this.innerSketches.map((s) => s.wire as ClosedWire)
     );
 
     return newFace;

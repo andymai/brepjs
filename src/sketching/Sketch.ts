@@ -15,7 +15,7 @@ import {
   type GenericSweepOptions,
 } from '../operations/extrude.js';
 import { loft, type LoftOptions } from '../operations/loft.js';
-import type { Face, Wire, Shape3D } from '../core/shapeTypes.js';
+import type { ClosedWire, Face, Wire, Shape3D } from '../core/shapeTypes.js';
 import { createFace, createWire } from '../core/shapeTypes.js';
 import { curveStartPoint, curveTangentAt } from '../topology/curveFns.js';
 import type { SketchInterface } from './sketchLib.js';
@@ -112,10 +112,12 @@ export default class Sketch implements SketchInterface {
    */
   face(): Face {
     let face;
+    // Sketch wires are always closed by construction
+    const closedWire = this.wire as ClosedWire;
     if (!this.baseFace) {
-      face = unwrap(makeFace(this.wire));
+      face = unwrap(makeFace(closedWire));
     } else {
-      face = makeNewFaceWithinFace(this.baseFace, this.wire);
+      face = makeNewFaceWithinFace(this.baseFace, closedWire);
     }
     return face;
   }
@@ -135,7 +137,7 @@ export default class Sketch implements SketchInterface {
    * (defaults to the sketch origin)
    */
   revolve(revolutionAxis?: PointInput, { origin }: { origin?: PointInput } = {}): Shape3D {
-    const face = unwrap(makeFace(this.wire));
+    const face = unwrap(makeFace(this.wire as ClosedWire));
     const solid = unwrap(revolution(face, origin || this.defaultOrigin, revolutionAxis));
     face.delete();
     this.delete();
@@ -187,7 +189,7 @@ export default class Sketch implements SketchInterface {
       return solid;
     }
 
-    const face = unwrap(makeFace(this.wire));
+    const face = unwrap(makeFace(this.wire as ClosedWire));
     const solid = basicFaceExtrusion(face, [...extrusionVec]);
 
     this.delete();

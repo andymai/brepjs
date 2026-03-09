@@ -7,7 +7,7 @@ import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
 import { validationError, kernelError } from '../core/errors.js';
-import type { Dimension, Face, Wire } from '../core/shapeTypes.js';
+import type { Dimension, ClosedWire, Face, OrientedFace } from '../core/shapeTypes.js';
 import { createFace, isFace } from '../core/shapeTypes.js';
 import { cast } from './cast.js';
 import { outerWire } from './faceFns.js';
@@ -20,16 +20,16 @@ import { makeLine, assembleWire } from './curveBuilders.js';
  * @returns An error if the wire is non-planar or the face cannot be built.
  */
 export function makeFace<D extends Dimension = '3D'>(
-  wire: Wire<D>,
-  holes?: Wire<D>[]
-): Result<Face<D>> {
+  wire: ClosedWire<D>,
+  holes?: ClosedWire<D>[]
+): Result<OrientedFace<D>> {
   try {
     const faceShape = getKernel().makeFace(wire.wrapped, true);
     if (holes && holes.length > 0) {
       // Add holes using the existing addHolesInFace helper which handles orientation fixing
       return ok(addHolesInFace(createFace<D>(faceShape), holes));
     }
-    return ok(createFace<D>(faceShape));
+    return ok(createFace<D>(faceShape) as OrientedFace<D>);
   } catch {
     return err(
       kernelError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
@@ -43,8 +43,8 @@ export function makeFace<D extends Dimension = '3D'>(
  * Equivalent to OpenSCAD's `fill()` — takes a 2D face with holes and returns
  * a solid face with all internal cutouts filled in.
  */
-export function fill<D extends Dimension = '3D'>(face: Face<D>): Result<Face<D>> {
-  const outer = outerWire(face as Face) as Wire<D>;
+export function fill<D extends Dimension = '3D'>(face: Face<D>): Result<OrientedFace<D>> {
+  const outer = outerWire(face);
   return makeFace(outer);
 }
 
@@ -54,8 +54,10 @@ export function fill<D extends Dimension = '3D'>(face: Face<D>): Result<Face<D>>
  * @param originFace - Face whose surface geometry is reused.
  * @param wire - Wire that defines the boundary on that surface.
  */
-export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
-  return createFace(getKernel().makeFaceOnSurface(originFace.wrapped, wire.wrapped));
+export function makeNewFaceWithinFace(originFace: Face, wire: ClosedWire): OrientedFace {
+  return createFace(
+    getKernel().makeFaceOnSurface(originFace.wrapped, wire.wrapped)
+  ) as OrientedFace;
 }
 
 /**
@@ -63,14 +65,16 @@ export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
  *
  * @returns An error if the filling algorithm fails to produce a face.
  */
-export function makeNonPlanarFace<D extends Dimension = '3D'>(wire: Wire<D>): Result<Face<D>> {
+export function makeNonPlanarFace<D extends Dimension = '3D'>(
+  wire: ClosedWire<D>
+): Result<OrientedFace<D>> {
   try {
     const shape = getKernel().makeNonPlanarFace(wire.wrapped);
     return andThen(cast(shape), (newFace) => {
       if (!isFace(newFace)) {
         return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face'));
       }
-      return ok(newFace as Face<D>);
+      return ok(newFace as OrientedFace<D>);
     });
   } catch {
     return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face'));
@@ -84,14 +88,14 @@ export function makeNonPlanarFace<D extends Dimension = '3D'>(wire: Wire<D>): Re
  */
 export function addHolesInFace<D extends Dimension = '3D'>(
   face: Face<D>,
-  holes: Wire<D>[]
-): Face<D> {
+  holes: ClosedWire<D>[]
+): OrientedFace<D> {
   return createFace<D>(
     getKernel().addHolesInFace(
       face.wrapped,
       holes.map((h) => h.wrapped)
     )
-  );
+  ) as OrientedFace<D>;
 }
 
 /**
@@ -99,7 +103,7 @@ export function addHolesInFace<D extends Dimension = '3D'>(
  *
  * @returns An error if fewer than 3 points are provided or the face cannot be built.
  */
-export function makePolygon(points: Vec3[]): Result<Face> {
+export function makePolygon(points: Vec3[]): Result<OrientedFace> {
   if (points.length < 3)
     return err(
       validationError('POLYGON_MIN_POINTS', 'You need at least 3 points to make a polygon')
@@ -109,5 +113,6 @@ export function makePolygon(points: Vec3[]): Result<Face> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zip returns untyped pairs
     ([p1, p2]: any) => makeLine(p1, p2)
   );
-  return andThen(assembleWire(edges), (wire) => makeFace(wire));
+  // Polygon edges always form a closed loop — safe to narrow
+  return andThen(assembleWire(edges), (wire) => makeFace(wire as ClosedWire));
 }

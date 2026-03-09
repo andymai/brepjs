@@ -13,9 +13,9 @@ import type {
   Shape3D,
   Compound,
   Face,
+  ValidSolid,
   Vertex,
   Shell,
-  Solid,
 } from '../core/shapeTypes.js';
 import {
   createSolid,
@@ -37,8 +37,10 @@ export function makeCylinder(
   height: number,
   location: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1]
-): Solid {
-  return createSolid(getKernel().makeCylinder(radius, height, [...location], [...direction]));
+): ValidSolid {
+  return createSolid(
+    getKernel().makeCylinder(radius, height, [...location], [...direction])
+  ) as ValidSolid;
 }
 
 /**
@@ -46,8 +48,8 @@ export function makeCylinder(
  *
  * @category Solids
  */
-export function makeSphere(radius: number): Solid {
-  return createSolid(getKernel().makeSphere(radius));
+export function makeSphere(radius: number): ValidSolid {
+  return createSolid(getKernel().makeSphere(radius)) as ValidSolid;
 }
 
 /**
@@ -61,8 +63,10 @@ export function makeCone(
   height: number,
   location: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1]
-): Solid {
-  return createSolid(getKernel().makeCone(radius1, radius2, height, [...location], [...direction]));
+): ValidSolid {
+  return createSolid(
+    getKernel().makeCone(radius1, radius2, height, [...location], [...direction])
+  ) as ValidSolid;
 }
 
 /**
@@ -75,10 +79,10 @@ export function makeTorus(
   minorRadius: number,
   location: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1]
-): Solid {
+): ValidSolid {
   return createSolid(
     getKernel().makeTorus(majorRadius, minorRadius, [...location], [...direction])
-  );
+  ) as ValidSolid;
 }
 
 /**
@@ -90,8 +94,8 @@ export function makeTorus(
  *
  * @category Solids
  */
-export function makeEllipsoid(aLength: number, bLength: number, cLength: number): Solid {
-  return createSolid(getKernel().makeEllipsoid(aLength, bLength, cLength));
+export function makeEllipsoid(aLength: number, bLength: number, cLength: number): ValidSolid {
+  return createSolid(getKernel().makeEllipsoid(aLength, bLength, cLength)) as ValidSolid;
 }
 
 /**
@@ -99,8 +103,8 @@ export function makeEllipsoid(aLength: number, bLength: number, cLength: number)
  *
  * @category Solids
  */
-export function makeBox(corner1: Vec3, corner2: Vec3): Solid {
-  return createSolid(getKernel().makeBoxFromCorners([...corner1], [...corner2]));
+export function makeBox(corner1: Vec3, corner2: Vec3): ValidSolid {
+  return createSolid(getKernel().makeBoxFromCorners([...corner1], [...corner2])) as ValidSolid;
 }
 
 /** Create a vertex at a 3D point. */
@@ -145,11 +149,11 @@ export function makeCompound(shapeArray: AnyShape<Dimension>[]): Compound {
  *
  * @category Solids
  */
-export function makeSolid(facesOrShells: Array<Face | Shell>): Result<Solid> {
+export function makeSolid(facesOrShells: Array<Face | Shell>): Result<ValidSolid> {
   const shell = weldShapes(facesOrShells);
   return andThen(cast(getKernel().solidFromShell(shell.wrapped)), (solid) => {
     if (!isSolid(solid))
       return err(typeCastError('SOLID_BUILD_FAILED', 'Could not make a solid of faces and shells'));
-    return ok(solid);
+    return ok(solid as ValidSolid);
   });
 }

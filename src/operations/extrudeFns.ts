@@ -9,7 +9,7 @@ type KernelType = any;
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
 import { vecAdd, vecLength, vecNormalize } from '../core/vecOps.js';
-import type { Dimension, Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
+import type { Dimension, OrientedFace, Wire, Shape3D, ValidSolid } from '../core/shapeTypes.js';
 import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError, validationError, kernelError, BrepErrorCode } from '../core/errors.js';
@@ -61,7 +61,7 @@ function makeHelixWire(
  *
  * @see {@link extrude!basicFaceExtrusion | basicFaceExtrusion} for the OOP API equivalent.
  */
-export function extrude(face: Face<Dimension>, extrusionVec: Vec3): Result<Solid> {
+export function extrude(face: OrientedFace<Dimension>, extrusionVec: Vec3): Result<ValidSolid> {
   if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrude: face is a null shape'));
   }
@@ -75,7 +75,7 @@ export function extrude(face: Face<Dimension>, extrusionVec: Vec3): Result<Solid
     const dir = vecNormalize(extrusionVec);
     const shape = kernel.extrude(face.wrapped, [...dir], len);
     const downcastShape = kernel.downcast(shape, 'solid');
-    const solid = createSolid(downcastShape);
+    const solid = createSolid(downcastShape) as ValidSolid;
     return ok(solid);
   } catch (e) {
     return err(
@@ -99,7 +99,7 @@ export function extrude(face: Face<Dimension>, extrusionVec: Vec3): Result<Solid
  * @see {@link extrude!revolution | revolution} for the OOP API equivalent.
  */
 export function revolve(
-  face: Face<Dimension>,
+  face: OrientedFace<Dimension>,
   center: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
   angle = 360

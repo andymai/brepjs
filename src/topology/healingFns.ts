@@ -6,7 +6,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Dimension, Face, Wire, Solid } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, Wire, Solid, ValidSolid } from '../core/shapeTypes.js';
 import { castShape, isSolid, isFace, isWire } from '../core/shapeTypes.js';
 import { type Result, ok, err, isOk } from '../core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '../core/errors.js';
@@ -32,7 +32,7 @@ export function isValid(shape: AnyShape<Dimension>): boolean {
  *
  * Uses ShapeFix_Solid to repair topology issues like gaps, wrong orientation, etc.
  */
-export function healSolid(solid: Solid): Result<Solid> {
+export function healSolid(solid: Solid): Result<ValidSolid> {
   if (!isSolid(solid)) {
     return err(validationError('NOT_A_SOLID', 'Input shape is not a solid'));
   }
@@ -44,7 +44,7 @@ export function healSolid(solid: Solid): Result<Solid> {
     if (!result) {
       if (alreadyValid) {
         // Shape was already valid — nothing to fix, return original
-        return ok(solid);
+        return ok(solid as ValidSolid);
       }
       // Shape was invalid but healer couldn't fix it
       return err(
@@ -58,7 +58,7 @@ export function healSolid(solid: Solid): Result<Solid> {
     if (!isSolid(cast)) {
       return err(kernelError('HEAL_RESULT_NOT_SOLID', 'Healed result is not a solid'));
     }
-    return ok(cast);
+    return ok(cast as ValidSolid);
   } catch (e) {
     return err(kernelError('HEAL_SOLID_FAILED', 'Solid healing failed', e));
   }

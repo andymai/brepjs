@@ -20,6 +20,7 @@ import type {
   AnyShape,
   Edge,
   Face,
+  OrientedFace,
   Wire,
   Shell,
   Solid,
@@ -441,8 +442,9 @@ function createWrappedFace(val: Face): WrappedFace {
     outerWire: () => outerWire(val),
     innerWires: () => innerWires(val),
 
-    extrude: (height) => wrap3D(unwrapOrThrow(extrude(val, height))),
-    revolve: (opts) => wrap3D(unwrapOrThrow(revolve(val, opts))),
+    // Wrapped faces from the fluent API are always oriented
+    extrude: (height) => wrap3D(unwrapOrThrow(extrude(val as OrientedFace, height))),
+    revolve: (opts) => wrap3D(unwrapOrThrow(revolve(val as OrientedFace, opts))),
   };
 }
 

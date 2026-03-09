@@ -4,7 +4,7 @@
  */
 
 import type { PointInput } from '../core/types.js';
-import type { Face, Shape3D, Wire } from '../core/shapeTypes.js';
+import type { OrientedFace, Shape3D, Wire } from '../core/shapeTypes.js';
 import type { ExtrusionProfile, GenericSweepOptions } from '../operations/extrude.js';
 import type { LoftOptions } from '../operations/loft.js';
 import type Sketch from './Sketch.js';
@@ -101,8 +101,8 @@ export function sketchSweep(
  *
  * @see {@link Sketch.face} for the OOP equivalent.
  */
-export function sketchFace(sketch: Sketch): Face {
-  return sketch.face();
+export function sketchFace(sketch: Sketch): OrientedFace {
+  return sketch.face() as OrientedFace;
 }
 
 /**
@@ -170,8 +170,8 @@ export function compoundSketchRevolve(
  *
  * @see {@link CompoundSketch.face} for the OOP equivalent.
  */
-export function compoundSketchFace(sketch: CompoundSketch): Face {
-  return sketch.face();
+export function compoundSketchFace(sketch: CompoundSketch): OrientedFace {
+  return sketch.face() as OrientedFace;
 }
 
 /**

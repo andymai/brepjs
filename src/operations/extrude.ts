@@ -8,7 +8,7 @@ import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepOptions } from './extrudeUtils.js';
-import type { Face, Wire, Edge, Shape3D, Solid } from '../core/shapeTypes.js';
+import type { OrientedFace, Wire, Edge, Shape3D, Solid } from '../core/shapeTypes.js';
 import { createSolid } from '../core/shapeTypes.js';
 import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
 
@@ -21,7 +21,7 @@ import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
  *
  * @see {@link extrudeFns!extrude | extrude} for the functional API equivalent.
  */
-export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid => {
+export const basicFaceExtrusion = (face: OrientedFace, extrusionVec: PointInput): Solid => {
   const kernel = getKernel();
   const vec = toVec3(extrusionVec);
   const len = vecLength(vec);
@@ -44,7 +44,7 @@ export const basicFaceExtrusion = (face: Face, extrusionVec: PointInput): Solid 
  * @see {@link extrudeFns!revolve | revolve} for the functional API equivalent.
  */
 export const revolution = (
-  face: Face,
+  face: OrientedFace,
   center: PointInput = [0, 0, 0],
   direction: PointInput = [0, 0, 1],
   angle = 360

@@ -7,7 +7,7 @@ import { getKernel } from '../kernel/index.js';
 import type { SurfaceType as KernelSurfaceType } from '../kernel/index.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
-import type { Face, Wire } from '../core/shapeTypes.js';
+import type { ClosedWire, Dimension, Face } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
@@ -212,16 +212,16 @@ export function classifyPointOnFace(
 // Wire extraction from faces
 // ---------------------------------------------------------------------------
 
-/** Get the outer wire of a face. Returns a new Wire. */
-export function outerWire(face: Face): Wire {
-  return castShape(getKernel().outerWire(face.wrapped)) as Wire;
+/** Get the outer wire of a face. The outer boundary of a face is always closed. */
+export function outerWire<D extends Dimension = '3D'>(face: Face<D>): ClosedWire<D> {
+  return castShape(getKernel().outerWire(face.wrapped)) as ClosedWire<D>;
 }
 
-/** Get the inner wires (holes) of a face. */
-export function innerWires(face: Face): Wire[] {
+/** Get the inner wires (holes) of a face. Hole boundaries are always closed. */
+export function innerWires<D extends Dimension = '3D'>(face: Face<D>): ClosedWire<D>[] {
   const outer = outerWire(face);
   const allWires = Array.from(iterTopo(face.wrapped, 'wire')).map(
-    (w) => castShape(unwrap(downcast(w))) as Wire
+    (w) => castShape(unwrap(downcast(w))) as ClosedWire<D>
   );
   const result = allWires.filter((w) => !getKernel().isSame(w.wrapped, outer.wrapped));
   return result;

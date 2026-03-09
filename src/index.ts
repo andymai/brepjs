@@ -347,6 +347,12 @@ export type {
   Shape1D,
   Shape3D,
   UnknownDimShape,
+  // Topological validity types (ADR-0005)
+  ClosedWire,
+  OrientedFace,
+  ManifoldShell,
+  ValidSolid,
+  ValidityResult,
 } from './core/shapeTypes.js';
 
 export {
@@ -373,6 +379,15 @@ export {
   is2D,
   as3D,
   as2D,
+  // Topological validity guards & smart constructors (ADR-0005)
+  isClosedWire,
+  isOrientedFace,
+  isManifoldShell,
+  isValidSolid,
+  closedWire,
+  orientedFace,
+  manifoldShell,
+  validSolid,
 } from './core/shapeTypes.js';
 
 export type { DimensionError, RequireDimension, SameDimension } from './core/typeErrors.js';
@@ -762,6 +777,7 @@ export {
   tangentArc,
   // Topology constructors
   wire,
+  wireLoop,
   face,
   filledFace,
   subFace,

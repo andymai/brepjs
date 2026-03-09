@@ -44,6 +44,19 @@ export type Dimension = '2D' | '3D';
 declare const __dim: unique symbol;
 
 // ---------------------------------------------------------------------------
+// Topological validity phantom brands (ADR-0005)
+// ---------------------------------------------------------------------------
+
+/** Phantom brand: wire forms a closed loop. */
+declare const __closed: unique symbol;
+/** Phantom brand: face has consistent normal orientation. */
+declare const __oriented: unique symbol;
+/** Phantom brand: shell is manifold (watertight, no dangling faces). */
+declare const __manifold: unique symbol;
+/** Phantom brand: solid passes BRepCheck validation. */
+declare const __valid: unique symbol;
+
+// ---------------------------------------------------------------------------
 // Shape kind discriminant
 // ---------------------------------------------------------------------------
 
@@ -124,6 +137,39 @@ export type Shape3D = Shell | Solid | CompSolid | Compound<'3D'>;
 /** Any shape whose dimension is unknown (e.g., from file import). Requires narrowing. */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- explicit dimensions for documentation clarity
 export type UnknownDimShape = AnyShape<'2D'> | AnyShape<'3D'>;
+
+// ---------------------------------------------------------------------------
+// Topological validity types (ADR-0005)
+// ---------------------------------------------------------------------------
+
+/**
+ * A wire proven to form a closed loop.
+ * The only way to obtain a `ClosedWire` is through smart constructors
+ * (`closedWire()`, `rectangleWire()`, etc.) or type guards (`isClosedWire()`).
+ * Assignable to `Wire<D>` — a subtype, not a separate type.
+ */
+export type ClosedWire<D extends Dimension = '3D'> = Wire<D> & { readonly [__closed]: true };
+
+/**
+ * A face with proven consistent normal orientation.
+ * Obtained via `orientedFace()` or `isOrientedFace()`.
+ * Assignable to `Face<D>`.
+ */
+export type OrientedFace<D extends Dimension = '3D'> = Face<D> & { readonly [__oriented]: true };
+
+/**
+ * A shell proven to be manifold (watertight, no dangling faces).
+ * Obtained via `manifoldShell()` or `isManifoldShell()`.
+ * Assignable to `Shell`.
+ */
+export type ManifoldShell = Shell & { readonly [__manifold]: true };
+
+/**
+ * A solid proven to pass BRepCheck validation.
+ * Obtained via `validSolid()` or `isValidSolid()`.
+ * Assignable to `Solid`.
+ */
+export type ValidSolid = Solid & { readonly [__valid]: true };
 
 // ---------------------------------------------------------------------------
 // Shape factories (brand a handle)
@@ -280,6 +326,106 @@ export function as2D(s: AnyShape<Dimension>): AnyShape<'2D'> {
   if (!is2D(s)) throw new Error('Expected 2D shape, got 3D');
   return s;
 }
+
+// ---------------------------------------------------------------------------
+// Topological validity type guards (ADR-0005)
+// ---------------------------------------------------------------------------
+
+/**
+ * Type guard — check if a wire is closed (forms a loop).
+ * Uses the kernel's `curveIsClosed` to verify at runtime.
+ */
+export function isClosedWire<D extends Dimension>(wire: Wire<D>): wire is ClosedWire<D> {
+  return getKernel().curveIsClosed(wire.wrapped);
+}
+
+/**
+ * Type guard — check if a face has consistent normal orientation.
+ * A face is oriented if its outer wire and surface normal are consistent.
+ * Currently checks kernel validity of the face — faces from kernel operations
+ * are oriented by construction, but imported/reconstructed faces may not be.
+ */
+export function isOrientedFace<D extends Dimension>(face: Face<D>): face is OrientedFace<D> {
+  return getKernel().isValid(face.wrapped);
+}
+
+/**
+ * Type guard — check if a shell is manifold (watertight, no dangling faces).
+ * Checks kernel validity, then attempts `solidFromShell` — if the shell
+ * can form a valid solid, it is manifold by definition.
+ */
+export function isManifoldShell(shell: Shell): shell is ManifoldShell {
+  const kernel = getKernel();
+  if (!kernel.isValid(shell.wrapped)) return false;
+  // A manifold shell can be converted to a solid — try it as a proof
+  try {
+    const solid = kernel.solidFromShell(shell.wrapped);
+    return kernel.isValid(solid);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Type guard — check if a solid passes BRepCheck validation.
+ */
+export function isValidSolid(solid: Solid): solid is ValidSolid {
+  return getKernel().isValid(solid.wrapped);
+}
+
+// ---------------------------------------------------------------------------
+// Topological validity smart constructors (ADR-0005)
+// ---------------------------------------------------------------------------
+
+/**
+ * Prove that a wire is closed, returning a branded `ClosedWire` on success.
+ * This is the primary smart constructor for `ClosedWire`.
+ *
+ * @example
+ * ```ts
+ * const w = wire([e1, e2, e3]);
+ * const closed = closedWire(unwrap(w));
+ * if (isOk(closed)) {
+ *   const f = face(closed.value); // ClosedWire accepted
+ * }
+ * ```
+ */
+export function closedWire<D extends Dimension>(wire: Wire<D>): ValidityResult<ClosedWire<D>> {
+  if (isClosedWire(wire)) return { valid: true, shape: wire };
+  return { valid: false, reason: 'Wire is not closed: start and end points do not coincide' };
+}
+
+/**
+ * Prove that a face is oriented, returning a branded `OrientedFace` on success.
+ */
+export function orientedFace<D extends Dimension>(face: Face<D>): ValidityResult<OrientedFace<D>> {
+  if (isOrientedFace(face)) return { valid: true, shape: face };
+  return { valid: false, reason: 'Face orientation is inconsistent or face is invalid' };
+}
+
+/**
+ * Prove that a shell is manifold, returning a branded `ManifoldShell` on success.
+ */
+export function manifoldShell(shell: Shell): ValidityResult<ManifoldShell> {
+  if (isManifoldShell(shell)) return { valid: true, shape: shell };
+  return { valid: false, reason: 'Shell is not manifold: has free edges or is invalid' };
+}
+
+/**
+ * Prove that a solid is valid, returning a branded `ValidSolid` on success.
+ */
+export function validSolid(solid: Solid): ValidityResult<ValidSolid> {
+  if (isValidSolid(solid)) return { valid: true, shape: solid };
+  return { valid: false, reason: 'Solid failed BRepCheck validation' };
+}
+
+/**
+ * Result of a validity proof. Either the shape is valid (branded type returned)
+ * or invalid (reason string returned).
+ */
+export type ValidityResult<T> =
+  | { readonly valid: true; readonly shape: T }
+  | { readonly valid: false; readonly reason: string };
 
 // ---------------------------------------------------------------------------
 // Cast utility — wraps an kernel shape into the correct branded type

@@ -27,7 +27,7 @@ import {
 } from '../2d/blueprints/index.js';
 import type { Plane, PlaneName } from '../core/planeTypes.js';
 import type { PointInput } from '../core/types.js';
-import type { AnyShape, Dimension, Edge, Face, Wire } from '../core/shapeTypes.js';
+import type { AnyShape, ClosedWire, Dimension, Edge, Face, Wire } from '../core/shapeTypes.js';
 import { createFace } from '../core/shapeTypes.js';
 import { outerWire } from '../topology/faceFns.js';
 import { getEdges } from '../topology/shapeFns.js';
@@ -550,7 +550,8 @@ const edgesToDrawing = (edges: Edge[]): Drawing => {
   const planeSketch = drawRectangle(1000, 1000).sketchOnPlane() as SketchInterface & {
     wire: Wire;
   };
-  const planeFace = scope.register(unwrap(makeFace(planeSketch.wire)));
+  // Rectangle drawing always produces a closed wire
+  const planeFace = scope.register(unwrap(makeFace(planeSketch.wire as ClosedWire)));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
 
