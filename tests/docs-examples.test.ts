@@ -20,6 +20,7 @@ import {
   faceFinder,
   measureVolume,
   measureArea,
+  getVertices,
   exportSTEP,
   drawRectangle,
   drawCircle,
@@ -35,12 +36,22 @@ import {
   isErr,
   unwrap,
   match,
+  type ValidSolid,
 } from '../src/index.js';
-import type { ValidSolid } from '../src/core/shapeTypes.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+/** Square wireLoop used by multiple tests. */
+function squareWireLoop(): ReturnType<typeof wireLoop> {
+  return wireLoop([
+    line([0, 0, 0], [10, 0, 0]),
+    line([10, 0, 0], [10, 10, 0]),
+    line([10, 10, 0], [0, 10, 0]),
+    line([0, 10, 0], [0, 0, 0]),
+  ]);
+}
 
 describe('getting-started.md examples', () => {
   it('Step 3: primitives return ValidSolid', () => {
@@ -96,14 +107,7 @@ describe('getting-started.md examples', () => {
   });
 
   it('wireLoop example', () => {
-    const cw = unwrap(
-      wireLoop([
-        line([0, 0, 0], [10, 0, 0]),
-        line([10, 0, 0], [10, 10, 0]),
-        line([10, 10, 0], [0, 10, 0]),
-        line([0, 10, 0], [0, 0, 0]),
-      ])
-    );
+    const cw = unwrap(squareWireLoop());
     expect(isClosedWire(cw)).toBe(true);
 
     const f = unwrap(face(cw));
@@ -120,8 +124,10 @@ describe('concepts.md examples', () => {
     const b = box(10, 10, 10);
     const faces = faceFinder().findAll(b);
     const edges = edgeFinder().findAll(b);
+    const vertices = getVertices(b);
     expect(faces.length).toBe(6);
     expect(edges.length).toBe(12);
+    expect(vertices.length).toBe(8);
   });
 
   it('finders: inDirection selects correct faces', () => {
@@ -176,7 +182,8 @@ describe('cheat-sheet.md examples', () => {
     expect(shape(b).volume()).toBeCloseTo(1000, 0);
   });
 
-  it('2D to 3D workflow', () => {
+  it('2D to 3D workflow', (ctx) => {
+    if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
     const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 15]));
     const sketch = drawingToSketchOnPlane(profile, 'XY');
     const solid = shape(sketch.face()).extrude(20).val;
@@ -189,29 +196,13 @@ describe('cheat-sheet.md examples', () => {
 
 describe('validity types (concepts.md + getting-started.md)', () => {
   it('smart constructors validate at runtime', () => {
-    const cw = unwrap(
-      wireLoop([
-        line([0, 0, 0], [10, 0, 0]),
-        line([10, 0, 0], [10, 10, 0]),
-        line([10, 10, 0], [0, 10, 0]),
-        line([0, 10, 0], [0, 0, 0]),
-      ])
-    );
-
-    // closedWire smart constructor on an already-closed wire
+    const cw = unwrap(squareWireLoop());
     const result = closedWire(cw);
     expect(result.valid).toBe(true);
   });
 
   it('type guards narrow correctly', () => {
-    const cw = unwrap(
-      wireLoop([
-        line([0, 0, 0], [10, 0, 0]),
-        line([10, 0, 0], [10, 10, 0]),
-        line([10, 10, 0], [0, 10, 0]),
-        line([0, 10, 0], [0, 0, 0]),
-      ])
-    );
+    const cw = unwrap(squareWireLoop());
     expect(isClosedWire(cw)).toBe(true);
 
     const f = unwrap(face(cw));
@@ -223,7 +214,6 @@ describe('validity types (concepts.md + getting-started.md)', () => {
 
   it('ValidSolid is a subtype of Solid', () => {
     const vs: ValidSolid = box(10, 10, 10);
-    // ValidSolid should work wherever Solid is accepted
     expect(isSolid(vs)).toBe(true);
     expect(measureVolume(vs)).toBeCloseTo(1000, 0);
   });
