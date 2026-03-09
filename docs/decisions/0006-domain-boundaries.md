@@ -78,7 +78,7 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 - Profiled: V8 CPU profiling confirmed vectorOperations are NOT hot-path bottlenecks (~0.02µs/call); WASM/Emscripten binding overhead dominates. (#421)
 - Documented: `brepkit2d.ts` struct-field math duplication is architectural — inline `c.ox`/`c.dy` access avoids temporary tuple allocations.
 
-### Phase 2: Tessellation Normals/UVs (target: v12) — ✅ Partial
+### Phase 2: Tessellation Normals/UVs (target: v12) — ✅ Complete
 
 **Target**: OCCT mesh path in `src/kernel/meshOps.ts` that builds normals via low-level OCCT API orchestration (`Poly_Connect`, `StdPrs_ToolTriangulatedShape.Normal()`). brepkit already returns normals/UVs. Migrate the OCCT adapter to a single higher-level call matching brepkit's interface.
 
@@ -86,9 +86,10 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 
 **Acceptance criteria**: Both adapters return normals and UVs as part of `KernelMeshResult`. No TS code iterates triangulation data to compute normals. Formatters and Three.js helpers work unchanged.
 
-**Progress (v11)**:
+**Progress**:
 
-- Refactored: extracted per-face mesh logic into `_meshFace()` helper, isolating normal computation (`Poly_Connect` + `StdPrs_ToolTriangulatedShape.Normal()`) into a single function mirroring brepkit's `meshSingleFace()`. (#426)
+- v11: extracted per-face mesh logic into `_meshFace()` helper, isolating normal computation into a single function mirroring brepkit's `meshSingleFace()`. (#426)
+- v12: **BREAKING** — removed JS mesh fallback entirely (`meshJS`, `_meshFace`, `meshEdgesJS`, UV detection cache). C++ `MeshExtractor`/`EdgeMeshExtractor` are now required. All normal/UV computation happens in C++ via single WASM calls. Net -440 lines. (#429)
 
 ### Phase 3: Ongoing Boundary Cleanup
 
