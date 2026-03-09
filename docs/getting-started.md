@@ -300,7 +300,7 @@ brepjs uses the TypeScript type system to prevent common modeling errors at comp
 
 - **`ClosedWire`** — a wire that forms a closed loop. Required by `face()`.
 - **`OrientedFace`** — a face with consistent normal orientation. Required by `extrude()` and `revolve()`.
-- **`ValidSolid`** — a solid that passes BRepCheck validation. Returned by `box()`, `cylinder()`, `extrude()`, etc.
+- **`ValidSolid`** — a solid that passes BRepCheck validation. Returned by `box()`, `cylinder()`, `sphere()`, etc.
 
 The easiest way to get a `ClosedWire` is with `wireLoop()`:
 
@@ -318,7 +318,7 @@ const cw = unwrap(
 );
 
 const f = unwrap(face(cw)); // face() requires ClosedWire, returns OrientedFace
-const s = unwrap(extrude(f, 10)); // extrude() requires OrientedFace, returns ValidSolid
+const s = unwrap(extrude(f, 10)); // extrude() requires OrientedFace, returns Solid
 ```
 
 For runtime validation of existing shapes, use **smart constructors**:

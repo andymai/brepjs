@@ -165,7 +165,7 @@ const cw = unwrap(
 // face() requires ClosedWire, returns OrientedFace
 const f = unwrap(face(cw));
 
-// extrude() requires OrientedFace, returns ValidSolid
+// extrude() requires OrientedFace, returns Solid
 const solid = unwrap(extrude(f, 10));
 
 // Smart constructors for runtime validation
