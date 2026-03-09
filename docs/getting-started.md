@@ -318,7 +318,7 @@ const cw = unwrap(
 );
 
 const f = unwrap(face(cw)); // face() requires ClosedWire, returns OrientedFace
-const s = unwrap(extrude(f, 10)); // extrude() requires OrientedFace, returns Solid
+const s = unwrap(extrude(f, 10)); // extrude() requires OrientedFace, returns ValidSolid
 ```
 
 For runtime validation of existing shapes, use **smart constructors**:
