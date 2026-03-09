@@ -359,6 +359,16 @@ function warnOnce(key: string, message: string): void {
   console.warn(`brepkit: ${message}`);
 }
 
+/** Check if a BooleanOptions object has any meaningful (non-signal) property set. */
+function hasBooleanOptions(opts: BooleanOptions): boolean {
+  return (
+    opts.optimisation !== undefined ||
+    opts.simplify !== undefined ||
+    opts.strategy !== undefined ||
+    opts.fuzzyValue !== undefined
+  );
+}
+
 export class BrepkitAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'brepkit';
@@ -377,10 +387,10 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   fuse(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    if (_options) {
+    if (_options && hasBooleanOptions(_options)) {
       warnOnce(
         'boolean-options',
-        'BooleanOptions (optimisation, simplify, algorithm) not supported; ignored.'
+        'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
       );
     }
     const baseId = unwrapSolidOrThrow(shape, 'fuse');
@@ -398,10 +408,10 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   cut(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    if (_options) {
+    if (_options && hasBooleanOptions(_options)) {
       warnOnce(
         'boolean-options',
-        'BooleanOptions (optimisation, simplify, algorithm) not supported; ignored.'
+        'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
       );
     }
     const baseId = unwrapSolidOrThrow(shape, 'cut');
@@ -421,10 +431,10 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    if (_options) {
+    if (_options && hasBooleanOptions(_options)) {
       warnOnce(
         'boolean-options',
-        'BooleanOptions (optimisation, simplify, algorithm) not supported; ignored.'
+        'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
       );
     }
     const result = this.bk.intersect(
@@ -1178,7 +1188,12 @@ export class BrepkitAdapter implements KernelAdapter {
   ): KernelShape {
     const r = typeof radius === 'number' ? radius : Array.isArray(radius) ? radius[0] : 1;
     if (typeof radius !== 'number') {
-      warnOnce('fillet-variable', 'Variable-radius fillet not supported; using constant radius.');
+      warnOnce(
+        'fillet-variable',
+        typeof radius === 'function'
+          ? 'Per-edge fillet radius function not supported; falling back to radius=1.'
+          : 'Variable-radius fillet not supported; using first radius only.'
+      );
     }
     const edgeIds = edges.map((e) => unwrap(e, 'edge'));
     const id = this.bk.fillet(unwrapSolidOrThrow(shape, 'fillet'), edgeIds, r);
@@ -1194,7 +1209,9 @@ export class BrepkitAdapter implements KernelAdapter {
     if (typeof distance !== 'number') {
       warnOnce(
         'chamfer-asymmetric',
-        'Asymmetric chamfer not supported; using first distance only.'
+        typeof distance === 'function'
+          ? 'Per-edge chamfer distance function not supported; falling back to distance=1.'
+          : 'Asymmetric chamfer not supported; using first distance only.'
       );
     }
     const edgeIds = edges.map((e) => unwrap(e, 'edge'));
