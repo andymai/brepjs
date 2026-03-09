@@ -3,7 +3,7 @@ Add a new method to the kernel abstraction layer.
 ## Workflow
 
 1. Ask the user what kernel capability is needed and why
-2. Read `src/kernel/types.ts` (`KernelAdapter` interface), the relevant `*Ops.ts`, and `DefaultAdapter.ts`
+2. Read `src/kernel/types.ts` (`KernelAdapter` interface), the relevant `*Ops.ts`, `DefaultAdapter.ts`, and `brepkitAdapter.ts`
 
 ## Implementation Steps
 
@@ -15,6 +15,7 @@ Add a new method to the kernel abstraction layer.
    - All kernel methods are synchronous
    - Handle OCCT enum values: `typeof val === 'number' ? val : Number(val?.value ?? val)`
 3. **Wire in `DefaultAdapter.ts`** — delegate to the `*Ops` function
-4. **Use in Layer 2+** via `getKernel().methodName()` — never import `*Ops` directly outside kernel
+4. **Wire in `brepkitAdapter.ts`** — add a stub or implementation for the brepkit kernel (throw `not implemented` if the operation isn't supported yet)
+5. **Use in Layer 2+** via `getKernel().methodName()` — never import `*Ops` directly outside kernel
 
 Tests go through Layer 2 functional API, not by testing `*Ops` directly.

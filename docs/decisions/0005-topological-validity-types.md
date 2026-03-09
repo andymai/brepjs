@@ -1,6 +1,6 @@
 # ADR-0005: Topological Validity Phantom Types
 
-**Status**: Accepted
+**Status**: Implemented
 **Date**: 2026-03-08
 
 ## Context
