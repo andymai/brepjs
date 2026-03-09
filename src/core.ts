@@ -77,6 +77,7 @@ export {
 } from './core/planeOps.js';
 
 export type {
+  Dimension,
   ShapeKind,
   Vertex,
   Edge,
@@ -89,6 +90,11 @@ export type {
   AnyShape,
   Shape1D,
   Shape3D,
+  ClosedWire,
+  OrientedFace,
+  ManifoldShell,
+  ValidSolid,
+  ValidityResult,
 } from './core/shapeTypes.js';
 
 export {
@@ -103,6 +109,16 @@ export {
   isCompound,
   isShape3D,
   isShape1D,
+  is3D,
+  is2D,
+  closedWire,
+  orientedFace,
+  manifoldShell,
+  validSolid,
+  isClosedWire,
+  isOrientedFace,
+  isManifoldShell,
+  isValidSolid,
 } from './core/shapeTypes.js';
 
 export type { ShapeHandle, KernelHandle } from './core/disposal.js';

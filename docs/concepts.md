@@ -145,7 +145,7 @@ Functions declare exactly what they need:
 
 ```typescript
 face(wire: ClosedWire): Result<OrientedFace>    // Requires a closed wire
-extrude(face: OrientedFace, height: number): Result<Solid>  // Requires an oriented face
+extrude(face: OrientedFace, height: number): Result<ValidSolid>  // Requires an oriented face
 ```
 
 **Creating branded shapes:**

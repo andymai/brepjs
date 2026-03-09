@@ -50,7 +50,7 @@ Returns the kernel adapter for the given ID, or the default kernel. Used interna
 
 ## Writing a KernelAdapter
 
-The `KernelAdapter` interface (`src/kernel/types.ts`) defines ~120 methods across these categories:
+The `KernelAdapter` interface (`src/kernel/types.ts`) defines ~164 methods across these categories:
 
 | Category           | Methods | Examples                                                      |
 | ------------------ | ------- | ------------------------------------------------------------- |

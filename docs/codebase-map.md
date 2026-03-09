@@ -26,7 +26,7 @@ Quick reference for navigating the brepjs source. See `CLAUDE.md` for rules and 
 
 | Module     | Key Files                                | Purpose                                           |
 | ---------- | ---------------------------------------- | ------------------------------------------------- |
-| **kernel** | `types.ts`                               | `KernelAdapter` interface (~120 methods)          |
+| **kernel** | `types.ts`                               | `KernelAdapter` interface (~164 methods)          |
 |            | `DefaultAdapter.ts`                      | OpenCascade kernel adapter                        |
 |            | `brepkitAdapter.ts`                      | brepkit kernel adapter                            |
 |            | `index.ts`                               | `getKernel()`, `initFromOC()`, `registerKernel()` |

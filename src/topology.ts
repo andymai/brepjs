@@ -27,6 +27,46 @@ export {
   type ShapeDescription,
 } from './topology/shapeFns.js';
 
+// ── Primitives ──
+
+export {
+  box,
+  cylinder,
+  sphere,
+  cone,
+  torus,
+  ellipsoid,
+  line,
+  circle,
+  ellipse,
+  helix,
+  threePointArc,
+  ellipseArc,
+  bsplineApprox,
+  bezier,
+  tangentArc,
+  wire,
+  wireLoop,
+  face,
+  filledFace,
+  subFace,
+  polygon,
+  vertex,
+  compound,
+  solid,
+  sewShells,
+  offsetFace,
+  addHoles,
+  type CylinderOptions,
+  type SphereOptions,
+  type ConeOptions,
+  type TorusOptions,
+  type CircleOptions,
+  type HelixOptions,
+  type EllipseArcOptions,
+  type BSplineApproximationOptions,
+} from './topology/primitiveFns.js';
+
 // ── Boolean operations ──
 
 export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';

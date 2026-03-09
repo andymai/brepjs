@@ -30,7 +30,7 @@ This is enforced by an ESLint `no-restricted-syntax` rule that bans `x.wrapped.m
 | File                  | Purpose                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `index.ts`            | Kernel registry: `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                               |
-| `types.ts`            | `KernelAdapter` interface (~120 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
+| `types.ts`            | `KernelAdapter` interface (~164 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
 | `kernel2dTypes.ts`    | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
 | `defaultAdapter.ts`   | Default OCCT adapter class — thin delegation layer implementing both interfaces                                                   |
 | `brepkitAdapter.ts`   | brepkit WASM adapter (`BrepkitAdapter`) — alternative kernel with growing operation coverage                                      |

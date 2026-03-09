@@ -94,15 +94,26 @@ This means you can safely chain multiple transformations while preserving access
 
 ### Branded Shape Types
 
-Shape types are lightweight branded handles (not classes):
-- `Vertex` — use `vertexPosition(v)` to get coordinates
-- `Edge`, `Wire` — use `curveStartPoint()`, `curveEndPoint()`, `curveLength()`, `getCurveType()`, etc.
-- `Face` — use `normalAt()`, `faceCenter()`, `faceGeomType()`, `uvBounds()`, `pointOnSurface()`, `outerWire()`, `innerWires()`
-- `Shell`, `Solid`, `CompSolid`, `Compound` — 3D shapes for booleans/modifiers
-- `AnyShape` — union of all shape types
-- `Shape3D` — union of Shell | Solid | CompSolid | Compound
+Shape types are lightweight branded handles (not classes) with a phantom `D extends Dimension` parameter for compile-time 2D/3D safety (default `'3D'`):
+- `Vertex<D>`, `Edge<D>`, `Wire<D>`, `Face<D>`, `Compound<D>` — dimension-parameterized (default `'3D'`)
+- `Shell`, `Solid`, `CompSolid` — always 3D (no dimension parameter)
+- `AnyShape<D>` — union of all shape types
+- `Shape3D` — union of Shell | Solid | CompSolid | Compound<'3D'>
+- `Shape1D<D>` — Edge<D> | Wire<D>
 
-All shapes have `.wrapped` (OCCT handle) and `.delete()`. Use `using` syntax for auto-cleanup.
+#### Validity Brands
+
+Layered on top of base types to encode topological invariants at compile time:
+- `ClosedWire<D>` — wire proven to form a closed loop. Required by `face()`.
+- `OrientedFace<D>` — face with consistent normal. Required by `extrude()`, `revolve()`.
+- `ManifoldShell` — shell proven to be watertight.
+- `ValidSolid` — solid passing BRepCheck validation. Returned by `box()`, `cylinder()`, etc.
+
+Smart constructors prove validity at runtime: `closedWire(w)`, `orientedFace(f)`, `manifoldShell(s)`, `validSolid(s)` → `ValidityResult<T>`.
+Type guards narrow in-place: `isClosedWire(w)`, `isOrientedFace(f)`, `isManifoldShell(s)`, `isValidSolid(s)`.
+Convenience: `wireLoop(edges)` assembles edges and verifies closure → `Result<ClosedWire>`.
+
+All shapes have `.wrapped` (kernel handle) and `.delete()`. Use `using` syntax for auto-cleanup.
 
 Also exported: `Sketch`, `CompoundSketch`, `Sketches` (multi-profile container), `Drawing`, `DrawingPen`, `Blueprint`, `CompoundBlueprint`, `Blueprints`
 
@@ -299,8 +310,8 @@ const halfTorus = sketchCircle(2, { plane: 'XZ' }).revolve([10, 0, 0], { origin:
 ```
 
 Functional API:
-- `extrude(face, height: number | Vec3): Result<Solid>` — Extrude a face. Pass a number for Z-axis extrusion or a Vec3 for arbitrary direction (vector length = distance)
-- `revolve(face, { axis?, at?, angle? }?): Result<Shape3D>` — Revolve a face. `at` default `[0,0,0]`, `axis` default `[0,0,1]` (Z), `angle` default `360` degrees
+- `extrude(face: OrientedFace, height: number | Vec3): Result<ValidSolid>` — Extrude a face. Pass a number for Z-axis extrusion or a Vec3 for arbitrary direction (vector length = distance)
+- `revolve(face: OrientedFace, { axis?, at?, angle? }?): Result<Shape3D>` — Revolve a face. `at` default `[0,0,0]`, `axis` default `[0,0,1]` (Z), `angle` default `360` degrees
 - `sweep(wire, spine, config?, shellMode?): Result<Shape3D | [Shape3D, Wire, Wire]>` — Sweep profile along spine
 - `complexExtrude(wire, center, normal, profileShape?, shellMode?): Result<Shape3D>` — Extrude with scaling profile
 - `twistExtrude(wire, angleDeg, center, normal, profileShape?, shellMode?): Result<Shape3D>` — Twist extrude with rotation
@@ -908,23 +919,24 @@ tangentArc(startPoint, startTangent, endPoint): Edge
 bsplineApprox(points, config?): Result<Edge>
 bezier(points): Result<Edge>
 wire(edgesOrWires): Result<Wire>
+wireLoop(edgesOrWires): Result<ClosedWire>    // Assemble + verify closure
 
-// 2D faces
-face(wire, holes?): Result<Face>
-filledFace(wire): Result<Face>
-subFace(originFace, wire): Face
-addHoles(face, holes): Face
-polygon(points): Result<Face>
+// 2D faces (require ClosedWire, return OrientedFace)
+face(wire: ClosedWire, holes?: ClosedWire[]): Result<OrientedFace>
+filledFace(wire: ClosedWire): Result<OrientedFace>
+subFace(originFace, wire: ClosedWire): OrientedFace
+addHoles(face, holes: ClosedWire[]): OrientedFace
+polygon(points): Result<OrientedFace>
 
-// 3D solids
-box(width, depth, height, { at?, centered? }?): Solid
-sphere(radius, { at? }?): Solid
-cylinder(radius, height, { at?, axis?, centered? }?): Solid
-cone(bottomRadius, topRadius, height, { at?, axis?, centered? }?): Solid
-torus(majorRadius, minorRadius, { at?, axis? }?): Solid
-ellipsoid(rx, ry, rz, { at? }?): Solid
+// 3D solids (return ValidSolid)
+box(width, depth, height, { at?, centered? }?): ValidSolid
+sphere(radius, { at? }?): ValidSolid
+cylinder(radius, height, { at?, axis?, centered? }?): ValidSolid
+cone(bottomRadius, topRadius, height, { at?, axis?, centered? }?): ValidSolid
+torus(majorRadius, minorRadius, { at?, axis? }?): ValidSolid
+ellipsoid(rx, ry, rz, { at? }?): ValidSolid
 makeBaseBox(x, y, z): Shape3D
-solid(facesOrShells): Result<Solid>
+solid(facesOrShells): Result<ValidSolid>
 
 // Vertex
 vertex(point): Vertex
@@ -1444,18 +1456,29 @@ makePlane(plane?, origin?): Plane       // From PlaneName + origin
 import {
   castShape, getShapeKind,
   createVertex, createEdge, createWire, createFace, createShell, createSolid, createCompound,
-  isVertex, isEdge, isWire, isFace, isShell, isSolid, isCompound, isShape3D, isShape1D
+  isVertex, isEdge, isWire, isFace, isShell, isSolid, isCompound, isShape3D, isShape1D,
+  is3D, is2D,
+  // Validity constructors and guards
+  closedWire, orientedFace, manifoldShell, validSolid,
+  isClosedWire, isOrientedFace, isManifoldShell, isValidSolid,
 } from 'brepjs';
 
 castShape(ocShape): AnyShape            // Auto-detect and wrap
-getShapeKind(shape): ShapeKind          // 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'compsolid' | 'compound'
-isVertex(s): s is Vertex              // Type guards
-// ... all type guards follow the same pattern
+getShapeKind(shape): ShapeKind          // 'vertex' | 'edge' | ... | 'compound'
+isVertex(s): s is Vertex                // Type guards for shape kinds
+is3D(s): s is AnyShape<'3D'>           // Dimension guards
+is2D(s): s is AnyShape<'2D'>
+closedWire(w): ValidityResult<ClosedWire>     // Validity smart constructors
+orientedFace(f): ValidityResult<OrientedFace>
+isClosedWire(w): w is ClosedWire              // Validity type guards
+isOrientedFace(f): f is OrientedFace
+isManifoldShell(s): s is ManifoldShell
+isValidSolid(s): s is ValidSolid
 ```
 
 ## Kernel Boundary Conversions
 
-Low-level helpers for interop with raw OpenCascade kernel objects:
+Low-level helpers for interop with raw kernel objects:
 
 ```typescript
 import { toKernelVec, fromKernelVec, fromKernelPnt, fromKernelDir, withKernelVec, withKernelPnt, withKernelDir } from 'brepjs';
