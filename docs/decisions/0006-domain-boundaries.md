@@ -68,6 +68,8 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 
 **Not in scope**: `Curve2D.ts` and `BoundingBox2d.ts` (wrapper classes around kernel handles, not duplicated computation). Blueprint DSL (orchestration, brepjs-owned) — migration replaces lib function _implementations_ with kernel calls, not the TS API surface.
 
+**Existing infrastructure**: The `Kernel2D` sub-interface (`src/kernel/kernel2dTypes.ts`) and brepkit implementation (`src/kernel/brepkit2d.ts`) already exist. `BoundingBox2d.ts` already uses `getKernel2D()`. This migration extends that infrastructure, not creates it from scratch.
+
 **Acceptance criteria**: No pure-TS geometry math in `src/2d/lib/` except hot-path functions retained under the performance exception. Blueprint imports compile unchanged. Both kernel test paths pass.
 
 ### Phase 2: Tessellation Normals/UVs (target: v12)
