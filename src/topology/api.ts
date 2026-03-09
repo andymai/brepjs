@@ -354,6 +354,7 @@ export function thicken(
   shape: Shapeable<Face<Dimension> | Shell>,
   thickness: number
 ): Result<Solid> {
+  // Thicken is 3D-only — narrow from Face<Dimension> to Face<'3D'>
   return modifiers.thicken(resolve(shape) as Face | Shell, thickness);
 }
 
