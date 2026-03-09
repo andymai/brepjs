@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.2](https://github.com/andymai/brepjs/compare/brepjs-v12.2.1...brepjs-v12.2.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* **kernel:** remove isValid volume fallback, add strictness JSDoc (ADR-0006) ([#439](https://github.com/andymai/brepjs/issues/439)) ([f475097](https://github.com/andymai/brepjs/commit/f4750978cf7416bdacaf005522678e3be484b7cc))
+
 ## [12.2.1](https://github.com/andymai/brepjs/compare/brepjs-v12.2.0...brepjs-v12.2.1) (2026-03-09)
 
 
