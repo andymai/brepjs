@@ -80,7 +80,7 @@ Each phase targets TypeScript code that evaluates geometry or reimplements kerne
 
 ### Phase 3: Ongoing Boundary Cleanup
 
-- **Projection**: `cameraFns.ts` and `projectionPlanes.ts` (~160 lines of coordinate math) — evaluate against heuristic; likely orchestration that stays in TS.
+- **Projection**: `projectionPlanes.ts` is pure data/type definitions (lookup table, type guard) — stays in TS. `cameraFns.ts` (~110 lines) performs 3D vector math for view setup — evaluate against heuristic to determine if computation should move to kernel.
 - **Color storage**: Migrate from TS-side `Map` to kernel storage if brepkit adds native per-shape color.
 - **New capabilities**: Evaluate against decision heuristic before implementation.
 
