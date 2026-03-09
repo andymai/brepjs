@@ -20,7 +20,7 @@ import {
   isPoint2D,
   approximateAsSvgCompatibleCurve,
 } from '../lib/index.js';
-import type { AnyShape, Face, Wire } from '../../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, Wire } from '../../core/shapeTypes.js';
 import { createWire } from '../../core/shapeTypes.js';
 import { cast } from '../../topology/cast.js';
 import { unwrap } from '../../core/result.js';
@@ -290,7 +290,7 @@ export default class Blueprint implements DrawingInterface {
    * @returns The modified shape with the hole removed.
    */
   punchHole(
-    shape: AnyShape,
+    shape: AnyShape<Dimension>,
     face: SingleFace,
     {
       height = null,

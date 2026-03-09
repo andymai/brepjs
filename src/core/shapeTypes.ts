@@ -1,6 +1,13 @@
 /**
  * Branded shape types — type-safe shape discrimination without class hierarchies.
  * Each shape type is a branded ShapeHandle to prevent incorrect assignments.
+ *
+ * Shapes carry a phantom dimension parameter `D extends Dimension` that tracks
+ * whether the shape is embedded in 2D or 3D space. This enables compile-time
+ * rejection of dimension mismatches (e.g., fusing a 2D wire with a 3D solid).
+ *
+ * - Dimension-parameterized types: Vertex, Edge, Wire, Face, Compound (default '3D')
+ * - Fixed 3D types: Shell, Solid, CompSolid (always '3D', no parameter)
  */
 
 import type { KernelShape, KernelType } from '../kernel/types.js';
@@ -27,6 +34,16 @@ export interface CurveLike {
 }
 
 // ---------------------------------------------------------------------------
+// Dimension phantom type
+// ---------------------------------------------------------------------------
+
+/** The geometric dimension a shape is embedded in. */
+export type Dimension = '2D' | '3D';
+
+/** Phantom brand key for dimension tracking (never exists at runtime). */
+declare const __dim: unique symbol;
+
+// ---------------------------------------------------------------------------
 // Shape kind discriminant
 // ---------------------------------------------------------------------------
 
@@ -47,58 +64,93 @@ export type ShapeKind =
 
 declare const __brand: unique symbol;
 
+// Dimension-parameterized types (can be 2D or 3D, default '3D')
+
 /** A topological vertex (0D point). */
-export type Vertex = ShapeHandle & { readonly [__brand]: 'vertex' };
+export type Vertex<D extends Dimension = '3D'> = ShapeHandle & {
+  readonly [__brand]: 'vertex';
+  readonly [__dim]: D;
+};
 /** A topological edge (1D curve segment). */
-export type Edge = ShapeHandle & { readonly [__brand]: 'edge' };
+export type Edge<D extends Dimension = '3D'> = ShapeHandle & {
+  readonly [__brand]: 'edge';
+  readonly [__dim]: D;
+};
 /** An ordered sequence of connected edges forming a path or loop. */
-export type Wire = ShapeHandle & { readonly [__brand]: 'wire' };
+export type Wire<D extends Dimension = '3D'> = ShapeHandle & {
+  readonly [__brand]: 'wire';
+  readonly [__dim]: D;
+};
 /** A bounded portion of a surface. */
-export type Face = ShapeHandle & { readonly [__brand]: 'face' };
-/** A connected set of faces sharing edges. */
-export type Shell = ShapeHandle & { readonly [__brand]: 'shell' };
-/** A closed volume bounded by shells. */
-export type Solid = ShapeHandle & { readonly [__brand]: 'solid' };
-/** A set of solids connected by faces. */
-export type CompSolid = ShapeHandle & { readonly [__brand]: 'compsolid' };
+export type Face<D extends Dimension = '3D'> = ShapeHandle & {
+  readonly [__brand]: 'face';
+  readonly [__dim]: D;
+};
+
+// Fixed-dimension types (always 3D — no type parameter)
+
+/** A connected set of faces sharing edges. Always 3D. */
+export type Shell = ShapeHandle & { readonly [__brand]: 'shell'; readonly [__dim]: '3D' };
+/** A closed volume bounded by shells. Always 3D. */
+export type Solid = ShapeHandle & { readonly [__brand]: 'solid'; readonly [__dim]: '3D' };
+/** A set of solids connected by faces. Always 3D. */
+export type CompSolid = ShapeHandle & { readonly [__brand]: 'compsolid'; readonly [__dim]: '3D' };
 /** A heterogeneous collection of shapes. */
-export type Compound = ShapeHandle & { readonly [__brand]: 'compound' };
+export type Compound<D extends Dimension = '3D'> = ShapeHandle & {
+  readonly [__brand]: 'compound';
+  readonly [__dim]: D;
+};
 
-/** Any branded shape type */
-export type AnyShape = Vertex | Edge | Wire | Face | Shell | Solid | CompSolid | Compound;
+// ---------------------------------------------------------------------------
+// Union types
+// ---------------------------------------------------------------------------
 
-/** 1D shapes (edges and wires) */
-export type Shape1D = Edge | Wire;
+/** Any branded shape type in a given dimension. Defaults to 3D. */
+export type AnyShape<D extends Dimension = '3D'> =
+  | Vertex<D>
+  | Edge<D>
+  | Wire<D>
+  | Face<D>
+  | Compound<D>
+  | (D extends '3D' ? Shell | Solid | CompSolid : never);
 
-/** 3D shapes (solid-like) */
-export type Shape3D = Shell | Solid | CompSolid | Compound;
+/** 1D shapes (edges and wires) in a given dimension. */
+export type Shape1D<D extends Dimension = '3D'> = Edge<D> | Wire<D>;
+
+/** 3D shapes (solid-like). Always 3D by definition. */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- explicit '3D' for documentation clarity
+export type Shape3D = Shell | Solid | CompSolid | Compound<'3D'>;
+
+/** Any shape whose dimension is unknown (e.g., from file import). Requires narrowing. */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- explicit dimensions for documentation clarity
+export type UnknownDimShape = AnyShape<'2D'> | AnyShape<'3D'>;
 
 // ---------------------------------------------------------------------------
 // Shape factories (brand a handle)
 // ---------------------------------------------------------------------------
 
-function brandHandle(handle: ShapeHandle): AnyShape {
-  return handle as AnyShape;
+function brandHandle<D extends Dimension>(handle: ShapeHandle): AnyShape<D> {
+  return handle as AnyShape<D>;
 }
 
 /** Wrap a raw kernel shape as a branded {@link Vertex} handle. */
-export function createVertex(ocShape: KernelShape): Vertex {
-  return brandHandle(createHandle(ocShape)) as Vertex;
+export function createVertex<D extends Dimension = '3D'>(ocShape: KernelShape): Vertex<D> {
+  return brandHandle<D>(createHandle(ocShape)) as Vertex<D>;
 }
 
 /** Wrap a raw kernel shape as a branded {@link Edge} handle. */
-export function createEdge(ocShape: KernelShape): Edge {
-  return brandHandle(createHandle(ocShape)) as Edge;
+export function createEdge<D extends Dimension = '3D'>(ocShape: KernelShape): Edge<D> {
+  return brandHandle<D>(createHandle(ocShape)) as Edge<D>;
 }
 
 /** Wrap a raw kernel shape as a branded {@link Wire} handle. */
-export function createWire(ocShape: KernelShape): Wire {
-  return brandHandle(createHandle(ocShape)) as Wire;
+export function createWire<D extends Dimension = '3D'>(ocShape: KernelShape): Wire<D> {
+  return brandHandle<D>(createHandle(ocShape)) as Wire<D>;
 }
 
 /** Wrap a raw kernel shape as a branded {@link Face} handle. */
-export function createFace(ocShape: KernelShape): Face {
-  return brandHandle(createHandle(ocShape)) as Face;
+export function createFace<D extends Dimension = '3D'>(ocShape: KernelShape): Face<D> {
+  return brandHandle<D>(createHandle(ocShape)) as Face<D>;
 }
 
 /** Wrap a raw kernel shape as a branded {@link Shell} handle. */
@@ -117,8 +169,8 @@ export function createCompSolid(ocShape: KernelShape): CompSolid {
 }
 
 /** Wrap a raw kernel shape as a branded {@link Compound} handle. */
-export function createCompound(ocShape: KernelShape): Compound {
-  return brandHandle(createHandle(ocShape)) as Compound;
+export function createCompound<D extends Dimension = '3D'>(ocShape: KernelShape): Compound<D> {
+  return brandHandle<D>(createHandle(ocShape)) as Compound<D>;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,55 +178,97 @@ export function createCompound(ocShape: KernelShape): Compound {
 // ---------------------------------------------------------------------------
 
 /** Query the kernel for the topological type of a shape. */
-export function getShapeKind(shape: AnyShape): ShapeKind {
+export function getShapeKind(shape: AnyShape<Dimension>): ShapeKind {
   return getKernel().shapeType(shape.wrapped);
 }
 
 /** Type guard — check if a shape is a {@link Vertex}. */
-export function isVertex(s: AnyShape): s is Vertex {
+export function isVertex<D extends Dimension>(s: AnyShape<D>): s is Vertex<D> {
   return getShapeKind(s) === 'vertex';
 }
 
 /** Type guard — check if a shape is an {@link Edge}. */
-export function isEdge(s: AnyShape): s is Edge {
+export function isEdge<D extends Dimension>(s: AnyShape<D>): s is Edge<D> {
   return getShapeKind(s) === 'edge';
 }
 
 /** Type guard — check if a shape is a {@link Wire}. */
-export function isWire(s: AnyShape): s is Wire {
+export function isWire<D extends Dimension>(s: AnyShape<D>): s is Wire<D> {
   return getShapeKind(s) === 'wire';
 }
 
 /** Type guard — check if a shape is a {@link Face}. */
-export function isFace(s: AnyShape): s is Face {
+export function isFace<D extends Dimension>(s: AnyShape<D>): s is Face<D> {
   return getShapeKind(s) === 'face';
 }
 
 /** Type guard — check if a shape is a {@link Shell}. */
-export function isShell(s: AnyShape): s is Shell {
+export function isShell(s: AnyShape<Dimension>): s is Shell {
   return getShapeKind(s) === 'shell';
 }
 
 /** Type guard — check if a shape is a {@link Solid}. */
-export function isSolid(s: AnyShape): s is Solid {
+export function isSolid(s: AnyShape<Dimension>): s is Solid {
   return getShapeKind(s) === 'solid';
 }
 
 /** Type guard — check if a shape is a {@link Compound}. */
-export function isCompound(s: AnyShape): s is Compound {
+export function isCompound<D extends Dimension>(s: AnyShape<D>): s is Compound<D> {
   return getShapeKind(s) === 'compound';
 }
 
 /** Type guard — check if a shape is a 3D shape (shell, solid, compsolid, or compound). */
-export function isShape3D(s: AnyShape): s is Shape3D {
+export function isShape3D(s: AnyShape<Dimension>): s is Shape3D {
   const kind = getShapeKind(s);
   return kind === 'shell' || kind === 'solid' || kind === 'compsolid' || kind === 'compound';
 }
 
 /** Type guard — check if a shape is a 1D shape (edge or wire). */
-export function isShape1D(s: AnyShape): s is Shape1D {
+export function isShape1D<D extends Dimension>(s: AnyShape<D>): s is Shape1D<D> {
   const kind = getShapeKind(s);
   return kind === 'edge' || kind === 'wire';
+}
+
+// ---------------------------------------------------------------------------
+// Dimension type guards — narrow unknown-dimension shapes
+// ---------------------------------------------------------------------------
+
+/**
+ * Narrow an unknown-dimension shape to 3D.
+ * All shapes from the kernel default to 3D embedding.
+ * 2D shapes only exist when explicitly created via 2D API paths.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- explicit '3D' for narrowing clarity
+export function is3D(s: AnyShape<Dimension>): s is AnyShape<'3D'> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime dimension marker
+  return (s as any).__is2D !== true;
+}
+
+/**
+ * Narrow an unknown-dimension shape to 2D.
+ */
+export function is2D(s: AnyShape<Dimension>): s is AnyShape<'2D'> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime dimension marker
+  return (s as any).__is2D === true;
+}
+
+/**
+ * Assert a shape is 3D. Throws at runtime if wrong.
+ * Use when you know the shape is 3D but TypeScript doesn't.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- explicit '3D' for narrowing clarity
+export function as3D(s: AnyShape<Dimension>): AnyShape<'3D'> {
+  if (!is3D(s)) throw new Error('Expected 3D shape, got 2D');
+  return s;
+}
+
+/**
+ * Assert a shape is 2D. Throws at runtime if wrong.
+ * Use when you know the shape is 2D but TypeScript doesn't.
+ */
+export function as2D(s: AnyShape<Dimension>): AnyShape<'2D'> {
+  if (!is2D(s)) throw new Error('Expected 2D shape, got 3D');
+  return s;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,18 +277,18 @@ export function isShape1D(s: AnyShape): s is Shape1D {
 
 /** Wrap a raw kernel shape into a properly branded type.
  *  Performs a downcast and wraps in a disposable handle. */
-export function castShape(ocShape: KernelShape): AnyShape {
+export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape): AnyShape<D> {
   const kernel = getKernel();
   const st = kernel.shapeType(ocShape);
   // Pass type to downcast to avoid recomputing ShapeType() in WASM
   const dc = kernel.downcast(ocShape, st);
 
-  if (st === 'vertex') return createVertex(dc);
-  if (st === 'edge') return createEdge(dc);
-  if (st === 'wire') return createWire(dc);
-  if (st === 'face') return createFace(dc);
-  if (st === 'shell') return createShell(dc);
-  if (st === 'solid') return createSolid(dc);
-  if (st === 'compsolid') return createCompSolid(dc);
-  return createCompound(dc);
+  if (st === 'vertex') return createVertex<D>(dc) as AnyShape<D>;
+  if (st === 'edge') return createEdge<D>(dc) as AnyShape<D>;
+  if (st === 'wire') return createWire<D>(dc) as AnyShape<D>;
+  if (st === 'face') return createFace<D>(dc) as AnyShape<D>;
+  if (st === 'shell') return createShell(dc) as AnyShape<D>;
+  if (st === 'solid') return createSolid(dc) as AnyShape<D>;
+  if (st === 'compsolid') return createCompSolid(dc) as AnyShape<D>;
+  return createCompound<D>(dc) as AnyShape<D>;
 }

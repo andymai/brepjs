@@ -4,7 +4,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { KernelShape } from '../kernel/types.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { UnknownDimShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError, BrepErrorCode } from '../core/errors.js';
@@ -149,7 +149,7 @@ function parseModelXml(xml: string): ParsedMesh {
 // Sewing (same pattern as OBJ import)
 // ---------------------------------------------------------------------------
 
-function buildSolidFromMesh(mesh: ParsedMesh): Result<AnyShape> {
+function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
   const kernel = getKernel();
 
   // Use buildSolidFromFaces (indexed mesh) for native import when available.
@@ -214,7 +214,7 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<AnyShape> {
  * const shape = unwrap(await importThreeMF(file));
  * ```
  */
-export async function importThreeMF(blob: Blob): Promise<Result<AnyShape>> {
+export async function importThreeMF(blob: Blob): Promise<Result<UnknownDimShape>> {
   try {
     const arrayBuf = await blob.arrayBuffer();
     const data = new Uint8Array(arrayBuf);

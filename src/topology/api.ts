@@ -7,7 +7,7 @@
 
 import type { Vec3, MatrixInput } from '../core/types.js';
 import type { Result } from '../core/result.js';
-import type { AnyShape, Edge, Face, Shape3D, Shell, Solid } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Edge, Face, Shape3D, Shell, Solid } from '../core/shapeTypes.js';
 import type { Shapeable, FinderFn, FilletRadius, ChamferDistance } from './apiTypes.js';
 import { resolve } from './apiTypes.js';
 import type { ShapeFinder } from '../query/finderFns.js';
@@ -26,7 +26,7 @@ import type { PlaneInput } from '../core/planeTypes.js';
 // ---------------------------------------------------------------------------
 
 /** Translate a shape by a vector. Returns a new shape. */
-export function translate<T extends AnyShape>(shape: Shapeable<T>, v: Vec3): T {
+export function translate<T extends AnyShape<Dimension>>(shape: Shapeable<T>, v: Vec3): T {
   return transforms.translate(resolve(shape), v);
 }
 
@@ -39,7 +39,7 @@ export interface RotateOptions {
 }
 
 /** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
-export function rotate<T extends AnyShape>(
+export function rotate<T extends AnyShape<Dimension>>(
   shape: Shapeable<T>,
   angle: number,
   options?: RotateOptions
@@ -57,7 +57,10 @@ export interface MirrorOptions {
 }
 
 /** Mirror a shape through a plane. Returns a new shape. */
-export function mirror<T extends AnyShape>(shape: Shapeable<T>, options?: MirrorOptions): T {
+export function mirror<T extends AnyShape<Dimension>>(
+  shape: Shapeable<T>,
+  options?: MirrorOptions
+): T {
   const planeOrigin = options?.at;
   return transforms.mirror(resolve(shape), options?.normal ?? [1, 0, 0], planeOrigin);
 }
@@ -69,7 +72,7 @@ export interface ScaleOptions {
 }
 
 /** Scale a shape uniformly. Returns a new shape. */
-export function scale<T extends AnyShape>(
+export function scale<T extends AnyShape<Dimension>>(
   shape: Shapeable<T>,
   factor: number,
   options?: ScaleOptions
@@ -78,7 +81,7 @@ export function scale<T extends AnyShape>(
 }
 
 /** Clone a shape (deep copy). */
-export function clone<T extends AnyShape>(shape: Shapeable<T>): T {
+export function clone<T extends AnyShape<Dimension>>(shape: Shapeable<T>): T {
   return transforms.clone(resolve(shape));
 }
 
@@ -89,7 +92,10 @@ export function clone<T extends AnyShape>(shape: Shapeable<T>): T {
  * Accepts either a raw `Matrix4x4` (4 rows of 4 numbers, row-major) or a structured
  * `MatrixTransform` with explicit `linear` and `translation` fields.
  */
-export function applyMatrix<T extends AnyShape>(shape: Shapeable<T>, matrix: MatrixInput): T {
+export function applyMatrix<T extends AnyShape<Dimension>>(
+  shape: Shapeable<T>,
+  matrix: MatrixInput
+): T {
   return transforms.applyMatrix(resolve(shape), matrix);
 }
 
@@ -100,7 +106,7 @@ export { composeTransforms } from './shapeFns.js';
  * Clone a shape and apply a pre-composed transform in a single kernel operation.
  * Much faster than separate clone() + translate() + rotate() calls for batch patterns.
  */
-export function transformCopy<T extends AnyShape>(
+export function transformCopy<T extends AnyShape<Dimension>>(
   shape: Shapeable<T>,
   composed: transforms.ComposedTransform
 ): T {
@@ -140,34 +146,37 @@ export function intersect<T extends Shape3D>(
 
 /** Section (cross-section) a shape with a plane. */
 export function section(
-  shape: Shapeable<AnyShape>,
+  shape: Shapeable<AnyShape<Dimension>>,
   plane: PlaneInput,
   options?: { approximation?: boolean; planeSize?: number }
 ): Result<AnyShape> {
-  return booleans.section(resolve(shape), plane, options);
+  return booleans.section(resolve(shape) as AnyShape, plane, options);
 }
 
 /** Section a shape with a plane and return a filled Face. */
 export function sectionToFace(
-  shape: Shapeable<AnyShape>,
+  shape: Shapeable<AnyShape<Dimension>>,
   plane: PlaneInput,
   options?: { approximation?: boolean; planeSize?: number }
 ): Result<Face> {
-  return booleans.sectionToFace(resolve(shape), plane, options);
+  return booleans.sectionToFace(resolve(shape) as AnyShape, plane, options);
 }
 
 /** Split a shape with tool shapes. */
-export function split(shape: Shapeable<AnyShape>, tools: AnyShape[]): Result<AnyShape> {
-  return booleans.split(resolve(shape), tools);
+export function split(
+  shape: Shapeable<AnyShape<Dimension>>,
+  tools: AnyShape<Dimension>[]
+): Result<AnyShape> {
+  return booleans.split(resolve(shape) as AnyShape, tools as AnyShape[]);
 }
 
 /** Slice a shape with multiple planes. */
 export function slice(
-  shape: Shapeable<AnyShape>,
+  shape: Shapeable<AnyShape<Dimension>>,
   planes: PlaneInput[],
   options?: { approximation?: boolean; planeSize?: number }
 ): Result<AnyShape[]> {
-  return booleans.slice(resolve(shape), planes, options);
+  return booleans.slice(resolve(shape) as AnyShape, planes, options);
 }
 
 // ---------------------------------------------------------------------------
@@ -341,8 +350,11 @@ export function offset<T extends Shape3D>(
 }
 
 /** Thicken a surface (face or shell) into a solid. */
-export function thicken(shape: Shapeable<Face | Shell>, thickness: number): Result<Solid> {
-  return modifiers.thicken(resolve(shape), thickness);
+export function thicken(
+  shape: Shapeable<Face<Dimension> | Shell>,
+  thickness: number
+): Result<Solid> {
+  return modifiers.thicken(resolve(shape) as Face | Shell, thickness);
 }
 
 // ---------------------------------------------------------------------------
@@ -350,52 +362,52 @@ export function thicken(shape: Shapeable<Face | Shell>, thickness: number): Resu
 // ---------------------------------------------------------------------------
 
 /** Heal a shape using the appropriate fixer. */
-export function heal<T extends AnyShape>(shape: Shapeable<T>): Result<T> {
-  return healing.heal(resolve(shape));
+export function heal<T extends AnyShape<Dimension>>(shape: Shapeable<T>): Result<T> {
+  return healing.heal(resolve(shape) as AnyShape) as Result<T>;
 }
 
 /** Simplify a shape by merging same-domain faces/edges. */
-export function simplify<T extends AnyShape>(shape: Shapeable<T>): T {
-  return transforms.simplify(resolve(shape));
+export function simplify<T extends AnyShape<Dimension>>(shape: Shapeable<T>): T {
+  return transforms.simplify(resolve(shape) as AnyShape) as T;
 }
 
 /** Mesh a shape for rendering. */
 export function mesh(
-  shape: Shapeable<AnyShape>,
+  shape: Shapeable<AnyShape<Dimension>>,
   options?: meshing.MeshOptions & { skipNormals?: boolean; includeUVs?: boolean; cache?: boolean }
 ): meshing.ShapeMesh {
-  return meshing.mesh(resolve(shape), options);
+  return meshing.mesh(resolve(shape) as AnyShape, options);
 }
 
 /** Mesh the edges of a shape for wireframe rendering. */
 export function meshEdges(
-  shape: Shapeable<AnyShape>,
+  shape: Shapeable<AnyShape<Dimension>>,
   options?: meshing.MeshOptions & { cache?: boolean }
 ): meshing.EdgeMesh {
-  return meshing.meshEdges(resolve(shape), options);
+  return meshing.meshEdges(resolve(shape) as AnyShape, options);
 }
 
 /** Get a summary description of a shape. */
-export function describe(shape: Shapeable<AnyShape>): transforms.ShapeDescription {
-  return transforms.describe(resolve(shape));
+export function describe(shape: Shapeable<AnyShape<Dimension>>): transforms.ShapeDescription {
+  return transforms.describe(resolve(shape) as AnyShape);
 }
 
 /** Serialize a shape to BREP format. */
-export function toBREP(shape: Shapeable<AnyShape>): string {
-  return transforms.toBREP(resolve(shape));
+export function toBREP(shape: Shapeable<AnyShape<Dimension>>): string {
+  return transforms.toBREP(resolve(shape) as AnyShape);
 }
 
 /** Deserialize a shape from BREP format. */
-export function fromBREP(data: string): Result<AnyShape> {
+export function fromBREP(data: string): Result<AnyShape<Dimension>> {
   return casting.fromBREP(data);
 }
 
 /** Check if a shape is valid. */
-export function isValid(shape: Shapeable<AnyShape>): boolean {
-  return healing.isValid(resolve(shape));
+export function isValid(shape: Shapeable<AnyShape<Dimension>>): boolean {
+  return healing.isValid(resolve(shape) as AnyShape);
 }
 
 /** Check if a shape is empty (null). */
-export function isEmpty(shape: Shapeable<AnyShape>): boolean {
-  return transforms.isEmpty(resolve(shape));
+export function isEmpty(shape: Shapeable<AnyShape<Dimension>>): boolean {
+  return transforms.isEmpty(resolve(shape) as AnyShape);
 }

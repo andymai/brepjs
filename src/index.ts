@@ -333,6 +333,7 @@ export {
 // ── Branded shape types ──
 
 export type {
+  Dimension,
   ShapeKind,
   Vertex,
   Edge,
@@ -345,6 +346,7 @@ export type {
   AnyShape,
   Shape1D,
   Shape3D,
+  UnknownDimShape,
 } from './core/shapeTypes.js';
 
 export {
@@ -366,7 +368,13 @@ export {
   isCompound,
   isShape3D,
   isShape1D,
+  is3D,
+  is2D,
+  as3D,
+  as2D,
 } from './core/shapeTypes.js';
+
+export type { DimensionError, RequireDimension, SameDimension } from './core/typeErrors.js';
 
 // ── Disposal / resource management ──
 

@@ -5,12 +5,12 @@
 import { getKernel } from '../kernel/index.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError } from '../core/errors.js';
-import type { AnyShape, Face, Shell } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, Shell } from '../core/shapeTypes.js';
 import { isShell } from '../core/shapeTypes.js';
 import { cast, downcast } from './cast.js';
 
 /** Sew faces/shells into a single shape using the kernel's sewing algorithm. */
-export function weldShapes(facesOrShells: Array<Face | Shell>): AnyShape {
+export function weldShapes(facesOrShells: Array<Face | Shell>): AnyShape<Dimension> {
   const sewn = getKernel().sew(facesOrShells.map((s) => s.wrapped));
   return unwrap(cast(unwrap(downcast(sewn))));
 }

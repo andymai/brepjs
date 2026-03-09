@@ -7,7 +7,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { ShapeType } from '../kernel/index.js';
-import type { AnyShape, Edge, Face, Vertex, Wire } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Edge, Face, Vertex, Wire } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { unwrap } from '../core/result.js';
@@ -95,7 +95,7 @@ function findChildren(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- wraps kernel shapes to branded types
-function wrapAll<T extends AnyShape>(shapes: any[]): T[] {
+function wrapAll<T extends AnyShape<Dimension>>(shapes: any[]): T[] {
   return shapes.map((s) => castShape(unwrap(downcast(s))) as T);
 }
 
@@ -113,9 +113,9 @@ function wrapAll<T extends AnyShape>(shapes: any[]): T[] {
  * @param edge - The edge whose adjacent faces to find.
  * @returns Array of unique faces containing the given edge.
  */
-export function facesOfEdge(parent: AnyShape, edge: Edge): Face[] {
+export function facesOfEdge<D extends Dimension>(parent: AnyShape<D>, edge: Edge<D>): Face<D>[] {
   const raw = findAncestors(parent.wrapped, edge.wrapped, 'face', 'edge');
-  return wrapAll<Face>(raw);
+  return wrapAll<Face<D>>(raw);
 }
 
 /**
@@ -124,9 +124,9 @@ export function facesOfEdge(parent: AnyShape, edge: Edge): Face[] {
  * @param face - The face whose edges to enumerate.
  * @returns Array of unique edges forming the face boundary.
  */
-export function edgesOfFace(face: Face): Edge[] {
+export function edgesOfFace<D extends Dimension>(face: Face<D>): Edge<D>[] {
   const raw = findChildren(face.wrapped, 'edge');
-  return wrapAll<Edge>(raw);
+  return wrapAll<Edge<D>>(raw);
 }
 
 /**
@@ -134,9 +134,9 @@ export function edgesOfFace(face: Face): Edge[] {
  *
  * @param face - The face whose wires to enumerate.
  */
-export function wiresOfFace(face: Face): Wire[] {
+export function wiresOfFace<D extends Dimension>(face: Face<D>): Wire<D>[] {
   const raw = findChildren(face.wrapped, 'wire');
-  return wrapAll<Wire>(raw);
+  return wrapAll<Wire<D>>(raw);
 }
 
 /**
@@ -145,9 +145,9 @@ export function wiresOfFace(face: Face): Wire[] {
  * @param edge - The edge whose vertices to retrieve.
  * @returns Array of 1-2 vertices (1 if degenerate/closed, 2 otherwise).
  */
-export function verticesOfEdge(edge: Edge): Vertex[] {
+export function verticesOfEdge<D extends Dimension>(edge: Edge<D>): Vertex<D>[] {
   const raw = findChildren(edge.wrapped, 'vertex');
-  return wrapAll<Vertex>(raw);
+  return wrapAll<Vertex<D>>(raw);
 }
 
 /**
@@ -159,7 +159,7 @@ export function verticesOfEdge(edge: Edge): Vertex[] {
  * @param face - The face whose neighbors to find.
  * @returns Array of unique adjacent faces (excluding the input face).
  */
-export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
+export function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: Face<D>): Face<D>[] {
   const kernel = getKernel();
 
   // Build edge->faces map in a single pass over all faces in parent.
@@ -209,7 +209,7 @@ export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
     }
   }
 
-  return wrapAll<Face>(neighborRaw);
+  return wrapAll<Face<D>>(neighborRaw);
 }
 
 /**
@@ -219,7 +219,7 @@ export function adjacentFaces(parent: AnyShape, face: Face): Face[] {
  * @param face2 - The second face.
  * @returns Array of edges present in both faces (via isSame comparison).
  */
-export function sharedEdges(face1: Face, face2: Face): Edge[] {
+export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>): Edge<D>[] {
   const kernel = getKernel();
   const edges1 = findChildren(face1.wrapped, 'edge');
   const edges2 = findChildren(face2.wrapped, 'edge');
@@ -246,5 +246,5 @@ export function sharedEdges(face1: Face, face2: Face): Edge[] {
     }
   }
 
-  return wrapAll<Edge>(shared);
+  return wrapAll<Edge<D>>(shared);
 }

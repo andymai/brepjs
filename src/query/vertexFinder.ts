@@ -3,7 +3,7 @@
  */
 
 import type { Vec3 } from '../core/types.js';
-import type { AnyShape, Vertex } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Vertex } from '../core/shapeTypes.js';
 import { vecDistance } from '../core/vecOps.js';
 import { type Result, ok, err } from '../core/result.js';
 import { queryError } from '../core/errors.js';
@@ -35,7 +35,7 @@ export interface VertexFinderFn extends ShapeFinder<Vertex> {
  * other filters.
  */
 function withNearestPostFilter(baseFinder: VertexFinderFn, nearestPoint: Vec3): VertexFinderFn {
-  const findAllNearest = (shape: AnyShape): Vertex[] => {
+  const findAllNearest = (shape: AnyShape<Dimension>): Vertex[] => {
     const candidates = baseFinder.findAll(shape);
     if (candidates.length === 0) return [];
 
@@ -55,7 +55,7 @@ function withNearestPostFilter(baseFinder: VertexFinderFn, nearestPoint: Vec3): 
     return [candidates[bestIdx]!];
   };
 
-  const findUniqueNearest = (shape: AnyShape): Result<Vertex> => {
+  const findUniqueNearest = (shape: AnyShape<Dimension>): Result<Vertex> => {
     const nearest = findAllNearest(shape);
     if (nearest.length === 0) {
       return err(

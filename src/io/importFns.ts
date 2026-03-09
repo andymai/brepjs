@@ -4,7 +4,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { UnknownDimShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
@@ -26,7 +26,7 @@ import { ioError } from '../core/errors.js';
  * const shape = unwrap(await importSTEP(file));
  * ```
  */
-export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
+export async function importSTEP(blob: Blob): Promise<Result<UnknownDimShape>> {
   try {
     const data = await blob.arrayBuffer();
     const shapes = getKernel().importSTEP(data);
@@ -56,7 +56,7 @@ export async function importSTEP(blob: Blob): Promise<Result<AnyShape>> {
  * const shape = unwrap(await importSTL(stlBlob));
  * ```
  */
-export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
+export async function importSTL(blob: Blob): Promise<Result<UnknownDimShape>> {
   try {
     const data = await blob.arrayBuffer();
     const shape = getKernel().importSTL(data);
@@ -82,7 +82,7 @@ export async function importSTL(blob: Blob): Promise<Result<AnyShape>> {
  * const shape = unwrap(await importIGES(igesBlob));
  * ```
  */
-export async function importIGES(blob: Blob): Promise<Result<AnyShape>> {
+export async function importIGES(blob: Blob): Promise<Result<UnknownDimShape>> {
   try {
     const data = await blob.arrayBuffer();
     const shapes = getKernel().importIGES(data);

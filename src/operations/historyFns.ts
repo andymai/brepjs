@@ -8,7 +8,7 @@
  * Also provides an operation registry and replay mechanism for parametric CAD.
  */
 
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { computationError } from '../core/errors.js';
 import { toBREP } from '../topology/shapeFns.js';
@@ -30,7 +30,7 @@ export interface OperationStep {
 
 export interface ModelHistory {
   readonly steps: ReadonlyArray<OperationStep>;
-  readonly shapes: ReadonlyMap<string, AnyShape>;
+  readonly shapes: ReadonlyMap<string, AnyShape<Dimension>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ export function createHistory(): ModelHistory {
 export function addStep(
   history: ModelHistory,
   step: Omit<OperationStep, 'timestamp'>,
-  outputShape: AnyShape
+  outputShape: AnyShape<Dimension>
 ): ModelHistory {
   const fullStep: OperationStep = { ...step, timestamp: Date.now() };
   const shapes = new Map(history.shapes);
@@ -68,7 +68,7 @@ export function undoLast(history: ModelHistory): ModelHistory {
     usedIds.add(s.outputId);
     for (const id of s.inputIds) usedIds.add(id);
   }
-  const shapes = new Map<string, AnyShape>();
+  const shapes = new Map<string, AnyShape<Dimension>>();
   for (const [id, shape] of history.shapes) {
     if (usedIds.has(id)) shapes.set(id, shape);
   }
@@ -81,7 +81,7 @@ export function findStep(history: ModelHistory, stepId: string): OperationStep |
 }
 
 /** Retrieve a shape by its ID. */
-export function getShape(history: ModelHistory, shapeId: string): AnyShape | undefined {
+export function getShape(history: ModelHistory, shapeId: string): AnyShape<Dimension> | undefined {
   return history.shapes.get(shapeId);
 }
 
@@ -98,7 +98,11 @@ export function stepsFrom(history: ModelHistory, stepId: string): ReadonlyArray<
 }
 
 /** Register an initial shape without an operation step. Returns a new history. */
-export function registerShape(history: ModelHistory, id: string, shape: AnyShape): ModelHistory {
+export function registerShape(
+  history: ModelHistory,
+  id: string,
+  shape: AnyShape<Dimension>
+): ModelHistory {
   const shapes = new Map(history.shapes);
   shapes.set(id, shape);
   return { ...history, shapes };
@@ -109,7 +113,10 @@ export function registerShape(history: ModelHistory, id: string, shape: AnyShape
 // ---------------------------------------------------------------------------
 
 /** A function that executes a modelling operation. */
-export type OperationFn = (inputs: AnyShape[], params: Record<string, unknown>) => AnyShape;
+export type OperationFn = (
+  inputs: AnyShape<Dimension>[],
+  params: Record<string, unknown>
+) => AnyShape<Dimension>;
 
 /** An immutable registry of named operations. */
 export interface OperationRegistry {
@@ -165,7 +172,7 @@ export function replayHistory(
       return err(computationError('REPLAY_UNKNOWN_OP', `Unknown operation type: ${step.type}`));
     }
 
-    const inputs: AnyShape[] = [];
+    const inputs: AnyShape<Dimension>[] = [];
     for (const inputId of step.inputIds) {
       const shape = current.shapes.get(inputId);
       if (!shape) {
@@ -245,7 +252,7 @@ export function replayFrom(
       return err(computationError('REPLAY_UNKNOWN_OP', `Unknown operation type: ${step.type}`));
     }
 
-    const inputs: AnyShape[] = [];
+    const inputs: AnyShape<Dimension>[] = [];
     for (const inputId of step.inputIds) {
       const shape = current.shapes.get(inputId);
       if (!shape) {
@@ -342,7 +349,7 @@ export function serializeHistory(history: ModelHistory): Result<SerializedHistor
 
 /** Deserialize a history from a JSON-safe object (shapes reconstructed via fromBREP). */
 export function deserializeHistory(data: SerializedHistory): Result<ModelHistory> {
-  const shapes = new Map<string, AnyShape>();
+  const shapes = new Map<string, AnyShape<Dimension>>();
   for (const [id, brep] of Object.entries(data.shapes)) {
     try {
       const result = fromBREP(brep);

@@ -5,7 +5,7 @@
  */
 
 import type { Vec3 } from '../core/types.js';
-import type { Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
+import type { Dimension, Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
 import type { Result } from '../core/result.js';
 import type { Shapeable } from '../topology/apiTypes.js';
 import { resolve } from '../topology/apiTypes.js';
@@ -26,7 +26,7 @@ export type { SweepOptions } from './extrudeFns.js';
  * @param height - A number for Z-direction extrusion, or a Vec3 direction vector.
  * @returns `Result` containing the extruded solid, or an error if validation or operation fails.
  */
-export function extrude(face: Shapeable<Face>, height: number | Vec3): Result<Solid> {
+export function extrude(face: Shapeable<Face<Dimension>>, height: number | Vec3): Result<Solid> {
   const f = resolve(face);
   const vec: Vec3 = typeof height === 'number' ? [0, 0, height] : height;
   return extruding.extrude(f, vec);
@@ -49,7 +49,10 @@ export interface RevolveOptions {
 /**
  * Revolve a face around an axis to create a solid of revolution.
  */
-export function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result<Shape3D> {
+export function revolve(
+  face: Shapeable<Face<Dimension>>,
+  options?: RevolveOptions
+): Result<Shape3D> {
   const pivotPoint = options?.at ?? [0, 0, 0];
   return extruding.revolve(
     resolve(face),
@@ -66,7 +69,10 @@ export function revolve(face: Shapeable<Face>, options?: RevolveOptions): Result
 /**
  * Loft through a set of wire profiles to create a 3D shape.
  */
-export function loft(wires: Shapeable<Wire>[], options?: lofting.LoftOptions): Result<Shape3D> {
+export function loft(
+  wires: Shapeable<Wire<Dimension>>[],
+  options?: lofting.LoftOptions
+): Result<Shape3D> {
   const resolvedWires = wires.map((w) => resolve(w));
   return lofting.loft(resolvedWires, options);
 }

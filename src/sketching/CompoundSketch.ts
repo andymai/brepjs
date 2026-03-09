@@ -27,7 +27,7 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
   if (!isFace(newFace)) {
     bug('guessFaceFromWires', 'Failed to create a face');
   }
-  return newFace;
+  return newFace as Face;
 };
 
 const fixWire = (wire: Wire, baseFace: Face): Wire => {

@@ -6,7 +6,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Face, Wire, Solid } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, Wire, Solid } from '../core/shapeTypes.js';
 import { castShape, isSolid, isFace, isWire } from '../core/shapeTypes.js';
 import { type Result, ok, err, isOk } from '../core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '../core/errors.js';
@@ -19,7 +19,7 @@ import { getWires, getFaces } from './shapeFns.js';
 /**
  * Check if a shape is valid according to kernel geometry and topology checks.
  */
-export function isValid(shape: AnyShape): boolean {
+export function isValid(shape: AnyShape<Dimension>): boolean {
   return getKernel().isValid(shape.wrapped);
 }
 
@@ -69,14 +69,14 @@ export function healSolid(solid: Solid): Result<Solid> {
  *
  * Uses ShapeFix_Face to repair wire ordering, orientation, and geometry issues.
  */
-export function healFace(face: Face): Result<Face> {
+export function healFace(face: Face<Dimension>): Result<Face<Dimension>> {
   if (!isFace(face)) {
     return err(validationError('NOT_A_FACE', 'Input shape is not a face'));
   }
 
   try {
     const result = getKernel().healFace(face.wrapped);
-    const cast = castShape(result);
+    const cast = castShape<Dimension>(result);
     if (!isFace(cast)) {
       return err(kernelError('HEAL_RESULT_NOT_FACE', 'Healed result is not a face'));
     }
@@ -92,14 +92,14 @@ export function healFace(face: Face): Result<Face> {
  * Uses ShapeFix_Wire to repair edge connectivity, gaps, and self-intersections.
  * Requires a face for surface context; pass `undefined` to use a default planar context.
  */
-export function healWire(wire: Wire, face?: Face): Result<Wire> {
+export function healWire(wire: Wire<Dimension>, face?: Face<Dimension>): Result<Wire<Dimension>> {
   if (!isWire(wire)) {
     return err(validationError('NOT_A_WIRE', 'Input shape is not a wire'));
   }
 
   try {
     const result = getKernel().healWire(wire.wrapped, face?.wrapped);
-    const cast = castShape(result);
+    const cast = castShape<Dimension>(result);
     if (!isWire(cast)) {
       return err(kernelError('HEAL_RESULT_NOT_WIRE', 'Healed result is not a wire'));
     }
@@ -115,7 +115,7 @@ export function healWire(wire: Wire, face?: Face): Result<Wire> {
  * Supports solids, faces, and wires. For other shape types, returns the
  * input unchanged.
  */
-export function heal<T extends AnyShape>(shape: T): Result<T> {
+export function heal<T extends AnyShape<Dimension>>(shape: T): Result<T> {
   if (isSolid(shape)) {
     return healSolid(shape) as Result<T>;
   }
@@ -175,9 +175,9 @@ export interface HealingReport {
  * handles sub-shape healing and reconstruction.
  */
 export function autoHeal(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   options?: AutoHealOptions
-): Result<{ shape: AnyShape; report: HealingReport }> {
+): Result<{ shape: AnyShape<Dimension>; report: HealingReport }> {
   const fixWires = options?.fixWires !== false;
   const fixFaces = options?.fixFaces !== false;
   const fixSolids = options?.fixSolids !== false;
@@ -209,7 +209,7 @@ export function autoHeal(
   const wiresBefore = getWires(shape).length;
   const facesBefore = getFaces(shape).length;
 
-  let current: AnyShape = shape;
+  let current: AnyShape<Dimension> = shape;
   let solidHealed = false;
 
   // Sewing step (if tolerance provided)

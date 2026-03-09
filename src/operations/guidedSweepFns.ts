@@ -5,7 +5,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { Wire, Solid, Shell } from '../core/shapeTypes.js';
+import type { Dimension, Wire, Solid, Shell } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { kernelError, typeCastError, BrepErrorCode } from '../core/errors.js';
@@ -33,9 +33,9 @@ export interface GuidedSweepOptions {
  * @returns Result containing the swept Solid or Shell.
  */
 export function guidedSweep(
-  profile: Wire,
-  spine: Wire,
-  guides: ReadonlyArray<Wire>,
+  profile: Wire<Dimension>,
+  spine: Wire<Dimension>,
+  guides: ReadonlyArray<Wire<Dimension>>,
   options: GuidedSweepOptions = {}
 ): Result<Solid | Shell> {
   const { transition = 'transformed', solid = true, tolerance } = options;

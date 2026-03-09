@@ -3,7 +3,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError } from '../core/errors.js';
 
@@ -67,7 +67,7 @@ export interface MeshOptions {
  * @see toBufferGeometryData — convert to Three.js BufferGeometry format
  */
 export function mesh(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   {
     tolerance = 1e-3,
     angularTolerance = 0.1,
@@ -128,7 +128,7 @@ export function mesh(
  * @see toLineGeometryData — convert to Three.js LineSegments format
  */
 export function meshEdges(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   { tolerance = 1e-3, angularTolerance = 0.1, cache = true }: MeshOptions & { cache?: boolean } = {}
 ): EdgeMesh {
   // Check cache first (uses WeakMap keyed by shape object to avoid hash collisions)
@@ -166,7 +166,7 @@ export function meshEdges(
  *
  * @returns Ok with a Blob (MIME type `application/STEP`), or Err on failure.
  */
-export function exportSTEP(shape: AnyShape): Result<Blob> {
+export function exportSTEP(shape: AnyShape<Dimension>): Result<Blob> {
   try {
     const stepString = getKernel().exportSTEP([shape.wrapped]);
     return ok(new Blob([stepString], { type: 'application/STEP' }));
@@ -187,7 +187,7 @@ export function exportSTEP(shape: AnyShape): Result<Blob> {
  * @returns Ok with a Blob (MIME type `application/sla`), or Err on failure.
  */
 export function exportSTL(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   {
     tolerance = 1e-3,
     angularTolerance = 0.1,
@@ -214,7 +214,7 @@ export function exportSTL(
  *
  * @returns Ok with a Blob (MIME type `application/iges`), or Err on failure.
  */
-export function exportIGES(shape: AnyShape): Result<Blob> {
+export function exportIGES(shape: AnyShape<Dimension>): Result<Blob> {
   try {
     const igesString = getKernel().exportIGES([shape.wrapped]);
     return ok(new Blob([igesString], { type: 'application/iges' }));

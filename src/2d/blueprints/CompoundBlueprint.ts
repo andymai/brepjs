@@ -4,7 +4,7 @@ import type Blueprint from './Blueprint.js';
 import type { DrawingInterface, SketchData } from './lib.js';
 import { asSVG, viewbox } from './svg.js';
 
-import type { AnyShape, Face } from '../../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face } from '../../core/shapeTypes.js';
 
 import type { Plane, PlaneName } from '../../core/planeTypes.js';
 import type { PointInput } from '../../core/types.js';
@@ -134,14 +134,14 @@ export default class CompoundBlueprint implements DrawingInterface {
    * @remarks Only the outer boundary (`blueprints[0]`) is used for the hole.
    */
   punchHole(
-    shape: AnyShape,
+    shape: AnyShape<Dimension>,
     face: SingleFace,
     options: {
       height?: number;
       origin?: PointInput;
       draftAngle?: number;
     } = {}
-  ): AnyShape {
+  ): AnyShape<Dimension> {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return this.blueprints[0]!.punchHole(shape, face, options);
   }

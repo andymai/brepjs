@@ -7,7 +7,7 @@
 
 import type { ShapeEvolution } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Face } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { getFaces } from './shapeFns.js';
 
@@ -22,11 +22,11 @@ const shapeTagStore = new WeakMap<object, Map<string, Set<number>>>();
 const tagMetadataStore = new WeakMap<object, Map<string, Record<string, unknown>>>();
 
 /** O(1) check whether a shape has any face tags attached. */
-export function hasFaceTags(shape: AnyShape): boolean {
+export function hasFaceTags(shape: AnyShape<Dimension>): boolean {
   return shapeTagStore.has(shape.wrapped);
 }
 
-function getTagMap(shape: AnyShape): Map<string, Set<number>> {
+function getTagMap(shape: AnyShape<Dimension>): Map<string, Set<number>> {
   let map = shapeTagStore.get(shape.wrapped);
   if (!map) {
     map = new Map();
@@ -35,7 +35,7 @@ function getTagMap(shape: AnyShape): Map<string, Set<number>> {
   return map;
 }
 
-function getMetaMap(shape: AnyShape): Map<string, Record<string, unknown>> {
+function getMetaMap(shape: AnyShape<Dimension>): Map<string, Record<string, unknown>> {
   let map = tagMetadataStore.get(shape.wrapped);
   if (!map) {
     map = new Map();
@@ -57,10 +57,10 @@ function getMetaMap(shape: AnyShape): Map<string, Record<string, unknown>> {
  * @returns The same shape (tags are stored externally).
  */
 export function tagFaces(
-  shape: AnyShape,
-  selector: Face[] | ((face: Face) => boolean),
+  shape: AnyShape<Dimension>,
+  selector: Face<Dimension>[] | ((face: Face<Dimension>) => boolean),
   tag: string
-): AnyShape {
+): AnyShape<Dimension> {
   const faces = Array.isArray(selector) ? selector : getFaces(shape).filter(selector);
 
   const tagMap = getTagMap(shape);
@@ -80,14 +80,14 @@ export function tagFaces(
  * Checks both direct tags and propagated origins (for faces that
  * survived boolean/modifier operations).
  */
-export function findFacesByTag(shape: AnyShape, tag: string): Face[] {
+export function findFacesByTag(shape: AnyShape<Dimension>, tag: string): Face<Dimension>[] {
   const tagMap = shapeTagStore.get(shape.wrapped);
   if (!tagMap) return [];
 
   const hashes = tagMap.get(tag);
   if (!hashes || hashes.size === 0) return [];
 
-  const result: Face[] = [];
+  const result: Face<Dimension>[] = [];
   for (const face of getFaces(shape)) {
     const hash = getKernel().hashCode(face.wrapped, HASH_CODE_MAX);
     if (hashes.has(hash)) {
@@ -100,19 +100,19 @@ export function findFacesByTag(shape: AnyShape, tag: string): Face[] {
 /**
  * Get all tags and their associated faces on a shape.
  */
-export function getFaceTags(shape: AnyShape): Map<string, Face[]> {
-  const result = new Map<string, Face[]>();
+export function getFaceTags(shape: AnyShape<Dimension>): Map<string, Face<Dimension>[]> {
+  const result = new Map<string, Face<Dimension>[]>();
   const tagMap = shapeTagStore.get(shape.wrapped);
   if (!tagMap) return result;
 
   const faces = getFaces(shape);
-  const faceByHash = new Map<number, Face>();
+  const faceByHash = new Map<number, Face<Dimension>>();
   for (const face of faces) {
     faceByHash.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), face);
   }
 
   for (const [tag, hashes] of tagMap) {
-    const taggedFaces: Face[] = [];
+    const taggedFaces: Face<Dimension>[] = [];
     for (const hash of hashes) {
       const face = faceByHash.get(hash);
       if (face) taggedFaces.push(face);
@@ -129,10 +129,10 @@ export function getFaceTags(shape: AnyShape): Map<string, Face[]> {
  * Store arbitrary metadata for a tag on a shape.
  */
 export function setTagMetadata(
-  shape: AnyShape,
+  shape: AnyShape<Dimension>,
   tag: string,
   metadata: Record<string, unknown>
-): AnyShape {
+): AnyShape<Dimension> {
   const metaMap = getMetaMap(shape);
   metaMap.set(tag, metadata);
   return shape;
@@ -141,7 +141,10 @@ export function setTagMetadata(
 /**
  * Retrieve metadata for a tag on a shape.
  */
-export function getTagMetadata(shape: AnyShape, tag: string): Record<string, unknown> | undefined {
+export function getTagMetadata(
+  shape: AnyShape<Dimension>,
+  tag: string
+): Record<string, unknown> | undefined {
   return tagMetadataStore.get(shape.wrapped)?.get(tag);
 }
 
@@ -151,8 +154,8 @@ export function getTagMetadata(shape: AnyShape, tag: string): Record<string, unk
  */
 export function propagateFaceTagsFromEvolution(
   evolution: ShapeEvolution,
-  inputs: readonly AnyShape[],
-  result: AnyShape
+  inputs: readonly AnyShape<Dimension>[],
+  result: AnyShape<Dimension>
 ): void {
   const resultTagMap = getTagMap(result);
 

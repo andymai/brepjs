@@ -7,7 +7,7 @@ import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
 import { type Result, ok, err, andThen } from '../core/result.js';
 import { validationError, kernelError } from '../core/errors.js';
-import type { Face, Wire } from '../core/shapeTypes.js';
+import type { Dimension, Face, Wire } from '../core/shapeTypes.js';
 import { createFace, isFace } from '../core/shapeTypes.js';
 import { cast } from './cast.js';
 import { outerWire } from './faceFns.js';
@@ -19,14 +19,17 @@ import { makeLine, assembleWire } from './curveBuilders.js';
  *
  * @returns An error if the wire is non-planar or the face cannot be built.
  */
-export function makeFace(wire: Wire, holes?: Wire[]): Result<Face> {
+export function makeFace<D extends Dimension = '3D'>(
+  wire: Wire<D>,
+  holes?: Wire<D>[]
+): Result<Face<D>> {
   try {
     const faceShape = getKernel().makeFace(wire.wrapped, true);
     if (holes && holes.length > 0) {
       // Add holes using the existing addHolesInFace helper which handles orientation fixing
-      return ok(addHolesInFace(createFace(faceShape), holes));
+      return ok(addHolesInFace(createFace<D>(faceShape), holes));
     }
-    return ok(createFace(faceShape));
+    return ok(createFace<D>(faceShape));
   } catch {
     return err(
       kernelError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
@@ -40,8 +43,8 @@ export function makeFace(wire: Wire, holes?: Wire[]): Result<Face> {
  * Equivalent to OpenSCAD's `fill()` — takes a 2D face with holes and returns
  * a solid face with all internal cutouts filled in.
  */
-export function fill(face: Face): Result<Face> {
-  const outer = outerWire(face);
+export function fill<D extends Dimension = '3D'>(face: Face<D>): Result<Face<D>> {
+  const outer = outerWire(face as Face) as Wire<D>;
   return makeFace(outer);
 }
 
@@ -60,14 +63,14 @@ export function makeNewFaceWithinFace(originFace: Face, wire: Wire): Face {
  *
  * @returns An error if the filling algorithm fails to produce a face.
  */
-export function makeNonPlanarFace(wire: Wire): Result<Face> {
+export function makeNonPlanarFace<D extends Dimension = '3D'>(wire: Wire<D>): Result<Face<D>> {
   try {
     const shape = getKernel().makeNonPlanarFace(wire.wrapped);
     return andThen(cast(shape), (newFace) => {
       if (!isFace(newFace)) {
         return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face'));
       }
-      return ok(newFace);
+      return ok(newFace as Face<D>);
     });
   } catch {
     return err(kernelError('FACE_BUILD_FAILED', 'Failed to create a non-planar face'));
@@ -79,8 +82,11 @@ export function makeNonPlanarFace(wire: Wire): Result<Face> {
  *
  * Orientation of the holes is automatically fixed.
  */
-export function addHolesInFace(face: Face, holes: Wire[]): Face {
-  return createFace(
+export function addHolesInFace<D extends Dimension = '3D'>(
+  face: Face<D>,
+  holes: Wire<D>[]
+): Face<D> {
+  return createFace<D>(
     getKernel().addHolesInFace(
       face.wrapped,
       holes.map((h) => h.wrapped)

@@ -7,7 +7,7 @@
 
 import type { ShapeEvolution } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Face } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 
 // ---------------------------------------------------------------------------
@@ -31,11 +31,11 @@ const shapeColorStore = new WeakMap<object, Color>();
 const faceColorStore = new WeakMap<object, Map<number, Color>>();
 
 /** O(1) check whether a shape has any color metadata (shape or face level). */
-export function hasColorMetadata(shape: AnyShape): boolean {
+export function hasColorMetadata(shape: AnyShape<Dimension>): boolean {
   return shapeColorStore.has(shape.wrapped) || faceColorStore.has(shape.wrapped);
 }
 
-function getFaceColorMap(shape: AnyShape): Map<number, Color> {
+function getFaceColorMap(shape: AnyShape<Dimension>): Map<number, Color> {
   let map = faceColorStore.get(shape.wrapped);
   if (!map) {
     map = new Map();
@@ -79,7 +79,7 @@ function parseColor(input: ColorInput): Color {
  * Set a whole-shape color (stored externally via WeakMap).
  * Returns the same shape reference.
  */
-export function colorShape<T extends AnyShape>(shape: T, color: ColorInput): T {
+export function colorShape<T extends AnyShape<Dimension>>(shape: T, color: ColorInput): T {
   shapeColorStore.set(shape.wrapped, parseColor(color));
   return shape;
 }
@@ -88,7 +88,11 @@ export function colorShape<T extends AnyShape>(shape: T, color: ColorInput): T {
  * Set per-face colors on a shape.
  * Returns the same shape reference.
  */
-export function colorFaces<T extends AnyShape>(shape: T, faces: Face[], color: ColorInput): T {
+export function colorFaces<T extends AnyShape<Dimension>>(
+  shape: T,
+  faces: Face<Dimension>[],
+  color: ColorInput
+): T {
   const parsed = parseColor(color);
   const map = getFaceColorMap(shape);
   for (const face of faces) {
@@ -100,14 +104,14 @@ export function colorFaces<T extends AnyShape>(shape: T, faces: Face[], color: C
 /**
  * Get the whole-shape color, or undefined if none set.
  */
-export function getShapeColor(shape: AnyShape): Color | undefined {
+export function getShapeColor(shape: AnyShape<Dimension>): Color | undefined {
   return shapeColorStore.get(shape.wrapped);
 }
 
 /**
  * Get the color of a specific face, or undefined if none set.
  */
-export function getFaceColor(shape: AnyShape, face: Face): Color | undefined {
+export function getFaceColor(shape: AnyShape<Dimension>, face: Face<Dimension>): Color | undefined {
   const map = faceColorStore.get(shape.wrapped);
   if (!map) return undefined;
   return map.get(getKernel().hashCode(face.wrapped, HASH_CODE_MAX));
@@ -119,8 +123,8 @@ export function getFaceColor(shape: AnyShape, face: Face): Color | undefined {
  */
 export function propagateColorsFromEvolution(
   evolution: ShapeEvolution,
-  inputs: readonly AnyShape[],
-  result: AnyShape
+  inputs: readonly AnyShape<Dimension>[],
+  result: AnyShape<Dimension>
 ): void {
   // Propagate whole-shape colors: first input with a color wins
   for (const input of inputs) {

@@ -6,7 +6,7 @@
  */
 
 import type { Vec2, Vec3 } from '../core/types.js';
-import type { AnyShape, Edge, Face, Wire, Shape3D } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Edge, Face, Wire, Shape3D } from '../core/shapeTypes.js';
 import type { ShapeFinder } from '../query/finderFns.js';
 
 /**
@@ -23,7 +23,7 @@ export interface DrawingLike {
 // ---------------------------------------------------------------------------
 
 /** Callback that configures a shape finder for inline use in modifiers. */
-export type FinderFn<T extends AnyShape> = (finder: ShapeFinder<T>) => ShapeFinder<T>;
+export type FinderFn<T extends AnyShape<Dimension>> = (finder: ShapeFinder<T>) => ShapeFinder<T>;
 
 // ---------------------------------------------------------------------------
 // FilletRadius — all radius modes for fillet()
@@ -39,7 +39,7 @@ export type FinderFn<T extends AnyShape> = (finder: ShapeFinder<T>) => ShapeFind
 export type FilletRadius =
   | number
   | [number, number]
-  | ((edge: Edge) => number | [number, number] | null);
+  | ((edge: Edge<Dimension>) => number | [number, number] | null);
 
 // ---------------------------------------------------------------------------
 // ChamferDistance — all distance modes for chamfer()
@@ -57,7 +57,9 @@ export type ChamferDistance =
   | number
   | [number, number]
   | { distance: number; angle: number }
-  | ((edge: Edge) => number | [number, number] | { distance: number; angle: number } | null);
+  | ((
+      edge: Edge<Dimension>
+    ) => number | [number, number] | { distance: number; angle: number } | null);
 
 // ---------------------------------------------------------------------------
 // Compound operation option types
@@ -130,7 +132,7 @@ export interface RectangularPatternOptions {
  * for the `resolve()` utility and `Shapeable<T>` type to work without
  * creating circular imports.
  */
-export interface WrappedMarker<T extends AnyShape> {
+export interface WrappedMarker<T extends AnyShape<Dimension>> {
   readonly val: T;
   /** Brand property to distinguish wrappers from branded shape handles. */
   readonly __wrapped: true;
@@ -142,14 +144,14 @@ export interface WrappedMarker<T extends AnyShape> {
  * All functional API functions use this as their shape parameter type,
  * enabling seamless interop between styles.
  */
-export type Shapeable<T extends AnyShape> = T | WrappedMarker<T>;
+export type Shapeable<T extends AnyShape<Dimension>> = T | WrappedMarker<T>;
 
 // ---------------------------------------------------------------------------
 // resolve() — extract raw shape from Shapeable
 // ---------------------------------------------------------------------------
 
 /** Extract the raw branded shape from a Shapeable value. */
-export function resolve<T extends AnyShape>(s: Shapeable<T>): T {
+export function resolve<T extends AnyShape<Dimension>>(s: Shapeable<T>): T {
   if ('__wrapped' in s) {
     return s.val;
   }

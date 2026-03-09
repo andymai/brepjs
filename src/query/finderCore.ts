@@ -7,7 +7,7 @@
  * in one place.
  */
 
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { queryError } from '../core/errors.js';
@@ -30,7 +30,7 @@ export type TopoKind = 'edge' | 'face' | 'wire' | 'vertex';
 // Base ShapeFinder interface
 // ---------------------------------------------------------------------------
 
-export interface ShapeFinder<T extends AnyShape> {
+export interface ShapeFinder<T extends AnyShape<Dimension>> {
   /** Add a custom predicate filter. Returns new finder. */
   readonly when: (predicate: Predicate<T>) => ShapeFinder<T>;
   /** Filter to elements in a list. Returns new finder. */
@@ -40,9 +40,9 @@ export interface ShapeFinder<T extends AnyShape> {
   /** Combine filters with OR. Returns new finder. */
   readonly either: (fns: ((f: ShapeFinder<T>) => ShapeFinder<T>)[]) => ShapeFinder<T>;
   /** Find all matching elements from a shape. */
-  readonly findAll: (shape: AnyShape) => T[];
+  readonly findAll: (shape: AnyShape<Dimension>) => T[];
   /** Find exactly one matching element. Returns error if 0 or more than 1 match. */
-  readonly findUnique: (shape: AnyShape) => Result<T>;
+  readonly findUnique: (shape: AnyShape<Dimension>) => Result<T>;
   /** Check if an element passes all filters. */
   readonly shouldKeep: (element: T) => boolean;
 
@@ -66,7 +66,7 @@ export interface ShapeFinder<T extends AnyShape> {
  * @param rebuild   - reconstruct the typed finder from a new filter list
  * @param extend    - attach domain-specific methods onto the base finder
  */
-export function createTypedFinder<T extends AnyShape, F extends ShapeFinder<T>>(
+export function createTypedFinder<T extends AnyShape<Dimension>, F extends ShapeFinder<T>>(
   topoKind: TopoKind,
   filters: ReadonlyArray<Predicate<T>>,
   rebuild: (newFilters: ReadonlyArray<Predicate<T>>) => F,
@@ -79,7 +79,7 @@ export function createTypedFinder<T extends AnyShape, F extends ShapeFinder<T>>(
 
   const shouldKeep = (element: T): boolean => filters.every((f) => f(element));
 
-  const extractElements = (shape: AnyShape): T[] => {
+  const extractElements = (shape: AnyShape<Dimension>): T[] => {
     const result: T[] = [];
     for (const raw of iterTopo(shape.wrapped, topoKind)) {
       const element = castShape(unwrap(downcast(raw))) as T;

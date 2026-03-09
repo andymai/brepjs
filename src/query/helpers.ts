@@ -1,4 +1,4 @@
-import type { AnyShape, Face } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face } from '../core/shapeTypes.js';
 import { isFace } from '../core/shapeTypes.js';
 import { faceFinder, type FaceFinderFn } from './finderFns.js';
 import { type Result, ok } from '../core/result.js';
@@ -10,7 +10,7 @@ import { type Result, ok } from '../core/result.js';
 export type SingleFace = Face | FaceFinderFn | ((f: FaceFinderFn) => FaceFinderFn);
 
 /** Resolve a {@link SingleFace} input to a concrete Face from the given shape. */
-export function getSingleFace(f: SingleFace, shape: AnyShape): Result<Face> {
+export function getSingleFace(f: SingleFace, shape: AnyShape<Dimension>): Result<Face> {
   // Handle functional finder instance (has _topoKind property)
   if (typeof f === 'object' && '_topoKind' in f) {
     return f.findUnique(shape);

@@ -5,7 +5,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
-import type { Edge, Wire } from '../core/shapeTypes.js';
+import type { Dimension, Edge, Wire } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import type { CurveType } from '../core/definitionMaps.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -19,18 +19,18 @@ import { isWire as isWireGuard, isEdge } from '../core/shapeTypes.js';
 /**
  * Get the geometric curve type of an edge or wire (LINE, CIRCLE, BSPLINE, etc.).
  */
-export function getCurveType(shape: Edge | Wire): CurveType {
+export function getCurveType(shape: Edge<Dimension> | Wire<Dimension>): CurveType {
   return getKernel().curveType(shape.wrapped) as CurveType;
 }
 
 /** Get the start point of a curve. */
-export function curveStartPoint(shape: Edge | Wire): Vec3 {
+export function curveStartPoint(shape: Edge<Dimension> | Wire<Dimension>): Vec3 {
   const [first] = getKernel().curveParameters(shape.wrapped);
   return getKernel().curvePointAtParam(shape.wrapped, first);
 }
 
 /** Get the end point of a curve. */
-export function curveEndPoint(shape: Edge | Wire): Vec3 {
+export function curveEndPoint(shape: Edge<Dimension> | Wire<Dimension>): Vec3 {
   const [, last] = getKernel().curveParameters(shape.wrapped);
   return getKernel().curvePointAtParam(shape.wrapped, last);
 }
@@ -58,34 +58,38 @@ export function curveTangentAt(shape: Edge | Wire, position = 0.5): Vec3 {
 }
 
 /** Get the arc length of an edge or wire. */
-export function curveLength(shape: Edge | Wire): number {
+export function curveLength(shape: Edge<Dimension> | Wire<Dimension>): number {
   return getKernel().length(shape.wrapped);
 }
 
 /** Check if the curve is closed. */
-export function curveIsClosed(shape: Edge | Wire): boolean {
+export function curveIsClosed(shape: Edge<Dimension> | Wire<Dimension>): boolean {
   return getKernel().curveIsClosed(shape.wrapped);
 }
 
 /** Check if the curve is periodic. */
-export function curveIsPeriodic(shape: Edge | Wire): boolean {
+export function curveIsPeriodic(shape: Edge<Dimension> | Wire<Dimension>): boolean {
   return getKernel().curveIsPeriodic(shape.wrapped);
 }
 
 /** Get the period of a periodic curve. */
-export function curvePeriod(shape: Edge | Wire): number {
+export function curvePeriod(shape: Edge<Dimension> | Wire<Dimension>): number {
   return getKernel().curvePeriod(shape.wrapped);
 }
 
 /** Get the topological orientation of an edge or wire. */
-export function getOrientation(shape: Edge | Wire): 'forward' | 'backward' {
+export function getOrientation(shape: Edge<Dimension> | Wire<Dimension>): 'forward' | 'backward' {
   const orient = getKernel().shapeOrientation(shape.wrapped);
   return orient === 'forward' ? 'forward' : 'backward';
 }
 
 /** Flip the orientation of an edge or wire. Returns a new shape. */
-export function flipOrientation(shape: Edge | Wire): Edge | Wire {
-  return castShape(getKernel().reverseShape(shape.wrapped)) as Edge | Wire;
+export function flipOrientation(
+  shape: Edge<Dimension> | Wire<Dimension>
+): Edge<Dimension> | Wire<Dimension> {
+  return castShape<Dimension>(getKernel().reverseShape(shape.wrapped)) as
+    | Edge<Dimension>
+    | Wire<Dimension>;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +193,7 @@ export function approximateCurve(
  * @returns Ok with the offset wire, or Err if the operation fails.
  */
 export function offsetWire2D(
-  wire: Wire,
+  wire: Wire<Dimension>,
   offset: number,
   kind: 'arc' | 'intersection' | 'tangent' | 'chamfer' = 'arc'
 ): Result<Wire> {

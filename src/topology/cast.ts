@@ -1,5 +1,5 @@
 import type { KernelShape, KernelType } from '../kernel/types.js';
-import type { AnyShape, CompSolid, Shape3D, Wire } from '../core/shapeTypes.js';
+import type { AnyShape, CompSolid, Dimension, Shape3D, Wire } from '../core/shapeTypes.js';
 import { castShape, isShape3D as _isShape3D, isWire as _isWire } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
 import { typeCastError } from '../core/errors.js';
@@ -99,7 +99,7 @@ export function downcast(shape: KernelShape): Result<GenericTopo> {
  *
  * @returns Ok with a typed AnyShape, or Err if the shape type is unknown.
  */
-export function cast(shape: KernelShape): Result<AnyShape> {
+export function cast(shape: KernelShape): Result<AnyShape<Dimension>> {
   if (getKernel().isNull(shape)) {
     return err(typeCastError('NULL_SHAPE', 'Cannot cast a null shape'));
   }
@@ -107,17 +107,17 @@ export function cast(shape: KernelShape): Result<AnyShape> {
 }
 
 /** Type guard: return true if the shape is a 3D body (Shell, Solid, CompSolid, or Compound). */
-export function isShape3D(shape: AnyShape): shape is Shape3D {
+export function isShape3D(shape: AnyShape<Dimension>): shape is Shape3D {
   return _isShape3D(shape);
 }
 
 /** Type guard: return true if the shape is a Wire. */
-export function isWire(shape: AnyShape): shape is Wire {
+export function isWire(shape: AnyShape<Dimension>): shape is Wire {
   return _isWire(shape);
 }
 
 /** Type guard: return true if the shape is a CompSolid. */
-export function isCompSolid(shape: AnyShape): shape is CompSolid {
+export function isCompSolid(shape: AnyShape<Dimension>): shape is CompSolid {
   return getKernel().shapeType(shape.wrapped) === 'compsolid';
 }
 
@@ -127,6 +127,6 @@ export function isCompSolid(shape: AnyShape): shape is CompSolid {
  * @param data - BREP string produced by toBREP().
  * @returns Ok with the deserialized shape, or Err if parsing fails.
  */
-export function fromBREP(data: string): Result<AnyShape> {
+export function fromBREP(data: string): Result<AnyShape<Dimension>> {
   return cast(getKernel().fromBREP(data));
 }

@@ -4,7 +4,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { KernelShape } from '../kernel/types.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { UnknownDimShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError, BrepErrorCode } from '../core/errors.js';
@@ -24,7 +24,7 @@ import { ioError, BrepErrorCode } from '../core/errors.js';
  * const shape = unwrap(await importOBJ(file));
  * ```
  */
-export async function importOBJ(blob: Blob): Promise<Result<AnyShape>> {
+export async function importOBJ(blob: Blob): Promise<Result<UnknownDimShape>> {
   const text = await blob.text();
   const lines = text.split('\n');
 
@@ -68,7 +68,7 @@ export async function importOBJ(blob: Blob): Promise<Result<AnyShape>> {
 function buildSolidFromMesh(
   vertices: Array<[number, number, number]>,
   faces: Array<number[]>
-): Result<AnyShape> {
+): Result<UnknownDimShape> {
   const kernel = getKernel();
   const triFaces: KernelShape[] = [];
 

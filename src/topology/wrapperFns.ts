@@ -495,10 +495,10 @@ export function shape(
 
   // Branded shape types
   if (s && typeof s === 'object' && 'wrapped' in s) {
-    if (isFace(s)) return createWrappedFace(s);
+    if (isFace(s)) return createWrappedFace(s as Face);
     if (isShape3D(s)) return createWrapped3D(s);
-    if (isEdge(s) || isWire(s)) return createWrappedCurve(s);
-    return createWrappedBase(s);
+    if (isEdge(s) || isWire(s)) return createWrappedCurve(s as Edge | Wire);
+    return createWrappedBase(s as AnyShape);
   }
 
   throw new Error('shape() requires a Sketch or branded shape type');

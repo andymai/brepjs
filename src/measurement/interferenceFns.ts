@@ -7,7 +7,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { validationError, BrepErrorCode } from '../core/errors.js';
 import { getBounds, type Bounds3D } from '../topology/shapeFns.js';
@@ -63,8 +63,8 @@ export interface InterferencePair {
  * ```
  */
 export function checkInterference(
-  shape1: AnyShape,
-  shape2: AnyShape,
+  shape1: AnyShape<Dimension>,
+  shape2: AnyShape<Dimension>,
   tolerance = 1e-6
 ): Result<InterferenceResult> {
   if (getKernel().isNull(shape1.wrapped)) {
@@ -114,13 +114,13 @@ export function checkInterference(
  * ```
  */
 export function checkAllInterferences(
-  shapes: ReadonlyArray<AnyShape>,
+  shapes: ReadonlyArray<AnyShape<Dimension>>,
   tolerance = 1e-6
 ): InterferencePair[] {
   const pairs: InterferencePair[] = [];
 
   // Pre-compute bounding boxes for cheap AABB rejection
-  const boxes = shapes.map((s) => getBounds(s));
+  const boxes = shapes.map((s) => getBounds(s as AnyShape));
 
   shapes.forEach((si, i) => {
     for (let j = i + 1; j < shapes.length; j++) {

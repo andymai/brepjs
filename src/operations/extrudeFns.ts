@@ -9,7 +9,7 @@ type KernelType = any;
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
 import { vecAdd, vecLength, vecNormalize } from '../core/vecOps.js';
-import type { Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
+import type { Dimension, Face, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
 import { castShape, isShape3D, isWire as isWireGuard, createSolid } from '../core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '../core/result.js';
 import { typeCastError, validationError, kernelError, BrepErrorCode } from '../core/errors.js';
@@ -61,7 +61,7 @@ function makeHelixWire(
  *
  * @see {@link extrude!basicFaceExtrusion | basicFaceExtrusion} for the OOP API equivalent.
  */
-export function extrude(face: Face, extrusionVec: Vec3): Result<Solid> {
+export function extrude(face: Face<Dimension>, extrusionVec: Vec3): Result<Solid> {
   if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrude: face is a null shape'));
   }
@@ -99,7 +99,7 @@ export function extrude(face: Face, extrusionVec: Vec3): Result<Solid> {
  * @see {@link extrude!revolution | revolution} for the OOP API equivalent.
  */
 export function revolve(
-  face: Face,
+  face: Face<Dimension>,
   center: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
   angle = 360
@@ -141,8 +141,8 @@ export function revolve(
  * @see {@link extrude!genericSweep | genericSweep} for the OOP API equivalent.
  */
 export function sweep(
-  wire: Wire,
-  spine: Wire,
+  wire: Wire<Dimension>,
+  spine: Wire<Dimension>,
   config: SweepOptions = {},
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
@@ -233,7 +233,7 @@ export function sweep(
  * @see {@link extrude!supportExtrude | supportExtrude (OOP)} for the class-based equivalent.
  */
 export function supportExtrude(
-  wire: Wire,
+  wire: Wire<Dimension>,
   center: Vec3,
   normal: Vec3,
   support: KernelType
@@ -267,7 +267,7 @@ export function supportExtrude(
  * @see {@link extrude!complexExtrude | complexExtrude (OOP)} for the class-based equivalent.
  */
 export function complexExtrude(
-  wire: Wire,
+  wire: Wire<Dimension>,
   center: Vec3,
   normal: Vec3,
   profileShape?: ExtrusionProfile,
@@ -303,7 +303,7 @@ export function complexExtrude(
  * @see {@link extrude!twistExtrude | twistExtrude (OOP)} for the class-based equivalent.
  */
 export function twistExtrude(
-  wire: Wire,
+  wire: Wire<Dimension>,
   angleDegrees: number,
   center: Vec3,
   normal: Vec3,

@@ -5,7 +5,7 @@
 import { getKernel } from '../kernel/index.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
-import type { Wire, Shape3D } from '../core/shapeTypes.js';
+import type { Dimension, Wire, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { typeCastError, validationError, kernelError } from '../core/errors.js';
@@ -42,7 +42,7 @@ export interface LoftOptions {
  * @see {@link loft!loft | loft} for the OOP API equivalent.
  */
 export function loft(
-  wires: Wire[],
+  wires: Wire<Dimension>[],
   { ruled = true, startPoint, endPoint, tolerance = 1e-6 }: LoftOptions = {},
   returnShell = false
 ): Result<Shape3D> {

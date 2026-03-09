@@ -7,7 +7,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { KernelShape } from '../kernel/types.js';
-import type { Wire, Solid, Shell } from '../core/shapeTypes.js';
+import type { Dimension, Wire, Solid, Shell } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { validationError, kernelError, typeCastError, BrepErrorCode } from '../core/errors.js';
@@ -15,7 +15,7 @@ import { validationError, kernelError, typeCastError, BrepErrorCode } from '../c
 /** Configuration for a single sweep section (profile wire + optional location). */
 export interface SweepSectionConfig {
   /** The profile wire for this section. */
-  wire: Wire;
+  wire: Wire<Dimension>;
   /** Location along the spine as a parameter in [0.0, 1.0]. Auto-distributed if omitted. */
   location?: number;
 }
@@ -44,7 +44,7 @@ export interface MultiSweepOptions {
  */
 export function multiSectionSweep(
   sections: ReadonlyArray<SweepSectionConfig>,
-  spine: Wire,
+  spine: Wire<Dimension>,
   options?: MultiSweepOptions
 ): Result<Solid | Shell> {
   if (sections.length < 2) {

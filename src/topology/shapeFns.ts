@@ -6,7 +6,15 @@
 import { getKernel } from '../kernel/index.js';
 import type { ShapeEvolution } from '../kernel/types.js';
 import type { Vec3, MatrixInput } from '../core/types.js';
-import type { AnyShape, Edge, Face, Wire, Vertex, ShapeKind } from '../core/shapeTypes.js';
+import type {
+  AnyShape,
+  Dimension,
+  Edge,
+  Face,
+  Wire,
+  Vertex,
+  ShapeKind,
+} from '../core/shapeTypes.js';
 import { castShape, getShapeKind } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX, DEG2RAD } from '../core/constants.js';
 import { downcast, iterTopo } from './cast.js';
@@ -17,37 +25,37 @@ import { unwrap } from '../core/result.js';
 // ---------------------------------------------------------------------------
 
 /** Clone a shape (deep copy via kernel topology downcast). */
-export function clone<T extends AnyShape>(shape: T): T {
+export function clone<T extends AnyShape<Dimension>>(shape: T): T {
   return castShape(unwrap(downcast(shape.wrapped))) as T;
 }
 
 /** Serialize a shape to BREP string format. */
-export function toBREP(shape: AnyShape): string {
+export function toBREP(shape: AnyShape<Dimension>): string {
   return getKernel().toBREP(shape.wrapped);
 }
 
 /** Get the topology hash code of a shape. */
-export function getHashCode(shape: AnyShape): number {
+export function getHashCode(shape: AnyShape<Dimension>): number {
   return getKernel().hashCode(shape.wrapped, HASH_CODE_MAX);
 }
 
 /** Check if a shape is null. */
-export function isEmpty(shape: AnyShape): boolean {
+export function isEmpty(shape: AnyShape<Dimension>): boolean {
   return getKernel().isNull(shape.wrapped);
 }
 
 /** Check if two shapes are the same topological entity. */
-export function isSameShape(a: AnyShape, b: AnyShape): boolean {
+export function isSameShape(a: AnyShape<Dimension>, b: AnyShape<Dimension>): boolean {
   return getKernel().isSame(a.wrapped, b.wrapped);
 }
 
 /** Check if two shapes are geometrically equal. */
-export function isEqualShape(a: AnyShape, b: AnyShape): boolean {
+export function isEqualShape(a: AnyShape<Dimension>, b: AnyShape<Dimension>): boolean {
   return getKernel().isEqual(a.wrapped, b.wrapped);
 }
 
 /** Simplify a shape by merging same-domain faces/edges. Returns a new shape. */
-export function simplify<T extends AnyShape>(shape: T): T {
+export function simplify<T extends AnyShape<Dimension>>(shape: T): T {
   return castShape(getKernel().simplify(shape.wrapped)) as T;
 }
 
@@ -56,7 +64,7 @@ export function simplify<T extends AnyShape>(shape: T): T {
 // ---------------------------------------------------------------------------
 
 /** Collect all face hashes that have origin tracking, for passing to WithHistory kernel methods. */
-function collectInputFaceHashes(inputs: AnyShape[]): number[] {
+function collectInputFaceHashes(inputs: AnyShape<Dimension>[]): number[] {
   const hashes: number[] = [];
   for (const input of inputs) {
     const origins = getFaceOrigins(input);
@@ -73,7 +81,7 @@ function collectInputFaceHashes(inputs: AnyShape[]): number[] {
 // ---------------------------------------------------------------------------
 
 /** Translate a shape by a vector. Returns a new shape. */
-export function translate<T extends AnyShape>(shape: T, v: Vec3): T {
+export function translate<T extends AnyShape<Dimension>>(shape: T, v: Vec3): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().translateWithHistory(
     shape.wrapped,
@@ -89,7 +97,7 @@ export function translate<T extends AnyShape>(shape: T, v: Vec3): T {
 }
 
 /** Rotate a shape around an axis. Angle is in degrees. Returns a new shape. */
-export function rotate<T extends AnyShape>(
+export function rotate<T extends AnyShape<Dimension>>(
   shape: T,
   angle: number,
   position: Vec3 = [0, 0, 0],
@@ -110,7 +118,7 @@ export function rotate<T extends AnyShape>(
 }
 
 /** Mirror a shape through a plane defined by origin and normal. Returns a new shape. */
-export function mirror<T extends AnyShape>(
+export function mirror<T extends AnyShape<Dimension>>(
   shape: T,
   planeNormal: Vec3 = [0, 1, 0],
   planeOrigin: Vec3 = [0, 0, 0]
@@ -129,7 +137,11 @@ export function mirror<T extends AnyShape>(
 }
 
 /** Scale a shape uniformly. Returns a new shape. */
-export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3 = [0, 0, 0]): T {
+export function scale<T extends AnyShape<Dimension>>(
+  shape: T,
+  factor: number,
+  center: Vec3 = [0, 0, 0]
+): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().scaleWithHistory(
     shape.wrapped,
@@ -144,7 +156,7 @@ export function scale<T extends AnyShape>(shape: T, factor: number, center: Vec3
 }
 
 /** Resize a shape to exact target dimensions with optional auto-proportional scaling. */
-export function resize<T extends AnyShape>(
+export function resize<T extends AnyShape<Dimension>>(
   shape: T,
   dimensions: [number | undefined, number | undefined, number | undefined],
   options?: { auto?: boolean }
@@ -276,7 +288,7 @@ function isOrthogonalMatrix(
  * Uses the fast `kernel transform` path for orthogonal matrices (rotation, uniform scale, mirror)
  * and the general `gp_GTrsf` path for non-orthogonal transforms (shear, non-uniform scale).
  */
-export function applyMatrix<T extends AnyShape>(shape: T, matrix: MatrixInput): T {
+export function applyMatrix<T extends AnyShape<Dimension>>(shape: T, matrix: MatrixInput): T {
   const { linear, translation } = parseMatrixInput(matrix);
 
   const d = det3x3(linear);
@@ -359,7 +371,10 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
  * Clone a shape and apply a pre-composed transform in a single kernel operation.
  * Much faster than separate clone() + translate() + rotate() calls.
  */
-export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTransform): T {
+export function transformCopy<T extends AnyShape<Dimension>>(
+  shape: T,
+  composed: ComposedTransform
+): T {
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().applyComposedTransformWithHistory(
     shape.wrapped,
@@ -379,16 +394,16 @@ export function transformCopy<T extends AnyShape>(shape: T, composed: ComposedTr
 const topoCache = new WeakMap<
   object,
   {
-    edges?: Edge[];
-    faces?: Face[];
-    wires?: Wire[];
-    vertices?: Vertex[];
+    edges?: Edge<Dimension>[];
+    faces?: Face<Dimension>[];
+    wires?: Wire<Dimension>[];
+    vertices?: Vertex<Dimension>[];
     faceOrigins?: Map<number, number>;
     bounds?: Bounds3D;
   }
 >();
 
-function getOrCreateCache(shape: AnyShape) {
+function getOrCreateCache(shape: AnyShape<Dimension>) {
   let entry = topoCache.get(shape.wrapped);
   if (!entry) {
     entry = {};
@@ -398,33 +413,33 @@ function getOrCreateCache(shape: AnyShape) {
 }
 
 /** Get all edges of a shape as branded Edge handles. Results are cached per shape. */
-export function getEdges(shape: AnyShape): Edge[] {
+export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[] {
   const cache = getOrCreateCache(shape);
-  if (cache.edges) return cache.edges;
+  if (cache.edges) return cache.edges as Edge<D>[];
   const edges = Array.from(iterTopo(shape.wrapped, 'edge')).map(
-    (e) => castShape(unwrap(downcast(e))) as Edge
+    (e) => castShape(unwrap(downcast(e))) as Edge<D>
   );
   cache.edges = edges;
   return edges;
 }
 
 /** Get all faces of a shape as branded Face handles. Results are cached per shape. */
-export function getFaces(shape: AnyShape): Face[] {
+export function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[] {
   const cache = getOrCreateCache(shape);
-  if (cache.faces) return cache.faces;
+  if (cache.faces) return cache.faces as Face<D>[];
   const faces = Array.from(iterTopo(shape.wrapped, 'face')).map(
-    (e) => castShape(unwrap(downcast(e))) as Face
+    (e) => castShape(unwrap(downcast(e))) as Face<D>
   );
   cache.faces = faces;
   return faces;
 }
 
 /** Get all wires of a shape as branded Wire handles. Results are cached per shape. */
-export function getWires(shape: AnyShape): Wire[] {
+export function getWires<D extends Dimension>(shape: AnyShape<D>): Wire<D>[] {
   const cache = getOrCreateCache(shape);
-  if (cache.wires) return cache.wires;
+  if (cache.wires) return cache.wires as Wire<D>[];
   const wires = Array.from(iterTopo(shape.wrapped, 'wire')).map(
-    (e) => castShape(unwrap(downcast(e))) as Wire
+    (e) => castShape(unwrap(downcast(e))) as Wire<D>
   );
   cache.wires = wires;
   return wires;
@@ -434,7 +449,7 @@ export function getWires(shape: AnyShape): Wire[] {
  * Tag all faces of a shape with an opaque integer origin.
  * Consumers assign meaning (e.g., source line number).
  */
-export function setShapeOrigin(shape: AnyShape, origin: number): void {
+export function setShapeOrigin(shape: AnyShape<Dimension>, origin: number): void {
   const cache = getOrCreateCache(shape);
   const map = new Map<number, number>();
   for (const f of getFaces(shape)) {
@@ -447,7 +462,7 @@ export function setShapeOrigin(shape: AnyShape, origin: number): void {
  * Get the face origin map for a shape (faceHash → originTag).
  * Returns undefined if no origins have been set or propagated.
  */
-export function getFaceOrigins(shape: AnyShape): Map<number, number> | undefined {
+export function getFaceOrigins(shape: AnyShape<Dimension>): Map<number, number> | undefined {
   return topoCache.get(shape.wrapped)?.faceOrigins;
 }
 
@@ -460,8 +475,8 @@ export function getFaceOrigins(shape: AnyShape): Map<number, number> | undefined
  */
 export function propagateOriginsFromEvolution(
   evolution: ShapeEvolution,
-  inputs: AnyShape[],
-  result: AnyShape
+  inputs: AnyShape<Dimension>[],
+  result: AnyShape<Dimension>
 ): void {
   // Collect all input face origins
   const inputOrigins = new Map<number, number>();
@@ -510,7 +525,10 @@ export function propagateOriginsFromEvolution(
  * Matches result faces to input faces by hash code first; if no hash matches
  * are found, falls back to geometric matching (normal + centroid comparison).
  */
-export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): void {
+export function propagateOriginsByHash(
+  inputs: AnyShape<Dimension>[],
+  result: AnyShape<Dimension>
+): void {
   const lookup = new Map<number, number>();
   for (const input of inputs) {
     const origins = getFaceOrigins(input);
@@ -615,11 +633,11 @@ export function propagateOriginsByHash(inputs: AnyShape[], result: AnyShape): vo
 }
 
 /** Get all vertices of a shape as branded Vertex handles. Results are cached per shape. */
-export function getVertices(shape: AnyShape): Vertex[] {
+export function getVertices<D extends Dimension>(shape: AnyShape<D>): Vertex<D>[] {
   const cache = getOrCreateCache(shape);
-  if (cache.vertices) return cache.vertices;
+  if (cache.vertices) return cache.vertices as Vertex<D>[];
   const vertices = Array.from(iterTopo(shape.wrapped, 'vertex')).map(
-    (e) => castShape(unwrap(downcast(e))) as Vertex
+    (e) => castShape(unwrap(downcast(e))) as Vertex<D>
   );
   cache.vertices = vertices;
   return vertices;
@@ -630,30 +648,30 @@ export function getVertices(shape: AnyShape): Vertex[] {
 // ---------------------------------------------------------------------------
 
 /** Lazily iterate edges of a shape, yielding branded Edge handles one at a time. */
-export function* iterEdges(shape: AnyShape): Generator<Edge> {
+export function* iterEdges<D extends Dimension>(shape: AnyShape<D>): Generator<Edge<D>> {
   for (const e of iterTopo(shape.wrapped, 'edge')) {
-    yield castShape(unwrap(downcast(e))) as Edge;
+    yield castShape(unwrap(downcast(e))) as Edge<D>;
   }
 }
 
 /** Lazily iterate faces of a shape, yielding branded Face handles one at a time. */
-export function* iterFaces(shape: AnyShape): Generator<Face> {
+export function* iterFaces<D extends Dimension>(shape: AnyShape<D>): Generator<Face<D>> {
   for (const f of iterTopo(shape.wrapped, 'face')) {
-    yield castShape(unwrap(downcast(f))) as Face;
+    yield castShape(unwrap(downcast(f))) as Face<D>;
   }
 }
 
 /** Lazily iterate wires of a shape, yielding branded Wire handles one at a time. */
-export function* iterWires(shape: AnyShape): Generator<Wire> {
+export function* iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<Wire<D>> {
   for (const w of iterTopo(shape.wrapped, 'wire')) {
-    yield castShape(unwrap(downcast(w))) as Wire;
+    yield castShape(unwrap(downcast(w))) as Wire<D>;
   }
 }
 
 /** Lazily iterate vertices of a shape, yielding branded Vertex handles one at a time. */
-export function* iterVertices(shape: AnyShape): Generator<Vertex> {
+export function* iterVertices<D extends Dimension>(shape: AnyShape<D>): Generator<Vertex<D>> {
   for (const v of iterTopo(shape.wrapped, 'vertex')) {
-    yield castShape(unwrap(downcast(v))) as Vertex;
+    yield castShape(unwrap(downcast(v))) as Vertex<D>;
   }
 }
 
@@ -668,7 +686,7 @@ export interface Bounds3D {
 }
 
 /** Get the axis-aligned bounding box of a shape. Cached per shape. */
-export function getBounds(shape: AnyShape): Bounds3D {
+export function getBounds(shape: AnyShape<Dimension>): Bounds3D {
   const cache = getOrCreateCache(shape);
   if (cache.bounds) return cache.bounds;
   const { min, max } = getKernel().boundingBox(shape.wrapped);
@@ -700,7 +718,7 @@ export interface ShapeDescription {
 }
 
 /** Get a quick summary of a shape for debugging and inspection. */
-export function describe(shape: AnyShape): ShapeDescription {
+export function describe(shape: AnyShape<Dimension>): ShapeDescription {
   return {
     kind: getShapeKind(shape),
     faceCount: getFaces(shape).length,

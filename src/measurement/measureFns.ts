@@ -5,7 +5,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
-import type { AnyShape, Face, Shape3D } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, Shape3D } from '../core/shapeTypes.js';
 import { uvBounds } from '../topology/faceFns.js';
 import type { CurvatureResult } from '../kernel/measureOps.js';
 import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
@@ -91,7 +91,7 @@ export function measureVolumeProps(shape: Shape3D): VolumeProps {
  * @returns Surface area, center of mass, and raw mass property.
  * @see {@link measureArea} for a shorthand that returns only the area number.
  */
-export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
+export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): SurfaceProps {
   const cached = getCachedMeasurement(shape.wrapped, 'surface') as SurfaceProps | undefined;
   if (cached) return cached;
   assertShapeNotNull(shape, 'measureSurfaceProps');
@@ -118,7 +118,7 @@ export function measureSurfaceProps(shape: Face | Shape3D): SurfaceProps {
  * @returns Length, center of mass, and raw mass property.
  * @see {@link measureLength} for a shorthand that returns only the length number.
  */
-export function measureLinearProps(shape: AnyShape): LinearProps {
+export function measureLinearProps(shape: AnyShape<Dimension>): LinearProps {
   const cached = getCachedMeasurement(shape.wrapped, 'linear') as LinearProps | undefined;
   if (cached) return cached;
   assertShapeNotNull(shape, 'measureLinearProps');
@@ -149,7 +149,7 @@ export function measureVolume(shape: Shape3D): number {
  *
  * @see {@link measureSurfaceProps} for the full property set including center of mass.
  */
-export function measureArea(shape: Face | Shape3D): number {
+export function measureArea(shape: Face<Dimension> | Shape3D): number {
   return measureSurfaceProps(shape).mass;
 }
 
@@ -158,7 +158,7 @@ export function measureArea(shape: Face | Shape3D): number {
  *
  * @see {@link measureLinearProps} for the full property set including center of mass.
  */
-export function measureLength(shape: AnyShape): number {
+export function measureLength(shape: AnyShape<Dimension>): number {
   return measureLinearProps(shape).mass;
 }
 
@@ -174,7 +174,7 @@ export function measureLength(shape: AnyShape): number {
  * const gap = measureDistance(boxA, boxB);
  * ```
  */
-export function measureDistance(shape1: AnyShape, shape2: AnyShape): number {
+export function measureDistance(shape1: AnyShape<Dimension>, shape2: AnyShape<Dimension>): number {
   assertShapeNotNull(shape1, 'measureDistance');
   assertShapeNotNull(shape2, 'measureDistance');
   return getKernel().distance(shape1.wrapped, shape2.wrapped).value;
@@ -199,15 +199,15 @@ export function measureDistance(shape1: AnyShape, shape2: AnyShape): number {
  * query.dispose();
  * ```
  */
-export function createDistanceQuery(referenceShape: AnyShape): {
-  distanceTo: (other: AnyShape) => number;
+export function createDistanceQuery(referenceShape: AnyShape<Dimension>): {
+  distanceTo: (other: AnyShape<Dimension>) => number;
   dispose: () => void;
 } {
   assertShapeNotNull(referenceShape, 'createDistanceQuery');
   const query = getKernel().createDistanceQuery(referenceShape.wrapped);
 
   return {
-    distanceTo(other: AnyShape): number {
+    distanceTo(other: AnyShape<Dimension>): number {
       assertShapeNotNull(other, 'createDistanceQuery.distanceTo');
       return query.distanceTo(other.wrapped).value;
     },
@@ -240,7 +240,7 @@ export type { CurvatureResult } from '../kernel/measureOps.js';
  * console.log(curv.meanCurvature, curv.gaussianCurvature);
  * ```
  */
-export function measureCurvatureAt(face: Face, u: number, v: number): CurvatureResult {
+export function measureCurvatureAt(face: Face<Dimension>, u: number, v: number): CurvatureResult {
   assertShapeNotNull(face, 'measureCurvatureAt');
   const result = getKernel().surfaceCurvature(face.wrapped, u, v);
   return {
@@ -262,9 +262,9 @@ export function measureCurvatureAt(face: Face, u: number, v: number): CurvatureR
  * @param face - The face to evaluate at its parametric center.
  * @see {@link measureCurvatureAt} to evaluate at an arbitrary (u, v) point.
  */
-export function measureCurvatureAtMid(face: Face): CurvatureResult {
+export function measureCurvatureAtMid(face: Face<Dimension>): CurvatureResult {
   assertShapeNotNull(face, 'measureCurvatureAtMid');
-  const bounds = uvBounds(face);
+  const bounds = uvBounds(face as Face);
   const uMid = (bounds.uMin + bounds.uMax) / 2;
   const vMid = (bounds.vMin + bounds.vMax) / 2;
   const result = getKernel().surfaceCurvature(face.wrapped, uMid, vMid);
