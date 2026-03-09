@@ -2693,7 +2693,7 @@ export class BrepkitAdapter implements KernelAdapter {
       if (errors > 0) {
         warnOnce(
           'isvalid-strict',
-          `validateSolid reported ${errors} error(s). ` +
+          'validateSolid reported errors. ' +
             'NURBS-approximated analytic shapes (cylinders, cones, tori) may report false negatives.'
         );
       }
