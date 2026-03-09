@@ -535,7 +535,16 @@ export interface KernelAdapter extends Kernel2DCapability {
   ): KernelShape;
 
   // --- Serialization ---
+  /**
+   * Serialize a shape to a string format for persistence.
+   *
+   * **Cross-kernel warning**: The serialization format is kernel-specific.
+   * OCCT uses its native BREP text format; brepkit proxies to STEP.
+   * Data produced by one kernel cannot be deserialized by the other.
+   * Only use for same-kernel round-trips.
+   */
   toBREP(shape: KernelShape): string;
+  /** @see {@link toBREP} for cross-kernel compatibility notes. */
   fromBREP(data: string): KernelShape;
 
   // --- Mesh preparation ---

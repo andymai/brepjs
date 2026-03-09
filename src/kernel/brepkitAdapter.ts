@@ -2937,12 +2937,20 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   toBREP(shape: KernelShape): string {
-    // brepkit doesn't have OCCT's BREP format — use STEP as the serialization format
+    // brepkit uses STEP as serialization format (not OCCT BREP format).
+    // Same-kernel round-trips work; cross-kernel round-trips do not.
+    warnOnce(
+      'brep-format',
+      'toBREP/fromBREP uses STEP format (not OCCT BREP). Cross-kernel BREP round-trips are not supported.'
+    );
     return this.exportSTEP([shape]);
   }
 
   fromBREP(data: string): KernelShape {
-    // Deserialize from STEP format
+    warnOnce(
+      'brep-format',
+      'toBREP/fromBREP uses STEP format (not OCCT BREP). Cross-kernel BREP round-trips are not supported.'
+    );
     const shapes = this.importSTEP(data);
     if (shapes.length === 0) throw new Error('brepkit: fromBREP produced no shapes');
     return shapes[0];
