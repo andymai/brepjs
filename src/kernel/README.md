@@ -1,6 +1,6 @@
 # Kernel
 
-Kernel abstraction layer — all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Ships with two built-in implementations (OpenCascade WASM and brepkit WASM); additional kernels can be registered at runtime.
+Kernel abstraction layer — all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Two adapters are provided: OpenCascade WASM (via the `brepjs-opencascade` companion package) and brepkit WASM (via the external `brepkit-wasm` npm package). Additional kernels can be registered at runtime.
 
 ```mermaid
 graph TD
@@ -71,11 +71,11 @@ import opencascade from 'brepjs-opencascade';
 const oc = await opencascade();
 initFromOC(oc);
 
-// Built-in alternative (brepkit WASM)
+// brepkit kernel (external brepkit-wasm package)
 import { BrepkitAdapter } from 'brepjs';
-import brepkit from 'brepjs-opencascade/brepkit';
-const bk = await brepkit();
-registerKernel('brepkit', new BrepkitAdapter(bk));
+import init, { BrepKernel } from 'brepkit-wasm';
+await init();
+registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
 // Custom kernel
 registerKernel('rust', new RustAdapter(wasm));

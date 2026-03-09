@@ -1,6 +1,6 @@
 # brepjs
 
-> Web CAD library with a layered architecture and pluggable kernel abstraction layer (ships with OpenCascade and brepkit WASM backends). Create 2D sketches, extrude/revolve/loft/sweep into 3D solids, apply booleans/fillets/chamfers/shells, query topology, measure geometry, heal shapes, manage assemblies, and import/export STEP, STL, IGES, glTF, DXF, 3MF, OBJ, and SVG.
+> Web CAD library with a layered architecture and pluggable kernel abstraction layer (supports OpenCascade and brepkit WASM backends). Create 2D sketches, extrude/revolve/loft/sweep into 3D solids, apply booleans/fillets/chamfers/shells, query topology, measure geometry, heal shapes, manage assemblies, and import/export STEP, STL, IGES, glTF, DXF, 3MF, OBJ, and SVG.
 
 ## API Reference & Discoverability
 

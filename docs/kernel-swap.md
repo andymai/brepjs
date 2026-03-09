@@ -1,6 +1,6 @@
 # Custom Kernel Guide
 
-brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface — the library ships with two built-in implementations (OpenCascade WASM and brepkit WASM), and you can register your own kernel at runtime.
+brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface. Two adapters are provided: OpenCascade WASM (shipped via the `brepjs-opencascade` companion package) and brepkit WASM (via the external `brepkit-wasm` npm package). You can also register your own kernel at runtime.
 
 ## Quick Start
 
@@ -12,10 +12,10 @@ import { initFromOC, registerKernel, withKernel, BrepkitAdapter } from 'brepjs';
 const oc = await opencascade();
 initFromOC(oc);
 
-// Register the built-in brepkit kernel as an alternative
-import brepkit from 'brepjs-opencascade/brepkit';
-const bk = await brepkit();
-registerKernel('brepkit', new BrepkitAdapter(bk));
+// Register the brepkit kernel as an alternative (external brepkit-wasm package)
+import init, { BrepKernel } from 'brepkit-wasm';
+await init();
+registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
 // Run a specific kernel temporarily
 const result = withKernel('brepkit', () => {
@@ -38,7 +38,7 @@ Convenience wrapper — creates the default OpenCascade adapter from a loaded WA
 
 ### `BrepkitAdapter`
 
-Built-in alternative kernel adapter. Create with `new BrepkitAdapter(brepkitWasm)` and register via `registerKernel('brepkit', adapter)`. Coverage is growing — some advanced operations may throw "not implemented".
+Adapter for the external `brepkit-wasm` WASM package. Create with `new BrepkitAdapter(brepkitWasm)` and register via `registerKernel('brepkit', adapter)`. Coverage is growing — some advanced operations may throw "not implemented".
 
 ### `withKernel(id, fn)`
 
@@ -171,8 +171,9 @@ The test setup (`tests/setup.ts`) reads `TEST_KERNEL` and initializes the correc
 export async function initKernel() {
   const kernel = process.env.TEST_KERNEL ?? 'occt';
   if (kernel === 'brepkit') {
-    const bk = await import('brepjs-opencascade/brepkit');
-    initFromBrepkit(await bk.default());
+    const bk = await import('brepkit-wasm');
+    if (typeof bk.default === 'function') await bk.default();
+    registerKernel('brepkit', new BrepkitAdapter(new bk.BrepKernel()));
   } else {
     const oc = await import('brepjs-opencascade');
     initFromOC(await oc.default());

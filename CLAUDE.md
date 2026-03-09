@@ -49,7 +49,7 @@ Monorepo with two publishable packages:
 - **Layer 2+ code must never call methods on `.wrapped`** — always use `getKernel().method(shape.wrapped)`. ESLint enforces this.
 - Branded types (`Edge`, `Wire`, `Face`, `Solid`, etc.) in `src/core/shapeTypes.ts` — lightweight handles, no class hierarchy. Types carry a phantom `D extends Dimension` parameter for 2D/3D safety.
 - Validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`) in `src/core/shapeTypes.ts` — phantom types encoding topological invariants. Smart constructors (`closedWire()`, `orientedFace()`) prove validity at runtime; type guards (`isClosedWire()`, etc.) narrow in-place.
-- Two built-in kernels: OpenCascade WASM (`initFromOC`) and brepkit WASM (`BrepkitAdapter`). Tests run against both via `TEST_KERNEL` env var.
+- Two supported kernels: OpenCascade WASM (`initFromOC`, shipped via `brepjs-opencascade`) and brepkit WASM (`BrepkitAdapter`, external `brepkit-wasm` npm package). Tests run against both via `TEST_KERNEL` env var.
 - `createHandle()` / `createKernelHandle()` from `src/core/disposal.ts` — use `using` keyword for resource cleanup
 - Functional API in `*Fns.ts` files — pure functions taking/returning branded types; prefer over OO API for new code
 - **Never add new methods to class-based wrappers** (e.g. `Shape`, `Solid`, `Edge` classes in `src/topology/`). These are legacy OO wrappers. All new functionality goes in `*Fns.ts` files.
