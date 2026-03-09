@@ -1,5 +1,12 @@
 # Changelog
 
+## [11.0.1](https://github.com/andymai/brepjs/compare/brepjs-v11.0.0...brepjs-v11.0.1) (2026-03-09)
+
+
+### Performance Improvements
+
+* V8 CPU profile for Blueprint boolean hot-path analysis ([#421](https://github.com/andymai/brepjs/issues/421)) ([f613c8e](https://github.com/andymai/brepjs/commit/f613c8eed3b20a96e834628deb7c8d189b8bb85b))
+
 ## [11.0.0](https://github.com/andymai/brepjs/compare/brepjs-v10.0.0...brepjs-v11.0.0) (2026-03-09)
 
 
