@@ -1,5 +1,12 @@
 # Changelog
 
+## [11.1.0](https://github.com/andymai/brepjs/compare/brepjs-v11.0.1...brepjs-v11.1.0) (2026-03-09)
+
+
+### Features
+
+* **errors:** add UNSUPPORTED error kind for capability gaps ([#424](https://github.com/andymai/brepjs/issues/424)) ([168e900](https://github.com/andymai/brepjs/commit/168e9004ecfbda44a62244cc0b513f61ec74033b))
+
 ## [11.0.1](https://github.com/andymai/brepjs/compare/brepjs-v11.0.0...brepjs-v11.0.1) (2026-03-09)
 
 
