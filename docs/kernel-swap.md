@@ -1,23 +1,29 @@
 # Custom Kernel Guide
 
-brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface — the library ships with a default implementation, but you can register your own kernel at runtime.
+brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface — the library ships with two built-in implementations (OpenCascade WASM and brepkit WASM), and you can register your own kernel at runtime.
 
 ## Quick Start
 
 ```typescript
-import { registerKernel, withKernel } from 'brepjs';
+import opencascade from 'brepjs-opencascade';
+import { initFromOC, registerKernel, withKernel, BrepkitAdapter } from 'brepjs';
 
-// Register your kernel (first registered becomes the default)
-registerKernel('my-kernel', myKernelAdapter);
+// Initialize the default OpenCascade kernel
+const oc = await opencascade();
+initFromOC(oc);
 
-// Or run a specific kernel temporarily
-import { initFromOC } from 'brepjs';
-initFromOC(oc); // default = 'occt'
-registerKernel('rust', rustAdapter);
+// Register the built-in brepkit kernel as an alternative
+import brepkit from 'brepjs-opencascade/brepkit';
+const bk = await brepkit();
+registerKernel('brepkit', new BrepkitAdapter(bk));
 
-const result = withKernel('rust', () => {
-  return makeBox(10, 10, 10); // uses Rust kernel
+// Run a specific kernel temporarily
+const result = withKernel('brepkit', () => {
+  return makeBox(10, 10, 10); // uses brepkit kernel
 });
+
+// Or register a fully custom kernel
+registerKernel('rust', new RustAdapter(wasm));
 ```
 
 ## API
@@ -28,7 +34,11 @@ Register a `KernelAdapter` under a unique string ID. The first kernel registered
 
 ### `initFromOC(oc)`
 
-Convenience wrapper — creates the default adapter from a loaded WASM instance and registers it.
+Convenience wrapper — creates the default OpenCascade adapter from a loaded WASM instance and registers it as `'occt'`.
+
+### `BrepkitAdapter`
+
+Built-in alternative kernel adapter. Create with `new BrepkitAdapter(brepkitWasm)` and register via `registerKernel('brepkit', adapter)`. Coverage is growing — some advanced operations may throw "not implemented".
 
 ### `withKernel(id, fn)`
 
@@ -63,7 +73,7 @@ There is also an optional `Kernel2DCapability` interface (~40 methods) for 2D sk
 import type { KernelAdapter, KernelShape, ShapeType } from 'brepjs';
 
 class MyKernel implements KernelAdapter {
-  readonly oc = null; // set to your WASM instance or null
+  readonly oc = null; // raw WASM instance (used internally by some adapters, can be null)
   readonly kernelId = 'my-kernel';
 
   // --- Shape construction ---
