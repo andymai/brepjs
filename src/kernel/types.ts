@@ -75,7 +75,14 @@ export type SurfaceType =
 export type ShapeOrientation = 'forward' | 'reversed' | 'internal' | 'external';
 
 export interface MeshOptions {
+  /** Linear deflection tolerance for tessellation. */
   tolerance: number;
+  /**
+   * Angular deflection tolerance for tessellation.
+   *
+   * **Cross-kernel note**: brepkit only supports linear deflection; this
+   * parameter is ignored (a one-time warning is emitted). OCCT honours both.
+   */
   angularTolerance: number;
   skipNormals?: boolean;
   includeUVs?: boolean;
@@ -425,6 +432,12 @@ export interface KernelAdapter extends Kernel2DCapability {
 
   // --- Meshing ---
   mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult;
+  /**
+   * Tessellate edges for wireframe display.
+   *
+   * **Cross-kernel note**: brepkit only supports linear deflection;
+   * `angularTolerance` is ignored (a one-time warning is emitted).
+   */
   meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
 
   // --- File I/O ---

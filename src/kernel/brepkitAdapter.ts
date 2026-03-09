@@ -1236,8 +1236,14 @@ export class BrepkitAdapter implements KernelAdapter {
     shape: KernelShape,
     faces: KernelShape[],
     thickness: number,
-    _tolerance?: number
+    tolerance?: number
   ): KernelShape {
+    if (tolerance !== undefined) {
+      warnOnce(
+        'shell-tolerance',
+        'shell() tolerance parameter is not supported; brepkit uses its own internal tolerance.'
+      );
+    }
     const solidId = unwrapSolidOrThrow(shape, 'shell');
     const solidFaces = toArray(this.bk.getSolidFaces(solidId));
     const solidFaceSet = new Set(solidFaces);
@@ -1288,7 +1294,13 @@ export class BrepkitAdapter implements KernelAdapter {
     throw new Error('brepkit: thicken() requires a face');
   }
 
-  offset(shape: KernelShape, distance: number, _tolerance?: number): KernelShape {
+  offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape {
+    if (tolerance !== undefined) {
+      warnOnce(
+        'offset-tolerance',
+        'offset() tolerance parameter is not supported; brepkit uses its own internal tolerance.'
+      );
+    }
     const h = shape as BrepkitHandle;
     if (h.type === 'face') {
       // OCCT's BRepOffset_MakeOffset creates a solid from an offset face.
@@ -1997,6 +2009,12 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult {
+    if (options.angularTolerance > 0) {
+      warnOnce(
+        'mesh-angular',
+        'mesh angularTolerance is not supported; only linear deflection is used.'
+      );
+    }
     const h = unwrap(shape);
     const bkHandle = shape as BrepkitHandle;
     const deflection = options.tolerance || DEFAULT_DEFLECTION;
@@ -2019,11 +2037,13 @@ export class BrepkitAdapter implements KernelAdapter {
     return result;
   }
 
-  meshEdges(
-    shape: KernelShape,
-    tolerance: number,
-    _angularTolerance: number
-  ): KernelEdgeMeshResult {
+  meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult {
+    if (angularTolerance > 0) {
+      warnOnce(
+        'mesh-edges-angular',
+        'meshEdges angularTolerance is not supported; only linear deflection is used.'
+      );
+    }
     const bkHandle = shape as BrepkitHandle;
 
     if (bkHandle.type !== 'solid') {
@@ -2031,7 +2051,7 @@ export class BrepkitAdapter implements KernelAdapter {
     }
 
     // Use native meshEdges — returns JsEdgeLines with positions/offsets/edgeCount
-    const edgeLines = this.bk.meshEdges(bkHandle.id, Math.max(tolerance, 0.001));
+    const edgeLines = this.bk.meshEdges(bkHandle.id, tolerance);
     const positions = edgeLines.positions;
     const offsets = edgeLines.offsets;
     const edgeCount = edgeLines.edgeCount;
@@ -2883,8 +2903,14 @@ export class BrepkitAdapter implements KernelAdapter {
     face: KernelShape,
     u: number,
     v: number,
-    _tolerance?: number
+    tolerance?: number
   ): 'in' | 'on' | 'out' {
+    if (tolerance !== undefined) {
+      warnOnce(
+        'classify-tolerance',
+        'classifyPointOnFace() tolerance parameter is not supported; brepkit uses domain-based classification.'
+      );
+    }
     // Evaluate the surface at (u,v) to get 3D point, then check if the
     // UV parameters are within the face's surface domain
     const faceId = unwrap(face, 'face');
@@ -2902,8 +2928,14 @@ export class BrepkitAdapter implements KernelAdapter {
 
   interpolatePoints(
     points: [number, number, number][],
-    _options?: { periodic?: boolean; tolerance?: number }
+    options?: { periodic?: boolean; tolerance?: number }
   ): KernelShape {
+    if (options?.tolerance !== undefined) {
+      warnOnce(
+        'interpolate-tolerance',
+        'interpolatePoints() tolerance parameter is not supported; brepkit uses chord-length parameterisation.'
+      );
+    }
     if (points.length < 2) throw new Error('brepkit: need at least 2 points');
     if (points.length === 2) {
       return this.makeLineEdge(points[0]!, points[1]!);
