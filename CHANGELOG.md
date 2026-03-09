@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.0](https://github.com/andymai/brepjs/compare/brepjs-v12.1.0...brepjs-v12.2.0) (2026-03-09)
+
+
+### Features
+
+* **kernel:** add one-time warnings for brepkit silent degradations (ADR-0006) ([#435](https://github.com/andymai/brepjs/issues/435)) ([37b8437](https://github.com/andymai/brepjs/commit/37b843774bb812d199dd8fdd5d0f374ad700b01f))
+
 ## [12.1.0](https://github.com/andymai/brepjs/compare/brepjs-v12.0.0...brepjs-v12.1.0) (2026-03-09)
 
 
