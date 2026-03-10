@@ -214,10 +214,14 @@
     "vitest": "4.0.18"
   },
   "peerDependencies": {
-    "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0"
+    "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0",
+    "brepkit-wasm": "^0.10.1"
   },
   "peerDependenciesMeta": {
     "brepjs-opencascade": {
+      "optional": true
+    },
+    "brepkit-wasm": {
       "optional": true
     }
   },
