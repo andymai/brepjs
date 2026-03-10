@@ -4,8 +4,15 @@
 
 // ── Layer 0: kernel / utils ──
 
-export { initFromOC, getKernel, registerKernel, withKernel } from './kernel/index.js';
+export {
+  initFromOC,
+  getKernel,
+  registerKernel,
+  withKernel,
+  BrepkitAdapter,
+} from './kernel/index.js';
 export type { KernelAdapter, SurfaceType, ShapeOrientation, ShapeType } from './kernel/index.js';
+export type { BrepkitHandle } from './kernel/index.js';
 export { supportsProjection } from './kernel/index.js';
 export type { ProjectionCapability } from './kernel/index.js';
 

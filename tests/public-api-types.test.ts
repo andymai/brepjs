@@ -146,6 +146,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'BrepBugError',
   'BrepErrorCode',
   'BrepWrapperError',
+  'BrepkitAdapter',
   'CompoundBlueprint',
   'CompoundSketch',
   'Curve2D',
