@@ -11,8 +11,13 @@ export {
   withKernel,
   BrepkitAdapter,
 } from './kernel/index.js';
-export type { KernelAdapter, SurfaceType, ShapeOrientation, ShapeType } from './kernel/index.js';
-export type { BrepkitHandle } from './kernel/index.js';
+export type {
+  KernelAdapter,
+  BrepkitHandle,
+  SurfaceType,
+  ShapeOrientation,
+  ShapeType,
+} from './kernel/index.js';
 export { supportsProjection } from './kernel/index.js';
 export type { ProjectionCapability } from './kernel/index.js';
 
