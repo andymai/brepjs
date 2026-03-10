@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.5](https://github.com/andymai/brepjs/compare/brepjs-v12.2.4...brepjs-v12.2.5) (2026-03-10)
+
+
+### Bug Fixes
+
+* **kernel:** consolidate BrepkitHandle type export ([#448](https://github.com/andymai/brepjs/issues/448)) ([4d0aed1](https://github.com/andymai/brepjs/commit/4d0aed1d0f346a6d90585c2dff01a58ebe55cbb4))
+
 ## [12.2.4](https://github.com/andymai/brepjs/compare/brepjs-v12.2.3...brepjs-v12.2.4) (2026-03-10)
 
 
