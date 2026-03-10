@@ -332,7 +332,7 @@ const syntheticCompounds = new Map<number, BrepkitHandle[]>();
  * Unwired brepkit-wasm capabilities (v0.10.1):
  * - TODO: bk.sketchDof() — degrees of freedom for constraint solver UI feedback
  * - See also per-method TODOs for checkpoint/restore, composeTransforms,
- *   tessellateSolidGrouped/UV, and removeHolesFromFace.
+ *   tessellateSolidUV, and removeHolesFromFace.
  */
 
 // ---------------------------------------------------------------------------
@@ -4657,10 +4657,55 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   /** Tessellate a solid with per-face groups for brepjs mesh format. */
-  // TODO: Replace per-face tessellation loop with bk.tessellateSolidGrouped()
-  // for a single WASM call instead of N. Requires aligning the grouped output
-  // format with KernelMeshResult (faceGroups, index offsets). See brepkitWasmTypes.ts.
   private meshSolid(solidId: number, deflection: number): KernelMeshResult {
+    try {
+      return this.meshSolidGrouped(solidId, deflection);
+    } catch {
+      return this.meshSolidPerFace(solidId, deflection);
+    }
+  }
+
+  /**
+   * Batch tessellation via `tessellateSolidGrouped` — single WASM call for
+   * all faces. Falls back to `meshSolidPerFace` on error.
+   */
+  private meshSolidGrouped(solidId: number, deflection: number): KernelMeshResult {
+    const json = this.bk.tessellateSolidGrouped(solidId, deflection);
+    const data: {
+      positions: number[];
+      normals: number[];
+      indices: number[];
+      faceOffsets: number[];
+    } = JSON.parse(json);
+
+    const faceIds = toArray(this.bk.getSolidFaces(solidId));
+    const vertexCount = data.positions.length / 3;
+
+    const faceGroups: Array<{ start: number; count: number; faceHash: number }> = [];
+    for (let i = 0; i < data.faceOffsets.length - 1; i++) {
+      const start = data.faceOffsets[i]!;
+
+      const count = data.faceOffsets[i + 1]! - start;
+      if (count === 0) continue; // degenerate face — skip
+      faceGroups.push({
+        start,
+        count,
+        faceHash: faceIds[i] ?? 0,
+      });
+    }
+
+    return {
+      vertices: new Float32Array(data.positions),
+      normals: new Float32Array(data.normals),
+      triangles: new Uint32Array(data.indices),
+      // TODO: Use bk.tessellateSolidUV() for real surface parametrization
+      uvs: new Float32Array(vertexCount * 2),
+      faceGroups,
+    };
+  }
+
+  /** Per-face tessellation fallback — N WASM calls, one per face. */
+  private meshSolidPerFace(solidId: number, deflection: number): KernelMeshResult {
     const faceIds = toArray(this.bk.getSolidFaces(solidId));
 
     const allVertices: number[] = [];
@@ -4690,8 +4735,6 @@ export class BrepkitAdapter implements KernelAdapter {
           allTriangles.push(idx + vertexOffset);
         }
 
-        // TODO: Use bk.tessellateSolidUV() for real surface parametrization
-        // instead of dummy UVs. Requires the grouped mesh refactor above.
         for (let i = 0; i < vertCount; i++) {
           allUVs.push(0, 0);
         }

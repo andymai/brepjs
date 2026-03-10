@@ -61,6 +61,16 @@ function createMockBrepKernel() {
       normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
       indices: [0, 1, 2],
     })),
+    tessellateSolidGrouped: vi.fn((_solid: number, _defl: number) =>
+      JSON.stringify({
+        positions: [
+          0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 2, 1, 0, 1, 1, 0, 3, 0, 0, 3, 1, 0, 2, 1, 0,
+        ],
+        normals: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+        indices: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+        faceOffsets: [0, 3, 6, 9],
+      })
+    ),
 
     // Topology
     getSolidFaces: vi.fn((_id: number) => [100, 101, 102]),
@@ -404,19 +414,78 @@ describe('BrepkitAdapter', () => {
 
       const result = adapter.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
 
-      // Mock returns 3 faces (100, 101, 102), each with 1 triangle
+      // Mock grouped result: 3 faces, each with 1 triangle (3 indices)
       expect(result.faceGroups.length).toBe(3);
       expect(result.vertices).toBeInstanceOf(Float32Array);
       expect(result.normals).toBeInstanceOf(Float32Array);
       expect(result.triangles).toBeInstanceOf(Uint32Array);
       expect(result.uvs).toBeInstanceOf(Float32Array);
 
-      // Each face contributes 3 vertices → 9 total
-      expect(result.vertices.length).toBe(27); // 9 vertices × 3 coords
-      // Triangles should be offset correctly
-      expect(result.triangles[0]).toBe(0); // face 0
-      expect(result.triangles[3]).toBe(3); // face 1 offset
-      expect(result.triangles[6]).toBe(6); // face 2 offset
+      // Grouped mock: 9 vertices × 3 coords = 27
+      expect(result.vertices.length).toBe(27);
+      // UVs stripped when includeUVs not set
+      expect(result.uvs.length).toBe(0);
+      // faceGroups count is index count (not triangle count)
+      expect(result.faceGroups[0]?.count).toBe(3);
+    });
+
+    it('uses grouped tessellation as primary path', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+
+      adapter.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
+
+      expect(mock.tessellateSolidGrouped).toHaveBeenCalled();
+      expect(mock.tessellateFace).not.toHaveBeenCalled();
+    });
+
+    it('grouped tessellation faceHash matches face IDs from getSolidFaces', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+
+      const result = adapter.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
+
+      // Mock getSolidFaces returns [100, 101, 102]
+      expect(result.faceGroups.map((g) => g.faceHash)).toEqual([100, 101, 102]);
+    });
+
+    it('falls back to per-face when grouped throws', () => {
+      const mock = createMockBrepKernel();
+      mock.tessellateSolidGrouped.mockImplementation(() => {
+        throw new Error('grouped not supported');
+      });
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+
+      const result = adapter.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
+
+      expect(mock.tessellateSolidGrouped).toHaveBeenCalled();
+      expect(mock.tessellateFace).toHaveBeenCalled();
+      // Still produces valid output via per-face fallback
+      expect(result.faceGroups.length).toBe(3);
+    });
+
+    it('skips degenerate faces with zero-count groups', () => {
+      const mock = createMockBrepKernel();
+      mock.tessellateSolidGrouped.mockReturnValue(
+        JSON.stringify({
+          positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+          normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
+          indices: [0, 1, 2],
+          // 3 faces but middle one has zero indices (degenerate)
+          faceOffsets: [0, 3, 3, 3],
+        })
+      );
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+
+      const result = adapter.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
+
+      // Only first face has non-zero count
+      expect(result.faceGroups.length).toBe(1);
+      expect(result.faceGroups[0]?.faceHash).toBe(100);
     });
 
     it('meshEdges returns tessellated edge polylines', () => {
