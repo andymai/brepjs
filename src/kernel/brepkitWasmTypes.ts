@@ -735,6 +735,9 @@ export interface BrepkitKernel {
   /** Offset a 2D polygon. Coords are flat `[x,y, ...]`. Returns flat coords. */
   offsetPolygon2d(coords: number[], distance: number, tolerance: number): number[];
 
+  // Note: The following 2D methods return Float64Array from WASM. Callers must
+  // convert via Array.from() before passing downstream (same as Uint32Array pattern).
+
   /** Chamfer corners of a 2D polygon. Coords flat `[x,y,...]`. Returns flat coords. */
   chamfer2d(coords: number[], distance: number): Float64Array;
 
