@@ -4660,7 +4660,11 @@ export class BrepkitAdapter implements KernelAdapter {
   private meshSolid(solidId: number, deflection: number): KernelMeshResult {
     try {
       return this.meshSolidGrouped(solidId, deflection);
-    } catch {
+    } catch (e: unknown) {
+      console.warn(
+        `brepkit: tessellateSolidGrouped failed (solidId=${solidId}), falling back to per-face:`,
+        e
+      );
       return this.meshSolidPerFace(solidId, deflection);
     }
   }
@@ -4679,6 +4683,12 @@ export class BrepkitAdapter implements KernelAdapter {
     } = JSON.parse(json);
 
     const faceIds = toArray(this.bk.getSolidFaces(solidId));
+    const groupCount = data.faceOffsets.length - 1;
+    if (groupCount !== faceIds.length) {
+      throw new Error(
+        `faceOffsets/faceIds length mismatch: ${groupCount} groups vs ${faceIds.length} faces`
+      );
+    }
     const vertexCount = data.positions.length / 3;
 
     const faceGroups: Array<{ start: number; count: number; faceHash: number }> = [];

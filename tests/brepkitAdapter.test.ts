@@ -467,6 +467,27 @@ describe('BrepkitAdapter', () => {
       expect(result.faceGroups.length).toBe(3);
     });
 
+    it('falls back when faceOffsets/faceIds counts diverge', () => {
+      const mock = createMockBrepKernel();
+      // Return 4 face groups but getSolidFaces returns 3 → mismatch
+      mock.tessellateSolidGrouped.mockReturnValue(
+        JSON.stringify({
+          positions: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+          normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
+          indices: [0, 1, 2],
+          faceOffsets: [0, 3, 3, 3, 3],
+        })
+      );
+      const adapter = new BrepkitAdapter(mock);
+      const box = adapter.makeBox(1, 1, 1);
+
+      const result = adapter.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
+
+      // Should have fallen back to per-face
+      expect(mock.tessellateFace).toHaveBeenCalled();
+      expect(result.faceGroups.length).toBe(3);
+    });
+
     it('skips degenerate faces with zero-count groups', () => {
       const mock = createMockBrepKernel();
       mock.tessellateSolidGrouped.mockReturnValue(
