@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.4](https://github.com/andymai/brepjs/compare/brepjs-v12.2.3...brepjs-v12.2.4) (2026-03-10)
+
+
+### Bug Fixes
+
+* **kernel:** declare brepkit-wasm as optional peer dependency ([#445](https://github.com/andymai/brepjs/issues/445)) ([9a5574e](https://github.com/andymai/brepjs/commit/9a5574e28f105e174bb99b809efb6c4ab84bb4bf))
+
 ## [12.2.3](https://github.com/andymai/brepjs/compare/brepjs-v12.2.2...brepjs-v12.2.3) (2026-03-09)
 
 
