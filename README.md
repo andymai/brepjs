@@ -4,7 +4,7 @@ CAD modeling for JavaScript. Build 3D geometry with code.
 
 [![npm](https://img.shields.io/npm/v/brepjs)](https://www.npmjs.com/package/brepjs)
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](./LICENSE)
 
 **[Docs](https://andymai.github.io/brepjs/)** · **[Examples](./examples/)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Getting Started](./docs/getting-started.md)**
 
@@ -361,4 +361,4 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-[Apache-2.0](./LICENSE)
+[AGPL-3.0-only](./LICENSE)

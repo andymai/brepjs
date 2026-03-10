@@ -105,7 +105,7 @@ export default function LandingPage() {
 
             {/* Bottom bar */}
             <div className="mt-10 border-t border-border-subtle pt-6 text-center text-xs text-gray-500">
-              Apache-2.0 License
+              AGPL-3.0-only License
             </div>
           </div>
         </footer>
