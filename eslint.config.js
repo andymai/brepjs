@@ -115,6 +115,13 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'vite.config.ts', 'vitest.config.ts', 'eslint.config.js'],
+    ignores: [
+      'dist/',
+      'node_modules/',
+      'src/kernel/wasm/',
+      'vite.config.ts',
+      'vitest.config.ts',
+      'eslint.config.js',
+    ],
   }
 );

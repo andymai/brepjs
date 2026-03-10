@@ -471,8 +471,8 @@ describe('Meshing: output validity', () => {
     const result = bk.mesh(box, { tolerance: 0.1, angularTolerance: 0.5 });
 
     const totalFromGroups = result.faceGroups.reduce((sum, g) => sum + g.count, 0);
-    // Total triangle count (indices / 3)
-    expect(totalFromGroups).toBe(result.triangles.length / 3);
+    // faceGroup.count is in index entries (matching OCCT convention)
+    expect(totalFromGroups).toBe(result.triangles.length);
   });
 
   it('mesh sphere (fine) — triangle count comparable to OCCT', () => {

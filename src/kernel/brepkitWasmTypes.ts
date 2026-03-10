@@ -516,8 +516,11 @@ export interface BrepkitKernel {
 
   // ── Validation / Repair ────────────────────────────────────────
 
-  /** Validate solid topology. Returns error count. */
+  /** Validate solid topology (strict). Returns error count. */
   validateSolid(solid: number): number;
+
+  /** Validate solid topology (relaxed, tolerant of NURBS approximation artifacts). Returns error count. */
+  validateSolidRelaxed(solid: number): number;
 
   /** Heal a solid (fix orientations, merge vertices, etc.). */
   healSolid(solid: number): void;
@@ -732,6 +735,24 @@ export interface BrepkitKernel {
   /** Offset a 2D polygon. Coords are flat `[x,y, ...]`. Returns flat coords. */
   offsetPolygon2d(coords: number[], distance: number, tolerance: number): number[];
 
+  /** Chamfer corners of a 2D polygon. Coords flat `[x,y,...]`. Returns flat coords. */
+  chamfer2d(coords: number[], distance: number): Float64Array;
+
+  /** Fillet corners of a 2D polygon. Coords flat `[x,y,...]`. Returns flat coords. */
+  fillet2d(coords: number[], radius: number): Float64Array;
+
+  /** Check if a point is inside a 2D polygon. Coords flat `[x,y,...]`. */
+  pointInPolygon2d?(x: number, y: number, coords: number[]): boolean;
+
+  /** Check if two 2D polygons intersect. Coords flat `[x,y,...]`. */
+  polygonsIntersect2d(coordsA: number[], coordsB: number[]): boolean;
+
+  /** Compute intersection polygon of two 2D polygons. Returns flat coords. */
+  intersectPolygons2d(coordsA: number[], coordsB: number[]): Float64Array;
+
+  /** Find common boundary segments of two 2D polygons. Returns flat coords. */
+  commonSegment2d(coordsA: number[], coordsB: number[]): Float64Array;
+
   // ── Batch execution ────────────────────────────────────────────
 
   /** Execute a batch of operations from JSON. Returns JSON result. */
@@ -748,6 +769,9 @@ export interface BrepkitKernel {
   /** Get edges of a wire. */
   getWireEdges(wire: number): Uint32Array;
 
+  /** Get all wires of a face (alternative binding). */
+  faceWires(face: number): Uint32Array;
+
   /** Get shape orientation flag. */
   getShapeOrientation(id: number): string;
 
@@ -756,6 +780,52 @@ export interface BrepkitKernel {
 
   /** Get edge start/end vertex arena handles. */
   getEdgeVertexHandles(edge: number): Uint32Array;
+
+  /** Remove holes (inner wires) from a face. Returns new face handle. */
+  removeHolesFromFace(face: number): number;
+
+  // ── Checkpoint / Restore ──────────────────────────────────────
+
+  /** Create an arena checkpoint. Returns checkpoint index. */
+  checkpoint(): number;
+
+  /** Get the current number of checkpoints. */
+  checkpointCount(): number;
+
+  /** Restore arena to a checkpoint, freeing all handles created after it. */
+  restore(checkpoint: number): void;
+
+  /** Discard a checkpoint without restoring. */
+  discardCheckpoint(checkpoint: number): void;
+
+  // ── Transform helpers ─────────────────────────────────────────
+
+  /** Multiply two 4×4 row-major transform matrices. Returns 16-element result. */
+  composeTransforms(a: number[], b: number[]): Float64Array;
+
+  // ── Advanced tessellation ─────────────────────────────────────
+
+  /**
+   * Tessellate a solid with per-face grouping info.
+   * Returns JSON string with `{ positions, normals, indices, faceOffsets }`.
+   */
+  tessellateSolidGrouped(solid: number, deflection: number): string;
+
+  /**
+   * Tessellate a solid with UV coordinates.
+   * Returns JSON string with `{ positions, normals, indices, uvs }`.
+   */
+  tessellateSolidUV(solid: number, deflection: number): string;
+
+  // ── BREP serialization ────────────────────────────────────────
+
+  /** Serialize a solid to brepkit's native BREP JSON format. */
+  toBREP(solid: number): string;
+
+  // ── Sketch ────────────────────────────────────────────────────
+
+  /** Get degrees of freedom remaining in a sketch. */
+  sketchDof(sketch: number): number;
 
   // ── Not yet exposed (future PRs) ──────────────────────────────
 

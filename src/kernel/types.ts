@@ -508,13 +508,29 @@ export interface KernelAdapter extends Kernel2DCapability {
   /**
    * Check if a shape is topologically and geometrically valid.
    *
-   * **Cross-kernel note**: Strictness differs between kernels. OCCT uses
-   * `BRepCheck_Analyzer` (strict geometry + topology check). brepkit uses
-   * `validateSolid()` which may report false negatives for NURBS-approximated
-   * analytic shapes (cylinders, cones, tori). Do not rely on identical
-   * results across kernels.
+   * Uses relaxed validation when available — accepts NURBS approximation
+   * tolerances that strict mode would flag. Suitable for general "is this
+   * shape usable?" checks.
+   *
+   * **Cross-kernel note**: OCCT uses `BRepCheck_Analyzer` (no relaxed
+   * variant). brepkit uses `validateSolidRelaxed()` which tolerates
+   * NURBS-approximated analytic shapes (cylinders, cones, tori).
    */
   isValid(shape: KernelShape): boolean;
+
+  /**
+   * Strict validation — fails on any geometric or topological issue,
+   * including NURBS approximation gaps.
+   *
+   * Used by {@link isManifoldShell} as a proof that a shell forms a
+   * watertight solid. Falls back to {@link isValid} if not overridden.
+   *
+   * **Cross-kernel note**: OCCT's `BRepCheck_Analyzer` is inherently
+   * strict, so this is identical to `isValid`. brepkit uses
+   * `validateSolid()` (strict) rather than `validateSolidRelaxed()`.
+   */
+  isValidStrict?(shape: KernelShape): boolean;
+
   sew(shapes: KernelShape[], tolerance?: number): KernelShape;
   healSolid(shape: KernelShape): KernelShape | null;
   healFace(shape: KernelShape): KernelShape;

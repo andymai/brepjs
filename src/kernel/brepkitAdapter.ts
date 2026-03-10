@@ -326,24 +326,13 @@ const syntheticCompounds = new Map<number, BrepkitHandle[]>();
 /**
  * Implements brepjs's {@link KernelAdapter} using brepkit's WASM `BrepKernel`.
  *
- * ## Supported operations (vertical slice 1)
+ * All 162 KernelAdapter 3D methods and 47 Kernel2DCapability methods are
+ * implemented. See ADR-0006 Appendix A for behavioral differences vs OCCT.
  *
- * - **Primitives**: makeBox, makeCylinder, makeSphere, makeCone, makeTorus
- * - **Booleans**: fuse, cut, intersect, section, fuseAll, cutAll, split
- * - **Transforms**: translate, rotate, mirror, scale, transform, generalTransform
- * - **Modification**: fillet, chamfer, shell, extrude, revolve, loft, sweep
- * - **Meshing**: mesh (with per-face groups), meshEdges (stub)
- * - **Measurement**: volume, area, boundingBox, centerOfMass, length, distance
- * - **I/O**: exportSTEP, importSTEP, exportSTL, importSTL, exportIGES, importIGES
- * - **Topology**: iterShapes, shapeType, hashCode, isNull, vertexPosition
- *
- * ## Not yet implemented
- *
- * - Shape evolution / history tracking (*WithHistory methods)
- * - Kernel2DCapability (2D curves)
- * - Advanced geometry queries (surfaceCurvature, uvBounds, etc.)
- * - Convex hull, projection, BREP serialization
- * - Composed transforms
+ * Unwired brepkit-wasm capabilities (v0.10.1):
+ * - TODO: bk.sketchDof() — degrees of freedom for constraint solver UI feedback
+ * - See also per-method TODOs for checkpoint/restore, composeTransforms,
+ *   tessellateSolidGrouped/UV, and removeHolesFromFace.
  */
 
 // ---------------------------------------------------------------------------
@@ -2709,17 +2698,22 @@ export class BrepkitAdapter implements KernelAdapter {
     if (!isBrepkitHandle(shape)) return false;
     if (shape.type !== 'solid') return true;
     try {
-      const errors: number = this.bk.validateSolid(shape.id);
-      if (errors > 0) {
-        warnOnce(
-          'isvalid-strict',
-          'validateSolid reported errors. ' +
-            'NURBS-approximated analytic shapes (cylinders, cones, tori) may report false negatives.'
-        );
-      }
+      const errors: number = this.bk.validateSolidRelaxed(shape.id);
       return errors === 0;
     } catch (e: unknown) {
       console.warn('brepkit: isValid check failed:', e);
+      return false;
+    }
+  }
+
+  isValidStrict(shape: KernelShape): boolean {
+    if (!isBrepkitHandle(shape)) return false;
+    if (shape.type !== 'solid') return true;
+    try {
+      const errors: number = this.bk.validateSolid(shape.id);
+      return errors === 0;
+    } catch (e: unknown) {
+      console.warn('brepkit: isValidStrict check failed:', e);
       return false;
     }
   }
@@ -3017,7 +3011,8 @@ export class BrepkitAdapter implements KernelAdapter {
         }
     >
   ): { handle: KernelType; dispose: () => void } {
-    // Compose into a single 4×4 matrix
+    // TODO: Use bk.composeTransforms() to replace JS matrix multiplication
+    // with a single WASM call per pair. See brepkitWasmTypes.ts.
     let matrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
     for (const op of ops) {
       const m =
@@ -3243,6 +3238,9 @@ export class BrepkitAdapter implements KernelAdapter {
     const id = this.bk.addHolesToFace(unwrap(face, 'face'), wireIds);
     return faceHandle(id);
   }
+
+  // TODO: Expose bk.removeHolesFromFace() — inverse of addHolesInFace.
+  // Useful for defeaturing workflows. See brepkitWasmTypes.ts.
 
   makeFaceOnSurface(_surface: KernelType, wire: KernelShape): KernelShape {
     // brepkit doesn't have separate surface handles — just create a face from the wire
@@ -3644,6 +3642,9 @@ export class BrepkitAdapter implements KernelAdapter {
   // Dispose
   // ═══════════════════════════════════════════════════════════════════════
 
+  // TODO: Expose bk.checkpoint() / bk.restore() / bk.discardCheckpoint() for
+  // transactional arena management. Could back a future undo/redo or speculative
+  // operation API (try operation → restore on failure). See brepkitWasmTypes.ts.
   dispose(_handle: { delete(): void }): void {
     // Arena-based: individual handles are not freed.
     // Call brepkitKernel.free() to release the entire arena.
@@ -4656,6 +4657,9 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   /** Tessellate a solid with per-face groups for brepjs mesh format. */
+  // TODO: Replace per-face tessellation loop with bk.tessellateSolidGrouped()
+  // for a single WASM call instead of N. Requires aligning the grouped output
+  // format with KernelMeshResult (faceGroups, index offsets). See brepkitWasmTypes.ts.
   private meshSolid(solidId: number, deflection: number): KernelMeshResult {
     const faceIds = toArray(this.bk.getSolidFaces(solidId));
 
@@ -4686,7 +4690,8 @@ export class BrepkitAdapter implements KernelAdapter {
           allTriangles.push(idx + vertexOffset);
         }
 
-        // Generate dummy UVs (brepkit doesn't provide them yet)
+        // TODO: Use bk.tessellateSolidUV() for real surface parametrization
+        // instead of dummy UVs. Requires the grouped mesh refactor above.
         for (let i = 0; i < vertCount; i++) {
           allUVs.push(0, 0);
         }

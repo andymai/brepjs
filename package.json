@@ -199,7 +199,7 @@
     "@types/opentype.js": "1.3.9",
     "@vitest/coverage-v8": "4.0.18",
     "brepjs-opencascade": "*",
-    "brepkit-wasm": "0.7.3",
+    "brepkit-wasm": "0.10.1",
     "eslint": "10.0.3",
     "husky": "9.1.7",
     "knip": "5.86.0",

@@ -363,10 +363,13 @@ export function isOrientedFace<D extends Dimension>(face: Face<D>): face is Orie
 export function isManifoldShell(shell: Shell): shell is ManifoldShell {
   const kernel = getKernel();
   if (!kernel.isValid(shell.wrapped)) return false;
+  // Use strict validation for the manifold proof — relaxed validation
+  // may accept open shells sewn into a "solid" that aren't truly watertight.
+  const validate = kernel.isValidStrict?.bind(kernel) ?? kernel.isValid.bind(kernel);
   // A manifold shell can be converted to a solid — try it as a proof
   try {
     const solid = kernel.solidFromShell(shell.wrapped);
-    const valid = kernel.isValid(solid);
+    const valid = validate(solid);
     // Dispose the temporary solid to prevent WASM memory leaks
     try {
       kernel.dispose(solid);
