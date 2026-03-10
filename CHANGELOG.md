@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.6](https://github.com/andymai/brepjs/compare/brepjs-v12.2.5...brepjs-v12.2.6) (2026-03-10)
+
+
+### Performance Improvements
+
+* **kernel:** batch tessellation via tessellateSolidGrouped ([#450](https://github.com/andymai/brepjs/issues/450)) ([a336306](https://github.com/andymai/brepjs/commit/a336306f8e36acd63ced62781aa5fc6f6b9a22d1))
+
 ## [12.2.5](https://github.com/andymai/brepjs/compare/brepjs-v12.2.4...brepjs-v12.2.5) (2026-03-10)
 
 
