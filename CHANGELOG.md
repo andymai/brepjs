@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.3.0](https://github.com/andymai/brepjs/compare/brepjs-v12.2.12...brepjs-v12.3.0) (2026-03-11)
+
+
+### Features
+
+* **kernel:** wire remaining brepkit-wasm capabilities ([#464](https://github.com/andymai/brepjs/issues/464)) ([fdcbd57](https://github.com/andymai/brepjs/commit/fdcbd574f206020afe95b0b516bce2babec11eca))
+
 ## [12.2.12](https://github.com/andymai/brepjs/compare/brepjs-v12.2.11...brepjs-v12.2.12) (2026-03-11)
 
 
