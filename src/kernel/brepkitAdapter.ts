@@ -193,6 +193,11 @@ function dist3(x1: number, y1: number, z1: number, x2: number, y2: number, z2: n
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+/** Copy a WASM-backed Uint8Array into an independent ArrayBuffer. */
+function copyWasmBytes(bytes: Uint8Array): ArrayBuffer {
+  return (bytes.buffer as ArrayBuffer).slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+}
+
 // ---------------------------------------------------------------------------
 // Matrix helpers
 // ---------------------------------------------------------------------------
@@ -5247,6 +5252,287 @@ export class BrepkitAdapter implements KernelAdapter {
   /** Get degrees of freedom remaining in a solved or partially-constrained sketch. */
   sketchDof(sketch: number): number {
     return this.bk.sketchDof(sketch);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Extended I/O formats
+  // ═══════════════════════════════════════════════════════════════════════
+
+  export3MF(shape: KernelShape, tolerance: number): ArrayBuffer {
+    const solidId = unwrapSolidOrThrow(shape, 'export3MF');
+    return copyWasmBytes(this.bk.export3mf(solidId, tolerance));
+  }
+
+  exportGLB(shape: KernelShape, tolerance: number): ArrayBuffer {
+    const solidId = unwrapSolidOrThrow(shape, 'exportGLB');
+    return copyWasmBytes(this.bk.exportGlb(solidId, tolerance));
+  }
+
+  exportOBJ(shape: KernelShape, tolerance: number): ArrayBuffer {
+    const solidId = unwrapSolidOrThrow(shape, 'exportOBJ');
+    return copyWasmBytes(this.bk.exportObj(solidId, tolerance));
+  }
+
+  exportPLY(shape: KernelShape, tolerance: number): ArrayBuffer {
+    const solidId = unwrapSolidOrThrow(shape, 'exportPLY');
+    return copyWasmBytes(this.bk.exportPly(solidId, tolerance));
+  }
+
+  import3MF(data: ArrayBuffer): KernelShape[] {
+    const result = toArray(this.bk.import3mf(new Uint8Array(data)));
+    return result.map((id) => solidHandle(id));
+  }
+
+  importOBJ(data: ArrayBuffer): KernelShape {
+    const result = this.bk.importObj(new Uint8Array(data));
+    return solidHandle(result);
+  }
+
+  importGLB(data: ArrayBuffer): KernelShape {
+    const result = this.bk.importGlb(new Uint8Array(data));
+    return solidHandle(result);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Advanced modeling
+  // ═══════════════════════════════════════════════════════════════════════
+
+  filletVariable(shape: KernelShape, spec: string): KernelShape {
+    const solidId = unwrapSolidOrThrow(shape, 'filletVariable');
+    return solidHandle(this.bk.filletVariable(solidId, spec));
+  }
+
+  helicalSweep(
+    profile: KernelShape,
+    axisOrigin: [number, number, number],
+    axisDirection: [number, number, number],
+    radius: number,
+    pitch: number,
+    turns: number
+  ): KernelShape {
+    const profileId = unwrap(profile, 'face');
+    return solidHandle(
+      this.bk.helicalSweep(
+        profileId,
+        axisOrigin[0],
+        axisOrigin[1],
+        axisOrigin[2],
+        axisDirection[0],
+        axisDirection[1],
+        axisDirection[2],
+        radius,
+        pitch,
+        turns
+      )
+    );
+  }
+
+  sweepWithOptions(
+    profile: KernelShape,
+    pathEdge: KernelShape,
+    contactMode: string,
+    scaleValues: number[],
+    segments: number
+  ): KernelShape {
+    const profileId = unwrap(profile, 'face');
+    const pathId = unwrap(pathEdge, 'edge');
+    return solidHandle(
+      this.bk.sweepWithOptions(profileId, pathId, contactMode, scaleValues, segments)
+    );
+  }
+
+  draft(
+    shape: KernelShape,
+    faces: KernelShape[],
+    pullDirection: [number, number, number],
+    neutralPlane: [number, number, number],
+    angleDeg: number
+  ): KernelShape {
+    const solidId = unwrapSolidOrThrow(shape, 'draft');
+    const faceIds = faces.map((f) => unwrap(f, 'face'));
+    return solidHandle(
+      this.bk.draft(
+        solidId,
+        faceIds,
+        pullDirection[0],
+        pullDirection[1],
+        pullDirection[2],
+        neutralPlane[0],
+        neutralPlane[1],
+        neutralPlane[2],
+        angleDeg
+      )
+    );
+  }
+
+  defeature(shape: KernelShape, faces: KernelShape[]): KernelShape {
+    const solidId = unwrapSolidOrThrow(shape, 'defeature');
+    const faceIds = faces.map((f) => unwrap(f, 'face'));
+    return solidHandle(this.bk.defeature(solidId, faceIds));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Feature detection
+  // ═══════════════════════════════════════════════════════════════════════
+
+  detectSmallFeatures(shape: KernelShape, areaThreshold: number, tolerance: number): KernelShape[] {
+    const solidId = unwrapSolidOrThrow(shape, 'detectSmallFeatures');
+    return Array.from(this.bk.detectSmallFeatures(solidId, areaThreshold, tolerance)).map((id) =>
+      faceHandle(id)
+    );
+  }
+
+  recognizeFeatures(shape: KernelShape, tolerance: number): string {
+    const solidId = unwrapSolidOrThrow(shape, 'recognizeFeatures');
+    return this.bk.recognizeFeatures(solidId, tolerance);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Mesh boolean
+  // ═══════════════════════════════════════════════════════════════════════
+
+  meshBoolean(
+    positionsA: number[],
+    indicesA: number[],
+    positionsB: number[],
+    indicesB: number[],
+    op: string,
+    tolerance: number
+  ): KernelMeshResult {
+    const mesh = this.bk.meshBoolean(positionsA, indicesA, positionsB, indicesB, op, tolerance);
+    return {
+      vertices: new Float32Array(mesh.positions),
+      normals: new Float32Array(mesh.normals),
+      triangles: new Uint32Array(mesh.indices),
+      uvs: new Float32Array(0),
+      faceGroups: [{ start: 0, count: mesh.indices.length, faceHash: 0 }],
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Topology queries
+  // ═══════════════════════════════════════════════════════════════════════
+
+  edgeToFaceMap(shape: KernelShape): string {
+    const solidId = unwrapSolidOrThrow(shape, 'edgeToFaceMap');
+    return this.bk.edgeToFaceMap(solidId);
+  }
+
+  sharedEdges(faceA: KernelShape, faceB: KernelShape): KernelShape[] {
+    const aId = unwrap(faceA, 'face');
+    const bId = unwrap(faceB, 'face');
+    return Array.from(this.bk.sharedEdges(aId, bId)).map((id) => edgeHandle(id));
+  }
+
+  adjacentFaces(shape: KernelShape, face: KernelShape): KernelShape[] {
+    const solidId = unwrapSolidOrThrow(shape, 'adjacentFaces');
+    const faceId = unwrap(face, 'face');
+    return Array.from(this.bk.adjacentFaces(solidId, faceId)).map((id) => faceHandle(id));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // NURBS curve operations
+  // ═══════════════════════════════════════════════════════════════════════
+
+  curveDegreeElevate(edge: KernelShape, elevateBy: number): KernelShape {
+    const edgeId = unwrap(edge, 'edge');
+    return edgeHandle(this.bk.curveDegreeElevate(edgeId, elevateBy));
+  }
+
+  curveKnotInsert(edge: KernelShape, knot: number, times: number): KernelShape {
+    const edgeId = unwrap(edge, 'edge');
+    return edgeHandle(this.bk.curveKnotInsert(edgeId, knot, times));
+  }
+
+  curveKnotRemove(edge: KernelShape, knot: number, tolerance: number): KernelShape {
+    const edgeId = unwrap(edge, 'edge');
+    return edgeHandle(this.bk.curveKnotRemove(edgeId, knot, tolerance));
+  }
+
+  curveSplit(edge: KernelShape, param: number): [KernelShape, KernelShape] {
+    const edgeId = unwrap(edge, 'edge');
+    const result = this.bk.curveSplit(edgeId, param);
+    return [edgeHandle(result[0]!), edgeHandle(result[1]!)];
+  }
+
+  approximateSurfaceLspia(
+    coords: number[],
+    rows: number,
+    cols: number,
+    degreeU: number,
+    degreeV: number,
+    numCpsU: number,
+    numCpsV: number,
+    tolerance: number,
+    maxIterations: number
+  ): KernelShape {
+    return faceHandle(
+      this.bk.approximateSurfaceLspia(
+        coords,
+        rows,
+        cols,
+        degreeU,
+        degreeV,
+        numCpsU,
+        numCpsV,
+        tolerance,
+        maxIterations
+      )
+    );
+  }
+
+  untrimFace(face: KernelShape, samplesPerCurve: number, interiorSamples: number): KernelShape {
+    const faceId = unwrap(face, 'face');
+    return faceHandle(this.bk.untrimFace(faceId, samplesPerCurve, interiorSamples));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Validation / Repair
+  // ═══════════════════════════════════════════════════════════════════════
+
+  mergeCoincidentVertices(shape: KernelShape, tolerance: number): number {
+    const solidId = unwrapSolidOrThrow(shape, 'mergeCoincidentVertices');
+    return this.bk.mergeCoincidentVertices(solidId, tolerance);
+  }
+
+  removeDegenerateEdges(shape: KernelShape, tolerance: number): number {
+    const solidId = unwrapSolidOrThrow(shape, 'removeDegenerateEdges');
+    return this.bk.removeDegenerateEdges(solidId, tolerance);
+  }
+
+  fixFaceOrientations(shape: KernelShape): number {
+    const solidId = unwrapSolidOrThrow(shape, 'fixFaceOrientations');
+    return this.bk.fixFaceOrientations(solidId);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Classification
+  // ═══════════════════════════════════════════════════════════════════════
+
+  classifyPointRobust(
+    shape: KernelShape,
+    point: [number, number, number],
+    tolerance: number
+  ): string {
+    const solidId = unwrapSolidOrThrow(shape, 'classifyPointRobust');
+    return this.bk.classifyPointRobust(solidId, point[0], point[1], point[2], tolerance);
+  }
+
+  classifyPointWinding(
+    shape: KernelShape,
+    point: [number, number, number],
+    tolerance: number
+  ): string {
+    const solidId = unwrapSolidOrThrow(shape, 'classifyPointWinding');
+    return this.bk.classifyPointWinding(solidId, point[0], point[1], point[2], tolerance);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Batch execution
+  // ═══════════════════════════════════════════════════════════════════════
+
+  executeBatch(json: string): string {
+    return this.bk.executeBatch(json);
   }
 }
 

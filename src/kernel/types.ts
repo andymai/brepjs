@@ -302,6 +302,37 @@ export interface KernelAdapter extends Kernel2DCapability {
   thicken(shape: KernelShape, thickness: number): KernelShape;
   offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape;
 
+  // --- Advanced modification ---
+  /** Variable-radius fillet. Each entry specifies edges and radii per edge. */
+  filletVariable(shape: KernelShape, spec: string): KernelShape;
+  /** Helical sweep of a profile around an axis. */
+  helicalSweep(
+    profile: KernelShape,
+    axisOrigin: [number, number, number],
+    axisDirection: [number, number, number],
+    radius: number,
+    pitch: number,
+    turns: number
+  ): KernelShape;
+  /** Sweep with options (contact mode, scale law, segments). */
+  sweepWithOptions(
+    profile: KernelShape,
+    pathEdge: KernelShape,
+    contactMode: string,
+    scaleValues: number[],
+    segments: number
+  ): KernelShape;
+  /** Draft (taper) faces of a solid along a pull direction with a neutral plane. */
+  draft(
+    shape: KernelShape,
+    faces: KernelShape[],
+    pullDirection: [number, number, number],
+    neutralPlane: [number, number, number],
+    angleDeg: number
+  ): KernelShape;
+  /** Remove faces from a solid (defeaturing). */
+  defeature(shape: KernelShape, faces: KernelShape[]): KernelShape;
+
   // --- Transforms ---
   transform(shape: KernelShape, trsf: KernelType): KernelShape;
   translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
@@ -440,6 +471,17 @@ export interface KernelAdapter extends Kernel2DCapability {
    */
   meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult;
 
+  // --- Mesh boolean ---
+  /** Boolean operation on raw triangle data. Returns merged mesh. */
+  meshBoolean(
+    positionsA: number[],
+    indicesA: number[],
+    positionsB: number[],
+    indicesB: number[],
+    op: string,
+    tolerance: number
+  ): KernelMeshResult;
+
   // --- File I/O ---
   exportSTEP(shapes: KernelShape[]): string;
   exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer;
@@ -448,6 +490,22 @@ export interface KernelAdapter extends Kernel2DCapability {
   exportIGES(shapes: KernelShape[]): string;
   importIGES(data: string | ArrayBuffer): KernelShape[];
   exportSTEPAssembly(parts: StepAssemblyPart[], options?: { unit?: string }): string;
+
+  // --- Extended I/O formats ---
+  /** Export shape to 3MF format. Returns binary data. */
+  export3MF(shape: KernelShape, tolerance: number): ArrayBuffer;
+  /** Export shape to GLB format. Returns binary data. */
+  exportGLB(shape: KernelShape, tolerance: number): ArrayBuffer;
+  /** Export shape to OBJ format. Returns binary data. */
+  exportOBJ(shape: KernelShape, tolerance: number): ArrayBuffer;
+  /** Export shape to PLY format (binary). Returns binary data. */
+  exportPLY(shape: KernelShape, tolerance: number): ArrayBuffer;
+  /** Import from 3MF format. Returns solid shapes. */
+  import3MF(data: ArrayBuffer): KernelShape[];
+  /** Import from OBJ format. Returns a solid shape. */
+  importOBJ(data: ArrayBuffer): KernelShape;
+  /** Import from GLB format. Returns a solid shape. */
+  importGLB(data: ArrayBuffer): KernelShape;
 
   // --- Measurement ---
   volume(shape: KernelShape): number;
@@ -471,6 +529,12 @@ export interface KernelAdapter extends Kernel2DCapability {
   hashCode(shape: KernelShape, upperBound: number): number;
   isNull(shape: KernelShape): boolean;
   shapeOrientation(shape: KernelShape): ShapeOrientation;
+  /** Get edge-to-face adjacency map as JSON. */
+  edgeToFaceMap(shape: KernelShape): string;
+  /** Get shared edges between two faces. */
+  sharedEdges(faceA: KernelShape, faceB: KernelShape): KernelShape[];
+  /** Get faces adjacent to a given face within a shape. */
+  adjacentFaces(shape: KernelShape, face: KernelShape): KernelShape[];
 
   // --- Geometry queries: vertex ---
   vertexPosition(vertex: KernelShape): [number, number, number];
@@ -535,6 +599,12 @@ export interface KernelAdapter extends Kernel2DCapability {
   healSolid(shape: KernelShape): KernelShape | null;
   healFace(shape: KernelShape): KernelShape;
   healWire(wire: KernelShape, face?: KernelShape): KernelShape;
+  /** Merge coincident vertices within tolerance. Returns merge count. */
+  mergeCoincidentVertices(shape: KernelShape, tolerance: number): number;
+  /** Remove zero-length (degenerate) edges. Returns removal count. */
+  removeDegenerateEdges(shape: KernelShape, tolerance: number): number;
+  /** Fix face orientations for consistent normals. Returns fix count. */
+  fixFaceOrientations(shape: KernelShape): number;
 
   // --- 2D offset ---
   offsetWire2D(
@@ -553,6 +623,18 @@ export interface KernelAdapter extends Kernel2DCapability {
     v: number,
     tolerance?: number
   ): 'in' | 'on' | 'out';
+  /** Classify a point using robust dual-method. */
+  classifyPointRobust(
+    shape: KernelShape,
+    point: [number, number, number],
+    tolerance: number
+  ): string;
+  /** Classify a point using winding numbers. */
+  classifyPointWinding(
+    shape: KernelShape,
+    point: [number, number, number],
+    tolerance: number
+  ): string;
 
   // --- Splitting ---
   split(shape: KernelShape, tools: KernelShape[]): KernelShape;
@@ -571,6 +653,30 @@ export interface KernelAdapter extends Kernel2DCapability {
       smoothing?: [number, number, number] | null;
     }
   ): KernelShape;
+
+  // --- NURBS curve operations ---
+  /** Elevate the degree of a NURBS edge curve. */
+  curveDegreeElevate(edge: KernelShape, elevateBy: number): KernelShape;
+  /** Insert a knot into a NURBS edge curve. */
+  curveKnotInsert(edge: KernelShape, knot: number, times: number): KernelShape;
+  /** Remove a knot from a NURBS edge curve. */
+  curveKnotRemove(edge: KernelShape, knot: number, tolerance: number): KernelShape;
+  /** Split a NURBS edge curve at a parameter. Returns two edges. */
+  curveSplit(edge: KernelShape, param: number): [KernelShape, KernelShape];
+  /** Approximate a surface via LSPIA. */
+  approximateSurfaceLspia(
+    coords: number[],
+    rows: number,
+    cols: number,
+    degreeU: number,
+    degreeV: number,
+    numCpsU: number,
+    numCpsV: number,
+    tolerance: number,
+    maxIterations: number
+  ): KernelShape;
+  /** Untrim a NURBS face to its full surface domain. */
+  untrimFace(face: KernelShape, samplesPerCurve: number, interiorSamples: number): KernelShape;
 
   // --- Serialization ---
   /**
@@ -744,6 +850,12 @@ export interface KernelAdapter extends Kernel2DCapability {
     dispose(): void;
   };
 
+  // --- Feature detection ---
+  /** Detect small features (faces below area threshold). Returns face shapes. */
+  detectSmallFeatures(shape: KernelShape, areaThreshold: number, tolerance: number): KernelShape[];
+  /** Recognize geometric features. Returns JSON description. */
+  recognizeFeatures(shape: KernelShape, tolerance: number): string;
+
   // --- Projection ---
   /** Project 3D edges onto a 2D plane (hidden line removal). */
   projectEdges(
@@ -852,6 +964,20 @@ export interface KernelAdapter extends Kernel2DCapability {
   // --- Shape reversal ---
   /** Return a copy of the shape with reversed orientation. */
   reverseShape(shape: KernelShape): KernelShape;
+
+  // --- Batch execution ---
+  /** Execute a batch of kernel operations from JSON. Returns JSON result. */
+  executeBatch(json: string): string;
+
+  // --- Checkpoint / Restore (arena memory management) ---
+  /** Create an arena checkpoint. Returns checkpoint index. */
+  checkpoint(): number;
+  /** Get the current number of active checkpoints. */
+  checkpointCount(): number;
+  /** Restore arena to a checkpoint, freeing all handles created after it. */
+  restoreCheckpoint(cp: number): void;
+  /** Discard a checkpoint without restoring (keep all handles). */
+  discardCheckpoint(cp: number): void;
 
   // --- Dispose ---
   dispose(handle: { delete(): void }): void;

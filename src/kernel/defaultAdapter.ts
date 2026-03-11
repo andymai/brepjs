@@ -1858,6 +1858,192 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     return ax;
   }
 
+  // --- Unsupported brepkit-only methods ---
+
+  export3MF(_shape: KernelShape, _tolerance: number): ArrayBuffer {
+    throw new Error('export3MF is only available with the brepkit kernel');
+  }
+
+  exportGLB(_shape: KernelShape, _tolerance: number): ArrayBuffer {
+    throw new Error('exportGLB is only available with the brepkit kernel');
+  }
+
+  exportOBJ(_shape: KernelShape, _tolerance: number): ArrayBuffer {
+    throw new Error('exportOBJ is only available with the brepkit kernel');
+  }
+
+  exportPLY(_shape: KernelShape, _tolerance: number): ArrayBuffer {
+    throw new Error('exportPLY is only available with the brepkit kernel');
+  }
+
+  import3MF(_data: ArrayBuffer): KernelShape[] {
+    throw new Error('import3MF is only available with the brepkit kernel');
+  }
+
+  importOBJ(_data: ArrayBuffer): KernelShape {
+    throw new Error('importOBJ is only available with the brepkit kernel');
+  }
+
+  importGLB(_data: ArrayBuffer): KernelShape {
+    throw new Error('importGLB is only available with the brepkit kernel');
+  }
+
+  filletVariable(_shape: KernelShape, _spec: string): KernelShape {
+    throw new Error('filletVariable is only available with the brepkit kernel');
+  }
+
+  helicalSweep(
+    _profile: KernelShape,
+    _axisOrigin: [number, number, number],
+    _axisDirection: [number, number, number],
+    _radius: number,
+    _pitch: number,
+    _turns: number
+  ): KernelShape {
+    throw new Error('helicalSweep is only available with the brepkit kernel');
+  }
+
+  sweepWithOptions(
+    _profile: KernelShape,
+    _pathEdge: KernelShape,
+    _contactMode: string,
+    _scaleValues: number[],
+    _segments: number
+  ): KernelShape {
+    throw new Error('sweepWithOptions is only available with the brepkit kernel');
+  }
+
+  draft(
+    _shape: KernelShape,
+    _faces: KernelShape[],
+    _pullDirection: [number, number, number],
+    _neutralPlane: [number, number, number],
+    _angleDeg: number
+  ): KernelShape {
+    throw new Error('draft is only available with the brepkit kernel');
+  }
+
+  defeature(_shape: KernelShape, _faces: KernelShape[]): KernelShape {
+    throw new Error('defeature is only available with the brepkit kernel');
+  }
+
+  detectSmallFeatures(
+    _shape: KernelShape,
+    _areaThreshold: number,
+    _tolerance: number
+  ): KernelShape[] {
+    throw new Error('detectSmallFeatures is only available with the brepkit kernel');
+  }
+
+  recognizeFeatures(_shape: KernelShape, _tolerance: number): string {
+    throw new Error('recognizeFeatures is only available with the brepkit kernel');
+  }
+
+  meshBoolean(
+    _positionsA: number[],
+    _indicesA: number[],
+    _positionsB: number[],
+    _indicesB: number[],
+    _op: string,
+    _tolerance: number
+  ): KernelMeshResult {
+    throw new Error('meshBoolean is only available with the brepkit kernel');
+  }
+
+  edgeToFaceMap(_shape: KernelShape): string {
+    throw new Error('edgeToFaceMap is only available with the brepkit kernel');
+  }
+
+  sharedEdges(_faceA: KernelShape, _faceB: KernelShape): KernelShape[] {
+    throw new Error('sharedEdges is only available with the brepkit kernel');
+  }
+
+  adjacentFaces(_shape: KernelShape, _face: KernelShape): KernelShape[] {
+    throw new Error('adjacentFaces is only available with the brepkit kernel');
+  }
+
+  curveDegreeElevate(_edge: KernelShape, _elevateBy: number): KernelShape {
+    throw new Error('curveDegreeElevate is only available with the brepkit kernel');
+  }
+
+  curveKnotInsert(_edge: KernelShape, _knot: number, _times: number): KernelShape {
+    throw new Error('curveKnotInsert is only available with the brepkit kernel');
+  }
+
+  curveKnotRemove(_edge: KernelShape, _knot: number, _tolerance: number): KernelShape {
+    throw new Error('curveKnotRemove is only available with the brepkit kernel');
+  }
+
+  curveSplit(_edge: KernelShape, _param: number): [KernelShape, KernelShape] {
+    throw new Error('curveSplit is only available with the brepkit kernel');
+  }
+
+  approximateSurfaceLspia(
+    _coords: number[],
+    _rows: number,
+    _cols: number,
+    _degreeU: number,
+    _degreeV: number,
+    _numCpsU: number,
+    _numCpsV: number,
+    _tolerance: number,
+    _maxIterations: number
+  ): KernelShape {
+    throw new Error('approximateSurfaceLspia is only available with the brepkit kernel');
+  }
+
+  untrimFace(_face: KernelShape, _samplesPerCurve: number, _interiorSamples: number): KernelShape {
+    throw new Error('untrimFace is only available with the brepkit kernel');
+  }
+
+  mergeCoincidentVertices(_shape: KernelShape, _tolerance: number): number {
+    throw new Error('mergeCoincidentVertices is only available with the brepkit kernel');
+  }
+
+  removeDegenerateEdges(_shape: KernelShape, _tolerance: number): number {
+    throw new Error('removeDegenerateEdges is only available with the brepkit kernel');
+  }
+
+  fixFaceOrientations(_shape: KernelShape): number {
+    throw new Error('fixFaceOrientations is only available with the brepkit kernel');
+  }
+
+  classifyPointRobust(
+    _shape: KernelShape,
+    _point: [number, number, number],
+    _tolerance: number
+  ): string {
+    throw new Error('classifyPointRobust is only available with the brepkit kernel');
+  }
+
+  classifyPointWinding(
+    _shape: KernelShape,
+    _point: [number, number, number],
+    _tolerance: number
+  ): string {
+    throw new Error('classifyPointWinding is only available with the brepkit kernel');
+  }
+
+  executeBatch(_json: string): string {
+    throw new Error('executeBatch is only available with the brepkit kernel');
+  }
+
+  checkpoint(): number {
+    throw new Error('checkpoint is only available with the brepkit kernel');
+  }
+
+  checkpointCount(): number {
+    throw new Error('checkpointCount is only available with the brepkit kernel');
+  }
+
+  restoreCheckpoint(_cp: number): void {
+    throw new Error('restoreCheckpoint is only available with the brepkit kernel');
+  }
+
+  discardCheckpoint(_cp: number): void {
+    throw new Error('discardCheckpoint is only available with the brepkit kernel');
+  }
+
   // --- Dispose ---
 
   dispose(handle: { delete(): void }): void {

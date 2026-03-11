@@ -583,8 +583,8 @@ export interface BrepkitKernel {
   /** Export to GLB format. Returns bytes. */
   exportGlb(solid: number, deflection: number): Uint8Array;
 
-  /** Export to PLY format. Returns bytes. */
-  exportPly(solid: number, deflection: number, binary: boolean): Uint8Array;
+  /** Export to PLY format (binary). Returns bytes. */
+  exportPly(solid: number, deflection: number): Uint8Array;
 
   // ── Import ─────────────────────────────────────────────────────
 
