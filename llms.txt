@@ -58,15 +58,7 @@ The kernel abstraction layer (`src/kernel/`) translates all brepjs calls into OC
 
 See `docs/cheat-sheet.md` for a single-page reference covering all common operations (primitives, booleans, transforms, fillets, measurement, export, memory management, error handling).
 
-Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). For a standalone browser example that generates an HTML file with an embedded Three.js viewer, see `examples/browser-viewer.ts`.
-
-## Examples with Visual Output
-
-Several examples generate SVG and HTML files in `examples/output/`:
-- `examples/2d-to-3d.ts` → `examples/output/2d-profile.svg` (2D profile preview)
-- `examples/mechanical-part.ts` → `examples/output/bracket-front.svg`, `bracket-top.svg` (technical drawings via `drawProjection`)
-- `examples/threejs-rendering.ts` → `examples/output/threejs-part.html` (Three.js 3D viewer)
-- `examples/browser-viewer.ts` → `examples/output/viewer.html` (standalone browser viewer with orbit controls)
+Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). Try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
 
 ## API Style
 
