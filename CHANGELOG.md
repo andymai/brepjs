@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.8](https://github.com/andymai/brepjs/compare/brepjs-v12.2.7...brepjs-v12.2.8) (2026-03-11)
+
+
+### Bug Fixes
+
+* revert compound passthrough pending brepkit-wasm compound support ([#455](https://github.com/andymai/brepjs/issues/455)) ([a6ed8d4](https://github.com/andymai/brepjs/commit/a6ed8d407bd5fba10690212919d14109e163c2f4))
+
 ## [12.2.7](https://github.com/andymai/brepjs/compare/brepjs-v12.2.6...brepjs-v12.2.7) (2026-03-11)
 
 
