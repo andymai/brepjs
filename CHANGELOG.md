@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.11](https://github.com/andymai/brepjs/compare/brepjs-v12.2.10...brepjs-v12.2.11) (2026-03-11)
+
+
+### Bug Fixes
+
+* update brepkit-wasm peer dep range to include v1.0.0 ([#454](https://github.com/andymai/brepjs/issues/454)) ([ca19fb3](https://github.com/andymai/brepjs/commit/ca19fb32308082a938fb4572d1c34a7c7b23dba1))
+
 ## [12.2.10](https://github.com/andymai/brepjs/compare/brepjs-v12.2.9...brepjs-v12.2.10) (2026-03-11)
 
 
