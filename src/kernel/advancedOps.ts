@@ -450,24 +450,24 @@ export function addHolesInFace(
 
 /** Remove all inner wires (holes) from a face. Returns a new face with only the outer boundary. */
 export function removeHolesFromFace(oc: KernelInstance, face: KernelShape): KernelShape {
-  // Extract the outer wire and underlying surface
   const outerWire = oc.BRepTools.OuterWire(face);
   const surface = oc.BRep_Tool.Surface_2(face);
+  try {
+    const maker = new oc.BRepBuilderAPI_MakeFace_21(surface, outerWire, true);
+    const result = maker.Face();
+    maker.delete();
 
-  // Rebuild the face from the surface + outer wire only (discards holes)
-  const maker = new oc.BRepBuilderAPI_MakeFace_21(surface, outerWire, true);
-  const result = maker.Face();
-  maker.delete();
-  surface.delete();
+    const fixer = new oc.ShapeFix_Face_2(result);
+    fixer.FixOrientation_1();
+    fixer.Perform();
+    const fixed = fixer.Face();
+    fixer.delete();
 
-  // Fix orientation to match the original
-  const fixer = new oc.ShapeFix_Face_2(result);
-  fixer.FixOrientation_1();
-  fixer.Perform();
-  const fixed = fixer.Face();
-  fixer.delete();
-
-  return fixed;
+    return fixed;
+  } finally {
+    surface.delete();
+    outerWire.delete();
+  }
 }
 
 /** Build a face on an existing surface bounded by a wire. Accepts a Geom_Surface handle or a TopoDS_Face (surface is extracted automatically). */

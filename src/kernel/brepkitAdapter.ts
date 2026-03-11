@@ -2042,6 +2042,8 @@ export class BrepkitAdapter implements KernelAdapter {
     if (bkHandle.type === 'solid') {
       result = this.meshSolid(h, deflection, !!options.includeUVs);
     } else if (bkHandle.type === 'face') {
+      // Note: meshSingleFace does not support real UVs yet (brepkit has no per-face UV API).
+      // UVs will be zeroed out by the post-processing guard below when includeUVs is false.
       result = this.meshSingleFace(h, deflection, 0);
     } else {
       throw new Error(`brepkit: cannot mesh shape of type '${bkHandle.type}'`);
@@ -4595,10 +4597,12 @@ export class BrepkitAdapter implements KernelAdapter {
         }
       }
       if (insertions.length === 0) break;
-      // Insert in reverse order to preserve indices
-      for (let j = insertions.length - 1; j >= 0; j--) {
+      // Insert in reverse order to preserve indices; cap at MAX_N total samples
+      let budget = MAX_N - uvSamples.length;
+      for (let j = insertions.length - 1; j >= 0 && budget > 0; j--) {
         const ins = insertions[j]!;
         uvSamples.splice(ins.index, 0, { t: ins.t, uv: ins.uv });
+        budget--;
       }
       refinements++;
       if (refinements > 3) break; // cap refinement passes
