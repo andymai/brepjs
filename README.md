@@ -1,6 +1,6 @@
 # brepjs
 
-CAD modeling for JavaScript. Build 3D geometry with code.
+CAD modeling for JavaScript.
 
 [![npm](https://img.shields.io/npm/v/brepjs)](https://www.npmjs.com/package/brepjs)
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
@@ -9,6 +9,7 @@ CAD modeling for JavaScript. Build 3D geometry with code.
 **[Docs](https://andymai.github.io/brepjs/)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Getting Started](./docs/getting-started.md)**
 
 ```typescript
+// Drill a hole, fillet the vertical edges, export to STEP
 import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
@@ -21,9 +22,58 @@ const part = unwrap(fillet(drilled, edges, 1.5));
 const step = unwrap(exportSTEP(part));
 ```
 
-## Why brepjs?
+## Why?
 
-Most CAD libraries for the web are mesh-based — they work with triangles, not real geometry. brepjs gives you boundary representation (B-Rep) modeling with a pluggable geometry kernel. Exact booleans, fillets, and export to formats real CAD software can open.
+brepjs grew out of the love and care I put into [gridfinitylayouttool.com](https://gridfinitylayouttool.com). I needed parametric CAD in the browser and I'm not a 3D modeler, but I know TypeScript. [OpenSCAD](https://openscad.org/) nailed code-first CAD but lives outside the JS ecosystem. [replicad](https://replicad.xyz/) proved OpenCascade works in JS but I kept hitting performance walls and fighting the API.
+
+Neither had the type safety I wanted, so brepjs leans hard on it: branded types, `Result<T,E>`, phantom types that prove invariants at compile time. If it compiles, the geometry is valid.
+
+## Status
+
+Production-ready with the OpenCascade kernel. [brepkit](https://github.com/andymai/brepkit), a Rust-based kernel, is in active development as a faster replacement but not yet production-ready. The kernel abstraction layer means switching is a one-line change.
+
+## Benchmarks
+
+Median times, 5 iterations, Node.js on Linux x86_64. Full results in [`benchmarks/results/latest.md`](./benchmarks/results/latest.md).
+
+### WASM bundle size
+
+| Kernel                                                                 | Size   |
+| ---------------------------------------------------------------------- | ------ |
+| [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | 11 MB  |
+| [brepkit](https://github.com/andymai/brepkit) (Rust, in development)   | 1.8 MB |
+
+brepjs-opencascade is a heavily optimized custom build of OpenCascade: trimmed to only the classes brepjs needs, with custom C++ bulk-extraction classes (mesh, booleans, topology) that bypass the JS-WASM bridge for hot paths. It's already about as fast as OCCT gets in the browser.
+
+### Boolean operations
+
+| Operation              | brepjs-opencascade | brepkit | Speedup |
+| ---------------------- | ------------------ | ------- | ------- |
+| fuse(box, box)         | 83.7 ms            | 5.7 ms  | 15x     |
+| cut(box, cylinder)     | 123.8 ms           | 4.2 ms  | 29x     |
+| intersect(box, sphere) | 107.1 ms           | 31.9 ms | 3x      |
+
+### Primitives
+
+| Operation    | brepjs-opencascade | brepkit | Speedup |
+| ------------ | ------------------ | ------- | ------- |
+| makeBox      | 5.9 ms             | 0.2 ms  | 30x     |
+| makeCylinder | 2.3 ms             | 0.1 ms  | 23x     |
+| makeSphere   | 1.4 ms             | 0.5 ms  | 3x      |
+
+### End-to-end
+
+| Operation              | brepjs-opencascade | brepkit | Speedup |
+| ---------------------- | ------------------ | ------- | ------- |
+| box + chamfer          | 7.8 ms             | 0.1 ms  | 78x     |
+| box + fillet           | 8.1 ms             | 0.3 ms  | 27x     |
+| multi-boolean model    | 52.0 ms            | 1.7 ms  | 31x     |
+| mesh sphere (tol=0.01) | 61.3 ms            | 20.0 ms | 3x      |
+| exportSTEP x10         | 19.2 ms            | 0.9 ms  | 21x     |
+
+## What you can build
+
+Code-as-CAD is great for parts defined by parameters - enclosures, brackets, fixtures, gridfinity bins. Less suited for organic sculpting. Think parametric part generators, browser-based CAD tools, automated manufacturing pipelines, 3D printing workflows.
 
 ## Install
 
@@ -31,7 +81,7 @@ Most CAD libraries for the web are mesh-based — they work with triangles, not 
 npm install brepjs brepjs-opencascade
 ```
 
-`brepjs/quick` auto-initializes the WASM kernel via top-level await (ESM only). For CJS or manual control:
+`brepjs/quick` handles WASM init automatically via top-level await (ESM only). Manual setup:
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
@@ -43,194 +93,45 @@ initFromOC(oc);
 
 ## Features
 
-**Modeling** — `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`, `polyhedron` plus `extrude`, `revolve`, `loft`, `sweep` from 2D sketches
+**Modeling** - `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`, `polyhedron` plus `extrude`, `revolve`, `loft`, `sweep` from 2D sketches
 
-**Booleans** — `fuse`, `cut`, `intersect`, `section`, `split`, `slice` with batch variants `fuseAll`, `cutAll`
+**Booleans** - `fuse`, `cut`, `intersect`, `section`, `split`, `slice` with batch variants `fuseAll`, `cutAll`
 
-**Modifiers** — `fillet`, `chamfer`, `shell`, `offset`, `thicken`, `resize`. Accepts `ShapeFinder` directly
+**Modifiers** - `fillet`, `chamfer`, `shell`, `offset`, `thicken`, `resize`
 
-**Transforms** — `translate`, `rotate`, `mirror`, `scale`, `applyMatrix`, `composeTransforms`, `transformCopy`
+**Transforms** - `translate`, `rotate`, `mirror`, `scale`, `applyMatrix`, `composeTransforms`, `transformCopy`
 
-**Sketching** — `draw`, `drawRectangle`, `drawCircle`, `Sketcher`, `sketchCircle`, `sketchHelix` for 2D-to-3D workflows
+**Sketching** - `draw`, `drawRectangle`, `drawCircle`, `Sketcher`, `sketchCircle`, `sketchHelix` for 2D profiles and paths
 
-**Queries** — `edgeFinder`, `faceFinder`, `wireFinder`, `vertexFinder` with composable filters like `.inDirection('Z')`, `.ofCurveType('CIRCLE')`, `.ofLength(10)`
+**Queries** - `edgeFinder`, `faceFinder`, `wireFinder`, `vertexFinder` with composable filters like `.inDirection('Z')`, `.ofCurveType('CIRCLE')`, `.ofLength(10)`
 
-**Measurement** — `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, `checkInterference`
+**Measurement** - `measureVolume`, `measureArea`, `measureLength`, `measureDistance`, `checkInterference`
 
-**Import/Export** — STEP, STL, glTF/GLB, DXF (import + export), 3MF, OBJ, SVG (import). Assembly export with colors and names via `exportAssemblySTEP`
+**Import/Export** - STEP, STL, glTF/GLB, DXF (import + export), 3MF, OBJ, SVG (import). Assembly export with colors and names via `exportAssemblySTEP`
 
-**Advanced Geometry** — `hull`, `minkowski`, `fill`, `roof`, `surfaceFromGrid`
+**Advanced Geometry** - `hull`, `minkowski`, `fill`, `roof`, `surfaceFromGrid`
 
-**Colors** — Per-shape colors that propagate through booleans and modifiers
+**Colors** - Per-shape colors that propagate through booleans and modifiers
 
-**Rendering** — `mesh` and `toBufferGeometryData` for Three.js / WebGL integration
+**Rendering** - `mesh` and `toBufferGeometryData` for Three.js / WebGL integration
 
-**Text** — `loadFont`, `drawText`, `sketchText`, `textMetrics`
+**Text** - `loadFont`, `drawText`, `sketchText`, `textMetrics`
 
-**Healing** — `autoHeal`, `healSolid`, `healFace`, `isValid` for fixing imported geometry
+**Healing** - `autoHeal`, `healSolid`, `healFace`, `isValid` for fixing imported geometry
 
-**Patterns** — `linearPattern`, `circularPattern` for arraying shapes
+**Patterns** - `linearPattern`, `circularPattern` for arraying shapes
 
-**Assemblies** — `createAssemblyNode`, `addChild`, `walkAssembly`, `collectShapes`, assembly mates
+**Assemblies** - `createAssemblyNode`, `addChild`, `addMate`, `walkAssembly`, `collectShapes`
 
-**Face Tracking** — Face origin tracking and face tags across boolean operations
+**Face Tracking** - Face origin tracking and face tags across boolean operations
 
-**Workers** — `createWorkerClient`, `createWorkerHandler` for off-main-thread operations
+**Workers** - `createWorkerClient`, `createWorkerHandler` for off-main-thread operations
 
-**History** — `createHistory`, `addStep`, `undoLast`, `replayHistory` for parametric undo/replay
+**History** - `createHistory`, `addStep`, `undoLast`, `replayHistory` for parametric undo/replay
 
-## Common Patterns
-
-### Memory cleanup
-
-WASM objects aren't garbage-collected. Use `using` (TS 5.9+) or `DisposalScope` for deterministic cleanup:
-
-```typescript
-import { box, cylinder, cut, unwrap, DisposalScope } from 'brepjs/quick';
-
-// Option 1: using keyword — auto-disposed at block end
-{
-  using temp = box(10, 10, 10);
-  using hole = cylinder(3, 15);
-  const result = unwrap(cut(temp, hole));
-  // temp and hole freed here; result survives
-}
-
-// Option 2: DisposalScope — deterministic cleanup
-function buildPart() {
-  using scope = new DisposalScope();
-  const b = scope.register(box(10, 10, 10));
-  const hole = scope.register(cylinder(3, 15));
-  return unwrap(cut(b, hole)); // b and hole freed when scope exits
-}
-```
-
-### Immutability
-
-All operations return new shapes — the original is never modified:
-
-```typescript
-import { box, translate, rotate, measureVolume } from 'brepjs/quick';
-
-const original = box(30, 20, 10);
-const moved = translate(original, [100, 0, 0]);
-const rotated = rotate(moved, 45, { axis: [0, 0, 1] });
-
-// original is unchanged
-console.log(measureVolume(original) === measureVolume(moved)); // true — same geometry, different position
-```
-
-### Chaining transforms
-
-Apply translation then rotation (functional or wrapper style):
-
-```typescript
-import { box, translate, rotate, shape } from 'brepjs/quick';
-
-// Functional — each call returns a new shape
-const b = box(30, 20, 10);
-const moved = translate(b, [50, 0, 0]);
-const result = rotate(moved, 45, { axis: [0, 0, 1] });
-
-// Wrapper — fluent chaining
-const same = shape(box(30, 20, 10))
-  .translate([50, 0, 0])
-  .rotate(45, { axis: [0, 0, 1] }).val;
-```
-
-### 2D sketch to 3D extrusion
-
-Draw a 2D profile, then extrude it to create a solid:
-
-```typescript
-import { drawRectangle, drawCircle, drawingCut, drawingToSketchOnPlane, shape } from 'brepjs/quick';
-
-// Draw 2D rectangle with a hole
-const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 15]));
-
-// Convert to sketch on XY plane, extrude 20mm
-const sketch = drawingToSketchOnPlane(profile, 'XY');
-const solid = shape(sketch.face()).extrude(20).val;
-
-// Or use the sketch shortcut directly
-import { sketchRectangle } from 'brepjs/quick';
-const quickBox = sketchRectangle(50, 30).extrude(20);
-```
-
-### STEP import and export
-
-Load a STEP file, modify it, and re-export:
-
-```typescript
-import { importSTEP, exportSTEP, shape, unwrap } from 'brepjs/quick';
-
-// Import from Blob (e.g., from file input or fs.readFileSync)
-const imported = unwrap(await importSTEP(stepBlob));
-
-// Modify the imported shape
-const modified = shape(imported).fillet(2).translate([0, 0, 10]).val;
-
-// Export back to STEP
-const outputBlob = unwrap(exportSTEP(modified));
-
-// Save to disk (Node.js)
-import { writeFileSync } from 'fs';
-writeFileSync('output.step', Buffer.from(await outputBlob.arrayBuffer()));
-```
-
-### Custom geometry kernel
-
-brepjs is kernel-agnostic — you can register alternative geometry kernels at runtime:
-
-```typescript
-import { registerKernel, withKernel, box } from 'brepjs';
-
-registerKernel('my-kernel', myAdapter);
-const result = box(10, 10, 10); // uses your kernel
-```
-
-The kernel abstraction layer in `src/kernel/` ensures brepjs code never touches kernel internals directly. See the [Custom Kernel Guide](docs/kernel-swap.md) for writing your own `KernelAdapter`.
-
-## Imports
-
-Everything is available from the top level:
-
-```typescript
-import { box, translate, fuse, exportSTEP } from 'brepjs';
-```
-
-Sub-path imports for tree-shaking:
-
-```typescript
-import { box, fuse, fillet } from 'brepjs/topology';
-import { importSTEP, exportSTEP } from 'brepjs/io';
-import { measureVolume } from 'brepjs/measurement';
-import { edgeFinder, faceFinder } from 'brepjs/query';
-import { sketchCircle, draw, drawRectangle, drawCircle } from 'brepjs/sketching';
-import { createAssemblyNode } from 'brepjs/operations';
-import { createWorkerClient } from 'brepjs/worker';
-import { Result, isOk, unwrap } from 'brepjs/result';
-import { toVec3, vecAdd, vecNormalize } from 'brepjs/vectors';
-```
-
-## Error Handling
-
-Operations that can fail return a `Result` instead of throwing:
-
-```typescript
-const result = fuse(a, b);
-
-if (isOk(result)) {
-  const fused = result.value;
-}
-
-// Or throw on failure
-const fused = unwrap(fuse(a, b));
-```
+**Error Handling** - `Result<T,E>` instead of exceptions. `isOk()`, `unwrap()`, `match()`
 
 ## Architecture
-
-Four layers with enforced import boundaries (imports flow downward only):
 
 ```
 Layer 3  sketching/, text/, projection/   High-level API
@@ -239,21 +140,23 @@ Layer 1  core/                            Types, memory, errors
 Layer 0  kernel/, utils/                  WASM bindings
 ```
 
+Imports flow downward only. Boundaries are enforced in CI.
+
 ## Documentation
 
-- [API Reference](https://andymai.github.io/brepjs/) — Searchable TypeDoc reference
-- [Zero to Shape](./docs/zero-to-shape.md) — First shape in 60 seconds
-- [Getting Started](./docs/getting-started.md) — Install to first part
-- [B-Rep Concepts](./docs/concepts.md) — Vertices, edges, faces, solids
-- [Cheat Sheet](./docs/cheat-sheet.md) — Single-page reference for common operations
-- [Cookbook](./docs/cookbook.md) — Practical recipes for common CAD workflows
-- [Which API?](./docs/which-api.md) — Sketcher vs functional vs Drawing
-- [Function Lookup](./docs/function-lookup.md) — Alphabetical index of every export
-- [Memory Management](./docs/memory-management.md) — Resource cleanup patterns
-- [Error Reference](./docs/errors.md) — Error codes and recovery
-- [Architecture](./docs/architecture.md) — Layer diagram and module overview
-- [Performance](./docs/performance.md) — Optimization tips
-- [Compatibility](./docs/compatibility.md) — Tested environments
+- [API Reference](https://andymai.github.io/brepjs/): Searchable TypeDoc reference
+- [Zero to Shape](./docs/zero-to-shape.md): First shape in 60 seconds
+- [Getting Started](./docs/getting-started.md): From install to first shape
+- [B-Rep Concepts](./docs/concepts.md): Vertices, edges, faces, solids
+- [Cheat Sheet](./docs/cheat-sheet.md): Single-page reference for common operations
+- [Cookbook](./docs/cookbook.md): Practical recipes for common CAD workflows
+- [Which API?](./docs/which-api.md): Sketcher vs functional vs Drawing
+- [Function Lookup](./docs/function-lookup.md): Alphabetical index of every export
+- [Memory Management](./docs/memory-management.md): Resource cleanup patterns
+- [Error Reference](./docs/errors.md): Error codes and recovery
+- [Architecture](./docs/architecture.md): Layer diagram and module overview
+- [Performance](./docs/performance.md): Optimization tips
+- [Compatibility](./docs/compatibility.md): Tested environments
 
 ## Packages
 
@@ -264,7 +167,7 @@ Layer 0  kernel/, utils/                  WASM bindings
 
 ## Projects Using brepjs
 
-- [Gridfinity Layout Tool](https://github.com/andymai/gridfinity-layout-tool) — Web-based layout generator for Gridfinity storage systems
+- [Gridfinity Layout Tool](https://github.com/andymai/gridfinity-layout-tool): Web-based layout generator for Gridfinity storage systems
 
 ## Development
 
