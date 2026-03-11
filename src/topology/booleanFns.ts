@@ -57,10 +57,6 @@ export type { BooleanOptions };
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function buildCompoundInternal(shapes: KernelType[]): KernelType {
-  return getKernel().makeCompound(shapes);
-}
-
 function castToShape3D(shape: KernelType, errorCode: string, errorMsg: string): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
@@ -386,27 +382,15 @@ export function cutAll(
     if (isErr(check)) return check;
   }
 
-  const toolCompound = buildCompoundInternal(tools.map((s) => s.wrapped));
   const allInputs = [base, ...tools];
-  const inputFaceHashes = collectInputFaceHashes(allInputs);
-  const { shape: resultShape, evolution } = getKernel().cutWithHistory(
+  const result = getKernel().cutAll(
     base.wrapped,
-    toolCompound,
-    inputFaceHashes,
-    HASH_CODE_MAX,
+    tools.map((s) => s.wrapped),
     { optimisation, simplify, fuzzyValue }
   );
-  // Dispose the temporary compound
-  toolCompound.delete();
-  const cutAllResult = castToShape3D(
-    resultShape,
-    'CUT_ALL_NOT_3D',
-    'cutAll did not produce a 3D shape'
-  );
+  const cutAllResult = castToShape3D(result, 'CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape');
   if (cutAllResult.ok) {
-    propagateOriginsFromEvolution(evolution, allInputs, cutAllResult.value);
-    propagateFaceTagsFromEvolution(evolution, allInputs, cutAllResult.value);
-    propagateColorsFromEvolution(evolution, allInputs, cutAllResult.value);
+    propagateOriginsByHash(allInputs, cutAllResult.value);
   }
   return cutAllResult;
 }
