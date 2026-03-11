@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.9](https://github.com/andymai/brepjs/compare/brepjs-v12.2.8...brepjs-v12.2.9) (2026-03-11)
+
+
+### Performance Improvements
+
+* **kernel:** use brepkit-wasm compoundCut for batch boolean operations ([#457](https://github.com/andymai/brepjs/issues/457)) ([8f77be0](https://github.com/andymai/brepjs/commit/8f77be0045b3c32f5d728841d8495453eb87c778))
+
 ## [12.2.8](https://github.com/andymai/brepjs/compare/brepjs-v12.2.7...brepjs-v12.2.8) (2026-03-11)
 
 
