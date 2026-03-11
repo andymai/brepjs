@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.12](https://github.com/andymai/brepjs/compare/brepjs-v12.2.11...brepjs-v12.2.12) (2026-03-11)
+
+
+### Performance Improvements
+
+* **kernel:** add compoundFuse path to BrepkitAdapter.fuseAll() ([#462](https://github.com/andymai/brepjs/issues/462)) ([3d84eef](https://github.com/andymai/brepjs/commit/3d84eefbf43d9fa72f1aeaaa43fe73759fe20bcb))
+
 ## [12.2.11](https://github.com/andymai/brepjs/compare/brepjs-v12.2.10...brepjs-v12.2.11) (2026-03-11)
 
 
