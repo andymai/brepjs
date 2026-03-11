@@ -153,7 +153,8 @@ Imports flow downward only. Boundaries are enforced in CI.
 **Reference**
 
 - [Cheat Sheet](./docs/cheat-sheet.md): Single-page quick reference
-- [Cookbook](./docs/cookbook.md): 20 practical recipes for common CAD workflows
+- [Cookbook](./docs/cookbook.md): 21 practical recipes for common CAD workflows
+- [Three.js Integration](./docs/threejs-integration.md): Render brepjs shapes in the browser
 - [Function Lookup](./docs/function-lookup.md): Alphabetical index of every export
 - [Error Reference](./docs/errors.md): Error codes and recovery
 - [API Reference](https://andymai.github.io/brepjs/): Searchable TypeDoc reference

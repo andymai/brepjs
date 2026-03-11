@@ -382,6 +382,44 @@ const assembly = shape(base).fuse(posts[0]).fuse(posts[1]).fuse(posts[2]).fuse(p
 
 ---
 
+### 21. Three.js Integration
+
+Render a brepjs shape in Three.js — mesh + edge wireframe:
+
+```typescript
+import * as THREE from 'three';
+import {
+  box,
+  cylinder,
+  shape,
+  toBufferGeometryData,
+  meshEdges,
+  toLineGeometryData,
+} from 'brepjs/quick';
+
+const part = shape(box(30, 20, 10))
+  .cut(cylinder(4, 15, { at: [15, 10, -2] }))
+  .fillet((e) => e.inDirection('Z'), 2).val;
+
+// Mesh
+const m = shape(part).mesh({ tolerance: 0.1 });
+const data = toBufferGeometryData(m);
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute('position', new THREE.Float32BufferAttribute(data.position, 3));
+geometry.setAttribute('normal', new THREE.Float32BufferAttribute(data.normal, 3));
+geometry.setIndex(new THREE.BufferAttribute(data.index, 1));
+
+// Edge wireframe (true B-Rep edges, not mesh-based)
+const edgeMesh = meshEdges(part, { tolerance: 0.1 });
+const lineData = toLineGeometryData(edgeMesh);
+const edgeGeometry = new THREE.BufferGeometry();
+edgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(lineData.position, 3));
+```
+
+For per-face colors, dynamic re-meshing, material recommendations, and a full scene setup, see the **[Three.js Integration Guide](./threejs-integration.md)**.
+
+---
+
 ## Tips
 
 1. **Use the wrapper** — `shape().cut().fillet()` beats `unwrap(fillet(unwrap(cut(...))))`
@@ -392,5 +430,6 @@ const assembly = shape(base).fuse(posts[0]).fuse(posts[1]).fuse(posts[2]).fuse(p
 ## Next Steps
 
 - **[Getting Started](./getting-started.md)** — Full tutorial from installation to export
+- **[Three.js Integration](./threejs-integration.md)** — Render shapes in the browser
 - **[Which API?](./which-api.md)** — When to use each API style
 - **[Function Lookup](./function-lookup.md)** — Alphabetical index of every export

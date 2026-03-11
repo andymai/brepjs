@@ -42,17 +42,35 @@ npm install brepjs brepjs-opencascade
 
 `brepjs` is the API layer. `brepjs-opencascade` provides the default WASM geometry kernel.
 
-## Step 2: Import from `brepjs/quick`
+## Step 2: Initialize
+
+Two ways to start — pick whichever fits your setup:
+
+**Option A: `brepjs/quick` (zero config)**
 
 ```typescript
 import { box, cylinder, shape } from 'brepjs/quick';
 
+const b = box(30, 20, 10); // just works — WASM init happens via top-level await
+```
+
+Best for: scripts, quick prototypes, any ESM environment that supports top-level await.
+
+**Option B: Standard import (explicit init)**
+
+```typescript
+import opencascade from 'brepjs-opencascade';
+import { initFromOC, box, cylinder, shape } from 'brepjs';
+
+const oc = await opencascade();
+initFromOC(oc); // call once, then all brepjs functions are ready
+
 const b = box(30, 20, 10);
 ```
 
-`brepjs/quick` auto-initializes the WASM kernel via top-level await. No setup code needed.
+Best for: apps that need a loading indicator, explicit error handling, lazy initialization, or environments without top-level await (older bundlers, some test frameworks).
 
-> **Note:** For manual control over initialization (e.g., loading indicators or environments without top-level await), see [Advanced: Manual Initialization](#advanced-manual-initialization) below.
+Both options expose the same API — the only difference is who calls `initFromOC()`. All examples below work with either import path.
 
 ## Step 3: Create shapes with primitives
 
@@ -62,7 +80,7 @@ const cyl = cylinder(5, 20); // radius, height
 const sph = sphere(8); // radius
 ```
 
-`box`, `cylinder`, and `sphere` return `ValidSolid` — a branded type representing a watertight 3D shape that passes BRepCheck validation. All primitives are available from `brepjs/quick`.
+`box`, `cylinder`, and `sphere` return `ValidSolid` — a branded type representing a watertight 3D shape that passes BRepCheck validation. All primitives are available from both `brepjs/quick` and `brepjs`.
 
 ## Step 4: Combine shapes with the fluent wrapper
 
@@ -325,35 +343,9 @@ See [B-Rep Concepts](./concepts.md#validity-types) for how validity types work �
 
 ---
 
-## Advanced: Manual Initialization
+## Advanced: Browser Loading Indicator
 
-Use manual initialization when you need control over WASM loading — for loading indicators, explicit error handling, or environments without top-level await support:
-
-```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box, cylinder, shape } from 'brepjs';
-
-async function main() {
-  // Load and initialize the WASM kernel manually
-  const oc = await opencascade();
-  initFromOC(oc);
-
-  // Now all brepjs functions are ready to use
-  const part = shape(box(30, 20, 10)).cut(cylinder(5, 15)).val;
-  console.log('Volume:', shape(part).volume());
-}
-
-main().catch(console.error);
-```
-
-**When to use manual initialization:**
-
-- Show a loading indicator while the WASM kernel loads
-- Handle initialization errors explicitly
-- Environments without top-level await (older bundlers, some test frameworks)
-- Dynamically load brepjs on demand rather than at startup
-
-**Browser example with loading indicator:**
+When using the standard import (Option B from Step 2), you can show a loading indicator while the WASM kernel downloads:
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
@@ -368,7 +360,6 @@ async function initCAD() {
     initFromOC(oc);
     loader.remove();
 
-    // Now ready to use brepjs
     const b = box(10, 10, 10);
     console.log('Initialized! Volume:', shape(b).volume());
   } catch (err) {
@@ -379,7 +370,7 @@ async function initCAD() {
 initCAD();
 ```
 
-**Note:** `initFromOC()` only needs to be called once per application lifetime.
+`initFromOC()` only needs to be called once per application lifetime.
 
 ---
 
@@ -416,6 +407,7 @@ You need TypeScript 5.9+ and `"lib": ["ES2022", "ESNext.Disposable"]` in your ts
 
 ## Next steps
 
+- **[Three.js Integration](./threejs-integration.md)** — Render shapes in the browser with Three.js
 - **[Which API?](./which-api.md)** — Choose between Sketcher, functional API, and Drawing API
 - **[B-Rep Concepts](./concepts.md)** — Understand the geometry model (vertices, edges, faces, solids)
 - **[Memory Management](./memory-management.md)** — How to clean up WASM objects

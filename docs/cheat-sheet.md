@@ -150,7 +150,7 @@ const result = withScope((scope) => {
 ## Type Safety: Validity Types
 
 ```typescript
-import { line, wireLoop, face, extrude, closedWire, isClosedWire, unwrap } from 'brepjs';
+import { line, wireLoop, face, extrude, isClosedWire, unwrap } from 'brepjs';
 
 // wireLoop: assemble edges + verify closure → ClosedWire
 const cw = unwrap(
