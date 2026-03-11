@@ -1,6 +1,6 @@
 # Error Reference
 
-brepjs uses the `Result<T, BrepError>` pattern for all fallible operations (v4.0.0+). This document lists all error codes and their meanings.
+Every fallible operation returns `Result<T, BrepError>`. Here's every error code, what it means, and how to fix it.
 
 ## Error Structure
 

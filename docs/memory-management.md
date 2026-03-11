@@ -1,10 +1,6 @@
 # Memory Management
 
-brepjs wraps kernel objects allocated in WebAssembly memory which require explicit cleanup. This guide explains how memory is handled and how to avoid leaks.
-
-## Overview
-
-Kernel objects are allocated in WASM linear memory and must be explicitly freed. brepjs provides several mechanisms:
+WASM objects aren't garbage-collected — you have to clean them up. brepjs gives you four ways to do it, from modern to legacy:
 
 1. **`Symbol.dispose`** -- Modern TC39 explicit resource management
 2. **`DisposalScope`** -- Scoped cleanup for multiple temporaries
@@ -81,11 +77,7 @@ const shape = box(10, 10, 10);
 // Eventually GC runs and FinalizationRegistry disposes it
 ```
 
-**Warning**: Relying on FinalizationRegistry is not recommended because:
-
-- GC timing is unpredictable
-- Memory pressure may build up before cleanup
-- Not all environments support it
+**Warning**: Do not rely on FinalizationRegistry — GC timing is unpredictable and memory pressure may build up before cleanup.
 
 ## Manual delete() (Legacy)
 

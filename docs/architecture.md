@@ -1,6 +1,6 @@
 # Architecture
 
-brepjs uses a strict layered architecture with enforced import boundaries.
+Four layers, imports flow downward only, boundaries enforced in CI.
 
 ## Layer Diagram
 
@@ -218,33 +218,4 @@ The default kernel implementation delegates to specialized `*Ops.ts` files that 
 
 See [Custom Kernel Guide](./kernel-swap.md) for writing alternative kernel implementations.
 
-## Boundary Enforcement
-
-Import and abstraction boundaries are enforced by:
-
-1. **`scripts/check-layer-boundaries.sh`** — Pre-commit hook checks import direction
-2. **CI workflow** — Runs on every PR
-3. **ESLint `no-restricted-syntax`** — Bans `.oc` access and `.wrapped.method()` calls in Layer 2+
-
-To check manually:
-
-```bash
-npm run check:boundaries
-npx eslint src/ --quiet
-```
-
-## Module Index
-
-See each module's README for detailed documentation:
-
-- [kernel/README.md](../src/kernel/README.md)
-- [core/README.md](../src/core/README.md)
-- [topology/README.md](../src/topology/README.md)
-- [operations/README.md](../src/operations/README.md)
-- [2d/README.md](../src/2d/README.md)
-- [query/README.md](../src/query/README.md)
-- [measurement/README.md](../src/measurement/README.md)
-- [io/README.md](../src/io/README.md)
-- [sketching/README.md](../src/sketching/README.md)
-- [text/README.md](../src/text/README.md)
-- [projection/README.md](../src/projection/README.md)
+For boundary enforcement details (`check:boundaries`, ESLint rules), see [CONTRIBUTING.md](../CONTRIBUTING.md#layer-boundaries).

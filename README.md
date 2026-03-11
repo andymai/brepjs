@@ -6,7 +6,7 @@ CAD modeling for JavaScript.
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](./LICENSE)
 
-**[Docs](https://andymai.github.io/brepjs/)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Getting Started](./docs/getting-started.md)**
+**[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://andymai.github.io/brepjs/)**
 
 ```typescript
 // Drill a hole, fillet the vertical edges, export to STEP
@@ -73,7 +73,7 @@ brepjs-opencascade is a heavily optimized custom build of OpenCascade: trimmed t
 
 ## What you can build
 
-Code-as-CAD is great for parts defined by parameters - enclosures, brackets, fixtures, gridfinity bins. Less suited for organic sculpting. Think parametric part generators, browser-based CAD tools, automated manufacturing pipelines, 3D printing workflows.
+Code-as-CAD is great for parts defined by parameters: enclosures, brackets, fixtures, gridfinity bins. Less suited for organic sculpting. Good fits: parametric part generators, browser-based CAD tools, automated manufacturing pipelines, 3D printing workflows.
 
 ## Install
 
@@ -144,18 +144,26 @@ Imports flow downward only. Boundaries are enforced in CI.
 
 ## Documentation
 
-- [API Reference](https://andymai.github.io/brepjs/): Searchable TypeDoc reference
-- [Zero to Shape](./docs/zero-to-shape.md): First shape in 60 seconds
-- [Getting Started](./docs/getting-started.md): From install to first shape
-- [B-Rep Concepts](./docs/concepts.md): Vertices, edges, faces, solids
-- [Cheat Sheet](./docs/cheat-sheet.md): Single-page reference for common operations
-- [Cookbook](./docs/cookbook.md): Practical recipes for common CAD workflows
-- [Which API?](./docs/which-api.md): Sketcher vs functional vs Drawing
+**Learn**
+
+- [Getting Started](./docs/getting-started.md): From install to first shape in 60 seconds
+- [B-Rep Concepts](./docs/concepts.md): Vertices, edges, faces, solids — and why they matter
+- [Which API?](./docs/which-api.md): Fluent wrapper vs Sketcher vs functional
+
+**Reference**
+
+- [Cheat Sheet](./docs/cheat-sheet.md): Single-page quick reference
+- [Cookbook](./docs/cookbook.md): 20 practical recipes for common CAD workflows
 - [Function Lookup](./docs/function-lookup.md): Alphabetical index of every export
-- [Memory Management](./docs/memory-management.md): Resource cleanup patterns
 - [Error Reference](./docs/errors.md): Error codes and recovery
-- [Architecture](./docs/architecture.md): Layer diagram and module overview
+- [API Reference](https://andymai.github.io/brepjs/): Searchable TypeDoc reference
+
+**Advanced**
+
+- [Memory Management](./docs/memory-management.md): WASM resource cleanup patterns
 - [Performance](./docs/performance.md): Optimization tips
+- [Custom Kernels](./docs/kernel-swap.md): Swap or write your own geometry kernel
+- [Architecture](./docs/architecture.md): Layer diagram and module overview
 - [Compatibility](./docs/compatibility.md): Tested environments
 
 ## Packages

@@ -1,12 +1,10 @@
 # Contributing to brepjs
 
-Thank you for your interest in contributing to brepjs, a kernel-agnostic Web CAD library! This guide will help you get started.
-
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 16+ and npm
+- Node.js 20+ and npm
 - Git
 
 ### Clone and Install
@@ -27,25 +25,9 @@ The build generates ES and CommonJS distributions in the `dist/` directory.
 
 ## Architecture Overview
 
-brepjs uses a four-layer architecture with enforced import boundaries to maintain clear separation of concerns and prevent circular dependencies.
+See [Architecture](docs/architecture.md) for the layer structure, data flow diagrams, and key patterns.
 
-### Layer Structure
-
-| Layer | Directories                                                        | Purpose                               | Can Import From |
-| ----- | ------------------------------------------------------------------ | ------------------------------------- | --------------- |
-| 0     | `kernel/`, `utils/`                                                | Foundation & WASM bindings            | External only   |
-| 1     | `core/`                                                            | Memory management, geometry constants | Layers 0        |
-| 2     | `topology/`, `operations/`, `2d/`, `query/`, `measurement/`, `io/` | Domain logic & features               | Layers 0-2      |
-| 3     | `sketching/`, `text/`, `projection/`                               | High-level API                        | Layers 0-3      |
-
-**Key principle**: Imports flow **downward only** (higher layers can import from lower layers, never the reverse).
-
-### Why This Matters
-
-- **Layer 0** (kernel/utils): Low-level WASM bindings and utilities — must have zero dependencies on other internal code
-- **Layer 1** (core): Shared abstractions for geometry and memory management
-- **Layer 2** (domain layers): Feature implementations that can depend on core but not on Layer 3
-- **Layer 3** (high-level API): Convenient interfaces for end users, can use all lower layers
+**The one rule:** imports flow downward only (Layer 3 → 2 → 1 → 0, never the reverse). `npm run check:boundaries` enforces this.
 
 ## Development Workflow
 
@@ -169,14 +151,16 @@ import { Shape } from '../core/shape';
 
 ## Layer Boundaries
 
-The project enforces a strict layered architecture. The `npm run check:boundaries` command validates that imports follow the rules.
+Import boundaries are enforced by:
 
-### How It Works
+1. **`scripts/check-layer-boundaries.sh`** — runs in pre-commit hook
+2. **CI workflow** — runs on every PR
+3. **ESLint `no-restricted-syntax`** — bans `.oc` access and `.wrapped.method()` calls in Layer 2+
 
-- Layer 0 modules (`kernel/`, `utils/`) cannot import from any internal code
-- Layer 1 modules (`core/`) can only import from Layer 0
-- Layer 2 modules can import from Layers 0-2 (and each other)
-- Layer 3 modules can import from any layer
+```bash
+npm run check:boundaries   # manual check
+npx eslint src/ --quiet     # lint check
+```
 
 ### If You Get a Boundary Error
 
@@ -186,11 +170,7 @@ Error: Layer violation in src/operations/box.ts
   But src/operations/box.ts is in Layer 2
 ```
 
-This means you're trying to import from a higher layer into a lower layer, which breaks the architecture. Solutions:
-
-1. Move the code to a layer that can import from both
-2. Extract the shared logic into a lower layer
-3. Refactor to remove the dependency
+You're importing from a higher layer into a lower one. Fix by moving the code to a layer that can import from both, extracting shared logic into a lower layer, or refactoring to remove the dependency.
 
 ## Testing
 
@@ -257,54 +237,15 @@ Run `npm run test:coverage` to see a detailed coverage report.
 
 ## Key Patterns
 
-When writing code, follow these established patterns:
+See [Architecture](docs/architecture.md#key-patterns) for detailed patterns with code examples. The essentials:
 
-### Kernel Access
-
-All kernel operations go through `getKernel()` from `src/kernel/index.ts`:
-
-```typescript
-import { getKernel } from '../kernel/index.js';
-
-const kernel = getKernel();
-const box = kernel.makeBox(10, 10, 10);
-const hash = kernel.hashCode(shape.wrapped, HASH_CODE_MAX);
-```
-
-**Layer 2+ code must never call methods on `.wrapped` directly** — always pass handles to `getKernel()` methods. This is enforced by an ESLint rule. Only code in `src/kernel/` may access raw kernel APIs.
-
-### Functional API
-
-Prefer standalone functions in `*Fns.ts` files over class methods:
-
-```typescript
-// ✅ Preferred — functional API
-import { fuse } from '../topology/booleanFns.js';
-const result = fuse(solid1, solid2);
-
-// ❌ Avoid — class API (legacy)
-solid1.fuse(solid2);
-```
-
-### WASM Dependency
-
-The WASM binding (`brepjs-opencascade`) is an external peer dependency, not bundled. It's initialized at runtime:
-
-```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC } from 'brepjs';
-
-const oc = await opencascade();
-initFromOC(oc); // Registers default kernel
-```
-
-Custom kernels can be registered with `registerKernel()` — see [Custom Kernel Guide](docs/kernel-swap.md).
+- **Kernel access:** All operations go through `getKernel()` — Layer 2+ code must never call methods on `.wrapped` directly
+- **Functional API:** New code goes in `*Fns.ts` files, not class methods (class wrappers are legacy)
+- **Custom kernels:** `registerKernel()` + `withKernel()` — see [Custom Kernel Guide](docs/kernel-swap.md)
 
 ## Where to Ask Questions
 
-- **GitHub Issues**: For bug reports, feature requests, or questions — open an issue on [github.com/andymai/brepjs](https://github.com/andymai/brepjs)
-- **Discussions**: Check existing issues/discussions before opening a new one
-- **PRs**: Discussion in pull request comments is welcome
+Open an issue on [github.com/andymai/brepjs](https://github.com/andymai/brepjs) for bug reports, feature requests, or questions. Check existing issues before opening a new one.
 
 ## Summary of Commands
 
@@ -330,7 +271,3 @@ npm run test:coverage      # Coverage report
 # Utilities
 npm run knip               # Detect unused code
 ```
-
----
-
-Thank you for contributing! We appreciate your help making brepjs better.

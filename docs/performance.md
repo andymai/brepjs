@@ -1,51 +1,6 @@
 # Performance Guide
 
-Best practices for achieving optimal performance with brepjs.
-
-## Memory Management
-
-### Use DisposalScope for Scoped Cleanup
-
-`DisposalScope` provides deterministic cleanup of kernel objects:
-
-```typescript
-import { DisposalScope, box, fuse } from 'brepjs';
-
-function buildComplexShape() {
-  using scope = new DisposalScope();
-
-  // Intermediate shapes are automatically cleaned up
-  const box1 = scope.register(box(10, 10, 10));
-  const box2 = scope.register(box(10, 10, 10, { at: [5, 0, 0] }));
-
-  // Return the result — it escapes the scope
-  return fuse(box1, box2);
-}
-```
-
-**Key patterns:**
-
-- Register intermediate kernel objects with `scope.register()` for cleanup
-- Objects returned from the function escape the scope and remain valid
-- Cleanup happens deterministically when the scope exits
-
-### Avoid Manual delete() Calls
-
-Modern brepjs uses `Symbol.dispose` and `FinalizationRegistry` for memory management. Prefer scoped cleanup over manual `delete()` calls:
-
-```typescript
-// ❌ Old pattern — error-prone
-const myBox = box(10, 10, 10);
-try {
-  doSomething(myBox);
-} finally {
-  myBox.delete();
-}
-
-// ✅ Modern pattern — automatic cleanup (requires TypeScript 5.9+)
-using myBox = box(10, 10, 10);
-doSomething(box);
-```
+For WASM memory cleanup patterns, see [Memory Management](./memory-management.md).
 
 ## Boolean Operations
 
@@ -173,37 +128,7 @@ results.push(
 printResults(results);
 ```
 
-## Common Pitfalls
-
-### 1. Creating Shapes in Loops
-
-```typescript
-// ❌ Leaks memory
-for (let i = 0; i < 1000; i++) {
-  const b = box(1, 1, 1, { at: [i, 0, 0] });
-  // b is never cleaned up
-}
-
-// ✅ Use DisposalScope
-for (let i = 0; i < 1000; i++) {
-  using scope = new DisposalScope();
-  const b = scope.register(box(1, 1, 1, { at: [i, 0, 0] }));
-  // Do something with b
-  // Automatically cleaned up at loop iteration end
-}
-```
-
-### 2. Storing Raw Kernel Objects
-
-```typescript
-// ❌ Raw objects may be garbage collected
-const rawShape = operation.Shape();
-
-// ✅ Wrap in branded handle
-const shape = castShape(operation.Shape());
-```
-
-### 3. Unnecessary Cloning
+## Avoid Unnecessary Cloning
 
 ```typescript
 // ❌ Unnecessary clone

@@ -150,9 +150,9 @@ const result = withScope((scope) => {
 ## Type Safety: Validity Types
 
 ```typescript
-import { line, wire, wireLoop, face, extrude, closedWire, isClosedWire, unwrap } from 'brepjs';
+import { line, wireLoop, face, extrude, closedWire, isClosedWire, unwrap } from 'brepjs';
 
-// wireLoop: assemble edges + verify closure in one step → ClosedWire
+// wireLoop: assemble edges + verify closure → ClosedWire
 const cw = unwrap(
   wireLoop([
     line([0, 0, 0], [10, 0, 0]),
@@ -162,25 +162,16 @@ const cw = unwrap(
   ])
 );
 
-// face() requires ClosedWire, returns OrientedFace
-const f = unwrap(face(cw));
+const f = unwrap(face(cw)); // face() requires ClosedWire → OrientedFace
+const solid = unwrap(extrude(f, 10)); // extrude() requires OrientedFace → Solid
 
-// extrude() requires OrientedFace, returns Solid
-const solid = unwrap(extrude(f, 10));
-
-// Smart constructors for runtime validation
-const result = closedWire(someWire); // ValidityResult<ClosedWire>
-if (result.valid) {
-  use(result.shape); // ClosedWire
-} else {
-  console.error(result.reason); // "Wire is not closed: ..."
-}
-
-// Type guards for narrowing
+// Runtime validation
 if (isClosedWire(someWire)) {
-  const f = unwrap(face(someWire)); // ClosedWire accepted
+  const f = unwrap(face(someWire));
 }
 ```
+
+See [B-Rep Concepts](./concepts.md#validity-types) for smart constructors and type guards.
 
 ## Error Handling
 
@@ -210,12 +201,11 @@ if (isOk(result)) {
 
 ## Which API?
 
-**Start with the fluent wrapper** (`shape().cut().fillet()`) — it's the canonical brepjs API and provides the cleanest syntax. Use the **Drawing API** for complex 2D profiles, and the **Sketcher** for interactive step-by-step sketching. Only use the **functional API** when you need explicit `Result` handling at each step.
+Start with the fluent wrapper (`shape().cut().fillet()`). Use the Drawing API for 2D profiles, the Sketcher for step-by-step sketching, and the functional API when you need explicit `Result` handling. See [Which API?](./which-api.md) for details.
 
 ## More
 
-- **[Zero to Shape](./zero-to-shape.md)** -- 60-second first-shape tutorial
-- **[Getting Started](./getting-started.md)** -- Full walkthrough
-- **[Which API?](./which-api.md)** -- Detailed API comparison
-- **[Memory Management](./memory-management.md)** -- Full patterns for WASM cleanup
-- **[Error Reference](./errors.md)** -- All error codes and recovery
+- **[Getting Started](./getting-started.md)** — 60-second first shape + full walkthrough
+- **[Which API?](./which-api.md)** — Detailed API comparison
+- **[Memory Management](./memory-management.md)** — Full patterns for WASM cleanup
+- **[Error Reference](./errors.md)** — All error codes and recovery
