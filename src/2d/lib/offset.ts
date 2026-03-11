@@ -11,7 +11,7 @@ const offsetEndPoints = (firstPoint: Point2D, lastPoint: Point2D, offset: number
   const tangent = normalize2d(subtract2d(lastPoint, firstPoint));
   const normal = [tangent[1], -tangent[0]];
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- normal has two elements
   const offsetVec: Point2D = [normal[0]! * offset, normal[1]! * offset];
 
   return {

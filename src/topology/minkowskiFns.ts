@@ -35,7 +35,7 @@ function detectSphere(shape: Shape3D): number | null {
   const faces: Face[] = getFaces(shape);
   if (faces.length !== 1) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
   const face = faces[0]!;
   const surfType = getKernel().surfaceType(face.wrapped);
 

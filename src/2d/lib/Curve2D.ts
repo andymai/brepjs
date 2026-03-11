@@ -254,12 +254,12 @@ export class Curve2D {
     }
 
     // We do not split again on the start and end
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- parameters is non-empty
     if (Math.abs(parameters[0]! - firstParam) < precision * 100) parameters = parameters.slice(1);
     if (!parameters.length) return [this];
 
     if (
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- parameters is non-empty
       Math.abs(parameters[parameters.length - 1]! - lastParam) <
       precision * 100
     )

@@ -142,7 +142,7 @@ export default class Blueprint implements DrawingInterface {
 
     const approximateArea = vertices
       .map((v1, i) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- modulo wraps within bounds
         const v2 = vertices[(i + 1) % vertices.length]!;
         return (v2[0] - v1[0]) * (v2[1] + v1[1]);
       })
@@ -271,7 +271,7 @@ export default class Blueprint implements DrawingInterface {
    * @param origin - Optional UV origin offset (defaults to the face center).
    * @returns A new Face bounded by the blueprint's profile.
    */
-  subFace(face: Face, origin?: PointInput | null): Face {
+  private subFace(face: Face, origin?: PointInput | null): Face {
     const originPoint = origin || [...faceCenter(face)];
     const originVec3 = toVec3(originPoint);
     const sketch = this.translate(uvCoordinates(face, originVec3)).sketchOnFace(face, 'original');
@@ -327,7 +327,7 @@ export default class Blueprint implements DrawingInterface {
       return adaptedCurveToPathElem(c, c.lastPoint);
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
     const [startX, startY] = bp.curves[0]!.firstPoint;
     return `M ${round5(startX)} ${round5(startY)} ${path.join(' ')}${bp.isClosed() ? ' Z' : ''}`;
   }
@@ -362,13 +362,13 @@ export default class Blueprint implements DrawingInterface {
 
   /** Get the start point of the first curve. */
   get firstPoint(): Point2D {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
     return this.curves[0]!.firstPoint;
   }
 
   /** Get the end point of the last curve. */
   get lastPoint(): Point2D {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
     return this.curves[this.curves.length - 1]!.lastPoint;
   }
 

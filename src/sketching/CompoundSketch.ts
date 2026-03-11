@@ -40,7 +40,7 @@ const faceFromWires = (wires: Wire[]): Face => {
   let holeWires: ClosedWire[];
 
   // Sweep end-cap wires are always closed boundaries
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- wires is non-empty
   const faceResult = makeFace(wires[0]! as ClosedWire);
   if (isOk(faceResult)) {
     baseFace = faceResult.value;
@@ -104,7 +104,7 @@ export default class CompoundSketch implements SketchInterface {
 
   /** Get the outer boundary sketch (the first in the array). */
   get outerSketch() {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- constructor validates non-empty
     return this.sketches[0]!;
   }
 
@@ -209,7 +209,7 @@ export default class CompoundSketch implements SketchInterface {
       );
 
     const shells: Array<Shell | Face> = this.sketches.map((base, cIndex) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- cIndex within matched-length arrays
       const outer = otherCompound.sketches[cIndex]!;
       return base.clone().loftWith(outer.clone(), { ruled: loftConfig.ruled }, true) as Shell;
     });

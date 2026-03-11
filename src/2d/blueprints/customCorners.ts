@@ -20,7 +20,7 @@ function modifyCorners(
     modifyCorner = finder.shouldKeep.bind(finder);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
   const curves: Curve2D[] = [blueprint.curves[0]!];
 
   const addModifiedCorner = (firstCurve: Curve2D, secondCurve: Curve2D) => {
@@ -42,7 +42,7 @@ function modifyCorners(
   if (!lastCurve)
     bug('customCorners.modifyCorners', 'Unexpected empty curve list during corner modification');
   if (
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- curves is non-empty
     samePoint(curves[0]!.firstPoint, lastCurve.lastPoint) &&
     curves.length > 1
   ) {

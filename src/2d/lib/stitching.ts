@@ -44,7 +44,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
         bug('stitchCurves', 'Infinite loop detected');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- array is non-empty
       const lastPoint = connectedCurves[connectedCurves.length - 1]!.lastPoint;
 
       const [x, y] = lastPoint;
@@ -60,7 +60,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
       const potentialNextCurves = neighbors
         .filter((neighborIndex: number) => !visited.has(neighborIndex))
         .map((neighborIndex: number): [Curve2D, number, number] => [
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- neighborIndex from spatial query
           curves[neighborIndex]!,
           neighborIndex,
           indexDistance(neighborIndex),
@@ -76,7 +76,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
         break;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
       const [nextCurve, nextCurveIndex] = potentialNextCurves[0]!;
 
       connectedCurves.push(nextCurve);

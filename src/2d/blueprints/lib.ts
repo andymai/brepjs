@@ -70,7 +70,7 @@ interface ContainedBlueprint {
 
 const addContainmentInfo = (groupedBlueprints: Blueprint[]): ContainedBlueprint[] => {
   return groupedBlueprints.map((blueprint, index) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- blueprint always has at least one curve
     const firstCurve = blueprint.curves[0]!;
     const point = firstCurve.value((firstCurve.lastParameter + firstCurve.firstParameter) / 2);
 
@@ -137,7 +137,7 @@ export const organiseBlueprints = (blueprints: Blueprint[]): Blueprints => {
   const basicGrouping = groupByBoundingBoxOverlap(blueprints).map(addContainmentInfo);
   return new Blueprints(
     basicGrouping.flatMap(cleanEdgeCases).map((compounds) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length === 1 checked
       if (compounds.length === 1) return compounds[0]!.blueprint;
 
       compounds.sort((a, b) => a.isIn.length - b.isIn.length);

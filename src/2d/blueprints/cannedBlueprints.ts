@@ -22,7 +22,7 @@ export const polysidesBlueprint = (radius: number, sidesCount: number, sagitta =
   });
 
   // We start with the last point to make sure the shape is complete
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- points is non-empty
   const lastPoint = points[points.length - 1]!;
   const blueprint = new BlueprintSketcher().movePointerTo([lastPoint[0], lastPoint[1]]);
 

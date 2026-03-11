@@ -187,20 +187,20 @@ export const sketchPolysides = (
     planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? new Sketcher(planeConfig.plane)
       : new Sketcher(planeConfig.plane, planeConfig.origin);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- points is non-empty
   const lastPoint = points[points.length - 1]!;
   const sketch = sketcher.movePointerTo([
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- tuple has two elements
     lastPoint[0]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- tuple has two elements
     lastPoint[1]!,
   ]);
 
   if (sagitta) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- destructured tuple elements
     points.forEach(([x, y]) => sketch.sagittaArcTo([x!, y!], sagitta));
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- destructured tuple elements
     points.forEach(([x, y]) => sketch.lineTo([x!, y!]));
   }
 

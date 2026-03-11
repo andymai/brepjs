@@ -248,7 +248,7 @@ export function fuseAll(
   options: BooleanOptions = {}
 ): KernelShape {
   if (shapes.length === 0) throw new Error('fuseAll requires at least one shape');
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
   if (shapes.length === 1) return shapes[0]!;
 
   const { strategy = 'native' } = options;

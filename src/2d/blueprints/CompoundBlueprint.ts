@@ -68,7 +68,7 @@ export default class CompoundBlueprint implements DrawingInterface {
     return [
       'Compound Blueprints',
       '-- Outline',
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
       this.blueprints[0]!.repr,
       '-- Holes',
       ...this.blueprints.slice(1).map((b) => b.repr),
@@ -142,7 +142,7 @@ export default class CompoundBlueprint implements DrawingInterface {
       draftAngle?: number;
     } = {}
   ): AnyShape<Dimension> {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
     return this.blueprints[0]!.punchHole(shape, face, options);
   }
 

@@ -80,7 +80,7 @@ export interface CornerFinderFn extends CornerFilter {
 function blueprintCorners(blueprint: BlueprintLike): Corner[] {
   return blueprint.curves.map((curve, index) => ({
     firstCurve: curve,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- modulo wraps within bounds
     secondCurve: blueprint.curves[(index + 1) % blueprint.curves.length]!,
     point: curve.lastPoint,
   }));

@@ -218,7 +218,7 @@ export function rawOffsets(
     }
 
     if (intersections.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length > 0 checked above
       let intersection = intersections[0]!;
       if (intersections.length > 1) {
         // We choose the intersection point the closest to the end of the
@@ -242,7 +242,7 @@ export function rawOffsets(
       // We need to be a lot more careful here with multiple intersections
       // as well as cases where curves overlap
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt always returns at least one segment
       const splitPreviousCurve: Curve2D = (previousCurve.offset as Curve2D).splitAt(
         [intersection],
         PRECISION_OFFSET
@@ -398,17 +398,17 @@ export function offsetBlueprint(
 
   if (!blueprints.length) return null;
   if (blueprints.length === 1) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length === 1 checked
     return blueprints[0]!;
   }
   return new Blueprints(blueprints);
 }
 
 const fuseAll = (blueprints: Shape2D[]): Shape2D => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- caller guarantees non-empty
   let fused: Shape2D = blueprints[0]!;
   for (let i = 1; i < blueprints.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
     fused = fuse2D(fused, blueprints[i]!);
   }
   return fused;
@@ -445,7 +445,7 @@ export default function offset(
       bp.blueprints.slice(1).map((b) => offset(b, offsetDistance, offsetConfig))
     );
     return cut2D(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
       offset(bp.blueprints[0]!, offsetDistance, offsetConfig),
       innerShape
     );

@@ -99,11 +99,11 @@ function computeMinMax(data: Float32Array): { min: number[]; max: number[] } {
   const max = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < data.length; i += 3) {
     for (let j = 0; j < 3; j++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
       const v = data[i + j]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j < 3, array has 3 elements
       if (v < min[j]!) min[j] = v;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j < 3, array has 3 elements
       if (v > max[j]!) max[j] = v;
     }
   }

@@ -49,7 +49,7 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
   const [first] = splitForFillet(firstCurve, firstOffset);
   const [, second] = splitForFillet(secondCurve, secondOffset);
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt always returns segments
   return { first: first!, second: second!, center };
 }
 
@@ -133,9 +133,9 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
 
   if (!firstInt || !secondInt) return [firstCurve, secondCurve];
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt returns at least one segment
   const firstPart = firstCurve.splitAt([firstInt])[0]!;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt returns at least one segment
   const secondPart = secondCurve.splitAt([secondInt]).at(-1)!;
 
   try {

@@ -204,7 +204,7 @@ export function makeEllipseArc2d(
 export function makeBezier2d(oc: KernelInstance, points: [number, number][]): KernelType {
   const arr = new oc.TColgp_Array1OfPnt2d_2(1, points.length);
   for (let i = 0; i < points.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
     const p = points[i]!;
     const gpPnt = new oc.gp_Pnt2d_3(p[0], p[1]);
     arr.SetValue(i + 1, gpPnt);
@@ -232,7 +232,7 @@ export function makeBSpline2d(
 
   const pnts = new oc.TColgp_Array1OfPnt2d_2(1, points.length);
   for (let i = 0; i < points.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
     const p = points[i]!;
     const gpPnt = new oc.gp_Pnt2d_3(p[0], p[1]);
     pnts.SetValue(i + 1, gpPnt);
