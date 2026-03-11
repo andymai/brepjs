@@ -460,9 +460,22 @@ export class BrepkitAdapter implements KernelAdapter {
     if (shapes.length === 0) throw new Error('brepkit: fuseAll requires at least one shape');
     if (shapes.length === 1) return shapes[0]!;
 
-    // Balanced binary tree reduction: fuse(fuse(a,b), fuse(c,d)) instead of
-    // sequential fuse(fuse(fuse(a,b),c),d). This keeps intermediate solids
-    // roughly equal in complexity and reduces O(n) depth to O(log n).
+    // Single WASM call when native compoundFuse is available.
+    if (this.bk.compoundFuse) {
+      const solidIds: number[] = [];
+      for (const shape of shapes) {
+        const h = shape as BrepkitHandle;
+        if (h.type === 'compound') {
+          solidIds.push(...toArray(this.bk.getCompoundSolids(h.id)));
+        } else {
+          solidIds.push(unwrapSolidOrThrow(shape, 'fuseAll'));
+        }
+      }
+      const result = this.bk.compoundFuse(new Uint32Array(solidIds));
+      return solidHandle(result);
+    }
+
+    // Fallback: balanced binary tree reduction — O(log n) depth, ~N WASM calls.
     let current = [...shapes];
     while (current.length > 1) {
       const next: KernelShape[] = [];

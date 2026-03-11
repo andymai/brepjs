@@ -135,6 +135,9 @@ export interface BrepkitKernel {
   /** Cut target solid with multiple tool solids in a single WASM call. Returns new solid handle. */
   compoundCut(target: number, tool_ids: Uint32Array): number;
 
+  /** Fuse multiple solids in a single WASM call. Returns new solid handle. Optional — may not exist in older versions. */
+  compoundFuse?(solid_ids: Uint32Array): number;
+
   /** Fuse with evolution tracking. Returns JSON string. */
   fuseWithEvolution(a: number, b: number): string;
 
