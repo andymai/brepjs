@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.5.0](https://github.com/andymai/brepjs/compare/brepjs-v12.4.0...brepjs-v12.5.0) (2026-03-11)
+
+
+### Features
+
+* **site:** upgrade to brepjs v12 with precomputed gallery meshes ([#471](https://github.com/andymai/brepjs/issues/471)) ([aac07d3](https://github.com/andymai/brepjs/commit/aac07d3774f0639e5e5a4efc58b1163914dd97f9))
+
 ## [12.4.0](https://github.com/andymai/brepjs/compare/brepjs-v12.3.0...brepjs-v12.4.0) (2026-03-11)
 
 
