@@ -159,17 +159,6 @@ function unwrapSolidOrThrow(shape: KernelShape, methodName: string): number {
   return shape.id;
 }
 
-/** Unwrap a shape that must be a solid or compound, with a descriptive error. */
-function unwrapSolidOrCompound(shape: KernelShape, methodName: string): number {
-  if (!isBrepkitHandle(shape)) {
-    throw new Error('brepkit: expected a BrepkitHandle, got ' + typeof shape);
-  }
-  if (shape.type !== 'solid' && shape.type !== 'compound') {
-    throw new Error(`brepkit: ${methodName} requires a solid or compound, got ${shape.type}.`);
-  }
-  return shape.id;
-}
-
 /**
  * Extract solid ids from a shape. For solids, returns the id directly.
  * For compounds, attempts to extract child solids via getCompoundSolids.
@@ -394,8 +383,17 @@ export class BrepkitAdapter implements KernelAdapter {
       );
     }
     const baseId = unwrapSolidOrThrow(shape, 'fuse');
-    const toolId = unwrapSolidOrCompound(tool, 'fuse');
-    return solidHandle(this.bk.fuse(baseId, toolId));
+    const toolHandle = tool as BrepkitHandle;
+    if (toolHandle.type === 'compound') {
+      const toolSolidIds: number[] = toArray(this.bk.getCompoundSolids(toolHandle.id));
+      let currentId = baseId;
+      for (const toolSolidId of toolSolidIds) {
+        currentId = this.bk.fuse(currentId, toolSolidId);
+      }
+      return solidHandle(currentId);
+    }
+    const result = this.bk.fuse(baseId, unwrapSolidOrThrow(tool, 'fuse'));
+    return solidHandle(result);
   }
 
   cut(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
@@ -406,8 +404,19 @@ export class BrepkitAdapter implements KernelAdapter {
       );
     }
     const baseId = unwrapSolidOrThrow(shape, 'cut');
-    const toolId = unwrapSolidOrCompound(tool, 'cut');
-    return solidHandle(this.bk.cut(baseId, toolId));
+    // If tool is a compound (e.g. from cutAll's buildCompound), iteratively
+    // cut each child solid from the base.
+    const toolHandle = tool as BrepkitHandle;
+    if (toolHandle.type === 'compound') {
+      const toolSolidIds: number[] = toArray(this.bk.getCompoundSolids(toolHandle.id));
+      let currentId = baseId;
+      for (const toolSolidId of toolSolidIds) {
+        currentId = this.bk.cut(currentId, toolSolidId);
+      }
+      return solidHandle(currentId);
+    }
+    const result = this.bk.cut(baseId, unwrapSolidOrThrow(tool, 'cut'));
+    return solidHandle(result);
   }
 
   intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
@@ -470,12 +479,11 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   cutAll(shape: KernelShape, tools: KernelShape[], options?: BooleanOptions): KernelShape {
-    if (tools.length === 0) return shape;
-    if (tools.length === 1) return this.cut(shape, tools[0], options);
-    // Build a compound from all tools → single WASM cut call
-    const toolIds = tools.map((t) => unwrapSolidOrCompound(t, 'cutAll'));
-    const compound = compoundHandle(this.bk.makeCompound(toolIds));
-    return this.cut(shape, compound, options);
+    let result = shape;
+    for (const tool of tools) {
+      result = this.cut(result, tool, options);
+    }
+    return result;
   }
 
   split(shape: KernelShape, tools: KernelShape[]): KernelShape {
@@ -1499,6 +1507,42 @@ export class BrepkitAdapter implements KernelAdapter {
     return { shape: resultShape, evolution: { modified, generated, deleted } };
   }
 
+  /**
+   * Chain an evolution map (modified or generated) through one step of a multi-step
+   * boolean. For each entry, each previous output hash is resolved against this
+   * step's evolution: if it was further modified, follow to the new outputs; if
+   * deleted, drop it; otherwise keep it unchanged.
+   *
+   * Mutates `map` in-place and records each resolved prevOut in `intermediateOutputs`.
+   * When `deleteOnEmpty` is provided, entries that reduce to no outputs are added to it.
+   */
+  private static chainEvolutionMap(
+    map: Map<number, number[]>,
+    stepModified: ReadonlyMap<number, readonly number[]>,
+    stepDeleted: ReadonlySet<number>,
+    intermediateOutputs: Set<number>,
+    deleteOnEmpty?: Set<number>
+  ): void {
+    for (const [origKey, prevOutputs] of map) {
+      const chainedOutputs: number[] = [];
+      for (const prevOut of prevOutputs) {
+        intermediateOutputs.add(prevOut);
+        const nextOutputs = stepModified.get(prevOut);
+        if (nextOutputs) {
+          chainedOutputs.push(...nextOutputs);
+        } else if (!stepDeleted.has(prevOut)) {
+          chainedOutputs.push(prevOut);
+        }
+      }
+      if (chainedOutputs.length > 0) {
+        map.set(origKey, chainedOutputs);
+      } else {
+        map.delete(origKey);
+        deleteOnEmpty?.add(origKey);
+      }
+    }
+  }
+
   /** Squared Euclidean distance between two 3-component centroids. */
   private static centroidDistSq(a: [number, number, number], b: [number, number, number]): number {
     const dx = a[0] - b[0];
@@ -1733,11 +1777,78 @@ export class BrepkitAdapter implements KernelAdapter {
     const sh = shape as BrepkitHandle;
     const th = tool as BrepkitHandle;
     if (inputFaceHashes.length > 0 && sh.type === 'solid') {
-      if (th.type === 'solid' || th.type === 'compound') {
-        // Native *WithEvolution APIs handle both solid and compound operands
-        // in a single call. Options (e.g. fuzzyValue) are silently ignored.
+      if (th.type === 'solid') {
+        // Native *WithEvolution APIs require solid handles and do not accept
+        // BooleanOptions (e.g. fuzzyValue). Options are silently ignored.
         const json = nativeFn(sh.id, th.id);
         return this.parseNativeEvolution(json, hashUpperBound);
+      }
+      if (th.type === 'compound') {
+        // Iteratively apply native evolution for each solid in the compound,
+        // chaining evolution maps so that original input face hashes map to
+        // final output face hashes (not intermediate ones).
+        const childSolidIds: number[] = toArray(this.bk.getCompoundSolids(th.id));
+        let currentShape: KernelShape = shape;
+        const combinedModified = new Map<number, number[]>();
+        const combinedGenerated = new Map<number, number[]>();
+        const combinedDeleted = new Set<number>();
+        const inputFaceHashSet = new Set(inputFaceHashes);
+        for (const childId of childSolidIds) {
+          const ch = currentShape as BrepkitHandle;
+          if (ch.type !== 'solid') break;
+          const json = nativeFn(ch.id, childId);
+          const result = this.parseNativeEvolution(json, hashUpperBound);
+          currentShape = result.shape;
+
+          // Chain evolution: update existing combined entries to follow through
+          // intermediate face hashes to final output hashes.
+          // Track which face hashes were intermediate outputs (inputs to this
+          // step) so we can skip them when merging new entries below.
+          const intermediateOutputs = new Set<number>();
+
+          // Chain combinedModified and combinedGenerated through this step.
+          // Modified entries that reduce to no outputs become deleted.
+          BrepkitAdapter.chainEvolutionMap(
+            combinedModified,
+            result.evolution.modified,
+            result.evolution.deleted,
+            intermediateOutputs,
+            combinedDeleted
+          );
+          BrepkitAdapter.chainEvolutionMap(
+            combinedGenerated,
+            result.evolution.modified,
+            result.evolution.deleted,
+            intermediateOutputs
+          );
+
+          // Add new entries from this step that aren't already chained
+          for (const [k, v] of result.evolution.modified) {
+            if (!combinedModified.has(k) && !intermediateOutputs.has(k)) {
+              combinedModified.set(k, [...v]);
+            }
+          }
+
+          for (const [k, v] of result.evolution.generated) {
+            if (!intermediateOutputs.has(k)) {
+              const existing = combinedGenerated.get(k) ?? [];
+              combinedGenerated.set(k, [...existing, ...v]);
+            }
+          }
+          for (const d of result.evolution.deleted) {
+            if (inputFaceHashSet.has(d)) {
+              combinedDeleted.add(d);
+            }
+          }
+        }
+        return {
+          shape: currentShape,
+          evolution: {
+            modified: combinedModified,
+            generated: combinedGenerated,
+            deleted: combinedDeleted,
+          },
+        };
       }
     }
     // Fallback: non-solid shapes or no face hashes
