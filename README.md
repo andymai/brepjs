@@ -51,22 +51,22 @@ brepjs-opencascade is a heavily optimized custom build of OpenCascade: trimmed t
 | ---------------------- | ------------------ | ------- | ------- |
 | fuse(box, box)         | 83.7 ms            | 5.7 ms  | 15x     |
 | cut(box, cylinder)     | 123.8 ms           | 4.2 ms  | 29x     |
-| intersect(box, sphere) | 107.1 ms           | 31.9 ms | 3x      |
+| intersect(box, sphere) | 107.1 ms           | 31.9 ms | 3.4x    |
 
 ### Primitives
 
 | Operation    | brepjs-opencascade | brepkit | Speedup |
 | ------------ | ------------------ | ------- | ------- |
-| makeBox      | 5.9 ms             | 0.2 ms  | 30x     |
-| makeCylinder | 2.3 ms             | 0.1 ms  | 23x     |
+| makeBox      | 5.9 ms             | 0.2 ms  | 25x     |
+| makeCylinder | 2.3 ms             | 0.1 ms  | 16x     |
 | makeSphere   | 1.4 ms             | 0.5 ms  | 3x      |
 
 ### End-to-end
 
 | Operation              | brepjs-opencascade | brepkit | Speedup |
 | ---------------------- | ------------------ | ------- | ------- |
-| box + chamfer          | 7.8 ms             | 0.1 ms  | 78x     |
-| box + fillet           | 8.1 ms             | 0.3 ms  | 27x     |
+| box + chamfer          | 7.8 ms             | 0.1 ms  | 70x     |
+| box + fillet           | 8.1 ms             | 0.3 ms  | 28x     |
 | multi-boolean model    | 52.0 ms            | 1.7 ms  | 31x     |
 | mesh sphere (tol=0.01) | 61.3 ms            | 20.0 ms | 3x      |
 | exportSTEP x10         | 19.2 ms            | 0.9 ms  | 21x     |
