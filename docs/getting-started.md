@@ -147,7 +147,7 @@ Measurement functions return plain numbers - they never fail on valid shapes.
 
 ## Step 7: Export
 
-Export functions return `Result<Blob>`. `unwrap()` extracts the value or throws on error:
+Export functions return `Result<Blob>`. `unwrap()` extracts the value or throws on error. It's fine for scripts and examples; in production code prefer `isOk()` or `match()` (see [Error handling](#error-handling-patterns)).
 
 ```typescript
 import { exportSTEP, unwrap } from 'brepjs';
@@ -221,6 +221,8 @@ Vite handles WASM loading automatically. For other bundlers, you may need to con
 >
 > ```typescript
 > // Next.js example
+> import dynamic from 'next/dynamic';
+>
 > const BrepViewer = dynamic(() => import('./BrepViewer'), { ssr: false });
 > ```
 >

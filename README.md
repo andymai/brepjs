@@ -45,7 +45,7 @@ Median times, 5 iterations, Node.js on Linux x86_64. Full results in [`benchmark
 | [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | 11 MB (~3.5 MB gzipped)  |
 | [brepkit](https://github.com/andymai/brepkit) (Rust, in development)   | 1.8 MB (~600 KB gzipped) |
 
-The WASM kernel loads asynchronously - browsers download ~3.5 MB gzipped, then initialize in under a second on most connections. brepjs-opencascade is a heavily optimized custom build of OpenCascade: trimmed to only the classes brepjs needs, with custom C++ bulk-extraction classes (mesh, booleans, topology) that bypass the JS-WASM bridge for hot paths.
+The WASM kernel loads asynchronously - browsers download ~3.5 MB gzipped, then instantiate quickly once downloaded. brepjs-opencascade is a heavily optimized custom build of OpenCascade: trimmed to only the classes brepjs needs, with custom C++ bulk-extraction classes (mesh, booleans, topology) that bypass the JS-WASM bridge for hot paths.
 
 ### Boolean operations
 
