@@ -8,6 +8,19 @@ CAD modeling for JavaScript. Build 3D geometry with code.
 
 **[Docs](https://andymai.github.io/brepjs/)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Getting Started](./docs/getting-started.md)**
 
+```typescript
+import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
+
+const b = box(30, 20, 10);
+const hole = cylinder(5, 15, { at: [15, 10, -2] });
+const drilled = unwrap(cut(b, hole));
+
+const edges = edgeFinder().inDirection('Z').findAll(drilled);
+const part = unwrap(fillet(drilled, edges, 1.5));
+
+const step = unwrap(exportSTEP(part));
+```
+
 ## Why brepjs?
 
 Most CAD libraries for the web are mesh-based — they work with triangles, not real geometry. brepjs gives you boundary representation (B-Rep) modeling with a pluggable geometry kernel. Exact booleans, fillets, and export to formats real CAD software can open.
