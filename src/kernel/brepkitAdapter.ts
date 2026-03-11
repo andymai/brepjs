@@ -4578,8 +4578,6 @@ export class BrepkitAdapter implements KernelAdapter {
         `faceOffsets/faceIds length mismatch: ${groupCount} groups vs ${faceIds.length} faces`
       );
     }
-    const vertexCount = data.positions.length / 3;
-
     const faceGroups: Array<{ start: number; count: number; faceHash: number }> = [];
     for (let i = 0; i < data.faceOffsets.length - 1; i++) {
       const start = data.faceOffsets[i]!;
@@ -4598,7 +4596,7 @@ export class BrepkitAdapter implements KernelAdapter {
       normals: new Float32Array(data.normals),
       triangles: new Uint32Array(data.indices),
       // TODO: Use bk.tessellateSolidUV() for real surface parametrization
-      uvs: new Float32Array(vertexCount * 2),
+      uvs: new Float32Array(0),
       faceGroups,
     };
   }
