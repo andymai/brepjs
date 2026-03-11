@@ -123,22 +123,22 @@ export interface BrepkitKernel {
 
   // ── Boolean operations ─────────────────────────────────────────
 
-  /** Fuse (union) two solids. Returns new solid handle. */
+  /** Fuse (union) two shapes. Operands can be solid or compound handles. Returns new solid handle. */
   fuse(a: number, b: number): number;
 
-  /** Cut (subtract) solid b from a. Returns new solid handle. */
+  /** Cut (subtract) shape b from a. Operands can be solid or compound handles. Returns new solid handle. */
   cut(a: number, b: number): number;
 
-  /** Intersect two solids. Returns new solid handle. */
+  /** Intersect two shapes. Operands can be solid or compound handles. Returns new solid handle. */
   intersect(a: number, b: number): number;
 
-  /** Fuse with evolution tracking. Returns JSON string. */
+  /** Fuse with evolution tracking. Operands can be solid or compound handles. Returns JSON string. */
   fuseWithEvolution(a: number, b: number): string;
 
-  /** Cut with evolution tracking. Returns JSON string. */
+  /** Cut with evolution tracking. Operands can be solid or compound handles. Returns JSON string. */
   cutWithEvolution(a: number, b: number): string;
 
-  /** Intersect with evolution tracking. Returns JSON string. */
+  /** Intersect with evolution tracking. Operands can be solid or compound handles. Returns JSON string. */
   intersectWithEvolution(a: number, b: number): string;
 
   // ── Sweep / Loft / Extrude ─────────────────────────────────────
