@@ -479,11 +479,25 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   cutAll(shape: KernelShape, tools: KernelShape[], options?: BooleanOptions): KernelShape {
-    let result = shape;
+    if (tools.length === 0) return shape;
+    if (tools.length === 1) return this.cut(shape, tools[0], options);
+
+    // Extract solid IDs from all tools (exploding compounds into individual solids).
+    const baseId = unwrapSolidOrThrow(shape, 'cutAll');
+    const toolIds: number[] = [];
     for (const tool of tools) {
-      result = this.cut(result, tool, options);
+      const h = tool as BrepkitHandle;
+      if (h.type === 'compound') {
+        toolIds.push(...toArray(this.bk.getCompoundSolids(h.id)));
+      } else {
+        toolIds.push(unwrapSolidOrThrow(tool, 'cutAll'));
+      }
     }
-    return result;
+    if (toolIds.length === 0) return shape;
+
+    // Single WASM call: brepkit does AABB pre-filtering and sequential cuts in Rust.
+    const result = this.bk.compoundCut(baseId, new Uint32Array(toolIds));
+    return solidHandle(result);
   }
 
   split(shape: KernelShape, tools: KernelShape[]): KernelShape {
