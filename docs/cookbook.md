@@ -485,5 +485,4 @@ const assembly = shape(base).fuse(posts[0]).fuse(posts[1]).fuse(posts[2]).fuse(p
 
 - **[Getting Started](./getting-started.md)** — Full tutorial from installation to export
 - **[Which API?](./which-api.md)** — Understand when to use different API styles
-- **[Examples](../examples/)** — More complex, runnable examples
 - **[API Reference](../llms.txt)** — Complete function reference

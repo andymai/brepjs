@@ -195,7 +195,7 @@ Vite handles WASM loading automatically. For other bundlers, you may need to con
 
 > **Note:** For manual initialization control in browsers (useful for loading indicators or error handling), see [Advanced: Manual Initialization](#advanced-manual-initialization) below.
 
-For a complete working example that generates a standalone HTML viewer (no bundler needed), see [`examples/browser-viewer.ts`](../examples/browser-viewer.ts). You can also try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
+Try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
 
 ## The 2D → 3D workflow
 
@@ -432,5 +432,4 @@ You need TypeScript 5.9+ and `"lib": ["ES2022", "ESNext.Disposable"]` in your ts
 - **[Which API?](./which-api.md)** — Choose between Sketcher, functional API, and Drawing API
 - **[B-Rep Concepts](./concepts.md)** — Understand the geometry model (vertices, edges, faces, solids)
 - **[Memory Management](./memory-management.md)** — How to clean up WASM objects
-- **[Examples](../examples/)** — Complete workflow examples from beginner to advanced
 - **[llms.txt](../llms.txt)** — Full API reference (great for AI-assisted development)

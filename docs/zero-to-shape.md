@@ -38,4 +38,3 @@ That's it. `brepjs/quick` auto-initializes the WASM kernel via top-level await �
 - **[Getting Started](./getting-started.md)** — Full tutorial with booleans, transforms, and export
 - **[Cheat Sheet](./cheat-sheet.md)** — Single-page quick reference for all common operations
 - **[Which API?](./which-api.md)** — Choose between the Sketcher, functional API, and Drawing API
-- **[Examples](../examples/)** — 5 runnable examples from beginner to advanced

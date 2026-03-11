@@ -1,9 +1,6 @@
 # Claude Code auto-memory (user-specific, not shared)
 memory/
 
-# Generated example output (SVG, HTML)
-examples/output/
-
 # Git worktrees
 .worktrees/
 

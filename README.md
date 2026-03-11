@@ -6,20 +6,7 @@ CAD modeling for JavaScript. Build 3D geometry with code.
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](./LICENSE)
 
-**[Docs](https://andymai.github.io/brepjs/)** · **[Examples](./examples/)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Getting Started](./docs/getting-started.md)**
-
-```typescript
-import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
-
-const b = box(30, 20, 10);
-const hole = cylinder(5, 15, { at: [15, 10, -2] });
-const drilled = unwrap(cut(b, hole));
-
-const edges = edgeFinder().inDirection('Z').findAll(drilled);
-const part = unwrap(fillet(drilled, edges, 1.5));
-
-const step = unwrap(exportSTEP(part));
-```
+**[Docs](https://andymai.github.io/brepjs/)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Getting Started](./docs/getting-started.md)**
 
 ## Why brepjs?
 
@@ -78,49 +65,6 @@ initFromOC(oc);
 **Workers** — `createWorkerClient`, `createWorkerHandler` for off-main-thread operations
 
 **History** — `createHistory`, `addStep`, `undoLast`, `replayHistory` for parametric undo/replay
-
-## A Larger Example
-
-A flanged pipe with bolt holes — showing booleans, shelling, fillets, and finders:
-
-```typescript
-import {
-  cylinder,
-  fuse,
-  cut,
-  shell,
-  fillet,
-  rotate,
-  faceFinder,
-  edgeFinder,
-  measureVolume,
-  unwrap,
-} from 'brepjs/quick';
-
-// Tube + flanges
-const tube = cylinder(15, 100);
-const body = unwrap(fuse(unwrap(fuse(tube, cylinder(30, 5))), cylinder(30, 5, { at: [0, 0, 95] })));
-
-// Hollow out — find top face, shell to 2mm walls
-const topFaces = faceFinder().parallelTo('XY').atDistance(100, [0, 0, 0]).findAll(body);
-const hollowed = unwrap(shell(body, topFaces, 2));
-
-// Fillet the tube-to-flange transitions
-const filletEdges = edgeFinder()
-  .ofCurveType('CIRCLE')
-  .ofLength(2 * Math.PI * 15)
-  .findAll(hollowed);
-let result = unwrap(fillet(hollowed, filletEdges, 3));
-
-// Bolt holes around each flange
-for (let i = 0; i < 6; i++) {
-  const angle = 60 * i;
-  const hole = rotate(cylinder(3, 10, { at: [22, 0, -2] }), angle, { axis: [0, 0, 1] });
-  result = unwrap(cut(result, hole));
-}
-
-console.log('Volume:', measureVolume(result), 'mm³');
-```
 
 ## Common Patterns
 
@@ -233,43 +177,6 @@ const result = box(10, 10, 10); // uses your kernel
 ```
 
 The kernel abstraction layer in `src/kernel/` ensures brepjs code never touches kernel internals directly. See the [Custom Kernel Guide](docs/kernel-swap.md) for writing your own `KernelAdapter`.
-
-### Parametric variations
-
-Generate multiple part variations by iterating over dimensions:
-
-```typescript
-import { box, cylinder, cut, fillet, edgeFinder, unwrap, exportSTEP } from 'brepjs/quick';
-
-function makeBracket(width: number, holeRadius: number) {
-  const base = box(width, 20, 10);
-  const hole = cylinder(holeRadius, 15, { at: [width / 2, 10, -2] });
-  const drilled = unwrap(cut(base, hole));
-  const edges = edgeFinder().inDirection('Z').findAll(drilled);
-  return unwrap(fillet(drilled, edges, 1.5));
-}
-
-// Generate variants
-for (const width of [30, 40, 50, 60]) {
-  const part = makeBracket(width, width / 10);
-  const step = unwrap(exportSTEP(part));
-  console.log(`${width}mm bracket: ${step.size} bytes`);
-}
-```
-
-## Examples
-
-```bash
-npm run example examples/mounting-block.ts
-```
-
-| Example                                               | Level        | What it does                                                   |
-| ----------------------------------------------------- | ------------ | -------------------------------------------------------------- |
-| [mounting-block.ts](./examples/mounting-block.ts)     | Beginner     | Game die with filleted edges and `cutAll` dot indentations     |
-| [shelf-bracket.ts](./examples/shelf-bracket.ts)       | Intermediate | Spur gear with `rotate` patterning and `fuseAll` teeth         |
-| [pen-cup.ts](./examples/pen-cup.ts)                   | Intermediate | Hollowed container using `shell` and `faceFinder`              |
-| [lofted-vase.ts](./examples/lofted-vase.ts)           | Advanced     | Multi-section `loft` through circular profiles, then shelled   |
-| [compartment-tray.ts](./examples/compartment-tray.ts) | Advanced     | Storage tray with dividers: `fuseAll` → `intersect` → `cutAll` |
 
 ## Imports
 

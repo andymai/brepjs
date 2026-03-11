@@ -219,4 +219,3 @@ if (isOk(result)) {
 - **[Which API?](./which-api.md)** -- Detailed API comparison
 - **[Memory Management](./memory-management.md)** -- Full patterns for WASM cleanup
 - **[Error Reference](./errors.md)** -- All error codes and recovery
-- **[Examples](../examples/)** -- 5 runnable examples
