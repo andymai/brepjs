@@ -7,6 +7,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { ShapeType } from '../kernel/index.js';
+import type { KernelShape } from '../kernel/types.js';
 import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
@@ -23,21 +24,16 @@ import { downcast } from './cast.js';
  * explores its children of `childType` to check if `child` is among them (via isSame).
  */
 function findAncestors(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape type
-  parent: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape type
-  child: any,
+  parent: KernelShape,
+  child: KernelShape,
   targetType: ShapeType,
   childType: ShapeType
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns kernel shapes
-): any[] {
+): KernelShape[] {
   const kernel = getKernel();
   const candidates = kernel.iterShapes(parent, targetType);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
-  const results: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shapes for isSame dedup
-  const seen = new Map<number, any[]>();
+  const results: KernelShape[] = [];
+  const seen = new Map<number, KernelShape[]>();
 
   for (const candidate of candidates) {
     // Check if child is a sub-shape of candidate
@@ -65,19 +61,12 @@ function findAncestors(
  * Find all unique sub-shapes of `childType` within `parent`.
  * Simple wrapper around iterShapes with deduplication.
  */
-function findChildren(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape type
-  parent: any,
-  childType: ShapeType
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- returns kernel shapes
-): any[] {
+function findChildren(parent: KernelShape, childType: ShapeType): KernelShape[] {
   const kernel = getKernel();
   const items = kernel.iterShapes(parent, childType);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
-  const results: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shapes for isSame dedup
-  const seen = new Map<number, any[]>();
+  const results: KernelShape[] = [];
+  const seen = new Map<number, KernelShape[]>();
 
   for (const item of items) {
     const hash = kernel.hashCode(item, HASH_CODE_MAX);
@@ -94,8 +83,7 @@ function findChildren(
   return results;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- wraps kernel shapes to branded types
-function wrapAll<T extends AnyShape<Dimension>>(shapes: any[]): T[] {
+function wrapAll<T extends AnyShape<Dimension>>(shapes: KernelShape[]): T[] {
   return shapes.map((s) => castShape(unwrap(downcast(s))) as T);
 }
 
@@ -166,8 +154,7 @@ export function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: Fa
   // Build edge->faces map in a single pass over all faces in parent.
   // This replaces the O(E_face x F x E_per_face) nested exploration with
   // O(F x E_per_face) to build + O(E_face) to query.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collections
-  const edgeToFaces = new Map<number, any[]>();
+  const edgeToFaces = new Map<number, KernelShape[]>();
   const allFaces = kernel.iterShapes(parent.wrapped, 'face');
 
   for (const f of allFaces) {
@@ -188,10 +175,8 @@ export function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: Fa
 
   // For each edge of the input face, look up adjacent faces from the map
   const faceEdges = findChildren(face.wrapped, 'edge');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
-  const neighborRaw: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shapes for isSame dedup
-  const seen = new Map<number, any[]>();
+  const neighborRaw: KernelShape[] = [];
+  const seen = new Map<number, KernelShape[]>();
 
   for (const edgeOc of faceEdges) {
     const hash = kernel.hashCode(edgeOc, HASH_CODE_MAX);
@@ -226,8 +211,7 @@ export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>)
   const edges2 = findChildren(face2.wrapped, 'edge');
 
   // Build hash-bucket index of edges2 for O(1) average lookup instead of O(nxm) isSame scans
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
-  const edge2Map = new Map<number, any[]>();
+  const edge2Map = new Map<number, KernelShape[]>();
   for (const e2 of edges2) {
     const hash = kernel.hashCode(e2, HASH_CODE_MAX);
     let bucket = edge2Map.get(hash);
@@ -238,8 +222,7 @@ export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>)
     bucket.push(e2);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel shape collection
-  const shared: any[] = [];
+  const shared: KernelShape[] = [];
   for (const e1 of edges1) {
     const bucket = edge2Map.get(kernel.hashCode(e1, HASH_CODE_MAX));
     if (bucket?.some((e2) => kernel.isSame(e1, e2))) {
