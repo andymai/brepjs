@@ -143,6 +143,10 @@ for (const example of examples) {
 
     const bin = meshToBinary(resultShape, tolerances);
 
+    // Free the WASM-heap shape now that we have the mesh data
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    try { (resultShape as any).delete?.(); } catch { /* already freed */ }
+
     // Write gallery mesh binary
     const outPath = resolve(galleryDir, `${example.id}.bin`);
     writeFileSync(outPath, bin);
