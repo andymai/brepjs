@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.7](https://github.com/andymai/brepjs/compare/brepjs-v12.2.6...brepjs-v12.2.7) (2026-03-11)
+
+
+### Performance Improvements
+
+* pass compound operands directly to brepkit-wasm for batch boolean operations ([#452](https://github.com/andymai/brepjs/issues/452)) ([0f8bb43](https://github.com/andymai/brepjs/commit/0f8bb431645bd3d965f6407620d07328ecca4af6))
+
 ## [12.2.6](https://github.com/andymai/brepjs/compare/brepjs-v12.2.5...brepjs-v12.2.6) (2026-03-10)
 
 ### Performance Improvements
