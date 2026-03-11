@@ -217,6 +217,14 @@ export function outerWire<D extends Dimension = '3D'>(face: Face<D>): ClosedWire
   return castShape(getKernel().outerWire(face.wrapped)) as ClosedWire<D>;
 }
 
+/**
+ * Remove all holes (inner wires) from a face, returning a new face with only the outer boundary.
+ * Useful for defeaturing workflows where holes need to be temporarily or permanently filled.
+ */
+export function removeHolesFromFace<D extends Dimension = '3D'>(face: Face<D>): Face<D> {
+  return castShape(getKernel().removeHolesFromFace(face.wrapped)) as Face<D>;
+}
+
 /** Get the inner wires (holes) of a face. Hole boundaries are always closed. */
 export function innerWires<D extends Dimension = '3D'>(face: Face<D>): ClosedWire<D>[] {
   const outer = outerWire(face);

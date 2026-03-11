@@ -688,6 +688,8 @@ export interface KernelAdapter extends Kernel2DCapability {
   makeNonPlanarFace(wire: KernelShape): KernelShape;
   /** Add hole wires to an existing face. */
   addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape;
+  /** Remove all inner wires (holes) from a face. Returns a new face with only the outer boundary. */
+  removeHolesFromFace(face: KernelShape): KernelShape;
   /** Build a face on an existing surface bounded by a wire. */
   makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape;
   /** Fit a B-spline surface through a grid of Z-heights. */
@@ -859,6 +861,20 @@ export interface KernelAdapter extends Kernel2DCapability {
 // Capability interfaces (optional per kernel)
 // ---------------------------------------------------------------------------
 
+/** Capability for 2D constraint sketch solving. */
+export interface ConstraintSketchCapability {
+  /** Create a new constraint sketch. Returns an opaque sketch handle. */
+  sketchNew(): number;
+  /** Add a point to a constraint sketch. Returns the point index. */
+  sketchAddPoint(sketch: number, x: number, y: number, fixed: boolean): number;
+  /** Add a constraint to a sketch (JSON-encoded constraint descriptor). */
+  sketchAddConstraint(sketch: number, constraintJson: string): void;
+  /** Solve sketch constraints. Returns a JSON result with solved point positions. */
+  sketchSolve(sketch: number, maxIterations: number, tolerance: number): string;
+  /** Get degrees of freedom remaining in a constraint sketch. */
+  sketchDof(sketch: number): number;
+}
+
 /** Capability for hidden-line removal (3D → 2D projection). */
 export interface ProjectionCapability {
   /** Project a 3D shape onto a 2D plane along a view direction. */
@@ -881,4 +897,11 @@ export function supportsProjection(
   kernel: KernelAdapter
 ): kernel is KernelAdapter & ProjectionCapability {
   return 'projectShape' in kernel;
+}
+
+/** Check if the kernel supports 2D constraint sketch solving. */
+export function supportsConstraintSketch(
+  kernel: KernelAdapter
+): kernel is KernelAdapter & ConstraintSketchCapability {
+  return 'sketchNew' in kernel && 'sketchDof' in kernel;
 }

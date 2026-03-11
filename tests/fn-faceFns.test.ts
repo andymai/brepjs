@@ -21,10 +21,14 @@ import {
   faceCenter,
   outerWire,
   innerWires,
+  removeHolesFromFace,
+  addHoles,
+  sketchCircle,
   unwrap,
   isOk,
   isErr,
   isWire,
+  isFace,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -127,6 +131,36 @@ describe('outerWire / innerWires', () => {
     const f = getFaces(castShape(rect.face().wrapped))[0];
     const inner = innerWires(f);
     expect(inner).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// removeHolesFromFace
+// ---------------------------------------------------------------------------
+
+describe('removeHolesFromFace', () => {
+  it('removes holes from a face with a hole', () => {
+    // Create a rectangular face with a circular hole (matching existing test pattern)
+    const baseFace = sketchRectangle(20, 20).face();
+    const holeWire = sketchCircle(3).wire;
+    const faceWithHole = addHoles(baseFace, [holeWire]);
+
+    // Should have 1 inner wire
+    expect(innerWires(faceWithHole)).toHaveLength(1);
+
+    // Remove holes — should produce a valid face with no inner wires
+    const faceWithoutHoles = removeHolesFromFace(faceWithHole);
+    expect(isFace(faceWithoutHoles)).toBe(true);
+    expect(innerWires(faceWithoutHoles)).toHaveLength(0);
+    // Outer wire should still exist
+    expect(isWire(outerWire(faceWithoutHoles))).toBe(true);
+  });
+
+  it('is a no-op on a face without holes', () => {
+    const f = sketchRectangle(10, 10).face();
+    const result = removeHolesFromFace(f);
+    expect(isFace(result)).toBe(true);
+    expect(innerWires(result)).toHaveLength(0);
   });
 });
 

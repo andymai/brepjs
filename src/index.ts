@@ -18,8 +18,8 @@ export type {
   ShapeOrientation,
   ShapeType,
 } from './kernel/index.js';
-export { supportsProjection } from './kernel/index.js';
-export type { ProjectionCapability } from './kernel/index.js';
+export { supportsProjection, supportsConstraintSketch } from './kernel/index.js';
+export type { ProjectionCapability, ConstraintSketchCapability } from './kernel/index.js';
 
 // ── Result type ──
 
@@ -508,6 +508,7 @@ export {
   classifyPointOnFace,
   outerWire,
   innerWires,
+  removeHolesFromFace,
   projectPointOnFace,
   type UVBounds,
   type PointProjectionResult,

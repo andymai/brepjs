@@ -110,8 +110,8 @@ export type {
   OperationResult,
 } from './types.js';
 
-export { supportsProjection } from './types.js';
-export type { ProjectionCapability } from './types.js';
+export { supportsProjection, supportsConstraintSketch } from './types.js';
+export type { ProjectionCapability, ConstraintSketchCapability } from './types.js';
 
 export { supportsKernel2D } from './kernel2dTypes.js';
 export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2dTypes.js';

@@ -234,6 +234,7 @@ import {
   circularPattern as _circularPattern,
   makeNonPlanarFace as _makeNonPlanarFace,
   addHolesInFace as _addHolesInFace,
+  removeHolesFromFace as _removeHolesFromFace,
   makeFaceOnSurface as _makeFaceOnSurface,
   bsplineSurface as _bsplineSurface,
   triangulatedSurface as _triangulatedSurface,
@@ -1193,6 +1194,10 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
 
   addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape {
     return _addHolesInFace(this.oc, face, holeWires);
+  }
+
+  removeHolesFromFace(face: KernelShape): KernelShape {
+    return _removeHolesFromFace(this.oc, face);
   }
 
   makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape {
