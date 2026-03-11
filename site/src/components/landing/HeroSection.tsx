@@ -42,13 +42,13 @@ export default function HeroSection() {
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-20">
         <div className="mb-12 text-center">
           <h1 className="animate-hero-fade-up mb-4 text-5xl font-bold tracking-tight text-white lg:text-6xl">
-            CAD Kernel
+            CAD Library
             <br />
             <span className="text-gradient-teal">for TypeScript</span>
           </h1>
           <p className="animate-hero-fade-up mx-auto max-w-2xl text-lg text-gray-400">
-            The OpenCascade geometry kernel, compiled to WebAssembly, with a TypeScript API designed
-            for the browser.
+            Solid modeling powered by the OpenCascade kernel, compiled to WebAssembly, with a
+            TypeScript API designed for the browser.
           </p>
           <div className="animate-hero-fade-up mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link

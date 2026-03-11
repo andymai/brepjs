@@ -42,7 +42,7 @@ const features: Feature[] = [
   {
     title: 'Functional API',
     description:
-      'Pure functions that take shapes and return shapes. No class hierarchy, no mutation — just composition.',
+      'Pure functions that take shapes and return shapes. No class hierarchy, no mutation, just composition.',
     icon: 'functional',
   },
 ];
@@ -174,8 +174,8 @@ export default function FeaturesSection() {
           className={`mb-12 text-center text-gray-400 ${inView ? 'animate-reveal-up' : ''}`}
           style={{ opacity: inView ? undefined : 0, animationDelay: '25ms' }}
         >
-          The geometry kernel behind FreeCAD, KiCad, and production CAD tools — now available as a
-          typed, tree-shakeable npm package.
+          Powered by the geometry kernel behind FreeCAD, KiCad, and production CAD tools. Typed,
+          tree-shakeable, and ready to npm install.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f, i) => (
