@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.2.10](https://github.com/andymai/brepjs/compare/brepjs-v12.2.9...brepjs-v12.2.10) (2026-03-11)
+
+
+### Bug Fixes
+
+* **topology:** route cutAll through kernel.cutAll for batch WASM optimization ([#459](https://github.com/andymai/brepjs/issues/459)) ([d9b3a85](https://github.com/andymai/brepjs/commit/d9b3a8548eaf8ec02c2e3453cfdbe4edf8d6a712))
+
 ## [12.2.9](https://github.com/andymai/brepjs/compare/brepjs-v12.2.8...brepjs-v12.2.9) (2026-03-11)
 
 
