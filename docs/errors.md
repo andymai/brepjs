@@ -202,8 +202,8 @@ function myOperation(value: number): Result<number> {
 
 ## Debugging Tips
 
-1. **Check the error code first** — it identifies the failure category
-2. **Read the message** — it often contains specific details
-3. **Check the cause** — it may contain the underlying exception
-4. **Verify inputs** — most errors result from invalid inputs
-5. **Check geometry validity** — use `isEmpty()` to verify shapes
+1. **Check the error code first** - it identifies the failure category
+2. **Read the message** - it often contains specific details
+3. **Check the cause** - it may contain the underlying exception
+4. **Verify inputs** - most errors result from invalid inputs
+5. **Check geometry validity** - use `isEmpty()` to verify shapes

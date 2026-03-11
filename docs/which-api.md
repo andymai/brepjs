@@ -1,6 +1,6 @@
 # Which API Should I Use?
 
-> **TL;DR:** Use the **fluent wrapper** (`shape().cut().fillet()`) for 3D operations and the **Sketcher** for 2D profiles. That's it — these two APIs cover 95% of use cases.
+> **TL;DR:** Use the **fluent wrapper** (`shape().cut().fillet()`) for 3D operations and the **Sketcher** for 2D profiles. That's it - these two APIs cover 95% of use cases.
 
 ## Start Here: The Two APIs You Need
 
@@ -9,7 +9,7 @@
 ```typescript
 import { shape, box, cylinder } from 'brepjs';
 
-// Everything you need — clean, chainable, type-safe
+// Everything you need - clean, chainable, type-safe
 const bracket = shape(box(30, 20, 10))
   .cut(cylinder(5, 15, { at: [15, 10, -2] }))
   .fillet((e) => e.inDirection('Z'), 2).val; // Extract the final shape
@@ -46,11 +46,11 @@ The `shape()` wrapper is the **canonical API** for brepjs. It wraps any shape an
 
 **Key benefits:**
 
-- **No `unwrap()` calls** — automatically handles `Result` types and throws `BrepWrapperError` on failure
-- **Type-safe chaining** — each method returns the appropriate wrapper type (3D, Face, Edge, Wire)
-- **Cleaner finder integration** — use callbacks directly: `.fillet((e) => e.inDirection('Z'), 2)`
-- **Axis shortcuts** — `.moveX(10)`, `.rotateZ(45)` for common transforms
-- **Built-in methods** — `.volume()`, `.area()`, `.mesh()`, `.toBREP()` without separate imports
+- **No `unwrap()` calls** - automatically handles `Result` types and throws `BrepWrapperError` on failure
+- **Type-safe chaining** - each method returns the appropriate wrapper type (3D, Face, Edge, Wire)
+- **Cleaner finder integration** - use callbacks directly: `.fillet((e) => e.inDirection('Z'), 2)`
+- **Axis shortcuts** - `.moveX(10)`, `.rotateZ(45)` for common transforms
+- **Built-in methods** - `.volume()`, `.area()`, `.mesh()`, `.toBREP()` without separate imports
 
 **Example with multiple operations:**
 
@@ -184,8 +184,8 @@ All sub-paths re-export a subset of the main `brepjs` entry. You can mix and mat
 
 Not sure which sub-path exports a specific function?
 
-- **[Function Lookup Table](function-lookup.md)** — Alphabetical index of all 400+ symbols with their sub-path
-- **[Hosted API Reference](https://andymai.github.io/brepjs/)** — Searchable TypeDoc documentation
+- **[Function Lookup Table](function-lookup.md)** - Alphabetical index of all 400+ symbols with their sub-path
+- **[Hosted API Reference](https://andymai.github.io/brepjs/)** - Searchable TypeDoc documentation
 
 Example: Looking for `fillet`? Check the lookup table → `brepjs/topology`.
 

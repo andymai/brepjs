@@ -1,6 +1,6 @@
 # Memory Management
 
-WASM objects aren't garbage-collected — you have to clean them up. brepjs gives you four ways to do it, from modern to legacy:
+WASM objects aren't garbage-collected - you have to clean them up. brepjs gives you four ways to do it, from modern to legacy:
 
 1. **`Symbol.dispose`** -- Modern TC39 explicit resource management
 2. **`DisposalScope`** -- Scoped cleanup for multiple temporaries
@@ -57,7 +57,7 @@ function buildPart() {
 1. `new DisposalScope()` creates a scope that tracks resources
 2. `scope.register(obj)` registers an object for cleanup and returns it
 3. When the scope is disposed (via `using` or `scope[Symbol.dispose]()`), all registered objects are freed in LIFO order
-4. Cleanup is deterministic — it happens at scope exit, not when GC runs
+4. Cleanup is deterministic - it happens at scope exit, not when GC runs
 
 ### Best Practices
 
@@ -77,7 +77,7 @@ const shape = box(10, 10, 10);
 // Eventually GC runs and FinalizationRegistry disposes it
 ```
 
-**Warning**: Do not rely on FinalizationRegistry — GC timing is unpredictable and memory pressure may build up before cleanup.
+**Warning**: Do not rely on FinalizationRegistry - GC timing is unpredictable and memory pressure may build up before cleanup.
 
 ## Manual delete() (Legacy)
 

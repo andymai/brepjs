@@ -42,7 +42,7 @@ camera.position.set(50, -50, 40);
 camera.up.set(0, 0, 1);
 camera.lookAt(15, 10, 5);
 
-// 5. Lighting — hemisphere + two directionals gives a clean CAD look
+// 5. Lighting - hemisphere + two directionals gives a clean CAD look
 scene.add(new THREE.HemisphereLight('#ffffff', '#b0b0b0', 0.65));
 const keyLight = new THREE.DirectionalLight('#fff8f0', 0.85);
 keyLight.position.set(-50, 60, 80);
@@ -82,9 +82,9 @@ animate();
 
 **Key points:**
 
-- `toBufferGeometryData()` returns `{ position, normal, index }` as typed arrays — zero-copy, ready for `BufferAttribute`
+- `toBufferGeometryData()` returns `{ position, normal, index }` as typed arrays - zero-copy, ready for `BufferAttribute`
 - `tolerance` controls mesh density: `0.1` for interactive display, `0.01` for high quality, `0.5` for previews
-- `camera.up.set(0, 0, 1)` — brepjs uses Z-up, matching CAD convention
+- `camera.up.set(0, 0, 1)` - brepjs uses Z-up, matching CAD convention
 
 ## Edge Wireframe Overlay
 
@@ -122,11 +122,11 @@ const material = new THREE.MeshStandardMaterial({
 });
 ```
 
-**Why `meshEdges()` instead of Three.js `EdgesGeometry`?** `meshEdges()` returns the actual B-Rep topology edges — the seams where faces meet. Three.js `EdgesGeometry` uses an angle threshold on the triangle mesh, which misses smooth edges and adds false edges on curved surfaces. The B-Rep edges are the "real" edges.
+**Why `meshEdges()` instead of Three.js `EdgesGeometry`?** `meshEdges()` returns the actual B-Rep topology edges - the seams where faces meet. Three.js `EdgesGeometry` uses an angle threshold on the triangle mesh, which misses smooth edges and adds false edges on curved surfaces. The B-Rep edges are the "real" edges.
 
 ## Per-Face Colors
 
-Color individual faces by their origin — useful for visualizing which faces came from which boolean operation:
+Color individual faces by their origin - useful for visualizing which faces came from which boolean operation:
 
 ```typescript
 import {
@@ -148,7 +148,7 @@ const b = colorShape(box(30, 20, 10), '#4a90d9');
 const hole = colorShape(cylinder(4, 15, { at: [15, 10, -2] }), '#d94a4a');
 const drilled = unwrap(cut(b, hole));
 
-// Colors propagate through booleans — cut faces inherit the tool color
+// Colors propagate through booleans - cut faces inherit the tool color
 const edges = edgeFinder().inDirection('Z').findAll(drilled);
 const part = unwrap(fillet(drilled, edges, 2));
 
@@ -166,7 +166,7 @@ for (const g of data.groups) {
   geometry.addGroup(g.start, g.count, g.materialIndex);
 }
 
-// One material per face group — use getFaceColor to read propagated colors
+// One material per face group - use getFaceColor to read propagated colors
 import { getFaceColor } from 'brepjs/quick';
 
 const materials = data.groups.map((g) => {
@@ -192,7 +192,7 @@ const materials = data.groups.map((g) => {
 scene.add(new THREE.Mesh(geometry, materials));
 ```
 
-**Simpler approach — color by face direction:**
+**Simpler approach - color by face direction:**
 
 If you don't need boolean-propagated colors, you can color faces by their normal direction using the face finder:
 
@@ -208,7 +208,7 @@ colorFaces(part, sideFaces, '#6ab04c');
 
 ## Dynamic Re-Meshing
 
-Update the Three.js geometry when brepjs parameters change — for example, a slider controlling fillet radius:
+Update the Three.js geometry when brepjs parameters change - for example, a slider controlling fillet radius:
 
 ```typescript
 import {
@@ -281,10 +281,10 @@ slider.addEventListener('input', () => {
 
 **Performance tips for dynamic updates:**
 
-- **Debounce** slider input if the shape is complex — `requestAnimationFrame` or a 16ms throttle prevents queueing multiple rebuilds
-- **Tolerance tradeoff** — use `tolerance: 0.5` during drag, switch to `0.1` on `pointerup` for final quality
-- **Web Worker** — for complex shapes, run `mesh()` and `meshEdges()` in a Worker. The typed arrays are `Transferable`, so they cross the Worker boundary at zero copy cost. See brepjs's `createWorkerClient` / `createWorkerHandler` APIs
-- **Cache** — `mesh()` and `meshEdges()` cache by shape identity + tolerance. If only the fillet radius changes, only the fillet result is re-meshed
+- **Debounce** slider input if the shape is complex - `requestAnimationFrame` or a 16ms throttle prevents queueing multiple rebuilds
+- **Tolerance tradeoff** - use `tolerance: 0.5` during drag, switch to `0.1` on `pointerup` for final quality
+- **Web Worker** - for complex shapes, run `mesh()` and `meshEdges()` in a Worker. The typed arrays are `Transferable`, so they cross the Worker boundary at zero copy cost. See brepjs's `createWorkerClient` / `createWorkerHandler` APIs
+- **Cache** - `mesh()` and `meshEdges()` cache by shape identity + tolerance. If only the fillet radius changes, only the fillet result is re-meshed
 
 ## Material Reference
 
@@ -315,7 +315,7 @@ The slight `emissive` glow prevents the dark side of the shape from going fully 
 
 ## Next Steps
 
-- **[Getting Started](./getting-started.md)** — brepjs basics from install to export
-- **[Cookbook](./cookbook.md)** — 20+ practical recipes
-- **[Memory Management](./memory-management.md)** — WASM cleanup patterns (important for dynamic re-meshing)
-- **[Performance](./performance.md)** — Mesh tolerance tuning and batch operations
+- **[Getting Started](./getting-started.md)** - brepjs basics from install to export
+- **[Cookbook](./cookbook.md)** - 20+ practical recipes
+- **[Memory Management](./memory-management.md)** - WASM cleanup patterns (important for dynamic re-meshing)
+- **[Performance](./performance.md)** - Mesh tolerance tuning and batch operations

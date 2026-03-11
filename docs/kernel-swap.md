@@ -34,15 +34,15 @@ Register a `KernelAdapter` under a unique string ID. The first kernel registered
 
 ### `initFromOC(oc)`
 
-Convenience wrapper — creates the default OpenCascade adapter from a loaded WASM instance and registers it as `'occt'`.
+Convenience wrapper - creates the default OpenCascade adapter from a loaded WASM instance and registers it as `'occt'`.
 
 ### `BrepkitAdapter`
 
-Adapter for the external `brepkit-wasm` WASM package. Create with `new BrepkitAdapter(brepkitWasm)` and register via `registerKernel('brepkit', adapter)`. Coverage is growing — some advanced operations may throw "not implemented".
+Adapter for the external `brepkit-wasm` WASM package. Create with `new BrepkitAdapter(brepkitWasm)` and register via `registerKernel('brepkit', adapter)`. Coverage is growing - some advanced operations may throw "not implemented".
 
 ### `withKernel(id, fn)`
 
-Run a **synchronous** function with a different kernel as the default, then restore the previous default. Do not pass async functions — the kernel override is restored in `finally`.
+Run a **synchronous** function with a different kernel as the default, then restore the previous default. Do not pass async functions - the kernel override is restored in `finally`.
 
 ### `getKernel(id?)`
 
@@ -114,7 +114,7 @@ class MyKernel implements KernelAdapter {
 
 ### Shape Handle Contract
 
-`KernelShape` is typed as `any` — your kernel decides what a "shape" is internally. It could be:
+`KernelShape` is typed as `any` - your kernel decides what a "shape" is internally. It could be:
 
 - A pointer into a WASM linear memory arena
 - An integer handle/index into a shape table
@@ -125,7 +125,7 @@ The only contract: **Layer 2+ code never calls methods on shape handles**. It on
 
 ### What Must Each Method Return?
 
-All kernel methods return **plain JavaScript values** — never raw kernel objects:
+All kernel methods return **plain JavaScript values** - never raw kernel objects:
 
 - Points → `[number, number, number]` tuples
 - Booleans → `boolean`

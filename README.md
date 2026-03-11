@@ -8,6 +8,8 @@ CAD modeling for JavaScript.
 
 **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://andymai.github.io/brepjs/)**
 
+Shapes are exact mathematical boundaries - not triangle meshes - so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
+
 ```typescript
 // Drill a hole, fillet the vertical edges, export to STEP
 import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brepjs/quick';
@@ -38,12 +40,12 @@ Median times, 5 iterations, Node.js on Linux x86_64. Full results in [`benchmark
 
 ### WASM bundle size
 
-| Kernel                                                                 | Size   |
-| ---------------------------------------------------------------------- | ------ |
-| [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | 11 MB  |
-| [brepkit](https://github.com/andymai/brepkit) (Rust, in development)   | 1.8 MB |
+| Kernel                                                                 | Size                     |
+| ---------------------------------------------------------------------- | ------------------------ |
+| [brepjs-opencascade](https://www.npmjs.com/package/brepjs-opencascade) | 11 MB (~3.5 MB gzipped)  |
+| [brepkit](https://github.com/andymai/brepkit) (Rust, in development)   | 1.8 MB (~600 KB gzipped) |
 
-brepjs-opencascade is a heavily optimized custom build of OpenCascade: trimmed to only the classes brepjs needs, with custom C++ bulk-extraction classes (mesh, booleans, topology) that bypass the JS-WASM bridge for hot paths. It's already about as fast as OCCT gets in the browser.
+The WASM kernel loads asynchronously - browsers download ~3.5 MB gzipped, then initialize in under a second on most connections. brepjs-opencascade is a heavily optimized custom build of OpenCascade: trimmed to only the classes brepjs needs, with custom C++ bulk-extraction classes (mesh, booleans, topology) that bypass the JS-WASM bridge for hot paths.
 
 ### Boolean operations
 
@@ -146,8 +148,8 @@ Imports flow downward only. Boundaries are enforced in CI.
 
 **Learn**
 
-- [Getting Started](./docs/getting-started.md): From install to first shape in 60 seconds
-- [B-Rep Concepts](./docs/concepts.md): Vertices, edges, faces, solids — and why they matter
+- [Getting Started](./docs/getting-started.md): Install, create shapes, export to STEP
+- [B-Rep Concepts](./docs/concepts.md): Vertices, edges, faces, solids - and why they matter
 - [Which API?](./docs/which-api.md): Fluent wrapper vs Sketcher vs functional
 
 **Reference**

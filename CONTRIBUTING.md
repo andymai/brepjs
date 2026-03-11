@@ -109,22 +109,22 @@ git commit -m "docs: update architecture guide"
 
 ### TypeScript Strict Mode
 
-- **No `any`** — Use proper types. If you must use `any` for WASM type gaps, add an ESLint disable comment with a reason:
+- **No `any`** - Use proper types. If you must use `any` for WASM type gaps, add an ESLint disable comment with a reason:
 
 ```typescript
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel WASM binding lacks type
 const shape: any = getKernel().BRepBuilderAPI_Box(...);
 ```
 
-- **No non-null assertions** (`!`) — Properly handle nullable types
-- **Consistent type imports** — Use `import type` for type-only imports:
+- **No non-null assertions** (`!`) - Properly handle nullable types
+- **Consistent type imports** - Use `import type` for type-only imports:
 
 ```typescript
 import type { Shape } from './shape.js';
 ```
 
-- **No `var`** — Use `const` or `let`
-- **Strict equality** — Always use `===` and `!==` (never `==` or `!=`)
+- **No `var`** - Use `const` or `let`
+- **Strict equality** - Always use `===` and `!==` (never `==` or `!=`)
 
 ### ESLint and Prettier
 
@@ -153,9 +153,9 @@ import { Shape } from '../core/shape';
 
 Import boundaries are enforced by:
 
-1. **`scripts/check-layer-boundaries.sh`** — runs in pre-commit hook
-2. **CI workflow** — runs on every PR
-3. **ESLint `no-restricted-syntax`** — bans `.oc` access and `.wrapped.method()` calls in Layer 2+
+1. **`scripts/check-layer-boundaries.sh`** - runs in pre-commit hook
+2. **CI workflow** - runs on every PR
+3. **ESLint `no-restricted-syntax`** - bans `.oc` access and `.wrapped.method()` calls in Layer 2+
 
 ```bash
 npm run check:boundaries   # manual check
@@ -239,9 +239,9 @@ Run `npm run test:coverage` to see a detailed coverage report.
 
 See [Architecture](docs/architecture.md#key-patterns) for detailed patterns with code examples. The essentials:
 
-- **Kernel access:** All operations go through `getKernel()` — Layer 2+ code must never call methods on `.wrapped` directly
+- **Kernel access:** All operations go through `getKernel()` - Layer 2+ code must never call methods on `.wrapped` directly
 - **Functional API:** New code goes in `*Fns.ts` files, not class methods (class wrappers are legacy)
-- **Custom kernels:** `registerKernel()` + `withKernel()` — see [Custom Kernel Guide](docs/kernel-swap.md)
+- **Custom kernels:** `registerKernel()` + `withKernel()` - see [Custom Kernel Guide](docs/kernel-swap.md)
 
 ## Where to Ask Questions
 

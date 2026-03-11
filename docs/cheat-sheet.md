@@ -205,7 +205,7 @@ Start with the fluent wrapper (`shape().cut().fillet()`). Use the Drawing API fo
 
 ## More
 
-- **[Getting Started](./getting-started.md)** — 60-second first shape + full walkthrough
-- **[Which API?](./which-api.md)** — Detailed API comparison
-- **[Memory Management](./memory-management.md)** — Full patterns for WASM cleanup
-- **[Error Reference](./errors.md)** — All error codes and recovery
+- **[Getting Started](./getting-started.md)** - 60-second first shape + full walkthrough
+- **[Which API?](./which-api.md)** - Detailed API comparison
+- **[Memory Management](./memory-management.md)** - Full patterns for WASM cleanup
+- **[Error Reference](./errors.md)** - All error codes and recovery

@@ -1,33 +1,6 @@
 # Getting Started
 
-Build your first 3D part — from `npm install` to exported STEP file.
-
-## 60 Seconds to Your First Shape
-
-```typescript
-import { box, measureVolume, exportSTEP, unwrap } from 'brepjs/quick';
-
-// Create a box — no init needed with brepjs/quick
-const b = box(30, 20, 10);
-
-// Measure it
-console.log('Volume:', measureVolume(b).toFixed(1), 'mm³');
-
-// Export to STEP (industry-standard CAD format)
-const step = unwrap(exportSTEP(b));
-console.log('STEP file:', step.size, 'bytes');
-```
-
-`brepjs/quick` auto-initializes the WASM kernel via top-level await.
-
-**What just happened?**
-
-1. `brepjs/quick` loaded and initialized the WASM geometry kernel
-2. `box(30, 20, 10)` created a B-Rep solid (width, depth, height)
-3. `measureVolume` computed the exact volume (6000 mm³)
-4. `exportSTEP` serialized the shape to an industry-standard CAD file
-
----
+Build your first 3D part, from `npm install` to exported STEP file.
 
 ## Prerequisites
 
@@ -44,19 +17,19 @@ npm install brepjs brepjs-opencascade
 
 ## Step 2: Initialize
 
-Two ways to start — pick whichever fits your setup:
+Two ways to start - pick whichever fits your setup:
 
-**Option A: `brepjs/quick` (zero config)**
+**Auto-init: `brepjs/quick` (zero config)**
 
 ```typescript
 import { box, cylinder, shape } from 'brepjs/quick';
 
-const b = box(30, 20, 10); // just works — WASM init happens via top-level await
+const b = box(30, 20, 10); // just works - WASM init happens via top-level await
 ```
 
 Best for: scripts, quick prototypes, any ESM environment that supports top-level await.
 
-**Option B: Standard import (explicit init)**
+**Manual init: Standard import**
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
@@ -70,7 +43,7 @@ const b = box(30, 20, 10);
 
 Best for: apps that need a loading indicator, explicit error handling, lazy initialization, or environments without top-level await (older bundlers, some test frameworks).
 
-Both options expose the same API — the only difference is who calls `initFromOC()`. All examples below work with either import path.
+Both paths expose the same API - the only difference is who calls `initFromOC()`. All examples below work with either import.
 
 ## Step 3: Create shapes with primitives
 
@@ -80,7 +53,17 @@ const cyl = cylinder(5, 20); // radius, height
 const sph = sphere(8); // radius
 ```
 
-`box`, `cylinder`, and `sphere` return `ValidSolid` — a branded type representing a watertight 3D shape that passes BRepCheck validation. All primitives are available from both `brepjs/quick` and `brepjs`.
+`box`, `cylinder`, and `sphere` return `ValidSolid` - a branded type representing a watertight 3D shape that passes BRepCheck validation. All primitives are available from both `brepjs/quick` and `brepjs`.
+
+WASM objects aren't garbage-collected. In loops or long-running apps, use `using` for automatic cleanup:
+
+```typescript
+{
+  using temp = box(10, 10, 10);
+} // cleaned up at block end
+```
+
+See [Memory Management](./memory-management.md) for full patterns.
 
 ## Step 4: Combine shapes with the fluent wrapper
 
@@ -125,7 +108,7 @@ The three boolean operations are:
 
 ## Step 5: Transform
 
-Transforms return new shapes — nothing is mutated:
+Transforms return new shapes - nothing is mutated:
 
 ```typescript
 // Wrapper style - chain operations fluently
@@ -160,11 +143,11 @@ import { measureVolume, measureArea } from 'brepjs';
 console.log('Volume:', measureVolume(moved), 'mm³');
 ```
 
-Measurement functions return plain numbers — they never fail on valid shapes.
+Measurement functions return plain numbers - they never fail on valid shapes.
 
 ## Step 7: Export
 
-Export functions return `Result<Blob>`:
+Export functions return `Result<Blob>`. `unwrap()` extracts the value or throws on error:
 
 ```typescript
 import { exportSTEP, unwrap } from 'brepjs';
@@ -232,7 +215,16 @@ const bufferData = toBufferGeometryData(m);
 console.log('Vertices:', bufferData.position.length / 3);
 ```
 
-Vite handles WASM loading automatically. For other bundlers, you may need to configure WASM file serving — see [Compatibility](./compatibility.md) for details.
+Vite handles WASM loading automatically. For other bundlers, you may need to configure WASM file serving - see [Compatibility](./compatibility.md) for details.
+
+> **SSR frameworks (Next.js, Nuxt, Remix):** brepjs requires WASM, which doesn't run during server-side rendering. Use a dynamic import in a client-only component:
+>
+> ```typescript
+> // Next.js example
+> const BrepViewer = dynamic(() => import('./BrepViewer'), { ssr: false });
+> ```
+>
+> See [Compatibility - No SSR Support](./compatibility.md#3-no-ssr-support) for patterns.
 
 Try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
 
@@ -288,7 +280,7 @@ const beveled = unwrap(chamfer(part, vertEdges, 1));
 
 brepjs uses a `Result<T, BrepError>` type for all fallible operations. Two styles:
 
-**Wrapper style** — throws on failure:
+**Wrapper style** - throws on failure:
 
 ```typescript
 import { shape, box, cylinder, BrepWrapperError } from 'brepjs';
@@ -304,7 +296,7 @@ try {
 }
 ```
 
-**Functional API** — explicit `Result` handling:
+**Functional API** - explicit `Result` handling:
 
 ```typescript
 import { cut, isOk } from 'brepjs';
@@ -339,13 +331,13 @@ const f = unwrap(face(cw)); // face() requires ClosedWire → OrientedFace
 const s = unwrap(extrude(f, 10)); // extrude() requires OrientedFace → Solid
 ```
 
-See [B-Rep Concepts](./concepts.md#validity-types) for how validity types work — `ClosedWire`, `OrientedFace`, `ValidSolid`, smart constructors, and type guards.
+See [B-Rep Concepts](./concepts.md#validity-types) for how validity types work - `ClosedWire`, `OrientedFace`, `ValidSolid`, smart constructors, and type guards.
 
 ---
 
 ## Advanced: Browser Loading Indicator
 
-When using the standard import (Option B from Step 2), you can show a loading indicator while the WASM kernel downloads:
+When using manual init (from Step 2), you can show a loading indicator while the WASM kernel downloads:
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
@@ -378,15 +370,15 @@ initCAD();
 
 ### "Cannot read properties of undefined" on first API call
 
-If using manual initialization (not `brepjs/quick`), make sure you've called `initFromOC()` before using any shape functions. See [Advanced: Manual Initialization](#advanced-manual-initialization) above.
+If using manual init (not `brepjs/quick`), make sure you've called `initFromOC()` before using any shape functions. See [Step 2: Initialize](#step-2-initialize) above.
 
 ### Boolean operation returns an error
 
 Boolean operations (`fuse`, `cut`, `intersect`) can fail when shapes don't overlap, are invalid, or have degenerate geometry. Try:
 
-1. **Check shapes overlap** — `cut(a, b)` requires `b` to intersect `a`
-2. **Heal inputs first** — `unwrap(healSolid(shape))` fixes minor geometry issues
-3. **Check the error** — `result.error.code` tells you exactly what failed (see [Error Reference](./errors.md))
+1. **Check shapes overlap** - `cut(a, b)` requires `b` to intersect `a`
+2. **Heal inputs first** - `unwrap(healSolid(shape))` fixes minor geometry issues
+3. **Check the error** - `result.error.code` tells you exactly what failed (see [Error Reference](./errors.md))
 
 ### Memory keeps growing
 
@@ -403,12 +395,12 @@ See [Memory Management](./memory-management.md) for full patterns.
 
 ### TypeScript errors with `using` syntax
 
-You need TypeScript 5.9+ and `"lib": ["ES2022", "ESNext.Disposable"]` in your tsconfig.json. If you can't upgrade, use `DisposalScope` instead — see [Memory Management](./memory-management.md).
+You need TypeScript 5.9+ and `"lib": ["ES2022", "ESNext.Disposable"]` in your tsconfig.json. If you can't upgrade, use `DisposalScope` instead - see [Memory Management](./memory-management.md).
 
 ## Next steps
 
-- **[Three.js Integration](./threejs-integration.md)** — Render shapes in the browser with Three.js
-- **[Which API?](./which-api.md)** — Choose between Sketcher, functional API, and Drawing API
-- **[B-Rep Concepts](./concepts.md)** — Understand the geometry model (vertices, edges, faces, solids)
-- **[Memory Management](./memory-management.md)** — How to clean up WASM objects
-- **[llms.txt](../llms.txt)** — Full API reference (great for AI-assisted development)
+- **[Three.js Integration](./threejs-integration.md)** - Render shapes in the browser with Three.js
+- **[Which API?](./which-api.md)** - Choose between Sketcher, functional API, and Drawing API
+- **[B-Rep Concepts](./concepts.md)** - Understand the geometry model (vertices, edges, faces, solids)
+- **[Memory Management](./memory-management.md)** - How to clean up WASM objects
+- **[llms.txt](../llms.txt)** - Full API reference (great for AI-assisted development)

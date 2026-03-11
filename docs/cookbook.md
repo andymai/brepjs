@@ -167,7 +167,7 @@ const assembly = shape(base).fuseAll(posts).val;
 
 ## 9. Measure Distances and Check Interference
 
-Two boxes — how far apart are they? Do they clash?
+Two boxes - how far apart are they? Do they clash?
 
 ```typescript
 import { box, sphere, measureDistance, checkInterference } from 'brepjs/quick';
@@ -384,7 +384,7 @@ const assembly = shape(base).fuse(posts[0]).fuse(posts[1]).fuse(posts[2]).fuse(p
 
 ### 21. Three.js Integration
 
-Render a brepjs shape in Three.js — mesh + edge wireframe:
+Render a brepjs shape in Three.js - mesh + edge wireframe:
 
 ```typescript
 import * as THREE from 'three';
@@ -422,14 +422,14 @@ For per-face colors, dynamic re-meshing, material recommendations, and a full sc
 
 ## Tips
 
-1. **Use the wrapper** — `shape().cut().fillet()` beats `unwrap(fillet(unwrap(cut(...))))`
-2. **Use finders** — `(e) => e.inDirection('Z')` is more maintainable than manual edge selection
-3. **Measure often** — `.volume()`, `.area()`, `measureDistance()` catch mistakes early
-4. **Export often** — save intermediate STEP files for visual inspection in CAD software
+1. **Use the wrapper** - `shape().cut().fillet()` beats `unwrap(fillet(unwrap(cut(...))))`
+2. **Use finders** - `(e) => e.inDirection('Z')` is more maintainable than manual edge selection
+3. **Measure often** - `.volume()`, `.area()`, `measureDistance()` catch mistakes early
+4. **Export often** - save intermediate STEP files for visual inspection in CAD software
 
 ## Next Steps
 
-- **[Getting Started](./getting-started.md)** — Full tutorial from installation to export
-- **[Three.js Integration](./threejs-integration.md)** — Render shapes in the browser
-- **[Which API?](./which-api.md)** — When to use each API style
-- **[Function Lookup](./function-lookup.md)** — Alphabetical index of every export
+- **[Getting Started](./getting-started.md)** - Full tutorial from installation to export
+- **[Three.js Integration](./threejs-integration.md)** - Render shapes in the browser
+- **[Which API?](./which-api.md)** - When to use each API style
+- **[Function Lookup](./function-lookup.md)** - Alphabetical index of every export

@@ -8,7 +8,7 @@ brepjs organizes its API into focused sub-path imports to reduce autocomplete no
 
 | Sub-path                                           | Description                                                      |
 | -------------------------------------------------- | ---------------------------------------------------------------- |
-| [`brepjs`](./modules/index.html)                   | Full API — all symbols re-exported                               |
+| [`brepjs`](./modules/index.html)                   | Full API - all symbols re-exported                               |
 | [`brepjs/core`](./modules/core.html)               | Result type, errors, vectors, planes, branded shape types        |
 | [`brepjs/topology`](./modules/topology.html)       | Primitives, booleans, modifiers, curves, faces, meshing, healing |
 | [`brepjs/operations`](./modules/operations.html)   | Extrude, loft, sweep, patterns, assemblies, history              |
@@ -21,11 +21,11 @@ brepjs organizes its API into focused sub-path imports to reduce autocomplete no
 
 ## Guides
 
-- [Getting Started](https://github.com/andymai/brepjs/blob/main/docs/getting-started.md) — Installation, WASM setup, first shape
-- [Which API?](https://github.com/andymai/brepjs/blob/main/docs/which-api.md) — Choosing between Sketcher, functional API, Drawing
-- [Function Lookup Table](https://github.com/andymai/brepjs/blob/main/docs/function-lookup.md) — Find any symbol and its sub-path
-- [Error Reference](https://github.com/andymai/brepjs/blob/main/docs/errors.md) — All error codes with recovery suggestions
-- [Memory Management](https://github.com/andymai/brepjs/blob/main/docs/memory-management.md) — WASM cleanup patterns
+- [Getting Started](https://github.com/andymai/brepjs/blob/main/docs/getting-started.md) - Installation, WASM setup, first shape
+- [Which API?](https://github.com/andymai/brepjs/blob/main/docs/which-api.md) - Choosing between Sketcher, functional API, Drawing
+- [Function Lookup Table](https://github.com/andymai/brepjs/blob/main/docs/function-lookup.md) - Find any symbol and its sub-path
+- [Error Reference](https://github.com/andymai/brepjs/blob/main/docs/errors.md) - All error codes with recovery suggestions
+- [Memory Management](https://github.com/andymai/brepjs/blob/main/docs/memory-management.md) - WASM cleanup patterns
 
 ## Quick Example
 

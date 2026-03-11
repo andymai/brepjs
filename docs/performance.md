@@ -11,13 +11,13 @@ Use batch boolean operations instead of sequential pairwise operations:
 ```typescript
 import { fuseAll, cutAll } from 'brepjs';
 
-// ❌ Slow — O(n) operations
+// ❌ Slow - O(n) operations
 let result = shapes[0];
 for (const shape of shapes.slice(1)) {
   result = fuse(result, shape);
 }
 
-// ✅ Fast — single N-way operation
+// ✅ Fast - single N-way operation
 const result = fuseAll(shapes);
 ```
 
@@ -77,13 +77,13 @@ clearMeshCache();
 Finders iterate over topology once per filter application. Chain filters to minimize iterations:
 
 ```typescript
-// ✅ Efficient — single iteration with combined filters
+// ✅ Efficient - single iteration with combined filters
 const faces = faceFinder()
   .parallelTo('Z')
   .ofSurfaceType('PLANE')
   .find(shape);
 
-// ❌ Less efficient — multiple separate queries
+// ❌ Less efficient - multiple separate queries
 const zFaces = faceFinder().parallelTo('Z').find(shape);
 const planeFaces = zFaces.filter(f => /* manual check */);
 ```

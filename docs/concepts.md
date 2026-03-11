@@ -1,12 +1,12 @@
 # B-Rep Concepts
 
-This guide introduces Boundary Representation (B-Rep) modeling for JavaScript developers. If you've used mesh-based libraries like Three.js, B-Rep is fundamentally different — and that difference is what makes it powerful for CAD.
+This guide introduces Boundary Representation (B-Rep) modeling for JavaScript developers. If you've used mesh-based libraries like Three.js, B-Rep is fundamentally different - and that difference is what makes it powerful for CAD.
 
 ## Mesh vs. B-Rep
 
 **Mesh** (Three.js, Babylon.js): A shape is a bag of triangles. A cube is 12 triangles. There's no concept of "this is a flat face" or "this edge is where two faces meet." Great for rendering, but lacks geometric precision.
 
-**B-Rep** (brepjs, SolidWorks, CATIA): A shape is defined by its _boundaries_ — faces, edges, and vertices — plus the mathematical surfaces and curves that define them exactly. A cube has 6 faces (each an infinite plane, trimmed), 12 edges (each a line segment), and 8 vertices. Booleans, fillets, and measurements work on exact geometry, not approximations.
+**B-Rep** (brepjs, SolidWorks, CATIA): A shape is defined by its _boundaries_ - faces, edges, and vertices - plus the mathematical surfaces and curves that define them exactly. A cube has 6 faces (each an infinite plane, trimmed), 12 edges (each a line segment), and 8 vertices. Booleans, fillets, and measurements work on exact geometry, not approximations.
 
 ```
 Mesh:   triangles → visual approximation
@@ -52,7 +52,7 @@ const type = getCurveType(edges[0]); // 'LINE', 'CIRCLE', etc.
 
 ### Wire
 
-A connected chain of edges forming a loop. Wires define the boundaries of faces — every face has at least one wire (its outer boundary), and may have additional wires for holes.
+A connected chain of edges forming a loop. Wires define the boundaries of faces - every face has at least one wire (its outer boundary), and may have additional wires for holes.
 
 ```typescript
 import { wireFinder } from 'brepjs';
@@ -85,7 +85,7 @@ A connected set of faces forming a surface. A closed shell (all faces joined, no
 
 ### Solid
 
-A watertight 3D volume bounded by a closed shell. This is the primary result type in CAD — it represents a real physical part with definite inside and outside.
+A watertight 3D volume bounded by a closed shell. This is the primary result type in CAD - it represents a real physical part with definite inside and outside.
 
 ```typescript
 import { box, measureVolume } from 'brepjs';
@@ -106,7 +106,7 @@ const assembly = compound([partA, partB, partC]);
 
 ## How brepjs represents shapes
 
-brepjs uses **branded types** — lightweight TypeScript type tags on top of the raw kernel WASM handle:
+brepjs uses **branded types** - lightweight TypeScript type tags on top of the raw kernel WASM handle:
 
 ```typescript
 type Edge<D extends Dimension = '3D'> = ShapeHandle & { readonly [__brand]: 'edge'; ... };
@@ -116,24 +116,24 @@ type Solid = ShapeHandle & { readonly [__brand]: 'solid' };
 
 This means:
 
-- **No class hierarchy** — shapes are plain handles, not class instances
-- **Compile-time safety** — you can't accidentally pass an `Edge` to a function expecting a `Face`
-- **Zero runtime cost** — the brand exists only at the type level
+- **No class hierarchy** - shapes are plain handles, not class instances
+- **Compile-time safety** - you can't accidentally pass an `Edge` to a function expecting a `Face`
+- **Zero runtime cost** - the brand exists only at the type level
 
 ### Phantom dimension types
 
 Shape types carry a phantom `D` parameter (`'2D' | '3D'`) that prevents mixing 2D and 3D geometry at compile time:
 
 ```typescript
-type Edge<'2D'>  // A 2D edge — cannot be passed to a 3D operation
-type Wire<'3D'>  // A 3D wire — the default
+type Edge<'2D'>  // A 2D edge - cannot be passed to a 3D operation
+type Wire<'3D'>  // A 3D wire - the default
 ```
 
-The default is `'3D'`, so existing code is unaffected. The dimension parameter has zero runtime cost — it exists only in the type system.
+The default is `'3D'`, so existing code is unaffected. The dimension parameter has zero runtime cost - it exists only in the type system.
 
 ### Validity types
 
-Some operations require shapes with stronger invariants. brepjs encodes these as **validity brands** — phantom tags layered on top of base types:
+Some operations require shapes with stronger invariants. brepjs encodes these as **validity brands** - phantom tags layered on top of base types:
 
 ```typescript
 type ClosedWire<D> = Wire<D> & { readonly [__closed]: true }; // Wire that forms a loop
@@ -235,7 +235,7 @@ const shelled = unwrap(shell(part, topFaces, 2));
 
 ## Next steps
 
-- **[Getting Started](./getting-started.md)** — Build your first part step by step
-- **[Architecture](./architecture.md)** — Layer diagram and type system design
-- **[Memory Management](./memory-management.md)** — Cleaning up WASM objects
-- **[Error Reference](./errors.md)** — Error codes and recovery patterns
+- **[Getting Started](./getting-started.md)** - Build your first part step by step
+- **[Architecture](./architecture.md)** - Layer diagram and type system design
+- **[Memory Management](./memory-management.md)** - Cleaning up WASM objects
+- **[Error Reference](./errors.md)** - Error codes and recovery patterns

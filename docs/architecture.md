@@ -185,7 +185,7 @@ type ClosedWire<D> = Wire<D> & { readonly [__closed]: true };
 type OrientedFace<D> = Face<D> & { readonly [__oriented]: true };
 type ValidSolid = Solid & { readonly [__valid]: true };
 
-// face() requires ClosedWire — passing a plain Wire is a compile error
+// face() requires ClosedWire - passing a plain Wire is a compile error
 function face(wire: ClosedWire): Result<OrientedFace>;
 ```
 
@@ -203,14 +203,14 @@ const temp = scope.register(someKernelHelper());
 
 ### 5. Kernel Abstraction
 
-All geometry operations go through `KernelAdapter` (defined in `kernel/types.ts`). Layer 2+ code treats shapes as opaque handles — it never calls methods on them directly.
+All geometry operations go through `KernelAdapter` (defined in `kernel/types.ts`). Layer 2+ code treats shapes as opaque handles - it never calls methods on them directly.
 
 ```typescript
-// ✅ Correct — pass handle to kernel method
+// ✅ Correct - pass handle to kernel method
 const hash = getKernel().hashCode(shape.wrapped, HASH_CODE_MAX);
 const type = getKernel().shapeType(shape.wrapped);
 
-// ❌ Banned — direct method call on handle
+// ❌ Banned - direct method call on handle
 const hash = shape.wrapped.HashCode(max);
 ```
 
