@@ -471,6 +471,9 @@ export class BrepkitAdapter implements KernelAdapter {
           solidIds.push(unwrapSolidOrThrow(shape, 'fuseAll'));
         }
       }
+      if (solidIds.length === 0) {
+        throw new Error('brepkit: fuseAll resolved to zero solid IDs');
+      }
       const result = this.bk.compoundFuse(new Uint32Array(solidIds));
       return solidHandle(result);
     }
