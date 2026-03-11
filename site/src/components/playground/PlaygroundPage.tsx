@@ -7,6 +7,7 @@ import { useUrlState } from '../../hooks/useUrlState';
 import { useHeroMesh } from '../../hooks/useHeroMesh';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { SHORTCUTS } from '../../lib/shortcuts';
+import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanel';
@@ -44,6 +45,11 @@ export default function PlaygroundPage() {
   const storage = typeof window !== 'undefined' ? localStorage : undefined;
   const hLayout = useDefaultLayout({ id: 'playground-h', storage });
   const vLayout = useDefaultLayout({ id: 'playground-v', storage });
+
+  // Preload WASM files in background when playground mounts
+  useEffect(() => {
+    startWASMPreload();
+  }, []);
 
   // Seed viewer with pre-computed mesh while WASM engine loads
   useEffect(() => {

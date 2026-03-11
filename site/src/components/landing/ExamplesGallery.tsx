@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { galleryExamples } from '../../lib/examples.js';
 import { useInView } from '../../hooks/useInView';
-import { useShapePrecompilation } from '../../hooks/useShapePrecompilation';
+import { usePrecomputedGalleryMeshes } from '../../hooks/usePrecomputedGalleryMeshes';
 import GalleryCard from './GalleryCard';
 
 /**
@@ -46,7 +46,7 @@ function useCardVisibility() {
 export default function ExamplesGallery() {
   const [sectionRef, sectionInView] = useInView();
   const { meshes: precompiledMeshes, loading: shapesLoading } =
-    useShapePrecompilation(galleryExamples);
+    usePrecomputedGalleryMeshes(galleryExamples);
   const { visibleCards, registerCard } = useCardVisibility();
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 

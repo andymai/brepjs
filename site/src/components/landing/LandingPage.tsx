@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import Header from '../layout/Header';
 import HeroSection from './HeroSection';
 import FeaturesSection from './FeaturesSection';
@@ -6,7 +5,6 @@ import ExamplesGallery from './ExamplesGallery';
 import InstallSection from './InstallSection';
 import CTASection from './CTASection';
 import Logo from '../shared/Logo';
-import { startWASMPreload } from '../../lib/wasmPreloader.js';
 
 function GradientDivider() {
   return <div className="gradient-divider" />;
@@ -30,11 +28,6 @@ const footerLinks = {
 };
 
 export default function LandingPage() {
-  // Preload WASM files in background while user browses landing page
-  useEffect(() => {
-    startWASMPreload();
-  }, []);
-
   return (
     <div className="relative min-h-screen bg-gray-950">
       {/* Full-page dot matrix */}

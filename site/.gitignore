@@ -1,5 +1,7 @@
 node_modules/
 dist/
 public/wasm/
+public/gallery-meshes/
+public/hero-mesh.bin
 .vercel
 .env*.local

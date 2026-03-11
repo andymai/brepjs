@@ -13,16 +13,34 @@ export function useHeroMesh() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('/hero-mesh.json')
-      .then((res) => res.json())
-      .then((data: { position: number[]; normal: number[]; index: number[]; edges: number[] }) => {
+    fetch('/hero-mesh.bin')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load hero mesh');
+        return res.arrayBuffer();
+      })
+      .then((buffer) => {
         if (cancelled) return;
-        setMesh({
-          position: new Float32Array(data.position),
-          normal: new Float32Array(data.normal),
-          index: new Uint32Array(data.index),
-          edges: new Float32Array(data.edges),
-        });
+
+        const header = new Uint32Array(buffer, 0, 4);
+        const posCount = header[0];
+        const normCount = header[1];
+        const idxCount = header[2];
+        const edgeCount = header[3];
+
+        let offset = 16;
+
+        const position = new Float32Array(buffer, offset, posCount);
+        offset += posCount * 4;
+
+        const normal = new Float32Array(buffer, offset, normCount);
+        offset += normCount * 4;
+
+        const index = new Uint32Array(buffer, offset, idxCount);
+        offset += idxCount * 4;
+
+        const edges = new Float32Array(buffer, offset, edgeCount);
+
+        setMesh({ position, normal, index, edges });
       })
       .catch(() => {
         // Silently fail — hero viewer just won't render
