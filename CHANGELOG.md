@@ -1,382 +1,342 @@
 # Changelog
 
-## [12.2.4](https://github.com/andymai/brepjs/compare/brepjs-v12.2.3...brepjs-v12.2.4) (2026-03-10)
+## [12.2.6](https://github.com/andymai/brepjs/compare/brepjs-v12.2.5...brepjs-v12.2.6) (2026-03-10)
 
+### Performance Improvements
+
+- **kernel:** batch tessellation via tessellateSolidGrouped ([#450](https://github.com/andymai/brepjs/issues/450)) ([a336306](https://github.com/andymai/brepjs/commit/a336306f8e36acd63ced62781aa5fc6f6b9a22d1))
+
+## [12.2.5](https://github.com/andymai/brepjs/compare/brepjs-v12.2.4...brepjs-v12.2.5) (2026-03-10)
 
 ### Bug Fixes
 
-* **kernel:** declare brepkit-wasm as optional peer dependency ([#445](https://github.com/andymai/brepjs/issues/445)) ([9a5574e](https://github.com/andymai/brepjs/commit/9a5574e28f105e174bb99b809efb6c4ab84bb4bf))
+- **kernel:** consolidate BrepkitHandle type export ([#448](https://github.com/andymai/brepjs/issues/448)) ([4d0aed1](https://github.com/andymai/brepjs/commit/4d0aed1d0f346a6d90585c2dff01a58ebe55cbb4))
+
+## [12.2.4](https://github.com/andymai/brepjs/compare/brepjs-v12.2.3...brepjs-v12.2.4) (2026-03-10)
+
+### Bug Fixes
+
+- **kernel:** declare brepkit-wasm as optional peer dependency ([#445](https://github.com/andymai/brepjs/issues/445)) ([9a5574e](https://github.com/andymai/brepjs/commit/9a5574e28f105e174bb99b809efb6c4ab84bb4bf))
 
 ## [12.2.3](https://github.com/andymai/brepjs/compare/brepjs-v12.2.2...brepjs-v12.2.3) (2026-03-09)
 
-
 ### Bug Fixes
 
-* honor caller-provided tolerances in brepkit adapter ([#441](https://github.com/andymai/brepjs/issues/441)) ([b3d0fb9](https://github.com/andymai/brepjs/commit/b3d0fb972702b825eae96ed616011400b1ab562e))
+- honor caller-provided tolerances in brepkit adapter ([#441](https://github.com/andymai/brepjs/issues/441)) ([b3d0fb9](https://github.com/andymai/brepjs/commit/b3d0fb972702b825eae96ed616011400b1ab562e))
 
 ## [12.2.2](https://github.com/andymai/brepjs/compare/brepjs-v12.2.1...brepjs-v12.2.2) (2026-03-09)
 
-
 ### Bug Fixes
 
-* **kernel:** remove isValid volume fallback, add strictness JSDoc (ADR-0006) ([#439](https://github.com/andymai/brepjs/issues/439)) ([f475097](https://github.com/andymai/brepjs/commit/f4750978cf7416bdacaf005522678e3be484b7cc))
+- **kernel:** remove isValid volume fallback, add strictness JSDoc (ADR-0006) ([#439](https://github.com/andymai/brepjs/issues/439)) ([f475097](https://github.com/andymai/brepjs/commit/f4750978cf7416bdacaf005522678e3be484b7cc))
 
 ## [12.2.1](https://github.com/andymai/brepjs/compare/brepjs-v12.2.0...brepjs-v12.2.1) (2026-03-09)
 
-
 ### Bug Fixes
 
-* **kernel:** warn on cross-kernel BREP format incompatibility (ADR-0006) ([#437](https://github.com/andymai/brepjs/issues/437)) ([a52342d](https://github.com/andymai/brepjs/commit/a52342d537d4f854ccd43442735383f03dba4036))
+- **kernel:** warn on cross-kernel BREP format incompatibility (ADR-0006) ([#437](https://github.com/andymai/brepjs/issues/437)) ([a52342d](https://github.com/andymai/brepjs/commit/a52342d537d4f854ccd43442735383f03dba4036))
 
 ## [12.2.0](https://github.com/andymai/brepjs/compare/brepjs-v12.1.0...brepjs-v12.2.0) (2026-03-09)
 
-
 ### Features
 
-* **kernel:** add one-time warnings for brepkit silent degradations (ADR-0006) ([#435](https://github.com/andymai/brepjs/issues/435)) ([37b8437](https://github.com/andymai/brepjs/commit/37b843774bb812d199dd8fdd5d0f374ad700b01f))
+- **kernel:** add one-time warnings for brepkit silent degradations (ADR-0006) ([#435](https://github.com/andymai/brepjs/issues/435)) ([37b8437](https://github.com/andymai/brepjs/commit/37b843774bb812d199dd8fdd5d0f374ad700b01f))
 
 ## [12.1.0](https://github.com/andymai/brepjs/compare/brepjs-v12.0.0...brepjs-v12.1.0) (2026-03-09)
 
-
 ### Features
 
-* phase 4 capability audit with behavioral diff matrix and parity tests (ADR-0006) ([#433](https://github.com/andymai/brepjs/issues/433)) ([664a5af](https://github.com/andymai/brepjs/commit/664a5af55cedeb61ff855102ca7a6cc616af0fb4))
+- phase 4 capability audit with behavioral diff matrix and parity tests (ADR-0006) ([#433](https://github.com/andymai/brepjs/issues/433)) ([664a5af](https://github.com/andymai/brepjs/commit/664a5af55cedeb61ff855102ca7a6cc616af0fb4))
 
 ## [12.0.0](https://github.com/andymai/brepjs/compare/brepjs-v11.1.0...brepjs-v12.0.0) (2026-03-09)
 
-
 ### ⚠ BREAKING CHANGES
 
-* remove JS mesh fallback, require C++ MeshExtractor ([#429](https://github.com/andymai/brepjs/issues/429))
+- remove JS mesh fallback, require C++ MeshExtractor ([#429](https://github.com/andymai/brepjs/issues/429))
 
 ### Features
 
-* remove JS mesh fallback, require C++ MeshExtractor ([#429](https://github.com/andymai/brepjs/issues/429)) ([73c32a7](https://github.com/andymai/brepjs/commit/73c32a70b3e0025a857b007e0bcb09e46d4faff7))
+- remove JS mesh fallback, require C++ MeshExtractor ([#429](https://github.com/andymai/brepjs/issues/429)) ([73c32a7](https://github.com/andymai/brepjs/commit/73c32a70b3e0025a857b007e0bcb09e46d4faff7))
 
 ## [11.1.0](https://github.com/andymai/brepjs/compare/brepjs-v11.0.1...brepjs-v11.1.0) (2026-03-09)
 
-
 ### Features
 
-* **errors:** add UNSUPPORTED error kind for capability gaps ([#424](https://github.com/andymai/brepjs/issues/424)) ([168e900](https://github.com/andymai/brepjs/commit/168e9004ecfbda44a62244cc0b513f61ec74033b))
+- **errors:** add UNSUPPORTED error kind for capability gaps ([#424](https://github.com/andymai/brepjs/issues/424)) ([168e900](https://github.com/andymai/brepjs/commit/168e9004ecfbda44a62244cc0b513f61ec74033b))
 
 ## [11.0.1](https://github.com/andymai/brepjs/compare/brepjs-v11.0.0...brepjs-v11.0.1) (2026-03-09)
 
-
 ### Performance Improvements
 
-* V8 CPU profile for Blueprint boolean hot-path analysis ([#421](https://github.com/andymai/brepjs/issues/421)) ([f613c8e](https://github.com/andymai/brepjs/commit/f613c8eed3b20a96e834628deb7c8d189b8bb85b))
+- V8 CPU profile for Blueprint boolean hot-path analysis ([#421](https://github.com/andymai/brepjs/issues/421)) ([f613c8e](https://github.com/andymai/brepjs/commit/f613c8eed3b20a96e834628deb7c8d189b8bb85b))
 
 ## [11.0.0](https://github.com/andymai/brepjs/compare/brepjs-v10.0.0...brepjs-v11.0.0) (2026-03-09)
 
-
 ### ⚠ BREAKING CHANGES
 
-* topological validity phantom types for compile-time safety ([#416](https://github.com/andymai/brepjs/issues/416))
+- topological validity phantom types for compile-time safety ([#416](https://github.com/andymai/brepjs/issues/416))
 
 ### Features
 
-* topological validity phantom types for compile-time safety ([#416](https://github.com/andymai/brepjs/issues/416)) ([0b5245e](https://github.com/andymai/brepjs/commit/0b5245ea35a832a82e95514c28df63e4e77c4b0b))
+- topological validity phantom types for compile-time safety ([#416](https://github.com/andymai/brepjs/issues/416)) ([0b5245e](https://github.com/andymai/brepjs/commit/0b5245ea35a832a82e95514c28df63e4e77c4b0b))
 
 ## [10.0.0](https://github.com/andymai/brepjs/compare/brepjs-v9.6.5...brepjs-v10.0.0) (2026-03-09)
 
-
 ### ⚠ BREAKING CHANGES
 
-* phantom dimension types for compile-time 2D/3D safety ([#414](https://github.com/andymai/brepjs/issues/414))
+- phantom dimension types for compile-time 2D/3D safety ([#414](https://github.com/andymai/brepjs/issues/414))
 
 ### Features
 
-* phantom dimension types for compile-time 2D/3D safety ([#414](https://github.com/andymai/brepjs/issues/414)) ([5542915](https://github.com/andymai/brepjs/commit/5542915759feea35dc1f5c7e99e540341dec2138))
+- phantom dimension types for compile-time 2D/3D safety ([#414](https://github.com/andymai/brepjs/issues/414)) ([5542915](https://github.com/andymai/brepjs/commit/5542915759feea35dc1f5c7e99e540341dec2138))
 
 ## [9.6.5](https://github.com/andymai/brepjs/compare/brepjs-v9.6.4...brepjs-v9.6.5) (2026-03-08)
 
-
 ### Bug Fixes
 
-* move shape creation inside benchBoth closures ([#411](https://github.com/andymai/brepjs/issues/411)) ([c036c11](https://github.com/andymai/brepjs/commit/c036c11df4340620ccc0f6f435ea834302a07740))
+- move shape creation inside benchBoth closures ([#411](https://github.com/andymai/brepjs/issues/411)) ([c036c11](https://github.com/andymai/brepjs/commit/c036c11df4340620ccc0f6f435ea834302a07740))
 
 ## [9.6.4](https://github.com/andymai/brepjs/compare/brepjs-v9.6.3...brepjs-v9.6.4) (2026-03-08)
 
-
 ### Bug Fixes
 
-* overhaul benchmark suite and fix fillet/chamfer BindingError ([#409](https://github.com/andymai/brepjs/issues/409)) ([f899dc8](https://github.com/andymai/brepjs/commit/f899dc83b986fd8d0c226ee357e8f12827a7b938))
+- overhaul benchmark suite and fix fillet/chamfer BindingError ([#409](https://github.com/andymai/brepjs/issues/409)) ([f899dc8](https://github.com/andymai/brepjs/commit/f899dc83b986fd8d0c226ee357e8f12827a7b938))
 
 ## [9.6.3](https://github.com/andymai/brepjs/compare/brepjs-v9.6.2...brepjs-v9.6.3) (2026-03-08)
 
-
 ### Bug Fixes
 
-* address unreviewed PR comments from past week ([#407](https://github.com/andymai/brepjs/issues/407)) ([d6694b1](https://github.com/andymai/brepjs/commit/d6694b1f066dd36accab5ed211d74c9394940f31))
+- address unreviewed PR comments from past week ([#407](https://github.com/andymai/brepjs/issues/407)) ([d6694b1](https://github.com/andymai/brepjs/commit/d6694b1f066dd36accab5ed211d74c9394940f31))
 
 ## [9.6.2](https://github.com/andymai/brepjs/compare/brepjs-v9.6.1...brepjs-v9.6.2) (2026-03-08)
 
-
 ### Bug Fixes
 
-* lower line coverage threshold to 84% ([#401](https://github.com/andymai/brepjs/issues/401)) ([aa9dcec](https://github.com/andymai/brepjs/commit/aa9dcec32fd6e3911e38b760764ec6acaea5e6cf))
+- lower line coverage threshold to 84% ([#401](https://github.com/andymai/brepjs/issues/401)) ([aa9dcec](https://github.com/andymai/brepjs/commit/aa9dcec32fd6e3911e38b760764ec6acaea5e6cf))
 
 ## [9.6.1](https://github.com/andymai/brepjs/compare/brepjs-v9.6.0...brepjs-v9.6.1) (2026-03-08)
 
-
 ### Bug Fixes
 
-* improve evolution chaining and geometric face matching ([#391](https://github.com/andymai/brepjs/issues/391)) ([e534472](https://github.com/andymai/brepjs/commit/e5344729171101dbcc77fa86fe1c273502898e33))
+- improve evolution chaining and geometric face matching ([#391](https://github.com/andymai/brepjs/issues/391)) ([e534472](https://github.com/andymai/brepjs/commit/e5344729171101dbcc77fa86fe1c273502898e33))
 
 ## [9.6.0](https://github.com/andymai/brepjs/compare/brepjs-v9.5.1...brepjs-v9.6.0) (2026-03-06)
 
-
 ### Features
 
-* **kernel:** integrate brepkit-wasm 0.5.2 — 89 remaining failures ([#389](https://github.com/andymai/brepjs/issues/389)) ([a93e336](https://github.com/andymai/brepjs/commit/a93e3360c1a56c3e05595b5402d389e332d61097))
+- **kernel:** integrate brepkit-wasm 0.5.2 — 89 remaining failures ([#389](https://github.com/andymai/brepjs/issues/389)) ([a93e336](https://github.com/andymai/brepjs/commit/a93e3360c1a56c3e05595b5402d389e332d61097))
 
 ## [9.5.1](https://github.com/andymai/brepjs/compare/brepjs-v9.5.0...brepjs-v9.5.1) (2026-03-06)
 
-
 ### Bug Fixes
 
-* **kernel:** brepkit adapter round 2 — 97 remaining failures ([#387](https://github.com/andymai/brepjs/issues/387)) ([59d5784](https://github.com/andymai/brepjs/commit/59d578423203cf1482a217082cad6cebb8fbc85c))
+- **kernel:** brepkit adapter round 2 — 97 remaining failures ([#387](https://github.com/andymai/brepjs/issues/387)) ([59d5784](https://github.com/andymai/brepjs/commit/59d578423203cf1482a217082cad6cebb8fbc85c))
 
 ## [9.5.0](https://github.com/andymai/brepjs/compare/brepjs-v9.4.1...brepjs-v9.5.0) (2026-03-06)
 
-
 ### Features
 
-* **tests:** dual-kernel test matrix + brepkit-wasm 0.5.0 ([#384](https://github.com/andymai/brepjs/issues/384)) ([b9f5579](https://github.com/andymai/brepjs/commit/b9f5579e766d3eaae6ff5dcd06630311f0f8cc9c))
+- **tests:** dual-kernel test matrix + brepkit-wasm 0.5.0 ([#384](https://github.com/andymai/brepjs/issues/384)) ([b9f5579](https://github.com/andymai/brepjs/commit/b9f5579e766d3eaae6ff5dcd06630311f0f8cc9c))
 
 ## [9.4.1](https://github.com/andymai/brepjs/compare/brepjs-v9.4.0...brepjs-v9.4.1) (2026-03-05)
 
-
 ### Bug Fixes
 
-* **kernel:** brepkit adapter loft, sweep, and handle fixes ([#382](https://github.com/andymai/brepjs/issues/382)) ([f25bd51](https://github.com/andymai/brepjs/commit/f25bd51c55156568cdfe0bedd62f78275c1f6c48))
+- **kernel:** brepkit adapter loft, sweep, and handle fixes ([#382](https://github.com/andymai/brepjs/issues/382)) ([f25bd51](https://github.com/andymai/brepjs/commit/f25bd51c55156568cdfe0bedd62f78275c1f6c48))
 
 ## [9.4.0](https://github.com/andymai/brepjs/compare/brepjs-v9.3.10...brepjs-v9.4.0) (2026-03-05)
 
-
 ### Features
 
-* **kernel:** integrate brepkit-wasm 0.4.3 ([#381](https://github.com/andymai/brepjs/issues/381)) ([3986ec4](https://github.com/andymai/brepjs/commit/3986ec41c16c1737619ef0df4a6ce73b74696f20))
-
+- **kernel:** integrate brepkit-wasm 0.4.3 ([#381](https://github.com/andymai/brepjs/issues/381)) ([3986ec4](https://github.com/andymai/brepjs/commit/3986ec41c16c1737619ef0df4a6ce73b74696f20))
 
 ### Bug Fixes
 
-* correct six bugs found in comprehensive codebase audit ([#379](https://github.com/andymai/brepjs/issues/379)) ([30cc62f](https://github.com/andymai/brepjs/commit/30cc62fc4ec2890f024819db93ad4db6d052d31b))
-* **deps:** correct brepkit-wasm version to ^0.1.0 ([#378](https://github.com/andymai/brepjs/issues/378)) ([17feeac](https://github.com/andymai/brepjs/commit/17feeac59a5fb4e116dd4f9fff736ae2c1cb7e1a))
-* reconcile release-please manifest for brepjs-opencascade to 0.9.0 ([#375](https://github.com/andymai/brepjs/issues/375)) ([cb4b3ca](https://github.com/andymai/brepjs/commit/cb4b3ca5d30219fcebf5a2f15e764d73e8e78762)), closes [#374](https://github.com/andymai/brepjs/issues/374)
+- correct six bugs found in comprehensive codebase audit ([#379](https://github.com/andymai/brepjs/issues/379)) ([30cc62f](https://github.com/andymai/brepjs/commit/30cc62fc4ec2890f024819db93ad4db6d052d31b))
+- **deps:** correct brepkit-wasm version to ^0.1.0 ([#378](https://github.com/andymai/brepjs/issues/378)) ([17feeac](https://github.com/andymai/brepjs/commit/17feeac59a5fb4e116dd4f9fff736ae2c1cb7e1a))
+- reconcile release-please manifest for brepjs-opencascade to 0.9.0 ([#375](https://github.com/andymai/brepjs/issues/375)) ([cb4b3ca](https://github.com/andymai/brepjs/commit/cb4b3ca5d30219fcebf5a2f15e764d73e8e78762)), closes [#374](https://github.com/andymai/brepjs/issues/374)
 
 ## [9.3.10](https://github.com/andymai/brepjs/compare/brepjs-v9.3.9...brepjs-v9.3.10) (2026-03-04)
 
-
 ### Performance Improvements
 
-* **wasm:** build flags, C++ extractors, and command buffer design ([#371](https://github.com/andymai/brepjs/issues/371)) ([5c591a1](https://github.com/andymai/brepjs/commit/5c591a1767d3ac80921ff38ab55273f76bfdfa81))
+- **wasm:** build flags, C++ extractors, and command buffer design ([#371](https://github.com/andymai/brepjs/issues/371)) ([5c591a1](https://github.com/andymai/brepjs/commit/5c591a1767d3ac80921ff38ab55273f76bfdfa81))
 
 ## [9.3.9](https://github.com/andymai/brepjs/compare/brepjs-v9.3.8...brepjs-v9.3.9) (2026-03-04)
 
-
 ### Bug Fixes
 
-* **deps:** declare brepjs-opencascade ^0.9.0 peer compatibility ([#368](https://github.com/andymai/brepjs/issues/368)) ([79eeb78](https://github.com/andymai/brepjs/commit/79eeb78d601c7f819b086a4123e904c0e4d8d760))
+- **deps:** declare brepjs-opencascade ^0.9.0 peer compatibility ([#368](https://github.com/andymai/brepjs/issues/368)) ([79eeb78](https://github.com/andymai/brepjs/commit/79eeb78d601c7f819b086a4123e904c0e4d8d760))
 
 ## [9.3.8](https://github.com/andymai/brepjs/compare/brepjs-v9.3.7...brepjs-v9.3.8) (2026-03-04)
 
-
 ### Performance Improvements
 
-* **wasm:** C++ extractors, build flags, and UV mesh support ([#364](https://github.com/andymai/brepjs/issues/364)) ([4f2546b](https://github.com/andymai/brepjs/commit/4f2546b79221a4de126dac680b1b4c13a407a0f6))
+- **wasm:** C++ extractors, build flags, and UV mesh support ([#364](https://github.com/andymai/brepjs/issues/364)) ([4f2546b](https://github.com/andymai/brepjs/commit/4f2546b79221a4de126dac680b1b4c13a407a0f6))
 
 ## [9.3.7](https://github.com/andymai/brepjs/compare/brepjs-v9.3.6...brepjs-v9.3.7) (2026-03-04)
 
-
 ### Performance Improvements
 
-* batch performance optimizations for gridfinity workloads ([#362](https://github.com/andymai/brepjs/issues/362)) ([d1602bd](https://github.com/andymai/brepjs/commit/d1602bd9038c68130c2555a72d5abe80bd6b6d4e))
+- batch performance optimizations for gridfinity workloads ([#362](https://github.com/andymai/brepjs/issues/362)) ([d1602bd](https://github.com/andymai/brepjs/commit/d1602bd9038c68130c2555a72d5abe80bd6b6d4e))
 
 ## [9.3.6](https://github.com/andymai/brepjs/compare/brepjs-v9.3.5...brepjs-v9.3.6) (2026-03-04)
 
-
 ### Performance Improvements
 
-* **kernel:** cache default kernel lookup and skip empty evolution tracking ([#360](https://github.com/andymai/brepjs/issues/360)) ([d490601](https://github.com/andymai/brepjs/commit/d490601c49aa1680da688215d6e9ddfc80ef38fb))
+- **kernel:** cache default kernel lookup and skip empty evolution tracking ([#360](https://github.com/andymai/brepjs/issues/360)) ([d490601](https://github.com/andymai/brepjs/commit/d490601c49aa1680da688215d6e9ddfc80ef38fb))
 
 ## [9.3.5](https://github.com/andymai/brepjs/compare/brepjs-v9.3.4...brepjs-v9.3.5) (2026-03-03)
 
-
 ### Bug Fixes
 
-* **ci:** exclude brepkit adapter from coverage thresholds ([#357](https://github.com/andymai/brepjs/issues/357)) ([f490cef](https://github.com/andymai/brepjs/commit/f490cefa8c36d46fb650a1a32cb76a6a112f9c71))
+- **ci:** exclude brepkit adapter from coverage thresholds ([#357](https://github.com/andymai/brepjs/issues/357)) ([f490cef](https://github.com/andymai/brepjs/commit/f490cefa8c36d46fb650a1a32cb76a6a112f9c71))
 
 ## [9.3.4](https://github.com/andymai/brepjs/compare/brepjs-v9.3.3...brepjs-v9.3.4) (2026-03-03)
 
-
 ### Bug Fixes
 
-* systematic Uint32Array WASM interop bugs ([#355](https://github.com/andymai/brepjs/issues/355)) ([2eed241](https://github.com/andymai/brepjs/commit/2eed24134ce335056d6efc0489830fc812847e11))
+- systematic Uint32Array WASM interop bugs ([#355](https://github.com/andymai/brepjs/issues/355)) ([2eed241](https://github.com/andymai/brepjs/commit/2eed24134ce335056d6efc0489830fc812847e11))
 
 ## [9.3.3](https://github.com/andymai/brepjs/compare/brepjs-v9.3.2...brepjs-v9.3.3) (2026-03-03)
 
-
 ### Bug Fixes
 
-* **kernel:** fix 14 brepkit adapter test failures ([#353](https://github.com/andymai/brepjs/issues/353)) ([eafd9b5](https://github.com/andymai/brepjs/commit/eafd9b544dd0d1d92af502a05cbc520925fd2f06))
+- **kernel:** fix 14 brepkit adapter test failures ([#353](https://github.com/andymai/brepjs/issues/353)) ([eafd9b5](https://github.com/andymai/brepjs/commit/eafd9b544dd0d1d92af502a05cbc520925fd2f06))
 
 ## [9.3.2](https://github.com/andymai/brepjs/compare/brepjs-v9.3.1...brepjs-v9.3.2) (2026-03-03)
 
-
 ### Bug Fixes
 
-* **kernel:** improve 2D curve methods with Newton refinement ([#350](https://github.com/andymai/brepjs/issues/350)) ([5b51e0d](https://github.com/andymai/brepjs/commit/5b51e0d0913e5026412b1028960c68c055665d7a))
+- **kernel:** improve 2D curve methods with Newton refinement ([#350](https://github.com/andymai/brepjs/issues/350)) ([5b51e0d](https://github.com/andymai/brepjs/commit/5b51e0d0913e5026412b1028960c68c055665d7a))
 
 ## [9.3.1](https://github.com/andymai/brepjs/compare/brepjs-v9.3.0...brepjs-v9.3.1) (2026-03-03)
 
-
 ### Bug Fixes
 
-* **kernel:** improve geometric fidelity for ellipses and surfaces ([#348](https://github.com/andymai/brepjs/issues/348)) ([cfcc5ab](https://github.com/andymai/brepjs/commit/cfcc5ab1108823111b670feafdd6ffb930f67da7))
+- **kernel:** improve geometric fidelity for ellipses and surfaces ([#348](https://github.com/andymai/brepjs/issues/348)) ([cfcc5ab](https://github.com/andymai/brepjs/commit/cfcc5ab1108823111b670feafdd6ffb930f67da7))
 
 ## [9.3.0](https://github.com/andymai/brepjs/compare/brepjs-v9.2.2...brepjs-v9.3.0) (2026-03-03)
 
-
 ### Features
 
-* **tests:** add cross-kernel test harness and agreement tests ([#346](https://github.com/andymai/brepjs/issues/346)) ([0d2ccbc](https://github.com/andymai/brepjs/commit/0d2ccbc49454174975261c8c0c3448100f7c27d9))
+- **tests:** add cross-kernel test harness and agreement tests ([#346](https://github.com/andymai/brepjs/issues/346)) ([0d2ccbc](https://github.com/andymai/brepjs/commit/0d2ccbc49454174975261c8c0c3448100f7c27d9))
 
 ## [9.2.2](https://github.com/andymai/brepjs/compare/brepjs-v9.2.1...brepjs-v9.2.2) (2026-03-03)
 
-
 ### Bug Fixes
 
-* **kernel:** replace bare catch blocks with diagnostic logging ([#340](https://github.com/andymai/brepjs/issues/340)) ([3c7346b](https://github.com/andymai/brepjs/commit/3c7346bbd152995b4a453f13d4d9f4ef44312fd7))
+- **kernel:** replace bare catch blocks with diagnostic logging ([#340](https://github.com/andymai/brepjs/issues/340)) ([3c7346b](https://github.com/andymai/brepjs/commit/3c7346bbd152995b4a453f13d4d9f4ef44312fd7))
 
 ## [9.2.1](https://github.com/andymai/brepjs/compare/brepjs-v9.2.0...brepjs-v9.2.1) (2026-03-03)
 
-
 ### Bug Fixes
 
-* **kernel:** update makeBoxFromCorners for origin-corner convention ([#343](https://github.com/andymai/brepjs/issues/343)) ([801d653](https://github.com/andymai/brepjs/commit/801d653ee4af4beda645d8a1ec3307aeba0c4603))
+- **kernel:** update makeBoxFromCorners for origin-corner convention ([#343](https://github.com/andymai/brepjs/issues/343)) ([801d653](https://github.com/andymai/brepjs/commit/801d653ee4af4beda645d8a1ec3307aeba0c4603))
 
 ## [9.2.0](https://github.com/andymai/brepjs/compare/brepjs-v9.1.0...brepjs-v9.2.0) (2026-03-03)
 
-
 ### Features
 
-* **kernel:** add BrepkitKernel type interface for WASM exports ([#336](https://github.com/andymai/brepjs/issues/336)) ([b57ebab](https://github.com/andymai/brepjs/commit/b57ebabbbd1bd405f43f3e2c09eb1ec890d96ba7))
-
+- **kernel:** add BrepkitKernel type interface for WASM exports ([#336](https://github.com/andymai/brepjs/issues/336)) ([b57ebab](https://github.com/andymai/brepjs/commit/b57ebabbbd1bd405f43f3e2c09eb1ec890d96ba7))
 
 ### Bug Fixes
 
-* **kernel:** remove solid-only constraints from 19 brepkit methods ([#338](https://github.com/andymai/brepjs/issues/338)) ([97415ff](https://github.com/andymai/brepjs/commit/97415ff45d73c81c2a4ea6ea86cba4cb695adf77))
+- **kernel:** remove solid-only constraints from 19 brepkit methods ([#338](https://github.com/andymai/brepjs/issues/338)) ([97415ff](https://github.com/andymai/brepjs/commit/97415ff45d73c81c2a4ea6ea86cba4cb695adf77))
 
 ## [9.1.0](https://github.com/andymai/brepjs/compare/brepjs-v9.0.0...brepjs-v9.1.0) (2026-03-03)
 
-
 ### Features
 
-* **kernel:** add BrepkitAdapter for brepkit WASM kernel ([#334](https://github.com/andymai/brepjs/issues/334)) ([e015434](https://github.com/andymai/brepjs/commit/e0154349be8fe4569f3c88344d1878d5bd35220c))
+- **kernel:** add BrepkitAdapter for brepkit WASM kernel ([#334](https://github.com/andymai/brepjs/issues/334)) ([e015434](https://github.com/andymai/brepjs/commit/e0154349be8fe4569f3c88344d1878d5bd35220c))
 
 ## [9.0.0](https://github.com/andymai/brepjs/compare/brepjs-v8.8.11...brepjs-v9.0.0) (2026-03-02)
 
-
 ### ⚠ BREAKING CHANGES
 
-* remove deprecated gcWithScope, gcWithObject, localGC ([#331](https://github.com/andymai/brepjs/issues/331))
+- remove deprecated gcWithScope, gcWithObject, localGC ([#331](https://github.com/andymai/brepjs/issues/331))
 
 ### Features
 
-* remove deprecated gcWithScope, gcWithObject, localGC ([#331](https://github.com/andymai/brepjs/issues/331)) ([d7e33e5](https://github.com/andymai/brepjs/commit/d7e33e50ad8225ff4fbafbf6adc82731e525b9c7))
+- remove deprecated gcWithScope, gcWithObject, localGC ([#331](https://github.com/andymai/brepjs/issues/331)) ([d7e33e5](https://github.com/andymai/brepjs/commit/d7e33e50ad8225ff4fbafbf6adc82731e525b9c7))
 
 ## [8.8.11](https://github.com/andymai/brepjs/compare/brepjs-v8.8.10...brepjs-v8.8.11) (2026-03-02)
 
-
 ### Bug Fixes
 
-* remove accidentally committed node_modules symlink ([#329](https://github.com/andymai/brepjs/issues/329)) ([121a656](https://github.com/andymai/brepjs/commit/121a656127b785801397f0171f5c5cc850963351))
+- remove accidentally committed node_modules symlink ([#329](https://github.com/andymai/brepjs/issues/329)) ([121a656](https://github.com/andymai/brepjs/commit/121a656127b785801397f0171f5c5cc850963351))
 
 ## [8.8.10](https://github.com/andymai/brepjs/compare/brepjs-v8.8.9...brepjs-v8.8.10) (2026-03-02)
 
-
 ### Bug Fixes
 
-* **core:** polyfill Symbol.dispose for Safari and older browsers ([#327](https://github.com/andymai/brepjs/issues/327)) ([6cb73a7](https://github.com/andymai/brepjs/commit/6cb73a75c01d39eb2c6843e226b7c2ab8684e113)), closes [#326](https://github.com/andymai/brepjs/issues/326)
+- **core:** polyfill Symbol.dispose for Safari and older browsers ([#327](https://github.com/andymai/brepjs/issues/327)) ([6cb73a7](https://github.com/andymai/brepjs/commit/6cb73a75c01d39eb2c6843e226b7c2ab8684e113)), closes [#326](https://github.com/andymai/brepjs/issues/326)
 
 ## [8.8.9](https://github.com/andymai/brepjs/compare/brepjs-v8.8.8...brepjs-v8.8.9) (2026-03-02)
 
-
 ### Bug Fixes
 
-* postinstall breaks consumer npm install ([#323](https://github.com/andymai/brepjs/issues/323)) ([9df2e10](https://github.com/andymai/brepjs/commit/9df2e1083d1727b1d5a0b936ef49a84e54e91810))
+- postinstall breaks consumer npm install ([#323](https://github.com/andymai/brepjs/issues/323)) ([9df2e10](https://github.com/andymai/brepjs/commit/9df2e1083d1727b1d5a0b936ef49a84e54e91810))
 
 ## [8.8.8](https://github.com/andymai/brepjs/compare/brepjs-v8.8.7...brepjs-v8.8.8) (2026-03-02)
 
-
 ### Bug Fixes
 
-* **topology:** use DisposalScope in buildBSplineSurface ([#319](https://github.com/andymai/brepjs/issues/319)) ([df7b536](https://github.com/andymai/brepjs/commit/df7b536135e283b0a2e223c42cd8285401b6db7a))
+- **topology:** use DisposalScope in buildBSplineSurface ([#319](https://github.com/andymai/brepjs/issues/319)) ([df7b536](https://github.com/andymai/brepjs/commit/df7b536135e283b0a2e223c42cd8285401b6db7a))
 
 ## [8.8.7](https://github.com/andymai/brepjs/compare/brepjs-v8.8.6...brepjs-v8.8.7) (2026-03-02)
 
-
 ### Bug Fixes
 
-* **topology:** double-free in surfaceFns, resource leak in curveFns, extrude coverage ([#317](https://github.com/andymai/brepjs/issues/317)) ([bb5d050](https://github.com/andymai/brepjs/commit/bb5d0503eb9dbf6fb7df18770a55e3b4c068a69e))
+- **topology:** double-free in surfaceFns, resource leak in curveFns, extrude coverage ([#317](https://github.com/andymai/brepjs/issues/317)) ([bb5d050](https://github.com/andymai/brepjs/commit/bb5d0503eb9dbf6fb7df18770a55e3b4c068a69e))
 
 ## [8.8.6](https://github.com/andymai/brepjs/compare/brepjs-v8.8.5...brepjs-v8.8.6) (2026-03-02)
 
-
 ### Performance Improvements
 
-* **topology:** optimize sectionToFace O(n³)→O(n), healing/color test coverage ([#314](https://github.com/andymai/brepjs/issues/314)) ([1c497ce](https://github.com/andymai/brepjs/commit/1c497ce4341fa135083294ae5219a64c067ab465))
+- **topology:** optimize sectionToFace O(n³)→O(n), healing/color test coverage ([#314](https://github.com/andymai/brepjs/issues/314)) ([1c497ce](https://github.com/andymai/brepjs/commit/1c497ce4341fa135083294ae5219a64c067ab465))
 
 ## [8.8.5](https://github.com/andymai/brepjs/compare/brepjs-v8.8.4...brepjs-v8.8.5) (2026-03-02)
 
-
 ### Performance Improvements
 
-* **wasm,topology:** enable simd, memory tuning, iterator optimization, and test coverage ([#309](https://github.com/andymai/brepjs/issues/309)) ([c0f1e1a](https://github.com/andymai/brepjs/commit/c0f1e1a2ac6fcf0ec8df751cafd24f57ddb4b04b))
+- **wasm,topology:** enable simd, memory tuning, iterator optimization, and test coverage ([#309](https://github.com/andymai/brepjs/issues/309)) ([c0f1e1a](https://github.com/andymai/brepjs/commit/c0f1e1a2ac6fcf0ec8df751cafd24f57ddb4b04b))
 
 ## [8.8.4](https://github.com/andymai/brepjs/compare/brepjs-v8.8.3...brepjs-v8.8.4) (2026-03-01)
 
-
 ### Bug Fixes
 
-* **topology:** Result adoption, DisposalScope safety, compound ops tests ([#307](https://github.com/andymai/brepjs/issues/307)) ([1ad35d9](https://github.com/andymai/brepjs/commit/1ad35d9a29dab90557ea6983d7cf726e3768347f))
+- **topology:** Result adoption, DisposalScope safety, compound ops tests ([#307](https://github.com/andymai/brepjs/issues/307)) ([1ad35d9](https://github.com/andymai/brepjs/commit/1ad35d9a29dab90557ea6983d7cf726e3768347f))
 
 ## [8.8.3](https://github.com/andymai/brepjs/compare/brepjs-v8.8.2...brepjs-v8.8.3) (2026-03-01)
 
-
 ### Bug Fixes
 
-* **deps:** resolve npm audit security vulnerabilities ([#305](https://github.com/andymai/brepjs/issues/305)) ([1588306](https://github.com/andymai/brepjs/commit/15883065ca1eb8b6be76fbdea36af41423874aac))
+- **deps:** resolve npm audit security vulnerabilities ([#305](https://github.com/andymai/brepjs/issues/305)) ([1588306](https://github.com/andymai/brepjs/commit/15883065ca1eb8b6be76fbdea36af41423874aac))
 
 ## [8.8.2](https://github.com/andymai/brepjs/compare/brepjs-v8.8.1...brepjs-v8.8.2) (2026-03-01)
 
-
 ### Reverts
 
-* **site:** remove static asset exclusions from SPA rewrite ([#301](https://github.com/andymai/brepjs/issues/301)) ([8e36342](https://github.com/andymai/brepjs/commit/8e3634207bd1e00ec4ee26dae09258ea0c5beeee))
+- **site:** remove static asset exclusions from SPA rewrite ([#301](https://github.com/andymai/brepjs/issues/301)) ([8e36342](https://github.com/andymai/brepjs/commit/8e3634207bd1e00ec4ee26dae09258ea0c5beeee))
 
 ## [8.8.1](https://github.com/andymai/brepjs/compare/brepjs-v8.8.0...brepjs-v8.8.1) (2026-03-01)
 
-
 ### Bug Fixes
 
-* **site:** fix 403 on site.webmanifest ([#299](https://github.com/andymai/brepjs/issues/299)) ([53ed288](https://github.com/andymai/brepjs/commit/53ed2883fc668dae5527aec741188dbfd4ae0aca))
+- **site:** fix 403 on site.webmanifest ([#299](https://github.com/andymai/brepjs/issues/299)) ([53ed288](https://github.com/andymai/brepjs/commit/53ed2883fc668dae5527aec741188dbfd4ae0aca))
 
 ## [8.8.0](https://github.com/andymai/brepjs/compare/brepjs-v8.7.6...brepjs-v8.8.0) (2026-02-18)
 
-
 ### Features
 
-* **build:** add bundle size tracking with size-limit ([#283](https://github.com/andymai/brepjs/issues/283)) ([ce0daf8](https://github.com/andymai/brepjs/commit/ce0daf8708db2cdf15db43b75260107c1c59e1b7))
+- **build:** add bundle size tracking with size-limit ([#283](https://github.com/andymai/brepjs/issues/283)) ([ce0daf8](https://github.com/andymai/brepjs/commit/ce0daf8708db2cdf15db43b75260107c1c59e1b7))
 
 ## [8.7.6](https://github.com/andymai/brepjs/compare/brepjs-v8.7.5...brepjs-v8.7.6) (2026-02-18)
 
-
 ### Bug Fixes
 
-* **test:** correct vitest 4 config and relocate benchmark ([#281](https://github.com/andymai/brepjs/issues/281)) ([424d8f9](https://github.com/andymai/brepjs/commit/424d8f94c76352ca6038b16ea70005804fff6b58))
+- **test:** correct vitest 4 config and relocate benchmark ([#281](https://github.com/andymai/brepjs/issues/281)) ([424d8f9](https://github.com/andymai/brepjs/commit/424d8f94c76352ca6038b16ea70005804fff6b58))
 
 ## [8.7.5](https://github.com/andymai/brepjs/compare/brepjs-v8.7.4...brepjs-v8.7.5) (2026-02-18)
 
