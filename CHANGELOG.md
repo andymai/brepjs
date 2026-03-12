@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.7.1](https://github.com/andymai/brepjs/compare/brepjs-v12.7.0...brepjs-v12.7.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* **brepkit:** resolve 12 test failures across 6 files ([#481](https://github.com/andymai/brepjs/issues/481)) ([fb283e5](https://github.com/andymai/brepjs/commit/fb283e5d683d1a6502132b4c9376da41f00b4b1e))
+
 ## [12.7.0](https://github.com/andymai/brepjs/compare/brepjs-v12.6.0...brepjs-v12.7.0) (2026-03-12)
 
 
