@@ -1,5 +1,5 @@
 import { DEG2RAD } from '../core/constants.js';
-import { polarToCartesian, type Point2D } from '../2d/lib/index.js';
+import { polarToCartesian, type Point2D, type Curve2D } from '../2d/lib/index.js';
 import { bug } from '../core/errors.js';
 
 type StartSplineTangent = number | Point2D;
@@ -358,6 +358,21 @@ export interface GenericSketcher<ReturnType> {
   smoothSpline(xDist: number, yDist: number, splineConfig: SplineOptions): this;
 
   /**
+   * Returns the current pen position as [x, y] coordinates.
+   *
+   * @category Drawing State
+   */
+  readonly penPosition: Point2D;
+
+  /**
+   * Returns the current pen angle in degrees, based on the tangent direction
+   * at the end of the last drawn segment. Returns 0 if nothing has been drawn.
+   *
+   * @category Drawing State
+   */
+  readonly penAngle: number;
+
+  /**
    * Stop drawing and returns the sketch.
    */
   done(): ReturnType;
@@ -371,6 +386,18 @@ export interface GenericSketcher<ReturnType> {
    * between the first and last points drawn) and returns the sketch.
    */
   closeWithMirror(): ReturnType;
+
+  /**
+   * Close the path and apply a custom corner treatment (fillet, chamfer, or dogbone)
+   * between the last and first segments.
+   *
+   * @param radius - Fillet/chamfer radius, or a custom corner function.
+   * @param mode - Corner treatment type: `'fillet'` (default), `'chamfer'`, or `'dogbone'`.
+   */
+  closeWithCustomCorner(
+    radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
+    mode?: 'fillet' | 'chamfer' | 'dogbone'
+  ): ReturnType;
 }
 
 /*

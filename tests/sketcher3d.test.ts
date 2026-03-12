@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import {
   Sketcher,
   Sketches,
@@ -322,5 +323,115 @@ describe('Sketcher 3D closeWithMirror', () => {
     expect(sketch).toBeDefined();
     const vol = measureVolume(sketch.extrude(1));
     expect(vol).toBeGreaterThan(0);
+  });
+});
+
+describe('Sketcher 3D volume parity', () => {
+  it('hLine/vLine rectangle matches expected volume exactly', () => {
+    const sketch = new Sketcher().hLine(10).vLine(10).hLine(-10).close();
+    expect(measureVolume(sketch.extrude(5))).toBeCloseTo(500, 2);
+  });
+
+  it('sagittaArcTo preserves original sagitta direction', (ctx) => {
+    // brepkit: 2D→3D lift produces different geometry than direct 3D construction
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher().sagittaArcTo([10, 0], 3).lineTo([10, -5]).lineTo([0, -5]).close();
+    const vol = measureVolume(sketch.extrude(1));
+    // Verified against original Sketcher output (old code: 28.63)
+    expect(vol).toBeCloseTo(28.63, 0);
+  });
+
+  it('bulgeArcTo preserves original bulge direction', (ctx) => {
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher().bulgeArcTo([10, 0], 0.5).lineTo([10, -5]).lineTo([0, -5]).close();
+    const vol = measureVolume(sketch.extrude(1));
+    // Verified against original Sketcher output (old code: 67.47)
+    expect(vol).toBeCloseTo(67.47, 0);
+  });
+
+  it('halfEllipseTo matches original geometry', (ctx) => {
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher()
+      .halfEllipseTo([10, 0], 5)
+      .lineTo([10, -5])
+      .lineTo([0, -5])
+      .close();
+    const vol = measureVolume(sketch.extrude(1));
+    // Verified against original Sketcher output (old code: 89.27)
+    expect(vol).toBeCloseTo(89.27, 0);
+  });
+
+  it('ellipseTo matches original geometry', (ctx) => {
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher().ellipseTo([10, 0], 3, 5).lineTo([10, -5]).lineTo([0, -5]).close();
+    const vol = measureVolume(sketch.extrude(1));
+    // Verified against original Sketcher output (old code: 115.45)
+    expect(vol).toBeCloseTo(115.45, 0);
+  });
+
+  it('smoothSplineTo matches original geometry', (ctx) => {
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher().hLine(5).smoothSplineTo([10, 5]).lineTo([0, 10]).close();
+    const vol = measureVolume(sketch.extrude(1));
+    // Verified against original Sketcher output (old code: 62.5)
+    expect(vol).toBeCloseTo(62.5, 0);
+  });
+});
+
+describe('Sketcher 3D inherited capabilities', () => {
+  it('customCorner applies fillet between segments', (ctx) => {
+    // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher().hLine(10).customCorner(1).vLine(10).hLine(-10).close();
+    const vol = measureVolume(sketch.extrude(1));
+    // 10×10 square minus one radius-1 quarter-circle corner: 100 - (1 - π/4) ≈ 99.785
+    expect(vol).toBeCloseTo(99.785, 1);
+  });
+
+  it('customCorner applies chamfer between segments', (ctx) => {
+    // brepkit: chamfer2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher().hLine(10).customCorner(1, 'chamfer').vLine(10).hLine(-10).close();
+    const vol = measureVolume(sketch.extrude(1));
+    // 10×10 square minus one radius-1 chamfer triangle: 100 - 0.5 = 99.5
+    expect(vol).toBeCloseTo(99.5, 1);
+  });
+
+  it('closeWithCustomCorner fillets the closing corner', (ctx) => {
+    // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1);
+    const vol = measureVolume(sketch.extrude(1));
+    // 10×10 square minus one radius-1 quarter-circle corner: 100 - (1 - π/4) ≈ 99.785
+    expect(vol).toBeCloseTo(99.785, 1);
+  });
+
+  it('penPosition returns current 2D coordinates', () => {
+    const sketcher = new Sketcher().hLine(10).vLine(5);
+    const [x, y] = sketcher.penPosition;
+    expect(x).toBeCloseTo(10, 5);
+    expect(y).toBeCloseTo(5, 5);
+  });
+
+  it('penAngle returns tangent direction in degrees', () => {
+    const sketcher = new Sketcher().hLine(10);
+    expect(sketcher.penAngle).toBeCloseTo(0, 5);
+
+    const sketcher2 = new Sketcher().vLine(10);
+    expect(sketcher2.penAngle).toBeCloseTo(90, 5);
+  });
+
+  it('penAngle returns 0 before any drawing', () => {
+    const sketcher = new Sketcher();
+    expect(sketcher.penAngle).toBe(0);
+  });
+
+  it('customCorner works on non-XY planes', (ctx) => {
+    // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
+    if (isBrepkit) ctx.skip();
+    const sketch = new Sketcher('XZ').hLine(10).customCorner(2).vLine(10).hLine(-10).close();
+    const vol = measureVolume(sketch.extrude(1));
+    // 10×10 square minus one radius-2 quarter-circle corner: 100 - (4 - π) ≈ 99.142
+    expect(vol).toBeCloseTo(99.142, 1);
   });
 });

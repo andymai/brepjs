@@ -1,7 +1,7 @@
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
 import { DisposalScope } from '../core/memory.js';
-import type { ApproximationOptions } from '../2d/lib/index.js';
+import type { ApproximationOptions, Curve2D } from '../2d/lib/index.js';
 import {
   BoundingBox2d,
   deserializeCurve2D,
@@ -349,7 +349,10 @@ export class DrawingPen extends BaseSketcher2d implements GenericSketcher<Drawin
    * @param mode - Corner treatment type.
    * @returns The closed {@link Drawing}.
    */
-  closeWithCustomCorner(radius: number, mode: 'fillet' | 'chamfer' = 'fillet'): Drawing {
+  closeWithCustomCorner(
+    radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
+    mode: 'fillet' | 'chamfer' | 'dogbone' = 'fillet'
+  ): Drawing {
     this._closeSketch();
     this._customCornerLastWithFirst(radius, mode);
 
