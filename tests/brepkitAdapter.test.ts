@@ -1242,4 +1242,57 @@ describe('BrepkitAdapter', () => {
       expect(mock.copySolid).toHaveBeenCalledTimes(3);
     });
   });
+
+  describe('makeArc2dTangent', () => {
+    it('produces a correct arc for a quarter-circle', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+
+      // Quarter-circle: start=(1,0), tangent=(0,1), end=(0,1)
+      // Expected center = (0,0), radius = 1
+      const spy = vi.spyOn(adapter, 'makeArc2dThreePoints');
+      adapter.makeArc2dTangent(1, 0, 0, 1, 0, 1);
+
+      expect(spy).toHaveBeenCalledOnce();
+      const [sx, sy, mx, my, ex, ey] = spy.mock.calls[0];
+      expect(sx).toBeCloseTo(1, 10);
+      expect(sy).toBeCloseTo(0, 10);
+      expect(ex).toBeCloseTo(0, 10);
+      expect(ey).toBeCloseTo(1, 10);
+      // Midpoint should be on the unit circle at ~45°
+      const midR = Math.sqrt(mx * mx + my * my);
+      expect(midR).toBeCloseTo(1, 5);
+    });
+
+    it('falls back to a line for collinear tangent', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+
+      // Start=(0,0), tangent=(1,0), end=(5,0) — tangent parallel to chord
+      const spy = vi.spyOn(adapter, 'makeArc2dThreePoints');
+      const result = adapter.makeArc2dTangent(0, 0, 1, 0, 5, 0);
+
+      // Should NOT call makeArc2dThreePoints (degenerate case)
+      expect(spy).not.toHaveBeenCalled();
+      // Returns a line (from bk2d.makeLine2d)
+      expect(result).toBeDefined();
+    });
+
+    it('handles CW arc direction', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+
+      // Start=(1,0), tangent=(0,-1) → CW, end=(0,-1)
+      const spy = vi.spyOn(adapter, 'makeArc2dThreePoints');
+      adapter.makeArc2dTangent(1, 0, 0, -1, 0, -1);
+
+      expect(spy).toHaveBeenCalledOnce();
+      const [, , mx, my] = spy.mock.calls[0];
+      // Midpoint should be in the positive-x, negative-y quadrant (CW arc)
+      const midR = Math.sqrt(mx * mx + my * my);
+      expect(midR).toBeCloseTo(1, 5);
+      expect(mx).toBeGreaterThan(0);
+      expect(my).toBeLessThan(0);
+    });
+  });
 });

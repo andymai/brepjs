@@ -3810,21 +3810,55 @@ export class BrepkitAdapter implements KernelAdapter {
     ex: number,
     ey: number
   ): Curve2dHandle {
-    // Place midpoint offset along tangent direction from chord midpoint
+    // Exact tangent arc: find circle center C where:
+    //   (C - S) · T = 0        (tangent constraint)
+    //   |C - S| = |C - E|      (equidistant = on circle)
+    // Solution: C = S + t * perp(T), with t = -chord² / (2 * ((sy-ey)*ntx - (sx-ex)*nty))
     const len = Math.sqrt(tx * tx + ty * ty);
     const ntx = len > 0 ? tx / len : 0;
     const nty = len > 0 ? ty / len : 0;
-    // Offset proportional to chord length for a reasonable arc
-    const chord = Math.sqrt((ex - sx) ** 2 + (ey - sy) ** 2);
-    const offset = chord * 0.25;
-    return this.makeArc2dThreePoints(
-      sx,
-      sy,
-      (sx + ex) / 2 + nty * offset,
-      (sy + ey) / 2 - ntx * offset,
-      ex,
-      ey
-    );
+
+    const dx = sx - ex;
+    const dy = sy - ey;
+    const denom = 2 * (dy * ntx - dx * nty);
+
+    if (Math.abs(denom) < 1e-12) {
+      // Degenerate: tangent parallel to S→E chord
+      return bk2d.makeLine2d(sx, sy, ex, ey);
+    }
+
+    const chord2 = dx * dx + dy * dy;
+    const t = -chord2 / denom;
+    const cx = sx - t * nty;
+    const cy = sy + t * ntx;
+    const radius = Math.abs(t);
+
+    // Pick the arc midpoint on the correct side (matching tangent direction).
+    const a1 = Math.atan2(sy - cy, sx - cx);
+    const a2 = Math.atan2(ey - cy, ex - cx);
+
+    // At S the CCW tangent is perpendicular to the radius: (-sin(a1), cos(a1))
+    const ccwTanX = -(sy - cy) / radius;
+    const ccwTanY = (sx - cx) / radius;
+    const dotCcw = ntx * ccwTanX + nty * ccwTanY;
+
+    let aMid: number;
+    if (dotCcw > 0) {
+      // CCW arc from S to E
+      let da = a2 - a1;
+      if (da <= 0) da += 2 * Math.PI;
+      aMid = a1 + da / 2;
+    } else {
+      // CW arc from S to E
+      let da = a2 - a1;
+      if (da >= 0) da -= 2 * Math.PI;
+      aMid = a1 + da / 2;
+    }
+
+    const mx = cx + radius * Math.cos(aMid);
+    const my = cy + radius * Math.sin(aMid);
+
+    return this.makeArc2dThreePoints(sx, sy, mx, my, ex, ey);
   }
   makeEllipse2d(
     cx: number,
