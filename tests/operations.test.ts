@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import {
   box,
   sphere,
@@ -32,8 +33,6 @@ import {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
-
-const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
 
 describe('basicFaceExtrusion', () => {
   it('extrudes a rectangular sketch into a solid', () => {

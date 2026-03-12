@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import {
   sketchRectangle,
   box,
@@ -28,8 +29,6 @@ import type { Face, Shape3D } from '../src/core/shapeTypes.js';
 beforeAll(async () => {
   await initKernel();
 }, 30000);
-
-const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
 
 describe('thicken', () => {
   it('thickens a planar face into a solid', () => {

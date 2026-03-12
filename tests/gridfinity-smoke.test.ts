@@ -13,6 +13,7 @@
 
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import { unwrap } from '../src/core/result.js';
 
 import {
@@ -51,8 +52,6 @@ import type { AnyShape, Shape3D } from '../src/index.js';
 beforeAll(async () => {
   await initKernel();
 }, 30_000);
-
-const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
 
 // ---------------------------------------------------------------------------
 // Helpers

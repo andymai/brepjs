@@ -8,6 +8,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import { getKernel } from '../src/kernel/index.js';
 import type { KernelAdapter } from '../src/kernel/types.js';
 import {
@@ -29,8 +30,6 @@ beforeAll(async () => {
   await initKernel();
   kernel = getKernel();
 }, 30000);
-
-const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
 
 // Helper: get the underlying KernelShape from a high-level shape
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unwrap branded shape

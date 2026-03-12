@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import {
   box,
   sphere,
@@ -33,8 +34,6 @@ import type { Shape3D } from '../src/core/shapeTypes.js';
 beforeAll(async () => {
   await initKernel();
 }, 30000);
-
-const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
 
 function boxAt(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): Shape3D {
   const b = box(x2 - x1, y2 - y1, z2 - z1);

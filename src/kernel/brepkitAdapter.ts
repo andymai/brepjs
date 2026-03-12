@@ -784,7 +784,7 @@ export class BrepkitAdapter implements KernelAdapter {
     p2: [number, number, number],
     p3: [number, number, number]
   ): KernelShape {
-    // Three-point arc: compute center, normal, radius, then make NURBS arc
+    // Three-point arc: compute center and normal, then delegate to native makeCircleArc3d
     // Compute normal from cross product of (p2-p1) × (p3-p1)
     const ab: [number, number, number] = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
     const ac: [number, number, number] = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
@@ -842,46 +842,23 @@ export class BrepkitAdapter implements KernelAdapter {
       p1[1] + ccx * ux[1] + ccy * uy[1],
       p1[2] + ccx * ux[2] + ccy * uy[2],
     ];
-    const radius = Math.sqrt(
-      (p1[0] - center[0]) ** 2 + (p1[1] - center[1]) ** 2 + (p1[2] - center[2]) ** 2
-    );
-
     // Use native makeCircleArc3d for true Circle3D edges (not NURBS).
     // p1 = start, p3 = end. The arc traverses through p2.
-    // For valid inputs where p2 is the actual midpoint, the arc direction
-    // is always consistent with nz, so we pass nz directly as the axis.
-    if (typeof this.bk.makeCircleArc3d === 'function') {
-      const id = this.bk.makeCircleArc3d(
-        p1[0],
-        p1[1],
-        p1[2],
-        p3[0],
-        p3[1],
-        p3[2],
-        center[0],
-        center[1],
-        center[2],
-        nz[0],
-        nz[1],
-        nz[2]
-      );
-      return edgeHandle(id);
-    }
-    // Fallback to NURBS arc if WASM function not available.
-    const lx: [number, number, number] = [p1[0] - center[0], p1[1] - center[1], p1[2] - center[2]];
-    const lxLen = Math.sqrt(lx[0] ** 2 + lx[1] ** 2 + lx[2] ** 2);
-    const uxA: [number, number, number] = [lx[0] / lxLen, lx[1] / lxLen, lx[2] / lxLen];
-    const uyA: [number, number, number] = [
-      nz[1] * uxA[2] - nz[2] * uxA[1],
-      nz[2] * uxA[0] - nz[0] * uxA[2],
-      nz[0] * uxA[1] - nz[1] * uxA[0],
-    ];
-    const v3f: [number, number, number] = [p3[0] - center[0], p3[1] - center[1], p3[2] - center[2]];
-    const dotX = v3f[0] * uxA[0] + v3f[1] * uxA[1] + v3f[2] * uxA[2];
-    const dotY = v3f[0] * uyA[0] + v3f[1] * uyA[1] + v3f[2] * uyA[2];
-    let endAngle = Math.atan2(dotY, dotX);
-    if (endAngle <= 0) endAngle += 2 * Math.PI;
-    return this.makeCircleNurbs(center, normal, radius, 0, endAngle);
+    const id = this.bk.makeCircleArc3d(
+      p1[0],
+      p1[1],
+      p1[2],
+      p3[0],
+      p3[1],
+      p3[2],
+      center[0],
+      center[1],
+      center[2],
+      nz[0],
+      nz[1],
+      nz[2]
+    );
+    return edgeHandle(id);
   }
 
   makeEllipseEdge(
