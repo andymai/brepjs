@@ -37,7 +37,7 @@ Monorepo with two publishable packages:
 
 ## Git hooks
 
-- **Pre-commit**: lint-staged + typecheck + boundary check (parallel), then `test:coverage:changed`. Set `FULL_TESTS=1` for full coverage run
+- **Pre-commit**: lint-staged + typecheck + boundary check (parallel), then changed-file tests (no coverage thresholds). Set `FULL_TESTS=1` for full coverage run
 - **Pre-push**: Full `test:coverage` + `knip` (~30s)
 - Bypass: `--no-verify` (not recommended)
 

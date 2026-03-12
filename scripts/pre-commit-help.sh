@@ -7,7 +7,7 @@ Quality gates enforce:
 - ✅ ESLint + Prettier (fix: npm run lint:fix && npm run format)
 - ✅ TypeScript strict mode (no any, no non-null assertions)
 - ✅ Layer boundaries (Layer 0 → 1 → 2 → 3)
-- ✅ Test coverage: Functions ≥83%, Statements ≥73%
+- ✅ Changed-file tests (coverage thresholds enforced at push time)
 
 To see detailed errors:
   npm run typecheck          # Type errors

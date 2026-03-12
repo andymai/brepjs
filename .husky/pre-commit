@@ -18,6 +18,8 @@ wait $PID2 || exit 1
 wait $PID3 || exit 1
 
 # Tier 2: Tests (only if Tier 1 passes)
+# Default: run only tests affected by changed files (fast, no coverage thresholds).
+# FULL_TESTS=1: run full suite with coverage thresholds (same as pre-push).
 if [ "${FULL_TESTS:-0}" = "1" ]; then
   npm run test:coverage
 else
