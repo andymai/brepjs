@@ -27,6 +27,8 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
+const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
+
 // ---------------------------------------------------------------------------
 // drill
 // ---------------------------------------------------------------------------
@@ -93,7 +95,7 @@ describe('pocket()', () => {
 
   it('returns Err with COMPOUND_NO_FACES for shape with no faces', (ctx) => {
     // brepkit skip: uses raw OCCT API (oc.gp_Pnt_3, BRepBuilderAPI_MakeEdge_3)
-    if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
+    if (isBrepkit) ctx.skip();
     const oc = getKernel().oc;
     const p1 = new oc.gp_Pnt_3(0, 0, 0);
     const p2 = new oc.gp_Pnt_3(10, 0, 0);

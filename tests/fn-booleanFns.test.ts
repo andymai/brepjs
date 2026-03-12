@@ -34,6 +34,8 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
+const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
+
 function boxAt(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): Shape3D {
   const b = box(x2 - x1, y2 - y1, z2 - z1);
   if (x1 === 0 && y1 === 0 && z1 === 0) return b;
@@ -127,14 +129,12 @@ describe('boolean edge cases', () => {
 
     it('intersect disjoint boxes produces empty or negligible volume', (ctx) => {
       // brepkit throws on disjoint intersection instead of returning empty shape
-      if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
+      if (isBrepkit) ctx.skip();
       const result = intersect(boxAt(0, 0, 0, 10, 10, 10), boxAt(100, 0, 0, 110, 10, 10));
-      // kernel may return an empty shell or compound
-      expect(isOk(result) || isErr(result)).toBe(true);
-      if (isOk(result)) {
-        const vol = measureVolume(unwrap(result));
-        expect(vol).toBeLessThan(1); // Essentially zero
-      }
+      // OCCT returns Ok with an empty/near-zero-volume result for disjoint intersection
+      expect(isOk(result)).toBe(true);
+      const vol = measureVolume(unwrap(result));
+      expect(vol).toBeLessThan(1);
     });
 
     it('cut with disjoint tool preserves base volume', () => {
@@ -390,7 +390,7 @@ describe('section', () => {
 
   it('returns result for plane not intersecting shape', (ctx) => {
     // brepkit returns Err for non-intersecting section; OCCT returns Ok with empty edges
-    if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
+    if (isBrepkit) ctx.skip();
     // Box at z=0..10, plane at z=100 — no intersection
     const b = boxAt(0, 0, 0, 10, 10, 10);
     const result = section(b, {
@@ -423,10 +423,9 @@ describe('null-shape pre-validation', () => {
     const oc = getKernel().oc;
     return createSolid(new oc.TopoDS_Solid()) as Shape3D;
   }
-  const isBrepkit = () => process.env['TEST_KERNEL'] === 'brepkit';
 
   it('fuse rejects null first operand', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = fuse(makeNullShape(), boxAt(0, 0, 0, 10, 10, 10));
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
@@ -434,7 +433,7 @@ describe('null-shape pre-validation', () => {
   });
 
   it('fuse rejects null second operand', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = fuse(boxAt(0, 0, 0, 10, 10, 10), makeNullShape());
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
@@ -442,28 +441,28 @@ describe('null-shape pre-validation', () => {
   });
 
   it('cut rejects null base', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = cut(makeNullShape(), boxAt(0, 0, 0, 10, 10, 10));
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
   it('cut rejects null tool', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = cut(boxAt(0, 0, 0, 10, 10, 10), makeNullShape());
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
   it('intersect rejects null operand', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = intersect(makeNullShape(), boxAt(0, 0, 0, 10, 10, 10));
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
   it('fuseAll rejects null shape in array', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = fuseAll([boxAt(0, 0, 0, 10, 10, 10), makeNullShape()]);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
@@ -471,21 +470,21 @@ describe('null-shape pre-validation', () => {
   });
 
   it('cutAll rejects null base', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = cutAll(makeNullShape(), [boxAt(0, 0, 0, 10, 10, 10)]);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
   it('split rejects null shape', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = split(makeNullShape(), [boxAt(0, 0, 0, 10, 10, 10)]);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
   it('section rejects null shape', (ctx) => {
-    if (isBrepkit()) ctx.skip(); // oc.TopoDS_Solid unavailable
+    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
     const result = section(makeNullShape(), 'XY');
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
@@ -504,7 +503,7 @@ describe('sectionToFace', () => {
 
   it('sections a sphere producing a circular face', (ctx) => {
     // brepkit sectionToFace produces degenerate face for sphere cross-sections
-    if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
+    if (isBrepkit) ctx.skip();
     const s = sphere(10);
     const result = sectionToFace(s, 'XY', { planeSize: 100 });
     expect(isOk(result)).toBe(true);
