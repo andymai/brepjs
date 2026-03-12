@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.7.2](https://github.com/andymai/brepjs/compare/brepjs-v12.7.1...brepjs-v12.7.2) (2026-03-12)
+
+
+### Bug Fixes
+
+* normalize arc angle parameters to prevent wrong-direction interpolation ([#484](https://github.com/andymai/brepjs/issues/484)) ([afaa1b5](https://github.com/andymai/brepjs/commit/afaa1b59dacdb87e8593c5e9fcb1c3720d43b778))
+
 ## [12.7.1](https://github.com/andymai/brepjs/compare/brepjs-v12.7.0...brepjs-v12.7.1) (2026-03-12)
 
 
