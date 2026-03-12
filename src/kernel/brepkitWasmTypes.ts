@@ -83,6 +83,22 @@ export interface BrepkitKernel {
   /** Create a line edge between two points. Returns edge handle. */
   makeLineEdge(x1: number, y1: number, z1: number, x2: number, y2: number, z2: number): number;
 
+  /** Create a circular arc edge. The arc goes from start to end CCW when viewed along the axis. Returns edge handle. */
+  makeCircleArc3d(
+    startX: number,
+    startY: number,
+    startZ: number,
+    endX: number,
+    endY: number,
+    endZ: number,
+    centerX: number,
+    centerY: number,
+    centerZ: number,
+    axisX: number,
+    axisY: number,
+    axisZ: number
+  ): number;
+
   /** Create a NURBS curve edge. Returns edge handle. */
   makeNurbsEdge(
     startX: number,
