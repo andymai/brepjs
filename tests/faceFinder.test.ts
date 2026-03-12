@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import { box, cylinder, sphere, unwrap, isErr, faceFinder, normalAt } from '../src/index.js';
 
 beforeAll(async () => {
@@ -14,7 +15,7 @@ describe('FaceFinder extra coverage', () => {
     expect(faceFinder().ofSurfaceType('PLANE').findAll(cylinder(5, 20)).length).toBe(2);
   });
   it('ofSurfaceType SPHERE', () => {
-    const expected = process.env['TEST_KERNEL'] === 'brepkit' ? 2 : 1;
+    const expected = isBrepkit ? 2 : 1;
     expect(faceFinder().ofSurfaceType('SPHERE').findAll(sphere(10)).length).toBe(expected);
   });
   it('ofSurfaceType no match', () => {

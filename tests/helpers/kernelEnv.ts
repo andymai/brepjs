@@ -4,4 +4,3 @@
  */
 export const currentKernel = (process.env['TEST_KERNEL'] ?? 'occt') as 'occt' | 'brepkit';
 export const isBrepkit = currentKernel === 'brepkit';
-export const isOcct = currentKernel === 'occt';

@@ -12,8 +12,8 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { box, fillet, castShape, getEdges, getFaces, isSolid, unwrap } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 
-const isBrepkit = (process.env['TEST_KERNEL'] ?? 'occt') === 'brepkit';
 const descBk = isBrepkit ? describe : describe.skip;
 
 beforeAll(async () => {

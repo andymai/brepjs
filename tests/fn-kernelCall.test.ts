@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import {
   box,
   sphere,
@@ -226,7 +227,7 @@ describe('pipeline', () => {
   it('accepts a Result as input', (ctx) => {
     // Double fillet requires filleting edges adjacent to NURBS blend faces,
     // which brepkit's fillet algorithm does not yet support.
-    if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
+    if (isBrepkit) ctx.skip();
 
     const b = box(10, 10, 10) as Shape3D;
     const filletResult = fillet(b, getEdges(b).slice(0, 2), 1);

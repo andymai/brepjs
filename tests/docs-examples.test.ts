@@ -6,6 +6,7 @@
  */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { isBrepkit } from './helpers/kernelEnv.js';
 import {
   box,
   cylinder,
@@ -183,7 +184,7 @@ describe('cheat-sheet.md examples', () => {
   });
 
   it('2D to 3D workflow', (ctx) => {
-    if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
+    if (isBrepkit) ctx.skip();
     const profile = drawingCut(drawRectangle(50, 30), drawCircle(8).translate([25, 15]));
     const sketch = drawingToSketchOnPlane(profile, 'XY');
     const solid = shape(sketch.face()).extrude(20).val;
