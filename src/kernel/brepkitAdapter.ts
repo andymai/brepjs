@@ -847,22 +847,9 @@ export class BrepkitAdapter implements KernelAdapter {
     );
 
     // Use native makeCircleArc3d for true Circle3D edges (not NURBS).
-    // p1 = start, p3 = end. The arc traverses through p2, so we need
-    // the correct normal orientation to ensure the arc goes through p2.
-    // Check: cross product (center→p1) × (center→p3) should agree with nz
-    // for counter-clockwise traversal through p2.
-    const cp1: [number, number, number] = [p1[0] - center[0], p1[1] - center[1], p1[2] - center[2]];
-    // Cross (center→p1) × (center→p2) should point in the nz direction
-    const cp2: [number, number, number] = [p2[0] - center[0], p2[1] - center[1], p2[2] - center[2]];
-    // Use dot of cross(cp1,cp2) with nz:
-    const crossDotN =
-      (cp1[1] * cp2[2] - cp1[2] * cp2[1]) * nz[0] +
-      (cp1[2] * cp2[0] - cp1[0] * cp2[2]) * nz[1] +
-      (cp1[0] * cp2[1] - cp1[1] * cp2[0]) * nz[2];
-    // If crossDotN < 0, the CCW arc from p1→p3 goes the wrong way (away from p2).
-    // Flip the normal to reverse the arc direction.
-    const axis: [number, number, number] = crossDotN >= 0 ? nz : [-nz[0], -nz[1], -nz[2]];
-
+    // p1 = start, p3 = end. The arc traverses through p2.
+    // For valid inputs where p2 is the actual midpoint, the arc direction
+    // is always consistent with nz, so we pass nz directly as the axis.
     if (typeof this.bk.makeCircleArc3d === 'function') {
       const id = this.bk.makeCircleArc3d(
         p1[0],
@@ -874,9 +861,9 @@ export class BrepkitAdapter implements KernelAdapter {
         center[0],
         center[1],
         center[2],
-        axis[0],
-        axis[1],
-        axis[2]
+        nz[0],
+        nz[1],
+        nz[2]
       );
       return edgeHandle(id);
     }
@@ -3934,12 +3921,12 @@ export class BrepkitAdapter implements KernelAdapter {
       let tEnd = -a2;
       // Ensure tEnd >= tStart so the linear interpolation
       // tStart + t*(tEnd-tStart) traverses the arc in the correct (CW) direction.
-      if (tEnd < tStart) tEnd += 2 * Math.PI;
+      if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
       return { __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj;
     }
     // CCW: ensure tEnd >= tStart so interpolation goes in the CCW direction.
     let tEnd = a2;
-    if (tEnd < a1) tEnd += 2 * Math.PI;
+    if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
     return { __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj;
   }
   makeArc2dTangent(
