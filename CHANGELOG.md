@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.6.0](https://github.com/andymai/brepjs/compare/brepjs-v12.5.0...brepjs-v12.6.0) (2026-03-12)
+
+
+### Features
+
+* v13 roadmap — coverage, brepkit parity, and CI fixes ([#476](https://github.com/andymai/brepjs/issues/476)) ([0c5f5b6](https://github.com/andymai/brepjs/commit/0c5f5b6194fe47c6a2fe9fc63af2607a020514b2))
+
 ## [12.5.0](https://github.com/andymai/brepjs/compare/brepjs-v12.4.0...brepjs-v12.5.0) (2026-03-11)
 
 
