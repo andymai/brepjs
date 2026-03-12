@@ -91,7 +91,9 @@ describe('pocket()', () => {
     expect(unwrapErr(result).code).toBe('POCKET_INVALID_DEPTH');
   });
 
-  it('returns Err with COMPOUND_NO_FACES for shape with no faces', () => {
+  it('returns Err with COMPOUND_NO_FACES for shape with no faces', (ctx) => {
+    // brepkit skip: uses raw OCCT API (oc.gp_Pnt_3, BRepBuilderAPI_MakeEdge_3)
+    if (process.env['TEST_KERNEL'] === 'brepkit') ctx.skip();
     const oc = getKernel().oc;
     const p1 = new oc.gp_Pnt_3(0, 0, 0);
     const p2 = new oc.gp_Pnt_3(10, 0, 0);
