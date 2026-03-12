@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   box,
@@ -14,6 +14,7 @@ import {
   getFaces,
   getWires,
   getEdges,
+  getKernel,
   isOk,
   isErr,
 } from '../src/index.js';
@@ -108,6 +109,154 @@ describe('autoHeal', () => {
     const result = unwrap(autoHeal(b, { fixSelfIntersection: true }));
     // Valid shapes short-circuit
     expect(result.report.isValid).toBe(true);
+  });
+});
+
+describe('autoHeal — healing pipeline (invalid shape paths)', () => {
+  /**
+   * Mock kernel.isValid to return false on the first call (initial check) so
+   * autoHeal enters the healing pipeline, then return true for the final
+   * validation. This exercises lines 213-307 of healingFns.ts.
+   */
+  function mockKernelIsValid(pattern: 'first-false' | 'always-false') {
+    const kernel = getKernel();
+    const original = kernel.isValid.bind(kernel);
+    let callCount = 0;
+    const spy = vi.spyOn(kernel, 'isValid').mockImplementation((...args) => {
+      callCount++;
+      if (pattern === 'always-false') return false;
+      // first-false: first call returns false, rest delegate to real impl
+      if (callCount === 1) return false;
+      return original(...args);
+    });
+    return spy;
+  }
+
+  it('enters healing pipeline and applies shape-level healing on a solid', () => {
+    const b = box(10, 10, 10);
+    const spy = mockKernelIsValid('first-false');
+
+    try {
+      const result = unwrap(autoHeal(b));
+      expect(result.report.alreadyValid).toBe(false);
+      expect(result.report.steps[0]).toContain('Shape invalid');
+      expect(result.report.solidHealed).toBe(true);
+      const finalDiag = result.report.diagnostics.find((d) => d.name === 'finalValidation');
+      expect(finalDiag).toBeDefined();
+      expect(finalDiag!.attempted).toBe(true);
+      expect(finalDiag!.succeeded).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('applies sewing step when sewTolerance is provided', () => {
+    const b = box(10, 10, 10);
+    const spy = mockKernelIsValid('first-false');
+
+    try {
+      const result = unwrap(autoHeal(b, { sewTolerance: 0.01 }));
+      expect(result.report.alreadyValid).toBe(false);
+      const sewDiag = result.report.diagnostics.find((d) => d.name === 'sew');
+      expect(sewDiag).toBeDefined();
+      expect(sewDiag!.attempted).toBe(true);
+      expect(sewDiag!.succeeded).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('applies self-intersection fix when enabled', () => {
+    const b = box(10, 10, 10);
+    const spy = mockKernelIsValid('first-false');
+
+    try {
+      const result = unwrap(autoHeal(b, { fixSelfIntersection: true }));
+      expect(result.report.alreadyValid).toBe(false);
+      const siDiag = result.report.diagnostics.find((d) => d.name === 'fixSelfIntersection');
+      expect(siDiag).toBeDefined();
+      expect(siDiag!.attempted).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('skips healing when all fix options are disabled', () => {
+    const b = box(10, 10, 10);
+    const spy = mockKernelIsValid('first-false');
+
+    try {
+      const result = unwrap(autoHeal(b, { fixWires: false, fixFaces: false, fixSolids: false }));
+      expect(result.report.alreadyValid).toBe(false);
+      const healDiag = result.report.diagnostics.find((d) => d.name === 'healShape');
+      expect(healDiag).toBeDefined();
+      expect(healDiag!.attempted).toBe(false);
+      expect(healDiag!.detail).toBe('skipped by options');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('exercises face healing pipeline', () => {
+    const b = box(10, 10, 10);
+    const face = getFaces(b)[0]!;
+    const spy = mockKernelIsValid('first-false');
+
+    try {
+      const result = unwrap(autoHeal(face));
+      expect(result.report.alreadyValid).toBe(false);
+      expect(result.report.steps).toEqual(
+        expect.arrayContaining([expect.stringContaining('ShapeFix_Face')])
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('exercises wire healing pipeline', () => {
+    const b = box(10, 10, 10);
+    const wire = getWires(b)[0]!;
+    const spy = mockKernelIsValid('first-false');
+
+    try {
+      const result = unwrap(autoHeal(wire));
+      expect(result.report.alreadyValid).toBe(false);
+      expect(result.report.steps).toEqual(
+        expect.arrayContaining([expect.stringContaining('ShapeFix_Wire')])
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('reports final validation as invalid when healed shape still fails', () => {
+    const b = box(10, 10, 10);
+    const spy = mockKernelIsValid('always-false');
+
+    try {
+      const result = unwrap(autoHeal(b));
+      expect(result.report.alreadyValid).toBe(false);
+      expect(result.report.isValid).toBe(false);
+      const finalStep = result.report.steps.find((s) => s.startsWith('Final validation'));
+      expect(finalStep).toContain('still invalid');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('reports wire/face count changes', () => {
+    const b = box(10, 10, 10);
+    const spy = mockKernelIsValid('first-false');
+
+    try {
+      const result = unwrap(autoHeal(b));
+      expect(result.report.alreadyValid).toBe(false);
+      // Even with valid shapes, the wire/face counting code runs (lines 296-303)
+      expect(typeof result.report.wiresHealed).toBe('number');
+      expect(typeof result.report.facesHealed).toBe('number');
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

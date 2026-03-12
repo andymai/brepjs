@@ -10,6 +10,7 @@ import {
   measureVolume,
   translate,
 } from '../src/index.js';
+import { gridPattern } from '../src/operations/patternFns.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -81,5 +82,74 @@ describe('circularPattern', () => {
     const b = box(5, 5, 5);
     const result = circularPattern(b, [0, 0, 0], 4);
     expect(isErr(result)).toBe(true);
+  });
+
+  it('returns original shape when count is 1', () => {
+    const b = box(5, 5, 5);
+    const result = circularPattern(b, [0, 0, 1], 1);
+    expect(isOk(result)).toBe(true);
+    const pattern = unwrap(result);
+    const vol = measureVolume(pattern);
+    expect(vol).toBeCloseTo(5 * 5 * 5, -1);
+  });
+});
+
+describe('gridPattern', () => {
+  it('creates a 2x3 grid of boxes', () => {
+    const b = box(2, 2, 2);
+    const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 2, 3, 5, 5);
+    expect(isOk(result)).toBe(true);
+    const pattern = unwrap(result);
+    const vol = measureVolume(pattern);
+    // 6 non-overlapping boxes (spacing=5 > size=2)
+    expect(vol).toBeCloseTo(2 * 2 * 2 * 6, -1);
+  });
+
+  it('returns original shape when both counts are 1', () => {
+    const b = box(5, 5, 5);
+    const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 1, 10, 10);
+    expect(isOk(result)).toBe(true);
+    const vol = measureVolume(unwrap(result));
+    expect(vol).toBeCloseTo(5 * 5 * 5, -1);
+  });
+
+  it('returns error for countX < 1', () => {
+    const b = box(5, 5, 5);
+    const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 0, 3, 10, 10);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns error for countY < 1', () => {
+    const b = box(5, 5, 5);
+    const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 3, 0, 10, 10);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns error for zero directionX', () => {
+    const b = box(5, 5, 5);
+    const result = gridPattern(b, [0, 0, 0], [0, 1, 0], 2, 2, 10, 10);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('returns error for zero directionY', () => {
+    const b = box(5, 5, 5);
+    const result = gridPattern(b, [1, 0, 0], [0, 0, 0], 2, 2, 10, 10);
+    expect(isErr(result)).toBe(true);
+  });
+
+  it('creates a 1xN grid (single row)', () => {
+    const b = box(2, 2, 2);
+    const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 4, 5, 5);
+    expect(isOk(result)).toBe(true);
+    const vol = measureVolume(unwrap(result));
+    expect(vol).toBeCloseTo(2 * 2 * 2 * 4, -1);
+  });
+
+  it('creates a Nx1 grid (single column)', () => {
+    const b = box(2, 2, 2);
+    const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 3, 1, 5, 5);
+    expect(isOk(result)).toBe(true);
+    const vol = measureVolume(unwrap(result));
+    expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
   });
 });

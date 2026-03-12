@@ -25,6 +25,12 @@ function oc(shape: any): any {
   return shape.wrapped;
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- raw OCCT instance for fallback path testing */
+function getRawOC(): any {
+  return (kernel as any).oc;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 // ---------------------------------------------------------------------------
 // constructorOps
 // ---------------------------------------------------------------------------
@@ -566,5 +572,121 @@ describe('curveOps', () => {
     const edge = kernel.approximatePoints(points, { tolerance: 0.01, degMax: 5 });
     expect(edge).toBeDefined();
     expect(kernel.shapeType(edge)).toBe('edge');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// topologyOps JS fallback paths
+// ---------------------------------------------------------------------------
+
+describe('topologyOps JS fallback', () => {
+  it('iterShapes falls back to JS TopExp_Explorer when TopologyExtractor is absent', () => {
+    const ocInst = getRawOC();
+    const saved = ocInst.TopologyExtractor;
+    try {
+      // Remove C++ extractor to force JS fallback
+      ocInst.TopologyExtractor = undefined;
+
+      const b = box(10, 10, 10);
+      // getFaces uses kernel.iterShapes internally
+      const faces = getFaces(b);
+      expect(faces.length).toBe(6);
+    } finally {
+      ocInst.TopologyExtractor = saved;
+    }
+  });
+
+  it('JS fallback deduplicates shapes by hash code', () => {
+    const ocInst = getRawOC();
+    const saved = ocInst.TopologyExtractor;
+    try {
+      ocInst.TopologyExtractor = undefined;
+
+      const b = box(10, 10, 10);
+      const edges = getEdges(b);
+      // A box has 12 edges
+      expect(edges.length).toBe(12);
+    } finally {
+      ocInst.TopologyExtractor = saved;
+    }
+  });
+
+  it('JS fallback handles wires', () => {
+    const ocInst = getRawOC();
+    const saved = ocInst.TopologyExtractor;
+    try {
+      ocInst.TopologyExtractor = undefined;
+
+      const b = box(10, 10, 10);
+      const wires = getWires(b);
+      // A box has 6 wires (one per face)
+      expect(wires.length).toBe(6);
+    } finally {
+      ocInst.TopologyExtractor = saved;
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// topologyOps iterShapeList fallback
+// ---------------------------------------------------------------------------
+
+describe('evolutionOps JS fallback', () => {
+  it('translateWithHistory falls back to JS evolution when EvolutionExtractor is absent', () => {
+    const ocInst = getRawOC();
+    const savedEvol = ocInst.EvolutionExtractor;
+    try {
+      ocInst.EvolutionExtractor = undefined;
+
+      const b = box(10, 10, 10);
+      const faces = kernel.iterShapes(oc(b), 'face');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw OCCT shape access
+      const hashes = faces.map((f: any) => f.HashCode(2147483647));
+      const result = kernel.translateWithHistory(oc(b), 5, 0, 0, hashes, 2147483647);
+      expect(result).toBeDefined();
+      expect(result.shape).toBeDefined();
+      expect(result.evolution).toBeDefined();
+      expect(result.evolution.modified.size).toBeGreaterThanOrEqual(0);
+    } finally {
+      ocInst.EvolutionExtractor = savedEvol;
+    }
+  });
+
+  it('JS evolution fallback handles empty faceHashes', () => {
+    const ocInst = getRawOC();
+    const savedEvol = ocInst.EvolutionExtractor;
+    try {
+      ocInst.EvolutionExtractor = undefined;
+
+      const b = box(10, 10, 10);
+      // Empty faceHashes should return EMPTY_EVOLUTION
+      const result = kernel.translateWithHistory(oc(b), 5, 0, 0, [], 2147483647);
+      expect(result.evolution.modified.size).toBe(0);
+      expect(result.evolution.generated.size).toBe(0);
+      expect(result.evolution.deleted.size).toBe(0);
+    } finally {
+      ocInst.EvolutionExtractor = savedEvol;
+    }
+  });
+
+  it('JS evolution fallback with ListIterator absent uses copy-and-consume', () => {
+    const ocInst = getRawOC();
+    const savedEvol = ocInst.EvolutionExtractor;
+    const savedIter = ocInst.TopTools_ListIteratorOfListOfShape;
+    try {
+      ocInst.EvolutionExtractor = undefined;
+      ocInst.TopTools_ListIteratorOfListOfShape = undefined;
+
+      const b = box(10, 10, 10);
+      const faces = kernel.iterShapes(oc(b), 'face');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw OCCT shape access
+      const hashes = faces.map((f: any) => f.HashCode(2147483647));
+      const result = kernel.translateWithHistory(oc(b), 5, 0, 0, hashes, 2147483647);
+      expect(result).toBeDefined();
+      expect(result.shape).toBeDefined();
+    } finally {
+      ocInst.EvolutionExtractor = savedEvol;
+      ocInst.TopTools_ListIteratorOfListOfShape = savedIter;
+    }
   });
 });
