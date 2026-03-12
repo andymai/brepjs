@@ -4522,84 +4522,25 @@ export class BrepkitAdapter implements KernelAdapter {
         // Full/near-full circles → 4 arcs; large arcs → 2; small arcs → 1
         const nSegments = angularSpan > Math.PI ? 4 : angularSpan > Math.PI / 2 ? 2 : 1;
         const segmentSpan = (bounds.last - bounds.first) / nSegments;
-
-        if (nSegments === 1) {
-          const [su, sv] = bk2d.evaluateCurve2d(c, bounds.first);
-          const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.last);
-          const start3d = lift(su, sv);
-          const end3d = lift(eu, ev);
-          const eid = this.bk.makeCircleArc3d(...start3d, ...end3d, ...center3d, ...axis);
-          return edgeHandle(eid);
-        }
-
-        // Build multiple arc edges and return as a wire.
         const edgeIds: number[] = [];
         for (let seg = 0; seg < nSegments; seg++) {
-          const segStart = bounds.first + seg * segmentSpan;
-          const segEnd = bounds.first + (seg + 1) * segmentSpan;
-          const [su, sv] = bk2d.evaluateCurve2d(c, segStart);
-          const [eu, ev] = bk2d.evaluateCurve2d(c, segEnd);
-          const start3d = lift(su, sv);
-          const end3d = lift(eu, ev);
-          edgeIds.push(this.bk.makeCircleArc3d(...start3d, ...end3d, ...center3d, ...axis));
+          const [su, sv] = bk2d.evaluateCurve2d(c, bounds.first + seg * segmentSpan);
+          const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.first + (seg + 1) * segmentSpan);
+          edgeIds.push(
+            this.bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis)
+          );
         }
-        const wireId = this.bk.makeWire(edgeIds, false);
-        return wireHandle(wireId);
+        if (edgeIds.length === 1) return edgeHandle(edgeIds[0]!);
+        return wireHandle(this.bk.makeWire(edgeIds, false));
       }
 
       /* eslint-enable @typescript-eslint/no-explicit-any */
 
-      // Non-circle basis (e.g. ellipse): fall through to sampling path
-      const bounds = bk2d.curveBounds(c);
-      let angularSpan: number;
-      if (c.__bk2d === 'trimmed') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- bk2d trimmed curve internals
-        angularSpan = Math.abs((c as any).tEnd - (c as any).tStart);
-      } else {
-        angularSpan = 2 * Math.PI;
-      }
-      const nSegments = angularSpan > Math.PI ? 4 : angularSpan > Math.PI / 2 ? 2 : 1;
-      const segmentSpan = (bounds.last - bounds.first) / nSegments;
-      const samplesPerSegment = Math.max(12, Math.ceil(angularSpan / nSegments / (Math.PI / 45)));
-
-      if (nSegments === 1) {
-        const points: [number, number, number][] = [];
-        for (let i = 0; i <= samplesPerSegment; i++) {
-          const t = bounds.first + ((bounds.last - bounds.first) * i) / samplesPerSegment;
-          const [u, v] = bk2d.evaluateCurve2d(c, t);
-          points.push(lift(u, v));
-        }
-        return this.interpolatePoints(points);
-      }
-
-      const edgeIds: number[] = [];
-      for (let seg = 0; seg < nSegments; seg++) {
-        const segStart = bounds.first + seg * segmentSpan;
-        const segEnd = bounds.first + (seg + 1) * segmentSpan;
-        const points: [number, number, number][] = [];
-        for (let i = 0; i <= samplesPerSegment; i++) {
-          const t = segStart + ((segEnd - segStart) * i) / samplesPerSegment;
-          const [u, v] = bk2d.evaluateCurve2d(c, t);
-          points.push(lift(u, v));
-        }
-        const coords = points.flatMap(([px, py, pz]) => [px, py, pz]);
-        const degree = Math.min(3, points.length - 1);
-        edgeIds.push(this.bk.interpolatePoints(coords, degree));
-      }
-      const wireId = this.bk.makeWire(edgeIds, false);
-      return wireHandle(wireId);
+      // Non-circle basis (e.g. ellipse): fall through to generic sampling below
     }
 
     // For Bezier/BSpline: lift control points exactly (preserves NURBS structure)
-    if (c.__bk2d === 'bezier') {
-      const points3d = c.poles.map(([u, v]) => lift(u, v));
-      if (points3d.length === 2) return this.makeLineEdge(points3d[0]!, points3d[1]!);
-      const degree = Math.min(3, points3d.length - 1);
-      const coords = points3d.flatMap(([px, py, pz]) => [px, py, pz]);
-      const id = this.bk.interpolatePoints(coords, degree);
-      return edgeHandle(id);
-    }
-    if (c.__bk2d === 'bspline') {
+    if (c.__bk2d === 'bezier' || c.__bk2d === 'bspline') {
       const points3d = c.poles.map(([u, v]) => lift(u, v));
       if (points3d.length === 2) return this.makeLineEdge(points3d[0]!, points3d[1]!);
       const degree = Math.min(3, points3d.length - 1);
