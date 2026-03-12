@@ -285,3 +285,42 @@ describe('makeBaseBox', () => {
     expect(measureVolume(makeBaseBox(10, 20, 30))).toBeCloseTo(6000, 0);
   });
 });
+
+describe('Sketcher 3D tangentArcTo edge cases', () => {
+  it('quarter-circle tangent arc produces extrudable solid', () => {
+    const sketch = new Sketcher().lineTo([5, 0]).tangentArcTo([10, 5]).lineTo([0, 10]).close();
+    const vol = measureVolume(sketch.extrude(1));
+    expect(vol).toBeGreaterThan(0);
+  });
+
+  it('tangent arc with near-vertical previous edge', () => {
+    const sketch = new Sketcher().lineTo([0, 5]).tangentArcTo([5, 10]).lineTo([0, 10]).close();
+    expect(sketch).toBeDefined();
+  });
+
+  it('tangent arc relative variant on XZ plane', () => {
+    const sketch = new Sketcher('XZ').hLine(5).tangentArc(5, 5).lineTo([0, 10]).close();
+    expect(sketch).toBeDefined();
+  });
+
+  it('consecutive tangent arcs form a smooth path', () => {
+    const sketch = new Sketcher()
+      .lineTo([5, 0])
+      .tangentArcTo([10, 5])
+      .tangentArcTo([15, 0])
+      .lineTo([15, -5])
+      .lineTo([0, -5])
+      .close();
+    const vol = measureVolume(sketch.extrude(1));
+    expect(vol).toBeGreaterThan(0);
+  });
+});
+
+describe('Sketcher 3D closeWithMirror', () => {
+  it('closeWithMirror on XZ plane', () => {
+    const sketch = new Sketcher('XZ').hLine(5).vLine(5).hLine(5).closeWithMirror();
+    expect(sketch).toBeDefined();
+    const vol = measureVolume(sketch.extrude(1));
+    expect(vol).toBeGreaterThan(0);
+  });
+});

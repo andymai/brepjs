@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   BlueprintSketcher,
+  FaceSketcher,
   Drawing,
   draw,
   drawRectangle,
@@ -16,6 +17,9 @@ import {
   deserializeDrawing,
   sketchRectangle,
   makeBaseBox,
+  box,
+  getFaces,
+  measureArea,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -488,5 +492,112 @@ describe('BlueprintSketcher smoothSplineTo', () => {
       .lineTo([10, 0])
       .close();
     expect(bp).toBeDefined();
+  });
+});
+
+describe('FaceSketcher', () => {
+  it('draws a closed rectangle on a box face', () => {
+    const b = box(20, 20, 20);
+    const face = getFaces(b)[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const sketch = new FaceSketcher(face)
+      .movePointerTo([0.2, 0.2])
+      .lineTo([0.8, 0.2])
+      .lineTo([0.8, 0.8])
+      .lineTo([0.2, 0.8])
+      .close();
+    expect(sketch).toBeDefined();
+    const area = measureArea(sketch.face());
+    expect(area).toBeGreaterThan(0);
+  });
+
+  it('done returns an open sketch with default direction', () => {
+    const b = box(20, 20, 20);
+    const face = getFaces(b)[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const sketch = new FaceSketcher(face)
+      .movePointerTo([0.2, 0.2])
+      .lineTo([0.8, 0.2])
+      .lineTo([0.8, 0.8])
+      .done();
+    expect(sketch).toBeDefined();
+    expect(sketch.defaultOrigin).toBeDefined();
+    expect(sketch.defaultDirection).toBeDefined();
+  });
+
+  it('closeWithMirror mirrors curves and closes', () => {
+    const b = box(20, 20, 20);
+    const face = getFaces(b)[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const sketch = new FaceSketcher(face)
+      .movePointerTo([0.2, 0.2])
+      .lineTo([0.5, 0.4])
+      .lineTo([0.8, 0.2])
+      .closeWithMirror();
+    expect(sketch).toBeDefined();
+  });
+
+  it('closeWithCustomCorner applies fillet at closing corner', () => {
+    const b = box(20, 20, 20);
+    const face = getFaces(b)[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const sketch = new FaceSketcher(face)
+      .movePointerTo([0.2, 0.2])
+      .lineTo([0.8, 0.2])
+      .lineTo([0.8, 0.8])
+      .lineTo([0.2, 0.8])
+      .closeWithCustomCorner(0.05, 'fillet');
+    expect(sketch).toBeDefined();
+  });
+
+  it('accepts custom origin', () => {
+    const b = box(20, 20, 20);
+    const face = getFaces(b)[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+    const sketch = new FaceSketcher(face, [0.1, 0.1])
+      .lineTo([0.5, 0.1])
+      .lineTo([0.5, 0.5])
+      .lineTo([0.1, 0.5])
+      .close();
+    expect(sketch).toBeDefined();
+  });
+});
+
+describe('tangentArcTo edge cases', () => {
+  it('quarter-circle tangent arc has correct geometry', () => {
+    // Start with horizontal line at (0,0)→(5,0), then tangent arc to (10,5)
+    // Should produce a quarter-circle arc
+    const bp = new BlueprintSketcher().lineTo([5, 0]).tangentArcTo([10, 5]).lineTo([0, 10]).close();
+    expect(bp).toBeDefined();
+    expect(bp.curves.length).toBe(4); // line + arc + line + closing line
+  });
+
+  it('tangentArc with near-vertical direction', () => {
+    // Line going up, then arc curving to the right
+    const bp = new BlueprintSketcher().lineTo([0, 5]).tangentArcTo([5, 10]).lineTo([0, 10]).close();
+    expect(bp).toBeDefined();
+  });
+
+  it('tangentArc with large arc (> 90°)', () => {
+    // Line going right, then arc curving ~180° to go left
+    const bp = new BlueprintSketcher().lineTo([5, 0]).tangentArcTo([5, 10]).lineTo([0, 10]).close();
+    expect(bp).toBeDefined();
+  });
+
+  it('tangentArc relative variant moves pointer correctly', () => {
+    const sketcher = new BlueprintSketcher().lineTo([5, 0]).tangentArc(5, 5);
+    const pos = sketcher.penPosition;
+    expect(pos[0]).toBeCloseTo(10, 0);
+    expect(pos[1]).toBeCloseTo(5, 0);
+    // Clean up by closing
+    sketcher.lineTo([0, 10]).close();
+  });
+
+  it('consecutive tangent arcs form a smooth S-curve', () => {
+    const bp = new BlueprintSketcher()
+      .lineTo([5, 0])
+      .tangentArcTo([10, 5])
+      .tangentArcTo([15, 0])
+      .lineTo([15, -5])
+      .lineTo([0, -5])
+      .close();
+    expect(bp).toBeDefined();
+    // 3 lines + 2 arcs + closing line
+    expect(bp.curves.length).toBeGreaterThanOrEqual(5);
   });
 });
