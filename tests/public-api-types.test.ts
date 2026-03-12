@@ -369,6 +369,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'intersect',
   'intersect2D',
   'intersectBlueprints',
+  'invalidateShapeCache',
   'ioError',
   'is2D',
   'is3D',

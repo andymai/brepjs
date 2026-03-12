@@ -846,7 +846,41 @@ export class BrepkitAdapter implements KernelAdapter {
       (p1[0] - center[0]) ** 2 + (p1[1] - center[1]) ** 2 + (p1[2] - center[2]) ** 2
     );
 
-    // Build local frame for angle computation: x-axis from center→p1
+    // Use native makeCircleArc3d for true Circle3D edges (not NURBS).
+    // p1 = start, p3 = end. The arc traverses through p2, so we need
+    // the correct normal orientation to ensure the arc goes through p2.
+    // Check: cross product (center→p1) × (center→p3) should agree with nz
+    // for counter-clockwise traversal through p2.
+    const cp1: [number, number, number] = [p1[0] - center[0], p1[1] - center[1], p1[2] - center[2]];
+    // Cross (center→p1) × (center→p2) should point in the nz direction
+    const cp2: [number, number, number] = [p2[0] - center[0], p2[1] - center[1], p2[2] - center[2]];
+    // Use dot of cross(cp1,cp2) with nz:
+    const crossDotN =
+      (cp1[1] * cp2[2] - cp1[2] * cp2[1]) * nz[0] +
+      (cp1[2] * cp2[0] - cp1[0] * cp2[2]) * nz[1] +
+      (cp1[0] * cp2[1] - cp1[1] * cp2[0]) * nz[2];
+    // If crossDotN < 0, the CCW arc from p1→p3 goes the wrong way (away from p2).
+    // Flip the normal to reverse the arc direction.
+    const axis: [number, number, number] = crossDotN >= 0 ? nz : [-nz[0], -nz[1], -nz[2]];
+
+    if (typeof this.bk.makeCircleArc3d === 'function') {
+      const id = this.bk.makeCircleArc3d(
+        p1[0],
+        p1[1],
+        p1[2],
+        p3[0],
+        p3[1],
+        p3[2],
+        center[0],
+        center[1],
+        center[2],
+        axis[0],
+        axis[1],
+        axis[2]
+      );
+      return edgeHandle(id);
+    }
+    // Fallback to NURBS arc if WASM function not available.
     const lx: [number, number, number] = [p1[0] - center[0], p1[1] - center[1], p1[2] - center[2]];
     const lxLen = Math.sqrt(lx[0] ** 2 + lx[1] ** 2 + lx[2] ** 2);
     const uxA: [number, number, number] = [lx[0] / lxLen, lx[1] / lxLen, lx[2] / lxLen];
@@ -855,10 +889,9 @@ export class BrepkitAdapter implements KernelAdapter {
       nz[2] * uxA[0] - nz[0] * uxA[2],
       nz[0] * uxA[1] - nz[1] * uxA[0],
     ];
-    // Compute angle of p3 relative to center in the local frame
-    const v3: [number, number, number] = [p3[0] - center[0], p3[1] - center[1], p3[2] - center[2]];
-    const dotX = v3[0] * uxA[0] + v3[1] * uxA[1] + v3[2] * uxA[2];
-    const dotY = v3[0] * uyA[0] + v3[1] * uyA[1] + v3[2] * uyA[2];
+    const v3f: [number, number, number] = [p3[0] - center[0], p3[1] - center[1], p3[2] - center[2]];
+    const dotX = v3f[0] * uxA[0] + v3f[1] * uxA[1] + v3f[2] * uxA[2];
+    const dotY = v3f[0] * uyA[0] + v3f[1] * uyA[1] + v3f[2] * uyA[2];
     let endAngle = Math.atan2(dotY, dotX);
     if (endAngle <= 0) endAngle += 2 * Math.PI;
     return this.makeCircleNurbs(center, normal, radius, 0, endAngle);
@@ -926,23 +959,90 @@ export class BrepkitAdapter implements KernelAdapter {
     startTangent: [number, number, number],
     endPoint: [number, number, number]
   ): KernelShape {
-    // Cubic Bezier arc: start, start + tangent/3, end - reverse_tangent/3, end
-    const cp1: [number, number, number] = [
-      startPoint[0] + startTangent[0] / 3,
-      startPoint[1] + startTangent[1] / 3,
-      startPoint[2] + startTangent[2] / 3,
+    // Compute exact circle from start point + tangent + end point.
+    // Center lies on the line perpendicular to the tangent through the start,
+    // equidistant from start and end.
+    const tLen = Math.sqrt(startTangent[0] ** 2 + startTangent[1] ** 2 + startTangent[2] ** 2);
+    if (tLen < 1e-12) return this.makeLineEdge(startPoint, endPoint);
+    const t: [number, number, number] = [
+      startTangent[0] / tLen,
+      startTangent[1] / tLen,
+      startTangent[2] / tLen,
     ];
-    // Estimate end tangent as direction from cp1 to end
-    const dx = endPoint[0] - cp1[0];
-    const dy = endPoint[1] - cp1[1];
-    const dz = endPoint[2] - cp1[2];
-    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    const cp2: [number, number, number] = [
-      endPoint[0] - dx / (3 * Math.max(len, 1e-10)),
-      endPoint[1] - dy / (3 * Math.max(len, 1e-10)),
-      endPoint[2] - dz / (3 * Math.max(len, 1e-10)),
+
+    // chord = startPoint - endPoint
+    const ch: [number, number, number] = [
+      startPoint[0] - endPoint[0],
+      startPoint[1] - endPoint[1],
+      startPoint[2] - endPoint[2],
     ];
-    return this.makeBezierEdge([startPoint, cp1, cp2, endPoint]);
+    const chDotT = ch[0] * t[0] + ch[1] * t[1] + ch[2] * t[2];
+    // perp component of chord w.r.t. tangent
+    const perp: [number, number, number] = [
+      ch[0] - chDotT * t[0],
+      ch[1] - chDotT * t[1],
+      ch[2] - chDotT * t[2],
+    ];
+    const perpLen = Math.sqrt(perp[0] ** 2 + perp[1] ** 2 + perp[2] ** 2);
+    if (perpLen < 1e-12) return this.makeLineEdge(startPoint, endPoint);
+
+    const n: [number, number, number] = [perp[0] / perpLen, perp[1] / perpLen, perp[2] / perpLen];
+    const chord2 = ch[0] ** 2 + ch[1] ** 2 + ch[2] ** 2;
+    const nDotCh = n[0] * ch[0] + n[1] * ch[1] + n[2] * ch[2]; // = perpLen
+    const s = -chord2 / (2 * nDotCh);
+    const center: [number, number, number] = [
+      startPoint[0] + s * n[0],
+      startPoint[1] + s * n[1],
+      startPoint[2] + s * n[2],
+    ];
+    const radius = Math.abs(s);
+
+    // Compute arc midpoint: halfway angle on the correct side.
+    // Use vectors from center to start/end.
+    const e1: [number, number, number] = [
+      (startPoint[0] - center[0]) / radius,
+      (startPoint[1] - center[1]) / radius,
+      (startPoint[2] - center[2]) / radius,
+    ];
+    const e2: [number, number, number] = [
+      (endPoint[0] - center[0]) / radius,
+      (endPoint[1] - center[1]) / radius,
+      (endPoint[2] - center[2]) / radius,
+    ];
+    // Bisector of e1 and e2
+    let mx = e1[0] + e2[0];
+    let my = e1[1] + e2[1];
+    let mz = e1[2] + e2[2];
+    let mLen = Math.sqrt(mx * mx + my * my + mz * mz);
+    if (mLen < 1e-12) {
+      // e1 and e2 are opposite — midpoint is perpendicular to both.
+      // Use tangent direction at start to pick the correct side.
+      mx = t[0];
+      my = t[1];
+      mz = t[2];
+      mLen = 1;
+    }
+    const mid: [number, number, number] = [
+      center[0] + (radius * mx) / mLen,
+      center[1] + (radius * my) / mLen,
+      center[2] + (radius * mz) / mLen,
+    ];
+
+    // Check: tangent at start should point toward the midpoint.
+    const toMid: [number, number, number] = [
+      mid[0] - startPoint[0],
+      mid[1] - startPoint[1],
+      mid[2] - startPoint[2],
+    ];
+    const dotTM = t[0] * toMid[0] + t[1] * toMid[1] + t[2] * toMid[2];
+    if (dotTM < 0) {
+      // Flip to the other arc
+      mid[0] = center[0] - (radius * mx) / mLen;
+      mid[1] = center[1] - (radius * my) / mLen;
+      mid[2] = center[2] - (radius * mz) / mLen;
+    }
+
+    return this.makeArcEdge(startPoint, mid, endPoint);
   }
 
   makeHelixWire(
@@ -3830,9 +3930,17 @@ export class BrepkitAdapter implements KernelAdapter {
     if (!sense) {
       // CW circle evaluates angle = -t, so parameter t = -angle.
       // Map start/end angles to the CW parameter space.
-      return { __bk2d: 'trimmed', basis: circle, tStart: -a1, tEnd: -a2 } as Curve2dObj;
+      const tStart = -a1;
+      let tEnd = -a2;
+      // Ensure tEnd >= tStart so the linear interpolation
+      // tStart + t*(tEnd-tStart) traverses the arc in the correct (CW) direction.
+      if (tEnd < tStart) tEnd += 2 * Math.PI;
+      return { __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj;
     }
-    return { __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd: a2 } as Curve2dObj;
+    // CCW: ensure tEnd >= tStart so interpolation goes in the CCW direction.
+    let tEnd = a2;
+    if (tEnd < a1) tEnd += 2 * Math.PI;
+    return { __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj;
   }
   makeArc2dTangent(
     sx: number,

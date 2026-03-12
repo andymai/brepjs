@@ -447,6 +447,7 @@ export {
   iterVertices,
   getBounds,
   vertexPosition,
+  invalidateShapeCache,
   setShapeOrigin,
   getFaceOrigins,
   resize,

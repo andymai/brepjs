@@ -23,6 +23,7 @@ export {
   iterVertices,
   getBounds,
   vertexPosition,
+  invalidateShapeCache,
   type Bounds3D,
   type ShapeDescription,
 } from './topology/shapeFns.js';

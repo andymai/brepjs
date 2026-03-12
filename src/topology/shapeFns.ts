@@ -412,6 +412,14 @@ function getOrCreateCache(shape: AnyShape<Dimension>) {
   return entry;
 }
 
+/**
+ * Invalidate cached topology data for a shape.
+ * Call this after operations that modify a shape in-place (e.g., unifyFaces).
+ */
+export function invalidateShapeCache(shape: AnyShape<Dimension>): void {
+  topoCache.delete(shape.wrapped);
+}
+
 /** Get all edges of a shape as branded Edge handles. Results are cached per shape. */
 export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[] {
   const cache = getOrCreateCache(shape);
