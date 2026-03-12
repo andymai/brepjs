@@ -1257,11 +1257,17 @@ export class BrepkitAdapter implements KernelAdapter {
     shape: KernelShape,
     edges: KernelShape[],
     distance: number,
-    _angleDeg: number
+    angleDeg: number
   ): KernelShape {
-    // Approximate: use the face-normal distance directly (brepkit lacks native dist-angle chamfer)
-    warnOnce('chamfer-dist-angle', 'Distance-angle chamfer approximated as uniform chamfer.');
-    return this.chamfer(shape, edges, distance);
+    // Approximate: convert dist-angle to an averaged two-distance chamfer.
+    // brepkit lacks native dist-angle chamfer; this is the best available approximation.
+    warnOnce(
+      'chamfer-dist-angle',
+      'Distance-angle chamfer approximated as averaged two-distance chamfer.'
+    );
+    const d2 = distance * Math.tan((angleDeg * Math.PI) / 180);
+    const avgDist = (distance + d2) / 2;
+    return this.chamfer(shape, edges, avgDist);
   }
 
   shell(

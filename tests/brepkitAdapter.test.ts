@@ -42,6 +42,7 @@ function createMockBrepKernel() {
     revolve: vi.fn(() => allocId()),
     loft: vi.fn(() => allocId()),
     fillet: vi.fn(() => allocId()),
+    filletVariable: vi.fn(() => allocId()),
     chamfer: vi.fn(() => allocId()),
     shell: vi.fn(() => allocId()),
 
@@ -1240,6 +1241,49 @@ describe('BrepkitAdapter', () => {
       expect(pattern[0]).toBe(box);
       // 3 rotated copies
       expect(mock.copySolid).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('fillet (variable radius)', () => {
+    it('calls filletVariable with array-tuple radius', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+
+      const solid = adapter.makeBox(10, 10, 10);
+      const edges = (adapter.getEdges(solid) as BrepkitHandle[]).slice(0, 2);
+      adapter.fillet(solid, edges, [1, 3]);
+
+      expect(mock.filletVariable).toHaveBeenCalledOnce();
+      const spec = JSON.parse(mock.filletVariable.mock.calls[0]?.[1] as string);
+      expect(spec).toHaveLength(2);
+      expect(spec[0]).toEqual(expect.objectContaining({ startRadius: 1, endRadius: 3 }));
+      expect(spec[1]).toEqual(expect.objectContaining({ startRadius: 1, endRadius: 3 }));
+    });
+
+    it('calls filletVariable with per-edge function', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+
+      const solid = adapter.makeBox(10, 10, 10);
+      const edges = (adapter.getEdges(solid) as BrepkitHandle[]).slice(0, 1);
+      adapter.fillet(solid, edges, () => [2, 4]);
+
+      expect(mock.filletVariable).toHaveBeenCalledOnce();
+      const spec = JSON.parse(mock.filletVariable.mock.calls[0]?.[1] as string);
+      expect(spec).toHaveLength(1);
+      expect(spec[0]).toEqual(expect.objectContaining({ startRadius: 2, endRadius: 4 }));
+    });
+
+    it('uses fast path for constant radius', () => {
+      const mock = createMockBrepKernel();
+      const adapter = new BrepkitAdapter(mock);
+
+      const solid = adapter.makeBox(10, 10, 10);
+      const edges = (adapter.getEdges(solid) as BrepkitHandle[]).slice(0, 1);
+      adapter.fillet(solid, edges, 2);
+
+      expect(mock.fillet).toHaveBeenCalledOnce();
+      expect(mock.filletVariable).not.toHaveBeenCalled();
     });
   });
 
