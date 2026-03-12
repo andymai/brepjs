@@ -71,6 +71,97 @@ describe('kernelCall', () => {
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).kind).toBe('VALIDATION');
   });
+
+  it('supports TYPE_CAST error kind', () => {
+    const result = kernelCall(
+      () => {
+        throw new Error('wrong shape type');
+      },
+      'CAST_ERR',
+      'Cast failed',
+      'TYPE_CAST'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('TYPE_CAST');
+  });
+
+  it('supports IO error kind', () => {
+    const result = kernelCall(
+      () => {
+        throw new Error('file read error');
+      },
+      'IO_ERR',
+      'IO failed',
+      'IO'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('IO');
+  });
+
+  it('supports COMPUTATION error kind', () => {
+    const result = kernelCallRaw(
+      () => {
+        throw new Error('numeric overflow');
+      },
+      'COMP_ERR',
+      'Computation failed',
+      'COMPUTATION'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('COMPUTATION');
+  });
+
+  it('supports QUERY error kind', () => {
+    const result = kernelCallRaw(
+      () => {
+        throw new Error('no results');
+      },
+      'QUERY_ERR',
+      'Query failed',
+      'QUERY'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('QUERY');
+  });
+
+  it('supports UNSUPPORTED error kind', () => {
+    const result = kernelCallRaw(
+      () => {
+        throw new Error('not implemented');
+      },
+      'UNSUPPORTED_ERR',
+      'Unsupported operation',
+      'UNSUPPORTED'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('UNSUPPORTED');
+  });
+
+  it('supports SKETCHER_STATE error kind', () => {
+    const result = kernelCall(
+      () => {
+        throw new Error('invalid state');
+      },
+      'SKETCH_ERR',
+      'Sketcher error',
+      'SKETCHER_STATE'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('SKETCHER_STATE');
+  });
+
+  it('supports MODULE_INIT error kind', () => {
+    const result = kernelCallRaw(
+      () => {
+        throw new Error('init failed');
+      },
+      'INIT_ERR',
+      'Module init failed',
+      'MODULE_INIT'
+    );
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).kind).toBe('MODULE_INIT');
+  });
 });
 
 // ---------------------------------------------------------------------------

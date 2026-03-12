@@ -6,8 +6,13 @@ import {
   sketchRectangle,
   sketchRoundedRectangle,
   sketchPolysides,
+  sketchFaceOffset,
+  sketchParametricFunction,
   polysideInnerRadius,
   measureVolume,
+  measureArea,
+  box,
+  getFaces,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -71,6 +76,54 @@ describe('Canned sketches', () => {
     expect(polysideInnerRadius(10, 6, 2)).toBeCloseTo(base, 5);
   });
 
-  // sketchParametricFunction and sketchHelix omitted — heavy WASM ops
-  // that cause OOM in CI; covered indirectly via draw tests.
+  it('sketchEllipse on custom plane', () => {
+    const plane = {
+      origin: [0, 0, 5] as [number, number, number],
+      xDir: [1, 0, 0] as [number, number, number],
+      yDir: [0, 1, 0] as [number, number, number],
+      zDir: [0, 0, 1] as [number, number, number],
+    };
+    expect(sketchEllipse(10, 5, { plane })).toBeDefined();
+  });
+
+  it('sketchRectangle on custom plane', () => {
+    const plane = {
+      origin: [0, 0, 0] as [number, number, number],
+      xDir: [1, 0, 0] as [number, number, number],
+      yDir: [0, 1, 0] as [number, number, number],
+      zDir: [0, 0, 1] as [number, number, number],
+    };
+    expect(sketchRectangle(10, 20, { plane })).toBeDefined();
+  });
+
+  it('sketchPolysides on custom plane', () => {
+    const plane = {
+      origin: [0, 0, 0] as [number, number, number],
+      xDir: [1, 0, 0] as [number, number, number],
+      yDir: [0, 1, 0] as [number, number, number],
+      zDir: [0, 0, 1] as [number, number, number],
+    };
+    expect(sketchPolysides(10, 5, 0, { plane })).toBeDefined();
+  });
+
+  it('sketchFaceOffset shrinks a face inward', () => {
+    const b = box(20, 20, 20);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test indexing
+    const face = getFaces(b)[0]!;
+    const sketch = sketchFaceOffset(face, -2);
+    expect(sketch).toBeDefined();
+    const area = measureArea(sketch.face());
+    expect(area).toBeGreaterThan(0);
+    // Offset inward by 2 on each side → (20-4)² = 256 < 400
+    expect(area).toBeLessThan(400);
+  });
+
+  it('sketchParametricFunction creates a sine curve sketch', () => {
+    const sketch = sketchParametricFunction(
+      (t) => [t * 20, Math.sin(t * Math.PI * 2) * 5],
+      {},
+      { pointsCount: 50 }
+    );
+    expect(sketch).toBeDefined();
+  });
 });
