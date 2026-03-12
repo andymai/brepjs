@@ -1,15 +1,13 @@
 import { defineConfig } from 'vitest/config';
 
 /**
- * OCCT-only tests — use `getKernel().oc` to access raw Emscripten/OCCT objects.
- * Excluded from the brepkit project.
+ * Tests excluded from the brepkit project.
+ * Files with per-test ctx.skip() guards have been removed from this list.
  */
 const occtOnlyTests = [
   // --- Raw oc.* API usage (getKernel().oc) ---
   'tests/fn-applyMatrix.test.ts',
-  // 'tests/fn-booleanFns.test.ts', // unblocked for brepkit
   'tests/fn-cast.test.ts',
-  // 'tests/fn-compoundOpsFns.test.ts', // unblocked for brepkit
   'tests/fn-disposal.test.ts',
   'tests/fn-extrudeFns.test.ts',
   'tests/fn-guidedSweepFns.test.ts',
@@ -20,10 +18,9 @@ const occtOnlyTests = [
   'tests/fn-measureFns.test.ts',
   'tests/fn-meshFns.test.ts',
   'tests/fn-minkowskiFns.test.ts',
-  // 'tests/fn-modifierFns.test.ts', // unblocked for brepkit
   'tests/fn-multiSweepFns.test.ts',
   'tests/geometry.test.ts',
-  // --- 0% brepkit pass rate (fully unimplemented features) ---
+  // --- Unimplemented brepkit features ---
   'tests/fn-blueprintFns.test.ts',
   'tests/fn-examples.test.ts',
   'tests/fn-exporterFns.test.ts',
