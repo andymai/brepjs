@@ -1145,13 +1145,21 @@ export class BrepkitAdapter implements KernelAdapter {
     if (_options?.transitionMode !== undefined) {
       warnOnce('sweep-transition', 'Sweep transition mode not supported; ignored.');
     }
+
+    // If profile is a wire, convert to face first (same pattern as simplePipe/loft)
+    const profileHandle = wire as BrepkitHandle;
+    const faceId =
+      profileHandle.type === 'wire'
+        ? this.bk.makeFaceFromWire(profileHandle.id)
+        : unwrap(wire, 'face');
+
     const spineHandle = spine as BrepkitHandle;
 
     // If spine is a wire, get its edges and use sweepAlongEdges
     if (spineHandle.type === 'wire') {
       const edges = this.iterShapes(spine, 'edge');
       const edgeIds = edges.map((e) => unwrap(e, 'edge'));
-      const id = this.bk.sweepAlongEdges(unwrap(wire, 'face'), edgeIds);
+      const id = this.bk.sweepAlongEdges(faceId, edgeIds);
       return solidHandle(id);
     }
 
@@ -1161,7 +1169,7 @@ export class BrepkitAdapter implements KernelAdapter {
       throw new Error('brepkit: sweep spine must be an edge or wire');
     }
     const id = this.bk.sweep(
-      unwrap(wire, 'face'),
+      faceId,
       nurbsData.degree,
       nurbsData.knots,
       nurbsData.controlPoints,
@@ -2182,8 +2190,18 @@ export class BrepkitAdapter implements KernelAdapter {
 
   volume(shape: KernelShape): number {
     const h = shape as BrepkitHandle;
-    if (h.type !== 'solid') return 0;
-    return this.bk.volume(unwrap(shape), DEFAULT_DEFLECTION);
+    if (h.type === 'solid') {
+      return this.bk.volume(unwrap(shape), DEFAULT_DEFLECTION);
+    }
+    if (h.type === 'compound') {
+      const solids = this.iterShapes(shape, 'solid');
+      let total = 0;
+      for (const s of solids) {
+        total += this.bk.volume(unwrap(s), DEFAULT_DEFLECTION);
+      }
+      return total;
+    }
+    return 0;
   }
 
   area(shape: KernelShape): number {
@@ -3755,7 +3773,7 @@ export class BrepkitAdapter implements KernelAdapter {
     return { x, y };
   }
   createAxis2d(px: number, py: number, dx: number, dy: number): KernelType {
-    return { px, py, dx, dy };
+    return { px, py, dx, dy, delete: noop } as KernelType;
   }
   wrapCurve2dHandle(handle: KernelType): Curve2dHandle {
     return handle;
@@ -4030,8 +4048,13 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   // --- General 2D transforms (stored as 3×3 matrices) ---
+  // All GTrsf2d methods return objects with a no-op .delete() to match OCCT's
+  // Emscripten WASM objects, which callers (e.g. curves.ts) rely on for cleanup.
+  private _gtrsf(m: number[], tx: number, ty: number): KernelType {
+    return { m, tx, ty, delete: noop } as KernelType;
+  }
   createIdentityGTrsf2d(): KernelType {
-    return { m: [1, 0, 0, 0, 1, 0, 0, 0, 1], tx: 0, ty: 0 };
+    return this._gtrsf([1, 0, 0, 0, 1, 0, 0, 0, 1], 0, 0);
   }
   createAffinityGTrsf2d(ox: number, oy: number, dx: number, dy: number, ratio: number): KernelType {
     const len = Math.sqrt(dx * dx + dy * dy);
@@ -4042,10 +4065,10 @@ export class BrepkitAdapter implements KernelAdapter {
     const m = [1 + k * px * px, k * px * py, 0, k * py * px, 1 + k * py * py, 0, 0, 0, 1];
     const txv = ox - m[0]! * ox - m[1]! * oy;
     const tyv = oy - m[3]! * ox - m[4]! * oy;
-    return { m, tx: txv, ty: tyv };
+    return this._gtrsf(m, txv, tyv);
   }
   createTranslationGTrsf2d(dx: number, dy: number): KernelType {
-    return { m: [1, 0, 0, 0, 1, 0, 0, 0, 1], tx: dx, ty: dy };
+    return this._gtrsf([1, 0, 0, 0, 1, 0, 0, 0, 1], dx, dy);
   }
   createMirrorGTrsf2d(
     cx: number,
@@ -4068,22 +4091,18 @@ export class BrepkitAdapter implements KernelAdapter {
       // Translation: p - R*p
       const txv = px - m[0]! * px - m[1]! * py;
       const tyv = py - m[3]! * px - m[4]! * py;
-      return { m, tx: txv, ty: tyv };
+      return this._gtrsf(m, txv, tyv);
     }
     // Point mirror at (cx, cy)
-    return { m: [-1, 0, 0, 0, -1, 0, 0, 0, 1], tx: 2 * cx, ty: 2 * cy };
+    return this._gtrsf([-1, 0, 0, 0, -1, 0, 0, 0, 1], 2 * cx, 2 * cy);
   }
   createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType {
     const c = Math.cos(angle),
       s = Math.sin(angle);
-    return { m: [c, -s, 0, s, c, 0, 0, 0, 1], tx: cx - c * cx + s * cy, ty: cy - s * cx - c * cy };
+    return this._gtrsf([c, -s, 0, s, c, 0, 0, 0, 1], cx - c * cx + s * cy, cy - s * cx - c * cy);
   }
   createScaleGTrsf2d(factor: number, cx: number, cy: number): KernelType {
-    return {
-      m: [factor, 0, 0, 0, factor, 0, 0, 0, 1],
-      tx: cx * (1 - factor),
-      ty: cy * (1 - factor),
-    };
+    return this._gtrsf([factor, 0, 0, 0, factor, 0, 0, 0, 1], cx * (1 - factor), cy * (1 - factor));
   }
   setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void {
     gtrsf.tx = dx;
