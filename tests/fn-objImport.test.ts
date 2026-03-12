@@ -39,4 +39,19 @@ describe('importOBJ', () => {
     const result = await importOBJ(blob);
     expect(result.ok).toBe(true);
   });
+
+  it('returns error when face indices reference out-of-range vertices', async () => {
+    // Face references vertex 100 which doesn't exist — all triangles skip → no valid faces
+    const obj = 'v 0 0 0\nv 1 0 0\nv 1 1 0\nf 100 200 300\n';
+    const blob = new Blob([obj]);
+    const result = await importOBJ(blob);
+    expect(result.ok).toBe(false);
+  });
+
+  it('returns error for vertices-only OBJ (no faces)', async () => {
+    const obj = 'v 0 0 0\nv 1 0 0\nv 1 1 0\n';
+    const blob = new Blob([obj]);
+    const result = await importOBJ(blob);
+    expect(result.ok).toBe(false);
+  });
 });

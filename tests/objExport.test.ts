@@ -48,4 +48,20 @@ describe('exportOBJ', () => {
     const obj = exportOBJ(m);
     expect(obj.endsWith('\n')).toBe(true);
   });
+
+  it('exports mesh without faceGroups (ungrouped path)', () => {
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    // Create a mesh copy with empty faceGroups to exercise the fallback path
+    const ungrouped = {
+      ...m,
+      faceGroups: [] as typeof m.faceGroups,
+    };
+    const obj = exportOBJ(ungrouped);
+    expect(obj).toContain('v ');
+    expect(obj).toContain('f ');
+    // Should have no group lines since faceGroups is empty
+    const gLines = obj.split('\n').filter((l: string) => l.startsWith('g '));
+    expect(gLines.length).toBe(0);
+  });
 });

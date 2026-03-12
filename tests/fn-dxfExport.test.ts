@@ -5,6 +5,7 @@ import {
   blueprintToDXF,
   roundedRectangleBlueprint,
   BlueprintSketcher,
+  CompoundBlueprint,
 } from '../src/index.js';
 import type { DXFEntity } from '../src/index.js';
 
@@ -118,5 +119,19 @@ describe('blueprintToDXF', () => {
     // 3 line segments
     const lineCount = (dxf.match(/\n0\nLINE\n/g) ?? []).length;
     expect(lineCount).toBe(3);
+  });
+
+  it('exports a compound blueprint (outer + hole) to DXF', () => {
+    const outer = roundedRectangleBlueprint(20, 20);
+    const inner = roundedRectangleBlueprint(5, 5);
+    const compound = new CompoundBlueprint([outer, inner]);
+    const dxf = blueprintToDXF(compound);
+
+    expect(dxf).toContain('SECTION');
+    expect(dxf).toContain('ENTITIES');
+    expect(dxf).toContain('EOF');
+    // Should have entities from both outer and inner blueprints
+    const lineCount = (dxf.match(/\n0\nLINE\n/g) ?? []).length;
+    expect(lineCount).toBeGreaterThanOrEqual(8); // 4 outer + 4 inner
   });
 });
