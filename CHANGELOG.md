@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.7.0](https://github.com/andymai/brepjs/compare/brepjs-v12.6.0...brepjs-v12.7.0) (2026-03-12)
+
+
+### Features
+
+* **brepkit:** unblock boolean, modifier, and compound ops tests ([#478](https://github.com/andymai/brepjs/issues/478)) ([700fd33](https://github.com/andymai/brepjs/commit/700fd33867925328398fa4bffb7c21e2af2f2c34))
+
 ## [12.6.0](https://github.com/andymai/brepjs/compare/brepjs-v12.5.0...brepjs-v12.6.0) (2026-03-12)
 
 
