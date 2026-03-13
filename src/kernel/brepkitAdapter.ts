@@ -2162,8 +2162,10 @@ export class BrepkitAdapter implements KernelAdapter {
       return { lines: new Float32Array(0), edgeGroups: [] };
     }
 
-    // Use native meshEdges — returns JsEdgeLines with positions/offsets/edgeCount
-    const edgeLines = this.bk.meshEdges(bkHandle.id, tolerance);
+    // Use meshEdgesAll (unfiltered) for OCCT parity — falls back to meshEdges if unavailable
+    const edgeLines = this.bk.meshEdgesAll
+      ? this.bk.meshEdgesAll(bkHandle.id, tolerance)
+      : this.bk.meshEdges(bkHandle.id, tolerance);
     const positions = edgeLines.positions;
     const offsets = edgeLines.offsets;
     const edgeCount = edgeLines.edgeCount;

@@ -167,7 +167,7 @@ Rejected: phased approach validates each step independently, catches boundary de
 
 ## Appendix A: Cross-Kernel Behavioral Differences
 
-Audit of behavioral differences between DefaultAdapter (OCCT) and BrepkitAdapter. Last updated for brepkit-wasm v0.10.1.
+Audit of behavioral differences between DefaultAdapter (OCCT) and BrepkitAdapter. Last updated for brepkit-wasm v1.0.8.
 
 ### Interface Coverage
 
@@ -192,7 +192,7 @@ The only OCCT gap is `gridPattern?` (optional, brepkit-exclusive). Neither adapt
 | **Chamfer**     | `chamferDistAngle`             | Native dist-angle support                                        | Approximates via `d2 = d * tan(angle)`, then averages                                                                                                              | Medium — approximation may diverge for steep angles                  |
 | **Shell**       | `shell`                        | Direct face ID operation; passes validation                      | Face ID resolution with normal-matching fallback; `validateSolidRelaxed()` accepts results                                                                         | Low — `isValid()` now returns true (relaxed mode)                    |
 | **Meshing**     | `mesh`                         | Respects both `tolerance` and `angularTolerance`                 | Uses `tolerance` only; hardcoded `DEFAULT_DEFLECTION = 0.01`                                                                                                       | Low — slightly different tessellation density                        |
-| **Meshing**     | `meshEdges`                    | Uses both tolerance parameters                                   | Uses `tolerance` only; enforces `Math.max(tol, 0.001)`                                                                                                             | Low                                                                  |
+| **Meshing**     | `meshEdges`                    | Uses both tolerance parameters; returns all topology edges       | Uses `meshEdgesAll` (unfiltered) for parity; `tolerance` only, enforces `Math.max(tol, 0.001)`                                                                     | Low — tolerance-only difference remains                              |
 | **Meshing**     | `hasTriangulation`             | Checks cached triangulation                                      | Always returns `false` (on-demand tessellation)                                                                                                                    | Low — behavioral, no geometric impact                                |
 | **Sweep**       | `loft`                         | Takes wires directly; supports `ruled`, `startShape`, `endShape` | Converts wires to faces; ignores `ruled`/`startShape`/`endShape`                                                                                                   | Medium — loft options silently ignored                               |
 | **Sweep**       | `sweep`                        | Native sweep with transition mode                                | Extracts NURBS data from spine; ignores `transitionMode`                                                                                                           | Medium — transition mode silently ignored                            |
@@ -207,7 +207,7 @@ The only OCCT gap is `gridPattern?` (optional, brepkit-exclusive). Neither adapt
 | **I/O**         | STEP/STL export (multi-shape)  | Native multi-shape export                                        | Exports each solid individually and concatenates                                                                                                                   | Low — same result, different implementation                          |
 | **Measurement** | `volume`, `area`               | OCCT native measurement                                          | Uses `DEFAULT_DEFLECTION = 0.01` for tessellation-based measurement                                                                                                | Low — slight numerical differences expected                          |
 
-### Resolved in v0.10.0–v0.10.1 (previously listed)
+### Resolved in v0.10.0–v1.0.8 (previously listed)
 
 These differences existed in brepkit-wasm v0.7.3 but have been resolved:
 
@@ -215,6 +215,7 @@ These differences existed in brepkit-wasm v0.7.3 but have been resolved:
 - **Validity: booleans** — `fuse`, `intersect`, `fuseAll` results now pass validation. `cut` and `cutAll` results pass in most cases.
 - **Validity: fillets/shells** — `validateSolidRelaxed()` (v0.10.1) tolerates NURBS approximation artifacts on fillet and shell results. `isValid()` now returns true for these shapes, matching OCCT behavior.
 - **Chamfer: validation** — chamfer and `chamferDistAngle` results now pass validation.
+- **Meshing: smooth-edge filtering** — brepkit-wasm v1.0.8 changed `meshEdges` to auto-filter smooth edges (tangent-continuous edges along fillets/rounds). Adapter switched to `meshEdgesAll` (unfiltered) to restore OCCT parity. Filtered `meshEdges` remains available in brepkit for future use.
 
 ### Key Takeaways
 
