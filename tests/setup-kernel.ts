@@ -9,6 +9,9 @@
 import { initFromOC, registerKernel } from '../src/kernel/index.js';
 import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
 
+/** The active kernel id, derived from `TEST_KERNEL` env var (default `"occt"`). */
+export const currentKernel: string = process.env['TEST_KERNEL'] ?? 'occt';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten instance
 let _oc: any = null;
 let _bkInitialized = false;

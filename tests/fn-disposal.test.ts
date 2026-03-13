@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   createHandle,
   createKernelHandle,
@@ -13,6 +13,7 @@ import { ok, err } from '../src/core/result.js';
 import type { Deletable } from '../src/core/disposal.js';
 import { getKernel } from '../src/kernel/index.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: disposal', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -347,4 +348,5 @@ describe('isLive', () => {
     handle[Symbol.dispose]();
     expect(isLive(handle)).toBe(false);
   });
+});
 });

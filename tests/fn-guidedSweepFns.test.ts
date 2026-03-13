@@ -1,10 +1,11 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import { guidedSweep, isOk, unwrap, isSolid, measureVolume, getKernel } from '../src/index.js';
 import { castShape } from '../src/core/shapeTypes.js';
 import { DisposalScope } from '../src/core/disposal.js';
 import type { Wire } from '../src/core/shapeTypes.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: guidedSweepFns', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -69,4 +70,5 @@ describe('guidedSweep', () => {
     }
     // If it fails, that's acceptable — guide sweep is best-effort in WASM
   });
+});
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   box,
   translate,
@@ -12,6 +12,7 @@ import {
   type MatrixTransform,
 } from '../src/index.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: applyMatrix', () => {
 let hasGTransform = false;
 
 beforeAll(async () => {
@@ -246,4 +247,5 @@ describe('applyMatrix — immutability', () => {
     expect(after.xMin).toBeCloseTo(before.xMin, 5);
     expect(after.xMax).toBeCloseTo(before.xMax, 5);
   });
+});
 });

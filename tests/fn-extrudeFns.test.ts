@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   sketchRectangle,
   sketchCircle,
@@ -25,6 +25,7 @@ import type { Wire } from '../src/core/shapeTypes.js';
 import { createFace } from '../src/core/shapeTypes.js';
 import { getKernel } from '../src/kernel/index.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: extrudeFns', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -193,4 +194,5 @@ describe('supportExtrude', () => {
     // but should not throw
     expect(typeof result.ok).toBe('boolean');
   });
+});
 });

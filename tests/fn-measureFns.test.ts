@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -25,6 +25,7 @@ import {
 } from '../src/index.js';
 import type { Shape3D, Face } from '../src/index.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: measureFns', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -216,4 +217,5 @@ describe('measurement caching', () => {
     const second = measureLinearProps(s);
     expect(second).toBe(first);
   });
+});
 });

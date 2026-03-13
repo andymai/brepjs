@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import { multiSectionSweep } from '../src/index.js';
 import type { Wire } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
@@ -32,6 +32,7 @@ function makeLineSpine(length: number): Wire {
   return castShape(wireMaker.Wire()) as Wire;
 }
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: multiSweepFns', () => {
 beforeAll(async () => {
   await initKernel();
 });
@@ -67,4 +68,5 @@ describe('multiSectionSweep', () => {
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('MULTI_SWEEP_INSUFFICIENT_SECTIONS');
   });
+});
 });

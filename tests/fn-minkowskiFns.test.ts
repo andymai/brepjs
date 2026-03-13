@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -17,6 +17,7 @@ import {
 } from '../src/index.js';
 import type { Shape3D } from '../src/core/shapeTypes.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: minkowskiFns', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -81,4 +82,5 @@ describe('minkowski', () => {
       expect(unwrapErr(result).code).toBe('MINKOWSKI_NULL_TOOL');
     });
   });
+});
 });

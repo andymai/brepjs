@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -16,6 +16,7 @@ import {
 } from '../src/index.js';
 import type { Shape3D } from '../src/core/shapeTypes.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: hullFns', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -106,4 +107,5 @@ describe('hull', () => {
     // Hull should be at least as large as the box
     expect(vol).toBeGreaterThanOrEqual(125);
   });
+});
 });

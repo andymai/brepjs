@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   box,
   sphere,
@@ -16,6 +16,7 @@ import {
   getKernel,
 } from '../src/index.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: meshFns', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -215,4 +216,5 @@ describe('exportIGES', () => {
       oc.FS.readFile = originalReadFile;
     }
   });
+});
 });

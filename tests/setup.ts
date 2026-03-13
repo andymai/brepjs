@@ -4,4 +4,4 @@
  * Backward-compatible: `initOC` is an alias for `initOCCT`.
  */
 
-export { initKernel, initOCCT, initOCCT as initOC } from './setup-kernel.js';
+export { currentKernel, initKernel, initOCCT, initOCCT as initOC } from './setup-kernel.js';

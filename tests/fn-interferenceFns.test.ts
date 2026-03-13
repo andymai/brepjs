@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   checkInterference,
   checkAllInterferences,
@@ -14,6 +14,7 @@ import {
 } from '../src/index.js';
 import type { Shape3D } from '../src/index.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: interferenceFns', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -162,4 +163,5 @@ describe('null-shape pre-validation', () => {
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
     expect(unwrapErr(result).message).toContain('second shape');
   });
+});
 });

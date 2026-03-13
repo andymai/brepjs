@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initOCCT } from './setup.js';
+import { currentKernel, initOCCT } from './setup.js';
 import {
   box,
   translate,
@@ -17,6 +17,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WASM availability check
 let oc: any;
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: kernelExpansion', () => {
 beforeAll(async () => {
   oc = await initOCCT();
 }, 30000);
@@ -84,4 +85,5 @@ describe('split', () => {
     const result = split(b, [tool]);
     expect(isErr(result)).toBe(true);
   });
+});
 });

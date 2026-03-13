@@ -1,38 +1,6 @@
 import { defineConfig } from 'vitest/config';
 
 /**
- * Tests excluded from the brepkit project.
- * Files with per-test ctx.skip() guards have been removed from this list.
- */
-const occtOnlyTests = [
-  // --- Raw oc.* API usage (getKernel().oc) ---
-  'tests/fn-applyMatrix.test.ts',
-  'tests/fn-cast.test.ts',
-  'tests/fn-disposal.test.ts',
-  'tests/fn-extrudeFns.test.ts',
-  'tests/fn-guidedSweepFns.test.ts',
-  'tests/fn-hullFns.test.ts',
-  'tests/fn-igesFns.test.ts',
-  'tests/fn-interferenceFns.test.ts',
-  'tests/fn-kernelExpansion.test.ts',
-  'tests/fn-measureFns.test.ts',
-  'tests/fn-meshFns.test.ts',
-  'tests/fn-minkowskiFns.test.ts',
-  'tests/fn-multiSweepFns.test.ts',
-  'tests/geometry.test.ts',
-  // --- Unimplemented brepkit features ---
-  'tests/fn-blueprintFns.test.ts',
-  'tests/fn-examples.test.ts',
-  'tests/fn-exporterFns.test.ts',
-  'tests/fn-occtBoundary.test.ts',
-  'tests/fn-offsetWire2D.test.ts',
-  'tests/fn-sectionToFace.test.ts',
-  'tests/fn-variableFillet.test.ts',
-  // --- Direct kernel-ops imports (OCCT-specific transformOps/measureOps) ---
-  'tests/fn-batchOps.test.ts',
-];
-
-/**
  * Tests excluded from both kernel projects:
  * - brepkit-only tests that use a mock BrepKernel or brepkit-only setup
  * - cross-kernel comparison tests that manage their own dual-kernel init
@@ -84,7 +52,7 @@ export default defineConfig({
         test: {
           name: 'brepkit',
           env: { TEST_KERNEL: 'brepkit' },
-          exclude: [...occtOnlyTests, ...alwaysExclude],
+          exclude: [...alwaysExclude],
         },
       },
     ],

@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { initKernel } from './setup.js';
+import { currentKernel, initKernel } from './setup.js';
 import {
   box,
   cast,
@@ -19,6 +19,7 @@ import {
   unwrapErr,
 } from '../src/index.js';
 
+describe.skipIf(currentKernel !== 'occt')('OCCT-specific: cast', () => {
 beforeAll(async () => {
   await initKernel();
 }, 30000);
@@ -152,4 +153,5 @@ describe('type guards', () => {
     const b = castShape(box(10, 10, 10).wrapped);
     expect(isWire(b)).toBe(false);
   });
+});
 });
