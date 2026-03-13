@@ -10,6 +10,7 @@ export default defineConfig({
   ],
   build: {
     target: 'es2022',
+    // minify: false — library convention; consumers handle minification in their own build
     minify: false,
     lib: {
       entry: {
