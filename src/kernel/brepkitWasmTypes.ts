@@ -559,6 +559,9 @@ export interface BrepkitKernel {
   /** Repair a solid (comprehensive healing). Returns error count after repair. */
   repairSolid(solid: number): number;
 
+  /** Unify adjacent faces on the same surface. Returns removed face count. */
+  unifyFaces(solid: number): number;
+
   // ── Tessellation ───────────────────────────────────────────────
 
   /** Tessellate a face into a triangle mesh. */
@@ -570,8 +573,11 @@ export interface BrepkitKernel {
   /** Tessellate an edge into polyline points. Returns flat `[x,y,z,...]`. */
   tessellateEdge(edge: number, numPoints: number): number[];
 
-  /** Sample all edges of a solid into polylines. Returns JsEdgeLines. */
+  /** Sample edges of a solid into polylines (smooth edges filtered out). */
   meshEdges(solid: number, deflection: number): BrepkitEdgeLines;
+
+  /** Sample all edges of a solid into polylines (no smooth-edge filtering). */
+  meshEdgesAll(solid: number, deflection: number): BrepkitEdgeLines;
 
   /** Convex hull from flat coords. Returns solid handle. */
   convexHull(coords: number[]): number;
