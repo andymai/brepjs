@@ -104,7 +104,7 @@ export interface BrepkitKernel {
    * Falls back to a straight line edge if the tangent is parallel to the start→end chord.
    * Returns edge handle.
    */
-  makeTangentArc3d(
+  makeTangentArc3d?(
     startX: number,
     startY: number,
     startZ: number,
@@ -114,7 +114,7 @@ export interface BrepkitKernel {
     endX: number,
     endY: number,
     endZ: number
-  ): number;
+  ): number; // Optional — added in 1.1.0
 
   /** Create a NURBS curve edge. Returns edge handle. */
   makeNurbsEdge(

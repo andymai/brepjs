@@ -923,6 +923,9 @@ export class BrepkitAdapter implements KernelAdapter {
     startTangent: [number, number, number],
     endPoint: [number, number, number]
   ): KernelShape {
+    if (!this.bk.makeTangentArc3d) {
+      throw new Error('makeTangentArc requires brepkit-wasm >= 1.1.0');
+    }
     const id = this.bk.makeTangentArc3d(
       startPoint[0],
       startPoint[1],
