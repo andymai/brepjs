@@ -21,9 +21,9 @@ wait $PID3 || exit 1
 # Default: run only tests affected by changed files (fast, no coverage thresholds).
 # FULL_TESTS=1: run full suite with coverage thresholds (same as pre-push).
 if [ "${FULL_TESTS:-0}" = "1" ]; then
-  npm run test:coverage
+  npm run test:full
 else
-  npm run test:coverage:changed
+  npm run test
 fi
 
 # Tier 3: Non-blocking reminders

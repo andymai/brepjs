@@ -8,4 +8,4 @@ Run all verification checks for the current changes.
 ## After verification passes
 
 - If `src/**/*Fns.ts` files changed, run `npm run docs:generate-lookup` to update the function index
-- For full coverage: `npm run test:coverage`
+- For full coverage: `npm run test:full`

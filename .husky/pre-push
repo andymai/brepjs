@@ -4,7 +4,7 @@ set -e
 echo "Running comprehensive checks before push..."
 
 # Full test suite with coverage
-npm run test:coverage
+npm run test:full
 
 # Detect unused code
 npm run knip

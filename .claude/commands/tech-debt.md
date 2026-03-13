@@ -11,8 +11,8 @@ You are working on the brepjs codebase to systematically reduce tech debt. Each 
 
 ## After Completing Each Item
 
-1. Run `npm run validate` (typecheck + lint + boundaries + format + affected tests)
-2. Run `npm run test:coverage` to confirm no coverage regressions
+1. Run `npm run validate` (typecheck + lint + boundaries + format + changed tests)
+2. Run `npm run test:full` to confirm no coverage regressions
 3. Commit with `fix(tech-debt): <description>` or `refactor(tech-debt): <description>`
 4. Open a PR with the tech-debt label
 
@@ -228,6 +228,6 @@ When starting an item, assign yourself and move to "In Progress". When the PR me
 - **One item per PR** — keep changes reviewable
 - **No behavioral changes** — tech debt PRs must not change functionality
 - **Tests must pass** — `npm run validate` is the minimum bar
-- **Coverage must not drop** — check `npm run test:coverage` thresholds
+- **Coverage must not drop** — check `npm run test:full` thresholds
 - **Boundary rules still apply** — `npm run check:boundaries` must pass
 - **Don't boil the ocean** — if an item is larger than expected, split it further

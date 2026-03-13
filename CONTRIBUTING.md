@@ -46,9 +46,9 @@ Make your changes and commit following [Commit Conventions](#commit-conventions)
 ### 3. Test Your Changes
 
 ```bash
-npm run test
+npm run test              # Changed files only (fast)
 npm run test:watch        # Run tests in watch mode
-npm run test:coverage     # Check coverage
+npm run test:full         # Full suite with coverage
 ```
 
 All tests must pass before submitting a PR.
@@ -177,10 +177,9 @@ You're importing from a higher layer into a lower one. Fix by moving the code to
 ### Run Tests
 
 ```bash
-npm run test              # Run all tests once
+npm run test             # Run changed-file tests (fast, no coverage)
 npm run test:watch       # Watch mode for development
-npm run test:coverage    # Generate coverage report
-npm run test:affected    # Run only tests affected by changes
+npm run test:full        # Full suite with coverage thresholds
 ```
 
 ### Test Expectations
@@ -200,7 +199,7 @@ brepjs enforces minimum coverage thresholds in pre-commit hooks and CI:
 | Branches   | **64%**   | Allows defensive error paths         |
 | Lines      | **73%**   | Baseline code execution coverage     |
 
-Run `npm run test:coverage` to see a detailed coverage report.
+Run `npm run test:full` to see a detailed coverage report.
 
 **If coverage drops below threshold:**
 
@@ -265,8 +264,8 @@ npm run format             # Format code
 npm run check:boundaries   # Verify layer boundaries
 
 # Testing
-npm run test               # Run all tests
-npm run test:coverage      # Coverage report
+npm run test               # Changed-file tests (fast)
+npm run test:full          # Full suite with coverage
 
 # Utilities
 npm run knip               # Detect unused code

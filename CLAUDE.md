@@ -26,19 +26,18 @@ Monorepo with two publishable packages:
 - `npm run typecheck` — TypeScript strict check
 - `npm run lint` / `npm run lint:fix` — ESLint
 - `npm run format` / `npm run format:check` — Prettier
-- `npm run test` — Vitest (all tests)
-- `npm run test:affected` — Tests for changed files only
-- `npm run test:coverage` — Full test suite with coverage
+- `npm run test` — Vitest (changed files only, no coverage)
+- `npm run test:full` — Full test suite with coverage
 - `npm run check:boundaries` — Layer boundary enforcement
 - `npm run knip` — Unused code detection
-- `npm run validate` — typecheck + lint + boundaries + format + affected tests (in order)
+- `npm run validate` — typecheck + lint + boundaries + format + changed tests (in order)
 - `npx vitest run tests/fn-booleanFns.test.ts` — Run a single test file
 - `npm run docs:generate-lookup` — Regenerate `docs/function-lookup.md`
 
 ## Git hooks
 
 - **Pre-commit**: lint-staged + typecheck + boundary check (parallel), then changed-file tests (no coverage thresholds). Set `FULL_TESTS=1` for full coverage run
-- **Pre-push**: Full `test:coverage` + `knip` (~30s)
+- **Pre-push**: Full `test:full` + `knip` (~30s)
 - Bypass: `--no-verify` (not recommended)
 
 ## Key patterns

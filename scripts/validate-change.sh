@@ -16,6 +16,6 @@ echo -e "\n→ [4/5] Format check..."
 npm run format:check
 
 echo -e "\n→ [5/5] Affected tests..."
-npm run test:affected
+npm run test
 
 echo -e "\n=== All checks passed ==="

@@ -12,7 +12,7 @@ Quality gates enforce:
 To see detailed errors:
   npm run typecheck          # Type errors
   npm run check:boundaries   # Architecture violations
-  npm run test:coverage      # Coverage report
+  npm run test:full          # Full suite with coverage
 
 To bypass (NOT recommended):
   git commit --no-verify -m "emergency fix"
