@@ -6,31 +6,31 @@ import { importIGES, exportIGES } from '../src/index.js';
 let oc: any;
 
 describe.skipIf(currentKernel !== 'occt')('OCCT-specific: igesFns', () => {
-beforeAll(async () => {
-  oc = await initOCCT();
-}, 30000);
+  beforeAll(async () => {
+    oc = await initOCCT();
+  }, 30000);
 
-describe('IGES module exports', () => {
-  it('exports importIGES function', () => {
-    expect(typeof importIGES).toBe('function');
+  describe('IGES module exports', () => {
+    it('exports importIGES function', () => {
+      expect(typeof importIGES).toBe('function');
+    });
+
+    it('exports exportIGES function', () => {
+      expect(typeof exportIGES).toBe('function');
+    });
   });
 
-  it('exports exportIGES function', () => {
-    expect(typeof exportIGES).toBe('function');
+  describe('IGES import/export (requires WASM rebuild)', () => {
+    it('IGES classes availability', () => {
+      const hasIGES = typeof oc.IGESControl_Reader_1 === 'function';
+      // This test documents that IGES support requires a WASM rebuild.
+      // Once IGESControl_Reader and IGESControl_Writer are added to
+      // defaults.yml and the WASM is rebuilt, this test will pass.
+      if (!hasIGES) {
+        console.warn('IGES classes not in WASM build — skipping IGES integration tests');
+        return;
+      }
+      expect(hasIGES).toBe(true);
+    });
   });
-});
-
-describe('IGES import/export (requires WASM rebuild)', () => {
-  it('IGES classes availability', () => {
-    const hasIGES = typeof oc.IGESControl_Reader_1 === 'function';
-    // This test documents that IGES support requires a WASM rebuild.
-    // Once IGESControl_Reader and IGESControl_Writer are added to
-    // defaults.yml and the WASM is rebuilt, this test will pass.
-    if (!hasIGES) {
-      console.warn('IGES classes not in WASM build — skipping IGES integration tests');
-      return;
-    }
-    expect(hasIGES).toBe(true);
-  });
-});
 });

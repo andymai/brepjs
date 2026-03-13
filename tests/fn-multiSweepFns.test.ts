@@ -33,40 +33,40 @@ function makeLineSpine(length: number): Wire {
 }
 
 describe.skipIf(currentKernel !== 'occt')('OCCT-specific: multiSweepFns', () => {
-beforeAll(async () => {
-  await initKernel();
-});
+  beforeAll(async () => {
+    await initKernel();
+  });
 
-describe('multiSectionSweep', () => {
-  it('sweeps two circles along a straight line producing a solid with positive volume', () => {
-    const spine = makeLineSpine(50);
-    const circle1 = makeCircleWire(10);
-    const circle2 = makeCircleWire(5);
+  describe('multiSectionSweep', () => {
+    it('sweeps two circles along a straight line producing a solid with positive volume', () => {
+      const spine = makeLineSpine(50);
+      const circle1 = makeCircleWire(10);
+      const circle2 = makeCircleWire(5);
 
-    const result = multiSectionSweep([{ wire: circle1 }, { wire: circle2 }], spine, {
-      solid: true,
+      const result = multiSectionSweep([{ wire: circle1 }, { wire: circle2 }], spine, {
+        solid: true,
+      });
+
+      expect(isOk(result)).toBe(true);
+      const shape = unwrap(result);
+
+      // Compute volume via GProp_GProps
+      const oc = getKernel().oc;
+      const scope = new DisposalScope();
+      const props = scope.register(new oc.GProp_GProps_1());
+      oc.BRepGProp.VolumeProperties_1(shape.wrapped, props, false, false, false);
+      const volume = props.Mass();
+      expect(volume).toBeGreaterThan(0);
     });
 
-    expect(isOk(result)).toBe(true);
-    const shape = unwrap(result);
+    it('returns error for fewer than 2 sections', () => {
+      const spine = makeLineSpine(50);
+      const circle1 = makeCircleWire(10);
 
-    // Compute volume via GProp_GProps
-    const oc = getKernel().oc;
-    const scope = new DisposalScope();
-    const props = scope.register(new oc.GProp_GProps_1());
-    oc.BRepGProp.VolumeProperties_1(shape.wrapped, props, false, false, false);
-    const volume = props.Mass();
-    expect(volume).toBeGreaterThan(0);
+      const result = multiSectionSweep([{ wire: circle1 }], spine);
+
+      expect(isErr(result)).toBe(true);
+      expect(unwrapErr(result).code).toBe('MULTI_SWEEP_INSUFFICIENT_SECTIONS');
+    });
   });
-
-  it('returns error for fewer than 2 sections', () => {
-    const spine = makeLineSpine(50);
-    const circle1 = makeCircleWire(10);
-
-    const result = multiSectionSweep([{ wire: circle1 }], spine);
-
-    expect(isErr(result)).toBe(true);
-    expect(unwrapErr(result).code).toBe('MULTI_SWEEP_INSUFFICIENT_SECTIONS');
-  });
-});
 });

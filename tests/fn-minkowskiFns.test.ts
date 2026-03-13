@@ -18,69 +18,69 @@ import {
 import type { Shape3D } from '../src/core/shapeTypes.js';
 
 describe.skipIf(currentKernel !== 'occt')('OCCT-specific: minkowskiFns', () => {
-beforeAll(async () => {
-  await initKernel();
-}, 30000);
+  beforeAll(async () => {
+    await initKernel();
+  }, 30000);
 
-function makeNullShape(): Shape3D {
-  const oc = getKernel().oc;
-  return createSolid(new oc.TopoDS_Solid()) as Shape3D;
-}
+  function makeNullShape(): Shape3D {
+    const oc = getKernel().oc;
+    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+  }
 
-describe('minkowski', () => {
-  describe('sphere fast path', () => {
-    it('produces a solid with volume > 1000 for box + sphere(1)', () => {
-      const result = minkowski(box(10, 10, 10), sphere(1));
+  describe('minkowski', () => {
+    describe('sphere fast path', () => {
+      it('produces a solid with volume > 1000 for box + sphere(1)', () => {
+        const result = minkowski(box(10, 10, 10), sphere(1));
 
-      expect(isOk(result)).toBe(true);
-      const shape = unwrap(result);
-      expect(isSolid(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeGreaterThan(1000);
+        expect(isOk(result)).toBe(true);
+        const shape = unwrap(result);
+        expect(isSolid(shape)).toBe(true);
+        expect(measureVolume(shape)).toBeGreaterThan(1000);
+      });
+
+      it('volume approximately matches offset(box, 2) for sphere(2)', () => {
+        const b = box(10, 10, 10);
+        const minkResult = minkowski(b, sphere(2));
+        expect(isOk(minkResult)).toBe(true);
+        const minkShape = unwrap(minkResult);
+
+        const offsetResult = offset(b, 2);
+        expect(isOk(offsetResult)).toBe(true);
+        const offsetShape = unwrap(offsetResult);
+
+        const minkVol = measureVolume(minkShape);
+        const offsetVol = measureVolume(offsetShape);
+
+        // Within 1% tolerance
+        expect(Math.abs(minkVol - offsetVol) / offsetVol).toBeLessThan(0.01);
+      });
     });
 
-    it('volume approximately matches offset(box, 2) for sphere(2)', () => {
-      const b = box(10, 10, 10);
-      const minkResult = minkowski(b, sphere(2));
-      expect(isOk(minkResult)).toBe(true);
-      const minkShape = unwrap(minkResult);
+    describe('general path', () => {
+      it('box + translated box produces volume ~1728 (12^3)', () => {
+        const b = box(10, 10, 10);
+        const tool = translate(box(2, 2, 2), [-1, -1, -1]);
+        const result = minkowski(b, tool);
 
-      const offsetResult = offset(b, 2);
-      expect(isOk(offsetResult)).toBe(true);
-      const offsetShape = unwrap(offsetResult);
+        expect(isOk(result)).toBe(true);
+        const shape = unwrap(result);
+        expect(isSolid(shape)).toBe(true);
+        expect(measureVolume(shape)).toBeCloseTo(1728, -1);
+      });
+    });
 
-      const minkVol = measureVolume(minkShape);
-      const offsetVol = measureVolume(offsetShape);
+    describe('error handling', () => {
+      it('returns error for null shape input', () => {
+        const result = minkowski(makeNullShape(), sphere(1));
+        expect(isErr(result)).toBe(true);
+        expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
+      });
 
-      // Within 1% tolerance
-      expect(Math.abs(minkVol - offsetVol) / offsetVol).toBeLessThan(0.01);
+      it('returns error for null tool input', () => {
+        const result = minkowski(box(10, 10, 10), makeNullShape());
+        expect(isErr(result)).toBe(true);
+        expect(unwrapErr(result).code).toBe('MINKOWSKI_NULL_TOOL');
+      });
     });
   });
-
-  describe('general path', () => {
-    it('box + translated box produces volume ~1728 (12^3)', () => {
-      const b = box(10, 10, 10);
-      const tool = translate(box(2, 2, 2), [-1, -1, -1]);
-      const result = minkowski(b, tool);
-
-      expect(isOk(result)).toBe(true);
-      const shape = unwrap(result);
-      expect(isSolid(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeCloseTo(1728, -1);
-    });
-  });
-
-  describe('error handling', () => {
-    it('returns error for null shape input', () => {
-      const result = minkowski(makeNullShape(), sphere(1));
-      expect(isErr(result)).toBe(true);
-      expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
-    });
-
-    it('returns error for null tool input', () => {
-      const result = minkowski(box(10, 10, 10), makeNullShape());
-      expect(isErr(result)).toBe(true);
-      expect(unwrapErr(result).code).toBe('MINKOWSKI_NULL_TOOL');
-    });
-  });
-});
 });
