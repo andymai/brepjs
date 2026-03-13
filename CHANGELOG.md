@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.8.0](https://github.com/andymai/brepjs/compare/brepjs-v12.7.3...brepjs-v12.8.0) (2026-03-13)
+
+
+### Features
+
+* **kernel:** delegate makeTangentArc to brepkit-wasm 1.1.0 ([#507](https://github.com/andymai/brepjs/issues/507)) ([6cec1a7](https://github.com/andymai/brepjs/commit/6cec1a7d5b123b03459495467dcfdc6d34321b19))
+
 ## [12.7.3](https://github.com/andymai/brepjs/compare/brepjs-v12.7.2...brepjs-v12.7.3) (2026-03-13)
 
 
