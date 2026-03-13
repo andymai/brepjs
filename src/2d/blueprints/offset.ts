@@ -1,6 +1,6 @@
 import Flatbush from 'flatbush';
 
-import { bug } from '../../core/errors.js';
+import { bug, safeIndex } from '../../core/errors.js';
 import { unwrap } from '../../core/result.js';
 import type { Point2D } from '../lib/index.js';
 import {
@@ -218,8 +218,7 @@ export function rawOffsets(
     }
 
     if (intersections.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length > 0 checked above
-      let intersection = intersections[0]!;
+      let intersection = safeIndex(intersections, 0, 'rawOffsets');
       if (intersections.length > 1) {
         // We choose the intersection point the closest to the end of the
         // original curve endpoint (why? not sure, following
@@ -229,8 +228,7 @@ export function rawOffsets(
         // Single-pass min distance calculation (more efficient than indexOf(Math.min(...)))
         let minDist = squareDistance2d(intersection, originalEndpoint);
         for (let i = 1; i < intersections.length; i++) {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index within bounds
-          const point = intersections[i]!;
+          const point = safeIndex(intersections, i, 'rawOffsets');
           const d = squareDistance2d(point, originalEndpoint);
           if (d < minDist) {
             minDist = d;
@@ -242,11 +240,11 @@ export function rawOffsets(
       // We need to be a lot more careful here with multiple intersections
       // as well as cases where curves overlap
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt always returns at least one segment
-      const splitPreviousCurve: Curve2D = (previousCurve.offset as Curve2D).splitAt(
-        [intersection],
-        PRECISION_OFFSET
-      )[0]!;
+      const splitPreviousCurve: Curve2D = safeIndex(
+        (previousCurve.offset as Curve2D).splitAt([intersection], PRECISION_OFFSET),
+        0,
+        'rawOffsets'
+      );
       const splitCurve = (curve.offset as Curve2D).splitAt([intersection], PRECISION_OFFSET).at(-1);
 
       if (!splitCurve) bug('offset.rawOffsets', 'Split produced no trailing curve segment');
@@ -337,8 +335,7 @@ export function offsetBlueprint(
       if (testedPairs.has(pairKey)) continue;
       testedPairs.add(pairKey);
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index from spatial query within bounds
-      const secondCurve = offsettedArray[secondIndex]!;
+      const secondCurve = safeIndex(offsettedArray, secondIndex, 'offsetBlueprint');
 
       const { intersections: rawIntersections, commonSegmentsPoints } = unwrap(
         intersectCurves(firstCurve, secondCurve, PRECISION_OFFSET)
@@ -398,18 +395,15 @@ export function offsetBlueprint(
 
   if (!blueprints.length) return null;
   if (blueprints.length === 1) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length === 1 checked
-    return blueprints[0]!;
+    return safeIndex(blueprints, 0, 'offsetBlueprint');
   }
   return new Blueprints(blueprints);
 }
 
 const fuseAll = (blueprints: Shape2D[]): Shape2D => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- caller guarantees non-empty
-  let fused: Shape2D = blueprints[0]!;
+  let fused: Shape2D = safeIndex(blueprints, 0, 'fuseAll');
   for (let i = 1; i < blueprints.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
-    fused = fuse2D(fused, blueprints[i]!);
+    fused = fuse2D(fused, safeIndex(blueprints, i, 'fuseAll'));
   }
   return fused;
 };
@@ -445,8 +439,7 @@ export default function offset(
       bp.blueprints.slice(1).map((b) => offset(b, offsetDistance, offsetConfig))
     );
     return cut2D(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-      offset(bp.blueprints[0]!, offsetDistance, offsetConfig),
+      offset(safeIndex(bp.blueprints, 0, 'offset'), offsetDistance, offsetConfig),
       innerShape
     );
   }
