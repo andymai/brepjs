@@ -73,7 +73,7 @@ export function mirror(
     directionVec = plane.zDir;
   }
 
-  const newShape = getKernel().mirror(shape, [...originVec], [...directionVec]);
+  const newShape = getKernel().mirror(shape, originVec, directionVec);
 
   return newShape;
 }

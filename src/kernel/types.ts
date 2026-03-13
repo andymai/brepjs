@@ -339,15 +339,15 @@ export interface KernelAdapter extends Kernel2DCapability {
   rotate(
     shape: KernelShape,
     angle: number,
-    axis?: [number, number, number],
-    center?: [number, number, number]
+    axis?: readonly [number, number, number],
+    center?: readonly [number, number, number]
   ): KernelShape;
   mirror(
     shape: KernelShape,
-    origin: [number, number, number],
-    normal: [number, number, number]
+    origin: readonly [number, number, number],
+    normal: readonly [number, number, number]
   ): KernelShape;
-  scale(shape: KernelShape, center: [number, number, number], factor: number): KernelShape;
+  scale(shape: KernelShape, center: readonly [number, number, number], factor: number): KernelShape;
   generalTransform(
     shape: KernelShape,
     linear: readonly [number, number, number, number, number, number, number, number, number],
