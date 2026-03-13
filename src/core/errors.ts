@@ -409,9 +409,9 @@ export function translateKernelError(kernelMessage: string): string {
  * @param context - Optional caller context for the error message (e.g. function name).
  */
 export function safeIndex<T>(arr: readonly T[], index: number, context?: string): T {
-  const val = arr[index];
-  if (val === undefined) {
+  if (index < 0 || index >= arr.length) {
     bug(context ?? 'safeIndex', `Index ${index} is out of bounds (array length ${arr.length})`);
   }
-  return val;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds proven above
+  return arr[index]!;
 }

@@ -113,8 +113,9 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
       let newFused;
       if (blueprint instanceof Blueprints || otherBlueprint instanceof Blueprints) {
         const fused = fuse2D(blueprint, otherBlueprint);
-        if (fused === null)
+        if (fused === null) {
           bug('fuseIntersectingBlueprints', 'fuse2D returned null for non-null inputs');
+        }
         newFused = fused;
       } else {
         newFused = genericFuse(blueprint, otherBlueprint);
