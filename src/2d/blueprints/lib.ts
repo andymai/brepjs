@@ -1,5 +1,7 @@
 import Flatbush from 'flatbush';
 
+import { safeIndex } from '../../core/errors.js';
+
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
 import type { Face, Wire } from '../../core/shapeTypes.js';
 
@@ -17,8 +19,7 @@ import CompoundBlueprint from './CompoundBlueprint.js';
  */
 const groupByBoundingBoxOverlap = (blueprints: Blueprint[]): Blueprint[][] => {
   if (blueprints.length === 0) return [];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length check above
-  if (blueprints.length === 1) return [[blueprints[0]!]];
+  if (blueprints.length === 1) return [[safeIndex(blueprints, 0, 'groupByBoundingBoxOverlap')]];
 
   // Build spatial index
   const index = new Flatbush(blueprints.length);
@@ -34,8 +35,11 @@ const groupByBoundingBoxOverlap = (blueprints: Blueprint[]): Blueprint[][] => {
     const candidates = index.search(xMin, yMin, xMax, yMax);
     // Filter to indices > i (to avoid duplicates) and verify overlap
     return candidates.filter(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index from spatial query within bounds
-      (j: number) => j > i && !blueprint.boundingBox.isOut(blueprints[j]!.boundingBox)
+      (j: number) =>
+        j > i &&
+        !blueprint.boundingBox.isOut(
+          safeIndex(blueprints, j, 'groupByBoundingBoxOverlap').boundingBox
+        )
     );
   });
 
@@ -50,8 +54,7 @@ const groupByBoundingBoxOverlap = (blueprints: Blueprint[]): Blueprint[][] => {
       groups.push(myGroup);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i is valid index from forEach
-    myGroup.push(blueprints[i]!);
+    myGroup.push(safeIndex(blueprints, i, 'groupByBoundingBoxOverlap'));
 
     if (indices.length) {
       indices.forEach((idx) => {
@@ -70,8 +73,7 @@ interface ContainedBlueprint {
 
 const addContainmentInfo = (groupedBlueprints: Blueprint[]): ContainedBlueprint[] => {
   return groupedBlueprints.map((blueprint, index) => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- blueprint always has at least one curve
-    const firstCurve = blueprint.curves[0]!;
+    const firstCurve = safeIndex(blueprint.curves, 0, 'addContainmentInfo');
     const point = firstCurve.value((firstCurve.lastParameter + firstCurve.firstParameter) / 2);
 
     const isIn = groupedBlueprints.filter((potentialOuterBlueprint, j) => {
@@ -137,8 +139,7 @@ export const organiseBlueprints = (blueprints: Blueprint[]): Blueprints => {
   const basicGrouping = groupByBoundingBoxOverlap(blueprints).map(addContainmentInfo);
   return new Blueprints(
     basicGrouping.flatMap(cleanEdgeCases).map((compounds) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length === 1 checked
-      if (compounds.length === 1) return compounds[0]!.blueprint;
+      if (compounds.length === 1) return safeIndex(compounds, 0, 'organiseBlueprints').blueprint;
 
       compounds.sort((a, b) => a.isIn.length - b.isIn.length);
       return new CompoundBlueprint(compounds.map(({ blueprint }) => blueprint));
