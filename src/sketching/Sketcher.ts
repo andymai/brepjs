@@ -2,6 +2,7 @@ import type { Plane, PlaneName, PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
+import { DisposalScope } from '../core/memory.js';
 import { vecSub, vecNormalize, vecCross } from '../core/vecOps.js';
 import { assembleWire } from '../topology/shapeHelpers.js';
 import { curvesAsEdgesOnPlane } from '../2d/curves.js';
@@ -73,7 +74,10 @@ export default class Sketcher extends BaseSketcher2d implements GenericSketcher<
   protected buildWire(): Wire {
     if (!this.pendingCurves.length) bug('Sketcher.buildWire', 'No lines to convert into a wire');
 
-    const edges = curvesAsEdgesOnPlane(this.pendingCurves, this.plane);
+    using scope = new DisposalScope();
+    const edges = curvesAsEdgesOnPlane(this.pendingCurves, this.plane).map((e) =>
+      scope.register(e)
+    );
     return unwrap(assembleWire(edges));
   }
 

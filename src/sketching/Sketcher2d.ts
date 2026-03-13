@@ -681,7 +681,7 @@ export class BlueprintSketcher extends BaseSketcher2d implements GenericSketcher
    * @returns The closed {@link Blueprint}.
    */
   closeWithCustomCorner(
-    radius: number,
+    radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
     mode: 'fillet' | 'chamfer' | 'dogbone' = 'fillet'
   ): Blueprint {
     this._closeSketch();

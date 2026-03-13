@@ -358,6 +358,20 @@ export interface GenericSketcher<ReturnType> {
   smoothSpline(xDist: number, yDist: number, splineConfig: SplineOptions): this;
 
   /**
+   * Changes the corner between the previous and next segments by applying
+   * a fillet, chamfer, or custom corner function.
+   *
+   * @param radius - Fillet/chamfer radius, or a custom corner function.
+   * @param mode - Corner treatment type: `'fillet'` (default) or `'chamfer'`.
+   *
+   * @category Corner Treatment
+   */
+  customCorner(
+    radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]),
+    mode?: 'fillet' | 'chamfer'
+  ): this;
+
+  /**
    * Returns the current pen position as [x, y] coordinates.
    *
    * @category Drawing State
