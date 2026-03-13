@@ -136,13 +136,13 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: <module>', () => {
 
 **Keep**:
 
-- `test` — changed files only, no coverage (current `test:affected` behavior)
+- `test` — changed files only, no coverage (**new behavior** — currently `test:affected`; the old full-suite `test` script will be replaced)
 - `test:full` — all tests + coverage thresholds (current `test:coverage`)
 - `test:brepkit` — brepkit kernel tests (current `test:brepkit`)
 
 **Remove**:
 
-- `test:coverage:changed` — redundant with `test:full`
+- `test:coverage:changed` — redundant with the new `test` (both run changed files without coverage thresholds)
 - `test:all` — can be done with `test:full` + `TEST_KERNEL=brepkit npm run test`
 
 **Steps**:
