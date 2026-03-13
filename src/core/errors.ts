@@ -3,7 +3,8 @@
  * Re-exports bug/BrepBugError from utils (Layer 0) for convenience.
  */
 
-export { bug, BrepBugError } from '../utils/bug.js';
+import { bug, BrepBugError } from '../utils/bug.js';
+export { bug, BrepBugError };
 
 // ---------------------------------------------------------------------------
 // Error kinds
@@ -391,3 +392,26 @@ export function translateKernelError(kernelMessage: string): string {
 // ---------------------------------------------------------------------------
 // Bug / panic helper — re-exported from utils/bug.ts (Layer 0)
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Array safety helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Safe array index access that throws a descriptive {@link BrepBugError} instead
+ * of returning `undefined` when the index is out of bounds.
+ *
+ * Use in place of `arr[i]!` when the caller can prove the index is valid by
+ * construction but TypeScript's `noUncheckedIndexedAccess` still requires a guard.
+ *
+ * @param arr - The array to index into.
+ * @param index - The index to access.
+ * @param context - Optional caller context for the error message (e.g. function name).
+ */
+export function safeIndex<T>(arr: readonly T[], index: number, context?: string): T {
+  const val = arr[index];
+  if (val === undefined) {
+    bug(context ?? 'safeIndex', `Index ${index} is out of bounds (array length ${arr.length})`);
+  }
+  return val;
+}

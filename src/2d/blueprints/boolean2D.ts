@@ -1,4 +1,4 @@
-import { bug } from '../../core/errors.js';
+import { bug, safeIndex } from '../../core/errors.js';
 import { unwrap } from '../../core/result.js';
 import Blueprint from './Blueprint.js';
 import Blueprints from './Blueprints.js';
@@ -112,8 +112,10 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
 
       let newFused;
       if (blueprint instanceof Blueprints || otherBlueprint instanceof Blueprints) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- inputs are non-null
-        newFused = fuse2D(blueprint, otherBlueprint)!;
+        const fused = fuse2D(blueprint, otherBlueprint);
+        if (fused === null)
+          bug('fuseIntersectingBlueprints', 'fuse2D returned null for non-null inputs');
+        newFused = fused;
       } else {
         newFused = genericFuse(blueprint, otherBlueprint);
       }
@@ -125,9 +127,7 @@ const fuseIntersectingBlueprints = (blueprints: (Blueprint | CompoundBlueprint)[
         } else if (newFused instanceof Blueprints && newFused.blueprints.length === 1) {
           // The generic intersects was wrong here - the intersection
           // points were only touching and not crossing
-
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length === 1 checked above
-          newFused = newFused.blueprints[0]!;
+          newFused = safeIndex(newFused.blueprints, 0, 'fuseIntersectingBlueprints');
         } else if (!(newFused instanceof Blueprints)) {
           bug('fuseIntersectingBlueprints', 'Fuse produced unexpected non-blueprint result');
         }
@@ -149,8 +149,10 @@ const allBlueprints = (shape: Shape2D): Blueprint[] => {
 };
 
 const fuseBlueprintWithCompound = (blueprint: Blueprint, compound: CompoundBlueprint) => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-  const outerFused = fuseBlueprints(blueprint, compound.blueprints[0]!);
+  const outerFused = fuseBlueprints(
+    blueprint,
+    safeIndex(compound.blueprints, 0, 'fuseBlueprintWithCompound')
+  );
   const innerFused = compound.blueprints.slice(1).map((c) => cutBlueprints(c, blueprint));
 
   return organiseBlueprints([
@@ -172,18 +174,13 @@ function allPairs<S, T>(list1: T[], list2: S[]): [T, S][] {
 }
 
 const fuseCompoundWithCompound = (first: CompoundBlueprint, second: CompoundBlueprint) => {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compounds always have outer boundary
-  const outerFused = fuseBlueprints(first.blueprints[0]!, second.blueprints[0]!);
+  const firstOuter = safeIndex(first.blueprints, 0, 'fuseCompoundWithCompound');
+  const secondOuter = safeIndex(second.blueprints, 0, 'fuseCompoundWithCompound');
+  const outerFused = fuseBlueprints(firstOuter, secondOuter);
 
-  const inner1Fused = second.blueprints
-    .slice(1)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-    .map((c) => cutBlueprints(c, first.blueprints[0]!));
+  const inner1Fused = second.blueprints.slice(1).map((c) => cutBlueprints(c, firstOuter));
 
-  const inner2Fused = first.blueprints
-    .slice(1)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-    .map((c) => cutBlueprints(c, second.blueprints[0]!));
+  const inner2Fused = first.blueprints.slice(1).map((c) => cutBlueprints(c, secondOuter));
 
   const innerIntersections = allPairs(
     first.blueprints.slice(1),
@@ -237,8 +234,7 @@ export const fuse2D = (
     return fuseIntersectingBlueprints([second, ...first.blueprints]);
   }
   if (first instanceof Blueprints && second instanceof Blueprints) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprints always has at least one element
-    let out = fuse2D(first.blueprints[0]!, second);
+    let out = fuse2D(safeIndex(first.blueprints, 0, 'fuse2D'), second);
 
     first.blueprints.slice(1).forEach((bp) => {
       out = fuse2D(bp, out);
@@ -283,8 +279,7 @@ const mergeNonIntersecting = (shapes: Shape2D[]) => {
     if (s instanceof Blueprints) return s.blueprints;
     return s;
   });
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length === 1 checked
-  if (exploded.length === 1) return exploded[0]!;
+  if (exploded.length === 1) return safeIndex(exploded, 0, 'mergeNonIntersecting');
   return new Blueprints(exploded);
 };
 
@@ -322,15 +317,13 @@ export const cut2D = (
   }
 
   if (first instanceof CompoundBlueprint) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-    const wrapper = first.blueprints[0]!;
+    const wrapper = safeIndex(first.blueprints, 0, 'cut2D');
     if (second instanceof Blueprint && !second.intersects(wrapper)) {
       if (!wrapper.isInside(second.firstPoint)) return null;
       const cuts = fuse2D(second, new Blueprints(first.blueprints.slice(1)));
       return organiseBlueprints([wrapper, ...allBlueprints(cuts)]);
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-      let out = cut2D(first.blueprints[0]!, second);
+      let out = cut2D(wrapper, second);
       first.blueprints.slice(1).forEach((bp) => {
         out = cut2D(out, bp);
       });
@@ -344,8 +337,7 @@ export const cut2D = (
   }
 
   if (second instanceof CompoundBlueprint) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-    let out: Shape2D = cutBlueprints(first, second.blueprints[0]!);
+    let out: Shape2D = cutBlueprints(first, safeIndex(second.blueprints, 0, 'cut2D'));
     second.blueprints.slice(1).forEach((bp) => {
       out = fuse2D(out, intersectBlueprints(bp, first));
     });
@@ -393,9 +385,7 @@ export function intersect2D(
 
   if (first instanceof CompoundBlueprint) {
     // blueprints[0] is the outer boundary (wrapper), remaining are holes (cuts)
-    // Non-null assertion safe: CompoundBlueprint constructor validates non-empty array
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-    const wrapper = first.blueprints[0]!;
+    const wrapper = safeIndex(first.blueprints, 0, 'intersect2D');
     const cuts = first.blueprints.slice(1);
 
     // If no holes, just intersect with the wrapper
@@ -416,9 +406,7 @@ export function intersect2D(
 
   if (second instanceof CompoundBlueprint) {
     // blueprints[0] is the outer boundary (wrapper), remaining are holes (cuts)
-    // Non-null assertion safe: CompoundBlueprint constructor validates non-empty array
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- compound always has outer boundary
-    const wrapper = second.blueprints[0]!;
+    const wrapper = safeIndex(second.blueprints, 0, 'intersect2D');
     const cuts = second.blueprints.slice(1);
 
     // If no holes, just intersect with the wrapper
