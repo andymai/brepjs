@@ -559,8 +559,8 @@ export interface BrepkitKernel {
   /** Repair a solid (comprehensive healing). Returns error count after repair. */
   repairSolid(solid: number): number;
 
-  /** Unify adjacent faces on the same surface. Returns removed face count. */
-  unifyFaces(solid: number): number;
+  /** Unify adjacent faces on the same surface. Returns removed face count. Optional — added in 1.0.8. */
+  unifyFaces?(solid: number): number;
 
   // ── Tessellation ───────────────────────────────────────────────
 
@@ -576,8 +576,8 @@ export interface BrepkitKernel {
   /** Sample edges of a solid into polylines (smooth edges filtered out). */
   meshEdges(solid: number, deflection: number): BrepkitEdgeLines;
 
-  /** Sample all edges of a solid into polylines (no smooth-edge filtering). */
-  meshEdgesAll(solid: number, deflection: number): BrepkitEdgeLines;
+  /** Sample all edges of a solid into polylines (no smooth-edge filtering). Optional — added in 1.0.8. */
+  meshEdgesAll?(solid: number, deflection: number): BrepkitEdgeLines;
 
   /** Convex hull from flat coords. Returns solid handle. */
   convexHull(coords: number[]): number;
