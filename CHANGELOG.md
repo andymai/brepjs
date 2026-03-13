@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.7.3](https://github.com/andymai/brepjs/compare/brepjs-v12.7.2...brepjs-v12.7.3) (2026-03-13)
+
+
+### Bug Fixes
+
+* **kernel:** use meshEdgesAll for cross-kernel edge parity ([#491](https://github.com/andymai/brepjs/issues/491)) ([efe94b2](https://github.com/andymai/brepjs/commit/efe94b2d7859d16702197196b2f4fec91a112bca))
+
 ## [12.7.2](https://github.com/andymai/brepjs/compare/brepjs-v12.7.1...brepjs-v12.7.2) (2026-03-12)
 
 
