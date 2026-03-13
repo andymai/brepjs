@@ -99,6 +99,23 @@ export interface BrepkitKernel {
     axisZ: number
   ): number;
 
+  /**
+   * Create a circular arc edge defined by start point, tangent direction at start, and end point.
+   * Falls back to a straight line edge if the tangent is parallel to the start→end chord.
+   * Returns edge handle.
+   */
+  makeTangentArc3d(
+    startX: number,
+    startY: number,
+    startZ: number,
+    tangentX: number,
+    tangentY: number,
+    tangentZ: number,
+    endX: number,
+    endY: number,
+    endZ: number
+  ): number;
+
   /** Create a NURBS curve edge. Returns edge handle. */
   makeNurbsEdge(
     startX: number,

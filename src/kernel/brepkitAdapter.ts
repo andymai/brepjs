@@ -923,90 +923,18 @@ export class BrepkitAdapter implements KernelAdapter {
     startTangent: [number, number, number],
     endPoint: [number, number, number]
   ): KernelShape {
-    // Compute exact circle from start point + tangent + end point.
-    // Center lies on the line perpendicular to the tangent through the start,
-    // equidistant from start and end.
-    const tLen = Math.sqrt(startTangent[0] ** 2 + startTangent[1] ** 2 + startTangent[2] ** 2);
-    if (tLen < 1e-12) return this.makeLineEdge(startPoint, endPoint);
-    const t: [number, number, number] = [
-      startTangent[0] / tLen,
-      startTangent[1] / tLen,
-      startTangent[2] / tLen,
-    ];
-
-    // chord = startPoint - endPoint
-    const ch: [number, number, number] = [
-      startPoint[0] - endPoint[0],
-      startPoint[1] - endPoint[1],
-      startPoint[2] - endPoint[2],
-    ];
-    const chDotT = ch[0] * t[0] + ch[1] * t[1] + ch[2] * t[2];
-    // perp component of chord w.r.t. tangent
-    const perp: [number, number, number] = [
-      ch[0] - chDotT * t[0],
-      ch[1] - chDotT * t[1],
-      ch[2] - chDotT * t[2],
-    ];
-    const perpLen = Math.sqrt(perp[0] ** 2 + perp[1] ** 2 + perp[2] ** 2);
-    if (perpLen < 1e-12) return this.makeLineEdge(startPoint, endPoint);
-
-    const n: [number, number, number] = [perp[0] / perpLen, perp[1] / perpLen, perp[2] / perpLen];
-    const chord2 = ch[0] ** 2 + ch[1] ** 2 + ch[2] ** 2;
-    const nDotCh = n[0] * ch[0] + n[1] * ch[1] + n[2] * ch[2]; // = perpLen
-    const s = -chord2 / (2 * nDotCh);
-    const center: [number, number, number] = [
-      startPoint[0] + s * n[0],
-      startPoint[1] + s * n[1],
-      startPoint[2] + s * n[2],
-    ];
-    const radius = Math.abs(s);
-
-    // Compute arc midpoint: halfway angle on the correct side.
-    // Use vectors from center to start/end.
-    const e1: [number, number, number] = [
-      (startPoint[0] - center[0]) / radius,
-      (startPoint[1] - center[1]) / radius,
-      (startPoint[2] - center[2]) / radius,
-    ];
-    const e2: [number, number, number] = [
-      (endPoint[0] - center[0]) / radius,
-      (endPoint[1] - center[1]) / radius,
-      (endPoint[2] - center[2]) / radius,
-    ];
-    // Bisector of e1 and e2
-    let mx = e1[0] + e2[0];
-    let my = e1[1] + e2[1];
-    let mz = e1[2] + e2[2];
-    let mLen = Math.sqrt(mx * mx + my * my + mz * mz);
-    if (mLen < 1e-12) {
-      // e1 and e2 are opposite — midpoint is perpendicular to both.
-      // Use tangent direction at start to pick the correct side.
-      mx = t[0];
-      my = t[1];
-      mz = t[2];
-      mLen = 1;
-    }
-    const mid: [number, number, number] = [
-      center[0] + (radius * mx) / mLen,
-      center[1] + (radius * my) / mLen,
-      center[2] + (radius * mz) / mLen,
-    ];
-
-    // Check: tangent at start should point toward the midpoint.
-    const toMid: [number, number, number] = [
-      mid[0] - startPoint[0],
-      mid[1] - startPoint[1],
-      mid[2] - startPoint[2],
-    ];
-    const dotTM = t[0] * toMid[0] + t[1] * toMid[1] + t[2] * toMid[2];
-    if (dotTM < 0) {
-      // Flip to the other arc
-      mid[0] = center[0] - (radius * mx) / mLen;
-      mid[1] = center[1] - (radius * my) / mLen;
-      mid[2] = center[2] - (radius * mz) / mLen;
-    }
-
-    return this.makeArcEdge(startPoint, mid, endPoint);
+    const id = this.bk.makeTangentArc3d(
+      startPoint[0],
+      startPoint[1],
+      startPoint[2],
+      startTangent[0],
+      startTangent[1],
+      startTangent[2],
+      endPoint[0],
+      endPoint[1],
+      endPoint[2]
+    );
+    return edgeHandle(id);
   }
 
   makeHelixWire(
