@@ -54,7 +54,7 @@ describe('makePlane', () => {
   });
 });
 
-describe('findCurveType', () => {
+describe.skipIf(currentKernel !== 'occt')('findCurveType (OCCT-specific)', () => {
   it('returns an error for an unknown type', () => {
     expect(isErr(findCurveType(-9999))).toBe(true);
   });
