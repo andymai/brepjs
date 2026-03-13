@@ -109,8 +109,8 @@ export function rotate<T extends AnyShape<Dimension>>(
     angle * DEG2RAD,
     inputFaceHashes,
     HASH_CODE_MAX,
-    direction as [number, number, number],
-    position as [number, number, number]
+    direction,
+    position
   );
   const result = castShape(resultShape) as T;
   propagateOriginsFromEvolution(evolution, [shape], result);
@@ -126,8 +126,8 @@ export function mirror<T extends AnyShape<Dimension>>(
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().mirrorWithHistory(
     shape.wrapped,
-    planeOrigin as [number, number, number],
-    planeNormal as [number, number, number],
+    planeOrigin,
+    planeNormal,
     inputFaceHashes,
     HASH_CODE_MAX
   );
@@ -145,7 +145,7 @@ export function scale<T extends AnyShape<Dimension>>(
   const inputFaceHashes = collectInputFaceHashes([shape]);
   const { shape: resultShape, evolution } = getKernel().scaleWithHistory(
     shape.wrapped,
-    center as [number, number, number],
+    center,
     factor,
     inputFaceHashes,
     HASH_CODE_MAX
@@ -359,8 +359,8 @@ export function composeTransforms(ops: readonly TransformOp[]): ComposedTransfor
     return {
       type: 'rotate' as const,
       angle: op.angle,
-      axis: op.axis ? ([...op.axis] as [number, number, number]) : undefined,
-      center: op.center ? ([...op.center] as [number, number, number]) : undefined,
+      axis: op.axis,
+      center: op.center,
     };
   });
   const { handle, dispose } = getKernel().composeTransform(kernelOps);

@@ -379,19 +379,19 @@ export interface KernelAdapter extends Kernel2DCapability {
     angle: number,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    axis?: [number, number, number],
-    center?: [number, number, number]
+    axis?: readonly [number, number, number],
+    center?: readonly [number, number, number]
   ): OperationResult;
   mirrorWithHistory(
     shape: KernelShape,
-    origin: [number, number, number],
-    normal: [number, number, number],
+    origin: readonly [number, number, number],
+    normal: readonly [number, number, number],
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult;
   scaleWithHistory(
     shape: KernelShape,
-    center: [number, number, number],
+    center: readonly [number, number, number],
     factor: number,
     inputFaceHashes: number[],
     hashUpperBound: number
@@ -703,8 +703,8 @@ export interface KernelAdapter extends Kernel2DCapability {
       | {
           type: 'rotate';
           angle: number;
-          axis?: [number, number, number] | undefined;
-          center?: [number, number, number] | undefined;
+          axis?: readonly [number, number, number] | undefined;
+          center?: readonly [number, number, number] | undefined;
         }
     >
   ): { handle: KernelType; dispose: () => void };

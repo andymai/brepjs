@@ -216,8 +216,8 @@ function translationMatrix(x: number, y: number, z: number): number[] {
 /** Build a row-major 4×4 rotation matrix (angle in degrees, optional axis/center). */
 function rotationMatrix(
   angleDeg: number,
-  axis: [number, number, number] = [0, 0, 1],
-  center: [number, number, number] = [0, 0, 0]
+  axis: readonly [number, number, number] = [0, 0, 1],
+  center: readonly [number, number, number] = [0, 0, 0]
 ): number[] {
   const rad = (angleDeg * Math.PI) / 180;
   const c = Math.cos(rad);
@@ -254,7 +254,7 @@ function rotationMatrix(
 }
 
 /** Build a row-major 4×4 uniform scale matrix about a center point. */
-function scaleMatrix(center: [number, number, number], factor: number): number[] {
+function scaleMatrix(center: readonly [number, number, number], factor: number): number[] {
   const [cx, cy, cz] = center;
   const tx = cx * (1 - factor);
   const ty = cy * (1 - factor);
@@ -284,8 +284,8 @@ function affineMatrix(
 
 /** Build a 4×4 reflection matrix for a plane defined by origin + normal. */
 function mirrorMatrix(
-  origin: [number, number, number],
-  normal: [number, number, number]
+  origin: readonly [number, number, number],
+  normal: readonly [number, number, number]
 ): number[] {
   const [ox, oy, oz] = origin;
   const len = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
@@ -1372,16 +1372,16 @@ export class BrepkitAdapter implements KernelAdapter {
   rotate(
     shape: KernelShape,
     angle: number,
-    axis?: [number, number, number],
-    center?: [number, number, number]
+    axis?: readonly [number, number, number],
+    center?: readonly [number, number, number]
   ): KernelShape {
     return this.applyMatrix(shape, rotationMatrix(angle, axis, center));
   }
 
   mirror(
     shape: KernelShape,
-    origin: [number, number, number],
-    normal: [number, number, number]
+    origin: readonly [number, number, number],
+    normal: readonly [number, number, number]
   ): KernelShape {
     const h = shape as BrepkitHandle;
     if (h.type === 'solid') {
@@ -1400,7 +1400,11 @@ export class BrepkitAdapter implements KernelAdapter {
     return this.applyMatrix(shape, mirrorMatrix(origin, normal));
   }
 
-  scale(shape: KernelShape, center: [number, number, number], factor: number): KernelShape {
+  scale(
+    shape: KernelShape,
+    center: readonly [number, number, number],
+    factor: number
+  ): KernelShape {
     return this.applyMatrix(shape, scaleMatrix(center, factor));
   }
 
@@ -1756,8 +1760,8 @@ export class BrepkitAdapter implements KernelAdapter {
     angle: number,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    axis?: [number, number, number],
-    center?: [number, number, number]
+    axis?: readonly [number, number, number],
+    center?: readonly [number, number, number]
   ): OperationResult {
     // shapeFns.rotate() passes angle in radians; convert back to degrees
     // since this.rotate() expects degrees (it calls rotationMatrix which converts internally)
@@ -1772,8 +1776,8 @@ export class BrepkitAdapter implements KernelAdapter {
 
   mirrorWithHistory(
     shape: KernelShape,
-    origin: [number, number, number],
-    normal: [number, number, number],
+    origin: readonly [number, number, number],
+    normal: readonly [number, number, number],
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
@@ -1787,7 +1791,7 @@ export class BrepkitAdapter implements KernelAdapter {
 
   scaleWithHistory(
     shape: KernelShape,
-    center: [number, number, number],
+    center: readonly [number, number, number],
     factor: number,
     inputFaceHashes: number[],
     hashUpperBound: number
@@ -3072,8 +3076,8 @@ export class BrepkitAdapter implements KernelAdapter {
       | {
           type: 'rotate';
           angle: number;
-          axis?: [number, number, number];
-          center?: [number, number, number];
+          axis?: readonly [number, number, number];
+          center?: readonly [number, number, number];
         }
     >
   ): { handle: KernelType; dispose: () => void } {

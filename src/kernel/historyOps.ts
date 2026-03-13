@@ -42,8 +42,8 @@ export function rotateWithHistory(
   angle: number,
   inputFaceHashes: number[],
   hashUpperBound: number,
-  axis: [number, number, number] = [0, 0, 1],
-  center: [number, number, number] = [0, 0, 0]
+  axis: readonly [number, number, number] = [0, 0, 1],
+  center: readonly [number, number, number] = [0, 0, 0]
 ): OperationResult {
   const trsf = new oc.gp_Trsf_1();
   const pnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
@@ -61,8 +61,8 @@ export function rotateWithHistory(
 export function mirrorWithHistory(
   oc: KernelInstance,
   shape: KernelShape,
-  origin: [number, number, number],
-  normal: [number, number, number],
+  origin: readonly [number, number, number],
+  normal: readonly [number, number, number],
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
@@ -82,7 +82,7 @@ export function mirrorWithHistory(
 export function scaleWithHistory(
   oc: KernelInstance,
   shape: KernelShape,
-  center: [number, number, number],
+  center: readonly [number, number, number],
   factor: number,
   inputFaceHashes: number[],
   hashUpperBound: number
