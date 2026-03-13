@@ -1138,7 +1138,7 @@ describe('BrepkitAdapter', () => {
 
       adapter.meshEdges(box, 0.05, 0.5);
 
-      // Should pass deflection to native meshEdges
+      // Falls back to native meshEdges when meshEdgesAll is unavailable (pre-1.0.8)
       expect(mock.meshEdges).toHaveBeenCalledWith(expect.any(Number), 0.05);
     });
 
