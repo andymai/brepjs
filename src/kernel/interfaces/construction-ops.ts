@@ -91,7 +91,7 @@ export interface KernelConstructionOps {
     direction?: [number, number, number],
     leftHanded?: boolean
   ): KernelShape;
-  /** Build a wire from a mix of edges and wires. */
+  /** Build a wire from a mix of edges and wires (uses Add_1 for edges, Add_2 for wires). */
   makeWireFromMixed(items: KernelShape[]): KernelShape;
   makeCompound(shapes: KernelShape[]): KernelShape;
   makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape;
@@ -115,7 +115,7 @@ export interface KernelConstructionOps {
   makeNonPlanarFace(wire: KernelShape): KernelShape;
   /** Add hole wires to an existing face. */
   addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape;
-  /** Remove all inner wires (holes) from a face. */
+  /** Remove all inner wires (holes) from a face. Returns a new face with only the outer boundary. */
   removeHolesFromFace(face: KernelShape): KernelShape;
   /** Build a face on an existing surface bounded by a wire. */
   makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape;

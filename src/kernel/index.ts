@@ -77,8 +77,8 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
     if (result instanceof Promise) {
       throw new Error(
         'withKernel() callback returned a Promise. ' +
-          'Async code must use getKernel(id) directly. ' +
-          'See CLAUDE.md: "withKernel(id, fn) is sync-only".'
+          'Async code must use getKernel(id) directly — ' +
+          'the kernel override is restored synchronously in finally.'
       );
     }
     return result;

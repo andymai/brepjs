@@ -531,6 +531,11 @@ export function dispose(_oc: KernelInstance, handle: { delete(): void }): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Rectangle
+// ---------------------------------------------------------------------------
+
+/** Build a rectangular face on the XY plane. */
 export function makeRectangle(oc: KernelInstance, width: number, height: number): KernelShape {
   const e1 = makeLineEdge(oc, [0, 0, 0], [width, 0, 0]);
   const e2 = makeLineEdge(oc, [width, 0, 0], [width, height, 0]);
@@ -543,13 +548,15 @@ export function makeRectangle(oc: KernelInstance, width: number, height: number)
   bw.Add_1(e4);
   const wire = bw.Wire();
   bw.delete();
-  const bf = new oc.BRepBuilderAPI_MakeFace_15(wire, true);
-  const face = bf.Shape();
+  const bf = new oc.BRepBuilderAPI_MakeFace_15(wire, false);
+  const face = bf.Face();
   bf.delete();
   return face;
 }
 
-// --- 3D Geometry primitive factories ---
+// ---------------------------------------------------------------------------
+// 3D Geometry primitive factories
+// ---------------------------------------------------------------------------
 
 export function createPoint3d(oc: KernelInstance, x: number, y: number, z: number): KernelType {
   return new oc.gp_Pnt_3(x, y, z);
