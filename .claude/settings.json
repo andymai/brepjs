@@ -1,10 +1,10 @@
 {
   "permissions": {
     "deny": [
-      "rm -rf",
-      "git push --force",
-      "git reset --hard",
-      "git clean -f"
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean -f*)"
     ]
   }
 }
