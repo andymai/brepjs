@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.8.1](https://github.com/andymai/brepjs/compare/brepjs-v12.8.0...brepjs-v12.8.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* use correct Bash(pattern) format in settings.json deny list ([#516](https://github.com/andymai/brepjs/issues/516)) ([ed5b527](https://github.com/andymai/brepjs/commit/ed5b5272c9fc214adc8dd2c8da2a756dd3cfd8e7))
+
 ## [12.8.0](https://github.com/andymai/brepjs/compare/brepjs-v12.7.3...brepjs-v12.8.0) (2026-03-13)
 
 
