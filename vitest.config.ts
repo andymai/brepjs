@@ -1,3 +1,4 @@
+import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -18,6 +19,14 @@ const alwaysExclude = [
 ];
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Vite resolves the "import" exports condition by default, hitting the ESM
+      // bundler entry that uses the unsupported WASM ESM integration proposal.
+      // Alias to the Node CJS entry so brepkit tests run under vitest.
+      'brepkit-wasm': resolve(__dirname, 'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'),
+    },
+  },
   test: {
     globals: true,
     setupFiles: ['./tests/setup.ts'],
