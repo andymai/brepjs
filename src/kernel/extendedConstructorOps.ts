@@ -548,6 +548,10 @@ export function makeRectangle(oc: KernelInstance, width: number, height: number)
   bw.Add_1(e4);
   const wire = bw.Wire();
   bw.delete();
+  e1.delete();
+  e2.delete();
+  e3.delete();
+  e4.delete();
   const bf = new oc.BRepBuilderAPI_MakeFace_15(wire, false);
   const face = bf.Face();
   bf.delete();
