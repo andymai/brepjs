@@ -8,7 +8,7 @@
 
 import type { Point2D } from './definitions.js';
 import { bug } from '../../core/errors.js';
-import { distance2d } from '../../utils/vec2d.js';
+import { normalize2d as normalize2dSafe } from '../../utils/vec2d.js';
 
 export {
   samePoint,
@@ -29,12 +29,15 @@ export {
 /**
  * Normalize a 2D vector to unit length.
  *
+ * Unlike the Layer 0 version (which returns [0,0] for zero-length vectors),
+ * this throws a BrepBugError — Layer 2 code should never pass zero-length vectors.
+ *
  * @throws When the vector has near-zero length.
  */
-export const normalize2d = ([x0, y0]: Point2D): Point2D => {
-  const l = distance2d([x0, y0]);
-  if (l < 1e-12) {
+export const normalize2d = ([x, y]: Point2D): Point2D => {
+  const result = normalize2dSafe([x, y]);
+  if (result[0] === 0 && result[1] === 0) {
     bug('normalize2d', 'Cannot normalize zero-length vector');
   }
-  return [x0 / l, y0 / l];
+  return result;
 };
