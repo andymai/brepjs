@@ -1,3 +1,4 @@
+import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -18,6 +19,11 @@ const alwaysExclude = [
 ];
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      'brepkit-wasm': resolve(__dirname, 'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'),
+    },
+  },
   test: {
     globals: true,
     setupFiles: ['./tests/setup.ts'],
