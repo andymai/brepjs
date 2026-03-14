@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.8.2](https://github.com/andymai/brepjs/compare/brepjs-v12.8.1...brepjs-v12.8.2) (2026-03-14)
+
+
+### Bug Fixes
+
+* **test:** resolve brepkit-wasm to Node CJS entry in vitest ([#518](https://github.com/andymai/brepjs/issues/518)) ([fe6d762](https://github.com/andymai/brepjs/commit/fe6d7620d40ab3522b20a9c725a5ddfa6eb22b82))
+
 ## [12.8.1](https://github.com/andymai/brepjs/compare/brepjs-v12.8.0...brepjs-v12.8.1) (2026-03-14)
 
 
