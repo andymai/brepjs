@@ -110,6 +110,15 @@ export const rotate2d = (point: Point2D, angle: number, center: Point2D = [0, 0]
   return [xnew + cx, ynew + cy];
 };
 
+/**
+ * Normalize a 2D vector to unit length.
+ * Returns `[0, 0]` for zero-length vectors (within epsilon).
+ */
+export function normalize2d([x, y]: Point2D): Point2D {
+  const l = Math.sqrt(x * x + y * y);
+  return l < 1e-12 ? [0, 0] : [x / l, y / l];
+}
+
 /** Convert polar coordinates (r, theta) to a Cartesian Point2D. */
 export const polarToCartesian = (r: number, theta: number): Point2D => {
   const x = Math.cos(theta) * r;

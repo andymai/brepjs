@@ -199,7 +199,7 @@ describe('validity types (concepts.md + getting-started.md)', () => {
   it('smart constructors validate at runtime', () => {
     const cw = unwrap(squareWireLoop());
     const result = closedWire(cw);
-    expect(result.valid).toBe(true);
+    expect(isOk(result)).toBe(true);
   });
 
   it('type guards narrow correctly', () => {

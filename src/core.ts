@@ -95,7 +95,6 @@ export type {
   OrientedFace,
   ManifoldShell,
   ValidSolid,
-  ValidityResult,
 } from './core/shapeTypes.js';
 
 export {

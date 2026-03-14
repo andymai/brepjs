@@ -2,7 +2,7 @@ import type { Plane, PlaneName, PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
-import { DisposalScope } from '../core/memory.js';
+import { DisposalScope } from '../core/disposal.js';
 import { vecSub, vecNormalize, vecCross } from '../core/vecOps.js';
 import { assembleWire } from '../topology/shapeHelpers.js';
 import { curvesAsEdgesOnPlane } from '../2d/curves.js';
@@ -13,7 +13,8 @@ import { createWire } from '../core/shapeTypes.js';
 import type { PointInput } from '../core/types.js';
 import type { Curve2D } from '../2d/lib/index.js';
 import { downcast } from '../topology/cast.js';
-import { mirror as mirrorKernelShape } from '../core/geometryHelpers.js';
+import { getKernel } from '../kernel/index.js';
+import { toVec3 } from '../core/types.js';
 import { planeToWorld } from '../core/planeOps.js';
 import Sketch from './Sketch.js';
 import { BaseSketcher2d } from './Sketcher2d.js';
@@ -117,7 +118,7 @@ export default class Sketcher extends BaseSketcher2d implements GenericSketcher<
     const normal = vecCross(startToEndVector, this.plane.zDir);
 
     const clonedWrapped = unwrap(downcast(wire.wrapped));
-    const mirroredRaw = mirrorKernelShape(clonedWrapped, normal, pointer3d);
+    const mirroredRaw = getKernel().mirror(clonedWrapped, toVec3(pointer3d), toVec3(normal));
     const mirroredWrapped = unwrap(downcast(mirroredRaw));
     const mirroredWire = createWire(mirroredWrapped);
 

@@ -1,6 +1,6 @@
 import Sketch from './Sketch.js';
 import { DEG2RAD, RAD2DEG } from '../core/constants.js';
-import { DisposalScope } from '../core/memory.js';
+import { DisposalScope } from '../core/disposal.js';
 import { getKernel } from '../kernel/index.js';
 import { assembleWire } from '../topology/shapeHelpers.js';
 import { unwrap } from '../core/result.js';

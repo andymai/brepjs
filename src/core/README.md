@@ -422,7 +422,7 @@ extrude(face: OrientedFace, height: number): ...  // Requires an oriented face
 Smart constructors and type guards for runtime validation:
 
 ```typescript
-closedWire(w: Wire): ValidityResult<ClosedWire>   // Runtime check
+closedWire(w: Wire): Result<ClosedWire, string>   // Runtime check
 isClosedWire(w: Wire): w is ClosedWire             // Type guard
 isOrientedFace(f: Face): f is OrientedFace
 isManifoldShell(s: Shell): s is ManifoldShell

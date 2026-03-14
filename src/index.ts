@@ -17,6 +17,20 @@ export type {
   SurfaceType,
   ShapeOrientation,
   ShapeType,
+  // Kernel sub-interfaces (ADR-0007)
+  KernelBooleanOps,
+  KernelConstructionOps,
+  KernelCore,
+  KernelEvolutionOps,
+  KernelGeometryOps,
+  KernelIOOps,
+  KernelMeasureOps,
+  KernelMeshOps,
+  KernelModifierOps,
+  KernelRepairOps,
+  KernelSweepOps,
+  KernelTopologyOps,
+  KernelTransformOps,
 } from './kernel/index.js';
 export { supportsProjection, supportsConstraintSketch } from './kernel/index.js';
 export type { ProjectionCapability, ConstraintSketchCapability } from './kernel/index.js';
@@ -30,9 +44,11 @@ export {
   isOk,
   isErr,
   map,
+  mapBoth,
   mapErr,
   andThen,
   flatMap,
+  flatten,
   unwrap,
   unwrapOr,
   unwrapOrElse,
@@ -79,9 +95,9 @@ export {
 
 export { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from './core/constants.js';
 
-export { type Deletable } from './core/memory.js';
+export { type Deletable } from './core/disposal.js';
 
-export { makePlane } from './core/geometryHelpers.js';
+export { makePlane } from './core/planeOps.js';
 
 export { findCurveType } from './core/definitionMaps.js';
 export type { CurveType } from './core/definitionMaps.js';
@@ -365,7 +381,6 @@ export type {
   OrientedFace,
   ManifoldShell,
   ValidSolid,
-  ValidityResult,
 } from './core/shapeTypes.js';
 
 export {
@@ -403,11 +418,11 @@ export {
   validSolid,
 } from './core/shapeTypes.js';
 
-export type { DimensionError, RequireDimension, SameDimension } from './core/typeErrors.js';
+export type { DimensionError, RequireDimension, SameDimension } from './core/dimensionTypes.js';
 
 // ── Disposal / resource management ──
 
-export type { ShapeHandle, KernelHandle } from './core/disposal.js';
+export type { ShapeHandle, KernelHandle, DisposalStats } from './core/disposal.js';
 
 export {
   createHandle,
@@ -417,6 +432,8 @@ export {
   withScopeResult,
   withScopeResultAsync,
   isLive,
+  getDisposalStats,
+  resetDisposalStats,
 } from './core/disposal.js';
 
 // ── Plane types ──

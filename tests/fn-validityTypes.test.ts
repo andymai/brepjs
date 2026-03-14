@@ -52,8 +52,8 @@ function makeClosedWireRaw(): Wire {
 function makeClosedWire(): ClosedWire {
   const w = makeClosedWireRaw();
   const result = closedWire(w);
-  if (!result.valid) throw new Error('Expected closed wire');
-  return result.shape;
+  if (!isOk(result)) throw new Error('Expected closed wire');
+  return result.value;
 }
 
 /** Create an open wire (not closed). */
@@ -125,23 +125,23 @@ describe('isClosedWire', () => {
 // ---------------------------------------------------------------------------
 
 describe('closedWire', () => {
-  it('returns valid=true for a closed wire', () => {
+  it('returns Ok for a closed wire', () => {
     const w = makeClosedWireRaw();
     const result = closedWire(w);
-    expect(result.valid).toBe(true);
-    if (result.valid) {
-      // result.shape is ClosedWire — assignable to Wire
-      const _asWire: Wire = result.shape;
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      // result.value is ClosedWire — assignable to Wire
+      const _asWire: Wire = result.value;
       expect(_asWire).toBeDefined();
     }
   });
 
-  it('returns valid=false for an open wire with a reason', () => {
+  it('returns Err for an open wire with a reason', () => {
     const w = makeOpenWire();
     const result = closedWire(w);
-    expect(result.valid).toBe(false);
-    if (!result.valid) {
-      expect(result.reason).toContain('not closed');
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error).toContain('not closed');
     }
   });
 });
@@ -170,12 +170,12 @@ describe('isOrientedFace', () => {
 // ---------------------------------------------------------------------------
 
 describe('orientedFace', () => {
-  it('returns valid=true for a valid face', () => {
+  it('returns Ok for a valid face', () => {
     const f = makeFace();
     const result = orientedFace(f);
-    expect(result.valid).toBe(true);
-    if (result.valid) {
-      const _asFace: Face = result.shape;
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      const _asFace: Face = result.value;
       expect(_asFace).toBeDefined();
     }
   });
@@ -210,22 +210,22 @@ describe('isManifoldShell', () => {
 // ---------------------------------------------------------------------------
 
 describe('manifoldShell', () => {
-  it('returns valid=true for a watertight shell', () => {
+  it('returns Ok for a watertight shell', () => {
     const shell = makeManifoldShell();
     const result = manifoldShell(shell);
-    expect(result.valid).toBe(true);
-    if (result.valid) {
-      const _asShell: Shell = result.shape;
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      const _asShell: Shell = result.value;
       expect(_asShell).toBeDefined();
     }
   });
 
-  it('returns valid=false for an open shell', () => {
+  it('returns Err for an open shell', () => {
     const shell = makeOpenShell();
     const result = manifoldShell(shell);
-    expect(result.valid).toBe(false);
-    if (!result.valid) {
-      expect(result.reason).toContain('not manifold');
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error).toContain('not manifold');
     }
   });
 });
@@ -254,12 +254,12 @@ describe('isValidSolid', () => {
 // ---------------------------------------------------------------------------
 
 describe('validSolid', () => {
-  it('returns valid=true for a box solid', () => {
+  it('returns Ok for a box solid', () => {
     const s = makeSolid();
     const result = validSolid(s);
-    expect(result.valid).toBe(true);
-    if (result.valid) {
-      const _asSolid: Solid = result.shape;
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      const _asSolid: Solid = result.value;
       expect(_asSolid).toBeDefined();
     }
   });
@@ -273,9 +273,9 @@ describe('subtype relationships', () => {
   it('ClosedWire is assignable to Wire', () => {
     const w = makeClosedWireRaw();
     const result = closedWire(w);
-    if (result.valid) {
+    if (isOk(result)) {
       // This assignment must compile — ClosedWire <: Wire
-      const _wire: Wire = result.shape;
+      const _wire: Wire = result.value;
       expect(_wire).toBeDefined();
     }
   });
@@ -283,8 +283,8 @@ describe('subtype relationships', () => {
   it('OrientedFace is assignable to Face', () => {
     const f = makeFace();
     const result = orientedFace(f);
-    if (result.valid) {
-      const _face: Face = result.shape;
+    if (isOk(result)) {
+      const _face: Face = result.value;
       expect(_face).toBeDefined();
     }
   });
@@ -292,8 +292,8 @@ describe('subtype relationships', () => {
   it('ManifoldShell is assignable to Shell', () => {
     const shell = makeManifoldShell();
     const result = manifoldShell(shell);
-    if (result.valid) {
-      const _shell: Shell = result.shape;
+    if (isOk(result)) {
+      const _shell: Shell = result.value;
       expect(_shell).toBeDefined();
     }
   });
@@ -301,8 +301,8 @@ describe('subtype relationships', () => {
   it('ValidSolid is assignable to Solid', () => {
     const s = makeSolid();
     const result = validSolid(s);
-    if (result.valid) {
-      const _solid: Solid = result.shape;
+    if (isOk(result)) {
+      const _solid: Solid = result.value;
       expect(_solid).toBeDefined();
     }
   });
@@ -337,10 +337,10 @@ describe('consumer type enforcement', () => {
     // Full pipeline: Wire → closedWire → face → extrude
     const w = makeClosedWireRaw();
     const cwResult = closedWire(w);
-    expect(cwResult.valid).toBe(true);
-    if (!cwResult.valid) return;
+    expect(isOk(cwResult)).toBe(true);
+    if (!isOk(cwResult)) return;
 
-    const faceResult = face(cwResult.shape);
+    const faceResult = face(cwResult.value);
     expect(isOk(faceResult)).toBe(true);
 
     const extrudeResult = extrude(unwrap(faceResult), [0, 0, 5]);

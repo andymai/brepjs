@@ -56,7 +56,64 @@ if (!globalWithRegistry.FinalizationRegistry) {
   } as unknown as typeof FinalizationRegistry;
 }
 
+// ---------------------------------------------------------------------------
+// DisposalStats — lightweight resource tracking for debugging WASM leaks
+// ---------------------------------------------------------------------------
+
+/** Statistics about WASM handle lifecycle. Zero overhead when not queried. */
+export interface DisposalStats {
+  /** Number of handles currently alive (not disposed). */
+  liveHandles: number;
+  /** Peak number of simultaneously live handles. */
+  peakHandles: number;
+  /** Number of handles reclaimed by FinalizationRegistry (GC safety net). */
+  gcCollected: number;
+  /** Number of DisposalScope.enter() calls. */
+  scopeEnters: number;
+  /** Number of DisposalScope.dispose() calls. */
+  scopeExits: number;
+}
+
+const _stats: DisposalStats = {
+  liveHandles: 0,
+  peakHandles: 0,
+  gcCollected: 0,
+  scopeEnters: 0,
+  scopeExits: 0,
+};
+
+/** Get a snapshot of current disposal statistics. */
+export function getDisposalStats(): Readonly<DisposalStats> {
+  return { ..._stats };
+}
+
+/** Reset all disposal statistics to zero. */
+export function resetDisposalStats(): void {
+  _stats.liveHandles = 0;
+  _stats.peakHandles = 0;
+  _stats.gcCollected = 0;
+  _stats.scopeEnters = 0;
+  _stats.scopeExits = 0;
+}
+
+function trackHandleCreated(): void {
+  _stats.liveHandles++;
+  if (_stats.liveHandles > _stats.peakHandles) {
+    _stats.peakHandles = _stats.liveHandles;
+  }
+}
+
+function trackHandleDisposed(): void {
+  _stats.liveHandles--;
+}
+
+function trackGcCollected(): void {
+  _stats.gcCollected++;
+  _stats.liveHandles--;
+}
+
 const registry = new FinalizationRegistry<Deletable>((heldValue) => {
+  trackGcCollected();
   try {
     heldValue.delete();
   } catch {
@@ -90,6 +147,7 @@ export function createHandle(ocShape: KernelShape): ShapeHandle {
   const dispose = () => {
     if (!disposed) {
       disposed = true;
+      trackHandleDisposed();
       registry.unregister(handle);
       try {
         ocShape.delete();
@@ -118,6 +176,7 @@ export function createHandle(ocShape: KernelShape): ShapeHandle {
     },
   };
 
+  trackHandleCreated();
   registry.register(handle, ocShape, handle);
   return handle;
 }
@@ -150,6 +209,7 @@ export function createKernelHandle<T extends Deletable>(ocObj: T): KernelHandle<
     [Symbol.dispose]() {
       if (!disposed) {
         disposed = true;
+        trackHandleDisposed();
         registry.unregister(handle);
         try {
           ocObj.delete();
@@ -160,6 +220,7 @@ export function createKernelHandle<T extends Deletable>(ocObj: T): KernelHandle<
     },
   };
 
+  trackHandleCreated();
   registry.register(handle, ocObj, handle);
   return handle;
 }
@@ -171,6 +232,10 @@ export function createKernelHandle<T extends Deletable>(ocObj: T): KernelHandle<
 /** Scope for tracking multiple disposable resources. */
 export class DisposalScope implements Disposable {
   private readonly handles: (() => void)[] = [];
+
+  constructor() {
+    _stats.scopeEnters++;
+  }
 
   /** Register a resource for disposal when scope ends. */
   register<T extends Deletable>(resource: T): T {
@@ -197,6 +262,7 @@ export class DisposalScope implements Disposable {
   }
 
   [Symbol.dispose](): void {
+    _stats.scopeExits++;
     // Dispose in reverse order (LIFO)
     for (let i = this.handles.length - 1; i >= 0; i--) {
       this.handles[i]?.();

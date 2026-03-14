@@ -23,7 +23,11 @@ import type {
   Shape3D,
   UnknownDimShape,
 } from '../src/index.js';
-import type { DimensionError, RequireDimension, SameDimension } from '../src/core/typeErrors.js';
+import type {
+  DimensionError,
+  RequireDimension,
+  SameDimension,
+} from '../src/core/dimensionTypes.js';
 
 // ---------------------------------------------------------------------------
 // Default type parameters — 3D by default, zero noise for existing code

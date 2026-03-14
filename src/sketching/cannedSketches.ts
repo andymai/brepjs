@@ -19,7 +19,7 @@ import type { Face } from '../core/shapeTypes.js';
 import { faceCenter, normalAt, outerWire } from '../topology/faceFns.js';
 import { offsetWire2D } from '../topology/curveFns.js';
 import type { Point2D } from '../2d/lib/index.js';
-import { DisposalScope } from '../core/memory.js';
+import { DisposalScope } from '../core/disposal.js';
 import { roundedRectangleBlueprint } from '../2d/blueprints/cannedBlueprints.js';
 
 interface PlaneConfig {

@@ -128,6 +128,34 @@ export function resolvePlane(input: PlaneInput, origin?: PointInput | number): P
 }
 
 // ---------------------------------------------------------------------------
+// makePlane — convenience constructor (migrated from geometryHelpers.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create or copy a {@link Plane}.
+ *
+ * When called with a `Plane` object, returns a shallow copy.
+ * When called with a `PlaneName` string (or no arguments), resolves the named
+ * plane with an optional origin offset.
+ *
+ * @param plane - A `Plane` object to copy, or a `PlaneName` string to resolve.
+ * @param origin - Origin point or scalar offset along the plane normal.
+ * @default plane `'XY'`
+ */
+function makePlane(plane: Plane): Plane;
+function makePlane(plane?: PlaneName, origin?: PointInput | number): Plane;
+function makePlane(plane?: PlaneInput, origin?: PointInput | number): Plane {
+  if (plane && typeof plane !== 'string') {
+    // Already a Plane object - return a copy
+    return { ...plane };
+  } else {
+    return resolvePlane(plane ?? 'XY', origin);
+  }
+}
+
+export { makePlane };
+
+// ---------------------------------------------------------------------------
 // Coordinate transforms
 // ---------------------------------------------------------------------------
 

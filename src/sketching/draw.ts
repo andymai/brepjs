@@ -1,6 +1,6 @@
 import { unwrap } from '../core/result.js';
 import { bug } from '../core/errors.js';
-import { DisposalScope } from '../core/memory.js';
+import { DisposalScope } from '../core/disposal.js';
 import type { ApproximationOptions, Curve2D } from '../2d/lib/index.js';
 import {
   BoundingBox2d,

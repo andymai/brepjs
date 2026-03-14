@@ -1,5 +1,5 @@
 import type { KernelShape } from '../../kernel/types.js';
-import { makePlane } from '../../core/geometryHelpers.js';
+import { makePlane } from '../../core/planeOps.js';
 import type { ScaleMode } from '../curves.js';
 import {
   curvesAsEdgesOnFace,

@@ -2,7 +2,7 @@ import { getKernel } from '../kernel/index.js';
 import type { PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { vecAdd, vecLength } from '../core/vecOps.js';
-import { DisposalScope } from '../core/memory.js';
+import { DisposalScope } from '../core/disposal.js';
 import { DEG2RAD } from '../core/constants.js';
 import { cast, downcast, isShape3D, isWire } from '../topology/cast.js';
 import { type Result, ok, err, unwrap, andThen } from '../core/result.js';

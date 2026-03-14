@@ -111,6 +111,20 @@ export function tapErr<T, E>(result: Result<T, E>, fn: (error: E) => void): Resu
   return result;
 }
 
+/** Flatten a nested Result<Result<T, E>, E> into Result<T, E>. */
+export function flatten<T, E>(result: Result<Result<T, E>, E>): Result<T, E> {
+  return result.ok ? result.value : result;
+}
+
+/** Map both Ok and Err variants in a single pass. */
+export function mapBoth<T, U, E, F>(
+  result: Result<T, E>,
+  okFn: (value: T) => U,
+  errFn: (error: E) => F
+): Result<U, F> {
+  return result.ok ? ok(okFn(result.value)) : err(errFn(result.error));
+}
+
 /** Convert a nullable value to a Result, using `errorFn` to produce the error for null/undefined. */
 export function fromNullable<T, E>(value: T | null | undefined, errorFn: () => E): Result<T, E> {
   if (value === null || value === undefined) return err(errorFn());
