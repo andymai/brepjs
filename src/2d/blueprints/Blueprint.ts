@@ -33,7 +33,7 @@ import type { PointInput } from '../../core/types.js';
 import { toVec3 } from '../../core/types.js';
 import { DEG2RAD } from '../../core/constants.js';
 import type { DrawingInterface, SketchData } from './lib.js';
-import round5 from '../../utils/round5.js';
+import { round5 } from '../../utils/precisionRound.js';
 import { asSVG, viewbox } from './svg.js';
 import type { SingleFace } from '../../query/helpers.js';
 import { getSingleFace } from '../../query/helpers.js';

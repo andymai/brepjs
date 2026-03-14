@@ -6,7 +6,7 @@
  * compounds, etc.). Used by DefaultAdapter.
  */
 
-import type { KernelInstance, KernelShape } from './types.js';
+import type { KernelInstance, KernelShape, KernelType } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Edge builders
@@ -529,4 +529,107 @@ export function dispose(_oc: KernelInstance, handle: { delete(): void }): void {
   } catch {
     // Already deleted or invalid — ignore
   }
+}
+
+export function makeRectangle(oc: KernelInstance, width: number, height: number): KernelShape {
+  const e1 = makeLineEdge(oc, [0, 0, 0], [width, 0, 0]);
+  const e2 = makeLineEdge(oc, [width, 0, 0], [width, height, 0]);
+  const e3 = makeLineEdge(oc, [width, height, 0], [0, height, 0]);
+  const e4 = makeLineEdge(oc, [0, height, 0], [0, 0, 0]);
+  const bw = new oc.BRepBuilderAPI_MakeWire_1();
+  bw.Add_1(e1);
+  bw.Add_1(e2);
+  bw.Add_1(e3);
+  bw.Add_1(e4);
+  const wire = bw.Wire();
+  bw.delete();
+  const bf = new oc.BRepBuilderAPI_MakeFace_15(wire, true);
+  const face = bf.Shape();
+  bf.delete();
+  return face;
+}
+
+// --- 3D Geometry primitive factories ---
+
+export function createPoint3d(oc: KernelInstance, x: number, y: number, z: number): KernelType {
+  return new oc.gp_Pnt_3(x, y, z);
+}
+
+export function createDirection3d(oc: KernelInstance, x: number, y: number, z: number): KernelType {
+  return new oc.gp_Dir_4(x, y, z);
+}
+
+export function createVector3d(oc: KernelInstance, x: number, y: number, z: number): KernelType {
+  return new oc.gp_Vec_4(x, y, z);
+}
+
+export function createAxis1(
+  oc: KernelInstance,
+  cx: number,
+  cy: number,
+  cz: number,
+  dx: number,
+  dy: number,
+  dz: number
+): KernelType {
+  const pnt = new oc.gp_Pnt_3(cx, cy, cz);
+  const dir = new oc.gp_Dir_4(dx, dy, dz);
+  const ax = new oc.gp_Ax1_2(pnt, dir);
+  pnt.delete();
+  dir.delete();
+  return ax;
+}
+
+export function createAxis2(
+  oc: KernelInstance,
+  ox: number,
+  oy: number,
+  oz: number,
+  zx: number,
+  zy: number,
+  zz: number,
+  xx?: number,
+  xy?: number,
+  xz?: number
+): KernelType {
+  const pnt = new oc.gp_Pnt_3(ox, oy, oz);
+  const z = new oc.gp_Dir_4(zx, zy, zz);
+  let ax;
+  if (xx !== undefined && xy !== undefined && xz !== undefined) {
+    const x = new oc.gp_Dir_4(xx, xy, xz);
+    ax = new oc.gp_Ax2_2(pnt, z, x);
+    x.delete();
+  } else {
+    ax = new oc.gp_Ax2_3(pnt, z);
+  }
+  pnt.delete();
+  z.delete();
+  return ax;
+}
+
+export function createAxis3(
+  oc: KernelInstance,
+  ox: number,
+  oy: number,
+  oz: number,
+  zx: number,
+  zy: number,
+  zz: number,
+  xx?: number,
+  xy?: number,
+  xz?: number
+): KernelType {
+  const pnt = new oc.gp_Pnt_3(ox, oy, oz);
+  const z = new oc.gp_Dir_4(zx, zy, zz);
+  let ax;
+  if (xx !== undefined && xy !== undefined && xz !== undefined) {
+    const x = new oc.gp_Dir_4(xx, xy, xz);
+    ax = new oc.gp_Ax3_3(pnt, z, x);
+    x.delete();
+  } else {
+    ax = new oc.gp_Ax3_4(pnt, z);
+  }
+  pnt.delete();
+  z.delete();
+  return ax;
 }

@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import range from '../src/utils/range.js';
 import zip from '../src/utils/zip.js';
-import round2 from '../src/utils/round2.js';
-import round5 from '../src/utils/round5.js';
-import precisionRound from '../src/utils/precisionRound.js';
+import precisionRound, { round2, round5 } from '../src/utils/precisionRound.js';
 import { uuidv } from '../src/utils/uuid.js';
 
 describe('range', () => {

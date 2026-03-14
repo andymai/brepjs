@@ -1,8 +1,7 @@
 import { RAD2DEG } from '../../core/constants.js';
 import { bug } from '../../core/errors.js';
 import { getKernel2D } from '../../kernel/index.js';
-import round2 from '../../utils/round2.js';
-import round5 from '../../utils/round5.js';
+import { round2, round5 } from '../../utils/precisionRound.js';
 import type { Point2D } from './definitions.js';
 import type { Curve2D } from './Curve2D.js';
 

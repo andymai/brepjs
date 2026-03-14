@@ -219,16 +219,25 @@ export function chamferDistAngle(
 
 /**
  * Offsets a 2D wire by the given distance.
- * joinType: the raw OCCT GeomAbs_JoinType enum value.
+ * joinType: a string ('arc', 'intersection', 'tangent') or raw OCCT enum value.
  */
 export function offsetWire2D(
   oc: KernelInstance,
   wire: KernelShape,
   offsetVal: number,
-  joinType?: number
+  joinType?: number | 'arc' | 'intersection' | 'tangent'
 ): KernelShape {
-  // Default to GeomAbs_Arc if no joinType provided
-  const jt = joinType ?? oc.GeomAbs_JoinType.GeomAbs_Arc;
+  let jt: number;
+  if (typeof joinType === 'string') {
+    const map: Record<string, number> = {
+      arc: oc.GeomAbs_JoinType.GeomAbs_Arc,
+      intersection: oc.GeomAbs_JoinType.GeomAbs_Intersection,
+      tangent: oc.GeomAbs_JoinType.GeomAbs_Tangent,
+    };
+    jt = map[joinType] ?? oc.GeomAbs_JoinType.GeomAbs_Arc;
+  } else {
+    jt = joinType ?? oc.GeomAbs_JoinType.GeomAbs_Arc;
+  }
   const offsetter = new oc.BRepOffsetAPI_MakeOffset_3(wire, jt, false);
   offsetter.Perform(offsetVal, 0);
   const result = offsetter.Shape();

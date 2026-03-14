@@ -156,6 +156,13 @@ import {
   fromBREP as _fromBREP,
   exportSTEPAssembly as _exportSTEPAssembly,
   dispose as _dispose,
+  makeRectangle as _makeRectangle,
+  createPoint3d as _createPoint3d,
+  createDirection3d as _createDirection3d,
+  createVector3d as _createVector3d,
+  createAxis1 as _createAxis1,
+  createAxis2 as _createAxis2,
+  createAxis3 as _createAxis3,
 } from './extendedConstructorOps.js';
 import {
   wrapCurve2dHandle as _wrapCurve2dHandle,
@@ -491,13 +498,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   makeRectangle(width: number, height: number): KernelShape {
-    // Build a rectangular face on the XY plane
-    const e1 = this.makeLineEdge([0, 0, 0], [width, 0, 0]);
-    const e2 = this.makeLineEdge([width, 0, 0], [width, height, 0]);
-    const e3 = this.makeLineEdge([width, height, 0], [0, height, 0]);
-    const e4 = this.makeLineEdge([0, height, 0], [0, 0, 0]);
-    const wire = this.makeWire([e1, e2, e3, e4]);
-    return this.makeFace(wire);
+    return _makeRectangle(this.oc, width, height);
   }
 
   solidFromShell(shell: KernelShape): KernelShape {
@@ -850,17 +851,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     offset: number,
     joinType?: number | 'arc' | 'intersection' | 'tangent'
   ): KernelShape {
-    let jt = joinType;
-    if (typeof joinType === 'string') {
-      const oc = this.oc;
-      const map: Record<string, number> = {
-        arc: oc.GeomAbs_JoinType.GeomAbs_Arc,
-        intersection: oc.GeomAbs_JoinType.GeomAbs_Intersection,
-        tangent: oc.GeomAbs_JoinType.GeomAbs_Tangent,
-      };
-      jt = map[joinType];
-    }
-    return _offsetWire2D(this.oc, wire, offset, jt as number | undefined);
+    return _offsetWire2D(this.oc, wire, offset, joinType);
   }
 
   // --- Distance ---
@@ -1786,24 +1777,19 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
   // --- 3D Geometry primitive factories ---
 
   createPoint3d(x: number, y: number, z: number): KernelType {
-    return new this.oc.gp_Pnt_3(x, y, z);
+    return _createPoint3d(this.oc, x, y, z);
   }
 
   createDirection3d(x: number, y: number, z: number): KernelType {
-    return new this.oc.gp_Dir_4(x, y, z);
+    return _createDirection3d(this.oc, x, y, z);
   }
 
   createVector3d(x: number, y: number, z: number): KernelType {
-    return new this.oc.gp_Vec_4(x, y, z);
+    return _createVector3d(this.oc, x, y, z);
   }
 
   createAxis1(cx: number, cy: number, cz: number, dx: number, dy: number, dz: number): KernelType {
-    const pnt = new this.oc.gp_Pnt_3(cx, cy, cz);
-    const dir = new this.oc.gp_Dir_4(dx, dy, dz);
-    const ax = new this.oc.gp_Ax1_2(pnt, dir);
-    pnt.delete();
-    dir.delete();
-    return ax;
+    return _createAxis1(this.oc, cx, cy, cz, dx, dy, dz);
   }
 
   createAxis2(
@@ -1817,19 +1803,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     xy?: number,
     xz?: number
   ): KernelType {
-    const pnt = new this.oc.gp_Pnt_3(ox, oy, oz);
-    const z = new this.oc.gp_Dir_4(zx, zy, zz);
-    let ax;
-    if (xx !== undefined && xy !== undefined && xz !== undefined) {
-      const x = new this.oc.gp_Dir_4(xx, xy, xz);
-      ax = new this.oc.gp_Ax2_2(pnt, z, x);
-      x.delete();
-    } else {
-      ax = new this.oc.gp_Ax2_3(pnt, z);
-    }
-    pnt.delete();
-    z.delete();
-    return ax;
+    return _createAxis2(this.oc, ox, oy, oz, zx, zy, zz, xx, xy, xz);
   }
 
   createAxis3(
@@ -1843,19 +1817,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     xy?: number,
     xz?: number
   ): KernelType {
-    const pnt = new this.oc.gp_Pnt_3(ox, oy, oz);
-    const z = new this.oc.gp_Dir_4(zx, zy, zz);
-    let ax;
-    if (xx !== undefined && xy !== undefined && xz !== undefined) {
-      const x = new this.oc.gp_Dir_4(xx, xy, xz);
-      ax = new this.oc.gp_Ax3_3(pnt, z, x);
-      x.delete();
-    } else {
-      ax = new this.oc.gp_Ax3_4(pnt, z);
-    }
-    pnt.delete();
-    z.delete();
-    return ax;
+    return _createAxis3(this.oc, ox, oy, oz, zx, zy, zz, xx, xy, xz);
   }
 
   // --- Unsupported brepkit-only methods ---

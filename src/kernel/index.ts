@@ -73,7 +73,15 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
   _defaultKernelId = id;
   _cachedDefault = _kernels.get(id) ?? null;
   try {
-    return fn();
+    const result = fn();
+    if (result instanceof Promise) {
+      throw new Error(
+        'withKernel() callback returned a Promise. ' +
+          'Async code must use getKernel(id) directly. ' +
+          'See CLAUDE.md: "withKernel(id, fn) is sync-only".'
+      );
+    }
+    return result;
   } finally {
     _defaultKernelId = prev;
     // Re-lookup rather than restoring prevCached: a registerKernel() call
@@ -112,6 +120,22 @@ export type {
 
 export { supportsProjection, supportsConstraintSketch } from './types.js';
 export type { ProjectionCapability, ConstraintSketchCapability } from './types.js';
+
+export type {
+  KernelBooleanOps,
+  KernelConstructionOps,
+  KernelCore,
+  KernelEvolutionOps,
+  KernelGeometryOps,
+  KernelIOOps,
+  KernelMeasureOps,
+  KernelMeshOps,
+  KernelModifierOps,
+  KernelRepairOps,
+  KernelSweepOps,
+  KernelTopologyOps,
+  KernelTransformOps,
+} from './interfaces/index.js';
 
 export { supportsKernel2D } from './kernel2dTypes.js';
 export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2dTypes.js';

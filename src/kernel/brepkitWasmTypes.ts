@@ -892,6 +892,23 @@ export interface BrepkitKernel {
   /** Reverse a 2D curve. (Theme F) */
   reverseCurve2d?(...args: number[]): number[];
 
+  /** Lift a serialised 2D curve onto a 3D plane. Returns edge handle. Added in 2.1.0. */
+  liftCurve2dToPlane?(
+    curveType: string,
+    curveParams: Float64Array,
+    originX: number,
+    originY: number,
+    originZ: number,
+    xAxisX: number,
+    xAxisY: number,
+    xAxisZ: number,
+    normalX: number,
+    normalY: number,
+    normalZ: number,
+    tStart: number,
+    tEnd: number
+  ): number;
+
   // ── wasm-bindgen destructor ────────────────────────────────────
 
   /** Release the entire arena. */
