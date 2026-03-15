@@ -16,7 +16,7 @@ import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '../t
 import { measureArea } from '../measurement/measureFns.js';
 import { unwrap } from '../core/result.js';
 import { iterTopo } from '../topology/cast.js';
-import type { CurveType } from '../core/definitionMaps.js';
+import type { CurveType } from '../core/typeDiscriminants.js';
 import { type ShapeFinder, type Predicate, createTypedFinder } from './finderCore.js';
 import { type DirectionInput, resolveDir } from './directionUtils.js';
 import { distanceFromPointFilter } from './shapeDistanceFilter.js';

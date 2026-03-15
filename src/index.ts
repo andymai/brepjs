@@ -99,8 +99,7 @@ export { type Deletable } from './core/disposal.js';
 
 export { makePlane } from './core/planeOps.js';
 
-export { findCurveType } from './core/definitionMaps.js';
-export type { CurveType } from './core/definitionMaps.js';
+export type { CurveType } from './core/typeDiscriminants.js';
 
 // ── Layer 2: topology (via barrel) ──
 

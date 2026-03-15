@@ -308,7 +308,6 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'fill',
   'filledFace',
   'fillet',
-  'findCurveType',
   'findFacesByTag',
   'findNode',
   'findStep',

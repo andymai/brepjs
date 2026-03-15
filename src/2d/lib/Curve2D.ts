@@ -1,6 +1,6 @@
 import type { KernelType } from '../../kernel/types.js';
 
-import type { CurveType } from '../../core/definitionMaps.js';
+import type { CurveType } from '../../core/typeDiscriminants.js';
 import { type Result, ok, err, unwrap } from '../../core/result.js';
 import { computationError } from '../../core/errors.js';
 import precisionRound from '../../utils/precisionRound.js';

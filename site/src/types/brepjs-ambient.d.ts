@@ -887,12 +887,6 @@ declare function makePlane(plane?: PlaneName, origin?: PointInput | number): Pla
 /** Discriminant for the geometric type of a 3D curve. */
 type CurveType = 'LINE' | 'CIRCLE' | 'ELLIPSE' | 'HYPERBOLA' | 'PARABOLA' | 'BEZIER_CURVE' | 'BSPLINE_CURVE' | 'OFFSET_CURVE' | 'OTHER_CURVE';
 
-/**
- * Map a kernel curve type enum value to its string discriminant.
- *
- * @returns `Ok<CurveType>` on success, or `Err` if the enum value is unrecognised.
- */
-declare const findCurveType: (type: any) => Result<CurveType>;
 
 /** String literal identifying a topological entity type for TopExp_Explorer iteration. */
 type TopoEntity = 'vertex' | 'edge' | 'wire' | 'face' | 'shell' | 'solid' | 'solidCompound' | 'compound' | 'shape';
