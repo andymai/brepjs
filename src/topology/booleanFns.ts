@@ -25,7 +25,7 @@ import {
   collectInputFaceHashes,
   propagateAllMetadata,
   propagateMetadataByHash,
-} from './metadataPropagation.js';
+} from './metadata/metadataPropagation.js';
 import { makeFace } from './surfaceBuilders.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic

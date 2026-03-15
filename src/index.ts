@@ -470,10 +470,15 @@ export {
   getFaceTags,
   setTagMetadata,
   getTagMetadata,
-} from './topology/faceTagFns.js';
+} from './topology/metadata/faceTagFns.js';
 
-export { colorFaces, colorShape, getFaceColor, getShapeColor } from './topology/colorFns.js';
-export type { Color, ColorInput } from './topology/colorFns.js';
+export {
+  colorFaces,
+  colorShape,
+  getFaceColor,
+  getShapeColor,
+} from './topology/metadata/colorFns.js';
+export type { Color, ColorInput } from './topology/metadata/colorFns.js';
 
 export { chamferDistAngle as chamferDistAngleShape } from './topology/chamferAngleFns.js';
 

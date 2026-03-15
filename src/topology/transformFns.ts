@@ -12,7 +12,7 @@ import {
   collectInputFaceHashes,
   propagateAllMetadata,
   propagateMetadataByHash,
-} from './metadataPropagation.js';
+} from './metadata/metadataPropagation.js';
 
 // ---------------------------------------------------------------------------
 // Basic transforms

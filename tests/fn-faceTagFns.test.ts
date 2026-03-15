@@ -13,7 +13,7 @@ import {
   getTagMetadata,
   getFaces,
 } from '../src/index.js';
-import { hasFaceTags } from '../src/topology/faceTagFns.js';
+import { hasFaceTags } from '../src/topology/metadata/faceTagFns.js';
 
 beforeAll(async () => {
   await initKernel();

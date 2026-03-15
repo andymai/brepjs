@@ -4,7 +4,7 @@
  * Re-exports from focused modules for backward compatibility:
  * - Transform functions from `./transformFns.js`
  * - Topology query functions from `./topologyQueryFns.js`
- * - Origin tracking functions from `./originTrackingFns.js`
+ * - Origin tracking functions from `./metadata/originTrackingFns.js`
  */
 
 import { getKernel } from '../kernel/index.js';
@@ -90,4 +90,4 @@ export {
   getFaceOrigins,
   propagateOriginsFromEvolution,
   propagateOriginsByHash,
-} from './originTrackingFns.js';
+} from './metadata/originTrackingFns.js';

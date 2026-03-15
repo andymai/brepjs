@@ -12,7 +12,7 @@ import {
   getFaceColor,
   getFaces,
 } from '../src/index.js';
-import { hasColorMetadata } from '../src/topology/colorFns.js';
+import { hasColorMetadata } from '../src/topology/metadata/colorFns.js';
 
 beforeAll(async () => {
   await initKernel();

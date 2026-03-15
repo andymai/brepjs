@@ -12,7 +12,7 @@ import { HASH_CODE_MAX } from '../core/constants.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '../core/errors.js';
 import { getEdges } from './shapeFns.js';
-import { collectInputFaceHashes, propagateAllMetadata } from './metadataPropagation.js';
+import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation

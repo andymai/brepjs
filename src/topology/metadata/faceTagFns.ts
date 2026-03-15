@@ -5,11 +5,11 @@
  * Built on the existing face hash / origin propagation system in shapeFns.ts.
  */
 
-import type { ShapeEvolution } from '../kernel/types.js';
-import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Dimension, Face } from '../core/shapeTypes.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
-import { getFaces } from './shapeFns.js';
+import type { ShapeEvolution } from '../../kernel/types.js';
+import { getKernel } from '../../kernel/index.js';
+import type { AnyShape, Dimension, Face } from '../../core/shapeTypes.js';
+import { HASH_CODE_MAX } from '../../core/constants.js';
+import { getFaces } from '../shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Internal storage
