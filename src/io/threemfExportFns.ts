@@ -179,6 +179,15 @@ function buildZip(entries: ZipEntry[]): ArrayBuffer {
 // 3MF XML construction
 // ---------------------------------------------------------------------------
 
+/** Escape XML special characters in attribute values. */
+function escapeXmlAttr(s: string): string {
+  return s
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
 function colorToHex(rgba: [number, number, number, number]): string {
   const to8 = (v: number) =>
     Math.round(Math.max(0, Math.min(1, v)) * 255)
@@ -303,7 +312,7 @@ function build3MFModel(
       .map((mat) => {
         const hexColor =
           mat.displayColor !== undefined ? colorToHex(mat.displayColor) : '#FFFFFFFF';
-        return `      <base name="${mat.name}" displaycolor="${hexColor}" />`;
+        return `      <base name="${escapeXmlAttr(mat.name)}" displaycolor="${hexColor}" />`;
       })
       .join('\n');
     resourceBlocks.push(`    <basematerials id="3">\n${matItems}\n    </basematerials>`);
@@ -319,7 +328,7 @@ function build3MFModel(
   return `<?xml version="1.0" encoding="UTF-8"?>
 <model unit="${unit}" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"${materialsNs}>
   <resources>${extraResources}
-    <object id="1" name="${name}" type="model">
+    <object id="1" name="${escapeXmlAttr(name)}" type="model">
       <mesh>
       <vertices>
 ${vertices.join('\n')}
