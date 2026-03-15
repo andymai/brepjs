@@ -3,6 +3,8 @@ import type { Plane, PlaneName } from '../core/planeTypes.js';
 import type { PointInput } from '../core/types.js';
 import type Blueprints from '../2d/blueprints/Blueprints.js';
 import { bug } from '../core/errors.js';
+import { type Result, ok, err } from '../core/result.js';
+import { ioError, validationError } from '../core/errors.js';
 import { organiseBlueprints } from '../2d/blueprints/lib.js';
 import { BlueprintSketcher } from '../sketching/Sketcher2d.js';
 import CompoundSketch from '../sketching/CompoundSketch.js';
@@ -31,9 +33,10 @@ export async function loadFont(
   fontFamily = 'default',
   force = false
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
-): Promise<any> {
+): Promise<Result<any>> {
   if (!force && FONT_REGISTER[fontFamily]) {
-    return FONT_REGISTER[fontFamily];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- opentype Font type
+    return ok(FONT_REGISTER[fontFamily]);
   }
 
   let fontData: ArrayBuffer;
@@ -42,14 +45,20 @@ export async function loadFont(
     try {
       response = await fetch(fontPath);
     } catch (e) {
-      throw new Error(
-        `Failed to fetch font from ${fontPath}: ${e instanceof Error ? e.message : String(e)}`,
-        { cause: e }
+      return err(
+        ioError(
+          'FONT_FETCH_FAILED',
+          `Failed to fetch font from ${fontPath}: ${e instanceof Error ? e.message : String(e)}`,
+          e
+        )
       );
     }
     if (!response.ok) {
-      throw new Error(
-        `Failed to fetch font from ${fontPath}: HTTP ${response.status} ${response.statusText}`
+      return err(
+        ioError(
+          'FONT_FETCH_FAILED',
+          `Failed to fetch font from ${fontPath}: HTTP ${response.status} ${response.statusText}`
+        )
       );
     }
     fontData = await response.arrayBuffer();
@@ -61,14 +70,19 @@ export async function loadFont(
   try {
     font = opentype.parse(fontData);
   } catch (e) {
-    throw new Error(`Failed to parse font data: ${e instanceof Error ? e.message : String(e)}`, {
-      cause: e,
-    });
+    return err(
+      ioError(
+        'FONT_PARSE_FAILED',
+        `Failed to parse font data: ${e instanceof Error ? e.message : String(e)}`,
+        e
+      )
+    );
   }
   FONT_REGISTER[fontFamily] = font;
   if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = font;
 
-  return font;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- opentype Font type
+  return ok(font);
 }
 
 /**
@@ -228,10 +242,20 @@ export interface FontMetricsResult {
 export function textMetrics(
   text: string,
   options?: { fontSize?: number; fontFamily?: string }
-): TextMetricsResult {
+): Result<TextMetricsResult> {
   const fontSize = options?.fontSize ?? 1;
   const font = getFont(options?.fontFamily);
-  if (!font) throw new Error('No font loaded. Call loadFont() first.');
+  if (!font) {
+    return err(
+      validationError(
+        'NO_FONT_LOADED',
+        'No font loaded. Call loadFont() first.',
+        undefined,
+        undefined,
+        'Load a font with loadFont() before calling textMetrics()'
+      )
+    );
+  }
 
   const width: number = font.getAdvanceWidth(text, fontSize) as number;
 
@@ -241,7 +265,7 @@ export function textMetrics(
 
   const descender = (font.descender as number) * scale;
 
-  return { width, height: ascender - descender, ascender, descender };
+  return ok({ width, height: ascender - descender, ascender, descender });
 }
 
 /**
@@ -252,10 +276,20 @@ export function textMetrics(
 export function fontMetrics(options?: {
   fontSize?: number;
   fontFamily?: string;
-}): FontMetricsResult {
+}): Result<FontMetricsResult> {
   const fontSize = options?.fontSize ?? 1;
   const font = getFont(options?.fontFamily);
-  if (!font) throw new Error('No font loaded. Call loadFont() first.');
+  if (!font) {
+    return err(
+      validationError(
+        'NO_FONT_LOADED',
+        'No font loaded. Call loadFont() first.',
+        undefined,
+        undefined,
+        'Load a font with loadFont() before calling fontMetrics()'
+      )
+    );
+  }
 
   const scale = fontSize / (font.unitsPerEm as number);
 
@@ -265,11 +299,11 @@ export function fontMetrics(options?: {
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- opentype Font, value may be undefined at runtime
   const lineGap = ((font.tables?.os2?.sTypoLineGap as number) ?? 0) * scale;
 
-  return {
+  return ok({
     ascender,
     descender,
 
     unitsPerEm: font.unitsPerEm as number,
     lineHeight: ascender - descender + lineGap,
-  };
+  });
 }

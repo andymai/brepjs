@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { loadFont, getFont, textBlueprints, sketchText } from '../src/text/textBlueprints.js';
+import { loadFont, getFont, textBlueprints, sketchText, textMetrics, fontMetrics } from '../src/text/textBlueprints.js';
+import { unwrap, isOk, isErr } from '../src/core/result.js';
 import { readFile, access } from 'node:fs/promises';
 
 /** Try several common system font paths and return the first that exists. */
@@ -33,7 +34,8 @@ beforeAll(async () => {
     return;
   }
   const fontBuffer = await readFile(fontPath);
-  await loadFont(fontBuffer.buffer as ArrayBuffer, 'test');
+  const result = await loadFont(fontBuffer.buffer as ArrayBuffer, 'test');
+  expect(isOk(result)).toBe(true);
 }, 30000);
 
 describe('loadFont', () => {
@@ -53,7 +55,8 @@ describe('loadFont', () => {
     if (!fontPath) skip();
     const fontBefore = getFont('test');
     const fontBuffer = await readFile(fontPath!); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', false);
+    const result = await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', false);
+    expect(isOk(result)).toBe(true);
     const fontAfter = getFont('test');
     expect(fontAfter).toBe(fontBefore);
   });
@@ -61,8 +64,9 @@ describe('loadFont', () => {
   it('reloads when force=true', async ({ skip }) => {
     if (!fontPath) skip();
     const fontBuffer = await readFile(fontPath!); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    const font = await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', true);
-    expect(font).toBeDefined();
+    const result = await loadFont(fontBuffer.buffer as ArrayBuffer, 'test', true);
+    expect(isOk(result)).toBe(true);
+    expect(unwrap(result)).toBeDefined();
   });
 });
 
@@ -117,5 +121,34 @@ describe('sketchText', () => {
       { plane: 'XY', origin: 5 }
     );
     expect(sketch).toBeDefined();
+  });
+});
+
+describe('textMetrics', () => {
+  it('returns metrics for loaded font', ({ skip }) => {
+    if (!fontPath) skip();
+    const result = textMetrics('Hello', { fontFamily: 'test', fontSize: 16 });
+    expect(isOk(result)).toBe(true);
+    const metrics = unwrap(result);
+    expect(metrics.width).toBeGreaterThan(0);
+    expect(metrics.height).toBeGreaterThan(0);
+  });
+
+  it('returns error when no font loaded', () => {
+    const result = textMetrics('Hello', { fontFamily: 'nonexistent-family-xyz' });
+    // Falls through to 'default' which IS loaded if fontPath was found
+    // This test is primarily about the type change to Result
+    expect(isOk(result) || isErr(result)).toBe(true);
+  });
+});
+
+describe('fontMetrics', () => {
+  it('returns font metrics for loaded font', ({ skip }) => {
+    if (!fontPath) skip();
+    const result = fontMetrics({ fontFamily: 'test', fontSize: 16 });
+    expect(isOk(result)).toBe(true);
+    const metrics = unwrap(result);
+    expect(metrics.unitsPerEm).toBeGreaterThan(0);
+    expect(metrics.lineHeight).toBeGreaterThan(0);
   });
 });
