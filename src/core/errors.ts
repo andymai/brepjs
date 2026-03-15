@@ -158,6 +158,11 @@ export const BrepErrorCode = {
   // GLB/glTF import errors
   GLB_IMPORT_FAILED: 'GLB_IMPORT_FAILED',
 
+  // Font/text errors
+  FONT_FETCH_FAILED: 'FONT_FETCH_FAILED',
+  FONT_PARSE_FAILED: 'FONT_PARSE_FAILED',
+  NO_FONT_LOADED: 'NO_FONT_LOADED',
+
   // Unsupported capability errors (ADR-0006 Phase 4)
   UNSUPPORTED_CAPABILITY: 'UNSUPPORTED_CAPABILITY',
 } as const;

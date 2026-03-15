@@ -709,6 +709,7 @@ export { importSTEP, importSTL, importIGES } from './io/importFns.js';
 export { importDXF } from './io/dxfImportFns.js';
 export { importOBJ } from './io/objImportFns.js';
 export { importThreeMF } from './io/threemfImportFns.js';
+export { importGLB } from './io/gltfImportFns.js';
 export type { DXFImportOptions } from './io/dxfImportFns.js';
 
 // ── Query (functional, immutable finders) ──
