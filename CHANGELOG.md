@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.11.2](https://github.com/andymai/brepjs/compare/brepjs-v12.11.1...brepjs-v12.11.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* **kernel:** sync brepkitWasmTypes.ts with brepkit-wasm 2.5.0 .d.ts ([#540](https://github.com/andymai/brepjs/issues/540)) ([8b4603c](https://github.com/andymai/brepjs/commit/8b4603c337596eb669d8f2ca18e51d81231d6fd2))
+
 ## [12.11.1](https://github.com/andymai/brepjs/compare/brepjs-v12.11.0...brepjs-v12.11.1) (2026-03-15)
 
 
