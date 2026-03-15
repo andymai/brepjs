@@ -21,10 +21,10 @@ import {
   box,
   getFaces,
 } from '../src/index.js';
-import { fillet2D, chamfer2D } from '../src/2d/blueprints/customCorners.js';
-import { offsetBlueprint } from '../src/2d/blueprints/offset.js';
-import offset from '../src/2d/blueprints/offset.js';
-import { approximateForSVG } from '../src/2d/blueprints/approximations.js';
+import { fillet2D, chamfer2D } from '../src/2d/blueprints/blueprintCustomCorners.js';
+import { offsetBlueprint } from '../src/2d/blueprints/blueprintOffset.js';
+import offset from '../src/2d/blueprints/blueprintOffset.js';
+import { approximateForSVG } from '../src/2d/blueprints/blueprintApproximations.js';
 import {
   blueprintsIntersectionSegments,
   isCommonSegmentMatch,

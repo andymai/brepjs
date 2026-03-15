@@ -42,12 +42,12 @@ import { textBlueprints } from '../text/textBlueprints.js';
 import type { ProjectionPlane } from '../projection/projectionPlanes.js';
 import { type Camera, cameraFromPlane, projectEdges } from '../projection/cameraFns.js';
 
-import offsetFn, { type Offset2DConfig } from '../2d/blueprints/offset.js';
+import offsetFn, { type Offset2DConfig } from '../2d/blueprints/blueprintOffset.js';
 import { cornerFinder, type CornerFinderFn } from '../query/finderFns.js';
-import { fillet2D, chamfer2D } from '../2d/blueprints/customCorners.js';
+import { fillet2D, chamfer2D } from '../2d/blueprints/blueprintCustomCorners.js';
 import { edgeToCurve } from '../2d/curves.js';
 import type { BSplineApproximationOptions } from '../topology/shapeHelpers.js';
-import { approximateForSVG } from '../2d/blueprints/approximations.js';
+import { approximateForSVG } from '../2d/blueprints/blueprintApproximations.js';
 import type { SingleFace } from '../query/helpers.js';
 import { wrapSketchData, wrapSketchDataArray } from './sketchUtils.js';
 
