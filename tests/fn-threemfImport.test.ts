@@ -1,6 +1,14 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, exportThreeMF, importThreeMF, measureVolume, mesh, unwrap } from '../src/index.js';
+import {
+  box,
+  exportThreeMF,
+  getShapeColor,
+  importThreeMF,
+  measureVolume,
+  mesh,
+  unwrap,
+} from '../src/index.js';
 import type { ThreeMFMaterial } from '../src/index.js';
 
 beforeAll(async () => {
@@ -184,5 +192,53 @@ describe('exportThreeMF with colors', () => {
     expect(xml).toContain('basematerials');
     expect(xml).toContain('PLA-Red');
     expect(xml).toContain('pid=');
+  });
+
+  it('round-trips per-face colors through 3MF export/import', async () => {
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+
+    const colors = new Map<number, [number, number, number, number]>();
+    const firstGroup = m.faceGroups[0];
+    expect(firstGroup).toBeDefined();
+    if (!firstGroup) return;
+    colors.set(firstGroup.faceId, [1, 0, 0, 1]);
+
+    const secondGroup = m.faceGroups[1];
+    if (secondGroup) {
+      colors.set(secondGroup.faceId, [0, 0, 1, 1]);
+    }
+
+    const buf = exportThreeMF(m, { colors });
+    const blob = new Blob([buf]);
+    const result = await importThreeMF(blob);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const shapeColor = getShapeColor(result.value);
+    expect(shapeColor).toBeDefined();
+  });
+
+  it('round-trips named materials through 3MF export/import', async () => {
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    const firstGroup = m.faceGroups[0];
+    expect(firstGroup).toBeDefined();
+    if (!firstGroup) return;
+
+    const materials = new Map<number, ThreeMFMaterial>();
+    materials.set(firstGroup.faceId, {
+      name: 'PLA-Red',
+      displayColor: [1, 0, 0, 1],
+    });
+
+    const buf = exportThreeMF(m, { materials });
+    const blob = new Blob([buf]);
+    const result = await importThreeMF(blob);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const vol = unwrap(measureVolume(result.value));
+    expect(vol).toBeCloseTo(1000, -1);
   });
 });
