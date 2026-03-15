@@ -66,7 +66,6 @@ import {
   measureArea,
   faceFinder,
   sketchCircle,
-  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
