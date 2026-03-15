@@ -1,6 +1,13 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { loadFont, getFont, textBlueprints, sketchText, textMetrics, fontMetrics } from '../src/text/textBlueprints.js';
+import {
+  loadFont,
+  getFont,
+  textBlueprints,
+  sketchText,
+  textMetrics,
+  fontMetrics,
+} from '../src/text/textBlueprints.js';
 import { unwrap, isOk, isErr } from '../src/core/result.js';
 import { readFile, access } from 'node:fs/promises';
 

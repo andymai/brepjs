@@ -35,7 +35,6 @@ export async function loadFont(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
 ): Promise<Result<any>> {
   if (!force && FONT_REGISTER[fontFamily]) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- opentype Font type
     return ok(FONT_REGISTER[fontFamily]);
   }
 
@@ -81,7 +80,6 @@ export async function loadFont(
   FONT_REGISTER[fontFamily] = font;
   if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = font;
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- opentype Font type
   return ok(font);
 }
 

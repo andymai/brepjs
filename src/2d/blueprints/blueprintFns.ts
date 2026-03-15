@@ -28,12 +28,9 @@ import { validationError } from '../../core/errors.js';
  * @see {@link Blueprint} constructor.
  */
 export function createBlueprint(curves: Blueprint['curves']): Result<Blueprint> {
-  if (!curves || curves.length === 0) {
+  if (curves.length === 0) {
     return err(
-      validationError(
-        'BLUEPRINT_EMPTY_CURVES',
-        'createBlueprint: at least one curve is required'
-      )
+      validationError('BLUEPRINT_EMPTY_CURVES', 'createBlueprint: at least one curve is required')
     );
   }
   return ok(new BlueprintClass(curves));
@@ -47,10 +44,8 @@ export function createBlueprint(curves: Blueprint['curves']): Result<Blueprint> 
  *
  * @see {@link CompoundBlueprint} constructor.
  */
-export function createCompoundBlueprint(
-  blueprints: Blueprint[]
-): Result<CompoundBlueprint> {
-  if (!blueprints || blueprints.length === 0) {
+export function createCompoundBlueprint(blueprints: Blueprint[]): Result<CompoundBlueprint> {
+  if (blueprints.length === 0) {
     return err(
       validationError(
         'COMPOUND_BLUEPRINT_EMPTY',
