@@ -112,16 +112,18 @@ interface LavNode {
   bx: number;
   by: number;
   origIdx: number;
-  prev: LavNode;
-  next: LavNode;
+  prev: LavNode | null;
+  next: LavNode | null;
   active: boolean;
 }
 
 /** Is a LAV node reflex based on current LAV positions? */
 function isLavNodeReflex(node: LavNode): boolean {
-  const prev = node.prev;
-  const next = node.next;
-  return cross2(node.x - prev.x, node.y - prev.y, next.x - node.x, next.y - node.y) < -EPS;
+  if (!node.prev || !node.next) return false;
+  return (
+    cross2(node.x - node.prev.x, node.y - node.prev.y, node.next.x - node.x, node.next.y - node.y) <
+    -EPS
+  );
 }
 
 function createLav(poly: SkPoint2D[]): LavNode[] {
@@ -133,8 +135,8 @@ function createLav(poly: SkPoint2D[]): LavNode[] {
       bx: b.dx,
       by: b.dy,
       origIdx: i,
-      prev: null as unknown as LavNode,
-      next: null as unknown as LavNode,
+      prev: null,
+      next: null,
       active: true,
     };
   });
@@ -155,10 +157,12 @@ function createLav(poly: SkPoint2D[]): LavNode[] {
 /** Count active nodes reachable from a starting node. */
 function lavSize(start: LavNode): number {
   let count = 1;
-  let cur = start.next;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list: prev/next non-null after construction
+  let cur = start.next!;
   while (cur !== start) {
     count++;
-    cur = cur.next;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list traversal
+    cur = cur.next!;
     if (count > 10000) break;
   }
   return count;
@@ -248,7 +252,7 @@ function computeEvents(lavNodes: LavNode[]): SkEvent[] {
   const events: SkEvent[] = [];
 
   for (const node of lavNodes) {
-    if (!node.active) continue;
+    if (!node.active || !node.next) continue;
 
     const t = bisectorIntersectTime(node, node.next);
     if (t !== null && t > EPS) {
@@ -258,16 +262,19 @@ function computeEvents(lavNodes: LavNode[]): SkEvent[] {
     }
 
     if (isLavNodeReflex(node)) {
-      let cur = node.next.next;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list traversal
+      let cur = node.next.next!;
       let count = 0;
       while (cur !== node.prev && cur !== node && count < 1000) {
-        const st = raySplitTime(node, cur, cur.next);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list traversal
+        const st = raySplitTime(node, cur, cur.next!);
         if (st !== null && st > EPS) {
           const x = node.x + st * node.bx;
           const y = node.y + st * node.by;
           events.push({ time: st, x, y, nodeA: node, nodeB: cur, type: 'split' });
         }
-        cur = cur.next;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list traversal
+        cur = cur.next!;
         count++;
       }
     }
@@ -311,8 +318,10 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
     if (sz <= 3) {
       if (sz === 3) {
         const a = activeStart;
-        const b = a.next;
-        const c = b.next;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list: 3-node LAV guaranteed non-null
+        const b = a.next!;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list: 3-node LAV guaranteed non-null
+        const c = b.next!;
 
         const t = bisectorIntersectTime(a, b);
         const time = t !== null && t > EPS ? t : 0;
@@ -333,8 +342,9 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
         b.active = false;
         c.active = false;
       } else {
-        let cur = activeStart;
+        let cur: LavNode | null = activeStart;
         for (let i = 0; i < sz; i++) {
+          if (!cur) break;
           cur.active = false;
           cur = cur.next;
         }
@@ -373,14 +383,16 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
       a.y = ev.y;
 
       a.next = b.next;
-      b.next.prev = a;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list: b.next non-null in active LAV
+      b.next!.prev = a;
       b.active = false;
 
       const lavPoly: SkPoint2D[] = [];
       let cur = a;
       do {
         lavPoly.push({ x: cur.x, y: cur.y });
-        cur = cur.next;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list traversal
+        cur = cur.next!;
       } while (cur !== a);
 
       const bDir = bisector(lavPoly, 0);
@@ -407,8 +419,8 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
         bx: 0,
         by: 0,
         origIdx: a.origIdx,
-        prev: null as unknown as LavNode,
-        next: null as unknown as LavNode,
+        prev: null,
+        next: null,
         active: true,
       };
       lavNodes.push(aCopy);
@@ -419,8 +431,10 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
 
       // Rewire: LAV 1 runs a -> b.next -> ... -> a.prev -> a
       // Rewire: LAV 2 runs aCopy -> a.next -> ... -> b -> aCopy
-      const aNext = a.next;
-      const bNext = b.next;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list: active nodes have non-null prev/next
+      const aNext = a.next!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list: active nodes have non-null prev/next
+      const bNext = b.next!;
 
       // LAV 1: a connects to b.next on the forward side
       a.next = bNext;
@@ -438,7 +452,8 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton 
         let c = start;
         do {
           poly.push({ x: c.x, y: c.y });
-          c = c.next;
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- circular linked list traversal
+          c = c.next!;
         } while (c !== start);
         return poly;
       };
