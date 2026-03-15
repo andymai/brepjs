@@ -54,7 +54,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: guidedSweepFns', () =>
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);
       expect(isSolid(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeGreaterThan(1000);
+      expect(unwrap(measureVolume(shape))).toBeGreaterThan(1000);
     });
 
     it('sweeps with an auxiliary guide wire', () => {
@@ -66,7 +66,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: guidedSweepFns', () =>
       // At minimum, the function should not crash
       if (isOk(result)) {
         expect(isSolid(unwrap(result))).toBe(true);
-        expect(measureVolume(unwrap(result))).toBeGreaterThan(500);
+        expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(500);
       }
       // If it fails, that's acceptable — guide sweep is best-effort in WASM
     });

@@ -35,7 +35,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: hullFns', () => {
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
       expect(isSolid(solid)).toBe(true);
-      const vol = measureVolume(solid);
+      const vol = unwrap(measureVolume(solid));
       expect(vol).toBeCloseTo(1000, 0);
     });
 
@@ -46,7 +46,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: hullFns', () => {
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
       expect(isSolid(solid)).toBe(true);
-      const vol = measureVolume(solid);
+      const vol = unwrap(measureVolume(solid));
       expect(vol).toBeGreaterThan(2000);
     });
 
@@ -56,7 +56,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: hullFns', () => {
       const result = hull([s]);
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
-      const vol = measureVolume(solid);
+      const vol = unwrap(measureVolume(solid));
       const expected = (4 / 3) * Math.PI * r ** 3;
       // Mesh-based hull is an approximation, allow 15% tolerance
       expect(vol).toBeGreaterThan(expected * 0.85);
@@ -74,7 +74,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: hullFns', () => {
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
       expect(isSolid(solid)).toBe(true);
-      const vol = measureVolume(solid);
+      const vol = unwrap(measureVolume(solid));
       // Should form a roughly tetrahedral shape — volume well above sum of small boxes (4)
       expect(vol).toBeGreaterThan(1000);
     });
@@ -92,7 +92,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: hullFns', () => {
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
       expect(isSolid(solid)).toBe(true);
-      const vol = measureVolume(solid);
+      const vol = unwrap(measureVolume(solid));
       expect(vol).toBeCloseTo(1000, 0);
     });
 
@@ -103,7 +103,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: hullFns', () => {
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
       expect(isSolid(solid)).toBe(true);
-      const vol = measureVolume(solid);
+      const vol = unwrap(measureVolume(solid));
       // Hull should be at least as large as the box
       expect(vol).toBeGreaterThanOrEqual(125);
     });

@@ -32,7 +32,7 @@ describe('polyhedron', () => {
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result);
     expect(isSolid(shape)).toBe(true);
-    expect(measureVolume(shape)).toBeGreaterThan(0.05);
+    expect(unwrap(measureVolume(shape))).toBeGreaterThan(0.05);
   });
 
   it('creates a cube with volume 1000', () => {
@@ -64,7 +64,7 @@ describe('polyhedron', () => {
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result);
     expect(isSolid(shape)).toBe(true);
-    expect(measureVolume(shape)).toBeCloseTo(1000, -1);
+    expect(unwrap(measureVolume(shape))).toBeCloseTo(1000, -1);
   });
 
   it('supports quad faces via fan triangulation', () => {
@@ -89,7 +89,7 @@ describe('polyhedron', () => {
     ];
     const result = polyhedron(points, faces);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1000, -1);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, -1);
   });
 
   describe('error handling', () => {

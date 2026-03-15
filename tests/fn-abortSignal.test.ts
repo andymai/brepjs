@@ -18,7 +18,7 @@ describe('AbortSignal cancellation', () => {
   it('fuseAll (pairwise) succeeds without signal', () => {
     const boxes = Array.from({ length: 3 }, () => box(10, 10, 10));
     const result = unwrap(fuseAll(boxes, { strategy: 'pairwise' }));
-    expect(measureVolume(result)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(result))).toBeCloseTo(1000, 0);
   });
 
   it('fuseAll (native) throws when signal is already aborted', () => {
@@ -69,6 +69,6 @@ describe('AbortSignal cancellation', () => {
     const controller = new AbortController();
     // Don't abort — operation should succeed
     const result = unwrap(fuseAll(boxes, { strategy: 'pairwise', signal: controller.signal }));
-    expect(measureVolume(result)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(result))).toBeCloseTo(1000, 0);
   });
 });

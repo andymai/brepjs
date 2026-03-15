@@ -39,7 +39,7 @@ describe('drill()', () => {
     const d = 10;
     const result = drill(b, { at: [25, 25, 20], radius: r, depth: d, axis: [0, 0, -1] });
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     const expected = 50 * 50 * 20 - Math.PI * r * r * d;
     expect(vol).toBeCloseTo(expected, -1);
   });
@@ -49,7 +49,7 @@ describe('drill()', () => {
     const r = 5;
     const result = drill(b, { at: [25, 25], radius: r });
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     const originalVol = 50 * 50 * 20;
     const cylinderVol = Math.PI * r * r * 20;
     expect(vol).toBeLessThan(originalVol);
@@ -81,7 +81,7 @@ describe('pocket()', () => {
     const profile = drawRectangle(20, 10);
     const result = pocket(b, { profile, depth: 5 });
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeLessThanOrEqual(50 * 50 * 20);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeLessThanOrEqual(50 * 50 * 20);
   });
 
   it('returns Err with POCKET_INVALID_DEPTH for depth <= 0', () => {
@@ -134,7 +134,7 @@ describe('boss()', () => {
     const profile = drawRectangle(20, 10);
     const result = boss(b, { profile, height: 5 });
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeGreaterThan(50 * 50 * 20);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(50 * 50 * 20);
   });
 
   it('returns Err with BOSS_INVALID_HEIGHT for height <= 0', () => {
@@ -155,7 +155,7 @@ describe('mirrorJoin()', () => {
     const b = box(10, 10, 10);
     const result = mirrorJoin(b);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(2000, -1);
   });
 });
@@ -176,7 +176,7 @@ describe('rectangularPattern()', () => {
       ySpacing: 20,
     });
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(4 * 125, 0);
   });
 

@@ -208,7 +208,7 @@ describe('pipeline', () => {
       .then((s) => shell(s, [faces[0]], 0.5)).result;
 
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeGreaterThan(0);
     expect(vol).toBeLessThan(1000);
   });
@@ -240,7 +240,7 @@ describe('pipeline', () => {
     }).result;
 
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
   });
 

@@ -8,6 +8,7 @@ import {
   sketchRectangle,
   sketchCircle,
   measureVolume,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -41,7 +42,7 @@ describe('Sketch extrusion', () => {
     const sketch = sketchRectangle(10, 20);
     const solid = sketch.extrude(5);
     expect(solid).toBeDefined();
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(10 * 20 * 5, 0);
   });
 
@@ -49,7 +50,7 @@ describe('Sketch extrusion', () => {
     const sketch = sketchCircle(10);
     const solid = sketch.extrude(5);
     expect(solid).toBeDefined();
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(Math.PI * 100 * 5, 0);
   });
 });

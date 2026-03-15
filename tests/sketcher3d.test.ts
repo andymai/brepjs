@@ -9,6 +9,7 @@ import {
   makeBaseBox,
   measureVolume,
   measureArea,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -19,7 +20,7 @@ describe('Sketcher 3D', () => {
   it('lineTo draws to an absolute point', () => {
     const sketch = new Sketcher().lineTo([10, 0]).lineTo([10, 10]).lineTo([0, 10]).close();
     expect(sketch).toBeDefined();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     expect(vol).toBeCloseTo(100, 0);
   });
 
@@ -30,7 +31,7 @@ describe('Sketcher 3D', () => {
 
   it('vLine and hLine', () => {
     const sketch = new Sketcher().hLine(10).vLine(10).hLine(-10).close();
-    const vol = measureVolume(sketch.extrude(5));
+    const vol = unwrap(measureVolume(sketch.extrude(5)));
     expect(vol).toBeCloseTo(500, 0);
   });
 
@@ -224,7 +225,7 @@ describe('Sketch class', () => {
   it('face returns a measurable face', () => {
     const sketch = sketchRectangle(10, 20);
     const f = sketch.face();
-    expect(measureArea(f)).toBeCloseTo(200, 0);
+    expect(unwrap(measureArea(f))).toBeCloseTo(200, 0);
   });
 
   it('extrude with custom direction', () => {
@@ -254,7 +255,7 @@ describe('Sketch class', () => {
     const s1 = sketchRectangle(10, 10);
     const s2 = sketchCircle(5, { plane: 'XY', origin: 10 });
     const solid = s1.loftWith(s2);
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 
@@ -283,14 +284,14 @@ describe('Sketches collection', () => {
 
 describe('makeBaseBox', () => {
   it('creates a box with correct volume', () => {
-    expect(measureVolume(makeBaseBox(10, 20, 30))).toBeCloseTo(6000, 0);
+    expect(unwrap(measureVolume(makeBaseBox(10, 20, 30)))).toBeCloseTo(6000, 0);
   });
 });
 
 describe('Sketcher 3D tangentArcTo edge cases', () => {
   it('quarter-circle tangent arc produces extrudable solid', () => {
     const sketch = new Sketcher().lineTo([5, 0]).tangentArcTo([10, 5]).lineTo([0, 10]).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     expect(vol).toBeGreaterThan(0);
   });
 
@@ -312,7 +313,7 @@ describe('Sketcher 3D tangentArcTo edge cases', () => {
       .lineTo([15, -5])
       .lineTo([0, -5])
       .close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     expect(vol).toBeGreaterThan(0);
   });
 });
@@ -321,7 +322,7 @@ describe('Sketcher 3D closeWithMirror', () => {
   it('closeWithMirror on XZ plane', () => {
     const sketch = new Sketcher('XZ').hLine(5).vLine(5).hLine(5).closeWithMirror();
     expect(sketch).toBeDefined();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     expect(vol).toBeGreaterThan(0);
   });
 });
@@ -329,14 +330,14 @@ describe('Sketcher 3D closeWithMirror', () => {
 describe('Sketcher 3D volume parity', () => {
   it('hLine/vLine rectangle matches expected volume exactly', () => {
     const sketch = new Sketcher().hLine(10).vLine(10).hLine(-10).close();
-    expect(measureVolume(sketch.extrude(5))).toBeCloseTo(500, 2);
+    expect(unwrap(measureVolume(sketch.extrude(5)))).toBeCloseTo(500, 2);
   });
 
   it('sagittaArcTo preserves original sagitta direction', (ctx) => {
     // brepkit: 2D→3D lift produces different geometry than direct 3D construction
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher().sagittaArcTo([10, 0], 3).lineTo([10, -5]).lineTo([0, -5]).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 28.63)
     expect(vol).toBeCloseTo(28.63, 0);
   });
@@ -344,7 +345,7 @@ describe('Sketcher 3D volume parity', () => {
   it('bulgeArcTo preserves original bulge direction', (ctx) => {
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher().bulgeArcTo([10, 0], 0.5).lineTo([10, -5]).lineTo([0, -5]).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 67.47)
     expect(vol).toBeCloseTo(67.47, 0);
   });
@@ -356,7 +357,7 @@ describe('Sketcher 3D volume parity', () => {
       .lineTo([10, -5])
       .lineTo([0, -5])
       .close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 89.27)
     expect(vol).toBeCloseTo(89.27, 0);
   });
@@ -364,7 +365,7 @@ describe('Sketcher 3D volume parity', () => {
   it('ellipseTo matches original geometry', (ctx) => {
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher().ellipseTo([10, 0], 3, 5).lineTo([10, -5]).lineTo([0, -5]).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 115.45)
     expect(vol).toBeCloseTo(115.45, 0);
   });
@@ -372,7 +373,7 @@ describe('Sketcher 3D volume parity', () => {
   it('smoothSplineTo matches original geometry', (ctx) => {
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher().hLine(5).smoothSplineTo([10, 5]).lineTo([0, 10]).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 62.5)
     expect(vol).toBeCloseTo(62.5, 0);
   });
@@ -383,7 +384,7 @@ describe('Sketcher 3D inherited capabilities', () => {
     // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher().hLine(10).customCorner(1).vLine(10).hLine(-10).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-1 quarter-circle corner: 100 - (1 - π/4) ≈ 99.785
     expect(vol).toBeCloseTo(99.785, 1);
   });
@@ -392,7 +393,7 @@ describe('Sketcher 3D inherited capabilities', () => {
     // brepkit: chamfer2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher().hLine(10).customCorner(1, 'chamfer').vLine(10).hLine(-10).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-1 chamfer triangle: 100 - 0.5 = 99.5
     expect(vol).toBeCloseTo(99.5, 1);
   });
@@ -401,7 +402,7 @@ describe('Sketcher 3D inherited capabilities', () => {
     // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1);
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-1 quarter-circle corner: 100 - (1 - π/4) ≈ 99.785
     expect(vol).toBeCloseTo(99.785, 1);
   });
@@ -430,7 +431,7 @@ describe('Sketcher 3D inherited capabilities', () => {
     // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
     if (isBrepkit) ctx.skip();
     const sketch = new Sketcher('XZ').hLine(10).customCorner(2).vLine(10).hLine(-10).close();
-    const vol = measureVolume(sketch.extrude(1));
+    const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-2 quarter-circle corner: 100 - (4 - π) ≈ 99.142
     expect(vol).toBeCloseTo(99.142, 1);
   });

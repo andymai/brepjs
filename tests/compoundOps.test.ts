@@ -34,7 +34,7 @@ describe('drill()', () => {
     const result = drill(b, { at: [25, 15], radius: 5 });
     expect(isOk(result)).toBe(true);
     const drilled = unwrap(result);
-    const vol = measureVolume(drilled);
+    const vol = unwrap(measureVolume(drilled));
     // Volume should be less than original (hole removed)
     expect(vol).toBeLessThan(50 * 30 * 10);
     expect(vol).toBeGreaterThan(0);
@@ -44,7 +44,7 @@ describe('drill()', () => {
     const b = box(50, 30, 10);
     const result = drill(b, { at: [25, 15, 0], radius: 5, depth: 5 });
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(50 * 30 * 10);
     // Blind hole removes less volume than through hole
     expect(vol).toBeGreaterThan(50 * 30 * 10 - Math.PI * 25 * 10);
@@ -64,7 +64,7 @@ describe('drill()', () => {
 
   it('drill via wrapper method', () => {
     const drilled = shape(box(50, 30, 10)).drill({ at: [25, 15], radius: 5 });
-    expect(measureVolume(drilled.val)).toBeLessThan(50 * 30 * 10);
+    expect(unwrap(measureVolume(drilled.val))).toBeLessThan(50 * 30 * 10);
   });
 
   it('multiple drills in chain', () => {
@@ -72,7 +72,7 @@ describe('drill()', () => {
       .drill({ at: [10, 10], radius: 3 })
       .drill({ at: [40, 10], radius: 3 })
       .drill({ at: [25, 20], radius: 5 });
-    expect(measureVolume(plate.val)).toBeLessThan(50 * 30 * 10);
+    expect(unwrap(measureVolume(plate.val))).toBeLessThan(50 * 30 * 10);
   });
 });
 
@@ -85,7 +85,7 @@ describe('mirrorJoin()', () => {
     const half = translate(box(10, 20, 10), [0, 0, 0]);
     const result = mirrorJoin(half);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     // Mirror across X, fused → roughly double width
     expect(vol).toBeGreaterThan(2000 * 0.9);
   });
@@ -98,7 +98,7 @@ describe('mirrorJoin()', () => {
 
   it('mirrorJoin via wrapper', () => {
     const s = shape(box(10, 20, 10)).mirrorJoin();
-    expect(measureVolume(s.val)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(s.val))).toBeGreaterThan(0);
   });
 });
 
@@ -162,7 +162,7 @@ describe('rectangularPattern()', () => {
     });
     expect(isOk(result)).toBe(true);
     // 6 copies fused together
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(6 * 125, 0);
   });
 
@@ -177,7 +177,7 @@ describe('rectangularPattern()', () => {
       ySpacing: 10,
     });
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(125, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(125, 0);
   });
 
   it('validates count >= 1', () => {
@@ -202,6 +202,6 @@ describe('rectangularPattern()', () => {
       yCount: 2,
       ySpacing: 10,
     });
-    expect(measureVolume(s.val)).toBeCloseTo(6 * 125, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(6 * 125, 0);
   });
 });

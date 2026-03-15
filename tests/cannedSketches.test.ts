@@ -14,6 +14,7 @@ import {
   measureArea,
   box,
   getFaces,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -24,7 +25,7 @@ describe('Canned sketches', () => {
   it('sketchCircle default plane', () => {
     const s = sketchCircle(10);
     expect(s).toBeDefined();
-    expect(measureVolume(s.extrude(5))).toBeCloseTo(Math.PI * 100 * 5, 0);
+    expect(unwrap(measureVolume(s.extrude(5)))).toBeCloseTo(Math.PI * 100 * 5, 0);
   });
 
   it('sketchCircle on XZ', () => {
@@ -44,7 +45,7 @@ describe('Canned sketches', () => {
   });
 
   it('sketchRectangle', () => {
-    expect(measureVolume(sketchRectangle(10, 20).extrude(5))).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(sketchRectangle(10, 20).extrude(5)))).toBeCloseTo(1000, 0);
   });
 
   it('sketchRoundedRectangle', () => {
@@ -115,7 +116,7 @@ describe('Canned sketches', () => {
     const face = getFaces(b)[0]!;
     const sketch = sketchFaceOffset(face, -2);
     expect(sketch).toBeDefined();
-    const area = measureArea(sketch.face());
+    const area = unwrap(measureArea(sketch.face()));
     expect(area).toBeGreaterThan(0);
     // Offset inward by 2 on each side → (20-4)² = 256 < 400
     expect(area).toBeLessThan(400);

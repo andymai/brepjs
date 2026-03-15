@@ -24,7 +24,7 @@ describe('linearPattern', () => {
     const pattern = unwrap(result);
     expect(pattern).toBeDefined();
     // 3 non-overlapping boxes (spacing=10 > box width=5)
-    const vol = measureVolume(pattern);
+    const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(5 * 5 * 5 * 3, -1);
   });
 
@@ -33,7 +33,7 @@ describe('linearPattern', () => {
     const result = linearPattern(b, [1, 0, 0], 1, 10);
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
-    const vol = measureVolume(pattern);
+    const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(5 * 5 * 5, -1);
   });
 
@@ -58,7 +58,7 @@ describe('circularPattern', () => {
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
     expect(pattern).toBeDefined();
-    const vol = measureVolume(pattern);
+    const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 4, -1);
   });
 
@@ -68,7 +68,7 @@ describe('circularPattern', () => {
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
     expect(pattern).toBeDefined();
-    const vol = measureVolume(pattern);
+    const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
   });
 
@@ -89,7 +89,7 @@ describe('circularPattern', () => {
     const result = circularPattern(b, [0, 0, 1], 1);
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
-    const vol = measureVolume(pattern);
+    const vol = unwrap(measureVolume(pattern));
     expect(vol).toBeCloseTo(5 * 5 * 5, -1);
   });
 });
@@ -100,7 +100,7 @@ describe('gridPattern', () => {
     const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 2, 3, 5, 5);
     expect(isOk(result)).toBe(true);
     const pattern = unwrap(result);
-    const vol = measureVolume(pattern);
+    const vol = unwrap(measureVolume(pattern));
     // 6 non-overlapping boxes (spacing=5 > size=2)
     expect(vol).toBeCloseTo(2 * 2 * 2 * 6, -1);
   });
@@ -109,7 +109,7 @@ describe('gridPattern', () => {
     const b = box(5, 5, 5);
     const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 1, 10, 10);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(5 * 5 * 5, -1);
   });
 
@@ -141,7 +141,7 @@ describe('gridPattern', () => {
     const b = box(2, 2, 2);
     const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 1, 4, 5, 5);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 4, -1);
   });
 
@@ -149,7 +149,7 @@ describe('gridPattern', () => {
     const b = box(2, 2, 2);
     const result = gridPattern(b, [1, 0, 0], [0, 1, 0], 3, 1, 5, 5);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeCloseTo(2 * 2 * 2 * 3, -1);
   });
 });

@@ -1,69 +1,53 @@
 /**
  * Functional measurement utilities using branded shape types.
- * Standalone pure functions returning plain values.
+ * All functions return `Result<T>` for consistent error handling.
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { Vec3 } from '../core/types.js';
 import type { AnyShape, Dimension, Face, OrientedFace, Shape3D } from '../core/shapeTypes.js';
+import { type Result, ok, err } from '../core/result.js';
+import { validationError, BrepErrorCode } from '../core/errors.js';
 import { uvBounds } from '../topology/faceFns.js';
 import type { CurvatureResult } from '../kernel/measureOps.js';
 import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
+import type {
+  PhysicalProps,
+  VolumeProps,
+  SurfaceProps,
+  LinearProps,
+  DistanceProps,
+} from './measureTypes.js';
+
+// Re-export types for consumers
+export type { PhysicalProps, VolumeProps, SurfaceProps, LinearProps, DistanceProps };
 
 // ---------------------------------------------------------------------------
-// Pre-validation
+// Pre-validation (returns Result instead of throwing)
 // ---------------------------------------------------------------------------
 
-function assertShapeNotNull(shape: { wrapped: { IsNull(): boolean } }, fn: string): void {
-  if (getKernel().isNull(shape.wrapped)) {
-    throw new Error(`${fn}: shape is a null shape`);
-  }
+function shapeIsNull(shape: { wrapped: { IsNull(): boolean } }): boolean {
+  return getKernel().isNull(shape.wrapped);
+}
+
+function nullShapeErr(fn: string) {
+  return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${fn}: shape is a null shape`));
 }
 
 // ---------------------------------------------------------------------------
 // Volume, area, length
 // ---------------------------------------------------------------------------
 
-/** Base physical properties returned by BRepGProp measurements. */
-export interface PhysicalProps {
-  /** Raw mass property from BRepGProp (volume, area, or length depending on measurement type). */
-  readonly mass: number;
-  /** Center of mass as an [x, y, z] tuple. */
-  readonly centerOfMass: Vec3;
-}
-
-/** Volume properties with a domain-specific `volume` alias. */
-export interface VolumeProps extends PhysicalProps {
-  readonly volume: number;
-}
-
-/** Surface properties with a domain-specific `area` alias. */
-export interface SurfaceProps extends PhysicalProps {
-  readonly area: number;
-}
-
-/** Linear properties with a domain-specific `length` alias. */
-export interface LinearProps extends PhysicalProps {
-  readonly length: number;
-}
-
 /**
  * Measure volume properties of a 3D shape.
  *
  * @param shape - A solid or compound shape.
- * @returns Volume, center of mass, and raw mass property.
+ * @returns `Result` containing volume, center of mass, and raw mass property.
  * @see {@link measureVolume} for a shorthand that returns only the volume number.
- *
- * @example
- * ```ts
- * const props = measureVolumeProps(mySolid);
- * console.log(props.volume, props.centerOfMass);
- * ```
  */
-export function measureVolumeProps(shape: Shape3D): VolumeProps {
+export function measureVolumeProps(shape: Shape3D): Result<VolumeProps> {
   const cached = getCachedMeasurement(shape.wrapped, 'volume') as VolumeProps | undefined;
-  if (cached) return cached;
-  assertShapeNotNull(shape, 'measureVolumeProps');
+  if (cached) return ok(cached);
+  if (shapeIsNull(shape)) return nullShapeErr('measureVolumeProps');
 
   const kernel = getKernel();
   const m = kernel.volume(shape.wrapped);
@@ -81,20 +65,20 @@ export function measureVolumeProps(shape: Shape3D): VolumeProps {
     centerOfMass: com,
   };
   setCachedMeasurement(shape.wrapped, 'volume', result);
-  return result;
+  return ok(result);
 }
 
 /**
  * Measure surface properties of a face or 3D shape.
  *
  * @param shape - A Face or any 3D shape (the total outer surface area is measured).
- * @returns Surface area, center of mass, and raw mass property.
+ * @returns `Result` containing surface area, center of mass, and raw mass property.
  * @see {@link measureArea} for a shorthand that returns only the area number.
  */
-export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): SurfaceProps {
+export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<SurfaceProps> {
   const cached = getCachedMeasurement(shape.wrapped, 'surface') as SurfaceProps | undefined;
-  if (cached) return cached;
-  assertShapeNotNull(shape, 'measureSurfaceProps');
+  if (cached) return ok(cached);
+  if (shapeIsNull(shape)) return nullShapeErr('measureSurfaceProps');
 
   const kernel = getKernel();
   const m = kernel.area(shape.wrapped);
@@ -105,7 +89,7 @@ export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): SurfacePr
     centerOfMass: com,
   };
   setCachedMeasurement(shape.wrapped, 'surface', result);
-  return result;
+  return ok(result);
 }
 
 /**
@@ -115,13 +99,13 @@ export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): SurfacePr
  * length of all edges.
  *
  * @param shape - Any shape whose linear extent is to be measured.
- * @returns Length, center of mass, and raw mass property.
+ * @returns `Result` containing length, center of mass, and raw mass property.
  * @see {@link measureLength} for a shorthand that returns only the length number.
  */
-export function measureLinearProps(shape: AnyShape<Dimension>): LinearProps {
+export function measureLinearProps(shape: AnyShape<Dimension>): Result<LinearProps> {
   const cached = getCachedMeasurement(shape.wrapped, 'linear') as LinearProps | undefined;
-  if (cached) return cached;
-  assertShapeNotNull(shape, 'measureLinearProps');
+  if (cached) return ok(cached);
+  if (shapeIsNull(shape)) return nullShapeErr('measureLinearProps');
 
   const kernel = getKernel();
   const m = kernel.length(shape.wrapped);
@@ -132,7 +116,7 @@ export function measureLinearProps(shape: AnyShape<Dimension>): LinearProps {
     centerOfMass: com,
   };
   setCachedMeasurement(shape.wrapped, 'linear', result);
-  return result;
+  return ok(result);
 }
 
 /**
@@ -140,8 +124,10 @@ export function measureLinearProps(shape: AnyShape<Dimension>): LinearProps {
  *
  * @see {@link measureVolumeProps} for the full property set including center of mass.
  */
-export function measureVolume(shape: Shape3D): number {
-  return measureVolumeProps(shape).mass;
+export function measureVolume(shape: Shape3D): Result<number> {
+  const props = measureVolumeProps(shape);
+  if (!props.ok) return props;
+  return ok(props.value.mass);
 }
 
 /**
@@ -149,8 +135,10 @@ export function measureVolume(shape: Shape3D): number {
  *
  * @see {@link measureSurfaceProps} for the full property set including center of mass.
  */
-export function measureArea(shape: Face<Dimension> | Shape3D): number {
-  return measureSurfaceProps(shape).mass;
+export function measureArea(shape: Face<Dimension> | Shape3D): Result<number> {
+  const props = measureSurfaceProps(shape);
+  if (!props.ok) return props;
+  return ok(props.value.mass);
 }
 
 /**
@@ -158,8 +146,10 @@ export function measureArea(shape: Face<Dimension> | Shape3D): number {
  *
  * @see {@link measureLinearProps} for the full property set including center of mass.
  */
-export function measureLength(shape: AnyShape<Dimension>): number {
-  return measureLinearProps(shape).mass;
+export function measureLength(shape: AnyShape<Dimension>): Result<number> {
+  const props = measureLinearProps(shape);
+  if (!props.ok) return props;
+  return ok(props.value.mass);
 }
 
 // ---------------------------------------------------------------------------
@@ -168,16 +158,31 @@ export function measureLength(shape: AnyShape<Dimension>): number {
 
 /**
  * Measure the minimum distance between two shapes.
- *
- * @example
- * ```ts
- * const gap = measureDistance(boxA, boxB);
- * ```
  */
-export function measureDistance(shape1: AnyShape<Dimension>, shape2: AnyShape<Dimension>): number {
-  assertShapeNotNull(shape1, 'measureDistance');
-  assertShapeNotNull(shape2, 'measureDistance');
-  return getKernel().distance(shape1.wrapped, shape2.wrapped).value;
+export function measureDistance(
+  shape1: AnyShape<Dimension>,
+  shape2: AnyShape<Dimension>
+): Result<number> {
+  if (shapeIsNull(shape1)) return nullShapeErr('measureDistance');
+  if (shapeIsNull(shape2)) return nullShapeErr('measureDistance');
+  return ok(getKernel().distance(shape1.wrapped, shape2.wrapped).value);
+}
+
+/**
+ * Measure the minimum distance between two shapes, including witness points.
+ */
+export function measureDistanceProps(
+  shape1: AnyShape<Dimension>,
+  shape2: AnyShape<Dimension>
+): Result<DistanceProps> {
+  if (shapeIsNull(shape1)) return nullShapeErr('measureDistanceProps');
+  if (shapeIsNull(shape2)) return nullShapeErr('measureDistanceProps');
+  const d = getKernel().distance(shape1.wrapped, shape2.wrapped);
+  return ok({
+    distance: d.value,
+    point1: d.point1,
+    point2: d.point2,
+  });
 }
 
 /**
@@ -187,34 +192,23 @@ export function measureDistance(shape1: AnyShape<Dimension>, shape2: AnyShape<Di
  * multiple `distanceTo` calls avoid re-loading overhead.
  *
  * @remarks Call `dispose()` when done to free the WASM-allocated distance tool.
- *
- * @param referenceShape - The shape to measure distances from.
- * @returns An object with `distanceTo(other)` and `dispose()` methods.
- *
- * @example
- * ```ts
- * const query = createDistanceQuery(referenceBox);
- * const d1 = query.distanceTo(otherBox);
- * const d2 = query.distanceTo(sphere);
- * query.dispose();
- * ```
  */
-export function createDistanceQuery(referenceShape: AnyShape<Dimension>): {
-  distanceTo: (other: AnyShape<Dimension>) => number;
+export function createDistanceQuery(referenceShape: AnyShape<Dimension>): Result<{
+  distanceTo: (other: AnyShape<Dimension>) => Result<number>;
   dispose: () => void;
-} {
-  assertShapeNotNull(referenceShape, 'createDistanceQuery');
+}> {
+  if (shapeIsNull(referenceShape)) return nullShapeErr('createDistanceQuery');
   const query = getKernel().createDistanceQuery(referenceShape.wrapped);
 
-  return {
-    distanceTo(other: AnyShape<Dimension>): number {
-      assertShapeNotNull(other, 'createDistanceQuery.distanceTo');
-      return query.distanceTo(other.wrapped).value;
+  return ok({
+    distanceTo(other: AnyShape<Dimension>): Result<number> {
+      if (shapeIsNull(other)) return nullShapeErr('createDistanceQuery.distanceTo');
+      return ok(query.distanceTo(other.wrapped).value);
     },
     dispose(): void {
       query.dispose();
     },
-  };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -229,55 +223,43 @@ export type { CurvatureResult } from '../kernel/measureOps.js';
  *
  * Returns mean, Gaussian, and principal curvatures with directions.
  * The u, v parameters correspond to the face's parametric domain.
- *
- * @param face - The face to evaluate.
- * @param u - Parameter in the U direction.
- * @param v - Parameter in the V direction.
- *
- * @example
- * ```ts
- * const curv = measureCurvatureAt(cylinderFace, 0.5, 0.5);
- * console.log(curv.meanCurvature, curv.gaussianCurvature);
- * ```
  */
 export function measureCurvatureAt(
   face: OrientedFace<Dimension>,
   u: number,
   v: number
-): CurvatureResult {
-  assertShapeNotNull(face, 'measureCurvatureAt');
+): Result<CurvatureResult> {
+  if (shapeIsNull(face)) return nullShapeErr('measureCurvatureAt');
   const result = getKernel().surfaceCurvature(face.wrapped, u, v);
-  return {
+  return ok({
     mean: result.mean,
     gaussian: result.gaussian,
     maxCurvature: result.max,
     minCurvature: result.min,
     maxDirection: result.maxDirection,
     minDirection: result.minDirection,
-  };
+  });
 }
 
 /**
  * Measure surface curvature at the mid-point of a face's UV bounds.
  *
- * Uses `BRepTools::UVBounds` for the actual trimmed face UV region,
- * avoiding singularities that can occur with surface-level parameter bounds.
+ * Uses `BRepTools::UVBounds` for the actual trimmed face UV region.
  *
- * @param face - The face to evaluate at its parametric center.
  * @see {@link measureCurvatureAt} to evaluate at an arbitrary (u, v) point.
  */
-export function measureCurvatureAtMid(face: Face<Dimension>): CurvatureResult {
-  assertShapeNotNull(face, 'measureCurvatureAtMid');
+export function measureCurvatureAtMid(face: Face<Dimension>): Result<CurvatureResult> {
+  if (shapeIsNull(face)) return nullShapeErr('measureCurvatureAtMid');
   const bounds = uvBounds(face as Face);
   const uMid = (bounds.uMin + bounds.uMax) / 2;
   const vMid = (bounds.vMin + bounds.vMax) / 2;
   const result = getKernel().surfaceCurvature(face.wrapped, uMid, vMid);
-  return {
+  return ok({
     mean: result.mean,
     gaussian: result.gaussian,
     maxCurvature: result.max,
     minCurvature: result.min,
     maxDirection: result.maxDirection,
     minDirection: result.minDirection,
-  };
+  });
 }

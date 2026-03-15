@@ -312,7 +312,7 @@ describe('serializeHistory / deserializeHistory', () => {
     const restoredShape = restored.shapes.get('box-1');
     expect(restoredShape).toBeDefined();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above guarantees defined
-    expect(measureVolume(restoredShape!)).toBeCloseTo(measureVolume(shape), 0);
+    expect(unwrap(measureVolume(restoredShape!))).toBeCloseTo(unwrap(measureVolume(shape)), 0);
   });
 
   it('round-trips a 3-step history and replay produces identical geometry', () => {
@@ -342,7 +342,7 @@ describe('serializeHistory / deserializeHistory', () => {
       fusedShape
     );
 
-    const originalVolume = measureVolume(fusedShape);
+    const originalVolume = unwrap(measureVolume(fusedShape));
 
     // Serialize → JSON → Deserialize
     const serResult = serializeHistory(h);
@@ -360,7 +360,7 @@ describe('serializeHistory / deserializeHistory', () => {
     const restoredFused = restored.shapes.get('fused');
     expect(restoredFused).toBeDefined();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above
-    expect(measureVolume(restoredFused!)).toBeCloseTo(originalVolume, 0);
+    expect(unwrap(measureVolume(restoredFused!))).toBeCloseTo(originalVolume, 0);
 
     // Verify replay with registry also produces matching geometry
     let registry = createRegistry();
@@ -381,7 +381,7 @@ describe('serializeHistory / deserializeHistory', () => {
     const replayedFused = replayed.shapes.get('fused');
     expect(replayedFused).toBeDefined();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test assertion above
-    expect(measureVolume(replayedFused!)).toBeCloseTo(originalVolume, 0);
+    expect(unwrap(measureVolume(replayedFused!))).toBeCloseTo(originalVolume, 0);
   });
 
   it('returns error for corrupted BREP data', () => {

@@ -27,8 +27,8 @@ describe('chamferDistAngleShape', () => {
     expect(isShape3D(chamfered)).toBe(true);
 
     // Chamfered box should have less volume than original
-    const origVol = measureVolume(b);
-    const chamfVol = measureVolume(chamfered);
+    const origVol = unwrap(measureVolume(b));
+    const chamfVol = unwrap(measureVolume(chamfered));
     expect(chamfVol).toBeLessThan(origVol);
     expect(chamfVol).toBeGreaterThan(0);
   });
@@ -43,8 +43,8 @@ describe('chamferDistAngleShape', () => {
     const chamfered = unwrap(result);
     expect(isShape3D(chamfered)).toBe(true);
 
-    const origVol = measureVolume(b);
-    const chamfVol = measureVolume(chamfered);
+    const origVol = unwrap(measureVolume(b));
+    const chamfVol = unwrap(measureVolume(chamfered));
     expect(chamfVol).toBeLessThan(origVol);
   });
 
@@ -57,11 +57,11 @@ describe('chamferDistAngleShape', () => {
     const result30 = unwrap(chamferDistAngleShape(b, [edges[0]!], 2, 30)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     const result60 = unwrap(chamferDistAngleShape(b, [edges[0]!], 2, 60)); // eslint-disable-line @typescript-eslint/no-non-null-assertion
 
-    const vol30 = measureVolume(result30);
-    const vol60 = measureVolume(result60);
+    const vol30 = unwrap(measureVolume(result30));
+    const vol60 = unwrap(measureVolume(result60));
 
     // Both should be valid and less than original
-    const origVol = measureVolume(b);
+    const origVol = unwrap(measureVolume(b));
     expect(vol30).toBeLessThan(origVol);
     expect(vol60).toBeLessThan(origVol);
     // Different angles produce different volumes
@@ -78,19 +78,19 @@ describe('chamferDistAngleShape', () => {
     const chamfered = unwrap(result);
     expect(isShape3D(chamfered)).toBe(true);
 
-    const origVol = measureVolume(b);
-    const chamfVol = measureVolume(chamfered);
+    const origVol = unwrap(measureVolume(b));
+    const chamfVol = unwrap(measureVolume(chamfered));
     expect(chamfVol).toBeLessThan(origVol);
     expect(chamfVol).toBeGreaterThan(origVol * 0.8); // Not too much removed
   });
 
   it('is immutable — does not modify original shape', () => {
     const b = box(10, 10, 10);
-    const origVol = measureVolume(b);
+    const origVol = unwrap(measureVolume(b));
     const edges = getEdges(b);
 
     chamferDistAngleShape(b, [edges[0]!], 1, 45); // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    expect(measureVolume(b)).toBeCloseTo(origVol, 6);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(origVol, 6);
   });
 
   it('returns Err for empty edges array', () => {

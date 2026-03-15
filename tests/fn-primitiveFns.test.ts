@@ -34,7 +34,7 @@ describe('ellipsoid', () => {
     const s = ellipsoid(rx, ry, rz);
     expect(isSolid(s)).toBe(true);
     const expectedVolume = (4 / 3) * Math.PI * rx * ry * rz;
-    expect(measureVolume(s)).toBeCloseTo(expectedVolume, -1);
+    expect(unwrap(measureVolume(s))).toBeCloseTo(expectedVolume, -1);
   });
 
   it('creates a sphere when all radii are equal', () => {
@@ -42,7 +42,7 @@ describe('ellipsoid', () => {
     const s = ellipsoid(r, r, r);
     expect(isSolid(s)).toBe(true);
     const expectedVolume = (4 / 3) * Math.PI * r * r * r;
-    expect(measureVolume(s)).toBeCloseTo(expectedVolume, -1);
+    expect(unwrap(measureVolume(s))).toBeCloseTo(expectedVolume, -1);
   });
 });
 
@@ -69,7 +69,7 @@ describe('subFace', () => {
     const result = subFace(outerFace, innerWire);
     expect(isFace(result)).toBe(true);
     // Sub-face area should be approximately 5*5 = 25
-    expect(measureArea(result)).toBeCloseTo(25, 0);
+    expect(unwrap(measureArea(result))).toBeCloseTo(25, 0);
   });
 });
 
@@ -87,7 +87,7 @@ describe('addHoles', () => {
   it('creates a face with holes that has less area than the original', () => {
     const rect = sketchRectangle(20, 20);
     const outerFace = castShape(rect.face().wrapped) as Face;
-    const originalArea = measureArea(outerFace);
+    const originalArea = unwrap(measureArea(outerFace));
 
     // Create a circular hole
     const holeCircle = sketchCircle(3);
@@ -95,7 +95,7 @@ describe('addHoles', () => {
 
     const faceWithHole = addHoles(outerFace, [holeWire]);
     expect(isFace(faceWithHole)).toBe(true);
-    expect(measureArea(faceWithHole)).toBeLessThan(originalArea);
+    expect(unwrap(measureArea(faceWithHole))).toBeLessThan(originalArea);
   });
 });
 

@@ -43,7 +43,7 @@ describe('extrudeFns', () => {
       expect(isOk(result)).toBe(true);
       const solid = unwrap(result);
       expect(isSolid(solid)).toBe(true);
-      expect(measureVolume(solid)).toBeCloseTo(10 * 20 * 30, 0);
+      expect(unwrap(measureVolume(solid))).toBeCloseTo(10 * 20 * 30, 0);
     });
 
     it.skipIf(currentKernel !== 'occt')('extrudes a circle into a cylinder', () => {
@@ -51,7 +51,7 @@ describe('extrudeFns', () => {
       const f = castShape(c.face().wrapped);
       const result = extrude(f, [0, 0, 10]);
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(Math.PI * 25 * 10, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(Math.PI * 25 * 10, 0);
     });
   });
 

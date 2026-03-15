@@ -24,7 +24,7 @@ describe('roof', () => {
     if (!result.ok) console.error('ROOF ERROR:', result.error);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const vol = measureVolume(result.value);
+    const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeGreaterThan(0);
   });
 
@@ -45,7 +45,7 @@ describe('roof', () => {
     expect(r1.ok).toBe(true);
     expect(r2.ok).toBe(true);
     if (!r1.ok || !r2.ok) return;
-    expect(measureVolume(r2.value)).toBeGreaterThan(measureVolume(r1.value));
+    expect(unwrap(measureVolume(r2.value))).toBeGreaterThan(unwrap(measureVolume(r1.value)));
   });
 
   it('returns error for wire with fewer than 3 edges', () => {
@@ -71,7 +71,7 @@ describe('roof', () => {
     const result = roof(wire);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const vol = measureVolume(result.value);
+    const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeGreaterThan(0);
   });
 
@@ -89,7 +89,7 @@ describe('roof', () => {
     const result = roof(wire);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const vol = measureVolume(result.value);
+    const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeGreaterThan(0);
   });
 });

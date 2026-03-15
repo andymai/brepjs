@@ -28,7 +28,7 @@ describe('importSTEP', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     expect(imported).toBeDefined();
-    expect(measureVolume(imported)).toBeCloseTo(1000, -1);
+    expect(unwrap(measureVolume(imported))).toBeCloseTo(1000, -1);
   });
 
   it('returns error for invalid STEP data', async () => {
@@ -52,7 +52,7 @@ describe('importSTEP', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     // Volume should be 5 * 10 * 20 = 1000
-    expect(measureVolume(imported)).toBeCloseTo(1000, -1);
+    expect(unwrap(measureVolume(imported))).toBeCloseTo(1000, -1);
   });
 });
 
@@ -135,7 +135,7 @@ describe('importIGES', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     expect(imported).toBeDefined();
-    expect(measureVolume(imported)).toBeCloseTo(1000, -1);
+    expect(unwrap(measureVolume(imported))).toBeCloseTo(1000, -1);
   });
 
   it.skip('returns error for invalid IGES data', async () => {
@@ -158,6 +158,6 @@ describe('importIGES', () => {
     expect(isOk(result)).toBe(true);
     const imported = unwrap(result);
     // Volume: 3 * 6 * 9 = 162
-    expect(measureVolume(imported)).toBeCloseTo(162, -1);
+    expect(unwrap(measureVolume(imported))).toBeCloseTo(162, -1);
   });
 });

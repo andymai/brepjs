@@ -27,7 +27,7 @@ describe('sweep', () => {
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
     expect(solid).toBeDefined();
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(Math.PI * 4 * 20, -1);
   });
 
@@ -39,7 +39,7 @@ describe('sweep', () => {
     const result = sweep(wire, spine, { frenet: true });
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(160, -1);
   });
 
@@ -54,7 +54,7 @@ describe('sweep', () => {
     });
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('sweeps with round transition mode', () => {
@@ -68,7 +68,7 @@ describe('sweep', () => {
     });
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 
@@ -84,7 +84,7 @@ describe('complexExtrude', () => {
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('extrudes a circle with s-curve profile', () => {
@@ -98,7 +98,7 @@ describe('complexExtrude', () => {
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('extrudes a rectangle without profile (no law)', () => {
@@ -108,7 +108,7 @@ describe('complexExtrude', () => {
     const result = complexExtrude(wire, [0, 0, 0], [0, 0, 15]);
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     expect(vol).toBeCloseTo(720, -1);
   });
 
@@ -134,7 +134,7 @@ describe('twistExtrude', () => {
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('twist-extrudes a circle with s-curve profile', () => {
@@ -147,7 +147,7 @@ describe('twistExtrude', () => {
     });
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('twist-extrudes with linear profile', () => {
@@ -160,7 +160,7 @@ describe('twistExtrude', () => {
     });
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('twist-extrudes without profile (no law)', () => {
@@ -170,6 +170,6 @@ describe('twistExtrude', () => {
     const result = twistExtrude(wire, 60, [0, 0, 0], [0, 0, 12]);
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });

@@ -70,7 +70,7 @@ describe('getting-started.md examples', () => {
     const cyl = cylinder(5, 15, { at: [15, 10, -2] });
     const withHole = shape(b).cut(cyl).val;
     expect(isShape3D(withHole)).toBe(true);
-    expect(measureVolume(withHole)).toBeLessThan(measureVolume(b));
+    expect(unwrap(measureVolume(withHole))).toBeLessThan(unwrap(measureVolume(b)));
   });
 
   it('Step 4: functional API cut', () => {
@@ -79,7 +79,7 @@ describe('getting-started.md examples', () => {
     const result = cut(b, cyl);
     expect(isOk(result)).toBe(true);
     if (isOk(result)) {
-      expect(measureVolume(result.value)).toBeGreaterThan(0);
+      expect(unwrap(measureVolume(result.value))).toBeGreaterThan(0);
     }
   });
 
@@ -92,13 +92,13 @@ describe('getting-started.md examples', () => {
     expect(isSolid(rotated)).toBe(true);
 
     const scaled = shape(b).scale(2).val;
-    expect(measureVolume(scaled)).toBeCloseTo(measureVolume(b) * 8, 0);
+    expect(unwrap(measureVolume(scaled))).toBeCloseTo(unwrap(measureVolume(b)) * 8, 0);
   });
 
   it('Step 6: measurement', () => {
     const b = box(10, 10, 10);
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
-    expect(measureArea(b)).toBeCloseTo(600, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
+    expect(unwrap(measureArea(b))).toBeCloseTo(600, 0);
   });
 
   it('Step 7: export', () => {
@@ -116,7 +116,7 @@ describe('getting-started.md examples', () => {
 
     const s = unwrap(extrude(f, 10));
     expect(isSolid(s)).toBe(true);
-    expect(measureVolume(s)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -145,15 +145,15 @@ describe('cheat-sheet.md examples', () => {
 
     const merged = shape(a).fuse(b).val;
     expect(isShape3D(merged)).toBe(true);
-    expect(measureVolume(merged)).toBeGreaterThan(measureVolume(a));
+    expect(unwrap(measureVolume(merged))).toBeGreaterThan(unwrap(measureVolume(a)));
 
     const drilled = shape(a).cut(b).val;
     expect(isShape3D(drilled)).toBe(true);
-    expect(measureVolume(drilled)).toBeLessThan(measureVolume(a));
+    expect(unwrap(measureVolume(drilled))).toBeLessThan(unwrap(measureVolume(a)));
 
     const common = shape(a).intersect(b).val;
     expect(isShape3D(common)).toBe(true);
-    expect(measureVolume(common)).toBeLessThan(measureVolume(a));
+    expect(unwrap(measureVolume(common))).toBeLessThan(unwrap(measureVolume(a)));
   });
 
   it('transforms: translate, rotate, scale', () => {
@@ -164,18 +164,18 @@ describe('cheat-sheet.md examples', () => {
 
     expect(isSolid(moved)).toBe(true);
     expect(isSolid(rotated)).toBe(true);
-    expect(measureVolume(scaled)).toBeCloseTo(8000, 0);
+    expect(unwrap(measureVolume(scaled))).toBeCloseTo(8000, 0);
   });
 
   it('fillet and chamfer', () => {
     const b = box(20, 20, 20);
     const rounded = shape(b).fillet(2).val;
     expect(isShape3D(rounded)).toBe(true);
-    expect(measureVolume(rounded)).toBeLessThan(measureVolume(b));
+    expect(unwrap(measureVolume(rounded))).toBeLessThan(unwrap(measureVolume(b)));
 
     const beveled = shape(b).chamfer(2).val;
     expect(isShape3D(beveled)).toBe(true);
-    expect(measureVolume(beveled)).toBeLessThan(measureVolume(b));
+    expect(unwrap(measureVolume(beveled))).toBeLessThan(unwrap(measureVolume(b)));
   });
 
   it('measurement', () => {
@@ -190,8 +190,8 @@ describe('cheat-sheet.md examples', () => {
     const solid = shape(sketch.face()).extrude(20).val;
     expect(isShape3D(solid)).toBe(true);
     // Volume should be positive and less than the full rectangle extruded
-    expect(measureVolume(solid)).toBeGreaterThan(0);
-    expect(measureVolume(solid)).toBeLessThan(50 * 30 * 20);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeLessThan(50 * 30 * 20);
   });
 });
 
@@ -216,7 +216,7 @@ describe('validity types (concepts.md + getting-started.md)', () => {
   it('ValidSolid is a subtype of Solid', () => {
     const vs: ValidSolid = box(10, 10, 10);
     expect(isSolid(vs)).toBe(true);
-    expect(measureVolume(vs)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(vs))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -236,7 +236,7 @@ describe('error handling (getting-started.md)', () => {
     const result = cut(b, cyl);
 
     const volume = match(result, {
-      ok: (solid) => measureVolume(solid),
+      ok: (solid) => unwrap(measureVolume(solid)),
       err: () => -1,
     });
     expect(volume).toBeGreaterThan(0);

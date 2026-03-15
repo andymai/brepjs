@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { fill, getWires, measureArea, polygon } from '../src/index.js';
+import { fill, getWires, measureArea, polygon, unwrap } from '../src/index.js';
 import { makeFace } from '../src/topology/surfaceBuilders.js';
 import { outerWire } from '../src/topology/faceFns.js';
 
@@ -45,7 +45,7 @@ describe('fill', () => {
     expect(filled.ok).toBe(true);
     if (!filled.ok) return;
     expect(getWires(filled.value).length).toBe(1);
-    expect(measureArea(filled.value)).toBeCloseTo(100, 0);
+    expect(unwrap(measureArea(filled.value))).toBeCloseTo(100, 0);
   });
 
   it('returns unchanged face when no holes exist', () => {
@@ -61,6 +61,6 @@ describe('fill', () => {
     const filled = fill(result.value);
     expect(filled.ok).toBe(true);
     if (!filled.ok) return;
-    expect(measureArea(filled.value)).toBeCloseTo(25, 0);
+    expect(unwrap(measureArea(filled.value))).toBeCloseTo(25, 0);
   });
 });

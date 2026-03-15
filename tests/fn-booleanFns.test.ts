@@ -47,13 +47,13 @@ describe('fuse', () => {
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result);
     expect(isShape3D(shape)).toBe(true);
-    expect(measureVolume(shape)).toBeCloseTo(2000, 0);
+    expect(unwrap(measureVolume(shape))).toBeCloseTo(2000, 0);
   });
 
   it('fuses overlapping boxes', () => {
     const result = fuse(boxAt(0, 0, 0, 10, 10, 10), boxAt(5, 0, 0, 15, 10, 10));
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1500, 0);
   });
 });
 
@@ -61,7 +61,7 @@ describe('cut', () => {
   it('cuts a box', () => {
     const result = cut(boxAt(0, 0, 0, 10, 10, 10), boxAt(5, 0, 0, 15, 10, 10));
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(500, 0);
   });
 });
 
@@ -69,7 +69,7 @@ describe('intersect', () => {
   it('intersects two overlapping boxes', () => {
     const result = intersect(boxAt(0, 0, 0, 10, 10, 10), boxAt(5, 0, 0, 15, 10, 10));
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(500, 0);
   });
 });
 
@@ -77,13 +77,13 @@ describe('fuseAll', () => {
   it('fuses multiple boxes', () => {
     const result = fuseAll([boxAt(0, 0, 0, 10, 10, 10), boxAt(10, 0, 0, 20, 10, 10)]);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(2000, 0);
   });
 
   it('fuses single box', () => {
     const result = fuseAll([boxAt(0, 0, 0, 10, 10, 10)]);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
   });
 
   it('returns error for empty array', () => {
@@ -96,13 +96,13 @@ describe('cutAll', () => {
   it('cuts multiple shapes from a base', () => {
     const result = cutAll(boxAt(0, 0, 0, 20, 10, 10), [boxAt(0, 0, 0, 5, 10, 10)]);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1500, 0);
   });
 
   it('returns base shape for empty tools', () => {
     const result = cutAll(boxAt(0, 0, 0, 10, 10, 10), []);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -123,7 +123,7 @@ describe('boolean edge cases', () => {
       const result = fuse(boxAt(0, 0, 0, 10, 10, 10), boxAt(100, 0, 0, 110, 10, 10));
       expect(isOk(result)).toBe(true);
       // Total volume should be 2000 (two separate 1000 unit boxes)
-      expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(2000, 0);
     });
 
     it('intersect disjoint boxes produces empty or negligible volume', (ctx) => {
@@ -132,14 +132,14 @@ describe('boolean edge cases', () => {
       const result = intersect(boxAt(0, 0, 0, 10, 10, 10), boxAt(100, 0, 0, 110, 10, 10));
       // OCCT returns Ok with an empty/near-zero-volume result for disjoint intersection
       expect(isOk(result)).toBe(true);
-      const vol = measureVolume(unwrap(result));
+      const vol = unwrap(measureVolume(unwrap(result)));
       expect(vol).toBeLessThan(1);
     });
 
     it('cut with disjoint tool preserves base volume', () => {
       const result = cut(boxAt(0, 0, 0, 10, 10, 10), boxAt(100, 0, 0, 110, 10, 10));
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
     });
   });
 
@@ -148,14 +148,14 @@ describe('boolean edge cases', () => {
       const b = boxAt(0, 0, 0, 10, 10, 10);
       const result = fuse(b, b);
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
     });
 
     it('intersect shape with itself preserves volume', () => {
       const b = boxAt(0, 0, 0, 10, 10, 10);
       const result = intersect(b, b);
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
     });
   });
 
@@ -165,7 +165,7 @@ describe('boolean edge cases', () => {
         simplify: true,
       });
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(2000, 0);
     });
 
     it('fuse with commonFace optimisation', () => {
@@ -173,7 +173,7 @@ describe('boolean edge cases', () => {
         optimisation: 'commonFace',
       });
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(2000, 0);
     });
 
     it('fuse with sameFace optimisation', () => {
@@ -181,7 +181,7 @@ describe('boolean edge cases', () => {
         optimisation: 'sameFace',
       });
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(2000, 0);
     });
 
     it('cut with simplify option', () => {
@@ -189,7 +189,7 @@ describe('boolean edge cases', () => {
         simplify: true,
       });
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
     });
 
     it('intersect with simplify option', () => {
@@ -197,7 +197,7 @@ describe('boolean edge cases', () => {
         simplify: true,
       });
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(500, 0);
     });
   });
 
@@ -208,7 +208,7 @@ describe('boolean edge cases', () => {
         { strategy: 'pairwise' }
       );
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(3000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(3000, 0);
     });
 
     it('fuseAll with native strategy (default)', () => {
@@ -218,7 +218,7 @@ describe('boolean edge cases', () => {
         boxAt(20, 0, 0, 30, 10, 10),
       ]);
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(3000, 0);
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(3000, 0);
     });
 
     it('fuseAll native strategy correctly identifies result as Shape3D', () => {
@@ -234,7 +234,7 @@ describe('boolean edge cases', () => {
       const shape = unwrap(result);
       expect(isShape3D(shape)).toBe(true);
       // Disjoint boxes should have combined volume
-      expect(measureVolume(shape)).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(shape))).toBeCloseTo(2000, 0);
     });
   });
 
@@ -245,7 +245,7 @@ describe('boolean edge cases', () => {
         boxAt(20, 0, 0, 30, 10, 10),
       ]);
       expect(isOk(result)).toBe(true);
-      expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0); // Middle third remains
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0); // Middle third remains
     });
   });
 });
@@ -269,7 +269,7 @@ describe('compound shape verification', () => {
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);
       expect(isShape3D(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeCloseTo(3000, 0);
+      expect(unwrap(measureVolume(shape))).toBeCloseTo(3000, 0);
     });
 
     it('four disjoint boxes at corners returns valid Shape3D', () => {
@@ -282,7 +282,7 @@ describe('compound shape verification', () => {
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);
       expect(isShape3D(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeCloseTo(4000, 0);
+      expect(unwrap(measureVolume(shape))).toBeCloseTo(4000, 0);
     });
 
     it('mixed disjoint and overlapping boxes returns valid Shape3D', () => {
@@ -295,7 +295,7 @@ describe('compound shape verification', () => {
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);
       expect(isShape3D(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeCloseTo(3000, 0);
+      expect(unwrap(measureVolume(shape))).toBeCloseTo(3000, 0);
     });
   });
 
@@ -306,7 +306,7 @@ describe('compound shape verification', () => {
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);
       expect(isShape3D(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeCloseTo(2000, 0); // 3000 - 1000 removed
+      expect(unwrap(measureVolume(shape))).toBeCloseTo(2000, 0); // 3000 - 1000 removed
     });
 
     it('multiple cuts creating three pieces returns valid Shape3D', () => {
@@ -317,7 +317,7 @@ describe('compound shape verification', () => {
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);
       expect(isShape3D(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeCloseTo(3000, 0); // 5000 - 2000 removed
+      expect(unwrap(measureVolume(shape))).toBeCloseTo(3000, 0); // 5000 - 2000 removed
     });
   });
 
@@ -329,7 +329,7 @@ describe('compound shape verification', () => {
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);
       expect(isShape3D(shape)).toBe(true);
-      expect(measureVolume(shape)).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(shape))).toBeCloseTo(2000, 0);
     });
   });
 });
@@ -497,7 +497,7 @@ describe('sectionToFace', () => {
     expect(isOk(result)).toBe(true);
     const face = unwrap(result);
     expect(isFace(face)).toBe(true);
-    expect(measureArea(face)).toBeGreaterThan(0);
+    expect(unwrap(measureArea(face))).toBeGreaterThan(0);
   });
 
   it('sections a sphere producing a circular face', (ctx) => {
@@ -508,7 +508,7 @@ describe('sectionToFace', () => {
     expect(isOk(result)).toBe(true);
     const face = unwrap(result);
     // Cross-section of sphere at origin is a circle with radius 10
-    expect(measureArea(face)).toBeCloseTo(Math.PI * 100, -1);
+    expect(unwrap(measureArea(face))).toBeCloseTo(Math.PI * 100, -1);
   });
 });
 

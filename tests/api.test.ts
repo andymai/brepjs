@@ -66,6 +66,7 @@ import {
   measureArea,
   faceFinder,
   sketchCircle,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -79,91 +80,91 @@ beforeAll(async () => {
 describe('box()', () => {
   it('creates a box with given dimensions', () => {
     const b = box(10, 20, 30);
-    expect(measureVolume(b)).toBeCloseTo(6000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(6000, 0);
   });
 
   it('centers a box at origin', () => {
     const b = box(10, 10, 10, { center: true });
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('centers a box at a specific point', () => {
     const b = box(10, 10, 10, { center: [5, 5, 5] });
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('positions a box via at (center semantics)', () => {
     const b = box(10, 10, 10, { at: [5, 5, 5] });
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('supports centered option (matches cylinder/cone)', () => {
     const b = box(10, 10, 10, { centered: true });
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 });
 
 describe('cylinder()', () => {
   it('creates a cylinder with radius and height', () => {
     const c = cylinder(5, 10);
-    const vol = measureVolume(c);
+    const vol = unwrap(measureVolume(c));
     expect(vol).toBeCloseTo(Math.PI * 25 * 10, 0);
   });
 
   it('supports centered option', () => {
     const c = cylinder(5, 10, { centered: true });
-    expect(measureVolume(c)).toBeCloseTo(Math.PI * 25 * 10, 0);
+    expect(unwrap(measureVolume(c))).toBeCloseTo(Math.PI * 25 * 10, 0);
   });
 });
 
 describe('sphere()', () => {
   it('creates a sphere with given radius', () => {
     const s = sphere(10);
-    const vol = measureVolume(s);
+    const vol = unwrap(measureVolume(s));
     expect(vol).toBeCloseTo((4 / 3) * Math.PI * 1000, 0);
   });
 
   it('supports at option', () => {
     const s = sphere(5, { at: [10, 0, 0] });
-    expect(measureVolume(s)).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
+    expect(unwrap(measureVolume(s))).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
   });
 });
 
 describe('cone()', () => {
   it('creates a full cone', () => {
     const c = cone(5, 0, 10);
-    const vol = measureVolume(c);
+    const vol = unwrap(measureVolume(c));
     // Volume of cone = (1/3) * pi * r^2 * h
     expect(vol).toBeCloseTo((1 / 3) * Math.PI * 25 * 10, 0);
   });
 
   it('creates a frustum', () => {
     const c = cone(5, 3, 10);
-    expect(measureVolume(c)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(c))).toBeGreaterThan(0);
   });
 
   it('creates a centered cone', () => {
     const c = cone(5, 0, 10, { centered: true });
-    expect(measureVolume(c)).toBeCloseTo((1 / 3) * Math.PI * 25 * 10, 0);
+    expect(unwrap(measureVolume(c))).toBeCloseTo((1 / 3) * Math.PI * 25 * 10, 0);
   });
 });
 
 describe('torus()', () => {
   it('creates a torus', () => {
     const t = torus(10, 3);
-    expect(measureVolume(t)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(t))).toBeGreaterThan(0);
   });
 });
 
 describe('ellipsoid()', () => {
   it('creates an ellipsoid', () => {
     const e = ellipsoid(10, 5, 3);
-    expect(measureVolume(e)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(e))).toBeGreaterThan(0);
   });
 
   it('creates an ellipsoid at a position', () => {
     const e = ellipsoid(10, 5, 3, { at: [20, 30, 40] });
-    expect(measureVolume(e)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(e))).toBeGreaterThan(0);
   });
 });
 
@@ -228,7 +229,7 @@ describe('topology constructors', () => {
     const e4 = line([0, 10, 0], [0, 0, 0]);
     const w = unwrap(wire([e1, e2, e3, e4]));
     const f = unwrap(face(w));
-    expect(measureArea(f)).toBeCloseTo(100, 0);
+    expect(unwrap(measureArea(f))).toBeCloseTo(100, 0);
   });
 
   it('polygon() creates a polygonal face', () => {
@@ -239,7 +240,7 @@ describe('topology constructors', () => {
       [0, 10, 0],
     ]);
     expect(isOk(result)).toBe(true);
-    expect(measureArea(unwrap(result))).toBeCloseTo(100, 0);
+    expect(unwrap(measureArea(unwrap(result)))).toBeCloseTo(100, 0);
   });
 
   it('vertex() creates a vertex at a point', () => {
@@ -263,7 +264,7 @@ describe('translate()', () => {
   it('moves a shape by a vector', () => {
     const b = box(10, 10, 10);
     const moved = translate(b, [10, 0, 0]);
-    expect(measureVolume(moved)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(moved))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -271,13 +272,13 @@ describe('rotate()', () => {
   it('rotates a shape by an angle', () => {
     const b = box(10, 10, 10);
     const rotated = rotate(b, 45);
-    expect(measureVolume(rotated)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(rotated))).toBeCloseTo(1000, 0);
   });
 
   it('supports axis and around options', () => {
     const b = box(10, 10, 10);
     const rotated = rotate(b, 90, { axis: [1, 0, 0], around: [5, 5, 5] });
-    expect(measureVolume(rotated)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(rotated))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -285,13 +286,13 @@ describe('mirror()', () => {
   it('mirrors a shape through a plane', () => {
     const b = box(10, 10, 10);
     const mirrored = mirror(b);
-    expect(measureVolume(mirrored)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(mirrored))).toBeCloseTo(1000, 0);
   });
 
   it('supports normal and origin options', () => {
     const b = box(10, 10, 10);
     const mirrored = mirror(b, { normal: [0, 1, 0], origin: [0, 5, 0] });
-    expect(measureVolume(mirrored)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(mirrored))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -299,7 +300,7 @@ describe('scale()', () => {
   it('scales a shape uniformly', () => {
     const b = box(10, 10, 10);
     const scaled = scale(b, 2);
-    expect(measureVolume(scaled)).toBeCloseTo(8000, 0);
+    expect(unwrap(measureVolume(scaled))).toBeCloseTo(8000, 0);
   });
 });
 
@@ -307,7 +308,7 @@ describe('clone()', () => {
   it('deep copies a shape', () => {
     const b = box(10, 10, 10);
     const cloned = clone(b);
-    expect(measureVolume(cloned)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(cloned))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -321,7 +322,7 @@ describe('fuse()', () => {
     const b2 = translate(box(10, 10, 10), [5, 0, 0]);
     const result = fuse(b1, b2);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1500, 0);
   });
 });
 
@@ -331,7 +332,7 @@ describe('cut()', () => {
     const b2 = translate(box(5, 10, 10), [5, 0, 0]);
     const result = cut(b1, b2);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(500, 0);
   });
 });
 
@@ -341,7 +342,7 @@ describe('intersect()', () => {
     const b2 = translate(box(10, 10, 10), [5, 0, 0]);
     const result = intersect(b1, b2);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(500, 0);
   });
 });
 
@@ -386,7 +387,7 @@ describe('shell()', () => {
     const topFaces = faceFinder().inDirection('Z').findAll(b);
     const result = shell(b, topFaces, 2);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(8000);
     expect(vol).toBeGreaterThan(0);
   });
@@ -403,7 +404,7 @@ describe('offset()', () => {
     const b = box(10, 10, 10);
     const result = offset(b, 1);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeGreaterThan(1000);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(1000);
   });
 });
 
@@ -414,7 +415,7 @@ describe('thicken()', () => {
     const result = thicken(f, 5);
     expect(isOk(result)).toBe(true);
     // Volume may be negative depending on face orientation; check absolute value
-    const vol = Math.abs(measureVolume(unwrap(result)));
+    const vol = Math.abs(unwrap(measureVolume(unwrap(result))));
     expect(vol).toBeGreaterThan(0);
   });
 });
@@ -435,7 +436,7 @@ describe('extrude()', () => {
     );
     const result = extrude(f, 5);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(500, 0);
   });
 
   it('extrudes with a Vec3 direction', () => {
@@ -449,7 +450,7 @@ describe('extrude()', () => {
     );
     const result = extrude(f, [0, 0, 10]);
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1000, 0);
   });
 
   it('returns error on zero-length vector', () => {

@@ -30,7 +30,7 @@ describe('surfaceFromGrid', () => {
     const result = surfaceFromGrid(heights, { width: 10, depth: 10 });
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result) as Face | Shape3D;
-    const area = measureArea(shape);
+    const area = unwrap(measureArea(shape));
     expect(area).toBeCloseTo(100, -1);
   });
 
@@ -43,7 +43,7 @@ describe('surfaceFromGrid', () => {
     const result = surfaceFromGrid(heights, { width: 10, depth: 10 });
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result) as Face | Shape3D;
-    const area = measureArea(shape);
+    const area = unwrap(measureArea(shape));
     expect(area).toBeGreaterThan(100);
   });
 
@@ -69,8 +69,8 @@ describe('surfaceFromGrid', () => {
     const r2 = surfaceFromGrid(heights, { width: 10, depth: 10, scaleZ: 10 });
     expect(isOk(r1)).toBe(true);
     expect(isOk(r2)).toBe(true);
-    const a1 = measureArea(unwrap(r1) as Face | Shape3D);
-    const a2 = measureArea(unwrap(r2) as Face | Shape3D);
+    const a1 = unwrap(measureArea(unwrap(r1) as Face | Shape3D));
+    const a2 = unwrap(measureArea(unwrap(r2) as Face | Shape3D));
     expect(a2).toBeGreaterThan(a1);
   });
 
@@ -83,7 +83,7 @@ describe('surfaceFromGrid', () => {
     ];
     const result = surfaceFromGrid(heights);
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result) as Face | Shape3D);
+    const area = unwrap(measureArea(unwrap(result) as Face | Shape3D));
     // Default area should be 3*2 = 6
     expect(area).toBeCloseTo(6, 0);
   });
@@ -100,7 +100,7 @@ describe('surfaceFromGrid', () => {
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result) as Face | Shape3D;
     expect(isFace(shape) || isShell(shape)).toBe(true);
-    const area = measureArea(shape);
+    const area = unwrap(measureArea(shape));
     expect(area).toBeCloseTo(400, -1);
   });
 
@@ -116,7 +116,7 @@ describe('surfaceFromGrid', () => {
     const result = surfaceFromGrid(heights, { width: 10, depth: 10 });
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result) as Face | Shape3D;
-    const area = measureArea(shape);
+    const area = unwrap(measureArea(shape));
     // Curved surface must be larger than the 10x10=100 flat projection
     expect(area).toBeGreaterThan(100);
   });
@@ -137,7 +137,7 @@ describe('surfaceFromGrid', () => {
     ];
     const result = surfaceFromGrid(heights, { width: 10, depth: 5 });
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result) as Face | Shape3D);
+    const area = unwrap(measureArea(unwrap(result) as Face | Shape3D));
     expect(area).toBeGreaterThan(0);
   });
 
@@ -149,7 +149,7 @@ describe('surfaceFromGrid', () => {
     ];
     const result = surfaceFromGrid(heights, { width: 5, depth: 10 });
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result) as Face | Shape3D);
+    const area = unwrap(measureArea(unwrap(result) as Face | Shape3D));
     expect(area).toBeGreaterThan(0);
   });
 
@@ -161,7 +161,7 @@ describe('surfaceFromGrid', () => {
     ];
     const result = surfaceFromGrid(heights, { width: 10, depth: 10 });
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result) as Face | Shape3D);
+    const area = unwrap(measureArea(unwrap(result) as Face | Shape3D));
     expect(area).toBeGreaterThan(100);
   });
 
@@ -173,7 +173,7 @@ describe('surfaceFromGrid', () => {
     ];
     const result = surfaceFromGrid(heights, { width: 10, depth: 10, scaleZ: 0 });
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result) as Face | Shape3D);
+    const area = unwrap(measureArea(unwrap(result) as Face | Shape3D));
     // With scaleZ=0 all z values are 0, area should be ~100
     expect(area).toBeCloseTo(100, -1);
   });
@@ -310,7 +310,7 @@ describe('surfaceFromImage', () => {
     const result = await surfaceFromImage(blob, { width: 10, depth: 10 });
     expect(isOk(result)).toBe(true);
     expect(mockBitmap.close).toHaveBeenCalled();
-    const area = measureArea(unwrap(result) as Face | Shape3D);
+    const area = unwrap(measureArea(unwrap(result) as Face | Shape3D));
     expect(area).toBeCloseTo(100, -1);
   });
 
@@ -457,7 +457,7 @@ describe('surfaceFromImage', () => {
       scaleZ: 2,
     });
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result) as Face | Shape3D);
+    const area = unwrap(measureArea(unwrap(result) as Face | Shape3D));
     // All pixels 255 → height = 1.0, with scaleZ=2 → z=2 (uniform surface)
     // With uniform z the surface is flat at z=2, so area should be close to 20*15=300
     expect(area).toBeCloseTo(300, 0);

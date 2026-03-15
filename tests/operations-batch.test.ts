@@ -23,7 +23,7 @@ describe('fuseAll (high-level)', () => {
     const result = fuseAll([box1, box2]);
     expect(isOk(result)).toBe(true);
     const fused = unwrap(result);
-    expect(measureVolume(fused)).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(fused))).toBeCloseTo(1500, 0);
   });
 
   it('returns error for empty array', () => {
@@ -36,7 +36,7 @@ describe('fuseAll (high-level)', () => {
     const result = fuseAll([b]);
     expect(isOk(result)).toBe(true);
     const fused = unwrap(result);
-    expect(measureVolume(fused)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(fused))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -47,8 +47,8 @@ describe('cutAll (high-level)', () => {
     const result = cutAll(b, [s]);
     expect(isOk(result)).toBe(true);
     const c = unwrap(result);
-    expect(measureVolume(c)).toBeLessThan(1000);
-    expect(measureVolume(c)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(c))).toBeLessThan(1000);
+    expect(unwrap(measureVolume(c))).toBeGreaterThan(0);
   });
 
   it('returns base shape when tools array is empty', () => {
@@ -56,6 +56,6 @@ describe('cutAll (high-level)', () => {
     const result = cutAll(b, []);
     expect(isOk(result)).toBe(true);
     const c = unwrap(result);
-    expect(measureVolume(c)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(c))).toBeCloseTo(1000, 0);
   });
 });

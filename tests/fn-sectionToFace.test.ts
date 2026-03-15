@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, cut, sectionToFace, measureArea, getWires } from '../src/index.js';
+import { box, cut, sectionToFace, measureArea, getWires, unwrap } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -13,7 +13,7 @@ describe('sectionToFace', () => {
       const result = sectionToFace(b, 'XY');
       expect(result.ok).toBe(true);
       if (!result.ok) return;
-      const area = measureArea(result.value);
+      const area = unwrap(measureArea(result.value));
       expect(area).toBeCloseTo(200, 0);
       expect(getWires(result.value).length).toBe(1);
     });
@@ -28,7 +28,7 @@ describe('sectionToFace', () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       // Area should be outer minus inner: 400 - 100 = 300
-      const area = measureArea(result.value);
+      const area = unwrap(measureArea(result.value));
       expect(area).toBeCloseTo(300, 0);
     });
 
@@ -37,12 +37,12 @@ describe('sectionToFace', () => {
       const xzResult = sectionToFace(b, 'XZ');
       expect(xzResult.ok).toBe(true);
       if (!xzResult.ok) return;
-      expect(measureArea(xzResult.value)).toBeCloseTo(300, 0);
+      expect(unwrap(measureArea(xzResult.value))).toBeCloseTo(300, 0);
 
       const yzResult = sectionToFace(b, 'YZ');
       expect(yzResult.ok).toBe(true);
       if (!yzResult.ok) return;
-      expect(measureArea(yzResult.value)).toBeCloseTo(600, 0);
+      expect(unwrap(measureArea(yzResult.value))).toBeCloseTo(600, 0);
     });
   });
 });

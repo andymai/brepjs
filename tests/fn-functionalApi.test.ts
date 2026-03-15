@@ -46,21 +46,21 @@ describe('sliceShape', () => {
 describe('VolumeProps / SurfaceProps / LinearProps aliases', () => {
   it('measureVolumeProps returns volume alias', () => {
     const b = box(10, 10, 10);
-    const props = measureVolumeProps(castShape(b.wrapped));
+    const props = unwrap(measureVolumeProps(castShape(b.wrapped)));
     expect(props.volume).toBeCloseTo(1000, 0);
     expect(props.volume).toBe(props.mass);
   });
 
   it('measureSurfaceProps returns area alias', () => {
     const b = box(10, 10, 10);
-    const props = measureSurfaceProps(castShape(b.wrapped));
+    const props = unwrap(measureSurfaceProps(castShape(b.wrapped)));
     expect(props.area).toBeCloseTo(600, 0);
     expect(props.area).toBe(props.mass);
   });
 
   it('measureLinearProps returns length alias', () => {
     const l = line([0, 0, 0], [10, 0, 0]);
-    const props = measureLinearProps(castShape(l.wrapped));
+    const props = unwrap(measureLinearProps(castShape(l.wrapped)));
     expect(props.length).toBeCloseTo(10, 2);
     expect(props.length).toBe(props.mass);
   });

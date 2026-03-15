@@ -57,7 +57,7 @@ describe('healSolid', () => {
     const healed = unwrap(result);
     expect(isSolid(healed)).toBe(true);
     // Volume should be preserved
-    const vol = measureVolume(healed);
+    const vol = unwrap(measureVolume(healed));
     expect(vol).toBeCloseTo(1000, 0);
   });
 
@@ -85,9 +85,9 @@ describe('healFace', () => {
   it('preserves face area', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    const originalArea = measureArea(faces[0]);
+    const originalArea = unwrap(measureArea(faces[0]));
     const healed = unwrap(healFace(faces[0]));
-    const healedArea = measureArea(healed);
+    const healedArea = unwrap(measureArea(healed));
     expect(healedArea).toBeCloseTo(originalArea, 2);
   });
 });
@@ -221,7 +221,7 @@ describe('autoHeal', () => {
       const b = box(10, 10, 10);
       const { shape } = unwrap(autoHeal(b));
       // Volume should be preserved (same shape returned)
-      expect(measureVolume(shape as ReturnType<typeof box>)).toBeCloseTo(1000, 0);
+      expect(unwrap(measureVolume(shape as ReturnType<typeof box>))).toBeCloseTo(1000, 0);
     });
 
     it('works for an already-valid sphere', () => {
@@ -426,7 +426,7 @@ describe('autoHeal', () => {
       const fused = unwrap(fuse(b1, b2));
       const { shape } = unwrap(autoHeal(fused));
       // Volume must be preserved after healing
-      expect(measureVolume(shape as typeof fused)).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(shape as typeof fused))).toBeCloseTo(2000, 0);
     });
 
     it('autoHeal on fused solid with sewTolerance option returns ok', () => {

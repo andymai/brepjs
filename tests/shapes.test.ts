@@ -13,6 +13,7 @@ import {
   cast,
   downcast,
   measureVolume,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -23,19 +24,19 @@ describe('Shape construction', () => {
   it('creates a box', () => {
     const b = box(10, 20, 30);
     expect(b).toBeDefined();
-    expect(measureVolume(b)).toBeCloseTo(10 * 20 * 30, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(10 * 20 * 30, 0);
   });
 
   it('creates a sphere', () => {
     const s = sphere(5);
     expect(s).toBeDefined();
-    expect(measureVolume(s)).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
+    expect(unwrap(measureVolume(s))).toBeCloseTo((4 / 3) * Math.PI * 125, 0);
   });
 
   it('creates a cylinder', () => {
     const c = cylinder(5, 10);
     expect(c).toBeDefined();
-    expect(measureVolume(c)).toBeCloseTo(Math.PI * 25 * 10, 0);
+    expect(unwrap(measureVolume(c))).toBeCloseTo(Math.PI * 25 * 10, 0);
   });
 
   it('creates a vertex', () => {
@@ -46,19 +47,19 @@ describe('Shape construction', () => {
   it('creates a cone', () => {
     const c = cone(5, 0, 10);
     const expectedVolume = (1 / 3) * Math.PI * 25 * 10;
-    expect(measureVolume(c)).toBeCloseTo(expectedVolume, 0);
+    expect(unwrap(measureVolume(c))).toBeCloseTo(expectedVolume, 0);
   });
 
   it('creates a truncated cone', () => {
     const c = cone(5, 3, 10);
     const expectedVolume = (1 / 3) * Math.PI * 10 * (25 + 9 + 15);
-    expect(measureVolume(c)).toBeCloseTo(expectedVolume, 0);
+    expect(unwrap(measureVolume(c))).toBeCloseTo(expectedVolume, 0);
   });
 
   it('creates a torus', () => {
     const t = torus(10, 3);
     const expectedVolume = 2 * Math.PI * Math.PI * 10 * 9;
-    expect(measureVolume(t)).toBeCloseTo(expectedVolume, 0);
+    expect(unwrap(measureVolume(t))).toBeCloseTo(expectedVolume, 0);
   });
 });
 

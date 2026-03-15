@@ -29,7 +29,7 @@ describe('loft', () => {
     expect(isOk(result)).toBe(true);
     expect(isShape3D(unwrap(result))).toBe(true);
     // Loft of two identical rectangles at different heights = box-like solid
-    expect(measureVolume(unwrap(result))).toBeCloseTo(10 * 10 * 20, -1);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(10 * 10 * 20, -1);
   });
 
   it('lofts with startPoint', () => {

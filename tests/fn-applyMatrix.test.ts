@@ -10,6 +10,7 @@ import {
   getKernel,
   type Matrix4x4,
   type MatrixTransform,
+  unwrap,
 } from '../src/index.js';
 
 describe('applyMatrix', () => {
@@ -119,14 +120,14 @@ describe('applyMatrix', () => {
       expect(bounds.xMax).toBeCloseTo(20, 3);
       expect(bounds.yMax).toBeCloseTo(20, 3);
       expect(bounds.zMax).toBeCloseTo(20, 3);
-      expect(measureVolume(result)).toBeCloseTo(8000, 0);
+      expect(unwrap(measureVolume(result))).toBeCloseTo(8000, 0);
     });
 
     it('uniform scale matches scale()', () => {
       const b = box(10, 10, 10);
       const viaMatrix = applyMatrix(b, UNIFORM_SCALE_2);
       const viaScale = scale(b, 2);
-      expect(measureVolume(viaMatrix)).toBeCloseTo(measureVolume(viaScale), 0);
+      expect(unwrap(measureVolume(viaMatrix))).toBeCloseTo(unwrap(measureVolume(viaScale)), 0);
     });
   });
 
@@ -143,7 +144,7 @@ describe('applyMatrix', () => {
       expect(bounds.yMax).toBeCloseTo(10, 3);
       expect(bounds.zMax).toBeCloseTo(10, 3);
       // Volume doubles (2x in X, 1x in Y, 1x in Z)
-      expect(measureVolume(result)).toBeCloseTo(2000, 0);
+      expect(unwrap(measureVolume(result))).toBeCloseTo(2000, 0);
     });
 
     it('shear preserves volume', () => {
@@ -151,7 +152,7 @@ describe('applyMatrix', () => {
       const b = box(10, 10, 10);
       const result = applyMatrix(b, SHEAR_XY);
       // Shear det = 1, so volume is preserved
-      expect(measureVolume(result)).toBeCloseTo(1000, 0);
+      expect(unwrap(measureVolume(result))).toBeCloseTo(1000, 0);
     });
 
     it('combined non-uniform scale + translation', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
-import { box, getEdges, measureVolume, castShape } from '../src/index.js';
+import { box, getEdges, measureVolume, castShape, unwrap } from '../src/index.js';
 import { getKernel } from '../src/kernel/index.js';
 
 beforeAll(async () => {
@@ -16,7 +16,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: variable fillet via ke
 
       const filleted = kernel.fillet(b.wrapped, [edges[0].wrapped], 1);
       const result = castShape(filleted);
-      const vol = measureVolume(result);
+      const vol = unwrap(measureVolume(result));
       // Filleted volume should be less than original box volume (1000)
       expect(vol).toBeLessThan(1000);
       expect(vol).toBeGreaterThan(900);
@@ -30,7 +30,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: variable fillet via ke
       // Variable radius: starts at 0.5, ends at 2
       const filleted = kernel.fillet(b.wrapped, [edges[0].wrapped], [0.5, 2]);
       const result = castShape(filleted);
-      const vol = measureVolume(result);
+      const vol = unwrap(measureVolume(result));
       expect(vol).toBeLessThan(1000);
       expect(vol).toBeGreaterThan(900);
     });
@@ -43,8 +43,8 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: variable fillet via ke
       const constFilleted = kernel.fillet(b.wrapped, [edges[0].wrapped], 1.5);
       const varFilleted = kernel.fillet(b.wrapped, [edges[0].wrapped], [0.5, 2.5]);
 
-      const constVol = measureVolume(castShape(constFilleted));
-      const varVol = measureVolume(castShape(varFilleted));
+      const constVol = unwrap(measureVolume(castShape(constFilleted)));
+      const varVol = unwrap(measureVolume(castShape(varFilleted)));
 
       // Both should reduce volume but by different amounts
       expect(constVol).toBeLessThan(1000);
@@ -68,7 +68,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: variable fillet via ke
       );
 
       const result = castShape(filleted);
-      const vol = measureVolume(result);
+      const vol = unwrap(measureVolume(result));
       expect(vol).toBeLessThan(1000);
       expect(callCount).toBe(2);
     });

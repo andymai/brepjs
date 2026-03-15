@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { importOBJ, measureVolume } from '../src/index.js';
+import { importOBJ, measureVolume, unwrap } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -15,7 +15,7 @@ describe('importOBJ', () => {
     const result = await importOBJ(blob);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const vol = measureVolume(result.value);
+    const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeCloseTo(1, 1);
   });
 

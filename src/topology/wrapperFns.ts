@@ -388,10 +388,10 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
     rectangularPattern: (opts) => wrap3D(unwrapOrThrow(rectPatternFn(val, opts)) as unknown as T),
 
     // Measurement
-    volume: () => measureVolume(val),
-    area: () => measureArea(val),
-    volumeProps: () => measureVolumeProps(val),
-    surfaceProps: () => measureSurfaceProps(val),
+    volume: () => unwrapOrThrow(measureVolume(val)),
+    area: () => unwrapOrThrow(measureArea(val)),
+    volumeProps: () => unwrapOrThrow(measureVolumeProps(val)),
+    surfaceProps: () => unwrapOrThrow(measureSurfaceProps(val)),
 
     // Queries
     edges: () => getEdges(val),
@@ -436,7 +436,7 @@ function createWrappedFace(val: Face): WrappedFace {
 
   return {
     ...base,
-    area: () => measureArea(val),
+    area: () => unwrapOrThrow(measureArea(val)),
     normalAt: (point) => normalAt(val, point),
     center: () => faceCenter(val),
     surfaceType: () => unwrapOrThrow(getSurfaceType(val)),

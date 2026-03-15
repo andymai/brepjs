@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, sphere, getFaces, measureCurvatureAt, measureCurvatureAtMid } from '../src/index.js';
+import {
+  box,
+  sphere,
+  getFaces,
+  measureCurvatureAt,
+  measureCurvatureAtMid,
+  unwrap,
+} from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -14,7 +21,7 @@ describe('measureCurvatureAt', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- 6 faces
     const f = faces[0]!;
-    const result = measureCurvatureAt(f, 0.5, 0.5);
+    const result = unwrap(measureCurvatureAt(f, 0.5, 0.5));
 
     expect(result.mean).toBeCloseTo(0, 5);
     expect(result.gaussian).toBeCloseTo(0, 5);
@@ -29,7 +36,7 @@ describe('measureCurvatureAt', () => {
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- at least 1 face
     const f = faces[0]!;
-    const result = measureCurvatureAtMid(f);
+    const result = unwrap(measureCurvatureAtMid(f));
 
     // Sphere of radius R: |k1| = |k2| = 1/R, |mean| = 1/R, gaussian = 1/R²
     // Sign depends on surface normal orientation (inward vs outward)
@@ -45,7 +52,7 @@ describe('measureCurvatureAt', () => {
     const faces = getFaces(s);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- at least 1 face
     const f = faces[0]!;
-    const result = measureCurvatureAtMid(f);
+    const result = unwrap(measureCurvatureAtMid(f));
 
     // Direction vectors should be unit vectors
     const maxLen = Math.sqrt(
@@ -65,7 +72,7 @@ describe('measureCurvatureAtMid', () => {
     const faces = getFaces(b);
 
     for (const f of faces) {
-      const result = measureCurvatureAtMid(f);
+      const result = unwrap(measureCurvatureAtMid(f));
       // All box faces are planar — zero curvature
       expect(result.mean).toBeCloseTo(0, 5);
       expect(result.gaussian).toBeCloseTo(0, 5);

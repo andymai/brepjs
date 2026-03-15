@@ -20,6 +20,7 @@ import {
   box,
   getFaces,
   measureArea,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -506,7 +507,7 @@ describe('FaceSketcher', () => {
       .lineTo([0.2, 0.8])
       .close();
     expect(sketch).toBeDefined();
-    const area = measureArea(sketch.face());
+    const area = unwrap(measureArea(sketch.face()));
     expect(area).toBeGreaterThan(0);
   });
 

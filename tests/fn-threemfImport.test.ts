@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, exportThreeMF, importThreeMF, measureVolume, mesh } from '../src/index.js';
+import { box, exportThreeMF, importThreeMF, measureVolume, mesh, unwrap } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -15,7 +15,7 @@ describe('importThreeMF', () => {
     const result = await importThreeMF(blob);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    const vol = measureVolume(result.value);
+    const vol = unwrap(measureVolume(result.value));
     expect(vol).toBeCloseTo(1000, -1);
   });
 

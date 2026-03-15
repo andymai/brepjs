@@ -8,6 +8,7 @@ import {
   Sketcher,
   CompoundSketch,
   isCompound,
+  unwrap,
 } from '../src/index.js';
 import {
   sketchExtrude,
@@ -31,14 +32,14 @@ describe('sketchExtrude', () => {
     const sketch = sketchRectangle(10, 10);
     const solid = sketchExtrude(sketch, 5);
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(solid))).toBeCloseTo(500, 0);
   });
 
   it('extrudes with custom direction', () => {
     const sketch = sketchRectangle(10, 10);
     const solid = sketchExtrude(sketch, 5, { extrusionDirection: [0, 0, 1] });
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(solid))).toBeCloseTo(500, 0);
   });
 });
 
@@ -48,7 +49,7 @@ describe('sketchRevolve', () => {
     const sketch = new Sketcher('XZ').movePointerTo([5, 0]).hLine(5).vLine(5).hLine(-5).close();
     const solid = sketchRevolve(sketch, [0, 0, 1]);
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 
@@ -58,7 +59,7 @@ describe('sketchLoft', () => {
     const s2 = sketchCircle(5, { plane: 'XY', origin: 5 });
     const solid = sketchLoft(s1, s2);
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 
@@ -90,7 +91,7 @@ describe('sketchSweep', () => {
         .close();
     });
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 
@@ -101,7 +102,7 @@ describe('compoundSketchExtrude', () => {
     const compound = new CompoundSketch([outer, inner]);
     const solid = compoundSketchExtrude(compound, 10);
     expect(solid).toBeDefined();
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     // Volume should be box minus cylinder: 20*20*10 - pi*9*10
     expect(vol).toBeCloseTo(20 * 20 * 10 - Math.PI * 9 * 10, -1);
   });
@@ -114,7 +115,7 @@ describe('compoundSketchFace', () => {
     const compound = new CompoundSketch([outer, inner]);
     const face = compoundSketchFace(compound);
     expect(face).toBeDefined();
-    const area = measureArea(face);
+    const area = unwrap(measureArea(face));
     // Area should be rectangle minus circle: 20*20 - pi*9
     expect(area).toBeCloseTo(20 * 20 - Math.PI * 9, -1);
   });
@@ -127,7 +128,7 @@ describe('compoundSketchRevolve', () => {
     const compound = new CompoundSketch([outer, inner]);
     const solid = compoundSketchRevolve(compound, [0, 0, 1]);
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 
@@ -143,7 +144,7 @@ describe('compoundSketchLoft', () => {
 
     const solid = compoundSketchLoft(compound1, compound2, { ruled: true });
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 
@@ -181,7 +182,7 @@ describe('CompoundSketch extrude options', () => {
     const compound = new CompoundSketch([outer, inner]);
     const solid = compound.extrude(10, { extrusionDirection: [0, 0, 1] });
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('extrudes with twistAngle', () => {
@@ -190,7 +191,7 @@ describe('CompoundSketch extrude options', () => {
     const compound = new CompoundSketch([outer, inner]);
     const solid = compound.extrude(10, { twistAngle: 30 });
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 
   it('extrudes with extrusionProfile', () => {
@@ -201,7 +202,7 @@ describe('CompoundSketch extrude options', () => {
       extrusionProfile: { profile: 'linear', endFactor: 0.5 },
     });
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(solid))).toBeGreaterThan(0);
   });
 });
 

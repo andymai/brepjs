@@ -60,7 +60,7 @@ describe('thicken', () => {
     const solid = unwrap(result);
     expect(isSolid(solid)).toBe(true);
     // 10 x 20 face thickened by 3 => |volume| ≈ 600
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     expect(Math.abs(vol)).toBeCloseTo(600, 0);
   });
 });
@@ -73,7 +73,7 @@ describe('fillet', () => {
     const result = fillet(b, 1);
     expect(isOk(result)).toBe(true);
     const filleted = unwrap(result);
-    const vol = measureVolume(filleted);
+    const vol = unwrap(measureVolume(filleted));
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(800);
   });
@@ -83,7 +83,7 @@ describe('fillet', () => {
     const edges = getEdges(b);
     const result = fillet(b, [edges[0]!], 1);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     // Single edge fillet removes less material
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(990);
@@ -119,7 +119,7 @@ describe('chamfer', () => {
     const b = box(10, 10, 10);
     const result = chamfer(b, 1);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(800);
   });
@@ -144,7 +144,7 @@ describe('shell', () => {
     const faces = getFaces(b);
     const result = shell(b, [faces[0]!], 1);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     // Shell removes interior, leaving walls of thickness 1
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(200);
@@ -167,19 +167,19 @@ describe('shell', () => {
 describe('offset', () => {
   it('offsets a sphere outward', () => {
     const s = sphere(5);
-    const originalArea = measureArea(s);
+    const originalArea = unwrap(measureArea(s));
     const result = offset(s, 1);
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result));
+    const area = unwrap(measureArea(unwrap(result)));
     expect(area).toBeGreaterThan(originalArea);
   });
 
   it('offsets a sphere inward', () => {
     const s = sphere(5);
-    const originalArea = measureArea(s);
+    const originalArea = unwrap(measureArea(s));
     const result = offset(s, -1);
     expect(isOk(result)).toBe(true);
-    const area = measureArea(unwrap(result));
+    const area = unwrap(measureArea(unwrap(result)));
     expect(area).toBeLessThan(originalArea);
   });
 
@@ -198,7 +198,7 @@ describe('fillet with array radius', () => {
     const edges = getEdges(b);
     const result = fillet(b, [edges[0]!], [1, 2]);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
     expect(vol).toBeGreaterThan(900);
   });
@@ -238,7 +238,7 @@ describe('fillet with callback returning null or array', () => {
     const edges = getEdges(b);
     const result = fillet(b, edges.slice(0, 2), () => [1, 2]);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
   });
 });
@@ -249,7 +249,7 @@ describe('chamfer with array distance', () => {
     const edges = getEdges(b);
     const result = chamfer(b, [edges[0]!], [1, 2]);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
   });
 
@@ -286,7 +286,7 @@ describe('chamfer with callback returning null or array', () => {
     const edges = getEdges(b);
     const result = chamfer(b, edges.slice(0, 2), () => [1, 2]);
     expect(isOk(result)).toBe(true);
-    const vol = measureVolume(unwrap(result));
+    const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
   });
 });

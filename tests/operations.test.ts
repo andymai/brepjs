@@ -41,7 +41,7 @@ describe('extrude', () => {
     const face = sketch.face() as OrientedFace;
     const solid = unwrap(extrude(face, [0, 0, 30]));
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeCloseTo(10 * 20 * 30, 0);
+    expect(unwrap(measureVolume(solid))).toBeCloseTo(10 * 20 * 30, 0);
   });
 
   it('extrudes a circular sketch', () => {
@@ -49,7 +49,7 @@ describe('extrude', () => {
     const face = sketch.face() as OrientedFace;
     const solid = unwrap(extrude(face, [0, 0, 10]));
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeCloseTo(Math.PI * 25 * 10, -1);
+    expect(unwrap(measureVolume(solid))).toBeCloseTo(Math.PI * 25 * 10, -1);
   });
 });
 
@@ -66,7 +66,7 @@ describe('revolve', () => {
     const solid = unwrap(revolve(face, { at: [0, 0, 0], axis: [0, 0, 1], angle: 2 * Math.PI }));
     expect(solid).toBeDefined();
     // Volume of hollow cylinder: π(R²-r²)*h
-    expect(measureVolume(solid)).toBeCloseTo(Math.PI * (4 - 1) * 5, 0);
+    expect(unwrap(measureVolume(solid))).toBeCloseTo(Math.PI * (4 - 1) * 5, 0);
   });
 });
 
@@ -78,7 +78,7 @@ describe('loft', () => {
     const top = sketchCircle(5, { origin: [0, 0, 10] });
     const solid = unwrap(loft([bottom.wire, top.wire]));
     expect(solid).toBeDefined();
-    const vol = measureVolume(solid);
+    const vol = unwrap(measureVolume(solid));
     // Truncated cone: (π*h/3)(R² + Rr + r²)
     const expected = ((Math.PI * 10) / 3) * (100 + 50 + 25);
     expect(vol).toBeCloseTo(expected, -1);
@@ -155,39 +155,39 @@ describe('Shape topology accessors', () => {
 describe('Shape transformations', () => {
   it('translate produces correct volume', () => {
     const b = translate(box(10, 10, 10), [5, 5, 5]);
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('rotate preserves volume', () => {
     const b = rotate(box(10, 10, 10), 45);
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('scale changes volume', () => {
     const b = scale(box(10, 10, 10), 2);
-    expect(measureVolume(b)).toBeCloseTo(8000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(8000, 0);
   });
 
   it('mirror preserves volume', () => {
     const b = mirror(box(10, 10, 10), { normal: [0, 0, 1] });
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('mirror with Plane object', () => {
     const plane = resolvePlane('YZ');
     const b = mirror(box(10, 10, 10), { normal: plane.zDir, origin: plane.origin });
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('mirror with Plane and custom origin', () => {
     const plane = resolvePlane('YZ');
     const b = mirror(box(10, 10, 10), { normal: plane.zDir, origin: [5, 0, 0] });
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 
   it('mirror with default (no args)', () => {
     const b = mirror(box(10, 10, 10));
-    expect(measureVolume(b)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(b))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -196,21 +196,21 @@ describe('Boolean operations', () => {
     const box1 = box(10, 10, 10);
     const box2 = translate(box1, [5, 0, 0]);
     const fused = unwrap(fuse(box1, box2));
-    expect(measureVolume(fused)).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(fused))).toBeCloseTo(1500, 0);
   });
 
   it('cut decreases volume', () => {
     const box1 = box(10, 10, 10);
     const box2 = translate(box1, [5, 0, 0]);
     const c = unwrap(cut(box1, box2));
-    expect(measureVolume(c)).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(c))).toBeCloseTo(500, 0);
   });
 
   it('intersect yields overlap', () => {
     const box1 = box(10, 10, 10);
     const box2 = translate(box1, [5, 0, 0]);
     const intersection = unwrap(intersect(box1, box2));
-    expect(measureVolume(intersection)).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(intersection))).toBeCloseTo(500, 0);
   });
 });
 

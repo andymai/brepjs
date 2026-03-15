@@ -21,7 +21,7 @@ describe('Boolean operations', () => {
     const box2 = translate(box1, [5, 0, 0]);
     const fused = unwrap(fuse(box1, box2));
     expect(fused).toBeDefined();
-    const vol = measureVolume(fused);
+    const vol = unwrap(measureVolume(fused));
     // Two 10x10x10 boxes overlapping by 5x10x10 = 2000 - 500 = 1500
     expect(vol).toBeCloseTo(1500, 0);
   });
@@ -31,7 +31,7 @@ describe('Boolean operations', () => {
     const box2 = translate(box1, [5, 0, 0]);
     const c = unwrap(cut(box1, box2));
     expect(c).toBeDefined();
-    const vol = measureVolume(c);
+    const vol = unwrap(measureVolume(c));
     // 10x10x10 minus the 5x10x10 overlap = 500
     expect(vol).toBeCloseTo(500, 0);
   });
@@ -41,7 +41,7 @@ describe('Boolean operations', () => {
     const box2 = translate(box1, [5, 0, 0]);
     const common = unwrap(intersect(box1, box2));
     expect(common).toBeDefined();
-    const vol = measureVolume(common);
+    const vol = unwrap(measureVolume(common));
     // Overlap region is 5x10x10 = 500
     expect(vol).toBeCloseTo(500, 0);
   });
@@ -52,7 +52,7 @@ describe('Shape transforms', () => {
     const b = box(10, 10, 10);
     const translated = translate(b, [100, 0, 0]);
     expect(translated).toBeDefined();
-    const vol = measureVolume(translated);
+    const vol = unwrap(measureVolume(translated));
     expect(vol).toBeCloseTo(1000, 0);
   });
 
@@ -60,7 +60,7 @@ describe('Shape transforms', () => {
     const b = box(10, 10, 10);
     const cloned = clone(b);
     expect(cloned).toBeDefined();
-    const vol = measureVolume(cloned);
+    const vol = unwrap(measureVolume(cloned));
     expect(vol).toBeCloseTo(1000, 0);
   });
 });

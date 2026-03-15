@@ -9,6 +9,7 @@ import {
   getBounds,
   composeTransforms,
   transformCopy,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -89,7 +90,7 @@ describe('transformCopy', () => {
     ]);
     const result = transformCopy(b, trsf);
     trsf.cleanup();
-    expect(measureVolume(result)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(result))).toBeCloseTo(1000, 0);
   });
 
   it('does not mutate the original shape', () => {

@@ -52,15 +52,15 @@ describe('shape() factory', () => {
     const s = shape(box(10, 10, 10));
     const unwrapped = s.done();
     expect(unwrapped).toBe(s.val);
-    expect(measureVolume(unwrapped)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(unwrapped))).toBeCloseTo(1000, 0);
   });
 
   it('.done() works after chaining operations', () => {
     const result = shape(box(10, 10, 10))
       .fillet(1)
       .done();
-    expect(measureVolume(result)).toBeLessThan(1000);
-    expect(measureVolume(result)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(result))).toBeLessThan(1000);
+    expect(unwrap(measureVolume(result))).toBeGreaterThan(0);
   });
 
   it('wraps a Face into WrappedFace', () => {
@@ -106,22 +106,22 @@ describe('shape() factory', () => {
 describe('Wrapped transforms', () => {
   it('translate() returns a new wrapper', () => {
     const s = shape(box(10, 10, 10)).translate([5, 0, 0]);
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('rotate() with default axis', () => {
     const s = shape(box(10, 10, 10)).rotate(45);
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('mirror() with default plane', () => {
     const s = shape(box(10, 10, 10)).mirror();
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('scale() by factor', () => {
     const s = shape(box(10, 10, 10)).scale(2);
-    expect(measureVolume(s.val)).toBeCloseTo(8000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(8000, 0);
   });
 
   it('moveX/Y/Z shortcuts', () => {
@@ -129,7 +129,7 @@ describe('Wrapped transforms', () => {
       .moveX(5)
       .moveY(3)
       .moveZ(1);
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('rotateX/Y/Z shortcuts', () => {
@@ -137,12 +137,12 @@ describe('Wrapped transforms', () => {
       .rotateX(45)
       .rotateY(30)
       .rotateZ(15);
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('clone() deep copies', () => {
     const s = shape(box(10, 10, 10)).clone();
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('bounds() returns bounding box', () => {
@@ -165,17 +165,17 @@ describe('Wrapped transforms', () => {
 describe('Wrapped3D booleans', () => {
   it('fuse() unions two shapes', () => {
     const s = shape(box(10, 10, 10)).fuse(translate(box(10, 10, 10), [5, 0, 0]));
-    expect(measureVolume(s.val)).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1500, 0);
   });
 
   it('cut() subtracts a shape', () => {
     const s = shape(box(10, 10, 10)).cut(translate(box(5, 10, 10), [5, 0, 0]));
-    expect(measureVolume(s.val)).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(500, 0);
   });
 
   it('intersect() computes overlap', () => {
     const s = shape(box(10, 10, 10)).intersect(translate(box(10, 10, 10), [5, 0, 0]));
-    expect(measureVolume(s.val)).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(500, 0);
   });
 });
 
@@ -186,46 +186,46 @@ describe('Wrapped3D booleans', () => {
 describe('Wrapped3D modifiers', () => {
   it('fillet() all edges', () => {
     const s = shape(box(10, 10, 10)).fillet(1);
-    expect(measureVolume(s.val)).toBeLessThan(1000);
-    expect(measureVolume(s.val)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(s.val))).toBeLessThan(1000);
+    expect(unwrap(measureVolume(s.val))).toBeGreaterThan(0);
   });
 
   it('fillet() selected edges with FinderFn', () => {
     const s = shape(box(10, 10, 10)).fillet((e) => e.inDirection('Z'), 1);
-    expect(measureVolume(s.val)).toBeLessThan(1000);
+    expect(unwrap(measureVolume(s.val))).toBeLessThan(1000);
   });
 
   it('fillet() accepts ShapeFinder directly', () => {
     const finder = edgeFinder().inDirection('Z');
     const s = shape(box(10, 10, 10)).fillet(finder, 1);
-    expect(measureVolume(s.val)).toBeLessThan(1000);
+    expect(unwrap(measureVolume(s.val))).toBeLessThan(1000);
   });
 
   it('chamfer() all edges', () => {
     const s = shape(box(10, 10, 10)).chamfer(1);
-    expect(measureVolume(s.val)).toBeLessThan(1000);
+    expect(unwrap(measureVolume(s.val))).toBeLessThan(1000);
   });
 
   it('chamfer() accepts ShapeFinder directly', () => {
     const finder = edgeFinder().inDirection('Z');
     const s = shape(box(10, 10, 10)).chamfer(finder, 1);
-    expect(measureVolume(s.val)).toBeLessThan(1000);
+    expect(unwrap(measureVolume(s.val))).toBeLessThan(1000);
   });
 
   it('shell() with FinderFn', () => {
     const s = shape(box(20, 20, 20)).shell((f) => f.inDirection('Z'), 2);
-    expect(measureVolume(s.val)).toBeLessThan(8000);
+    expect(unwrap(measureVolume(s.val))).toBeLessThan(8000);
   });
 
   it('shell() accepts ShapeFinder directly', () => {
     const finder = faceFinder().inDirection('Z');
     const s = shape(box(20, 20, 20)).shell(finder, 2);
-    expect(measureVolume(s.val)).toBeLessThan(8000);
+    expect(unwrap(measureVolume(s.val))).toBeLessThan(8000);
   });
 
   it('offset() expands a shape', () => {
     const s = shape(box(10, 10, 10)).offset(1);
-    expect(measureVolume(s.val)).toBeGreaterThan(1000);
+    expect(unwrap(measureVolume(s.val))).toBeGreaterThan(1000);
   });
 });
 
@@ -291,7 +291,7 @@ describe('Wrapped3D chaining', () => {
       .fillet(1)
       .moveZ(5);
 
-    const vol = measureVolume(bracket.val);
+    const vol = unwrap(measureVolume(bracket.val));
     expect(vol).toBeGreaterThan(0);
     expect(vol).toBeLessThan(6000);
   });
@@ -300,7 +300,7 @@ describe('Wrapped3D chaining', () => {
     const s = shape(box(20, 20, 10))
       .cut(translate(cylinder(3, 15), [10, 10, -1]))
       .fillet((e) => e.inDirection('Z'), 1);
-    expect(measureVolume(s.val)).toBeGreaterThan(0);
+    expect(unwrap(measureVolume(s.val))).toBeGreaterThan(0);
   });
 });
 
@@ -311,14 +311,14 @@ describe('Wrapped3D chaining', () => {
 describe('escape hatches', () => {
   it('apply() transforms with a function', () => {
     const s = shape(box(10, 10, 10)).apply((s) => translate(s, [10, 0, 0]));
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('applyResult() handles Result-returning functions', () => {
     const s = shape(box(10, 10, 10)).applyResult((s) =>
       fuse(s, translate(box(10, 10, 10), [5, 0, 0]))
     );
-    expect(measureVolume(s.val)).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1500, 0);
   });
 });
 
@@ -337,7 +337,7 @@ describe('WrappedFace', () => {
       ])
     );
     const s = shape(f).extrude(5);
-    expect(measureVolume(s.val)).toBeCloseTo(500, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(500, 0);
   });
 
   it('extrude() with number shorthand for Z', () => {
@@ -350,7 +350,7 @@ describe('WrappedFace', () => {
       ])
     );
     const s = shape(f).extrude(10);
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 
   it('area() returns face area', () => {
@@ -395,7 +395,7 @@ describe('WrappedFace', () => {
   it('Sketch → WrappedFace → extrude', () => {
     const sketch = sketchCircle(5);
     const solid = shape(sketch).extrude(10);
-    expect(measureVolume(solid.val)).toBeCloseTo(Math.PI * 25 * 10, 0);
+    expect(unwrap(measureVolume(solid.val))).toBeCloseTo(Math.PI * 25 * 10, 0);
   });
 });
 
@@ -470,7 +470,7 @@ describe('Wrapped applyMatrix', () => {
       [0, 0, 0, 1],
     ];
     const s = shape(box(10, 10, 10)).applyMatrix(identity);
-    expect(measureVolume(s.val)).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(s.val))).toBeCloseTo(1000, 0);
   });
 });
 
@@ -518,7 +518,7 @@ describe('Shapeable interop', () => {
     // fuse() accepts Shapeable<T> which includes Wrapped<T>
     const result = fuse(wrapped, translate(box(10, 10, 10), [5, 0, 0]));
     expect(isOk(result)).toBe(true);
-    expect(measureVolume(unwrap(result))).toBeCloseTo(1500, 0);
+    expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1500, 0);
   });
 
   it('wrapper methods accept both raw and wrapped shapes', () => {
@@ -526,7 +526,7 @@ describe('Shapeable interop', () => {
     const tool = shape(translate(cylinder(3, 15), [5, 5, -1]));
     // Pass wrapper to .cut()
     const result = base.cut(tool);
-    expect(measureVolume(result.val)).toBeLessThan(1000);
+    expect(unwrap(measureVolume(result.val))).toBeLessThan(1000);
   });
 });
 

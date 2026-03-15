@@ -14,7 +14,7 @@ import { DEG2RAD } from '../core/constants.js';
 import { getCurveType, curveLength, curveIsClosed } from '../topology/curveFns.js';
 import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '../topology/faceFns.js';
 import { measureArea } from '../measurement/measureFns.js';
-import { unwrap } from '../core/result.js';
+import { unwrap, isOk } from '../core/result.js';
 import { iterTopo } from '../topology/cast.js';
 import type { CurveType } from '../core/typeDiscriminants.js';
 import { type ShapeFinder, type Predicate, createTypedFinder } from './finderCore.js';
@@ -109,7 +109,10 @@ function buildFaceFinder(filters: ReadonlyArray<Predicate<Face>>): FaceFinderFn 
         withFilter((face) => unwrap(getSurfaceType(face)) === surfaceType),
 
       ofArea: (area, tolerance = 1e-3) =>
-        withFilter((face) => Math.abs(measureArea(face) - area) < tolerance),
+        withFilter((face) => {
+          const r = measureArea(face);
+          return isOk(r) && Math.abs(r.value - area) < tolerance;
+        }),
 
       atDistance: (distance, point: Vec3 = [0, 0, 0]) =>
         withFilter(distanceFromPointFilter<Face>(distance, point, 1e-6)),

@@ -29,6 +29,7 @@ import {
   isFace,
   isSolid,
   isWire,
+  unwrap,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -39,7 +40,7 @@ describe('clone', () => {
   it('clones a solid preserving volume', () => {
     const b = box(10, 10, 10);
     const cloned = clone(b);
-    expect(measureVolume(box(10, 10, 10))).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(box(10, 10, 10)))).toBeCloseTo(1000, 0);
     expect(cloned).toBeDefined();
   });
 });

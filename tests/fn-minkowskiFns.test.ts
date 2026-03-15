@@ -35,7 +35,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: minkowskiFns', () => {
         expect(isOk(result)).toBe(true);
         const shape = unwrap(result);
         expect(isSolid(shape)).toBe(true);
-        expect(measureVolume(shape)).toBeGreaterThan(1000);
+        expect(unwrap(measureVolume(shape))).toBeGreaterThan(1000);
       });
 
       it('volume approximately matches offset(box, 2) for sphere(2)', () => {
@@ -48,8 +48,8 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: minkowskiFns', () => {
         expect(isOk(offsetResult)).toBe(true);
         const offsetShape = unwrap(offsetResult);
 
-        const minkVol = measureVolume(minkShape);
-        const offsetVol = measureVolume(offsetShape);
+        const minkVol = unwrap(measureVolume(minkShape));
+        const offsetVol = unwrap(measureVolume(offsetShape));
 
         // Within 1% tolerance
         expect(Math.abs(minkVol - offsetVol) / offsetVol).toBeLessThan(0.01);
@@ -65,7 +65,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: minkowskiFns', () => {
         expect(isOk(result)).toBe(true);
         const shape = unwrap(result);
         expect(isSolid(shape)).toBe(true);
-        expect(measureVolume(shape)).toBeCloseTo(1728, -1);
+        expect(unwrap(measureVolume(shape))).toBeCloseTo(1728, -1);
       });
     });
 
