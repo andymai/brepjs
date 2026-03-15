@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.9.0](https://github.com/andymai/brepjs/compare/brepjs-v12.8.2...brepjs-v12.9.0) (2026-03-15)
+
+
+### Features
+
+* **kernel:** close brepkit parity gaps and unblock 118 tests ([#523](https://github.com/andymai/brepjs/issues/523)) ([0461846](https://github.com/andymai/brepjs/commit/046184655f35a6d2c8c2672a4077c439fa8698d7))
+
 ## [12.8.2](https://github.com/andymai/brepjs/compare/brepjs-v12.8.1...brepjs-v12.8.2) (2026-03-14)
 
 
