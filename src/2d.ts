@@ -31,8 +31,8 @@ export {
   scale2D,
   mirror2D,
   stretch2D,
-  sketch2DOnPlane,
-  sketch2DOnFace,
+  sketchOnPlane2D,
+  sketchOnFace2D,
 } from './2d/blueprints/blueprintFns.js';
 
 // ── 2D booleans ──

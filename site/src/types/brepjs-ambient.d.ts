@@ -1436,10 +1436,10 @@ declare function mirror2D(bp: Blueprint, centerOrDirection: Point2D, origin?: Po
 declare function stretch2D(bp: Blueprint, ratio: number, direction: Point2D, origin?: Point2D): Blueprint;
 
 /** Project a blueprint onto a 3D plane, producing sketch data. */
-declare function sketch2DOnPlane(bp: Blueprint, inputPlane?: PlaneName | Plane, origin?: PointInput | number): any;
+declare function sketchOnPlane2D(bp: Blueprint, inputPlane?: PlaneName | Plane, origin?: PointInput | number): any;
 
 /** Map a blueprint onto a 3D face's UV surface, producing sketch data. */
-declare function sketch2DOnFace(bp: Blueprint, face: Face, scaleMode?: ScaleMode): any;
+declare function sketchOnFace2D(bp: Blueprint, face: Face, scaleMode?: ScaleMode): any;
 
 /**
  * Input that resolves to a single face — a direct Face, a FaceFinderFn,

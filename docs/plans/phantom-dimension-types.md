@@ -228,7 +228,7 @@ export interface ShapeHandle {
 ```
 
 **Implementation note**: `__is2D` is only set to `true` by 2D creation paths
-(`sketch2DOnPlane`, `importSVG`→wire, etc.). The vast majority of shapes never
+(`sketchOnPlane2D`, `importSVG`→wire, etc.). The vast majority of shapes never
 set it, so memory overhead is negligible.
 
 ---
@@ -323,7 +323,7 @@ These gain `'2D'` typing:
 
 ```ts
 function createBlueprint(...): Blueprint;  // Blueprint is 2D by definition
-function sketch2DOnPlane(bp: Blueprint, plane: PlaneInput): Wire<'3D'>;  // converts to 3D!
+function sketchOnPlane2D(bp: Blueprint, plane: PlaneInput): Wire<'3D'>;  // converts to 3D!
 ```
 
 **Note**: The `Blueprint` type is a separate system (not shape-based), so it's

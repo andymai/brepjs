@@ -176,8 +176,8 @@ export {
   mirror2D,
   stretch2D,
   // Sketching - clean 2D aliases
-  sketch2DOnPlane,
-  sketch2DOnFace,
+  sketchOnPlane2D,
+  sketchOnFace2D,
 } from './2d/blueprints/blueprintFns.js';
 
 // ── Layer 2: query ──

@@ -86,7 +86,7 @@ export function stretch2D(
 // ── Sketching Functions (Clean 2D API) ──
 
 /** Project a blueprint onto a 3D plane, producing sketch data. */
-export function sketch2DOnPlane(
+export function sketchOnPlane2D(
   bp: Blueprint,
   inputPlane?: PlaneName | Plane,
   origin?: PointInput | number
@@ -96,7 +96,7 @@ export function sketch2DOnPlane(
 }
 
 /** Map a blueprint onto a 3D face's UV surface, producing sketch data. */
-export function sketch2DOnFace(
+export function sketchOnFace2D(
   bp: Blueprint,
   face: Face,
   scaleMode?: ScaleMode

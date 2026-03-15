@@ -1008,7 +1008,7 @@ import {
   createBlueprint, getBounds2D, getOrientation2D,
   translate2D, rotate2D, scale2D, mirror2D,
   stretch2D, toSVGPathD, isInside2D,
-  sketch2DOnPlane, sketch2DOnFace
+  sketchOnPlane2D, sketchOnFace2D
 } from 'brepjs';
 
 createBlueprint(curves): Blueprint
@@ -1021,8 +1021,8 @@ mirror2D(bp, dir, origin?, mode?): Blueprint
 stretch2D(bp, ratio, direction, origin?): Blueprint
 toSVGPathD(bp): string
 isInside2D(bp, point): boolean
-sketch2DOnPlane(bp, plane?, origin?): Sketch
-sketch2DOnFace(bp, face, scaleMode?): Sketch
+sketchOnPlane2D(bp, plane?, origin?): Sketch
+sketchOnFace2D(bp, face, scaleMode?): Sketch
 ```
 
 Blueprint construction helpers:

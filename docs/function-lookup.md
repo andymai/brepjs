@@ -333,8 +333,8 @@ import { fillet } from 'brepjs/topology';
 | `sharedEdges`                 | `brepjs/topology`    | function |
 | `SingleFace`                  | `brepjs/query`       | type     |
 | `Sketch`                      | `brepjs/sketching`   | class    |
-| `sketch2DOnFace`              | `brepjs/2d`          | function |
-| `sketch2DOnPlane`             | `brepjs/2d`          | function |
+| `sketchOnFace2D`              | `brepjs/2d`          | function |
+| `sketchOnPlane2D`             | `brepjs/2d`          | function |
 | `sketchCircle`                | `brepjs/sketching`   | function |
 | `sketchEllipse`               | `brepjs/sketching`   | function |
 | `Sketcher`                    | `brepjs/sketching`   | class    |
@@ -454,7 +454,7 @@ import { fillet } from 'brepjs/topology';
 
 ## `brepjs/2d`
 
-**Functions** (29): `createBlueprint`, `curve2dBoundingBox`, `curve2dDistanceFrom`, `curve2dFirstPoint`, `curve2dIsOnCurve`, `curve2dLastPoint`, `curve2dParameter`, `curve2dSplitAt`, `curve2dTangentAt`, `cut2D`, `cutBlueprints`, `fuse2D`, `fuseBlueprints`, `getOrientation2D`, `intersect2D`, `intersectBlueprints`, `isInside2D`, `mirror2D`, `organiseBlueprints`, `polysidesBlueprint`, `reverseCurve`, `rotate2D`, `roundedRectangleBlueprint`, `scale2D`, `sketch2DOnFace`, `sketch2DOnPlane`, `stretch2D`, `toSVGPathD`, `translate2D`
+**Functions** (29): `createBlueprint`, `curve2dBoundingBox`, `curve2dDistanceFrom`, `curve2dFirstPoint`, `curve2dIsOnCurve`, `curve2dLastPoint`, `curve2dParameter`, `curve2dSplitAt`, `curve2dTangentAt`, `cut2D`, `cutBlueprints`, `fuse2D`, `fuseBlueprints`, `getOrientation2D`, `intersect2D`, `intersectBlueprints`, `isInside2D`, `mirror2D`, `organiseBlueprints`, `polysidesBlueprint`, `reverseCurve`, `rotate2D`, `roundedRectangleBlueprint`, `scale2D`, `sketchOnFace2D`, `sketchOnPlane2D`, `stretch2D`, `toSVGPathD`, `translate2D`
 
 **Classes** (5): `Blueprint`, `Blueprints`, `BoundingBox2d`, `CompoundBlueprint`, `Curve2D`
 
