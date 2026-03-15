@@ -1,6 +1,6 @@
 import type { KernelShape, KernelType } from '../kernel/types.js';
-import type { AnyShape, CompSolid, Dimension, Shape3D, Wire } from '../core/shapeTypes.js';
-import { castShape, isShape3D as _isShape3D, isWire as _isWire } from '../core/shapeTypes.js';
+import type { AnyShape, CompSolid, Dimension } from '../core/shapeTypes.js';
+import { castShape } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
 import { typeCastError } from '../core/errors.js';
 import { type Result, ok, err } from '../core/result.js';
@@ -104,16 +104,6 @@ export function cast(shape: KernelShape): Result<AnyShape<Dimension>> {
     return err(typeCastError('NULL_SHAPE', 'Cannot cast a null shape'));
   }
   return ok(castShape(shape));
-}
-
-/** Type guard: return true if the shape is a 3D body (Shell, Solid, CompSolid, or Compound). */
-export function isShape3D(shape: AnyShape<Dimension>): shape is Shape3D {
-  return _isShape3D(shape);
-}
-
-/** Type guard: return true if the shape is a Wire. */
-export function isWire(shape: AnyShape<Dimension>): shape is Wire {
-  return _isWire(shape);
 }
 
 /** Type guard: return true if the shape is a CompSolid. */

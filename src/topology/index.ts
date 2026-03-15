@@ -10,8 +10,6 @@ export {
   shapeType,
   iterTopo,
   asTopo,
-  isShape3D,
-  isWire,
   isCompSolid,
   fromBREP as deserializeShape,
   type TopoEntity,
