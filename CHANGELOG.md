@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.9.1](https://github.com/andymai/brepjs/compare/brepjs-v12.9.0...brepjs-v12.9.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* **build:** bump package file limit to 550 ([#525](https://github.com/andymai/brepjs/issues/525)) ([058eb28](https://github.com/andymai/brepjs/commit/058eb28372ef6af56c0098304a3163131c3ef863))
+
 ## [12.9.0](https://github.com/andymai/brepjs/compare/brepjs-v12.8.2...brepjs-v12.9.0) (2026-03-15)
 
 
