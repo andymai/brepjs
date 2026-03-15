@@ -64,9 +64,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 1100,
     rollupOptions: {
       output: {
-        manualChunks: {
-          monaco: ['monaco-editor', '@monaco-editor/react'],
-          three: ['three', '@react-three/fiber', '@react-three/drei'],
+        manualChunks(id) {
+          if (id.includes('monaco-editor') || id.includes('@monaco-editor/react')) return 'monaco';
+          if (id.includes('/three/') || id.includes('@react-three/')) return 'three';
         },
       },
     },
