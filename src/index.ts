@@ -166,6 +166,7 @@ export {
 
 export {
   createBlueprint,
+  createCompoundBlueprint,
   // Utilities - clean 2D aliases
   getBounds2D,
   getOrientation2D,
@@ -571,6 +572,8 @@ export {
 } from './topology/surfaceFns.js';
 
 export { hull, type HullOptions } from './topology/hullFns.js';
+
+export { convexHull } from './operations/convexHullFns.js';
 
 export { minkowski, type MinkowskiOptions } from './topology/minkowskiFns.js';
 
