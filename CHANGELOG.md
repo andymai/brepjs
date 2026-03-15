@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.11.1](https://github.com/andymai/brepjs/compare/brepjs-v12.11.0...brepjs-v12.11.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* **site:** convert manualChunks to function form for Vite 8/Rolldown ([#538](https://github.com/andymai/brepjs/issues/538)) ([c97d867](https://github.com/andymai/brepjs/commit/c97d867af5ed7e4388ee17a23adde3e429a7e883))
+
 ## [12.11.0](https://github.com/andymai/brepjs/compare/brepjs-v12.10.0...brepjs-v12.11.0) (2026-03-15)
 
 
