@@ -129,7 +129,7 @@ export function sweep(
     if (contactMode && edgeIds.length === 1) {
       const edgeId = edgeIds[0];
       if (edgeId !== undefined) {
-        return solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+        return solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed'));
       }
     }
 
@@ -146,7 +146,7 @@ export function sweep(
 
   if (contactMode) {
     const edgeId = unwrap(spine, 'edge');
-    return solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+    return solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed'));
   }
 
   const nurbsData = extractNurbsFromEdge(bk, spine);
@@ -231,7 +231,9 @@ export function sweepWithOptions(
 ): KernelShape {
   const profileId = unwrap(profile, 'face');
   const pathId = unwrap(pathEdge, 'edge');
-  return solidHandle(bk.sweepWithOptions(profileId, pathId, contactMode, scaleValues, segments));
+  return solidHandle(
+    bk.sweepWithOptions(profileId, pathId, contactMode, scaleValues, segments, 'transformed')
+  );
 }
 
 function mapStringTransitionMode(mode: string): string | undefined {
@@ -267,7 +269,9 @@ export function sweepPipeShell(
     if (spineHandle.type !== 'wire') {
       try {
         const edgeId = unwrap(spine, 'edge');
-        const shape = solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+        const shape = solidHandle(
+          bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
+        );
         if (shellMode) return { shape, firstShape: profile, lastShape: profile };
         return shape;
       } catch (e: unknown) {
@@ -283,7 +287,9 @@ export function sweepPipeShell(
         if (first) {
           try {
             const edgeId = unwrap(first, 'edge');
-            const shape = solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+            const shape = solidHandle(
+              bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
+            );
             if (shellMode) return { shape, firstShape: profile, lastShape: profile };
             return shape;
           } catch (e: unknown) {

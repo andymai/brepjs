@@ -271,7 +271,8 @@ export interface BrepkitKernel {
     pathEdge: number,
     contactMode: string,
     scaleValues: number[],
-    segments: number
+    segments: number,
+    cornerMode: string
   ): number;
 
   // ── Modifiers ──────────────────────────────────────────────────
@@ -530,7 +531,7 @@ export interface BrepkitKernel {
   // ── Distance / Classification ──────────────────────────────────
 
   /** Classify a point relative to a solid. Returns "inside"|"outside"|"boundary". */
-  classifyPoint(solid: number, x: number, y: number, z: number): string;
+  classifyPoint(solid: number, x: number, y: number, z: number, tolerance: number): string;
 
   /** Classify using generalized winding numbers. */
   classifyPointWinding(solid: number, x: number, y: number, z: number, tolerance: number): string;
@@ -575,7 +576,7 @@ export interface BrepkitKernel {
   validateSolidWithOptions?(solid: number, tolerance_scale: number): number;
 
   /** Heal a solid (fix orientations, merge vertices, etc.). */
-  healSolid(solid: number): void;
+  healSolid(solid: number): number;
 
   /** Merge coincident vertices. Returns merge count. */
   mergeCoincidentVertices(solid: number, tolerance: number): number;
@@ -806,7 +807,7 @@ export interface BrepkitKernel {
   fillet2d(coords: number[], radius: number): Float64Array;
 
   /** Check if a point is inside a 2D polygon. Coords flat `[x,y,...]`. */
-  pointInPolygon2d?(x: number, y: number, coords: number[]): boolean;
+  pointInPolygon2d?(polygonCoords: Float64Array | number[], px: number, py: number): boolean;
 
   /** Check if two 2D polygons intersect. Coords flat `[x,y,...]`. */
   polygonsIntersect2d(coordsA: number[], coordsB: number[]): boolean;
@@ -892,7 +893,7 @@ export interface BrepkitKernel {
   // ── Sketch ────────────────────────────────────────────────────
 
   /** Get degrees of freedom remaining in a sketch. */
-  sketchDof(sketch: number): number;
+  sketchDof(sketch: number): string;
 
   // ── Not yet exposed (future PRs) ──────────────────────────────
 
@@ -913,7 +914,7 @@ export interface BrepkitKernel {
 
   /** Lift a serialised 2D curve onto a 3D plane. Returns edge handle. Added in 2.1.0. */
   liftCurve2dToPlane?(
-    curveType: string,
+    curveType: number,
     curveParams: Float64Array,
     originX: number,
     originY: number,

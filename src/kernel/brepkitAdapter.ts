@@ -1181,7 +1181,9 @@ export class BrepkitAdapter implements KernelAdapter {
       if (contactMode && edgeIds.length === 1) {
         const edgeId = edgeIds[0];
         if (edgeId !== undefined) {
-          return solidHandle(this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+          return solidHandle(
+            this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
+          );
         }
       }
 
@@ -1198,7 +1200,9 @@ export class BrepkitAdapter implements KernelAdapter {
 
     if (contactMode) {
       const edgeId = unwrap(spine, 'edge');
-      return solidHandle(this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+      return solidHandle(
+        this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
+      );
     }
 
     const nurbsData = this.extractNurbsFromEdge(spine);
@@ -3299,7 +3303,9 @@ export class BrepkitAdapter implements KernelAdapter {
       if (spineHandle.type !== 'wire') {
         try {
           const edgeId = unwrap(spine, 'edge');
-          const shape = solidHandle(this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+          const shape = solidHandle(
+            this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
+          );
           if (shellMode) return { shape, firstShape: profile, lastShape: profile };
           return shape;
         } catch (e: unknown) {
@@ -3316,7 +3322,7 @@ export class BrepkitAdapter implements KernelAdapter {
             try {
               const edgeId = unwrap(first, 'edge');
               const shape = solidHandle(
-                this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0)
+                this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
               );
               if (shellMode) return { shape, firstShape: profile, lastShape: profile };
               return shape;
@@ -5530,7 +5536,7 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   /** Get degrees of freedom remaining in a solved or partially-constrained sketch. */
-  sketchDof(sketch: number): number {
+  sketchDof(sketch: number): string {
     return this.bk.sketchDof(sketch);
   }
 
@@ -5617,7 +5623,7 @@ export class BrepkitAdapter implements KernelAdapter {
     const profileId = unwrap(profile, 'face');
     const pathId = unwrap(pathEdge, 'edge');
     return solidHandle(
-      this.bk.sweepWithOptions(profileId, pathId, contactMode, scaleValues, segments)
+      this.bk.sweepWithOptions(profileId, pathId, contactMode, scaleValues, segments, 'transformed')
     );
   }
 
