@@ -300,6 +300,9 @@ export interface BrepkitKernel {
   /** Offset a wire on a planar face. Returns wire handle. */
   offsetWire(face: number, distance: number): number;
 
+  /** Offset a wire on a planar face with join type control. Returns wire handle. Added in 2.5.0. */
+  offsetWireWithJoinType?(face: number, distance: number, join_type: string): number;
+
   /** Draft (taper) faces of a solid. Returns solid handle. */
   draft(
     solid: number,
@@ -553,8 +556,12 @@ export interface BrepkitKernel {
    */
   pointToEdgeDistance(px: number, py: number, pz: number, edge: number): number[];
 
-  /** Minimum distance between two solids. */
-  solidToSolidDistance(a: number, b: number): number;
+  /**
+   * Minimum distance between two solids.
+   * Returns Float64Array with 7 elements: [distance, p1x, p1y, p1z, p2x, p2y, p2z].
+   * Changed from `number` in 2.5.0.
+   */
+  solidToSolidDistance(a: number, b: number): Float64Array;
 
   // ── Validation / Repair ────────────────────────────────────────
 
@@ -563,6 +570,9 @@ export interface BrepkitKernel {
 
   /** Validate solid topology (relaxed, tolerant of NURBS approximation artifacts). Returns error count. */
   validateSolidRelaxed(solid: number): number;
+
+  /** Validate solid topology with configurable tolerance scale. Returns error count. Added in 2.5.0. */
+  validateSolidWithOptions?(solid: number, tolerance_scale: number): number;
 
   /** Heal a solid (fix orientations, merge vertices, etc.). */
   healSolid(solid: number): void;

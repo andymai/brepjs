@@ -50,7 +50,7 @@ export type { KernelCore } from './core.js';
 export type { KernelCurveOps } from './curve-ops.js';
 export type { KernelEvolutionOps } from './evolution-ops.js';
 export type { KernelIOOps } from './io-ops.js';
-export type { KernelMeasureOps } from './measure-ops.js';
+export type { BulkMeasurement, KernelMeasureOps } from './measure-ops.js';
 export type { KernelMeshOps } from './mesh-ops.js';
 export type { KernelModifierOps } from './modifier-ops.js';
 export type { KernelPrimitiveOps } from './primitive-ops.js';
@@ -58,7 +58,7 @@ export type { KernelRepairOps } from './repair-ops.js';
 export type { KernelSurfaceOps } from './surface-ops.js';
 export type { KernelSweepOps } from './sweep-ops.js';
 export type { KernelTopologyOps } from './topology-ops.js';
-export type { KernelTransformOps } from './transform-ops.js';
+export type { KernelTransformOps, TransformEntry } from './transform-ops.js';
 
 // --- Backward-compatible aliases ---
 

@@ -10,6 +10,35 @@
 
 import type { KernelShape, KernelType } from '../types.js';
 
+/** A single entry in a batch transform operation. */
+export type TransformEntry =
+  | {
+      readonly type: 'translate';
+      readonly shape: KernelShape;
+      readonly x: number;
+      readonly y: number;
+      readonly z: number;
+    }
+  | {
+      readonly type: 'rotate';
+      readonly shape: KernelShape;
+      readonly angle: number;
+      readonly axis: readonly [number, number, number];
+      readonly center: readonly [number, number, number];
+    }
+  | {
+      readonly type: 'scale';
+      readonly shape: KernelShape;
+      readonly center: readonly [number, number, number];
+      readonly factor: number;
+    }
+  | {
+      readonly type: 'mirror';
+      readonly shape: KernelShape;
+      readonly origin: readonly [number, number, number];
+      readonly normal: readonly [number, number, number];
+    };
+
 export interface KernelTransformOps {
   /** Create a composed transform from a sequence of translate/rotate operations. Returns an opaque handle. */
   composeTransform(
@@ -80,4 +109,7 @@ export interface KernelTransformOps {
     countX: number,
     countY: number
   ): KernelShape;
+
+  /** Apply N transforms in a single call. */
+  transformBatch(entries: TransformEntry[]): KernelShape[];
 }

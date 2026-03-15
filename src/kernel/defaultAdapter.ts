@@ -32,7 +32,9 @@ import {
   boundingBox as _boundingBox,
   distance as _distance,
   classifyPointOnFace as _classifyPointOnFace,
+  measureBulk as _measureBulk,
 } from './measureOps.js';
+import type { BulkMeasurement } from './interfaces/measure-ops.js';
 import {
   transform as _transform,
   translate as _translate,
@@ -41,7 +43,9 @@ import {
   scale as _scale,
   generalTransform as _generalTransform,
   simplify as _simplify,
+  transformBatch as _transformBatch,
 } from './transformOps.js';
+import type { TransformEntry } from './interfaces/transform-ops.js';
 import {
   fuse as _fuse,
   cut as _cut,
@@ -611,6 +615,10 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     return _scale(this.oc, shape, center, factor);
   }
 
+  transformBatch(entries: TransformEntry[]): KernelShape[] {
+    return _transformBatch(this.oc, entries);
+  }
+
   generalTransform(
     shape: KernelShape,
     linear: readonly [number, number, number, number, number, number, number, number, number],
@@ -695,6 +703,10 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     max: [number, number, number];
   } {
     return _boundingBox(this.oc, shape);
+  }
+
+  measureBulk(shape: KernelShape, includeLinear?: boolean): BulkMeasurement {
+    return _measureBulk(this.oc, shape, includeLinear);
   }
 
   // --- Topology introspection ---

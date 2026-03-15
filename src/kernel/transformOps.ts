@@ -5,28 +5,10 @@
  * Used by DefaultAdapter.
  */
 
+import type { TransformEntry } from './interfaces/transform-ops.js';
 import type { KernelInstance, KernelShape, KernelType } from './types.js';
 
-// ---------------------------------------------------------------------------
-// Batch transform (C++ extractor)
-// ---------------------------------------------------------------------------
-
-export type TransformEntry =
-  | { type: 'translate'; shape: KernelShape; x: number; y: number; z: number }
-  | {
-      type: 'rotate';
-      shape: KernelShape;
-      angle: number;
-      axis: [number, number, number];
-      center: [number, number, number];
-    }
-  | { type: 'scale'; shape: KernelShape; center: [number, number, number]; factor: number }
-  | {
-      type: 'mirror';
-      shape: KernelShape;
-      origin: [number, number, number];
-      normal: [number, number, number];
-    };
+export type { TransformEntry };
 
 /** Cached flag: does the WASM build include TransformBatch? */
 let hasCppTransformBatch: boolean | undefined;
@@ -89,11 +71,11 @@ export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): K
       case 'translate':
         return translate(oc, e.shape, e.x, e.y, e.z);
       case 'rotate':
-        return rotate(oc, e.shape, e.angle, e.axis, e.center);
+        return rotate(oc, e.shape, e.angle, [...e.axis], [...e.center]);
       case 'scale':
-        return scale(oc, e.shape, e.center, e.factor);
+        return scale(oc, e.shape, [...e.center], e.factor);
       case 'mirror':
-        return mirror(oc, e.shape, e.origin, e.normal);
+        return mirror(oc, e.shape, [...e.origin], [...e.normal]);
     }
   });
 }

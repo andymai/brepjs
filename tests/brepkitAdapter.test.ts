@@ -92,7 +92,7 @@ function createMockBrepKernel() {
     facePerimeter: vi.fn(() => 8.0),
 
     // Distance
-    solidToSolidDistance: vi.fn(() => 5.0),
+    solidToSolidDistance: vi.fn(() => new Float64Array([5.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0])),
     pointToSolidDistance: vi.fn(() => [3.0, 1.0, 2.0, 3.0]),
 
     // Classification

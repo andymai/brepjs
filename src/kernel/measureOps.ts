@@ -5,24 +5,12 @@
  * Used by DefaultAdapter.
  */
 
+import type { BulkMeasurement } from './interfaces/measure-ops.js';
 import type { KernelInstance, KernelShape } from './types.js';
 
+export type { BulkMeasurement };
+
 const HASH_CODE_MAX = 2147483647;
-
-// ---------------------------------------------------------------------------
-// Bulk measurement (C++ extractor)
-// ---------------------------------------------------------------------------
-
-export interface BulkMeasurement {
-  volume: number;
-  area: number;
-  length: number;
-  centerOfMass: [number, number, number];
-  boundingBox: {
-    min: [number, number, number];
-    max: [number, number, number];
-  };
-}
 
 /** Cached flag: does the WASM build include MeasurementExtractor? */
 let hasCppMeasurement: boolean | undefined;

@@ -45,6 +45,8 @@ import type {
   MeshOptions,
   StepAssemblyPart,
 } from './types.js';
+import type { BulkMeasurement } from './interfaces/measure-ops.js';
+import type { TransformEntry } from './interfaces/transform-ops.js';
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { Curve2dHandle, BBox2dHandle } from './kernel2dTypes.js';
 import * as bk2d from './brepkit2d.js';
@@ -1540,6 +1542,21 @@ export class BrepkitAdapter implements KernelAdapter {
     return this.applyMatrix(shape, scaleMatrix(center, factor));
   }
 
+  transformBatch(entries: TransformEntry[]): KernelShape[] {
+    return entries.map((e) => {
+      switch (e.type) {
+        case 'translate':
+          return this.translate(e.shape, e.x, e.y, e.z);
+        case 'rotate':
+          return this.rotate(e.shape, e.angle, [...e.axis], [...e.center]);
+        case 'scale':
+          return this.scale(e.shape, [...e.center], e.factor);
+        case 'mirror':
+          return this.mirror(e.shape, [...e.origin], [...e.normal]);
+      }
+    });
+  }
+
   generalTransform(
     shape: KernelShape,
     linear: readonly [number, number, number, number, number, number, number, number, number],
@@ -2469,6 +2486,18 @@ export class BrepkitAdapter implements KernelAdapter {
     return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
   }
 
+  measureBulk(shape: KernelShape, includeLinear = false): BulkMeasurement {
+    const h = shape as BrepkitHandle;
+    const canMeasureLength = h.type === 'edge' || h.type === 'wire' || h.type === 'face';
+    return {
+      volume: this.volume(shape),
+      area: this.area(shape),
+      length: includeLinear && canMeasureLength ? this.length(shape) : 0,
+      centerOfMass: this.centerOfMass(shape),
+      boundingBox: this.boundingBox(shape),
+    };
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // Topology introspection
   // ═══════════════════════════════════════════════════════════════════════
@@ -3033,8 +3062,12 @@ export class BrepkitAdapter implements KernelAdapter {
     const h2 = shape2 as BrepkitHandle;
 
     if (h1.type === 'solid' && h2.type === 'solid') {
-      const d = this.bk.solidToSolidDistance(h1.id, h2.id);
-      return { value: d, point1: [0, 0, 0], point2: [0, 0, 0] };
+      const buf = this.bk.solidToSolidDistance(h1.id, h2.id);
+      return {
+        value: buf[0]!,
+        point1: [buf[1]!, buf[2]!, buf[3]!],
+        point2: [buf[4]!, buf[5]!, buf[6]!],
+      };
     }
 
     // Point to solid

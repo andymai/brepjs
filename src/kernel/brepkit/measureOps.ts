@@ -165,8 +165,12 @@ export function distance(
   const h2 = shape2 as BrepkitHandle;
 
   if (h1.type === 'solid' && h2.type === 'solid') {
-    const d = bk.solidToSolidDistance(h1.id, h2.id);
-    return { value: d, point1: [0, 0, 0], point2: [0, 0, 0] };
+    const buf = bk.solidToSolidDistance(h1.id, h2.id);
+    return {
+      value: buf[0]!,
+      point1: [buf[1]!, buf[2]!, buf[3]!],
+      point2: [buf[4]!, buf[5]!, buf[6]!],
+    };
   }
 
   // Point to solid

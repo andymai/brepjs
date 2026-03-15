@@ -8,6 +8,18 @@
 
 import type { DistanceResult, KernelShape } from '../types.js';
 
+/** All scalar measurements for a shape, computed in bulk. */
+export interface BulkMeasurement {
+  volume: number;
+  area: number;
+  length: number;
+  centerOfMass: [number, number, number];
+  boundingBox: {
+    min: [number, number, number];
+    max: [number, number, number];
+  };
+}
+
 export interface KernelMeasureOps {
   volume(shape: KernelShape): number;
   area(shape: KernelShape): number;
@@ -38,6 +50,9 @@ export interface KernelMeasureOps {
 
   /** Surface-based center of mass (uses surface properties, not volume). */
   surfaceCenterOfMass(face: KernelShape): [number, number, number];
+
+  /** Compute volume, area, length, center-of-mass, and bounding box in one call. */
+  measureBulk(shape: KernelShape, includeLinear?: boolean): BulkMeasurement;
 
   /** Create a persistent distance query tool for repeated measurements. */
   createDistanceQuery(referenceShape: KernelShape): {
