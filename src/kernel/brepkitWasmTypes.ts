@@ -2,11 +2,14 @@
  * Type-safe interface for the brepkit WASM kernel (`BrepKernel`).
  *
  * This mirrors the Rust `BrepKernel` struct's `#[wasm_bindgen]` exports.
- * Every `this.bk.*` call in `brepkitAdapter.ts` is typed here so TypeScript
- * catches mismatches at compile time.
+ * Synced against `brepkit-wasm@2.5.0` (`brepkit_wasm.d.ts`).
  *
- * Methods not yet exposed by the WASM build are marked **optional** (`?`).
- * Callers must guard with `typeof this.bk.method === 'function'` before use.
+ * Methods not yet exposed by the WASM build are marked **optional** (`?`)
+ * with `@future` JSDoc tags. Callers must guard with
+ * `typeof this.bk.method === 'function'` before use.
+ *
+ * Input array params use union types (`Float64Array | number[]`) — the WASM
+ * prefers typed arrays but wasm-bindgen coerces plain arrays.
  *
  * @module
  */
@@ -37,6 +40,51 @@ export interface BrepkitEdgeLines {
   readonly offsets: Uint32Array;
   /** Number of edges. */
   readonly edgeCount: number;
+}
+
+// ── Upstream result types (from brepkit_wasm.d.ts) ──────────────
+
+/** Structured bounding box result. Returned by `boundingBox` as Float64Array,
+ *  but available as a named struct when using the typed JS API. */
+export interface BrepkitBoundingBoxResult {
+  min_x: number;
+  min_y: number;
+  min_z: number;
+  max_x: number;
+  max_y: number;
+  max_z: number;
+}
+
+/** Constraint solver result from `sketchSolve`. Returned as JSON string. */
+export interface BrepkitSketchSolveResult {
+  converged: boolean;
+  points: number[];
+  residual: number;
+}
+
+/** Per-face grouped tessellation from `tessellateSolidGrouped`. Returned as JSON string. */
+export interface BrepkitGroupedMeshResult {
+  positions: number[];
+  normals: number[];
+  indices: number[];
+  faceOffsets: number[];
+}
+
+/** UV-mapped tessellation from `tessellateSolidUV`. Returned as JSON string. */
+export interface BrepkitUvMeshResult {
+  positions: number[];
+  normals: number[];
+  indices: number[];
+  uvs: number[];
+}
+
+/** Evolution tracking result from `*WithEvolution` methods. Returned as JSON string.
+ *  Note: the actual JSON has a nested `evolution` object — see parseNativeEvolution
+ *  in evolutionOps.ts for the full parse shape. */
+export interface BrepkitEvolutionResult {
+  solid: number;
+  generated: number[];
+  modified: number[];
 }
 
 // ── Main kernel interface ────────────────────────────────────────
@@ -168,7 +216,7 @@ export interface BrepkitKernel {
   /** Cut target solid with multiple tool solids in a single WASM call. Returns new solid handle. */
   compoundCut(target: number, tool_ids: Uint32Array): number;
 
-  /** Fuse multiple solids in a single WASM call. Returns new solid handle. Optional — may not exist in older versions. */
+  /** @future Not in brepkit-wasm 2.5.0. Fuse multiple solids in a single WASM call. Returns new solid handle. */
   compoundFuse?(solid_ids: Uint32Array): number;
 
   /** Fuse with evolution tracking. Returns JSON string. */
@@ -286,7 +334,7 @@ export interface BrepkitKernel {
   /** Chamfer edges of a solid. Returns solid handle. */
   chamfer(solid: number, edgeIds: Uint32Array | number[], distance: number): number;
 
-  /** Asymmetric chamfer: d1 on first adjacent face, d2 on second. Optional — added in 2.2.0. */
+  /** @future Not in brepkit-wasm 2.5.0. Asymmetric chamfer: d1 on first adjacent face, d2 on second. */
   chamferAsymmetric?(
     solid: number,
     edgeIds: Uint32Array | number[],
@@ -598,7 +646,7 @@ export interface BrepkitKernel {
   /** Repair a solid (comprehensive healing). Returns error count after repair. */
   repairSolid(solid: number): number;
 
-  /** Return detailed validation report as JSON string. Optional — may not exist in all versions. */
+  /** @future Not in brepkit-wasm 2.5.0. Return detailed validation report as JSON string. */
   validateSolidDetails?(solid: number): string;
 
   /** Unify adjacent faces on the same surface. Returns removed face count. Optional — added in 1.0.8. */
@@ -755,16 +803,16 @@ export interface BrepkitKernel {
 
   // ── Copy sub-shapes ────────────────────────────────────────────
 
-  /** Deep copy an edge. Returns new edge handle. */
+  /** @future Not in brepkit-wasm 2.5.0. Deep copy an edge. Returns new edge handle. */
   copyEdge?(edge: number): number;
 
-  /** Deep copy a face. Returns new face handle. */
+  /** @future Not in brepkit-wasm 2.5.0. Deep copy a face. Returns new face handle. */
   copyFace?(face: number): number;
 
-  /** Transform an edge in-place. */
+  /** @future Not in brepkit-wasm 2.5.0. Transform an edge in-place. */
   transformEdge?(edge: number, matrix: Float64Array | number[]): void;
 
-  /** Transform a face in-place. */
+  /** @future Not in brepkit-wasm 2.5.0. Transform a face in-place. */
   transformFace?(face: number, matrix: Float64Array | number[]): void;
 
   // ── Sketch ─────────────────────────────────────────────────────
@@ -918,19 +966,19 @@ export interface BrepkitKernel {
 
   // ── Not yet exposed (future PRs) ──────────────────────────────
 
-  /** Classify a point on a face (trim-aware). (Theme G) */
+  /** @future Not in brepkit-wasm 2.5.0. Classify a point on a face (trim-aware). */
   classifyPointOnFace?(face: number, u: number, v: number, tolerance: number): number;
 
-  /** Distance between two arbitrary shapes. (Theme G) */
+  /** @future Not in brepkit-wasm 2.5.0. Distance between two arbitrary shapes. */
   shapeToShapeDistance?(id1: number, id2: number): number[];
 
-  /** 2D curve intersection. (Theme F) */
+  /** @future Not in brepkit-wasm 2.5.0. 2D curve intersection. */
   intersectCurves2d?(...args: number[]): number[];
 
-  /** Project point onto 2D curve. (Theme F) */
+  /** @future Not in brepkit-wasm 2.5.0. Project point onto 2D curve. */
   projectPointOnCurve2d?(...args: number[]): number[];
 
-  /** Reverse a 2D curve. (Theme F) */
+  /** @future Not in brepkit-wasm 2.5.0. Reverse a 2D curve. */
   reverseCurve2d?(...args: number[]): number[];
 
   /** Lift a serialised 2D curve onto a 3D plane. Returns edge handle. Added in 2.1.0. */
