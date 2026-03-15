@@ -69,26 +69,38 @@ export function chamfer(
     return solidHandle(bk.chamfer(solidId, edgeIds, (d1 + d2) / 2));
   }
 
-  // Callback mode: per-edge distance function
-  if (typeof bk.chamferAsymmetric === 'function') {
-    // Try to use asymmetric chamfer for each edge individually
-    let result = solidId;
-    for (const [i, edge] of edges.entries()) {
-      const r = distance(edge);
-      const eid = edgeIds[i];
-      if (eid === undefined) continue;
-      if (Array.isArray(r)) {
-        result = bk.chamferAsymmetric(result, [eid], r[0], r[1]);
-      } else {
-        result = bk.chamfer(result, [eid], r);
-      }
+  // Callback mode: group edges by distance to batch atomically
+  // (avoids stale edge IDs from iterating one-by-one across topology changes)
+  const groups = new Map<string, { ids: number[]; d1: number; d2: number }>();
+  for (const [i, edge] of edges.entries()) {
+    const r = distance(edge);
+    const eid = edgeIds[i];
+    if (eid === undefined) continue;
+    const [d1, d2] = Array.isArray(r) ? r : [r, r];
+    const key = `${d1},${d2}`;
+    const group = groups.get(key);
+    if (group) {
+      group.ids.push(eid);
+    } else {
+      groups.set(key, { ids: [eid], d1, d2 });
     }
-    return solidHandle(result);
   }
 
-  // Fallback: use first element or 1
-  warnOnce('chamfer-callback', 'Per-edge chamfer callback not supported; using distance=1.');
-  return solidHandle(bk.chamfer(solidId, edgeIds, 1));
+  let result = solidId;
+  for (const group of groups.values()) {
+    if (group.d1 === group.d2) {
+      result = bk.chamfer(result, group.ids, group.d1);
+    } else if (typeof bk.chamferAsymmetric === 'function') {
+      result = bk.chamferAsymmetric(result, group.ids, group.d1, group.d2);
+    } else {
+      warnOnce(
+        'chamfer-callback',
+        'chamferAsymmetric not available; asymmetric edges use averaged distance.'
+      );
+      result = bk.chamfer(result, group.ids, (group.d1 + group.d2) / 2);
+    }
+  }
+  return solidHandle(result);
 }
 
 export function chamferDistAngle(

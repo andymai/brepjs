@@ -1299,25 +1299,38 @@ export class BrepkitAdapter implements KernelAdapter {
       return solidHandle(this.bk.chamfer(solidId, edgeIds, (d1 + d2) / 2));
     }
 
-    // Callback mode: per-edge distance function
-    if (typeof this.bk.chamferAsymmetric === 'function') {
-      let result = solidId;
-      for (const [i, edge] of edges.entries()) {
-        const r = distance(edge);
-        const eid = edgeIds[i];
-        if (eid === undefined) continue;
-        if (Array.isArray(r)) {
-          result = this.bk.chamferAsymmetric(result, [eid], r[0], r[1]);
-        } else {
-          result = this.bk.chamfer(result, [eid], r);
-        }
+    // Callback mode: group edges by distance to batch atomically
+    // (avoids stale edge IDs from iterating one-by-one across topology changes)
+    const groups = new Map<string, { ids: number[]; d1: number; d2: number }>();
+    for (const [i, edge] of edges.entries()) {
+      const r = distance(edge);
+      const eid = edgeIds[i];
+      if (eid === undefined) continue;
+      const [d1, d2] = Array.isArray(r) ? r : [r, r];
+      const key = `${d1},${d2}`;
+      const group = groups.get(key);
+      if (group) {
+        group.ids.push(eid);
+      } else {
+        groups.set(key, { ids: [eid], d1, d2 });
       }
-      return solidHandle(result);
     }
 
-    // Fallback: use first element or 1
-    warnOnce('chamfer-callback', 'Per-edge chamfer callback not supported; using distance=1.');
-    return solidHandle(this.bk.chamfer(solidId, edgeIds, 1));
+    let result = solidId;
+    for (const group of groups.values()) {
+      if (group.d1 === group.d2) {
+        result = this.bk.chamfer(result, group.ids, group.d1);
+      } else if (typeof this.bk.chamferAsymmetric === 'function') {
+        result = this.bk.chamferAsymmetric(result, group.ids, group.d1, group.d2);
+      } else {
+        warnOnce(
+          'chamfer-callback',
+          'chamferAsymmetric not available; asymmetric edges use averaged distance.'
+        );
+        result = this.bk.chamfer(result, group.ids, (group.d1 + group.d2) / 2);
+      }
+    }
+    return solidHandle(result);
   }
 
   chamferDistAngle(
@@ -1385,6 +1398,59 @@ export class BrepkitAdapter implements KernelAdapter {
       } catch {
         // original face lookup failed
       }
+
+      // Centroid-proximity fallback: compare average vertex positions
+      try {
+        const origVerts = toArray(this.bk.getFaceVertices(fid));
+        if (origVerts.length >= 1) {
+          let ox = 0,
+            oy = 0,
+            oz = 0;
+          for (const vid of origVerts) {
+            const pos: number[] = this.bk.getVertexPosition(vid);
+            ox += pos[0]!;
+            oy += pos[1]!;
+            oz += pos[2]!;
+          }
+          const n = origVerts.length;
+          ox /= n;
+          oy /= n;
+          oz /= n;
+
+          let bestCentroidMatch = -1;
+          let bestCentroidDist = Infinity;
+          for (const sf of solidFaces) {
+            try {
+              const sv = toArray(this.bk.getFaceVertices(sf));
+              if (sv.length < 1) continue;
+              let sx = 0,
+                sy = 0,
+                sz = 0;
+              for (const svid of sv) {
+                const spos: number[] = this.bk.getVertexPosition(svid);
+                sx += spos[0]!;
+                sy += spos[1]!;
+                sz += spos[2]!;
+              }
+              const sn = sv.length;
+              sx /= sn;
+              sy /= sn;
+              sz /= sn;
+              const dist = Math.sqrt((ox - sx) ** 2 + (oy - sy) ** 2 + (oz - sz) ** 2);
+              if (dist < bestCentroidDist) {
+                bestCentroidDist = dist;
+                bestCentroidMatch = sf;
+              }
+            } catch {
+              // vertex lookup failed for this face
+            }
+          }
+          if (bestCentroidMatch >= 0 && bestCentroidDist < 1e-3) return bestCentroidMatch;
+        }
+      } catch {
+        // original face vertex lookup failed
+      }
+
       return fid; // fallback: pass original ID and let WASM validate
     });
 
