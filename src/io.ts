@@ -33,6 +33,10 @@ export {
   type DXFExportOptions,
 } from './io/dxfExportFns.js';
 
-export { exportThreeMF, type ThreeMFExportOptions } from './io/threemfExportFns.js';
+export {
+  exportThreeMF,
+  type ThreeMFExportOptions,
+  type ThreeMFMaterial,
+} from './io/threemfExportFns.js';
 
 export { importSVGPathD, importSVG, type SVGImportOptions } from './io/svgImportFns.js';

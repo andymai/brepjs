@@ -1,10 +1,24 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { box, exportThreeMF, importThreeMF, measureVolume, mesh, unwrap } from '../src/index.js';
+import type { ThreeMFMaterial } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
+
+/**
+ * Extract 3D/3dmodel.model XML from a store-only 3MF ZIP buffer.
+ * Works by decoding the entire buffer as UTF-8 and finding the model XML.
+ * Only valid for store-only (uncompressed) ZIPs — which is what exportThreeMF produces.
+ */
+function extractModelXmlFromStoreZip(buf: ArrayBuffer): string {
+  const fullStr = new TextDecoder().decode(new Uint8Array(buf));
+  const modelStart = fullStr.indexOf('<model');
+  expect(modelStart).toBeGreaterThan(-1);
+  const modelEnd = fullStr.indexOf('</model>', modelStart) + '</model>'.length;
+  return fullStr.slice(modelStart, modelEnd);
+}
 
 describe('importThreeMF', () => {
   it('round-trips a box through 3MF export/import', async () => {
@@ -134,5 +148,41 @@ describe('importThreeMF', () => {
     if (!result.ok) {
       expect(result.error.message).toContain('no valid geometry');
     }
+  });
+});
+
+describe('exportThreeMF with colors', () => {
+  it('includes colorgroup XML when colors option is provided', () => {
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    const firstGroup = m.faceGroups[0];
+    expect(firstGroup).toBeDefined();
+    if (!firstGroup) return;
+
+    const colors = new Map<number, [number, number, number, number]>();
+    colors.set(firstGroup.faceId, [1, 0, 0, 1]);
+
+    const buf = exportThreeMF(m, { colors });
+    const xml = extractModelXmlFromStoreZip(buf);
+    expect(xml).toContain('colorgroup');
+    expect(xml).toContain('#FF0000FF');
+    expect(xml).toContain('pid=');
+  });
+
+  it('includes basematerials XML when materials option is provided', () => {
+    const b = box(10, 10, 10);
+    const m = mesh(b);
+    const firstGroup = m.faceGroups[0];
+    expect(firstGroup).toBeDefined();
+    if (!firstGroup) return;
+
+    const materials = new Map<number, ThreeMFMaterial>();
+    materials.set(firstGroup.faceId, { name: 'PLA-Red', displayColor: [1, 0, 0, 1] });
+
+    const buf = exportThreeMF(m, { materials });
+    const xml = extractModelXmlFromStoreZip(buf);
+    expect(xml).toContain('basematerials');
+    expect(xml).toContain('PLA-Red');
+    expect(xml).toContain('pid=');
   });
 });

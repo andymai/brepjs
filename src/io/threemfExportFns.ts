@@ -11,12 +11,24 @@ import type { ShapeMesh } from '../topology/meshFns.js';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Named material for 3MF basematerials resource. */
+export interface ThreeMFMaterial {
+  /** Display name (e.g. 'PLA-Red'). */
+  name: string;
+  /** Display color as RGBA 0-1. Falls back to white if omitted. */
+  displayColor?: [number, number, number, number];
+}
+
 /** Options controlling 3MF archive export. */
 export interface ThreeMFExportOptions {
   /** Name of the model object inside the 3MF archive. Default: `"model"`. */
   name?: string;
   /** Unit of measurement for vertex coordinates. Default: `"millimeter"`. */
   unit?: 'micron' | 'millimeter' | 'centimeter' | 'meter' | 'inch' | 'foot';
+  /** Per-face colors keyed by faceId from ShapeMesh.faceGroups. RGBA 0-1 floats. */
+  colors?: Map<number, [number, number, number, number]>;
+  /** Per-face named materials keyed by faceId from ShapeMesh.faceGroups. */
+  materials?: Map<number, ThreeMFMaterial>;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +179,27 @@ function buildZip(entries: ZipEntry[]): ArrayBuffer {
 // 3MF XML construction
 // ---------------------------------------------------------------------------
 
-function build3MFModel(mesh: ShapeMesh, name: string, unit: string): string {
+function colorToHex(rgba: [number, number, number, number]): string {
+  const to8 = (v: number) =>
+    Math.round(Math.max(0, Math.min(1, v)) * 255)
+      .toString(16)
+      .padStart(2, '0')
+      .toUpperCase();
+  return `#${to8(rgba[0])}${to8(rgba[1])}${to8(rgba[2])}${to8(rgba[3])}`;
+}
+
+interface TriangleAttrs {
+  pid: number;
+  p1: number;
+}
+
+function build3MFModel(
+  mesh: ShapeMesh,
+  name: string,
+  unit: string,
+  colors?: Map<number, [number, number, number, number]>,
+  materials?: Map<number, ThreeMFMaterial>
+): string {
   const vertices: string[] = [];
   for (let i = 0; i < mesh.vertices.length; i += 3) {
     const x = mesh.vertices[i] ?? 0;
@@ -176,17 +208,117 @@ function build3MFModel(mesh: ShapeMesh, name: string, unit: string): string {
     vertices.push(`        <vertex x="${x}" y="${y}" z="${z}" />`);
   }
 
+  // Build deduped color palette (hex → index), resource id=2
+  const colorIndexByHex = new Map<string, number>();
+  const colorHexList: string[] = [];
+  if (colors !== undefined && colors.size > 0) {
+    for (const rgba of colors.values()) {
+      const hex = colorToHex(rgba);
+      if (!colorIndexByHex.has(hex)) {
+        colorIndexByHex.set(hex, colorHexList.length);
+        colorHexList.push(hex);
+      }
+    }
+  }
+
+  // Build deduped materials list (name → index), resource id=3
+  // Use material name as dedup key since ThreeMFMaterial has no id.
+  const materialIndexByName = new Map<string, number>();
+  const materialList: ThreeMFMaterial[] = [];
+  if (materials !== undefined && materials.size > 0) {
+    for (const mat of materials.values()) {
+      if (!materialIndexByName.has(mat.name)) {
+        materialIndexByName.set(mat.name, materialList.length);
+        materialList.push(mat);
+      }
+    }
+  }
+
+  // Build per-triangle pid/p1 lookup.
+  // Materials take priority over colors when both are present.
+  const triangleAttrs = new Map<number, TriangleAttrs>();
+  for (const group of mesh.faceGroups) {
+    const triStart = group.start / 3; // group.start is index offset into triangles array
+    const triCount = group.count / 3;
+    const faceId = group.faceId;
+
+    let attrs: TriangleAttrs | undefined;
+
+    // Materials take priority
+    if (materials !== undefined) {
+      const mat = materials.get(faceId);
+      if (mat !== undefined) {
+        const matIdx = materialIndexByName.get(mat.name);
+        if (matIdx !== undefined) {
+          attrs = { pid: 3, p1: matIdx };
+        }
+      }
+    }
+
+    // Fall back to colors
+    if (attrs === undefined && colors !== undefined) {
+      const rgba = colors.get(faceId);
+      if (rgba !== undefined) {
+        const hex = colorToHex(rgba);
+        const colorIdx = colorIndexByHex.get(hex);
+        if (colorIdx !== undefined) {
+          attrs = { pid: 2, p1: colorIdx };
+        }
+      }
+    }
+
+    if (attrs !== undefined) {
+      for (let t = triStart; t < triStart + triCount; t++) {
+        triangleAttrs.set(t, attrs);
+      }
+    }
+  }
+
   const triangles: string[] = [];
   for (let i = 0; i < mesh.triangles.length; i += 3) {
+    const triIdx = i / 3;
     const v1 = mesh.triangles[i] ?? 0;
     const v2 = mesh.triangles[i + 1] ?? 0;
     const v3 = mesh.triangles[i + 2] ?? 0;
-    triangles.push(`        <triangle v1="${v1}" v2="${v2}" v3="${v3}" />`);
+    const attrs = triangleAttrs.get(triIdx);
+    if (attrs !== undefined) {
+      triangles.push(
+        `        <triangle v1="${v1}" v2="${v2}" v3="${v3}" pid="${attrs.pid}" p1="${attrs.p1}" />`
+      );
+    } else {
+      triangles.push(`        <triangle v1="${v1}" v2="${v2}" v3="${v3}" />`);
+    }
   }
 
+  // Build resource blocks
+  const resourceBlocks: string[] = [];
+
+  if (colorHexList.length > 0) {
+    const colorItems = colorHexList.map((hex) => `      <color color="${hex}" />`).join('\n');
+    resourceBlocks.push(`    <colorgroup id="2">\n${colorItems}\n    </colorgroup>`);
+  }
+
+  if (materialList.length > 0) {
+    const matItems = materialList
+      .map((mat) => {
+        const hexColor =
+          mat.displayColor !== undefined ? colorToHex(mat.displayColor) : '#FFFFFFFF';
+        return `      <base name="${mat.name}" displaycolor="${hexColor}" />`;
+      })
+      .join('\n');
+    resourceBlocks.push(`    <basematerials id="3">\n${matItems}\n    </basematerials>`);
+  }
+
+  const hasMaterials = materialList.length > 0;
+  const materialsNs = hasMaterials
+    ? '\n  xmlns:m="http://schemas.microsoft.com/3dmanufacturing/material/2015/02"'
+    : '';
+
+  const extraResources = resourceBlocks.length > 0 ? '\n' + resourceBlocks.join('\n') : '';
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-<model unit="${unit}" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
-  <resources>
+<model unit="${unit}" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"${materialsNs}>
+  <resources>${extraResources}
     <object id="1" name="${name}" type="model">
       <mesh>
       <vertices>
@@ -230,7 +362,7 @@ ${triangles.join('\n')}
  * ```
  */
 export function exportThreeMF(mesh: ShapeMesh, options: ThreeMFExportOptions = {}): ArrayBuffer {
-  const { name = 'model', unit = 'millimeter' } = options;
+  const { name = 'model', unit = 'millimeter', colors, materials } = options;
   const encoder = new TextEncoder();
 
   const contentTypes = `<?xml version="1.0" encoding="UTF-8"?>
@@ -244,7 +376,7 @@ export function exportThreeMF(mesh: ShapeMesh, options: ThreeMFExportOptions = {
   <Relationship Target="/3D/3dmodel.model" Id="rel0" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" />
 </Relationships>`;
 
-  const model = build3MFModel(mesh, name, unit);
+  const model = build3MFModel(mesh, name, unit, colors, materials);
 
   function entry(path: string, content: string): ZipEntry {
     const nameBytes = encoder.encode(path);
