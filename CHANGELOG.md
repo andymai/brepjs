@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.11.0](https://github.com/andymai/brepjs/compare/brepjs-v12.10.0...brepjs-v12.11.0) (2026-03-15)
+
+
+### Features
+
+* **kernel:** promote batch ops to KernelAdapter, upgrade brepkit-wasm 2.5.0 ([#536](https://github.com/andymai/brepjs/issues/536)) ([e6c7f84](https://github.com/andymai/brepjs/commit/e6c7f84d400d814b1fc8c03e3dc2251033a4d4de))
+
 ## [12.10.0](https://github.com/andymai/brepjs/compare/brepjs-v12.9.1...brepjs-v12.10.0) (2026-03-15)
 
 
