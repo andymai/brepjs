@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.12.0](https://github.com/andymai/brepjs/compare/brepjs-v12.11.2...brepjs-v12.12.0) (2026-03-15)
+
+
+### Features
+
+* **io:** 3MF color/material round-trip, stress tests, concurrent export safety ([#542](https://github.com/andymai/brepjs/issues/542)) ([aacaa74](https://github.com/andymai/brepjs/commit/aacaa7444b2529476995bee1e91d4ee23e3c46b9))
+
 ## [12.11.2](https://github.com/andymai/brepjs/compare/brepjs-v12.11.1...brepjs-v12.11.2) (2026-03-15)
 
 
