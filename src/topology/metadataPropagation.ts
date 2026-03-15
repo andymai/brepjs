@@ -36,11 +36,12 @@ export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): 
   );
   if (!hasMetadata) return [];
 
+  const kernel = getKernel();
   const hashes: number[] = [];
   for (const input of inputs) {
-    const faces = getKernel().iterShapes(input.wrapped, 'face');
+    const faces = kernel.iterShapes(input.wrapped, 'face');
     for (const face of faces) {
-      hashes.push(face.HashCode(HASH_CODE_MAX));
+      hashes.push(kernel.hashCode(face, HASH_CODE_MAX));
     }
   }
   return hashes;
@@ -72,12 +73,15 @@ export function propagateAllMetadata(
  *
  * Matches result faces to input faces by hash code (and geometric fallback).
  * Used by operations that don't support WithHistory (e.g., native fuseAll).
+ *
+ * **Limitation:** Only propagates face origins. Face tags and face colors
+ * require a ShapeEvolution record to map input→output face hashes, so they
+ * are lost through this path. Batch booleans (`fuseAll`, `cutAll`) therefore
+ * have weaker metadata guarantees than pairwise booleans (`fuse`, `cut`).
  */
 export function propagateMetadataByHash(
   inputs: readonly AnyShape<Dimension>[],
   result: AnyShape<Dimension>
 ): void {
   propagateOriginsByHash(inputs, result);
-  // Tag and color propagation by hash requires evolution data —
-  // without it, only origin propagation (which has its own hash fallback) works.
 }

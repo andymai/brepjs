@@ -306,6 +306,7 @@ export function fuseAll(
       'fuseAll did not produce a 3D shape'
     );
     if (fuseAllResult.ok) {
+      // Native N-way fuse has no ShapeEvolution — only origins propagate (tags/colors lost)
       propagateMetadataByHash(shapes, fuseAllResult.value);
     }
     return fuseAllResult;
@@ -360,6 +361,7 @@ export function cutAll(
   );
   const cutAllResult = castToShape3D(result, 'CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape');
   if (cutAllResult.ok) {
+    // Batch cut has no ShapeEvolution — only origins propagate (tags/colors lost)
     propagateMetadataByHash(allInputs, cutAllResult.value);
   }
   return cutAllResult;
