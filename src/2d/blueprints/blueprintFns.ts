@@ -17,7 +17,7 @@ import type { Plane, PlaneName } from '../../core/planeTypes.js';
 import type { Face } from '../../core/shapeTypes.js';
 import type { ScaleMode } from '../curves.js';
 import { type Result, ok, err } from '../../core/result.js';
-import { validationError } from '../../core/errors.js';
+import { validationError, BrepErrorCode } from '../../core/errors.js';
 
 /**
  * Create a new Blueprint from an ordered array of 2D curves.
@@ -30,7 +30,7 @@ import { validationError } from '../../core/errors.js';
 export function createBlueprint(curves: Blueprint['curves']): Result<Blueprint> {
   if (curves.length === 0) {
     return err(
-      validationError('BLUEPRINT_EMPTY_CURVES', 'createBlueprint: at least one curve is required')
+      validationError(BrepErrorCode.BLUEPRINT_EMPTY_CURVES, 'createBlueprint: at least one curve is required')
     );
   }
   return ok(new BlueprintClass(curves));
@@ -48,7 +48,7 @@ export function createCompoundBlueprint(blueprints: Blueprint[]): Result<Compoun
   if (blueprints.length === 0) {
     return err(
       validationError(
-        'COMPOUND_BLUEPRINT_EMPTY',
+        BrepErrorCode.COMPOUND_BLUEPRINT_EMPTY,
         'createCompoundBlueprint: at least one blueprint (outer boundary) is required'
       )
     );

@@ -54,9 +54,7 @@ describe('textMetrics', () => {
 
   it('returns error when no font loaded for family', () => {
     const result = textMetrics('X', { fontFamily: 'nonexistent-font-xyz' });
-    // Falls through to default — if default is loaded this succeeds, otherwise it errors.
-    // On a clean state it would be isErr, but in test suite default is likely loaded.
-    expect(isOk(result) || isErr(result)).toBe(true);
+    expect(isErr(result)).toBe(true);
   });
 });
 

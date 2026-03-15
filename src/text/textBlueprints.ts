@@ -2,7 +2,7 @@ import type { Point2D } from '../2d/lib/index.js';
 import type { Plane, PlaneName } from '../core/planeTypes.js';
 import type { PointInput } from '../core/types.js';
 import type Blueprints from '../2d/blueprints/Blueprints.js';
-import { bug } from '../core/errors.js';
+import { bug, BrepErrorCode } from '../core/errors.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError, validationError } from '../core/errors.js';
 import { organiseBlueprints } from '../2d/blueprints/lib.js';
@@ -46,7 +46,7 @@ export async function loadFont(
     } catch (e) {
       return err(
         ioError(
-          'FONT_FETCH_FAILED',
+          BrepErrorCode.FONT_FETCH_FAILED,
           `Failed to fetch font from ${fontPath}: ${e instanceof Error ? e.message : String(e)}`,
           e
         )
@@ -55,7 +55,7 @@ export async function loadFont(
     if (!response.ok) {
       return err(
         ioError(
-          'FONT_FETCH_FAILED',
+          BrepErrorCode.FONT_FETCH_FAILED,
           `Failed to fetch font from ${fontPath}: HTTP ${response.status} ${response.statusText}`
         )
       );
@@ -71,7 +71,7 @@ export async function loadFont(
   } catch (e) {
     return err(
       ioError(
-        'FONT_PARSE_FAILED',
+        BrepErrorCode.FONT_PARSE_FAILED,
         `Failed to parse font data: ${e instanceof Error ? e.message : String(e)}`,
         e
       )
@@ -246,7 +246,7 @@ export function textMetrics(
   if (!font) {
     return err(
       validationError(
-        'NO_FONT_LOADED',
+        BrepErrorCode.NO_FONT_LOADED,
         'No font loaded. Call loadFont() first.',
         undefined,
         undefined,
@@ -280,7 +280,7 @@ export function fontMetrics(options?: {
   if (!font) {
     return err(
       validationError(
-        'NO_FONT_LOADED',
+        BrepErrorCode.NO_FONT_LOADED,
         'No font loaded. Call loadFont() first.',
         undefined,
         undefined,

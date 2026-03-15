@@ -141,11 +141,9 @@ describe('textMetrics', () => {
     expect(metrics.height).toBeGreaterThan(0);
   });
 
-  it('returns error when no font loaded', () => {
+  it('returns error when no font loaded for family', () => {
     const result = textMetrics('Hello', { fontFamily: 'nonexistent-family-xyz' });
-    // Falls through to 'default' which IS loaded if fontPath was found
-    // This test is primarily about the type change to Result
-    expect(isOk(result) || isErr(result)).toBe(true);
+    expect(isErr(result)).toBe(true);
   });
 });
 
