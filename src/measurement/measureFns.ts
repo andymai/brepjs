@@ -45,7 +45,7 @@ function nullShapeErr(fn: string) {
  * @see {@link measureVolume} for a shorthand that returns only the volume number.
  */
 export function measureVolumeProps(shape: Shape3D): Result<VolumeProps> {
-  const cached = getCachedMeasurement(shape.wrapped, 'volume') as VolumeProps | undefined;
+  const cached = getCachedMeasurement(shape.wrapped, 'volume');
   if (cached) return ok(cached);
   if (shapeIsNull(shape)) return nullShapeErr('measureVolumeProps');
 
@@ -76,7 +76,7 @@ export function measureVolumeProps(shape: Shape3D): Result<VolumeProps> {
  * @see {@link measureArea} for a shorthand that returns only the area number.
  */
 export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<SurfaceProps> {
-  const cached = getCachedMeasurement(shape.wrapped, 'surface') as SurfaceProps | undefined;
+  const cached = getCachedMeasurement(shape.wrapped, 'surface');
   if (cached) return ok(cached);
   if (shapeIsNull(shape)) return nullShapeErr('measureSurfaceProps');
 
@@ -103,7 +103,7 @@ export function measureSurfaceProps(shape: Face<Dimension> | Shape3D): Result<Su
  * @see {@link measureLength} for a shorthand that returns only the length number.
  */
 export function measureLinearProps(shape: AnyShape<Dimension>): Result<LinearProps> {
-  const cached = getCachedMeasurement(shape.wrapped, 'linear') as LinearProps | undefined;
+  const cached = getCachedMeasurement(shape.wrapped, 'linear');
   if (cached) return ok(cached);
   if (shapeIsNull(shape)) return nullShapeErr('measureLinearProps');
 

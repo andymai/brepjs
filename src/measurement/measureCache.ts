@@ -6,13 +6,32 @@
  * WeakMap keys auto-expire when shapes are GC'd.
  */
 
-let cache = new WeakMap<object, Map<string, unknown>>();
+import type { VolumeProps, SurfaceProps, LinearProps } from './measureTypes.js';
 
-export function getCachedMeasurement(shape: object, key: string): unknown {
-  return cache.get(shape)?.get(key);
+/** Maps measurement keys to their corresponding result types. */
+export interface MeasurementValueMap {
+  volume: VolumeProps;
+  surface: SurfaceProps;
+  linear: LinearProps;
 }
 
-export function setCachedMeasurement(shape: object, key: string, value: unknown): void {
+/** Valid measurement cache keys. */
+export type MeasurementKey = keyof MeasurementValueMap;
+
+let cache = new WeakMap<object, Map<MeasurementKey, MeasurementValueMap[MeasurementKey]>>();
+
+export function getCachedMeasurement<K extends MeasurementKey>(
+  shape: object,
+  key: K
+): MeasurementValueMap[K] | undefined {
+  return cache.get(shape)?.get(key) as MeasurementValueMap[K] | undefined;
+}
+
+export function setCachedMeasurement<K extends MeasurementKey>(
+  shape: object,
+  key: K,
+  value: MeasurementValueMap[K]
+): void {
   let map = cache.get(shape);
   if (!map) {
     map = new Map();

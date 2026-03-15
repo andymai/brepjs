@@ -4,6 +4,7 @@ import {
   setCachedMeasurement,
   clearMeasurementCache,
 } from '../src/measurement/measureCache.js';
+import type { VolumeProps, SurfaceProps } from '../src/measurement/measureTypes.js';
 
 describe('measureCache', () => {
   it('returns undefined for uncached shape', () => {
@@ -31,13 +32,15 @@ describe('measureCache', () => {
   it('isolates different shapes', () => {
     const shape1 = {};
     const shape2 = {};
-    setCachedMeasurement(shape1, 'volume', { v: 1 });
+    const vol: VolumeProps = { mass: 1, volume: 1, centerOfMass: [0, 0, 0] };
+    setCachedMeasurement(shape1, 'volume', vol);
     expect(getCachedMeasurement(shape2, 'volume')).toBeUndefined();
   });
 
   it('clearMeasurementCache clears specific shape', () => {
     const shape = {};
-    setCachedMeasurement(shape, 'volume', { v: 1 });
+    const vol: VolumeProps = { mass: 1, volume: 1, centerOfMass: [0, 0, 0] };
+    setCachedMeasurement(shape, 'volume', vol);
     clearMeasurementCache(shape);
     expect(getCachedMeasurement(shape, 'volume')).toBeUndefined();
   });
@@ -45,8 +48,10 @@ describe('measureCache', () => {
   it('clearMeasurementCache with no argument clears all', () => {
     const shape1 = {};
     const shape2 = {};
-    setCachedMeasurement(shape1, 'volume', { v: 1 });
-    setCachedMeasurement(shape2, 'surface', { a: 2 });
+    const vol: VolumeProps = { mass: 1, volume: 1, centerOfMass: [0, 0, 0] };
+    const surf: SurfaceProps = { mass: 2, area: 2, centerOfMass: [1, 1, 1] };
+    setCachedMeasurement(shape1, 'volume', vol);
+    setCachedMeasurement(shape2, 'surface', surf);
     clearMeasurementCache();
     expect(getCachedMeasurement(shape1, 'volume')).toBeUndefined();
     expect(getCachedMeasurement(shape2, 'surface')).toBeUndefined();
