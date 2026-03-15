@@ -3,11 +3,11 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
 import type { UnknownDimShape } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { type Result, ok, err } from '../core/result.js';
 import { ioError, BrepErrorCode } from '../core/errors.js';
+import { sewMeshToSolid } from './ioUtils.js';
 
 // ---------------------------------------------------------------------------
 // ZIP extraction (store-only, no compression)
@@ -146,7 +146,7 @@ function parseModelXml(xml: string): ParsedMesh {
 }
 
 // ---------------------------------------------------------------------------
-// Sewing (same pattern as OBJ import)
+// Sewing
 // ---------------------------------------------------------------------------
 
 function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
@@ -162,8 +162,10 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
     const solid = kernel.buildSolidFromFaces(points, faces, 1e-6);
     return ok(castShape(solid));
   } catch {
-    // Fallback: build individual triangle faces and sew
-    const triFaces: KernelShape[] = [];
+    // Fallback: resolve indexed triangles to vertex triples and sew
+    const triangles: Array<
+      [[number, number, number], [number, number, number], [number, number, number]]
+    > = [];
 
     for (const [v1, v2, v3] of mesh.triangles) {
       const va = mesh.vertices[v1];
@@ -171,27 +173,10 @@ function buildSolidFromMesh(mesh: ParsedMesh): Result<UnknownDimShape> {
       const vc = mesh.vertices[v3];
       if (!va || !vb || !vc) continue;
 
-      const triFace = kernel.buildTriFace(va, vb, vc);
-      if (triFace !== null) {
-        triFaces.push(triFace);
-      }
+      triangles.push([va, vb, vc]);
     }
 
-    if (triFaces.length === 0) {
-      return err(
-        ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, 'No valid triangular faces could be built')
-      );
-    }
-
-    try {
-      return ok(castShape(kernel.sewAndSolidify(triFaces, 1e-6)));
-    } catch {
-      try {
-        return ok(castShape(kernel.sew(triFaces, 1e-6)));
-      } catch {
-        return err(ioError(BrepErrorCode.THREEMF_IMPORT_FAILED, 'Failed to sew triangular faces'));
-      }
-    }
+    return sewMeshToSolid(triangles, BrepErrorCode.THREEMF_IMPORT_FAILED);
   }
 }
 

@@ -6,12 +6,10 @@
  * from the parsed vertex/index data.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
 import type { UnknownDimShape } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
+import { type Result, err } from '../core/result.js';
 import { ioError, BrepErrorCode } from '../core/errors.js';
+import { sewMeshToSolid } from './ioUtils.js';
 
 /**
  * Import a Wavefront OBJ file from a Blob.
@@ -73,8 +71,10 @@ function buildSolidFromMesh(
   vertices: Array<[number, number, number]>,
   faces: Array<number[]>
 ): Result<UnknownDimShape> {
-  const kernel = getKernel();
-  const triFaces: KernelShape[] = [];
+  // Fan-triangulate n-gon faces and resolve OBJ 1-based / negative indices
+  const triangles: Array<
+    [[number, number, number], [number, number, number], [number, number, number]]
+  > = [];
 
   for (const face of faces) {
     for (let i = 1; i < face.length - 1; i++) {
@@ -90,27 +90,9 @@ function buildSolidFromMesh(
       const vc = vertices[ci];
       if (!va || !vb || !vc) continue;
 
-      const triFace = kernel.buildTriFace(va, vb, vc);
-      if (triFace !== null) {
-        triFaces.push(triFace);
-      }
+      triangles.push([va, vb, vc]);
     }
   }
 
-  if (triFaces.length === 0) {
-    return err(
-      ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'No valid triangular faces could be built')
-    );
-  }
-
-  try {
-    return ok(castShape(kernel.sewAndSolidify(triFaces, 1e-6)));
-  } catch {
-    // If sewing/solid fails, try sewing alone
-    try {
-      return ok(castShape(kernel.sew(triFaces, 1e-6)));
-    } catch {
-      return err(ioError(BrepErrorCode.OBJ_IMPORT_FAILED, 'Failed to sew triangular faces'));
-    }
-  }
+  return sewMeshToSolid(triangles, BrepErrorCode.OBJ_IMPORT_FAILED);
 }
