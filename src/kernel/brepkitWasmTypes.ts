@@ -876,8 +876,8 @@ export interface BrepkitKernel {
   /** Serialize a solid to brepkit's native BREP JSON format. */
   toBREP(solid: number): string;
 
-  /** Reconstruct a solid from a toBREP JSON string. Optional — added in 2.2.0. */
-  fromBREP?(json: string): number;
+  /** Reconstruct a solid from a toBREP JSON string. Added in 2.2.0. */
+  fromBREP(json: string): number;
 
   // ── Sketch ────────────────────────────────────────────────────
 
