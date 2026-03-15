@@ -268,8 +268,8 @@ export function surfaceCenterOfMass(
 ): [number, number, number] {
   // Area-weighted centroid via tessellation
   const mesh = bk.tessellateFace(unwrap(face, 'face'), 0.1);
-  const pos: number[] = mesh.positions;
-  const idx: number[] = mesh.indices;
+  const pos = mesh.positions;
+  const idx = mesh.indices;
   let cx = 0,
     cy = 0,
     cz = 0,

@@ -202,9 +202,9 @@ function meshSolidPerFace(
   for (const faceId of faceIds) {
     try {
       const faceMesh = bk.tessellateFace(faceId, deflection);
-      const positions: number[] = faceMesh.positions;
-      const normals: number[] = faceMesh.normals;
-      const indices: number[] = faceMesh.indices;
+      const positions = faceMesh.positions;
+      const normals = faceMesh.normals;
+      const indices = faceMesh.indices;
       const vertCount = positions.length / 3;
 
       if (vertCount === 0) continue;
@@ -251,9 +251,9 @@ function meshSingleFace(
   faceHash: number
 ): KernelMeshResult {
   const faceMesh = bk.tessellateFace(faceId, deflection);
-  const positions: number[] = faceMesh.positions;
-  const normals: number[] = faceMesh.normals;
-  const indices: number[] = faceMesh.indices;
+  const positions = faceMesh.positions;
+  const normals = faceMesh.normals;
+  const indices = faceMesh.indices;
   const vertCount = positions.length / 3;
 
   const uvs: number[] = [];

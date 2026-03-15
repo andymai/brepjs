@@ -1763,7 +1763,7 @@ export class BrepkitAdapter implements KernelAdapter {
   /** Compute face centroid as the average of tessellation vertices. */
   private faceCentroidById(faceId: number): [number, number, number] {
     try {
-      const pos: number[] = this.bk.tessellateFace(faceId, 1.0).positions;
+      const pos = this.bk.tessellateFace(faceId, 1.0).positions;
       if (pos.length < 3) return [0, 0, 0];
       let cx = 0;
       let cy = 0;
@@ -3679,8 +3679,8 @@ export class BrepkitAdapter implements KernelAdapter {
   surfaceCenterOfMass(face: KernelShape): [number, number, number] {
     // Area-weighted centroid via tessellation
     const mesh = this.bk.tessellateFace(unwrap(face, 'face'), 0.1);
-    const pos: number[] = mesh.positions;
-    const idx: number[] = mesh.indices;
+    const pos = mesh.positions;
+    const idx = mesh.indices;
     let cx = 0,
       cy = 0,
       cz = 0,
@@ -5159,9 +5159,9 @@ export class BrepkitAdapter implements KernelAdapter {
     for (const faceId of faceIds) {
       try {
         const faceMesh = this.bk.tessellateFace(faceId, deflection);
-        const positions: number[] = faceMesh.positions;
-        const normals: number[] = faceMesh.normals;
-        const indices: number[] = faceMesh.indices;
+        const positions = faceMesh.positions;
+        const normals = faceMesh.normals;
+        const indices = faceMesh.indices;
         const vertCount = positions.length / 3;
 
         if (vertCount === 0) continue;
@@ -5203,9 +5203,9 @@ export class BrepkitAdapter implements KernelAdapter {
   /** Tessellate a single face and return brepjs mesh format. */
   private meshSingleFace(faceId: number, deflection: number, faceHash: number): KernelMeshResult {
     const faceMesh = this.bk.tessellateFace(faceId, deflection);
-    const positions: number[] = faceMesh.positions;
-    const normals: number[] = faceMesh.normals;
-    const indices: number[] = faceMesh.indices;
+    const positions = faceMesh.positions;
+    const normals = faceMesh.normals;
+    const indices = faceMesh.indices;
     const vertCount = positions.length / 3;
 
     const uvs: number[] = [];
@@ -5506,7 +5506,7 @@ export class BrepkitAdapter implements KernelAdapter {
 
     // Get a point on the face via lightweight tessellation
     const mesh = this.bk.tessellateFace(faceId, 1.0); // coarse is fine for a single point
-    const positions: number[] = mesh.positions;
+    const positions = mesh.positions;
     if (positions.length >= 3) {
       return { point: [positions[0]!, positions[1]!, positions[2]!], normal };
     }
