@@ -42,51 +42,6 @@ export interface BrepkitEdgeLines {
   readonly edgeCount: number;
 }
 
-// ── Upstream result types (from brepkit_wasm.d.ts) ──────────────
-
-/** Structured bounding box result. Returned by `boundingBox` as Float64Array,
- *  but available as a named struct when using the typed JS API. */
-export interface BrepkitBoundingBoxResult {
-  min_x: number;
-  min_y: number;
-  min_z: number;
-  max_x: number;
-  max_y: number;
-  max_z: number;
-}
-
-/** Constraint solver result from `sketchSolve`. Returned as JSON string. */
-export interface BrepkitSketchSolveResult {
-  converged: boolean;
-  points: number[];
-  residual: number;
-}
-
-/** Per-face grouped tessellation from `tessellateSolidGrouped`. Returned as JSON string. */
-export interface BrepkitGroupedMeshResult {
-  positions: number[];
-  normals: number[];
-  indices: number[];
-  faceOffsets: number[];
-}
-
-/** UV-mapped tessellation from `tessellateSolidUV`. Returned as JSON string. */
-export interface BrepkitUvMeshResult {
-  positions: number[];
-  normals: number[];
-  indices: number[];
-  uvs: number[];
-}
-
-/** Evolution tracking result from `*WithEvolution` methods. Returned as JSON string.
- *  Note: the actual JSON has a nested `evolution` object — see parseNativeEvolution
- *  in evolutionOps.ts for the full parse shape. */
-export interface BrepkitEvolutionResult {
-  solid: number;
-  generated: number[];
-  modified: number[];
-}
-
 // ── Main kernel interface ────────────────────────────────────────
 
 /**
