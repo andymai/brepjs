@@ -18,23 +18,9 @@ export interface LoftOptions {
 }
 
 /**
- * Loft through a set of wire profiles to create a 3D shape.
+ * Loft through a set of wire profiles to create a 3D shape (OOP API).
  *
- * Builds a `BRepOffsetAPI_ThruSections` surface through the given wires,
- * optionally starting and/or ending at point vertices. Produces a solid
- * by default, or a shell when `returnShell` is `true`.
- *
- * @param wires - Ordered wire profiles to loft through.
- * @param config - Loft configuration (ruled interpolation, start/end points).
- * @param returnShell - When `true`, return a shell instead of a solid.
- * @returns `Result` containing the lofted 3D shape.
- *
- * @example
- * ```ts
- * const result = loft([bottomWire, topWire], { ruled: false });
- * ```
- *
- * @see {@link loftFns!loft | loft} for the functional API equivalent.
+ * @deprecated Use {@link loftFns!loft | loft()} from the functional API instead.
  */
 export const loft = (
   wires: Wire[],

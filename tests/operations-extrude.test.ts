@@ -4,13 +4,13 @@ import {
   Sketcher,
   sketchCircle,
   sketchRectangle,
-  genericSweep,
   complexExtrude,
   twistExtrude,
   measureVolume,
   unwrap,
   isOk,
 } from '../src/index.js';
+import { genericSweep } from '../src/operations/extrude.js';
 
 beforeAll(async () => {
   await initKernel();

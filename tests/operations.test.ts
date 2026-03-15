@@ -7,8 +7,6 @@ import {
   Sketcher,
   sketchCircle,
   sketchRectangle,
-  basicFaceExtrusion,
-  revolution,
   loft,
   measureVolume,
   unwrap,
@@ -29,6 +27,7 @@ import {
   cut,
   intersect,
 } from '../src/index.js';
+import { basicFaceExtrusion, revolution } from '../src/operations/extrude.js';
 
 beforeAll(async () => {
   await initKernel();

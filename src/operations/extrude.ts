@@ -15,11 +15,7 @@ import { makeLine, makeHelix, assembleWire } from '../topology/shapeHelpers.js';
 /**
  * Extrude a face along a vector to produce a solid (OOP API).
  *
- * @param face - The planar face to extrude.
- * @param extrusionVec - Direction and magnitude of the extrusion.
- * @returns A new Solid created by the linear extrusion.
- *
- * @see {@link extrudeFns!extrude | extrude} for the functional API equivalent.
+ * @deprecated Use {@link extrudeFns!extrude | extrude()} from the functional API instead.
  */
 export const basicFaceExtrusion = (face: OrientedFace, extrusionVec: PointInput): Solid => {
   const kernel = getKernel();
@@ -35,13 +31,7 @@ export const basicFaceExtrusion = (face: OrientedFace, extrusionVec: PointInput)
 /**
  * Revolve a face around an axis to create a solid of revolution (OOP API).
  *
- * @param face - The face to revolve.
- * @param center - A point on the rotation axis. Defaults to the origin.
- * @param direction - Direction vector of the rotation axis. Defaults to Z-up.
- * @param angle - Rotation angle in degrees (0-360). Defaults to a full revolution.
- * @returns `Result` containing the revolved 3D shape, or an error if the result is not 3D.
- *
- * @see {@link extrudeFns!revolve | revolve} for the functional API equivalent.
+ * @deprecated Use {@link extrudeFns!revolve | revolve()} from the functional API instead.
  */
 export const revolution = (
   face: OrientedFace,

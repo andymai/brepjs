@@ -18,6 +18,7 @@ import type { Result } from '../core/result.js';
 import { isErr } from '../core/result.js';
 import type {
   AnyShape,
+  ClosedWire,
   Edge,
   Face,
   OrientedFace,
@@ -421,7 +422,7 @@ function createWrappedCurve<T extends Edge | Wire>(val: T): WrappedCurve<T> {
 
     sweep(spine: Shapeable<Wire>, opts?: SweepOptions): Wrapped3D<Shape3D> {
       if (!isWire(val)) throw new Error('sweep requires a Wire');
-      const w: Wire = val as unknown as Wire;
+      const w = val as unknown as ClosedWire;
       const result = unwrapOrThrow(_sweep(w, resolve(spine), opts));
       // _sweep may return [Shape3D, Wire, Wire] in shell mode; extract the shape
       const shape3D: Shape3D = Array.isArray(result) ? result[0] : result;

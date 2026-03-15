@@ -123,18 +123,12 @@ export {
   isFilletRadius,
   type ChamferRadius,
   type RadiusOptions,
-  // core/shapeTypes.ts (via topology)
-  type CurveLike,
 } from './topology/index.js';
 
 // ── Layer 2: operations ──
 
-export {
-  basicFaceExtrusion,
-  revolution,
-  genericSweep,
-  type GenericSweepOptions,
-} from './operations/extrude.js';
+// Legacy OO API — deprecated, use extrude/revolve/sweep from functional API
+// export { basicFaceExtrusion, revolution, genericSweep, type GenericSweepOptions } from './operations/extrude.js';
 
 export { type AssemblyExporter, createAssembly } from './operations/exporters.js';
 
@@ -376,6 +370,8 @@ export type {
   Shape1D,
   Shape3D,
   UnknownDimShape,
+  // Curve adaptor
+  CurveLike,
   // Topological validity types (ADR-0005)
   ClosedWire,
   OrientedFace,
@@ -892,7 +888,13 @@ export {
 
 // ── Compound operations ──
 
-export { drill, pocket, boss, mirrorJoin, rectangularPattern } from './topology/compoundOpsFns.js';
+export {
+  drill,
+  pocket,
+  boss,
+  mirrorJoin,
+  rectangularPattern,
+} from './operations/compoundOpsFns.js';
 
 // ── shape() wrapper ──
 

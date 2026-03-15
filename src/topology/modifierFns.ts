@@ -6,15 +6,13 @@
  */
 
 import { getKernel } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
 import type { Edge, Face, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
 import { castShape, isShape3D } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { type Result, ok, err, isErr } from '../core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '../core/errors.js';
-import { getEdges, getFaceOrigins, propagateOriginsFromEvolution } from './shapeFns.js';
-import { propagateFaceTagsFromEvolution, hasFaceTags } from './faceTagFns.js';
-import { propagateColorsFromEvolution, hasColorMetadata } from './colorFns.js';
+import { getEdges } from './shapeFns.js';
+import { collectInputFaceHashes, propagateAllMetadata } from './metadataPropagation.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -28,27 +26,6 @@ function validateNotNull(
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
   }
   return ok(undefined);
-}
-
-/** Collect tracked face hashes from input shapes for WithHistory kernel methods.
- *  Fast-path: returns empty array when no inputs have metadata to propagate,
- *  avoiding expensive WASM topology exploration. */
-function collectInputFaceHashes(inputs: { wrapped: { IsNull(): boolean } }[]): number[] {
-  // O(1) check: skip expensive face iteration when no metadata exists
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inputs are AnyShape-compatible
-  const hasMetadata = inputs.some((s: any) => {
-    return getFaceOrigins(s) !== undefined || hasFaceTags(s) || hasColorMetadata(s);
-  });
-  if (!hasMetadata) return [];
-
-  const hashes: number[] = [];
-  for (const input of inputs) {
-    const faces = getKernel().iterShapes(input.wrapped as KernelShape, 'face');
-    for (const face of faces) {
-      hashes.push(face.HashCode(HASH_CODE_MAX));
-    }
-  }
-  return hashes;
 }
 
 /**
@@ -71,9 +48,7 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
       HASH_CODE_MAX
     );
     const cast = castShape(resultShape) as Solid;
-    propagateOriginsFromEvolution(evolution, [shape], cast);
-    propagateFaceTagsFromEvolution(evolution, [shape], cast);
-    propagateColorsFromEvolution(evolution, [shape], cast);
+    propagateAllMetadata(evolution, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -192,9 +167,7 @@ export function fillet(
     if (!isShape3D(cast)) {
       return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
     }
-    propagateOriginsFromEvolution(evolution, [shape], cast);
-    propagateFaceTagsFromEvolution(evolution, [shape], cast);
-    propagateColorsFromEvolution(evolution, [shape], cast);
+    propagateAllMetadata(evolution, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -306,9 +279,7 @@ export function chamfer(
     if (!isShape3D(cast)) {
       return err(kernelError(BrepErrorCode.CHAMFER_NOT_3D, 'Chamfer result is not a 3D shape'));
     }
-    propagateOriginsFromEvolution(evolution, [shape], cast);
-    propagateFaceTagsFromEvolution(evolution, [shape], cast);
-    propagateColorsFromEvolution(evolution, [shape], cast);
+    propagateAllMetadata(evolution, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -363,9 +334,7 @@ export function shell(
     if (!isShape3D(cast)) {
       return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }
-    propagateOriginsFromEvolution(evolution, [shape], cast);
-    propagateFaceTagsFromEvolution(evolution, [shape], cast);
-    propagateColorsFromEvolution(evolution, [shape], cast);
+    propagateAllMetadata(evolution, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
@@ -410,9 +379,7 @@ export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Resu
     if (!isShape3D(cast)) {
       return err(kernelError('OFFSET_RESULT_NOT_3D', 'Offset result is not a 3D shape'));
     }
-    propagateOriginsFromEvolution(evolution, [shape], cast);
-    propagateFaceTagsFromEvolution(evolution, [shape], cast);
-    propagateColorsFromEvolution(evolution, [shape], cast);
+    propagateAllMetadata(evolution, [shape], cast);
     return ok(cast);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);

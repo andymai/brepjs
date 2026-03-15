@@ -33,10 +33,6 @@ export {
   type RadiusOptions,
 } from './shapeModifiers.js';
 
-// ── Re-export branded shape types from core ──
-
-export type { AnyShape, Shape3D, CurveLike } from '../core/shapeTypes.js';
-
 // ── Re-export domain types from functional modules ──
 
 export type { CurveType } from '../core/definitionMaps.js';

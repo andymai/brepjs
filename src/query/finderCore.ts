@@ -46,6 +46,13 @@ export interface ShapeFinder<T extends AnyShape<Dimension>> {
   /** Check if an element passes all filters. */
   readonly shouldKeep: (element: T) => boolean;
 
+  /** Intersect: element must match both this finder AND other. */
+  readonly and: (other: ShapeFinder<T>) => ShapeFinder<T>;
+  /** Union: element must match this finder OR other. */
+  readonly or: (other: ShapeFinder<T>) => ShapeFinder<T>;
+  /** Negate: invert all filters on this finder. */
+  readonly negate: () => ShapeFinder<T>;
+
   // -- Internal (for composition) --
   readonly _filters: ReadonlyArray<Predicate<T>>;
   readonly _topoKind: TopoKind;
@@ -149,6 +156,19 @@ export function createTypedFinder<T extends AnyShape<Dimension>, F extends Shape
     },
 
     shouldKeep,
+
+    and: (other) => withFilter((el) => other.shouldKeep(el)),
+
+    or: (other) => {
+      // Union: element passes if it matches this finder's filters OR the other's
+      const selfKeep = shouldKeep;
+      return rebuild([(el: T) => selfKeep(el) || other.shouldKeep(el)]);
+    },
+
+    negate: () => {
+      const selfKeep = shouldKeep;
+      return rebuild([(el: T) => !selfKeep(el)]);
+    },
   };
 
   const extensions = extend(base, withFilter);

@@ -20,16 +20,12 @@ import type { PlaneInput } from '../core/planeTypes.js';
 import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
+import { getWires, getEdges, getVertices } from './shapeFns.js';
 import {
-  propagateOriginsFromEvolution,
-  propagateOriginsByHash,
-  getFaceOrigins,
-  getWires,
-  getEdges,
-  getVertices,
-} from './shapeFns.js';
-import { propagateFaceTagsFromEvolution, hasFaceTags } from './faceTagFns.js';
-import { propagateColorsFromEvolution, hasColorMetadata } from './colorFns.js';
+  collectInputFaceHashes,
+  propagateAllMetadata,
+  propagateMetadataByHash,
+} from './metadataPropagation.js';
 import { makeFace } from './surfaceBuilders.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
@@ -80,26 +76,6 @@ function castToShape3D(shape: KernelType, errorCode: string, errorMsg: string): 
   return ok(wrapped);
 }
 
-/** Collect ALL face hashes from input shapes for WithHistory kernel methods.
- *  Fast-path: returns empty array when no inputs have metadata to propagate,
- *  avoiding expensive WASM topology exploration. */
-function collectInputFaceHashes(inputs: AnyShape[]): number[] {
-  // O(1) check: skip expensive face iteration when no metadata exists
-  const hasMetadata = inputs.some(
-    (s) => getFaceOrigins(s) !== undefined || hasFaceTags(s) || hasColorMetadata(s)
-  );
-  if (!hasMetadata) return [];
-
-  const hashes: number[] = [];
-  for (const input of inputs) {
-    const faces = getKernel().iterShapes(input.wrapped, 'face');
-    for (const face of faces) {
-      hashes.push(face.HashCode(HASH_CODE_MAX));
-    }
-  }
-  return hashes;
-}
-
 // ---------------------------------------------------------------------------
 // Boolean operations
 // ---------------------------------------------------------------------------
@@ -138,9 +114,7 @@ export function fuse(
   );
   const fuseResult = castToShape3D(resultShape, 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
   if (fuseResult.ok) {
-    propagateOriginsFromEvolution(evolution, [a, b], fuseResult.value);
-    propagateFaceTagsFromEvolution(evolution, [a, b], fuseResult.value);
-    propagateColorsFromEvolution(evolution, [a, b], fuseResult.value);
+    propagateAllMetadata(evolution, [a, b], fuseResult.value);
   }
   return fuseResult;
 }
@@ -178,9 +152,7 @@ export function cut(
   );
   const cutResult = castToShape3D(resultShape, 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
   if (cutResult.ok) {
-    propagateOriginsFromEvolution(evolution, [base, tool], cutResult.value);
-    propagateFaceTagsFromEvolution(evolution, [base, tool], cutResult.value);
-    propagateColorsFromEvolution(evolution, [base, tool], cutResult.value);
+    propagateAllMetadata(evolution, [base, tool], cutResult.value);
   }
   return cutResult;
 }
@@ -217,9 +189,7 @@ export function intersect(
     'Intersect did not produce a 3D shape'
   );
   if (intResult.ok) {
-    propagateOriginsFromEvolution(evolution, [a, b], intResult.value);
-    propagateFaceTagsFromEvolution(evolution, [a, b], intResult.value);
-    propagateColorsFromEvolution(evolution, [a, b], intResult.value);
+    propagateAllMetadata(evolution, [a, b], intResult.value);
   }
   return intResult;
 }
@@ -336,7 +306,7 @@ export function fuseAll(
       'fuseAll did not produce a 3D shape'
     );
     if (fuseAllResult.ok) {
-      propagateOriginsByHash(shapes, fuseAllResult.value);
+      propagateMetadataByHash(shapes, fuseAllResult.value);
     }
     return fuseAllResult;
   }
@@ -390,7 +360,7 @@ export function cutAll(
   );
   const cutAllResult = castToShape3D(result, 'CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape');
   if (cutAllResult.ok) {
-    propagateOriginsByHash(allInputs, cutAllResult.value);
+    propagateMetadataByHash(allInputs, cutAllResult.value);
   }
   return cutAllResult;
 }

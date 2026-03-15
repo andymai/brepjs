@@ -5,7 +5,7 @@
 
 import { getKernel } from '../kernel/index.js';
 import type { Vec3 } from '../core/types.js';
-import type { AnyShape, Dimension, Face, Shape3D } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face, OrientedFace, Shape3D } from '../core/shapeTypes.js';
 import { uvBounds } from '../topology/faceFns.js';
 import type { CurvatureResult } from '../kernel/measureOps.js';
 import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
@@ -240,7 +240,11 @@ export type { CurvatureResult } from '../kernel/measureOps.js';
  * console.log(curv.meanCurvature, curv.gaussianCurvature);
  * ```
  */
-export function measureCurvatureAt(face: Face<Dimension>, u: number, v: number): CurvatureResult {
+export function measureCurvatureAt(
+  face: OrientedFace<Dimension>,
+  u: number,
+  v: number
+): CurvatureResult {
   assertShapeNotNull(face, 'measureCurvatureAt');
   const result = getKernel().surfaceCurvature(face.wrapped, u, v);
   return {
