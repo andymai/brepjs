@@ -25,7 +25,7 @@ import {
 } from '../src/index.js';
 import type { Shape3D, Face } from '../src/index.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: measureFns', () => {
+describe('measureFns', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);
@@ -125,7 +125,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: measureFns', () => {
   // Null-shape pre-validation tests
   // ---------------------------------------------------------------------------
 
-  describe('null-shape pre-validation', () => {
+  describe.skipIf(currentKernel !== 'occt')('null-shape pre-validation', () => {
     function makeNullSolid(): Shape3D {
       const oc = getKernel().oc;
       return createSolid(new oc.TopoDS_Solid()) as Shape3D;

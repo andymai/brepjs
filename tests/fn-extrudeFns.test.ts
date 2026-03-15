@@ -25,7 +25,7 @@ import type { Wire } from '../src/core/shapeTypes.js';
 import { createFace } from '../src/core/shapeTypes.js';
 import { getKernel } from '../src/kernel/index.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: extrudeFns', () => {
+describe('extrudeFns', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);
@@ -46,7 +46,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: extrudeFns', () => {
       expect(measureVolume(solid)).toBeCloseTo(10 * 20 * 30, 0);
     });
 
-    it('extrudes a circle into a cylinder', () => {
+    it.skipIf(currentKernel !== 'occt')('extrudes a circle into a cylinder', () => {
       const c = sketchCircle(5);
       const f = castShape(c.face().wrapped);
       const result = extrude(f, [0, 0, 10]);
@@ -56,7 +56,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: extrudeFns', () => {
   });
 
   describe('extrude error paths', () => {
-    it('returns error for null face', () => {
+    it.skipIf(currentKernel !== 'occt')('returns error for null face', () => {
       const result = extrude(makeNullFace(), [0, 0, 10]);
       expect(isErr(result)).toBe(true);
     });
@@ -86,7 +86,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: extrudeFns', () => {
   });
 
   describe('revolve error paths', () => {
-    it('returns error for null face', () => {
+    it.skipIf(currentKernel !== 'occt')('returns error for null face', () => {
       const result = revolve(makeNullFace(), { at: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
       expect(isErr(result)).toBe(true);
     });

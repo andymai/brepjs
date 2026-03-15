@@ -52,18 +52,43 @@ export function chamfer(
   edges: KernelShape[],
   distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])
 ): KernelShape {
-  const d = typeof distance === 'number' ? distance : Array.isArray(distance) ? distance[0] : 1;
-  if (typeof distance !== 'number') {
-    warnOnce(
-      'chamfer-asymmetric',
-      typeof distance === 'function'
-        ? 'Per-edge chamfer distance function not supported; falling back to distance=1.'
-        : 'Asymmetric chamfer not supported; using first distance only.'
-    );
-  }
+  const solidId = unwrapSolidOrThrow(shape, 'chamfer');
   const edgeIds = edges.map((e) => unwrap(e, 'edge'));
-  const id = bk.chamfer(unwrapSolidOrThrow(shape, 'chamfer'), edgeIds, d);
-  return solidHandle(id);
+
+  if (typeof distance === 'number') {
+    return solidHandle(bk.chamfer(solidId, edgeIds, distance));
+  }
+
+  if (Array.isArray(distance)) {
+    const [d1, d2] = distance;
+    if (typeof bk.chamferAsymmetric === 'function') {
+      return solidHandle(bk.chamferAsymmetric(solidId, edgeIds, d1, d2));
+    }
+    // Fallback: average the two distances
+    warnOnce('chamfer-asymmetric', 'chamferAsymmetric not available; using averaged distance.');
+    return solidHandle(bk.chamfer(solidId, edgeIds, (d1 + d2) / 2));
+  }
+
+  // Callback mode: per-edge distance function
+  if (typeof bk.chamferAsymmetric === 'function') {
+    // Try to use asymmetric chamfer for each edge individually
+    let result = solidId;
+    for (const [i, edge] of edges.entries()) {
+      const r = distance(edge);
+      const eid = edgeIds[i];
+      if (eid === undefined) continue;
+      if (Array.isArray(r)) {
+        result = bk.chamferAsymmetric(result, [eid], r[0], r[1]);
+      } else {
+        result = bk.chamfer(result, [eid], r);
+      }
+    }
+    return solidHandle(result);
+  }
+
+  // Fallback: use first element or 1
+  warnOnce('chamfer-callback', 'Per-edge chamfer callback not supported; using distance=1.');
+  return solidHandle(bk.chamfer(solidId, edgeIds, 1));
 }
 
 export function chamferDistAngle(
@@ -73,13 +98,17 @@ export function chamferDistAngle(
   distance: number,
   angleDeg: number
 ): KernelShape {
-  warnOnce(
-    'chamfer-dist-angle',
-    'Distance-angle chamfer approximated as averaged two-distance chamfer.'
-  );
   const d2 = distance * Math.tan((angleDeg * Math.PI) / 180);
-  const avgDist = (distance + d2) / 2;
-  return chamfer(bk, shape, edges, avgDist);
+  const solidId = unwrapSolidOrThrow(shape, 'chamferDistAngle');
+  const edgeIds = edges.map((e) => unwrap(e, 'edge'));
+
+  if (typeof bk.chamferAsymmetric === 'function') {
+    return solidHandle(bk.chamferAsymmetric(solidId, edgeIds, distance, d2));
+  }
+
+  // Fallback: averaged symmetric chamfer
+  warnOnce('chamfer-dist-angle', 'chamferAsymmetric not available; using averaged distance.');
+  return solidHandle(bk.chamfer(solidId, edgeIds, (distance + d2) / 2));
 }
 
 export function shell(
@@ -126,6 +155,59 @@ export function shell(
     } catch {
       // original face lookup failed
     }
+
+    // Centroid-proximity fallback: compare average vertex positions
+    try {
+      const origVerts = toArray(bk.getFaceVertices(fid));
+      if (origVerts.length >= 1) {
+        let ox = 0,
+          oy = 0,
+          oz = 0;
+        for (const vid of origVerts) {
+          const pos: number[] = bk.getVertexPosition(vid);
+          ox += pos[0]!;
+          oy += pos[1]!;
+          oz += pos[2]!;
+        }
+        const n = origVerts.length;
+        ox /= n;
+        oy /= n;
+        oz /= n;
+
+        let bestCentroidMatch = -1;
+        let bestCentroidDist = Infinity;
+        for (const sf of solidFaces) {
+          try {
+            const sv = toArray(bk.getFaceVertices(sf));
+            if (sv.length < 1) continue;
+            let sx = 0,
+              sy = 0,
+              sz = 0;
+            for (const svid of sv) {
+              const spos: number[] = bk.getVertexPosition(svid);
+              sx += spos[0]!;
+              sy += spos[1]!;
+              sz += spos[2]!;
+            }
+            const sn = sv.length;
+            sx /= sn;
+            sy /= sn;
+            sz /= sn;
+            const dist = Math.sqrt((ox - sx) ** 2 + (oy - sy) ** 2 + (oz - sz) ** 2);
+            if (dist < bestCentroidDist) {
+              bestCentroidDist = dist;
+              bestCentroidMatch = sf;
+            }
+          } catch {
+            // vertex lookup failed for this face
+          }
+        }
+        if (bestCentroidMatch >= 0 && bestCentroidDist < 1e-3) return bestCentroidMatch;
+      }
+    } catch {
+      // original face vertex lookup failed
+    }
+
     return fid;
   });
 

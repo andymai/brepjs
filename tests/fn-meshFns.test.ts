@@ -16,7 +16,7 @@ import {
   getKernel,
 } from '../src/index.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: meshFns', () => {
+describe('meshFns', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);
@@ -94,23 +94,26 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: meshFns', () => {
       expect(blob.size).toBeGreaterThan(0);
     });
 
-    it('returns STEP_FILE_READ_ERROR when FS.readFile throws after successful write', () => {
-      const oc = getKernel().oc;
-      const originalReadFile = oc.FS.readFile as (...args: unknown[]) => unknown;
-      // Patch readFile to throw on any .step file
-      oc.FS.readFile = (path: string) => {
-        if (path.endsWith('.step')) throw new Error('simulated FS read failure');
-        return originalReadFile.call(oc.FS, path);
-      };
-      try {
-        const b = box(5, 5, 5);
-        const result = exportSTEP(b);
-        expect(isErr(result)).toBe(true);
-        expect(unwrapErr(result).code).toBe('STEP_FILE_READ_ERROR');
-      } finally {
-        oc.FS.readFile = originalReadFile;
+    it.skipIf(currentKernel !== 'occt')(
+      'returns STEP_FILE_READ_ERROR when FS.readFile throws after successful write',
+      () => {
+        const oc = getKernel().oc;
+        const originalReadFile = oc.FS.readFile as (...args: unknown[]) => unknown;
+        // Patch readFile to throw on any .step file
+        oc.FS.readFile = (path: string) => {
+          if (path.endsWith('.step')) throw new Error('simulated FS read failure');
+          return originalReadFile.call(oc.FS, path);
+        };
+        try {
+          const b = box(5, 5, 5);
+          const result = exportSTEP(b);
+          expect(isErr(result)).toBe(true);
+          expect(unwrapErr(result).code).toBe('STEP_FILE_READ_ERROR');
+        } finally {
+          oc.FS.readFile = originalReadFile;
+        }
       }
-    });
+    );
   });
 
   describe('exportSTL', () => {
@@ -150,23 +153,26 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: meshFns', () => {
       expect(unwrap(result).size).toBeGreaterThan(0);
     });
 
-    it('returns STL_FILE_READ_ERROR when FS.readFile throws after successful write', () => {
-      const oc = getKernel().oc;
-      const originalReadFile = oc.FS.readFile as (...args: unknown[]) => unknown;
-      // Patch readFile to throw on any .stl file
-      oc.FS.readFile = (path: string) => {
-        if (path.endsWith('.stl')) throw new Error('simulated FS read failure');
-        return originalReadFile.call(oc.FS, path);
-      };
-      try {
-        const b = box(5, 5, 5);
-        const result = exportSTL(b);
-        expect(isErr(result)).toBe(true);
-        expect(unwrapErr(result).code).toBe('STL_FILE_READ_ERROR');
-      } finally {
-        oc.FS.readFile = originalReadFile;
+    it.skipIf(currentKernel !== 'occt')(
+      'returns STL_FILE_READ_ERROR when FS.readFile throws after successful write',
+      () => {
+        const oc = getKernel().oc;
+        const originalReadFile = oc.FS.readFile as (...args: unknown[]) => unknown;
+        // Patch readFile to throw on any .stl file
+        oc.FS.readFile = (path: string) => {
+          if (path.endsWith('.stl')) throw new Error('simulated FS read failure');
+          return originalReadFile.call(oc.FS, path);
+        };
+        try {
+          const b = box(5, 5, 5);
+          const result = exportSTL(b);
+          expect(isErr(result)).toBe(true);
+          expect(unwrapErr(result).code).toBe('STL_FILE_READ_ERROR');
+        } finally {
+          oc.FS.readFile = originalReadFile;
+        }
       }
-    });
+    );
   });
 
   describe('exportIGES', () => {

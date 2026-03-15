@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   box,
   translate,
@@ -12,7 +12,7 @@ import {
   type MatrixTransform,
 } from '../src/index.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: applyMatrix', () => {
+describe('applyMatrix', () => {
   let hasGTransform = false;
 
   beforeAll(async () => {

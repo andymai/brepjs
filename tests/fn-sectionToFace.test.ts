@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, cut, sectionToFace, measureArea, getWires } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: sectionToFace', () => {
+describe('sectionToFace', () => {
   describe('sectionToFace', () => {
     it('returns a filled face from sectioning a box at XY', () => {
       const b = box(10, 20, 30);

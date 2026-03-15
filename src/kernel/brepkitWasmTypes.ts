@@ -285,6 +285,9 @@ export interface BrepkitKernel {
   /** Chamfer edges of a solid. Returns solid handle. */
   chamfer(solid: number, edgeIds: number[], distance: number): number;
 
+  /** Asymmetric chamfer: d1 on first adjacent face, d2 on second. Optional — added in 2.2.0. */
+  chamferAsymmetric?(solid: number, edgeIds: number[], d1: number, d2: number): number;
+
   /** Shell a solid by removing faces. Returns solid handle. */
   shell(solid: number, thickness: number, faceIds: number[]): number;
 
@@ -575,6 +578,9 @@ export interface BrepkitKernel {
 
   /** Repair a solid (comprehensive healing). Returns error count after repair. */
   repairSolid(solid: number): number;
+
+  /** Return detailed validation report as JSON string. Optional — may not exist in all versions. */
+  validateSolidDetails?(solid: number): string;
 
   /** Unify adjacent faces on the same surface. Returns removed face count. Optional — added in 1.0.8. */
   unifyFaces?(solid: number): number;
@@ -869,6 +875,9 @@ export interface BrepkitKernel {
 
   /** Serialize a solid to brepkit's native BREP JSON format. */
   toBREP(solid: number): string;
+
+  /** Reconstruct a solid from a toBREP JSON string. Optional — added in 2.2.0. */
+  fromBREP?(json: string): number;
 
   // ── Sketch ────────────────────────────────────────────────────
 

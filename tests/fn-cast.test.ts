@@ -19,7 +19,7 @@ import {
   unwrapErr,
 } from '../src/index.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: cast', () => {
+describe('cast', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);
@@ -32,13 +32,16 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: cast', () => {
       expect(unwrap(result)).toBeDefined();
     });
 
-    it('returns Err with NULL_SHAPE for a null KernelShape', () => {
-      const oc = getKernel().oc;
-      const nullShape = new oc.TopoDS_Solid();
-      const result = cast(nullShape);
-      expect(isErr(result)).toBe(true);
-      expect(unwrapErr(result).code).toBe('NULL_SHAPE');
-    });
+    it.skipIf(currentKernel !== 'occt')(
+      'returns Err with NULL_SHAPE for a null KernelShape',
+      () => {
+        const oc = getKernel().oc;
+        const nullShape = new oc.TopoDS_Solid();
+        const result = cast(nullShape);
+        expect(isErr(result)).toBe(true);
+        expect(unwrapErr(result).code).toBe('NULL_SHAPE');
+      }
+    );
   });
 
   describe('downcast()', () => {
@@ -49,7 +52,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: cast', () => {
       expect(unwrap(result)).toBeDefined();
     });
 
-    it('returns Err for a null KernelShape', () => {
+    it.skipIf(currentKernel !== 'occt')('returns Err for a null KernelShape', () => {
       const oc = getKernel().oc;
       const nullShape = new oc.TopoDS_Solid();
       const result = downcast(nullShape);
@@ -120,7 +123,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: cast', () => {
   });
 
   describe('fromBREP()', () => {
-    it('round-trips a box through toBREP and fromBREP', () => {
+    it.skipIf(currentKernel !== 'occt')('round-trips a box through toBREP and fromBREP', () => {
       const b = box(10, 10, 10);
       const brep = toBREP(b);
       const result = fromBREP(brep);
@@ -129,7 +132,7 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: cast', () => {
       expect(isShape3D(shape)).toBe(true);
     });
 
-    it('does not throw for garbage input', () => {
+    it.skipIf(currentKernel !== 'occt')('does not throw for garbage input', () => {
       expect(() => {
         const result = fromBREP('this is not valid BREP data');
         // Result may be ok or err depending on kernel behavior, but it must not throw

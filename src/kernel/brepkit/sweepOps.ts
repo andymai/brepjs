@@ -92,15 +92,29 @@ export function loft(
   return solidHandle(id);
 }
 
+function mapNumericTransitionMode(mode: number): string | undefined {
+  switch (mode) {
+    case 0:
+      return 'rmf';
+    case 1:
+      return 'rightCorner';
+    case 2:
+      return 'roundCorner';
+    default:
+      return undefined;
+  }
+}
+
 export function sweep(
   bk: BrepkitKernel,
   wire: KernelShape,
   spine: KernelShape,
-  _options?: { transitionMode?: number }
+  options?: { transitionMode?: number }
 ): KernelShape {
-  if (_options?.transitionMode !== undefined) {
-    warnOnce('sweep-transition', 'Sweep transition mode not supported; ignored.');
-  }
+  const contactMode =
+    options?.transitionMode !== undefined
+      ? mapNumericTransitionMode(options.transitionMode)
+      : undefined;
 
   const profileHandle = wire as BrepkitHandle;
   const faceId =
@@ -111,8 +125,28 @@ export function sweep(
   if (spineHandle.type === 'wire') {
     const edges = iterShapes(bk, spine, 'edge');
     const edgeIds = edges.map((e) => unwrap(e, 'edge'));
+
+    if (contactMode && edgeIds.length === 1) {
+      const edgeId = edgeIds[0];
+      if (edgeId !== undefined) {
+        return solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+      }
+    }
+
+    if (contactMode && edgeIds.length > 1) {
+      warnOnce(
+        'sweep-transition-multi-edge',
+        'Sweep transition mode not supported for multi-edge wires; ignored.'
+      );
+    }
+
     const id = bk.sweepAlongEdges(faceId, edgeIds);
     return solidHandle(id);
+  }
+
+  if (contactMode) {
+    const edgeId = unwrap(spine, 'edge');
+    return solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
   }
 
   const nurbsData = extractNurbsFromEdge(bk, spine);
@@ -200,6 +234,19 @@ export function sweepWithOptions(
   return solidHandle(bk.sweepWithOptions(profileId, pathId, contactMode, scaleValues, segments));
 }
 
+function mapStringTransitionMode(mode: string): string | undefined {
+  switch (mode) {
+    case 'right':
+      return 'rightCorner';
+    case 'round':
+      return 'roundCorner';
+    case 'transformed':
+      return 'rmf';
+    default:
+      return undefined;
+  }
+}
+
 export function sweepPipeShell(
   bk: BrepkitKernel,
   profile: KernelShape,
@@ -211,6 +258,49 @@ export function sweepPipeShell(
     profileHandle.type === 'wire' ? bk.makeFaceFromWire(profileHandle.id) : unwrap(profile, 'face');
 
   const shellMode = !!(options && options['shellMode']);
+
+  const transitionMode = options?.['transitionMode'] as string | undefined;
+  const contactMode = transitionMode ? mapStringTransitionMode(transitionMode) : undefined;
+
+  if (contactMode) {
+    const spineHandle = spine as BrepkitHandle;
+    if (spineHandle.type !== 'wire') {
+      try {
+        const edgeId = unwrap(spine, 'edge');
+        const shape = solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+        if (shellMode) return { shape, firstShape: profile, lastShape: profile };
+        return shape;
+      } catch (e: unknown) {
+        console.warn(
+          'brepkit: sweepWithOptions failed, falling back to sweepSmooth/simplePipe:',
+          e
+        );
+      }
+    } else {
+      const edges = iterShapes(bk, spine, 'edge');
+      if (edges.length === 1) {
+        const first = edges[0];
+        if (first) {
+          try {
+            const edgeId = unwrap(first, 'edge');
+            const shape = solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+            if (shellMode) return { shape, firstShape: profile, lastShape: profile };
+            return shape;
+          } catch (e: unknown) {
+            console.warn(
+              'brepkit: sweepWithOptions failed, falling back to sweepSmooth/simplePipe:',
+              e
+            );
+          }
+        }
+      } else {
+        warnOnce(
+          'sweepPipeShell-transition-multi-edge',
+          'sweepPipeShell transition mode not supported for multi-edge wires; ignored.'
+        );
+      }
+    }
+  }
 
   const nurbsData = extractNurbsFromEdge(bk, spine);
   if (nurbsData && nurbsData.degree > 1) {

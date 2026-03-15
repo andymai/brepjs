@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
 import {
   createBlueprint,
   getBounds2D,
@@ -23,7 +23,7 @@ function rect(w = 10, h = 20): ReturnType<typeof drawRectangle>['blueprint'] {
   return drawRectangle(w, h).blueprint;
 }
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: createBlueprint', () => {
+describe('blueprintFns', () => {
   describe('createBlueprint', () => {
     it('creates a blueprint from curves of an existing blueprint', () => {
       const original = rect();

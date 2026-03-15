@@ -1,11 +1,11 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initOCCT } from './setup.js';
+import { initOCCT } from './setup.js';
 import { importIGES, exportIGES } from '../src/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel instance has dynamic members
 let oc: any;
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: igesFns', () => {
+describe('igesFns', () => {
   beforeAll(async () => {
     oc = await initOCCT();
   }, 30000);

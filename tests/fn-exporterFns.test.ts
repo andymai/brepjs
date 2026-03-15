@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
 import { box, sphere, castShape, exportAssemblySTEP, isOk, unwrap } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: exportAssemblySTEP', () => {
+describe('exportAssemblySTEP', () => {
   describe('exportAssemblySTEP', () => {
     it('exports a single shape', () => {
       const b = castShape(box(10, 10, 10).wrapped);

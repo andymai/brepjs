@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
 import * as brepjs from '../src/index.js';
 
 // Read example code strings from the site source at test time.
@@ -69,31 +69,29 @@ function runExample(code: string): unknown {
   return fn();
 }
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: playground examples', () => {
-  describe('playground examples', () => {
-    const examples = loadExampleCodes();
+describe('playground examples', () => {
+  const examples = loadExampleCodes();
 
-    // Spiral staircase (16 steps of boolean fuse) is slow
-    const SLOW_IDS = new Set(['spiral-staircase']);
+  // Spiral staircase (16 steps of boolean fuse) is slow
+  const SLOW_IDS = new Set(['spiral-staircase']);
 
-    for (const example of examples) {
-      const timeout = SLOW_IDS.has(example.id) ? 60000 : 15000;
+  for (const example of examples) {
+    const timeout = SLOW_IDS.has(example.id) ? 60000 : 15000;
 
-      it(
-        `${example.id}: runs without error and returns geometry`,
-        () => {
-          const result = runExample(example.code);
+    it(
+      `${example.id}: runs without error and returns geometry`,
+      () => {
+        const result = runExample(example.code);
 
-          expect(result).toBeDefined();
-          expect(result).not.toBeNull();
+        expect(result).toBeDefined();
+        expect(result).not.toBeNull();
 
-          // Every example should return something that brepjs identifies as a 3D shape
-          const is3D = brepjs.isShape3D(result);
-          const isSolid = brepjs.isSolid(result);
-          expect(is3D || isSolid).toBe(true);
-        },
-        timeout
-      );
-    }
-  });
+        // Every example should return something that brepjs identifies as a 3D shape
+        const is3D = brepjs.isShape3D(result);
+        const isSolid = brepjs.isSolid(result);
+        expect(is3D || isSolid).toBe(true);
+      },
+      timeout
+    );
+  }
 });

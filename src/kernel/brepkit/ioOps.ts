@@ -7,6 +7,7 @@
 import type { BrepkitKernel } from '../brepkitWasmTypes.js';
 import type { KernelShape, KernelType, StepAssemblyPart } from '../types.js';
 import {
+  type BrepkitHandle,
   solidHandle,
   unwrapSolidOrThrow,
   unwrapSolidsForExport,
@@ -123,23 +124,26 @@ export function importGLB(bk: BrepkitKernel, data: ArrayBuffer): KernelShape {
 }
 
 export function toBREP(bk: BrepkitKernel, shape: KernelShape): string {
-  // brepkit uses STEP as serialization format (not OCCT BREP format).
-  // Same-kernel round-trips work; cross-kernel round-trips do not.
-  warnOnce(
-    'brep-format',
-    'toBREP/fromBREP uses STEP format (not OCCT BREP). Cross-kernel BREP round-trips are not supported.'
-  );
+  const h = shape as BrepkitHandle;
+  if (h.type === 'solid') {
+    return bk.toBREP(h.id);
+  }
+  // Non-solid shapes: fall back to STEP serialization
+  warnOnce('brep-non-solid', 'toBREP for non-solid shapes uses STEP format.');
   return exportSTEP(bk, [shape]);
 }
 
 export function fromBREP(bk: BrepkitKernel, data: string): KernelShape {
-  warnOnce(
-    'brep-format',
-    'toBREP/fromBREP uses STEP format (not OCCT BREP). Cross-kernel BREP round-trips are not supported.'
-  );
+  // Try native JSON round-trip if available and data is JSON
+  if (typeof bk.fromBREP === 'function' && data.trimStart().startsWith('{')) {
+    const id = bk.fromBREP(data);
+    return solidHandle(id);
+  }
+  // Fallback to STEP import
   const shapes = importSTEP(bk, data);
-  if (shapes.length === 0) throw new Error('brepkit: fromBREP produced no shapes');
-  return shapes[0];
+  const first = shapes[0];
+  if (!first) throw new Error('brepkit: fromBREP produced no shapes');
+  return first;
 }
 
 export function createXCAFDocument(

@@ -107,3 +107,15 @@ export function fixSelfIntersection(_bk: BrepkitKernel, wire: KernelShape): Kern
   // Wire-level self-intersection fixing not yet available in brepkit
   return wire;
 }
+
+export function validationDetails(bk: BrepkitKernel, shape: KernelShape): string | null {
+  if (!isBrepkitHandle(shape) || shape.type !== 'solid') return null;
+  try {
+    if (typeof bk.validateSolidDetails === 'function') {
+      return bk.validateSolidDetails(shape.id);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

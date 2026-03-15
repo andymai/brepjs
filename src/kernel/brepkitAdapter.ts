@@ -353,6 +353,32 @@ function warnOnce(key: string, message: string): void {
   console.warn(`brepkit: ${message}`);
 }
 
+function mapNumericTransition(mode: number): string | undefined {
+  switch (mode) {
+    case 0:
+      return 'rmf';
+    case 1:
+      return 'rightCorner';
+    case 2:
+      return 'roundCorner';
+    default:
+      return undefined;
+  }
+}
+
+function mapStringTransition(mode: string): string | undefined {
+  switch (mode) {
+    case 'right':
+      return 'rightCorner';
+    case 'round':
+      return 'roundCorner';
+    case 'transformed':
+      return 'rmf';
+    default:
+      return undefined;
+  }
+}
+
 /** Check if a BooleanOptions object has any meaningful (non-signal) property set. */
 function hasBooleanOptions(opts: BooleanOptions): boolean {
   return (
@@ -1132,16 +1158,12 @@ export class BrepkitAdapter implements KernelAdapter {
     return solidHandle(id);
   }
 
-  sweep(
-    wire: KernelShape,
-    spine: KernelShape,
-    _options?: { transitionMode?: number }
-  ): KernelShape {
-    if (_options?.transitionMode !== undefined) {
-      warnOnce('sweep-transition', 'Sweep transition mode not supported; ignored.');
-    }
+  sweep(wire: KernelShape, spine: KernelShape, options?: { transitionMode?: number }): KernelShape {
+    const contactMode =
+      options?.transitionMode !== undefined
+        ? mapNumericTransition(options.transitionMode)
+        : undefined;
 
-    // If profile is a wire, convert to face first (same pattern as simplePipe/loft)
     const profileHandle = wire as BrepkitHandle;
     const faceId =
       profileHandle.type === 'wire'
@@ -1150,15 +1172,33 @@ export class BrepkitAdapter implements KernelAdapter {
 
     const spineHandle = spine as BrepkitHandle;
 
-    // If spine is a wire, get its edges and use sweepAlongEdges
     if (spineHandle.type === 'wire') {
       const edges = this.iterShapes(spine, 'edge');
       const edgeIds = edges.map((e) => unwrap(e, 'edge'));
+
+      if (contactMode && edgeIds.length === 1) {
+        const edgeId = edgeIds[0];
+        if (edgeId !== undefined) {
+          return solidHandle(this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+        }
+      }
+
+      if (contactMode && edgeIds.length > 1) {
+        warnOnce(
+          'sweep-transition-multi-edge',
+          'Sweep transition mode not supported for multi-edge wires; ignored.'
+        );
+      }
+
       const id = this.bk.sweepAlongEdges(faceId, edgeIds);
       return solidHandle(id);
     }
 
-    // If spine is an edge, extract NURBS data
+    if (contactMode) {
+      const edgeId = unwrap(spine, 'edge');
+      return solidHandle(this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+    }
+
     const nurbsData = this.extractNurbsFromEdge(spine);
     if (!nurbsData) {
       throw new Error('brepkit: sweep spine must be an edge or wire');
@@ -1242,18 +1282,42 @@ export class BrepkitAdapter implements KernelAdapter {
     edges: KernelShape[],
     distance: number | [number, number] | ((edge: KernelShape) => number | [number, number])
   ): KernelShape {
-    const d = typeof distance === 'number' ? distance : Array.isArray(distance) ? distance[0] : 1;
-    if (typeof distance !== 'number') {
-      warnOnce(
-        'chamfer-asymmetric',
-        typeof distance === 'function'
-          ? 'Per-edge chamfer distance function not supported; falling back to distance=1.'
-          : 'Asymmetric chamfer not supported; using first distance only.'
-      );
-    }
+    const solidId = unwrapSolidOrThrow(shape, 'chamfer');
     const edgeIds = edges.map((e) => unwrap(e, 'edge'));
-    const id = this.bk.chamfer(unwrapSolidOrThrow(shape, 'chamfer'), edgeIds, d);
-    return solidHandle(id);
+
+    if (typeof distance === 'number') {
+      return solidHandle(this.bk.chamfer(solidId, edgeIds, distance));
+    }
+
+    if (Array.isArray(distance)) {
+      const [d1, d2] = distance;
+      if (typeof this.bk.chamferAsymmetric === 'function') {
+        return solidHandle(this.bk.chamferAsymmetric(solidId, edgeIds, d1, d2));
+      }
+      // Fallback: average the two distances
+      warnOnce('chamfer-asymmetric', 'chamferAsymmetric not available; using averaged distance.');
+      return solidHandle(this.bk.chamfer(solidId, edgeIds, (d1 + d2) / 2));
+    }
+
+    // Callback mode: per-edge distance function
+    if (typeof this.bk.chamferAsymmetric === 'function') {
+      let result = solidId;
+      for (const [i, edge] of edges.entries()) {
+        const r = distance(edge);
+        const eid = edgeIds[i];
+        if (eid === undefined) continue;
+        if (Array.isArray(r)) {
+          result = this.bk.chamferAsymmetric(result, [eid], r[0], r[1]);
+        } else {
+          result = this.bk.chamfer(result, [eid], r);
+        }
+      }
+      return solidHandle(result);
+    }
+
+    // Fallback: use first element or 1
+    warnOnce('chamfer-callback', 'Per-edge chamfer callback not supported; using distance=1.');
+    return solidHandle(this.bk.chamfer(solidId, edgeIds, 1));
   }
 
   chamferDistAngle(
@@ -1262,15 +1326,17 @@ export class BrepkitAdapter implements KernelAdapter {
     distance: number,
     angleDeg: number
   ): KernelShape {
-    // Approximate: convert dist-angle to an averaged two-distance chamfer.
-    // brepkit lacks native dist-angle chamfer; this is the best available approximation.
-    warnOnce(
-      'chamfer-dist-angle',
-      'Distance-angle chamfer approximated as averaged two-distance chamfer.'
-    );
     const d2 = distance * Math.tan((angleDeg * Math.PI) / 180);
-    const avgDist = (distance + d2) / 2;
-    return this.chamfer(shape, edges, avgDist);
+    const solidId = unwrapSolidOrThrow(shape, 'chamferDistAngle');
+    const edgeIds = edges.map((e) => unwrap(e, 'edge'));
+
+    if (typeof this.bk.chamferAsymmetric === 'function') {
+      return solidHandle(this.bk.chamferAsymmetric(solidId, edgeIds, distance, d2));
+    }
+
+    // Fallback: averaged symmetric chamfer
+    warnOnce('chamfer-dist-angle', 'chamferAsymmetric not available; using averaged distance.');
+    return solidHandle(this.bk.chamfer(solidId, edgeIds, (distance + d2) / 2));
   }
 
   shell(
@@ -3035,23 +3101,26 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   toBREP(shape: KernelShape): string {
-    // brepkit uses STEP as serialization format (not OCCT BREP format).
-    // Same-kernel round-trips work; cross-kernel round-trips do not.
-    warnOnce(
-      'brep-format',
-      'toBREP/fromBREP uses STEP format (not OCCT BREP). Cross-kernel BREP round-trips are not supported.'
-    );
+    const h = shape as BrepkitHandle;
+    if (h.type === 'solid') {
+      return this.bk.toBREP(h.id);
+    }
+    // Non-solid shapes: fall back to STEP serialization
+    warnOnce('brep-non-solid', 'toBREP for non-solid shapes uses STEP format.');
     return this.exportSTEP([shape]);
   }
 
   fromBREP(data: string): KernelShape {
-    warnOnce(
-      'brep-format',
-      'toBREP/fromBREP uses STEP format (not OCCT BREP). Cross-kernel BREP round-trips are not supported.'
-    );
+    // Try native JSON round-trip if available and data is JSON
+    if (typeof this.bk.fromBREP === 'function' && data.trimStart().startsWith('{')) {
+      const id = this.bk.fromBREP(data);
+      return solidHandle(id);
+    }
+    // Fallback to STEP import
     const shapes = this.importSTEP(data);
-    if (shapes.length === 0) throw new Error('brepkit: fromBREP produced no shapes');
-    return shapes[0];
+    const first = shapes[0];
+    if (!first) throw new Error('brepkit: fromBREP produced no shapes');
+    return first;
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -3113,7 +3182,6 @@ export class BrepkitAdapter implements KernelAdapter {
     spine: KernelShape,
     options?: Record<string, unknown>
   ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
-    // If profile is a wire, convert to face first
     const profileHandle = profile as BrepkitHandle;
     const faceId =
       profileHandle.type === 'wire'
@@ -3122,7 +3190,51 @@ export class BrepkitAdapter implements KernelAdapter {
 
     const shellMode = !!(options && options['shellMode']);
 
-    // Try smooth NURBS sweep if spine has NURBS data
+    const transitionMode = options?.['transitionMode'] as string | undefined;
+    const contactMode = transitionMode ? mapStringTransition(transitionMode) : undefined;
+
+    if (contactMode) {
+      const spineHandle = spine as BrepkitHandle;
+      if (spineHandle.type !== 'wire') {
+        try {
+          const edgeId = unwrap(spine, 'edge');
+          const shape = solidHandle(this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0));
+          if (shellMode) return { shape, firstShape: profile, lastShape: profile };
+          return shape;
+        } catch (e: unknown) {
+          console.warn(
+            'brepkit: sweepWithOptions failed, falling back to sweepSmooth/simplePipe:',
+            e
+          );
+        }
+      } else {
+        const edges = this.iterShapes(spine, 'edge');
+        if (edges.length === 1) {
+          const first = edges[0];
+          if (first) {
+            try {
+              const edgeId = unwrap(first, 'edge');
+              const shape = solidHandle(
+                this.bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0)
+              );
+              if (shellMode) return { shape, firstShape: profile, lastShape: profile };
+              return shape;
+            } catch (e: unknown) {
+              console.warn(
+                'brepkit: sweepWithOptions failed, falling back to sweepSmooth/simplePipe:',
+                e
+              );
+            }
+          }
+        } else {
+          warnOnce(
+            'sweepPipeShell-transition-multi-edge',
+            'sweepPipeShell transition mode not supported for multi-edge wires; ignored.'
+          );
+        }
+      }
+    }
+
     const nurbsData = this.extractNurbsFromEdge(spine);
     if (nurbsData && nurbsData.degree > 1) {
       try {
@@ -3137,7 +3249,6 @@ export class BrepkitAdapter implements KernelAdapter {
         if (shellMode) return { shape, firstShape: profile, lastShape: profile };
         return shape;
       } catch (e: unknown) {
-        // Fall back to simplePipe for non-NURBS or failed cases
         console.warn('brepkit: sweepSmooth failed, falling back to simplePipe:', e);
       }
     }

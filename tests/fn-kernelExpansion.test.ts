@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { currentKernel, initOCCT } from './setup.js';
+import { initOCCT } from './setup.js';
 import {
   box,
   translate,
@@ -17,7 +17,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WASM availability check
 let oc: any;
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: kernelExpansion', () => {
+describe('kernelExpansion', () => {
   beforeAll(async () => {
     oc = await initOCCT();
   }, 30000);
