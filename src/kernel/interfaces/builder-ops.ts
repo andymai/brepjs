@@ -1,46 +1,22 @@
 /**
- * KernelConstructionOps — shape construction primitives and builders.
+ * KernelBuilderOps — extended shape construction and assembly.
  *
- * Covers vertex/edge/wire/face/solid construction, geometric primitives
- * (box, cylinder, sphere, cone, torus, ellipsoid), extended curve builders
- * (arcs, ellipses, Bézier, helix), convex hulls, and surface construction.
- * Analogous to OCCT's BRepPrimAPI + BRepBuilderAPI packages.
+ * Covers vertex/edge/wire/face construction, extended curve builders
+ * (arcs, ellipses, Bezier, helix), convex hulls, surface construction,
+ * mesh sewing, curve interpolation/approximation, and 3D geometry
+ * primitive factories. Analogous to OCCT's BRepBuilderAPI package.
  *
- * @see {@link KernelGeometryOps} for geometry queries on constructed shapes.
+ * @see {@link KernelPrimitiveOps} for solid primitives (box, cylinder, etc.).
  */
 
 import type { KernelShape, KernelType } from '../types.js';
 
-export interface KernelConstructionOps {
+export interface KernelBuilderOps {
   // --- Basic construction ---
   makeVertex(x: number, y: number, z: number): KernelShape;
   makeEdge(curve: KernelType, start?: number, end?: number): KernelShape;
   makeWire(edges: KernelShape[]): KernelShape;
   makeFace(wire: KernelShape, planar?: boolean): KernelShape;
-  makeBox(width: number, height: number, depth: number): KernelShape;
-  makeCylinder(
-    radius: number,
-    height: number,
-    center?: [number, number, number],
-    direction?: [number, number, number]
-  ): KernelShape;
-  makeSphere(radius: number, center?: [number, number, number]): KernelShape;
-  makeCone(
-    radius1: number,
-    radius2: number,
-    height: number,
-    center?: [number, number, number],
-    direction?: [number, number, number]
-  ): KernelShape;
-  makeTorus(
-    majorRadius: number,
-    minorRadius: number,
-    center?: [number, number, number],
-    direction?: [number, number, number]
-  ): KernelShape;
-
-  /** Build an ellipsoid solid with the given axis half-lengths. */
-  makeEllipsoid(aLength: number, bLength: number, cLength: number): KernelShape;
 
   // --- Extended construction (kernel-agnostic curve/edge builders) ---
   makeLineEdge(p1: [number, number, number], p2: [number, number, number]): KernelShape;
@@ -94,8 +70,6 @@ export interface KernelConstructionOps {
   /** Build a wire from a mix of edges and wires (uses Add_1 for edges, Add_2 for wires). */
   makeWireFromMixed(items: KernelShape[]): KernelShape;
   makeCompound(shapes: KernelShape[]): KernelShape;
-  makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape;
-  makeRectangle(width: number, height: number): KernelShape;
   solidFromShell(shell: KernelShape): KernelShape;
 
   // --- Convex hull ---
@@ -124,7 +98,7 @@ export interface KernelConstructionOps {
   /** Build a triangulated surface from a height grid. */
   triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape;
 
-  // --- Mesh sewing → solid ---
+  // --- Mesh sewing -> solid ---
   /**
    * Build a triangular face from 3 points. Returns null if degenerate.
    * Used by importers, hull, roof, and surface builders.
@@ -136,21 +110,6 @@ export interface KernelConstructionOps {
   ): KernelShape | null;
   /** Sew triangular faces into a shell and convert to solid. */
   sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape;
-
-  // --- Curve construction ---
-  interpolatePoints(
-    points: [number, number, number][],
-    options?: { periodic?: boolean; tolerance?: number }
-  ): KernelShape;
-  approximatePoints(
-    points: [number, number, number][],
-    options?: {
-      tolerance?: number;
-      degMin?: number;
-      degMax?: number;
-      smoothing?: [number, number, number] | null;
-    }
-  ): KernelShape;
 
   // --- 3D geometry primitive factories ---
   createPoint3d(x: number, y: number, z: number): KernelType;

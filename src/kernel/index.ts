@@ -123,18 +123,23 @@ export type { ProjectionCapability, ConstraintSketchCapability } from './types.j
 
 export type {
   KernelBooleanOps,
-  KernelConstructionOps,
+  KernelBuilderOps,
   KernelCore,
+  KernelCurveOps,
   KernelEvolutionOps,
-  KernelGeometryOps,
   KernelIOOps,
   KernelMeasureOps,
   KernelMeshOps,
   KernelModifierOps,
+  KernelPrimitiveOps,
   KernelRepairOps,
+  KernelSurfaceOps,
   KernelSweepOps,
   KernelTopologyOps,
   KernelTransformOps,
+  // Backward-compatible aliases
+  KernelConstructionOps,
+  KernelGeometryOps,
 } from './interfaces/index.js';
 
 export { supportsKernel2D } from './kernel2dTypes.js';

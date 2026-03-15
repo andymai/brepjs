@@ -8,7 +8,7 @@
  * @see {@link KernelAdapter} for the full composed interface.
  */
 
-import type { KernelInstance, KernelType } from '../types.js';
+import type { KernelInstance } from '../types.js';
 
 export interface KernelCore {
   /**
@@ -39,17 +39,4 @@ export interface KernelCore {
   restoreCheckpoint(cp: number): void;
   /** Discard a checkpoint without restoring (keep all handles). */
   discardCheckpoint(cp: number): void;
-
-  /** Create a composed transform from a sequence of translate/rotate operations. Returns an opaque handle. */
-  composeTransform(
-    ops: Array<
-      | { type: 'translate'; x: number; y: number; z: number }
-      | {
-          type: 'rotate';
-          angle: number;
-          axis?: readonly [number, number, number] | undefined;
-          center?: readonly [number, number, number] | undefined;
-        }
-    >
-  ): { handle: KernelType; dispose: () => void };
 }

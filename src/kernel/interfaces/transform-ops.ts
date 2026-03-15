@@ -11,6 +11,19 @@
 import type { KernelShape, KernelType } from '../types.js';
 
 export interface KernelTransformOps {
+  /** Create a composed transform from a sequence of translate/rotate operations. Returns an opaque handle. */
+  composeTransform(
+    ops: Array<
+      | { type: 'translate'; x: number; y: number; z: number }
+      | {
+          type: 'rotate';
+          angle: number;
+          axis?: readonly [number, number, number] | undefined;
+          center?: readonly [number, number, number] | undefined;
+        }
+    >
+  ): { handle: KernelType; dispose: () => void };
+
   transform(shape: KernelShape, trsf: KernelType): KernelShape;
   translate(shape: KernelShape, x: number, y: number, z: number): KernelShape;
   rotate(

@@ -19,18 +19,23 @@ export type {
   ShapeType,
   // Kernel sub-interfaces (ADR-0007)
   KernelBooleanOps,
-  KernelConstructionOps,
+  KernelBuilderOps,
   KernelCore,
+  KernelCurveOps,
   KernelEvolutionOps,
-  KernelGeometryOps,
   KernelIOOps,
   KernelMeasureOps,
   KernelMeshOps,
   KernelModifierOps,
+  KernelPrimitiveOps,
   KernelRepairOps,
+  KernelSurfaceOps,
   KernelSweepOps,
   KernelTopologyOps,
   KernelTransformOps,
+  // Backward-compatible aliases
+  KernelConstructionOps,
+  KernelGeometryOps,
 } from './kernel/index.js';
 export { supportsProjection, supportsConstraintSketch } from './kernel/index.js';
 export type { ProjectionCapability, ConstraintSketchCapability } from './kernel/index.js';
