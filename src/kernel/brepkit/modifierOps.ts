@@ -176,7 +176,7 @@ export function shell(
           oy = 0,
           oz = 0;
         for (const vid of origVerts) {
-          const pos: number[] = bk.getVertexPosition(vid);
+          const pos = bk.getVertexPosition(vid);
           ox += pos[0]!;
           oy += pos[1]!;
           oz += pos[2]!;
@@ -196,7 +196,7 @@ export function shell(
               sy = 0,
               sz = 0;
             for (const svid of sv) {
-              const spos: number[] = bk.getVertexPosition(svid);
+              const spos = bk.getVertexPosition(svid);
               sx += spos[0]!;
               sy += spos[1]!;
               sz += spos[2]!;
@@ -308,12 +308,12 @@ export function offsetWire2D(
 
   const coords2d: number[] = [];
   for (const edge of edges) {
-    const verts: number[] = bk.getEdgeVertices(unwrap(edge, 'edge'));
+    const verts = bk.getEdgeVertices(unwrap(edge, 'edge'));
     coords2d.push(verts[0]!, verts[1]!);
   }
   if (coords2d.length < 6) return wire;
 
-  const result: number[] = bk.offsetPolygon2d(coords2d, offsetVal, 1e-10);
+  const result = bk.offsetPolygon2d(coords2d, offsetVal, 1e-10);
   const coords3d: number[] = [];
   for (let i = 0; i < result.length; i += 2) {
     coords3d.push(result[i]!, result[i + 1]!, 0);

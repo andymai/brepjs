@@ -26,7 +26,7 @@ import { extractNurbsFromEdge } from './internalOps.js';
 // ═══════════════════════════════════════════════════════════════════════
 
 export function vertexPosition(bk: BrepkitKernel, vertex: KernelShape): [number, number, number] {
-  const pos: number[] = bk.getVertexPosition(unwrap(vertex, 'vertex'));
+  const pos = bk.getVertexPosition(unwrap(vertex, 'vertex'));
   return [pos[0]!, pos[1]!, pos[2]!];
 }
 
@@ -43,7 +43,7 @@ export function uvBounds(
   bk: BrepkitKernel,
   face: KernelShape
 ): { uMin: number; uMax: number; vMin: number; vMax: number } {
-  const domain: number[] = bk.getSurfaceDomain(unwrap(face, 'face'));
+  const domain = bk.getSurfaceDomain(unwrap(face, 'face'));
   return { uMin: domain[0]!, uMax: domain[1]!, vMin: domain[2]!, vMax: domain[3]! };
 }
 
@@ -58,7 +58,7 @@ export function surfaceNormal(
   u: number,
   v: number
 ): [number, number, number] {
-  const n: number[] = bk.evaluateSurfaceNormal(unwrap(face, 'face'), u, v);
+  const n = bk.evaluateSurfaceNormal(unwrap(face, 'face'), u, v);
   return [n[0]!, n[1]!, n[2]!];
 }
 
@@ -68,7 +68,7 @@ export function pointOnSurface(
   u: number,
   v: number
 ): [number, number, number] {
-  const p: number[] = bk.evaluateSurface(unwrap(face, 'face'), u, v);
+  const p = bk.evaluateSurface(unwrap(face, 'face'), u, v);
   return [p[0]!, p[1]!, p[2]!];
 }
 
@@ -78,12 +78,7 @@ export function uvFromPoint(
   point: [number, number, number]
 ): [number, number] | null {
   try {
-    const result: number[] = bk.projectPointOnSurface(
-      unwrap(face, 'face'),
-      point[0],
-      point[1],
-      point[2]
-    );
+    const result = bk.projectPointOnSurface(unwrap(face, 'face'), point[0], point[1], point[2]);
     return [result[0]!, result[1]!];
   } catch (e: unknown) {
     console.warn('brepkit: uvFromPoint failed:', e);
@@ -96,12 +91,7 @@ export function projectPointOnFace(
   face: KernelShape,
   point: [number, number, number]
 ): [number, number, number] {
-  const result: number[] = bk.projectPointOnSurface(
-    unwrap(face, 'face'),
-    point[0],
-    point[1],
-    point[2]
-  );
+  const result = bk.projectPointOnSurface(unwrap(face, 'face'), point[0], point[1], point[2]);
   return [result[2]!, result[3]!, result[4]!];
 }
 
@@ -124,7 +114,7 @@ export function curveTangent(
     edgeId = edgeIds[edgeIds.length - 1]!; // fallback to last edge
     let cumulative = 0;
     for (const eid of edgeIds) {
-      const p: number[] = bk.getEdgeCurveParameters(eid);
+      const p = bk.getEdgeCurveParameters(eid);
       const span = p[1]! - p[0]!;
       if (param <= cumulative + span || eid === edgeId) {
         edgeId = eid;
@@ -137,7 +127,7 @@ export function curveTangent(
     edgeId = unwrap(shape, 'edge');
   }
 
-  const result: number[] = bk.evaluateEdgeCurveD1(edgeId, evalParam);
+  const result = bk.evaluateEdgeCurveD1(edgeId, evalParam);
   return {
     point: [result[0]!, result[1]!, result[2]!],
     tangent: [result[3]!, result[4]!, result[5]!],
@@ -152,13 +142,13 @@ export function curveParameters(bk: BrepkitKernel, shape: KernelShape): [number,
     if (edgeIds.length === 0) return [0, 0];
     let total = 0;
     for (const eid of edgeIds) {
-      const p: number[] = bk.getEdgeCurveParameters(eid);
+      const p = bk.getEdgeCurveParameters(eid);
       total += p[1]! - p[0]!;
     }
     return [0, total];
   }
   const edgeId = unwrap(shape, 'edge');
-  const params: number[] = bk.getEdgeCurveParameters(edgeId);
+  const params = bk.getEdgeCurveParameters(edgeId);
   return [params[0]!, params[1]!];
 }
 
@@ -173,21 +163,21 @@ export function curvePointAtParam(
     const edgeIds: number[] = toArray(bk.getWireEdges(h.id));
     let cumulative = 0;
     for (const eid of edgeIds) {
-      const p: number[] = bk.getEdgeCurveParameters(eid);
+      const p = bk.getEdgeCurveParameters(eid);
       const span = p[1]! - p[0]!;
       if (param <= cumulative + span || eid === edgeIds[edgeIds.length - 1]) {
         const localParam = p[0]! + (param - cumulative);
-        const pt: number[] = bk.evaluateEdgeCurve(eid, Math.min(localParam, p[1]!));
+        const pt = bk.evaluateEdgeCurve(eid, Math.min(localParam, p[1]!));
         return [pt[0]!, pt[1]!, pt[2]!];
       }
       cumulative += span;
     }
     // Fallback: evaluate first edge at param
-    const pt: number[] = bk.evaluateEdgeCurve(edgeIds[0]!, param);
+    const pt = bk.evaluateEdgeCurve(edgeIds[0]!, param);
     return [pt[0]!, pt[1]!, pt[2]!];
   }
   const edgeId = unwrap(shape, 'edge');
-  const p: number[] = bk.evaluateEdgeCurve(edgeId, param);
+  const p = bk.evaluateEdgeCurve(edgeId, param);
   return [p[0]!, p[1]!, p[2]!];
 }
 
@@ -199,14 +189,14 @@ export function curveIsClosed(bk: BrepkitKernel, shape: KernelShape): boolean {
 
     // For a single-edge wire, check if edge start == edge end
     if (edgeIds.length === 1) {
-      const verts: number[] = bk.getEdgeVertices(edgeIds[0]!);
+      const verts = bk.getEdgeVertices(edgeIds[0]!);
       return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
     }
 
     // For multi-edge wires, collect all endpoints and check each has a partner
     const endpoints: Array<[number, number, number]> = [];
     for (const eid of edgeIds) {
-      const verts: number[] = bk.getEdgeVertices(eid);
+      const verts = bk.getEdgeVertices(eid);
       endpoints.push([verts[0]!, verts[1]!, verts[2]!]);
       endpoints.push([verts[3]!, verts[4]!, verts[5]!]);
     }
@@ -225,7 +215,7 @@ export function curveIsClosed(bk: BrepkitKernel, shape: KernelShape): boolean {
     return unmatched.length === 0;
   }
   // Check if edge start == end vertex
-  const verts: number[] = bk.getEdgeVertices(unwrap(shape, 'edge'));
+  const verts = bk.getEdgeVertices(unwrap(shape, 'edge'));
   return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
 }
 
@@ -416,7 +406,7 @@ export function classifyPointOnFace(
     );
   }
   const faceId = unwrap(face, 'face');
-  const domain: number[] = bk.getSurfaceDomain(faceId);
+  const domain = bk.getSurfaceDomain(faceId);
   // domain = [uMin, uMax, vMin, vMax]
   if (u < domain[0]! || u > domain[1]! || v < domain[2]! || v > domain[3]!) {
     return 'out';

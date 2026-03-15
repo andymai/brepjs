@@ -583,11 +583,11 @@ export class BrepkitAdapter implements KernelAdapter {
       if (h.type === 'solid') {
         const vertIds = toArray(this.bk.getSolidVertices(h.id));
         for (const vid of vertIds) {
-          const pos: number[] = this.bk.getVertexPosition(vid);
+          const pos = this.bk.getVertexPosition(vid);
           coords.push(pos[0]!, pos[1]!, pos[2]!);
         }
       } else if (h.type === 'vertex') {
-        const pos: number[] = this.bk.getVertexPosition(h.id);
+        const pos = this.bk.getVertexPosition(h.id);
         coords.push(pos[0]!, pos[1]!, pos[2]!);
       }
     }
@@ -1413,7 +1413,7 @@ export class BrepkitAdapter implements KernelAdapter {
             oy = 0,
             oz = 0;
           for (const vid of origVerts) {
-            const pos: number[] = this.bk.getVertexPosition(vid);
+            const pos = this.bk.getVertexPosition(vid);
             ox += pos[0]!;
             oy += pos[1]!;
             oz += pos[2]!;
@@ -1433,7 +1433,7 @@ export class BrepkitAdapter implements KernelAdapter {
                 sy = 0,
                 sz = 0;
               for (const svid of sv) {
-                const spos: number[] = this.bk.getVertexPosition(svid);
+                const spos = this.bk.getVertexPosition(svid);
                 sx += spos[0]!;
                 sy += spos[1]!;
                 sz += spos[2]!;
@@ -1800,7 +1800,11 @@ export class BrepkitAdapter implements KernelAdapter {
     const hashCount = Math.min(inputFaceIds.length, inputFaceHashes.length);
 
     // Snapshot input face signatures (skip faces where normal can't be computed)
-    const inputSigs: { hash: number; normal: number[]; centroid: [number, number, number] }[] = [];
+    const inputSigs: {
+      hash: number;
+      normal: ArrayLike<number>;
+      centroid: [number, number, number];
+    }[] = [];
     for (let i = 0; i < hashCount; i++) {
       const fid = inputFaceIds[i]!;
       try {
@@ -1818,7 +1822,11 @@ export class BrepkitAdapter implements KernelAdapter {
     }
 
     // Snapshot output face signatures (skip faces where normal can't be computed)
-    const outputSigs: { hash: number; normal: number[]; centroid: [number, number, number] }[] = [];
+    const outputSigs: {
+      hash: number;
+      normal: ArrayLike<number>;
+      centroid: [number, number, number];
+    }[] = [];
     for (const fid of outputFaceIds) {
       try {
         const normal = this.bk.getFaceNormal(fid);
@@ -2396,7 +2404,7 @@ export class BrepkitAdapter implements KernelAdapter {
   centerOfMass(shape: KernelShape): [number, number, number] {
     const h = shape as BrepkitHandle;
     if (h.type === 'solid') {
-      const result: number[] = this.bk.centerOfMass(unwrap(shape), DEFAULT_DEFLECTION);
+      const result = this.bk.centerOfMass(unwrap(shape), DEFAULT_DEFLECTION);
       return [result[0]!, result[1]!, result[2]!];
     }
     if (h.type === 'face') {
@@ -2408,7 +2416,7 @@ export class BrepkitAdapter implements KernelAdapter {
     }
     if (h.type === 'edge') {
       // Use midpoint of edge vertices
-      const verts: number[] = this.bk.getEdgeVertices(h.id);
+      const verts = this.bk.getEdgeVertices(h.id);
       return [
         (verts[0]! + verts[3]!) / 2,
         (verts[1]! + verts[4]!) / 2,
@@ -2439,7 +2447,7 @@ export class BrepkitAdapter implements KernelAdapter {
     // Average of edge endpoints (approximation for straight edges)
     const h = shape as BrepkitHandle;
     if (h.type === 'edge') {
-      const verts: number[] = this.bk.getEdgeVertices(h.id);
+      const verts = this.bk.getEdgeVertices(h.id);
       return [
         (verts[0]! + verts[3]!) / 2,
         (verts[1]! + verts[4]!) / 2,
@@ -2456,7 +2464,7 @@ export class BrepkitAdapter implements KernelAdapter {
   } {
     const h = shape as BrepkitHandle;
     if (h.type === 'solid') {
-      const bb: number[] = this.bk.boundingBox(unwrap(shape));
+      const bb = this.bk.boundingBox(unwrap(shape));
       return {
         min: [bb[0]!, bb[1]!, bb[2]!],
         max: [bb[3]!, bb[4]!, bb[5]!],
@@ -2692,7 +2700,7 @@ export class BrepkitAdapter implements KernelAdapter {
   // ═══════════════════════════════════════════════════════════════════════
 
   vertexPosition(vertex: KernelShape): [number, number, number] {
-    const pos: number[] = this.bk.getVertexPosition(unwrap(vertex, 'vertex'));
+    const pos = this.bk.getVertexPosition(unwrap(vertex, 'vertex'));
     return [pos[0]!, pos[1]!, pos[2]!];
   }
 
@@ -2706,7 +2714,7 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   uvBounds(face: KernelShape): { uMin: number; uMax: number; vMin: number; vMax: number } {
-    const domain: number[] = this.bk.getSurfaceDomain(unwrap(face, 'face'));
+    const domain = this.bk.getSurfaceDomain(unwrap(face, 'face'));
     return { uMin: domain[0]!, uMax: domain[1]!, vMin: domain[2]!, vMax: domain[3]! };
   }
 
@@ -2716,18 +2724,18 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   surfaceNormal(face: KernelShape, u: number, v: number): [number, number, number] {
-    const n: number[] = this.bk.evaluateSurfaceNormal(unwrap(face, 'face'), u, v);
+    const n = this.bk.evaluateSurfaceNormal(unwrap(face, 'face'), u, v);
     return [n[0]!, n[1]!, n[2]!];
   }
 
   pointOnSurface(face: KernelShape, u: number, v: number): [number, number, number] {
-    const p: number[] = this.bk.evaluateSurface(unwrap(face, 'face'), u, v);
+    const p = this.bk.evaluateSurface(unwrap(face, 'face'), u, v);
     return [p[0]!, p[1]!, p[2]!];
   }
 
   uvFromPoint(face: KernelShape, point: [number, number, number]): [number, number] | null {
     try {
-      const result: number[] = this.bk.projectPointOnSurface(
+      const result = this.bk.projectPointOnSurface(
         unwrap(face, 'face'),
         point[0],
         point[1],
@@ -2741,7 +2749,7 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   projectPointOnFace(face: KernelShape, point: [number, number, number]): [number, number, number] {
-    const result: number[] = this.bk.projectPointOnSurface(
+    const result = this.bk.projectPointOnSurface(
       unwrap(face, 'face'),
       point[0],
       point[1],
@@ -2768,7 +2776,7 @@ export class BrepkitAdapter implements KernelAdapter {
       edgeId = edgeIds[edgeIds.length - 1]!; // fallback to last edge
       let cumulative = 0;
       for (const eid of edgeIds) {
-        const p: number[] = this.bk.getEdgeCurveParameters(eid);
+        const p = this.bk.getEdgeCurveParameters(eid);
         const span = p[1]! - p[0]!;
         if (param <= cumulative + span || eid === edgeId) {
           edgeId = eid;
@@ -2781,7 +2789,7 @@ export class BrepkitAdapter implements KernelAdapter {
       edgeId = unwrap(shape, 'edge');
     }
 
-    const result: number[] = this.bk.evaluateEdgeCurveD1(edgeId, evalParam);
+    const result = this.bk.evaluateEdgeCurveD1(edgeId, evalParam);
     return {
       point: [result[0]!, result[1]!, result[2]!],
       tangent: [result[3]!, result[4]!, result[5]!],
@@ -2796,13 +2804,13 @@ export class BrepkitAdapter implements KernelAdapter {
       if (edgeIds.length === 0) return [0, 0];
       let total = 0;
       for (const eid of edgeIds) {
-        const p: number[] = this.bk.getEdgeCurveParameters(eid);
+        const p = this.bk.getEdgeCurveParameters(eid);
         total += p[1]! - p[0]!;
       }
       return [0, total];
     }
     const edgeId = unwrap(shape, 'edge');
-    const params: number[] = this.bk.getEdgeCurveParameters(edgeId);
+    const params = this.bk.getEdgeCurveParameters(edgeId);
     return [params[0]!, params[1]!];
   }
 
@@ -2813,21 +2821,21 @@ export class BrepkitAdapter implements KernelAdapter {
       const edgeIds: number[] = toArray(this.bk.getWireEdges(h.id));
       let cumulative = 0;
       for (const eid of edgeIds) {
-        const p: number[] = this.bk.getEdgeCurveParameters(eid);
+        const p = this.bk.getEdgeCurveParameters(eid);
         const span = p[1]! - p[0]!;
         if (param <= cumulative + span || eid === edgeIds[edgeIds.length - 1]) {
           const localParam = p[0]! + (param - cumulative);
-          const pt: number[] = this.bk.evaluateEdgeCurve(eid, Math.min(localParam, p[1]!));
+          const pt = this.bk.evaluateEdgeCurve(eid, Math.min(localParam, p[1]!));
           return [pt[0]!, pt[1]!, pt[2]!];
         }
         cumulative += span;
       }
       // Fallback: evaluate first edge at param
-      const pt: number[] = this.bk.evaluateEdgeCurve(edgeIds[0]!, param);
+      const pt = this.bk.evaluateEdgeCurve(edgeIds[0]!, param);
       return [pt[0]!, pt[1]!, pt[2]!];
     }
     const edgeId = unwrap(shape, 'edge');
-    const p: number[] = this.bk.evaluateEdgeCurve(edgeId, param);
+    const p = this.bk.evaluateEdgeCurve(edgeId, param);
     return [p[0]!, p[1]!, p[2]!];
   }
 
@@ -2841,14 +2849,14 @@ export class BrepkitAdapter implements KernelAdapter {
 
       // For a single-edge wire, check if edge start == edge end
       if (edgeIds.length === 1) {
-        const verts: number[] = this.bk.getEdgeVertices(edgeIds[0]!);
+        const verts = this.bk.getEdgeVertices(edgeIds[0]!);
         return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
       }
 
       // For multi-edge wires, collect all endpoints and check each has a partner
       const endpoints: Array<[number, number, number]> = [];
       for (const eid of edgeIds) {
-        const verts: number[] = this.bk.getEdgeVertices(eid);
+        const verts = this.bk.getEdgeVertices(eid);
         endpoints.push([verts[0]!, verts[1]!, verts[2]!]);
         endpoints.push([verts[3]!, verts[4]!, verts[5]!]);
       }
@@ -2867,7 +2875,7 @@ export class BrepkitAdapter implements KernelAdapter {
       return unmatched.length === 0;
     }
     // Check if edge start == end vertex
-    const verts: number[] = this.bk.getEdgeVertices(unwrap(shape, 'edge'));
+    const verts = this.bk.getEdgeVertices(unwrap(shape, 'edge'));
     return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
   }
 
@@ -3042,14 +3050,14 @@ export class BrepkitAdapter implements KernelAdapter {
 
     const coords2d: number[] = [];
     for (const edge of edges) {
-      const verts: number[] = this.bk.getEdgeVertices(unwrap(edge, 'edge'));
+      const verts = this.bk.getEdgeVertices(unwrap(edge, 'edge'));
       // Use start vertex of each edge (XY projection)
       coords2d.push(verts[0]!, verts[1]!);
     }
     if (coords2d.length < 6) return wire; // Need at least 3 vertices
 
     // Use brepkit's 2D polygon offset
-    const result: number[] = this.bk.offsetPolygon2d(coords2d, offset, 1e-10);
+    const result = this.bk.offsetPolygon2d(coords2d, offset, 1e-10);
     // Build new wire from offset points (as 3D with Z=0)
     const coords3d: number[] = [];
     for (let i = 0; i < result.length; i += 2) {
@@ -3079,7 +3087,7 @@ export class BrepkitAdapter implements KernelAdapter {
     // Point to solid
     if (h1.type === 'vertex' && h2.type === 'solid') {
       const pos = this.bk.getVertexPosition(h1.id);
-      const result: number[] = this.bk.pointToSolidDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+      const result = this.bk.pointToSolidDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
       return {
         value: result[0]!,
         point1: [pos[0]!, pos[1]!, pos[2]!],
@@ -3090,7 +3098,7 @@ export class BrepkitAdapter implements KernelAdapter {
     // Point-to-face distance
     if (h1.type === 'vertex' && h2.type === 'face') {
       const pos = this.bk.getVertexPosition(h1.id);
-      const result: number[] = this.bk.pointToFaceDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+      const result = this.bk.pointToFaceDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
       return {
         value: result[0]!,
         point1: [pos[0]!, pos[1]!, pos[2]!],
@@ -3101,7 +3109,7 @@ export class BrepkitAdapter implements KernelAdapter {
     // Point-to-edge distance
     if (h1.type === 'vertex' && h2.type === 'edge') {
       const pos = this.bk.getVertexPosition(h1.id);
-      const result: number[] = this.bk.pointToEdgeDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+      const result = this.bk.pointToEdgeDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
       return {
         value: result[0]!,
         point1: [pos[0]!, pos[1]!, pos[2]!],
@@ -3117,7 +3125,7 @@ export class BrepkitAdapter implements KernelAdapter {
       }
       // Use bounding box center as approximation
       if (s.type === 'solid') {
-        const bb: number[] = this.bk.boundingBox(s.id);
+        const bb = this.bk.boundingBox(s.id);
         return [(bb[0]! + bb[3]!) / 2, (bb[1]! + bb[4]!) / 2, (bb[2]! + bb[5]!) / 2];
       }
       return [0, 0, 0];
@@ -3149,7 +3157,7 @@ export class BrepkitAdapter implements KernelAdapter {
     // Evaluate the surface at (u,v) to get 3D point, then check if the
     // UV parameters are within the face's surface domain
     const faceId = unwrap(face, 'face');
-    const domain: number[] = this.bk.getSurfaceDomain(faceId);
+    const domain = this.bk.getSurfaceDomain(faceId);
     // domain = [uMin, uMax, vMin, vMax]
     if (u < domain[0]! || u > domain[1]! || v < domain[2]! || v > domain[3]!) {
       return 'out';
@@ -4828,7 +4836,7 @@ export class BrepkitAdapter implements KernelAdapter {
     for (let i = 0; i <= N; i++) {
       const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
       const [u, v] = bk2d.evaluateCurve2d(c, t);
-      const p: number[] = this.bk.evaluateSurface(fid, u, v);
+      const p = this.bk.evaluateSurface(fid, u, v);
       points.push([p[0]!, p[1]!, p[2]!]);
     }
     return this.interpolatePoints(points);
@@ -4840,7 +4848,7 @@ export class BrepkitAdapter implements KernelAdapter {
     const eid = unwrap(edge, 'edge');
     const fid = unwrap(face, 'face');
 
-    const params: number[] = this.bk.getEdgeCurveParameters(eid);
+    const params = this.bk.getEdgeCurveParameters(eid);
     const tMin = params[0] ?? 0;
     const tMax = params[1] ?? 1;
 
@@ -4859,8 +4867,8 @@ export class BrepkitAdapter implements KernelAdapter {
 
     // Evaluate 3D points → UV
     const evaluateUV = (t: number): [number, number] => {
-      const pt: number[] = this.bk.evaluateEdgeCurve(eid, t);
-      const uv: number[] = this.bk.projectPointOnSurface(fid, pt[0]!, pt[1]!, pt[2]!);
+      const pt = this.bk.evaluateEdgeCurve(eid, t);
+      const uv = this.bk.projectPointOnSurface(fid, pt[0]!, pt[1]!, pt[2]!);
       return [uv[0]!, uv[1]!];
     };
 
@@ -4906,10 +4914,10 @@ export class BrepkitAdapter implements KernelAdapter {
     }
 
     // Fallback: use edge vertices projected to UV
-    const verts: number[] = this.bk.getEdgeVertices(eid);
+    const verts = this.bk.getEdgeVertices(eid);
     if (verts.length >= 6) {
-      const uv1: number[] = this.bk.projectPointOnSurface(fid, verts[0]!, verts[1]!, verts[2]!);
-      const uv2: number[] = this.bk.projectPointOnSurface(fid, verts[3]!, verts[4]!, verts[5]!);
+      const uv1 = this.bk.projectPointOnSurface(fid, verts[0]!, verts[1]!, verts[2]!);
+      const uv2 = this.bk.projectPointOnSurface(fid, verts[3]!, verts[4]!, verts[5]!);
       return bk2d.makeLine2d(uv1[0]!, uv1[1]!, uv2[0]!, uv2[1]!);
     }
     throw new Error(`brepkit: extractCurve2dFromEdge: degenerate edge (${verts.length} coords)`);
@@ -4930,14 +4938,14 @@ export class BrepkitAdapter implements KernelAdapter {
         const curveLengths: number[] = [];
         for (const edge of wireEdges) {
           const edgeId = unwrap(edge, 'edge');
-          const params: number[] = this.bk.getEdgeCurveParameters(edgeId);
+          const params = this.bk.getEdgeCurveParameters(edgeId);
           const tMin = params[0]!,
             tMax = params[1]!;
           const N = 10;
           const pts: number[] = [];
           for (let i = 0; i <= N; i++) {
             const t = tMin + ((tMax - tMin) * i) / N;
-            const p: number[] = this.bk.evaluateEdgeCurve(edgeId, t);
+            const p = this.bk.evaluateEdgeCurve(edgeId, t);
             pts.push(p[0]!, p[1]!, p[2]!);
           }
           allCoords.push(...pts);
@@ -5337,7 +5345,7 @@ export class BrepkitAdapter implements KernelAdapter {
     }
 
     // Line edge: build a degree-1 NURBS from vertices
-    const verts: number[] = this.bk.getEdgeVertices(h.id);
+    const verts = this.bk.getEdgeVertices(h.id);
     return {
       degree: 1,
       knots: [0, 0, 1, 1],
@@ -5493,7 +5501,7 @@ export class BrepkitAdapter implements KernelAdapter {
     } else {
       faceId = unwrap(faceShape, 'face');
     }
-    const n: number[] = this.bk.getFaceNormal(faceId);
+    const n = this.bk.getFaceNormal(faceId);
     const normal: [number, number, number] = [n[0]!, n[1]!, n[2]!];
 
     // Get a point on the face via lightweight tessellation

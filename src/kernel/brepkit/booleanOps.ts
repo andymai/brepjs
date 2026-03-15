@@ -218,11 +218,11 @@ export function hull(bk: BrepkitKernel, shapes: KernelShape[], _tolerance: numbe
     if (h.type === 'solid') {
       const vertIds = toArray(bk.getSolidVertices(h.id));
       for (const vid of vertIds) {
-        const pos: number[] = bk.getVertexPosition(vid);
+        const pos = bk.getVertexPosition(vid);
         coords.push(pos[0]!, pos[1]!, pos[2]!);
       }
     } else if (h.type === 'vertex') {
-      const pos: number[] = bk.getVertexPosition(h.id);
+      const pos = bk.getVertexPosition(h.id);
       coords.push(pos[0]!, pos[1]!, pos[2]!);
     }
   }

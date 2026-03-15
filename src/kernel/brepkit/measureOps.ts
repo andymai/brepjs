@@ -64,7 +64,7 @@ export function length(bk: BrepkitKernel, shape: KernelShape): number {
 export function centerOfMass(bk: BrepkitKernel, shape: KernelShape): [number, number, number] {
   const h = shape as BrepkitHandle;
   if (h.type === 'solid') {
-    const result: number[] = bk.centerOfMass(unwrap(shape), DEFAULT_DEFLECTION);
+    const result = bk.centerOfMass(unwrap(shape), DEFAULT_DEFLECTION);
     return [result[0]!, result[1]!, result[2]!];
   }
   if (h.type === 'face') {
@@ -76,7 +76,7 @@ export function centerOfMass(bk: BrepkitKernel, shape: KernelShape): [number, nu
   }
   if (h.type === 'edge') {
     // Use midpoint of edge vertices
-    const verts: number[] = bk.getEdgeVertices(h.id);
+    const verts = bk.getEdgeVertices(h.id);
     return [(verts[0]! + verts[3]!) / 2, (verts[1]! + verts[4]!) / 2, (verts[2]! + verts[5]!) / 2];
   }
   if (h.type === 'vertex') {
@@ -106,7 +106,7 @@ export function linearCenterOfMass(
   // Average of edge endpoints (approximation for straight edges)
   const h = shape as BrepkitHandle;
   if (h.type === 'edge') {
-    const verts: number[] = bk.getEdgeVertices(h.id);
+    const verts = bk.getEdgeVertices(h.id);
     return [(verts[0]! + verts[3]!) / 2, (verts[1]! + verts[4]!) / 2, (verts[2]! + verts[5]!) / 2];
   }
   // For wires/solids, fall back to volumetric CoM
@@ -122,7 +122,7 @@ export function boundingBox(
 } {
   const h = shape as BrepkitHandle;
   if (h.type === 'solid') {
-    const bb: number[] = bk.boundingBox(unwrap(shape));
+    const bb = bk.boundingBox(unwrap(shape));
     return {
       min: [bb[0]!, bb[1]!, bb[2]!],
       max: [bb[3]!, bb[4]!, bb[5]!],
@@ -176,7 +176,7 @@ export function distance(
   // Point to solid
   if (h1.type === 'vertex' && h2.type === 'solid') {
     const pos = bk.getVertexPosition(h1.id);
-    const result: number[] = bk.pointToSolidDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+    const result = bk.pointToSolidDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
     return {
       value: result[0]!,
       point1: [pos[0]!, pos[1]!, pos[2]!],
@@ -187,7 +187,7 @@ export function distance(
   // Point-to-face distance
   if (h1.type === 'vertex' && h2.type === 'face') {
     const pos = bk.getVertexPosition(h1.id);
-    const result: number[] = bk.pointToFaceDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+    const result = bk.pointToFaceDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
     return {
       value: result[0]!,
       point1: [pos[0]!, pos[1]!, pos[2]!],
@@ -198,7 +198,7 @@ export function distance(
   // Point-to-edge distance
   if (h1.type === 'vertex' && h2.type === 'edge') {
     const pos = bk.getVertexPosition(h1.id);
-    const result: number[] = bk.pointToEdgeDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
+    const result = bk.pointToEdgeDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
     return {
       value: result[0]!,
       point1: [pos[0]!, pos[1]!, pos[2]!],
@@ -214,7 +214,7 @@ export function distance(
     }
     // Use bounding box center as approximation
     if (s.type === 'solid') {
-      const bb: number[] = bk.boundingBox(s.id);
+      const bb = bk.boundingBox(s.id);
       return [(bb[0]! + bb[3]!) / 2, (bb[1]! + bb[4]!) / 2, (bb[2]! + bb[5]!) / 2];
     }
     return [0, 0, 0];

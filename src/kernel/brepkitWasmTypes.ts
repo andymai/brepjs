@@ -429,25 +429,25 @@ export interface BrepkitKernel {
    * Get vertex positions of an edge.
    * Returns `[startX, startY, startZ, endX, endY, endZ]`.
    */
-  getEdgeVertices(edge: number): number[];
+  getEdgeVertices(edge: number): Float64Array;
 
   /** Get vertex position `[x, y, z]`. */
-  getVertexPosition(vertex: number): number[];
+  getVertexPosition(vertex: number): Float64Array;
 
   /** Get face normal `[nx, ny, nz]` (planar faces only). */
-  getFaceNormal(face: number): number[];
+  getFaceNormal(face: number): Float64Array;
 
   /** Get entity counts `[faces, edges, vertices]` of a solid. */
-  getEntityCounts(solid: number): number[];
+  getEntityCounts(solid: number): Uint32Array;
 
   /** Get edge-to-face adjacency map as JSON string. */
   edgeToFaceMap(solid: number): string;
 
   /** Get shared edges between two faces. */
-  sharedEdges(faceA: number, faceB: number): number[];
+  sharedEdges(faceA: number, faceB: number): Uint32Array;
 
   /** Get faces adjacent to a face within a solid. */
-  adjacentFaces(solid: number, face: number): number[];
+  adjacentFaces(solid: number, face: number): Uint32Array;
 
   /** Check if an edge is forward in its parent wire. */
   isEdgeForwardInWire(edge: number, wire: number): boolean;
@@ -479,25 +479,25 @@ export interface BrepkitKernel {
   getEdgeCurveType(edge: number): string;
 
   /** Get edge curve parameter range `[tMin, tMax]`. */
-  getEdgeCurveParameters(edge: number): number[];
+  getEdgeCurveParameters(edge: number): Float64Array;
 
   /** Evaluate edge curve at parameter. Returns `[x, y, z]`. */
-  evaluateEdgeCurve(edge: number, param: number): number[];
+  evaluateEdgeCurve(edge: number, param: number): Float64Array;
 
   /** Evaluate edge curve + tangent at parameter. Returns `[px,py,pz, tx,ty,tz]`. */
-  evaluateEdgeCurveD1(edge: number, param: number): number[];
+  evaluateEdgeCurveD1(edge: number, param: number): Float64Array;
 
   /** Evaluate surface at (u,v). Returns `[x, y, z]`. */
-  evaluateSurface(face: number, u: number, v: number): number[];
+  evaluateSurface(face: number, u: number, v: number): Float64Array;
 
   /** Evaluate surface normal at (u,v). Returns `[nx, ny, nz]`. */
-  evaluateSurfaceNormal(face: number, u: number, v: number): number[];
+  evaluateSurfaceNormal(face: number, u: number, v: number): Float64Array;
 
   /** Get UV domain `[uMin, uMax, vMin, vMax]`. */
-  getSurfaceDomain(face: number): number[];
+  getSurfaceDomain(face: number): Float64Array;
 
   /** Project a 3D point onto a face surface. Returns `[x, y, z]`. */
-  projectPointOnSurface(face: number, x: number, y: number, z: number): number[];
+  projectPointOnSurface(face: number, x: number, y: number, z: number): Float64Array;
 
   /** Get analytic surface parameters as JSON. */
   getAnalyticSurfaceParams(face: number): string;
@@ -508,7 +508,7 @@ export interface BrepkitKernel {
   // ── Measurement ────────────────────────────────────────────────
 
   /** Bounding box `[minX, minY, minZ, maxX, maxY, maxZ]`. */
-  boundingBox(solid: number): number[];
+  boundingBox(solid: number): Float64Array;
 
   /** Volume of a solid (tessellation-based). */
   volume(solid: number, deflection: number): number;
@@ -520,7 +520,7 @@ export interface BrepkitKernel {
   faceArea(face: number, deflection: number): number;
 
   /** Center of mass `[x, y, z]`. */
-  centerOfMass(solid: number, deflection: number): number[];
+  centerOfMass(solid: number, deflection: number): Float64Array;
 
   /** Edge length. */
   edgeLength(edge: number): number;
@@ -543,19 +543,19 @@ export interface BrepkitKernel {
    * Distance from a point to a solid.
    * Returns `[distance, closestX, closestY, closestZ]`.
    */
-  pointToSolidDistance(px: number, py: number, pz: number, solid: number): number[];
+  pointToSolidDistance(px: number, py: number, pz: number, solid: number): Float64Array;
 
   /**
    * Minimum distance from a point to a face.
    * Returns `[distance, closestX, closestY, closestZ]`.
    */
-  pointToFaceDistance(px: number, py: number, pz: number, face: number): number[];
+  pointToFaceDistance(px: number, py: number, pz: number, face: number): Float64Array;
 
   /**
    * Minimum distance from a point to an edge.
    * Returns `[distance, closestX, closestY, closestZ]`.
    */
-  pointToEdgeDistance(px: number, py: number, pz: number, edge: number): number[];
+  pointToEdgeDistance(px: number, py: number, pz: number, edge: number): Float64Array;
 
   /**
    * Minimum distance between two solids.
@@ -605,7 +605,7 @@ export interface BrepkitKernel {
   tessellateSolid(solid: number, deflection: number): BrepkitMesh;
 
   /** Tessellate an edge into polyline points. Returns flat `[x,y,z,...]`. */
-  tessellateEdge(edge: number, numPoints: number): number[];
+  tessellateEdge(edge: number, numPoints: number): Float64Array;
 
   /** Sample edges of a solid into polylines (smooth edges filtered out). */
   meshEdges(solid: number, deflection: number): BrepkitEdgeLines;
@@ -689,7 +689,7 @@ export interface BrepkitKernel {
   curveKnotRemove(edge: number, knot: number, tolerance: number): number;
 
   /** Split a NURBS curve at parameter. Returns `[edge1, edge2]`. */
-  curveSplit(edge: number, u: number): number[];
+  curveSplit(edge: number, u: number): Uint32Array;
 
   /** Elevate degree of a NURBS curve. Returns new edge handle. */
   curveDegreeElevate(edge: number, elevateBy: number): number;
@@ -721,7 +721,7 @@ export interface BrepkitKernel {
   // ── Feature detection ──────────────────────────────────────────
 
   /** Detect small features (faces below area threshold). Returns face handles. */
-  detectSmallFeatures(solid: number, areaThreshold: number, deflection: number): number[];
+  detectSmallFeatures(solid: number, areaThreshold: number, deflection: number): Uint32Array;
 
   /** Recognize geometric features. Returns JSON string. */
   recognizeFeatures(solid: number, deflection: number): string;
@@ -795,7 +795,7 @@ export interface BrepkitKernel {
   // ── 2D polygon ─────────────────────────────────────────────────
 
   /** Offset a 2D polygon. Coords are flat `[x,y, ...]`. Returns flat coords. */
-  offsetPolygon2d(coords: number[], distance: number, tolerance: number): number[];
+  offsetPolygon2d(coords: number[], distance: number, tolerance: number): Float64Array;
 
   // Note: The following 2D methods return Float64Array from WASM. Callers must
   // convert via Array.from() before passing downstream (same as Uint32Array pattern).
