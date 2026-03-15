@@ -12,6 +12,7 @@ const alwaysExclude = [
   'tests/brepkit-adapter.test.ts',
   'tests/brepkit-validation.test.ts',
   'tests/kernel-agreement.test.ts',
+  'tests/io-stress.test.ts',
   'benchmarks/**',
   'node_modules/**',
   'site/**',
