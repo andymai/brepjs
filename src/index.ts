@@ -126,9 +126,6 @@ export {
 
 // ── Layer 2: operations ──
 
-// Legacy OO API — deprecated, use extrude/revolve/sweep from functional API
-// export { basicFaceExtrusion, revolution, genericSweep, type GenericSweepOptions } from './operations/extrude.js';
-
 export { type AssemblyExporter, createAssembly } from './operations/exporters.js';
 
 // ── Layer 2: 2d ──

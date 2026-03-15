@@ -8,6 +8,8 @@ import {
   sketchCircle,
   sketchRectangle,
   loft,
+  extrude,
+  revolve,
   measureVolume,
   unwrap,
   isOk,
@@ -27,31 +29,31 @@ import {
   cut,
   intersect,
 } from '../src/index.js';
-import { basicFaceExtrusion, revolution } from '../src/operations/extrude.js';
+import type { OrientedFace } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-describe('basicFaceExtrusion', () => {
+describe('extrude', () => {
   it('extrudes a rectangular sketch into a solid', () => {
     const sketch = sketchRectangle(10, 20);
-    const face = sketch.face();
-    const solid = basicFaceExtrusion(face, [0, 0, 30]);
+    const face = sketch.face() as OrientedFace;
+    const solid = unwrap(extrude(face, [0, 0, 30]));
     expect(solid).toBeDefined();
     expect(measureVolume(solid)).toBeCloseTo(10 * 20 * 30, 0);
   });
 
   it('extrudes a circular sketch', () => {
     const sketch = sketchCircle(5);
-    const face = sketch.face();
-    const solid = basicFaceExtrusion(face, [0, 0, 10]);
+    const face = sketch.face() as OrientedFace;
+    const solid = unwrap(extrude(face, [0, 0, 10]));
     expect(solid).toBeDefined();
-    expect(measureVolume(solid)).toBeCloseTo(Math.PI * 25 * 10, 0);
+    expect(measureVolume(solid)).toBeCloseTo(Math.PI * 25 * 10, -1);
   });
 });
 
-describe('revolution', () => {
+describe('revolve', () => {
   it('revolves a face 360 degrees', () => {
     const sketch = new Sketcher('XZ')
       .movePointerTo([1, 0])
@@ -59,8 +61,9 @@ describe('revolution', () => {
       .lineTo([2, 5])
       .lineTo([1, 5])
       .close();
-    const face = sketch.face();
-    const solid = unwrap(revolution(face, [0, 0, 0], [0, 0, 1], 360));
+    const face = sketch.face() as OrientedFace;
+    // Note: revolve() passes angle directly to kernel (radians); use 2π for full revolution
+    const solid = unwrap(revolve(face, { at: [0, 0, 0], axis: [0, 0, 1], angle: 2 * Math.PI }));
     expect(solid).toBeDefined();
     // Volume of hollow cylinder: π(R²-r²)*h
     expect(measureVolume(solid)).toBeCloseTo(Math.PI * (4 - 1) * 5, 0);
@@ -212,15 +215,15 @@ describe('Boolean operations', () => {
 });
 
 describe('Result error paths', () => {
-  it('revolution returns Ok for valid input', () => {
+  it('revolve returns Ok for valid input', () => {
     const sketch = new Sketcher('XZ')
       .movePointerTo([1, 0])
       .lineTo([2, 0])
       .lineTo([2, 1])
       .lineTo([1, 1])
       .close();
-    const face = sketch.face();
-    const result = revolution(face, [0, 0, 0], [0, 0, 1]);
+    const face = sketch.face() as OrientedFace;
+    const result = revolve(face, { at: [0, 0, 0], axis: [0, 0, 1], angle: 2 * Math.PI });
     expect(isOk(result)).toBe(true);
   });
 

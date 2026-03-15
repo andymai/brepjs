@@ -1,6 +1,6 @@
 import type { PointInput } from '../core/types.js';
 import { makeCompound } from '../topology/shapeHelpers.js';
-import type { ExtrusionProfile } from '../operations/extrude.js';
+import type { ExtrusionProfile } from '../operations/extrudeUtils.js';
 import type { AnyShape } from '../core/shapeTypes.js';
 
 import type CompoundSketch from './CompoundSketch.js';

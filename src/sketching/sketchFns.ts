@@ -5,8 +5,8 @@
 
 import type { PointInput } from '../core/types.js';
 import type { OrientedFace, Shape3D, Wire } from '../core/shapeTypes.js';
-import type { ExtrusionProfile, GenericSweepOptions } from '../operations/extrude.js';
-import type { LoftOptions } from '../operations/loft.js';
+import type { ExtrusionProfile, SweepOptions } from '../operations/extrudeUtils.js';
+import type { LoftOptions } from '../operations/loftFns.js';
 import type Sketch from './Sketch.js';
 import type CompoundSketch from './CompoundSketch.js';
 
@@ -88,7 +88,7 @@ export function sketchLoft(
 export function sketchSweep(
   sketch: Sketch,
   sketchOnPlane: Parameters<Sketch['sweepSketch']>[0],
-  sweepConfig?: GenericSweepOptions
+  sweepConfig?: SweepOptions
 ): Shape3D {
   return sketch.sweepSketch(sketchOnPlane, sweepConfig);
 }

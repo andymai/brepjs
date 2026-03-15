@@ -67,13 +67,4 @@ export {
 
 // ── Low-level ──
 
-export {
-  basicFaceExtrusion,
-  revolution,
-  genericSweep,
-  type GenericSweepOptions,
-} from './operations/extrude.js';
-
-export { loft } from './operations/loft.js';
-
 export { type AssemblyExporter, createAssembly } from './operations/exporters.js';

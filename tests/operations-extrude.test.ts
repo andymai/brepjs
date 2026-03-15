@@ -6,23 +6,24 @@ import {
   sketchRectangle,
   complexExtrude,
   twistExtrude,
+  sweep,
   measureVolume,
   unwrap,
   isOk,
 } from '../src/index.js';
-import { genericSweep } from '../src/operations/extrude.js';
+import type { ClosedWire } from '../src/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-describe('genericSweep', () => {
+describe('sweep', () => {
   it('sweeps a circle along a straight spine', () => {
     const profile = sketchCircle(2);
-    const wire = profile.wire;
+    const wire = profile.wire as ClosedWire;
     const spine = new Sketcher('XZ').movePointerTo([0, 0]).lineTo([0, 20]).done().wire;
 
-    const result = genericSweep(wire, spine, { frenet: true });
+    const result = sweep(wire, spine, { frenet: true });
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
     expect(solid).toBeDefined();
@@ -32,10 +33,10 @@ describe('genericSweep', () => {
 
   it('sweeps a rectangle along a straight spine with frenet mode', () => {
     const profile = sketchRectangle(4, 4);
-    const wire = profile.wire;
+    const wire = profile.wire as ClosedWire;
     const spine = new Sketcher('XZ').movePointerTo([0, 0]).lineTo([0, 10]).done().wire;
 
-    const result = genericSweep(wire, spine, { frenet: true });
+    const result = sweep(wire, spine, { frenet: true });
     expect(isOk(result)).toBe(true);
     const solid = unwrap(result);
     const vol = measureVolume(solid);
@@ -44,10 +45,10 @@ describe('genericSweep', () => {
 
   it('sweeps with transformed transition mode', () => {
     const profile = sketchCircle(2);
-    const wire = profile.wire;
+    const wire = profile.wire as ClosedWire;
     const spine = new Sketcher('XZ').movePointerTo([0, 0]).lineTo([0, 15]).done().wire;
 
-    const result = genericSweep(wire, spine, {
+    const result = sweep(wire, spine, {
       frenet: true,
       transitionMode: 'transformed',
     });
@@ -58,10 +59,10 @@ describe('genericSweep', () => {
 
   it('sweeps with round transition mode', () => {
     const profile = sketchCircle(2);
-    const wire = profile.wire;
+    const wire = profile.wire as ClosedWire;
     const spine = new Sketcher('XZ').movePointerTo([0, 0]).lineTo([0, 15]).done().wire;
 
-    const result = genericSweep(wire, spine, {
+    const result = sweep(wire, spine, {
       frenet: true,
       transitionMode: 'round',
     });

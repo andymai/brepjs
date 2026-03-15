@@ -62,7 +62,6 @@ export const BREPJS_FNS = new Set([
   'revolve',
   'loft',
   'sweep',
-  'genericSweep',
   'guidedSweep',
   'multiSectionSweep',
   'thicken',

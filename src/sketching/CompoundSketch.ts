@@ -4,19 +4,15 @@ import type Sketch from './Sketch.js';
 import type { Vec3, PointInput } from '../core/types.js';
 import { toVec3 } from '../core/types.js';
 import { vecNormalize, vecScale } from '../core/vecOps.js';
-import {
-  basicFaceExtrusion,
-  complexExtrude,
-  twistExtrude,
-  revolution,
-  type ExtrusionProfile,
-} from '../operations/extrude.js';
-import type { LoftOptions } from '../operations/loft.js';
+import { extrude, revolve } from '../operations/extrudeFns.js';
+import { complexExtrude, twistExtrude } from '../operations/sweepFns.js';
+import type { ExtrusionProfile } from '../operations/extrudeUtils.js';
+import type { LoftOptions } from '../operations/loftFns.js';
 import type { SketchInterface } from './sketchLib.js';
 import { cast, downcast } from '../topology/cast.js';
 import { type Result, unwrap, isOk } from '../core/result.js';
 import { bug } from '../core/errors.js';
-import type { ClosedWire, Face, Shape3D, Shell, Wire } from '../core/shapeTypes.js';
+import type { ClosedWire, OrientedFace, Face, Shape3D, Shell, Wire } from '../core/shapeTypes.js';
 import { createFace, isFace } from '../core/shapeTypes.js';
 import { getKernel } from '../kernel/index.js';
 
@@ -159,28 +155,32 @@ export default class CompoundSketch implements SketchInterface {
 
     let result: Shape3D;
     if (extrusionProfile && !twistAngle) {
-      result = solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
-        complexExtrude(
-          sketch.wire,
-          origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile,
-          true
-        )
+      result = solidFromShellGenerator(
+        this.sketches,
+        (sketch: Sketch) =>
+          complexExtrude(
+            sketch.wire as ClosedWire,
+            origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
+            extrusionVec,
+            extrusionProfile,
+            true
+          ) as Result<[Shape3D, Wire, Wire]>
       );
     } else if (twistAngle) {
-      result = solidFromShellGenerator(this.sketches, (sketch: Sketch) =>
-        twistExtrude(
-          sketch.wire,
-          twistAngle,
-          origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
-          extrusionVec,
-          extrusionProfile,
-          true
-        )
+      result = solidFromShellGenerator(
+        this.sketches,
+        (sketch: Sketch) =>
+          twistExtrude(
+            sketch.wire as ClosedWire,
+            twistAngle,
+            origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
+            extrusionVec,
+            extrusionProfile,
+            true
+          ) as Result<[Shape3D, Wire, Wire]>
       );
     } else {
-      result = basicFaceExtrusion(this.face(), extrusionVec);
+      result = unwrap(extrude(this.face() as OrientedFace, extrusionVec));
     }
 
     return result;
@@ -191,13 +191,9 @@ export default class CompoundSketch implements SketchInterface {
    * (defaults to the sketch origin)
    */
   revolve(revolutionAxis?: PointInput, { origin }: { origin?: PointInput } = {}): Shape3D {
-    return unwrap(
-      revolution(
-        this.face(),
-        origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
-        revolutionAxis
-      )
-    );
+    const center = origin ? toVec3(origin) : this.outerSketch.defaultOrigin;
+    const dir = revolutionAxis ? toVec3(revolutionAxis) : ([0, 0, 1] as Vec3);
+    return unwrap(revolve(this.face() as OrientedFace, center, dir));
   }
 
   /** Loft between this compound sketch and another with matching sub-sketch counts. */
@@ -211,7 +207,9 @@ export default class CompoundSketch implements SketchInterface {
     const shells: Array<Shell | Face> = this.sketches.map((base, cIndex) => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- cIndex within matched-length arrays
       const outer = otherCompound.sketches[cIndex]!;
-      return base.clone().loftWith(outer.clone(), { ruled: loftConfig.ruled }, true) as Shell;
+      const loftOpts: LoftOptions = {};
+      if (loftConfig.ruled !== undefined) loftOpts.ruled = loftConfig.ruled;
+      return base.clone().loftWith(outer.clone(), loftOpts, true) as Shell;
     });
 
     const baseFaceRaw = this.face();

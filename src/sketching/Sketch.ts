@@ -5,17 +5,12 @@ import { unwrap } from '../core/result.js';
 import { downcast } from '../topology/cast.js';
 import { toVec3, type Vec3, type PointInput } from '../core/types.js';
 import { vecScale, vecNormalize, vecCross } from '../core/vecOps.js';
-import {
-  basicFaceExtrusion,
-  complexExtrude,
-  twistExtrude,
-  revolution,
-  genericSweep,
-  type ExtrusionProfile,
-  type GenericSweepOptions,
-} from '../operations/extrude.js';
-import { loft, type LoftOptions } from '../operations/loft.js';
-import type { ClosedWire, Face, Wire, Shape3D } from '../core/shapeTypes.js';
+import { extrude, revolve } from '../operations/extrudeFns.js';
+import { sweep, complexExtrude, twistExtrude } from '../operations/sweepFns.js';
+import type { ExtrusionProfile, SweepOptions } from '../operations/extrudeUtils.js';
+import { loft } from '../operations/loftFns.js';
+import type { LoftOptions } from '../operations/loftFns.js';
+import type { ClosedWire, OrientedFace, Face, Wire, Shape3D } from '../core/shapeTypes.js';
 import { createFace, createWire } from '../core/shapeTypes.js';
 import { curveStartPoint, curveTangentAt } from '../topology/curveFns.js';
 import type { SketchInterface } from './sketchLib.js';
@@ -138,7 +133,9 @@ export default class Sketch implements SketchInterface {
    */
   revolve(revolutionAxis?: PointInput, { origin }: { origin?: PointInput } = {}): Shape3D {
     const face = unwrap(makeFace(this.wire as ClosedWire));
-    const solid = unwrap(revolution(face, origin || this.defaultOrigin, revolutionAxis));
+    const center: Vec3 = origin ? toVec3(origin) : this.defaultOrigin;
+    const dir: Vec3 = revolutionAxis ? toVec3(revolutionAxis) : [0, 0, 1];
+    const solid = unwrap(revolve(face as OrientedFace, center, dir));
     face.delete();
     this.delete();
     return solid;
@@ -175,22 +172,28 @@ export default class Sketch implements SketchInterface {
 
     if (extrusionProfile && !twistAngle) {
       const solid = unwrap(
-        complexExtrude(this.wire, [...originVec], [...extrusionVec], extrusionProfile)
+        complexExtrude(this.wire as ClosedWire, [...originVec], [...extrusionVec], extrusionProfile)
       );
       this.delete();
-      return solid;
+      return solid as Shape3D;
     }
 
     if (twistAngle) {
       const solid = unwrap(
-        twistExtrude(this.wire, twistAngle, [...originVec], [...extrusionVec], extrusionProfile)
+        twistExtrude(
+          this.wire as ClosedWire,
+          twistAngle,
+          [...originVec],
+          [...extrusionVec],
+          extrusionProfile
+        )
       );
       this.delete();
-      return solid;
+      return solid as Shape3D;
     }
 
     const face = unwrap(makeFace(this.wire as ClosedWire));
-    const solid = basicFaceExtrusion(face, [...extrusionVec]);
+    const solid = unwrap(extrude(face as OrientedFace, [...extrusionVec]));
 
     this.delete();
     return solid;
@@ -202,7 +205,7 @@ export default class Sketch implements SketchInterface {
    */
   sweepSketch(
     sketchOnPlane: (plane: Plane, origin: Vec3) => this,
-    sweepConfig: GenericSweepOptions = {}
+    sweepConfig: SweepOptions = {}
   ): Shape3D {
     const startPoint = curveStartPoint(this.wire);
     const tangent = curveTangentAt(this.wire, 1e-9);
@@ -214,14 +217,14 @@ export default class Sketch implements SketchInterface {
       ...startPoint,
     ]);
 
-    const config: GenericSweepOptions = {
+    const config: SweepOptions = {
       forceProfileSpineOthogonality: true,
       ...sweepConfig,
     };
     if (this.baseFace) {
       config.support = this.baseFace.wrapped;
     }
-    const shape = unwrap(genericSweep(sketch.wire, this.wire, config));
+    const shape = unwrap(sweep(sketch.wire as ClosedWire, this.wire, config)) as Shape3D;
     this.delete();
 
     return shape;
