@@ -66,10 +66,10 @@ export {
   drawText,
   drawPointsInterpolation,
   drawParametricFunction,
-  drawProjection,
-  drawFaceOutline,
   deserializeDrawing,
 } from './sketching/draw.js';
+
+export { drawProjection, drawFaceOutline } from './sketching/draw3d.js';
 
 // ── Drawing operations (functional) ──
 

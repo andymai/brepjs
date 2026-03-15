@@ -244,10 +244,10 @@ export {
   drawText,
   drawPointsInterpolation,
   drawParametricFunction,
-  drawProjection,
-  drawFaceOutline,
   deserializeDrawing,
 } from './sketching/draw.js';
+
+export { drawProjection, drawFaceOutline } from './sketching/draw3d.js';
 
 export type { DrawingInterface, SketchData } from './2d/blueprints/lib.js';
 
