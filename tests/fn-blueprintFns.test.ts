@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   createBlueprint,
+  createCompoundBlueprint,
   getBounds2D,
   getOrientation2D,
   isInside2D,
@@ -12,6 +13,9 @@ import {
   mirror2D,
   drawRectangle,
   drawCircle,
+  unwrap,
+  isOk,
+  isErr,
 } from '../src/index.js';
 
 beforeAll(async () => {
@@ -27,11 +31,33 @@ describe('blueprintFns', () => {
   describe('createBlueprint', () => {
     it('creates a blueprint from curves of an existing blueprint', () => {
       const original = rect();
-      const copy = createBlueprint(original.curves);
-      expect(copy).toBeDefined();
+      const result = createBlueprint(original.curves);
+      expect(isOk(result)).toBe(true);
+      const copy = unwrap(result);
       expect(copy.curves).toHaveLength(original.curves.length);
       copy.delete();
       original.delete();
+    });
+
+    it('returns error for empty curves array', () => {
+      const result = createBlueprint([]);
+      expect(isErr(result)).toBe(true);
+    });
+  });
+
+  describe('createCompoundBlueprint', () => {
+    it('creates a compound blueprint from outer + hole', () => {
+      const outer = rect(20, 20);
+      const hole = rect(5, 5);
+      const result = createCompoundBlueprint([outer, hole]);
+      expect(isOk(result)).toBe(true);
+      const compound = unwrap(result);
+      expect(compound.blueprints).toHaveLength(2);
+    });
+
+    it('returns error for empty blueprints array', () => {
+      const result = createCompoundBlueprint([]);
+      expect(isErr(result)).toBe(true);
     });
   });
 

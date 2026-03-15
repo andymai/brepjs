@@ -10,18 +10,55 @@
 import type { Point2D, BoundingBox2d } from '../lib/index.js';
 import BlueprintClass from './Blueprint.js';
 import type Blueprint from './Blueprint.js';
+import CompoundBlueprintClass from './CompoundBlueprint.js';
+import type CompoundBlueprint from './CompoundBlueprint.js';
 import type { PointInput } from '../../core/types.js';
 import type { Plane, PlaneName } from '../../core/planeTypes.js';
 import type { Face } from '../../core/shapeTypes.js';
 import type { ScaleMode } from '../curves.js';
+import { type Result, ok, err } from '../../core/result.js';
+import { validationError } from '../../core/errors.js';
 
 /**
  * Create a new Blueprint from an ordered array of 2D curves.
  *
+ * Returns a `Result` — use `unwrap()` in tests or `isOk()`/`match()` in
+ * production code.
+ *
  * @see {@link Blueprint} constructor.
  */
-export function createBlueprint(curves: Blueprint['curves']): Blueprint {
-  return new BlueprintClass(curves);
+export function createBlueprint(curves: Blueprint['curves']): Result<Blueprint> {
+  if (!curves || curves.length === 0) {
+    return err(
+      validationError(
+        'BLUEPRINT_EMPTY_CURVES',
+        'createBlueprint: at least one curve is required'
+      )
+    );
+  }
+  return ok(new BlueprintClass(curves));
+}
+
+/**
+ * Create a CompoundBlueprint from an outer boundary and optional holes.
+ *
+ * The first element of `blueprints` is the outer boundary; subsequent
+ * elements are subtracted as holes.
+ *
+ * @see {@link CompoundBlueprint} constructor.
+ */
+export function createCompoundBlueprint(
+  blueprints: Blueprint[]
+): Result<CompoundBlueprint> {
+  if (!blueprints || blueprints.length === 0) {
+    return err(
+      validationError(
+        'COMPOUND_BLUEPRINT_EMPTY',
+        'createCompoundBlueprint: at least one blueprint (outer boundary) is required'
+      )
+    );
+  }
+  return ok(new CompoundBlueprintClass(blueprints));
 }
 
 // ── Utility Functions (Clean 2D API) ──
