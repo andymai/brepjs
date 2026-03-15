@@ -2488,6 +2488,8 @@ export class BrepkitAdapter implements KernelAdapter {
 
   measureBulk(shape: KernelShape, includeLinear = false): BulkMeasurement {
     const h = shape as BrepkitHandle;
+    // brepkit length() throws for non-linear shapes; guard to edge/wire/face.
+    // OCCT LinearProperties returns edge-length sum even for solids — intentional divergence.
     const canMeasureLength = h.type === 'edge' || h.type === 'wire' || h.type === 'face';
     return {
       volume: this.volume(shape),
