@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.10.0](https://github.com/andymai/brepjs/compare/brepjs-v12.9.1...brepjs-v12.10.0) (2026-03-15)
+
+
+### Features
+
+* v14.0.0 — brepkit-wasm upgrade, new APIs, throw→Result ([#528](https://github.com/andymai/brepjs/issues/528)) ([7cdd20e](https://github.com/andymai/brepjs/commit/7cdd20e19eaa13c053816c07f7fbd2b4c2b2a33c))
+
 ## [12.9.1](https://github.com/andymai/brepjs/compare/brepjs-v12.9.0...brepjs-v12.9.1) (2026-03-15)
 
 
