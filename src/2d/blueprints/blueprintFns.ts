@@ -30,7 +30,10 @@ import { validationError, BrepErrorCode } from '../../core/errors.js';
 export function createBlueprint(curves: Blueprint['curves']): Result<Blueprint> {
   if (curves.length === 0) {
     return err(
-      validationError(BrepErrorCode.BLUEPRINT_EMPTY_CURVES, 'createBlueprint: at least one curve is required')
+      validationError(
+        BrepErrorCode.BLUEPRINT_EMPTY_CURVES,
+        'createBlueprint: at least one curve is required'
+      )
     );
   }
   return ok(new BlueprintClass(curves));
