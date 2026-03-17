@@ -5,6 +5,7 @@
 // ── Layer 0: kernel / utils ──
 
 export {
+  init,
   initFromOC,
   getKernel,
   registerKernel,

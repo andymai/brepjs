@@ -100,6 +100,57 @@ export function initFromOC(oc: KernelInstance): void {
   _cachedDefault = adapter;
 }
 
+/**
+ * Auto-detect and initialise the best available kernel.
+ *
+ * Tries `brepjs-opencascade` (OCCT) first, then falls back to `brepkit-wasm`.
+ * Idempotent — calling it again after a kernel is registered is a no-op that
+ * returns the current kernel ID immediately.
+ *
+ * @returns The kernel ID that was initialised (`'occt'` or `'brepkit'`).
+ * @throws If neither `brepjs-opencascade` nor `brepkit-wasm` can be imported.
+ *
+ * @example
+ * ```ts
+ * import { init, box } from 'brepjs';
+ *
+ * await init();
+ * const myBox = box(10, 10, 10);
+ * ```
+ */
+export async function init(): Promise<string> {
+  if (_defaultKernelId) return _defaultKernelId;
+
+  // Try OpenCascade first
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
+    const mod = (await import('brepjs-opencascade')) as any;
+    const oc = await mod.default();
+    initFromOC(oc);
+    return 'occt';
+  } catch {
+    // OCCT not available, try brepkit
+  }
+
+  // Try brepkit
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
+    const bk = (await import('brepkit-wasm')) as any;
+    if (typeof bk.default === 'function') await bk.default();
+    const { BrepkitAdapter } = await import('./brepkitAdapter.js');
+    registerKernel('brepkit', new BrepkitAdapter(new bk.BrepKernel()));
+    return 'brepkit';
+  } catch {
+    // brepkit not available either
+  }
+
+  throw new Error(
+    'brepjs: no kernel package found. Install one of:\n' +
+      '  npm install brepjs-opencascade   (recommended)\n' +
+      '  npm install brepkit-wasm'
+  );
+}
+
 export type {
   KernelAdapter,
   KernelMeshResult,
