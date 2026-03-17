@@ -124,7 +124,7 @@ export async function init(): Promise<string> {
   // Try OpenCascade first
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
-    const mod = (await import('brepjs-opencascade')) as any;
+    const mod = (await import(/* @vite-ignore */ 'brepjs-opencascade')) as any;
     const oc = await mod.default();
     initFromOC(oc);
     return 'occt';
@@ -135,9 +135,9 @@ export async function init(): Promise<string> {
   // Try brepkit
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
-    const bk = (await import('brepkit-wasm')) as any;
+    const bk = (await import(/* @vite-ignore */ 'brepkit-wasm')) as any;
     if (typeof bk.default === 'function') await bk.default();
-    const { BrepkitAdapter } = await import('./brepkitAdapter.js');
+    const { BrepkitAdapter } = await import(/* @vite-ignore */ './brepkitAdapter.js');
     registerKernel('brepkit', new BrepkitAdapter(new bk.BrepKernel()));
     return 'brepkit';
   } catch {
