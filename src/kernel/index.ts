@@ -137,9 +137,6 @@ export type {
   KernelSweepOps,
   KernelTopologyOps,
   KernelTransformOps,
-  // Backward-compatible aliases
-  KernelConstructionOps,
-  KernelGeometryOps,
 } from './interfaces/index.js';
 
 export { supportsKernel2D } from './kernel2dTypes.js';

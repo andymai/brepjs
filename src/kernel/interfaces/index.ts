@@ -59,10 +59,3 @@ export type { KernelSurfaceOps } from './surface-ops.js';
 export type { KernelSweepOps } from './sweep-ops.js';
 export type { KernelTopologyOps } from './topology-ops.js';
 export type { KernelTransformOps, TransformEntry } from './transform-ops.js';
-
-// --- Backward-compatible aliases ---
-
-/** @deprecated Use KernelPrimitiveOps & KernelBuilderOps */
-export type KernelConstructionOps = KernelPrimitiveOps & KernelBuilderOps;
-/** @deprecated Use KernelCurveOps & KernelSurfaceOps */
-export type KernelGeometryOps = KernelCurveOps & KernelSurfaceOps;

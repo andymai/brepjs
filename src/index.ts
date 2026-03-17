@@ -33,9 +33,6 @@ export type {
   KernelSweepOps,
   KernelTopologyOps,
   KernelTransformOps,
-  // Backward-compatible aliases
-  KernelConstructionOps,
-  KernelGeometryOps,
 } from './kernel/index.js';
 export { supportsProjection, supportsConstraintSketch } from './kernel/index.js';
 export type { ProjectionCapability, ConstraintSketchCapability } from './kernel/index.js';
