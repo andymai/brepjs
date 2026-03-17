@@ -51,17 +51,6 @@ export interface OcctEvolutionData {
   delete(): void;
 }
 
-/**
- * OCCT TopTools_ListOfShape — iterable list of shapes.
- * Used by iterListHashes in evolution tracking.
- */
-export interface OcctShapeList {
-  Size(): number;
-  First_1(): KernelShape;
-  RemoveFirst(): void;
-  delete(): void;
-}
-
 // ---------------------------------------------------------------------------
 // OCCT geometry primitives
 // ---------------------------------------------------------------------------
