@@ -7,6 +7,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType } from './types.js';
+import type { OcctPoint } from './wasm-types/index.js';
 
 // ---------------------------------------------------------------------------
 // Edge builders
@@ -282,7 +283,7 @@ function makeEllipsoidGTrsf(
   x: number,
   y: number,
   z: number
-): { transform: KernelShape; applyToPoint: (p: KernelShape) => KernelShape } {
+): { transform: KernelType; applyToPoint: (p: OcctPoint) => KernelType } {
   const xyRatio = Math.sqrt((x * y) / z);
   const xzRatio = x / xyRatio;
   const yzRatio = y / xyRatio;
@@ -322,8 +323,7 @@ function makeEllipsoidGTrsf(
 
   return {
     transform,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT gp_Pnt type
-    applyToPoint(p: any): any {
+    applyToPoint(p: OcctPoint): KernelType {
       const coords = p.XYZ();
       transform.Transforms_1(coords);
       const result = new oc.gp_Pnt_2(coords);

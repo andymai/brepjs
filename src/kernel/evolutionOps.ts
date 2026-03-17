@@ -6,9 +6,12 @@
  */
 
 import type { KernelInstance, KernelShape, ShapeEvolution, OperationResult } from './types.js';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT operation builders are dynamically typed
-type OcBuilder = any;
+import type {
+  OcctEvolutionBuilder,
+  OcctEvolutionData,
+  OcctSimplifyBuilder,
+  OcctTransform,
+} from './wasm-types/index.js';
 
 /** Shared empty evolution object for operations with no face tracking.
  *  Avoids allocating new Map/Set instances on every transform. */
@@ -47,23 +50,15 @@ function parsePackedMap(heap: Int32Array, ptr: number, size: number): Map<number
  * Modified/Generated format: [inputHash, count, out1, out2, ..., nextInputHash, count, ...]
  * Deleted format: flat [hash1, hash2, ...]
  */
-function parseEvolutionData(oc: KernelInstance, raw: OcBuilder): ShapeEvolution {
+function parseEvolutionData(oc: KernelInstance, raw: OcctEvolutionData): ShapeEvolution {
   try {
-    const modified = parsePackedMap(
-      oc.HEAP32,
-      raw.getModifiedPtr() as number,
-      raw.getModifiedSize() as number
-    );
-    const generated = parsePackedMap(
-      oc.HEAP32,
-      raw.getGeneratedPtr() as number,
-      raw.getGeneratedSize() as number
-    );
+    const modified = parsePackedMap(oc.HEAP32, raw.getModifiedPtr(), raw.getModifiedSize());
+    const generated = parsePackedMap(oc.HEAP32, raw.getGeneratedPtr(), raw.getGeneratedSize());
 
     const deleted = new Set<number>();
-    const deletedSize = raw.getDeletedSize() as number;
+    const deletedSize = raw.getDeletedSize();
     if (deletedSize > 0) {
-      const ptr = (raw.getDeletedPtr() as number) / 4;
+      const ptr = raw.getDeletedPtr() / 4;
       const data = oc.HEAP32.slice(ptr, ptr + deletedSize) as Int32Array;
       for (let i = 0; i < data.length; i++) {
         deleted.add(data[i] as number);
@@ -79,7 +74,7 @@ function parseEvolutionData(oc: KernelInstance, raw: OcBuilder): ShapeEvolution 
 /**
  * Iterate an OCCT TopTools_ListOfShape, extracting hash codes.
  */
-function iterListHashes(oc: KernelInstance, list: OcBuilder, hashUpperBound: number): number[] {
+function iterListHashes(oc: KernelInstance, list: KernelShape, hashUpperBound: number): number[] {
   const result: number[] = [];
   if (list.Size() === 0) return result;
 
@@ -113,7 +108,7 @@ function iterListHashes(oc: KernelInstance, list: OcBuilder, hashUpperBound: num
  */
 export function buildEvolution(
   oc: KernelInstance,
-  op: OcBuilder,
+  op: OcctEvolutionBuilder,
   shapes: KernelShape | KernelShape[],
   inputFaceHashes: number[],
   hashUpperBound: number
@@ -127,8 +122,8 @@ export function buildEvolution(
   // Try C++ bulk extraction — single WASM call for all faces
   if (oc.EvolutionExtractor) {
     let inputShape: KernelShape;
-    let compBuilder: OcBuilder | undefined;
-    let compound: OcBuilder | undefined;
+    let compBuilder: KernelShape | undefined;
+    let compound: KernelShape | undefined;
     if (shapeArray.length === 1) {
       inputShape = shapeArray[0];
     } else {
@@ -142,7 +137,7 @@ export function buildEvolution(
     }
 
     // Narrow catch to only the extract() call — embind may not handle all builder types
-    let raw: OcBuilder | undefined;
+    let raw: OcctEvolutionData | undefined;
     try {
       raw = oc.EvolutionExtractor.extract(op, inputShape, hashUpperBound);
     } catch {
@@ -210,8 +205,7 @@ export function buildEvolution(
 export function transformWithEvolution(
   oc: KernelInstance,
   shape: KernelShape,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT gp_Trsf
-  trsf: any,
+  trsf: OcctTransform,
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
@@ -230,8 +224,7 @@ export function transformWithEvolution(
  */
 export function booleanWithEvolution(
   oc: KernelInstance,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT boolean operation builder
-  boolOp: any,
+  boolOp: OcctSimplifyBuilder & OcctEvolutionBuilder,
   inputShapes: KernelShape | KernelShape[],
   inputFaceHashes: number[],
   hashUpperBound: number,
@@ -249,8 +242,7 @@ export function booleanWithEvolution(
  */
 export function modifierWithEvolution(
   oc: KernelInstance,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT modifier builder
-  builder: any,
+  builder: OcctEvolutionBuilder,
   inputShape: KernelShape,
   inputFaceHashes: number[],
   hashUpperBound: number

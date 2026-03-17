@@ -12,9 +12,9 @@ import Sketches from '../sketching/Sketches.js';
 import { wrapSketchData } from '../sketching/sketchUtils.js';
 
 import opentype from 'opentype.js';
+import type { OpenTypeFont, OpenTypePathCommand } from '../kernel/wasm-types/externals.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
-const FONT_REGISTER: Record<string, any> = {};
+const FONT_REGISTER: Record<string, OpenTypeFont> = {};
 
 /**
  * Load and register an OpenType/TrueType font for use with text drawing functions.
@@ -32,8 +32,7 @@ export async function loadFont(
   fontPath: string | ArrayBuffer,
   fontFamily = 'default',
   force = false
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
-): Promise<Result<any>> {
+): Promise<Result<OpenTypeFont>> {
   if (!force && FONT_REGISTER[fontFamily]) {
     return ok(FONT_REGISTER[fontFamily]);
   }
@@ -77,10 +76,12 @@ export async function loadFont(
       )
     );
   }
-  FONT_REGISTER[fontFamily] = font;
-  if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = font;
+  // Assert at library boundary — opentype.js Font is structurally compatible
+  const typedFont = font as unknown as OpenTypeFont;
+  FONT_REGISTER[fontFamily] = typedFont;
+  if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = typedFont;
 
-  return ok(font);
+  return ok(typedFont);
 }
 
 /**
@@ -89,15 +90,12 @@ export async function loadFont(
  * @param fontFamily - Registry key (defaults to `'default'`).
  * @returns The opentype.js Font object, or `undefined` if not loaded.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype Font type
-export const getFont = (fontFamily = 'default'): any => {
+export const getFont = (fontFamily = 'default'): OpenTypeFont | undefined => {
   return FONT_REGISTER[fontFamily];
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- opentype PathCommand type
-const sketchFontCommands = function* (commands: any[]) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- sketcher instance
-  let sk: any = null;
+const sketchFontCommands = function* (commands: OpenTypePathCommand[]) {
+  let sk: BlueprintSketcher | null = null;
   let lastPoint: Point2D | null = null;
 
   for (const command of commands) {
@@ -255,13 +253,13 @@ export function textMetrics(
     );
   }
 
-  const width: number = font.getAdvanceWidth(text, fontSize) as number;
+  const width = font.getAdvanceWidth(text, fontSize);
 
-  const scale = fontSize / (font.unitsPerEm as number);
+  const scale = fontSize / font.unitsPerEm;
 
-  const ascender = (font.ascender as number) * scale;
+  const ascender = font.ascender * scale;
 
-  const descender = (font.descender as number) * scale;
+  const descender = font.descender * scale;
 
   return ok({ width, height: ascender - descender, ascender, descender });
 }
@@ -289,19 +287,18 @@ export function fontMetrics(options?: {
     );
   }
 
-  const scale = fontSize / (font.unitsPerEm as number);
+  const scale = fontSize / font.unitsPerEm;
 
-  const ascender = (font.ascender as number) * scale;
+  const ascender = font.ascender * scale;
 
-  const descender = (font.descender as number) * scale;
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- opentype Font, value may be undefined at runtime
-  const lineGap = ((font.tables?.os2?.sTypoLineGap as number) ?? 0) * scale;
+  const descender = font.descender * scale;
+  const lineGap = (font.tables?.os2?.sTypoLineGap ?? 0) * scale;
 
   return ok({
     ascender,
     descender,
 
-    unitsPerEm: font.unitsPerEm as number,
+    unitsPerEm: font.unitsPerEm,
     lineHeight: ascender - descender + lineGap,
   });
 }

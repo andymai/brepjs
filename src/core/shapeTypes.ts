@@ -155,8 +155,7 @@ export type UnknownDimShape = AnyShape<'2D'> | AnyShape<'3D'>;
 // ---------------------------------------------------------------------------
 
 function brandHandle<D extends Dimension>(handle: ShapeHandle, dim?: D): AnyShape<D> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime dimension marker
-  if (dim === '2D') (handle as any).__is2D = true;
+  if (dim === '2D') (handle as unknown as Record<string, unknown>)['__is2D'] = true;
   return handle as AnyShape<D>;
 }
 

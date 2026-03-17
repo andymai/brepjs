@@ -156,8 +156,11 @@ export class Drawing {
   translate(translationVector: Point2D): Drawing;
   translate(xDistOrPoint: number | Point2D, yDist = 0): Drawing {
     if (!this.innerShape) return new Drawing();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overloaded translate signature
-    return new Drawing(this.innerShape.translate(xDistOrPoint as any, yDist));
+    return new Drawing(
+      typeof xDistOrPoint === 'number'
+        ? this.innerShape.translate(xDistOrPoint, yDist)
+        : this.innerShape.translate(xDistOrPoint)
+    );
   }
 
   /** Uniformly scale the drawing by a factor around an optional center point. */

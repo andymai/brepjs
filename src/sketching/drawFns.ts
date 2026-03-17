@@ -121,8 +121,7 @@ export function translateDrawing(drawing: Drawing, dx: number, dy: number): Draw
 /** Translate a drawing by a 2D vector. */
 export function translateDrawing(drawing: Drawing, vector: Point2D): Drawing;
 export function translateDrawing(drawing: Drawing, dxOrVec: number | Point2D, dy = 0): Drawing {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overloaded translate signature
-  return drawing.translate(dxOrVec as any, dy);
+  return typeof dxOrVec === 'number' ? drawing.translate(dxOrVec, dy) : drawing.translate(dxOrVec);
 }
 
 /**

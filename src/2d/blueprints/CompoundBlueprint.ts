@@ -96,8 +96,11 @@ export default class CompoundBlueprint implements DrawingInterface {
   translate(translationVector: Point2D): CompoundBlueprint;
   translate(xDistOrPoint: number | Point2D, yDist = 0): CompoundBlueprint {
     return new CompoundBlueprint(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overloaded translate call
-      this.blueprints.map((bp) => bp.translate(xDistOrPoint as any, yDist))
+      this.blueprints.map((bp) =>
+        typeof xDistOrPoint === 'number'
+          ? bp.translate(xDistOrPoint, yDist)
+          : bp.translate(xDistOrPoint)
+      )
     );
   }
 

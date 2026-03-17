@@ -105,11 +105,7 @@ export function applyComposedTransformWithHistory(
 // ---------------------------------------------------------------------------
 
 /** Map string transition mode to OCCT enum value. */
-function getTransitionMode(
-  oc: KernelInstance,
-  mode?: 'transformed' | 'round' | 'right'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- OCCT enum value
-): any {
+function getTransitionMode(oc: KernelInstance, mode?: 'transformed' | 'round' | 'right'): unknown {
   if (!mode) return undefined;
   const modes = oc.BRepBuilderAPI_TransitionMode;
   switch (mode) {

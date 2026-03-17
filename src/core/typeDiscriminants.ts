@@ -52,9 +52,8 @@ const CURVE_TYPE_BY_INT: CurveType[] = [
  *
  * @returns `Ok<CurveType>` on success, or `Err` if the enum value is unrecognised.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Kernel enum value type
-export const findCurveType = (type: any): Result<CurveType> => {
-  const idx = typeof type === 'number' ? type : Number(type?.value ?? type);
+export const findCurveType = (type: number | { value: number }): Result<CurveType> => {
+  const idx = typeof type === 'number' ? type : type.value;
   const curveType = CURVE_TYPE_BY_INT[idx];
   if (!curveType) return err(typeCastError('UNKNOWN_CURVE_TYPE', 'Unknown curve type'));
   return ok(curveType);

@@ -77,8 +77,11 @@ export default class Blueprints implements DrawingInterface {
   translate(translationVector: Point2D): Blueprints;
   translate(xDistOrPoint: number | Point2D, yDist = 0): Blueprints {
     return new Blueprints(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overloaded translate call
-      this.blueprints.map((bp) => bp.translate(xDistOrPoint as any, yDist))
+      this.blueprints.map((bp) =>
+        typeof xDistOrPoint === 'number'
+          ? bp.translate(xDistOrPoint, yDist)
+          : bp.translate(xDistOrPoint)
+      )
     );
   }
 

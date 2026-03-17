@@ -33,8 +33,7 @@ export type Dimension = '2D' | '3D';
  */
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-arguments -- explicit '3D' for narrowing clarity
 export function is3D(s: AnyShape<Dimension>): s is AnyShape<'3D'> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime dimension marker
-  return (s as any).__is2D !== true;
+  return (s as unknown as Record<string, unknown>)['__is2D'] !== true;
 }
 
 /**
@@ -44,8 +43,7 @@ export function is3D(s: AnyShape<Dimension>): s is AnyShape<'3D'> {
  * This guard is provided for forward compatibility with future 2D API work.
  */
 export function is2D(s: AnyShape<Dimension>): s is AnyShape<'2D'> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime dimension marker
-  return (s as any).__is2D === true;
+  return (s as unknown as Record<string, unknown>)['__is2D'] === true;
 }
 
 /**
