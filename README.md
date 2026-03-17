@@ -40,12 +40,16 @@ Production-ready with the OpenCascade kernel. [brepkit](https://github.com/andym
 npm install brepjs brepjs-opencascade
 ```
 
-`brepjs/quick` handles WASM init automatically via top-level await (ESM only). Manual setup:
+`brepjs/quick` handles WASM init automatically via top-level await (ESM only). Other options:
 
 ```typescript
+// Auto-detect kernel
+import { init } from 'brepjs';
+await init();
+
+// Or manual setup
 import opencascade from 'brepjs-opencascade';
 import { initFromOC } from 'brepjs';
-
 const oc = await opencascade();
 initFromOC(oc);
 ```

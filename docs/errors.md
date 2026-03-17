@@ -9,6 +9,7 @@ interface BrepError {
   readonly kind: BrepErrorKind;
   readonly code: string;
   readonly message: string;
+  readonly suggestion?: string; // actionable recovery advice
   readonly cause?: unknown;
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
@@ -36,9 +37,10 @@ if (isOk(result)) {
   const value = result.value;
 }
 
-// Check failure
+// Check failure (suggestion field provides actionable recovery advice)
 if (isErr(result)) {
   console.error(result.error.code, result.error.message);
+  if (result.error.suggestion) console.log('Tip:', result.error.suggestion);
 }
 
 // Pattern match
@@ -57,28 +59,28 @@ const value = unwrap(result);
 
 Errors from kernel geometry operations.
 
-| Code                    | Description                        | Recovery                         |
-| ----------------------- | ---------------------------------- | -------------------------------- |
-| `BSPLINE_FAILED`        | B-spline curve construction failed | Check control points are valid   |
-| `FACE_BUILD_FAILED`     | Face construction from wire failed | Ensure wire is closed and planar |
-| `SWEEP_FAILED`          | Sweep operation failed             | Check spine and profile geometry |
-| `LOFT_FAILED`           | Loft operation failed              | Check profiles are compatible    |
-| `FUSE_FAILED`           | Boolean fuse operation failed      | Check shapes are valid solids    |
-| `CUT_FAILED`            | Boolean cut operation failed       | Check shapes overlap             |
-| `FILLET_FAILED`         | Fillet operation failed            | Reduce radius or check edges     |
-| `FILLET_RESULT_NOT_3D`  | Fillet result is not a 3D shape    | Check input shape type           |
-| `CHAMFER_FAILED`        | Chamfer operation failed           | Reduce distance or check edges   |
-| `CHAMFER_RESULT_NOT_3D` | Chamfer result is not a 3D shape   | Check input shape type           |
-| `SHELL_FAILED`          | Shell operation failed             | Check thickness vs geometry      |
-| `SHELL_RESULT_NOT_3D`   | Shell result is not a 3D shape     | Check input shape type           |
-| `HEAL_SOLID_FAILED`     | Solid healing failed               | Shape may be too damaged         |
-| `HEAL_FACE_FAILED`      | Face healing failed                | Shape may be too damaged         |
-| `HEAL_WIRE_FAILED`      | Wire healing failed                | Shape may be too damaged         |
-| `HEAL_RESULT_NOT_SOLID` | Healed result is not a solid       | Check input is a solid           |
-| `HEAL_RESULT_NOT_FACE`  | Healed result is not a face        | Check input is a face            |
-| `HEAL_RESULT_NOT_WIRE`  | Healed result is not a wire        | Check input is a wire            |
-| `HEAL_SOLID_INCOMPLETE` | Healed result still invalid        | Shape may be too damaged to fix  |
-| `HEAL_NO_EFFECT`        | Healing had no effect on shape     | Shape was invalid, healer failed |
+| Code                    | Description                        | Recovery                                            |
+| ----------------------- | ---------------------------------- | --------------------------------------------------- |
+| `BSPLINE_FAILED`        | B-spline curve construction failed | Check control points are valid                      |
+| `FACE_BUILD_FAILED`     | Face construction from wire failed | Ensure wire is closed and planar                    |
+| `SWEEP_FAILED`          | Sweep operation failed             | See `error.suggestion`; simplify profile or path    |
+| `LOFT_FAILED`           | Loft operation failed              | See `error.suggestion`; ensure compatible profiles  |
+| `FUSE_FAILED`           | Boolean fuse operation failed      | See `error.suggestion`; try `autoHeal()` on inputs  |
+| `CUT_FAILED`            | Boolean cut operation failed       | See `error.suggestion`; ensure tool intersects base |
+| `FILLET_FAILED`         | Fillet operation failed            | Reduce radius or check edges                        |
+| `FILLET_RESULT_NOT_3D`  | Fillet result is not a 3D shape    | Check input shape type                              |
+| `CHAMFER_FAILED`        | Chamfer operation failed           | Reduce distance or check edges                      |
+| `CHAMFER_RESULT_NOT_3D` | Chamfer result is not a 3D shape   | Check input shape type                              |
+| `SHELL_FAILED`          | Shell operation failed             | Check thickness vs geometry                         |
+| `SHELL_RESULT_NOT_3D`   | Shell result is not a 3D shape     | Check input shape type                              |
+| `HEAL_SOLID_FAILED`     | Solid healing failed               | Shape may be too damaged                            |
+| `HEAL_FACE_FAILED`      | Face healing failed                | Shape may be too damaged                            |
+| `HEAL_WIRE_FAILED`      | Wire healing failed                | Shape may be too damaged                            |
+| `HEAL_RESULT_NOT_SOLID` | Healed result is not a solid       | Check input is a solid                              |
+| `HEAL_RESULT_NOT_FACE`  | Healed result is not a face        | Check input is a face                               |
+| `HEAL_RESULT_NOT_WIRE`  | Healed result is not a wire        | Check input is a wire                               |
+| `HEAL_SOLID_INCOMPLETE` | Healed result still invalid        | Shape may be too damaged to fix                     |
+| `HEAL_NO_EFFECT`        | Healing had no effect on shape     | Shape was invalid, healer failed                    |
 
 ### VALIDATION
 

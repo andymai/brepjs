@@ -21,6 +21,8 @@ The `using` declaration automatically disposes objects when they go out of scope
 }
 ```
 
+All shape handles, `Blueprint`, `Curve2D`, and `BoundingBox2d` implement `Symbol.dispose`.
+
 ### Requirements
 
 - TypeScript 5.9+ with `"lib": ["ES2022", "ESNext.Disposable"]`

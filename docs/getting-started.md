@@ -17,7 +17,7 @@ npm install brepjs brepjs-opencascade
 
 ## Step 2: Initialize
 
-Two ways to start - pick whichever fits your setup:
+Three ways to start - pick whichever fits your setup:
 
 **Auto-init: `brepjs/quick` (zero config)**
 
@@ -29,7 +29,18 @@ const b = box(30, 20, 10); // just works - WASM init happens via top-level await
 
 Best for: scripts, quick prototypes, any ESM environment that supports top-level await.
 
-**Manual init: Standard import**
+**Auto-detect: `init()` (one-liner)**
+
+```typescript
+import { init, box, cylinder, shape } from 'brepjs';
+
+await init(); // auto-detects brepjs-opencascade or brepkit-wasm
+const b = box(30, 20, 10);
+```
+
+Best for: apps where you control the async startup flow. `init()` is idempotent and returns the kernel ID (`'occt'` or `'brepkit'`).
+
+**Manual init: `initFromOC()`**
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
@@ -43,7 +54,7 @@ const b = box(30, 20, 10);
 
 Best for: apps that need a loading indicator, explicit error handling, lazy initialization, or environments without top-level await (older bundlers, some test frameworks).
 
-Both paths expose the same API - the only difference is who calls `initFromOC()`. All examples below work with either import.
+All three paths expose the same API - the only difference is who calls the kernel init. All examples below work with any import style.
 
 ## Step 3: Create shapes with primitives
 
@@ -339,7 +350,7 @@ See [B-Rep Concepts](./concepts.md#validity-types) for how validity types work -
 
 ## Advanced: Browser Loading Indicator
 
-When using manual init (from Step 2), you can show a loading indicator while the WASM kernel downloads:
+When using `initFromOC()` (from Step 2), you can show a loading indicator while the WASM kernel downloads. (`init()` and `brepjs/quick` handle this automatically.)
 
 ```typescript
 import opencascade from 'brepjs-opencascade';
@@ -372,15 +383,16 @@ initCAD();
 
 ### "Cannot read properties of undefined" on first API call
 
-If using manual init (not `brepjs/quick`), make sure you've called `initFromOC()` before using any shape functions. See [Step 2: Initialize](#step-2-initialize) above.
+If using manual init (not `brepjs/quick`), make sure you've called `init()` or `initFromOC()` before using any shape functions. See [Step 2: Initialize](#step-2-initialize) above.
 
 ### Boolean operation returns an error
 
 Boolean operations (`fuse`, `cut`, `intersect`) can fail when shapes don't overlap, are invalid, or have degenerate geometry. Try:
 
-1. **Check shapes overlap** - `cut(a, b)` requires `b` to intersect `a`
-2. **Heal inputs first** - `unwrap(healSolid(shape))` fixes minor geometry issues
-3. **Check the error** - `result.error.code` tells you exactly what failed (see [Error Reference](./errors.md))
+1. **Read the suggestion** - `result.error.suggestion` provides actionable recovery advice specific to the failure
+2. **Check shapes overlap** - `cut(a, b)` requires `b` to intersect `a`
+3. **Heal inputs first** - `unwrap(autoHeal(shape))` fixes minor geometry issues
+4. **Check the error code** - `result.error.code` tells you exactly what failed (see [Error Reference](./errors.md))
 
 ### Memory keeps growing
 

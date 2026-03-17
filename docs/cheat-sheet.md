@@ -8,7 +8,11 @@ Single-page quick reference for the most common brepjs operations.
 // Quick start (auto-init, ESM only)
 import { box } from 'brepjs/quick';
 
-// Standard (explicit init, works with CJS)
+// Auto-detect kernel
+import { init, box } from 'brepjs';
+await init(); // returns 'occt' or 'brepkit'
+
+// Manual (explicit kernel, works with CJS)
 import opencascade from 'brepjs-opencascade';
 import { initFromOC, box } from 'brepjs';
 const oc = await opencascade();
