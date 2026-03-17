@@ -53,7 +53,8 @@ const CURVE_TYPE_BY_INT: CurveType[] = [
  * @returns `Ok<CurveType>` on success, or `Err` if the enum value is unrecognised.
  */
 export const findCurveType = (type: number | { value: number }): Result<CurveType> => {
-  const idx = typeof type === 'number' ? type : type.value;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion -- WASM enum .value may be boxed; Number() ensures plain number
+  const idx = typeof type === 'number' ? type : Number(type.value);
   const curveType = CURVE_TYPE_BY_INT[idx];
   if (!curveType) return err(typeCastError('UNKNOWN_CURVE_TYPE', 'Unknown curve type'));
   return ok(curveType);

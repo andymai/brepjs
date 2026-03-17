@@ -5,7 +5,7 @@
 
 import type { Result } from '../core/result.js';
 import { ok, err } from '../core/result.js';
-import { computationError } from '../core/errors.js';
+import { computationError, BrepErrorCode } from '../core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -306,7 +306,11 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): Result<StraightSk
     return ok(computeStraightSkeletonImpl(polygon));
   } catch (e: unknown) {
     return err(
-      computationError('STRAIGHT_SKELETON_FAILED', e instanceof Error ? e.message : String(e), e)
+      computationError(
+        BrepErrorCode.STRAIGHT_SKELETON_FAILED,
+        e instanceof Error ? e.message : String(e),
+        e
+      )
     );
   }
 }
