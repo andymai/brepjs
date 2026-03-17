@@ -9,6 +9,7 @@ import { type Result, ok, err } from '../core/result.js';
 import { queryError } from '../core/errors.js';
 import { vertexPosition } from '../topology/shapeFns.js';
 import { type ShapeFinder, type Predicate, createTypedFinder } from './finderCore.js';
+import { firstOrThrow, getAtOrThrow } from '../utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Vertex finder interface
@@ -40,19 +41,16 @@ function withNearestPostFilter(baseFinder: VertexFinderFn, nearestPoint: Vec3): 
     if (candidates.length === 0) return [];
 
     let bestIdx = 0;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by length > 0
-    let bestDist = vecDistance(vertexPosition(candidates[0]!), nearestPoint);
+    let bestDist = vecDistance(vertexPosition(firstOrThrow(candidates)), nearestPoint);
     for (let i = 1; i < candidates.length; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i < candidates.length
-      const d = vecDistance(vertexPosition(candidates[i]!), nearestPoint);
+      const d = vecDistance(vertexPosition(getAtOrThrow(candidates, i)), nearestPoint);
       if (d < bestDist) {
         bestDist = d;
         bestIdx = i;
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bestIdx is valid
-    return [candidates[bestIdx]!];
+    return [getAtOrThrow(candidates, bestIdx)];
   };
 
   const findUniqueNearest = (shape: AnyShape<Dimension>): Result<Vertex> => {
@@ -62,8 +60,7 @@ function withNearestPostFilter(baseFinder: VertexFinderFn, nearestPoint: Vec3): 
         queryError('FINDER_NOT_UNIQUE', 'Finder expected a unique match but found 0 element(s)')
       );
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
-    return ok(nearest[0]!);
+    return ok(firstOrThrow(nearest));
   };
 
   return {

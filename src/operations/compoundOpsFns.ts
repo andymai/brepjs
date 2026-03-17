@@ -27,6 +27,7 @@ import { extrude } from './extrudeFns.js';
 import { faceFinder } from '../query/finderFns.js';
 import { normalAt, faceCenter } from '../topology/faceFns.js';
 import { makeFace as _makeFace, makeCylinder as _makeCylinder } from '../topology/shapeHelpers.js';
+import { firstOrThrow, getAtOrThrow } from '../utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,10 +46,10 @@ function resolveTargetFace(
         validationError(BrepErrorCode.COMPOUND_NO_FACES, 'compoundOps: shape has no faces')
       );
     }
-    let best = faces[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion -- checked length > 0
+    let best = firstOrThrow(faces);
     let bestZ = faceCenter(best)[2];
     for (let i = 1; i < faces.length; i++) {
-      const f = faces[i]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion -- bounded by length
+      const f = getAtOrThrow(faces, i);
       const z = faceCenter(f)[2];
       if (z > bestZ) {
         best = f;

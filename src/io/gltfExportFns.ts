@@ -6,6 +6,7 @@
  */
 
 import type { ShapeMesh } from '../topology/meshFns.js';
+import { getAtOrThrow } from '../utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -99,7 +100,7 @@ function computeMinMax(data: Float32Array): { min: number[]; max: number[] } {
   const max = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < data.length; i += 3) {
     for (let j = 0; j < 3; j++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j < 3, typed array access
       const v = data[i + j]!;
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j < 3, array has 3 elements
       if (v < min[j]!) min[j] = v;
@@ -382,8 +383,7 @@ function computeMaterialLayout(
   // Group face groups by material index (or -1 for no material)
   const groupsByMaterial = new Map<number, number[]>();
   for (let gi = 0; gi < faceGroups.length; gi++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- gi < length
-    const fg = faceGroups[gi]!;
+    const fg = getAtOrThrow(faceGroups, gi);
     const mat = materialMap.get(fg.faceId);
     const matIdx = mat !== undefined ? (materialRefMap.get(mat) ?? -1) : -1;
     const group = groupsByMaterial.get(matIdx);
@@ -396,14 +396,12 @@ function computeMaterialLayout(
   for (const [matIdx, groupIndices] of groupsByMaterial) {
     let totalCount = 0;
     for (const gi of groupIndices) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- gi from groupIndices
-      totalCount += faceGroups[gi]!.count;
+      totalCount += getAtOrThrow(faceGroups, gi).count;
     }
     const indices = new Uint32Array(totalCount);
     let offset = 0;
     for (const gi of groupIndices) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- gi from groupIndices
-      const fg = faceGroups[gi]!;
+      const fg = getAtOrThrow(faceGroups, gi);
       for (let i = fg.start; i < fg.start + fg.count; i++) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i within triangles bounds
         indices[offset++] = triangles[i]!;
@@ -476,10 +474,8 @@ function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout
 
   // Per-primitive index buffer views + accessors
   for (let pi = 0; pi < primitiveData.length; pi++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- pi < length
-    const pd = primitiveData[pi]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- pi < length
-    const info = indexBufferInfos[pi]!;
+    const pd = getAtOrThrow(primitiveData, pi);
+    const info = getAtOrThrow(indexBufferInfos, pi);
     const bvIdx = bufferViews.length;
     bufferViews.push({
       buffer: 0,
@@ -530,10 +526,8 @@ function buildBinaryBufferFromLayout(
 
   // Write index buffers
   for (let i = 0; i < primitiveData.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i < length
-    const pd = primitiveData[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i < length
-    const info = indexBufferInfos[i]!;
+    const pd = getAtOrThrow(primitiveData, i);
+    const info = getAtOrThrow(indexBufferInfos, i);
     output.set(
       new Uint8Array(pd.indices.buffer, pd.indices.byteOffset, pd.indices.byteLength),
       info.byteOffset

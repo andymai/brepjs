@@ -151,8 +151,8 @@ export function createTypedFinder<T extends AnyShape<Dimension>, F extends Shape
           )
         );
       }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by count === 1
-      return ok(match!);
+      // count === 1 guarantees match was assigned
+      return ok(match as T);
     },
 
     shouldKeep,

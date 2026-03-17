@@ -1,4 +1,5 @@
 import type { KernelShape } from '../../kernel/types.js';
+import { firstOrThrow, lastOrThrow, getAtOrThrow } from '../../utils/arrayAccess.js';
 import { makePlane } from '../../core/planeOps.js';
 import type { ScaleMode } from '../curves.js';
 import {
@@ -146,8 +147,7 @@ export default class Blueprint implements DrawingInterface {
 
     const approximateArea = vertices
       .map((v1, i) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- modulo wraps within bounds
-        const v2 = vertices[(i + 1) % vertices.length]!;
+        const v2 = getAtOrThrow(vertices, (i + 1) % vertices.length);
         return (v2[0] - v1[0]) * (v2[1] + v1[1]);
       })
       .reduce((a, b) => a + b, 0);
@@ -331,8 +331,7 @@ export default class Blueprint implements DrawingInterface {
       return adaptedCurveToPathElem(c, c.lastPoint);
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
-    const [startX, startY] = bp.curves[0]!.firstPoint;
+    const [startX, startY] = firstOrThrow(bp.curves).firstPoint;
     return `M ${round5(startX)} ${round5(startY)} ${path.join(' ')}${bp.isClosed() ? ' Z' : ''}`;
   }
 
@@ -366,14 +365,12 @@ export default class Blueprint implements DrawingInterface {
 
   /** Get the start point of the first curve. */
   get firstPoint(): Point2D {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
-    return this.curves[0]!.firstPoint;
+    return firstOrThrow(this.curves).firstPoint;
   }
 
   /** Get the end point of the last curve. */
   get lastPoint(): Point2D {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
-    return this.curves[this.curves.length - 1]!.lastPoint;
+    return lastOrThrow(this.curves).lastPoint;
   }
 
   /**

@@ -21,6 +21,7 @@ import { resolvePlane } from '../core/planeOps.js';
 import { vecAdd, vecScale } from '../core/vecOps.js';
 import { HASH_CODE_MAX } from '../core/constants.js';
 import { getWires, getEdges, getVertices } from './shapeFns.js';
+import { getAtOrThrow, firstOrThrow } from '../utils/arrayAccess.js';
 import {
   collectInputFaceHashes,
   propagateAllMetadata,
@@ -237,11 +238,9 @@ function fuseAllPairwise(
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const count = end - start;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start is valid index
-  if (count === 1) return ok(shapes[start]!);
+  if (count === 1) return ok(getAtOrThrow(shapes, start));
   if (count === 2) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- start and start+1 are valid indices
-    return fuse(shapes[start]!, shapes[start + 1]!, {
+    return fuse(getAtOrThrow(shapes, start), getAtOrThrow(shapes, start + 1), {
       optimisation,
       simplify: isTopLevel ? simplify : false,
       fuzzyValue,
@@ -309,12 +308,10 @@ export function fuseAll(
   if (signal?.aborted) throw signal.reason;
   if (shapes.length === 0)
     return err(validationError('FUSE_ALL_EMPTY', 'fuseAll requires at least one shape'));
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
-  if (shapes.length === 1) return ok(shapes[0]!);
+  if (shapes.length === 1) return ok(firstOrThrow(shapes));
 
   for (let i = 0; i < shapes.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
-    const check = validateShape3D(shapes[i]!, `fuseAll: shape at index ${i}`);
+    const check = validateShape3D(getAtOrThrow(shapes, i), `fuseAll: shape at index ${i}`);
     if (isErr(check)) return check;
   }
 
@@ -372,8 +369,7 @@ export function cutAll(
   const checkBase = validateShape3D(base, 'cutAll: base');
   if (isErr(checkBase)) return checkBase;
   for (let i = 0; i < tools.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
-    const check = validateShape3D(tools[i]!, `cutAll: tool at index ${i}`);
+    const check = validateShape3D(getAtOrThrow(tools, i), `cutAll: tool at index ${i}`);
     if (isErr(check)) return check;
   }
 
@@ -595,8 +591,7 @@ export function sectionToFace(
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- outerIdx set from valid wires index
-  const outer = wires[outerIdx]!;
+  const outer = getAtOrThrow(wires, outerIdx);
   const holes = wires.filter((_, i) => i !== outerIdx);
   // Section result wires are always closed boundary loops
   return makeFace(
@@ -623,8 +618,7 @@ export function split(
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'split: shape is a null shape'));
   }
   for (let i = 0; i < tools.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index is valid
-    if (getKernel().isNull(tools[i]!.wrapped)) {
+    if (getKernel().isNull(getAtOrThrow(tools, i).wrapped)) {
       return err(
         validationError(
           BrepErrorCode.NULL_SHAPE_INPUT,

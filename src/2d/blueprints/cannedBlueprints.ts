@@ -1,5 +1,6 @@
 import type Blueprint from './Blueprint.js';
 import { BlueprintSketcher } from '../../sketching/Sketcher2d.js';
+import { lastOrThrow } from '../../utils/arrayAccess.js';
 
 /**
  * Create a regular polygon blueprint inscribed in a circle of the given radius.
@@ -22,8 +23,7 @@ export const polysidesBlueprint = (radius: number, sidesCount: number, sagitta =
   });
 
   // We start with the last point to make sure the shape is complete
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- points is non-empty
-  const lastPoint = points[points.length - 1]!;
+  const lastPoint = lastOrThrow(points);
   const blueprint = new BlueprintSketcher().movePointerTo([lastPoint[0], lastPoint[1]]);
 
   if (sagitta) {

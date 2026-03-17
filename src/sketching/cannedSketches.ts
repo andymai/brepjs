@@ -1,4 +1,5 @@
 import { unwrap } from '../core/result.js';
+import { getAtOrThrow, lastOrThrow } from '../utils/arrayAccess.js';
 import {
   assembleWire,
   type BSplineApproximationOptions,
@@ -187,21 +188,15 @@ export const sketchPolysides = (
     planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? new Sketcher(planeConfig.plane)
       : new Sketcher(planeConfig.plane, planeConfig.origin);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- points is non-empty
-  const lastPoint = points[points.length - 1]!;
-  const sketch = sketcher.movePointerTo([
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- tuple has two elements
-    lastPoint[0]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- tuple has two elements
-    lastPoint[1]!,
-  ]);
+  const lastPoint = lastOrThrow(points);
+  const sketch = sketcher.movePointerTo([getAtOrThrow(lastPoint, 0), getAtOrThrow(lastPoint, 1)]);
 
   if (sagitta) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- destructured tuple elements
-    points.forEach(([x, y]) => sketch.sagittaArcTo([x!, y!], sagitta));
+    points.forEach((pt) =>
+      sketch.sagittaArcTo([getAtOrThrow(pt, 0), getAtOrThrow(pt, 1)], sagitta)
+    );
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- destructured tuple elements
-    points.forEach(([x, y]) => sketch.lineTo([x!, y!]));
+    points.forEach((pt) => sketch.lineTo([getAtOrThrow(pt, 0), getAtOrThrow(pt, 1)]));
   }
 
   return sketch.done();

@@ -2,6 +2,7 @@ import { bug } from '../../core/errors.js';
 import type { Corner, CornerFilter } from '../../query/finderFns.js';
 import type { Curve2D } from '../lib/index.js';
 import { chamferCurves, filletCurves, samePoint } from '../lib/index.js';
+import { firstOrThrow } from '../../utils/arrayAccess.js';
 import Blueprint from './Blueprint.js';
 import Blueprints from './Blueprints.js';
 import type { Shape2D } from './boolean2D.js';
@@ -20,8 +21,7 @@ function modifyCorners(
     modifyCorner = finder.shouldKeep.bind(finder);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Blueprint requires non-empty curves
-  const curves: Curve2D[] = [blueprint.curves[0]!];
+  const curves: Curve2D[] = [firstOrThrow(blueprint.curves)];
 
   const addModifiedCorner = (firstCurve: Curve2D, secondCurve: Curve2D) => {
     if (modifyCorner({ firstCurve, secondCurve, point: firstCurve.lastPoint })) {
@@ -41,11 +41,7 @@ function modifyCorners(
   const lastCurve = curves.at(-1);
   if (!lastCurve)
     bug('customCorners.modifyCorners', 'Unexpected empty curve list during corner modification');
-  if (
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- curves is non-empty
-    samePoint(curves[0]!.firstPoint, lastCurve.lastPoint) &&
-    curves.length > 1
-  ) {
+  if (samePoint(firstOrThrow(curves).firstPoint, lastCurve.lastPoint) && curves.length > 1) {
     const firstCurve = curves.pop();
     const secondCurve = curves.shift();
     if (!firstCurve || !secondCurve)

@@ -1,4 +1,5 @@
 import { makeCompound, addHolesInFace, makeSolid, makeFace } from '../topology/shapeHelpers.js';
+import { firstOrThrow, getAtOrThrow } from '../utils/arrayAccess.js';
 import type Sketch from './Sketch.js';
 
 import type { Vec3, PointInput } from '../core/types.js';
@@ -36,8 +37,7 @@ const faceFromWires = (wires: Wire[]): Face => {
   let holeWires: ClosedWire[];
 
   // Sweep end-cap wires are always closed boundaries
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- wires is non-empty
-  const faceResult = makeFace(wires[0]! as ClosedWire);
+  const faceResult = makeFace(firstOrThrow(wires) as ClosedWire);
   if (isOk(faceResult)) {
     baseFace = faceResult.value;
     holeWires = wires.slice(1) as ClosedWire[];
@@ -100,8 +100,7 @@ export default class CompoundSketch implements SketchInterface {
 
   /** Get the outer boundary sketch (the first in the array). */
   get outerSketch() {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- constructor validates non-empty
-    return this.sketches[0]!;
+    return firstOrThrow(this.sketches);
   }
 
   /** Get the hole sketches (all but the first). */
@@ -205,8 +204,7 @@ export default class CompoundSketch implements SketchInterface {
       );
 
     const shells: Array<Shell | Face> = this.sketches.map((base, cIndex) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- cIndex within matched-length arrays
-      const outer = otherCompound.sketches[cIndex]!;
+      const outer = getAtOrThrow(otherCompound.sketches, cIndex);
       const loftOpts: LoftOptions = {};
       if (loftConfig.ruled !== undefined) loftOpts.ruled = loftConfig.ruled;
       return base.clone().loftWith(outer.clone(), loftOpts, true) as Shell;

@@ -9,6 +9,7 @@ import type { Point2D } from '../2d/lib/definitions.js';
 import type { Curve2D } from '../2d/lib/Curve2D.js';
 import { angle2d, distance2d, samePoint } from '../2d/lib/vectorOperations.js';
 import { DEG2RAD } from '../core/constants.js';
+import { getAtOrThrow } from '../utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -80,8 +81,7 @@ export interface CornerFinderFn extends CornerFilter {
 function blueprintCorners(blueprint: BlueprintLike): Corner[] {
   return blueprint.curves.map((curve, index) => ({
     firstCurve: curve,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- modulo wraps within bounds
-    secondCurve: blueprint.curves[(index + 1) % blueprint.curves.length]!,
+    secondCurve: getAtOrThrow(blueprint.curves, (index + 1) % blueprint.curves.length),
     point: curve.lastPoint,
   }));
 }
