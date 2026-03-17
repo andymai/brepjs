@@ -32,7 +32,7 @@ function makeBox(params: {
 /** Helper: get volume, returning 0 on error. */
 function volume(s: Shape3D): number {
   const result = measureVolume(s);
-  if (isOk(result)) return unwrap(result);
+  if (isOk(result)) return result.value;
   return 0;
 }
 

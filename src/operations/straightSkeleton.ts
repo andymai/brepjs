@@ -306,11 +306,7 @@ export function computeStraightSkeleton(polygon: SkPoint2D[]): Result<StraightSk
     return ok(computeStraightSkeletonImpl(polygon));
   } catch (e: unknown) {
     return err(
-      computationError(
-        'STRAIGHT_SKELETON_FAILED',
-        `Straight skeleton computation failed: ${e instanceof Error ? e.message : String(e)}`,
-        e
-      )
+      computationError('STRAIGHT_SKELETON_FAILED', e instanceof Error ? e.message : String(e), e)
     );
   }
 }

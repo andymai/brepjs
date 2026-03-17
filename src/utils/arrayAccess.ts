@@ -6,11 +6,10 @@
 
 /** Access element by index, throwing if out of bounds. Use when bounds are logically guaranteed. */
 export function getAtOrThrow<T>(arr: readonly T[], index: number, msg?: string): T {
-  const val = arr[index];
-  if (val === undefined && (index < 0 || index >= arr.length)) {
+  if (index < 0 || index >= arr.length) {
     throw new Error(msg ?? `Index ${index} out of bounds (length ${arr.length})`);
   }
-  return val as T;
+  return arr[index] as T;
 }
 
 /** Get the first element of a non-empty array, throwing if empty. */

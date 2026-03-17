@@ -296,7 +296,7 @@ export type TransformOp =
       readonly center?: Vec3;
     };
 
-/** An kernel kernel transform with a cleanup function. Call `cleanup()` when done. */
+/** A kernel transform with a cleanup function. Call `cleanup()` when done. */
 export interface ComposedTransform {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel WASM type
   readonly trsf: any;
@@ -304,7 +304,7 @@ export interface ComposedTransform {
 }
 
 /**
- * Compose multiple translate/rotate operations into a single kernel kernel transform.
+ * Compose multiple translate/rotate operations into a single kernel transform.
  * Operations are applied in order (first element applied first).
  * Call `.cleanup()` on the result when done to free the kernel object.
  */

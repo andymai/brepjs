@@ -6,7 +6,7 @@
  * package.
  */
 
-import type { KernelShape } from '../types.js';
+import type { KernelShape, KernelType } from '../types.js';
 
 // ---------------------------------------------------------------------------
 // OCCT operation builder interfaces
@@ -58,12 +58,12 @@ export interface OcctEvolutionData {
 /** OCCT gp_Trsf — an affine transform. */
 export interface OcctTransform {
   IsNegative(): boolean;
-  Transforms_1(coords: KernelShape): void;
+  Transforms_1(coords: KernelType): void;
   delete(): void;
 }
 
 /** OCCT gp_Pnt — a 3D point with XYZ access. */
 export interface OcctPoint {
-  XYZ(): KernelShape;
+  XYZ(): KernelType;
   delete(): void;
 }
