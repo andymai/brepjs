@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.13.0](https://github.com/andymai/brepjs/compare/brepjs-v12.12.0...brepjs-v12.13.0) (2026-03-17)
+
+
+### Features
+
+* API ergonomics quick wins (init, Disposable, error suggestions) ([#545](https://github.com/andymai/brepjs/issues/545)) ([b989112](https://github.com/andymai/brepjs/commit/b9891127a1a97fedb8673fa6b12c8a9e0d8b9992))
+
 ## [12.12.0](https://github.com/andymai/brepjs/compare/brepjs-v12.11.2...brepjs-v12.12.0) (2026-03-15)
 
 
