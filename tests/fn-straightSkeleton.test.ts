@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeStraightSkeleton } from '../src/operations/straightSkeleton.js';
+import { unwrap } from '../src/index.js';
 
 describe('computeStraightSkeleton', () => {
   it('computes skeleton for a square', () => {
@@ -9,7 +10,7 @@ describe('computeStraightSkeleton', () => {
       { x: 10, y: 10 },
       { x: 0, y: 10 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
     const center = skeleton.nodes.find((n) => Math.abs(n.x - 5) < 0.1 && Math.abs(n.y - 5) < 0.1);
     expect(center).toBeDefined();
@@ -25,7 +26,7 @@ describe('computeStraightSkeleton', () => {
       { x: 5, y: 10 },
       { x: 0, y: 10 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.faces.length).toBe(6);
   });
 
@@ -36,20 +37,22 @@ describe('computeStraightSkeleton', () => {
       { x: 20, y: 10 },
       { x: 0, y: 10 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.faces.length).toBe(4);
     // Rectangle produces 2 ridge nodes (not 1 center like a square)
     expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
   });
 
   it('handles degenerate input (fewer than 3 vertices)', () => {
-    expect(computeStraightSkeleton([]).faces.length).toBe(0);
-    expect(computeStraightSkeleton([{ x: 0, y: 0 }]).faces.length).toBe(0);
+    expect(unwrap(computeStraightSkeleton([])).faces.length).toBe(0);
+    expect(unwrap(computeStraightSkeleton([{ x: 0, y: 0 }])).faces.length).toBe(0);
     expect(
-      computeStraightSkeleton([
-        { x: 0, y: 0 },
-        { x: 1, y: 0 },
-      ]).faces.length
+      unwrap(
+        computeStraightSkeleton([
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+        ])
+      ).faces.length
     ).toBe(0);
   });
 
@@ -61,7 +64,7 @@ describe('computeStraightSkeleton', () => {
       { x: 10, y: 0 },
       { x: 0, y: 0 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.faces.length).toBe(4);
     expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
   });
@@ -72,7 +75,7 @@ describe('computeStraightSkeleton', () => {
       { x: 10, y: 0 },
       { x: 5, y: 8.66 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.faces.length).toBe(3);
     expect(skeleton.nodes.length).toBe(1);
   });
@@ -93,7 +96,7 @@ describe('computeStraightSkeleton', () => {
       { x: 0, y: 3 },
       { x: 3, y: 3 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.faces.length).toBe(12);
     expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
   });
@@ -106,7 +109,7 @@ describe('computeStraightSkeleton', () => {
       { x: 2, y: 9 },
       { x: 0, y: 3.5 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.faces.length).toBe(5);
     expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
   });
@@ -122,7 +125,7 @@ describe('computeStraightSkeleton', () => {
       { x: 6, y: 6 },
       { x: 0, y: 6 },
     ];
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeleton = unwrap(computeStraightSkeleton(polygon));
     expect(skeleton.faces.length).toBe(7);
     expect(skeleton.nodes.length).toBeGreaterThanOrEqual(1);
   });

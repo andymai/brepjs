@@ -8,6 +8,9 @@ import type { Vec3, MatrixInput } from '../core/types.js';
 import type { AnyShape, Dimension } from '../core/shapeTypes.js';
 import { castShape } from '../core/shapeTypes.js';
 import { HASH_CODE_MAX, DEG2RAD } from '../core/constants.js';
+import type { Result } from '../core/result.js';
+import { ok, err } from '../core/result.js';
+import { validationError, BrepErrorCode } from '../core/errors.js';
 import {
   collectInputFaceHashes,
   propagateAllMetadata,
@@ -98,7 +101,7 @@ export function resize<T extends AnyShape<Dimension>>(
   shape: T,
   dimensions: [number | undefined, number | undefined, number | undefined],
   options?: { auto?: boolean }
-): T {
+): Result<T> {
   const bbox = getKernel().boundingBox(shape.wrapped);
   const size: [number, number, number] = [
     bbox.max[0] - bbox.min[0],
@@ -134,13 +137,18 @@ export function resize<T extends AnyShape<Dimension>>(
     Math.abs(factors[0] - factors[1]) < 1e-6 && Math.abs(factors[1] - factors[2]) < 1e-6;
 
   if (!isUniform) {
-    throw new Error(
-      'resize: non-uniform scaling is not supported (WASM build lacks BRepBuilderAPI_GTransform). ' +
+    return err(
+      validationError(
+        BrepErrorCode.VALIDATION_FAILED,
+        'resize: non-uniform scaling is not supported (WASM build lacks BRepBuilderAPI_GTransform).',
+        undefined,
+        undefined,
         'Use auto: true to scale proportionally, or set all three dimensions to achieve uniform scaling.'
+      )
     );
   }
 
-  return scale(shape, factors[0]);
+  return ok(scale(shape, factors[0]));
 }
 
 // ---------------------------------------------------------------------------
@@ -151,12 +159,12 @@ export function resize<T extends AnyShape<Dimension>>(
  * Parse a MatrixInput into a 3x3 linear part and translation vector.
  * Validates the bottom row of a Matrix4x4.
  */
-function parseMatrixInput(input: MatrixInput): {
+function parseMatrixInput(input: MatrixInput): Result<{
   linear: readonly [number, number, number, number, number, number, number, number, number];
   translation: readonly [number, number, number];
-} {
+}> {
   if ('linear' in input) {
-    return { linear: input.linear, translation: input.translation };
+    return ok({ linear: input.linear, translation: input.translation });
   }
 
   const [r0, r1, r2, r3] = input;
@@ -167,15 +175,18 @@ function parseMatrixInput(input: MatrixInput): {
     Math.abs(r3[2]) > TOL ||
     Math.abs(r3[3] - 1) > TOL
   ) {
-    throw new Error(
-      `applyMatrix: invalid bottom row [${String(r3[0])}, ${String(r3[1])}, ${String(r3[2])}, ${String(r3[3])}]. Must be [0, 0, 0, 1] for an affine transform.`
+    return err(
+      validationError(
+        BrepErrorCode.VALIDATION_FAILED,
+        `applyMatrix: invalid bottom row [${String(r3[0])}, ${String(r3[1])}, ${String(r3[2])}, ${String(r3[3])}]. Must be [0, 0, 0, 1] for an affine transform.`
+      )
     );
   }
 
-  return {
+  return ok({
     linear: [r0[0], r0[1], r0[2], r1[0], r1[1], r1[2], r2[0], r2[1], r2[2]],
     translation: [r0[3], r1[3], r2[3]],
-  };
+  });
 }
 
 /** Determinant of a 3x3 matrix given as 9 row-major values. */
@@ -226,13 +237,21 @@ function isOrthogonalMatrix(
  * Uses the fast `kernel transform` path for orthogonal matrices (rotation, uniform scale, mirror)
  * and the general `gp_GTrsf` path for non-orthogonal transforms (shear, non-uniform scale).
  */
-export function applyMatrix<T extends AnyShape<Dimension>>(shape: T, matrix: MatrixInput): T {
-  const { linear, translation } = parseMatrixInput(matrix);
+export function applyMatrix<T extends AnyShape<Dimension>>(
+  shape: T,
+  matrix: MatrixInput
+): Result<T> {
+  const parsed = parseMatrixInput(matrix);
+  if (!parsed.ok) return parsed;
+  const { linear, translation } = parsed.value;
 
   const d = det3x3(linear);
   if (Math.abs(d) < 1e-12) {
-    throw new Error(
-      'applyMatrix: singular matrix (determinant ≈ 0). Cannot apply a non-invertible transform.'
+    return err(
+      validationError(
+        BrepErrorCode.VALIDATION_FAILED,
+        'applyMatrix: singular matrix (determinant ≈ 0). Cannot apply a non-invertible transform.'
+      )
     );
   }
 
@@ -250,7 +269,7 @@ export function applyMatrix<T extends AnyShape<Dimension>>(shape: T, matrix: Mat
     );
     const result = castShape(resultShape) as T;
     propagateAllMetadata(evolution, [shape], result);
-    return result;
+    return ok(result);
   }
 
   // General path: gp_GTrsf for non-orthogonal transforms
@@ -259,7 +278,7 @@ export function applyMatrix<T extends AnyShape<Dimension>>(shape: T, matrix: Mat
   const resultShape = getKernel().generalTransformNonOrthogonal(shape.wrapped, linear, translation);
   const result = castShape(resultShape) as T;
   propagateMetadataByHash([shape], result);
-  return result;
+  return ok(result);
   /* v8 ignore stop */
 }
 

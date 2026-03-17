@@ -95,7 +95,7 @@ export function clone<T extends AnyShape<Dimension>>(shape: Shapeable<T>): T {
 export function applyMatrix<T extends AnyShape<Dimension>>(
   shape: Shapeable<T>,
   matrix: MatrixInput
-): T {
+): Result<T> {
   return transforms.applyMatrix(resolve(shape), matrix);
 }
 

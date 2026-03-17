@@ -175,7 +175,9 @@ export function roof(w: ClosedWire<Dimension>, options?: RoofOptions): Result<So
       );
     }
 
-    const skeleton = computeStraightSkeleton(polygon);
+    const skeletonResult = computeStraightSkeleton(polygon);
+    if (!skeletonResult.ok) return skeletonResult;
+    const skeleton = skeletonResult.value;
     if (skeleton.faces.length === 0) {
       return err(
         kernelError(BrepErrorCode.ROOF_FAILED, 'Straight skeleton computation produced no faces')

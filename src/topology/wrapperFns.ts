@@ -304,7 +304,7 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
     rotate: (angle, opts) => wrapAny(rotate(val, angle, opts)),
     mirror: (opts) => wrapAny(mirror(val, opts)),
     scale: (factor, opts) => wrapAny(scale(val, factor, opts)),
-    applyMatrix: (matrix) => wrapAny(applyMatrix(val, matrix)),
+    applyMatrix: (matrix) => wrapAny(unwrapOrThrow(applyMatrix(val, matrix))),
 
     moveX: (d) => wrapAny(translate(val, [d, 0, 0])),
     moveY: (d) => wrapAny(translate(val, [0, d, 0])),

@@ -3,6 +3,10 @@
  * No kernel dependency — operates on 2D point arrays.
  */
 
+import type { Result } from '../core/result.js';
+import { ok, err } from '../core/result.js';
+import { computationError } from '../core/errors.js';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -293,11 +297,26 @@ function computeEvents(lavNodes: LavNode[]): SkEvent[] {
  * The polygon vertices must define a simple (non-self-intersecting) polygon.
  * They will be reordered to CCW if necessary.
  */
-export function computeStraightSkeleton(polygon: SkPoint2D[]): StraightSkeleton {
+export function computeStraightSkeleton(polygon: SkPoint2D[]): Result<StraightSkeleton> {
   if (polygon.length < 3) {
-    return { nodes: [], faces: [] };
+    return ok({ nodes: [], faces: [] });
   }
 
+  try {
+    return ok(computeStraightSkeletonImpl(polygon));
+  } catch (e: unknown) {
+    return err(
+      computationError(
+        'STRAIGHT_SKELETON_FAILED',
+        `Straight skeleton computation failed: ${e instanceof Error ? e.message : String(e)}`,
+        e
+      )
+    );
+  }
+}
+
+/** Internal implementation — may throw on degenerate polygon indices. */
+function computeStraightSkeletonImpl(polygon: SkPoint2D[]): StraightSkeleton {
   const poly = ensureCCW(polygon);
   const n = poly.length;
 

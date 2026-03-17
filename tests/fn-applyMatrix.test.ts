@@ -11,6 +11,7 @@ import {
   type Matrix4x4,
   type MatrixTransform,
   unwrap,
+  isErr,
 } from '../src/index.js';
 
 describe('applyMatrix', () => {
@@ -80,7 +81,7 @@ describe('applyMatrix', () => {
   describe('applyMatrix — orthogonal (fast path)', () => {
     it('identity matrix preserves shape bounds', () => {
       const b = box(10, 10, 10);
-      const result = applyMatrix(b, IDENTITY);
+      const result = unwrap(applyMatrix(b, IDENTITY));
       const bounds = getBounds(result);
       expect(bounds.xMin).toBeCloseTo(0, 5);
       expect(bounds.xMax).toBeCloseTo(10, 5);
@@ -90,7 +91,7 @@ describe('applyMatrix', () => {
 
     it('pure translation matches translate()', () => {
       const b = box(10, 10, 10);
-      const viaMatrix = applyMatrix(b, translationMatrix(5, 10, 15));
+      const viaMatrix = unwrap(applyMatrix(b, translationMatrix(5, 10, 15)));
       const viaTranslate = translate(b, [5, 10, 15]);
       const mb = getBounds(viaMatrix);
       const tb = getBounds(viaTranslate);
@@ -104,7 +105,7 @@ describe('applyMatrix', () => {
 
     it('90° Z rotation moves box correctly', () => {
       const b = box(10, 20, 5);
-      const result = applyMatrix(b, ROTATE_Z_90);
+      const result = unwrap(applyMatrix(b, ROTATE_Z_90));
       const bounds = getBounds(result);
       // Box [0,10]x[0,20] rotated 90° CCW → [-20,0]x[0,10]
       expect(bounds.xMin).toBeCloseTo(-20, 3);
@@ -115,7 +116,7 @@ describe('applyMatrix', () => {
 
     it('uniform scale doubles dimensions and volume 8x', () => {
       const b = box(10, 10, 10);
-      const result = applyMatrix(b, UNIFORM_SCALE_2);
+      const result = unwrap(applyMatrix(b, UNIFORM_SCALE_2));
       const bounds = getBounds(result);
       expect(bounds.xMax).toBeCloseTo(20, 3);
       expect(bounds.yMax).toBeCloseTo(20, 3);
@@ -125,7 +126,7 @@ describe('applyMatrix', () => {
 
     it('uniform scale matches scale()', () => {
       const b = box(10, 10, 10);
-      const viaMatrix = applyMatrix(b, UNIFORM_SCALE_2);
+      const viaMatrix = unwrap(applyMatrix(b, UNIFORM_SCALE_2));
       const viaScale = scale(b, 2);
       expect(unwrap(measureVolume(viaMatrix))).toBeCloseTo(unwrap(measureVolume(viaScale)), 0);
     });
@@ -137,7 +138,7 @@ describe('applyMatrix', () => {
     it('non-uniform scale stretches one axis', () => {
       if (!hasGTransform) return; // requires WASM rebuild with BRepBuilderAPI_GTransform
       const b = box(10, 10, 10);
-      const result = applyMatrix(b, NONUNIFORM_SCALE);
+      const result = unwrap(applyMatrix(b, NONUNIFORM_SCALE));
       const bounds = getBounds(result);
       expect(bounds.xMin).toBeCloseTo(0, 3);
       expect(bounds.xMax).toBeCloseTo(20, 3);
@@ -150,7 +151,7 @@ describe('applyMatrix', () => {
     it('shear preserves volume', () => {
       if (!hasGTransform) return; // requires WASM rebuild with BRepBuilderAPI_GTransform
       const b = box(10, 10, 10);
-      const result = applyMatrix(b, SHEAR_XY);
+      const result = unwrap(applyMatrix(b, SHEAR_XY));
       // Shear det = 1, so volume is preserved
       expect(unwrap(measureVolume(result))).toBeCloseTo(1000, 0);
     });
@@ -164,7 +165,7 @@ describe('applyMatrix', () => {
         [0, 0, 0, 1],
       ];
       const b = box(10, 10, 10);
-      const result = applyMatrix(b, m);
+      const result = unwrap(applyMatrix(b, m));
       const bounds = getBounds(result);
       expect(bounds.xMin).toBeCloseTo(5, 3);
       expect(bounds.xMax).toBeCloseTo(25, 3); // 10*2 + 5
@@ -182,7 +183,7 @@ describe('applyMatrix', () => {
         linear: [1, 0, 0, 0, 1, 0, 0, 0, 1],
         translation: [5, 10, 15],
       };
-      const result = getBounds(applyMatrix(b, mt));
+      const result = getBounds(unwrap(applyMatrix(b, mt)));
       expect(result.xMin).toBeCloseTo(5, 5);
       expect(result.xMax).toBeCloseTo(15, 5);
       expect(result.yMin).toBeCloseTo(10, 5);
@@ -204,8 +205,8 @@ describe('applyMatrix', () => {
         linear: [2, 0, 0, 0, 1, 0, 0, 0, 1],
         translation: [5, 10, 0],
       };
-      const r1 = getBounds(applyMatrix(b, m4));
-      const r2 = getBounds(applyMatrix(b, mt));
+      const r1 = getBounds(unwrap(applyMatrix(b, m4)));
+      const r2 = getBounds(unwrap(applyMatrix(b, mt)));
       expect(r1.xMin).toBeCloseTo(r2.xMin, 5);
       expect(r1.xMax).toBeCloseTo(r2.xMax, 5);
       expect(r1.yMin).toBeCloseTo(r2.yMin, 5);
@@ -216,24 +217,24 @@ describe('applyMatrix', () => {
   // ── Validation ──
 
   describe('applyMatrix — validation', () => {
-    it('throws on singular matrix (zero row)', () => {
+    it('returns error on singular matrix (zero row)', () => {
       const singular: Matrix4x4 = [
         [1, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 1, 0],
         [0, 0, 0, 1],
       ];
-      expect(() => applyMatrix(box(10, 10, 10), singular)).toThrow(/singular/i);
+      expect(isErr(applyMatrix(box(10, 10, 10), singular))).toBe(true);
     });
 
-    it('throws on invalid bottom row', () => {
+    it('returns error on invalid bottom row', () => {
       const bad: Matrix4x4 = [
         [1, 0, 0, 0],
         [0, 1, 0, 0],
         [0, 0, 1, 0],
         [0, 0, 1, 1],
       ];
-      expect(() => applyMatrix(box(10, 10, 10), bad)).toThrow(/bottom row/i);
+      expect(isErr(applyMatrix(box(10, 10, 10), bad))).toBe(true);
     });
   });
 
