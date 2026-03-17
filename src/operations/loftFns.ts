@@ -73,6 +73,14 @@ export function loft(
     }
     return ok(result);
   } catch {
-    return err(kernelError('LOFT_FAILED', 'Loft operation failed'));
+    return err(
+      kernelError(
+        'LOFT_FAILED',
+        'Loft operation failed',
+        undefined,
+        undefined,
+        'Common causes: wire profiles with different edge counts, self-intersecting result, or profiles too far apart. Ensure profiles are compatible and ordered.'
+      )
+    );
   }
 }

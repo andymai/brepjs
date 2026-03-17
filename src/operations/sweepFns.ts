@@ -363,7 +363,13 @@ export function multiSectionSweep(
   } catch (e: unknown) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
-      kernelError(BrepErrorCode.MULTI_SWEEP_FAILED, `Multi-section sweep failed: ${raw}`, e)
+      kernelError(
+        BrepErrorCode.MULTI_SWEEP_FAILED,
+        `Multi-section sweep failed: ${raw}`,
+        e,
+        undefined,
+        'Common causes: profile too large for path curvature, self-intersecting result, or discontinuous path. Try simplifying the profile or path.'
+      )
     );
   }
 }
@@ -414,6 +420,14 @@ export function guidedSweep(
     return ok(result as Solid | Shell);
   } catch (e: unknown) {
     const raw = e instanceof Error ? e.message : String(e);
-    return err(kernelError(BrepErrorCode.GUIDED_SWEEP_FAILED, `Guided sweep failed: ${raw}`, e));
+    return err(
+      kernelError(
+        BrepErrorCode.GUIDED_SWEEP_FAILED,
+        `Guided sweep failed: ${raw}`,
+        e,
+        undefined,
+        'Common causes: profile too large for path curvature, self-intersecting result, or discontinuous path. Try simplifying the profile or path.'
+      )
+    );
   }
 }

@@ -7,7 +7,8 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, shape, fillet, chamfer, isErr } from '../src/index.js';
+import { box, shape, fillet, chamfer, isErr, loft, line, wire, unwrap } from '../src/index.js';
+import { kernelError, typeCastError } from '../src/core/errors.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -73,6 +74,55 @@ describe('Error suggestions', () => {
         expect(e.suggestion).toBeDefined();
         expect(e.suggestion).toContain('positive');
       }
+    });
+  });
+
+  describe('operation error suggestions are defined', () => {
+    it('loft error includes suggestion text', () => {
+      // Loft with a single open wire — triggers LOFT_FAILED or LOFT_NOT_3D
+      const edge = line([0, 0, 0], [1, 0, 0]);
+      const w = unwrap(wire([edge]));
+      const result = loft([w]);
+      if (isErr(result)) {
+        expect(result.error.suggestion).toBeDefined();
+        expect(result.error.suggestion).toContain('profiles');
+      }
+    });
+
+    it('SECTION_FAILED errors include suggestion', () => {
+      const error = kernelError(
+        'SECTION_FAILED',
+        'test',
+        undefined,
+        undefined,
+        'The cutting plane may not intersect the shape.'
+      );
+      expect(error.suggestion).toBeDefined();
+      expect(error.suggestion).toContain('plane');
+    });
+
+    it('SPLIT_FAILED errors include suggestion', () => {
+      const error = kernelError(
+        'SPLIT_FAILED',
+        'test',
+        undefined,
+        undefined,
+        'The splitting tools may not intersect the shape.'
+      );
+      expect(error.suggestion).toBeDefined();
+      expect(error.suggestion).toContain('tools');
+    });
+
+    it('boolean type-cast errors include suggestion', () => {
+      const error = typeCastError(
+        'FUSE_NOT_3D',
+        'test',
+        undefined,
+        undefined,
+        'Common causes: overlapping coplanar faces'
+      );
+      expect(error.suggestion).toBeDefined();
+      expect(error.suggestion).toContain('coplanar');
     });
   });
 

@@ -53,7 +53,12 @@ export type { BooleanOptions };
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function castToShape3D(shape: KernelType, errorCode: string, errorMsg: string): Result<Shape3D> {
+function castToShape3D(
+  shape: KernelType,
+  errorCode: string,
+  errorMsg: string,
+  suggestion?: string
+): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
     // Include actual shape type in error for debugging
@@ -71,7 +76,15 @@ function castToShape3D(shape: KernelType, errorCode: string, errorMsg: string): 
     ];
     const typeName = typeNames[shapeType] ?? `UNKNOWN(${shapeType})`;
     wrapped[Symbol.dispose]();
-    return err(typeCastError(errorCode, `${errorMsg}. Got ${typeName} instead.`));
+    return err(
+      typeCastError(
+        errorCode,
+        `${errorMsg}. Got ${typeName} instead.`,
+        undefined,
+        undefined,
+        suggestion
+      )
+    );
   }
   return ok(wrapped);
 }
@@ -112,7 +125,12 @@ export function fuse(
     HASH_CODE_MAX,
     { optimisation, simplify, fuzzyValue }
   );
-  const fuseResult = castToShape3D(resultShape, 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
+  const fuseResult = castToShape3D(
+    resultShape,
+    'FUSE_NOT_3D',
+    'Fuse did not produce a 3D shape',
+    'Common causes: overlapping coplanar faces, zero-thickness geometry, or non-manifold input. Try autoHeal() on inputs first.'
+  );
   if (fuseResult.ok) {
     propagateAllMetadata(evolution, [a, b], fuseResult.value);
   }
@@ -150,7 +168,12 @@ export function cut(
     HASH_CODE_MAX,
     { optimisation, simplify, fuzzyValue }
   );
-  const cutResult = castToShape3D(resultShape, 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
+  const cutResult = castToShape3D(
+    resultShape,
+    'CUT_NOT_3D',
+    'Cut did not produce a 3D shape',
+    'Common causes: tool does not fully intersect the base, or produces a zero-thickness sliver. Ensure the tool extends through the shape.'
+  );
   if (cutResult.ok) {
     propagateAllMetadata(evolution, [base, tool], cutResult.value);
   }
@@ -186,7 +209,8 @@ export function intersect(
   const intResult = castToShape3D(
     resultShape,
     'INTERSECT_NOT_3D',
-    'Intersect did not produce a 3D shape'
+    'Intersect did not produce a 3D shape',
+    'Shapes may not overlap. Verify they share a common volume before intersecting.'
   );
   if (intResult.ok) {
     propagateAllMetadata(evolution, [a, b], intResult.value);
@@ -439,10 +463,13 @@ export function section(
     const raw = e instanceof Error ? e.message : String(e);
     const planeName = typeof plane === 'string' ? plane : 'custom';
     return err(
-      kernelError('SECTION_FAILED', `Section with ${planeName} plane failed: ${raw}`, e, {
-        operation: 'section',
-        plane: planeName,
-      })
+      kernelError(
+        'SECTION_FAILED',
+        `Section with ${planeName} plane failed: ${raw}`,
+        e,
+        { operation: 'section', plane: planeName },
+        'The cutting plane may not intersect the shape. Verify plane position relative to shape bounds.'
+      )
     );
   } finally {
     sectionFace.delete();
@@ -467,7 +494,15 @@ export function sectionToFace(
     // Section may return loose edges — assemble them into wires
     const edges = getEdges(sectionResult.value);
     if (edges.length === 0) {
-      return err(kernelError('SECTION_FAILED', 'sectionToFace: section produced no geometry'));
+      return err(
+        kernelError(
+          'SECTION_FAILED',
+          'sectionToFace: section produced no geometry',
+          undefined,
+          undefined,
+          'The cutting plane may not intersect the shape. Verify plane position relative to shape bounds.'
+        )
+      );
     }
     const kernel = getKernel();
 
@@ -532,7 +567,15 @@ export function sectionToFace(
     }
   }
   if (wires.length === 0) {
-    return err(kernelError('SECTION_FAILED', 'sectionToFace: section produced no usable geometry'));
+    return err(
+      kernelError(
+        'SECTION_FAILED',
+        'sectionToFace: section produced no usable geometry',
+        undefined,
+        undefined,
+        'The cutting plane may not intersect the shape. Verify plane position relative to shape bounds.'
+      )
+    );
   }
 
   // Find outermost wire (largest bounding box diagonal — works for any plane orientation)
@@ -600,10 +643,13 @@ export function split(
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
-      kernelError('SPLIT_FAILED', `Split operation failed on ${tools.length} tool(s): ${raw}`, e, {
-        operation: 'split',
-        toolCount: tools.length,
-      })
+      kernelError(
+        'SPLIT_FAILED',
+        `Split operation failed on ${tools.length} tool(s): ${raw}`,
+        e,
+        { operation: 'split', toolCount: tools.length },
+        "The splitting tools may not intersect the shape. Ensure tools cross through the shape's interior."
+      )
     );
   }
 }
