@@ -5,6 +5,15 @@ brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` 
 ## Quick Start
 
 ```typescript
+// Easiest: auto-detect and initialize the best available kernel
+import { init, box } from 'brepjs';
+await init(); // tries brepjs-opencascade, then brepkit-wasm
+const myBox = box(10, 10, 10);
+```
+
+### Manual initialization
+
+```typescript
 import opencascade from 'brepjs-opencascade';
 import { initFromOC, registerKernel, withKernel, BrepkitAdapter } from 'brepjs';
 
@@ -13,8 +22,8 @@ const oc = await opencascade();
 initFromOC(oc);
 
 // Register the brepkit kernel as an alternative (external brepkit-wasm package)
-import init, { BrepKernel } from 'brepkit-wasm';
-await init();
+import bkInit, { BrepKernel } from 'brepkit-wasm';
+await bkInit();
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
 // Run a specific kernel temporarily
@@ -32,9 +41,13 @@ registerKernel('rust', new RustAdapter(wasm));
 
 Register a `KernelAdapter` under a unique string ID. The first kernel registered becomes the default for all `getKernel()` calls.
 
+### `init()`
+
+Auto-detect and initialize the best available kernel. Tries `brepjs-opencascade` first, then falls back to `brepkit-wasm`. Returns a `Promise<string>` with the kernel ID (`'occt'` or `'brepkit'`). Idempotent — calling it again after a kernel is registered returns the current kernel ID immediately.
+
 ### `initFromOC(oc)`
 
-Convenience wrapper - creates the default OpenCascade adapter from a loaded WASM instance and registers it as `'occt'`.
+Manual initialization — creates the default OpenCascade adapter from a loaded WASM instance and registers it as `'occt'`.
 
 ### `BrepkitAdapter`
 

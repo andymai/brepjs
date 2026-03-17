@@ -4,7 +4,7 @@ Kernel abstraction layer — all geometry operations go through `KernelAdapter`,
 
 ```mermaid
 graph TD
-    A[initFromOC / initFromBrepkit / registerKernel] -->|creates| B[KernelAdapter]
+    A[init / initFromOC / registerKernel] -->|creates| B[KernelAdapter]
     B -->|stored in| C[kernel registry]
     C -->|accessed via| D[getKernel]
     D -->|used by| E[Layer 2+ code]
@@ -29,7 +29,7 @@ This is enforced by an ESLint `no-restricted-syntax` rule that bans `x.wrapped.m
 
 | File                  | Purpose                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`            | Kernel registry: `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                               |
+| `index.ts`            | Kernel registry: `init()`, `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                     |
 | `types.ts`            | `KernelAdapter` interface (~164 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
 | `kernel2dTypes.ts`    | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
 | `defaultAdapter.ts`   | Default OCCT adapter class — thin delegation layer implementing both interfaces                                                   |
@@ -66,15 +66,22 @@ All raw kernel API calls are isolated in these files. A new kernel replaces `def
 ## Kernel Registration
 
 ```typescript
-// Default kernel (OpenCascade WASM)
+// Auto-detect and initialize the best available kernel
+import { init } from 'brepjs';
+const kernelId = await init(); // 'occt' or 'brepkit'
+
+// Or initialize a specific kernel manually:
+
+// OpenCascade WASM
 import opencascade from 'brepjs-opencascade';
+import { initFromOC } from 'brepjs';
 const oc = await opencascade();
 initFromOC(oc);
 
-// brepkit kernel (external brepkit-wasm package)
-import { BrepkitAdapter } from 'brepjs';
-import init, { BrepKernel } from 'brepkit-wasm';
-await init();
+// brepkit WASM (external brepkit-wasm package)
+import { registerKernel, BrepkitAdapter } from 'brepjs';
+import bkInit, { BrepKernel } from 'brepkit-wasm';
+await bkInit();
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
 // Custom kernel
