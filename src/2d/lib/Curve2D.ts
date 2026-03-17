@@ -55,6 +55,10 @@ export class Curve2D {
     }
   }
 
+  [Symbol.dispose](): void {
+    this.delete();
+  }
+
   /** Compute (and cache) the 2D bounding box of this curve. */
   get boundingBox() {
     if (this._boundingBox) return this._boundingBox;

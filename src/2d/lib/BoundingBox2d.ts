@@ -33,6 +33,10 @@ export class BoundingBox2d {
     }
   }
 
+  [Symbol.dispose](): void {
+    this.delete();
+  }
+
   /** Return a human-readable string of the form `(xMin,yMin) - (xMax,yMax)`. */
   get repr(): string {
     const [min, max] = this.bounds;

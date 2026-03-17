@@ -104,6 +104,10 @@ export default class Blueprint implements DrawingInterface {
     if (this._boundingBox) this._boundingBox.delete();
   }
 
+  [Symbol.dispose](): void {
+    this.delete();
+  }
+
   /** Return a deep copy of this blueprint. */
   clone(): Blueprint {
     return new Blueprint(this.curves.map((c) => c.clone()));
