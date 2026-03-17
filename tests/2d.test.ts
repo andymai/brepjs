@@ -2,9 +2,9 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import type { Blueprint } from '../src/index.js';
+import CompoundBlueprint from '../src/2d/blueprints/CompoundBlueprint.js';
+import Blueprints from '../src/2d/blueprints/Blueprints.js';
 import {
-  CompoundBlueprint,
-  Blueprints,
   draw,
   drawRectangle,
   drawCircle,

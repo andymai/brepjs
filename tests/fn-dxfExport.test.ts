@@ -1,12 +1,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import {
-  exportDXF,
-  blueprintToDXF,
-  roundedRectangleBlueprint,
-  BlueprintSketcher,
-  CompoundBlueprint,
-} from '../src/index.js';
+import { BlueprintSketcher } from '../src/sketching/Sketcher2d.js';
+import CompoundBlueprint from '../src/2d/blueprints/CompoundBlueprint.js';
+import { exportDXF, blueprintToDXF, roundedRectangleBlueprint } from '../src/index.js';
 import type { DXFEntity } from '../src/index.js';
 
 beforeAll(async () => {

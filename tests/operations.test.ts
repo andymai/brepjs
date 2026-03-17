@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { isBrepkit } from './helpers/kernelEnv.js';
+import Sketcher from '../src/sketching/Sketcher.js';
 import {
   box,
   sphere,
-  Sketcher,
   sketchCircle,
   sketchRectangle,
   loft,

@@ -1,11 +1,11 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import Sketcher from '../src/sketching/Sketcher.js';
 import {
   sketchRectangle,
   sketchCircle,
   measureVolume,
   measureArea,
-  Sketcher,
   CompoundSketch,
   isCompound,
   unwrap,
