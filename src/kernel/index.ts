@@ -119,7 +119,11 @@ export function prewarm(): void {
   // A trivial box triggers OCCT's global constructors and JIT compilation
   // of the core geometry modules without producing visible side effects.
   const shape = kernel.makeBox(1, 1, 1);
-  kernel.dispose(shape);
+  try {
+    kernel.dispose(shape);
+  } catch {
+    // Swallow — prewarm is best-effort, never fail visibly
+  }
 }
 
 /**
