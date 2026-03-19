@@ -14,7 +14,7 @@
  * both are re-exported here for backward compatibility.
  */
 
-import type { KernelShape, KernelType } from '../kernel/types.js';
+import type { KernelShape, KernelType, ShapeType } from '../kernel/types.js';
 import { getKernel } from '../kernel/index.js';
 import type { ShapeHandle } from './disposal.js';
 import { createHandle } from './disposal.js';
@@ -289,4 +289,25 @@ export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape, dim?
 /** Type-safe cast for shapes known to be 3D. */
 export function castShape3D(ocShape: KernelShape): AnyShape {
   return castShape(ocShape);
+}
+
+/**
+ * Fast-path cast when the shape type is already known (e.g., from iterShapes).
+ * Skips the shapeType() WASM call — only performs downcast + branded handle creation.
+ * Used internally by topology extractors for bulk sub-shape iteration.
+ */
+export function castShapeWithKnownType<D extends Dimension = '3D'>(
+  ocShape: KernelShape,
+  knownType: ShapeType,
+  dim?: D
+): AnyShape<D> {
+  const dc = getKernel().downcast(ocShape, knownType);
+  if (knownType === 'vertex') return createVertex<D>(dc, dim) as AnyShape<D>;
+  if (knownType === 'edge') return createEdge<D>(dc, dim) as AnyShape<D>;
+  if (knownType === 'wire') return createWire<D>(dc, dim) as AnyShape<D>;
+  if (knownType === 'face') return createFace<D>(dc, dim) as AnyShape<D>;
+  if (knownType === 'shell') return createShell(dc) as AnyShape<D>;
+  if (knownType === 'solid') return createSolid(dc) as AnyShape<D>;
+  if (knownType === 'compsolid') return createCompSolid(dc) as AnyShape<D>;
+  return createCompound<D>(dc, dim) as AnyShape<D>;
 }

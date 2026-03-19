@@ -101,6 +101,28 @@ export function initFromOC(oc: KernelInstance): void {
 }
 
 /**
+ * Trigger OCCT's deferred internal initialization by performing a trivial
+ * geometry operation. The first OCCT call in a WASM session incurs a ~400-900ms
+ * JIT penalty; calling `prewarm()` during idle time (e.g., after `init()` resolves
+ * but before user interaction) moves this cost off the critical path.
+ *
+ * Safe to call multiple times — only the first call does work.
+ *
+ * @example
+ * ```ts
+ * await init();
+ * prewarm(); // fire-and-forget during idle time
+ * ```
+ */
+export function prewarm(): void {
+  const kernel = getKernel();
+  // A trivial box triggers OCCT's global constructors and JIT compilation
+  // of the core geometry modules without producing visible side effects.
+  const shape = kernel.makeBox(1, 1, 1);
+  kernel.dispose(shape);
+}
+
+/**
  * Auto-detect and initialise the best available kernel.
  *
  * Tries `brepjs-opencascade` (OCCT) first, then falls back to `brepkit-wasm`.

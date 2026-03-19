@@ -4,6 +4,7 @@
  */
 
 import { getKernel } from '../kernel/index.js';
+import type { KernelShape, ShapeType } from '../kernel/types.js';
 import type {
   AnyShape,
   Dimension,
@@ -13,10 +14,27 @@ import type {
   Vertex,
   ShapeKind,
 } from '../core/shapeTypes.js';
-import { castShape, getShapeKind } from '../core/shapeTypes.js';
+import { castShapeWithKnownType, getShapeKind } from '../core/shapeTypes.js';
 import type { Vec3 } from '../core/types.js';
-import { downcast, iterTopo } from './cast.js';
-import { unwrap } from '../core/result.js';
+
+// ---------------------------------------------------------------------------
+// Fast sub-shape extraction (avoids per-item downcast + generator overhead)
+// ---------------------------------------------------------------------------
+
+/**
+ * Extract sub-shapes of a known type, bypassing the generator wrapper and
+ * redundant downcast calls. Uses iterShapes (C++ bulk extraction) directly
+ * and passes the known type to castShape to skip the shapeType() WASM call.
+ */
+function castSubShapes<T>(parentShape: KernelShape, type: ShapeType): T[] {
+  const kernel = getKernel();
+  const rawShapes = kernel.iterShapes(parentShape, type);
+  const result: T[] = new Array(rawShapes.length);
+  for (let i = 0; i < rawShapes.length; i++) {
+    result[i] = castShapeWithKnownType(rawShapes[i], type) as T;
+  }
+  return result;
+}
 
 // ---------------------------------------------------------------------------
 // Shared topology cache
@@ -65,9 +83,7 @@ export function invalidateShapeCache(shape: AnyShape<Dimension>): void {
 export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.edges) return cache.edges as Edge<D>[];
-  const edges = Array.from(iterTopo(shape.wrapped, 'edge')).map(
-    (e) => castShape(unwrap(downcast(e))) as Edge<D>
-  );
+  const edges = castSubShapes<Edge<D>>(shape.wrapped, 'edge');
   cache.edges = edges;
   return edges;
 }
@@ -81,9 +97,7 @@ export function getEdges<D extends Dimension>(shape: AnyShape<D>): Edge<D>[] {
 export function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.faces) return cache.faces as Face<D>[];
-  const faces = Array.from(iterTopo(shape.wrapped, 'face')).map(
-    (e) => castShape(unwrap(downcast(e))) as Face<D>
-  );
+  const faces = castSubShapes<Face<D>>(shape.wrapped, 'face');
   cache.faces = faces;
   return faces;
 }
@@ -92,9 +106,7 @@ export function getFaces<D extends Dimension>(shape: AnyShape<D>): Face<D>[] {
 export function getWires<D extends Dimension>(shape: AnyShape<D>): Wire<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.wires) return cache.wires as Wire<D>[];
-  const wires = Array.from(iterTopo(shape.wrapped, 'wire')).map(
-    (e) => castShape(unwrap(downcast(e))) as Wire<D>
-  );
+  const wires = castSubShapes<Wire<D>>(shape.wrapped, 'wire');
   cache.wires = wires;
   return wires;
 }
@@ -103,9 +115,7 @@ export function getWires<D extends Dimension>(shape: AnyShape<D>): Wire<D>[] {
 export function getVertices<D extends Dimension>(shape: AnyShape<D>): Vertex<D>[] {
   const cache = getOrCreateCache(shape);
   if (cache.vertices) return cache.vertices as Vertex<D>[];
-  const vertices = Array.from(iterTopo(shape.wrapped, 'vertex')).map(
-    (e) => castShape(unwrap(downcast(e))) as Vertex<D>
-  );
+  const vertices = castSubShapes<Vertex<D>>(shape.wrapped, 'vertex');
   cache.vertices = vertices;
   return vertices;
 }
@@ -116,29 +126,29 @@ export function getVertices<D extends Dimension>(shape: AnyShape<D>): Vertex<D>[
 
 /** Lazily iterate edges of a shape, yielding branded Edge handles one at a time. */
 export function* iterEdges<D extends Dimension>(shape: AnyShape<D>): Generator<Edge<D>> {
-  for (const e of iterTopo(shape.wrapped, 'edge')) {
-    yield castShape(unwrap(downcast(e))) as Edge<D>;
+  for (const e of getKernel().iterShapes(shape.wrapped, 'edge')) {
+    yield castShapeWithKnownType(e, 'edge') as Edge<D>;
   }
 }
 
 /** Lazily iterate faces of a shape, yielding branded Face handles one at a time. */
 export function* iterFaces<D extends Dimension>(shape: AnyShape<D>): Generator<Face<D>> {
-  for (const f of iterTopo(shape.wrapped, 'face')) {
-    yield castShape(unwrap(downcast(f))) as Face<D>;
+  for (const f of getKernel().iterShapes(shape.wrapped, 'face')) {
+    yield castShapeWithKnownType(f, 'face') as Face<D>;
   }
 }
 
 /** Lazily iterate wires of a shape, yielding branded Wire handles one at a time. */
 export function* iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<Wire<D>> {
-  for (const w of iterTopo(shape.wrapped, 'wire')) {
-    yield castShape(unwrap(downcast(w))) as Wire<D>;
+  for (const w of getKernel().iterShapes(shape.wrapped, 'wire')) {
+    yield castShapeWithKnownType(w, 'wire') as Wire<D>;
   }
 }
 
 /** Lazily iterate vertices of a shape, yielding branded Vertex handles one at a time. */
 export function* iterVertices<D extends Dimension>(shape: AnyShape<D>): Generator<Vertex<D>> {
-  for (const v of iterTopo(shape.wrapped, 'vertex')) {
-    yield castShape(unwrap(downcast(v))) as Vertex<D>;
+  for (const v of getKernel().iterShapes(shape.wrapped, 'vertex')) {
+    yield castShapeWithKnownType(v, 'vertex') as Vertex<D>;
   }
 }
 

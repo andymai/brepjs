@@ -7,6 +7,7 @@
 export {
   init,
   initFromOC,
+  prewarm,
   getKernel,
   registerKernel,
   withKernel,

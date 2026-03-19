@@ -458,6 +458,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'polyhedron',
   'polysideInnerRadius',
   'polysidesBlueprint',
+  'prewarm',
   'projectEdges',
   'projectPointOnFace',
   'queryError',
