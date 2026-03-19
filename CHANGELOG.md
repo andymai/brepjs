@@ -1,5 +1,12 @@
 # Changelog
 
+## [12.13.1](https://github.com/andymai/brepjs/compare/brepjs-v12.13.0...brepjs-v12.13.1) (2026-03-19)
+
+
+### Performance Improvements
+
+* fast topology extraction, prewarm API, and benchmarks ([#548](https://github.com/andymai/brepjs/issues/548)) ([e6f3708](https://github.com/andymai/brepjs/commit/e6f3708225b150b1559c25a4cf520ad4f1f9b731))
+
 ## [12.13.0](https://github.com/andymai/brepjs/compare/brepjs-v12.12.0...brepjs-v12.13.0) (2026-03-17)
 
 
