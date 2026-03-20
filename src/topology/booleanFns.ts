@@ -15,7 +15,7 @@ import type {
   Wire,
 } from '@/core/shapeTypes.js';
 import { castShape, isShape3D } from '@/core/shapeTypes.js';
-import { type Result, ok, err, isErr } from '@/core/result.js';
+import { type Result, ok, err, isErr, unwrap } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { Plane } from '@/core/planeTypes.js';
 import type { PlaneInput } from '@/core/planeTypes.js';
@@ -449,7 +449,7 @@ export function section(
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'section: shape is a null shape'));
   }
 
-  const resolvedPlane: Plane = typeof plane === 'string' ? resolvePlane(plane) : plane;
+  const resolvedPlane: Plane = typeof plane === 'string' ? unwrap(resolvePlane(plane)) : plane;
   const sectionFace = makeSectionFace(resolvedPlane, planeSize);
 
   try {

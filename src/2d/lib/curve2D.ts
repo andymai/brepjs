@@ -189,14 +189,22 @@ export class Curve2D {
    * @returns `Ok(parameter)` when the point is on the curve, or an error result otherwise.
    */
   parameter(point: Point2D, precision = 1e-9): Result<number> {
-    let lowerDistance;
-    let lowerDistanceParameter;
+    let lowerDistance: number | undefined;
+    let lowerDistanceParameter: number | undefined;
+    let projectionFailed = false;
     try {
       const proj = getKernel().projectPointOnCurve2d(this.wrapped, point[0], point[1]);
-      if (!proj) throw new Error('projection failed');
-      lowerDistance = proj.distance;
-      lowerDistanceParameter = proj.param;
+      if (!proj) {
+        projectionFailed = true;
+      } else {
+        lowerDistance = proj.distance;
+        lowerDistanceParameter = proj.param;
+      }
     } catch {
+      projectionFailed = true;
+    }
+
+    if (projectionFailed) {
       // Perhaps it failed because it is on an extremity
       if (samePoint(point, this.firstPoint, precision)) return ok(this.firstParameter);
       if (samePoint(point, this.lastPoint, precision)) return ok(this.lastParameter);
@@ -204,6 +212,9 @@ export class Curve2D {
       return err(computationError('PARAMETER_NOT_FOUND', 'Failed to find parameter'));
     }
 
+    if (lowerDistance === undefined || lowerDistanceParameter === undefined) {
+      return err(computationError('PARAMETER_NOT_FOUND', 'Failed to find parameter'));
+    }
     if (lowerDistance > precision) {
       return err(
         computationError(

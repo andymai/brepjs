@@ -1,6 +1,7 @@
 import type { Point2D } from '@/2d/lib/index.js';
 import { BoundingBox2d } from '@/2d/lib/index.js';
 import { firstOrThrow } from '@/utils/arrayAccess.js';
+import { bug } from '@/core/errors.js';
 import type Blueprint from './blueprint.js';
 import type { DrawingInterface, SketchData } from './lib.js';
 import { asSVG, viewbox } from './svg.js';
@@ -37,11 +38,14 @@ export default class CompoundBlueprint implements DrawingInterface {
    *
    * @param blueprints - First element is the outer boundary; subsequent
    *   elements are holes.
-   * @throws Error if the array is empty.
+   * @throws BrepBugError if the array is empty (use {@link createCompoundBlueprint} for Result-based validation).
    */
   constructor(blueprints: Blueprint[]) {
     if (blueprints.length === 0) {
-      throw new Error('CompoundBlueprint requires at least one blueprint (the outer boundary)');
+      bug(
+        'CompoundBlueprint',
+        'requires at least one blueprint (the outer boundary) — use createCompoundBlueprint() for Result-based validation'
+      );
     }
     this.blueprints = blueprints;
     this._boundingBox = null;

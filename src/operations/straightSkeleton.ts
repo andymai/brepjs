@@ -4,8 +4,8 @@
  */
 
 import type { Result } from '@/core/result.js';
-import { ok, err } from '@/core/result.js';
-import { computationError, BrepErrorCode } from '@/core/errors.js';
+import { ok, err, unwrap } from '@/core/result.js';
+import { computationError, validationError, BrepErrorCode } from '@/core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,18 +51,21 @@ function len2(x: number, y: number): number {
 }
 
 /** Safe polygon access with modular index. */
-function polyAt(poly: SkPoint2D[], i: number): SkPoint2D {
+function polyAt(poly: SkPoint2D[], i: number): Result<SkPoint2D> {
   const p = poly[((i % poly.length) + poly.length) % poly.length];
-  if (!p) throw new Error(`Invalid polygon index ${i} for length ${poly.length}`);
-  return p;
+  if (!p)
+    return err(
+      validationError('INVALID_INPUT', `Invalid polygon index ${i} for length ${poly.length}`)
+    );
+  return ok(p);
 }
 
 /** Ensure polygon is in CCW order. Returns a new array if reversed. */
 function ensureCCW(poly: SkPoint2D[]): SkPoint2D[] {
   let area = 0;
   for (let i = 0; i < poly.length; i++) {
-    const cur = polyAt(poly, i);
-    const nxt = polyAt(poly, i + 1);
+    const cur = unwrap(polyAt(poly, i));
+    const nxt = unwrap(polyAt(poly, i + 1));
     area += cur.x * nxt.y - nxt.x * cur.y;
   }
   if (area < 0) return [...poly].reverse();
@@ -71,9 +74,9 @@ function ensureCCW(poly: SkPoint2D[]): SkPoint2D[] {
 
 /** Compute unit bisector direction pointing inward for vertex at index i. */
 function bisector(poly: SkPoint2D[], i: number): { dx: number; dy: number } {
-  const prev = polyAt(poly, i - 1);
-  const cur = polyAt(poly, i);
-  const next = polyAt(poly, i + 1);
+  const prev = unwrap(polyAt(poly, i - 1));
+  const cur = unwrap(polyAt(poly, i));
+  const next = unwrap(polyAt(poly, i + 1));
 
   const e1x = cur.x - prev.x;
   const e1y = cur.y - prev.y;
@@ -499,8 +502,8 @@ function computeStraightSkeletonImpl(polygon: SkPoint2D[]): StraightSkeleton {
 
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    const pi = polyAt(poly, i);
-    const pj = polyAt(poly, j);
+    const pi = unwrap(polyAt(poly, i));
+    const pj = unwrap(polyAt(poly, j));
     const faceVerts: SkPoint2D[] = [pi, pj];
     const faceHeights: number[] = [0, 0];
 

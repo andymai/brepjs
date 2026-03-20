@@ -25,6 +25,7 @@ import type { AnyShape, ClosedWire, Dimension, Face, Wire } from '@/core/shapeTy
 import { createWire } from '@/core/shapeTypes.js';
 import { cast } from '@/topology/cast.js';
 import { unwrap } from '@/core/result.js';
+import { bug } from '@/core/errors.js';
 import { faceCenter, uvCoordinates } from '@/topology/faceFns.js';
 
 import { getKernel } from '@/kernel/index.js';
@@ -84,11 +85,14 @@ export default class Blueprint implements DrawingInterface {
   private _guessedOrientation: null | 'clockwise' | 'counterClockwise';
   /** Create a blueprint from an ordered array of 2D curves.
    *
-   * @throws Error if the curves array is empty.
+   * @throws BrepBugError if the curves array is empty (use {@link createBlueprint} for Result-based validation).
    */
   constructor(curves: Curve2D[]) {
     if (curves.length === 0) {
-      throw new Error('Blueprint requires at least one curve');
+      bug(
+        'Blueprint',
+        'requires at least one curve — use createBlueprint() for Result-based validation'
+      );
     }
     this.curves = curves;
     this._boundingBox = null;

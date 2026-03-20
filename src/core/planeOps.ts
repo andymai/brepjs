@@ -17,7 +17,7 @@ import {
   vecRotate,
 } from './vecOps.js';
 import { DEG2RAD } from './constants.js';
-import { type Result, ok, err } from './result.js';
+import { type Result, ok, err, unwrap } from './result.js';
 import { validationError } from './errors.js';
 
 // ---------------------------------------------------------------------------
@@ -116,15 +116,15 @@ export function createNamedPlane(
 /**
  * Resolve a {@link PlaneInput} to a concrete {@link Plane}.
  *
- * @throws If a named plane cannot be resolved.
+ * @returns `Ok<Plane>` on success, or `Err` if the named plane cannot be resolved.
  */
-export function resolvePlane(input: PlaneInput, origin?: PointInput | number): Plane {
+export function resolvePlane(input: PlaneInput, origin?: PointInput | number): Result<Plane> {
   if (typeof input === 'string') {
     const result = createNamedPlane(input, origin);
-    if (!result.ok) throw new Error(result.error.message);
-    return result.value;
+    if (!result.ok) return result;
+    return result;
   }
-  return input;
+  return ok(input);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +149,7 @@ function makePlane(plane?: PlaneInput, origin?: PointInput | number): Plane {
     // Already a Plane object - return a copy
     return { ...plane };
   } else {
-    return resolvePlane(plane ?? 'XY', origin);
+    return unwrap(resolvePlane(plane ?? 'XY', origin));
   }
 }
 

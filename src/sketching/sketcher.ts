@@ -52,7 +52,9 @@ export default class Sketcher extends BaseSketcher2d implements GenericSketcher<
   constructor(plane?: PlaneInput, origin?: PointInput | number) {
     super();
     this.plane =
-      plane && typeof plane !== 'string' ? { ...plane } : resolvePlane(plane ?? 'XY', origin);
+      plane && typeof plane !== 'string'
+        ? { ...plane }
+        : unwrap(resolvePlane(plane ?? 'XY', origin));
   }
 
   /** Release resources held by this sketcher (lightweight — no kernel handles during drawing). */

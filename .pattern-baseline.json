@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-20T19:26:43.223Z",
+  "generated": "2026-03-20T19:32:49.888Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -270,7 +270,7 @@
     {
       "file": "src/operations/straightSkeleton.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/operations/straightSkeleton.ts|max-function-lines|329|"
+      "fingerprint": "src/operations/straightSkeleton.ts|max-function-lines|332|"
     },
     {
       "file": "src/topology/healingFns.ts",

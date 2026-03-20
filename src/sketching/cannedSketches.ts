@@ -47,7 +47,7 @@ export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Ske
   const plane =
     planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? { ...planeConfig.plane }
-      : resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin);
+      : unwrap(resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin));
 
   const wire = unwrap(assembleWire([makeCircle(radius, plane.origin, plane.zDir)]));
   const sketch = new Sketch(wire, {
@@ -71,7 +71,7 @@ export const sketchEllipse = (xRadius = 1, yRadius = 2, planeConfig: PlaneConfig
   const plane =
     planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? { ...planeConfig.plane }
-      : resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin);
+      : unwrap(resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin));
   let xDir: Vec3 = plane.xDir;
 
   let majR = xRadius;
@@ -267,7 +267,7 @@ export const sketchParametricFunction = (
   const plane =
     planeConfig.plane && typeof planeConfig.plane !== 'string'
       ? { ...planeConfig.plane }
-      : resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin);
+      : unwrap(resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin));
 
   const stepSize = (stop - start) / pointsCount;
   const points: Vec3[] = [...Array(pointsCount + 1).keys()].map((t) => {
