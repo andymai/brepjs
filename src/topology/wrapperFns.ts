@@ -27,6 +27,7 @@ import type {
   Solid,
   Vertex,
   Shape3D,
+  ValidSolid,
 } from '@/core/shapeTypes.js';
 import { isShape3D, isFace, isEdge, isWire } from '@/core/shapeTypes.js';
 import type {
@@ -395,23 +396,40 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
     fillet(
       ...args: [FilletRadius] | [Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, FilletRadius]
     ): Wrapped3D<T> {
+      // brepjs-patterns-disable: no-double-cast
       if (args.length === 1) {
-        return wrap3D(unwrapOrThrow(fillet(val, args[0])) as unknown as T);
+        return wrap3D(unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0])) as unknown as T);
       }
-      return wrap3D(unwrapOrThrow(fillet(val, args[0], args[1])) as unknown as T);
+      // brepjs-patterns-disable: no-double-cast
+      return wrap3D(
+        unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0], args[1])) as unknown as T
+      );
     },
     chamfer(
       ...args: [ChamferDistance] | [Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, ChamferDistance]
     ): Wrapped3D<T> {
+      // brepjs-patterns-disable: no-double-cast
       if (args.length === 1) {
-        return wrap3D(unwrapOrThrow(chamfer(val, args[0])) as unknown as T);
+        return wrap3D(
+          unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0])) as unknown as T
+        );
       }
-      return wrap3D(unwrapOrThrow(chamfer(val, args[0], args[1])) as unknown as T);
+      // brepjs-patterns-disable: no-double-cast
+      return wrap3D(
+        unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0], args[1])) as unknown as T
+      );
     },
+    // brepjs-patterns-disable: no-double-cast
     shell: (faces, thickness, opts) =>
-      wrap3D(unwrapOrThrow(shell(val, faces, thickness, opts)) as unknown as T),
-    offset: (distance, opts) => wrap3D(unwrapOrThrow(offset(val, distance, opts)) as unknown as T),
-    draft: (faces, opts) => wrap3D(unwrapOrThrow(draftFn(val, faces, opts)) as unknown as T),
+      wrap3D(
+        unwrapOrThrow(shell(val as unknown as ValidSolid, faces, thickness, opts)) as unknown as T
+      ),
+    // brepjs-patterns-disable: no-double-cast
+    offset: (distance, opts) =>
+      wrap3D(unwrapOrThrow(offset(val as unknown as ValidSolid, distance, opts)) as unknown as T),
+    // brepjs-patterns-disable: no-double-cast
+    draft: (faces, opts) =>
+      wrap3D(unwrapOrThrow(draftFn(val as unknown as ValidSolid, faces, opts)) as unknown as T),
 
     // Compound operations
     drill: (opts) => wrap3D(unwrapOrThrow(drillFn(val, opts)) as unknown as T),

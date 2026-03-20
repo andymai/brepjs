@@ -7,6 +7,7 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
+import type { ValidSolid } from '@/core/validityTypes.js';
 import { castShape, isShape3D } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
@@ -194,10 +195,10 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
  * @param radius - Constant radius, variable radius `[r1, r2]`, or per-edge callback.
  */
 export function fillet(
-  shape: Shape3D,
+  shape: ValidSolid,
   edges: ReadonlyArray<Edge> | undefined,
   radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
-): Result<Shape3D> {
+): Result<ValidSolid> {
   const check = validateNotNull(shape, 'fillet: shape');
   if (isErr(check)) return check;
   const paramErr = validatePositiveParam(radius, {
@@ -260,7 +261,7 @@ export function fillet(
       [shape],
       BrepErrorCode.FILLET_NOT_3D,
       'Fillet result is not a 3D shape'
-    );
+    ) as Result<ValidSolid>;
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
@@ -285,10 +286,10 @@ export function fillet(
  * @param distance - Symmetric distance, asymmetric `[d1, d2]`, or per-edge callback.
  */
 export function chamfer(
-  shape: Shape3D,
+  shape: ValidSolid,
   edges: ReadonlyArray<Edge> | undefined,
   distance: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
-): Result<Shape3D> {
+): Result<ValidSolid> {
   const check = validateNotNull(shape, 'chamfer: shape');
   if (isErr(check)) return check;
   const paramErr = validatePositiveParam(distance, {
@@ -340,7 +341,7 @@ export function chamfer(
       [shape],
       BrepErrorCode.CHAMFER_NOT_3D,
       'Chamfer result is not a 3D shape'
-    );
+    ) as Result<ValidSolid>;
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
@@ -366,11 +367,11 @@ export function chamfer(
  * @param tolerance - Shell operation tolerance (default 1e-3).
  */
 export function shell(
-  shape: Shape3D,
+  shape: ValidSolid,
   faces: ReadonlyArray<Face>,
   thickness: number,
   tolerance = 1e-3
-): Result<Shape3D> {
+): Result<ValidSolid> {
   const check = validateNotNull(shape, 'shell: shape');
   if (isErr(check)) return check;
   if (thickness <= 0) {
@@ -395,7 +396,7 @@ export function shell(
       return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
     }
     propagateAllMetadata(evolution, [shape], cast);
-    return ok(cast);
+    return ok(cast as ValidSolid);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
@@ -419,7 +420,7 @@ export function shell(
  * @param distance - Offset distance (positive = outward, negative = inward).
  * @param tolerance - Offset tolerance (default 1e-6).
  */
-export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Result<Shape3D> {
+export function offset(shape: ValidSolid, distance: number, tolerance = 1e-6): Result<ValidSolid> {
   const check = validateNotNull(shape, 'offset: shape');
   if (isErr(check)) return check;
   if (distance === 0) {
@@ -440,7 +441,7 @@ export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Resu
       return err(kernelError('OFFSET_RESULT_NOT_3D', 'Offset result is not a 3D shape'));
     }
     propagateAllMetadata(evolution, [shape], cast);
-    return ok(cast);
+    return ok(cast as ValidSolid);
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(kernelError('OFFSET_FAILED', `Offset operation failed: ${raw}`, e));
@@ -465,12 +466,12 @@ export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Resu
  * @param angle - Constant angle in degrees, or per-face callback returning degrees (null to skip).
  */
 export function draft(
-  shape: Shape3D,
+  shape: ValidSolid,
   faces: ReadonlyArray<Face>,
   pullDirection: Vec3,
   neutralPlane: Vec3,
   angle: DraftAngle
-): Result<Shape3D> {
+): Result<ValidSolid> {
   const check = validateNotNull(shape, 'draft: shape');
   if (isErr(check)) return check;
 
@@ -541,7 +542,7 @@ export function draft(
       [shape],
       BrepErrorCode.DRAFT_NOT_3D,
       'Draft result is not a 3D shape'
-    );
+    ) as Result<ValidSolid>;
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(

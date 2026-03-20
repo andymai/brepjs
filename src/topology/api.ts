@@ -8,6 +8,7 @@
 import type { Vec3, MatrixInput } from '@/core/types.js';
 import type { Result } from '@/core/result.js';
 import type { AnyShape, Dimension, Edge, Face, Shape3D, Shell, Solid } from '@/core/shapeTypes.js';
+import type { ValidSolid } from '@/core/validityTypes.js';
 import type {
   Shapeable,
   FinderFn,
@@ -270,15 +271,15 @@ function normalizeChamferDistance(distance: ChamferDistance): NormalizedChamfer 
 
 // Overloads: 2-arg (all edges) vs 3-arg (selected edges)
 
-/** Apply a fillet to all edges of a 3D shape. */
-export function fillet<T extends Shape3D>(shape: Shapeable<T>, radius: FilletRadius): Result<T>;
-/** Apply a fillet to selected edges of a 3D shape. */
-export function fillet<T extends Shape3D>(
+/** Apply a fillet to all edges of a valid solid. */
+export function fillet<T extends ValidSolid>(shape: Shapeable<T>, radius: FilletRadius): Result<T>;
+/** Apply a fillet to selected edges of a valid solid. */
+export function fillet<T extends ValidSolid>(
   shape: Shapeable<T>,
   edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>,
   radius: FilletRadius
 ): Result<T>;
-export function fillet<T extends Shape3D>(
+export function fillet<T extends ValidSolid>(
   shape: Shapeable<T>,
   edgesOrRadius: Edge[] | FinderFn<Edge> | ShapeFinder<Edge> | FilletRadius,
   maybeRadius?: FilletRadius
@@ -300,18 +301,18 @@ export function fillet<T extends Shape3D>(
   return modifiers.fillet(s, edges, radius) as Result<T>;
 }
 
-/** Apply a chamfer to all edges of a 3D shape. */
-export function chamfer<T extends Shape3D>(
+/** Apply a chamfer to all edges of a valid solid. */
+export function chamfer<T extends ValidSolid>(
   shape: Shapeable<T>,
   distance: ChamferDistance
 ): Result<T>;
-/** Apply a chamfer to selected edges of a 3D shape. */
-export function chamfer<T extends Shape3D>(
+/** Apply a chamfer to selected edges of a valid solid. */
+export function chamfer<T extends ValidSolid>(
   shape: Shapeable<T>,
   edges: Edge[] | FinderFn<Edge> | ShapeFinder<Edge>,
   distance: ChamferDistance
 ): Result<T>;
-export function chamfer<T extends Shape3D>(
+export function chamfer<T extends ValidSolid>(
   shape: Shapeable<T>,
   edgesOrDistance: Edge[] | FinderFn<Edge> | ShapeFinder<Edge> | ChamferDistance,
   maybeDistance?: ChamferDistance
@@ -344,7 +345,7 @@ export function chamfer<T extends Shape3D>(
 }
 
 /** Create a hollow shell by removing faces and offsetting remaining walls. */
-export function shell<T extends Shape3D>(
+export function shell<T extends ValidSolid>(
   shape: Shapeable<T>,
   faces: Face[] | FinderFn<Face> | ShapeFinder<Face>,
   thickness: number,
@@ -355,8 +356,8 @@ export function shell<T extends Shape3D>(
   return modifiers.shell(s, resolvedFaces, thickness, options?.tolerance) as Result<T>;
 }
 
-/** Offset all faces of a shape by a given distance. */
-export function offset<T extends Shape3D>(
+/** Offset all faces of a valid solid by a given distance. */
+export function offset<T extends ValidSolid>(
   shape: Shapeable<T>,
   distance: number,
   options?: { tolerance?: number }
@@ -380,7 +381,7 @@ export function thicken(
  * pivoting about a neutral plane. Essential for manufacturing workflows
  * (injection molding, casting) where parts must release from a mold.
  */
-export function draft<T extends Shape3D>(
+export function draft<T extends ValidSolid>(
   shape: Shapeable<T>,
   faces: Face[] | FinderFn<Face> | ShapeFinder<Face>,
   options: DraftOptions
