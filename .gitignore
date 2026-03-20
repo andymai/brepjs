@@ -1,5 +1,5 @@
-# Claude Code auto-memory (user-specific, not shared)
-memory/
+# Claude Code agent memory (user-specific, not shared)
+.claude/agent-memory-local/
 
 # Git worktrees
 .worktrees/
