@@ -22,6 +22,11 @@
  *
  * Note: Only src/**\/*.ts files are scanned. This script (in scripts/) is
  * exempt from its own rules by design.
+ *
+ * Baseline: Fingerprints include the violation's line number. Insertions or
+ * deletions above a baselined violation will shift its line, causing it to
+ * appear as "new". Run `--update-baseline` after non-trivial edits near
+ * baselined code.
  */
 
 import * as ts from 'typescript';
@@ -217,31 +222,32 @@ const requireUsingForHandles: Rule = {
         TARGET_FNS.has(node.expression.text)
       ) {
         const fnName = node.expression.text;
-        function isExcusedContext(parent: ts.Node): boolean {
-          // using x = createHandle(...)
-          if (
-            ts.isVariableDeclaration(parent) &&
-            parent.parent &&
-            ts.isVariableDeclarationList(parent.parent) &&
-            isUsingDeclaration(parent.parent)
-          ) {
-            return true;
+        function isExcused(): boolean {
+          let p: ts.Node | undefined = node.parent;
+          while (p) {
+            // using x = createHandle(...)
+            if (
+              ts.isVariableDeclaration(p) &&
+              p.parent &&
+              ts.isVariableDeclarationList(p.parent) &&
+              isUsingDeclaration(p.parent)
+            ) {
+              return true;
+            }
+            // return createHandle(...) — caller's responsibility
+            if (ts.isReturnStatement(p)) return true;
+            // Direct argument to another call: scope.register(createHandle(...))
+            // Intentionally broad — any call receiving the handle is assumed to manage it.
+            // Does not catch createHandle() nested in sub-expressions (ternaries, etc.).
+            if (ts.isCallExpression(p) && p.arguments.includes(node)) return true;
+            // { key: createHandle(...) } or [createHandle(...)]
+            if (ts.isPropertyAssignment(p) || ts.isArrayLiteralExpression(p)) return true;
+            p = p.parent;
           }
-          // return, nested call, property assignment, or array literal
-          return (
-            ts.isReturnStatement(parent) ||
-            (ts.isCallExpression(parent) && parent !== node) ||
-            ts.isPropertyAssignment(parent) ||
-            ts.isArrayLiteralExpression(parent)
-          );
+          return false;
         }
 
-        let excused = false;
-        let parent: ts.Node | undefined = node.parent;
-        while (parent && !excused) {
-          excused = isExcusedContext(parent);
-          parent = parent.parent;
-        }
+        const excused = isExcused();
 
         if (!excused) {
           const { line, col } = getLineAndCol(sourceFile, node.getStart(sourceFile));
@@ -580,7 +586,12 @@ function main() {
   const allDiagnostics: Diagnostic[] = [];
 
   for (const file of files) {
-    const content = readFileSync(file, 'utf-8');
+    let content: string;
+    try {
+      content = readFileSync(file, 'utf-8');
+    } catch {
+      continue; // file deleted between lint-staged collection and script execution
+    }
     const sourceFile = ts.createSourceFile(
       file,
       content,
