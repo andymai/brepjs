@@ -50,6 +50,7 @@ function validateShape3D(shape: Shape3D, label: string): Result<undefined> {
 // ---------------------------------------------------------------------------
 
 import type { BooleanOptions } from '@/kernel/types.js';
+import type { ValidSolid } from '@/core/validityTypes.js';
 export type { BooleanOptions };
 
 // ---------------------------------------------------------------------------
@@ -110,10 +111,22 @@ function castToShape3D(
  * if (isOk(result)) console.log(describe(result.value));
  * ```
  */
+export function fuse(a: ValidSolid, b: ValidSolid, options?: BooleanOptions): Result<ValidSolid>;
 export function fuse(
   a: Shape3D,
   b: Shape3D,
-  { optimisation = 'none', simplify = false, signal, fuzzyValue }: BooleanOptions = {}
+  options: BooleanOptions & { unsafe: true }
+): Result<Shape3D>;
+export function fuse(
+  a: Shape3D,
+  b: Shape3D,
+  {
+    optimisation = 'none',
+    simplify = false,
+    signal,
+    fuzzyValue,
+    unsafe: _unsafe,
+  }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const checkA = validateShape3D(a, 'fuse: first operand');
@@ -154,9 +167,25 @@ export function fuse(
  * ```
  */
 export function cut(
+  base: ValidSolid,
+  tool: ValidSolid,
+  options?: BooleanOptions
+): Result<ValidSolid>;
+export function cut(
   base: Shape3D,
   tool: Shape3D,
-  { optimisation = 'none', simplify = false, signal, fuzzyValue }: BooleanOptions = {}
+  options: BooleanOptions & { unsafe: true }
+): Result<Shape3D>;
+export function cut(
+  base: Shape3D,
+  tool: Shape3D,
+  {
+    optimisation = 'none',
+    simplify = false,
+    signal,
+    fuzzyValue,
+    unsafe: _unsafe,
+  }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const checkBase = validateShape3D(base, 'cut: base');
@@ -192,9 +221,19 @@ export function cut(
  * @returns Ok with the intersection, or Err if the result is not 3D.
  */
 export function intersect(
+  a: ValidSolid,
+  b: ValidSolid,
+  options?: BooleanOptions
+): Result<ValidSolid>;
+export function intersect(
   a: Shape3D,
   b: Shape3D,
-  { simplify = false, signal, fuzzyValue }: BooleanOptions = {}
+  options: BooleanOptions & { unsafe: true }
+): Result<Shape3D>;
+export function intersect(
+  a: Shape3D,
+  b: Shape3D,
+  { simplify = false, signal, fuzzyValue, unsafe: _unsafe }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const checkA = validateShape3D(a, 'intersect: first operand');
@@ -246,8 +285,9 @@ function fuseAllPairwise(
       optimisation,
       simplify: isTopLevel ? simplify : false,
       fuzzyValue,
+      unsafe: true,
       ...(signal ? { signal } : {}),
-    });
+    } as BooleanOptions & { unsafe: true });
   }
 
   const mid = start + Math.ceil(count / 2);
@@ -278,8 +318,9 @@ function fuseAllPairwise(
     optimisation,
     simplify: isTopLevel ? simplify : false,
     fuzzyValue,
+    unsafe: true,
     ...(signal ? { signal } : {}),
-  });
+  } as BooleanOptions & { unsafe: true });
 }
 
 /**
@@ -297,6 +338,11 @@ function fuseAllPairwise(
  * const result = fuseAll([box1, box2, box3], { simplify: true });
  * ```
  */
+export function fuseAll(shapes: ValidSolid[], options?: BooleanOptions): Result<ValidSolid>;
+export function fuseAll(
+  shapes: Shape3D[],
+  options: BooleanOptions & { unsafe: true }
+): Result<Shape3D>;
 export function fuseAll(
   shapes: Shape3D[],
   {
@@ -305,6 +351,7 @@ export function fuseAll(
     strategy = 'native',
     signal,
     fuzzyValue,
+    unsafe: _unsafe,
   }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
@@ -361,9 +408,25 @@ export function fuseAll(
  * @returns Ok with the cut shape, or the base shape unchanged if tools is empty.
  */
 export function cutAll(
+  base: ValidSolid,
+  tools: ValidSolid[],
+  options?: BooleanOptions
+): Result<ValidSolid>;
+export function cutAll(
   base: Shape3D,
   tools: Shape3D[],
-  { optimisation = 'none', simplify = false, signal, fuzzyValue }: BooleanOptions = {}
+  options: BooleanOptions & { unsafe: true }
+): Result<Shape3D>;
+export function cutAll(
+  base: Shape3D,
+  tools: Shape3D[],
+  {
+    optimisation = 'none',
+    simplify = false,
+    signal,
+    fuzzyValue,
+    unsafe: _unsafe,
+  }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   if (tools.length === 0) return ok(base);

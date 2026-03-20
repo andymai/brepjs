@@ -45,6 +45,12 @@ export interface BooleanOptions {
    * sub-micron precision is not needed. Default: 0 (exact geometry).
    */
   fuzzyValue?: number | undefined;
+  /**
+   * When true, accepts any Shape3D (shells, compounds) without requiring
+   * ValidSolid branding. This is a type-level escape hatch only — no runtime
+   * effect.
+   */
+  unsafe?: boolean;
 }
 
 export type ShapeType =

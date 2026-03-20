@@ -22,7 +22,7 @@ import type {
 } from '@/topology/apiTypes.js';
 import { resolve } from '@/topology/apiTypes.js';
 import { getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
-import { fuse, cut, fuseAll } from '@/topology/booleanFns.js';
+import { fuse, cut, fuseAll, type BooleanOptions } from '@/topology/booleanFns.js';
 import { extrude } from './extrudeFns.js';
 import { faceFinder } from '@/query/finderFns.js';
 import { normalAt, faceCenter } from '@/topology/faceFns.js';
@@ -145,7 +145,7 @@ export function drill<T extends Shape3D>(shape: Shapeable<T>, options: DrillOpti
     tool = _makeCylinder(radius, depth, startPos, dir);
   }
 
-  return cut(s, tool) as Result<T>;
+  return cut(s, tool, { unsafe: true } as BooleanOptions & { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +179,9 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
   const toolResult = extrude(faceResult.value, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
 
-  return cut(s, toolResult.value) as Result<T>;
+  return cut(s, toolResult.value, { unsafe: true } as BooleanOptions & {
+    unsafe: true;
+  }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +215,9 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
   const toolResult = extrude(faceResult.value, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
 
-  return fuse(s, toolResult.value) as Result<T>;
+  return fuse(s, toolResult.value, { unsafe: true } as BooleanOptions & {
+    unsafe: true;
+  }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +238,7 @@ export function mirrorJoin<T extends Shape3D>(
   const planeOrigin = options?.at;
 
   const mirrored = mirror(s, normal, planeOrigin);
-  return fuse(s, mirrored) as Result<T>;
+  return fuse(s, mirrored, { unsafe: true } as BooleanOptions & { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,5 +289,5 @@ export function rectangularPattern<T extends Shape3D>(
     }
   }
 
-  return fuseAll(copies) as Result<T>;
+  return fuseAll(copies, { unsafe: true } as BooleanOptions & { unsafe: true }) as Result<T>;
 }

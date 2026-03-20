@@ -129,7 +129,10 @@ export function fuse<T extends Shape3D>(
   b: Shapeable<Shape3D>,
   options?: booleans.BooleanOptions
 ): Result<T> {
-  return booleans.fuse(resolve(a), resolve(b), options) as Result<T>;
+  return booleans.fuse(resolve(a), resolve(b), {
+    ...options,
+    unsafe: true,
+  } as booleans.BooleanOptions & { unsafe: true }) as Result<T>;
 }
 
 /** Cut a tool from a base shape (boolean subtraction). */
@@ -138,7 +141,10 @@ export function cut<T extends Shape3D>(
   tool: Shapeable<Shape3D>,
   options?: booleans.BooleanOptions
 ): Result<T> {
-  return booleans.cut(resolve(base), resolve(tool), options) as Result<T>;
+  return booleans.cut(resolve(base), resolve(tool), {
+    ...options,
+    unsafe: true,
+  } as booleans.BooleanOptions & { unsafe: true }) as Result<T>;
 }
 
 /** Compute the intersection of two shapes (boolean common). */
@@ -147,7 +153,10 @@ export function intersect<T extends Shape3D>(
   b: Shapeable<Shape3D>,
   options?: booleans.BooleanOptions
 ): Result<T> {
-  return booleans.intersect(resolve(a), resolve(b), options) as Result<T>;
+  return booleans.intersect(resolve(a), resolve(b), {
+    ...options,
+    unsafe: true,
+  } as booleans.BooleanOptions & { unsafe: true }) as Result<T>;
 }
 
 /** Section (cross-section) a shape with a plane. */

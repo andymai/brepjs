@@ -42,7 +42,11 @@ export function linearPattern(
 
   // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
   // expensive intersection calculations (default unless caller overrides)
-  return fuseAll(copies, { optimisation: 'sameFace', ...options });
+  return fuseAll(copies, {
+    optimisation: 'sameFace',
+    ...options,
+    unsafe: true,
+  } as BooleanOptions & { unsafe: true });
 }
 
 /**
@@ -82,7 +86,11 @@ export function circularPattern(
 
   // Pattern copies share exact face geometry — sameFace glue lets OCCT skip
   // expensive intersection calculations (default unless caller overrides)
-  return fuseAll(copies, { optimisation: 'sameFace', ...options });
+  return fuseAll(copies, {
+    optimisation: 'sameFace',
+    ...options,
+    unsafe: true,
+  } as BooleanOptions & { unsafe: true });
 }
 
 /**

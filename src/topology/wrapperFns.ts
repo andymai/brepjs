@@ -346,16 +346,45 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
   const self: Wrapped3D<T> = {
     ...base,
 
-    // Booleans — cast through unknown to satisfy generic constraint
-    fuse: (tool, opts) => wrap3D(unwrapOrThrow(fuse(val, resolve(tool), opts)) as unknown as T),
-    cut: (tool, opts) => wrap3D(unwrapOrThrow(cut(val, resolve(tool), opts)) as unknown as T),
+    // Booleans — legacy OOP wrappers use unsafe to bypass ValidSolid requirement
+    fuse: (tool, opts) =>
+      wrap3D(
+        unwrapOrThrow(
+          fuse(val, resolve(tool), { ...opts, unsafe: true } as BooleanOptions & { unsafe: true })
+        ) as unknown as T
+      ),
+    cut: (tool, opts) =>
+      wrap3D(
+        unwrapOrThrow(
+          cut(val, resolve(tool), { ...opts, unsafe: true } as BooleanOptions & { unsafe: true })
+        ) as unknown as T
+      ),
     intersect: (tool, opts) =>
-      wrap3D(unwrapOrThrow(intersect(val, resolve(tool), opts)) as unknown as T),
+      wrap3D(
+        unwrapOrThrow(
+          intersect(val, resolve(tool), {
+            ...opts,
+            unsafe: true,
+          } as BooleanOptions & { unsafe: true })
+        ) as unknown as T
+      ),
 
-    // Batch booleans
+    // Batch booleans — legacy OOP wrappers use unsafe to bypass ValidSolid requirement
     fuseAll: (tools, opts) =>
-      wrap3D(unwrapOrThrow(fuseAllFn([val, ...tools.map(resolve)], opts)) as unknown as T),
-    cutAll: (tools, opts) => wrap3D(unwrapOrThrow(cutAllFn(val, tools, opts)) as unknown as T),
+      wrap3D(
+        unwrapOrThrow(
+          fuseAllFn([val, ...tools.map(resolve)], {
+            ...opts,
+            unsafe: true,
+          } as BooleanOptions & { unsafe: true })
+        ) as unknown as T
+      ),
+    cutAll: (tools, opts) =>
+      wrap3D(
+        unwrapOrThrow(
+          cutAllFn(val, tools, { ...opts, unsafe: true } as BooleanOptions & { unsafe: true })
+        ) as unknown as T
+      ),
 
     // Boolean variants — wrappers are always 3D context, safe to narrow
     section: (plane, opts) => wrapAny(unwrapOrThrow(sectionFn(val, plane, opts)) as AnyShape),

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-20T20:32:38.685Z",
+  "generated": "2026-03-20T22:15:10.185Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -16,11 +16,6 @@
       "file": "src/core/disposal.ts",
       "rule": "no-double-cast",
       "fingerprint": "src/core/disposal.ts|no-double-cast|48|class NoOpFinalizationRegistry {\n    register(_target: objec"
-    },
-    {
-      "file": "src/core/shapeTypes.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/core/shapeTypes.ts|no-double-cast|158|handle as unknown as Record<string, unknown>"
     },
     {
       "file": "src/io/gltfExportFns.ts",
@@ -300,117 +295,122 @@
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|350|unwrapOrThrow(fuse(val, resolve(tool), opts)) as unknown as "
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|352|unwrapOrThrow(\n          fuse(val, resolve(tool), { ...opts,"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|351|unwrapOrThrow(cut(val, resolve(tool), opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|358|unwrapOrThrow(\n          cut(val, resolve(tool), { ...opts, "
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|353|unwrapOrThrow(intersect(val, resolve(tool), opts)) as unknow"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|364|unwrapOrThrow(\n          intersect(val, resolve(tool), {\n   "
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|357|unwrapOrThrow(fuseAllFn([val, ...tools.map(resolve)], opts))"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|375|unwrapOrThrow(\n          fuseAllFn([val, ...tools.map(resolv"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|358|unwrapOrThrow(cutAllFn(val, tools, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|384|unwrapOrThrow(\n          cutAllFn(val, tools, { ...opts, uns"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|370|unwrapOrThrow(fillet(val, args[0])) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|399|unwrapOrThrow(fillet(val, args[0])) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|372|unwrapOrThrow(fillet(val, args[0], args[1])) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|401|unwrapOrThrow(fillet(val, args[0], args[1])) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|378|unwrapOrThrow(chamfer(val, args[0])) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|407|unwrapOrThrow(chamfer(val, args[0])) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|380|unwrapOrThrow(chamfer(val, args[0], args[1])) as unknown as "
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|409|unwrapOrThrow(chamfer(val, args[0], args[1])) as unknown as "
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|383|unwrapOrThrow(shell(val, faces, thickness, opts)) as unknown"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|412|unwrapOrThrow(shell(val, faces, thickness, opts)) as unknown"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|384|unwrapOrThrow(offset(val, distance, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|413|unwrapOrThrow(offset(val, distance, opts)) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|385|unwrapOrThrow(draftFn(val, faces, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|414|unwrapOrThrow(draftFn(val, faces, opts)) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|388|unwrapOrThrow(drillFn(val, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|417|unwrapOrThrow(drillFn(val, opts)) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|389|unwrapOrThrow(pocketFn(val, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|418|unwrapOrThrow(pocketFn(val, opts)) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|390|unwrapOrThrow(bossFn(val, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|419|unwrapOrThrow(bossFn(val, opts)) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|391|unwrapOrThrow(mirrorJoinFn(val, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|420|unwrapOrThrow(mirrorJoinFn(val, opts)) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|392|unwrapOrThrow(rectPatternFn(val, opts)) as unknown as T"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|421|unwrapOrThrow(rectPatternFn(val, opts)) as unknown as T"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|408|unwrapOrThrow(linearPattern(val, dir, count, spacing)) as un"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|437|unwrapOrThrow(linearPattern(val, dir, count, spacing)) as un"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|410|unwrapOrThrow(circularPattern(val, axis, count, angle)) as u"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|439|unwrapOrThrow(circularPattern(val, axis, count, angle)) as u"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|429|val as unknown as ClosedWire"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|458|val as unknown as ClosedWire"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|461|createWrapped3D(val) as unknown as Wrapped<T>"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|490|createWrapped3D(val) as unknown as Wrapped<T>"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|462|createWrappedFace(val) as unknown as Wrapped<T>"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|491|createWrappedFace(val) as unknown as Wrapped<T>"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|463|createWrappedCurve(val) as unknown as Wrapped<T>"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|492|createWrappedCurve(val) as unknown as Wrapped<T>"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/wrapperFns.ts|max-function-lines|343|"
     }
   ]
 }
