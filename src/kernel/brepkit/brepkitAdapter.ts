@@ -5664,23 +5664,28 @@ export class BrepkitAdapter implements KernelAdapter {
     const [nx, ny, nz] = neutralPlane;
 
     if (typeof angleDeg === 'function') {
-      // Group faces by angle, call bk.draft per group
-      const groups = new Map<number, number[]>();
+      // Resolve per-face angles; brepkit only supports a single uniform angle
+      // per draft call (face IDs become stale after each call), so we require
+      // all callback-returned angles to be the same value.
+      const faceIds: number[] = [];
+      let uniformAngle: number | undefined;
       for (const face of faces) {
         const angle = angleDeg(face);
-        const faceId = unwrap(face, 'face');
-        const existing = groups.get(angle);
-        if (existing) {
-          existing.push(faceId);
-        } else {
-          groups.set(angle, [faceId]);
+        faceIds.push(unwrap(face, 'face'));
+        if (uniformAngle === undefined) {
+          uniformAngle = angle;
+        } else if (angle !== uniformAngle) {
+          throw new Error(
+            'brepkit does not support variable draft with multiple distinct angles. ' +
+              'Use the OCCT kernel for per-face angle variation, or use a uniform angle.'
+          );
         }
       }
-      let currentId = unwrapSolidOrThrow(shape, 'draft');
-      for (const [angle, ids] of groups) {
-        currentId = this.bk.draft(currentId, ids, dx, dy, dz, nx, ny, nz, angle);
+      if (uniformAngle === undefined) {
+        throw new Error('draft: no faces provided');
       }
-      return solidHandle(currentId);
+      const solidId = unwrapSolidOrThrow(shape, 'draft');
+      return solidHandle(this.bk.draft(solidId, faceIds, dx, dy, dz, nx, ny, nz, uniformAngle));
     }
 
     const solidId = unwrapSolidOrThrow(shape, 'draft');

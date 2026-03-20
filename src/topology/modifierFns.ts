@@ -479,7 +479,10 @@ export function draft(
       }
       kernelAngle = (ocFace) => {
         const a = hashToAngle.get(ocFace.HashCode(HASH_CODE_MAX));
-        return a ?? 1;
+        if (a === undefined) {
+          throw new Error('draft: face hash not found — possible hash collision');
+        }
+        return a;
       };
     } else {
       filteredFaces = [...faces];
@@ -505,7 +508,7 @@ export function draft(
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
-      kernelError('DRAFT_FAILED', `Draft operation failed: ${raw}`, e, {
+      kernelError(BrepErrorCode.DRAFT_FAILED, `Draft operation failed: ${raw}`, e, {
         operation: 'draft',
         faceCount: faces.length,
         angle,

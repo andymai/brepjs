@@ -396,21 +396,21 @@ export function draftWithHistory(
   const dir = new oc.gp_Dir_4(px, py, pz);
   const origin = new oc.gp_Pnt_3(ox, oy, oz);
   const pln = new oc.gp_Pln_3(origin, dir);
-
   const builder = new oc.BRepOffsetAPI_DraftAngle(shape);
-  for (const face of faces) {
-    const angle = typeof angleDeg === 'function' ? angleDeg(face) : angleDeg;
-    const angleRad = (angle * Math.PI) / 180;
-    builder.Add(oc.TopoDS.Face_1(face), dir, angleRad, pln);
+  try {
+    for (const face of faces) {
+      const angle = typeof angleDeg === 'function' ? angleDeg(face) : angleDeg;
+      const angleRad = (angle * Math.PI) / 180;
+      builder.Add(oc.TopoDS.Face_1(face), dir, angleRad, pln);
+    }
+    const progress = new oc.Message_ProgressRange_1();
+    builder.Build(progress);
+    progress.delete();
+    return modifierWithEvolution(oc, builder, shape, inputFaceHashes, hashUpperBound);
+  } finally {
+    builder.delete();
+    pln.delete();
+    origin.delete();
+    dir.delete();
   }
-  const progress = new oc.Message_ProgressRange_1();
-  builder.Build(progress);
-  progress.delete();
-
-  const result = modifierWithEvolution(oc, builder, shape, inputFaceHashes, hashUpperBound);
-  builder.delete();
-  pln.delete();
-  origin.delete();
-  dir.delete();
-  return result;
 }

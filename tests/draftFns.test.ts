@@ -105,12 +105,29 @@ describe('draft', () => {
       expect(vol).toBeGreaterThan(0);
     });
 
-    it.skipIf(!isBrepkit)('applies variable draft via per-face callback', () => {
+    it.skipIf(!isBrepkit)('applies uniform-angle callback draft', () => {
+      const b = box(10, 10, 10);
+      const sideFaces = findFacesByNormal(b, 'X');
+
+      // Callback that returns the same angle for all faces (supported by brepkit)
+      const result = draft(b, sideFaces, {
+        pullDirection: [0, 0, 1],
+        neutralPlane: [0, 0, 0],
+        angle: () => 5,
+      });
+
+      expect(isOk(result)).toBe(true);
+      const solid = unwrap(result);
+      expect(isSolid(solid)).toBe(true);
+    });
+
+    it.skipIf(!isBrepkit)('rejects multi-angle callback draft', () => {
       const b = box(10, 10, 10);
       const xFaces = findFacesByNormal(b, 'X');
       const yFaces = findFacesByNormal(b, 'Y');
       const allSideFaces = [...xFaces, ...yFaces];
 
+      // Brepkit does not support multiple distinct angles in a single draft call
       const result = draft(b, allSideFaces, {
         pullDirection: [0, 0, 1],
         neutralPlane: [0, 0, 0],
@@ -121,9 +138,8 @@ describe('draft', () => {
         },
       });
 
-      expect(isOk(result)).toBe(true);
-      const solid = unwrap(result);
-      expect(isSolid(solid)).toBe(true);
+      expect(isErr(result)).toBe(true);
+      expect(unwrapErr(result).message).toMatch(/multiple distinct angles/);
     });
 
     it.skipIf(!isBrepkit)('works with FinderFn face selection', () => {
