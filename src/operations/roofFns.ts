@@ -9,8 +9,9 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
-import type { ClosedWire, Dimension, Solid, Wire } from '@/core/shapeTypes.js';
+import type { ClosedWire, Dimension, Wire } from '@/core/shapeTypes.js';
 import { createSolid } from '@/core/shapeTypes.js';
+import type { PlanarWire, ValidSolid } from '@/core/validityTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { kernelError, BrepErrorCode } from '@/core/errors.js';
 import { getEdges } from '@/topology/shapeFns.js';
@@ -209,7 +210,10 @@ function buildSkeletonTriFaces(
  * @param options - Optional angle (degrees) for the roof slope
  * @returns A Result containing the roof Solid, or an error
  */
-export function roof(w: ClosedWire<Dimension>, options?: RoofOptions): Result<Solid> {
+export function roof(
+  w: ClosedWire<Dimension> & PlanarWire<Dimension>,
+  options?: RoofOptions
+): Result<ValidSolid> {
   const angle = (options?.angle ?? 45) * (Math.PI / 180);
   const tanAngle = Math.tan(angle);
 
@@ -261,10 +265,10 @@ export function roof(w: ClosedWire<Dimension>, options?: RoofOptions): Result<So
     try {
       const solid = kernel.sewAndSolidify(triFaces, 1e-6);
       const fixed = kernel.fixShape(solid);
-      return ok(createSolid(fixed));
+      return ok(createSolid(fixed) as ValidSolid);
     } catch {
       try {
-        return ok(createSolid(kernel.sew(triFaces, 1e-6)));
+        return ok(createSolid(kernel.sew(triFaces, 1e-6)) as ValidSolid);
       } catch {
         return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Failed to sew roof faces'));
       }
