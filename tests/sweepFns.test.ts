@@ -7,6 +7,7 @@ import {
   castShape,
   sweep,
   isOk,
+  isErr,
   unwrap,
   isSolid,
   isShape3D,
@@ -68,11 +69,11 @@ describe('sweepFns', () => {
     const result = sweep(profile, spine, { transitionMode: 0 });
     expect(isOk(result)).toBe(true);
     const shape = unwrap(result);
-    if (isSolid(shape)) {
-      const expected = Math.PI * 4 * 20;
-      const actual = unwrap(measureVolume(shape));
-      expect(actual).toBeGreaterThan(expected * 0.99);
-      expect(actual).toBeLessThan(expected * 1.01);
-    }
+    expect(isSolid(shape)).toBe(true);
+    const expected = Math.PI * 4 * 20;
+    const actual = unwrap(measureVolume(shape));
+    expect(actual).toBeGreaterThan(expected * 0.99);
+    expect(actual).toBeLessThan(expected * 1.01);
   });
+
 });

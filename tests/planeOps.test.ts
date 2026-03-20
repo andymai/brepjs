@@ -10,6 +10,7 @@ import {
   pivotPlane,
 } from '@/core/planeOps.js';
 import { vecEquals, vecLength, vecDot } from '@/core/vecOps.js';
+import { unwrap, isErr } from '@/core/result.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -109,25 +110,25 @@ describe('createNamedPlane', () => {
 
 describe('resolvePlane', () => {
   it('resolves string plane name', () => {
-    const plane = resolvePlane('XY');
+    const plane = unwrap(resolvePlane('XY'));
     expect(vecEquals(plane.zDir, [0, 0, 1])).toBe(true);
   });
 
   it('passes through Plane object', () => {
     const custom = createPlane([1, 2, 3], [1, 0, 0], [0, 0, 1]);
-    const resolved = resolvePlane(custom);
-    expect(resolved).toBe(custom);
+    const resolved = unwrap(resolvePlane(custom));
+    expect(vecEquals(resolved.origin, custom.origin)).toBe(true);
   });
 
-  it('throws for invalid plane name', () => {
+  it('returns Err for invalid plane name', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input
-    expect(() => resolvePlane('INVALID' as any)).toThrow();
+    expect(isErr(resolvePlane('INVALID' as any))).toBe(true);
   });
 });
 
 describe('planeToWorld / planeToLocal', () => {
   it('converts local to world on XY plane', () => {
-    const plane = resolvePlane('XY');
+    const plane = unwrap(resolvePlane('XY'));
     const world = planeToWorld(plane, [3, 4]);
     expect(world[0]).toBeCloseTo(3);
     expect(world[1]).toBeCloseTo(4);
@@ -135,14 +136,14 @@ describe('planeToWorld / planeToLocal', () => {
   });
 
   it('converts world to local on XY plane', () => {
-    const plane = resolvePlane('XY');
+    const plane = unwrap(resolvePlane('XY'));
     const local = planeToLocal(plane, [3, 4, 0]);
     expect(local[0]).toBeCloseTo(3);
     expect(local[1]).toBeCloseTo(4);
   });
 
   it('round-trips correctly', () => {
-    const plane = resolvePlane('XY');
+    const plane = unwrap(resolvePlane('XY'));
     const local = [7, 11] as const;
     const world = planeToWorld(plane, local);
     const backToLocal = planeToLocal(plane, world);
@@ -151,7 +152,7 @@ describe('planeToWorld / planeToLocal', () => {
   });
 
   it('works with offset plane', () => {
-    const plane = resolvePlane('XY', 10);
+    const plane = unwrap(resolvePlane('XY', 10));
     const world = planeToWorld(plane, [1, 2]);
     expect(world[2]).toBeCloseTo(10);
   });
@@ -159,7 +160,7 @@ describe('planeToWorld / planeToLocal', () => {
 
 describe('translatePlane', () => {
   it('translates origin by vector', () => {
-    const plane = resolvePlane('XY');
+    const plane = unwrap(resolvePlane('XY'));
     const translated = translatePlane(plane, [5, 10, 15]);
     expect(vecEquals(translated.origin, [5, 10, 15])).toBe(true);
     // Directions unchanged
@@ -171,7 +172,7 @@ describe('translatePlane', () => {
 
 describe('pivotPlane', () => {
   it('rotates plane around axis', () => {
-    const plane = resolvePlane('XY');
+    const plane = unwrap(resolvePlane('XY'));
     const pivoted = pivotPlane(plane, 90, [1, 0, 0]);
     // After 90 degree rotation around X, Z normal [0,0,1] becomes [0,-1,0]
     expect(pivoted.zDir[1]).toBeCloseTo(-1, 3);
@@ -185,7 +186,7 @@ describe('pivotPlane', () => {
   });
 
   it('all directions remain unit length', () => {
-    const pivoted = pivotPlane(resolvePlane('XY'), 37, [1, 1, 0]);
+    const pivoted = pivotPlane(unwrap(resolvePlane('XY')), 37, [1, 1, 0]);
     expect(vecLength(pivoted.xDir)).toBeCloseTo(1);
     expect(vecLength(pivoted.yDir)).toBeCloseTo(1);
     expect(vecLength(pivoted.zDir)).toBeCloseTo(1);
