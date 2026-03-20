@@ -1,6 +1,6 @@
 # ADR-0011: Geometric Validity Brands (PlanarFace / PlanarWire)
 
-**Status**: Proposed
+**Status**: Implemented
 **Date**: 2026-03-20
 
 ## Context

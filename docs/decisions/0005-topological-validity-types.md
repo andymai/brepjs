@@ -1,6 +1,6 @@
 # ADR-0005: Topological Validity Phantom Types
 
-**Status**: Implemented (Phases 1–2 complete, Phase 3 partially complete, Phases 4–5 proposed)
+**Status**: Implemented (Phases 1–3b complete, Phase 4 partially complete, Phase 5 see ADR-0011)
 **Date**: 2026-03-08 (updated 2026-03-20)
 
 ## Context
@@ -187,7 +187,7 @@ Updated operation signatures to _require_ validity brands at call sites:
 
 Internal call sites (Sketch, CompoundSketch, Blueprint, draw, booleanFns, compoundOpsFns) cast with `as ClosedWire`/`as OrientedFace` where the invariant is known to hold by construction.
 
-### Phase 3b: Consumer Updates — ValidSolid (Proposed)
+### Phase 3b: Consumer Updates — ValidSolid ✅ Complete
 
 Require `ValidSolid` on operations that fail or produce garbage on invalid solids:
 
@@ -214,7 +214,7 @@ Batch variants `fuseAll` and `cutAll` follow the same overload pattern.
 - `fillet`, `chamfer`, `shell` (api layer) preserve brands via `<T extends Shape3D>` generics
 - `Sketch.wire` stays as `Wire` (sketches serve as both closed profiles and open sweep paths)
 
-### Phase 5: Geometric Validity Brands (Proposed)
+### Phase 5: Geometric Validity Brands ✅ Complete
 
 See ADR-0011 for `PlanarFace`/`PlanarWire` brands that encode geometric (not just topological) invariants.
 

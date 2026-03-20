@@ -63,9 +63,11 @@ export function makeFace<D extends Dimension = '3D'>(
  * Equivalent to OpenSCAD's `fill()` — takes a 2D face with holes and returns
  * a solid face with all internal cutouts filled in.
  */
-export function fill<D extends Dimension = '3D'>(face: Face<D>): Result<OrientedFace<D>> {
+export function fill<D extends Dimension = '3D'>(
+  face: PlanarFace<D>
+): Result<OrientedFace<D> & PlanarFace<D>> {
   const outer = outerWire(face);
-  // Outer wire of a face shares the face's surface — planar if face was planar
+  // Outer wire of a planar face lies in the same plane — cast is sound
   return makeFace(outer as ClosedWire<D> & PlanarWire<D>);
 }
 

@@ -12,6 +12,7 @@ import type { KernelShape } from '@/kernel/types.js';
 import type { ClosedWire, Dimension, Wire } from '@/core/shapeTypes.js';
 import { createSolid } from '@/core/shapeTypes.js';
 import type { PlanarWire, ValidSolid } from '@/core/validityTypes.js';
+import { isValidSolid } from '@/core/validityTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { kernelError, BrepErrorCode } from '@/core/errors.js';
 import { getEdges } from '@/topology/shapeFns.js';
@@ -268,7 +269,10 @@ export function roof(
       return ok(createSolid(fixed) as ValidSolid);
     } catch {
       try {
-        return ok(createSolid(kernel.sew(triFaces, 1e-6)) as ValidSolid);
+        const sewn = createSolid(kernel.sew(triFaces, 1e-6));
+        // sew() doesn't guarantee a valid solid — validate before branding
+        if (isValidSolid(sewn)) return ok(sewn);
+        return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Sew fallback produced invalid solid'));
       } catch {
         return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Failed to sew roof faces'));
       }

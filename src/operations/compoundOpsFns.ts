@@ -80,7 +80,8 @@ function toWire(profile: DrawingLike | Wire): ClosedWire & PlanarWire {
     // planar by construction: sketch operates on XY plane
     return profile.sketchOnPlane('XY').wire as ClosedWire & PlanarWire;
   }
-  // planar by construction: DrawingLike profiles are 2D sketches
+  // planar by construction: remaining cases are either DrawingLike 2D profiles
+  // or Wire inputs — callers are expected to pass closed, planar profiles here.
   return profile as ClosedWire & PlanarWire;
 }
 
