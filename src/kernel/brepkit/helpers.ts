@@ -10,6 +10,8 @@
 
 import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
+import type { Curve2dObj, BBox2d as BkBBox2d } from './brepkit2d.js';
 
 // ---------------------------------------------------------------------------
 // Handle types
@@ -342,4 +344,25 @@ export function hasBooleanOptions(opts: {
     opts.strategy !== undefined ||
     opts.fuzzyValue !== undefined
   );
+}
+
+// ---------------------------------------------------------------------------
+// 2D handle casts
+// ---------------------------------------------------------------------------
+
+/** Cast opaque Curve2dHandle to internal Curve2dObj. */
+export function c2d(h: Curve2dHandle): Curve2dObj {
+  return h as Curve2dObj;
+}
+
+/** Unwrap trimmed curve wrappers to get the basis geometry. */
+export function c2dBasis(h: Curve2dHandle): Curve2dObj {
+  let c = h as Curve2dObj;
+  while (c.__bk2d === 'trimmed') c = c.basis;
+  return c;
+}
+
+/** Cast opaque BBox2dHandle to internal BkBBox2d. */
+export function bb2d(h: BBox2dHandle): BkBBox2d {
+  return h as BkBBox2d;
 }
