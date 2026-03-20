@@ -8,11 +8,10 @@
  */
 
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
-import { castShape } from '@/core/shapeTypes.js';
-import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { type Result, ok, err } from '@/core/result.js';
 import { queryError } from '@/core/errors.js';
 import { getHashCode, isSameShape } from '@/topology/shapeFns.js';
-import { iterTopo, downcast } from '@/topology/cast.js';
+import { getEdges, getFaces, getWires, getVertices } from '@/topology/topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Predicate type
@@ -86,15 +85,27 @@ export function createTypedFinder<T extends AnyShape<Dimension>, F extends Shape
 
   const shouldKeep = (element: T): boolean => filters.every((f) => f(element));
 
-  const extractElements = (shape: AnyShape<Dimension>): T[] => {
-    const result: T[] = [];
-    for (const raw of iterTopo(shape.wrapped, topoKind)) {
-      const element = castShape(unwrap(downcast(raw))) as T;
-      if (shouldKeep(element)) {
-        result.push(element);
-      }
+  // Use cached topology getters instead of raw iterTopo — avoids redundant
+  // WASM calls and benefits from the castShapeWithKnownType fast path.
+  function getCachedElements(shape: AnyShape<Dimension>): T[] {
+    switch (topoKind) {
+      case 'edge':
+        return getEdges(shape) as T[];
+      case 'face':
+        return getFaces(shape) as T[];
+      case 'wire':
+        return getWires(shape) as T[];
+      case 'vertex':
+        return getVertices(shape) as T[];
     }
-    return result;
+  }
+
+  const extractElements = (shape: AnyShape<Dimension>): T[] => {
+    const all = getCachedElements(shape);
+    // When no filters are active, return the cached array directly — callers
+    // do not mutate the result and the cache holds the authoritative array.
+    if (filters.length === 0) return all;
+    return all.filter(shouldKeep);
   };
 
   const emptyFinder = (): ShapeFinder<T> => createTypedFinder<T, F>(topoKind, [], rebuild, extend);
@@ -132,11 +143,13 @@ export function createTypedFinder<T extends AnyShape<Dimension>, F extends Shape
     findAll: (shape) => extractElements(shape),
 
     findUnique: (shape) => {
-      // Early-termination: stop iterating once we find more than 1 match
+      // Use cached topology — early termination only saves JS filtering,
+      // since iterShapes already materializes all shapes in one WASM call.
+      const all = getCachedElements(shape);
       let match: T | undefined;
       let count = 0;
-      for (const raw of iterTopo(shape.wrapped, topoKind)) {
-        const element = castShape(unwrap(downcast(raw))) as T;
+      for (let i = 0; i < all.length; i++) {
+        const element = all[i] as T; // noUncheckedIndexedAccess: i < all.length guarantees defined
         if (shouldKeep(element)) {
           count++;
           if (count === 1) match = element;
@@ -151,7 +164,6 @@ export function createTypedFinder<T extends AnyShape<Dimension>, F extends Shape
           )
         );
       }
-      // count === 1 guarantees match was assigned
       return ok(match as T);
     },
 

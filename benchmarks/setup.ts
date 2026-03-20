@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initOC } from '../tests/setup.js';
 import { registerKernel } from '../src/kernel/index.js';
-import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
+import { BrepkitAdapter } from '../src/kernel/brepkit/brepkitAdapter.js';
 import { createDualKernelBench } from './harness.js';
 
 let _hasBrepkit = false;

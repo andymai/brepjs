@@ -15,7 +15,7 @@ import { getCurveType, curveLength, curveIsClosed } from '@/topology/curveFns.js
 import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '@/topology/faceFns.js';
 import { measureArea } from '@/measurement/measureFns.js';
 import { unwrap, isOk } from '@/core/result.js';
-import { iterTopo } from '@/topology/cast.js';
+import { getEdges } from '@/topology/topologyQueryFns.js';
 import type { CurveType } from '@/core/typeDiscriminants.js';
 import { type ShapeFinder, type Predicate, createTypedFinder } from './finderCore.js';
 import { type DirectionInput, resolveDir } from './directionUtils.js';
@@ -145,14 +145,7 @@ function buildWireFinder(filters: ReadonlyArray<Predicate<Wire>>): WireFinderFn 
 
       isOpen: () => withFilter((wire) => !curveIsClosed(wire)),
 
-      ofEdgeCount: (count) =>
-        withFilter((wire) => {
-          let edgeCount = 0;
-          for (const _raw of iterTopo(wire.wrapped, 'edge')) {
-            edgeCount++;
-          }
-          return edgeCount === count;
-        }),
+      ofEdgeCount: (count) => withFilter((wire) => getEdges(wire).length === count),
     })
   );
 }

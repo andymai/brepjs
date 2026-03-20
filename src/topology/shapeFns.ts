@@ -79,6 +79,7 @@ export {
   iterWires,
   iterVertices,
   getBounds,
+  getCachedShapeKind,
   describe,
   vertexPosition,
   invalidateShapeCache,
