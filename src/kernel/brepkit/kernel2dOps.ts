@@ -38,6 +38,7 @@ export function createPoint2d(x: number, y: number): KernelType {
 
 export function createDirection2d(x: number, y: number): KernelType {
   const l = Math.sqrt(x * x + y * y);
+  if (l < 1e-15) throw new Error('brepkit: createDirection2d called with zero-length vector');
   return { x: x / l, y: y / l };
 }
 
@@ -858,7 +859,7 @@ export function deserializeCurve2d(data: string): Curve2dHandle {
 export function splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHandle[] {
   const c = c2d(curve);
   const bounds = bk2d.curveBounds(c);
-  const sortedParams = [bounds.first, ...params.sort((a, b) => a - b), bounds.last];
+  const sortedParams = [bounds.first, ...[...params].sort((a, b) => a - b), bounds.last];
   const result: Curve2dHandle[] = [];
   for (let i = 0; i < sortedParams.length - 1; i++) {
     result.push({
