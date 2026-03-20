@@ -117,7 +117,7 @@ describe('resolvePlane', () => {
   it('passes through Plane object', () => {
     const custom = createPlane([1, 2, 3], [1, 0, 0], [0, 0, 1]);
     const resolved = unwrap(resolvePlane(custom));
-    expect(vecEquals(resolved.origin, custom.origin)).toBe(true);
+    expect(resolved).toBe(custom);
   });
 
   it('returns Err for invalid plane name', () => {
