@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Operations with shape evolution tracking for the brepkit adapter.
  *
@@ -96,8 +95,11 @@ function faceCentroidById(bk: BrepkitKernel, faceId: number): [number, number, n
     let cz = 0;
     const nVerts = pos.length / 3;
     for (let i = 0; i < pos.length; i += 3) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       cx += pos[i]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       cy += pos[i + 1]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       cz += pos[i + 2]!;
     }
     return [cx / nVerts, cy / nVerts, cz / nVerts];
@@ -133,6 +135,7 @@ function matchFacesGeometrically(
     centroid: [number, number, number];
   }[] = [];
   for (let i = 0; i < hashCount; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
     const fid = inputFaceIds[i]!;
     try {
       const normal = bk.getFaceNormal(fid);
@@ -177,6 +180,7 @@ function matchFacesGeometrically(
     let bestIdx = -1;
 
     for (let i = 0; i < inputSigs.length; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
       const inp = inputSigs[i]!;
       const dot =
         (out.normal[0] ?? 0) * (inp.normal[0] ?? 0) +
@@ -195,6 +199,7 @@ function matchFacesGeometrically(
     }
 
     if (bestIdx >= 0) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
       const bestInput = inputSigs[bestIdx]!;
       const existing = modified.get(bestInput.hash) ?? [];
       existing.push(out.hash);
@@ -222,6 +227,7 @@ function matchFacesGeometrically(
   // Input faces not matched -> deleted
   for (let i = 0; i < inputSigs.length; i++) {
     if (!matchedInputIndices.has(i)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
       deleted.add(inputSigs[i]!.hash);
     }
   }
@@ -254,6 +260,7 @@ function buildEvolution(
     if (isTransform) {
       // Transforms: 1:1 mapping -- each input face maps to the corresponding output face
       for (let i = 0; i < inputFaceHashes.length && i < outputHashes.length; i++) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
         modified.set(inputFaceHashes[i]!, [outputHashes[i]!]);
       }
     } else {
@@ -279,6 +286,7 @@ function buildEvolution(
         }
         const newFaces = outputHashes.filter((fh) => !inputSet.has(fh));
         if (newFaces.length > 0 && inputFaceHashes.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
           generated.set(inputFaceHashes[0]!, newFaces);
         }
         for (const hash of inputFaceHashes) {
@@ -301,9 +309,11 @@ function buildEvolution(
       } else {
         // No original shape available -- positional fallback
         for (let i = 0; i < inputFaceHashes.length && i < outputHashes.length; i++) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
           modified.set(inputFaceHashes[i]!, [outputHashes[i]!]);
         }
         if (outputHashes.length > inputFaceHashes.length && inputFaceHashes.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
           generated.set(inputFaceHashes[0]!, outputHashes.slice(inputFaceHashes.length));
         }
       }

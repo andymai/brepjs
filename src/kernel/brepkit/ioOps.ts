@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * File I/O operations for the brepkit adapter.
  * @module
@@ -40,9 +39,11 @@ export function exportSTL(
   const solidIds = unwrapSolidsForExport(bk, shape, 'exportSTL');
   // Use the first solid; STL format doesn't natively support multi-solid
   if (binary) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const bytes: Uint8Array = bk.exportStl(solidIds[0]!, DEFAULT_DEFLECTION);
     return bytes.buffer as ArrayBuffer;
   }
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   const bytes: Uint8Array = bk.exportStlAscii(solidIds[0]!, DEFAULT_DEFLECTION);
   return new TextDecoder().decode(bytes);
 }

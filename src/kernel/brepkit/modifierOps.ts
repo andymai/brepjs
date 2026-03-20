@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Modifier operations for the brepkit adapter.
  * @module
@@ -177,8 +176,11 @@ export function shell(
           oz = 0;
         for (const vid of origVerts) {
           const pos = bk.getVertexPosition(vid);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
           ox += pos[0]!;
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
           oy += pos[1]!;
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
           oz += pos[2]!;
         }
         const n = origVerts.length;
@@ -197,8 +199,11 @@ export function shell(
               sz = 0;
             for (const svid of sv) {
               const spos = bk.getVertexPosition(svid);
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
               sx += spos[0]!;
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
               sy += spos[1]!;
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
               sz += spos[2]!;
             }
             const sn = sv.length;
@@ -309,6 +314,7 @@ export function offsetWire2D(
   const coords2d: number[] = [];
   for (const edge of edges) {
     const verts = bk.getEdgeVertices(unwrap(edge, 'edge'));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
     coords2d.push(verts[0]!, verts[1]!);
   }
   if (coords2d.length < 6) return wire;
@@ -316,6 +322,7 @@ export function offsetWire2D(
   const result = bk.offsetPolygon2d(coords2d, offsetVal, 1e-10);
   const coords3d: number[] = [];
   for (let i = 0; i < result.length; i += 2) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     coords3d.push(result[i]!, result[i + 1]!, 0);
   }
   const wireId: number = bk.makePolygonWire(coords3d);

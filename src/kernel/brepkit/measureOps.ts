@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Measurement operations for the brepkit adapter.
  * @module
@@ -65,6 +64,7 @@ export function centerOfMass(bk: BrepkitKernel, shape: KernelShape): [number, nu
   const h = shape as BrepkitHandle;
   if (h.type === 'solid') {
     const result = bk.centerOfMass(unwrap(shape), DEFAULT_DEFLECTION);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     return [result[0]!, result[1]!, result[2]!];
   }
   if (h.type === 'face') {
@@ -77,6 +77,7 @@ export function centerOfMass(bk: BrepkitKernel, shape: KernelShape): [number, nu
   if (h.type === 'edge') {
     // Use midpoint of edge vertices
     const verts = bk.getEdgeVertices(h.id);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     return [(verts[0]! + verts[3]!) / 2, (verts[1]! + verts[4]!) / 2, (verts[2]! + verts[5]!) / 2];
   }
   if (h.type === 'vertex') {
@@ -107,6 +108,7 @@ export function linearCenterOfMass(
   const h = shape as BrepkitHandle;
   if (h.type === 'edge') {
     const verts = bk.getEdgeVertices(h.id);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     return [(verts[0]! + verts[3]!) / 2, (verts[1]! + verts[4]!) / 2, (verts[2]! + verts[5]!) / 2];
   }
   // For wires/solids, fall back to volumetric CoM
@@ -124,7 +126,9 @@ export function boundingBox(
   if (h.type === 'solid') {
     const bb = bk.boundingBox(unwrap(shape));
     return {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       min: [bb[0]!, bb[1]!, bb[2]!],
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       max: [bb[3]!, bb[4]!, bb[5]!],
     };
   }
@@ -167,8 +171,11 @@ export function distance(
   if (h1.type === 'solid' && h2.type === 'solid') {
     const buf = bk.solidToSolidDistance(h1.id, h2.id);
     return {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       value: buf[0]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point1: [buf[1]!, buf[2]!, buf[3]!],
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point2: [buf[4]!, buf[5]!, buf[6]!],
     };
   }
@@ -176,10 +183,14 @@ export function distance(
   // Point to solid
   if (h1.type === 'vertex' && h2.type === 'solid') {
     const pos = bk.getVertexPosition(h1.id);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const result = bk.pointToSolidDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
     return {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       value: result[0]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point1: [pos[0]!, pos[1]!, pos[2]!],
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point2: [result[1]!, result[2]!, result[3]!],
     };
   }
@@ -187,10 +198,14 @@ export function distance(
   // Point-to-face distance
   if (h1.type === 'vertex' && h2.type === 'face') {
     const pos = bk.getVertexPosition(h1.id);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const result = bk.pointToFaceDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
     return {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       value: result[0]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point1: [pos[0]!, pos[1]!, pos[2]!],
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point2: [result[1]!, result[2]!, result[3]!],
     };
   }
@@ -198,10 +213,14 @@ export function distance(
   // Point-to-edge distance
   if (h1.type === 'vertex' && h2.type === 'edge') {
     const pos = bk.getVertexPosition(h1.id);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const result = bk.pointToEdgeDistance(pos[0]!, pos[1]!, pos[2]!, h2.id);
     return {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       value: result[0]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point1: [pos[0]!, pos[1]!, pos[2]!],
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       point2: [result[1]!, result[2]!, result[3]!],
     };
   }
@@ -210,11 +229,13 @@ export function distance(
   const getPos = (s: BrepkitHandle): [number, number, number] => {
     if (s.type === 'vertex') {
       const p = bk.getVertexPosition(s.id);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       return [p[0]!, p[1]!, p[2]!];
     }
     // Use bounding box center as approximation
     if (s.type === 'solid') {
       const bb = bk.boundingBox(s.id);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       return [(bb[0]! + bb[3]!) / 2, (bb[1]! + bb[4]!) / 2, (bb[2]! + bb[5]!) / 2];
     }
     return [0, 0, 0];
@@ -248,7 +269,9 @@ export function surfaceCurvature(
       `brepkit: measureCurvatureAtSurface returned ${data.length} values, expected 8`
     );
   }
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   const k1 = data[0]!;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   const k2 = data[1]!;
   const gaussian = k1 * k2;
   const mean = (k1 + k2) / 2;
@@ -257,7 +280,9 @@ export function surfaceCurvature(
     mean,
     max: Math.max(k1, k2),
     min: Math.min(k1, k2),
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     maxDirection: [data[2]!, data[3]!, data[4]!],
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     minDirection: [data[5]!, data[6]!, data[7]!],
   };
 }
@@ -275,17 +300,29 @@ export function surfaceCenterOfMass(
     cz = 0,
     totalArea = 0;
   for (let t = 0; t < idx.length; t += 3) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const i0 = idx[t]! * 3,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       i1 = idx[t + 1]! * 3,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       i2 = idx[t + 2]! * 3;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const tcx = (pos[i0]! + pos[i1]! + pos[i2]!) / 3;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const tcy = (pos[i0 + 1]! + pos[i1 + 1]! + pos[i2 + 1]!) / 3;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const tcz = (pos[i0 + 2]! + pos[i1 + 2]! + pos[i2 + 2]!) / 3;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const ux = pos[i1]! - pos[i0]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       uy = pos[i1 + 1]! - pos[i0 + 1]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       uz = pos[i1 + 2]! - pos[i0 + 2]!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const vx = pos[i2]! - pos[i0]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       vy = pos[i2 + 1]! - pos[i0 + 1]!,
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       vz = pos[i2 + 2]! - pos[i0 + 2]!;
     const faceArea =
       0.5 *

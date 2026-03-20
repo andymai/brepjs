@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-20T19:32:49.888Z",
+  "generated": "2026-03-20T19:57:17.648Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -45,7 +45,7 @@
     {
       "file": "src/kernel/brepkit/brepkit2d.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/brepkit2d.ts|max-function-lines|590|"
+      "fingerprint": "src/kernel/brepkit/brepkit2d.ts|max-function-lines|592|"
     },
     {
       "file": "src/kernel/brepkit/brepkitAdapter.ts",
@@ -125,77 +125,77 @@
     {
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|677|"
+      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|685|"
     },
     {
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|764|"
+      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|797|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-function-lines|113|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-function-lines|115|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|276|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|283|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|285|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|293|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|303|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|311|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|306|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|315|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|409|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|419|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|415|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|425|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|421|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|431|"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|126|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|125|"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|143|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|142|"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|194|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|196|"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|198|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|200|"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|209|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|214|"
     },
     {
       "file": "src/kernel/brepkit/sweepOps.ts",
@@ -215,22 +215,22 @@
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-function-lines|22|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-function-lines|21|"
     },
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|78|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|77|"
     },
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|112|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|113|"
     },
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|217|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|220|"
     },
     {
       "file": "src/kernel/occt/advancedOps.ts",

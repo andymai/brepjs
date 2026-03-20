@@ -1,5 +1,5 @@
 /* v8 ignore file -- brepkit WASM kernel not available in OCCT test suite */
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
+/* eslint-disable @typescript-eslint/no-non-null-assertion -- remaining inline methods use WASM indices; will convert to per-line as methods are extracted to ops files */
 /**
  * BrepkitAdapter — KernelAdapter implementation backed by brepkit's WASM kernel.
  *

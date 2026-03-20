@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Topology introspection operations for the brepkit adapter.
  * @module
@@ -103,10 +102,12 @@ export function iterShapes(bk: BrepkitKernel, shape: KernelShape, type: ShapeTyp
         const results: KernelShape[] = [];
         for (const eid of edgeIds) {
           const verts = bk.getEdgeVertices(eid);
+          /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
           const coords = [
             [verts[0]!, verts[1]!, verts[2]!],
             [verts[3]!, verts[4]!, verts[5]!],
           ] as const;
+          /* eslint-enable @typescript-eslint/no-non-null-assertion */
           for (const [x, y, z] of coords) {
             const key = `${x},${y},${z}`;
             if (!seen.has(key)) {
@@ -124,7 +125,9 @@ export function iterShapes(bk: BrepkitKernel, shape: KernelShape, type: ShapeTyp
       if (type === 'edge') return [shape];
       if (type === 'vertex') {
         const verts = bk.getEdgeVertices(h);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
         const v1 = bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
         const v2 = bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);
         return [vertexHandle(v1), vertexHandle(v2)];
       }

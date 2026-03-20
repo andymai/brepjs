@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * 2D curve and bounding-box operations for the brepkit adapter.
  *
@@ -384,7 +383,9 @@ export function createAffinityGTrsf2d(ox: number, oy: number, dx: number, dy: nu
     py = dx / len; // perpendicular to axis
   const k = ratio - 1;
   const m = [1 + k * px * px, k * px * py, 0, k * py * px, 1 + k * py * py, 0, 0, 0, 1];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   const txv = ox - m[0]! * ox - m[1]! * oy;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   const tyv = oy - m[3]! * ox - m[4]! * oy;
   return _gtrsf(m, txv, tyv);
 }
@@ -412,7 +413,9 @@ export function createMirrorGTrsf2d(
     const px = ox ?? cx,
       py = oy ?? cy;
     // Translation: p - R*p
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const txv = px - m[0]! * px - m[1]! * py;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const tyv = py - m[3]! * px - m[4]! * py;
     return _gtrsf(m, txv, tyv);
   }
@@ -439,6 +442,7 @@ export function multiplyGTrsf2d(base: KernelType, other: KernelType): void {
   // Full 3x3 matrix multiply: base = base * other
   const a = base.m as number[],
     b = other.m as number[];
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
   const r = [
     a[0]! * b[0]! + a[1]! * b[3]! + a[2]! * b[6]!,
     a[0]! * b[1]! + a[1]! * b[4]! + a[2]! * b[7]!,
@@ -450,12 +454,15 @@ export function multiplyGTrsf2d(base: KernelType, other: KernelType): void {
     a[6]! * b[1]! + a[7]! * b[4]! + a[8]! * b[7]!,
     a[6]! * b[2]! + a[7]! * b[5]! + a[8]! * b[8]!,
   ];
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
   base.m = r;
   const oldTx = base.tx as number,
     oldTy = base.ty as number;
   const otx = Number(other.tx) || 0,
     oty = Number(other.ty) || 0;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   base.tx = a[0]! * otx + a[1]! * oty + oldTx;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   base.ty = a[3]! * otx + a[4]! * oty + oldTy;
 }
 
@@ -466,11 +473,13 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   const tx = Number(gtrsf.tx) || 0,
     ty = Number(gtrsf.ty) || 0;
   // If transform is just a translation, use fast path
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
   const isIdentityMatrix =
     Math.abs(m[0]! - 1) < 1e-12 &&
     Math.abs(m[4]! - 1) < 1e-12 &&
     Math.abs(m[1]!) < 1e-12 &&
     Math.abs(m[3]!) < 1e-12;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
   if (isIdentityMatrix) {
     return bk2d.translateCurve2d(c, tx, ty);
   }
@@ -481,6 +490,7 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   for (let i = 0; i <= N; i++) {
     const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
     const [px, py] = bk2d.evaluateCurve2d(c, t);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     pts.push([m[0]! * px + m[1]! * py + tx, m[3]! * px + m[4]! * py + ty]);
   }
   return bk2d.makeBezier2d(pts);
@@ -663,7 +673,9 @@ export function approximateCurve2dAsBSpline(
       const tMid = bounds.first + ((bounds.last - bounds.first) * (i + 0.5)) / N;
       const [ex, ey] = bk2d.evaluateCurve2d(c, tMid);
       // Linear interp between adjacent samples
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       const p0 = poles[i]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       const p1 = poles[i + 1]!;
       const mx = (p0[0] + p1[0]) / 2;
       const my = (p0[1] + p1[1]) / 2;
@@ -700,7 +712,9 @@ export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle
   const breakpoints = [first, ...internalKnots, last];
   const result: Curve2dHandle[] = [];
   for (let i = 0; i < breakpoints.length - 1; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const t0 = breakpoints[i]!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const t1 = breakpoints[i + 1]!;
     const span = t1 - t0;
     if (span < 1e-15) continue;
@@ -919,6 +933,7 @@ export function liftCurve2dToPlane(
           bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis)
         );
       }
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       if (edgeIds.length === 1) return edgeHandle(edgeIds[0]!);
       return wireHandle(bk.makeWire(edgeIds, false));
     }
@@ -931,6 +946,7 @@ export function liftCurve2dToPlane(
   // For Bezier/BSpline: lift control points exactly (preserves NURBS structure)
   if (c.__bk2d === 'bezier' || c.__bk2d === 'bspline') {
     const points3d = c.poles.map(([u, v]) => lift(u, v));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     if (points3d.length === 2) return makeLineEdge(bk, points3d[0]!, points3d[1]!);
     const degree = Math.min(3, points3d.length - 1);
     const coords = points3d.flatMap(([px, py, pz]) => [px, py, pz]);
@@ -971,6 +987,7 @@ export function buildEdgeOnSurface(
     const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
     const [u, v] = bk2d.evaluateCurve2d(c, t);
     const p = bk.evaluateSurface(fid, u, v);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     points.push([p[0]!, p[1]!, p[2]!]);
   }
   return interpolatePoints(bk, points);
@@ -1008,7 +1025,9 @@ export function extractCurve2dFromEdge(
   // Evaluate 3D points -> UV
   const evaluateUV = (t: number): [number, number] => {
     const pt = bk.evaluateEdgeCurve(eid, t);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const uv = bk.projectPointOnSurface(fid, pt[0]!, pt[1]!, pt[2]!);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     return [uv[0]!, uv[1]!];
   };
 
@@ -1023,7 +1042,9 @@ export function extractCurve2dFromEdge(
   while (uvSamples.length < MAX_N) {
     const insertions: Array<{ index: number; t: number; uv: [number, number] }> = [];
     for (let i = 0; i < uvSamples.length - 1; i++) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       const a = uvSamples[i]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       const b = uvSamples[i + 1]!;
       const tMid = (a.t + b.t) / 2;
       const uvMid = evaluateUV(tMid);
@@ -1039,6 +1060,7 @@ export function extractCurve2dFromEdge(
     // Insert in reverse order to preserve indices; cap at MAX_N total samples
     let budget = MAX_N - uvSamples.length;
     for (let j = insertions.length - 1; j >= 0 && budget > 0; j--) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       const ins = insertions[j]!;
       uvSamples.splice(ins.index, 0, { t: ins.t, uv: ins.uv });
       budget--;
@@ -1056,8 +1078,11 @@ export function extractCurve2dFromEdge(
   // Fallback: use edge vertices projected to UV
   const verts = bk.getEdgeVertices(eid);
   if (verts.length >= 6) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const uv1 = bk.projectPointOnSurface(fid, verts[0]!, verts[1]!, verts[2]!);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const uv2 = bk.projectPointOnSurface(fid, verts[3]!, verts[4]!, verts[5]!);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     return bk2d.makeLine2d(uv1[0]!, uv1[1]!, uv2[0]!, uv2[1]!);
   }
   throw new Error(`brepkit: extractCurve2dFromEdge: degenerate edge (${verts.length} coords)`);
@@ -1086,13 +1111,16 @@ export function fillSurface(
       for (const edge of wireEdges) {
         const edgeId = unwrap(edge, 'edge');
         const params = bk.getEdgeCurveParameters(edgeId);
+        /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
         const tMin = params[0]!,
           tMax = params[1]!;
+        /* eslint-enable @typescript-eslint/no-non-null-assertion */
         const N = 10;
         const pts: number[] = [];
         for (let i = 0; i <= N; i++) {
           const t = tMin + ((tMax - tMin) * i) / N;
           const p = bk.evaluateEdgeCurve(edgeId, t);
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
           pts.push(p[0]!, p[1]!, p[2]!);
         }
         allCoords.push(...pts);

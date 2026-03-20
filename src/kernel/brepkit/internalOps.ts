@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Internal (private) helper operations shared across brepkit adapter modules.
  *
@@ -149,11 +148,13 @@ export function extractPlaneFromFace(
     faceId = unwrap(faceShape, 'face');
   }
   const n = bk.getFaceNormal(faceId);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   const normal: [number, number, number] = [n[0]!, n[1]!, n[2]!];
 
   const mesh = bk.tessellateFace(faceId, 1.0);
   const positions = mesh.positions;
   if (positions.length >= 3) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     return { point: [positions[0]!, positions[1]!, positions[2]!], normal };
   }
 
@@ -187,6 +188,7 @@ export function extractNurbsFromEdge(
   return {
     degree: 1,
     knots: [0, 0, 1, 1],
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     controlPoints: [verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!],
     weights: [1, 1],
   };

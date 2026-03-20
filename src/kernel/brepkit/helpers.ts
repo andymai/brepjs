@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Shared helpers for the brepkit adapter module files.
  *
@@ -247,12 +246,14 @@ export function affineMatrix(
   translation: readonly [number, number, number]
 ): number[] {
   // prettier-ignore
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
   return [
     linear[0]!, linear[1]!, linear[2]!, translation[0],
     linear[3]!, linear[4]!, linear[5]!, translation[1],
     linear[6]!, linear[7]!, linear[8]!, translation[2],
     0,          0,          0,          1,
   ];
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
 
 /** Build a 4x4 reflection matrix for a plane defined by origin + normal. */

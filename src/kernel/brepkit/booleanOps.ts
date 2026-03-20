@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Boolean operations for the brepkit adapter.
  * @module
@@ -110,6 +109,7 @@ export function section(
     return compoundHandle(bk.makeCompound([]));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   const firstWireId = bk.getFaceOuterWire(faceIds[0]!);
   return wireHandle(firstWireId);
 }
@@ -120,6 +120,7 @@ export function fuseAll(
   options?: BooleanOptions
 ): KernelShape {
   if (shapes.length === 0) throw new Error('brepkit: fuseAll requires at least one shape');
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   if (shapes.length === 1) return shapes[0]!;
 
   if (bk.compoundFuse) {
@@ -151,6 +152,7 @@ export function fuseAll(
     }
     current = next;
   }
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
   return current[0]!;
 }
 
@@ -219,10 +221,12 @@ export function hull(bk: BrepkitKernel, shapes: KernelShape[], _tolerance: numbe
       const vertIds = toArray(bk.getSolidVertices(h.id));
       for (const vid of vertIds) {
         const pos = bk.getVertexPosition(vid);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
         coords.push(pos[0]!, pos[1]!, pos[2]!);
       }
     } else if (h.type === 'vertex') {
       const pos = bk.getVertexPosition(h.id);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       coords.push(pos[0]!, pos[1]!, pos[2]!);
     }
   }
@@ -253,6 +257,7 @@ export function buildSolidFromFaces(
 ): KernelShape {
   const positions = new Float64Array(points.length * 3);
   for (let i = 0; i < points.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const p = points[i]!;
     positions[i * 3] = p.x;
     positions[i * 3 + 1] = p.y;
@@ -260,6 +265,7 @@ export function buildSolidFromFaces(
   }
   const indices = new Uint32Array(faces.length * 3);
   for (let i = 0; i < faces.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
     const f = faces[i]!;
     indices[i * 3] = f[0];
     indices[i * 3 + 1] = f[1];

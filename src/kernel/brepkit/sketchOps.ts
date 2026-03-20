@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Constraint sketch operations for the brepkit adapter.
  * @module
@@ -47,5 +46,6 @@ export function sketchSolve(
 
 /** Get degrees of freedom remaining in a solved or partially-constrained sketch. */
 export function sketchDof(bk: BrepkitKernel, sketch: number): string {
-  return String(bk.sketchDof(sketch));
+  const result = bk.sketchDof(sketch);
+  return typeof result === 'string' ? result : String(result);
 }

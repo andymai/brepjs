@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM arrays have known-valid indices */
 /**
  * Geometry query operations for the brepkit adapter.
  * @module
@@ -27,6 +26,7 @@ import { extractNurbsFromEdge } from './internalOps.js';
 
 export function vertexPosition(bk: BrepkitKernel, vertex: KernelShape): [number, number, number] {
   const pos = bk.getVertexPosition(unwrap(vertex, 'vertex'));
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return [pos[0]!, pos[1]!, pos[2]!];
 }
 
@@ -44,6 +44,7 @@ export function uvBounds(
   face: KernelShape
 ): { uMin: number; uMax: number; vMin: number; vMax: number } {
   const domain = bk.getSurfaceDomain(unwrap(face, 'face'));
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return { uMin: domain[0]!, uMax: domain[1]!, vMin: domain[2]!, vMax: domain[3]! };
 }
 
@@ -59,6 +60,7 @@ export function surfaceNormal(
   v: number
 ): [number, number, number] {
   const n = bk.evaluateSurfaceNormal(unwrap(face, 'face'), u, v);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return [n[0]!, n[1]!, n[2]!];
 }
 
@@ -69,6 +71,7 @@ export function pointOnSurface(
   v: number
 ): [number, number, number] {
   const p = bk.evaluateSurface(unwrap(face, 'face'), u, v);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return [p[0]!, p[1]!, p[2]!];
 }
 
@@ -79,6 +82,7 @@ export function uvFromPoint(
 ): [number, number] | null {
   try {
     const result = bk.projectPointOnSurface(unwrap(face, 'face'), point[0], point[1], point[2]);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     return [result[0]!, result[1]!];
   } catch (e: unknown) {
     console.warn('brepkit: uvFromPoint failed:', e);
@@ -92,6 +96,7 @@ export function projectPointOnFace(
   point: [number, number, number]
 ): [number, number, number] {
   const result = bk.projectPointOnSurface(unwrap(face, 'face'), point[0], point[1], point[2]);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return [result[2]!, result[3]!, result[4]!];
 }
 
@@ -111,13 +116,16 @@ export function curveTangent(
   if (h.type === 'wire') {
     // Walk edges to find the right one for the composite parameter
     const edgeIds: number[] = toArray(bk.getWireEdges(h.id));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid after bounds check
     edgeId = edgeIds[edgeIds.length - 1]!; // fallback to last edge
     let cumulative = 0;
     for (const eid of edgeIds) {
       const p = bk.getEdgeCurveParameters(eid);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       const span = p[1]! - p[0]!;
       if (param <= cumulative + span || eid === edgeId) {
         edgeId = eid;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
         evalParam = Math.min(p[0]! + (param - cumulative), p[1]!);
         break;
       }
@@ -129,7 +137,9 @@ export function curveTangent(
 
   const result = bk.evaluateEdgeCurveD1(edgeId, evalParam);
   return {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     point: [result[0]!, result[1]!, result[2]!],
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     tangent: [result[3]!, result[4]!, result[5]!],
   };
 }
@@ -143,12 +153,14 @@ export function curveParameters(bk: BrepkitKernel, shape: KernelShape): [number,
     let total = 0;
     for (const eid of edgeIds) {
       const p = bk.getEdgeCurveParameters(eid);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       total += p[1]! - p[0]!;
     }
     return [0, total];
   }
   const edgeId = unwrap(shape, 'edge');
   const params = bk.getEdgeCurveParameters(edgeId);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return [params[0]!, params[1]!];
 }
 
@@ -164,20 +176,27 @@ export function curvePointAtParam(
     let cumulative = 0;
     for (const eid of edgeIds) {
       const p = bk.getEdgeCurveParameters(eid);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       const span = p[1]! - p[0]!;
       if (param <= cumulative + span || eid === edgeIds[edgeIds.length - 1]) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
         const localParam = p[0]! + (param - cumulative);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
         const pt = bk.evaluateEdgeCurve(eid, Math.min(localParam, p[1]!));
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
         return [pt[0]!, pt[1]!, pt[2]!];
       }
       cumulative += span;
     }
     // Fallback: evaluate first edge at param
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     const pt = bk.evaluateEdgeCurve(edgeIds[0]!, param);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     return [pt[0]!, pt[1]!, pt[2]!];
   }
   const edgeId = unwrap(shape, 'edge');
   const p = bk.evaluateEdgeCurve(edgeId, param);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return [p[0]!, p[1]!, p[2]!];
 }
 
@@ -189,7 +208,9 @@ export function curveIsClosed(bk: BrepkitKernel, shape: KernelShape): boolean {
 
     // For a single-edge wire, check if edge start == edge end
     if (edgeIds.length === 1) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       const verts = bk.getEdgeVertices(edgeIds[0]!);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
     }
 
@@ -197,7 +218,9 @@ export function curveIsClosed(bk: BrepkitKernel, shape: KernelShape): boolean {
     const endpoints: Array<[number, number, number]> = [];
     for (const eid of edgeIds) {
       const verts = bk.getEdgeVertices(eid);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       endpoints.push([verts[0]!, verts[1]!, verts[2]!]);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
       endpoints.push([verts[3]!, verts[4]!, verts[5]!]);
     }
     // Each vertex should appear exactly twice in a closed wire
@@ -216,6 +239,7 @@ export function curveIsClosed(bk: BrepkitKernel, shape: KernelShape): boolean {
   }
   // Check if edge start == end vertex
   const verts = bk.getEdgeVertices(unwrap(shape, 'edge'));
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return dist3(verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!) < 1e-7;
 }
 
@@ -298,6 +322,7 @@ export function curveSplit(
 ): [KernelShape, KernelShape] {
   const edgeId = unwrap(edge, 'edge');
   const result = bk.curveSplit(edgeId, param);
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   return [edgeHandle(result[0]!), edgeHandle(result[1]!)];
 }
 
@@ -360,8 +385,11 @@ export function getBezierPenultimatePole(
   // Penultimate = second-to-last control point
   const n = nurbsData.controlPoints.length;
   return [
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     nurbsData.controlPoints[n - 6]!,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     nurbsData.controlPoints[n - 5]!,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
     nurbsData.controlPoints[n - 4]!,
   ];
 }
@@ -408,6 +436,7 @@ export function classifyPointOnFace(
   const faceId = unwrap(face, 'face');
   const domain = bk.getSurfaceDomain(faceId);
   // domain = [uMin, uMax, vMin, vMax]
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
   if (u < domain[0]! || u > domain[1]! || v < domain[2]! || v > domain[3]!) {
     return 'out';
   }

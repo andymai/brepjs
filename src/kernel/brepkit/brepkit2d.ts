@@ -1,5 +1,4 @@
 /* v8 ignore file -- brepkit WASM kernel not available in OCCT test suite */
-/* eslint-disable @typescript-eslint/no-non-null-assertion -- array indices are bounded by algorithm invariants */
 /**
  * Pure-TypeScript 2D geometry implementation for brepkit's Kernel2DCapability.
  *
@@ -140,7 +139,9 @@ export function tangentCurve2d(c: Curve2dObj, t: number): [number, number] {
     }
     case 'bspline': {
       const h = 1e-8;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
       const kFirst = c.knots[0]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
       const kLast = c.knots[c.knots.length - 1]!;
       const p0 = evaluateBSpline2d(c, Math.max(kFirst, t - h));
       const p1 = evaluateBSpline2d(c, Math.min(kLast, t + h));
@@ -166,6 +167,7 @@ export function curveBounds(c: Curve2dObj): { first: number; last: number } {
     case 'bezier':
       return { first: 0, last: 1 };
     case 'bspline':
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
       return { first: c.knots[0]!, last: c.knots[c.knots.length - 1]! };
     case 'trimmed':
       return { first: 0, last: 1 };
@@ -615,11 +617,13 @@ function numericalIntersect(
   const crossTol = Math.max(tolerance * 100, 0.5);
   const candidates: { t1: number; t2: number }[] = [];
   for (let i = 0; i < N; i++) {
+    /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
     const p1a = pts1[i]!;
     const p1b = pts1[i + 1]!;
     for (let j = 0; j < N; j++) {
       const p2a = pts2[j]!;
       const p2b = pts2[j + 1]!;
+      /* eslint-enable @typescript-eslint/no-non-null-assertion */
       // Quick AABB check
       const x1min = Math.min(p1a.x, p1b.x) - crossTol;
       const x1max = Math.max(p1a.x, p1b.x) + crossTol;
@@ -731,6 +735,7 @@ function evaluateBezier(poles: [number, number][], t: number): [number, number] 
   // De Casteljau
   const n = poles.length;
   const work = poles.map(([x, y]) => [x, y] as [number, number]);
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
   for (let r = 1; r < n; r++) {
     for (let i = 0; i < n - r; i++) {
       const wi = work[i]!;
@@ -740,9 +745,11 @@ function evaluateBezier(poles: [number, number][], t: number): [number, number] 
     }
   }
   return work[0]!;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
 
 function evaluateBSpline2d(c: BSpline2d, t: number): [number, number] {
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
   // Expand knots with multiplicities
   const fullKnots: number[] = [];
   for (let i = 0; i < c.knots.length; i++) {
@@ -794,4 +801,5 @@ function evaluateBSpline2d(c: BSpline2d, t: number): [number, number] {
   }
 
   return d[p]!;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
