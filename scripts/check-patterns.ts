@@ -19,6 +19,9 @@
  *   --sarif            Output as SARIF 2.1.0
  *
  * Inline disable: // brepjs-patterns-disable: <rule-id|*>
+ *
+ * Note: Only src/**\/*.ts files are scanned. This script (in scripts/) is
+ * exempt from its own rules by design.
  */
 
 import * as ts from 'typescript';
@@ -106,10 +109,12 @@ function makeFingerprint(
 
 function isUsingDeclaration(
   declList: ts.VariableDeclarationList,
-  sourceFile: ts.SourceFile
+  _sourceFile: ts.SourceFile
 ): boolean {
-  const text = declList.getText(sourceFile).trimStart();
-  return text.startsWith('using ') || text.startsWith('await using ');
+  // NodeFlags.Using (1 << 18) and AwaitUsing (1 << 19) are stable since TS 5.2
+  const USING = 1 << 18;
+  const AWAIT_USING = 1 << 19;
+  return !!(declList.flags & (USING | AWAIT_USING));
 }
 
 // ─── Rules ───────────────────────────────────────────────
@@ -183,11 +188,23 @@ const noAsyncWithKernel: Rule = {
   check(sourceFile, filePath, diagnostics) {
     const lines = sourceFile.getFullText().split('\n');
 
+    function isWithKernelCall(node: ts.CallExpression): boolean {
+      const callee = node.expression;
+      // Bare identifier: withKernel(id, fn)
+      if (ts.isIdentifier(callee) && callee.text === 'withKernel') return true;
+      // Member expression: foo.withKernel(id, fn)
+      if (
+        ts.isPropertyAccessExpression(callee) &&
+        callee.name.text === 'withKernel'
+      )
+        return true;
+      return false;
+    }
+
     function visit(node: ts.Node) {
       if (
         ts.isCallExpression(node) &&
-        ts.isIdentifier(node.expression) &&
-        node.expression.text === 'withKernel' &&
+        isWithKernelCall(node) &&
         node.arguments.length >= 2
       ) {
         const callback = node.arguments[1]!;

@@ -35,6 +35,9 @@ function validateNotNull(
 /**
  * Validate that a scalar or `[a, b]` pair is positive.
  * Returns an Err Result on failure, `undefined` on success.
+ *
+ * Function-type values (per-edge callbacks) are intentionally skipped here —
+ * they are validated lazily in {@link resolveEdgeCallback} when each edge is processed.
  */
 function validatePositiveParam(
   value: number | [number, number] | ((...args: never[]) => unknown),
