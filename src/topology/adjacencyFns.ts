@@ -52,17 +52,23 @@ function deduplicatedSubShapes<T extends AnyShape<Dimension>>(
   return wrapAll<T>(results, type);
 }
 
+/** Edge-face pair stored in the adjacency map. */
+interface EdgeFaceEntry {
+  readonly edge: KernelShape;
+  readonly face: KernelShape;
+}
+
 /**
  * Build or retrieve the cached edge→faces adjacency map for a parent shape.
- * Maps edge hash codes to arrays of raw face KernelShapes that contain
- * an edge with that hash.
+ * Maps edge hash codes to edge-face pairs, storing the edge alongside each
+ * face so facesOfEdge can verify via isSame without re-extracting face edges.
  */
-function getEdgeToFacesMap(parent: AnyShape<Dimension>): Map<number, KernelShape[]> {
+function getEdgeToFacesMap(parent: AnyShape<Dimension>): Map<number, EdgeFaceEntry[]> {
   const cache = getOrCreateCache(parent);
   if (cache.edgeToFaces) return cache.edgeToFaces;
 
   const kernel = getKernel();
-  const edgeToFaces = new Map<number, KernelShape[]>();
+  const edgeToFaces = new Map<number, EdgeFaceEntry[]>();
   const allFaces = kernel.iterShapes(parent.wrapped, 'face');
 
   for (const f of allFaces) {
@@ -74,9 +80,9 @@ function getEdgeToFacesMap(parent: AnyShape<Dimension>): Map<number, KernelShape
         bucket = [];
         edgeToFaces.set(hash, bucket);
       }
-      // Dedup faces within the same hash bucket
-      if (!bucket.some((existing) => kernel.isSame(existing, f))) {
-        bucket.push(f);
+      // Store each edge-face pair; dedup faces within same edge identity
+      if (!bucket.some((entry) => kernel.isSame(entry.edge, e) && kernel.isSame(entry.face, f))) {
+        bucket.push({ edge: e, face: f });
       }
     }
   }
@@ -105,13 +111,20 @@ export function facesOfEdge<D extends Dimension>(parent: AnyShape<D>, edge: Edge
   const hash = kernel.hashCode(edge.wrapped, HASH_CODE_MAX);
   const bucket = edgeToFaces.get(hash) ?? [];
 
-  // Filter bucket by isSame on the edge's sub-edges to handle hash collisions.
-  // A face is in the result if it actually contains this specific edge.
+  // Verify via isSame on the stored edge — no need to re-extract face edges.
+  // Dedup faces in case the same face appears with different edge instances.
   const results: KernelShape[] = [];
-  for (const f of bucket) {
-    const faceEdges = kernel.iterShapes(f, 'edge');
-    if (faceEdges.some((e) => kernel.isSame(e, edge.wrapped))) {
-      results.push(f);
+  const seen = new Map<number, KernelShape[]>();
+  for (const entry of bucket) {
+    if (!kernel.isSame(entry.edge, edge.wrapped)) continue;
+    const fHash = kernel.hashCode(entry.face, HASH_CODE_MAX);
+    const fBucket = seen.get(fHash);
+    if (!fBucket) {
+      seen.set(fHash, [entry.face]);
+      results.push(entry.face);
+    } else if (!fBucket.some((r) => kernel.isSame(r, entry.face))) {
+      fBucket.push(entry.face);
+      results.push(entry.face);
     }
   }
 
@@ -162,24 +175,24 @@ export function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: Fa
   const kernel = getKernel();
   const edgeToFaces = getEdgeToFacesMap(parent);
 
-  // Get edges of the input face
-  const faceEdges = kernel.iterShapes(face.wrapped, 'edge');
+  // Deduplicate face edges to avoid redundant bucket lookups
+  const faceEdgeHandles = deduplicatedSubShapes<Edge<D>>(face.wrapped, 'edge');
   const neighborRaw: KernelShape[] = [];
   const seen = new Map<number, KernelShape[]>();
 
-  for (const edgeOc of faceEdges) {
-    const hash = kernel.hashCode(edgeOc, HASH_CODE_MAX);
-    const facesForEdge = edgeToFaces.get(hash) ?? [];
-    for (const f of facesForEdge) {
-      if (kernel.isSame(f, face.wrapped)) continue;
-      const fHash = kernel.hashCode(f, HASH_CODE_MAX);
+  for (const edgeHandle of faceEdgeHandles) {
+    const hash = kernel.hashCode(edgeHandle.wrapped, HASH_CODE_MAX);
+    const entries = edgeToFaces.get(hash) ?? [];
+    for (const entry of entries) {
+      if (kernel.isSame(entry.face, face.wrapped)) continue;
+      const fHash = kernel.hashCode(entry.face, HASH_CODE_MAX);
       const bucket = seen.get(fHash);
       if (!bucket) {
-        seen.set(fHash, [f]);
-        neighborRaw.push(f);
-      } else if (!bucket.some((r) => kernel.isSame(r, f))) {
-        bucket.push(f);
-        neighborRaw.push(f);
+        seen.set(fHash, [entry.face]);
+        neighborRaw.push(entry.face);
+      } else if (!bucket.some((r) => kernel.isSame(r, entry.face))) {
+        bucket.push(entry.face);
+        neighborRaw.push(entry.face);
       }
     }
   }

@@ -102,9 +102,7 @@ export function createTypedFinder<T extends AnyShape<Dimension>, F extends Shape
 
   const extractElements = (shape: AnyShape<Dimension>): T[] => {
     const all = getCachedElements(shape);
-    // When no filters are active, return the cached array directly — callers
-    // do not mutate the result and the cache holds the authoritative array.
-    if (filters.length === 0) return all;
+    if (filters.length === 0) return all.slice();
     return all.filter(shouldKeep);
   };
 

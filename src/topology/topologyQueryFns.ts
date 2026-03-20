@@ -49,8 +49,9 @@ export interface TopoCacheEntry {
   faceOrigins?: Map<number, number>;
   bounds?: Bounds3D;
   shapeKind?: ShapeKind;
-  /** Edge hash → raw faces that contain an edge with that hash (for adjacency queries). */
-  edgeToFaces?: Map<number, KernelShape[]>;
+  /** Edge hash → edge-face pairs for adjacency queries. Stores the edge alongside
+   *  each face so facesOfEdge can verify via isSame without re-extracting face edges. */
+  edgeToFaces?: Map<number, Array<{ edge: KernelShape; face: KernelShape }>>;
 }
 
 const topoCache = new WeakMap<object, TopoCacheEntry>();
