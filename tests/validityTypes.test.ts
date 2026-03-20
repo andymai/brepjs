@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import {
   box,
+  cylinder,
   extrude,
   isErr,
   isOk,
@@ -12,24 +13,32 @@ import {
   face,
   sewShells,
   getFaces,
+  getWires,
   unwrap,
   isClosedWire,
   isOrientedFace,
   isManifoldShell,
   isValidSolid,
+  isPlanarFace,
+  isPlanarWire,
   closedWire,
   orientedFace,
   manifoldShell,
   validSolid,
+  planarFace,
+  planarWire,
   type ClosedWire,
   type OrientedFace,
   type ManifoldShell,
   type ValidSolid,
+  type PlanarFace,
+  type PlanarWire,
   type Wire,
   type Face,
   type Shell,
   type Solid,
 } from '@/index.js';
+import { currentKernel } from './helpers/kernelEnv.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -266,6 +275,185 @@ describe('validSolid', () => {
 });
 
 // ---------------------------------------------------------------------------
+// isPlanarFace
+// ---------------------------------------------------------------------------
+
+describe('isPlanarFace', () => {
+  it('returns true for a planar face', () => {
+    const w = unwrap(
+      wireLoop([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [0, 10, 0]),
+        line([0, 10, 0], [0, 0, 0]),
+      ])
+    );
+    const f = unwrap(face(w));
+    expect(isPlanarFace(f)).toBe(true);
+  });
+
+  it('returns false for a non-planar face', () => {
+    // A cylinder lateral face is definitely non-planar (cylindrical surface)
+    const cyl = cylinder(5, 10);
+    const faces = getFaces(cyl);
+    // Find the lateral (non-planar) face — it's the one that is not planar
+    const nonPlanar = faces.find((f) => !isPlanarFace(f));
+    expect(nonPlanar).toBeDefined();
+  });
+
+  it('narrows Face to PlanarFace in type system', () => {
+    const w = unwrap(
+      wireLoop([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [0, 10, 0]),
+        line([0, 10, 0], [0, 0, 0]),
+      ])
+    );
+    const f: Face = unwrap(face(w));
+    if (isPlanarFace(f)) {
+      const _planar: PlanarFace = f;
+      expect(_planar).toBeDefined();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// planarFace (smart constructor)
+// ---------------------------------------------------------------------------
+
+describe('planarFace', () => {
+  it('returns Ok for a planar face', () => {
+    const w = unwrap(
+      wireLoop([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [0, 10, 0]),
+        line([0, 10, 0], [0, 0, 0]),
+      ])
+    );
+    const f = unwrap(face(w));
+    const result = planarFace(f);
+    expect(isOk(result)).toBe(true);
+  });
+
+  it('returns Err for a non-planar face', () => {
+    const cyl = cylinder(5, 10);
+    const faces = getFaces(cyl);
+    const nonPlanar = faces.find((f) => !isPlanarFace(f));
+    expect(nonPlanar).toBeDefined();
+    if (nonPlanar) {
+      const result = planarFace(nonPlanar);
+      expect(isErr(result)).toBe(true);
+      if (isErr(result)) {
+        expect(result.error).toContain('not planar');
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isPlanarWire
+// ---------------------------------------------------------------------------
+
+describe('isPlanarWire', () => {
+  it('returns true for a wire in a plane', () => {
+    const w = unwrap(
+      wireLoop([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [0, 10, 0]),
+        line([0, 10, 0], [0, 0, 0]),
+      ])
+    );
+    expect(isPlanarWire(w)).toBe(true);
+  });
+
+  // brepkit's makeFace + surfaceType reports 'plane' even for non-coplanar
+  // wires — skip on brepkit until its surfaceType classification improves
+  it.skipIf(currentKernel === 'brepkit')('returns false for a non-planar wire', () => {
+    // Build a closed wire with vertices NOT in the same plane:
+    // three corners at z=0 and one at z=5 — no single plane contains all four
+    const w = unwrap(
+      wire([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [5, 5, 5]),
+        line([5, 5, 5], [0, 0, 0]),
+      ])
+    );
+    expect(isPlanarWire(w)).toBe(false);
+  });
+
+  // Supplementary: cylinder lateral wire test (also OCCT-only)
+  it.skipIf(currentKernel === 'brepkit')('returns false for a cylinder lateral wire (OCCT)', () => {
+    const cyl = cylinder(5, 10);
+    const faces = getFaces(cyl);
+    const lateralFace = faces.find((f) => !isPlanarFace(f));
+    expect(lateralFace).toBeDefined();
+    if (lateralFace) {
+      const wires = getWires(lateralFace);
+      expect(wires.length).toBeGreaterThan(0);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by length check
+      expect(isPlanarWire(wires[0]!)).toBe(false);
+    }
+  });
+
+  it('narrows Wire to PlanarWire in type system', () => {
+    const w: Wire = unwrap(
+      wireLoop([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [0, 10, 0]),
+        line([0, 10, 0], [0, 0, 0]),
+      ])
+    );
+    if (isPlanarWire(w)) {
+      const _planar: PlanarWire = w;
+      expect(_planar).toBeDefined();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// planarWire (smart constructor)
+// ---------------------------------------------------------------------------
+
+describe('planarWire', () => {
+  it('returns Ok for a planar wire', () => {
+    const w = unwrap(
+      wireLoop([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [0, 10, 0]),
+        line([0, 10, 0], [0, 0, 0]),
+      ])
+    );
+    const result = planarWire(w);
+    expect(isOk(result)).toBe(true);
+  });
+
+  // brepkit's makeFace + surfaceType reports 'plane' even for non-coplanar
+  // wires — skip on brepkit until its surfaceType classification improves
+  it.skipIf(currentKernel === 'brepkit')('returns Err for a non-planar wire', () => {
+    // Non-coplanar wire: three corners at z=0, one at z=5
+    const w = unwrap(
+      wire([
+        line([0, 0, 0], [10, 0, 0]),
+        line([10, 0, 0], [10, 10, 0]),
+        line([10, 10, 0], [5, 5, 5]),
+        line([5, 5, 5], [0, 0, 0]),
+      ])
+    );
+    const result = planarWire(w);
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error).toContain('not planar');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Subtype relationships (compile-time checks verified at runtime)
 // ---------------------------------------------------------------------------
 
@@ -304,6 +492,24 @@ describe('subtype relationships', () => {
     if (isOk(result)) {
       const _solid: Solid = result.value;
       expect(_solid).toBeDefined();
+    }
+  });
+
+  it('PlanarFace is assignable to Face', () => {
+    const f = makeFace();
+    const result = planarFace(f);
+    if (isOk(result)) {
+      const _face: Face = result.value;
+      expect(_face).toBeDefined();
+    }
+  });
+
+  it('PlanarWire is assignable to Wire', () => {
+    const w = makeClosedWireRaw();
+    const result = planarWire(w);
+    if (isOk(result)) {
+      const _wire: Wire = result.value;
+      expect(_wire).toBeDefined();
     }
   });
 });

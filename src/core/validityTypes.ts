@@ -171,3 +171,80 @@ export function validSolid(solid: Solid): Result<ValidSolid, string> {
   if (isValidSolid(solid)) return ok(solid);
   return err('Solid failed BRepCheck validation');
 }
+
+// ---------------------------------------------------------------------------
+// Geometric validity brands (ADR-0011)
+// ---------------------------------------------------------------------------
+
+/** Phantom brand: underlying surface / edges lie in a geometric plane. */
+declare const __planar: unique symbol;
+
+/**
+ * A face whose underlying surface is a geometric plane.
+ * Obtained via `planarFace()` or `isPlanarFace()`.
+ * Assignable to `Face<D>`.
+ */
+export type PlanarFace<D extends Dimension = '3D'> = Face<D> & { readonly [__planar]: true };
+
+/**
+ * A wire whose edges all lie in a common plane.
+ * Obtained via `planarWire()` or `isPlanarWire()`.
+ * Assignable to `Wire<D>`.
+ */
+export type PlanarWire<D extends Dimension = '3D'> = Wire<D> & { readonly [__planar]: true };
+
+// ---------------------------------------------------------------------------
+// Geometric validity type guards
+// ---------------------------------------------------------------------------
+
+/** Type guard — check if a face is planar (underlying surface is a plane). */
+export function isPlanarFace<D extends Dimension>(face: Face<D>): face is PlanarFace<D> {
+  return getKernel().surfaceType(face.wrapped) === 'plane';
+}
+
+/**
+ * Type guard — check if a wire is planar (all edges lie in a common plane).
+ * Strategy: try planar-only face construction first (fast path on OCCT — throws
+ * for non-planar wires). If that succeeds, verify the surface type. If it
+ * fails, fall back to general mode and check whether the resulting surface is
+ * a plane. This handles kernel-specific differences in the planar flag.
+ */
+export function isPlanarWire<D extends Dimension>(wire: Wire<D>): wire is PlanarWire<D> {
+  const kernel = getKernel();
+  // Helper: build face, check surface type, dispose
+  const checkFace = (onlyPlane: boolean): boolean => {
+    try {
+      const tempFace = kernel.makeFace(wire.wrapped, onlyPlane);
+      const stype = kernel.surfaceType(tempFace);
+      try {
+        kernel.dispose(tempFace);
+      } catch {
+        /* best-effort cleanup */
+      }
+      return stype === 'plane';
+    } catch {
+      return false;
+    }
+  };
+  // Planar-only mode: OCCT throws for non-planar, brepkit may not
+  const planarResult = checkFace(true);
+  if (planarResult) return true;
+  // General mode fallback: build any surface and inspect its type
+  return checkFace(false);
+}
+
+// ---------------------------------------------------------------------------
+// Geometric validity smart constructors
+// ---------------------------------------------------------------------------
+
+/** Prove that a face is planar, returning a branded `PlanarFace` on success. */
+export function planarFace<D extends Dimension>(face: Face<D>): Result<PlanarFace<D>, string> {
+  if (isPlanarFace(face)) return ok(face);
+  return err('Face is not planar: underlying surface is not a geometric plane');
+}
+
+/** Prove that a wire is planar, returning a branded `PlanarWire` on success. */
+export function planarWire<D extends Dimension>(wire: Wire<D>): Result<PlanarWire<D>, string> {
+  if (isPlanarWire(wire)) return ok(wire);
+  return err('Wire is not planar: edges do not lie in a common plane');
+}

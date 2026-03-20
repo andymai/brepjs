@@ -382,6 +382,8 @@ export type {
   OrientedFace,
   ManifoldShell,
   ValidSolid,
+  PlanarFace,
+  PlanarWire,
 } from './core/shapeTypes.js';
 
 export {
@@ -413,10 +415,14 @@ export {
   isOrientedFace,
   isManifoldShell,
   isValidSolid,
+  isPlanarFace,
+  isPlanarWire,
   closedWire,
   orientedFace,
   manifoldShell,
   validSolid,
+  planarFace,
+  planarWire,
 } from './core/shapeTypes.js';
 
 export type { DimensionError, RequireDimension, SameDimension } from './core/dimensionTypes.js';

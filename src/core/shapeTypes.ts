@@ -36,7 +36,14 @@ export type {
   SameDimension,
 } from './dimensionTypes.js';
 export { is2D, is3D, as2D, as3D } from './dimensionTypes.js';
-export type { ClosedWire, OrientedFace, ManifoldShell, ValidSolid } from './validityTypes.js';
+export type {
+  ClosedWire,
+  OrientedFace,
+  ManifoldShell,
+  ValidSolid,
+  PlanarFace,
+  PlanarWire,
+} from './validityTypes.js';
 export {
   closedWire,
   orientedFace,
@@ -46,6 +53,10 @@ export {
   isOrientedFace,
   isManifoldShell,
   isValidSolid,
+  isPlanarFace,
+  isPlanarWire,
+  planarFace,
+  planarWire,
 } from './validityTypes.js';
 
 // ---------------------------------------------------------------------------
@@ -155,6 +166,7 @@ export type UnknownDimShape = AnyShape<'2D'> | AnyShape<'3D'>;
 // ---------------------------------------------------------------------------
 
 function brandHandle<D extends Dimension>(handle: ShapeHandle, dim?: D): AnyShape<D> {
+  // brepjs-patterns-disable: no-double-cast
   if (dim === '2D') (handle as unknown as Record<string, unknown>)['__is2D'] = true;
   return handle as AnyShape<D>;
 }
