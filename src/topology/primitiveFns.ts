@@ -23,7 +23,7 @@ import type {
   Dimension,
   Shape3D,
 } from '@/core/shapeTypes.js';
-import type { PlanarFace } from '@/core/validityTypes.js';
+import type { PlanarFace, PlanarWire } from '@/core/validityTypes.js';
 import { DEG2RAD } from '@/core/constants.js';
 import {
   makeLine as _makeLine,
@@ -402,7 +402,10 @@ export function wireLoop(listOfEdges: (Edge | Wire)[]): Result<ClosedWire> {
  * Create a planar face from a closed wire, optionally with holes.
  * The resulting face is always oriented (consistent normal direction).
  */
-export function face(w: ClosedWire, holes?: ClosedWire[]): Result<OrientedFace & PlanarFace> {
+export function face(
+  w: ClosedWire & PlanarWire,
+  holes?: Array<ClosedWire & PlanarWire>
+): Result<OrientedFace & PlanarFace> {
   return _makeFace(w, holes);
 }
 
@@ -468,7 +471,10 @@ export function sewShells(facesOrShells: Array<Face | Shell>, ignoreType?: boole
  * Add hole wires to an existing face.
  * The resulting face preserves orientation.
  */
-export function addHoles(f: PlanarFace, holes: ClosedWire[]): OrientedFace & PlanarFace;
+export function addHoles(
+  f: PlanarFace,
+  holes: Array<ClosedWire & PlanarWire>
+): OrientedFace & PlanarFace;
 export function addHoles(f: Face, holes: ClosedWire[]): OrientedFace;
 export function addHoles(f: Face, holes: ClosedWire[]): OrientedFace {
   return _addHolesInFace(f, holes);

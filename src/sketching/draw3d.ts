@@ -2,7 +2,7 @@ import { unwrap } from '@/core/result.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { stitchCurves } from '@/2d/lib/index.js';
 import { Blueprint, Blueprints } from '@/2d/blueprints/index.js';
-import type { AnyShape, ClosedWire, Edge, Face, Wire } from '@/core/shapeTypes.js';
+import type { AnyShape, ClosedWire, Edge, Face, Wire, PlanarWire } from '@/core/shapeTypes.js';
 import { createFace } from '@/core/shapeTypes.js';
 import { outerWire } from '@/topology/faceFns.js';
 import { getEdges } from '@/topology/shapeFns.js';
@@ -20,7 +20,7 @@ const edgesToDrawing = (edges: Edge[]): Drawing => {
     wire: Wire;
   };
   // Rectangle drawing always produces a closed wire
-  const planeFace = scope.register(unwrap(makeFace(planeSketch.wire as ClosedWire)));
+  const planeFace = scope.register(unwrap(makeFace(planeSketch.wire as ClosedWire & PlanarWire)));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
 

@@ -21,7 +21,7 @@ import {
   isPoint2D,
   approximateAsSvgCompatibleCurve,
 } from '@/2d/lib/index.js';
-import type { AnyShape, ClosedWire, Dimension, Face, Wire } from '@/core/shapeTypes.js';
+import type { AnyShape, ClosedWire, Dimension, Face, PlanarWire, Wire } from '@/core/shapeTypes.js';
 import { createWire } from '@/core/shapeTypes.js';
 import { cast } from '@/topology/cast.js';
 import { unwrap } from '@/core/result.js';
@@ -284,7 +284,7 @@ export default class Blueprint implements DrawingInterface {
     const originVec3 = toVec3(originPoint);
     const sketch = this.translate(uvCoordinates(face, originVec3)).sketchOnFace(face, 'original');
     // Blueprint sketch wires are always closed profiles
-    return unwrap(makeFace(sketch.wire as ClosedWire));
+    return unwrap(makeFace(sketch.wire as ClosedWire & PlanarWire));
   }
 
   /**

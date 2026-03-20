@@ -13,7 +13,15 @@ import type { SketchInterface } from './sketchLib.js';
 import { cast, downcast } from '@/topology/cast.js';
 import { type Result, unwrap, isOk } from '@/core/result.js';
 import { bug } from '@/core/errors.js';
-import type { ClosedWire, OrientedFace, Face, Shape3D, Shell, Wire } from '@/core/shapeTypes.js';
+import type {
+  ClosedWire,
+  OrientedFace,
+  Face,
+  Shape3D,
+  Shell,
+  Wire,
+  PlanarWire,
+} from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
 import { createFace, isFace } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
@@ -38,7 +46,7 @@ const faceFromWires = (wires: Wire[]): Face => {
   let holeWires: ClosedWire[];
 
   // Sweep end-cap wires are always closed boundaries
-  const faceResult = makeFace(firstOrThrow(wires) as ClosedWire);
+  const faceResult = makeFace(firstOrThrow(wires) as ClosedWire & PlanarWire);
   if (isOk(faceResult)) {
     baseFace = faceResult.value;
     holeWires = wires.slice(1) as ClosedWire[];
@@ -121,7 +129,7 @@ export default class CompoundSketch implements SketchInterface {
     // Sketch wires are always closed by construction
     const newFace = addHolesInFace(
       baseFace,
-      this.innerSketches.map((s) => s.wire as ClosedWire)
+      this.innerSketches.map((s) => s.wire as ClosedWire & PlanarWire)
     );
 
     return newFace;
@@ -159,7 +167,7 @@ export default class CompoundSketch implements SketchInterface {
         this.sketches,
         (sketch: Sketch) =>
           complexExtrude(
-            sketch.wire as ClosedWire,
+            sketch.wire as ClosedWire & PlanarWire,
             origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
             extrusionVec,
             extrusionProfile,
@@ -171,7 +179,7 @@ export default class CompoundSketch implements SketchInterface {
         this.sketches,
         (sketch: Sketch) =>
           twistExtrude(
-            sketch.wire as ClosedWire,
+            sketch.wire as ClosedWire & PlanarWire,
             twistAngle,
             origin ? toVec3(origin) : this.outerSketch.defaultOrigin,
             extrusionVec,

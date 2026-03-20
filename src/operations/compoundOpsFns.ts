@@ -7,7 +7,7 @@
 import type { Vec3 } from '@/core/types.js';
 import type { Result } from '@/core/result.js';
 import { ok, err, isErr } from '@/core/result.js';
-import type { ClosedWire, Face, Shape3D, Wire } from '@/core/shapeTypes.js';
+import type { ClosedWire, Face, PlanarWire, Shape3D, Wire } from '@/core/shapeTypes.js';
 import { validationError, queryError, BrepErrorCode } from '@/core/errors.js';
 import { vecScale, vecNormalize, vecIsZero } from '@/core/vecOps.js';
 import type {
@@ -74,12 +74,14 @@ function resolveTargetFace(
   return ok(faceSpec);
 }
 
-/** Convert a DrawingLike or Wire to a ClosedWire (profiles are always closed). */
-function toWire(profile: DrawingLike | Wire): ClosedWire {
+/** Convert a DrawingLike or Wire to a ClosedWire & PlanarWire (profiles are always closed and planar). */
+function toWire(profile: DrawingLike | Wire): ClosedWire & PlanarWire {
   if ('sketchOnPlane' in profile && typeof profile.sketchOnPlane === 'function') {
-    return profile.sketchOnPlane('XY').wire as ClosedWire;
+    // planar by construction: sketch operates on XY plane
+    return profile.sketchOnPlane('XY').wire as ClosedWire & PlanarWire;
   }
-  return profile as ClosedWire;
+  // planar by construction: DrawingLike profiles are 2D sketches
+  return profile as ClosedWire & PlanarWire;
 }
 
 // ---------------------------------------------------------------------------

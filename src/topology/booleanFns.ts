@@ -10,6 +10,7 @@ import type {
   Dimension,
   Edge,
   OrientedFace,
+  PlanarWire,
   Shape3D,
   Vertex,
   Wire,
@@ -721,10 +722,10 @@ export function sectionToFace(
   const outerIdx = findOuterWireIndex(wires);
   const outer = getAtOrThrow(wires, outerIdx);
   const holes = wires.filter((_, i) => i !== outerIdx);
-  // Section result wires are always closed boundary loops
+  // Section result wires are always closed, coplanar boundary loops
   return makeFace(
-    outer as ClosedWire,
-    holes.length > 0 ? (holes as ClosedWire[]) : undefined
+    outer as ClosedWire & PlanarWire,
+    holes.length > 0 ? (holes as Array<ClosedWire & PlanarWire>) : undefined
   ) as Result<OrientedFace>;
 }
 

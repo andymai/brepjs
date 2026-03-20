@@ -9,7 +9,7 @@ import { type Result, ok, err, andThen } from '@/core/result.js';
 import { validationError, kernelError } from '@/core/errors.js';
 import type { Dimension, ClosedWire, Face, OrientedFace } from '@/core/shapeTypes.js';
 import { createFace, isFace } from '@/core/shapeTypes.js';
-import type { PlanarFace } from '@/core/validityTypes.js';
+import type { PlanarFace, PlanarWire } from '@/core/validityTypes.js';
 import { isPlanarFace } from '@/core/validityTypes.js';
 import { cast } from './cast.js';
 import { outerWire } from './faceFns.js';
@@ -22,8 +22,8 @@ import { makeLine, assembleWire } from './curveBuilders.js';
  * @returns An error if the wire is non-planar or the face cannot be built.
  */
 export function makeFace<D extends Dimension = '3D'>(
-  wire: ClosedWire<D>,
-  holes?: ClosedWire<D>[]
+  wire: ClosedWire<D> & PlanarWire<D>,
+  holes?: Array<ClosedWire<D> & PlanarWire<D>>
 ): Result<OrientedFace<D> & PlanarFace<D>> {
   try {
     const faceShape = getKernel().makeFace(wire.wrapped, true);
@@ -65,7 +65,8 @@ export function makeFace<D extends Dimension = '3D'>(
  */
 export function fill<D extends Dimension = '3D'>(face: Face<D>): Result<OrientedFace<D>> {
   const outer = outerWire(face);
-  return makeFace(outer);
+  // Outer wire of a face shares the face's surface — planar if face was planar
+  return makeFace(outer as ClosedWire<D> & PlanarWire<D>);
 }
 
 /**
@@ -141,6 +142,6 @@ export function makePolygon(points: Vec3[]): Result<OrientedFace & PlanarFace> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zip returns untyped pairs
     ([p1, p2]: any) => makeLine(p1, p2)
   );
-  // Polygon edges always form a closed loop — safe to narrow
-  return andThen(assembleWire(edges), (wire) => makeFace(wire as ClosedWire));
+  // Polygon edges always form a closed, coplanar loop — safe to narrow
+  return andThen(assembleWire(edges), (wire) => makeFace(wire as ClosedWire & PlanarWire));
 }
