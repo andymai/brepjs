@@ -1,5 +1,16 @@
 # Changelog
 
+## [13.0.0](https://github.com/andymai/brepjs/compare/brepjs-v12.13.1...brepjs-v13.0.0) (2026-03-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **types:** branded types Phase 3 — ValidSolid consumers + PlanarFace/PlanarWire ([#560](https://github.com/andymai/brepjs/issues/560))
+
+### Features
+
+* **types:** branded types Phase 3 — ValidSolid consumers + PlanarFace/PlanarWire ([#560](https://github.com/andymai/brepjs/issues/560)) ([c0607c3](https://github.com/andymai/brepjs/commit/c0607c358678a25229e580f0c1ca83b19f460c21))
+
 ## [12.13.1](https://github.com/andymai/brepjs/compare/brepjs-v12.13.0...brepjs-v12.13.1) (2026-03-19)
 
 
