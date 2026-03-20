@@ -36,22 +36,24 @@ function validateNotNull(
  * Validate that a scalar or `[a, b]` pair is positive.
  * Returns an Err Result on failure, `undefined` on success.
  *
- * Function-type values (per-edge callbacks) are intentionally skipped here —
+ * Function-type values (per-edge callbacks) are intentionally skipped here --
  * they are validated lazily in {@link resolveEdgeCallback} when each edge is processed.
  */
 function validatePositiveParam(
   value: number | [number, number] | ((...args: never[]) => unknown),
-  code: string,
-  scalarMsg: string,
-  pairMsg: string,
-  scalarSuggestion: string,
-  pairSuggestion: string
+  msgs: {
+    code: string;
+    scalar: string;
+    pair: string;
+    scalarHint: string;
+    pairHint: string;
+  }
 ): Err<BrepError> | undefined {
   if (typeof value === 'number' && value <= 0) {
-    return err(validationError(code, scalarMsg, undefined, undefined, scalarSuggestion));
+    return err(validationError(msgs.code, msgs.scalar, undefined, undefined, msgs.scalarHint));
   }
   if (Array.isArray(value) && (value[0] <= 0 || value[1] <= 0)) {
-    return err(validationError(code, pairMsg, undefined, undefined, pairSuggestion));
+    return err(validationError(msgs.code, msgs.pair, undefined, undefined, msgs.pairHint));
   }
   return undefined;
 }
@@ -198,14 +200,13 @@ export function fillet(
 ): Result<Shape3D> {
   const check = validateNotNull(shape, 'fillet: shape');
   if (isErr(check)) return check;
-  const paramErr = validatePositiveParam(
-    radius,
-    'INVALID_FILLET_RADIUS',
-    'Fillet radius must be positive',
-    'Fillet radii must both be positive',
-    'Provide a positive radius value greater than 0',
-    'Both radius values must be greater than 0'
-  );
+  const paramErr = validatePositiveParam(radius, {
+    code: 'INVALID_FILLET_RADIUS',
+    scalar: 'Fillet radius must be positive',
+    pair: 'Fillet radii must both be positive',
+    scalarHint: 'Provide a positive radius value greater than 0',
+    pairHint: 'Both radius values must be greater than 0',
+  });
   if (paramErr) return paramErr;
 
   const selectedEdges = edges ?? getEdges(shape);
@@ -290,14 +291,13 @@ export function chamfer(
 ): Result<Shape3D> {
   const check = validateNotNull(shape, 'chamfer: shape');
   if (isErr(check)) return check;
-  const paramErr = validatePositiveParam(
-    distance,
-    'INVALID_CHAMFER_DISTANCE',
-    'Chamfer distance must be positive',
-    'Chamfer distances must both be positive',
-    'Provide a positive distance value greater than 0',
-    'Both distance values must be greater than 0'
-  );
+  const paramErr = validatePositiveParam(distance, {
+    code: 'INVALID_CHAMFER_DISTANCE',
+    scalar: 'Chamfer distance must be positive',
+    pair: 'Chamfer distances must both be positive',
+    scalarHint: 'Provide a positive distance value greater than 0',
+    pairHint: 'Both distance values must be greater than 0',
+  });
   if (paramErr) return paramErr;
 
   const selectedEdges = edges ?? getEdges(shape);

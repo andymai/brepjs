@@ -70,10 +70,7 @@ const EXCLUDED_DIRS = new Set(['wasm']);
 
 // ─── Helpers ─────────────────────────────────────────────
 
-function getLineAndCol(
-  sourceFile: ts.SourceFile,
-  pos: number
-): { line: number; col: number } {
+function getLineAndCol(sourceFile: ts.SourceFile, pos: number): { line: number; col: number } {
   const { line, character } = sourceFile.getLineAndCharacterOfPosition(pos);
   return { line: line + 1, col: character + 1 };
 }
@@ -83,14 +80,9 @@ function getSnippet(sourceFile: ts.SourceFile, node: ts.Node): string {
   return text.length > 80 ? text.slice(0, 77) + '...' : text;
 }
 
-function isDisabledAt(
-  lines: string[],
-  line: number,
-  ruleId: string
-): boolean {
+function isDisabledAt(lines: string[], line: number, ruleId: string): boolean {
   const check = (text: string) =>
-    text.includes(`${DISABLE_COMMENT}: ${ruleId}`) ||
-    text.includes(`${DISABLE_COMMENT}: *`);
+    text.includes(`${DISABLE_COMMENT}: ${ruleId}`) || text.includes(`${DISABLE_COMMENT}: *`);
   // Check line above
   if (line >= 2 && check(lines[line - 2]!)) return true;
   // Check inline on same line
@@ -98,19 +90,11 @@ function isDisabledAt(
   return false;
 }
 
-function makeFingerprint(
-  file: string,
-  ruleId: string,
-  line: number,
-  source: string
-): string {
+function makeFingerprint(file: string, ruleId: string, line: number, source: string): string {
   return `${file}|${ruleId}|${line}|${source.trim().slice(0, 60)}`;
 }
 
-function isUsingDeclaration(
-  declList: ts.VariableDeclarationList,
-  _sourceFile: ts.SourceFile
-): boolean {
+function isUsingDeclaration(declList: ts.VariableDeclarationList): boolean {
   // NodeFlags.Using (1 << 18) and AwaitUsing (1 << 19) are stable since TS 5.2
   const USING = 1 << 18;
   const AWAIT_USING = 1 << 19;
@@ -122,57 +106,51 @@ function isUsingDeclaration(
 const noDoubleCast: Rule = {
   id: 'no-double-cast',
   severity: 'error',
-  description:
-    'Bans `as unknown as T` double-casts that bypass the type system entirely.',
+  description: 'Bans `as unknown as T` double-casts that bypass the type system entirely.',
   check(sourceFile, filePath, diagnostics) {
     const lines = sourceFile.getFullText().split('\n');
 
+    /** Report a double-cast if the inner type is `unknown` or `any`. */
+    function reportIfDoubleCast(
+      node: ts.AsExpression | ts.TypeAssertion,
+      inner: ts.TypeNode,
+      outer: ts.TypeNode,
+      formatMsg: (innerType: string, outerType: string) => string
+    ) {
+      const innerType = inner.getText(sourceFile);
+      if (innerType !== 'unknown' && innerType !== 'any') return;
+      const { line, col } = getLineAndCol(sourceFile, node.getStart(sourceFile));
+      if (isDisabledAt(lines, line, 'no-double-cast')) return;
+      diagnostics.push({
+        ruleId: 'no-double-cast',
+        severity: 'error',
+        message: formatMsg(innerType, outer.getText(sourceFile)),
+        file: filePath,
+        line,
+        column: col,
+        source: getSnippet(sourceFile, node),
+      });
+    }
+
     function visit(node: ts.Node) {
       if (ts.isAsExpression(node) && ts.isAsExpression(node.expression)) {
-        const innerType = node.expression.type.getText(sourceFile);
-        if (innerType === 'unknown' || innerType === 'any') {
-          const outerType = node.type.getText(sourceFile);
-          const { line, col } = getLineAndCol(
-            sourceFile,
-            node.getStart(sourceFile)
-          );
-          if (!isDisabledAt(lines, line, 'no-double-cast')) {
-            diagnostics.push({
-              ruleId: 'no-double-cast',
-              severity: 'error',
-              message: `Double-cast \`as ${innerType} as ${outerType}\` bypasses type safety. Use a type guard, generic, or branded constructor instead.`,
-              file: filePath,
-              line,
-              column: col,
-              source: getSnippet(sourceFile, node),
-            });
-          }
-        }
+        reportIfDoubleCast(
+          node,
+          node.expression.type,
+          node.type,
+          (inner, outer) =>
+            `Double-cast \`as ${inner} as ${outer}\` bypasses type safety. Use a type guard, generic, or branded constructor instead.`
+        );
       }
       // Also catch angle-bracket style: <T><unknown>expr
-      if (
-        ts.isTypeAssertionExpression(node) &&
-        ts.isTypeAssertionExpression(node.expression)
-      ) {
-        const innerType = node.expression.type.getText(sourceFile);
-        if (innerType === 'unknown' || innerType === 'any') {
-          const outerType = node.type.getText(sourceFile);
-          const { line, col } = getLineAndCol(
-            sourceFile,
-            node.getStart(sourceFile)
-          );
-          if (!isDisabledAt(lines, line, 'no-double-cast')) {
-            diagnostics.push({
-              ruleId: 'no-double-cast',
-              severity: 'error',
-              message: `Double-cast \`<${outerType}><${innerType}>\` bypasses type safety. Use a type guard, generic, or branded constructor instead.`,
-              file: filePath,
-              line,
-              column: col,
-              source: getSnippet(sourceFile, node),
-            });
-          }
-        }
+      if (ts.isTypeAssertionExpression(node) && ts.isTypeAssertionExpression(node.expression)) {
+        reportIfDoubleCast(
+          node,
+          node.expression.type,
+          node.type,
+          (inner, outer) =>
+            `Double-cast \`<${outer}><${inner}>\` bypasses type safety. Use a type guard, generic, or branded constructor instead.`
+        );
       }
       ts.forEachChild(node, visit);
     }
@@ -183,8 +161,7 @@ const noDoubleCast: Rule = {
 const noAsyncWithKernel: Rule = {
   id: 'no-async-withkernel',
   severity: 'error',
-  description:
-    'Bans async callbacks in withKernel() — kernel context is lost after first await.',
+  description: 'Bans async callbacks in withKernel() — kernel context is lost after first await.',
   check(sourceFile, filePath, diagnostics) {
     const lines = sourceFile.getFullText().split('\n');
 
@@ -193,32 +170,18 @@ const noAsyncWithKernel: Rule = {
       // Bare identifier: withKernel(id, fn)
       if (ts.isIdentifier(callee) && callee.text === 'withKernel') return true;
       // Member expression: foo.withKernel(id, fn)
-      if (
-        ts.isPropertyAccessExpression(callee) &&
-        callee.name.text === 'withKernel'
-      )
-        return true;
+      if (ts.isPropertyAccessExpression(callee) && callee.name.text === 'withKernel') return true;
       return false;
     }
 
     function visit(node: ts.Node) {
-      if (
-        ts.isCallExpression(node) &&
-        isWithKernelCall(node) &&
-        node.arguments.length >= 2
-      ) {
+      if (ts.isCallExpression(node) && isWithKernelCall(node) && node.arguments.length >= 2) {
         const callback = node.arguments[1]!;
         const isAsync =
-          (ts.isArrowFunction(callback) ||
-            ts.isFunctionExpression(callback)) &&
-          callback.modifiers?.some(
-            (m) => m.kind === ts.SyntaxKind.AsyncKeyword
-          );
+          (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) &&
+          callback.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
         if (isAsync) {
-          const { line, col } = getLineAndCol(
-            sourceFile,
-            callback.getStart(sourceFile)
-          );
+          const { line, col } = getLineAndCol(sourceFile, callback.getStart(sourceFile));
           if (!isDisabledAt(lines, line, 'no-async-withkernel')) {
             diagnostics.push({
               ruleId: 'no-async-withkernel',
@@ -242,8 +205,7 @@ const noAsyncWithKernel: Rule = {
 const requireUsingForHandles: Rule = {
   id: 'require-using-for-handles',
   severity: 'error',
-  description:
-    'Requires `using` keyword when calling createHandle() or createKernelHandle().',
+  description: 'Requires `using` keyword when calling createHandle() or createKernelHandle().',
   check(sourceFile, filePath, diagnostics) {
     const lines = sourceFile.getFullText().split('\n');
     const TARGET_FNS = new Set(['createHandle', 'createKernelHandle']);
@@ -255,43 +217,34 @@ const requireUsingForHandles: Rule = {
         TARGET_FNS.has(node.expression.text)
       ) {
         const fnName = node.expression.text;
-        let excused = false;
-        let parent: ts.Node | undefined = node.parent;
-
-        while (parent && !excused) {
+        function isExcusedContext(parent: ts.Node): boolean {
           // using x = createHandle(...)
           if (
             ts.isVariableDeclaration(parent) &&
             parent.parent &&
             ts.isVariableDeclarationList(parent.parent) &&
-            isUsingDeclaration(parent.parent, sourceFile)
+            isUsingDeclaration(parent.parent)
           ) {
-            excused = true;
+            return true;
           }
-          // return createHandle(...)
-          if (ts.isReturnStatement(parent)) {
-            excused = true;
-          }
-          // someFunction(createHandle(...)) — passed to scope or wrapper
-          if (ts.isCallExpression(parent) && parent !== node) {
-            excused = true;
-          }
-          // Property assignment: { key: createHandle(...) }
-          if (ts.isPropertyAssignment(parent)) {
-            excused = true;
-          }
-          // Array literal: [createHandle(...)]
-          if (ts.isArrayLiteralExpression(parent)) {
-            excused = true;
-          }
+          // return, nested call, property assignment, or array literal
+          return (
+            ts.isReturnStatement(parent) ||
+            (ts.isCallExpression(parent) && parent !== node) ||
+            ts.isPropertyAssignment(parent) ||
+            ts.isArrayLiteralExpression(parent)
+          );
+        }
+
+        let excused = false;
+        let parent: ts.Node | undefined = node.parent;
+        while (parent && !excused) {
+          excused = isExcusedContext(parent);
           parent = parent.parent;
         }
 
         if (!excused) {
-          const { line, col } = getLineAndCol(
-            sourceFile,
-            node.getStart(sourceFile)
-          );
+          const { line, col } = getLineAndCol(sourceFile, node.getStart(sourceFile));
           if (!isDisabledAt(lines, line, 'require-using-for-handles')) {
             diagnostics.push({
               ruleId: 'require-using-for-handles',
@@ -319,12 +272,8 @@ const maxFunctionLines: Rule = {
     const allLines = sourceFile.getFullText().split('\n');
 
     function countEffectiveLines(body: ts.Node): number {
-      const startLine =
-        sourceFile.getLineAndCharacterOfPosition(body.getStart(sourceFile))
-          .line;
-      const endLine = sourceFile.getLineAndCharacterOfPosition(
-        body.getEnd()
-      ).line;
+      const startLine = sourceFile.getLineAndCharacterOfPosition(body.getStart(sourceFile)).line;
+      const endLine = sourceFile.getLineAndCharacterOfPosition(body.getEnd()).line;
       let count = 0;
       for (let i = startLine; i <= endLine && i < allLines.length; i++) {
         const trimmed = allLines[i]!.trim();
@@ -344,10 +293,8 @@ const maxFunctionLines: Rule = {
     }
 
     function getFnName(node: ts.Node): string {
-      if (ts.isFunctionDeclaration(node) && node.name)
-        return node.name.text;
-      if (ts.isMethodDeclaration(node))
-        return node.name.getText(sourceFile);
+      if (ts.isFunctionDeclaration(node) && node.name) return node.name.text;
+      if (ts.isMethodDeclaration(node)) return node.name.getText(sourceFile);
       if (
         ts.isArrowFunction(node) &&
         ts.isVariableDeclaration(node.parent) &&
@@ -358,39 +305,29 @@ const maxFunctionLines: Rule = {
       return '<anonymous>';
     }
 
+    function getFunctionBody(node: ts.Node): ts.Block | undefined {
+      if (ts.isFunctionDeclaration(node)) return node.body;
+      if (ts.isMethodDeclaration(node)) return node.body;
+      if (ts.isArrowFunction(node) && ts.isBlock(node.body)) return node.body;
+      return undefined;
+    }
+
     function visit(node: ts.Node) {
-      const isFn =
-        ts.isFunctionDeclaration(node) ||
-        ts.isMethodDeclaration(node) ||
-        (ts.isArrowFunction(node) && node.body && ts.isBlock(node.body));
-
-      if (isFn) {
-        const body = ts.isFunctionDeclaration(node)
-          ? node.body
-          : ts.isMethodDeclaration(node)
-            ? node.body
-            : ts.isArrowFunction(node) && ts.isBlock(node.body)
-              ? node.body
-              : undefined;
-
-        if (body) {
-          const lines = countEffectiveLines(body);
-          if (lines > MAX_FUNCTION_LINES) {
-            const { line, col } = getLineAndCol(
-              sourceFile,
-              node.getStart(sourceFile)
-            );
-            const name = getFnName(node);
-            if (!isDisabledAt(allLines, line, 'max-function-lines')) {
-              diagnostics.push({
-                ruleId: 'max-function-lines',
-                severity: 'error',
-                message: `Function \`${name}\` has ${lines} effective lines (limit: ${MAX_FUNCTION_LINES}). Consider extracting helpers.`,
-                file: filePath,
-                line,
-                column: col,
-              });
-            }
+      const body = getFunctionBody(node);
+      if (body) {
+        const lines = countEffectiveLines(body);
+        if (lines > MAX_FUNCTION_LINES) {
+          const { line, col } = getLineAndCol(sourceFile, node.getStart(sourceFile));
+          const name = getFnName(node);
+          if (!isDisabledAt(allLines, line, 'max-function-lines')) {
+            diagnostics.push({
+              ruleId: 'max-function-lines',
+              severity: 'error',
+              message: `Function \`${name}\` has ${lines} effective lines (limit: ${MAX_FUNCTION_LINES}). Consider extracting helpers.`,
+              file: filePath,
+              line,
+              column: col,
+            });
           }
         }
       }
@@ -438,14 +375,8 @@ const maxNestingDepth: Rule = {
       if (isNestingNode(node)) {
         newDepth = depth + 1;
         if (newDepth > MAX_NESTING_DEPTH) {
-          const { line, col } = getLineAndCol(
-            sourceFile,
-            node.getStart(sourceFile)
-          );
-          if (
-            !reported.has(line) &&
-            !isDisabledAt(allLines, line, 'max-nesting-depth')
-          ) {
+          const { line, col } = getLineAndCol(sourceFile, node.getStart(sourceFile));
+          if (!reported.has(line) && !isDisabledAt(allLines, line, 'max-nesting-depth')) {
             reported.add(line);
             diagnostics.push({
               ruleId: 'max-nesting-depth',
@@ -485,11 +416,7 @@ function collectSrcFiles(dir: string): string[] {
       const full = join(d, entry.name);
       if (entry.isDirectory() && !entry.name.startsWith('.')) {
         walk(full);
-      } else if (
-        entry.isFile() &&
-        entry.name.endsWith('.ts') &&
-        !entry.name.endsWith('.d.ts')
-      ) {
+      } else if (entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
         results.push(full);
       }
     }
@@ -523,10 +450,7 @@ function saveBaseline(diagnostics: Diagnostic[]): void {
   writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + '\n');
 }
 
-function filterNewViolations(
-  diagnostics: Diagnostic[],
-  baseline: Baseline
-): Diagnostic[] {
+function filterNewViolations(diagnostics: Diagnostic[], baseline: Baseline): Diagnostic[] {
   const baselineSet = new Set(baseline.entries.map((e) => e.fingerprint));
   return diagnostics.filter((d) => {
     const fp = makeFingerprint(d.file, d.ruleId, d.line, d.source ?? '');
@@ -552,27 +476,18 @@ function fmtConsole(diagnostics: Diagnostic[]): string {
   for (const [file, diags] of grouped) {
     out.push(`\n\x1b[4m${file}\x1b[0m`);
     for (const d of diags.sort((a, b) => a.line - b.line)) {
-      const icon =
-        d.severity === 'error'
-          ? '\x1b[31m✖\x1b[0m'
-          : '\x1b[33m⚠\x1b[0m';
-      out.push(
-        `  ${icon} ${d.line}:${d.column}  ${d.message}  \x1b[90m${d.ruleId}\x1b[0m`
-      );
+      const icon = d.severity === 'error' ? '\x1b[31m✖\x1b[0m' : '\x1b[33m⚠\x1b[0m';
+      out.push(`  ${icon} ${d.line}:${d.column}  ${d.message}  \x1b[90m${d.ruleId}\x1b[0m`);
     }
   }
 
-  const errors = diagnostics.filter((d) => d.severity === 'error').length;
-  const warnings = diagnostics.filter((d) => d.severity === 'warning').length;
+  const errors = diagnostics.reduce((n, d) => n + (d.severity === 'error' ? 1 : 0), 0);
+  const warnings = diagnostics.length - errors;
   out.push(
     `\n\x1b[31m✖ ${diagnostics.length} new violation(s)\x1b[0m (${errors} error(s), ${warnings} warning(s))\n`
   );
-  out.push(
-    `\x1b[90mDisable per-line: // ${DISABLE_COMMENT}: <rule-id>\x1b[0m`
-  );
-  out.push(
-    `\x1b[90mUpdate baseline:  npx tsx scripts/check-patterns.ts --update-baseline\x1b[0m`
-  );
+  out.push(`\x1b[90mDisable per-line: // ${DISABLE_COMMENT}: <rule-id>\x1b[0m`);
+  out.push(`\x1b[90mUpdate baseline:  npx tsx scripts/check-patterns.ts --update-baseline\x1b[0m`);
   return out.join('\n');
 }
 
@@ -595,12 +510,7 @@ function fmtSARIF(diagnostics: Diagnostic[]): string {
               rules: ALL_RULES.map((r) => ({
                 id: r.id,
                 shortDescription: { text: r.description },
-                defaultConfiguration: {
-                  level:
-                    r.severity === 'error'
-                      ? ('error' as const)
-                      : ('warning' as const),
-                },
+                defaultConfiguration: { level: r.severity },
               })),
             },
           },

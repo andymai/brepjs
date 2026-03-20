@@ -40,12 +40,7 @@ export const noop = () => {};
 
 /** Type guard: is this shape a brepkit handle? */
 export function isBrepkitHandle(shape: unknown): shape is BrepkitHandle {
-  return (
-    shape !== null &&
-    shape !== undefined &&
-    typeof shape === 'object' &&
-    (shape as BrepkitHandle).__brepkit
-  );
+  return typeof shape === 'object' && shape !== null && (shape as BrepkitHandle).__brepkit;
 }
 
 export function handle(type: ShapeType, id: number): BrepkitHandle {

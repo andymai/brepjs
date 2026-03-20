@@ -12,10 +12,7 @@ const sharedRules = {
     'error',
     { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
   ],
-  '@typescript-eslint/restrict-template-expressions': [
-    'error',
-    { allowNumber: true },
-  ],
+  '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
   '@typescript-eslint/no-unnecessary-condition': 'error',
   '@typescript-eslint/no-unsafe-assignment': 'off',
   '@typescript-eslint/no-unsafe-member-access': 'off',
@@ -43,8 +40,7 @@ const sharedRules = {
 
 const noMutableExport = {
   selector: 'ExportNamedDeclaration > VariableDeclaration[kind="let"]',
-  message:
-    'Mutable exports (`export let`) are forbidden. Use a getter function or const instead.',
+  message: 'Mutable exports (`export let`) are forbidden. Use a getter function or const instead.',
 };
 
 // ─── Config ──────────────────────────────────────────────────────────
@@ -80,9 +76,7 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    rules: {
-      ...sharedRules,
-    },
+    rules: sharedRules,
   },
   // Kernel abstraction boundary: ban direct .oc access and .wrapped calls outside kernel/ and core/
   {

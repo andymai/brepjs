@@ -30,13 +30,15 @@ Monorepo with two publishable packages:
 - `npm run test:full` — Full test suite with coverage
 - `npm run check:boundaries` — Layer boundary enforcement
 - `npm run knip` — Unused code detection
+- `npm run check:patterns` — AST pattern checker (double-casts, async withKernel, missing `using`, long functions, deep nesting)
+- `npm run check:patterns:baseline` — Regenerate pattern baseline after fixing violations
 - `npm run validate` — typecheck + lint + boundaries + format + changed tests (in order)
 - `npx vitest run tests/booleanFns.test.ts` — Run a single test file
 - `npm run docs:generate-lookup` — Regenerate `docs/function-lookup.md`
 
 ## Git hooks
 
-- **Pre-commit**: lint-staged + typecheck + boundary check (parallel), then changed-file tests (no coverage thresholds). Set `FULL_TESTS=1` for full coverage run
+- **Pre-commit**: lint-staged (ESLint + Prettier + pattern checker) + typecheck + boundary check (parallel), then changed-file tests (no coverage thresholds). Set `FULL_TESTS=1` for full coverage run
 - **Pre-push**: Full `test:full` + `knip` (~30s)
 - Bypass: `--no-verify` (not recommended)
 
@@ -66,7 +68,10 @@ Monorepo with two publishable packages:
 - Consistent type imports (`import type` enforced)
 - No `var`, strict equality, `prefer-const`, `prefer-readonly`
 - `no-unsafe-*` rules disabled due to WASM type gaps
-- `no-restricted-syntax` bans `.oc` access and `.wrapped.method()` calls in Layer 2+ code
+- `no-restricted-syntax` bans `.oc` access, `.wrapped.method()` calls in Layer 2+ code, and `export let` everywhere
+- `ban-ts-comment` requires `@ts-expect-error -- reason` format; `@ts-ignore` and `@ts-nocheck` are banned
+- `no-console` is an error (only `console.error`/`console.warn` allowed)
+- Pattern checker inline disable: `// brepjs-patterns-disable: <rule-id>` (line above or inline)
 
 ## Testing
 

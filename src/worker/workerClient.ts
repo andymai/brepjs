@@ -49,22 +49,20 @@ export interface WorkerClient {
 
 type PendingMap = Map<string, { resolve: (v: WorkerResult) => void; reject: (e: unknown) => void }>;
 
-function createMessageHandler(pending: PendingMap): (event: MessageEvent<WorkerResponse>) => void {
-  return (event) => {
-    const msg = event.data;
-    const entry = pending.get(msg.id);
-    if (!entry) return;
-    pending.delete(msg.id);
+function handleWorkerMessage(pending: PendingMap, event: MessageEvent<WorkerResponse>): void {
+  const msg = event.data;
+  const entry = pending.get(msg.id);
+  if (!entry) return;
+  pending.delete(msg.id);
 
-    if (isSuccessResponse(msg)) {
-      const result: WorkerResult = {};
-      if (msg.resultBrep !== undefined) result.resultBrep = msg.resultBrep;
-      if (msg.resultData !== undefined) result.resultData = msg.resultData;
-      entry.resolve(result);
-    } else {
-      entry.reject(new Error((msg as ErrorResponse).error));
-    }
-  };
+  if (isSuccessResponse(msg)) {
+    const result: WorkerResult = {};
+    if (msg.resultBrep !== undefined) result.resultBrep = msg.resultBrep;
+    if (msg.resultData !== undefined) result.resultData = msg.resultData;
+    entry.resolve(result);
+  } else {
+    entry.reject(new Error((msg as ErrorResponse).error));
+  }
 }
 
 /** Create a worker client that communicates using the brepjs worker protocol. */
@@ -77,7 +75,9 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
     return crypto.randomUUID();
   }
 
-  const onMessage = createMessageHandler(pending);
+  function onMessage(event: MessageEvent<WorkerResponse>): void {
+    handleWorkerMessage(pending, event);
+  }
   worker.addEventListener('message', onMessage);
 
   function send(msg: { id: string }): Promise<WorkerResult> {
