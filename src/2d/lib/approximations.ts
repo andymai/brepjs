@@ -1,6 +1,6 @@
-import { bug } from '../../core/errors.js';
-import { getKernel2D } from '../../kernel/index.js';
-import { Curve2D } from './Curve2D.js';
+import { bug } from '@/core/errors.js';
+import { getKernel2D } from '@/kernel/index.js';
+import { Curve2D } from './curve2D.js';
 import { samePoint } from './vectorOperations.js';
 
 /**

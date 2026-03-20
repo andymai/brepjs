@@ -7,14 +7,14 @@
  * evaluation. The kernel builds the actual B-Rep faces and solid.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
-import type { ClosedWire, Dimension, Solid, Wire } from '../core/shapeTypes.js';
-import { createSolid } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { kernelError, BrepErrorCode } from '../core/errors.js';
-import { getEdges } from '../topology/shapeFns.js';
-import { curveStartPoint } from '../topology/curveFns.js';
+import { getKernel } from '@/kernel/index.js';
+import type { KernelShape } from '@/kernel/types.js';
+import type { ClosedWire, Dimension, Solid, Wire } from '@/core/shapeTypes.js';
+import { createSolid } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { kernelError, BrepErrorCode } from '@/core/errors.js';
+import { getEdges } from '@/topology/shapeFns.js';
+import { curveStartPoint } from '@/topology/curveFns.js';
 import { computeStraightSkeleton } from './straightSkeleton.js';
 import type { SkPoint2D } from './straightSkeleton.js';
 

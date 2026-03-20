@@ -1,9 +1,9 @@
-import type { KernelShape, KernelType } from '../kernel/types.js';
-import type { AnyShape, CompSolid, Dimension } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { getKernel } from '../kernel/index.js';
-import { typeCastError } from '../core/errors.js';
-import { type Result, ok, err } from '../core/result.js';
+import type { KernelShape, KernelType } from '@/kernel/types.js';
+import type { AnyShape, CompSolid, Dimension } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { getKernel } from '@/kernel/index.js';
+import { typeCastError } from '@/core/errors.js';
+import { type Result, ok, err } from '@/core/result.js';
 
 /** String literal identifying a topological entity type for TopExp_Explorer iteration. */
 export type TopoEntity =

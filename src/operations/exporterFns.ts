@@ -2,11 +2,11 @@
  * Functional assembly exporter using branded shape types.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { uuidv } from '../utils/uuid.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { uuidv } from '@/utils/uuid.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError } from '@/core/errors.js';
 import type { SupportedUnit } from './exporterUtils.js';
 
 // ---------------------------------------------------------------------------

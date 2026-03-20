@@ -8,4 +8,4 @@ export {
   boss,
   mirrorJoin,
   rectangularPattern,
-} from '../operations/compoundOpsFns.js';
+} from '@/operations/compoundOpsFns.js';

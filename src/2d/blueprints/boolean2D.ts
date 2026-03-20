@@ -1,12 +1,12 @@
-import { bug, safeIndex } from '../../core/errors.js';
-import { unwrap } from '../../core/result.js';
-import Blueprint from './Blueprint.js';
-import Blueprints from './Blueprints.js';
-import CompoundBlueprint from './CompoundBlueprint.js';
+import { bug, safeIndex } from '@/core/errors.js';
+import { unwrap } from '@/core/result.js';
+import Blueprint from './blueprint.js';
+import Blueprints from './blueprints.js';
+import CompoundBlueprint from './compoundBlueprint.js';
 import { organiseBlueprints } from './lib.js';
 import { fuseBlueprints, cutBlueprints, intersectBlueprints } from './booleanOperations.js';
-import type { Point2D } from '../lib/index.js';
-import { intersectCurves, removeDuplicatePoints } from '../lib/index.js';
+import type { Point2D } from '@/2d/lib/index.js';
+import { intersectCurves, removeDuplicatePoints } from '@/2d/lib/index.js';
 
 /**
  * Union type for all 2D shape representations, including `null` for empty results.

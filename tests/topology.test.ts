@@ -84,7 +84,7 @@ import {
   intersect,
   faceFinder,
   edgeFinder,
-} from '../src/index.js';
+} from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

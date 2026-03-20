@@ -4,12 +4,12 @@
  * drill(), pocket(), boss(), mirrorJoin(), rectangularPattern()
  */
 
-import type { Vec3 } from '../core/types.js';
-import type { Result } from '../core/result.js';
-import { ok, err, isErr } from '../core/result.js';
-import type { ClosedWire, Face, Shape3D, Wire } from '../core/shapeTypes.js';
-import { validationError, queryError, BrepErrorCode } from '../core/errors.js';
-import { vecScale, vecNormalize, vecIsZero } from '../core/vecOps.js';
+import type { Vec3 } from '@/core/types.js';
+import type { Result } from '@/core/result.js';
+import { ok, err, isErr } from '@/core/result.js';
+import type { ClosedWire, Face, Shape3D, Wire } from '@/core/shapeTypes.js';
+import { validationError, queryError, BrepErrorCode } from '@/core/errors.js';
+import { vecScale, vecNormalize, vecIsZero } from '@/core/vecOps.js';
 import type {
   Shapeable,
   FinderFn,
@@ -19,15 +19,15 @@ import type {
   BossOptions,
   MirrorJoinOptions,
   RectangularPatternOptions,
-} from '../topology/apiTypes.js';
-import { resolve } from '../topology/apiTypes.js';
-import { getBounds, getFaces, translate, mirror } from '../topology/shapeFns.js';
-import { fuse, cut, fuseAll } from '../topology/booleanFns.js';
+} from '@/topology/apiTypes.js';
+import { resolve } from '@/topology/apiTypes.js';
+import { getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
+import { fuse, cut, fuseAll } from '@/topology/booleanFns.js';
 import { extrude } from './extrudeFns.js';
-import { faceFinder } from '../query/finderFns.js';
-import { normalAt, faceCenter } from '../topology/faceFns.js';
-import { makeFace as _makeFace, makeCylinder as _makeCylinder } from '../topology/shapeHelpers.js';
-import { firstOrThrow, getAtOrThrow } from '../utils/arrayAccess.js';
+import { faceFinder } from '@/query/finderFns.js';
+import { normalAt, faceCenter } from '@/topology/faceFns.js';
+import { makeFace as _makeFace, makeCylinder as _makeCylinder } from '@/topology/shapeHelpers.js';
+import { firstOrThrow, getAtOrThrow } from '@/utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

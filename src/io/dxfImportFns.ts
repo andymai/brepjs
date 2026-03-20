@@ -2,11 +2,11 @@
  * DXF file import -- parse ASCII DXF entities into kernel wires.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Wire } from '../core/shapeTypes.js';
-import { createWire } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Wire } from '@/core/shapeTypes.js';
+import { createWire } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError, BrepErrorCode } from '@/core/errors.js';
 
 export interface DXFImportOptions {
   readonly layer?: string;

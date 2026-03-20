@@ -1,9 +1,9 @@
-import type { ApproximationOptions } from '../lib/index.js';
-import { approximateAsSvgCompatibleCurve } from '../lib/index.js';
-import Blueprint from './Blueprint.js';
-import Blueprints from './Blueprints.js';
+import type { ApproximationOptions } from '@/2d/lib/index.js';
+import { approximateAsSvgCompatibleCurve } from '@/2d/lib/index.js';
+import Blueprint from './blueprint.js';
+import Blueprints from './blueprints.js';
 import type { Shape2D } from './boolean2D.js';
-import CompoundBlueprint from './CompoundBlueprint.js';
+import CompoundBlueprint from './compoundBlueprint.js';
 
 /**
  * Replace curves that have no native SVG equivalent with polyline/arc approximations.

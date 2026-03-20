@@ -14,7 +14,7 @@
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initKernel } from './setup.js';
 import { isBrepkit } from './helpers/kernelEnv.js';
-import { unwrap } from '../src/core/result.js';
+import { unwrap } from '@/core/result.js';
 
 import {
   draw,
@@ -41,9 +41,9 @@ import {
   exportSTL,
   getBounds,
   curveLength,
-} from '../src/index.js';
+} from '@/index.js';
 
-import type { AnyShape, Shape3D } from '../src/index.js';
+import type { AnyShape, Shape3D } from '@/index.js';
 
 // ---------------------------------------------------------------------------
 // Setup

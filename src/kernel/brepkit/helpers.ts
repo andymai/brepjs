@@ -8,8 +8,8 @@
  * @module
  */
 
-import type { KernelShape, ShapeType } from '../types.js';
-import type { BrepkitKernel } from '../brepkitWasmTypes.js';
+import type { KernelShape, ShapeType } from '@/kernel/types.js';
+import type { BrepkitKernel } from './brepkitWasmTypes.js';
 
 // ---------------------------------------------------------------------------
 // Handle types

@@ -13,7 +13,7 @@ import {
   BrepBugError,
   BrepErrorCode,
   translateKernelError,
-} from '../src/core/errors.js';
+} from '@/core/errors.js';
 
 describe('Error constructors', () => {
   it('kernelError creates correct shape', () => {

@@ -1,10 +1,10 @@
-import { bug } from '../../core/errors.js';
-import { unwrap } from '../../core/result.js';
-import zip from '../../utils/zip.js';
-import type { Point2D, Curve2D } from '../lib/index.js';
-import { intersectCurves, removeDuplicatePoints, PRECISION_INTERSECTION } from '../lib/index.js';
+import { bug } from '@/core/errors.js';
+import { unwrap } from '@/core/result.js';
+import zip from '@/utils/zip.js';
+import type { Point2D, Curve2D } from '@/2d/lib/index.js';
+import { intersectCurves, removeDuplicatePoints, PRECISION_INTERSECTION } from '@/2d/lib/index.js';
 
-import type Blueprint from './Blueprint.js';
+import type Blueprint from './blueprint.js';
 import {
   samePoint,
   hashPoint,

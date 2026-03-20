@@ -10,7 +10,7 @@
 
 import { type Result, ok, err } from './result.js';
 import { typeCastError } from './errors.js';
-import { getKernel } from '../kernel/index.js';
+import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, ShapeKind } from './shapeTypes.js';
 import type { Dimension } from './dimensionTypes.js';
 

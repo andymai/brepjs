@@ -1,6 +1,6 @@
-import type Blueprint from './Blueprint.js';
-import { BlueprintSketcher } from '../../sketching/Sketcher2d.js';
-import { lastOrThrow } from '../../utils/arrayAccess.js';
+import type Blueprint from './blueprint.js';
+import { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import { lastOrThrow } from '@/utils/arrayAccess.js';
 
 /**
  * Create a regular polygon blueprint inscribed in a circle of the given radius.

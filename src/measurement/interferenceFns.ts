@@ -5,12 +5,12 @@
  * and proximity between shape pairs.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Vec3 } from '../core/types.js';
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { type Result, ok, err, unwrap } from '../core/result.js';
-import { validationError, BrepErrorCode } from '../core/errors.js';
-import { getBounds, type Bounds3D } from '../topology/shapeFns.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Vec3 } from '@/core/types.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { validationError, BrepErrorCode } from '@/core/errors.js';
+import { getBounds, type Bounds3D } from '@/topology/shapeFns.js';
 
 // ---------------------------------------------------------------------------
 // Types

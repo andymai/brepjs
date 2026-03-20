@@ -1,4 +1,4 @@
-import { round2 } from '../../utils/precisionRound.js';
+import { round2 } from '@/utils/precisionRound.js';
 import type { Point2D } from './definitions.js';
 
 /** Format a `Point2D` as a human-readable string `(x,y)` rounded to 2 decimals. */

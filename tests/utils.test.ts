@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import range from '../src/utils/range.js';
-import zip from '../src/utils/zip.js';
-import precisionRound, { round2, round5 } from '../src/utils/precisionRound.js';
-import { uuidv } from '../src/utils/uuid.js';
+import range from '@/utils/range.js';
+import zip from '@/utils/zip.js';
+import precisionRound, { round2, round5 } from '@/utils/precisionRound.js';
+import { uuidv } from '@/utils/uuid.js';
 
 describe('range', () => {
   it('returns an array of integers from 0 to len-1', () => {

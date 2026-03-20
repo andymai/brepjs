@@ -16,7 +16,7 @@ import {
   expectClose,
   expectKernelsAgree,
 } from './helpers/kernelTestHarness.js';
-import type { KernelAdapter } from '../src/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/types.js';
 
 interface KernelPair {
   readonly o: KernelAdapter;

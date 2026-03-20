@@ -5,11 +5,11 @@
  * otherwise falls back to a convex-hull-of-pairwise-vertex-sums approach.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Shape3D, Solid, Face } from '../core/shapeTypes.js';
-import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError, kernelError, typeCastError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Shape3D, Solid, Face } from '@/core/shapeTypes.js';
+import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError, kernelError, typeCastError, BrepErrorCode } from '@/core/errors.js';
 import { getFaces, getVertices } from './shapeFns.js';
 
 // ---------------------------------------------------------------------------

@@ -9,8 +9,8 @@
  * @module
  */
 
-import type { BrepkitKernel } from '../brepkitWasmTypes.js';
-import type { KernelShape, KernelType, OperationResult, BooleanOptions } from '../types.js';
+import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type { KernelShape, KernelType, OperationResult, BooleanOptions } from '@/kernel/types.js';
 import {
   type BrepkitHandle,
   solidHandle,

@@ -2,14 +2,14 @@
  * Vertex-specific finder — filters vertices by position, proximity, bounding box, etc.
  */
 
-import type { Vec3 } from '../core/types.js';
-import type { AnyShape, Dimension, Vertex } from '../core/shapeTypes.js';
-import { vecDistance } from '../core/vecOps.js';
-import { type Result, ok, err } from '../core/result.js';
-import { queryError } from '../core/errors.js';
-import { vertexPosition } from '../topology/shapeFns.js';
+import type { Vec3 } from '@/core/types.js';
+import type { AnyShape, Dimension, Vertex } from '@/core/shapeTypes.js';
+import { vecDistance } from '@/core/vecOps.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { queryError } from '@/core/errors.js';
+import { vertexPosition } from '@/topology/shapeFns.js';
 import { type ShapeFinder, type Predicate, createTypedFinder } from './finderCore.js';
-import { firstOrThrow, getAtOrThrow } from '../utils/arrayAccess.js';
+import { firstOrThrow, getAtOrThrow } from '@/utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Vertex finder interface

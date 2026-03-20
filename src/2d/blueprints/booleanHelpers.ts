@@ -1,6 +1,6 @@
-import type { Point2D, Curve2D } from '../lib/index.js';
-import { samePoint as defaultSamePoint, PRECISION_INTERSECTION } from '../lib/index.js';
-import { bug } from '../../core/errors.js';
+import type { Point2D, Curve2D } from '@/2d/lib/index.js';
+import { samePoint as defaultSamePoint, PRECISION_INTERSECTION } from '@/2d/lib/index.js';
+import { bug } from '@/core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Precision-aware point comparison

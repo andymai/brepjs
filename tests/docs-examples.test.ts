@@ -38,7 +38,7 @@ import {
   unwrap,
   match,
   type ValidSolid,
-} from '../src/index.js';
+} from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

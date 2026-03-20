@@ -3,11 +3,11 @@
  * Supports STEP, STL, and IGES formats.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { UnknownDimShape } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { UnknownDimShape } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError } from '@/core/errors.js';
 
 /**
  * Import a STEP file from a Blob.

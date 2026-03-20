@@ -19,7 +19,7 @@ import {
   castShape,
   getFaces,
   unwrap,
-} from '../src/index.js';
+} from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

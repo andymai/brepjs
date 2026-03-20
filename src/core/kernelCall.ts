@@ -5,7 +5,7 @@
  * into a single call.
  */
 
-import type { KernelShape } from '../kernel/types.js';
+import type { KernelShape } from '@/kernel/types.js';
 import type { AnyShape } from './shapeTypes.js';
 import { castShape } from './shapeTypes.js';
 import type { Result } from './result.js';

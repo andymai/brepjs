@@ -1,12 +1,12 @@
-import type { KernelType } from '../kernel/types.js';
-import { getKernel } from '../kernel/index.js';
-import type { Plane } from '../core/planeTypes.js';
-import type { Face, Edge } from '../core/shapeTypes.js';
-import { createEdge } from '../core/shapeTypes.js';
-import { uvBounds, faceGeomType } from '../topology/faceFns.js';
-import { getOrientation } from '../topology/curveFns.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError } from '../core/errors.js';
+import type { KernelType } from '@/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Plane } from '@/core/planeTypes.js';
+import type { Face, Edge } from '@/core/shapeTypes.js';
+import { createEdge } from '@/core/shapeTypes.js';
+import { uvBounds, faceGeomType } from '@/topology/faceFns.js';
+import { getOrientation } from '@/topology/curveFns.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError } from '@/core/errors.js';
 import type { Point2D } from './lib/index.js';
 import { BoundingBox2d, Curve2D } from './lib/index.js';
 

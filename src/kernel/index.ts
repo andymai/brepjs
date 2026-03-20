@@ -1,9 +1,9 @@
 import type { KernelAdapter, KernelInstance } from './types.js';
 import type { Kernel2DCapability } from './kernel2dTypes.js';
 import { supportsKernel2D } from './kernel2dTypes.js';
-import { DefaultAdapter } from './defaultAdapter.js';
-import { resetMeasureDetectionCache } from './measureOps.js';
-import { resetTransformDetectionCache } from './transformOps.js';
+import { DefaultAdapter } from './occt/defaultAdapter.js';
+import { resetMeasureDetectionCache } from './occt/measureOps.js';
+import { resetTransformDetectionCache } from './occt/transformOps.js';
 
 // ---------------------------------------------------------------------------
 // Kernel registry — supports multiple kernels for gradual migration
@@ -163,7 +163,7 @@ export async function init(): Promise<string> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
     const bk = (await import(/* @vite-ignore */ 'brepkit-wasm')) as any;
     if (typeof bk.default === 'function') await bk.default();
-    const { BrepkitAdapter } = await import(/* @vite-ignore */ './brepkitAdapter.js');
+    const { BrepkitAdapter } = await import(/* @vite-ignore */ './brepkit/brepkitAdapter.js');
     registerKernel('brepkit', new BrepkitAdapter(new bk.BrepKernel()));
     return 'brepkit';
   } catch {
@@ -219,5 +219,5 @@ export type {
 export { supportsKernel2D } from './kernel2dTypes.js';
 export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2dTypes.js';
 
-export { BrepkitAdapter } from './brepkitAdapter.js';
-export type { BrepkitHandle } from './brepkitAdapter.js';
+export { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
+export type { BrepkitHandle } from './brepkit/brepkitAdapter.js';

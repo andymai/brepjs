@@ -2,11 +2,11 @@
  * Surface creation functions — generate faces from height-map grids.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { AnyShape } from '../core/shapeTypes.js';
-import { castShape, isFace, isShell } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError, kernelError, ioError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { AnyShape } from '@/core/shapeTypes.js';
+import { castShape, isFace, isShell } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError, kernelError, ioError, BrepErrorCode } from '@/core/errors.js';
 
 /** Rec. 601 luma coefficients for luminance calculation. */
 const REC601_R = 0.299;

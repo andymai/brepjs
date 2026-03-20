@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import type { Blueprint } from '../src/index.js';
-import CompoundBlueprint from '../src/2d/blueprints/CompoundBlueprint.js';
-import Blueprints from '../src/2d/blueprints/Blueprints.js';
+import type { Blueprint } from '@/index.js';
+import CompoundBlueprint from '@/2d/blueprints/compoundBlueprint.js';
+import Blueprints from '@/2d/blueprints/blueprints.js';
 import {
   draw,
   drawRectangle,
@@ -20,15 +20,15 @@ import {
   intersect2D,
   box,
   getFaces,
-} from '../src/index.js';
-import { fillet2D, chamfer2D } from '../src/2d/blueprints/blueprintCustomCorners.js';
-import { offsetBlueprint } from '../src/2d/blueprints/blueprintOffset.js';
-import offset from '../src/2d/blueprints/blueprintOffset.js';
-import { approximateForSVG } from '../src/2d/blueprints/blueprintApproximations.js';
+} from '@/index.js';
+import { fillet2D, chamfer2D } from '@/2d/blueprints/blueprintCustomCorners.js';
+import { offsetBlueprint } from '@/2d/blueprints/blueprintOffset.js';
+import offset from '@/2d/blueprints/blueprintOffset.js';
+import { approximateForSVG } from '@/2d/blueprints/blueprintApproximations.js';
 import {
   blueprintsIntersectionSegments,
   isCommonSegmentMatch,
-} from '../src/2d/blueprints/intersectionSegments.js';
+} from '@/2d/blueprints/intersectionSegments.js';
 
 beforeAll(async () => {
   await initKernel();

@@ -5,11 +5,11 @@
  * They live in the 2D world and operate on `BlueprintLike` profiles.
  */
 
-import type { Point2D } from '../2d/lib/definitions.js';
-import type { Curve2D } from '../2d/lib/Curve2D.js';
-import { angle2d, distance2d, samePoint } from '../2d/lib/vectorOperations.js';
-import { DEG2RAD } from '../core/constants.js';
-import { getAtOrThrow } from '../utils/arrayAccess.js';
+import type { Point2D } from '@/2d/lib/definitions.js';
+import type { Curve2D } from '@/2d/lib/curve2D.js';
+import { angle2d, distance2d, samePoint } from '@/2d/lib/vectorOperations.js';
+import { DEG2RAD } from '@/core/constants.js';
+import { getAtOrThrow } from '@/utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Types

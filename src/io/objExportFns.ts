@@ -3,7 +3,7 @@
  * Pure string formatting — no kernel dependency.
  */
 
-import type { ShapeMesh } from '../topology/meshFns.js';
+import type { ShapeMesh } from '@/topology/meshFns.js';
 
 /** Read a vec3 from a typed array at the given vertex index. */
 function vec3At(arr: Float32Array, i: number): [number, number, number] {

@@ -4,11 +4,11 @@
  * Provides extrude(), revolve(), loft() with short names, Shapeable support, and options objects.
  */
 
-import type { Vec3 } from '../core/types.js';
-import type { Dimension, OrientedFace, Wire, Shape3D, Solid } from '../core/shapeTypes.js';
-import type { Result } from '../core/result.js';
-import type { Shapeable } from '../topology/apiTypes.js';
-import { resolve } from '../topology/apiTypes.js';
+import type { Vec3 } from '@/core/types.js';
+import type { Dimension, OrientedFace, Wire, Shape3D, Solid } from '@/core/shapeTypes.js';
+import type { Result } from '@/core/result.js';
+import type { Shapeable } from '@/topology/apiTypes.js';
+import { resolve } from '@/topology/apiTypes.js';
 import * as extruding from './extrudeFns.js';
 import * as lofting from './loftFns.js';
 

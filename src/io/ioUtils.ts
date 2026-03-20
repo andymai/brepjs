@@ -5,12 +5,12 @@
  * a solid, with a fallback to a shell when solidification fails.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
-import type { UnknownDimShape } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { KernelShape } from '@/kernel/types.js';
+import type { UnknownDimShape } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError } from '@/core/errors.js';
 
 /**
  * Build triangular B-Rep faces from vertex data and sew them into a solid.

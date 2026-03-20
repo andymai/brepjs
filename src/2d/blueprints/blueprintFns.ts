@@ -7,17 +7,17 @@
  * @see {@link Blueprint} for the OOP equivalent.
  */
 
-import type { Point2D, BoundingBox2d } from '../lib/index.js';
-import BlueprintClass from './Blueprint.js';
-import type Blueprint from './Blueprint.js';
-import CompoundBlueprintClass from './CompoundBlueprint.js';
-import type CompoundBlueprint from './CompoundBlueprint.js';
-import type { PointInput } from '../../core/types.js';
-import type { Plane, PlaneName } from '../../core/planeTypes.js';
-import type { Face } from '../../core/shapeTypes.js';
-import type { ScaleMode } from '../curves.js';
-import { type Result, ok, err } from '../../core/result.js';
-import { validationError, BrepErrorCode } from '../../core/errors.js';
+import type { Point2D, BoundingBox2d } from '@/2d/lib/index.js';
+import BlueprintClass from './blueprint.js';
+import type Blueprint from './blueprint.js';
+import CompoundBlueprintClass from './compoundBlueprint.js';
+import type CompoundBlueprint from './compoundBlueprint.js';
+import type { PointInput } from '@/core/types.js';
+import type { Plane, PlaneName } from '@/core/planeTypes.js';
+import type { Face } from '@/core/shapeTypes.js';
+import type { ScaleMode } from '@/2d/curves.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError, BrepErrorCode } from '@/core/errors.js';
 
 /**
  * Create a new Blueprint from an ordered array of 2D curves.

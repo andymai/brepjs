@@ -5,12 +5,12 @@
  * measured along one face and an angle to determine the chamfer on the other.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Edge, Shape3D } from '../core/shapeTypes.js';
-import { castShape, isShape3D } from '../core/shapeTypes.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Edge, Shape3D } from '@/core/shapeTypes.js';
+import { castShape, isShape3D } from '@/core/shapeTypes.js';
 import { downcast } from './cast.js';
-import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, typeCastError, kernelError } from '../core/errors.js';
+import { type Result, ok, err, isErr } from '@/core/result.js';
+import { validationError, typeCastError, kernelError } from '@/core/errors.js';
 
 /**
  * Chamfer edges of a shape using distance + angle.

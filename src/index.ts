@@ -136,9 +136,9 @@ export { type AssemblyExporter, createAssembly } from './operations/exporters.js
 
 export { type Point2D, type BoundingBox2d, type Curve2D } from './2d/lib/index.js';
 
-export type { default as Blueprint } from './2d/blueprints/Blueprint.js';
-export type { default as CompoundBlueprint } from './2d/blueprints/CompoundBlueprint.js';
-export type { default as Blueprints } from './2d/blueprints/Blueprints.js';
+export type { default as Blueprint } from './2d/blueprints/blueprint.js';
+export type { default as CompoundBlueprint } from './2d/blueprints/compoundBlueprint.js';
+export type { default as Blueprints } from './2d/blueprints/blueprints.js';
 export { organiseBlueprints } from './2d/blueprints/lib.js';
 export { polysidesBlueprint, roundedRectangleBlueprint } from './2d/blueprints/cannedBlueprints.js';
 export {
@@ -213,18 +213,18 @@ export { importSVGPathD, importSVG, type SVGImportOptions } from './io/svgImport
 
 // ── Layer 3: sketching ──
 
-export type { default as Sketcher } from './sketching/Sketcher.js';
+export type { default as Sketcher } from './sketching/sketcher.js';
 export type {
   default as FaceSketcher,
   BaseSketcher2d,
   BlueprintSketcher,
-} from './sketching/Sketcher2d.js';
+} from './sketching/sketcher2d.js';
 export type { GenericSketcher, SplineOptions } from './sketching/sketcherlib.js';
 export type { SketchInterface } from './sketching/sketchLib.js';
 
-export { default as Sketch } from './sketching/Sketch.js';
-export { default as CompoundSketch } from './sketching/CompoundSketch.js';
-export { default as Sketches } from './sketching/Sketches.js';
+export { default as Sketch } from './sketching/sketch.js';
+export { default as CompoundSketch } from './sketching/compoundSketch.js';
+export { default as Sketches } from './sketching/sketches.js';
 
 export {
   sketchCircle,

@@ -7,8 +7,8 @@
  */
 
 import type { Point2D } from './definitions.js';
-import { bug } from '../../core/errors.js';
-import { normalize2d as normalize2dSafe } from '../../utils/vec2d.js';
+import { bug } from '@/core/errors.js';
+import { normalize2d as normalize2dSafe } from '@/utils/vec2d.js';
 
 export {
   samePoint,
@@ -24,7 +24,7 @@ export {
   rotate2d,
   polarToCartesian,
   cartesianToPolar,
-} from '../../utils/vec2d.js';
+} from '@/utils/vec2d.js';
 
 /**
  * Normalize a 2D vector to unit length.

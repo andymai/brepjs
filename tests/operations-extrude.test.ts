@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import Sketcher from '../src/sketching/Sketcher.js';
+import Sketcher from '@/sketching/sketcher.js';
 import {
   sketchCircle,
   sketchRectangle,
@@ -10,8 +10,8 @@ import {
   measureVolume,
   unwrap,
   isOk,
-} from '../src/index.js';
-import type { ClosedWire } from '../src/index.js';
+} from '@/index.js';
+import type { ClosedWire } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

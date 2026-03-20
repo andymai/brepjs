@@ -2,7 +2,7 @@
  * Shared projection plane definitions used by cameraFns and makeProjectedEdges.
  */
 
-import type { Vec3 } from '../core/types.js';
+import type { Vec3 } from '@/core/types.js';
 
 /** Named face of an axis-aligned bounding cube. */
 export type CubeFace = 'front' | 'back' | 'top' | 'bottom' | 'left' | 'right';

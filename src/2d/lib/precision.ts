@@ -9,4 +9,4 @@
  *  - PRECISION_POINT        (1e-6): point-equality checks (default for samePoint)
  */
 
-export { PRECISION_INTERSECTION, PRECISION_OFFSET, PRECISION_POINT } from '../../utils/vec2d.js';
+export { PRECISION_INTERSECTION, PRECISION_OFFSET, PRECISION_POINT } from '@/utils/vec2d.js';

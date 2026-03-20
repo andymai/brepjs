@@ -3,12 +3,12 @@
  * All functions return `Result<T>` for consistent error handling.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Dimension, Face, OrientedFace, Shape3D } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError, BrepErrorCode } from '../core/errors.js';
-import { uvBounds } from '../topology/faceFns.js';
-import type { CurvatureResult } from '../kernel/measureOps.js';
+import { getKernel } from '@/kernel/index.js';
+import type { AnyShape, Dimension, Face, OrientedFace, Shape3D } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError, BrepErrorCode } from '@/core/errors.js';
+import { uvBounds } from '@/topology/faceFns.js';
+import type { CurvatureResult } from '@/kernel/occt/measureOps.js';
 import { getCachedMeasurement, setCachedMeasurement } from './measureCache.js';
 import type {
   PhysicalProps,
@@ -216,7 +216,7 @@ export function createDistanceQuery(referenceShape: AnyShape<Dimension>): Result
 // ---------------------------------------------------------------------------
 
 /** Re-export of the kernel curvature result type. */
-export type { CurvatureResult } from '../kernel/measureOps.js';
+export type { CurvatureResult } from '@/kernel/occt/measureOps.js';
 
 /**
  * Measure surface curvature at a (u, v) parameter point on a face.

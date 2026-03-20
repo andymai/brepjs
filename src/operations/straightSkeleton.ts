@@ -3,9 +3,9 @@
  * No kernel dependency — operates on 2D point arrays.
  */
 
-import type { Result } from '../core/result.js';
-import { ok, err } from '../core/result.js';
-import { computationError, BrepErrorCode } from '../core/errors.js';
+import type { Result } from '@/core/result.js';
+import { ok, err } from '@/core/result.js';
+import { computationError, BrepErrorCode } from '@/core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Types

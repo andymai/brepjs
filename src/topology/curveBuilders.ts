@@ -2,12 +2,12 @@
  * Curve construction helpers — lines, arcs, circles, ellipses, splines, and wire assembly.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Vec3 } from '../core/types.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError, kernelError } from '../core/errors.js';
-import type { Edge, Wire } from '../core/shapeTypes.js';
-import { createEdge, createWire } from '../core/shapeTypes.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Vec3 } from '@/core/types.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError, kernelError } from '@/core/errors.js';
+import type { Edge, Wire } from '@/core/shapeTypes.js';
+import { createEdge, createWire } from '@/core/shapeTypes.js';
 
 /** Create a straight edge between two 3D points. */
 export function makeLine(v1: Vec3, v2: Vec3): Edge {

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { roundedRectangleBlueprint, polysidesBlueprint, cornerFinder } from '../src/index.js';
+import { roundedRectangleBlueprint, polysidesBlueprint, cornerFinder } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

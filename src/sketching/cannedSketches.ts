@@ -1,5 +1,5 @@
-import { unwrap } from '../core/result.js';
-import { getAtOrThrow, lastOrThrow } from '../utils/arrayAccess.js';
+import { unwrap } from '@/core/result.js';
+import { getAtOrThrow, lastOrThrow } from '@/utils/arrayAccess.js';
 import {
   assembleWire,
   type BSplineApproximationOptions,
@@ -7,21 +7,21 @@ import {
   makeCircle,
   makeEllipse,
   makeHelix,
-} from '../topology/shapeHelpers.js';
-import type { Plane, PlaneName } from '../core/planeTypes.js';
-import { resolvePlane, planeToWorld } from '../core/planeOps.js';
-import type { Vec3, PointInput } from '../core/types.js';
-import { toVec3 } from '../core/types.js';
-import { vecRotate } from '../core/vecOps.js';
-import { DEG2RAD } from '../core/constants.js';
-import Sketcher from './Sketcher.js';
-import Sketch from './Sketch.js';
-import type { Face } from '../core/shapeTypes.js';
-import { faceCenter, normalAt, outerWire } from '../topology/faceFns.js';
-import { offsetWire2D } from '../topology/curveFns.js';
-import type { Point2D } from '../2d/lib/index.js';
-import { DisposalScope } from '../core/disposal.js';
-import { roundedRectangleBlueprint } from '../2d/blueprints/cannedBlueprints.js';
+} from '@/topology/shapeHelpers.js';
+import type { Plane, PlaneName } from '@/core/planeTypes.js';
+import { resolvePlane, planeToWorld } from '@/core/planeOps.js';
+import type { Vec3, PointInput } from '@/core/types.js';
+import { toVec3 } from '@/core/types.js';
+import { vecRotate } from '@/core/vecOps.js';
+import { DEG2RAD } from '@/core/constants.js';
+import Sketcher from './sketcher.js';
+import Sketch from './sketch.js';
+import type { Face } from '@/core/shapeTypes.js';
+import { faceCenter, normalAt, outerWire } from '@/topology/faceFns.js';
+import { offsetWire2D } from '@/topology/curveFns.js';
+import type { Point2D } from '@/2d/lib/index.js';
+import { DisposalScope } from '@/core/disposal.js';
+import { roundedRectangleBlueprint } from '@/2d/blueprints/cannedBlueprints.js';
 
 interface PlaneConfig {
   plane?: PlaneName | Plane;

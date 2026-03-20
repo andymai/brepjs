@@ -1,10 +1,10 @@
-import { getKernel } from '../../kernel/index.js';
-import { type Result, ok, err } from '../../core/result.js';
-import { computationError } from '../../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { computationError } from '@/core/errors.js';
 
 import type { Point2D } from './definitions.js';
 
-import { Curve2D } from './Curve2D.js';
+import { Curve2D } from './curve2D.js';
 import {
   add2d,
   distance2d,

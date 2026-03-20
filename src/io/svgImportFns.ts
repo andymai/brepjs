@@ -9,16 +9,12 @@
  * and format-specific logic, not geometric computation.
  */
 
-import type { Point2D } from '../2d/lib/definitions.js';
-import type { Curve2D } from '../2d/lib/Curve2D.js';
-import {
-  make2dSegmentCurve,
-  make2dBezierCurve,
-  make2dThreePointArc,
-} from '../2d/lib/makeCurves.js';
-import Blueprint from '../2d/blueprints/Blueprint.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError } from '../core/errors.js';
+import type { Point2D } from '@/2d/lib/definitions.js';
+import type { Curve2D } from '@/2d/lib/curve2D.js';
+import { make2dSegmentCurve, make2dBezierCurve, make2dThreePointArc } from '@/2d/lib/makeCurves.js';
+import Blueprint from '@/2d/blueprints/blueprint.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError } from '@/core/errors.js';
 
 // ---------------------------------------------------------------------------
 // SVG path tokenizer

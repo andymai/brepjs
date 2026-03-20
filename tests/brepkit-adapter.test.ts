@@ -4,9 +4,9 @@
  * Requires brepkit-wasm to be linked: `npm link ~/Git/brepkit/pkg`
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { registerKernel } from '../src/kernel/index.js';
-import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
-import type { KernelAdapter } from '../src/kernel/types.js';
+import { registerKernel } from '@/kernel/index.js';
+import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
+import type { KernelAdapter } from '@/kernel/types.js';
 
 let k: KernelAdapter;
 let available = false;

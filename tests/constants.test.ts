@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from '../src/core/constants.js';
+import { DEG2RAD, RAD2DEG, HASH_CODE_MAX } from '@/core/constants.js';
 
 describe('constants', () => {
   it('DEG2RAD converts degrees to radians', () => {

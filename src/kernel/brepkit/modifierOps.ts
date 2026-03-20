@@ -4,8 +4,8 @@
  * @module
  */
 
-import type { BrepkitKernel } from '../brepkitWasmTypes.js';
-import type { KernelShape } from '../types.js';
+import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type { KernelShape } from '@/kernel/types.js';
 import {
   type BrepkitHandle,
   handle,

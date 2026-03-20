@@ -2,13 +2,13 @@
  * Functional loft operation using branded shape types.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { PointInput } from '../core/types.js';
-import { toVec3 } from '../core/types.js';
-import type { Dimension, Wire, Shape3D } from '../core/shapeTypes.js';
-import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { typeCastError, validationError, kernelError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { PointInput } from '@/core/types.js';
+import { toVec3 } from '@/core/types.js';
+import type { Dimension, Wire, Shape3D } from '@/core/shapeTypes.js';
+import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { typeCastError, validationError, kernelError } from '@/core/errors.js';
 
 /** Configuration for the functional loft operation. */
 export interface LoftOptions {

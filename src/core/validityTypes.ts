@@ -16,7 +16,7 @@ import type { Wire, Face, Shell, Solid } from './shapeTypes.js';
 import type { Result } from './result.js';
 
 import { ok, err } from './result.js';
-import { getKernel } from '../kernel/index.js';
+import { getKernel } from '@/kernel/index.js';
 
 // ---------------------------------------------------------------------------
 // Phantom brand symbols

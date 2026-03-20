@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPoint2D, isMatrix2X2 } from '../src/2d/lib/definitions.js';
+import { isPoint2D, isMatrix2X2 } from '@/2d/lib/definitions.js';
 
 describe('isPoint2D', () => {
   it('returns true for valid 2D points', () => {

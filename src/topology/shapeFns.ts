@@ -7,12 +7,12 @@
  * - Origin tracking functions from `./metadata/originTrackingFns.js`
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
+import { getKernel } from '@/kernel/index.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 import { downcast } from './cast.js';
-import { unwrap } from '../core/result.js';
+import { unwrap } from '@/core/result.js';
 
 // ---------------------------------------------------------------------------
 // Identity / introspection

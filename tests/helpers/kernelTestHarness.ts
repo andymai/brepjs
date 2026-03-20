@@ -19,9 +19,9 @@
  * ```
  */
 
-import { initFromOC, getKernel, registerKernel } from '../../src/kernel/index.js';
-import type { KernelAdapter } from '../../src/kernel/types.js';
-import { BrepkitAdapter } from '../../src/kernel/brepkitAdapter.js';
+import { initFromOC, getKernel, registerKernel } from '@/kernel/index.js';
+import type { KernelAdapter } from '@/kernel/types.js';
+import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
 import { expect } from 'vitest';
 
 export type KernelId = 'occt' | 'brepkit';

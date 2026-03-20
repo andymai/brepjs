@@ -1,4 +1,4 @@
-import { DEG2RAD } from '../core/constants.js';
+import { DEG2RAD } from '@/core/constants.js';
 import {
   normalize2d,
   distance2d,
@@ -7,8 +7,8 @@ import {
   rotate2d,
   make2dEllipseArc,
   type Point2D,
-} from '../2d/lib/index.js';
-import type { Curve2D } from '../2d/lib/index.js';
+} from '@/2d/lib/index.js';
+import type { Curve2D } from '@/2d/lib/index.js';
 import { convertSvgEllipseParams } from './sketcherlib.js';
 
 /**

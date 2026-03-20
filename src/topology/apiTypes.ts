@@ -5,9 +5,9 @@
  * that are shared across functional functions and the shape() wrapper.
  */
 
-import type { Vec2, Vec3 } from '../core/types.js';
-import type { AnyShape, Dimension, Edge, Face, Wire, Shape3D } from '../core/shapeTypes.js';
-import type { ShapeFinder } from '../query/finderFns.js';
+import type { Vec2, Vec3 } from '@/core/types.js';
+import type { AnyShape, Dimension, Edge, Face, Wire, Shape3D } from '@/core/shapeTypes.js';
+import type { ShapeFinder } from '@/query/finderFns.js';
 
 /**
  * Structural type matching a Drawing's wire-producing interface.

@@ -9,8 +9,8 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { isBrepkit } from './helpers/kernelEnv.js';
-import { getKernel } from '../src/kernel/index.js';
-import type { KernelAdapter } from '../src/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
+import type { KernelAdapter } from '@/kernel/types.js';
 import {
   box,
   sphere,
@@ -22,7 +22,7 @@ import {
   getWires,
   sketchRectangle,
   castShape,
-} from '../src/index.js';
+} from '@/index.js';
 
 let kernel: KernelAdapter;
 

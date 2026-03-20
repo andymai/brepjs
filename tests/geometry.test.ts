@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { currentKernel, initKernel } from './setup.js';
-import { makePlane, unwrap, isOk, isErr, resolveDirection, getKernel } from '../src/index.js';
-import { findCurveType } from '../src/core/typeDiscriminants.js';
+import { makePlane, unwrap, isOk, isErr, resolveDirection, getKernel } from '@/index.js';
+import { findCurveType } from '@/core/typeDiscriminants.js';
 
 beforeAll(async () => {
   await initKernel();

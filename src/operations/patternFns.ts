@@ -3,15 +3,15 @@
  * Composes translate/rotate transforms with boolean fuse.
  */
 
-import type { Vec3 } from '../core/types.js';
-import type { Shape3D } from '../core/shapeTypes.js';
-import type { Result } from '../core/result.js';
-import { ok, err } from '../core/result.js';
-import { vecNormalize, vecIsZero } from '../core/vecOps.js';
-import { fuseAll, type BooleanOptions } from '../topology/booleanFns.js';
-import { validationError } from '../core/errors.js';
-import { getKernel } from '../kernel/index.js';
-import { castShape } from '../core/shapeTypes.js';
+import type { Vec3 } from '@/core/types.js';
+import type { Shape3D } from '@/core/shapeTypes.js';
+import type { Result } from '@/core/result.js';
+import { ok, err } from '@/core/result.js';
+import { vecNormalize, vecIsZero } from '@/core/vecOps.js';
+import { fuseAll, type BooleanOptions } from '@/topology/booleanFns.js';
+import { validationError } from '@/core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import { castShape } from '@/core/shapeTypes.js';
 
 /**
  * Create a linear pattern of a shape along a direction.

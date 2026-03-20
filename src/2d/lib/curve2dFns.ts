@@ -8,9 +8,9 @@
  */
 
 import type { Point2D } from './definitions.js';
-import type { BoundingBox2d } from './BoundingBox2d.js';
-import type { Curve2D } from './Curve2D.js';
-import type { Result } from '../../core/result.js';
+import type { BoundingBox2d } from './boundingBox2d.js';
+import type { Curve2D } from './curve2D.js';
+import type { Result } from '@/core/result.js';
 
 /**
  * Return a reversed copy of the curve (non-mutating).

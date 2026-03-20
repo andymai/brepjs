@@ -11,8 +11,8 @@
  *     |> addChild(_, createAssemblyNode('part-b', { shape: cylShape }));
  */
 
-import type { Vec3 } from '../core/types.js';
-import type { AnyShape } from '../core/shapeTypes.js';
+import type { Vec3 } from '@/core/types.js';
+import type { AnyShape } from '@/core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Assembly types

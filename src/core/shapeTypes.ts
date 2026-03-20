@@ -14,8 +14,8 @@
  * both are re-exported here for backward compatibility.
  */
 
-import type { KernelShape, KernelType, ShapeType } from '../kernel/types.js';
-import { getKernel } from '../kernel/index.js';
+import type { KernelShape, KernelType, ShapeType } from '@/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
 import type { ShapeHandle } from './disposal.js';
 import { createHandle } from './disposal.js';
 import { is3D } from './dimensionTypes.js';

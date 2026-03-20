@@ -5,8 +5,8 @@
  * or raw .glb binary. No external dependencies.
  */
 
-import type { ShapeMesh } from '../topology/meshFns.js';
-import { getAtOrThrow } from '../utils/arrayAccess.js';
+import type { ShapeMesh } from '@/topology/meshFns.js';
+import { getAtOrThrow } from '@/utils/arrayAccess.js';
 
 // ---------------------------------------------------------------------------
 // Public types

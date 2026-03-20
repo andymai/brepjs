@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, getSingleFace, unwrap, isErr, getFaces, faceFinder } from '../src/index.js';
+import { box, getSingleFace, unwrap, isErr, getFaces, faceFinder } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

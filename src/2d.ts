@@ -13,9 +13,9 @@
 
 // ── Blueprint classes ──
 
-export { default as Blueprint } from './2d/blueprints/Blueprint.js';
-export { default as CompoundBlueprint } from './2d/blueprints/CompoundBlueprint.js';
-export { default as Blueprints } from './2d/blueprints/Blueprints.js';
+export { default as Blueprint } from './2d/blueprints/blueprint.js';
+export { default as CompoundBlueprint } from './2d/blueprints/compoundBlueprint.js';
+export { default as Blueprints } from './2d/blueprints/blueprints.js';
 
 // ── Blueprint functions ──
 

@@ -3,8 +3,8 @@
  * @module
  */
 
-import type { BrepkitKernel } from '../brepkitWasmTypes.js';
-import type { KernelShape, KernelType } from '../types.js';
+import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type { KernelShape, KernelType } from '@/kernel/types.js';
 import { type BrepkitHandle, solidHandle, unwrap, noop, warnOnce } from './helpers.js';
 import { extractNurbsFromEdge } from './internalOps.js';
 import { iterShapes } from './topologyOps.js';

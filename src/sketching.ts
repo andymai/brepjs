@@ -9,17 +9,17 @@
 
 // ── Sketcher classes ──
 
-import Sketcher from './sketching/Sketcher.js';
-import FaceSketcher, { BaseSketcher2d, BlueprintSketcher } from './sketching/Sketcher2d.js';
+import Sketcher from './sketching/sketcher.js';
+import FaceSketcher, { BaseSketcher2d, BlueprintSketcher } from './sketching/sketcher2d.js';
 import { type GenericSketcher, type SplineOptions } from './sketching/sketcherlib.js';
 
 export { Sketcher, FaceSketcher, BaseSketcher2d, BlueprintSketcher };
 export type { GenericSketcher, SplineOptions };
 export type { SketchInterface } from './sketching/sketchLib.js';
 
-export { default as Sketch } from './sketching/Sketch.js';
-export { default as CompoundSketch } from './sketching/CompoundSketch.js';
-export { default as Sketches } from './sketching/Sketches.js';
+export { default as Sketch } from './sketching/sketch.js';
+export { default as CompoundSketch } from './sketching/compoundSketch.js';
+export { default as Sketches } from './sketching/sketches.js';
 
 // ── Canned sketches ──
 

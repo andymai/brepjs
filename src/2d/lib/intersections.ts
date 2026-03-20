@@ -1,9 +1,9 @@
-import { getKernel2D } from '../../kernel/index.js';
-import { Curve2D } from './Curve2D.js';
+import { getKernel2D } from '@/kernel/index.js';
+import { Curve2D } from './curve2D.js';
 import type { Point2D } from './definitions.js';
 import { samePoint } from './vectorOperations.js';
-import { type Result, ok, err } from '../../core/result.js';
-import { computationError } from '../../core/errors.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { computationError } from '@/core/errors.js';
 
 interface IntersectionResult {
   intersections: Point2D[];

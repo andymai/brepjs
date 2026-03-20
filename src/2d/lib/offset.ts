@@ -1,9 +1,9 @@
-import { getKernel2D } from '../../kernel/index.js';
+import { getKernel2D } from '@/kernel/index.js';
 import { approximateAsBSpline } from './approximations.js';
-import { Curve2D } from './Curve2D.js';
+import { Curve2D } from './curve2D.js';
 import type { Point2D } from './definitions.js';
 import { selfIntersections } from './intersections.js';
-import { unwrap } from '../../core/result.js';
+import { unwrap } from '@/core/result.js';
 import { make2dSegmentCurve } from './makeCurves.js';
 import { add2d, normalize2d, subtract2d } from './vectorOperations.js';
 

@@ -2,12 +2,12 @@
  * Create a solid from vertices and face indices.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Solid } from '../core/shapeTypes.js';
-import { castShape, isSolid } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError, kernelError, BrepErrorCode } from '../core/errors.js';
-import type { Vec3 } from '../core/types.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Solid } from '@/core/shapeTypes.js';
+import { castShape, isSolid } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
+import type { Vec3 } from '@/core/types.js';
 
 export interface PolyhedronOptions {
   tolerance?: number;

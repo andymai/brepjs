@@ -1,8 +1,8 @@
-import { getKernel } from '../kernel/index.js';
-import type { KernelType } from '../kernel/types.js';
-import type { Edge, AnyShape } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { getEdges as _getEdges } from '../topology/shapeFns.js';
+import { getKernel } from '@/kernel/index.js';
+import type { KernelType } from '@/kernel/types.js';
+import type { Edge, AnyShape } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { getEdges as _getEdges } from '@/topology/shapeFns.js';
 import type { Camera } from './cameraFns.js';
 
 const getEdgesFromOc = (shape: KernelType): Edge[] => {

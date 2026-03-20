@@ -3,7 +3,7 @@
  * Re-exports bug/BrepBugError from utils (Layer 0) for convenience.
  */
 
-import { bug, BrepBugError } from '../utils/bug.js';
+import { bug, BrepBugError } from '@/utils/bug.js';
 export { bug, BrepBugError };
 
 // ---------------------------------------------------------------------------

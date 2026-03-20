@@ -1,10 +1,10 @@
-import type { KernelType } from '../kernel/types.js';
-import { getKernel } from '../kernel/index.js';
-import { type KernelHandle, createKernelHandle } from '../core/disposal.js';
-import { uuidv } from '../utils/uuid.js';
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError } from '../core/errors.js';
+import type { KernelType } from '@/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
+import { type KernelHandle, createKernelHandle } from '@/core/disposal.js';
+import { uuidv } from '@/utils/uuid.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError } from '@/core/errors.js';
 import type { SupportedUnit } from './exporterUtils.js';
 
 export type { SupportedUnit } from './exporterUtils.js';

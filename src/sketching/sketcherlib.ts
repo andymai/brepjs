@@ -1,6 +1,6 @@
-import { DEG2RAD } from '../core/constants.js';
-import { polarToCartesian, type Point2D, type Curve2D } from '../2d/lib/index.js';
-import { bug } from '../core/errors.js';
+import { DEG2RAD } from '@/core/constants.js';
+import { polarToCartesian, type Point2D, type Curve2D } from '@/2d/lib/index.js';
+import { bug } from '@/core/errors.js';
 
 type StartSplineTangent = number | Point2D;
 /** Tangent specification for smooth spline endpoints: an angle (degrees), a 2D direction, or `'symmetric'`. */

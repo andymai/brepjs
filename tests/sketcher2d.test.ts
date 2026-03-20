@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import FaceSketcher, { BlueprintSketcher } from '../src/sketching/Sketcher2d.js';
-import { Drawing } from '../src/sketching/draw.js';
+import FaceSketcher, { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import { Drawing } from '@/sketching/draw.js';
 import {
   draw,
   drawRectangle,
@@ -20,7 +20,7 @@ import {
   getFaces,
   measureArea,
   unwrap,
-} from '../src/index.js';
+} from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

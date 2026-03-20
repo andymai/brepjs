@@ -3,11 +3,11 @@
  * Wraps Drawing class methods as pure functions.
  */
 
-import type { Point2D } from '../2d/lib/definitions.js';
+import type { Point2D } from '@/2d/lib/definitions.js';
 import type { Drawing } from './draw.js';
-import type { CornerFinderFn } from '../query/finderFns.js';
-import type { PointInput } from '../core/types.js';
-import type { Plane, PlaneName } from '../core/planeTypes.js';
+import type { CornerFinderFn } from '@/query/finderFns.js';
+import type { PointInput } from '@/core/types.js';
+import type { Plane, PlaneName } from '@/core/planeTypes.js';
 
 /**
  * Sketch a drawing onto a 3D plane, producing a Sketch or Sketches.

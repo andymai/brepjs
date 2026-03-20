@@ -2,11 +2,11 @@
  * Shape assembly utilities — welding and sewing operations.
  */
 
-import { getKernel } from '../kernel/index.js';
-import { type Result, ok, err, unwrap } from '../core/result.js';
-import { typeCastError } from '../core/errors.js';
-import type { AnyShape, Dimension, Face, Shell } from '../core/shapeTypes.js';
-import { isShell } from '../core/shapeTypes.js';
+import { getKernel } from '@/kernel/index.js';
+import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { typeCastError } from '@/core/errors.js';
+import type { AnyShape, Dimension, Face, Shell } from '@/core/shapeTypes.js';
+import { isShell } from '@/core/shapeTypes.js';
 import { cast, downcast } from './cast.js';
 
 /** Sew faces/shells into a single shape using the kernel's sewing algorithm. */

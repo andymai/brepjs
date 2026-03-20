@@ -7,13 +7,13 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, polygon } from '../src/topology/primitiveFns.js';
-import { rotate, mirror } from '../src/topology/api.js';
-import { revolve } from '../src/operations/api.js';
-import { circle, ellipse, ellipseArc } from '../src/topology/primitiveFns.js';
-import { mirrorJoin } from '../src/topology/compoundOpsFns.js';
-import { getBounds } from '../src/topology/shapeFns.js';
-import { isErr, unwrap } from '../src/core/result.js';
+import { box, polygon } from '@/topology/primitiveFns.js';
+import { rotate, mirror } from '@/topology/api.js';
+import { revolve } from '@/operations/api.js';
+import { circle, ellipse, ellipseArc } from '@/topology/primitiveFns.js';
+import { mirrorJoin } from '@/topology/compoundOpsFns.js';
+import { getBounds } from '@/topology/shapeFns.js';
+import { isErr, unwrap } from '@/core/result.js';
 
 beforeAll(async () => {
   await initKernel();

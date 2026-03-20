@@ -10,8 +10,8 @@ import {
   isOk,
   isErr,
   unwrap,
-} from '../src/index.js';
-import { exportSTEP as exportAssemblySTEPOop } from '../src/operations/exporters.js';
+} from '@/index.js';
+import { exportSTEP as exportAssemblySTEPOop } from '@/operations/exporters.js';
 
 beforeAll(async () => {
   await initKernel();

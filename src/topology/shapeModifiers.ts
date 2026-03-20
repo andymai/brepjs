@@ -2,8 +2,8 @@
  * Shape modifier types for fillet/chamfer operations.
  */
 
-import type { EdgeFinderFn, FaceFinderFn } from '../query/finderFns.js';
-import type { Edge } from '../core/shapeTypes.js';
+import type { EdgeFinderFn, FaceFinderFn } from '@/query/finderFns.js';
+import type { Edge } from '@/core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Fillet / Chamfer types

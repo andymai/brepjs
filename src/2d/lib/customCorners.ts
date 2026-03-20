@@ -1,7 +1,7 @@
-import { Curve2D } from './Curve2D.js';
+import { Curve2D } from './curve2D.js';
 import { isPoint2D } from './definitions.js';
 import { intersectCurves } from './intersections.js';
-import { unwrap, isOk } from '../../core/result.js';
+import { unwrap, isOk } from '@/core/result.js';
 import {
   make2dArcFromCenter,
   make2dCircle,

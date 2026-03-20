@@ -5,12 +5,12 @@
  * and return Result values.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Edge, Face, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
-import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
-import { type Result, ok, err, isErr } from '../core/result.js';
-import { kernelError, validationError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Edge, Face, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
+import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
+import { type Result, ok, err, isErr } from '@/core/result.js';
+import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
 

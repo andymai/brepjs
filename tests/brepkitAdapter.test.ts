@@ -12,8 +12,8 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { BrepkitAdapter, type BrepkitHandle } from '../src/kernel/brepkitAdapter.js';
-import { registerKernel, getKernel, withKernel } from '../src/kernel/index.js';
+import { BrepkitAdapter, type BrepkitHandle } from '@/kernel/brepkit/brepkitAdapter.js';
+import { registerKernel, getKernel, withKernel } from '@/kernel/index.js';
 
 // ---------------------------------------------------------------------------
 // Mock BrepKernel

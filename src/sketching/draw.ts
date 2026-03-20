@@ -1,6 +1,6 @@
-import { unwrap } from '../core/result.js';
-import { bug } from '../core/errors.js';
-import type { ApproximationOptions, Curve2D } from '../2d/lib/index.js';
+import { unwrap } from '@/core/result.js';
+import { bug } from '@/core/errors.js';
+import type { ApproximationOptions, Curve2D } from '@/2d/lib/index.js';
 import {
   BoundingBox2d,
   deserializeCurve2D,
@@ -10,7 +10,7 @@ import {
   make2dSegmentCurve,
   type Point2D,
   samePoint,
-} from '../2d/lib/index.js';
+} from '@/2d/lib/index.js';
 import {
   Blueprint,
   cut2D,
@@ -22,23 +22,23 @@ import {
   type Shape2D,
   Blueprints,
   CompoundBlueprint,
-} from '../2d/blueprints/index.js';
-import type { Plane, PlaneName } from '../core/planeTypes.js';
-import type { PointInput } from '../core/types.js';
-import type { AnyShape, Dimension, Face } from '../core/shapeTypes.js';
-import { BaseSketcher2d } from './Sketcher2d.js';
+} from '@/2d/blueprints/index.js';
+import type { Plane, PlaneName } from '@/core/planeTypes.js';
+import type { PointInput } from '@/core/types.js';
+import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
+import { BaseSketcher2d } from './sketcher2d.js';
 import type { SketchInterface } from './sketchLib.js';
-import Sketches from './Sketches.js';
+import Sketches from './sketches.js';
 import type { GenericSketcher } from './sketcherlib.js';
-import type { SketchData } from '../2d/blueprints/lib.js';
-import { textBlueprints } from '../text/textBlueprints.js';
+import type { SketchData } from '@/2d/blueprints/lib.js';
+import { textBlueprints } from '@/text/textBlueprints.js';
 
-import offsetFn, { type Offset2DConfig } from '../2d/blueprints/blueprintOffset.js';
-import { cornerFinder, type CornerFinderFn } from '../query/finderFns.js';
-import { fillet2D, chamfer2D } from '../2d/blueprints/blueprintCustomCorners.js';
-import type { BSplineApproximationOptions } from '../topology/shapeHelpers.js';
-import { approximateForSVG } from '../2d/blueprints/blueprintApproximations.js';
-import type { SingleFace } from '../query/helpers.js';
+import offsetFn, { type Offset2DConfig } from '@/2d/blueprints/blueprintOffset.js';
+import { cornerFinder, type CornerFinderFn } from '@/query/finderFns.js';
+import { fillet2D, chamfer2D } from '@/2d/blueprints/blueprintCustomCorners.js';
+import type { BSplineApproximationOptions } from '@/topology/shapeHelpers.js';
+import { approximateForSVG } from '@/2d/blueprints/blueprintApproximations.js';
+import type { SingleFace } from '@/query/helpers.js';
 import { wrapSketchData, wrapSketchDataArray } from './sketchUtils.js';
 
 function wrapBlueprintResult(

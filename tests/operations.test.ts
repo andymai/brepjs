@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { isBrepkit } from './helpers/kernelEnv.js';
-import Sketcher from '../src/sketching/Sketcher.js';
+import Sketcher from '@/sketching/sketcher.js';
 import {
   box,
   sphere,
@@ -28,8 +28,8 @@ import {
   fuse,
   cut,
   intersect,
-} from '../src/index.js';
-import type { OrientedFace } from '../src/index.js';
+} from '@/index.js';
+import type { OrientedFace } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

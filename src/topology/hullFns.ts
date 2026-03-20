@@ -4,12 +4,12 @@
  * Computes the 3D convex hull of one or more shapes using QuickHull.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
-import type { Solid, AnyShape, Dimension } from '../core/shapeTypes.js';
-import { castShape, isSolid } from '../core/shapeTypes.js';
-import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, kernelError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { KernelShape } from '@/kernel/types.js';
+import type { Solid, AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { castShape, isSolid } from '@/core/shapeTypes.js';
+import { type Result, ok, err, isErr } from '@/core/result.js';
+import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Options

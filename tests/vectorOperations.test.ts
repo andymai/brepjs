@@ -14,7 +14,7 @@ import {
   rotate2d,
   polarToCartesian,
   cartesianToPolar,
-} from '../src/2d/lib/vectorOperations.js';
+} from '@/2d/lib/vectorOperations.js';
 
 const closeTo = (a: number, b: number, eps = 1e-9) => Math.abs(a - b) < eps;
 

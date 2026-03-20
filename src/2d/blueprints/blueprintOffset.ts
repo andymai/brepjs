@@ -1,8 +1,8 @@
 import Flatbush from 'flatbush';
 
-import { bug, safeIndex } from '../../core/errors.js';
-import { unwrap } from '../../core/result.js';
-import type { Point2D } from '../lib/index.js';
+import { bug, safeIndex } from '@/core/errors.js';
+import { unwrap } from '@/core/result.js';
+import type { Point2D } from '@/2d/lib/index.js';
 import {
   intersectCurves,
   stitchCurves,
@@ -15,10 +15,10 @@ import {
   add2d,
   subtract2d,
   PRECISION_OFFSET,
-} from '../lib/index.js';
-import Blueprint from './Blueprint.js';
-import Blueprints from './Blueprints.js';
-import CompoundBlueprint from './CompoundBlueprint.js';
+} from '@/2d/lib/index.js';
+import Blueprint from './blueprint.js';
+import Blueprints from './blueprints.js';
+import CompoundBlueprint from './compoundBlueprint.js';
 import type { Shape2D } from './boolean2D.js';
 import { fuse2D, cut2D } from './boolean2D.js';
 

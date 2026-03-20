@@ -9,8 +9,8 @@ import {
   unwrap,
   measureVolume,
   translate,
-} from '../src/index.js';
-import { gridPattern } from '../src/operations/patternFns.js';
+} from '@/index.js';
+import { gridPattern } from '@/operations/patternFns.js';
 
 beforeAll(async () => {
   await initKernel();

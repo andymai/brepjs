@@ -1,8 +1,8 @@
 /* v8 ignore file -- interface definitions only, no executable code */
-import type { Face, Shape3D } from '../core/shapeTypes.js';
-import type { PointInput } from '../core/types.js';
-import type { ExtrusionProfile } from '../operations/extrudeUtils.js';
-import type { LoftOptions } from '../operations/loftFns.js';
+import type { Face, Shape3D } from '@/core/shapeTypes.js';
+import type { PointInput } from '@/core/types.js';
+import type { ExtrusionProfile } from '@/operations/extrudeUtils.js';
+import type { LoftOptions } from '@/operations/loftFns.js';
 
 /** Common interface for sketch-like objects that can be extruded, revolved, or lofted. */
 export interface SketchInterface {

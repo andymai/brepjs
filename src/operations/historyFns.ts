@@ -8,11 +8,11 @@
  * Also provides an operation registry and replay mechanism for parametric CAD.
  */
 
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { computationError } from '../core/errors.js';
-import { toBREP } from '../topology/shapeFns.js';
-import { fromBREP } from '../topology/cast.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { computationError } from '@/core/errors.js';
+import { toBREP } from '@/topology/shapeFns.js';
+import { fromBREP } from '@/topology/cast.js';
 
 // ---------------------------------------------------------------------------
 // Types

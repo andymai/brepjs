@@ -5,10 +5,10 @@
  * Follows the same WeakMap + HashCode pattern as faceTagFns.ts.
  */
 
-import type { ShapeEvolution } from '../../kernel/types.js';
-import { getKernel } from '../../kernel/index.js';
-import type { AnyShape, Dimension, Face } from '../../core/shapeTypes.js';
-import { HASH_CODE_MAX } from '../../core/constants.js';
+import type { ShapeEvolution } from '@/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
+import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 
 // ---------------------------------------------------------------------------
 // Types

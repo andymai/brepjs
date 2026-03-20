@@ -1,15 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import {
-  box,
-  measureVolume,
-  unwrap,
-  translate,
-  clone,
-  fuse,
-  cut,
-  intersect,
-} from '../src/index.js';
+import { box, measureVolume, unwrap, translate, clone, fuse, cut, intersect } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

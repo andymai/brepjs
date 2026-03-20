@@ -1,7 +1,7 @@
-import type { AnyShape, Dimension, Face } from '../core/shapeTypes.js';
-import { isFace } from '../core/shapeTypes.js';
+import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
+import { isFace } from '@/core/shapeTypes.js';
 import { faceFinder, type FaceFinderFn } from './finderFns.js';
-import { type Result, ok } from '../core/result.js';
+import { type Result, ok } from '@/core/result.js';
 
 /**
  * Input that resolves to a single face — a direct Face, a FaceFinderFn,

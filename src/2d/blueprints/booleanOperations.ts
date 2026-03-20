@@ -7,9 +7,9 @@
  * - `segmentAssembly.ts` — segment selection and path assembly
  */
 
-import Blueprint from './Blueprint.js';
-import Blueprints from './Blueprints.js';
-import CompoundBlueprint from './CompoundBlueprint.js';
+import Blueprint from './blueprint.js';
+import Blueprints from './blueprints.js';
+import CompoundBlueprint from './compoundBlueprint.js';
 import { booleanOperation } from './segmentAssembly.js';
 
 // Re-export internal types and functions for backward compatibility

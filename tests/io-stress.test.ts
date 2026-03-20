@@ -11,8 +11,8 @@ import {
   exportOBJ,
   exportSTEP,
   exportSTL,
-} from '../src/index.js';
-import type { ShapeMesh, Compound } from '../src/index.js';
+} from '@/index.js';
+import type { ShapeMesh, Compound } from '@/index.js';
 
 // ---------------------------------------------------------------------------
 // Setup

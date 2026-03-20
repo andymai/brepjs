@@ -20,9 +20,9 @@
 
 import { describe, it, beforeAll, beforeEach, expect } from 'vitest';
 import { initOCCT } from './setup.js';
-import { getKernel, registerKernel } from '../src/kernel/index.js';
-import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
-import type { KernelAdapter } from '../src/kernel/types.js';
+import { getKernel, registerKernel } from '@/kernel/index.js';
+import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
+import type { KernelAdapter } from '@/kernel/types.js';
 
 // ---------------------------------------------------------------------------
 // Setup

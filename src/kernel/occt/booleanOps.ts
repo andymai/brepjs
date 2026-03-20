@@ -1,0 +1,310 @@
+/**
+ * Boolean operations for OCCT shapes.
+ *
+ * Provides fuse, cut, intersect, and batch operations (fuseAll, cutAll).
+ * Used by DefaultAdapter.
+ */
+
+import type { KernelInstance, KernelShape, BooleanOptions } from '@/kernel/types.js';
+
+/** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
+const SIMPLIFY_TOLERANCE = 1e-3;
+
+/**
+ * Applies glue optimization to a boolean operation builder.
+ */
+export function applyGlue(
+  oc: KernelInstance,
+  op: { SetGlue(glue: unknown): void },
+  optimisation?: string
+): void {
+  if (optimisation === 'commonFace') {
+    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueShift);
+  }
+  if (optimisation === 'sameFace') {
+    op.SetGlue(oc.BOPAlgo_GlueEnum.BOPAlgo_GlueFull);
+  }
+}
+
+/**
+ * Applies common OCCT boolean algorithm settings for performance.
+ *
+ * - SetRunParallel: enables multi-threaded intersection computation.
+ * - SetUseOBB: Oriented Bounding Boxes give tighter spatial rejection than AABBs.
+ * - SetFuzzyValue: when provided, merges nearly-coincident vertices/edges early,
+ *   reducing intersection computation complexity.
+ */
+export function applyBooleanDefaults(
+  // All OCCT boolean algo classes inherit these from BRepAlgoAPI_Algo / BOPAlgo_Options.
+  // Optional markers are defensive — the WASM bridge is untyped (KernelInstance = any).
+  op: {
+    SetRunParallel(flag: boolean): void;
+    SetUseOBB?(flag: boolean): void;
+    SetFuzzyValue?(fuzz: number): void;
+  },
+  fuzzyValue?: number
+): void {
+  op.SetRunParallel(true);
+  op.SetUseOBB?.(true);
+  if (fuzzyValue !== undefined && fuzzyValue > 0) {
+    op.SetFuzzyValue?.(fuzzyValue);
+  }
+}
+
+/**
+ * Builds a compound from multiple shapes.
+ */
+export function buildCompound(oc: KernelInstance, shapes: KernelShape[]): KernelShape {
+  const builder = new oc.TopoDS_Builder();
+  const compound = new oc.TopoDS_Compound();
+  builder.MakeCompound(compound);
+  for (const s of shapes) {
+    builder.Add(compound, s);
+  }
+  builder.delete();
+  return compound;
+}
+
+/**
+ * Fuses two shapes together.
+ */
+export function fuse(
+  oc: KernelInstance,
+  shape: KernelShape,
+  tool: KernelShape,
+  options: BooleanOptions = {}
+): KernelShape {
+  const { optimisation, simplify = false, fuzzyValue } = options;
+  const progress = new oc.Message_ProgressRange_1();
+  const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
+  applyGlue(oc, fuseOp, optimisation);
+  applyBooleanDefaults(fuseOp, fuzzyValue);
+  fuseOp.Build(progress);
+  if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+  const result = fuseOp.Shape();
+  fuseOp.delete();
+  progress.delete();
+  return result;
+}
+
+/**
+ * Cuts a tool shape from a base shape.
+ */
+export function cut(
+  oc: KernelInstance,
+  shape: KernelShape,
+  tool: KernelShape,
+  options: BooleanOptions = {}
+): KernelShape {
+  const { optimisation, simplify = false, fuzzyValue } = options;
+  const progress = new oc.Message_ProgressRange_1();
+  const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
+  applyGlue(oc, cutOp, optimisation);
+  applyBooleanDefaults(cutOp, fuzzyValue);
+  cutOp.Build(progress);
+  if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+  const result = cutOp.Shape();
+  cutOp.delete();
+  progress.delete();
+  return result;
+}
+
+/**
+ * Intersects two shapes.
+ */
+export function intersect(
+  oc: KernelInstance,
+  shape: KernelShape,
+  tool: KernelShape,
+  options: BooleanOptions = {}
+): KernelShape {
+  const { optimisation, simplify = false, fuzzyValue } = options;
+  const progress = new oc.Message_ProgressRange_1();
+  const commonOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
+  applyGlue(oc, commonOp, optimisation);
+  applyBooleanDefaults(commonOp, fuzzyValue);
+  commonOp.Build(progress);
+  if (simplify) commonOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+  const result = commonOp.Shape();
+  commonOp.delete();
+  progress.delete();
+  return result;
+}
+
+/**
+ * Sections a shape with another shape (typically a planar face), returning
+ * the intersection edges/wires.
+ */
+export function section(
+  oc: KernelInstance,
+  shape: KernelShape,
+  tool: KernelShape,
+  approximation: boolean = true
+): KernelShape {
+  const progress = new oc.Message_ProgressRange_1();
+  const sectionOp = new oc.BRepAlgoAPI_Section_3(shape, tool, false);
+  sectionOp.Approximation(approximation);
+  applyBooleanDefaults(sectionOp);
+  sectionOp.Build(progress);
+  if (!sectionOp.IsDone()) {
+    sectionOp.delete();
+    progress.delete();
+    throw new Error('BRepAlgoAPI_Section build failed');
+  }
+  const result = sectionOp.Shape();
+  sectionOp.delete();
+  progress.delete();
+  return result;
+}
+
+/**
+ * Fuses multiple shapes using native OCCT N-way general fuse.
+ */
+function fuseAllNative(
+  oc: KernelInstance,
+  shapes: KernelShape[],
+  options: BooleanOptions = {}
+): KernelShape {
+  const { optimisation, simplify = false, fuzzyValue } = options;
+
+  const argList = new oc.TopTools_ListOfShape_1();
+  for (const s of shapes) {
+    argList.Append_1(s);
+  }
+
+  const builder = new oc.BRepAlgoAPI_BuilderAlgo_1();
+  builder.SetArguments(argList);
+  applyGlue(oc, builder, optimisation);
+  applyBooleanDefaults(builder, fuzzyValue);
+
+  const progress = new oc.Message_ProgressRange_1();
+  builder.Build(progress);
+  let result = builder.Shape();
+
+  if (simplify) {
+    const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(result, true, true, false);
+    upgrader.Build();
+    result = upgrader.Shape();
+    upgrader.delete();
+  }
+
+  argList.delete();
+  builder.delete();
+  progress.delete();
+  return result;
+}
+
+/**
+ * Fuses multiple shapes using recursive pairwise fusion with index ranges.
+ * Uses start/end indices to avoid array allocations on each recursive call.
+ */
+function fuseAllPairwiseRange(
+  oc: KernelInstance,
+  shapes: KernelShape[],
+  start: number,
+  end: number,
+  options: BooleanOptions
+): KernelShape {
+  options.signal?.throwIfAborted();
+  const count = end - start;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
+  if (count === 1) return shapes[start]!;
+  if (count === 2) {
+    return fuse(oc, shapes[start], shapes[start + 1], { ...options, simplify: false });
+  }
+
+  const mid = start + Math.ceil(count / 2);
+  const left = fuseAllPairwiseRange(oc, shapes, start, mid, options);
+  const right = fuseAllPairwiseRange(oc, shapes, mid, end, options);
+  return fuse(oc, left, right, { ...options, simplify: false });
+}
+
+/**
+ * Fuses multiple shapes using recursive pairwise fusion.
+ */
+function fuseAllPairwise(
+  oc: KernelInstance,
+  shapes: KernelShape[],
+  options: BooleanOptions = {}
+): KernelShape {
+  const result = fuseAllPairwiseRange(oc, shapes, 0, shapes.length, options);
+  // Apply simplify only at the end if requested
+  if (options.simplify) {
+    const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(result, true, true, false);
+    upgrader.Build();
+    const simplified = upgrader.Shape();
+    upgrader.delete();
+    return simplified;
+  }
+  return result;
+}
+
+/**
+ * Fuses all given shapes in a single operation.
+ */
+export function fuseAll(
+  oc: KernelInstance,
+  shapes: KernelShape[],
+  options: BooleanOptions = {}
+): KernelShape {
+  if (shapes.length === 0) throw new Error('fuseAll requires at least one shape');
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
+  if (shapes.length === 1) return shapes[0]!;
+
+  const { strategy = 'native' } = options;
+  if (strategy === 'pairwise') {
+    return fuseAllPairwise(oc, shapes, options);
+  }
+
+  return fuseAllNative(oc, shapes, options);
+}
+
+/**
+ * Splits a shape using one or more tool shapes via BRepAlgoAPI_Splitter.
+ * The result contains all the pieces from the split.
+ */
+export function split(oc: KernelInstance, shape: KernelShape, tools: KernelShape[]): KernelShape {
+  if (!oc.BRepAlgoAPI_Splitter) {
+    throw new Error('BRepAlgoAPI_Splitter not available in this WASM build');
+  }
+
+  const argList = new oc.TopTools_ListOfShape_1();
+  argList.Append_1(shape);
+
+  const toolList = new oc.TopTools_ListOfShape_1();
+  for (const tool of tools) {
+    toolList.Append_1(tool);
+  }
+
+  const splitter = new oc.BRepAlgoAPI_Splitter();
+  splitter.SetArguments(argList);
+  splitter.SetTools(toolList);
+  applyBooleanDefaults(splitter);
+
+  const progress = new oc.Message_ProgressRange_1();
+  splitter.Build(progress);
+
+  const result = splitter.Shape();
+  splitter.delete();
+  progress.delete();
+  argList.delete();
+  toolList.delete();
+  return result;
+}
+
+/**
+ * Cuts all tool shapes from a base shape.
+ */
+export function cutAll(
+  oc: KernelInstance,
+  shape: KernelShape,
+  tools: KernelShape[],
+  options: BooleanOptions = {}
+): KernelShape {
+  if (tools.length === 0) return shape;
+
+  const toolCompound = buildCompound(oc, tools);
+  const result = cut(oc, shape, toolCompound, options);
+  toolCompound.delete();
+  return result;
+}

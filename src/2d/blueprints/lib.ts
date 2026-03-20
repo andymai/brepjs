@@ -1,17 +1,17 @@
 import Flatbush from 'flatbush';
 
-import { safeIndex } from '../../core/errors.js';
+import { safeIndex } from '@/core/errors.js';
 
-import type { Point2D, BoundingBox2d } from '../lib/index.js';
-import type { Face, Wire } from '../../core/shapeTypes.js';
+import type { Point2D, BoundingBox2d } from '@/2d/lib/index.js';
+import type { Face, Wire } from '@/core/shapeTypes.js';
 
-import type { Plane, PlaneName } from '../../core/planeTypes.js';
-import type { Vec3, PointInput } from '../../core/types.js';
+import type { Plane, PlaneName } from '@/core/planeTypes.js';
+import type { Vec3, PointInput } from '@/core/types.js';
 
-import type { ScaleMode } from '../curves.js';
-import type Blueprint from './Blueprint.js';
-import Blueprints from './Blueprints.js';
-import CompoundBlueprint from './CompoundBlueprint.js';
+import type { ScaleMode } from '@/2d/curves.js';
+import type Blueprint from './blueprint.js';
+import Blueprints from './blueprints.js';
+import CompoundBlueprint from './compoundBlueprint.js';
 
 /**
  * Groups blueprints by bounding box overlap using a spatial index.

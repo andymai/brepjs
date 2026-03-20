@@ -2,10 +2,10 @@
  * Shared utilities for sketch creation and manipulation.
  */
 
-import type { PointInput } from '../core/types.js';
-import type { SketchData } from '../2d/blueprints/lib.js';
-import Sketch from './Sketch.js';
-import CompoundSketch from './CompoundSketch.js';
+import type { PointInput } from '@/core/types.js';
+import type { SketchData } from '@/2d/blueprints/lib.js';
+import Sketch from './sketch.js';
+import CompoundSketch from './compoundSketch.js';
 
 /** Wrap SketchData into a Sketch instance. */
 export function wrapSketchData(data: SketchData): Sketch {

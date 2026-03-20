@@ -7,10 +7,10 @@
  * transform functions don't duplicate the same ~20-line block.
  */
 
-import type { ShapeEvolution } from '../../kernel/types.js';
-import { getKernel } from '../../kernel/index.js';
-import type { AnyShape, Dimension } from '../../core/shapeTypes.js';
-import { HASH_CODE_MAX } from '../../core/constants.js';
+import type { ShapeEvolution } from '@/kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 import {
   getFaceOrigins,
   propagateOriginsFromEvolution,

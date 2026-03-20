@@ -3,8 +3,8 @@
  * describe shape topology. All results are lazily cached per shape.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { KernelShape, ShapeType } from '../kernel/types.js';
+import { getKernel } from '@/kernel/index.js';
+import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type {
   AnyShape,
   Dimension,
@@ -13,9 +13,9 @@ import type {
   Wire,
   Vertex,
   ShapeKind,
-} from '../core/shapeTypes.js';
-import { castShapeWithKnownType, getShapeKind } from '../core/shapeTypes.js';
-import type { Vec3 } from '../core/types.js';
+} from '@/core/shapeTypes.js';
+import { castShapeWithKnownType, getShapeKind } from '@/core/shapeTypes.js';
+import type { Vec3 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
 // Fast sub-shape extraction (avoids per-item downcast + generator overhead)

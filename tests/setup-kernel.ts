@@ -6,8 +6,8 @@
  * workspace so the full test suite can run against either backend.
  */
 
-import { initFromOC, registerKernel } from '../src/kernel/index.js';
-import { BrepkitAdapter } from '../src/kernel/brepkitAdapter.js';
+import { initFromOC, registerKernel } from '@/kernel/index.js';
+import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
 
 /** The active kernel id, derived from `TEST_KERNEL` env var (default `"occt"`). */
 export const currentKernel: string = process.env['TEST_KERNEL'] ?? 'occt';

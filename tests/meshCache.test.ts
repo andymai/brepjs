@@ -7,8 +7,8 @@ import {
   setMeshForShape,
   getEdgeMeshForShape,
   setEdgeMeshForShape,
-} from '../src/topology/meshCache.js';
-import type { ShapeMesh, EdgeMesh } from '../src/topology/meshFns.js';
+} from '@/topology/meshCache.js';
+import type { ShapeMesh, EdgeMesh } from '@/topology/meshFns.js';
 
 function fakeMesh(id: number): ShapeMesh {
   return {

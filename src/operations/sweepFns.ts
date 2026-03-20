@@ -8,14 +8,14 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
 type KernelType = any;
 
-import { getKernel } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
-import type { Vec3 } from '../core/types.js';
-import { vecAdd, vecLength } from '../core/vecOps.js';
-import type { ClosedWire, Dimension, Wire, Shell, Solid, Shape3D } from '../core/shapeTypes.js';
-import { castShape, isShape3D, isWire as isWireGuard } from '../core/shapeTypes.js';
-import { type Result, ok, err, unwrap } from '../core/result.js';
-import { validationError, kernelError, typeCastError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { KernelShape } from '@/kernel/types.js';
+import type { Vec3 } from '@/core/types.js';
+import { vecAdd, vecLength } from '@/core/vecOps.js';
+import type { ClosedWire, Dimension, Wire, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
+import { castShape, isShape3D, isWire as isWireGuard } from '@/core/shapeTypes.js';
+import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { validationError, kernelError, typeCastError, BrepErrorCode } from '@/core/errors.js';
 import { buildLawFromProfile, type ExtrusionProfile, type SweepOptions } from './extrudeUtils.js';
 
 // Re-export types from consolidated modules

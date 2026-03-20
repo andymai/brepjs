@@ -3,7 +3,7 @@
  * All functions are immutable: they return new shapes without disposing inputs.
  */
 
-import { getKernel } from '../kernel/index.js';
+import { getKernel } from '@/kernel/index.js';
 import type {
   AnyShape,
   ClosedWire,
@@ -11,17 +11,17 @@ import type {
   OrientedFace,
   Shape3D,
   Wire,
-} from '../core/shapeTypes.js';
-import { castShape, isShape3D } from '../core/shapeTypes.js';
-import { type Result, ok, err, isErr } from '../core/result.js';
-import { validationError, typeCastError, kernelError, BrepErrorCode } from '../core/errors.js';
-import type { Plane } from '../core/planeTypes.js';
-import type { PlaneInput } from '../core/planeTypes.js';
-import { resolvePlane } from '../core/planeOps.js';
-import { vecAdd, vecScale } from '../core/vecOps.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
+} from '@/core/shapeTypes.js';
+import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { type Result, ok, err, isErr } from '@/core/result.js';
+import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
+import type { Plane } from '@/core/planeTypes.js';
+import type { PlaneInput } from '@/core/planeTypes.js';
+import { resolvePlane } from '@/core/planeOps.js';
+import { vecAdd, vecScale } from '@/core/vecOps.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 import { getWires, getEdges, getVertices } from './shapeFns.js';
-import { getAtOrThrow, firstOrThrow } from '../utils/arrayAccess.js';
+import { getAtOrThrow, firstOrThrow } from '@/utils/arrayAccess.js';
 import {
   collectInputFaceHashes,
   propagateAllMetadata,
@@ -47,7 +47,7 @@ function validateShape3D(shape: Shape3D, label: string): Result<undefined> {
 // Types
 // ---------------------------------------------------------------------------
 
-import type { BooleanOptions } from '../kernel/types.js';
+import type { BooleanOptions } from '@/kernel/types.js';
 export type { BooleanOptions };
 
 // ---------------------------------------------------------------------------

@@ -2,13 +2,13 @@
  * 3MF import — parses a 3MF ZIP archive and builds a solid via sewing.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { UnknownDimShape } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { UnknownDimShape } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError, BrepErrorCode } from '@/core/errors.js';
 import { sewMeshToSolid } from './ioUtils.js';
-import { colorShape } from '../topology/metadata/colorFns.js';
+import { colorShape } from '@/topology/metadata/colorFns.js';
 
 // ---------------------------------------------------------------------------
 // ZIP extraction (store-only, no compression)

@@ -5,12 +5,12 @@
  * and options objects. They delegate to implementations in shapeFns.ts, booleanFns.ts, etc.
  */
 
-import type { Vec3, MatrixInput } from '../core/types.js';
-import type { Result } from '../core/result.js';
-import type { AnyShape, Dimension, Edge, Face, Shape3D, Shell, Solid } from '../core/shapeTypes.js';
+import type { Vec3, MatrixInput } from '@/core/types.js';
+import type { Result } from '@/core/result.js';
+import type { AnyShape, Dimension, Edge, Face, Shape3D, Shell, Solid } from '@/core/shapeTypes.js';
 import type { Shapeable, FinderFn, FilletRadius, ChamferDistance } from './apiTypes.js';
 import { resolve } from './apiTypes.js';
-import type { ShapeFinder } from '../query/finderFns.js';
+import type { ShapeFinder } from '@/query/finderFns.js';
 import * as transforms from './shapeFns.js';
 import * as booleans from './booleanFns.js';
 import * as modifiers from './modifierFns.js';
@@ -18,8 +18,8 @@ import * as angles from './chamferAngleFns.js';
 import * as healing from './healingFns.js';
 import * as meshing from './meshFns.js';
 import * as casting from './cast.js';
-import { edgeFinder, faceFinder } from '../query/finderFns.js';
-import type { PlaneInput } from '../core/planeTypes.js';
+import { edgeFinder, faceFinder } from '@/query/finderFns.js';
+import type { PlaneInput } from '@/core/planeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Transforms — accept Shapeable<T>, use options objects

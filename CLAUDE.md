@@ -31,7 +31,7 @@ Monorepo with two publishable packages:
 - `npm run check:boundaries` — Layer boundary enforcement
 - `npm run knip` — Unused code detection
 - `npm run validate` — typecheck + lint + boundaries + format + changed tests (in order)
-- `npx vitest run tests/fn-booleanFns.test.ts` — Run a single test file
+- `npx vitest run tests/booleanFns.test.ts` — Run a single test file
 - `npm run docs:generate-lookup` — Regenerate `docs/function-lookup.md`
 
 ## Git hooks
@@ -54,6 +54,9 @@ Monorepo with two publishable packages:
 - **Never add new methods to class-based wrappers** (e.g. `Shape`, `Solid`, `Edge` classes in `src/topology/`). These are legacy OO wrappers. All new functionality goes in `*Fns.ts` files.
 - `Result<T,E>` in `src/core/result.ts` — prefer over throwing in layers 2-3
 - All `.ts` imports must use `.js` extensions for ESM compatibility
+- Cross-directory imports use `@/` alias (e.g. `@/kernel/index.js`); same-directory imports stay relative (`./foo.js`)
+- File naming: camelCase everywhere (no PascalCase, no kebab-case)
+- kernel/ structure: shared abstractions at root (`types.ts`, `interfaces/`), OCCT code in `occt/`, brepkit code in `brepkit/`
 - Unused variables must be prefixed with `_`
 
 ## Lint rules
@@ -68,7 +71,7 @@ Monorepo with two publishable packages:
 ## Testing
 
 - Tests in `/tests/`, setup in `tests/setup.ts` (WASM init)
-- Test naming: `fn-*.test.ts` for functional API, `api*.test.ts` for public API
+- Test naming: `<moduleName>.test.ts` (e.g. `shapeFns.test.ts`), `api*.test.ts` for public API
 - Vitest globals enabled, 30s timeout, forks pool, `--max-old-space-size=6144`
 - Coverage thresholds enforced — see `vitest.config.ts`
 
@@ -80,8 +83,8 @@ Conventional Commits enforced: `type(scope): subject`
 
 ### Writing a test
 
-1. File: extend existing `tests/fn-<module>.test.ts` or create new `tests/fn-<name>.test.ts`
-2. Import from `../src/index.js` (always `.js` extension)
+1. File: extend existing `tests/<moduleName>.test.ts` or create new `tests/<name>.test.ts`
+2. Import from `@/index.js` (use `@/` alias for cross-directory imports, always `.js` extension)
 3. Add `beforeAll(async () => { await initOC(); }, 30000)` and import `initOC` from `./setup.js`
 4. Use `toBeCloseTo(expected, precision)` for geometry — never exact equality for floating point
 5. Use `unwrap(result)` in tests; use `isOk()`/`match()` in production code

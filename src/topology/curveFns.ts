@@ -3,14 +3,14 @@
  * All functions accept branded Edge or Wire handles and return plain values.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Vec3 } from '../core/types.js';
-import type { Dimension, Edge, Wire } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import type { CurveType } from '../core/typeDiscriminants.js';
-import { type Result, ok, err } from '../core/result.js';
-import { typeCastError } from '../core/errors.js';
-import { isWire as isWireGuard, isEdge } from '../core/shapeTypes.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Vec3 } from '@/core/types.js';
+import type { Dimension, Edge, Wire } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import type { CurveType } from '@/core/typeDiscriminants.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { typeCastError } from '@/core/errors.js';
+import { isWire as isWireGuard, isEdge } from '@/core/shapeTypes.js';
 
 // ---------------------------------------------------------------------------
 // Curve properties

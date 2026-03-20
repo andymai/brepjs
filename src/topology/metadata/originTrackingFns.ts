@@ -3,11 +3,11 @@
  * them through kernel operations via ShapeEvolution records.
  */
 
-import { getKernel } from '../../kernel/index.js';
-import type { ShapeEvolution } from '../../kernel/types.js';
-import type { AnyShape, Dimension } from '../../core/shapeTypes.js';
-import { HASH_CODE_MAX } from '../../core/constants.js';
-import { getOrCreateCache, getCacheEntry, getFaces } from '../topologyQueryFns.js';
+import { getKernel } from '@/kernel/index.js';
+import type { ShapeEvolution } from '@/kernel/types.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
+import { getOrCreateCache, getCacheEntry, getFaces } from '@/topology/topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Origin assignment

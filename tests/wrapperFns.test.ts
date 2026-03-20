@@ -30,8 +30,8 @@ import {
   getFaces,
   getEdges,
   getVertices,
-} from '../src/index.js';
-import { BrepWrapperError } from '../src/topology/wrapperFns.js';
+} from '@/index.js';
+import { BrepWrapperError } from '@/topology/wrapperFns.js';
 
 beforeAll(async () => {
   await initKernel();

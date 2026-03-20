@@ -5,10 +5,10 @@
  * approximations for arcs, ellipses, splines, and other curves.
  */
 
-import type { Point2D, Curve2D } from '../2d/lib/index.js';
-import type Blueprint from '../2d/blueprints/Blueprint.js';
-import type CompoundBlueprint from '../2d/blueprints/CompoundBlueprint.js';
-import type Blueprints from '../2d/blueprints/Blueprints.js';
+import type { Point2D, Curve2D } from '@/2d/lib/index.js';
+import type Blueprint from '@/2d/blueprints/blueprint.js';
+import type CompoundBlueprint from '@/2d/blueprints/compoundBlueprint.js';
+import type Blueprints from '@/2d/blueprints/blueprints.js';
 
 // ---------------------------------------------------------------------------
 // Public types

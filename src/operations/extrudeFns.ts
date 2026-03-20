@@ -5,13 +5,13 @@
  * have moved to `./sweepFns.js`.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Vec3 } from '../core/types.js';
-import { vecLength, vecNormalize } from '../core/vecOps.js';
-import type { Dimension, OrientedFace, Shape3D, ValidSolid } from '../core/shapeTypes.js';
-import { castShape, isShape3D, createSolid } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { typeCastError, validationError, kernelError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Vec3 } from '@/core/types.js';
+import { vecLength, vecNormalize } from '@/core/vecOps.js';
+import type { Dimension, OrientedFace, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
+import { castShape, isShape3D, createSolid } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { typeCastError, validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 
 export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
 

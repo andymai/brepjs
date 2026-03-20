@@ -2,18 +2,18 @@
  * Assembly mates — constraint-based positioning for assembly parts.
  */
 
-import type { Face, Edge } from '../core/shapeTypes.js';
-import type { Vec3 } from '../core/types.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError, kernelError, BrepErrorCode } from '../core/errors.js';
+import type { Face, Edge } from '@/core/shapeTypes.js';
+import type { Vec3 } from '@/core/types.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { AssemblyNode } from './assemblyFns.js';
 import { walkAssembly } from './assemblyFns.js';
-import { faceCenter, normalAt } from '../topology/faceFns.js';
+import { faceCenter, normalAt } from '@/topology/faceFns.js';
 import {
   solveConstraints,
   type SolverEntity,
   type SolverConstraint,
-} from '../kernel/solverAdapter.js';
+} from '@/kernel/solverAdapter.js';
 
 // ---------------------------------------------------------------------------
 // Types

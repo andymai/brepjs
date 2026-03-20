@@ -2,16 +2,16 @@
  * Surface / face construction helpers — planar faces, non-planar fills, holes, and polygons.
  */
 
-import { getKernel } from '../kernel/index.js';
+import { getKernel } from '@/kernel/index.js';
 
-import type { Vec3 } from '../core/types.js';
-import { type Result, ok, err, andThen } from '../core/result.js';
-import { validationError, kernelError } from '../core/errors.js';
-import type { Dimension, ClosedWire, Face, OrientedFace } from '../core/shapeTypes.js';
-import { createFace, isFace } from '../core/shapeTypes.js';
+import type { Vec3 } from '@/core/types.js';
+import { type Result, ok, err, andThen } from '@/core/result.js';
+import { validationError, kernelError } from '@/core/errors.js';
+import type { Dimension, ClosedWire, Face, OrientedFace } from '@/core/shapeTypes.js';
+import { createFace, isFace } from '@/core/shapeTypes.js';
 import { cast } from './cast.js';
 import { outerWire } from './faceFns.js';
-import zip from '../utils/zip.js';
+import zip from '@/utils/zip.js';
 import { makeLine, assembleWire } from './curveBuilders.js';
 
 /**

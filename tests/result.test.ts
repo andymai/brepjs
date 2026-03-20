@@ -25,7 +25,7 @@ import {
   tryCatch,
   tryCatchAsync,
   type Result,
-} from '../src/core/result.js';
+} from '@/core/result.js';
 
 describe('Result constructors', () => {
   it('ok() creates an Ok result', () => {

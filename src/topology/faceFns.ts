@@ -3,14 +3,14 @@
  * All functions accept branded Face handles and return plain values or branded shapes.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { SurfaceType as KernelSurfaceType } from '../kernel/index.js';
-import type { Vec3, PointInput } from '../core/types.js';
-import { toVec3 } from '../core/types.js';
-import type { ClosedWire, Dimension, Face } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { type Result, ok, err, unwrap } from '../core/result.js';
-import { typeCastError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { SurfaceType as KernelSurfaceType } from '@/kernel/index.js';
+import type { Vec3, PointInput } from '@/core/types.js';
+import { toVec3 } from '@/core/types.js';
+import type { ClosedWire, Dimension, Face } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { typeCastError } from '@/core/errors.js';
 import { iterTopo, downcast } from './cast.js';
 
 // ---------------------------------------------------------------------------

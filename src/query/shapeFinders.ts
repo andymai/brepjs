@@ -6,17 +6,17 @@
  * former edgeFinder.ts, faceFinder.ts, and wireFinder.ts.
  */
 
-import type { Vec3 } from '../core/types.js';
-import type { Edge, Face, Wire } from '../core/shapeTypes.js';
-import { getKernel } from '../kernel/index.js';
-import { vecDot, vecNormalize } from '../core/vecOps.js';
-import { DEG2RAD } from '../core/constants.js';
-import { getCurveType, curveLength, curveIsClosed } from '../topology/curveFns.js';
-import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '../topology/faceFns.js';
-import { measureArea } from '../measurement/measureFns.js';
-import { unwrap, isOk } from '../core/result.js';
-import { iterTopo } from '../topology/cast.js';
-import type { CurveType } from '../core/typeDiscriminants.js';
+import type { Vec3 } from '@/core/types.js';
+import type { Edge, Face, Wire } from '@/core/shapeTypes.js';
+import { getKernel } from '@/kernel/index.js';
+import { vecDot, vecNormalize } from '@/core/vecOps.js';
+import { DEG2RAD } from '@/core/constants.js';
+import { getCurveType, curveLength, curveIsClosed } from '@/topology/curveFns.js';
+import { normalAt as faceNormalAt, getSurfaceType, type SurfaceType } from '@/topology/faceFns.js';
+import { measureArea } from '@/measurement/measureFns.js';
+import { unwrap, isOk } from '@/core/result.js';
+import { iterTopo } from '@/topology/cast.js';
+import type { CurveType } from '@/core/typeDiscriminants.js';
 import { type ShapeFinder, type Predicate, createTypedFinder } from './finderCore.js';
 import { type DirectionInput, resolveDir } from './directionUtils.js';
 import { distanceFromPointFilter } from './shapeDistanceFilter.js';

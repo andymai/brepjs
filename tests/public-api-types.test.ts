@@ -9,7 +9,7 @@
  *   4. Runtime constructors — error/result constructors produce correct shapes
  */
 import { describe, expect, it } from 'vitest';
-import * as API from '../src/index.js';
+import * as API from '@/index.js';
 
 // ── Import every documented type and value from the public API ──
 import {
@@ -63,7 +63,7 @@ import {
 
   // Plane
   createPlane,
-} from '../src/index.js';
+} from '@/index.js';
 
 import type {
   // Core types
@@ -126,7 +126,7 @@ import type {
   OperationFn,
   HistoryOperationRegistry,
   Point2D,
-} from '../src/index.js';
+} from '@/index.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // 0. Export surface snapshot — fails when exports are added or removed

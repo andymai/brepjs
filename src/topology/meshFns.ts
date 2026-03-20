@@ -2,10 +2,10 @@
  * Meshing and export functions — functional replacements for Shape mesh/export methods.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError } from '@/core/errors.js';
 
 import {
   buildMeshCacheKey,

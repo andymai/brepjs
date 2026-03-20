@@ -7,12 +7,12 @@
  * in one place.
  */
 
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { type Result, ok, err, unwrap } from '../core/result.js';
-import { queryError } from '../core/errors.js';
-import { getHashCode, isSameShape } from '../topology/shapeFns.js';
-import { iterTopo, downcast } from '../topology/cast.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { queryError } from '@/core/errors.js';
+import { getHashCode, isSameShape } from '@/topology/shapeFns.js';
+import { iterTopo, downcast } from '@/topology/cast.js';
 
 // ---------------------------------------------------------------------------
 // Predicate type

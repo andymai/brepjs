@@ -5,10 +5,10 @@
  * Delegates to existing implementations in shapeHelpers.ts and kernel layer.
  */
 
-import type { Vec3 } from '../core/types.js';
-import { type Result, ok as _ok, err as _err, andThen } from '../core/result.js';
-import { isClosedWire as _isClosedWire, createSolid } from '../core/shapeTypes.js';
-import { validationError as _validationError } from '../core/errors.js';
+import type { Vec3 } from '@/core/types.js';
+import { type Result, ok as _ok, err as _err, andThen } from '@/core/result.js';
+import { isClosedWire as _isClosedWire, createSolid } from '@/core/shapeTypes.js';
+import { validationError as _validationError } from '@/core/errors.js';
 import type {
   Edge,
   ClosedWire,
@@ -22,8 +22,8 @@ import type {
   AnyShape,
   Dimension,
   Shape3D,
-} from '../core/shapeTypes.js';
-import { DEG2RAD } from '../core/constants.js';
+} from '@/core/shapeTypes.js';
+import { DEG2RAD } from '@/core/constants.js';
 import {
   makeLine as _makeLine,
   makeCircle as _makeCircle,
@@ -53,7 +53,7 @@ import {
   addHolesInFace as _addHolesInFace,
   makePolygon as _makePolygon,
 } from './shapeHelpers.js';
-import { getKernel } from '../kernel/index.js';
+import { getKernel } from '@/kernel/index.js';
 import { translate } from './shapeFns.js';
 
 // Re-export the approximation config type

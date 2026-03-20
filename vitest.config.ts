@@ -25,6 +25,7 @@ export default defineConfig({
       // Vite resolves the "import" exports condition by default, hitting the ESM
       // bundler entry that uses the unsupported WASM ESM integration proposal.
       // Alias to the Node CJS entry so brepkit tests run under vitest.
+      '@': resolve(__dirname, 'src'),
       'brepkit-wasm': resolve(__dirname, 'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'),
     },
   },
@@ -38,12 +39,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/**/*.d.ts',
-        'src/**/index.ts',
-        'src/kernel/brepkit*.ts',
-        'src/kernel/brepkit/**',
-      ],
+      exclude: ['src/**/*.d.ts', 'src/**/index.ts', 'src/kernel/brepkit/**'],
       reporter: ['text', 'text-summary', 'lcov'],
       reportsDirectory: './coverage',
       thresholds: {

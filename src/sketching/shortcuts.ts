@@ -1,5 +1,5 @@
-import type { Shape3D } from '../core/shapeTypes.js';
-import Sketcher from './Sketcher.js';
+import type { Shape3D } from '@/core/shapeTypes.js';
+import Sketcher from './sketcher.js';
 
 /**
  * Create a box centered on the XY plane and extruded along Z.

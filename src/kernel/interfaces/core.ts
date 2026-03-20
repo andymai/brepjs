@@ -8,7 +8,7 @@
  * @see {@link KernelAdapter} for the full composed interface.
  */
 
-import type { KernelInstance } from '../types.js';
+import type { KernelInstance } from '@/kernel/types.js';
 
 export interface KernelCore {
   /**

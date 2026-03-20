@@ -2,7 +2,7 @@
  * Boolean operation helpers — compound builders and glue optimization.
  */
 
-import type { KernelType } from '../kernel/types.js';
+import type { KernelType } from '@/kernel/types.js';
 
 // BOPAlgo_GlueEnum integer constants
 const BOPAlgo_GlueShift = 1;

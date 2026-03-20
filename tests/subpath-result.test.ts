@@ -3,7 +3,7 @@
  * Does NOT require WASM initialization.
  */
 import { describe, expect, it } from 'vitest';
-import * as ResultAPI from '../src/result.js';
+import * as ResultAPI from '@/result.js';
 
 const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'BrepBugError',

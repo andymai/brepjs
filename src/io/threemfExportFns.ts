@@ -5,7 +5,7 @@
  * No external dependencies required.
  */
 
-import type { ShapeMesh } from '../topology/meshFns.js';
+import type { ShapeMesh } from '@/topology/meshFns.js';
 
 // ---------------------------------------------------------------------------
 // Types

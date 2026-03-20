@@ -2,9 +2,9 @@
  * Shared distance-from-point filter used by edge, face, and vertex finders.
  */
 
-import type { Vec3 } from '../core/types.js';
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { getKernel } from '../kernel/index.js';
+import type { Vec3 } from '@/core/types.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { getKernel } from '@/kernel/index.js';
 import type { Predicate } from './finderCore.js';
 
 /**

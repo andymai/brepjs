@@ -1,17 +1,17 @@
-import { unwrap } from '../core/result.js';
-import { DisposalScope } from '../core/disposal.js';
-import { stitchCurves } from '../2d/lib/index.js';
-import { Blueprint, Blueprints } from '../2d/blueprints/index.js';
-import type { AnyShape, ClosedWire, Edge, Face, Wire } from '../core/shapeTypes.js';
-import { createFace } from '../core/shapeTypes.js';
-import { outerWire } from '../topology/faceFns.js';
-import { getEdges } from '../topology/shapeFns.js';
-import { makeFace } from '../topology/shapeHelpers.js';
-import { downcast } from '../topology/cast.js';
+import { unwrap } from '@/core/result.js';
+import { DisposalScope } from '@/core/disposal.js';
+import { stitchCurves } from '@/2d/lib/index.js';
+import { Blueprint, Blueprints } from '@/2d/blueprints/index.js';
+import type { AnyShape, ClosedWire, Edge, Face, Wire } from '@/core/shapeTypes.js';
+import { createFace } from '@/core/shapeTypes.js';
+import { outerWire } from '@/topology/faceFns.js';
+import { getEdges } from '@/topology/shapeFns.js';
+import { makeFace } from '@/topology/shapeHelpers.js';
+import { downcast } from '@/topology/cast.js';
 import type { SketchInterface } from './sketchLib.js';
-import type { ProjectionPlane } from '../projection/projectionPlanes.js';
-import { type Camera, cameraFromPlane, projectEdges } from '../projection/cameraFns.js';
-import { edgeToCurve } from '../2d/curves.js';
+import type { ProjectionPlane } from '@/projection/projectionPlanes.js';
+import { type Camera, cameraFromPlane, projectEdges } from '@/projection/cameraFns.js';
+import { edgeToCurve } from '@/2d/curves.js';
 import { Drawing, drawRectangle } from './draw.js';
 
 const edgesToDrawing = (edges: Edge[]): Drawing => {

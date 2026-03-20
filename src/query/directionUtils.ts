@@ -2,7 +2,7 @@
  * Direction resolution utilities shared across finder modules.
  */
 
-import type { Vec3 } from '../core/types.js';
+import type { Vec3 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
 // Direction constants

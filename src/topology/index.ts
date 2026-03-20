@@ -33,7 +33,7 @@ export {
 
 // ── Re-export domain types from functional modules ──
 
-export type { CurveType } from '../core/typeDiscriminants.js';
+export type { CurveType } from '@/core/typeDiscriminants.js';
 
 // ── Functional API ──
 

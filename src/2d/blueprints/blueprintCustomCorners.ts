@@ -1,12 +1,12 @@
-import { bug } from '../../core/errors.js';
-import type { Corner, CornerFilter } from '../../query/finderFns.js';
-import type { Curve2D } from '../lib/index.js';
-import { chamferCurves, filletCurves, samePoint } from '../lib/index.js';
-import { firstOrThrow } from '../../utils/arrayAccess.js';
-import Blueprint from './Blueprint.js';
-import Blueprints from './Blueprints.js';
+import { bug } from '@/core/errors.js';
+import type { Corner, CornerFilter } from '@/query/finderFns.js';
+import type { Curve2D } from '@/2d/lib/index.js';
+import { chamferCurves, filletCurves, samePoint } from '@/2d/lib/index.js';
+import { firstOrThrow } from '@/utils/arrayAccess.js';
+import Blueprint from './blueprint.js';
+import Blueprints from './blueprints.js';
 import type { Shape2D } from './boolean2D.js';
-import CompoundBlueprint from './CompoundBlueprint.js';
+import CompoundBlueprint from './compoundBlueprint.js';
 
 type CornerMaker = (c1: Curve2D, c2: Curve2D, radius: number) => Curve2D[];
 

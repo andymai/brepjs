@@ -5,13 +5,13 @@
  * without requiring TopExp::MapShapesAndAncestors (not available in WASM).
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { ShapeType } from '../kernel/index.js';
-import type { KernelShape } from '../kernel/types.js';
-import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { HASH_CODE_MAX } from '../core/constants.js';
-import { unwrap } from '../core/result.js';
+import { getKernel } from '@/kernel/index.js';
+import type { ShapeType } from '@/kernel/index.js';
+import type { KernelShape } from '@/kernel/types.js';
+import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
+import { unwrap } from '@/core/result.js';
 import { downcast } from './cast.js';
 
 // ---------------------------------------------------------------------------

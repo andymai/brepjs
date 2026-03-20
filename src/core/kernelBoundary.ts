@@ -7,7 +7,7 @@
  */
 
 import type { Vec3 } from './types.js';
-import { getKernel } from '../kernel/index.js';
+import { getKernel } from '@/kernel/index.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types
 type KernelType = any;
 

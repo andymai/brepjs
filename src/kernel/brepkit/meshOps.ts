@@ -4,8 +4,13 @@
  * @module
  */
 
-import type { BrepkitKernel } from '../brepkitWasmTypes.js';
-import type { KernelShape, KernelMeshResult, KernelEdgeMeshResult, MeshOptions } from '../types.js';
+import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type {
+  KernelShape,
+  KernelMeshResult,
+  KernelEdgeMeshResult,
+  MeshOptions,
+} from '@/kernel/types.js';
 import { type BrepkitHandle, unwrap, toArray, warnOnce, DEFAULT_DEFLECTION } from './helpers.js';
 
 export function mesh(

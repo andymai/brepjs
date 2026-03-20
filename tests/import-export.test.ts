@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, deserializeShape, toBREP, mesh } from '../src/index.js';
+import { box, deserializeShape, toBREP, mesh } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();

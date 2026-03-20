@@ -1,9 +1,9 @@
-import Blueprint from './Blueprint.js';
-import CompoundBlueprint from './CompoundBlueprint.js';
-import Blueprints from './Blueprints.js';
+import Blueprint from './blueprint.js';
+import CompoundBlueprint from './compoundBlueprint.js';
+import Blueprints from './blueprints.js';
 import type { DrawingInterface } from './lib.js';
 import { organiseBlueprints } from './lib.js';
-import type { ScaleMode } from '../curves.js';
+import type { ScaleMode } from '@/2d/curves.js';
 import offset from './blueprintOffset.js';
 
 export { Blueprint, CompoundBlueprint, Blueprints, organiseBlueprints, offset };

@@ -9,22 +9,22 @@
  * @see docs/decisions/0007-kernel-interface-segregation.md
  */
 
-import type { Kernel2DCapability } from '../kernel2dTypes.js';
-import type { KernelBooleanOps } from './boolean-ops.js';
-import type { KernelBuilderOps } from './builder-ops.js';
+import type { Kernel2DCapability } from '@/kernel/kernel2dTypes.js';
+import type { KernelBooleanOps } from './booleanOps.js';
+import type { KernelBuilderOps } from './builderOps.js';
 import type { KernelCore } from './core.js';
-import type { KernelCurveOps } from './curve-ops.js';
-import type { KernelEvolutionOps } from './evolution-ops.js';
-import type { KernelIOOps } from './io-ops.js';
-import type { KernelMeasureOps } from './measure-ops.js';
-import type { KernelMeshOps } from './mesh-ops.js';
-import type { KernelModifierOps } from './modifier-ops.js';
-import type { KernelPrimitiveOps } from './primitive-ops.js';
-import type { KernelRepairOps } from './repair-ops.js';
-import type { KernelSurfaceOps } from './surface-ops.js';
-import type { KernelSweepOps } from './sweep-ops.js';
-import type { KernelTopologyOps } from './topology-ops.js';
-import type { KernelTransformOps } from './transform-ops.js';
+import type { KernelCurveOps } from './curveOps.js';
+import type { KernelEvolutionOps } from './evolutionOps.js';
+import type { KernelIOOps } from './ioOps.js';
+import type { KernelMeasureOps } from './measureOps.js';
+import type { KernelMeshOps } from './meshOps.js';
+import type { KernelModifierOps } from './modifierOps.js';
+import type { KernelPrimitiveOps } from './primitiveOps.js';
+import type { KernelRepairOps } from './repairOps.js';
+import type { KernelSurfaceOps } from './surfaceOps.js';
+import type { KernelSweepOps } from './sweepOps.js';
+import type { KernelTopologyOps } from './topologyOps.js';
+import type { KernelTransformOps } from './transformOps.js';
 
 export type KernelAdapter = KernelCore &
   KernelBooleanOps &
@@ -44,18 +44,18 @@ export type KernelAdapter = KernelCore &
   Kernel2DCapability;
 
 // --- New sub-interfaces ---
-export type { KernelBooleanOps } from './boolean-ops.js';
-export type { KernelBuilderOps } from './builder-ops.js';
+export type { KernelBooleanOps } from './booleanOps.js';
+export type { KernelBuilderOps } from './builderOps.js';
 export type { KernelCore } from './core.js';
-export type { KernelCurveOps } from './curve-ops.js';
-export type { KernelEvolutionOps } from './evolution-ops.js';
-export type { KernelIOOps } from './io-ops.js';
-export type { BulkMeasurement, KernelMeasureOps } from './measure-ops.js';
-export type { KernelMeshOps } from './mesh-ops.js';
-export type { KernelModifierOps } from './modifier-ops.js';
-export type { KernelPrimitiveOps } from './primitive-ops.js';
-export type { KernelRepairOps } from './repair-ops.js';
-export type { KernelSurfaceOps } from './surface-ops.js';
-export type { KernelSweepOps } from './sweep-ops.js';
-export type { KernelTopologyOps } from './topology-ops.js';
-export type { KernelTransformOps, TransformEntry } from './transform-ops.js';
+export type { KernelCurveOps } from './curveOps.js';
+export type { KernelEvolutionOps } from './evolutionOps.js';
+export type { KernelIOOps } from './ioOps.js';
+export type { BulkMeasurement, KernelMeasureOps } from './measureOps.js';
+export type { KernelMeshOps } from './meshOps.js';
+export type { KernelModifierOps } from './modifierOps.js';
+export type { KernelPrimitiveOps } from './primitiveOps.js';
+export type { KernelRepairOps } from './repairOps.js';
+export type { KernelSurfaceOps } from './surfaceOps.js';
+export type { KernelSweepOps } from './sweepOps.js';
+export type { KernelTopologyOps } from './topologyOps.js';
+export type { KernelTransformOps, TransformEntry } from './transformOps.js';

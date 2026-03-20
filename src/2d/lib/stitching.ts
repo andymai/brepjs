@@ -1,6 +1,6 @@
 import Flatbush from 'flatbush';
-import { bug } from '../../core/errors.js';
-import type { Curve2D } from './Curve2D.js';
+import { bug } from '@/core/errors.js';
+import type { Curve2D } from './curve2D.js';
 
 /**
  * Group a flat list of curves into connected chains by matching endpoints.

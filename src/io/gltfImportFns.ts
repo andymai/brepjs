@@ -2,11 +2,11 @@
  * Functional GLB/glTF import operations using branded shape types.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { UnknownDimShape } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { UnknownDimShape } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError, BrepErrorCode } from '@/core/errors.js';
 
 /**
  * Import a GLB (binary glTF) file from a Blob.

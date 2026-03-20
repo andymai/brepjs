@@ -13,9 +13,9 @@
  * ```
  */
 
-import type { Vec3, MatrixInput } from '../core/types.js';
-import type { Result } from '../core/result.js';
-import { isErr } from '../core/result.js';
+import type { Vec3, MatrixInput } from '@/core/types.js';
+import type { Result } from '@/core/result.js';
+import { isErr } from '@/core/result.js';
 import type {
   AnyShape,
   ClosedWire,
@@ -27,8 +27,8 @@ import type {
   Solid,
   Vertex,
   Shape3D,
-} from '../core/shapeTypes.js';
-import { isShape3D, isFace, isEdge, isWire } from '../core/shapeTypes.js';
+} from '@/core/shapeTypes.js';
+import { isShape3D, isFace, isEdge, isWire } from '@/core/shapeTypes.js';
 import type {
   Shapeable,
   WrappedMarker,
@@ -41,11 +41,11 @@ import type {
   MirrorJoinOptions,
   RectangularPatternOptions,
 } from './apiTypes.js';
-import type { ShapeFinder } from '../query/finderFns.js';
+import type { ShapeFinder } from '@/query/finderFns.js';
 import { resolve } from './apiTypes.js';
 import type { BooleanOptions } from './booleanFns.js';
 import type { Bounds3D, ShapeDescription } from './shapeFns.js';
-import type { SurfaceType } from '../topology/faceFns.js';
+import type { SurfaceType } from '@/topology/faceFns.js';
 
 // Lazy imports to avoid circular dependencies — these are resolved at call time
 // We import the actual functions from the public API layer
@@ -77,17 +77,17 @@ import {
   slice as sliceFn,
 } from './api.js';
 import { getBounds, getEdges, getFaces, getWires, getVertices } from './shapeFns.js';
-import type { PlaneInput } from '../core/planeTypes.js';
+import type { PlaneInput } from '@/core/planeTypes.js';
 import type { ShapeMesh, EdgeMesh, MeshOptions } from './meshFns.js';
 import { cutAll as cutAllFn, fuseAll as fuseAllFn } from './booleanFns.js';
-import { extrude, revolve } from '../operations/api.js';
+import { extrude, revolve } from '@/operations/api.js';
 import {
   measureVolume,
   measureArea,
   measureVolumeProps,
   measureSurfaceProps,
-} from '../measurement/measureFns.js';
-import type { VolumeProps, SurfaceProps } from '../measurement/measureFns.js';
+} from '@/measurement/measureFns.js';
+import type { VolumeProps, SurfaceProps } from '@/measurement/measureFns.js';
 import {
   curveStartPoint,
   curveEndPoint,
@@ -97,9 +97,9 @@ import {
   curveIsClosed,
 } from './curveFns.js';
 import { normalAt, faceCenter, getSurfaceType, outerWire, innerWires } from './faceFns.js';
-import { linearPattern, circularPattern } from '../operations/patternFns.js';
-import { sweep as _sweep } from '../operations/extrudeFns.js';
-import type { SweepOptions } from '../operations/extrudeFns.js';
+import { linearPattern, circularPattern } from '@/operations/patternFns.js';
+import { sweep as _sweep } from '@/operations/extrudeFns.js';
+import type { SweepOptions } from '@/operations/extrudeFns.js';
 import {
   drill as drillFn,
   pocket as pocketFn,

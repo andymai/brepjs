@@ -3,14 +3,14 @@
  * All functions return new shapes without disposing inputs.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Vec3, MatrixInput } from '../core/types.js';
-import type { AnyShape, Dimension } from '../core/shapeTypes.js';
-import { castShape } from '../core/shapeTypes.js';
-import { HASH_CODE_MAX, DEG2RAD } from '../core/constants.js';
-import type { Result } from '../core/result.js';
-import { ok, err } from '../core/result.js';
-import { validationError, BrepErrorCode } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Vec3, MatrixInput } from '@/core/types.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
+import { castShape } from '@/core/shapeTypes.js';
+import { HASH_CODE_MAX, DEG2RAD } from '@/core/constants.js';
+import type { Result } from '@/core/result.js';
+import { ok, err } from '@/core/result.js';
+import { validationError, BrepErrorCode } from '@/core/errors.js';
 import {
   collectInputFaceHashes,
   propagateAllMetadata,

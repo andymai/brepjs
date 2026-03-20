@@ -1,8 +1,8 @@
-import zip from '../../utils/zip.js';
-import type { Curve2D } from '../lib/index.js';
+import zip from '@/utils/zip.js';
+import type { Curve2D } from '@/2d/lib/index.js';
 
-import Blueprint from './Blueprint.js';
-import type Blueprints from './Blueprints.js';
+import Blueprint from './blueprint.js';
+import type Blueprints from './blueprints.js';
 import { organiseBlueprints } from './lib.js';
 import { samePoint, curveMidPoint, reverseSegment } from './booleanHelpers.js';
 import type { Segment } from './booleanHelpers.js';

@@ -8,7 +8,7 @@
  * FinalizationRegistry serves as a safety net for handles not explicitly disposed.
  */
 
-import type { KernelShape } from '../kernel/types.js';
+import type { KernelShape } from '@/kernel/types.js';
 import type { BrepError } from './errors.js';
 import type { Result } from './result.js';
 

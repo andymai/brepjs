@@ -4,7 +4,7 @@
  * Extracted from measureFns.ts for reuse by measureCache.ts.
  */
 
-import type { Vec3 } from '../core/types.js';
+import type { Vec3 } from '@/core/types.js';
 
 /** Base physical properties returned by BRepGProp measurements. */
 export interface PhysicalProps {

@@ -3,7 +3,7 @@
  * Does NOT require WASM initialization.
  */
 import { describe, expect, it } from 'vitest';
-import * as VectorsAPI from '../src/vectors.js';
+import * as VectorsAPI from '@/vectors.js';
 
 const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'DEG2RAD',

@@ -4,8 +4,8 @@
  * @module
  */
 
-import type { BrepkitKernel } from '../brepkitWasmTypes.js';
-import type { KernelShape, DistanceResult } from '../types.js';
+import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type { KernelShape, DistanceResult } from '@/kernel/types.js';
 import { type BrepkitHandle, unwrap, DEFAULT_DEFLECTION } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { vertexPosition, uvBounds, pointOnSurface } from './geometryOps.js';

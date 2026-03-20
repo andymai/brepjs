@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reprPnt, removeDuplicatePoints } from '../src/2d/lib/utils.js';
+import { reprPnt, removeDuplicatePoints } from '@/2d/lib/utils.js';
 
 describe('reprPnt', () => {
   it('formats a point with 2 decimal places', () => {

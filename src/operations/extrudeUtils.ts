@@ -6,9 +6,9 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- kernel types are dynamic
 type KernelType = any;
 
-import { getKernel } from '../kernel/index.js';
-import { type Result, ok, err } from '../core/result.js';
-import { validationError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { validationError } from '@/core/errors.js';
 
 // ---------------------------------------------------------------------------
 // Sweep configuration

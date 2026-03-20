@@ -3,10 +3,10 @@
  * tori, ellipsoids, vertices, compounds, and offsets.
  */
 
-import { getKernel } from '../kernel/index.js';
-import type { Vec3 } from '../core/types.js';
-import { type Result, ok, err, andThen } from '../core/result.js';
-import { typeCastError } from '../core/errors.js';
+import { getKernel } from '@/kernel/index.js';
+import type { Vec3 } from '@/core/types.js';
+import { type Result, ok, err, andThen } from '@/core/result.js';
+import { typeCastError } from '@/core/errors.js';
 import type {
   AnyShape,
   Dimension,
@@ -16,14 +16,14 @@ import type {
   ValidSolid,
   Vertex,
   Shell,
-} from '../core/shapeTypes.js';
+} from '@/core/shapeTypes.js';
 import {
   createSolid,
   createCompound,
   createVertex,
   isShape3D,
   isSolid,
-} from '../core/shapeTypes.js';
+} from '@/core/shapeTypes.js';
 import { cast, downcast } from './cast.js';
 import { weldShapes } from './shapeUtils.js';
 

@@ -6,9 +6,9 @@
  * from the parsed vertex/index data.
  */
 
-import type { UnknownDimShape } from '../core/shapeTypes.js';
-import { type Result, err } from '../core/result.js';
-import { ioError, BrepErrorCode } from '../core/errors.js';
+import type { UnknownDimShape } from '@/core/shapeTypes.js';
+import { type Result, err } from '@/core/result.js';
+import { ioError, BrepErrorCode } from '@/core/errors.js';
 import { sewMeshToSolid } from './ioUtils.js';
 
 /**

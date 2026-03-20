@@ -1,4 +1,4 @@
-import type { BoundingBox2d } from '../lib/index.js';
+import type { BoundingBox2d } from '@/2d/lib/index.js';
 
 /**
  * Compute an SVG `viewBox` attribute string from a 2D bounding box.

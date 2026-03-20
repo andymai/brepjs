@@ -3,12 +3,12 @@
  * Delegates to existing Sketch/CompoundSketch class methods and operations/ functions.
  */
 
-import type { PointInput } from '../core/types.js';
-import type { OrientedFace, Shape3D, Wire } from '../core/shapeTypes.js';
-import type { ExtrusionProfile, SweepOptions } from '../operations/extrudeUtils.js';
-import type { LoftOptions } from '../operations/loftFns.js';
-import type Sketch from './Sketch.js';
-import type CompoundSketch from './CompoundSketch.js';
+import type { PointInput } from '@/core/types.js';
+import type { OrientedFace, Shape3D, Wire } from '@/core/shapeTypes.js';
+import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
+import type { LoftOptions } from '@/operations/loftFns.js';
+import type Sketch from './sketch.js';
+import type CompoundSketch from './compoundSketch.js';
 
 // ---------------------------------------------------------------------------
 // Sketch operations

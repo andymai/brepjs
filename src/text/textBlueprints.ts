@@ -1,18 +1,18 @@
-import type { Point2D } from '../2d/lib/index.js';
-import type { Plane, PlaneName } from '../core/planeTypes.js';
-import type { PointInput } from '../core/types.js';
-import type Blueprints from '../2d/blueprints/Blueprints.js';
-import { bug, BrepErrorCode } from '../core/errors.js';
-import { type Result, ok, err } from '../core/result.js';
-import { ioError, validationError } from '../core/errors.js';
-import { organiseBlueprints } from '../2d/blueprints/lib.js';
-import { BlueprintSketcher } from '../sketching/Sketcher2d.js';
-import CompoundSketch from '../sketching/CompoundSketch.js';
-import Sketches from '../sketching/Sketches.js';
-import { wrapSketchData } from '../sketching/sketchUtils.js';
+import type { Point2D } from '@/2d/lib/index.js';
+import type { Plane, PlaneName } from '@/core/planeTypes.js';
+import type { PointInput } from '@/core/types.js';
+import type Blueprints from '@/2d/blueprints/blueprints.js';
+import { bug, BrepErrorCode } from '@/core/errors.js';
+import { type Result, ok, err } from '@/core/result.js';
+import { ioError, validationError } from '@/core/errors.js';
+import { organiseBlueprints } from '@/2d/blueprints/lib.js';
+import { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import CompoundSketch from '@/sketching/compoundSketch.js';
+import Sketches from '@/sketching/sketches.js';
+import { wrapSketchData } from '@/sketching/sketchUtils.js';
 
 import opentype from 'opentype.js';
-import type { OpenTypeFont, OpenTypePathCommand } from '../kernel/wasm-types/externals.js';
+import type { OpenTypeFont, OpenTypePathCommand } from '@/kernel/occt/wasmTypes/externals.js';
 
 const FONT_REGISTER: Record<string, OpenTypeFont> = {};
 
