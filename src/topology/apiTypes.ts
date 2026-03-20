@@ -62,6 +62,28 @@ export type ChamferDistance =
     ) => number | [number, number] | { distance: number; angle: number } | null);
 
 // ---------------------------------------------------------------------------
+// DraftAngle — angle specification for draft()
+// ---------------------------------------------------------------------------
+
+/**
+ * Draft angle specification.
+ *
+ * - `number` — constant angle in degrees for all selected faces
+ * - callback — per-face angle; return `null` to skip a face
+ */
+export type DraftAngle = number | ((face: Face<Dimension>) => number | null);
+
+/** Options for the draft() modifier. */
+export interface DraftOptions {
+  /** Pull direction (mold opening direction). */
+  pullDirection: Vec3;
+  /** A point on the neutral plane (where no material is added or removed). */
+  neutralPlane: Vec3;
+  /** Draft angle in degrees. Constant or per-face callback. */
+  angle: DraftAngle;
+}
+
+// ---------------------------------------------------------------------------
 // Compound operation option types
 // ---------------------------------------------------------------------------
 

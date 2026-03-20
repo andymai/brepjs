@@ -555,10 +555,12 @@ descOcct('Brepkit-only methods throw on OCCT', () => {
     );
   });
 
-  it('draft throws', () => {
+  it('draft throws when WASM binding not yet available', () => {
     const kernel = getKernel();
     const b = box(10, 10, 10);
-    expect(() => kernel.draft(b.wrapped, [], [0, 0, 1], [0, 0, 0], 5)).toThrow(/brepkit/);
+    expect(() => kernel.draft(b.wrapped, [], [0, 0, 1], [0, 0, 0], 5)).toThrow(
+      /DraftAngle not available/
+    );
   });
 
   it('detectSmallFeatures throws', () => {

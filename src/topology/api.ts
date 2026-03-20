@@ -8,7 +8,13 @@
 import type { Vec3, MatrixInput } from '@/core/types.js';
 import type { Result } from '@/core/result.js';
 import type { AnyShape, Dimension, Edge, Face, Shape3D, Shell, Solid } from '@/core/shapeTypes.js';
-import type { Shapeable, FinderFn, FilletRadius, ChamferDistance } from './apiTypes.js';
+import type {
+  Shapeable,
+  FinderFn,
+  FilletRadius,
+  ChamferDistance,
+  DraftOptions,
+} from './apiTypes.js';
 import { resolve } from './apiTypes.js';
 import type { ShapeFinder } from '@/query/finderFns.js';
 import * as transforms from './shapeFns.js';
@@ -356,6 +362,29 @@ export function thicken(
 ): Result<Solid> {
   // Thicken is 3D-only — narrow from Face<Dimension> to Face<'3D'>
   return modifiers.thicken(resolve(shape) as Face | Shell, thickness);
+}
+
+/**
+ * Draft (taper) selected faces of a 3D shape.
+ *
+ * Tilts faces by a specified angle relative to a pull direction,
+ * pivoting about a neutral plane. Essential for manufacturing workflows
+ * (injection molding, casting) where parts must release from a mold.
+ */
+export function draft<T extends Shape3D>(
+  shape: Shapeable<T>,
+  faces: Face[] | FinderFn<Face> | ShapeFinder<Face>,
+  options: DraftOptions
+): Result<T> {
+  const s = resolve(shape);
+  const resolvedFaces = resolveFaces(faces, s);
+  return modifiers.draft(
+    s,
+    resolvedFaces,
+    options.pullDirection,
+    options.neutralPlane,
+    options.angle
+  ) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------

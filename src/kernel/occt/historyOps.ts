@@ -368,3 +368,49 @@ export function offsetWithHistory(
   builder.delete();
   return result;
 }
+
+// ---------------------------------------------------------------------------
+// Draft with history
+// ---------------------------------------------------------------------------
+
+export function draftWithHistory(
+  oc: KernelInstance,
+  shape: KernelShape,
+  faces: KernelShape[],
+  pullDirection: [number, number, number],
+  neutralPlane: [number, number, number],
+  angleDeg: number | ((face: KernelShape) => number),
+  inputFaceHashes: number[],
+  hashUpperBound: number
+): OperationResult {
+  if (!oc.BRepOffsetAPI_DraftAngle) {
+    throw new Error(
+      'BRepOffsetAPI_DraftAngle not available in this WASM build. ' +
+        'Rebuild brepjs-opencascade with the updated build config.'
+    );
+  }
+
+  const [px, py, pz] = pullDirection;
+  const [ox, oy, oz] = neutralPlane;
+
+  const dir = new oc.gp_Dir_4(px, py, pz);
+  const origin = new oc.gp_Pnt_3(ox, oy, oz);
+  const pln = new oc.gp_Pln_3(origin, dir);
+
+  const builder = new oc.BRepOffsetAPI_DraftAngle(shape);
+  for (const face of faces) {
+    const angle = typeof angleDeg === 'function' ? angleDeg(face) : angleDeg;
+    const angleRad = (angle * Math.PI) / 180;
+    builder.Add(oc.TopoDS.Face_1(face), dir, angleRad, pln);
+  }
+  const progress = new oc.Message_ProgressRange_1();
+  builder.Build(progress);
+  progress.delete();
+
+  const result = modifierWithEvolution(oc, builder, shape, inputFaceHashes, hashUpperBound);
+  builder.delete();
+  pln.delete();
+  origin.delete();
+  dir.delete();
+  return result;
+}

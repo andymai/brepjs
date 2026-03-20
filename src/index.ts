@@ -788,6 +788,8 @@ export type {
   FinderFn,
   FilletRadius,
   ChamferDistance,
+  DraftAngle,
+  DraftOptions,
   DrawingLike,
   DrillOptions,
   PocketOptions,
@@ -874,6 +876,7 @@ export {
   shell,
   offset,
   thicken,
+  draft,
   // Utilities
   heal,
   simplify,

@@ -2210,6 +2210,24 @@ export class BrepkitAdapter implements KernelAdapter {
     );
   }
 
+  draftWithHistory(
+    shape: KernelShape,
+    faces: KernelShape[],
+    pullDirection: [number, number, number],
+    neutralPlane: [number, number, number],
+    angleDeg: number | ((face: KernelShape) => number),
+    inputFaceHashes: number[],
+    hashUpperBound: number
+  ): OperationResult {
+    return this.buildEvolution(
+      this.draft(shape, faces, pullDirection, neutralPlane, angleDeg),
+      inputFaceHashes,
+      hashUpperBound,
+      false,
+      shape
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   // Meshing
   // ═══════════════════════════════════════════════════════════════════════
@@ -5640,23 +5658,34 @@ export class BrepkitAdapter implements KernelAdapter {
     faces: KernelShape[],
     pullDirection: [number, number, number],
     neutralPlane: [number, number, number],
-    angleDeg: number
+    angleDeg: number | ((face: KernelShape) => number)
   ): KernelShape {
+    const [dx, dy, dz] = pullDirection;
+    const [nx, ny, nz] = neutralPlane;
+
+    if (typeof angleDeg === 'function') {
+      // Group faces by angle, call bk.draft per group
+      const groups = new Map<number, number[]>();
+      for (const face of faces) {
+        const angle = angleDeg(face);
+        const faceId = unwrap(face, 'face');
+        const existing = groups.get(angle);
+        if (existing) {
+          existing.push(faceId);
+        } else {
+          groups.set(angle, [faceId]);
+        }
+      }
+      let currentId = unwrapSolidOrThrow(shape, 'draft');
+      for (const [angle, ids] of groups) {
+        currentId = this.bk.draft(currentId, ids, dx, dy, dz, nx, ny, nz, angle);
+      }
+      return solidHandle(currentId);
+    }
+
     const solidId = unwrapSolidOrThrow(shape, 'draft');
     const faceIds = faces.map((f) => unwrap(f, 'face'));
-    return solidHandle(
-      this.bk.draft(
-        solidId,
-        faceIds,
-        pullDirection[0],
-        pullDirection[1],
-        pullDirection[2],
-        neutralPlane[0],
-        neutralPlane[1],
-        neutralPlane[2],
-        angleDeg
-      )
-    );
+    return solidHandle(this.bk.draft(solidId, faceIds, dx, dy, dz, nx, ny, nz, angleDeg));
   }
 
   defeature(shape: KernelShape, faces: KernelShape[]): KernelShape {

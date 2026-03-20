@@ -32,6 +32,7 @@
 - symbol: gp_Sphere
 - symbol: gp_Trsf
 - symbol: gp_GTrsf
+- symbol: gp_Pln
 - symbol: Geom2d_Line
 - symbol: Geom2d_Curve
 - symbol: Geom2d_OffsetCurve
@@ -213,6 +214,7 @@
 - symbol: BRepOffsetAPI_MakePipe
 - symbol: BRepOffsetAPI_MakePipeShell
 - symbol: BRepOffsetAPI_MakeFilling
+- symbol: BRepOffsetAPI_DraftAngle
 - symbol: BRepOffset_Mode
 - symbol: BRepFilletAPI_LocalOperation
 - symbol: BRepFilletAPI_MakeFillet

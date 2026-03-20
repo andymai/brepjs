@@ -35,6 +35,7 @@ import type {
   FinderFn,
   FilletRadius,
   ChamferDistance,
+  DraftOptions,
   DrillOptions,
   PocketOptions,
   BossOptions,
@@ -64,6 +65,7 @@ import {
   chamfer,
   shell,
   offset,
+  draft as draftFn,
   describe,
   mesh as meshFn,
   meshEdges as meshEdgesFn,
@@ -241,6 +243,7 @@ export interface Wrapped3D<T extends Shape3D> extends Wrapped<T> {
     options?: { tolerance?: number }
   ): Wrapped3D<T>;
   offset(distance: number, options?: { tolerance?: number }): Wrapped3D<T>;
+  draft(faces: Face[] | FinderFn<Face> | ShapeFinder<Face>, options: DraftOptions): Wrapped3D<T>;
 
   // Compound operations (placeholders — filled in when compoundOpsFns.ts is ready)
   drill(options: DrillOptions): Wrapped3D<T>;
@@ -379,6 +382,7 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
     shell: (faces, thickness, opts) =>
       wrap3D(unwrapOrThrow(shell(val, faces, thickness, opts)) as unknown as T),
     offset: (distance, opts) => wrap3D(unwrapOrThrow(offset(val, distance, opts)) as unknown as T),
+    draft: (faces, opts) => wrap3D(unwrapOrThrow(draftFn(val, faces, opts)) as unknown as T),
 
     // Compound operations
     drill: (opts) => wrap3D(unwrapOrThrow(drillFn(val, opts)) as unknown as T),

@@ -38,13 +38,20 @@ export interface KernelModifierOps {
   /** Variable-radius fillet. Each entry specifies edges and radii per edge. */
   filletVariable(shape: KernelShape, spec: string): KernelShape;
 
-  /** Draft (taper) faces of a solid along a pull direction with a neutral plane. */
+  /**
+   * Draft (taper) faces of a solid along a pull direction about a neutral plane.
+   *
+   * The neutral plane is the surface where material is neither added nor removed.
+   * Angle is in degrees; positive tapers outward from the pull direction.
+   *
+   * @param angleDeg - Uniform angle, or per-face callback returning degrees (null to skip).
+   */
   draft(
     shape: KernelShape,
     faces: KernelShape[],
     pullDirection: [number, number, number],
     neutralPlane: [number, number, number],
-    angleDeg: number
+    angleDeg: number | ((face: KernelShape) => number)
   ): KernelShape;
 
   /** Remove faces from a solid (defeaturing). */

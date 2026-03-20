@@ -1,5 +1,5 @@
 /**
- * Functional modifier operations — fillet, chamfer, shell, thicken, offset.
+ * Functional modifier operations — fillet, chamfer, shell, thicken, offset, draft.
  *
  * These are standalone functions that operate on branded shape types
  * and return Result values.
@@ -13,6 +13,8 @@ import { type Result, ok, err, isErr } from '@/core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
+import type { Vec3 } from '@/core/types.js';
+import type { DraftAngle } from './apiTypes.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -384,5 +386,130 @@ export function offset(shape: Shape3D, distance: number, tolerance = 1e-6): Resu
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(kernelError('OFFSET_FAILED', `Offset operation failed: ${raw}`, e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Draft
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply a draft (taper) to selected faces of a 3D shape.
+ *
+ * Draft tilts faces by a specified angle relative to a pull direction,
+ * pivoting about a neutral plane. This is essential for injection molding
+ * and casting workflows where parts must release from a mold.
+ *
+ * @param shape - The solid to modify.
+ * @param faces - Faces to draft.
+ * @param pullDirection - Mold opening direction vector.
+ * @param neutralPlane - A point on the plane where faces are not displaced.
+ * @param angle - Constant angle in degrees, or per-face callback returning degrees (null to skip).
+ */
+export function draft(
+  shape: Shape3D,
+  faces: ReadonlyArray<Face>,
+  pullDirection: Vec3,
+  neutralPlane: Vec3,
+  angle: DraftAngle
+): Result<Shape3D> {
+  const check = validateNotNull(shape, 'draft: shape');
+  if (isErr(check)) return check;
+
+  if (typeof angle === 'number') {
+    if (angle === 0) {
+      return err(
+        validationError(
+          BrepErrorCode.DRAFT_INVALID_ANGLE,
+          'Draft angle cannot be zero',
+          undefined,
+          undefined,
+          'Provide a non-zero angle in degrees'
+        )
+      );
+    }
+    if (Math.abs(angle) >= 90) {
+      return err(
+        validationError(
+          BrepErrorCode.DRAFT_INVALID_ANGLE,
+          'Draft angle must be between -90 and 90 degrees (exclusive)',
+          undefined,
+          undefined,
+          'Typical draft angles are 1-5 degrees for injection molding'
+        )
+      );
+    }
+  }
+
+  if (faces.length === 0) {
+    return err(
+      validationError(
+        BrepErrorCode.DRAFT_NO_FACES,
+        'No faces specified for draft',
+        undefined,
+        undefined,
+        'Select at least one face to apply the draft angle to'
+      )
+    );
+  }
+
+  try {
+    let filteredFaces: Face[];
+    let kernelAngle: number | ((face: { HashCode(max: number): number }) => number);
+
+    if (typeof angle === 'function') {
+      filteredFaces = [];
+      const hashToAngle = new Map<number, number>();
+      for (const face of faces) {
+        const a = angle(face);
+        if (a === null || a === 0 || Math.abs(a) >= 90) continue;
+        filteredFaces.push(face);
+        hashToAngle.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), a);
+      }
+      if (filteredFaces.length === 0) {
+        return err(
+          validationError(
+            BrepErrorCode.DRAFT_NO_FACES,
+            'No faces with valid draft angle',
+            undefined,
+            undefined,
+            'Check that the angle callback returns non-zero values between -90 and 90 degrees'
+          )
+        );
+      }
+      kernelAngle = (ocFace) => {
+        const a = hashToAngle.get(ocFace.HashCode(HASH_CODE_MAX));
+        return a ?? 1;
+      };
+    } else {
+      filteredFaces = [...faces];
+      kernelAngle = angle;
+    }
+
+    const inputFaceHashes = collectInputFaceHashes([shape]);
+    const { shape: resultShape, evolution } = getKernel().draftWithHistory(
+      shape.wrapped,
+      filteredFaces.map((f) => f.wrapped),
+      [pullDirection[0], pullDirection[1], pullDirection[2]],
+      [neutralPlane[0], neutralPlane[1], neutralPlane[2]],
+      kernelAngle,
+      inputFaceHashes,
+      HASH_CODE_MAX
+    );
+    const cast = castShape(resultShape);
+    if (!isShape3D(cast)) {
+      return err(kernelError(BrepErrorCode.DRAFT_NOT_3D, 'Draft result is not a 3D shape'));
+    }
+    propagateAllMetadata(evolution, [shape], cast);
+    return ok(cast);
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    return err(
+      kernelError('DRAFT_FAILED', `Draft operation failed: ${raw}`, e, {
+        operation: 'draft',
+        faceCount: faces.length,
+        angle,
+      })
+    );
   }
 }

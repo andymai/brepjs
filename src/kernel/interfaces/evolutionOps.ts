@@ -109,6 +109,16 @@ export interface KernelEvolutionOps {
     tolerance?: number
   ): OperationResult;
 
+  draftWithHistory(
+    shape: KernelShape,
+    faces: KernelShape[],
+    pullDirection: [number, number, number],
+    neutralPlane: [number, number, number],
+    angleDeg: number | ((face: KernelShape) => number),
+    inputFaceHashes: number[],
+    hashUpperBound: number
+  ): OperationResult;
+
   /** Apply a composed transform to a shape with history tracking. */
   applyComposedTransformWithHistory(
     shape: KernelShape,

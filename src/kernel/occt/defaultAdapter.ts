@@ -276,6 +276,7 @@ import {
   shellWithHistory as _shellWithHistory,
   thickenWithHistory as _thickenWithHistory,
   offsetWithHistory as _offsetWithHistory,
+  draftWithHistory as _draftWithHistory,
 } from './historyOps.js';
 
 /**
@@ -1079,6 +1080,27 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     tolerance?: number
   ): OperationResult {
     return _offsetWithHistory(this.oc, shape, distance, inputFaceHashes, hashUpperBound, tolerance);
+  }
+
+  draftWithHistory(
+    shape: KernelShape,
+    faces: KernelShape[],
+    pullDirection: [number, number, number],
+    neutralPlane: [number, number, number],
+    angleDeg: number | ((face: KernelShape) => number),
+    inputFaceHashes: number[],
+    hashUpperBound: number
+  ): OperationResult {
+    return _draftWithHistory(
+      this.oc,
+      shape,
+      faces,
+      pullDirection,
+      neutralPlane,
+      angleDeg,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   // --- Composed transforms (delegates to advancedOps.ts) ---
@@ -1888,13 +1910,14 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   draft(
-    _shape: KernelShape,
-    _faces: KernelShape[],
-    _pullDirection: [number, number, number],
-    _neutralPlane: [number, number, number],
-    _angleDeg: number
+    shape: KernelShape,
+    faces: KernelShape[],
+    pullDirection: [number, number, number],
+    neutralPlane: [number, number, number],
+    angleDeg: number | ((face: KernelShape) => number)
   ): KernelShape {
-    throw new Error('draft is only available with the brepkit kernel');
+    return _draftWithHistory(this.oc, shape, faces, pullDirection, neutralPlane, angleDeg, [], 1)
+      .shape;
   }
 
   defeature(_shape: KernelShape, _faces: KernelShape[]): KernelShape {

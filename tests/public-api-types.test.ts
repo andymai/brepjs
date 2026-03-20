@@ -254,6 +254,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'deserializeHistory',
   'deserializeShape',
   'downcast',
+  'draft',
   'draw',
   'drawCircle',
   'drawEllipse',
