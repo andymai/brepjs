@@ -27,17 +27,17 @@
     "react-router-dom": "7.13.1",
     "shiki": "4.0.2",
     "three": "0.183.2",
-    "zustand": "5.0.11"
+    "zustand": "5.0.12"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.2.1",
+    "@tailwindcss/vite": "4.2.2",
     "@types/lz-string": "1.5.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@types/three": "0.183.1",
     "@vitejs/plugin-react": "6.0.1",
-    "puppeteer": "24.39.1",
-    "tailwindcss": "4.2.1",
+    "puppeteer": "24.40.0",
+    "tailwindcss": "4.2.2",
     "tsx": "4.21.0",
     "typescript": "5.9.3"
   }
