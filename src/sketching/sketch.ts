@@ -10,7 +10,7 @@ import { sweep, complexExtrude, twistExtrude } from '@/operations/sweepFns.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import { loft } from '@/operations/loftFns.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
-import type { ClosedWire, OrientedFace, Face, Wire, Shape3D } from '@/core/shapeTypes.js';
+import type { ClosedWire, Face, Wire, Shape3D } from '@/core/shapeTypes.js';
 import { createFace, createWire } from '@/core/shapeTypes.js';
 import { curveStartPoint, curveTangentAt } from '@/topology/curveFns.js';
 import type { SketchInterface } from './sketchLib.js';
@@ -135,7 +135,7 @@ export default class Sketch implements SketchInterface {
     const face = unwrap(makeFace(this.wire as ClosedWire));
     const center: Vec3 = origin ? toVec3(origin) : this.defaultOrigin;
     const dir: Vec3 = revolutionAxis ? toVec3(revolutionAxis) : [0, 0, 1];
-    const solid = unwrap(revolve(face as OrientedFace, center, dir));
+    const solid = unwrap(revolve(face, center, dir));
     face.delete();
     this.delete();
     return solid;
@@ -193,7 +193,7 @@ export default class Sketch implements SketchInterface {
     }
 
     const face = unwrap(makeFace(this.wire as ClosedWire));
-    const solid = unwrap(extrude(face as OrientedFace, [...extrusionVec]));
+    const solid = unwrap(extrude(face, [...extrusionVec]));
 
     this.delete();
     return solid;

@@ -14,6 +14,7 @@ import { cast, downcast } from '@/topology/cast.js';
 import { type Result, unwrap, isOk } from '@/core/result.js';
 import { bug } from '@/core/errors.js';
 import type { ClosedWire, OrientedFace, Face, Shape3D, Shell, Wire } from '@/core/shapeTypes.js';
+import type { PlanarFace } from '@/core/validityTypes.js';
 import { createFace, isFace } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 
@@ -179,7 +180,8 @@ export default class CompoundSketch implements SketchInterface {
           ) as Result<[Shape3D, Wire, Wire]>
       );
     } else {
-      result = unwrap(extrude(this.face() as OrientedFace, extrusionVec));
+      // planar by construction: sketch operates on XY plane
+      result = unwrap(extrude(this.face() as OrientedFace & PlanarFace, extrusionVec));
     }
 
     return result;
@@ -192,7 +194,8 @@ export default class CompoundSketch implements SketchInterface {
   revolve(revolutionAxis?: PointInput, { origin }: { origin?: PointInput } = {}): Shape3D {
     const center = origin ? toVec3(origin) : this.outerSketch.defaultOrigin;
     const dir = revolutionAxis ? toVec3(revolutionAxis) : ([0, 0, 1] as Vec3);
-    return unwrap(revolve(this.face() as OrientedFace, center, dir));
+    // planar by construction: sketch operates on XY plane
+    return unwrap(revolve(this.face() as OrientedFace & PlanarFace, center, dir));
   }
 
   /** Loft between this compound sketch and another with matching sub-sketch counts. */

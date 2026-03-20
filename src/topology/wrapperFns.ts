@@ -29,6 +29,7 @@ import type {
   Shape3D,
   ValidSolid,
 } from '@/core/shapeTypes.js';
+import type { PlanarFace } from '@/core/validityTypes.js';
 import { isShape3D, isFace, isEdge, isWire } from '@/core/shapeTypes.js';
 import type {
   Shapeable,
@@ -494,9 +495,13 @@ function createWrappedFace(val: Face): WrappedFace {
     outerWire: () => outerWire(val),
     innerWires: () => innerWires(val),
 
-    // Wrapped faces from the fluent API are always oriented
-    extrude: (height) => wrap3D(unwrapOrThrow(extrude(val as OrientedFace, height))),
-    revolve: (opts) => wrap3D(unwrapOrThrow(revolve(val as OrientedFace, opts))),
+    // Wrapped faces from the fluent API are always oriented and planar
+    // brepjs-patterns-disable: no-double-cast
+    extrude: (height) =>
+      wrap3D(unwrapOrThrow(extrude(val as unknown as OrientedFace & PlanarFace, height))),
+    // brepjs-patterns-disable: no-double-cast
+    revolve: (opts) =>
+      wrap3D(unwrapOrThrow(revolve(val as unknown as OrientedFace & PlanarFace, opts))),
   };
 }
 

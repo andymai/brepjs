@@ -9,6 +9,7 @@ import { getKernel } from '@/kernel/index.js';
 import type { Vec3 } from '@/core/types.js';
 import { vecLength, vecNormalize } from '@/core/vecOps.js';
 import type { Dimension, OrientedFace, Shape3D, ValidSolid } from '@/core/shapeTypes.js';
+import type { PlanarFace } from '@/core/validityTypes.js';
 import { castShape, isShape3D, createSolid } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { typeCastError, validationError, kernelError, BrepErrorCode } from '@/core/errors.js';
@@ -26,7 +27,10 @@ export type { ExtrusionProfile, SweepOptions } from './extrudeUtils.js';
  * @param extrusionVec - Direction and magnitude of the extrusion as `[x, y, z]`.
  * @returns `Result` containing the extruded solid, or an error if validation or operation fails.
  */
-export function extrude(face: OrientedFace<Dimension>, extrusionVec: Vec3): Result<ValidSolid> {
+export function extrude(
+  face: OrientedFace<Dimension> & PlanarFace<Dimension>,
+  extrusionVec: Vec3
+): Result<ValidSolid> {
   if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrude: face is a null shape'));
   }
@@ -62,7 +66,7 @@ export function extrude(face: OrientedFace<Dimension>, extrusionVec: Vec3): Resu
  * @returns `Result` containing the revolved 3D shape, or an error if the result is not 3D.
  */
 export function revolve(
-  face: OrientedFace<Dimension>,
+  face: OrientedFace<Dimension> & PlanarFace<Dimension>,
   center: Vec3 = [0, 0, 0],
   direction: Vec3 = [0, 0, 1],
   angle = 360

@@ -29,7 +29,7 @@ import {
   cut,
   intersect,
 } from '@/index.js';
-import type { OrientedFace } from '@/index.js';
+import type { OrientedFace, PlanarFace } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -38,7 +38,7 @@ beforeAll(async () => {
 describe('extrude', () => {
   it('extrudes a rectangular sketch into a solid', () => {
     const sketch = sketchRectangle(10, 20);
-    const face = sketch.face() as OrientedFace;
+    const face = sketch.face() as OrientedFace & PlanarFace;
     const solid = unwrap(extrude(face, [0, 0, 30]));
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeCloseTo(10 * 20 * 30, 0);
@@ -46,7 +46,7 @@ describe('extrude', () => {
 
   it('extrudes a circular sketch', () => {
     const sketch = sketchCircle(5);
-    const face = sketch.face() as OrientedFace;
+    const face = sketch.face() as OrientedFace & PlanarFace;
     const solid = unwrap(extrude(face, [0, 0, 10]));
     expect(solid).toBeDefined();
     expect(unwrap(measureVolume(solid))).toBeCloseTo(Math.PI * 25 * 10, -1);
@@ -61,7 +61,7 @@ describe('revolve', () => {
       .lineTo([2, 5])
       .lineTo([1, 5])
       .close();
-    const face = sketch.face() as OrientedFace;
+    const face = sketch.face() as OrientedFace & PlanarFace;
     // Note: revolve() passes angle directly to kernel (radians); use 2π for full revolution
     const solid = unwrap(revolve(face, { at: [0, 0, 0], axis: [0, 0, 1], angle: 2 * Math.PI }));
     expect(solid).toBeDefined();
@@ -222,7 +222,7 @@ describe('Result error paths', () => {
       .lineTo([2, 1])
       .lineTo([1, 1])
       .close();
-    const face = sketch.face() as OrientedFace;
+    const face = sketch.face() as OrientedFace & PlanarFace;
     const result = revolve(face, { at: [0, 0, 0], axis: [0, 0, 1], angle: 2 * Math.PI });
     expect(isOk(result)).toBe(true);
   });
