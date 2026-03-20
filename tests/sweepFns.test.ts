@@ -75,5 +75,4 @@ describe('sweepFns', () => {
     expect(actual).toBeGreaterThan(expected * 0.99);
     expect(actual).toBeLessThan(expected * 1.01);
   });
-
 });

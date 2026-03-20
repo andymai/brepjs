@@ -65,7 +65,12 @@ export function makeLine2d(x1: number, y1: number, x2: number, y2: number): Curv
   return bk2d.makeLine2d(x1, y1, x2, y2);
 }
 
-export function makeCircle2d(cx: number, cy: number, radius: number, sense?: boolean): Curve2dHandle {
+export function makeCircle2d(
+  cx: number,
+  cy: number,
+  radius: number,
+  sense?: boolean
+): Curve2dHandle {
   return bk2d.makeCircle2d(cx, cy, radius, sense);
 }
 
@@ -214,7 +219,10 @@ export function makeBezier2d(points: [number, number][]): Curve2dHandle {
   return bk2d.makeBezier2d(points);
 }
 
-export function makeBSpline2d(points: [number, number][], _options?: Record<string, unknown>): Curve2dHandle {
+export function makeBSpline2d(
+  points: [number, number][],
+  _options?: Record<string, unknown>
+): Curve2dHandle {
   // Approximate: use points as control points with uniform knots
   const n = points.length;
   const degree = Math.min(3, n - 1);
@@ -307,11 +315,21 @@ export function translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): 
   return bk2d.translateCurve2d(c2d(curve), dx, dy);
 }
 
-export function rotateCurve2d(curve: Curve2dHandle, angle: number, cx: number, cy: number): Curve2dHandle {
+export function rotateCurve2d(
+  curve: Curve2dHandle,
+  angle: number,
+  cx: number,
+  cy: number
+): Curve2dHandle {
   return bk2d.rotateCurve2d(c2d(curve), angle, cx, cy);
 }
 
-export function scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle {
+export function scaleCurve2d(
+  curve: Curve2dHandle,
+  factor: number,
+  cx: number,
+  cy: number
+): Curve2dHandle {
   return bk2d.scaleCurve2d(c2d(curve), factor, cx, cy);
 }
 
@@ -355,7 +373,13 @@ export function createIdentityGTrsf2d(): KernelType {
   return _gtrsf([1, 0, 0, 0, 1, 0, 0, 0, 1], 0, 0);
 }
 
-export function createAffinityGTrsf2d(ox: number, oy: number, dx: number, dy: number, ratio: number): KernelType {
+export function createAffinityGTrsf2d(
+  ox: number,
+  oy: number,
+  dx: number,
+  dy: number,
+  ratio: number
+): KernelType {
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 1e-15) return createIdentityGTrsf2d();
   const px = -dy / len,
@@ -728,7 +752,12 @@ export function addCurveToBBox2d(bbox: BBox2dHandle, curve: Curve2dHandle, tol: 
   bk2d.addCurveToBBox(bb2d(bbox), c2d(curve), tol);
 }
 
-export function getBBox2dBounds(bbox: BBox2dHandle): { xMin: number; yMin: number; xMax: number; yMax: number } {
+export function getBBox2dBounds(bbox: BBox2dHandle): {
+  xMin: number;
+  yMin: number;
+  xMax: number;
+  yMax: number;
+} {
   const b = bb2d(bbox);
   return { xMin: b.xMin, yMin: b.yMin, xMax: b.xMax, yMax: b.yMax };
 }
@@ -908,9 +937,7 @@ export function liftCurve2dToPlane(
       for (let seg = 0; seg < nSegments; seg++) {
         const [su, sv] = bk2d.evaluateCurve2d(c, bounds.first + seg * segmentSpan);
         const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.first + (seg + 1) * segmentSpan);
-        edgeIds.push(
-          bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis)
-        );
+        edgeIds.push(bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis));
       }
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
       if (edgeIds.length === 1) return edgeHandle(edgeIds[0]!);
@@ -1071,7 +1098,11 @@ export function buildCurves3d(_wire: KernelShape): void {
   /* No-op: brepkit doesn't separate 2D/3D curve storage */
 }
 
-export function fixWireOnFace(wire: KernelShape, _face: KernelShape, _tolerance: number): KernelShape {
+export function fixWireOnFace(
+  wire: KernelShape,
+  _face: KernelShape,
+  _tolerance: number
+): KernelShape {
   return wire;
 }
 

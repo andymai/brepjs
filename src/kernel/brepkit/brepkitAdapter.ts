@@ -500,7 +500,6 @@ function warnOnce(key: string, message: string): void {
   console.warn(`brepkit: ${message}`);
 }
 
-
 function mapStringTransition(mode: string): string | undefined {
   switch (mode) {
     case 'right':
@@ -697,7 +696,16 @@ export class BrepkitAdapter implements KernelAdapter {
     endAngle: number,
     xDir?: [number, number, number]
   ): KernelShape {
-    return _makeEllipseArc(this.bk, center, normal, majorRadius, minorRadius, startAngle, endAngle, xDir);
+    return _makeEllipseArc(
+      this.bk,
+      center,
+      normal,
+      majorRadius,
+      minorRadius,
+      startAngle,
+      endAngle,
+      xDir
+    );
   }
 
   makeBezierEdge(points: [number, number, number][]): KernelShape {
@@ -3284,24 +3292,46 @@ export class BrepkitAdapter implements KernelAdapter {
     return _makeCircle2d(cx, cy, radius, sense);
   }
   makeArc2dThreePoints(
-    x1: number, y1: number, xm: number, ym: number, x2: number, y2: number
+    x1: number,
+    y1: number,
+    xm: number,
+    ym: number,
+    x2: number,
+    y2: number
   ): Curve2dHandle {
     return _makeArc2dThreePoints(x1, y1, xm, ym, x2, y2);
   }
   makeArc2dTangent(
-    sx: number, sy: number, tx: number, ty: number, ex: number, ey: number
+    sx: number,
+    sy: number,
+    tx: number,
+    ty: number,
+    ex: number,
+    ey: number
   ): Curve2dHandle {
     return _makeArc2dTangent(sx, sy, tx, ty, ex, ey);
   }
   makeEllipse2d(
-    cx: number, cy: number, major: number, minor: number,
-    xDirX?: number, xDirY?: number, sense?: boolean
+    cx: number,
+    cy: number,
+    major: number,
+    minor: number,
+    xDirX?: number,
+    xDirY?: number,
+    sense?: boolean
   ): Curve2dHandle {
     return _makeEllipse2d(cx, cy, major, minor, xDirX, xDirY, sense);
   }
   makeEllipseArc2d(
-    cx: number, cy: number, major: number, minor: number,
-    start: number, end: number, xDirX?: number, xDirY?: number, sense?: boolean
+    cx: number,
+    cy: number,
+    major: number,
+    minor: number,
+    start: number,
+    end: number,
+    xDirX?: number,
+    xDirY?: number,
+    sense?: boolean
   ): Curve2dHandle {
     return _makeEllipseArc2d(cx, cy, major, minor, start, end, xDirX, xDirY, sense);
   }
@@ -3316,7 +3346,8 @@ export class BrepkitAdapter implements KernelAdapter {
     return _evaluateCurve2d(curve, param);
   }
   evaluateCurve2dD1(
-    curve: Curve2dHandle, param: number
+    curve: Curve2dHandle,
+    param: number
   ): { point: [number, number]; tangent: [number, number] } {
     return _evaluateCurve2dD1(curve, param);
   }
@@ -3353,12 +3384,21 @@ export class BrepkitAdapter implements KernelAdapter {
     return _mirrorCurve2dAtPoint(curve, cx, cy);
   }
   mirrorCurve2dAcrossAxis(
-    curve: Curve2dHandle, ox: number, oy: number, dx: number, dy: number
+    curve: Curve2dHandle,
+    ox: number,
+    oy: number,
+    dx: number,
+    dy: number
   ): Curve2dHandle {
     return _mirrorCurve2dAcrossAxis(curve, ox, oy, dx, dy);
   }
   affinityTransform2d(
-    curve: Curve2dHandle, ox: number, oy: number, dx: number, dy: number, ratio: number
+    curve: Curve2dHandle,
+    ox: number,
+    oy: number,
+    dx: number,
+    dy: number,
+    ratio: number
   ): Curve2dHandle {
     return _affinityTransform2d(curve, ox, oy, dx, dy, ratio);
   }
@@ -3373,8 +3413,13 @@ export class BrepkitAdapter implements KernelAdapter {
     return _createTranslationGTrsf2d(dx, dy);
   }
   createMirrorGTrsf2d(
-    cx: number, cy: number, mode: 'point' | 'axis',
-    ox?: number, oy?: number, dx?: number, dy?: number
+    cx: number,
+    cy: number,
+    mode: 'point' | 'axis',
+    ox?: number,
+    oy?: number,
+    dx?: number,
+    dy?: number
   ): KernelType {
     return _createMirrorGTrsf2d(cx, cy, mode, ox, oy, dx, dy);
   }
@@ -3395,24 +3440,35 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   intersectCurves2d(
-    c1: Curve2dHandle, c2: Curve2dHandle, tolerance: number
+    c1: Curve2dHandle,
+    c2: Curve2dHandle,
+    tolerance: number
   ): { points: [number, number][]; segments: Curve2dHandle[] } {
     return _intersectCurves2d(c1, c2, tolerance);
   }
   projectPointOnCurve2d(
-    curve: Curve2dHandle, x: number, y: number
+    curve: Curve2dHandle,
+    x: number,
+    y: number
   ): { param: number; distance: number } | null {
     return _projectPointOnCurve2d(curve, x, y);
   }
   distanceBetweenCurves2d(
-    c1: Curve2dHandle, c2: Curve2dHandle,
-    p1s: number, p1e: number, p2s: number, p2e: number
+    c1: Curve2dHandle,
+    c2: Curve2dHandle,
+    p1s: number,
+    p1e: number,
+    p2s: number,
+    p2e: number
   ): number {
     return _distanceBetweenCurves2d(c1, c2, p1s, p1e, p2s, p2e);
   }
 
   approximateCurve2dAsBSpline(
-    curve: Curve2dHandle, tol: number, cont: 'C0' | 'C1' | 'C2' | 'C3', maxSeg: number
+    curve: Curve2dHandle,
+    tol: number,
+    cont: 'C0' | 'C1' | 'C2' | 'C3',
+    maxSeg: number
   ): Curve2dHandle {
     return _approximateCurve2dAsBSpline(curve, tol, cont, maxSeg);
   }
@@ -3456,8 +3512,11 @@ export class BrepkitAdapter implements KernelAdapter {
     return _getCurve2dBezierDegree(curve);
   }
   getCurve2dBSplineData(curve: Curve2dHandle): {
-    poles: [number, number][]; knots: number[]; multiplicities: number[];
-    degree: number; isPeriodic: boolean;
+    poles: [number, number][];
+    knots: number[];
+    multiplicities: number[];
+    degree: number;
+    isPeriodic: boolean;
   } | null {
     return _getCurve2dBSplineData(curve);
   }
@@ -3474,8 +3533,10 @@ export class BrepkitAdapter implements KernelAdapter {
   }
 
   liftCurve2dToPlane(
-    curve: Curve2dHandle, origin: [number, number, number],
-    planeZ: [number, number, number], planeX: [number, number, number]
+    curve: Curve2dHandle,
+    origin: [number, number, number],
+    planeZ: [number, number, number],
+    planeX: [number, number, number]
   ): KernelShape {
     return _liftCurve2dToPlane(this.bk, curve, origin, planeZ, planeX);
   }
@@ -3708,7 +3769,6 @@ export class BrepkitAdapter implements KernelAdapter {
     };
   }
 
-
   /**
    * Extract NURBS curve data from an edge handle.
    * Returns null for line edges (caller can build a linear NURBS).
@@ -3741,7 +3801,6 @@ export class BrepkitAdapter implements KernelAdapter {
       weights: [1, 1],
     };
   }
-
 
   // ═══════════════════════════════════════════════════════════════════════
   // Constraint sketch solver (brepkit-only capability)
