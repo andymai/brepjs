@@ -9,6 +9,8 @@ import { type Result, ok, err, andThen } from '@/core/result.js';
 import { validationError, kernelError } from '@/core/errors.js';
 import type { Dimension, ClosedWire, Face, OrientedFace } from '@/core/shapeTypes.js';
 import { createFace, isFace } from '@/core/shapeTypes.js';
+import type { PlanarFace } from '@/core/validityTypes.js';
+import { isPlanarFace } from '@/core/validityTypes.js';
 import { cast } from './cast.js';
 import { outerWire } from './faceFns.js';
 import zip from '@/utils/zip.js';
@@ -22,14 +24,32 @@ import { makeLine, assembleWire } from './curveBuilders.js';
 export function makeFace<D extends Dimension = '3D'>(
   wire: ClosedWire<D>,
   holes?: ClosedWire<D>[]
-): Result<OrientedFace<D>> {
+): Result<OrientedFace<D> & PlanarFace<D>> {
   try {
     const faceShape = getKernel().makeFace(wire.wrapped, true);
     if (holes && holes.length > 0) {
       // Add holes using the existing addHolesInFace helper which handles orientation fixing
-      return ok(addHolesInFace(createFace<D>(faceShape), holes));
+      const withHoles = addHolesInFace(createFace<D>(faceShape), holes);
+      if (!isPlanarFace(withHoles)) {
+        return err(
+          validationError(
+            'FACE_NOT_PLANAR',
+            'makeFace produced a non-planar face — wire may not be truly planar'
+          )
+        );
+      }
+      return ok(withHoles);
     }
-    return ok(createFace<D>(faceShape) as OrientedFace<D>);
+    const face = createFace<D>(faceShape);
+    if (!isPlanarFace(face)) {
+      return err(
+        validationError(
+          'FACE_NOT_PLANAR',
+          'makeFace produced a non-planar face — wire may not be truly planar'
+        )
+      );
+    }
+    return ok(face as OrientedFace<D> & PlanarFace<D>);
   } catch {
     return err(
       kernelError('FACE_BUILD_FAILED', 'Failed to build the face. Your wire might be non planar.')
@@ -87,6 +107,14 @@ export function makeNonPlanarFace<D extends Dimension = '3D'>(
  * Orientation of the holes is automatically fixed.
  */
 export function addHolesInFace<D extends Dimension = '3D'>(
+  face: PlanarFace<D>,
+  holes: ClosedWire<D>[]
+): OrientedFace<D> & PlanarFace<D>;
+export function addHolesInFace<D extends Dimension = '3D'>(
+  face: Face<D>,
+  holes: ClosedWire<D>[]
+): OrientedFace<D>;
+export function addHolesInFace<D extends Dimension = '3D'>(
   face: Face<D>,
   holes: ClosedWire<D>[]
 ): OrientedFace<D> {
@@ -103,7 +131,7 @@ export function addHolesInFace<D extends Dimension = '3D'>(
  *
  * @returns An error if fewer than 3 points are provided or the face cannot be built.
  */
-export function makePolygon(points: Vec3[]): Result<OrientedFace> {
+export function makePolygon(points: Vec3[]): Result<OrientedFace & PlanarFace> {
   if (points.length < 3)
     return err(
       validationError('POLYGON_MIN_POINTS', 'You need at least 3 points to make a polygon')
