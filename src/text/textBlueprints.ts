@@ -77,7 +77,7 @@ export async function loadFont(
     );
   }
   // Assert at library boundary — opentype.js Font is structurally compatible
-  const typedFont = font as unknown as OpenTypeFont;
+  const typedFont = font as OpenTypeFont;
   FONT_REGISTER[fontFamily] = typedFont;
   if (!FONT_REGISTER['default']) FONT_REGISTER['default'] = typedFont;
 

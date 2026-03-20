@@ -1,6 +1,54 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
+// ─── Shared rules (DRY: src/ and tests/ use the same base) ──────────
+
+const sharedRules = {
+  '@typescript-eslint/no-deprecated': 'warn',
+  '@typescript-eslint/no-explicit-any': 'error',
+  '@typescript-eslint/no-non-null-assertion': 'error',
+  '@typescript-eslint/consistent-type-imports': 'error',
+  '@typescript-eslint/no-unused-vars': [
+    'error',
+    { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+  ],
+  '@typescript-eslint/restrict-template-expressions': [
+    'error',
+    { allowNumber: true },
+  ],
+  '@typescript-eslint/no-unnecessary-condition': 'error',
+  '@typescript-eslint/no-unsafe-assignment': 'off',
+  '@typescript-eslint/no-unsafe-member-access': 'off',
+  '@typescript-eslint/no-unsafe-call': 'off',
+  '@typescript-eslint/no-unsafe-return': 'off',
+  '@typescript-eslint/no-unsafe-argument': 'off',
+  '@typescript-eslint/no-this-alias': 'error',
+  '@typescript-eslint/prefer-readonly': 'error',
+  // Require @ts-expect-error with "-- reason" format; ban @ts-ignore entirely
+  '@typescript-eslint/ban-ts-comment': [
+    'error',
+    {
+      'ts-expect-error': { descriptionFormat: '-- .+' },
+      'ts-ignore': true,
+      'ts-nocheck': true,
+    },
+  ],
+  'prefer-const': 'error',
+  eqeqeq: 'error',
+  'no-var': 'error',
+  'no-console': ['error', { allow: ['error', 'warn'] }],
+};
+
+// ─── Restricted syntax selectors ─────────────────────────────────────
+
+const noMutableExport = {
+  selector: 'ExportNamedDeclaration > VariableDeclaration[kind="let"]',
+  message:
+    'Mutable exports (`export let`) are forbidden. Use a getter function or const instead.',
+};
+
+// ─── Config ──────────────────────────────────────────────────────────
+
 export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -13,31 +61,8 @@ export default tseslint.config(
       },
     },
     rules: {
-      // Deprecation warnings for external users, not errors for internal usage
-      '@typescript-eslint/no-deprecated': 'warn',
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-non-null-assertion': 'error',
-      '@typescript-eslint/consistent-type-imports': 'error',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/restrict-template-expressions': [
-        'error',
-        { allowNumber: true },
-      ],
-      '@typescript-eslint/no-unnecessary-condition': 'error',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/no-this-alias': 'error',
-      '@typescript-eslint/prefer-readonly': 'error',
-      'prefer-const': 'error',
-      eqeqeq: 'error',
-      'no-var': 'error',
-      'no-console': ['warn', { allow: ['error', 'warn'] }],
+      ...sharedRules,
+      'no-restricted-syntax': ['error', noMutableExport],
     },
   },
   // Kernel internal: suppress redundant-type-constituents since KernelShape=any is intentional
@@ -56,34 +81,10 @@ export default tseslint.config(
       },
     },
     rules: {
-      // Deprecation warnings for external users, not errors for internal usage
-      '@typescript-eslint/no-deprecated': 'warn',
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-non-null-assertion': 'error',
-      '@typescript-eslint/consistent-type-imports': 'error',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/restrict-template-expressions': [
-        'error',
-        { allowNumber: true },
-      ],
-      '@typescript-eslint/no-unnecessary-condition': 'error',
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-      '@typescript-eslint/no-unsafe-call': 'off',
-      '@typescript-eslint/no-unsafe-return': 'off',
-      '@typescript-eslint/no-unsafe-argument': 'off',
-      '@typescript-eslint/no-this-alias': 'error',
-      '@typescript-eslint/prefer-readonly': 'error',
-      'prefer-const': 'error',
-      eqeqeq: 'error',
-      'no-var': 'error',
-      'no-console': ['warn', { allow: ['error', 'warn'] }],
+      ...sharedRules,
     },
   },
-  // Kernel abstraction boundary: ban direct .oc access outside kernel/ and core/
+  // Kernel abstraction boundary: ban direct .oc access and .wrapped calls outside kernel/ and core/
   {
     files: [
       'src/topology/**/*.ts',
@@ -100,6 +101,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-syntax': [
         'error',
+        noMutableExport,
         {
           selector: 'MemberExpression[property.name="oc"]',
           message:

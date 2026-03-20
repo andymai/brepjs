@@ -148,6 +148,55 @@ function earClipTriangulate(poly: SkPoint2D[]): Array<[number, number, number]> 
   return tris;
 }
 
+/**
+ * Convert skeleton faces into 3D triangular kernel faces by lifting vertices
+ * to the height dictated by the skeleton, scaled by the roof slope tangent.
+ */
+function buildSkeletonTriFaces(
+  skeleton: { faces: Array<{ vertices: SkPoint2D[]; heights: number[] }> },
+  tanAngle: number,
+  kernel: ReturnType<typeof getKernel>
+): KernelShape[] {
+  const triFaces: KernelShape[] = [];
+  for (const skFace of skeleton.faces) {
+    const verts3d: Array<[number, number, number]> = skFace.vertices.map(
+      (v: SkPoint2D, i: number): [number, number, number] => [
+        v.x,
+        v.y,
+        (skFace.heights[i] ?? 0) * tanAngle,
+      ]
+    );
+
+    const tris = fanTriangulate(verts3d.length);
+
+    for (const [ai, bi, ci] of tris) {
+      const va = verts3d[ai];
+      const vb = verts3d[bi];
+      const vc = verts3d[ci];
+      if (!va || !vb || !vc) continue;
+
+      // Skip degenerate triangles
+      const abx = vb[0] - va[0];
+      const aby = vb[1] - va[1];
+      const abz = vb[2] - va[2];
+      const acx = vc[0] - va[0];
+      const acy = vc[1] - va[1];
+      const acz = vc[2] - va[2];
+      const nx = aby * acz - abz * acy;
+      const ny = abz * acx - abx * acz;
+      const nz = abx * acy - aby * acx;
+      const areaSq = nx * nx + ny * ny + nz * nz;
+      if (areaSq < 1e-20) continue;
+
+      const triFace = kernel.buildTriFace(va, vb, vc);
+      if (triFace !== null) {
+        triFaces.push(triFace);
+      }
+    }
+  }
+  return triFaces;
+}
+
 // ---------------------------------------------------------------------------
 // Main function
 // ---------------------------------------------------------------------------
@@ -185,45 +234,7 @@ export function roof(w: ClosedWire<Dimension>, options?: RoofOptions): Result<So
     }
 
     const kernel = getKernel();
-    const triFaces: KernelShape[] = [];
-
-    // For each skeleton face, build triangles
-    for (const skFace of skeleton.faces) {
-      const verts3d: Array<[number, number, number]> = skFace.vertices.map(
-        (v: SkPoint2D, i: number): [number, number, number] => [
-          v.x,
-          v.y,
-          (skFace.heights[i] ?? 0) * tanAngle,
-        ]
-      );
-
-      const tris = fanTriangulate(verts3d.length);
-
-      for (const [ai, bi, ci] of tris) {
-        const va = verts3d[ai];
-        const vb = verts3d[bi];
-        const vc = verts3d[ci];
-        if (!va || !vb || !vc) continue;
-
-        // Skip degenerate triangles
-        const abx = vb[0] - va[0];
-        const aby = vb[1] - va[1];
-        const abz = vb[2] - va[2];
-        const acx = vc[0] - va[0];
-        const acy = vc[1] - va[1];
-        const acz = vc[2] - va[2];
-        const nx = aby * acz - abz * acy;
-        const ny = abz * acx - abx * acz;
-        const nz = abx * acy - aby * acx;
-        const areaSq = nx * nx + ny * ny + nz * nz;
-        if (areaSq < 1e-20) continue;
-
-        const triFace = kernel.buildTriFace(va, vb, vc);
-        if (triFace !== null) {
-          triFaces.push(triFace);
-        }
-      }
-    }
+    const triFaces: KernelShape[] = buildSkeletonTriFaces(skeleton, tanAngle, kernel);
 
     // Also add the bottom face (the original polygon at z=0).
     // Use ear-clip triangulation to correctly handle concave footprints.

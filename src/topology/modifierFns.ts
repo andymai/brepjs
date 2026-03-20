@@ -6,15 +6,17 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
-import type { Edge, Face, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
+import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { castShape, isShape3D } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
-import { type Result, ok, err, isErr } from '@/core/result.js';
+import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
+import type { BrepError } from '@/core/errors.js';
 import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
 import type { Vec3 } from '@/core/types.js';
 import type { DraftAngle } from './apiTypes.js';
+import type { ShapeEvolution } from '@/kernel/types.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -28,6 +30,123 @@ function validateNotNull(
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `${label} is a null shape`));
   }
   return ok(undefined);
+}
+
+/**
+ * Validate that a scalar or `[a, b]` pair is positive.
+ * Returns an Err Result on failure, `undefined` on success.
+ */
+function validatePositiveParam(
+  value: number | [number, number] | ((...args: never[]) => unknown),
+  code: string,
+  scalarMsg: string,
+  pairMsg: string,
+  scalarSuggestion: string,
+  pairSuggestion: string
+): Err<BrepError> | undefined {
+  if (typeof value === 'number' && value <= 0) {
+    return err(validationError(code, scalarMsg, undefined, undefined, scalarSuggestion));
+  }
+  if (Array.isArray(value) && (value[0] <= 0 || value[1] <= 0)) {
+    return err(validationError(code, pairMsg, undefined, undefined, pairSuggestion));
+  }
+  return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Edge callback resolution (shared by fillet / chamfer)
+// ---------------------------------------------------------------------------
+
+/** Kernel-compatible callback type: looks up value by raw OC hash. */
+type KernelHashCallback<V> = (ocShape: { HashCode(max: number): number }) => V;
+
+/**
+ * When the user supplies a per-edge callback, pre-filter edges and build a
+ * hash-indexed lookup for the kernel. Returns `null` if no edges survive.
+ */
+function resolveEdgeCallback(
+  selectedEdges: ReadonlyArray<Edge>,
+  callbackFn: (edge: Edge) => number | [number, number] | null
+): { edges: Edge[]; kernelParam: KernelHashCallback<number | [number, number]> } | null {
+  const filteredEdges: Edge[] = [];
+  const hashToValue = new Map<number, number | [number, number]>();
+
+  for (const edge of selectedEdges) {
+    const val = callbackFn(edge) ?? 0;
+    if (typeof val === 'number' && val <= 0) continue;
+    if (Array.isArray(val) && (val[0] <= 0 || val[1] <= 0)) continue;
+    filteredEdges.push(edge);
+    hashToValue.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), val);
+  }
+  if (filteredEdges.length === 0) return null;
+
+  const kernelParam: KernelHashCallback<number | [number, number]> = (ocEdge) => {
+    const v = hashToValue.get(ocEdge.HashCode(HASH_CODE_MAX));
+    // Default to 1 (should not happen due to pre-filtering)
+    return v ?? 1;
+  };
+  return { edges: filteredEdges, kernelParam };
+}
+
+// ---------------------------------------------------------------------------
+// Post-kernel finalization (shared by fillet / chamfer / draft + others)
+// ---------------------------------------------------------------------------
+
+/**
+ * Cast a kernel result to a Shape3D, propagate metadata, and wrap in `ok()`.
+ * Returns an error if the result is not a 3D shape.
+ */
+function finalizeShape3D(
+  evolution: ShapeEvolution,
+  resultShape: unknown,
+  inputs: ReadonlyArray<AnyShape<Dimension>>,
+  not3dCode: string,
+  not3dMessage: string
+): Result<Shape3D> {
+  const cast = castShape(resultShape);
+  if (!isShape3D(cast)) {
+    return err(kernelError(not3dCode, not3dMessage));
+  }
+  propagateAllMetadata(evolution, inputs, cast);
+  return ok(cast);
+}
+
+// ---------------------------------------------------------------------------
+// Draft callback resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * When the user supplies a per-face callback for draft angle, pre-filter
+ * faces and build a hash-indexed lookup for the kernel.
+ */
+function resolveDraftCallback(
+  faces: ReadonlyArray<Face>,
+  angle: DraftAngle
+): {
+  filteredFaces: Face[];
+  kernelAngle: number | ((face: { HashCode(max: number): number }) => number);
+} {
+  if (typeof angle !== 'function') {
+    return { filteredFaces: [...faces], kernelAngle: angle };
+  }
+
+  const filteredFaces: Face[] = [];
+  const hashToAngle = new Map<number, number>();
+  for (const face of faces) {
+    const a = angle(face);
+    if (a === null || a === 0 || Math.abs(a) >= 90) continue;
+    filteredFaces.push(face);
+    hashToAngle.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), a);
+  }
+
+  const kernelAngle = (ocFace: { HashCode(max: number): number }) => {
+    const a = hashToAngle.get(ocFace.HashCode(HASH_CODE_MAX));
+    if (a === undefined) {
+      throw new Error('draft: face hash not found — possible hash collision');
+    }
+    return a;
+  };
+  return { filteredFaces, kernelAngle };
 }
 
 /**
@@ -76,28 +195,15 @@ export function fillet(
 ): Result<Shape3D> {
   const check = validateNotNull(shape, 'fillet: shape');
   if (isErr(check)) return check;
-  if (typeof radius === 'number' && radius <= 0) {
-    return err(
-      validationError(
-        'INVALID_FILLET_RADIUS',
-        'Fillet radius must be positive',
-        undefined,
-        undefined,
-        'Provide a positive radius value greater than 0'
-      )
-    );
-  }
-  if (Array.isArray(radius) && (radius[0] <= 0 || radius[1] <= 0)) {
-    return err(
-      validationError(
-        'INVALID_FILLET_RADIUS',
-        'Fillet radii must both be positive',
-        undefined,
-        undefined,
-        'Both radius values must be greater than 0'
-      )
-    );
-  }
+  const paramErr = validatePositiveParam(
+    radius,
+    'INVALID_FILLET_RADIUS',
+    'Fillet radius must be positive',
+    'Fillet radii must both be positive',
+    'Provide a positive radius value greater than 0',
+    'Both radius values must be greater than 0'
+  );
+  if (paramErr) return paramErr;
 
   const selectedEdges = edges ?? getEdges(shape);
   if (selectedEdges.length === 0) {
@@ -113,48 +219,27 @@ export function fillet(
   }
 
   try {
-    // Pre-filter edges when using a callback: skip null/zero results
     let filteredEdges: Edge[];
-    let kernelRadius:
-      | number
-      | [number, number]
-      | ((edge: { HashCode(max: number): number }) => number | [number, number]);
+    let kernelRadius: number | [number, number] | KernelHashCallback<number | [number, number]>;
 
     if (typeof radius === 'function') {
-      filteredEdges = [];
-      const radMap = new Map<Edge, number | [number, number]>();
-      for (const edge of selectedEdges) {
-        const rad = radius(edge) ?? 0;
-        if (typeof rad === 'number' && rad <= 0) continue;
-        if (Array.isArray(rad) && (rad[0] <= 0 || rad[1] <= 0)) continue;
-        filteredEdges.push(edge);
-        radMap.set(edge, rad);
+      const resolved = resolveEdgeCallback(selectedEdges, radius);
+      if (!resolved) {
+        return err(
+          validationError(
+            BrepErrorCode.FILLET_NO_EDGES,
+            'No edges with positive radius for fillet',
+            undefined,
+            undefined,
+            'Check that the radius callback returns positive values'
+          )
+        );
       }
-      // Build a lookup by hash for the kernel callback
-      const hashToRad = new Map<number, number | [number, number]>();
-      for (const [edge, rad] of radMap) {
-        hashToRad.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), rad);
-      }
-      kernelRadius = (ocEdge) => {
-        const r = hashToRad.get(ocEdge.HashCode(HASH_CODE_MAX));
-        // Default to 1 (should not happen due to pre-filtering)
-        return r ?? 1;
-      };
+      filteredEdges = resolved.edges;
+      kernelRadius = resolved.kernelParam;
     } else {
       filteredEdges = [...selectedEdges];
       kernelRadius = radius;
-    }
-
-    if (filteredEdges.length === 0) {
-      return err(
-        validationError(
-          BrepErrorCode.FILLET_NO_EDGES,
-          'No edges with positive radius for fillet',
-          undefined,
-          undefined,
-          'Check that the radius callback returns positive values'
-        )
-      );
     }
 
     const inputFaceHashes = collectInputFaceHashes([shape]);
@@ -165,12 +250,13 @@ export function fillet(
       inputFaceHashes,
       HASH_CODE_MAX
     );
-    const cast = castShape(resultShape);
-    if (!isShape3D(cast)) {
-      return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
-    }
-    propagateAllMetadata(evolution, [shape], cast);
-    return ok(cast);
+    return finalizeShape3D(
+      evolution,
+      resultShape,
+      [shape],
+      BrepErrorCode.FILLET_NOT_3D,
+      'Fillet result is not a 3D shape'
+    );
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
@@ -201,28 +287,15 @@ export function chamfer(
 ): Result<Shape3D> {
   const check = validateNotNull(shape, 'chamfer: shape');
   if (isErr(check)) return check;
-  if (typeof distance === 'number' && distance <= 0) {
-    return err(
-      validationError(
-        'INVALID_CHAMFER_DISTANCE',
-        'Chamfer distance must be positive',
-        undefined,
-        undefined,
-        'Provide a positive distance value greater than 0'
-      )
-    );
-  }
-  if (Array.isArray(distance) && (distance[0] <= 0 || distance[1] <= 0)) {
-    return err(
-      validationError(
-        'INVALID_CHAMFER_DISTANCE',
-        'Chamfer distances must both be positive',
-        undefined,
-        undefined,
-        'Both distance values must be greater than 0'
-      )
-    );
-  }
+  const paramErr = validatePositiveParam(
+    distance,
+    'INVALID_CHAMFER_DISTANCE',
+    'Chamfer distance must be positive',
+    'Chamfer distances must both be positive',
+    'Provide a positive distance value greater than 0',
+    'Both distance values must be greater than 0'
+  );
+  if (paramErr) return paramErr;
 
   const selectedEdges = edges ?? getEdges(shape);
   if (selectedEdges.length === 0) {
@@ -230,43 +303,24 @@ export function chamfer(
   }
 
   try {
-    // Pre-filter edges when using a callback: skip null/zero results
     let filteredEdges: Edge[];
-    let kernelDistance:
-      | number
-      | [number, number]
-      | ((edge: { HashCode(max: number): number }) => number | [number, number]);
+    let kernelDistance: number | [number, number] | KernelHashCallback<number | [number, number]>;
 
     if (typeof distance === 'function') {
-      filteredEdges = [];
-      const distMap = new Map<Edge, number | [number, number]>();
-      for (const edge of selectedEdges) {
-        const d = distance(edge) ?? 0;
-        if (typeof d === 'number' && d <= 0) continue;
-        if (Array.isArray(d) && (d[0] <= 0 || d[1] <= 0)) continue;
-        filteredEdges.push(edge);
-        distMap.set(edge, d);
+      const resolved = resolveEdgeCallback(selectedEdges, distance);
+      if (!resolved) {
+        return err(
+          validationError(
+            BrepErrorCode.CHAMFER_NO_EDGES,
+            'No edges with positive distance for chamfer'
+          )
+        );
       }
-      const hashToDist = new Map<number, number | [number, number]>();
-      for (const [edge, d] of distMap) {
-        hashToDist.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), d);
-      }
-      kernelDistance = (ocEdge) => {
-        const d = hashToDist.get(ocEdge.HashCode(HASH_CODE_MAX));
-        return d ?? 1;
-      };
+      filteredEdges = resolved.edges;
+      kernelDistance = resolved.kernelParam;
     } else {
       filteredEdges = [...selectedEdges];
       kernelDistance = distance;
-    }
-
-    if (filteredEdges.length === 0) {
-      return err(
-        validationError(
-          BrepErrorCode.CHAMFER_NO_EDGES,
-          'No edges with positive distance for chamfer'
-        )
-      );
     }
 
     const inputFaceHashes = collectInputFaceHashes([shape]);
@@ -277,12 +331,13 @@ export function chamfer(
       inputFaceHashes,
       HASH_CODE_MAX
     );
-    const cast = castShape(resultShape);
-    if (!isShape3D(cast)) {
-      return err(kernelError(BrepErrorCode.CHAMFER_NOT_3D, 'Chamfer result is not a 3D shape'));
-    }
-    propagateAllMetadata(evolution, [shape], cast);
-    return ok(cast);
+    return finalizeShape3D(
+      evolution,
+      resultShape,
+      [shape],
+      BrepErrorCode.CHAMFER_NOT_3D,
+      'Chamfer result is not a 3D shape'
+    );
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(
@@ -454,39 +509,17 @@ export function draft(
   }
 
   try {
-    let filteredFaces: Face[];
-    let kernelAngle: number | ((face: { HashCode(max: number): number }) => number);
-
-    if (typeof angle === 'function') {
-      filteredFaces = [];
-      const hashToAngle = new Map<number, number>();
-      for (const face of faces) {
-        const a = angle(face);
-        if (a === null || a === 0 || Math.abs(a) >= 90) continue;
-        filteredFaces.push(face);
-        hashToAngle.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), a);
-      }
-      if (filteredFaces.length === 0) {
-        return err(
-          validationError(
-            BrepErrorCode.DRAFT_NO_FACES,
-            'No faces with valid draft angle',
-            undefined,
-            undefined,
-            'Check that the angle callback returns non-zero values between -90 and 90 degrees'
-          )
-        );
-      }
-      kernelAngle = (ocFace) => {
-        const a = hashToAngle.get(ocFace.HashCode(HASH_CODE_MAX));
-        if (a === undefined) {
-          throw new Error('draft: face hash not found — possible hash collision');
-        }
-        return a;
-      };
-    } else {
-      filteredFaces = [...faces];
-      kernelAngle = angle;
+    const { filteredFaces, kernelAngle } = resolveDraftCallback(faces, angle);
+    if (filteredFaces.length === 0) {
+      return err(
+        validationError(
+          BrepErrorCode.DRAFT_NO_FACES,
+          'No faces with valid draft angle',
+          undefined,
+          undefined,
+          'Check that the angle callback returns non-zero values between -90 and 90 degrees'
+        )
+      );
     }
 
     const inputFaceHashes = collectInputFaceHashes([shape]);
@@ -499,12 +532,13 @@ export function draft(
       inputFaceHashes,
       HASH_CODE_MAX
     );
-    const cast = castShape(resultShape);
-    if (!isShape3D(cast)) {
-      return err(kernelError(BrepErrorCode.DRAFT_NOT_3D, 'Draft result is not a 3D shape'));
-    }
-    propagateAllMetadata(evolution, [shape], cast);
-    return ok(cast);
+    return finalizeShape3D(
+      evolution,
+      resultShape,
+      [shape],
+      BrepErrorCode.DRAFT_NOT_3D,
+      'Draft result is not a 3D shape'
+    );
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     return err(

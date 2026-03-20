@@ -47,20 +47,10 @@ export interface WorkerClient {
 // Implementation
 // ---------------------------------------------------------------------------
 
-/** Create a worker client that communicates using the brepjs worker protocol. */
-export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
-  const { worker, wasmUrl } = options;
-  const pending = new Map<
-    string,
-    { resolve: (v: WorkerResult) => void; reject: (e: unknown) => void }
-  >();
-  let disposed = false;
+type PendingMap = Map<string, { resolve: (v: WorkerResult) => void; reject: (e: unknown) => void }>;
 
-  function nextId(): string {
-    return crypto.randomUUID();
-  }
-
-  function onMessage(event: MessageEvent<WorkerResponse>) {
+function createMessageHandler(pending: PendingMap): (event: MessageEvent<WorkerResponse>) => void {
+  return (event) => {
     const msg = event.data;
     const entry = pending.get(msg.id);
     if (!entry) return;
@@ -74,8 +64,20 @@ export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
     } else {
       entry.reject(new Error((msg as ErrorResponse).error));
     }
+  };
+}
+
+/** Create a worker client that communicates using the brepjs worker protocol. */
+export function createWorkerClient(options: WorkerClientOptions): WorkerClient {
+  const { worker, wasmUrl } = options;
+  const pending: PendingMap = new Map();
+  let disposed = false;
+
+  function nextId(): string {
+    return crypto.randomUUID();
   }
 
+  const onMessage = createMessageHandler(pending);
   worker.addEventListener('message', onMessage);
 
   function send(msg: { id: string }): Promise<WorkerResult> {

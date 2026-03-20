@@ -1,5 +1,5 @@
 {
-  "src/**/*.ts": ["eslint --fix", "prettier --write"],
+  "src/**/*.ts": ["eslint --fix", "prettier --write", "npx tsx scripts/check-patterns.ts"],
   "tests/**/*.ts": ["eslint --fix", "prettier --write"],
   "*.config.ts": ["prettier --write"],
   "*.md": ["prettier --write"]

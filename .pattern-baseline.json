@@ -1,0 +1,451 @@
+{
+  "version": 1,
+  "generated": "2026-03-20T15:08:16.298Z",
+  "entries": [
+    {
+      "file": "src/core/dimensionTypes.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/core/dimensionTypes.ts|no-double-cast|36|s as unknown as Record<string, unknown>"
+    },
+    {
+      "file": "src/core/dimensionTypes.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/core/dimensionTypes.ts|no-double-cast|46|s as unknown as Record<string, unknown>"
+    },
+    {
+      "file": "src/core/disposal.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/core/disposal.ts|no-double-cast|48|class NoOpFinalizationRegistry {\n    register(_target: objec"
+    },
+    {
+      "file": "src/core/shapeTypes.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/core/shapeTypes.ts|no-double-cast|158|handle as unknown as Record<string, unknown>"
+    },
+    {
+      "file": "src/io/gltfExportFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|228|"
+    },
+    {
+      "file": "src/io/gltfExportFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|431|"
+    },
+    {
+      "file": "src/io/threemfExportFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|66|"
+    },
+    {
+      "file": "src/io/threemfExportFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|205|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkit2d.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkit2d.ts|max-function-lines|590|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-function-lines|1351|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-function-lines|1369|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-function-lines|1777|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-function-lines|2527|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-function-lines|3301|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-function-lines|5239|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-function-lines|5368|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|1421|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|1425|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|1436|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|1670|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|1679|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|1696|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|1699|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|2034|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|2040|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|2046|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|2587|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|2635|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|2986|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|3338|"
+    },
+    {
+      "file": "src/kernel/brepkit/brepkitAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/brepkitAdapter.ts|max-nesting-depth|3343|"
+    },
+    {
+      "file": "src/kernel/brepkit/constructionOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|677|"
+    },
+    {
+      "file": "src/kernel/brepkit/constructionOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|764|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-function-lines|113|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|276|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|285|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|303|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|306|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|409|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|415|"
+    },
+    {
+      "file": "src/kernel/brepkit/evolutionOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|421|"
+    },
+    {
+      "file": "src/kernel/brepkit/modifierOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|126|"
+    },
+    {
+      "file": "src/kernel/brepkit/modifierOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|143|"
+    },
+    {
+      "file": "src/kernel/brepkit/modifierOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|194|"
+    },
+    {
+      "file": "src/kernel/brepkit/modifierOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|198|"
+    },
+    {
+      "file": "src/kernel/brepkit/modifierOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|209|"
+    },
+    {
+      "file": "src/kernel/brepkit/sweepOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-function-lines|252|"
+    },
+    {
+      "file": "src/kernel/brepkit/sweepOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|288|"
+    },
+    {
+      "file": "src/kernel/brepkit/sweepOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|293|"
+    },
+    {
+      "file": "src/kernel/brepkit/topologyOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-function-lines|22|"
+    },
+    {
+      "file": "src/kernel/brepkit/topologyOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|78|"
+    },
+    {
+      "file": "src/kernel/brepkit/topologyOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|112|"
+    },
+    {
+      "file": "src/kernel/brepkit/topologyOps.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|217|"
+    },
+    {
+      "file": "src/kernel/occt/advancedOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|676|"
+    },
+    {
+      "file": "src/kernel/occt/advancedOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|1072|"
+    },
+    {
+      "file": "src/kernel/occt/hullOps.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/occt/hullOps.ts|max-function-lines|208|"
+    },
+    {
+      "file": "src/operations/mateFns.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|133|"
+    },
+    {
+      "file": "src/operations/mateFns.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|135|"
+    },
+    {
+      "file": "src/operations/mateFns.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|137|"
+    },
+    {
+      "file": "src/operations/mateFns.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|142|"
+    },
+    {
+      "file": "src/operations/straightSkeleton.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/operations/straightSkeleton.ts|max-function-lines|329|"
+    },
+    {
+      "file": "src/topology/healingFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/healingFns.ts|max-function-lines|184|"
+    },
+    {
+      "file": "src/topology/metadata/originTrackingFns.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/topology/metadata/originTrackingFns.ts|max-nesting-depth|209|"
+    },
+    {
+      "file": "src/topology/modifierFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|191|"
+    },
+    {
+      "file": "src/topology/modifierFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|464|"
+    },
+    {
+      "file": "src/topology/surfaceFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/surfaceFns.ts|max-function-lines|176|"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|350|unwrapOrThrow(fuse(val, resolve(tool), opts)) as unknown as "
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|351|unwrapOrThrow(cut(val, resolve(tool), opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|353|unwrapOrThrow(intersect(val, resolve(tool), opts)) as unknow"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|357|unwrapOrThrow(fuseAllFn([val, ...tools.map(resolve)], opts))"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|358|unwrapOrThrow(cutAllFn(val, tools, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|370|unwrapOrThrow(fillet(val, args[0])) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|372|unwrapOrThrow(fillet(val, args[0], args[1])) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|378|unwrapOrThrow(chamfer(val, args[0])) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|380|unwrapOrThrow(chamfer(val, args[0], args[1])) as unknown as "
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|383|unwrapOrThrow(shell(val, faces, thickness, opts)) as unknown"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|384|unwrapOrThrow(offset(val, distance, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|385|unwrapOrThrow(draftFn(val, faces, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|388|unwrapOrThrow(drillFn(val, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|389|unwrapOrThrow(pocketFn(val, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|390|unwrapOrThrow(bossFn(val, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|391|unwrapOrThrow(mirrorJoinFn(val, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|392|unwrapOrThrow(rectPatternFn(val, opts)) as unknown as T"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|408|unwrapOrThrow(linearPattern(val, dir, count, spacing)) as un"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|410|unwrapOrThrow(circularPattern(val, axis, count, angle)) as u"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|429|val as unknown as ClosedWire"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|461|createWrapped3D(val) as unknown as Wrapped<T>"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|462|createWrappedFace(val) as unknown as Wrapped<T>"
+    },
+    {
+      "file": "src/topology/wrapperFns.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|463|createWrappedCurve(val) as unknown as Wrapped<T>"
+    }
+  ]
+}

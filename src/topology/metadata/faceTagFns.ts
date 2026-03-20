@@ -148,6 +148,12 @@ export function getTagMetadata(
   return tagMetadataStore.get(shape.wrapped)?.get(tag);
 }
 
+function addTagToResult(resultTagMap: Map<string, Set<number>>, tag: string, hash: number): void {
+  const set = resultTagMap.get(tag) ?? new Set<number>();
+  set.add(hash);
+  resultTagMap.set(tag, set);
+}
+
 /**
  * Propagate face tags from input shapes to a result shape using a
  * kernel-provided ShapeEvolution record (no direct kernel op access needed).
@@ -178,20 +184,10 @@ export function propagateFaceTagsFromEvolution(
       if (evolution.deleted.has(hash)) continue;
 
       const modifiedHashes = evolution.modified.get(hash);
-      if (modifiedHashes && modifiedHashes.length > 0) {
-        for (const modHash of modifiedHashes) {
-          for (const tag of tags) {
-            const set = resultTagMap.get(tag) ?? new Set<number>();
-            set.add(modHash);
-            resultTagMap.set(tag, set);
-          }
-        }
-      } else {
-        // Face survived unmodified
+      const targetHashes = modifiedHashes && modifiedHashes.length > 0 ? modifiedHashes : [hash];
+      for (const targetHash of targetHashes) {
         for (const tag of tags) {
-          const set = resultTagMap.get(tag) ?? new Set<number>();
-          set.add(hash);
-          resultTagMap.set(tag, set);
+          addTagToResult(resultTagMap, tag, targetHash);
         }
       }
     }

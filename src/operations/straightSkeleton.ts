@@ -158,6 +158,16 @@ function createLav(poly: SkPoint2D[]): LavNode[] {
   return nodes;
 }
 
+/** Deactivate a chain of nodes starting from `start`. */
+function deactivateNodes(start: LavNode | null, count: number): void {
+  let cur = start;
+  for (let i = 0; i < count; i++) {
+    if (!cur) break;
+    cur.active = false;
+    cur = cur.next;
+  }
+}
+
 /** Count active nodes reachable from a starting node. */
 function lavSize(start: LavNode): number {
   let count = 1;
@@ -361,12 +371,7 @@ function computeStraightSkeletonImpl(polygon: SkPoint2D[]): StraightSkeleton {
         b.active = false;
         c.active = false;
       } else {
-        let cur: LavNode | null = activeStart;
-        for (let i = 0; i < sz; i++) {
-          if (!cur) break;
-          cur.active = false;
-          cur = cur.next;
-        }
+        deactivateNodes(activeStart, sz);
       }
       continue;
     }

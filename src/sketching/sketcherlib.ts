@@ -414,6 +414,44 @@ export interface GenericSketcher<ReturnType> {
   ): ReturnType;
 }
 
+/**
+ * Compute start/delta/end angles from the unit-circle parameterization
+ * of an SVG elliptical arc (F6.5.5–F6.5.6).
+ */
+function computeArcAngles(
+  xcr1: number,
+  ycr1: number,
+  xcr2: number,
+  ycr2: number,
+  fS: boolean
+): { startAngle: number; deltaAngle: number; endAngle: number } {
+  const PIx2 = Math.PI * 2.0;
+
+  // F6.5.5
+  const startAngle = radianAngle(1.0, 0.0, xcr1, ycr1);
+
+  // F6.5.6
+  let deltaAngle = radianAngle(xcr1, ycr1, -xcr2, -ycr2);
+  while (deltaAngle > PIx2) {
+    deltaAngle -= PIx2;
+  }
+  while (deltaAngle < 0.0) {
+    deltaAngle += PIx2;
+  }
+  if (!fS) {
+    deltaAngle -= PIx2;
+  }
+  let endAngle = startAngle + deltaAngle;
+  while (endAngle > PIx2) {
+    endAngle -= PIx2;
+  }
+  while (endAngle < 0.0) {
+    endAngle += PIx2;
+  }
+
+  return { startAngle, deltaAngle, endAngle };
+}
+
 /*
  * adapted from https://stackoverflow.com/a/12329083
  */
@@ -456,8 +494,6 @@ export function convertSvgEllipseParams(
   endAngle: number;
   clockwise: boolean;
 } {
-  const PIx2 = Math.PI * 2.0;
-
   if (rx < 0) {
     rx = -rx;
   }
@@ -513,38 +549,16 @@ export function convertSvgEllipseParams(
   const ycr1 = (y1_ - cy_) / ry;
   const ycr2 = (y1_ + cy_) / ry;
 
-  // F6.5.5
-  const startAngle = radianAngle(1.0, 0.0, xcr1, ycr1);
+  const { startAngle, deltaAngle, endAngle } = computeArcAngles(xcr1, ycr1, xcr2, ycr2, fS);
 
-  // F6.5.6
-  let deltaAngle = radianAngle(xcr1, ycr1, -xcr2, -ycr2);
-  while (deltaAngle > PIx2) {
-    deltaAngle -= PIx2;
-  }
-  while (deltaAngle < 0.0) {
-    deltaAngle += PIx2;
-  }
-  if (!fS) {
-    deltaAngle -= PIx2;
-  }
-  let endAngle = startAngle + deltaAngle;
-  while (endAngle > PIx2) {
-    endAngle -= PIx2;
-  }
-  while (endAngle < 0.0) {
-    endAngle += PIx2;
-  }
-
-  const outputObj = {
-    cx: cx,
-    cy: cy,
-    startAngle: startAngle,
-    deltaAngle: deltaAngle,
-    endAngle: endAngle,
+  return {
+    cx,
+    cy,
+    startAngle,
+    deltaAngle,
+    endAngle,
     clockwise: fS,
     rx,
     ry,
   };
-
-  return outputObj;
 }

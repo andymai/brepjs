@@ -127,6 +127,117 @@ const OFFSET_JOINERS = {
 } as const;
 
 /**
+ * Handle the case where adjacent offset curves intersect: split both at
+ * the closest intersection and return updated previous/current curves.
+ */
+function splitAtIntersection(
+  previousCurve: OffsetCurvePair,
+  curve: OffsetCurvePair,
+  intersections: Point2D[]
+): { splitPrevious: OffsetCurvePair; splitCurrent: OffsetCurvePair } {
+  const intersection: Point2D =
+    intersections.length === 1
+      ? safeIndex(intersections, 0, 'rawOffsets')
+      : selectClosestIntersection(intersections, previousCurve.original.lastPoint);
+
+  const splitPreviousCurve: Curve2D = safeIndex(
+    (previousCurve.offset as Curve2D).splitAt([intersection], PRECISION_OFFSET),
+    0,
+    'rawOffsets'
+  );
+  const splitCurve = (curve.offset as Curve2D).splitAt([intersection], PRECISION_OFFSET).at(-1);
+
+  if (!splitCurve) bug('offset.rawOffsets', 'Split produced no trailing curve segment');
+
+  return {
+    splitPrevious: { offset: splitPreviousCurve, original: previousCurve.original },
+    splitCurrent: { offset: splitCurve, original: curve.original },
+  };
+}
+
+/**
+ * From an array of candidate intersection points, select the one closest to
+ * a reference point (the original curve endpoint).
+ */
+function selectClosestIntersection(intersections: Point2D[], referencePoint: Point2D): Point2D {
+  let closest = safeIndex(intersections, 0, 'selectClosestIntersection');
+  let minDist = squareDistance2d(closest, referencePoint);
+  for (let i = 1; i < intersections.length; i++) {
+    const point = safeIndex(intersections, i, 'selectClosestIntersection');
+    const d = squareDistance2d(point, referencePoint);
+    if (d < minDist) {
+      minDist = d;
+      closest = point;
+    }
+  }
+  return closest;
+}
+
+/**
+ * Build a map of self-intersection points per curve index using a spatial
+ * index over offset-curve bounding boxes.
+ */
+function findSelfIntersections(offsettedArray: Curve2D[]): Map<number, Point2D[]> {
+  const allIntersections: Map<number, Point2D[]> = new Map();
+  const updateIntersections = (index: number, newPoints: Point2D[]) => {
+    const intersections = allIntersections.get(index) || [];
+    allIntersections.set(index, [...intersections, ...newPoints]);
+  };
+
+  // Build spatial index of curve bounding boxes for O(n log n) intersection filtering
+  const spatialIndex = new Flatbush(offsettedArray.length);
+  for (const curve of offsettedArray) {
+    const [[xMin, yMin], [xMax, yMax]] = curve.boundingBox.bounds;
+    spatialIndex.add(xMin, yMin, xMax, yMax);
+  }
+  spatialIndex.finish();
+
+  // Use spatial index to find candidate pairs, avoiding O(n²) comparisons
+  const testedPairs = new Set<string>();
+  offsettedArray.forEach((firstCurve, firstIndex) => {
+    const [[xMin, yMin], [xMax, yMax]] = firstCurve.boundingBox.bounds;
+    const candidates = spatialIndex.search(xMin, yMin, xMax, yMax);
+
+    for (const secondIndex of candidates) {
+      // Only test pairs where secondIndex > firstIndex to avoid duplicates
+      if (secondIndex <= firstIndex) continue;
+
+      // Avoid testing the same pair twice
+      const pairKey = `${firstIndex}-${secondIndex}`;
+      if (testedPairs.has(pairKey)) continue;
+      testedPairs.add(pairKey);
+
+      const secondCurve = safeIndex(offsettedArray, secondIndex, 'offsetBlueprint');
+
+      const { intersections: rawIntersections, commonSegmentsPoints } = unwrap(
+        intersectCurves(firstCurve, secondCurve, PRECISION_OFFSET)
+      );
+
+      const intersections = [...rawIntersections, ...commonSegmentsPoints].filter(
+        (intersection) => {
+          const onFirstCurveExtremity =
+            samePoint(intersection, firstCurve.firstPoint) ||
+            samePoint(intersection, firstCurve.lastPoint);
+
+          const onSecondCurveExtremity =
+            samePoint(intersection, secondCurve.firstPoint) ||
+            samePoint(intersection, secondCurve.lastPoint);
+
+          return !(onFirstCurveExtremity && onSecondCurveExtremity);
+        }
+      );
+
+      if (!intersections.length) continue;
+
+      updateIntersections(firstIndex, intersections);
+      updateIntersections(secondIndex, intersections);
+    }
+  });
+
+  return allIntersections;
+}
+
+/**
  * Compute raw offset curves for a single blueprint without self-intersection cleanup.
  *
  * Offsets each curve individually, then joins adjacent offset curves using the
@@ -218,42 +329,15 @@ export function rawOffsets(
     }
 
     if (intersections.length > 0) {
-      let intersection = safeIndex(intersections, 0, 'rawOffsets');
-      if (intersections.length > 1) {
-        // We choose the intersection point the closest to the end of the
-        // original curve endpoint (why? not sure, following
-        // https://github.com/jbuckmccready/cavalier_contours/)
-
-        const originalEndpoint: Point2D = previousCurve.original.lastPoint;
-        // Single-pass min distance calculation (more efficient than indexOf(Math.min(...)))
-        let minDist = squareDistance2d(intersection, originalEndpoint);
-        for (let i = 1; i < intersections.length; i++) {
-          const point = safeIndex(intersections, i, 'rawOffsets');
-          const d = squareDistance2d(point, originalEndpoint);
-          if (d < minDist) {
-            minDist = d;
-            intersection = point;
-          }
-        }
-      }
-
-      // We need to be a lot more careful here with multiple intersections
-      // as well as cases where curves overlap
-
-      const splitPreviousCurve: Curve2D = safeIndex(
-        (previousCurve.offset as Curve2D).splitAt([intersection], PRECISION_OFFSET),
-        0,
-        'rawOffsets'
+      // Pick the intersection closest to the original curve endpoint
+      // (following https://github.com/jbuckmccready/cavalier_contours/)
+      const { splitPrevious, splitCurrent } = splitAtIntersection(
+        previousCurve,
+        curve,
+        intersections
       );
-      const splitCurve = (curve.offset as Curve2D).splitAt([intersection], PRECISION_OFFSET).at(-1);
-
-      if (!splitCurve) bug('offset.rawOffsets', 'Split produced no trailing curve segment');
-
-      appendCurve({
-        offset: splitPreviousCurve,
-        original: previousCurve.original,
-      });
-      previousCurve = { offset: splitCurve, original: curve.original };
+      appendCurve(splitPrevious);
+      previousCurve = splitCurrent;
       continue;
     }
 
@@ -306,61 +390,7 @@ export function offsetBlueprint(
 
   // We remove the self intersections with the use the the algorithm as described in https://github.com/jbuckmccready/CavalierContours#offset-algorithm-and-stepwise-example
 
-  const allIntersections: Map<number, Point2D[]> = new Map();
-  const updateIntersections = (index: number, newPoints: Point2D[]) => {
-    const intersections = allIntersections.get(index) || [];
-    allIntersections.set(index, [...intersections, ...newPoints]);
-  };
-
-  // Build spatial index of curve bounding boxes for O(n log n) intersection filtering
-  const spatialIndex = new Flatbush(offsettedArray.length);
-  for (const curve of offsettedArray) {
-    const [[xMin, yMin], [xMax, yMax]] = curve.boundingBox.bounds;
-    spatialIndex.add(xMin, yMin, xMax, yMax);
-  }
-  spatialIndex.finish();
-
-  // Use spatial index to find candidate pairs, avoiding O(n²) comparisons
-  const testedPairs = new Set<string>();
-  offsettedArray.forEach((firstCurve, firstIndex) => {
-    const [[xMin, yMin], [xMax, yMax]] = firstCurve.boundingBox.bounds;
-    const candidates = spatialIndex.search(xMin, yMin, xMax, yMax);
-
-    for (const secondIndex of candidates) {
-      // Only test pairs where secondIndex > firstIndex to avoid duplicates
-      if (secondIndex <= firstIndex) continue;
-
-      // Avoid testing the same pair twice
-      const pairKey = `${firstIndex}-${secondIndex}`;
-      if (testedPairs.has(pairKey)) continue;
-      testedPairs.add(pairKey);
-
-      const secondCurve = safeIndex(offsettedArray, secondIndex, 'offsetBlueprint');
-
-      const { intersections: rawIntersections, commonSegmentsPoints } = unwrap(
-        intersectCurves(firstCurve, secondCurve, PRECISION_OFFSET)
-      );
-
-      const intersections = [...rawIntersections, ...commonSegmentsPoints].filter(
-        (intersection) => {
-          const onFirstCurveExtremity =
-            samePoint(intersection, firstCurve.firstPoint) ||
-            samePoint(intersection, firstCurve.lastPoint);
-
-          const onSecondCurveExtremity =
-            samePoint(intersection, secondCurve.firstPoint) ||
-            samePoint(intersection, secondCurve.lastPoint);
-
-          return !(onFirstCurveExtremity && onSecondCurveExtremity);
-        }
-      );
-
-      if (!intersections.length) continue;
-
-      updateIntersections(firstIndex, intersections);
-      updateIntersections(secondIndex, intersections);
-    }
-  });
+  const allIntersections = findSelfIntersections(offsettedArray);
 
   if (!allIntersections.size) {
     const offsettedBlueprint = new Blueprint(offsettedArray);

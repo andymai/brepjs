@@ -179,6 +179,8 @@
     "bench:compare": "BENCH_KERNELS=both vitest run --config vitest.bench.config.ts",
     "bench:json": "BENCH_KERNELS=both BENCH_OUTPUT_JSON=1 vitest run --config vitest.bench.config.ts",
     "check:boundaries:staged": "bash scripts/check-layer-boundaries.sh --staged",
+    "check:patterns": "npx tsx scripts/check-patterns.ts",
+    "check:patterns:baseline": "npx tsx scripts/check-patterns.ts --update-baseline",
     "check:readme-reminders": "bash scripts/check-readme-reminders.sh",
     "knip": "knip",
     "validate": "bash scripts/validate-change.sh",

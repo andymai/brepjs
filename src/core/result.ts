@@ -269,7 +269,7 @@ export function pipeline<T, E = BrepError>(input: T | Result<T, E>): ResultPipel
   function makePipeline<U>(current: Result<U, E>): ResultPipeline<U, E> {
     return {
       then<V>(fn: (value: U) => Result<V, E>): ResultPipeline<V, E> {
-        if (!current.ok) return makePipeline(current as unknown as Result<V, E>);
+        if (!current.ok) return makePipeline(current as Result<V, E>);
         return makePipeline(fn(current.value));
       },
       get result(): Result<U, E> {

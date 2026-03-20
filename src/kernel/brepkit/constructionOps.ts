@@ -200,6 +200,33 @@ export function makeCircleArc(
   return makeCircleNurbs(bk, center, normal, radius, startAngle, endAngle);
 }
 
+/**
+ * Compute the circumscribed circle center of three 2D points.
+ * Returns `null` when the points are (nearly) collinear and no unique circle exists.
+ */
+export function computeCircumcircleCenter2D(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number
+): [number, number] | null {
+  const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
+  if (Math.abs(d) < 1e-12) return null;
+  const ccx =
+    ((ax ** 2 + ay ** 2) * (by - cy) +
+      (bx ** 2 + by ** 2) * (cy - ay) +
+      (cx ** 2 + cy ** 2) * (ay - by)) /
+    d;
+  const ccy =
+    ((ax ** 2 + ay ** 2) * (cx - bx) +
+      (bx ** 2 + by ** 2) * (ax - cx) +
+      (cx ** 2 + cy ** 2) * (bx - ax)) /
+    d;
+  return [ccx, ccy];
+}
+
 export function makeArcEdge(
   bk: BrepkitKernel,
   p1: [number, number, number],
@@ -237,20 +264,9 @@ export function makeArcEdge(
   const [bx2, by2] = proj(p2);
   const [cx2, cy2] = proj(p3);
 
-  const d = 2 * (ax2 * (by2 - cy2) + bx2 * (cy2 - ay2) + cx2 * (ay2 - by2));
-  if (Math.abs(d) < 1e-12) {
-    return makeLineEdge(bk, p1, p3);
-  }
-  const ccx =
-    ((ax2 ** 2 + ay2 ** 2) * (by2 - cy2) +
-      (bx2 ** 2 + by2 ** 2) * (cy2 - ay2) +
-      (cx2 ** 2 + cy2 ** 2) * (ay2 - by2)) /
-    d;
-  const ccy =
-    ((ax2 ** 2 + ay2 ** 2) * (cx2 - bx2) +
-      (bx2 ** 2 + by2 ** 2) * (ax2 - cx2) +
-      (cx2 ** 2 + cy2 ** 2) * (bx2 - ax2)) /
-    d;
+  const cc = computeCircumcircleCenter2D(ax2, ay2, bx2, by2, cx2, cy2);
+  if (!cc) return makeLineEdge(bk, p1, p3);
+  const [ccx, ccy] = cc;
 
   const center: [number, number, number] = [
     p1[0] + ccx * ux[0] + ccy * uy[0],

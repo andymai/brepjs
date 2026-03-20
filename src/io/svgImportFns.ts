@@ -52,12 +52,336 @@ function tokenizeSVGPath(d: string): PathToken[] {
 }
 
 // ---------------------------------------------------------------------------
-// SVG path to curves
+// SVG path to curves — cursor state & command handlers
 // ---------------------------------------------------------------------------
 
 function flipY(p: Point2D): Point2D {
   return [p[0], -p[1]];
 }
+
+/** Mutable cursor state threaded through SVG path command handlers. */
+interface PathCursor {
+  cx: number;
+  cy: number;
+  sx: number; // subpath start
+  sy: number;
+  prevControlX: number;
+  prevControlY: number;
+  lastCmd: string;
+}
+
+function handleMoveTo(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  let i = 0;
+  while (i < args.length) {
+    const x = (isRelative ? cursor.cx : 0) + (args[i] ?? 0);
+    const y = (isRelative ? cursor.cy : 0) + (args[i + 1] ?? 0);
+    if (i === 0) {
+      cursor.sx = x;
+      cursor.sy = y;
+    } else {
+      // Implicit L after first pair
+      curves.push(make2dSegmentCurve(flipY([cursor.cx, cursor.cy]), flipY([x, y])));
+    }
+    cursor.cx = x;
+    cursor.cy = y;
+    i += 2;
+  }
+}
+
+function handleLineTo(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  let i = 0;
+  while (i < args.length) {
+    const x = (isRelative ? cursor.cx : 0) + (args[i] ?? 0);
+    const y = (isRelative ? cursor.cy : 0) + (args[i + 1] ?? 0);
+    curves.push(make2dSegmentCurve(flipY([cursor.cx, cursor.cy]), flipY([x, y])));
+    cursor.cx = x;
+    cursor.cy = y;
+    i += 2;
+  }
+}
+
+function handleHorizontalLineTo(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  for (const arg of args) {
+    const x = isRelative ? cursor.cx + arg : arg;
+    curves.push(make2dSegmentCurve(flipY([cursor.cx, cursor.cy]), flipY([x, cursor.cy])));
+    cursor.cx = x;
+  }
+}
+
+function handleVerticalLineTo(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  for (const arg of args) {
+    const y = isRelative ? cursor.cy + arg : arg;
+    curves.push(make2dSegmentCurve(flipY([cursor.cx, cursor.cy]), flipY([cursor.cx, y])));
+    cursor.cy = y;
+  }
+}
+
+function handleCubicBezier(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  let i = 0;
+  while (i + 5 < args.length) {
+    const ox = isRelative ? cursor.cx : 0;
+    const oy = isRelative ? cursor.cy : 0;
+    const cp1x = ox + (args[i] ?? 0);
+    const cp1y = oy + (args[i + 1] ?? 0);
+    const cp2x = ox + (args[i + 2] ?? 0);
+    const cp2y = oy + (args[i + 3] ?? 0);
+    const x = ox + (args[i + 4] ?? 0);
+    const y = oy + (args[i + 5] ?? 0);
+
+    curves.push(
+      make2dBezierCurve(
+        flipY([cursor.cx, cursor.cy]),
+        [flipY([cp1x, cp1y]), flipY([cp2x, cp2y])],
+        flipY([x, y])
+      )
+    );
+
+    cursor.prevControlX = cp2x;
+    cursor.prevControlY = cp2y;
+    cursor.cx = x;
+    cursor.cy = y;
+    i += 6;
+  }
+}
+
+function handleSmoothCubicBezier(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  let i = 0;
+  while (i + 3 < args.length) {
+    const ox = isRelative ? cursor.cx : 0;
+    const oy = isRelative ? cursor.cy : 0;
+    // Reflect last control point
+    const prev = cursor.lastCmd;
+    const cp1x = prev === 'C' || prev === 'S' ? 2 * cursor.cx - cursor.prevControlX : cursor.cx;
+    const cp1y = prev === 'C' || prev === 'S' ? 2 * cursor.cy - cursor.prevControlY : cursor.cy;
+    const cp2x = ox + (args[i] ?? 0);
+    const cp2y = oy + (args[i + 1] ?? 0);
+    const x = ox + (args[i + 2] ?? 0);
+    const y = oy + (args[i + 3] ?? 0);
+
+    curves.push(
+      make2dBezierCurve(
+        flipY([cursor.cx, cursor.cy]),
+        [flipY([cp1x, cp1y]), flipY([cp2x, cp2y])],
+        flipY([x, y])
+      )
+    );
+
+    cursor.prevControlX = cp2x;
+    cursor.prevControlY = cp2y;
+    cursor.cx = x;
+    cursor.cy = y;
+    cursor.lastCmd = 'S';
+    i += 4;
+  }
+}
+
+function handleQuadraticBezier(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  let i = 0;
+  while (i + 3 < args.length) {
+    const ox = isRelative ? cursor.cx : 0;
+    const oy = isRelative ? cursor.cy : 0;
+    const cpx = ox + (args[i] ?? 0);
+    const cpy = oy + (args[i + 1] ?? 0);
+    const x = ox + (args[i + 2] ?? 0);
+    const y = oy + (args[i + 3] ?? 0);
+
+    curves.push(
+      make2dBezierCurve(flipY([cursor.cx, cursor.cy]), [flipY([cpx, cpy])], flipY([x, y]))
+    );
+
+    cursor.prevControlX = cpx;
+    cursor.prevControlY = cpy;
+    cursor.cx = x;
+    cursor.cy = y;
+    i += 4;
+  }
+}
+
+function handleSmoothQuadraticBezier(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  let i = 0;
+  while (i + 1 < args.length) {
+    const ox = isRelative ? cursor.cx : 0;
+    const oy = isRelative ? cursor.cy : 0;
+    const prev = cursor.lastCmd;
+    const cpx = prev === 'Q' || prev === 'T' ? 2 * cursor.cx - cursor.prevControlX : cursor.cx;
+    const cpy = prev === 'Q' || prev === 'T' ? 2 * cursor.cy - cursor.prevControlY : cursor.cy;
+    const x = ox + (args[i] ?? 0);
+    const y = oy + (args[i + 1] ?? 0);
+
+    curves.push(
+      make2dBezierCurve(flipY([cursor.cx, cursor.cy]), [flipY([cpx, cpy])], flipY([x, y]))
+    );
+
+    cursor.prevControlX = cpx;
+    cursor.prevControlY = cpy;
+    cursor.cx = x;
+    cursor.cy = y;
+    cursor.lastCmd = 'T';
+    i += 2;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Arc command helpers
+// ---------------------------------------------------------------------------
+
+/** Create two semi-arcs for a full-circle arc (coincident endpoints). */
+function createFullCircleArcs(
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  sweepFlag: boolean
+): Curve2D[] {
+  const r = Math.max(rx, ry);
+  const s = sweepFlag ? 1 : -1;
+  // Center is r above/below start; opposite point is r further
+  const oppositeY = cy + 2 * s * r;
+  // Semi-arc midpoints sit at 90° offsets from the circle center
+  const semi1Mid: [number, number] = [cx - s * r, cy + s * r];
+  const semi2Mid: [number, number] = [cx + s * r, cy + s * r];
+
+  try {
+    return [
+      make2dThreePointArc(flipY([cx, cy]), flipY(semi1Mid), flipY([cx, oppositeY])),
+      make2dThreePointArc(flipY([cx, oppositeY]), flipY(semi2Mid), flipY([cx, cy])),
+    ];
+  } catch {
+    // If arc construction fails, skip (degenerate circle)
+    return [];
+  }
+}
+
+/** Create a standard (non-full-circle) three-point arc approximation. */
+function createStandardArc(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  rx: number,
+  ry: number,
+  largeArc: boolean,
+  sweepFlag: boolean
+): Curve2D[] {
+  const midParam = 0.5;
+  const midX = fromX + midParam * (toX - fromX);
+  const midY = fromY + midParam * (toY - fromY);
+
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  const r = Math.max(rx, ry);
+  const halfChord = dist / 2;
+  const sagitta = halfChord < r ? r - Math.sqrt(r * r - halfChord * halfChord) : r;
+
+  const sign = (largeArc !== sweepFlag ? 1 : -1) * (sweepFlag ? 1 : -1);
+  const nx = -dy / dist;
+  const ny = dx / dist;
+  const arcMidX = midX + sign * sagitta * nx;
+  const arcMidY = midY + sign * sagitta * ny;
+
+  try {
+    return [
+      make2dThreePointArc(flipY([fromX, fromY]), flipY([arcMidX, arcMidY]), flipY([toX, toY])),
+    ];
+  } catch {
+    // Fallback to line if arc construction fails
+    return [make2dSegmentCurve(flipY([fromX, fromY]), flipY([toX, toY]))];
+  }
+}
+
+function handleArc(
+  args: number[],
+  cursor: PathCursor,
+  isRelative: boolean,
+  curves: Curve2D[]
+): void {
+  let i = 0;
+  while (i + 6 < args.length) {
+    const ox = isRelative ? cursor.cx : 0;
+    const oy = isRelative ? cursor.cy : 0;
+    const rx = Math.abs(args[i] ?? 0);
+    const ry = Math.abs(args[i + 1] ?? 0);
+    // args[i+2] is rotation, args[i+3] is large-arc, args[i+4] is sweep
+    const largeArc = (args[i + 3] ?? 0) !== 0;
+    const sweepFlag = (args[i + 4] ?? 0) !== 0;
+    const x = ox + (args[i + 5] ?? 0);
+    const y = oy + (args[i + 6] ?? 0);
+
+    if (rx === 0 || ry === 0) {
+      // Degenerate arc -> line
+      curves.push(make2dSegmentCurve(flipY([cursor.cx, cursor.cy]), flipY([x, y])));
+    } else {
+      const dx = x - cursor.cx;
+      const dy = y - cursor.cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < 1e-10) {
+        // Coincident endpoints (full-circle arc)
+        curves.push(...createFullCircleArcs(cursor.cx, cursor.cy, rx, ry, sweepFlag));
+      } else {
+        curves.push(...createStandardArc(cursor.cx, cursor.cy, x, y, rx, ry, largeArc, sweepFlag));
+      }
+    }
+
+    cursor.cx = x;
+    cursor.cy = y;
+    i += 7;
+  }
+}
+
+function handleClosePath(cursor: PathCursor, curves: Curve2D[]): void {
+  if (cursor.cx !== cursor.sx || cursor.cy !== cursor.sy) {
+    curves.push(make2dSegmentCurve(flipY([cursor.cx, cursor.cy]), flipY([cursor.sx, cursor.sy])));
+  }
+  cursor.cx = cursor.sx;
+  cursor.cy = cursor.sy;
+}
+
+// ---------------------------------------------------------------------------
+// SVG path to curves — dispatcher
+// ---------------------------------------------------------------------------
 
 /**
  * Parse SVG path data string into an array of Curve2D.
@@ -65,282 +389,55 @@ function flipY(p: Point2D): Point2D {
 function parseSVGPathToCurves(d: string): Curve2D[] {
   const tokens = tokenizeSVGPath(d);
   const curves: Curve2D[] = [];
-
-  let cx = 0;
-  let cy = 0; // current point
-  let sx = 0;
-  let sy = 0; // subpath start
-  let lastCpx = 0;
-  let lastCpy = 0; // last control point for S/T
-  let lastCmd = '';
+  const cursor: PathCursor = {
+    cx: 0,
+    cy: 0,
+    sx: 0,
+    sy: 0,
+    prevControlX: 0,
+    prevControlY: 0,
+    lastCmd: '',
+  };
 
   for (const { command, args } of tokens) {
     const isRelative = command === command.toLowerCase();
     const cmd = command.toUpperCase();
 
     switch (cmd) {
-      case 'M': {
-        // Move to
-        let i = 0;
-        while (i < args.length) {
-          const x = (isRelative ? cx : 0) + (args[i] ?? 0);
-          const y = (isRelative ? cy : 0) + (args[i + 1] ?? 0);
-          if (i === 0) {
-            sx = x;
-            sy = y;
-          } else {
-            // Implicit L after first pair
-            const from = flipY([cx, cy]);
-            const to = flipY([x, y]);
-            curves.push(make2dSegmentCurve(from, to));
-          }
-          cx = x;
-          cy = y;
-          i += 2;
-        }
+      case 'M':
+        handleMoveTo(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'L': {
-        let i = 0;
-        while (i < args.length) {
-          const x = (isRelative ? cx : 0) + (args[i] ?? 0);
-          const y = (isRelative ? cy : 0) + (args[i + 1] ?? 0);
-          const from = flipY([cx, cy]);
-          const to = flipY([x, y]);
-          curves.push(make2dSegmentCurve(from, to));
-          cx = x;
-          cy = y;
-          i += 2;
-        }
+      case 'L':
+        handleLineTo(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'H': {
-        for (const arg of args) {
-          const x = isRelative ? cx + arg : arg;
-          const from = flipY([cx, cy]);
-          const to = flipY([x, cy]);
-          curves.push(make2dSegmentCurve(from, to));
-          cx = x;
-        }
+      case 'H':
+        handleHorizontalLineTo(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'V': {
-        for (const arg of args) {
-          const y = isRelative ? cy + arg : arg;
-          const from = flipY([cx, cy]);
-          const to = flipY([cx, y]);
-          curves.push(make2dSegmentCurve(from, to));
-          cy = y;
-        }
+      case 'V':
+        handleVerticalLineTo(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'C': {
-        // Cubic bezier
-        let i = 0;
-        while (i + 5 < args.length) {
-          const ox = isRelative ? cx : 0;
-          const oy = isRelative ? cy : 0;
-          const cp1x = ox + (args[i] ?? 0);
-          const cp1y = oy + (args[i + 1] ?? 0);
-          const cp2x = ox + (args[i + 2] ?? 0);
-          const cp2y = oy + (args[i + 3] ?? 0);
-          const x = ox + (args[i + 4] ?? 0);
-          const y = oy + (args[i + 5] ?? 0);
-
-          curves.push(
-            make2dBezierCurve(
-              flipY([cx, cy]),
-              [flipY([cp1x, cp1y]), flipY([cp2x, cp2y])],
-              flipY([x, y])
-            )
-          );
-
-          lastCpx = cp2x;
-          lastCpy = cp2y;
-          cx = x;
-          cy = y;
-          i += 6;
-        }
+      case 'C':
+        handleCubicBezier(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'S': {
-        // Smooth cubic bezier
-        let i = 0;
-        while (i + 3 < args.length) {
-          const ox = isRelative ? cx : 0;
-          const oy = isRelative ? cy : 0;
-          // Reflect last control point
-          const cp1x = lastCmd === 'C' || lastCmd === 'S' ? 2 * cx - lastCpx : cx;
-          const cp1y = lastCmd === 'C' || lastCmd === 'S' ? 2 * cy - lastCpy : cy;
-          const cp2x = ox + (args[i] ?? 0);
-          const cp2y = oy + (args[i + 1] ?? 0);
-          const x = ox + (args[i + 2] ?? 0);
-          const y = oy + (args[i + 3] ?? 0);
-
-          curves.push(
-            make2dBezierCurve(
-              flipY([cx, cy]),
-              [flipY([cp1x, cp1y]), flipY([cp2x, cp2y])],
-              flipY([x, y])
-            )
-          );
-
-          lastCpx = cp2x;
-          lastCpy = cp2y;
-          cx = x;
-          cy = y;
-          lastCmd = 'S';
-          i += 4;
-        }
+      case 'S':
+        handleSmoothCubicBezier(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'Q': {
-        // Quadratic bezier
-        let i = 0;
-        while (i + 3 < args.length) {
-          const ox = isRelative ? cx : 0;
-          const oy = isRelative ? cy : 0;
-          const cpx = ox + (args[i] ?? 0);
-          const cpy = oy + (args[i + 1] ?? 0);
-          const x = ox + (args[i + 2] ?? 0);
-          const y = oy + (args[i + 3] ?? 0);
-
-          curves.push(make2dBezierCurve(flipY([cx, cy]), [flipY([cpx, cpy])], flipY([x, y])));
-
-          lastCpx = cpx;
-          lastCpy = cpy;
-          cx = x;
-          cy = y;
-          i += 4;
-        }
+      case 'Q':
+        handleQuadraticBezier(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'T': {
-        // Smooth quadratic bezier
-        let i = 0;
-        while (i + 1 < args.length) {
-          const ox = isRelative ? cx : 0;
-          const oy = isRelative ? cy : 0;
-          const cpx = lastCmd === 'Q' || lastCmd === 'T' ? 2 * cx - lastCpx : cx;
-          const cpy = lastCmd === 'Q' || lastCmd === 'T' ? 2 * cy - lastCpy : cy;
-          const x = ox + (args[i] ?? 0);
-          const y = oy + (args[i + 1] ?? 0);
-
-          curves.push(make2dBezierCurve(flipY([cx, cy]), [flipY([cpx, cpy])], flipY([x, y])));
-
-          lastCpx = cpx;
-          lastCpy = cpy;
-          cx = x;
-          cy = y;
-          lastCmd = 'T';
-          i += 2;
-        }
+      case 'T':
+        handleSmoothQuadraticBezier(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'A': {
-        // Elliptical arc — approximate with three-point arc
-        let i = 0;
-        while (i + 6 < args.length) {
-          const ox = isRelative ? cx : 0;
-          const oy = isRelative ? cy : 0;
-          const rx = Math.abs(args[i] ?? 0);
-          const ry = Math.abs(args[i + 1] ?? 0);
-          // args[i+2] is rotation, args[i+3] is large-arc, args[i+4] is sweep
-          const largeArc = (args[i + 3] ?? 0) !== 0;
-          const sweepFlag = (args[i + 4] ?? 0) !== 0;
-          const x = ox + (args[i + 5] ?? 0);
-          const y = oy + (args[i + 6] ?? 0);
-
-          if (rx === 0 || ry === 0) {
-            // Degenerate arc → line
-            curves.push(make2dSegmentCurve(flipY([cx, cy]), flipY([x, y])));
-          } else {
-            // Use midpoint arc approximation via three-point arc
-            const midParam = 0.5;
-            const midX = cx + midParam * (x - cx);
-            const midY = cy + midParam * (y - cy);
-
-            // Compute perpendicular offset for arc bulge
-            const dx = x - cx;
-            const dy = y - cy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < 1e-10) {
-              // Coincident endpoints (full-circle arc) — split into two semi-arcs.
-              // A three-point arc cannot represent a full circle, so we create two
-              // 180° arcs via perpendicular midpoints on opposite sides of the center.
-              const r = Math.max(rx, ry);
-              const s = sweepFlag ? 1 : -1;
-              // Center is r above/below start; opposite point is r further
-              const oppositeY = cy + 2 * s * r;
-              // Semi-arc midpoints sit at 90° offsets from the circle center
-              const semi1Mid: [number, number] = [cx - s * r, cy + s * r];
-              const semi2Mid: [number, number] = [cx + s * r, cy + s * r];
-
-              try {
-                curves.push(
-                  make2dThreePointArc(flipY([cx, cy]), flipY(semi1Mid), flipY([cx, oppositeY]))
-                );
-                curves.push(
-                  make2dThreePointArc(flipY([cx, oppositeY]), flipY(semi2Mid), flipY([cx, cy]))
-                );
-              } catch {
-                // If arc construction fails, skip (degenerate circle)
-              }
-              cx = x;
-              cy = y;
-              i += 7;
-              continue;
-            }
-
-            const r = Math.max(rx, ry);
-            const halfChord = dist / 2;
-            const sagitta = halfChord < r ? r - Math.sqrt(r * r - halfChord * halfChord) : r;
-
-            const sign = (largeArc !== sweepFlag ? 1 : -1) * (sweepFlag ? 1 : -1);
-            const nx = -dy / dist;
-            const ny = dx / dist;
-            const arcMidX = midX + sign * sagitta * nx;
-            const arcMidY = midY + sign * sagitta * ny;
-
-            try {
-              curves.push(
-                make2dThreePointArc(flipY([cx, cy]), flipY([arcMidX, arcMidY]), flipY([x, y]))
-              );
-            } catch {
-              // Fallback to line if arc construction fails
-              curves.push(make2dSegmentCurve(flipY([cx, cy]), flipY([x, y])));
-            }
-          }
-
-          cx = x;
-          cy = y;
-          i += 7;
-        }
+      case 'A':
+        handleArc(args, cursor, isRelative, curves);
         break;
-      }
-
-      case 'Z': {
-        // Close path
-        if (cx !== sx || cy !== sy) {
-          curves.push(make2dSegmentCurve(flipY([cx, cy]), flipY([sx, sy])));
-        }
-        cx = sx;
-        cy = sy;
+      case 'Z':
+        handleClosePath(cursor, curves);
         break;
-      }
     }
 
     if (cmd !== 'S' && cmd !== 'T') {
-      lastCmd = cmd;
+      cursor.lastCmd = cmd;
     }
   }
 

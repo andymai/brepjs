@@ -58,6 +58,39 @@ export interface ShapeFinder<T extends AnyShape<Dimension>> {
 }
 
 // ---------------------------------------------------------------------------
+// findUnique helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Find exactly one element matching all predicates. Returns an error Result
+ * if zero or more than one element matches.
+ */
+function findUniqueIn<T extends AnyShape<Dimension>>(
+  elements: T[],
+  shouldKeep: (el: T) => boolean
+): Result<T> {
+  let match: T | undefined;
+  let count = 0;
+  for (let i = 0; i < elements.length; i++) {
+    const element = elements[i] as T; // noUncheckedIndexedAccess: i < length guarantees defined
+    if (shouldKeep(element)) {
+      count++;
+      if (count === 1) match = element;
+      else break; // More than 1 match — no need to continue
+    }
+  }
+  if (count !== 1) {
+    return err(
+      queryError(
+        'FINDER_NOT_UNIQUE',
+        `Finder expected a unique match but found ${count === 0 ? 0 : '2+'} element(s)`
+      )
+    );
+  }
+  return ok(match as T);
+}
+
+// ---------------------------------------------------------------------------
 // Generic typed-finder factory
 // ---------------------------------------------------------------------------
 
@@ -140,30 +173,7 @@ export function createTypedFinder<T extends AnyShape<Dimension>, F extends Shape
 
     findAll: (shape) => extractElements(shape),
 
-    findUnique: (shape) => {
-      // Use cached topology — early termination only saves JS filtering,
-      // since iterShapes already materializes all shapes in one WASM call.
-      const all = getCachedElements(shape);
-      let match: T | undefined;
-      let count = 0;
-      for (let i = 0; i < all.length; i++) {
-        const element = all[i] as T; // noUncheckedIndexedAccess: i < all.length guarantees defined
-        if (shouldKeep(element)) {
-          count++;
-          if (count === 1) match = element;
-          else break; // More than 1 match — no need to continue
-        }
-      }
-      if (count !== 1) {
-        return err(
-          queryError(
-            'FINDER_NOT_UNIQUE',
-            `Finder expected a unique match but found ${count === 0 ? 0 : '2+'} element(s)`
-          )
-        );
-      }
-      return ok(match as T);
-    },
+    findUnique: (shape) => findUniqueIn(getCachedElements(shape), shouldKeep),
 
     shouldKeep,
 

@@ -311,7 +311,7 @@ export const DEFAULT_SEGMENTS = 32;
  * Counter for synthetic compound IDs (non-solid compounds stored JS-side).
  * Starts high to avoid colliding with WASM arena indices.
  */
-export let syntheticCompoundCounter = 900_000;
+let syntheticCompoundCounter = 900_000;
 
 /** Increment and return the synthetic compound counter. */
 export function nextSyntheticId(): number {

@@ -89,6 +89,43 @@ export function propagateOriginsFromEvolution(
 }
 
 // ---------------------------------------------------------------------------
+// Geometric matching helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Find the best origin match for a result face by comparing normals and centroids
+ * against input face signatures. Returns `undefined` if no good match exists.
+ */
+function findBestOriginMatch(
+  outNormal: readonly [number, number, number],
+  outCentroid: readonly [number, number, number],
+  inputSigs: ReadonlyArray<{
+    normal: readonly [number, number, number];
+    centroid: readonly [number, number, number];
+    origin: number;
+  }>
+): number | undefined {
+  let bestScore = -Infinity;
+  let bestOrigin: number | undefined;
+  for (const inp of inputSigs) {
+    const dot =
+      outNormal[0] * inp.normal[0] + outNormal[1] * inp.normal[1] + outNormal[2] * inp.normal[2];
+    if (dot < 0.707) continue;
+    const dx = outCentroid[0] - inp.centroid[0];
+    const dy = outCentroid[1] - inp.centroid[1];
+    const dz = outCentroid[2] - inp.centroid[2];
+    const distSq = dx * dx + dy * dy + dz * dz;
+    if (distSq > 100) continue;
+    const score = dot - distSq / 100;
+    if (score > bestScore) {
+      bestScore = score;
+      bestOrigin = inp.origin;
+    }
+  }
+  return bestOrigin;
+}
+
+// ---------------------------------------------------------------------------
 // Origin propagation by hash (fallback)
 // ---------------------------------------------------------------------------
 
@@ -168,25 +205,7 @@ export function propagateOriginsByHash(
           );
           const outCentroid = kernel.surfaceCenterOfMass(f.wrapped);
 
-          let bestScore = -Infinity;
-          let bestOrigin: number | undefined;
-          for (const inp of inputSigs) {
-            const dot =
-              outNormal[0] * inp.normal[0] +
-              outNormal[1] * inp.normal[1] +
-              outNormal[2] * inp.normal[2];
-            if (dot < 0.707) continue;
-            const dx = outCentroid[0] - inp.centroid[0];
-            const dy = outCentroid[1] - inp.centroid[1];
-            const dz = outCentroid[2] - inp.centroid[2];
-            const distSq = dx * dx + dy * dy + dz * dz;
-            if (distSq > 100) continue;
-            const score = dot - distSq / 100;
-            if (score > bestScore) {
-              bestScore = score;
-              bestOrigin = inp.origin;
-            }
-          }
+          const bestOrigin = findBestOriginMatch(outNormal, outCentroid, inputSigs);
           if (bestOrigin !== undefined) {
             resultMap.set(hash, bestOrigin);
           }

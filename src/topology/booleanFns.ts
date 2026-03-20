@@ -8,8 +8,10 @@ import type {
   AnyShape,
   ClosedWire,
   Dimension,
+  Edge,
   OrientedFace,
   Shape3D,
+  Vertex,
   Wire,
 } from '@/core/shapeTypes.js';
 import { castShape, isShape3D } from '@/core/shapeTypes.js';
@@ -472,6 +474,144 @@ export function section(
   }
 }
 
+// ---------------------------------------------------------------------------
+// sectionToFace helpers
+// ---------------------------------------------------------------------------
+
+type EdgeD = Edge<Dimension>;
+type VertexD = Vertex<Dimension>;
+
+/** Adjacency data for O(n) wire assembly from loose edges. */
+interface EdgeAdjacency {
+  readonly vertexToEdges: Map<number, EdgeD[]>;
+  readonly edgeVertexHashes: Map<EdgeD, [number, number]>;
+}
+
+/**
+ * Build vertex-hash → edge adjacency map for O(n) wire assembly.
+ * Each edge maps to its two vertex hashes; each hash maps to the edges sharing that vertex.
+ */
+function buildEdgeAdjacency(edges: EdgeD[]): EdgeAdjacency {
+  const kernel = getKernel();
+  const vertexToEdges = new Map<number, EdgeD[]>();
+  const edgeVertexHashes = new Map<EdgeD, [number, number]>();
+
+  for (const edge of edges) {
+    const verts: VertexD[] = getVertices(edge);
+    const h0 = verts[0] ? kernel.hashCode(verts[0].wrapped, HASH_CODE_MAX) : -1;
+    const h1 = verts.length > 1 && verts[1] ? kernel.hashCode(verts[1].wrapped, HASH_CODE_MAX) : h0;
+    edgeVertexHashes.set(edge, [h0, h1]);
+    for (const h of [h0, h1]) {
+      const bucket = vertexToEdges.get(h) ?? [];
+      bucket.push(edge);
+      vertexToEdges.set(h, bucket);
+    }
+  }
+
+  return { vertexToEdges, edgeVertexHashes };
+}
+
+/**
+ * Find the first unvisited adjacent edge reachable from `tip` in the adjacency map.
+ * Returns the matched edge and the new tip hash, or undefined if no match.
+ */
+function findNextEdge(
+  tip: number,
+  adjacency: EdgeAdjacency,
+  visited: Set<EdgeD>
+): { edge: EdgeD; nextTip: number } | undefined {
+  const bucket = adjacency.vertexToEdges.get(tip);
+  if (!bucket) return undefined;
+  for (const candidate of bucket) {
+    if (visited.has(candidate)) continue;
+    const ch = adjacency.edgeVertexHashes.get(candidate);
+    if (!ch) continue;
+    visited.add(candidate);
+    const nextTip = ch[0] === tip ? ch[1] : ch[0];
+    return { edge: candidate, nextTip };
+  }
+  return undefined;
+}
+
+/**
+ * Walk a connected chain of edges starting from `startEdge` in both directions.
+ * Marks all traversed edges as visited. Returns the ordered edge chain.
+ */
+function walkEdgeChain(startEdge: EdgeD, adjacency: EdgeAdjacency, visited: Set<EdgeD>): EdgeD[] {
+  visited.add(startEdge);
+  const wireEdges = [startEdge];
+  const hashes = adjacency.edgeVertexHashes.get(startEdge);
+  if (!hashes) return wireEdges;
+
+  // Walk forward from hashes[1], then backward from hashes[0]
+  const endpoints = [hashes[1], hashes[0]] as const;
+  for (let dir = 0; dir < 2; dir++) {
+    let tip = endpoints[dir];
+    if (tip === undefined) continue;
+    let match = findNextEdge(tip, adjacency, visited);
+    while (match) {
+      if (dir === 0) wireEdges.push(match.edge);
+      else wireEdges.unshift(match.edge);
+      tip = match.nextTip;
+      match = findNextEdge(tip, adjacency, visited);
+    }
+  }
+
+  return wireEdges;
+}
+
+/**
+ * Assemble loose section edges into wires via vertex-hash adjacency.
+ * Walks connected components and builds kernel wires from each chain.
+ */
+function assembleWiresFromEdges(edges: EdgeD[]): Wire[] {
+  const kernel = getKernel();
+  const adjacency = buildEdgeAdjacency(edges);
+  const visited = new Set<EdgeD>();
+  const wires: Wire[] = [];
+
+  for (const startEdge of edges) {
+    if (visited.has(startEdge)) continue;
+    const wireEdges = walkEdgeChain(startEdge, adjacency, visited);
+    try {
+      const wireOc = kernel.makeWire(wireEdges.map((e) => e.wrapped));
+      wires.push(castShape(wireOc) as Wire);
+    } catch {
+      // Skip malformed wire components
+    }
+  }
+
+  return wires;
+}
+
+/**
+ * Find the index of the outermost wire (largest bounding-box diagonal).
+ * Works for any plane orientation.
+ */
+function findOuterWireIndex(wires: Wire<Dimension>[]): number {
+  const kernel = getKernel();
+  let outerIdx = 0;
+  let maxDiag = -1;
+  for (let i = 0; i < wires.length; i++) {
+    const w = wires[i];
+    if (!w) continue;
+    const bb = kernel.boundingBox(w.wrapped);
+    const dx = bb.max[0] - bb.min[0];
+    const dy = bb.max[1] - bb.min[1];
+    const dz = bb.max[2] - bb.min[2];
+    const diag = dx * dx + dy * dy + dz * dz;
+    if (diag > maxDiag) {
+      maxDiag = diag;
+      outerIdx = i;
+    }
+  }
+  return outerIdx;
+}
+
+// ---------------------------------------------------------------------------
+// sectionToFace
+// ---------------------------------------------------------------------------
+
 /**
  * Section a shape with a plane and return a filled Face.
  * The outermost wire (largest bounding-box area) becomes the outer boundary;
@@ -500,68 +640,9 @@ export function sectionToFace(
         )
       );
     }
-    const kernel = getKernel();
-
-    // Build vertex-hash -> edge adjacency map for O(n) wire assembly
-    // (replaces the previous O(n^3) probe-builder approach)
-    const vertexToEdges = new Map<number, typeof edges>();
-    const edgeVertexHashes = new Map<(typeof edges)[number], [number, number]>();
-    for (const edge of edges) {
-      const verts = getVertices(edge);
-      const h0 = verts[0] ? getKernel().hashCode(verts[0].wrapped, HASH_CODE_MAX) : -1;
-      const h1 =
-        verts.length > 1 && verts[1] ? getKernel().hashCode(verts[1].wrapped, HASH_CODE_MAX) : h0;
-      edgeVertexHashes.set(edge, [h0, h1]);
-      for (const h of [h0, h1]) {
-        const bucket = vertexToEdges.get(h) ?? [];
-        bucket.push(edge);
-        vertexToEdges.set(h, bucket);
-      }
-    }
-
-    // Walk connected components via adjacency map
-    const visited = new Set<(typeof edges)[number]>();
-    for (const startEdge of edges) {
-      if (visited.has(startEdge)) continue;
-      const wireEdges = [startEdge];
-      visited.add(startEdge);
-
-      // Walk from both endpoints of the growing chain
-      const hashes = edgeVertexHashes.get(startEdge);
-      if (!hashes) continue;
-      const endpoints = [hashes[1], hashes[0]]; // [forward tip, backward tip]
-      for (let dir = 0; dir < 2; dir++) {
-        let tip = endpoints[dir];
-        if (tip === undefined) continue;
-        let found = true;
-        while (found) {
-          found = false;
-          const bucket = vertexToEdges.get(tip);
-          if (!bucket) break;
-          for (const candidate of bucket) {
-            if (visited.has(candidate)) continue;
-            const ch = edgeVertexHashes.get(candidate);
-            if (!ch) continue;
-            visited.add(candidate);
-            if (dir === 0) wireEdges.push(candidate);
-            else wireEdges.unshift(candidate);
-            // Advance tip to the other endpoint of the candidate
-            tip = ch[0] === tip ? ch[1] : ch[0];
-            found = true;
-            break;
-          }
-        }
-      }
-
-      // Build wire from collected edges via kernel
-      try {
-        const wireOc = kernel.makeWire(wireEdges.map((e) => e.wrapped));
-        wires.push(castShape(wireOc) as Wire);
-      } catch {
-        // Skip malformed wire components
-      }
-    }
+    wires.push(...assembleWiresFromEdges(edges));
   }
+
   if (wires.length === 0) {
     return err(
       kernelError(
@@ -574,23 +655,7 @@ export function sectionToFace(
     );
   }
 
-  // Find outermost wire (largest bounding box diagonal — works for any plane orientation)
-  let outerIdx = 0;
-  let maxDiag = -1;
-  for (let i = 0; i < wires.length; i++) {
-    const w = wires[i];
-    if (!w) continue;
-    const bb = getKernel().boundingBox(w.wrapped);
-    const dx = bb.max[0] - bb.min[0];
-    const dy = bb.max[1] - bb.min[1];
-    const dz = bb.max[2] - bb.min[2];
-    const diag = dx * dx + dy * dy + dz * dz;
-    if (diag > maxDiag) {
-      maxDiag = diag;
-      outerIdx = i;
-    }
-  }
-
+  const outerIdx = findOuterWireIndex(wires);
   const outer = getAtOrThrow(wires, outerIdx);
   const holes = wires.filter((_, i) => i !== outerIdx);
   // Section result wires are always closed boundary loops

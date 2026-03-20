@@ -51,6 +51,7 @@ import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import * as bk2d from './brepkit2d.js';
 import type { Curve2dObj, BBox2d as BkBBox2d } from './brepkit2d.js';
+import { computeCircumcircleCenter2D } from './constructionOps.js';
 
 // ---------------------------------------------------------------------------
 // Handle types
@@ -849,20 +850,9 @@ export class BrepkitAdapter implements KernelAdapter {
     const [cx2, cy2] = proj(p3);
 
     // 2D circumscribed circle center
-    const d = 2 * (ax2 * (by2 - cy2) + bx2 * (cy2 - ay2) + cx2 * (ay2 - by2));
-    if (Math.abs(d) < 1e-12) {
-      return this.makeLineEdge(p1, p3);
-    }
-    const ccx =
-      ((ax2 ** 2 + ay2 ** 2) * (by2 - cy2) +
-        (bx2 ** 2 + by2 ** 2) * (cy2 - ay2) +
-        (cx2 ** 2 + cy2 ** 2) * (ay2 - by2)) /
-      d;
-    const ccy =
-      ((ax2 ** 2 + ay2 ** 2) * (cx2 - bx2) +
-        (bx2 ** 2 + by2 ** 2) * (ax2 - cx2) +
-        (cx2 ** 2 + cy2 ** 2) * (bx2 - ax2)) /
-      d;
+    const cc = computeCircumcircleCenter2D(ax2, ay2, bx2, by2, cx2, cy2);
+    if (!cc) return this.makeLineEdge(p1, p3);
+    const [ccx, ccy] = cc;
 
     // Lift 2D center back to 3D
     const center: [number, number, number] = [

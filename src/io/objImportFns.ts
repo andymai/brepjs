@@ -11,6 +11,27 @@ import { type Result, err } from '@/core/result.js';
 import { ioError, BrepErrorCode } from '@/core/errors.js';
 import { sewMeshToSolid } from './ioUtils.js';
 
+// ---------------------------------------------------------------------------
+// Parsing helpers
+// ---------------------------------------------------------------------------
+
+function parseVertexLine(line: string): [number, number, number] | null {
+  const parts = line.split(/\s+/);
+  const x = parseFloat(parts[1] ?? '');
+  const y = parseFloat(parts[2] ?? '');
+  const z = parseFloat(parts[3] ?? '');
+  if (isNaN(x) || isNaN(y) || isNaN(z)) return null;
+  return [x, y, z];
+}
+
+function parseFaceIndices(line: string): number[] {
+  return line
+    .split(/\s+/)
+    .slice(1)
+    .map((p) => parseInt(p.split('/')[0] ?? '', 10))
+    .filter((idx) => !isNaN(idx));
+}
+
 /**
  * Import a Wavefront OBJ file from a Blob.
  *
@@ -36,20 +57,10 @@ export async function importOBJ(blob: Blob): Promise<Result<UnknownDimShape>> {
   for (const raw of lines) {
     const line = raw.trim();
     if (line.startsWith('v ')) {
-      const parts = line.split(/\s+/);
-      const x = parseFloat(parts[1] ?? '');
-      const y = parseFloat(parts[2] ?? '');
-      const z = parseFloat(parts[3] ?? '');
-      if (isNaN(x) || isNaN(y) || isNaN(z)) continue;
-      vertices.push([x, y, z]);
+      const vertex = parseVertexLine(line);
+      if (vertex) vertices.push(vertex);
     } else if (line.startsWith('f ')) {
-      const parts = line.split(/\s+/).slice(1);
-      const indices: number[] = [];
-      for (const p of parts) {
-        // OBJ format: v or v/vt or v/vt/vn or v//vn — extract first number
-        const idx = parseInt(p.split('/')[0] ?? '', 10);
-        if (!isNaN(idx)) indices.push(idx);
-      }
+      const indices = parseFaceIndices(line);
       if (indices.length >= 3) faces.push(indices);
     }
   }

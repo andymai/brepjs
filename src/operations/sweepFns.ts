@@ -268,6 +268,61 @@ export function twistExtrude(
 }
 
 // ---------------------------------------------------------------------------
+// Multi-section sweep — helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate section locations and compute spine parameters for each section.
+ *
+ * Returns an array of spine parameters (one per section) or an error if any
+ * explicit location is out of range or not strictly increasing.
+ */
+function validateSectionLocations(
+  sections: ReadonlyArray<SweepSectionConfig>,
+  spine: Wire<Dimension>,
+  kernel: ReturnType<typeof getKernel>
+): Result<number[]> {
+  const explicitLocations = sections.map((s) => s.location);
+  for (let i = 0; i < explicitLocations.length; i++) {
+    const loc = explicitLocations[i];
+    if (loc !== undefined && (loc < 0 || loc > 1)) {
+      return err(
+        validationError(
+          BrepErrorCode.MULTI_SWEEP_FAILED,
+          `Section ${i} location ${loc} is out of range [0, 1]`
+        )
+      );
+    }
+  }
+  const definedLocs = explicitLocations.filter((l): l is number => l !== undefined);
+  for (let i = 1; i < definedLocs.length; i++) {
+    if ((definedLocs[i] ?? 0) <= (definedLocs[i - 1] ?? 0)) {
+      return err(
+        validationError(
+          BrepErrorCode.MULTI_SWEEP_FAILED,
+          'Section locations must be strictly increasing'
+        )
+      );
+    }
+  }
+
+  // Get spine parameterization
+  const [uFirst, uLast] = kernel.curveParameters(spine.wrapped);
+  const uRange = uLast - uFirst;
+
+  // Compute parameter for each section
+  const params: number[] = sections.map((s, i) => {
+    if (s.location !== undefined) {
+      return uFirst + s.location * uRange;
+    }
+    // Auto-distribute evenly
+    return uFirst + (i / (sections.length - 1)) * uRange;
+  });
+
+  return ok(params);
+}
+
+// ---------------------------------------------------------------------------
 // Multi-section sweep
 // ---------------------------------------------------------------------------
 
@@ -299,46 +354,12 @@ export function multiSectionSweep(
 
   const { solid = true, ruled = false, tolerance = 1e-6 } = options ?? {};
 
-  // Validate explicit locations
-  const explicitLocations = sections.map((s) => s.location);
-  for (let i = 0; i < explicitLocations.length; i++) {
-    const loc = explicitLocations[i];
-    if (loc !== undefined && (loc < 0 || loc > 1)) {
-      return err(
-        validationError(
-          BrepErrorCode.MULTI_SWEEP_FAILED,
-          `Section ${i} location ${loc} is out of range [0, 1]`
-        )
-      );
-    }
-  }
-  const definedLocs = explicitLocations.filter((l): l is number => l !== undefined);
-  for (let i = 1; i < definedLocs.length; i++) {
-    if ((definedLocs[i] ?? 0) <= (definedLocs[i - 1] ?? 0)) {
-      return err(
-        validationError(
-          BrepErrorCode.MULTI_SWEEP_FAILED,
-          'Section locations must be strictly increasing'
-        )
-      );
-    }
-  }
-
   try {
     const kernel = getKernel();
 
-    // Get spine parameterization
-    const [uFirst, uLast] = kernel.curveParameters(spine.wrapped);
-    const uRange = uLast - uFirst;
-
-    // Compute parameter for each section
-    const params: number[] = sections.map((s, i) => {
-      if (s.location !== undefined) {
-        return uFirst + s.location * uRange;
-      }
-      // Auto-distribute evenly
-      return uFirst + (i / (sections.length - 1)) * uRange;
-    });
+    const paramsResult = validateSectionLocations(sections, spine, kernel);
+    if (!paramsResult.ok) return paramsResult;
+    const params = paramsResult.value;
 
     // Position each profile wire along the spine and loft
     const positionedWires: KernelShape[] = [];
