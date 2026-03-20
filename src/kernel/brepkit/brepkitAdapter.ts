@@ -3708,7 +3708,6 @@ export class BrepkitAdapter implements KernelAdapter {
     };
   }
 
-  // makeCircleNurbs — moved to constructionOps.ts
 
   /**
    * Extract NURBS curve data from an edge handle.
@@ -3743,7 +3742,6 @@ export class BrepkitAdapter implements KernelAdapter {
     };
   }
 
-  // makeEllipseNurbs — moved to constructionOps.ts
 
   // ═══════════════════════════════════════════════════════════════════════
   // Constraint sketch solver (brepkit-only capability)

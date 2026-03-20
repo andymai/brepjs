@@ -25,9 +25,8 @@ import {
   c2dBasis,
   bb2d,
 } from './helpers.js';
-import { makeLineEdge, interpolatePoints } from './constructionOps.js';
+import { makeLineEdge, interpolatePoints, makeNonPlanarFace } from './constructionOps.js';
 import { iterShapes } from './topologyOps.js';
-import { makeNonPlanarFace } from './constructionOps.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Primitive 2D geometry constructors
@@ -338,27 +337,7 @@ export function affinityTransform2d(
   dy: number,
   ratio: number
 ): Curve2dHandle {
-  // Affinity: scale the perpendicular component of each point relative to the axis
-  // axis direction (dx,dy), perpendicular (-dy,dx)
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 1e-15) return c2d(curve);
-  const ax = dx / len,
-    ay = dy / len;
-  // Build 2x2 affinity matrix: M = I + (ratio-1) * perp x perp
-  // perp = (-ay, ax)
-  const px = -ay,
-    py = ax;
-  const k = ratio - 1;
-  // M = [[1+k*px*px, k*px*py], [k*py*px, 1+k*py*py]]
-  const m00 = 1 + k * px * px,
-    m01 = k * px * py;
-  const m10 = k * py * px,
-    m11 = 1 + k * py * py;
-  const txOff = ox - m00 * ox - m01 * oy;
-  const tyOff = oy - m10 * ox - m11 * oy;
-  // Apply via GTrsf
-  const gtrsf = { m: [m00, m01, 0, m10, m11, 0, 0, 0, 1], tx: txOff, ty: tyOff };
-  return transformCurve2dGeneral(curve, gtrsf);
+  return transformCurve2dGeneral(curve, createAffinityGTrsf2d(ox, oy, dx, dy, ratio));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -652,8 +631,8 @@ export function approximateCurve2dAsBSpline(
   const bounds = bk2d.curveBounds(c);
 
   // Map continuity to minimum degree
-  const contDeg = cont === 'C0' ? 1 : cont === 'C1' ? 2 : cont === 'C2' ? 3 : 4;
-  const degree = Math.max(3, contDeg);
+  const contDegMap: Record<string, number> = { C0: 1, C1: 2, C2: 3, C3: 4 };
+  const degree = Math.max(3, contDegMap[cont] ?? 4);
 
   // Start with 100 samples, adaptively increase if error exceeds tolerance
   let N = Math.max(100, maxSeg * 10);

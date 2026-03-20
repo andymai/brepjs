@@ -176,7 +176,7 @@ createNamedPlane(
   sourceOrigin: PointInput | number = [0, 0, 0]  // Offset along normal if number
 ): Result<Plane>
 
-resolvePlane(input: PlaneInput, origin?: PointInput | number): Plane
+resolvePlane(input: PlaneInput, origin?: PointInput | number): Result<Plane>
 ```
 
 **Coordinate Transforms:**

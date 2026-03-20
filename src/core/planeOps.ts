@@ -120,9 +120,7 @@ export function createNamedPlane(
  */
 export function resolvePlane(input: PlaneInput, origin?: PointInput | number): Result<Plane> {
   if (typeof input === 'string') {
-    const result = createNamedPlane(input, origin);
-    if (!result.ok) return result;
-    return result;
+    return createNamedPlane(input, origin);
   }
   return ok(input);
 }
