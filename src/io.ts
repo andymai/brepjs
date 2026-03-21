@@ -40,3 +40,9 @@ export {
 } from './io/threemfExportFns.js';
 
 export { importSVGPathD, importSVG, type SVGImportOptions } from './io/svgImportFns.js';
+
+export {
+  exportSTEPConfigured,
+  type StepExportOptions,
+  type StepExportPart,
+} from './io/stepConfigFns.js';

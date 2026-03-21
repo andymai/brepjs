@@ -289,6 +289,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'exportIGES',
   'exportOBJ',
   'exportSTEP',
+  'exportSTEPConfigured',
   'exportSTL',
   'exportThreeMF',
   'extrude',

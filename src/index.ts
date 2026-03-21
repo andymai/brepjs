@@ -211,6 +211,12 @@ export {
 
 export { importSVGPathD, importSVG, type SVGImportOptions } from './io/svgImportFns.js';
 
+export {
+  exportSTEPConfigured,
+  type StepExportOptions,
+  type StepExportPart,
+} from './io/stepConfigFns.js';
+
 // ── Layer 3: sketching ──
 
 export type { default as Sketcher } from './sketching/sketcher.js';
