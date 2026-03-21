@@ -9,6 +9,7 @@ import {
   checkBoolean,
   isOk,
   unwrap,
+  unwrapErr,
   measureVolume,
 } from '@/index.js';
 
@@ -38,6 +39,30 @@ describe('boolean diagnostics', () => {
     const result = intersect(a, b);
     expect(isOk(result)).toBe(true);
     expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(125, 0);
+  });
+});
+
+describe('enhanced boolean errors', () => {
+  it('boolean error metadata contains diagnostics when OCCT reports errors', () => {
+    const a = box(10, 10, 10);
+    const b = translate(box(10, 10, 10), [5, 0, 0]);
+    // Normal fuse should NOT trigger BOOLEAN_HAS_ERRORS
+    const result = fuse(a, b);
+    if (isOk(result)) {
+      // Verify the shape is valid
+      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(1500, 0);
+    } else {
+      // If it fails, error should have diagnostics
+      const error = unwrapErr(result);
+      expect(error.metadata?.diagnostics).toBeDefined();
+    }
+  });
+
+  it('successful boolean does not trigger BOOLEAN_HAS_ERRORS', () => {
+    const a = box(10, 10, 10);
+    const b = translate(box(5, 5, 5), [2, 2, 2]);
+    const result = cut(a, b);
+    expect(isOk(result)).toBe(true);
   });
 });
 

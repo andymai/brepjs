@@ -148,6 +148,17 @@ export function fuse(
     'diagnostics' in kernelResult
       ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
       : undefined;
+  if (diagnostics?.hasErrors) {
+    return err(
+      kernelError(
+        BrepErrorCode.BOOLEAN_HAS_ERRORS,
+        'Boolean operation reported internal errors. The result may be invalid.',
+        undefined,
+        { diagnostics },
+        'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
+      )
+    );
+  }
   const fuseResult = castToShape3D(
     resultShape,
     'FUSE_NOT_3D',
@@ -213,6 +224,17 @@ export function cut(
     'diagnostics' in kernelResult
       ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
       : undefined;
+  if (diagnostics?.hasErrors) {
+    return err(
+      kernelError(
+        BrepErrorCode.BOOLEAN_HAS_ERRORS,
+        'Boolean operation reported internal errors. The result may be invalid.',
+        undefined,
+        { diagnostics },
+        'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
+      )
+    );
+  }
   const cutResult = castToShape3D(
     resultShape,
     'CUT_NOT_3D',
@@ -267,6 +289,17 @@ export function intersect(
     'diagnostics' in kernelResult
       ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
       : undefined;
+  if (diagnostics?.hasErrors) {
+    return err(
+      kernelError(
+        BrepErrorCode.BOOLEAN_HAS_ERRORS,
+        'Boolean operation reported internal errors. The result may be invalid.',
+        undefined,
+        { diagnostics },
+        'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
+      )
+    );
+  }
   const intResult = castToShape3D(
     resultShape,
     'INTERSECT_NOT_3D',
