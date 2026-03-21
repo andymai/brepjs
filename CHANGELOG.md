@@ -1,5 +1,12 @@
 # Changelog
 
+## [13.3.0](https://github.com/andymai/brepjs/compare/brepjs-v13.2.0...brepjs-v13.3.0) (2026-03-21)
+
+
+### Features
+
+* **nurbs:** add NURBS read-only introspection ([#565](https://github.com/andymai/brepjs/issues/565)) ([325c7f9](https://github.com/andymai/brepjs/commit/325c7f906e3bc6f130b1e31fe30d5c1b0d0f436e))
+
 ## [13.2.0](https://github.com/andymai/brepjs/compare/brepjs-v13.1.0...brepjs-v13.2.0) (2026-03-21)
 
 
