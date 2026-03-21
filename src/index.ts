@@ -600,6 +600,10 @@ export { polyhedron, type PolyhedronOptions } from './topology/polyhedronFns.js'
 
 export { positionOnCurve } from './topology/positionFns.js';
 
+// ── Variable-radius modifiers (functional) ──
+
+export { variableFillet, type VariableFilletRadius } from './topology/modifierFns.js';
+
 // ── Healing (functional) ──
 
 export {

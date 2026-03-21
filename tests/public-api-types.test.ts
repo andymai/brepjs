@@ -579,6 +579,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'uvCoordinates',
   'validSolid',
   'validationError',
+  'variableFillet',
   'vecAdd',
   'vecAngle',
   'vecCross',

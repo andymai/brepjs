@@ -554,3 +554,46 @@ export function draft(
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Variable-radius fillet
+// ---------------------------------------------------------------------------
+
+/** Specification for a radius point along a variable-radius fillet. */
+export interface VariableFilletRadius {
+  readonly param: number;
+  readonly radius: number;
+}
+
+/**
+ * Apply a variable-radius fillet to an edge.
+ *
+ * The radius varies along the edge according to the provided spec points.
+ * Each point specifies a normalized parameter (0 = start, 1 = end) and radius.
+ *
+ * **Cross-kernel note:** Only brepkit supports variable-radius fillet.
+ * Returns UNSUPPORTED_CAPABILITY error on OCCT.
+ */
+export function variableFillet(
+  shape: ValidSolid,
+  edge: Edge,
+  radii: ReadonlyArray<VariableFilletRadius>
+): Result<ValidSolid> {
+  const kernel = getKernel();
+  try {
+    const spec = JSON.stringify({
+      edge: kernel.hashCode(edge.wrapped, HASH_CODE_MAX),
+      radii: radii.map((r) => ({ param: r.param, radius: r.radius })),
+    });
+    const result = kernel.filletVariable(shape.wrapped, spec);
+    const wrapped = castShape(result);
+    if (!isShape3D(wrapped)) {
+      return err(
+        kernelError('VARIABLE_FILLET_FAILED', 'Variable-radius fillet did not produce a 3D shape')
+      );
+    }
+    return ok(wrapped as ValidSolid);
+  } catch (e) {
+    return err(kernelError('VARIABLE_FILLET_FAILED', 'Variable-radius fillet failed', e));
+  }
+}
