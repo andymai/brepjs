@@ -573,6 +573,20 @@ export {
 
 export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
 
+// ── Evolution-tracking operations (functional) ──
+
+export {
+  fuseWithEvolution,
+  cutWithEvolution,
+  intersectWithEvolution,
+  filletWithEvolution,
+  chamferWithEvolution,
+  shellWithEvolution,
+  type EvolutionResult,
+} from './topology/evolutionFns.js';
+
+export type { ShapeEvolution } from './kernel/types.js';
+
 export {
   surfaceFromGrid,
   surfaceFromImage,

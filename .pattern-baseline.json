@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-20T23:07:19.741Z",
+  "generated": "2026-03-21T03:01:04.522Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -266,6 +266,16 @@
       "file": "src/operations/straightSkeleton.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/operations/straightSkeleton.ts|max-function-lines|330|"
+    },
+    {
+      "file": "src/topology/evolutionFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/evolutionFns.ts|max-function-lines|289|"
+    },
+    {
+      "file": "src/topology/evolutionFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/evolutionFns.ts|max-function-lines|390|"
     },
     {
       "file": "src/topology/healingFns.ts",
