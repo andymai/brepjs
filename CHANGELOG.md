@@ -1,5 +1,13 @@
 # Changelog
 
+## [13.1.0](https://github.com/andymai/brepjs/compare/brepjs-v13.0.0...brepjs-v13.1.0) (2026-03-21)
+
+
+### Features
+
+* **evolution:** expose shape evolution API for face tracking ([#564](https://github.com/andymai/brepjs/issues/564)) ([43b9309](https://github.com/andymai/brepjs/commit/43b930900e614a7f1f6b334e0f771aa388a54375))
+* expose hidden kernel capabilities (quick wins) ([#563](https://github.com/andymai/brepjs/issues/563)) ([eccc66b](https://github.com/andymai/brepjs/commit/eccc66bf4ec72bd50d216ed5d8d13986fa4a952d))
+
 ## [13.0.0](https://github.com/andymai/brepjs/compare/brepjs-v12.13.1...brepjs-v13.0.0) (2026-03-20)
 
 
