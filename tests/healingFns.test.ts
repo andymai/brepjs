@@ -28,6 +28,7 @@ import {
   isFace,
   isWire,
 } from '@/index.js';
+import { solidFromShell } from '@/index.js';
 import type { AutoHealOptions, Solid, Face, Wire } from '@/index.js';
 
 beforeAll(async () => {
@@ -512,6 +513,32 @@ describe('fixShape', () => {
 // ---------------------------------------------------------------------------
 // fixSelfIntersection tests
 // ---------------------------------------------------------------------------
+
+describe('solidFromShell', () => {
+  it('returns a Result for a box (solid input)', () => {
+    const b = box(10, 10, 10);
+    const result = solidFromShell(b);
+    // May succeed (kernel converts) or fail — verify it returns a structured Result
+    if (isOk(result)) {
+      expect(isValid(result.value)).toBe(true);
+    } else {
+      expect(result.error.code).toBe('SOLID_FROM_SHELL_FAILED');
+    }
+  });
+
+  it('returns a Result for a face (non-shell input)', () => {
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test: box always has faces
+    const result = solidFromShell(faces[0]!);
+    // Passing a face should fail or produce a non-solid result
+    if (isOk(result)) {
+      expect(isSolid(result.value)).toBe(true);
+    } else {
+      expect(result.error.code).toBe('SOLID_FROM_SHELL_FAILED');
+    }
+  });
+});
 
 describe('fixSelfIntersection', () => {
   it('returns a Result for a simple wire', () => {

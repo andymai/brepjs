@@ -12,7 +12,9 @@ import {
   chamferWithEvolution,
   shellWithEvolution,
   isOk,
+  isErr,
   unwrap,
+  unwrapErr,
   measureVolume,
 } from '@/index.js';
 
@@ -167,5 +169,72 @@ describe('shellWithEvolution', () => {
       expect(typeof key).toBe('number');
       expect(Array.isArray(value)).toBe(true);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Validation error branches
+// ---------------------------------------------------------------------------
+
+describe('chamferWithEvolution validation errors', () => {
+  it('rejects negative distance', () => {
+    const b = box(10, 10, 10);
+    const result = chamferWithEvolution(b, undefined, -1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_CHAMFER_DISTANCE');
+  });
+
+  it('rejects zero distance', () => {
+    const b = box(10, 10, 10);
+    const result = chamferWithEvolution(b, undefined, 0);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_CHAMFER_DISTANCE');
+  });
+
+  it('rejects asymmetric distances with negative value', () => {
+    const b = box(10, 10, 10);
+    const result = chamferWithEvolution(b, undefined, [-1, 2]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_CHAMFER_DISTANCE');
+  });
+
+  it('rejects empty edge list', () => {
+    const b = box(10, 10, 10);
+    const result = chamferWithEvolution(b, [], 1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('CHAMFER_NO_EDGES');
+  });
+
+  it('rejects callback that skips all edges', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = chamferWithEvolution(b, edges, () => null);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('CHAMFER_NO_EDGES');
+  });
+});
+
+describe('shellWithEvolution validation errors', () => {
+  it('rejects negative thickness', () => {
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    const result = shellWithEvolution(b, faces.slice(0, 1), -1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_THICKNESS');
+  });
+
+  it('rejects zero thickness', () => {
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    const result = shellWithEvolution(b, faces.slice(0, 1), 0);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('INVALID_THICKNESS');
+  });
+
+  it('rejects empty faces list', () => {
+    const b = box(10, 10, 10);
+    const result = shellWithEvolution(b, [], 1);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('NO_FACES');
   });
 });

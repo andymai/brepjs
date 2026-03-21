@@ -21,6 +21,8 @@ import {
   chamfer,
   shell,
   offset,
+  draft,
+  variableFillet,
   getKernel,
   createSolid,
 } from '@/index.js';
@@ -288,6 +290,49 @@ describe('chamfer with callback returning null or array', () => {
     expect(isOk(result)).toBe(true);
     const vol = unwrap(measureVolume(unwrap(result)));
     expect(vol).toBeLessThan(1000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Draft validation
+// ---------------------------------------------------------------------------
+
+describe('draft validation errors', () => {
+  it('rejects empty faces list', () => {
+    const b = box(10, 10, 10);
+    const result = draft(b, [], [0, 0, 1], [0, 0, 0], 5);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('DRAFT_NO_FACES');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Variable-radius fillet validation
+// ---------------------------------------------------------------------------
+
+describe('variableFillet validation', () => {
+  it('rejects empty radii array', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = variableFillet(b, edges[0]!, []);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('VARIABLE_FILLET_FAILED');
+  });
+
+  it('rejects negative radius', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = variableFillet(b, edges[0]!, [{ param: 0, radius: -1 }]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('VARIABLE_FILLET_FAILED');
+  });
+
+  it('rejects zero radius', () => {
+    const b = box(10, 10, 10);
+    const edges = getEdges(b);
+    const result = variableFillet(b, edges[0]!, [{ param: 0, radius: 0 }]);
+    expect(isErr(result)).toBe(true);
+    expect(unwrapErr(result).code).toBe('VARIABLE_FILLET_FAILED');
   });
 });
 
