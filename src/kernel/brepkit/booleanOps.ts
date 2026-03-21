@@ -226,6 +226,8 @@ export function checkBoolean(
   _bk: BrepkitKernel,
   shape: KernelShape,
   tool: KernelShape,
+  // op is accepted for future use (e.g., operation-specific validation)
+  // but currently all boolean operations share the same pre-validation checks
   _op: BooleanOpType,
   isValid: (s: KernelShape) => boolean
 ): CheckBooleanResult {

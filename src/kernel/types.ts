@@ -144,7 +144,11 @@ export interface BooleanDiagnostics {
   readonly hasErrors: boolean;
   /** Whether the OCCT algorithm reported warnings. */
   readonly hasWarnings: boolean;
-  /** Human-readable error/warning messages extracted from the OCCT report. */
+  /**
+   * Human-readable messages. Currently always empty — OCCT's message
+   * reporting via Standard_OStream is not accessible in WASM builds.
+   * Reserved for future use.
+   */
   readonly messages: readonly string[];
 }
 
