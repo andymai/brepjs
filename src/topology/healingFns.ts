@@ -335,7 +335,7 @@ export function fixShape<D extends Dimension>(shape: AnyShape<D>): Result<AnySha
     const fixed = kernel.fixShape(shape.wrapped);
     return ok(castShape<D>(fixed));
   } catch (e) {
-    return err(kernelError('FIX_SHAPE_FAILED', 'ShapeFix_Shape failed', e));
+    return err(kernelError(BrepErrorCode.FIX_SHAPE_FAILED, 'ShapeFix_Shape failed', e));
   }
 }
 
@@ -350,16 +350,23 @@ export function solidFromShell(shell: AnyShape): Result<ValidSolid> {
     const solidShape = kernel.solidFromShell(shell.wrapped);
     const wrapped = castShape(solidShape);
     if (!isSolid(wrapped)) {
-      return err(kernelError('SOLID_FROM_SHELL_FAILED', 'solidFromShell did not produce a solid'));
+      return err(
+        kernelError(BrepErrorCode.SOLID_FROM_SHELL_FAILED, 'solidFromShell did not produce a solid')
+      );
     }
     if (!isValid(wrapped)) {
       return err(
-        kernelError('SOLID_FROM_SHELL_FAILED', 'solidFromShell produced an invalid solid')
+        kernelError(
+          BrepErrorCode.SOLID_FROM_SHELL_FAILED,
+          'solidFromShell produced an invalid solid'
+        )
       );
     }
     return ok(wrapped as ValidSolid);
   } catch (e) {
-    return err(kernelError('SOLID_FROM_SHELL_FAILED', 'Failed to create solid from shell', e));
+    return err(
+      kernelError(BrepErrorCode.SOLID_FROM_SHELL_FAILED, 'Failed to create solid from shell', e)
+    );
   }
 }
 
@@ -374,12 +381,16 @@ export function fixSelfIntersection(wire: Wire): Result<Wire> {
     const fixed = kernel.fixSelfIntersection(wire.wrapped);
     const wrapped = castShape(fixed);
     if (!isWire(wrapped)) {
-      return err(kernelError('FIX_SELF_INTERSECTION_FAILED', 'Result is not a wire'));
+      return err(kernelError(BrepErrorCode.FIX_SELF_INTERSECTION_FAILED, 'Result is not a wire'));
     }
     return ok(wrapped);
   } catch (e) {
     return err(
-      kernelError('FIX_SELF_INTERSECTION_FAILED', 'Failed to fix wire self-intersection', e)
+      kernelError(
+        BrepErrorCode.FIX_SELF_INTERSECTION_FAILED,
+        'Failed to fix wire self-intersection',
+        e
+      )
     );
   }
 }

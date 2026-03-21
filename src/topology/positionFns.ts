@@ -6,7 +6,7 @@ import { getKernel } from '@/kernel/index.js';
 import type { Shape3D, Edge, Wire } from '@/core/shapeTypes.js';
 import { castShape, isShape3D } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
-import { kernelError } from '@/core/errors.js';
+import { kernelError, BrepErrorCode } from '@/core/errors.js';
 
 /**
  * Position a shape at a point along a spine curve with Frenet frame orientation.
@@ -30,14 +30,17 @@ export function positionOnCurve(
     const wrapped = castShape(result);
     if (!isShape3D(wrapped)) {
       return err(
-        kernelError('POSITION_ON_CURVE_FAILED', 'positionOnCurve did not produce a 3D shape')
+        kernelError(
+          BrepErrorCode.POSITION_ON_CURVE_FAILED,
+          'positionOnCurve did not produce a 3D shape'
+        )
       );
     }
     return ok(wrapped);
   } catch (e) {
     return err(
       kernelError(
-        'POSITION_ON_CURVE_FAILED',
+        BrepErrorCode.POSITION_ON_CURVE_FAILED,
         `Failed to position shape on curve at param ${param}`,
         e
       )

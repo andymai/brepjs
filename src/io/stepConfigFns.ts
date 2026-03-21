@@ -5,7 +5,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
-import { ioError } from '@/core/errors.js';
+import { ioError, BrepErrorCode } from '@/core/errors.js';
 
 /** Options for configured STEP export. */
 export interface StepExportOptions {
@@ -46,6 +46,8 @@ export function exportSTEPConfigured(
     const result = kernel.exportSTEPConfigured(kernelParts, options);
     return ok(result);
   } catch (e) {
-    return err(ioError('STEP_EXPORT_CONFIGURED_FAILED', 'Configured STEP export failed', e));
+    return err(
+      ioError(BrepErrorCode.STEP_EXPORT_CONFIGURED_FAILED, 'Configured STEP export failed', e)
+    );
   }
 }

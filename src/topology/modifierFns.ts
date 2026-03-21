@@ -8,7 +8,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
-import { castShape, isShape3D } from '@/core/shapeTypes.js';
+import { castShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
@@ -579,6 +579,22 @@ export function variableFillet(
   edge: Edge,
   radii: ReadonlyArray<VariableFilletRadius>
 ): Result<ValidSolid> {
+  if (radii.length === 0) {
+    return err(
+      validationError(
+        BrepErrorCode.VARIABLE_FILLET_FAILED,
+        'radii must contain at least one radius spec'
+      )
+    );
+  }
+  for (const r of radii) {
+    if (r.radius <= 0) {
+      return err(
+        validationError(BrepErrorCode.VARIABLE_FILLET_FAILED, 'All radius values must be positive')
+      );
+    }
+  }
+
   const kernel = getKernel();
   try {
     const spec = JSON.stringify({
@@ -588,12 +604,27 @@ export function variableFillet(
     const result = kernel.filletVariable(shape.wrapped, spec);
     const wrapped = castShape(result);
     if (!isShape3D(wrapped)) {
+      wrapped[Symbol.dispose]();
       return err(
-        kernelError('VARIABLE_FILLET_FAILED', 'Variable-radius fillet did not produce a 3D shape')
+        kernelError(
+          BrepErrorCode.VARIABLE_FILLET_FAILED,
+          'Variable-radius fillet did not produce a 3D shape'
+        )
+      );
+    }
+    if (!isSolid(wrapped)) {
+      wrapped[Symbol.dispose]();
+      return err(
+        kernelError(
+          BrepErrorCode.VARIABLE_FILLET_FAILED,
+          'Variable-radius fillet did not produce a solid'
+        )
       );
     }
     return ok(wrapped as ValidSolid);
   } catch (e) {
-    return err(kernelError('VARIABLE_FILLET_FAILED', 'Variable-radius fillet failed', e));
+    return err(
+      kernelError(BrepErrorCode.VARIABLE_FILLET_FAILED, 'Variable-radius fillet failed', e)
+    );
   }
 }
