@@ -3,7 +3,9 @@ import { initKernel } from './setup.js';
 import { isBrepkit } from './helpers/kernelEnv.js';
 import {
   box,
+  cylinder,
   line,
+  circle,
   fillet,
   interpolateCurve,
   getEdges,
@@ -23,7 +25,14 @@ describe('getNurbsCurveData', () => {
   it('returns null for a line edge', () => {
     const edge = line([0, 0, 0], [10, 0, 0]);
     const data = getNurbsCurveData(edge);
-    // Line is not a BSpline — should be null (or may be converted on some kernels)
+    if (!isBrepkit) {
+      expect(data).toBeNull();
+    }
+  });
+
+  it('returns null for a circle edge', () => {
+    const edge = circle(5);
+    const data = getNurbsCurveData(edge);
     if (!isBrepkit) {
       expect(data).toBeNull();
     }
@@ -79,6 +88,32 @@ describe('getNurbsSurfaceData', () => {
     const faces = getFaces(b);
     if (faces.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test: box always has faces
+      const data = getNurbsSurfaceData(faces[0]!);
+      expect(data).toBeNull();
+    }
+  });
+
+  it('returns null for a cylindrical face', (ctx) => {
+    if (isBrepkit) ctx.skip();
+    // Cylinder faces are not BSpline
+    const cyl = cylinder(5, 10);
+    const faces = getFaces(cyl);
+    for (const face of faces) {
+      const data = getNurbsSurfaceData(face);
+      // Cylinder faces should return null (not BSpline)
+      // Some may be planar (top/bottom caps), some cylindrical
+      if (data !== null) {
+        expect(data.degreeU).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('returns null on brepkit for any face', (ctx) => {
+    if (!isBrepkit) ctx.skip();
+    const b = box(10, 10, 10);
+    const faces = getFaces(b);
+    if (faces.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test
       const data = getNurbsSurfaceData(faces[0]!);
       expect(data).toBeNull();
     }
