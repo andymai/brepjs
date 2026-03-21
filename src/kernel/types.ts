@@ -138,6 +138,21 @@ export interface OperationResult {
   readonly evolution: ShapeEvolution;
 }
 
+/** Diagnostic information from a boolean operation. */
+export interface BooleanDiagnostics {
+  /** Whether the OCCT algorithm reported internal errors. */
+  readonly hasErrors: boolean;
+  /** Whether the OCCT algorithm reported warnings. */
+  readonly hasWarnings: boolean;
+  /** Human-readable error/warning messages extracted from the OCCT report. */
+  readonly messages: readonly string[];
+}
+
+/** Extended operation result with diagnostics. */
+export interface DiagnosticOperationResult extends OperationResult {
+  readonly diagnostics: BooleanDiagnostics;
+}
+
 /** Options for STEP assembly export with named/colored parts. */
 export interface StepAssemblyPart {
   shape: KernelShape;

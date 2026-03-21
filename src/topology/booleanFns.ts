@@ -50,7 +50,7 @@ function validateShape3D(shape: Shape3D, label: string): Result<undefined> {
 // Types
 // ---------------------------------------------------------------------------
 
-import type { BooleanOptions } from '@/kernel/types.js';
+import type { BooleanOptions, BooleanDiagnostics } from '@/kernel/types.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 export type { BooleanOptions };
 
@@ -62,7 +62,8 @@ function castToShape3D(
   shape: KernelType,
   errorCode: string,
   errorMsg: string,
-  suggestion?: string
+  suggestion?: string,
+  diagnostics?: BooleanDiagnostics
 ): Result<Shape3D> {
   const wrapped = castShape(shape);
   if (!isShape3D(wrapped)) {
@@ -86,7 +87,7 @@ function castToShape3D(
         errorCode,
         `${errorMsg}. Got ${typeName} instead.`,
         undefined,
-        undefined,
+        diagnostics ? { diagnostics } : undefined,
         suggestion
       )
     );
@@ -135,18 +136,24 @@ export function fuse(
   const checkB = validateShape3D(b, 'fuse: second operand');
   if (isErr(checkB)) return checkB;
   const inputFaceHashes = collectInputFaceHashes([a, b]);
-  const { shape: resultShape, evolution } = getKernel().fuseWithHistory(
+  const kernelResult = getKernel().fuseWithHistory(
     a.wrapped,
     b.wrapped,
     inputFaceHashes,
     HASH_CODE_MAX,
     { optimisation, simplify, fuzzyValue }
   );
+  const { shape: resultShape, evolution } = kernelResult;
+  const diagnostics =
+    'diagnostics' in kernelResult
+      ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
+      : undefined;
   const fuseResult = castToShape3D(
     resultShape,
     'FUSE_NOT_3D',
     'Fuse did not produce a 3D shape',
-    'Common causes: overlapping coplanar faces, zero-thickness geometry, or non-manifold input. Try autoHeal() on inputs first.'
+    'Common causes: overlapping coplanar faces, zero-thickness geometry, or non-manifold input. Try autoHeal() on inputs first.',
+    diagnostics
   );
   if (fuseResult.ok) {
     propagateAllMetadata(evolution, [a, b], fuseResult.value);
@@ -194,18 +201,24 @@ export function cut(
   const checkTool = validateShape3D(tool, 'cut: tool');
   if (isErr(checkTool)) return checkTool;
   const inputFaceHashes = collectInputFaceHashes([base, tool]);
-  const { shape: resultShape, evolution } = getKernel().cutWithHistory(
+  const kernelResult = getKernel().cutWithHistory(
     base.wrapped,
     tool.wrapped,
     inputFaceHashes,
     HASH_CODE_MAX,
     { optimisation, simplify, fuzzyValue }
   );
+  const { shape: resultShape, evolution } = kernelResult;
+  const diagnostics =
+    'diagnostics' in kernelResult
+      ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
+      : undefined;
   const cutResult = castToShape3D(
     resultShape,
     'CUT_NOT_3D',
     'Cut did not produce a 3D shape',
-    'Common causes: tool does not fully intersect the base, or produces a zero-thickness sliver. Ensure the tool extends through the shape.'
+    'Common causes: tool does not fully intersect the base, or produces a zero-thickness sliver. Ensure the tool extends through the shape.',
+    diagnostics
   );
   if (cutResult.ok) {
     propagateAllMetadata(evolution, [base, tool], cutResult.value);
@@ -242,18 +255,24 @@ export function intersect(
   const checkB = validateShape3D(b, 'intersect: second operand');
   if (isErr(checkB)) return checkB;
   const inputFaceHashes = collectInputFaceHashes([a, b]);
-  const { shape: resultShape, evolution } = getKernel().intersectWithHistory(
+  const kernelResult = getKernel().intersectWithHistory(
     a.wrapped,
     b.wrapped,
     inputFaceHashes,
     HASH_CODE_MAX,
     { simplify, fuzzyValue }
   );
+  const { shape: resultShape, evolution } = kernelResult;
+  const diagnostics =
+    'diagnostics' in kernelResult
+      ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
+      : undefined;
   const intResult = castToShape3D(
     resultShape,
     'INTERSECT_NOT_3D',
     'Intersect did not produce a 3D shape',
-    'Shapes may not overlap. Verify they share a common volume before intersecting.'
+    'Shapes may not overlap. Verify they share a common volume before intersecting.',
+    diagnostics
   );
   if (intResult.ok) {
     propagateAllMetadata(evolution, [a, b], intResult.value);

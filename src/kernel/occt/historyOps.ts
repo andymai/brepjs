@@ -11,7 +11,10 @@ import type {
   KernelShape,
   BooleanOptions,
   OperationResult,
+  BooleanDiagnostics,
+  DiagnosticOperationResult,
 } from '@/kernel/types.js';
+import type { OcctSimplifyBuilder } from './wasmTypes/index.js';
 import {
   transformWithEvolution,
   modifierWithEvolution,
@@ -131,6 +134,17 @@ export function generalTransformWithHistory(
 }
 
 // ---------------------------------------------------------------------------
+// Diagnostics extraction
+// ---------------------------------------------------------------------------
+
+function extractDiagnostics(op: OcctSimplifyBuilder): BooleanDiagnostics {
+  const hasErrors = op.HasErrors();
+  const hasWarnings = op.HasWarnings();
+  const messages: string[] = [];
+  return { hasErrors, hasWarnings, messages };
+}
+
+// ---------------------------------------------------------------------------
 // Boolean with history
 // ---------------------------------------------------------------------------
 
@@ -141,19 +155,21 @@ export function fuseWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number,
   options: BooleanOptions = {}
-): OperationResult {
+): DiagnosticOperationResult {
   const progress = new oc.Message_ProgressRange_1();
   const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
   applyGlue(oc, fuseOp, options.optimisation);
   applyBooleanDefaults(fuseOp, options.fuzzyValue);
   fuseOp.Build(progress);
+  const diagnostics = extractDiagnostics(fuseOp as OcctSimplifyBuilder);
   const result = booleanWithEvolution(
     oc,
     fuseOp,
     [shape, tool],
     inputFaceHashes,
     hashUpperBound,
-    options.simplify ?? false
+    options.simplify ?? false,
+    diagnostics
   );
   fuseOp.delete();
   progress.delete();
@@ -167,19 +183,21 @@ export function cutWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number,
   options: BooleanOptions = {}
-): OperationResult {
+): DiagnosticOperationResult {
   const progress = new oc.Message_ProgressRange_1();
   const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
   applyGlue(oc, cutOp, options.optimisation);
   applyBooleanDefaults(cutOp, options.fuzzyValue);
   cutOp.Build(progress);
+  const diagnostics = extractDiagnostics(cutOp as OcctSimplifyBuilder);
   const result = booleanWithEvolution(
     oc,
     cutOp,
     [shape, tool],
     inputFaceHashes,
     hashUpperBound,
-    options.simplify ?? false
+    options.simplify ?? false,
+    diagnostics
   );
   cutOp.delete();
   progress.delete();
@@ -193,19 +211,21 @@ export function intersectWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number,
   options: BooleanOptions = {}
-): OperationResult {
+): DiagnosticOperationResult {
   const progress = new oc.Message_ProgressRange_1();
   const intOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
   applyGlue(oc, intOp, options.optimisation);
   applyBooleanDefaults(intOp, options.fuzzyValue);
   intOp.Build(progress);
+  const diagnostics = extractDiagnostics(intOp as OcctSimplifyBuilder);
   const result = booleanWithEvolution(
     oc,
     intOp,
     [shape, tool],
     inputFaceHashes,
     hashUpperBound,
-    options.simplify ?? false
+    options.simplify ?? false,
+    diagnostics
   );
   intOp.delete();
   progress.delete();

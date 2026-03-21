@@ -10,6 +10,8 @@ import type {
   KernelShape,
   ShapeEvolution,
   OperationResult,
+  BooleanDiagnostics,
+  DiagnosticOperationResult,
 } from '@/kernel/types.js';
 import type {
   OcctEvolutionBuilder,
@@ -233,12 +235,17 @@ export function booleanWithEvolution(
   inputShapes: KernelShape | KernelShape[],
   inputFaceHashes: number[],
   hashUpperBound: number,
-  simplify: boolean
-): OperationResult {
+  simplify: boolean,
+  diagnostics?: BooleanDiagnostics
+): DiagnosticOperationResult {
   if (simplify) boolOp.SimplifyResult(true, true, 1e-3);
   const resultShape = boolOp.Shape();
   const evolution = buildEvolution(oc, boolOp, inputShapes, inputFaceHashes, hashUpperBound);
-  return { shape: resultShape, evolution };
+  return {
+    shape: resultShape,
+    evolution,
+    diagnostics: diagnostics ?? { hasErrors: false, hasWarnings: false, messages: [] },
+  };
 }
 
 /**

@@ -22,9 +22,13 @@ export interface OcctBuilder {
 /**
  * OCCT builders that support simplification of the result shape.
  * Used by boolean operations (BRepAlgoAPI_Fuse, BRepAlgoAPI_Cut, etc.).
+ * Also exposes HasErrors/HasWarnings diagnostics available on
+ * BRepAlgoAPI_BooleanOperation subclasses after Build().
  */
 export interface OcctSimplifyBuilder extends OcctBuilder {
   SimplifyResult(unify: boolean, edges: boolean, tol: number): void;
+  HasErrors(): boolean;
+  HasWarnings(): boolean;
 }
 
 /**
