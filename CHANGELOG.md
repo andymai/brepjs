@@ -1,5 +1,12 @@
 # Changelog
 
+## [13.2.0](https://github.com/andymai/brepjs/compare/brepjs-v13.1.0...brepjs-v13.2.0) (2026-03-21)
+
+
+### Features
+
+* **booleans:** add boolean diagnostics and pre-validation ([#562](https://github.com/andymai/brepjs/issues/562)) ([9700db0](https://github.com/andymai/brepjs/commit/9700db0d52cabab8c13de51ff66775fe2d5f1379))
+
 ## [13.1.0](https://github.com/andymai/brepjs/compare/brepjs-v13.0.0...brepjs-v13.1.0) (2026-03-21)
 
 
