@@ -110,6 +110,10 @@ export {
   type ApproximateCurveOptions,
 } from './topology/curveFns.js';
 
+// ── NURBS introspection ──
+
+export { getNurbsCurveData, getNurbsSurfaceData } from './topology/nurbsFns.js';
+
 // ── Faces ──
 
 export {

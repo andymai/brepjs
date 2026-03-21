@@ -9,7 +9,7 @@
  * @see {@link KernelSurfaceOps} for surface geometry queries.
  */
 
-import type { KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelShape, KernelType, NurbsCurveData } from '@/kernel/types.js';
 
 export interface KernelCurveOps {
   // --- Edge / curve queries ---
@@ -61,4 +61,7 @@ export interface KernelCurveOps {
   // --- Bezier pole extraction (3D) ---
   /** Get the second-to-last Bezier control pole of a 3D edge curve. */
   getBezierPenultimatePole(edge: KernelShape): [number, number, number] | null;
+
+  /** Extract NURBS data from a BSpline/Bezier edge. Returns null for non-NURBS curves. */
+  getNurbsCurveData?(edge: KernelShape): NurbsCurveData | null;
 }

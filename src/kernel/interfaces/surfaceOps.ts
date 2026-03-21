@@ -10,7 +10,7 @@
  * @see {@link KernelCurveOps} for curve geometry queries.
  */
 
-import type { KernelShape, KernelType, SurfaceType } from '@/kernel/types.js';
+import type { KernelShape, KernelType, SurfaceType, NurbsSurfaceData } from '@/kernel/types.js';
 
 export interface KernelSurfaceOps {
   // --- Vertex ---
@@ -84,4 +84,7 @@ export interface KernelSurfaceOps {
     visible: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
     hidden: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
   };
+
+  /** Extract NURBS data from a BSpline face. Returns null for non-BSpline surfaces. */
+  getNurbsSurfaceData?(face: KernelShape): NurbsSurfaceData | null;
 }

@@ -16,6 +16,8 @@ import type {
   ShapeOrientation,
   MeshOptions,
   StepAssemblyPart,
+  NurbsCurveData,
+  NurbsSurfaceData,
 } from '@/kernel/types.js';
 import type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import {
@@ -140,6 +142,10 @@ import {
   getSurfaceCylinderData as _getSurfaceCylinderData,
   reverseSurfaceU as _reverseSurfaceU,
 } from './geometryQueryOps.js';
+import {
+  getNurbsCurveData as _getNurbsCurveData,
+  getNurbsSurfaceData as _getNurbsSurfaceData,
+} from './nurbsQueryOps.js';
 import {
   wrapString as _wrapString,
   wrapColorRGBA as _wrapColorRGBA,
@@ -835,6 +841,16 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
 
   reverseSurfaceU(surface: KernelType): KernelType {
     return _reverseSurfaceU(this.oc, surface);
+  }
+
+  // --- NURBS introspection ---
+
+  getNurbsCurveData(edge: KernelShape): NurbsCurveData | null {
+    return _getNurbsCurveData(this.oc, edge);
+  }
+
+  getNurbsSurfaceData(face: KernelShape): NurbsSurfaceData | null {
+    return _getNurbsSurfaceData(this.oc, face);
   }
 
   // --- Simplification ---

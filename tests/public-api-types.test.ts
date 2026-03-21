@@ -339,6 +339,8 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'getHashCode',
   'getHistoryShape',
   'getKernel',
+  'getNurbsCurveData',
+  'getNurbsSurfaceData',
   'getOrientation',
   'getOrientation2D',
   'getShapeColor',

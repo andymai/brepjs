@@ -180,6 +180,34 @@ export interface StepAssemblyPart {
   color?: [number, number, number, number]; // RGBA 0-255
 }
 
+/** Read-only NURBS curve data. */
+export interface NurbsCurveData {
+  readonly degree: number;
+  readonly poles: ReadonlyArray<readonly [number, number, number]>;
+  readonly weights: ReadonlyArray<number>;
+  readonly knots: ReadonlyArray<number>;
+  readonly multiplicities: ReadonlyArray<number>;
+  readonly isPeriodic: boolean;
+  readonly isRational: boolean;
+}
+
+/** Read-only NURBS surface data. */
+export interface NurbsSurfaceData {
+  readonly degreeU: number;
+  readonly degreeV: number;
+  readonly nbPolesU: number;
+  readonly nbPolesV: number;
+  readonly poles: ReadonlyArray<ReadonlyArray<readonly [number, number, number]>>;
+  readonly weights: ReadonlyArray<ReadonlyArray<number>>;
+  readonly knotsU: ReadonlyArray<number>;
+  readonly knotsV: ReadonlyArray<number>;
+  readonly multiplicitiesU: ReadonlyArray<number>;
+  readonly multiplicitiesV: ReadonlyArray<number>;
+  readonly isPeriodicU: boolean;
+  readonly isPeriodicV: boolean;
+  readonly isRational: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Kernel adapter — composed from domain-aligned sub-interfaces
 // ---------------------------------------------------------------------------

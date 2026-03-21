@@ -47,6 +47,8 @@ import type {
   ShapeOrientation,
   MeshOptions,
   StepAssemblyPart,
+  NurbsCurveData,
+  NurbsSurfaceData,
 } from '@/kernel/types.js';
 import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
@@ -3172,6 +3174,14 @@ export class BrepkitAdapter implements KernelAdapter {
 
   reverseSurfaceU(surface: KernelType): KernelType {
     return surface; // No-op: brepkit doesn't have separate surface handle direction
+  }
+
+  getNurbsCurveData(_edge: KernelShape): NurbsCurveData | null {
+    return null; // NURBS introspection not supported by brepkit
+  }
+
+  getNurbsSurfaceData(_face: KernelShape): NurbsSurfaceData | null {
+    return null; // NURBS introspection not supported by brepkit
   }
 
   // ═══════════════════════════════════════════════════════════════════════

@@ -531,6 +531,9 @@ export {
   type ApproximateCurveOptions,
 } from './topology/curveFns.js';
 
+export { getNurbsCurveData, getNurbsSurfaceData } from './topology/nurbsFns.js';
+export type { NurbsCurveData, NurbsSurfaceData } from '@/kernel/types.js';
+
 export {
   getSurfaceType,
   faceGeomType,
