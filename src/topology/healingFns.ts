@@ -320,3 +320,66 @@ export function autoHeal(
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// General-purpose repair
+// ---------------------------------------------------------------------------
+
+/**
+ * General-purpose shape repair using ShapeFix_Shape.
+ * Fixes orientations, missing curves, and other common issues.
+ */
+export function fixShape<D extends Dimension>(shape: AnyShape<D>): Result<AnyShape<D>> {
+  try {
+    const kernel = getKernel();
+    const fixed = kernel.fixShape(shape.wrapped);
+    return ok(castShape<D>(fixed));
+  } catch (e) {
+    return err(kernelError('FIX_SHAPE_FAILED', 'ShapeFix_Shape failed', e));
+  }
+}
+
+/**
+ * Convert a closed shell into a solid.
+ *
+ * The shell must be closed (all faces share edges) for the conversion to succeed.
+ */
+export function solidFromShell(shell: AnyShape): Result<ValidSolid> {
+  try {
+    const kernel = getKernel();
+    const solidShape = kernel.solidFromShell(shell.wrapped);
+    const wrapped = castShape(solidShape);
+    if (!isSolid(wrapped)) {
+      return err(kernelError('SOLID_FROM_SHELL_FAILED', 'solidFromShell did not produce a solid'));
+    }
+    if (!isValid(wrapped)) {
+      return err(
+        kernelError('SOLID_FROM_SHELL_FAILED', 'solidFromShell produced an invalid solid')
+      );
+    }
+    return ok(wrapped as ValidSolid);
+  } catch (e) {
+    return err(kernelError('SOLID_FROM_SHELL_FAILED', 'Failed to create solid from shell', e));
+  }
+}
+
+/**
+ * Fix self-intersections in a wire.
+ *
+ * Uses ShapeFix_Wire to detect and repair self-intersecting edges.
+ */
+export function fixSelfIntersection(wire: Wire): Result<Wire> {
+  try {
+    const kernel = getKernel();
+    const fixed = kernel.fixSelfIntersection(wire.wrapped);
+    const wrapped = castShape(fixed);
+    if (!isWire(wrapped)) {
+      return err(kernelError('FIX_SELF_INTERSECTION_FAILED', 'Result is not a wire'));
+    }
+    return ok(wrapped);
+  } catch (e) {
+    return err(
+      kernelError('FIX_SELF_INTERSECTION_FAILED', 'Failed to fix wire self-intersection', e)
+    );
+  }
+}

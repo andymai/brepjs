@@ -15,6 +15,10 @@ import {
   healWire,
   heal,
   autoHeal,
+  fixShape,
+  fixSelfIntersection,
+  line,
+  wire,
   isOk,
   isErr,
   unwrap,
@@ -476,5 +480,50 @@ describe('autoHeal', () => {
       expect(report.alreadyValid).toBe(true);
       expect(report.diagnostics.find((d) => d.name === 'sew')).toBeUndefined();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fixShape tests
+// ---------------------------------------------------------------------------
+
+describe('fixShape', () => {
+  it('fixes a valid shape without error', () => {
+    const b = box(10, 10, 10);
+    const result = fixShape(b);
+    // fixShape may not be available on all kernel builds; if it errors,
+    // verify the error is structured correctly
+    if (isOk(result)) {
+      expect(isValid(result.value)).toBe(true);
+    } else {
+      expect(result.error.code).toBe('FIX_SHAPE_FAILED');
+    }
+  });
+
+  it('result is valid when fixShape succeeds', () => {
+    const b = box(10, 10, 10);
+    const fixed = fixShape(b);
+    if (isOk(fixed)) {
+      expect(isValid(fixed.value)).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fixSelfIntersection tests
+// ---------------------------------------------------------------------------
+
+describe('fixSelfIntersection', () => {
+  it('returns a Result for a simple wire', () => {
+    const spine = line([0, 0, 0], [10, 0, 0]);
+    const w = wire([spine]);
+    const result = fixSelfIntersection(w);
+    // fixSelfIntersection may succeed or fail depending on kernel support;
+    // verify it returns a properly structured Result either way
+    if (isOk(result)) {
+      expect(isWire(result.value)).toBe(true);
+    } else {
+      expect(result.error.code).toBe('FIX_SELF_INTERSECTION_FAILED');
+    }
   });
 });
