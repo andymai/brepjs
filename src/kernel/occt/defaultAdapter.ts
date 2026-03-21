@@ -6,6 +6,7 @@ import type {
   KernelEdgeMeshResult,
   DistanceResult,
   OperationResult,
+  DiagnosticOperationResult,
   KernelInstance,
   KernelShape,
   KernelType,
@@ -1007,7 +1008,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult {
+  ): DiagnosticOperationResult {
     return _fuseWithHistory(this.oc, shape, tool, inputFaceHashes, hashUpperBound, options);
   }
 
@@ -1017,7 +1018,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult {
+  ): DiagnosticOperationResult {
     return _cutWithHistory(this.oc, shape, tool, inputFaceHashes, hashUpperBound, options);
   }
 
@@ -1027,7 +1028,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult {
+  ): DiagnosticOperationResult {
     return _intersectWithHistory(this.oc, shape, tool, inputFaceHashes, hashUpperBound, options);
   }
 

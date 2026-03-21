@@ -9,7 +9,13 @@
  */
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
-import type { KernelShape, KernelType, OperationResult, BooleanOptions } from '@/kernel/types.js';
+import type {
+  KernelShape,
+  KernelType,
+  OperationResult,
+  DiagnosticOperationResult,
+  BooleanOptions,
+} from '@/kernel/types.js';
 import {
   type BrepkitHandle,
   solidHandle,
@@ -372,13 +378,14 @@ function booleanWithHistoryImpl(
   nativeFn: (a: number, b: number) => string,
   fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
   _label: string
-): OperationResult {
+): DiagnosticOperationResult {
+  const noDiagnostics = { hasErrors: false, hasWarnings: false, messages: [] } as const;
   const sh = shape as BrepkitHandle;
   const th = tool as BrepkitHandle;
   if (inputFaceHashes.length > 0 && sh.type === 'solid') {
     if (th.type === 'solid') {
       const json = nativeFn(sh.id, th.id);
-      return parseNativeEvolution(json, hashUpperBound);
+      return { ...parseNativeEvolution(json, hashUpperBound), diagnostics: noDiagnostics };
     }
     if (th.type === 'compound') {
       // Iteratively apply native evolution for each solid in the compound,
@@ -440,12 +447,16 @@ function booleanWithHistoryImpl(
           generated: combinedGenerated,
           deleted: combinedDeleted,
         },
+        diagnostics: noDiagnostics,
       };
     }
   }
   // Fallback: non-solid shapes or no face hashes
   const fallbackResult = fallbackFn(shape, tool, options);
-  return buildEvolution(bk, fallbackResult, inputFaceHashes, hashUpperBound, false, shape);
+  return {
+    ...buildEvolution(bk, fallbackResult, inputFaceHashes, hashUpperBound, false, shape),
+    diagnostics: noDiagnostics,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -544,7 +555,7 @@ export function fuseWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number,
   options?: BooleanOptions
-): OperationResult {
+): DiagnosticOperationResult {
   return booleanWithHistoryImpl(
     bk,
     shape,
@@ -565,7 +576,7 @@ export function cutWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number,
   options?: BooleanOptions
-): OperationResult {
+): DiagnosticOperationResult {
   return booleanWithHistoryImpl(
     bk,
     shape,
@@ -586,7 +597,7 @@ export function intersectWithHistory(
   inputFaceHashes: number[],
   hashUpperBound: number,
   options?: BooleanOptions
-): OperationResult {
+): DiagnosticOperationResult {
   return booleanWithHistoryImpl(
     bk,
     shape,

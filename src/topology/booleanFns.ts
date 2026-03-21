@@ -143,12 +143,8 @@ export function fuse(
     HASH_CODE_MAX,
     { optimisation, simplify, fuzzyValue }
   );
-  const { shape: resultShape, evolution } = kernelResult;
-  const diagnostics =
-    'diagnostics' in kernelResult
-      ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
-      : undefined;
-  if (diagnostics?.hasErrors) {
+  const { shape: resultShape, evolution, diagnostics } = kernelResult;
+  if (diagnostics.hasErrors) {
     return err(
       kernelError(
         BrepErrorCode.BOOLEAN_HAS_ERRORS,
@@ -219,12 +215,8 @@ export function cut(
     HASH_CODE_MAX,
     { optimisation, simplify, fuzzyValue }
   );
-  const { shape: resultShape, evolution } = kernelResult;
-  const diagnostics =
-    'diagnostics' in kernelResult
-      ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
-      : undefined;
-  if (diagnostics?.hasErrors) {
+  const { shape: resultShape, evolution, diagnostics } = kernelResult;
+  if (diagnostics.hasErrors) {
     return err(
       kernelError(
         BrepErrorCode.BOOLEAN_HAS_ERRORS,
@@ -284,12 +276,8 @@ export function intersect(
     HASH_CODE_MAX,
     { simplify, fuzzyValue }
   );
-  const { shape: resultShape, evolution } = kernelResult;
-  const diagnostics =
-    'diagnostics' in kernelResult
-      ? (kernelResult as { diagnostics: BooleanDiagnostics }).diagnostics
-      : undefined;
-  if (diagnostics?.hasErrors) {
+  const { shape: resultShape, evolution, diagnostics } = kernelResult;
+  if (diagnostics.hasErrors) {
     return err(
       kernelError(
         BrepErrorCode.BOOLEAN_HAS_ERRORS,

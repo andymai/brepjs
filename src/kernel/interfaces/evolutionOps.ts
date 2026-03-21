@@ -11,7 +11,13 @@
  * @see {@link KernelModifierOps} for non-history modifier variants.
  */
 
-import type { BooleanOptions, KernelShape, KernelType, OperationResult } from '@/kernel/types.js';
+import type {
+  BooleanOptions,
+  DiagnosticOperationResult,
+  KernelShape,
+  KernelType,
+  OperationResult,
+} from '@/kernel/types.js';
 
 export interface KernelEvolutionOps {
   translateWithHistory(
@@ -58,21 +64,21 @@ export interface KernelEvolutionOps {
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult;
+  ): DiagnosticOperationResult;
   cutWithHistory(
     shape: KernelShape,
     tool: KernelShape,
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult;
+  ): DiagnosticOperationResult;
   intersectWithHistory(
     shape: KernelShape,
     tool: KernelShape,
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult;
+  ): DiagnosticOperationResult;
   filletWithHistory(
     shape: KernelShape,
     edges: KernelShape[],

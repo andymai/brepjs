@@ -37,6 +37,7 @@ import type {
   KernelEdgeMeshResult,
   DistanceResult,
   OperationResult,
+  DiagnosticOperationResult,
   KernelInstance,
   KernelShape,
   KernelType,
@@ -1351,7 +1352,8 @@ export class BrepkitAdapter implements KernelAdapter {
     nativeFn: (a: number, b: number) => string,
     fallbackFn: (s: KernelShape, t: KernelShape, o?: BooleanOptions) => KernelShape,
     _label: string
-  ): OperationResult {
+  ): DiagnosticOperationResult {
+    const noDiagnostics = { hasErrors: false, hasWarnings: false, messages: [] } as const;
     const sh = shape as BrepkitHandle;
     const th = tool as BrepkitHandle;
     if (inputFaceHashes.length > 0 && sh.type === 'solid') {
@@ -1359,7 +1361,7 @@ export class BrepkitAdapter implements KernelAdapter {
         // Native *WithEvolution APIs require solid handles and do not accept
         // BooleanOptions (e.g. fuzzyValue). Options are silently ignored.
         const json = nativeFn(sh.id, th.id);
-        return this.parseNativeEvolution(json, hashUpperBound);
+        return { ...this.parseNativeEvolution(json, hashUpperBound), diagnostics: noDiagnostics };
       }
       if (th.type === 'compound') {
         // Iteratively apply native evolution for each solid in the compound,
@@ -1426,12 +1428,14 @@ export class BrepkitAdapter implements KernelAdapter {
             generated: combinedGenerated,
             deleted: combinedDeleted,
           },
+          diagnostics: noDiagnostics,
         };
       }
     }
     // Fallback: non-solid shapes or no face hashes
     const fallbackResult = fallbackFn(shape, tool, options);
-    return this.buildEvolution(fallbackResult, inputFaceHashes, hashUpperBound, false, shape);
+    const evo = this.buildEvolution(fallbackResult, inputFaceHashes, hashUpperBound, false, shape);
+    return { ...evo, diagnostics: noDiagnostics };
   }
 
   fuseWithHistory(
@@ -1440,7 +1444,7 @@ export class BrepkitAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult {
+  ): DiagnosticOperationResult {
     return this.booleanWithHistoryImpl(
       shape,
       tool,
@@ -1459,7 +1463,7 @@ export class BrepkitAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult {
+  ): DiagnosticOperationResult {
     return this.booleanWithHistoryImpl(
       shape,
       tool,
@@ -1478,7 +1482,7 @@ export class BrepkitAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number,
     options?: BooleanOptions
-  ): OperationResult {
+  ): DiagnosticOperationResult {
     return this.booleanWithHistoryImpl(
       shape,
       tool,

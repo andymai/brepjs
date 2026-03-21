@@ -155,8 +155,8 @@ export interface DiagnosticOperationResult extends OperationResult {
 
 /** Issue detected during boolean pre-validation. */
 export interface BooleanIssue {
-  readonly operand: 'base' | 'tool' | 'both';
-  readonly issue: 'null-shape' | 'not-valid' | 'self-intersection';
+  readonly operand: 'base' | 'tool';
+  readonly issue: 'null-shape' | 'not-valid';
   readonly message: string;
 }
 
