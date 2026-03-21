@@ -590,6 +590,10 @@ export { polyhedron, type PolyhedronOptions } from './topology/polyhedronFns.js'
 
 // (modifiers available via public API: fillet, chamfer, shell, offset, thicken)
 
+// ── Positioning (functional) ──
+
+export { positionOnCurve } from './topology/positionFns.js';
+
 // ── Healing (functional) ──
 
 export {
@@ -597,6 +601,9 @@ export {
   healFace,
   healWire,
   autoHeal,
+  fixShape,
+  solidFromShell,
+  fixSelfIntersection,
   type HealingReport,
   type AutoHealOptions,
   type HealingStepDiagnostic,

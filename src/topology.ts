@@ -151,6 +151,10 @@ export {
   type BufferGeometryGroup,
 } from './topology/threeHelpers.js';
 
+// ── Positioning ──
+
+export { positionOnCurve } from './topology/positionFns.js';
+
 // ── Healing ──
 
 export {
@@ -158,6 +162,9 @@ export {
   healFace,
   healWire,
   autoHeal,
+  fixShape,
+  solidFromShell,
+  fixSelfIntersection,
   type HealingReport,
   type AutoHealOptions,
   type HealingStepDiagnostic,
