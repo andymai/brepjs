@@ -67,7 +67,7 @@ export function getNurbsCurveData(oc: KernelInstance, edge: KernelShape): NurbsC
       multiplicities.push(bspline.Multiplicity(i));
     }
 
-    return {
+    const result = {
       degree,
       poles,
       weights,
@@ -76,6 +76,8 @@ export function getNurbsCurveData(oc: KernelInstance, edge: KernelShape): NurbsC
       isPeriodic,
       isRational,
     };
+    bsplineHandle.delete();
+    return result;
   } catch {
     return null;
   } finally {
@@ -85,7 +87,7 @@ export function getNurbsCurveData(oc: KernelInstance, edge: KernelShape): NurbsC
 
 /**
  * Extract NURBS surface data from a BSpline face.
- * Returns null for non-BSpline surface types (plane, cylinder, etc.).
+ * Returns null for non-BSpline surface types (plane, cylinder, Bezier, etc.).
  */
 // brepjs-patterns-disable: max-function-lines
 export function getNurbsSurfaceData(
@@ -102,11 +104,7 @@ export function getNurbsSurfaceData(
       typeof st.GeomAbs_BSplineSurface === 'number'
         ? st.GeomAbs_BSplineSurface
         : Number(st.GeomAbs_BSplineSurface?.value ?? st.GeomAbs_BSplineSurface);
-    const bezierIdx =
-      typeof st.GeomAbs_BezierSurface === 'number'
-        ? st.GeomAbs_BezierSurface
-        : Number(st.GeomAbs_BezierSurface?.value ?? st.GeomAbs_BezierSurface);
-    if (surfIdx !== bsplineIdx && surfIdx !== bezierIdx) {
+    if (surfIdx !== bsplineIdx) {
       return null;
     }
 
@@ -155,7 +153,7 @@ export function getNurbsSurfaceData(
       multiplicitiesV.push(bspline.VMultiplicity(i));
     }
 
-    return {
+    const result = {
       degreeU,
       degreeV,
       nbPolesU,
@@ -170,6 +168,8 @@ export function getNurbsSurfaceData(
       isPeriodicV,
       isRational,
     };
+    bsplineHandle.delete();
+    return result;
   } catch {
     return null;
   } finally {
