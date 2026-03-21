@@ -8,7 +8,13 @@
  * @see {@link KernelEvolutionOps} for history-tracking boolean variants.
  */
 
-import type { BooleanOptions, KernelMeshResult, KernelShape } from '@/kernel/types.js';
+import type {
+  BooleanOpType,
+  BooleanOptions,
+  CheckBooleanResult,
+  KernelMeshResult,
+  KernelShape,
+} from '@/kernel/types.js';
 
 export interface KernelBooleanOps {
   /** Fuse (union) two shapes. */
@@ -26,6 +32,9 @@ export interface KernelBooleanOps {
 
   /** Split shape by tool shapes. */
   split(shape: KernelShape, tools: KernelShape[]): KernelShape;
+
+  /** Pre-validate operands before a boolean operation. */
+  checkBoolean(shape: KernelShape, tool: KernelShape, op: BooleanOpType): CheckBooleanResult;
 
   /**
    * Boolean operation on raw triangle data. Returns merged mesh.

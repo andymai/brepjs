@@ -180,6 +180,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'chamferDistAngleShape',
   'chamferWithEvolution',
   'checkAllInterferences',
+  'checkBoolean',
   'checkInterference',
   'circle',
   'circularPattern',

@@ -4,7 +4,14 @@
  */
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
-import type { KernelShape, KernelMeshResult, BooleanOptions } from '@/kernel/types.js';
+import type {
+  BooleanIssue,
+  BooleanOpType,
+  CheckBooleanResult,
+  KernelShape,
+  KernelMeshResult,
+  BooleanOptions,
+} from '@/kernel/types.js';
 import {
   type BrepkitHandle,
   solidHandle,
@@ -208,6 +215,43 @@ export function meshBoolean(
     uvs: new Float32Array(0),
     faceGroups: [{ start: 0, count: mesh.indices.length, faceHash: 0 }],
   };
+}
+
+/**
+ * Pre-validate operands before a boolean operation.
+ *
+ * Checks that both shapes are non-null and topologically valid.
+ */
+export function checkBoolean(
+  _bk: BrepkitKernel,
+  shape: KernelShape,
+  tool: KernelShape,
+  _op: BooleanOpType,
+  isValid: (s: KernelShape) => boolean
+): CheckBooleanResult {
+  const issues: BooleanIssue[] = [];
+  if (!isBrepkitHandle(shape) || shape.IsNull()) {
+    issues.push({ operand: 'base', issue: 'null-shape', message: 'Base shape is null' });
+  }
+  if (!isBrepkitHandle(tool) || tool.IsNull()) {
+    issues.push({ operand: 'tool', issue: 'null-shape', message: 'Tool shape is null' });
+  }
+  if (issues.length > 0) return { valid: false, issues };
+  if (!isValid(shape)) {
+    issues.push({
+      operand: 'base',
+      issue: 'not-valid',
+      message: 'Base shape fails BRepCheck validation. Try autoHeal() first.',
+    });
+  }
+  if (!isValid(tool)) {
+    issues.push({
+      operand: 'tool',
+      issue: 'not-valid',
+      message: 'Tool shape fails BRepCheck validation. Try autoHeal() first.',
+    });
+  }
+  return { valid: issues.length === 0, issues };
 }
 
 // Re-export for use by hull that needs iterShapes

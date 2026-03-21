@@ -578,6 +578,13 @@ export {
 // ── Boolean operations (functional) ──
 
 export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
+export { checkBoolean } from './topology/booleanDiagnosticFns.js';
+export type {
+  CheckBooleanResult,
+  BooleanIssue,
+  BooleanOpType,
+  BooleanDiagnostics,
+} from '@/kernel/types.js';
 
 // ── Evolution-tracking operations (functional) ──
 

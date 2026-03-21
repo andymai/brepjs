@@ -153,6 +153,22 @@ export interface DiagnosticOperationResult extends OperationResult {
   readonly diagnostics: BooleanDiagnostics;
 }
 
+/** Issue detected during boolean pre-validation. */
+export interface BooleanIssue {
+  readonly operand: 'base' | 'tool' | 'both';
+  readonly issue: 'null-shape' | 'not-valid' | 'self-intersection';
+  readonly message: string;
+}
+
+/** Result of boolean pre-validation. */
+export interface CheckBooleanResult {
+  readonly valid: boolean;
+  readonly issues: readonly BooleanIssue[];
+}
+
+/** Boolean operation type for checkBoolean. */
+export type BooleanOpType = 'fuse' | 'cut' | 'intersect';
+
 /** Options for STEP assembly export with named/colored parts. */
 export interface StepAssemblyPart {
   shape: KernelShape;

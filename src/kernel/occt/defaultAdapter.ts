@@ -1,4 +1,6 @@
 import type {
+  BooleanOpType,
+  CheckBooleanResult,
   KernelAdapter,
   KernelMeshResult,
   KernelEdgeMeshResult,
@@ -54,6 +56,7 @@ import {
   fuseAll as _fuseAll,
   cutAll as _cutAll,
   split as _split,
+  checkBoolean as _checkBoolean,
 } from './booleanOps.js';
 import { mesh as _mesh, meshEdges as _meshEdges } from './meshOps.js';
 import {
@@ -314,6 +317,10 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
 
   cutAll(shape: KernelShape, tools: KernelShape[], options: BooleanOptions = {}): KernelShape {
     return _cutAll(this.oc, shape, tools, options);
+  }
+
+  checkBoolean(shape: KernelShape, tool: KernelShape, op: BooleanOpType): CheckBooleanResult {
+    return _checkBoolean(this.oc, shape, tool, op, (s) => this.isValid(s));
   }
 
   // --- Convex hull ---

@@ -30,6 +30,8 @@
  */
 
 import type {
+  BooleanOpType,
+  CheckBooleanResult,
   KernelAdapter,
   KernelMeshResult,
   KernelEdgeMeshResult,
@@ -101,6 +103,7 @@ import {
   cutAll as _cutAll,
   split as _split,
   meshBoolean as _meshBoolean,
+  checkBoolean as _checkBoolean,
   hull as _hull,
   hullFromPoints as _hullFromPoints,
   buildSolidFromFaces as _buildSolidFromFaces,
@@ -556,6 +559,10 @@ export class BrepkitAdapter implements KernelAdapter {
 
   split(shape: KernelShape, tools: KernelShape[]): KernelShape {
     return _split(this.bk, shape, tools);
+  }
+
+  checkBoolean(shape: KernelShape, tool: KernelShape, op: BooleanOpType): CheckBooleanResult {
+    return _checkBoolean(this.bk, shape, tool, op, (s) => this.isValid(s));
   }
 
   // ═══════════════════════════════════════════════════════════════════════

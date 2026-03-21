@@ -71,6 +71,7 @@ export {
 // ── Boolean operations ──
 
 export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
+export { checkBoolean } from './topology/booleanDiagnosticFns.js';
 
 export {
   fuseWithEvolution,
