@@ -27,19 +27,26 @@ import {
   cutWithEvolution,
   filletWithEvolution,
 } from '@/topology/evolutionFns.js';
-import { assignRoles, createRef, resolveRef, type ShapeRef } from '@/topology/shapeRef/index.js';
+import {
+  assignRoles,
+  createRef,
+  updateRoles,
+  resolveRef,
+  type RoleTable,
+  type ShapeRef,
+} from '@/topology/shapeRef/index.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Test 1: 10-command replay
+// Test 1: Multi-step replay
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('10-command replay', () => {
+describe('multi-step replay', () => {
   it.skipIf(currentKernel === 'brepkit')(
-    'face references survive box → fillet → fuse → extrude → cut pipeline',
+    'face references survive box → fillet → fuse → cut pipeline via geometric fallback',
     () => {
       // Step 1: Create box and assign roles
       const b = box(20, 20, 20);
@@ -81,20 +88,17 @@ describe('10-command replay', () => {
       const resolvedTop = resolveRef(topRef, new Map(), withHole);
       const resolvedFront = resolveRef(frontRef, new Map(), withHole);
 
-      // At least one should resolve via geometric fallback
-      const topOk = 'face' in resolvedTop;
-      const frontOk = 'face' in resolvedFront;
-      expect(topOk || frontOk).toBe(true);
+      // Both should resolve — they have distinct normals (+Z and -Y)
+      expect('face' in resolvedTop).toBe(true);
+      expect('face' in resolvedFront).toBe(true);
 
-      if (topOk) {
-        expect(isFace(resolvedTop.face)).toBe(true);
+      if ('face' in resolvedTop) {
         expect(resolvedTop.confidence).toBe('geometric-fallback');
         const area = unwrap(measureArea(resolvedTop.face));
         expect(area).toBeGreaterThan(0);
       }
 
-      if (frontOk) {
-        expect(isFace(resolvedFront.face)).toBe(true);
+      if ('face' in resolvedFront) {
         expect(resolvedFront.confidence).toBe('geometric-fallback');
         const area = unwrap(measureArea(resolvedFront.face));
         expect(area).toBeGreaterThan(0);
@@ -103,6 +107,44 @@ describe('10-command replay', () => {
       // Final shape should still be a valid solid
       const vol = unwrap(measureVolume(withHole));
       expect(vol).toBeGreaterThan(0);
+    }
+  );
+
+  it.skipIf(currentKernel === 'brepkit')(
+    'updateRoles propagates hashes through evolution for exact resolution',
+    () => {
+      // Simple pipeline: box → fuse → resolve via updated role table
+      const b = box(20, 20, 20);
+      const roles0 = assignRoles(b, 'box');
+
+      // Create ref for the bottom face (least likely to be affected by top fuse)
+      const bottomHash = roles0.get('box:bottom');
+      expect(bottomHash).toBeDefined();
+      const bottomFace = getFaces(b).find((f) => getHashCode(f) === bottomHash);
+      expect(bottomFace).toBeDefined();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
+      const bottomRef = createRef('step_0', 'box:bottom', bottomFace!);
+
+      // Fuse a small box on top (doesn't touch bottom face)
+      const topPiece = translate(box(5, 5, 5), [7, 7, 20]);
+      const fuseResult = fuseWithEvolution(b, topPiece);
+      expect(isOk(fuseResult)).toBe(true);
+      const { shape: fused, evolution } = unwrap(fuseResult);
+
+      // Build and update role table through evolution
+      const roleTable: RoleTable = new Map([['step_0', roles0]]);
+      const updatedTable = updateRoles(roleTable, 'step_0', evolution);
+
+      // The bottom face should be unchanged → exact resolution
+      const result = resolveRef(bottomRef, updatedTable, fused);
+      expect('face' in result).toBe(true);
+      if ('face' in result) {
+        // Bottom face was not modified by the fuse → should be exact
+        expect(result.confidence).toBe('exact');
+        const area = unwrap(measureArea(result.face));
+        // Bottom face area = 20 * 20 = 400 (unchanged)
+        expect(area).toBeCloseTo(400, 0);
+      }
     }
   );
 });
