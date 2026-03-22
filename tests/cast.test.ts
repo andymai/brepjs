@@ -125,7 +125,7 @@ describe('cast', () => {
   describe('fromBREP()', () => {
     it.skipIf(currentKernel !== 'occt')('round-trips a box through toBREP and fromBREP', () => {
       const b = box(10, 10, 10);
-      const brep = toBREP(b);
+      const brep = unwrap(toBREP(b));
       const result = fromBREP(brep);
       expect(isOk(result)).toBe(true);
       const shape = unwrap(result);

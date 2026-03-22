@@ -88,7 +88,7 @@ export function scale<T extends AnyShape<Dimension>>(
 }
 
 /** Clone a shape (deep copy). */
-export function clone<T extends AnyShape<Dimension>>(shape: Shapeable<T>): T {
+export function clone<T extends AnyShape<Dimension>>(shape: Shapeable<T>): Result<T> {
   return transforms.clone(resolve(shape));
 }
 
@@ -407,7 +407,7 @@ export function heal<T extends AnyShape<Dimension>>(shape: Shapeable<T>): Result
 }
 
 /** Simplify a shape by merging same-domain faces/edges. */
-export function simplify<T extends AnyShape<Dimension>>(shape: Shapeable<T>): T {
+export function simplify<T extends AnyShape<Dimension>>(shape: Shapeable<T>): Result<T> {
   return transforms.simplify(resolve(shape));
 }
 
@@ -433,7 +433,7 @@ export function describe(shape: Shapeable<AnyShape<Dimension>>): transforms.Shap
 }
 
 /** Serialize a shape to BREP format. */
-export function toBREP(shape: Shapeable<AnyShape<Dimension>>): string {
+export function toBREP(shape: Shapeable<AnyShape<Dimension>>): Result<string> {
   return transforms.toBREP(resolve(shape));
 }
 

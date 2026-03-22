@@ -320,7 +320,7 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
 
     bounds: () => getBounds(val),
     describe: () => describe(val),
-    clone: () => wrapAny(clone(val)),
+    clone: () => wrapAny(unwrapOrThrow(clone(val))),
 
     // Meshing & Rendering
     mesh: (opts) => meshFn(val, opts),
@@ -330,8 +330,8 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
     isValid: () => isValidFn(val),
     isEmpty: () => isEmptyFn(val),
     heal: () => wrapAny(unwrapOrThrow(healFn(val))),
-    simplify: () => wrapAny(simplifyFn(val)),
-    toBREP: () => toBREPFn(val),
+    simplify: () => wrapAny(unwrapOrThrow(simplifyFn(val))),
+    toBREP: () => unwrapOrThrow(toBREPFn(val)),
 
     apply: (fn) => wrapAny(fn(val)),
     applyResult: (fn) => wrapAny(unwrapOrThrow(fn(val))),

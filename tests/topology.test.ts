@@ -92,13 +92,13 @@ beforeAll(async () => {
 
 describe('Shape base methods', () => {
   it('clone solid', () => {
-    expect(unwrap(measureVolume(clone(box(10, 10, 10))))).toBeCloseTo(1000, 0);
+    expect(unwrap(measureVolume(unwrap(clone(box(10, 10, 10)))))).toBeCloseTo(1000, 0);
   });
   it('clone edge', () => {
-    expect(clone(line([0, 0, 0], [10, 0, 0]))).toBeDefined();
+    expect(unwrap(clone(line([0, 0, 0], [10, 0, 0])))).toBeDefined();
   });
   it('serialize', () => {
-    const s = toBREP(box(5, 5, 5));
+    const s = unwrap(toBREP(box(5, 5, 5)));
     expect(s.length).toBeGreaterThan(0);
   });
   it('hashCode', () => {
@@ -121,7 +121,7 @@ describe('Shape base methods', () => {
         simplify: false,
       })
     );
-    expect(unwrap(measureVolume(simplify(f)))).toBeCloseTo(2000, 0);
+    expect(unwrap(measureVolume(unwrap(simplify(f))))).toBeCloseTo(2000, 0);
   });
 });
 

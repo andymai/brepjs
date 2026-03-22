@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { box, deserializeShape, toBREP, mesh } from '@/index.js';
+import { box, deserializeShape, toBREP, mesh, unwrap } from '@/index.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -9,7 +9,7 @@ beforeAll(async () => {
 describe('Shape serialization', () => {
   it('serializes and deserializes a shape', () => {
     const b = box(10, 10, 10);
-    const serialized = toBREP(b);
+    const serialized = unwrap(toBREP(b));
     expect(serialized).toBeDefined();
     expect(typeof serialized).toBe('string');
     expect(serialized.length).toBeGreaterThan(0);

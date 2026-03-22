@@ -329,7 +329,7 @@ describe('6. Transforms', () => {
 
   it('clone produces independent copy', () => {
     const box = drawRectangle(10, 10).sketchOnPlane('XY').extrude(5);
-    const copy = clone(box as AnyShape);
+    const copy = unwrap(clone(box as AnyShape));
     const moved = translate(copy, [100, 0, 0]);
     const origBounds = boundsSize(getBounds(box as AnyShape));
     const copyBounds = boundsSize(getBounds(moved));

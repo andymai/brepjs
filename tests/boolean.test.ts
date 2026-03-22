@@ -49,7 +49,7 @@ describe('Shape transforms', () => {
 
   it('clones a box', () => {
     const b = box(10, 10, 10);
-    const cloned = clone(b);
+    const cloned = unwrap(clone(b));
     expect(cloned).toBeDefined();
     const vol = unwrap(measureVolume(cloned));
     expect(vol).toBeCloseTo(1000, 0);

@@ -39,7 +39,7 @@ beforeAll(async () => {
 describe('clone', () => {
   it('clones a solid preserving volume', () => {
     const b = box(10, 10, 10);
-    const cloned = clone(b);
+    const cloned = unwrap(clone(b));
     expect(unwrap(measureVolume(box(10, 10, 10)))).toBeCloseTo(1000, 0);
     expect(cloned).toBeDefined();
   });
@@ -48,7 +48,7 @@ describe('clone', () => {
 describe('toBREP', () => {
   it('serializes a box to a non-empty string', () => {
     const b = box(5, 5, 5);
-    const s = toBREP(b);
+    const s = unwrap(toBREP(b));
     expect(s.length).toBeGreaterThan(0);
   });
 });
@@ -83,7 +83,7 @@ describe('simplify', () => {
     const fused = fuse(a, translate(box(10, 10, 10), [10, 0, 0]), {
       simplify: false,
     });
-    const simplified = simplify(fused.value);
+    const simplified = unwrap(simplify(fused.value));
     expect(simplified).toBeDefined();
   });
 });

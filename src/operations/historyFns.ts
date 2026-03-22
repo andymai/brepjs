@@ -333,16 +333,16 @@ export interface SerializedHistory {
 export function serializeHistory(history: ModelHistory): Result<SerializedHistory> {
   const shapes: Record<string, string> = {};
   for (const [id, shape] of history.shapes) {
-    try {
-      shapes[id] = toBREP(shape);
-    } catch (e) {
+    const brepResult = toBREP(shape);
+    if (!brepResult.ok) {
       return err(
         computationError(
           'SERIALIZE_SHAPE_FAILED',
-          `Failed to serialize shape "${id}": ${e instanceof Error ? e.message : String(e)}`
+          `Failed to serialize shape "${id}": ${brepResult.error.message}`
         )
       );
     }
+    shapes[id] = brepResult.value;
   }
   return ok({ steps: history.steps, shapes });
 }

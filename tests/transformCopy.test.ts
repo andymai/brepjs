@@ -64,7 +64,7 @@ describe('composeTransforms', () => {
     trsf.cleanup();
 
     // Sequential equivalent
-    let seq = clone(b);
+    let seq = unwrap(clone(b));
     seq = translate(seq, [3, 4, -5]);
     seq = rotate(seq, 90, { axis: [1, 0, 0] });
     seq = rotate(seq, 45, { axis: [0, 0, 1] });

@@ -37,7 +37,7 @@ stair = shape(stair).fuse(handrail).val;
 const ball = sphere(4);
 stair = shape(stair).fuse(translate(ball, [railR, 0, firstTop])).val;
 const lastTop = firstTop + rise * (steps - 1);
-const endBall = rotate(translate(clone(ball), [railR, 0, lastTop]), twist * (steps - 1));
+const endBall = rotate(translate(unwrap(clone(ball)), [railR, 0, lastTop]), twist * (steps - 1));
 stair = shape(stair).fuse(endBall).val;
 
 return stair;`;

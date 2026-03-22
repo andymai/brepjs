@@ -306,7 +306,7 @@ describe('scale()', () => {
 describe('clone()', () => {
   it('deep copies a shape', () => {
     const b = box(10, 10, 10);
-    const cloned = clone(b);
+    const cloned = unwrap(clone(b));
     expect(unwrap(measureVolume(cloned))).toBeCloseTo(1000, 0);
   });
 });
@@ -505,7 +505,7 @@ describe('heal()', () => {
 describe('simplify()', () => {
   it('simplifies a shape', () => {
     const b = box(10, 10, 10);
-    const simplified = simplify(b);
+    const simplified = unwrap(simplify(b));
     expect(simplified).toBeDefined();
   });
 });
@@ -538,7 +538,7 @@ describe('describe()', () => {
 describe('toBREP() / fromBREP()', () => {
   it('round-trips through BREP serialization', () => {
     const b = box(10, 10, 10);
-    const brep = toBREP(b);
+    const brep = unwrap(toBREP(b));
     expect(brep).toBeTruthy();
     const result = fromBREP(brep);
     expect(isOk(result)).toBe(true);
