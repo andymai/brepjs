@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.1.1](https://github.com/andymai/brepjs/compare/brepjs-v14.1.0...brepjs-v14.1.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* **test:** add updateRoles exact resolution test, strengthen assertions ([#581](https://github.com/andymai/brepjs/issues/581)) ([bbdffe9](https://github.com/andymai/brepjs/commit/bbdffe92bc7a7b0fee6be3b0325a675675335b41))
+
 ## [14.1.0](https://github.com/andymai/brepjs/compare/brepjs-v14.0.0...brepjs-v14.1.0) (2026-03-22)
 
 
