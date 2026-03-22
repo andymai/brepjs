@@ -372,10 +372,19 @@ export function intersectCurves2d(
   return kernelCallRaw(
     () => {
       const result = getKernel2D().intersectCurves2d(c1.raw, c2.raw, tolerance);
-      return {
-        points: result.points,
-        segments: result.segments.map((s) => wrapRawHandle(s)),
-      };
+      // Defensively wrap segments — dispose already-wrapped handles if one fails
+      const wrapped: Curve2DHandle[] = [];
+      try {
+        for (const s of result.segments) {
+          wrapped.push(wrapRawHandle(s));
+        }
+      } catch (e) {
+        wrapped.forEach((h) => {
+          h[Symbol.dispose]();
+        });
+        throw e;
+      }
+      return { points: result.points, segments: wrapped };
     },
     CURVE2D_INTERSECTION_FAILED,
     'Failed to intersect 2D curves'
@@ -418,7 +427,7 @@ export function distanceBetweenCurves2d(
       const b2 = bounds2 ?? kernel.getCurve2dBounds(c2.raw);
       return kernel.distanceBetweenCurves2d(c1.raw, c2.raw, b1.first, b1.last, b2.first, b2.last);
     },
-    CURVE2D_INTERSECTION_FAILED,
+    CURVE2D_QUERY_FAILED,
     'Failed to compute distance between 2D curves'
   );
 }

@@ -121,61 +121,49 @@ describe('2D curve constructors', () => {
 
 describe('2D curve transforms', () => {
   it('translates a 2D curve', () => {
-    const curve = unwrap(line2d([0, 0], [10, 0]));
-    const moved = unwrap(translateCurve2d(curve, 5, 3));
+    using curve = unwrap(line2d([0, 0], [10, 0]));
+    using moved = unwrap(translateCurve2d(curve, 5, 3));
     const pt = unwrap(evaluateCurve2d(moved, 0));
     expect(pt[0]).toBeCloseTo(5, 5);
     expect(pt[1]).toBeCloseTo(3, 5);
-    curve[Symbol.dispose]();
-    moved[Symbol.dispose]();
   });
 
   it('rotates a 2D curve by 90 degrees', () => {
-    const curve = unwrap(line2d([1, 0], [2, 0]));
-    const rotated = unwrap(rotateCurve2d(curve, Math.PI / 2));
+    using curve = unwrap(line2d([1, 0], [2, 0]));
+    using rotated = unwrap(rotateCurve2d(curve, Math.PI / 2));
     const pt = unwrap(evaluateCurve2d(rotated, 0));
     expect(pt[0]).toBeCloseTo(0, 5);
     expect(pt[1]).toBeCloseTo(1, 5);
-    curve[Symbol.dispose]();
-    rotated[Symbol.dispose]();
   });
 
   it('scales a 2D curve', () => {
-    const curve = unwrap(line2d([1, 0], [2, 0]));
-    const scaled = unwrap(scaleCurve2d(curve, 3));
+    using curve = unwrap(line2d([1, 0], [2, 0]));
+    using scaled = unwrap(scaleCurve2d(curve, 3));
     const pt = unwrap(evaluateCurve2d(scaled, 0));
     expect(pt[0]).toBeCloseTo(3, 5);
     expect(pt[1]).toBeCloseTo(0, 5);
-    curve[Symbol.dispose]();
-    scaled[Symbol.dispose]();
   });
 
   it('mirrors a 2D curve across a point', () => {
-    const curve = unwrap(line2d([1, 0], [2, 0]));
-    const mirrored = unwrap(mirrorCurve2d(curve, [0, 0]));
+    using curve = unwrap(line2d([1, 0], [2, 0]));
+    using mirrored = unwrap(mirrorCurve2d(curve, [0, 0]));
     const pt = unwrap(evaluateCurve2d(mirrored, 0));
     expect(pt[0]).toBeCloseTo(-1, 5);
     expect(pt[1]).toBeCloseTo(0, 5);
-    curve[Symbol.dispose]();
-    mirrored[Symbol.dispose]();
   });
 
   it('mirrors a 2D curve across an axis', () => {
-    const curve = unwrap(line2d([1, 1], [2, 1]));
-    const mirrored = unwrap(mirrorCurve2dAcrossAxis(curve, [0, 0], [1, 0]));
+    using curve = unwrap(line2d([1, 1], [2, 1]));
+    using mirrored = unwrap(mirrorCurve2dAcrossAxis(curve, [0, 0], [1, 0]));
     const pt = unwrap(evaluateCurve2d(mirrored, 0));
     expect(pt[0]).toBeCloseTo(1, 5);
     expect(pt[1]).toBeCloseTo(-1, 5);
-    curve[Symbol.dispose]();
-    mirrored[Symbol.dispose]();
   });
 
   it('offsets a 2D circle', () => {
-    const curve = unwrap(circle2d([0, 0], 5));
-    const offset = unwrap(offsetCurve2d(curve, 2));
+    using curve = unwrap(circle2d([0, 0], 5));
+    using offset = unwrap(offsetCurve2d(curve, 2));
     expect(offset.disposed).toBe(false);
-    curve[Symbol.dispose]();
-    offset[Symbol.dispose]();
   });
 });
 
@@ -185,40 +173,36 @@ describe('2D curve transforms', () => {
 
 describe('2D curve queries', () => {
   it('evaluates a point on a 2D line', () => {
-    const curve = unwrap(line2d([0, 0], [10, 0]));
+    using curve = unwrap(line2d([0, 0], [10, 0]));
     const bounds = unwrap(boundsCurve2d(curve));
     const midParam = (bounds.first + bounds.last) / 2;
     const pt = unwrap(evaluateCurve2d(curve, midParam));
     expect(pt[0]).toBeCloseTo(5, 5);
     expect(pt[1]).toBeCloseTo(0, 5);
-    curve[Symbol.dispose]();
   });
 
   it('evaluates tangent on a 2D line', () => {
-    const curve = unwrap(line2d([0, 0], [10, 0]));
+    using curve = unwrap(line2d([0, 0], [10, 0]));
     const bounds = unwrap(boundsCurve2d(curve));
     const result = unwrap(tangentCurve2d(curve, bounds.first));
     expect(result.point[0]).toBeCloseTo(0, 5);
     expect(result.point[1]).toBeCloseTo(0, 5);
     // Tangent direction should be along X
     expect(result.tangent[1]).toBeCloseTo(0, 5);
-    curve[Symbol.dispose]();
   });
 
   it('gets parameter bounds of a 2D curve', () => {
-    const curve = unwrap(line2d([0, 0], [10, 0]));
+    using curve = unwrap(line2d([0, 0], [10, 0]));
     const bounds = unwrap(boundsCurve2d(curve));
     expect(bounds.first).toBeDefined();
     expect(bounds.last).toBeDefined();
     expect(bounds.last).toBeGreaterThan(bounds.first);
-    curve[Symbol.dispose]();
   });
 
   it('gets the type of a 2D curve', () => {
-    const line = unwrap(line2d([0, 0], [10, 0]));
+    using line = unwrap(line2d([0, 0], [10, 0]));
     const lineType = unwrap(typeCurve2d(line));
     expect(lineType.toUpperCase()).toContain('LINE');
-    line[Symbol.dispose]();
   });
 });
 
@@ -228,8 +212,8 @@ describe('2D curve queries', () => {
 
 describe('2D curve intersection', () => {
   it('finds intersection of two crossing lines', () => {
-    const c1 = unwrap(line2d([0, 0], [10, 10]));
-    const c2 = unwrap(line2d([0, 10], [10, 0]));
+    using c1 = unwrap(line2d([0, 0], [10, 10]));
+    using c2 = unwrap(line2d([0, 10], [10, 0]));
     const result = unwrap(intersectCurves2d(c1, c2));
     expect(result.points.length).toBeGreaterThanOrEqual(1);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length asserted above
@@ -239,37 +223,30 @@ describe('2D curve intersection', () => {
     result.segments.forEach((s) => {
       s[Symbol.dispose]();
     });
-    c1[Symbol.dispose]();
-    c2[Symbol.dispose]();
   });
 
   it('finds no intersection for parallel lines', () => {
-    const c1 = unwrap(line2d([0, 0], [10, 0]));
-    const c2 = unwrap(line2d([0, 5], [10, 5]));
+    using c1 = unwrap(line2d([0, 0], [10, 0]));
+    using c2 = unwrap(line2d([0, 5], [10, 5]));
     const result = unwrap(intersectCurves2d(c1, c2));
     expect(result.points).toHaveLength(0);
-    c1[Symbol.dispose]();
-    c2[Symbol.dispose]();
   });
 
   it('projects a point onto a 2D curve', () => {
-    const curve = unwrap(line2d([0, 0], [10, 0]));
+    using curve = unwrap(line2d([0, 0], [10, 0]));
     const result = unwrap(projectPointOnCurve2d(curve, [5, 3]));
     expect(result).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted above
     expect(result!.distance).toBeCloseTo(3, 5);
-    curve[Symbol.dispose]();
   });
 
   it('computes distance between two circles', () => {
     // Circles have well-defined bounds, avoiding infinite-range issues with lines
-    const c1 = unwrap(circle2d([0, 0], 2));
-    const c2 = unwrap(circle2d([10, 0], 3));
+    using c1 = unwrap(circle2d([0, 0], 2));
+    using c2 = unwrap(circle2d([10, 0], 3));
     const dist = unwrap(distanceBetweenCurves2d(c1, c2));
     // Distance between circles: gap = 10 - 2 - 3 = 5
     expect(dist).toBeCloseTo(5, 4);
-    c1[Symbol.dispose]();
-    c2[Symbol.dispose]();
   });
 });
 
@@ -279,19 +256,17 @@ describe('2D curve intersection', () => {
 
 describe('2D-3D bridge', () => {
   it('lifts a 2D line to a 3D edge on XY plane', () => {
-    const curve = unwrap(line2d([0, 0], [10, 0]));
+    using curve = unwrap(line2d([0, 0], [10, 0]));
     const plane = makePlane('XY');
-    const result = liftCurve2dToPlane(curve, plane);
-    expect(isOk(result)).toBe(true);
-    curve[Symbol.dispose]();
+    using edge = unwrap(liftCurve2dToPlane(curve, plane));
+    expect(edge.disposed).toBe(false);
   });
 
   it('lifts a 2D line to an offset plane', () => {
-    const curve = unwrap(line2d([0, 0], [10, 0]));
+    using curve = unwrap(line2d([0, 0], [10, 0]));
     const plane = makePlane('XY', [0, 0, 5]);
-    const result = liftCurve2dToPlane(curve, plane);
-    expect(isOk(result)).toBe(true);
-    curve[Symbol.dispose]();
+    using edge = unwrap(liftCurve2dToPlane(curve, plane));
+    expect(edge.disposed).toBe(false);
   });
 
   it('extracts a 2D curve from a 3D edge on a face', () => {
@@ -304,14 +279,11 @@ describe('2D-3D bridge', () => {
     expect(edges.length).toBeGreaterThan(0);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length asserted above
     const edge = edges[0]!;
-    const result = extractCurve2dFromEdge(edge, face);
-    expect(isOk(result)).toBe(true);
-    const curve = unwrap(result);
+    using curve = unwrap(extractCurve2dFromEdge(edge, face));
     // Verify the extracted curve is usable
     const type = unwrap(typeCurve2d(curve));
     expect(type).toBeDefined();
     const bounds = unwrap(boundsCurve2d(curve));
     expect(bounds.last).toBeGreaterThan(bounds.first);
-    curve[Symbol.dispose]();
   });
 });
