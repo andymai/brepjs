@@ -604,6 +604,24 @@ export {
 
 export type { ShapeEvolution } from './kernel/types.js';
 
+// ── Shape references (parametric face tracking) ──
+export {
+  captureHint,
+  assignRoles,
+  createRef,
+  updateRoles,
+  resolveRef,
+  defaultScorer,
+} from './topology/shapeRef/index.js';
+export type {
+  GeometricHint,
+  ShapeRef,
+  RoleTable,
+  ResolvedRef,
+  BrokenRef,
+  FaceScorer,
+} from './topology/shapeRef/index.js';
+
 export {
   surfaceFromGrid,
   surfaceFromImage,

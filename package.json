@@ -149,6 +149,16 @@
         "default": "./dist/worker.cjs"
       }
     },
+    "./shapeRef": {
+      "import": {
+        "types": "./dist/shapeRef.d.ts",
+        "default": "./dist/shapeRef.js"
+      },
+      "require": {
+        "types": "./dist/shapeRef.d.ts",
+        "default": "./dist/shapeRef.cjs"
+      }
+    },
     "./quick": {
       "import": {
         "types": "./dist/quick.d.ts",

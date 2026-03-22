@@ -31,6 +31,7 @@ export default defineConfig({
         measurement: resolve(__dirname, 'src/measurement.ts'),
         io: resolve(__dirname, 'src/io.ts'),
         worker: resolve(__dirname, 'src/worker.ts'),
+        shapeRef: resolve(__dirname, 'src/shapeRef.ts'),
       },
       formats: ['es', 'cjs'],
     },
