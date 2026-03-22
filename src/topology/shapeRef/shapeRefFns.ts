@@ -57,6 +57,9 @@ function boxRoleFromNormal(n: readonly [number, number, number]): string | undef
  *
  * For 'box': uses face normals to assign cardinal names
  * ('box:top', 'box:bottom', 'box:front', 'box:back', 'box:left', 'box:right').
+ * **Note:** Box role detection assumes axis-aligned faces (normal within 0.9 of
+ * a cardinal axis). Rotated boxes may receive fewer than 6 named roles; remaining
+ * faces fall through to sequential naming.
  *
  * For other types: sequential naming ('opType:face_0', 'opType:face_1', ...).
  *
@@ -104,6 +107,11 @@ export function createRef(origin: string, role: string, face: Face): ShapeRef {
  * - Deleted faces: role removed
  * - Modified faces: hash updated to first result hash
  * - Unchanged faces: hash preserved
+ *
+ * **Limitation:** When a face splits (1→many in `evolution.modified`), only the
+ * first successor hash is tracked. The geometric fallback in `resolveRef` handles
+ * cases where this picks the "wrong" successor. A future version may return
+ * multi-hash mappings for split-aware resolution.
  */
 export function updateRoles(
   roles: RoleTable,
@@ -183,16 +191,16 @@ export function resolveRef(
     return { ref, reason: 'deleted' };
   }
 
-  // 2. Geometric fallback
+  // 2. Geometric fallback — cache scores to avoid double WASM calls
   let bestScore = -Infinity;
   let bestFace: Face | undefined;
   let secondBestScore = -Infinity;
-  const candidates: Face[] = [];
+  const scored: Array<[Face, number]> = [];
 
   for (const face of faces) {
     const score = scoreFn(ref.hint, face);
     if (score > MIN_SCORE) {
-      candidates.push(face);
+      scored.push([face, score]);
     }
     if (score > bestScore) {
       secondBestScore = bestScore;
@@ -205,11 +213,10 @@ export function resolveRef(
 
   // 3. Check for ambiguity
   if (bestFace !== undefined && bestScore > MIN_SCORE) {
-    if (bestScore - secondBestScore < AMBIGUITY_THRESHOLD && candidates.length > 1) {
-      // Filter candidates to only competitive faces (within threshold of best)
-      const competitive = candidates.filter(
-        (f) => scoreFn(ref.hint, f) >= bestScore - AMBIGUITY_THRESHOLD
-      );
+    if (bestScore - secondBestScore < AMBIGUITY_THRESHOLD && scored.length > 1) {
+      const competitive = scored
+        .filter(([, s]) => s >= bestScore - AMBIGUITY_THRESHOLD)
+        .map(([f]) => f);
       return { ref, reason: 'ambiguous', candidates: competitive };
     }
     return { face: bestFace, confidence: 'geometric-fallback' };
