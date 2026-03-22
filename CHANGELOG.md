@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.1.2](https://github.com/andymai/brepjs/compare/brepjs-v14.1.1...brepjs-v14.1.2) (2026-03-22)
+
+
+### Bug Fixes
+
+* **build:** bump max package files to 600 for shapeRef module ([#583](https://github.com/andymai/brepjs/issues/583)) ([519cc9c](https://github.com/andymai/brepjs/commit/519cc9c23b1d23db5779ed17d2c7fd58f71ea9a9))
+
 ## [14.1.1](https://github.com/andymai/brepjs/compare/brepjs-v14.1.0...brepjs-v14.1.1) (2026-03-22)
 
 
