@@ -1,5 +1,16 @@
 # Changelog
 
+## [14.0.0](https://github.com/andymai/brepjs/compare/brepjs-v13.4.0...brepjs-v14.0.0) (2026-03-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **api:** `clone()`, `simplify()`, and `toBREP()` now return `Result<T>` instead of `T`. Use `unwrap()` to extract values.
+
+### Features
+
+* **api:** API ergonomics quick wins — error suggestions, Result migrations, namespace re-exports ([#572](https://github.com/andymai/brepjs/issues/572)) ([4edd7ea](https://github.com/andymai/brepjs/commit/4edd7ea21c6288281eba31f2ab05789eb9731f48))
+
 ## [13.4.0](https://github.com/andymai/brepjs/compare/brepjs-v13.3.0...brepjs-v13.4.0) (2026-03-22)
 
 
