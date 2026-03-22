@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.1.0](https://github.com/andymai/brepjs/compare/brepjs-v14.0.0...brepjs-v14.1.0) (2026-03-22)
+
+
+### Features
+
+* **shapeRef:** add parametric face reference system ([#578](https://github.com/andymai/brepjs/issues/578)) ([644b018](https://github.com/andymai/brepjs/commit/644b0187a35f28c1f25143b14c2e4fad669edde8))
+
 ## [14.0.0](https://github.com/andymai/brepjs/compare/brepjs-v13.4.0...brepjs-v14.0.0) (2026-03-22)
 
 
