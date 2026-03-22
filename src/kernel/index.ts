@@ -2,6 +2,7 @@ import type { KernelAdapter, KernelInstance } from './types.js';
 import type { Kernel2DCapability } from './kernel2dTypes.js';
 import { supportsKernel2D } from './kernel2dTypes.js';
 import { DefaultAdapter } from './occt/defaultAdapter.js';
+import { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 import { resetMeasureDetectionCache } from './occt/measureOps.js';
 import { resetTransformDetectionCache } from './occt/transformOps.js';
 
@@ -163,7 +164,6 @@ export async function init(): Promise<string> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
     const bk = (await import(/* @vite-ignore */ 'brepkit-wasm')) as any;
     if (typeof bk.default === 'function') await bk.default();
-    const { BrepkitAdapter } = await import(/* @vite-ignore */ './brepkit/brepkitAdapter.js');
     registerKernel('brepkit', new BrepkitAdapter(new bk.BrepKernel()));
     return 'brepkit';
   } catch {
