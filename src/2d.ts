@@ -92,7 +92,7 @@ export {
 // ── Utilities ──
 
 export { type Point2D, BoundingBox2d, Curve2D } from './2d/lib/index.js';
-export type { Curve2DHandle } from './core/curve2dHandle.js';
+export { type Curve2DHandle, createCurve2DHandle } from './core/curve2dHandle.js';
 export { organiseBlueprints } from './2d/blueprints/lib.js';
 export { polysidesBlueprint, roundedRectangleBlueprint } from './2d/blueprints/cannedBlueprints.js';
 export type { ScaleMode } from './2d/curves.js';
