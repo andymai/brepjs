@@ -280,10 +280,6 @@ import {
   composeTransform as _composeTransform,
 } from './evolutionOps.js';
 import {
-  applyMatrix as _applyMatrix,
-  extractNurbsFromEdge as _extractNurbsFromEdge,
-} from './internalOps.js';
-import {
   createPoint2d as _createPoint2d,
   createDirection2d as _createDirection2d,
   createVector2d as _createVector2d,
@@ -364,6 +360,31 @@ import {
  * - bk.shapeToShapeDistance() — shape-to-shape distance (future brepkit PR)
  * - bk.intersectCurves2d() — 2D curve intersection (future brepkit PR)
  */
+
+/**
+ * Resolve a callback-style draft angle to a uniform number.
+ * brepkit only supports a single angle per draft call.
+ */
+function resolveUniformAngle(
+  faces: KernelShape[],
+  angleDeg: number | ((face: KernelShape) => number)
+): number {
+  if (typeof angleDeg !== 'function') return angleDeg;
+  let uniform: number | undefined;
+  for (const face of faces) {
+    const angle = angleDeg(face);
+    if (uniform === undefined) {
+      uniform = angle;
+    } else if (angle !== uniform) {
+      throw new Error(
+        'brepkit does not support variable draft with multiple distinct angles. ' +
+          'Use the OCCT kernel for per-face angle variation, or use a uniform angle.'
+      );
+    }
+  }
+  if (uniform === undefined) throw new Error('draft: no faces provided');
+  return uniform;
+}
 
 export class BrepkitAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
@@ -753,28 +774,14 @@ export class BrepkitAdapter implements KernelAdapter {
     neutralPlane: [number, number, number],
     angleDeg: number | ((face: KernelShape) => number)
   ): KernelShape {
-    if (typeof angleDeg === 'function') {
-      // Resolve per-face angles; brepkit only supports a single uniform angle
-      // per draft call (face IDs become stale after each call), so we require
-      // all callback-returned angles to be the same value.
-      let uniformAngle: number | undefined;
-      for (const face of faces) {
-        const angle = angleDeg(face);
-        if (uniformAngle === undefined) {
-          uniformAngle = angle;
-        } else if (angle !== uniformAngle) {
-          throw new Error(
-            'brepkit does not support variable draft with multiple distinct angles. ' +
-              'Use the OCCT kernel for per-face angle variation, or use a uniform angle.'
-          );
-        }
-      }
-      if (uniformAngle === undefined) {
-        throw new Error('draft: no faces provided');
-      }
-      return _draft(this.bk, shape, faces, pullDirection, neutralPlane, uniformAngle);
-    }
-    return _draft(this.bk, shape, faces, pullDirection, neutralPlane, angleDeg);
+    return _draft(
+      this.bk,
+      shape,
+      faces,
+      pullDirection,
+      neutralPlane,
+      resolveUniformAngle(faces, angleDeg)
+    );
   }
 
   defeature(shape: KernelShape, faces: KernelShape[]): KernelShape {
@@ -1063,35 +1070,13 @@ export class BrepkitAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    // Resolve callback to uniform angle before delegating
-    let resolvedAngle: number;
-    if (typeof angleDeg === 'function') {
-      let uniformAngle: number | undefined;
-      for (const face of faces) {
-        const angle = angleDeg(face);
-        if (uniformAngle === undefined) {
-          uniformAngle = angle;
-        } else if (angle !== uniformAngle) {
-          throw new Error(
-            'brepkit does not support variable draft with multiple distinct angles. ' +
-              'Use the OCCT kernel for per-face angle variation, or use a uniform angle.'
-          );
-        }
-      }
-      if (uniformAngle === undefined) {
-        throw new Error('draft: no faces provided');
-      }
-      resolvedAngle = uniformAngle;
-    } else {
-      resolvedAngle = angleDeg;
-    }
     return _draftWithHistory(
       this.bk,
       shape,
       faces,
       pullDirection,
       neutralPlane,
-      resolvedAngle,
+      resolveUniformAngle(faces, angleDeg),
       inputFaceHashes,
       hashUpperBound
     );
