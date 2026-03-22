@@ -1,5 +1,12 @@
 # Changelog
 
+## [13.4.0](https://github.com/andymai/brepjs/compare/brepjs-v13.3.0...brepjs-v13.4.0) (2026-03-22)
+
+
+### Features
+
+* **2d:** add functional 2D curve geometry API ([#570](https://github.com/andymai/brepjs/issues/570)) ([37b7581](https://github.com/andymai/brepjs/commit/37b75819ca95930ec307a41ad28723943d5d73ed))
+
 ## [13.3.0](https://github.com/andymai/brepjs/compare/brepjs-v13.2.0...brepjs-v13.3.0) (2026-03-21)
 
 
