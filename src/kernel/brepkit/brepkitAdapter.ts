@@ -283,7 +283,6 @@ import {
   applyMatrix as _applyMatrix,
   extractNurbsFromEdge as _extractNurbsFromEdge,
 } from './internalOps.js';
-import { unwrap as _unwrap } from './helpers.js';
 import {
   createPoint2d as _createPoint2d,
   createDirection2d as _createDirection2d,
