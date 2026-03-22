@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.1.3](https://github.com/andymai/brepjs/compare/brepjs-v14.1.2...brepjs-v14.1.3) (2026-03-22)
+
+
+### Bug Fixes
+
+* **build:** use static import for BrepkitAdapter ([#585](https://github.com/andymai/brepjs/issues/585)) ([b9ae299](https://github.com/andymai/brepjs/commit/b9ae2994f75006d2619dbc7f5a3fe7aa90766b18))
+
 ## [14.1.2](https://github.com/andymai/brepjs/compare/brepjs-v14.1.1...brepjs-v14.1.2) (2026-03-22)
 
 
