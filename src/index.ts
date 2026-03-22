@@ -436,6 +436,7 @@ export type { DimensionError, RequireDimension, SameDimension } from './core/dim
 // ── Disposal / resource management ──
 
 export type { ShapeHandle, KernelHandle, DisposalStats } from './core/disposal.js';
+export type { Curve2DHandle } from './core/curve2dHandle.js';
 
 export {
   createHandle,

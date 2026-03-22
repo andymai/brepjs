@@ -59,9 +59,40 @@ export {
   curve2dDistanceFrom,
 } from './2d/lib/curve2dFns.js';
 
+// ── 2D curve geometry (functional API) ──
+
+export {
+  line2d,
+  circle2d,
+  arc2d,
+  arc2dTangent,
+  ellipse2d,
+  ellipseArc2d,
+  bezier2d,
+  bspline2d,
+  translateCurve2d,
+  rotateCurve2d,
+  scaleCurve2d,
+  mirrorCurve2d,
+  mirrorCurve2dAcrossAxis,
+  offsetCurve2d,
+  evaluateCurve2d,
+  tangentCurve2d,
+  boundsCurve2d,
+  typeCurve2d,
+  intersectCurves2d,
+  projectPointOnCurve2d,
+  distanceBetweenCurves2d,
+  liftCurve2dToPlane,
+  extractCurve2dFromEdge,
+  type Ellipse2dOptions,
+  type BSpline2dOptions,
+} from './2d/curve2dGeometryFns.js';
+
 // ── Utilities ──
 
 export { type Point2D, BoundingBox2d, Curve2D } from './2d/lib/index.js';
+export type { Curve2DHandle } from './core/curve2dHandle.js';
 export { organiseBlueprints } from './2d/blueprints/lib.js';
 export { polysidesBlueprint, roundedRectangleBlueprint } from './2d/blueprints/cannedBlueprints.js';
 export type { ScaleMode } from './2d/curves.js';
