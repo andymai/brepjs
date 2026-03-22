@@ -11,23 +11,48 @@ import { castShape } from './shapeTypes.js';
 import type { Result } from './result.js';
 import { ok, err } from './result.js';
 import type { BrepErrorKind, BrepError } from './errors.js';
-import { translateKernelError } from './errors.js';
+import { translateKernelError, getSuggestionForCode } from './errors.js';
 import { DisposalScope } from './disposal.js';
 
-type ErrorFactory = (code: string, message: string, cause?: unknown) => BrepError;
+type ErrorFactory = (
+  code: string,
+  message: string,
+  cause?: unknown,
+  suggestion?: string
+) => BrepError;
+
+function buildError(
+  kind: BrepErrorKind,
+  code: string,
+  message: string,
+  cause?: unknown,
+  suggestion?: string
+): BrepError {
+  const base: BrepError = { kind, code, message, cause };
+  if (suggestion) return { ...base, suggestion };
+  return base;
+}
 
 const errorFactories: Record<BrepErrorKind, ErrorFactory> = {
-  KERNEL_OPERATION: (code, message, cause) => ({ kind: 'KERNEL_OPERATION', code, message, cause }),
-  VALIDATION: (code, message, cause) => ({ kind: 'VALIDATION', code, message, cause }),
-  TYPE_CAST: (code, message, cause) => ({ kind: 'TYPE_CAST', code, message, cause }),
-  SKETCHER_STATE: (code, message, cause) => ({ kind: 'SKETCHER_STATE', code, message, cause }),
-  MODULE_INIT: (code, message, cause) => ({ kind: 'MODULE_INIT', code, message, cause }),
-  COMPUTATION: (code, message, cause) => ({ kind: 'COMPUTATION', code, message, cause }),
-  IO: (code, message, cause) => ({ kind: 'IO', code, message, cause }),
-  QUERY: (code, message, cause) => ({ kind: 'QUERY', code, message, cause }),
+  KERNEL_OPERATION: (code, message, cause, suggestion) =>
+    buildError('KERNEL_OPERATION', code, message, cause, suggestion),
+  VALIDATION: (code, message, cause, suggestion) =>
+    buildError('VALIDATION', code, message, cause, suggestion),
+  TYPE_CAST: (code, message, cause, suggestion) =>
+    buildError('TYPE_CAST', code, message, cause, suggestion),
+  SKETCHER_STATE: (code, message, cause, suggestion) =>
+    buildError('SKETCHER_STATE', code, message, cause, suggestion),
+  MODULE_INIT: (code, message, cause, suggestion) =>
+    buildError('MODULE_INIT', code, message, cause, suggestion),
+  COMPUTATION: (code, message, cause, suggestion) =>
+    buildError('COMPUTATION', code, message, cause, suggestion),
+  IO: (code, message, cause, suggestion) => buildError('IO', code, message, cause, suggestion),
+  QUERY: (code, message, cause, suggestion) =>
+    buildError('QUERY', code, message, cause, suggestion),
   // NB: UNSUPPORTED exists for Record<BrepErrorKind> exhaustiveness.
   // Prefer explicit `return err(unsupportedError(...))` in adapter code (ADR-0006).
-  UNSUPPORTED: (code, message, cause) => ({ kind: 'UNSUPPORTED', code, message, cause }),
+  UNSUPPORTED: (code, message, cause, suggestion) =>
+    buildError('UNSUPPORTED', code, message, cause, suggestion),
 };
 
 /**
@@ -50,7 +75,8 @@ export function kernelCall(
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =
       kind === 'KERNEL_OPERATION' ? translateKernelError(rawMessage) : rawMessage;
-    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
+    const suggestion = getSuggestionForCode(code);
+    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e, suggestion));
   }
 }
 
@@ -73,7 +99,8 @@ export function kernelCallRaw<T>(
     const rawMessage = e instanceof Error ? e.message : String(e);
     const translatedMessage =
       kind === 'KERNEL_OPERATION' ? translateKernelError(rawMessage) : rawMessage;
-    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e));
+    const suggestion = getSuggestionForCode(code);
+    return err(errorFactories[kind](code, `${message}: ${translatedMessage}`, e, suggestion));
   }
 }
 

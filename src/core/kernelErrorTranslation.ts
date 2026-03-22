@@ -72,6 +72,42 @@ const kernel_ERROR_PATTERNS: ReadonlyArray<{ pattern: RegExp; translation: strin
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Per-error-code suggestions — actionable hints for the `suggestion` field
+// ---------------------------------------------------------------------------
+
+const ERROR_CODE_SUGGESTIONS: Readonly<Record<string, string>> = {
+  FUSE_FAILED:
+    'Try autoHeal() on both operands before the boolean operation. Check for overlapping faces or zero-thickness geometry.',
+  CUT_FAILED:
+    'Try autoHeal() on both operands before the boolean operation. Check for overlapping faces or zero-thickness geometry.',
+  FUSE_NOT_3D:
+    'The boolean result was not a 3D solid. Ensure both input shapes are valid 3D solids, not shells or open surfaces.',
+  CUT_NOT_3D:
+    'The boolean result was not a 3D solid. Ensure both input shapes are valid 3D solids, not shells or open surfaces.',
+  INTERSECT_NOT_3D:
+    'The boolean result was not a 3D solid. Ensure both input shapes are valid 3D solids, not shells or open surfaces.',
+  SWEEP_FAILED:
+    'Ensure the spine curve has no sharp corners or self-intersections. Try simplifying the profile or using a smoother path.',
+  LOFT_FAILED:
+    'Check that all profiles have the same number of edges and consistent orientation. Try reordering profiles.',
+  FILLET_NOT_3D:
+    'The fillet radius may be too large for the selected edges. Try a smaller radius or check that adjacent faces have enough room.',
+  CHAMFER_NOT_3D:
+    'The chamfer distance may be too large. Try a smaller distance or check edge geometry.',
+  SHELL_NOT_3D:
+    'The shell thickness may be too large for the shape. Try reducing thickness or removing problematic faces.',
+  OFFSET_NOT_3D:
+    'The offset distance may be too large for the shape geometry. Try a smaller distance.',
+  DRAFT_FAILED:
+    'The draft angle may be too large or the selected faces incompatible. Try a smaller angle or different faces.',
+};
+
+/** Look up an actionable suggestion for a given error code. */
+export function getSuggestionForCode(code: string): string | undefined {
+  return ERROR_CODE_SUGGESTIONS[code];
+}
+
 /**
  * Translate an kernel error message into a user-friendly explanation.
  * If no pattern matches, returns the original message.
