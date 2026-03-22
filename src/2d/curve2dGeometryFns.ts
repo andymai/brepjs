@@ -403,7 +403,7 @@ export function projectPointOnCurve2d(
 ): Result<{ param: number; distance: number } | null> {
   return kernelCallRaw(
     () => getKernel2D().projectPointOnCurve2d(curve.raw, point[0], point[1]),
-    CURVE2D_INTERSECTION_FAILED,
+    CURVE2D_QUERY_FAILED,
     'Failed to project point onto 2D curve'
   );
 }
