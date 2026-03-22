@@ -27,7 +27,7 @@ import {
 import { applyMatrix } from './internalOps.js';
 import { translate, rotate, mirror, scale, generalTransform } from './transformOps.js';
 import { fuse, cut, intersect } from './booleanOps.js';
-import { fillet, chamfer, shell, thicken, offset } from './modifierOps.js';
+import { fillet, chamfer, shell, thicken, offset, draft } from './modifierOps.js';
 
 // ---------------------------------------------------------------------------
 // Internal evolution helpers
@@ -694,6 +694,26 @@ export function offsetWithHistory(
   return buildEvolution(
     bk,
     offset(bk, shape, distance, tolerance),
+    inputFaceHashes,
+    hashUpperBound,
+    false,
+    shape
+  );
+}
+
+export function draftWithHistory(
+  bk: BrepkitKernel,
+  shape: KernelShape,
+  faces: KernelShape[],
+  pullDirection: [number, number, number],
+  neutralPlane: [number, number, number],
+  angleDeg: number,
+  inputFaceHashes: number[],
+  hashUpperBound: number
+): OperationResult {
+  return buildEvolution(
+    bk,
+    draft(bk, shape, faces, pullDirection, neutralPlane, angleDeg),
     inputFaceHashes,
     hashUpperBound,
     false,

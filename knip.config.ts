@@ -11,10 +11,7 @@ const config: KnipConfig = {
   workspaces: {
     '.': {
       project: ['src/**/*.ts'],
-      ignore: [
-        // Extracted brepkit adapter modules — not yet wired up (progressive extraction)
-        'src/kernel/brepkit/**',
-      ],
+      ignore: [],
       ignoreBinaries: ['tsx'],
     },
     'packages/brepjs-opencascade': {

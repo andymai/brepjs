@@ -220,4 +220,4 @@ export { supportsKernel2D } from './kernel2dTypes.js';
 export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2dTypes.js';
 
 export { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
-export type { BrepkitHandle } from './brepkit/brepkitAdapter.js';
+export type { BrepkitHandle } from './brepkit/helpers.js';
