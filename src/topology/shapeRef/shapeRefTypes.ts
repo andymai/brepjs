@@ -54,7 +54,7 @@ export type RoleTable = ReadonlyMap<string, ReadonlyMap<string, number>>;
 /** A successfully resolved face reference. */
 export interface ResolvedRef {
   readonly face: Face;
-  readonly confidence: 'exact' | 'heuristic' | 'geometric-fallback';
+  readonly confidence: 'exact' | 'geometric-fallback';
 }
 
 /** A face reference that could not be resolved. */

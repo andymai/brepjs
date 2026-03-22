@@ -206,7 +206,11 @@ export function resolveRef(
   // 3. Check for ambiguity
   if (bestFace !== undefined && bestScore > MIN_SCORE) {
     if (bestScore - secondBestScore < AMBIGUITY_THRESHOLD && candidates.length > 1) {
-      return { ref, reason: 'ambiguous', candidates };
+      // Filter candidates to only competitive faces (within threshold of best)
+      const competitive = candidates.filter(
+        (f) => scoreFn(ref.hint, f) >= bestScore - AMBIGUITY_THRESHOLD
+      );
+      return { ref, reason: 'ambiguous', candidates: competitive };
     }
     return { face: bestFace, confidence: 'geometric-fallback' };
   }
