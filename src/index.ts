@@ -972,3 +972,14 @@ export {
   type WrappedCurve,
   type WrappedFace,
 } from './topology/wrapperFns.js';
+
+// ── Namespace re-exports (grouped API) ──
+export * as primitives from './ns/primitives.js';
+export * as booleans from './ns/booleans.js';
+export * as modifiers from './ns/modifiers.js';
+export * as transforms from './ns/transforms.js';
+export * as measurement from './ns/measurement.js';
+export * as io from './ns/ioNs.js';
+export * as query from './ns/query.js';
+export * as construction from './ns/construction.js';
+export * as patterns from './ns/patterns.js';

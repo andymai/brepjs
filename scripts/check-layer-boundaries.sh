@@ -26,7 +26,7 @@ get_layer() {
     kernel|utils) echo 0 ;;
     core) echo 1 ;;
     topology|2d|operations|query|measurement|io|worker) echo 2 ;;
-    sketching|text|projection) echo 3 ;;
+    sketching|text|projection|ns) echo 3 ;;
     *) echo -1 ;;
   esac
 }
