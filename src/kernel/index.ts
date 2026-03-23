@@ -5,6 +5,7 @@ import { DefaultAdapter } from './occt/defaultAdapter.js';
 import { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 import { resetMeasureDetectionCache } from './occt/measureOps.js';
 import { resetTransformDetectionCache } from './occt/transformOps.js';
+import { resetBooleanBatchDetectionCache } from './occt/booleanBatchOps.js';
 import { resetPerformanceStats } from './perfStats.js';
 
 // ---------------------------------------------------------------------------
@@ -96,6 +97,7 @@ export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
 export function initFromOC(oc: KernelInstance): void {
   resetMeasureDetectionCache();
   resetTransformDetectionCache();
+  resetBooleanBatchDetectionCache();
   resetPerformanceStats();
   const adapter = new DefaultAdapter(oc);
   registerKernel('occt', adapter);

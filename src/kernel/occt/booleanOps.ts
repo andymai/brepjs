@@ -14,6 +14,7 @@ import type {
   BooleanOptions,
 } from '@/kernel/types.js';
 import { perfTimer } from '../perfStats.js';
+import { cppFuseAll, cppCutAll } from './booleanBatchOps.js';
 
 /** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
 const SIMPLIFY_TOLERANCE = 1e-3;
@@ -188,6 +189,11 @@ function fuseAllNative(
   shapes: KernelShape[],
   options: BooleanOptions = {}
 ): KernelShape {
+  // Try C++ batch path first (single WASM call with parallel + OBB)
+  const cppResult = cppFuseAll(oc, shapes, options);
+  if (cppResult !== null) return cppResult;
+
+  // JS fallback — individual OCCT calls via Embind
   const end = perfTimer('boolean');
   try {
     const { optimisation, simplify = false, fuzzyValue } = options;
@@ -331,8 +337,12 @@ export function cutAll(
 ): KernelShape {
   if (tools.length === 0) return shape;
 
-  // Note: cut() already calls perfTimer('boolean') internally,
-  // so we don't double-wrap here.
+  // Try C++ batch path first (single WASM call with parallel + OBB)
+  const cppResult = cppCutAll(oc, shape, tools, options);
+  if (cppResult !== null) return cppResult;
+
+  // JS fallback — compound tool then single cut
+  // Note: cut() already calls perfTimer('boolean') internally
   const toolCompound = buildCompound(oc, tools);
   const result = cut(oc, shape, toolCompound, options);
   toolCompound.delete();
