@@ -258,8 +258,12 @@ export function offset(
     const id = bk.thicken(h.id, distance);
     return solidHandle(id);
   }
-  const id = bk.offsetSolid(unwrapSolidOrThrow(shape, 'offset'), distance);
-  return solidHandle(id);
+  const solidId = unwrapSolidOrThrow(shape, 'offset');
+  // Prefer V2 offset engine (intersection-based joints) when available
+  if (typeof bk.offsetSolidV2 === 'function') {
+    return solidHandle(bk.offsetSolidV2(solidId, distance));
+  }
+  return solidHandle(bk.offsetSolid(solidId, distance));
 }
 
 export function filletVariable(bk: BrepkitKernel, shape: KernelShape, spec: string): KernelShape {

@@ -276,7 +276,6 @@ export interface BrepkitKernel {
 
   offsetSolid(solid: number, distance: number): number;
 
-  /** @unwired */
   offsetSolidV2(solid: number, distance: number): number;
 
   /** @unwired */
@@ -644,7 +643,6 @@ export interface BrepkitKernel {
 
   sketchAddPoint(sketch: number, x: number, y: number, fixed: boolean): number;
 
-  /** @unwired */
   sketchAddArc(sketch: number, centerIdx: number, startIdx: number, endIdx: number): number;
 
   sketchAddConstraint(sketch: number, json: string): void;
