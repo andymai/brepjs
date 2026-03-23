@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.2.1](https://github.com/andymai/brepjs/compare/brepjs-v14.2.0...brepjs-v14.2.1) (2026-03-23)
+
+
+### Performance Improvements
+
+* evolution fast path + wasm-opt in CI ([#591](https://github.com/andymai/brepjs/issues/591)) ([c3aa610](https://github.com/andymai/brepjs/commit/c3aa610b4abd971ffccd5fbf9016e2a451ad6257))
+
 ## [14.2.0](https://github.com/andymai/brepjs/compare/brepjs-v14.1.3...brepjs-v14.2.0) (2026-03-23)
 
 ### Features
