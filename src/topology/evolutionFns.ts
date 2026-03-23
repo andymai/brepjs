@@ -13,7 +13,7 @@ import { castShape, isShape3D } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
-import type { BooleanOptions, ShapeEvolution } from '@/kernel/types.js';
+import type { BooleanOptions, KernelShape, ShapeEvolution } from '@/kernel/types.js';
 import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
 
@@ -90,8 +90,8 @@ function castToShape3D(
 // Edge callback resolution (inlined from modifierFns.ts)
 // ---------------------------------------------------------------------------
 
-/** Kernel-compatible callback type: looks up value by raw OC hash. */
-type KernelHashCallback<V> = (ocShape: { HashCode(max: number): number }) => V;
+/** Kernel-compatible callback type: looks up value by raw kernel shape hash. */
+type KernelHashCallback<V> = (ocShape: KernelShape) => V;
 
 function resolveEdgeCallback(
   selectedEdges: ReadonlyArray<Edge>,

@@ -59,10 +59,9 @@ function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
 
 // ── Init ──
 
-async function loadWasmBuild(buildType: 'threaded' | 'single') {
-  const jsFile = `/wasm/brepjs_${buildType}.js`;
-  const wasmFile = `/wasm/brepjs_${buildType}.wasm`;
-  const workerFile = buildType === 'threaded' ? '/wasm/brepjs_threaded.worker.js' : undefined;
+async function loadWasmBuild() {
+  const jsFile = '/wasm/brepjs_single.js';
+  const wasmFile = '/wasm/brepjs_single.wasm';
 
   // Try cache first, fall back to network
   let resp: Response | undefined;
@@ -93,7 +92,6 @@ async function loadWasmBuild(buildType: 'threaded' | 'single') {
   const oc = await opencascade({
     locateFile: (f: string) => {
       if (f.endsWith('.wasm')) return wasmFile;
-      if (f.endsWith('.worker.js') && workerFile) return workerFile;
       return f;
     },
   });
@@ -107,24 +105,7 @@ async function handleInit() {
 
     post({ type: 'init-progress', stage: 'Initializing WASM...', progress: 0.4 });
 
-    // Try threaded build first (better performance), fall back to single if it hangs
-    let oc;
-    try {
-      // 10 second timeout for threaded init
-      oc = await Promise.race([
-        loadWasmBuild('threaded'),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Threaded WASM init timeout')), 10000)
-        ),
-      ]);
-    } catch (threadedErr) {
-      console.warn(
-        'Threaded WASM failed, falling back to single-threaded:',
-        threadedErr instanceof Error ? threadedErr.message : String(threadedErr)
-      );
-      post({ type: 'init-progress', stage: 'Loading fallback kernel...', progress: 0.5 });
-      oc = await loadWasmBuild('single');
-    }
+    const oc = await loadWasmBuild();
 
     post({ type: 'init-progress', stage: 'Loading brepjs...', progress: 0.7 });
 

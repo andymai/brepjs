@@ -41,16 +41,9 @@ describe('Binary size tracking', () => {
   const results: BenchResult[] = [];
 
   const artifacts = [
-    // Single-threaded (primary optimization target)
     { name: 'single.wasm', path: path.join(pkgDir, 'brepjs_single.wasm') },
     { name: 'single.js', path: path.join(pkgDir, 'brepjs_single.js') },
     { name: 'single.d.ts', path: path.join(pkgDir, 'brepjs_single.d.ts') },
-    // Threaded
-    { name: 'threaded.wasm', path: path.join(pkgDir, 'brepjs_threaded.wasm') },
-    { name: 'threaded.js', path: path.join(pkgDir, 'brepjs_threaded.js') },
-    // With exceptions
-    { name: 'exceptions.wasm', path: path.join(pkgDir, 'brepjs_with_exceptions.wasm') },
-    { name: 'exceptions.js', path: path.join(pkgDir, 'brepjs_with_exceptions.js') },
   ];
 
   it('records artifact sizes', () => {

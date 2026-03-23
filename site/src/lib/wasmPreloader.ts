@@ -13,7 +13,7 @@ export async function preloadWASM(): Promise<void> {
   try {
     const cache = await caches.open(WASM_CACHE_NAME);
 
-    // List of WASM files to preload (threaded version for multi-core performance)
+    // List of WASM files to preload
     const urls = WASM_FILES.map((file) => `/wasm/${file}`);
 
     // Fetch and cache each file if not already cached

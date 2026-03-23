@@ -63,8 +63,8 @@ function validatePositiveParam(
 // Edge callback resolution (shared by fillet / chamfer)
 // ---------------------------------------------------------------------------
 
-/** Kernel-compatible callback type: looks up value by raw OC hash. */
-type KernelHashCallback<V> = (ocShape: { HashCode(max: number): number }) => V;
+/** Kernel-compatible callback type: looks up value by raw kernel shape hash. */
+type KernelHashCallback<V> = (ocShape: KernelShape) => V;
 
 /**
  * When the user supplies a per-edge callback, pre-filter edges and build a
