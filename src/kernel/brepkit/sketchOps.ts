@@ -44,6 +44,17 @@ export function sketchSolve(
   return bk.sketchSolve(sketch, maxIterations, tolerance);
 }
 
+/** Add an arc to a sketch defined by center, start, end point indices. Returns the arc index. */
+export function sketchAddArc(
+  bk: BrepkitKernel,
+  sketch: number,
+  centerIdx: number,
+  startIdx: number,
+  endIdx: number
+): number {
+  return bk.sketchAddArc(sketch, centerIdx, startIdx, endIdx);
+}
+
 /** Get degrees of freedom remaining in a solved or partially-constrained sketch. */
 export function sketchDof(bk: BrepkitKernel, sketch: number): string {
   const result = bk.sketchDof(sketch);

@@ -155,6 +155,7 @@ import {
   sketchAddPoint as _sketchAddPoint,
   sketchAddConstraint as _sketchAddConstraint,
   sketchSolve as _sketchSolve,
+  sketchAddArc as _sketchAddArc,
   sketchDof as _sketchDof,
 } from './sketchOps.js';
 import {
@@ -1736,6 +1737,10 @@ export class BrepkitAdapter implements KernelAdapter {
 
   sketchAddPoint(sketch: number, x: number, y: number, fixed: boolean): number {
     return _sketchAddPoint(this.bk, sketch, x, y, fixed);
+  }
+
+  sketchAddArc(sketch: number, centerIdx: number, startIdx: number, endIdx: number): number {
+    return _sketchAddArc(this.bk, sketch, centerIdx, startIdx, endIdx);
   }
 
   sketchAddConstraint(sketch: number, constraintJson: string): void {

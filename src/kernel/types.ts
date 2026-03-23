@@ -230,12 +230,14 @@ export interface ConstraintSketchCapability {
   sketchNew(): number;
   /** Add a point to a constraint sketch. Returns the point index. */
   sketchAddPoint(sketch: number, x: number, y: number, fixed: boolean): number;
+  /** Add an arc entity to a constraint sketch. Returns the arc index. */
+  sketchAddArc(sketch: number, centerIdx: number, startIdx: number, endIdx: number): number;
   /** Add a constraint to a sketch (JSON-encoded constraint descriptor). */
   sketchAddConstraint(sketch: number, constraintJson: string): void;
   /** Solve sketch constraints. Returns a JSON result with solved point positions. */
   sketchSolve(sketch: number, maxIterations: number, tolerance: number): string;
-  /** Get degrees of freedom remaining in a constraint sketch. */
-  sketchDof(sketch: number): number;
+  /** Get degrees of freedom remaining in a constraint sketch. Returns JSON string. */
+  sketchDof(sketch: number): string;
 }
 
 /** Capability for hidden-line removal (3D → 2D projection). */
