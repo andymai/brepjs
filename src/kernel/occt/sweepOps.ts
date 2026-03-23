@@ -8,6 +8,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import { perfTimer } from '../perfStats.js';
 
 /**
  * Extrudes a face along a direction.
@@ -18,12 +19,21 @@ export function extrude(
   direction: [number, number, number],
   length: number
 ): KernelShape {
-  const vec = new oc.gp_Vec_4(direction[0] * length, direction[1] * length, direction[2] * length);
-  const maker = new oc.BRepPrimAPI_MakePrism_1(face, vec, false, true);
-  const result = maker.Shape();
-  maker.delete();
-  vec.delete();
-  return result;
+  const end = perfTimer('extrude');
+  try {
+    const vec = new oc.gp_Vec_4(
+      direction[0] * length,
+      direction[1] * length,
+      direction[2] * length
+    );
+    const maker = new oc.BRepPrimAPI_MakePrism_1(face, vec, false, true);
+    const result = maker.Shape();
+    maker.delete();
+    vec.delete();
+    return result;
+  } finally {
+    end();
+  }
 }
 
 /**
@@ -51,18 +61,23 @@ export function loft(
   startShape?: KernelShape,
   endShape?: KernelShape
 ): KernelShape {
-  const loftBuilder = new oc.BRepOffsetAPI_ThruSections(true, ruled, 1e-6);
-  if (startShape) loftBuilder.AddVertex(startShape);
-  for (const wire of wires) {
-    loftBuilder.AddWire(wire);
+  const end = perfTimer('loft');
+  try {
+    const loftBuilder = new oc.BRepOffsetAPI_ThruSections(true, ruled, 1e-6);
+    if (startShape) loftBuilder.AddVertex(startShape);
+    for (const wire of wires) {
+      loftBuilder.AddWire(wire);
+    }
+    if (endShape) loftBuilder.AddVertex(endShape);
+    const progress = new oc.Message_ProgressRange_1();
+    loftBuilder.Build(progress);
+    const result = loftBuilder.Shape();
+    loftBuilder.delete();
+    progress.delete();
+    return result;
+  } finally {
+    end();
   }
-  if (endShape) loftBuilder.AddVertex(endShape);
-  const progress = new oc.Message_ProgressRange_1();
-  loftBuilder.Build(progress);
-  const result = loftBuilder.Shape();
-  loftBuilder.delete();
-  progress.delete();
-  return result;
 }
 
 /**

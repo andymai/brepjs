@@ -19,6 +19,7 @@ import type {
   KernelMeshResult,
   KernelEdgeMeshResult,
 } from '@/kernel/types.js';
+import { perfTimer } from '../perfStats.js';
 
 /** Slice a Float32Array from the WASM heap, or return empty if size is 0. */
 function sliceF32(heap: Float32Array, ptr: number, size: number): Float32Array {
@@ -38,6 +39,7 @@ export function mesh(
   shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
+  const end = perfTimer('mesh');
   const raw = oc.MeshExtractor.extract(
     shape,
     options.tolerance,
@@ -82,6 +84,7 @@ export function mesh(
 
   // Free C++ allocated memory (destructor frees internal buffers)
   raw.delete();
+  end();
 
   return { vertices, normals, triangles, uvs, faceGroups };
 }
@@ -95,6 +98,7 @@ export function meshEdges(
   tolerance: number,
   angularTolerance: number
 ): KernelEdgeMeshResult {
+  const end = perfTimer('edgeMesh');
   const raw = oc.EdgeMeshExtractor.extract(shape, tolerance, angularTolerance);
 
   const linesSize = raw.getLinesSize() as number;
@@ -116,5 +120,6 @@ export function meshEdges(
   }
 
   raw.delete();
+  end();
   return { lines, edgeGroups };
 }

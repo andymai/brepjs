@@ -13,6 +13,7 @@ import type {
   KernelShape,
   BooleanOptions,
 } from '@/kernel/types.js';
+import { perfTimer } from '../perfStats.js';
 
 /** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
 const SIMPLIFY_TOLERANCE = 1e-3;
@@ -81,17 +82,22 @@ export function fuse(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false, fuzzyValue } = options;
-  const progress = new oc.Message_ProgressRange_1();
-  const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
-  applyGlue(oc, fuseOp, optimisation);
-  applyBooleanDefaults(fuseOp, fuzzyValue);
-  fuseOp.Build(progress);
-  if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
-  const result = fuseOp.Shape();
-  fuseOp.delete();
-  progress.delete();
-  return result;
+  const end = perfTimer('boolean');
+  try {
+    const { optimisation, simplify = false, fuzzyValue } = options;
+    const progress = new oc.Message_ProgressRange_1();
+    const fuseOp = new oc.BRepAlgoAPI_Fuse_3(shape, tool, progress);
+    applyGlue(oc, fuseOp, optimisation);
+    applyBooleanDefaults(fuseOp, fuzzyValue);
+    fuseOp.Build(progress);
+    if (simplify) fuseOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+    const result = fuseOp.Shape();
+    fuseOp.delete();
+    progress.delete();
+    return result;
+  } finally {
+    end();
+  }
 }
 
 /**
@@ -103,17 +109,22 @@ export function cut(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false, fuzzyValue } = options;
-  const progress = new oc.Message_ProgressRange_1();
-  const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
-  applyGlue(oc, cutOp, optimisation);
-  applyBooleanDefaults(cutOp, fuzzyValue);
-  cutOp.Build(progress);
-  if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
-  const result = cutOp.Shape();
-  cutOp.delete();
-  progress.delete();
-  return result;
+  const end = perfTimer('boolean');
+  try {
+    const { optimisation, simplify = false, fuzzyValue } = options;
+    const progress = new oc.Message_ProgressRange_1();
+    const cutOp = new oc.BRepAlgoAPI_Cut_3(shape, tool, progress);
+    applyGlue(oc, cutOp, optimisation);
+    applyBooleanDefaults(cutOp, fuzzyValue);
+    cutOp.Build(progress);
+    if (simplify) cutOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+    const result = cutOp.Shape();
+    cutOp.delete();
+    progress.delete();
+    return result;
+  } finally {
+    end();
+  }
 }
 
 /**
@@ -125,17 +136,22 @@ export function intersect(
   tool: KernelShape,
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false, fuzzyValue } = options;
-  const progress = new oc.Message_ProgressRange_1();
-  const commonOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
-  applyGlue(oc, commonOp, optimisation);
-  applyBooleanDefaults(commonOp, fuzzyValue);
-  commonOp.Build(progress);
-  if (simplify) commonOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
-  const result = commonOp.Shape();
-  commonOp.delete();
-  progress.delete();
-  return result;
+  const end = perfTimer('boolean');
+  try {
+    const { optimisation, simplify = false, fuzzyValue } = options;
+    const progress = new oc.Message_ProgressRange_1();
+    const commonOp = new oc.BRepAlgoAPI_Common_3(shape, tool, progress);
+    applyGlue(oc, commonOp, optimisation);
+    applyBooleanDefaults(commonOp, fuzzyValue);
+    commonOp.Build(progress);
+    if (simplify) commonOp.SimplifyResult(true, true, SIMPLIFY_TOLERANCE);
+    const result = commonOp.Shape();
+    commonOp.delete();
+    progress.delete();
+    return result;
+  } finally {
+    end();
+  }
 }
 
 /**
@@ -172,33 +188,38 @@ function fuseAllNative(
   shapes: KernelShape[],
   options: BooleanOptions = {}
 ): KernelShape {
-  const { optimisation, simplify = false, fuzzyValue } = options;
+  const end = perfTimer('boolean');
+  try {
+    const { optimisation, simplify = false, fuzzyValue } = options;
 
-  const argList = new oc.TopTools_ListOfShape_1();
-  for (const s of shapes) {
-    argList.Append_1(s);
+    const argList = new oc.TopTools_ListOfShape_1();
+    for (const s of shapes) {
+      argList.Append_1(s);
+    }
+
+    const builder = new oc.BRepAlgoAPI_BuilderAlgo_1();
+    builder.SetArguments(argList);
+    applyGlue(oc, builder, optimisation);
+    applyBooleanDefaults(builder, fuzzyValue);
+
+    const progress = new oc.Message_ProgressRange_1();
+    builder.Build(progress);
+    let result = builder.Shape();
+
+    if (simplify) {
+      const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(result, true, true, false);
+      upgrader.Build();
+      result = upgrader.Shape();
+      upgrader.delete();
+    }
+
+    argList.delete();
+    builder.delete();
+    progress.delete();
+    return result;
+  } finally {
+    end();
   }
-
-  const builder = new oc.BRepAlgoAPI_BuilderAlgo_1();
-  builder.SetArguments(argList);
-  applyGlue(oc, builder, optimisation);
-  applyBooleanDefaults(builder, fuzzyValue);
-
-  const progress = new oc.Message_ProgressRange_1();
-  builder.Build(progress);
-  let result = builder.Shape();
-
-  if (simplify) {
-    const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(result, true, true, false);
-    upgrader.Build();
-    result = upgrader.Shape();
-    upgrader.delete();
-  }
-
-  argList.delete();
-  builder.delete();
-  progress.delete();
-  return result;
 }
 
 /**
@@ -310,6 +331,8 @@ export function cutAll(
 ): KernelShape {
   if (tools.length === 0) return shape;
 
+  // Note: cut() already calls perfTimer('boolean') internally,
+  // so we don't double-wrap here.
   const toolCompound = buildCompound(oc, tools);
   const result = cut(oc, shape, toolCompound, options);
   toolCompound.delete();

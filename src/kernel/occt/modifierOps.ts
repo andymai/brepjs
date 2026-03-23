@@ -8,6 +8,7 @@
  */
 
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
+import { perfTimer } from '../perfStats.js';
 
 export type FilletRadiusSpec =
   | number
@@ -24,20 +25,25 @@ export function fillet(
   edges: KernelShape[],
   radius: FilletRadiusSpec
 ): KernelShape {
-  const builder = new oc.BRepFilletAPI_MakeFillet(shape, oc.ChFi3d_FilletShape.ChFi3d_Rational);
-  for (const edge of edges) {
-    const r = typeof radius === 'function' ? radius(edge) : radius;
-    const downcast = oc.TopoDS.Edge_1(edge);
-    if (typeof r === 'number') {
-      if (r > 0) builder.Add_2(r, downcast);
-    } else {
-      const [r1, r2] = r;
-      if (r1 > 0 && r2 > 0) builder.Add_3(r1, r2, downcast);
+  const end = perfTimer('fillet');
+  try {
+    const builder = new oc.BRepFilletAPI_MakeFillet(shape, oc.ChFi3d_FilletShape.ChFi3d_Rational);
+    for (const edge of edges) {
+      const r = typeof radius === 'function' ? radius(edge) : radius;
+      const downcast = oc.TopoDS.Edge_1(edge);
+      if (typeof r === 'number') {
+        if (r > 0) builder.Add_2(r, downcast);
+      } else {
+        const [r1, r2] = r;
+        if (r1 > 0 && r2 > 0) builder.Add_3(r1, r2, downcast);
+      }
     }
+    const result = builder.Shape();
+    builder.delete();
+    return result;
+  } finally {
+    end();
   }
-  const result = builder.Shape();
-  builder.delete();
-  return result;
 }
 
 export type ChamferDistSpec =
@@ -123,29 +129,34 @@ export function shell(
   thickness: number,
   tolerance = 1e-3
 ): KernelShape {
-  const facesToRemove = new oc.TopTools_ListOfShape_1();
-  for (const face of faces) {
-    facesToRemove.Append_1(face);
+  const end = perfTimer('shell');
+  try {
+    const facesToRemove = new oc.TopTools_ListOfShape_1();
+    for (const face of faces) {
+      facesToRemove.Append_1(face);
+    }
+    const progress = new oc.Message_ProgressRange_1();
+    const builder = new oc.BRepOffsetAPI_MakeThickSolid();
+    builder.MakeThickSolidByJoin(
+      shape,
+      facesToRemove,
+      -thickness,
+      tolerance,
+      oc.BRepOffset_Mode.BRepOffset_Skin,
+      false,
+      false,
+      oc.GeomAbs_JoinType.GeomAbs_Arc,
+      false,
+      progress
+    );
+    const result = builder.Shape();
+    builder.delete();
+    facesToRemove.delete();
+    progress.delete();
+    return result;
+  } finally {
+    end();
   }
-  const progress = new oc.Message_ProgressRange_1();
-  const builder = new oc.BRepOffsetAPI_MakeThickSolid();
-  builder.MakeThickSolidByJoin(
-    shape,
-    facesToRemove,
-    -thickness,
-    tolerance,
-    oc.BRepOffset_Mode.BRepOffset_Skin,
-    false,
-    false,
-    oc.GeomAbs_JoinType.GeomAbs_Arc,
-    false,
-    progress
-  );
-  const result = builder.Shape();
-  builder.delete();
-  facesToRemove.delete();
-  progress.delete();
-  return result;
 }
 
 /**

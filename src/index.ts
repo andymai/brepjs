@@ -38,6 +38,8 @@ export type {
 } from './kernel/index.js';
 export { supportsProjection, supportsConstraintSketch } from './kernel/index.js';
 export type { ProjectionCapability, ConstraintSketchCapability } from './kernel/index.js';
+export { getPerformanceStats, resetPerformanceStats } from './kernel/index.js';
+export type { PerformanceStats } from './kernel/perfStats.js';
 
 // ── Result type ──
 

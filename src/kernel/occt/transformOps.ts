@@ -7,6 +7,7 @@
 
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import { perfTimer } from '../perfStats.js';
 
 export type { TransformEntry };
 
@@ -30,6 +31,7 @@ function detectCppTransformBatch(oc: KernelInstance): boolean {
 export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): KernelShape[] {
   if (entries.length === 0) return [];
 
+  const endPerf = perfTimer('transform');
   /* v8 ignore start -- C++ extractor not available in test WASM build */
   if (detectCppTransformBatch(oc)) {
     const batch = new oc.TransformBatch();
@@ -55,6 +57,7 @@ export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): K
       try {
         const count = result.getShapesCount() as number;
         const shapes: KernelShape[] = Array.from({ length: count }, (_, i) => result.getShape(i));
+        endPerf();
         return shapes;
       } finally {
         result.delete();
@@ -66,7 +69,7 @@ export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): K
   /* v8 ignore stop */
 
   // JS fallback — individual calls
-  return entries.map((e) => {
+  const result = entries.map((e) => {
     switch (e.type) {
       case 'translate':
         return translate(oc, e.shape, e.x, e.y, e.z);
@@ -78,6 +81,8 @@ export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): K
         return mirror(oc, e.shape, [...e.origin], [...e.normal]);
     }
   });
+  endPerf();
+  return result;
 }
 
 /**
