@@ -276,6 +276,11 @@ mainBuild:
   - symbol: MeasurementExtractor
   - symbol: TransformBatch
   - symbol: TransformBatchResult
+  - symbol: ShapeBatchResult
+  - symbol: LoftBatch
+  - symbol: ExtrudeBatch
+  - symbol: ShellBatch
+  - symbol: FilletBatch
   emccFlags:
   - -O3
   - -sEXPORT_ES6=1
@@ -1161,4 +1166,171 @@ additionalCppCode: |
     };
     std::vector<Entry> entries_;
   };
+  class ShapeBatchResult {
+  public:
+    ShapeBatchResult() : shapesPtr_(nullptr), shapesCount_(0) {}
+    ~ShapeBatchResult() {
+      delete[] shapesPtr_;
+    }
+    ShapeBatchResult(const ShapeBatchResult& other)
+      : shapesPtr_(other.shapesPtr_), shapesCount_(other.shapesCount_) {
+      auto& mutable_other = const_cast<ShapeBatchResult&>(other);
+      mutable_other.shapesPtr_ = nullptr;
+    }
+    int getShapesCount() const { return shapesCount_; }
+    TopoDS_Shape getShape(int index) const {
+      if (index < 0 || index >= shapesCount_ || !shapesPtr_) return TopoDS_Shape();
+      return shapesPtr_[index];
+    }
+  private:
+    TopoDS_Shape* shapesPtr_;
+    int shapesCount_;
+    friend class LoftBatch;
+    friend class ExtrudeBatch;
+    friend class ShellBatch;
+    friend class FilletBatch;
+  };
+
+  class LoftBatch {
+  public:
+    int beginLoft(bool solid, bool ruled, double tolerance) {
+      entries_.push_back({solid, ruled, tolerance, {}, TopoDS_Shape(), TopoDS_Shape(), false, false});
+      return static_cast<int>(entries_.size()) - 1;
+    }
+    void addWire(int entryIndex, const TopoDS_Shape& wire) {
+      if (entryIndex >= 0 && entryIndex < static_cast<int>(entries_.size())) {
+        entries_[entryIndex].wires.push_back(wire);
+      }
+    }
+    void setStartVertex(int entryIndex, const TopoDS_Shape& vertex) {
+      if (entryIndex >= 0 && entryIndex < static_cast<int>(entries_.size())) {
+        entries_[entryIndex].startVertex = vertex;
+        entries_[entryIndex].hasStart = true;
+      }
+    }
+    void setEndVertex(int entryIndex, const TopoDS_Shape& vertex) {
+      if (entryIndex >= 0 && entryIndex < static_cast<int>(entries_.size())) {
+        entries_[entryIndex].endVertex = vertex;
+        entries_[entryIndex].hasEnd = true;
+      }
+    }
+    void clear() { entries_.clear(); }
+    int count() const { return static_cast<int>(entries_.size()); }
+    ShapeBatchResult execute() {
+      ShapeBatchResult result;
+      result.shapesCount_ = static_cast<int>(entries_.size());
+      if (result.shapesCount_ == 0) return result;
+      result.shapesPtr_ = new TopoDS_Shape[result.shapesCount_];
+      for (int i = 0; i < result.shapesCount_; i++) {
+        const Entry& e = entries_[i];
+        BRepOffsetAPI_ThruSections builder(e.solid, e.ruled, e.tolerance);
+        if (e.hasStart) { builder.AddVertex(TopoDS::Vertex(e.startVertex)); }
+        for (const auto& wire : e.wires) { builder.AddWire(TopoDS::Wire(wire)); }
+        if (e.hasEnd) { builder.AddVertex(TopoDS::Vertex(e.endVertex)); }
+        Message_ProgressRange progress;
+        builder.Build(progress);
+        result.shapesPtr_[i] = builder.Shape();
+      }
+      return result;
+    }
+  private:
+    struct Entry {
+      bool solid; bool ruled; double tolerance;
+      std::vector<TopoDS_Shape> wires;
+      TopoDS_Shape startVertex; TopoDS_Shape endVertex;
+      bool hasStart; bool hasEnd;
+    };
+    std::vector<Entry> entries_;
+  };
+
+  class ExtrudeBatch {
+  public:
+    void addExtrude(const TopoDS_Shape& face, double dx, double dy, double dz) {
+      entries_.push_back({face, dx, dy, dz});
+    }
+    void clear() { entries_.clear(); }
+    int count() const { return static_cast<int>(entries_.size()); }
+    ShapeBatchResult execute() {
+      ShapeBatchResult result;
+      result.shapesCount_ = static_cast<int>(entries_.size());
+      if (result.shapesCount_ == 0) return result;
+      result.shapesPtr_ = new TopoDS_Shape[result.shapesCount_];
+      for (int i = 0; i < result.shapesCount_; i++) {
+        const Entry& e = entries_[i];
+        gp_Vec vec(e.dx, e.dy, e.dz);
+        BRepPrimAPI_MakePrism maker(e.face, vec, Standard_False, Standard_True);
+        result.shapesPtr_[i] = maker.Shape();
+      }
+      return result;
+    }
+  private:
+    struct Entry { TopoDS_Shape face; double dx, dy, dz; };
+    std::vector<Entry> entries_;
+  };
+
+  class ShellBatch {
+  public:
+    int beginShell(const TopoDS_Shape& shape, double thickness, double tolerance) {
+      entries_.push_back({shape, {}, thickness, tolerance});
+      return static_cast<int>(entries_.size()) - 1;
+    }
+    void addFaceToRemove(int entryIndex, const TopoDS_Shape& face) {
+      if (entryIndex >= 0 && entryIndex < static_cast<int>(entries_.size())) {
+        entries_[entryIndex].facesToRemove.push_back(face);
+      }
+    }
+    void clear() { entries_.clear(); }
+    int count() const { return static_cast<int>(entries_.size()); }
+    ShapeBatchResult execute() {
+      ShapeBatchResult result;
+      result.shapesCount_ = static_cast<int>(entries_.size());
+      if (result.shapesCount_ == 0) return result;
+      result.shapesPtr_ = new TopoDS_Shape[result.shapesCount_];
+      for (int i = 0; i < result.shapesCount_; i++) {
+        const Entry& e = entries_[i];
+        TopTools_ListOfShape facesToRemove;
+        for (const auto& face : e.facesToRemove) { facesToRemove.Append(face); }
+        Message_ProgressRange progress;
+        BRepOffsetAPI_MakeThickSolid builder;
+        builder.MakeThickSolidByJoin(e.shape, facesToRemove, -e.thickness, e.tolerance,
+          BRepOffset_Skin, Standard_False, Standard_False, GeomAbs_Arc, Standard_False, progress);
+        result.shapesPtr_[i] = builder.Shape();
+      }
+      return result;
+    }
+  private:
+    struct Entry {
+      TopoDS_Shape shape; std::vector<TopoDS_Shape> facesToRemove;
+      double thickness; double tolerance;
+    };
+    std::vector<Entry> entries_;
+  };
+
+  class FilletBatch {
+  public:
+    int beginFillet(const TopoDS_Shape& shape) {
+      entries_.push_back({shape, {}});
+      return static_cast<int>(entries_.size()) - 1;
+    }
+    void addEdge(int entryIndex, const TopoDS_Shape& shape, double radius) {
+      if (entryIndex >= 0 && entryIndex < static_cast<int>(entries_.size())) {
+        TopoDS_Edge edge = TopoDS::Edge(shape);
+        entries_[entryIndex].edges.push_back({edge, radius, radius, false});
+      }
+    }
+    void addEdgeVariable(int entryIndex, const TopoDS_Shape& shape, double r1, double r2) {
+      if (entryIndex >= 0 && entryIndex < static_cast<int>(entries_.size())) {
+        TopoDS_Edge edge = TopoDS::Edge(shape);
+        entries_[entryIndex].edges.push_back({edge, r1, r2, true});
+      }
+    }
+    void clear() { entries_.clear(); }
+    int count() const { return static_cast<int>(entries_.size()); }
+    ShapeBatchResult execute() {
+      ShapeBatchResult result;
+      result.shapesCount_ = static_cast<int>(entries_.size());
+      if (result.shapesCount_ == 0) return result;
+      result.shapesPtr_ = new TopoDS_Shape[result.shapesCount_];
+      for (int i = 0; i < result.shapesCount_; i++) {
+        const Entry& e = entries_[i];
 

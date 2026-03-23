@@ -1184,10 +1184,6 @@ private:
   std::vector<Entry> entries_;
 };
 
-// ---------------------------------------------------------------------------
-// ShapeBatchResult — shared result type for all batch extractors
-// ---------------------------------------------------------------------------
-
 class ShapeBatchResult {
 public:
   ShapeBatchResult() : shapesPtr_(nullptr), shapesCount_(0) {}
@@ -1217,10 +1213,6 @@ private:
   friend class ShellBatch;
   friend class FilletBatch;
 };
-
-// ---------------------------------------------------------------------------
-// LoftBatch — batch loft operations in a single WASM call
-// ---------------------------------------------------------------------------
 
 class LoftBatch {
 public:
@@ -1295,10 +1287,6 @@ private:
   std::vector<Entry> entries_;
 };
 
-// ---------------------------------------------------------------------------
-// ExtrudeBatch — batch extrusion operations in a single WASM call
-// ---------------------------------------------------------------------------
-
 class ExtrudeBatch {
 public:
   void addExtrude(const TopoDS_Shape& face, double dx, double dy, double dz) {
@@ -1332,10 +1320,6 @@ private:
   };
   std::vector<Entry> entries_;
 };
-
-// ---------------------------------------------------------------------------
-// ShellBatch — batch shell (hollow) operations in a single WASM call
-// ---------------------------------------------------------------------------
 
 class ShellBatch {
 public:
@@ -1397,10 +1381,6 @@ private:
   };
   std::vector<Entry> entries_;
 };
-
-// ---------------------------------------------------------------------------
-// FilletBatch — batch fillet operations in a single WASM call
-// ---------------------------------------------------------------------------
 
 class FilletBatch {
 public:
