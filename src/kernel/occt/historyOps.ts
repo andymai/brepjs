@@ -416,12 +416,12 @@ export function draftWithHistory(
   const dir = new oc.gp_Dir_4(px, py, pz);
   const origin = new oc.gp_Pnt_3(ox, oy, oz);
   const pln = new oc.gp_Pln_3(origin, dir);
-  const builder = new oc.BRepOffsetAPI_DraftAngle(shape);
+  const builder = new oc.BRepOffsetAPI_DraftAngle_2(shape);
   try {
     for (const face of faces) {
       const angle = typeof angleDeg === 'function' ? angleDeg(face) : angleDeg;
       const angleRad = (angle * Math.PI) / 180;
-      builder.Add(oc.TopoDS.Face_1(face), dir, angleRad, pln);
+      builder.Add(oc.TopoDS.Face_1(face), dir, angleRad, pln, true);
     }
     const progress = new oc.Message_ProgressRange_1();
     builder.Build(progress);
