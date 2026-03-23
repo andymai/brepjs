@@ -90,7 +90,10 @@ import {
   loft as _loft,
   sweep as _sweep,
   simplePipe as _simplePipe,
+  loftBatch as _loftBatch,
+  extrudeBatch as _extrudeBatch,
 } from './sweepOps.js';
+import type { LoftBatchEntry, ExtrudeBatchEntry } from './sweepOps.js';
 import {
   healSolid as _healSolid,
   healFace as _healFace,
@@ -104,7 +107,10 @@ import {
   thicken as _thicken,
   offset as _offset,
   offsetWire2D as _offsetWire2D,
+  shellBatch as _shellBatch,
+  filletBatch as _filletBatch,
 } from './modifierOps.js';
+import type { ShellBatchEntry, FilletBatchEntry } from './modifierOps.js';
 import {
   interpolatePoints as _interpolatePoints,
   approximatePoints as _approximatePoints,
@@ -555,6 +561,14 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     return _simplePipe(this.oc, profile, spine);
   }
 
+  loftBatch(entries: ReadonlyArray<LoftBatchEntry>): KernelShape[] {
+    return _loftBatch(this.oc, entries);
+  }
+
+  extrudeBatch(entries: ReadonlyArray<ExtrudeBatchEntry>): KernelShape[] {
+    return _extrudeBatch(this.oc, entries);
+  }
+
   // --- Modification (delegates to modifierOps.ts) ---
 
   fillet(
@@ -597,6 +611,14 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
 
   offset(shape: KernelShape, distance: number, tolerance = 1e-6): KernelShape {
     return _offset(this.oc, shape, distance, tolerance);
+  }
+
+  shellBatch(entries: ReadonlyArray<ShellBatchEntry>): KernelShape[] {
+    return _shellBatch(this.oc, entries);
+  }
+
+  filletBatch(entries: ReadonlyArray<FilletBatchEntry>): KernelShape[] {
+    return _filletBatch(this.oc, entries);
   }
 
   // --- Transforms (delegates to transformOps.ts) ---

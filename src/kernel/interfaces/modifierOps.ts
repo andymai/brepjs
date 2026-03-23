@@ -69,4 +69,22 @@ export interface KernelModifierOps {
 
   /** Return a copy of the shape with reversed orientation. */
   reverseShape(shape: KernelShape): KernelShape;
+
+  /** Batch shell: hollow N solids in a single WASM call. */
+  shellBatch?(
+    entries: ReadonlyArray<{
+      shape: KernelShape;
+      faces: KernelShape[];
+      thickness: number;
+      tolerance?: number | undefined;
+    }>
+  ): KernelShape[];
+
+  /** Batch fillet: round edges on N solids in a single WASM call. */
+  filletBatch?(
+    entries: ReadonlyArray<{
+      shape: KernelShape;
+      edges: ReadonlyArray<{ edge: KernelShape; radius: number; r2?: number | undefined }>;
+    }>
+  ): KernelShape[];
 }

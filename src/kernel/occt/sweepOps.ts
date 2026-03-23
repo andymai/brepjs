@@ -137,3 +137,129 @@ export function simplePipe(
   maker.delete();
   return result;
 }
+
+// ---------------------------------------------------------------------------
+// Batch operations — C++ detection + JS fallback
+// ---------------------------------------------------------------------------
+
+let hasCppLoftBatch: boolean | undefined;
+let hasCppExtrudeBatch: boolean | undefined;
+
+export function resetLoftBatchDetectionCache(): void {
+  hasCppLoftBatch = undefined;
+}
+
+export function resetExtrudeBatchDetectionCache(): void {
+  hasCppExtrudeBatch = undefined;
+}
+
+function detectCppLoftBatch(oc: KernelInstance): boolean {
+  hasCppLoftBatch ??= typeof oc.LoftBatch === 'function';
+  return hasCppLoftBatch;
+}
+
+function detectCppExtrudeBatch(oc: KernelInstance): boolean {
+  hasCppExtrudeBatch ??= typeof oc.ExtrudeBatch === 'function';
+  return hasCppExtrudeBatch;
+}
+
+export interface LoftBatchEntry {
+  wires: KernelShape[];
+  solid?: boolean | undefined;
+  ruled?: boolean | undefined;
+  tolerance?: number | undefined;
+  startVertex?: KernelShape | undefined;
+  endVertex?: KernelShape | undefined;
+}
+
+export function loftBatch(oc: KernelInstance, entries: readonly LoftBatchEntry[]): KernelShape[] {
+  if (entries.length === 0) return [];
+
+  const end = perfTimer('loft');
+  try {
+    /* v8 ignore start -- C++ extractor not available in test WASM build */
+    if (detectCppLoftBatch(oc)) {
+      const batch = new oc.LoftBatch();
+      try {
+        for (const e of entries) {
+          const idx = batch.beginLoft(
+            e.solid ?? true,
+            e.ruled ?? false,
+            e.tolerance ?? 1e-6
+          ) as number;
+          // brepjs-patterns-disable: max-nesting-depth
+          if (e.startVertex) batch.setStartVertex(idx, e.startVertex);
+          // brepjs-patterns-disable: max-nesting-depth
+          for (const wire of e.wires) {
+            batch.addWire(idx, wire);
+          }
+          // brepjs-patterns-disable: max-nesting-depth
+          if (e.endVertex) batch.setEndVertex(idx, e.endVertex);
+        }
+
+        const result = batch.execute();
+        try {
+          const count = result.getShapesCount() as number;
+          return Array.from({ length: count }, (_, i) => result.getShape(i));
+        } finally {
+          result.delete();
+        }
+      } finally {
+        batch.delete();
+      }
+    }
+    /* v8 ignore stop */
+
+    // JS fallback — individual lofts
+    return entries.map((e) => loft(oc, e.wires, e.ruled ?? false, e.startVertex, e.endVertex));
+  } finally {
+    end();
+  }
+}
+
+export interface ExtrudeBatchEntry {
+  face: KernelShape;
+  direction: [number, number, number];
+  length: number;
+}
+
+export function extrudeBatch(
+  oc: KernelInstance,
+  entries: readonly ExtrudeBatchEntry[]
+): KernelShape[] {
+  if (entries.length === 0) return [];
+
+  const end = perfTimer('extrude');
+  try {
+    /* v8 ignore start -- C++ extractor not available in test WASM build */
+    if (detectCppExtrudeBatch(oc)) {
+      const batch = new oc.ExtrudeBatch();
+      try {
+        for (const e of entries) {
+          batch.addExtrude(
+            e.face,
+            e.direction[0] * e.length,
+            e.direction[1] * e.length,
+            e.direction[2] * e.length
+          );
+        }
+
+        const result = batch.execute();
+        try {
+          const count = result.getShapesCount() as number;
+          return Array.from({ length: count }, (_, i) => result.getShape(i));
+        } finally {
+          result.delete();
+        }
+      } finally {
+        batch.delete();
+      }
+    }
+    /* v8 ignore stop */
+
+    // JS fallback
+    return entries.map((e) => extrude(oc, e.face, e.direction, e.length));
+  } finally {
+    end();
+  }
+}

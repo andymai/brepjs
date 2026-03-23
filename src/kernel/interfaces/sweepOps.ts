@@ -94,4 +94,25 @@ export interface KernelSweepOps {
     angleDeg: number,
     fuse: boolean
   ): KernelShape;
+
+  /** Batch loft: build N independent lofts in a single WASM call. */
+  loftBatch?(
+    entries: ReadonlyArray<{
+      wires: KernelShape[];
+      solid?: boolean | undefined;
+      ruled?: boolean | undefined;
+      tolerance?: number | undefined;
+      startVertex?: KernelShape | undefined;
+      endVertex?: KernelShape | undefined;
+    }>
+  ): KernelShape[];
+
+  /** Batch extrude: build N independent extrusions in a single WASM call. */
+  extrudeBatch?(
+    entries: ReadonlyArray<{
+      face: KernelShape;
+      direction: [number, number, number];
+      length: number;
+    }>
+  ): KernelShape[];
 }

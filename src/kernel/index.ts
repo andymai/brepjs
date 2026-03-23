@@ -6,6 +6,11 @@ import { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 import { resetMeasureDetectionCache } from './occt/measureOps.js';
 import { resetTransformDetectionCache } from './occt/transformOps.js';
 import { resetBooleanBatchDetectionCache } from './occt/booleanBatchOps.js';
+import { resetLoftBatchDetectionCache, resetExtrudeBatchDetectionCache } from './occt/sweepOps.js';
+import {
+  resetShellBatchDetectionCache,
+  resetFilletBatchDetectionCache,
+} from './occt/modifierOps.js';
 import { resetPerformanceStats } from './perfStats.js';
 
 // ---------------------------------------------------------------------------
@@ -98,6 +103,10 @@ export function initFromOC(oc: KernelInstance): void {
   resetMeasureDetectionCache();
   resetTransformDetectionCache();
   resetBooleanBatchDetectionCache();
+  resetLoftBatchDetectionCache();
+  resetExtrudeBatchDetectionCache();
+  resetShellBatchDetectionCache();
+  resetFilletBatchDetectionCache();
   resetPerformanceStats();
   const adapter = new DefaultAdapter(oc);
   registerKernel('occt', adapter);

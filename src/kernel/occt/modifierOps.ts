@@ -283,3 +283,138 @@ export function offset(
   progress.delete();
   return result;
 }
+
+// ---------------------------------------------------------------------------
+// Batch operations — C++ detection + JS fallback
+// ---------------------------------------------------------------------------
+
+let hasCppShellBatch: boolean | undefined;
+let hasCppFilletBatch: boolean | undefined;
+
+export function resetShellBatchDetectionCache(): void {
+  hasCppShellBatch = undefined;
+}
+
+export function resetFilletBatchDetectionCache(): void {
+  hasCppFilletBatch = undefined;
+}
+
+function detectCppShellBatch(oc: KernelInstance): boolean {
+  hasCppShellBatch ??= typeof oc.ShellBatch === 'function';
+  return hasCppShellBatch;
+}
+
+function detectCppFilletBatch(oc: KernelInstance): boolean {
+  hasCppFilletBatch ??= typeof oc.FilletBatch === 'function';
+  return hasCppFilletBatch;
+}
+
+export interface ShellBatchEntry {
+  shape: KernelShape;
+  faces: KernelShape[];
+  thickness: number;
+  tolerance?: number | undefined;
+}
+
+export function shellBatch(oc: KernelInstance, entries: readonly ShellBatchEntry[]): KernelShape[] {
+  if (entries.length === 0) return [];
+
+  const end = perfTimer('shell');
+  try {
+    /* v8 ignore start -- C++ extractor not available in test WASM build */
+    if (detectCppShellBatch(oc)) {
+      const batch = new oc.ShellBatch();
+      try {
+        for (const e of entries) {
+          const idx = batch.beginShell(e.shape, e.thickness, e.tolerance ?? 1e-3) as number;
+          // brepjs-patterns-disable: max-nesting-depth
+          for (const face of e.faces) {
+            batch.addFaceToRemove(idx, face);
+          }
+        }
+
+        const result = batch.execute();
+        try {
+          const count = result.getShapesCount() as number;
+          return Array.from({ length: count }, (_, i) => result.getShape(i));
+        } finally {
+          result.delete();
+        }
+      } finally {
+        batch.delete();
+      }
+    }
+    /* v8 ignore stop */
+
+    // JS fallback
+    return entries.map((e) => shell(oc, e.shape, e.faces, e.thickness, e.tolerance ?? 1e-3));
+  } finally {
+    end();
+  }
+}
+
+export interface FilletBatchEdge {
+  edge: KernelShape;
+  radius: number;
+  r2?: number | undefined;
+}
+
+export interface FilletBatchEntry {
+  shape: KernelShape;
+  edges: readonly FilletBatchEdge[];
+}
+
+export function filletBatch(
+  oc: KernelInstance,
+  entries: readonly FilletBatchEntry[]
+): KernelShape[] {
+  if (entries.length === 0) return [];
+
+  const end = perfTimer('fillet');
+  try {
+    /* v8 ignore start -- C++ extractor not available in test WASM build */
+    if (detectCppFilletBatch(oc)) {
+      const batch = new oc.FilletBatch();
+      try {
+        for (const e of entries) {
+          const idx = batch.beginFillet(e.shape) as number;
+          // brepjs-patterns-disable: max-nesting-depth
+          for (const ei of e.edges) {
+            // brepjs-patterns-disable: max-nesting-depth
+            if (ei.r2 !== undefined) {
+              batch.addEdgeVariable(idx, ei.edge, ei.radius, ei.r2);
+            } else {
+              batch.addEdge(idx, ei.edge, ei.radius);
+            }
+          }
+        }
+
+        const result = batch.execute();
+        try {
+          const count = result.getShapesCount() as number;
+          return Array.from({ length: count }, (_, i) => result.getShape(i));
+        } finally {
+          result.delete();
+        }
+      } finally {
+        batch.delete();
+      }
+    }
+    /* v8 ignore stop */
+
+    // JS fallback
+    return entries.map((e) => {
+      const edges = e.edges.map((ei) => ei.edge);
+      // Use the first edge's radius as the constant radius for the fallback
+      const firstEdge = e.edges[0];
+      if (!firstEdge) return e.shape;
+      const radius =
+        firstEdge.r2 !== undefined
+          ? ([firstEdge.radius, firstEdge.r2] as [number, number])
+          : firstEdge.radius;
+      return fillet(oc, e.shape, edges, radius);
+    });
+  } finally {
+    end();
+  }
+}
