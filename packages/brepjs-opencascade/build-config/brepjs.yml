@@ -802,7 +802,7 @@ additionalCppCode: |
 
         result.edgeGroupsPtr_[groupOffset++] = lineStart;
         result.edgeGroupsPtr_[groupOffset++] = pointCount;
-        result.edgeGroupsPtr_[groupOffset++] = info.static_cast<int>(TopTools_ShapeMapHasher{}(edge) % 2147483647);
+        result.edgeGroupsPtr_[groupOffset++] = static_cast<int>(TopTools_ShapeMapHasher{}(info.edge) % 2147483647);
       }
 
       return result;
