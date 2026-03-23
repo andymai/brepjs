@@ -223,7 +223,7 @@
     "vitest": "4.1.0"
   },
   "peerDependencies": {
-    "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0 || ^0.10.0",
+    "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0",
     "brepkit-wasm": "^0.10.1 || ^1.0.0 || ^2.0.0"
   },
   "peerDependenciesMeta": {
