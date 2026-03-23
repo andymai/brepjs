@@ -47,6 +47,15 @@ jobs:
           docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:wasm-exceptions custom_build_threaded.yml
           mv brepjs_threaded* ../src/
 
+      - name: Optimize WASM binaries
+        working-directory: packages/brepjs-opencascade/src
+        run: |
+          npm install -g binaryen
+          for f in *.wasm; do
+            echo "Optimizing $f..."
+            wasm-opt -O4 --strip-debug --strip-producers "$f" -o "$f"
+          done
+
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
