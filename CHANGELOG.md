@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.2.0](https://github.com/andymai/brepjs/compare/brepjs-v14.1.3...brepjs-v14.2.0) (2026-03-23)
+
+
+### Features
+
+* batch C++ extractors + perf instrumentation for OCCT ([#587](https://github.com/andymai/brepjs/issues/587)) ([1d26fdc](https://github.com/andymai/brepjs/commit/1d26fdcdf7ea3d4956ee639da11bb689ee21941a))
+
 ## [14.1.3](https://github.com/andymai/brepjs/compare/brepjs-v14.1.2...brepjs-v14.1.3) (2026-03-22)
 
 
