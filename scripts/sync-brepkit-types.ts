@@ -85,7 +85,10 @@ function parseUpstreamDts(src: string): {
 
   // Parse methods: capture JSDoc + signature
   const methods: ParsedMethod[] = [];
-  // Split by method boundaries: look for lines that start a new method/property/constructor
+  // Split by method boundaries: look for lines that start a new method/property/constructor.
+  // Note: [^)]* doesn't handle nested parens (e.g., function-type params). This is fine for
+  // wasm-bindgen output which only uses flat primitive/typed-array params. If upstream adds
+  // nested types, this regex will need a balanced-paren parser.
   const methodRe =
     /(?:\/\*\*[\s\S]*?\*\/\s*)?((?:readonly\s+)?\w+)(?:\(([^)]*)\)\s*:\s*([^;]+)|:\s*([^;]+));/g;
 

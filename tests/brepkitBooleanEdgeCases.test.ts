@@ -17,7 +17,7 @@ descBk('Boolean edge cases (GFA hardening v2.26-2.33)', () => {
     try {
       const result = cut(a, b);
       // If it doesn't throw, the result should be an error
-      expect(result.isOk).toBe(false);
+      expect(result.ok).toBe(false);
     } catch {
       // Expected — brepkit throws for identical solid cut
     }
