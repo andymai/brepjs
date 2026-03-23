@@ -673,6 +673,8 @@ export {
   twistExtrude,
   type SweepOptions,
   type ExtrusionProfile,
+  extrudeAll,
+  type ExtrudeAllEntry,
 } from './operations/extrudeFns.js';
 
 export {
@@ -971,6 +973,8 @@ export {
   type LoftOptions as CleanLoftOptions,
   type SweepOptions as CleanSweepOptions,
 } from './operations/api.js';
+
+export { loftAll, type LoftAllEntry } from './operations/loftFns.js';
 
 // ── Compound operations ──
 

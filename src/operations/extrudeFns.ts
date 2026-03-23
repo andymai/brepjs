@@ -86,6 +86,54 @@ export function revolve(
 }
 
 // ---------------------------------------------------------------------------
+// Batch extrusion
+// ---------------------------------------------------------------------------
+
+/** Configuration for a single entry in a batch extrude operation. */
+export interface ExtrudeAllEntry {
+  /** The planar face to extrude. */
+  face: OrientedFace<Dimension> & PlanarFace<Dimension>;
+  /** Height (number for Z-direction) or full direction vector. */
+  height: number | Vec3;
+}
+
+/**
+ * Batch extrude: build N independent extrusions in a single kernel call.
+ *
+ * Uses the C++ ExtrudeBatch extractor when available (single WASM call),
+ * falling back to N individual extrude operations otherwise.
+ *
+ * @returns Array of valid solids, one per entry.
+ */
+export function extrudeAll(entries: readonly ExtrudeAllEntry[]): Result<ValidSolid[]> {
+  if (entries.length === 0) return ok([]);
+
+  const kernel = getKernel();
+  const kernelEntries = entries.map((e) => {
+    const vec: Vec3 = typeof e.height === 'number' ? [0, 0, e.height] : e.height;
+    const len = vecLength(vec);
+    const direction: [number, number, number] =
+      len > 0 ? ([...vecNormalize(vec)] as [number, number, number]) : [0, 0, 1];
+    return { face: e.face.wrapped, direction, length: len };
+  });
+
+  try {
+    const shapes =
+      kernel.extrudeBatch?.(kernelEntries) ??
+      kernelEntries.map((e) => kernel.extrude(e.face, e.direction, e.length));
+
+    return ok(
+      shapes.map((shape) => {
+        const downcast = kernel.downcast(shape, 'solid');
+        return createSolid(downcast) as ValidSolid;
+      })
+    );
+  } catch (e) {
+    return err(kernelError('EXTRUDE_ALL_FAILED', 'Batch extrusion operation failed', e));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Re-exports for backward compatibility
 // ---------------------------------------------------------------------------
 

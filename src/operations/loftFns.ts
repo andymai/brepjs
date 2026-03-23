@@ -84,3 +84,57 @@ export function loft(
     );
   }
 }
+
+/** Configuration for a single entry in a batch loft operation. */
+export interface LoftAllEntry {
+  /** Ordered wire profiles to loft through. */
+  wires: Wire<Dimension>[];
+  /** Use ruled (straight) interpolation. Defaults to `true`. */
+  ruled?: boolean;
+  /** Optional start point before the first wire. */
+  startPoint?: PointInput;
+  /** Optional end point after the last wire. */
+  endPoint?: PointInput;
+  /** Sewing tolerance. Defaults to `1e-6`. */
+  tolerance?: number;
+}
+
+/**
+ * Batch loft: build N independent lofts in a single kernel call.
+ *
+ * Uses the C++ LoftBatch extractor when available (single WASM call),
+ * falling back to N individual loft operations otherwise.
+ *
+ * @returns Array of 3D shapes, one per entry.
+ */
+export function loftAll(entries: readonly LoftAllEntry[]): Result<Shape3D[]> {
+  if (entries.length === 0) return ok([]);
+
+  const kernel = getKernel();
+  const kernelEntries = entries.map((e) => ({
+    wires: e.wires.map((w) => w.wrapped),
+    solid: true,
+    ruled: e.ruled ?? true,
+    tolerance: e.tolerance ?? 1e-6,
+    startVertex: e.startPoint ? kernel.makeVertex(...toVec3(e.startPoint)) : undefined,
+    endVertex: e.endPoint ? kernel.makeVertex(...toVec3(e.endPoint)) : undefined,
+  }));
+
+  try {
+    const shapes =
+      kernel.loftBatch?.(kernelEntries) ??
+      kernelEntries.map((e) => kernel.loft(e.wires, e.ruled, e.startVertex, e.endVertex));
+
+    const results: Shape3D[] = [];
+    for (const shape of shapes) {
+      const cast = castShape(shape);
+      if (!isShape3D(cast)) {
+        return err(typeCastError('LOFT_ALL_NOT_3D', 'Batch loft entry did not produce a 3D shape'));
+      }
+      results.push(cast);
+    }
+    return ok(results);
+  } catch (e) {
+    return err(kernelError('LOFT_ALL_FAILED', 'Batch loft operation failed', e));
+  }
+}
