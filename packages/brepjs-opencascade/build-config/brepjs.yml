@@ -307,6 +307,38 @@ mainBuild:
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>
 
+  // OCCT V8 removed Handle_*.hxx headers. Re-declare typedefs so the
+  // binding generator can produce Embind wrappers for handle types.
+  typedef opencascade::handle<StepData_StepModel> Handle_StepData_StepModel;
+  typedef opencascade::handle<Geom2d_Geometry> Handle_Geom2d_Geometry;
+  typedef opencascade::handle<Geom2d_Line> Handle_Geom2d_Line;
+  typedef opencascade::handle<Geom2d_Curve> Handle_Geom2d_Curve;
+  typedef opencascade::handle<Geom2d_BoundedCurve> Handle_Geom2d_BoundedCurve;
+  typedef opencascade::handle<Geom2d_TrimmedCurve> Handle_Geom2d_TrimmedCurve;
+  typedef opencascade::handle<Geom2d_Ellipse> Handle_Geom2d_Ellipse;
+  typedef opencascade::handle<Geom2d_Circle> Handle_Geom2d_Circle;
+  typedef opencascade::handle<Geom2d_BezierCurve> Handle_Geom2d_BezierCurve;
+  typedef opencascade::handle<Geom2d_BSplineCurve> Handle_Geom2d_BSplineCurve;
+  typedef opencascade::handle<Geom_SphericalSurface> Handle_Geom_SphericalSurface;
+  typedef opencascade::handle<Geom_ElementarySurface> Handle_Geom_ElementarySurface;
+  typedef opencascade::handle<Geom_Geometry> Handle_Geom_Geometry;
+  typedef opencascade::handle<Geom_TrimmedCurve> Handle_Geom_TrimmedCurve;
+  typedef opencascade::handle<Geom_Curve> Handle_Geom_Curve;
+  typedef opencascade::handle<Geom_Surface> Handle_Geom_Surface;
+  typedef opencascade::handle<Geom_BezierCurve> Handle_Geom_BezierCurve;
+  typedef opencascade::handle<Geom_BSplineCurve> Handle_Geom_BSplineCurve;
+  typedef opencascade::handle<Geom_BSplineSurface> Handle_Geom_BSplineSurface;
+  typedef opencascade::handle<Poly_Triangulation> Handle_Poly_Triangulation;
+  typedef opencascade::handle<Poly_PolygonOnTriangulation> Handle_Poly_PolygonOnTriangulation;
+  typedef opencascade::handle<Adaptor2d_Curve2d> Handle_Adaptor2d_Curve2d;
+  typedef opencascade::handle<Law_Function> Handle_Law_Function;
+  typedef opencascade::handle<HLRBRep_Algo> Handle_HLRBRep_Algo;
+  typedef opencascade::handle<TDocStd_Document> Handle_TDocStd_Document;
+  typedef opencascade::handle<XCAFDoc_ShapeTool> Handle_XCAFDoc_ShapeTool;
+  typedef opencascade::handle<XCAFDoc_ColorTool> Handle_XCAFDoc_ColorTool;
+  typedef opencascade::handle<TDataStd_Name> Handle_TDataStd_Name;
+  typedef opencascade::handle<XSControl_WorkSession> Handle_XSControl_WorkSession;
+
   class BRepToolsWrapper {
   public:
     static std::string Write(const TopoDS_Shape& shape) {
