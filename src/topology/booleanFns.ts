@@ -128,6 +128,7 @@ export function fuse(
     signal,
     fuzzyValue,
     unsafe: _unsafe,
+    trackEvolution = true,
   }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
@@ -135,6 +136,16 @@ export function fuse(
   if (isErr(checkA)) return checkA;
   const checkB = validateShape3D(b, 'fuse: second operand');
   if (isErr(checkB)) return checkB;
+
+  if (!trackEvolution) {
+    const resultShape = getKernel().fuse(a.wrapped, b.wrapped, {
+      optimisation,
+      simplify,
+      fuzzyValue,
+    });
+    return castToShape3D(resultShape, 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
+  }
+
   const inputFaceHashes = collectInputFaceHashes([a, b]);
   const kernelResult = getKernel().fuseWithHistory(
     a.wrapped,
@@ -201,6 +212,7 @@ export function cut(
     signal,
     fuzzyValue,
     unsafe: _unsafe,
+    trackEvolution = true,
   }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
@@ -208,6 +220,16 @@ export function cut(
   if (isErr(checkBase)) return checkBase;
   const checkTool = validateShape3D(tool, 'cut: tool');
   if (isErr(checkTool)) return checkTool;
+
+  if (!trackEvolution) {
+    const resultShape = getKernel().cut(base.wrapped, tool.wrapped, {
+      optimisation,
+      simplify,
+      fuzzyValue,
+    });
+    return castToShape3D(resultShape, 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
+  }
+
   const inputFaceHashes = collectInputFaceHashes([base, tool]);
   const kernelResult = getKernel().cutWithHistory(
     base.wrapped,
@@ -263,13 +285,25 @@ export function intersect(
 export function intersect(
   a: Shape3D,
   b: Shape3D,
-  { simplify = false, signal, fuzzyValue, unsafe: _unsafe }: BooleanOptions = {}
+  {
+    simplify = false,
+    signal,
+    fuzzyValue,
+    unsafe: _unsafe,
+    trackEvolution = true,
+  }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
   const checkA = validateShape3D(a, 'intersect: first operand');
   if (isErr(checkA)) return checkA;
   const checkB = validateShape3D(b, 'intersect: second operand');
   if (isErr(checkB)) return checkB;
+
+  if (!trackEvolution) {
+    const resultShape = getKernel().intersect(a.wrapped, b.wrapped, { simplify, fuzzyValue });
+    return castToShape3D(resultShape, 'INTERSECT_NOT_3D', 'Intersect did not produce a 3D shape');
+  }
+
   const inputFaceHashes = collectInputFaceHashes([a, b]);
   const kernelResult = getKernel().intersectWithHistory(
     a.wrapped,
@@ -317,7 +351,7 @@ function fuseAllPairwise(
   end: number,
   optimisation: 'none' | 'commonFace' | 'sameFace',
   simplify: boolean,
-  isTopLevel: boolean,
+  trackEvolution: boolean,
   signal?: AbortSignal,
   fuzzyValue?: number
 ): Result<Shape3D> {
@@ -327,7 +361,8 @@ function fuseAllPairwise(
   if (count === 2) {
     return fuse(getAtOrThrow(shapes, start), getAtOrThrow(shapes, start + 1), {
       optimisation,
-      simplify: isTopLevel ? simplify : false,
+      simplify: false,
+      trackEvolution,
       fuzzyValue,
       unsafe: true,
       ...(signal ? { signal } : {}),
@@ -341,7 +376,7 @@ function fuseAllPairwise(
     mid,
     optimisation,
     simplify,
-    false,
+    trackEvolution,
     signal,
     fuzzyValue
   );
@@ -352,7 +387,7 @@ function fuseAllPairwise(
     end,
     optimisation,
     simplify,
-    false,
+    trackEvolution,
     signal,
     fuzzyValue
   );
@@ -360,7 +395,8 @@ function fuseAllPairwise(
 
   return fuse(leftResult.value, rightResult.value, {
     optimisation,
-    simplify: isTopLevel ? simplify : false,
+    simplify,
+    trackEvolution,
     fuzzyValue,
     unsafe: true,
     ...(signal ? { signal } : {}),
@@ -396,6 +432,7 @@ export function fuseAll(
     signal,
     fuzzyValue,
     unsafe: _unsafe,
+    trackEvolution = true,
   }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
@@ -419,7 +456,7 @@ export function fuseAll(
       'FUSE_ALL_NOT_3D',
       'fuseAll did not produce a 3D shape'
     );
-    if (fuseAllResult.ok) {
+    if (fuseAllResult.ok && trackEvolution) {
       // Native N-way fuse has no ShapeEvolution — only origins propagate (tags/colors lost)
       propagateMetadataByHash(shapes, fuseAllResult.value);
     }
@@ -434,7 +471,7 @@ export function fuseAll(
     shapes.length,
     optimisation,
     simplify,
-    true,
+    trackEvolution,
     signal,
     fuzzyValue
   );
@@ -470,6 +507,7 @@ export function cutAll(
     signal,
     fuzzyValue,
     unsafe: _unsafe,
+    trackEvolution = true,
   }: BooleanOptions = {}
 ): Result<Shape3D> {
   if (signal?.aborted) throw signal.reason;
@@ -489,7 +527,7 @@ export function cutAll(
     { optimisation, simplify, fuzzyValue }
   );
   const cutAllResult = castToShape3D(result, 'CUT_ALL_NOT_3D', 'cutAll did not produce a 3D shape');
-  if (cutAllResult.ok) {
+  if (cutAllResult.ok && trackEvolution) {
     // Batch cut has no ShapeEvolution — only origins propagate (tags/colors lost)
     propagateMetadataByHash(allInputs, cutAllResult.value);
   }

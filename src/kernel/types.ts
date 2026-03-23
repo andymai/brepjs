@@ -51,6 +51,12 @@ export interface BooleanOptions {
    * effect.
    */
   unsafe?: boolean;
+  /**
+   * When false, skips face evolution tracking (hash collection, Modified/Generated/Deleted
+   * queries, metadata propagation). This is a performance optimization for intermediate
+   * boolean operations where face tags/colors are not needed. Defaults to `true`.
+   */
+  trackEvolution?: boolean | undefined;
 }
 
 export type ShapeType =

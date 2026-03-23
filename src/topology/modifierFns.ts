@@ -197,7 +197,8 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
 export function fillet(
   shape: ValidSolid,
   edges: ReadonlyArray<Edge> | undefined,
-  radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null)
+  radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null),
+  { trackEvolution = true }: { trackEvolution?: boolean | undefined } = {}
 ): Result<ValidSolid> {
   const check = validateNotNull(shape, 'fillet: shape');
   if (isErr(check)) return check;
@@ -245,6 +246,19 @@ export function fillet(
     } else {
       filteredEdges = [...selectedEdges];
       kernelRadius = radius;
+    }
+
+    if (!trackEvolution) {
+      const resultShape = getKernel().fillet(
+        shape.wrapped,
+        filteredEdges.map((e) => e.wrapped),
+        kernelRadius
+      );
+      const cast = castShape(resultShape);
+      if (!isShape3D(cast)) {
+        return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
+      }
+      return ok(cast as ValidSolid);
     }
 
     const inputFaceHashes = collectInputFaceHashes([shape]);
@@ -370,7 +384,8 @@ export function shell(
   shape: ValidSolid,
   faces: ReadonlyArray<Face>,
   thickness: number,
-  tolerance = 1e-3
+  tolerance = 1e-3,
+  { trackEvolution = true }: { trackEvolution?: boolean | undefined } = {}
 ): Result<ValidSolid> {
   const check = validateNotNull(shape, 'shell: shape');
   if (isErr(check)) return check;
@@ -382,6 +397,20 @@ export function shell(
   }
 
   try {
+    if (!trackEvolution) {
+      const resultShape = getKernel().shell(
+        shape.wrapped,
+        faces.map((f) => f.wrapped),
+        thickness,
+        tolerance
+      );
+      const cast = castShape(resultShape);
+      if (!isShape3D(cast)) {
+        return err(kernelError('SHELL_RESULT_NOT_3D', 'Shell result is not a 3D shape'));
+      }
+      return ok(cast as ValidSolid);
+    }
+
     const inputFaceHashes = collectInputFaceHashes([shape]);
     const { shape: resultShape, evolution } = getKernel().shellWithHistory(
       shape.wrapped,
