@@ -61,6 +61,38 @@ export function applyBooleanDefaults(
 }
 
 /**
+ * Compute a sensible fuzzy value based on shape bounding box diagonal.
+ * Returns 0 (no fuzzy) for very small shapes; 1e-5 for mm-scale geometry.
+ *
+ * Only fires for multi-shape operations (≥3 shapes) where vertex merging
+ * during intersection is the bottleneck. For 2-shape operations the overhead
+ * of computing a bounding box exceeds the benefit.
+ */
+function autoFuzzyValue(oc: KernelInstance, shapes: KernelShape[]): number {
+  if (shapes.length < 3) return 0;
+
+  const firstShape = shapes[0];
+  if (!firstShape) return 0;
+
+  const box = new oc.Bnd_Box_1();
+  oc.BRepBndLib.Add(firstShape, box, true);
+  if (box.IsVoid()) {
+    box.delete();
+    return 0;
+  }
+  const min = box.CornerMin();
+  const max = box.CornerMax();
+  const dx = (max.X() as number) - (min.X() as number);
+  const dy = (max.Y() as number) - (min.Y() as number);
+  const dz = (max.Z() as number) - (min.Z() as number);
+  box.delete();
+
+  const diagonal = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  // 1e-5 for shapes > 1mm diagonal, 0 for sub-mm geometry
+  return diagonal > 1 ? 1e-5 : 0;
+}
+
+/**
  * Builds a compound from multiple shapes.
  */
 export function buildCompound(oc: KernelInstance, shapes: KernelShape[]): KernelShape {
@@ -196,7 +228,8 @@ function fuseAllNative(
   // JS fallback — individual OCCT calls via Embind
   const end = perfTimer('boolean');
   try {
-    const { optimisation, simplify = false, fuzzyValue } = options;
+    const { optimisation, simplify = false } = options;
+    const fuzzyValue = options.fuzzyValue ?? autoFuzzyValue(oc, shapes);
 
     const argList = new oc.TopTools_ListOfShape_1();
     for (const s of shapes) {
