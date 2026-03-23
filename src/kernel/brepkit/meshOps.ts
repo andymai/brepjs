@@ -63,10 +63,8 @@ export function meshEdges(
     return { lines: new Float32Array(0), edgeGroups: [] };
   }
 
-  // Use meshEdgesAll (unfiltered) for OCCT parity -- falls back to meshEdges if unavailable
-  const edgeLines = bk.meshEdgesAll
-    ? bk.meshEdgesAll(bkHandle.id, tolerance)
-    : bk.meshEdges(bkHandle.id, tolerance);
+  // Use meshEdgesAll (unfiltered) for OCCT parity
+  const edgeLines = bk.meshEdgesAll(bkHandle.id, tolerance);
   const positions = edgeLines.positions;
   const offsets = edgeLines.offsets;
   const edgeCount = edgeLines.edgeCount;

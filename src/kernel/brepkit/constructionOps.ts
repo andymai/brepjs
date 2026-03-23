@@ -346,9 +346,6 @@ export function makeTangentArc(
   startTangent: [number, number, number],
   endPoint: [number, number, number]
 ): KernelShape {
-  if (!bk.makeTangentArc3d) {
-    throw new Error('makeTangentArc requires brepkit-wasm >= 1.1.0');
-  }
   const id = bk.makeTangentArc3d(
     startPoint[0],
     startPoint[1],
