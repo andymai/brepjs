@@ -93,7 +93,8 @@ describe('Batch extractors', () => {
       }
 
       const stats = getPerformanceStats();
-      expect(stats.extrude.count).toBeGreaterThanOrEqual(2);
+      // C++ batch path: 1 call for N extrusions; JS fallback: N calls
+      expect(stats.extrude.count).toBeGreaterThanOrEqual(1);
     });
 
     it('supports Vec3 direction', () => {
