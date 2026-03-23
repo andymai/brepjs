@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.10.0...brepjs-opencascade-v0.11.0) (2026-03-23)
+
+
+### Features
+
+* batch C++ extractors + perf instrumentation for OCCT ([#587](https://github.com/andymai/brepjs/issues/587)) ([1d26fdc](https://github.com/andymai/brepjs/commit/1d26fdcdf7ea3d4956ee639da11bb689ee21941a))
+
 ## [0.10.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.9.0...brepjs-opencascade-v0.10.0) (2026-03-05)
 
 
