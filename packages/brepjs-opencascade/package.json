@@ -1,6 +1,6 @@
 {
   "name": "brepjs-opencascade",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "OpenCascade.js custom WASM build for brepjs",
   "keywords": [
     "opencascade",
@@ -23,7 +23,6 @@
   "exports": {
     ".": "./src/brepjs_single.js",
     "./single": "./src/brepjs_single.js",
-    "./threaded": "./src/brepjs_threaded.js",
     "./src/*": "./src/*"
   },
   "directories": {
@@ -35,12 +34,9 @@
     "NOTICE"
   ],
   "scripts": {
-    "buildWasm": "pnpm run generateConfig && pnpm run buildSingle && pnpm run buildWithExceptions && pnpm run buildThreaded && pnpm run optimizeWasm",
-    "updateDocker": "docker pull andymai/opencascade.js:wasm-exceptions",
-    "generateConfig": "ytt -f build-source/ --output-files build-config",
-    "buildSingle": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) andymai/opencascade.js:wasm-exceptions custom_build_single.yml && mv brepjs_single* ../src && cd -",
-    "buildWithExceptions": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) andymai/opencascade.js:wasm-exceptions custom_build_with_exceptions.yml && mv brepjs_with_exceptions* ../src && cd -",
-    "buildThreaded": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) andymai/opencascade.js:wasm-exceptions custom_build_threaded.yml && mv brepjs_threaded* ../src && cd -",
-    "optimizeWasm": "npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_single.wasm -o src/brepjs_single.wasm && npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_threaded.wasm -o src/brepjs_threaded.wasm && npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_with_exceptions.wasm -o src/brepjs_with_exceptions.wasm"
+    "buildWasm": "pnpm run buildSingle && pnpm run optimizeWasm",
+    "updateDocker": "docker pull ghcr.io/andymai/opencascade.js:v8",
+    "buildSingle": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) ghcr.io/andymai/opencascade.js:v8 brepjs.yml && mv brepjs_single* ../src && cd -",
+    "optimizeWasm": "npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_single.wasm -o src/brepjs_single.wasm"
   }
 }

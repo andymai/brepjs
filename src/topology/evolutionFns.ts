@@ -110,7 +110,7 @@ function resolveEdgeCallback(
   if (filteredEdges.length === 0) return null;
 
   const kernelParam: KernelHashCallback<number | [number, number]> = (ocEdge) => {
-    const v = hashToValue.get(ocEdge.HashCode(HASH_CODE_MAX));
+    const v = hashToValue.get(getKernel().hashCode(ocEdge, HASH_CODE_MAX));
     return v ?? 1;
   };
   return { edges: filteredEdges, kernelParam };

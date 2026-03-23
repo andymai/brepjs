@@ -286,7 +286,7 @@ export function chamferWithHistory(
       oc.TopAbs_ShapeEnum.TopAbs_SHAPE
     );
     while (edgeExplorer.More()) {
-      edgeFaceMap.set(edgeExplorer.Current().HashCode(hashUpperBound), face);
+      edgeFaceMap.set(oc.shapeHashCode(edgeExplorer.Current(), hashUpperBound), face);
       edgeExplorer.Next();
     }
     edgeExplorer.delete();
@@ -296,7 +296,7 @@ export function chamferWithHistory(
 
   for (const edge of edges) {
     const d = typeof distance === 'function' ? distance(edge) : distance;
-    const adjacentFace = edgeFaceMap.get(edge.HashCode(hashUpperBound));
+    const adjacentFace = edgeFaceMap.get(oc.shapeHashCode(edge, hashUpperBound));
     if (Array.isArray(d) && adjacentFace) {
       builder.Add_3(d[0], d[1], oc.TopoDS.Edge_1(edge), adjacentFace);
     } else {

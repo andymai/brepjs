@@ -750,7 +750,7 @@ describe('evolutionOps JS fallback', () => {
       const b = box(10, 10, 10);
       const faces = kernel.iterShapes(oc(b), 'face');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw OCCT shape access
-      const hashes = faces.map((f: any) => f.HashCode(2147483647));
+      const hashes = faces.map((f: any) => kernel.hashCode(f, 2147483647));
       const result = kernel.translateWithHistory(oc(b), 5, 0, 0, hashes, 2147483647);
       expect(result).toBeDefined();
       expect(result.shape).toBeDefined();
@@ -789,7 +789,7 @@ describe('evolutionOps JS fallback', () => {
       const b = box(10, 10, 10);
       const faces = kernel.iterShapes(oc(b), 'face');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw OCCT shape access
-      const hashes = faces.map((f: any) => f.HashCode(2147483647));
+      const hashes = faces.map((f: any) => kernel.hashCode(f, 2147483647));
       const result = kernel.translateWithHistory(oc(b), 5, 0, 0, hashes, 2147483647);
       expect(result).toBeDefined();
       expect(result.shape).toBeDefined();

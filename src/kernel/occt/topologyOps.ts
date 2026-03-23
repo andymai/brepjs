@@ -73,7 +73,7 @@ export function iterShapesJS(
   const seen = new Map<number, KernelShape[]>();
   while (explorer.More()) {
     const item = explorer.Current();
-    const hash = item.HashCode(HASH_CODE_MAX);
+    const hash = oc.shapeHashCode(item, HASH_CODE_MAX);
     const bucket = seen.get(hash);
     if (!bucket) {
       seen.set(hash, [item]);

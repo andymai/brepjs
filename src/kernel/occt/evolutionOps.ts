@@ -88,14 +88,14 @@ function iterListHashes(oc: KernelInstance, list: KernelShape, hashUpperBound: n
   if (oc.TopTools_ListIteratorOfListOfShape) {
     const iter = new oc.TopTools_ListIteratorOfListOfShape(list);
     while (iter.More()) {
-      result.push(iter.Value().HashCode(hashUpperBound));
+      result.push(oc.shapeHashCode(iter.Value(), hashUpperBound));
       iter.Next();
     }
     iter.delete();
   } else {
     const copy = new oc.TopTools_ListOfShape_3(list);
     while (copy.Size() > 0) {
-      result.push(copy.First_1().HashCode(hashUpperBound));
+      result.push(oc.shapeHashCode(copy.First_1(), hashUpperBound));
       copy.RemoveFirst();
     }
     copy.delete();
@@ -176,7 +176,7 @@ export function buildEvolution(
     );
     while (faceExplorer.More()) {
       const face = faceExplorer.Current();
-      const hash = face.HashCode(hashUpperBound);
+      const hash = oc.shapeHashCode(face, hashUpperBound);
       if (inputHashSet.has(hash)) {
         facesById.set(hash, face);
       }

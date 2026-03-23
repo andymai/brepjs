@@ -354,8 +354,9 @@ function shapeTypeStr(oc: KernelInstance, shape: KernelShape): string {
 }
 
 /** Get the hash code of a shape. */
-export function hashCode(_oc: KernelInstance, shape: KernelShape, upperBound: number): number {
-  return shape.HashCode(upperBound);
+export function hashCode(oc: KernelInstance, shape: KernelShape, upperBound: number): number {
+  // OCCT V8 removed TopoDS_Shape::HashCode() member — use bound C++ helper
+  return oc.shapeHashCode(shape, upperBound);
 }
 
 /** Check if a shape is null. */

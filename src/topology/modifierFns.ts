@@ -17,7 +17,7 @@ import { getEdges } from './shapeFns.js';
 import { collectInputFaceHashes, propagateAllMetadata } from './metadata/metadataPropagation.js';
 import type { Vec3 } from '@/core/types.js';
 import type { DraftAngle } from './apiTypes.js';
-import type { ShapeEvolution } from '@/kernel/types.js';
+import type { KernelShape, ShapeEvolution } from '@/kernel/types.js';
 
 // ---------------------------------------------------------------------------
 // Pre-validation
@@ -87,7 +87,7 @@ function resolveEdgeCallback(
   if (filteredEdges.length === 0) return null;
 
   const kernelParam: KernelHashCallback<number | [number, number]> = (ocEdge) => {
-    const v = hashToValue.get(ocEdge.HashCode(HASH_CODE_MAX));
+    const v = hashToValue.get(getKernel().hashCode(ocEdge, HASH_CODE_MAX));
     // Default to 1 (should not happen due to pre-filtering)
     return v ?? 1;
   };
@@ -130,7 +130,7 @@ function resolveDraftCallback(
   angle: DraftAngle
 ): {
   filteredFaces: Face[];
-  kernelAngle: number | ((face: { HashCode(max: number): number }) => number);
+  kernelAngle: number | ((face: KernelShape) => number);
 } {
   if (typeof angle !== 'function') {
     return { filteredFaces: [...faces], kernelAngle: angle };
@@ -145,8 +145,8 @@ function resolveDraftCallback(
     hashToAngle.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), a);
   }
 
-  const kernelAngle = (ocFace: { HashCode(max: number): number }) => {
-    const a = hashToAngle.get(ocFace.HashCode(HASH_CODE_MAX));
+  const kernelAngle = (ocFace: KernelShape) => {
+    const a = hashToAngle.get(getKernel().hashCode(ocFace, HASH_CODE_MAX));
     if (a === undefined) {
       throw new Error('draft: face hash not found — possible hash collision');
     }

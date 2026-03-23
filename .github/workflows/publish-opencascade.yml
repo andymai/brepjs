@@ -27,16 +27,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: Build single (no exceptions)
+      - name: Build WASM (OCCT V8 + emsdk 5)
         working-directory: packages/brepjs-opencascade/build-config
         run: |
-          docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:wasm-exceptions custom_build_single.yml
+          docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:v8 brepjs.yml
           mv brepjs_single* ../src/
-
-      # Threaded and exceptions builds are disabled — the wasm-exceptions Docker
-      # image lacks the pthread toolchain needed for threaded builds, and the
-      # exceptions build has compilation issues. Gridfinity uses single only.
-      # TODO: re-enable when Docker image supports all build variants.
 
       - name: Optimize WASM binaries
         working-directory: packages/brepjs-opencascade/src

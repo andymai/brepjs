@@ -287,7 +287,6 @@ mainBuild:
   - -flto
   - -fwasm-exceptions
   - -sEXPORT_ES6=1
-  - -sUSE_ES6_IMPORT_META=0
   - -sALLOW_MEMORY_GROWTH=1
   - -sEXPORTED_RUNTIME_METHODS=["FS"]
   - -msimd128
@@ -297,7 +296,17 @@ mainBuild:
   - -O3
   - -sINITIAL_MEMORY=134217728
   - -sMAXIMUM_MEMORY=4294967296
+  additionalBindCode: |
+    #include <TopTools_ShapeMapHasher.hxx>
+    int shapeHashCode(const TopoDS_Shape& shape, int upperBound) {
+      return static_cast<int>(TopTools_ShapeMapHasher{}(shape) % upperBound);
+    }
+    EMSCRIPTEN_BINDINGS(brepjs_helpers) {
+      emscripten::function("shapeHashCode", &shapeHashCode);
+    }
 additionalCppCode: |
+  #include <TopTools_ShapeMapHasher.hxx>
+
   class BRepToolsWrapper {
   public:
     static std::string Write(const TopoDS_Shape& shape) {
@@ -520,7 +529,7 @@ additionalCppCode: |
           triOffset += 3;
         }
 
-        int faceHash = face.HashCode(2147483647);
+        int faceHash = static_cast<int>(TopTools_ShapeMapHasher{}(face) % 2147483647);
         result.faceGroupsPtr_[faceGroupIdx + 0] = faceTriStart;
         result.faceGroupsPtr_[faceGroupIdx + 1] = (triOffset - faceTriStart);
         result.faceGroupsPtr_[faceGroupIdx + 2] = faceHash;
@@ -761,7 +770,7 @@ additionalCppCode: |
 
           result.edgeGroupsPtr_[groupOffset++] = lineStart;
           result.edgeGroupsPtr_[groupOffset++] = pointCount;
-          result.edgeGroupsPtr_[groupOffset++] = edge.HashCode(2147483647);
+          result.edgeGroupsPtr_[groupOffset++] = static_cast<int>(TopTools_ShapeMapHasher{}(edge) % 2147483647);
         }
       }
 
@@ -793,7 +802,7 @@ additionalCppCode: |
 
         result.edgeGroupsPtr_[groupOffset++] = lineStart;
         result.edgeGroupsPtr_[groupOffset++] = pointCount;
-        result.edgeGroupsPtr_[groupOffset++] = info.edge.HashCode(2147483647);
+        result.edgeGroupsPtr_[groupOffset++] = info.static_cast<int>(TopTools_ShapeMapHasher{}(edge) % 2147483647);
       }
 
       return result;
@@ -854,7 +863,7 @@ additionalCppCode: |
       NCollection_DataMap<int, TopoDS_Shape> facesByHash;
       for (TopExp_Explorer ex(inputShape, TopAbs_FACE); ex.More(); ex.Next()) {
         const TopoDS_Face& face = TopoDS::Face(ex.Current());
-        int hash = face.HashCode(hashUpperBound);
+        int hash = static_cast<int>(TopTools_ShapeMapHasher{}(face) % hashUpperBound);
         if (!facesByHash.IsBound(hash)) {
           facesByHash.Bind(hash, face);
         }
@@ -879,7 +888,7 @@ additionalCppCode: |
           modifiedBuf.push_back(inputHash);
           modifiedBuf.push_back(modList.Size());
           for (TopTools_ListIteratorOfListOfShape lit(modList); lit.More(); lit.Next()) {
-            modifiedBuf.push_back(lit.Value().HashCode(hashUpperBound));
+            modifiedBuf.push_back(static_cast<int>(TopTools_ShapeMapHasher{}(lit.Value()) % hashUpperBound));
           }
         }
 
@@ -888,7 +897,7 @@ additionalCppCode: |
           generatedBuf.push_back(inputHash);
           generatedBuf.push_back(genList.Size());
           for (TopTools_ListIteratorOfListOfShape lit(genList); lit.More(); lit.Next()) {
-            generatedBuf.push_back(lit.Value().HashCode(hashUpperBound));
+            generatedBuf.push_back(static_cast<int>(TopTools_ShapeMapHasher{}(lit.Value()) % hashUpperBound));
           }
         }
       }
