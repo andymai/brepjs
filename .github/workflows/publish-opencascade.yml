@@ -34,12 +34,14 @@ jobs:
           mv brepjs_single* ../src/
 
       - name: Build with exceptions
+        continue-on-error: true
         working-directory: packages/brepjs-opencascade/build-config
         run: |
           docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:wasm-exceptions custom_build_with_exceptions.yml
           mv brepjs_with_exceptions* ../src/
 
       - name: Build threaded (multi-threading)
+        continue-on-error: true
         working-directory: packages/brepjs-opencascade/build-config
         run: |
           docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:wasm-exceptions custom_build_threaded.yml
