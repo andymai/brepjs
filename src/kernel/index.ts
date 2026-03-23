@@ -11,7 +11,7 @@ import {
   resetShellBatchDetectionCache,
   resetFilletBatchDetectionCache,
 } from './occt/modifierOps.js';
-import { resetPerformanceStats } from './perfStats.js';
+// resetPerformanceStats is exported but not called in initFromOC — users control their own stats lifecycle
 
 // ---------------------------------------------------------------------------
 // Kernel registry — supports multiple kernels for gradual migration
@@ -107,7 +107,6 @@ export function initFromOC(oc: KernelInstance): void {
   resetExtrudeBatchDetectionCache();
   resetShellBatchDetectionCache();
   resetFilletBatchDetectionCache();
-  resetPerformanceStats();
   const adapter = new DefaultAdapter(oc);
   registerKernel('occt', adapter);
   _defaultKernelId = 'occt';

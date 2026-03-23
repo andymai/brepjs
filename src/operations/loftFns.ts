@@ -111,14 +111,22 @@ export function loftAll(entries: readonly LoftAllEntry[]): Result<Shape3D[]> {
   if (entries.length === 0) return ok([]);
 
   const kernel = getKernel();
-  const kernelEntries = entries.map((e) => ({
-    wires: e.wires.map((w) => w.wrapped),
-    solid: true,
-    ruled: e.ruled ?? true,
-    tolerance: e.tolerance ?? 1e-6,
-    startVertex: e.startPoint ? kernel.makeVertex(...toVec3(e.startPoint)) : undefined,
-    endVertex: e.endPoint ? kernel.makeVertex(...toVec3(e.endPoint)) : undefined,
-  }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WASM vertex handles
+  const verticesToDelete: any[] = [];
+  const kernelEntries = entries.map((e) => {
+    const startVertex = e.startPoint ? kernel.makeVertex(...toVec3(e.startPoint)) : undefined;
+    const endVertex = e.endPoint ? kernel.makeVertex(...toVec3(e.endPoint)) : undefined;
+    if (startVertex) verticesToDelete.push(startVertex);
+    if (endVertex) verticesToDelete.push(endVertex);
+    return {
+      wires: e.wires.map((w) => w.wrapped),
+      solid: true,
+      ruled: e.ruled ?? true,
+      tolerance: e.tolerance ?? 1e-6,
+      startVertex,
+      endVertex,
+    };
+  });
 
   try {
     const shapes =
@@ -136,5 +144,7 @@ export function loftAll(entries: readonly LoftAllEntry[]): Result<Shape3D[]> {
     return ok(results);
   } catch (e) {
     return err(kernelError('LOFT_ALL_FAILED', 'Batch loft operation failed', e));
+  } finally {
+    for (const v of verticesToDelete) kernel.dispose(v);
   }
 }

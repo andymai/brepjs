@@ -1234,7 +1234,7 @@ additionalCppCode: |
         if (e.hasEnd) { builder.AddVertex(TopoDS::Vertex(e.endVertex)); }
         Message_ProgressRange progress;
         builder.Build(progress);
-        result.shapesPtr_[i] = builder.Shape();
+        result.shapesPtr_[i] = builder.IsDone() ? builder.Shape() : TopoDS_Shape();
       }
       return result;
     }
@@ -1264,7 +1264,7 @@ additionalCppCode: |
         const Entry& e = entries_[i];
         gp_Vec vec(e.dx, e.dy, e.dz);
         BRepPrimAPI_MakePrism maker(e.face, vec, Standard_False, Standard_True);
-        result.shapesPtr_[i] = maker.Shape();
+        result.shapesPtr_[i] = maker.IsDone() ? maker.Shape() : TopoDS_Shape();
       }
       return result;
     }
@@ -1299,7 +1299,7 @@ additionalCppCode: |
         BRepOffsetAPI_MakeThickSolid builder;
         builder.MakeThickSolidByJoin(e.shape, facesToRemove, -e.thickness, e.tolerance,
           BRepOffset_Skin, Standard_False, Standard_False, GeomAbs_Arc, Standard_False, progress);
-        result.shapesPtr_[i] = builder.Shape();
+        result.shapesPtr_[i] = builder.IsDone() ? builder.Shape() : TopoDS_Shape();
       }
       return result;
     }
@@ -1345,7 +1345,7 @@ additionalCppCode: |
         }
         Message_ProgressRange progress;
         builder.Build(progress);
-        result.shapesPtr_[i] = builder.Shape();
+        result.shapesPtr_[i] = builder.IsDone() ? builder.Shape() : TopoDS_Shape();
       }
       return result;
     }

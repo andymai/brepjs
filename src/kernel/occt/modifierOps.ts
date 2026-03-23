@@ -319,38 +319,35 @@ export interface ShellBatchEntry {
 export function shellBatch(oc: KernelInstance, entries: readonly ShellBatchEntry[]): KernelShape[] {
   if (entries.length === 0) return [];
 
-  const end = perfTimer('shell');
-  try {
-    /* v8 ignore start -- C++ extractor not available in test WASM build */
-    if (detectCppShellBatch(oc)) {
-      const batch = new oc.ShellBatch();
-      try {
-        for (const e of entries) {
-          const idx = batch.beginShell(e.shape, e.thickness, e.tolerance ?? 1e-3) as number;
-          // brepjs-patterns-disable: max-nesting-depth
-          for (const face of e.faces) {
-            batch.addFaceToRemove(idx, face);
-          }
+  /* v8 ignore start -- C++ extractor not available in test WASM build */
+  if (detectCppShellBatch(oc)) {
+    const end = perfTimer('shell');
+    const batch = new oc.ShellBatch();
+    try {
+      for (const e of entries) {
+        const idx = batch.beginShell(e.shape, e.thickness, e.tolerance ?? 1e-3) as number;
+        // brepjs-patterns-disable: max-nesting-depth
+        for (const face of e.faces) {
+          batch.addFaceToRemove(idx, face);
         }
-
-        const result = batch.execute();
-        try {
-          const count = result.getShapesCount() as number;
-          return Array.from({ length: count }, (_, i) => result.getShape(i));
-        } finally {
-          result.delete();
-        }
-      } finally {
-        batch.delete();
       }
-    }
-    /* v8 ignore stop */
 
-    // JS fallback
-    return entries.map((e) => shell(oc, e.shape, e.faces, e.thickness, e.tolerance ?? 1e-3));
-  } finally {
-    end();
+      const result = batch.execute();
+      try {
+        const count = result.getShapesCount() as number;
+        return Array.from({ length: count }, (_, i) => result.getShape(i));
+      } finally {
+        result.delete();
+      }
+    } finally {
+      batch.delete();
+      end();
+    }
   }
+  /* v8 ignore stop */
+
+  // JS fallback — shell() has its own perfTimer
+  return entries.map((e) => shell(oc, e.shape, e.faces, e.thickness, e.tolerance ?? 1e-3));
 }
 
 export interface FilletBatchEdge {
@@ -370,51 +367,47 @@ export function filletBatch(
 ): KernelShape[] {
   if (entries.length === 0) return [];
 
-  const end = perfTimer('fillet');
-  try {
-    /* v8 ignore start -- C++ extractor not available in test WASM build */
-    if (detectCppFilletBatch(oc)) {
-      const batch = new oc.FilletBatch();
-      try {
-        for (const e of entries) {
-          const idx = batch.beginFillet(e.shape) as number;
+  /* v8 ignore start -- C++ extractor not available in test WASM build */
+  if (detectCppFilletBatch(oc)) {
+    const end = perfTimer('fillet');
+    const batch = new oc.FilletBatch();
+    try {
+      for (const e of entries) {
+        const idx = batch.beginFillet(e.shape) as number;
+        // brepjs-patterns-disable: max-nesting-depth
+        for (const ei of e.edges) {
           // brepjs-patterns-disable: max-nesting-depth
-          for (const ei of e.edges) {
-            // brepjs-patterns-disable: max-nesting-depth
-            if (ei.r2 !== undefined) {
-              batch.addEdgeVariable(idx, ei.edge, ei.radius, ei.r2);
-            } else {
-              batch.addEdge(idx, ei.edge, ei.radius);
-            }
+          if (ei.r2 !== undefined) {
+            batch.addEdgeVariable(idx, ei.edge, ei.radius, ei.r2);
+          } else {
+            batch.addEdge(idx, ei.edge, ei.radius);
           }
         }
-
-        const result = batch.execute();
-        try {
-          const count = result.getShapesCount() as number;
-          return Array.from({ length: count }, (_, i) => result.getShape(i));
-        } finally {
-          result.delete();
-        }
-      } finally {
-        batch.delete();
       }
-    }
-    /* v8 ignore stop */
 
-    // JS fallback
-    return entries.map((e) => {
-      const edges = e.edges.map((ei) => ei.edge);
-      // Use the first edge's radius as the constant radius for the fallback
-      const firstEdge = e.edges[0];
-      if (!firstEdge) return e.shape;
-      const radius =
-        firstEdge.r2 !== undefined
-          ? ([firstEdge.radius, firstEdge.r2] as [number, number])
-          : firstEdge.radius;
-      return fillet(oc, e.shape, edges, radius);
-    });
-  } finally {
-    end();
+      const result = batch.execute();
+      try {
+        const count = result.getShapesCount() as number;
+        return Array.from({ length: count }, (_, i) => result.getShape(i));
+      } finally {
+        result.delete();
+      }
+    } finally {
+      batch.delete();
+      end();
+    }
   }
+  /* v8 ignore stop */
+
+  // JS fallback — per-edge radius via callback, fillet() has its own perfTimer
+  return entries.map((e) => {
+    const edges = e.edges.map((ei) => ei.edge);
+    // Build a per-edge radius callback to preserve individual radii
+    const radiusFn = (edge: KernelShape): number | [number, number] => {
+      const match = e.edges.find((ei) => ei.edge === edge);
+      if (!match) return 0;
+      return match.r2 !== undefined ? [match.radius, match.r2] : match.radius;
+    };
+    return fillet(oc, e.shape, edges, radiusFn);
+  });
 }

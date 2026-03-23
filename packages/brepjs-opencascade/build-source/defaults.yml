@@ -1267,7 +1267,7 @@ public:
 
       Message_ProgressRange progress;
       builder.Build(progress);
-      result.shapesPtr_[i] = builder.Shape();
+      result.shapesPtr_[i] = builder.IsDone() ? builder.Shape() : TopoDS_Shape();
     }
 
     return result;
@@ -1307,7 +1307,7 @@ public:
       const Entry& e = entries_[i];
       gp_Vec vec(e.dx, e.dy, e.dz);
       BRepPrimAPI_MakePrism maker(e.face, vec, Standard_False, Standard_True);
-      result.shapesPtr_[i] = maker.Shape();
+      result.shapesPtr_[i] = maker.IsDone() ? maker.Shape() : TopoDS_Shape();
     }
 
     return result;
@@ -1366,7 +1366,7 @@ public:
         Standard_False,
         progress
       );
-      result.shapesPtr_[i] = builder.Shape();
+      result.shapesPtr_[i] = builder.IsDone() ? builder.Shape() : TopoDS_Shape();
     }
 
     return result;
@@ -1427,7 +1427,7 @@ public:
 
       Message_ProgressRange progress;
       builder.Build(progress);
-      result.shapesPtr_[i] = builder.Shape();
+      result.shapesPtr_[i] = builder.IsDone() ? builder.Shape() : TopoDS_Shape();
     }
 
     return result;

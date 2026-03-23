@@ -85,6 +85,8 @@ function autoFuzzyValue(oc: KernelInstance, shapes: KernelShape[]): number {
   const dx = (max.X() as number) - (min.X() as number);
   const dy = (max.Y() as number) - (min.Y() as number);
   const dz = (max.Z() as number) - (min.Z() as number);
+  min.delete();
+  max.delete();
   box.delete();
 
   const diagonal = Math.sqrt(dx * dx + dy * dy + dz * dz);
