@@ -22,19 +22,19 @@ jobs:
       - name: Build single (no exceptions)
         working-directory: packages/brepjs-opencascade/build-config
         run: |
-          docker run -i --rm -v "$(pwd)":/src andymai/opencascade.js:wasm-exceptions custom_build_single.yml
+          docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:wasm-exceptions custom_build_single.yml
           mv brepjs_single* ../src/
 
       - name: Build with exceptions
         working-directory: packages/brepjs-opencascade/build-config
         run: |
-          docker run -i --rm -v "$(pwd)":/src andymai/opencascade.js:wasm-exceptions custom_build_with_exceptions.yml
+          docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:wasm-exceptions custom_build_with_exceptions.yml
           mv brepjs_with_exceptions* ../src/
 
       - name: Build threaded (multi-threading)
         working-directory: packages/brepjs-opencascade/build-config
         run: |
-          docker run -i --rm -v "$(pwd)":/src andymai/opencascade.js:wasm-exceptions custom_build_threaded.yml
+          docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:wasm-exceptions custom_build_threaded.yml
           mv brepjs_threaded* ../src/
 
       - name: Upload WASM artifacts
