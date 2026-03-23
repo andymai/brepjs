@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.3.0](https://github.com/andymai/brepjs/compare/brepjs-v14.2.2...brepjs-v14.3.0) (2026-03-23)
+
+
+### Features
+
+* upgrade brepkit-wasm 2.26.0 → 2.33.0 ([#595](https://github.com/andymai/brepjs/issues/595)) ([9a6473b](https://github.com/andymai/brepjs/commit/9a6473b25f0599fe3472992be1648061889ceeae))
+
 ## [14.2.2](https://github.com/andymai/brepjs/compare/brepjs-v14.2.1...brepjs-v14.2.2) (2026-03-23)
 
 
