@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.2.2](https://github.com/andymai/brepjs/compare/brepjs-v14.2.1...brepjs-v14.2.2) (2026-03-23)
+
+
+### Bug Fixes
+
+* **ci:** remove broken threaded/exceptions WASM builds ([#593](https://github.com/andymai/brepjs/issues/593)) ([c506c8c](https://github.com/andymai/brepjs/commit/c506c8c55509b169a2cd08d0e5386b010a62442a))
+
 ## [14.2.1](https://github.com/andymai/brepjs/compare/brepjs-v14.2.0...brepjs-v14.2.1) (2026-03-23)
 
 
