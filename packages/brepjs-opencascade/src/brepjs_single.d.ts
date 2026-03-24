@@ -7062,6 +7062,80 @@ export declare class Geom_TrimmedCurve extends Geom_BoundedCurve {
   delete(): void;
 }
 
+export declare class GeomAdaptor_TransformedSurface extends Adaptor3d_Surface {
+  static get_type_name(): Standard_Character;
+  static get_type_descriptor(): Handle_Standard_Type;
+  DynamicType(): Handle_Standard_Type;
+  ShallowCopy(): any;
+  Load_1(theSurface: any): void;
+  Load_2(theSurface: any, theUFirst: Standard_Real, theULast: Standard_Real, theVFirst: Standard_Real, theVLast: Standard_Real, theTolU: Standard_Real, theTolV: Standard_Real): void;
+  SetTrsf(theTrsf: gp_Trsf): void;
+  Trsf(): gp_Trsf;
+  Surface(): GeomAdaptor_Surface;
+  ChangeSurface(): GeomAdaptor_Surface;
+  GeomSurface(): any;
+  FirstUParameter(): Standard_Real;
+  LastUParameter(): Standard_Real;
+  FirstVParameter(): Standard_Real;
+  LastVParameter(): Standard_Real;
+  UContinuity(): GeomAbs_Shape;
+  VContinuity(): GeomAbs_Shape;
+  NbUIntervals(theS: GeomAbs_Shape): Standard_Integer;
+  NbVIntervals(theS: GeomAbs_Shape): Standard_Integer;
+  UIntervals(theT: TColStd_Array1OfReal, theS: GeomAbs_Shape): void;
+  VIntervals(theT: TColStd_Array1OfReal, theS: GeomAbs_Shape): void;
+  UTrim(theFirst: Standard_Real, theLast: Standard_Real, theTol: Standard_Real): any;
+  VTrim(theFirst: Standard_Real, theLast: Standard_Real, theTol: Standard_Real): any;
+  IsUClosed(): Standard_Boolean;
+  IsVClosed(): Standard_Boolean;
+  IsUPeriodic(): Standard_Boolean;
+  UPeriod(): Standard_Real;
+  IsVPeriodic(): Standard_Boolean;
+  VPeriod(): Standard_Real;
+  Value(theU: Standard_Real, theV: Standard_Real): gp_Pnt;
+  D0(theU: Standard_Real, theV: Standard_Real, theP: gp_Pnt): void;
+  D1(theU: Standard_Real, theV: Standard_Real, theP: gp_Pnt, theD1U: gp_Vec, theD1V: gp_Vec): void;
+  D2(theU: Standard_Real, theV: Standard_Real, theP: gp_Pnt, theD1U: gp_Vec, theD1V: gp_Vec, theD2U: gp_Vec, theD2V: gp_Vec, theD2UV: gp_Vec): void;
+  D3(theU: Standard_Real, theV: Standard_Real, theP: gp_Pnt, theD1U: gp_Vec, theD1V: gp_Vec, theD2U: gp_Vec, theD2V: gp_Vec, theD2UV: gp_Vec, theD3U: gp_Vec, theD3V: gp_Vec, theD3UUV: gp_Vec, theD3UVV: gp_Vec): void;
+  DN(theU: Standard_Real, theV: Standard_Real, theNu: Standard_Integer, theNv: Standard_Integer): gp_Vec;
+  UResolution(theR3d: Standard_Real): Standard_Real;
+  VResolution(theR3d: Standard_Real): Standard_Real;
+  GetType(): GeomAbs_SurfaceType;
+  Plane(): gp_Pln;
+  Cylinder(): gp_Cylinder;
+  Cone(): gp_Cone;
+  Sphere(): gp_Sphere;
+  Torus(): gp_Torus;
+  UDegree(): Standard_Integer;
+  NbUPoles(): Standard_Integer;
+  VDegree(): Standard_Integer;
+  NbVPoles(): Standard_Integer;
+  NbUKnots(): Standard_Integer;
+  NbVKnots(): Standard_Integer;
+  IsURational(): Standard_Boolean;
+  IsVRational(): Standard_Boolean;
+  Bezier(): any;
+  BSpline(): any;
+  AxeOfRevolution(): gp_Ax1;
+  Direction(): gp_Dir;
+  BasisCurve(): any;
+  BasisSurface(): any;
+  OffsetValue(): Standard_Real;
+  delete(): void;
+}
+
+  export declare class GeomAdaptor_TransformedSurface_1 extends GeomAdaptor_TransformedSurface {
+    constructor();
+  }
+
+  export declare class GeomAdaptor_TransformedSurface_2 extends GeomAdaptor_TransformedSurface {
+    constructor(theSurface: any, theTrsf: gp_Trsf);
+  }
+
+  export declare class GeomAdaptor_TransformedSurface_3 extends GeomAdaptor_TransformedSurface {
+    constructor(theSurface: any, theUFirst: Standard_Real, theULast: Standard_Real, theVFirst: Standard_Real, theVLast: Standard_Real, theTrsf: gp_Trsf, theTolU: Standard_Real, theTolV: Standard_Real);
+  }
+
 export declare type TopAbs_Orientation = {
   TopAbs_FORWARD: {};
   TopAbs_REVERSED: {};
@@ -9139,6 +9213,10 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   Geom_SphericalSurface_2: typeof Geom_SphericalSurface_2;
   Geom_Surface: typeof Geom_Surface;
   Geom_TrimmedCurve: typeof Geom_TrimmedCurve;
+  GeomAdaptor_TransformedSurface: typeof GeomAdaptor_TransformedSurface;
+  GeomAdaptor_TransformedSurface_1: typeof GeomAdaptor_TransformedSurface_1;
+  GeomAdaptor_TransformedSurface_2: typeof GeomAdaptor_TransformedSurface_2;
+  GeomAdaptor_TransformedSurface_3: typeof GeomAdaptor_TransformedSurface_3;
   TopAbs_Orientation: TopAbs_Orientation;
   TopAbs_ShapeEnum: TopAbs_ShapeEnum;
   BndLib_Add2dCurve: typeof BndLib_Add2dCurve;
