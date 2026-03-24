@@ -14,9 +14,9 @@ describe.skipIf(currentKernel !== 'occt')('OCCT-specific: guidedSweepFns', () =>
     const oc = getKernel().oc;
     const scope = new DisposalScope();
     const ax = scope.register(
-      new oc.gp_Ax2_3(
+      new oc.gp_Ax2_4(
         scope.register(new oc.gp_Pnt_3(0, 0, 0)),
-        scope.register(new oc.gp_Dir_4(0, 0, 1))
+        scope.register(new oc.gp_Dir_5(0, 0, 1))
       )
     );
     const circ = scope.register(new oc.gp_Circ_2(ax, radius));

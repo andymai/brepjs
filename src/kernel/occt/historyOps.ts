@@ -55,7 +55,7 @@ export function rotateWithHistory(
 ): OperationResult {
   const trsf = new oc.gp_Trsf_1();
   const pnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(axis[0], axis[1], axis[2]);
+  const dir = new oc.gp_Dir_5(axis[0], axis[1], axis[2]);
   const ax1 = new oc.gp_Ax1_2(pnt, dir);
   trsf.SetRotation_1(ax1, angle);
   pnt.delete();
@@ -76,8 +76,8 @@ export function mirrorWithHistory(
 ): OperationResult {
   const trsf = new oc.gp_Trsf_1();
   const pnt = new oc.gp_Pnt_3(origin[0], origin[1], origin[2]);
-  const dir = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
-  const ax2 = new oc.gp_Ax2_3(pnt, dir);
+  const dir = new oc.gp_Dir_5(normal[0], normal[1], normal[2]);
+  const ax2 = new oc.gp_Ax2_4(pnt, dir);
   trsf.SetMirror_3(ax2);
   pnt.delete();
   dir.delete();
@@ -413,7 +413,7 @@ export function draftWithHistory(
   const [px, py, pz] = pullDirection;
   const [ox, oy, oz] = neutralPlane;
 
-  const dir = new oc.gp_Dir_4(px, py, pz);
+  const dir = new oc.gp_Dir_5(px, py, pz);
   const origin = new oc.gp_Pnt_3(ox, oy, oz);
   const pln = new oc.gp_Pln_3(origin, dir);
   const builder = new oc.BRepOffsetAPI_DraftAngle_2(shape);

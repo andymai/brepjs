@@ -216,7 +216,7 @@ export function transformWithEvolution(
   inputFaceHashes: number[],
   hashUpperBound: number
 ): OperationResult {
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
+  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
   const resultShape = transformer.Shape();
   const evolution =
     inputFaceHashes.length === 0

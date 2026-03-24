@@ -107,8 +107,8 @@ export function makeCylinder(
   direction: [number, number, number] = [0, 0, 1]
 ): KernelShape {
   const origin = new oc.gp_Pnt_3(...center);
-  const dir = new oc.gp_Dir_4(...direction);
-  const axis = new oc.gp_Ax2_3(origin, dir);
+  const dir = new oc.gp_Dir_5(...direction);
+  const axis = new oc.gp_Ax2_4(origin, dir);
   const maker = new oc.BRepPrimAPI_MakeCylinder_3(axis, radius, height);
   const solid = maker.Shape();
   maker.delete();
@@ -153,8 +153,8 @@ export function makeCone(
   direction: [number, number, number] = [0, 0, 1]
 ): KernelShape {
   const origin = new oc.gp_Pnt_3(...center);
-  const dir = new oc.gp_Dir_4(...direction);
-  const axis = new oc.gp_Ax2_3(origin, dir);
+  const dir = new oc.gp_Dir_5(...direction);
+  const axis = new oc.gp_Ax2_4(origin, dir);
   const maker = new oc.BRepPrimAPI_MakeCone_3(axis, radius1, radius2, height);
   const solid = maker.Shape();
   maker.delete();
@@ -241,8 +241,8 @@ export function makeTorus(
   direction: [number, number, number] = [0, 0, 1]
 ): KernelShape {
   const origin = new oc.gp_Pnt_3(...center);
-  const dir = new oc.gp_Dir_4(...direction);
-  const axis = new oc.gp_Ax2_3(origin, dir);
+  const dir = new oc.gp_Dir_5(...direction);
+  const axis = new oc.gp_Ax2_4(origin, dir);
   const maker = new oc.BRepPrimAPI_MakeTorus_5(axis, majorRadius, minorRadius);
   const solid = maker.Shape();
   maker.delete();

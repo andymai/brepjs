@@ -37,8 +37,8 @@ export function makeCircleEdge(
   radius: number
 ): KernelShape {
   const pnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
-  const ax = new oc.gp_Ax2_3(pnt, dir);
+  const dir = new oc.gp_Dir_5(normal[0], normal[1], normal[2]);
+  const ax = new oc.gp_Ax2_4(pnt, dir);
   const circ = new oc.gp_Circ_2(ax, radius);
   const maker = new oc.BRepBuilderAPI_MakeEdge_8(circ);
   const edge = maker.Edge();
@@ -60,8 +60,8 @@ export function makeCircleArc(
   endAngle: number
 ): KernelShape {
   const pnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
-  const ax = new oc.gp_Ax2_3(pnt, dir);
+  const dir = new oc.gp_Dir_5(normal[0], normal[1], normal[2]);
+  const ax = new oc.gp_Ax2_4(pnt, dir);
   const circ = new oc.gp_Circ_2(ax, radius);
   const maker = new oc.BRepBuilderAPI_MakeEdge_9(circ, startAngle, endAngle);
   const edge = maker.Edge();
@@ -129,14 +129,14 @@ export function makeEllipseEdge(
   xDir?: [number, number, number]
 ): KernelShape {
   const pnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
+  const dir = new oc.gp_Dir_5(normal[0], normal[1], normal[2]);
   let ax;
   if (xDir) {
-    const xd = new oc.gp_Dir_4(xDir[0], xDir[1], xDir[2]);
+    const xd = new oc.gp_Dir_5(xDir[0], xDir[1], xDir[2]);
     ax = new oc.gp_Ax2_2(pnt, dir, xd);
     xd.delete();
   } else {
-    ax = new oc.gp_Ax2_3(pnt, dir);
+    ax = new oc.gp_Ax2_4(pnt, dir);
   }
   const elips = new oc.gp_Elips_2(ax, majorRadius, minorRadius);
   const maker = new oc.BRepBuilderAPI_MakeEdge_12(elips);
@@ -161,14 +161,14 @@ export function makeEllipseArc(
   xDir?: [number, number, number]
 ): KernelShape {
   const pnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(normal[0], normal[1], normal[2]);
+  const dir = new oc.gp_Dir_5(normal[0], normal[1], normal[2]);
   let ax;
   if (xDir) {
-    const xd = new oc.gp_Dir_4(xDir[0], xDir[1], xDir[2]);
+    const xd = new oc.gp_Dir_5(xDir[0], xDir[1], xDir[2]);
     ax = new oc.gp_Ax2_2(pnt, dir, xd);
     xd.delete();
   } else {
-    ax = new oc.gp_Ax2_3(pnt, dir);
+    ax = new oc.gp_Ax2_4(pnt, dir);
   }
   const elips = new oc.gp_Elips_2(ax, majorRadius, minorRadius);
   const maker = new oc.BRepBuilderAPI_MakeEdge_13(elips, startAngle, endAngle);
@@ -229,15 +229,15 @@ export function makeHelixWire(
 
   // Create the cylindrical surface
   const pnt = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(direction[0], direction[1], direction[2]);
-  const ax3 = new oc.gp_Ax3_4(pnt, dir);
+  const dir = new oc.gp_Dir_5(direction[0], direction[1], direction[2]);
+  const ax3 = new oc.gp_Ax3_5(pnt, dir);
   // Surface is NOT deleted here — doing so can crash OCCT for some reason
   const geomSurf = new oc.Geom_CylindricalSurface_1(ax3, radius);
   ax3.delete();
 
   // Create the 2D parametric line on the cylinder
   const pnt2d = new oc.gp_Pnt2d_3(0.0, 0.0);
-  const dir2d = new oc.gp_Dir2d_4(myDir, pitch);
+  const dir2d = new oc.gp_Dir2d_5(myDir, pitch);
   const geomLine = new oc.Geom2d_Line_3(pnt2d, dir2d);
 
   // Evaluate start/end points on the parametric line
@@ -290,13 +290,13 @@ function makeEllipsoidGTrsf(
 
   const origin = new oc.gp_Pnt_3(0, 0, 0);
 
-  const dirY = new oc.gp_Dir_4(0, 1, 0);
+  const dirY = new oc.gp_Dir_5(0, 1, 0);
   const ax1 = new oc.gp_Ax1_2(origin, dirY);
 
-  const dirZ = new oc.gp_Dir_4(0, 0, 1);
+  const dirZ = new oc.gp_Dir_5(0, 0, 1);
   const ax2 = new oc.gp_Ax1_2(origin, dirZ);
 
-  const dirX = new oc.gp_Dir_4(1, 0, 0);
+  const dirX = new oc.gp_Dir_5(1, 0, 0);
   const ax3 = new oc.gp_Ax1_2(origin, dirX);
 
   const transform = new oc.gp_GTrsf_1();
@@ -567,7 +567,7 @@ export function createPoint3d(oc: KernelInstance, x: number, y: number, z: numbe
 }
 
 export function createDirection3d(oc: KernelInstance, x: number, y: number, z: number): KernelType {
-  return new oc.gp_Dir_4(x, y, z);
+  return new oc.gp_Dir_5(x, y, z);
 }
 
 export function createVector3d(oc: KernelInstance, x: number, y: number, z: number): KernelType {
@@ -584,7 +584,7 @@ export function createAxis1(
   dz: number
 ): KernelType {
   const pnt = new oc.gp_Pnt_3(cx, cy, cz);
-  const dir = new oc.gp_Dir_4(dx, dy, dz);
+  const dir = new oc.gp_Dir_5(dx, dy, dz);
   const ax = new oc.gp_Ax1_2(pnt, dir);
   pnt.delete();
   dir.delete();
@@ -604,14 +604,14 @@ export function createAxis2(
   xz?: number
 ): KernelType {
   const pnt = new oc.gp_Pnt_3(ox, oy, oz);
-  const z = new oc.gp_Dir_4(zx, zy, zz);
+  const z = new oc.gp_Dir_5(zx, zy, zz);
   let ax;
   if (xx !== undefined && xy !== undefined && xz !== undefined) {
-    const x = new oc.gp_Dir_4(xx, xy, xz);
+    const x = new oc.gp_Dir_5(xx, xy, xz);
     ax = new oc.gp_Ax2_2(pnt, z, x);
     x.delete();
   } else {
-    ax = new oc.gp_Ax2_3(pnt, z);
+    ax = new oc.gp_Ax2_4(pnt, z);
   }
   pnt.delete();
   z.delete();
@@ -631,14 +631,14 @@ export function createAxis3(
   xz?: number
 ): KernelType {
   const pnt = new oc.gp_Pnt_3(ox, oy, oz);
-  const z = new oc.gp_Dir_4(zx, zy, zz);
+  const z = new oc.gp_Dir_5(zx, zy, zz);
   let ax;
   if (xx !== undefined && xy !== undefined && xz !== undefined) {
-    const x = new oc.gp_Dir_4(xx, xy, xz);
+    const x = new oc.gp_Dir_5(xx, xy, xz);
     ax = new oc.gp_Ax3_3(pnt, z, x);
     x.delete();
   } else {
-    ax = new oc.gp_Ax3_4(pnt, z);
+    ax = new oc.gp_Ax3_5(pnt, z);
   }
   pnt.delete();
   z.delete();

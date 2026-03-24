@@ -75,7 +75,7 @@ export function composeTransform(
       const axis = op.axis ?? [0, 0, 1];
       const center = op.center ?? [0, 0, 0];
       const origin = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-      const dir = new oc.gp_Dir_4(axis[0], axis[1], axis[2]);
+      const dir = new oc.gp_Dir_5(axis[0], axis[1], axis[2]);
       const ax1 = new oc.gp_Ax1_2(origin, dir);
       step.SetRotation_1(ax1, (op.angle * Math.PI) / 180);
       ax1.delete();
@@ -262,7 +262,7 @@ export function revolveVec(
   angle: number
 ): KernelShape {
   const origin = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(direction[0], direction[1], direction[2]);
+  const dir = new oc.gp_Dir_5(direction[0], direction[1], direction[2]);
   const ax1 = new oc.gp_Ax1_2(origin, dir);
   const maker = new oc.BRepPrimAPI_MakeRevol_1(shape, ax1, angle, false);
   const result = maker.Shape();
@@ -296,7 +296,7 @@ export function linearPattern(
     trsf.SetTranslation_1(vec);
     vec.delete();
 
-    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
+    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
     results.push(transformer.Shape());
     transformer.delete();
   }
@@ -316,7 +316,7 @@ export function circularPattern(
 ): KernelShape[] {
   const results: KernelShape[] = [];
   const origin = new oc.gp_Pnt_3(center[0], center[1], center[2]);
-  const dir = new oc.gp_Dir_4(axis[0], axis[1], axis[2]);
+  const dir = new oc.gp_Dir_5(axis[0], axis[1], axis[2]);
   const ax1 = new oc.gp_Ax1_2(origin, dir);
   const trsf = new oc.gp_Trsf_1();
 
@@ -324,7 +324,7 @@ export function circularPattern(
     const angle = (angleStep * i * Math.PI) / 180;
     trsf.SetRotation_1(ax1, angle);
 
-    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
+    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
     results.push(transformer.Shape());
     transformer.delete();
   }
@@ -364,7 +364,7 @@ export function positionOnCurve(
 
   // Build target coordinate system at the spine point
   const tangentDir = new oc.gp_Dir_2(tangent);
-  const toAx3 = new oc.gp_Ax3_4(pnt, tangentDir);
+  const toAx3 = new oc.gp_Ax3_5(pnt, tangentDir);
 
   // SetTransformation_2(ax3) computes transform FROM ax3 TO standard coords.
   // We want FROM standard (origin/Z-up) TO toAx3, so invert.
@@ -373,7 +373,7 @@ export function positionOnCurve(
   trsf.Invert();
 
   // Apply transform to the shape
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
+  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
   const result = transformer.Shape();
 
   // Clean up
@@ -894,15 +894,15 @@ export function projectEdges(
   hlr.Add_2(shape, 0);
 
   const origin = new oc.gp_Pnt_3(cameraOrigin[0], cameraOrigin[1], cameraOrigin[2]);
-  const dir = new oc.gp_Dir_4(cameraDirection[0], cameraDirection[1], cameraDirection[2]);
+  const dir = new oc.gp_Dir_5(cameraDirection[0], cameraDirection[1], cameraDirection[2]);
 
   let ax2;
   if (cameraXAxis) {
-    const xDir = new oc.gp_Dir_4(cameraXAxis[0], cameraXAxis[1], cameraXAxis[2]);
+    const xDir = new oc.gp_Dir_5(cameraXAxis[0], cameraXAxis[1], cameraXAxis[2]);
     ax2 = new oc.gp_Ax2_2(origin, dir, xDir);
     xDir.delete();
   } else {
-    ax2 = new oc.gp_Ax2_3(origin, dir);
+    ax2 = new oc.gp_Ax2_4(origin, dir);
   }
 
   const projector = new oc.HLRAlgo_Projector_2(ax2);

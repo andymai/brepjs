@@ -143,18 +143,12 @@ export function boundingBox(
 } {
   const box = new oc.Bnd_Box_1();
   oc.BRepBndLib.Add(shape, box, true);
-  const xMin = { current: 0 };
-  const yMin = { current: 0 };
-  const zMin = { current: 0 };
-  const xMax = { current: 0 };
-  const yMax = { current: 0 };
-  const zMax = { current: 0 };
-  box.Get(xMin, yMin, zMin, xMax, yMax, zMax);
-  box.delete();
-  return {
-    min: [xMin.current, yMin.current, zMin.current],
-    max: [xMax.current, yMax.current, zMax.current],
+  const result = {
+    min: [box.GetXMin(), box.GetYMin(), box.GetZMin()] as [number, number, number],
+    max: [box.GetXMax(), box.GetYMax(), box.GetZMax()] as [number, number, number],
   };
+  box.delete();
+  return result;
 }
 
 /**

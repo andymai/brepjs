@@ -90,7 +90,7 @@ export function transformBatch(oc: KernelInstance, entries: TransformEntry[]): K
  * Applies a transformation matrix to a shape.
  */
 export function transform(oc: KernelInstance, shape: KernelShape, trsf: KernelType): KernelShape {
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
+  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
   const result = transformer.ModifiedShape(shape);
   transformer.delete();
   return result;
@@ -127,7 +127,7 @@ export function rotate(
 ): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const origin = new oc.gp_Pnt_3(...center);
-  const dir = new oc.gp_Dir_4(...axis);
+  const dir = new oc.gp_Dir_5(...axis);
   const ax1 = new oc.gp_Ax1_2(origin, dir);
   trsf.SetRotation_1(ax1, (angle * Math.PI) / 180);
   const result = transform(oc, shape, trsf);
@@ -149,8 +149,8 @@ export function mirror(
 ): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const pnt = new oc.gp_Pnt_3(...origin);
-  const dir = new oc.gp_Dir_4(...normal);
-  const ax2 = new oc.gp_Ax2_3(pnt, dir);
+  const dir = new oc.gp_Dir_5(...normal);
+  const ax2 = new oc.gp_Ax2_4(pnt, dir);
   trsf.SetMirror_3(ax2);
   const result = transform(oc, shape, trsf);
   trsf.delete();
@@ -208,7 +208,7 @@ export function generalTransform(
       linear[8],
       translation[2]
     );
-    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true);
+    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
     const result = transformer.ModifiedShape(shape);
     transformer.delete();
     trsf.delete();

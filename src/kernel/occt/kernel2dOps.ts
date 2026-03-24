@@ -51,7 +51,7 @@ export function createPoint2d(oc: KernelInstance, x: number, y: number): KernelT
 }
 
 export function createDirection2d(oc: KernelInstance, x: number, y: number): KernelType {
-  return new oc.gp_Dir2d_4(x, y);
+  return new oc.gp_Dir2d_5(x, y);
 }
 
 export function createVector2d(oc: KernelInstance, x: number, y: number): KernelType {
@@ -66,7 +66,7 @@ export function createAxis2d(
   dy: number
 ): KernelType {
   const pnt = new oc.gp_Pnt2d_3(px, py);
-  const dir = new oc.gp_Dir2d_4(dx, dy);
+  const dir = new oc.gp_Dir2d_5(dx, dy);
   const axis = new oc.gp_Ax2d_2(pnt, dir);
   pnt.delete();
   dir.delete();
@@ -162,7 +162,7 @@ export function makeEllipse2d(
   sense = true
 ): KernelType {
   const center = new oc.gp_Pnt2d_3(cx, cy);
-  const dir = new oc.gp_Dir2d_4(xDirX, xDirY);
+  const dir = new oc.gp_Dir2d_5(xDirX, xDirY);
   const ax = new oc.gp_Ax2d_2(center, dir);
   const elips = new oc.gp_Elips2d_2(ax, majorRadius, minorRadius, sense);
   const maker = new oc.GCE2d_MakeEllipse_1(elips);
@@ -188,7 +188,7 @@ export function makeEllipseArc2d(
   sense = true
 ): KernelType {
   const center = new oc.gp_Pnt2d_3(cx, cy);
-  const dir = new oc.gp_Dir2d_4(xDirX, xDirY);
+  const dir = new oc.gp_Dir2d_5(xDirX, xDirY);
   const ax = new oc.gp_Ax2d_2(center, dir);
   const elips = new oc.gp_Elips2d_2(ax, majorRadius, minorRadius, true);
   const maker = new oc.GCE2d_MakeArcOfEllipse_1(elips, startAngle, endAngle, sense);
@@ -441,7 +441,7 @@ export function mirrorCurve2dAcrossAxis(
   dirY: number
 ): KernelType {
   const origin = new oc.gp_Pnt2d_3(originX, originY);
-  const dir = new oc.gp_Dir2d_4(dirX, dirY);
+  const dir = new oc.gp_Dir2d_5(dirX, dirY);
   const ax = new oc.gp_Ax2d_2(origin, dir);
   const trsf = new oc.gp_Trsf2d_1();
   trsf.SetMirror_2(ax);
@@ -461,7 +461,7 @@ export function affinityTransform2d(
   ratio: number
 ): KernelType {
   const origin = new oc.gp_Pnt2d_3(axisOriginX, axisOriginY);
-  const dir = new oc.gp_Dir2d_4(axisDirX, axisDirY);
+  const dir = new oc.gp_Dir2d_5(axisDirX, axisDirY);
   const ax = new oc.gp_Ax2d_2(origin, dir);
   const gtrsf = new oc.gp_GTrsf2d_1();
   gtrsf.SetAffinity(ax, ratio);
@@ -497,7 +497,7 @@ export function createAffinityGTrsf2d(
   ratio: number
 ): KernelType {
   const origin = new oc.gp_Pnt2d_3(originX, originY);
-  const dir = new oc.gp_Dir2d_4(dirX, dirY);
+  const dir = new oc.gp_Dir2d_5(dirX, dirY);
   const ax = new oc.gp_Ax2d_2(origin, dir);
   const gtrsf = new oc.gp_GTrsf2d_1();
   gtrsf.SetAffinity(ax, ratio);
@@ -532,7 +532,7 @@ export function createMirrorGTrsf2d(
     p.delete();
   } else {
     const p = new oc.gp_Pnt2d_3(originX, originY);
-    const dir = new oc.gp_Dir2d_4(dirX, dirY);
+    const dir = new oc.gp_Dir2d_5(dirX, dirY);
     const ax = new oc.gp_Ax2d_2(p, dir);
     trsf.SetMirror_2(ax);
     ax.delete();
@@ -741,16 +741,11 @@ export function getBBox2dBounds(
   _oc: KernelInstance,
   bbox: KernelType
 ): { xMin: number; yMin: number; xMax: number; yMax: number } {
-  const xMin = { current: 0 };
-  const yMin = { current: 0 };
-  const xMax = { current: 0 };
-  const yMax = { current: 0 };
-  bbox.Get(xMin, yMin, xMax, yMax);
   return {
-    xMin: xMin.current,
-    yMin: yMin.current,
-    xMax: xMax.current,
-    yMax: yMax.current,
+    xMin: bbox.GetXMin(),
+    yMin: bbox.GetYMin(),
+    xMax: bbox.GetXMax(),
+    yMax: bbox.GetYMax(),
   };
 }
 
@@ -1001,8 +996,8 @@ export function liftCurve2dToPlane(
   planeX: [number, number, number]
 ): KernelShape {
   const origin = new oc.gp_Pnt_3(planeOrigin[0], planeOrigin[1], planeOrigin[2]);
-  const zDir = new oc.gp_Dir_4(planeZ[0], planeZ[1], planeZ[2]);
-  const xDir = new oc.gp_Dir_4(planeX[0], planeX[1], planeX[2]);
+  const zDir = new oc.gp_Dir_5(planeZ[0], planeZ[1], planeZ[2]);
+  const xDir = new oc.gp_Dir_5(planeX[0], planeX[1], planeX[2]);
   const ax = new oc.gp_Ax2_2(origin, zDir, xDir);
 
   const curve3d = oc.GeomLib.To3d(ax, curve);

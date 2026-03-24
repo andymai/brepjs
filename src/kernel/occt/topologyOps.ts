@@ -137,7 +137,7 @@ export function shapeType(oc: KernelInstance, shape: KernelShape): ShapeType {
  * Checks if a shape is valid according to OCCT geometry and topology checks.
  */
 export function isValid(oc: KernelInstance, shape: KernelShape): boolean {
-  const analyzer = new oc.BRepCheck_Analyzer(shape, true, false);
+  const analyzer = new oc.BRepCheck_Analyzer(shape, true, false, false);
   const valid = analyzer.IsValid_2();
   analyzer.delete();
   return valid;
