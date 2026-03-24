@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.3.2](https://github.com/andymai/brepjs/compare/brepjs-v14.3.1...brepjs-v14.3.2) (2026-03-24)
+
+
+### Bug Fixes
+
+* **ci:** skip redundant wasm-opt in publish workflow ([#601](https://github.com/andymai/brepjs/issues/601)) ([c77eea0](https://github.com/andymai/brepjs/commit/c77eea05d8c4ba609eeaf11cf140b5517dc4cc79))
+
 ## [14.3.1](https://github.com/andymai/brepjs/compare/brepjs-v14.3.0...brepjs-v14.3.1) (2026-03-24)
 
 
