@@ -386,16 +386,13 @@ function extractVertices(oc: KernelInstance, shapes: KernelShape[], tolerance: n
 
   for (const shape of shapes) {
     // Mesh the shape
-    const mesh = new oc.BRepMesh_IncrementalMesh_2(
+    const mesh = new oc.BRepMesh_IncrementalMeshWrapper(
       shape,
       meshDeflection,
       false,
       meshDeflection * 0.5,
       false
     );
-    const progress = new oc.Message_ProgressRange_1();
-    mesh.Perform(progress);
-    progress.delete();
     mesh.delete();
 
     // Iterate faces to get triangulation nodes

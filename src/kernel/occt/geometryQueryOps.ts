@@ -401,7 +401,7 @@ export function meshShape(
   tolerance: number,
   angularTolerance: number
 ): void {
-  const mesher = new oc.BRepMesh_IncrementalMesh_2(
+  const mesher = new oc.BRepMesh_IncrementalMeshWrapper(
     shape,
     tolerance,
     false,
