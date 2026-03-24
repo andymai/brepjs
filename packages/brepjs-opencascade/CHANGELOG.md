@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.13.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.12.0...brepjs-opencascade-v0.13.0) (2026-03-24)
+
+
+### Features
+
+* add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
+* batch C++ extractors + perf instrumentation for OCCT ([#587](https://github.com/andymai/brepjs/issues/587)) ([1d26fdc](https://github.com/andymai/brepjs/commit/1d26fdcdf7ea3d4956ee639da11bb689ee21941a))
+
+
+### Bug Fixes
+
+* add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
+* **brepjs-opencascade:** correct license to LGPL-2.1-only ([#257](https://github.com/andymai/brepjs/issues/257)) ([a828529](https://github.com/andymai/brepjs/commit/a828529a92ba3252c62d743acbd088746305d703))
+* **ci:** bump validate-pack MAX_FILES to 450 for publish ([f293ef9](https://github.com/andymai/brepjs/commit/f293ef9ade2b832f18c4afb8d62e87bbf8c90b6f))
+* **deps:** declare brepjs-opencascade ^0.9.0 peer compatibility ([#368](https://github.com/andymai/brepjs/issues/368)) ([79eeb78](https://github.com/andymai/brepjs/commit/79eeb78d601c7f819b086a4123e904c0e4d8d760))
+* **deps:** trigger release for brepjs-opencascade 0.8.x peer dep support ([#269](https://github.com/andymai/brepjs/issues/269)) ([68d09ef](https://github.com/andymai/brepjs/commit/68d09ef9dd27096bf7b4c768de4e6314a68d7574))
+* trigger redeploy with brepjs 4.29.0 ([041e8ea](https://github.com/andymai/brepjs/commit/041e8ea829adaf323973609b36db81eb24e42889))
+
+
+### Performance Improvements
+
+* **wasm,topology:** enable simd, memory tuning, iterator optimization, and test coverage ([#309](https://github.com/andymai/brepjs/issues/309)) ([c0f1e1a](https://github.com/andymai/brepjs/commit/c0f1e1a2ac6fcf0ec8df751cafd24f57ddb4b04b))
+* **wasm:** build flags, C++ extractors, and command buffer design ([#371](https://github.com/andymai/brepjs/issues/371)) ([5c591a1](https://github.com/andymai/brepjs/commit/5c591a1767d3ac80921ff38ab55273f76bfdfa81))
+* **wasm:** C++ extractors, build flags, and UV mesh support ([#364](https://github.com/andymai/brepjs/issues/364)) ([4f2546b](https://github.com/andymai/brepjs/commit/4f2546b79221a4de126dac680b1b4c13a407a0f6))
+
 ## [0.11.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.10.0...brepjs-opencascade-v0.11.0) (2026-03-23)
 
 
