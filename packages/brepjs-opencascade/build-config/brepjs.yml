@@ -283,6 +283,8 @@ mainBuild:
   - symbol: ExtrudeBatch
   - symbol: ShellBatch
   - symbol: FilletBatch
+  - symbol: TopoDS_Cast
+  - symbol: BRepMesh_IncrementalMeshWrapper
   emccFlags:
   - -flto
   - -fwasm-exceptions
@@ -306,19 +308,6 @@ mainBuild:
     }
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>
-
-  // OCCT V8 moved collection typedefs to Deprecated/NCollectionAliases which has
-  // broken transitive includes. Re-declare the ones we need here.
-  typedef NCollection_Array1<gp_Dir> TColgp_Array1OfDir;
-  typedef NCollection_Array1<gp_Pnt> TColgp_Array1OfPnt;
-  typedef NCollection_Array1<gp_Pnt2d> TColgp_Array1OfPnt2d;
-  typedef NCollection_Array2<gp_Pnt> TColgp_Array2OfPnt;
-  typedef NCollection_Array1<Standard_Boolean> TColStd_Array1OfBoolean;
-  typedef NCollection_Array1<gp_Vec> TColgp_Array1OfVec;
-  typedef NCollection_Array1<Standard_Integer> TColStd_Array1OfInteger;
-  typedef NCollection_Array1<Standard_Real> TColStd_Array1OfReal;
-  typedef NCollection_Array1<Poly_Triangle> Poly_Array1OfTriangle;
-  typedef NCollection_List<TopoDS_Shape> TopTools_ListOfShape;
 
   // OCCT V8 removed Handle_*.hxx headers. Re-declare typedefs so the
   // binding generator can produce Embind wrappers for handle types.
@@ -351,6 +340,39 @@ additionalCppCode: |
   typedef opencascade::handle<XCAFDoc_ColorTool> Handle_XCAFDoc_ColorTool;
   typedef opencascade::handle<TDataStd_Name> Handle_TDataStd_Name;
   typedef opencascade::handle<XSControl_WorkSession> Handle_XSControl_WorkSession;
+
+  // OCCT V8: TopoDS static casters (Vertex/Edge/Face/etc.) are not directly
+  // bindable via Embind. Wrap them in a class with static forwarding methods.
+  class TopoDS_Cast {
+  public:
+    static TopoDS_Vertex Vertex(const TopoDS_Shape& S) { return TopoDS::Vertex(S); }
+    static TopoDS_Edge Edge(const TopoDS_Shape& S) { return TopoDS::Edge(S); }
+    static TopoDS_Wire Wire(const TopoDS_Shape& S) { return TopoDS::Wire(S); }
+    static TopoDS_Face Face(const TopoDS_Shape& S) { return TopoDS::Face(S); }
+    static TopoDS_Shell Shell(const TopoDS_Shape& S) { return TopoDS::Shell(S); }
+    static TopoDS_Solid Solid(const TopoDS_Shape& S) { return TopoDS::Solid(S); }
+    static TopoDS_Compound Compound(const TopoDS_Shape& S) { return TopoDS::Compound(S); }
+    static TopoDS_CompSolid CompSolid(const TopoDS_Shape& S) { return TopoDS::CompSolid(S); }
+  };
+
+  // OCCT V8: BRepMesh_IncrementalMesh constructor signature changed.
+  // Wrap with the V7-compatible 5-arg constructor.
+  class BRepMesh_IncrementalMeshWrapper {
+  public:
+    BRepMesh_IncrementalMeshWrapper(const TopoDS_Shape& theShape,
+                                     const double theLinDeflection,
+                                     const bool isRelative,
+                                     const double theAngDeflection,
+                                     const bool isInParallel) {
+      mesh_ = new BRepMesh_IncrementalMesh(theShape, theLinDeflection, isRelative, theAngDeflection, isInParallel);
+    }
+    ~BRepMesh_IncrementalMeshWrapper() { delete mesh_; }
+    bool IsDone() const { return mesh_->IsDone(); }
+    bool IsModified() const { return mesh_->IsModified(); }
+    int GetStatusFlags() const { return mesh_->GetStatusFlags(); }
+  private:
+    BRepMesh_IncrementalMesh* mesh_;
+  };
 
   class BRepToolsWrapper {
   public:
