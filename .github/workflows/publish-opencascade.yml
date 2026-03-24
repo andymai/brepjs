@@ -33,14 +33,8 @@ jobs:
           docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:v8 brepjs.yml
           mv brepjs_single* ../src/
 
-      - name: Optimize WASM binaries
-        working-directory: packages/brepjs-opencascade/src
-        run: |
-          npm install -g binaryen
-          for f in *.wasm; do
-            echo "Optimizing $f..."
-            wasm-opt -O4 --strip-debug --strip-producers --enable-exception-handling "$f" -o "$f"
-          done
+      # wasm-opt is already run inside the Docker container by buildFromYaml.py
+      # with --enable-exception-handling. No need to run it again in CI.
 
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
