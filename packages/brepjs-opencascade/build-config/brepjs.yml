@@ -126,7 +126,7 @@ mainBuild:
   - symbol: TopExp_Explorer
   - symbol: NCollection_BaseList
   - symbol: Poly_Connect
-  - symbol: StdPrs_ToolTriangulatedShape
+
   - symbol: Poly_Triangle
   - symbol: Poly_Triangulation
   - symbol: Handle_Poly_Triangulation
@@ -236,7 +236,6 @@ mainBuild:
   - symbol: ShapeFix_EdgeConnect
   - symbol: StlAPI
   - symbol: HLRBRep_Algo
-  - symbol: Handle_HLRBRep_Algo
   - symbol: HLRBRep_InternalAlgo
   - symbol: HLRAlgo_Projector
   - symbol: HLRBRep_HLRToShape
@@ -309,6 +308,7 @@ mainBuild:
     }
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>
+  #include <BRepLib_ToolTriangulatedShape.hxx>
 
   // Handle typedefs (V8 removed Handle_*.hxx headers)
   typedef opencascade::handle<StepData_StepModel> Handle_StepData_StepModel;
@@ -334,7 +334,7 @@ additionalCppCode: |
   typedef opencascade::handle<Poly_PolygonOnTriangulation> Handle_Poly_PolygonOnTriangulation;
   typedef opencascade::handle<Adaptor2d_Curve2d> Handle_Adaptor2d_Curve2d;
   typedef opencascade::handle<Law_Function> Handle_Law_Function;
-  typedef opencascade::handle<HLRBRep_Algo> Handle_HLRBRep_Algo;
+  // HLRBRep_Algo handle removed — HLR package is filtered
   typedef opencascade::handle<TDocStd_Document> Handle_TDocStd_Document;
   typedef opencascade::handle<XCAFDoc_ShapeTool> Handle_XCAFDoc_ShapeTool;
   typedef opencascade::handle<XCAFDoc_ColorTool> Handle_XCAFDoc_ColorTool;
@@ -546,12 +546,13 @@ additionalCppCode: |
         }
 
         if (!skipNormals) {
-          TColgp_Array1OfDir normalsArray(1, nbNodes);
-          Poly_Connect pc(tri);
-          StdPrs_ToolTriangulatedShape::Normal(face, pc, normalsArray);
-
+          if (!tri->HasNormals()) {
+            BRepLib_ToolTriangulatedShape::ComputeNormals(face, tri);
+          }
           for (int i = 1; i <= nbNodes; i++) {
-            gp_Dir d = normalsArray.Value(i).Transformed(trsf);
+            gp_Dir d = tri->Normal(i).IsEqual({0,0,0}, 1e-10)
+              ? gp_Dir(0, 0, 1) : gp_Dir(tri->Normal(i));
+            d = d.Transformed(trsf);
             int base = (vertexOffset + i - 1) * 3;
             result.normalsPtr_[base + 0] = static_cast<float>(d.X());
             result.normalsPtr_[base + 1] = static_cast<float>(d.Y());
