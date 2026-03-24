@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.3.1](https://github.com/andymai/brepjs/compare/brepjs-v14.3.0...brepjs-v14.3.1) (2026-03-24)
+
+
+### Bug Fixes
+
+* **ci:** add --enable-exception-handling to wasm-opt ([#599](https://github.com/andymai/brepjs/issues/599)) ([a0630f9](https://github.com/andymai/brepjs/commit/a0630f967b2ff602c98001e91069688fce09360d))
+
 ## [14.3.0](https://github.com/andymai/brepjs/compare/brepjs-v14.2.2...brepjs-v14.3.0) (2026-03-23)
 
 
