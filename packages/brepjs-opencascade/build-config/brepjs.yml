@@ -551,8 +551,14 @@ additionalCppCode: |
             BRepLib_ToolTriangulatedShape::ComputeNormals(face, tri);
           }
           for (int i = 1; i <= nbNodes; i++) {
-            gp_Dir d = tri->Normal(i).IsEqual({0,0,0}, 1e-10)
-              ? gp_Dir(0, 0, 1) : gp_Dir(tri->Normal(i));
+            gp_Dir d(0, 0, 1);
+            if (tri->HasNormals()) {
+              NCollection_Vec3<float> nv;
+              tri->Normal(i, nv);
+              if (nv.x() != 0.0f || nv.y() != 0.0f || nv.z() != 0.0f) {
+                d = gp_Dir(nv.x(), nv.y(), nv.z());
+              }
+            }
             d = d.Transformed(trsf);
             int base = (vertexOffset + i - 1) * 3;
             result.normalsPtr_[base + 0] = static_cast<float>(d.X());
