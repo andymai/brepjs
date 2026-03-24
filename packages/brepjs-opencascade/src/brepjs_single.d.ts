@@ -8371,6 +8371,30 @@ export declare class Handle_Law_Function {
     constructor(theHandle: Handle_Law_Function);
   }
 
+export declare class Handle_HLRBRep_Algo {
+  Nullify(): void;
+  IsNull(): boolean;
+  reset(thePtr: HLRBRep_Algo): void;
+  get(): HLRBRep_Algo;
+  delete(): void;
+}
+
+  export declare class Handle_HLRBRep_Algo_1 extends Handle_HLRBRep_Algo {
+    constructor();
+  }
+
+  export declare class Handle_HLRBRep_Algo_2 extends Handle_HLRBRep_Algo {
+    constructor(thePtr: HLRBRep_Algo);
+  }
+
+  export declare class Handle_HLRBRep_Algo_3 extends Handle_HLRBRep_Algo {
+    constructor(theHandle: Handle_HLRBRep_Algo);
+  }
+
+  export declare class Handle_HLRBRep_Algo_4 extends Handle_HLRBRep_Algo {
+    constructor(theHandle: Handle_HLRBRep_Algo);
+  }
+
 export declare class Handle_TDocStd_Document {
   Nullify(): void;
   IsNull(): boolean;
@@ -9537,6 +9561,11 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   Handle_Law_Function_2: typeof Handle_Law_Function_2;
   Handle_Law_Function_3: typeof Handle_Law_Function_3;
   Handle_Law_Function_4: typeof Handle_Law_Function_4;
+  Handle_HLRBRep_Algo: typeof Handle_HLRBRep_Algo;
+  Handle_HLRBRep_Algo_1: typeof Handle_HLRBRep_Algo_1;
+  Handle_HLRBRep_Algo_2: typeof Handle_HLRBRep_Algo_2;
+  Handle_HLRBRep_Algo_3: typeof Handle_HLRBRep_Algo_3;
+  Handle_HLRBRep_Algo_4: typeof Handle_HLRBRep_Algo_4;
   Handle_TDocStd_Document: typeof Handle_TDocStd_Document;
   Handle_TDocStd_Document_1: typeof Handle_TDocStd_Document_1;
   Handle_TDocStd_Document_2: typeof Handle_TDocStd_Document_2;
