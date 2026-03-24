@@ -362,7 +362,7 @@ export function copyCurve2d(_oc: KernelInstance, curve: KernelType): KernelType 
 }
 
 export function offsetCurve2d(oc: KernelInstance, curve: KernelType, offset: number): KernelType {
-  const offsetCurve = new oc.Geom2d_OffsetCurve(curve, offset, true);
+  const offsetCurve = new oc.Geom2d_OffsetCurve_1(curve, offset, true);
   return new oc.Handle_Geom2d_Curve_2(offsetCurve);
 }
 
