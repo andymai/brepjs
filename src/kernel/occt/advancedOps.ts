@@ -506,7 +506,7 @@ export function bsplineSurface(
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by rows*cols
       const pt = points[idx]!;
       const pnt = new oc.gp_Pnt_3(pt[0], pt[1], pt[2]);
-      arr.SetValue(r + 1, c + 1, pnt);
+      arr.SetValue_1(r + 1, c + 1, pnt);
       pnt.delete();
     }
   }

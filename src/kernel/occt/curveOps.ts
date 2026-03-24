@@ -38,7 +38,7 @@ export function interpolatePoints(
   let idx = 1;
   for (const pt of points) {
     reusePnt.SetCoord_2(pt[0], pt[1], pt[2]);
-    pnts.SetValue(idx++, reusePnt);
+    pnts.SetValue_1(idx++, reusePnt);
   }
   reusePnt.delete();
 
@@ -82,7 +82,7 @@ export function approximatePoints(
   let idx = 1;
   for (const pt of points) {
     reusePnt.SetCoord_2(pt[0], pt[1], pt[2]);
-    pnts.SetValue(idx++, reusePnt);
+    pnts.SetValue_1(idx++, reusePnt);
   }
   reusePnt.delete();
 

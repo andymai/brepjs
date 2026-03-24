@@ -191,7 +191,7 @@ export function makeBezierEdge(
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop is bounded by points.length
     const p = points[i]!;
     const pnt = new oc.gp_Pnt_3(p[0], p[1], p[2]);
-    arr.SetValue(i + 1, pnt);
+    arr.SetValue_1(i + 1, pnt);
     pnt.delete();
   }
   const bezier = new oc.Geom_BezierCurve_1(arr);

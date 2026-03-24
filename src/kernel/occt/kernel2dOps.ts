@@ -207,7 +207,7 @@ export function makeBezier2d(oc: KernelInstance, points: [number, number][]): Ke
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
     const p = points[i]!;
     const gpPnt = new oc.gp_Pnt2d_3(p[0], p[1]);
-    arr.SetValue(i + 1, gpPnt);
+    arr.SetValue_1(i + 1, gpPnt);
     gpPnt.delete();
   }
 
@@ -235,7 +235,7 @@ export function makeBSpline2d(
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
     const p = points[i]!;
     const gpPnt = new oc.gp_Pnt2d_3(p[0], p[1]);
-    pnts.SetValue(i + 1, gpPnt);
+    pnts.SetValue_1(i + 1, gpPnt);
     gpPnt.delete();
   }
 
