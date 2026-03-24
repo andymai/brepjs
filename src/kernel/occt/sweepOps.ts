@@ -124,7 +124,7 @@ export function simplePipe(
   // MakePipe produces a shell by default — solidify it
   const shellShape = maker.Shape();
   const solidMaker = new oc.BRepBuilderAPI_MakeSolid_1();
-  const shellDowncast = oc.TopoDS.Shell_1(shellShape);
+  const shellDowncast = oc.TopoDS_Cast.Shell(shellShape);
   solidMaker.Add(shellDowncast);
   const solidProgress = new oc.Message_ProgressRange_1();
   solidMaker.Build(solidProgress);

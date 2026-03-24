@@ -402,7 +402,7 @@ export function makeNonPlanarFace(oc: KernelInstance, wire: KernelShape): Kernel
     oc.TopAbs_ShapeEnum.TopAbs_SHAPE
   );
   while (explorer.More()) {
-    const edge = oc.TopoDS.Edge_1(explorer.Current());
+    const edge = oc.TopoDS_Cast.Edge(explorer.Current());
     filler.Add_1(edge, oc.GeomAbs_Shape.GeomAbs_C0, true);
     explorer.Next();
   }
@@ -632,7 +632,7 @@ export function sewAndSolidify(
   // Try to convert to solid via ShapeFix_Solid.SolidFromShell
   const fixer = new oc.ShapeFix_Solid_1();
   try {
-    const shell = oc.TopoDS.Shell_1(sewn);
+    const shell = oc.TopoDS_Cast.Shell(sewn);
     const solid = fixer.SolidFromShell(shell);
     return solid;
   } catch {

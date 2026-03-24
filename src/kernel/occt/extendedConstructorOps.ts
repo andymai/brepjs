@@ -419,7 +419,7 @@ export function makeBoxFromCorners(
 /** Build a solid from a closed shell using ShapeFix_Solid. */
 export function solidFromShell(oc: KernelInstance, shell: KernelShape): KernelShape {
   const fixer = new oc.ShapeFix_Solid_1();
-  const solid = fixer.SolidFromShell(oc.TopoDS.Shell_1(shell));
+  const solid = fixer.SolidFromShell(oc.TopoDS_Cast.Shell(shell));
   fixer.delete();
   return solid;
 }

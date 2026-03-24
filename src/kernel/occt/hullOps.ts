@@ -406,7 +406,7 @@ function extractVertices(oc: KernelInstance, shapes: KernelShape[], tolerance: n
     );
 
     while (explorer.More()) {
-      const face = oc.TopoDS.Face_1(explorer.Current());
+      const face = oc.TopoDS_Cast.Face(explorer.Current());
       const location = new oc.TopLoc_Location_1();
       const tri = oc.BRep_Tool.Triangulation(face, location, 0);
 
@@ -489,7 +489,7 @@ function reconstructBrep(
   );
 
   if (shellExplorer.More()) {
-    const shell = oc.TopoDS.Shell_1(shellExplorer.Current());
+    const shell = oc.TopoDS_Cast.Shell(shellExplorer.Current());
     shellExplorer.delete();
 
     const solidMaker = new oc.BRepBuilderAPI_MakeSolid_1();

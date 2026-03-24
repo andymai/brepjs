@@ -117,7 +117,7 @@ export function importSTL(oc: KernelInstance, data: string | ArrayBuffer): Kerne
     upgrader.Build();
     const upgraded = upgrader.Shape();
     const solidBuilder = new oc.BRepBuilderAPI_MakeSolid_1();
-    solidBuilder.Add(oc.TopoDS.Shell_1(upgraded));
+    solidBuilder.Add(oc.TopoDS_Cast.Shell(upgraded));
     const solid = solidBuilder.Solid();
     readShape.delete();
     upgrader.delete();

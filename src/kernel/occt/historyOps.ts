@@ -248,9 +248,9 @@ export function filletWithHistory(
   for (const edge of edges) {
     const r = typeof radius === 'function' ? radius(edge) : radius;
     if (Array.isArray(r)) {
-      builder.Add_3(r[0], r[1], oc.TopoDS.Edge_1(edge));
+      builder.Add_3(r[0], r[1], oc.TopoDS_Cast.Edge(edge));
     } else {
-      builder.Add_2(r, oc.TopoDS.Edge_1(edge));
+      builder.Add_2(r, oc.TopoDS_Cast.Edge(edge));
     }
   }
   const progress = new oc.Message_ProgressRange_1();
@@ -279,7 +279,7 @@ export function chamferWithHistory(
   );
   const edgeFaceMap = new Map<number, KernelShape>();
   while (faceExplorer.More()) {
-    const face = oc.TopoDS.Face_1(faceExplorer.Current());
+    const face = oc.TopoDS_Cast.Face(faceExplorer.Current());
     const edgeExplorer = new oc.TopExp_Explorer_2(
       face,
       oc.TopAbs_ShapeEnum.TopAbs_EDGE,
@@ -298,10 +298,10 @@ export function chamferWithHistory(
     const d = typeof distance === 'function' ? distance(edge) : distance;
     const adjacentFace = edgeFaceMap.get(oc.shapeHashCode(edge, hashUpperBound));
     if (Array.isArray(d) && adjacentFace) {
-      builder.Add_3(d[0], d[1], oc.TopoDS.Edge_1(edge), adjacentFace);
+      builder.Add_3(d[0], d[1], oc.TopoDS_Cast.Edge(edge), adjacentFace);
     } else {
       const dist = Array.isArray(d) ? d[0] : d;
-      builder.Add_2(dist, oc.TopoDS.Edge_1(edge));
+      builder.Add_2(dist, oc.TopoDS_Cast.Edge(edge));
     }
   }
 
@@ -421,7 +421,7 @@ export function draftWithHistory(
     for (const face of faces) {
       const angle = typeof angleDeg === 'function' ? angleDeg(face) : angleDeg;
       const angleRad = (angle * Math.PI) / 180;
-      builder.Add(oc.TopoDS.Face_1(face), dir, angleRad, pln, true);
+      builder.Add(oc.TopoDS_Cast.Face(face), dir, angleRad, pln, true);
     }
     const progress = new oc.Message_ProgressRange_1();
     builder.Build(progress);
