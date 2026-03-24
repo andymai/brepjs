@@ -252,13 +252,7 @@ export declare class STEPCAFControl_Reader {
   ReadFile_2(theFileName: Standard_Character, theParams: DESTEP_Parameters): IFSelect_ReturnStatus;
   NbRootsForTransfer(): Standard_Integer;
   TransferOneRoot(num: Standard_Integer, doc: any, theProgress: Message_ProgressRange): Standard_Boolean;
-  Transfer_1(doc: any, theProgress: Message_ProgressRange): Standard_Boolean;
-  Perform_1(filename: XCAFDoc_PartId, doc: any, theProgress: Message_ProgressRange): Standard_Boolean;
-  Perform_2(filename: XCAFDoc_PartId, doc: any, theParams: DESTEP_Parameters, theProgress: Message_ProgressRange): Standard_Boolean;
-  Perform_3(filename: Standard_Character, doc: any, theProgress: Message_ProgressRange): Standard_Boolean;
-  Perform_4(filename: Standard_Character, doc: any, theParams: DESTEP_Parameters, theProgress: Message_ProgressRange): Standard_Boolean;
   ExternFiles(): Standard_Integer;
-  ExternFile(name: Standard_Character, ef: any): Standard_Boolean;
   ChangeReader(): STEPControl_Reader;
   Reader(): STEPControl_Reader;
   static FindInstance(NAUO: any, STool: any, Tool: STEPConstruct_Tool, ShapeLabelMap: NCollection_DataMap<TopoDS_Shape, TDF_Label, TopTools_ShapeMapHasher>): TDF_Label;
@@ -283,11 +277,6 @@ export declare class STEPCAFControl_Reader {
   SetViewMode(viewmode: Standard_Boolean): void;
   GetViewMode(): Standard_Boolean;
   GetShapeLabelMap(): any;
-  SetShapeFixParameters_1(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_2(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_3(theParameters: DE_ShapeFixParameters, theAdditionalParameters: Standard_Integer): void;
-  GetShapeFixParameters(): Standard_Integer;
-  SetShapeProcessFlags(theFlags: any): void;
   GetShapeProcessFlags(): any;
   delete(): void;
 }
@@ -303,18 +292,7 @@ export declare class STEPCAFControl_Reader {
 export declare class STEPCAFControl_Writer {
   Init(theWS: any, theScratch: Standard_Boolean): void;
   Write(theFileName: Standard_Character): IFSelect_ReturnStatus;
-  Transfer_1(theDoc: any, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
-  Transfer_2(theDoc: any, theParams: DESTEP_Parameters, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
-  Transfer_3(theLabel: TDF_Label, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
-  Transfer_4(theLabel: TDF_Label, theParams: DESTEP_Parameters, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
-  Transfer_5(theLabelSeq: NCollection_Sequence<TDF_Label>, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
-  Transfer_6(theLabelSeq: NCollection_Sequence<TDF_Label>, theParams: DESTEP_Parameters, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
-  Perform_1(theDoc: any, theFileName: XCAFDoc_PartId, theProgress: Message_ProgressRange): Standard_Boolean;
-  Perform_2(theDoc: any, theFileName: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
-  Perform_3(theDoc: any, theFileName: Standard_Character, theParams: DESTEP_Parameters, theProgress: Message_ProgressRange): Standard_Boolean;
   ExternFiles(): Standard_Integer;
-  ExternFile_1(theLabel: TDF_Label, theExtFile: any): Standard_Boolean;
-  ExternFile_2(theName: Standard_Character, theExtFile: any): Standard_Boolean;
   ChangeWriter(): STEPControl_Writer;
   Writer(): STEPControl_Writer;
   SetColorMode(theColorMode: Standard_Boolean): void;
@@ -337,11 +315,6 @@ export declare class STEPCAFControl_Writer {
   GetVisualMaterialMode(): Standard_Boolean;
   SetCleanDuplicates(theCleanDuplicates: Standard_Boolean): void;
   GetCleanDuplicates(): Standard_Boolean;
-  SetShapeFixParameters_1(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_2(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_3(theParameters: DE_ShapeFixParameters, theAdditionalParameters: Standard_Integer): void;
-  GetShapeFixParameters(): Standard_Integer;
-  SetShapeProcessFlags(theFlags: any): void;
   GetShapeProcessFlags(): any;
   delete(): void;
 }
