@@ -931,8 +931,6 @@ export declare class XSControl_Reader {
   PrintStatsTransfer_1(what: Standard_Integer, mode: Standard_Integer): void;
   GetStatsTransfer(list: any, nbMapped: Standard_Integer, nbWithResult: Standard_Integer, nbWithFail: Standard_Integer): void;
   GetShapeProcessFlags(): any;
-  GetDefaultShapeFixParameters(): DE_ShapeFixParameters;
-  GetDefaultShapeProcessFlags(): any;
   delete(): void;
 }
 
