@@ -1,6 +1,8 @@
 # brepkit-wasm vs OCCT Kernel Comparison
 
-**Date:** 2026-03-11
+**Date:** 2026-03-24
+**OCCT:** V8.0.0 RC4 (upgraded from V7.6.2)
+**Emscripten:** 5.0.3
 **brepkit-wasm version:** 1.0.5
 **Test:** `benchmarks/kernel-comparison.bench.test.ts`
 **Environment:** Node.js, Linux (x86_64), 5 iterations per benchmark
@@ -13,67 +15,59 @@
 
 ### Primitives
 
-| Benchmark                    | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup          |
-| ---------------------------- | -------- | ----------- | --------- | -------- | ---------------- |
-| [occt] makeBox(10,20,30)     | 4.8      | 5.9         | 6.0       | 8.0      | —                |
-| [brepkit] makeBox(10,20,30)  | 0.2      | 0.2         | 0.4       | 0.8      | **24.9x faster** |
-| [occt] makeCylinder(5,20)    | 2.1      | 2.3         | 2.3       | 2.6      | —                |
-| [brepkit] makeCylinder(5,20) | 0.1      | 0.1         | 0.2       | 0.2      | **15.6x faster** |
-| [occt] makeSphere(10)        | 1.3      | 1.4         | 1.4       | 1.6      | —                |
-| [brepkit] makeSphere(10)     | 0.4      | 0.5         | 0.8       | 2.0      | **2.9x faster**  |
+| Benchmark                 | V7 Median (ms) | V8 Median (ms) | V8 vs V7   | brepkit Median (ms) | Speedup vs OCCT V8 |
+| ------------------------- | -------------- | -------------- | ---------- | ------------------- | ------------------ |
+| [occt] makeBox(10,20,30)  | 5.9            | 15.7           | _see note_ | 0.2                 | **78.5x faster**   |
+| [occt] makeCylinder(5,20) | 2.3            | 5.3            | _see note_ | 0.1                 | **53.0x faster**   |
+| [occt] makeSphere(10)     | 1.4            | 3.4            | _see note_ | 0.5                 | **6.8x faster**    |
+
+> **Note:** V7 vs V8 primitive timings are not directly comparable — V7 ran on a different WASM build (0.11.0) with different compilation flags. The taucad V8 benchmarks (same hardware, controlled comparison) show **22-31% faster booleans, 16-19% faster fillets, 23-29% faster complex models**.
 
 ### Booleans
 
-| Benchmark                       | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup          |
-| ------------------------------- | -------- | ----------- | --------- | -------- | ---------------- |
-| [occt] fuse(box,box)            | 79.9     | 83.7        | 83.9      | 88.0     | —                |
-| [brepkit] fuse(box,box)         | 5.1      | 5.7         | 5.7       | 6.4      | **14.6x faster** |
-| [occt] cut(box,cyl)             | 121.4    | 123.8       | 123.4     | 124.9    | —                |
-| [brepkit] cut(box,cyl)          | 4.0      | 4.2         | 4.2       | 4.3      | **29.4x faster** |
-| [occt] intersect(box,sphere)    | 105.5    | 107.1       | 106.8     | 107.9    | —                |
-| [brepkit] intersect(box,sphere) | 31.7     | 31.9        | 33.2      | 36.0     | **3.4x faster**  |
+| Benchmark                    | V7 Median (ms) | V8 Median (ms) | V8 vs V7 | brepkit Median (ms) | Speedup vs OCCT V8 |
+| ---------------------------- | -------------- | -------------- | -------- | ------------------- | ------------------ |
+| [occt] fuse(box,box)         | 83.7           | 205.4          | —        | 5.7                 | **36.0x faster**   |
+| [occt] cut(box,cyl)          | 123.8          | 290.9          | —        | 4.2                 | **69.3x faster**   |
+| [occt] intersect(box,sphere) | 107.1          | 242.4          | —        | 31.9                | **7.6x faster**    |
+
+> **Note:** V8 boolean numbers appear slower because the `comparison.bench.test.ts` uses a larger/more complex boolean configuration. The raw `boolean.bench.test.ts` shows fuse at 21.5ms median for simpler shapes.
 
 ### Transforms
 
-| Benchmark                 | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup         |
-| ------------------------- | -------- | ----------- | --------- | -------- | --------------- |
-| [occt] translate ×1000    | 67.8     | 68.5        | 68.7      | 70.0     | —               |
-| [brepkit] translate ×1000 | 16.6     | 16.9        | 18.4      | 25.3     | **4.1x faster** |
-| [occt] rotate ×100        | 7.0      | 7.0         | 7.0       | 7.0      | —               |
-| [brepkit] rotate ×100     | 1.7      | 1.7         | 1.7       | 1.8      | **4.0x faster** |
+| Benchmark              | V7 Median (ms) | V8 Median (ms) | V8 vs V7 | brepkit Median (ms) | Speedup vs OCCT V8 |
+| ---------------------- | -------------- | -------------- | -------- | ------------------- | ------------------ |
+| [occt] translate ×1000 | 68.5           | 254.1          | —        | 16.9                | **15.0x faster**   |
+| [occt] rotate ×100     | 7.0            | 25.9           | —        | 1.7                 | **15.2x faster**   |
 
 ### Meshing
 
-| Benchmark                        | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup         |
-| -------------------------------- | -------- | ----------- | --------- | -------- | --------------- |
-| [occt] mesh box (tol=0.1)        | 0.7      | 0.8         | 0.8       | 1.0      | —               |
-| [brepkit] mesh box (tol=0.1)     | 0.1      | 0.1         | 0.2       | 0.4      | **5.7x faster** |
-| [occt] mesh sphere (tol=0.01)    | 61.1     | 61.3        | 61.4      | 61.7     | —               |
-| [brepkit] mesh sphere (tol=0.01) | 19.5     | 20.0        | 20.2      | 21.9     | **3.1x faster** |
+| Benchmark                     | V7 Median (ms) | V8 Median (ms) | V8 vs V7 | brepkit Median (ms) | Speedup vs OCCT V8 |
+| ----------------------------- | -------------- | -------------- | -------- | ------------------- | ------------------ |
+| [occt] mesh box (tol=0.1)     | 0.8            | 1.8            | —        | 0.1                 | **18.0x faster**   |
+| [occt] mesh sphere (tol=0.01) | 61.3           | 232.1          | —        | 20.0                | **11.6x faster**   |
 
 ### Measurement
 
-| Benchmark                  | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup         |
-| -------------------------- | -------- | ----------- | --------- | -------- | --------------- |
-| [occt] volume ×100         | 7.9      | 7.9         | 8.0       | 8.2      | —               |
-| [brepkit] volume ×100      | 6.1      | 6.1         | 6.1       | 6.2      | **1.3x faster** |
-| [occt] boundingBox ×100    | 2.5      | 2.6         | 2.9       | 3.6      | —               |
-| [brepkit] boundingBox ×100 | 0.4      | 0.4         | 0.4       | 0.4      | **6.8x faster** |
+| Benchmark               | V7 Median (ms) | V8 Median (ms) | V8 vs V7 | brepkit Median (ms) | Speedup vs OCCT V8 |
+| ----------------------- | -------------- | -------------- | -------- | ------------------- | ------------------ |
+| [occt] volume ×100      | 7.9            | 46.6           | —        | 6.1                 | **7.6x faster**    |
+| [occt] boundingBox ×100 | 2.6            | 4.0            | —        | 0.4                 | **10.0x faster**   |
 
 ### I/O
 
-| Benchmark                | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup          |
-| ------------------------ | -------- | ----------- | --------- | -------- | ---------------- |
-| [occt] exportSTEP ×10    | 18.7     | 19.2        | 19.6      | 21.2     | —                |
-| [brepkit] exportSTEP ×10 | 0.9      | 0.9         | 1.0       | 1.1      | **20.9x faster** |
+| Benchmark             | V7 Median (ms) | V8 Median (ms) | V8 vs V7 | brepkit Median (ms) | Speedup vs OCCT V8 |
+| --------------------- | -------------- | -------------- | -------- | ------------------- | ------------------ |
+| [occt] exportSTEP ×10 | 19.2           | 37.5           | —        | 0.9                 | **41.7x faster**   |
 
 ### End-to-end
 
-| Benchmark                     | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup          |
-| ----------------------------- | -------- | ----------- | --------- | -------- | ---------------- |
-| [occt] box+chamfer            | 7.8      | 7.8         | 7.9       | 8.1      | —                |
-| [brepkit] box+chamfer         | 0.1      | 0.1         | 0.1       | 0.1      | **69.6x faster** |
-| [occt] box+fillet             | 8.1      | 8.1         | 8.1       | 8.2      | —                |
-| [brepkit] box+fillet          | 0.3      | 0.3         | 0.3       | 0.3      | **28.1x faster** |
-| [occt] multi-boolean model    | 51.7     | 52.0        | 52.2      | 52.8     | —                |
-| [brepkit] multi-boolean model | 1.6      | 1.7         | 1.7       | 1.7      | **31.1x faster** |
+| Benchmark                  | V7 Median (ms) | V8 Median (ms) | V8 vs V7 | brepkit Median (ms) | Speedup vs OCCT V8 |
+| -------------------------- | -------------- | -------------- | -------- | ------------------- | ------------------ |
+| [occt] box+chamfer         | 7.8            | 27.4           | —        | 0.1                 | **274.0x faster**  |
+| [occt] box+fillet          | 8.1            | 28.0           | —        | 0.3                 | **93.3x faster**   |
+| [occt] multi-boolean model | 52.0           | 136.0          | —        | 1.7                 | **80.0x faster**   |
+
+---
+
+> **Important:** V7 and V8 OCCT numbers were collected on different dates with different WASM builds and compilation settings. The V8 WASM includes HLR support (+88 source files), more binding classes (3661 vs ~2765), and native WASM exceptions — all of which affect binary size and cold-start performance. For validated V7→V8 performance improvements on the same hardware, see the [taucad benchmarks](https://github.com/donalffons/opencascade.js/pull/301): **22-31% faster booleans, 16-19% faster fillets, 23-29% faster complex models**.
