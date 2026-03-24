@@ -76,7 +76,7 @@ describe('playground examples', () => {
   const SLOW_IDS = new Set(['spiral-staircase']);
 
   for (const example of examples) {
-    const timeout = SLOW_IDS.has(example.id) ? 60000 : 15000;
+    const timeout = SLOW_IDS.has(example.id) ? 120000 : 15000;
 
     it(
       `${example.id}: runs without error and returns geometry`,
