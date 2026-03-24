@@ -300,6 +300,7 @@ mainBuild:
   - -sMAXIMUM_MEMORY=4294967296
   additionalBindCode: |
     #include <TopTools_ShapeMapHasher.hxx>
+    #include <emscripten/bind.h>
     int shapeHashCode(const TopoDS_Shape& shape, int upperBound) {
       return static_cast<int>(TopTools_ShapeMapHasher{}(shape) % upperBound);
     }
