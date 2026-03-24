@@ -210,7 +210,7 @@ All geometry operations go through `KernelAdapter` (defined in `kernel/types.ts`
 const hash = getKernel().hashCode(shape.wrapped, HASH_CODE_MAX);
 const type = getKernel().shapeType(shape.wrapped);
 
-// ❌ Banned - direct method call on handle (also removed in OCCT V8)
+// ❌ Banned - direct method call on handle
 const hash = shape.wrapped.HashCode(max);
 ```
 

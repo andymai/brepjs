@@ -310,8 +310,7 @@ mainBuild:
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>
 
-  // OCCT V8 removed Handle_*.hxx headers. Re-declare typedefs so the
-  // binding generator can produce Embind wrappers for handle types.
+  // Handle typedefs (V8 removed Handle_*.hxx headers)
   typedef opencascade::handle<StepData_StepModel> Handle_StepData_StepModel;
   typedef opencascade::handle<Geom2d_Geometry> Handle_Geom2d_Geometry;
   typedef opencascade::handle<Geom2d_Line> Handle_Geom2d_Line;
@@ -342,8 +341,7 @@ additionalCppCode: |
   typedef opencascade::handle<TDataStd_Name> Handle_TDataStd_Name;
   typedef opencascade::handle<XSControl_WorkSession> Handle_XSControl_WorkSession;
 
-  // OCCT V8: TopoDS static casters (Vertex/Edge/Face/etc.) are not directly
-  // bindable via Embind. Wrap them in a class with static forwarding methods.
+  // TopoDS static casters (not directly bindable via Embind)
   class TopoDS_Cast {
   public:
     static TopoDS_Vertex Vertex(const TopoDS_Shape& S) { return TopoDS::Vertex(S); }
@@ -356,8 +354,7 @@ additionalCppCode: |
     static TopoDS_CompSolid CompSolid(const TopoDS_Shape& S) { return TopoDS::CompSolid(S); }
   };
 
-  // OCCT V8: BRepMesh_IncrementalMesh constructor signature changed.
-  // Wrap with the V7-compatible 5-arg constructor.
+  // BRepMesh wrapper (V8 constructor signature changed)
   class BRepMesh_IncrementalMeshWrapper {
   public:
     BRepMesh_IncrementalMeshWrapper(const TopoDS_Shape& theShape,
@@ -1013,7 +1010,10 @@ additionalCppCode: |
     }
 
     int getShapesCount() const { return shapesCount_; }
-    TopoDS_Shape getShape(int index) const { return shapesPtr_[index]; }
+    TopoDS_Shape getShape(int index) const {
+      if (index < 0 || index >= shapesCount_ || !shapesPtr_) return TopoDS_Shape();
+      return shapesPtr_[index];
+    }
 
   private:
     TopoDS_Shape* shapesPtr_;
