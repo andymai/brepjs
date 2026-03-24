@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.3.3](https://github.com/andymai/brepjs/compare/brepjs-v14.3.2...brepjs-v14.3.3) (2026-03-24)
+
+
+### Bug Fixes
+
+* **ci:** increase spiral-staircase example timeout ([#606](https://github.com/andymai/brepjs/issues/606)) ([c87a5b1](https://github.com/andymai/brepjs/commit/c87a5b12487d24ad1de07bb8bc0188a4c6228eb6))
+
 ## [14.3.2](https://github.com/andymai/brepjs/compare/brepjs-v14.3.1...brepjs-v14.3.2) (2026-03-24)
 
 
