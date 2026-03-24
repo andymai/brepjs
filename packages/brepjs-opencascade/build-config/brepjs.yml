@@ -284,6 +284,7 @@ mainBuild:
   - symbol: FilletBatch
   - symbol: TopoDS_Cast
   - symbol: BRepMesh_IncrementalMeshWrapper
+  - symbol: GeomAdaptor_TransformedSurface
   emccFlags:
   - -flto
   - -fwasm-exceptions
