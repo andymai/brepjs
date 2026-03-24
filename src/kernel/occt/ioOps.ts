@@ -18,7 +18,7 @@ export function exportSTEP(oc: KernelInstance, shapes: KernelShape[]): string {
   const progress = new oc.Message_ProgressRange_1();
 
   for (const shape of shapes) {
-    writer.Transfer(shape, oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
+    writer.Transfer_1(shape, oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
   }
 
   const filename = uniqueIOFilename('_export', 'step');

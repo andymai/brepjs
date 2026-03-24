@@ -396,11 +396,6 @@ export declare class STEPControl_Writer {
   Write(theFileName: Standard_Character): IFSelect_ReturnStatus;
   PrintStatsTransfer(what: Standard_Integer, mode: Standard_Integer): void;
   CleanDuplicateEntities(): void;
-  SetShapeFixParameters_1(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_2(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_3(theParameters: DE_ShapeFixParameters, theAdditionalParameters: Standard_Integer): void;
-  GetShapeFixParameters(): Standard_Integer;
-  SetShapeProcessFlags(theFlags: any): void;
   GetShapeProcessFlags(): any;
   delete(): void;
 }
@@ -824,7 +819,6 @@ export declare class Interface_Static extends Interface_TypedValue {
   static IsUpdated(name: Standard_Character): Standard_Boolean;
   static Items(mode: Standard_Integer, criter: Standard_Character): any;
   static Standards(): void;
-  static FillMap(theMap: Standard_Integer): void;
   static get_type_name(): Standard_Character;
   static get_type_descriptor(): Handle_Standard_Type;
   DynamicType(): Handle_Standard_Type;
@@ -936,11 +930,6 @@ export declare class XSControl_Reader {
   PrintCheckTransfer_1(failsonly: Standard_Boolean, mode: IFSelect_PrintCount): void;
   PrintStatsTransfer_1(what: Standard_Integer, mode: Standard_Integer): void;
   GetStatsTransfer(list: any, nbMapped: Standard_Integer, nbWithResult: Standard_Integer, nbWithFail: Standard_Integer): void;
-  SetShapeFixParameters_1(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_2(theParameters: Standard_Integer): void;
-  SetShapeFixParameters_3(theParameters: DE_ShapeFixParameters, theAdditionalParameters: Standard_Integer): void;
-  GetShapeFixParameters(): Standard_Integer;
-  SetShapeProcessFlags(theFlags: any): void;
   GetShapeProcessFlags(): any;
   GetDefaultShapeFixParameters(): DE_ShapeFixParameters;
   GetDefaultShapeProcessFlags(): any;
