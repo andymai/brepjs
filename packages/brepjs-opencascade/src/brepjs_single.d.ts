@@ -252,6 +252,7 @@ export declare class STEPCAFControl_Reader {
   ReadFile_2(theFileName: Standard_Character, theParams: DESTEP_Parameters): IFSelect_ReturnStatus;
   NbRootsForTransfer(): Standard_Integer;
   TransferOneRoot(num: Standard_Integer, doc: any, theProgress: Message_ProgressRange): Standard_Boolean;
+  Transfer_1(doc: any, theProgress: Message_ProgressRange): Standard_Boolean;
   ExternFiles(): Standard_Integer;
   ChangeReader(): STEPControl_Reader;
   Reader(): STEPControl_Reader;
@@ -292,6 +293,12 @@ export declare class STEPCAFControl_Reader {
 export declare class STEPCAFControl_Writer {
   Init(theWS: any, theScratch: Standard_Boolean): void;
   Write(theFileName: Standard_Character): IFSelect_ReturnStatus;
+  Transfer_1(theDoc: any, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
+  Transfer_2(theDoc: any, theParams: DESTEP_Parameters, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
+  Transfer_3(theLabel: TDF_Label, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
+  Transfer_4(theLabel: TDF_Label, theParams: DESTEP_Parameters, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
+  Transfer_5(theLabelSeq: NCollection_Sequence<TDF_Label>, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
+  Transfer_6(theLabelSeq: NCollection_Sequence<TDF_Label>, theParams: DESTEP_Parameters, theMode: STEPControl_StepModelType, theIsMulti: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
   ExternFiles(): Standard_Integer;
   ChangeWriter(): STEPControl_Writer;
   Writer(): STEPControl_Writer;
