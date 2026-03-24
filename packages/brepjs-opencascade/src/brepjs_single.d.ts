@@ -4104,6 +4104,133 @@ export declare class Law_S extends Law_BSpFunc {
   delete(): void;
 }
 
+export declare class HLRAlgo_Projector {
+  Set(T: gp_Trsf, Persp: Standard_Boolean, Focus: Standard_Real): void;
+  Directions(D1: gp_Vec2d, D2: gp_Vec2d, D3: gp_Vec2d): void;
+  Scaled(On: Standard_Boolean): void;
+  Perspective(): Standard_Boolean;
+  Transformation(): gp_Trsf;
+  InvertedTransformation(): gp_Trsf;
+  FullTransformation(): gp_Trsf;
+  Focus(): Standard_Real;
+  Transform_1(D: gp_Vec): void;
+  Transform_2(Pnt: gp_Pnt): void;
+  Project_1(P: gp_Pnt, Pout: gp_Pnt2d): void;
+  Project_2(P: gp_Pnt, X: Standard_Real, Y: Standard_Real, Z: Standard_Real): void;
+  Project_3(P: gp_Pnt, D1: gp_Vec, Pout: gp_Pnt2d, D1out: gp_Vec2d): void;
+  Shoot(X: Standard_Real, Y: Standard_Real): gp_Lin;
+  delete(): void;
+}
+
+  export declare class HLRAlgo_Projector_1 extends HLRAlgo_Projector {
+    constructor();
+  }
+
+  export declare class HLRAlgo_Projector_2 extends HLRAlgo_Projector {
+    constructor(CS: gp_Ax2);
+  }
+
+  export declare class HLRAlgo_Projector_3 extends HLRAlgo_Projector {
+    constructor(CS: gp_Ax2, Focus: Standard_Real);
+  }
+
+  export declare class HLRAlgo_Projector_4 extends HLRAlgo_Projector {
+    constructor(T: gp_Trsf, Persp: Standard_Boolean, Focus: Standard_Real);
+  }
+
+  export declare class HLRAlgo_Projector_5 extends HLRAlgo_Projector {
+    constructor(T: gp_Trsf, Persp: Standard_Boolean, Focus: Standard_Real, v1: gp_Vec2d, v2: gp_Vec2d, v3: gp_Vec2d);
+  }
+
+export declare class HLRBRep_Algo extends HLRBRep_InternalAlgo {
+  Add_1(S: TopoDS_Shape, SData: any, nbIso: Standard_Integer): void;
+  Add_2(S: TopoDS_Shape, nbIso: Standard_Integer): void;
+  Index(S: TopoDS_Shape): Standard_Integer;
+  OutLinedShapeNullify(): void;
+  static get_type_name(): Standard_Character;
+  static get_type_descriptor(): Handle_Standard_Type;
+  DynamicType(): Handle_Standard_Type;
+  delete(): void;
+}
+
+  export declare class HLRBRep_Algo_1 extends HLRBRep_Algo {
+    constructor();
+  }
+
+  export declare class HLRBRep_Algo_2 extends HLRBRep_Algo {
+    constructor(A: any);
+  }
+
+export declare class HLRBRep_HLRToShape {
+  constructor(A: any)
+  VCompound_1(): TopoDS_Shape;
+  VCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  Rg1LineVCompound_1(): TopoDS_Shape;
+  Rg1LineVCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  RgNLineVCompound_1(): TopoDS_Shape;
+  RgNLineVCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  OutLineVCompound_1(): TopoDS_Shape;
+  OutLineVCompound3d(): TopoDS_Shape;
+  OutLineVCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  IsoLineVCompound_1(): TopoDS_Shape;
+  IsoLineVCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  HCompound_1(): TopoDS_Shape;
+  HCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  Rg1LineHCompound_1(): TopoDS_Shape;
+  Rg1LineHCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  RgNLineHCompound_1(): TopoDS_Shape;
+  RgNLineHCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  OutLineHCompound_1(): TopoDS_Shape;
+  OutLineHCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  IsoLineHCompound_1(): TopoDS_Shape;
+  IsoLineHCompound_2(S: TopoDS_Shape): TopoDS_Shape;
+  CompoundOfEdges_1(type: HLRBRep_TypeOfResultingEdge, visible: Standard_Boolean, In3d: Standard_Boolean): TopoDS_Shape;
+  CompoundOfEdges_2(S: TopoDS_Shape, type: HLRBRep_TypeOfResultingEdge, visible: Standard_Boolean, In3d: Standard_Boolean): TopoDS_Shape;
+  delete(): void;
+}
+
+export declare class HLRBRep_InternalAlgo extends Standard_Transient {
+  Projector_1(P: HLRAlgo_Projector): void;
+  Projector_2(): HLRAlgo_Projector;
+  Update(): void;
+  Load_1(S: any, SData: any, nbIso: Standard_Integer): void;
+  Load_2(S: any, nbIso: Standard_Integer): void;
+  Index(S: any): Standard_Integer;
+  Remove(I: Standard_Integer): void;
+  ShapeData(I: Standard_Integer, SData: any): void;
+  SeqOfShapeBounds(): any;
+  NbShapes(): Standard_Integer;
+  ShapeBounds(I: Standard_Integer): HLRBRep_ShapeBounds;
+  InitEdgeStatus(): void;
+  Select_1(): void;
+  Select_2(I: Standard_Integer): void;
+  SelectEdge(I: Standard_Integer): void;
+  SelectFace(I: Standard_Integer): void;
+  ShowAll_1(): void;
+  ShowAll_2(I: Standard_Integer): void;
+  HideAll_1(): void;
+  HideAll_2(I: Standard_Integer): void;
+  PartialHide(): void;
+  Hide_1(): void;
+  Hide_2(I: Standard_Integer): void;
+  Hide_3(I: Standard_Integer, J: Standard_Integer): void;
+  Debug_1(deb: Standard_Boolean): void;
+  Debug_2(): Standard_Boolean;
+  DataStructure(): any;
+  static get_type_name(): Standard_Character;
+  static get_type_descriptor(): Handle_Standard_Type;
+  DynamicType(): Handle_Standard_Type;
+  delete(): void;
+}
+
+  export declare class HLRBRep_InternalAlgo_1 extends HLRBRep_InternalAlgo {
+    constructor();
+  }
+
+  export declare class HLRBRep_InternalAlgo_2 extends HLRBRep_InternalAlgo {
+    constructor(A: any);
+  }
+
 export declare class BRepMesh_DiscretRoot extends Standard_Transient {
   SetShape(theShape: TopoDS_Shape): void;
   Shape(): TopoDS_Shape;
@@ -8895,6 +9022,19 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   Law_Interpol: typeof Law_Interpol;
   Law_Linear: typeof Law_Linear;
   Law_S: typeof Law_S;
+  HLRAlgo_Projector: typeof HLRAlgo_Projector;
+  HLRAlgo_Projector_1: typeof HLRAlgo_Projector_1;
+  HLRAlgo_Projector_2: typeof HLRAlgo_Projector_2;
+  HLRAlgo_Projector_3: typeof HLRAlgo_Projector_3;
+  HLRAlgo_Projector_4: typeof HLRAlgo_Projector_4;
+  HLRAlgo_Projector_5: typeof HLRAlgo_Projector_5;
+  HLRBRep_Algo: typeof HLRBRep_Algo;
+  HLRBRep_Algo_1: typeof HLRBRep_Algo_1;
+  HLRBRep_Algo_2: typeof HLRBRep_Algo_2;
+  HLRBRep_HLRToShape: typeof HLRBRep_HLRToShape;
+  HLRBRep_InternalAlgo: typeof HLRBRep_InternalAlgo;
+  HLRBRep_InternalAlgo_1: typeof HLRBRep_InternalAlgo_1;
+  HLRBRep_InternalAlgo_2: typeof HLRBRep_InternalAlgo_2;
   BRepMesh_DiscretRoot: typeof BRepMesh_DiscretRoot;
   BRepOffset_Mode: BRepOffset_Mode;
   BRepOffsetAPI_DraftAngle: typeof BRepOffsetAPI_DraftAngle;

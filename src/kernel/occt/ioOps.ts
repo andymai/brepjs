@@ -111,7 +111,7 @@ export function importSTL(oc: KernelInstance, data: string | ArrayBuffer): Kerne
   const reader = new oc.StlAPI_Reader();
   const readShape = new oc.TopoDS_Shell();
 
-  if (reader.Read(readShape, filename)) {
+  if (reader.Read_1(readShape, filename)) {
     oc.FS.unlink('/' + filename);
     const upgrader = new oc.ShapeUpgrade_UnifySameDomain_2(readShape, true, true, false);
     upgrader.Build();

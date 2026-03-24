@@ -355,14 +355,16 @@ export function makeEllipsoidSolid(
 
   try {
     // Extract and transform poles
-    const poles = baseSurface.Poles_2();
     const trsf = makeEllipsoidGTrsf(oc, aLength, bLength, cLength);
+    const nU = baseSurface.NbUPoles();
+    const nV = baseSurface.NbVPoles();
 
-    for (let row = poles.LowerRow(); row <= poles.UpperRow(); row++) {
-      for (let col = poles.LowerCol(); col <= poles.UpperCol(); col++) {
-        const pnt = poles.Value(row, col);
+    for (let row = 1; row <= nU; row++) {
+      for (let col = 1; col <= nV; col++) {
+        const pnt = oc.bsplineSurfacePole(baseSurface, row, col);
         const newPoint = trsf.applyToPoint(pnt);
         baseSurface.SetPole_1(row, col, newPoint);
+        pnt.delete();
         newPoint.delete();
       }
     }

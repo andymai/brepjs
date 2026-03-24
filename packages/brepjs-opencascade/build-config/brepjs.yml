@@ -236,6 +236,7 @@ mainBuild:
   - symbol: ShapeFix_EdgeConnect
   - symbol: StlAPI
   - symbol: HLRBRep_Algo
+  - symbol: Handle_HLRBRep_Algo
   - symbol: HLRBRep_InternalAlgo
   - symbol: HLRAlgo_Projector
   - symbol: HLRBRep_HLRToShape
@@ -304,8 +305,12 @@ mainBuild:
     int shapeHashCode(const TopoDS_Shape& shape, int upperBound) {
       return static_cast<int>(TopTools_ShapeMapHasher{}(shape) % upperBound);
     }
+    gp_Pnt bsplineSurfacePole(const Geom_BSplineSurface& surf, int uIndex, int vIndex) {
+      return surf.Pole(uIndex, vIndex);
+    }
     EMSCRIPTEN_BINDINGS(brepjs_helpers) {
       emscripten::function("shapeHashCode", &shapeHashCode);
+      emscripten::function("bsplineSurfacePole", &bsplineSurfacePole, emscripten::allow_raw_pointers());
     }
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>
@@ -335,7 +340,7 @@ additionalCppCode: |
   typedef opencascade::handle<Poly_PolygonOnTriangulation> Handle_Poly_PolygonOnTriangulation;
   typedef opencascade::handle<Adaptor2d_Curve2d> Handle_Adaptor2d_Curve2d;
   typedef opencascade::handle<Law_Function> Handle_Law_Function;
-  // HLRBRep_Algo handle removed — HLR package is filtered
+  typedef opencascade::handle<HLRBRep_Algo> Handle_HLRBRep_Algo;
   typedef opencascade::handle<TDocStd_Document> Handle_TDocStd_Document;
   typedef opencascade::handle<XCAFDoc_ShapeTool> Handle_XCAFDoc_ShapeTool;
   typedef opencascade::handle<XCAFDoc_ColorTool> Handle_XCAFDoc_ColorTool;
