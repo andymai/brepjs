@@ -30,6 +30,7 @@ jobs:
       - name: Build WASM (OCCT V8 + emsdk 5)
         working-directory: packages/brepjs-opencascade/build-config
         run: |
+          docker pull ghcr.io/andymai/opencascade.js:v8
           docker run -i --rm -v "$(pwd)":/src ghcr.io/andymai/opencascade.js:v8 brepjs.yml
           mv brepjs_single* ../src/
 
