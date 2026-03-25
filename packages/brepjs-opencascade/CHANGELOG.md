@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.14.2...brepjs-opencascade-v0.15.0) (2026-03-25)
+
+
+### Features
+
+* **boolean:** add booleanPipeline() for chained operations ([#632](https://github.com/andymai/brepjs/issues/632)) ([7dc239a](https://github.com/andymai/brepjs/commit/7dc239afeacb781b832fd41686e987b3bb648adb))
+* **mesh:** progressive LOD + batch mesh C++ class ([#641](https://github.com/andymai/brepjs/issues/641)) ([fb78946](https://github.com/andymai/brepjs/commit/fb789467f995311e904748871496856f8154ea11))
+
 ## [0.14.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.14.1...brepjs-opencascade-v0.14.2) (2026-03-25)
 
 
