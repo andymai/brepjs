@@ -10,8 +10,19 @@ import { uniqueIOFilename } from '@/utils/ioFilename.js';
 
 /**
  * Exports shapes to STEP format.
+ *
+ * Uses stream-based I/O (V8) when available, bypassing Emscripten FS.
+ * Falls back to FS-based path for V7 compatibility.
  */
 export function exportSTEP(oc: KernelInstance, shapes: KernelShape[]): string {
+  // V8: stream path — bypasses Emscripten FS entirely
+
+  const streamIO = oc.StepStreamIO;
+  if (typeof streamIO?.exportSTEP === 'function' && shapes.length === 1) {
+    return streamIO.exportSTEP(shapes[0], 5) as string; // AP214
+  }
+
+  // FS-based path (V7 fallback, or multi-shape export)
   const writer = new oc.STEPControl_Writer_1();
   oc.Interface_Static.SetIVal('write.step.schema', 5);
   writer.Model(true).delete();
@@ -79,10 +90,26 @@ export function exportIGES(oc: KernelInstance, shapes: KernelShape[]): string {
 
 /**
  * Imports shapes from STEP data.
+ *
+ * Uses stream-based I/O (V8) when available, bypassing Emscripten FS.
  */
 export function importSTEP(oc: KernelInstance, data: string | ArrayBuffer): KernelShape[] {
+  const dataStr = typeof data === 'string' ? data : new TextDecoder().decode(new Uint8Array(data));
+
+  // V8: stream path — bypasses Emscripten FS entirely
+
+  const streamIO = oc.StepStreamIO;
+  if (typeof streamIO?.importSTEP === 'function') {
+    const shape = streamIO.importSTEP(dataStr);
+    if (shape.IsNull()) {
+      throw new Error('Failed to import STEP file: stream reader could not parse the input data');
+    }
+    return [shape];
+  }
+
+  // FS-based path (V7 fallback)
   const filename = uniqueIOFilename('_import', 'step');
-  const buffer = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
+  const buffer = new TextEncoder().encode(dataStr);
   oc.FS.writeFile('/' + filename, buffer);
 
   const reader = new oc.STEPControl_Reader_1();

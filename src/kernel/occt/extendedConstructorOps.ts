@@ -224,6 +224,26 @@ export function makeHelixWire(
   direction: [number, number, number] = [0, 0, 1],
   leftHanded = false
 ): KernelShape {
+  // V8: use native TKHelix when available (higher quality B-spline approximation)
+
+  const helixBuilder = oc.HelixWireBuilder;
+  if (typeof helixBuilder?.build === 'function') {
+    const result = helixBuilder.build(
+      radius,
+      pitch,
+      height,
+      center[0],
+      center[1],
+      center[2],
+      direction[0],
+      direction[1],
+      direction[2],
+      leftHanded
+    );
+    if (!result.IsNull()) return result;
+    // Fall through to manual construction if native builder fails
+  }
+
   const nTurns = height / pitch;
   const myDir = leftHanded ? -2 * Math.PI : 2 * Math.PI;
 
