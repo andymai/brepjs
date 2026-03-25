@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.14.0...brepjs-opencascade-v0.14.1) (2026-03-25)
+
+
+### Bug Fixes
+
+* address PR review feedback from [#615](https://github.com/andymai/brepjs/issues/615), [#621](https://github.com/andymai/brepjs/issues/621), [#604](https://github.com/andymai/brepjs/issues/604) ([#623](https://github.com/andymai/brepjs/issues/623)) ([4c9a203](https://github.com/andymai/brepjs/commit/4c9a2035800cd0a7476b26b6424b708c6afdbd4d))
+
 ## [0.14.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.13.1...brepjs-opencascade-v0.14.0) (2026-03-25)
 
 
