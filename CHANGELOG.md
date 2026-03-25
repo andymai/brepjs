@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.5.1](https://github.com/andymai/brepjs/compare/brepjs-v14.5.0...brepjs-v14.5.1) (2026-03-25)
+
+
+### Bug Fixes
+
+* **ci:** use --registry flag in ensure-wasm.sh ([#635](https://github.com/andymai/brepjs/issues/635)) ([9c05f97](https://github.com/andymai/brepjs/commit/9c05f97e956d2e3267eecc4e9dd68eaadc493b40))
+
 ## [14.5.0](https://github.com/andymai/brepjs/compare/brepjs-v14.4.2...brepjs-v14.5.0) (2026-03-25)
 
 
