@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.4.1](https://github.com/andymai/brepjs/compare/brepjs-v14.4.0...brepjs-v14.4.1) (2026-03-25)
+
+
+### Bug Fixes
+
+* **ci:** ensure-wasm.sh re-downloads on version mismatch ([#621](https://github.com/andymai/brepjs/issues/621)) ([b068216](https://github.com/andymai/brepjs/commit/b0682160bf7fd8e31ddf0c6235b5dc3cbe124c40))
+
 ## [14.4.0](https://github.com/andymai/brepjs/compare/brepjs-v14.3.5...brepjs-v14.4.0) (2026-03-25)
 
 
