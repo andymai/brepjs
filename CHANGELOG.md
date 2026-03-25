@@ -1,5 +1,13 @@
 # Changelog
 
+## [14.6.4](https://github.com/andymai/brepjs/compare/brepjs-v14.6.3...brepjs-v14.6.4) (2026-03-25)
+
+
+### Bug Fixes
+
+* **opencascade:** replace gp_Vec3f with NCollection_Vec3&lt;float&gt; ([#662](https://github.com/andymai/brepjs/issues/662)) ([5aca24a](https://github.com/andymai/brepjs/commit/5aca24aeb2b3c1c1a45a59b804088e773a98b349))
+* **opencascade:** trigger 0.15.4 ([#663](https://github.com/andymai/brepjs/issues/663)) ([b038f37](https://github.com/andymai/brepjs/commit/b038f379045fdfa30d9fd9bb9457dbf98ea5febd))
+
 ## [14.6.3](https://github.com/andymai/brepjs/compare/brepjs-v14.6.2...brepjs-v14.6.3) (2026-03-25)
 
 
