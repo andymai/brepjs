@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.3.4](https://github.com/andymai/brepjs/compare/brepjs-v14.3.3...brepjs-v14.3.4) (2026-03-25)
+
+
+### Performance Improvements
+
+* V8 OCCT benchmark + optimization fix ([#604](https://github.com/andymai/brepjs/issues/604)) ([c0b81cf](https://github.com/andymai/brepjs/commit/c0b81cf8e90e5c8a5834407b9017c3665f5cf295))
+
 ## [14.3.3](https://github.com/andymai/brepjs/compare/brepjs-v14.3.2...brepjs-v14.3.3) (2026-03-24)
 
 
