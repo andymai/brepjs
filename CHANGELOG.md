@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.6.1](https://github.com/andymai/brepjs/compare/brepjs-v14.6.0...brepjs-v14.6.1) (2026-03-25)
+
+
+### Bug Fixes
+
+* **opencascade:** custom binding compilation fix ([#645](https://github.com/andymai/brepjs/issues/645)) ([1c4a297](https://github.com/andymai/brepjs/commit/1c4a297653bb91aa9c08b4602d75748ec3390f93))
+
 ## [14.6.0](https://github.com/andymai/brepjs/compare/brepjs-v14.5.2...brepjs-v14.6.0) (2026-03-25)
 
 
