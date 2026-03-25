@@ -22,6 +22,7 @@ packages/brepjs-opencascade/build-config/*.wasm
 packages/brepjs-opencascade/build-config/*.d.ts
 packages/brepjs-opencascade/src/*.js
 packages/brepjs-opencascade/src/*.wasm
+packages/brepjs-opencascade/src/.wasm-version
 
 # brepkit WASM build artifacts
 packages/brepkit-wasm/
