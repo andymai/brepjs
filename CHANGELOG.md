@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.5.2](https://github.com/andymai/brepjs/compare/brepjs-v14.5.1...brepjs-v14.5.2) (2026-03-25)
+
+
+### Bug Fixes
+
+* **ci:** use curl instead of npm pack in ensure-wasm.sh ([#637](https://github.com/andymai/brepjs/issues/637)) ([314936a](https://github.com/andymai/brepjs/commit/314936a6b0fc2fa9bc5b39a90ceefff4b419eb17))
+
 ## [14.5.1](https://github.com/andymai/brepjs/compare/brepjs-v14.5.0...brepjs-v14.5.1) (2026-03-25)
 
 
