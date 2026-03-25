@@ -1,5 +1,18 @@
 # Changelog
 
+## [14.5.0](https://github.com/andymai/brepjs/compare/brepjs-v14.4.2...brepjs-v14.5.0) (2026-03-25)
+
+
+### Features
+
+* **boolean:** add booleanPipeline() for chained operations ([#632](https://github.com/andymai/brepjs/issues/632)) ([7dc239a](https://github.com/andymai/brepjs/commit/7dc239afeacb781b832fd41686e987b3bb648adb))
+
+
+### Bug Fixes
+
+* **bench:** fetch V7/V8 WASM from npm instead of local paths ([#628](https://github.com/andymai/brepjs/issues/628)) ([c909db3](https://github.com/andymai/brepjs/commit/c909db3d803d0a139ad5ae95ce1727ad84f96281))
+* **opencascade:** rebuild WASM with -O2+LTO ([#629](https://github.com/andymai/brepjs/issues/629)) ([c779398](https://github.com/andymai/brepjs/commit/c779398c98a2da3dcceaba62c79dc390199f6080))
+
 ## [14.4.2](https://github.com/andymai/brepjs/compare/brepjs-v14.4.1...brepjs-v14.4.2) (2026-03-25)
 
 
