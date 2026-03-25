@@ -5,7 +5,7 @@
  * THREE.BufferGeometry.setAttribute(). No three.js dependency required.
  */
 
-import type { ShapeMesh, EdgeMesh } from './meshFns.js';
+import type { ShapeMesh, EdgeMesh, MultiLODMesh } from './meshFns.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,5 +117,42 @@ export function toGroupedBufferGeometryData(mesh: ShapeMesh): GroupedBufferGeome
 export function toLineGeometryData(mesh: EdgeMesh): LineGeometryData {
   return {
     position: mesh.lines,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// LOD geometry
+// ---------------------------------------------------------------------------
+
+/** LOD-ready geometry data for Three.js LOD class. */
+export interface LODGeometryData {
+  readonly coarse: BufferGeometryData;
+  readonly fine: BufferGeometryData;
+  /** Camera distance at which to switch to coarse geometry. */
+  readonly coarseDistance: number;
+  /** Camera distance at which to show fine geometry (typically 0). */
+  readonly fineDistance: number;
+}
+
+/**
+ * Convert a multi-LOD mesh into Three.js LOD-compatible geometry data.
+ *
+ * @example
+ * ```ts
+ * const lod = new THREE.LOD();
+ * const data = toLODGeometryData(meshMultiLOD(shape));
+ * lod.addLevel(new THREE.Mesh(toBufferGeometry(data.fine), mat), data.fineDistance);
+ * lod.addLevel(new THREE.Mesh(toBufferGeometry(data.coarse), mat), data.coarseDistance);
+ * ```
+ */
+export function toLODGeometryData(
+  multiLOD: MultiLODMesh,
+  distances?: { readonly coarse?: number | undefined; readonly fine?: number | undefined }
+): LODGeometryData {
+  return {
+    coarse: toBufferGeometryData(multiLOD.coarse),
+    fine: toBufferGeometryData(multiLOD.fine),
+    coarseDistance: distances?.coarse ?? 50,
+    fineDistance: distances?.fine ?? 0,
   };
 }

@@ -562,9 +562,11 @@ export {
   exportSTEP,
   exportSTL,
   exportIGES,
+  meshMultiLOD,
   type ShapeMesh,
   type EdgeMesh,
   type MeshOptions,
+  type MultiLODMesh,
 } from './topology/meshFns.js';
 
 export { clearMeshCache, createMeshCache, type MeshCacheContext } from './topology/meshCache.js';
@@ -579,6 +581,8 @@ export {
   type LineGeometryData,
   type GroupedBufferGeometryData,
   type BufferGeometryGroup,
+  toLODGeometryData,
+  type LODGeometryData,
 } from './topology/threeHelpers.js';
 
 // ── Boolean operations (functional) ──

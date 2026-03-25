@@ -222,3 +222,36 @@ export function exportIGES(shape: AnyShape<Dimension>): Result<Blob> {
     return err(ioError('IGES_EXPORT_FAILED', 'Failed to write IGES file', e));
   }
 }
+
+// ---------------------------------------------------------------------------
+// Multi-LOD meshing
+// ---------------------------------------------------------------------------
+
+export interface MultiLODMesh {
+  readonly coarse: ShapeMesh;
+  readonly fine: ShapeMesh;
+}
+
+/**
+ * Produce coarse (preview) + fine (export) meshes for a shape.
+ *
+ * Coarse mesh uses high tolerance for fast preview rendering.
+ * Fine mesh uses low tolerance for export quality.
+ */
+export function meshMultiLOD(
+  shape: AnyShape<Dimension>,
+  options?: {
+    readonly coarseTolerance?: number | undefined;
+    readonly fineTolerance?: number | undefined;
+    readonly angularTolerance?: number | undefined;
+  }
+): MultiLODMesh {
+  const coarseTol = options?.coarseTolerance ?? 0.5;
+  const fineTol = options?.fineTolerance ?? 0.05;
+  const angTol = options?.angularTolerance ?? 0.5;
+
+  const coarse = mesh(shape, { tolerance: coarseTol, angularTolerance: angTol });
+  const fine = mesh(shape, { tolerance: fineTol, angularTolerance: angTol * 0.2 });
+
+  return { coarse, fine };
+}
