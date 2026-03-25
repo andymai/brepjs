@@ -11,9 +11,9 @@ runs:
       id: cache
       with:
         path: node_modules
-        key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+        key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('packages/brepjs-opencascade/package.json') }}
         restore-keys: |
-          node-24-${{ runner.os }}-
+          node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
     - name: Install dependencies
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
