@@ -286,6 +286,11 @@ mainBuild:
   - symbol: TopoDS_Cast
   - symbol: BRepMesh_IncrementalMeshWrapper
   - symbol: GeomAdaptor_TransformedSurface
+  # V8 feature wrappers
+  - symbol: StepStreamIO
+  - symbol: Curve2dBatchEval
+  - symbol: HelixWireBuilder
+  - symbol: SpatialIndex3D
   emccFlags:
   - -flto
   - -fwasm-exceptions
@@ -315,6 +320,12 @@ mainBuild:
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>
   #include <BRepLib_ToolTriangulatedShape.hxx>
+  #include <STEPControl_Writer.hxx>
+  #include <STEPControl_Reader.hxx>
+  #include <Interface_Static.hxx>
+  #include <HelixBRep_BuilderHelix.hxx>
+  #include <NCollection_KDTree.hxx>
+  #include <sstream>
 
   // Handle typedefs (V8 removed Handle_*.hxx headers)
   typedef opencascade::handle<StepData_StepModel> Handle_StepData_StepModel;
@@ -1443,5 +1454,154 @@ additionalCppCode: |
     struct EdgeInfo { TopoDS_Edge edge; double r1; double r2; bool variable; };
     struct Entry { TopoDS_Shape shape; std::vector<EdgeInfo> edges; };
     std::vector<Entry> entries_;
+  };
+
+  // ── V8 Feature Wrappers ───────────────────────────────────────────────
+
+  // Stream-based STEP I/O — bypasses Emscripten FS entirely
+  class StepStreamIO {
+  public:
+    static std::string exportSTEP(const TopoDS_Shape& shape, int schema) {
+      STEPControl_Writer writer;
+      Interface_Static::SetIVal("write.step.schema", schema);
+      writer.Model(Standard_True);
+      Message_ProgressRange progress;
+      writer.Transfer(shape, STEPControl_AsIs, Standard_True, progress);
+      std::ostringstream oss;
+      writer.WriteStream(oss);
+      return oss.str();
+    }
+
+    static TopoDS_Shape importSTEP(const std::string& data) {
+      std::istringstream iss(data);
+      STEPControl_Reader reader;
+      if (reader.ReadStream("memory.step", iss) != IFSelect_RetDone) {
+        return TopoDS_Shape();
+      }
+      Message_ProgressRange progress;
+      reader.TransferRoots(progress);
+      return reader.OneShape();
+    }
+  };
+
+  // Batch 2D curve evaluation — single WASM call for N parameters
+  class Curve2dBatchEval {
+  public:
+    // Returns flat array: [x0, y0, x1, y1, ...] for each parameter
+    static int evaluate(const Handle_Geom2d_Curve& curve,
+                        const double* params, int paramCount,
+                        double* outPtr) {
+      for (int i = 0; i < paramCount; i++) {
+        gp_Pnt2d p;
+        curve->D0(params[i], p);
+        outPtr[i * 2] = p.X();
+        outPtr[i * 2 + 1] = p.Y();
+      }
+      return paramCount;
+    }
+
+    // Returns flat array: [px0, py0, tx0, ty0, ...] for each parameter
+    static int evaluateD1(const Handle_Geom2d_Curve& curve,
+                          const double* params, int paramCount,
+                          double* outPtr) {
+      for (int i = 0; i < paramCount; i++) {
+        gp_Pnt2d p;
+        gp_Vec2d v;
+        curve->D1(params[i], p, v);
+        outPtr[i * 4] = p.X();
+        outPtr[i * 4 + 1] = p.Y();
+        outPtr[i * 4 + 2] = v.X();
+        outPtr[i * 4 + 3] = v.Y();
+      }
+      return paramCount;
+    }
+  };
+
+  // Native helix via TKHelix (V8) — wraps HelixBRep_BuilderHelix
+  class HelixWireBuilder {
+  public:
+    static TopoDS_Shape build(double radius, double pitch, double height,
+                              double cx, double cy, double cz,
+                              double dx, double dy, double dz,
+                              bool leftHanded) {
+      gp_Pnt center(cx, cy, cz);
+      gp_Dir dir(dx, dy, dz);
+      gp_Ax3 axis(center, dir);
+
+      double diameter = radius * 2.0;
+      double nTurns = height / pitch;
+
+      NCollection_Array1<double> pitches(1, 1);
+      pitches.SetValue(1, pitch);
+      NCollection_Array1<double> turns(1, 1);
+      turns.SetValue(1, nTurns);
+
+      HelixBRep_BuilderHelix builder;
+      builder.SetParameters(axis, diameter, pitches, turns);
+      builder.SetApproxParameters(1e-4, 14, GeomAbs_C2);
+      builder.Perform();
+
+      if (builder.ErrorStatus() != 0) {
+        return TopoDS_Shape(); // Return null shape on error
+      }
+
+      TopoDS_Shape result = builder.Shape();
+      if (leftHanded) {
+        // Mirror the helix to reverse handedness
+        gp_Trsf mirror;
+        gp_Ax2 mirrorPlane(center, gp_Dir(0, 1, 0), dir);
+        mirror.SetMirror(mirrorPlane);
+        BRepBuilderAPI_Transform xform(result, mirror, true);
+        result = xform.Shape();
+      }
+      return result;
+    }
+  };
+
+  // KDTree spatial index for 3D points — wraps NCollection_KDTree<gp_XYZ, 3>
+  class SpatialIndex3D {
+  public:
+    SpatialIndex3D() : built_(false) {}
+
+    void addPoint(double x, double y, double z) {
+      points_.push_back(gp_XYZ(x, y, z));
+    }
+
+    void build() {
+      if (points_.empty()) return;
+      tree_.Build(points_.data(), points_.size());
+      built_ = true;
+    }
+
+    // Returns 1-based index of nearest point, or 0 if tree is empty
+    int nearestPoint(double x, double y, double z) {
+      if (!built_ || points_.empty()) return 0;
+      gp_XYZ query(x, y, z);
+      NCollection_Array1<size_t> indices(1, 0);
+      NCollection_Array1<double> dists(1, 0);
+      size_t found = tree_.KNearestPoints(query, 1, indices, dists);
+      if (found == 0) return 0;
+      return static_cast<int>(indices.Value(1)); // 1-based
+    }
+
+    // Returns count + fills outPtr with 1-based indices of points within radius
+    int pointsInRadius(double x, double y, double z, double radius,
+                       int* outPtr, int maxResults) {
+      if (!built_) return 0;
+      gp_XYZ query(x, y, z);
+      auto results = tree_.RangeSearch(query, radius);
+      int count = std::min(static_cast<int>(results.Size()), maxResults);
+      for (int i = 0; i < count; i++) {
+        outPtr[i] = static_cast<int>(results[i]);
+      }
+      return count;
+    }
+
+    int size() const { return static_cast<int>(points_.size()); }
+
+  private:
+    std::vector<gp_XYZ> points_;
+    NCollection_KDTree<gp_XYZ, 3> tree_;
+    bool built_;
   };
 
