@@ -289,7 +289,7 @@ mainBuild:
   # V8 feature wrappers
   - symbol: StepStreamIO
   - symbol: Curve2dBatchEval
-  - symbol: HelixWireBuilder
+  # - symbol: HelixWireBuilder  # TKHelix not in filter — needs Docker image update
   - symbol: SpatialIndex3D
   emccFlags:
   - -flto
@@ -323,7 +323,7 @@ additionalCppCode: |
   #include <STEPControl_Writer.hxx>
   #include <STEPControl_Reader.hxx>
   #include <Interface_Static.hxx>
-  #include <HelixBRep_BuilderHelix.hxx>
+  // HelixBRep_BuilderHelix.hxx — TKHelix not compiled yet, needs filter update
   #include <NCollection_KDTree.hxx>
   #include <sstream>
 
@@ -1517,46 +1517,10 @@ additionalCppCode: |
     }
   };
 
-  // Native helix via TKHelix (V8) — wraps HelixBRep_BuilderHelix
-  class HelixWireBuilder {
-  public:
-    static TopoDS_Shape build(double radius, double pitch, double height,
-                              double cx, double cy, double cz,
-                              double dx, double dy, double dz,
-                              bool leftHanded) {
-      gp_Pnt center(cx, cy, cz);
-      gp_Dir dir(dx, dy, dz);
-      gp_Ax3 axis(center, dir);
-
-      double diameter = radius * 2.0;
-      double nTurns = height / pitch;
-
-      NCollection_Array1<double> pitches(1, 1);
-      pitches.SetValue(1, pitch);
-      NCollection_Array1<double> turns(1, 1);
-      turns.SetValue(1, nTurns);
-
-      HelixBRep_BuilderHelix builder;
-      builder.SetParameters(axis, diameter, pitches, turns);
-      builder.SetApproxParameters(1e-4, 14, GeomAbs_C2);
-      builder.Perform();
-
-      if (builder.ErrorStatus() != 0) {
-        return TopoDS_Shape(); // Return null shape on error
-      }
-
-      TopoDS_Shape result = builder.Shape();
-      if (leftHanded) {
-        // Mirror the helix to reverse handedness
-        gp_Trsf mirror;
-        gp_Ax2 mirrorPlane(center, gp_Dir(0, 1, 0), dir);
-        mirror.SetMirror(mirrorPlane);
-        BRepBuilderAPI_Transform xform(result, mirror, true);
-        result = xform.Shape();
-      }
-      return result;
-    }
-  };
+  // Native helix via TKHelix (V8) — BLOCKED: TKHelix not in Docker image filter.
+  // Needs filterPackages.py update to include TKHelix sources in compilation.
+  // TS adapter in extendedConstructorOps.ts has feature detection ready.
+  // class HelixWireBuilder { ... };
 
   // KDTree spatial index for 3D points — wraps NCollection_KDTree<gp_XYZ, 3>
   class SpatialIndex3D {
