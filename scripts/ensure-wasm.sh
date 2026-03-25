@@ -29,8 +29,9 @@ TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "⬇ Downloading WASM runtime files v${EXPECTED_VERSION:-latest} (not tracked in git)..."
-npm pack "brepjs-opencascade${EXPECTED_VERSION:+@$EXPECTED_VERSION}" --pack-destination "$TMPDIR" --silent 2>/dev/null || \
-  npm pack brepjs-opencascade --pack-destination "$TMPDIR" --silent
+# Use --registry to force npm to fetch from the public registry (not the local workspace)
+npm pack "brepjs-opencascade${EXPECTED_VERSION:+@$EXPECTED_VERSION}" --pack-destination "$TMPDIR" --registry https://registry.npmjs.org --silent 2>/dev/null || \
+  npm pack brepjs-opencascade --pack-destination "$TMPDIR" --registry https://registry.npmjs.org --silent
 tar -xzf "$TMPDIR"/brepjs-opencascade-*.tgz -C "$TMPDIR"
 cp "$TMPDIR"/package/src/*.js "$TMPDIR"/package/src/*.wasm "$WASM_DIR/"
 cp "$TMPDIR"/package/src/*.d.ts "$WASM_DIR/" 2>/dev/null || true
