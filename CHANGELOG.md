@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.3.5](https://github.com/andymai/brepjs/compare/brepjs-v14.3.4...brepjs-v14.3.5) (2026-03-25)
+
+
+### Bug Fixes
+
+* **opencascade:** enable -Os + LTO in Docker image ([#609](https://github.com/andymai/brepjs/issues/609)) ([5ad938b](https://github.com/andymai/brepjs/commit/5ad938beea9f3734216fa0103af9215f6bf7df05))
+
 ## [14.3.4](https://github.com/andymai/brepjs/compare/brepjs-v14.3.3...brepjs-v14.3.4) (2026-03-25)
 
 
