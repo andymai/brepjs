@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.6.0](https://github.com/andymai/brepjs/compare/brepjs-v14.5.2...brepjs-v14.6.0) (2026-03-25)
+
+
+### Features
+
+* **mesh:** progressive LOD + batch mesh C++ class ([#641](https://github.com/andymai/brepjs/issues/641)) ([fb78946](https://github.com/andymai/brepjs/commit/fb789467f995311e904748871496856f8154ea11))
+
 ## [14.5.2](https://github.com/andymai/brepjs/compare/brepjs-v14.5.1...brepjs-v14.5.2) (2026-03-25)
 
 
