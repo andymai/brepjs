@@ -37,6 +37,6 @@
     "buildWasm": "pnpm run buildSingle && pnpm run optimizeWasm",
     "updateDocker": "docker pull ghcr.io/andymai/opencascade.js:v8",
     "buildSingle": "cd build-config && docker run -it --rm -v $(pwd):/src -u $(id -u):$(id -g) ghcr.io/andymai/opencascade.js:v8 brepjs.yml && mv brepjs_single* ../src && cd -",
-    "optimizeWasm": "npx wasm-opt -O4 --strip-debug --strip-producers src/brepjs_single.wasm -o src/brepjs_single.wasm"
+    "optimizeWasm": "npx wasm-opt -O4 --strip-debug --strip-producers --enable-exception-handling src/brepjs_single.wasm -o src/brepjs_single.wasm"
   }
 }

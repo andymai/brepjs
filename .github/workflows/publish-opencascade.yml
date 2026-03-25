@@ -39,7 +39,7 @@ jobs:
           npm install -g binaryen
           for f in *.wasm; do
             echo "Optimizing $f..."
-            wasm-opt -O4 --strip-debug --strip-producers "$f" -o "$f"
+            wasm-opt -O4 --strip-debug --strip-producers --enable-exception-handling "$f" -o "$f"
           done
 
       - name: Upload WASM artifacts
