@@ -1736,16 +1736,17 @@ additionalCppCode: |
 
           if (!tri->HasNormals()) BRepLib_ToolTriangulatedShape::ComputeNormals(face, tri);
           for (int i = 1; i <= nn; i++) {
-            gp_Vec3f n = tri->Normal(i);
+            NCollection_Vec3<float> nv;
+            tri->Normal(i, nv);
             if (hasLoc) {
-              gp_Dir d(n.x(), n.y(), n.z()); d.Transform(trsf);
+              gp_Dir d(nv.x(), nv.y(), nv.z()); d.Transform(trsf);
               result.normalsPtr_[ni++] = static_cast<float>(d.X());
               result.normalsPtr_[ni++] = static_cast<float>(d.Y());
               result.normalsPtr_[ni++] = static_cast<float>(d.Z());
             } else {
-              result.normalsPtr_[ni++] = n.x();
-              result.normalsPtr_[ni++] = n.y();
-              result.normalsPtr_[ni++] = n.z();
+              result.normalsPtr_[ni++] = nv.x();
+              result.normalsPtr_[ni++] = nv.y();
+              result.normalsPtr_[ni++] = nv.z();
             }
           }
 
