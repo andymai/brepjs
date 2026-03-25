@@ -29,10 +29,15 @@ TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "⬇ Downloading WASM runtime files v${EXPECTED_VERSION:-latest} (not tracked in git)..."
-# Use --registry to force npm to fetch from the public registry (not the local workspace)
-npm pack "brepjs-opencascade${EXPECTED_VERSION:+@$EXPECTED_VERSION}" --pack-destination "$TMPDIR" --registry https://registry.npmjs.org --silent 2>/dev/null || \
-  npm pack brepjs-opencascade --pack-destination "$TMPDIR" --registry https://registry.npmjs.org --silent
-tar -xzf "$TMPDIR"/brepjs-opencascade-*.tgz -C "$TMPDIR"
+# Download directly from npm registry via curl (avoids monorepo workspace resolution issues with npm pack)
+TARBALL_URL=$(npm view "brepjs-opencascade@${EXPECTED_VERSION:-latest}" dist.tarball 2>/dev/null) || \
+  TARBALL_URL=$(npm view brepjs-opencascade dist.tarball 2>/dev/null)
+if [ -z "$TARBALL_URL" ]; then
+  echo "❌ Failed to resolve tarball URL for brepjs-opencascade@${EXPECTED_VERSION:-latest}"
+  exit 1
+fi
+curl -fsSL "$TARBALL_URL" -o "$TMPDIR/package.tgz"
+tar -xzf "$TMPDIR/package.tgz" -C "$TMPDIR"
 cp "$TMPDIR"/package/src/*.js "$TMPDIR"/package/src/*.wasm "$WASM_DIR/"
 cp "$TMPDIR"/package/src/*.d.ts "$WASM_DIR/" 2>/dev/null || true
 [ -n "$EXPECTED_VERSION" ] && echo "$EXPECTED_VERSION" > "$VERSION_FILE"
