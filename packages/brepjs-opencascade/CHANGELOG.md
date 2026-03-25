@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.13.1...brepjs-opencascade-v0.14.0) (2026-03-25)
+
+
+### Features
+
+* V8 performance features — stream STEP I/O, sweep history, KDTree, batch eval ([#615](https://github.com/andymai/brepjs/issues/615)) ([44eb71f](https://github.com/andymai/brepjs/commit/44eb71f82fbd5076cff6f24d8c0f3f90ac80999f))
+
 ## [0.13.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.13.0...brepjs-opencascade-v0.13.1) (2026-03-25)
 
 
