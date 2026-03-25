@@ -292,6 +292,8 @@ mainBuild:
   # - symbol: HelixWireBuilder  # TKHelix not in filter — needs Docker image update
   - symbol: SpatialIndex3D
   - symbol: BooleanPipeline
+  - symbol: MeshBatchData
+  - symbol: MeshBatchExtractor
   emccFlags:
   - -flto
   - -fwasm-exceptions
@@ -1636,5 +1638,132 @@ additionalCppCode: |
     std::vector<gp_XYZ> points_;
     NCollection_KDTree<gp_XYZ, 3> tree_;
     bool built_;
+  };
+
+  // Batch mesh data — holds per-shape offsets + packed geometry arrays
+  class MeshBatchData {
+  public:
+    int shapeCount_;
+    int32_t* offsetsPtr_;   // [vertStart, vertCount, triStart, triCount] × shapeCount
+    int offsetsSize_;
+    float* verticesPtr_;    // packed xyz
+    int verticesSize_;
+    float* normalsPtr_;     // packed xyz
+    int normalsSize_;
+    uint32_t* trianglesPtr_; // packed indices
+    int trianglesSize_;
+
+    int getOffsetsPtr() const { return reinterpret_cast<uintptr_t>(offsetsPtr_); }
+    int getOffsetsSize() const { return offsetsSize_; }
+    int getVerticesPtr() const { return reinterpret_cast<uintptr_t>(verticesPtr_); }
+    int getVerticesSize() const { return verticesSize_; }
+    int getNormalsPtr() const { return reinterpret_cast<uintptr_t>(normalsPtr_); }
+    int getNormalsSize() const { return normalsSize_; }
+    int getTrianglesPtr() const { return reinterpret_cast<uintptr_t>(trianglesPtr_); }
+    int getTrianglesSize() const { return trianglesSize_; }
+    int getShapeCount() const { return shapeCount_; }
+
+    void dispose() {
+      std::free(offsetsPtr_); std::free(verticesPtr_);
+      std::free(normalsPtr_); std::free(trianglesPtr_);
+    }
+  };
+
+  // Batch mesh extraction — meshes N shapes in a single WASM call
+  class MeshBatchExtractor {
+  public:
+    void addShape(const TopoDS_Shape& shape) { shapes_.push_back(shape); }
+
+    MeshBatchData extract(double tolerance, double angularTolerance) {
+      MeshBatchData result;
+      result.shapeCount_ = static_cast<int>(shapes_.size());
+
+      // First pass: mesh all shapes, count totals
+      struct Info { int vertStart; int vertCount; int triStart; int triCount; };
+      std::vector<Info> infos(shapes_.size());
+      int totalVerts = 0, totalTris = 0;
+
+      for (size_t s = 0; s < shapes_.size(); s++) {
+        BRepMesh_IncrementalMesh(shapes_[s], tolerance, false, angularTolerance, false);
+        int sv = 0, st = 0;
+        for (TopExp_Explorer ex(shapes_[s], TopAbs_FACE); ex.More(); ex.Next()) {
+          TopLoc_Location loc;
+          auto tri = BRep_Tool::Triangulation(TopoDS::Face(ex.Current()), loc);
+          if (!tri.IsNull()) { sv += tri->NbNodes(); st += tri->NbTriangles(); }
+        }
+        infos[s] = {totalVerts, sv, totalTris, st};
+        totalVerts += sv; totalTris += st;
+      }
+
+      // Allocate
+      result.offsetsPtr_ = static_cast<int32_t*>(std::malloc(shapes_.size() * 4 * sizeof(int32_t)));
+      result.offsetsSize_ = static_cast<int>(shapes_.size()) * 4;
+      result.verticesPtr_ = static_cast<float*>(std::malloc(totalVerts * 3 * sizeof(float)));
+      result.verticesSize_ = totalVerts * 3;
+      result.normalsPtr_ = static_cast<float*>(std::malloc(totalVerts * 3 * sizeof(float)));
+      result.normalsSize_ = totalVerts * 3;
+      result.trianglesPtr_ = static_cast<uint32_t*>(std::malloc(totalTris * 3 * sizeof(uint32_t)));
+      result.trianglesSize_ = totalTris * 3;
+
+      // Second pass: extract geometry
+      for (size_t s = 0; s < shapes_.size(); s++) {
+        const auto& info = infos[s];
+        result.offsetsPtr_[s*4] = info.vertStart;
+        result.offsetsPtr_[s*4+1] = info.vertCount;
+        result.offsetsPtr_[s*4+2] = info.triStart;
+        result.offsetsPtr_[s*4+3] = info.triCount;
+
+        int vi = info.vertStart * 3, ni = info.vertStart * 3, ti = info.triStart * 3;
+        int nodeOffset = 0;
+
+        for (TopExp_Explorer ex(shapes_[s], TopAbs_FACE); ex.More(); ex.Next()) {
+          const TopoDS_Face& face = TopoDS::Face(ex.Current());
+          TopLoc_Location loc;
+          auto tri = BRep_Tool::Triangulation(face, loc);
+          if (tri.IsNull()) continue;
+
+          const bool hasLoc = !loc.IsIdentity();
+          const gp_Trsf trsf = hasLoc ? loc.Transformation() : gp_Trsf();
+          const int nn = tri->NbNodes(), nt = tri->NbTriangles();
+
+          for (int i = 1; i <= nn; i++) {
+            gp_Pnt p = tri->Node(i);
+            if (hasLoc) p.Transform(trsf);
+            result.verticesPtr_[vi++] = static_cast<float>(p.X());
+            result.verticesPtr_[vi++] = static_cast<float>(p.Y());
+            result.verticesPtr_[vi++] = static_cast<float>(p.Z());
+          }
+
+          if (!tri->HasNormals()) BRepLib_ToolTriangulatedShape::ComputeNormals(face, tri);
+          for (int i = 1; i <= nn; i++) {
+            gp_Vec3f n = tri->Normal(i);
+            if (hasLoc) {
+              gp_Dir d(n.x(), n.y(), n.z()); d.Transform(trsf);
+              result.normalsPtr_[ni++] = static_cast<float>(d.X());
+              result.normalsPtr_[ni++] = static_cast<float>(d.Y());
+              result.normalsPtr_[ni++] = static_cast<float>(d.Z());
+            } else {
+              result.normalsPtr_[ni++] = n.x();
+              result.normalsPtr_[ni++] = n.y();
+              result.normalsPtr_[ni++] = n.z();
+            }
+          }
+
+          const bool reversed = face.Orientation() == TopAbs_REVERSED;
+          for (int i = 1; i <= nt; i++) {
+            int n1, n2, n3; tri->Triangle(i).Get(n1, n2, n3);
+            if (reversed) std::swap(n1, n2);
+            result.trianglesPtr_[ti++] = static_cast<uint32_t>(nodeOffset + n1 - 1);
+            result.trianglesPtr_[ti++] = static_cast<uint32_t>(nodeOffset + n2 - 1);
+            result.trianglesPtr_[ti++] = static_cast<uint32_t>(nodeOffset + n3 - 1);
+          }
+          nodeOffset += nn;
+        }
+      }
+      return result;
+    }
+
+  private:
+    std::vector<TopoDS_Shape> shapes_;
   };
 
