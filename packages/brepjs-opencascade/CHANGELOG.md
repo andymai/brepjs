@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.14.1...brepjs-opencascade-v0.14.2) (2026-03-25)
+
+
+### Bug Fixes
+
+* **opencascade:** rebuild WASM with -O2+LTO ([#629](https://github.com/andymai/brepjs/issues/629)) ([c779398](https://github.com/andymai/brepjs/commit/c779398c98a2da3dcceaba62c79dc390199f6080))
+
 ## [0.14.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.14.0...brepjs-opencascade-v0.14.1) (2026-03-25)
 
 
