@@ -2,7 +2,7 @@
  * Opaque boolean pipeline — executes chained operations in a single WASM call.
  *
  * Used by DefaultAdapter. Requires BooleanPipeline C++ class in WASM build.
- * Falls back to sequential JS calls when unavailable.
+ * Returns undefined when unavailable — caller handles fallback.
  */
 
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
@@ -20,14 +20,14 @@ const OP_CODES: Readonly<Record<PipelineOp, number>> = { fuse: 0, cut: 1, inters
  * Execute a chained boolean pipeline.
  * Uses C++ BooleanPipeline when available (zero JS↔WASM bridge crossings
  * between steps, auto-skips UnifySameDomain on intermediates).
- * Falls back to sequential JS calls otherwise.
+ * Returns undefined when C++ class is unavailable.
  */
 export function executeBooleanPipeline(
   oc: KernelInstance,
   base: KernelShape,
   steps: readonly PipelineStep[],
   options: { glueMode?: number | undefined; fuzzyValue?: number | undefined } = {}
-): KernelShape | null {
+): KernelShape | null | undefined {
   const { glueMode = 0, fuzzyValue = 0 } = options;
 
   // Feature-detect C++ pipeline
@@ -45,33 +45,6 @@ export function executeBooleanPipeline(
     }
   }
 
-  // JS fallback: sequential operations with simplify only on last step
-  let current = base;
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    const isLast = i === steps.length - 1;
-    const progress = new oc.Message_ProgressRange_1();
-
-    let op;
-    if (step.op === 'fuse') {
-      op = new oc.BRepAlgoAPI_Fuse_3(current, step.tool, progress);
-    } else if (step.op === 'cut') {
-      op = new oc.BRepAlgoAPI_Cut_4(current, step.tool, progress);
-    } else {
-      op = new oc.BRepAlgoAPI_Common_4(current, step.tool, progress);
-    }
-
-    op.SetRunParallel(true);
-    op.SetUseOBB(true);
-    op.Build(progress);
-
-    if (isLast) {
-      op.SimplifyResult(true, true, 1e-3);
-    }
-
-    current = op.Shape();
-    op.delete();
-    progress.delete();
-  }
-  return current;
+  // C++ pipeline not available — return undefined so caller uses higher-level fallback
+  return undefined;
 }
