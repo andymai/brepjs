@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.3](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.2...brepjs-opencascade-v0.15.3) (2026-03-25)
+
+
+### Bug Fixes
+
+* **opencascade:** trigger 0.15.3 rebuild ([#658](https://github.com/andymai/brepjs/issues/658)) ([58e8de9](https://github.com/andymai/brepjs/commit/58e8de9eb2253f75b49b0b076efb270f99f37cca))
+
 ## [0.15.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.1...brepjs-opencascade-v0.15.2) (2026-03-25)
 
 
