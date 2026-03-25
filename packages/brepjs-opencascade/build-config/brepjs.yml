@@ -291,6 +291,7 @@ mainBuild:
   - symbol: Curve2dBatchEval
   # - symbol: HelixWireBuilder  # TKHelix not in filter — needs Docker image update
   - symbol: SpatialIndex3D
+  - symbol: BooleanPipeline
   emccFlags:
   - -flto
   - -fwasm-exceptions
@@ -299,6 +300,7 @@ mainBuild:
   - -sEXPORTED_RUNTIME_METHODS=["FS","HEAP32","HEAPU32","HEAPF32","HEAPF64","HEAPU8"]
   - -msimd128
   - -mrelaxed-simd
+  - -mtail-call
   - -sWASM_BIGINT
   - -sEVAL_CTORS=2
   - -O3
@@ -695,6 +697,73 @@ additionalCppCode: |
 
   private:
     TopTools_ListOfShape shapes_;
+  };
+
+  // Opaque boolean pipeline — executes chained fuse/cut/intersect in C++.
+  // Auto-skips UnifySameDomain on intermediates; only simplifies final result.
+  class BooleanPipeline {
+  public:
+    // Operation codes: 0=fuse, 1=cut, 2=intersect
+    void addStep(int opCode, const TopoDS_Shape& tool) {
+      steps_.push_back({opCode, tool});
+    }
+
+    TopoDS_Shape execute(const TopoDS_Shape& base, int glueMode, double fuzzyValue) {
+      TopoDS_Shape current = base;
+
+      for (size_t i = 0; i < steps_.size(); i++) {
+        const auto& step = steps_[i];
+        const bool isLast = (i == steps_.size() - 1);
+        Message_ProgressRange progress;
+        TopoDS_Shape stepResult;
+
+        if (step.opCode == 0) {
+          BRepAlgoAPI_Fuse op(current, step.tool, progress);
+          op.SetRunParallel(true);
+          op.SetUseOBB(true);
+          if (glueMode == 1) op.SetGlue(BOPAlgo_GlueShift);
+          else if (glueMode == 2) op.SetGlue(BOPAlgo_GlueFull);
+          if (fuzzyValue > 0) op.SetFuzzyValue(fuzzyValue);
+          op.Build(progress);
+          if (!op.IsDone() || op.HasErrors()) return TopoDS_Shape();
+          if (isLast) op.SimplifyResult(true, true, 1e-3);
+          stepResult = op.Shape();
+        } else if (step.opCode == 1) {
+          BRepAlgoAPI_Cut op(current, step.tool, progress);
+          op.SetRunParallel(true);
+          op.SetUseOBB(true);
+          if (glueMode == 1) op.SetGlue(BOPAlgo_GlueShift);
+          else if (glueMode == 2) op.SetGlue(BOPAlgo_GlueFull);
+          if (fuzzyValue > 0) op.SetFuzzyValue(fuzzyValue);
+          op.Build(progress);
+          if (!op.IsDone() || op.HasErrors()) return TopoDS_Shape();
+          if (isLast) op.SimplifyResult(true, true, 1e-3);
+          stepResult = op.Shape();
+        } else {
+          BRepAlgoAPI_Common op(current, step.tool, progress);
+          op.SetRunParallel(true);
+          op.SetUseOBB(true);
+          if (glueMode == 1) op.SetGlue(BOPAlgo_GlueShift);
+          else if (glueMode == 2) op.SetGlue(BOPAlgo_GlueFull);
+          if (fuzzyValue > 0) op.SetFuzzyValue(fuzzyValue);
+          op.Build(progress);
+          if (!op.IsDone() || op.HasErrors()) return TopoDS_Shape();
+          if (isLast) op.SimplifyResult(true, true, 1e-3);
+          stepResult = op.Shape();
+        }
+
+        current = stepResult;
+      }
+
+      return current;
+    }
+
+    int stepCount() const { return static_cast<int>(steps_.size()); }
+    void clear() { steps_.clear(); }
+
+  private:
+    struct Step { int opCode; TopoDS_Shape tool; };
+    std::vector<Step> steps_;
   };
 
   class EdgeMeshData {
