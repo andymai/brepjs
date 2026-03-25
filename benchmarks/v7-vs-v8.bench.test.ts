@@ -1,22 +1,25 @@
 /**
  * V7 vs V8 OCCT apples-to-apples benchmark.
  *
- * Loads both WASM binaries in the same process and runs identical operations
- * through each kernel, producing a direct comparison.
+ * Downloads both V7 and V8 WASM binaries from npm and loads them in the
+ * same process for a controlled comparison.
  *
  * ## Running
  *
  * ```bash
- * # V8 WASM must be available at OCCT_V8_PATH (or default ../brepjs-occt-v8/...)
- * npx vitest run benchmarks/v7-vs-v8.bench.test.ts
+ * npx vitest run benchmarks/v7-vs-v8.bench.test.ts --config vitest.bench.config.ts
  * ```
+ *
+ * Override versions via env vars:
+ *   OCCT_V7_VERSION=0.13.0 OCCT_V8_VERSION=0.14.1 npx vitest run ...
  */
 import { describe, it, beforeAll, afterAll } from 'vitest';
-import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { registerKernel, withKernel, getKernel } from '../src/kernel/index.js';
 import { DefaultAdapter } from '../src/kernel/occt/defaultAdapter.js';
-import { initOCCT } from '../tests/setup-kernel.js';
 import { bench, type BenchResult } from './harness.js';
 
 // ---------------------------------------------------------------------------
@@ -30,32 +33,50 @@ interface ComparisonResult {
 }
 
 // ---------------------------------------------------------------------------
-// Init helpers
+// npm version fetcher
 // ---------------------------------------------------------------------------
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
+const CACHE_DIR = path.resolve(__dir, '../.bench-cache');
 
-async function initV8Kernel(): Promise<void> {
-  const v8Base =
-    process.env['OCCT_V8_PATH'] ??
-    path.resolve(__dir, '../../brepjs-occt-v8/packages/brepjs-opencascade/src');
+/** Download a specific brepjs-opencascade version from npm and return the src directory path. */
+function fetchNpmVersion(version: string): string {
+  const versionDir = path.resolve(CACHE_DIR, version);
+  const srcDir = path.resolve(versionDir, 'src');
+  const marker = path.resolve(srcDir, 'brepjs_single.js');
+  if (existsSync(marker)) return srcDir;
 
-  const jsPath = path.resolve(v8Base, 'brepjs_single.js');
-  const wasmPath = path.resolve(v8Base, 'brepjs_single.wasm');
-
-  // Dynamic import of the V8 Emscripten module factory
-  const mod = await import(jsPath);
-  const initV8 = mod.default ?? mod;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten factory
-  const oc: any = await initV8({
-    locateFile: (fileName: string) => {
-      if (fileName.endsWith('.wasm')) return wasmPath;
-      return fileName;
-    },
+  mkdirSync(versionDir, { recursive: true });
+  execFileSync('npm', ['pack', `brepjs-opencascade@${version}`, '--pack-destination', versionDir], {
+    stdio: 'pipe',
   });
-
-  registerKernel('occt-v8', new DefaultAdapter(oc));
+  // Find the tgz
+  const tgz = readdirSync(versionDir).find((f) => f.endsWith('.tgz'));
+  if (!tgz) throw new Error(`npm pack did not produce a .tgz for ${version}`);
+  execFileSync('tar', ['-xzf', path.join(versionDir, tgz), '-C', versionDir], { stdio: 'pipe' });
+  renameSync(path.join(versionDir, 'package', 'src'), srcDir);
+  rmSync(path.join(versionDir, 'package'), { recursive: true, force: true });
+  rmSync(path.join(versionDir, tgz), { force: true });
+  return srcDir;
 }
+
+/** Load an OCCT WASM binary from a directory and register as a kernel. */
+async function loadOCCTFromDir(kernelId: string, srcDir: string): Promise<void> {
+  const jsPath = path.resolve(srcDir, 'brepjs_single.js');
+  const wasmPath = path.resolve(srcDir, 'brepjs_single.wasm');
+  const mod = await import(jsPath);
+  const init = mod.default ?? mod;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten factory
+  const oc: any = await init({
+    locateFile: (f: string) => (f.endsWith('.wasm') ? wasmPath : f),
+  });
+  registerKernel(kernelId, new DefaultAdapter(oc));
+}
+
+// Last V7 build (OCCT 7.x, emsdk 3.1.14, -Os)
+const V7_VERSION = process.env['OCCT_V7_VERSION'] ?? '0.13.0';
+// Current V8 build (OCCT 8.0 RC4, emsdk 5.0.3, -Os+LTO)
+const V8_VERSION = process.env['OCCT_V8_VERSION'] ?? '0.14.1';
 
 // ---------------------------------------------------------------------------
 // Bench helper — runs same fn through both kernels
@@ -103,21 +124,21 @@ function printComparison(results: ComparisonResult[]): void {
 const ALL: ComparisonResult[] = [];
 
 beforeAll(async () => {
-  // Init V7 (the default bundled OCCT)
-  const ocV7 = await initOCCT();
+  // Download both versions from npm (cached in .bench-cache/)
+  console.log(`[v7-vs-v8] Fetching V7 (${V7_VERSION}) and V8 (${V8_VERSION}) from npm...`); // eslint-disable-line no-console
+  const v7Dir = fetchNpmVersion(V7_VERSION);
+  const v8Dir = fetchNpmVersion(V8_VERSION);
 
-  // Re-register V7 under explicit name
-  registerKernel('occt-v7', new DefaultAdapter(ocV7));
-
-  // Init V8 from separate WASM build
-  await initV8Kernel();
+  // Load both WASM binaries as separate kernels
+  await loadOCCTFromDir('occt-v7', v7Dir);
+  await loadOCCTFromDir('occt-v8', v8Dir);
 
   // Prewarm both kernels (first call has JIT penalty)
   withKernel('occt-v7', () => getKernel().makeBox(1, 1, 1));
   withKernel('occt-v8', () => getKernel().makeBox(1, 1, 1));
 
-  console.log('[v7-vs-v8] Both kernels loaded and prewarmed');
-}, 60000);
+  console.log(`[v7-vs-v8] Both kernels loaded and prewarmed (V7=${V7_VERSION}, V8=${V8_VERSION})`); // eslint-disable-line no-console
+}, 90000);
 
 describe('V7 vs V8: Primitives', () => {
   const results: ComparisonResult[] = [];

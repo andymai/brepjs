@@ -4,6 +4,9 @@
 # Git worktrees
 .worktrees/
 
+# Benchmark npm version cache
+.bench-cache/
+
 node_modules
 dist/
 
