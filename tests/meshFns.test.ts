@@ -95,9 +95,11 @@ describe('meshFns', () => {
     });
 
     it.skipIf(currentKernel !== 'occt')(
-      'returns STEP_FILE_READ_ERROR when FS.readFile throws after successful write',
+      'returns STEP_FILE_READ_ERROR when FS.readFile throws after successful write (FS path only)',
       () => {
         const oc = getKernel().oc;
+        // V8 stream I/O bypasses FS entirely — this test only applies to FS path
+        if (typeof oc.StepStreamIO?.exportSTEP === 'function') return;
         const originalReadFile = oc.FS.readFile as (...args: unknown[]) => unknown;
         // Patch readFile to throw on any .step file
         oc.FS.readFile = (path: string) => {
