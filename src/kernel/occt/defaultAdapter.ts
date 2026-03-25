@@ -61,6 +61,7 @@ import {
   split as _split,
   checkBoolean as _checkBoolean,
 } from './booleanOps.js';
+import { executeBooleanPipeline } from './booleanPipelineOps.js';
 import { mesh as _mesh, meshEdges as _meshEdges } from './meshOps.js';
 import {
   iterShapes as _iterShapes,
@@ -1991,6 +1992,14 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     _tolerance: number
   ): KernelMeshResult {
     throw new Error('meshBoolean is only available with the brepkit kernel');
+  }
+
+  booleanPipeline(
+    base: KernelShape,
+    steps: ReadonlyArray<{ op: 'fuse' | 'cut' | 'intersect'; tool: KernelShape }>,
+    options?: { glueMode?: number | undefined; fuzzyValue?: number | undefined }
+  ): KernelShape | null {
+    return executeBooleanPipeline(this.oc, base, steps, options);
   }
 
   edgeToFaceMap(_shape: KernelShape): string {

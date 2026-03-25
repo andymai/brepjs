@@ -50,4 +50,11 @@ export interface KernelBooleanOps {
     op: string,
     tolerance: number
   ): KernelMeshResult;
+
+  /** Execute a chained boolean pipeline in a single WASM call (optional). */
+  booleanPipeline?(
+    base: KernelShape,
+    steps: ReadonlyArray<{ op: 'fuse' | 'cut' | 'intersect'; tool: KernelShape }>,
+    options?: { glueMode?: number | undefined; fuzzyValue?: number | undefined }
+  ): KernelShape | null;
 }
