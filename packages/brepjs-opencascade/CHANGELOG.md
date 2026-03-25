@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.1...brepjs-opencascade-v0.15.2) (2026-03-25)
+
+
+### Bug Fixes
+
+* **opencascade:** docker image with custom binding fixes ([#651](https://github.com/andymai/brepjs/issues/651)) ([6364728](https://github.com/andymai/brepjs/commit/6364728cc843636cb0d6262c9e4aa3de3e307d70))
+
 ## [0.15.1](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.0...brepjs-opencascade-v0.15.1) (2026-03-25)
 
 
