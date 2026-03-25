@@ -91,6 +91,10 @@ export function sweep(
 ): KernelShape {
   const { transitionMode } = options;
   const sweepBuilder = new oc.BRepOffsetAPI_MakePipeShell(spine);
+  // V8: skip internal history recording (no evolution tracking in this path)
+  if (typeof sweepBuilder.SetIsBuildHistory === 'function') {
+    sweepBuilder.SetIsBuildHistory(false);
+  }
   if (transitionMode !== undefined) {
     sweepBuilder.SetTransitionMode(transitionMode);
   }

@@ -141,6 +141,12 @@ export function sweepPipeShell(
 ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
   const builder = new oc.BRepOffsetAPI_MakePipeShell(spine);
 
+  // V8: disable internal history generation — sweepPipeShell is never called
+  // with evolution tracking, so skip the overhead of recording Modified/Generated.
+  if (typeof builder.SetIsBuildHistory === 'function') {
+    builder.SetIsBuildHistory(false);
+  }
+
   // Performance tuning
   if (options.tolerance !== undefined) {
     builder.SetTolerance(
