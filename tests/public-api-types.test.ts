@@ -168,6 +168,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'autoHeal',
   'bezier',
   'blueprintToDXF',
+  'booleanPipeline',
   'booleans',
   'boss',
   'box',

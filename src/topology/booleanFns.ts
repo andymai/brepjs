@@ -879,3 +879,87 @@ export function slice(
   }
   return ok(results);
 }
+
+// ---------------------------------------------------------------------------
+// Boolean pipeline — chained operations in a single WASM call
+// ---------------------------------------------------------------------------
+
+export type PipelineOp = 'fuse' | 'cut' | 'intersect';
+
+export interface BooleanPipelineStep {
+  readonly op: PipelineOp;
+  readonly tool: Shape3D;
+}
+
+/**
+ * Execute a chained boolean pipeline in a single WASM call.
+ *
+ * More efficient than sequential fuse/cut calls for long chains (e.g., 16-step
+ * spiral staircase). Skips UnifySameDomain on intermediate results — only
+ * simplifies the final shape.
+ *
+ * Falls back to sequential operations when the C++ pipeline class is not
+ * available in the WASM build.
+ */
+export function booleanPipeline(
+  base: Shape3D,
+  steps: readonly BooleanPipelineStep[],
+  options?: {
+    readonly optimisation?: 'none' | 'commonFace' | 'sameFace' | undefined;
+  }
+): Result<Shape3D> {
+  if (steps.length === 0) return ok(base);
+
+  const glueMode =
+    options?.optimisation === 'commonFace' ? 1 : options?.optimisation === 'sameFace' ? 2 : 0;
+
+  const k = getKernel();
+  const kernelSteps = steps.map((s) => ({
+    op: s.op,
+    tool: s.tool.wrapped,
+  }));
+
+  try {
+    const result = k.booleanPipeline?.(base.wrapped, kernelSteps, { glueMode });
+    if (result === undefined) {
+      // Kernel doesn't support pipeline — fall back to sequential
+      return booleanPipelineFallback(base, steps, options);
+    }
+    if (result === null) {
+      return err(kernelError('BOOLEAN_PIPELINE_FAILED', 'Boolean pipeline returned null shape'));
+    }
+
+    const shape = castShape(result);
+    if (!isShape3D(shape)) {
+      return err(typeCastError('BOOLEAN_PIPELINE_NOT_3D', 'Pipeline result is not a 3D shape'));
+    }
+    return ok(shape);
+  } catch (e) {
+    return err(kernelError('BOOLEAN_PIPELINE_FAILED', e instanceof Error ? e.message : String(e)));
+  }
+}
+
+function booleanPipelineFallback(
+  base: Shape3D,
+  steps: readonly BooleanPipelineStep[],
+  options?: {
+    readonly optimisation?: 'none' | 'commonFace' | 'sameFace' | undefined;
+  }
+): Result<Shape3D> {
+  let current: Shape3D = base;
+  const boolOpts: BooleanOptions & { unsafe: true } = {
+    ...(options?.optimisation ? { optimisation: options.optimisation } : {}),
+    unsafe: true,
+  };
+  for (const step of steps) {
+    const r =
+      step.op === 'fuse'
+        ? fuse(current, step.tool, boolOpts)
+        : step.op === 'cut'
+          ? cut(current, step.tool, boolOpts)
+          : intersect(current, step.tool, boolOpts);
+    if (isErr(r)) return r;
+    current = unwrap(r);
+  }
+  return ok(current);
+}

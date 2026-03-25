@@ -583,7 +583,14 @@ export {
 
 // ── Boolean operations (functional) ──
 
-export { fuseAll, cutAll, type BooleanOptions } from './topology/booleanFns.js';
+export {
+  fuseAll,
+  cutAll,
+  booleanPipeline,
+  type BooleanOptions,
+  type BooleanPipelineStep,
+  type PipelineOp,
+} from './topology/booleanFns.js';
 export { checkBoolean } from './topology/booleanDiagnosticFns.js';
 export type {
   CheckBooleanResult,
