@@ -1,5 +1,13 @@
 # Changelog
 
+## [14.6.3](https://github.com/andymai/brepjs/compare/brepjs-v14.6.2...brepjs-v14.6.3) (2026-03-25)
+
+
+### Bug Fixes
+
+* **ci:** force docker pull in publish workflow ([#656](https://github.com/andymai/brepjs/issues/656)) ([7232ff5](https://github.com/andymai/brepjs/commit/7232ff57a50b7cc468033e9845188de8a5b7a15a))
+* **opencascade:** trigger 0.15.3 rebuild ([#658](https://github.com/andymai/brepjs/issues/658)) ([58e8de9](https://github.com/andymai/brepjs/commit/58e8de9eb2253f75b49b0b076efb270f99f37cca))
+
 ## [14.6.2](https://github.com/andymai/brepjs/compare/brepjs-v14.6.1...brepjs-v14.6.2) (2026-03-25)
 
 
