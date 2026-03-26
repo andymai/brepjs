@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.15.5](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.4...brepjs-opencascade-v0.15.5) (2026-03-26)
+
+
+### Bug Fixes
+
+* **opencascade:** add GeomLib bindings and fix V8 signature changes ([#672](https://github.com/andymai/brepjs/issues/672))
+* **opencascade:** manual embind wrappers for all broken V8 bindings ([#675](https://github.com/andymai/brepjs/issues/675))
+
 ## [0.15.4](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.3...brepjs-opencascade-v0.15.4) (2026-03-26)
 
 
