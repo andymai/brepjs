@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.6.6](https://github.com/andymai/brepjs/compare/brepjs-v14.6.5...brepjs-v14.6.6) (2026-03-26)
+
+
+### Bug Fixes
+
+* add brepjs-opencascade ^0.15.0 to peer dependencies ([#670](https://github.com/andymai/brepjs/issues/670)) ([bf5a2c4](https://github.com/andymai/brepjs/commit/bf5a2c4d5bf4a32a4d4a61fce6775a55739ffa3a))
+
 ## [14.6.5](https://github.com/andymai/brepjs/compare/brepjs-v14.6.4...brepjs-v14.6.5) (2026-03-26)
 
 
