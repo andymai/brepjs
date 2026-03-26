@@ -452,8 +452,8 @@ export function addHolesInFace(
 
 /** Remove all inner wires (holes) from a face. Returns a new face with only the outer boundary. */
 export function removeHolesFromFace(oc: KernelInstance, face: KernelShape): KernelShape {
-  const outerWire = oc.BRepTools_OuterWire(face);
-  const surface = oc.BRep_Tool_Surface(face);
+  const outerWire = oc.BRepTools.OuterWire(face);
+  const surface = oc.BRep_Tool.Surface_2(face);
   try {
     const maker = new oc.BRepBuilderAPI_MakeFace_21(surface, outerWire, true);
     const result = maker.Face();
@@ -484,7 +484,7 @@ export function makeFaceOnSurface(
   try {
     if (surfaceOrFace.ShapeType !== undefined) {
       // It's a TopoDS_Shape (face) — extract surface
-      surface = oc.BRep_Tool_Surface(surfaceOrFace);
+      surface = oc.BRep_Tool.Surface_2(surfaceOrFace);
       surfaceOwned = true;
     }
   } catch {
@@ -936,7 +936,7 @@ export function projectEdges(
   for (const group of [result.visible, result.hidden]) {
     for (const s of [group.outline, group.smooth, group.sharp]) {
       if (!s.IsNull()) {
-        oc.BRepLib_BuildCurves3d(s);
+        oc.BRepLib.BuildCurves3d_2(s);
       }
     }
   }
@@ -996,8 +996,8 @@ export function createXCAFDocument(
   oc.XCAFDoc_ShapeTool.SetAutoNaming(false);
 
   const mainLabel = doc.Main();
-  const shapeTool = oc.XCAFDoc_DocumentTool_ShapeTool(mainLabel).get();
-  const colorTool = oc.XCAFDoc_DocumentTool_ColorTool(mainLabel).get();
+  const shapeTool = oc.XCAFDoc_DocumentTool.ShapeTool(mainLabel).get();
+  const colorTool = oc.XCAFDoc_DocumentTool.ColorTool(mainLabel).get();
 
   for (const part of shapes) {
     const shapeNode = shapeTool.NewShape();
@@ -1103,8 +1103,8 @@ export function exportSTEPConfigured(
     nameStr.delete();
 
     const mainLabel = doc.Main();
-    const shapeTool = oc.XCAFDoc_DocumentTool_ShapeTool(mainLabel).get();
-    const colorTool = oc.XCAFDoc_DocumentTool_ColorTool(mainLabel).get();
+    const shapeTool = oc.XCAFDoc_DocumentTool.ShapeTool(mainLabel).get();
+    const colorTool = oc.XCAFDoc_DocumentTool.ColorTool(mainLabel).get();
     oc.XCAFDoc_ShapeTool.SetAutoNaming(false);
 
     for (const part of shapes) {

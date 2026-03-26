@@ -70,18 +70,17 @@ mainBuild:
   - symbol: GCE2d_MakeArcOfEllipse
   - symbol: GCE2d_MakeCircle
   - symbol: GCE2d_MakeEllipse
-  # GeomLib removed from auto-binding — non-const complex ref params in methods
-  # like BuildCurve3d/SameRange kill the entire EMSCRIPTEN_BINDINGS block.
-  # To3d and GTransform are manually wrapped in additionalBindCode below.
+  - symbol: GeomLib
   - symbol: gp_Trsf2d
   - symbol: gp_GTrsf2d
-  - symbol: Bnd_Box2d
+  # Bnd_Box2d removed — forward decl conflict in PCH (BndLib_AddSurface.hxx).
+  # Constructor exposed via additionalBindCode below.
   - symbol: BndLib_Add2dCurve
   - symbol: Geom2dAPI_InterCurveCurve
   - symbol: Geom2dAPI_ProjectPointOnCurve
   - symbol: Geom2dAPI_PointsToBSpline
   - symbol: Geom2dAPI_ExtremaCurveCurve
-  - symbol: Bnd_Box
+  # Bnd_Box removed — same PCH forward decl conflict.
   - symbol: Bnd_OBB
   - symbol: BRepBndLib
   - symbol: GeomAbs_CurveType
@@ -110,8 +109,7 @@ mainBuild:
   - symbol: Handle_Geom_BezierCurve
   - symbol: Handle_Geom_BSplineCurve
   - symbol: Handle_Geom_BSplineSurface
-  # TopoDS removed — non-const overloads (TopoDS_Edge& Edge(TopoDS_Shape&)) kill
-  # the block. TopoDS_Cast custom wrapper handles all cast methods.
+  - symbol: TopoDS
   - symbol: TopoDS_Edge
   - symbol: TopoDS_Face
   - symbol: TopoDS_Wire
@@ -136,9 +134,9 @@ mainBuild:
   - symbol: Poly_PolygonOnTriangulation
   - symbol: Handle_Poly_PolygonOnTriangulation
   - symbol: BinTools
-  # BRep_Tool, BRepLib, BRepTools removed — non-const complex ref params in
-  # methods like Curve(TopLoc_Location&), OrientClosedSolid(TopoDS_Solid&),
-  # Read(TopoDS_Shape&) kill the blocks. Used methods manually wrapped below.
+  - symbol: BRep_Tool
+  - symbol: BRepLib
+  - symbol: BRepTools
   - symbol: BRepGProp
   - symbol: BRepGProp_Face
   - symbol: GProp_GProps
@@ -146,8 +144,7 @@ mainBuild:
   - symbol: GC_MakeArcOfEllipse
   - symbol: GC_Root
   - symbol: GCPnts_TangentialDeflection
-  # BRepMesh_IncrementalMesh removed — V8 changed constructor signature.
-  # BRepMesh_IncrementalMeshWrapper custom wrapper handles construction.
+  - symbol: BRepMesh_IncrementalMesh
   - symbol: BRepMesh_DiscretRoot
   - symbol: BRepAdaptor_Surface
   - symbol: BRepAdaptor_Curve
@@ -160,10 +157,9 @@ mainBuild:
   - symbol: BRepAdaptor_Curve2d
   - symbol: Geom2dConvert_BSplineCurveToBezierCurve
   - symbol: Geom2dConvert_ApproxCurve
-  # Geom2dConvert, GeomConvert removed — ConcatG1/ConcatC1 methods have
-  # NCollection_Array1<handle>& non-const refs. Sub-classes (ApproxCurve,
-  # BSplineCurveToBezierCurve) are separate and work fine.
+  - symbol: Geom2dConvert
   - symbol: Convert_ParameterisationType
+  - symbol: GeomConvert
   - symbol: StlAPI_Writer
   - symbol: STEPControl_Writer
   - symbol: STEPControl_StepModelType
@@ -253,7 +249,7 @@ mainBuild:
   - symbol: XCAFDoc_LengthUnit
   - symbol: Handle_TDocStd_Document
   - symbol: TCollection_ExtendedString
-  # XCAFDoc_DocumentTool removed — ShapeTool/ColorTool manually wrapped below.
+  - symbol: XCAFDoc_DocumentTool
   - symbol: XCAFDoc_ShapeTool
   - symbol: Handle_XCAFDoc_ShapeTool
   - symbol: XCAFDoc_ColorTool
@@ -262,8 +258,7 @@ mainBuild:
   - symbol: TDataStd_Name
   - symbol: Handle_TDataStd_Name
   - symbol: Quantity_ColorRGBA
-  # Quantity_Color removed — Values(double&) out-params kill the block.
-  # Quantity_ColorRGBA (separate class) handles construction.
+  - symbol: Quantity_Color
   - symbol: XCAFDoc_ColorType
   - symbol: XSControl_WorkSession
   - symbol: Handle_XSControl_WorkSession
@@ -323,85 +318,49 @@ mainBuild:
     gp_Pnt bsplineSurfacePole(const Geom_BSplineSurface& surf, int uIndex, int vIndex) {
       return surf.Pole(uIndex, vIndex);
     }
-    // Manual wrappers for OCCT static classes whose auto-generated bindings fail
-    // to compile. The binding generator produces std::function lambdas with
-    // non-const lvalue refs to complex types (gp_Ax2&, Handle(Geom_Curve)&, etc.)
-    // which embind rejects — one bad method kills the entire EMSCRIPTEN_BINDINGS block.
-    #include <GeomLib.hxx>
-    #include <BRepTools.hxx>
+    // BRep_Tool::Triangulation has TopLoc_Location& out-param (non-primitive) which the
+    // generic filter skips. Manual wrapper passes it through directly.
     #include <BRep_Tool.hxx>
-    #include <BRepLib.hxx>
-    #include <GeomConvert.hxx>
-    #include <XCAFDoc_DocumentTool.hxx>
     #include <Poly_Triangulation.hxx>
-
-    // GeomLib
-    opencascade::handle<Geom_Curve> GeomLib_To3d(const gp_Ax2& Position, const opencascade::handle<Geom2d_Curve>& Curve2d) {
-      return GeomLib::To3d(Position, Curve2d);
+    opencascade::handle<Poly_Triangulation> BRep_Tool_Triangulation(const TopoDS_Face& F, TopLoc_Location& L, int meshPurpose) {
+      return BRep_Tool::Triangulation(F, L, static_cast<Poly_MeshPurpose>(meshPurpose));
     }
-    opencascade::handle<Geom2d_Curve> GeomLib_GTransform(const opencascade::handle<Geom2d_Curve>& Curve, const gp_GTrsf2d& GTrsf) {
-      return GeomLib::GTransform(Curve, GTrsf);
-    }
-
-    // BRepTools
-    TopoDS_Wire BRepTools_OuterWire(const TopoDS_Face& F) {
-      return BRepTools::OuterWire(F);
-    }
-    emscripten::val BRepTools_UVBounds(const TopoDS_Face& F) {
-      double uMin, uMax, vMin, vMax;
-      BRepTools::UVBounds(F, uMin, uMax, vMin, vMax);
-      auto result = emscripten::val::object();
-      result.set("UMin", uMin);
-      result.set("UMax", uMax);
-      result.set("VMin", vMin);
-      result.set("VMax", vMax);
-      return result;
-    }
-
-    // BRep_Tool
-    gp_Pnt BRep_Tool_Pnt(const TopoDS_Vertex& V) {
-      return BRep_Tool::Pnt(V);
-    }
-    opencascade::handle<Geom_Surface> BRep_Tool_Surface(const TopoDS_Face& F) {
-      return BRep_Tool::Surface(F);
-    }
-    emscripten::val BRep_Tool_Triangulation(const TopoDS_Face& F, TopLoc_Location& L) {
-      auto tri = BRep_Tool::Triangulation(F, L);
-      return emscripten::val(tri);
-    }
-
-    // BRepLib
-    bool BRepLib_BuildCurves3d(const TopoDS_Shape& S) {
-      return BRepLib::BuildCurves3d(S);
-    }
-
-    // GeomConvert
-    opencascade::handle<Geom_BSplineSurface> GeomConvert_SurfaceToBSplineSurface(const opencascade::handle<Geom_Surface>& S) {
-      return GeomConvert::SurfaceToBSplineSurface(S);
-    }
-
-    // XCAFDoc_DocumentTool
-    opencascade::handle<XCAFDoc_ShapeTool> XCAFDoc_DocumentTool_ShapeTool(const TDF_Label& acces) {
-      return XCAFDoc_DocumentTool::ShapeTool(acces);
-    }
-    opencascade::handle<XCAFDoc_ColorTool> XCAFDoc_DocumentTool_ColorTool(const TDF_Label& acces) {
-      return XCAFDoc_DocumentTool::ColorTool(acces);
-    }
-
     EMSCRIPTEN_BINDINGS(brepjs_helpers) {
       emscripten::function("shapeHashCode", &shapeHashCode);
       emscripten::function("bsplineSurfacePole", &bsplineSurfacePole, emscripten::allow_raw_pointers());
-      emscripten::function("GeomLib_To3d", &GeomLib_To3d);
-      emscripten::function("GeomLib_GTransform", &GeomLib_GTransform);
-      emscripten::function("BRepTools_OuterWire", &BRepTools_OuterWire);
-      emscripten::function("BRepTools_UVBounds", &BRepTools_UVBounds);
-      emscripten::function("BRep_Tool_Pnt", &BRep_Tool_Pnt);
-      emscripten::function("BRep_Tool_Surface", &BRep_Tool_Surface);
       emscripten::function("BRep_Tool_Triangulation", &BRep_Tool_Triangulation, emscripten::allow_raw_pointers());
-      emscripten::function("BRepLib_BuildCurves3d", &BRepLib_BuildCurves3d);
-      emscripten::function("GeomConvert_SurfaceToBSplineSurface", &GeomConvert_SurfaceToBSplineSurface);
-      emscripten::function("XCAFDoc_DocumentTool_ShapeTool", &XCAFDoc_DocumentTool_ShapeTool);
-      emscripten::function("XCAFDoc_DocumentTool_ColorTool", &XCAFDoc_DocumentTool_ColorTool);
+    }
+    // Bnd_Box and Bnd_Box2d — auto-gen bindings fail due to forward decl conflict
+    // in PCH (BndLib_AddSurface.hxx declares 'class Bnd_Box;' before definition).
+    // Manual bindings for the methods brepjs uses.
+    #include <Bnd_Box.hxx>
+    #include <Bnd_Box2d.hxx>
+    EMSCRIPTEN_BINDINGS(brepjs_bnd_box) {
+      emscripten::class_<Bnd_Box>("Bnd_Box")
+        .constructor<>()
+        .function("IsVoid", &Bnd_Box::IsVoid)
+        .function("CornerMin", &Bnd_Box::CornerMin)
+        .function("CornerMax", &Bnd_Box::CornerMax)
+        .function("GetXMin", +[](const Bnd_Box& b) -> double { return b.CornerMin().X(); })
+        .function("GetYMin", +[](const Bnd_Box& b) -> double { return b.CornerMin().Y(); })
+        .function("GetZMin", +[](const Bnd_Box& b) -> double { return b.CornerMin().Z(); })
+        .function("GetXMax", +[](const Bnd_Box& b) -> double { return b.CornerMax().X(); })
+        .function("GetYMax", +[](const Bnd_Box& b) -> double { return b.CornerMax().Y(); })
+        .function("GetZMax", +[](const Bnd_Box& b) -> double { return b.CornerMax().Z(); })
+        ;
+      emscripten::class_<Bnd_Box2d>("Bnd_Box2d")
+        .constructor<>()
+        .function("IsVoid", &Bnd_Box2d::IsVoid)
+        .function("GetXMin", +[](const Bnd_Box2d& b) -> double { double x1,y1,x2,y2; b.Get(x1,y1,x2,y2); return x1; })
+        .function("GetYMin", +[](const Bnd_Box2d& b) -> double { double x1,y1,x2,y2; b.Get(x1,y1,x2,y2); return y1; })
+        .function("GetXMax", +[](const Bnd_Box2d& b) -> double { double x1,y1,x2,y2; b.Get(x1,y1,x2,y2); return x2; })
+        .function("GetYMax", +[](const Bnd_Box2d& b) -> double { double x1,y1,x2,y2; b.Get(x1,y1,x2,y2); return y2; })
+        .function("IsOut_1", emscripten::select_overload<Standard_Boolean(const gp_Pnt2d&) const>(&Bnd_Box2d::IsOut))
+        .function("IsOut_4", emscripten::select_overload<Standard_Boolean(const Bnd_Box2d&) const>(&Bnd_Box2d::IsOut))
+        .function("Add_1", emscripten::select_overload<void(const Bnd_Box2d&)>(&Bnd_Box2d::Add))
+        .function("Add_2", emscripten::select_overload<void(const gp_Pnt2d&)>(&Bnd_Box2d::Add))
+        .function("Update_1", emscripten::select_overload<void(const double, const double, const double, const double)>(&Bnd_Box2d::Update))
+        ;
     }
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>

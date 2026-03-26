@@ -768,6 +768,90 @@ export declare type XCAFDoc_ColorType = {
 
 export declare type XCAFDoc_ColorTypeValue = 'XCAFDoc_ColorGen' | 'XCAFDoc_ColorSurf' | 'XCAFDoc_ColorCurv';
 
+export declare class XCAFDoc_DocumentTool extends TDataStd_GenericEmpty {
+  constructor()
+  static GetID(): Standard_GUID;
+  /** Create (if not exist) DocumentTool attribute on 0.1 label if <IsAcces> is true, else on <L> label. This label will be returned by DocLabel(); If the attribute is already set it won't be reset on <L> even if <IsAcces> is false. ColorTool and ShapeTool attributes are also set by this method. */
+  static Set(L: TDF_Label, IsAcces: Standard_Boolean): any;
+  static IsXCAFDocument(Doc: any): Standard_Boolean;
+  /** Returns label where the DocumentTool attribute is or 0.1 if DocumentTool is not yet set. */
+  static DocLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 1. */
+  static ShapesLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 2. */
+  static ColorsLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 3. */
+  static LayersLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 4. */
+  static DGTsLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 5. */
+  static MaterialsLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 7. */
+  static ViewsLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 8. */
+  static ClippingPlanesLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 9. */
+  static NotesLabel(acces: TDF_Label): TDF_Label;
+  /** Returns sub-label of DocLabel() with tag 10. */
+  static VisMaterialLabel(theLabel: TDF_Label): TDF_Label;
+  /** Creates (if it does not exist) ShapeTool attribute on ShapesLabel(). */
+  static ShapeTool(acces: TDF_Label): any;
+  /** Checks for the ShapeTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckShapeTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) ColorTool attribute on ColorsLabel(). */
+  static ColorTool(acces: TDF_Label): any;
+  /** Checks for the ColorTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckColorTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) XCAFDoc_VisMaterialTool attribute on VisMaterialLabel(). Should not be confused with MaterialTool() defining physical/manufacturing materials. */
+  static VisMaterialTool(theLabel: TDF_Label): any;
+  /** Checks for the VisMaterialTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckVisMaterialTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) LayerTool attribute on LayersLabel(). */
+  static LayerTool(acces: TDF_Label): any;
+  /** Checks for the LayerTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckLayerTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) DimTolTool attribute on DGTsLabel(). */
+  static DimTolTool(acces: TDF_Label): any;
+  /** Checks for the DimTolTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckDimTolTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) DimTolTool attribute on DGTsLabel(). */
+  static MaterialTool(acces: TDF_Label): any;
+  /** Checks for the MaterialTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckMaterialTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) ViewTool attribute on ViewsLabel(). */
+  static ViewTool(acces: TDF_Label): any;
+  /** Checks for the ViewTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckViewTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) ClippingPlaneTool attribute on ClippingPlanesLabel(). */
+  static ClippingPlaneTool(acces: TDF_Label): any;
+  /** Checks for the ClippingPlaneTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckClippingPlaneTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Creates (if it does not exist) NotesTool attribute on NotesLabel(). */
+  static NotesTool(acces: TDF_Label): any;
+  /** Checks for the NotesTool attribute on the label's document Returns TRUE if Tool exists, ELSE if it has not been created */
+  static CheckNotesTool(theAcces: TDF_Label): Standard_Boolean;
+  /** Returns value of current internal unit for the document converted to base unit type. */
+  static GetLengthUnit_1(theDoc: any, theBaseUnit: UnitsMethods_LengthUnit): { result: Standard_Boolean; theResut: number };
+  /** Returns value of current internal unit for the document converted to base unit type. */
+  static GetLengthUnit_2(theDoc: any): { result: Standard_Boolean; theResut: number };
+  /** Sets value of current internal unit to the document in meter. */
+  static SetLengthUnit_1(theDoc: any, theUnitValue: Standard_Real): void;
+  /** Sets value of current internal unit to the document in meter. */
+  static SetLengthUnit_2(theDoc: any, theUnitValue: Standard_Real, theBaseUnit: UnitsMethods_LengthUnit): void;
+  /** to be called when reading this attribute from file */
+  Init(): void;
+  /** Returns the ID of the attribute. */
+  ID(): Standard_GUID;
+  /** To init this derived attribute after the attribute restore using the base restore-methods. */
+  AfterRetrieval(forceIt: Standard_Boolean): Standard_Boolean;
+  static get_type_name(): Standard_Character;
+  static get_type_descriptor(): Handle_Standard_Type;
+  DynamicType(): Handle_Standard_Type;
+  NewEmpty(): any;
+  delete(): void;
+  [Symbol.dispose](): void;
+}
+
 /** Used to define a Length Unit attribute containing a length unit info. */
 export declare class XCAFDoc_LengthUnit extends TDF_Attribute {
   constructor()
@@ -2020,214 +2104,6 @@ export declare class TopTools_ListOfShape extends NCollection_BaseList {
   export declare class TopTools_ListOfShape_5 extends TopTools_ListOfShape {
     constructor(theInitList: any, theAllocator: any);
   }
-
-export declare class Bnd_Box {
-  /** Sets this bounding box so that it covers the whole of 3D space. It is infinitely long in all directions. */
-  SetWhole(): void;
-  /** Sets this bounding box so that it is empty. All points are outside a void box. */
-  SetVoid(): void;
-  /** Sets this bounding box so that it bounds the point P. This involves first setting this bounding box to be void and then adding the point P. */
-  Set_1(P: gp_Pnt): void;
-  /** Sets this bounding box so that it bounds the point P. This involves first setting this bounding box to be void and then adding the point P. */
-  Set_2(P: gp_Pnt, D: gp_Dir): void;
-  /** Enlarges this bounding box, if required, so that it contains at least: interval [ aXmin,aXmax ] in the "X Direction", interval [ aYmin,aYmax ] in the "Y Direction", interval [ aZmin,aZmax ] in the "Z Direction"; */
-  Update_1(aXmin: Standard_Real, aYmin: Standard_Real, aZmin: Standard_Real, aXmax: Standard_Real, aYmax: Standard_Real, aZmax: Standard_Real): void;
-  /** Enlarges this bounding box, if required, so that it contains at least: interval [ aXmin,aXmax ] in the "X Direction", interval [ aYmin,aYmax ] in the "Y Direction", interval [ aZmin,aZmax ] in the "Z Direction"; */
-  Update_2(X: Standard_Real, Y: Standard_Real, Z: Standard_Real): void;
-  /** Set the gap of this bounding box to abs(Tol). */
-  SetGap(Tol: Standard_Real): void;
-  /** Enlarges the box with a tolerance value. (minvalues-std::abs(<tol>) and maxvalues+std::abs(<tol>)) This means that the minimum values of its X, Y and Z intervals of definition, when they are finite, are reduced by the absolute value of Tol, while the maximum values are increased by the same amount. */
-  Enlarge(Tol: Standard_Real): void;
-  /** Returns the Xmin value (IsOpenXmin() ? -Precision::Infinite() : Xmin - GetGap()). */
-  GetXMin(): Standard_Real;
-  /** Returns the Xmax value (IsOpenXmax() ? Precision::Infinite() : Xmax + GetGap()). */
-  GetXMax(): Standard_Real;
-  /** Returns the Ymin value (IsOpenYmin() ? -Precision::Infinite() : Ymin - GetGap()). */
-  GetYMin(): Standard_Real;
-  /** Returns the Ymax value (IsOpenYmax() ? Precision::Infinite() : Ymax + GetGap()). */
-  GetYMax(): Standard_Real;
-  /** Returns the Zmin value (IsOpenZmin() ? -Precision::Infinite() : Zmin - GetGap()). */
-  GetZMin(): Standard_Real;
-  /** Returns the Zmax value (IsOpenZmax() ? Precision::Infinite() : Zmax + GetGap()). */
-  GetZMax(): Standard_Real;
-  /** Returns the lower corner of this bounding box. The gap is included. If this bounding box is infinite (i.e. "open"), returned values may be equal to +/- Precision::Infinite(). Standard_ConstructionError exception will be thrown if the box is void. if IsVoid() */
-  CornerMin(): gp_Pnt;
-  /** Returns the upper corner of this bounding box. The gap is included. If this bounding box is infinite (i.e. "open"), returned values may be equal to +/- Precision::Infinite(). Standard_ConstructionError exception will be thrown if the box is void. if IsVoid() */
-  CornerMax(): gp_Pnt;
-  /** Returns the center of this bounding box. The gap is included. If this bounding box is infinite (i.e. "open"), returned values may be equal to +/- Precision::Infinite(). Returns std::nullopt if the box is void. */
-  Center(): any;
-  /** The Box will be infinitely long in the Xmin direction. */
-  OpenXmin(): void;
-  /** The Box will be infinitely long in the Xmax direction. */
-  OpenXmax(): void;
-  /** The Box will be infinitely long in the Ymin direction. */
-  OpenYmin(): void;
-  /** The Box will be infinitely long in the Ymax direction. */
-  OpenYmax(): void;
-  /** The Box will be infinitely long in the Zmin direction. */
-  OpenZmin(): void;
-  /** The Box will be infinitely long in the Zmax direction. */
-  OpenZmax(): void;
-  /** Returns true if this bounding box has at least one open direction. */
-  IsOpen(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Xmin direction. */
-  IsOpenXmin(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Xmax direction. */
-  IsOpenXmax(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Ymin direction. */
-  IsOpenYmin(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Ymax direction. */
-  IsOpenYmax(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Zmin direction. */
-  IsOpenZmin(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Zmax direction. */
-  IsOpenZmax(): Standard_Boolean;
-  /** Returns true if this bounding box is infinite in all 6 directions (WholeSpace flag). */
-  IsWhole(): Standard_Boolean;
-  /** Returns true if this bounding box is empty (Void flag). */
-  IsVoid(): Standard_Boolean;
-  /** true if xmax-xmin < tol. */
-  IsXThin(tol: Standard_Real): Standard_Boolean;
-  /** true if ymax-ymin < tol. */
-  IsYThin(tol: Standard_Real): Standard_Boolean;
-  /** true if zmax-zmin < tol. */
-  IsZThin(tol: Standard_Real): Standard_Boolean;
-  /** Returns true if IsXThin, IsYThin and IsZThin are all true, i.e. if the box is thin in all three dimensions. */
-  IsThin(tol: Standard_Real): Standard_Boolean;
-  /** Returns a bounding box which is the result of applying the transformation T to this bounding box. Warning Applying a geometric transformation (for example, a rotation) to a bounding box generally increases its dimensions. This is not optimal for algorithms which use it. */
-  Transformed(T: gp_Trsf): Bnd_Box;
-  /** Adds the box <Other> to <me>. */
-  Add_1(Other: Bnd_Box): void;
-  /** Adds the box <Other> to <me>. */
-  Add_2(P: gp_Pnt): void;
-  /** Adds the box <Other> to <me>. */
-  Add_3(P: gp_Pnt, D: gp_Dir): void;
-  /** Adds the box <Other> to <me>. */
-  Add_4(D: gp_Dir): void;
-  /** Returns True if the Pnt is out the box. */
-  IsOut_1(P: gp_Pnt): Standard_Boolean;
-  /** Returns True if the Pnt is out the box. */
-  IsOut_2(L: gp_Lin): Standard_Boolean;
-  /** Returns True if the Pnt is out the box. */
-  IsOut_3(P: gp_Pln): Standard_Boolean;
-  /** Returns True if the Pnt is out the box. */
-  IsOut_4(Other: Bnd_Box): Standard_Boolean;
-  /** Returns True if the Pnt is out the box. */
-  IsOut_5(Other: Bnd_Box, T: gp_Trsf): Standard_Boolean;
-  /** Returns True if the Pnt is out the box. */
-  IsOut_6(T1: gp_Trsf, Other: Bnd_Box, T2: gp_Trsf): Standard_Boolean;
-  /** Returns True if the Pnt is out the box. */
-  IsOut_7(P1: gp_Pnt, P2: gp_Pnt, D: gp_Dir): Standard_Boolean;
-  /** Returns True if the point is inside or on the boundary of this box. */
-  Contains(theP: gp_Pnt): Standard_Boolean;
-  /** Returns True if the other box intersects or is inside this box. */
-  Intersects(theOther: Bnd_Box): Standard_Boolean;
-  /** Computes the minimum distance between two boxes. */
-  Distance(Other: Bnd_Box): Standard_Real;
-  Dump(): void;
-  /** Computes the squared diagonal of me. */
-  SquareExtent(): Standard_Real;
-  /** Returns a finite part of an infinite bounding box (returns self if this is already finite box). This can be a Void box in case if its sides has been defined as infinite (Open) without adding any finite points. WARNING! This method relies on Open flags, the infinite points added using Add() method will be returned as is. */
-  FinitePart(): Bnd_Box;
-  /** Returns TRUE if this box has finite part. */
-  HasFinitePart(): Standard_Boolean;
-  /** Inits the content of me from the stream. */
-  InitFromJson(theSStream: Standard_SStream): { result: Standard_Boolean; theStreamPos: number };
-  delete(): void;
-  [Symbol.dispose](): void;
-}
-
-  export declare class Bnd_Box_1 extends Bnd_Box {
-    constructor();
-  }
-
-  export declare class Bnd_Box_2 extends Bnd_Box {
-    constructor(theMin: gp_Pnt, theMax: gp_Pnt);
-  }
-
-export declare class Bnd_Box2d {
-  /** Creates an empty 2D bounding box. The constructed box is qualified Void. Its gap is null. */
-  constructor()
-  /** Sets this bounding box so that it covers the whole 2D space, i.e. it is infinite in all directions. */
-  SetWhole(): void;
-  /** Sets this 2D bounding box so that it is empty. All points are outside a void box. */
-  SetVoid(): void;
-  /** Sets this 2D bounding box so that it bounds the point P. This involves first setting this bounding box to be void and then adding the point PThe rectangle bounds the point . */
-  Set_1(thePnt: gp_Pnt2d): void;
-  /** Sets this 2D bounding box so that it bounds the point P. This involves first setting this bounding box to be void and then adding the point PThe rectangle bounds the point . */
-  Set_2(thePnt: gp_Pnt2d, theDir: gp_Dir2d): void;
-  /** Enlarges this 2D bounding box, if required, so that it contains at least: interval [ aXmin,aXmax ] in the "X Direction", interval [ aYmin,aYmax ] in the "Y Direction" */
-  Update_1(aXmin: Standard_Real, aYmin: Standard_Real, aXmax: Standard_Real, aYmax: Standard_Real): void;
-  /** Enlarges this 2D bounding box, if required, so that it contains at least: interval [ aXmin,aXmax ] in the "X Direction", interval [ aYmin,aYmax ] in the "Y Direction" */
-  Update_2(X: Standard_Real, Y: Standard_Real): void;
-  /** Set the gap of this 2D bounding box to abs(Tol). */
-  SetGap(Tol: Standard_Real): void;
-  /** Enlarges the box with a tolerance value. This means that the minimum values of its X and Y intervals of definition, when they are finite, are reduced by the absolute value of Tol, while the maximum values are increased by the same amount. */
-  Enlarge(theTol: Standard_Real): void;
-  /** Returns the Xmin value (IsOpenXmin() ? -Precision::Infinite() : Xmin - GetGap()). */
-  GetXMin(): Standard_Real;
-  /** Returns the Xmax value (IsOpenXmax() ? Precision::Infinite() : Xmax + GetGap()). */
-  GetXMax(): Standard_Real;
-  /** Returns the Ymin value (IsOpenYmin() ? -Precision::Infinite() : Ymin - GetGap()). */
-  GetYMin(): Standard_Real;
-  /** Returns the Ymax value (IsOpenYmax() ? Precision::Infinite() : Ymax + GetGap()). */
-  GetYMax(): Standard_Real;
-  /** Returns the center of this 2D bounding box. The gap is included. If this bounding box is infinite (i.e. "open"), returned values may be equal to +/- Precision::Infinite(). Returns std::nullopt if the box is void. */
-  Center(): any;
-  /** The Box will be infinitely long in the Xmin direction. */
-  OpenXmin(): void;
-  /** The Box will be infinitely long in the Xmax direction. */
-  OpenXmax(): void;
-  /** The Box will be infinitely long in the Ymin direction. */
-  OpenYmin(): void;
-  /** The Box will be infinitely long in the Ymax direction. */
-  OpenYmax(): void;
-  /** Returns true if this bounding box is open in the Xmin direction. */
-  IsOpenXmin(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Xmax direction. */
-  IsOpenXmax(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Ymin direction. */
-  IsOpenYmin(): Standard_Boolean;
-  /** Returns true if this bounding box is open in the Ymax direction. */
-  IsOpenYmax(): Standard_Boolean;
-  /** Returns true if this bounding box is infinite in all 4 directions (Whole Space flag). */
-  IsWhole(): Standard_Boolean;
-  /** Returns true if this 2D bounding box is empty (Void flag). */
-  IsVoid(): Standard_Boolean;
-  /** Returns a bounding box which is the result of applying the transformation T to this bounding box. Warning Applying a geometric transformation (for example, a rotation) to a bounding box generally increases its dimensions. This is not optimal for algorithms which use it. */
-  Transformed(T: gp_Trsf2d): Bnd_Box2d;
-  /** Adds the 2d box <Other> to <me>. */
-  Add_1(Other: Bnd_Box2d): void;
-  /** Adds the 2d box <Other> to <me>. */
-  Add_2(thePnt: gp_Pnt2d): void;
-  /** Adds the 2d box <Other> to <me>. */
-  Add_3(thePnt: gp_Pnt2d, theDir: gp_Dir2d): void;
-  /** Adds the 2d box <Other> to <me>. */
-  Add_4(D: gp_Dir2d): void;
-  /** Returns True if the 2d pnt. */
-  IsOut_1(P: gp_Pnt2d): Standard_Boolean;
-  /** Returns True if the 2d pnt. */
-  IsOut_2(theL: gp_Lin2d): Standard_Boolean;
-  /** Returns True if the 2d pnt. */
-  IsOut_3(theP0: gp_Pnt2d, theP1: gp_Pnt2d): Standard_Boolean;
-  /** Returns True if the 2d pnt. */
-  IsOut_4(Other: Bnd_Box2d): Standard_Boolean;
-  /** Returns True if the 2d point is inside or on the boundary of this box. */
-  Contains(theP: gp_Pnt2d): Standard_Boolean;
-  /** Returns True if the other 2d box intersects or is inside this box. */
-  Intersects(theOther: Bnd_Box2d): Standard_Boolean;
-  /** Computes the minimum distance between two 2D boxes. */
-  Distance(theOther: Bnd_Box2d): Standard_Real;
-  /** Returns True if the 2d pnt. */
-  IsOut_5(theOther: Bnd_Box2d, theTrsf: gp_Trsf2d): Standard_Boolean;
-  /** Returns True if the 2d pnt. */
-  IsOut_6(T1: gp_Trsf2d, Other: Bnd_Box2d, T2: gp_Trsf2d): Standard_Boolean;
-  Dump(): void;
-  /** Computes the squared diagonal of me. */
-  SquareExtent(): Standard_Real;
-  delete(): void;
-  [Symbol.dispose](): void;
-}
 
 export declare class Bnd_OBB {
   /** Creates new OBB covering every point in theListOfPoints. Tolerance of every such point is set by *theListOfTolerances array. If this array is not void (not null-pointer) then the resulted Bnd_OBB will be enlarged using tolerances of points lying on the box surface. <theIsOptimal> flag defines the mode in which the OBB will be built. Constructing Optimal box takes more time, but the resulting box is usually more tight. In case of construction of Optimal OBB more possible axes are checked. */
@@ -4681,6 +4557,121 @@ export declare class Precision {
   delete(): void;
   [Symbol.dispose](): void;
 }
+
+export declare class Quantity_Color {
+  /** Returns the name of the nearest color from the Quantity_NameOfColor enumeration. */
+  Name_1(): Quantity_NameOfColor;
+  /** Updates the color from specified named color. */
+  SetValues_1(theName: Quantity_NameOfColor): void;
+  /** Return the color as vector of 3 float elements. */
+  Rgb(): any;
+  /** Returns in theC1, theC2 and theC3 the components of this color according to the color system definition theType. */
+  Values(theType: Quantity_TypeOfColor): { theC1: number; theC2: number; theC3: number };
+  /** Updates the color from specified named color. */
+  SetValues_2(theC1: Standard_Real, theC2: Standard_Real, theC3: Standard_Real, theType: Quantity_TypeOfColor): void;
+  /** Returns the Red component (quantity of red) of the color within range [0.0; 1.0]. */
+  Red(): Standard_Real;
+  /** Returns the Green component (quantity of green) of the color within range [0.0; 1.0]. */
+  Green(): Standard_Real;
+  /** Returns the Blue component (quantity of blue) of the color within range [0.0; 1.0]. */
+  Blue(): Standard_Real;
+  /** Returns the Hue component (hue angle) of the color in degrees within range [0.0; 360.0], 0.0 being Red. -1.0 is a special value reserved for grayscale color (S should be 0.0) */
+  Hue(): Standard_Real;
+  /** Returns the Light component (value of the lightness) of the color within range [0.0; 1.0]. */
+  Light(): Standard_Real;
+  /** Increases or decreases the intensity (variation of the lightness). The delta is a percentage. Any value greater than zero will increase the intensity. The variation is expressed as a percentage of the current value. */
+  ChangeIntensity(theDelta: Standard_Real): void;
+  /** Returns the Saturation component (value of the saturation) of the color within range [0.0; 1.0]. */
+  Saturation(): Standard_Real;
+  /** Increases or decreases the contrast (variation of the saturation). The delta is a percentage. Any value greater than zero will increase the contrast. The variation is expressed as a percentage of the current value. */
+  ChangeContrast(theDelta: Standard_Real): void;
+  /** Returns TRUE if the distance between two colors is greater than Epsilon(). */
+  IsDifferent(theOther: Quantity_Color): Standard_Boolean;
+  /** Returns TRUE if the distance between two colors is no greater than Epsilon(). */
+  IsEqual(theOther: Quantity_Color): Standard_Boolean;
+  /** Returns the distance between two colors. It's a value between 0 and the square root of 3 (the black/white distance). */
+  Distance(theColor: Quantity_Color): Standard_Real;
+  /** Returns the square of distance between two colors. */
+  SquareDistance(theColor: Quantity_Color): Standard_Real;
+  /** Returns the percentage change of contrast and intensity between this and another color. <DC> and <DI> are percentages, either positive or negative. The calculation is with respect to this color. If <DC> is positive then <me> is more contrasty. If <DI> is positive then <me> is more intense. */
+  Delta(theColor: Quantity_Color): { DC: number; DI: number };
+  /** Returns the value of the perceptual difference between this color and theOther, computed using the CIEDE2000 formula. The difference is in range [0, 100.], with 1 approximately corresponding to the minimal perceivable difference (usually difference 5 or greater is needed for the difference to be recognizable in practice). */
+  DeltaE2000(theOther: Quantity_Color): Standard_Real;
+  /** Returns the name of the nearest color from the Quantity_NameOfColor enumeration. */
+  static Name_2(theR: Standard_Real, theG: Standard_Real, theB: Standard_Real): Quantity_NameOfColor;
+  /** Returns the name of the color identified by the given Quantity_NameOfColor enumeration value. */
+  static StringName(theColor: Quantity_NameOfColor): Standard_Character;
+  /** Finds color from predefined names. For example, the name of the color which corresponds to "BLACK" is Quantity_NOC_BLACK. Returns FALSE if name is unknown. */
+  static ColorFromName_2(theColorNameString: Standard_Character, theColor: Quantity_Color): Standard_Boolean;
+  /** Parses the string as a hex color (like "#FF0" for short sRGB color, or "#FFFF00" for sRGB color) theHexColorString the string to be parsed theColor a color that is a result of parsing true if parsing was successful, or false otherwise */
+  static ColorFromHex(theHexColorString: Standard_Character, theColor: Quantity_Color): Standard_Boolean;
+  /** Returns hex sRGB string in format "#FFAAFF". */
+  static ColorToHex(theColor: Quantity_Color, theToPrefixHash: Standard_Boolean): XCAFDoc_PartId;
+  /** Converts sRGB components into HLS ones. */
+  static Convert_sRGB_To_HLS(theRgb: NCollection_Vec3<float>): any;
+  /** Converts HLS components into RGB ones. */
+  static Convert_HLS_To_sRGB(theHls: NCollection_Vec3<float>): any;
+  /** Converts Linear RGB components into HLS ones. */
+  static Convert_LinearRGB_To_HLS(theRgb: NCollection_Vec3<float>): any;
+  /** Converts HLS components into linear RGB ones. */
+  static Convert_HLS_To_LinearRGB(theHls: NCollection_Vec3<float>): any;
+  /** Converts linear RGB components into CIE Lab ones. */
+  static Convert_LinearRGB_To_Lab(theRgb: NCollection_Vec3<float>): any;
+  /** Converts CIE Lab components into CIE Lch ones. */
+  static Convert_Lab_To_Lch(theLab: NCollection_Vec3<float>): any;
+  /** Converts CIE Lab components into linear RGB ones. Note that the resulting values may be out of the valid range for RGB. */
+  static Convert_Lab_To_LinearRGB(theLab: NCollection_Vec3<float>): any;
+  /** Converts CIE Lch components into CIE Lab ones. */
+  static Convert_Lch_To_Lab(theLch: NCollection_Vec3<float>): any;
+  /** Convert the color value to ARGB integer value, with alpha equals to 0. So the output is formatted as 0x00RRGGBB. Note that this unpacking does NOT involve non-linear sRGB -> linear RGB conversion, as would be usually expected for RGB color packed into 4 bytes. theColor color to convert theARGB result color encoded as integer */
+  static Color2argb(theColor: Quantity_Color): { theARGB: number };
+  /** Convert integer ARGB value to Color. Alpha bits are ignored. Note that this packing does NOT involve linear -> non-linear sRGB conversion, as would be usually expected to preserve higher (for human eye) color precision in 4 bytes. */
+  static Argb2color(theARGB: Standard_Integer, theColor: Quantity_Color): void;
+  /** Convert linear RGB component into sRGB using OpenGL specs formula (double precision), also known as gamma correction. */
+  static Convert_LinearRGB_To_sRGB_1(theLinearValue: Standard_Real): Standard_Real;
+  /** Convert linear RGB component into sRGB using OpenGL specs formula (double precision), also known as gamma correction. */
+  static Convert_LinearRGB_To_sRGB_2(theLinearValue: Standard_ShortReal): Standard_ShortReal;
+  /** Convert sRGB component into linear RGB using OpenGL specs formula (double precision), also known as gamma correction. */
+  static Convert_sRGB_To_LinearRGB_1(thesRGBValue: Standard_Real): Standard_Real;
+  /** Convert sRGB component into linear RGB using OpenGL specs formula (double precision), also known as gamma correction. */
+  static Convert_sRGB_To_LinearRGB_2(thesRGBValue: Standard_ShortReal): Standard_ShortReal;
+  /** Convert linear RGB component into sRGB using approximated uniform gamma coefficient 2.2. */
+  static Convert_LinearRGB_To_sRGB_approx22_1(theLinearValue: Standard_ShortReal): Standard_ShortReal;
+  /** Convert sRGB component into linear RGB using approximated uniform gamma coefficient 2.2. */
+  static Convert_sRGB_To_LinearRGB_approx22_1(thesRGBValue: Standard_ShortReal): Standard_ShortReal;
+  /** Convert linear RGB component into sRGB using approximated uniform gamma coefficient 2.2. */
+  static Convert_LinearRGB_To_sRGB_approx22_2(theRGB: NCollection_Vec3<float>): any;
+  /** Convert sRGB component into linear RGB using approximated uniform gamma coefficient 2.2. */
+  static Convert_sRGB_To_LinearRGB_approx22_2(theRGB: NCollection_Vec3<float>): any;
+  /** Converts HLS components into sRGB ones. */
+  static HlsRgb(theH: Standard_Real, theL: Standard_Real, theS: Standard_Real): { theR: number; theG: number; theB: number };
+  /** Converts sRGB components into HLS ones. */
+  static RgbHls(theR: Standard_Real, theG: Standard_Real, theB: Standard_Real): { theH: number; theL: number; theS: number };
+  /** Returns the value used to compare two colors for equality; 0.0001 by default. */
+  static Epsilon(): Standard_Real;
+  /** Set the value used to compare two colors for equality. */
+  static SetEpsilon(theEpsilon: Standard_Real): void;
+  /** Inits the content of me from the stream. */
+  InitFromJson(theSStream: Standard_SStream): { result: Standard_Boolean; theStreamPos: number };
+  delete(): void;
+  [Symbol.dispose](): void;
+}
+
+  export declare class Quantity_Color_1 extends Quantity_Color {
+    constructor();
+  }
+
+  export declare class Quantity_Color_2 extends Quantity_Color {
+    constructor(theName: Quantity_NameOfColor);
+  }
+
+  export declare class Quantity_Color_3 extends Quantity_Color {
+    constructor(theC1: Standard_Real, theC2: Standard_Real, theC3: Standard_Real, theType: Quantity_TypeOfColor);
+  }
+
+  export declare class Quantity_Color_4 extends Quantity_Color {
+    constructor(theRgb: NCollection_Vec3<float>);
+  }
 
 /** The pair of Quantity_Color and Alpha component (1.0 opaque, 0.0 transparent). */
 export declare class Quantity_ColorRGBA {
@@ -7991,6 +7982,188 @@ export declare class BRepGProp_Face {
     constructor(F: TopoDS_Face, IsUseSpan: Standard_Boolean);
   }
 
+export declare class BRepLib {
+  constructor();
+  /** Computes the max distance between edge and its 2d representation on the face. Sets the default precision. The current Precision is returned. */
+  static Precision_1(P: Standard_Real): void;
+  /** Computes the max distance between edge and its 2d representation on the face. Sets the default precision. The current Precision is returned. */
+  static Precision_2(): Standard_Real;
+  /** Sets the current plane to P. */
+  static Plane_1(P: any): void;
+  /** Sets the current plane to P. */
+  static Plane_2(): any;
+  /** checks if the Edge is same range IGNORING the same range flag of the edge Confusion argument is to compare real numbers idenpendently of any model space tolerance */
+  static CheckSameRange(E: TopoDS_Edge, Confusion: Standard_Real): Standard_Boolean;
+  /** will make all the curve representation have the same range domain for the parameters. This will IGNORE the same range flag value to proceed. If there is a 3D curve there it will the range of that curve. If not the first curve representation encountered in the list will give its range to the all the other curves. */
+  static SameRange(E: TopoDS_Edge, Tolerance: Standard_Real): void;
+  /** Computes the 3d curve for the edge <E> if it does not exist. Returns True if the curve was computed or existed. Returns False if there is no planar pcurve or the computation failed. <MaxSegment> >= 30 in approximation */
+  static BuildCurve3d(E: TopoDS_Edge, Tolerance: Standard_Real, Continuity: GeomAbs_Shape, MaxDegree: Standard_Integer, MaxSegment: Standard_Integer): Standard_Boolean;
+  /** Computes the 3d curves for all the edges of return False if one of the computation failed. <MaxSegment> >= 30 in approximation */
+  static BuildCurves3d_1(S: TopoDS_Shape, Tolerance: Standard_Real, Continuity: GeomAbs_Shape, MaxDegree: Standard_Integer, MaxSegment: Standard_Integer): Standard_Boolean;
+  /** Computes the 3d curves for all the edges of return False if one of the computation failed. <MaxSegment> >= 30 in approximation */
+  static BuildCurves3d_2(S: TopoDS_Shape): Standard_Boolean;
+  /** Builds pcurve of edge on face if the surface is plane, and updates the edge. */
+  static BuildPCurveForEdgeOnPlane_1(theE: TopoDS_Edge, theF: TopoDS_Face): void;
+  /** Builds pcurve of edge on face if the surface is plane, and updates the edge. */
+  static BuildPCurveForEdgeOnPlane_2(theE: TopoDS_Edge, theF: TopoDS_Face, aC2D: any): { bToUpdate: boolean };
+  /** Checks if the edge has a Tolerance smaller than MaxToleranceToCheck if so it will compute the radius of the cylindrical pipe surface that MinToleranceRequest is the minimum tolerance before it is useful to start testing. Usually it should be around 10e-5 contains all the curve representation of the edge returns True if the Edge tolerance had to be updated */
+  static UpdateEdgeTol(E: TopoDS_Edge, MinToleranceRequest: Standard_Real, MaxToleranceToCheck: Standard_Real): Standard_Boolean;
+  /** Checks all the edges of the shape whose Tolerance is smaller than MaxToleranceToCheck Returns True if at least one edge was updated MinToleranceRequest is the minimum tolerance before it is useful to start testing. Usually it should be around 10e-5 Warning: The method is very slow as it checks all. Use only in interfaces or processing assimilate batch */
+  static UpdateEdgeTolerance(S: TopoDS_Shape, MinToleranceRequest: Standard_Real, MaxToleranceToCheck: Standard_Real): Standard_Boolean;
+  /** Computes new 2d curve(s) for the edge <theEdge> to have the same parameter as the 3d curve. The algorithm is not done if the flag SameParameter was True on the Edge. */
+  static SameParameter_1(theEdge: TopoDS_Edge, Tolerance: Standard_Real): void;
+  /** Computes new 2d curve(s) for the edge <theEdge> to have the same parameter as the 3d curve. The algorithm is not done if the flag SameParameter was True on the Edge. */
+  static SameParameter_2(theEdge: TopoDS_Edge, theTolerance: Standard_Real, IsUseOldEdge: Standard_Boolean): { result: TopoDS_Edge; theNewTol: number };
+  /** Computes new 2d curve(s) for the edge <theEdge> to have the same parameter as the 3d curve. The algorithm is not done if the flag SameParameter was True on the Edge. */
+  static SameParameter_3(S: TopoDS_Shape, Tolerance: Standard_Real, forced: Standard_Boolean): void;
+  /** Computes new 2d curve(s) for the edge <theEdge> to have the same parameter as the 3d curve. The algorithm is not done if the flag SameParameter was True on the Edge. */
+  static SameParameter_4(S: TopoDS_Shape, theReshaper: BRepTools_ReShape, Tolerance: Standard_Real, forced: Standard_Boolean): void;
+  /** Replaces tolerance of FACE EDGE VERTEX by the tolerance Max of their connected handling shapes. It is not necessary to use this call after SameParameter. (called in) */
+  static UpdateTolerances_1(S: TopoDS_Shape, verifyFaceTolerance: Standard_Boolean): void;
+  /** Replaces tolerance of FACE EDGE VERTEX by the tolerance Max of their connected handling shapes. It is not necessary to use this call after SameParameter. (called in) */
+  static UpdateTolerances_2(S: TopoDS_Shape, theReshaper: BRepTools_ReShape, verifyFaceTolerance: Standard_Boolean): void;
+  /** Checks tolerances of edges (including inner points) and vertices of a shape and updates them to satisfy "SameParameter" condition */
+  static UpdateInnerTolerances(S: TopoDS_Shape): void;
+  /** Orients the solid forward and the shell with the orientation to have matter in the solid. Returns False if the solid is unOrientable (open or incoherent) */
+  static OrientClosedSolid(solid: TopoDS_Solid): Standard_Boolean;
+  /** Returns the order of continuity between two faces connected by an edge */
+  static ContinuityOfFaces(theEdge: TopoDS_Edge, theFace1: TopoDS_Face, theFace2: TopoDS_Face, theAngleTol: Standard_Real): GeomAbs_Shape;
+  /** Encodes the Regularity of edges on a Shape. Warning: <TolAng> is an angular tolerance, expressed in Rad. Warning: If the edges's regularity are coded before, nothing is done. */
+  static EncodeRegularity_1(S: TopoDS_Shape, TolAng: Standard_Real): void;
+  /** Encodes the Regularity of edges on a Shape. Warning: <TolAng> is an angular tolerance, expressed in Rad. Warning: If the edges's regularity are coded before, nothing is done. */
+  static EncodeRegularity_2(S: TopoDS_Shape, LE: TopTools_ListOfShape, TolAng: Standard_Real): void;
+  /** Encodes the Regularity of edges on a Shape. Warning: <TolAng> is an angular tolerance, expressed in Rad. Warning: If the edges's regularity are coded before, nothing is done. */
+  static EncodeRegularity_3(E: TopoDS_Edge, F1: TopoDS_Face, F2: TopoDS_Face, TolAng: Standard_Real): void;
+  /** Sorts in LF the Faces of S on the complexity of their surfaces (Plane,Cylinder,Cone,Sphere,Torus,other) */
+  static SortFaces(S: TopoDS_Shape, LF: TopTools_ListOfShape): void;
+  /** Sorts in LF the Faces of S on the reverse complexity of their surfaces (other,Torus,Sphere,Cone,Cylinder,Plane) */
+  static ReverseSortFaces(S: TopoDS_Shape, LF: TopTools_ListOfShape): void;
+  /** Corrects the normals in Poly_Triangulation of faces, in such way that normals at nodes lying along smooth edges have the same value on both adjacent triangulations. Returns TRUE if any correction is done. */
+  static EnsureNormalConsistency(S: TopoDS_Shape, theAngTol: Standard_Real, ForceComputeNormals: Standard_Boolean): Standard_Boolean;
+  /** Updates value of deflection in Poly_Triangulation of faces by the maximum deviation measured on existing triangulation. */
+  static UpdateDeflection(S: TopoDS_Shape): void;
+  /** Calculates the bounding sphere around the set of vertexes from the theLV list. Returns the center (theNewCenter) and the radius (theNewTol) of this sphere. This can be used to construct the new vertex which covers the given set of other vertices. */
+  static BoundingVertex(theLV: TopTools_ListOfShape, theNewCenter: gp_Pnt): { theNewTol: number };
+  /** For an edge defined by 3d curve and tolerance and vertices defined by points, parameters on curve and tolerances, finds a range of curve between vertices not covered by vertices tolerances. Returns false if there is no such range. Otherwise, sets theFirst and theLast as its bounds. */
+  static FindValidRange_1(theCurve: Adaptor3d_Curve, theTolE: Standard_Real, theParV1: Standard_Real, thePntV1: gp_Pnt, theTolV1: Standard_Real, theParV2: Standard_Real, thePntV2: gp_Pnt, theTolV2: Standard_Real): { result: Standard_Boolean; theFirst: number; theLast: number };
+  /** For an edge defined by 3d curve and tolerance and vertices defined by points, parameters on curve and tolerances, finds a range of curve between vertices not covered by vertices tolerances. Returns false if there is no such range. Otherwise, sets theFirst and theLast as its bounds. */
+  static FindValidRange_2(theEdge: TopoDS_Edge): { result: Standard_Boolean; theFirst: number; theLast: number };
+  /** Enlarges the face on the given value. theF The face to extend theExtVal The extension value theExtUMin Defines whether to extend the face in UMin direction theExtUMax Defines whether to extend the face in UMax direction theExtVMin Defines whether to extend the face in VMin direction theExtVMax Defines whether to extend the face in VMax direction theFExtended The extended face */
+  static ExtendFace(theF: TopoDS_Face, theExtVal: Standard_Real, theExtUMin: Standard_Boolean, theExtUMax: Standard_Boolean, theExtVMin: Standard_Boolean, theExtVMax: Standard_Boolean, theFExtended: TopoDS_Face): void;
+  delete(): void;
+  [Symbol.dispose](): void;
+}
+
+export declare class BRep_Tool {
+  constructor();
+  /** If S is Shell, returns True if it has no free boundaries (edges). If S is Wire, returns True if it has no free ends (vertices). (Internal and External sub-shepes are ignored in these checks) If S is Edge, returns True if its vertices are the same. For other shape types returns S.Closed(). */
+  static IsClosed_1(S: TopoDS_Shape): Standard_Boolean;
+  /** Returns the geometric surface of the face. Returns in <L> the location for the surface. */
+  static Surface_1(F: TopoDS_Face, L: TopLoc_Location): any;
+  /** Returns the geometric surface of the face. Returns in <L> the location for the surface. */
+  static Surface_2(F: TopoDS_Face): any;
+  /** Returns the triangulation of the face according to the mesh purpose. theFace the input face to find triangulation. theLocation the face location. theMeshPurpose a mesh purpose to find appropriate triangulation (NONE by default). an active triangulation in case of NONE purpose, the first triangulation appropriate for the input purpose, just the first triangulation if none matching other criteria and input purpose is AnyFallback or null handle if there is no any suitable triangulation. */
+  static Triangulation(theFace: TopoDS_Face, theLocation: TopLoc_Location, theMeshPurpose: Poly_MeshPurpose): any;
+  /** Returns all triangulations of the face. theFace the input face. theLocation the face location. list of all available face triangulations. */
+  static Triangulations(theFace: TopoDS_Face, theLocation: TopLoc_Location): any;
+  /** Returns the tolerance of the face. */
+  static Tolerance_1(F: TopoDS_Face): Standard_Real;
+  /** Returns the NaturalRestriction flag of the face. */
+  static NaturalRestriction(F: TopoDS_Face): Standard_Boolean;
+  /** Returns True if <F> has a surface, false otherwise. */
+  static IsGeometric_1(F: TopoDS_Face): Standard_Boolean;
+  /** Returns True if <F> has a surface, false otherwise. */
+  static IsGeometric_2(E: TopoDS_Edge): Standard_Boolean;
+  /** Returns the 3D curve of the edge. May be a Null handle. Returns in <L> the location for the curve. In <First> and <Last> the parameter range. */
+  static Curve_1(E: TopoDS_Edge, L: TopLoc_Location): { result: any; First: number; Last: number };
+  /** Returns the 3D curve of the edge. May be a Null handle. Returns in <L> the location for the curve. In <First> and <Last> the parameter range. */
+  static Curve_2(E: TopoDS_Edge): { result: any; First: number; Last: number };
+  /** Returns the 3D polygon of the edge. May be a Null handle. Returns in <L> the location for the polygon. */
+  static Polygon3D(E: TopoDS_Edge, L: TopLoc_Location): any;
+  /** Returns the curve associated to the edge in the parametric space of the face. Returns a NULL handle if this curve does not exist. Returns in <First> and <Last> the parameter range. If the surface is a plane the curve can be not stored but created a new each time. The flag pointed by <theIsStored> serves to indicate storage status. It is valued if the pointer is non-null. */
+  static CurveOnSurface_1(E: TopoDS_Edge, F: TopoDS_Face, theIsStored: Standard_Boolean): { result: any; First: number; Last: number };
+  /** Returns the curve associated to the edge in the parametric space of the face. Returns a NULL handle if this curve does not exist. Returns in <First> and <Last> the parameter range. If the surface is a plane the curve can be not stored but created a new each time. The flag pointed by <theIsStored> serves to indicate storage status. It is valued if the pointer is non-null. */
+  static CurveOnSurface_2(E: TopoDS_Edge, S: any, L: TopLoc_Location, theIsStored: Standard_Boolean): { result: any; First: number; Last: number };
+  /** For the planar surface builds the 2d curve for the edge by projection of the edge on plane. Returns a NULL handle if the surface is not planar or the projection failed. */
+  static CurveOnPlane(E: TopoDS_Edge, S: any, L: TopLoc_Location): { result: any; First: number; Last: number };
+  /** Returns the curve associated to the edge in the parametric space of the face. Returns a NULL handle if this curve does not exist. Returns in <First> and <Last> the parameter range. If the surface is a plane the curve can be not stored but created a new each time. The flag pointed by <theIsStored> serves to indicate storage status. It is valued if the pointer is non-null. */
+  static CurveOnSurface_3(E: TopoDS_Edge, C: any, S: any, L: TopLoc_Location): { First: number; Last: number };
+  /** Returns the curve associated to the edge in the parametric space of the face. Returns a NULL handle if this curve does not exist. Returns in <First> and <Last> the parameter range. If the surface is a plane the curve can be not stored but created a new each time. The flag pointed by <theIsStored> serves to indicate storage status. It is valued if the pointer is non-null. */
+  static CurveOnSurface_4(E: TopoDS_Edge, C: any, S: any, L: TopLoc_Location, Index: Standard_Integer): { First: number; Last: number };
+  /** Returns the polygon associated to the edge in the parametric space of the face. Returns a NULL handle if this polygon does not exist. */
+  static PolygonOnSurface_1(E: TopoDS_Edge, F: TopoDS_Face): any;
+  /** Returns the polygon associated to the edge in the parametric space of the face. Returns a NULL handle if this polygon does not exist. */
+  static PolygonOnSurface_2(E: TopoDS_Edge, S: any, L: TopLoc_Location): any;
+  /** Returns the polygon associated to the edge in the parametric space of the face. Returns a NULL handle if this polygon does not exist. */
+  static PolygonOnSurface_3(E: TopoDS_Edge, C: any, S: any, L: TopLoc_Location): void;
+  /** Returns the polygon associated to the edge in the parametric space of the face. Returns a NULL handle if this polygon does not exist. */
+  static PolygonOnSurface_4(E: TopoDS_Edge, C: any, S: any, L: TopLoc_Location, Index: Standard_Integer): void;
+  /** Returns the polygon associated to the edge in the parametric space of the face. Returns a NULL handle if this polygon does not exist. */
+  static PolygonOnTriangulation_1(E: TopoDS_Edge, T: any, L: TopLoc_Location): any;
+  /** Returns the polygon associated to the edge in the parametric space of the face. Returns a NULL handle if this polygon does not exist. */
+  static PolygonOnTriangulation_2(E: TopoDS_Edge, P: any, T: any, L: TopLoc_Location): void;
+  /** Returns the polygon associated to the edge in the parametric space of the face. Returns a NULL handle if this polygon does not exist. */
+  static PolygonOnTriangulation_3(E: TopoDS_Edge, P: any, T: any, L: TopLoc_Location, Index: Standard_Integer): void;
+  /** If S is Shell, returns True if it has no free boundaries (edges). If S is Wire, returns True if it has no free ends (vertices). (Internal and External sub-shepes are ignored in these checks) If S is Edge, returns True if its vertices are the same. For other shape types returns S.Closed(). */
+  static IsClosed_2(E: TopoDS_Edge, F: TopoDS_Face): Standard_Boolean;
+  /** If S is Shell, returns True if it has no free boundaries (edges). If S is Wire, returns True if it has no free ends (vertices). (Internal and External sub-shepes are ignored in these checks) If S is Edge, returns True if its vertices are the same. For other shape types returns S.Closed(). */
+  static IsClosed_3(E: TopoDS_Edge, S: any, L: TopLoc_Location): Standard_Boolean;
+  /** If S is Shell, returns True if it has no free boundaries (edges). If S is Wire, returns True if it has no free ends (vertices). (Internal and External sub-shepes are ignored in these checks) If S is Edge, returns True if its vertices are the same. For other shape types returns S.Closed(). */
+  static IsClosed_4(E: TopoDS_Edge, T: any, L: TopLoc_Location): Standard_Boolean;
+  /** Returns the tolerance of the face. */
+  static Tolerance_2(E: TopoDS_Edge): Standard_Real;
+  /** Returns the SameParameter flag for the edge. */
+  static SameParameter(E: TopoDS_Edge): Standard_Boolean;
+  /** Returns the SameRange flag for the edge. */
+  static SameRange(E: TopoDS_Edge): Standard_Boolean;
+  /** Returns True if the edge is degenerated. */
+  static Degenerated(E: TopoDS_Edge): Standard_Boolean;
+  /** Gets the range of the 3d curve. */
+  static Range_1(E: TopoDS_Edge): { First: number; Last: number };
+  /** Gets the range of the 3d curve. */
+  static Range_2(E: TopoDS_Edge, S: any, L: TopLoc_Location): { First: number; Last: number };
+  /** Gets the range of the 3d curve. */
+  static Range_3(E: TopoDS_Edge, F: TopoDS_Face): { First: number; Last: number };
+  /** Gets the UV locations of the extremities of the edge. */
+  static UVPoints_1(E: TopoDS_Edge, S: any, L: TopLoc_Location, PFirst: gp_Pnt2d, PLast: gp_Pnt2d): void;
+  /** Gets the UV locations of the extremities of the edge. */
+  static UVPoints_2(E: TopoDS_Edge, F: TopoDS_Face, PFirst: gp_Pnt2d, PLast: gp_Pnt2d): void;
+  /** Sets the UV locations of the extremities of the edge. */
+  static SetUVPoints_1(E: TopoDS_Edge, S: any, L: TopLoc_Location, PFirst: gp_Pnt2d, PLast: gp_Pnt2d): void;
+  /** Sets the UV locations of the extremities of the edge. */
+  static SetUVPoints_2(E: TopoDS_Edge, F: TopoDS_Face, PFirst: gp_Pnt2d, PLast: gp_Pnt2d): void;
+  /** Returns True if the edge is on the surfaces of the two faces. */
+  static HasContinuity_1(E: TopoDS_Edge, F1: TopoDS_Face, F2: TopoDS_Face): Standard_Boolean;
+  /** Returns the continuity. */
+  static Continuity_1(E: TopoDS_Edge, F1: TopoDS_Face, F2: TopoDS_Face): GeomAbs_Shape;
+  /** Returns True if the edge is on the surfaces of the two faces. */
+  static HasContinuity_2(E: TopoDS_Edge, S1: any, S2: any, L1: TopLoc_Location, L2: TopLoc_Location): Standard_Boolean;
+  /** Returns the continuity. */
+  static Continuity_2(E: TopoDS_Edge, S1: any, S2: any, L1: TopLoc_Location, L2: TopLoc_Location): GeomAbs_Shape;
+  /** Returns True if the edge is on the surfaces of the two faces. */
+  static HasContinuity_3(E: TopoDS_Edge): Standard_Boolean;
+  /** Returns the max continuity of edge between some surfaces or GeomAbs_C0 if there are no such surfaces. */
+  static MaxContinuity(theEdge: TopoDS_Edge): GeomAbs_Shape;
+  /** Returns the 3d point. */
+  static Pnt(V: TopoDS_Vertex): gp_Pnt;
+  /** Returns the tolerance of the face. */
+  static Tolerance_3(V: TopoDS_Vertex): Standard_Real;
+  /** Finds the parameter of <theV> on <theE>. theV input vertex theE input edge theParam calculated parameter on the curve TRUE if done */
+  static Parameter_1(theV: TopoDS_Vertex, theE: TopoDS_Edge): { result: Standard_Boolean; theParam: number };
+  /** Finds the parameter of <theV> on <theE>. theV input vertex theE input edge theParam calculated parameter on the curve TRUE if done */
+  static Parameter_2(V: TopoDS_Vertex, E: TopoDS_Edge): Standard_Real;
+  /** Finds the parameter of <theV> on <theE>. theV input vertex theE input edge theParam calculated parameter on the curve TRUE if done */
+  static Parameter_3(V: TopoDS_Vertex, E: TopoDS_Edge, F: TopoDS_Face): Standard_Real;
+  /** Finds the parameter of <theV> on <theE>. theV input vertex theE input edge theParam calculated parameter on the curve TRUE if done */
+  static Parameter_4(V: TopoDS_Vertex, E: TopoDS_Edge, S: any, L: TopLoc_Location): Standard_Real;
+  /** Returns the parameters of the vertex on the face. */
+  static Parameters(V: TopoDS_Vertex, F: TopoDS_Face): gp_Pnt2d;
+  /** Returns the maximum tolerance of input shape subshapes. */
+  static MaxTolerance(theShape: TopoDS_Shape, theSubShape: TopAbs_ShapeEnum): Standard_Real;
+  delete(): void;
+  [Symbol.dispose](): void;
+}
+
 export declare class BRepAdaptor_CompCurve extends Adaptor3d_Curve {
   static get_type_name(): Standard_Character;
   static get_type_descriptor(): Handle_Standard_Type;
@@ -8191,6 +8364,88 @@ export declare class BRepAdaptor_Surface extends GeomAdaptor_TransformedSurface 
   export declare class BRepAdaptor_Surface_2 extends BRepAdaptor_Surface {
     constructor(F: TopoDS_Face, R: Standard_Boolean);
   }
+
+export declare class BRepTools {
+  constructor();
+  /** Returns in UMin, UMax, VMin, VMax the bounding values in the parametric space of F. */
+  static UVBounds_1(F: TopoDS_Face): { UMin: number; UMax: number; VMin: number; VMax: number };
+  /** Returns in UMin, UMax, VMin, VMax the bounding values in the parametric space of F. */
+  static UVBounds_2(F: TopoDS_Face, W: TopoDS_Wire): { UMin: number; UMax: number; VMin: number; VMax: number };
+  /** Returns in UMin, UMax, VMin, VMax the bounding values in the parametric space of F. */
+  static UVBounds_3(F: TopoDS_Face, E: TopoDS_Edge): { UMin: number; UMax: number; VMin: number; VMax: number };
+  /** Adds to the box the bounding values in the parametric space of F. */
+  static AddUVBounds_1(F: TopoDS_Face, B: Bnd_Box2d): void;
+  /** Adds to the box the bounding values in the parametric space of F. */
+  static AddUVBounds_2(F: TopoDS_Face, W: TopoDS_Wire, B: Bnd_Box2d): void;
+  /** Adds to the box the bounding values in the parametric space of F. */
+  static AddUVBounds_3(F: TopoDS_Face, E: TopoDS_Edge, B: Bnd_Box2d): void;
+  /** Update a vertex (nothing is done) */
+  static Update_1(V: TopoDS_Vertex): void;
+  /** Update a vertex (nothing is done) */
+  static Update_2(E: TopoDS_Edge): void;
+  /** Update a vertex (nothing is done) */
+  static Update_3(W: TopoDS_Wire): void;
+  /** Update a vertex (nothing is done) */
+  static Update_4(F: TopoDS_Face): void;
+  /** Update a vertex (nothing is done) */
+  static Update_5(S: TopoDS_Shell): void;
+  /** Update a vertex (nothing is done) */
+  static Update_6(S: TopoDS_Solid): void;
+  /** Update a vertex (nothing is done) */
+  static Update_7(C: TopoDS_CompSolid): void;
+  /** Update a vertex (nothing is done) */
+  static Update_8(C: TopoDS_Compound): void;
+  /** Update a vertex (nothing is done) */
+  static Update_9(S: TopoDS_Shape): void;
+  /** For each edge of the face <F> reset the UV points to the bounding points of the parametric curve of the edge on the face. */
+  static UpdateFaceUVPoints(theF: TopoDS_Face): void;
+  /** Removes all cached polygonal representation of the shape, i.e. the triangulations of the faces of and polygons on triangulations and polygons 3d of the edges. In case polygonal representation is the only available representation for the shape (shape does not have geometry) it is not removed. theShape the shape to clean theForce allows removing all polygonal representations from the shape, including polygons on triangulations irrelevant for the faces of the given shape. */
+  static Clean(theShape: TopoDS_Shape, theForce: Standard_Boolean): void;
+  /** Removes geometry (curves and surfaces) from all edges and faces of the shape. */
+  static CleanGeometry(theShape: TopoDS_Shape): void;
+  /** Removes all the pcurves of the edges of that refer to surfaces not belonging to any face of */
+  static RemoveUnusedPCurves(S: TopoDS_Shape): void;
+  /** Verifies that each Face from the shape has got a triangulation with a deflection smaller or equal to specified one and the Edges a discretization on this triangulation. theShape shape to verify theLinDefl maximum allowed linear deflection theToCheckFreeEdges if TRUE, then free Edges are required to have 3D polygon FALSE if input Shape contains Faces without triangulation, or that triangulation has worse (greater) deflection than specified one, or Edges in Shape lack polygons on triangulation or free Edges in Shape lack 3D polygons */
+  static Triangulation(theShape: TopoDS_Shape, theLinDefl: Standard_Real, theToCheckFreeEdges: Standard_Boolean): Standard_Boolean;
+  /** Loads triangulation data for each face of the shape from some deferred storage using specified shared input file system theShape shape to load triangulations theTriangulationIdx index defining what triangulation should be loaded. Starts from 0. -1 is used in specific case to load currently already active triangulation. If some face doesn't contain triangulation with this index, nothing will be loaded for it. Exception will be thrown in case of invalid negative index theToSetAsActive flag to activate triangulation after its loading theFileSystem shared file system TRUE if at least one triangulation is loaded. */
+  static LoadTriangulation(theShape: TopoDS_Shape, theTriangulationIdx: Standard_Integer, theToSetAsActive: Standard_Boolean, theFileSystem: any): Standard_Boolean;
+  /** Releases triangulation data for each face of the shape if there is deferred storage to load it later theShape shape to unload triangulations theTriangulationIdx index defining what triangulation should be unloaded. Starts from 0. -1 is used in specific case to unload currently already active triangulation. If some face doesn't contain triangulation with this index, nothing will be unloaded for it. Exception will be thrown in case of invalid negative index TRUE if at least one triangulation is unloaded. */
+  static UnloadTriangulation(theShape: TopoDS_Shape, theTriangulationIdx: Standard_Integer): Standard_Boolean;
+  /** Activates triangulation data for each face of the shape from some deferred storage using specified shared input file system theShape shape to activate triangulations theTriangulationIdx index defining what triangulation should be activated. Starts from 0. Exception will be thrown in case of invalid negative index theToActivateStrictly flag to activate exactly triangulation with defined theTriangulationIdx index. In TRUE case if some face doesn't contain triangulation with this index, active triangulation will not be changed for it. Else the last available triangulation will be activated. TRUE if at least one active triangulation was changed. */
+  static ActivateTriangulation(theShape: TopoDS_Shape, theTriangulationIdx: Standard_Integer, theToActivateStrictly: Standard_Boolean): Standard_Boolean;
+  /** Loads all available triangulations for each face of the shape from some deferred storage using specified shared input file system theShape shape to load triangulations theFileSystem shared file system TRUE if at least one triangulation is loaded. */
+  static LoadAllTriangulations(theShape: TopoDS_Shape, theFileSystem: any): Standard_Boolean;
+  /** Releases all available triangulations for each face of the shape if there is deferred storage to load them later theShape shape to unload triangulations TRUE if at least one triangulation is unloaded. */
+  static UnloadAllTriangulations(theShape: TopoDS_Shape): Standard_Boolean;
+  /** Returns True if the distance between the two vertices is lower than their tolerance. */
+  static Compare_1(V1: TopoDS_Vertex, V2: TopoDS_Vertex): Standard_Boolean;
+  /** Returns True if the distance between the two vertices is lower than their tolerance. */
+  static Compare_2(E1: TopoDS_Edge, E2: TopoDS_Edge): Standard_Boolean;
+  /** Returns the outer most wire of <F>. Returns a Null wire if <F> has no wires. */
+  static OuterWire(F: TopoDS_Face): TopoDS_Wire;
+  /** Stores in the map <M> all the 3D topology edges of . */
+  static Map3DEdges(S: TopoDS_Shape, M: TopTools_IndexedMapOfShape): void;
+  /** Verifies that the edge <E> is found two times on the face <F> before calling BRep_Tool::IsClosed. */
+  static IsReallyClosed(E: TopoDS_Edge, F: TopoDS_Face): Standard_Boolean;
+  /** Detect closedness of face in U and V directions. */
+  static DetectClosedness(theFace: TopoDS_Face): { theUclosed: boolean; theVclosed: boolean };
+  /** Writes the shape to the stream in an ASCII format TopTools_FormatVersion_VERSION_1. This alias writes shape with triangulation data. theShape the shape to write out] theStream the stream to output shape into theRange the range of progress indicator to fill in */
+  static Write_3(theShape: TopoDS_Shape, theFile: Standard_Character, theProgress: Message_ProgressRange): Standard_Boolean;
+  /** Writes the shape to the stream in an ASCII format TopTools_FormatVersion_VERSION_1. This alias writes shape with triangulation data. theShape the shape to write out] theStream the stream to output shape into theRange the range of progress indicator to fill in */
+  static Write_4(theShape: TopoDS_Shape, theFile: Standard_Character, theWithTriangles: Standard_Boolean, theWithNormals: Standard_Boolean, theVersion: TopTools_FormatVersion, theProgress: Message_ProgressRange): Standard_Boolean;
+  /** Reads a Shape from in returns it in <Sh>. is used to build the shape. */
+  static Read_2(Sh: TopoDS_Shape, File: Standard_Character, B: BRep_Builder, theProgress: Message_ProgressRange): Standard_Boolean;
+  /** Evals real tolerance of edge <theE>. <theC3d>, <theC2d>, <theS>, <theF>, <theL> are correspondently 3d curve of edge, 2d curve on surface <theS> and rang of edge If calculated tolerance is more then current edge tolerance, edge is updated. Method returns actual tolerance of edge */
+  static EvalAndUpdateTol(theE: TopoDS_Edge, theC3d: any, theC2d: any, theS: any, theF: Standard_Real, theL: Standard_Real): Standard_Real;
+  /** returns the cumul of the orientation of <Edge> and the containing wire in <Face> */
+  static OriEdgeInFace(theEdge: TopoDS_Edge, theFace: TopoDS_Face): TopAbs_Orientation;
+  /** Removes internal sub-shapes from the shape. The check on internal status is based on orientation of sub-shapes, classification is not performed. Before removal of internal sub-shapes the algorithm checks if such removal is not going to break topological connectivity between sub-shapes. The flag <theForce> if set to true disables the connectivity check and clears the given shape from all sub-shapes with internal orientation. */
+  static RemoveInternals(theS: TopoDS_Shape, theForce: Standard_Boolean): void;
+  /** Check all locations of shape according criterium: aTrsf.IsNegative() || (std::abs(std::abs(aTrsf.ScaleFactor()) - 1.) > TopLoc_Location::ScalePrec()) All sub-shapes having such locations are put in list theProblemShapes */
+  static CheckLocations(theS: TopoDS_Shape, theProblemShapes: TopTools_ListOfShape): void;
+  delete(): void;
+  [Symbol.dispose](): void;
+}
 
 /** Tool to keep shapes in binary format. */
 export declare class BinTools {
@@ -10811,6 +11066,30 @@ export declare class GCPnts_TangentialDeflection {
     constructor(theC: Adaptor2d_Curve2d, theFirstParameter: Standard_Real, theLastParameter: Standard_Real, theAngularDeflection: Standard_Real, theCurvatureDeflection: Standard_Real, theMinimumOfPoints: Standard_Integer, theUTol: Standard_Real, theMinLen: Standard_Real);
   }
 
+export declare class Geom2dConvert {
+  constructor();
+  /** Convert a curve to BSpline by Approximation This method computes the arc of B-spline curve between the two knots FromK1 and ToK2. If C is periodic the arc has the same orientation as C if SameOrientation = true. If C is not periodic SameOrientation is not used for the computation and C is oriented from the knot fromK1 to the knot toK2. We just keep the local definition of C between the knots FromK1 and ToK2. The returned B-spline curve has its first and last knots with a multiplicity equal to degree + 1, where degree is the polynomial degree of C. The indexes of the knots FromK1 and ToK2 doesn't include the repetition of multiple knots in their definition. Raised if FromK1 or ToK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] Raised if FromK1 = ToK2 */
+  static SplitBSplineCurve_1(C: any, FromK1: Standard_Integer, ToK2: Standard_Integer, SameOrientation: Standard_Boolean): any;
+  /** Convert a curve to BSpline by Approximation This method computes the arc of B-spline curve between the two knots FromK1 and ToK2. If C is periodic the arc has the same orientation as C if SameOrientation = true. If C is not periodic SameOrientation is not used for the computation and C is oriented from the knot fromK1 to the knot toK2. We just keep the local definition of C between the knots FromK1 and ToK2. The returned B-spline curve has its first and last knots with a multiplicity equal to degree + 1, where degree is the polynomial degree of C. The indexes of the knots FromK1 and ToK2 doesn't include the repetition of multiple knots in their definition. Raised if FromK1 or ToK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] Raised if FromK1 = ToK2 */
+  static SplitBSplineCurve_2(C: any, FromU1: Standard_Real, ToU2: Standard_Real, ParametricTolerance: Standard_Real, SameOrientation: Standard_Boolean): any;
+  /** This function converts a non infinite curve from Geom into a B-spline curve. C must be an ellipse or a circle or a trimmed conic or a trimmed line or a Bezier curve or a trimmed Bezier curve or a BSpline curve or a trimmed BSpline curve or an Offset curve or a trimmed Offset curve. The returned B-spline is not periodic except if C is a Circle or an Ellipse. ParameterisationType applies only if the curve is a Circle or an ellipse : TgtThetaOver2, TgtThetaOver2_1, TgtThetaOver2_2, TgtThetaOver2_3, TgtThetaOver2_4, Purpose: this is the classical rational parameterisation 2 1 - t cos(theta) = --- 2 1 + t 2t sin(theta) = --- 2 1 + t t = tan (theta/2) with TgtThetaOver2 the routine will compute the number of spans using the rule num_spans = [ (ULast - UFirst) / 1.2 ] + 1 with TgtThetaOver2_N, N spans will be forced: an error will be raized if (ULast - UFirst) >= PI and N = 1, ULast - UFirst >= 2 PI and N = 2 QuasiAngular, here t is a rational function that approximates theta -> tan(theta/2). Nevetheless the composing with above function yields exact functions whose square sum up to 1 RationalC1 ; t is replaced by a polynomial function of u so as to grant C1 contiuity across knots. Exceptions Standard_DomainError if the curve C is infinite. Standard_ConstructionError: if C is a complete circle or ellipse, and if Parameterisation is not equal to Convert_TgtThetaOver2 or to Convert_RationalC1, or if C is a trimmed circle or ellipse and if Parameterisation is equal to Convert_TgtThetaOver2_1 and if U2 - U1 > 0.9999 * Pi where U1 and U2 are respectively the first and the last parameters of the trimmed curve (this method of parameterization cannot be used to convert a half-circle or a half-ellipse, for example), or if C is a trimmed circle or ellipse and Parameterisation is equal to Convert_TgtThetaOver2_2 and U2 - U1 > 1.9999 * Pi where U1 and U2 are respectively the first and the last parameters of the trimmed curve (this method of parameterization cannot be used to convert a quasi-complete circle or ellipse). */
+  static CurveToBSplineCurve(C: any, Parameterisation: Convert_ParameterisationType): any;
+  /** This Method concatenates G1 the ArrayOfCurves as far as it is possible. ArrayOfCurves[0..N-1] ArrayOfToler contains the biggest tolerance of the two points shared by two consecutives curves. Its dimension: [0..N-2] ClosedFlag indicates if the ArrayOfCurves is closed. In this case ClosedTolerance contains the biggest tolerance of the two points which are at the closure. Otherwise its value is 0.0 ClosedFlag becomes False on the output if it is impossible to build closed curve. */
+  static ConcatG1(ArrayOfCurves: any, ArrayOfToler: TColStd_Array1OfReal, ArrayOfConcatenated: any, ClosedTolerance: Standard_Real): { ClosedFlag: boolean };
+  /** This Method concatenates C1 the ArrayOfCurves as far as it is possible. ArrayOfCurves[0..N-1] ArrayOfToler contains the biggest tolerance of the two points shared by two consecutives curves. Its dimension: [0..N-2] ClosedFlag indicates if the ArrayOfCurves is closed. In this case ClosedTolerance contains the biggest tolerance of the two points which are at the closure. Otherwise its value is 0.0 ClosedFlag becomes False on the output if it is impossible to build closed curve. */
+  static ConcatC1_1(ArrayOfCurves: any, ArrayOfToler: TColStd_Array1OfReal, ArrayOfIndices: any, ArrayOfConcatenated: any, ClosedTolerance: Standard_Real): { ClosedFlag: boolean };
+  /** This Method concatenates C1 the ArrayOfCurves as far as it is possible. ArrayOfCurves[0..N-1] ArrayOfToler contains the biggest tolerance of the two points shared by two consecutives curves. Its dimension: [0..N-2] ClosedFlag indicates if the ArrayOfCurves is closed. In this case ClosedTolerance contains the biggest tolerance of the two points which are at the closure. Otherwise its value is 0.0 ClosedFlag becomes False on the output if it is impossible to build closed curve. */
+  static ConcatC1_2(ArrayOfCurves: any, ArrayOfToler: TColStd_Array1OfReal, ArrayOfIndices: any, ArrayOfConcatenated: any, ClosedTolerance: Standard_Real, AngularTolerance: Standard_Real): { ClosedFlag: boolean };
+  /** This Method reduces as far as it is possible the multiplicities of the knots of the BSpline BS.(keeping the geometry). It returns a new BSpline which could still be C0. tolerance is a geometrical tolerance */
+  static C0BSplineToC1BSplineCurve(BS: any, Tolerance: Standard_Real): void;
+  /** This Method reduces as far as it is possible the multiplicities of the knots of the BSpline BS.(keeping the geometry). It returns an array of BSpline C1. Tolerance is a geometrical tolerance */
+  static C0BSplineToArrayOfC1BSplineCurve_1(BS: any, tabBS: any, Tolerance: Standard_Real): void;
+  /** This Method reduces as far as it is possible the multiplicities of the knots of the BSpline BS.(keeping the geometry). It returns an array of BSpline C1. Tolerance is a geometrical tolerance */
+  static C0BSplineToArrayOfC1BSplineCurve_2(BS: any, tabBS: any, AngularTolerance: Standard_Real, Tolerance: Standard_Real): void;
+  delete(): void;
+  [Symbol.dispose](): void;
+}
+
 export declare class Geom2dConvert_ApproxCurve {
   /** Returns the 2D BSpline curve resulting from the approximation algorithm. */
   Curve(): any;
@@ -10852,6 +11131,90 @@ export declare class Geom2dConvert_BSplineCurveToBezierCurve {
   export declare class Geom2dConvert_BSplineCurveToBezierCurve_2 extends Geom2dConvert_BSplineCurveToBezierCurve {
     constructor(BasisCurve: any, U1: Standard_Real, U2: Standard_Real, ParametricTolerance: Standard_Real);
   }
+
+export declare class GeomConvert {
+  constructor();
+  /** Convert a curve from Geom by an approximation method This method computes the arc of B-spline curve between the two knots FromK1 and ToK2. If C is periodic the arc has the same orientation as C if SameOrientation = true. If C is not periodic SameOrientation is not used for the computation and C is oriented from the knot fromK1 to the knot toK2. We just keep the local definition of C between the knots FromK1 and ToK2. The returned B-spline curve has its first and last knots with a multiplicity equal to degree + 1, where degree is the polynomial degree of C. The indexes of the knots FromK1 and ToK2 doesn't include the repetition of multiple knots in their definition. Raised if FromK1 = ToK2 Raised if FromK1 or ToK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] */
+  static SplitBSplineCurve_1(C: any, FromK1: Standard_Integer, ToK2: Standard_Integer, SameOrientation: Standard_Boolean): any;
+  /** Convert a curve from Geom by an approximation method This method computes the arc of B-spline curve between the two knots FromK1 and ToK2. If C is periodic the arc has the same orientation as C if SameOrientation = true. If C is not periodic SameOrientation is not used for the computation and C is oriented from the knot fromK1 to the knot toK2. We just keep the local definition of C between the knots FromK1 and ToK2. The returned B-spline curve has its first and last knots with a multiplicity equal to degree + 1, where degree is the polynomial degree of C. The indexes of the knots FromK1 and ToK2 doesn't include the repetition of multiple knots in their definition. Raised if FromK1 = ToK2 Raised if FromK1 or ToK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] */
+  static SplitBSplineCurve_2(C: any, FromU1: Standard_Real, ToU2: Standard_Real, ParametricTolerance: Standard_Real, SameOrientation: Standard_Boolean): any;
+  /** Computes the B-spline surface patche between the knots values FromUK1, ToUK2, FromVK1, ToVK2. If S is periodic in one direction the patche has the same orientation as S in this direction if the flag is true in this direction (SameUOrientation, SameVOrientation). If S is not periodic SameUOrientation and SameVOrientation are not used for the computation and S is oriented FromUK1 ToUK2 and FromVK1 ToVK2. Raised if FromUK1 = ToUK2 or FromVK1 = ToVK2 FromUK1 or ToUK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] FromVK1 or ToVK2 are out of the bounds [FirstVKnotIndex, LastVKnotIndex] */
+  static SplitBSplineSurface_1(S: any, FromUK1: Standard_Integer, ToUK2: Standard_Integer, FromVK1: Standard_Integer, ToVK2: Standard_Integer, SameUOrientation: Standard_Boolean, SameVOrientation: Standard_Boolean): any;
+  /** Computes the B-spline surface patche between the knots values FromUK1, ToUK2, FromVK1, ToVK2. If S is periodic in one direction the patche has the same orientation as S in this direction if the flag is true in this direction (SameUOrientation, SameVOrientation). If S is not periodic SameUOrientation and SameVOrientation are not used for the computation and S is oriented FromUK1 ToUK2 and FromVK1 ToVK2. Raised if FromUK1 = ToUK2 or FromVK1 = ToVK2 FromUK1 or ToUK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] FromVK1 or ToVK2 are out of the bounds [FirstVKnotIndex, LastVKnotIndex] */
+  static SplitBSplineSurface_2(S: any, FromK1: Standard_Integer, ToK2: Standard_Integer, USplit: Standard_Boolean, SameOrientation: Standard_Boolean): any;
+  /** Computes the B-spline surface patche between the knots values FromUK1, ToUK2, FromVK1, ToVK2. If S is periodic in one direction the patche has the same orientation as S in this direction if the flag is true in this direction (SameUOrientation, SameVOrientation). If S is not periodic SameUOrientation and SameVOrientation are not used for the computation and S is oriented FromUK1 ToUK2 and FromVK1 ToVK2. Raised if FromUK1 = ToUK2 or FromVK1 = ToVK2 FromUK1 or ToUK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] FromVK1 or ToVK2 are out of the bounds [FirstVKnotIndex, LastVKnotIndex] */
+  static SplitBSplineSurface_3(S: any, FromU1: Standard_Real, ToU2: Standard_Real, FromV1: Standard_Real, ToV2: Standard_Real, ParametricTolerance: Standard_Real, SameUOrientation: Standard_Boolean, SameVOrientation: Standard_Boolean): any;
+  /** Computes the B-spline surface patche between the knots values FromUK1, ToUK2, FromVK1, ToVK2. If S is periodic in one direction the patche has the same orientation as S in this direction if the flag is true in this direction (SameUOrientation, SameVOrientation). If S is not periodic SameUOrientation and SameVOrientation are not used for the computation and S is oriented FromUK1 ToUK2 and FromVK1 ToVK2. Raised if FromUK1 = ToUK2 or FromVK1 = ToVK2 FromUK1 or ToUK2 are out of the bounds [FirstUKnotIndex, LastUKnotIndex] FromVK1 or ToVK2 are out of the bounds [FirstVKnotIndex, LastVKnotIndex] */
+  static SplitBSplineSurface_4(S: any, FromParam1: Standard_Real, ToParam2: Standard_Real, USplit: Standard_Boolean, ParametricTolerance: Standard_Real, SameOrientation: Standard_Boolean): any;
+  /** This function converts a non infinite curve from Geom into a B-spline curve. C must be an ellipse or a circle or a trimmed conic or a trimmed line or a Bezier curve or a trimmed Bezier curve or a BSpline curve or a trimmed BSpline curve or an OffsetCurve. The returned B-spline is not periodic except if C is a Circle or an Ellipse. If the Parameterisation is QuasiAngular than the returned curve is NOT periodic in case a periodic Geom_Circle or Geom_Ellipse. For TgtThetaOver2_1 and TgtThetaOver2_2 the method raises an exception in case of a periodic Geom_Circle or a Geom_Ellipse ParameterisationType applies only if the curve is a Circle or an ellipse: TgtThetaOver2, TgtThetaOver2_1, TgtThetaOver2_2, TgtThetaOver2_3, TgtThetaOver2_4, Purpose: this is the classical rational parameterisation 2 1 - t cos(theta) = --- 2 1 + t 2t sin(theta) = --- 2 1 + t t = tan (theta/2) with TgtThetaOver2 the routine will compute the number of spans using the rule num_spans = [ (ULast - UFirst) / 1.2 ] + 1 with TgtThetaOver2_N, N spans will be forced: an error will be raized if (ULast - UFirst) >= PI and N = 1, ULast - UFirst >= 2 PI and N = 2 QuasiAngular, here t is a rational function that approximates theta -> tan(theta/2). Nevetheless the composing with above function yields exact functions whose square sum up to 1 RationalC1 ; t is replaced by a polynomial function of u so as to grant C1 contiuity across knots. Exceptions Standard_DomainError: if the curve C is infinite, or if C is a (complete) circle or ellipse, and Parameterisation is equal to Convert_TgtThetaOver2_1 or Convert_TgtThetaOver2_2. Standard_ConstructionError: if C is a (complete) circle or ellipse, and if Parameterisation is not equal to Convert_TgtThetaOver2, Convert_RationalC1, Convert_QuasiAngular (the curve is converted in these three cases) or to Convert_TgtThetaOver2_1 or Convert_TgtThetaOver2_2 (another exception is raised in these two cases). if C is a trimmed circle or ellipse, if Parameterisation is equal to Convert_TgtThetaOver2_1 and if U2 - U1 > 0.9999 * Pi, where U1 and U2 are respectively the first and the last parameters of the trimmed curve (this method of parameterization cannot be used to convert a half-circle or a half-ellipse, for example), or if C is a trimmed circle or ellipse, if Parameterisation is equal to Convert_TgtThetaOver2_2 and U2 - U1 > 1.9999 * Pi where U1 and U2 are respectively the first and the last parameters of the trimmed curve (this method of parameterization cannot be used to convert a quasi-complete circle or ellipse). */
+  static CurveToBSplineCurve(C: any, Parameterisation: Convert_ParameterisationType): any;
+  /** This algorithm converts a non infinite surface from Geom into a B-spline surface. S must be a trimmed plane or a trimmed cylinder or a trimmed cone or a trimmed sphere or a trimmed torus or a sphere or a torus or a Bezier surface of a trimmed Bezier surface or a trimmed swept surface with a corresponding basis curve which can be turned into a B-spline curve (see the method CurveToBSplineCurve). Raises DomainError if the type of the surface is not previously defined. */
+  static SurfaceToBSplineSurface(S: any): any;
+  /** This Method concatenates G1 the ArrayOfCurves as far as it is possible. ArrayOfCurves[0..N-1] ArrayOfToler contains the biggest tolerance of the two points shared by two consecutives curves. Its dimension: [0..N-2] ClosedFlag indicates if the ArrayOfCurves is closed. In this case ClosedTolerance contains the biggest tolerance of the two points which are at the closure. Otherwise its value is 0.0 ClosedFlag becomes False on the output if it is impossible to build closed curve. */
+  static ConcatG1(ArrayOfCurves: any, ArrayOfToler: TColStd_Array1OfReal, ArrayOfConcatenated: any, ClosedTolerance: Standard_Real): { ClosedFlag: boolean };
+  /** This Method concatenates C1 the ArrayOfCurves as far as it is possible. ArrayOfCurves[0..N-1] ArrayOfToler contains the biggest tolerance of the two points shared by two consecutives curves. Its dimension: [0..N-2] ClosedFlag indicates if the ArrayOfCurves is closed. In this case ClosedTolerance contains the biggest tolerance of the two points which are at the closure. Otherwise its value is 0.0 ClosedFlag becomes False on the output if it is impossible to build closed curve. */
+  static ConcatC1_1(ArrayOfCurves: any, ArrayOfToler: TColStd_Array1OfReal, ArrayOfIndices: any, ArrayOfConcatenated: any, ClosedTolerance: Standard_Real): { ClosedFlag: boolean };
+  /** This Method concatenates C1 the ArrayOfCurves as far as it is possible. ArrayOfCurves[0..N-1] ArrayOfToler contains the biggest tolerance of the two points shared by two consecutives curves. Its dimension: [0..N-2] ClosedFlag indicates if the ArrayOfCurves is closed. In this case ClosedTolerance contains the biggest tolerance of the two points which are at the closure. Otherwise its value is 0.0 ClosedFlag becomes False on the output if it is impossible to build closed curve. */
+  static ConcatC1_2(ArrayOfCurves: any, ArrayOfToler: TColStd_Array1OfReal, ArrayOfIndices: any, ArrayOfConcatenated: any, ClosedTolerance: Standard_Real, AngularTolerance: Standard_Real): { ClosedFlag: boolean };
+  /** This Method reduces as far as it is possible the multiplicities of the knots of the BSpline BS.(keeping the geometry). It returns a new BSpline which could still be C0. tolerance is a geometrical tolerance. The Angular toleranceis in radians and measures the angle of the tangents on the left and on the right to decide if the curve is G1 or not at a given point */
+  static C0BSplineToC1BSplineCurve(BS: any, tolerance: Standard_Real, AngularTolerance: Standard_Real): void;
+  /** This Method reduces as far as it is possible the multiplicities of the knots of the BSpline BS.(keeping the geometry). It returns an array of BSpline C1. tolerance is a geometrical tolerance. */
+  static C0BSplineToArrayOfC1BSplineCurve_1(BS: any, tabBS: any, tolerance: Standard_Real): void;
+  /** This Method reduces as far as it is possible the multiplicities of the knots of the BSpline BS.(keeping the geometry). It returns an array of BSpline C1. tolerance is a geometrical tolerance. */
+  static C0BSplineToArrayOfC1BSplineCurve_2(BS: any, tabBS: any, AngularTolerance: Standard_Real, tolerance: Standard_Real): void;
+  delete(): void;
+  [Symbol.dispose](): void;
+}
+
+export declare class GeomLib {
+  constructor();
+  /** Computes the curve 3d from package Geom corresponding to curve 2d from package Geom2d, on the plan defined with the local coordinate system Position. */
+  static To3d(Position: gp_Ax2, Curve2d: any): any;
+  /** Computes the curve 3d from package Geom corresponding to the curve 3d from package Geom, transformed with the transformation <GTrsf> WARNING : this method may return a null Handle if it's impossible to compute the transformation of a curve. It's not implemented when : 1) the curve is an infinite parabola or hyperbola 2) the curve is an offsetcurve */
+  static GTransform(Curve: any, GTrsf: gp_GTrsf2d): any;
+  /** Make the curve Curve2dPtr have the imposed range First to List the most economic way, that is if it can change the range without changing the nature of the curve it will try to do that. Otherwise it will produce a Bspline curve that has the required range */
+  static SameRange(Tolerance: Standard_Real, Curve2dPtr: any, First: Standard_Real, Last: Standard_Real, RequestedFirst: Standard_Real, RequestedLast: Standard_Real, NewCurve2dPtr: any): void;
+  static BuildCurve3d(Tolerance: Standard_Real, CurvePtr: Adaptor3d_CurveOnSurface, FirstParameter: Standard_Real, LastParameter: Standard_Real, NewCurvePtr: any, Continuity: GeomAbs_Shape, MaxDegree: Standard_Integer, MaxSegment: Standard_Integer): { MaxDeviation: number; AverageDeviation: number };
+  static AdjustExtremity(Curve: any, P1: gp_Pnt, P2: gp_Pnt, T1: gp_Vec, T2: gp_Vec): void;
+  /** Extends the bounded curve Curve to the point Point. The extension is built: at the end of the curve if After equals true, or at the beginning of the curve if After equals false. The extension is performed according to a degree of continuity equal to Cont, which in its turn must be equal to 1, 2 or 3. This function converts the bounded curve Curve into a BSpline curve. Warning Nothing is done, and Curve is not modified if Cont is not equal to 1, 2 or 3. It is recommended that the extension should not be too large with respect to the size of the bounded curve Curve: Point must not be located too far from one of the extremities of Curve. */
+  static ExtendCurveToPoint(Curve: any, Point: gp_Pnt, Cont: Standard_Integer, After: Standard_Boolean): void;
+  /** Extends the bounded surface Surf along one of its boundaries. The chord length of the extension is equal to Length. The direction of the extension is given as: the u parametric direction of Surf, if InU equals true, or the v parametric direction of Surf, if InU equals false. In this parametric direction, the extension is built on the side of: the last parameter of Surf, if After equals true, or the first parameter of Surf, if After equals false. The extension is performed according to a degree of continuity equal to Cont, which in its turn must be equal to 1, 2 or 3. This function converts the bounded surface Surf into a BSpline surface. Warning Nothing is done, and Surf is not modified if Cont is not equal to 1, 2 or 3. It is recommended that Length, the size of the extension should not be too large with respect to the size of the bounded surface Surf. Surf must not be a periodic BSpline surface in the parametric direction corresponding to the direction of extension. */
+  static ExtendSurfByLength(Surf: any, Length: Standard_Real, Cont: Standard_Integer, InU: Standard_Boolean, After: Standard_Boolean): void;
+  /** Compute axes of inertia, of some points <Axe>.Location() is the BaryCentre <Axe>.XDirection is the axe of upper inertia <Axe>.Direction is the Normal to the average plane IsSingular is True if points are on line Tol is used to determine singular cases. */
+  static AxeOfInertia(Points: TColgp_Array1OfPnt, Axe: gp_Ax2, Tol: Standard_Real): { IsSingular: boolean };
+  /** Compute principale axes of inertia, and dispersion value of some points. */
+  static Inertia(Points: TColgp_Array1OfPnt, Bary: gp_Pnt, XDir: gp_Dir, YDir: gp_Dir): { Xgap: number; YGap: number; ZGap: number };
+  /** Warning! This assume that the InParameter is an increasing sequence of real number and it will not check for that : Unpredictable result can happen if this is not satisfied. It is the caller responsibility to check for that property. This method makes uniform NumPoints segments S1,...SNumPoints out of the segment defined by the first parameter and the last parameter of the InParameter ; keeps only one point of the InParameters set of parameter in each of the uniform segments taking care of the first and the last parameters. For the ith segment the element of the InParameter is the one that is the first to exceed the midpoint of the segment and to fall before the midpoint of the next segment There will be at the end at most NumPoints + 1 if NumPoints > 2 in the OutParameters Array */
+  static RemovePointsFromArray(NumPoints: Standard_Integer, InParameters: TColStd_Array1OfReal, OutParameters: any): void;
+  /** this makes sure that there is at least MinNumPoints in OutParameters taking into account the parameters in the InParameters array provided those are in order, that is the sequence of real in the InParameter is strictly non decreasing */
+  static DensifyArray1OfReal(MinNumPoints: Standard_Integer, InParameters: TColStd_Array1OfReal, OutParameters: any): void;
+  /** This method fuse intervals Interval1 and Interval2 with specified Confusion Interval1 first interval to fuse Interval2 second interval to fuse Confision tolerance to compare intervals IsAdjustToFirstInterval flag to set method of fusion, if intervals are close if false, intervals are fusing by half-division method if true, intervals are fusing by selecting value from Interval1 Fusion output interval */
+  static FuseIntervals(Interval1: TColStd_Array1OfReal, Interval2: TColStd_Array1OfReal, Fusion: TColStd_SequenceOfReal, Confusion: Standard_Real, IsAdjustToFirstInterval: Standard_Boolean): void;
+  /** this will compute the maximum distance at the parameters given in the Parameters array by evaluating each parameter the two curves and taking the maximum of the evaluated distance */
+  static EvalMaxParametricDistance(Curve: Adaptor3d_Curve, AReferenceCurve: Adaptor3d_Curve, Tolerance: Standard_Real, Parameters: TColStd_Array1OfReal): { MaxDistance: number };
+  /** this will compute the maximum distance at the parameters given in the Parameters array by projecting from the Curve to the reference curve and taking the minimum distance Than the maximum will be taken on those minimas. */
+  static EvalMaxDistanceAlongParameter(Curve: Adaptor3d_Curve, AReferenceCurve: Adaptor3d_Curve, Tolerance: Standard_Real, Parameters: TColStd_Array1OfReal): { MaxDistance: number };
+  /** Cancel,on the boundaries,the denominator first derivative in the directions wished by the user and set its value to 1. */
+  static CancelDenominatorDerivative(BSurf: any, UDirection: Standard_Boolean, VDirection: Standard_Boolean): void;
+  /** Estimate surface normal at the given (U, V) point. theSurf input surface theUV (U, V) point coordinates on the surface theTol estimation tolerance theNorm computed normal 0 if normal estimated from D1, 1 if estimated from D2 (quasysingular), >=2 in case of failure (undefined or infinite solutions) */
+  static NormEstim(theSurf: any, theUV: gp_Pnt2d, theTol: Standard_Real, theNorm: gp_Dir): Standard_Integer;
+  /** This method defines if opposite boundaries of surface coincide with given tolerance */
+  static IsClosed(S: any, Tol: Standard_Real): { isUClosed: boolean; isVClosed: boolean };
+  /** Returns true if the poles of U1 isoline and the poles of U2 isoline of surface are identical according to tolerance criterion. For rational surfaces Weights(i)*Poles(i) are checked. */
+  static IsBSplUClosed(S: any, U1: Standard_Real, U2: Standard_Real, Tol: Standard_Real): Standard_Boolean;
+  /** Returns true if the poles of V1 isoline and the poles of V2 isoline of surface are identical according to tolerance criterion. For rational surfaces Weights(i)*Poles(i) are checked. */
+  static IsBSplVClosed(S: any, V1: Standard_Real, V2: Standard_Real, Tol: Standard_Real): Standard_Boolean;
+  /** Returns true if the poles of U1 isoline and the poles of U2 isoline of surface are identical according to tolerance criterion. */
+  static IsBzUClosed(S: any, U1: Standard_Real, U2: Standard_Real, Tol: Standard_Real): Standard_Boolean;
+  /** Returns true if the poles of V1 isoline and the poles of V2 isoline of surface are identical according to tolerance criterion. */
+  static IsBzVClosed(S: any, V1: Standard_Real, V2: Standard_Real, Tol: Standard_Real): Standard_Boolean;
+  /** Checks whether the 2d curve is a isoline. It can be represented by b-spline, bezier, or geometric line. This line should have natural parameterization. theC2D Trimmed curve to be checked. theIsU Flag indicating that line is u const. theParam Line parameter. theIsForward Flag indicating forward parameterization on a isoline. true when 2d curve is a line and false otherwise. */
+  static isIsoLine(theC2D: any): { result: Standard_Boolean; theIsU: boolean; theParam: number; theIsForward: boolean };
+  /** Builds 3D curve for a isoline. This method takes corresponding isoline from the input surface. theC2D Trimmed curve to be approximated. theIsU Flag indicating that line is u const. theParam Line parameter. theIsForward Flag indicating forward parameterization on a isoline. true when 3d curve is built and false otherwise. */
+  static buildC3dOnIsoLine(theC2D: any, theSurf: any, theFirst: Standard_Real, theLast: Standard_Real, theTolerance: Standard_Real, theIsU: Standard_Boolean, theParam: Standard_Real, theIsForward: Standard_Boolean): any;
+  delete(): void;
+  [Symbol.dispose](): void;
+}
 
 export declare class GeomTools {
   constructor();
@@ -12091,6 +12454,7 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   StlAPI_Writer: typeof StlAPI_Writer;
   XCAFDoc_ColorTool: typeof XCAFDoc_ColorTool;
   XCAFDoc_ColorType: XCAFDoc_ColorType;
+  XCAFDoc_DocumentTool: typeof XCAFDoc_DocumentTool;
   XCAFDoc_LengthUnit: typeof XCAFDoc_LengthUnit;
   XCAFDoc_ShapeTool: typeof XCAFDoc_ShapeTool;
   IFSelect_ReturnStatus: IFSelect_ReturnStatus;
@@ -12167,10 +12531,6 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   TopTools_ListOfShape_3: typeof TopTools_ListOfShape_3;
   TopTools_ListOfShape_4: typeof TopTools_ListOfShape_4;
   TopTools_ListOfShape_5: typeof TopTools_ListOfShape_5;
-  Bnd_Box: typeof Bnd_Box;
-  Bnd_Box_1: typeof Bnd_Box_1;
-  Bnd_Box_2: typeof Bnd_Box_2;
-  Bnd_Box2d: typeof Bnd_Box2d;
   Bnd_OBB: typeof Bnd_OBB;
   Bnd_OBB_1: typeof Bnd_OBB_1;
   Bnd_OBB_2: typeof Bnd_OBB_2;
@@ -12318,6 +12678,11 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   Message_ProgressRange_2: typeof Message_ProgressRange_2;
   NCollection_BaseList: typeof NCollection_BaseList;
   Precision: typeof Precision;
+  Quantity_Color: typeof Quantity_Color;
+  Quantity_Color_1: typeof Quantity_Color_1;
+  Quantity_Color_2: typeof Quantity_Color_2;
+  Quantity_Color_3: typeof Quantity_Color_3;
+  Quantity_Color_4: typeof Quantity_Color_4;
   Quantity_ColorRGBA: typeof Quantity_ColorRGBA;
   Quantity_ColorRGBA_1: typeof Quantity_ColorRGBA_1;
   Quantity_ColorRGBA_2: typeof Quantity_ColorRGBA_2;
@@ -12635,6 +13000,8 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   BRepGProp_Face: typeof BRepGProp_Face;
   BRepGProp_Face_1: typeof BRepGProp_Face_1;
   BRepGProp_Face_2: typeof BRepGProp_Face_2;
+  BRepLib: typeof BRepLib;
+  BRep_Tool: typeof BRep_Tool;
   BRepAdaptor_CompCurve: typeof BRepAdaptor_CompCurve;
   BRepAdaptor_CompCurve_1: typeof BRepAdaptor_CompCurve_1;
   BRepAdaptor_CompCurve_2: typeof BRepAdaptor_CompCurve_2;
@@ -12649,6 +13016,7 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   BRepAdaptor_Surface: typeof BRepAdaptor_Surface;
   BRepAdaptor_Surface_1: typeof BRepAdaptor_Surface_1;
   BRepAdaptor_Surface_2: typeof BRepAdaptor_Surface_2;
+  BRepTools: typeof BRepTools;
   BinTools: typeof BinTools;
   TopExp_Explorer: typeof TopExp_Explorer;
   TopExp_Explorer_1: typeof TopExp_Explorer_1;
@@ -12785,12 +13153,15 @@ export type OpenCascadeInstance = {FS: typeof FS} & {
   GCPnts_TangentialDeflection_3: typeof GCPnts_TangentialDeflection_3;
   GCPnts_TangentialDeflection_4: typeof GCPnts_TangentialDeflection_4;
   GCPnts_TangentialDeflection_5: typeof GCPnts_TangentialDeflection_5;
+  Geom2dConvert: typeof Geom2dConvert;
   Geom2dConvert_ApproxCurve: typeof Geom2dConvert_ApproxCurve;
   Geom2dConvert_ApproxCurve_1: typeof Geom2dConvert_ApproxCurve_1;
   Geom2dConvert_ApproxCurve_2: typeof Geom2dConvert_ApproxCurve_2;
   Geom2dConvert_BSplineCurveToBezierCurve: typeof Geom2dConvert_BSplineCurveToBezierCurve;
   Geom2dConvert_BSplineCurveToBezierCurve_1: typeof Geom2dConvert_BSplineCurveToBezierCurve_1;
   Geom2dConvert_BSplineCurveToBezierCurve_2: typeof Geom2dConvert_BSplineCurveToBezierCurve_2;
+  GeomConvert: typeof GeomConvert;
+  GeomLib: typeof GeomLib;
   GeomTools: typeof GeomTools;
   TopoDS_Cast: typeof TopoDS_Cast;
   BRepMesh_IncrementalMeshWrapper: typeof BRepMesh_IncrementalMeshWrapper;

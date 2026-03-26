@@ -74,7 +74,7 @@ function autoFuzzyValue(oc: KernelInstance, shapes: KernelShape[]): number {
   const firstShape = shapes[0];
   if (!firstShape) return 0;
 
-  const box = new oc.Bnd_Box_1();
+  const box = new oc.Bnd_Box();
   oc.BRepBndLib.Add(firstShape, box, true);
   if (box.IsVoid()) {
     box.delete();

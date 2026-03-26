@@ -141,7 +141,7 @@ export function boundingBox(
   min: [number, number, number];
   max: [number, number, number];
 } {
-  const box = new oc.Bnd_Box_1();
+  const box = new oc.Bnd_Box();
   oc.BRepBndLib.Add(shape, box, true);
   const result = {
     min: [box.GetXMin(), box.GetYMin(), box.GetZMin()] as [number, number, number],

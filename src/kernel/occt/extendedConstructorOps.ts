@@ -271,7 +271,7 @@ export function makeHelixWire(
   // Build the edge on surface
   const edgeMaker = new oc.BRepBuilderAPI_MakeEdge_30(handle2dCurve, handleSurf);
   const e = edgeMaker.Edge();
-  oc.BRepLib_BuildCurves3d(e);
+  oc.BRepLib.BuildCurves3d_2(e);
 
   // Wrap in a wire
   const wireMaker = new oc.BRepBuilderAPI_MakeWire_2(e);
@@ -369,7 +369,7 @@ export function makeEllipsoidSolid(
   sphere.SetRadius(1);
 
   const sphericalSurface = new oc.Geom_SphericalSurface_2(sphere);
-  const baseSurface = oc.GeomConvert_SurfaceToBSplineSurface(sphericalSurface.UReversed()).get();
+  const baseSurface = oc.GeomConvert.SurfaceToBSplineSurface(sphericalSurface.UReversed()).get();
   sphere.delete();
   sphericalSurface.delete();
 
@@ -492,8 +492,8 @@ export function exportSTEPAssembly(
   nameStr.delete();
 
   const mainLabel = doc.Main();
-  const shapeTool = oc.XCAFDoc_DocumentTool_ShapeTool(mainLabel).get();
-  const colorTool = oc.XCAFDoc_DocumentTool_ColorTool(mainLabel).get();
+  const shapeTool = oc.XCAFDoc_DocumentTool.ShapeTool(mainLabel).get();
+  const colorTool = oc.XCAFDoc_DocumentTool.ColorTool(mainLabel).get();
   oc.XCAFDoc_ShapeTool.SetAutoNaming(false);
 
   for (const part of parts) {

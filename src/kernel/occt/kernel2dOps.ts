@@ -372,7 +372,7 @@ export function offsetCurve2d(oc: KernelInstance, curve: KernelType, offset: num
 
 function transformCurve(oc: KernelInstance, curve: KernelType, trsf: KernelType): KernelType {
   const gtrsf = new oc.gp_GTrsf2d_2(trsf);
-  const result = oc.GeomLib_GTransform(curve, gtrsf);
+  const result = oc.GeomLib.GTransform(curve, gtrsf);
   gtrsf.delete();
   trsf.delete();
   return result;
@@ -468,7 +468,7 @@ export function affinityTransform2d(
   ax.delete();
   dir.delete();
   origin.delete();
-  const result = oc.GeomLib_GTransform(curve, gtrsf);
+  const result = oc.GeomLib.GTransform(curve, gtrsf);
   gtrsf.delete();
   return result;
 }
@@ -588,7 +588,7 @@ export function transformCurve2dGeneral(
   curve: KernelType,
   gtrsf: KernelType
 ): KernelType {
-  return oc.GeomLib_GTransform(curve, gtrsf);
+  return oc.GeomLib.GTransform(curve, gtrsf);
 }
 
 // ---------------------------------------------------------------------------
@@ -1000,7 +1000,7 @@ export function liftCurve2dToPlane(
   const xDir = new oc.gp_Dir_5(planeX[0], planeX[1], planeX[2]);
   const ax = new oc.gp_Ax2_2(origin, zDir, xDir);
 
-  const curve3d = oc.GeomLib_To3d(ax, curve);
+  const curve3d = oc.GeomLib.To3d(ax, curve);
   const edgeBuilder = new oc.BRepBuilderAPI_MakeEdge_24(curve3d);
   const edge = edgeBuilder.Edge();
 
@@ -1025,7 +1025,7 @@ export function buildEdgeOnSurface(
 }
 
 export function extractSurfaceFromFace(oc: KernelInstance, face: KernelShape): KernelType {
-  return oc.BRep_Tool_Surface(face);
+  return oc.BRep_Tool.Surface_2(face);
 }
 
 export function extractCurve2dFromEdge(
@@ -1044,7 +1044,7 @@ export function extractCurve2dFromEdge(
 }
 
 export function buildCurves3d(oc: KernelInstance, wire: KernelShape): void {
-  oc.BRepLib_BuildCurves3d(wire);
+  oc.BRepLib.BuildCurves3d_2(wire);
 }
 
 export function fixWireOnFace(
