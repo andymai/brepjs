@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.6.9](https://github.com/andymai/brepjs/compare/brepjs-v14.6.8...brepjs-v14.6.9) (2026-03-26)
+
+
+### Bug Fixes
+
+* **opencascade:** fix binding generator + revert to auto-gen bindings ([#679](https://github.com/andymai/brepjs/issues/679)) ([687dd7d](https://github.com/andymai/brepjs/commit/687dd7d60312c586bd258c1c6a53f8bee7ea7bcd))
+
 ## [14.6.8](https://github.com/andymai/brepjs/compare/brepjs-v14.6.7...brepjs-v14.6.8) (2026-03-26)
 
 
