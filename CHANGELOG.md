@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.6.8](https://github.com/andymai/brepjs/compare/brepjs-v14.6.7...brepjs-v14.6.8) (2026-03-26)
+
+
+### Bug Fixes
+
+* **opencascade:** manual embind wrappers for all broken V8 bindings ([#675](https://github.com/andymai/brepjs/issues/675)) ([41456e6](https://github.com/andymai/brepjs/commit/41456e60f149d660002af24ce25d4c255a7fc46f))
+
 ## [14.6.7](https://github.com/andymai/brepjs/compare/brepjs-v14.6.6...brepjs-v14.6.7) (2026-03-26)
 
 
