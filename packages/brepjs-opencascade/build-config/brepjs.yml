@@ -70,7 +70,9 @@ mainBuild:
   - symbol: GCE2d_MakeArcOfEllipse
   - symbol: GCE2d_MakeCircle
   - symbol: GCE2d_MakeEllipse
-  - symbol: GeomLib
+  # GeomLib removed from auto-binding — non-const complex ref params in methods
+  # like BuildCurve3d/SameRange kill the entire EMSCRIPTEN_BINDINGS block.
+  # To3d and GTransform are manually wrapped in additionalBindCode below.
   - symbol: gp_Trsf2d
   - symbol: gp_GTrsf2d
   - symbol: Bnd_Box2d
@@ -317,9 +319,21 @@ mainBuild:
     gp_Pnt bsplineSurfacePole(const Geom_BSplineSurface& surf, int uIndex, int vIndex) {
       return surf.Pole(uIndex, vIndex);
     }
+    // GeomLib::To3d + GTransform — manual binding because auto-generated GeomLib
+    // bindings fail to compile (non-const complex ref params in other methods
+    // kill the entire EMSCRIPTEN_BINDINGS block).
+    #include <GeomLib.hxx>
+    opencascade::handle<Geom_Curve> GeomLib_To3d(const gp_Ax2& Position, const opencascade::handle<Geom2d_Curve>& Curve2d) {
+      return GeomLib::To3d(Position, Curve2d);
+    }
+    opencascade::handle<Geom2d_Curve> GeomLib_GTransform(const opencascade::handle<Geom2d_Curve>& Curve, const gp_GTrsf2d& GTrsf) {
+      return GeomLib::GTransform(Curve, GTrsf);
+    }
     EMSCRIPTEN_BINDINGS(brepjs_helpers) {
       emscripten::function("shapeHashCode", &shapeHashCode);
       emscripten::function("bsplineSurfacePole", &bsplineSurfacePole, emscripten::allow_raw_pointers());
+      emscripten::function("GeomLib_To3d", &GeomLib_To3d);
+      emscripten::function("GeomLib_GTransform", &GeomLib_GTransform);
     }
 additionalCppCode: |
   #include <TopTools_ShapeMapHasher.hxx>

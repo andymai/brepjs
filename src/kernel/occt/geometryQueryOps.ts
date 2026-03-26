@@ -68,16 +68,12 @@ export function uvBounds(
   oc: KernelInstance,
   face: KernelShape
 ): { uMin: number; uMax: number; vMin: number; vMax: number } {
-  const uMin = { current: 0 };
-  const uMax = { current: 0 };
-  const vMin = { current: 0 };
-  const vMax = { current: 0 };
-  oc.BRepTools.UVBounds_1(face, uMin, uMax, vMin, vMax);
+  const bounds = oc.BRepTools.UVBounds_1(face);
   return {
-    uMin: uMin.current,
-    uMax: uMax.current,
-    vMin: vMin.current,
-    vMax: vMax.current,
+    uMin: bounds.UMin,
+    uMax: bounds.UMax,
+    vMin: bounds.VMin,
+    vMax: bounds.VMax,
   };
 }
 
@@ -136,10 +132,8 @@ export function uvFromPoint(
 
   let result: [number, number] | null = null;
   if (proj.NbPoints() > 0) {
-    const u = { current: 0 };
-    const v = { current: 0 };
-    proj.LowerDistanceParameters(u, v);
-    result = [u.current, v.current];
+    const params = proj.LowerDistanceParameters();
+    result = [params.U, params.V];
   }
 
   proj.delete();
