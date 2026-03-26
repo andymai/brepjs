@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.6.7](https://github.com/andymai/brepjs/compare/brepjs-v14.6.6...brepjs-v14.6.7) (2026-03-26)
+
+
+### Bug Fixes
+
+* **opencascade:** add GeomLib bindings and fix V8 signature changes ([#672](https://github.com/andymai/brepjs/issues/672)) ([6281da2](https://github.com/andymai/brepjs/commit/6281da2eefdfc6ddd15bc534fbee5dcf013b631d))
+
 ## [14.6.6](https://github.com/andymai/brepjs/compare/brepjs-v14.6.5...brepjs-v14.6.6) (2026-03-26)
 
 
