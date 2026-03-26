@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.6.5](https://github.com/andymai/brepjs/compare/brepjs-v14.6.4...brepjs-v14.6.5) (2026-03-26)
+
+
+### Bug Fixes
+
+* **opencascade:** prevent LTO stripping of custom bindings ([#666](https://github.com/andymai/brepjs/issues/666)) ([977dd75](https://github.com/andymai/brepjs/commit/977dd757e162d6fa47152b14aa31bac4edd9ae82))
+
 ## [14.6.4](https://github.com/andymai/brepjs/compare/brepjs-v14.6.3...brepjs-v14.6.4) (2026-03-25)
 
 
