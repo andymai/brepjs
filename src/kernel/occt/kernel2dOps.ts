@@ -1025,7 +1025,7 @@ export function buildEdgeOnSurface(
 }
 
 export function extractSurfaceFromFace(oc: KernelInstance, face: KernelShape): KernelType {
-  return oc.BRep_Tool.Surface_2(face);
+  return oc.BRep_Tool_Surface(face);
 }
 
 export function extractCurve2dFromEdge(
@@ -1044,7 +1044,7 @@ export function extractCurve2dFromEdge(
 }
 
 export function buildCurves3d(oc: KernelInstance, wire: KernelShape): void {
-  oc.BRepLib.BuildCurves3d_2(wire);
+  oc.BRepLib_BuildCurves3d(wire);
 }
 
 export function fixWireOnFace(

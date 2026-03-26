@@ -405,7 +405,7 @@ function extractVertices(oc: KernelInstance, shapes: KernelShape[], tolerance: n
     while (explorer.More()) {
       const face = oc.TopoDS_Cast.Face(explorer.Current());
       const location = new oc.TopLoc_Location_1();
-      const tri = oc.BRep_Tool.Triangulation(face, location, 0);
+      const tri = oc.BRep_Tool_Triangulation(face, location, 0);
 
       if (!tri.IsNull()) {
         const trsf = location.Transformation();

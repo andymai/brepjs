@@ -19,7 +19,7 @@ import type {
 
 /** Extract the 3D position of a vertex. */
 export function vertexPosition(oc: KernelInstance, vertex: KernelShape): [number, number, number] {
-  const pnt = oc.BRep_Tool.Pnt(vertex);
+  const pnt = oc.BRep_Tool_Pnt(vertex);
   const result: [number, number, number] = [pnt.X(), pnt.Y(), pnt.Z()];
   pnt.delete();
   return result;
@@ -68,7 +68,7 @@ export function uvBounds(
   oc: KernelInstance,
   face: KernelShape
 ): { uMin: number; uMax: number; vMin: number; vMax: number } {
-  const bounds = oc.BRepTools.UVBounds_1(face);
+  const bounds = oc.BRepTools_UVBounds(face);
   return {
     uMin: bounds.UMin,
     uMax: bounds.UMax,
@@ -79,7 +79,7 @@ export function uvBounds(
 
 /** Get the outer wire of a face. */
 export function outerWire(oc: KernelInstance, face: KernelShape): KernelShape {
-  return oc.BRepTools.OuterWire(face);
+  return oc.BRepTools_OuterWire(face);
 }
 
 /** Get the surface normal at a UV parameter on a face. */
@@ -122,7 +122,7 @@ export function uvFromPoint(
   face: KernelShape,
   point: [number, number, number]
 ): [number, number] | null {
-  const surface = oc.BRep_Tool.Surface_2(face);
+  const surface = oc.BRep_Tool_Surface(face);
   const pnt = new oc.gp_Pnt_3(point[0], point[1], point[2]);
   const proj = new oc.GeomAPI_ProjectPointOnSurf_2(
     pnt,
@@ -148,7 +148,7 @@ export function projectPointOnFace(
   face: KernelShape,
   point: [number, number, number]
 ): [number, number, number] {
-  const surface = oc.BRep_Tool.Surface_2(face);
+  const surface = oc.BRep_Tool_Surface(face);
   const pnt = new oc.gp_Pnt_3(point[0], point[1], point[2]);
   const proj = new oc.GeomAPI_ProjectPointOnSurf_2(
     pnt,
@@ -373,7 +373,7 @@ export function hasTriangulation(oc: KernelInstance, shape: KernelShape): boolea
   let found = false;
   while (explorer.More()) {
     const face = oc.TopoDS_Cast.Face(explorer.Current());
-    const tri = oc.BRep_Tool.Triangulation(face, loc, 0);
+    const tri = oc.BRep_Tool_Triangulation(face, loc, 0);
     if (!tri.IsNull()) {
       found = true;
       break;
