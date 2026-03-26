@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.15.4](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.3...brepjs-opencascade-v0.15.4) (2026-03-26)
+
+
+### Bug Fixes
+
+* **opencascade:** prevent LTO stripping of custom bindings ([#666](https://github.com/andymai/brepjs/issues/666)) ([977dd75](https://github.com/andymai/brepjs/commit/977dd757e162d6fa47152b14aa31bac4edd9ae82))
+* **opencascade:** replace gp_Vec3f with NCollection_Vec3&lt;float&gt; ([#662](https://github.com/andymai/brepjs/issues/662)) ([5aca24a](https://github.com/andymai/brepjs/commit/5aca24aeb2b3c1c1a45a59b804088e773a98b349))
+* **opencascade:** trigger 0.15.4 ([#663](https://github.com/andymai/brepjs/issues/663)) ([b038f37](https://github.com/andymai/brepjs/commit/b038f379045fdfa30d9fd9bb9457dbf98ea5febd))
+
 ## [0.15.3](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.2...brepjs-opencascade-v0.15.3) (2026-03-25)
 
 
