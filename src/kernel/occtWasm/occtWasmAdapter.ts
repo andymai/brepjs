@@ -2139,13 +2139,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     shape: KernelShape,
     param: number
   ): { point: [number, number, number]; tangent: [number, number, number] } {
-    const vec = this.k.curveTangent(unwrap(shape), param);
-    // Assumes the C++ facade returns [px, py, pz, tx, ty, tz]
+    const tvec = this.k.curveTangent(unwrap(shape), param);
+    const pvec = this.k.curvePointAtParam(unwrap(shape), param);
     const result = {
-      point: [vec.get(0), vec.get(1), vec.get(2)] as [number, number, number],
-      tangent: [vec.get(3), vec.get(4), vec.get(5)] as [number, number, number],
+      point: [pvec.get(0), pvec.get(1), pvec.get(2)] as [number, number, number],
+      tangent: [tvec.get(0), tvec.get(1), tvec.get(2)] as [number, number, number],
     };
-    vec.delete();
+    tvec.delete();
+    pvec.delete();
     return result;
   }
 
