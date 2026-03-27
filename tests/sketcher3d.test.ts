@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import Sketcher from '@/sketching/sketcher.js';
 import {
   Sketches,
@@ -334,8 +334,7 @@ describe('Sketcher 3D volume parity', () => {
   });
 
   it('sagittaArcTo preserves original sagitta direction', (ctx) => {
-    // brepkit: 2D→3D lift produces different geometry than direct 3D construction
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.sagittaArcTo');
     const sketch = new Sketcher().sagittaArcTo([10, 0], 3).lineTo([10, -5]).lineTo([0, -5]).close();
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 28.63)
@@ -343,7 +342,7 @@ describe('Sketcher 3D volume parity', () => {
   });
 
   it('bulgeArcTo preserves original bulge direction', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.bulgeArcTo');
     const sketch = new Sketcher().bulgeArcTo([10, 0], 0.5).lineTo([10, -5]).lineTo([0, -5]).close();
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 67.47)
@@ -351,7 +350,7 @@ describe('Sketcher 3D volume parity', () => {
   });
 
   it('halfEllipseTo matches original geometry', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.halfEllipseTo');
     const sketch = new Sketcher()
       .halfEllipseTo([10, 0], 5)
       .lineTo([10, -5])
@@ -363,7 +362,7 @@ describe('Sketcher 3D volume parity', () => {
   });
 
   it('ellipseTo matches original geometry', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.ellipseTo');
     const sketch = new Sketcher().ellipseTo([10, 0], 3, 5).lineTo([10, -5]).lineTo([0, -5]).close();
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 115.45)
@@ -371,7 +370,7 @@ describe('Sketcher 3D volume parity', () => {
   });
 
   it('smoothSplineTo matches original geometry', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.smoothSplineTo');
     const sketch = new Sketcher().hLine(5).smoothSplineTo([10, 5]).lineTo([0, 10]).close();
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // Verified against original Sketcher output (old code: 62.5)
@@ -381,8 +380,7 @@ describe('Sketcher 3D volume parity', () => {
 
 describe('Sketcher 3D inherited capabilities', () => {
   it('customCorner applies fillet between segments', (ctx) => {
-    // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.customCornerFillet');
     const sketch = new Sketcher().hLine(10).customCorner(1).vLine(10).hLine(-10).close();
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-1 quarter-circle corner: 100 - (1 - π/4) ≈ 99.785
@@ -390,8 +388,7 @@ describe('Sketcher 3D inherited capabilities', () => {
   });
 
   it('customCorner applies chamfer between segments', (ctx) => {
-    // brepkit: chamfer2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.customCornerChamfer');
     const sketch = new Sketcher().hLine(10).customCorner(1, 'chamfer').vLine(10).hLine(-10).close();
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-1 chamfer triangle: 100 - 0.5 = 99.5
@@ -399,8 +396,7 @@ describe('Sketcher 3D inherited capabilities', () => {
   });
 
   it('closeWithCustomCorner fillets the closing corner', (ctx) => {
-    // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.closeWithCustomCorner');
     const sketch = new Sketcher().hLine(10).vLine(10).hLine(-10).closeWithCustomCorner(1);
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-1 quarter-circle corner: 100 - (1 - π/4) ≈ 99.785
@@ -428,8 +424,7 @@ describe('Sketcher 3D inherited capabilities', () => {
   });
 
   it('customCorner works on non-XY planes', (ctx) => {
-    // brepkit: fillet2d produces incorrect geometry when lifted to 3D via curvesAsEdgesOnPlane
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'sketcher3d.customCornerNonXY');
     const sketch = new Sketcher('XZ').hLine(10).customCorner(2).vLine(10).hLine(-10).close();
     const vol = unwrap(measureVolume(sketch.extrude(1)));
     // 10×10 square minus one radius-2 quarter-circle corner: 100 - (4 - π) ≈ 99.142

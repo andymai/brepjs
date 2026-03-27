@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion -- test array indexing */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchRectangle,
   box,
@@ -69,8 +69,7 @@ describe('thicken', () => {
 
 describe('fillet', () => {
   it('fillets all edges of a box with constant radius', (ctx) => {
-    // brepkit over-fillets when all 12 edges are filleted (vol ~530 vs >800 expected)
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'modifierFns.filletAllEdges');
     const b = box(10, 10, 10);
     const result = fillet(b, 1);
     expect(isOk(result)).toBe(true);
@@ -195,8 +194,7 @@ describe('offset', () => {
 describe('fillet with array radius', () => {
   // OCCT V8 RC4: variable radius fillet crashes with memory access out of bounds
   it.skip('fillets a specific edge with variable radius [r1, r2]', (ctx) => {
-    // brepkit variable fillet produces vol > 1000 (physically impossible — fillet removes material)
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'modifierFns.variableFilletRadius');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = fillet(b, [edges[0]!], [1, 2]);
@@ -236,8 +234,7 @@ describe('fillet with callback returning null or array', () => {
 
   // OCCT V8 RC4: variable radius fillet crashes with memory access out of bounds
   it.skip('callback returning [r1, r2] applies variable fillet', (ctx) => {
-    // brepkit variable fillet produces vol > 1000 (physically impossible — fillet removes material)
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'modifierFns.variableFilletCallback');
     const b = box(10, 10, 10);
     const edges = getEdges(b);
     const result = fillet(b, edges.slice(0, 2), () => [1, 2]);
@@ -342,7 +339,6 @@ describe('variableFillet validation', () => {
 // Null-shape pre-validation tests
 // ---------------------------------------------------------------------------
 
-// brepkit skip: these tests use raw OCCT API (oc.TopoDS_Solid) to construct null shapes
 describe('null-shape pre-validation', () => {
   function makeNullShape(): Shape3D {
     const oc = getKernel().oc;
@@ -350,21 +346,21 @@ describe('null-shape pre-validation', () => {
   }
 
   it('fillet rejects null shape', (ctx) => {
-    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
+    skipIfDiverges(ctx, 'modifierFns.nullShapeValidation');
     const result = fillet(makeNullShape(), 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
   it('chamfer rejects null shape', (ctx) => {
-    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
+    skipIfDiverges(ctx, 'modifierFns.nullShapeValidation');
     const result = chamfer(makeNullShape(), 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
   });
 
   it('shell rejects null shape', (ctx) => {
-    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
+    skipIfDiverges(ctx, 'modifierFns.nullShapeValidation');
     const b = box(10, 10, 10);
     const faces = getFaces(b);
     const result = shell(makeNullShape(), [faces[0]!], 1);
@@ -373,7 +369,7 @@ describe('null-shape pre-validation', () => {
   });
 
   it('offset rejects null shape', (ctx) => {
-    if (isBrepkit) ctx.skip(); // oc.TopoDS_Solid unavailable
+    skipIfDiverges(ctx, 'modifierFns.nullShapeValidation');
     const result = offset(makeNullShape(), 1);
     expect(isErr(result)).toBe(true);
     expect(unwrapErr(result).code).toBe('NULL_SHAPE_INPUT');
