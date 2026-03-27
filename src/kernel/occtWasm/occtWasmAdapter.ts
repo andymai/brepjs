@@ -2773,17 +2773,33 @@ export class OcctWasmAdapter implements KernelAdapter {
     return x < b.xMin || x > b.xMax || y < b.yMin || y > b.yMax;
   } // brepjs-patterns-disable: no-double-cast
   getCurve2dCircleData(
-    _curve: Curve2dHandle
+    curve: Curve2dHandle
   ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
-    notImplemented('getCurve2dCircleData');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
+    const c = c2d(curve) as any;
+    if (c.__bk2d === 'circle')
+      return { cx: c.cx, cy: c.cy, radius: c.radius, isDirect: c.sense !== false };
+    return null;
   }
   getCurve2dEllipseData(
-    _curve: Curve2dHandle
+    curve: Curve2dHandle
   ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
-    notImplemented('getCurve2dEllipseData');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
+    const c = c2d(curve) as any;
+    if (c.__bk2d === 'ellipse')
+      return {
+        majorRadius: c.majorRadius,
+        minorRadius: c.minorRadius,
+        xAxisAngle: c.xDirAngle ?? 0,
+        isDirect: c.sense !== false,
+      };
+    return null;
   }
-  getCurve2dBezierPoles(_curve: Curve2dHandle): [number, number][] | null {
-    notImplemented('getCurve2dBezierPoles');
+  getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
+    const c = c2d(curve) as any;
+    if (c.__bk2d === 'bezier' && Array.isArray(c.poles)) return c.poles as [number, number][];
+    return null;
   }
   getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
