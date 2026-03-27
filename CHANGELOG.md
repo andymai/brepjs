@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.7.0](https://github.com/andymai/brepjs/compare/brepjs-v14.6.9...brepjs-v14.7.0) (2026-03-27)
+
+
+### Features
+
+* occt-wasm kernel adapter (98.2% test parity) ([9c1362c](https://github.com/andymai/brepjs/commit/9c1362c4fb5bad936db892a7b7f3d298fd1a00be))
+
 ## [14.6.9](https://github.com/andymai/brepjs/compare/brepjs-v14.6.8...brepjs-v14.6.9) (2026-03-26)
 
 
