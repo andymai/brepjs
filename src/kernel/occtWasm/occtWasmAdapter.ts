@@ -1030,23 +1030,21 @@ export class OcctWasmAdapter implements KernelAdapter {
     _neutralPlane: [number, number, number],
     angleDeg: number | ((face: KernelShape) => number)
   ): KernelShape {
-    // C++ facade: draft(shapeId, faceId, angleRad, dx, dy, dz)
-    // Apply to first face only for now (single face per call)
-    const angle = typeof angleDeg === 'function' ? angleDeg(faces[0]) : angleDeg;
-    const angleRad = (angle * Math.PI) / 180;
-
-    return wrapResult(
-      this.k,
-      this.k.draft(
-        unwrap(shape),
-
-        unwrap(faces[0]),
+    // Apply draft to each face sequentially
+    let currentId = unwrap(shape);
+    for (const face of faces) {
+      const angle = typeof angleDeg === 'function' ? angleDeg(face) : angleDeg;
+      const angleRad = (angle * Math.PI) / 180;
+      currentId = this.k.draft(
+        currentId,
+        unwrap(face),
         angleRad,
         pullDirection[0],
         pullDirection[1],
         pullDirection[2]
-      )
-    );
+      );
+    }
+    return wrapResult(this.k, currentId);
   }
 
   defeature(shape: KernelShape, faces: KernelShape[]): KernelShape {
