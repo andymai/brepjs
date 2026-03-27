@@ -10,12 +10,9 @@
  */
 
 import { describe, it, beforeAll, expect } from 'vitest';
-import {
-  initAllKernels,
-  getAdapter,
-  expectClose,
-  expectKernelsAgree,
-} from './helpers/kernelTestHarness.js';
+import { initAllKernels } from './helpers/kernelInit.js';
+import { expectClose, expectKernelsAgree } from './helpers/kernelDivergences.js';
+import { getKernel } from '@/kernel/index.js';
 import type { KernelAdapter } from '@/kernel/types.js';
 
 interface KernelPair {
@@ -27,9 +24,13 @@ let _pair: KernelPair | null = null;
 
 beforeAll(async () => {
   await initAllKernels();
-  const o = getAdapter('occt');
-  const b = getAdapter('brepkit');
-  if (o && b) _pair = { o, b };
+  try {
+    const o = getKernel('occt');
+    const b = getKernel('brepkit');
+    _pair = { o, b };
+  } catch {
+    // One or both kernels not available
+  }
 }, 30000);
 
 /** Returns both adapters or null (caller should `return` on null). */

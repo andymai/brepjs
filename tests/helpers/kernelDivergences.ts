@@ -4,6 +4,7 @@
  * Each entry maps a divergence key (operation.specificCase) to its kind and reason.
  * Test files use `skipIfDiverges(ctx, key)` instead of inline `if (isBrepkit) ctx.skip()`.
  */
+import { expect } from 'vitest';
 import type { TestContext } from 'vitest';
 
 // ---------------------------------------------------------------------------
@@ -533,4 +534,37 @@ export function skipIfDiverges(
   if (div && (div.kind === 'not-implemented' || div.kind === 'skip')) {
     ctx.skip();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Cross-kernel comparison helpers (moved from kernelTestHarness.ts)
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert a value is close to expected within tolerance.
+ * Supports both relative and absolute tolerance.
+ */
+export function expectClose(actual: number, expected: number, relTol = 1e-4, absTol = 1e-10): void {
+  const diff = Math.abs(actual - expected);
+  const tol = Math.max(absTol, Math.abs(expected) * relTol);
+  expect(diff).toBeLessThanOrEqual(tol);
+}
+
+/**
+ * Compare values from two kernels and assert they agree within tolerance.
+ */
+export function expectKernelsAgree(
+  valA: number,
+  valB: number,
+  label: string,
+  relTol = 1e-4,
+  absTol = 1e-10
+): void {
+  const diff = Math.abs(valA - valB);
+  const ref = Math.max(Math.abs(valA), Math.abs(valB));
+  const tol = Math.max(absTol, ref * relTol);
+  expect(
+    diff,
+    `Cross-kernel disagreement on ${label}: OCCT=${valA}, brepkit=${valB}, diff=${diff}, tol=${tol}`
+  ).toBeLessThanOrEqual(tol);
 }
