@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.7.1](https://github.com/andymai/brepjs/compare/brepjs-v14.7.0...brepjs-v14.7.1) (2026-03-27)
+
+
+### Bug Fixes
+
+* occt-wasm remaining fixes (42→26 failures, 98.9%) ([d8f7bd5](https://github.com/andymai/brepjs/commit/d8f7bd5ef8af7049bf32eeb92df319156db86c8b))
+
 ## [14.7.0](https://github.com/andymai/brepjs/compare/brepjs-v14.6.9...brepjs-v14.7.0) (2026-03-27)
 
 
