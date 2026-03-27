@@ -2531,7 +2531,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     return c2dWrap(ow2d.makeBezier2d(points));
   }
   makeBSpline2d(
-    _points: [number, number][],
+    points: [number, number][],
     _options?: {
       degMin?: number;
       degMax?: number;
@@ -2540,7 +2540,15 @@ export class OcctWasmAdapter implements KernelAdapter {
       smoothing?: [number, number, number] | null;
     }
   ): Curve2dHandle {
-    notImplemented('makeBSpline2d');
+    // Approximate B-spline as a Bezier through the control points
+    // This is an approximation — true B-spline fitting would need OCCT's Geom2d
+    if (points.length <= 25) {
+      return c2dWrap(ow2d.makeBezier2d(points));
+    }
+    // For many points, subsample to keep Bezier degree manageable
+    const step = Math.max(1, Math.floor(points.length / 24));
+    const sampled = points.filter((_, i) => i % step === 0 || i === points.length - 1);
+    return c2dWrap(ow2d.makeBezier2d(sampled));
   }
   evaluateCurve2d(curve: Curve2dHandle, param: number): [number, number] {
     return ow2d.evaluateCurve2d(c2d(curve), param);
@@ -2817,11 +2825,11 @@ export class OcctWasmAdapter implements KernelAdapter {
   } | null {
     notImplemented('getCurve2dBSplineData');
   }
-  serializeCurve2d(_curve: Curve2dHandle): string {
-    notImplemented('serializeCurve2d');
+  serializeCurve2d(curve: Curve2dHandle): string {
+    return ow2d.serializeCurve2d(c2d(curve));
   }
-  deserializeCurve2d(_data: string): Curve2dHandle {
-    notImplemented('deserializeCurve2d');
+  deserializeCurve2d(data: string): Curve2dHandle {
+    return c2dWrap(ow2d.deserializeCurve2d(data));
   }
   splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHandle[] {
     const bounds = ow2d.curveBounds(c2d(curve));
@@ -2834,6 +2842,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     }
     return result;
   }
+  // brepjs-patterns-disable: max-function-lines
   liftCurve2dToPlane(
     curve: Curve2dHandle,
     planeOrigin: [number, number, number],
@@ -2860,6 +2869,32 @@ export class OcctWasmAdapter implements KernelAdapter {
       const p1 = lift(u1, v1);
       const p2 = lift(u2, v2);
       return handle('edge', this.k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
+    }
+    if (cType === 'trimmed') {
+      // Trimmed curve: evaluate at the trim bounds
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect trimmed basis
+      const trimmed = cu as any;
+      if (trimmed.basis && trimmed.basis.__bk2d === 'line') {
+        const [u1, v1] = ow2d.evaluateCurve2d(cu, 0);
+        const [u2, v2] = ow2d.evaluateCurve2d(cu, 1);
+        const p1 = lift(u1, v1);
+        const p2 = lift(u2, v2);
+        return handle('edge', this.k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
+      }
+      if (trimmed.basis && trimmed.basis.__bk2d === 'circle') {
+        const bounds = ow2d.curveBounds(cu);
+        const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
+        const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
+        const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
+        const p1 = lift(u1, v1);
+        const pm = lift(um, vm);
+        const p2 = lift(u2, v2);
+        return handle(
+          'edge',
+          this.k.makeArcEdge(p1[0], p1[1], p1[2], pm[0], pm[1], pm[2], p2[0], p2[1], p2[2])
+        );
+      }
+      // Fall through to interpolation for other trimmed basis types
     }
     if (cType === 'circle') {
       const bounds = ow2d.curveBounds(cu);
