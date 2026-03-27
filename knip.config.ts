@@ -11,6 +11,7 @@ const config: KnipConfig = {
   workspaces: {
     '.': {
       project: ['src/**/*.ts'],
+      entry: ['src/kernel/occtWasm/occtWasmAdapter.ts'],
       ignore: [],
       ignoreBinaries: ['tsx'],
     },
