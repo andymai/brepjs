@@ -175,35 +175,38 @@ function readVecInt(vec: EmVectorInt): number[] {
  * for modified and generated, and a flat vector of deleted input hashes.
  */
 function parseEvolution(evo: EmEvolutionData): { id: number; evolution: ShapeEvolution } {
-  const modifiedRaw = readVecInt(evo.modified);
-  const generatedRaw = readVecInt(evo.generated);
-  const deletedRaw = readVecInt(evo.deleted);
+  try {
+    const modifiedRaw = readVecInt(evo.modified);
+    const generatedRaw = readVecInt(evo.generated);
+    const deletedRaw = readVecInt(evo.deleted);
 
-  // C++ format: [inputHash, count, output1, output2, ..., inputHash, count, ...]
-  const parseMap = (raw: number[]): Map<number, number[]> => {
-    const map = new Map<number, number[]>();
-    let i = 0;
-    while (i + 1 < raw.length) {
-      const inputHash = raw[i] ?? 0;
-      const count = raw[i + 1] ?? 0;
-      i += 2;
-      const outputs: number[] = [];
-      for (let j = 0; j < count && i < raw.length; j++, i++) {
-        outputs.push(raw[i] ?? 0);
+    // C++ format: [inputHash, count, output1, output2, ..., inputHash, count, ...]
+    const parseMap = (raw: number[]): Map<number, number[]> => {
+      const map = new Map<number, number[]>();
+      let i = 0;
+      while (i + 1 < raw.length) {
+        const inputHash = raw[i] ?? 0;
+        const count = raw[i + 1] ?? 0;
+        i += 2;
+        const outputs: number[] = [];
+        for (let j = 0; j < count && i < raw.length; j++, i++) {
+          outputs.push(raw[i] ?? 0);
+        }
+        map.set(inputHash, outputs);
       }
-      map.set(inputHash, outputs);
-    }
-    return map;
-  };
+      return map;
+    };
 
-  const modified = parseMap(modifiedRaw);
-  const generated = parseMap(generatedRaw);
-  const deleted = new Set<number>(deletedRaw);
+    const modified = parseMap(modifiedRaw);
+    const generated = parseMap(generatedRaw);
+    const deleted = new Set<number>(deletedRaw);
 
-  const resultId = evo.resultId;
-  evo.delete();
+    const resultId = evo.resultId;
 
-  return { id: resultId, evolution: { modified, generated, deleted } };
+    return { id: resultId, evolution: { modified, generated, deleted } };
+  } finally {
+    evo.delete();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1031,10 +1034,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     if (shellMode) {
       // Shell mode: return { shape, firstShape, lastShape } tuple
       const edges = this.k.getSubShapes(unwrap(result), 'wire');
-      const firstWire = edges.size() > 0 ? wrapResult(this.k, edges.get(0)) : result;
-      const lastWire = edges.size() > 1 ? wrapResult(this.k, edges.get(edges.size() - 1)) : result;
-      edges.delete();
-      return { shape: result, firstShape: firstWire, lastShape: lastWire };
+      try {
+        const firstWire = edges.size() > 0 ? wrapResult(this.k, edges.get(0)) : result;
+        const lastWire =
+          edges.size() > 1 ? wrapResult(this.k, edges.get(edges.size() - 1)) : result;
+        return { shape: result, firstShape: firstWire, lastShape: lastWire };
+      } finally {
+        edges.delete();
+      }
     }
     return result;
   }
@@ -1526,18 +1533,24 @@ export class OcctWasmAdapter implements KernelAdapter {
     );
     const subVec = this.k.getSubShapes(compoundId, 'solid');
     const results: KernelShape[] = [];
-    const n = subVec.size();
-    for (let i = 0; i < n; i++) {
-      results.push(handle('solid', subVec.get(i)));
+    try {
+      const n = subVec.size();
+      for (let i = 0; i < n; i++) {
+        results.push(handle('solid', subVec.get(i)));
+      }
+    } finally {
+      subVec.delete();
     }
-    subVec.delete();
     if (results.length === 0) {
       const iter = this.k.iterShapes(compoundId);
-      const n2 = iter.size();
-      for (let i = 0; i < n2; i++) {
-        results.push(wrapResult(this.k, iter.get(i)));
+      try {
+        const n2 = iter.size();
+        for (let i = 0; i < n2; i++) {
+          results.push(wrapResult(this.k, iter.get(i)));
+        }
+      } finally {
+        iter.delete();
       }
-      iter.delete();
     }
     return results;
   }
@@ -2227,7 +2240,9 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   surfaceCenterOfMass(face: KernelShape): [number, number, number] {
-    // Get vertices of the face and average their positions
+    // Known approximation: averages vertex positions (centroid) rather than
+    // computing the true surface center of mass. This matches the OCCT adapter
+    // behavior for this kernel — a proper GProp_GProps integration is not yet available.
     const vertVec = this.k.getSubShapes(unwrap(face), 'vertex');
     const n = vertVec.size();
     if (n === 0) {
@@ -2778,6 +2793,11 @@ export class OcctWasmAdapter implements KernelAdapter {
     endX: number,
     endY: number
   ): Curve2dHandle {
+    // Heuristic: place "via point" at start + 0.5*tangent as a hint for the
+    // three-point arc. This works for small tangent vectors where the offset
+    // approximates a point on the desired circle, but may produce incorrect
+    // arcs for large tangent magnitudes (the true approach would solve for the
+    // circumscribed circle tangent to the tangent vector at the start point).
     const midX = startX + tangentX * 0.5;
     const midY = startY + tangentY * 0.5;
     return this.makeArc2dThreePoints(startX, startY, midX, midY, endX, endY);
@@ -3414,33 +3434,36 @@ export class OcctWasmAdapter implements KernelAdapter {
   getNurbsCurveData(edge: KernelShape): NurbsCurveData | null {
     try {
       const data = this.k.getNurbsCurveData(unwrap(edge));
-      const nPoles = data.poles.size() / 3;
-      const poles: [number, number, number][] = [];
-      for (let i = 0; i < nPoles; i++) {
-        poles.push([data.poles.get(i * 3), data.poles.get(i * 3 + 1), data.poles.get(i * 3 + 2)]);
+      try {
+        const nPoles = data.poles.size() / 3;
+        const poles: [number, number, number][] = [];
+        for (let i = 0; i < nPoles; i++) {
+          poles.push([data.poles.get(i * 3), data.poles.get(i * 3 + 1), data.poles.get(i * 3 + 2)]);
+        }
+        const knots: number[] = [];
+        for (let i = 0; i < data.knots.size(); i++) knots.push(data.knots.get(i));
+        const multiplicities: number[] = [];
+        for (let i = 0; i < data.multiplicities.size(); i++)
+          multiplicities.push(data.multiplicities.get(i));
+        const weights: number[] = [];
+        if (data.rational) {
+          for (let i = 0; i < data.weights.size(); i++) weights.push(data.weights.get(i));
+        } else {
+          for (let i = 0; i < nPoles; i++) weights.push(1);
+        }
+        const result: NurbsCurveData = {
+          degree: data.degree,
+          poles,
+          weights,
+          knots,
+          multiplicities,
+          isPeriodic: data.periodic,
+          isRational: data.rational,
+        };
+        return result;
+      } finally {
+        data.delete();
       }
-      const knots: number[] = [];
-      for (let i = 0; i < data.knots.size(); i++) knots.push(data.knots.get(i));
-      const multiplicities: number[] = [];
-      for (let i = 0; i < data.multiplicities.size(); i++)
-        multiplicities.push(data.multiplicities.get(i));
-      const weights: number[] = [];
-      if (data.rational) {
-        for (let i = 0; i < data.weights.size(); i++) weights.push(data.weights.get(i));
-      } else {
-        for (let i = 0; i < nPoles; i++) weights.push(1);
-      }
-      const result: NurbsCurveData = {
-        degree: data.degree,
-        poles,
-        weights,
-        knots,
-        multiplicities,
-        isPeriodic: data.periodic,
-        isRational: data.rational,
-      };
-      data.delete();
-      return result;
     } catch {
       return null;
     }
