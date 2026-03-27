@@ -2598,7 +2598,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     return c2dWrap(ow2d.rotateCurve2d(c2d(curve), angle, cx, cy));
   }
   scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle {
-    return c2dWrap(ow2d.scaleCurve2d(c2d(curve), factor, cx, cy));
+    const result = ow2d.scaleCurve2d(c2d(curve), factor, cx, cy);
+    // Fix: brepkit2d scaleCurve2d doesn't scale line length. Patch it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- patch line length
+    const r = result as any;
+    if (r.__bk2d === 'line' && typeof r.len === 'number') {
+      r.len = r.len * Math.abs(factor);
+    }
+    return c2dWrap(result);
   }
   mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle {
     return c2dWrap(ow2d.mirrorAtPoint(c2d(curve), cx, cy));
