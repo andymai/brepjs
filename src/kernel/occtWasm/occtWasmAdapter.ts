@@ -1865,16 +1865,26 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   draftWithHistory(
-    _shape: KernelShape,
-    _faces: KernelShape[],
-    _pullDirection: [number, number, number],
+    shape: KernelShape,
+    faces: KernelShape[],
+    pullDirection: [number, number, number],
     _neutralPlane: [number, number, number],
-    _angleDeg: number | ((face: KernelShape) => number),
+    angleDeg: number | ((face: KernelShape) => number),
     _inputFaceHashes: number[],
     _hashUpperBound: number
   ): OperationResult {
-    // No C++ draftWithHistory in the facade
-    notImplemented('draftWithHistory');
+    // Apply draft to each face sequentially (no evolution tracking)
+    const [dx, dy, dz] = pullDirection;
+    let currentId = unwrap(shape);
+    for (const face of faces) {
+      const angle = typeof angleDeg === 'number' ? angleDeg : angleDeg(face);
+      const angleRad = (angle * Math.PI) / 180;
+      currentId = this.k.draft(currentId, unwrap(face), angleRad, dx, dy, dz);
+    }
+    return {
+      shape: wrapResult(this.k, currentId),
+      evolution: { modified: new Map(), generated: new Map(), deleted: new Set() },
+    };
   }
 
   applyComposedTransformWithHistory(
@@ -2127,7 +2137,18 @@ export class OcctWasmAdapter implements KernelAdapter {
     _options?: { unit?: string | undefined; modelUnit?: string | undefined }
   ): string {
     // brepjs-patterns-disable: no-double-cast
-    return this.k.writeXCAFToSTEP(unwrap(doc as unknown as KernelShape));
+    const id = unwrap(doc as unknown as KernelShape);
+    // Empty documents (0 shapes) — check by looking for any sub-shapes
+    const subs = this.k.getSubShapes(id, 'solid');
+    const hasSolids = subs.size() > 0;
+    subs.delete();
+    if (!hasSolids) {
+      const faces = this.k.getSubShapes(id, 'face');
+      const hasFaces = faces.size() > 0;
+      faces.delete();
+      if (!hasFaces) return '';
+    }
+    return this.k.writeXCAFToSTEP(id);
   }
 
   exportSTEPConfigured(
