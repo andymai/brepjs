@@ -77,6 +77,28 @@ export interface EmEvolutionData {
   delete(): void;
 }
 
+/** ProjectionData struct returned from projectEdges (HLR). */
+export interface EmProjectionData {
+  visibleOutline: number;
+  visibleSmooth: number;
+  visibleSharp: number;
+  hiddenOutline: number;
+  hiddenSmooth: number;
+  hiddenSharp: number;
+}
+
+/** NurbsCurveData struct returned from getNurbsCurveData. */
+export interface EmNurbsCurveData {
+  degree: number;
+  rational: boolean;
+  periodic: boolean;
+  knots: EmVectorDouble;
+  multiplicities: EmVectorInt;
+  poles: EmVectorDouble;
+  weights: EmVectorDouble;
+  delete(): void;
+}
+
 /** Embind std::vector<uint32_t> wrapper. */
 export interface EmVectorUint32 {
   size(): number;
@@ -390,6 +412,38 @@ export interface OcctKernelWasm {
   curveLength(edgeId: number): number;
   interpolatePoints(flatPoints: EmVectorDouble, periodic: boolean): number;
   approximatePoints(flatPoints: EmVectorDouble, tolerance: number): number;
+
+  // --- Projection (HLR) ---
+  projectEdges(
+    shapeId: number,
+    ox: number,
+    oy: number,
+    oz: number,
+    dx: number,
+    dy: number,
+    dz: number,
+    xx: number,
+    xy: number,
+    xz: number,
+    hasXAxis: boolean
+  ): EmProjectionData;
+
+  // --- NURBS introspection ---
+  getNurbsCurveData(edgeId: number): EmNurbsCurveData;
+
+  // --- 2D→3D curve lifting ---
+  liftCurve2dToPlane(
+    flatPoints2d: EmVectorDouble,
+    planeOx: number,
+    planeOy: number,
+    planeOz: number,
+    planeZx: number,
+    planeZy: number,
+    planeZz: number,
+    planeXx: number,
+    planeXy: number,
+    planeXz: number
+  ): number;
 
   // --- Modifier ---
   thicken(shapeId: number, thickness: number): number;

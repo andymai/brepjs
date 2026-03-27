@@ -40,6 +40,7 @@ import type {
   KernelShape,
   KernelType,
   MeshOptions,
+  NurbsCurveData,
   OperationResult,
   ShapeEvolution,
   ShapeOrientation,
@@ -2416,15 +2417,35 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   projectEdges(
-    _shape: KernelShape,
-    _cameraOrigin: [number, number, number],
-    _cameraDirection: [number, number, number],
-    _cameraXAxis?: [number, number, number]
+    shape: KernelShape,
+    cameraOrigin: [number, number, number],
+    cameraDirection: [number, number, number],
+    cameraXAxis?: [number, number, number]
   ): {
     visible: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
     hidden: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
   } {
-    notImplemented('projectEdges');
+    const [ox, oy, oz] = cameraOrigin;
+    const [dx, dy, dz] = cameraDirection;
+    const hasXAxis = !!cameraXAxis;
+    const [xx, xy, xz] = cameraXAxis ?? [1, 0, 0];
+    const proj = this.k.projectEdges(unwrap(shape), ox, oy, oz, dx, dy, dz, xx, xy, xz, hasXAxis);
+    const wrapOrNull = (id: number): KernelShape =>
+      id === 0
+        ? handle('compound', this.k.makeCompound(new this.Module.VectorUint32()))
+        : handle('compound', id);
+    return {
+      visible: {
+        outline: wrapOrNull(proj.visibleOutline),
+        smooth: wrapOrNull(proj.visibleSmooth),
+        sharp: wrapOrNull(proj.visibleSharp),
+      },
+      hidden: {
+        outline: wrapOrNull(proj.hiddenOutline),
+        smooth: wrapOrNull(proj.hiddenSmooth),
+        sharp: wrapOrNull(proj.hiddenSharp),
+      },
+    };
   }
 
   // =========================================================================
@@ -3026,7 +3047,40 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   // KernelRepairOps.validationDetails is not on the interface but brepkit has it
-  // KernelCurveOps.getNurbsCurveData is optional
+  getNurbsCurveData(edge: KernelShape): NurbsCurveData | null {
+    try {
+      const data = this.k.getNurbsCurveData(unwrap(edge));
+      const nPoles = data.poles.size() / 3;
+      const poles: [number, number, number][] = [];
+      for (let i = 0; i < nPoles; i++) {
+        poles.push([data.poles.get(i * 3), data.poles.get(i * 3 + 1), data.poles.get(i * 3 + 2)]);
+      }
+      const knots: number[] = [];
+      for (let i = 0; i < data.knots.size(); i++) knots.push(data.knots.get(i));
+      const multiplicities: number[] = [];
+      for (let i = 0; i < data.multiplicities.size(); i++)
+        multiplicities.push(data.multiplicities.get(i));
+      const weights: number[] = [];
+      if (data.rational) {
+        for (let i = 0; i < data.weights.size(); i++) weights.push(data.weights.get(i));
+      } else {
+        for (let i = 0; i < nPoles; i++) weights.push(1);
+      }
+      const result: NurbsCurveData = {
+        degree: data.degree,
+        poles,
+        weights,
+        knots,
+        multiplicities,
+        isPeriodic: data.periodic,
+        isRational: data.rational,
+      };
+      data.delete();
+      return result;
+    } catch {
+      return null;
+    }
+  }
   // KernelSurfaceOps.getNurbsSurfaceData is optional
 }
 
