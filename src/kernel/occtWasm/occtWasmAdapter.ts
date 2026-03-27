@@ -3108,7 +3108,6 @@ export class OcctWasmAdapter implements KernelAdapter {
     planeX: [number, number, number]
   ): KernelShape {
     const cu = c2d(curve);
-    const cType = ow2d.curveTypeName(cu);
     const [ox, oy, oz] = planeOrigin;
     const [zx, zy, zz] = planeZ;
     const [xx, xy, xz] = planeX;
@@ -3120,7 +3119,10 @@ export class OcctWasmAdapter implements KernelAdapter {
       oy + u * xy + v * yy,
       oz + u * xz + v * yz,
     ];
-    if (cType === 'line') {
+    // Use the internal __bk2d tag for type dispatch (curveTypeName returns uppercase compound names)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
+    const bk2dType = (cu as any).__bk2d as string;
+    if (bk2dType === 'line') {
       const bounds = ow2d.curveBounds(cu);
       const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
       const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
@@ -3128,7 +3130,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       const p2 = lift(u2, v2);
       return handle('edge', this.k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
     }
-    if (cType === 'trimmed') {
+    if (bk2dType === 'trimmed') {
       // Trimmed curve: evaluate at the trim bounds
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect trimmed basis
       const trimmed = cu as any;
@@ -3154,7 +3156,15 @@ export class OcctWasmAdapter implements KernelAdapter {
       }
       // Fall through to interpolation for other trimmed basis types
     }
-    if (cType === 'circle') {
+    if (bk2dType === 'circle') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect circle data
+      const circleData = cu as any;
+      if (circleData.cx !== undefined && circleData.radius !== undefined) {
+        // Full circle — use makeCircleEdge with center on the plane
+        const [pcx, pcy, pcz] = lift(circleData.cx, circleData.cy);
+        return handle('edge', this.k.makeCircleEdge(pcx, pcy, pcz, zx, zy, zz, circleData.radius));
+      }
+      // Partial circle — use 3-point arc
       const bounds = ow2d.curveBounds(cu);
       const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
       const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
