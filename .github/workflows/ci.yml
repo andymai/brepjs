@@ -22,8 +22,19 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # Release-please PRs only touch CHANGELOG.md, package.json versions,
+      # and .release-please-manifest.json — no code changes to validate.
+      - name: Skip release-please PRs
+        id: release-please
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" == release-please--* ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: filter
+        if: steps.release-please.outputs.skip != 'true'
         with:
           filters: |
             code:
