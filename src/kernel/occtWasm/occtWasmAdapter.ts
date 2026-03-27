@@ -1200,7 +1200,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     translation: readonly [number, number, number],
     _isOrthogonal: boolean
   ): KernelShape {
-    // Build 4x4 from 3x3 linear + translation
+    // Build 3x4 row-major from 3x3 linear + translation (C++ facade expects 12 elements)
     const matrix = [
       linear[0],
       linear[1],
@@ -1214,10 +1214,6 @@ export class OcctWasmAdapter implements KernelAdapter {
       linear[7],
       linear[8],
       translation[2],
-      0,
-      0,
-      0,
-      1,
     ];
     const vec = makeVecDouble(this.Module, matrix);
     try {
