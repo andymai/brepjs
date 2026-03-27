@@ -719,7 +719,9 @@ export class OcctWasmAdapter implements KernelAdapter {
   ): KernelShape {
     if (points.length < 4) throw new Error('hullFromPoints: need at least 4 points');
     const faces = computeConvexHullFaces(points);
-    return this.buildSolidFromFaces(points, faces, tolerance);
+    const solid = this.buildSolidFromFaces(points, faces, tolerance);
+    // Fix orientation to ensure positive volume (hull winding may be inverted)
+    return wrapResult(this.k, this.k.fixFaceOrientations(unwrap(solid)));
   }
 
   buildSolidFromFaces(
@@ -1012,10 +1014,20 @@ export class OcctWasmAdapter implements KernelAdapter {
   ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
     const freenet = options?.frenet ?? false;
     const smooth = options?.transitionMode === 'round';
-    return wrapResult(
+    const shellMode = options?.shellMode ?? false;
+    const result = wrapResult(
       this.k,
       this.k.sweepPipeShell(unwrap(profile), unwrap(spine), freenet, smooth)
     );
+    if (shellMode) {
+      // Shell mode: return { shape, firstShape, lastShape } tuple
+      const edges = this.k.getSubShapes(unwrap(result), 'wire');
+      const firstWire = edges.size() > 0 ? wrapResult(this.k, edges.get(0)) : result;
+      const lastWire = edges.size() > 1 ? wrapResult(this.k, edges.get(edges.size() - 1)) : result;
+      edges.delete();
+      return { shape: result, firstShape: firstWire, lastShape: lastWire };
+    }
+    return result;
   }
 
   loftAdvanced(
