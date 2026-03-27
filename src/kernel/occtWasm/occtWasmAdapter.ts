@@ -1687,28 +1687,28 @@ export class OcctWasmAdapter implements KernelAdapter {
       triangles[i] = this.Module.HEAPU32[idxPtr + i] ?? 0;
     }
 
+    // Read face groups before deleting meshData
+    const faceGroups: Array<{ start: number; count: number; faceHash: number }> = [];
+    const fgCount = meshData.faceGroupCount;
+    if (fgCount > 0) {
+      const fgPtr = meshData.getFaceGroupsPtr() >> 2;
+      for (let i = 0; i < fgCount; i += 3) {
+        faceGroups.push({
+          start: this.Module.HEAP32[fgPtr + i] ?? 0,
+          count: this.Module.HEAP32[fgPtr + i + 1] ?? 0,
+          faceHash: this.Module.HEAP32[fgPtr + i + 2] ?? 0,
+        });
+      }
+    }
+
     meshData.delete();
 
     return {
       vertices,
       normals: options.skipNormals ? new Float32Array(0) : normals,
       triangles,
-      uvs: new Float32Array(0), // TODO: UV generation
-      faceGroups: (() => {
-        const fgCount = meshData.faceGroupCount;
-        const groups: Array<{ start: number; count: number; faceHash: number }> = [];
-        if (fgCount > 0) {
-          const fgPtr = meshData.getFaceGroupsPtr() >> 2;
-          for (let i = 0; i < fgCount; i += 3) {
-            groups.push({
-              start: this.Module.HEAP32[fgPtr + i] ?? 0,
-              count: this.Module.HEAP32[fgPtr + i + 1] ?? 0,
-              faceHash: this.Module.HEAP32[fgPtr + i + 2] ?? 0,
-            });
-          }
-        }
-        return groups;
-      })(),
+      uvs: new Float32Array(0),
+      faceGroups,
     };
   }
 
@@ -1726,26 +1726,23 @@ export class OcctWasmAdapter implements KernelAdapter {
       lines[i] = this.Module.HEAPF32[ptr + i] ?? 0;
     }
 
+    // Read edge groups before deleting edgeData
+    const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
+    const egCount = edgeData.edgeGroupCount;
+    if (egCount > 0) {
+      const egPtr = edgeData.getEdgeGroupsPtr() >> 2;
+      for (let i = 0; i < egCount; i += 3) {
+        edgeGroups.push({
+          start: this.Module.HEAP32[egPtr + i] ?? 0,
+          count: this.Module.HEAP32[egPtr + i + 1] ?? 0,
+          edgeHash: this.Module.HEAP32[egPtr + i + 2] ?? 0,
+        });
+      }
+    }
+
     edgeData.delete();
 
-    return {
-      lines,
-      edgeGroups: (() => {
-        const egCount = edgeData.edgeGroupCount;
-        const groups: Array<{ start: number; count: number; edgeHash: number }> = [];
-        if (egCount > 0) {
-          const egPtr = edgeData.getEdgeGroupsPtr() >> 2;
-          for (let i = 0; i < egCount; i += 3) {
-            groups.push({
-              start: this.Module.HEAP32[egPtr + i] ?? 0,
-              count: this.Module.HEAP32[egPtr + i + 1] ?? 0,
-              edgeHash: this.Module.HEAP32[egPtr + i + 2] ?? 0,
-            });
-          }
-        }
-        return groups;
-      })(),
-    };
+    return { lines, edgeGroups };
   }
 
   hasTriangulation(shape: KernelShape): boolean {
