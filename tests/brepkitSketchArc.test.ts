@@ -1,11 +1,11 @@
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import { getKernel } from '@/kernel/index.js';
 import { supportsConstraintSketch } from '@/kernel/types.js';
 import type { ConstraintSketchCapability, KernelAdapter } from '@/kernel/types.js';
 
-const descBk = isBrepkit ? describe : describe.skip;
+const descBk = shouldSkipSuite('brepkitSketchArc') ? describe.skip : describe;
 
 let kernel: KernelAdapter & ConstraintSketchCapability;
 

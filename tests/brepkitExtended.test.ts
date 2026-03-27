@@ -12,9 +12,9 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { box, fillet, castShape, getEdges, getFaces, isSolid, unwrap } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 
-const descBk = isBrepkit ? describe : describe.skip;
+const descBk = shouldSkipSuite('brepkitExtended') ? describe.skip : describe;
 
 beforeAll(async () => {
   await initKernel();
@@ -470,7 +470,7 @@ descBk('Arena checkpoint/restore (brepkit)', () => {
 // OCCT kernel: methods should throw
 // ---------------------------------------------------------------------------
 
-const descOcct = !isBrepkit ? describe : describe.skip;
+const descOcct = shouldSkipSuite('brepkitExtended') ? describe : describe.skip;
 
 descOcct('Brepkit-only methods throw on OCCT', () => {
   it('export3MF throws', () => {

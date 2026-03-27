@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import { box, importGLB, measureVolume, isSolid, unwrap, isOk } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
 
@@ -7,7 +8,7 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-describe.skipIf(currentKernel !== 'brepkit')('brepkit-specific: GLB round-trip', () => {
+describe.skipIf(shouldSkipSuite('gltfRoundTrip'))('brepkit-specific: GLB round-trip', () => {
   it('exports a box as GLB then re-imports with preserved volume', async () => {
     const solid = box(10, 10, 10);
     const originalVolume = unwrap(measureVolume(solid));

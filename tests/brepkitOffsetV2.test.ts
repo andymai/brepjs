@@ -1,9 +1,9 @@
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import { box, unwrap, measureVolume, offset } from '@/index.js';
 
-const descBk = isBrepkit ? describe : describe.skip;
+const descBk = shouldSkipSuite('brepkitOffsetV2') ? describe.skip : describe;
 
 beforeAll(async () => {
   await initKernel();
