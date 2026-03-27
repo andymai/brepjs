@@ -2826,7 +2826,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
     const basis = c2d(curve);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return c2dWrap({ __bk2d: 'trimmed' as const, basis, first: start, last: end } as any);
+    return c2dWrap({ __bk2d: 'trimmed' as const, basis, tStart: start, tEnd: end } as any);
   }
   reverseCurve2d(_curve: Curve2dHandle): void {
     /* Curves are immutable in our pure-TS 2D system — reverse is a no-op */
@@ -2964,25 +2964,71 @@ export class OcctWasmAdapter implements KernelAdapter {
     const result = ow2d.intersectCurves2dFn(c2d(c1), c2d(c2), tolerance);
     return { points: result.points, segments: result.segments.map((s) => c2dWrap(s)) };
   }
+  // brepjs-patterns-disable: max-function-lines
   projectPointOnCurve2d(
     curve: Curve2dHandle,
     x: number,
     y: number
   ): { param: number; distance: number } | null {
-    const c = c2d(curve);
+    // Analytical projection matching OCCT's Geom2dAPI_ProjectPointOnCurve
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
+    const c = c2d(curve) as any;
     const bounds = ow2d.curveBounds(c);
-    let bestT = bounds.first,
-      bestDist = Infinity;
-    for (let i = 0; i <= 50; i++) {
-      const t = bounds.first + ((bounds.last - bounds.first) * i) / 50;
-      const [px, py] = ow2d.evaluateCurve2d(c, t);
-      const d = Math.sqrt((px - x) ** 2 + (py - y) ** 2);
-      if (d < bestDist) {
-        bestDist = d;
-        bestT = t;
+
+    // Helper: project onto a basis curve and return raw parameter
+    const projectOnBasis = (
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- curve obj
+      basis: any,
+      bFirst: number,
+      bLast: number
+    ): { param: number; distance: number } | null => {
+      if (basis.__bk2d === 'line') {
+        // Line: (ox + dx*t, oy + dy*t), dx²+dy²=1
+        const rawT = (x - basis.ox) * basis.dx + (y - basis.oy) * basis.dy;
+        const t = Math.max(bFirst, Math.min(bLast, rawT));
+        const [px, py] = ow2d.evaluateCurve2d(basis, t);
+        return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
       }
+      if (basis.__bk2d === 'circle') {
+        let angle = Math.atan2(y - basis.cy, x - basis.cx);
+        if (!basis.sense) angle = -angle;
+        // Normalize angle into [bFirst, bLast] range
+        while (angle < bFirst - Math.PI) angle += 2 * Math.PI;
+        while (angle > bLast + Math.PI) angle -= 2 * Math.PI;
+        const t = Math.max(bFirst, Math.min(bLast, angle));
+        const [px, py] = ow2d.evaluateCurve2d(basis, t);
+        return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
+      }
+      // General: dense sampling
+      const N = 200;
+      let bestT = bFirst;
+      let bestDist = Infinity;
+      for (let i = 0; i <= N; i++) {
+        const t = bFirst + ((bLast - bFirst) * i) / N;
+        const [px, py] = ow2d.evaluateCurve2d(basis, t);
+        const d = (px - x) ** 2 + (py - y) ** 2;
+        if (d < bestDist) {
+          bestDist = d;
+          bestT = t;
+        }
+      }
+      return { param: bestT, distance: Math.sqrt(bestDist) };
+    };
+
+    // For trimmed curves: project on basis, then map parameter to [0,1]
+    if (c.__bk2d === 'trimmed' && c.basis) {
+      const tStart = c.tStart as number;
+      const tEnd = c.tEnd as number;
+      const basisResult = projectOnBasis(c.basis, tStart, tEnd);
+      if (!basisResult) return null;
+      // Map basis parameter back to trimmed [0,1]
+      const range = tEnd - tStart;
+      const trimmedT = range > 1e-15 ? (basisResult.param - tStart) / range : 0;
+      return { param: Math.max(0, Math.min(1, trimmedT)), distance: basisResult.distance };
     }
-    return { param: bestT, distance: bestDist };
+
+    // Direct projection for non-trimmed curves
+    return projectOnBasis(c, bounds.first, bounds.last);
   }
   distanceBetweenCurves2d(
     c1: Curve2dHandle,
@@ -3236,11 +3282,11 @@ export class OcctWasmAdapter implements KernelAdapter {
       ow2d.makeLine2d(0, 0, 1, 0)
     );
   }
-  buildCurves3d(_wire: KernelShape): void {
-    notImplemented('buildCurves3d');
+  buildCurves3d(wire: KernelShape): void {
+    this.k.buildCurves3d(unwrap(wire));
   }
-  fixWireOnFace(_wire: KernelShape, _face: KernelShape, _tolerance: number): KernelShape {
-    notImplemented('fixWireOnFace');
+  fixWireOnFace(wire: KernelShape, face: KernelShape, tolerance: number): KernelShape {
+    return handle('wire', this.k.fixWireOnFace(unwrap(wire), unwrap(face), tolerance));
   }
   fillSurface(
     _wires: KernelShape[],

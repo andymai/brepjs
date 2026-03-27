@@ -580,6 +580,10 @@ export interface OcctKernelWasm {
     hashUpperBound: number
   ): EmEvolutionData;
 
+  // --- Wire/curve repair ---
+  buildCurves3d(wireId: number): void;
+  fixWireOnFace(wireId: number, faceId: number, tolerance: number): number;
+
   // --- Healing / Repair ---
   fixShape(id: number): number;
   unifySameDomain(id: number): number;
