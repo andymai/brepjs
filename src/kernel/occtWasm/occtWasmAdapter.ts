@@ -1954,9 +1954,26 @@ export class OcctWasmAdapter implements KernelAdapter {
     };
   }
 
-  surfaceCenterOfMass(_face: KernelShape): [number, number, number] {
-    // Use surface area center of mass -- delegate to centerOfMass
-    return this.centerOfMass(_face);
+  surfaceCenterOfMass(face: KernelShape): [number, number, number] {
+    // Get vertices of the face and average their positions
+    const vertVec = this.k.getSubShapes(unwrap(face), 'vertex');
+    const n = vertVec.size();
+    if (n === 0) {
+      vertVec.delete();
+      return [0, 0, 0];
+    }
+    let sx = 0,
+      sy = 0,
+      sz = 0;
+    for (let i = 0; i < n; i++) {
+      const posVec = this.k.vertexPosition(vertVec.get(i));
+      sx += posVec.get(0);
+      sy += posVec.get(1);
+      sz += posVec.get(2);
+      posVec.delete();
+    }
+    vertVec.delete();
+    return [sx / n, sy / n, sz / n];
   }
 
   measureBulk(shape: KernelShape, includeLinear?: boolean): BulkMeasurement {
