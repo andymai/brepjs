@@ -445,6 +445,9 @@ export interface OcctKernelWasm {
     planeXz: number
   ): number;
 
+  // --- Surface construction ---
+  bsplineSurface(flatPoints: EmVectorDouble, rows: number, cols: number): number;
+
   // --- Null shape ---
   makeNullShape(): number;
 

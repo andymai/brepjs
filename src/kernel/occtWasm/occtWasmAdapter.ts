@@ -754,8 +754,18 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('makeFaceOnSurface');
   }
 
-  bsplineSurface(_points: [number, number, number][], _rows: number, _cols: number): KernelShape {
-    notImplemented('bsplineSurface');
+  bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
+    const vec = new this.Module.VectorDouble();
+    for (const [x, y, z] of points) {
+      vec.push_back(x);
+      vec.push_back(y);
+      vec.push_back(z);
+    }
+    try {
+      return handle('face', this.k.bsplineSurface(vec, rows, cols));
+    } finally {
+      vec.delete();
+    }
   }
 
   triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
