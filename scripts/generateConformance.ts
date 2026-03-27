@@ -13,22 +13,11 @@ import { fileURLToPath } from 'node:url';
 
 import { kernelConfigs } from '../tests/helpers/kernelRegistry.js';
 import { divergences } from '../tests/helpers/kernelDivergences.js';
+import type { Divergence, DivergenceKind } from '../tests/helpers/kernelDivergences.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'docs', 'kernel-conformance.md');
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-type DivergenceKind = 'not-implemented' | 'skip' | 'tolerance' | 'topology-differs';
-
-interface DivergenceEntry {
-  readonly kind: DivergenceKind;
-  readonly reason: string;
-  readonly relativeTol?: number | undefined;
-}
 
 function kindEmoji(kind: DivergenceKind): string {
   switch (kind) {
@@ -102,12 +91,12 @@ function generateParityTable(): string {
 
   const rows = sortedKeys.map((key) => {
     const cells = kernelIds.map((kernelId) => {
-      const entry = divergences[kernelId]?.[key] as DivergenceEntry | undefined;
+      const entry: Divergence | undefined = divergences[kernelId]?.[key];
       if (!entry) {
         return '\u2705';
       }
       const emoji = kindEmoji(entry.kind);
-      if (entry.kind === 'tolerance' && entry.relativeTol !== undefined) {
+      if (entry.kind === 'tolerance' && 'relativeTol' in entry) {
         const pct = (entry.relativeTol * 100).toFixed(1);
         return `${emoji} ${pct}%`;
       }

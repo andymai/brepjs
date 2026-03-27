@@ -8,6 +8,7 @@
 import { initFromOC, registerKernel } from '@/kernel/index.js';
 import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
 import { OcctWasmAdapter } from '@/kernel/occtWasm/occtWasmAdapter.js';
+import { kernelConfigs } from './kernelRegistry.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten instance
 let _oc: any = null;
@@ -56,7 +57,8 @@ export async function initKernel(id?: string): Promise<void> {
   } else if (kernel === 'occt') {
     await initOCCT();
   } else {
-    throw new Error(`Unknown kernel: "${kernel}". Expected "occt", "brepkit", or "occt-wasm".`);
+    const known = kernelConfigs.map((k) => `"${k.id}"`).join(', ');
+    throw new Error(`Unknown kernel: "${kernel}". Expected one of: ${known}.`);
   }
 }
 
@@ -94,7 +96,7 @@ export async function initOCCT(): Promise<any> {
  */
 export async function initAllKernels(): Promise<string[]> {
   const results: string[] = [];
-  for (const id of ['occt', 'brepkit']) {
+  for (const { id } of kernelConfigs) {
     try {
       await initKernel(id);
       results.push(id);

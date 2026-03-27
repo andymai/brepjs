@@ -470,6 +470,11 @@ export const divergences: DivergenceMap = {
       reason: 'brepkit negative angle draft not available in OCCT',
     },
   },
+
+  // occt-wasm is near-identical to occt; divergences are tracked via
+  // excludeTests in kernelRegistry.ts. Add entries here when specific
+  // tests need per-test skipping rather than whole-file exclusion.
+  'occt-wasm': {},
 };
 
 // ---------------------------------------------------------------------------
