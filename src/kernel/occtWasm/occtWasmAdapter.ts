@@ -1041,8 +1041,13 @@ export class OcctWasmAdapter implements KernelAdapter {
     }
   ): KernelShape {
     const isSolid = options?.solid ?? true;
+    const startV = options?.startVertex ? unwrap(options.startVertex) : 0;
+    const endV = options?.endVertex ? unwrap(options.endVertex) : 0;
     const vec = makeVecU32(this.Module, wires.map(unwrap));
     try {
+      if (startV || endV) {
+        return wrapResult(this.k, this.k.loftWithVertices(vec, isSolid, startV, endV));
+      }
       return wrapResult(this.k, this.k.loft(vec, isSolid));
     } finally {
       vec.delete();

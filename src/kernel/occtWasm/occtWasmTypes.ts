@@ -208,6 +208,12 @@ export interface OcctKernelWasm {
   pipe(profileId: number, spineId: number): number;
   simplePipe(profileId: number, spineId: number): number;
   loft(wireIds: EmVectorUint32, isSolid: boolean): number;
+  loftWithVertices(
+    wireIds: EmVectorUint32,
+    isSolid: boolean,
+    startVertexId: number,
+    endVertexId: number
+  ): number;
   sweep(wireId: number, spineId: number, transitionMode: number): number;
   sweepPipeShell(profileId: number, spineId: number, freenet: boolean, smooth: boolean): number;
   draftPrism(shapeId: number, dx: number, dy: number, dz: number, angleDeg: number): number;
