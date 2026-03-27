@@ -1990,14 +1990,19 @@ export class OcctWasmAdapter implements KernelAdapter {
     maxDirection: [number, number, number];
     minDirection: [number, number, number];
   } {
-    const c = this.k.surfaceCurvature(unwrap(face), u, v);
-    // The C++ facade returns a single curvature value
+    const vec = this.k.surfaceCurvature(unwrap(face), u, v);
+    // C++ returns [mean, gaussian, maxK, minK]
+    const mean = vec.get(0);
+    const gaussian = vec.get(1);
+    const maxK = vec.get(2);
+    const minK = vec.get(3);
+    vec.delete();
     return {
-      gaussian: c,
-      mean: c,
-      max: c,
-      min: c,
-      maxDirection: [1, 0, 0],
+      gaussian,
+      mean,
+      max: maxK,
+      min: minK,
+      maxDirection: [1, 0, 0], // TODO: extract actual principal directions
       minDirection: [0, 1, 0],
     };
   }

@@ -367,7 +367,7 @@ export interface OcctKernelWasm {
   getLength(id: number): number;
   getCenterOfMass(id: number): EmVectorDouble;
   getLinearCenterOfMass(id: number): EmVectorDouble;
-  surfaceCurvature(faceId: number, u: number, v: number): number;
+  surfaceCurvature(faceId: number, u: number, v: number): EmVectorDouble;
 
   // --- Vertex/Surface query ---
   vertexPosition(vertexId: number): EmVectorDouble;
