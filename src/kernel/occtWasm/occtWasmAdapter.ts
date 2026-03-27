@@ -731,9 +731,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   ): KernelShape {
     if (points.length < 4) throw new Error('hullFromPoints: need at least 4 points');
     const faces = computeConvexHullFaces(points);
-    const solid = this.buildSolidFromFaces(points, faces, tolerance);
-    // Fix orientation to ensure positive volume (hull winding may be inverted)
-    return wrapResult(this.k, this.k.fixFaceOrientations(unwrap(solid)));
+    return this.buildSolidFromFaces(points, faces, tolerance);
   }
 
   buildSolidFromFaces(
@@ -752,7 +750,9 @@ export class OcctWasmAdapter implements KernelAdapter {
     }
     const vec = makeVecU32(this.Module, faceIds);
     try {
-      const sewn = this.k.sewAndSolidify(vec, tolerance);
+      let sewn = this.k.sewAndSolidify(vec, tolerance);
+      // Fix face orientations for consistent normals (OBJ/hull winding may vary)
+      sewn = this.k.fixFaceOrientations(sewn);
       return wrapResult(this.k, sewn);
     } finally {
       vec.delete();
@@ -874,7 +874,9 @@ export class OcctWasmAdapter implements KernelAdapter {
   sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape {
     const vec = makeVecU32(this.Module, faces.map(unwrap));
     try {
-      return handle('solid', this.k.sewAndSolidify(vec, tolerance));
+      let sewn = this.k.sewAndSolidify(vec, tolerance);
+      sewn = this.k.fixFaceOrientations(sewn);
+      return handle('solid', sewn);
     } finally {
       vec.delete();
     }
@@ -2959,7 +2961,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       delete() {
         /* no-op */
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque transform
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
     } as any;
   }
 
@@ -2980,12 +2982,11 @@ export class OcctWasmAdapter implements KernelAdapter {
       delete() {
         /* no-op */
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
     } as any;
   }
 
   createTranslationGTrsf2d(dx: number, dy: number): KernelType {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
     return {
       type: 'translate2d',
       dx,
@@ -2993,6 +2994,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       delete() {
         /* no-op */
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
     } as any;
   }
 
@@ -3005,7 +3007,6 @@ export class OcctWasmAdapter implements KernelAdapter {
     dirX?: number,
     dirY?: number
   ): KernelType {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
     return {
       type: 'mirror2d',
       cx,
@@ -3018,11 +3019,11 @@ export class OcctWasmAdapter implements KernelAdapter {
       delete() {
         /* no-op */
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
     } as any;
   }
 
   createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
     return {
       type: 'rotate2d',
       angle,
@@ -3031,11 +3032,11 @@ export class OcctWasmAdapter implements KernelAdapter {
       delete() {
         /* no-op */
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
     } as any;
   }
 
   createScaleGTrsf2d(factor: number, cx: number, cy: number): KernelType {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
     return {
       type: 'scale2d',
       sx: factor,
@@ -3045,6 +3046,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       delete() {
         /* no-op */
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
     } as any;
   }
   setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void {
