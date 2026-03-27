@@ -2811,7 +2811,13 @@ export class OcctWasmAdapter implements KernelAdapter {
     return ow2d.curveBounds(c2d(curve));
   }
   getCurve2dType(curve: Curve2dHandle): string {
-    return ow2d.curveTypeName(c2d(curve));
+    // Unwrap trimmed curves to return the basis type (matches OCCT Geom2dAdaptor behavior)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect trimmed basis
+    let cu = c2d(curve) as any;
+    while (cu.__bk2d === 'trimmed' && cu.basis) {
+      cu = cu.basis;
+    }
+    return ow2d.curveTypeName(cu);
   }
 
   trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
