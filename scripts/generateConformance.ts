@@ -36,11 +36,6 @@ function capEmoji(supported: boolean): string {
   return supported ? '\u2705' : '\u274C';
 }
 
-function padRight(s: string, len: number): string {
-  // Emoji can be wider than 1 char, but for markdown tables this is fine
-  return s.length >= len ? s : s + ' '.repeat(len - s.length);
-}
-
 // ---------------------------------------------------------------------------
 // Capabilities table
 // ---------------------------------------------------------------------------
@@ -70,11 +65,8 @@ function generateParityTable(): string {
   const allKeys = new Set<string>();
   const kernelIds = Object.keys(divergences);
   for (const kernelId of kernelIds) {
-    const entries = divergences[kernelId];
-    if (entries) {
-      for (const key of Object.keys(entries)) {
-        allKeys.add(key);
-      }
+    for (const key of Object.keys(divergences[kernelId] ?? {})) {
+      allKeys.add(key);
     }
   }
 

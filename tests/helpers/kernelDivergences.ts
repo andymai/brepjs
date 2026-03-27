@@ -501,10 +501,7 @@ export function getToleranceFor(
   kernelId: string = currentKernelId
 ): ToleranceDivergence | undefined {
   const div = getDivergence(key, kernelId);
-  if (div?.kind === 'tolerance') {
-    return div as ToleranceDivergence;
-  }
-  return undefined;
+  return div?.kind === 'tolerance' ? (div as ToleranceDivergence) : undefined;
 }
 
 /**
@@ -535,14 +532,13 @@ export function skipIfDiverges(
   key: string,
   kernelId: string = currentKernelId
 ): void {
-  const div = getDivergence(key, kernelId);
-  if (div && (div.kind === 'not-implemented' || div.kind === 'skip')) {
+  if (shouldSkipSuite(key, kernelId)) {
     ctx.skip();
   }
 }
 
 // ---------------------------------------------------------------------------
-// Cross-kernel comparison helpers (moved from kernelTestHarness.ts)
+// Cross-kernel comparison helpers
 // ---------------------------------------------------------------------------
 
 /**
