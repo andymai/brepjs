@@ -1,8 +1,9 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
+import { kernelConfigs } from './tests/helpers/kernelRegistry.js';
 
 /**
- * Tests excluded from both kernel projects:
+ * Tests excluded from all kernel projects:
  * - brepkit-only tests that use a mock BrepKernel or brepkit-only setup
  * - cross-kernel comparison tests that manage their own dual-kernel init
  * - standard non-test directories
@@ -54,35 +55,19 @@ export default defineConfig({
         lines: 84,
       },
     },
-    projects: [
-      {
-        extends: true,
-        test: {
-          name: 'occt',
-          env: { TEST_KERNEL: 'occt' },
-          exclude: [...alwaysExclude],
+    projects: kernelConfigs.map((k) => ({
+      extends: true,
+      test: {
+        name: k.id,
+        env: { TEST_KERNEL: k.id, ...(k.envOverrides ?? {}) },
+        exclude: [...alwaysExclude, ...(k.excludeTests ?? [])],
+        coverage: {
+          reportsDirectory: `./coverage/${k.id}`,
+          ...(k.coverageThresholds !== 'informational' && k.coverageThresholds
+            ? { thresholds: k.coverageThresholds }
+            : {}),
         },
       },
-      {
-        extends: true,
-        test: {
-          name: 'brepkit',
-          env: { TEST_KERNEL: 'brepkit' },
-          exclude: [...alwaysExclude],
-        },
-      },
-      {
-        extends: true,
-        test: {
-          name: 'occt-wasm',
-          env: { TEST_KERNEL: 'occt-wasm' },
-          exclude: [
-            ...alwaysExclude,
-            'tests/brepkitExtended.test.ts',
-            'tests/brepkitAdapter.test.ts',
-          ],
-        },
-      },
-    ],
+    })),
   },
 });
