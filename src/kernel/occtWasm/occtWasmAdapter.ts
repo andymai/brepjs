@@ -675,8 +675,13 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   removeHolesFromFace(face: KernelShape): KernelShape {
-    // C++ facade takes face + hole indices; remove all holes by passing empty
-    const vec = makeVecInt(this.Module, []);
+    // C++ facade takes face + hole indices to remove. Pass all inner wire indices.
+    const allWires = this.k.getSubShapes(unwrap(face), 'wire');
+    const holeCount = allWires.size() - 1; // exclude outer wire
+    allWires.delete();
+    const indices: number[] = [];
+    for (let i = 0; i < holeCount; i++) indices.push(i);
+    const vec = makeVecInt(this.Module, indices);
     try {
       return handle('face', this.k.removeHolesFromFace(unwrap(face), vec));
     } finally {
