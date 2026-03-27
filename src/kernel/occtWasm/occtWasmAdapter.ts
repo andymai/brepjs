@@ -659,12 +659,14 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   makeTangentArc(
-    _startPoint: [number, number, number],
-    _startTangent: [number, number, number],
-    _endPoint: [number, number, number]
+    startPoint: [number, number, number],
+    startTangent: [number, number, number],
+    endPoint: [number, number, number]
   ): KernelShape {
-    // TODO: not yet in the C++ facade
-    notImplemented('makeTangentArc');
+    const [x1, y1, z1] = startPoint;
+    const [tx, ty, tz] = startTangent;
+    const [x2, y2, z2] = endPoint;
+    return handle('edge', this.k.makeTangentArc(x1, y1, z1, tx, ty, tz, x2, y2, z2));
   }
 
   makeHelixWire(
@@ -1951,20 +1953,41 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   createXCAFDocument(
-    _shapes: Array<{
+    shapes: Array<{
       shape: KernelShape;
       name: string;
       color?: [number, number, number, number] | undefined;
     }>
   ): KernelType {
-    notImplemented('createXCAFDocument');
+    const ids = new this.Module.VectorUint32();
+    const nameParts: string[] = [];
+    const colors = new this.Module.VectorDouble();
+    for (const entry of shapes) {
+      ids.push_back(unwrap(entry.shape));
+      nameParts.push(entry.name);
+      const [r, g, b, a] = entry.color ?? [0.5, 0.5, 0.5, 1];
+      colors.push_back(r);
+      colors.push_back(g);
+      colors.push_back(b);
+      colors.push_back(a);
+    }
+    try {
+      const joinedNames = nameParts.join('\0');
+      const docId = this.k.createXCAFDocument(ids, joinedNames, colors);
+      // brepjs-patterns-disable: no-double-cast
+      return handle('compound', docId) as unknown as KernelType;
+    } finally {
+      ids.delete();
+      colors.delete();
+    }
   }
 
   writeXCAFToSTEP(
-    _doc: KernelType,
+    doc: KernelType,
     _options?: { unit?: string | undefined; modelUnit?: string | undefined }
   ): string {
-    notImplemented('writeXCAFToSTEP');
+    // brepjs-patterns-disable: no-double-cast
+    return this.k.writeXCAFToSTEP(unwrap(doc as unknown as KernelShape));
   }
 
   exportSTEPConfigured(
@@ -3083,8 +3106,10 @@ export class OcctWasmAdapter implements KernelAdapter {
   buildEdgeOnSurface(_curve: Curve2dHandle, _surface: KernelType): KernelShape {
     notImplemented('buildEdgeOnSurface');
   }
-  extractSurfaceFromFace(_face: KernelShape): KernelType {
-    notImplemented('extractSurfaceFromFace');
+  extractSurfaceFromFace(face: KernelShape): KernelType {
+    // Return the face handle itself — occt-wasm uses faces as surface proxies
+    // brepjs-patterns-disable: no-double-cast
+    return face as unknown as KernelType;
   }
   extractCurve2dFromEdge(_edge: KernelShape, _face: KernelShape): Curve2dHandle {
     /* PCurve extraction not yet supported — return a dummy line */ return c2dWrap(

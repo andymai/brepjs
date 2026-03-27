@@ -99,6 +99,14 @@ export interface EmNurbsCurveData {
   delete(): void;
 }
 
+/** Embind std::vector<std::string> wrapper. */
+export interface EmVectorString {
+  size(): number;
+  get(index: number): string;
+  push_back(value: string): void;
+  delete(): void;
+}
+
 /** Embind std::vector<uint32_t> wrapper. */
 export interface EmVectorUint32 {
   size(): number;
@@ -272,6 +280,17 @@ export interface OcctKernelWasm {
     endAngle: number
   ): number;
   makeBezierEdge(flatPoints: EmVectorDouble): number;
+  makeTangentArc(
+    x1: number,
+    y1: number,
+    z1: number,
+    tx: number,
+    ty: number,
+    tz: number,
+    x2: number,
+    y2: number,
+    z2: number
+  ): number;
   makeHelixWire(
     px: number,
     py: number,
@@ -445,6 +464,14 @@ export interface OcctKernelWasm {
     planeXz: number
   ): number;
 
+  // --- XCAF ---
+  createXCAFDocument(
+    shapeIds: EmVectorUint32,
+    joinedNames: string,
+    flatColors: EmVectorDouble
+  ): number;
+  writeXCAFToSTEP(docId: number): string;
+
   // --- Surface construction ---
   bsplineSurface(flatPoints: EmVectorDouble, rows: number, cols: number): number;
 
@@ -586,6 +613,8 @@ export interface OcctWasmModule {
   VectorInt: new () => EmVectorInt;
   /** Embind std::vector<double> constructor. */
   VectorDouble: new () => EmVectorDouble;
+  /** Embind std::vector<std::string> constructor. */
+  VectorString: new () => EmVectorString;
 
   /** OcctKernel constructor (Embind class). */
   OcctKernel: new () => OcctKernelWasm;
