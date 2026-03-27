@@ -34,26 +34,24 @@ export async function initKernel(id?: string): Promise<void> {
     const BrepKernel = bk.BrepKernel ?? bk.default?.BrepKernel;
     if (!BrepKernel) throw new Error('brepkit-wasm: could not resolve BrepKernel constructor');
     registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
-    if (!_available.includes('brepkit')) _available.push('brepkit');
+    _available.push('brepkit');
   } else if (kernel === 'occt-wasm') {
     if (_occtWasmInitialized) return;
     _occtWasmInitialized = true;
-    const pathMod = await import('node:path');
-    const wasmDir = pathMod.resolve(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten dirname
-      (import.meta as any).dirname ?? process.cwd(),
-      '../../occt-wasm/dist'
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic WASM import
-    const mod: any = await import(pathMod.join(wasmDir, 'occt-wasm.js'));
-    const createOcctWasm = mod.default;
+    // occt-wasm npm package bundles the Emscripten module in its dist/
+    const { resolve } = await import('node:path');
+    // Locate the occt-wasm dist directory via the package's import resolution
+    const occtWasmEntry = import.meta.resolve('occt-wasm');
+    const { fileURLToPath, URL: UrlClass } = await import('node:url');
+    const wasmDir = fileURLToPath(new UrlClass('.', occtWasmEntry));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten factory
+    const { default: createOcctWasm }: any = await import(resolve(wasmDir, 'occt-wasm.js'));
     const Module = await createOcctWasm({
-      locateFile: (p: string) =>
-        p.endsWith('.wasm') ? pathMod.join(wasmDir, 'occt-wasm.wasm') : p,
+      locateFile: (p: string) => (p.endsWith('.wasm') ? resolve(wasmDir, 'occt-wasm.wasm') : p),
     });
     const k = new Module.OcctKernel();
     registerKernel('occt-wasm', new OcctWasmAdapter(Module, k));
-    if (!_available.includes('occt-wasm')) _available.push('occt-wasm');
+    _available.push('occt-wasm');
   } else if (kernel === 'occt') {
     await initOCCT();
   } else {
