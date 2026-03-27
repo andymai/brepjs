@@ -1,5 +1,5 @@
 /**
- * Shared benchmark setup — initialises both OCCT and brepkit kernels.
+ * Shared benchmark setup — initialises kernels via the unified init module.
  *
  * All benchmark files should import from here instead of duplicating init logic.
  */
@@ -7,49 +7,45 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initOC } from '../tests/setup.js';
-import { registerKernel } from '../src/kernel/index.js';
-import { BrepkitAdapter } from '../src/kernel/brepkit/brepkitAdapter.js';
-import { createDualKernelBench } from './harness.js';
-
-let _hasBrepkit = false;
+import {
+  initKernel,
+  initAllKernels,
+  getAvailableKernels,
+} from '../tests/helpers/kernelInit.js';
+import { createMultiKernelBench } from './harness.js';
 
 /** Whether brepkit kernel is available. */
 export function hasBrepkit(): boolean {
-  return _hasBrepkit;
+  return getAvailableKernels().includes('brepkit');
 }
 
 /**
- * Initialise OCCT and optionally brepkit kernels.
+ * Initialise kernels for benchmarks.
  *
- * brepkit is only loaded when `BENCH_KERNELS=both` or `BENCH_KERNELS=brepkit`
- * is set, keeping `npm run bench` fast (OCCT-only by default).
+ * Reads `BENCH_KERNELS` env var:
+ * - `'all'` or `'both'` → initialise all available kernels
+ * - otherwise → treat as a kernel id (defaults to `'occt'`)
+ *
+ * Keeps `npm run bench` fast (OCCT-only by default).
  */
-export async function initBothKernels(): Promise<void> {
-  // Always init OCCT
-  await initOC();
-
-  const kernelMode = process.env.BENCH_KERNELS ?? 'occt';
-  if (kernelMode !== 'both' && kernelMode !== 'brepkit') return;
-
-  // Try to init brepkit
-  try {
-    const brepkitWasm = await import('brepkit-wasm');
-    if (typeof brepkitWasm.default === 'function') {
-      await brepkitWasm.default();
-    }
-    const BrepKernel = brepkitWasm.BrepKernel ?? brepkitWasm.default?.BrepKernel;
-    const kernel = new BrepKernel();
-    registerKernel('brepkit', new BrepkitAdapter(kernel));
-    _hasBrepkit = true;
-    console.log('[benchmark] brepkit WASM loaded successfully');
-  } catch {
-    console.log('[benchmark] brepkit WASM not available — brepkit benchmarks will be skipped');
+export async function initBenchKernels(): Promise<void> {
+  const mode = process.env['BENCH_KERNELS'] ?? 'occt';
+  if (mode === 'all' || mode === 'both') {
+    await initAllKernels();
+  } else {
+    await initKernel(mode);
   }
 }
 
-/** Pre-configured dual-kernel bench helpers. */
-export const { benchBoth, benchKernel } = createDualKernelBench(() => _hasBrepkit);
+/**
+ * @deprecated Use `initBenchKernels` instead.
+ */
+export const initBothKernels = initBenchKernels;
+
+/** Pre-configured multi-kernel bench helpers. */
+export const { benchBoth, benchKernel } = createMultiKernelBench(
+  () => getAvailableKernels()
+);
 
 /** Read brepkit-wasm version from package.json. */
 export function getBrepkitVersion(): string {

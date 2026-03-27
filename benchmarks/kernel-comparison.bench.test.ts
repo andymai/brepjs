@@ -34,7 +34,7 @@ import {
   type BenchResult,
   type ReportSection,
 } from './harness.js';
-import { initBothKernels, benchBoth, hasBrepkit, getBrepkitVersion } from './setup.js';
+import { initBenchKernels, benchBoth, hasBrepkit, getBrepkitVersion } from './setup.js';
 
 // Accumulate all results for JSON output
 const ALL_RESULTS: BenchResult[] = [];
@@ -51,7 +51,7 @@ async function benchAndCollect(
 }
 
 beforeAll(async () => {
-  await initBothKernels();
+  await initBenchKernels();
 }, 30000);
 
 // ---------------------------------------------------------------------------

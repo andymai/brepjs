@@ -100,26 +100,31 @@ export async function bench(
 }
 
 // ---------------------------------------------------------------------------
-// Dual-kernel helpers
+// Multi-kernel helpers
 // ---------------------------------------------------------------------------
 
-export function createDualKernelBench(hasBrepkit: () => boolean) {
+/**
+ * Create bench helpers that run across all available kernels.
+ *
+ * @param getKernels — returns currently-available kernel ids (e.g. `['occt', 'brepkit']`)
+ */
+export function createMultiKernelBench(getKernels: () => string[]) {
   async function benchKernel(
     kernelId: KernelId,
     name: string,
     fn: () => void,
     opts?: BenchOptions
   ): Promise<BenchResult | null> {
-    if (kernelId === 'brepkit' && !hasBrepkit()) return null;
+    if (!getKernels().includes(kernelId)) return null;
 
     try {
       return await bench(`[${kernelId}] ${name}`, () => {
         withKernel(kernelId, fn);
       }, opts);
     } catch (e) {
-      if (kernelId === 'brepkit') {
+      if (kernelId !== 'occt') {
         const msg = e instanceof Error ? e.message : String(e);
-        console.log(`  [brepkit] ${name}: skipped (${msg})`);
+        console.warn(`  [${kernelId}] ${name}: skipped (${msg})`);
         return null;
       }
       throw e;
@@ -143,6 +148,17 @@ export function createDualKernelBench(hasBrepkit: () => boolean) {
   }
 
   return { benchKernel, benchBoth };
+}
+
+/**
+ * @deprecated Use `createMultiKernelBench` instead.
+ */
+export function createDualKernelBench(hasBrepkit: () => boolean) {
+  return createMultiKernelBench(() => {
+    const kernels = ['occt'];
+    if (hasBrepkit()) kernels.push('brepkit');
+    return kernels;
+  });
 }
 
 /** Push occt (and brepkit if present) results into the array. */
