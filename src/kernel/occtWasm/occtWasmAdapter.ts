@@ -717,11 +717,26 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   buildSolidFromFaces(
-    _points: Array<{ x: number; y: number; z: number }>,
-    _faces: Array<readonly [number, number, number]>,
-    _tolerance: number
+    points: Array<{ x: number; y: number; z: number }>,
+    faces: Array<readonly [number, number, number]>,
+    tolerance: number
   ): KernelShape {
-    notImplemented('buildSolidFromFaces');
+    // Build triangle faces, sew them, and solidify
+    const faceIds: number[] = [];
+    for (const [i0, i1, i2] of faces) {
+      const p0 = points[i0];
+      const p1 = points[i1];
+      const p2 = points[i2];
+      if (!p0 || !p1 || !p2) continue;
+      faceIds.push(this.k.buildTriFace(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z));
+    }
+    const vec = makeVecU32(this.Module, faceIds);
+    try {
+      const sewn = this.k.sewAndSolidify(vec, tolerance);
+      return wrapResult(this.k, sewn);
+    } finally {
+      vec.delete();
+    }
   }
 
   makeNonPlanarFace(wire: KernelShape): KernelShape {
@@ -1352,8 +1367,63 @@ export class OcctWasmAdapter implements KernelAdapter {
     return this.generalTransform(shape, linear, translation, false);
   }
 
-  positionOnCurve(_shape: KernelShape, _spine: KernelShape, _param: number): KernelShape {
-    notImplemented('positionOnCurve');
+  positionOnCurve(shape: KernelShape, spine: KernelShape, param: number): KernelShape {
+    // Compute Frenet frame at param: point + tangent direction
+    const ptVec = this.k.curvePointAtParam(unwrap(spine), param);
+    const tgVec = this.k.curveTangent(unwrap(spine), param);
+    const px = ptVec.get(0),
+      py = ptVec.get(1),
+      pz = ptVec.get(2);
+    const tx = tgVec.get(0),
+      ty = tgVec.get(1),
+      tz = tgVec.get(2);
+    ptVec.delete();
+    tgVec.delete();
+
+    // Build rotation from Z-axis to tangent direction
+    // Standard frame: origin at (0,0,0), Z-up → target frame: at (px,py,pz), tangent direction
+    // Tangent = new Z direction
+    // Pick a perpendicular X direction
+    let ux: number, uy: number, uz: number;
+    if (Math.abs(tx) < 0.9) {
+      // cross(tangent, (1,0,0))
+      ux = 0;
+      uy = tz;
+      uz = -ty;
+    } else {
+      // cross(tangent, (0,1,0))
+      ux = -tz;
+      uy = 0;
+      uz = tx;
+    }
+    const uLen = Math.sqrt(ux * ux + uy * uy + uz * uz);
+    ux /= uLen;
+    uy /= uLen;
+    uz /= uLen;
+    // V = cross(tangent, U)
+    const vx = ty * uz - tz * uy;
+    const vy = tz * ux - tx * uz;
+    const vz = tx * uy - ty * ux;
+
+    // 3x4 transform matrix: [ux,vx,tx,px, uy,vy,ty,py, uz,vz,tz,pz]
+    const mat = new this.Module.VectorDouble();
+    mat.push_back(ux);
+    mat.push_back(vx);
+    mat.push_back(tx);
+    mat.push_back(px);
+    mat.push_back(uy);
+    mat.push_back(vy);
+    mat.push_back(ty);
+    mat.push_back(py);
+    mat.push_back(uz);
+    mat.push_back(vz);
+    mat.push_back(tz);
+    mat.push_back(pz);
+    try {
+      return wrapResult(this.k, this.k.transform(unwrap(shape), mat));
+    } finally {
+      mat.delete();
+    }
   }
 
   linearPattern(
@@ -2311,6 +2381,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   curveIsClosed(shape: KernelShape): boolean {
+    // C++ handles both wires (BRep_Tool::IsClosed) and edges (BRepAdaptor_Curve::IsClosed)
     return this.k.curveIsClosed(unwrap(shape));
   }
 
