@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   checkInterference,
   checkAllInterferences,
@@ -14,7 +15,7 @@ import {
 } from '@/index.js';
 import type { Shape3D } from '@/index.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: interferenceFns', () => {
+describe.skipIf(shouldSkipSuite('interferenceFns'))('OCCT-specific: interferenceFns', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);

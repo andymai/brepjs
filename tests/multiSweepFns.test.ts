@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import { multiSectionSweep } from '@/index.js';
 import type { Wire } from '@/index.js';
 import { getKernel } from '@/kernel/index.js';
@@ -32,7 +33,7 @@ function makeLineSpine(length: number): Wire {
   return castShape(wireMaker.Wire()) as Wire;
 }
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: multiSweepFns', () => {
+describe.skipIf(shouldSkipSuite('multiSweepFns'))('OCCT-specific: multiSweepFns', () => {
   beforeAll(async () => {
     await initKernel();
   });

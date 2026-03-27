@@ -1,6 +1,7 @@
 import { describe, it, beforeAll } from 'vitest';
 import * as fc from 'fast-check';
-import { currentKernel, initKernel } from '../setup.js';
+import { initKernel } from '../setup.js';
+import { shouldSkipSuite } from '../helpers/kernelDivergences.js';
 import {
   box,
   translate,
@@ -40,7 +41,7 @@ function volume(s: Shape3D): number {
 const VOL_REL_TOL = 1e-3;
 
 // Property tests require reliable boolean ops — skip on brepkit (known issues)
-describe.skipIf(currentKernel !== 'occt')('Boolean operation properties', () => {
+describe.skipIf(shouldSkipSuite('booleanFns.propertyTests'))('Boolean operation properties', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);

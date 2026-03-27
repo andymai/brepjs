@@ -1,11 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import { guidedSweep, isOk, unwrap, isSolid, measureVolume, getKernel } from '@/index.js';
 import { castShape } from '@/core/shapeTypes.js';
 import { DisposalScope } from '@/core/disposal.js';
 import type { Wire } from '@/core/shapeTypes.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: guidedSweepFns', () => {
+describe.skipIf(shouldSkipSuite('guidedSweepFns'))('OCCT-specific: guidedSweepFns', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);

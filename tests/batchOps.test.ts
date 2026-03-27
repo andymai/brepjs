@@ -6,7 +6,8 @@
  */
 
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import { getKernel } from '@/kernel/index.js';
 import type { KernelAdapter } from '@/kernel/types.js';
 import { resetMeasureDetectionCache } from '@/kernel/occt/measureOps.js';
@@ -94,7 +95,7 @@ describe('transformBatch', () => {
   });
 });
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: cache reset', () => {
+describe.skipIf(shouldSkipSuite('batchOps.cacheReset'))('OCCT-specific: cache reset', () => {
   it('measure detection cache can be reset', () => {
     expect(() => {
       resetMeasureDetectionCache();

@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
@@ -17,7 +18,7 @@ import {
 } from '@/index.js';
 import type { Shape3D } from '@/core/shapeTypes.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: minkowskiFns', () => {
+describe.skipIf(shouldSkipSuite('minkowskiFns'))('OCCT-specific: minkowskiFns', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);

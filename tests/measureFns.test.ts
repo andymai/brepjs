@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
@@ -127,73 +128,76 @@ describe('measureFns', () => {
   // Null-shape pre-validation tests
   // ---------------------------------------------------------------------------
 
-  describe.skipIf(currentKernel !== 'occt')('null-shape pre-validation', () => {
-    function makeNullSolid(): Shape3D {
-      const oc = getKernel().oc;
-      return createSolid(new oc.TopoDS_Solid()) as Shape3D;
-    }
-
-    function makeNullFace(): Face {
-      const oc = getKernel().oc;
-      return createFace(new oc.TopoDS_Face());
-    }
-
-    it('measureVolumeProps returns Err on null shape', () => {
-      expect(isErr(measureVolumeProps(makeNullSolid()))).toBe(true);
-    });
-
-    it('measureVolume returns Err on null shape', () => {
-      expect(isErr(measureVolume(makeNullSolid()))).toBe(true);
-    });
-
-    it('measureSurfaceProps returns Err on null shape', () => {
-      expect(isErr(measureSurfaceProps(makeNullSolid()))).toBe(true);
-    });
-
-    it('measureArea returns Err on null shape', () => {
-      expect(isErr(measureArea(makeNullSolid()))).toBe(true);
-    });
-
-    it('measureLinearProps returns Err on null shape', () => {
-      expect(isErr(measureLinearProps(makeNullSolid()))).toBe(true);
-    });
-
-    it('measureLength returns Err on null shape', () => {
-      expect(isErr(measureLength(makeNullSolid()))).toBe(true);
-    });
-
-    it('measureDistance returns Err on null first shape', () => {
-      const valid = castShape(vertex([0, 0, 0]).wrapped);
-      expect(isErr(measureDistance(makeNullSolid(), valid))).toBe(true);
-    });
-
-    it('measureDistance returns Err on null second shape', () => {
-      const valid = castShape(vertex([0, 0, 0]).wrapped);
-      expect(isErr(measureDistance(valid, makeNullSolid()))).toBe(true);
-    });
-
-    it('createDistanceQuery returns Err on null reference', () => {
-      expect(isErr(createDistanceQuery(makeNullSolid()))).toBe(true);
-    });
-
-    it('createDistanceQuery.distanceTo returns Err on null other', () => {
-      const ref = castShape(vertex([0, 0, 0]).wrapped);
-      const query = unwrap(createDistanceQuery(ref));
-      try {
-        expect(isErr(query.distanceTo(makeNullSolid()))).toBe(true);
-      } finally {
-        query.dispose();
+  describe.skipIf(shouldSkipSuite('measureFns.nullShapeValidation'))(
+    'null-shape pre-validation',
+    () => {
+      function makeNullSolid(): Shape3D {
+        const oc = getKernel().oc;
+        return createSolid(new oc.TopoDS_Solid()) as Shape3D;
       }
-    });
 
-    it('measureCurvatureAt returns Err on null face', () => {
-      expect(isErr(measureCurvatureAt(makeNullFace(), 0, 0))).toBe(true);
-    });
+      function makeNullFace(): Face {
+        const oc = getKernel().oc;
+        return createFace(new oc.TopoDS_Face());
+      }
 
-    it('measureCurvatureAtMid returns Err on null face', () => {
-      expect(isErr(measureCurvatureAtMid(makeNullFace()))).toBe(true);
-    });
-  });
+      it('measureVolumeProps returns Err on null shape', () => {
+        expect(isErr(measureVolumeProps(makeNullSolid()))).toBe(true);
+      });
+
+      it('measureVolume returns Err on null shape', () => {
+        expect(isErr(measureVolume(makeNullSolid()))).toBe(true);
+      });
+
+      it('measureSurfaceProps returns Err on null shape', () => {
+        expect(isErr(measureSurfaceProps(makeNullSolid()))).toBe(true);
+      });
+
+      it('measureArea returns Err on null shape', () => {
+        expect(isErr(measureArea(makeNullSolid()))).toBe(true);
+      });
+
+      it('measureLinearProps returns Err on null shape', () => {
+        expect(isErr(measureLinearProps(makeNullSolid()))).toBe(true);
+      });
+
+      it('measureLength returns Err on null shape', () => {
+        expect(isErr(measureLength(makeNullSolid()))).toBe(true);
+      });
+
+      it('measureDistance returns Err on null first shape', () => {
+        const valid = castShape(vertex([0, 0, 0]).wrapped);
+        expect(isErr(measureDistance(makeNullSolid(), valid))).toBe(true);
+      });
+
+      it('measureDistance returns Err on null second shape', () => {
+        const valid = castShape(vertex([0, 0, 0]).wrapped);
+        expect(isErr(measureDistance(valid, makeNullSolid()))).toBe(true);
+      });
+
+      it('createDistanceQuery returns Err on null reference', () => {
+        expect(isErr(createDistanceQuery(makeNullSolid()))).toBe(true);
+      });
+
+      it('createDistanceQuery.distanceTo returns Err on null other', () => {
+        const ref = castShape(vertex([0, 0, 0]).wrapped);
+        const query = unwrap(createDistanceQuery(ref));
+        try {
+          expect(isErr(query.distanceTo(makeNullSolid()))).toBe(true);
+        } finally {
+          query.dispose();
+        }
+      });
+
+      it('measureCurvatureAt returns Err on null face', () => {
+        expect(isErr(measureCurvatureAt(makeNullFace(), 0, 0))).toBe(true);
+      });
+
+      it('measureCurvatureAtMid returns Err on null face', () => {
+        expect(isErr(measureCurvatureAtMid(makeNullFace()))).toBe(true);
+      });
+    }
+  );
 
   describe('measurement caching', () => {
     it('measureVolumeProps returns identical object on second call', () => {

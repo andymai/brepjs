@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import { makePlane, unwrap, isOk, isErr, resolveDirection, getKernel } from '@/index.js';
 import { findCurveType } from '@/core/typeDiscriminants.js';
 
@@ -47,7 +48,7 @@ describe('makePlane', () => {
   });
 });
 
-describe.skipIf(currentKernel !== 'occt')('findCurveType (OCCT-specific)', () => {
+describe.skipIf(shouldSkipSuite('geometry.findCurveType'))('findCurveType (OCCT-specific)', () => {
   it('returns an error for an unknown type', () => {
     expect(isErr(findCurveType(-9999))).toBe(true);
   });

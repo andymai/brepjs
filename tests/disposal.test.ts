@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   createHandle,
   createKernelHandle,
@@ -13,7 +14,7 @@ import { ok, err } from '@/core/result.js';
 import type { Deletable } from '@/core/disposal.js';
 import { getKernel } from '@/kernel/index.js';
 
-describe.skipIf(currentKernel !== 'occt')('OCCT-specific: disposal', () => {
+describe.skipIf(shouldSkipSuite('disposal'))('OCCT-specific: disposal', () => {
   beforeAll(async () => {
     await initKernel();
   }, 30000);
