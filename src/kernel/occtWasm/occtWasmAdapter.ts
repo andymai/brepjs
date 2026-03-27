@@ -767,8 +767,11 @@ export class OcctWasmAdapter implements KernelAdapter {
     }
   }
 
-  makeFaceOnSurface(_surface: KernelType, _wire: KernelShape): KernelShape {
-    notImplemented('makeFaceOnSurface');
+  makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape {
+    // surface is a face handle (from extractSurfaceFromFace)
+    // brepjs-patterns-disable: no-double-cast
+    const faceId = unwrap(surface as unknown as KernelShape);
+    return handle('face', this.k.makeFaceOnSurface(faceId, unwrap(wire)));
   }
 
   bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
@@ -3200,8 +3203,28 @@ export class OcctWasmAdapter implements KernelAdapter {
       vec.delete();
     }
   }
-  buildEdgeOnSurface(_curve: Curve2dHandle, _surface: KernelType): KernelShape {
-    notImplemented('buildEdgeOnSurface');
+  buildEdgeOnSurface(curve: Curve2dHandle, surface: KernelType): KernelShape {
+    // Sample the 2D curve, evaluate each point on the surface, interpolate in 3D
+    const cu = c2d(curve);
+    const bounds = ow2d.curveBounds(cu);
+    // brepjs-patterns-disable: no-double-cast
+    const faceId = unwrap(surface as unknown as KernelShape);
+    const nSamples = 30;
+    const vec = new this.Module.VectorDouble();
+    for (let i = 0; i <= nSamples; i++) {
+      const t = bounds.first + ((bounds.last - bounds.first) * i) / nSamples;
+      const [u, v] = ow2d.evaluateCurve2d(cu, t);
+      const pt = this.k.pointOnSurface(faceId, u, v);
+      vec.push_back(pt.get(0));
+      vec.push_back(pt.get(1));
+      vec.push_back(pt.get(2));
+      pt.delete();
+    }
+    try {
+      return handle('edge', this.k.interpolatePoints(vec, false));
+    } finally {
+      vec.delete();
+    }
   }
   extractSurfaceFromFace(face: KernelShape): KernelType {
     // Return the face handle itself — occt-wasm uses faces as surface proxies

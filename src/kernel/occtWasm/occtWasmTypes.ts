@@ -474,6 +474,7 @@ export interface OcctKernelWasm {
 
   // --- Surface construction ---
   bsplineSurface(flatPoints: EmVectorDouble, rows: number, cols: number): number;
+  makeFaceOnSurface(faceId: number, wireId: number): number;
 
   // --- Null shape ---
   makeNullShape(): number;
