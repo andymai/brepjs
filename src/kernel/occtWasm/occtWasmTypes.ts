@@ -397,7 +397,7 @@ export interface OcctKernelWasm {
   exportStep(id: number): string;
   importIges(data: string): number;
   exportIges(id: number): string;
-  exportStl(id: number, linearDeflection: number): string;
+  exportStl(id: number, linearDeflection: number, ascii: boolean): string;
   toBREP(id: number): string;
   fromBREP(data: string): number;
 

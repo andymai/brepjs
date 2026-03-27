@@ -1954,8 +1954,18 @@ export class OcctWasmAdapter implements KernelAdapter {
     return this.k.exportStep(unwrap(compound));
   }
 
-  exportSTL(shape: KernelShape, _binary?: boolean): string | ArrayBuffer {
-    return this.k.exportStl(unwrap(shape), 0.1);
+  exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer {
+    const ascii = !binary;
+    const result = this.k.exportStl(unwrap(shape), 0.1, ascii);
+    if (binary) {
+      const buf = new ArrayBuffer(result.length);
+      const view = new Uint8Array(buf);
+      for (let i = 0; i < result.length; i++) {
+        view[i] = result.charCodeAt(i);
+      }
+      return buf;
+    }
+    return result;
   }
 
   importSTEP(data: string | ArrayBuffer): KernelShape[] {
