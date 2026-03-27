@@ -1,5 +1,44 @@
 # Changelog
 
+## [0.16.0](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.5...brepjs-opencascade-v0.16.0) (2026-03-27)
+
+
+### Features
+
+* add applyMatrix for 4x4 affine transforms ([#245](https://github.com/andymai/brepjs/issues/245)) ([ea70442](https://github.com/andymai/brepjs/commit/ea70442ac7647306f3a2c79735188efdb1d125f1))
+* batch C++ extractors + perf instrumentation for OCCT ([#587](https://github.com/andymai/brepjs/issues/587)) ([1d26fdc](https://github.com/andymai/brepjs/commit/1d26fdcdf7ea3d4956ee639da11bb689ee21941a))
+* **boolean:** add booleanPipeline() for chained operations ([#632](https://github.com/andymai/brepjs/issues/632)) ([7dc239a](https://github.com/andymai/brepjs/commit/7dc239afeacb781b832fd41686e987b3bb648adb))
+* **mesh:** progressive LOD + batch mesh C++ class ([#641](https://github.com/andymai/brepjs/issues/641)) ([fb78946](https://github.com/andymai/brepjs/commit/fb789467f995311e904748871496856f8154ea11))
+* V8 performance features — stream STEP I/O, sweep history, KDTree, batch eval ([#615](https://github.com/andymai/brepjs/issues/615)) ([44eb71f](https://github.com/andymai/brepjs/commit/44eb71f82fbd5076cff6f24d8c0f3f90ac80999f))
+
+
+### Bug Fixes
+
+* add EmscriptenModuleConfig to WASM init type declarations ([#233](https://github.com/andymai/brepjs/issues/233)) ([30cabee](https://github.com/andymai/brepjs/commit/30cabeee362224ec0ba0c73a226c721fa3df608a))
+* address PR review feedback from [#615](https://github.com/andymai/brepjs/issues/615), [#621](https://github.com/andymai/brepjs/issues/621), [#604](https://github.com/andymai/brepjs/issues/604) ([#623](https://github.com/andymai/brepjs/issues/623)) ([4c9a203](https://github.com/andymai/brepjs/commit/4c9a2035800cd0a7476b26b6424b708c6afdbd4d))
+* **brepjs-opencascade:** correct license to LGPL-2.1-only ([#257](https://github.com/andymai/brepjs/issues/257)) ([a828529](https://github.com/andymai/brepjs/commit/a828529a92ba3252c62d743acbd088746305d703))
+* **ci:** bump validate-pack MAX_FILES to 450 for publish ([f293ef9](https://github.com/andymai/brepjs/commit/f293ef9ade2b832f18c4afb8d62e87bbf8c90b6f))
+* **deps:** declare brepjs-opencascade ^0.9.0 peer compatibility ([#368](https://github.com/andymai/brepjs/issues/368)) ([79eeb78](https://github.com/andymai/brepjs/commit/79eeb78d601c7f819b086a4123e904c0e4d8d760))
+* **deps:** trigger release for brepjs-opencascade 0.8.x peer dep support ([#269](https://github.com/andymai/brepjs/issues/269)) ([68d09ef](https://github.com/andymai/brepjs/commit/68d09ef9dd27096bf7b4c768de4e6314a68d7574))
+* **opencascade:** add GeomLib bindings and fix V8 signature changes ([#672](https://github.com/andymai/brepjs/issues/672)) ([6281da2](https://github.com/andymai/brepjs/commit/6281da2eefdfc6ddd15bc534fbee5dcf013b631d))
+* **opencascade:** custom binding compilation fix ([#645](https://github.com/andymai/brepjs/issues/645)) ([1c4a297](https://github.com/andymai/brepjs/commit/1c4a297653bb91aa9c08b4602d75748ec3390f93))
+* **opencascade:** docker image with custom binding fixes ([#651](https://github.com/andymai/brepjs/issues/651)) ([6364728](https://github.com/andymai/brepjs/commit/6364728cc843636cb0d6262c9e4aa3de3e307d70))
+* **opencascade:** enable -Os + LTO in Docker image ([#609](https://github.com/andymai/brepjs/issues/609)) ([5ad938b](https://github.com/andymai/brepjs/commit/5ad938beea9f3734216fa0103af9215f6bf7df05))
+* **opencascade:** fix binding generator + revert to auto-gen bindings ([#679](https://github.com/andymai/brepjs/issues/679)) ([687dd7d](https://github.com/andymai/brepjs/commit/687dd7d60312c586bd258c1c6a53f8bee7ea7bcd))
+* **opencascade:** manual embind wrappers for all broken V8 bindings ([#675](https://github.com/andymai/brepjs/issues/675)) ([41456e6](https://github.com/andymai/brepjs/commit/41456e60f149d660002af24ce25d4c255a7fc46f))
+* **opencascade:** prevent LTO stripping of custom bindings ([#666](https://github.com/andymai/brepjs/issues/666)) ([977dd75](https://github.com/andymai/brepjs/commit/977dd757e162d6fa47152b14aa31bac4edd9ae82))
+* **opencascade:** rebuild WASM with -O2+LTO ([#629](https://github.com/andymai/brepjs/issues/629)) ([c779398](https://github.com/andymai/brepjs/commit/c779398c98a2da3dcceaba62c79dc390199f6080))
+* **opencascade:** replace gp_Vec3f with NCollection_Vec3&lt;float&gt; ([#662](https://github.com/andymai/brepjs/issues/662)) ([5aca24a](https://github.com/andymai/brepjs/commit/5aca24aeb2b3c1c1a45a59b804088e773a98b349))
+* **opencascade:** trigger 0.15.3 rebuild ([#658](https://github.com/andymai/brepjs/issues/658)) ([58e8de9](https://github.com/andymai/brepjs/commit/58e8de9eb2253f75b49b0b076efb270f99f37cca))
+* **opencascade:** trigger 0.15.4 ([#663](https://github.com/andymai/brepjs/issues/663)) ([b038f37](https://github.com/andymai/brepjs/commit/b038f379045fdfa30d9fd9bb9457dbf98ea5febd))
+
+
+### Performance Improvements
+
+* **wasm,topology:** enable simd, memory tuning, iterator optimization, and test coverage ([#309](https://github.com/andymai/brepjs/issues/309)) ([c0f1e1a](https://github.com/andymai/brepjs/commit/c0f1e1a2ac6fcf0ec8df751cafd24f57ddb4b04b))
+* **wasm:** build flags, C++ extractors, and command buffer design ([#371](https://github.com/andymai/brepjs/issues/371)) ([5c591a1](https://github.com/andymai/brepjs/commit/5c591a1767d3ac80921ff38ab55273f76bfdfa81))
+* **wasm:** C++ extractors, build flags, and UV mesh support ([#364](https://github.com/andymai/brepjs/issues/364)) ([4f2546b](https://github.com/andymai/brepjs/commit/4f2546b79221a4de126dac680b1b4c13a407a0f6))
+
 ## [0.15.5](https://github.com/andymai/brepjs/compare/brepjs-opencascade-v0.15.4...brepjs-opencascade-v0.15.5) (2026-03-26)
 
 
