@@ -2906,7 +2906,13 @@ export class OcctWasmAdapter implements KernelAdapter {
     return _curve; /* affinity not yet supported, pass through */
   }
   createIdentityGTrsf2d(): KernelType {
-    notImplemented('createIdentityGTrsf2d');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque transform
+    return {
+      type: 'identity2d',
+      delete() {
+        /* no-op */
+      },
+    } as any;
   }
 
   createAffinityGTrsf2d(
