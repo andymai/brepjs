@@ -14,6 +14,8 @@ const config: KnipConfig = {
       entry: ['src/kernel/occtWasm/occtWasmAdapter.ts'],
       ignore: [],
       ignoreBinaries: ['tsx'],
+      // occt-wasm is dynamically imported in tests/helpers/kernelInit.ts (outside project scope)
+      ignoreDependencies: ['occt-wasm'],
     },
     'packages/brepjs-opencascade': {
       ignore: ['**'],
