@@ -3057,9 +3057,42 @@ export class OcctWasmAdapter implements KernelAdapter {
     curve: Curve2dHandle,
     _tolerance: number,
     _continuity: 'C0' | 'C1' | 'C2' | 'C3',
-    _maxSegments: number
+    maxSegments: number
   ): Curve2dHandle {
-    return curve;
+    // Sample curve and create interpolating cubic BSpline (matches OCCT Geom2dConvert_ApproxCurve)
+    const cu = c2d(curve);
+    const bounds = ow2d.curveBounds(cu);
+    const nPts = Math.min(Math.max(maxSegments + 1, 10), 100);
+    const poles: [number, number][] = [];
+    for (let i = 0; i < nPts; i++) {
+      const t = bounds.first + ((bounds.last - bounds.first) * i) / (nPts - 1);
+      poles.push(ow2d.evaluateCurve2d(cu, t));
+    }
+    // Build uniform cubic BSpline with clamped knot vector
+    const degree = Math.min(3, nPts - 1);
+    const n = poles.length;
+    const knots: number[] = [];
+    const mults: number[] = [];
+    // Clamped: first/last knot has multiplicity degree+1
+    const nInternalKnots = n - degree - 1;
+    knots.push(0);
+    mults.push(degree + 1);
+    for (let i = 1; i <= nInternalKnots; i++) {
+      knots.push(i / (nInternalKnots + 1));
+      mults.push(1);
+    }
+    knots.push(1);
+    mults.push(degree + 1);
+
+    return c2dWrap({
+      __bk2d: 'bspline' as const,
+      poles,
+      knots,
+      multiplicities: mults,
+      degree,
+      isPeriodic: false,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
+    } as any);
   }
   decomposeBSpline2dToBeziers(_curve: Curve2dHandle): Curve2dHandle[] {
     notImplemented('decomposeBSpline2dToBeziers');
