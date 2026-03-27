@@ -445,6 +445,9 @@ export interface OcctKernelWasm {
     planeXz: number
   ): number;
 
+  // --- Null shape ---
+  makeNullShape(): number;
+
   // --- Modifier ---
   thicken(shapeId: number, thickness: number): number;
   defeature(shapeId: number, faceIds: EmVectorUint32): number;
@@ -583,4 +586,7 @@ export interface OcctWasmModule {
 
   /** OcctKernel constructor (Embind class). */
   OcctKernel: new () => OcctKernelWasm;
+
+  /** Extract error message from a C++ exception (requires -sEXPORT_EXCEPTION_HANDLING_HELPERS). */
+  getExceptionMessage(ex: unknown): [string, string];
 }

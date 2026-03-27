@@ -223,6 +223,37 @@ function notImplemented(method: string): never {
   throw new Error(`occt-wasm: ${method} is not yet implemented`);
 }
 
+/**
+ * Wrap an OcctKernelWasm instance so that every method call converts
+ * C++ exceptions (WebAssembly.Exception) into readable JS Errors.
+ */
+function wrapKernelExceptions(kernel: OcctKernelWasm, mod: OcctWasmModule): OcctKernelWasm {
+  return new Proxy(kernel, {
+    get(target, prop, receiver) {
+      const val = Reflect.get(target, prop, receiver);
+      if (typeof val !== 'function') return val;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proxy wraps all methods
+      return function (this: unknown, ...args: any[]) {
+        try {
+          return val.apply(target, args);
+        } catch (ex: unknown) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WebAssembly.Exception not in TS lib
+          const WasmException = (WebAssembly as any).Exception as { new (): unknown } | undefined;
+          if (WasmException && ex instanceof WasmException) {
+            try {
+              const [, msg] = mod.getExceptionMessage(ex);
+              throw new Error(msg, { cause: ex });
+            } catch (inner) {
+              if (inner instanceof Error && !(inner instanceof WasmException)) throw inner;
+            }
+          }
+          throw ex;
+        }
+      };
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // OcctWasmAdapter
 // ---------------------------------------------------------------------------
@@ -253,8 +284,37 @@ export class OcctWasmAdapter implements KernelAdapter {
 
   constructor(module: OcctWasmModule, kernel: OcctKernelWasm) {
     this.Module = module;
-    this.k = kernel;
-    this.oc = module;
+    this.k = wrapKernelExceptions(kernel, module);
+    // Provide .oc with TopoDS_* constructors for null-shape tests
+    const k = this.k;
+    const makeNull = () => handle('compound', k.makeNullShape());
+
+    this.oc = Object.assign(Object.create(module), {
+      TopoDS_Solid: function () {
+        return makeNull();
+      },
+      TopoDS_Face: function () {
+        return makeNull();
+      },
+      TopoDS_Shape: function () {
+        return makeNull();
+      },
+      TopoDS_Wire: function () {
+        return makeNull();
+      },
+      TopoDS_Edge: function () {
+        return makeNull();
+      },
+      TopoDS_Vertex: function () {
+        return makeNull();
+      },
+      TopoDS_Shell: function () {
+        return makeNull();
+      },
+      TopoDS_Compound: function () {
+        return makeNull();
+      },
+    });
   }
 
   // =========================================================================
