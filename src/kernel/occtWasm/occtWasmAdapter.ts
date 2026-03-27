@@ -314,6 +314,10 @@ export class OcctWasmAdapter implements KernelAdapter {
       TopoDS_Compound: function () {
         return makeNull();
       },
+
+      gp_Pnt_3: function (x: number, y: number, z: number) {
+        return handle('vertex', k.makeVertex(x, y, z));
+      },
     });
   }
 
@@ -2683,8 +2687,10 @@ export class OcctWasmAdapter implements KernelAdapter {
   createVector2d(_x: number, _y: number): KernelType {
     notImplemented('createVector2d');
   }
-  createAxis2d(_px: number, _py: number, _dx: number, _dy: number): KernelType {
-    notImplemented('createAxis2d');
+  createAxis2d(px: number, py: number, dx: number, dy: number): KernelType {
+    // Return a plain object representing the axis (used by mirrorCurve2dAcrossAxis)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
+    return { px, py, dx, dy, delete() {} } as any;
   }
   wrapCurve2dHandle(handle: KernelType): Curve2dHandle {
     return handle;
@@ -3133,7 +3139,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     curve: Curve2dHandle
   ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    const c = c2d(curve) as any;
+    let c = c2d(curve) as any;
+    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
     if (c.__bk2d === 'circle')
       return { cx: c.cx, cy: c.cy, radius: c.radius, isDirect: c.sense !== false };
     return null;
@@ -3142,7 +3149,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     curve: Curve2dHandle
   ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    const c = c2d(curve) as any;
+    let c = c2d(curve) as any;
+    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
     if (c.__bk2d === 'ellipse')
       return {
         majorRadius: c.majorRadius,
@@ -3154,13 +3162,15 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
   getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    const c = c2d(curve) as any;
+    let c = c2d(curve) as any;
+    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
     if (c.__bk2d === 'bezier' && Array.isArray(c.poles)) return c.poles as [number, number][];
     return null;
   }
   getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    const c = c2d(curve) as any;
+    let c = c2d(curve) as any;
+    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
     if (c['__bk2d'] === 'bezier' && Array.isArray(c['poles']))
       return (c['poles'] as unknown[]).length - 1;
     return null;
