@@ -66,6 +66,18 @@ export default defineConfig({
           exclude: [...alwaysExclude],
         },
       },
+      {
+        extends: true,
+        test: {
+          name: 'occt-wasm',
+          env: { TEST_KERNEL: 'occt-wasm' },
+          exclude: [
+            ...alwaysExclude,
+            'tests/brepkitExtended.test.ts',
+            'tests/brepkitAdapter.test.ts',
+          ],
+        },
+      },
     ],
   },
 });
