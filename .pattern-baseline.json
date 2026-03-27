@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-25T04:18:11.544Z",
+  "generated": "2026-03-27T05:39:53.332Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -166,6 +166,26 @@
       "file": "src/kernel/occt/hullOps.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/kernel/occt/hullOps.ts|max-function-lines|208|"
+    },
+    {
+      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3510|"
+    },
+    {
+      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3512|"
+    },
+    {
+      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3513|"
+    },
+    {
+      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
+      "rule": "max-nesting-depth",
+      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3515|"
     },
     {
       "file": "src/operations/mateFns.ts",
