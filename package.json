@@ -197,6 +197,7 @@
     "size": "size-limit",
     "docs:api": "typedoc",
     "docs:generate-lookup": "npx tsx scripts/generate-function-lookup.ts",
+    "conformance:generate": "npx tsx scripts/generateConformance.ts",
     "sync:brepkit-types": "npx tsx scripts/sync-brepkit-types.ts",
     "prepare": "husky && bash scripts/ensure-wasm.sh"
   },
