@@ -269,6 +269,31 @@ function resolveUniformRadius(
   return typeof val === 'number' ? val : val[0];
 }
 
+/** Rotate a shape from Z-axis to an arbitrary direction. */
+function rotateZToDirection(
+  k: OcctKernelWasm,
+  shapeId: number,
+  dir: [number, number, number]
+): number {
+  const [dx, dy, dz] = dir;
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (len < 1e-10) return shapeId;
+  const nx = dx / len,
+    ny = dy / len,
+    nz = dz / len;
+  // Already Z-up
+  if (Math.abs(nz - 1) < 1e-10) return shapeId;
+  // Flip to -Z: rotate 180° around X
+  if (Math.abs(nz + 1) < 1e-10) return k.rotate(shapeId, 0, 0, 0, 1, 0, 0, Math.PI);
+  // General: cross(Z, dir) = rotation axis, angle = acos(nz)
+  const ax = -ny,
+    ay = nx;
+  const axLen = Math.sqrt(ax * ax + ay * ay);
+  if (axLen < 1e-10) return shapeId;
+  const angle = Math.acos(Math.max(-1, Math.min(1, nz)));
+  return k.rotate(shapeId, 0, 0, 0, ax / axLen, ay / axLen, 0, angle);
+}
+
 export class OcctWasmAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'occt-wasm';
@@ -381,15 +406,13 @@ export class OcctWasmAdapter implements KernelAdapter {
     direction?: [number, number, number]
   ): KernelShape {
     let id = this.k.makeCylinder(radius, height);
-    if (center || direction) {
-      // The C++ facade only takes (radius, height) at origin along Z.
-      // Transform if needed.
-      if (direction && (direction[0] !== 0 || direction[1] !== 0 || direction[2] !== 1)) {
-        // TODO: apply rotation to align Z-axis with direction
-      }
-      if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-        id = this.k.translate(id, center[0], center[1], center[2]);
-      }
+    // Rotate from Z-axis to direction if needed
+    if (direction) {
+      id = rotateZToDirection(this.k, id, direction);
+    }
+    // Translate to center
+    if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
+      id = this.k.translate(id, center[0], center[1], center[2]);
     }
     return handle('solid', id);
   }
