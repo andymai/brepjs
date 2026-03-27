@@ -2989,17 +2989,8 @@ export class OcctWasmAdapter implements KernelAdapter {
         const [px, py] = ow2d.evaluateCurve2d(basis, t);
         return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
       }
-      if (basis.__bk2d === 'circle') {
-        let angle = Math.atan2(y - basis.cy, x - basis.cx);
-        if (!basis.sense) angle = -angle;
-        // Normalize angle into [bFirst, bLast] range
-        while (angle < bFirst - Math.PI) angle += 2 * Math.PI;
-        while (angle > bLast + Math.PI) angle -= 2 * Math.PI;
-        const t = Math.max(bFirst, Math.min(bLast, angle));
-        const [px, py] = ow2d.evaluateCurve2d(basis, t);
-        return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
-      }
-      // General: dense sampling
+      // For circles and general curves: dense sampling (analytical circle
+      // projection is unreliable due to angle normalization with sense/bounds)
       const N = 200;
       let bestT = bFirst;
       let bestDist = Infinity;
@@ -3094,8 +3085,20 @@ export class OcctWasmAdapter implements KernelAdapter {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
     } as any);
   }
-  decomposeBSpline2dToBeziers(_curve: Curve2dHandle): Curve2dHandle[] {
-    notImplemented('decomposeBSpline2dToBeziers');
+  decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
+    // Split BSpline at internal knots to produce Bezier-like segments
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
+    const cu = c2d(curve) as any;
+    const knots: number[] = cu.knots ?? [];
+    if (knots.length < 2) return [curve];
+    const result: Curve2dHandle[] = [];
+    for (let i = 0; i < knots.length - 1; i++) {
+      const k0 = knots[i] as number;
+      const k1 = knots[i + 1] as number;
+      if (Math.abs(k1 - k0) < 1e-15) continue;
+      result.push(this.trimCurve2d(curve, k0, k1));
+    }
+    return result.length > 0 ? result : [curve];
   }
 
   createBoundingBox2d(): BBox2dHandle {
