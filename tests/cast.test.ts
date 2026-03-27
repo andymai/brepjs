@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   cast,
@@ -32,7 +33,7 @@ describe('cast', () => {
       expect(unwrap(result)).toBeDefined();
     });
 
-    it.skipIf(currentKernel !== 'occt')(
+    it.skipIf(shouldSkipSuite('cast.nullShape'))(
       'returns Err with NULL_SHAPE for a null KernelShape',
       () => {
         const oc = getKernel().oc;
@@ -52,7 +53,7 @@ describe('cast', () => {
       expect(unwrap(result)).toBeDefined();
     });
 
-    it.skipIf(currentKernel !== 'occt')('returns Err for a null KernelShape', () => {
+    it.skipIf(shouldSkipSuite('cast.downcastNull'))('returns Err for a null KernelShape', () => {
       const oc = getKernel().oc;
       const nullShape = new oc.TopoDS_Solid();
       const result = downcast(nullShape);
@@ -123,16 +124,19 @@ describe('cast', () => {
   });
 
   describe('fromBREP()', () => {
-    it.skipIf(currentKernel !== 'occt')('round-trips a box through toBREP and fromBREP', () => {
-      const b = box(10, 10, 10);
-      const brep = unwrap(toBREP(b));
-      const result = fromBREP(brep);
-      expect(isOk(result)).toBe(true);
-      const shape = unwrap(result);
-      expect(isShape3D(shape)).toBe(true);
-    });
+    it.skipIf(shouldSkipSuite('cast.toBREPRoundTrip'))(
+      'round-trips a box through toBREP and fromBREP',
+      () => {
+        const b = box(10, 10, 10);
+        const brep = unwrap(toBREP(b));
+        const result = fromBREP(brep);
+        expect(isOk(result)).toBe(true);
+        const shape = unwrap(result);
+        expect(isShape3D(shape)).toBe(true);
+      }
+    );
 
-    it.skipIf(currentKernel !== 'occt')('does not throw for garbage input', () => {
+    it.skipIf(shouldSkipSuite('cast.garbageInput'))('does not throw for garbage input', () => {
       expect(() => {
         const result = fromBREP('this is not valid BREP data');
         // Result may be ok or err depending on kernel behavior, but it must not throw

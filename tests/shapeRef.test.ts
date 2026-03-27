@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   translate,
@@ -87,27 +88,30 @@ describe('createRef', () => {
 });
 
 describe('updateRoles', () => {
-  it.skipIf(currentKernel === 'brepkit')('propagates through evolution (fuse box + box)', () => {
-    const a = box(10, 10, 10);
-    const b = translate(box(10, 10, 10), [5, 0, 0]);
-    const roles = assignRoles(a, 'box');
+  it.skipIf(shouldSkipSuite('shapeRef.evolutionFuse'))(
+    'propagates through evolution (fuse box + box)',
+    () => {
+      const a = box(10, 10, 10);
+      const b = translate(box(10, 10, 10), [5, 0, 0]);
+      const roles = assignRoles(a, 'box');
 
-    // Build initial role table
-    const roleTable: RoleTable = new Map([['step_0', roles]]);
+      // Build initial role table
+      const roleTable: RoleTable = new Map([['step_0', roles]]);
 
-    const result = fuseWithEvolution(a, b);
-    const { evolution } = unwrap(result);
+      const result = fuseWithEvolution(a, b);
+      const { evolution } = unwrap(result);
 
-    const updatedTable = updateRoles(roleTable, 'step_0', evolution);
+      const updatedTable = updateRoles(roleTable, 'step_0', evolution);
 
-    // Should still have an entry for step_0
-    const updatedOriginRoles = updatedTable.get('step_0');
-    expect(updatedOriginRoles).toBeDefined();
+      // Should still have an entry for step_0
+      const updatedOriginRoles = updatedTable.get('step_0');
+      expect(updatedOriginRoles).toBeDefined();
 
-    // Some roles may have been deleted (overlapping faces) but most should survive
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
-    expect(updatedOriginRoles!.size).toBeGreaterThan(0);
-  });
+      // Some roles may have been deleted (overlapping faces) but most should survive
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
+      expect(updatedOriginRoles!.size).toBeGreaterThan(0);
+    }
+  );
 });
 
 describe('resolveRef', () => {
@@ -156,7 +160,7 @@ describe('resolveRef', () => {
     }
   });
 
-  it.skipIf(currentKernel === 'brepkit')('returns BrokenRef for deleted face', () => {
+  it.skipIf(shouldSkipSuite('shapeRef.deletedFace'))('returns BrokenRef for deleted face', () => {
     const a = box(10, 10, 10);
     const tool = translate(box(12, 12, 5), [-1, -1, 5]);
 
@@ -225,7 +229,7 @@ describe('custom scorer', () => {
 });
 
 describe('full pipeline', () => {
-  it.skipIf(currentKernel === 'brepkit')(
+  it.skipIf(shouldSkipSuite('shapeRef.splitEvolution'))(
     'box -> assign roles -> create refs -> fillet with evolution -> update roles -> resolve refs',
     () => {
       const b = box(10, 10, 10);

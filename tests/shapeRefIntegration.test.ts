@@ -7,7 +7,8 @@
  * These are the pass/fail tests for brepd's parametric replay architecture.
  */
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   cylinder,
@@ -45,7 +46,7 @@ beforeAll(async () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('multi-step replay', () => {
-  it.skipIf(currentKernel === 'brepkit')(
+  it.skipIf(shouldSkipSuite('shapeRefIntegration.multiStepReplay'))(
     'face references survive box → fillet → fuse → cut pipeline via geometric fallback',
     () => {
       // Step 1: Create box and assign roles
@@ -110,7 +111,7 @@ describe('multi-step replay', () => {
     }
   );
 
-  it.skipIf(currentKernel === 'brepkit')(
+  it.skipIf(shouldSkipSuite('shapeRefIntegration.filletEvolution'))(
     'updateRoles propagates hashes through evolution for exact resolution',
     () => {
       // Simple pipeline: box → fuse → resolve via updated role table
@@ -154,7 +155,7 @@ describe('multi-step replay', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('symmetric geometry', () => {
-  it.skipIf(currentKernel === 'brepkit')(
+  it.skipIf(shouldSkipSuite('shapeRefIntegration.cutEvolution'))(
     'cube: all 6 identical faces get distinct roles and survive fillet',
     () => {
       // All 6 faces of a cube are identical 10x10 squares
@@ -208,7 +209,7 @@ describe('symmetric geometry', () => {
     }
   );
 
-  it.skipIf(currentKernel === 'brepkit')(
+  it.skipIf(shouldSkipSuite('shapeRefIntegration.geometricFallback'))(
     'cylinder: roles assigned sequentially, survive fillet',
     () => {
       const cyl = cylinder(5, 10);
@@ -246,7 +247,7 @@ describe('symmetric geometry', () => {
     }
   );
 
-  it.skipIf(currentKernel === 'brepkit')(
+  it.skipIf(shouldSkipSuite('shapeRefIntegration.brokenRef'))(
     'sphere: single face, role survives identity operation',
     () => {
       const s = sphere(5);
@@ -285,7 +286,7 @@ describe('symmetric geometry', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('split face tracking', () => {
-  it.skipIf(currentKernel === 'brepkit')(
+  it.skipIf(shouldSkipSuite('shapeRefIntegration.rolePropagation'))(
     'face split by overlapping boolean is resolved via geometric fallback',
     () => {
       // Create a large box
@@ -325,37 +326,40 @@ describe('split face tracking', () => {
     }
   );
 
-  it.skipIf(currentKernel === 'brepkit')('multiple faces tracked through split operation', () => {
-    const base = box(20, 20, 20);
-    const roles = assignRoles(base, 'box');
+  it.skipIf(shouldSkipSuite('shapeRefIntegration.multipleTrackedFaces'))(
+    'multiple faces tracked through split operation',
+    () => {
+      const base = box(20, 20, 20);
+      const roles = assignRoles(base, 'box');
 
-    // Create refs for all faces
-    const refs = new Map<string, ShapeRef>();
-    for (const [role, hash] of roles) {
-      const face = getFaces(base).find((f) => getHashCode(f) === hash);
-      expect(face).toBeDefined();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
-      refs.set(role, createRef('step_0', role, face!));
-    }
-
-    // Fuse with overlapping box (splits front and top faces)
-    const overlap = translate(box(10, 10, 10), [5, -5, 15]);
-    const fuseResult = fuseWithEvolution(base, overlap);
-    expect(isOk(fuseResult)).toBe(true);
-    const { shape: fused } = unwrap(fuseResult);
-
-    // Try resolving all 6 original refs
-    let resolvedCount = 0;
-    for (const [_role, ref] of refs) {
-      const result = resolveRef(ref, new Map(), fused);
-      if ('face' in result) {
-        expect(isFace(result.face)).toBe(true);
-        resolvedCount++;
+      // Create refs for all faces
+      const refs = new Map<string, ShapeRef>();
+      for (const [role, hash] of roles) {
+        const face = getFaces(base).find((f) => getHashCode(f) === hash);
+        expect(face).toBeDefined();
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- checked above
+        refs.set(role, createRef('step_0', role, face!));
       }
-    }
 
-    // Most faces should resolve via geometric fallback
-    // (normal direction is a strong discriminator for box faces)
-    expect(resolvedCount).toBeGreaterThanOrEqual(4);
-  });
+      // Fuse with overlapping box (splits front and top faces)
+      const overlap = translate(box(10, 10, 10), [5, -5, 15]);
+      const fuseResult = fuseWithEvolution(base, overlap);
+      expect(isOk(fuseResult)).toBe(true);
+      const { shape: fused } = unwrap(fuseResult);
+
+      // Try resolving all 6 original refs
+      let resolvedCount = 0;
+      for (const [_role, ref] of refs) {
+        const result = resolveRef(ref, new Map(), fused);
+        if ('face' in result) {
+          expect(isFace(result.face)).toBe(true);
+          resolvedCount++;
+        }
+      }
+
+      // Most faces should resolve via geometric fallback
+      // (normal direction is a strong discriminator for box faces)
+      expect(resolvedCount).toBeGreaterThanOrEqual(4);
+    }
+  );
 });

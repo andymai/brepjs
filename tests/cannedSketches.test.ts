@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchCircle,
   sketchEllipse,
@@ -109,8 +109,7 @@ describe('Canned sketches', () => {
   });
 
   it('sketchFaceOffset shrinks a face inward', (ctx) => {
-    // brepkit: face offset area=576 vs expected<400 (offset not applied correctly)
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'cannedSketches.faceOffset');
     const b = box(20, 20, 20);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test indexing
     const face = getFaces(b)[0]!;

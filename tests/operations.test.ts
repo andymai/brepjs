@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import Sketcher from '@/sketching/sketcher.js';
 import {
   box,
@@ -72,8 +72,7 @@ describe('revolve', () => {
 
 describe('loft', () => {
   it('lofts between two circles', (ctx) => {
-    // brepkit: loft volume ~1821 vs expected ~1833 (precision difference, not wrong geometry)
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'operations.loftCircles');
     const bottom = sketchCircle(10);
     const top = sketchCircle(5, { origin: [0, 0, 10] });
     const solid = unwrap(loft([bottom.wire, top.wire]));

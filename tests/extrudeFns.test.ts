@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   sketchRectangle,
   sketchCircle,
@@ -46,17 +47,20 @@ describe('extrudeFns', () => {
       expect(unwrap(measureVolume(solid))).toBeCloseTo(10 * 20 * 30, 0);
     });
 
-    it.skipIf(currentKernel !== 'occt')('extrudes a circle into a cylinder', () => {
-      const c = sketchCircle(5);
-      const f = castShape(c.face().wrapped);
-      const result = extrude(f, [0, 0, 10]);
-      expect(isOk(result)).toBe(true);
-      expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(Math.PI * 25 * 10, 0);
-    });
+    it.skipIf(shouldSkipSuite('extrudeFns.circleExtrude'))(
+      'extrudes a circle into a cylinder',
+      () => {
+        const c = sketchCircle(5);
+        const f = castShape(c.face().wrapped);
+        const result = extrude(f, [0, 0, 10]);
+        expect(isOk(result)).toBe(true);
+        expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(Math.PI * 25 * 10, 0);
+      }
+    );
   });
 
   describe('extrude error paths', () => {
-    it.skipIf(currentKernel !== 'occt')('returns error for null face', () => {
+    it.skipIf(shouldSkipSuite('extrudeFns.nullFace'))('returns error for null face', () => {
       const result = extrude(makeNullFace(), [0, 0, 10]);
       expect(isErr(result)).toBe(true);
     });
@@ -86,7 +90,7 @@ describe('extrudeFns', () => {
   });
 
   describe('revolve error paths', () => {
-    it.skipIf(currentKernel !== 'occt')('returns error for null face', () => {
+    it.skipIf(shouldSkipSuite('extrudeFns.revolveNullFace'))('returns error for null face', () => {
       const result = revolve(makeNullFace(), { at: [0, 0, 0], axis: [0, 1, 0], angle: 360 });
       expect(isErr(result)).toBe(true);
     });

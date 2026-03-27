@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { isBrepkit, skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   cylinder,
@@ -39,7 +39,7 @@ describe('getNurbsCurveData', () => {
   });
 
   it('extracts data from a BSpline edge', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'nurbsFns.bsplineData');
     const pts: Vec3[] = [
       [0, 0, 0],
       [5, 5, 0],
@@ -66,7 +66,7 @@ describe('getNurbsCurveData', () => {
   });
 
   it('returns null on brepkit', (ctx) => {
-    if (!isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'nurbsFns.brepkitCurveNull');
     const pts: Vec3[] = [
       [0, 0, 0],
       [5, 5, 0],
@@ -83,7 +83,7 @@ describe('getNurbsCurveData', () => {
 
 describe('getNurbsSurfaceData', () => {
   it('returns null for a planar face', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'nurbsFns.planarFaceSurface');
     const b = box(10, 10, 10);
     const faces = getFaces(b);
     if (faces.length > 0) {
@@ -94,7 +94,7 @@ describe('getNurbsSurfaceData', () => {
   });
 
   it('returns null for a cylindrical face', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'nurbsFns.cylindricalFaceSurface');
     // Cylinder faces are not BSpline
     const cyl = cylinder(5, 10);
     const faces = getFaces(cyl);
@@ -109,7 +109,7 @@ describe('getNurbsSurfaceData', () => {
   });
 
   it('returns null on brepkit for any face', (ctx) => {
-    if (!isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'nurbsFns.brepkitSurfaceNull');
     const b = box(10, 10, 10);
     const faces = getFaces(b);
     if (faces.length > 0) {
@@ -120,7 +120,7 @@ describe('getNurbsSurfaceData', () => {
   });
 
   it('extracts data from a BSpline surface (fillet face)', (ctx) => {
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'nurbsFns.bsplineSurface');
     // Fillet surfaces are always BSpline — use a filleted box to get one
     const b = box(10, 10, 10);
     const edges = getEdges(b);

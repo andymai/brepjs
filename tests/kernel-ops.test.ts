@@ -8,7 +8,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import { getKernel } from '@/kernel/index.js';
 import type { KernelAdapter } from '@/kernel/types.js';
 import {
@@ -430,8 +430,7 @@ describe('modifierOps', () => {
   });
 
   it('fillet variable radius', (ctx) => {
-    // brepkit: variable fillet produces vol > 8000 (physically impossible — fillet removes material)
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'kernelOps.variableFilletRadius');
     const b = box(20, 20, 20);
     const edges = getEdges(b);
     const filleted = kernel.fillet(oc(b), [oc(edges[0]!)], [1, 3]); // eslint-disable-line @typescript-eslint/no-non-null-assertion

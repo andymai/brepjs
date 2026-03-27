@@ -38,7 +38,7 @@ import {
   type Shell,
   type Solid,
 } from '@/index.js';
-import { currentKernel } from './helpers/kernelEnv.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 
 beforeAll(async () => {
   await initKernel();
@@ -369,35 +369,38 @@ describe('isPlanarWire', () => {
     expect(isPlanarWire(w)).toBe(true);
   });
 
-  // brepkit's makeFace + surfaceType reports 'plane' even for non-coplanar
-  // wires — skip on brepkit until its surfaceType classification improves
-  it.skipIf(currentKernel === 'brepkit')('returns false for a non-planar wire', () => {
-    // Build a closed wire with vertices NOT in the same plane:
-    // three corners at z=0 and one at z=5 — no single plane contains all four
-    const w = unwrap(
-      wire([
-        line([0, 0, 0], [10, 0, 0]),
-        line([10, 0, 0], [10, 10, 0]),
-        line([10, 10, 0], [5, 5, 5]),
-        line([5, 5, 5], [0, 0, 0]),
-      ])
-    );
-    expect(isPlanarWire(w)).toBe(false);
-  });
-
-  // Supplementary: cylinder lateral wire test (also OCCT-only)
-  it.skipIf(currentKernel === 'brepkit')('returns false for a cylinder lateral wire (OCCT)', () => {
-    const cyl = cylinder(5, 10);
-    const faces = getFaces(cyl);
-    const lateralFace = faces.find((f) => !isPlanarFace(f));
-    expect(lateralFace).toBeDefined();
-    if (lateralFace) {
-      const wires = getWires(lateralFace);
-      expect(wires.length).toBeGreaterThan(0);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by length check
-      expect(isPlanarWire(wires[0]!)).toBe(false);
+  it.skipIf(shouldSkipSuite('validityTypes.nonPlanarWire'))(
+    'returns false for a non-planar wire',
+    () => {
+      // Build a closed wire with vertices NOT in the same plane:
+      // three corners at z=0 and one at z=5 — no single plane contains all four
+      const w = unwrap(
+        wire([
+          line([0, 0, 0], [10, 0, 0]),
+          line([10, 0, 0], [10, 10, 0]),
+          line([10, 10, 0], [5, 5, 5]),
+          line([5, 5, 5], [0, 0, 0]),
+        ])
+      );
+      expect(isPlanarWire(w)).toBe(false);
     }
-  });
+  );
+
+  it.skipIf(shouldSkipSuite('validityTypes.cylinderLateralWire'))(
+    'returns false for a cylinder lateral wire (OCCT)',
+    () => {
+      const cyl = cylinder(5, 10);
+      const faces = getFaces(cyl);
+      const lateralFace = faces.find((f) => !isPlanarFace(f));
+      expect(lateralFace).toBeDefined();
+      if (lateralFace) {
+        const wires = getWires(lateralFace);
+        expect(wires.length).toBeGreaterThan(0);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by length check
+        expect(isPlanarWire(wires[0]!)).toBe(false);
+      }
+    }
+  );
 
   it('narrows Wire to PlanarWire in type system', () => {
     const w: Wire = unwrap(
@@ -433,24 +436,25 @@ describe('planarWire', () => {
     expect(isOk(result)).toBe(true);
   });
 
-  // brepkit's makeFace + surfaceType reports 'plane' even for non-coplanar
-  // wires — skip on brepkit until its surfaceType classification improves
-  it.skipIf(currentKernel === 'brepkit')('returns Err for a non-planar wire', () => {
-    // Non-coplanar wire: three corners at z=0, one at z=5
-    const w = unwrap(
-      wire([
-        line([0, 0, 0], [10, 0, 0]),
-        line([10, 0, 0], [10, 10, 0]),
-        line([10, 10, 0], [5, 5, 5]),
-        line([5, 5, 5], [0, 0, 0]),
-      ])
-    );
-    const result = planarWire(w);
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
-      expect(result.error).toContain('not planar');
+  it.skipIf(shouldSkipSuite('validityTypes.planarWireErr'))(
+    'returns Err for a non-planar wire',
+    () => {
+      // Non-coplanar wire: three corners at z=0, one at z=5
+      const w = unwrap(
+        wire([
+          line([0, 0, 0], [10, 0, 0]),
+          line([10, 0, 0], [10, 10, 0]),
+          line([10, 10, 0], [5, 5, 5]),
+          line([5, 5, 5], [0, 0, 0]),
+        ])
+      );
+      const result = planarWire(w);
+      expect(isErr(result)).toBe(true);
+      if (isErr(result)) {
+        expect(result.error).toContain('not planar');
+      }
     }
-  });
+  );
 });
 
 // ---------------------------------------------------------------------------

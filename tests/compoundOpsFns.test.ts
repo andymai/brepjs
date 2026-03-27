@@ -6,7 +6,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   box,
   drill,
@@ -93,8 +93,7 @@ describe('pocket()', () => {
   });
 
   it('returns Err with COMPOUND_NO_FACES for shape with no faces', (ctx) => {
-    // brepkit skip: uses raw OCCT API (oc.gp_Pnt_3, BRepBuilderAPI_MakeEdge_3)
-    if (isBrepkit) ctx.skip();
+    skipIfDiverges(ctx, 'compoundOpsFns.noFacesShape');
     const oc = getKernel().oc;
     const p1 = new oc.gp_Pnt_3(0, 0, 0);
     const p2 = new oc.gp_Pnt_3(10, 0, 0);

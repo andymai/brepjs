@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { isBrepkit } from './helpers/kernelEnv.js';
+import { isBrepkit } from './helpers/kernelDivergences.js';
 import { box, cylinder, sphere, unwrap, isErr, faceFinder, normalAt } from '@/index.js';
 
 beforeAll(async () => {

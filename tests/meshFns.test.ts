@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { currentKernel, initKernel } from './setup.js';
+import { initKernel } from './setup.js';
+import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
@@ -94,7 +95,7 @@ describe('meshFns', () => {
       expect(blob.size).toBeGreaterThan(0);
     });
 
-    it.skipIf(currentKernel !== 'occt')(
+    it.skipIf(shouldSkipSuite('meshFns.stepReadError'))(
       'returns STEP_FILE_READ_ERROR when FS.readFile throws after successful write (FS path only)',
       () => {
         const oc = getKernel().oc;
@@ -155,7 +156,7 @@ describe('meshFns', () => {
       expect(unwrap(result).size).toBeGreaterThan(0);
     });
 
-    it.skipIf(currentKernel !== 'occt')(
+    it.skipIf(shouldSkipSuite('meshFns.meshDeflection'))(
       'returns STL_FILE_READ_ERROR when FS.readFile throws after successful write',
       () => {
         const oc = getKernel().oc;
