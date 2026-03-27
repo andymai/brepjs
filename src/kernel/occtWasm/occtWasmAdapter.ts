@@ -2776,14 +2776,27 @@ export class OcctWasmAdapter implements KernelAdapter {
     return { param: bestT, distance: bestDist };
   }
   distanceBetweenCurves2d(
-    _c1: Curve2dHandle,
-    _c2: Curve2dHandle,
-    _p1Start: number,
-    _p1End: number,
-    _p2Start: number,
-    _p2End: number
+    c1: Curve2dHandle,
+    c2: Curve2dHandle,
+    p1Start: number,
+    p1End: number,
+    p2Start: number,
+    p2End: number
   ): number {
-    notImplemented('distanceBetweenCurves2d');
+    // Sample both curves and find minimum distance
+    const n = 20;
+    let minDist = Infinity;
+    for (let i = 0; i <= n; i++) {
+      const t1 = p1Start + (p1End - p1Start) * (i / n);
+      const [x1, y1] = ow2d.evaluateCurve2d(c2d(c1), t1);
+      for (let j = 0; j <= n; j++) {
+        const t2 = p2Start + (p2End - p2Start) * (j / n);
+        const [x2, y2] = ow2d.evaluateCurve2d(c2d(c2), t2);
+        const d = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        if (d < minDist) minDist = d;
+      }
+    }
+    return minDist;
   }
   approximateCurve2dAsBSpline(
     curve: Curve2dHandle,
