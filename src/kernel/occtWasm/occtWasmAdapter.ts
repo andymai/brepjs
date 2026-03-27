@@ -179,34 +179,25 @@ function parseEvolution(evo: EmEvolutionData): { id: number; evolution: ShapeEvo
   const generatedRaw = readVecInt(evo.generated);
   const deletedRaw = readVecInt(evo.deleted);
 
-  const modified = new Map<number, number[]>();
-  for (let i = 0; i + 1 < modifiedRaw.length; i += 2) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM pair
-    const inputHash = modifiedRaw[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM pair
-    const outputHash = modifiedRaw[i + 1]!;
-    const existing = modified.get(inputHash);
-    if (existing) {
-      existing.push(outputHash);
-    } else {
-      modified.set(inputHash, [outputHash]);
+  // C++ format: [inputHash, count, output1, output2, ..., inputHash, count, ...]
+  const parseMap = (raw: number[]): Map<number, number[]> => {
+    const map = new Map<number, number[]>();
+    let i = 0;
+    while (i + 1 < raw.length) {
+      const inputHash = raw[i] ?? 0;
+      const count = raw[i + 1] ?? 0;
+      i += 2;
+      const outputs: number[] = [];
+      for (let j = 0; j < count && i < raw.length; j++, i++) {
+        outputs.push(raw[i] ?? 0);
+      }
+      map.set(inputHash, outputs);
     }
-  }
+    return map;
+  };
 
-  const generated = new Map<number, number[]>();
-  for (let i = 0; i + 1 < generatedRaw.length; i += 2) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM pair
-    const inputHash = generatedRaw[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM pair
-    const outputHash = generatedRaw[i + 1]!;
-    const existing = generated.get(inputHash);
-    if (existing) {
-      existing.push(outputHash);
-    } else {
-      generated.set(inputHash, [outputHash]);
-    }
-  }
-
+  const modified = parseMap(modifiedRaw);
+  const generated = parseMap(generatedRaw);
   const deleted = new Set<number>(deletedRaw);
 
   const resultId = evo.resultId;
