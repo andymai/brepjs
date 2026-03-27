@@ -697,12 +697,57 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('bsplineSurface');
   }
 
-  triangulatedSurface(
-    _points: [number, number, number][],
-    _rows: number,
-    _cols: number
-  ): KernelShape {
-    notImplemented('triangulatedSurface');
+  triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
+    // Build triangulated surface from grid: create triangles + sew into shell
+    const faceIds: number[] = [];
+    for (let r = 0; r < rows - 1; r++) {
+      for (let c = 0; c < cols - 1; c++) {
+        const i00 = r * cols + c;
+        const i10 = (r + 1) * cols + c;
+        const i01 = r * cols + (c + 1);
+        const i11 = (r + 1) * cols + (c + 1);
+        const p00 = points[i00];
+        const p10 = points[i10];
+        const p01 = points[i01];
+        const p11 = points[i11];
+        if (p00 && p10 && p01) {
+          faceIds.push(
+            this.k.buildTriFace(
+              p00[0],
+              p00[1],
+              p00[2],
+              p10[0],
+              p10[1],
+              p10[2],
+              p01[0],
+              p01[1],
+              p01[2]
+            )
+          );
+        }
+        if (p10 && p11 && p01) {
+          faceIds.push(
+            this.k.buildTriFace(
+              p10[0],
+              p10[1],
+              p10[2],
+              p11[0],
+              p11[1],
+              p11[2],
+              p01[0],
+              p01[1],
+              p01[2]
+            )
+          );
+        }
+      }
+    }
+    const vec = makeVecU32(this.Module, faceIds);
+    try {
+      return wrapResult(this.k, this.k.sewAndSolidify(vec, 1e-3));
+    } finally {
+      vec.delete();
+    }
   }
 
   buildTriFace(
