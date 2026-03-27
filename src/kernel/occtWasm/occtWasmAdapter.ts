@@ -3008,11 +3008,22 @@ export class OcctWasmAdapter implements KernelAdapter {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
     return { type: 'scale2d', sx: factor, sy: factor, cx, cy } as any;
   }
-  setGTrsf2dTranslationPart(_gtrsf: KernelType, _dx: number, _dy: number): void {
-    notImplemented('setGTrsf2dTranslationPart');
+  setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void {
+    const t = gtrsf;
+    t['dx'] = (Number(t['dx']) || 0) + dx;
+    t['dy'] = (Number(t['dy']) || 0) + dy;
   }
-  multiplyGTrsf2d(_base: KernelType, _other: KernelType): void {
-    notImplemented('multiplyGTrsf2d');
+  multiplyGTrsf2d(base: KernelType, other: KernelType): void {
+    const b = base;
+
+    const o = other;
+    b['dx'] = (Number(b['dx']) || 0) + (Number(o['dx']) || 0);
+    b['dy'] = (Number(b['dy']) || 0) + (Number(o['dy']) || 0);
+    if (o['type'] === 'scale2d') {
+      b['type'] = 'scale2d';
+      b['sx'] = o['sx'];
+      b['sy'] = o['sy'];
+    }
   }
   transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType): Curve2dHandle {
     const t = gtrsf; /* transform dispatch */
