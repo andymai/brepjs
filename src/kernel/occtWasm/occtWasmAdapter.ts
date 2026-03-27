@@ -1035,12 +1035,22 @@ export class OcctWasmAdapter implements KernelAdapter {
     }
   }
 
-  buildExtrusionLaw(
-    _profile: 'linear' | 's-curve',
-    _length: number,
-    _endFactor: number
-  ): KernelType {
-    notImplemented('buildExtrusionLaw');
+  buildExtrusionLaw(profile: 'linear' | 's-curve', length: number, endFactor: number): KernelType {
+    // Return a JS law object with Trim method (matching OCCT Law_Linear/Law_S)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque law object
+    const law: any = {
+      __occtWasmLaw: true,
+      profile,
+      length,
+      endFactor,
+      Trim(first: number, last: number, _tol: number) {
+        return { ...law, trimFirst: first, trimLast: last };
+      },
+      delete() {
+        /* no-op */
+      },
+    };
+    return law;
   }
 
   revolveVec(
