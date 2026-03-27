@@ -1088,18 +1088,18 @@ export class OcctWasmAdapter implements KernelAdapter {
         }
     >
   ): { handle: KernelType; dispose: () => void } {
-    // Build a 4x4 identity matrix then compose
+    // Build a 4x4 identity matrix then compose using PreMultiply order
+    // (matches OCCT's trsf.PreMultiply(step) convention)
     let matrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
     for (const op of ops) {
       if (op.type === 'translate') {
-        // Create translation matrix and multiply
         const t = [1, 0, 0, op.x, 0, 1, 0, op.y, 0, 0, 1, op.z, 0, 0, 0, 1];
-        matrix = multiplyMatrices4x4(matrix, t);
+        matrix = multiplyMatrices4x4(t, matrix); // PreMultiply
       } else {
-        // Rotation -- build rotation matrix
+        // Rotation — angle is DEGREES, convert to radians
         const ax = op.axis ?? [0, 0, 1];
         const cn = op.center ?? [0, 0, 0];
-        const rad = op.angle;
+        const rad = (op.angle * Math.PI) / 180;
         const c = Math.cos(rad);
         const s = Math.sin(rad);
         const t = 1 - c;
@@ -1118,7 +1118,7 @@ export class OcctWasmAdapter implements KernelAdapter {
         const ty = cn[1] - (r10 * cn[0] + r11 * cn[1] + r12 * cn[2]);
         const tz = cn[2] - (r20 * cn[0] + r21 * cn[1] + r22 * cn[2]);
         const rm = [r00, r01, r02, tx, r10, r11, r12, ty, r20, r21, r22, tz, 0, 0, 0, 1];
-        matrix = multiplyMatrices4x4(matrix, rm);
+        matrix = multiplyMatrices4x4(rm, matrix); // PreMultiply
       }
     }
     return {
