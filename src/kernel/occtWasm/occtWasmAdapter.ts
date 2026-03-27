@@ -2977,13 +2977,23 @@ export class OcctWasmAdapter implements KernelAdapter {
       axDirX: dirX,
       axDirY: dirY,
       ratio,
+      delete() {
+        /* no-op */
+      },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
     } as any;
   }
 
   createTranslationGTrsf2d(dx: number, dy: number): KernelType {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return { type: 'translate2d', dx, dy } as any;
+    return {
+      type: 'translate2d',
+      dx,
+      dy,
+      delete() {
+        /* no-op */
+      },
+    } as any;
   }
 
   createMirrorGTrsf2d(
@@ -2996,17 +3006,46 @@ export class OcctWasmAdapter implements KernelAdapter {
     dirY?: number
   ): KernelType {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return { type: 'mirror2d', cx, cy, mode, originX, originY, dirX, dirY } as any;
+    return {
+      type: 'mirror2d',
+      cx,
+      cy,
+      mode,
+      originX,
+      originY,
+      dirX,
+      dirY,
+      delete() {
+        /* no-op */
+      },
+    } as any;
   }
 
   createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return { type: 'rotate2d', angle, cx, cy } as any;
+    return {
+      type: 'rotate2d',
+      angle,
+      cx,
+      cy,
+      delete() {
+        /* no-op */
+      },
+    } as any;
   }
 
   createScaleGTrsf2d(factor: number, cx: number, cy: number): KernelType {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return { type: 'scale2d', sx: factor, sy: factor, cx, cy } as any;
+    return {
+      type: 'scale2d',
+      sx: factor,
+      sy: factor,
+      cx,
+      cy,
+      delete() {
+        /* no-op */
+      },
+    } as any;
   }
   setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void {
     const t = gtrsf;
@@ -3035,6 +3074,16 @@ export class OcctWasmAdapter implements KernelAdapter {
       return this.scaleCurve2d(curve, t['sx'] ?? 1, t['cx'] ?? 0, t['cy'] ?? 0);
     if (t['type'] === 'mirror2d')
       return this.mirrorCurve2dAtPoint(curve, t['ox'] ?? 0, t['oy'] ?? 0);
+    if (t['type'] === 'affinity2d')
+      return this.scaleCurve2d(
+        curve,
+        Number(t['ratio']) || 1,
+        Number(t['axOriginX']) || 0,
+        Number(t['axOriginY']) || 0
+      );
+    // Identity or unknown — apply any accumulated translation
+    if (Number(t['dx']) || Number(t['dy']))
+      return this.translateCurve2d(curve, Number(t['dx']) || 0, Number(t['dy']) || 0);
     return curve;
   } // brepjs-patterns-disable: no-double-cast
   intersectCurves2d(
