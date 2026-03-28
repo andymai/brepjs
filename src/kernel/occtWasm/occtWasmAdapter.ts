@@ -2989,7 +2989,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
   scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle {
     const result = ow2d.scaleCurve2d(c2d(curve), factor, cx, cy);
-    // Fix: brepkit2d scaleCurve2d doesn't scale line length. Patch it.
+    // Fix: geometry2d scaleCurve2d doesn't scale line length. Patch it.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- patch line length
     const r = result as any;
     if (r.__bk2d === 'line' && typeof r.len === 'number') {

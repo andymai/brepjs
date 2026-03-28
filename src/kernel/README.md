@@ -34,7 +34,7 @@ This is enforced by an ESLint `no-restricted-syntax` rule that bans `x.wrapped.m
 | `kernel2dTypes.ts`    | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
 | `defaultAdapter.ts`   | Default OCCT adapter class — thin delegation layer implementing both interfaces                                                   |
 | `brepkitAdapter.ts`   | brepkit WASM adapter (`BrepkitAdapter`) — alternative kernel with growing operation coverage                                      |
-| `brepkit2d.ts`        | brepkit 2D capability implementation                                                                                              |
+| `geometry2d.ts`       | Pure-TypeScript 2D geometry engine — kernel-agnostic, used by brepkit and occt-wasm adapters                                      |
 | `brepkitWasmTypes.ts` | TypeScript type definitions for the brepkit WASM module                                                                           |
 
 ### Operation Modules (kernel-specific)
