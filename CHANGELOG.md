@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.0](https://github.com/andymai/brepjs/compare/brepjs-v15.0.0...brepjs-v15.1.0) (2026-03-28)
+
+
+### Features
+
+* **kernel:** promote occt-wasm to supported secondary kernel ([#697](https://github.com/andymai/brepjs/issues/697)) ([4ebfadf](https://github.com/andymai/brepjs/commit/4ebfadfaf0b379fa151c852360cb881e0de9bc83))
+
 ## [15.0.0](https://github.com/andymai/brepjs/compare/brepjs-v14.8.1...brepjs-v15.0.0) (2026-03-28)
 
 
