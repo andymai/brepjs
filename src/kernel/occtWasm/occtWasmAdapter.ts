@@ -51,8 +51,8 @@ import type {
 import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
-import * as ow2d from '@/kernel/brepkit/brepkit2d.js';
-import type { Curve2dObj } from '@/kernel/brepkit/brepkit2d.js';
+import * as ow2d from '@/kernel/geometry2d.js';
+import type { Curve2dObj } from '@/kernel/geometry2d.js';
 import type {
   OcctWasmHandle,
   OcctWasmModule,

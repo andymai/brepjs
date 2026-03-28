@@ -12,8 +12,8 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
-import type { Curve2dObj } from './brepkit2d.js';
-import * as bk2d from './brepkit2d.js';
+import type { Curve2dObj } from '../geometry2d.js';
+import * as bk2d from '../geometry2d.js';
 import {
   isBrepkitHandle,
   noop,

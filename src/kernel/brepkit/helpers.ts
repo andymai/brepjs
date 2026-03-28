@@ -10,7 +10,7 @@
 import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
-import type { Curve2dObj, BBox2d as BkBBox2d } from './brepkit2d.js';
+import type { Curve2dObj, BBox2d as BkBBox2d } from '../geometry2d.js';
 
 // ---------------------------------------------------------------------------
 // Handle types

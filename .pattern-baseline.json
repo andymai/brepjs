@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-28T02:00:37.605Z",
+  "generated": "2026-03-28T04:41:51.614Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -36,11 +36,6 @@
       "file": "src/io/threemfExportFns.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|205|"
-    },
-    {
-      "file": "src/kernel/brepkit/brepkit2d.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/brepkit2d.ts|max-function-lines|592|"
     },
     {
       "file": "src/kernel/brepkit/constructionOps.ts",
@@ -151,6 +146,11 @@
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-nesting-depth",
       "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|220|"
+    },
+    {
+      "file": "src/kernel/geometry2d.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/kernel/geometry2d.ts|max-function-lines|592|"
     },
     {
       "file": "src/kernel/occt/advancedOps.ts",
