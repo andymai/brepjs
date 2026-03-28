@@ -85,4 +85,24 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     expect(result).toBeDefined();
     expectBounds(result, 5, 10);
   });
+
+  it('fuses then intersects rounded rectangles (compound boolean)', () => {
+    const a = drawRoundedRectangle(10, 10, 1);
+    const b = drawRoundedRectangle(8, 8, 1).translate(2, 0);
+    const fused = a.fuse(b);
+    const clip = drawRectangle(20, 6);
+    const result = fused.intersect(clip);
+    expect(result).toBeDefined();
+  });
+
+  it('intersects rounded rects with various radii and offsets', () => {
+    // Stress-test common segment detection at arc/line junctions
+    for (const r of [0.5, 1, 1.5, 2, 3]) {
+      for (const offset of [2, 3, 4, 5]) {
+        const a = drawRoundedRectangle(10, 10, r);
+        const b = drawRoundedRectangle(10, 10, r).translate(offset, 0);
+        expect(() => a.intersect(b), `r=${r} offset=${offset}`).not.toThrow();
+      }
+    }
+  });
 });

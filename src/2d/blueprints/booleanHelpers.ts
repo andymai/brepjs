@@ -82,15 +82,25 @@ export function curveMidPoint(curve: Curve2D): Point2D {
 
 /**
  * Find the index of the first curve in `curves` whose firstPoint matches
- * `point` (using hash + samePoint for fast comparison).
+ * `point`. Uses hash for a fast first pass, then falls back to tolerance-only
+ * comparison to handle floating-point rounding at `toFixed(9)` boundaries.
  * Returns -1 if no match is found.
  */
 function findCurveIndexByStartPoint(curves: Curve2D[], point: Point2D): number {
   const targetHash = hashPoint(point);
+  // Fast path: hash + tolerance
   for (let i = 0; i < curves.length; i++) {
     const curve = curves[i];
     if (curve === undefined) continue;
     if (hashPoint(curve.firstPoint) === targetHash && samePoint(point, curve.firstPoint)) {
+      return i;
+    }
+  }
+  // Fallback: tolerance-only (handles hash mismatches at rounding boundaries)
+  for (let i = 0; i < curves.length; i++) {
+    const curve = curves[i];
+    if (curve === undefined) continue;
+    if (samePoint(point, curve.firstPoint)) {
       return i;
     }
   }
@@ -99,7 +109,8 @@ function findCurveIndexByStartPoint(curves: Curve2D[], point: Point2D): number {
 
 /**
  * Find the index of the first curve in `curves` that matches the given
- * segment's start and end points (using hash + samePoint).
+ * segment's start and end points. Uses hash for a fast first pass, then
+ * falls back to tolerance-only comparison.
  * Returns -1 if no match is found.
  */
 function findCurveIndexBySegment(
@@ -108,6 +119,7 @@ function findCurveIndexBySegment(
   segLastHash: string,
   matchesFn: (curve: Curve2D) => boolean
 ): number {
+  // Fast path: hash + tolerance
   for (let i = 0; i < curves.length; i++) {
     const curve = curves[i];
     if (curve === undefined) continue;
@@ -116,6 +128,14 @@ function findCurveIndexBySegment(
       hashPoint(curve.lastPoint) === segLastHash &&
       matchesFn(curve)
     ) {
+      return i;
+    }
+  }
+  // Fallback: tolerance-only (handles hash mismatches at rounding boundaries)
+  for (let i = 0; i < curves.length; i++) {
+    const curve = curves[i];
+    if (curve === undefined) continue;
+    if (matchesFn(curve)) {
       return i;
     }
   }
