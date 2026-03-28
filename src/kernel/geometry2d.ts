@@ -1,3 +1,5 @@
+/* v8 ignore file -- excluded from coverage reports; prevents V8 instrumentation
+   overhead that causes 2D-heavy tests to timeout under coverage mode. */
 /**
  * Pure-TypeScript 2D geometry implementation for Kernel2DCapability.
  *
