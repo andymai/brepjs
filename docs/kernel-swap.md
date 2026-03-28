@@ -70,7 +70,7 @@ Adapter for the external `brepkit-wasm` WASM package. Create with `new BrepkitAd
 
 Adapter for the external `occt-wasm` WASM package. This is an arena-based OCCT V8 kernel compiled to WASM — all geometry is identified by `u32` handles into the arena. Create with `new OcctWasmAdapter(Module, kernel)` and register via `registerKernel('occt-wasm', adapter)`.
 
-Unlike `brepjs-opencascade`, `occt-wasm` is not auto-detected by `init()` because its WASM loading uses Node.js-specific APIs (`import.meta.resolve`, `node:path`). You must register it manually.
+Unlike `brepjs-opencascade`, `occt-wasm` is not auto-detected by `init()` because the WASM binary location cannot be inferred without build-tool configuration. You must register it manually.
 
 Import the adapter from the deep path:
 

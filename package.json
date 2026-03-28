@@ -164,6 +164,16 @@
         "types": "./dist/quick.d.ts",
         "default": "./dist/quick.js"
       }
+    },
+    "./kernel/occtWasm/occtWasmAdapter": {
+      "import": {
+        "types": "./dist/kernel/occtWasm/occtWasmAdapter.d.ts",
+        "default": "./dist/kernel/occtWasm/occtWasmAdapter.js"
+      },
+      "require": {
+        "types": "./dist/kernel/occtWasm/occtWasmAdapter.d.ts",
+        "default": "./dist/kernel/occtWasm/occtWasmAdapter.cjs"
+      }
     }
   },
   "files": [
