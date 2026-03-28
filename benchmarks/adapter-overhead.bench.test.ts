@@ -394,7 +394,8 @@ describe('Adapter overhead — phase breakdown', () => {
 
       // Phase: raw WASM fuse
       const wasmUs = timeUs(() => {
-        k.fuse(b1raw, b2raw, {});
+        const fused = k.fuse(b1raw, b2raw, {});
+        fused?.delete?.();
       }, N);
 
       // Phase: shapeType + downcast (type casting)

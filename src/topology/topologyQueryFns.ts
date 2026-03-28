@@ -50,7 +50,7 @@ export interface TopoCacheEntry {
   faceOrigins?: Map<number, number>;
   bounds?: Bounds3D;
   isValid?: boolean;
-  surfaceType?: string;
+  surfaceType?: SurfaceType;
   /** Edge hash → edge-face pairs for adjacency queries. Stores the edge alongside
    *  each face so facesOfEdge can verify via isSame without re-extracting face edges. */
   edgeToFaces?: Map<number, Array<{ edge: KernelShape; face: KernelShape }>>;
@@ -199,9 +199,9 @@ export function getCachedShapeKind(shape: AnyShape<Dimension>): ShapeKind {
 }
 
 /** Get the kernel surface type of a face. Cached per face (shapes are immutable). */
-export function getCachedSurfaceType(face: AnyShape<Dimension>): SurfaceType {
+export function getCachedSurfaceType(face: Face<Dimension>): SurfaceType {
   const cache = getOrCreateCache(face);
-  if (cache.surfaceType !== undefined) return cache.surfaceType as SurfaceType;
+  if (cache.surfaceType !== undefined) return cache.surfaceType;
   const surfType = getKernel().surfaceType(face.wrapped);
   cache.surfaceType = surfType;
   return surfType;
