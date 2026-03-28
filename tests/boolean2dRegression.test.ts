@@ -5,7 +5,7 @@
  */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { drawRectangle, drawRoundedRectangle } from '@/index.js';
+import { draw, drawRectangle, drawRoundedRectangle } from '@/index.js';
 import type { Drawing } from '@/sketching/draw.js';
 
 beforeAll(async () => {
@@ -104,5 +104,75 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
         expect(() => a.intersect(b), `r=${r} offset=${offset}`).not.toThrow();
       }
     }
+  });
+
+  it('intersects draw()-built profile with rounded rect (common segment split by arc intersection)', () => {
+    // A tall thin rectangle whose left edge at x=0 aligns with the rounded
+    // rect's right straight edge. The rounded rect's corner arcs intersect the
+    // rectangle at points *within* the common segment range, causing the
+    // common segment to be split into sub-curves. This is the scenario from
+    // the issue report where a Sketcher-built lip profile crashes.
+    const profile = draw([0, -6]).lineTo([8, -6]).lineTo([8, 6]).lineTo([0, 6]).close();
+
+    // drawRoundedRectangle(10, 10, 1) centered then shifted left by 5
+    // → right edge straight segment at x=0, from y=-4 to y=4
+    // → arc corners at x=0 produce intersection points near y=±4
+    const clip = drawRoundedRectangle(10, 10, 1).translate(-5, 0);
+
+    // This should not throw BrepBugError
+    expect(() => profile.intersect(clip)).not.toThrow();
+  });
+
+  it('intersects gridfinity lip profile with clip rectangle — includeLip=true', () => {
+    // Exact geometry from gridfinity-layout-tool boxBuilder.ts
+    const LIP_SMALL_TAPER = 0.7;
+    const LIP_VERTICAL_PART = 1.8;
+    const LIP_BIG_TAPER = 1.9;
+    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER; // 2.6
+    const LIP_EXTENSION = 1.2;
+
+    const basicShape = draw([-LIP_TAPER_WIDTH, 0])
+      .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
+      .vLine(LIP_VERTICAL_PART)
+      .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
+      .vLineTo(-(LIP_TAPER_WIDTH + LIP_EXTENSION))
+      .lineTo([-LIP_TAPER_WIDTH, -LIP_EXTENSION])
+      .close();
+
+    const clip = drawRoundedRectangle(10, 10).translate(-5, 0);
+    expect(() => basicShape.intersect(clip)).not.toThrow();
+  });
+
+  it('intersects gridfinity lip profile with clip rectangle — includeLip=false', () => {
+    const LIP_SMALL_TAPER = 0.7;
+    const LIP_VERTICAL_PART = 1.8;
+    const LIP_BIG_TAPER = 1.9;
+    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER; // 2.6
+
+    const basicShape = draw([-LIP_TAPER_WIDTH, 0])
+      .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
+      .vLine(LIP_VERTICAL_PART)
+      .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
+      .vLineTo(0)
+      .close();
+
+    // includeLip=false: translate(-5, 5) — shared edges at y=0 and x=0
+    const clip = drawRoundedRectangle(10, 10).translate(-5, 5);
+    expect(() => basicShape.intersect(clip)).not.toThrow();
+  });
+
+  it('intersects draw()-built L-shape with rounded rect (Sketcher-like lip profile)', () => {
+    // Simulate the issue reporter's lip profile — an L-shaped cross-section
+    // that shares a partial edge with the rounded rectangle.
+    const lip = draw([-2, 0])
+      .lineTo([4, 0])
+      .lineTo([4, 2])
+      .lineTo([0, 2])
+      .lineTo([0, 6])
+      .lineTo([-2, 6])
+      .close();
+
+    const clip = drawRoundedRectangle(10, 10, 1).translate(-5, 0);
+    expect(() => lip.intersect(clip)).not.toThrow();
   });
 });
