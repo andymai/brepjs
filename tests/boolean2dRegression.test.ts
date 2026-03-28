@@ -119,8 +119,11 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     // → arc corners at x=0 produce intersection points near y=±4
     const clip = drawRoundedRectangle(10, 10, 1).translate(-5, 0);
 
-    // This should not throw BrepBugError
-    expect(() => profile.intersect(clip)).not.toThrow();
+    const result = profile.intersect(clip);
+    expect(result).toBeDefined();
+    const [[xMin, yMin], [xMax, yMax]] = result.boundingBox.bounds;
+    expect(xMax - xMin).toBeGreaterThan(0);
+    expect(yMax - yMin).toBeGreaterThan(0);
   });
 
   it('intersects gridfinity lip profile with clip rectangle — includeLip=true', () => {
@@ -140,7 +143,11 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
       .close();
 
     const clip = drawRoundedRectangle(10, 10).translate(-5, 0);
-    expect(() => basicShape.intersect(clip)).not.toThrow();
+    const result = basicShape.intersect(clip);
+    expect(result).toBeDefined();
+    const [[xMin, yMin], [xMax, yMax]] = result.boundingBox.bounds;
+    expect(xMax - xMin).toBeGreaterThan(0);
+    expect(yMax - yMin).toBeGreaterThan(0);
   });
 
   it('intersects gridfinity lip profile with clip rectangle — includeLip=false', () => {
@@ -158,7 +165,11 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
 
     // includeLip=false: translate(-5, 5) — shared edges at y=0 and x=0
     const clip = drawRoundedRectangle(10, 10).translate(-5, 5);
-    expect(() => basicShape.intersect(clip)).not.toThrow();
+    const result = basicShape.intersect(clip);
+    expect(result).toBeDefined();
+    const [[xMin, yMin], [xMax, yMax]] = result.boundingBox.bounds;
+    expect(xMax - xMin).toBeGreaterThan(0);
+    expect(yMax - yMin).toBeGreaterThan(0);
   });
 
   it('intersects draw()-built L-shape with rounded rect (Sketcher-like lip profile)', () => {
@@ -173,6 +184,10 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
       .close();
 
     const clip = drawRoundedRectangle(10, 10, 1).translate(-5, 0);
-    expect(() => lip.intersect(clip)).not.toThrow();
+    const result = lip.intersect(clip);
+    expect(result).toBeDefined();
+    const [[xMin, yMin], [xMax, yMax]] = result.boundingBox.bounds;
+    expect(xMax - xMin).toBeGreaterThan(0);
+    expect(yMax - yMin).toBeGreaterThan(0);
   });
 });

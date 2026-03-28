@@ -168,38 +168,44 @@ export function rotateToStartAtSegment(curves: Curve2D[], segment: Curve2D): Cur
   const segFirstHash = hashPoint(segment.firstPoint);
   const segLastHash = hashPoint(segment.lastPoint);
 
-  const onSegmentForward = (curve: Curve2D): boolean =>
+  // matchesForward: curve runs in the same direction as segment (first→last)
+  const matchesForward = (curve: Curve2D): boolean =>
     samePoint(segment.firstPoint, curve.firstPoint) &&
     samePoint(segment.lastPoint, curve.lastPoint);
 
-  const onSegmentFlipped = (curve: Curve2D): boolean =>
+  // matchesFlipped: curve runs opposite to segment (last→first)
+  const matchesFlipped = (curve: Curve2D): boolean =>
     samePoint(segment.lastPoint, curve.firstPoint) &&
     samePoint(segment.firstPoint, curve.lastPoint);
 
-  // Try forward segment on forward curves
-  let startIndex = findCurveIndexBySegment(curves, segFirstHash, segLastHash, onSegmentForward);
-  if (startIndex !== -1) {
-    return rotateArray(curves, startIndex);
+  // Attempt to locate the segment in `chain` and return a rotated result.
+  // Returns null when the segment is not found in the chain.
+  function tryRotate(
+    chain: Curve2D[],
+    firstHash: string,
+    lastHash: string,
+    matchFn: (curve: Curve2D) => boolean
+  ): Curve2D[] | null {
+    const idx = findCurveIndexBySegment(chain, firstHash, lastHash, matchFn);
+    return idx !== -1 ? rotateArray(chain, idx) : null;
   }
+
+  // Try forward segment on forward curves
+  const fwdFwd = tryRotate(curves, segFirstHash, segLastHash, matchesForward);
+  if (fwdFwd !== null) return fwdFwd;
 
   // Try flipped segment on forward curves (common segment oriented opposite)
-  startIndex = findCurveIndexBySegment(curves, segLastHash, segFirstHash, onSegmentFlipped);
-  if (startIndex !== -1) {
-    return rotateArray(curves, startIndex);
-  }
+  const flipFwd = tryRotate(curves, segLastHash, segFirstHash, matchesFlipped);
+  if (flipFwd !== null) return flipFwd;
 
-  // Try forward segment on reversed curves
+  // Reverse the chain once; try both segment orientations against it
   const reversed = reverseSegment(curves);
-  startIndex = findCurveIndexBySegment(reversed, segFirstHash, segLastHash, onSegmentForward);
-  if (startIndex !== -1) {
-    return rotateArray(reversed, startIndex);
-  }
 
-  // Try flipped segment on reversed curves
-  startIndex = findCurveIndexBySegment(reversed, segLastHash, segFirstHash, onSegmentFlipped);
-  if (startIndex !== -1) {
-    return rotateArray(reversed, startIndex);
-  }
+  const fwdRev = tryRotate(reversed, segFirstHash, segLastHash, matchesForward);
+  if (fwdRev !== null) return fwdRev;
+
+  const flipRev = tryRotate(reversed, segLastHash, segFirstHash, matchesFlipped);
+  if (flipRev !== null) return flipRev;
 
   bug('rotateToStartAtSegment', 'failed to rotate to segment start');
 }
