@@ -34,18 +34,18 @@ import {
   type BenchResult,
   type ReportSection,
 } from './harness.js';
-import { initBenchKernels, benchBoth, hasBrepkit, getBrepkitVersion } from './setup.js';
+import { initBenchKernels, benchAll, hasBrepkit, getBrepkitVersion } from './setup.js';
 
 // Accumulate all results for JSON output
 const ALL_RESULTS: BenchResult[] = [];
 
-/** Run benchBoth and collect results into both a local array and ALL_RESULTS. */
+/** Run benchAll and collect results into both a local array and ALL_RESULTS. */
 async function benchAndCollect(
   target: BenchResult[],
   name: string,
   fn: () => void
 ): Promise<void> {
-  const result = await benchBoth(name, fn);
+  const result = await benchAll(name, fn);
   collectResults(target, result);
   collectResults(ALL_RESULTS, result);
 }
@@ -306,8 +306,8 @@ afterAll(() => {
     writeResultsJSON(ALL_RESULTS);
   }
 
-  // Auto-generate latest.md when brepkit is available
-  if (hasBrepkit()) {
+  // Auto-generate latest.md when at least 2 kernels ran
+  if (ALL_RESULTS.length > 0) {
     const sectionDefs = [
       { title: 'Primitives', names: ['makeBox', 'makeCylinder', 'makeSphere'] },
       { title: 'Booleans', names: ['fuse', 'cut', 'intersect'] },
@@ -324,7 +324,7 @@ afterAll(() => {
     }));
 
     for (const r of ALL_RESULTS) {
-      const baseName = r.name.replace(/^\[(occt|brepkit)] /, '');
+      const baseName = r.name.replace(/^\[[^\]]+] /, '');
       const idx = sectionDefs.findIndex((s) => s.names.some((n) => baseName.includes(n)));
       sections[idx === -1 ? sections.length - 1 : idx]!.results.push(r); // eslint-disable-line @typescript-eslint/no-non-null-assertion
     }

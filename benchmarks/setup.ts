@@ -43,7 +43,7 @@ export async function initBenchKernels(): Promise<void> {
 export const initBothKernels = initBenchKernels;
 
 /** Pre-configured multi-kernel bench helpers. */
-export const { benchBoth, benchKernel } = createMultiKernelBench(
+export const { benchBoth, benchAll, benchKernel } = createMultiKernelBench(
   () => getAvailableKernels()
 );
 

@@ -30,7 +30,7 @@ export interface BenchOptions {
   iterations?: number;
 }
 
-export type KernelId = 'occt' | 'brepkit';
+export type KernelId = 'occt' | 'brepkit' | 'occt-wasm';
 
 // ---------------------------------------------------------------------------
 // Statistics helpers
@@ -131,23 +131,34 @@ export function createMultiKernelBench(getKernels: () => string[]) {
     }
   }
 
+  async function benchAll(
+    name: string,
+    fn: () => void,
+    opts?: BenchOptions
+  ): Promise<Record<string, BenchResult | null>> {
+    const results: Record<string, BenchResult | null> = {};
+    for (const kid of getKernels()) {
+      const r = await benchKernel(kid as KernelId, name, fn, opts);
+      if (r) r.kernel = kid;
+      results[kid] = r;
+    }
+    return results;
+  }
+
   async function benchBoth(
     name: string,
     fn: () => void,
     opts?: BenchOptions
-  ): Promise<{ occt: BenchResult; brepkit: BenchResult | null }> {
-    const occt = (await benchKernel('occt', name, fn, opts))!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
-    occt.kernel = 'occt';
-
-    const brepkit = await benchKernel('brepkit', name, fn, opts);
-    if (brepkit) {
-      brepkit.kernel = 'brepkit';
-    }
-
-    return { occt, brepkit };
+  ): Promise<{ occt: BenchResult; brepkit: BenchResult | null; 'occt-wasm'?: BenchResult | null }> {
+    const all = await benchAll(name, fn, opts);
+    return {
+      occt: all['occt']!,  // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      brepkit: all['brepkit'] ?? null,
+      'occt-wasm': all['occt-wasm'] ?? null,
+    };
   }
 
-  return { benchKernel, benchBoth };
+  return { benchKernel, benchBoth, benchAll };
 }
 
 /**
@@ -161,13 +172,14 @@ export function createDualKernelBench(hasBrepkit: () => boolean) {
   });
 }
 
-/** Push occt (and brepkit if present) results into the array. */
+/** Push all non-null kernel results into the array. */
 export function collectResults(
   target: BenchResult[],
-  { occt, brepkit }: { occt: BenchResult; brepkit: BenchResult | null }
+  results: Record<string, BenchResult | null>
 ): void {
-  target.push(occt);
-  if (brepkit) target.push(brepkit);
+  for (const r of Object.values(results)) {
+    if (r) target.push(r);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -253,9 +265,9 @@ export interface ReportSection {
   results: BenchResult[];
 }
 
-function speedupText(occtMedian: number, brepkitMedian: number): string {
-  if (brepkitMedian === 0) return '**>100x faster**';
-  const ratio = occtMedian / brepkitMedian;
+function speedupText(baselineMedian: number, compareMedian: number): string {
+  if (compareMedian === 0) return '**>100x faster**';
+  const ratio = baselineMedian / compareMedian;
   if (ratio >= 1) {
     return `**${ratio.toFixed(1)}x faster**`;
   }
@@ -263,13 +275,16 @@ function speedupText(occtMedian: number, brepkitMedian: number): string {
   return `**${inverse.toFixed(1)}x SLOWER**`;
 }
 
+/** All kernel IDs that may appear in reports, in display order. */
+const KERNEL_ORDER: readonly string[] = ['occt', 'occt-wasm', 'brepkit'];
+
 export function generateReport(
   sections: ReportSection[],
   brepkitVersion: string,
   date: string
 ): string {
   const lines: string[] = [
-    '# brepkit-wasm vs OCCT Kernel Comparison',
+    '# Kernel Comparison',
     '',
     `**Date:** ${date}`,
     `**brepkit-wasm version:** ${brepkitVersion}`,
@@ -287,33 +302,32 @@ export function generateReport(
   for (const section of sections) {
     lines.push(`### ${section.title}`, '');
     lines.push(
-      '| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | Speedup |'
+      '| Benchmark | Min (ms) | Median (ms) | Mean (ms) | Max (ms) | vs occt |'
     );
     lines.push(
       '| --- | --- | --- | --- | --- | --- |'
     );
 
-    // Group results into OCCT/brepkit pairs by stripping kernel prefix
-    const pairs = new Map<string, { occt?: BenchResult; brepkit?: BenchResult }>();
+    // Group results by base name (stripping [kernel] prefix)
+    const groups = new Map<string, Map<string, BenchResult>>();
     for (const r of section.results) {
-      const baseName = r.name.replace(/^\[(occt|brepkit)] /, '');
-      const pair = pairs.get(baseName) ?? {};
-      if (r.kernel === 'occt') pair.occt = r;
-      else if (r.kernel === 'brepkit') pair.brepkit = r;
-      pairs.set(baseName, pair);
+      const baseName = r.name.replace(/^\[[^\]]+] /, '');
+      const group = groups.get(baseName) ?? new Map<string, BenchResult>();
+      if (r.kernel) group.set(r.kernel, r);
+      groups.set(baseName, group);
     }
 
-    for (const [_baseName, pair] of pairs) {
-      if (pair.occt) {
-        lines.push(
-          `| ${pair.occt.name} | ${pair.occt.min.toFixed(1)} | ${pair.occt.median.toFixed(1)} | ${pair.occt.mean.toFixed(1)} | ${pair.occt.max.toFixed(1)} | — |`
-        );
-      }
-      if (pair.brepkit) {
+    for (const [_baseName, group] of groups) {
+      const occtResult = group.get('occt');
+      for (const kid of KERNEL_ORDER) {
+        const r = group.get(kid);
+        if (!r) continue;
         const speedup =
-          pair.occt ? speedupText(pair.occt.median, pair.brepkit.median) : '—';
+          kid === 'occt' || !occtResult
+            ? '—'
+            : speedupText(occtResult.median, r.median);
         lines.push(
-          `| ${pair.brepkit.name} | ${pair.brepkit.min.toFixed(1)} | ${pair.brepkit.median.toFixed(1)} | ${pair.brepkit.mean.toFixed(1)} | ${pair.brepkit.max.toFixed(1)} | ${speedup} |`
+          `| ${r.name} | ${r.min.toFixed(1)} | ${r.median.toFixed(1)} | ${r.mean.toFixed(1)} | ${r.max.toFixed(1)} | ${speedup} |`
         );
       }
     }
