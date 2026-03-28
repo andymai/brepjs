@@ -16,6 +16,7 @@ import type {
 } from '@/core/shapeTypes.js';
 import { castShapeWithKnownType } from '@/core/shapeTypes.js';
 import { getOrQueryType } from '@/core/shapeTypeCache.js';
+import { getOrQueryVertexPosition } from '@/core/shapePropertyCache.js';
 import type { Vec3 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -248,7 +249,7 @@ export function describe(shape: AnyShape<Dimension>): ShapeDescription {
 // Vertex position
 // ---------------------------------------------------------------------------
 
-/** Get the position of a vertex as a Vec3 tuple. */
+/** Get the position of a vertex as a Vec3 tuple. Cached — no WASM call on repeat queries. */
 export function vertexPosition(vertex: Vertex): Vec3 {
-  return getKernel().vertexPosition(vertex.wrapped);
+  return getOrQueryVertexPosition(getKernel(), vertex.wrapped);
 }

@@ -9,7 +9,7 @@ import { getKernel } from '@/kernel/index.js';
 import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { AnyShape, ClosedWire, Dimension, Edge, Face, Vertex } from '@/core/shapeTypes.js';
 import { castShapeWithKnownType } from '@/core/shapeTypes.js';
-import { HASH_CODE_MAX } from '@/core/constants.js';
+import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
 import { getOrCreateCache } from './topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ function deduplicatedSubShapes<T extends AnyShape<Dimension>>(
   const seen = new Map<number, KernelShape[]>();
 
   for (const item of items) {
-    const hash = kernel.hashCode(item, HASH_CODE_MAX);
+    const hash = getOrQueryHashCode(kernel, item);
     const bucket = seen.get(hash);
     if (!bucket) {
       seen.set(hash, [item]);
@@ -74,7 +74,7 @@ function getEdgeToFacesMap(parent: AnyShape<Dimension>): Map<number, EdgeFaceEnt
   for (const f of allFaces) {
     const edges = kernel.iterShapes(f, 'edge');
     for (const e of edges) {
-      const hash = kernel.hashCode(e, HASH_CODE_MAX);
+      const hash = getOrQueryHashCode(kernel, e);
       let bucket = edgeToFaces.get(hash);
       if (!bucket) {
         bucket = [];
@@ -108,7 +108,7 @@ function getEdgeToFacesMap(parent: AnyShape<Dimension>): Map<number, EdgeFaceEnt
 export function facesOfEdge<D extends Dimension>(parent: AnyShape<D>, edge: Edge<D>): Face<D>[] {
   const kernel = getKernel();
   const edgeToFaces = getEdgeToFacesMap(parent);
-  const hash = kernel.hashCode(edge.wrapped, HASH_CODE_MAX);
+  const hash = getOrQueryHashCode(kernel, edge.wrapped);
   const bucket = edgeToFaces.get(hash) ?? [];
 
   // Verify via isSame on the stored edge — no need to re-extract face edges.
@@ -117,7 +117,7 @@ export function facesOfEdge<D extends Dimension>(parent: AnyShape<D>, edge: Edge
   const seen = new Map<number, KernelShape[]>();
   for (const entry of bucket) {
     if (!kernel.isSame(entry.edge, edge.wrapped)) continue;
-    const fHash = kernel.hashCode(entry.face, HASH_CODE_MAX);
+    const fHash = getOrQueryHashCode(kernel, entry.face);
     const fBucket = seen.get(fHash);
     if (!fBucket) {
       seen.set(fHash, [entry.face]);
@@ -181,11 +181,11 @@ export function adjacentFaces<D extends Dimension>(parent: AnyShape<D>, face: Fa
   const seen = new Map<number, KernelShape[]>();
 
   for (const edgeHandle of faceEdgeHandles) {
-    const hash = kernel.hashCode(edgeHandle.wrapped, HASH_CODE_MAX);
+    const hash = getOrQueryHashCode(kernel, edgeHandle.wrapped);
     const entries = edgeToFaces.get(hash) ?? [];
     for (const entry of entries) {
       if (kernel.isSame(entry.face, face.wrapped)) continue;
-      const fHash = kernel.hashCode(entry.face, HASH_CODE_MAX);
+      const fHash = getOrQueryHashCode(kernel, entry.face);
       const bucket = seen.get(fHash);
       if (!bucket) {
         seen.set(fHash, [entry.face]);
@@ -215,7 +215,7 @@ export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>)
   // Build hash-bucket index of edges2 for O(1) average lookup instead of O(nxm) isSame scans
   const edge2Map = new Map<number, KernelShape[]>();
   for (const e2 of edges2) {
-    const hash = kernel.hashCode(e2, HASH_CODE_MAX);
+    const hash = getOrQueryHashCode(kernel, e2);
     let bucket = edge2Map.get(hash);
     if (!bucket) {
       bucket = [];
@@ -226,7 +226,7 @@ export function sharedEdges<D extends Dimension>(face1: Face<D>, face2: Face<D>)
 
   const shared: KernelShape[] = [];
   for (const e1 of edges1) {
-    const bucket = edge2Map.get(kernel.hashCode(e1, HASH_CODE_MAX));
+    const bucket = edge2Map.get(getOrQueryHashCode(kernel, e1));
     if (bucket?.some((e2) => kernel.isSame(e1, e2))) {
       shared.push(e1);
     }

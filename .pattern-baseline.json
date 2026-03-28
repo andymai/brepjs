@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-28T07:03:31.142Z",
+  "generated": "2026-03-28T13:11:53.172Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -205,12 +205,12 @@
     {
       "file": "src/topology/modifierFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|197|"
+      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|198|"
     },
     {
       "file": "src/topology/modifierFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|497|"
+      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|498|"
     },
     {
       "file": "src/topology/surfaceFns.ts",

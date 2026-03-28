@@ -9,8 +9,8 @@
 
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
-import { HASH_CODE_MAX } from '@/core/constants.js';
 import type { Result } from '@/core/result.js';
+import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
 import { kernelCall, kernelCallRaw } from '@/core/kernelCall.js';
 import { BrepErrorCode } from '@/core/errors.js';
 
@@ -38,7 +38,7 @@ export function toBREP(shape: AnyShape<Dimension>): Result<string> {
 
 /** Get the topology hash code of a shape. */
 export function getHashCode(shape: AnyShape<Dimension>): number {
-  return getKernel().hashCode(shape.wrapped, HASH_CODE_MAX);
+  return getOrQueryHashCode(getKernel(), shape.wrapped);
 }
 
 /** Check if a shape is null. */

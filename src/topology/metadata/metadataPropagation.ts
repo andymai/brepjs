@@ -10,7 +10,7 @@
 import type { ShapeEvolution } from '@/kernel/types.js';
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
-import { HASH_CODE_MAX } from '@/core/constants.js';
+import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
 import {
   getFaceOrigins,
   propagateOriginsFromEvolution,
@@ -41,7 +41,7 @@ export function collectInputFaceHashes(inputs: readonly AnyShape<Dimension>[]): 
   for (const input of inputs) {
     const faces = kernel.iterShapes(input.wrapped, 'face');
     for (const face of faces) {
-      hashes.push(kernel.hashCode(face, HASH_CODE_MAX));
+      hashes.push(getOrQueryHashCode(kernel, face));
     }
   }
   return hashes;

@@ -23,6 +23,7 @@ import type { PlaneInput } from '@/core/planeTypes.js';
 import { resolvePlane } from '@/core/planeOps.js';
 import { vecAdd, vecScale } from '@/core/vecOps.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
+import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
 import { getWires, getEdges, getVertices } from './shapeFns.js';
 import { getAtOrThrow, firstOrThrow } from '@/utils/arrayAccess.js';
 import {
@@ -643,8 +644,8 @@ function buildEdgeAdjacency(edges: EdgeD[]): EdgeAdjacency {
 
   for (const edge of edges) {
     const verts: VertexD[] = getVertices(edge);
-    const h0 = verts[0] ? kernel.hashCode(verts[0].wrapped, HASH_CODE_MAX) : -1;
-    const h1 = verts.length > 1 && verts[1] ? kernel.hashCode(verts[1].wrapped, HASH_CODE_MAX) : h0;
+    const h0 = verts[0] ? getOrQueryHashCode(kernel, verts[0].wrapped) : -1;
+    const h1 = verts.length > 1 && verts[1] ? getOrQueryHashCode(kernel, verts[1].wrapped) : h0;
     edgeVertexHashes.set(edge, [h0, h1]);
     for (const h of [h0, h1]) {
       const bucket = vertexToEdges.get(h) ?? [];
