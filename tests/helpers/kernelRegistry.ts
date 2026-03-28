@@ -63,6 +63,8 @@ export const kernelConfigs: readonly KernelConfig[] = [
       'tests/brepkitExtended.test.ts',
       'tests/brepkitAdapter.test.ts',
       'tests/brepkitSketchArc.test.ts',
+      'tests/brepkitOffsetV2.test.ts',
+      'tests/gltfRoundTrip.test.ts',
     ],
     capabilities: {
       projection: true,

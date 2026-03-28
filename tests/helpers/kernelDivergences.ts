@@ -126,6 +126,11 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // nurbsFns.test.ts
     // -----------------------------------------------------------------------
+    'nurbsFns.bsplineData': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit getNurbsCurveData returns null for interpolated curves (regressed in 2.43.2)',
+    },
     'nurbsFns.planarFaceSurface': {
       kind: 'not-implemented',
       reason: 'brepkit does not expose BSpline surface data extraction (getNurbsSurfaceData)',
@@ -477,6 +482,18 @@ export const divergences: DivergenceMap = {
     brepkitSketchArc: {
       kind: 'not-implemented',
       reason: 'Sketch arc entity and constraints are brepkit-only features',
+    },
+    'draftFns.brepkitCallback': {
+      kind: 'not-implemented',
+      reason: 'brepkit draft callback API not available in OCCT',
+    },
+    'draftFns.brepkitMultiAngle': {
+      kind: 'not-implemented',
+      reason: 'brepkit multi-angle callback draft rejection not available in OCCT',
+    },
+    'draftFns.brepkitFinderFn': {
+      kind: 'not-implemented',
+      reason: 'brepkit FinderFn draft not available in OCCT',
     },
   },
 };
