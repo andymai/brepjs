@@ -202,7 +202,7 @@ export function booleanOperation(
   let segmentsIn: number | null = null;
   let lastWasSame: Segment | null = null;
 
-  const assembledCurves = segments.flatMap(([firstSegment, secondSegment]) => {
+  let assembledCurves: Curve2D[] = segments.flatMap(([firstSegment, secondSegment]) => {
     if (secondSegment === 'same') {
       const result = handleSameSegment(firstSegment, segmentsIn, lastWasSame);
       segmentsIn = result.segmentsIn;
@@ -223,6 +223,18 @@ export function booleanOperation(
     lastWasSame = result.lastWasSame;
     return result.curves;
   });
+
+  // Resolve any trailing same-segments that were accumulated but never flushed.
+  // This happens when the segment sequence ends with 'same' entries while
+  // segmentsIn is still null (no non-same segment resolved the ambiguity).
+  // If segmentsIn was eventually resolved to 1, prepend the accumulated curves.
+  // Note: segmentsIn and lastWasSame are mutated inside the flatMap callback;
+  // TypeScript narrows them to their initial values, so we cast to the actual type.
+  const finalLastWasSame = lastWasSame as Segment | null;
+  const finalSegmentsIn = segmentsIn as number | null;
+  if (finalLastWasSame !== null && finalSegmentsIn === 1) {
+    assembledCurves = [...finalLastWasSame, ...assembledCurves];
+  }
 
   // Split into separate paths and build blueprints
   const paths = splitPaths(assembledCurves)

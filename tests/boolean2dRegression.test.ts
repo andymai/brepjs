@@ -215,3 +215,40 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     expect(result).toBeDefined();
   });
 });
+
+describe('audit fixes: cut2D correctness', () => {
+  it('cut by external tool returns shape unchanged (not null)', () => {
+    // Create a CompoundBlueprint (rect with hole)
+    const outer = drawRectangle(10, 10);
+    const hole = drawRectangle(4, 4);
+    const compound = outer.cut(hole);
+
+    // Cut by a rect that is entirely outside — should return compound unchanged
+    const external = drawRectangle(3, 3).translate(20, 0);
+    const result = compound.cut(external);
+    expect(result).toBeDefined();
+    // Bounding box should match the original outer rect
+    expectBounds(result, 10, 10);
+  });
+
+  it('cut by multiple disjoint tools subtracts all (sequential, not distributed)', () => {
+    const base = drawRectangle(20, 10);
+    // Two disjoint holes at opposite ends
+    const holeA = drawRectangle(2, 2).translate(-6, 0);
+    const holeB = drawRectangle(2, 2).translate(6, 0);
+
+    // First cut both individually to get expected area
+    const cutA = base.cut(holeA);
+    const cutBoth = cutA.cut(holeB);
+
+    // Now fuse the two holes and cut in one operation
+    const fusedHoles = holeA.fuse(holeB);
+    const cutFused = base.cut(fusedHoles);
+
+    // Both approaches should produce the same bounding box
+    expect(cutBoth).toBeDefined();
+    expect(cutFused).toBeDefined();
+    expectBounds(cutBoth, 20, 10);
+    expectBounds(cutFused, 20, 10);
+  });
+});

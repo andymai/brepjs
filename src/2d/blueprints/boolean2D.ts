@@ -320,7 +320,8 @@ export const cut2D = (
   if (first instanceof CompoundBlueprint) {
     const wrapper = safeIndex(first.blueprints, 0, 'cut2D');
     if (second instanceof Blueprint && !second.intersects(wrapper)) {
-      if (!wrapper.isInside(second.firstPoint)) return null;
+      // Tool is entirely outside the compound shape — nothing to cut
+      if (!wrapper.isInside(second.firstPoint)) return first.clone();
       const cuts = fuse2D(second, new Blueprints(first.blueprints.slice(1)));
       return organiseBlueprints([wrapper, ...allBlueprints(cuts)]);
     } else {
@@ -334,7 +335,12 @@ export const cut2D = (
 
   // From here the first is a simple blueprint
   if (second instanceof Blueprints) {
-    return mergeNonIntersecting(second.blueprints.map((bp) => cut2D(first, bp)));
+    // Apply cuts sequentially: first - a - b - c
+    let out: Shape2D = first;
+    for (const bp of second.blueprints) {
+      out = cut2D(out, bp);
+    }
+    return out;
   }
 
   if (second instanceof CompoundBlueprint) {

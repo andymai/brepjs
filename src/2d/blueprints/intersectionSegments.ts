@@ -27,16 +27,31 @@ function* createSegmentOnPoints(
   allIntersections: Point2D[],
   allCommonSegments: Curve2D[]
 ): Generator<Segment> {
-  // Pre-compute hash sets for O(1) lookup
+  // Pre-compute hash sets for fast O(1) lookup (first pass)
   const intersectionSet = new Set(allIntersections.map(hashPoint));
   const commonSegmentSet = new Set(
     allCommonSegments.map((seg) => hashSegment(seg.firstPoint, seg.lastPoint))
   );
 
+  // Hash-then-tolerance lookup: handles toFixed(9) rounding boundary mismatches
+  const matchesIntersection = (point: Point2D): boolean => {
+    if (intersectionSet.has(hashPoint(point))) return true;
+    return allIntersections.some((p) => samePoint(p, point));
+  };
+
+  const matchesCommonSegment = (first: Point2D, last: Point2D): boolean => {
+    if (commonSegmentSet.has(hashSegment(first, last))) return true;
+    return allCommonSegments.some(
+      (seg) =>
+        (samePoint(seg.firstPoint, first) && samePoint(seg.lastPoint, last)) ||
+        (samePoint(seg.firstPoint, last) && samePoint(seg.lastPoint, first))
+    );
+  };
+
   let currentCurves: Curve2D[] = [];
   for (const curve of curves) {
-    const endsAtIntersection = intersectionSet.has(hashPoint(curve.lastPoint));
-    const isCommon = commonSegmentSet.has(hashSegment(curve.firstPoint, curve.lastPoint));
+    const endsAtIntersection = matchesIntersection(curve.lastPoint);
+    const isCommon = matchesCommonSegment(curve.firstPoint, curve.lastPoint);
 
     if (endsAtIntersection) {
       currentCurves.push(curve);
