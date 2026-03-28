@@ -15,6 +15,7 @@ import type {
   ShapeKind,
 } from '@/core/shapeTypes.js';
 import { castShapeWithKnownType } from '@/core/shapeTypes.js';
+import { getOrQueryType } from '@/core/shapeTypeCache.js';
 import type { Vec3 } from '@/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -48,7 +49,6 @@ export interface TopoCacheEntry {
   vertices?: Vertex<Dimension>[];
   faceOrigins?: Map<number, number>;
   bounds?: Bounds3D;
-  shapeKind?: ShapeKind;
   /** Edge hash → edge-face pairs for adjacency queries. Stores the edge alongside
    *  each face so facesOfEdge can verify via isSame without re-extracting face edges. */
   edgeToFaces?: Map<number, Array<{ edge: KernelShape; face: KernelShape }>>;
@@ -191,13 +191,9 @@ export function getBounds(shape: AnyShape<Dimension>): Bounds3D {
 // Cached shape kind
 // ---------------------------------------------------------------------------
 
-/** Get the topological kind of a shape. Cached per shape. */
+/** Get the topological kind of a shape. Cached per shape via shapeTypeCache. */
 export function getCachedShapeKind(shape: AnyShape<Dimension>): ShapeKind {
-  const cache = getOrCreateCache(shape);
-  if (cache.shapeKind !== undefined) return cache.shapeKind;
-  const kind = getKernel().shapeType(shape.wrapped);
-  cache.shapeKind = kind;
-  return kind;
+  return getOrQueryType(getKernel(), shape.wrapped);
 }
 
 // ---------------------------------------------------------------------------
