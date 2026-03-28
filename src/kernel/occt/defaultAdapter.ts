@@ -1401,39 +1401,39 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
   // --- 2D Handle wrapping (delegates to kernel2dOps.ts) ---
 
   wrapCurve2dHandle(handle: KernelType): Curve2dHandle {
-    return _wrapCurve2dHandle(this.oc, handle);
+    return _wrapCurve2dHandle(handle);
   }
 
   createCurve2dAdaptor(handle: Curve2dHandle): KernelType {
-    return _createCurve2dAdaptor(this.oc, handle);
+    return _createCurve2dAdaptor(handle);
   }
 
   // --- 2D Point/Vector factories (delegates to kernel2dOps.ts) ---
 
   createPoint2d(x: number, y: number): KernelType {
-    return _createPoint2d(this.oc, x, y);
+    return _createPoint2d(x, y);
   }
 
   createDirection2d(x: number, y: number): KernelType {
-    return _createDirection2d(this.oc, x, y);
+    return _createDirection2d(x, y);
   }
 
   createVector2d(x: number, y: number): KernelType {
-    return _createVector2d(this.oc, x, y);
+    return _createVector2d(x, y);
   }
 
   createAxis2d(px: number, py: number, dx: number, dy: number): KernelType {
-    return _createAxis2d(this.oc, px, py, dx, dy);
+    return _createAxis2d(px, py, dx, dy);
   }
 
   // --- 2D Curve construction (delegates to kernel2dOps.ts) ---
 
   makeLine2d(x1: number, y1: number, x2: number, y2: number): Curve2dHandle {
-    return _makeLine2d(this.oc, x1, y1, x2, y2);
+    return _makeLine2d(x1, y1, x2, y2);
   }
 
   makeCircle2d(cx: number, cy: number, radius: number, sense?: boolean): Curve2dHandle {
-    return _makeCircle2d(this.oc, cx, cy, radius, sense);
+    return _makeCircle2d(cx, cy, radius, sense);
   }
 
   makeArc2dThreePoints(
@@ -1444,7 +1444,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     x2: number,
     y2: number
   ): Curve2dHandle {
-    return _makeArc2dThreePoints(this.oc, x1, y1, xm, ym, x2, y2);
+    return _makeArc2dThreePoints(x1, y1, xm, ym, x2, y2);
   }
 
   makeArc2dTangent(
@@ -1455,7 +1455,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     endX: number,
     endY: number
   ): Curve2dHandle {
-    return _makeArc2dTangent(this.oc, startX, startY, tangentX, tangentY, endX, endY);
+    return _makeArc2dTangent(startX, startY, tangentX, tangentY, endX, endY);
   }
 
   makeEllipse2d(
@@ -1467,7 +1467,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     xDirY?: number,
     sense?: boolean
   ): Curve2dHandle {
-    return _makeEllipse2d(this.oc, cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense);
+    return _makeEllipse2d(cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense);
   }
 
   makeEllipseArc2d(
@@ -1482,7 +1482,6 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     sense?: boolean
   ): Curve2dHandle {
     return _makeEllipseArc2d(
-      this.oc,
       cx,
       cy,
       majorRadius,
@@ -1496,7 +1495,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   makeBezier2d(points: [number, number][]): Curve2dHandle {
-    return _makeBezier2d(this.oc, points);
+    return _makeBezier2d(points);
   }
 
   makeBSpline2d(
@@ -1509,64 +1508,64 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
       smoothing?: [number, number, number] | null;
     }
   ): Curve2dHandle {
-    return _makeBSpline2d(this.oc, points, options);
+    return _makeBSpline2d(points, options);
   }
 
   // --- 2D Curve queries (delegates to kernel2dOps.ts) ---
 
   evaluateCurve2d(curve: Curve2dHandle, param: number): [number, number] {
-    return _evaluateCurve2d(this.oc, curve, param);
+    return _evaluateCurve2d(curve, param);
   }
 
   evaluateCurve2dD1(
     curve: Curve2dHandle,
     param: number
   ): { point: [number, number]; tangent: [number, number] } {
-    return _evaluateCurve2dD1(this.oc, curve, param);
+    return _evaluateCurve2dD1(curve, param);
   }
 
   getCurve2dBounds(curve: Curve2dHandle): { first: number; last: number } {
-    return _getCurve2dBounds(this.oc, curve);
+    return _getCurve2dBounds(curve);
   }
 
   getCurve2dType(curve: Curve2dHandle): string {
-    return _getCurve2dType(this.oc, curve);
+    return _getCurve2dType(curve);
   }
 
   // --- 2D Curve modification (delegates to kernel2dOps.ts) ---
 
   trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
-    return _trimCurve2d(this.oc, curve, start, end);
+    return _trimCurve2d(curve, start, end);
   }
 
   reverseCurve2d(curve: Curve2dHandle): void {
-    _reverseCurve2d(this.oc, curve);
+    _reverseCurve2d(curve);
   }
 
   copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
-    return _copyCurve2d(this.oc, curve);
+    return _copyCurve2d(curve);
   }
 
   offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle {
-    return _offsetCurve2d(this.oc, curve, offset);
+    return _offsetCurve2d(curve, offset);
   }
 
   // --- 2D Transformations (delegates to kernel2dOps.ts) ---
 
   translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle {
-    return _translateCurve2d(this.oc, curve, dx, dy);
+    return _translateCurve2d(curve, dx, dy);
   }
 
   rotateCurve2d(curve: Curve2dHandle, angle: number, cx: number, cy: number): Curve2dHandle {
-    return _rotateCurve2d(this.oc, curve, angle, cx, cy);
+    return _rotateCurve2d(curve, angle, cx, cy);
   }
 
   scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle {
-    return _scaleCurve2d(this.oc, curve, factor, cx, cy);
+    return _scaleCurve2d(curve, factor, cx, cy);
   }
 
   mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle {
-    return _mirrorCurve2dAtPoint(this.oc, curve, cx, cy);
+    return _mirrorCurve2dAtPoint(curve, cx, cy);
   }
 
   mirrorCurve2dAcrossAxis(
@@ -1576,7 +1575,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     dirX: number,
     dirY: number
   ): Curve2dHandle {
-    return _mirrorCurve2dAcrossAxis(this.oc, curve, originX, originY, dirX, dirY);
+    return _mirrorCurve2dAcrossAxis(curve, originX, originY, dirX, dirY);
   }
 
   affinityTransform2d(
@@ -1587,21 +1586,13 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     axisDirY: number,
     ratio: number
   ): Curve2dHandle {
-    return _affinityTransform2d(
-      this.oc,
-      curve,
-      axisOriginX,
-      axisOriginY,
-      axisDirX,
-      axisDirY,
-      ratio
-    );
+    return _affinityTransform2d(curve, axisOriginX, axisOriginY, axisDirX, axisDirY, ratio);
   }
 
   // --- 2D General transforms (gp_GTrsf2d) (delegates to kernel2dOps.ts) ---
 
   createIdentityGTrsf2d(): KernelType {
-    return _createIdentityGTrsf2d(this.oc);
+    return _createIdentityGTrsf2d();
   }
 
   createAffinityGTrsf2d(
@@ -1611,11 +1602,11 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     dirY: number,
     ratio: number
   ): KernelType {
-    return _createAffinityGTrsf2d(this.oc, originX, originY, dirX, dirY, ratio);
+    return _createAffinityGTrsf2d(originX, originY, dirX, dirY, ratio);
   }
 
   createTranslationGTrsf2d(dx: number, dy: number): KernelType {
-    return _createTranslationGTrsf2d(this.oc, dx, dy);
+    return _createTranslationGTrsf2d(dx, dy);
   }
 
   createMirrorGTrsf2d(
@@ -1627,27 +1618,27 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     dirX?: number,
     dirY?: number
   ): KernelType {
-    return _createMirrorGTrsf2d(this.oc, cx, cy, mode, originX, originY, dirX, dirY);
+    return _createMirrorGTrsf2d(cx, cy, mode, originX, originY, dirX, dirY);
   }
 
   createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType {
-    return _createRotationGTrsf2d(this.oc, angle, cx, cy);
+    return _createRotationGTrsf2d(angle, cx, cy);
   }
 
   createScaleGTrsf2d(factor: number, cx: number, cy: number): KernelType {
-    return _createScaleGTrsf2d(this.oc, factor, cx, cy);
+    return _createScaleGTrsf2d(factor, cx, cy);
   }
 
   setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void {
-    _setGTrsf2dTranslationPart(this.oc, gtrsf, dx, dy);
+    _setGTrsf2dTranslationPart(gtrsf, dx, dy);
   }
 
   multiplyGTrsf2d(base: KernelType, other: KernelType): void {
-    _multiplyGTrsf2d(this.oc, base, other);
+    _multiplyGTrsf2d(base, other);
   }
 
   transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType): Curve2dHandle {
-    return _transformCurve2dGeneral(this.oc, curve, gtrsf);
+    return _transformCurve2dGeneral(curve, gtrsf);
   }
 
   // --- 2D Intersection & distance (delegates to kernel2dOps.ts) ---
@@ -1657,7 +1648,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     c2: Curve2dHandle,
     tolerance: number
   ): { points: [number, number][]; segments: Curve2dHandle[] } {
-    return _intersectCurves2d(this.oc, c1, c2, tolerance);
+    return _intersectCurves2d(c1, c2, tolerance);
   }
 
   projectPointOnCurve2d(
@@ -1665,7 +1656,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     x: number,
     y: number
   ): { param: number; distance: number } | null {
-    return _projectPointOnCurve2d(this.oc, curve, x, y);
+    return _projectPointOnCurve2d(curve, x, y);
   }
 
   distanceBetweenCurves2d(
@@ -1676,7 +1667,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     p2Start: number,
     p2End: number
   ): number {
-    return _distanceBetweenCurves2d(this.oc, c1, c2, p1Start, p1End, p2Start, p2End);
+    return _distanceBetweenCurves2d(c1, c2, p1Start, p1End, p2Start, p2End);
   }
 
   // --- 2D Approximation (delegates to kernel2dOps.ts) ---
@@ -1687,21 +1678,21 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     continuity: 'C0' | 'C1' | 'C2' | 'C3',
     maxSegments: number
   ): Curve2dHandle {
-    return _approximateCurve2dAsBSpline(this.oc, curve, tolerance, continuity, maxSegments);
+    return _approximateCurve2dAsBSpline(curve, tolerance, continuity, maxSegments);
   }
 
   decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
-    return _decomposeBSpline2dToBeziers(this.oc, curve);
+    return _decomposeBSpline2dToBeziers(curve);
   }
 
   // --- 2D Bounding box (delegates to kernel2dOps.ts) ---
 
   createBoundingBox2d(): BBox2dHandle {
-    return _createBoundingBox2d(this.oc);
+    return _createBoundingBox2d();
   }
 
   addCurveToBBox2d(bbox: BBox2dHandle, curve: Curve2dHandle, tolerance: number): void {
-    _addCurveToBBox2d(this.oc, bbox, curve, tolerance);
+    _addCurveToBBox2d(bbox, curve, tolerance);
   }
 
   getBBox2dBounds(bbox: BBox2dHandle): {
@@ -1710,19 +1701,19 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     xMax: number;
     yMax: number;
   } {
-    return _getBBox2dBounds(this.oc, bbox);
+    return _getBBox2dBounds(bbox);
   }
 
   mergeBBox2d(target: BBox2dHandle, other: BBox2dHandle): void {
-    _mergeBBox2d(this.oc, target, other);
+    _mergeBBox2d(target, other);
   }
 
   isBBox2dOut(a: BBox2dHandle, b: BBox2dHandle): boolean {
-    return _isBBox2dOut(this.oc, a, b);
+    return _isBBox2dOut(a, b);
   }
 
   isBBox2dOutPoint(bbox: BBox2dHandle, x: number, y: number): boolean {
-    return _isBBox2dOutPoint(this.oc, bbox, x, y);
+    return _isBBox2dOutPoint(bbox, x, y);
   }
 
   // --- 2D Type extraction (delegates to kernel2dOps.ts) ---
@@ -1733,7 +1724,7 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     radius: number;
     isDirect: boolean;
   } | null {
-    return _getCurve2dCircleData(this.oc, curve);
+    return _getCurve2dCircleData(curve);
   }
 
   getCurve2dEllipseData(curve: Curve2dHandle): {
@@ -1742,15 +1733,15 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     xAxisAngle: number;
     isDirect: boolean;
   } | null {
-    return _getCurve2dEllipseData(this.oc, curve);
+    return _getCurve2dEllipseData(curve);
   }
 
   getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
-    return _getCurve2dBezierPoles(this.oc, curve);
+    return _getCurve2dBezierPoles(curve);
   }
 
   getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
-    return _getCurve2dBezierDegree(this.oc, curve);
+    return _getCurve2dBezierDegree(curve);
   }
 
   getCurve2dBSplineData(curve: Curve2dHandle): {
@@ -1760,23 +1751,23 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
     degree: number;
     isPeriodic: boolean;
   } | null {
-    return _getCurve2dBSplineData(this.oc, curve);
+    return _getCurve2dBSplineData(curve);
   }
 
   // --- 2D Serialization (delegates to kernel2dOps.ts) ---
 
   serializeCurve2d(curve: Curve2dHandle): string {
-    return _serializeCurve2d(this.oc, curve);
+    return _serializeCurve2d(curve);
   }
 
   deserializeCurve2d(data: string): Curve2dHandle {
-    return _deserializeCurve2d(this.oc, data);
+    return _deserializeCurve2d(data);
   }
 
   // --- 2D Curve splitting (delegates to kernel2dOps.ts) ---
 
   splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHandle[] {
-    return _splitCurve2d(this.oc, curve, params);
+    return _splitCurve2d(curve, params);
   }
 
   // --- 2D -> 3D projection (delegates to kernel2dOps.ts) ---
