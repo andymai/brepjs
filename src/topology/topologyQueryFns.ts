@@ -4,7 +4,7 @@
  */
 
 import { getKernel } from '@/kernel/index.js';
-import type { KernelShape, ShapeType } from '@/kernel/types.js';
+import type { KernelShape, ShapeType, SurfaceType } from '@/kernel/types.js';
 import type {
   AnyShape,
   Dimension,
@@ -50,6 +50,7 @@ export interface TopoCacheEntry {
   faceOrigins?: Map<number, number>;
   bounds?: Bounds3D;
   isValid?: boolean;
+  surfaceType?: string;
   /** Edge hash → edge-face pairs for adjacency queries. Stores the edge alongside
    *  each face so facesOfEdge can verify via isSame without re-extracting face edges. */
   edgeToFaces?: Map<number, Array<{ edge: KernelShape; face: KernelShape }>>;
@@ -195,6 +196,15 @@ export function getBounds(shape: AnyShape<Dimension>): Bounds3D {
 /** Get the topological kind of a shape. Cached per shape via shapeTypeCache. */
 export function getCachedShapeKind(shape: AnyShape<Dimension>): ShapeKind {
   return getOrQueryType(getKernel(), shape.wrapped);
+}
+
+/** Get the kernel surface type of a face. Cached per face (shapes are immutable). */
+export function getCachedSurfaceType(face: AnyShape<Dimension>): SurfaceType {
+  const cache = getOrCreateCache(face);
+  if (cache.surfaceType !== undefined) return cache.surfaceType as SurfaceType;
+  const surfType = getKernel().surfaceType(face.wrapped);
+  cache.surfaceType = surfType;
+  return surfType;
 }
 
 /** Get whether a shape is valid. Cached per shape (shapes are immutable). */

@@ -12,6 +12,7 @@ import { castShape } from '@/core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '@/core/result.js';
 import { typeCastError } from '@/core/errors.js';
 import { iterTopo, downcast } from './cast.js';
+import { getCachedSurfaceType } from './topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Surface type detection
@@ -52,7 +53,7 @@ const KERNEL_TO_PUBLIC_SURFACE_TYPE: Record<KernelSurfaceType, SurfaceType> = {
  * @returns Ok with the surface type, or Err for unrecognized kernel surface types.
  */
 export function getSurfaceType(face: Face): Result<SurfaceType> {
-  const kernelType = getKernel().surfaceType(face.wrapped);
+  const kernelType = getCachedSurfaceType(face);
   return ok(KERNEL_TO_PUBLIC_SURFACE_TYPE[kernelType]);
 }
 
