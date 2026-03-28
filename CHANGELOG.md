@@ -1,5 +1,13 @@
 # Changelog
 
+## [14.8.0](https://github.com/andymai/brepjs/compare/brepjs-v14.7.1...brepjs-v14.8.0) (2026-03-28)
+
+
+### Features
+
+* **bench:** support all kernels in benchmark harness ([#692](https://github.com/andymai/brepjs/issues/692)) ([8edb6cc](https://github.com/andymai/brepjs/commit/8edb6cc70cd3507e591c953ac0a18312eb7a6b3d))
+* **occtWasm:** wire importSTL adapter method ([#691](https://github.com/andymai/brepjs/issues/691)) ([942572f](https://github.com/andymai/brepjs/commit/942572ffeabaedd6651f9ef4e4dd1fd5a78c2807))
+
 ## [14.7.1](https://github.com/andymai/brepjs/compare/brepjs-v14.7.0...brepjs-v14.7.1) (2026-03-27)
 
 
