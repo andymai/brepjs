@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.2](https://github.com/andymai/brepjs/compare/brepjs-v15.1.1...brepjs-v15.1.2) (2026-03-28)
+
+
+### Bug Fixes
+
+* **tests:** resolve brepkit 2.43.1 test compatibility issues ([#709](https://github.com/andymai/brepjs/issues/709)) ([4310da6](https://github.com/andymai/brepjs/commit/4310da6ce9b831ceba3615ccd1c84b45c3f8b2fb))
+
 ## [15.1.1](https://github.com/andymai/brepjs/compare/brepjs-v15.1.0...brepjs-v15.1.1) (2026-03-28)
 
 
