@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.5](https://github.com/andymai/brepjs/compare/brepjs-v15.1.4...brepjs-v15.1.5) (2026-03-28)
+
+
+### Bug Fixes
+
+* **2d:** match reversed common segments in rotateToStartAtSegment ([#717](https://github.com/andymai/brepjs/issues/717)) ([fdf2e75](https://github.com/andymai/brepjs/commit/fdf2e75b9e92002df06ebca1e3bc7f8154be0049))
+
 ## [15.1.4](https://github.com/andymai/brepjs/compare/brepjs-v15.1.3...brepjs-v15.1.4) (2026-03-28)
 
 
