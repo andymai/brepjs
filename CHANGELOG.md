@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.4](https://github.com/andymai/brepjs/compare/brepjs-v15.1.3...brepjs-v15.1.4) (2026-03-28)
+
+
+### Bug Fixes
+
+* **2d:** add tolerance fallback for hash-based curve lookup ([#715](https://github.com/andymai/brepjs/issues/715)) ([e94089e](https://github.com/andymai/brepjs/commit/e94089eaea23410c5a91db6ab4ee93e887aa6a92))
+
 ## [15.1.3](https://github.com/andymai/brepjs/compare/brepjs-v15.1.2...brepjs-v15.1.3) (2026-03-28)
 
 
