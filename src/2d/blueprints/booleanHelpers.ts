@@ -194,7 +194,11 @@ export function rotateToStartAtSegment(curves: Curve2D[], segment: Curve2D): Cur
   const fwdFwd = tryRotate(curves, segFirstHash, segLastHash, matchesForward);
   if (fwdFwd !== null) return fwdFwd;
 
-  // Try flipped segment on forward curves (common segment oriented opposite)
+  // Try flipped segment on forward curves (common segment oriented opposite).
+  // Expected to trigger only for secondCurveSegments — allCommonSegments[0]
+  // is oriented with the first blueprint's curve direction, so firstCurveSegments
+  // should always match via fwdFwd. The downstream reversal in
+  // blueprintsIntersectionSegments always flips secondIntersectedSegments.
   const flipFwd = tryRotate(curves, segLastHash, segFirstHash, matchesFlipped);
   if (flipFwd !== null) return flipFwd;
 

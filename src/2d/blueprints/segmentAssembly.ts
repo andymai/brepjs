@@ -225,9 +225,11 @@ export function booleanOperation(
   });
 
   // Resolve any trailing same-segments that were accumulated but never flushed.
-  // This happens when the segment sequence ends with 'same' entries while
-  // segmentsIn is still null (no non-same segment resolved the ambiguity).
-  // If segmentsIn was eventually resolved to 1, prepend the accumulated curves.
+  // handleSameSegment accumulates into lastWasSame only when segmentsIn is null,
+  // and clears it when segmentsIn is 1. The combined state (lastWasSame != null
+  // AND segmentsIn == 1) occurs when: trailing 'same' segments accumulate at the
+  // end of the sequence, then a non-same segment resolves segmentsIn to 1 but
+  // the loop ends before the accumulated curves can be prepended by selectSegments.
   // Note: segmentsIn and lastWasSame are mutated inside the flatMap callback;
   // TypeScript narrows them to their initial values, so we cast to the actual type.
   const finalLastWasSame = lastWasSame as Segment | null;
