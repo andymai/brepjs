@@ -82,10 +82,10 @@ graph TB
 
 No internal imports allowed.
 
-| Module    | Purpose                                                                                                 |
-| --------- | ------------------------------------------------------------------------------------------------------- |
-| `kernel/` | Kernel adapter interface + adapters for OpenCascade (`brepjs-opencascade`) and brepkit (`brepkit-wasm`) |
-| `utils/`  | Pure utilities (no dependencies)                                                                        |
+| Module    | Purpose                                                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `kernel/` | Kernel adapter interface + adapters for OpenCascade (`brepjs-opencascade`), brepkit (`brepkit-wasm`), and occt-wasm (`occt-wasm`) |
+| `utils/`  | Pure utilities (no dependencies)                                                                                                  |
 
 ### Layer 1: Core
 

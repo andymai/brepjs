@@ -1,13 +1,19 @@
 # Custom Kernel Guide
 
-brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface. Two adapters are provided: OpenCascade WASM (shipped via the `brepjs-opencascade` companion package) and brepkit WASM (via the external `brepkit-wasm` npm package). You can also register your own kernel at runtime.
+brepjs is kernel-agnostic. All geometry operations go through a `KernelAdapter` interface. Three adapters are provided:
+
+- **OpenCascade WASM** (via `brepjs-opencascade`) — the default, most mature kernel
+- **brepkit WASM** (via `brepkit-wasm`) — alternative kernel with growing coverage
+- **occt-wasm** (via `occt-wasm`) — arena-based OCCT V8 kernel with handle-based memory model
+
+You can also register your own kernel at runtime.
 
 ## Quick Start
 
 ```typescript
 // Easiest: auto-detect and initialize the best available kernel
 import { init, box } from 'brepjs';
-await init(); // tries brepjs-opencascade, then brepkit-wasm
+await init(); // tries brepjs-opencascade, then brepkit-wasm (occt-wasm requires manual registration)
 const myBox = box(10, 10, 10);
 ```
 
@@ -26,6 +32,13 @@ import bkInit, { BrepKernel } from 'brepkit-wasm';
 await bkInit();
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
+// Register the occt-wasm kernel (external occt-wasm package)
+import createOcctWasm from 'occt-wasm';
+import { OcctWasmAdapter } from 'brepjs/kernel/occtWasm/occtWasmAdapter';
+const Module = await createOcctWasm();
+const kernel = new Module.OcctKernel();
+registerKernel('occt-wasm', new OcctWasmAdapter(Module, kernel));
+
 // Run a specific kernel temporarily
 const result = withKernel('brepkit', () => {
   return makeBox(10, 10, 10); // uses brepkit kernel
@@ -43,7 +56,7 @@ Register a `KernelAdapter` under a unique string ID. The first kernel registered
 
 ### `init()`
 
-Auto-detect and initialize the best available kernel. Tries `brepjs-opencascade` first, then falls back to `brepkit-wasm`. Returns a `Promise<string>` with the kernel ID (`'occt'` or `'brepkit'`). Idempotent — calling it again after a kernel is registered returns the current kernel ID immediately.
+Auto-detect and initialize the best available kernel. Tries `brepjs-opencascade` first, then falls back to `brepkit-wasm`. Returns a `Promise<string>` with the kernel ID (`'occt'` or `'brepkit'`). Idempotent — calling it again after a kernel is registered returns the current kernel ID immediately. Note: `occt-wasm` is not auto-detected — use `registerKernel()` directly.
 
 ### `initFromOC(oc)`
 
@@ -52,6 +65,18 @@ Manual initialization — creates the default OpenCascade adapter from a loaded 
 ### `BrepkitAdapter`
 
 Adapter for the external `brepkit-wasm` WASM package. Create with `new BrepkitAdapter(brepkitWasm)` and register via `registerKernel('brepkit', adapter)`. Coverage is growing - some advanced operations may throw "not implemented".
+
+### `OcctWasmAdapter`
+
+Adapter for the external `occt-wasm` WASM package. This is an arena-based OCCT V8 kernel compiled to WASM — all geometry is identified by `u32` handles into the arena. Create with `new OcctWasmAdapter(Module, kernel)` and register via `registerKernel('occt-wasm', adapter)`.
+
+Unlike `brepjs-opencascade`, `occt-wasm` is not auto-detected by `init()` because its WASM loading uses Node.js-specific APIs (`import.meta.resolve`, `node:path`). You must register it manually.
+
+Import the adapter from the deep path:
+
+```typescript
+import { OcctWasmAdapter } from 'brepjs/kernel/occtWasm/occtWasmAdapter';
+```
 
 ### `withKernel(id, fn)`
 
@@ -162,9 +187,9 @@ registerKernel('test', myKernelAdapter);
 // All 2023 tests should pass with your kernel
 ```
 
-## Dual-Kernel Testing
+## Multi-Kernel Testing
 
-brepjs tests run against both OpenCascade (OCCT) and brepkit WASM backends in CI. This is configured via vitest projects:
+brepjs tests run against all three kernels (OpenCascade, brepkit, and occt-wasm) in CI. This is configured via vitest projects:
 
 ```typescript
 // vitest.config.ts (simplified)
@@ -173,42 +198,30 @@ export default defineConfig({
     projects: [
       { name: 'occt', env: { TEST_KERNEL: 'occt' } },
       { name: 'brepkit', env: { TEST_KERNEL: 'brepkit' } },
+      { name: 'occt-wasm', env: { TEST_KERNEL: 'occt-wasm' } },
     ],
   },
 });
 ```
 
-The test setup (`tests/setup.ts`) reads `TEST_KERNEL` and initializes the correct adapter:
-
-```typescript
-export async function initKernel() {
-  const kernel = process.env.TEST_KERNEL ?? 'occt';
-  if (kernel === 'brepkit') {
-    const bk = await import('brepkit-wasm');
-    if (typeof bk.default === 'function') await bk.default();
-    registerKernel('brepkit', new BrepkitAdapter(new bk.BrepKernel()));
-  } else {
-    const oc = await import('brepjs-opencascade');
-    initFromOC(await oc.default());
-  }
-}
-```
+The test setup reads `TEST_KERNEL` and initializes the correct adapter. See `tests/helpers/kernelInit.ts` for the full implementation covering all three kernels.
 
 ### Running tests against a specific kernel
 
 ```bash
-# Run all tests with both kernels (default)
+# Run all tests with all kernels (default)
 npm run test
 
 # Run a single kernel
 npx vitest run --project occt
 npx vitest run --project brepkit
+npx vitest run --project occt-wasm
 
-# Run a single test file on both kernels
+# Run a single test file on all kernels
 npx vitest run tests/fn-booleanFns.test.ts
 ```
 
-Some tests are OCCT-only (e.g., tests for OCCT-specific features). These are listed in `vitest.config.ts` under `occtOnlyTests`.
+Some tests are kernel-specific (e.g., tests for OCCT-only or brepkit-only features). These are listed in `vitest.config.ts` under each kernel's `excludeTests`. See the [Kernel Conformance Matrix](./kernel-conformance.md) for a detailed breakdown of feature parity across all three kernels.
 
 ### Testing your custom kernel
 

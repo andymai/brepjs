@@ -15,6 +15,8 @@ npm install brepjs brepjs-opencascade
 
 `brepjs` is the API layer. `brepjs-opencascade` provides the default WASM geometry kernel.
 
+Two alternative kernels are also supported: `brepkit-wasm` and `occt-wasm`. See [Custom Kernel Guide](./kernel-swap.md) for details.
+
 ## Step 2: Initialize
 
 Three ways to start - pick whichever fits your setup:

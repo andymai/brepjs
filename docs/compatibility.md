@@ -96,11 +96,22 @@ brepjs requires WebAssembly support:
 
 ### WASM Module Variants
 
+**brepjs-opencascade** (default kernel):
+
 | Module                   | Size   | Features                                            |
 | ------------------------ | ------ | --------------------------------------------------- |
 | `brepjs_single`          | ~15 MB | Standard, single-threaded, no exceptions            |
 | `brepjs_threaded`        | ~16 MB | Multi-threaded variant (SharedArrayBuffer required) |
 | `brepjs_with_exceptions` | ~17 MB | C++ exceptions for better error messages            |
+
+**Alternative kernels** (optional peer dependencies):
+
+| Package        | Description                                         |
+| -------------- | --------------------------------------------------- |
+| `brepkit-wasm` | Alternative kernel with growing operation coverage  |
+| `occt-wasm`    | Arena-based OCCT V8 kernel with handle-based memory |
+
+All three kernels are optional peer dependencies — install whichever you need. See [Custom Kernel Guide](./kernel-swap.md) for initialization details.
 
 ## Known Limitations
 

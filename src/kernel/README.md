@@ -1,6 +1,6 @@
 # Kernel
 
-Kernel abstraction layer — all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Two adapters are provided: OpenCascade WASM (via the `brepjs-opencascade` companion package) and brepkit WASM (via the external `brepkit-wasm` npm package). Additional kernels can be registered at runtime.
+Kernel abstraction layer — all geometry operations go through `KernelAdapter`, making the library kernel-agnostic. Three adapters are provided: OpenCascade WASM (via `brepjs-opencascade`), brepkit WASM (via `brepkit-wasm`), and occt-wasm (via `occt-wasm`). Additional kernels can be registered at runtime.
 
 ```mermaid
 graph TD
@@ -27,15 +27,16 @@ This is enforced by an ESLint `no-restricted-syntax` rule that bans `x.wrapped.m
 
 ## Key Files
 
-| File                  | Purpose                                                                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`            | Kernel registry: `init()`, `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                     |
-| `types.ts`            | `KernelAdapter` interface (~164 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
-| `kernel2dTypes.ts`    | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
-| `defaultAdapter.ts`   | Default OCCT adapter class — thin delegation layer implementing both interfaces                                                   |
-| `brepkitAdapter.ts`   | brepkit WASM adapter (`BrepkitAdapter`) — alternative kernel with growing operation coverage                                      |
-| `geometry2d.ts`       | Pure-TypeScript 2D geometry engine — kernel-agnostic, used by brepkit and occt-wasm adapters                                      |
-| `brepkitWasmTypes.ts` | TypeScript type definitions for the brepkit WASM module                                                                           |
+| File                          | Purpose                                                                                                                           |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`                    | Kernel registry: `init()`, `getKernel()`, `getKernel2D()`, `registerKernel()`, `withKernel()`, `initFromOC()`                     |
+| `types.ts`                    | `KernelAdapter` interface (~164 methods), `KernelShape`/`KernelType` opaque handles, `ShapeType`, `BooleanOptions`, `MeshOptions` |
+| `kernel2dTypes.ts`            | `Kernel2DCapability` interface (~40 methods) for 2D curve/sketch operations                                                       |
+| `defaultAdapter.ts`           | Default OCCT adapter class — thin delegation layer implementing both interfaces                                                   |
+| `brepkitAdapter.ts`           | brepkit WASM adapter (`BrepkitAdapter`) — alternative kernel with growing operation coverage                                      |
+| `occtWasm/occtWasmAdapter.ts` | occt-wasm adapter (`OcctWasmAdapter`) — arena-based OCCT V8 kernel with handle-based memory model                                 |
+| `geometry2d.ts`               | Pure-TypeScript 2D geometry engine — kernel-agnostic, used by brepkit and occt-wasm adapters                                      |
+| `brepkitWasmTypes.ts`         | TypeScript type definitions for the brepkit WASM module                                                                           |
 
 ### Operation Modules (kernel-specific)
 
@@ -83,6 +84,13 @@ import { registerKernel, BrepkitAdapter } from 'brepjs';
 import bkInit, { BrepKernel } from 'brepkit-wasm';
 await bkInit();
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
+
+// occt-wasm (external occt-wasm package)
+import createOcctWasm from 'occt-wasm';
+import { OcctWasmAdapter } from 'brepjs/kernel/occtWasm/occtWasmAdapter';
+const Module = await createOcctWasm();
+const kernel = new Module.OcctKernel();
+registerKernel('occt-wasm', new OcctWasmAdapter(Module, kernel));
 
 // Custom kernel
 registerKernel('rust', new RustAdapter(wasm));
