@@ -20,6 +20,8 @@ import {
 } from '../src/index.js';
 import { castShape, isVertex, isEdge, isFace, isSolid } from '../src/core/shapeTypes.js';
 import { createHandle } from '../src/core/disposal.js';
+import { getCachedIsValid, getCachedSurfaceType } from '../src/topology/topologyQueryFns.js';
+import { getFaces } from '../src/topology/shapeFns.js';
 import { initBenchKernels, benchAll } from './setup.js';
 import { bench, collectResults, printResults, type BenchResult } from './harness.js';
 
@@ -290,7 +292,86 @@ describe('Adapter overhead — phase breakdown', () => {
     );
   });
 
-  // ─── Phase 7: Decomposed phase timing ──────────────────────────────
+  // ─── Phase 7: Cached isValid + surfaceType ──────────────────────────
+
+  it('isValid() — 1k calls on same shape (cached)', async () => {
+    collectResults(
+      results,
+      await benchAll(
+        'isValid() x1k (cached)',
+        () => {
+          const solid = box(10, 10, 10);
+          for (let i = 0; i < 1_000; i++) {
+            getCachedIsValid(solid);
+          }
+        },
+        { warmup: 2, iterations: 5 }
+      )
+    );
+  });
+
+  it('isValid() — 1k calls uncached (raw kernel)', async () => {
+    collectResults(
+      results,
+      await benchAll(
+        'isValid() x1k (uncached)',
+        () => {
+          const solid = box(10, 10, 10);
+          const k = getKernel();
+          for (let i = 0; i < 1_000; i++) {
+            k.isValid(solid.wrapped);
+          }
+        },
+        { warmup: 2, iterations: 5 }
+      )
+    );
+  });
+
+  it('surfaceType() — per-face on 10 boxes (cached vs uncached)', async () => {
+    const shapes = Array.from({ length: 10 }, (_, i) =>
+      translate(box(5 + i * 0.5, 5, 5), [i * 10, 0, 0])
+    );
+
+    // Cached: uses getCachedSurfaceType
+    collectResults(
+      results,
+      await benchAll(
+        'surfaceType cached (10 boxes x faces x2)',
+        () => {
+          for (const s of shapes) {
+            const faces = getFaces(s);
+            // Query twice per face to measure cache benefit
+            for (const f of faces) {
+              getCachedSurfaceType(f);
+              getCachedSurfaceType(f);
+            }
+          }
+        },
+        { warmup: 2, iterations: 5 }
+      )
+    );
+
+    // Uncached: raw kernel.surfaceType()
+    collectResults(
+      results,
+      await benchAll(
+        'surfaceType uncached (10 boxes x faces x2)',
+        () => {
+          const k = getKernel();
+          for (const s of shapes) {
+            const faces = getFaces(s);
+            for (const f of faces) {
+              k.surfaceType(f.wrapped);
+              k.surfaceType(f.wrapped);
+            }
+          }
+        },
+        { warmup: 2, iterations: 5 }
+      )
+    );
+  });
+
+  // ─── Phase 8: Decomposed phase timing ──────────────────────────────
 
   it('phase breakdown: boolean + cast (per-kernel)', async () => {
     for (const kernelId of ['occt', 'occt-wasm', 'brepkit'] as const) {
