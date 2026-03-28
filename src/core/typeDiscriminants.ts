@@ -13,6 +13,7 @@ import { typeCastError } from './errors.js';
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, ShapeKind } from './shapeTypes.js';
 import type { Dimension } from './dimensionTypes.js';
+import { getOrQueryType } from './shapeTypeCache.js';
 
 // ---------------------------------------------------------------------------
 // CurveType discriminant
@@ -66,5 +67,5 @@ export const findCurveType = (type: number | { value: number }): Result<CurveTyp
 
 /** Query the kernel for the topological type of a shape. */
 export function getShapeKind(shape: AnyShape<Dimension>): ShapeKind {
-  return getKernel().shapeType(shape.wrapped);
+  return getOrQueryType(getKernel(), shape.wrapped);
 }

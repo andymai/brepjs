@@ -21,6 +21,7 @@ import { createHandle } from './disposal.js';
 import { is3D } from './dimensionTypes.js';
 import type { Dimension } from './dimensionTypes.js';
 import { getShapeKind as _getShapeKind } from './typeDiscriminants.js';
+import { getOrQueryType, setCachedType } from './shapeTypeCache.js';
 
 // ---------------------------------------------------------------------------
 // Re-exports — dimensionTypes.ts (ADR-0004), validityTypes.ts (ADR-0005),
@@ -284,7 +285,7 @@ export function isShape1D<D extends Dimension>(s: AnyShape<D>): s is Shape1D<D> 
  */
 export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape, dim?: D): AnyShape<D> {
   const kernel = getKernel();
-  const st = kernel.shapeType(ocShape);
+  const st = getOrQueryType(kernel, ocShape);
   // Pass type to downcast to avoid recomputing ShapeType() in WASM
   const dc = kernel.downcast(ocShape, st);
 
@@ -313,6 +314,7 @@ export function castShapeWithKnownType<D extends Dimension = '3D'>(
   knownType: ShapeType,
   dim?: D
 ): AnyShape<D> {
+  setCachedType(ocShape, knownType);
   const dc = getKernel().downcast(ocShape, knownType);
   if (knownType === 'vertex') return createVertex<D>(dc, dim) as AnyShape<D>;
   if (knownType === 'edge') return createEdge<D>(dc, dim) as AnyShape<D>;
