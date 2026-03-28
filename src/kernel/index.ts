@@ -142,12 +142,12 @@ export function prewarm(): void {
 /**
  * Auto-detect and initialise the best available kernel.
  *
- * Tries `brepjs-opencascade` (OCCT) first, then falls back to `brepkit-wasm`.
+ * Tries `brepjs-opencascade` (OCCT) first, then `brepkit-wasm`, then `occt-wasm`.
  * Idempotent — calling it again after a kernel is registered is a no-op that
  * returns the current kernel ID immediately.
  *
- * @returns The kernel ID that was initialised (`'occt'` or `'brepkit'`).
- * @throws If neither `brepjs-opencascade` nor `brepkit-wasm` can be imported.
+ * @returns The kernel ID that was initialised (`'occt'`, `'brepkit'`, or `'occt-wasm'`).
+ * @throws If no kernel package can be imported.
  *
  * @example
  * ```ts
@@ -182,10 +182,30 @@ export async function init(): Promise<string> {
     // brepkit not available either
   }
 
+  // Try occt-wasm
+  try {
+    const { resolve } = await import('node:path');
+    const occtWasmEntry = import.meta.resolve('occt-wasm');
+    const { fileURLToPath, URL: UrlClass } = await import('node:url');
+    const wasmDir = fileURLToPath(new UrlClass('.', occtWasmEntry));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten factory
+    const { default: createOcctWasm }: any = await import(resolve(wasmDir, 'occt-wasm.js'));
+    const Module = await createOcctWasm({
+      locateFile: (p: string) => (p.endsWith('.wasm') ? resolve(wasmDir, 'occt-wasm.wasm') : p),
+    });
+    const { OcctWasmAdapter } = await import('./occtWasm/occtWasmAdapter.js');
+    const k = new Module.OcctKernel();
+    registerKernel('occt-wasm', new OcctWasmAdapter(Module, k));
+    return 'occt-wasm';
+  } catch {
+    // occt-wasm not available either
+  }
+
   throw new Error(
     'brepjs: no kernel package found. Install one of:\n' +
       '  npm install brepjs-opencascade   (recommended)\n' +
-      '  npm install brepkit-wasm'
+      '  npm install brepkit-wasm\n' +
+      '  npm install occt-wasm'
   );
 }
 
@@ -233,6 +253,9 @@ export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2d
 
 export { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 export type { BrepkitHandle } from './brepkit/helpers.js';
+
+export { OcctWasmAdapter } from './occtWasm/occtWasmAdapter.js';
+export type { OcctWasmHandle } from './occtWasm/occtWasmTypes.js';
 
 export { getPerformanceStats, resetPerformanceStats, perfTimer } from './perfStats.js';
 export type { PerfCategory, PerformanceStats } from './perfStats.js';

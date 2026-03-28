@@ -242,11 +242,12 @@ export interface ConstraintSketchCapability {
 
 /** Capability for hidden-line removal (3D → 2D projection). */
 export interface ProjectionCapability {
-  /** Project a 3D shape onto a 2D plane along a view direction. */
-  projectShape(
+  /** Project 3D edges onto a 2D plane (hidden line removal). */
+  projectEdges(
     shape: KernelShape,
-    viewOrigin: [number, number, number],
-    viewDirection: [number, number, number]
+    cameraOrigin: [number, number, number],
+    cameraDirection: [number, number, number],
+    cameraXAxis?: [number, number, number]
   ): {
     visible: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
     hidden: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
@@ -261,7 +262,7 @@ export interface ProjectionCapability {
 export function supportsProjection(
   kernel: KernelAdapter
 ): kernel is KernelAdapter & ProjectionCapability {
-  return 'projectShape' in kernel;
+  return 'projectEdges' in kernel;
 }
 
 /** Check if the kernel supports 2D constraint sketch solving. */

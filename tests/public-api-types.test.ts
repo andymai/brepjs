@@ -148,6 +148,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'DisposalScope',
   'HASH_CODE_MAX',
   'OK',
+  'OcctWasmAdapter',
   'RAD2DEG',
   'Sketch',
   'Sketches',

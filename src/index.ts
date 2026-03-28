@@ -12,10 +12,12 @@ export {
   registerKernel,
   withKernel,
   BrepkitAdapter,
+  OcctWasmAdapter,
 } from './kernel/index.js';
 export type {
   KernelAdapter,
   BrepkitHandle,
+  OcctWasmHandle,
   SurfaceType,
   ShapeOrientation,
   ShapeType,

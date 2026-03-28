@@ -61,9 +61,9 @@ export const kernelConfigs: readonly KernelConfig[] = [
     coverageThresholds: 'informational',
     excludeTests: ['tests/brepkitExtended.test.ts', 'tests/brepkitAdapter.test.ts'],
     capabilities: {
-      projection: false,
+      projection: true,
       constraintSketch: false,
-      kernel2D: false,
+      kernel2D: true,
       variableFillet: false,
       offsetSolidV2: false,
       gridPattern: false,
