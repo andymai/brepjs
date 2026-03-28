@@ -106,12 +106,10 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     }
   });
 
-  it('intersects draw()-built profile with rounded rect (common segment split by arc intersection)', () => {
+  it('intersects draw()-built profile with rounded rect (shared edge at arc junction)', () => {
     // A tall thin rectangle whose left edge at x=0 aligns with the rounded
-    // rect's right straight edge. The rounded rect's corner arcs intersect the
-    // rectangle at points *within* the common segment range, causing the
-    // common segment to be split into sub-curves. This is the scenario from
-    // the issue report where a Sketcher-built lip profile crashes.
+    // rect's right straight edge. The arc endpoints coincide with the common
+    // segment boundaries, exercising orientation-flip matching.
     const profile = draw([0, -6]).lineTo([8, -6]).lineTo([8, 6]).lineTo([0, 6]).close();
 
     // drawRoundedRectangle(10, 10, 1) centered then shifted left by 5
@@ -189,5 +187,31 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     const [[xMin, yMin], [xMax, yMax]] = result.boundingBox.bounds;
     expect(xMax - xMin).toBeGreaterThan(0);
     expect(yMax - yMin).toBeGreaterThan(0);
+  });
+
+  it('cuts with shared corner edges (cut uses same code path)', () => {
+    // Two rectangles sharing edges at a corner — cut must not crash
+    const a = drawRectangle(10, 10);
+    const b = drawRectangle(6, 6).translate(-2, -2);
+    expect(() => a.cut(b)).not.toThrow();
+  });
+
+  it('fuses with shared corner edges (fuse uses same code path)', () => {
+    const LIP_SMALL_TAPER = 0.7;
+    const LIP_VERTICAL_PART = 1.8;
+    const LIP_BIG_TAPER = 1.9;
+    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER;
+
+    const basicShape = draw([-LIP_TAPER_WIDTH, 0])
+      .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
+      .vLine(LIP_VERTICAL_PART)
+      .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
+      .vLineTo(0)
+      .close();
+
+    const clip = drawRoundedRectangle(10, 10).translate(-5, 5);
+    // fuse uses blueprintsIntersectionSegments → rotateToStartAtSegment
+    const result = basicShape.fuse(clip);
+    expect(result).toBeDefined();
   });
 });
