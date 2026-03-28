@@ -1,6 +1,5 @@
-/* v8 ignore file -- brepkit WASM kernel not available in OCCT test suite */
 /**
- * Pure-TypeScript 2D geometry implementation for brepkit's Kernel2DCapability.
+ * Pure-TypeScript 2D geometry implementation for Kernel2DCapability.
  *
  * All 2D curves are represented as plain objects with a `type` discriminant
  * and `evaluate(t)` method. No WASM boundary crossing required.

@@ -25,6 +25,7 @@ import {
   liftCurve2dToPlane,
   extractCurve2dFromEdge,
 } from '@/2d/curve2dGeometryFns.js';
+import { getKernel2D } from '@/kernel/index.js';
 import { unwrap, isOk, isErr } from '@/core/result.js';
 import { makePlane } from '@/core/planeOps.js';
 import { box } from '@/topology/primitiveFns.js';
@@ -285,5 +286,194 @@ describe('2D-3D bridge', () => {
     expect(type).toBeDefined();
     const bounds = unwrap(boundsCurve2d(curve));
     expect(bounds.last).toBeGreaterThan(bounds.first);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Circle-circle intersection
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('circle-circle intersection', () => {
+  it('finds intersection of line with circle', () => {
+    // Line-circle intersection uses the analytic path
+    using line = unwrap(line2d([0, 0], [10, 0]));
+    using circ = unwrap(circle2d([5, 0], 3));
+    const result = unwrap(intersectCurves2d(line, circ));
+    expect(result.points.length).toBeGreaterThanOrEqual(1);
+    result.segments.forEach((s) => {
+      s[Symbol.dispose]();
+    });
+  });
+
+  it('finds no intersection for separated circles', () => {
+    using c1 = unwrap(circle2d([0, 0], 3));
+    using c2 = unwrap(circle2d([20, 0], 3));
+    const result = unwrap(intersectCurves2d(c1, c2));
+    expect(result.points).toHaveLength(0);
+  });
+
+  it('finds no intersection for concentric circles', () => {
+    using c1 = unwrap(circle2d([0, 0], 5));
+    using c2 = unwrap(circle2d([0, 0], 3));
+    const result = unwrap(intersectCurves2d(c1, c2));
+    expect(result.points).toHaveLength(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Numerical intersection (line-bezier, bezier-bezier)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('numerical intersection', () => {
+  it('finds line-bezier intersection', () => {
+    using line = unwrap(line2d([0, 2], [10, 2]));
+    using bez = unwrap(
+      bezier2d([
+        [2, 0],
+        [4, 6],
+        [6, 6],
+        [8, 0],
+      ])
+    );
+    const result = unwrap(intersectCurves2d(line, bez));
+    expect(result.points.length).toBeGreaterThanOrEqual(1);
+    result.segments.forEach((s) => {
+      s[Symbol.dispose]();
+    });
+  });
+
+  it('finds bezier-circle intersection', () => {
+    using bez = unwrap(
+      bezier2d([
+        [0, 0],
+        [5, 10],
+        [10, 0],
+      ])
+    );
+    using circ = unwrap(circle2d([5, 3], 4));
+    const result = unwrap(intersectCurves2d(bez, circ));
+    expect(result.points.length).toBeGreaterThanOrEqual(1);
+    result.segments.forEach((s) => {
+      s[Symbol.dispose]();
+    });
+  });
+
+  it('finds line-circle intersection via numerical path', () => {
+    // Use arcs (trimmed circles) which trigger the numerical path
+    using arc = unwrap(arc2d([0, 5], [5, 0], [10, 5]));
+    using bez = unwrap(
+      bezier2d([
+        [0, 0],
+        [10, 10],
+      ])
+    );
+    const result = unwrap(intersectCurves2d(arc, bez));
+    expect(result.points.length).toBeGreaterThanOrEqual(1);
+    result.segments.forEach((s) => {
+      s[Symbol.dispose]();
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Serialization
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('2D curve serialization', () => {
+  it('round-trips a line through serialize/deserialize', () => {
+    const kernel = getKernel2D();
+    using curve = unwrap(line2d([1, 2], [5, 7]));
+    const data = kernel.serializeCurve2d(curve.raw);
+    expect(typeof data).toBe('string');
+    const restored = kernel.deserializeCurve2d(data);
+    const pt = kernel.evaluateCurve2d(restored, 0);
+    expect(pt[0]).toBeCloseTo(1, 5);
+    expect(pt[1]).toBeCloseTo(2, 5);
+  });
+
+  it('round-trips a circle through serialize/deserialize', () => {
+    const kernel = getKernel2D();
+    using curve = unwrap(circle2d([3, 4], 7));
+    const data = kernel.serializeCurve2d(curve.raw);
+    const restored = kernel.deserializeCurve2d(data);
+    const type = kernel.getCurve2dType(restored);
+    expect(type.toUpperCase()).toContain('CIRCLE');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Bounding box
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('2D bounding box', () => {
+  it('computes bounding box of a circle', () => {
+    const kernel = getKernel2D();
+    using curve = unwrap(circle2d([5, 5], 3));
+    const bbox = kernel.createBoundingBox2d();
+    kernel.addCurveToBBox2d(bbox, curve.raw, 0.01);
+    const bounds = kernel.getBBox2dBounds(bbox);
+    expect(bounds.xMin).toBeCloseTo(2, 0);
+    expect(bounds.xMax).toBeCloseTo(8, 0);
+    expect(bounds.yMin).toBeCloseTo(2, 0);
+    expect(bounds.yMax).toBeCloseTo(8, 0);
+  });
+
+  it('merges two bounding boxes', () => {
+    const kernel = getKernel2D();
+    using c1 = unwrap(circle2d([0, 0], 1));
+    using c2 = unwrap(circle2d([10, 10], 1));
+    const bbox1 = kernel.createBoundingBox2d();
+    const bbox2 = kernel.createBoundingBox2d();
+    kernel.addCurveToBBox2d(bbox1, c1.raw, 0.01);
+    kernel.addCurveToBBox2d(bbox2, c2.raw, 0.01);
+    kernel.mergeBBox2d(bbox1, bbox2);
+    const bounds = kernel.getBBox2dBounds(bbox1);
+    expect(bounds.xMin).toBeCloseTo(-1, 0);
+    expect(bounds.xMax).toBeCloseTo(11, 0);
+  });
+
+  it('reports point outside bbox', () => {
+    const kernel = getKernel2D();
+    using curve = unwrap(circle2d([0, 0], 1));
+    const bbox = kernel.createBoundingBox2d();
+    kernel.addCurveToBBox2d(bbox, curve.raw, 0.01);
+    expect(kernel.isBBox2dOutPoint(bbox, 100, 100)).toBe(true);
+    expect(kernel.isBBox2dOutPoint(bbox, 0, 0)).toBe(false);
+  });
+
+  it('reports non-overlapping bboxes as out', () => {
+    const kernel = getKernel2D();
+    using c1 = unwrap(circle2d([0, 0], 1));
+    using c2 = unwrap(circle2d([100, 100], 1));
+    const bbox1 = kernel.createBoundingBox2d();
+    const bbox2 = kernel.createBoundingBox2d();
+    kernel.addCurveToBBox2d(bbox1, c1.raw, 0.01);
+    kernel.addCurveToBBox2d(bbox2, c2.raw, 0.01);
+    expect(kernel.isBBox2dOut(bbox1, bbox2)).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Ellipse evaluation
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('2D ellipse evaluation', () => {
+  it('evaluates points on an ellipse', () => {
+    using curve = unwrap(ellipse2d([0, 0], 10, 5));
+    // At t=0, should be at (majorRadius, 0)
+    const pt0 = unwrap(evaluateCurve2d(curve, 0));
+    expect(pt0[0]).toBeCloseTo(10, 3);
+    expect(pt0[1]).toBeCloseTo(0, 3);
+    // At t=π/2, should be at (0, minorRadius)
+    const ptHalf = unwrap(evaluateCurve2d(curve, Math.PI / 2));
+    expect(ptHalf[0]).toBeCloseTo(0, 3);
+    expect(ptHalf[1]).toBeCloseTo(5, 3);
+  });
+
+  it('evaluates tangent on an ellipse', () => {
+    using curve = unwrap(ellipse2d([0, 0], 10, 5));
+    const result = unwrap(tangentCurve2d(curve, 0));
+    // At t=0 (rightmost point), tangent should be vertical
+    expect(result.tangent[0]).toBeCloseTo(0, 3);
   });
 });
