@@ -43,7 +43,7 @@ function circ(r = 5, cx = 0, cy = 0): Blueprint {
 }
 
 describe('Blueprint', () => {
-  it('basic properties and SVG', { timeout: 90000 }, () => {
+  it('basic properties and SVG', () => {
     const bp = rect();
     expect(bp).toBeDefined();
     expect(bp.curves.length).toBeGreaterThan(0);
@@ -317,7 +317,7 @@ describe('intersect2D', () => {
 });
 
 describe('CompoundBlueprint', () => {
-  it('basic properties and SVG', { timeout: 90000 }, () => {
+  it('basic properties and SVG', () => {
     const c = new CompoundBlueprint([rect(30, 30), rect(10, 10)]);
     expect(c.boundingBox.width).toBeCloseTo(30, 0);
     expect(typeof c.repr).toBe('string');
@@ -343,7 +343,7 @@ describe('CompoundBlueprint', () => {
 });
 
 describe('Blueprints', () => {
-  it('basic properties and SVG', { timeout: 90000 }, () => {
+  it('basic properties and SVG', () => {
     const b = new Blueprints([rect(10, 10), rect(10, 10, 30, 0)]);
     expect(b.boundingBox.width).toBeGreaterThan(20);
     expect(typeof b.repr).toBe('string');
