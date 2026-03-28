@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.3](https://github.com/andymai/brepjs/compare/brepjs-v15.1.2...brepjs-v15.1.3) (2026-03-28)
+
+
+### Bug Fixes
+
+* **kernel:** return trimmed arcs from occt-wasm adapter ([#713](https://github.com/andymai/brepjs/issues/713)) ([cc48e4d](https://github.com/andymai/brepjs/commit/cc48e4db982ca417a3f61dff9babeb585825aafc))
+
 ## [15.1.2](https://github.com/andymai/brepjs/compare/brepjs-v15.1.1...brepjs-v15.1.2) (2026-03-28)
 
 
