@@ -45,6 +45,10 @@ export default defineConfig({
         'src/**/index.ts',
         'src/kernel/brepkit/**',
         'src/kernel/occtWasm/**',
+        // geometry2d.ts is pure-TS 2D used by brepkit/occt-wasm, not by OCCT.
+        // Excluded from OCCT coverage (the only enforced project). Covered
+        // informally by brepkit/occt-wasm test runs.
+        'src/kernel/geometry2d.ts',
       ],
       reporter: ['text', 'text-summary', 'lcov'],
       reportsDirectory: './coverage',
