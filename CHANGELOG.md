@@ -1,5 +1,12 @@
 # Changelog
 
+## [14.8.1](https://github.com/andymai/brepjs/compare/brepjs-v14.8.0...brepjs-v14.8.1) (2026-03-28)
+
+
+### Performance Improvements
+
+* kernel adapter overhead caching (shapeType, isValid, surfaceType) ([#694](https://github.com/andymai/brepjs/issues/694)) ([9d2377d](https://github.com/andymai/brepjs/commit/9d2377dbbfcad7037a1ffe6a4dcbcdd0c26ba669))
+
 ## [14.8.0](https://github.com/andymai/brepjs/compare/brepjs-v14.7.1...brepjs-v14.8.0) (2026-03-28)
 
 
