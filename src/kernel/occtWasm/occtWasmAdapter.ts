@@ -2831,9 +2831,9 @@ export class OcctWasmAdapter implements KernelAdapter {
     x2: number,
     y2: number
   ): Curve2dHandle {
-    // Compute circumcircle of 3 points → arc
-    const D = 2 * (x1 * (ym - y2) + xm * (y2 - y1) + x2 * (y1 - ym));
-    if (Math.abs(D) < 1e-10) {
+    // Circumscribed circle through 3 points
+    const d = 2 * (x1 * (ym - y2) + xm * (y2 - y1) + x2 * (y1 - ym));
+    if (Math.abs(d) < 1e-12) {
       // Collinear — return a line
       return c2dWrap(ow2d.makeLine2d(x1, y1, x2, y2));
     }
@@ -2841,15 +2841,38 @@ export class OcctWasmAdapter implements KernelAdapter {
       ((x1 * x1 + y1 * y1) * (ym - y2) +
         (xm * xm + ym * ym) * (y2 - y1) +
         (x2 * x2 + y2 * y2) * (y1 - ym)) /
-      D;
+      d;
     const cy =
       ((x1 * x1 + y1 * y1) * (x2 - xm) +
         (xm * xm + ym * ym) * (x1 - x2) +
         (x2 * x2 + y2 * y2) * (xm - x1)) /
-      D;
-    const radius = Math.sqrt((x1 - cx) * (x1 - cx) + (y1 - cy) * (y1 - cy));
-    const cross = (xm - x1) * (y2 - y1) - (ym - y1) * (x2 - x1);
-    return c2dWrap(ow2d.makeCircle2d(cx, cy, radius, cross > 0));
+      d;
+    const radius = Math.sqrt((x1 - cx) ** 2 + (y1 - cy) ** 2);
+
+    // Compute angles for start (p1), mid (pm), and end (p2)
+    const a1 = Math.atan2(y1 - cy, x1 - cx);
+    const am = Math.atan2(ym - cy, xm - cx);
+    const a2 = Math.atan2(y2 - cy, x2 - cx);
+
+    // Determine sense: CCW if mid-point angle is between start and end going CCW
+    let da1m = am - a1;
+    if (da1m < 0) da1m += 2 * Math.PI;
+    let da12 = a2 - a1;
+    if (da12 < 0) da12 += 2 * Math.PI;
+    const sense = da1m < da12;
+
+    const circle = ow2d.makeCircle2d(cx, cy, radius, sense);
+    if (!sense) {
+      // CW circle evaluates angle = -t, so parameter t = -angle.
+      const tStart = -a1;
+      let tEnd = -a2;
+      if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
+      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj);
+    }
+    // CCW: ensure tEnd >= tStart
+    let tEnd = a2;
+    if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
+    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj);
   }
   makeArc2dTangent(
     startX: number,
@@ -2859,14 +2882,41 @@ export class OcctWasmAdapter implements KernelAdapter {
     endX: number,
     endY: number
   ): Curve2dHandle {
-    // Heuristic: place "via point" at start + 0.5*tangent as a hint for the
-    // three-point arc. This works for small tangent vectors where the offset
-    // approximates a point on the desired circle, but may produce incorrect
-    // arcs for large tangent magnitudes (the true approach would solve for the
-    // circumscribed circle tangent to the tangent vector at the start point).
-    const midX = startX + tangentX * 0.5;
-    const midY = startY + tangentY * 0.5;
-    return this.makeArc2dThreePoints(startX, startY, midX, midY, endX, endY);
+    const len = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
+    const ntx = len > 0 ? tangentX / len : 0;
+    const nty = len > 0 ? tangentY / len : 0;
+
+    const dx = startX - endX;
+    const dy = startY - endY;
+    const denom = 2 * (dy * ntx - dx * nty);
+
+    if (Math.abs(denom) < 1e-12) {
+      return c2dWrap(ow2d.makeLine2d(startX, startY, endX, endY));
+    }
+
+    const chord2 = dx * dx + dy * dy;
+    const t = -chord2 / denom;
+    const cx = startX - t * nty;
+    const cy = startY + t * ntx;
+    const radius = Math.abs(t);
+
+    const a1 = Math.atan2(startY - cy, startX - cx);
+    const a2 = Math.atan2(endY - cy, endX - cx);
+
+    const ccwTanX = -(startY - cy) / radius;
+    const ccwTanY = (startX - cx) / radius;
+    const sense = ccwTanX * ntx + ccwTanY * nty > 0;
+
+    const circle = ow2d.makeCircle2d(cx, cy, radius, sense);
+    if (!sense) {
+      const tStart = -a1;
+      let tEnd = -a2;
+      if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
+      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj);
+    }
+    let tEnd = a2;
+    if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
+    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj);
   }
   makeEllipse2d(
     cx: number,
