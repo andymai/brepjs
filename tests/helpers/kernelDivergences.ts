@@ -126,10 +126,6 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // nurbsFns.test.ts
     // -----------------------------------------------------------------------
-    'nurbsFns.bsplineData': {
-      kind: 'not-implemented',
-      reason: 'brepkit does not expose BSpline curve data extraction (getNurbsCurveData)',
-    },
     'nurbsFns.planarFaceSurface': {
       kind: 'not-implemented',
       reason: 'brepkit does not expose BSpline surface data extraction (getNurbsSurfaceData)',
@@ -432,20 +428,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // nurbsFns.test.ts -- brepkit-only tests
-    // -----------------------------------------------------------------------
-    'nurbsFns.brepkitCurveNull': {
-      kind: 'not-implemented',
-      reason:
-        'brepkit returns null for getNurbsCurveData on interpolated curve; test only relevant for brepkit',
-    },
-    'nurbsFns.brepkitSurfaceNull': {
-      kind: 'not-implemented',
-      reason:
-        'brepkit returns null for getNurbsSurfaceData on any face; test only relevant for brepkit',
-    },
-
-    // -----------------------------------------------------------------------
     // draftFns.test.ts -- brepkit-only draft operations
     // -----------------------------------------------------------------------
     'draftFns.brepkitUniform': {
@@ -491,7 +473,12 @@ export const divergences: DivergenceMap = {
   // occt-wasm is near-identical to occt; divergences are tracked via
   // excludeTests in kernelRegistry.ts. Add entries here when specific
   // tests need per-test skipping rather than whole-file exclusion.
-  'occt-wasm': {},
+  'occt-wasm': {
+    brepkitSketchArc: {
+      kind: 'not-implemented',
+      reason: 'Sketch arc entity and constraints are brepkit-only features',
+    },
+  },
 };
 
 // ---------------------------------------------------------------------------

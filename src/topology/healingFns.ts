@@ -11,7 +11,7 @@ import { castShape, isSolid, isFace, isWire } from '@/core/shapeTypes.js';
 import { type Result, ok, err, isOk } from '@/core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
 import { getWires, getFaces } from './shapeFns.js';
-import { getCachedIsValid } from './topologyQueryFns.js';
+import { getCachedIsValid, invalidateShapeCache } from './topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -59,6 +59,9 @@ export function healSolid(solid: Solid): Result<ValidSolid> {
     if (!isSolid(cast)) {
       return err(kernelError('HEAL_RESULT_NOT_SOLID', 'Healed result is not a solid'));
     }
+    // Invalidate cached validity — kernels that heal in-place (e.g. brepkit)
+    // return the same handle, so the stale cache entry must be cleared.
+    invalidateShapeCache(cast);
     // Verify the healed solid actually passes BRepCheck — ShapeFix_Solid
     // makes a best-effort attempt but does not guarantee full repair.
     if (!isValid(cast)) {
@@ -182,6 +185,7 @@ export interface HealingReport {
  * Uses ShapeFix_Solid/Face/Wire depending on shape type, which internally
  * handles sub-shape healing and reconstruction.
  */
+// brepjs-patterns-disable: max-function-lines
 export function autoHeal(
   shape: AnyShape<Dimension>,
   options?: AutoHealOptions

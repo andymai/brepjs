@@ -38,8 +38,7 @@ describe('getNurbsCurveData', () => {
     }
   });
 
-  it('extracts data from a BSpline edge', (ctx) => {
-    skipIfDiverges(ctx, 'nurbsFns.bsplineData');
+  it('extracts data from a BSpline edge', () => {
     const pts: Vec3[] = [
       [0, 0, 0],
       [5, 5, 0],
@@ -62,21 +61,6 @@ describe('getNurbsCurveData', () => {
       for (const pole of data.poles) {
         expect(pole).toHaveLength(3);
       }
-    }
-  });
-
-  it('returns null on brepkit', (ctx) => {
-    skipIfDiverges(ctx, 'nurbsFns.brepkitCurveNull');
-    const pts: Vec3[] = [
-      [0, 0, 0],
-      [5, 5, 0],
-      [10, 0, 0],
-      [15, 5, 0],
-    ];
-    const result = interpolateCurve(pts);
-    if (isOk(result)) {
-      const data = getNurbsCurveData(unwrap(result));
-      expect(data).toBeNull();
     }
   });
 });
@@ -108,13 +92,12 @@ describe('getNurbsSurfaceData', () => {
     }
   });
 
-  it('returns null on brepkit for any face', (ctx) => {
-    skipIfDiverges(ctx, 'nurbsFns.brepkitSurfaceNull');
+  it('returns null for a planar box face (not BSpline)', () => {
     const b = box(10, 10, 10);
     const faces = getFaces(b);
-    if (faces.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test
-      const data = getNurbsSurfaceData(faces[0]!);
+    // All box faces are planar — getNurbsSurfaceData should return null
+    for (const face of faces) {
+      const data = getNurbsSurfaceData(face);
       expect(data).toBeNull();
     }
   });

@@ -59,7 +59,11 @@ export const kernelConfigs: readonly KernelConfig[] = [
     id: 'occt-wasm',
     displayName: 'occt-wasm',
     coverageThresholds: 'informational',
-    excludeTests: ['tests/brepkitExtended.test.ts', 'tests/brepkitAdapter.test.ts'],
+    excludeTests: [
+      'tests/brepkitExtended.test.ts',
+      'tests/brepkitAdapter.test.ts',
+      'tests/brepkitSketchArc.test.ts',
+    ],
     capabilities: {
       projection: true,
       constraintSketch: false,

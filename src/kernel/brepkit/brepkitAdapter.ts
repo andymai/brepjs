@@ -373,7 +373,15 @@ function resolveUniformAngle(
   if (typeof angleDeg !== 'function') return angleDeg;
   let uniform: number | undefined;
   for (const face of faces) {
-    const angle = angleDeg(face);
+    let angle: number;
+    try {
+      angle = angleDeg(face);
+    } catch {
+      throw new Error(
+        'brepkit does not support variable draft with multiple distinct angles. ' +
+          'Use the OCCT kernel for per-face angle variation, or use a uniform angle.'
+      );
+    }
     if (uniform === undefined) {
       uniform = angle;
     } else if (angle !== uniform) {
