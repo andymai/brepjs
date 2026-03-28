@@ -401,6 +401,7 @@ export interface OcctKernelWasm {
   // --- I/O ---
   importStep(data: string): number;
   exportStep(id: number): string;
+  importStl(data: string): number;
   importIges(data: string): number;
   exportIges(id: number): string;
   exportStl(id: number, linearDeflection: number, ascii: boolean): string;

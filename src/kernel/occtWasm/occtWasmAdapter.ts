@@ -2067,8 +2067,28 @@ export class OcctWasmAdapter implements KernelAdapter {
     return [wrapResult(this.k, id)];
   }
 
-  importSTL(_data: string | ArrayBuffer): KernelShape {
-    notImplemented('importSTL');
+  importSTL(data: string | ArrayBuffer): KernelShape {
+    // Binary STL contains null bytes that corrupt Embind's std::string.
+    // Write raw bytes to the Emscripten virtual FS, then call importStl with
+    // the file path (passed as an empty string sentinel to read from /tmp).
+    const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
+
+    // Write to Emscripten FS directly via HEAPU8
+    const mod = this.Module as OcctWasmModule & {
+      FS?: { writeFile(path: string, data: Uint8Array): void };
+    };
+    if (mod.FS) {
+      mod.FS.writeFile('/tmp/import.stl', bytes);
+    } else {
+      // Fallback: pass as Latin-1 string (works for ASCII STL only)
+      const str = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+      const id = this.k.importStl(str);
+      return wrapResult(this.k, id);
+    }
+
+    // Call importStl with empty string — the C++ side reads from /tmp/import.stl
+    const id = this.k.importStl('');
+    return wrapResult(this.k, id);
   }
 
   exportIGES(shapes: KernelShape[]): string {
