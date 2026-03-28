@@ -34,7 +34,7 @@ export function applyMatrix(bk: BrepkitKernel, shape: KernelShape, matrix: numbe
       return solidHandle(copy);
     }
     case 'face': {
-      if (typeof bk.copyFace !== 'function' || typeof bk.transformFace !== 'function') {
+      if (typeof bk.copyFace !== 'function') {
         throw new Error(
           'brepkit: applyMatrix for faces requires copyFace/transformFace WASM exports'
         );
