@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.1](https://github.com/andymai/brepjs/compare/brepjs-v15.1.0...brepjs-v15.1.1) (2026-03-28)
+
+
+### Performance Improvements
+
+* cache vertex positions and hash codes across WASM boundary ([#701](https://github.com/andymai/brepjs/issues/701)) ([bc8b046](https://github.com/andymai/brepjs/commit/bc8b04615241bc03bdc5f9bd22e90452b6b065cd))
+
 ## [15.1.0](https://github.com/andymai/brepjs/compare/brepjs-v15.0.0...brepjs-v15.1.0) (2026-03-28)
 
 
