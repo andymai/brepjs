@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-27T05:39:53.332Z",
+  "generated": "2026-03-28T02:00:37.605Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -168,26 +168,6 @@
       "fingerprint": "src/kernel/occt/hullOps.ts|max-function-lines|208|"
     },
     {
-      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3510|"
-    },
-    {
-      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3512|"
-    },
-    {
-      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3513|"
-    },
-    {
-      "file": "src/kernel/occtWasm/occtWasmAdapter.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/occtWasm/occtWasmAdapter.ts|max-nesting-depth|3515|"
-    },
-    {
       "file": "src/operations/mateFns.ts",
       "rule": "max-nesting-depth",
       "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|133|"
@@ -215,7 +195,7 @@
     {
       "file": "src/topology/healingFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/healingFns.ts|max-function-lines|184|"
+      "fingerprint": "src/topology/healingFns.ts|max-function-lines|185|"
     },
     {
       "file": "src/topology/metadata/originTrackingFns.ts",

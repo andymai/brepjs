@@ -49,6 +49,7 @@ export interface TopoCacheEntry {
   vertices?: Vertex<Dimension>[];
   faceOrigins?: Map<number, number>;
   bounds?: Bounds3D;
+  isValid?: boolean;
   /** Edge hash → edge-face pairs for adjacency queries. Stores the edge alongside
    *  each face so facesOfEdge can verify via isSame without re-extracting face edges. */
   edgeToFaces?: Map<number, Array<{ edge: KernelShape; face: KernelShape }>>;
@@ -196,6 +197,15 @@ export function getCachedShapeKind(shape: AnyShape<Dimension>): ShapeKind {
   return getOrQueryType(getKernel(), shape.wrapped);
 }
 
+/** Get whether a shape is valid. Cached per shape (shapes are immutable). */
+export function getCachedIsValid(shape: AnyShape<Dimension>): boolean {
+  const cache = getOrCreateCache(shape);
+  if (cache.isValid !== undefined) return cache.isValid;
+  const valid = getKernel().isValid(shape.wrapped);
+  cache.isValid = valid;
+  return valid;
+}
+
 // ---------------------------------------------------------------------------
 // Shape description
 // ---------------------------------------------------------------------------
@@ -219,7 +229,7 @@ export function describe(shape: AnyShape<Dimension>): ShapeDescription {
     edgeCount: getEdges(shape).length,
     wireCount: getWires(shape).length,
     vertexCount: getVertices(shape).length,
-    valid: getKernel().isValid(shape.wrapped),
+    valid: getCachedIsValid(shape),
     bounds: getBounds(shape),
   };
 }

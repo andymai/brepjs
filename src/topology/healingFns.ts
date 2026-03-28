@@ -11,6 +11,7 @@ import { castShape, isSolid, isFace, isWire } from '@/core/shapeTypes.js';
 import { type Result, ok, err, isOk } from '@/core/result.js';
 import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
 import { getWires, getFaces } from './shapeFns.js';
+import { getCachedIsValid } from './topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -20,7 +21,7 @@ import { getWires, getFaces } from './shapeFns.js';
  * Check if a shape is valid according to kernel geometry and topology checks.
  */
 export function isValid(shape: AnyShape<Dimension>): boolean {
-  return getKernel().isValid(shape.wrapped);
+  return getCachedIsValid(shape);
 }
 
 // ---------------------------------------------------------------------------
