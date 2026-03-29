@@ -504,14 +504,3 @@ export function splitCurve2d(curve: Curve2DHandle, params: number[]): Result<Cur
     'Failed to split 2D curve'
   );
 }
-
-/** Reverse the orientation of a 2D curve in place. */
-export function reverseCurve2d(curve: Curve2DHandle): Result<void> {
-  return kernelCallRaw(
-    () => {
-      getKernel2D().reverseCurve2d(curve.raw);
-    },
-    CURVE2D_TRANSFORM_FAILED,
-    'Failed to reverse 2D curve'
-  );
-}

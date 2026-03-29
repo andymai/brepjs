@@ -88,7 +88,6 @@ export {
   trimCurve2d,
   copyCurve2d,
   splitCurve2d,
-  reverseCurve2d,
   type Ellipse2dOptions,
   type BSpline2dOptions,
 } from './2d/curve2dGeometryFns.js';

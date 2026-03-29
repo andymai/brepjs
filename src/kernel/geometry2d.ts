@@ -573,7 +573,7 @@ function intersectConcentricArcs(c1: Curve2dObj, c2: Curve2dObj, tol: number): [
 
   const deduped: [number, number][] = [];
   for (const p of pts) {
-    if (!deduped.some(([ddx, ddy]) => (ddx - p[0]) ** 2 + (ddy - p[1]) ** 2 < tol * tol)) {
+    if (!deduped.some(([ddx, ddy]) => (ddx - p[0]) ** 2 + (ddy - p[1]) ** 2 < tol * tol * 100)) {
       deduped.push(p);
     }
   }
