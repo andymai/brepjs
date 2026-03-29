@@ -3761,3 +3761,5 @@ function c2d(handle: Curve2dHandle): Curve2dObj {
 function c2dWrap(obj: Curve2dObj): Curve2dHandle {
   return obj as unknown as Curve2dHandle; // brepjs-patterns-disable: no-double-cast
 }
+
+export type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';

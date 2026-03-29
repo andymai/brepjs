@@ -242,11 +242,9 @@ export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2d
 export { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 export type { BrepkitHandle } from './brepkit/helpers.js';
 
-// OcctWasmAdapter is not re-exported here to avoid pulling ~16KB into the
-// main bundle. Users who need it can import directly:
-//   import { OcctWasmAdapter } from 'brepjs/kernel/occtWasm/occtWasmAdapter'
-// The init() fallback uses a dynamic import() to keep it tree-shaken.
+export { OcctWasmAdapter } from './occtWasm/occtWasmAdapter.js';
 export type { OcctWasmHandle } from './occtWasm/occtWasmTypes.js';
+export type { OcctWasmModule, OcctKernelWasm } from './occtWasm/occtWasmTypes.js';
 
 export { getPerformanceStats, resetPerformanceStats, perfTimer } from './perfStats.js';
 export type { PerfCategory, PerformanceStats } from './perfStats.js';

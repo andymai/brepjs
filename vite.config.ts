@@ -32,11 +32,15 @@ export default defineConfig({
         io: resolve(__dirname, 'src/io.ts'),
         worker: resolve(__dirname, 'src/worker.ts'),
         shapeRef: resolve(__dirname, 'src/shapeRef.ts'),
+        'kernel/occtWasm/occtWasmAdapter': resolve(
+          __dirname,
+          'src/kernel/occtWasm/occtWasmAdapter.ts'
+        ),
       },
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['brepjs-opencascade', 'opentype.js'],
+      external: ['brepjs-opencascade', 'occt-wasm', 'opentype.js'],
     },
   },
 });
