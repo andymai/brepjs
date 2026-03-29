@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.6](https://github.com/andymai/brepjs/compare/brepjs-v15.1.5...brepjs-v15.1.6) (2026-03-29)
+
+
+### Bug Fixes
+
+* **2d:** filter degenerate curves in boolean pipeline; widen occt-wasm peer dep ([#721](https://github.com/andymai/brepjs/issues/721)) ([909d1eb](https://github.com/andymai/brepjs/commit/909d1eb8419dfd01a5fc907d23fe695a6e8b748a)), closes [#719](https://github.com/andymai/brepjs/issues/719) [#720](https://github.com/andymai/brepjs/issues/720)
+
 ## [15.1.5](https://github.com/andymai/brepjs/compare/brepjs-v15.1.4...brepjs-v15.1.5) (2026-03-28)
 
 
