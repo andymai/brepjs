@@ -466,3 +466,52 @@ export function extractCurve2dFromEdge(edge: Edge, face: Face): Result<Curve2DHa
     'Failed to extract 2D curve from edge'
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Curve modification
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Trim a 2D curve to a sub-range of its parameter domain. */
+export function trimCurve2d(
+  curve: Curve2DHandle,
+  start: number,
+  end: number
+): Result<Curve2DHandle> {
+  return curveCall(
+    () => getKernel2D().trimCurve2d(curve.raw, start, end),
+    CURVE2D_CONSTRUCTION_FAILED,
+    'Failed to trim 2D curve'
+  );
+}
+
+/** Create an independent deep copy of a 2D curve. */
+export function copyCurve2d(curve: Curve2DHandle): Result<Curve2DHandle> {
+  return curveCall(
+    () => getKernel2D().copyCurve2d(curve.raw),
+    CURVE2D_CONSTRUCTION_FAILED,
+    'Failed to copy 2D curve'
+  );
+}
+
+/** Split a 2D curve at the given parameter values. */
+export function splitCurve2d(curve: Curve2DHandle, params: number[]): Result<Curve2DHandle[]> {
+  return kernelCallRaw(
+    () => {
+      const handles = getKernel2D().splitCurve2d(curve.raw, params);
+      return handles.map((h: unknown) => wrapRawHandle(h));
+    },
+    CURVE2D_CONSTRUCTION_FAILED,
+    'Failed to split 2D curve'
+  );
+}
+
+/** Reverse the orientation of a 2D curve in place. */
+export function reverseCurve2d(curve: Curve2DHandle): Result<void> {
+  return kernelCallRaw(
+    () => {
+      getKernel2D().reverseCurve2d(curve.raw);
+    },
+    CURVE2D_TRANSFORM_FAILED,
+    'Failed to reverse 2D curve'
+  );
+}

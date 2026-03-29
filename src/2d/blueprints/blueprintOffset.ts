@@ -414,11 +414,27 @@ export function offsetBlueprint(
   });
 
   // We remove all the segments that are closer to the original curve than the offset
+  const originalIndex = new Flatbush(blueprint.curves.length);
+  for (const c of blueprint.curves) {
+    const [[xMin, yMin], [xMax, yMax]] = c.boundingBox.bounds;
+    originalIndex.add(xMin, yMin, xMax, yMax);
+  }
+  originalIndex.finish();
+
+  const absOffset = Math.abs(offset);
   const prunedCurves = splitCurves.filter((curve) => {
-    const closeCurve = blueprint.curves.find(
-      (c) => c.distanceFrom(curve) < Math.abs(offset) - PRECISION_OFFSET
+    const [[xMin, yMin], [xMax, yMax]] = curve.boundingBox.bounds;
+    const candidates = originalIndex.search(
+      xMin - absOffset,
+      yMin - absOffset,
+      xMax + absOffset,
+      yMax + absOffset
     );
-    return !closeCurve;
+    return !candidates.some((idx) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spatial index returns valid indices
+      const c = blueprint.curves[idx]!;
+      return c.distanceFrom(curve) < absOffset - PRECISION_OFFSET;
+    });
   });
 
   if (!prunedCurves.length) return null;

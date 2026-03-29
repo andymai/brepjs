@@ -156,30 +156,35 @@ export function curvesAsEdgesOnFace(
 
   if (scale === 'bounds') {
     transformation = kernel.createIdentityGTrsf2d();
-    kernel.setGTrsf2dTranslationPart(transformation, 0, 0); // ensure identity state
+    try {
+      kernel.setGTrsf2dTranslationPart(transformation, 0, 0); // ensure identity state
 
-    // Apply u-axis affinity
-    const uAffinity = kernel.createAffinityGTrsf2d(0, 0, 0, 1, bounds.uMax - bounds.uMin);
-    kernel.multiplyGTrsf2d(transformation, uAffinity);
-    uAffinity.delete();
+      // Apply u-axis affinity
+      const uAffinity = kernel.createAffinityGTrsf2d(0, 0, 0, 1, bounds.uMax - bounds.uMin);
+      kernel.multiplyGTrsf2d(transformation, uAffinity);
+      uAffinity.delete();
 
-    if (bounds.uMin !== 0) {
-      const trans = kernel.createIdentityGTrsf2d();
-      kernel.setGTrsf2dTranslationPart(trans, -bounds.uMin, 0);
-      kernel.multiplyGTrsf2d(transformation, trans);
-      trans.delete();
-    }
+      if (bounds.uMin !== 0) {
+        const trans = kernel.createIdentityGTrsf2d();
+        kernel.setGTrsf2dTranslationPart(trans, -bounds.uMin, 0);
+        kernel.multiplyGTrsf2d(transformation, trans);
+        trans.delete();
+      }
 
-    // Apply v-axis affinity
-    const vAffinity = kernel.createAffinityGTrsf2d(0, 0, 1, 0, bounds.vMax - bounds.vMin);
-    kernel.multiplyGTrsf2d(transformation, vAffinity);
-    vAffinity.delete();
+      // Apply v-axis affinity
+      const vAffinity = kernel.createAffinityGTrsf2d(0, 0, 1, 0, bounds.vMax - bounds.vMin);
+      kernel.multiplyGTrsf2d(transformation, vAffinity);
+      vAffinity.delete();
 
-    if (bounds.vMin !== 0) {
-      const trans = kernel.createIdentityGTrsf2d();
-      kernel.setGTrsf2dTranslationPart(trans, 0, -bounds.vMin);
-      kernel.multiplyGTrsf2d(transformation, trans);
-      trans.delete();
+      if (bounds.vMin !== 0) {
+        const trans = kernel.createIdentityGTrsf2d();
+        kernel.setGTrsf2dTranslationPart(trans, 0, -bounds.vMin);
+        kernel.multiplyGTrsf2d(transformation, trans);
+        trans.delete();
+      }
+    } catch (e) {
+      transformation.delete();
+      throw e;
     }
   }
 

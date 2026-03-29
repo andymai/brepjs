@@ -5,7 +5,15 @@
  */
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { draw, drawRectangle, drawRoundedRectangle } from '@/index.js';
+import {
+  draw,
+  drawRectangle,
+  drawRoundedRectangle,
+  fuseBlueprints,
+  cutBlueprints,
+  intersectBlueprints,
+} from '@/index.js';
+import Blueprint from '@/2d/blueprints/blueprint.js';
 import type { Drawing } from '@/sketching/draw.js';
 
 beforeAll(async () => {
@@ -286,5 +294,79 @@ describe('issue #719: degenerate curves in chained boolean pipeline', () => {
     const [[xMin, yMin], [xMax, yMax]] = step2.boundingBox.bounds;
     expect(xMax - xMin).toBeCloseTo(2.6, 0);
     expect(yMax - yMin).toBeGreaterThan(3);
+  });
+});
+
+describe('geometric correctness', () => {
+  it('fuseBlueprints produces correct bounding box for overlapping rectangles', () => {
+    const r1 = drawRectangle(10, 10);
+    const r2 = drawRectangle(10, 10).translate(5, 0);
+    const result = fuseBlueprints(r1.blueprint, r2.blueprint);
+    expect(result).toBeInstanceOf(Blueprint);
+    if (result instanceof Blueprint) {
+      const bb = result.boundingBox;
+      expect(bb.width).toBeCloseTo(15, 1);
+      expect(bb.height).toBeCloseTo(10, 1);
+    }
+  });
+
+  it('cutBlueprints produces correct bounding box', () => {
+    const r1 = drawRectangle(10, 10);
+    const r2 = drawRectangle(10, 10).translate(5, 0);
+    const result = cutBlueprints(r1.blueprint, r2.blueprint);
+    expect(result).toBeInstanceOf(Blueprint);
+    if (result instanceof Blueprint) {
+      const bb = result.boundingBox;
+      expect(bb.width).toBeCloseTo(5, 0);
+      expect(bb.height).toBeCloseTo(10, 1);
+    }
+  });
+
+  it('intersectBlueprints produces correct bounding box', () => {
+    const r1 = drawRectangle(10, 10);
+    const r2 = drawRectangle(10, 10).translate(5, 0);
+    const result = intersectBlueprints(r1.blueprint, r2.blueprint);
+    expect(result).toBeInstanceOf(Blueprint);
+    if (result instanceof Blueprint) {
+      const bb = result.boundingBox;
+      expect(bb.width).toBeCloseTo(5, 0);
+      expect(bb.height).toBeCloseTo(10, 1);
+    }
+  });
+
+  it('fuse of identical shapes returns a clone', () => {
+    const r = drawRectangle(10, 10);
+    const result = fuseBlueprints(r.blueprint, r.blueprint);
+    expect(result).toBeInstanceOf(Blueprint);
+    if (result instanceof Blueprint) {
+      const bb = result.boundingBox;
+      expect(bb.width).toBeCloseTo(10, 1);
+      expect(bb.height).toBeCloseTo(10, 1);
+    }
+  });
+
+  it('cut of identical shapes returns null', () => {
+    const r = drawRectangle(10, 10);
+    const result = cutBlueprints(r.blueprint, r.blueprint);
+    expect(result).toBeNull();
+  });
+
+  it('fuse of fully contained shape returns outer', () => {
+    const outer = drawRectangle(10, 10);
+    const inner = drawRectangle(4, 4);
+    const result = fuseBlueprints(outer.blueprint, inner.blueprint);
+    expect(result).toBeInstanceOf(Blueprint);
+    if (result instanceof Blueprint) {
+      const bb = result.boundingBox;
+      expect(bb.width).toBeCloseTo(10, 1);
+      expect(bb.height).toBeCloseTo(10, 1);
+    }
+  });
+
+  it('cut of fully contained shape creates compound', () => {
+    const outer = drawRectangle(10, 10);
+    const inner = drawRectangle(4, 4);
+    const result = cutBlueprints(outer.blueprint, inner.blueprint);
+    expect(result).not.toBeNull();
   });
 });

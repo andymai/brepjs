@@ -540,6 +540,46 @@ function intersectLineCircle(
   return results;
 }
 
+function intersectConcentricArcs(c1: Curve2dObj, c2: Curve2dObj, tol: number): [number, number][] {
+  const b1 = curveBounds(c1);
+  const b2 = curveBounds(c2);
+
+  const isFullCircle1 = Math.abs(b1.last - b1.first - 2 * Math.PI) < 1e-10;
+  const isFullCircle2 = Math.abs(b2.last - b2.first - 2 * Math.PI) < 1e-10;
+
+  if (isFullCircle1 && isFullCircle2) return [];
+  if (isFullCircle1) {
+    return [evaluateCurve2d(c2, b2.first), evaluateCurve2d(c2, b2.last)];
+  }
+  if (isFullCircle2) {
+    return [evaluateCurve2d(c1, b1.first), evaluateCurve2d(c1, b1.last)];
+  }
+
+  const pts: [number, number][] = [];
+  const checks: [Curve2dObj, [number, number]][] = [
+    [c2, evaluateCurve2d(c1, b1.first)],
+    [c2, evaluateCurve2d(c1, b1.last)],
+    [c1, evaluateCurve2d(c2, b2.first)],
+    [c1, evaluateCurve2d(c2, b2.last)],
+  ];
+
+  for (const [target, pt] of checks) {
+    const t = refineParam(target, pt[0], pt[1]);
+    if (t !== null) {
+      const [ex, ey] = evaluateCurve2d(target, t);
+      if ((ex - pt[0]) ** 2 + (ey - pt[1]) ** 2 < tol * tol * 100) pts.push(pt);
+    }
+  }
+
+  const deduped: [number, number][] = [];
+  for (const p of pts) {
+    if (!deduped.some(([ddx, ddy]) => (ddx - p[0]) ** 2 + (ddy - p[1]) ** 2 < tol * tol)) {
+      deduped.push(p);
+    }
+  }
+  return deduped;
+}
+
 function intersectCircleCircle(
   c1: Curve2dObj,
   circ1: Circle2d,
@@ -552,7 +592,10 @@ function intersectCircleCircle(
   const d = Math.sqrt(dx * dx + dy * dy);
   if (d > circ1.radius + circ2.radius + tol) return [];
   if (d < Math.abs(circ1.radius - circ2.radius) - tol) return [];
-  if (d < 1e-14) return []; // concentric
+  if (d < 1e-14) {
+    if (Math.abs(circ1.radius - circ2.radius) > tol) return [];
+    return intersectConcentricArcs(c1, c2, tol);
+  }
 
   const a = (circ1.radius * circ1.radius - circ2.radius * circ2.radius + d * d) / (2 * d);
   const h2 = circ1.radius * circ1.radius - a * a;

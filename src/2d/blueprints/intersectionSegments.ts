@@ -1,4 +1,5 @@
-import { bug } from '@/core/errors.js';
+import Flatbush from 'flatbush';
+
 import { unwrap } from '@/core/result.js';
 import zip from '@/utils/zip.js';
 import type { Point2D, Curve2D } from '@/2d/lib/index.js';
@@ -145,21 +146,33 @@ function findAllIntersections(first: Blueprint, second: Blueprint): CurveInterse
   const firstCurvePoints: Point2D[][] = first.curves.map(() => []);
   const secondCurvePoints: Point2D[][] = second.curves.map(() => []);
 
-  first.curves.forEach((thisCurve, firstIndex) => {
-    second.curves.forEach((otherCurve, secondIndex) => {
+  const secondIndex = new Flatbush(second.curves.length);
+  for (const curve of second.curves) {
+    const [[xMin, yMin], [xMax, yMax]] = curve.boundingBox.bounds;
+    secondIndex.add(xMin, yMin, xMax, yMax);
+  }
+  secondIndex.finish();
+
+  first.curves.forEach((thisCurve, firstIdx) => {
+    const [[xMin, yMin], [xMax, yMax]] = thisCurve.boundingBox.bounds;
+    const candidates = secondIndex.search(xMin, yMin, xMax, yMax);
+
+    for (const secondIdx of candidates) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spatial index returns valid indices
+      const otherCurve = second.curves[secondIdx]!;
       const { intersections, commonSegments, commonSegmentsPoints } = unwrap(
         intersectCurves(thisCurve, otherCurve, PRECISION_INTERSECTION / 100)
       );
 
       allIntersections.push(...intersections);
-      firstCurvePoints[firstIndex]?.push(...intersections);
-      secondCurvePoints[secondIndex]?.push(...intersections);
+      firstCurvePoints[firstIdx]?.push(...intersections);
+      secondCurvePoints[secondIdx]?.push(...intersections);
 
       allCommonSegments.push(...commonSegments);
       allIntersections.push(...commonSegmentsPoints);
-      firstCurvePoints[firstIndex]?.push(...commonSegmentsPoints);
-      secondCurvePoints[secondIndex]?.push(...commonSegmentsPoints);
-    });
+      firstCurvePoints[firstIdx]?.push(...commonSegmentsPoints);
+      secondCurvePoints[secondIdx]?.push(...commonSegmentsPoints);
+    }
   });
 
   return {
@@ -239,7 +252,8 @@ export function blueprintsIntersectionSegments(
   const commonSegmentsPoints = allCommonSegments.map((c) => [c.firstPoint, c.lastPoint]);
 
   // Remove intersection points that only touch but don't cross
-  const allIntersections = removeNonCrossingPoints(rawIntersections, firstCurveSegments, second);
+  const filteredByFirst = removeNonCrossingPoints(rawIntersections, firstCurveSegments, second);
+  const allIntersections = removeNonCrossingPoints(filteredByFirst, secondCurveSegments, first);
 
   if (allIntersections.length === 0 && allCommonSegments.length === 0) return null;
 
@@ -277,19 +291,32 @@ export function blueprintsIntersectionSegments(
     }
   }
 
-  // Pair up segments and mark common ones
-  return zip([firstIntersectedSegments, secondIntersectedSegments]).map(
-    ([first, second]): IntersectionSegment => {
-      if (first === undefined || second === undefined) {
-        bug('blueprintsIntersectionSegments', 'Mismatched segment counts between blueprints');
-      }
-      const currentStart = startOfSegment(first);
-      const currentEnd = endOfSegment(first);
+  // Pair up segments and mark common ones.
+  // When segment counts differ (e.g. tangent intersections splitting
+  // asymmetrically), pad the shorter list to avoid silent truncation.
+  const maxLen = Math.max(firstIntersectedSegments.length, secondIntersectedSegments.length);
+  const result: IntersectionSegment[] = [];
 
-      if (isCommonSegmentMatch(commonSegmentsPoints, currentStart, currentEnd)) {
-        return [first, 'same'];
-      }
-      return [first, second];
+  for (let i = 0; i < maxLen; i++) {
+    const firstSeg2 = firstIntersectedSegments[i];
+    const secondSeg2 = secondIntersectedSegments[i];
+
+    if (firstSeg2 === undefined || secondSeg2 === undefined) {
+      const available = firstSeg2 ?? secondSeg2;
+      if (available === undefined) continue;
+      result.push([available, available]);
+      continue;
     }
-  );
+
+    const currentStart = startOfSegment(firstSeg2);
+    const currentEnd = endOfSegment(firstSeg2);
+
+    if (isCommonSegmentMatch(commonSegmentsPoints, currentStart, currentEnd)) {
+      result.push([firstSeg2, 'same']);
+    } else {
+      result.push([firstSeg2, secondSeg2]);
+    }
+  }
+
+  return result;
 }
