@@ -157,15 +157,20 @@ export function fuse(
   );
   const { shape: resultShape, evolution, diagnostics } = kernelResult;
   if (diagnostics.hasErrors) {
-    getKernel().dispose(resultShape);
-    return err(
-      kernelError(
-        BrepErrorCode.BOOLEAN_HAS_ERRORS,
-        'Boolean operation reported internal errors. The result may be invalid.',
-        undefined,
-        { diagnostics },
-        'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
-      )
+    if (getKernel().isNull(resultShape)) {
+      return err(
+        kernelError(
+          BrepErrorCode.BOOLEAN_HAS_ERRORS,
+          'Boolean operation reported internal errors and produced no result.',
+          undefined,
+          { diagnostics },
+          'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
+        )
+      );
+    }
+    console.warn(
+      'brepjs: fuse reported OCCT warnings/errors but produced a shape. Continuing with result.',
+      diagnostics
     );
   }
   const fuseResult = castToShape3D(
@@ -241,15 +246,20 @@ export function cut(
   );
   const { shape: resultShape, evolution, diagnostics } = kernelResult;
   if (diagnostics.hasErrors) {
-    getKernel().dispose(resultShape);
-    return err(
-      kernelError(
-        BrepErrorCode.BOOLEAN_HAS_ERRORS,
-        'Boolean operation reported internal errors. The result may be invalid.',
-        undefined,
-        { diagnostics },
-        'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
-      )
+    if (getKernel().isNull(resultShape)) {
+      return err(
+        kernelError(
+          BrepErrorCode.BOOLEAN_HAS_ERRORS,
+          'Boolean operation reported internal errors and produced no result.',
+          undefined,
+          { diagnostics },
+          'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
+        )
+      );
+    }
+    console.warn(
+      'brepjs: cut reported OCCT warnings/errors but produced a shape. Continuing with result.',
+      diagnostics
     );
   }
   const cutResult = castToShape3D(
@@ -315,15 +325,20 @@ export function intersect(
   );
   const { shape: resultShape, evolution, diagnostics } = kernelResult;
   if (diagnostics.hasErrors) {
-    getKernel().dispose(resultShape);
-    return err(
-      kernelError(
-        BrepErrorCode.BOOLEAN_HAS_ERRORS,
-        'Boolean operation reported internal errors. The result may be invalid.',
-        undefined,
-        { diagnostics },
-        'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
-      )
+    if (getKernel().isNull(resultShape)) {
+      return err(
+        kernelError(
+          BrepErrorCode.BOOLEAN_HAS_ERRORS,
+          'Boolean operation reported internal errors and produced no result.',
+          undefined,
+          { diagnostics },
+          'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
+        )
+      );
+    }
+    console.warn(
+      'brepjs: intersect reported OCCT warnings/errors but produced a shape. Continuing with result.',
+      diagnostics
     );
   }
   const intResult = castToShape3D(
