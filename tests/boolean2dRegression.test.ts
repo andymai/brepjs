@@ -189,39 +189,6 @@ describe('issue #712: rotateToStartAtSegment crash', () => {
     expect(yMax - yMin).toBeGreaterThan(0);
   });
 
-  it('cuts intersect result with rectangle — gridfinity lip pipeline step 2 (#719)', () => {
-    // Exact geometry from gridfinity-layout-tool boxBuilder.ts
-    // Step 1: intersect lip profile with rounded rect (fixed by #717)
-    // Step 2: cut result with a rectangle → crashed with
-    // "removeNonCrossingPoints: Odd number of segments at intersection point"
-    const LIP_SMALL_TAPER = 0.7;
-    const LIP_VERTICAL_PART = 1.8;
-    const LIP_BIG_TAPER = 1.9;
-    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER; // 2.6
-    const LIP_EXTENSION = 1.2;
-
-    const basicShape = draw([-LIP_TAPER_WIDTH, 0])
-      .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
-      .vLine(LIP_VERTICAL_PART)
-      .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
-      .vLineTo(-(LIP_TAPER_WIDTH + LIP_EXTENSION))
-      .lineTo([-LIP_TAPER_WIDTH, -LIP_EXTENSION])
-      .close();
-
-    // Step 1: intersect
-    const step1 = basicShape.intersect(drawRoundedRectangle(10, 10).translate(-5, 0));
-    expect(step1).toBeDefined();
-
-    // Step 2: cut — this is the crash from #719
-    const step2 = step1.cut(drawRectangle(LIP_EXTENSION, 10).translate(-LIP_EXTENSION / 2, -5));
-    expect(step2).toBeDefined();
-
-    // Verify geometry is reasonable
-    const [[xMin, yMin], [xMax, yMax]] = step2.boundingBox.bounds;
-    expect(xMax - xMin).toBeGreaterThan(0);
-    expect(yMax - yMin).toBeGreaterThan(0);
-  });
-
   it('cuts with shared corner edges (cut uses same code path)', () => {
     // Two rectangles sharing edges at a corner — cut must not crash
     const a = drawRectangle(10, 10);
@@ -283,5 +250,41 @@ describe('audit fixes: cut2D correctness', () => {
     expect(cutFused).toBeDefined();
     expectBounds(cutBoth, 20, 10);
     expectBounds(cutFused, 20, 10);
+  });
+});
+
+describe('issue #719: degenerate curves in chained boolean pipeline', () => {
+  it('cuts intersect result with rectangle — gridfinity lip pipeline', () => {
+    // Exact geometry from gridfinity-layout-tool boxBuilder.ts
+    // Step 1: intersect lip profile with rounded rect (fixed by #717)
+    // Step 2: cut result with a rectangle → crashed with
+    // "removeNonCrossingPoints: Odd number of segments at intersection point"
+    const LIP_SMALL_TAPER = 0.7;
+    const LIP_VERTICAL_PART = 1.8;
+    const LIP_BIG_TAPER = 1.9;
+    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER; // 2.6
+    const LIP_EXTENSION = 1.2;
+
+    const basicShape = draw([-LIP_TAPER_WIDTH, 0])
+      .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
+      .vLine(LIP_VERTICAL_PART)
+      .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
+      .vLineTo(-(LIP_TAPER_WIDTH + LIP_EXTENSION))
+      .lineTo([-LIP_TAPER_WIDTH, -LIP_EXTENSION])
+      .close();
+
+    // Step 1: intersect
+    const step1 = basicShape.intersect(drawRoundedRectangle(10, 10).translate(-5, 0));
+    expect(step1).toBeDefined();
+
+    // Step 2: cut — this is the crash from #719
+    const step2 = step1.cut(drawRectangle(LIP_EXTENSION, 10).translate(-LIP_EXTENSION / 2, -5));
+    expect(step2).toBeDefined();
+
+    // Verify the result has sensible dimensions: the lip profile is ~2.6mm
+    // wide; height depends on intersection/cut geometry.
+    const [[xMin, yMin], [xMax, yMax]] = step2.boundingBox.bounds;
+    expect(xMax - xMin).toBeCloseTo(2.6, 0);
+    expect(yMax - yMin).toBeGreaterThan(3);
   });
 });
