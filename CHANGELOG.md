@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.9](https://github.com/andymai/brepjs/compare/brepjs-v15.1.8...brepjs-v15.1.9) (2026-03-29)
+
+
+### Bug Fixes
+
+* **2d:** correctness, performance, and robustness fixes for 2D geometry ([#734](https://github.com/andymai/brepjs/issues/734)) ([18e7866](https://github.com/andymai/brepjs/commit/18e7866b46ecddca9b8210facb0d627f796a8519))
+
 ## [15.1.8](https://github.com/andymai/brepjs/compare/brepjs-v15.1.7...brepjs-v15.1.8) (2026-03-29)
 
 
