@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.7](https://github.com/andymai/brepjs/compare/brepjs-v15.1.6...brepjs-v15.1.7) (2026-03-29)
+
+
+### Bug Fixes
+
+* **boolean:** accept OCCT boolean results with warnings ([#725](https://github.com/andymai/brepjs/issues/725)) ([f365e2c](https://github.com/andymai/brepjs/commit/f365e2c2991127cc08b6e10ca5b14188b2d77147)), closes [#724](https://github.com/andymai/brepjs/issues/724)
+
 ## [15.1.6](https://github.com/andymai/brepjs/compare/brepjs-v15.1.5...brepjs-v15.1.6) (2026-03-29)
 
 
