@@ -112,9 +112,13 @@ function joinMiter(
     return;
   }
 
+  const midpoint: Point2D = [
+    (previousLastPoint[0] + firstPoint[0]) / 2,
+    (previousLastPoint[1] + firstPoint[1]) / 2,
+  ];
+  const miterDist = squareDistance2d(midpoint, offsetIntersectionPoint);
   const endpointDist = squareDistance2d(previousLastPoint, firstPoint);
-  const miterDist = squareDistance2d(previousCurve.original.lastPoint, offsetIntersectionPoint);
-  if (miterDist > 16 * endpointDist) {
+  if (endpointDist < 1e-18 || miterDist > 16 * endpointDist) {
     const bevelJoiner = make2dSegmentCurve(previousLastPoint, firstPoint);
     appendCurve(previousCurve);
     appendCurve(bevelJoiner);

@@ -268,6 +268,7 @@ export default class Blueprint implements DrawingInterface {
 
     kernel.buildCurves3d(wire.wrapped);
     const fixedWire = kernel.fixWireOnFace(wire.wrapped, face.wrapped, 1e-9);
+    wire.delete();
 
     return { wire: createWire(fixedWire), baseFace: face };
   }
@@ -396,16 +397,15 @@ export default class Blueprint implements DrawingInterface {
       const onCurve = this.curves.find((c) => c.isOnCurve(point));
       if (onCurve) return false;
 
-      const seen = new Set<string>();
+      const seen: Point2D[] = [];
       let crossCounts = 0;
 
       this.curves.forEach((c) => {
         if (c.boundingBox.isOut(segment.boundingBox)) return;
         const result = kernel.intersectCurves2d(segment.wrapped, c.wrapped, 1e-9);
         for (const pt of result.points) {
-          const key = `${pt[0].toFixed(9)},${pt[1].toFixed(9)}`;
-          if (!seen.has(key)) {
-            seen.add(key);
+          if (!seen.some((s) => samePoint(s, pt, 1e-9))) {
+            seen.push(pt);
             crossCounts++;
           }
         }
