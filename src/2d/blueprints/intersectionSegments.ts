@@ -89,14 +89,19 @@ function removeNonCrossingPoints(
     const touching = segmentedCurve.filter(
       (s) => samePoint(s.firstPoint, intersection) || samePoint(s.lastPoint, intersection)
     );
-    if (touching.length % 2) {
-      bug(
-        'removeNonCrossingPoints',
-        'Odd number of segments at intersection point (expected even)'
-      );
-    }
+    // When odd, exclude degenerate curves (both endpoints match the
+    // intersection) that survived the upstream filter — they contribute a
+    // phantom +1 without carrying meaningful inside/outside information.
+    const effectiveTouching =
+      touching.length % 2
+        ? touching.filter(
+            (s) => !(samePoint(s.firstPoint, intersection) && samePoint(s.lastPoint, intersection))
+          )
+        : touching;
 
-    const insideFlags = touching.map((segment) =>
+    if (effectiveTouching.length === 0) return false;
+
+    const insideFlags = effectiveTouching.map((segment) =>
       blueprintToCheck.isInside(curveMidPoint(segment))
     );
 
@@ -217,6 +222,14 @@ export function blueprintsIntersectionSegments(
   // Split curves at intersection points
   let firstCurveSegments = splitCurvesAtIntersections(first.curves, firstCurvePoints);
   let secondCurveSegments = splitCurvesAtIntersections(second.curves, secondCurvePoints);
+
+  // Remove degenerate (near-zero-length) curves whose endpoints are within
+  // PRECISION_INTERSECTION of each other. These arise when the blueprint is
+  // the result of a prior boolean operation that left very short curves at
+  // corner junctions. They cause phantom segment breaks in createSegmentOnPoints
+  // and odd touching counts in removeNonCrossingPoints.
+  firstCurveSegments = firstCurveSegments.filter((c) => !samePoint(c.firstPoint, c.lastPoint));
+  secondCurveSegments = secondCurveSegments.filter((c) => !samePoint(c.firstPoint, c.lastPoint));
 
   const commonSegmentsPoints = allCommonSegments.map((c) => [c.firstPoint, c.lastPoint]);
 
