@@ -267,9 +267,9 @@ export default class Blueprint implements DrawingInterface {
     const wire = assembleWire(edges);
 
     kernel.buildCurves3d(wire.wrapped);
-    kernel.fixWireOnFace(wire.wrapped, face.wrapped, 1e-9);
+    const fixedWire = kernel.fixWireOnFace(wire.wrapped, face.wrapped, 1e-9);
 
-    return { wire, baseFace: face };
+    return { wire: createWire(fixedWire), baseFace: face };
   }
 
   /**
@@ -391,18 +391,33 @@ export default class Blueprint implements DrawingInterface {
 
     const kernel = getKernel();
     const segment = make2dSegmentCurve(point, this.boundingBox.outsidePoint());
-    let crossCounts = 0;
 
-    const onCurve = this.curves.find((c) => c.isOnCurve(point));
-    if (onCurve) return false;
+    try {
+      const onCurve = this.curves.find((c) => c.isOnCurve(point));
+      if (onCurve) return false;
 
-    this.curves.forEach((c) => {
-      if (c.boundingBox.isOut(segment.boundingBox)) return;
-      const result = kernel.intersectCurves2d(segment.wrapped, c.wrapped, 1e-9);
-      crossCounts += result.points.length;
-    });
+      const seen = new Set<string>();
+      let crossCounts = 0;
 
-    return !!(crossCounts % 2);
+      this.curves.forEach((c) => {
+        if (c.boundingBox.isOut(segment.boundingBox)) return;
+        const result = kernel.intersectCurves2d(segment.wrapped, c.wrapped, 1e-9);
+        for (const pt of result.points) {
+          const key = `${pt[0].toFixed(9)},${pt[1].toFixed(9)}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            crossCounts++;
+          }
+        }
+        for (const seg of result.segments) {
+          seg.delete();
+        }
+      });
+
+      return !!(crossCounts % 2);
+    } finally {
+      segment.delete();
+    }
   }
 
   /** Check whether the first and last points coincide (the profile is closed). */

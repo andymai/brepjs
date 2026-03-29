@@ -155,9 +155,6 @@ export function curvesAsEdgesOnFace(
   }
 
   if (scale === 'bounds') {
-    const uAxis = kernel.createAxis2d(0, 0, 0, 1);
-    const vAxis = kernel.createAxis2d(0, 0, 1, 0);
-
     transformation = kernel.createIdentityGTrsf2d();
     kernel.setGTrsf2dTranslationPart(transformation, 0, 0); // ensure identity state
 
@@ -168,7 +165,7 @@ export function curvesAsEdgesOnFace(
 
     if (bounds.uMin !== 0) {
       const trans = kernel.createIdentityGTrsf2d();
-      kernel.setGTrsf2dTranslationPart(trans, 0, -bounds.uMin);
+      kernel.setGTrsf2dTranslationPart(trans, -bounds.uMin, 0);
       kernel.multiplyGTrsf2d(transformation, trans);
       trans.delete();
     }
@@ -184,9 +181,6 @@ export function curvesAsEdgesOnFace(
       kernel.multiplyGTrsf2d(transformation, trans);
       trans.delete();
     }
-
-    uAxis.delete();
-    vAxis.delete();
   }
 
   const modifiedCurves = transformCurves(curves, transformation);

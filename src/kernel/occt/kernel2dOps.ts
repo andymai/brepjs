@@ -979,11 +979,17 @@ export function liftCurve2dToPlane(
     // Non-circle trimmed: fall through to generic sampling
   }
 
-  // Bezier/BSpline: lift control points directly
+  // Bezier/BSpline: sample along curve and interpolate (control-point
+  // lifting would interpolate through interior poles, distorting the shape)
   if (c.__bk2d === 'bezier' || c.__bk2d === 'bspline') {
-    const pts3d = c.poles.map(([u, v]) => lift(u, v));
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
-    if (pts3d.length === 2) return makeLineEdge3d(oc, pts3d[0]!, pts3d[1]!);
+    const curveBounds = g2d.curveBounds(c);
+    const nSamples = Math.max(20, c.poles.length * 8);
+    const pts3d: [number, number, number][] = [];
+    for (let i = 0; i <= nSamples; i++) {
+      const t = curveBounds.first + ((curveBounds.last - curveBounds.first) * i) / nSamples;
+      const [u, v] = g2d.evaluateCurve2d(c, t);
+      pts3d.push(lift(u, v));
+    }
     return interpolatePoints3d(oc, pts3d);
   }
 

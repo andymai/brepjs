@@ -78,12 +78,16 @@ export const make2dOffset = (
 
     const circleHandle = kernel.makeCircle2d(cx, cy, newRadius, isDirect);
     const fullCircle = new Curve2D(circleHandle);
-    const trimmedHandle = kernel.trimCurve2d(
-      fullCircle.wrapped,
-      curve.firstParameter,
-      curve.lastParameter
-    );
-    fullCircle.delete();
+    let trimmedHandle;
+    try {
+      trimmedHandle = kernel.trimCurve2d(
+        fullCircle.wrapped,
+        curve.firstParameter,
+        curve.lastParameter
+      );
+    } finally {
+      fullCircle.delete();
+    }
 
     return new Curve2D(trimmedHandle);
   }
@@ -99,6 +103,7 @@ export const make2dOffset = (
   const offsetHandle = kernel.offsetCurve2d(curve.wrapped, offset);
   const offsetCurve = new Curve2D(offsetHandle);
   const approximation = approximateAsBSpline(offsetCurve);
+  offsetCurve.delete();
 
   // Self-intersecting single-curve offsets are collapsed to a straight-line
   // sentinel rather than trimmed. This happens when a concave region is offset
@@ -113,10 +118,13 @@ export const make2dOffset = (
   // curve upward — a non-trivial architectural change.
   const selfIntersects = unwrap(selfIntersections(approximation));
   if (selfIntersects.length) {
+    const firstPoint = approximation.firstPoint;
+    const lastPoint = approximation.lastPoint;
+    approximation.delete();
     return {
       collapsed: true,
-      firstPoint: approximation.firstPoint,
-      lastPoint: approximation.lastPoint,
+      firstPoint,
+      lastPoint,
     };
   }
 

@@ -65,10 +65,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
           neighborIndex,
           indexDistance(neighborIndex),
         ])
-        .sort(
-          ([, , a]: [Curve2D, number, number], [, , b]: [Curve2D, number, number]) =>
-            indexDistance(a) - indexDistance(b)
-        );
+        .sort(([, , a]: [Curve2D, number, number], [, , b]: [Curve2D, number, number]) => a - b);
 
       if (potentialNextCurves.length === 0) {
         // No more curves to connect we should have wrapped

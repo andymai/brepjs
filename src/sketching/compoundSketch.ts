@@ -23,7 +23,7 @@ import type {
   PlanarWire,
 } from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
-import { createFace, isFace } from '@/core/shapeTypes.js';
+import { createFace, createWire, isFace } from '@/core/shapeTypes.js';
 import { getKernel } from '@/kernel/index.js';
 
 const guessFaceFromWires = (wires: Wire[]): Face => {
@@ -37,8 +37,8 @@ const guessFaceFromWires = (wires: Wire[]): Face => {
 };
 
 const fixWire = (wire: Wire, baseFace: Face): Wire => {
-  getKernel().fixWireOnFace(wire.wrapped, baseFace.wrapped, 1e-9);
-  return wire;
+  const fixedWire = getKernel().fixWireOnFace(wire.wrapped, baseFace.wrapped, 1e-9);
+  return createWire(fixedWire);
 };
 
 const faceFromWires = (wires: Wire[]): Face => {

@@ -35,6 +35,8 @@ export class Curve2D {
   _boundingBox: null | BoundingBox2d;
   private _firstPoint: Point2D | null = null;
   private _lastPoint: Point2D | null = null;
+  private _firstParameter: number | null = null;
+  private _lastParameter: number | null = null;
 
   constructor(handle: KernelType) {
     this._wrapped = getKernel().wrapCurve2dHandle(handle);
@@ -100,14 +102,20 @@ export class Curve2D {
     return this._lastPoint;
   }
 
-  /** Return the parameter value at the start of the curve. */
+  /** Return the parameter value at the start of the curve (cached after first access). */
   get firstParameter(): number {
-    return getKernel().getCurve2dBounds(this.wrapped).first;
+    if (this._firstParameter === null) {
+      this._firstParameter = getKernel().getCurve2dBounds(this.wrapped).first;
+    }
+    return this._firstParameter;
   }
 
-  /** Return the parameter value at the end of the curve. */
+  /** Return the parameter value at the end of the curve (cached after first access). */
   get lastParameter(): number {
-    return getKernel().getCurve2dBounds(this.wrapped).last;
+    if (this._lastParameter === null) {
+      this._lastParameter = getKernel().getCurve2dBounds(this.wrapped).last;
+    }
+    return this._lastParameter;
   }
 
   /** Return the geometric type of this curve (e.g. `LINE`, `CIRCLE`, `BSPLINE_CURVE`). */
@@ -121,16 +129,20 @@ export class Curve2D {
     // Copy cached endpoint values to avoid redundant recalculation
     cloned._firstPoint = this._firstPoint;
     cloned._lastPoint = this._lastPoint;
+    cloned._firstParameter = this._firstParameter;
+    cloned._lastParameter = this._lastParameter;
     return cloned;
   }
 
   /** Reverse the orientation of this curve in place. */
   reverse(): void {
     getKernel().reverseCurve2d(this.wrapped);
-    // Swap cached points (first becomes last, last becomes first)
-    const tmp = this._firstPoint;
+    const tmpPt = this._firstPoint;
     this._firstPoint = this._lastPoint;
-    this._lastPoint = tmp;
+    this._lastPoint = tmpPt;
+    const tmpParam = this._firstParameter;
+    this._firstParameter = this._lastParameter;
+    this._lastParameter = tmpParam;
   }
 
   private distanceFromPoint(point: Point2D): number {
