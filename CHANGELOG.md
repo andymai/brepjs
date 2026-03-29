@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.10](https://github.com/andymai/brepjs/compare/brepjs-v15.1.9...brepjs-v15.1.10) (2026-03-29)
+
+
+### Bug Fixes
+
+* **2d:** remaining correctness, performance, and API fixes ([#736](https://github.com/andymai/brepjs/issues/736)) ([fd57968](https://github.com/andymai/brepjs/commit/fd57968e97e83c3d4d1335ae01ef09e21f9d658c))
+
 ## [15.1.9](https://github.com/andymai/brepjs/compare/brepjs-v15.1.8...brepjs-v15.1.9) (2026-03-29)
 
 
