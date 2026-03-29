@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.8](https://github.com/andymai/brepjs/compare/brepjs-v15.1.7...brepjs-v15.1.8) (2026-03-29)
+
+
+### Bug Fixes
+
+* **build:** emit OcctWasmAdapter JS and add initFromOcctWasm ([#732](https://github.com/andymai/brepjs/issues/732)) ([57e574b](https://github.com/andymai/brepjs/commit/57e574b81848c196bc53901e477ad41989961583))
+
 ## [15.1.7](https://github.com/andymai/brepjs/compare/brepjs-v15.1.6...brepjs-v15.1.7) (2026-03-29)
 
 
