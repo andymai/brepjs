@@ -158,6 +158,7 @@ export function fuse(
   const { shape: resultShape, evolution, diagnostics } = kernelResult;
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
+      getKernel().dispose(resultShape);
       return err(
         kernelError(
           BrepErrorCode.BOOLEAN_HAS_ERRORS,
@@ -247,6 +248,7 @@ export function cut(
   const { shape: resultShape, evolution, diagnostics } = kernelResult;
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
+      getKernel().dispose(resultShape);
       return err(
         kernelError(
           BrepErrorCode.BOOLEAN_HAS_ERRORS,
@@ -326,6 +328,7 @@ export function intersect(
   const { shape: resultShape, evolution, diagnostics } = kernelResult;
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
+      getKernel().dispose(resultShape);
       return err(
         kernelError(
           BrepErrorCode.BOOLEAN_HAS_ERRORS,
