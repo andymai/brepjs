@@ -1,26 +1,26 @@
 /**
- * Regression test for #753: sweepSketch produces outward-oriented lip profile.
+ * Regression test for sweepSketch xDir convention.
  *
- * A profile swept along a rounded-rectangle spine should extend INWARD
- * (toward the rectangle's center), not outward.  We verify this by
- * comparing the bounding box of the swept shape against the spine's
- * bounding box — the swept bounds must be ≤ the spine bounds in X and Y.
+ * In sweepSketch, the profile's local X axis maps OUTWARD from the spine
+ * center (positive-X = outward). Negative-X maps inward. This convention
+ * is relied upon by gridfinity-layout-tool and other consumers.
+ *
+ * See also: gridfinity-smoke.test.ts "real lip profile" test for the
+ * end-to-end verification of this convention.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { drawRoundedRectangle, draw, getBounds } from '@/index.js';
 import type { AnyShape } from '@/core/shapeTypes.js';
 import type Sketch from '@/sketching/sketch.js';
 import { initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-describe('sweepSketch orientation #753', () => {
-  it('positive-X profile sweeps inward (no overhang)', (ctx) => {
-    skipIfDiverges(ctx, 'sweepSketch.inwardOverhang');
-    // Profile entirely in positive X should sweep inward with no overhang.
+describe('sweepSketch orientation', () => {
+  it('positive-X profile sweeps outward from spine', () => {
+    // Profile entirely in positive X should sweep outward (away from center).
     const spine = drawRoundedRectangle(80, 80, 3.75).sketchOnPlane('XY') as Sketch;
     const spineBounds = getBounds(spine.wire as AnyShape);
 
@@ -37,23 +37,21 @@ describe('sweepSketch orientation #753', () => {
 
     const sweptBounds = getBounds(swept as AnyShape);
 
-    expect(sweptBounds.xMax).toBeLessThanOrEqual(spineBounds.xMax + 0.1);
-    expect(sweptBounds.xMin).toBeGreaterThanOrEqual(spineBounds.xMin - 0.1);
-    expect(sweptBounds.yMax).toBeLessThanOrEqual(spineBounds.yMax + 0.1);
-    expect(sweptBounds.yMin).toBeGreaterThanOrEqual(spineBounds.yMin - 0.1);
+    // Positive-X = outward, so swept bounds should EXCEED spine bounds
+    expect(sweptBounds.xMax).toBeGreaterThan(spineBounds.xMax);
+    expect(sweptBounds.yMax).toBeGreaterThan(spineBounds.yMax);
   });
 
-  it('raw lip profile has at most 0.8mm outward extent (negative-X portion)', (ctx) => {
-    skipIfDiverges(ctx, 'sweepSketch.lipOverhangTolerance');
-
+  it('lip profile with negative-X start has controlled outward extent', () => {
     const w = 125.5;
     const d = 125.5;
 
     const spine = drawRoundedRectangle(w, d, 3.75).sketchOnPlane('XY') as Sketch;
     const spineBounds = getBounds(spine.wire as AnyShape);
 
-    // Raw gridfinity lip profile without 2D booleans — starts at x=-0.7,
-    // so 0.7mm naturally extends outward. Before the fix this was ~1.8mm.
+    // Gridfinity lip profile — starts at x=-0.7 (inward), extends via
+    // positive-X line() calls (outward). The max positive-X extent from
+    // the line() calls is ~1.9mm.
     const swept = spine.sweepSketch(
       (plane, origin) => {
         const shape = draw([-0.7, 0])
@@ -70,18 +68,14 @@ describe('sweepSketch orientation #753', () => {
 
     const sweptBounds = getBounds(swept as AnyShape);
 
-    // The profile's negative-X extent (-0.7) maps to ≤0.8mm outward.
-    // Before the fix, this was ~1.8mm outward (positive-X extent mapped outward).
+    // The profile's positive-X extent maps outward (~1.9mm).
     const overhangX = Math.max(
       sweptBounds.xMax - spineBounds.xMax,
       spineBounds.xMin - sweptBounds.xMin
     );
-    const overhangY = Math.max(
-      sweptBounds.yMax - spineBounds.yMax,
-      spineBounds.yMin - sweptBounds.yMin
-    );
 
-    expect(overhangX).toBeLessThanOrEqual(0.8);
-    expect(overhangY).toBeLessThanOrEqual(0.8);
+    // Overhang should be roughly the positive-X extent of the profile
+    expect(overhangX).toBeGreaterThan(1.0);
+    expect(overhangX).toBeLessThan(3.0);
   });
 });

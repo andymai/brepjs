@@ -41,6 +41,7 @@ import {
   exportSTL,
   getBounds,
   curveLength,
+  measureVolume,
 } from '@/index.js';
 
 import type { AnyShape, Shape3D } from '@/index.js';
@@ -213,6 +214,153 @@ describe('4. Sweep + fillet (stacking lip)', () => {
     const s = boundsSize(getBounds(solid as AnyShape));
     expect(s.width).toBeGreaterThan(80);
     expect(s.depth).toBeGreaterThan(0);
+  });
+
+  it('real lip profile sweep produces non-zero mesh when fused with box', () => {
+    // Reproduces the actual gridfinity lip construction from boxBuilder.ts.
+    // The profile starts at negative-X (inward) and extends via positive-X
+    // line() calls (outward). If xDir is flipped, the sweep goes the wrong
+    // direction and the fuse produces degenerate geometry.
+    const LIP_SMALL_TAPER = 0.7;
+    const LIP_VERTICAL_PART = 1.8;
+    const LIP_BIG_TAPER = 1.9;
+    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER; // 2.6
+    const LIP_HEIGHT = LIP_SMALL_TAPER + LIP_VERTICAL_PART + LIP_BIG_TAPER; // 4.4
+    const BOX_CORNER_RADIUS = 3.75;
+
+    const outerW = 84;
+    const outerD = 84;
+    const wallHeight = 21;
+
+    // Build box body (shelled)
+    const box = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS)
+      .sketchOnPlane('XY')
+      .extrude(wallHeight);
+    const topFaces = faceFinder()
+      .parallelTo('Z')
+      .atDistance(wallHeight, [0, 0, 0])
+      .findAll(box as AnyShape);
+    const hollowBox = unwrap(shell(box as AnyShape, topFaces, 1.2));
+
+    // Build lip via sweep — uses the real profile from boxBuilder.ts
+    const spine = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY');
+
+    const lipSolid = spine.sweepSketch(
+      (plane, _origin) => {
+        return draw([-LIP_TAPER_WIDTH, 0])
+          .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
+          .vLine(LIP_VERTICAL_PART)
+          .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
+          .vLineTo(0)
+          .close()
+          .sketchOnPlane(plane, _origin);
+      },
+      { withContact: true }
+    );
+
+    // Lip solid must have positive volume
+    const lipVolume = unwrap(measureVolume(lipSolid as AnyShape));
+    expect(lipVolume).toBeGreaterThan(100);
+
+    const lipBounds = getBounds(lipSolid as AnyShape);
+    expect(lipBounds.zMax - lipBounds.zMin).toBeGreaterThan(0);
+
+    // Translate lip to top of box and fuse
+    const translatedLip = translate(lipSolid as AnyShape, [0, 0, wallHeight]);
+    const result = fuse(hollowBox, translatedLip);
+
+    // The fuse must succeed and produce a meshable solid
+    if (!result.ok) {
+      throw new Error(`fuse failed: ${JSON.stringify(result)}`);
+    }
+    const fused = result.value;
+    const m = mesh(fused as AnyShape, { tolerance: 0.1 });
+    expect(m.triangles.length).toBeGreaterThan(0);
+
+    // Fused solid must have substantial volume
+    const fusedVolume = unwrap(measureVolume(fused as AnyShape));
+    expect(fusedVolume).toBeGreaterThan(5000);
+
+    // Fused solid should extend above the box by roughly LIP_HEIGHT
+    const fusedBounds = getBounds(fused as AnyShape);
+    expect(fusedBounds.zMax).toBeGreaterThan(wallHeight + LIP_HEIGHT - 2);
+  });
+
+  it('rectangular 1x3 lip profile sweep produces correct geometry', (ctx) => {
+    skipIfDiverges(ctx, 'gridfinity.rectLipSweep');
+    // Rectangular bins (non-square) are more sensitive to xDir orientation
+    // because the spine has different tangent directions on long vs short edges.
+    const LIP_SMALL_TAPER = 0.7;
+    const LIP_VERTICAL_PART = 1.8;
+    const LIP_BIG_TAPER = 1.9;
+    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER; // 2.6
+    const LIP_HEIGHT = LIP_SMALL_TAPER + LIP_VERTICAL_PART + LIP_BIG_TAPER; // 4.4
+    const BOX_CORNER_RADIUS = 3.75;
+
+    // 1x3 gridfinity bin: 42mm × 126mm
+    const outerW = 42;
+    const outerD = 126;
+    const wallHeight = 21;
+
+    const box = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS)
+      .sketchOnPlane('XY')
+      .extrude(wallHeight);
+    const topFaces = faceFinder()
+      .parallelTo('Z')
+      .atDistance(wallHeight, [0, 0, 0])
+      .findAll(box as AnyShape);
+    const hollowBox = unwrap(shell(box as AnyShape, topFaces, 1.2));
+
+    const spine = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY');
+
+    const lipSolid = spine.sweepSketch(
+      (plane, _origin) => {
+        return draw([-LIP_TAPER_WIDTH, 0])
+          .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
+          .vLine(LIP_VERTICAL_PART)
+          .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
+          .vLineTo(0)
+          .close()
+          .sketchOnPlane(plane, _origin);
+      },
+      { withContact: true }
+    );
+
+    // Lip solid must have positive volume
+    const lipVolume = unwrap(measureVolume(lipSolid as AnyShape));
+    expect(lipVolume).toBeGreaterThan(100);
+
+    const lipBounds = getBounds(lipSolid as AnyShape);
+    expect(lipBounds.zMax - lipBounds.zMin).toBeGreaterThan(0);
+    // Lip X extent should not exceed spine (positive-X = outward)
+    const spineBounds = getBounds(
+      drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY').wire as AnyShape
+    );
+    // Allow up to LIP_TAPER_WIDTH outward overhang
+    expect(lipBounds.xMax).toBeLessThan(spineBounds.xMax + LIP_TAPER_WIDTH + 0.5);
+    expect(lipBounds.yMax).toBeLessThan(spineBounds.yMax + LIP_TAPER_WIDTH + 0.5);
+
+    // Fuse lip onto box
+    const translatedLip = translate(lipSolid as AnyShape, [0, 0, wallHeight]);
+    const result = fuse(hollowBox, translatedLip);
+
+    if (!result.ok) {
+      throw new Error(`fuse failed: ${JSON.stringify(result)}`);
+    }
+    const fused = result.value;
+    const m = mesh(fused as AnyShape, { tolerance: 0.1 });
+    expect(m.triangles.length).toBeGreaterThan(0);
+
+    // Fused solid must have substantial volume
+    const fusedVolume = unwrap(measureVolume(fused as AnyShape));
+    expect(fusedVolume).toBeGreaterThan(5000);
+
+    const fusedBounds = getBounds(fused as AnyShape);
+    expect(fusedBounds.zMax).toBeGreaterThan(wallHeight + LIP_HEIGHT - 2);
+    // Verify aspect ratio preserved — depth should be ~3x width
+    const fusedWidth = fusedBounds.xMax - fusedBounds.xMin;
+    const fusedDepth = fusedBounds.yMax - fusedBounds.yMin;
+    expect(fusedDepth / fusedWidth).toBeCloseTo(3, 0);
   });
 
   it('fillet on extruded box edges', () => {
