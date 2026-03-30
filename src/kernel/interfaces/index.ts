@@ -59,3 +59,6 @@ export type { KernelSurfaceOps } from './surfaceOps.js';
 export type { KernelSweepOps } from './sweepOps.js';
 export type { KernelTopologyOps } from './topologyOps.js';
 export type { KernelTransformOps, TransformEntry } from './transformOps.js';
+
+// --- Async adapter ---
+export type { Asyncify, AsyncKernelAdapter } from './asyncAdapter.js';
