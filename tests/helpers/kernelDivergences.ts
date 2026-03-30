@@ -208,20 +208,6 @@ export const divergences: DivergenceMap = {
     } satisfies ToleranceDivergence,
 
     // -----------------------------------------------------------------------
-    // sweepSketchOrientation.test.ts
-    // -----------------------------------------------------------------------
-    'sweepSketch.inwardOverhang': {
-      kind: 'skip',
-      reason:
-        'brepkit sweep pipe produces ~2mm overhang for positive-X-only square profile (OCCT: 0mm)',
-    },
-    'sweepSketch.lipOverhangTolerance': {
-      kind: 'skip',
-      reason:
-        'brepkit sweep pipe geometry differs: overhang ~1.5mm vs OCCT ~0.6mm for asymmetric profile',
-    },
-
-    // -----------------------------------------------------------------------
     // gridfinity-smoke.test.ts
     // -----------------------------------------------------------------------
     'gridfinity.roundedRectExtrude': {
@@ -486,20 +472,6 @@ export const divergences: DivergenceMap = {
       kind: 'skip',
       reason:
         'Sampled B-spline approximation of ellipse arcs has lower precision than native OCCT Geom2d',
-    },
-
-    // -----------------------------------------------------------------------
-    // sweepSketchOrientation.test.ts
-    // -----------------------------------------------------------------------
-    'sweepSketch.inwardOverhang': {
-      kind: 'skip',
-      reason:
-        'brepjs-opencascade Emscripten build produces different curveTangent sign than occt-wasm on CI (Ubuntu); orientation test verified on occt-wasm',
-    },
-    'sweepSketch.lipOverhangTolerance': {
-      kind: 'skip',
-      reason:
-        'brepjs-opencascade Emscripten build produces different curveTangent sign than occt-wasm on CI (Ubuntu); orientation test verified on occt-wasm',
     },
   },
 
