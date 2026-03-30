@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.13](https://github.com/andymai/brepjs/compare/brepjs-v15.1.12...brepjs-v15.1.13) (2026-03-30)
+
+
+### Bug Fixes
+
+* **sketching:** handle Sketches return in sweepSketch callback ([#746](https://github.com/andymai/brepjs/issues/746)) ([b3294e5](https://github.com/andymai/brepjs/commit/b3294e512d864e52a03cd1a12b40f5147555cbe4)), closes [#744](https://github.com/andymai/brepjs/issues/744)
+
 ## [15.1.12](https://github.com/andymai/brepjs/compare/brepjs-v15.1.11...brepjs-v15.1.12) (2026-03-30)
 
 
