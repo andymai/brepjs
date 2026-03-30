@@ -159,15 +159,14 @@ export function fuse(
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
       getKernel().dispose(resultShape);
-      return err(
-        kernelError(
-          BrepErrorCode.BOOLEAN_HAS_ERRORS,
-          'Boolean operation reported internal errors and produced no result.',
-          undefined,
-          { diagnostics },
-          'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
-        )
-      );
+      // Retry without history tracking — the simpler OCCT path sometimes
+      // succeeds where the history-enabled path reports internal errors.
+      const fallbackShape = getKernel().fuse(a.wrapped, b.wrapped, {
+        optimisation,
+        simplify,
+        fuzzyValue,
+      });
+      return castToShape3D(fallbackShape, 'FUSE_NOT_3D', 'Fuse did not produce a 3D shape');
     }
     console.warn(
       'brepjs: fuse reported OCCT warnings/errors but produced a shape. Continuing with result.',
@@ -249,15 +248,12 @@ export function cut(
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
       getKernel().dispose(resultShape);
-      return err(
-        kernelError(
-          BrepErrorCode.BOOLEAN_HAS_ERRORS,
-          'Boolean operation reported internal errors and produced no result.',
-          undefined,
-          { diagnostics },
-          'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
-        )
-      );
+      const fallbackShape = getKernel().cut(base.wrapped, tool.wrapped, {
+        optimisation,
+        simplify,
+        fuzzyValue,
+      });
+      return castToShape3D(fallbackShape, 'CUT_NOT_3D', 'Cut did not produce a 3D shape');
     }
     console.warn(
       'brepjs: cut reported OCCT warnings/errors but produced a shape. Continuing with result.',
@@ -329,14 +325,14 @@ export function intersect(
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
       getKernel().dispose(resultShape);
-      return err(
-        kernelError(
-          BrepErrorCode.BOOLEAN_HAS_ERRORS,
-          'Boolean operation reported internal errors and produced no result.',
-          undefined,
-          { diagnostics },
-          'Use checkBoolean() to pre-validate operands, or try autoHeal() on inputs.'
-        )
+      const fallbackShape = getKernel().intersect(a.wrapped, b.wrapped, {
+        simplify,
+        fuzzyValue,
+      });
+      return castToShape3D(
+        fallbackShape,
+        'INTERSECT_NOT_3D',
+        'Intersect did not produce a 3D shape'
       );
     }
     console.warn(

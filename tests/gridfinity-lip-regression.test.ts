@@ -148,3 +148,60 @@ describe('gridfinity lip fuse regression (#724)', () => {
     expect(triangleCount).toBeGreaterThan(0);
   });
 });
+
+describe('gridfinity production dimensions', () => {
+  it.each([
+    { name: '1x1', w: 1, d: 1, wt: 0.95 },
+    { name: '2x2', w: 2, d: 2, wt: 0.95 },
+    { name: '1x1 thick', w: 1, d: 1, wt: 1.2 },
+  ])('$name: lip fuse with wallThickness=$wt', ({ w, d, wt }) => {
+    const outerW = w * 42 - 0.5;
+    const outerD = d * 42 - 0.5;
+    const boxHeight = 21;
+
+    const boxSketch = drawRoundedRectangle(
+      outerW,
+      outerD,
+      BOX_CORNER_RADIUS
+    ).sketchOnPlane() as Sketch;
+    const box = boxSketch.extrude(boxHeight);
+    const topFaces = faceFinder().parallelTo('Z').atDistance(boxHeight, [0, 0, 0]).findAll(box);
+    const shelled = unwrap(shell(box as ValidSolid, topFaces, wt));
+
+    const topProfile = (plane: Plane, _origin: Vec3): Sketch => {
+      const basicShape = buildLipSketch(true);
+      let topProfileShape = basicShape.intersect(drawRoundedRectangle(10, 10).translate(-5, 0));
+      topProfileShape = topProfileShape.cut(
+        drawRectangle(LIP_EXTENSION, 10).translate(-LIP_EXTENSION / 2, -5)
+      );
+      return topProfileShape.sketchOnPlane(plane) as Sketch;
+    };
+
+    const pathSketch = drawRoundedRectangle(
+      outerW,
+      outerD,
+      BOX_CORNER_RADIUS
+    ).sketchOnPlane() as Sketch;
+    const lip = pathSketch.sweepSketch(topProfile, { withContact: true });
+    const translatedLip = translate(lip, [0, 0, boxHeight]);
+
+    const fused = fuse(shelled, translatedLip);
+    expect(isOk(fused)).toBe(true);
+    expect(mesh(unwrap(fused)).triangles.length).toBeGreaterThan(0);
+  });
+
+  it('2D lip profile has no degenerate curves', () => {
+    const basicShape = buildLipSketch(true);
+    let topProfileShape = basicShape.intersect(drawRoundedRectangle(10, 10).translate(-5, 0));
+    topProfileShape = topProfileShape.cut(
+      drawRectangle(LIP_EXTENSION, 10).translate(-LIP_EXTENSION / 2, -5)
+    );
+
+    const bp = topProfileShape.blueprint;
+    for (const c of bp.curves) {
+      const dx = Math.abs(c.firstPoint[0] - c.lastPoint[0]);
+      const dy = Math.abs(c.firstPoint[1] - c.lastPoint[1]);
+      expect(dx + dy).toBeGreaterThan(1e-6);
+    }
+  });
+});
