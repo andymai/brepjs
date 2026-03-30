@@ -14,6 +14,7 @@ import type { ClosedWire, Face, Wire, Shape3D, PlanarWire } from '@/core/shapeTy
 import { createFace, createWire } from '@/core/shapeTypes.js';
 import { curveStartPoint, curveTangentAt } from '@/topology/curveFns.js';
 import type { SketchInterface } from './sketchLib.js';
+import Sketches from './sketches.js';
 
 /**
  * Represent a closed or open wire profile with a default extrusion origin and direction.
@@ -218,9 +219,15 @@ export default class Sketch implements SketchInterface {
     const defaultDir: Vec3 = this.defaultDirection;
     const xDir = vecScale(vecCross(normal, defaultDir), -1);
 
-    const sketch = sketchOnPlane(createPlane([...startPoint], [...xDir], [...normal]), [
+    const result = sketchOnPlane(createPlane([...startPoint], [...xDir], [...normal]), [
       ...startPoint,
     ]);
+
+    // The callback may return a Sketches (plural) when the Drawing used a
+    // 2D boolean that split the profile into multiple pieces. Extract the
+    // first sketch's wire in that case.
+    const sketch: Sketch =
+      result instanceof Sketches ? (result.sketches[0] as Sketch) : (result as Sketch);
 
     const config: SweepOptions = {
       forceProfileSpineOthogonality: true,
