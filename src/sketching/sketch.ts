@@ -216,7 +216,7 @@ export default class Sketch implements SketchInterface {
     const tangent = curveTangentAt(this.wire, 1e-9);
     const normal = vecNormalize(vecScale(tangent, -1));
     const defaultDir: Vec3 = this.defaultDirection;
-    const xDir = vecScale(vecCross(normal, defaultDir), -1);
+    const xDir = vecCross(normal, defaultDir);
 
     const result = sketchOnPlane(createPlane([...startPoint], [...xDir], [...normal]), [
       ...startPoint,
