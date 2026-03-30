@@ -11,7 +11,6 @@ import type { Edge, Face, Shape3D } from '@/core/shapeTypes.js';
 import type { ValidSolid } from '@/core/validityTypes.js';
 import { castShape, isShape3D } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
-import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, typeCastError, kernelError, BrepErrorCode } from '@/core/errors.js';
 import type { BooleanOptions, KernelShape, ShapeEvolution } from '@/kernel/types.js';
@@ -106,12 +105,12 @@ function resolveEdgeCallback(
     if (typeof val === 'number' && val <= 0) continue;
     if (Array.isArray(val) && (val[0] <= 0 || val[1] <= 0)) continue;
     filteredEdges.push(edge);
-    hashToValue.set(getOrQueryHashCode(getKernel(), edge.wrapped), val);
+    hashToValue.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), val);
   }
   if (filteredEdges.length === 0) return null;
 
   const kernelParam: KernelHashCallback<number | [number, number]> = (ocEdge) => {
-    const v = hashToValue.get(getOrQueryHashCode(getKernel(), ocEdge));
+    const v = hashToValue.get(getKernel().hashCode(ocEdge, HASH_CODE_MAX));
     return v ?? 1;
   };
   return { edges: filteredEdges, kernelParam };

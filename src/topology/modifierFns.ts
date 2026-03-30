@@ -10,7 +10,6 @@ import type { Edge, Face, Shell, Solid, Shape3D, AnyShape, Dimension } from '@/c
 import type { ValidSolid } from '@/core/validityTypes.js';
 import { castShape, isShape3D, isSolid } from '@/core/shapeTypes.js';
 import { HASH_CODE_MAX } from '@/core/constants.js';
-import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
 import { type Result, type Err, ok, err, isErr } from '@/core/result.js';
 import type { BrepError } from '@/core/errors.js';
 import { kernelError, validationError, BrepErrorCode } from '@/core/errors.js';
@@ -83,12 +82,12 @@ function resolveEdgeCallback(
     if (typeof val === 'number' && val <= 0) continue;
     if (Array.isArray(val) && (val[0] <= 0 || val[1] <= 0)) continue;
     filteredEdges.push(edge);
-    hashToValue.set(getOrQueryHashCode(getKernel(), edge.wrapped), val);
+    hashToValue.set(getKernel().hashCode(edge.wrapped, HASH_CODE_MAX), val);
   }
   if (filteredEdges.length === 0) return null;
 
   const kernelParam: KernelHashCallback<number | [number, number]> = (ocEdge) => {
-    const v = hashToValue.get(getOrQueryHashCode(getKernel(), ocEdge));
+    const v = hashToValue.get(getKernel().hashCode(ocEdge, HASH_CODE_MAX));
     // Default to 1 (should not happen due to pre-filtering)
     return v ?? 1;
   };
@@ -143,11 +142,11 @@ function resolveDraftCallback(
     const a = angle(face);
     if (a === null || a === 0 || Math.abs(a) >= 90) continue;
     filteredFaces.push(face);
-    hashToAngle.set(getOrQueryHashCode(getKernel(), face.wrapped), a);
+    hashToAngle.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), a);
   }
 
   const kernelAngle = (ocFace: KernelShape) => {
-    const a = hashToAngle.get(getOrQueryHashCode(getKernel(), ocFace));
+    const a = hashToAngle.get(getKernel().hashCode(ocFace, HASH_CODE_MAX));
     if (a === undefined) {
       throw new Error('draft: face hash not found — possible hash collision');
     }
@@ -628,7 +627,7 @@ export function variableFillet(
   const kernel = getKernel();
   try {
     const spec = JSON.stringify({
-      edge: getOrQueryHashCode(kernel, edge.wrapped),
+      edge: kernel.hashCode(edge.wrapped, HASH_CODE_MAX),
       radii: radii.map((r) => ({ param: r.param, radius: r.radius })),
     });
     const result = kernel.filletVariable(shape.wrapped, spec);

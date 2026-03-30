@@ -8,7 +8,7 @@
 import type { ShapeEvolution } from '@/kernel/types.js';
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
-import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 import { getFaces } from '@/topology/shapeFns.js';
 
 // ---------------------------------------------------------------------------
@@ -67,7 +67,7 @@ export function tagFaces(
   const existing = tagMap.get(tag) ?? new Set<number>();
 
   for (const face of faces) {
-    existing.add(getOrQueryHashCode(getKernel(), face.wrapped));
+    existing.add(getKernel().hashCode(face.wrapped, HASH_CODE_MAX));
   }
 
   tagMap.set(tag, existing);
@@ -89,7 +89,7 @@ export function findFacesByTag(shape: AnyShape<Dimension>, tag: string): Face<Di
 
   const result: Face<Dimension>[] = [];
   for (const face of getFaces(shape)) {
-    const hash = getOrQueryHashCode(getKernel(), face.wrapped);
+    const hash = getKernel().hashCode(face.wrapped, HASH_CODE_MAX);
     if (hashes.has(hash)) {
       result.push(face);
     }
@@ -108,7 +108,7 @@ export function getFaceTags(shape: AnyShape<Dimension>): Map<string, Face<Dimens
   const faces = getFaces(shape);
   const faceByHash = new Map<number, Face<Dimension>>();
   for (const face of faces) {
-    faceByHash.set(getOrQueryHashCode(getKernel(), face.wrapped), face);
+    faceByHash.set(getKernel().hashCode(face.wrapped, HASH_CODE_MAX), face);
   }
 
   for (const [tag, hashes] of tagMap) {

@@ -6,7 +6,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { ShapeEvolution } from '@/kernel/types.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
-import { getOrQueryHashCode } from '@/core/shapePropertyCache.js';
+import { HASH_CODE_MAX } from '@/core/constants.js';
 import { getOrCreateCache, getCacheEntry, getFaces } from '@/topology/topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ export function setShapeOrigin(shape: AnyShape<Dimension>, origin: number): void
   const cache = getOrCreateCache(shape);
   const map = new Map<number, number>();
   for (const f of getFaces(shape)) {
-    map.set(getOrQueryHashCode(getKernel(), f.wrapped), origin);
+    map.set(getKernel().hashCode(f.wrapped, HASH_CODE_MAX), origin);
   }
   cache.faceOrigins = map;
 }
@@ -154,7 +154,7 @@ export function propagateOriginsByHash(
 
   // Try hash-based matching first
   for (const f of resultFaces) {
-    const hash = getOrQueryHashCode(kernel, f.wrapped);
+    const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
     const origin = lookup.get(hash);
     if (origin !== undefined) {
       resultMap.set(hash, origin);
@@ -175,7 +175,7 @@ export function propagateOriginsByHash(
       const origins = getFaceOrigins(input);
       if (!origins) continue;
       for (const f of getFaces(input)) {
-        const hash = getOrQueryHashCode(kernel, f.wrapped);
+        const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
         const origin = origins.get(hash);
         if (origin === undefined) continue;
         try {
@@ -195,7 +195,7 @@ export function propagateOriginsByHash(
 
     if (inputSigs.length > 0) {
       for (const f of resultFaces) {
-        const hash = getOrQueryHashCode(kernel, f.wrapped);
+        const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
         try {
           const outBounds = kernel.uvBounds(f.wrapped);
           const outNormal = kernel.surfaceNormal(
