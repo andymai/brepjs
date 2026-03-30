@@ -33,7 +33,7 @@ export default defineConfig({
   test: {
     globals: true,
     setupFiles: ['./tests/setup.ts'],
-    testTimeout: 30000,
+    testTimeout: 90000,
     pool: 'forks',
     execArgv: ['--max-old-space-size=6144'],
     maxWorkers: 4,

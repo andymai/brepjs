@@ -141,12 +141,16 @@ export function makeArc2dThreePoints(
   const pm = new oc.gp_Pnt2d_3(xm, ym);
   const p2 = new oc.gp_Pnt2d_3(x2, y2);
   const maker = new oc.GCE2d_MakeArcOfCircle_4(p1, pm, p2);
-  const curve = maker.Value();
-  maker.delete();
-  p1.delete();
-  pm.delete();
-  p2.delete();
-  return curve;
+  try {
+    if (!maker.IsDone())
+      throw new Error('makeArc2dThreePoints: construction failed (collinear points?)');
+    return maker.Value();
+  } finally {
+    maker.delete();
+    p2.delete();
+    pm.delete();
+    p1.delete();
+  }
 }
 
 export function makeArc2dTangent(
@@ -162,12 +166,15 @@ export function makeArc2dTangent(
   const tangent = new oc.gp_Vec2d_4(tangentX, tangentY);
   const end = new oc.gp_Pnt2d_3(endX, endY);
   const maker = new oc.GCE2d_MakeArcOfCircle_5(start, tangent, end);
-  const curve = maker.Value();
-  maker.delete();
-  start.delete();
-  tangent.delete();
-  end.delete();
-  return curve;
+  try {
+    if (!maker.IsDone()) throw new Error('makeArc2dTangent: construction failed');
+    return maker.Value();
+  } finally {
+    maker.delete();
+    end.delete();
+    tangent.delete();
+    start.delete();
+  }
 }
 
 export function makeEllipse2d(
@@ -185,13 +192,16 @@ export function makeEllipse2d(
   const ax = new oc.gp_Ax2d_2(center, dir);
   const elips = new oc.gp_Elips2d_2(ax, majorRadius, minorRadius, sense);
   const maker = new oc.GCE2d_MakeEllipse_1(elips);
-  const curve = maker.Value();
-  maker.delete();
-  elips.delete();
-  ax.delete();
-  dir.delete();
-  center.delete();
-  return curve;
+  try {
+    if (!maker.IsDone()) throw new Error('makeEllipse2d: construction failed');
+    return maker.Value();
+  } finally {
+    maker.delete();
+    elips.delete();
+    ax.delete();
+    dir.delete();
+    center.delete();
+  }
 }
 
 export function makeEllipseArc2d(
@@ -211,13 +221,16 @@ export function makeEllipseArc2d(
   const ax = new oc.gp_Ax2d_2(center, dir);
   const elips = new oc.gp_Elips2d_2(ax, majorRadius, minorRadius, true);
   const maker = new oc.GCE2d_MakeArcOfEllipse_1(elips, startAngle, endAngle, sense);
-  const curve = maker.Value();
-  maker.delete();
-  elips.delete();
-  ax.delete();
-  dir.delete();
-  center.delete();
-  return curve;
+  try {
+    if (!maker.IsDone()) throw new Error('makeEllipseArc2d: construction failed');
+    return maker.Value();
+  } finally {
+    maker.delete();
+    elips.delete();
+    ax.delete();
+    dir.delete();
+    center.delete();
+  }
 }
 
 export function makeBezier2d(oc: KernelInstance, points: [number, number][]): KernelType {
