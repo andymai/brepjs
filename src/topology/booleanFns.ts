@@ -159,8 +159,10 @@ export function fuse(
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
       getKernel().dispose(resultShape);
-      // Retry without history tracking — the simpler OCCT path sometimes
-      // succeeds where the history-enabled path reports internal errors.
+      console.warn(
+        'brepjs: fuse history path produced null result; retrying without evolution tracking.',
+        diagnostics
+      );
       const fallbackShape = getKernel().fuse(a.wrapped, b.wrapped, {
         optimisation,
         simplify,
@@ -248,6 +250,10 @@ export function cut(
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
       getKernel().dispose(resultShape);
+      console.warn(
+        'brepjs: cut history path produced null result; retrying without evolution tracking.',
+        diagnostics
+      );
       const fallbackShape = getKernel().cut(base.wrapped, tool.wrapped, {
         optimisation,
         simplify,
@@ -325,6 +331,10 @@ export function intersect(
   if (diagnostics.hasErrors) {
     if (getKernel().isNull(resultShape)) {
       getKernel().dispose(resultShape);
+      console.warn(
+        'brepjs: intersect history path produced null result; retrying without evolution tracking.',
+        diagnostics
+      );
       const fallbackShape = getKernel().intersect(a.wrapped, b.wrapped, {
         simplify,
         fuzzyValue,
