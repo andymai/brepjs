@@ -37,8 +37,8 @@ const OCCT_ERROR_MAP: Readonly<Record<string, ErrorMapping>> = {
   BOOLEAN_FAILED: { kind: 'KERNEL_OPERATION', code: BrepErrorCode.BOOLEAN_HAS_ERRORS },
   INVALID_SHAPE_ID: { kind: 'VALIDATION', code: BrepErrorCode.NULL_SHAPE_INPUT },
   INVALID_LABEL_ID: { kind: 'VALIDATION', code: BrepErrorCode.NULL_SHAPE_INPUT },
-  TESSELLATION_FAILED: { kind: 'COMPUTATION', code: BrepErrorCode.INTERSECTION_FAILED },
-  IMPORT_EXPORT_FAILED: { kind: 'IO', code: BrepErrorCode.STEP_IMPORT_FAILED },
+  TESSELLATION_FAILED: { kind: 'COMPUTATION', code: BrepErrorCode.TESSELLATION_FAILED },
+  IMPORT_EXPORT_FAILED: { kind: 'IO', code: BrepErrorCode.IO_FAILED },
   HEALING_FAILED: { kind: 'KERNEL_OPERATION', code: BrepErrorCode.FIX_SHAPE_FAILED },
   DOCUMENT_CLOSED: { kind: 'VALIDATION', code: BrepErrorCode.NULL_SHAPE_INPUT },
   KERNEL_ERROR: { kind: 'KERNEL_OPERATION', code: BrepErrorCode.VALIDATION_FAILED },
@@ -48,6 +48,13 @@ const OCCT_ERROR_MAP: Readonly<Record<string, ErrorMapping>> = {
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the error has a string `.code` property (OcctError shape).
+ */
+export function isOcctError(error: unknown): boolean {
+  return getOcctErrorCode(error) !== undefined;
+}
 
 /**
  * Detect whether an error has an OcctErrorCode-shaped `.code` property.

@@ -12,7 +12,7 @@ import type { Result } from './result.js';
 import { ok, err } from './result.js';
 import type { BrepErrorKind, BrepError } from './errors.js';
 import { translateKernelError, getSuggestionForCode } from './errors.js';
-import { mapOcctError } from './occtErrorMapping.js';
+import { isOcctError, mapOcctError } from './occtErrorMapping.js';
 import { DisposalScope } from './disposal.js';
 
 type ErrorFactory = (
@@ -32,19 +32,6 @@ function buildError(
   const base: BrepError = { kind, code, message, cause };
   if (suggestion) return { ...base, suggestion };
   return base;
-}
-
-/**
- * Check if an error is an OcctError (has a string `.code` property).
- * occt-wasm ≥1.4.0 throws OcctError with structured error codes.
- */
-function isOcctError(e: unknown): boolean {
-  return (
-    typeof e === 'object' &&
-    e !== null &&
-    'code' in e &&
-    typeof (e as Record<string, unknown>)['code'] === 'string'
-  );
 }
 
 const errorFactories: Record<BrepErrorKind, ErrorFactory> = {

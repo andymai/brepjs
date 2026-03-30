@@ -22,21 +22,23 @@ describe('mapOcctError', () => {
     expect(result.cause).toBe(error);
   });
 
-  it('maps IMPORT_EXPORT_FAILED to IO kind', () => {
+  it('maps IMPORT_EXPORT_FAILED to IO kind with generic IO_FAILED code', () => {
     const error = new Error('STEP import failed');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simulate OcctError
     (error as any).code = 'IMPORT_EXPORT_FAILED';
     const result = mapOcctError(error);
     expect(result.kind).toBe('IO');
+    expect(result.code).toBe('IO_FAILED');
     expect(result.cause).toBe(error);
   });
 
-  it('maps TESSELLATION_FAILED to COMPUTATION kind', () => {
+  it('maps TESSELLATION_FAILED to COMPUTATION kind with TESSELLATION_FAILED code', () => {
     const error = new Error('Tessellation failed');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simulate OcctError
     (error as any).code = 'TESSELLATION_FAILED';
     const result = mapOcctError(error);
     expect(result.kind).toBe('COMPUTATION');
+    expect(result.code).toBe('TESSELLATION_FAILED');
   });
 
   it('maps HEALING_FAILED to KERNEL_OPERATION with FIX_SHAPE_FAILED', () => {

@@ -128,16 +128,16 @@ const SUPPORTED: ReadonlySet<string> = new Set([
 // ---------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- KernelShape is any
-function workerHandle(type: ShapeType, id: number): any {
+function workerHandle(type: ShapeType, id: number, releaseFn: (id: number) => void): any {
   return {
     __occtWasm: true,
     type,
     id,
     delete() {
-      console.warn(
-        'workerHandle.delete() called — shapes created via WorkerKernelAdapter ' +
-          'must be disposed through adapter.dispose(), not handle.delete().'
-      );
+      releaseFn(id);
+    },
+    [Symbol.dispose]() {
+      releaseFn(id);
     },
     HashCode(upperBound: number) {
       return id % upperBound;
@@ -202,6 +202,13 @@ export function createWorkerAdapter(
 ): WorkerAdapterResult {
   const k = kernel;
 
+  // Fire-and-forget release: Symbol.dispose is sync, but worker release is
+  // async. We kick off the remote release without awaiting to stay compatible
+  // with `using` / DisposalScope while still freeing worker-side WASM memory.
+  const fireRelease = (id: number): void => {
+    void k.release(id);
+  };
+
   const adapter = new Proxy({} as AsyncKernelAdapter, {
     get(_target, prop: string | symbol) {
       if (typeof prop === 'symbol') return undefined;
@@ -242,7 +249,7 @@ export function createWorkerAdapter(
         // Wrap returned shape handles
         if (SHAPE_RETURNING.has(remoteName) && typeof result === 'number') {
           const type = (await k.getShapeType(result)) as string as ShapeType;
-          return workerHandle(type, result);
+          return workerHandle(type, result, fireRelease);
         }
 
         return result;

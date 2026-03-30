@@ -16,7 +16,7 @@
 
 import { Worker as NodeWorker } from 'node:worker_threads';
 import { resolve } from 'node:path';
-import { fileURLToPath, URL as UrlClass } from 'node:url';
+import { fileURLToPath, pathToFileURL, URL as UrlClass } from 'node:url';
 import * as Comlink from 'comlink';
 import nodeEndpoint from 'comlink/dist/esm/node-adapter.mjs';
 
@@ -56,7 +56,7 @@ export async function spawnNodeOcctWorker(): Promise<NodeOcctWorker> {
     import { parentPort } from 'node:worker_threads';
     import * as Comlink from 'comlink';
     import nodeEndpoint from 'comlink/dist/esm/node-adapter.mjs';
-    import { OcctKernel } from '${resolve(wasmDir, 'index.js')}';
+    import { OcctKernel } from '${pathToFileURL(resolve(wasmDir, 'index.js')).href}';
 
     let kernel = null;
     const api = {

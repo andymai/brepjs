@@ -144,6 +144,12 @@ export const BrepErrorCode = {
   POLYHEDRON_INVALID_INDEX: 'POLYHEDRON_INVALID_INDEX',
   POLYHEDRON_FAILED: 'POLYHEDRON_FAILED',
 
+  // Tessellation errors
+  TESSELLATION_FAILED: 'TESSELLATION_FAILED',
+
+  // General IO errors
+  IO_FAILED: 'IO_FAILED',
+
   // General validation errors
   VALIDATION_FAILED: 'VALIDATION_FAILED',
 
