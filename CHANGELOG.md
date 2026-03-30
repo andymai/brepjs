@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.3](https://github.com/andymai/brepjs/compare/brepjs-v15.2.2...brepjs-v15.2.3) (2026-03-30)
+
+
+### Bug Fixes
+
+* **sketching:** revert sweepSketch xDir sign that broke lip geometry ([#757](https://github.com/andymai/brepjs/issues/757)) ([7bbad86](https://github.com/andymai/brepjs/commit/7bbad861881e9611a8a84698f79e9f5f18809e7d))
+
 ## [15.2.2](https://github.com/andymai/brepjs/compare/brepjs-v15.2.1...brepjs-v15.2.2) (2026-03-30)
 
 
