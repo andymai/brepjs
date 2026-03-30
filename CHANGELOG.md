@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.1](https://github.com/andymai/brepjs/compare/brepjs-v15.2.0...brepjs-v15.2.1) (2026-03-30)
+
+
+### Bug Fixes
+
+* **kernel:** restore pure-TS geometry2d for OCCT 2D ops ([#751](https://github.com/andymai/brepjs/issues/751)) ([954cc2e](https://github.com/andymai/brepjs/commit/954cc2e322641b6a4c388a09438213ec754a6609))
+
 ## [15.2.0](https://github.com/andymai/brepjs/compare/brepjs-v15.1.13...brepjs-v15.2.0) (2026-03-30)
 
 
