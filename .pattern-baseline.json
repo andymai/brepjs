@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-03-30T04:49:42.533Z",
+  "generated": "2026-03-28T07:03:31.142Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -150,7 +150,7 @@
     {
       "file": "src/kernel/geometry2d.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/geometry2d.ts|max-function-lines|634|"
+      "fingerprint": "src/kernel/geometry2d.ts|max-function-lines|593|"
     },
     {
       "file": "src/kernel/occt/advancedOps.ts",
@@ -191,6 +191,11 @@
       "file": "src/operations/straightSkeleton.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/operations/straightSkeleton.ts|max-function-lines|330|"
+    },
+    {
+      "file": "src/topology/healingFns.ts",
+      "rule": "max-function-lines",
+      "fingerprint": "src/topology/healingFns.ts|max-function-lines|185|"
     },
     {
       "file": "src/topology/metadata/originTrackingFns.ts",

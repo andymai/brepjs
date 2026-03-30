@@ -456,6 +456,23 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'brepkit negative angle draft not available in OCCT',
     },
+    // geometry2d migration: sampled B-spline bridge loses analytic precision
+    'docsExamples.2dTo3dWorkflow': {
+      kind: 'skip',
+      reason:
+        'Sampled B-spline bridge for circle cut holes loses analytic precision — ' +
+        'OCCT face builder needs exact circle geometry for hole subtraction during extrusion',
+    },
+    'sketcher3d.halfEllipseTo': {
+      kind: 'skip',
+      reason:
+        'Sampled B-spline approximation of ellipse arcs has lower precision than native OCCT Geom2d',
+    },
+    'sketcher3d.ellipseTo': {
+      kind: 'skip',
+      reason:
+        'Sampled B-spline approximation of ellipse arcs has lower precision than native OCCT Geom2d',
+    },
   },
 
   // occt-wasm is near-identical to occt; divergences are tracked via

@@ -1,1040 +1,1022 @@
 /**
  * 2D geometry operations for OCCT.
  *
- * Provides 2D curve construction, transformation, querying, intersection,
- * bounding box, and 2D-to-3D projection operations.
+ * Pure-2D methods delegate to the shared geometry2d module (no WASM crossing).
+ * Bridge methods (2D->3D) construct 3D edges directly using OCCT's 3D APIs,
+ * avoiding GeomLib.To3d and toNativeCurve2d entirely.
  *
  * Used by DefaultAdapter to implement Kernel2DCapability.
  */
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
+import type { Curve2dObj, BBox2d } from '../geometry2d.js';
+import * as g2d from '../geometry2d.js';
 import { iterShapes } from './topologyOps.js';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Local helpers (no imports from brepkit)
 // ---------------------------------------------------------------------------
 
-function mapContinuity(oc: KernelInstance, continuity: 'C0' | 'C1' | 'C2' | 'C3'): KernelType {
-  switch (continuity) {
-    case 'C0':
-      return oc.GeomAbs_Shape.GeomAbs_C0;
-    case 'C1':
-      return oc.GeomAbs_Shape.GeomAbs_C1;
-    case 'C2':
-      return oc.GeomAbs_Shape.GeomAbs_C2;
-    case 'C3':
-      return oc.GeomAbs_Shape.GeomAbs_C3;
-  }
+const noop = () => {};
+
+/** Cast opaque Curve2dHandle to internal Curve2dObj. */
+function c2d(handle: Curve2dHandle): Curve2dObj {
+  return handle as Curve2dObj;
 }
 
-/**
- * Extract a numeric value from an OCCT Emscripten enum.
- * Emscripten returns enum objects with a `.value` property, not raw numbers.
- */
-function unwrapOcctEnum(val: KernelType): number {
-  return typeof val === 'number' ? val : Number(val?.value ?? val);
+/** Unwrap trimmed curve wrappers to get the basis geometry. */
+function c2dBasis(handle: Curve2dHandle): Curve2dObj {
+  let c = c2d(handle);
+  while (c.__bk2d === 'trimmed') c = c.basis;
+  return c;
 }
 
-/**
- * Get the GeomAbs_CurveType index for a 2D curve via a temporary adaptor.
- * Caller avoids repeating the adaptor-create / GetType / unwrap / delete cycle.
- */
-function getCurve2dTypeIndex(oc: KernelInstance, curve: KernelType): number {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const idx = unwrapOcctEnum(adaptor.GetType());
-  adaptor.delete();
-  return idx;
+/** Cast opaque BBox2dHandle to internal BBox2d. */
+function bb2d(handle: BBox2dHandle): BBox2d {
+  return handle as BBox2d;
 }
 
-// ---------------------------------------------------------------------------
-// 2D Handle wrapping
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// Primitive 2D geometry constructors
+// ═══════════════════════════════════════════════════════════════════════
 
-/** Wrap a raw Geom2d_Curve in a Handle_Geom2d_Curve. */
-export function wrapCurve2dHandle(oc: KernelInstance, handle: KernelType): KernelType {
-  const inner = handle.get();
-  return new oc.Handle_Geom2d_Curve_2(inner);
+export function createPoint2d(x: number, y: number): KernelType {
+  return { x, y };
 }
 
-/** Create a Geom2dAdaptor_Curve for algorithmic queries. Caller must delete. */
-export function createCurve2dAdaptor(oc: KernelInstance, handle: KernelType): KernelType {
-  return new oc.Geom2dAdaptor_Curve_2(handle);
+export function createDirection2d(x: number, y: number): KernelType {
+  const l = Math.sqrt(x * x + y * y);
+  if (l < 1e-15) throw new Error('occt: createDirection2d called with zero-length vector');
+  return { x: x / l, y: y / l };
 }
 
-// ---------------------------------------------------------------------------
-// 2D Point/Vector factories
-// ---------------------------------------------------------------------------
-
-export function createPoint2d(oc: KernelInstance, x: number, y: number): KernelType {
-  return new oc.gp_Pnt2d_3(x, y);
+export function createVector2d(x: number, y: number): KernelType {
+  return { x, y };
 }
 
-export function createDirection2d(oc: KernelInstance, x: number, y: number): KernelType {
-  return new oc.gp_Dir2d_5(x, y);
+export function createAxis2d(px: number, py: number, dx: number, dy: number): KernelType {
+  return { px, py, dx, dy, delete: noop } as KernelType;
 }
 
-export function createVector2d(oc: KernelInstance, x: number, y: number): KernelType {
-  return new oc.gp_Vec2d_4(x, y);
+export function wrapCurve2dHandle(handle: KernelType): Curve2dHandle {
+  return handle;
 }
 
-export function createAxis2d(
-  oc: KernelInstance,
-  px: number,
-  py: number,
-  dx: number,
-  dy: number
-): KernelType {
-  const pnt = new oc.gp_Pnt2d_3(px, py);
-  const dir = new oc.gp_Dir2d_5(dx, dy);
-  const axis = new oc.gp_Ax2d_2(pnt, dir);
-  pnt.delete();
-  dir.delete();
-  return axis;
+export function createCurve2dAdaptor(handle: Curve2dHandle): KernelType {
+  return handle;
 }
 
-// ---------------------------------------------------------------------------
-// 2D Curve construction
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// 2D curve construction
+// ═══════════════════════════════════════════════════════════════════════
 
-export function makeLine2d(
-  oc: KernelInstance,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number
-): KernelType {
-  const p1 = new oc.gp_Pnt2d_3(x1, y1);
-  const p2 = new oc.gp_Pnt2d_3(x2, y2);
-  const maker = new oc.GCE2d_MakeSegment_1(p1, p2);
-  const curve = maker.Value();
-  maker.delete();
-  p1.delete();
-  p2.delete();
-  return curve;
+export function makeLine2d(x1: number, y1: number, x2: number, y2: number): Curve2dHandle {
+  return g2d.makeLine2d(x1, y1, x2, y2);
 }
 
 export function makeCircle2d(
-  oc: KernelInstance,
   cx: number,
   cy: number,
   radius: number,
-  sense = true
-): KernelType {
-  const center = new oc.gp_Pnt2d_3(cx, cy);
-  const maker = new oc.GCE2d_MakeCircle_7(center, radius, sense);
-  const curve = maker.Value();
-  maker.delete();
-  center.delete();
-  return curve;
+  sense?: boolean
+): Curve2dHandle {
+  return g2d.makeCircle2d(cx, cy, radius, sense);
 }
 
 export function makeArc2dThreePoints(
-  oc: KernelInstance,
   x1: number,
   y1: number,
   xm: number,
   ym: number,
   x2: number,
   y2: number
-): KernelType {
-  const p1 = new oc.gp_Pnt2d_3(x1, y1);
-  const pm = new oc.gp_Pnt2d_3(xm, ym);
-  const p2 = new oc.gp_Pnt2d_3(x2, y2);
-  const maker = new oc.GCE2d_MakeArcOfCircle_4(p1, pm, p2);
-  try {
-    if (!maker.IsDone())
-      throw new Error('makeArc2dThreePoints: construction failed (collinear points?)');
-    return maker.Value();
-  } finally {
-    maker.delete();
-    p2.delete();
-    pm.delete();
-    p1.delete();
+): Curve2dHandle {
+  // Circumscribed circle through 3 points
+  const d = 2 * (x1 * (ym - y2) + xm * (y2 - y1) + x2 * (y1 - ym));
+  if (Math.abs(d) < 1e-12) {
+    // Degenerate (collinear): return a line
+    return g2d.makeLine2d(x1, y1, x2, y2);
   }
+  const cx =
+    ((x1 * x1 + y1 * y1) * (ym - y2) +
+      (xm * xm + ym * ym) * (y2 - y1) +
+      (x2 * x2 + y2 * y2) * (y1 - ym)) /
+    d;
+  const cy =
+    ((x1 * x1 + y1 * y1) * (x2 - xm) +
+      (xm * xm + ym * ym) * (x1 - x2) +
+      (x2 * x2 + y2 * y2) * (xm - x1)) /
+    d;
+  const radius = Math.sqrt((x1 - cx) ** 2 + (y1 - cy) ** 2);
+
+  // Compute angles for start (p1), mid (pm), and end (p2)
+  const a1 = Math.atan2(y1 - cy, x1 - cx);
+  const am = Math.atan2(ym - cy, xm - cx);
+  const a2 = Math.atan2(y2 - cy, x2 - cx);
+
+  // Determine sense: CCW if mid-point angle is between start and end going CCW
+  let da1m = am - a1;
+  if (da1m < 0) da1m += 2 * Math.PI;
+  let da12 = a2 - a1;
+  if (da12 < 0) da12 += 2 * Math.PI;
+  const sense = da1m < da12; // CCW if midpoint comes before endpoint
+
+  const circle = g2d.makeCircle2d(cx, cy, radius, sense);
+  if (!sense) {
+    // CW circle evaluates angle = -t, so parameter t = -angle.
+    const tStart = -a1;
+    let tEnd = -a2;
+    if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
+    return { __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj;
+  }
+  // CCW: ensure tEnd >= tStart
+  let tEnd = a2;
+  if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
+  return { __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj;
 }
 
 export function makeArc2dTangent(
-  oc: KernelInstance,
-  startX: number,
-  startY: number,
-  tangentX: number,
-  tangentY: number,
-  endX: number,
-  endY: number
-): KernelType {
-  const start = new oc.gp_Pnt2d_3(startX, startY);
-  const tangent = new oc.gp_Vec2d_4(tangentX, tangentY);
-  const end = new oc.gp_Pnt2d_3(endX, endY);
-  const maker = new oc.GCE2d_MakeArcOfCircle_5(start, tangent, end);
-  try {
-    if (!maker.IsDone()) throw new Error('makeArc2dTangent: construction failed');
-    return maker.Value();
-  } finally {
-    maker.delete();
-    end.delete();
-    tangent.delete();
-    start.delete();
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  ex: number,
+  ey: number
+): Curve2dHandle {
+  const len = Math.sqrt(tx * tx + ty * ty);
+  const ntx = len > 0 ? tx / len : 0;
+  const nty = len > 0 ? ty / len : 0;
+
+  const dx = sx - ex;
+  const dy = sy - ey;
+  const denom = 2 * (dy * ntx - dx * nty);
+
+  if (Math.abs(denom) < 1e-12) {
+    return g2d.makeLine2d(sx, sy, ex, ey);
   }
+
+  const chord2 = dx * dx + dy * dy;
+  const t = -chord2 / denom;
+  const cx = sx - t * nty;
+  const cy = sy + t * ntx;
+  const radius = Math.abs(t);
+
+  const a1 = Math.atan2(sy - cy, sx - cx);
+  const a2 = Math.atan2(ey - cy, ex - cx);
+
+  const ccwTanX = -(sy - cy) / radius;
+  const ccwTanY = (sx - cx) / radius;
+  const dotCcw = ntx * ccwTanX + nty * ccwTanY;
+
+  let aMid: number;
+  if (dotCcw > 0) {
+    let da = a2 - a1;
+    if (da <= 0) da += 2 * Math.PI;
+    aMid = a1 + da / 2;
+  } else {
+    let da = a2 - a1;
+    if (da >= 0) da -= 2 * Math.PI;
+    aMid = a1 + da / 2;
+  }
+
+  const mx = cx + radius * Math.cos(aMid);
+  const my = cy + radius * Math.sin(aMid);
+
+  return makeArc2dThreePoints(sx, sy, mx, my, ex, ey);
 }
 
 export function makeEllipse2d(
-  oc: KernelInstance,
   cx: number,
   cy: number,
-  majorRadius: number,
-  minorRadius: number,
-  xDirX = 1,
-  xDirY = 0,
-  sense = true
-): KernelType {
-  const center = new oc.gp_Pnt2d_3(cx, cy);
-  const dir = new oc.gp_Dir2d_5(xDirX, xDirY);
-  const ax = new oc.gp_Ax2d_2(center, dir);
-  const elips = new oc.gp_Elips2d_2(ax, majorRadius, minorRadius, sense);
-  const maker = new oc.GCE2d_MakeEllipse_1(elips);
-  try {
-    if (!maker.IsDone()) throw new Error('makeEllipse2d: construction failed');
-    return maker.Value();
-  } finally {
-    maker.delete();
-    elips.delete();
-    ax.delete();
-    dir.delete();
-    center.delete();
-  }
+  major: number,
+  minor: number,
+  xDirX?: number,
+  xDirY?: number,
+  sense?: boolean
+): Curve2dHandle {
+  return g2d.makeEllipse2d(cx, cy, major, minor, xDirX, xDirY, sense);
 }
 
 export function makeEllipseArc2d(
-  oc: KernelInstance,
   cx: number,
   cy: number,
-  majorRadius: number,
-  minorRadius: number,
-  startAngle: number,
-  endAngle: number,
-  xDirX = 1,
-  xDirY = 0,
-  sense = true
-): KernelType {
-  const center = new oc.gp_Pnt2d_3(cx, cy);
-  const dir = new oc.gp_Dir2d_5(xDirX, xDirY);
-  const ax = new oc.gp_Ax2d_2(center, dir);
-  const elips = new oc.gp_Elips2d_2(ax, majorRadius, minorRadius, true);
-  const maker = new oc.GCE2d_MakeArcOfEllipse_1(elips, startAngle, endAngle, sense);
-  try {
-    if (!maker.IsDone()) throw new Error('makeEllipseArc2d: construction failed');
-    return maker.Value();
-  } finally {
-    maker.delete();
-    elips.delete();
-    ax.delete();
-    dir.delete();
-    center.delete();
-  }
+  major: number,
+  minor: number,
+  start: number,
+  end: number,
+  xDirX?: number,
+  xDirY?: number,
+  sense?: boolean
+): Curve2dHandle {
+  const ellipse = g2d.makeEllipse2d(cx, cy, major, minor, xDirX, xDirY, sense);
+  return { __bk2d: 'trimmed', basis: ellipse, tStart: start, tEnd: end } as Curve2dObj;
 }
 
-export function makeBezier2d(oc: KernelInstance, points: [number, number][]): KernelType {
-  const arr = new oc.TColgp_Array1OfPnt2d_2(1, points.length);
-  for (let i = 0; i < points.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
-    const p = points[i]!;
-    const gpPnt = new oc.gp_Pnt2d_3(p[0], p[1]);
-    arr.SetValue_1(i + 1, gpPnt);
-    gpPnt.delete();
-  }
-
-  const bezier = new oc.Geom2d_BezierCurve_1(arr);
-  arr.delete();
-
-  return new oc.Handle_Geom2d_Curve_2(bezier);
+export function makeBezier2d(points: [number, number][]): Curve2dHandle {
+  return g2d.makeBezier2d(points);
 }
 
 export function makeBSpline2d(
-  oc: KernelInstance,
   points: [number, number][],
-  options: {
-    degMin?: number;
-    degMax?: number;
-    continuity?: 'C0' | 'C1' | 'C2' | 'C3';
-    tolerance?: number;
-    smoothing?: [number, number, number] | null;
-  } = {}
-): KernelType {
-  const { degMin = 1, degMax = 3, continuity = 'C2', tolerance = 1e-3, smoothing = null } = options;
-
-  const pnts = new oc.TColgp_Array1OfPnt2d_2(1, points.length);
-  for (let i = 0; i < points.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index within bounds
-    const p = points[i]!;
-    const gpPnt = new oc.gp_Pnt2d_3(p[0], p[1]);
-    pnts.SetValue_1(i + 1, gpPnt);
-    gpPnt.delete();
+  _options?: Record<string, unknown>
+): Curve2dHandle {
+  const n = points.length;
+  const degree = Math.min(3, n - 1);
+  const knots: number[] = [];
+  const mults: number[] = [];
+  knots.push(0);
+  mults.push(degree + 1);
+  const nInternal = n - degree - 1;
+  for (let i = 1; i <= nInternal; i++) {
+    knots.push(i / (nInternal + 1));
+    mults.push(1);
   }
-
-  let splineBuilder: KernelType;
-  if (smoothing) {
-    splineBuilder = new oc.Geom2dAPI_PointsToBSpline_6(
-      pnts,
-      smoothing[0],
-      smoothing[1],
-      smoothing[2],
-      degMax,
-      mapContinuity(oc, continuity),
-      tolerance
-    );
-  } else {
-    splineBuilder = new oc.Geom2dAPI_PointsToBSpline_2(
-      pnts,
-      degMin,
-      degMax,
-      mapContinuity(oc, continuity),
-      tolerance
-    );
-  }
-  pnts.delete();
-
-  if (!splineBuilder.IsDone()) {
-    splineBuilder.delete();
-    throw new Error('B-spline 2D approximation failed');
-  }
-
-  const curve = splineBuilder.Curve();
-  splineBuilder.delete();
-  return curve;
+  knots.push(1);
+  mults.push(degree + 1);
+  return {
+    __bk2d: 'bspline',
+    poles: [...points],
+    knots,
+    multiplicities: mults,
+    degree,
+    isPeriodic: false,
+  } as Curve2dObj;
 }
 
-// ---------------------------------------------------------------------------
-// 2D Curve queries
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// 2D curve evaluation & query
+// ═══════════════════════════════════════════════════════════════════════
 
-export function evaluateCurve2d(
-  _oc: KernelInstance,
-  curve: KernelType,
-  param: number
-): [number, number] {
-  const inner = curve.get();
-  const p = inner.Value(param);
-  const result: [number, number] = [p.X(), p.Y()];
-  p.delete();
-  return result;
+export function evaluateCurve2d(curve: Curve2dHandle, param: number): [number, number] {
+  return g2d.evaluateCurve2d(c2d(curve), param);
 }
 
 export function evaluateCurve2dD1(
-  oc: KernelInstance,
-  curve: KernelType,
+  curve: Curve2dHandle,
   param: number
 ): { point: [number, number]; tangent: [number, number] } {
-  const inner = curve.get();
-  const pnt = new oc.gp_Pnt2d_1();
-  const vec = new oc.gp_Vec2d_1();
-  inner.D1(param, pnt, vec);
-  const result = {
-    point: [pnt.X(), pnt.Y()] as [number, number],
-    tangent: [vec.X(), vec.Y()] as [number, number],
-  };
-  pnt.delete();
-  vec.delete();
-  return result;
-}
-
-export function getCurve2dBounds(
-  _oc: KernelInstance,
-  curve: KernelType
-): { first: number; last: number } {
-  const inner = curve.get();
   return {
-    first: inner.FirstParameter(),
-    last: inner.LastParameter(),
+    point: g2d.evaluateCurve2d(c2d(curve), param),
+    tangent: g2d.tangentCurve2d(c2d(curve), param),
   };
 }
 
-const CURVE_TYPE_NAMES: readonly string[] = [
-  'LINE',
-  'CIRCLE',
-  'ELLIPSE',
-  'HYPERBOLA',
-  'PARABOLA',
-  'BEZIER_CURVE',
-  'BSPLINE_CURVE',
-  'OFFSET_CURVE',
-  'OTHER_CURVE',
-];
-
-export function getCurve2dType(oc: KernelInstance, curve: KernelType): string {
-  const idx = getCurve2dTypeIndex(oc, curve);
-  return CURVE_TYPE_NAMES[idx] ?? 'OTHER_CURVE';
+export function getCurve2dBounds(curve: Curve2dHandle): { first: number; last: number } {
+  return g2d.curveBounds(c2d(curve));
 }
 
-// ---------------------------------------------------------------------------
-// 2D Curve modification
-// ---------------------------------------------------------------------------
-
-export function trimCurve2d(
-  oc: KernelInstance,
-  curve: KernelType,
-  start: number,
-  end: number
-): KernelType {
-  const trimmed = new oc.Geom2d_TrimmedCurve(curve, start, end, true, true);
-  return new oc.Handle_Geom2d_Curve_2(trimmed);
+export function getCurve2dType(curve: Curve2dHandle): string {
+  return g2d.curveTypeName(c2dBasis(curve));
 }
 
-export function reverseCurve2d(_oc: KernelInstance, curve: KernelType): void {
-  curve.get().Reverse();
+// ═══════════════════════════════════════════════════════════════════════
+// 2D curve manipulation
+// ═══════════════════════════════════════════════════════════════════════
+
+export function trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
+  return { __bk2d: 'trimmed', basis: c2d(curve), tStart: start, tEnd: end } as Curve2dObj;
 }
 
-export function copyCurve2d(_oc: KernelInstance, curve: KernelType): KernelType {
-  return curve.get().Copy();
+export function reverseCurve2d(_curve: Curve2dHandle): void {
+  /* Mutates in-place — no-op for immutable objects */
 }
 
-export function offsetCurve2d(oc: KernelInstance, curve: KernelType, offset: number): KernelType {
-  const offsetCurve = new oc.Geom2d_OffsetCurve_1(curve, offset, true);
-  return new oc.Handle_Geom2d_Curve_2(offsetCurve);
+export function copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
+  return JSON.parse(JSON.stringify(curve));
 }
 
-// ---------------------------------------------------------------------------
-// 2D Transformations
-// ---------------------------------------------------------------------------
-
-function transformCurve(oc: KernelInstance, curve: KernelType, trsf: KernelType): KernelType {
-  const gtrsf = new oc.gp_GTrsf2d_2(trsf);
-  const result = oc.GeomLib.GTransform(curve, gtrsf);
-  gtrsf.delete();
-  trsf.delete();
-  return result;
+export function offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle {
+  const c = c2d(curve);
+  const bounds = g2d.curveBounds(c);
+  const N = 30;
+  const poles: [number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
+    const [px, py] = g2d.evaluateCurve2d(c, t);
+    const [tvx, tvy] = g2d.tangentCurve2d(c, t);
+    const tLen = Math.sqrt(tvx * tvx + tvy * tvy);
+    if (tLen > 1e-12) {
+      poles.push([px - (tvy / tLen) * offset, py + (tvx / tLen) * offset]);
+    } else {
+      poles.push([px, py]);
+    }
+  }
+  return makeBSpline2d(poles);
 }
 
-export function translateCurve2d(
-  oc: KernelInstance,
-  curve: KernelType,
-  dx: number,
-  dy: number
-): KernelType {
-  const v = new oc.gp_Vec2d_4(dx, dy);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetTranslation_1(v);
-  v.delete();
-  return transformCurve(oc, curve, trsf);
+export function translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle {
+  return g2d.translateCurve2d(c2d(curve), dx, dy);
 }
 
 export function rotateCurve2d(
-  oc: KernelInstance,
-  curve: KernelType,
+  curve: Curve2dHandle,
   angle: number,
   cx: number,
   cy: number
-): KernelType {
-  const center = new oc.gp_Pnt2d_3(cx, cy);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetRotation(center, angle);
-  center.delete();
-  return transformCurve(oc, curve, trsf);
+): Curve2dHandle {
+  return g2d.rotateCurve2d(c2d(curve), angle, cx, cy);
 }
 
 export function scaleCurve2d(
-  oc: KernelInstance,
-  curve: KernelType,
+  curve: Curve2dHandle,
   factor: number,
   cx: number,
   cy: number
-): KernelType {
-  const center = new oc.gp_Pnt2d_3(cx, cy);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetScale(center, factor);
-  center.delete();
-  return transformCurve(oc, curve, trsf);
+): Curve2dHandle {
+  return g2d.scaleCurve2d(c2d(curve), factor, cx, cy);
 }
 
-export function mirrorCurve2dAtPoint(
-  oc: KernelInstance,
-  curve: KernelType,
-  cx: number,
-  cy: number
-): KernelType {
-  const center = new oc.gp_Pnt2d_3(cx, cy);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetMirror_1(center);
-  center.delete();
-  return transformCurve(oc, curve, trsf);
+export function mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle {
+  return g2d.mirrorAtPoint(c2d(curve), cx, cy);
 }
 
 export function mirrorCurve2dAcrossAxis(
-  oc: KernelInstance,
-  curve: KernelType,
-  originX: number,
-  originY: number,
-  dirX: number,
-  dirY: number
-): KernelType {
-  const origin = new oc.gp_Pnt2d_3(originX, originY);
-  const dir = new oc.gp_Dir2d_5(dirX, dirY);
-  const ax = new oc.gp_Ax2d_2(origin, dir);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetMirror_2(ax);
-  ax.delete();
-  dir.delete();
-  origin.delete();
-  return transformCurve(oc, curve, trsf);
+  curve: Curve2dHandle,
+  ox: number,
+  oy: number,
+  dx: number,
+  dy: number
+): Curve2dHandle {
+  return g2d.mirrorAcrossAxis(c2d(curve), ox, oy, dx, dy);
 }
 
 export function affinityTransform2d(
-  oc: KernelInstance,
-  curve: KernelType,
-  axisOriginX: number,
-  axisOriginY: number,
-  axisDirX: number,
-  axisDirY: number,
+  curve: Curve2dHandle,
+  ox: number,
+  oy: number,
+  dx: number,
+  dy: number,
   ratio: number
-): KernelType {
-  const origin = new oc.gp_Pnt2d_3(axisOriginX, axisOriginY);
-  const dir = new oc.gp_Dir2d_5(axisDirX, axisDirY);
-  const ax = new oc.gp_Ax2d_2(origin, dir);
-  const gtrsf = new oc.gp_GTrsf2d_1();
-  gtrsf.SetAffinity(ax, ratio);
-  ax.delete();
-  dir.delete();
-  origin.delete();
-  const result = oc.GeomLib.GTransform(curve, gtrsf);
-  gtrsf.delete();
-  return result;
+): Curve2dHandle {
+  return transformCurve2dGeneral(curve, createAffinityGTrsf2d(ox, oy, dx, dy, ratio));
 }
 
-// ---------------------------------------------------------------------------
-// 2D General transforms (gp_GTrsf2d)
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// General 2D transforms (stored as 3x3 matrices)
+// ═══════════════════════════════════════════════════════════════════════
 
-/** Helper: wrap a gp_Trsf2d in a gp_GTrsf2d and delete the trsf. */
-function wrapTrsf2dAsGTrsf2d(oc: KernelInstance, trsf: KernelType): KernelType {
-  const gtrsf = new oc.gp_GTrsf2d_2(trsf);
-  trsf.delete();
-  return gtrsf;
+function _gtrsf(m: number[], tx: number, ty: number): KernelType {
+  return { m, tx, ty, delete: noop } as KernelType;
 }
 
-export function createIdentityGTrsf2d(oc: KernelInstance): KernelType {
-  return new oc.gp_GTrsf2d_1();
+export function createIdentityGTrsf2d(): KernelType {
+  return _gtrsf([1, 0, 0, 0, 1, 0, 0, 0, 1], 0, 0);
 }
 
 export function createAffinityGTrsf2d(
-  oc: KernelInstance,
-  originX: number,
-  originY: number,
-  dirX: number,
-  dirY: number,
+  ox: number,
+  oy: number,
+  dx: number,
+  dy: number,
   ratio: number
 ): KernelType {
-  const origin = new oc.gp_Pnt2d_3(originX, originY);
-  const dir = new oc.gp_Dir2d_5(dirX, dirY);
-  const ax = new oc.gp_Ax2d_2(origin, dir);
-  const gtrsf = new oc.gp_GTrsf2d_1();
-  gtrsf.SetAffinity(ax, ratio);
-  ax.delete();
-  dir.delete();
-  origin.delete();
-  return gtrsf;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1e-15) return createIdentityGTrsf2d();
+  const px = -dy / len,
+    py = dx / len;
+  const k = ratio - 1;
+  const m = [1 + k * px * px, k * px * py, 0, k * py * px, 1 + k * py * py, 0, 0, 0, 1];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
+  const txv = ox - m[0]! * ox - m[1]! * oy;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
+  const tyv = oy - m[3]! * ox - m[4]! * oy;
+  return _gtrsf(m, txv, tyv);
 }
 
-export function createTranslationGTrsf2d(oc: KernelInstance, dx: number, dy: number): KernelType {
-  const v = new oc.gp_Vec2d_4(dx, dy);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetTranslation_1(v);
-  v.delete();
-  return wrapTrsf2dAsGTrsf2d(oc, trsf);
+export function createTranslationGTrsf2d(dx: number, dy: number): KernelType {
+  return _gtrsf([1, 0, 0, 0, 1, 0, 0, 0, 1], dx, dy);
 }
 
 export function createMirrorGTrsf2d(
-  oc: KernelInstance,
   cx: number,
   cy: number,
   mode: 'point' | 'axis',
-  originX = 0,
-  originY = 0,
-  dirX = 1,
-  dirY = 0
+  ox?: number,
+  oy?: number,
+  dx?: number,
+  dy?: number
 ): KernelType {
-  const trsf = new oc.gp_Trsf2d_1();
-  if (mode === 'point') {
-    const p = new oc.gp_Pnt2d_3(cx, cy);
-    trsf.SetMirror_1(p);
-    p.delete();
-  } else {
-    const p = new oc.gp_Pnt2d_3(originX, originY);
-    const dir = new oc.gp_Dir2d_5(dirX, dirY);
-    const ax = new oc.gp_Ax2d_2(p, dir);
-    trsf.SetMirror_2(ax);
-    ax.delete();
-    dir.delete();
-    p.delete();
+  if (mode === 'axis' && dx !== undefined && dy !== undefined) {
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const nx = dx / len,
+      ny = dy / len;
+    const m = [2 * nx * nx - 1, 2 * nx * ny, 0, 2 * nx * ny, 2 * ny * ny - 1, 0, 0, 0, 1];
+    const apx = ox ?? cx,
+      apy = oy ?? cy;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
+    const txv = apx - m[0]! * apx - m[1]! * apy;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
+    const tyv = apy - m[3]! * apx - m[4]! * apy;
+    return _gtrsf(m, txv, tyv);
   }
-  return wrapTrsf2dAsGTrsf2d(oc, trsf);
+  return _gtrsf([-1, 0, 0, 0, -1, 0, 0, 0, 1], 2 * cx, 2 * cy);
 }
 
-export function createRotationGTrsf2d(
-  oc: KernelInstance,
-  angle: number,
-  cx: number,
-  cy: number
-): KernelType {
-  const p = new oc.gp_Pnt2d_3(cx, cy);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetRotation(p, angle);
-  p.delete();
-  return wrapTrsf2dAsGTrsf2d(oc, trsf);
+export function createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType {
+  const c = Math.cos(angle),
+    s = Math.sin(angle);
+  return _gtrsf([c, -s, 0, s, c, 0, 0, 0, 1], cx - c * cx + s * cy, cy - s * cx - c * cy);
 }
 
-export function createScaleGTrsf2d(
-  oc: KernelInstance,
-  factor: number,
-  cx: number,
-  cy: number
-): KernelType {
-  const p = new oc.gp_Pnt2d_3(cx, cy);
-  const trsf = new oc.gp_Trsf2d_1();
-  trsf.SetScale(p, factor);
-  p.delete();
-  return wrapTrsf2dAsGTrsf2d(oc, trsf);
+export function createScaleGTrsf2d(factor: number, cx: number, cy: number): KernelType {
+  return _gtrsf([factor, 0, 0, 0, factor, 0, 0, 0, 1], cx * (1 - factor), cy * (1 - factor));
 }
 
-export function setGTrsf2dTranslationPart(
-  oc: KernelInstance,
-  gtrsf: KernelType,
-  dx: number,
-  dy: number
-): void {
-  const xy = new oc.gp_XY_2(dx, dy);
-  gtrsf.SetTranslationPart(xy);
-  xy.delete();
+export function setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void {
+  gtrsf.tx = dx;
+  gtrsf.ty = dy;
 }
 
-export function multiplyGTrsf2d(_oc: KernelInstance, base: KernelType, other: KernelType): void {
-  base.Multiply(other);
+export function multiplyGTrsf2d(base: KernelType, other: KernelType): void {
+  const a = base.m as number[],
+    b = other.m as number[];
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
+  const r = [
+    a[0]! * b[0]! + a[1]! * b[3]! + a[2]! * b[6]!,
+    a[0]! * b[1]! + a[1]! * b[4]! + a[2]! * b[7]!,
+    a[0]! * b[2]! + a[1]! * b[5]! + a[2]! * b[8]!,
+    a[3]! * b[0]! + a[4]! * b[3]! + a[5]! * b[6]!,
+    a[3]! * b[1]! + a[4]! * b[4]! + a[5]! * b[7]!,
+    a[3]! * b[2]! + a[4]! * b[5]! + a[5]! * b[8]!,
+    a[6]! * b[0]! + a[7]! * b[3]! + a[8]! * b[6]!,
+    a[6]! * b[1]! + a[7]! * b[4]! + a[8]! * b[7]!,
+    a[6]! * b[2]! + a[7]! * b[5]! + a[8]! * b[8]!,
+  ];
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+  base.m = r;
+  const oldTx = base.tx as number,
+    oldTy = base.ty as number;
+  const otx = Number(other.tx) || 0,
+    oty = Number(other.ty) || 0;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
+  base.tx = a[0]! * otx + a[1]! * oty + oldTx;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
+  base.ty = a[3]! * otx + a[4]! * oty + oldTy;
 }
 
-export function transformCurve2dGeneral(
-  oc: KernelInstance,
-  curve: KernelType,
-  gtrsf: KernelType
-): KernelType {
-  return oc.GeomLib.GTransform(curve, gtrsf);
+export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType): Curve2dHandle {
+  const c = c2d(curve);
+  const m = (gtrsf.m as number[] | undefined) ?? [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  const tx = Number(gtrsf.tx) || 0,
+    ty = Number(gtrsf.ty) || 0;
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
+  const isIdentityMatrix =
+    Math.abs(m[0]! - 1) < 1e-12 &&
+    Math.abs(m[4]! - 1) < 1e-12 &&
+    Math.abs(m[1]!) < 1e-12 &&
+    Math.abs(m[3]!) < 1e-12;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+  if (isIdentityMatrix) {
+    return g2d.translateCurve2d(c, tx, ty);
+  }
+  const bounds = g2d.curveBounds(c);
+  const N = 20;
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
+    const [px, py] = g2d.evaluateCurve2d(c, t);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
+    pts.push([m[0]! * px + m[1]! * py + tx, m[3]! * px + m[4]! * py + ty]);
+  }
+  return g2d.makeBezier2d(pts);
 }
 
-// ---------------------------------------------------------------------------
-// 2D Intersection & distance
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// 2D intersection & distance
+// ═══════════════════════════════════════════════════════════════════════
 
 export function intersectCurves2d(
-  oc: KernelInstance,
-  c1: KernelType,
-  c2: KernelType,
+  c1: Curve2dHandle,
+  c2: Curve2dHandle,
   tolerance: number
-): { points: [number, number][]; segments: KernelType[] } {
-  const intersector = new oc.Geom2dAPI_InterCurveCurve_1();
-  intersector.Init_1(c1, c2, tolerance);
-
-  const points: [number, number][] = [];
-  const nPoints = intersector.NbPoints();
-  for (let i = 1; i <= nPoints; i++) {
-    const p = intersector.Point(i);
-    points.push([p.X(), p.Y()]);
-    p.delete();
-  }
-
-  const segments: KernelType[] = [];
-  const nSegments = intersector.NbSegments();
-  for (let i = 1; i <= nSegments; i++) {
-    const h1 = new oc.Handle_Geom2d_Curve_1();
-    const h2 = new oc.Handle_Geom2d_Curve_1();
-    try {
-      intersector.Segment(i, h1, h2);
-      segments.push(h1);
-      h2.delete();
-    } catch {
-      // Known OCCT bug: NbSegments() may report unfetchable segments
-      h1.delete();
-      h2.delete();
-    }
-  }
-
-  intersector.delete();
-  return { points, segments };
+): { points: [number, number][]; segments: Curve2dHandle[] } {
+  const result = g2d.intersectCurves2dFn(c2d(c1), c2d(c2), tolerance);
+  const segments: Curve2dHandle[] = result.segments.map((s) =>
+    Object.assign(s, {
+      delete() {
+        /* no-op */
+      },
+    })
+  );
+  return { points: result.points, segments };
 }
 
 export function projectPointOnCurve2d(
-  oc: KernelInstance,
-  curve: KernelType,
+  curve: Curve2dHandle,
   x: number,
   y: number
 ): { param: number; distance: number } | null {
-  const pnt = new oc.gp_Pnt2d_3(x, y);
-  const projector = new oc.Geom2dAPI_ProjectPointOnCurve_2(pnt, curve);
-  pnt.delete();
+  const c = c2d(curve);
+  const bounds = g2d.curveBounds(c);
 
-  let result: { param: number; distance: number } | null = null;
-  try {
-    if (projector.NbPoints() > 0) {
-      result = {
-        param: projector.LowerDistanceParameter(),
-        distance: projector.LowerDistance(),
-      };
-    }
-  } catch {
-    // Projection failed — return null
+  // Analytic projection for untrimmed lines
+  if (c.__bk2d === 'line') {
+    const ddx = x - c.ox;
+    const ddy = y - c.oy;
+    const t = Math.max(bounds.first, Math.min(bounds.last, ddx * c.dx + ddy * c.dy));
+    const [px, py] = g2d.evaluateCurve2d(c, t);
+    return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
   }
 
-  projector.delete();
-  return result;
+  // Analytic projection for untrimmed circles
+  if (c.__bk2d === 'circle') {
+    const angle = Math.atan2(y - c.cy, x - c.cx);
+    let t = c.sense ? angle : -angle;
+    while (t < 0) t += 2 * Math.PI;
+    while (t > 2 * Math.PI) t -= 2 * Math.PI;
+    const [px, py] = g2d.evaluateCurve2d(c, t);
+    return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
+  }
+
+  // General: brute-force + Newton refinement
+  if (!isFinite(bounds.first) || !isFinite(bounds.last)) return null;
+  let bestT = bounds.first;
+  let bestDist = Infinity;
+  const N = 200;
+  const dt = (bounds.last - bounds.first) / N;
+  for (let i = 0; i <= N; i++) {
+    const t = bounds.first + i * dt;
+    const [px, py] = g2d.evaluateCurve2d(c, t);
+    const dd = (px - x) ** 2 + (py - y) ** 2;
+    if (dd < bestDist) {
+      bestDist = dd;
+      bestT = t;
+    }
+  }
+  for (let iter = 0; iter < 10; iter++) {
+    const [px, py] = g2d.evaluateCurve2d(c, bestT);
+    const [tvx, tvy] = g2d.tangentCurve2d(c, bestT);
+    const dot = (px - x) * tvx + (py - y) * tvy;
+    const ddenom = tvx * tvx + tvy * tvy;
+    if (ddenom < 1e-20) break;
+    const step = dot / ddenom;
+    const newT = Math.max(bounds.first, Math.min(bounds.last, bestT - step));
+    if (Math.abs(newT - bestT) < 1e-14) break;
+    bestT = newT;
+  }
+  const [fx, fy] = g2d.evaluateCurve2d(c, bestT);
+  return { param: bestT, distance: Math.sqrt((fx - x) ** 2 + (fy - y) ** 2) };
 }
 
 export function distanceBetweenCurves2d(
-  oc: KernelInstance,
-  c1: KernelType,
-  c2: KernelType,
-  p1Start: number,
-  p1End: number,
-  p2Start: number,
-  p2End: number
+  c1: Curve2dHandle,
+  c2: Curve2dHandle,
+  p1s: number,
+  p1e: number,
+  p2s: number,
+  p2e: number
 ): number {
-  const extrema = new oc.Geom2dAPI_ExtremaCurveCurve(c1, c2, p1Start, p1End, p2Start, p2End);
+  const curve1 = c2d(c1);
+  const curve2 = c2d(c2);
 
-  let distance: number;
-  try {
-    distance = extrema.LowerDistance();
-  } catch {
-    distance = Infinity;
+  // Phase 1: 50x50 grid scan
+  let bestT1 = p1s;
+  let bestT2 = p2s;
+  let minDistSq = Infinity;
+  const N = 50;
+  for (let i = 0; i <= N; i++) {
+    const t1 = p1s + ((p1e - p1s) * i) / N;
+    const [x1, y1] = g2d.evaluateCurve2d(curve1, t1);
+    for (let j = 0; j <= N; j++) {
+      const t2 = p2s + ((p2e - p2s) * j) / N;
+      const [x2, y2] = g2d.evaluateCurve2d(curve2, t2);
+      const dd = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+      if (dd < minDistSq) {
+        minDistSq = dd;
+        bestT1 = t1;
+        bestT2 = t2;
+      }
+    }
   }
 
-  extrema.delete();
-  return distance;
+  // Phase 2: Alternating projection refinement
+  let t1 = bestT1;
+  let t2 = bestT2;
+  for (let iter = 0; iter < 20; iter++) {
+    const [x2, y2] = g2d.evaluateCurve2d(curve2, t2);
+    const proj1 = projectPointOnCurve2d(c1, x2, y2);
+    if (proj1) {
+      const newT1 = Math.max(p1s, Math.min(p1e, proj1.param));
+      const converged1 = Math.abs(newT1 - t1) < 1e-12;
+      t1 = newT1;
+      if (converged1) break;
+    }
+
+    const [x1, y1] = g2d.evaluateCurve2d(curve1, t1);
+    const proj2 = projectPointOnCurve2d(c2, x1, y1);
+    if (proj2) {
+      const newT2 = Math.max(p2s, Math.min(p2e, proj2.param));
+      const converged2 = Math.abs(newT2 - t2) < 1e-12;
+      t2 = newT2;
+      if (converged2) break;
+    }
+  }
+
+  const [fx1, fy1] = g2d.evaluateCurve2d(curve1, t1);
+  const [fx2, fy2] = g2d.evaluateCurve2d(curve2, t2);
+  return Math.sqrt((fx2 - fx1) ** 2 + (fy2 - fy1) ** 2);
 }
 
-// ---------------------------------------------------------------------------
-// 2D Approximation
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// 2D curve approximation & decomposition
+// ═══════════════════════════════════════════════════════════════════════
 
 export function approximateCurve2dAsBSpline(
-  oc: KernelInstance,
-  curve: KernelType,
-  tolerance: number,
-  continuity: 'C0' | 'C1' | 'C2' | 'C3',
-  maxSegments: number
-): KernelType {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const convert = new oc.Geom2dConvert_ApproxCurve_2(
-    adaptor.ShallowCopy(),
-    tolerance,
-    mapContinuity(oc, continuity),
-    maxSegments,
-    3
-  );
-  const result = convert.Curve();
-  convert.delete();
-  adaptor.delete();
-  return result;
-}
+  curve: Curve2dHandle,
+  tol: number,
+  cont: 'C0' | 'C1' | 'C2' | 'C3',
+  maxSeg: number
+): Curve2dHandle {
+  const c = c2d(curve);
+  const bounds = g2d.curveBounds(c);
 
-export function decomposeBSpline2dToBeziers(oc: KernelInstance, curve: KernelType): KernelType[] {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const handle = adaptor.BSpline();
-  adaptor.delete();
+  const contDegMap: Record<string, number> = { C0: 1, C1: 2, C2: 3, C3: 4 };
+  const degree = Math.max(3, contDegMap[cont] ?? 4);
 
-  const convert = new oc.Geom2dConvert_BSplineCurveToBezierCurve_1(handle);
-  const arcs: KernelType[] = [];
-  const nArcs = convert.NbArcs();
-  for (let i = 1; i <= nArcs; i++) {
-    arcs.push(convert.Arc(i));
+  let curN = Math.max(100, maxSeg * 10);
+  let poles: [number, number][] = [];
+  let maxErr = Infinity;
+
+  for (let attempt = 0; attempt < 3 && maxErr > tol; attempt++) {
+    poles = [];
+    for (let i = 0; i <= curN; i++) {
+      const t = bounds.first + ((bounds.last - bounds.first) * i) / curN;
+      poles.push(g2d.evaluateCurve2d(c, t));
+    }
+
+    maxErr = 0;
+    for (let i = 0; i < curN; i++) {
+      const tMid = bounds.first + ((bounds.last - bounds.first) * (i + 0.5)) / curN;
+      const [ex, ey] = g2d.evaluateCurve2d(c, tMid);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
+      const p0 = poles[i]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
+      const p1 = poles[i + 1]!;
+      const mx = (p0[0] + p1[0]) / 2;
+      const my = (p0[1] + p1[1]) / 2;
+      const err = Math.sqrt((ex - mx) ** 2 + (ey - my) ** 2);
+      if (err > maxErr) maxErr = err;
+    }
+
+    if (maxErr > tol) curN = Math.min(curN * 2, 500);
   }
-  convert.delete();
-  return arcs;
+
+  return makeBSpline2d(poles, { degMax: degree });
 }
 
-// ---------------------------------------------------------------------------
-// 2D Bounding box
-// ---------------------------------------------------------------------------
-
-export function createBoundingBox2d(oc: KernelInstance): KernelType {
-  return new oc.Bnd_Box2d();
+export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
+  const c = c2dBasis(curve);
+  if (c.__bk2d === 'bezier') return [curve];
+  if (c.__bk2d !== 'bspline') {
+    const approx = approximateCurve2dAsBSpline(curve, 1e-6, 'C2', 10);
+    return decomposeBSpline2dToBeziers(approx);
+  }
+  const trimBounds = g2d.curveBounds(c2d(curve));
+  const first = trimBounds.first;
+  const last = trimBounds.last;
+  const internalKnots: number[] = [];
+  for (const k of c.knots) {
+    if (k > first + 1e-12 && k < last - 1e-12) internalKnots.push(k);
+  }
+  const breakpoints = [first, ...internalKnots, last];
+  const result: Curve2dHandle[] = [];
+  for (let i = 0; i < breakpoints.length - 1; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
+    const t0 = breakpoints[i]!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
+    const t1 = breakpoints[i + 1]!;
+    const span = t1 - t0;
+    if (span < 1e-15) continue;
+    const p0 = g2d.evaluateCurve2d(c, t0);
+    const p3 = g2d.evaluateCurve2d(c, t1);
+    const tan0 = g2d.tangentCurve2d(c, t0);
+    const tan3 = g2d.tangentCurve2d(c, t1);
+    const s = span / 3;
+    const bezier: Curve2dObj = {
+      __bk2d: 'bezier',
+      poles: [
+        p0,
+        [p0[0] + tan0[0] * s, p0[1] + tan0[1] * s],
+        [p3[0] - tan3[0] * s, p3[1] - tan3[1] * s],
+        p3,
+      ],
+    };
+    result.push(bezier as Curve2dHandle);
+  }
+  return result.length > 0 ? result : [curve];
 }
 
-export function addCurveToBBox2d(
-  oc: KernelInstance,
-  bbox: KernelType,
-  curve: KernelType,
-  tolerance: number
-): void {
-  oc.BndLib_Add2dCurve.Add_3(curve, tolerance, bbox);
+// ═══════════════════════════════════════════════════════════════════════
+// 2D bounding boxes
+// ═══════════════════════════════════════════════════════════════════════
+
+export function createBoundingBox2d(): BBox2dHandle {
+  return g2d.createBBox2d();
 }
 
-export function getBBox2dBounds(
-  _oc: KernelInstance,
-  bbox: KernelType
-): { xMin: number; yMin: number; xMax: number; yMax: number } {
-  return {
-    xMin: bbox.GetXMin(),
-    yMin: bbox.GetYMin(),
-    xMax: bbox.GetXMax(),
-    yMax: bbox.GetYMax(),
-  };
+export function addCurveToBBox2d(bbox: BBox2dHandle, curve: Curve2dHandle, tol: number): void {
+  g2d.addCurveToBBox(bb2d(bbox), c2d(curve), tol);
 }
 
-export function mergeBBox2d(_oc: KernelInstance, target: KernelType, other: KernelType): void {
-  target.Add_1(other);
+export function getBBox2dBounds(bbox: BBox2dHandle): {
+  xMin: number;
+  yMin: number;
+  xMax: number;
+  yMax: number;
+} {
+  const b = bb2d(bbox);
+  return { xMin: b.xMin, yMin: b.yMin, xMax: b.xMax, yMax: b.yMax };
 }
 
-export function isBBox2dOut(_oc: KernelInstance, a: KernelType, b: KernelType): boolean {
-  return a.IsOut_4(b);
+export function mergeBBox2d(target: BBox2dHandle, other: BBox2dHandle): void {
+  const t = bb2d(target),
+    o = bb2d(other);
+  t.xMin = Math.min(t.xMin, o.xMin);
+  t.yMin = Math.min(t.yMin, o.yMin);
+  t.xMax = Math.max(t.xMax, o.xMax);
+  t.yMax = Math.max(t.yMax, o.yMax);
 }
 
-export function isBBox2dOutPoint(
-  oc: KernelInstance,
-  bbox: KernelType,
-  x: number,
-  y: number
-): boolean {
-  const pnt = new oc.gp_Pnt2d_3(x, y);
-  const result = bbox.IsOut_1(pnt);
-  pnt.delete();
-  return result;
+export function isBBox2dOut(a: BBox2dHandle, b: BBox2dHandle): boolean {
+  const ba = bb2d(a),
+    bbb = bb2d(b);
+  return ba.xMax < bbb.xMin || bbb.xMax < ba.xMin || ba.yMax < bbb.yMin || bbb.yMax < ba.yMin;
 }
 
-// ---------------------------------------------------------------------------
-// 2D Type extraction
-// ---------------------------------------------------------------------------
+export function isBBox2dOutPoint(bbox: BBox2dHandle, x: number, y: number): boolean {
+  const b = bb2d(bbox);
+  return x < b.xMin || x > b.xMax || y < b.yMin || y > b.yMax;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 2D type extraction
+// ═══════════════════════════════════════════════════════════════════════
 
 export function getCurve2dCircleData(
-  oc: KernelInstance,
-  curve: KernelType
+  curve: Curve2dHandle
 ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const typeIdx = unwrapOcctEnum(adaptor.GetType());
-  // 1 = GeomAbs_Circle
-  if (typeIdx !== 1) {
-    adaptor.delete();
-    return null;
-  }
-  const circle = adaptor.Circle();
-  const center = circle.Location();
-  const result = {
-    cx: center.X(),
-    cy: center.Y(),
-    radius: circle.Radius(),
-    isDirect: circle.IsDirect(),
-  };
-  center.delete();
-  circle.delete();
-  adaptor.delete();
-  return result;
+  const c = c2dBasis(curve);
+  if (c.__bk2d === 'circle') return { cx: c.cx, cy: c.cy, radius: c.radius, isDirect: c.sense };
+  return null;
 }
 
 export function getCurve2dEllipseData(
-  oc: KernelInstance,
-  curve: KernelType
+  curve: Curve2dHandle
 ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const typeIdx = unwrapOcctEnum(adaptor.GetType());
-  // 2 = GeomAbs_Ellipse
-  if (typeIdx !== 2) {
-    adaptor.delete();
-    return null;
-  }
-  const elips = adaptor.Ellipse();
-  const xAxis = elips.XAxis();
-  const xDir = xAxis.Direction();
-  const result = {
-    majorRadius: elips.MajorRadius(),
-    minorRadius: elips.MinorRadius(),
-    xAxisAngle: Math.atan2(xDir.Y(), xDir.X()),
-    isDirect: elips.IsDirect(),
-  };
-  xDir.delete();
-  xAxis.delete();
-  elips.delete();
-  adaptor.delete();
-  return result;
+  const c = c2dBasis(curve);
+  if (c.__bk2d === 'ellipse')
+    return {
+      majorRadius: c.majorRadius,
+      minorRadius: c.minorRadius,
+      xAxisAngle: c.xDirAngle,
+      isDirect: c.sense,
+    };
+  return null;
 }
 
-export function getCurve2dBezierPoles(
-  oc: KernelInstance,
-  curve: KernelType
-): [number, number][] | null {
-  // 5 = GeomAbs_BezierCurve
-  if (getCurve2dTypeIndex(oc, curve) !== 5) return null;
-
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const bezier = adaptor.Bezier().get();
-  const poles: [number, number][] = [];
-  const nbPoles = bezier.NbPoles();
-  for (let i = 1; i <= nbPoles; i++) {
-    const p = bezier.Pole(i);
-    poles.push([p.X(), p.Y()]);
-    p.delete();
-  }
-  adaptor.delete();
-  return poles;
+export function getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
+  const c = c2dBasis(curve);
+  if (c.__bk2d === 'bezier') return [...c.poles];
+  return null;
 }
 
-export function getCurve2dBezierDegree(oc: KernelInstance, curve: KernelType): number | null {
-  // 5 = GeomAbs_BezierCurve
-  if (getCurve2dTypeIndex(oc, curve) !== 5) return null;
-
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const degree = adaptor.Bezier().get().Degree();
-  adaptor.delete();
-  return degree;
+export function getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
+  const c = c2dBasis(curve);
+  if (c.__bk2d === 'bezier') return c.poles.length - 1;
+  return null;
 }
 
-export function getCurve2dBSplineData(
-  oc: KernelInstance,
-  curve: KernelType
-): {
+export function getCurve2dBSplineData(curve: Curve2dHandle): {
   poles: [number, number][];
   knots: number[];
   multiplicities: number[];
   degree: number;
   isPeriodic: boolean;
 } | null {
-  // 6 = GeomAbs_BSplineCurve
-  if (getCurve2dTypeIndex(oc, curve) !== 6) return null;
+  const c = c2dBasis(curve);
+  if (c.__bk2d === 'bspline')
+    return {
+      poles: [...c.poles],
+      knots: [...c.knots],
+      multiplicities: [...c.multiplicities],
+      degree: c.degree,
+      isPeriodic: c.isPeriodic,
+    };
+  return null;
+}
 
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const bspline = adaptor.BSpline().get();
+// ═══════════════════════════════════════════════════════════════════════
+// 2D serialization
+// ═══════════════════════════════════════════════════════════════════════
 
-  const poles: [number, number][] = [];
-  const polesArr = bspline.Poles_2();
-  for (let i = polesArr.Lower(); i <= polesArr.Upper(); i++) {
-    const p = polesArr.Value(i);
-    poles.push([p.X(), p.Y()]);
+export function serializeCurve2d(curve: Curve2dHandle): string {
+  return g2d.serializeCurve2d(c2d(curve));
+}
+
+export function deserializeCurve2d(data: string): Curve2dHandle {
+  return g2d.deserializeCurve2d(data);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 2D curve splitting
+// ═══════════════════════════════════════════════════════════════════════
+
+export function splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHandle[] {
+  const c = c2d(curve);
+  const bounds = g2d.curveBounds(c);
+  const sortedParams = [bounds.first, ...[...params].sort((a, b) => a - b), bounds.last];
+  const result: Curve2dHandle[] = [];
+  for (let i = 0; i < sortedParams.length - 1; i++) {
+    result.push({
+      __bk2d: 'trimmed',
+      basis: c,
+      tStart: sortedParams[i],
+      tEnd: sortedParams[i + 1],
+    } as Curve2dObj);
   }
-
-  const knots: number[] = [];
-  const knotsArr = bspline.Knots_2();
-  for (let i = knotsArr.Lower(); i <= knotsArr.Upper(); i++) {
-    knots.push(knotsArr.Value(i));
-  }
-
-  const multiplicities: number[] = [];
-  const multsArr = bspline.Multiplicities_2();
-  for (let i = multsArr.Lower(); i <= multsArr.Upper(); i++) {
-    multiplicities.push(multsArr.Value(i));
-  }
-
-  const result = {
-    poles,
-    knots,
-    multiplicities,
-    degree: bspline.Degree(),
-    isPeriodic: bspline.IsPeriodic(),
-  };
-  adaptor.delete();
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// 2D Serialization
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// 3D edge helpers for bridge methods (private)
+// ═══════════════════════════════════════════════════════════════════════
 
-export function serializeCurve2d(oc: KernelInstance, curve: KernelType): string {
-  return oc.GeomToolsWrapper.Write(curve);
-}
-
-export function deserializeCurve2d(oc: KernelInstance, data: string): KernelType {
-  return oc.GeomToolsWrapper.Read(data);
-}
-
-// ---------------------------------------------------------------------------
-// 2D Curve splitting
-// ---------------------------------------------------------------------------
-
-export function splitCurve2d(
+/** Create a straight 3D edge between two points. */
+function makeLineEdge3d(
   oc: KernelInstance,
-  curve: KernelType,
-  params: number[]
-): KernelType[] {
-  const inner = curve.get();
-  const first = inner.FirstParameter();
-  const last = inner.LastParameter();
-
-  const sorted = [...params].sort((a, b) => a - b);
-  const boundaries: [number, number][] = [];
-
-  let prev = first;
-  for (const p of sorted) {
-    if (p > first && p < last) {
-      boundaries.push([prev, p]);
-      prev = p;
-    }
-  }
-  boundaries.push([prev, last]);
-
-  // Detect curve type via adaptor for type-specific splitting
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const geomType = unwrapOcctEnum(adaptor.GetType());
-
-  const results = boundaries.map(([start, end]) => {
-    // 5 = GeomAbs_BezierCurve
-    if (geomType === 5) {
-      const curveCopy = new oc.Geom2d_BezierCurve_1(adaptor.Bezier().get().Poles_2());
-      curveCopy.Segment(start, end);
-      return new oc.Handle_Geom2d_Curve_2(curveCopy);
-    }
-    // 6 = GeomAbs_BSplineCurve
-    if (geomType === 6) {
-      const bspline = adaptor.BSpline().get();
-      const curveCopy = new oc.Geom2d_BSplineCurve_1(
-        bspline.Poles_2(),
-        bspline.Knots_2(),
-        bspline.Multiplicities_2(),
-        bspline.Degree(),
-        bspline.IsPeriodic()
-      );
-      curveCopy.Segment(start, end, 1e-9);
-      return new oc.Handle_Geom2d_Curve_2(curveCopy);
-    }
-    // Default: TrimmedCurve
-    const trimmed = new oc.Geom2d_TrimmedCurve(curve, start, end, true, true);
-    return new oc.Handle_Geom2d_Curve_2(trimmed);
-  });
-
-  adaptor.delete();
-  return results;
+  p1: [number, number, number],
+  p2: [number, number, number]
+): KernelShape {
+  const gp1 = new oc.gp_Pnt_3(p1[0], p1[1], p1[2]);
+  const gp2 = new oc.gp_Pnt_3(p2[0], p2[1], p2[2]);
+  const builder = new oc.BRepBuilderAPI_MakeEdge_3(gp1, gp2);
+  const edge = builder.Edge();
+  builder.delete();
+  gp1.delete();
+  gp2.delete();
+  return edge;
 }
 
-// ---------------------------------------------------------------------------
-// 2D -> 3D projection
-// ---------------------------------------------------------------------------
+/** Create a circular arc edge through 3 points. */
+function makeCircleArcEdge3d(
+  oc: KernelInstance,
+  startPt: [number, number, number],
+  midPt: [number, number, number],
+  endPt: [number, number, number]
+): KernelShape {
+  const gpStart = new oc.gp_Pnt_3(startPt[0], startPt[1], startPt[2]);
+  const gpMid = new oc.gp_Pnt_3(midPt[0], midPt[1], midPt[2]);
+  const gpEnd = new oc.gp_Pnt_3(endPt[0], endPt[1], endPt[2]);
+  const arcMaker = new oc.GC_MakeArcOfCircle_4(gpStart, gpMid, gpEnd);
+  const arcGeom = arcMaker.Value().get();
+  const curveHandle = new oc.Handle_Geom_Curve_2(arcGeom);
+  const edgeBuilder = new oc.BRepBuilderAPI_MakeEdge_24(curveHandle);
+  const edge = edgeBuilder.Edge();
+  edgeBuilder.delete();
+  curveHandle.delete();
+  gpStart.delete();
+  gpMid.delete();
+  gpEnd.delete();
+  return edge;
+}
+
+/** Interpolate a 3D BSpline through the given points and return an edge. */
+function interpolatePoints3d(oc: KernelInstance, points: [number, number, number][]): KernelShape {
+  const pnts = new oc.TColgp_Array1OfPnt_2(1, points.length);
+  const reusePnt = new oc.gp_Pnt_1();
+  for (let i = 0; i < points.length; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
+    const p = points[i]!;
+    reusePnt.SetCoord_2(p[0], p[1], p[2]);
+    pnts.SetValue_1(i + 1, reusePnt);
+  }
+  reusePnt.delete();
+
+  const interp = new oc.GeomAPI_PointsToBSpline_2(pnts, 3, 8, oc.GeomAbs_Shape.GeomAbs_C2, 1e-6);
+  pnts.delete();
+
+  if (!interp.IsDone()) {
+    interp.delete();
+    throw new Error('Interpolation failed — GeomAPI_PointsToBSpline did not converge');
+  }
+
+  const curve3d = interp.Curve();
+  const geomHandle = new oc.Handle_Geom_Curve_2(curve3d.get());
+  const builder = new oc.BRepBuilderAPI_MakeEdge_24(geomHandle);
+  const edge = builder.Edge();
+  builder.delete();
+  interp.delete();
+  return edge;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// 2D -> 3D projection (bridge methods — require OCCT kernel)
+// ═══════════════════════════════════════════════════════════════════════
 
 export function liftCurve2dToPlane(
   oc: KernelInstance,
-  curve: KernelType,
+  curve: Curve2dHandle,
   planeOrigin: [number, number, number],
   planeZ: [number, number, number],
   planeX: [number, number, number]
 ): KernelShape {
-  const origin = new oc.gp_Pnt_3(planeOrigin[0], planeOrigin[1], planeOrigin[2]);
-  const zDir = new oc.gp_Dir_5(planeZ[0], planeZ[1], planeZ[2]);
-  const xDir = new oc.gp_Dir_5(planeX[0], planeX[1], planeX[2]);
-  const ax = new oc.gp_Ax2_2(origin, zDir, xDir);
+  const c = c2d(curve);
+  // Y axis = Z cross X
+  const y: [number, number, number] = [
+    planeZ[1] * planeX[2] - planeZ[2] * planeX[1],
+    planeZ[2] * planeX[0] - planeZ[0] * planeX[2],
+    planeZ[0] * planeX[1] - planeZ[1] * planeX[0],
+  ];
 
-  const curve3d = oc.GeomLib.To3d(ax, curve);
-  const edgeBuilder = new oc.BRepBuilderAPI_MakeEdge_24(curve3d);
-  const edge = edgeBuilder.Edge();
+  const lift = (u: number, v: number): [number, number, number] => [
+    planeOrigin[0] + u * planeX[0] + v * y[0],
+    planeOrigin[1] + u * planeX[1] + v * y[1],
+    planeOrigin[2] + u * planeX[2] + v * y[2],
+  ];
 
-  edgeBuilder.delete();
-  curve3d.delete();
-  ax.delete();
-  xDir.delete();
-  zDir.delete();
-  origin.delete();
-  return edge;
+  // Lines: exact 3D line edge
+  if (c.__bk2d === 'line') {
+    return makeLineEdge3d(oc, lift(c.ox, c.oy), lift(c.ox + c.dx * c.len, c.oy + c.dy * c.len));
+  }
+
+  // Circles/arcs: use exact Circle3D edges when the basis is a circle
+  if (c.__bk2d === 'circle' || c.__bk2d === 'trimmed') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- geometry2d internal
+    let basis: any = c;
+    while (basis.__bk2d === 'trimmed') basis = basis.basis;
+
+    if (basis.__bk2d === 'circle') {
+      const circ = basis;
+      const center3d = lift(circ.cx, circ.cy);
+      const axisDir: [number, number, number] = circ.sense
+        ? planeZ
+        : [-planeZ[0], -planeZ[1], -planeZ[2]];
+
+      // Full circle: create single OCCT circle edge
+      if (c.__bk2d === 'circle') {
+        const gpCenter = new oc.gp_Pnt_3(center3d[0], center3d[1], center3d[2]);
+        const gpDir = new oc.gp_Dir_5(axisDir[0], axisDir[1], axisDir[2]);
+        const gpAx2 = new oc.gp_Ax2_4(gpCenter, gpDir);
+        const gpCirc = new oc.gp_Circ_2(gpAx2, circ.radius);
+        const builder = new oc.BRepBuilderAPI_MakeEdge_8(gpCirc);
+        const edge = builder.Edge();
+        builder.delete();
+        gpCirc.delete();
+        gpAx2.delete();
+        gpDir.delete();
+        gpCenter.delete();
+        return edge;
+      }
+
+      // Arc (trimmed circle): create arc edge via 3-point construction
+      const bounds = g2d.curveBounds(c);
+      const [su, sv] = g2d.evaluateCurve2d(c, bounds.first);
+      const [mu, mv] = g2d.evaluateCurve2d(c, (bounds.first + bounds.last) / 2);
+      const [eu, ev] = g2d.evaluateCurve2d(c, bounds.last);
+      return makeCircleArcEdge3d(oc, lift(su, sv), lift(mu, mv), lift(eu, ev));
+    }
+    // Non-circle trimmed: fall through to generic sampling
+  }
+
+  // Bezier/BSpline: lift control points directly
+  if (c.__bk2d === 'bezier' || c.__bk2d === 'bspline') {
+    const pts3d = c.poles.map(([u, v]) => lift(u, v));
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
+    if (pts3d.length === 2) return makeLineEdge3d(oc, pts3d[0]!, pts3d[1]!);
+    return interpolatePoints3d(oc, pts3d);
+  }
+
+  // General: sample + lift + interpolate
+  const bounds = g2d.curveBounds(c);
+  const nSamples = 60;
+  const pts3d: [number, number, number][] = [];
+  for (let i = 0; i <= nSamples; i++) {
+    const t = bounds.first + ((bounds.last - bounds.first) * i) / nSamples;
+    const [u, v] = g2d.evaluateCurve2d(c, t);
+    pts3d.push(lift(u, v));
+  }
+  return interpolatePoints3d(oc, pts3d);
 }
 
 export function buildEdgeOnSurface(
   oc: KernelInstance,
-  curve: KernelType,
+  curve: Curve2dHandle,
   surface: KernelType
 ): KernelShape {
-  const edgeMaker = new oc.BRepBuilderAPI_MakeEdge_30(curve, surface);
-  const edge = edgeMaker.Edge();
-  edgeMaker.delete();
-  return edge;
+  const c = c2d(curve);
+  const bounds = g2d.curveBounds(c);
+  const N = 60;
+  const pts3d: [number, number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
+    const [u, v] = g2d.evaluateCurve2d(c, t);
+    // Evaluate OCCT surface at (u,v) — surface is a Handle_Geom_Surface
+    const gpPnt = surface.get().Value(u, v);
+    pts3d.push([gpPnt.X(), gpPnt.Y(), gpPnt.Z()]);
+    gpPnt.delete();
+  }
+  return interpolatePoints3d(oc, pts3d);
 }
 
 export function extractSurfaceFromFace(oc: KernelInstance, face: KernelShape): KernelType {
@@ -1045,15 +1027,20 @@ export function extractCurve2dFromEdge(
   oc: KernelInstance,
   edge: KernelShape,
   face: KernelShape
-): KernelType {
+): Curve2dHandle {
   const adaptor = new oc.BRepAdaptor_Curve2d_2(edge, face);
-  const curveHandle = adaptor.Curve();
-  const first = adaptor.FirstParameter();
-  const last = adaptor.LastParameter();
+  const first = Number(adaptor.FirstParameter());
+  const last = Number(adaptor.LastParameter());
+  const N = 30;
+  const points: [number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = first + ((last - first) * i) / N;
+    const pt = adaptor.Value(t);
+    points.push([pt.X(), pt.Y()]);
+    pt.delete();
+  }
   adaptor.delete();
-
-  const trimmed = new oc.Geom2d_TrimmedCurve(curveHandle, first, last, true, true);
-  return new oc.Handle_Geom2d_Curve_2(trimmed);
+  return makeBSpline2d(points);
 }
 
 export function buildCurves3d(oc: KernelInstance, wire: KernelShape): void {
@@ -1073,9 +1060,9 @@ export function fixWireOnFace(
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// Surface filling
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// Surface filling (requires OCCT kernel)
+// ═══════════════════════════════════════════════════════════════════════
 
 export function fillSurface(
   oc: KernelInstance,
