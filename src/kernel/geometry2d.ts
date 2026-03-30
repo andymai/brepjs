@@ -689,9 +689,11 @@ function numericalIntersect(
     const t1mid = (p1a.t + p1b.t) / 2;
     for (let j = 0; j < N; j++) {
       const off = j * 6;
-      if (x1max < seg2Bounds[off] || seg2Bounds[off + 1] < x1min) continue;
-      if (y1max < seg2Bounds[off + 2] || seg2Bounds[off + 3] < y1min) continue;
-      const t2mid = seg2Bounds[off + 4];
+      /* eslint-disable @typescript-eslint/no-non-null-assertion -- typed array indices known valid */
+      if (x1max < seg2Bounds[off]! || seg2Bounds[off + 1]! < x1min) continue;
+      if (y1max < seg2Bounds[off + 2]! || seg2Bounds[off + 3]! < y1min) continue;
+      const t2mid = seg2Bounds[off + 4]!;
+      /* eslint-enable @typescript-eslint/no-non-null-assertion */
       if (isSelf && Math.abs(t1mid - t2mid) < selfMinSep) continue;
       candidates.push({ t1: t1mid, t2: t2mid });
     }
