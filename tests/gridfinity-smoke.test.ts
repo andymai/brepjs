@@ -333,9 +333,9 @@ describe('4. Sweep + fillet (stacking lip)', () => {
     const lipBounds = getBounds(lipSolid as AnyShape);
     expect(lipBounds.zMax - lipBounds.zMin).toBeGreaterThan(0);
     // Lip X extent should not exceed spine (positive-X = outward)
-    const spineBounds = getBounds(
-      drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY').wire as AnyShape
-    );
+    const spineSketch = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY');
+    const spineBounds = getBounds(spineSketch.wire as AnyShape);
+    spineSketch.delete();
     // Allow up to LIP_TAPER_WIDTH outward overhang
     expect(lipBounds.xMax).toBeLessThan(spineBounds.xMax + LIP_TAPER_WIDTH + 0.5);
     expect(lipBounds.yMax).toBeLessThan(spineBounds.yMax + LIP_TAPER_WIDTH + 0.5);
