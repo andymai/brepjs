@@ -134,9 +134,108 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           build_script: "build"
 
+  benchmark:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup
+      - name: Run benchmark on PR branch
+        run: npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-pr.txt
+      - name: Extract PR benchmark results
+        run: sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-pr.txt | sed '1d;$d' > /tmp/pr-results.json
+      - name: Checkout main branch
+        run: git fetch origin main && git checkout origin/main
+      - name: Install main branch dependencies
+        run: npm ci --ignore-scripts && bash scripts/ensure-wasm.sh
+      - name: Run benchmark on main branch
+        run: npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-main.txt
+      - name: Extract main benchmark results
+        run: sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-main.txt | sed '1d;$d' > /tmp/main-results.json
+      - name: Compare results and post PR comment
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { readFileSync } = await import('fs');
+            const prResults = JSON.parse(readFileSync('/tmp/pr-results.json', 'utf8'));
+            const mainResults = JSON.parse(readFileSync('/tmp/main-results.json', 'utf8'));
+
+            const mainByName = {};
+            for (const b of mainResults) {
+              mainByName[b.name] = b;
+            }
+
+            let hasRegression = false;
+            const rows = [];
+
+            for (const pr of prResults) {
+              const main = mainByName[pr.name];
+              if (!main) {
+                rows.push(`| ${pr.name} | — | ${pr.median.toFixed(2)} ms | *new* | ⚪ |`);
+                continue;
+              }
+
+              const pctChange = ((pr.median - main.median) / main.median) * 100;
+              let icon;
+              if (pctChange > 10) {
+                icon = '🔴';
+                hasRegression = true;
+              } else if (pctChange < -10) {
+                icon = '🟢';
+              } else {
+                icon = '⚪';
+              }
+
+              rows.push(`| ${pr.name} | ${main.median.toFixed(2)} ms | ${pr.median.toFixed(2)} ms | ${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(1)}% | ${icon} |`);
+            }
+
+            const marker = '<!-- brepjs-benchmark-results -->';
+            const body = [
+              marker,
+              '## Benchmark Results',
+              '',
+              '| Benchmark | main | PR | Change | |',
+              '|-----------|------|----|---------|-|',
+              ...rows,
+              '',
+              hasRegression ? '**🔴 Regression detected:** one or more benchmarks regressed >10%' : 'All benchmarks within tolerance.',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+            if (hasRegression) {
+              core.setFailed('Benchmark regression detected: one or more benchmarks regressed >10%');
+            }
+
   ci-pass:
     if: always()
-    needs: [changes, typecheck, lint, quality, build, test, size]
+    needs: [changes, typecheck, lint, quality, build, test, size, benchmark]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
