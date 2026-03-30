@@ -41,7 +41,12 @@ export class Curve2D {
   constructor(handle: KernelType) {
     this._wrapped = getKernel().wrapCurve2dHandle(handle);
     this._boundingBox = null;
-    registerForCleanup(this, this._wrapped);
+    // Only register for GC cleanup if the handle has a real delete method
+    // (OCCT WASM handles). Pure-TS geometry2d objects have no-op delete
+    // and don't need FinalizationRegistry tracking.
+    if (typeof this._wrapped.delete === 'function') {
+      registerForCleanup(this, this._wrapped);
+    }
   }
 
   get wrapped(): KernelType {
@@ -52,8 +57,10 @@ export class Curve2D {
   delete(): void {
     if (!this._deleted) {
       this._deleted = true;
-      unregisterFromCleanup(this._wrapped);
-      if (typeof this._wrapped.delete === 'function') this._wrapped.delete();
+      if (typeof this._wrapped.delete === 'function') {
+        unregisterFromCleanup(this._wrapped);
+        this._wrapped.delete();
+      }
     }
   }
 
