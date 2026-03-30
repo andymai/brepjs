@@ -210,6 +210,11 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // sweepSketchOrientation.test.ts
     // -----------------------------------------------------------------------
+    'sweepSketch.inwardOverhang': {
+      kind: 'skip',
+      reason:
+        'brepkit sweep pipe produces ~2mm overhang for positive-X-only square profile (OCCT: 0mm)',
+    },
     'sweepSketch.lipOverhangTolerance': {
       kind: 'skip',
       reason:

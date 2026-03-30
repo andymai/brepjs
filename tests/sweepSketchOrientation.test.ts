@@ -19,7 +19,7 @@ beforeAll(async () => {
 
 describe('sweepSketch orientation #753', () => {
   it('positive-X profile sweeps inward (no overhang)', (ctx) => {
-    skipIfDiverges(ctx, 'sweepSketch.lipOverhangTolerance');
+    skipIfDiverges(ctx, 'sweepSketch.inwardOverhang');
     // Profile entirely in positive X should sweep inward with no overhang.
     const spine = drawRoundedRectangle(80, 80, 3.75).sketchOnPlane('XY') as Sketch;
     const spineBounds = getBounds(spine.wire as AnyShape);
@@ -43,7 +43,7 @@ describe('sweepSketch orientation #753', () => {
     expect(sweptBounds.yMin).toBeGreaterThanOrEqual(spineBounds.yMin - 0.1);
   });
 
-  it('raw lip profile has at most 0.7mm outward extent (negative-X portion)', (ctx) => {
+  it('raw lip profile has at most 0.8mm outward extent (negative-X portion)', (ctx) => {
     skipIfDiverges(ctx, 'sweepSketch.lipOverhangTolerance');
 
     const w = 125.5;
