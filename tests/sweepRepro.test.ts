@@ -8,10 +8,12 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { drawRoundedRectangle, draw, isSolid } from '@/index.js';
 import type { AnyShape } from '@/core/shapeTypes.js';
 import type Sketch from '@/sketching/sketch.js';
-import { initOC } from './setup.js';
+import { measureVolume } from '@/measurement/measureFns.js';
+import { unwrap } from '@/core/result.js';
+import { initKernel } from './setup.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initKernel();
 }, 30000);
 
 describe('sweepSketch regression #744', () => {
@@ -33,6 +35,7 @@ describe('sweepSketch regression #744', () => {
 
     expect(swept).toBeDefined();
     expect(isSolid(swept as AnyShape)).toBe(true);
+    expect(unwrap(measureVolume(swept as AnyShape))).toBeGreaterThan(0);
   });
 
   it('sweepSketch with drawRoundedRectangle spine on XY plane', () => {
@@ -53,6 +56,7 @@ describe('sweepSketch regression #744', () => {
 
     expect(swept).toBeDefined();
     expect(isSolid(swept as AnyShape)).toBe(true);
+    expect(unwrap(measureVolume(swept as AnyShape))).toBeGreaterThan(0);
   });
 
   it('sweepSketch with simple square profile', () => {
@@ -71,5 +75,6 @@ describe('sweepSketch regression #744', () => {
 
     expect(swept).toBeDefined();
     expect(isSolid(swept as AnyShape)).toBe(true);
+    expect(unwrap(measureVolume(swept as AnyShape))).toBeGreaterThan(0);
   });
 });
