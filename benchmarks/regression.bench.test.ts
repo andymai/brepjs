@@ -59,8 +59,8 @@ describe('Regression benchmark — gridfinity bin', () => {
         const lipped = _scope.register(lipPath.sweepSketch(
           (plane, origin) =>
             draw([0, 0])
-              .lineTo([lipWidth, 0])
-              .lineTo([lipWidth, lipHeight])
+              .lineTo([-lipWidth, 0])
+              .lineTo([-lipWidth, lipHeight])
               .lineTo([0, lipHeight])
               .lineTo([0, 0])
               .close()
