@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.11](https://github.com/andymai/brepjs/compare/brepjs-v15.1.10...brepjs-v15.1.11) (2026-03-30)
+
+
+### Bug Fixes
+
+* **boolean:** retry without history when OCCT boolean produces null result ([#738](https://github.com/andymai/brepjs/issues/738)) ([53bb3f1](https://github.com/andymai/brepjs/commit/53bb3f1499b80af5e40704ab5ae1a67a0d099509))
+
 ## [15.1.10](https://github.com/andymai/brepjs/compare/brepjs-v15.1.9...brepjs-v15.1.10) (2026-03-29)
 
 
