@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.1.12](https://github.com/andymai/brepjs/compare/brepjs-v15.1.11...brepjs-v15.1.12) (2026-03-30)
+
+
+### Bug Fixes
+
+* **perf:** revert [#700](https://github.com/andymai/brepjs/issues/700) and [#701](https://github.com/andymai/brepjs/issues/701) to resolve 33% regression ([#742](https://github.com/andymai/brepjs/issues/742)) ([54374a7](https://github.com/andymai/brepjs/commit/54374a729a1472949d9c3718635cafe30c6d139f)), closes [#740](https://github.com/andymai/brepjs/issues/740)
+
 ## [15.1.11](https://github.com/andymai/brepjs/compare/brepjs-v15.1.10...brepjs-v15.1.11) (2026-03-30)
 
 
