@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.2](https://github.com/andymai/brepjs/compare/brepjs-v15.2.1...brepjs-v15.2.2) (2026-03-30)
+
+
+### Bug Fixes
+
+* **sketching:** correct sweepSketch xDir to sweep profiles inward ([#754](https://github.com/andymai/brepjs/issues/754)) ([839dca4](https://github.com/andymai/brepjs/commit/839dca45d531ba8540e2dcb58c87742f201f5c3f)), closes [#753](https://github.com/andymai/brepjs/issues/753)
+
 ## [15.2.1](https://github.com/andymai/brepjs/compare/brepjs-v15.2.0...brepjs-v15.2.1) (2026-03-30)
 
 
