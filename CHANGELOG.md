@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.4](https://github.com/andymai/brepjs/compare/brepjs-v15.2.3...brepjs-v15.2.4) (2026-03-30)
+
+
+### Bug Fixes
+
+* **sketching:** revert sweepSketch xDir sign to restore gridfinity lip geometry ([#759](https://github.com/andymai/brepjs/issues/759)) ([292bcb2](https://github.com/andymai/brepjs/commit/292bcb2dc5ac31d47400506fcbddfd1de3a89796))
+
 ## [15.2.3](https://github.com/andymai/brepjs/compare/brepjs-v15.2.2...brepjs-v15.2.3) (2026-03-30)
 
 ### Bug Fixes
