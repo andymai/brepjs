@@ -487,6 +487,20 @@ export const divergences: DivergenceMap = {
       reason:
         'Sampled B-spline approximation of ellipse arcs has lower precision than native OCCT Geom2d',
     },
+
+    // -----------------------------------------------------------------------
+    // sweepSketchOrientation.test.ts
+    // -----------------------------------------------------------------------
+    'sweepSketch.inwardOverhang': {
+      kind: 'skip',
+      reason:
+        'brepjs-opencascade Emscripten build produces different curveTangent sign than occt-wasm on CI (Ubuntu); orientation test verified on occt-wasm',
+    },
+    'sweepSketch.lipOverhangTolerance': {
+      kind: 'skip',
+      reason:
+        'brepjs-opencascade Emscripten build produces different curveTangent sign than occt-wasm on CI (Ubuntu); orientation test verified on occt-wasm',
+    },
   },
 
   // occt-wasm is near-identical to occt; divergences are tracked via
