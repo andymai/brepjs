@@ -222,17 +222,24 @@ export default class Sketch implements SketchInterface {
       ...startPoint,
     ]);
 
-    // The callback may return a Sketches (plural) when the Drawing used a
-    // 2D boolean that split the profile into multiple pieces. Extract the
-    // first sketch's wire and dispose the rest to prevent WASM leaks.
-    // Duck-type check avoids circular import (sketches.ts imports Sketch).
+    // The callback may return Sketches (plural) or CompoundSketch when the
+    // Drawing used 2D booleans. Extract a single Sketch with a .wire for sweep.
+    // Duck-type checks avoid circular imports (sketches.ts/compoundSketch.ts import Sketch).
     let sketch: Sketch;
     if ('sketches' in result && Array.isArray((result as { sketches: unknown[] }).sketches)) {
-      const pieces = (result as { sketches: Sketch[] }).sketches;
-      sketch = pieces[0] as Sketch;
+      const pieces = (
+        result as { sketches: Array<Sketch | { outerSketch: Sketch; delete(): void }> }
+      ).sketches;
+      const first = pieces[0];
+      // CompoundSketch has .outerSketch (a Sketch with .wire); plain Sketch has .wire directly
+      sketch = 'outerSketch' in first ? first.outerSketch : (first as Sketch);
+      // Dispose unused pieces (skip the one we extracted from)
       for (let i = 1; i < pieces.length; i++) {
         pieces[i]?.delete();
       }
+    } else if ('outerSketch' in result) {
+      // Direct CompoundSketch return (from CompoundBlueprint.sketchOnPlane)
+      sketch = (result as { outerSketch: Sketch }).outerSketch;
     } else {
       sketch = result as Sketch;
     }
