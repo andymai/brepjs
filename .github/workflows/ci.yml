@@ -145,7 +145,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
       - name: Run benchmark on PR branch
-        run: npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-pr.txt
+        run: NO_COLOR=1 npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-pr.txt
       - name: Extract PR benchmark results
         run: sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-pr.txt | sed '1d;$d' > /tmp/pr-results.json
       - name: Checkout main branch
@@ -153,17 +153,24 @@ jobs:
       - name: Install main branch dependencies
         run: npm ci --ignore-scripts && bash scripts/ensure-wasm.sh
       - name: Run benchmark on main branch
-        run: npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-main.txt
-      - name: Extract main benchmark results
-        run: sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-main.txt | sed '1d;$d' > /tmp/main-results.json
+        run: |
+          if [ -f benchmarks/regression.bench.test.ts ]; then
+            NO_COLOR=1 npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-main.txt
+            sed -n '/--- BENCHMARK RESULTS JSON ---/,/--- END BENCHMARK RESULTS ---/p' /tmp/bench-main.txt | sed '1d;$d' > /tmp/main-results.json
+          else
+            echo "[]" > /tmp/main-results.json
+            echo "Benchmark file not found on main — skipping baseline"
+          fi
       - name: Compare results and post PR comment
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { readFileSync } = await import('fs');
-            const prResults = JSON.parse(readFileSync('/tmp/pr-results.json', 'utf8'));
-            const mainResults = JSON.parse(readFileSync('/tmp/main-results.json', 'utf8'));
+            const prRaw = readFileSync('/tmp/pr-results.json', 'utf8').trim();
+            const mainRaw = readFileSync('/tmp/main-results.json', 'utf8').trim();
+            const prResults = prRaw ? JSON.parse(prRaw) : [];
+            const mainResults = mainRaw ? JSON.parse(mainRaw) : [];
 
             const mainByName = {};
             for (const b of mainResults) {
