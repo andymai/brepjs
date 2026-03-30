@@ -45,6 +45,11 @@ export type { ProjectionCapability, ConstraintSketchCapability } from './kernel/
 export { getPerformanceStats, resetPerformanceStats } from './kernel/index.js';
 export type { PerformanceStats } from './kernel/perfStats.js';
 
+// --- Async / Worker kernel ---
+export type { AsyncKernelAdapter, Asyncify } from './kernel/index.js';
+export { createWorkerAdapter } from './kernel/index.js';
+export type { WorkerAdapterResult } from './kernel/index.js';
+
 // ── Result type ──
 
 export {

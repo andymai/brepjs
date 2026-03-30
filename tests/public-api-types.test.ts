@@ -234,6 +234,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'createTaskQueue',
   'createVertex',
   'createWire',
+  'createWorkerAdapter',
   'createWorkerClient',
   'createWorkerHandler',
   'curve2dBoundingBox',

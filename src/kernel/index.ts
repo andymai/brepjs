@@ -248,3 +248,8 @@ export type { OcctWasmModule, OcctKernelWasm } from './occtWasm/occtWasmTypes.js
 
 export { getPerformanceStats, resetPerformanceStats, perfTimer } from './perfStats.js';
 export type { PerfCategory, PerformanceStats } from './perfStats.js';
+
+// --- Async kernel adapter ---
+export type { AsyncKernelAdapter, Asyncify } from './interfaces/asyncAdapter.js';
+export { createWorkerAdapter } from './occtWasm/occtWasmWorkerAdapter.js';
+export type { WorkerAdapterResult } from './occtWasm/occtWasmWorkerAdapter.js';
