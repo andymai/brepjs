@@ -657,32 +657,42 @@ function numericalIntersect(
     pts2.push({ t: t2, x: x2, y: y2 });
   }
 
-  // Find segment pairs where curves are close
+  // Pre-compute segment bounds for curve2 (avoids recomputing N times in inner loop)
   const crossTol = Math.max(tolerance * 100, 0.5);
+  const seg2Bounds = new Float64Array(N * 6); // xmin, xmax, ymin, ymax, tmid, _pad per segment
+  for (let j = 0; j < N; j++) {
+    /* eslint-disable @typescript-eslint/no-non-null-assertion -- known array index */
+    const a = pts2[j]!,
+      b = pts2[j + 1]!;
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
+    const off = j * 6;
+    seg2Bounds[off] = Math.min(a.x, b.x);
+    seg2Bounds[off + 1] = Math.max(a.x, b.x);
+    seg2Bounds[off + 2] = Math.min(a.y, b.y);
+    seg2Bounds[off + 3] = Math.max(a.y, b.y);
+    seg2Bounds[off + 4] = (a.t + b.t) / 2;
+  }
+
+  // Find segment pairs where curves are close
   const candidates: { t1: number; t2: number }[] = [];
+  const selfMinSep = (b1.last - b1.first) / 5;
   for (let i = 0; i < N; i++) {
-    /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
+    /* eslint-disable @typescript-eslint/no-non-null-assertion -- known array index */
     const p1a = pts1[i]!;
     const p1b = pts1[i + 1]!;
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
+    // Hoist outer segment AABB (computed once per outer iteration)
+    const x1min = Math.min(p1a.x, p1b.x) - crossTol;
+    const x1max = Math.max(p1a.x, p1b.x) + crossTol;
+    const y1min = Math.min(p1a.y, p1b.y) - crossTol;
+    const y1max = Math.max(p1a.y, p1b.y) + crossTol;
+    const t1mid = (p1a.t + p1b.t) / 2;
     for (let j = 0; j < N; j++) {
-      const p2a = pts2[j]!;
-      const p2b = pts2[j + 1]!;
-      /* eslint-enable @typescript-eslint/no-non-null-assertion */
-      // Quick AABB check
-      const x1min = Math.min(p1a.x, p1b.x) - crossTol;
-      const x1max = Math.max(p1a.x, p1b.x) + crossTol;
-      const y1min = Math.min(p1a.y, p1b.y) - crossTol;
-      const y1max = Math.max(p1a.y, p1b.y) + crossTol;
-      const x2min = Math.min(p2a.x, p2b.x);
-      const x2max = Math.max(p2a.x, p2b.x);
-      const y2min = Math.min(p2a.y, p2b.y);
-      const y2max = Math.max(p2a.y, p2b.y);
-      if (x1max < x2min || x2max < x1min || y1max < y2min || y2max < y1min) continue;
-
-      const t1mid = (p1a.t + p1b.t) / 2;
-      const t2mid = (p2a.t + p2b.t) / 2;
-      // For self-intersection, skip pairs where t1 ≈ t2 (trivial overlap)
-      if (isSelf && Math.abs(t1mid - t2mid) < (b1.last - b1.first) / 5) continue;
+      const off = j * 6;
+      if (x1max < seg2Bounds[off] || seg2Bounds[off + 1] < x1min) continue;
+      if (y1max < seg2Bounds[off + 2] || seg2Bounds[off + 3] < y1min) continue;
+      const t2mid = seg2Bounds[off + 4];
+      if (isSelf && Math.abs(t1mid - t2mid) < selfMinSep) continue;
       candidates.push({ t1: t1mid, t2: t2mid });
     }
   }
@@ -756,8 +766,61 @@ export function createBBox2d(): BBox2d {
 }
 
 export function addCurveToBBox(bbox: BBox2d, c: Curve2dObj, _tol: number): void {
+  const basis = c.__bk2d === 'trimmed' ? c.basis : c;
+
+  // Analytic: lines need only 2 endpoints (no sampling)
+  if (basis.__bk2d === 'line') {
+    const bounds = curveBounds(c);
+    if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
+    const [x0, y0] = evaluateCurve2d(c, bounds.first);
+    const [x1, y1] = evaluateCurve2d(c, bounds.last);
+    bbox.xMin = Math.min(bbox.xMin, x0, x1);
+    bbox.yMin = Math.min(bbox.yMin, y0, y1);
+    bbox.xMax = Math.max(bbox.xMax, x0, x1);
+    bbox.yMax = Math.max(bbox.yMax, y0, y1);
+    return;
+  }
+
+  // Analytic: circles/arcs — endpoints + axis extremes
+  if (basis.__bk2d === 'circle') {
+    const bounds = curveBounds(c);
+    if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
+    const { cx, cy, radius, sense } = basis;
+    const [x0, y0] = evaluateCurve2d(c, bounds.first);
+    const [x1, y1] = evaluateCurve2d(c, bounds.last);
+    let xMin = Math.min(x0, x1),
+      xMax = Math.max(x0, x1);
+    let yMin = Math.min(y0, y1),
+      yMax = Math.max(y0, y1);
+    // Check axis-aligned extreme angles within the arc's parameter range
+    const tStart = c.__bk2d === 'trimmed' ? c.tStart : bounds.first;
+    const tEnd = c.__bk2d === 'trimmed' ? c.tEnd : bounds.last;
+    for (let k = 0; k < 4; k++) {
+      const angle = (k * Math.PI) / 2;
+      const t = sense ? angle : -angle;
+      // Check if t (or t + 2π) falls within [tStart, tEnd]
+      for (let wrap = 0; wrap <= 1; wrap++) {
+        const tt = t + wrap * 2 * Math.PI;
+        if (tt >= tStart - 1e-10 && tt <= tEnd + 1e-10) {
+          const ex = cx + radius * Math.cos(angle);
+          const ey = cy + radius * Math.sin(angle);
+          xMin = Math.min(xMin, ex);
+          xMax = Math.max(xMax, ex);
+          yMin = Math.min(yMin, ey);
+          yMax = Math.max(yMax, ey);
+          break;
+        }
+      }
+    }
+    bbox.xMin = Math.min(bbox.xMin, xMin);
+    bbox.yMin = Math.min(bbox.yMin, yMin);
+    bbox.xMax = Math.max(bbox.xMax, xMax);
+    bbox.yMax = Math.max(bbox.yMax, yMax);
+    return;
+  }
+
+  // General: sample (bezier, bspline, ellipse)
   const bounds = curveBounds(c);
-  // Guard against infinite-extent curves (e.g. untrimmed Line2d)
   if (!isFinite(bounds.first) || !isFinite(bounds.last)) return;
   const nSamples = 20;
   const dt = (bounds.last - bounds.first) / nSamples;
