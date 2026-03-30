@@ -1,5 +1,6 @@
 import zip from '@/utils/zip.js';
 import type { Curve2D } from '@/2d/lib/index.js';
+import { make2dSegmentCurve, crossProduct2d, subtract2d } from '@/2d/lib/index.js';
 
 import Blueprint from './blueprint.js';
 import type Blueprints from './blueprints.js';
@@ -7,6 +8,62 @@ import { organiseBlueprints } from './lib.js';
 import { samePoint, curveMidPoint, reverseSegment } from './booleanHelpers.js';
 import type { Segment } from './booleanHelpers.js';
 import { blueprintsIntersectionSegments } from './intersectionSegments.js';
+
+// ---------------------------------------------------------------------------
+// Collinear segment merging
+// ---------------------------------------------------------------------------
+
+/**
+ * Merge adjacent collinear line segments into single segments.
+ *
+ * Boolean operations can split a line at intersection points that lie on the
+ * line itself (e.g. when a cut rectangle's edge is collinear with the
+ * profile's edge). The extra split creates a C0 discontinuity in swept
+ * surfaces. Merging eliminates unnecessary vertices.
+ */
+function mergeCollinearSegments(curves: Curve2D[]): Curve2D[] {
+  if (curves.length < 2) return curves;
+  const result: Curve2D[] = [];
+  let i = 0;
+
+  while (i < curves.length) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by length check
+    const current = curves[i]!;
+
+    if (current.geomType !== 'LINE') {
+      result.push(current);
+      i++;
+      continue;
+    }
+
+    // Accumulate consecutive collinear lines
+    let endPoint = current.lastPoint;
+    let j = i + 1;
+
+    while (j < curves.length) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by length check
+      const next = curves[j]!;
+      if (next.geomType !== 'LINE') break;
+      if (!samePoint(endPoint, next.firstPoint)) break;
+
+      const dir1 = subtract2d(endPoint, current.firstPoint);
+      const dir2 = subtract2d(next.lastPoint, next.firstPoint);
+      if (Math.abs(crossProduct2d(dir1, dir2)) > 1e-9) break;
+
+      endPoint = next.lastPoint;
+      j++;
+    }
+
+    if (j > i + 1) {
+      result.push(make2dSegmentCurve(current.firstPoint, endPoint));
+    } else {
+      result.push(current);
+    }
+    i = j;
+  }
+
+  return result;
+}
 
 // ---------------------------------------------------------------------------
 // Path splitting: detect discontinuities and split into separate loops
@@ -238,8 +295,9 @@ export function booleanOperation(
     assembledCurves = [...finalLastWasSame, ...assembledCurves];
   }
 
-  // Split into separate paths and build blueprints
-  const paths = splitPaths(assembledCurves)
+  // Merge collinear lines created by splits at intersection points, then
+  // split into separate paths and build blueprints.
+  const paths = splitPaths(mergeCollinearSegments(assembledCurves))
     .filter((b) => b.length > 0)
     .map((b) => new Blueprint(b));
 
