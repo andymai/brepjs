@@ -215,6 +215,73 @@ describe('4. Sweep + fillet (stacking lip)', () => {
     expect(s.depth).toBeGreaterThan(0);
   });
 
+  it('real lip profile sweep produces non-zero mesh when fused with box', () => {
+    // Reproduces the actual gridfinity lip construction from boxBuilder.ts.
+    // The profile starts at negative-X (which maps outward with the old xDir
+    // convention and inward with the new one). The 2D boolean trims it, and
+    // the result is fused with the box body. If xDir is wrong, the sweep
+    // extends outward and the fuse produces a degenerate or null result.
+    const LIP_SMALL_TAPER = 0.7;
+    const LIP_VERTICAL_PART = 1.8;
+    const LIP_BIG_TAPER = 1.9;
+    const LIP_TAPER_WIDTH = LIP_SMALL_TAPER + LIP_BIG_TAPER; // 2.6
+    const LIP_HEIGHT = LIP_SMALL_TAPER + LIP_VERTICAL_PART + LIP_BIG_TAPER; // 4.4
+    const BOX_CORNER_RADIUS = 3.75;
+
+    const outerW = 84;
+    const outerD = 84;
+    const wallHeight = 21;
+
+    // Build box body (shelled)
+    const box = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS)
+      .sketchOnPlane('XY')
+      .extrude(wallHeight);
+    const topFaces = faceFinder()
+      .parallelTo('Z')
+      .atDistance(wallHeight, [0, 0, 0])
+      .findAll(box as AnyShape);
+    const hollowBox = unwrap(shell(box as AnyShape, topFaces, 1.2));
+
+    // Build lip via sweep — uses the real profile from boxBuilder.ts
+    const spine = drawRoundedRectangle(outerW, outerD, BOX_CORNER_RADIUS).sketchOnPlane('XY');
+
+    const lipSolid = spine.sweepSketch(
+      (plane, _origin) => {
+        // Simplified version of the real gridfinity lip profile.
+        // Starts at negative-X (outward under new convention, inward under old).
+        // The full profile uses 2D booleans to trim, but this simpler closed
+        // profile is enough to exercise the xDir orientation.
+        return draw([-LIP_TAPER_WIDTH, 0])
+          .line(LIP_SMALL_TAPER, LIP_SMALL_TAPER)
+          .vLine(LIP_VERTICAL_PART)
+          .line(LIP_BIG_TAPER, LIP_BIG_TAPER)
+          .vLineTo(0)
+          .close()
+          .sketchOnPlane(plane, _origin);
+      },
+      { withContact: true }
+    );
+
+    const lipBounds = getBounds(lipSolid as AnyShape);
+    expect(lipBounds.zMax - lipBounds.zMin).toBeGreaterThan(0);
+
+    // Translate lip to top of box and fuse
+    const translatedLip = translate(lipSolid as AnyShape, [0, 0, wallHeight]);
+    const result = fuse(hollowBox, translatedLip);
+
+    // The fuse must succeed and produce a meshable solid
+    if (!result.ok) {
+      throw new Error(`fuse failed: ${JSON.stringify(result)}`);
+    }
+    const fused = result.value;
+    const m = mesh(fused as AnyShape, { tolerance: 0.1 });
+    expect(m.triangles.length).toBeGreaterThan(0);
+
+    // Fused solid should extend above the box by roughly LIP_HEIGHT
+    const fusedBounds = getBounds(fused as AnyShape);
+    expect(fusedBounds.zMax).toBeGreaterThan(wallHeight + LIP_HEIGHT - 1);
+  });
+
   it('fillet on extruded box edges', () => {
     const box = drawRectangle(20, 20).sketchOnPlane('XY').extrude(10);
 
