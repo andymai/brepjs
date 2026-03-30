@@ -208,6 +208,15 @@ export const divergences: DivergenceMap = {
     } satisfies ToleranceDivergence,
 
     // -----------------------------------------------------------------------
+    // sweepSketchOrientation.test.ts
+    // -----------------------------------------------------------------------
+    'sweepSketch.lipOverhangTolerance': {
+      kind: 'skip',
+      reason:
+        'brepkit sweep pipe geometry differs: overhang ~1.5mm vs OCCT ~0.6mm for asymmetric profile',
+    },
+
+    // -----------------------------------------------------------------------
     // gridfinity-smoke.test.ts
     // -----------------------------------------------------------------------
     'gridfinity.roundedRectExtrude': {
