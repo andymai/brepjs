@@ -27,6 +27,25 @@ function mapContinuity(oc: KernelInstance, continuity: 'C0' | 'C1' | 'C2' | 'C3'
   }
 }
 
+/**
+ * Extract a numeric value from an OCCT Emscripten enum.
+ * Emscripten returns enum objects with a `.value` property, not raw numbers.
+ */
+function unwrapOcctEnum(val: KernelType): number {
+  return typeof val === 'number' ? val : Number(val?.value ?? val);
+}
+
+/**
+ * Get the GeomAbs_CurveType index for a 2D curve via a temporary adaptor.
+ * Caller avoids repeating the adaptor-create / GetType / unwrap / delete cycle.
+ */
+function getCurve2dTypeIndex(oc: KernelInstance, curve: KernelType): number {
+  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
+  const idx = unwrapOcctEnum(adaptor.GetType());
+  adaptor.delete();
+  return idx;
+}
+
 // ---------------------------------------------------------------------------
 // 2D Handle wrapping
 // ---------------------------------------------------------------------------
@@ -316,27 +335,21 @@ export function getCurve2dBounds(
   };
 }
 
+const CURVE_TYPE_NAMES: readonly string[] = [
+  'LINE',
+  'CIRCLE',
+  'ELLIPSE',
+  'HYPERBOLA',
+  'PARABOLA',
+  'BEZIER_CURVE',
+  'BSPLINE_CURVE',
+  'OFFSET_CURVE',
+  'OTHER_CURVE',
+];
+
 export function getCurve2dType(oc: KernelInstance, curve: KernelType): string {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const typeVal = adaptor.GetType();
-  adaptor.delete();
-
-  // OCCT Emscripten returns enum objects with a .value property, not raw numbers
-  const idx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
-
-  // Map GeomAbs_CurveType enum to string
-  const typeMap: Record<number, string> = {
-    0: 'LINE',
-    1: 'CIRCLE',
-    2: 'ELLIPSE',
-    3: 'HYPERBOLA',
-    4: 'PARABOLA',
-    5: 'BEZIER_CURVE',
-    6: 'BSPLINE_CURVE',
-    7: 'OFFSET_CURVE',
-    8: 'OTHER_CURVE',
-  };
-  return typeMap[idx] ?? 'OTHER_CURVE';
+  const idx = getCurve2dTypeIndex(oc, curve);
+  return CURVE_TYPE_NAMES[idx] ?? 'OTHER_CURVE';
 }
 
 // ---------------------------------------------------------------------------
@@ -778,9 +791,7 @@ export function getCurve2dCircleData(
   curve: KernelType
 ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const typeVal = adaptor.GetType();
-  // OCCT Emscripten returns enum objects with .value property
-  const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
+  const typeIdx = unwrapOcctEnum(adaptor.GetType());
   // 1 = GeomAbs_Circle
   if (typeIdx !== 1) {
     adaptor.delete();
@@ -805,15 +816,15 @@ export function getCurve2dEllipseData(
   curve: KernelType
 ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const typeVal = adaptor.GetType();
-  const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
+  const typeIdx = unwrapOcctEnum(adaptor.GetType());
   // 2 = GeomAbs_Ellipse
   if (typeIdx !== 2) {
     adaptor.delete();
     return null;
   }
   const elips = adaptor.Ellipse();
-  const xDir = elips.XAxis().Direction();
+  const xAxis = elips.XAxis();
+  const xDir = xAxis.Direction();
   const result = {
     majorRadius: elips.MajorRadius(),
     minorRadius: elips.MinorRadius(),
@@ -821,6 +832,7 @@ export function getCurve2dEllipseData(
     isDirect: elips.IsDirect(),
   };
   xDir.delete();
+  xAxis.delete();
   elips.delete();
   adaptor.delete();
   return result;
@@ -830,14 +842,10 @@ export function getCurve2dBezierPoles(
   oc: KernelInstance,
   curve: KernelType
 ): [number, number][] | null {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const typeVal = adaptor.GetType();
-  const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
   // 5 = GeomAbs_BezierCurve
-  if (typeIdx !== 5) {
-    adaptor.delete();
-    return null;
-  }
+  if (getCurve2dTypeIndex(oc, curve) !== 5) return null;
+
+  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
   const bezier = adaptor.Bezier().get();
   const poles: [number, number][] = [];
   const nbPoles = bezier.NbPoles();
@@ -851,16 +859,11 @@ export function getCurve2dBezierPoles(
 }
 
 export function getCurve2dBezierDegree(oc: KernelInstance, curve: KernelType): number | null {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const typeVal = adaptor.GetType();
-  const typeIdx = typeof typeVal === 'number' ? typeVal : Number(typeVal?.value ?? typeVal);
   // 5 = GeomAbs_BezierCurve
-  if (typeIdx !== 5) {
-    adaptor.delete();
-    return null;
-  }
-  const bezier = adaptor.Bezier().get();
-  const degree = bezier.Degree();
+  if (getCurve2dTypeIndex(oc, curve) !== 5) return null;
+
+  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
+  const degree = adaptor.Bezier().get().Degree();
   adaptor.delete();
   return degree;
 }
@@ -875,13 +878,10 @@ export function getCurve2dBSplineData(
   degree: number;
   isPeriodic: boolean;
 } | null {
-  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const type = adaptor.GetType();
   // 6 = GeomAbs_BSplineCurve
-  if (type !== 6) {
-    adaptor.delete();
-    return null;
-  }
+  if (getCurve2dTypeIndex(oc, curve) !== 6) return null;
+
+  const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
   const bspline = adaptor.BSpline().get();
 
   const poles: [number, number][] = [];
@@ -953,7 +953,7 @@ export function splitCurve2d(
 
   // Detect curve type via adaptor for type-specific splitting
   const adaptor = new oc.Geom2dAdaptor_Curve_2(curve);
-  const geomType = adaptor.GetType() as number;
+  const geomType = unwrapOcctEnum(adaptor.GetType());
 
   const results = boundaries.map(([start, end]) => {
     // 5 = GeomAbs_BezierCurve
