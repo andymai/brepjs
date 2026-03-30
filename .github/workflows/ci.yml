@@ -144,6 +144,8 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
+      - name: Clear stale Vite transform cache
+        run: rm -rf node_modules/.vite
       - name: Run benchmark on PR branch
         run: NO_COLOR=1 npx vitest run benchmarks/regression.bench.test.ts --config vitest.bench.config.ts --reporter=verbose 2>&1 | tee /tmp/bench-pr.txt
       - name: Extract PR benchmark results
