@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.0](https://github.com/andymai/brepjs/compare/brepjs-v15.1.13...brepjs-v15.2.0) (2026-03-30)
+
+
+### Features
+
+* **ci:** add performance regression gate ([#748](https://github.com/andymai/brepjs/issues/748)) ([ebf99eb](https://github.com/andymai/brepjs/commit/ebf99ebeb2e8d6a23831cc20f63e4bf616107266))
+
 ## [15.1.13](https://github.com/andymai/brepjs/compare/brepjs-v15.1.12...brepjs-v15.1.13) (2026-03-30)
 
 
