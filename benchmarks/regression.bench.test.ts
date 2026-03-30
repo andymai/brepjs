@@ -16,6 +16,7 @@ import {
   unwrap,
   faceFinder,
 } from '../src/index.js';
+import { DisposalScope } from '../src/core/disposal.js';
 import { initBenchKernels } from './setup.js';
 import { bench, printResults, writeResultsJSON, type BenchResult } from './harness.js';
 
@@ -30,6 +31,7 @@ describe('Regression benchmark — gridfinity bin', () => {
     const result = await bench(
       'gridfinity-bin',
       () => {
+        using _scope = new DisposalScope();
         const width = 42;
         const height = 42;
         const depth = 30;
@@ -40,22 +42,21 @@ describe('Regression benchmark — gridfinity bin', () => {
 
         // 1. Create a rounded box via sketch extrusion
         const boxSketch = drawRoundedRectangle(width, height, cornerRadius).sketchOnPlane('XY');
-        const solid = boxSketch.extrude(depth);
+        const solid = _scope.register(boxSketch.extrude(depth));
 
         // 2. Shell it (remove top face) to create a hollow bin
         const topFace = unwrap(
           faceFinder().inDirection('Z').atDistance(depth, [0, 0, 0]).findUnique(solid)
         );
-        const shelled = unwrap(shell(solid, [topFace], wallThickness));
+        const shelled = _scope.register(unwrap(shell(solid, [topFace], wallThickness)));
 
         // 3. Build stacking lip via sweepSketch with an L-shaped profile
-        //    The lip path follows the top rim of the shelled box.
         const lipPath = drawRoundedRectangle(width, height, cornerRadius).sketchOnPlane(
           'XY',
           depth
         );
 
-        const lipped = lipPath.sweepSketch(
+        const lipped = _scope.register(lipPath.sweepSketch(
           (plane, origin) =>
             draw([0, 0])
               .lineTo([lipWidth, 0])
@@ -65,10 +66,10 @@ describe('Regression benchmark — gridfinity bin', () => {
               .close()
               .sketchOnPlane(plane, origin),
           { frenet: true }
-        );
+        ));
 
         // 4. Fuse the lip onto the shelled box
-        const combined = unwrap(fuse(shelled, lipped));
+        const combined = _scope.register(unwrap(fuse(shelled, lipped)));
 
         // 5. Mesh the result
         mesh(combined);

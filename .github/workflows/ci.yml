@@ -213,7 +213,7 @@ jobs:
               hasRegression ? '**🔴 Regression detected:** one or more benchmarks regressed >10%' : 'All benchmarks within tolerance.',
             ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
