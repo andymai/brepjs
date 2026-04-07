@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.5](https://github.com/andymai/brepjs/compare/brepjs-v15.2.4...brepjs-v15.2.5) (2026-04-07)
+
+
+### Bug Fixes
+
+* **site:** unbreak Monaco type checking in playground ([#761](https://github.com/andymai/brepjs/issues/761) follow-up) ([#767](https://github.com/andymai/brepjs/issues/767)) ([e3399e6](https://github.com/andymai/brepjs/commit/e3399e6eade5f809d0abd24051bdc9c0aa6ac5b9))
+
 ## [15.2.4](https://github.com/andymai/brepjs/compare/brepjs-v15.2.3...brepjs-v15.2.4) (2026-03-30)
 
 
