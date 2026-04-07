@@ -24,6 +24,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/((?!wasm|assets).*)", "destination": "/index.html" }
+    { "source": "/((?!wasm/|assets/|gallery-meshes/|.*\\..+).*)", "destination": "/index.html" }
   ]
 }

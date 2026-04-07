@@ -5,10 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm run precompute-meshes && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "precompute-hero": "npx tsx scripts/precompute-hero-mesh.ts",
     "precompute-meshes": "npx tsx scripts/precompute-gallery-meshes.ts",
     "screenshot-examples": "npx tsx scripts/screenshot-examples.ts",
     "generate-types": "npx tsx scripts/generate-ambient-types.ts"
@@ -17,7 +16,7 @@
     "@monaco-editor/react": "4.7.0",
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.5.0",
-    "brepjs": "^12.0.0",
+    "brepjs": "^15.0.0",
     "brepjs-opencascade": "*",
     "lz-string": "1.5.0",
     "monaco-editor": "0.55.1",
