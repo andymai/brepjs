@@ -31,14 +31,19 @@ export function setupMonaco(monaco: Monaco) {
     },
   });
 
-  // Configure TypeScript compiler options
+  // Configure TypeScript compiler options.
+  // We omit `lib` so Monaco's TS worker uses the default lib for the target
+  // (`lib.es2022.full.d.ts`), which transitively pulls in lib.es5.d.ts —
+  // the file that declares `Math`, `Array<T>`, and other built-ins. Passing
+  // `lib: ['es2022']` explicitly hits a Monaco bug where the lib reference
+  // is not expanded transitively, leaving user code with `Cannot find name
+  // 'Math'` and `push does not exist on type '{}'` errors (issue #761).
   monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
     target: monaco.languages.typescript.ScriptTarget.ES2022,
     module: monaco.languages.typescript.ModuleKind.ESNext,
     strict: true,
     noEmit: true,
     allowJs: true,
-    lib: ['es2022'],
   });
 
   // Disable diagnostic errors that don't make sense for eval'd code
