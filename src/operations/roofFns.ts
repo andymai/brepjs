@@ -268,14 +268,16 @@ export function roof(
       const solid = kernel.sewAndSolidify(triFaces, 1e-6);
       const fixed = kernel.fixShape(solid);
       return ok(createSolid(fixed) as ValidSolid);
-    } catch {
+    } catch (solidifyErr) {
       try {
         const sewn = createSolid(kernel.sew(triFaces, 1e-6));
         // sew() doesn't guarantee a valid solid — validate before branding
         if (isValidSolid(sewn)) return ok(sewn);
-        return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Sew fallback produced invalid solid'));
-      } catch {
-        return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Failed to sew roof faces'));
+        return err(
+          kernelError(BrepErrorCode.ROOF_FAILED, 'Sew fallback produced invalid solid', solidifyErr)
+        );
+      } catch (sewErr) {
+        return err(kernelError(BrepErrorCode.ROOF_FAILED, 'Failed to sew roof faces', sewErr));
       }
     }
   } catch (e) {

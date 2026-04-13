@@ -72,12 +72,12 @@ export function loft(
       return err(typeCastError('LOFT_NOT_3D', 'Loft did not produce a 3D shape'));
     }
     return ok(result);
-  } catch {
+  } catch (e) {
     return err(
       kernelError(
         'LOFT_FAILED',
         'Loft operation failed',
-        undefined,
+        e,
         undefined,
         'Common causes: wire profiles with different edge counts, self-intersecting result, or profiles too far apart. Ensure profiles are compatible and ordered.'
       )

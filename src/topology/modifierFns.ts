@@ -88,8 +88,10 @@ function resolveEdgeCallback(
 
   const kernelParam: KernelHashCallback<number | [number, number]> = (ocEdge) => {
     const v = hashToValue.get(getKernel().hashCode(ocEdge, HASH_CODE_MAX));
-    // Default to 1 (should not happen due to pre-filtering)
-    return v ?? 1;
+    if (v === undefined) {
+      throw new Error('fillet/chamfer: edge hash not found — possible hash collision');
+    }
+    return v;
   };
   return { edges: filteredEdges, kernelParam };
 }

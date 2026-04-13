@@ -14,7 +14,7 @@ import type { Vec3 } from '@/core/types.js';
 import { vecAdd, vecLength } from '@/core/vecOps.js';
 import type { ClosedWire, Dimension, Wire, Shell, Solid, Shape3D } from '@/core/shapeTypes.js';
 import { castShape, isShape3D, isWire as isWireGuard } from '@/core/shapeTypes.js';
-import { type Result, ok, err, unwrap } from '@/core/result.js';
+import { type Result, ok, err, isErr } from '@/core/result.js';
 import {
   type BrepError,
   validationError,
@@ -226,7 +226,12 @@ export function complexExtrude(
   }
   const endPoint = vecAdd(center, normal);
   const spine = makeSpineWire(center, endPoint);
-  const law = profileShape ? unwrap(buildLawFromProfile(extrusionLength, profileShape)) : null;
+  let law = null;
+  if (profileShape) {
+    const lawResult = buildLawFromProfile(extrusionLength, profileShape);
+    if (isErr(lawResult)) return lawResult;
+    law = lawResult.value;
+  }
   return sweep(wire, spine, { law }, shellMode);
 }
 
@@ -269,7 +274,12 @@ export function twistExtrude(
   const pitch = (360.0 / angleDegrees) * extrusionLength;
   const auxiliarySpine = makeHelixWire(pitch, extrusionLength, 1, center, normal);
 
-  const law = profileShape ? unwrap(buildLawFromProfile(extrusionLength, profileShape)) : null;
+  let law = null;
+  if (profileShape) {
+    const lawResult = buildLawFromProfile(extrusionLength, profileShape);
+    if (isErr(lawResult)) return lawResult;
+    law = lawResult.value;
+  }
   return sweep(wire, spine, { auxiliarySpine, law }, shellMode);
 }
 
