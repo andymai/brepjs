@@ -96,6 +96,16 @@ export const divergences: DivergenceMap = {
       reason:
         'Uses raw OCCT API (oc.gp_Pnt_3, BRepBuilderAPI_MakeEdge_3) to construct edge-only shape',
     },
+    'compoundOpsFns.pocketVolume': {
+      kind: 'skip',
+      reason:
+        'brepkit: translate on faces requires copyFace/transformFace WASM exports not yet available',
+    },
+    'compoundOpsFns.bossVolume': {
+      kind: 'skip',
+      reason:
+        'brepkit: translate on faces requires copyFace/transformFace WASM exports not yet available',
+    },
 
     // -----------------------------------------------------------------------
     // cannedSketches.test.ts

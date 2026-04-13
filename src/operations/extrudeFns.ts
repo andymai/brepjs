@@ -34,7 +34,7 @@ export function extrude(
   if (getKernel().isNull(face.wrapped)) {
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'extrude: face is a null shape'));
   }
-  if (vecLength(extrusionVec) === 0) {
+  if (vecLength(extrusionVec) < 1e-10) {
     return err(validationError('EXTRUDE_ZERO_VECTOR', 'extrude: extrusion vector has zero length'));
   }
 
@@ -75,14 +75,23 @@ export function revolve(
     return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, 'revolve: face is a null shape'));
   }
 
-  const kernel = getKernel();
-  const shape = kernel.revolveVec(face.wrapped, [...center], [...direction], angle);
-  const result = castShape(shape);
+  try {
+    const kernel = getKernel();
+    const shape = kernel.revolveVec(face.wrapped, [...center], [...direction], angle);
+    const result = castShape(shape);
 
-  if (!isShape3D(result)) {
-    return err(typeCastError('REVOLUTION_NOT_3D', 'Revolution did not produce a 3D shape'));
+    if (!isShape3D(result)) {
+      return err(typeCastError('REVOLUTION_NOT_3D', 'Revolution did not produce a 3D shape'));
+    }
+    return ok(result);
+  } catch (e) {
+    return err(
+      kernelError('REVOLVE_FAILED', 'Revolution operation failed', e, {
+        operation: 'revolve',
+        angle,
+      })
+    );
   }
-  return ok(result);
 }
 
 // ---------------------------------------------------------------------------
@@ -109,13 +118,27 @@ export function extrudeAll(entries: readonly ExtrudeAllEntry[]): Result<ValidSol
   if (entries.length === 0) return ok([]);
 
   const kernel = getKernel();
-  const kernelEntries = entries.map((e) => {
+  const kernelEntries: Array<{
+    face: unknown;
+    direction: [number, number, number];
+    length: number;
+  }> = [];
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    if (!e) continue;
     const vec: Vec3 = typeof e.height === 'number' ? [0, 0, e.height] : e.height;
     const len = vecLength(vec);
-    const direction: [number, number, number] =
-      len > 0 ? ([...vecNormalize(vec)] as [number, number, number]) : [0, 0, 1];
-    return { face: e.face.wrapped, direction, length: len };
-  });
+    if (len < 1e-10) {
+      return err(
+        validationError(
+          'EXTRUDE_ALL_ZERO_VECTOR',
+          `extrudeAll: entry ${i} has zero-length extrusion vector`
+        )
+      );
+    }
+    const direction = [...vecNormalize(vec)] as [number, number, number];
+    kernelEntries.push({ face: e.face.wrapped, direction, length: len });
+  }
 
   try {
     const shapes =

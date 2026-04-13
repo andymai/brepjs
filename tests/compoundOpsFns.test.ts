@@ -76,12 +76,15 @@ describe('drill()', () => {
 // ---------------------------------------------------------------------------
 
 describe('pocket()', () => {
-  it('pockets into box top face — succeeds and volume does not increase', () => {
+  it('pockets into box top face — volume decreases by profile area * depth', (ctx) => {
+    skipIfDiverges(ctx, 'compoundOpsFns.pocketVolume');
     const b = box(50, 50, 20);
     const profile = drawRectangle(20, 10);
     const result = pocket(b, { profile, depth: 5 });
     expect(isOk(result)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(result)))).toBeLessThanOrEqual(50 * 50 * 20);
+    const vol = unwrap(measureVolume(unwrap(result)));
+    const expected = 50 * 50 * 20 - 20 * 10 * 5;
+    expect(vol).toBeCloseTo(expected, -1);
   });
 
   it('returns Err with POCKET_INVALID_DEPTH for depth <= 0', () => {
@@ -128,12 +131,15 @@ describe('pocket()', () => {
 // ---------------------------------------------------------------------------
 
 describe('boss()', () => {
-  it('adds a boss onto box top face — volume increases', () => {
+  it('adds a boss onto box top face — volume increases by profile area * height', (ctx) => {
+    skipIfDiverges(ctx, 'compoundOpsFns.bossVolume');
     const b = box(50, 50, 20);
     const profile = drawRectangle(20, 10);
     const result = boss(b, { profile, height: 5 });
     expect(isOk(result)).toBe(true);
-    expect(unwrap(measureVolume(unwrap(result)))).toBeGreaterThan(50 * 50 * 20);
+    const vol = unwrap(measureVolume(unwrap(result)));
+    const expected = 50 * 50 * 20 + 20 * 10 * 5;
+    expect(vol).toBeCloseTo(expected, -1);
   });
 
   it('returns Err with BOSS_INVALID_HEIGHT for height <= 0', () => {

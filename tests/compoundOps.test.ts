@@ -4,6 +4,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
+import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   shape,
   box,
@@ -107,7 +108,8 @@ describe('mirrorJoin()', () => {
 // ---------------------------------------------------------------------------
 
 describe('pocket()', () => {
-  it('cuts a pocket into the top face of a box', () => {
+  it('cuts a pocket into the top face of a box', (ctx) => {
+    skipIfDiverges(ctx, 'compoundOpsFns.pocketVolume');
     const b = box(50, 30, 10);
     const profile = drawRectangle(20, 10);
     const result = pocket(b, { profile, depth: 5 });
@@ -129,7 +131,8 @@ describe('pocket()', () => {
 // ---------------------------------------------------------------------------
 
 describe('boss()', () => {
-  it('adds a boss onto the top face of a box', () => {
+  it('adds a boss onto the top face of a box', (ctx) => {
+    skipIfDiverges(ctx, 'compoundOpsFns.bossVolume');
     const b = box(50, 30, 10);
     const profile = drawRectangle(20, 10);
     const result = boss(b, { profile, height: 5 });

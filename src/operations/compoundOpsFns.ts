@@ -173,13 +173,16 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
   if (isErr(targetResult)) return targetResult as Result<T>;
   const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
+  const center = faceCenter(targetFace);
   const w = toWire(profile);
 
   const faceResult = _makeFace(w);
   if (isErr(faceResult)) return faceResult as Result<T>;
 
+  // Position the profile on the target face before extruding
+  const positioned = translate(faceResult.value, center);
   const extDir = vecScale(vecNormalize(normal), -depth);
-  const toolResult = extrude(faceResult.value, extDir);
+  const toolResult = extrude(positioned, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
 
   return cut(s, toolResult.value, { unsafe: true } as BooleanOptions & {
@@ -209,13 +212,16 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
   if (isErr(targetResult)) return targetResult as Result<T>;
   const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
+  const center = faceCenter(targetFace);
   const w = toWire(profile);
 
   const faceResult = _makeFace(w);
   if (isErr(faceResult)) return faceResult as Result<T>;
 
+  // Position the profile on the target face before extruding
+  const positioned = translate(faceResult.value, center);
   const extDir = vecScale(vecNormalize(normal), height);
-  const toolResult = extrude(faceResult.value, extDir);
+  const toolResult = extrude(positioned, extDir);
   if (isErr(toolResult)) return toolResult as Result<T>;
 
   return fuse(s, toolResult.value, { unsafe: true } as BooleanOptions & {
@@ -239,6 +245,10 @@ export function mirrorJoin<T extends Shape3D>(
   const s = resolve(shape);
   const normal = options?.normal ?? [1, 0, 0];
   const planeOrigin = options?.at;
+
+  if (vecIsZero(normal)) {
+    return err(validationError('MIRROR_ZERO_NORMAL', 'Mirror plane normal cannot be zero'));
+  }
 
   const mirrored = mirror(s, normal, planeOrigin);
   return fuse(s, mirrored, { unsafe: true } as BooleanOptions & { unsafe: true }) as Result<T>;
