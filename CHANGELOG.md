@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.8](https://github.com/andymai/brepjs/compare/brepjs-v15.2.7...brepjs-v15.2.8) (2026-04-13)
+
+
+### Bug Fixes
+
+* improve error handling across operations and queries ([#777](https://github.com/andymai/brepjs/issues/777)) ([05caf20](https://github.com/andymai/brepjs/commit/05caf207b0de06eb9971a564d4530105be16d7a9))
+
 ## [15.2.7](https://github.com/andymai/brepjs/compare/brepjs-v15.2.6...brepjs-v15.2.7) (2026-04-13)
 
 
