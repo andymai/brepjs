@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.7](https://github.com/andymai/brepjs/compare/brepjs-v15.2.6...brepjs-v15.2.7) (2026-04-13)
+
+
+### Bug Fixes
+
+* **sketching:** remove redundant Math.abs() on positive radii ([#775](https://github.com/andymai/brepjs/issues/775)) ([1005c17](https://github.com/andymai/brepjs/commit/1005c17df5b75c87aed1d9c278f70b847692f9ed))
+
 ## [15.2.6](https://github.com/andymai/brepjs/compare/brepjs-v15.2.5...brepjs-v15.2.6) (2026-04-13)
 
 
