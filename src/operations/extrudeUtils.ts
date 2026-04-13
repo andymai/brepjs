@@ -84,7 +84,7 @@ export function buildLawFromProfile(
   extrusionLength: number,
   { profile, endFactor = 1 }: ExtrusionProfile
 ): Result<KernelType> {
-  if (extrusionLength <= 0) {
+  if (extrusionLength < 1e-10) {
     return err(validationError('INVALID_EXTRUSION_LENGTH', 'Extrusion length must be positive'));
   }
   if (profile !== 's-curve' && profile !== 'linear') {
