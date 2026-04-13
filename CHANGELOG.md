@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.10](https://github.com/andymai/brepjs/compare/brepjs-v15.2.9...brepjs-v15.2.10) (2026-04-13)
+
+
+### Bug Fixes
+
+* **operations:** fix geometry bugs in sweep and loft pipeline ([#781](https://github.com/andymai/brepjs/issues/781)) ([99fb83f](https://github.com/andymai/brepjs/commit/99fb83fd47799699304a10be884fe57f49b21942))
+
 ## [15.2.9](https://github.com/andymai/brepjs/compare/brepjs-v15.2.8...brepjs-v15.2.9) (2026-04-13)
 
 
