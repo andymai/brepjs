@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.11](https://github.com/andymai/brepjs/compare/brepjs-v15.2.10...brepjs-v15.2.11) (2026-04-13)
+
+
+### Bug Fixes
+
+* **operations:** fix pocket/boss positioning and extrude validation ([#783](https://github.com/andymai/brepjs/issues/783)) ([b6e916c](https://github.com/andymai/brepjs/commit/b6e916ca25edabc3bf6b1202e607660a6cfd6a51))
+
 ## [15.2.10](https://github.com/andymai/brepjs/compare/brepjs-v15.2.9...brepjs-v15.2.10) (2026-04-13)
 
 
