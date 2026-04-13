@@ -500,7 +500,7 @@ export function convertSvgEllipseParams(
   if (ry < 0) {
     ry = -ry;
   }
-  if (Math.abs(rx) < 1e-10 || Math.abs(ry) < 1e-10) {
+  if (rx < 1e-10 || ry < 1e-10) {
     // invalid arguments
     bug('convertSvgEllipseParams', 'rx and ry cannot be 0');
   }
