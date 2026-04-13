@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.6](https://github.com/andymai/brepjs/compare/brepjs-v15.2.5...brepjs-v15.2.6) (2026-04-13)
+
+
+### Bug Fixes
+
+* replace exact float equality with tolerance-based geometry checks ([#773](https://github.com/andymai/brepjs/issues/773)) ([2a86f92](https://github.com/andymai/brepjs/commit/2a86f9267c639cf5428c25e7a254f235b894ef77))
+
 ## [15.2.5](https://github.com/andymai/brepjs/compare/brepjs-v15.2.4...brepjs-v15.2.5) (2026-04-07)
 
 
