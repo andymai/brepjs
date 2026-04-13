@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.9](https://github.com/andymai/brepjs/compare/brepjs-v15.2.8...brepjs-v15.2.9) (2026-04-13)
+
+
+### Bug Fixes
+
+* **operations:** use consistent 1e-10 threshold in buildLawFromProfile ([#779](https://github.com/andymai/brepjs/issues/779)) ([3c5b4b6](https://github.com/andymai/brepjs/commit/3c5b4b64f4fd3ed1e9418a260a488784bb481c22))
+
 ## [15.2.8](https://github.com/andymai/brepjs/compare/brepjs-v15.2.7...brepjs-v15.2.8) (2026-04-13)
 
 
