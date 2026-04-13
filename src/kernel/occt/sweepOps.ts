@@ -102,6 +102,10 @@ export function sweep(
   const progress = new oc.Message_ProgressRange_1();
   sweepBuilder.Build(progress);
   progress.delete();
+  if (!sweepBuilder.IsDone()) {
+    sweepBuilder.delete();
+    throw new Error('Sweep build failed (IsDone=false)');
+  }
   sweepBuilder.MakeSolid();
   const result = sweepBuilder.Shape();
   sweepBuilder.delete();
@@ -125,21 +129,28 @@ export function simplePipe(
   maker.Build(progress);
   progress.delete();
 
-  // MakePipe produces a shell by default — solidify it
-  const shellShape = maker.Shape();
-  const solidMaker = new oc.BRepBuilderAPI_MakeSolid_1();
-  const shellDowncast = oc.TopoDS_Cast.Shell(shellShape);
-  solidMaker.Add(shellDowncast);
-  const solidProgress = new oc.Message_ProgressRange_1();
-  solidMaker.Build(solidProgress);
-  solidProgress.delete();
+  const pipeShape = maker.Shape();
 
-  const result = solidMaker.IsDone() ? solidMaker.Solid() : shellShape;
+  // MakePipe may produce a solid or shell depending on the profile.
+  // Only attempt solidification if the result is a shell.
+  if (pipeShape.ShapeType() === oc.TopAbs_ShapeEnum.TopAbs_SHELL) {
+    const solidMaker = new oc.BRepBuilderAPI_MakeSolid_1();
+    const shellDowncast = oc.TopoDS_Cast.Shell(pipeShape);
+    solidMaker.Add(shellDowncast);
+    const solidProgress = new oc.Message_ProgressRange_1();
+    solidMaker.Build(solidProgress);
+    solidProgress.delete();
 
-  shellDowncast.delete();
-  solidMaker.delete();
+    const result = solidMaker.IsDone() ? solidMaker.Solid() : pipeShape;
+
+    shellDowncast.delete();
+    solidMaker.delete();
+    maker.delete();
+    return result;
+  }
+
   maker.delete();
-  return result;
+  return pipeShape;
 }
 
 // ---------------------------------------------------------------------------

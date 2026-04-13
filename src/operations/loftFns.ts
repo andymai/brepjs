@@ -131,7 +131,15 @@ export function loftAll(entries: readonly LoftAllEntry[]): Result<Shape3D[]> {
   try {
     const shapes =
       kernel.loftBatch?.(kernelEntries) ??
-      kernelEntries.map((e) => kernel.loft(e.wires, e.ruled, e.startVertex, e.endVertex));
+      kernelEntries.map((e) =>
+        kernel.loftAdvanced(e.wires, {
+          solid: e.solid,
+          ruled: e.ruled,
+          tolerance: e.tolerance,
+          startVertex: e.startVertex,
+          endVertex: e.endVertex,
+        })
+      );
 
     const results: Shape3D[] = [];
     for (const shape of shapes) {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-04-13T03:34:30.182Z",
+  "generated": "2026-04-13T16:26:00.924Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -155,12 +155,12 @@
     {
       "file": "src/kernel/occt/advancedOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|682|"
+      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|700|"
     },
     {
       "file": "src/kernel/occt/advancedOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|1078|"
+      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|1096|"
     },
     {
       "file": "src/kernel/occt/hullOps.ts",

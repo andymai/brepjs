@@ -74,10 +74,12 @@ function makeHelixWire(
   radius: number,
   center: Vec3,
   dir: Vec3,
-  _lefthand = false
+  leftHanded = false
 ): Wire {
   const kernel = getKernel();
-  return castShape(kernel.makeHelixWire(pitch, height, radius, [...center], [...dir])) as Wire;
+  return castShape(
+    kernel.makeHelixWire(pitch, height, radius, [...center], [...dir], leftHanded)
+  ) as Wire;
 }
 
 // ---------------------------------------------------------------------------
@@ -271,8 +273,9 @@ export function twistExtrude(
   const endPoint = vecAdd(center, normal);
   const spine = makeSpineWire(center, endPoint);
 
-  const pitch = (360.0 / angleDegrees) * extrusionLength;
-  const auxiliarySpine = makeHelixWire(pitch, extrusionLength, 1, center, normal);
+  const leftHanded = angleDegrees < 0;
+  const pitch = (360.0 / Math.abs(angleDegrees)) * extrusionLength;
+  const auxiliarySpine = makeHelixWire(pitch, extrusionLength, 1, center, normal, leftHanded);
 
   let law = null;
   if (profileShape) {
@@ -318,15 +321,52 @@ function computeSectionParams(
   sections: ReadonlyArray<SweepSectionConfig>,
   spine: Wire<Dimension>,
   kernel: ReturnType<typeof getKernel>
-): number[] {
+): Result<number[]> {
   const [uFirst, uLast] = kernel.curveParameters(spine.wrapped);
   const uRange = uLast - uFirst;
-  return sections.map((s, i) => {
-    if (s.location !== undefined) {
-      return uFirst + s.location * uRange;
+
+  // Build params: explicit locations override, gaps are linearly interpolated
+  // between the nearest explicit neighbors (or 0/1 at boundaries).
+  const params: number[] = new Array(sections.length);
+  // First pass: resolve explicit locations
+  for (let i = 0; i < sections.length; i++) {
+    const loc = sections[i]?.location;
+    params[i] = loc !== undefined ? uFirst + loc * uRange : Number.NaN;
+  }
+  // Second pass: interpolate gaps between explicit anchors
+  let prevIdx = -1;
+  let prevVal = uFirst; // implicit 0.0 at start
+  for (let i = 0; i <= sections.length; i++) {
+    const isEnd = i === sections.length;
+    const isExplicit = !isEnd && !Number.isNaN(params[i] ?? Number.NaN);
+    if (isExplicit || isEnd) {
+      const nextVal = isEnd ? uLast : (params[i] ?? uLast);
+      // Fill gap between prevIdx+1 and i-1
+      const gapCount = i - prevIdx - 1;
+      for (let g = 1; g <= gapCount; g++) {
+        params[prevIdx + g] = prevVal + (g / (gapCount + 1)) * (nextVal - prevVal);
+      }
+      if (!isEnd) {
+        prevIdx = i;
+        prevVal = params[i] ?? uFirst;
+      }
     }
-    return uFirst + (i / (sections.length - 1)) * uRange;
-  });
+  }
+
+  // Validate: final params must be strictly increasing
+  for (let i = 1; i < params.length; i++) {
+    if ((params[i] ?? 0) <= (params[i - 1] ?? 0)) {
+      return err(
+        validationError(
+          BrepErrorCode.MULTI_SWEEP_FAILED,
+          `Computed section parameters are not strictly increasing at index ${i} ` +
+            `(${params[i - 1]?.toFixed(4)} >= ${params[i]?.toFixed(4)})`
+        )
+      );
+    }
+  }
+
+  return ok(params);
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +407,9 @@ export function multiSectionSweep(
 
   try {
     const kernel = getKernel();
-    const params = computeSectionParams(sections, spine, kernel);
+    const paramsResult = computeSectionParams(sections, spine, kernel);
+    if (isErr(paramsResult)) return paramsResult;
+    const params = paramsResult.value;
 
     // Position each profile wire along the spine and loft
     const positionedWires: KernelShape[] = [];

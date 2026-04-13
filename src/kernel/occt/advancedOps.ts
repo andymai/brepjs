@@ -190,6 +190,11 @@ export function sweepPipeShell(
   builder.Build(progress);
   progress.delete();
 
+  if (!builder.IsDone()) {
+    builder.delete();
+    throw new Error('Sweep pipe shell build failed (IsDone=false)');
+  }
+
   if (options.shellMode) {
     const shape = builder.Shape();
     const firstShape = builder.FirstShape();
@@ -351,6 +356,12 @@ export function circularPattern(
  *
  * Computes the Frenet frame (point + tangent) at the given parameter on the spine,
  * then transforms the shape from standard coordinates (origin, Z-up) to that frame.
+ *
+ * Note: gp_Ax3 with only a main direction auto-generates X/Y axes. This is
+ * deterministic for a given tangent direction but can produce discontinuous
+ * profile orientations when the tangent crosses axis-aligned thresholds on
+ * curved spines. For multi-section sweep this is acceptable because each
+ * section is independently positioned and then lofted.
  */
 export function positionOnCurve(
   oc: KernelInstance,
@@ -366,32 +377,39 @@ export function positionOnCurve(
 
   const pnt = new oc.gp_Pnt_1();
   const tangent = new oc.gp_Vec_1();
-  adaptor.D1(param, pnt, tangent);
 
-  // Build target coordinate system at the spine point
-  const tangentDir = new oc.gp_Dir_2(tangent);
-  const toAx3 = new oc.gp_Ax3_5(pnt, tangentDir);
+  try {
+    adaptor.D1(param, pnt, tangent);
 
-  // SetTransformation_2(ax3) computes transform FROM ax3 TO standard coords.
-  // We want FROM standard (origin/Z-up) TO toAx3, so invert.
-  const trsf = new oc.gp_Trsf_1();
-  trsf.SetTransformation_2(toAx3);
-  trsf.Invert();
+    // Build target coordinate system at the spine point.
+    // Use the 2-arg Ax3 constructor which is available in all WASM builds.
+    // Threaded build: gp_Ax3_4(P, V), single build: gp_Ax3_5(P, V).
+    const tangentDir = new oc.gp_Dir_2(tangent);
+    const Ax3Ctor = oc.gp_Ax3_5 ?? oc.gp_Ax3_4;
+    const toAx3 = new Ax3Ctor(pnt, tangentDir);
 
-  // Apply transform to the shape
-  const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
-  const result = transformer.Shape();
+    // SetTransformation_2(ax3) computes transform FROM ax3 TO standard coords.
+    // We want FROM standard (origin/Z-up) TO toAx3, so invert.
+    const trsf = new oc.gp_Trsf_1();
+    trsf.SetTransformation_2(toAx3);
+    trsf.Invert();
 
-  // Clean up
-  transformer.delete();
-  trsf.delete();
-  toAx3.delete();
-  tangentDir.delete();
-  tangent.delete();
-  pnt.delete();
-  adaptor.delete();
+    // Apply transform to the shape
+    const transformer = new oc.BRepBuilderAPI_Transform_2(shape, trsf, true, false);
+    const result = transformer.Shape();
 
-  return result;
+    // Clean up
+    transformer.delete();
+    trsf.delete();
+    toAx3.delete();
+    tangentDir.delete();
+
+    return result;
+  } finally {
+    tangent.delete();
+    pnt.delete();
+    adaptor.delete();
+  }
 }
 
 // ---------------------------------------------------------------------------
