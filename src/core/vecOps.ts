@@ -115,7 +115,7 @@ export function vecAngle(a: Vec3, b: Vec3): number {
   const dot = vecDot(a, b);
   const lenA = vecLength(a);
   const lenB = vecLength(b);
-  if (lenA === 0 || lenB === 0) return 0;
+  if (lenA < 1e-10 || lenB < 1e-10) return 0;
   const cosAngle = Math.max(-1, Math.min(1, dot / (lenA * lenB)));
   return Math.acos(cosAngle);
 }
@@ -124,7 +124,7 @@ export function vecAngle(a: Vec3, b: Vec3): number {
 export function vecProjectToPlane(v: Vec3, planeOrigin: Vec3, planeNormal: Vec3): Vec3 {
   const relative = vecSub(v, planeOrigin);
   const normalLen = vecLengthSq(planeNormal);
-  if (normalLen === 0) return v;
+  if (normalLen < 1e-20) return v;
   const projection = vecScale(planeNormal, vecDot(relative, planeNormal) / normalLen);
   return vecSub(v, projection);
 }

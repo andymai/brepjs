@@ -219,7 +219,7 @@ export function complexExtrude(
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
   const extrusionLength = vecLength(normal);
-  if (extrusionLength === 0) {
+  if (extrusionLength < 1e-10) {
     return err(
       validationError('ZERO_LENGTH_EXTRUSION', 'Extrusion vector cannot have zero length')
     );
@@ -253,11 +253,11 @@ export function twistExtrude(
   profileShape?: ExtrusionProfile,
   shellMode = false
 ): Result<Shape3D | [Shape3D, Wire, Wire]> {
-  if (angleDegrees === 0) {
+  if (Math.abs(angleDegrees) < 1e-10) {
     return err(validationError('ZERO_TWIST_ANGLE', 'Twist angle cannot be zero'));
   }
   const extrusionLength = vecLength(normal);
-  if (extrusionLength === 0) {
+  if (extrusionLength < 1e-10) {
     return err(
       validationError('ZERO_LENGTH_EXTRUSION', 'Extrusion vector cannot have zero length')
     );

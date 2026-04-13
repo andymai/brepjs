@@ -372,7 +372,7 @@ function handleArc(
 }
 
 function handleClosePath(cursor: PathCursor, curves: Curve2D[]): void {
-  if (cursor.cx !== cursor.sx || cursor.cy !== cursor.sy) {
+  if (Math.abs(cursor.cx - cursor.sx) > 1e-10 || Math.abs(cursor.cy - cursor.sy) > 1e-10) {
     curves.push(make2dSegmentCurve(flipY([cursor.cx, cursor.cy]), flipY([cursor.sx, cursor.sy])));
   }
   cursor.cx = cursor.sx;

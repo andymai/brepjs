@@ -452,7 +452,7 @@ export function shell(
 export function offset(shape: ValidSolid, distance: number, tolerance = 1e-6): Result<ValidSolid> {
   const check = validateNotNull(shape, 'offset: shape');
   if (isErr(check)) return check;
-  if (distance === 0) {
+  if (Math.abs(distance) < 1e-10) {
     return err(validationError('ZERO_OFFSET', 'Offset distance cannot be zero'));
   }
 
@@ -505,7 +505,7 @@ export function draft(
   if (isErr(check)) return check;
 
   if (typeof angle === 'number') {
-    if (angle === 0) {
+    if (Math.abs(angle) < 1e-10) {
       return err(
         validationError(
           BrepErrorCode.DRAFT_INVALID_ANGLE,

@@ -11,6 +11,7 @@ import { getKernel } from '@/kernel/index.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { ClosedWire, Dimension, Wire } from '@/core/shapeTypes.js';
 import { createSolid } from '@/core/shapeTypes.js';
+import { DEG2RAD } from '@/core/constants.js';
 import type { PlanarWire, ValidSolid } from '@/core/validityTypes.js';
 import { isValidSolid } from '@/core/validityTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
@@ -215,7 +216,7 @@ export function roof(
   w: ClosedWire<Dimension> & PlanarWire<Dimension>,
   options?: RoofOptions
 ): Result<ValidSolid> {
-  const angle = (options?.angle ?? 45) * (Math.PI / 180);
+  const angle = (options?.angle ?? 45) * DEG2RAD;
   const tanAngle = Math.tan(angle);
 
   try {
