@@ -2108,7 +2108,11 @@ export class OcctWasmAdapter implements KernelAdapter {
   exportSTEPAssembly(parts: StepAssemblyPart[], _options?: { unit?: string }): string {
     if (parts.length === 0) return '';
     const doc = this.createXCAFDocument(parts);
-    return this.writeXCAFToSTEP(doc);
+    try {
+      return this.writeXCAFToSTEP(doc);
+    } finally {
+      doc.delete();
+    }
   }
 
   export3MF(_shape: KernelShape, _tolerance: number): ArrayBuffer {
@@ -2215,7 +2219,11 @@ export class OcctWasmAdapter implements KernelAdapter {
       color: s.color,
     }));
     const doc = this.createXCAFDocument(named);
-    return this.writeXCAFToSTEP(doc);
+    try {
+      return this.writeXCAFToSTEP(doc);
+    } finally {
+      doc.delete();
+    }
   }
 
   wrapString(_str: string): KernelType {
