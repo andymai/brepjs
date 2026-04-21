@@ -180,6 +180,7 @@ describe('meshFns', () => {
 
   describe('kernel.exportOBJ', () => {
     it('produces a valid OBJ ArrayBuffer on kernels that support it', () => {
+      expect.hasAssertions();
       const b = box(10, 10, 10);
       let data: ArrayBuffer;
       try {

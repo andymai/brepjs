@@ -2144,12 +2144,21 @@ export class OcctWasmAdapter implements KernelAdapter {
       const o = i * 3;
       lines.push(`vn ${n[o] ?? 0} ${n[o + 1] ?? 0} ${n[o + 2] ?? 0}`);
     }
-    const triCount = t.length / 3;
-    for (let i = 0; i < triCount; i++) {
-      const a = (t[i * 3] ?? 0) + 1;
-      const b = (t[i * 3 + 1] ?? 0) + 1;
-      const c = (t[i * 3 + 2] ?? 0) + 1;
+    const pushTri = (offset: number) => {
+      const a = (t[offset] ?? 0) + 1;
+      const b = (t[offset + 1] ?? 0) + 1;
+      const c = (t[offset + 2] ?? 0) + 1;
       lines.push(`f ${a}//${a} ${b}//${b} ${c}//${c}`);
+    };
+    if (result.faceGroups.length > 0) {
+      for (const group of result.faceGroups) {
+        lines.push(`g face_${group.faceHash}`);
+        const count = group.count / 3;
+        for (let i = 0; i < count; i++) pushTri(group.start + i * 3);
+      }
+    } else {
+      const triCount = t.length / 3;
+      for (let i = 0; i < triCount; i++) pushTri(i * 3);
     }
     return new TextEncoder().encode(lines.join('\n') + '\n').buffer;
   }
