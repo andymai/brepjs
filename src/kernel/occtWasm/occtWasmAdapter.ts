@@ -1994,22 +1994,31 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    if (transformHandle.__type === 'transform_matrix') {
-      // Apply the matrix as a generalTransform, then synthesize evolution
-      const result = this.transform(shape, transformHandle);
-      const modified = new Map<number, number[]>();
-      for (const h of inputFaceHashes) {
-        const resultHash = this.hashCode(result, hashUpperBound);
-        modified.set(h, [resultHash]);
+    // transform() dispatches across all matrix-like handle shapes:
+    // { __type: 'transform_matrix', matrix }, { matrix: [] }, { elements: [] },
+    // and plain number[]. It throws on anything unrecognizable.
+    const result = this.transform(shape, transformHandle);
+
+    // Synthesize per-face evolution by pairing input and output face hashes
+    // by iteration index. Affine transforms preserve topology, and both
+    // the caller (collectInputFaceHashes) and we use iterShapes(..., 'face')
+    // which is order-stable — the correspondence holds. True C++-tracked
+    // evolution would need a facade method for generic transforms (only
+    // translateWithHistory / rotateWithHistory are exposed today).
+    const outFaces = this.iterShapes(result, 'face');
+    const modified = new Map<number, number[]>();
+    const limit = Math.min(inputFaceHashes.length, outFaces.length);
+    for (let i = 0; i < limit; i++) {
+      const outFace = outFaces[i];
+      const inHash = inputFaceHashes[i];
+      if (outFace !== undefined && inHash !== undefined) {
+        modified.set(inHash, [this.hashCode(outFace, hashUpperBound)]);
       }
-      const evolution: ShapeEvolution = {
-        modified,
-        generated: new Map(),
-        deleted: new Set(),
-      };
-      return { shape: result, evolution };
     }
-    notImplemented('applyComposedTransformWithHistory');
+    return {
+      shape: result,
+      evolution: { modified, generated: new Map(), deleted: new Set() },
+    };
   }
 
   // =========================================================================

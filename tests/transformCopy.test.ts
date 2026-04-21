@@ -10,6 +10,8 @@ import {
   composeTransforms,
   transformCopy,
   unwrap,
+  getKernel,
+  HASH_CODE_MAX,
 } from '@/index.js';
 
 beforeAll(async () => {
@@ -132,5 +134,36 @@ describe('transformCopy', () => {
     expect(cb.xMax).toBeCloseTo(sb.xMax, 3);
     expect(cb.yMin).toBeCloseTo(sb.yMin, 3);
     expect(cb.yMax).toBeCloseTo(sb.yMax, 3);
+  });
+});
+
+describe('applyComposedTransformWithHistory evolution', () => {
+  it('produces per-face modified entries mapping input hashes to output face hashes', () => {
+    const kernel = getKernel();
+    const b = box(10, 10, 10);
+    const faces = kernel.iterShapes(b.wrapped, 'face');
+    const inputHashes = faces.map((f) => kernel.hashCode(f, HASH_CODE_MAX));
+
+    const trsf = composeTransforms([{ type: 'translate', v: [1, 2, 3] }]);
+    const { shape: resultShape, evolution } = kernel.applyComposedTransformWithHistory(
+      b.wrapped,
+      trsf.trsf,
+      inputHashes,
+      HASH_CODE_MAX
+    );
+    trsf.cleanup();
+
+    // Box has 6 faces — evolution should contain an entry per input face.
+    expect(evolution.modified.size).toBe(6);
+    expect(evolution.generated.size).toBe(0);
+    expect(evolution.deleted.size).toBe(0);
+
+    // Every mapped output hash should correspond to an actual face in the result.
+    const outFaces = kernel.iterShapes(resultShape, 'face');
+    const outHashSet = new Set(outFaces.map((f) => kernel.hashCode(f, HASH_CODE_MAX)));
+    for (const outHashes of evolution.modified.values()) {
+      expect(outHashes).toHaveLength(1);
+      expect(outHashSet.has(outHashes[0] ?? -1)).toBe(true);
+    }
   });
 });
