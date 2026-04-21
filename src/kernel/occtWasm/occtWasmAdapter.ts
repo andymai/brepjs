@@ -2194,7 +2194,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   export3MF(_shape: KernelShape, _tolerance: number): ArrayBuffer {
-    notImplemented('export3MF');
+    throw new Error('export3MF is only available with the brepkit kernel');
   }
 
   exportGLB(shape: KernelShape, tolerance: number): ArrayBuffer {
@@ -2350,15 +2350,15 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   import3MF(_data: ArrayBuffer): KernelShape[] {
-    notImplemented('import3MF');
+    throw new Error('import3MF is only available with the brepkit kernel');
   }
 
   importOBJ(_data: ArrayBuffer): KernelShape {
-    notImplemented('importOBJ');
+    throw new Error('importOBJ is only available with the brepkit kernel');
   }
 
   importGLB(_data: ArrayBuffer): KernelShape {
-    notImplemented('importGLB');
+    throw new Error('importGLB is only available with the brepkit kernel');
   }
 
   toBREP(shape: KernelShape): string {
