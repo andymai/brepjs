@@ -3032,14 +3032,18 @@ export class OcctWasmAdapter implements KernelAdapter {
   // 2D operations (not implemented -- occt-wasm doesn't expose 2D API)
   // =========================================================================
 
-  createPoint2d(_x: number, _y: number): KernelType {
-    notImplemented('createPoint2d');
+  createPoint2d(x: number, y: number): KernelType {
+    return { x, y };
   }
-  createDirection2d(_x: number, _y: number): KernelType {
-    notImplemented('createDirection2d');
+  createDirection2d(x: number, y: number): KernelType {
+    const l = Math.sqrt(x * x + y * y);
+    if (l < 1e-15) {
+      throw new Error('occt-wasm: createDirection2d called with zero-length vector');
+    }
+    return { x: x / l, y: y / l };
   }
-  createVector2d(_x: number, _y: number): KernelType {
-    notImplemented('createVector2d');
+  createVector2d(x: number, y: number): KernelType {
+    return { x, y };
   }
   createAxis2d(px: number, py: number, dx: number, dy: number): KernelType {
     // Return a plain object representing the axis (used by mirrorCurve2dAcrossAxis)

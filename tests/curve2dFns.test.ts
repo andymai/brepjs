@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { drawRectangle, drawCircle } from '@/index.js';
+import { drawRectangle, drawCircle, getKernel } from '@/index.js';
 import {
   reverseCurve,
   curve2dBoundingBox,
@@ -123,5 +123,30 @@ describe('curve2dDistanceFrom', () => {
   it('distant point has large distance', () => {
     const curve = getLineCurve();
     expect(curve2dDistanceFrom(curve, [1000, 1000])).toBeGreaterThan(10);
+  });
+});
+
+describe('kernel 2D primitives', () => {
+  it('createPoint2d returns {x, y}', () => {
+    const p = getKernel().createPoint2d(3, 4) as { x: number; y: number };
+    expect(p.x).toBe(3);
+    expect(p.y).toBe(4);
+  });
+
+  it('createVector2d returns {x, y}', () => {
+    const v = getKernel().createVector2d(5, -2) as { x: number; y: number };
+    expect(v.x).toBe(5);
+    expect(v.y).toBe(-2);
+  });
+
+  it('createDirection2d returns a unit-length direction', () => {
+    const d = getKernel().createDirection2d(3, 4) as { x: number; y: number };
+    expect(Math.hypot(d.x, d.y)).toBeCloseTo(1, 10);
+    expect(d.x).toBeCloseTo(0.6, 10);
+    expect(d.y).toBeCloseTo(0.8, 10);
+  });
+
+  it('createDirection2d throws on zero-length vector', () => {
+    expect(() => getKernel().createDirection2d(0, 0)).toThrow();
   });
 });
