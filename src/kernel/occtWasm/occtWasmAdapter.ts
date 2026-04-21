@@ -217,6 +217,83 @@ function notImplemented(method: string): never {
   throw new Error(`occt-wasm: ${method} is not yet implemented`);
 }
 
+// ---------------------------------------------------------------------------
+// GLB (binary glTF 2.0) helpers — used by exportGLB
+// ---------------------------------------------------------------------------
+
+interface Vec3Bounds {
+  readonly min: [number, number, number];
+  readonly max: [number, number, number];
+}
+
+function computePositionBounds(positions: Float32Array, vCount: number): Vec3Bounds {
+  if (vCount === 0) return { min: [0, 0, 0], max: [0, 0, 0] };
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity;
+  let maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
+  for (let i = 0; i < vCount; i++) {
+    const o = i * 3;
+    const x = positions[o] ?? 0;
+    const y = positions[o + 1] ?? 0;
+    const z = positions[o + 2] ?? 0;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (z < minZ) minZ = z;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    if (z > maxZ) maxZ = z;
+  }
+  return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
+}
+
+function buildGltfManifest(
+  vCount: number,
+  iCount: number,
+  posBytes: number,
+  nrmBytes: number,
+  idxBytes: number,
+  bufferLength: number,
+  bounds: Vec3Bounds
+): object {
+  return {
+    asset: { version: '2.0', generator: 'brepjs occt-wasm' },
+    scene: 0,
+    scenes: [{ nodes: [0] }],
+    nodes: [{ mesh: 0 }],
+    meshes: [
+      {
+        primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2, mode: 4 }],
+      },
+    ],
+    buffers: [{ byteLength: bufferLength }],
+    bufferViews: [
+      { buffer: 0, byteOffset: 0, byteLength: posBytes, target: 34962 },
+      { buffer: 0, byteOffset: posBytes, byteLength: nrmBytes, target: 34962 },
+      {
+        buffer: 0,
+        byteOffset: posBytes + nrmBytes,
+        byteLength: idxBytes,
+        target: 34963,
+      },
+    ],
+    accessors: [
+      {
+        bufferView: 0,
+        componentType: 5126,
+        count: vCount,
+        type: 'VEC3',
+        min: bounds.min,
+        max: bounds.max,
+      },
+      { bufferView: 1, componentType: 5126, count: vCount, type: 'VEC3' },
+      { bufferView: 2, componentType: 5125, count: iCount, type: 'SCALAR' },
+    ],
+  };
+}
+
 /**
  * Wrap an OcctKernelWasm instance so that every method call converts
  * C++ exceptions (WebAssembly.Exception) into readable JS Errors.
@@ -2119,8 +2196,65 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('export3MF');
   }
 
-  exportGLB(_shape: KernelShape, _tolerance: number): ArrayBuffer {
-    notImplemented('exportGLB');
+  exportGLB(shape: KernelShape, tolerance: number): ArrayBuffer {
+    const result = this.mesh(shape, {
+      tolerance,
+      angularTolerance: 0.5,
+      skipNormals: false,
+    });
+    const positions = result.vertices;
+    const normals = result.normals;
+    const indices = result.triangles;
+    const vCount = positions.length / 3;
+    const iCount = indices.length;
+
+    // Binary buffer: positions | normals | indices. All components are
+    // 4 bytes, so segment offsets are naturally aligned.
+    const posBytes = positions.byteLength;
+    const nrmBytes = normals.byteLength;
+    const idxBytes = indices.byteLength;
+    const binLength = posBytes + nrmBytes + idxBytes;
+    const paddedBinLength = binLength + ((4 - (binLength % 4)) % 4);
+
+    const manifest = buildGltfManifest(
+      vCount,
+      iCount,
+      posBytes,
+      nrmBytes,
+      idxBytes,
+      paddedBinLength,
+      computePositionBounds(positions, vCount)
+    );
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(manifest));
+    const paddedJsonLength = jsonBytes.byteLength + ((4 - (jsonBytes.byteLength % 4)) % 4);
+
+    const totalLength = 12 + 8 + paddedJsonLength + 8 + paddedBinLength;
+    const glb = new ArrayBuffer(totalLength);
+    const view = new DataView(glb);
+
+    view.setUint32(0, 0x46546c67, true);
+    view.setUint32(4, 2, true);
+    view.setUint32(8, totalLength, true);
+    view.setUint32(12, paddedJsonLength, true);
+    view.setUint32(16, 0x4e4f534a, true);
+    const jsonDst = new Uint8Array(glb, 20, paddedJsonLength);
+    jsonDst.set(jsonBytes);
+    for (let i = jsonBytes.byteLength; i < paddedJsonLength; i++) jsonDst[i] = 0x20;
+
+    const binHeaderOffset = 20 + paddedJsonLength;
+    view.setUint32(binHeaderOffset, paddedBinLength, true);
+    view.setUint32(binHeaderOffset + 4, 0x004e4942, true);
+    const binDataOffset = binHeaderOffset + 8;
+    new Uint8Array(glb, binDataOffset, posBytes).set(
+      new Uint8Array(positions.buffer, positions.byteOffset, posBytes)
+    );
+    new Uint8Array(glb, binDataOffset + posBytes, nrmBytes).set(
+      new Uint8Array(normals.buffer, normals.byteOffset, nrmBytes)
+    );
+    new Uint8Array(glb, binDataOffset + posBytes + nrmBytes, idxBytes).set(
+      new Uint8Array(indices.buffer, indices.byteOffset, idxBytes)
+    );
+    return glb;
   }
 
   exportOBJ(shape: KernelShape, tolerance: number): ArrayBuffer {

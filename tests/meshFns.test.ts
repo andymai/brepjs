@@ -224,6 +224,27 @@ describe('meshFns', () => {
     });
   });
 
+  describe('kernel.exportGLB', () => {
+    it('produces a valid GLB ArrayBuffer on kernels that support it', () => {
+      expect.hasAssertions();
+      const b = box(10, 10, 10);
+      let data: ArrayBuffer;
+      try {
+        data = getKernel().exportGLB(b.wrapped, 0.1);
+      } catch (e) {
+        // OCCT default adapter throws "only available with the brepkit kernel"
+        expect(String(e)).toContain('brepkit');
+        return;
+      }
+      expect(data.byteLength).toBeGreaterThan(0);
+      // GLB spec: 12-byte header = magic 'glTF' (0x46546C67) | version 2 | total length
+      const view = new DataView(data);
+      expect(view.getUint32(0, true)).toBe(0x46546c67);
+      expect(view.getUint32(4, true)).toBe(2);
+      expect(view.getUint32(8, true)).toBe(data.byteLength);
+    });
+  });
+
   describe('exportIGES', () => {
     it('exports a shape to IGES blob when IGES is available in the WASM build', () => {
       const oc = getKernel().oc;
