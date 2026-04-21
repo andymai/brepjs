@@ -181,29 +181,3 @@ export function exportSTEPConfigured(
     shapes.map((s) => s.shape)
   );
 }
-
-export function wrapString(_bk: BrepkitKernel, str: string): KernelType {
-  return str;
-}
-
-export function wrapColor(
-  _bk: BrepkitKernel,
-  red: number,
-  green: number,
-  blue: number,
-  alpha: number
-): KernelType {
-  return [red, green, blue, alpha];
-}
-
-export function configureStepUnits(
-  _bk: BrepkitKernel,
-  _unit: string | undefined,
-  _modelUnit: string | undefined
-): void {
-  // no-op
-}
-
-export function configureStepWriter(_bk: BrepkitKernel, _writer: KernelType): void {
-  // no-op
-}

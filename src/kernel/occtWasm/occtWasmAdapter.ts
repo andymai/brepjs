@@ -2464,22 +2464,6 @@ export class OcctWasmAdapter implements KernelAdapter {
     }
   }
 
-  wrapString(_str: string): KernelType {
-    notImplemented('wrapString');
-  }
-
-  wrapColor(_red: number, _green: number, _blue: number, _alpha: number): KernelType {
-    notImplemented('wrapColor');
-  }
-
-  configureStepUnits(_unit: string | undefined, _modelUnit: string | undefined): void {
-    notImplemented('configureStepUnits');
-  }
-
-  configureStepWriter(_writer: KernelType): void {
-    notImplemented('configureStepWriter');
-  }
-
   // =========================================================================
   // Measure
   // =========================================================================

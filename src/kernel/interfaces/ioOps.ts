@@ -73,14 +73,4 @@ export interface KernelIOOps {
       schema?: number | undefined;
     }
   ): string;
-
-  // --- Export helpers ---
-  /** Wrap a JS string as a kernel extended string. */
-  wrapString(str: string): KernelType;
-  /** Create a kernel color from RGB 0-255 and alpha 0-1. */
-  wrapColor(red: number, green: number, blue: number, alpha: number): KernelType;
-  /** Configure STEP writer unit settings. */
-  configureStepUnits(unit: string | undefined, modelUnit: string | undefined): void;
-  /** Configure STEP writer standard settings (color, layer, name, schema). */
-  configureStepWriter(writer: KernelType): void;
 }

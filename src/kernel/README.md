@@ -55,7 +55,6 @@ All raw kernel API calls are isolated in these files. A new kernel replaces `def
 | `meshOps.ts`                | `mesh`, `meshEdges` (C++ bulk extraction via MeshExtractor/EdgeMeshExtractor)                                                                                   |
 | `topologyOps.ts`            | `iterShapes`, `iterShapeList`, `isSame`, `isEqual`, `isValid`, `sew`                                                                                            |
 | `ioOps.ts`                  | `exportSTEP`, `exportSTL`, `importSTEP`, `importSTL`, `exportIGES`, `importIGES`                                                                                |
-| `exportOps.ts`              | `wrapString`, `wrapColorRGBA`, `configureStepUnits`, `configureStepWriter`                                                                                      |
 | `historyOps.ts`             | `*WithHistory` variants for all transforms and booleans (face hash tracking)                                                                                    |
 | `advancedOps.ts`            | Patterns, XCAF documents, projection, surface construction, curvature                                                                                           |
 | `healingOps.ts`             | `healSolid`, `healFace`, `healWire`                                                                                                                             |

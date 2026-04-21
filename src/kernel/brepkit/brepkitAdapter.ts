@@ -191,10 +191,6 @@ import {
   createXCAFDocument as _createXCAFDocument,
   writeXCAFToSTEP as _writeXCAFToSTEP,
   exportSTEPConfigured as _exportSTEPConfigured,
-  wrapString as _wrapString,
-  wrapColor as _wrapColor,
-  configureStepUnits as _configureStepUnits,
-  configureStepWriter as _configureStepWriter,
 } from './ioOps.js';
 import {
   mesh as _mesh,
@@ -1223,22 +1219,6 @@ export class BrepkitAdapter implements KernelAdapter {
     _options?: { unit?: string; modelUnit?: string; schema?: number }
   ): string {
     return _exportSTEPConfigured(this.bk, shapes, _options);
-  }
-
-  wrapString(str: string): KernelType {
-    return _wrapString(this.bk, str);
-  }
-
-  wrapColor(red: number, green: number, blue: number, alpha: number): KernelType {
-    return _wrapColor(this.bk, red, green, blue, alpha);
-  }
-
-  configureStepUnits(_unit: string | undefined, _modelUnit: string | undefined): void {
-    _configureStepUnits(this.bk, _unit, _modelUnit);
-  }
-
-  configureStepWriter(_writer: KernelType): void {
-    _configureStepWriter(this.bk, _writer);
   }
 
   // ═══════════════════════════════════════════════════════════════════════

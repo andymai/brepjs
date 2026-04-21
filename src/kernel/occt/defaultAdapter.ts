@@ -154,12 +154,6 @@ import {
   getNurbsSurfaceData as _getNurbsSurfaceData,
 } from './nurbsQueryOps.js';
 import {
-  wrapString as _wrapString,
-  wrapColorRGBA as _wrapColorRGBA,
-  configureStepUnits as _configureStepUnits,
-  configureStepWriter as _configureStepWriter,
-} from './exportOps.js';
-import {
   makeLineEdge as _makeLineEdge,
   makeCircleEdge as _makeCircleEdge,
   makeCircleArc as _makeCircleArc,
@@ -1819,24 +1813,6 @@ export class DefaultAdapter implements KernelAdapter, Kernel2DCapability {
   }
 
   // --- Bezier pole extraction (3D) ---
-
-  // --- Export helpers ---
-
-  wrapString(str: string): KernelType {
-    return _wrapString(this.oc, str);
-  }
-
-  wrapColor(red: number, green: number, blue: number, alpha: number): KernelType {
-    return _wrapColorRGBA(this.oc, red, green, blue, alpha);
-  }
-
-  configureStepUnits(unit: string | undefined, modelUnit: string | undefined): void {
-    _configureStepUnits(this.oc, unit, modelUnit);
-  }
-
-  configureStepWriter(writer: KernelType): void {
-    _configureStepWriter(this.oc, writer);
-  }
 
   createCurveAdaptor(shape: KernelShape): KernelType {
     return _createCurveAdaptor(this.oc, shape);
