@@ -7,11 +7,13 @@ import {
   castShape,
   sweep,
   isOk,
-  isErr,
   unwrap,
   isSolid,
   isShape3D,
   measureVolume,
+  box,
+  getFaces,
+  getKernel,
 } from '@/index.js';
 import type { Wire } from '@/core/shapeTypes.js';
 
@@ -74,5 +76,38 @@ describe('sweepFns', () => {
     const actual = unwrap(measureVolume(shape));
     expect(actual).toBeGreaterThan(expected * 0.99);
     expect(actual).toBeLessThan(expected * 1.01);
+  });
+
+  describe('kernel.helicalSweep', () => {
+    it('produces a solid on kernels that support it', () => {
+      expect.hasAssertions();
+      // Use a box face as the profile, sweep along a helix around Z axis.
+      const b = box(2, 2, 1);
+      const faces = getFaces(b);
+      const profileFace = faces[0]!; // eslint-disable-line @typescript-eslint/no-non-null-assertion
+      let result: unknown;
+      try {
+        result = getKernel().helicalSweep(
+          profileFace.wrapped,
+          [0, 0, 0],
+          [0, 0, 1],
+          10, // radius
+          5, // pitch
+          2 // turns
+        );
+      } catch (e) {
+        // OCCT and occt-wasm both decline: OCCT says "only available with
+        // the brepkit kernel"; occt-wasm says brepkit has a native impl
+        // while its own composition isn't fleshed out yet. Either way,
+        // the message mentions brepkit — brepkit is the only kernel that
+        // currently implements helicalSweep.
+        expect(String(e)).toContain('brepkit');
+        return;
+      }
+      expect(result).toBeDefined();
+      // Result should be a valid solid with positive volume.
+      expect(getKernel().isValid(result)).toBe(true);
+      expect(getKernel().volume(result)).toBeGreaterThan(0);
+    });
   });
 });

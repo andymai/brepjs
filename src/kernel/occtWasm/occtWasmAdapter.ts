@@ -1094,8 +1094,19 @@ export class OcctWasmAdapter implements KernelAdapter {
     _pitch: number,
     _turns: number
   ): KernelShape {
-    // TODO: compose from helix wire + sweep
-    notImplemented('helicalSweep');
+    // Primitive composition via makeHelixWire + sweep/sweepPipeShell runs
+    // into OCCT's BRepOffsetAPI_MakePipe{Shell} requirement that the profile
+    // be positioned at the spine's first vertex and oriented perpendicular
+    // to the spine tangent there. Replicating that positioning+orientation
+    // step in TS is real geometric work (extract helix start point and
+    // tangent, transform the profile into that frame) — not a trivial
+    // composition. brepkit exposes a dedicated C++ helicalSweep that
+    // handles this internally; OCCT's defaultAdapter declines with
+    // "only available with the brepkit kernel". Matching that posture
+    // until the composition is fleshed out or a C++ facade method lands.
+    throw new Error(
+      'helicalSweep on occt-wasm requires profile positioning+orientation logic not yet implemented; brepkit has a native implementation'
+    );
   }
 
   sweepWithOptions(
