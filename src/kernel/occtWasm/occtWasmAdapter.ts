@@ -2614,7 +2614,14 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   iterShapeList(_list: KernelShape, _callback: (item: KernelShape) => void): void {
-    notImplemented('iterShapeList');
+    // occt-wasm's arena model has no TopTools_ListOfShape equivalent — the
+    // kernel only yields individual u32 shape IDs, not list handles. This
+    // method is used internally by OCCT's evolution JS fallback path, which
+    // is itself unreachable on occt-wasm (evolution data comes from the C++
+    // facade's EvolutionExtractor). No Layer 2+ code calls this directly.
+    throw new Error(
+      'iterShapeList is not applicable to occt-wasm: the arena model has no TopTools_ListOfShape handles'
+    );
   }
 
   shapeType(shape: KernelShape): ShapeType {
