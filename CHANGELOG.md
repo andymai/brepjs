@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.4.0](https://github.com/andymai/brepjs/compare/brepjs-v15.3.0...brepjs-v15.4.0) (2026-04-21)
+
+
+### Features
+
+* **kernel:** implement exportOBJ on occt-wasm ([#792](https://github.com/andymai/brepjs/issues/792)) ([cabaf66](https://github.com/andymai/brepjs/commit/cabaf6676f5f2eec6affbcdf18b2f323866afe15))
+
 ## [15.3.0](https://github.com/andymai/brepjs/compare/brepjs-v15.2.12...brepjs-v15.3.0) (2026-04-21)
 
 
