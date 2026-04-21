@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.3.0](https://github.com/andymai/brepjs/compare/brepjs-v15.2.12...brepjs-v15.3.0) (2026-04-21)
+
+
+### Features
+
+* **kernel:** implement exportSTEP{Assembly,Configured} on occt-wasm ([#790](https://github.com/andymai/brepjs/issues/790)) ([99676ba](https://github.com/andymai/brepjs/commit/99676ba93f42c35e70f34bfd11e1862dbdbd0bc5))
+
 ## [15.2.12](https://github.com/andymai/brepjs/compare/brepjs-v15.2.11...brepjs-v15.2.12) (2026-04-21)
 
 
