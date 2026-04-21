@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.6.0](https://github.com/andymai/brepjs/compare/brepjs-v15.5.0...brepjs-v15.6.0) (2026-04-21)
+
+
+### Features
+
+* **kernel:** implement createPoint2d/Direction2d/Vector2d on occt-wasm ([#798](https://github.com/andymai/brepjs/issues/798)) ([dab2992](https://github.com/andymai/brepjs/commit/dab2992d9b76ac2fa96b0ea917d9d100a3e55f60))
+
 ## [15.5.0](https://github.com/andymai/brepjs/compare/brepjs-v15.4.0...brepjs-v15.5.0) (2026-04-21)
 
 
