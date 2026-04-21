@@ -251,6 +251,7 @@ function computePositionBounds(positions: Float32Array, vCount: number): Vec3Bou
 
 function buildGltfManifest(
   vCount: number,
+  nCount: number,
   iCount: number,
   posBytes: number,
   nrmBytes: number,
@@ -288,7 +289,7 @@ function buildGltfManifest(
         min: bounds.min,
         max: bounds.max,
       },
-      { bufferView: 1, componentType: 5126, count: vCount, type: 'VEC3' },
+      { bufferView: 1, componentType: 5126, count: nCount, type: 'VEC3' },
       { bufferView: 2, componentType: 5125, count: iCount, type: 'SCALAR' },
     ],
   };
@@ -2206,6 +2207,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     const normals = result.normals;
     const indices = result.triangles;
     const vCount = positions.length / 3;
+    const nCount = normals.length / 3;
     const iCount = indices.length;
 
     // Binary buffer: positions | normals | indices. All components are
@@ -2218,6 +2220,7 @@ export class OcctWasmAdapter implements KernelAdapter {
 
     const manifest = buildGltfManifest(
       vCount,
+      nCount,
       iCount,
       posBytes,
       nrmBytes,
