@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.2.12](https://github.com/andymai/brepjs/compare/brepjs-v15.2.11...brepjs-v15.2.12) (2026-04-21)
+
+
+### Bug Fixes
+
+* **kernel:** apply direction rotation in occt-wasm makeCone/makeTorus ([#788](https://github.com/andymai/brepjs/issues/788)) ([2d19802](https://github.com/andymai/brepjs/commit/2d19802648a6327b49d04599e293c2325115a103))
+
 ## [15.2.11](https://github.com/andymai/brepjs/compare/brepjs-v15.2.10...brepjs-v15.2.11) (2026-04-13)
 
 
