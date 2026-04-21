@@ -199,6 +199,31 @@ describe('meshFns', () => {
     });
   });
 
+  describe('kernel.exportPLY', () => {
+    it('produces a valid PLY ArrayBuffer on kernels that support it', () => {
+      expect.hasAssertions();
+      const b = box(10, 10, 10);
+      let data: ArrayBuffer;
+      try {
+        data = getKernel().exportPLY(b.wrapped, 0.1);
+      } catch (e) {
+        // OCCT default adapter throws "only available with the brepkit kernel"
+        expect(String(e)).toContain('brepkit');
+        return;
+      }
+      expect(data.byteLength).toBeGreaterThan(0);
+      const text = new TextDecoder().decode(data);
+      // PLY header is always ASCII, even when the body is binary. Keep the
+      // assertions format-agnostic so brepkit's binary-little-endian writer
+      // and occt-wasm's ASCII writer both pass.
+      expect(text.startsWith('ply\n')).toBe(true);
+      expect(text).toMatch(/^format (ascii|binary_little_endian|binary_big_endian) 1\.0/m);
+      expect(text).toMatch(/^element vertex \d+/m);
+      expect(text).toMatch(/^element face \d+/m);
+      expect(text).toContain('end_header');
+    });
+  });
+
   describe('exportIGES', () => {
     it('exports a shape to IGES blob when IGES is available in the WASM build', () => {
       const oc = getKernel().oc;

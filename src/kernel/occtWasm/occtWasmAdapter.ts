@@ -2163,8 +2163,53 @@ export class OcctWasmAdapter implements KernelAdapter {
     return new TextEncoder().encode(lines.join('\n') + '\n').buffer;
   }
 
-  exportPLY(_shape: KernelShape, _tolerance: number): ArrayBuffer {
-    notImplemented('exportPLY');
+  exportPLY(shape: KernelShape, tolerance: number): ArrayBuffer {
+    const result = this.mesh(shape, {
+      tolerance,
+      angularTolerance: 0.5,
+      skipNormals: false,
+    });
+    const v = result.vertices;
+    const n = result.normals;
+    const t = result.triangles;
+    const vCount = v.length / 3;
+    const triCount = t.length / 3;
+    const hasNormals = n.length === v.length;
+
+    const lines: string[] = [
+      'ply',
+      'format ascii 1.0',
+      'comment brepjs PLY export',
+      `element vertex ${vCount}`,
+      'property float x',
+      'property float y',
+      'property float z',
+    ];
+    if (hasNormals) {
+      lines.push('property float nx', 'property float ny', 'property float nz');
+    }
+    lines.push(`element face ${triCount}`, 'property list uchar int vertex_index', 'end_header');
+    for (let i = 0; i < vCount; i++) {
+      const o = i * 3;
+      const x = v[o] ?? 0;
+      const y = v[o + 1] ?? 0;
+      const z = v[o + 2] ?? 0;
+      if (hasNormals) {
+        const nx = n[o] ?? 0;
+        const ny = n[o + 1] ?? 0;
+        const nz = n[o + 2] ?? 0;
+        lines.push(`${x} ${y} ${z} ${nx} ${ny} ${nz}`);
+      } else {
+        lines.push(`${x} ${y} ${z}`);
+      }
+    }
+    for (let i = 0; i < triCount; i++) {
+      const a = t[i * 3] ?? 0;
+      const b = t[i * 3 + 1] ?? 0;
+      const c = t[i * 3 + 2] ?? 0;
+      lines.push(`3 ${a} ${b} ${c}`);
+    }
+    return new TextEncoder().encode(lines.join('\n') + '\n').buffer;
   }
 
   import3MF(_data: ArrayBuffer): KernelShape[] {
