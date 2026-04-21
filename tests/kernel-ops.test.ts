@@ -92,8 +92,21 @@ describe('constructorOps', () => {
     expect(kernel.volume(c)).toBeCloseTo(vol, 0);
   });
 
+  it('makeCone with custom center and direction', () => {
+    const c = kernel.makeCone(10, 0, 20, [1, 2, 3], [0, 1, 0]);
+    expect(kernel.isValid(c)).toBe(true);
+    expect(kernel.volume(c)).toBeCloseTo((1 / 3) * Math.PI * 100 * 20, 0);
+  });
+
   it('makeTorus', () => {
     const t = oc(torus(10, 3));
+    expect(kernel.isValid(t)).toBe(true);
+    const vol = 2 * Math.PI * Math.PI * 10 * 9;
+    expect(kernel.volume(t)).toBeCloseTo(vol, 0);
+  });
+
+  it('makeTorus with custom center and direction', () => {
+    const t = kernel.makeTorus(10, 3, [1, 2, 3], [0, 1, 0]);
     expect(kernel.isValid(t)).toBe(true);
     const vol = 2 * Math.PI * Math.PI * 10 * 9;
     expect(kernel.volume(t)).toBeCloseTo(vol, 0);

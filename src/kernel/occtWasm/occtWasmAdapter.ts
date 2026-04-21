@@ -433,8 +433,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     direction?: [number, number, number]
   ): KernelShape {
     let id = this.k.makeCone(radius1, radius2, height);
-    if (direction && (direction[0] !== 0 || direction[1] !== 0 || direction[2] !== 1)) {
-      // TODO: apply rotation to align Z-axis with direction
+    if (direction) {
+      id = rotateZToDirection(this.k, id, direction);
     }
     if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
       id = this.k.translate(id, center[0], center[1], center[2]);
@@ -449,8 +449,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     direction?: [number, number, number]
   ): KernelShape {
     let id = this.k.makeTorus(majorRadius, minorRadius);
-    if (direction && (direction[0] !== 0 || direction[1] !== 0 || direction[2] !== 1)) {
-      // TODO: apply rotation to align Z-axis with direction
+    if (direction) {
+      id = rotateZToDirection(this.k, id, direction);
     }
     if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
       id = this.k.translate(id, center[0], center[1], center[2]);
