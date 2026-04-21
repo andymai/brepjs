@@ -178,6 +178,26 @@ describe('meshFns', () => {
     );
   });
 
+  describe('kernel.exportOBJ', () => {
+    it('produces a valid OBJ ArrayBuffer on kernels that support it', () => {
+      const b = box(10, 10, 10);
+      let data: ArrayBuffer;
+      try {
+        data = getKernel().exportOBJ(b.wrapped, 0.1);
+      } catch (e) {
+        // OCCT default adapter throws "only available with the brepkit kernel"
+        expect(String(e)).toContain('brepkit');
+        return;
+      }
+      expect(data.byteLength).toBeGreaterThan(0);
+      const text = new TextDecoder().decode(data);
+      // Structural assertions are kernel-agnostic — brepkit's C++ writer
+      // and occt-wasm's TS writer both emit standard OBJ.
+      expect(text).toMatch(/^v /m);
+      expect(text).toMatch(/^f /m);
+    });
+  });
+
   describe('exportIGES', () => {
     it('exports a shape to IGES blob when IGES is available in the WASM build', () => {
       const oc = getKernel().oc;
