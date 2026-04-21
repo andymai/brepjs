@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.6.1](https://github.com/andymai/brepjs/compare/brepjs-v15.6.0...brepjs-v15.6.1) (2026-04-21)
+
+
+### Bug Fixes
+
+* **kernel:** real per-face evolution in occt-wasm applyComposedTransformWithHistory ([#801](https://github.com/andymai/brepjs/issues/801)) ([569f05c](https://github.com/andymai/brepjs/commit/569f05ccaa5c1adc58aa1e6171cc2254e40f836e))
+
 ## [15.6.0](https://github.com/andymai/brepjs/compare/brepjs-v15.5.0...brepjs-v15.6.0) (2026-04-21)
 
 
