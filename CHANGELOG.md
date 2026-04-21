@@ -1,5 +1,13 @@
 # Changelog
 
+## [15.5.0](https://github.com/andymai/brepjs/compare/brepjs-v15.4.0...brepjs-v15.5.0) (2026-04-21)
+
+
+### Features
+
+* **kernel:** implement exportGLB on occt-wasm ([#796](https://github.com/andymai/brepjs/issues/796)) ([0a38eeb](https://github.com/andymai/brepjs/commit/0a38eebb3a2fd788219f2c581dc26a7856a33e2c))
+* **kernel:** implement exportPLY on occt-wasm ([#794](https://github.com/andymai/brepjs/issues/794)) ([4b1e9c5](https://github.com/andymai/brepjs/commit/4b1e9c5f03c511c9eaa60d623c807431206b9875))
+
 ## [15.4.0](https://github.com/andymai/brepjs/compare/brepjs-v15.3.0...brepjs-v15.4.0) (2026-04-21)
 
 
