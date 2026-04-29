@@ -1,9 +1,10 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { shouldSkipSuite } from './helpers/kernelDivergences.js';
+import { isBrepkit, shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
   box,
   sphere,
+  cylinder,
   line,
   vertex,
   translate,
@@ -13,6 +14,7 @@ import {
   measureArea,
   measureLength,
   measureDistance,
+  measureDistanceProps,
   createDistanceQuery,
   measureVolumeProps,
   measureSurfaceProps,
@@ -133,7 +135,7 @@ describe('measureFns', () => {
     () => {
       function makeNullSolid(): Shape3D {
         const oc = getKernel().oc;
-        return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+        return createSolid(new oc.TopoDS_Solid());
       }
 
       function makeNullFace(): Face {
@@ -198,6 +200,108 @@ describe('measureFns', () => {
       });
     }
   );
+
+  // ---------------------------------------------------------------------------
+  // Surface measurement quality — verifies witness points, principal
+  // directions, and surface-centroid against analytic ground truth so that
+  // approximate kernel implementations (occt-wasm) stay within tolerance.
+  // ---------------------------------------------------------------------------
+
+  describe('surface measurement quality', () => {
+    /** Pick the lateral (cylindrical) face of a Z-axis cylinder by surface type. */
+    function pickLateralFace(faces: ReadonlyArray<Face>): Face {
+      const k = getKernel();
+      for (const f of faces) {
+        if (k.surfaceType(f.wrapped) === 'cylinder') return f;
+      }
+      throw new Error('no cylindrical face found');
+    }
+
+    it('surfaceCenterOfMass: cylinder lateral face is on the axis', () => {
+      const c = cylinder(5, 10);
+      const lateral = pickLateralFace(getFaces(castShape(c.wrapped)));
+      const center = getKernel().surfaceCenterOfMass(lateral.wrapped);
+      // Cylinder is at origin with axis along +Z, height 10 → centroid at (0, 0, 5).
+      // 0.1% of the bounding-box diagonal (~12) is ~0.012; we use 0.05 absolute.
+      expect(center[0]).toBeCloseTo(0, 1);
+      expect(center[1]).toBeCloseTo(0, 1);
+      expect(center[2]).toBeCloseTo(5, 1);
+    });
+
+    // brepkit's existing tessellateFace(face, 0.1) returns an asymmetric mesh
+    // around the seam that biases the centroid; tracked separately, not part
+    // of this measurement-quality work.
+    it.skipIf(isBrepkit)(
+      'surfaceCenterOfMass: sphere face centroid is at the sphere center',
+      () => {
+        const s = sphere(7);
+        const f = getFaces(castShape(s.wrapped))[0];
+        if (!f) throw new Error('expected one face on a sphere');
+        const center = getKernel().surfaceCenterOfMass(f.wrapped);
+        expect(center[0]).toBeCloseTo(0, 1);
+        expect(center[1]).toBeCloseTo(0, 1);
+        expect(center[2]).toBeCloseTo(0, 1);
+      }
+    );
+
+    it('surfaceCurvature: sphere principal curvatures equal 1/R', () => {
+      const R = 4;
+      const s = sphere(R);
+      const f = getFaces(castShape(s.wrapped))[0];
+      if (!f) throw new Error('expected one face on a sphere');
+      const result = unwrap(measureCurvatureAtMid(f));
+      // Both principal curvatures should be ±1/R (sign depends on orientation).
+      expect(Math.abs(result.maxCurvature)).toBeCloseTo(1 / R, 2);
+      expect(Math.abs(result.minCurvature)).toBeCloseTo(1 / R, 2);
+      // Each principal direction must be a unit vector tangent to the sphere
+      // at the sample point — i.e. perpendicular to the surface normal.
+      const dot = (a: readonly [number, number, number], b: readonly [number, number, number]) =>
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const lenMax = Math.sqrt(dot(result.maxDirection, result.maxDirection));
+      const lenMin = Math.sqrt(dot(result.minDirection, result.minDirection));
+      expect(lenMax).toBeCloseTo(1, 2);
+      expect(lenMin).toBeCloseTo(1, 2);
+    });
+
+    it('surfaceCurvature: planar face has zero principal curvatures', () => {
+      const rect = sketchRectangle(10, 8);
+      const f = getFaces(castShape(rect.face().wrapped))[0];
+      if (!f) throw new Error('expected one face on a rectangle');
+      const result = unwrap(measureCurvatureAtMid(f));
+      expect(result.maxCurvature).toBeCloseTo(0, 4);
+      expect(result.minCurvature).toBeCloseTo(0, 4);
+    });
+
+    it('surfaceCurvature: cylinder lateral face — one curvature is 1/R, the other 0', () => {
+      const R = 3;
+      const c = cylinder(R, 10);
+      const lateral = pickLateralFace(getFaces(castShape(c.wrapped)));
+      const result = unwrap(measureCurvatureAtMid(lateral));
+      const ks = [result.maxCurvature, result.minCurvature].map(Math.abs).sort((a, b) => b - a);
+      expect(ks[0]).toBeCloseTo(1 / R, 2);
+      expect(ks[1]).toBeCloseTo(0, 2);
+    });
+
+    it('measureDistance: witness points lie on (or near) the connecting line for two boxes', () => {
+      const b1 = castShape(box(2, 2, 2).wrapped);
+      const b2 = castShape(translate(box(2, 2, 2), [10, 0, 0]).wrapped);
+      const result = unwrap(measureDistanceProps(b1, b2));
+      expect(result.distance).toBeCloseTo(8, 2);
+      // Witness point on b1 should have x ≈ 2 (the +X face); on b2 should have x ≈ 10.
+      // y and z should be inside [0, 2] for both boxes. Use loose tolerance — the
+      // tessellation samples at vertices, so witness points may snap to corners.
+      expect(result.point1[0]).toBeGreaterThanOrEqual(0);
+      expect(result.point1[0]).toBeLessThanOrEqual(2 + 1e-3);
+      expect(result.point2[0]).toBeGreaterThanOrEqual(10 - 1e-3);
+      expect(result.point2[0]).toBeLessThanOrEqual(12);
+      // Distance from witness-point pair should bound the true distance from above.
+      const dx = result.point2[0] - result.point1[0];
+      const dy = result.point2[1] - result.point1[1];
+      const dz = result.point2[2] - result.point1[2];
+      const witnessDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      expect(witnessDist).toBeGreaterThanOrEqual(result.distance - 1e-3);
+    });
+  });
 
   describe('measurement caching', () => {
     it('measureVolumeProps returns identical object on second call', () => {

@@ -372,6 +372,274 @@ function rotateZToDirection(
   return k.rotate(shapeId, 0, 0, 0, ax / axLen, ay / axLen, 0, angle);
 }
 
+/**
+ * Collect 3D sample points from a shape for nearest-pair queries: every
+ * topological vertex, plus tessellation vertices when the shape carries
+ * surfaces. Used by distance() to approximate witness points.
+ */
+function collectDistanceSamples(
+  k: OcctKernelWasm,
+  mod: OcctWasmModule,
+  shapeId: number
+): Array<[number, number, number]> {
+  const out: Array<[number, number, number]> = [];
+
+  // Topological vertices — always available and cheap.
+  const verts = k.getSubShapes(shapeId, 'vertex');
+  try {
+    const n = verts.size();
+    for (let i = 0; i < n; i++) {
+      const p = k.vertexPosition(verts.get(i));
+      out.push([p.get(0), p.get(1), p.get(2)]);
+      p.delete();
+    }
+  } finally {
+    verts.delete();
+  }
+
+  // Tessellation samples — coarse linear deflection (≈1% of bbox diagonal)
+  // is enough to seed a witness-point search; refinement comes from picking
+  // the closest pair, not from sample density per se.
+  const bb = k.getBoundingBox(shapeId);
+  const diag = Math.sqrt(
+    (bb.xmax - bb.xmin) ** 2 + (bb.ymax - bb.ymin) ** 2 + (bb.zmax - bb.zmin) ** 2
+  );
+  const linDef = Math.max(diag * 1e-2, 1e-4);
+  let mesh: ReturnType<OcctKernelWasm['tessellate']> | undefined;
+  try {
+    mesh = k.tessellate(shapeId, linDef, 0.5);
+  } catch {
+    // Shapes with no faces (loose vertices/edges) fail tessellation gracefully.
+    return out;
+  }
+  try {
+    const posCount = mesh.positionCount;
+    if (posCount > 0) {
+      const ptr = mesh.getPositionsPtr() >> 2;
+      const heap = mod.HEAPF32;
+      for (let i = 0; i < posCount; i += 3) {
+        out.push([heap[ptr + i] ?? 0, heap[ptr + i + 1] ?? 0, heap[ptr + i + 2] ?? 0]);
+      }
+    }
+  } finally {
+    mesh.delete();
+  }
+
+  return out;
+}
+
+/** Read a 3D point on a surface via the WASM facade. */
+function pointAt(
+  k: OcctKernelWasm,
+  faceId: number,
+  u: number,
+  v: number
+): [number, number, number] {
+  const p = k.pointOnSurface(faceId, u, v);
+  const r: [number, number, number] = [p.get(0), p.get(1), p.get(2)];
+  p.delete();
+  return r;
+}
+
+/**
+ * Compute principal curvature directions at (u, v) via finite-difference
+ * fundamental forms. The C++ facade exposes only k1 and k2 as scalars; this
+ * helper recovers the corresponding tangent directions in 3D space.
+ *
+ * Step sizes are clamped so all sample points stay inside the parametric
+ * domain, with a one-sided fallback near the boundary. For elementary
+ * surfaces (plane, sphere) where curvature is direction-degenerate, returns
+ * any orthonormal pair tangent to the surface.
+ */
+function computePrincipalDirections(
+  k: OcctKernelWasm,
+  faceId: number,
+  u: number,
+  v: number,
+  maxK: number,
+  minK: number
+): {
+  maxDirection: [number, number, number];
+  minDirection: [number, number, number];
+} {
+  const derivs = surfaceDerivatives(k, faceId, u, v);
+  const { Pu, Pv, Puu, Pvv, Puv } = derivs;
+
+  // Surface unit normal: n = (Pu × Pv) / |Pu × Pv|
+  const nx = Pu[1] * Pv[2] - Pu[2] * Pv[1];
+  const ny = Pu[2] * Pv[0] - Pu[0] * Pv[2];
+  const nz = Pu[0] * Pv[1] - Pu[1] * Pv[0];
+  const nlen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+  const E = Pu[0] * Pu[0] + Pu[1] * Pu[1] + Pu[2] * Pu[2];
+  const F = Pu[0] * Pv[0] + Pu[1] * Pv[1] + Pu[2] * Pv[2];
+  const G = Pv[0] * Pv[0] + Pv[1] * Pv[1] + Pv[2] * Pv[2];
+
+  if (nlen < 1e-12 || E * G - F * F < 1e-24) {
+    return degenerateOrthoFrame(Pu, Pv);
+  }
+
+  const e = (Puu[0] * nx + Puu[1] * ny + Puu[2] * nz) / nlen;
+  const f = (Puv[0] * nx + Puv[1] * ny + Puv[2] * nz) / nlen;
+  const g = (Pvv[0] * nx + Pvv[1] * ny + Pvv[2] * nz) / nlen;
+
+  // Shape operator W = II · I⁻¹ in the {Pu, Pv} basis.
+  const det = E * G - F * F;
+  const w11 = (e * G - f * F) / det;
+  const w12 = (f * G - g * F) / det;
+  const w21 = (f * E - e * F) / det;
+  const w22 = (g * E - f * F) / det;
+
+  // Isotropic point (k1 ≈ k2) — any direction is principal.
+  if (Math.abs(maxK - minK) < 1e-9 * (Math.abs(maxK) + Math.abs(minK) + 1)) {
+    return degenerateOrthoFrame(Pu, Pv);
+  }
+
+  // Eigenvector for k: solve (W - k·I) · x = 0.
+  const dirMax2D = eigenvector2x2(w11 - maxK, w12, w21, w22 - maxK);
+  const dirMin2D = eigenvector2x2(w11 - minK, w12, w21, w22 - minK);
+
+  return {
+    maxDirection: liftAndNormalize(dirMax2D, Pu, Pv),
+    minDirection: liftAndNormalize(dirMin2D, Pu, Pv),
+  };
+}
+
+/**
+ * Sample a 9-point stencil around (u, v) and return central-difference
+ * partial derivatives Pu, Pv, Puu, Pvv, Puv. Step size is 1e-3 of the
+ * parametric range (clamped at 1e-6) — the sweet spot between truncation
+ * error and float-eval noise. Near the boundary the stencil shifts inward
+ * so all sample points stay in the domain.
+ */
+function surfaceDerivatives(
+  k: OcctKernelWasm,
+  faceId: number,
+  u: number,
+  v: number
+): {
+  Pu: [number, number, number];
+  Pv: [number, number, number];
+  Puu: [number, number, number];
+  Pvv: [number, number, number];
+  Puv: [number, number, number];
+} {
+  const bounds = k.uvBounds(faceId);
+  const uMin = bounds.get(0);
+  const uMax = bounds.get(1);
+  const vMin = bounds.get(2);
+  const vMax = bounds.get(3);
+  bounds.delete();
+
+  const hu = Math.max(Math.max(uMax - uMin, 1e-12) * 1e-3, 1e-6);
+  const hv = Math.max(Math.max(vMax - vMin, 1e-12) * 1e-3, 1e-6);
+  const uc = Math.min(Math.max(u, uMin + hu), uMax - hu);
+  const vc = Math.min(Math.max(v, vMin + hv), vMax - hv);
+
+  const P = pointAt(k, faceId, uc, vc);
+  const Pup = pointAt(k, faceId, uc + hu, vc);
+  const Pum = pointAt(k, faceId, uc - hu, vc);
+  const Pvp = pointAt(k, faceId, uc, vc + hv);
+  const Pvm = pointAt(k, faceId, uc, vc - hv);
+  const Ppp = pointAt(k, faceId, uc + hu, vc + hv);
+  const Ppm = pointAt(k, faceId, uc + hu, vc - hv);
+  const Pmp = pointAt(k, faceId, uc - hu, vc + hv);
+  const Pmm = pointAt(k, faceId, uc - hu, vc - hv);
+  const huu = hu * hu;
+  const hvv = hv * hv;
+  const huv4 = 4 * hu * hv;
+
+  return {
+    Pu: [(Pup[0] - Pum[0]) / (2 * hu), (Pup[1] - Pum[1]) / (2 * hu), (Pup[2] - Pum[2]) / (2 * hu)],
+    Pv: [(Pvp[0] - Pvm[0]) / (2 * hv), (Pvp[1] - Pvm[1]) / (2 * hv), (Pvp[2] - Pvm[2]) / (2 * hv)],
+    Puu: [
+      (Pup[0] - 2 * P[0] + Pum[0]) / huu,
+      (Pup[1] - 2 * P[1] + Pum[1]) / huu,
+      (Pup[2] - 2 * P[2] + Pum[2]) / huu,
+    ],
+    Pvv: [
+      (Pvp[0] - 2 * P[0] + Pvm[0]) / hvv,
+      (Pvp[1] - 2 * P[1] + Pvm[1]) / hvv,
+      (Pvp[2] - 2 * P[2] + Pvm[2]) / hvv,
+    ],
+    Puv: [
+      (Ppp[0] - Ppm[0] - Pmp[0] + Pmm[0]) / huv4,
+      (Ppp[1] - Ppm[1] - Pmp[1] + Pmm[1]) / huv4,
+      (Ppp[2] - Ppm[2] - Pmp[2] + Pmm[2]) / huv4,
+    ],
+  };
+}
+
+/**
+ * Return a non-zero eigenvector of the singular matrix [[a,b],[c,d]] (whose
+ * eigenvalue is implicit — caller has already subtracted λ from the diagonal).
+ * Picks the row with the larger magnitude for numerical stability.
+ */
+function eigenvector2x2(a: number, b: number, c: number, d: number): [number, number] {
+  const useFirst = Math.abs(a) + Math.abs(b) >= Math.abs(c) + Math.abs(d);
+  if (useFirst) {
+    if (Math.abs(a) + Math.abs(b) < 1e-12) return [1, 0];
+    return [-b, a];
+  }
+  if (Math.abs(c) + Math.abs(d) < 1e-12) return [0, 1];
+  return [-d, c];
+}
+
+/** Map a 2D tangent vector (a·Pu + b·Pv) to a unit 3D direction. */
+function liftAndNormalize(
+  ab: [number, number],
+  Pu: [number, number, number],
+  Pv: [number, number, number]
+): [number, number, number] {
+  const x = ab[0] * Pu[0] + ab[1] * Pv[0];
+  const y = ab[0] * Pu[1] + ab[1] * Pv[1];
+  const z = ab[0] * Pu[2] + ab[1] * Pv[2];
+  const len = Math.sqrt(x * x + y * y + z * z);
+  if (len < 1e-12) return [1, 0, 0];
+  return [x / len, y / len, z / len];
+}
+
+/**
+ * Fallback when curvature is direction-degenerate: return an orthonormal
+ * tangent frame derived from Pu and the Gram-Schmidt-corrected Pv.
+ */
+function degenerateOrthoFrame(
+  Pu: [number, number, number],
+  Pv: [number, number, number]
+): {
+  maxDirection: [number, number, number];
+  minDirection: [number, number, number];
+} {
+  const uLen = Math.sqrt(Pu[0] * Pu[0] + Pu[1] * Pu[1] + Pu[2] * Pu[2]);
+  if (uLen < 1e-12) {
+    return { maxDirection: [1, 0, 0], minDirection: [0, 1, 0] };
+  }
+  const ux = Pu[0] / uLen,
+    uy = Pu[1] / uLen,
+    uz = Pu[2] / uLen;
+  // Project Pv onto plane orthogonal to Pu.
+  const dot = ux * Pv[0] + uy * Pv[1] + uz * Pv[2];
+  const vx = Pv[0] - dot * ux;
+  const vy = Pv[1] - dot * uy;
+  const vz = Pv[2] - dot * uz;
+  const vLen = Math.sqrt(vx * vx + vy * vy + vz * vz);
+  if (vLen < 1e-12) {
+    // Pu and Pv parallel: pick any orthogonal axis.
+    const ax: [number, number, number] = Math.abs(ux) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const ox = uy * ax[2] - uz * ax[1];
+    const oy = uz * ax[0] - ux * ax[2];
+    const oz = ux * ax[1] - uy * ax[0];
+    const oLen = Math.sqrt(ox * ox + oy * oy + oz * oz) || 1;
+    return {
+      maxDirection: [ux, uy, uz],
+      minDirection: [ox / oLen, oy / oLen, oz / oLen],
+    };
+  }
+  return {
+    maxDirection: [ux, uy, uz],
+    minDirection: [vx / vLen, vy / vLen, vz / vLen],
+  };
+}
+
 export class OcctWasmAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'occt-wasm';
@@ -891,7 +1159,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape {
     // surface is a face handle (from extractSurfaceFromFace)
     // brepjs-patterns-disable: no-double-cast
-    const faceId = unwrap(surface as unknown as KernelShape);
+    const faceId = unwrap(surface);
     return handle('face', this.k.makeFaceOnSurface(faceId, unwrap(wire)));
   }
 
@@ -2412,7 +2680,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       const joinedNames = nameParts.join('\0');
       const docId = this.k.createXCAFDocument(ids, joinedNames, colors);
       // brepjs-patterns-disable: no-double-cast
-      return handle('compound', docId) as unknown as KernelType;
+      return handle('compound', docId);
     } finally {
       ids.delete();
       colors.delete();
@@ -2424,7 +2692,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     _options?: { unit?: string | undefined; modelUnit?: string | undefined }
   ): string {
     // brepjs-patterns-disable: no-double-cast
-    const id = unwrap(doc as unknown as KernelShape);
+    const id = unwrap(doc);
     // Empty documents (0 shapes) — check by looking for any sub-shapes
     const subs = this.k.getSubShapes(id, 'solid');
     const hasSolids = subs.size() > 0;
@@ -2506,13 +2774,36 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   distance(shape1: KernelShape, shape2: KernelShape): DistanceResult {
-    const d = this.k.distanceBetween(unwrap(shape1), unwrap(shape2));
-    // The C++ facade only returns a scalar distance, not witness points
-    return {
-      value: d,
-      point1: [0, 0, 0], // TODO: witness points not yet available
-      point2: [0, 0, 0],
-    };
+    const id1 = unwrap(shape1);
+    const id2 = unwrap(shape2);
+    const value = this.k.distanceBetween(id1, id2);
+    // Witness points: the C++ facade returns only a scalar distance, so we
+    // sample each shape (topological vertices + face tessellation) and pick
+    // the closest pair. The `value` above stays exact (from BRepExtrema);
+    // `point1`/`point2` are an approximation whose error scales with the
+    // tessellation deflection.
+    const samples1 = collectDistanceSamples(this.k, this.Module, id1);
+    const samples2 = collectDistanceSamples(this.k, this.Module, id2);
+    if (samples1.length === 0 || samples2.length === 0) {
+      return { value, point1: [0, 0, 0], point2: [0, 0, 0] };
+    }
+    let bestD2 = Infinity;
+    let bestP1: [number, number, number] = samples1[0] ?? [0, 0, 0];
+    let bestP2: [number, number, number] = samples2[0] ?? [0, 0, 0];
+    for (const p1 of samples1) {
+      for (const p2 of samples2) {
+        const dx = p2[0] - p1[0];
+        const dy = p2[1] - p1[1];
+        const dz = p2[2] - p1[2];
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < bestD2) {
+          bestD2 = d2;
+          bestP1 = p1;
+          bestP2 = p2;
+        }
+      }
+    }
+    return { value, point1: bestP1, point2: bestP2 };
   }
 
   surfaceCurvature(
@@ -2527,45 +2818,94 @@ export class OcctWasmAdapter implements KernelAdapter {
     maxDirection: [number, number, number];
     minDirection: [number, number, number];
   } {
-    const vec = this.k.surfaceCurvature(unwrap(face), u, v);
+    const faceId = unwrap(face);
+    const vec = this.k.surfaceCurvature(faceId, u, v);
     // C++ returns [mean, gaussian, maxK, minK]
     const mean = vec.get(0);
     const gaussian = vec.get(1);
     const maxK = vec.get(2);
     const minK = vec.get(3);
     vec.delete();
+
+    const { maxDirection, minDirection } = computePrincipalDirections(
+      this.k,
+      faceId,
+      u,
+      v,
+      maxK,
+      minK
+    );
+
     return {
       gaussian,
       mean,
       max: maxK,
       min: minK,
-      maxDirection: [1, 0, 0], // TODO: extract actual principal directions
-      minDirection: [0, 1, 0],
+      maxDirection,
+      minDirection,
     };
   }
 
   surfaceCenterOfMass(face: KernelShape): [number, number, number] {
-    // Known approximation: averages vertex positions (centroid) rather than
-    // computing the true surface center of mass. This matches the OCCT adapter
-    // behavior for this kernel — a proper GProp_GProps integration is not yet available.
-    const vertVec = this.k.getSubShapes(unwrap(face), 'vertex');
-    const n = vertVec.size();
-    if (n === 0) {
-      vertVec.delete();
-      return [0, 0, 0];
+    // Area-weighted triangle centroid via tessellation. Mathematically exact
+    // for the triangulated face; converges to the true surface center of mass
+    // as deflection → 0. Tessellation deflection is scaled to the face's
+    // bounding-box diagonal so small and large faces both get adequate fidelity.
+    const faceId = unwrap(face);
+    const bb = this.k.getBoundingBox(faceId);
+    const dx = bb.xmax - bb.xmin;
+    const dy = bb.ymax - bb.ymin;
+    const dz = bb.zmax - bb.zmin;
+    const diag = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const linDef = Math.max(diag * 1e-3, 1e-5);
+    const angDef = 0.1;
+
+    const meshData = this.k.tessellate(faceId, linDef, angDef);
+    try {
+      const idxCount = meshData.indexCount;
+      if (idxCount < 3) return [0, 0, 0];
+      const posPtr = meshData.getPositionsPtr() >> 2;
+      const idxPtr = meshData.getIndicesPtr() >> 2;
+      const heapF32 = this.Module.HEAPF32;
+      const heapU32 = this.Module.HEAPU32;
+      let cx = 0,
+        cy = 0,
+        cz = 0,
+        totalArea = 0;
+      for (let t = 0; t < idxCount; t += 3) {
+        const i0 = (heapU32[idxPtr + t] ?? 0) * 3;
+        const i1 = (heapU32[idxPtr + t + 1] ?? 0) * 3;
+        const i2 = (heapU32[idxPtr + t + 2] ?? 0) * 3;
+        const p0x = heapF32[posPtr + i0] ?? 0;
+        const p0y = heapF32[posPtr + i0 + 1] ?? 0;
+        const p0z = heapF32[posPtr + i0 + 2] ?? 0;
+        const p1x = heapF32[posPtr + i1] ?? 0;
+        const p1y = heapF32[posPtr + i1 + 1] ?? 0;
+        const p1z = heapF32[posPtr + i1 + 2] ?? 0;
+        const p2x = heapF32[posPtr + i2] ?? 0;
+        const p2y = heapF32[posPtr + i2 + 1] ?? 0;
+        const p2z = heapF32[posPtr + i2 + 2] ?? 0;
+        const ux = p1x - p0x,
+          uy = p1y - p0y,
+          uz = p1z - p0z;
+        const vx = p2x - p0x,
+          vy = p2y - p0y,
+          vz = p2z - p0z;
+        const nx = uy * vz - uz * vy;
+        const ny = uz * vx - ux * vz;
+        const nz = ux * vy - uy * vx;
+        const area = 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (area === 0) continue;
+        cx += ((p0x + p1x + p2x) / 3) * area;
+        cy += ((p0y + p1y + p2y) / 3) * area;
+        cz += ((p0z + p1z + p2z) / 3) * area;
+        totalArea += area;
+      }
+      if (totalArea < 1e-30) return [0, 0, 0];
+      return [cx / totalArea, cy / totalArea, cz / totalArea];
+    } finally {
+      meshData.delete();
     }
-    let sx = 0,
-      sy = 0,
-      sz = 0;
-    for (let i = 0; i < n; i++) {
-      const posVec = this.k.vertexPosition(vertVec.get(i));
-      sx += posVec.get(0);
-      sy += posVec.get(1);
-      sz += posVec.get(2);
-      posVec.delete();
-    }
-    vertVec.delete();
-    return [sx / n, sy / n, sz / n];
   }
 
   measureBulk(shape: KernelShape, includeLinear?: boolean): BulkMeasurement {
@@ -3117,12 +3457,12 @@ export class OcctWasmAdapter implements KernelAdapter {
       const tStart = -a1;
       let tEnd = -a2;
       if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
-      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj);
+      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd });
     }
     // CCW: ensure tEnd >= tStart
     let tEnd = a2;
     if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
-    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj);
+    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd });
   }
   makeArc2dTangent(
     startX: number,
@@ -3162,11 +3502,11 @@ export class OcctWasmAdapter implements KernelAdapter {
       const tStart = -a1;
       let tEnd = -a2;
       if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
-      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd } as Curve2dObj);
+      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd });
     }
     let tEnd = a2;
     if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
-    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd } as Curve2dObj);
+    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd });
   }
   makeEllipse2d(
     cx: number,
@@ -3255,8 +3595,8 @@ export class OcctWasmAdapter implements KernelAdapter {
 
   trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
     const basis = c2d(curve);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return c2dWrap({ __bk2d: 'trimmed' as const, basis, tStart: start, tEnd: end } as any);
+
+    return c2dWrap({ __bk2d: 'trimmed' as const, basis, tStart: start, tEnd: end });
   }
   reverseCurve2d(_curve: Curve2dHandle): void {
     /* Curves are immutable in our pure-TS 2D system — reverse is a no-op */
@@ -3578,8 +3918,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       multiplicities: mults,
       degree,
       isPeriodic: false,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    } as any);
+    });
   }
   decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
     // Split BSpline at internal knots to produce Bezier-like segments
@@ -3803,7 +4142,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     const cu = c2d(curve);
     const bounds = ow2d.curveBounds(cu);
     // brepjs-patterns-disable: no-double-cast
-    const faceId = unwrap(surface as unknown as KernelShape);
+    const faceId = unwrap(surface);
     const nSamples = 30;
     const vec = new this.Module.VectorDouble();
     for (let i = 0; i <= nSamples; i++) {
@@ -3824,7 +4163,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   extractSurfaceFromFace(face: KernelShape): KernelType {
     // Return the face handle itself — occt-wasm uses faces as surface proxies
     // brepjs-patterns-disable: no-double-cast
-    return face as unknown as KernelType;
+    return face;
   }
   extractCurve2dFromEdge(_edge: KernelShape, _face: KernelShape): Curve2dHandle {
     /* PCurve extraction not yet supported — return a dummy line */ return c2dWrap(
@@ -4006,10 +4345,10 @@ function computeConvexHullFaces(
 
 // --- 2D curve helpers (at module scope) ---
 function c2d(handle: Curve2dHandle): Curve2dObj {
-  return handle as unknown as Curve2dObj; // brepjs-patterns-disable: no-double-cast
+  return handle; // brepjs-patterns-disable: no-double-cast
 }
 function c2dWrap(obj: Curve2dObj): Curve2dHandle {
-  return obj as unknown as Curve2dHandle; // brepjs-patterns-disable: no-double-cast
+  return obj; // brepjs-patterns-disable: no-double-cast
 }
 
 export type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
