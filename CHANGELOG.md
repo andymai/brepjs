@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.6.2](https://github.com/andymai/brepjs/compare/brepjs-v15.6.1...brepjs-v15.6.2) (2026-04-30)
+
+
+### Bug Fixes
+
+* **kernel:** real witness points, principal directions, surface centroid in occt-wasm ([#809](https://github.com/andymai/brepjs/issues/809)) ([7df8a3d](https://github.com/andymai/brepjs/commit/7df8a3d3aaa3a56952733ecd38eef5080624f74c))
+
 ## [15.6.1](https://github.com/andymai/brepjs/compare/brepjs-v15.6.0...brepjs-v15.6.1) (2026-04-21)
 
 
