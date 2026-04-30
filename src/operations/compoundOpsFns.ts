@@ -22,7 +22,7 @@ import type {
 } from '@/topology/apiTypes.js';
 import { resolve } from '@/topology/apiTypes.js';
 import { getBounds, getFaces, translate, mirror } from '@/topology/shapeFns.js';
-import { fuse, cut, fuseAll, type BooleanOptions } from '@/topology/booleanFns.js';
+import { fuse, cut, fuseAll } from '@/topology/booleanFns.js';
 import { extrude } from './extrudeFns.js';
 import { faceFinder } from '@/query/finderFns.js';
 import { normalAt, faceCenter } from '@/topology/faceFns.js';
@@ -148,7 +148,7 @@ export function drill<T extends Shape3D>(shape: Shapeable<T>, options: DrillOpti
     tool = _makeCylinder(radius, depth, startPos, dir);
   }
 
-  return cut(s, tool, { unsafe: true } as BooleanOptions & { unsafe: true }) as Result<T>;
+  return cut(s, tool, { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,24 +170,22 @@ export function pocket<T extends Shape3D>(shape: Shapeable<T>, options: PocketOp
   }
 
   const targetResult = resolveTargetFace(s, options.face);
-  if (isErr(targetResult)) return targetResult as Result<T>;
+  if (isErr(targetResult)) return targetResult;
   const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
   const center = faceCenter(targetFace);
   const w = toWire(profile);
 
   const faceResult = _makeFace(w);
-  if (isErr(faceResult)) return faceResult as Result<T>;
+  if (isErr(faceResult)) return faceResult;
 
   // Position the profile on the target face before extruding
   const positioned = translate(faceResult.value, center);
   const extDir = vecScale(vecNormalize(normal), -depth);
   const toolResult = extrude(positioned, extDir);
-  if (isErr(toolResult)) return toolResult as Result<T>;
+  if (isErr(toolResult)) return toolResult;
 
-  return cut(s, toolResult.value, { unsafe: true } as BooleanOptions & {
-    unsafe: true;
-  }) as Result<T>;
+  return cut(s, toolResult.value, { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -209,24 +207,22 @@ export function boss<T extends Shape3D>(shape: Shapeable<T>, options: BossOption
   }
 
   const targetResult = resolveTargetFace(s, options.face);
-  if (isErr(targetResult)) return targetResult as Result<T>;
+  if (isErr(targetResult)) return targetResult;
   const targetFace = targetResult.value;
   const normal = normalAt(targetFace);
   const center = faceCenter(targetFace);
   const w = toWire(profile);
 
   const faceResult = _makeFace(w);
-  if (isErr(faceResult)) return faceResult as Result<T>;
+  if (isErr(faceResult)) return faceResult;
 
   // Position the profile on the target face before extruding
   const positioned = translate(faceResult.value, center);
   const extDir = vecScale(vecNormalize(normal), height);
   const toolResult = extrude(positioned, extDir);
-  if (isErr(toolResult)) return toolResult as Result<T>;
+  if (isErr(toolResult)) return toolResult;
 
-  return fuse(s, toolResult.value, { unsafe: true } as BooleanOptions & {
-    unsafe: true;
-  }) as Result<T>;
+  return fuse(s, toolResult.value, { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -251,7 +247,7 @@ export function mirrorJoin<T extends Shape3D>(
   }
 
   const mirrored = mirror(s, normal, planeOrigin);
-  return fuse(s, mirrored, { unsafe: true } as BooleanOptions & { unsafe: true }) as Result<T>;
+  return fuse(s, mirrored, { unsafe: true }) as Result<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -302,5 +298,5 @@ export function rectangularPattern<T extends Shape3D>(
     }
   }
 
-  return fuseAll(copies, { unsafe: true } as BooleanOptions & { unsafe: true }) as Result<T>;
+  return fuseAll(copies, { unsafe: true }) as Result<T>;
 }

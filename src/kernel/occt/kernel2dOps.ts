@@ -833,7 +833,7 @@ export function splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHan
       basis: c,
       tStart: sortedParams[i],
       tEnd: sortedParams[i + 1],
-    } as Curve2dObj);
+    });
   }
   return result;
 }

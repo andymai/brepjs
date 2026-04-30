@@ -234,7 +234,7 @@ export default class Sketch implements SketchInterface {
         pieces[i]?.delete();
       }
     } else {
-      sketch = result as Sketch;
+      sketch = result;
     }
 
     const config: SweepOptions = {

@@ -61,7 +61,7 @@ export function hull(
 
   for (const [i, shape] of shapes.entries()) {
     const check = validateNotNull(shape, `hull: shapes[${i}]`);
-    if (isErr(check)) return check as Result<Solid>;
+    if (isErr(check)) return check;
   }
 
   const tolerance = options.tolerance ?? 0.1;

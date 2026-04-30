@@ -46,7 +46,7 @@ export function linearPattern(
     optimisation: 'sameFace',
     ...options,
     unsafe: true,
-  } as BooleanOptions & { unsafe: true });
+  });
 }
 
 /**
@@ -90,7 +90,7 @@ export function circularPattern(
     optimisation: 'sameFace',
     ...options,
     unsafe: true,
-  } as BooleanOptions & { unsafe: true });
+  });
 }
 
 /**

@@ -390,7 +390,7 @@ function fuseAllPairwise(
       fuzzyValue,
       unsafe: true,
       ...(signal ? { signal } : {}),
-    } as BooleanOptions & { unsafe: true });
+    });
   }
 
   const mid = start + Math.ceil(count / 2);
@@ -424,7 +424,7 @@ function fuseAllPairwise(
     fuzzyValue,
     unsafe: true,
     ...(signal ? { signal } : {}),
-  } as BooleanOptions & { unsafe: true });
+  });
 }
 
 /**
@@ -831,7 +831,7 @@ export function sectionToFace(
   return makeFace(
     outer as ClosedWire & PlanarWire,
     holes.length > 0 ? (holes as Array<ClosedWire & PlanarWire>) : undefined
-  ) as Result<OrientedFace>;
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -898,7 +898,7 @@ export function slice(
   const results: AnyShape<Dimension>[] = [];
   for (const plane of planes) {
     const result = section(shape, plane, options);
-    if (isErr(result)) return result as Result<AnyShape<Dimension>[]>;
+    if (isErr(result)) return result;
     results.push(result.value);
   }
   return ok(results);

@@ -84,7 +84,7 @@ export function chamferDistAngle(
   }
 
   const downcastResult = downcast(raw);
-  if (isErr(downcastResult)) return downcastResult as Result<Shape3D>;
+  if (isErr(downcastResult)) return downcastResult;
 
   const wrapped = castShape(downcastResult.value);
   if (!isShape3D(wrapped)) {

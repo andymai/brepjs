@@ -289,14 +289,14 @@ export function castShape<D extends Dimension = '3D'>(ocShape: KernelShape, dim?
   // Pass type to downcast to avoid recomputing ShapeType() in WASM
   const dc = kernel.downcast(ocShape, st);
 
-  if (st === 'vertex') return createVertex<D>(dc, dim) as AnyShape<D>;
-  if (st === 'edge') return createEdge<D>(dc, dim) as AnyShape<D>;
-  if (st === 'wire') return createWire<D>(dc, dim) as AnyShape<D>;
-  if (st === 'face') return createFace<D>(dc, dim) as AnyShape<D>;
+  if (st === 'vertex') return createVertex<D>(dc, dim);
+  if (st === 'edge') return createEdge<D>(dc, dim);
+  if (st === 'wire') return createWire<D>(dc, dim);
+  if (st === 'face') return createFace<D>(dc, dim);
   if (st === 'shell') return createShell(dc) as AnyShape<D>;
   if (st === 'solid') return createSolid(dc) as AnyShape<D>;
   if (st === 'compsolid') return createCompSolid(dc) as AnyShape<D>;
-  return createCompound<D>(dc, dim) as AnyShape<D>;
+  return createCompound<D>(dc, dim);
 }
 
 /** Type-safe cast for shapes known to be 3D. */
@@ -316,12 +316,12 @@ export function castShapeWithKnownType<D extends Dimension = '3D'>(
 ): AnyShape<D> {
   setCachedType(ocShape, knownType);
   const dc = getKernel().downcast(ocShape, knownType);
-  if (knownType === 'vertex') return createVertex<D>(dc, dim) as AnyShape<D>;
-  if (knownType === 'edge') return createEdge<D>(dc, dim) as AnyShape<D>;
-  if (knownType === 'wire') return createWire<D>(dc, dim) as AnyShape<D>;
-  if (knownType === 'face') return createFace<D>(dc, dim) as AnyShape<D>;
+  if (knownType === 'vertex') return createVertex<D>(dc, dim);
+  if (knownType === 'edge') return createEdge<D>(dc, dim);
+  if (knownType === 'wire') return createWire<D>(dc, dim);
+  if (knownType === 'face') return createFace<D>(dc, dim);
   if (knownType === 'shell') return createShell(dc) as AnyShape<D>;
   if (knownType === 'solid') return createSolid(dc) as AnyShape<D>;
   if (knownType === 'compsolid') return createCompSolid(dc) as AnyShape<D>;
-  return createCompound<D>(dc, dim) as AnyShape<D>;
+  return createCompound<D>(dc, dim);
 }

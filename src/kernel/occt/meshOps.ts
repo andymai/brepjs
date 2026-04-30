@@ -25,7 +25,7 @@ import { perfTimer } from '../perfStats.js';
 function sliceF32(heap: Float32Array, ptr: number, size: number): Float32Array {
   if (size === 0) return new Float32Array(0);
   const offset = ptr / 4;
-  return heap.slice(offset, offset + size) as Float32Array;
+  return heap.slice(offset, offset + size);
 }
 
 /**

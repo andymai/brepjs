@@ -20,6 +20,6 @@ export function getSingleFace(f: SingleFace, shape: AnyShape<Dimension>): Result
   if (typeof f !== 'function' && isFace(f)) return ok(f);
 
   // Handle callback with functional finder
-  const fnResult = (f as (ff: FaceFinderFn) => FaceFinderFn)(faceFinder());
+  const fnResult = (f)(faceFinder());
   return fnResult.findUnique(shape);
 }

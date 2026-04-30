@@ -187,7 +187,7 @@ export function replayHistory(
     }
 
     try {
-      const output = fn(inputs, step.parameters as Record<string, unknown>);
+      const output = fn(inputs, step.parameters);
       current = addStep(
         current,
         {
@@ -267,7 +267,7 @@ export function replayFrom(
     }
 
     try {
-      const output = fn(inputs, step.parameters as Record<string, unknown>);
+      const output = fn(inputs, step.parameters);
       current = addStep(
         current,
         {
