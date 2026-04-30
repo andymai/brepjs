@@ -350,17 +350,8 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
 
     // Booleans — legacy OOP wrappers use unsafe to bypass ValidSolid requirement
     fuse: (tool, opts) =>
-      wrap3D(
-        unwrapOrThrow(
-          fuse(val, resolve(tool), { ...opts, unsafe: true })
-        )
-      ),
-    cut: (tool, opts) =>
-      wrap3D(
-        unwrapOrThrow(
-          cut(val, resolve(tool), { ...opts, unsafe: true })
-        )
-      ),
+      wrap3D(unwrapOrThrow(fuse(val, resolve(tool), { ...opts, unsafe: true }))),
+    cut: (tool, opts) => wrap3D(unwrapOrThrow(cut(val, resolve(tool), { ...opts, unsafe: true }))),
     intersect: (tool, opts) =>
       wrap3D(
         unwrapOrThrow(
@@ -382,11 +373,7 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
         ) as unknown as T
       ),
     cutAll: (tools, opts) =>
-      wrap3D(
-        unwrapOrThrow(
-          cutAllFn(val, tools, { ...opts, unsafe: true })
-        ) as unknown as T
-      ),
+      wrap3D(unwrapOrThrow(cutAllFn(val, tools, { ...opts, unsafe: true })) as unknown as T),
 
     // Boolean variants — wrappers are always 3D context, safe to narrow
     section: (plane, opts) => wrapAny(unwrapOrThrow(sectionFn(val, plane, opts)) as AnyShape),
