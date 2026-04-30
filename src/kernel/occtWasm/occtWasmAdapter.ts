@@ -417,7 +417,16 @@ function collectDistanceSamples(
     if (posCount > 0) {
       const ptr = mesh.getPositionsPtr() >> 2;
       const heap = mod.HEAPF32;
-      for (let i = 0; i < posCount; i += 3) {
+      // Cap mesh samples so distance()'s nested O(N·M) loop stays bounded
+      // (~65k pair comparisons at the cap × cap product). Stride-sample by
+      // vertex (3 floats) when the mesh exceeds the cap; the closest-pair
+      // approximation degrades gracefully because every retained sample is
+      // still on the surface.
+      const MAX_MESH_SAMPLES = 256;
+      const vertexCount = Math.floor(posCount / 3);
+      const stride = vertexCount > MAX_MESH_SAMPLES ? Math.ceil(vertexCount / MAX_MESH_SAMPLES) : 1;
+      const step = stride * 3;
+      for (let i = 0; i < posCount; i += step) {
         out.push([heap[ptr + i] ?? 0, heap[ptr + i + 1] ?? 0, heap[ptr + i + 2] ?? 0]);
       }
     }
@@ -482,7 +491,8 @@ function computePrincipalDirections(
   const f = (Puv[0] * nx + Puv[1] * ny + Puv[2] * nz) / nlen;
   const g = (Pvv[0] * nx + Pvv[1] * ny + Pvv[2] * nz) / nlen;
 
-  // Shape operator W = II · I⁻¹ in the {Pu, Pv} basis.
+  // Shape operator W = I⁻¹ · II in the {Pu, Pv} basis. Solves the
+  // generalized eigenproblem II·x = k·I·x so eigenvectors are in {Pu, Pv}.
   const det = E * G - F * F;
   const w11 = (e * G - f * F) / det;
   const w12 = (f * G - g * F) / det;
@@ -2860,7 +2870,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     const linDef = Math.max(diag * 1e-3, 1e-5);
     const angDef = 0.1;
 
-    const meshData = this.k.tessellate(faceId, linDef, angDef);
+    let meshData: ReturnType<OcctKernelWasm['tessellate']>;
+    try {
+      meshData = this.k.tessellate(faceId, linDef, angDef);
+    } catch {
+      // Degenerate or unmeshable face — fall back to no centroid rather than
+      // propagating the WASM exception. Matches collectDistanceSamples.
+      return [0, 0, 0];
+    }
     try {
       const idxCount = meshData.indexCount;
       if (idxCount < 3) return [0, 0, 0];
