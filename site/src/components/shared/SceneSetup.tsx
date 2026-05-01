@@ -9,6 +9,8 @@ export interface ControlsProps {
   enableDamping?: boolean;
   dampingFactor?: number;
   rotateSpeed?: number;
+  zoomSpeed?: number;
+  enablePan?: boolean;
   minDistance?: number;
   maxDistance?: number;
   minPolarAngle?: number;

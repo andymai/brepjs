@@ -15,8 +15,8 @@ export default function EdgeRenderer({ edges }: { edges: Float32Array }) {
   }, [geometry]);
 
   return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color="#444455" />
+    <lineSegments geometry={geometry} renderOrder={1}>
+      <lineBasicMaterial color="#000000" depthTest={true} />
     </lineSegments>
   );
 }

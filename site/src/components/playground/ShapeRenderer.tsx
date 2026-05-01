@@ -23,11 +23,11 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
   return (
     <mesh geometry={geometry}>
       <meshStandardMaterial
-        color="#d4d0cc"
-        metalness={0.02}
-        roughness={0.55}
-        emissive="#d4d0cc"
-        emissiveIntensity={0.04}
+        color="#d4d8dc"
+        metalness={0}
+        roughness={0.45}
+        emissive="#d4d8dc"
+        emissiveIntensity={0.08}
         side={THREE.DoubleSide}
         polygonOffset
         polygonOffsetFactor={1}

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { usePlaygroundStore, type MeshData } from '../../stores/playgroundStore';
 import { useViewerStore } from '../../stores/viewerStore';
 import { useCameraPresets } from '../../hooks/useCameraPresets';
+import { useTouchDevice } from '../../hooks/useTouchDevice';
 import SceneSetup from '../shared/SceneSetup';
 import ShapeRenderer from './ShapeRenderer';
 import EdgeRenderer from './EdgeRenderer';
@@ -150,37 +151,48 @@ function CameraPresetBridge({ meshes }: { meshes: MeshData[] }) {
   return null;
 }
 
-const CONTROLS_PROPS = {
+const BASE_CONTROLS_PROPS = {
   enableDamping: true,
   dampingFactor: 0.12,
-  rotateSpeed: 0.8,
   minDistance: 5,
   maxDistance: 800,
-  minPolarAngle: 0.001,
-  maxPolarAngle: Math.PI * 0.999,
+  minPolarAngle: Math.PI * 0.05,
+  maxPolarAngle: Math.PI * 0.85,
 } as const;
 
 export default function ViewerPanel() {
   const meshes = usePlaygroundStore((s) => s.meshes);
   const showEdges = useViewerStore((s) => s.showEdges);
   const showGrid = useViewerStore((s) => s.showGrid);
+  const showWireframe = useViewerStore((s) => s.showWireframe);
   const clearPreset = useViewerStore((s) => s.clearPreset);
+  const isTouch = useTouchDevice();
   const controlsRef = useRef(null);
 
   const handleControlsStart = useCallback(() => {
     clearPreset();
   }, [clearPreset]);
 
+  const controlsProps = useMemo(
+    () => ({
+      ...BASE_CONTROLS_PROPS,
+      rotateSpeed: isTouch ? 1.0 : 0.8,
+      zoomSpeed: isTouch ? 1.2 : 1.0,
+      enablePan: !isTouch,
+    }),
+    [isTouch]
+  );
+
   return (
     <div className="relative h-full w-full">
       <Canvas
-        camera={{ position: [40, 30, 40], fov: 45 }}
+        camera={{ position: [40, 30, 40], fov: 45, near: 0.1, far: 2000 }}
         frameloop="demand"
         gl={{ antialias: true, preserveDrawingBuffer: true }}
       >
         <SceneSetup
           gridVisible={showGrid}
-          controlsProps={CONTROLS_PROPS}
+          controlsProps={controlsProps}
           controlsRef={controlsRef}
           onControlsStart={handleControlsStart}
         />
@@ -191,7 +203,9 @@ export default function ViewerPanel() {
           {meshes.map((m, i) => (
             <group key={i}>
               <ShapeRenderer data={m} />
-              {showEdges && m.edges.length > 0 && <EdgeRenderer edges={m.edges} />}
+              {showEdges && !showWireframe && m.edges.length > 0 && (
+                <EdgeRenderer edges={m.edges} />
+              )}
             </group>
           ))}
         </group>
