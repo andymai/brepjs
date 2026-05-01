@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.7.0](https://github.com/andymai/brepjs/compare/brepjs-v15.6.2...brepjs-v15.7.0) (2026-05-01)
+
+
+### Features
+
+* **site:** match gridfinity bin-designer 3D preview look-and-feel ([#811](https://github.com/andymai/brepjs/issues/811)) ([4417b9f](https://github.com/andymai/brepjs/commit/4417b9f229268eaa02c6700acf11446d500db841))
+
 ## [15.6.2](https://github.com/andymai/brepjs/compare/brepjs-v15.6.1...brepjs-v15.6.2) (2026-04-30)
 
 
