@@ -4,6 +4,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # 1.3.5 throws on GSUB lookup type 6 substFormat 2 used by DejaVu Sans / Noto Sans
+      # for ccmp glyph composition — breaks textBlueprints/textMetrics with system fonts.
+      # Re-allow once opentype.js supports this lookup format.
+      - dependency-name: opentype.js
+        versions: ['1.3.5']
     groups:
       minor-and-patch:
         update-types:

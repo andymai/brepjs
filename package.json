@@ -253,7 +253,7 @@
   },
   "dependencies": {
     "flatbush": "4.5.1",
-    "opentype.js": "1.3.5"
+    "opentype.js": "1.3.4"
   },
   "overrides": {
     "minimatch@>=10.0.0 <10.2.3": "10.2.3"
