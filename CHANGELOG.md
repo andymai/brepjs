@@ -1,5 +1,12 @@
 # Changelog
 
+## [15.7.1](https://github.com/andymai/brepjs/compare/brepjs-v15.7.0...brepjs-v15.7.1) (2026-05-04)
+
+
+### Bug Fixes
+
+* **deps:** pin opentype.js to 1.3.4 ([#815](https://github.com/andymai/brepjs/issues/815)) ([f2e5550](https://github.com/andymai/brepjs/commit/f2e555047d5ca6209904804424c6d61a8d2500f4))
+
 ## [15.7.0](https://github.com/andymai/brepjs/compare/brepjs-v15.6.2...brepjs-v15.7.0) (2026-05-01)
 
 
