@@ -1,5 +1,16 @@
 # Changelog
 
+## [16.0.0](https://github.com/andymai/brepjs/compare/brepjs-v15.7.1...brepjs-v16.0.0) (2026-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **occt-wasm:** consume occt-wasm 2.0 facade for parity with occt kernel ([#817](https://github.com/andymai/brepjs/issues/817))
+
+### Features
+
+* **occt-wasm:** consume occt-wasm 2.0 facade for parity with occt kernel ([#817](https://github.com/andymai/brepjs/issues/817)) ([d286841](https://github.com/andymai/brepjs/commit/d28684169ac0dc248bc5ea836f594ff46089c3dd))
+
 ## [15.7.1](https://github.com/andymai/brepjs/compare/brepjs-v15.7.0...brepjs-v15.7.1) (2026-05-04)
 
 
