@@ -33,3 +33,10 @@ src/kernel/wasm/
 
 # Ad-hoc test scripts
 test-*.mjs
+
+# Auto-generated docs test (regenerated from docs-site/**/*.md)
+tests/docs/extracted.test.ts
+
+# VitePress build outputs
+docs-site/.vitepress/cache/
+docs-site/.vitepress/dist/

@@ -1,0 +1,150 @@
+import { defineConfig } from 'vitepress';
+import { withMermaid } from 'vitepress-plugin-mermaid';
+
+export default withMermaid(
+  defineConfig({
+    title: 'brepjs',
+    description: 'CAD modeling for JavaScript. Exact B-Rep geometry, type-safe, browser-native.',
+    lang: 'en-US',
+    base: process.env.DOCS_BASE ?? '/',
+    cleanUrls: true,
+    lastUpdated: true,
+    head: [
+      ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
+      ['meta', { name: 'theme-color', content: '#3b82f6' }],
+    ],
+    themeConfig: {
+      logo: { src: '/logo.svg', alt: 'brepjs' },
+      siteTitle: 'brepjs',
+      nav: [
+        { text: 'Guide', link: '/introduction/why-brepjs' },
+        { text: 'API Reference', link: '/api/' },
+        { text: 'Playground', link: 'https://brepjs.vercel.app/' },
+        {
+          text: 'v16',
+          items: [
+            { text: 'Changelog', link: 'https://github.com/andymai/brepjs/blob/main/CHANGELOG.md' },
+            { text: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
+          ],
+        },
+      ],
+      sidebar: [
+        {
+          text: 'Introduction',
+          items: [
+            { text: 'Why brepjs', link: '/introduction/why-brepjs' },
+            { text: 'Status, Stability & Versioning', link: '/introduction/stability' },
+            { text: 'What brepjs is NOT', link: '/introduction/non-goals' },
+          ],
+        },
+        {
+          text: 'Getting Started',
+          items: [
+            { text: 'Install & Initialize', link: '/getting-started/install' },
+            { text: 'Your First Solid', link: '/getting-started/first-solid' },
+            { text: 'Cheat Sheet', link: '/getting-started/cheat-sheet' },
+          ],
+        },
+        {
+          text: 'Core Concepts',
+          items: [
+            { text: 'B-Rep vs Mesh', link: '/concepts/brep-vs-mesh' },
+            { text: 'The Topology Hierarchy', link: '/concepts/topology' },
+            { text: 'Types That Prove Geometry Is Valid', link: '/concepts/types' },
+            { text: 'Result<T,E> and Errors', link: '/concepts/result' },
+            { text: 'Kernels & withKernel', link: '/concepts/kernels' },
+            { text: 'Tolerance & Validity', link: '/concepts/tolerance' },
+          ],
+        },
+        {
+          text: 'Common Tasks',
+          items: [
+            { text: 'Primitives & Transforms', link: '/tasks/primitives' },
+            { text: 'Boolean Operations', link: '/tasks/booleans' },
+            { text: 'Fillets & Chamfers', link: '/tasks/fillets' },
+            { text: '2D Sketching', link: '/tasks/sketching' },
+            { text: 'Lofts, Sweeps, Revolves', link: '/tasks/lofts-sweeps' },
+            { text: 'Finders & Queries', link: '/tasks/finders' },
+            { text: 'Measurement', link: '/tasks/measurement' },
+            { text: 'Import & Export', link: '/tasks/import-export' },
+          ],
+        },
+        {
+          text: 'Advanced',
+          items: [
+            { text: 'Memory Management', link: '/advanced/memory' },
+            { text: 'Performance', link: '/advanced/performance' },
+            { text: 'Web Workers', link: '/advanced/workers' },
+            { text: 'Healing & Sewing', link: '/advanced/healing' },
+          ],
+        },
+        {
+          text: 'Integration',
+          items: [
+            { text: 'Three.js', link: '/integration/threejs' },
+            { text: 'React Three Fiber', link: '/integration/r3f' },
+            { text: 'Vite, Next.js, Astro', link: '/integration/frameworks' },
+            { text: 'Compatibility Matrix', link: '/integration/compatibility' },
+          ],
+        },
+        {
+          text: 'Migration',
+          items: [
+            { text: 'Coming from Replicad', link: '/migration/replicad' },
+            { text: 'Coming from OpenSCAD', link: '/migration/openscad' },
+            { text: 'Coming from Three.js', link: '/migration/threejs' },
+          ],
+        },
+        {
+          text: 'Extending brepjs',
+          items: [
+            { text: 'Architecture & Layers', link: '/extending/architecture' },
+            { text: 'Writing a Custom Kernel', link: '/extending/custom-kernel' },
+            { text: 'Kernel Conformance Suite', link: '/extending/conformance' },
+            { text: 'Writing Custom Operations', link: '/extending/custom-ops' },
+            { text: 'Pattern Checker Rules', link: '/extending/pattern-checker' },
+          ],
+        },
+        {
+          text: 'Reference',
+          items: [
+            { text: 'Glossary', link: '/reference/glossary' },
+            { text: 'Function Lookup', link: '/reference/function-lookup' },
+            { text: 'Error Codes', link: '/reference/errors' },
+            { text: 'Design Decisions', link: '/reference/decisions' },
+            { text: 'API Reference (TypeDoc)', link: 'https://andymai.github.io/brepjs/' },
+          ],
+        },
+      ],
+      socialLinks: [
+        { icon: 'github', link: 'https://github.com/andymai/brepjs' },
+        { icon: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
+      ],
+      editLink: {
+        pattern: 'https://github.com/andymai/brepjs/edit/main/docs-site/:path',
+        text: 'Edit this page on GitHub',
+      },
+      footer: {
+        message: 'Released under the Apache 2.0 License.',
+        copyright: 'Copyright © 2024-present Andy Aragon',
+      },
+      search: {
+        provider: 'local',
+        options: {
+          detailedView: true,
+        },
+      },
+      outline: { level: [2, 3] },
+    },
+    markdown: {
+      lineNumbers: false,
+      theme: { light: 'github-light', dark: 'github-dark' },
+    },
+    mermaid: {
+      theme: 'default',
+    },
+    sitemap: {
+      hostname: 'https://brepjs.dev',
+    },
+  })
+);

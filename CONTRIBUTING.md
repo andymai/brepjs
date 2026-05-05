@@ -25,9 +25,26 @@ The build generates ES and CommonJS distributions in the `dist/` directory.
 
 ## Architecture Overview
 
-See [Architecture](docs/architecture.md) for the layer structure, data flow diagrams, and key patterns.
+See the chapter [Architecture & Layers](https://andymai.github.io/brepjs/extending/architecture) for the layer structure, data flow diagrams, and key patterns.
 
 **The one rule:** imports flow downward only (Layer 3 → 2 → 1 → 0, never the reverse). `npm run check:boundaries` enforces this.
+
+## Documentation
+
+The chapter-based docs live in `docs-site/` and are built with VitePress. The legacy single-page docs in `docs/` are still served and kept around for inbound-link compatibility, but new content goes in `docs-site/`.
+
+Common docs commands:
+
+```bash
+npm run docs:dev            # local preview at http://localhost:5173
+npm run docs:build          # production build (output: docs-site/.vitepress/dist)
+npm run docs:extract-tests  # extract code blocks from docs into tests/docs/extracted.test.ts
+npm run test:docs           # extract + run the doc tests
+npm run docs:api            # build TypeDoc API reference
+npm run docs:generate-lookup # regenerate docs/function-lookup.md from sources
+```
+
+When you add or modify a code block in a chapter, the doc-test harness picks it up automatically — every fenced ` ```typescript ` block becomes a test that runs against the OCCT kernel. Mark blocks with `<!-- @no-test -->` (immediately preceding) to opt out, or `<!-- @setup -->` for shared setup that's prepended to subsequent blocks in the same file.
 
 ## Development Workflow
 

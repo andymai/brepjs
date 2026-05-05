@@ -23,7 +23,8 @@
   "packageManager": "npm@11.6.1",
   "workspaces": [
     "packages/brepjs-opencascade",
-    "site"
+    "site",
+    "docs-site"
   ],
   "main": "./dist/brepjs.cjs",
   "module": "./dist/brepjs.js",
@@ -207,6 +208,11 @@
     "size": "size-limit",
     "docs:api": "typedoc",
     "docs:generate-lookup": "npx tsx scripts/generate-function-lookup.ts",
+    "docs:dev": "vitepress dev docs-site",
+    "docs:build": "vitepress build docs-site",
+    "docs:preview": "vitepress preview docs-site",
+    "docs:extract-tests": "npx tsx scripts/extract-doc-tests.ts",
+    "test:docs": "npm run docs:extract-tests && vitest run --project occt tests/docs",
     "conformance:generate": "npx tsx scripts/generateConformance.ts",
     "sync:brepkit-types": "npx tsx scripts/sync-brepkit-types.ts",
     "prepare": "husky && bash scripts/ensure-wasm.sh"

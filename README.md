@@ -67,20 +67,21 @@ Imports flow downward only. Boundaries are enforced in CI.
 
 ## Documentation
 
-- [Getting Started](./docs/getting-started.md): Install, create shapes, export to STEP
-- [B-Rep Concepts](./docs/concepts.md): Vertices, edges, faces, solids - and why they matter
-- [Which API?](./docs/which-api.md): Fluent wrapper vs Sketcher vs functional
-- [Cheat Sheet](./docs/cheat-sheet.md): Single-page quick reference
-- [Cookbook](./docs/cookbook.md): 21 practical recipes for common CAD workflows
-- [Three.js Integration](./docs/threejs-integration.md): Render brepjs shapes in the browser
-- [Function Lookup](./docs/function-lookup.md): Alphabetical index of every export
-- [Error Reference](./docs/errors.md): Error codes and recovery
-- [API Reference](https://andymai.github.io/brepjs/): Searchable TypeDoc reference
-- [Memory Management](./docs/memory-management.md): WASM resource cleanup patterns
-- [Performance](./docs/performance.md): Optimization tips
-- [Custom Kernels](./docs/kernel-swap.md): Swap or write your own geometry kernel
-- [Architecture](./docs/architecture.md): Layer diagram and module overview
-- [Compatibility](./docs/compatibility.md): Tested environments
+The chapter-based guide is the recommended starting point:
+
+- **[Why brepjs](https://andymai.github.io/brepjs/introduction/why-brepjs)** — what makes it different, who it's for
+- **[Install & Initialize](https://andymai.github.io/brepjs/getting-started/install)** — three init styles, bundler notes
+- **[Your First Solid](https://andymai.github.io/brepjs/getting-started/first-solid)** — the canonical drill-fillet-export workflow
+- **[Cheat Sheet](https://andymai.github.io/brepjs/getting-started/cheat-sheet)** — single-page reference
+- **[Core Concepts](https://andymai.github.io/brepjs/concepts/brep-vs-mesh)** — B-Rep, topology, types, kernels, tolerance
+- **[Common Tasks](https://andymai.github.io/brepjs/tasks/booleans)** — booleans, fillets, sketching, lofts, sweeps, finders, measurement, IO
+- **[Three.js Integration](https://andymai.github.io/brepjs/integration/threejs)** — meshing and rendering
+- **[Migration](https://andymai.github.io/brepjs/migration/replicad)** — coming from Replicad, OpenSCAD, or Three.js
+- **[Extending brepjs](https://andymai.github.io/brepjs/extending/architecture)** — custom kernels, custom operations, architecture
+- **[Reference](https://andymai.github.io/brepjs/reference/glossary)** — glossary, function lookup, error codes, ADRs
+- **[API Reference (TypeDoc)](https://andymai.github.io/brepjs/api/)** — searchable type-level reference
+
+Legacy single-page docs in [./docs/](./docs/) remain available; the chapter site is the canonical location going forward.
 
 ## Projects Using brepjs
 
