@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import DefaultTheme from 'vitepress/theme';
-import { onMounted, onUpdated, nextTick } from 'vue';
+import { onMounted, nextTick, watch } from 'vue';
 import { useRoute } from 'vitepress';
 import { decorateCodeBlocks } from './playgroundLink';
 
@@ -12,7 +12,7 @@ const decorate = () => {
 };
 
 onMounted(decorate);
-onUpdated(decorate);
+watch(() => route.path, decorate);
 </script>
 
 <template>

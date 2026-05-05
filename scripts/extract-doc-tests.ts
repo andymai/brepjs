@@ -124,11 +124,33 @@ const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
 ) => (...args: unknown[]) => Promise<unknown>;
 
 function stripImports(code: string): string {
-  // Remove ESM import statements (single- or multi-line). brepjs exports are
-  // injected onto globalThis above, so imports become no-ops in tests.
-  return code
-    .replace(/^[ \\t]*import\\b[\\s\\S]*?from\\s+['\"][^'\"]+['\"];?[ \\t]*$/gm, '')
-    .replace(/^[ \\t]*import\\s+['\"][^'\"]+['\"];?[ \\t]*$/gm, '');
+  // Line-by-line strip of ESM import statements. Handles both single-line
+  // (\`import { x } from 'y';\`) and multi-line (named imports broken across
+  // lines) forms. brepjs exports are injected onto globalThis above, so
+  // imports become no-ops in tests.
+  const lines = code.split('\\n');
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i] ?? '';
+    if (/^[ \\t]*import\\b/.test(line)) {
+      // Consume lines until we find one ending with \`from '...'\` (optionally
+      // followed by \`;\`) or until the end of file. Side-effect imports
+      // (\`import 'foo';\`) end on the same line.
+      let j = i;
+      while (j < lines.length) {
+        const cur = lines[j] ?? '';
+        if (/from\\s+['\"][^'\"]+['\"];?[ \\t]*$/.test(cur)) break;
+        if (/^[ \\t]*import\\s+['\"][^'\"]+['\"];?[ \\t]*$/.test(cur)) break;
+        j++;
+      }
+      i = j + 1;
+    } else {
+      out.push(line);
+      i++;
+    }
+  }
+  return out.join('\\n');
 }
 
 async function runSnippet(code: string): Promise<void> {

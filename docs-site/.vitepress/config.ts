@@ -112,7 +112,7 @@ export default withMermaid(
             { text: 'Function Lookup', link: '/reference/function-lookup' },
             { text: 'Error Codes', link: '/reference/errors' },
             { text: 'Design Decisions', link: '/reference/decisions' },
-            { text: 'API Reference (TypeDoc)', link: 'https://andymai.github.io/brepjs/' },
+            { text: 'API Reference (TypeDoc)', link: '/api/' },
           ],
         },
       ],
