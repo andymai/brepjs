@@ -1,5 +1,21 @@
 # Changelog
 
+## [17.0.0](https://github.com/andymai/brepjs/compare/brepjs-v16.0.0...brepjs-v17.0.0) (2026-05-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **occtWasm:** consume occt-wasm 3.0 — close issue #90 parity gap ([#823](https://github.com/andymai/brepjs/issues/823))
+
+### Features
+
+* **occtWasm:** consume occt-wasm 3.0 — close issue [#90](https://github.com/andymai/brepjs/issues/90) parity gap ([#823](https://github.com/andymai/brepjs/issues/823)) ([fb2ff35](https://github.com/andymai/brepjs/commit/fb2ff357efa0f2354c993d1c37fbcf696bb0c288))
+
+
+### Bug Fixes
+
+* **deps:** update package-lock to occt-wasm@2.0.0 ([#819](https://github.com/andymai/brepjs/issues/819)) ([28341d7](https://github.com/andymai/brepjs/commit/28341d750b9f664a23659b580a531fce7d4e3194))
+
 ## [16.0.0](https://github.com/andymai/brepjs/compare/brepjs-v15.7.1...brepjs-v16.0.0) (2026-05-05)
 
 
