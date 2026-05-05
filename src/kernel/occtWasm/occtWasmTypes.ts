@@ -194,7 +194,7 @@ export interface OcctKernelWasm {
     angleDeg: number
   ): number;
   shell(solidId: number, faceIds: EmVectorUint32, thickness: number): number;
-  offset(solidId: number, distance: number): number;
+  offset(solidId: number, distance: number, tolerance: number): number;
   draft(
     shapeId: number,
     faceId: number,
@@ -207,10 +207,11 @@ export interface OcctKernelWasm {
   // --- Sweep operations ---
   pipe(profileId: number, spineId: number): number;
   simplePipe(profileId: number, spineId: number): number;
-  loft(wireIds: EmVectorUint32, isSolid: boolean): number;
+  loft(wireIds: EmVectorUint32, isSolid: boolean, ruled: boolean): number;
   loftWithVertices(
     wireIds: EmVectorUint32,
     isSolid: boolean,
+    ruled: boolean,
     startVertexId: number,
     endVertexId: number
   ): number;
@@ -414,6 +415,7 @@ export interface OcctKernelWasm {
   getSurfaceArea(id: number): number;
   getLength(id: number): number;
   getCenterOfMass(id: number): EmVectorDouble;
+  getSurfaceCenterOfMass(faceId: number): EmVectorDouble;
   getLinearCenterOfMass(id: number): EmVectorDouble;
   surfaceCurvature(faceId: number, u: number, v: number): EmVectorDouble;
 

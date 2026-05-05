@@ -1343,13 +1343,13 @@ export class OcctWasmAdapter implements KernelAdapter {
 
   loft(
     wires: KernelShape[],
-    _ruled?: boolean,
+    ruled?: boolean,
     _startShape?: KernelShape,
     _endShape?: KernelShape
   ): KernelShape {
     const vec = makeVecU32(this.Module, wires.map(unwrap));
     try {
-      return wrapResult(this.k, this.k.loft(vec, true));
+      return wrapResult(this.k, this.k.loft(vec, true, ruled ?? false));
     } finally {
       vec.delete();
     }
@@ -1449,14 +1449,15 @@ export class OcctWasmAdapter implements KernelAdapter {
     }
   ): KernelShape {
     const isSolid = options?.solid ?? true;
+    const ruled = options?.ruled ?? false;
     const startV = options?.startVertex ? unwrap(options.startVertex) : 0;
     const endV = options?.endVertex ? unwrap(options.endVertex) : 0;
     const vec = makeVecU32(this.Module, wires.map(unwrap));
     try {
       if (startV || endV) {
-        return wrapResult(this.k, this.k.loftWithVertices(vec, isSolid, startV, endV));
+        return wrapResult(this.k, this.k.loftWithVertices(vec, isSolid, ruled, startV, endV));
       }
-      return wrapResult(this.k, this.k.loft(vec, isSolid));
+      return wrapResult(this.k, this.k.loft(vec, isSolid, ruled));
     } finally {
       vec.delete();
     }
@@ -1579,8 +1580,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     return wrapResult(this.k, this.k.thicken(unwrap(shape), thickness));
   }
 
-  offset(shape: KernelShape, distance: number, _tolerance?: number): KernelShape {
-    return wrapResult(this.k, this.k.offset(unwrap(shape), distance));
+  offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape {
+    return wrapResult(this.k, this.k.offset(unwrap(shape), distance, tolerance ?? 1e-6));
   }
 
   filletVariable(shape: KernelShape, spec: string): KernelShape {
@@ -2857,71 +2858,20 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   surfaceCenterOfMass(face: KernelShape): [number, number, number] {
-    // Area-weighted triangle centroid via tessellation. Mathematically exact
-    // for the triangulated face; converges to the true surface center of mass
-    // as deflection → 0. Tessellation deflection is scaled to the face's
-    // bounding-box diagonal so small and large faces both get adequate fidelity.
-    const faceId = unwrap(face);
-    const bb = this.k.getBoundingBox(faceId);
-    const dx = bb.xmax - bb.xmin;
-    const dy = bb.ymax - bb.ymin;
-    const dz = bb.zmax - bb.zmin;
-    const diag = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    const linDef = Math.max(diag * 1e-3, 1e-5);
-    const angDef = 0.1;
-
-    let meshData: ReturnType<OcctKernelWasm['tessellate']>;
+    // Delegates to occt-wasm's exact `BRepGProp::SurfaceProperties.CentreOfMass()`
+    // (added in occt-wasm 2.0). The previous tessellation-triangle centroid
+    // diverged from brepjs-occt for non-planar faces — for cylindrical faces
+    // it landed `+radius` off-axis (on the surface), and for holed planar
+    // faces it biased toward the holes' weighted x-position. See occt-wasm#90.
     try {
-      meshData = this.k.tessellate(faceId, linDef, angDef);
+      const v = this.k.getSurfaceCenterOfMass(unwrap(face));
+      const result: [number, number, number] = [v.get(0), v.get(1), v.get(2)];
+      v.delete();
+      return result;
     } catch {
-      // Degenerate or unmeshable face — fall back to no centroid rather than
-      // propagating the WASM exception. Matches collectDistanceSamples.
+      // Degenerate or unmeshable face — preserve previous behavior of
+      // returning origin rather than propagating the WASM exception.
       return [0, 0, 0];
-    }
-    try {
-      const idxCount = meshData.indexCount;
-      if (idxCount < 3) return [0, 0, 0];
-      const posPtr = meshData.getPositionsPtr() >> 2;
-      const idxPtr = meshData.getIndicesPtr() >> 2;
-      const heapF32 = this.Module.HEAPF32;
-      const heapU32 = this.Module.HEAPU32;
-      let cx = 0,
-        cy = 0,
-        cz = 0,
-        totalArea = 0;
-      for (let t = 0; t < idxCount; t += 3) {
-        const i0 = (heapU32[idxPtr + t] ?? 0) * 3;
-        const i1 = (heapU32[idxPtr + t + 1] ?? 0) * 3;
-        const i2 = (heapU32[idxPtr + t + 2] ?? 0) * 3;
-        const p0x = heapF32[posPtr + i0] ?? 0;
-        const p0y = heapF32[posPtr + i0 + 1] ?? 0;
-        const p0z = heapF32[posPtr + i0 + 2] ?? 0;
-        const p1x = heapF32[posPtr + i1] ?? 0;
-        const p1y = heapF32[posPtr + i1 + 1] ?? 0;
-        const p1z = heapF32[posPtr + i1 + 2] ?? 0;
-        const p2x = heapF32[posPtr + i2] ?? 0;
-        const p2y = heapF32[posPtr + i2 + 1] ?? 0;
-        const p2z = heapF32[posPtr + i2 + 2] ?? 0;
-        const ux = p1x - p0x,
-          uy = p1y - p0y,
-          uz = p1z - p0z;
-        const vx = p2x - p0x,
-          vy = p2y - p0y,
-          vz = p2z - p0z;
-        const nx = uy * vz - uz * vy;
-        const ny = uz * vx - ux * vz;
-        const nz = ux * vy - uy * vx;
-        const area = 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (area === 0) continue;
-        cx += ((p0x + p1x + p2x) / 3) * area;
-        cy += ((p0y + p1y + p2y) / 3) * area;
-        cz += ((p0z + p1z + p2z) / 3) * area;
-        totalArea += area;
-      }
-      if (totalArea < 1e-30) return [0, 0, 0];
-      return [cx / totalArea, cy / totalArea, cz / totalArea];
-    } finally {
-      meshData.delete();
     }
   }
 
