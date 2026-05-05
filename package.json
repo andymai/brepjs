@@ -207,9 +207,9 @@
     "size": "size-limit",
     "docs:api": "typedoc",
     "docs:generate-lookup": "npx tsx scripts/generate-function-lookup.ts",
-    "docs:dev": "vitepress dev docs-site",
-    "docs:build": "vitepress build docs-site",
-    "docs:preview": "vitepress preview docs-site",
+    "docs:dev": "npm -C docs-site run dev",
+    "docs:build": "npm -C docs-site run build",
+    "docs:preview": "npm -C docs-site run preview",
     "docs:extract-tests": "npx tsx scripts/extract-doc-tests.ts",
     "docs:render-images": "npx tsx scripts/render-doc-images.ts",
     "test:docs": "npm run docs:extract-tests && vitest run --project occt tests/docs",
@@ -231,8 +231,6 @@
     "husky": "9.1.7",
     "knip": "6.11.0",
     "lint-staged": "16.4.0",
-    "lz-string": "1.5.0",
-    "mermaid": "11.4.1",
     "occt-wasm": "2.0.0",
     "prettier": "3.8.3",
     "puppeteer": "24.42.0",
@@ -242,10 +240,7 @@
     "typescript-eslint": "8.59.1",
     "vite": "8.0.10",
     "vite-plugin-dts": "5.0.0",
-    "vitepress": "1.6.3",
-    "vitepress-plugin-mermaid": "2.0.17",
-    "vitest": "4.1.5",
-    "vue": "3.5.13"
+    "vitest": "4.1.5"
   },
   "peerDependencies": {
     "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0",

@@ -15,9 +15,7 @@ const config: KnipConfig = {
       ignore: [],
       ignoreBinaries: ['tsx'],
       // occt-wasm is dynamically imported in tests/helpers/kernelInit.ts (outside project scope)
-      // mermaid / vitepress-plugin-mermaid / vue are used from docs-site/.vitepress/*
-      // (Vue SFC + Vite plugin, outside knip's TS-only scan)
-      ignoreDependencies: ['occt-wasm', 'mermaid', 'vitepress-plugin-mermaid', 'vue'],
+      ignoreDependencies: ['occt-wasm'],
     },
     'packages/brepjs-opencascade': {
       ignore: ['**'],

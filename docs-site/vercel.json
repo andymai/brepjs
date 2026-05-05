@@ -1,9 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vitepress",
-  "buildCommand": "cd .. && npm install && npx vitepress build docs-site",
+  "buildCommand": "npm install && npm run build",
   "outputDirectory": ".vitepress/dist",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ../docs-site ../scripts/generate-function-lookup.ts ../package.json ../package-lock.json",
   "github": {
     "silent": false
   }
