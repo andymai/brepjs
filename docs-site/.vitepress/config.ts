@@ -144,7 +144,7 @@ export default withMermaid(
       theme: 'default',
     },
     sitemap: {
-      hostname: 'https://brepjs.dev',
+      hostname: 'https://andymai.github.io',
     },
   })
 );
