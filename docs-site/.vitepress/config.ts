@@ -18,7 +18,7 @@ export default withMermaid(
       siteTitle: 'brepjs',
       nav: [
         { text: 'Guide', link: '/introduction/why-brepjs' },
-        { text: 'API Reference', link: '/api/' },
+        { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
         { text: 'Playground', link: 'https://brepjs.vercel.app/' },
         {
           text: 'v16',
@@ -112,7 +112,7 @@ export default withMermaid(
             { text: 'Function Lookup', link: '/reference/function-lookup' },
             { text: 'Error Codes', link: '/reference/errors' },
             { text: 'Design Decisions', link: '/reference/decisions' },
-            { text: 'API Reference (TypeDoc)', link: '/api/' },
+            { text: 'API Reference (TypeDoc)', link: 'https://andymai.github.io/brepjs/' },
           ],
         },
       ],
@@ -144,7 +144,7 @@ export default withMermaid(
       theme: 'default',
     },
     sitemap: {
-      hostname: 'https://andymai.github.io',
+      hostname: 'https://docs.brepjs.dev',
     },
   })
 );

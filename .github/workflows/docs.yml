@@ -1,4 +1,4 @@
-name: Deploy Docs
+name: Deploy API Docs
 
 on:
   workflow_run:
@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     permissions:
       contents: read
     # workflow_dispatch bypasses CI gate (intentional for emergency redeploys, restricted to main)
@@ -34,26 +34,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsx scripts/generate-function-lookup.ts
-
-      # Build the chapter site at /brepjs/ (GitHub Pages project-page subpath).
-      - run: npm run docs:build
-        env:
-          DOCS_BASE: /brepjs/
-
-      # Build TypeDoc → docs-api/ (its default).
       - run: npm run docs:api
-
-      # Combine: VitePress at /, TypeDoc at /api/.
-      - name: Assemble combined docs
-        run: |
-          mkdir -p combined-docs
-          cp -r docs-site/.vitepress/dist/. combined-docs/
-          mkdir -p combined-docs/api
-          cp -r docs-api/. combined-docs/api/
-
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: combined-docs
+          path: docs-api
 
   deploy:
     needs: build

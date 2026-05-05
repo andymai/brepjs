@@ -46,6 +46,14 @@ npm run docs:generate-lookup # regenerate docs/function-lookup.md from sources
 
 When you add or modify a code block in a chapter, the doc-test harness picks it up automatically — every fenced ` ```typescript ` block becomes a test that runs against the OCCT kernel. Mark blocks with `<!-- @no-test -->` (immediately preceding) to opt out, or `<!-- @setup -->` for shared setup that's prepended to subsequent blocks in the same file.
 
+### Docs deployment
+
+The chapter site (`docs-site/`) is deployed to Vercel at `https://docs.brepjs.dev` via a Vercel project rooted at `docs-site/` (config: `docs-site/vercel.json`). Pushing to `main` produces a production deploy; PRs get preview deploys.
+
+The TypeDoc API reference is a separate deploy on GitHub Pages (`https://andymai.github.io/brepjs/`) via `.github/workflows/docs.yml`. Keeping them split lets the chapter site iterate without re-running TypeDoc.
+
+To set up the Vercel project (one-time): in the Vercel dashboard, create a project pointed at this repo with `Root Directory: docs-site`. Vercel reads `docs-site/vercel.json` for build/output settings.
+
 ## Development Workflow
 
 ### 1. Create a Feature Branch

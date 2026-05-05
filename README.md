@@ -6,7 +6,7 @@ CAD modeling for JavaScript.
 [![CI](https://github.com/andymai/brepjs/actions/workflows/ci.yml/badge.svg)](https://github.com/andymai/brepjs/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
-**[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://andymai.github.io/brepjs/)**
+**[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://docs.brepjs.dev/)**
 
 Shapes are exact mathematical boundaries - not triangle meshes - so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
 
@@ -69,17 +69,17 @@ Imports flow downward only. Boundaries are enforced in CI.
 
 The chapter-based guide is the recommended starting point:
 
-- **[Why brepjs](https://andymai.github.io/brepjs/introduction/why-brepjs)** — what makes it different, who it's for
-- **[Install & Initialize](https://andymai.github.io/brepjs/getting-started/install)** — three init styles, bundler notes
-- **[Your First Solid](https://andymai.github.io/brepjs/getting-started/first-solid)** — the canonical drill-fillet-export workflow
-- **[Cheat Sheet](https://andymai.github.io/brepjs/getting-started/cheat-sheet)** — single-page reference
-- **[Core Concepts](https://andymai.github.io/brepjs/concepts/brep-vs-mesh)** — B-Rep, topology, types, kernels, tolerance
-- **[Common Tasks](https://andymai.github.io/brepjs/tasks/booleans)** — booleans, fillets, sketching, lofts, sweeps, finders, measurement, IO
-- **[Three.js Integration](https://andymai.github.io/brepjs/integration/threejs)** — meshing and rendering
-- **[Migration](https://andymai.github.io/brepjs/migration/replicad)** — coming from Replicad, OpenSCAD, or Three.js
-- **[Extending brepjs](https://andymai.github.io/brepjs/extending/architecture)** — custom kernels, custom operations, architecture
-- **[Reference](https://andymai.github.io/brepjs/reference/glossary)** — glossary, function lookup, error codes, ADRs
-- **[API Reference (TypeDoc)](https://andymai.github.io/brepjs/api/)** — searchable type-level reference
+- **[Why brepjs](https://docs.brepjs.dev/introduction/why-brepjs)** — what makes it different, who it's for
+- **[Install & Initialize](https://docs.brepjs.dev/getting-started/install)** — three init styles, bundler notes
+- **[Your First Solid](https://docs.brepjs.dev/getting-started/first-solid)** — the canonical drill-fillet-export workflow
+- **[Cheat Sheet](https://docs.brepjs.dev/getting-started/cheat-sheet)** — single-page reference
+- **[Core Concepts](https://docs.brepjs.dev/concepts/brep-vs-mesh)** — B-Rep, topology, types, kernels, tolerance
+- **[Common Tasks](https://docs.brepjs.dev/tasks/booleans)** — booleans, fillets, sketching, lofts, sweeps, finders, measurement, IO
+- **[Three.js Integration](https://docs.brepjs.dev/integration/threejs)** — meshing and rendering
+- **[Migration](https://docs.brepjs.dev/migration/replicad)** — coming from Replicad, OpenSCAD, or Three.js
+- **[Extending brepjs](https://docs.brepjs.dev/extending/architecture)** — custom kernels, custom operations, architecture
+- **[Reference](https://docs.brepjs.dev/reference/glossary)** — glossary, function lookup, error codes, ADRs
+- **[API Reference (TypeDoc)](https://andymai.github.io/brepjs/)** — searchable type-level reference
 
 Legacy single-page docs in [./docs/](./docs/) remain available; the chapter site is the canonical location going forward.
 
