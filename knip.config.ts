@@ -15,7 +15,8 @@ const config: KnipConfig = {
       ignore: [],
       ignoreBinaries: ['tsx'],
       // occt-wasm is dynamically imported in tests/helpers/kernelInit.ts (outside project scope)
-      ignoreDependencies: ['occt-wasm'],
+      // lz-string is used by scripts/render-doc-images.ts; resolves via docs-site/ workspace install
+      ignoreDependencies: ['occt-wasm', 'lz-string'],
     },
     'packages/brepjs-opencascade': {
       ignore: ['**'],
