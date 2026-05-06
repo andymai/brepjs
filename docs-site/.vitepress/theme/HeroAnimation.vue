@@ -1,5 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, useTemplateRef } from 'vue';
+import {
+  gearGeom,
+  gearPath,
+  ringSlotPath,
+  PLANET_COUNT,
+  Z_SUN,
+  Z_PLANET,
+  Z_RING,
+  MODULE,
+  PLANET_INITIAL_PHASE,
+  RATE_CARRIER_PER_SUN,
+  RATE_PLANET_PER_SUN,
+} from './gearMath.js';
 
 // ─── Animation cycle ────────────────────────────────────────────────────
 const CYCLE_MS = 10_000;
@@ -12,7 +25,7 @@ let started = 0;
 let pausedAt = 0;
 let pauseAccum = 0;
 
-const tick = (now: number) => {
+const tick = (now: number): void => {
   if (!onScreen.value) {
     pausedAt ||= now;
     raf = requestAnimationFrame(tick);
@@ -30,7 +43,7 @@ onMounted(() => {
   if (typeof window === 'undefined') return;
   reduceMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduceMotion.value) {
-    t.value = 0.9;
+    t.value = 0.78; // mid-divider-sweep, full assembly visible
     return;
   }
   started = performance.now();
@@ -47,340 +60,215 @@ onMounted(() => {
 onUnmounted(() => cancelAnimationFrame(raf));
 
 // ─── Easing palette ─────────────────────────────────────────────────────
-const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
-const smooth = (x: number) => {
+const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
+const smooth = (x: number): number => {
   const c = clamp01(x);
   return c * c * (3 - 2 * c);
 };
-const easeOutQuart = (x: number) => {
-  const c = clamp01(x);
-  return 1 - Math.pow(1 - c, 4);
-};
-const easeOutExpo = (x: number) => {
+const easeOutExpo = (x: number): number => {
   const c = clamp01(x);
   return c === 1 ? 1 : 1 - Math.pow(2, -10 * c);
 };
-const easeInOutCubic = (x: number) => {
-  const c = clamp01(x);
-  return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
-};
-const easeOutBack = (x: number, k = 1.4) => {
+const easeOutBack = (x: number, k = 1.4): number => {
   const c = clamp01(x);
   const k1 = k + 1;
   return 1 + k1 * Math.pow(c - 1, 3) + k * Math.pow(c - 1, 2);
 };
+const easeInOutCubic = (x: number): number => {
+  const c = clamp01(x);
+  return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
+};
 
-// ─── Stage helpers ──────────────────────────────────────────────────────
 type Eas = (x: number) => number;
-const seg = (a: number, b: number, easeFn: Eas = smooth) => easeFn((t.value - a) / (b - a));
-const elem = (start: number, dur: number, easeFn: Eas = smooth) =>
+const elem = (start: number, dur: number, easeFn: Eas = smooth): number =>
   easeFn((t.value - start) / dur);
+const seg = (a: number, b: number, easeFn: Eas = smooth): number =>
+  easeFn((t.value - a) / (b - a));
 
 // ─── Phase windows ──────────────────────────────────────────────────────
-const VERTS_T0 = 0.03;
-const VERT_STAGGER = 0.025;
-const VERT_DUR = 0.06;
-const EDGES_T0 = 0.1;
-const EDGE_STAGGER = 0.028;
-const EDGE_DUR = 0.07;
-const HOLE_AT = [0.21, 0.29] as const;
-const DIMS_T0 = 0.3;
-const DIM_STAGGER = 0.025;
-const DIM_DUR = 0.07;
-const SKETCH_OUT_AT = [0.4, 0.46] as const;
-const TILT_AT = [0.42, 0.58] as const;
-const EXTRUDE_AT = [0.52, 0.7] as const;
-const HEIGHT_DIM_AT = [0.6, 0.72] as const;
-const CALLOUTS_T0 = 0.72;
-const CALLOUT_STAGGER = 0.035;
-const CALLOUT_DUR = 0.13;
-const FADE_AT = [0.96, 1.0] as const;
+// 0.00–0.05  ring blank fades in
+// 0.05–0.15  one slot is cut + glows
+// 0.15–0.28  circular pattern fills the remaining 41 slots (staggered)
+// 0.28–0.36  sun + planets pop in (overshoot)
+// 0.36–0.50  divider sweeps in from left
+// 0.50–0.92  hold; gears rotate, callouts tick
+// 0.92–1.00  loop seam fade-out
+const RING_FADE_AT = [0.0, 0.05] as const;
+const SLOT_CUT_AT = [0.05, 0.15] as const;
+const PATTERN_AT = [0.15, 0.28] as const;
+const ASSEMBLE_AT = [0.28, 0.36] as const;
+const DIVIDER_IN_AT = [0.36, 0.5] as const;
+const FADE_AT = [0.92, 1.0] as const;
 
-// ─── World geometry (mm at 10× scale, world units = cm) ─────────────────
-const W = 4.0; // 40 mm
-const D = 2.4; // 24 mm
-const HX = 2.7;
-const HY = 1.2;
-const HR = 0.55; // Ø 11 mm
-const H = 1.4; // 14 mm extrusion
-
-// ─── Projection ────────────────────────────────────────────────────────
+// ─── Layout ─────────────────────────────────────────────────────────────
+const VB = 400;
 const CX = 200;
-const CY = 198;
-const SCALE = 36;
+const CY = 200;
 
-type Pt = { x: number; y: number };
+const sun = gearGeom(Z_SUN, MODULE, false);
+const planet = gearGeom(Z_PLANET, MODULE, false);
+const ring = gearGeom(Z_RING, MODULE, true);
+const RIM = ring.rRoot + 1.0 * MODULE;
+const CARRIER_R = sun.rPitch + planet.rPitch;
 
-// Yaw breathing during analysis hold (subtle ±2°)
-const yaw = computed(() => {
-  const inHold = elem(0.86, 0.04, smooth) * (1 - elem(FADE_AT[0], 0.04, smooth));
-  if (inHold === 0) return 0;
-  const phase = (t.value - 0.86) / 0.1;
-  return Math.sin(phase * Math.PI * 2) * 0.035 * inHold;
-});
+// Pre-compute static gear paths once.
+const sunBrep = gearPath(sun, 'brep');
+const sunMesh = gearPath(sun, 'mesh');
+const planetBrep = gearPath(planet, 'brep');
+const planetMesh = gearPath(planet, 'mesh');
+const ringBrep = gearPath(ring, 'brep');
+const ringMesh = gearPath(ring, 'mesh');
 
-const project = (x: number, y: number, z: number, k: number, ya: number = 0): Pt => {
-  // Yaw around part center
-  const dx = x - W / 2;
-  const dy = y - D / 2;
-  const c = Math.cos(ya);
-  const s = Math.sin(ya);
-  const xr = dx * c - dy * s;
-  const yr = dx * s + dy * c;
-  const xTop = xr;
-  const yTop = yr;
-  const xIso = (xr - yr) * 0.866;
-  const yIso = (xr + yr) * 0.5 - z;
-  return {
-    x: CX + (xTop * (1 - k) + xIso * k) * SCALE,
-    y: CY + (yTop * (1 - k) + yIso * k) * SCALE,
-  };
+// Per-tooth slot wedges, used as cut-outs in the smooth-bore cover.
+const ringSlots: string[] = Array.from({ length: Z_RING }, (_, k) =>
+  ringSlotPath(ring, k, RIM),
+);
+
+// ─── Build-phase reactive state ─────────────────────────────────────────
+const ringFadeAlpha = computed(
+  () =>
+    elem(RING_FADE_AT[0], RING_FADE_AT[1] - RING_FADE_AT[0], easeOutExpo) *
+    (1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth)),
+);
+
+const PATTERN_STAGGER = 0.003;
+const SLOT_DUR = 0.025;
+
+// Per-slot mask-cutout opacity. Slot 0 lights up during the cut beat;
+// slots 1..(Z_RING-1) stagger across the pattern beat.
+const slotAlpha = (k: number): number => {
+  if (k === 0) {
+    const cut = elem(SLOT_CUT_AT[0], SLOT_CUT_AT[1] - SLOT_CUT_AT[0], easeOutExpo);
+    const pat = elem(PATTERN_AT[0], SLOT_DUR, easeOutExpo);
+    return Math.max(cut, pat);
+  }
+  return elem(PATTERN_AT[0] + (k - 1) * PATTERN_STAGGER, SLOT_DUR, easeOutExpo);
 };
 
-const tilt = computed(() => seg(TILT_AT[0], TILT_AT[1], easeInOutCubic));
-const ext = computed(() => seg(EXTRUDE_AT[0], EXTRUDE_AT[1], (x) => easeOutBack(x, 1.1)) * H);
-
-const v = computed(() => {
-  const k = tilt.value;
-  const e = ext.value;
-  const ya = yaw.value;
-  return {
-    B0: project(0, 0, 0, k, ya),
-    B1: project(W, 0, 0, k, ya),
-    B2: project(W, D, 0, k, ya),
-    B3: project(0, D, 0, k, ya),
-    T0: project(0, 0, e, k, ya),
-    T1: project(W, 0, e, k, ya),
-    T2: project(W, D, e, k, ya),
-    T3: project(0, D, e, k, ya),
-  };
+// Highlight the freshly-cut slot during SLOT_CUT_AT only.
+const slotHighlightAlpha = computed(() => {
+  const inCut = elem(SLOT_CUT_AT[0], SLOT_CUT_AT[1] - SLOT_CUT_AT[0], easeOutExpo);
+  const fadeOut = 1 - elem(PATTERN_AT[0], (PATTERN_AT[1] - PATTERN_AT[0]) * 0.4, smooth);
+  return inCut * fadeOut;
 });
 
-// ─── Hole ellipse (axis-aligned in iso) ─────────────────────────────────
-const holeRx = computed(() => {
-  const k = tilt.value;
-  const r = HR * SCALE;
-  return r * (1 - k) + r * 0.866 * Math.SQRT2 * k;
-});
-const holeRy = computed(() => {
-  const k = tilt.value;
-  const r = HR * SCALE;
-  return r * (1 - k) + r * 0.5 * Math.SQRT2 * k;
-});
-const holeTop = computed(() => project(HX, HY, ext.value, tilt.value, yaw.value));
-const holeBot = computed(() => project(HX, HY, 0, tilt.value, yaw.value));
-
-// Hole circle scale during sketch phase (overshoot)
-const holeScale = computed(() => {
-  const inA = elem(HOLE_AT[0], HOLE_AT[1] - HOLE_AT[0], (x) => easeOutBack(x, 1.6));
-  const outA = 1 - elem(SKETCH_OUT_AT[0], SKETCH_OUT_AT[1] - SKETCH_OUT_AT[0], smooth);
-  return inA * outA;
-});
-const holeAlpha = computed(() => {
-  const inA = elem(HOLE_AT[0] - 0.02, 0.06, smooth);
-  const outA = 1 - elem(SKETCH_OUT_AT[0], SKETCH_OUT_AT[1] - SKETCH_OUT_AT[0], smooth);
-  return inA * outA;
-});
-
-// ─── Sketch element alphas (staggered) ──────────────────────────────────
-const vertexAlpha = (i: number) =>
-  elem(VERTS_T0 + i * VERT_STAGGER, VERT_DUR, (x) => easeOutBack(x, 2.4));
-
-const edgeAlpha = (i: number) =>
-  elem(EDGES_T0 + i * EDGE_STAGGER, EDGE_DUR, easeOutExpo);
-
-const dimAlpha = (i: number) =>
-  elem(DIMS_T0 + i * DIM_STAGGER, DIM_DUR, easeOutExpo);
-
-const sketchOut = computed(() => 1 - elem(SKETCH_OUT_AT[0], SKETCH_OUT_AT[1] - SKETCH_OUT_AT[0], smooth));
-const sketchFillAlpha = computed(() => smooth((t.value - 0.16) / 0.10) * sketchOut.value);
-
-// ─── 3D / iso phase alphas ──────────────────────────────────────────────
-const solidAlpha = computed(() => {
-  const inA = elem(TILT_AT[0] - 0.02, 0.10, easeOutQuart);
-  const outA = 1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth);
-  return inA * outA;
-});
-
-const heightDimAlpha = computed(() => {
-  const inA = elem(HEIGHT_DIM_AT[0], HEIGHT_DIM_AT[1] - HEIGHT_DIM_AT[0], easeOutExpo);
-  const outA = 1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth);
-  return inA * outA;
-});
-
-// Callout slide-in alphas (staggered)
-const calloutAlpha = (i: number) =>
-  elem(CALLOUTS_T0 + i * CALLOUT_STAGGER, CALLOUT_DUR, easeOutExpo) *
-  (1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth));
-
-// Slide-from-outer-edge offsets per callout (collapse to 0 as alpha→1)
-const calloutSlide = (i: number, distance: number) =>
-  (1 - calloutAlpha(i)) * distance;
-
-// ValidSolid scale pop
-const validScale = computed(() => {
-  const a = elem(CALLOUTS_T0 + 3 * CALLOUT_STAGGER, 0.18, (x) => easeOutBack(x, 2.8));
+// Sun + planets pop-in
+const sunPopAlpha = computed(
+  () =>
+    elem(ASSEMBLE_AT[0], 0.06, smooth) *
+    (1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth)),
+);
+const sunPopScale = computed(() => {
+  const a = elem(ASSEMBLE_AT[0], 0.10, (x) => easeOutBack(x, 2.4));
   return 0.6 + 0.4 * a;
 });
-const validAlpha = computed(() => calloutAlpha(3));
+const planetPopAlpha = (i: number): number =>
+  elem(ASSEMBLE_AT[0] + 0.02 + i * 0.025, 0.06, smooth) *
+  (1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth));
+const planetPopScale = (i: number): number => {
+  const a = elem(ASSEMBLE_AT[0] + 0.02 + i * 0.025, 0.10, (x) => easeOutBack(x, 2.4));
+  return 0.6 + 0.4 * a;
+};
 
-// Phase indicator (3 dots)
-const phaseProgress = computed(() => {
-  // 0 = sketch, 1 = extrude, 2 = analyse
-  if (t.value < TILT_AT[0]) return 0;
-  if (t.value < CALLOUTS_T0) return 1;
+// ─── Settle-phase kinematics ────────────────────────────────────────────
+const SETTLE_T0 = ASSEMBLE_AT[1];
+const SETTLE_END = FADE_AT[0];
+const SETTLE_DUR = SETTLE_END - SETTLE_T0;
+const SUN_TURNS = 1.4;
+
+// Sun rotation (degrees) over the settle.
+const sunAngle = computed(() => {
+  const local = clamp01((t.value - SETTLE_T0) / SETTLE_DUR);
+  return local * SUN_TURNS * 360;
+});
+const carrierAngle = computed(() => sunAngle.value * RATE_CARRIER_PER_SUN);
+// Planet body rotation in the ring (canvas) frame.
+const planetBodyAngle = computed(
+  () =>
+    (PLANET_INITIAL_PHASE * 180) / Math.PI + sunAngle.value * RATE_PLANET_PER_SUN,
+);
+
+// ─── Divider state ──────────────────────────────────────────────────────
+// dividerX is the x-coordinate of the seam in viewBox units. Mesh-side
+// rendered where x < dividerX, B-Rep-side where x ≥ dividerX.
+const DIVIDER_HOLD_X = CX + 30;
+
+const dividerX = computed(() => {
+  if (t.value < DIVIDER_IN_AT[0]) return 0;
+  const sweepIn = seg(DIVIDER_IN_AT[0], DIVIDER_IN_AT[1], easeInOutCubic);
+  return sweepIn * DIVIDER_HOLD_X;
+});
+
+const dividerAlpha = computed(
+  () =>
+    elem(DIVIDER_IN_AT[0], DIVIDER_IN_AT[1] - DIVIDER_IN_AT[0], smooth) *
+    (1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth)),
+);
+
+// ─── Callout values ─────────────────────────────────────────────────────
+// Per-gear B-Rep face count (4 faces per tooth flank quartet + 2 caps).
+const BREP_FACES =
+  Z_SUN * 4 + 2 + PLANET_COUNT * (Z_PLANET * 4 + 2) + (Z_RING * 4 + 2);
+// Mesh count: ~12 triangles per B-Rep face at default chord tolerance.
+const MESH_FACES_TARGET = BREP_FACES * 12;
+
+const meshFaceCount = computed(() => {
+  const sweep = clamp01(dividerX.value / DIVIDER_HOLD_X);
+  return Math.round(sweep * MESH_FACES_TARGET);
+});
+
+const calloutAlpha = computed(
+  () =>
+    elem(DIVIDER_IN_AT[1] - 0.04, 0.10, easeOutExpo) *
+    (1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth)),
+);
+
+// ─── Phase indicator ────────────────────────────────────────────────────
+const phase = computed<0 | 1 | 2>(() => {
+  if (t.value < ASSEMBLE_AT[0]) return 0;
+  if (t.value < SETTLE_T0) return 1;
   return 2;
 });
-const sketchPhaseAlpha = computed(() => Math.max(0, 1 - elem(SKETCH_OUT_AT[0], 0.06, smooth)));
-const extrudePhaseAlpha = computed(() =>
-  elem(TILT_AT[0], 0.05, smooth) * (1 - elem(EXTRUDE_AT[1], 0.05, smooth)),
-);
-const analysisPhaseAlpha = computed(() =>
-  elem(EXTRUDE_AT[1] - 0.02, 0.08, smooth) * (1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth)),
-);
 
-// ─── Path builders ──────────────────────────────────────────────────────
-const polyTop = computed(() => {
-  const { T0, T1, T2, T3 } = v.value;
-  return `M ${T0.x} ${T0.y} L ${T1.x} ${T1.y} L ${T2.x} ${T2.y} L ${T3.x} ${T3.y} Z`;
-});
-const polyRight = computed(() => {
-  const { T1, T2, B2, B1 } = v.value;
-  return `M ${T1.x} ${T1.y} L ${T2.x} ${T2.y} L ${B2.x} ${B2.y} L ${B1.x} ${B1.y} Z`;
-});
-const polyLeft = computed(() => {
-  const { T2, T3, B3, B2 } = v.value;
-  return `M ${T2.x} ${T2.y} L ${T3.x} ${T3.y} L ${B3.x} ${B3.y} L ${B2.x} ${B2.y} Z`;
-});
-const sketchProfile = computed(() => {
-  const { B0, B1, B2, B3 } = v.value;
-  return `M ${B0.x} ${B0.y} L ${B1.x} ${B1.y} L ${B2.x} ${B2.y} L ${B3.x} ${B3.y} Z`;
-});
-
-// Bezier leader (anchor on part → callout edge) with subtle perpendicular curl
-const bezier = (a: Pt, c: Pt, curl = 0.18) => {
-  const dx = c.x - a.x;
-  const dy = c.y - a.y;
-  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-  const mx = (a.x + c.x) / 2;
-  const my = (a.y + c.y) / 2;
-  const nx = -dy / len;
-  const ny = dx / len;
-  const px = mx + nx * len * curl;
-  const py = my + ny * len * curl;
-  return `M ${a.x} ${a.y} Q ${px} ${py} ${c.x} ${c.y}`;
+const phaseAlpha = (i: 0 | 1 | 2): number => {
+  if (i === 0) return Math.max(0, 1 - elem(ASSEMBLE_AT[0], 0.04, smooth));
+  if (i === 1)
+    return (
+      elem(ASSEMBLE_AT[0], 0.03, smooth) *
+      Math.max(0, 1 - elem(SETTLE_T0, 0.04, smooth))
+    );
+  return (
+    elem(SETTLE_T0, 0.04, smooth) *
+    Math.max(0, 1 - elem(FADE_AT[0], FADE_AT[1] - FADE_AT[0], smooth))
+  );
 };
 
-// Quadratic Bezier arc-length approximation: chord + (8/3)·h²/chord
-// (small-perpendicular-offset form; accurate enough that stroke-dashoffset
-// draw-on stays in sync with the easing)
-const bezierLen = (a: Pt, c: Pt, curl: number) => {
-  const chord = Math.hypot(c.x - a.x, c.y - a.y);
-  const h = Math.abs(curl) * chord;
-  return chord + (8 / 3) * (h * h) / Math.max(chord, 1e-3);
+// ─── Transform helpers ──────────────────────────────────────────────────
+const sunTransform = computed(
+  () => `translate(${CX} ${CY}) rotate(${sunAngle.value}) scale(${sunPopScale.value})`,
+);
+
+const planetTransform = (i: number): string => {
+  const carrierDeg = carrierAngle.value + i * 120;
+  const cx = CX + CARRIER_R * Math.cos((carrierDeg * Math.PI) / 180);
+  const cy = CY + CARRIER_R * Math.sin((carrierDeg * Math.PI) / 180);
+  return `translate(${cx} ${cy}) rotate(${planetBodyAngle.value}) scale(${planetPopScale(i)})`;
 };
 
-// ─── Numbers ────────────────────────────────────────────────────────────
-const volume = (W * D * 100 - Math.PI * HR * HR * 100) * H * 10; // ≈ 12,110 mm³
-const surface = (() => {
-  const cap = (W * D - Math.PI * HR * HR) * 100;
-  const sides = 2 * (W + D) * 10 * H * 10;
-  const hole = 2 * Math.PI * HR * 10 * H * 10;
-  return 2 * cap + sides + hole;
-})();
-const volStr = `${Math.round(volume).toLocaleString()} mm³`;
-const surfStr = `${Math.round(surface).toLocaleString()} mm²`;
-
-// Anchors for callout leaders
-const anchorTop = computed(() => v.value.T0);
-const anchorRight = computed(() => v.value.T1);
-const anchorBackBottom = computed(() => v.value.B2);
-
-// Fixed callout positions
-const cVol = { x: 18, y: 36, w: 156, h: 38 };
-const cSurf = { x: 244, y: 36, w: 138, h: 38 };
-const cTop = { x: 122, y: 348, w: 156, h: 38 };
-
-// Leader endpoints + per-leader curl + path length (used for stroke-dashoffset)
-const leader0 = computed(() => {
-  const a: Pt = { x: cVol.x + cVol.w, y: cVol.y + cVol.h / 2 };
-  const c: Pt = { x: anchorTop.value.x - 8, y: anchorTop.value.y - 6 };
-  return { a, c, curl: 0.22, len: bezierLen(a, c, 0.22) };
-});
-const leader1 = computed(() => {
-  const a: Pt = { x: cSurf.x, y: cSurf.y + cSurf.h / 2 };
-  const c: Pt = { x: anchorRight.value.x + 8, y: anchorRight.value.y - 6 };
-  return { a, c, curl: -0.22, len: bezierLen(a, c, -0.22) };
-});
-const leader2 = computed(() => {
-  const a: Pt = { x: cTop.x + cTop.w / 2, y: cTop.y };
-  const c: Pt = { x: anchorBackBottom.value.x, y: anchorBackBottom.value.y + 6 };
-  return { a, c, curl: 0.18, len: bezierLen(a, c, 0.18) };
-});
-
-// Edge length for stroke-dashoffset draw-on of profile edges
-const edgeLen = (a: Pt, b: Pt) => Math.hypot(b.x - a.x, b.y - a.y);
-
-// Per-edge dashoffsets for "draw on" effect. Edges in order: B0→B1, B1→B2, B2→B3, B3→B0
-const e01 = computed(() => {
-  const a = v.value.B0, b = v.value.B1;
-  const len = edgeLen(a, b);
-  return { len, off: len * (1 - edgeAlpha(0)) };
-});
-const e12 = computed(() => {
-  const a = v.value.B1, b = v.value.B2;
-  const len = edgeLen(a, b);
-  return { len, off: len * (1 - edgeAlpha(1)) };
-});
-const e23 = computed(() => {
-  const a = v.value.B2, b = v.value.B3;
-  const len = edgeLen(a, b);
-  return { len, off: len * (1 - edgeAlpha(2)) };
-});
-const e30 = computed(() => {
-  const a = v.value.B3, b = v.value.B0;
-  const len = edgeLen(a, b);
-  return { len, off: len * (1 - edgeAlpha(3)) };
-});
-
-// Leader-line draw-on for each callout
-const leaderDrawAlpha = (i: number) =>
-  elem(CALLOUTS_T0 + i * CALLOUT_STAGGER + 0.04, 0.10, easeOutExpo);
+const ringTransform = `translate(${CX} ${CY})`;
 </script>
 
 <template>
   <div class="hero-anim" ref="root">
-    <svg viewBox="0 0 400 400" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Animated demo: 2D sketch extruded into a 3D solid with dimension and volume analysis">
+    <svg
+      viewBox="0 0 400 400"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label="Animated demo: a planetary gear set is constructed and compared as B-Rep splines vs tessellated mesh facets"
+    >
       <defs>
-        <!-- Lit top face: cyan with warm rim near front edge -->
-        <linearGradient id="ha-top" x1="20%" y1="0%" x2="80%" y2="100%">
-          <stop offset="0%" stop-color="#bef0ff" />
-          <stop offset="40%" stop-color="#22d3ee" />
-          <stop offset="100%" stop-color="#0e7490" />
-        </linearGradient>
-        <!-- Right face -->
-        <linearGradient id="ha-right" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#3b82f6" />
-          <stop offset="100%" stop-color="#1e3a8a" />
-        </linearGradient>
-        <!-- Left face (deeper, in shadow) -->
-        <linearGradient id="ha-left" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#1d4ed8" />
-          <stop offset="100%" stop-color="#0c1f55" />
-        </linearGradient>
-        <!-- Top-edge highlight (rim light) -->
-        <linearGradient id="ha-rim" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0" />
-          <stop offset="50%" stop-color="#f0f9ff" stop-opacity="0.85" />
-          <stop offset="100%" stop-color="#e0f2fe" stop-opacity="0" />
-        </linearGradient>
-        <!-- Hole interior depth -->
-        <radialGradient id="ha-hole" cx="42%" cy="38%" r="65%">
-          <stop offset="0%" stop-color="#020617" />
-          <stop offset="80%" stop-color="#0b1330" />
-          <stop offset="100%" stop-color="#1e293b" />
-        </radialGradient>
-        <!-- Background mesh: two soft blobs -->
         <radialGradient id="ha-bg-a" cx="35%" cy="30%" r="55%">
           <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.20" />
           <stop offset="60%" stop-color="#22d3ee" stop-opacity="0.04" />
@@ -391,251 +279,390 @@ const leaderDrawAlpha = (i: number) =>
           <stop offset="65%" stop-color="#6366f1" stop-opacity="0.03" />
           <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
         </radialGradient>
-        <!-- Floor shadow -->
-        <radialGradient id="ha-floor" cx="50%" cy="50%">
-          <stop offset="0%" stop-color="#020617" stop-opacity="0.55" />
-          <stop offset="100%" stop-color="#020617" stop-opacity="0" />
+        <radialGradient id="ha-sun" cx="35%" cy="35%" r="70%">
+          <stop offset="0%" stop-color="#bef0ff" />
+          <stop offset="50%" stop-color="#22d3ee" />
+          <stop offset="100%" stop-color="#0e7490" />
         </radialGradient>
-        <!-- Vignette -->
+        <radialGradient id="ha-planet" cx="35%" cy="35%" r="70%">
+          <stop offset="0%" stop-color="#7dd3fc" />
+          <stop offset="55%" stop-color="#3b82f6" />
+          <stop offset="100%" stop-color="#1e3a8a" />
+        </radialGradient>
+        <radialGradient id="ha-rim" cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stop-color="#1d4ed8" stop-opacity="0" />
+          <stop offset="80%" stop-color="#1d4ed8" stop-opacity="0.55" />
+          <stop offset="100%" stop-color="#0c1f55" />
+        </radialGradient>
         <radialGradient id="ha-vignette" cx="50%" cy="50%" r="65%">
           <stop offset="65%" stop-color="#000" stop-opacity="0" />
           <stop offset="100%" stop-color="#000" stop-opacity="0.18" />
         </radialGradient>
-        <!-- Sketch grid -->
-        <pattern id="ha-grid" x="200" y="200" width="20" height="20" patternUnits="userSpaceOnUse">
-          <circle cx="0" cy="0" r="0.9" fill="#22d3ee" fill-opacity="0.55" />
-        </pattern>
-        <!-- Drop shadow on solid -->
-        <filter id="ha-soft" x="-20%" y="-20%" width="140%" height="160%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="3.2" />
-          <feOffset dx="0" dy="4" />
-          <feComponentTransfer><feFuncA type="linear" slope="0.4" /></feComponentTransfer>
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <!-- Edge halo glow (2D sketch) -->
         <filter id="ha-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="1.4" result="blur" />
+          <feGaussianBlur stdDeviation="1.6" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        <filter id="ha-soft" x="-20%" y="-20%" width="140%" height="160%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3.0" />
+          <feOffset dx="0" dy="3" />
+          <feComponentTransfer><feFuncA type="linear" slope="0.35" /></feComponentTransfer>
+          <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        <!-- Static gear shape symbols. We <use> them with a transform per
+             frame; the path data itself never changes. -->
+        <symbol id="g-sun-brep" overflow="visible">
+          <path
+            :d="sunBrep"
+            fill="url(#ha-sun)"
+            stroke="#0a1530"
+            stroke-width="1"
+            stroke-linejoin="round"
+          />
+        </symbol>
+        <symbol id="g-sun-mesh" overflow="visible">
+          <path
+            :d="sunMesh"
+            fill="url(#ha-sun)"
+            stroke="#0a1530"
+            stroke-width="1"
+            stroke-linejoin="miter"
+            opacity="0.85"
+          />
+        </symbol>
+        <symbol id="g-planet-brep" overflow="visible">
+          <path
+            :d="planetBrep"
+            fill="url(#ha-planet)"
+            stroke="#0a1530"
+            stroke-width="1"
+            stroke-linejoin="round"
+          />
+        </symbol>
+        <symbol id="g-planet-mesh" overflow="visible">
+          <path
+            :d="planetMesh"
+            fill="url(#ha-planet)"
+            stroke="#0a1530"
+            stroke-width="1"
+            stroke-linejoin="miter"
+            opacity="0.85"
+          />
+        </symbol>
+        <symbol id="g-ring-brep" overflow="visible">
+          <circle :r="RIM" fill="url(#ha-rim)" stroke="#0a1530" stroke-width="1" />
+          <path
+            :d="ringBrep"
+            fill="#020617"
+            stroke="#0a1530"
+            stroke-width="1"
+            stroke-linejoin="round"
+          />
+        </symbol>
+        <symbol id="g-ring-mesh" overflow="visible">
+          <circle
+            :r="RIM"
+            fill="url(#ha-rim)"
+            stroke="#0a1530"
+            stroke-width="1"
+            opacity="0.85"
+          />
+          <path
+            :d="ringMesh"
+            fill="#020617"
+            stroke="#0a1530"
+            stroke-width="1"
+            stroke-linejoin="miter"
+            opacity="0.85"
+          />
+        </symbol>
+
+        <!-- Build-phase mask: starts white-everywhere (smooth bore visible),
+             tooth-slot wedges punch through to black as they reveal. -->
+        <mask id="ring-cover-mask" maskUnits="userSpaceOnUse" x="0" y="0" :width="VB" :height="VB">
+          <rect x="0" y="0" :width="VB" :height="VB" fill="white" />
+          <g :transform="ringTransform">
+            <path
+              v-for="(p, k) in ringSlots"
+              :key="`slot-${k}`"
+              :d="p"
+              fill="black"
+              :opacity="slotAlpha(k)"
+            />
+          </g>
+        </mask>
+
+        <!-- Divider clip-paths -->
+        <clipPath id="clip-mesh-side">
+          <rect x="0" y="0" :width="dividerX" :height="VB" />
+        </clipPath>
+        <clipPath id="clip-brep-side">
+          <rect :x="dividerX" y="0" :width="VB - dividerX" :height="VB" />
+        </clipPath>
       </defs>
 
-      <!-- Background mesh gradient -->
+      <!-- Background -->
       <rect width="400" height="400" fill="url(#ha-bg-a)" />
       <rect width="400" height="400" fill="url(#ha-bg-b)" />
 
-      <!-- Sketch grid (only in sketch phase) -->
-      <g :opacity="0.55 * sketchOut">
-        <rect x="40" y="40" width="320" height="320" fill="url(#ha-grid)" />
-        <line x1="200" y1="56" x2="200" y2="344" stroke="#22d3ee" stroke-opacity="0.16" stroke-width="1" />
-        <line x1="56" y1="200" x2="344" y2="200" stroke="#22d3ee" stroke-opacity="0.16" stroke-width="1" />
-        <!-- Origin marker (lower-left of profile) -->
-        <g :transform="`translate(${v.B0.x} ${v.B0.y})`" :opacity="vertexAlpha(0)">
-          <circle r="4" fill="none" stroke="#22d3ee" stroke-opacity="0.8" stroke-width="1" />
-          <line x1="-7" y1="0" x2="7" y2="0" stroke="#22d3ee" stroke-opacity="0.8" stroke-width="1" />
-          <line x1="0" y1="-7" x2="0" y2="7" stroke="#22d3ee" stroke-opacity="0.8" stroke-width="1" />
+      <!-- ─── Build phase ────────────────────────────────────────── -->
+      <!-- Toothed B-Rep ring underneath, always visible during the build. -->
+      <g :transform="ringTransform" :opacity="ringFadeAlpha" filter="url(#ha-soft)">
+        <use href="#g-ring-brep" />
+      </g>
+
+      <!-- Smooth-bore cover: a dark inner disc that hides the teeth. The
+           mask carves slot-shaped windows out of it as each slot is "cut" -->
+      <g :transform="ringTransform" :opacity="ringFadeAlpha">
+        <circle
+          :r="ring.rRoot"
+          fill="#020617"
+          stroke="#0a1530"
+          stroke-width="1"
+          mask="url(#ring-cover-mask)"
+        />
+      </g>
+
+      <!-- Cyan glow on the just-cut slot -->
+      <g :transform="ringTransform" :opacity="slotHighlightAlpha" filter="url(#ha-glow)">
+        <path
+          :d="ringSlots[0]"
+          fill="#22d3ee"
+          fill-opacity="0.4"
+          stroke="#22d3ee"
+          stroke-width="1.4"
+        />
+      </g>
+
+      <!-- ─── Settle phase: divided assembly ─────────────────────── -->
+      <!-- Mesh side (left of divider) -->
+      <g clip-path="url(#clip-mesh-side)">
+        <g :transform="ringTransform" :opacity="ringFadeAlpha">
+          <use href="#g-ring-mesh" />
+        </g>
+        <g :transform="sunTransform" :opacity="sunPopAlpha">
+          <use href="#g-sun-mesh" />
+        </g>
+        <g
+          v-for="i in PLANET_COUNT"
+          :key="`pm-${i - 1}`"
+          :transform="planetTransform(i - 1)"
+          :opacity="planetPopAlpha(i - 1)"
+        >
+          <use href="#g-planet-mesh" />
         </g>
       </g>
 
-      <!-- Floor shadow (under solid) -->
-      <ellipse :cx="200" :cy="262 + ext * 6" :rx="118 - ext * 4" :ry="14" fill="url(#ha-floor)" :opacity="solidAlpha" />
-
-      <!-- ─── 3D solid (iso phase) ─── -->
-      <g :opacity="solidAlpha">
-        <!-- Hidden edges (dashed, behind faces) -->
-        <g stroke="#7dd3fc" stroke-width="1.1" stroke-dasharray="3 3" stroke-opacity="0.32" fill="none" stroke-linecap="round">
-          <line :x1="v.B0.x" :y1="v.B0.y" :x2="v.B1.x" :y2="v.B1.y" />
-          <line :x1="v.B0.x" :y1="v.B0.y" :x2="v.B3.x" :y2="v.B3.y" />
-          <line :x1="v.B0.x" :y1="v.B0.y" :x2="v.T0.x" :y2="v.T0.y" />
+      <!-- B-Rep side (right of divider) -->
+      <g clip-path="url(#clip-brep-side)">
+        <g :transform="ringTransform" :opacity="ringFadeAlpha">
+          <use href="#g-ring-brep" />
         </g>
-
-        <g filter="url(#ha-soft)">
-          <path :d="polyLeft" fill="url(#ha-left)" stroke="#0a1530" stroke-width="1.4" stroke-linejoin="round" />
-          <path :d="polyRight" fill="url(#ha-right)" stroke="#0a1530" stroke-width="1.4" stroke-linejoin="round" />
-          <path :d="polyTop" fill="url(#ha-top)" stroke="#0a1530" stroke-width="1.4" stroke-linejoin="round" />
+        <g :transform="sunTransform" :opacity="sunPopAlpha">
+          <use href="#g-sun-brep" />
         </g>
-
-        <!-- Hole opening + interior cues -->
-        <ellipse :cx="holeTop.x" :cy="holeTop.y" :rx="holeRx" :ry="holeRy" fill="url(#ha-hole)" stroke="#0a1530" stroke-width="1.2" />
-        <ellipse :cx="holeBot.x" :cy="holeBot.y" :rx="holeRx" :ry="holeRy" fill="none" stroke="#0a1530" stroke-width="0.8" stroke-opacity="0.55" stroke-dasharray="2 2" />
-        <ellipse :cx="holeTop.x" :cy="holeTop.y + 1.4" :rx="holeRx - 2.6" :ry="holeRy - 1.3" fill="none" stroke="#22d3ee" stroke-width="0.7" stroke-opacity="0.6" />
-
-        <!-- Visible edges (crisp) -->
-        <g stroke="#0a1530" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" fill="none">
-          <path :d="polyTop" />
-          <line :x1="v.T1.x" :y1="v.T1.y" :x2="v.B1.x" :y2="v.B1.y" />
-          <line :x1="v.T2.x" :y1="v.T2.y" :x2="v.B2.x" :y2="v.B2.y" />
-          <line :x1="v.T3.x" :y1="v.T3.y" :x2="v.B3.x" :y2="v.B3.y" />
-          <line :x1="v.B1.x" :y1="v.B1.y" :x2="v.B2.x" :y2="v.B2.y" />
-          <line :x1="v.B3.x" :y1="v.B3.y" :x2="v.B2.x" :y2="v.B2.y" />
-        </g>
-
-        <!-- Specular rim on top-front edge -->
-        <line :x1="v.T0.x + 4" :y1="v.T0.y + 1" :x2="v.T1.x - 4" :y2="v.T1.y - 1" stroke="url(#ha-rim)" stroke-width="2" stroke-linecap="round" />
-
-        <!-- Vertex dots -->
-        <g fill="#bae6fd" stroke="#0a1530" stroke-width="1.1">
-          <circle :cx="v.T0.x" :cy="v.T0.y" r="2.7" />
-          <circle :cx="v.T1.x" :cy="v.T1.y" r="2.7" />
-          <circle :cx="v.T2.x" :cy="v.T2.y" r="2.7" />
-          <circle :cx="v.T3.x" :cy="v.T3.y" r="2.7" />
-          <circle :cx="v.B1.x" :cy="v.B1.y" r="2.7" />
-          <circle :cx="v.B2.x" :cy="v.B2.y" r="2.7" />
-          <circle :cx="v.B3.x" :cy="v.B3.y" r="2.7" />
+        <g
+          v-for="i in PLANET_COUNT"
+          :key="`pb-${i - 1}`"
+          :transform="planetTransform(i - 1)"
+          :opacity="planetPopAlpha(i - 1)"
+        >
+          <use href="#g-planet-brep" />
         </g>
       </g>
 
-      <!-- ─── 2D sketch profile ─── -->
-      <g :opacity="sketchOut">
-        <!-- Profile fill -->
-        <path :d="sketchProfile" fill="#22d3ee" :fill-opacity="0.07 * sketchFillAlpha" />
+      <!-- Divider seam -->
+      <g :opacity="dividerAlpha">
+        <line
+          :x1="dividerX"
+          y1="20"
+          :x2="dividerX"
+          y2="380"
+          stroke="#22d3ee"
+          stroke-width="1.3"
+          stroke-dasharray="3 3"
+          stroke-opacity="0.85"
+        />
+        <path
+          :d="`M ${dividerX - 5} 14 L ${dividerX + 5} 14 L ${dividerX} 22 Z`"
+          fill="#22d3ee"
+          fill-opacity="0.85"
+        />
+        <path
+          :d="`M ${dividerX - 5} 386 L ${dividerX + 5} 386 L ${dividerX} 378 Z`"
+          fill="#22d3ee"
+          fill-opacity="0.85"
+        />
+      </g>
 
-        <!-- Per-edge "draw on" lines (with stagger) -->
-        <g stroke="#22d3ee" stroke-width="2" stroke-linecap="round" fill="none" filter="url(#ha-glow)">
-          <line :x1="v.B0.x" :y1="v.B0.y" :x2="v.B1.x" :y2="v.B1.y" :stroke-dasharray="e01.len" :stroke-dashoffset="e01.off" />
-          <line :x1="v.B1.x" :y1="v.B1.y" :x2="v.B2.x" :y2="v.B2.y" :stroke-dasharray="e12.len" :stroke-dashoffset="e12.off" />
-          <line :x1="v.B2.x" :y1="v.B2.y" :x2="v.B3.x" :y2="v.B3.y" :stroke-dasharray="e23.len" :stroke-dashoffset="e23.off" />
-          <line :x1="v.B3.x" :y1="v.B3.y" :x2="v.B0.x" :y2="v.B0.y" :stroke-dasharray="e30.len" :stroke-dashoffset="e30.off" />
+      <!-- ─── Callouts ────────────────────────────────────────────── -->
+      <g
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        :opacity="calloutAlpha"
+      >
+        <g>
+          <rect
+            x="18"
+            y="22"
+            width="124"
+            height="36"
+            rx="6"
+            fill="#0c0e1a"
+            stroke="#1e3a8a"
+            stroke-width="0.8"
+          />
+          <text
+            x="28"
+            y="36"
+            fill="#94a3b8"
+            font-size="9"
+            letter-spacing="1.4"
+            font-weight="600"
+          >MESH · TRIANGLES</text>
+          <text
+            x="28"
+            y="52"
+            fill="#bae6fd"
+            font-size="14"
+            font-weight="600"
+            font-family="ui-monospace, monospace"
+          >{{ meshFaceCount.toLocaleString() }}</text>
         </g>
-
-        <!-- Hole circle (sketch) — overshoot scale-up around its center -->
-        <g :transform="`translate(${holeTop.x} ${holeTop.y}) scale(${holeScale})`" filter="url(#ha-glow)">
-          <circle :r="holeRx" fill="none" stroke="#22d3ee" stroke-width="2" :opacity="holeAlpha" />
-          <line x1="-8" y1="0" x2="8" y2="0" stroke="#22d3ee" stroke-width="1" stroke-opacity="0.85" :opacity="holeAlpha" />
-          <line x1="0" y1="-8" x2="0" y2="8" stroke="#22d3ee" stroke-width="1" stroke-opacity="0.85" :opacity="holeAlpha" />
+        <g>
+          <rect
+            x="258"
+            y="22"
+            width="124"
+            height="36"
+            rx="6"
+            fill="#0c0e1a"
+            stroke="#10b981"
+            stroke-width="0.8"
+          />
+          <text
+            x="268"
+            y="36"
+            fill="#94a3b8"
+            font-size="9"
+            letter-spacing="1.4"
+            font-weight="600"
+          >B-REP · FACES</text>
+          <text
+            x="268"
+            y="52"
+            fill="#34d399"
+            font-size="14"
+            font-weight="600"
+            font-family="ui-monospace, monospace"
+          >{{ BREP_FACES.toLocaleString() }}</text>
         </g>
-
-        <!-- Vertex dots (sketch) — staggered pop-in -->
-        <g fill="#bae6fd" stroke="#0c1f55" stroke-width="1">
-          <circle :cx="v.B0.x" :cy="v.B0.y" :r="2.6 + (1 - vertexAlpha(0)) * 4" :opacity="vertexAlpha(0)" />
-          <circle :cx="v.B1.x" :cy="v.B1.y" :r="2.6 + (1 - vertexAlpha(1)) * 4" :opacity="vertexAlpha(1)" />
-          <circle :cx="v.B2.x" :cy="v.B2.y" :r="2.6 + (1 - vertexAlpha(2)) * 4" :opacity="vertexAlpha(2)" />
-          <circle :cx="v.B3.x" :cy="v.B3.y" :r="2.6 + (1 - vertexAlpha(3)) * 4" :opacity="vertexAlpha(3)" />
+        <g transform="translate(200 354)">
+          <rect
+            x="-118"
+            y="0"
+            width="236"
+            height="32"
+            rx="6"
+            fill="#0c0e1a"
+            stroke="#1e3a8a"
+            stroke-width="0.8"
+          />
+          <text
+            x="0"
+            y="13"
+            text-anchor="middle"
+            fill="#94a3b8"
+            font-size="9"
+            letter-spacing="1.2"
+            font-weight="600"
+          >TOOTH FLANK</text>
+          <text
+            x="0"
+            y="26"
+            text-anchor="middle"
+            fill="#bae6fd"
+            font-size="10.5"
+            font-weight="600"
+            font-family="ui-monospace, monospace"
+          >12 line segments / 1 involute spline</text>
         </g>
       </g>
 
-      <!-- ─── 2D dimension annotations (staggered slide-in) ─── -->
-      <g font-family="ui-sans-serif, system-ui, sans-serif">
-        <!-- Width: 40 mm -->
-        <g :opacity="dimAlpha(0) * sketchOut" :transform="`translate(0 ${(1 - dimAlpha(0)) * -10})`">
-          <g stroke="#bae6fd" stroke-width="1" stroke-opacity="0.55">
-            <line :x1="v.B0.x" :y1="v.B0.y - 7" :x2="v.B0.x" :y2="v.B0.y - 23" />
-            <line :x1="v.B1.x" :y1="v.B1.y - 7" :x2="v.B1.x" :y2="v.B1.y - 23" />
-            <line :x1="v.B0.x + 1" :y1="v.B0.y - 19" :x2="v.B1.x - 1" :y2="v.B1.y - 19" />
-          </g>
-          <rect :x="(v.B0.x + v.B1.x) / 2 - 24" :y="v.B0.y - 30" width="48" height="16" rx="3.5" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.5" />
-          <text :x="(v.B0.x + v.B1.x) / 2" :y="v.B0.y - 18" text-anchor="middle" font-size="10.5" font-weight="600" fill="#bae6fd" font-family="ui-monospace, monospace">40 mm</text>
-        </g>
-
-        <!-- Depth: 24 mm -->
-        <g :opacity="dimAlpha(1) * sketchOut" :transform="`translate(${(1 - dimAlpha(1)) * 10} 0)`">
-          <g stroke="#bae6fd" stroke-width="1" stroke-opacity="0.55">
-            <line :x1="v.B1.x + 7" :y1="v.B1.y" :x2="v.B1.x + 23" :y2="v.B1.y" />
-            <line :x1="v.B2.x + 7" :y1="v.B2.y" :x2="v.B2.x + 23" :y2="v.B2.y" />
-            <line :x1="v.B1.x + 19" :y1="v.B1.y + 1" :x2="v.B2.x + 19" :y2="v.B2.y - 1" />
-          </g>
-          <rect :x="v.B1.x + 25" :y="(v.B1.y + v.B2.y) / 2 - 9" width="48" height="16" rx="3.5" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.5" />
-          <text :x="v.B1.x + 49" :y="(v.B1.y + v.B2.y) / 2 + 3" text-anchor="middle" font-size="10.5" font-weight="600" fill="#bae6fd" font-family="ui-monospace, monospace">24 mm</text>
-        </g>
-
-        <!-- Diameter: Ø 11 mm -->
-        <g :opacity="dimAlpha(2) * sketchOut" :transform="`translate(0 ${(1 - dimAlpha(2)) * -8})`">
-          <g stroke="#bae6fd" stroke-width="1" stroke-opacity="0.7" fill="none">
-            <line :x1="holeTop.x + 11" :y1="holeTop.y - 11" :x2="holeTop.x + 38" :y2="holeTop.y - 32" />
-          </g>
-          <rect :x="holeTop.x + 38" :y="holeTop.y - 41" width="50" height="16" rx="3.5" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.5" />
-          <text :x="holeTop.x + 63" :y="holeTop.y - 30" text-anchor="middle" font-size="10.5" font-weight="600" fill="#bae6fd" font-family="ui-monospace, monospace">Ø 11 mm</text>
-        </g>
-      </g>
-
-      <!-- ─── Height annotation (during extrude / analysis) ─── -->
-      <g :opacity="heightDimAlpha" font-family="ui-monospace, monospace">
-        <g stroke="#bae6fd" stroke-width="1" stroke-opacity="0.6" fill="none">
-          <line :x1="v.B3.x - 7" :y1="v.B3.y" :x2="v.B3.x - 23" :y2="v.B3.y" />
-          <line :x1="v.T3.x - 7" :y1="v.T3.y" :x2="v.T3.x - 23" :y2="v.T3.y" />
-          <line :x1="v.B3.x - 19" :y1="v.B3.y - 1" :x2="v.T3.x - 19" :y2="v.T3.y + 1" />
-        </g>
-        <rect :x="v.B3.x - 67" :y="(v.B3.y + v.T3.y) / 2 - 9" width="44" height="16" rx="3.5" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.5" />
-        <text :x="v.B3.x - 45" :y="(v.B3.y + v.T3.y) / 2 + 3" text-anchor="middle" font-size="10.5" font-weight="600" fill="#bae6fd">14 mm</text>
-      </g>
-
-      <!-- ─── Phase indicator (top-left) ─── -->
+      <!-- ─── Phase indicator ────────────────────────────────────── -->
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="9">
-        <!-- Three dots -->
-        <g transform="translate(36 36)">
-          <line x1="6" y1="0" x2="14" y2="0" :stroke="phaseProgress >= 1 ? '#22d3ee' : '#1e293b'" stroke-width="1.4" stroke-linecap="round" />
-          <line x1="22" y1="0" x2="30" y2="0" :stroke="phaseProgress >= 2 ? '#22d3ee' : '#1e293b'" stroke-width="1.4" stroke-linecap="round" />
-          <circle cx="2" cy="0" :r="phaseProgress === 0 ? 3 : 2" :fill="phaseProgress >= 0 ? '#22d3ee' : '#1e293b'" />
-          <circle cx="18" cy="0" :r="phaseProgress === 1 ? 3 : 2" :fill="phaseProgress >= 1 ? '#22d3ee' : '#1e293b'" />
-          <circle cx="34" cy="0" :r="phaseProgress === 2 ? 3 : 2" :fill="phaseProgress >= 2 ? '#22d3ee' : '#1e293b'" />
+        <g transform="translate(36 78)">
+          <line
+            x1="6"
+            y1="0"
+            x2="14"
+            y2="0"
+            :stroke="phase >= 1 ? '#22d3ee' : '#1e293b'"
+            stroke-width="1.4"
+            stroke-linecap="round"
+          />
+          <line
+            x1="22"
+            y1="0"
+            x2="30"
+            y2="0"
+            :stroke="phase >= 2 ? '#22d3ee' : '#1e293b'"
+            stroke-width="1.4"
+            stroke-linecap="round"
+          />
+          <circle cx="2" cy="0" :r="phase === 0 ? 3 : 2" fill="#22d3ee" />
+          <circle
+            cx="18"
+            cy="0"
+            :r="phase === 1 ? 3 : 2"
+            :fill="phase >= 1 ? '#22d3ee' : '#1e293b'"
+          />
+          <circle
+            cx="34"
+            cy="0"
+            :r="phase === 2 ? 3 : 2"
+            :fill="phase >= 2 ? '#22d3ee' : '#1e293b'"
+          />
         </g>
-        <!-- Phase title (mono) — only the active one renders -->
         <g font-family="ui-monospace, monospace" font-weight="600">
-          <g :opacity="sketchPhaseAlpha">
-            <text x="36" y="62" fill="#bae6fd" font-size="11" letter-spacing="0.2">01 · sketch</text>
-            <text x="36" y="74" fill="#475569" font-size="9.5">closedWire()</text>
+          <g :opacity="phaseAlpha(0)">
+            <text
+              x="36"
+              y="106"
+              fill="#bae6fd"
+              font-size="11"
+              letter-spacing="0.2"
+            >01 · pattern</text>
+            <text x="36" y="118" fill="#475569" font-size="9.5">circularPattern(slot, 42)</text>
           </g>
-          <g :opacity="extrudePhaseAlpha">
-            <text x="36" y="62" fill="#bae6fd" font-size="11" letter-spacing="0.2">02 · extrude</text>
-            <text x="36" y="74" fill="#475569" font-size="9.5">extrude(profile, 14)</text>
+          <g :opacity="phaseAlpha(1)">
+            <text
+              x="36"
+              y="106"
+              fill="#bae6fd"
+              font-size="11"
+              letter-spacing="0.2"
+            >02 · assemble</text>
+            <text x="36" y="118" fill="#475569" font-size="9.5">assemble([sun, ...planets])</text>
           </g>
-          <g :opacity="analysisPhaseAlpha">
-            <text x="36" y="62" fill="#bae6fd" font-size="11" letter-spacing="0.2">03 · analyse</text>
-            <text x="36" y="74" fill="#475569" font-size="9.5">measureVolume(solid)</text>
+          <g :opacity="phaseAlpha(2)">
+            <text
+              x="36"
+              y="106"
+              fill="#bae6fd"
+              font-size="11"
+              letter-spacing="0.2"
+            >03 · compare</text>
+            <text x="36" y="118" fill="#475569" font-size="9.5">tessellate(0.05) vs faces()</text>
           </g>
         </g>
       </g>
 
-      <!-- ─── Analysis callouts (staggered slide-in with curved leaders) ─── -->
-      <g font-family="ui-sans-serif, system-ui, sans-serif">
-        <!-- VOLUME (top-left) -->
-        <g :opacity="calloutAlpha(0)" :transform="`translate(${-calloutSlide(0, 30)} 0)`">
-          <path :d="bezier(leader0.a, leader0.c, leader0.curl)"
-            stroke="#22d3ee" stroke-width="1" stroke-opacity="0.6" fill="none"
-            :stroke-dasharray="leader0.len" :stroke-dashoffset="(1 - leaderDrawAlpha(0)) * leader0.len" />
-          <circle :cx="leader0.c.x" :cy="leader0.c.y" r="2" fill="#22d3ee" />
-          <rect :x="cVol.x" :y="cVol.y" :width="cVol.w" :height="cVol.h" rx="7" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.8" />
-          <text :x="cVol.x + 12" :y="cVol.y + 14" fill="#94a3b8" font-size="9" letter-spacing="1.2" font-weight="600">VOLUME</text>
-          <text :x="cVol.x + 12" :y="cVol.y + 30" fill="#bae6fd" font-size="14" font-weight="600" font-family="ui-monospace, monospace">{{ volStr }}</text>
-        </g>
-
-        <!-- SURFACE (top-right) -->
-        <g :opacity="calloutAlpha(1)" :transform="`translate(${calloutSlide(1, 30)} 0)`">
-          <path :d="bezier(leader1.a, leader1.c, leader1.curl)"
-            stroke="#22d3ee" stroke-width="1" stroke-opacity="0.6" fill="none"
-            :stroke-dasharray="leader1.len" :stroke-dashoffset="(1 - leaderDrawAlpha(1)) * leader1.len" />
-          <circle :cx="leader1.c.x" :cy="leader1.c.y" r="2" fill="#22d3ee" />
-          <rect :x="cSurf.x" :y="cSurf.y" :width="cSurf.w" :height="cSurf.h" rx="7" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.8" />
-          <text :x="cSurf.x + 12" :y="cSurf.y + 14" fill="#94a3b8" font-size="9" letter-spacing="1.2" font-weight="600">SURFACE</text>
-          <text :x="cSurf.x + 12" :y="cSurf.y + 30" fill="#bae6fd" font-size="14" font-weight="600" font-family="ui-monospace, monospace">{{ surfStr }}</text>
-        </g>
-
-        <!-- TOPOLOGY (bottom-center) -->
-        <g :opacity="calloutAlpha(2)" :transform="`translate(0 ${calloutSlide(2, 24)})`">
-          <path :d="bezier(leader2.a, leader2.c, leader2.curl)"
-            stroke="#22d3ee" stroke-width="1" stroke-opacity="0.6" fill="none"
-            :stroke-dasharray="leader2.len" :stroke-dashoffset="(1 - leaderDrawAlpha(2)) * leader2.len" />
-          <circle :cx="leader2.c.x" :cy="leader2.c.y" r="2" fill="#22d3ee" />
-          <rect :x="cTop.x" :y="cTop.y" :width="cTop.w" :height="cTop.h" rx="7" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.8" />
-          <text :x="cTop.x + 12" :y="cTop.y + 14" fill="#94a3b8" font-size="9" letter-spacing="1.2" font-weight="600">TOPOLOGY</text>
-          <text :x="cTop.x + 12" :y="cTop.y + 30" fill="#bae6fd" font-size="13" font-weight="600" font-family="ui-monospace, monospace">10 F · 24 E · 16 V</text>
-        </g>
-
-        <!-- ValidSolid badge (top-center, scale-pop) -->
-        <g :opacity="validAlpha" :transform="`translate(200 110) scale(${validScale})`">
-          <rect x="-50" y="-13" width="100" height="24" rx="12" fill="#062e2e" stroke="#10b981" stroke-width="1.4" />
-          <circle cx="-34" cy="-1" r="3.6" fill="#10b981" />
-          <path d="M -36 -1 L -34.4 0.7 L -31.6 -2.6" stroke="#062e2e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
-          <text x="-24" y="3" fill="#34d399" font-family="ui-monospace, monospace" font-size="10.5" font-weight="700" letter-spacing="0.3">ValidSolid</text>
-        </g>
-      </g>
-
-      <!-- Vignette on top of everything -->
       <rect width="400" height="400" fill="url(#ha-vignette)" pointer-events="none" />
     </svg>
   </div>
