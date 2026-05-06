@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useRef } from 'react';
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from 'react-resizable-panels';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
+import { useEngineStore } from '../../stores/engineStore';
 import { useToastStore } from '../../stores/toastStore';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useUrlState } from '../../hooks/useUrlState';
@@ -31,10 +32,14 @@ export default function PlaygroundPage() {
   const setViewerCollapsed = usePlaygroundStore((s) => s.setViewerCollapsed);
   const isRunning = usePlaygroundStore((s) => s.isRunning);
   const error = usePlaygroundStore((s) => s.error);
+  const engineStatus = useEngineStore((s) => s.status);
   const addToast = useToastStore((s) => s.addToast);
   const { runCode, exportSTL, exportSTEP, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
   const heroMesh = useHeroMesh();
+  // Latches once the engine is ready so we don't re-seed the hero mesh after
+  // a failed run clears the viewer.
+  const heroSeededRef = useRef(false);
 
   const consolePanelRef = usePanelRef();
   const viewerPanelRef = usePanelRef();
@@ -51,12 +56,20 @@ export default function PlaygroundPage() {
     startWASMPreload();
   }, []);
 
-  // Seed viewer with pre-computed mesh while WASM engine loads
+  // Seed viewer with pre-computed mesh while WASM engine loads. Once the
+  // engine becomes ready we stop seeding — otherwise an error path that
+  // clears the viewer would silently re-render the staircase under the
+  // user's failing code.
   useEffect(() => {
+    if (engineStatus === 'ready') {
+      heroSeededRef.current = true;
+      return;
+    }
+    if (heroSeededRef.current) return;
     if (heroMesh && meshes.length === 0) {
       setMeshes([heroMesh]);
     }
-  }, [heroMesh, meshes.length, setMeshes]);
+  }, [heroMesh, meshes.length, setMeshes, engineStatus]);
 
   const handleCodeChange = useCallback(
     (newCode: string) => {

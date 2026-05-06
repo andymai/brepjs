@@ -101,6 +101,13 @@ async function loadWasmBuild() {
 }
 
 async function handleInit() {
+  // React StrictMode and crash-recovery paths can dispatch `init` twice; the
+  // OCCT module rejects re-initialization, so short-circuit when we already
+  // have a live kernel.
+  if (brepjs) {
+    post({ type: 'init-done' });
+    return;
+  }
   try {
     post({ type: 'init-progress', stage: 'Downloading kernel...', progress: 0.1 });
 
@@ -159,12 +166,15 @@ function handleEval(id: string, code: string) {
       },
       transferables
     );
+    activeEvalId = null;
     return;
   }
 
   const consoleOutput: string[] = [];
 
-  // Capture console.log
+  // Capture console.log/warn for the duration of user code so output appears in
+  // the playground console panel. Restoration happens in `finally` so cancel
+  // paths and unexpected throws don't leak the patched console.
   const origLog = console.log;
   const origWarn = console.warn;
   console.log = (...args: unknown[]) => {
@@ -183,14 +193,9 @@ function handleEval(id: string, code: string) {
     const fn = new Function(code); // codeql[js/code-injection] Playground evaluates user-authored scripts in sandboxed Web Worker
     let result = fn();
 
-    // Restore console
-    console.log = origLog;
-    console.warn = origWarn;
-
     // Check if cancelled before proceeding with expensive meshing
     if (cancelRequested && activeEvalId === id) {
       post({ type: 'eval-cancelled', id });
-      activeEvalId = null;
       return;
     }
 
@@ -202,7 +207,6 @@ function handleEval(id: string, code: string) {
         console: consoleOutput,
         timeMs: performance.now() - t0,
       });
-      activeEvalId = null;
       return;
     }
 
@@ -221,7 +225,6 @@ function handleEval(id: string, code: string) {
       // Check for cancellation before each shape (expensive operation)
       if (cancelRequested && activeEvalId === id) {
         post({ type: 'eval-cancelled', id });
-        activeEvalId = null;
         return;
       }
 
@@ -255,8 +258,9 @@ function handleEval(id: string, code: string) {
           mesh.edges.buffer
         );
       } catch (meshErr) {
+        // `[error]` prefix matches the red styling in OutputPanel.
         consoleOutput.push(
-          `[mesh error] ${meshErr instanceof Error ? meshErr.message : String(meshErr)}`
+          `[error] ${meshErr instanceof Error ? meshErr.message : String(meshErr)}`
         );
       }
     }
@@ -266,7 +270,6 @@ function handleEval(id: string, code: string) {
     // Final cancellation check before sending result
     if (cancelRequested && activeEvalId === id) {
       post({ type: 'eval-cancelled', id });
-      activeEvalId = null;
       return;
     }
 
@@ -283,11 +286,7 @@ function handleEval(id: string, code: string) {
     });
 
     post({ type: 'eval-result', id, meshes, console: consoleOutput, timeMs }, transferables);
-    activeEvalId = null;
   } catch (e) {
-    console.log = origLog;
-    console.warn = origWarn;
-
     const errorMsg = e instanceof Error ? e.message : String(e);
     // Try to extract line number from stack trace
     let line: number | undefined;
@@ -300,8 +299,13 @@ function handleEval(id: string, code: string) {
     }
 
     post({ type: 'eval-error', id, error: errorMsg, line });
-    activeEvalId = null;
   } finally {
+    // Always restore console and clear active id, regardless of which return
+    // path we took (cancelled / errored / cached / completed).
+    console.log = origLog;
+    console.warn = origWarn;
+    activeEvalId = null;
+
     // Clean up user-added globalThis keys
     const globalAny = globalThis as Record<string, unknown>;
     for (const key of Object.keys(globalAny)) {

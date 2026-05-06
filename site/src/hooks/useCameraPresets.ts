@@ -51,6 +51,12 @@ export function useCameraPresets(
     const startTarget = target.clone();
     const startTime = performance.now();
 
+    // Suspend damping for the duration: damping interpolates camera.position
+    // toward an internal `_lastPosition`, which fights our explicit lerp and
+    // makes the camera "snap back" or oscillate at the end of the animation.
+    const dampingWasOn = controls.enableDamping;
+    controls.enableDamping = false;
+
     function animate() {
       const elapsed = performance.now() - startTime;
       const t = Math.min(elapsed / TRANSITION_MS, 1);
@@ -64,6 +70,8 @@ export function useCameraPresets(
 
       if (t < 1) {
         animFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        controls.enableDamping = dampingWasOn;
       }
     }
 
@@ -73,6 +81,7 @@ export function useCameraPresets(
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);
+      controls.enableDamping = dampingWasOn;
     };
   }, [activePreset, bounds, controlsRef, invalidate]);
 }

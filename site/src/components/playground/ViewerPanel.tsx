@@ -120,14 +120,30 @@ function AutoFit({ meshes }: { meshes: MeshData[] }) {
   return null;
 }
 
-/** Keeps the render loop alive while OrbitControls damping is settling. */
+/**
+ * Keeps the render loop alive while OrbitControls damping is still settling
+ * AFTER user interaction. We invalidate only when the camera moved since the
+ * previous frame — checking `enableDamping` alone (always true) caused an
+ * unbounded render loop in `frameloop="demand"` mode and pegged the GPU.
+ */
 function Invalidator() {
-  const { controls } = useThree();
+  const { controls, camera } = useThree();
+  const lastPos = useRef(new THREE.Vector3());
+  const lastTarget = useRef(new THREE.Vector3());
 
   useFrame(({ invalidate }) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
     const ctrl = controls as any;
-    if (ctrl?.enableDamping) {
+    if (!ctrl?.enableDamping) return;
+
+    const target = ctrl.target as THREE.Vector3 | undefined;
+    const moved =
+      !camera.position.equals(lastPos.current) ||
+      (target ? !target.equals(lastTarget.current) : false);
+
+    if (moved) {
+      lastPos.current.copy(camera.position);
+      if (target) lastTarget.current.copy(target);
       invalidate();
     }
   });
@@ -135,18 +151,22 @@ function Invalidator() {
   return null;
 }
 
-/** Wires up the camera preset hook to store + controls. */
+/**
+ * Wires up the camera preset hook to the live OrbitControls instance.
+ * The synthetic ref is memoized so `useCameraPresets`'s effect doesn't
+ * re-fire on every render (which would restart any in-flight preset
+ * animation when meshes update).
+ */
 function CameraPresetBridge({ meshes }: { meshes: MeshData[] }) {
-  const { invalidate } = useThree();
+  const { invalidate, controls } = useThree();
   const bounds = useBoundsComputation(meshes);
-  const { controls } = useThree();
-
-  useCameraPresets(
+  const controlsRef = useMemo(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
-    { current: controls } as React.RefObject<any>,
-    invalidate,
-    bounds
+    () => ({ current: controls }) as React.RefObject<any>,
+    [controls]
   );
+
+  useCameraPresets(controlsRef, invalidate, bounds);
 
   return null;
 }

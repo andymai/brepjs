@@ -1,4 +1,4 @@
-import Editor, { type OnMount } from '@monaco-editor/react';
+import Editor, { type BeforeMount, type OnMount } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { setupMonaco } from '../../lib/monacoSetup';
@@ -18,12 +18,16 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
   // Track last code from user typing to distinguish from external updates
   const lastUserCodeRef = useRef(code);
 
+  // beforeMount fires before the Editor instance is created, so the theme is
+  // registered ahead of first paint and we no longer flash from `vs-dark`.
+  const handleBeforeMount: BeforeMount = useCallback((monaco) => {
+    setupMonaco(monaco);
+  }, []);
+
   const handleMount: OnMount = useCallback(
     (editor, monaco) => {
       editorRef.current = editor;
       monacoRef.current = monaco;
-      setupMonaco(monaco);
-      monaco.editor.setTheme('brepjs-dark');
 
       // Register format function for external access
       if (onFormat) {
@@ -45,13 +49,25 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
     [setCode, onCodeChange]
   );
 
-  // Sync external code changes (example picker, URL state) to editor
+  // Sync external code changes (example picker, URL state) to editor.
+  // We replace the model contents through pushEditOperations so the user's
+  // undo stack survives loading an example.
   useEffect(() => {
-    if (!editorRef.current) return;
-    if (code !== lastUserCodeRef.current) {
-      lastUserCodeRef.current = code;
-      editorRef.current.setValue(code);
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (code === lastUserCodeRef.current) return;
+
+    lastUserCodeRef.current = code;
+    const model = editor.getModel();
+    if (!model) {
+      editor.setValue(code);
+      return;
     }
+    model.pushEditOperations(
+      [],
+      [{ range: model.getFullModelRange(), text: code }],
+      () => null
+    );
   }, [code]);
 
   // Update error markers
@@ -65,14 +81,18 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
       if (!model) return;
 
       if (error && errorLine) {
+        // Clamp to the current line count — a stale error line from a previous
+        // run can exceed the buffer after the user shortens the file.
+        const lineCount = model.getLineCount();
+        const line = Math.min(Math.max(errorLine, 1), lineCount);
         monaco.editor.setModelMarkers(model, 'brepjs', [
           {
             severity: monaco.MarkerSeverity.Error,
             message: error,
-            startLineNumber: errorLine,
+            startLineNumber: line,
             startColumn: 1,
-            endLineNumber: errorLine,
-            endColumn: model.getLineMaxColumn(errorLine),
+            endLineNumber: line,
+            endColumn: model.getLineMaxColumn(line),
           },
         ]);
       } else {
@@ -91,6 +111,7 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
       defaultValue={code}
       keepCurrentModel
       onChange={handleChange}
+      beforeMount={handleBeforeMount}
       onMount={handleMount}
       theme="brepjs-dark"
       options={{

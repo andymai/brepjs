@@ -32,9 +32,14 @@ export default function Toolbar({
         setShowExamples(false);
       }
     };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowExamples(false);
+    };
     document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
     return () => {
       document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
     };
   }, [showExamples]);
 
@@ -53,6 +58,8 @@ export default function Toolbar({
             onClick={() => {
               setShowExamples((v) => !v);
             }}
+            aria-haspopup="menu"
+            aria-expanded={showExamples}
             className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"
           >
             Examples
@@ -96,7 +103,7 @@ export default function Toolbar({
         </button>
         <button
           onClick={onExportSTL}
-          disabled={!engineReady}
+          disabled={!engineReady || isRunning}
           title={`Export STL (${formatShortcut(SHORTCUTS.exportSTL)})`}
           className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
         >
@@ -104,7 +111,7 @@ export default function Toolbar({
         </button>
         <button
           onClick={onExportSTEP}
-          disabled={!engineReady}
+          disabled={!engineReady || isRunning}
           title={`Export STEP (${formatShortcut(SHORTCUTS.exportSTEP)})`}
           className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
         >
