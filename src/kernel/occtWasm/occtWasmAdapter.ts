@@ -400,7 +400,10 @@ function collectDistanceSamples(
   // Tessellation samples — coarse linear deflection (≈1% of bbox diagonal)
   // is enough to seed a witness-point search; refinement comes from picking
   // the closest pair, not from sample density per se.
-  const bb = k.getBoundingBox(shapeId);
+  // useTriangulation=true matches brepjs-occt's BRepBndLib.Add(shape, box, true)
+  // semantics — refines the bound via surface analysis when triangulation is
+  // present, falls back to surface-precise AddOptimal otherwise.
+  const bb = k.getBoundingBox(shapeId, true);
   const diag = Math.sqrt(
     (bb.xmax - bb.xmin) ** 2 + (bb.ymax - bb.ymin) ** 2 + (bb.zmax - bb.zmin) ** 2
   );
@@ -1566,18 +1569,21 @@ export class OcctWasmAdapter implements KernelAdapter {
     shape: KernelShape,
     faces: KernelShape[],
     thickness: number,
-    _tolerance?: number
+    tolerance?: number
   ): KernelShape {
     const vec = makeVecU32(this.Module, faces.map(unwrap));
     try {
-      return wrapResult(this.k, this.k.shell(unwrap(shape), vec, thickness));
+      return wrapResult(this.k, this.k.shell(unwrap(shape), vec, thickness, tolerance ?? 1e-3));
     } finally {
       vec.delete();
     }
   }
 
   thicken(shape: KernelShape, thickness: number): KernelShape {
-    return wrapResult(this.k, this.k.thicken(unwrap(shape), thickness));
+    // 1e-3 matches OCCT's pre-3.0 hardcoded default; brepjs's KernelInstance
+    // interface doesn't expose tolerance for thicken, so we keep the prior
+    // behavior. Bump to 1e-6 if/when the interface widens to accept it.
+    return wrapResult(this.k, this.k.thicken(unwrap(shape), thickness, 1e-3));
   }
 
   offset(shape: KernelShape, distance: number, tolerance?: number): KernelShape {
@@ -1628,7 +1634,8 @@ export class OcctWasmAdapter implements KernelAdapter {
   defeature(shape: KernelShape, faces: KernelShape[]): KernelShape {
     const vec = makeVecU32(this.Module, faces.map(unwrap));
     try {
-      return wrapResult(this.k, this.k.defeature(unwrap(shape), vec));
+      // 1e-3 matches OCCT's pre-3.0 hardcoded default; see `thicken`.
+      return wrapResult(this.k, this.k.defeature(unwrap(shape), vec, 1e-3));
     } finally {
       vec.delete();
     }
@@ -2202,7 +2209,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     thickness: number,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    _tolerance?: number
+    tolerance?: number
   ): OperationResult {
     const faceVec = makeVecU32(this.Module, faces.map(unwrap));
     const hashVec = makeVecInt(this.Module, inputFaceHashes);
@@ -2211,6 +2218,7 @@ export class OcctWasmAdapter implements KernelAdapter {
         unwrap(shape),
         faceVec,
         thickness,
+        tolerance ?? 1e-3,
         hashVec,
         hashUpperBound
       );
@@ -2230,7 +2238,13 @@ export class OcctWasmAdapter implements KernelAdapter {
   ): OperationResult {
     const hashVec = makeVecInt(this.Module, inputFaceHashes);
     try {
-      const evo = this.k.thickenWithHistory(unwrap(shape), thickness, hashVec, hashUpperBound);
+      const evo = this.k.thickenWithHistory(
+        unwrap(shape),
+        thickness,
+        1e-3,
+        hashVec,
+        hashUpperBound
+      );
       const { id, evolution } = parseEvolution(evo);
       return { shape: wrapResult(this.k, id), evolution };
     } finally {
@@ -2243,11 +2257,17 @@ export class OcctWasmAdapter implements KernelAdapter {
     distance: number,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    _tolerance?: number
+    tolerance?: number
   ): OperationResult {
     const hashVec = makeVecInt(this.Module, inputFaceHashes);
     try {
-      const evo = this.k.offsetWithHistory(unwrap(shape), distance, hashVec, hashUpperBound);
+      const evo = this.k.offsetWithHistory(
+        unwrap(shape),
+        distance,
+        tolerance ?? 1e-6,
+        hashVec,
+        hashUpperBound
+      );
       const { id, evolution } = parseEvolution(evo);
       return { shape: wrapResult(this.k, id), evolution };
     } finally {
@@ -2777,7 +2797,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     min: [number, number, number];
     max: [number, number, number];
   } {
-    const bb = this.k.getBoundingBox(unwrap(shape));
+    const bb = this.k.getBoundingBox(unwrap(shape), true);
     return {
       min: [bb.xmin, bb.ymin, bb.zmin],
       max: [bb.xmax, bb.ymax, bb.zmax],

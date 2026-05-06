@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "16.0.0",
+  "version": "17.0.0",
   "description": "Web CAD library with pluggable geometry kernel",
   "keywords": [
     "cad",
@@ -232,7 +232,7 @@
     "knip": "6.11.0",
     "lint-staged": "16.4.0",
     "lz-string": "1.5.0",
-    "occt-wasm": "2.0.0",
+    "occt-wasm": "3.0.0",
     "prettier": "3.8.3",
     "puppeteer": "24.42.0",
     "size-limit": "12.1.0",
@@ -246,7 +246,7 @@
   "peerDependencies": {
     "brepjs-opencascade": "^0.5.1 || ^0.6.0 || ^0.7.0 || ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0",
     "brepkit-wasm": "^0.10.1 || ^1.0.0 || ^2.0.0",
-    "occt-wasm": "^2.0.0"
+    "occt-wasm": "^3.0.0"
   },
   "peerDependenciesMeta": {
     "brepjs-opencascade": {

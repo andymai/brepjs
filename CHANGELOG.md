@@ -1,135 +1,131 @@
 # Changelog
 
-## [16.0.0](https://github.com/andymai/brepjs/compare/brepjs-v15.7.1...brepjs-v16.0.0) (2026-05-05)
-
+## [17.0.0](https://github.com/andymai/brepjs/compare/brepjs-v16.0.0...brepjs-v17.0.0) (2026-05-05)
 
 ### ⚠ BREAKING CHANGES
 
-* **occt-wasm:** consume occt-wasm 2.0 facade for parity with occt kernel ([#817](https://github.com/andymai/brepjs/issues/817))
+- **occtWasm:** consume occt-wasm 3.0 — close issue #90 parity gap ([#823](https://github.com/andymai/brepjs/issues/823))
 
 ### Features
 
-* **occt-wasm:** consume occt-wasm 2.0 facade for parity with occt kernel ([#817](https://github.com/andymai/brepjs/issues/817)) ([d286841](https://github.com/andymai/brepjs/commit/d28684169ac0dc248bc5ea836f594ff46089c3dd))
+- **occtWasm:** consume occt-wasm 3.0 — close issue [#90](https://github.com/andymai/brepjs/issues/90) parity gap ([#823](https://github.com/andymai/brepjs/issues/823)) ([fb2ff35](https://github.com/andymai/brepjs/commit/fb2ff357efa0f2354c993d1c37fbcf696bb0c288))
+
+### Bug Fixes
+
+- **deps:** update package-lock to occt-wasm@2.0.0 ([#819](https://github.com/andymai/brepjs/issues/819)) ([28341d7](https://github.com/andymai/brepjs/commit/28341d750b9f664a23659b580a531fce7d4e3194))
+
+## [16.0.0](https://github.com/andymai/brepjs/compare/brepjs-v15.7.1...brepjs-v16.0.0) (2026-05-05)
+
+### ⚠ BREAKING CHANGES
+
+- **occt-wasm:** consume occt-wasm 2.0 facade for parity with occt kernel ([#817](https://github.com/andymai/brepjs/issues/817))
+
+### Features
+
+- **occt-wasm:** consume occt-wasm 2.0 facade for parity with occt kernel ([#817](https://github.com/andymai/brepjs/issues/817)) ([d286841](https://github.com/andymai/brepjs/commit/d28684169ac0dc248bc5ea836f594ff46089c3dd))
 
 ## [15.7.1](https://github.com/andymai/brepjs/compare/brepjs-v15.7.0...brepjs-v15.7.1) (2026-05-04)
 
-
 ### Bug Fixes
 
-* **deps:** pin opentype.js to 1.3.4 ([#815](https://github.com/andymai/brepjs/issues/815)) ([f2e5550](https://github.com/andymai/brepjs/commit/f2e555047d5ca6209904804424c6d61a8d2500f4))
+- **deps:** pin opentype.js to 1.3.4 ([#815](https://github.com/andymai/brepjs/issues/815)) ([f2e5550](https://github.com/andymai/brepjs/commit/f2e555047d5ca6209904804424c6d61a8d2500f4))
 
 ## [15.7.0](https://github.com/andymai/brepjs/compare/brepjs-v15.6.2...brepjs-v15.7.0) (2026-05-01)
 
-
 ### Features
 
-* **site:** match gridfinity bin-designer 3D preview look-and-feel ([#811](https://github.com/andymai/brepjs/issues/811)) ([4417b9f](https://github.com/andymai/brepjs/commit/4417b9f229268eaa02c6700acf11446d500db841))
+- **site:** match gridfinity bin-designer 3D preview look-and-feel ([#811](https://github.com/andymai/brepjs/issues/811)) ([4417b9f](https://github.com/andymai/brepjs/commit/4417b9f229268eaa02c6700acf11446d500db841))
 
 ## [15.6.2](https://github.com/andymai/brepjs/compare/brepjs-v15.6.1...brepjs-v15.6.2) (2026-04-30)
 
-
 ### Bug Fixes
 
-* **kernel:** real witness points, principal directions, surface centroid in occt-wasm ([#809](https://github.com/andymai/brepjs/issues/809)) ([7df8a3d](https://github.com/andymai/brepjs/commit/7df8a3d3aaa3a56952733ecd38eef5080624f74c))
+- **kernel:** real witness points, principal directions, surface centroid in occt-wasm ([#809](https://github.com/andymai/brepjs/issues/809)) ([7df8a3d](https://github.com/andymai/brepjs/commit/7df8a3d3aaa3a56952733ecd38eef5080624f74c))
 
 ## [15.6.1](https://github.com/andymai/brepjs/compare/brepjs-v15.6.0...brepjs-v15.6.1) (2026-04-21)
 
-
 ### Bug Fixes
 
-* **kernel:** real per-face evolution in occt-wasm applyComposedTransformWithHistory ([#801](https://github.com/andymai/brepjs/issues/801)) ([569f05c](https://github.com/andymai/brepjs/commit/569f05ccaa5c1adc58aa1e6171cc2254e40f836e))
+- **kernel:** real per-face evolution in occt-wasm applyComposedTransformWithHistory ([#801](https://github.com/andymai/brepjs/issues/801)) ([569f05c](https://github.com/andymai/brepjs/commit/569f05ccaa5c1adc58aa1e6171cc2254e40f836e))
 
 ## [15.6.0](https://github.com/andymai/brepjs/compare/brepjs-v15.5.0...brepjs-v15.6.0) (2026-04-21)
 
-
 ### Features
 
-* **kernel:** implement createPoint2d/Direction2d/Vector2d on occt-wasm ([#798](https://github.com/andymai/brepjs/issues/798)) ([dab2992](https://github.com/andymai/brepjs/commit/dab2992d9b76ac2fa96b0ea917d9d100a3e55f60))
+- **kernel:** implement createPoint2d/Direction2d/Vector2d on occt-wasm ([#798](https://github.com/andymai/brepjs/issues/798)) ([dab2992](https://github.com/andymai/brepjs/commit/dab2992d9b76ac2fa96b0ea917d9d100a3e55f60))
 
 ## [15.5.0](https://github.com/andymai/brepjs/compare/brepjs-v15.4.0...brepjs-v15.5.0) (2026-04-21)
 
-
 ### Features
 
-* **kernel:** implement exportGLB on occt-wasm ([#796](https://github.com/andymai/brepjs/issues/796)) ([0a38eeb](https://github.com/andymai/brepjs/commit/0a38eebb3a2fd788219f2c581dc26a7856a33e2c))
-* **kernel:** implement exportPLY on occt-wasm ([#794](https://github.com/andymai/brepjs/issues/794)) ([4b1e9c5](https://github.com/andymai/brepjs/commit/4b1e9c5f03c511c9eaa60d623c807431206b9875))
+- **kernel:** implement exportGLB on occt-wasm ([#796](https://github.com/andymai/brepjs/issues/796)) ([0a38eeb](https://github.com/andymai/brepjs/commit/0a38eebb3a2fd788219f2c581dc26a7856a33e2c))
+- **kernel:** implement exportPLY on occt-wasm ([#794](https://github.com/andymai/brepjs/issues/794)) ([4b1e9c5](https://github.com/andymai/brepjs/commit/4b1e9c5f03c511c9eaa60d623c807431206b9875))
 
 ## [15.4.0](https://github.com/andymai/brepjs/compare/brepjs-v15.3.0...brepjs-v15.4.0) (2026-04-21)
 
-
 ### Features
 
-* **kernel:** implement exportOBJ on occt-wasm ([#792](https://github.com/andymai/brepjs/issues/792)) ([cabaf66](https://github.com/andymai/brepjs/commit/cabaf6676f5f2eec6affbcdf18b2f323866afe15))
+- **kernel:** implement exportOBJ on occt-wasm ([#792](https://github.com/andymai/brepjs/issues/792)) ([cabaf66](https://github.com/andymai/brepjs/commit/cabaf6676f5f2eec6affbcdf18b2f323866afe15))
 
 ## [15.3.0](https://github.com/andymai/brepjs/compare/brepjs-v15.2.12...brepjs-v15.3.0) (2026-04-21)
 
-
 ### Features
 
-* **kernel:** implement exportSTEP{Assembly,Configured} on occt-wasm ([#790](https://github.com/andymai/brepjs/issues/790)) ([99676ba](https://github.com/andymai/brepjs/commit/99676ba93f42c35e70f34bfd11e1862dbdbd0bc5))
+- **kernel:** implement exportSTEP{Assembly,Configured} on occt-wasm ([#790](https://github.com/andymai/brepjs/issues/790)) ([99676ba](https://github.com/andymai/brepjs/commit/99676ba93f42c35e70f34bfd11e1862dbdbd0bc5))
 
 ## [15.2.12](https://github.com/andymai/brepjs/compare/brepjs-v15.2.11...brepjs-v15.2.12) (2026-04-21)
 
-
 ### Bug Fixes
 
-* **kernel:** apply direction rotation in occt-wasm makeCone/makeTorus ([#788](https://github.com/andymai/brepjs/issues/788)) ([2d19802](https://github.com/andymai/brepjs/commit/2d19802648a6327b49d04599e293c2325115a103))
+- **kernel:** apply direction rotation in occt-wasm makeCone/makeTorus ([#788](https://github.com/andymai/brepjs/issues/788)) ([2d19802](https://github.com/andymai/brepjs/commit/2d19802648a6327b49d04599e293c2325115a103))
 
 ## [15.2.11](https://github.com/andymai/brepjs/compare/brepjs-v15.2.10...brepjs-v15.2.11) (2026-04-13)
 
-
 ### Bug Fixes
 
-* **operations:** fix pocket/boss positioning and extrude validation ([#783](https://github.com/andymai/brepjs/issues/783)) ([b6e916c](https://github.com/andymai/brepjs/commit/b6e916ca25edabc3bf6b1202e607660a6cfd6a51))
+- **operations:** fix pocket/boss positioning and extrude validation ([#783](https://github.com/andymai/brepjs/issues/783)) ([b6e916c](https://github.com/andymai/brepjs/commit/b6e916ca25edabc3bf6b1202e607660a6cfd6a51))
 
 ## [15.2.10](https://github.com/andymai/brepjs/compare/brepjs-v15.2.9...brepjs-v15.2.10) (2026-04-13)
 
-
 ### Bug Fixes
 
-* **operations:** fix geometry bugs in sweep and loft pipeline ([#781](https://github.com/andymai/brepjs/issues/781)) ([99fb83f](https://github.com/andymai/brepjs/commit/99fb83fd47799699304a10be884fe57f49b21942))
+- **operations:** fix geometry bugs in sweep and loft pipeline ([#781](https://github.com/andymai/brepjs/issues/781)) ([99fb83f](https://github.com/andymai/brepjs/commit/99fb83fd47799699304a10be884fe57f49b21942))
 
 ## [15.2.9](https://github.com/andymai/brepjs/compare/brepjs-v15.2.8...brepjs-v15.2.9) (2026-04-13)
 
-
 ### Bug Fixes
 
-* **operations:** use consistent 1e-10 threshold in buildLawFromProfile ([#779](https://github.com/andymai/brepjs/issues/779)) ([3c5b4b6](https://github.com/andymai/brepjs/commit/3c5b4b64f4fd3ed1e9418a260a488784bb481c22))
+- **operations:** use consistent 1e-10 threshold in buildLawFromProfile ([#779](https://github.com/andymai/brepjs/issues/779)) ([3c5b4b6](https://github.com/andymai/brepjs/commit/3c5b4b64f4fd3ed1e9418a260a488784bb481c22))
 
 ## [15.2.8](https://github.com/andymai/brepjs/compare/brepjs-v15.2.7...brepjs-v15.2.8) (2026-04-13)
 
-
 ### Bug Fixes
 
-* improve error handling across operations and queries ([#777](https://github.com/andymai/brepjs/issues/777)) ([05caf20](https://github.com/andymai/brepjs/commit/05caf207b0de06eb9971a564d4530105be16d7a9))
+- improve error handling across operations and queries ([#777](https://github.com/andymai/brepjs/issues/777)) ([05caf20](https://github.com/andymai/brepjs/commit/05caf207b0de06eb9971a564d4530105be16d7a9))
 
 ## [15.2.7](https://github.com/andymai/brepjs/compare/brepjs-v15.2.6...brepjs-v15.2.7) (2026-04-13)
 
-
 ### Bug Fixes
 
-* **sketching:** remove redundant Math.abs() on positive radii ([#775](https://github.com/andymai/brepjs/issues/775)) ([1005c17](https://github.com/andymai/brepjs/commit/1005c17df5b75c87aed1d9c278f70b847692f9ed))
+- **sketching:** remove redundant Math.abs() on positive radii ([#775](https://github.com/andymai/brepjs/issues/775)) ([1005c17](https://github.com/andymai/brepjs/commit/1005c17df5b75c87aed1d9c278f70b847692f9ed))
 
 ## [15.2.6](https://github.com/andymai/brepjs/compare/brepjs-v15.2.5...brepjs-v15.2.6) (2026-04-13)
 
-
 ### Bug Fixes
 
-* replace exact float equality with tolerance-based geometry checks ([#773](https://github.com/andymai/brepjs/issues/773)) ([2a86f92](https://github.com/andymai/brepjs/commit/2a86f9267c639cf5428c25e7a254f235b894ef77))
+- replace exact float equality with tolerance-based geometry checks ([#773](https://github.com/andymai/brepjs/issues/773)) ([2a86f92](https://github.com/andymai/brepjs/commit/2a86f9267c639cf5428c25e7a254f235b894ef77))
 
 ## [15.2.5](https://github.com/andymai/brepjs/compare/brepjs-v15.2.4...brepjs-v15.2.5) (2026-04-07)
 
-
 ### Bug Fixes
 
-* **site:** unbreak Monaco type checking in playground ([#761](https://github.com/andymai/brepjs/issues/761) follow-up) ([#767](https://github.com/andymai/brepjs/issues/767)) ([e3399e6](https://github.com/andymai/brepjs/commit/e3399e6eade5f809d0abd24051bdc9c0aa6ac5b9))
+- **site:** unbreak Monaco type checking in playground ([#761](https://github.com/andymai/brepjs/issues/761) follow-up) ([#767](https://github.com/andymai/brepjs/issues/767)) ([e3399e6](https://github.com/andymai/brepjs/commit/e3399e6eade5f809d0abd24051bdc9c0aa6ac5b9))
 
 ## [15.2.4](https://github.com/andymai/brepjs/compare/brepjs-v15.2.3...brepjs-v15.2.4) (2026-03-30)
 
-
 ### Bug Fixes
 
-* **sketching:** revert sweepSketch xDir sign to restore gridfinity lip geometry ([#759](https://github.com/andymai/brepjs/issues/759)) ([292bcb2](https://github.com/andymai/brepjs/commit/292bcb2dc5ac31d47400506fcbddfd1de3a89796))
+- **sketching:** revert sweepSketch xDir sign to restore gridfinity lip geometry ([#759](https://github.com/andymai/brepjs/issues/759)) ([292bcb2](https://github.com/andymai/brepjs/commit/292bcb2dc5ac31d47400506fcbddfd1de3a89796))
 
 ## [15.2.3](https://github.com/andymai/brepjs/compare/brepjs-v15.2.2...brepjs-v15.2.3) (2026-03-30)
 

@@ -193,7 +193,7 @@ export interface OcctKernelWasm {
     distance: number,
     angleDeg: number
   ): number;
-  shell(solidId: number, faceIds: EmVectorUint32, thickness: number): number;
+  shell(solidId: number, faceIds: EmVectorUint32, thickness: number, tolerance: number): number;
   offset(solidId: number, distance: number, tolerance: number): number;
   draft(
     shapeId: number,
@@ -410,7 +410,7 @@ export interface OcctKernelWasm {
   fromBREP(data: string): number;
 
   // --- Query / Measure ---
-  getBoundingBox(id: number): EmBBoxData;
+  getBoundingBox(id: number, useTriangulation: boolean): EmBBoxData;
   getVolume(id: number): number;
   getSurfaceArea(id: number): number;
   getLength(id: number): number;
@@ -489,8 +489,8 @@ export interface OcctKernelWasm {
   makeNullShape(): number;
 
   // --- Modifier ---
-  thicken(shapeId: number, thickness: number): number;
-  defeature(shapeId: number, faceIds: EmVectorUint32): number;
+  thicken(shapeId: number, thickness: number, tolerance: number): number;
+  defeature(shapeId: number, faceIds: EmVectorUint32, tolerance: number): number;
   reverseShape(id: number): number;
   simplify(id: number): number;
   filletVariable(solidId: number, edgeId: number, startRadius: number, endRadius: number): number;
@@ -573,18 +573,21 @@ export interface OcctKernelWasm {
     solidId: number,
     faceIds: EmVectorUint32,
     thickness: number,
+    tolerance: number,
     inputFaceHashes: EmVectorInt,
     hashUpperBound: number
   ): EmEvolutionData;
   offsetWithHistory(
     solidId: number,
     distance: number,
+    tolerance: number,
     inputFaceHashes: EmVectorInt,
     hashUpperBound: number
   ): EmEvolutionData;
   thickenWithHistory(
     shapeId: number,
     thickness: number,
+    tolerance: number,
     inputFaceHashes: EmVectorInt,
     hashUpperBound: number
   ): EmEvolutionData;
