@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.0.3](https://github.com/andymai/brepjs/compare/brepjs-v18.0.2...brepjs-v18.0.3) (2026-05-06)
+
+
+### Bug Fixes
+
+* **site:** allow new Function() in playground CSP ([#834](https://github.com/andymai/brepjs/issues/834)) ([fdefd23](https://github.com/andymai/brepjs/commit/fdefd2311fa7e6637d8e11d9bf05571f908a81bb))
+
 ## [18.0.2](https://github.com/andymai/brepjs/compare/brepjs-v18.0.1...brepjs-v18.0.2) (2026-05-06)
 
 
