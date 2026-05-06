@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.0.2](https://github.com/andymai/brepjs/compare/brepjs-v18.0.1...brepjs-v18.0.2) (2026-05-06)
+
+
+### Bug Fixes
+
+* **site:** unbreak production playground CSP ([#832](https://github.com/andymai/brepjs/issues/832)) ([851a457](https://github.com/andymai/brepjs/commit/851a457b368c181f29d213f1516dbf23bac1a150))
+
 ## [18.0.1](https://github.com/andymai/brepjs/compare/brepjs-v18.0.0...brepjs-v18.0.1) (2026-05-06)
 
 
