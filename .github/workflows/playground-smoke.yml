@@ -43,7 +43,7 @@ jobs:
 
       - name: Install site dependencies
         working-directory: site
-        run: npm install --legacy-peer-deps --no-audit --no-fund
+        run: npm install --legacy-peer-deps --no-audit --no-fund --ignore-scripts
 
       - name: Run smoke against deployment
         working-directory: site
