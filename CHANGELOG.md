@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.1.1](https://github.com/andymai/brepjs/compare/brepjs-v18.1.0...brepjs-v18.1.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **ci:** skip lifecycle scripts in smoke install ([#838](https://github.com/andymai/brepjs/issues/838)) ([ed532b4](https://github.com/andymai/brepjs/commit/ed532b4164204335e3660797a875e0a8ed9edd2a))
+
 ## [18.1.0](https://github.com/andymai/brepjs/compare/brepjs-v18.0.3...brepjs-v18.1.0) (2026-05-06)
 
 
