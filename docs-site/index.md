@@ -5,9 +5,6 @@ hero:
   name: brepjs
   text: CAD modeling for JavaScript.
   tagline: Exact B-Rep geometry, type-safe at compile time, browser-native via WASM.
-  image:
-    src: /hero.svg
-    alt: brepjs hero shape
   actions:
     - theme: brand
       text: Get Started
