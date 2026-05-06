@@ -28,7 +28,7 @@ export default withMermaid(
       nav: [
         { text: 'Guide', link: '/introduction/why-brepjs' },
         { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
-        { text: 'Playground', link: '/playground', target: '_blank' },
+        { text: 'Playground', link: '/playground', target: '_blank', rel: 'noopener noreferrer' },
         {
           text: major,
           items: [

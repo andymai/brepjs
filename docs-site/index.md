@@ -19,6 +19,7 @@ hero:
       text: Open Playground
       link: /playground
       target: _blank
+      rel: noopener noreferrer
 
 features:
   - icon: 📐

@@ -20,6 +20,7 @@ export function decodeShare(url: URL): DecodedShare | null {
   if (code) {
     const text = decompressFromEncodedURIComponent(code);
     if (text) return { type: 'code', code: text, legacy: false };
+    console.warn('Could not decode `?code=` share param — link is corrupted or truncated.');
     return null;
   }
 
@@ -33,6 +34,7 @@ export function decodeShare(url: URL): DecodedShare | null {
   if (stripped.startsWith('code/')) {
     const text = decompressFromEncodedURIComponent(stripped.slice(5));
     if (text) return { type: 'code', code: text, legacy: true };
+    console.warn('Could not decode `#code/` share hash — legacy link is corrupted or truncated.');
     return null;
   }
 
