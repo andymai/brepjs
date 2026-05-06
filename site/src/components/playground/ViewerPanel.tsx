@@ -208,15 +208,31 @@ export default function ViewerPanel() {
     clearPreset();
   }, [clearPreset]);
 
-  const controlsProps = useMemo(
-    () => ({
+  // Snapshot the initial pointer-class via matchMedia so the props object we
+  // hand drei stays stable across renders. Runtime device-class flips (a user
+  // plugging in a touchscreen, a tablet rotating) are rare but real, and
+  // recreating controlsProps on each flip would jolt drei's OrbitControls
+  // mid-pointer-down and lose interaction state. Apply runtime updates via
+  // direct mutation in the effect below instead.
+  const controlsProps = useMemo(() => {
+    const initialIsTouch =
+      typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+    return {
       ...BASE_CONTROLS_PROPS,
-      rotateSpeed: isTouch ? 1.0 : 0.8,
-      zoomSpeed: isTouch ? 1.2 : 1.0,
-      enablePan: !isTouch,
-    }),
-    [isTouch]
-  );
+      rotateSpeed: initialIsTouch ? 1.0 : 0.8,
+      zoomSpeed: initialIsTouch ? 1.2 : 1.0,
+      enablePan: !initialIsTouch,
+    };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- drei OrbitControls
+    const c = controlsRef.current as any;
+    if (!c) return;
+    c.rotateSpeed = isTouch ? 1.0 : 0.8;
+    c.zoomSpeed = isTouch ? 1.2 : 1.0;
+    c.enablePan = !isTouch;
+  }, [isTouch]);
 
   return (
     <div className="relative h-full w-full">

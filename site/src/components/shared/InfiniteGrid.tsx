@@ -77,6 +77,14 @@ export default function InfiniteGrid({
         transparent
         depthWrite={false}
         side={THREE.DoubleSide}
+        // Bias grid fragments slightly deeper than coplanar geometry so
+        // shapes resting on z=0 always win the depth test, even at
+        // oblique camera angles where float precision degrades. Combined
+        // with the y=-0.01 position above, this is a belt-and-suspenders
+        // fix for shapes whose bottom face touches the grid plane.
+        polygonOffset
+        polygonOffsetFactor={1}
+        polygonOffsetUnits={1}
       />
     </mesh>
   );
