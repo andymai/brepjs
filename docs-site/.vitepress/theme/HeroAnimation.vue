@@ -137,7 +137,7 @@ const holeCenterBot = computed(() => project(HX, HY, 0, tilt.value));
 // ---- Stage opacities ---------------------------------------------------
 // Sketch path "draw-on" via stroke-dashoffset proxy
 const sketchDraw = computed(() => stage(SKETCH_DRAW[0], SKETCH_DRAW[1]));
-const sketchPathLen = 4 * (W + D) * SCALE; // rough perimeter sum for dashoffset
+const sketchPathLen = 2 * (W + D) * SCALE; // rectangle perimeter, in screen units
 const sketchDashOffset = computed(() => (1 - sketchDraw.value) * sketchPathLen);
 const holeDraw = computed(() => stage(SKETCH_DRAW[0] + 0.1, SKETCH_DRAW[1] + 0.02));
 
@@ -172,7 +172,7 @@ const gridAlpha = computed(() => {
 
 // Volume / surface area (precomputed for our part)
 // Volume = (W*D - π*HR²) * H  [in mm³, treating units as mm at scale 10]
-const volume = (W * D * 100 - Math.PI * HR * HR * 100) * H * 10; // = 12,879 mm³ approx
+const volume = (W * D * 100 - Math.PI * HR * HR * 100) * H * 10; // ≈ 12,110 mm³
 const surface = (() => {
   const top = (W * D - Math.PI * HR * HR) * 100;
   const bottom = top;
