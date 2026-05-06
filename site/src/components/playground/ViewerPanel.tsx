@@ -11,6 +11,21 @@ import EdgeRenderer from './EdgeRenderer';
 import ViewerToolbar from './ViewerToolbar';
 
 /**
+ * Build a content-derived React key for a mesh. The store hands us a fresh
+ * typed-array reference per eval, but using the array index as the key would
+ * make React reuse the prior ShapeRenderer when the array length is the same
+ * — and useMemo would skip if the typed-array reference were ever recycled.
+ * Sampling length + first/middle/last position values is enough to make
+ * distinct geometries hash distinct without scanning the full buffer.
+ */
+function meshKey(m: MeshData, fallback: number): string {
+  const p = m.position;
+  if (!p || p.length === 0) return `empty-${fallback}`;
+  const mid = (p.length / 6 | 0) * 3;
+  return `${p.length}-${p[0]}-${p[mid] ?? 0}-${p[p.length - 1] ?? 0}`;
+}
+
+/**
  * Compute bounding box from mesh position data in CAD coordinates,
  * then return center and radius in display coordinates (Z-up -> Y-up).
  */
@@ -221,7 +236,7 @@ export default function ViewerPanel() {
         <CameraPresetBridge meshes={meshes} />
         <group rotation={[-Math.PI / 2, 0, 0]}>
           {meshes.map((m, i) => (
-            <group key={i}>
+            <group key={meshKey(m, i)}>
               <ShapeRenderer data={m} />
               {showEdges && !showWireframe && m.edges.length > 0 && (
                 <EdgeRenderer edges={m.edges} />

@@ -11,7 +11,7 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-gray-800 px-3 py-1">
-        <span className="text-xs font-medium text-gray-400">Console</span>
+        <span className="text-xs font-medium text-gray-300">Console</span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => {
@@ -19,10 +19,11 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
               store.setConsoleOutput([]);
               store.setError(null);
             }}
-            className="text-gray-500 transition-colors hover:text-gray-300"
+            className="text-gray-400 transition-colors hover:text-gray-100"
             title="Clear console"
+            aria-label="Clear console"
           >
-            <svg viewBox="0 0 16 16" className="h-3 w-3">
+            <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden="true">
               <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" fill="none" />
             </svg>
           </button>
@@ -31,10 +32,11 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
               const text = [...consoleOutput, ...(error ? [error] : [])].join('\n');
               void navigator.clipboard.writeText(text);
             }}
-            className="text-gray-500 transition-colors hover:text-gray-300"
+            className="text-gray-400 transition-colors hover:text-gray-100"
             title="Copy console output"
+            aria-label="Copy console output"
           >
-            <svg viewBox="0 0 16 16" className="h-3 w-3">
+            <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden="true">
               <rect
                 x="5"
                 y="5"
@@ -50,10 +52,11 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
           </button>
           <button
             onClick={onCollapse}
-            className="text-gray-500 transition-colors hover:text-gray-300"
+            className="text-gray-400 transition-colors hover:text-gray-100"
             title="Collapse console"
+            aria-label="Collapse console"
           >
-            <svg viewBox="0 0 16 16" className="h-3 w-3">
+            <svg viewBox="0 0 16 16" className="h-3 w-3" aria-hidden="true">
               <path d="M4.5 5.5L8 9l3.5-3.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
             </svg>
           </button>
@@ -61,7 +64,7 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
       </div>
       <div className="scrollbar-thin flex-1 overflow-auto p-2 font-mono text-xs" aria-live="polite">
         {consoleOutput.length === 0 && !error ? (
-          <div className="flex h-full items-center justify-center text-gray-600">
+          <div className="flex h-full items-center justify-center text-gray-500">
             Console output appears here
           </div>
         ) : (
@@ -74,7 +77,7 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
                     ? 'text-red-400'
                     : line.startsWith('[warn]')
                       ? 'text-amber-400'
-                      : 'text-gray-400'
+                      : 'text-gray-300'
                 }
               >
                 {line}
