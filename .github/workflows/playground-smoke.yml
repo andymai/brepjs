@@ -1,0 +1,58 @@
+name: Playground Smoke
+
+# Runs after Vercel finishes a deployment. Loads the deployed playground in
+# headless Chromium and verifies the WASM kernel reaches `Ready` within 60s
+# — gates against CSP / COEP / COOP / asset-path regressions that block
+# engine init but pass static build checks.
+
+on:
+  deployment_status:
+
+concurrency:
+  group: playground-smoke-${{ github.event.deployment.sha }}-${{ github.event.deployment.environment }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  smoke:
+    # Only run on successful Vercel deployments. Vercel populates
+    # `creator.login` with `vercel[bot]`; the environment is "Preview" or
+    # "Production".
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.creator.login == 'vercel[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+
+      - name: Cache puppeteer browser download
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('site/package-lock.json', 'site/package.json') }}
+
+      - name: Install site dependencies
+        working-directory: site
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+
+      - name: Run smoke against deployment
+        working-directory: site
+        env:
+          DEPLOY_URL: ${{ github.event.deployment_status.target_url || github.event.deployment_status.environment_url }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error::No deployment URL on the event payload"
+            exit 1
+          fi
+          echo "Smoking $DEPLOY_URL"
+          npm run smoke -- "$DEPLOY_URL"
