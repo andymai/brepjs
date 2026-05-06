@@ -73,7 +73,6 @@ const easeOutBack = (x: number, k = 1.4) => {
 // ─── Stage helpers ──────────────────────────────────────────────────────
 type Eas = (x: number) => number;
 const seg = (a: number, b: number, easeFn: Eas = smooth) => easeFn((t.value - a) / (b - a));
-const fadeAt = (a: number, dur: number) => 1 - smooth((t.value - a) / dur);
 const elem = (start: number, dur: number, easeFn: Eas = smooth) =>
   easeFn((t.value - start) / dur);
 
@@ -272,6 +271,15 @@ const bezier = (a: Pt, c: Pt, curl = 0.18) => {
   return `M ${a.x} ${a.y} Q ${px} ${py} ${c.x} ${c.y}`;
 };
 
+// Quadratic Bezier arc-length approximation: chord + (8/3)·h²/chord
+// (small-perpendicular-offset form; accurate enough that stroke-dashoffset
+// draw-on stays in sync with the easing)
+const bezierLen = (a: Pt, c: Pt, curl: number) => {
+  const chord = Math.hypot(c.x - a.x, c.y - a.y);
+  const h = Math.abs(curl) * chord;
+  return chord + (8 / 3) * (h * h) / Math.max(chord, 1e-3);
+};
+
 // ─── Numbers ────────────────────────────────────────────────────────────
 const volume = (W * D * 100 - Math.PI * HR * HR * 100) * H * 10; // ≈ 12,110 mm³
 const surface = (() => {
@@ -292,6 +300,23 @@ const anchorBackBottom = computed(() => v.value.B2);
 const cVol = { x: 18, y: 36, w: 156, h: 38 };
 const cSurf = { x: 244, y: 36, w: 138, h: 38 };
 const cTop = { x: 122, y: 348, w: 156, h: 38 };
+
+// Leader endpoints + per-leader curl + path length (used for stroke-dashoffset)
+const leader0 = computed(() => {
+  const a: Pt = { x: cVol.x + cVol.w, y: cVol.y + cVol.h / 2 };
+  const c: Pt = { x: anchorTop.value.x - 8, y: anchorTop.value.y - 6 };
+  return { a, c, curl: 0.22, len: bezierLen(a, c, 0.22) };
+});
+const leader1 = computed(() => {
+  const a: Pt = { x: cSurf.x, y: cSurf.y + cSurf.h / 2 };
+  const c: Pt = { x: anchorRight.value.x + 8, y: anchorRight.value.y - 6 };
+  return { a, c, curl: -0.22, len: bezierLen(a, c, -0.22) };
+});
+const leader2 = computed(() => {
+  const a: Pt = { x: cTop.x + cTop.w / 2, y: cTop.y };
+  const c: Pt = { x: anchorBackBottom.value.x, y: anchorBackBottom.value.y + 6 };
+  return { a, c, curl: 0.18, len: bezierLen(a, c, 0.18) };
+});
 
 // Edge length for stroke-dashoffset draw-on of profile edges
 const edgeLen = (a: Pt, b: Pt) => Math.hypot(b.x - a.x, b.y - a.y);
@@ -570,10 +595,10 @@ const leaderDrawAlpha = (i: number) =>
       <g font-family="ui-sans-serif, system-ui, sans-serif">
         <!-- VOLUME (top-left) -->
         <g :opacity="calloutAlpha(0)" :transform="`translate(${-calloutSlide(0, 30)} 0)`">
-          <path :d="bezier({ x: cVol.x + cVol.w, y: cVol.y + cVol.h / 2 }, { x: anchorTop.x - 8, y: anchorTop.y - 6 }, 0.22)"
+          <path :d="bezier(leader0.a, leader0.c, leader0.curl)"
             stroke="#22d3ee" stroke-width="1" stroke-opacity="0.6" fill="none"
-            :stroke-dasharray="120" :stroke-dashoffset="(1 - leaderDrawAlpha(0)) * 120" />
-          <circle :cx="anchorTop.x - 8" :cy="anchorTop.y - 6" r="2" fill="#22d3ee" />
+            :stroke-dasharray="leader0.len" :stroke-dashoffset="(1 - leaderDrawAlpha(0)) * leader0.len" />
+          <circle :cx="leader0.c.x" :cy="leader0.c.y" r="2" fill="#22d3ee" />
           <rect :x="cVol.x" :y="cVol.y" :width="cVol.w" :height="cVol.h" rx="7" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.8" />
           <text :x="cVol.x + 12" :y="cVol.y + 14" fill="#94a3b8" font-size="9" letter-spacing="1.2" font-weight="600">VOLUME</text>
           <text :x="cVol.x + 12" :y="cVol.y + 30" fill="#bae6fd" font-size="14" font-weight="600" font-family="ui-monospace, monospace">{{ volStr }}</text>
@@ -581,10 +606,10 @@ const leaderDrawAlpha = (i: number) =>
 
         <!-- SURFACE (top-right) -->
         <g :opacity="calloutAlpha(1)" :transform="`translate(${calloutSlide(1, 30)} 0)`">
-          <path :d="bezier({ x: cSurf.x, y: cSurf.y + cSurf.h / 2 }, { x: anchorRight.x + 8, y: anchorRight.y - 6 }, -0.22)"
+          <path :d="bezier(leader1.a, leader1.c, leader1.curl)"
             stroke="#22d3ee" stroke-width="1" stroke-opacity="0.6" fill="none"
-            :stroke-dasharray="120" :stroke-dashoffset="(1 - leaderDrawAlpha(1)) * 120" />
-          <circle :cx="anchorRight.x + 8" :cy="anchorRight.y - 6" r="2" fill="#22d3ee" />
+            :stroke-dasharray="leader1.len" :stroke-dashoffset="(1 - leaderDrawAlpha(1)) * leader1.len" />
+          <circle :cx="leader1.c.x" :cy="leader1.c.y" r="2" fill="#22d3ee" />
           <rect :x="cSurf.x" :y="cSurf.y" :width="cSurf.w" :height="cSurf.h" rx="7" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.8" />
           <text :x="cSurf.x + 12" :y="cSurf.y + 14" fill="#94a3b8" font-size="9" letter-spacing="1.2" font-weight="600">SURFACE</text>
           <text :x="cSurf.x + 12" :y="cSurf.y + 30" fill="#bae6fd" font-size="14" font-weight="600" font-family="ui-monospace, monospace">{{ surfStr }}</text>
@@ -592,10 +617,10 @@ const leaderDrawAlpha = (i: number) =>
 
         <!-- TOPOLOGY (bottom-center) -->
         <g :opacity="calloutAlpha(2)" :transform="`translate(0 ${calloutSlide(2, 24)})`">
-          <path :d="bezier({ x: cTop.x + cTop.w / 2, y: cTop.y }, { x: anchorBackBottom.x, y: anchorBackBottom.y + 6 }, 0.18)"
+          <path :d="bezier(leader2.a, leader2.c, leader2.curl)"
             stroke="#22d3ee" stroke-width="1" stroke-opacity="0.6" fill="none"
-            :stroke-dasharray="120" :stroke-dashoffset="(1 - leaderDrawAlpha(2)) * 120" />
-          <circle :cx="anchorBackBottom.x" :cy="anchorBackBottom.y + 6" r="2" fill="#22d3ee" />
+            :stroke-dasharray="leader2.len" :stroke-dashoffset="(1 - leaderDrawAlpha(2)) * leader2.len" />
+          <circle :cx="leader2.c.x" :cy="leader2.c.y" r="2" fill="#22d3ee" />
           <rect :x="cTop.x" :y="cTop.y" :width="cTop.w" :height="cTop.h" rx="7" fill="#0c0e1a" stroke="#1e3a8a" stroke-width="0.8" />
           <text :x="cTop.x + 12" :y="cTop.y + 14" fill="#94a3b8" font-size="9" letter-spacing="1.2" font-weight="600">TOPOLOGY</text>
           <text :x="cTop.x + 12" :y="cTop.y + 30" fill="#bae6fd" font-size="13" font-weight="600" font-family="ui-monospace, monospace">10 F · 24 E · 16 V</text>
