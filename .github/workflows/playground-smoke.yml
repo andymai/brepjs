@@ -43,7 +43,15 @@ jobs:
 
       - name: Install site dependencies
         working-directory: site
+        # --ignore-scripts skips the root `prepare` (husky + ensure-wasm)
+        # which we don't need in a smoke runner. We then run puppeteer's
+        # browser install explicitly below since --ignore-scripts also
+        # suppressed it.
         run: npm install --legacy-peer-deps --no-audit --no-fund --ignore-scripts
+
+      - name: Install Chrome for Puppeteer
+        working-directory: site
+        run: npx puppeteer browsers install chrome
 
       - name: Run smoke against deployment
         working-directory: site
