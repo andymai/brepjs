@@ -4,7 +4,8 @@
     ".": {
       "release-type": "node",
       "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true
+      "bump-minor-pre-major": true,
+      "exclude-paths": ["site", "docs-site"]
     },
     "packages/brepjs-opencascade": {
       "release-type": "node",
