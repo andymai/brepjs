@@ -1,14 +1,10 @@
 import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as {
-  version?: string;
-};
-const major = pkg.version ? `v${pkg.version.split('.')[0]}` : 'latest';
+// Update on major bumps — this docs site is deployed independently from the
+// brepjs package, so reading the version from package.json at build time would
+// require shipping the parent package.json into the deploy artifact.
+const major = 'v17';
 const year = new Date().getFullYear();
 
 export default withMermaid(
