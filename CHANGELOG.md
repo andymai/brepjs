@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.1.0](https://github.com/andymai/brepjs/compare/brepjs-v18.0.3...brepjs-v18.1.0) (2026-05-06)
+
+
+### Features
+
+* **ci:** playground smoke check on Vercel deploys + drop hero-mesh ([#836](https://github.com/andymai/brepjs/issues/836)) ([5cb11df](https://github.com/andymai/brepjs/commit/5cb11df948900c755815d90bb337775362e1b96d))
+
 ## [18.0.3](https://github.com/andymai/brepjs/compare/brepjs-v18.0.2...brepjs-v18.0.3) (2026-05-06)
 
 
