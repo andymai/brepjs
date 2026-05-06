@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <!-- isometric cube with edge lines: a B-Rep idea reduced to 12 edges, 8 vertices -->
+  <g fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- top face -->
+    <path d="M32 8 L54 20 L32 32 L10 20 Z"/>
+    <!-- vertical edges -->
+    <path d="M10 20 L10 44"/>
+    <path d="M32 32 L32 56"/>
+    <path d="M54 20 L54 44"/>
+    <!-- bottom face (visible portion) -->
+    <path d="M10 44 L32 56 L54 44"/>
+  </g>
+</svg>

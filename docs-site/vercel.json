@@ -3,6 +3,8 @@
   "framework": "vitepress",
   "buildCommand": "npm install && npm run build",
   "outputDirectory": ".vitepress/dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "github": {
     "silent": false
   }

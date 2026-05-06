@@ -1,5 +1,15 @@
 import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as {
+  version?: string;
+};
+const major = pkg.version ? `v${pkg.version.split('.')[0]}` : 'latest';
+const year = new Date().getFullYear();
 
 export default withMermaid(
   defineConfig({
@@ -21,7 +31,7 @@ export default withMermaid(
         { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
         { text: 'Playground', link: 'https://brepjs.vercel.app/' },
         {
-          text: 'v16',
+          text: major,
           items: [
             { text: 'Changelog', link: 'https://github.com/andymai/brepjs/blob/main/CHANGELOG.md' },
             { text: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
@@ -126,7 +136,7 @@ export default withMermaid(
       },
       footer: {
         message: 'Released under the Apache 2.0 License.',
-        copyright: 'Copyright © 2024-present Andy Aragon',
+        copyright: `Copyright © 2024–${year} Andy Aragon`,
       },
       search: {
         provider: 'local',
