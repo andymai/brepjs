@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.1.2](https://github.com/andymai/brepjs/compare/brepjs-v18.1.1...brepjs-v18.1.2) (2026-05-06)
+
+
+### Bug Fixes
+
+* **ci:** install Chrome explicitly for smoke ([#840](https://github.com/andymai/brepjs/issues/840)) ([c5e9f07](https://github.com/andymai/brepjs/commit/c5e9f079e0c0d93008f037b2789d0a7329b876bc))
+
 ## [18.1.1](https://github.com/andymai/brepjs/compare/brepjs-v18.1.0...brepjs-v18.1.1) (2026-05-06)
 
 
