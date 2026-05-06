@@ -13,7 +13,7 @@ export function useHeroMesh() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch('/hero-mesh.bin')
+    fetch(`${import.meta.env.BASE_URL}hero-mesh.bin`)
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load hero mesh');
         return res.arrayBuffer();

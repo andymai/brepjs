@@ -17,7 +17,8 @@ hero:
       link: /introduction/why-brepjs
     - theme: alt
       text: Open Playground
-      link: https://brepjs.vercel.app/
+      link: /playground
+      target: _blank
 
 features:
   - icon: 📐

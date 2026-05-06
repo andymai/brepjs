@@ -2,11 +2,11 @@ import lzString from 'lz-string';
 
 const { compressToEncodedURIComponent } = lzString;
 
-const PLAYGROUND_ORIGIN = 'https://brepjs.vercel.app';
+const PLAYGROUND_PATH = '/playground';
 const ATTR_DECORATED = 'data-playground-decorated';
 
 function encodeCode(code: string): string {
-  return `${PLAYGROUND_ORIGIN}/#code/${compressToEncodedURIComponent(code)}`;
+  return `${PLAYGROUND_PATH}?code=${compressToEncodedURIComponent(code)}`;
 }
 
 function getCodeFromBlock(block: HTMLElement): string {

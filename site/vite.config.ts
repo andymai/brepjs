@@ -4,10 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 import { createReadStream, existsSync, mkdirSync, copyFileSync } from 'fs';
 
-const WASM_FILES = [
-  'brepjs_single.js',
-  'brepjs_single.wasm',
-];
+const WASM_FILES = ['brepjs_single.js', 'brepjs_single.wasm'];
+
+const BASE = '/playground/';
 
 function opencascadeWasm(): Plugin {
   // Prefer local monorepo path, fall back to node_modules
@@ -16,10 +15,17 @@ function opencascadeWasm(): Plugin {
     ? local
     : resolve('node_modules/brepjs-opencascade/src');
 
+  let base = BASE;
+
   return {
     name: 'opencascade-wasm',
+    configResolved(config) {
+      base = config.base;
+    },
     configureServer(server) {
-      server.middlewares.use('/wasm', (req, res, next) => {
+      // Listen under the configured base so dev URLs match production (`/playground/wasm/...`)
+      const wasmPath = `${base.replace(/\/$/, '')}/wasm`;
+      server.middlewares.use(wasmPath, (req, res, next) => {
         const file = req.url?.slice(1) ?? '';
         if (!WASM_FILES.includes(file)) return next();
         const filePath = resolve(wasmDir, file);
@@ -47,6 +53,7 @@ function opencascadeWasm(): Plugin {
 }
 
 export default defineConfig({
+  base: BASE,
   plugins: [react(), tailwindcss(), opencascadeWasm()],
   server: {
     headers: {

@@ -14,7 +14,8 @@ export async function preloadWASM(): Promise<void> {
     const cache = await caches.open(WASM_CACHE_NAME);
 
     // List of WASM files to preload
-    const urls = WASM_FILES.map((file) => `/wasm/${file}`);
+    const base = import.meta.env.BASE_URL;
+    const urls = WASM_FILES.map((file) => `${base}wasm/${file}`);
 
     // Fetch and cache each file if not already cached
     await Promise.all(

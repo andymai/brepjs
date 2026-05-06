@@ -5,10 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && npm run precompute-meshes && vite build",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "precompute-meshes": "npx tsx scripts/precompute-gallery-meshes.ts",
     "screenshot-examples": "npx tsx scripts/screenshot-examples.ts",
     "generate-types": "npx tsx scripts/generate-ambient-types.ts"
   },
@@ -23,7 +22,6 @@
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-resizable-panels": "4.11.0",
-    "react-router-dom": "7.14.2",
     "shiki": "4.0.2",
     "three": "0.184.0",
     "zustand": "5.0.12"

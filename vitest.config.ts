@@ -17,6 +17,7 @@ const alwaysExclude = [
   'benchmarks/**',
   'node_modules/**',
   'site/**',
+  'docs-site/**',
   '.worktrees/**',
 ];
 

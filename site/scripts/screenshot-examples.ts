@@ -39,7 +39,7 @@ for (const ex of examples) {
 
   try {
     // Navigate to the example
-    await page.goto(`${BASE_URL}/playground#example/${ex.id}`, {
+    await page.goto(`${BASE_URL}/playground/?example=${encodeURIComponent(ex.id)}`, {
       waitUntil: 'networkidle2',
       timeout: 30_000,
     });

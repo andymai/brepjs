@@ -17,7 +17,10 @@ export default withMermaid(
     lastUpdated: true,
     head: [
       ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
-      ['meta', { name: 'theme-color', content: '#3b82f6' }],
+      ['link', { rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' }],
+      ['link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
+      ['link', { rel: 'manifest', href: '/site.webmanifest' }],
+      ['meta', { name: 'theme-color', content: '#4ACECC' }],
     ],
     themeConfig: {
       logo: { src: '/logo.svg', alt: 'brepjs' },
@@ -25,7 +28,7 @@ export default withMermaid(
       nav: [
         { text: 'Guide', link: '/introduction/why-brepjs' },
         { text: 'API Reference', link: 'https://andymai.github.io/brepjs/' },
-        { text: 'Playground', link: 'https://brepjs.vercel.app/' },
+        { text: 'Playground', link: '/playground', target: '_blank' },
         {
           text: major,
           items: [

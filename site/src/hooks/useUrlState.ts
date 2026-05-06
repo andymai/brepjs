@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../stores/playgroundStore';
-import { decodeHash, encodeCode } from '../lib/urlCodec';
+import { decodeShare, encodeCodeQuery } from '../lib/urlCodec';
 import { findExample } from '../lib/examples';
 
 export function useUrlState() {
@@ -8,37 +8,46 @@ export function useUrlState() {
   const setPendingReview = usePlaygroundStore((s) => s.setPendingReview);
   const initialized = useRef(false);
 
-  // On mount: read URL hash and set code
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
-    const result = decodeHash(window.location.hash);
+    const url = new URL(window.location.href);
+    const result = decodeShare(url);
     if (!result) return;
 
     if (result.type === 'code') {
       setCode(result.code);
-      setPendingReview(true); // Don't auto-run shared links — user must review first
+      setPendingReview(true); // shared links require review before run
     } else {
       const ex = findExample(result.id);
       if (ex) setCode(ex.code);
     }
+
+    // Migrate legacy hash URLs to the new query format so further updates
+    // and clipboard copies pick up the canonical form.
+    if (result.legacy) {
+      const next =
+        result.type === 'code'
+          ? `${url.pathname}${encodeCodeQuery(result.code)}`
+          : `${url.pathname}?example=${encodeURIComponent(result.id)}`;
+      history.replaceState(null, '', next);
+    }
   }, [setCode, setPendingReview]);
 
-  // Update URL on successful eval (called manually, not on every code change)
+  // Update URL on successful eval (called manually, not on every code change).
   const updateUrl = (code: string) => {
-    const hash = encodeCode(code);
-    history.replaceState(null, '', hash);
+    const query = encodeCodeQuery(code);
+    history.replaceState(null, '', `${window.location.pathname}${query}`);
   };
 
   const copyShareUrl = async (code: string) => {
-    const hash = encodeCode(code);
-    const url = `${window.location.origin}${window.location.pathname}${hash}`;
-    history.replaceState(null, '', hash);
+    const query = encodeCodeQuery(code);
+    const url = `${window.location.origin}${window.location.pathname}${query}`;
+    history.replaceState(null, '', `${window.location.pathname}${query}`);
     try {
       await navigator.clipboard.writeText(url);
     } catch {
-      // Fallback for browsers without clipboard API
       const textarea = document.createElement('textarea');
       textarea.value = url;
       textarea.style.position = 'fixed';

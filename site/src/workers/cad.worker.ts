@@ -60,8 +60,9 @@ function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
 // ── Init ──
 
 async function loadWasmBuild() {
-  const jsFile = '/wasm/brepjs_single.js';
-  const wasmFile = '/wasm/brepjs_single.wasm';
+  const base = import.meta.env.BASE_URL;
+  const jsFile = `${base}wasm/brepjs_single.js`;
+  const wasmFile = `${base}wasm/brepjs_single.wasm`;
 
   // Try cache first, fall back to network
   let resp: Response | undefined;

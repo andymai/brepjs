@@ -1,29 +1,24 @@
 {
-  "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "cd site && npm run build",
-  "outputDirectory": "site/dist",
+  "framework": "vitepress",
+  "installCommand": "npm install --legacy-peer-deps && cd docs-site && npm install --legacy-peer-deps",
+  "buildCommand": "npm run build --workspace=site && cd docs-site && npm run build && mkdir -p .vitepress/dist/playground && cp -r ../site/dist/. .vitepress/dist/playground/",
+  "outputDirectory": "docs-site/.vitepress/dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/playground/(.*)",
       "headers": [
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:" }
       ]
     },
     {
-      "source": "/wasm/(.*)",
+      "source": "/playground/wasm/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
-    },
-    {
-      "source": "/playground",
-      "headers": [
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net; worker-src 'self' blob:; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:" }
-      ]
     }
-  ],
-  "rewrites": [
-    { "source": "/((?!wasm/|assets/|gallery-meshes/|.*\\..+).*)", "destination": "/index.html" }
   ]
 }
