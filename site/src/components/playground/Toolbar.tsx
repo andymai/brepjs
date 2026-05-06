@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useEngineStore } from '../../stores/engineStore';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import Logo from '../shared/Logo';
@@ -42,10 +41,10 @@ export default function Toolbar({
   return (
     <div className="flex h-11 items-center justify-between border-b border-border-subtle bg-surface px-3">
       <div className="flex items-center gap-2">
-        <Link to="/" className="flex items-center gap-1.5 text-sm font-bold">
+        <a href="/" className="flex items-center gap-1.5 text-sm font-bold" aria-label="Back to brepjs docs">
           <Logo className="h-6 w-6" />
           <span className="text-gray-400">brepjs</span>
-        </Link>
+        </a>
 
         <div className="mx-2 h-4 w-px bg-border-subtle" />
 
