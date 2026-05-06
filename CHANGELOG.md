@@ -1,5 +1,16 @@
 # Changelog
 
+## [18.0.0](https://github.com/andymai/brepjs/compare/brepjs-v17.0.0...brepjs-v18.0.0) (2026-05-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **site:** serve docs-site at root, playground at /playground ([#827](https://github.com/andymai/brepjs/issues/827))
+
+### Features
+
+* **site:** serve docs-site at root, playground at /playground ([#827](https://github.com/andymai/brepjs/issues/827)) ([3607d11](https://github.com/andymai/brepjs/commit/3607d11db9abd8e5f97ac09d50d3f5e04bc4ef24))
+
 ## [17.0.0](https://github.com/andymai/brepjs/compare/brepjs-v16.0.0...brepjs-v17.0.0) (2026-05-05)
 
 ### ⚠ BREAKING CHANGES
