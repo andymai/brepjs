@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.0.1](https://github.com/andymai/brepjs/compare/brepjs-v18.0.0...brepjs-v18.0.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **playground:** bundled UX pass — worker, viewer, editor, shortcuts ([#828](https://github.com/andymai/brepjs/issues/828)) ([0f34ce2](https://github.com/andymai/brepjs/commit/0f34ce2cb8683e34f67524157998f48cb20d8492))
+
 ## [18.0.0](https://github.com/andymai/brepjs/compare/brepjs-v17.0.0...brepjs-v18.0.0) (2026-05-06)
 
 
