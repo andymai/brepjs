@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.3.1](https://github.com/andymai/brepjs/compare/brepjs-v18.3.0...brepjs-v18.3.1) (2026-05-07)
+
+
+### Bug Fixes
+
+* **playground:** force HTML revalidation so deploys aren't shadowed by browser cache ([#882](https://github.com/andymai/brepjs/issues/882)) ([b0fb229](https://github.com/andymai/brepjs/commit/b0fb229c7cccd3ad190e207a36441121a8fdc8fa))
+
 ## [18.3.0](https://github.com/andymai/brepjs/compare/brepjs-v18.2.0...brepjs-v18.3.0) (2026-05-07)
 
 
