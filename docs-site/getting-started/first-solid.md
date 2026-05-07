@@ -31,6 +31,8 @@ console.log('Volume:', measureVolume(part).toFixed(2), 'mm³');
 
 const step = unwrap(exportSTEP(part));
 console.log('STEP file size:', step.size, 'bytes');
+
+export default part;
 ```
 
 That is the canonical brepjs flow: primitives → booleans → query → refinement → measurement → export.
@@ -113,6 +115,8 @@ const part = shape(box(30, 20, 10))
 
 console.log('Volume:', shape(part).volume().toFixed(2), 'mm³');
 const step = unwrap(exportSTEP(part));
+
+export default part;
 ```
 
 The wrapper auto-unwraps `Result`s and throws `BrepWrapperError` on failure. Each operation returns a typed wrapper (`Wrapped3D`, `WrappedFace`, etc.) so `.fillet`, `.shell`, `.translate`, `.volume` are all available without separate imports. Use `.val` at the end to extract the underlying shape.
@@ -136,6 +140,8 @@ const holes = unwrap(
   ])
 );
 const part = unwrap(cut(block, holes));
+
+export default part;
 ```
 
 Boolean-fuse the holes first, then cut once. Three booleans become two — faster and avoids a class of failure modes when the cuts overlap.
@@ -146,6 +152,8 @@ Boolean-fuse the holes first, then cut once. Three booleans become two — faste
 import { sketchRoundedRectangle } from 'brepjs/quick';
 
 const part = sketchRoundedRectangle(40, 30, 5).extrude(15);
+
+export default part;
 ```
 
 For shapes you cannot build from primitive booleans, sketch the cross-section in 2D and extrude. See [2D Sketching](../tasks/sketching).

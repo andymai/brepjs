@@ -15,6 +15,9 @@ function getCodeFromBlock(block: HTMLElement): string {
   return (code.textContent ?? '').replace(/\n$/, '');
 }
 
+// Only decorate blocks that import brepjs *and* end with an `export default`.
+// Without an exported default the playground would render an empty viewer, so
+// blocks lacking it (signature snippets, console-logging demos) are skipped.
 function shouldDecorate(block: HTMLElement): boolean {
   if (block.getAttribute(ATTR_DECORATED) === 'true') return false;
   const lang = block.className.match(/language-(\w+)/)?.[1];
@@ -23,8 +26,8 @@ function shouldDecorate(block: HTMLElement): boolean {
   if (block.dataset.noPlayground === 'true') return false;
   const code = getCodeFromBlock(block);
   if (!code) return false;
-  if (!/(brepjs|shape\(|box\(|cylinder\(|sketchCircle|sphere\(|drawRect|draw\()/.test(code))
-    return false;
+  if (!/from\s+['"]brepjs(?:\/quick)?['"]/.test(code)) return false;
+  if (!/^\s*export\s+default\b/m.test(code)) return false;
   return true;
 }
 
@@ -39,7 +42,7 @@ function buildButton(href: string): HTMLAnchorElement {
   arrow.setAttribute('aria-hidden', 'true');
   arrow.textContent = '▶';
   button.appendChild(arrow);
-  button.appendChild(document.createTextNode(' Open in Playground'));
+  button.appendChild(document.createTextNode(' Open in Playground'));
   return button;
 }
 

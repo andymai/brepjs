@@ -138,7 +138,8 @@ import { box, mirror } from 'brepjs/quick';
 
 const right = box(10, 10, 10, { at: [5, 0, 0] });
 const left = mirror(right, 'YZ'); // reflect across the YZ plane
-void left;
+
+export default left;
 ```
 
 Plane names: `'XY'`, `'YZ'`, `'XZ'`. For arbitrary planes pass a `Plane` value (origin + normal).
@@ -174,6 +175,8 @@ const ring = unwrap(
   })
 );
 void ring;
+
+export default drilled;
 ```
 
 `linearPattern` distributes copies on a 3D grid; `circularPattern` distributes them around an axis.
@@ -190,7 +193,8 @@ import { box, cylinder, cut, unwrap } from 'brepjs/quick';
 const block = box(20, 20, 10);
 const hole = cylinder(5, 12, { at: [10, 10, -1] }); // -1 to +11 = +1 overshoot
 const drilled = unwrap(cut(block, hole));
-void drilled;
+
+export default drilled;
 ```
 
 `cylinder(5, 10, { at: [10, 10, 0] })` would have endpoints exactly on the block's faces — the boolean kernel can produce slivers near coincident geometry. A 1-unit overshoot is the cheap, reliable fix.

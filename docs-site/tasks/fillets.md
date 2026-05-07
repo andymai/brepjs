@@ -19,6 +19,8 @@ const beveled = unwrap(chamfer(b, verticals, 1));
 
 console.log('Filleted vertical edges with 2 mm radius');
 void beveled;
+
+export default filleted;
 ```
 
 `fillet(shape, edges, radius)` and `chamfer(shape, edges, distance)`. Both return `Result<Shape3D, BrepError>`.
@@ -65,7 +67,8 @@ import { shape, box } from 'brepjs/quick';
 const filleted = shape(box(30, 20, 10))
   .fillet((e) => e.inDirection('Z'), 2)
   .chamfer((e) => e.inDirection('X'), 0.5).val;
-void filleted;
+
+export default filleted;
 ```
 
 The callback receives an `EdgeFinder` you chain filters on. The wrapper internally calls `findAll` and passes the result to the kernel.
@@ -79,6 +82,8 @@ import { shape, box } from 'brepjs/quick';
 
 const blob = shape(box(20, 20, 20)).fillet(2).val;
 console.log('All edges filleted');
+
+export default blob;
 ```
 
 `shape(s).fillet(radius)` (no finder) applies to every edge. The functional equivalent: `fillet(s, edgeFinder().findAll(s), radius)`.
@@ -162,6 +167,8 @@ const allTargetEdges = [
 ];
 const filleted = unwrap(fillet(b, allTargetEdges, 3));
 console.log('One-pass fillet');
+
+export default filleted;
 ```
 
 For different radii, two passes are unavoidable — just re-find edges after each.
@@ -179,7 +186,8 @@ const edges = edgeFinder().inDirection('Z').findAll(part);
 const filleted = fillet(part, edges, 1.5);
 const refined = isOk(filleted) ? filleted.value : unwrap(chamfer(part, edges, 1.5)); // fallback
 console.log('Refined edges (fillet-or-chamfer)');
-void refined;
+
+export default refined;
 ```
 
 A `fillet ?? chamfer` fallback can hide some classes of import-related failures without sacrificing visual quality.
@@ -194,7 +202,8 @@ import { shape, box, cylinder } from 'brepjs/quick';
 const drilled = shape(box(40, 30, 15))
   .cut(cylinder(5, 20, { at: [20, 15, -3] }))
   .fillet(1.5).val;
-void drilled;
+
+export default drilled;
 ```
 
 A small uniform fillet (1–2 mm on a 30 mm part) reads as "manufactured to spec" without becoming the dominant visual feature.
@@ -208,7 +217,8 @@ const bowl = sketchCircle(30).extrude(40);
 const rounded = shape(bowl)
   .shell((f) => f.inDirection('Z'), 2) // hollow it
   .fillet((e) => e.inDirection('Z').withLength({ max: 200 }), 2).val;
-void rounded;
+
+export default rounded;
 ```
 
 Find the top circular edge with a length filter; fillet only that.
@@ -221,7 +231,8 @@ Find the top circular edge with a length filter; fillet only that.
 import { shape, box } from 'brepjs/quick';
 
 const part = shape(box(30, 20, 10)).chamfer((e) => e.inDirection('Z'), 0.3).val;
-void part;
+
+export default part;
 ```
 
 ## Next steps

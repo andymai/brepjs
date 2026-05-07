@@ -1,17 +1,8 @@
-/**
- * CAD Web Worker — loads WASM, evaluates user code, returns mesh data.
- *
- * All brepjs exports are injected onto globalThis so user code can
- * use them without imports (e.g. `const b = box(40, 30, 20)`).
- */
 import type { ToWorker, FromWorker, MeshTransfer } from './workerProtocol';
 import { WASM_CACHE_NAME } from '../lib/wasmConfig';
 
-// Worker global scope declarations
 declare function postMessage(message: unknown, transfer?: Transferable[]): void;
 declare function postMessage(message: unknown, options?: StructuredSerializeOptions): void;
-
-// ── Helpers ──
 
 function post(msg: FromWorker, transfer?: Transferable[]) {
   if (transfer) {
@@ -21,20 +12,18 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
   }
 }
 
-// Keep track of which keys we added to globalThis so we can clean up user-added keys
-const brepjsGlobalKeys: Set<string> = new Set();
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs module
 let brepjs: any = null;
 
-// Cache the last eval result for exports
+let brepjsBlobUrl: string | null = null;
 let lastEvalResult: unknown[] | null = null;
 
-// Track active execution for cancellation
-let activeEvalId: string | null = null;
-let cancelRequested = false;
-
-// ── Code Cache ──
+// Per-eval cancellation: ids land here when the main thread sends `cancel`
+// or when a newer eval supersedes them. Each `handleEval` checks the set at
+// async boundaries and removes its own id in `finally`. Using a set instead
+// of a single flag handles concurrent in-flight evals correctly when the
+// user spams Run.
+const cancelledIds = new Set<string>();
 
 interface CachedEval {
   meshes: MeshTransfer[];
@@ -45,9 +34,6 @@ interface CachedEval {
 const codeCache = new Map<string, CachedEval>();
 const MAX_CACHE_SIZE = 20;
 
-/**
- * Clone mesh data for cache storage (since transferables can only be sent once).
- */
 function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
   return {
     position: new Float32Array(mesh.position),
@@ -57,14 +43,11 @@ function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
   };
 }
 
-// ── Init ──
-
 async function loadWasmBuild() {
   const base = import.meta.env.BASE_URL;
   const jsFile = `${base}wasm/brepjs_single.js`;
   const wasmFile = `${base}wasm/brepjs_single.wasm`;
 
-  // Try cache first, fall back to network
   let resp: Response | undefined;
   try {
     if ('caches' in self) {
@@ -100,34 +83,38 @@ async function loadWasmBuild() {
   return oc;
 }
 
+// Wrapper module that re-exports the loaded brepjs runtime via self.__brepjs.
+// User code's bare specifiers ('brepjs', 'brepjs/quick') get rewritten to
+// this URL so we keep one live module instance instead of re-importing.
+// `default` is excluded because it's a keyword and can't be used as a named export const.
+function buildBrepjsWrapperUrl(mod: Record<string, unknown>): string {
+  const names = Object.keys(mod).filter((k) => k !== 'default');
+  const lines = names.map((n) => `export const ${n} = m.${n};`);
+  const body = `const m = self.__brepjs;\n${lines.join('\n')}\n`;
+  const blob = new Blob([body], { type: 'application/javascript' });
+  return URL.createObjectURL(blob);
+}
+
 async function handleInit() {
-  // React StrictMode and crash-recovery paths can dispatch `init` twice; the
-  // OCCT module rejects re-initialization, so short-circuit when we already
-  // have a live kernel.
+  // OCCT module rejects re-init; React StrictMode and crash recovery can
+  // dispatch `init` twice, so short-circuit when we already have a kernel.
   if (brepjs) {
     post({ type: 'init-done' });
     return;
   }
   try {
     post({ type: 'init-progress', stage: 'Downloading kernel...', progress: 0.1 });
-
     post({ type: 'init-progress', stage: 'Initializing WASM...', progress: 0.4 });
 
     const oc = await loadWasmBuild();
 
     post({ type: 'init-progress', stage: 'Loading brepjs...', progress: 0.7 });
 
-    // Import brepjs and initialize it
     brepjs = await import('brepjs');
     brepjs.initFromOC(oc);
 
-    // Inject all brepjs exports onto globalThis
-    const globalAny = globalThis as Record<string, unknown>;
-    for (const [key, value] of Object.entries(brepjs)) {
-      if (key === 'default') continue;
-      globalAny[key] = value;
-      brepjsGlobalKeys.add(key);
-    }
+    (self as unknown as { __brepjs: unknown }).__brepjs = brepjs;
+    brepjsBlobUrl = buildBrepjsWrapperUrl(brepjs);
 
     post({ type: 'init-progress', stage: 'Ready', progress: 1 });
     post({ type: 'init-done' });
@@ -136,19 +123,29 @@ async function handleInit() {
   }
 }
 
-// ── Eval ──
+// Anchored on `from \"…\"` so we only rewrite import specifiers, not
+// arbitrary string literals in user code (e.g. `console.log('brepjs')`).
+// The `\2` boundary on the closing quote also rules out 'brepjs-foo' /
+// 'brepjsKit' specifiers.
+function rewriteBrepjsImports(code: string, wrapperUrl: string): string {
+  return code.replace(/(\bfrom\s+)(['"])brepjs(?:\/quick)?\2/g, `$1'${wrapperUrl}'`);
+}
 
-function handleEval(id: string, code: string) {
+function extractUserLine(err: unknown, userBlobUrl: string): number | undefined {
+  if (!(err instanceof Error) || !err.stack) return undefined;
+  for (const line of err.stack.split('\n')) {
+    if (!line.includes(userBlobUrl)) continue;
+    const match = line.match(/:(\d+):\d+\)?$/);
+    if (match) return parseInt(match[1], 10);
+  }
+  return undefined;
+}
+
+async function handleEval(id: string, code: string) {
   const t0 = performance.now();
 
-  // Set as active execution
-  activeEvalId = id;
-  cancelRequested = false;
-
-  // Check cache first (use code string directly as key)
   const cached = codeCache.get(code);
   if (cached) {
-    // Clone meshes to create new transferable buffers
     const meshes = cached.meshes.map(cloneMeshTransfer);
     const transferables = meshes.flatMap((m) => [
       m.position.buffer,
@@ -166,15 +163,16 @@ function handleEval(id: string, code: string) {
       },
       transferables
     );
-    activeEvalId = null;
+    return;
+  }
+
+  if (!brepjsBlobUrl) {
+    post({ type: 'eval-error', id, error: 'Worker not initialized' });
     return;
   }
 
   const consoleOutput: string[] = [];
 
-  // Capture console.log/warn for the duration of user code so output appears in
-  // the playground console panel. Restoration happens in `finally` so cancel
-  // paths and unexpected throws don't leak the patched console.
   const origLog = console.log;
   const origWarn = console.warn;
   console.log = (...args: unknown[]) => {
@@ -184,20 +182,21 @@ function handleEval(id: string, code: string) {
     consoleOutput.push('[warn] ' + args.map(String).join(' '));
   };
 
-  // Snapshot globalThis keys to detect user additions
-  const keysBefore = new Set(Object.keys(globalThis as Record<string, unknown>));
+  const rewritten = rewriteBrepjsImports(code, brepjsBlobUrl);
+  const userBlob = new Blob([rewritten], { type: 'application/javascript' });
+  const userBlobUrl = URL.createObjectURL(userBlob);
 
   try {
-    // Intentional: playground evaluates user-authored scripts in a sandboxed Web Worker
-    // with no access to DOM, cookies, or storage.
-    const fn = new Function(code); // codeql[js/code-injection] Playground evaluates user-authored scripts in sandboxed Web Worker
-    let result = fn();
+    // Playground evaluates user-authored ES modules in a sandboxed Web Worker
+    // with no DOM, cookies, or storage access.
+    const mod = (await import(/* @vite-ignore */ userBlobUrl)) as { default?: unknown };
 
-    // Check if cancelled before proceeding with expensive meshing
-    if (cancelRequested && activeEvalId === id) {
+    if (cancelledIds.has(id)) {
       post({ type: 'eval-cancelled', id });
       return;
     }
+
+    let result: unknown = mod.default;
 
     if (result == null) {
       post({
@@ -210,32 +209,23 @@ function handleEval(id: string, code: string) {
       return;
     }
 
-    // Normalize: if result is a single shape, wrap in array
-    // Detect shapes by checking for .wrapped property (legacy Shape) or branded type
     if (!Array.isArray(result)) {
       result = [result];
     }
 
-    lastEvalResult = result;
+    lastEvalResult = result as unknown[];
 
     const meshes: MeshTransfer[] = [];
     const transferables: Transferable[] = [];
 
-    for (const shape of result) {
-      // Check for cancellation before each shape (expensive operation)
-      if (cancelRequested && activeEvalId === id) {
+    for (const shape of result as unknown[]) {
+      if (cancelledIds.has(id)) {
         post({ type: 'eval-cancelled', id });
         return;
       }
 
       try {
-        // Handle fluent wrappers (__wrapped), legacy Shape (.wrapped), and branded shapes
-        const fnShape =
-          shape && typeof shape === 'object' && '__wrapped' in shape
-            ? (shape as unknown as { val: unknown }).val
-            : shape && typeof shape === 'object' && 'wrapped' in shape
-              ? brepjs.castShape(shape.wrapped)
-              : shape;
+        const fnShape = unwrapResultShape(shape);
 
         const shapeMesh = brepjs.mesh(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
         const edgeMesh = brepjs.meshEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
@@ -258,7 +248,6 @@ function handleEval(id: string, code: string) {
           mesh.edges.buffer
         );
       } catch (meshErr) {
-        // `[error]` prefix matches the red styling in OutputPanel.
         consoleOutput.push(
           `[error] ${meshErr instanceof Error ? meshErr.message : String(meshErr)}`
         );
@@ -267,15 +256,12 @@ function handleEval(id: string, code: string) {
 
     const timeMs = performance.now() - t0;
 
-    // Final cancellation check before sending result
-    if (cancelRequested && activeEvalId === id) {
+    if (cancelledIds.has(id)) {
       post({ type: 'eval-cancelled', id });
       return;
     }
 
-    // Cache the result before transferring (clone because we'll transfer ownership)
     if (codeCache.size >= MAX_CACHE_SIZE) {
-      // Simple FIFO eviction: delete oldest entry
       const firstKey = codeCache.keys().next().value;
       if (firstKey) codeCache.delete(firstKey);
     }
@@ -288,53 +274,34 @@ function handleEval(id: string, code: string) {
     post({ type: 'eval-result', id, meshes, console: consoleOutput, timeMs }, transferables);
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : String(e);
-    // Try to extract line number from stack trace
-    let line: number | undefined;
-    if (e instanceof Error && e.stack) {
-      const match = e.stack.match(/<anonymous>:(\d+):/);
-      if (match) {
-        // Subtract 2 for the function wrapper lines
-        line = Math.max(1, parseInt(match[1], 10) - 2);
-      }
-    }
-
+    const line = extractUserLine(e, userBlobUrl);
     post({ type: 'eval-error', id, error: errorMsg, line });
   } finally {
-    // Always restore console and clear active id, regardless of which return
-    // path we took (cancelled / errored / cached / completed).
+    URL.revokeObjectURL(userBlobUrl);
     console.log = origLog;
     console.warn = origWarn;
-    activeEvalId = null;
-
-    // Clean up user-added globalThis keys
-    const globalAny = globalThis as Record<string, unknown>;
-    for (const key of Object.keys(globalAny)) {
-      if (!keysBefore.has(key) && !brepjsGlobalKeys.has(key)) {
-        delete globalAny[key];
-      }
-    }
+    cancelledIds.delete(id);
   }
 }
 
-// ── STL Export ──
+function unwrapResultShape(shape: unknown): unknown {
+  if (shape && typeof shape === 'object' && '__wrapped' in shape) {
+    return (shape as unknown as { val: unknown }).val;
+  }
+  if (shape && typeof shape === 'object' && 'wrapped' in shape) {
+    return brepjs.castShape((shape as { wrapped: unknown }).wrapped);
+  }
+  return shape;
+}
 
-function handleExportSTL(id: string, code: string) {
+function handleExportSTL(id: string) {
   try {
-    let result: unknown;
-    if (lastEvalResult && lastEvalResult.length > 0) {
-      result = lastEvalResult[0];
-    } else {
-      const fn = new Function(code); // codeql[js/code-injection] Playground evaluates user-authored scripts in sandboxed Web Worker
-      result = fn();
+    if (!lastEvalResult || lastEvalResult.length === 0) {
+      post({ type: 'export-error', id, error: 'Run code successfully before exporting STL.' });
+      return;
     }
 
-    if (result && typeof result === 'object' && '__wrapped' in result) {
-      result = (result as unknown as { val: unknown }).val;
-    } else if (result && typeof result === 'object' && 'wrapped' in result) {
-      result = brepjs.castShape(result.wrapped);
-    }
-
-    const stlResult = brepjs.exportSTL(result, { binary: true });
+    const stlResult = brepjs.exportSTL(unwrapResultShape(lastEvalResult[0]), { binary: true });
 
     if (brepjs.isOk(stlResult)) {
       const blob: Blob = stlResult.value;
@@ -349,25 +316,14 @@ function handleExportSTL(id: string, code: string) {
   }
 }
 
-// ── STEP Export ──
-
-function handleExportSTEP(id: string, code: string) {
+function handleExportSTEP(id: string) {
   try {
-    let result: unknown;
-    if (lastEvalResult && lastEvalResult.length > 0) {
-      result = lastEvalResult[0];
-    } else {
-      const fn = new Function(code); // codeql[js/code-injection] Playground evaluates user-authored scripts in sandboxed Web Worker
-      result = fn();
+    if (!lastEvalResult || lastEvalResult.length === 0) {
+      post({ type: 'export-error', id, error: 'Run code successfully before exporting STEP.' });
+      return;
     }
 
-    if (result && typeof result === 'object' && '__wrapped' in result) {
-      result = (result as unknown as { val: unknown }).val;
-    } else if (result && typeof result === 'object' && 'wrapped' in result) {
-      result = brepjs.castShape(result.wrapped);
-    }
-
-    const stepResult = brepjs.exportSTEP(result);
+    const stepResult = brepjs.exportSTEP(unwrapResultShape(lastEvalResult[0]));
 
     if (brepjs.isOk(stepResult)) {
       const blob: Blob = stepResult.value;
@@ -382,28 +338,23 @@ function handleExportSTEP(id: string, code: string) {
   }
 }
 
-// ── Message handler ──
-
 addEventListener('message', (e: MessageEvent<ToWorker>) => {
   const msg = e.data;
   switch (msg.type) {
     case 'init':
-      handleInit();
+      void handleInit();
       break;
     case 'eval':
-      handleEval(msg.id, msg.code);
+      void handleEval(msg.id, msg.code);
       break;
     case 'cancel':
-      // Mark current execution for cancellation
-      if (activeEvalId === msg.id) {
-        cancelRequested = true;
-      }
+      cancelledIds.add(msg.id);
       break;
     case 'export-stl':
-      handleExportSTL(msg.id, msg.code);
+      handleExportSTL(msg.id);
       break;
     case 'export-step':
-      handleExportSTEP(msg.id, msg.code);
+      handleExportSTEP(msg.id);
       break;
   }
 });

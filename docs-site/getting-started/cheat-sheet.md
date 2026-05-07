@@ -66,11 +66,13 @@ import { fillet, chamfer, shell, edgeFinder, faceFinder, box, unwrap } from 'bre
 const b = box(30, 20, 10);
 
 const verticalEdges = edgeFinder().inDirection('Z').findAll(b);
-unwrap(fillet(b, verticalEdges, 2));
+const filleted = unwrap(fillet(b, verticalEdges, 2));
 unwrap(chamfer(b, verticalEdges, 1));
 
 const topFaces = faceFinder().inDirection('Z').findAll(b);
 unwrap(shell(b, topFaces, 1.5)); // wall thickness
+
+export default filleted;
 ```
 
 ## Sketching
@@ -81,13 +83,15 @@ import { sketchCircle, sketchRoundedRectangle, Sketcher } from 'brepjs/quick';
 sketchCircle(10).extrude(20);
 sketchRoundedRectangle(30, 20, 3).extrude(10);
 
-new Sketcher('XY')
+const sketched = new Sketcher('XY')
   .movePointerTo([0, 0])
   .lineTo([20, 0])
   .lineTo([20, 10])
   .lineTo([0, 10])
   .close()
   .extrude(5);
+
+export default sketched;
 ```
 
 ## Finders (queries)
@@ -170,7 +174,8 @@ The wrapper hides all of this:
 import { shape, box, cylinder } from 'brepjs/quick';
 
 const part = shape(box(10, 10, 10)).cut(cylinder(5, 15)).val; // throws on error
-void part;
+
+export default part;
 ```
 
 ## Memory management

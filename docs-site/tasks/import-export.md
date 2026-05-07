@@ -38,6 +38,8 @@ const gltf = unwrap(exportGltf(part, { tolerance: 0.1 }));
 console.log('STEP:', step.size, 'bytes');
 console.log('STL:', stl.size, 'bytes');
 console.log('glTF:', gltf.size, 'bytes');
+
+export default part;
 ```
 
 ### STEP — the round-trip format
@@ -71,8 +73,9 @@ const printable = unwrap(
     angularTolerance: 0.5, // max angle between adjacent face normals (rad)
   })
 );
-
 void printable;
+
+export default part;
 ```
 
 The defaults are tuned for screen-size rendering. For 3D printing, set `tolerance` to roughly one-tenth your printer's nozzle diameter (so for a 0.4 mm nozzle, ~0.04 mm).
@@ -87,6 +90,8 @@ import { box, exportGltf, unwrap } from 'brepjs/quick';
 const part = box(30, 20, 10);
 const glb = unwrap(exportGltf(part, { tolerance: 0.1 }));
 void glb;
+
+export default part;
 ```
 
 Use this for "ship the model to the user's browser" — they can open it directly in `<model-viewer>` or load it into Three.js.
@@ -101,6 +106,8 @@ import { box, exportThreeMF, unwrap } from 'brepjs/quick';
 const part = box(30, 20, 10);
 const threeMF = unwrap(exportThreeMF(part, { tolerance: 0.05 }));
 void threeMF;
+
+export default part;
 ```
 
 ### DXF / SVG — 2D export

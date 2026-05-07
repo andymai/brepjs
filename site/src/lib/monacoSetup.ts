@@ -1,14 +1,23 @@
 import type { Monaco } from '@monaco-editor/react';
-// Vite ?raw import — gets file contents as string
 import ambientTypes from '../types/brepjs-ambient.d.ts?raw';
 
 let initialized = false;
+
+// Top-level declarations in the ambient file sit at column 0; the line-anchored
+// regexes below rely on that invariant.
+function ambientToModuleBody(ambient: string): string {
+  return ambient
+    .replace(
+      /^((?:\/\*\*[^*]*\*\/\s*)?)(?:declare\s+)?(abstract\s+class|class|function|const|let|var|namespace|enum|interface)\b/gm,
+      '$1export $2'
+    )
+    .replace(/^((?:\/\*\*[^*]*\*\/\s*)?)type(\s+\w+\b)/gm, '$1export type$2');
+}
 
 export function setupMonaco(monaco: Monaco) {
   if (initialized) return;
   initialized = true;
 
-  // Define dark theme matching site colors
   monaco.editor.defineTheme('brepjs-dark', {
     base: 'vs-dark',
     inherit: true,
@@ -31,30 +40,32 @@ export function setupMonaco(monaco: Monaco) {
     },
   });
 
-  // Configure TypeScript compiler options.
   // We omit `lib` so Monaco's TS worker uses the default lib for the target
-  // (`lib.es2022.full.d.ts`), which transitively pulls in lib.es5.d.ts —
-  // the file that declares `Math`, `Array<T>`, and other built-ins. Passing
-  // `lib: ['es2022']` explicitly hits a Monaco bug where the lib reference
-  // is not expanded transitively, leaving user code with `Cannot find name
-  // 'Math'` and `push does not exist on type '{}'` errors (issue #761).
+  // (lib.es2022.full.d.ts), which transitively pulls in lib.es5.d.ts — the
+  // file declaring `Math`, `Array<T>`, etc. Passing `lib: ['es2022']`
+  // explicitly hits a Monaco bug where the reference isn't expanded
+  // transitively, leaving user code with "Cannot find name 'Math'" errors
+  // (issue #761).
   monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
     target: monaco.languages.typescript.ScriptTarget.ES2022,
     module: monaco.languages.typescript.ModuleKind.ESNext,
+    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
     strict: true,
     noEmit: true,
     allowJs: true,
   });
 
-  // Disable diagnostic errors that don't make sense for eval'd code
   monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
-    // 1108: "A 'return' statement can only be used within a function body"
-    // Playground code is wrapped in a function at runtime, so top-level return is valid.
-    diagnosticCodesToIgnore: [1108],
   });
 
-  // Register brepjs ambient type declarations
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(ambientTypes, 'brepjs-ambient.d.ts');
+  const moduleBody = ambientToModuleBody(ambientTypes);
+  const moduleDts =
+    `declare module 'brepjs' {\n${moduleBody}\n}\n` +
+    `declare module 'brepjs/quick' {\n${moduleBody}\n}\n`;
+  monaco.languages.typescript.typescriptDefaults.addExtraLib(
+    moduleDts,
+    'file:///node_modules/@types/brepjs/index.d.ts'
+  );
 }

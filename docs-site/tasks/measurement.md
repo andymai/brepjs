@@ -33,6 +33,8 @@ const circularEdge = edgeFinder().ofCurveType('CIRCLE').findAll(cylinder2)[0];
 if (circularEdge) {
   console.log('Edge length:', measureLength(circularEdge).toFixed(3)); // 62.832
 }
+
+export default cylinder2;
 ```
 
 | Function               | Argument            | Returns                            |
@@ -56,6 +58,8 @@ console.log('Min:', bbox.min); // [5, 5, 5]
 console.log('Max:', bbox.max); // [35, 25, 15]
 console.log('Centre:', bbox.center); // [20, 15, 10]
 console.log('Size:', bbox.size); // [30, 20, 10]
+
+export default b;
 ```
 
 The bounding box is in world coordinates and updates after every transform. Useful for layout and packing.
@@ -71,6 +75,8 @@ console.log(
   'Centre of mass:',
   com.map((c) => c.toFixed(3))
 );
+
+export default compound;
 ```
 
 Returns `[x, y, z]`. Computed via the kernel's mass-property analysis assuming uniform density.
@@ -182,6 +188,8 @@ if (isOk(result)) {
   const removed = before - after;
   console.log(`Cut removed ${removed.toFixed(2)} mm³`);
 }
+
+export default isOk(result) ? result.value : block;
 ```
 
 Sanity-check that booleans actually changed the volume by the expected amount.

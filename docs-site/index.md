@@ -47,6 +47,8 @@ import { box, cut, cylinder, fillet, edgeFinder, exportSTEP, unwrap } from 'brep
 const drilled = unwrap(cut(box(30, 20, 10), cylinder(5, 15, { at: [15, 10, -2] })));
 const part = unwrap(fillet(drilled, edgeFinder().inDirection('Z').findAll(drilled), 1.5));
 const step = unwrap(exportSTEP(part));
+
+export default part;
 ```
 
 Drill a hole, fillet the vertical edges, export to STEP. The full code-CAD loop in five lines.

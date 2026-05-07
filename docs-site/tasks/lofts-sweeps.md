@@ -27,7 +27,7 @@ import { sketchCircle, extrude, unwrap } from 'brepjs/quick';
 
 const profile = sketchCircle(10).face();
 const cyl = unwrap(extrude(profile, 20));
-void cyl;
+export default cyl;
 ```
 
 ### Extrude with a vector
@@ -39,7 +39,7 @@ import { sketchRectangle, extrudeAlong, unwrap } from 'brepjs/quick';
 
 const profile = sketchRectangle(20, 10).face();
 const slanted = unwrap(extrudeAlong(profile, [0, 5, 20])); // extrude along (0,5,20)
-void slanted;
+export default slanted;
 ```
 
 The vector replaces the height — its length determines extrusion distance, its direction determines the axis.
@@ -53,7 +53,7 @@ import { sketchRectangle, extrude, unwrap } from 'brepjs/quick';
 
 const profile = sketchRectangle(30, 20).face();
 const tapered = unwrap(extrude(profile, 20, { taper: 5 })); // 5° draft
-void tapered;
+export default tapered;
 ```
 
 Negative taper widens upward; positive narrows.
@@ -77,7 +77,7 @@ const goblet = new Sketcher('XZ')
   .vLine(-26)
   .close()
   .revolve();
-void goblet;
+export default goblet;
 ```
 
 The axis defaults to the sketch plane's vertical axis. The profile must lie entirely on one side of the axis — the kernel rejects profiles that cross.
@@ -98,7 +98,7 @@ const profile = new Sketcher('XZ')
   .face();
 
 const halfRing = unwrap(revolve(profile, { angle: 180 })); // half-torus segment
-void halfRing;
+export default halfRing;
 ```
 
 `{ angle: degrees }` controls the sweep. Use this for hemisphere caps, pie slices, partial bushings.
@@ -117,7 +117,7 @@ const profile = new Sketcher('XY')
   .face();
 
 const ring = unwrap(revolve(profile, { axis: { origin: [0, 0, 0], direction: [0, 0, 1] } }));
-void ring;
+export default ring;
 ```
 
 ## Sweep — profile along a path
@@ -131,7 +131,7 @@ const cross = sketchCircle(2).face(); // 2mm tube radius
 const path = line([0, 0, 0], [0, 0, 50]); // 50mm straight up
 
 const tube = unwrap(sweep(cross, path));
-void tube;
+export default tube;
 ```
 
 The path can be any 3D curve — straight, arced, helical, B-spline. The profile rides along it.
@@ -147,7 +147,7 @@ const thread = sketchCircle(0.5).face(); // thread cross-section
 const path = helix({ pitch: 1.5, height: 30, radius: 5 });
 
 const screw = unwrap(sweep(thread, path));
-void screw;
+export default screw;
 ```
 
 `helix({ pitch, height, radius })` returns a wire of the helical curve.
@@ -172,7 +172,7 @@ const bottom = sketchCircle(20); // round base
 const top = sketchRectangle(30, 30).translate([0, 0, 50]); // square top
 
 const bowl = unwrap(loft([bottom, top]));
-void bowl;
+export default bowl;
 ```
 
 The loft passes through every input profile in order. Profiles must be on parallel planes (or roughly so — non-coplanar lofting works but can produce twisted results).
@@ -189,7 +189,7 @@ const sections = [
 ];
 
 const vase = unwrap(loft(sections));
-void vase;
+export default vase;
 ```
 
 Three or more sections produces a smooth blend through every one. Useful for vases, ducts, ergonomic handles.
@@ -208,7 +208,7 @@ import { sketchCircle, faceFinder, shell, unwrap } from 'brepjs/quick';
 const closed = sketchCircle(20).extrude(40);
 const topFaces = faceFinder().inDirection('Z').withZ({ min: 39 }).findAll(closed);
 const cup = unwrap(shell(closed, topFaces, 2)); // 2mm wall, top open
-void cup;
+export default cup;
 ```
 
 `shell(solid, openFaces, thickness)`. The top face becomes the open mouth; everything else gains the wall thickness inward.
@@ -222,7 +222,7 @@ const cup = shape(sketchCircle(20).extrude(40)).shell(
   (f) => f.inDirection('Z').withZ({ min: 39 }),
   2
 ).val;
-void cup;
+export default cup;
 ```
 
 ## Common patterns
@@ -239,7 +239,7 @@ const thread = unwrap(sweep(threadProfile, threadPath));
 const head = sketchRoundedRectangle(8, 8, 0.5).extrude(3).translate([0, 0, 20]);
 
 const screw = unwrap(fuse(unwrap(fuse(shaft, thread)), head));
-void screw;
+export default screw;
 ```
 
 ### Funnel (loft + revolve combined)
@@ -260,7 +260,7 @@ const funnel = new Sketcher('XZ')
   .lineTo([14, 0])
   .close()
   .revolve();
-void funnel;
+export default funnel;
 ```
 
 A profile, two `lineTo`s, a revolve. Simpler than building two cones and fusing.

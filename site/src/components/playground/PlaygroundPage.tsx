@@ -75,14 +75,6 @@ export default function PlaygroundPage() {
     addToast('Link copied to clipboard');
   }, [copyShareUrl, code, addToast]);
 
-  const handleSelectExample = useCallback(
-    (exampleCode: string) => {
-      runCode(exampleCode);
-      updateUrl(exampleCode);
-    },
-    [runCode, updateUrl]
-  );
-
   const toggleConsole = useCallback(() => {
     const panel = consolePanelRef.current;
     if (!panel) return;
@@ -166,7 +158,6 @@ export default function PlaygroundPage() {
         onExportSTEP={handleExportSTEP}
         onShare={handleShare}
         isRunning={isRunning}
-        onSelectExample={handleSelectExample}
       />
 
       {pendingReview && (

@@ -29,6 +29,8 @@ console.log({
   drilled: measureVolume(drilled).toFixed(2),
   overlap: measureVolume(overlap).toFixed(2),
 });
+
+export default drilled;
 ```
 
 All three return `Result<Shape3D, BrepError>`.
@@ -54,6 +56,8 @@ const drilled = unwrap(
   ])
 );
 console.log('Drilled four holes');
+
+export default drilled;
 ```
 
 `cutAll(base, tools)` cuts every tool from base in one operation. `fuseAll(shapes)` fuses everything in the list.
@@ -66,7 +70,8 @@ import { shape, box, cylinder } from 'brepjs/quick';
 const part = shape(box(20, 20, 20))
   .cut(cylinder(5, 25, { at: [10, 10, -3] }))
   .fuse(cylinder(2, 30, { at: [10, 10, 0] })).val;
-void part;
+
+export default part;
 ```
 
 Each `.cut`, `.fuse`, `.intersect` chains; failures throw `BrepWrapperError`.
@@ -166,6 +171,8 @@ const tools = unwrap(
 );
 const part = unwrap(cut(block, tools));
 console.log('Drilled four holes in one boolean');
+
+export default part;
 ```
 
 Three potential boolean failures become one. If the holes don't overlap each other (the typical case) the cost is the same as four sequential cuts but in one kernel invocation.
@@ -182,6 +189,8 @@ const mortise = box(8.2, 6.2, 4.1, { at: [15.9, 6.9, -0.05] }); // through-cut
 const withTenon = unwrap(fuse(part, tenon));
 const withMortise = unwrap(cut(withTenon, mortise));
 console.log('Built mortise and tenon');
+
+export default withMortise;
 ```
 
 Add tenons by `fuse`; remove mortises by `cut`. The slight oversize on the mortise (`8.2 × 6.2`) gives manufacturing clearance.

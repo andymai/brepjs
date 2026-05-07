@@ -155,7 +155,8 @@ const filleted = shape(box(30, 20, 10)).fillet(
   (e) => e.inDirection('Z').withLength({ min: 9 }),
   1.5
 ).val;
-void filleted;
+
+export default filleted;
 ```
 
 The callback receives an `EdgeFinder` (for `.fillet`, `.chamfer`) or `FaceFinder` (for `.shell`). You chain filters; the wrapper calls `findAll` internally.
@@ -177,7 +178,8 @@ const externalVerticals = edgeFinder()
   .withLength({ min: 9.5 }) // hole edges are 12mm but the box edges are 10mm — adjust filter
   .findAll(drilled);
 const filleted = unwrap(fillet(drilled, externalVerticals, 1));
-void filleted;
+
+export default filleted;
 ```
 
 In practice, hole edges and exterior edges have different positions, lengths, or curve types. Find a filter that distinguishes them.
@@ -193,7 +195,8 @@ const cup = sketchCircle(20).extrude(40);
 const rim = edgeFinder().ofCurveType('CIRCLE').withZ({ min: 39 }).findAll(cup);
 
 const rounded = unwrap(fillet(cup, rim, 2));
-void rounded;
+
+export default rounded;
 ```
 
 Two filters: circular curves only, in the upper millimetre. One match.
@@ -213,6 +216,8 @@ const part = unwrap(fuse(base, boss));
 const bossSide = faceFinder().ofSurfaceType('CYLINDER').findAll(part)[0];
 console.log('Found boss cylindrical face');
 void bossSide;
+
+export default part;
 ```
 
 Surface type, area range, and direction together usually pin down a specific face. When they aren't enough, project face centres back to your input geometry to identify them.

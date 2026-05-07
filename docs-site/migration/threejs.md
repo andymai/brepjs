@@ -72,6 +72,8 @@ const result = unwrap(cut(a, b));
 // To render in Three.js, mesh the result:
 const data = toBufferGeometryData(shape(result).mesh({ tolerance: 0.1 }));
 console.log('Triangles after exact cut:', data.index.length / 3);
+
+export default result;
 ```
 
 The brepjs version produces an exact cylindrical hole. The three-csg-ts version produces a polygonal approximation that looks fine until you fillet, measure, or export to STEP.
@@ -89,7 +91,8 @@ const b = box(30, 20, 10);
 const verticals = edgeFinder().inDirection('Z').findAll(b);
 const filleted = unwrap(fillet(b, verticals, 2));
 console.log('Filleted with 2mm radius');
-void filleted;
+
+export default filleted;
 ```
 
 Real fillets, on real edges. See [Fillets & Chamfers](../tasks/fillets).
@@ -120,6 +123,8 @@ import { box, exportSTEP, unwrap } from 'brepjs/quick';
 const part = box(30, 20, 10);
 const step = unwrap(exportSTEP(part));
 console.log('STEP size:', step.size, 'bytes');
+
+export default part;
 ```
 
 The output round-trips with SolidWorks, Fusion 360, FreeCAD, OnShape — every desktop CAD tool.

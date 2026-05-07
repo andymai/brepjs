@@ -31,6 +31,8 @@ const softBlock = sketchRoundedRectangle(30, 20, 3).extrude(10);
 
 console.log('Cylinder volume:', measureVolume(cyl).toFixed(2));
 console.log('Soft block volume:', measureVolume(softBlock).toFixed(2));
+
+export default softBlock;
 ```
 
 All canned sketches default to the XY plane. Pass a plane name as second argument: `sketchCircle(10, 'YZ').extrude(20)`.
@@ -55,6 +57,8 @@ const profile = new Sketcher('XY')
 
 const part = profile.extrude(8);
 console.log('Notched plate volume:', measureVolume(part));
+
+export default part;
 ```
 
 A C-shaped profile, eight straight segments, closed back to the start, extruded 8 mm. The Sketcher tracks the current "pointer" position; every `lineTo` / `arcTo` extends from the pointer.
@@ -97,7 +101,8 @@ const cammedShape = new Sketcher('XY')
   .hLine(-20)
   .close()
   .extrude(5);
-void cammedShape;
+
+export default cammedShape;
 ```
 
 `tangentArc(dx, dy)` builds the arc that meets the previous segment tangentially and ends at the relative offset. Smooth curves with no math.
@@ -121,7 +126,8 @@ const wineGlass = new Sketcher('XZ')
   .vLine(-26)
   .close()
   .revolve(); // around Z by default
-void wineGlass;
+
+export default wineGlass;
 ```
 
 The default axis is the plane's vertical axis (Z for XZ, Z for YZ, Y for XY). Override with `revolve({ axis: [0, 0, 1] })` if needed.
@@ -138,7 +144,8 @@ const profile2 = sketchCircle(20).translate([0, 0, 30]);
 const profile3 = sketchCircle(5).translate([0, 0, 60]);
 
 const tapered = loft([profile1, profile2, profile3]);
-void tapered;
+
+export default tapered;
 ```
 
 The loft passes through every input sketch in order. Useful for ducts, transitions, organic-looking parts.
@@ -154,7 +161,8 @@ const cross = sketchCircle(2); // 2mm radius
 const path = line([0, 0, 0], [50, 0, 0]); // 50mm straight
 
 const rod = sweep(cross, path);
-void rod;
+
+export default rod;
 ```
 
 The path can be any wire — straight, arced, helical. Common pattern: revolve + sweep produces threaded rods, tubing, springs.
@@ -182,6 +190,8 @@ const rounded = drawingFillet(profile, 3);
 const sketch = drawingToSketchOnPlane(rounded, 'XY');
 const part = unwrap(sketchExtrude(sketch, 10));
 console.log('Built drawing → sketch → solid');
+
+export default part;
 ```
 
 `drawing*` operations work on `Drawing<'2D'>` values; `drawingToSketchOnPlane` converts to a `Sketch` projected onto the named plane.
@@ -209,6 +219,8 @@ const boss = new Sketcher(topFace)
 
 const part = unwrap(fuse(base, boss));
 console.log('Built feature on top face');
+
+export default part;
 ```
 
 The Sketcher constructor accepts either a plane name (`'XY'`) or a face. When given a face, the sketch coordinates are local to that face's surface.

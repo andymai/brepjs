@@ -152,7 +152,8 @@ const holes = unwrap(
 
 const bracket = unwrap(cut(base, holes));
 console.log('Built bracket');
-void bracket;
+
+export default bracket;
 ```
 
 Two more lines than the SCAD version. In return: type-safe parameters, `.tsx` if you want a UI on top, STEP export for the buyer's CAD tool.

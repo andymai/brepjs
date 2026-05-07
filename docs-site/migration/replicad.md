@@ -160,7 +160,8 @@ const part = new Sketcher('XY')
   .lineTo([10, 10])
   .close()
   .extrude(5);
-void part;
+
+export default part;
 ```
 
 The chain is similar but each step's input type is checked at compile time. `extrude` requires `OrientedFace`, which `close()` guarantees by construction. If you build a wire and try to skip `close()`, the compiler catches it.

@@ -8,7 +8,6 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "screenshot-examples": "npx tsx scripts/screenshot-examples.ts",
     "smoke": "npx tsx scripts/smoke.ts",
     "generate-types": "npx tsx scripts/generate-ambient-types.ts"
   },
