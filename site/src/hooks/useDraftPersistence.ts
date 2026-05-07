@@ -1,13 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { DEFAULT_CODE } from '../lib/constants';
+import { hasShareParams } from '../lib/urlCodec';
 
 const DRAFT_KEY = 'brepjs-playground-draft';
 const DEBOUNCE_MS = 500;
-
-function hasShareParams(url: URL): boolean {
-  return url.searchParams.has('code') || url.hash.startsWith('#code/');
-}
 
 /**
  * Persists the editor code to localStorage so an accidental tab close doesn't
@@ -20,13 +17,9 @@ function hasShareParams(url: URL): boolean {
 export function useDraftPersistence() {
   const code = usePlaygroundStore((s) => s.code);
   const setCode = usePlaygroundStore((s) => s.setCode);
-  const initialized = useRef(false);
 
   // One-shot: restore from draft on mount if appropriate.
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
     const url = new URL(window.location.href);
     if (hasShareParams(url)) return;
 
@@ -42,10 +35,23 @@ export function useDraftPersistence() {
     setCode(draft);
   }, [setCode]);
 
-  // Debounced save on every code change. Skip the very first synchronous
-  // tick so we don't write the default before any user input.
+  // Debounced save on every code change. Two guards:
+  //   1. savedOnce: skip the very first call so we don't write the default
+  //      (or a freshly-restored draft) right back. The previous version used
+  //      the restore effect's `initialized` ref, but React fires effects in
+  //      declaration order so that ref was always `true` by the time this
+  //      effect ran — making the guard dead.
+  //   2. hasShareParams: when the URL carries `?code=` or `#code/`, the
+  //      pending `code` is the shared payload, not the user's own work.
+  //      Writing it would silently clobber whatever draft they had on a
+  //      future fresh visit.
+  const savedOnce = useRef(false);
   useEffect(() => {
-    if (!initialized.current) return;
+    if (!savedOnce.current) {
+      savedOnce.current = true;
+      return;
+    }
+    if (hasShareParams(new URL(window.location.href))) return;
     const t = setTimeout(() => {
       try {
         localStorage.setItem(DRAFT_KEY, code);

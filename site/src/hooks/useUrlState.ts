@@ -1,11 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useToastStore } from '../stores/toastStore';
-import { decodeShare, encodeCodeQuery } from '../lib/urlCodec';
-
-function hasShareParams(url: URL): boolean {
-  return url.searchParams.has('code') || url.hash.startsWith('#code/');
-}
+import { decodeShare, encodeCodeQuery, hasShareParams } from '../lib/urlCodec';
 
 export function useUrlState() {
   const setCode = usePlaygroundStore((s) => s.setCode);
