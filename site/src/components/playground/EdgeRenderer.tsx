@@ -86,7 +86,11 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
 
   // pointermove updates hoverEntity each frame so the tooltip tracks the
   // cursor across the same edge. Cost is one shallow store merge per move
-  // and re-renders only the tooltip via zustand selectors.
+  // and re-renders only the tooltip via zustand selectors. Stop propagation
+  // so the underlying face mesh's onPointerMove doesn't fire after this and
+  // overwrite the hoverEntity with a face — R3F dispatches to every
+  // intersected object in the same frame, so without this the edge would
+  // never win.
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       if (!edgeGroups || !edgeInfoById) return;
@@ -96,6 +100,7 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
       if (!group) return;
       const info = edgeInfoById.get(group.edgeId);
       if (!info) return;
+      event.stopPropagation();
       setHoverEntity({
         kind: 'edge',
         info,

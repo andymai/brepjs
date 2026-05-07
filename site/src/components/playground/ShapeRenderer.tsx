@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { MeshData } from '../../stores/playgroundStore';
@@ -73,16 +73,12 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
   }, []);
   const handlePointerOut = useCallback(() => {
     document.body.style.cursor = '';
-    lastHoverIdRef.current = null;
     setHoverEntity(null);
   }, [setHoverEntity]);
 
   // pointermove fires per-frame while hovering. We update on every tick so
-  // the tooltip follows the cursor (cheap: one shallow-merge re-renders just
-  // the tooltip via zustand selectors). lastHoverIdRef holds the active face
-  // id so handlePointerOut can avoid clearing a stale hover after we've
-  // already moved off this mesh into another.
-  const lastHoverIdRef = useRef<number | null>(null);
+  // the tooltip follows the cursor — cost is one shallow store merge per
+  // move and re-renders only the tooltip via zustand selectors.
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       if (!data.faceGroups || !faceInfoById) return;
@@ -92,7 +88,6 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
       if (!group) return;
       const info = faceInfoById.get(group.faceId);
       if (!info) return;
-      lastHoverIdRef.current = group.faceId;
       setHoverEntity({
         kind: 'face',
         info,
