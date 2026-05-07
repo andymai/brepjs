@@ -11,6 +11,7 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import { DEFAULT_CODE } from '../../lib/constants';
+import { EXAMPLES, type Example } from '../../lib/examples';
 import { copyToClipboard } from '../../lib/copyToClipboard';
 import { useScreenshot } from '../../hooks/useScreenshot';
 import Toolbar from './Toolbar';
@@ -110,6 +111,18 @@ export default function PlaygroundPage() {
     clearDraft();
     addToast('Reset to default code');
   }, [addToast]);
+
+  // Loading swaps the editor buffer through the store; EditorPanel's sync
+  // effect picks it up and replaces content via Monaco's pushEditOperations,
+  // which preserves the undo stack — Cmd+Z restores prior work if the user
+  // overwrites edits by accident.
+  const handleLoadExample = useCallback(
+    (example: Example) => {
+      usePlaygroundStore.getState().setCode(example.code);
+      addToast(`Loaded: ${example.label}`);
+    },
+    [addToast]
+  );
 
   // copyToClipboard handles both undefined `navigator.clipboard` (HTTP /
   // sandboxed iframe / older browsers) and a sync throw — neither of which
@@ -409,6 +422,14 @@ export default function PlaygroundPage() {
         keys: '?',
         run: openShortcutHelp,
       },
+      ...EXAMPLES.map((ex) => ({
+        id: `example-${ex.id}`,
+        group: 'Examples',
+        label: `Load: ${ex.label}`,
+        run: () => {
+          handleLoadExample(ex);
+        },
+      })),
     ],
     [
       handleRun,
@@ -418,6 +439,7 @@ export default function PlaygroundPage() {
       handleResetViewer,
       handleScreenshot,
       handleCopyCode,
+      handleLoadExample,
       clearSelections,
       handleExportSTL,
       handleExportSTEP,
