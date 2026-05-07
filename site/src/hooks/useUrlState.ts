@@ -1,11 +1,27 @@
 import { useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useToastStore } from '../stores/toastStore';
-import { decodeShare, encodeCodeQuery, hasShareParams } from '../lib/urlCodec';
+import {
+  decodeShare,
+  encodeCodeQuery,
+  hasShareParams,
+  type SharedSelection,
+} from '../lib/urlCodec';
+
+function selectionsForUrl(): SharedSelection[] {
+  return usePlaygroundStore
+    .getState()
+    .selections.map((s) =>
+      s.kind === 'face'
+        ? { kind: 'face' as const, id: s.info.faceId }
+        : { kind: 'edge' as const, id: s.info.edgeId }
+    );
+}
 
 export function useUrlState() {
   const setCode = usePlaygroundStore((s) => s.setCode);
   const setPendingReview = usePlaygroundStore((s) => s.setPendingReview);
+  const setPendingSharedSelections = usePlaygroundStore((s) => s.setPendingSharedSelections);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -27,20 +43,23 @@ export function useUrlState() {
 
     setCode(result.code);
     setPendingReview(true);
+    if (result.selections.length > 0) {
+      setPendingSharedSelections(result.selections);
+    }
 
     if (result.legacy) {
       const next = `${url.pathname}${encodeCodeQuery(result.code)}`;
       history.replaceState(null, '', next);
     }
-  }, [setCode, setPendingReview]);
+  }, [setCode, setPendingReview, setPendingSharedSelections]);
 
   const updateUrl = (code: string) => {
-    const query = encodeCodeQuery(code);
+    const query = encodeCodeQuery(code, selectionsForUrl());
     history.replaceState(null, '', `${window.location.pathname}${query}`);
   };
 
   const copyShareUrl = async (code: string) => {
-    const query = encodeCodeQuery(code);
+    const query = encodeCodeQuery(code, selectionsForUrl());
     const url = `${window.location.origin}${window.location.pathname}${query}`;
     history.replaceState(null, '', `${window.location.pathname}${query}`);
     try {

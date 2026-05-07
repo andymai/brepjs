@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { DEFAULT_CODE } from '../lib/constants';
 import type { FaceGroup, EdgeGroup, FaceInfo, EdgeInfo } from '../workers/workerProtocol';
+import type { SharedSelection } from '../lib/urlCodec';
 
 export interface MeshData {
   position: Float32Array;
@@ -37,6 +38,10 @@ interface PlaygroundState {
   lastSuccessfulCode: string | null;
   selections: Selection[];
   hoverEntity: Selection | null;
+  // Selections decoded from a share URL but not yet applied — they need a
+  // mesh with valid faceInfos/edgeInfos before they can become real
+  // Selection objects. Drained by an effect that runs after each eval.
+  pendingSharedSelections: SharedSelection[];
 
   setCode: (code: string) => void;
   setMeshes: (meshes: MeshData[]) => void;
@@ -52,6 +57,7 @@ interface PlaygroundState {
   pickSelection: (selection: Selection, additive: boolean) => void;
   clearSelections: () => void;
   setHoverEntity: (entity: Selection | null) => void;
+  setPendingSharedSelections: (sel: SharedSelection[]) => void;
   clearResults: () => void;
 }
 
@@ -77,6 +83,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   lastSuccessfulCode: null,
   selections: [],
   hoverEntity: null,
+  pendingSharedSelections: [],
 
   setCode: (code) => set({ code }),
   // Drop selections on every new render — they're bound to the mesh by
@@ -104,6 +111,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
     }),
   clearSelections: () => set({ selections: [] }),
   setHoverEntity: (hoverEntity) => set({ hoverEntity }),
+  setPendingSharedSelections: (pendingSharedSelections) => set({ pendingSharedSelections }),
   clearResults: () =>
     set({
       meshes: [],

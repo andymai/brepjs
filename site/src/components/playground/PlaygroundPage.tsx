@@ -6,6 +6,7 @@ import { useToastStore } from '../../stores/toastStore';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useUrlState } from '../../hooks/useUrlState';
 import { useDraftPersistence, clearDraft } from '../../hooks/useDraftPersistence';
+import { useApplyPendingSelections } from '../../hooks/useApplyPendingSelections';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
@@ -40,6 +41,7 @@ export default function PlaygroundPage() {
   const { runCode, exportSTL, exportSTEP, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
   useDraftPersistence();
+  useApplyPendingSelections();
 
   const consolePanelRef = usePanelRef();
   const viewerPanelRef = usePanelRef();
