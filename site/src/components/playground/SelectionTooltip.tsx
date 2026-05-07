@@ -71,8 +71,9 @@ export default function SelectionTooltip({ selections, hoverEntity, containerRef
 }
 
 function SingleTooltip({ selection, isHover }: { selection: Selection; isHover: boolean }) {
-  // Hover state shows metadata only — the snippet preview is committed UI
-  // that pairs with a clipboard write, and we haven't written anything yet.
+  // Selection state previews the finder predicate as a hint that right-click
+  // → "Copy finder predicate" will copy it. Hover state hides the preview
+  // because the user hasn't committed to anything yet.
   if (selection.kind === 'face') {
     const f = selection.info;
     return (
@@ -94,15 +95,12 @@ function SingleTooltip({ selection, isHover }: { selection: Selection; isHover: 
   );
 }
 
-// Shows the finder predicate the click produced. We previously labeled this
-// "Copied to clipboard" but the actual clipboard write is async and can fail
-// (denied permission, insecure context); a neutral label doesn't make a
-// promise the UI can't keep — the toast still reports clipboard success/fail.
 function SnippetPreview({ snippet }: { snippet: string }) {
   return (
     <div className="mt-1 border-t border-border-subtle pt-1">
-      <div className="mb-0.5 text-[10px] uppercase tracking-wider text-gray-500">
-        Finder predicate
+      <div className="mb-0.5 flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-500">
+        <span>Finder predicate</span>
+        <span className="normal-case tracking-normal">right-click to copy</span>
       </div>
       <pre className="whitespace-pre-wrap break-words text-[10.5px] leading-snug text-teal-light/90">
         {snippet}
@@ -128,7 +126,7 @@ function MultiTooltip({ selections }: { selections: Selection[] }) {
         </div>
       )}
       <div className="mt-1 border-t border-border-subtle pt-1 text-[10px] text-gray-500">
-        Last picked copies to clipboard
+        Right-click any face or edge to copy its finder
       </div>
     </div>
   );

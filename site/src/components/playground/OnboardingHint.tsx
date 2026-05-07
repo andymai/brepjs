@@ -21,8 +21,8 @@ function writeDismissed(): void {
 
 /**
  * Small pill at the bottom-center of the viewport that teaches first-time
- * visitors about the click-to-copy flow. Auto-dismisses on the first
- * selection (the user found it on their own) or on click.
+ * visitors that right-click reveals copy-finder actions. Auto-dismisses on
+ * the first selection (the user is interacting with the model) or on click.
  */
 export default function OnboardingHint() {
   const [visible, setVisible] = useState(false);
@@ -60,7 +60,7 @@ export default function OnboardingHint() {
     >
       <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-teal-primary/30 bg-[rgba(15,15,20,0.92)] px-3 py-1.5 text-xs text-gray-300 shadow-lg backdrop-blur-sm">
         <span aria-hidden="true">💡</span>
-        <span>Click a face or edge to copy a finder predicate</span>
+        <span>Right-click a face or edge to copy a finder predicate</span>
         <button
           onClick={() => {
             writeDismissed();

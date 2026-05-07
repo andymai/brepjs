@@ -23,6 +23,13 @@ export type Selection =
   | { kind: 'face'; info: FaceInfo; screenPos: ScreenPos }
   | { kind: 'edge'; info: EdgeInfo; screenPos: ScreenPos };
 
+export interface ContextMenuState {
+  // The entity the user right-clicked. Right-click does NOT mutate selections,
+  // so we carry the target separately rather than reading from `selections`.
+  entity: Selection;
+  screenPos: ScreenPos;
+}
+
 interface PlaygroundState {
   code: string;
   meshes: MeshData[];
@@ -38,6 +45,7 @@ interface PlaygroundState {
   lastSuccessfulCode: string | null;
   selections: Selection[];
   hoverEntity: Selection | null;
+  contextMenu: ContextMenuState | null;
   // Selections decoded from a share URL but not yet applied — they need a
   // mesh with valid faceInfos/edgeInfos before they can become real
   // Selection objects. Drained by an effect that runs after each eval.
@@ -57,6 +65,8 @@ interface PlaygroundState {
   pickSelection: (selection: Selection, additive: boolean) => void;
   clearSelections: () => void;
   setHoverEntity: (entity: Selection | null) => void;
+  openContextMenu: (entity: Selection, screenPos: ScreenPos) => void;
+  closeContextMenu: () => void;
   setPendingSharedSelections: (sel: SharedSelection[]) => void;
   clearResults: () => void;
 }
@@ -83,13 +93,21 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   lastSuccessfulCode: null,
   selections: [],
   hoverEntity: null,
+  contextMenu: null,
   pendingSharedSelections: [],
 
   setCode: (code) => set({ code }),
   // Drop selections on every new render — they're bound to the mesh by
   // faceId/edgeId and the new mesh likely won't have the same ids.
   setMeshes: (meshes) =>
-    set({ meshes, error: null, errorLine: null, selections: [], hoverEntity: null }),
+    set({
+      meshes,
+      error: null,
+      errorLine: null,
+      selections: [],
+      hoverEntity: null,
+      contextMenu: null,
+    }),
   setError: (error, line) => set({ error, errorLine: line ?? null }),
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
@@ -111,6 +129,8 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
     }),
   clearSelections: () => set({ selections: [] }),
   setHoverEntity: (hoverEntity) => set({ hoverEntity }),
+  openContextMenu: (entity, screenPos) => set({ contextMenu: { entity, screenPos } }),
+  closeContextMenu: () => set({ contextMenu: null }),
   setPendingSharedSelections: (pendingSharedSelections) => set({ pendingSharedSelections }),
   clearResults: () =>
     set({
@@ -121,5 +141,6 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       timeMs: null,
       selections: [],
       hoverEntity: null,
+      contextMenu: null,
     }),
 }));

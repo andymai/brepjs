@@ -15,6 +15,7 @@ const VIEWPORT_ROWS: Row[] = [
   { label: 'Pick face/edge', keys: 'Click' },
   { label: 'Add to selection', keys: 'Shift+Click' },
   { label: 'Clear selection', keys: 'Click empty space' },
+  { label: 'Copy finder predicate', keys: 'Right-click' },
 ];
 
 export default function ShortcutHelp({ open, onClose }: Props) {

@@ -13,6 +13,7 @@ import ViewerToolbar from './ViewerToolbar';
 import SelectionTooltip from './SelectionTooltip';
 import SelectionHighlight from './SelectionHighlight';
 import OnboardingHint from './OnboardingHint';
+import ContextMenu from './ContextMenu';
 
 /**
  * Build a content-derived React key for a mesh. The store hands us a fresh
@@ -254,16 +255,30 @@ export default function ViewerPanel() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selections = usePlaygroundStore((s) => s.selections);
   const hoverEntity = usePlaygroundStore((s) => s.hoverEntity);
+  const closeContextMenu = usePlaygroundStore((s) => s.closeContextMenu);
 
   const handleControlsStart = useCallback(() => {
     clearPreset();
-  }, [clearPreset]);
+    closeContextMenu();
+  }, [clearPreset, closeContextMenu]);
 
   // R3F fires onPointerMissed when a click hits the canvas but no mesh in
-  // the scene — empty-space click clears the selection.
-  const handlePointerMissed = useCallback(() => {
-    clearSelections();
-  }, [clearSelections]);
+  // the scene — empty-space click clears the selection. Right-click in
+  // empty space gets the same handler (R3F fires onPointerMissed for any
+  // missed pointer event), which we treat as menu-dismiss only — selection
+  // stays intact when the user is just dismissing the menu.
+  const handlePointerMissed = useCallback(
+    (event: MouseEvent) => {
+      if (event.button === 2) {
+        event.preventDefault();
+        closeContextMenu();
+        return;
+      }
+      closeContextMenu();
+      clearSelections();
+    },
+    [clearSelections, closeContextMenu]
+  );
 
   // Snapshot the initial pointer-class via matchMedia so the props object we
   // hand drei stays stable across renders. Runtime device-class flips (a user
@@ -292,7 +307,16 @@ export default function ViewerPanel() {
   }, [isTouch]);
 
   return (
-    <div ref={containerRef} className="relative h-full w-full">
+    <div
+      ref={containerRef}
+      className="relative h-full w-full"
+      onContextMenu={(e) => {
+        // Suppress the browser's native menu on the canvas itself — R3F's
+        // onContextMenu on individual meshes calls preventDefault, but a
+        // right-click on empty canvas would otherwise pop Chrome's menu.
+        e.preventDefault();
+      }}
+    >
       <Canvas
         camera={{ position: [40, 30, 40], fov: 45, near: 0.1, far: 2000 }}
         frameloop="demand"
@@ -327,6 +351,7 @@ export default function ViewerPanel() {
         hoverEntity={hoverEntity}
         containerRef={containerRef}
       />
+      <ContextMenu containerRef={containerRef} />
       <OnboardingHint />
     </div>
   );

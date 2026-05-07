@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { EdgeGroup, EdgeInfo } from '../../workers/workerProtocol';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
-import { useToastStore } from '../../stores/toastStore';
-import { buildEdgeFinderSnippet } from '../../lib/finderSnippet';
-import { copyToClipboard } from '../../lib/copyToClipboard';
 
 interface Props {
   edges: Float32Array;
@@ -31,8 +28,13 @@ function findGroupAt(groups: EdgeGroup[], vertexIndex: number): EdgeGroup | null
 export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   const pickSelection = usePlaygroundStore((s) => s.pickSelection);
   const setHoverEntity = usePlaygroundStore((s) => s.setHoverEntity);
-  const addToast = useToastStore((s) => s.addToast);
+  const openContextMenu = usePlaygroundStore((s) => s.openContextMenu);
   const pickable = Boolean(edgeGroups && edgeInfos);
+  // See ShapeRenderer for the rationale — pointerOut nulls hover state only
+  // when *we* are still the published target. Without this guard, an edge
+  // moving out of intersection while the cursor is still on a face would
+  // wipe the freshly-set face hover.
+  const lastAdvertisedEdgeId = useRef<number | null>(null);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -53,27 +55,43 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
     return byId;
   }, [edgeInfos]);
 
+  const resolveEdge = useCallback(
+    (event: ThreeEvent<PointerEvent | MouseEvent>): EdgeInfo | null => {
+      if (!edgeGroups || !edgeInfoById) return null;
+      const vertexIndex = event.index;
+      if (vertexIndex === undefined) return null;
+      const group = findGroupAt(edgeGroups, vertexIndex);
+      if (!group) return null;
+      return edgeInfoById.get(group.edgeId) ?? null;
+    },
+    [edgeGroups, edgeInfoById]
+  );
+
   const handleClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
-      if (!edgeGroups || !edgeInfoById) return;
-      const vertexIndex = event.index;
-      if (vertexIndex === undefined) return;
-      const group = findGroupAt(edgeGroups, vertexIndex);
-      if (!group) return;
-      const info = edgeInfoById.get(group.edgeId);
+      const info = resolveEdge(event);
       if (!info) return;
       event.stopPropagation();
-      const additive = event.shiftKey;
       pickSelection(
         { kind: 'edge', info, screenPos: { x: event.clientX, y: event.clientY } },
-        additive
-      );
-      const snippet = buildEdgeFinderSnippet(info);
-      void copyToClipboard(snippet).then((copied) =>
-        addToast(copied ? 'Edge finder copied' : 'Edge selected (clipboard unavailable)')
+        event.shiftKey
       );
     },
-    [edgeGroups, edgeInfoById, pickSelection, addToast]
+    [resolveEdge, pickSelection]
+  );
+
+  const handleContextMenu = useCallback(
+    (event: ThreeEvent<MouseEvent>) => {
+      const info = resolveEdge(event);
+      if (!info) return;
+      event.stopPropagation();
+      event.nativeEvent.preventDefault();
+      openContextMenu(
+        { kind: 'edge', info, screenPos: { x: event.clientX, y: event.clientY } },
+        { x: event.clientX, y: event.clientY }
+      );
+    },
+    [resolveEdge, openContextMenu]
   );
 
   const handlePointerOver = useCallback(() => {
@@ -81,7 +99,11 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   }, []);
   const handlePointerOut = useCallback(() => {
     document.body.style.cursor = '';
-    setHoverEntity(null);
+    const cur = usePlaygroundStore.getState().hoverEntity;
+    if (cur?.kind === 'edge' && cur.info.edgeId === lastAdvertisedEdgeId.current) {
+      setHoverEntity(null);
+    }
+    lastAdvertisedEdgeId.current = null;
   }, [setHoverEntity]);
 
   // pointermove updates hoverEntity each frame so the tooltip tracks the
@@ -93,21 +115,17 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   // never win.
   const handlePointerMove = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
-      if (!edgeGroups || !edgeInfoById) return;
-      const vertexIndex = event.index;
-      if (vertexIndex === undefined) return;
-      const group = findGroupAt(edgeGroups, vertexIndex);
-      if (!group) return;
-      const info = edgeInfoById.get(group.edgeId);
+      const info = resolveEdge(event);
       if (!info) return;
       event.stopPropagation();
+      lastAdvertisedEdgeId.current = info.edgeId;
       setHoverEntity({
         kind: 'edge',
         info,
         screenPos: { x: event.clientX, y: event.clientY },
       });
     },
-    [edgeGroups, edgeInfoById, setHoverEntity]
+    [resolveEdge, setHoverEntity]
   );
 
   // R3F doesn't synthesize `pointerout` for an object that gets unmounted
@@ -117,7 +135,10 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   useEffect(() => {
     return () => {
       document.body.style.cursor = '';
-      setHoverEntity(null);
+      const cur = usePlaygroundStore.getState().hoverEntity;
+      if (cur?.kind === 'edge' && cur.info.edgeId === lastAdvertisedEdgeId.current) {
+        setHoverEntity(null);
+      }
     };
   }, [setHoverEntity]);
 
@@ -126,6 +147,7 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
       geometry={geometry}
       renderOrder={1}
       onClick={pickable ? handleClick : undefined}
+      onContextMenu={pickable ? handleContextMenu : undefined}
       onPointerOver={pickable ? handlePointerOver : undefined}
       onPointerOut={pickable ? handlePointerOut : undefined}
       onPointerMove={pickable ? handlePointerMove : undefined}
@@ -136,9 +158,12 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   );
 }
 
-// Bumps the line-pick threshold so users don't need to hit the 1-pixel-wide
-// line dead-on; the default threshold is too tight on hi-DPI displays.
-const PICK_THRESHOLD_WORLD = 0.5;
+// Pick threshold for line raycasting. Earlier we used 0.5mm world-units to
+// be forgiving on hi-DPI displays, but on a 9.6mm-tall stud brick that
+// makes every side face partially "inside" the line pick volume — edges
+// then win the closest-hit race for hovers that visually land on a face.
+// 0.15 keeps lines easy to grab without swallowing face area.
+const PICK_THRESHOLD_WORLD = 0.15;
 function raycastLines(
   this: THREE.LineSegments,
   raycaster: THREE.Raycaster,
