@@ -43,6 +43,11 @@ export default function PlaygroundPage() {
   const viewerPanelRef = usePanelRef();
   // Mutable ref to hold the editor format function, set by EditorPanel
   const editorFormatFnRef = useMemo(() => ({ current: null as (() => void) | null }), []);
+  // Mutable ref for the editor's jump-to-line bridge (used by OutputPanel).
+  const editorJumpToLineRef = useMemo(
+    () => ({ current: null as ((line: number) => void) | null }),
+    []
+  );
 
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -138,6 +143,13 @@ export default function PlaygroundPage() {
   const handleFormat = useCallback(() => {
     editorFormatFnRef.current?.();
   }, [editorFormatFnRef]);
+
+  const handleJumpToLine = useCallback(
+    (line: number) => {
+      editorJumpToLineRef.current?.(line);
+    },
+    [editorJumpToLineRef]
+  );
 
   const handleConsoleResize = useCallback(
     (size: { asPercentage: number }) => {
@@ -441,7 +453,11 @@ export default function PlaygroundPage() {
             onLayoutChanged={vLayout.onLayoutChanged}
           >
             <Panel id="editor" defaultSize="80%" minSize="30%">
-              <EditorPanel onCodeChange={handleCodeChange} onFormat={editorFormatFnRef} />
+              <EditorPanel
+                onCodeChange={handleCodeChange}
+                onFormat={editorFormatFnRef}
+                jumpToLineRef={editorJumpToLineRef}
+              />
             </Panel>
             <Separator className="h-px bg-border-subtle" />
             <Panel
@@ -456,7 +472,7 @@ export default function PlaygroundPage() {
               {isConsoleCollapsed ? (
                 <CollapsedConsoleBar onExpand={toggleConsole} />
               ) : (
-                <OutputPanel onCollapse={toggleConsole} />
+                <OutputPanel onCollapse={toggleConsole} onJumpToLine={handleJumpToLine} />
               )}
             </Panel>
           </Group>

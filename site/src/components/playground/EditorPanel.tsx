@@ -6,9 +6,10 @@ import { setupMonaco } from '../../lib/monacoSetup';
 interface EditorPanelProps {
   onCodeChange: (code: string) => void;
   onFormat?: { current: (() => void) | null };
+  jumpToLineRef?: { current: ((line: number) => void) | null };
 }
 
-export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps) {
+export default function EditorPanel({ onCodeChange, onFormat, jumpToLineRef }: EditorPanelProps) {
   const code = usePlaygroundStore((s) => s.code);
   const setCode = usePlaygroundStore((s) => s.setCode);
   const error = usePlaygroundStore((s) => s.error);
@@ -35,8 +36,21 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
           void editor.getAction('editor.action.formatDocument')?.run();
         };
       }
+      // Expose a jump-to-line bridge so the console panel's "Go to line"
+      // button can scroll the editor to the offending line and focus it.
+      if (jumpToLineRef) {
+        jumpToLineRef.current = (line: number) => {
+          const model = editor.getModel();
+          if (!model) return;
+          const lineCount = model.getLineCount();
+          const target = Math.min(Math.max(line, 1), lineCount);
+          editor.revealLineInCenter(target);
+          editor.setPosition({ lineNumber: target, column: 1 });
+          editor.focus();
+        };
+      }
     },
-    [onFormat]
+    [onFormat, jumpToLineRef]
   );
 
   const handleChange = useCallback(
@@ -63,11 +77,7 @@ export default function EditorPanel({ onCodeChange, onFormat }: EditorPanelProps
       editor.setValue(code);
       return;
     }
-    model.pushEditOperations(
-      [],
-      [{ range: model.getFullModelRange(), text: code }],
-      () => null
-    );
+    model.pushEditOperations([], [{ range: model.getFullModelRange(), text: code }], () => null);
   }, [code]);
 
   // Update error markers

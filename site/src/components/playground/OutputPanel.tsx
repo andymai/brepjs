@@ -4,11 +4,13 @@ import { countErrors } from '../../lib/consoleStats';
 
 interface OutputPanelProps {
   onCollapse: () => void;
+  onJumpToLine?: (line: number) => void;
 }
 
-export default function OutputPanel({ onCollapse }: OutputPanelProps) {
+export default function OutputPanel({ onCollapse, onJumpToLine }: OutputPanelProps) {
   const consoleOutput = usePlaygroundStore((s) => s.consoleOutput);
   const error = usePlaygroundStore((s) => s.error);
+  const errorLine = usePlaygroundStore((s) => s.errorLine);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-scroll on new content. zustand replaces the array on every
@@ -111,7 +113,22 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
                 {line}
               </div>
             ))}
-            {error && <div className="text-red-400">{error}</div>}
+            {error && (
+              <div className="flex flex-wrap items-baseline gap-2 text-red-400">
+                <span>{error}</span>
+                {errorLine !== null && onJumpToLine && (
+                  <button
+                    onClick={() => {
+                      onJumpToLine(errorLine);
+                    }}
+                    className="rounded border border-red-500/40 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-200 transition-colors hover:bg-red-500/20"
+                    title="Jump to error line in editor"
+                  >
+                    Go to line {errorLine}
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
