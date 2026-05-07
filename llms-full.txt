@@ -58,7 +58,7 @@ The kernel abstraction layer (`src/kernel/`) translates all brepjs calls into OC
 
 See `docs/cheat-sheet.md` for a single-page reference covering all common operations (primitives, booleans, transforms, fillets, measurement, export, memory management, error handling).
 
-Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). Try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
+Works in both Node.js and browsers. For browser setup with Vite, see `docs/getting-started.md` (Browser Setup section). Try the [interactive playground](https://docs.brepjs.dev/playground) for live experimentation.
 
 ## API Style
 

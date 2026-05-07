@@ -241,7 +241,7 @@ Vite handles WASM loading automatically. For other bundlers, you may need to con
 >
 > See [Compatibility - No SSR Support](./compatibility.md#3-no-ssr-support) for patterns.
 
-Try the [interactive playground](https://brepjs.vercel.app) for live experimentation.
+Try the [interactive playground](https://docs.brepjs.dev/playground) for live experimentation.
 
 ## The 2D → 3D workflow
 

@@ -4,7 +4,7 @@ title: Cheat Sheet
 
 # Cheat Sheet
 
-A one-page reference for the brepjs API. Bookmark this. Every snippet here is also openable in the [playground](https://brepjs.vercel.app/).
+A one-page reference for the brepjs API. Bookmark this. Every snippet here is also openable in the [playground](/playground).
 
 ## Init
 

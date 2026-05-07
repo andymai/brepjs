@@ -196,7 +196,7 @@ Terms used throughout brepjs documentation, in alphabetical order. Where a term 
 
 **`withKernel`** — `withKernel(id, fn)`. Runs `fn` synchronously with the named kernel active. Don't pass async callbacks. See [Kernels](../concepts/kernels).
 
-**Workbench** — Replicad's name for its in-browser playground. brepjs has [a similar playground](https://brepjs.vercel.app/).
+**Workbench** — Replicad's name for its in-browser playground. brepjs has [a similar playground](/playground).
 
 ## Next steps
 
