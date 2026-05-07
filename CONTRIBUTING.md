@@ -48,7 +48,7 @@ When you add or modify a code block in a chapter, the doc-test harness picks it 
 
 ### Docs deployment
 
-The chapter site (`docs-site/`) is deployed to Vercel at `https://docs.brepjs.dev` via a Vercel project rooted at `docs-site/` (config: `docs-site/vercel.json`). Pushing to `main` produces a production deploy; PRs get preview deploys.
+The chapter site (`docs-site/`) is deployed to Vercel at `https://brepjs.dev` via a Vercel project rooted at `docs-site/` (config: `docs-site/vercel.json`). Pushing to `main` produces a production deploy; PRs get preview deploys.
 
 The TypeDoc API reference is a separate deploy on GitHub Pages (`https://andymai.github.io/brepjs/`) via `.github/workflows/docs.yml`. Keeping them split lets the chapter site iterate without re-running TypeDoc.
 

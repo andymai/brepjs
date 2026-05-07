@@ -156,7 +156,7 @@ export default withMermaid(
       theme: 'default',
     },
     sitemap: {
-      hostname: 'https://docs.brepjs.dev',
+      hostname: 'https://brepjs.dev',
     },
   })
 );
