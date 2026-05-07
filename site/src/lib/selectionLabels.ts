@@ -56,6 +56,11 @@ export function formatNormalDirection(normal: Vec3): string {
 }
 
 function formatNumber(n: number): string {
+  // Defensive: the worker boundary erased a Result<number> bug into a
+  // crashing toFixed call once. If a non-finite value sneaks through
+  // again — null, NaN, an unwrapped Result — render `—` instead of
+  // toppling the whole tooltip.
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   if (n >= 100) return Math.round(n).toLocaleString('en-US');
   return n.toFixed(2).replace(/\.?0+$/, '');
 }

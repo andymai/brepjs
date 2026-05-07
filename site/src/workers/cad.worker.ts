@@ -1,10 +1,4 @@
-import type {
-  ToWorker,
-  FromWorker,
-  MeshTransfer,
-  FaceGroup,
-  EdgeGroup,
-} from './workerProtocol';
+import type { ToWorker, FromWorker, MeshTransfer, FaceGroup, EdgeGroup } from './workerProtocol';
 import { WASM_CACHE_NAME } from '../lib/wasmConfig';
 
 declare function postMessage(message: unknown, transfer?: Transferable[]): void;
@@ -333,10 +327,15 @@ function collectFaceInfos(shape: any) {
         ? (surfaceTypeResult.value as string)
         : 'OTHER_SURFACE';
       const normal = brepjs.normalAt(face) as [number, number, number];
+      // measureArea returns Result<number>; the prior code shipped the
+      // wrapped object straight to the UI, where formatNumber crashed
+      // because the Result had no .toFixed.
+      const areaResult = brepjs.measureArea(face);
+      const area = brepjs.isOk(areaResult) ? (areaResult.value as number) : NaN;
       infos.push({
         faceId: brepjs.getHashCode(face),
         surfaceType,
-        area: brepjs.measureArea(face),
+        area,
         normal,
       });
     } catch (err) {
