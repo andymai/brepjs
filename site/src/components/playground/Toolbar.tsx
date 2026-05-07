@@ -1,5 +1,5 @@
 import { useEngineStore } from '../../stores/engineStore';
-import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
+import { SHORTCUTS, formatShortcut, isMac } from '../../lib/shortcuts';
 import Logo from '../shared/Logo';
 
 interface ToolbarProps {
@@ -7,6 +7,8 @@ interface ToolbarProps {
   onExportSTL: () => void;
   onExportSTEP: () => void;
   onShare: () => void;
+  onOpenCommandPalette: () => void;
+  onOpenHelp: () => void;
   isRunning: boolean;
 }
 
@@ -15,6 +17,8 @@ export default function Toolbar({
   onExportSTL,
   onExportSTEP,
   onShare,
+  onOpenCommandPalette,
+  onOpenHelp,
   isRunning,
 }: ToolbarProps) {
   const engineReady = useEngineStore((s) => s.status === 'ready');
@@ -22,7 +26,11 @@ export default function Toolbar({
   return (
     <div className="flex h-11 items-center justify-between border-b border-border-subtle bg-surface px-3">
       <div className="flex items-center gap-2">
-        <a href="/" className="flex items-center gap-1.5 text-sm font-bold" aria-label="Back to brepjs docs">
+        <a
+          href="/"
+          className="flex items-center gap-1.5 text-sm font-bold"
+          aria-label="Back to brepjs docs"
+        >
           <Logo className="h-6 w-6" />
           <span className="text-gray-400">brepjs</span>
         </a>
@@ -60,6 +68,26 @@ export default function Toolbar({
           className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
         >
           STEP
+        </button>
+        <div className="mx-1 h-4 w-px bg-border-subtle" />
+        <button
+          onClick={onOpenCommandPalette}
+          title={`Command palette (${isMac ? '⌘+K' : 'Ctrl+K'})`}
+          aria-label="Open command palette"
+          className="rounded px-2 py-1 text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"
+        >
+          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-hidden="true">
+            <circle cx="6" cy="6" r="3.5" stroke="currentColor" strokeWidth="1.4" fill="none" />
+            <path d="M9 9l4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </button>
+        <button
+          onClick={onOpenHelp}
+          title="Keyboard shortcuts (?)"
+          aria-label="Show keyboard shortcuts"
+          className="rounded px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"
+        >
+          ?
         </button>
       </div>
     </div>

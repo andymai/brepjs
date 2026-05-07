@@ -397,6 +397,10 @@ export default function PlaygroundPage() {
         onExportSTL={handleExportSTL}
         onExportSTEP={handleExportSTEP}
         onShare={handleShare}
+        onOpenCommandPalette={openCommandPalette}
+        onOpenHelp={() => {
+          setShortcutHelpOpen(true);
+        }}
         isRunning={isRunning}
       />
 
