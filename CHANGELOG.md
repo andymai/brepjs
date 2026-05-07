@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.2.0](https://github.com/andymai/brepjs/compare/brepjs-v18.1.3...brepjs-v18.2.0) (2026-05-07)
+
+
+### Features
+
+* **playground:** click a face or edge to copy its finder predicate ([#856](https://github.com/andymai/brepjs/issues/856)) ([05b03fb](https://github.com/andymai/brepjs/commit/05b03fbb59b19d7b272d4894d45a9f47e5094f47))
+
 ## [18.1.3](https://github.com/andymai/brepjs/compare/brepjs-v18.1.2...brepjs-v18.1.3) (2026-05-07)
 
 ### Bug Fixes
