@@ -11,7 +11,7 @@ import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import { DEFAULT_CODE } from '../../lib/constants';
 import { copyToClipboard } from '../../lib/copyToClipboard';
-import { downloadViewerScreenshot } from '../../lib/screenshot';
+import { useScreenshot } from '../../hooks/useScreenshot';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanel';
@@ -123,10 +123,7 @@ export default function PlaygroundPage() {
     addToast('Viewer settings reset');
   }, [resetViewerDefaults, addToast]);
 
-  const handleScreenshot = useCallback(() => {
-    const ok = downloadViewerScreenshot();
-    addToast(ok ? 'Screenshot saved' : 'Screenshot failed');
-  }, [addToast]);
+  const handleScreenshot = useScreenshot();
 
   const toggleConsole = useCallback(() => {
     const panel = consolePanelRef.current;

@@ -1,7 +1,5 @@
-import { useCallback } from 'react';
 import { useViewerStore, type CameraPreset, type ViewMode } from '../../stores/viewerStore';
-import { useToastStore } from '../../stores/toastStore';
-import { downloadViewerScreenshot } from '../../lib/screenshot';
+import { useScreenshot } from '../../hooks/useScreenshot';
 
 export default function ViewerToolbar() {
   const viewMode = useViewerStore((s) => s.viewMode);
@@ -15,12 +13,7 @@ export default function ViewerToolbar() {
   const toggleProjection = useViewerStore((s) => s.toggleProjection);
   const requestFit = useViewerStore((s) => s.requestFit);
   const setCameraPreset = useViewerStore((s) => s.setCameraPreset);
-  const addToast = useToastStore((s) => s.addToast);
-
-  const handleScreenshot = useCallback(() => {
-    const ok = downloadViewerScreenshot();
-    addToast(ok ? 'Screenshot saved' : 'Screenshot failed');
-  }, [addToast]);
+  const handleScreenshot = useScreenshot();
 
   return (
     <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col gap-1">
