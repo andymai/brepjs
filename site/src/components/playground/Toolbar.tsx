@@ -1,5 +1,5 @@
 import { useEngineStore } from '../../stores/engineStore';
-import { SHORTCUTS, formatShortcut, isMac } from '../../lib/shortcuts';
+import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import Logo from '../shared/Logo';
 
 interface ToolbarProps {
@@ -72,7 +72,7 @@ export default function Toolbar({
         <div className="mx-1 h-4 w-px bg-border-subtle" />
         <button
           onClick={onOpenCommandPalette}
-          title={`Command palette (${isMac ? '⌘+K' : 'Ctrl+K'})`}
+          title={`Command palette (${formatShortcut(SHORTCUTS.commandPalette)})`}
           aria-label="Open command palette"
           className="rounded px-2 py-1 text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"
         >

@@ -158,6 +158,10 @@ export default function PlaygroundPage() {
     setPaletteOpen(true);
   }, []);
 
+  const openShortcutHelp = useCallback(() => {
+    setShortcutHelpOpen(true);
+  }, []);
+
   const shortcutActions = useMemo(
     () => ({
       run: handleRun,
@@ -350,14 +354,13 @@ export default function PlaygroundPage() {
         group: 'Help',
         label: 'Show keyboard shortcuts',
         keys: '?',
-        run: () => {
-          setShortcutHelpOpen(true);
-        },
+        run: openShortcutHelp,
       },
     ],
     [
       handleRun,
       handleShare,
+      openShortcutHelp,
       handleResetToDefault,
       handleResetViewer,
       handleCopyCode,
@@ -398,9 +401,7 @@ export default function PlaygroundPage() {
         onExportSTEP={handleExportSTEP}
         onShare={handleShare}
         onOpenCommandPalette={openCommandPalette}
-        onOpenHelp={() => {
-          setShortcutHelpOpen(true);
-        }}
+        onOpenHelp={openShortcutHelp}
         isRunning={isRunning}
       />
 
