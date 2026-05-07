@@ -41,7 +41,7 @@ export default function Toolbar({
           <button
             onClick={clearSelections}
             title="Click to clear selection"
-            className="ml-2 flex items-center gap-1 rounded-full border border-teal-primary/30 bg-teal-primary/15 px-2 py-0.5 text-[10px] font-semibold text-teal-light transition-colors hover:bg-teal-primary/25"
+            className="flex items-center gap-1 rounded-full border border-teal-primary/30 bg-teal-primary/15 px-2 py-0.5 text-[10px] font-semibold text-teal-light transition-colors hover:bg-teal-primary/25"
           >
             <span>{selectionCount} selected</span>
             <svg viewBox="0 0 16 16" className="h-2.5 w-2.5 opacity-70" aria-hidden="true">
@@ -50,6 +50,7 @@ export default function Toolbar({
                 stroke="currentColor"
                 strokeWidth="1.6"
                 strokeLinecap="round"
+                fill="none"
               />
             </svg>
           </button>
