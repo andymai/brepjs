@@ -182,7 +182,6 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
 
 const PICK_THRESHOLD_PX = 6;
 const FALLBACK_WORLD_THRESHOLD = 0.15;
-const _center = new THREE.Vector3();
 
 function computeWorldThreshold(
   lines: THREE.LineSegments,
@@ -196,8 +195,8 @@ function computeWorldThreshold(
     if (!lines.geometry.boundingSphere) lines.geometry.computeBoundingSphere();
     const sphere = lines.geometry.boundingSphere;
     if (!sphere) return FALLBACK_WORLD_THRESHOLD;
-    _center.copy(sphere.center).applyMatrix4(lines.matrixWorld);
-    const distance = persp.position.distanceTo(_center);
+    const center = new THREE.Vector3().copy(sphere.center).applyMatrix4(lines.matrixWorld);
+    const distance = persp.position.distanceTo(center);
     const fovRad = (persp.fov * Math.PI) / 180;
     const worldPerPixel = (2 * distance * Math.tan(fovRad / 2)) / viewportHeight;
     return worldPerPixel * PICK_THRESHOLD_PX;
