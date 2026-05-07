@@ -315,7 +315,7 @@ export default function ViewerPanel() {
               {showEdges && viewMode !== 'wireframe' && m.edges.length > 0 && (
                 <EdgeRenderer edges={m.edges} edgeGroups={m.edgeGroups} edgeInfos={m.edgeInfos} />
               )}
-              <SelectionHighlight data={m} selections={selections} />
+              <SelectionHighlight data={m} selections={selections} hoverEntity={hoverEntity} />
             </group>
           ))}
         </group>

@@ -6,6 +6,7 @@ import type { Selection } from '../../stores/playgroundStore';
 interface Props {
   data: MeshData;
   selections: Selection[];
+  hoverEntity: Selection | null;
 }
 
 const FACE_COLOR = '#4ACECC';
@@ -100,7 +101,7 @@ function buildEdgeHighlightGeometry(
   return geo;
 }
 
-export default function SelectionHighlight({ data, selections }: Props) {
+export default function SelectionHighlight({ data, selections, hoverEntity }: Props) {
   // Stable cache keys: ids only, so unrelated selection drift (e.g. screenPos
   // updates from re-clicking the same face) doesn't rebuild geometry.
   const { faceIds, edgeIds } = useMemo(() => partitionIds(data, selections), [data, selections]);
@@ -118,6 +119,38 @@ export default function SelectionHighlight({ data, selections }: Props) {
     [data, edgeKey]
   );
 
+  // Hover highlight uses the same geometry-builder pipeline but only when
+  // the hovered entity isn't already in `selections` (avoids z-fighting
+  // between the committed and hover overlays at the same poly-offset).
+  const hoverFaceIds = useMemo(() => {
+    if (!hoverEntity || hoverEntity.kind !== 'face') return [];
+    const id = hoverEntity.info.faceId;
+    if (faceIds.includes(id)) return [];
+    if (!data.faceGroups?.some((g) => g.faceId === id)) return [];
+    return [id];
+  }, [hoverEntity, faceIds, data.faceGroups]);
+  const hoverEdgeIds = useMemo(() => {
+    if (!hoverEntity || hoverEntity.kind !== 'edge') return [];
+    const id = hoverEntity.info.edgeId;
+    if (edgeIds.includes(id)) return [];
+    if (!data.edgeGroups?.some((g) => g.edgeId === id)) return [];
+    return [id];
+  }, [hoverEntity, edgeIds, data.edgeGroups]);
+
+  const hoverFaceKey = hoverFaceIds.join(',');
+  const hoverEdgeKey = hoverEdgeIds.join(',');
+
+  const hoverFaceGeometry = useMemo(
+    () => buildFaceHighlightGeometry(data, hoverFaceIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ids captured via hoverFaceKey
+    [data, hoverFaceKey]
+  );
+  const hoverEdgeGeometry = useMemo(
+    () => buildEdgeHighlightGeometry(data, hoverEdgeIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ids captured via hoverEdgeKey
+    [data, hoverEdgeKey]
+  );
+
   useEffect(() => {
     return () => {
       faceGeometry?.dispose();
@@ -129,6 +162,18 @@ export default function SelectionHighlight({ data, selections }: Props) {
       edgeGeometry?.dispose();
     };
   }, [edgeGeometry]);
+
+  useEffect(() => {
+    return () => {
+      hoverFaceGeometry?.dispose();
+    };
+  }, [hoverFaceGeometry]);
+
+  useEffect(() => {
+    return () => {
+      hoverEdgeGeometry?.dispose();
+    };
+  }, [hoverEdgeGeometry]);
 
   return (
     <>
@@ -156,6 +201,29 @@ export default function SelectionHighlight({ data, selections }: Props) {
               browser, so we lean on the bright color + depthTest=false (renders
               on top of the base edges) to make the highlight readable. */}
           <lineBasicMaterial color={EDGE_COLOR} depthTest={false} transparent />
+        </lineSegments>
+      )}
+      {hoverFaceGeometry && (
+        <mesh geometry={hoverFaceGeometry} raycast={skipRaycast} renderOrder={2}>
+          <meshStandardMaterial
+            color={FACE_COLOR}
+            emissive={FACE_COLOR}
+            emissiveIntensity={0.35}
+            metalness={0}
+            roughness={0.3}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.22}
+            depthWrite={false}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
+      )}
+      {hoverEdgeGeometry && (
+        <lineSegments geometry={hoverEdgeGeometry} raycast={skipRaycast} renderOrder={3}>
+          <lineBasicMaterial color={EDGE_COLOR} depthTest={false} transparent opacity={0.55} />
         </lineSegments>
       )}
     </>
