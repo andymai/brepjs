@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.3.0](https://github.com/andymai/brepjs/compare/brepjs-v18.2.0...brepjs-v18.3.0) (2026-05-07)
+
+
+### Features
+
+* **playground:** studio-style polish for selection, viewport, and shortcuts ([#858](https://github.com/andymai/brepjs/issues/858)) ([fbee21d](https://github.com/andymai/brepjs/commit/fbee21d5db0a248af0c16ad83114aa8aeed65a09))
+
 ## [18.2.0](https://github.com/andymai/brepjs/compare/brepjs-v18.1.3...brepjs-v18.2.0) (2026-05-07)
 
 
