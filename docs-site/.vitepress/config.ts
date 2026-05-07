@@ -51,9 +51,11 @@ export default withMermaid(
         .replace(/\.md$/, '');
       const url = `${siteUrl}/${path}`;
 
+      // VitePress emits `<meta name="description">` natively from
+      // `frontmatter.description`, so we don't push one here — that would
+      // duplicate the tag and let scrapers pick the wrong copy.
       pageData.frontmatter.head ??= [];
       pageData.frontmatter.head.push(
-        ['meta', { name: 'description', content: description }],
         ['link', { rel: 'canonical', href: url }],
         ['meta', { property: 'og:url', content: url }],
         ['meta', { property: 'og:title', content: fullTitle }],
