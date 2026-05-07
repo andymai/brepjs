@@ -1,14 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
+import { countErrors } from '../../lib/consoleStats';
 
 interface OutputPanelProps {
   onCollapse: () => void;
-}
-
-function countErrors(lines: string[], error: string | null): number {
-  let n = error ? 1 : 0;
-  for (const l of lines) if (l.startsWith('[error]')) n++;
-  return n;
 }
 
 export default function OutputPanel({ onCollapse }: OutputPanelProps) {
@@ -16,14 +11,14 @@ export default function OutputPanel({ onCollapse }: OutputPanelProps) {
   const error = usePlaygroundStore((s) => s.error);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll on new lines so the latest output is always visible. Triggers
-  // on length+error change rather than the consoleOutput reference itself
-  // because identity-equal arrays could otherwise short-circuit the effect.
-  const tick = consoleOutput.length + (error ? 1 : 0);
+  // Auto-scroll on new content. zustand replaces the array on every
+  // `setConsoleOutput`, so identity is a reliable change signal — counter
+  // arithmetic could collide across evals (eval A 4 lines → eval B error
+  // adds 1 → eval C 4 lines clears error: net same number, missed scroll).
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [tick]);
+  }, [consoleOutput, error]);
 
   const errorCount = countErrors(consoleOutput, error);
 

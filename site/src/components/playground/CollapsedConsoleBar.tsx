@@ -1,4 +1,5 @@
 import { usePlaygroundStore } from '../../stores/playgroundStore';
+import { countErrors } from '../../lib/consoleStats';
 
 interface CollapsedConsoleBarProps {
   onExpand: () => void;
@@ -7,9 +8,7 @@ interface CollapsedConsoleBarProps {
 export default function CollapsedConsoleBar({ onExpand }: CollapsedConsoleBarProps) {
   const consoleOutput = usePlaygroundStore((s) => s.consoleOutput);
   const error = usePlaygroundStore((s) => s.error);
-
-  let errorCount = error ? 1 : 0;
-  for (const l of consoleOutput) if (l.startsWith('[error]')) errorCount++;
+  const errorCount = countErrors(consoleOutput, error);
 
   return (
     <button
@@ -22,7 +21,7 @@ export default function CollapsedConsoleBar({ onExpand }: CollapsedConsoleBarPro
       Console
       {errorCount > 0 && (
         <span
-          className="rounded-full bg-red-500/25 px-1.5 py-0.5 text-[10px] font-semibold text-red-300"
+          className="rounded-full bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-300"
           title={`${errorCount} error${errorCount === 1 ? '' : 's'}`}
         >
           {errorCount}
