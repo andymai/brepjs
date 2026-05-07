@@ -51,15 +51,14 @@ const profile = new Sketcher('XZ')
 
 const body = unwrap(revolve(profile));
 
-// Fillet the rim and base for that thrown-on-a-wheel feel.
-const lipEdges = edgeFinder().atZ(70, { tol: 0.5 }).findAll(body);
+// Fillet the rim — the top of the profile sits at Z=68.
+const lipEdges = edgeFinder().atZ(68, { tol: 0.5 }).findAll(body);
 const filleted = unwrap(fillet(body, lipEdges, 0.6));
 
 export default filleted;
 `;
 
-const pegboard = `import { box, cutAll, cylinder } from 'brepjs/quick';
-import { unwrap } from 'brepjs/quick';
+const pegboard = `import { box, cutAll, cylinder, unwrap } from 'brepjs/quick';
 
 // Parametric pegboard: any width × height, fixed 25 mm grid, 6 mm pegs.
 function pegboard(cols: number, rows: number) {
