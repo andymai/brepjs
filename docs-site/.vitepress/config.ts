@@ -15,6 +15,9 @@ export default withMermaid(
     base: process.env.DOCS_BASE ?? '/',
     cleanUrls: true,
     lastUpdated: true,
+    // /playground is staged into the VitePress dist after this build runs
+    // (see vercel.json buildCommand), so the link checker can't see it.
+    ignoreDeadLinks: [/^\/playground(\/|$)/],
     head: [
       ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
       ['link', { rel: 'icon', href: '/favicon.ico', type: 'image/x-icon' }],
