@@ -12,6 +12,7 @@ import EdgeRenderer from './EdgeRenderer';
 import ViewerToolbar from './ViewerToolbar';
 import SelectionTooltip from './SelectionTooltip';
 import SelectionHighlight from './SelectionHighlight';
+import OnboardingHint from './OnboardingHint';
 
 /**
  * Build a content-derived React key for a mesh. The store hands us a fresh
@@ -326,6 +327,7 @@ export default function ViewerPanel() {
         hoverEntity={hoverEntity}
         containerRef={containerRef}
       />
+      <OnboardingHint />
     </div>
   );
 }
