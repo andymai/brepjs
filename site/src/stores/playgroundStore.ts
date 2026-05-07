@@ -33,6 +33,7 @@ interface PlaygroundState {
   pendingReview: boolean;
   isConsoleCollapsed: boolean;
   isViewerCollapsed: boolean;
+  isEditorCollapsed: boolean;
   lastSuccessfulCode: string | null;
   selections: Selection[];
   hoverEntity: Selection | null;
@@ -46,6 +47,7 @@ interface PlaygroundState {
   setPendingReview: (pending: boolean) => void;
   setConsoleCollapsed: (collapsed: boolean) => void;
   setViewerCollapsed: (collapsed: boolean) => void;
+  setEditorCollapsed: (collapsed: boolean) => void;
   setLastSuccessfulCode: (code: string) => void;
   pickSelection: (selection: Selection, additive: boolean) => void;
   clearSelections: () => void;
@@ -71,6 +73,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   pendingReview: false,
   isConsoleCollapsed: false,
   isViewerCollapsed: false,
+  isEditorCollapsed: false,
   lastSuccessfulCode: null,
   selections: [],
   hoverEntity: null,
@@ -87,6 +90,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setPendingReview: (pendingReview) => set({ pendingReview }),
   setConsoleCollapsed: (isConsoleCollapsed) => set({ isConsoleCollapsed }),
   setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
+  setEditorCollapsed: (isEditorCollapsed) => set({ isEditorCollapsed }),
   setLastSuccessfulCode: (lastSuccessfulCode) => set({ lastSuccessfulCode }),
   pickSelection: (selection, additive) =>
     set((s) => {

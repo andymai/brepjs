@@ -32,6 +32,8 @@ export default function PlaygroundPage() {
   const setConsoleCollapsed = usePlaygroundStore((s) => s.setConsoleCollapsed);
   const isViewerCollapsed = usePlaygroundStore((s) => s.isViewerCollapsed);
   const setViewerCollapsed = usePlaygroundStore((s) => s.setViewerCollapsed);
+  const isEditorCollapsed = usePlaygroundStore((s) => s.isEditorCollapsed);
+  const setEditorCollapsed = usePlaygroundStore((s) => s.setEditorCollapsed);
   const isRunning = usePlaygroundStore((s) => s.isRunning);
   const error = usePlaygroundStore((s) => s.error);
   const addToast = useToastStore((s) => s.addToast);
@@ -41,6 +43,7 @@ export default function PlaygroundPage() {
 
   const consolePanelRef = usePanelRef();
   const viewerPanelRef = usePanelRef();
+  const editorAreaPanelRef = usePanelRef();
   // Mutable ref to hold the editor format function, set by EditorPanel
   const editorFormatFnRef = useMemo(() => ({ current: null as (() => void) | null }), []);
   // Mutable ref for the editor's jump-to-line bridge (used by OutputPanel).
@@ -140,6 +143,16 @@ export default function PlaygroundPage() {
     }
   }, [viewerPanelRef]);
 
+  const toggleEditor = useCallback(() => {
+    const panel = editorAreaPanelRef.current;
+    if (!panel) return;
+    if (panel.isCollapsed()) {
+      panel.expand();
+    } else {
+      panel.collapse();
+    }
+  }, [editorAreaPanelRef]);
+
   const handleFormat = useCallback(() => {
     editorFormatFnRef.current?.();
   }, [editorFormatFnRef]);
@@ -166,6 +179,13 @@ export default function PlaygroundPage() {
     [setViewerCollapsed]
   );
 
+  const handleEditorAreaResize = useCallback(
+    (size: { asPercentage: number }) => {
+      setEditorCollapsed(size.asPercentage <= 1);
+    },
+    [setEditorCollapsed]
+  );
+
   const openCommandPalette = useCallback(() => {
     setPaletteOpen(true);
   }, []);
@@ -183,6 +203,7 @@ export default function PlaygroundPage() {
       formatCode: handleFormat,
       toggleOutput: toggleConsole,
       toggleViewer: toggleViewer,
+      toggleEditor: toggleEditor,
       commandPalette: openCommandPalette,
     }),
     [
@@ -193,6 +214,7 @@ export default function PlaygroundPage() {
       handleFormat,
       toggleConsole,
       toggleViewer,
+      toggleEditor,
       openCommandPalette,
     ]
   );
@@ -270,6 +292,13 @@ export default function PlaygroundPage() {
         label: 'Toggle viewer',
         keys: formatShortcut(SHORTCUTS.toggleViewer!),
         run: toggleViewer,
+      },
+      {
+        id: 'toggleEditor',
+        group: 'Layout',
+        label: 'Toggle editor',
+        keys: formatShortcut(SHORTCUTS.toggleEditor!),
+        run: toggleEditor,
       },
       {
         id: 'view-solid',
@@ -382,6 +411,7 @@ export default function PlaygroundPage() {
       handleFormat,
       toggleConsole,
       toggleViewer,
+      toggleEditor,
       setViewMode,
       cycleViewMode,
       toggleEdges,
@@ -392,15 +422,20 @@ export default function PlaygroundPage() {
     ]
   );
 
-  // Auto-expand console when error occurs
+  // Auto-expand console when error occurs — and the editor too, so users
+  // who collapsed the editor for a screenshot don't get stuck staring at
+  // a 3D viewer with an error message they can't see or fix.
   useEffect(() => {
-    if (error && isConsoleCollapsed) {
+    if (!error) return;
+    if (isConsoleCollapsed) {
       const panel = consolePanelRef.current;
-      if (panel?.isCollapsed()) {
-        panel.expand();
-      }
+      if (panel?.isCollapsed()) panel.expand();
     }
-  }, [error, isConsoleCollapsed, consolePanelRef]);
+    if (isEditorCollapsed) {
+      const panel = editorAreaPanelRef.current;
+      if (panel?.isCollapsed()) panel.expand();
+    }
+  }, [error, isConsoleCollapsed, isEditorCollapsed, consolePanelRef, editorAreaPanelRef]);
 
   return (
     <div className="relative flex h-screen flex-col bg-gray-950">
@@ -446,36 +481,46 @@ export default function PlaygroundPage() {
         className="flex-1 overflow-hidden"
       >
         {/* Left: editor + output */}
-        <Panel id="editor-area" defaultSize="50%" minSize="20%">
-          <Group
-            orientation="vertical"
-            defaultLayout={vLayout.defaultLayout}
-            onLayoutChanged={vLayout.onLayoutChanged}
-          >
-            <Panel id="editor" defaultSize="80%" minSize="30%">
-              <EditorPanel
-                onCodeChange={handleCodeChange}
-                onFormat={editorFormatFnRef}
-                jumpToLineRef={editorJumpToLineRef}
-              />
-            </Panel>
-            <Separator className="h-px bg-border-subtle" />
-            <Panel
-              id="console"
-              panelRef={consolePanelRef}
-              collapsible
-              collapsedSize="3.5%"
-              minSize="15%"
-              defaultSize="20%"
-              onResize={handleConsoleResize}
+        <Panel
+          id="editor-area"
+          panelRef={editorAreaPanelRef}
+          collapsible
+          collapsedSize="0%"
+          minSize="20%"
+          defaultSize="50%"
+          onResize={handleEditorAreaResize}
+        >
+          {isEditorCollapsed ? null : (
+            <Group
+              orientation="vertical"
+              defaultLayout={vLayout.defaultLayout}
+              onLayoutChanged={vLayout.onLayoutChanged}
             >
-              {isConsoleCollapsed ? (
-                <CollapsedConsoleBar onExpand={toggleConsole} />
-              ) : (
-                <OutputPanel onCollapse={toggleConsole} onJumpToLine={handleJumpToLine} />
-              )}
-            </Panel>
-          </Group>
+              <Panel id="editor" defaultSize="80%" minSize="30%">
+                <EditorPanel
+                  onCodeChange={handleCodeChange}
+                  onFormat={editorFormatFnRef}
+                  jumpToLineRef={editorJumpToLineRef}
+                />
+              </Panel>
+              <Separator className="h-px bg-border-subtle" />
+              <Panel
+                id="console"
+                panelRef={consolePanelRef}
+                collapsible
+                collapsedSize="3.5%"
+                minSize="15%"
+                defaultSize="20%"
+                onResize={handleConsoleResize}
+              >
+                {isConsoleCollapsed ? (
+                  <CollapsedConsoleBar onExpand={toggleConsole} />
+                ) : (
+                  <OutputPanel onCollapse={toggleConsole} onJumpToLine={handleJumpToLine} />
+                )}
+              </Panel>
+            </Group>
+          )}
         </Panel>
 
         <Separator className="w-px bg-border-subtle" />

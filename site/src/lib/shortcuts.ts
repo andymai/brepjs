@@ -36,6 +36,14 @@ export const SHORTCUTS: Record<string, ShortcutDef> = {
     label: 'Toggle Viewer',
     inEditor: false,
   },
+  toggleEditor: {
+    id: 'toggleEditor',
+    key: '\\',
+    ctrl: true,
+    shift: true,
+    label: 'Toggle Editor',
+    inEditor: false,
+  },
   commandPalette: {
     id: 'commandPalette',
     key: 'k',
