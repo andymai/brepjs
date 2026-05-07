@@ -70,6 +70,15 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
     document.body.style.cursor = '';
   }, []);
 
+  // R3F doesn't synthesize `pointerout` for an object that gets unmounted
+  // mid-hover (e.g. a new eval drops the previous mesh). Without this
+  // cleanup the body cursor stays `pointer` for the rest of the session.
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = '';
+    };
+  }, []);
+
   return (
     <mesh
       geometry={geometry}
