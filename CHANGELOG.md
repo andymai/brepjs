@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.1.3](https://github.com/andymai/brepjs/compare/brepjs-v18.1.2...brepjs-v18.1.3) (2026-05-07)
+
+
+### Bug Fixes
+
+* **playground:** evaluate user code as ES modules so docs links work ([#854](https://github.com/andymai/brepjs/issues/854)) ([9776ba6](https://github.com/andymai/brepjs/commit/9776ba62ade694eeed818bd9a0af1cefd666113d))
+
 ## [18.1.2](https://github.com/andymai/brepjs/compare/brepjs-v18.1.1...brepjs-v18.1.2) (2026-05-06)
 
 
