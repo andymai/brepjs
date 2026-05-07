@@ -152,7 +152,10 @@ export default function SelectionHighlight({ data, selections }: Props) {
       )}
       {edgeGeometry && (
         <lineSegments geometry={edgeGeometry} raycast={skipRaycast} renderOrder={3}>
-          <lineBasicMaterial color={EDGE_COLOR} linewidth={3} depthTest={false} transparent />
+          {/* `linewidth` is silently clamped to 1 in WebGL2 across every major
+              browser, so we lean on the bright color + depthTest=false (renders
+              on top of the base edges) to make the highlight readable. */}
+          <lineBasicMaterial color={EDGE_COLOR} depthTest={false} transparent />
         </lineSegments>
       )}
     </>
