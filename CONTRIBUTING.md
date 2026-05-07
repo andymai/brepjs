@@ -48,11 +48,11 @@ When you add or modify a code block in a chapter, the doc-test harness picks it 
 
 ### Docs deployment
 
-The chapter site (`docs-site/`) is deployed to Vercel at `https://brepjs.dev` via a Vercel project rooted at `docs-site/` (config: `docs-site/vercel.json`). Pushing to `main` produces a production deploy; PRs get preview deploys.
+The chapter site (`docs-site/`) and the playground (`site/`) are deployed together to Vercel at `https://brepjs.dev` via a single project rooted at the repo root (config: `vercel.json`). The build runs the playground build, then the VitePress build, then stages the playground assets into `docs-site/.vitepress/dist/playground/` so both ship from one origin and the playground gets the COOP/COEP headers it needs. Pushing to `main` produces a production deploy; PRs get preview deploys.
 
 The TypeDoc API reference is a separate deploy on GitHub Pages (`https://andymai.github.io/brepjs/`) via `.github/workflows/docs.yml`. Keeping them split lets the chapter site iterate without re-running TypeDoc.
 
-To set up the Vercel project (one-time): in the Vercel dashboard, create a project pointed at this repo with `Root Directory: docs-site`. Vercel reads `docs-site/vercel.json` for build/output settings.
+To set up the Vercel project (one-time): in the Vercel dashboard, create a project pointed at this repo and leave `Root Directory` at the default. Vercel reads `vercel.json` at the repo root for build/output settings.
 
 ## Development Workflow
 
