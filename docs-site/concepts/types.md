@@ -1,5 +1,6 @@
 ---
 title: Types That Prove Geometry Is Valid
+description: 'Branded types, phantom dimensions, and validity brands prove your geometry compiles only when it is structurally valid.'
 ---
 
 # Types That Prove Geometry Is Valid

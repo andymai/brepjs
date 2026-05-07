@@ -1,5 +1,6 @@
 ---
 title: Compatibility Matrix
+description: "What's tested and what works: Node.js versions, browser support, bundlers, frameworks, edge runtimes, and known gotchas."
 ---
 
 # Compatibility Matrix

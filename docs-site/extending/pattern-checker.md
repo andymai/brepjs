@@ -1,5 +1,6 @@
 ---
 title: Pattern Checker Rules
+description: "AST-based linter rules that catch issues ESLint can't: kernel routing, memory cleanup, code-quality thresholds. The catalog and fix recipes."
 ---
 
 # Pattern Checker Rules

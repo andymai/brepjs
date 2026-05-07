@@ -1,5 +1,6 @@
 ---
 title: Primitives & Transforms
+description: 'Boxes, cylinders, spheres, cones, tori, plus the transform vocabulary (translate, rotate, scale, mirror) that moves them around.'
 ---
 
 # Primitives & Transforms

@@ -1,5 +1,6 @@
 ---
 title: Coming from Three.js (mesh modeling)
+description: "If you've tried CAD in Three.js with three-csg-ts and hit the wall, brepjs is the precision layer above. The conceptual and practical shift."
 ---
 
 # Coming from Three.js (mesh modeling)

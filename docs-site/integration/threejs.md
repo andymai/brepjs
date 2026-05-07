@@ -1,5 +1,6 @@
 ---
 title: Three.js
+description: 'The CAD-on-the-web stack: model in brepjs, mesh, hand the buffer data to Three.js, render in a canvas. Materials, outlines, shadows.'
 ---
 
 # Three.js

@@ -1,5 +1,6 @@
 ---
 title: Coming from Replicad
+description: 'Coming from Replicad — both wrap OpenCascade. What is the same, what differs, and the search-and-replace map for working code.'
 ---
 
 # Coming from Replicad

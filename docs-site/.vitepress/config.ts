@@ -6,11 +6,15 @@ import { withMermaid } from 'vitepress-plugin-mermaid';
 // require shipping the parent package.json into the deploy artifact.
 const major = 'v18';
 const year = new Date().getFullYear();
+const siteUrl = 'https://brepjs.dev';
+const defaultOgImage = `${siteUrl}/og.png`;
+const defaultDescription =
+  'CAD modeling for JavaScript. Exact B-Rep geometry, type-safe, browser-native.';
 
 export default withMermaid(
   defineConfig({
     title: 'brepjs',
-    description: 'CAD modeling for JavaScript. Exact B-Rep geometry, type-safe, browser-native.',
+    description: defaultDescription,
     lang: 'en-US',
     base: process.env.DOCS_BASE ?? '/',
     cleanUrls: true,
@@ -24,7 +28,40 @@ export default withMermaid(
       ['link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' }],
       ['link', { rel: 'manifest', href: '/site.webmanifest' }],
       ['meta', { name: 'theme-color', content: '#4ACECC' }],
+      ['meta', { property: 'og:type', content: 'website' }],
+      ['meta', { property: 'og:site_name', content: 'brepjs' }],
+      ['meta', { property: 'og:image', content: defaultOgImage }],
+      ['meta', { property: 'og:image:width', content: '1200' }],
+      ['meta', { property: 'og:image:height', content: '630' }],
+      ['meta', { property: 'og:image:alt', content: 'brepjs — CAD modeling for JavaScript' }],
+      ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+      ['meta', { name: 'twitter:image', content: defaultOgImage }],
     ],
+    transformPageData(pageData) {
+      // Per-page meta. `frontmatter.description` wins over the global default
+      // so each page can give Slack/X/Google a tailored preview.
+      const description =
+        (pageData.frontmatter.description as string | undefined) ??
+        pageData.description ??
+        defaultDescription;
+      const title = pageData.frontmatter.title ?? pageData.title ?? 'brepjs';
+      const fullTitle = title === 'brepjs' ? 'brepjs' : `${title} | brepjs`;
+      const path = pageData.relativePath
+        .replace(/(^|\/)index\.md$/, '$1')
+        .replace(/\.md$/, '');
+      const url = `${siteUrl}/${path}`;
+
+      pageData.frontmatter.head ??= [];
+      pageData.frontmatter.head.push(
+        ['meta', { name: 'description', content: description }],
+        ['link', { rel: 'canonical', href: url }],
+        ['meta', { property: 'og:url', content: url }],
+        ['meta', { property: 'og:title', content: fullTitle }],
+        ['meta', { property: 'og:description', content: description }],
+        ['meta', { name: 'twitter:title', content: fullTitle }],
+        ['meta', { name: 'twitter:description', content: description }]
+      );
+    },
     themeConfig: {
       logo: { src: '/logo.svg', alt: 'brepjs' },
       siteTitle: 'brepjs',

@@ -1,5 +1,6 @@
 ---
 title: 2D Sketching with the Sketcher
+description: 'Build 2D profiles fluently with the Sketcher, or use canned shape builders. Then extrude, revolve, sweep, or loft into 3D.'
 ---
 
 # 2D Sketching with the Sketcher

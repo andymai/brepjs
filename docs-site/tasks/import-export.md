@@ -1,5 +1,6 @@
 ---
 title: Import & Export
+description: 'Read and write STEP, IGES, STL, glTF, OBJ, 3MF, BREP, DXF, SVG. The complete I/O surface, including round-tripping with desktop CAD.'
 ---
 
 # Import & Export

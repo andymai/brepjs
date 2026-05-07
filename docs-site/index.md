@@ -1,5 +1,6 @@
 ---
 layout: home
+description: 'CAD modeling for JavaScript. Exact B-Rep geometry, branded types that prove validity at compile time, browser-native via WASM.'
 
 hero:
   name: brepjs

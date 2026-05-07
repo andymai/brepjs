@@ -1,5 +1,6 @@
 ---
 title: Error Codes
+description: 'Catalog of every BrepError code: what it means, common causes, and how to recover. Switch on .code, never on .message.'
 ---
 
 # Error Codes

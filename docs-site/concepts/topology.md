@@ -1,5 +1,6 @@
 ---
 title: The Topology Hierarchy
+description: 'Solid → Shell → Face → Wire → Edge → Vertex. The recursive hierarchy every brepjs operation acts on, with examples.'
 ---
 
 # The Topology Hierarchy

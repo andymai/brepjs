@@ -1,5 +1,6 @@
 ---
 title: Result and Errors
+description: 'Every fallible brepjs operation returns Result<T, BrepError> instead of throwing. The patterns that keep error handling clean.'
 ---
 
 # Result and Errors

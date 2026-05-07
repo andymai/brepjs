@@ -1,5 +1,6 @@
 ---
 title: What brepjs is NOT
+description: "What brepjs deliberately doesn't do — no renderer, no mesh modeling, no constraint solver, no SubD. Use the right tool for the job."
 ---
 
 # What brepjs is NOT

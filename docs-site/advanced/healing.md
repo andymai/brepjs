@@ -1,5 +1,6 @@
 ---
 title: Healing & Sewing
+description: 'Imported STEP and IGES rarely arrive perfectly valid. autoHeal, sew, and the diagnostics that find gaps before you build on top.'
 ---
 
 # Healing & Sewing

@@ -1,5 +1,6 @@
 ---
 title: Status, Stability & Versioning
+description: 'Versioning policy, release cadence, and what production-ready means for the OpenCascade and brepkit kernels.'
 ---
 
 # Status, Stability & Versioning

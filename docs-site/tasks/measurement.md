@@ -1,5 +1,6 @@
 ---
 title: Measurement
+description: 'Volume, area, length, distance, bounding box, centroid, principal axes — every measurement you can ask of a brepjs shape.'
 ---
 
 # Measurement

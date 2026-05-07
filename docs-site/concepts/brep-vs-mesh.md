@@ -1,5 +1,6 @@
 ---
 title: B-Rep vs Mesh
+description: 'Why exact mathematical boundaries beat triangle meshes for CAD: precise booleans, real fillets, real measurements, STEP round-trip.'
 ---
 
 # B-Rep vs Mesh

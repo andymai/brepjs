@@ -1,5 +1,6 @@
 ---
 title: Kernels and withKernel
+description: 'How brepjs swaps geometry kernels behind a single API. Pick OpenCascade or brepkit, switch with one line, run both side by side.'
 ---
 
 # Kernels and withKernel

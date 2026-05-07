@@ -1,5 +1,6 @@
 ---
 title: Install & Initialize
+description: 'Pick an init style, run npm install, and you are modelling. Auto-detect, manual init, top-level await — three ways to load brepjs.'
 ---
 
 # Install & Initialize

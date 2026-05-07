@@ -1,5 +1,6 @@
 ---
 title: Finders & Queries
+description: 'edgeFinder, faceFinder, wireFinder, vertexFinder — composable filters that pick exactly the topology your next operation needs.'
 ---
 
 # Finders & Queries

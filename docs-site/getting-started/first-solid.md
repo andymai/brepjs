@@ -1,5 +1,6 @@
 ---
 title: Your First Solid
+description: 'Build a 30×20×10 mm block with a hole, fillet the vertical edges, export to STEP — six type-checked operations end to end.'
 ---
 
 # Your First Solid

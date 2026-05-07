@@ -1,5 +1,6 @@
 ---
 title: Glossary
+description: 'Terms used throughout brepjs documentation, alphabetical: branded type, conformance, edge finder, healing, kernel, tolerance, validity brand.'
 ---
 
 # Glossary

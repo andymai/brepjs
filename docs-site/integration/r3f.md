@@ -1,5 +1,6 @@
 ---
 title: React Three Fiber
+description: 'Render brepjs solids declaratively in React Three Fiber. The <BrepShape> pattern, memoization, selection, and live-edit workflows.'
 ---
 
 # React Three Fiber

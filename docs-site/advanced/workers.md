@@ -1,5 +1,6 @@
 ---
 title: Web Workers
+description: 'Run brepjs in a Web Worker so a 2-second STEP import never freezes the UI. The typed RPC layer, the worker contract, and the patterns.'
 ---
 
 # Web Workers

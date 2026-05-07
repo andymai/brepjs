@@ -1,5 +1,6 @@
 ---
 title: Fillets & Chamfers
+description: 'Round edges with arcs, bevel them with chamfers. Edge selection patterns, common failure modes, and how to recover from them.'
 ---
 
 # Fillets & Chamfers

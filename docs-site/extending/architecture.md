@@ -1,5 +1,6 @@
 ---
 title: Architecture & Layers
+description: 'The four enforced layers — kernel, core, domain, high-level API — and the rules that keep imports flowing downward only.'
 ---
 
 # Architecture & Layers

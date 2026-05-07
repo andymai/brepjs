@@ -1,5 +1,6 @@
 ---
 title: Coming from OpenSCAD
+description: 'Switching from OpenSCAD to brepjs: TypeScript instead of a DSL, exact B-Rep instead of CSG-of-meshes, browser-native instead of desktop-only.'
 ---
 
 # Coming from OpenSCAD

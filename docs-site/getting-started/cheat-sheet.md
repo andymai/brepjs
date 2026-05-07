@@ -1,5 +1,6 @@
 ---
 title: Cheat Sheet
+description: 'One-page reference for the brepjs API: init, primitives, booleans, fillets, finders, sketching, measurement, export.'
 ---
 
 # Cheat Sheet

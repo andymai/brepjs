@@ -1,5 +1,6 @@
 ---
 title: Writing Custom Operations
+description: 'Add a new modelling operation to brepjs: where the file goes, what types to declare, what tests to write, how it routes to the kernel.'
 ---
 
 # Writing Custom Operations

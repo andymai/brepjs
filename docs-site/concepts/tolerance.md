@@ -1,5 +1,6 @@
 ---
 title: Tolerance and Validity
+description: 'Every B-Rep shape has a tolerance below which two points are the same point. What that means, where it shows up, when to autoHeal.'
 ---
 
 # Tolerance and Validity

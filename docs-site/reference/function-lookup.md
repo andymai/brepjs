@@ -1,5 +1,6 @@
 ---
 title: Function Lookup
+description: "Auto-generated alphabetical index of every brepjs export. Find a function by name when you don't remember which file it's in."
 ---
 
 # Function Lookup

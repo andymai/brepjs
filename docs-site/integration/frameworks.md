@@ -1,5 +1,6 @@
 ---
 title: Vite, Next.js, Astro
+description: 'Per-framework recipes for Vite, Next.js, Astro, SvelteKit. Where the WASM file goes and how to keep brepjs out of server-side rendering.'
 ---
 
 # Vite, Next.js, Astro

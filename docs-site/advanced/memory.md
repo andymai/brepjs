@@ -1,5 +1,6 @@
 ---
 title: Memory Management
+description: 'WASM objects are not GC-managed. The four cleanup patterns — using, DisposalScope, manual delete, ownership transfer — and when to use each.'
 ---
 
 # Memory Management

@@ -1,5 +1,6 @@
 ---
 title: Boolean Operations
+description: 'Fuse, cut, intersect — the three operations that combine primitives into real parts, plus their multi-shape variants and failure modes.'
 ---
 
 # Boolean Operations

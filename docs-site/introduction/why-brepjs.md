@@ -1,5 +1,6 @@
 ---
 title: Why brepjs
+description: 'Code-first CAD for JavaScript: exact B-Rep solids, branded types that prove geometric validity, browser-native via WASM.'
 ---
 
 # Why brepjs

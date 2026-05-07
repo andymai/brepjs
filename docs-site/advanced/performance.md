@@ -1,5 +1,6 @@
 ---
 title: Performance
+description: "What's cheap and what's expensive in brepjs. Batching booleans, caching meshes, avoiding redundant healing, profiling slow operations."
 ---
 
 # Performance

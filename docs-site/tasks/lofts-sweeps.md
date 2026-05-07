@@ -1,5 +1,6 @@
 ---
 title: Lofts, Sweeps, Revolves
+description: 'Extrude, revolve, sweep, and loft turn 2D profiles into 3D solids. The four motion-based operations, with options and gotchas.'
 ---
 
 # Lofts, Sweeps, Revolves

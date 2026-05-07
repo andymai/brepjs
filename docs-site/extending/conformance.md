@@ -1,5 +1,6 @@
 ---
 title: Kernel Conformance Suite
+description: 'The kernel conformance test suite. Run the same tests against every backend; any divergence is a kernel bug or a missing semantic.'
 ---
 
 # Kernel Conformance Suite

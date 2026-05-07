@@ -1,5 +1,6 @@
 ---
 title: Writing a Custom Kernel
+description: 'Implement KernelInterface to back brepjs with a third geometry library. What the interface requires and how to verify your adapter.'
 ---
 
 # Writing a Custom Kernel

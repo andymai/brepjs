@@ -1,5 +1,6 @@
 ---
 title: Design Decisions
+description: 'Index of architectural decision records — short ADRs explaining context, choice, alternatives, and consequences for major decisions.'
 ---
 
 # Design Decisions
