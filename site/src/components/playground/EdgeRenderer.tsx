@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import type { ThreeEvent } from '@react-three/fiber';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
 import type { EdgeGroup, EdgeInfo } from '../../workers/workerProtocol';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 
@@ -30,6 +30,9 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   const setHoverEntity = usePlaygroundStore((s) => s.setHoverEntity);
   const openContextMenu = usePlaygroundStore((s) => s.openContextMenu);
   const pickable = Boolean(edgeGroups && edgeInfos);
+  const viewportHeight = useThree((s) => s.size.height);
+  const viewportHeightRef = useRef(viewportHeight);
+  viewportHeightRef.current = viewportHeight;
   // See ShapeRenderer for the rationale — pointerOut nulls hover state only
   // when *we* are still the published target. Without this guard, an edge
   // moving out of intersection while the cursor is still on a face would
@@ -142,6 +145,25 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
     };
   }, [setHoverEntity]);
 
+  const raycastLines = useCallback(
+    function (
+      this: THREE.LineSegments,
+      raycaster: THREE.Raycaster,
+      intersects: THREE.Intersection[]
+    ) {
+      const lineParams = raycaster.params.Line;
+      if (!lineParams) {
+        THREE.LineSegments.prototype.raycast.call(this, raycaster, intersects);
+        return;
+      }
+      const previousThreshold = lineParams.threshold;
+      lineParams.threshold = computeWorldThreshold(this, raycaster, viewportHeightRef.current);
+      THREE.LineSegments.prototype.raycast.call(this, raycaster, intersects);
+      lineParams.threshold = previousThreshold;
+    },
+    []
+  );
+
   return (
     <lineSegments
       geometry={geometry}
@@ -158,24 +180,32 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   );
 }
 
-// Pick threshold for line raycasting. Earlier we used 0.5mm world-units to
-// be forgiving on hi-DPI displays, but on a 9.6mm-tall stud brick that
-// makes every side face partially "inside" the line pick volume — edges
-// then win the closest-hit race for hovers that visually land on a face.
-// 0.15 keeps lines easy to grab without swallowing face area.
-const PICK_THRESHOLD_WORLD = 0.15;
-function raycastLines(
-  this: THREE.LineSegments,
+const PICK_THRESHOLD_PX = 6;
+const FALLBACK_WORLD_THRESHOLD = 0.15;
+const _center = new THREE.Vector3();
+
+function computeWorldThreshold(
+  lines: THREE.LineSegments,
   raycaster: THREE.Raycaster,
-  intersects: THREE.Intersection[]
-) {
-  const lineParams = raycaster.params.Line;
-  if (!lineParams) {
-    THREE.LineSegments.prototype.raycast.call(this, raycaster, intersects);
-    return;
+  viewportHeight: number
+): number {
+  const camera = raycaster.camera as THREE.Camera | null;
+  if (!camera || viewportHeight <= 0) return FALLBACK_WORLD_THRESHOLD;
+  if ((camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+    const persp = camera as THREE.PerspectiveCamera;
+    if (!lines.geometry.boundingSphere) lines.geometry.computeBoundingSphere();
+    const sphere = lines.geometry.boundingSphere;
+    if (!sphere) return FALLBACK_WORLD_THRESHOLD;
+    _center.copy(sphere.center).applyMatrix4(lines.matrixWorld);
+    const distance = persp.position.distanceTo(_center);
+    const fovRad = (persp.fov * Math.PI) / 180;
+    const worldPerPixel = (2 * distance * Math.tan(fovRad / 2)) / viewportHeight;
+    return worldPerPixel * PICK_THRESHOLD_PX;
   }
-  const previousThreshold = lineParams.threshold;
-  lineParams.threshold = PICK_THRESHOLD_WORLD;
-  THREE.LineSegments.prototype.raycast.call(this, raycaster, intersects);
-  lineParams.threshold = previousThreshold;
+  if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
+    const ortho = camera as THREE.OrthographicCamera;
+    const worldPerPixel = (ortho.top - ortho.bottom) / ortho.zoom / viewportHeight;
+    return worldPerPixel * PICK_THRESHOLD_PX;
+  }
+  return FALLBACK_WORLD_THRESHOLD;
 }

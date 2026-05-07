@@ -3,8 +3,22 @@ import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { MeshData } from '../../stores/playgroundStore';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
-import type { FaceInfo } from '../../workers/workerProtocol';
+import type { FaceGroup, FaceInfo } from '../../workers/workerProtocol';
 import { useViewerStore } from '../../stores/viewerStore';
+
+function findFaceGroupAt(groups: FaceGroup[], triangleIndex: number): FaceGroup | null {
+  const indexBufferOffset = triangleIndex * 3;
+  let lo = 0;
+  let hi = groups.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    const group = groups[mid]!;
+    if (indexBufferOffset < group.start) hi = mid - 1;
+    else if (indexBufferOffset >= group.start + group.count) lo = mid + 1;
+    else return group;
+  }
+  return null;
+}
 
 export default function ShapeRenderer({ data }: { data: MeshData }) {
   const viewMode = useViewerStore((s) => s.viewMode);
@@ -23,16 +37,8 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
     geo.setAttribute('position', new THREE.BufferAttribute(data.position, 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(data.normal, 3));
     geo.setIndex(new THREE.BufferAttribute(data.index, 1));
-    // Add per-face groups so raycaster intersections expose `materialIndex`,
-    // which we map back to faceId via `data.faceGroups`.
-    if (data.faceGroups) {
-      for (let i = 0; i < data.faceGroups.length; i++) {
-        const group = data.faceGroups[i]!;
-        geo.addGroup(group.start, group.count, i);
-      }
-    }
     return geo;
-  }, [data.position, data.normal, data.index, data.faceGroups]);
+  }, [data.position, data.normal, data.index]);
 
   useEffect(() => {
     return () => {
@@ -47,12 +53,14 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
     return byId;
   }, [data.faceInfos]);
 
+  // three.js only sets face.materialIndex when the mesh has a materials array;
+  // with a single material it defaults to 0. Look up by faceIndex instead.
   const resolveFace = useCallback(
     (event: ThreeEvent<PointerEvent | MouseEvent>): FaceInfo | null => {
       if (!data.faceGroups || !faceInfoById) return null;
-      const materialIndex = event.face?.materialIndex;
-      if (materialIndex === undefined) return null;
-      const group = data.faceGroups[materialIndex];
+      const triangleIndex = event.faceIndex;
+      if (triangleIndex === undefined || triangleIndex === null) return null;
+      const group = findFaceGroupAt(data.faceGroups, triangleIndex);
       if (!group) return null;
       return faceInfoById.get(group.faceId) ?? null;
     },
@@ -149,7 +157,7 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
         roughness={0.45}
         emissive="#d4d8dc"
         emissiveIntensity={0.08}
-        side={THREE.DoubleSide}
+        side={viewMode === 'solid' ? THREE.FrontSide : THREE.DoubleSide}
         polygonOffset
         polygonOffsetFactor={1}
         polygonOffsetUnits={1}
