@@ -136,6 +136,75 @@ async function handleInit() {
   }
 }
 
+// ── Edge classification ──
+
+const TANGENT_DOT_THRESHOLD = 0.9962; // |cos(5°)| — edges whose adjacent face
+// normals are this parallel are treated as tangent (G1+) and dropped from
+// the wireframe overlay so they don't paint dark stripes on smooth regions.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs runtime
+function filterTangentEdges(
+  bjs: any,
+  shape: unknown,
+  edgeMesh: {
+    lines: Float32Array;
+    edgeGroups: { start: number; count: number; edgeId: number }[];
+  }
+): Float32Array {
+  let sharpHashes: Set<number>;
+  try {
+    sharpHashes = computeSharpEdgeHashes(bjs, shape);
+  } catch {
+    // If classification fails for any reason, fall back to drawing every edge.
+    return edgeMesh.lines;
+  }
+
+  let outFloats = 0;
+  for (const g of edgeMesh.edgeGroups) {
+    if (sharpHashes.has(g.edgeId)) outFloats += g.count * 3;
+  }
+  if (outFloats === edgeMesh.lines.length) return edgeMesh.lines;
+
+  const out = new Float32Array(outFloats);
+  let off = 0;
+  for (const g of edgeMesh.edgeGroups) {
+    if (!sharpHashes.has(g.edgeId)) continue;
+    const startFloat = g.start * 3;
+    const numFloats = g.count * 3;
+    out.set(edgeMesh.lines.subarray(startFloat, startFloat + numFloats), off);
+    off += numFloats;
+  }
+  return out;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs runtime
+function computeSharpEdgeHashes(bjs: any, shape: unknown): Set<number> {
+  const kernel = bjs.getKernel();
+  const HASH_MAX: number = bjs.HASH_CODE_MAX;
+  const sharp = new Set<number>();
+  const edges = bjs.getEdges(shape);
+
+  for (const edge of edges) {
+    const hash = kernel.hashCode(edge.wrapped, HASH_MAX);
+    let isTangent = false;
+    try {
+      const faces = bjs.facesOfEdge(shape, edge);
+      if (faces.length === 2) {
+        const mid = bjs.curvePointAt(edge, 0.5);
+        const n1 = bjs.normalAt(faces[0], mid);
+        const n2 = bjs.normalAt(faces[1], mid);
+        const dot = Math.abs(n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2]);
+        if (dot > TANGENT_DOT_THRESHOLD) isTangent = true;
+      }
+    } catch {
+      // Treat any classification failure as sharp so we never *hide* an edge
+      // we couldn't analyze — far better than over-filtering.
+    }
+    if (!isTangent) sharp.add(hash);
+  }
+  return sharp;
+}
+
 // ── Eval ──
 
 function handleEval(id: string, code: string) {
@@ -241,13 +310,13 @@ function handleEval(id: string, code: string) {
         const edgeMesh = brepjs.meshEdges(fnShape, { tolerance: 0.05, angularTolerance: 0.1 });
 
         const bufData = brepjs.toBufferGeometryData(shapeMesh);
-        const lineData = brepjs.toLineGeometryData(edgeMesh);
+        const filteredEdges = filterTangentEdges(brepjs, fnShape, edgeMesh);
 
         const mesh: MeshTransfer = {
           position: bufData.position,
           normal: bufData.normal,
           index: bufData.index,
-          edges: lineData.position,
+          edges: filteredEdges,
         };
 
         meshes.push(mesh);
