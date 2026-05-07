@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 
 const STORAGE_KEY = 'brepjs-playground-onboarded';
@@ -33,18 +33,31 @@ export default function OnboardingHint() {
   }, []);
 
   // Auto-dismiss the moment the user makes their first selection — no need
-  // to lecture them about a flow they've already discovered.
+  // to lecture them about a flow they've already discovered. We deliberately
+  // depend only on `selectionCount`, reading `visible` via a ref. Including
+  // `visible` would re-fire on every show/hide; if `selectionCount` happened
+  // to be non-zero when the mount effect promoted `visible` to true (a
+  // future shared-link-with-selections flow could land in this state), the
+  // pill would render for one frame and immediately auto-dismiss, hiding
+  // itself permanently from a user who never interacted.
+  const visibleRef = useRef(visible);
   useEffect(() => {
-    if (selectionCount > 0 && visible) {
+    visibleRef.current = visible;
+  }, [visible]);
+  useEffect(() => {
+    if (selectionCount > 0 && visibleRef.current) {
       writeDismissed();
       setVisible(false);
     }
-  }, [selectionCount, visible]);
+  }, [selectionCount]);
 
   if (!visible) return null;
 
   return (
-    <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
+    <div
+      className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
+      role="status"
+    >
       <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-teal-primary/30 bg-[rgba(15,15,20,0.92)] px-3 py-1.5 text-xs text-gray-300 shadow-lg backdrop-blur-sm">
         <span aria-hidden="true">💡</span>
         <span>Click a face or edge to copy a finder predicate</span>
