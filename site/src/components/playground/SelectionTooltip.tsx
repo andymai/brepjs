@@ -86,16 +86,17 @@ function SingleTooltip({ selection }: { selection: Selection }) {
   );
 }
 
-// Shows the finder predicate that was just copied to the clipboard. Without
-// this, users only saw a transient toast — the tooltip is the persistent
-// confirmation of *what* landed in their clipboard, ready to paste.
+// Shows the finder predicate the click produced. We previously labeled this
+// "Copied to clipboard" but the actual clipboard write is async and can fail
+// (denied permission, insecure context); a neutral label doesn't make a
+// promise the UI can't keep — the toast still reports clipboard success/fail.
 function SnippetPreview({ snippet }: { snippet: string }) {
   return (
     <div className="mt-1 border-t border-border-subtle pt-1">
       <div className="mb-0.5 text-[10px] uppercase tracking-wider text-gray-500">
-        Copied to clipboard
+        Finder predicate
       </div>
-      <pre className="whitespace-pre-wrap break-all text-[10.5px] leading-snug text-teal-light/90">
+      <pre className="whitespace-pre-wrap break-words text-[10.5px] leading-snug text-teal-light/90">
         {snippet}
       </pre>
     </div>
