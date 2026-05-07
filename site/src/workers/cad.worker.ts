@@ -203,27 +203,27 @@ async function handleEval(id: string, code: string) {
     consoleOutput.push('[warn] ' + args.map(String).join(' '));
   };
 
-  let stripped: string;
-  try {
-    stripped = stripTypeScript(code);
-  } catch (e) {
-    // Sucrase parse errors include `(line:col)` so the existing line-number
-    // path can't recover them — pull the line out of the message instead.
-    const message = e instanceof Error ? e.message : String(e);
-    const match = message.match(/\((\d+):\d+\)/);
-    const line = match?.[1] ? parseInt(match[1], 10) : undefined;
-    post({ type: 'eval-error', id, error: message, line });
-    console.log = origLog;
-    console.warn = origWarn;
-    cancelledIds.delete(id);
-    return;
-  }
-
-  const rewritten = rewriteBrepjsImports(stripped, brepjsBlobUrl);
-  const userBlob = new Blob([rewritten], { type: 'application/javascript' });
-  const userBlobUrl = URL.createObjectURL(userBlob);
+  // Hoisted so the single finally block can revoke if it was ever assigned.
+  let userBlobUrl: string | undefined;
 
   try {
+    let stripped: string;
+    try {
+      stripped = stripTypeScript(code);
+    } catch (e) {
+      // Sucrase parse errors include `(line:col)` so the existing line-number
+      // path can't recover them — pull the line out of the message instead.
+      const message = e instanceof Error ? e.message : String(e);
+      const match = message.match(/\((\d+):\d+\)/);
+      const line = match?.[1] ? parseInt(match[1], 10) : undefined;
+      post({ type: 'eval-error', id, error: message, line });
+      return;
+    }
+
+    const rewritten = rewriteBrepjsImports(stripped, brepjsBlobUrl);
+    const userBlob = new Blob([rewritten], { type: 'application/javascript' });
+    userBlobUrl = URL.createObjectURL(userBlob);
+
     // Playground evaluates user-authored ES modules in a sandboxed Web Worker
     // with no DOM, cookies, or storage access.
     const userModule = (await import(/* @vite-ignore */ userBlobUrl)) as { default?: unknown };
@@ -323,10 +323,10 @@ async function handleEval(id: string, code: string) {
     );
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : String(e);
-    const line = extractUserLine(e, userBlobUrl);
+    const line = userBlobUrl ? extractUserLine(e, userBlobUrl) : undefined;
     post({ type: 'eval-error', id, error: errorMsg, line });
   } finally {
-    URL.revokeObjectURL(userBlobUrl);
+    if (userBlobUrl) URL.revokeObjectURL(userBlobUrl);
     console.log = origLog;
     console.warn = origWarn;
     cancelledIds.delete(id);

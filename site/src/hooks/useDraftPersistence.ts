@@ -17,12 +17,22 @@ interface Draft {
 
 function readDraft(): Draft | null {
   try {
+    // Migrate v1 user work into v2 before deleting the legacy key — otherwise
+    // anyone with a non-default v1 draft loses their code on first load.
+    const legacyRaw = localStorage.getItem(LEGACY_DRAFT_KEY);
     localStorage.removeItem(LEGACY_DRAFT_KEY);
+
     const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<Draft>;
-    if (typeof parsed.code !== 'string') return null;
-    return { code: parsed.code, hasUserEdit: !!parsed.hasUserEdit };
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<Draft>;
+      if (typeof parsed.code !== 'string') return null;
+      return { code: parsed.code, hasUserEdit: !!parsed.hasUserEdit };
+    }
+
+    if (typeof legacyRaw === 'string' && legacyRaw && legacyRaw !== DEFAULT_CODE) {
+      return { code: legacyRaw, hasUserEdit: true };
+    }
+    return null;
   } catch {
     return null;
   }
