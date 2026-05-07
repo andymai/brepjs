@@ -1,57 +1,56 @@
 # Changelog
 
-## [18.1.2](https://github.com/andymai/brepjs/compare/brepjs-v18.1.1...brepjs-v18.1.2) (2026-05-06)
-
+## [18.1.3](https://github.com/andymai/brepjs/compare/brepjs-v18.1.2...brepjs-v18.1.3) (2026-05-07)
 
 ### Bug Fixes
 
-* **ci:** install Chrome explicitly for smoke ([#840](https://github.com/andymai/brepjs/issues/840)) ([c5e9f07](https://github.com/andymai/brepjs/commit/c5e9f079e0c0d93008f037b2789d0a7329b876bc))
+- **playground:** evaluate user code as ES modules so docs links work ([#854](https://github.com/andymai/brepjs/issues/854)) ([9776ba6](https://github.com/andymai/brepjs/commit/9776ba62ade694eeed818bd9a0af1cefd666113d))
+
+## [18.1.2](https://github.com/andymai/brepjs/compare/brepjs-v18.1.1...brepjs-v18.1.2) (2026-05-06)
+
+### Bug Fixes
+
+- **ci:** install Chrome explicitly for smoke ([#840](https://github.com/andymai/brepjs/issues/840)) ([c5e9f07](https://github.com/andymai/brepjs/commit/c5e9f079e0c0d93008f037b2789d0a7329b876bc))
 
 ## [18.1.1](https://github.com/andymai/brepjs/compare/brepjs-v18.1.0...brepjs-v18.1.1) (2026-05-06)
 
-
 ### Bug Fixes
 
-* **ci:** skip lifecycle scripts in smoke install ([#838](https://github.com/andymai/brepjs/issues/838)) ([ed532b4](https://github.com/andymai/brepjs/commit/ed532b4164204335e3660797a875e0a8ed9edd2a))
+- **ci:** skip lifecycle scripts in smoke install ([#838](https://github.com/andymai/brepjs/issues/838)) ([ed532b4](https://github.com/andymai/brepjs/commit/ed532b4164204335e3660797a875e0a8ed9edd2a))
 
 ## [18.1.0](https://github.com/andymai/brepjs/compare/brepjs-v18.0.3...brepjs-v18.1.0) (2026-05-06)
 
-
 ### Features
 
-* **ci:** playground smoke check on Vercel deploys + drop hero-mesh ([#836](https://github.com/andymai/brepjs/issues/836)) ([5cb11df](https://github.com/andymai/brepjs/commit/5cb11df948900c755815d90bb337775362e1b96d))
+- **ci:** playground smoke check on Vercel deploys + drop hero-mesh ([#836](https://github.com/andymai/brepjs/issues/836)) ([5cb11df](https://github.com/andymai/brepjs/commit/5cb11df948900c755815d90bb337775362e1b96d))
 
 ## [18.0.3](https://github.com/andymai/brepjs/compare/brepjs-v18.0.2...brepjs-v18.0.3) (2026-05-06)
 
-
 ### Bug Fixes
 
-* **site:** allow new Function() in playground CSP ([#834](https://github.com/andymai/brepjs/issues/834)) ([fdefd23](https://github.com/andymai/brepjs/commit/fdefd2311fa7e6637d8e11d9bf05571f908a81bb))
+- **site:** allow new Function() in playground CSP ([#834](https://github.com/andymai/brepjs/issues/834)) ([fdefd23](https://github.com/andymai/brepjs/commit/fdefd2311fa7e6637d8e11d9bf05571f908a81bb))
 
 ## [18.0.2](https://github.com/andymai/brepjs/compare/brepjs-v18.0.1...brepjs-v18.0.2) (2026-05-06)
 
-
 ### Bug Fixes
 
-* **site:** unbreak production playground CSP ([#832](https://github.com/andymai/brepjs/issues/832)) ([851a457](https://github.com/andymai/brepjs/commit/851a457b368c181f29d213f1516dbf23bac1a150))
+- **site:** unbreak production playground CSP ([#832](https://github.com/andymai/brepjs/issues/832)) ([851a457](https://github.com/andymai/brepjs/commit/851a457b368c181f29d213f1516dbf23bac1a150))
 
 ## [18.0.1](https://github.com/andymai/brepjs/compare/brepjs-v18.0.0...brepjs-v18.0.1) (2026-05-06)
 
-
 ### Bug Fixes
 
-* **playground:** bundled UX pass — worker, viewer, editor, shortcuts ([#828](https://github.com/andymai/brepjs/issues/828)) ([0f34ce2](https://github.com/andymai/brepjs/commit/0f34ce2cb8683e34f67524157998f48cb20d8492))
+- **playground:** bundled UX pass — worker, viewer, editor, shortcuts ([#828](https://github.com/andymai/brepjs/issues/828)) ([0f34ce2](https://github.com/andymai/brepjs/commit/0f34ce2cb8683e34f67524157998f48cb20d8492))
 
 ## [18.0.0](https://github.com/andymai/brepjs/compare/brepjs-v17.0.0...brepjs-v18.0.0) (2026-05-06)
 
-
 ### ⚠ BREAKING CHANGES
 
-* **site:** serve docs-site at root, playground at /playground ([#827](https://github.com/andymai/brepjs/issues/827))
+- **site:** serve docs-site at root, playground at /playground ([#827](https://github.com/andymai/brepjs/issues/827))
 
 ### Features
 
-* **site:** serve docs-site at root, playground at /playground ([#827](https://github.com/andymai/brepjs/issues/827)) ([3607d11](https://github.com/andymai/brepjs/commit/3607d11db9abd8e5f97ac09d50d3f5e04bc4ef24))
+- **site:** serve docs-site at root, playground at /playground ([#827](https://github.com/andymai/brepjs/issues/827)) ([3607d11](https://github.com/andymai/brepjs/commit/3607d11db9abd8e5f97ac09d50d3f5e04bc4ef24))
 
 ## [17.0.0](https://github.com/andymai/brepjs/compare/brepjs-v16.0.0...brepjs-v17.0.0) (2026-05-05)
 
