@@ -1,3 +1,4 @@
+import { transform } from 'sucrase';
 import type { ToWorker, FromWorker, MeshTransfer, FaceGroup, EdgeGroup } from './workerProtocol';
 import { WASM_CACHE_NAME } from '../lib/wasmConfig';
 
@@ -137,6 +138,17 @@ function rewriteBrepjsImports(code: string, wrapperUrl: string): string {
   return code.replace(/(\bfrom\s+)(['"])brepjs(?:\/quick)?\2/g, `$1'${wrapperUrl}'`);
 }
 
+// Strip TypeScript syntax so the browser's `import()` of a JS blob can parse
+// the user's code. Sucrase preserves line numbers, which keeps
+// `extractUserLine` accurate for runtime error markers.
+function stripTypeScript(code: string): string {
+  return transform(code, {
+    transforms: ['typescript'],
+    disableESTransforms: true,
+    preserveDynamicImport: true,
+  }).code;
+}
+
 function extractUserLine(err: unknown, userBlobUrl: string): number | undefined {
   if (!(err instanceof Error) || !err.stack) return undefined;
   for (const line of err.stack.split('\n')) {
@@ -191,7 +203,23 @@ async function handleEval(id: string, code: string) {
     consoleOutput.push('[warn] ' + args.map(String).join(' '));
   };
 
-  const rewritten = rewriteBrepjsImports(code, brepjsBlobUrl);
+  let stripped: string;
+  try {
+    stripped = stripTypeScript(code);
+  } catch (e) {
+    // Sucrase parse errors include `(line:col)` so the existing line-number
+    // path can't recover them — pull the line out of the message instead.
+    const message = e instanceof Error ? e.message : String(e);
+    const match = message.match(/\((\d+):\d+\)/);
+    const line = match?.[1] ? parseInt(match[1], 10) : undefined;
+    post({ type: 'eval-error', id, error: message, line });
+    console.log = origLog;
+    console.warn = origWarn;
+    cancelledIds.delete(id);
+    return;
+  }
+
+  const rewritten = rewriteBrepjsImports(stripped, brepjsBlobUrl);
   const userBlob = new Blob([rewritten], { type: 'application/javascript' });
   const userBlobUrl = URL.createObjectURL(userBlob);
 

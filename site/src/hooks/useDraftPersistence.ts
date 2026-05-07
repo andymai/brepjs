@@ -3,8 +3,41 @@ import { usePlaygroundStore } from '../stores/playgroundStore';
 import { DEFAULT_CODE } from '../lib/constants';
 import { hasShareParams } from '../lib/urlCodec';
 
-const DRAFT_KEY = 'brepjs-playground-draft';
+// v2 carries `{ code, hasUserEdit }`; v1 was a bare string. The v1 key is
+// dropped on first read so a saved old default never sticks to the user
+// after DEFAULT_CODE changes.
+const DRAFT_KEY = 'brepjs-playground-draft-v2';
+const LEGACY_DRAFT_KEY = 'brepjs-playground-draft';
 const DEBOUNCE_MS = 500;
+
+interface Draft {
+  code: string;
+  hasUserEdit: boolean;
+}
+
+function readDraft(): Draft | null {
+  try {
+    localStorage.removeItem(LEGACY_DRAFT_KEY);
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<Draft>;
+    if (typeof parsed.code !== 'string') return null;
+    return { code: parsed.code, hasUserEdit: !!parsed.hasUserEdit };
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(code: string): void {
+  try {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ code, hasUserEdit: code !== DEFAULT_CODE })
+    );
+  } catch {
+    // best-effort: localStorage can throw under quota or privacy settings.
+  }
+}
 
 /**
  * Persists the editor code to localStorage so an accidental tab close doesn't
@@ -23,16 +56,14 @@ export function useDraftPersistence() {
     const url = new URL(window.location.href);
     if (hasShareParams(url)) return;
 
-    let draft: string | null = null;
-    try {
-      draft = localStorage.getItem(DRAFT_KEY);
-    } catch {
-      return;
-    }
-    // Skip restore when the draft matches the default — that's just noise
-    // (user never edited last time).
-    if (!draft || draft === DEFAULT_CODE) return;
-    setCode(draft);
+    const draft = readDraft();
+    if (!draft) return;
+    // `hasUserEdit:false` means the draft was the default at save time, so a
+    // newer DEFAULT_CODE shipping in this build should win — restoring would
+    // pin the user to a stale (and possibly broken) example.
+    if (!draft.hasUserEdit) return;
+    if (draft.code === DEFAULT_CODE) return;
+    setCode(draft.code);
   }, [setCode]);
 
   // Debounced save on every code change. Two guards:
@@ -53,12 +84,7 @@ export function useDraftPersistence() {
     }
     if (hasShareParams(new URL(window.location.href))) return;
     const t = setTimeout(() => {
-      try {
-        localStorage.setItem(DRAFT_KEY, code);
-      } catch {
-        // localStorage can throw under quota or privacy settings — silently
-        // give up; the draft is best-effort, not load-bearing.
-      }
+      writeDraft(code);
     }, DEBOUNCE_MS);
     return () => {
       clearTimeout(t);
@@ -69,6 +95,7 @@ export function useDraftPersistence() {
 export function clearDraft(): void {
   try {
     localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(LEGACY_DRAFT_KEY);
   } catch {
     // best-effort
   }
