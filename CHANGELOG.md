@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.3.2](https://github.com/andymai/brepjs/compare/brepjs-v18.3.1...brepjs-v18.3.2) (2026-05-07)
+
+
+### Bug Fixes
+
+* **playground:** correct doc links + strict-TS-clean default snippet ([#884](https://github.com/andymai/brepjs/issues/884)) ([68d11d8](https://github.com/andymai/brepjs/commit/68d11d8526735113af3c2881e0ebf695ab4fc267))
+
 ## [18.3.1](https://github.com/andymai/brepjs/compare/brepjs-v18.3.0...brepjs-v18.3.1) (2026-05-07)
 
 
