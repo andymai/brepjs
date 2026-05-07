@@ -50,8 +50,11 @@ export default function StatusBar() {
         {timeMs !== null && !isRunning && (
           <span className="text-gray-500">{timeMs.toFixed(0)}ms</span>
         )}
-        <span className="text-gray-500" title="brepjs version (helpful when reporting bugs)">
-          brepjs v{__BREPJS_VERSION__}
+        <span
+          className="text-gray-500"
+          title="brepjs version + active kernel (helpful when reporting bugs)"
+        >
+          brepjs v{__BREPJS_VERSION__} · OCCT
         </span>
       </div>
       {lastSelection && (
