@@ -51,8 +51,10 @@ export default function PlaygroundPage() {
   const toggleEdges = useViewerStore((s) => s.toggleEdges);
   const toggleGrid = useViewerStore((s) => s.toggleGrid);
   const toggleProjection = useViewerStore((s) => s.toggleProjection);
+  const resetViewerDefaults = useViewerStore((s) => s.resetViewerDefaults);
   const requestFit = useViewerStore((s) => s.requestFit);
   const setCameraPreset = useViewerStore((s) => s.setCameraPreset);
+  const clearSelections = usePlaygroundStore((s) => s.clearSelections);
 
   // Layout persistence
   const storage = typeof window !== 'undefined' ? localStorage : undefined;
@@ -97,6 +99,26 @@ export default function PlaygroundPage() {
     clearDraft();
     addToast('Reset to default code');
   }, [addToast]);
+
+  const handleCopyCode = useCallback(() => {
+    void navigator.clipboard?.writeText(code).then(
+      () => {
+        addToast('Code copied to clipboard');
+      },
+      () => {
+        addToast('Clipboard unavailable');
+      }
+    );
+  }, [code, addToast]);
+
+  const handleResetViewer = useCallback(() => {
+    resetViewerDefaults();
+    addToast('Viewer settings reset');
+  }, [resetViewerDefaults, addToast]);
+
+  const handleClearSelection = useCallback(() => {
+    clearSelections();
+  }, [clearSelections]);
 
   const toggleConsole = useCallback(() => {
     const panel = consolePanelRef.current;
@@ -271,6 +293,12 @@ export default function PlaygroundPage() {
         label: 'Toggle projection (perspective/ortho)',
         run: toggleProjection,
       },
+      {
+        id: 'reset-viewer',
+        group: 'View',
+        label: 'Reset viewer to defaults',
+        run: handleResetViewer,
+      },
       { id: 'fit', group: 'Camera', label: 'Fit to view', run: requestFit },
       {
         id: 'cam-front',
@@ -311,6 +339,18 @@ export default function PlaygroundPage() {
         run: handleResetToDefault,
       },
       {
+        id: 'copy-code',
+        group: 'Editor',
+        label: 'Copy code to clipboard',
+        run: handleCopyCode,
+      },
+      {
+        id: 'clear-selection',
+        group: 'Selection',
+        label: 'Clear selection',
+        run: handleClearSelection,
+      },
+      {
         id: 'help',
         group: 'Help',
         label: 'Show keyboard shortcuts',
@@ -324,6 +364,9 @@ export default function PlaygroundPage() {
       handleRun,
       handleShare,
       handleResetToDefault,
+      handleResetViewer,
+      handleCopyCode,
+      handleClearSelection,
       handleExportSTL,
       handleExportSTEP,
       handleFormat,

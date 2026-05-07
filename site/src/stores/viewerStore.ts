@@ -18,20 +18,25 @@ interface ViewerState {
   toggleEdges: () => void;
   toggleGrid: () => void;
   toggleProjection: () => void;
+  resetViewerDefaults: () => void;
   requestFit: () => void;
   setCameraPreset: (preset: CameraPreset) => void;
   clearPreset: () => void;
 }
+
+const VIEWER_DEFAULTS = {
+  viewMode: 'solid' as ViewMode,
+  showEdges: true,
+  showGrid: true,
+  projection: 'perspective' as Projection,
+};
 
 const VIEW_MODE_CYCLE: ViewMode[] = ['solid', 'wireframe', 'xray'];
 
 export const useViewerStore = create<ViewerState>()(
   persist(
     (set) => ({
-      viewMode: 'solid',
-      showEdges: true,
-      showGrid: true,
-      projection: 'perspective',
+      ...VIEWER_DEFAULTS,
       fitRequest: 0,
       activePreset: null,
 
@@ -55,6 +60,9 @@ export const useViewerStore = create<ViewerState>()(
         set((s) => ({
           projection: s.projection === 'perspective' ? 'orthographic' : 'perspective',
         }));
+      },
+      resetViewerDefaults: () => {
+        set({ ...VIEWER_DEFAULTS });
       },
       requestFit: () => {
         set((s) => ({ fitRequest: s.fitRequest + 1 }));
