@@ -89,20 +89,39 @@ export default pegboard(6, 4);
 
 const mortiseAndTenon = `import { box, cut, fuse, translate, unwrap } from 'brepjs/quick';
 
-// Two boards joined with a mortise-and-tenon. The tenon (boss on board A)
-// fits into the mortise (slot in board B) cut by the same dimensions.
-const tenonW = 12;
-const tenonH = 10;
-const tenonD = 16;
+// Two boards joined with a mortise-and-tenon. The tenon (boss on partA)
+// plugs into the mortise (slot in partB) when assembled. Rendered with a
+// 20 mm visual gap between them so both halves are clearly visible.
+const len = 60;          // board length (X)
+const width = 30;        // board width  (Y)
+const thickness = 16;    // board thickness (Z)
 
-const boardA = box(60, 30, 16);
-const tenon = translate(box(tenonW, tenonH, tenonD), [60, (30 - tenonH) / 2, (16 - tenonW) / 2 + 2]);
+const tenonD = 16;       // depth of the tenon along X
+const tenonH = 14;       // tenon height in Y
+const tenonW = 10;       // tenon thickness in Z
+const clearance = 0.2;   // mortise oversize for a sliding fit
+const visualGap = 20;    // air between the parts in the render
+
+// Tenon protrudes from boardA's right face along +X.
+const boardA = box(len, width, thickness);
+const tenon = translate(
+  box(tenonD, tenonH, tenonW),
+  [len, (width - tenonH) / 2, (thickness - tenonW) / 2]
+);
 const partA = unwrap(fuse(boardA, tenon));
 
-const boardB = translate(box(60, 30, 16), [60 + tenonD, 0, 0]);
+// boardB sits visualGap mm beyond where the tenon tip would land. The
+// mortise is cut into its left face, sized to accept the tenon plus
+// clearance.
+const boardBX = len + tenonD + visualGap;
+const boardB = translate(box(len, width, thickness), [boardBX, 0, 0]);
 const mortise = translate(
-  box(tenonW + 0.4, tenonH + 0.4, tenonD + 0.2),
-  [60 - 0.1, (30 - tenonH) / 2 - 0.2, (16 - tenonW) / 2 + 1.9]
+  box(tenonD + clearance, tenonH + clearance, tenonW + clearance),
+  [
+    boardBX - clearance / 2,
+    (width - tenonH) / 2 - clearance / 2,
+    (thickness - tenonW) / 2 - clearance / 2,
+  ]
 );
 const partB = unwrap(cut(boardB, mortise));
 
