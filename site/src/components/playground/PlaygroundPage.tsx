@@ -11,6 +11,7 @@ import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import { DEFAULT_CODE } from '../../lib/constants';
 import { copyToClipboard } from '../../lib/copyToClipboard';
+import { downloadViewerScreenshot } from '../../lib/screenshot';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanel';
@@ -121,6 +122,11 @@ export default function PlaygroundPage() {
     resetViewerDefaults();
     addToast('Viewer settings reset');
   }, [resetViewerDefaults, addToast]);
+
+  const handleScreenshot = useCallback(() => {
+    const ok = downloadViewerScreenshot();
+    addToast(ok ? 'Screenshot saved' : 'Screenshot failed');
+  }, [addToast]);
 
   const toggleConsole = useCallback(() => {
     const panel = consolePanelRef.current;
@@ -339,6 +345,7 @@ export default function PlaygroundPage() {
         run: handleResetViewer,
       },
       { id: 'fit', group: 'Camera', label: 'Fit to view', run: requestFit },
+      { id: 'screenshot', group: 'Camera', label: 'Save screenshot (PNG)', run: handleScreenshot },
       {
         id: 'cam-front',
         group: 'Camera',
@@ -403,6 +410,7 @@ export default function PlaygroundPage() {
       openShortcutHelp,
       handleResetToDefault,
       handleResetViewer,
+      handleScreenshot,
       handleCopyCode,
       clearSelections,
       handleExportSTL,

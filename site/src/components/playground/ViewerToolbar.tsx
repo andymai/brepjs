@@ -1,4 +1,7 @@
+import { useCallback } from 'react';
 import { useViewerStore, type CameraPreset, type ViewMode } from '../../stores/viewerStore';
+import { useToastStore } from '../../stores/toastStore';
+import { downloadViewerScreenshot } from '../../lib/screenshot';
 
 export default function ViewerToolbar() {
   const viewMode = useViewerStore((s) => s.viewMode);
@@ -12,10 +15,17 @@ export default function ViewerToolbar() {
   const toggleProjection = useViewerStore((s) => s.toggleProjection);
   const requestFit = useViewerStore((s) => s.requestFit);
   const setCameraPreset = useViewerStore((s) => s.setCameraPreset);
+  const addToast = useToastStore((s) => s.addToast);
+
+  const handleScreenshot = useCallback(() => {
+    const ok = downloadViewerScreenshot();
+    addToast(ok ? 'Screenshot saved' : 'Screenshot failed');
+  }, [addToast]);
 
   return (
     <div className="pointer-events-none absolute right-3 top-3 z-10 flex flex-col gap-1">
       <ToolbarButton onClick={requestFit} label="Fit" active={false} />
+      <ToolbarButton onClick={handleScreenshot} label="Snap" active={false} />
       <div className="my-1 border-t border-border-subtle" />
       <ModeButton mode="solid" label="Solid" active={viewMode} onClick={setViewMode} />
       <ModeButton mode="wireframe" label="Wire" active={viewMode} onClick={setViewMode} />
