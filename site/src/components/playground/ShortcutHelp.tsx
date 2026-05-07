@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
+import { SHORTCUTS, formatShortcut, isMac } from '../../lib/shortcuts';
 
 interface Props {
   open: boolean;
@@ -10,8 +10,6 @@ interface Row {
   label: string;
   keys: string;
 }
-
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 const VIEWPORT_ROWS: Row[] = [
   { label: 'Pick face/edge', keys: 'Click' },
