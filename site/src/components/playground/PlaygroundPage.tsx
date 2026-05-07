@@ -207,6 +207,7 @@ export default function PlaygroundPage() {
       toggleViewer: toggleViewer,
       toggleEditor: toggleEditor,
       commandPalette: openCommandPalette,
+      cycleViewMode: cycleViewMode,
     }),
     [
       handleRun,
@@ -326,7 +327,13 @@ export default function PlaygroundPage() {
           setViewMode('xray');
         },
       },
-      { id: 'cycle-view', group: 'View', label: 'Cycle view mode', run: cycleViewMode },
+      {
+        id: 'cycle-view',
+        group: 'View',
+        label: 'Cycle view mode',
+        keys: formatShortcut(SHORTCUTS.cycleViewMode!),
+        run: cycleViewMode,
+      },
       { id: 'toggle-edges', group: 'View', label: 'Toggle edges', run: toggleEdges },
       { id: 'toggle-grid', group: 'View', label: 'Toggle grid', run: toggleGrid },
       {

@@ -51,14 +51,24 @@ export const SHORTCUTS: Record<string, ShortcutDef> = {
     shift: false,
     label: 'Command Palette',
   },
+  cycleViewMode: {
+    id: 'cycleViewMode',
+    key: 'v',
+    ctrl: false,
+    shift: false,
+    label: 'Cycle View Mode',
+    // Plain `v` would clobber the user typing the letter inside the editor;
+    // restrict to the viewport / outside Monaco.
+    inEditor: false,
+  },
 };
 
 export const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 export function formatShortcut(def: ShortcutDef): string {
-  const mod = isMac ? '\u2318' : 'Ctrl';
+  const mod = def.ctrl ? (isMac ? '\u2318+' : 'Ctrl+') : '';
   const shift = def.shift ? (isMac ? '\u21E7+' : 'Shift+') : '';
   const key = def.key === 'Enter' ? '\u21B5' : def.key === '\\' ? '\\' : def.key.toUpperCase();
-  return `${mod}+${shift}${key}`;
+  return `${mod}${shift}${key}`;
 }
