@@ -10,6 +10,7 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import { DEFAULT_CODE } from '../../lib/constants';
+import { copyToClipboard } from '../../lib/copyToClipboard';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanel';
@@ -100,25 +101,19 @@ export default function PlaygroundPage() {
     addToast('Reset to default code');
   }, [addToast]);
 
+  // copyToClipboard handles both undefined `navigator.clipboard` (HTTP /
+  // sandboxed iframe / older browsers) and a sync throw — neither of which
+  // a bare `navigator.clipboard?.writeText(...).then(...)` chain catches.
   const handleCopyCode = useCallback(() => {
-    void navigator.clipboard?.writeText(code).then(
-      () => {
-        addToast('Code copied to clipboard');
-      },
-      () => {
-        addToast('Clipboard unavailable');
-      }
-    );
+    void copyToClipboard(code).then((copied) => {
+      addToast(copied ? 'Code copied to clipboard' : 'Clipboard unavailable');
+    });
   }, [code, addToast]);
 
   const handleResetViewer = useCallback(() => {
     resetViewerDefaults();
     addToast('Viewer settings reset');
   }, [resetViewerDefaults, addToast]);
-
-  const handleClearSelection = useCallback(() => {
-    clearSelections();
-  }, [clearSelections]);
 
   const toggleConsole = useCallback(() => {
     const panel = consolePanelRef.current;
@@ -348,7 +343,7 @@ export default function PlaygroundPage() {
         id: 'clear-selection',
         group: 'Selection',
         label: 'Clear selection',
-        run: handleClearSelection,
+        run: clearSelections,
       },
       {
         id: 'help',
@@ -366,7 +361,7 @@ export default function PlaygroundPage() {
       handleResetToDefault,
       handleResetViewer,
       handleCopyCode,
-      handleClearSelection,
+      clearSelections,
       handleExportSTL,
       handleExportSTEP,
       handleFormat,
