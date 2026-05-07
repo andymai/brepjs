@@ -2,7 +2,7 @@
 set -e
 
 # Show helpful error message on failure
-trap 'bash scripts/pre-commit-help.sh 2>/dev/null || true' EXIT
+trap 'rc=$?; [ "$rc" -ne 0 ] && bash scripts/pre-commit-help.sh 2>/dev/null; exit "$rc"' EXIT
 
 # Tier 1: Fast, independent checks (parallel)
 npx lint-staged &
