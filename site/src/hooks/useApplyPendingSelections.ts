@@ -26,7 +26,7 @@ export function useApplyPendingSelections() {
       return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     })();
 
-    let firstAdditive = false;
+    let hasMatched = false;
     for (const want of pending) {
       let matched = false;
       for (const mesh of meshes) {
@@ -35,16 +35,16 @@ export function useApplyPendingSelections() {
           if (info) {
             // Replace on first match, additive after, so the final selection
             // list is exactly the requested set in URL order.
-            pickSelection({ kind: 'face', info, screenPos }, firstAdditive);
-            firstAdditive = true;
+            pickSelection({ kind: 'face', info, screenPos }, hasMatched);
+            hasMatched = true;
             matched = true;
             break;
           }
         } else {
           const info = mesh.edgeInfos?.find((e) => e.edgeId === want.id);
           if (info) {
-            pickSelection({ kind: 'edge', info, screenPos }, firstAdditive);
-            firstAdditive = true;
+            pickSelection({ kind: 'edge', info, screenPos }, hasMatched);
+            hasMatched = true;
             matched = true;
             break;
           }
