@@ -5,9 +5,11 @@ import { useViewerStore } from '../../stores/viewerStore';
 import { useToastStore } from '../../stores/toastStore';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useUrlState } from '../../hooks/useUrlState';
+import { useDraftPersistence, clearDraft } from '../../hooks/useDraftPersistence';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
+import { DEFAULT_CODE } from '../../lib/constants';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanel';
@@ -34,6 +36,7 @@ export default function PlaygroundPage() {
   const addToast = useToastStore((s) => s.addToast);
   const { runCode, exportSTL, exportSTEP, debouncedRun } = useCodeExecution();
   const { updateUrl, copyShareUrl } = useUrlState();
+  useDraftPersistence();
 
   const consolePanelRef = usePanelRef();
   const viewerPanelRef = usePanelRef();
@@ -88,6 +91,12 @@ export default function PlaygroundPage() {
     void copyShareUrl(code);
     addToast('Link copied to clipboard');
   }, [copyShareUrl, code, addToast]);
+
+  const handleResetToDefault = useCallback(() => {
+    usePlaygroundStore.getState().setCode(DEFAULT_CODE);
+    clearDraft();
+    addToast('Reset to default code');
+  }, [addToast]);
 
   const toggleConsole = useCallback(() => {
     const panel = consolePanelRef.current;
@@ -296,6 +305,12 @@ export default function PlaygroundPage() {
         },
       },
       {
+        id: 'reset-default',
+        group: 'Editor',
+        label: 'Reset to default code',
+        run: handleResetToDefault,
+      },
+      {
         id: 'help',
         group: 'Help',
         label: 'Show keyboard shortcuts',
@@ -308,6 +323,7 @@ export default function PlaygroundPage() {
     [
       handleRun,
       handleShare,
+      handleResetToDefault,
       handleExportSTL,
       handleExportSTEP,
       handleFormat,
