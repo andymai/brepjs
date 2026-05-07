@@ -119,37 +119,38 @@ export default function SelectionHighlight({ data, selections, hoverEntity }: Pr
     [data, edgeKey]
   );
 
-  // Hover highlight uses the same geometry-builder pipeline but only when
-  // the hovered entity isn't already in `selections` (avoids z-fighting
-  // between the committed and hover overlays at the same poly-offset).
-  const hoverFaceIds = useMemo(() => {
-    if (!hoverEntity || hoverEntity.kind !== 'face') return [];
+  // Hover overlay derives only from `hoverEntity` and the mesh's own group
+  // tables — NOT from `faceIds`/`edgeIds`. Including the selection-derived
+  // arrays here would re-run hover memoization on every click/deselect even
+  // when the hover target is unchanged. The `selections.includes` check
+  // moves down to the render-time gate (`shouldRenderHoverFace`) instead.
+  const hoverFaceId = useMemo(() => {
+    if (!hoverEntity || hoverEntity.kind !== 'face') return null;
     const id = hoverEntity.info.faceId;
-    if (faceIds.includes(id)) return [];
-    if (!data.faceGroups?.some((g) => g.faceId === id)) return [];
-    return [id];
-  }, [hoverEntity, faceIds, data.faceGroups]);
-  const hoverEdgeIds = useMemo(() => {
-    if (!hoverEntity || hoverEntity.kind !== 'edge') return [];
+    if (!data.faceGroups?.some((g) => g.faceId === id)) return null;
+    return id;
+  }, [hoverEntity, data.faceGroups]);
+  const hoverEdgeId = useMemo(() => {
+    if (!hoverEntity || hoverEntity.kind !== 'edge') return null;
     const id = hoverEntity.info.edgeId;
-    if (edgeIds.includes(id)) return [];
-    if (!data.edgeGroups?.some((g) => g.edgeId === id)) return [];
-    return [id];
-  }, [hoverEntity, edgeIds, data.edgeGroups]);
-
-  const hoverFaceKey = hoverFaceIds.join(',');
-  const hoverEdgeKey = hoverEdgeIds.join(',');
+    if (!data.edgeGroups?.some((g) => g.edgeId === id)) return null;
+    return id;
+  }, [hoverEntity, data.edgeGroups]);
 
   const hoverFaceGeometry = useMemo(
-    () => buildFaceHighlightGeometry(data, hoverFaceIds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ids captured via hoverFaceKey
-    [data, hoverFaceKey]
+    () => (hoverFaceId !== null ? buildFaceHighlightGeometry(data, [hoverFaceId]) : null),
+    [data, hoverFaceId]
   );
   const hoverEdgeGeometry = useMemo(
-    () => buildEdgeHighlightGeometry(data, hoverEdgeIds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ids captured via hoverEdgeKey
-    [data, hoverEdgeKey]
+    () => (hoverEdgeId !== null ? buildEdgeHighlightGeometry(data, [hoverEdgeId]) : null),
+    [data, hoverEdgeId]
   );
+
+  // Skip rendering the hover overlay when the hovered entity is already in
+  // selections — the committed overlay covers the same triangles, and two
+  // transparent quads at the same poly-offset would just produce flicker.
+  const shouldRenderHoverFace = hoverFaceId !== null && !faceIds.includes(hoverFaceId);
+  const shouldRenderHoverEdge = hoverEdgeId !== null && !edgeIds.includes(hoverEdgeId);
 
   useEffect(() => {
     return () => {
@@ -203,8 +204,12 @@ export default function SelectionHighlight({ data, selections, hoverEntity }: Pr
           <lineBasicMaterial color={EDGE_COLOR} depthTest={false} transparent />
         </lineSegments>
       )}
-      {hoverFaceGeometry && (
-        <mesh geometry={hoverFaceGeometry} raycast={skipRaycast} renderOrder={2}>
+      {hoverFaceGeometry && shouldRenderHoverFace && (
+        // renderOrder one below the committed overlay (which is `2`) so the
+        // committed face always composites on top when both happen to be
+        // visible on adjacent faces — three.js sorts transparent objects by
+        // renderOrder, so equal values would blend in unspecified order.
+        <mesh geometry={hoverFaceGeometry} raycast={skipRaycast} renderOrder={1}>
           <meshStandardMaterial
             color={FACE_COLOR}
             emissive={FACE_COLOR}
@@ -221,8 +226,10 @@ export default function SelectionHighlight({ data, selections, hoverEntity }: Pr
           />
         </mesh>
       )}
-      {hoverEdgeGeometry && (
-        <lineSegments geometry={hoverEdgeGeometry} raycast={skipRaycast} renderOrder={3}>
+      {hoverEdgeGeometry && shouldRenderHoverEdge && (
+        // renderOrder=2 keeps it below the committed edge overlay (=3) for
+        // the same blending-stability reason as the face hover above.
+        <lineSegments geometry={hoverEdgeGeometry} raycast={skipRaycast} renderOrder={2}>
           <lineBasicMaterial color={EDGE_COLOR} depthTest={false} transparent opacity={0.55} />
         </lineSegments>
       )}
