@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.4.0](https://github.com/andymai/brepjs/compare/brepjs-v18.3.2...brepjs-v18.4.0) (2026-05-07)
+
+
+### Features
+
+* **meta:** add OG images and per-page social meta ([#892](https://github.com/andymai/brepjs/issues/892)) ([0e2f88a](https://github.com/andymai/brepjs/commit/0e2f88ae1cf37d504d5fe9f556d424a07a0d4e3f))
+
 ## [18.3.2](https://github.com/andymai/brepjs/compare/brepjs-v18.3.1...brepjs-v18.3.2) (2026-05-07)
 
 
