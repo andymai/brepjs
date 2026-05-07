@@ -11,7 +11,7 @@ function ambientToModuleBody(ambient: string): string {
       /^((?:\/\*\*[^*]*\*\/\s*)?)(?:declare\s+)?(abstract\s+class|class|function|const|let|var|namespace|enum|interface)\b/gm,
       '$1export $2'
     )
-    .replace(/^((?:\/\*\*[^*]*\*\/\s*)?)type(\s+\w+\b)/gm, '$1export type$2');
+    .replace(/^((?:\/\*\*[^*]*\*\/\s*)?)(?:declare\s+)?type(\s+\w+\b)/gm, '$1export type$2');
 }
 
 export function setupMonaco(monaco: Monaco) {

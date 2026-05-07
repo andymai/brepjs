@@ -97,8 +97,12 @@ function buildBrepjsWrapperUrl(mod: Record<string, unknown>): string {
 
 async function handleInit() {
   // OCCT module rejects re-init; React StrictMode and crash recovery can
-  // dispatch `init` twice, so short-circuit when we already have a kernel.
-  if (brepjs) {
+  // dispatch `init` twice, so short-circuit when we already have a kernel
+  // *and* its wrapper URL — checking only `brepjs` would falsely report
+  // success after a partial init that threw between the import and the
+  // wrapper-URL build, leaving every eval to fail with "Worker not
+  // initialized".
+  if (brepjs && brepjsBlobUrl) {
     post({ type: 'init-done' });
     return;
   }
