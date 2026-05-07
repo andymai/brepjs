@@ -5,6 +5,7 @@ import type { EdgeGroup, EdgeInfo } from '../../workers/workerProtocol';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { useToastStore } from '../../stores/toastStore';
 import { buildEdgeFinderSnippet } from '../../lib/finderSnippet';
+import { copyToClipboard } from '../../lib/copyToClipboard';
 
 interface Props {
   edges: Float32Array;
@@ -12,18 +13,17 @@ interface Props {
   edgeInfos?: EdgeInfo[];
 }
 
-// Map a vertex index in the line buffer to its edge group via binary search
-// over (start, count) ranges. Edge groups are sorted by start offset so the
-// search is O(log n) per pick.
+// Edge groups are sorted by start offset, so binary search the (start, count)
+// ranges to find the group containing a given vertex index.
 function findGroupAt(groups: EdgeGroup[], vertexIndex: number): EdgeGroup | null {
   let lo = 0;
   let hi = groups.length - 1;
   while (lo <= hi) {
     const mid = (lo + hi) >>> 1;
-    const g = groups[mid]!;
-    if (vertexIndex < g.start) hi = mid - 1;
-    else if (vertexIndex >= g.start + g.count) lo = mid + 1;
-    else return g;
+    const group = groups[mid]!;
+    if (vertexIndex < group.start) hi = mid - 1;
+    else if (vertexIndex >= group.start + group.count) lo = mid + 1;
+    else return group;
   }
   return null;
 }
@@ -31,6 +31,7 @@ function findGroupAt(groups: EdgeGroup[], vertexIndex: number): EdgeGroup | null
 export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   const setSelection = usePlaygroundStore((s) => s.setSelection);
   const addToast = useToastStore((s) => s.addToast);
+  const pickable = Boolean(edgeGroups && edgeInfos);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -46,9 +47,9 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
 
   const edgeInfoById = useMemo(() => {
     if (!edgeInfos) return null;
-    const m = new Map<number, EdgeInfo>();
-    for (const info of edgeInfos) m.set(info.edgeId, info);
-    return m;
+    const byId = new Map<number, EdgeInfo>();
+    for (const info of edgeInfos) byId.set(info.edgeId, info);
+    return byId;
   }, [edgeInfos]);
 
   const handleClick = useCallback(
@@ -63,19 +64,27 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
       event.stopPropagation();
       setSelection({ kind: 'edge', info });
       const snippet = buildEdgeFinderSnippet(info);
-      void navigator.clipboard?.writeText(snippet).then(
-        () => addToast('Edge finder copied'),
-        () => addToast('Edge selected (copy failed)')
+      void copyToClipboard(snippet).then((copied) =>
+        addToast(copied ? 'Edge finder copied' : 'Edge selected (clipboard unavailable)')
       );
     },
     [edgeGroups, edgeInfoById, setSelection, addToast]
   );
 
+  const handlePointerOver = useCallback(() => {
+    document.body.style.cursor = 'pointer';
+  }, []);
+  const handlePointerOut = useCallback(() => {
+    document.body.style.cursor = '';
+  }, []);
+
   return (
     <lineSegments
       geometry={geometry}
       renderOrder={1}
-      onClick={handleClick}
+      onClick={pickable ? handleClick : undefined}
+      onPointerOver={pickable ? handlePointerOver : undefined}
+      onPointerOut={pickable ? handlePointerOut : undefined}
       raycast={raycastLines}
     >
       <lineBasicMaterial color="#000000" depthTest={true} linewidth={2} />
@@ -91,8 +100,13 @@ function raycastLines(
   raycaster: THREE.Raycaster,
   intersects: THREE.Intersection[]
 ) {
-  const prev = raycaster.params.Line?.threshold;
-  if (raycaster.params.Line) raycaster.params.Line.threshold = PICK_THRESHOLD_WORLD;
+  const lineParams = raycaster.params.Line;
+  if (!lineParams) {
+    THREE.LineSegments.prototype.raycast.call(this, raycaster, intersects);
+    return;
+  }
+  const previousThreshold = lineParams.threshold;
+  lineParams.threshold = PICK_THRESHOLD_WORLD;
   THREE.LineSegments.prototype.raycast.call(this, raycaster, intersects);
-  if (raycaster.params.Line && prev !== undefined) raycaster.params.Line.threshold = prev;
+  lineParams.threshold = previousThreshold;
 }

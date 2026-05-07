@@ -197,6 +197,7 @@ const BASE_CONTROLS_PROPS = {
 
 export default function ViewerPanel() {
   const meshes = usePlaygroundStore((s) => s.meshes);
+  const setSelection = usePlaygroundStore((s) => s.setSelection);
   const showEdges = useViewerStore((s) => s.showEdges);
   const showGrid = useViewerStore((s) => s.showGrid);
   const showWireframe = useViewerStore((s) => s.showWireframe);
@@ -207,6 +208,12 @@ export default function ViewerPanel() {
   const handleControlsStart = useCallback(() => {
     clearPreset();
   }, [clearPreset]);
+
+  // R3F fires onPointerMissed when a click hits the canvas but no mesh in
+  // the scene — empty-space click clears the selection.
+  const handlePointerMissed = useCallback(() => {
+    setSelection(null);
+  }, [setSelection]);
 
   // Snapshot the initial pointer-class via matchMedia so the props object we
   // hand drei stays stable across renders. Runtime device-class flips (a user
@@ -240,6 +247,7 @@ export default function ViewerPanel() {
         camera={{ position: [40, 30, 40], fov: 45, near: 0.1, far: 2000 }}
         frameloop="demand"
         gl={{ antialias: true, preserveDrawingBuffer: true }}
+        onPointerMissed={handlePointerMissed}
       >
         <SceneSetup
           gridVisible={showGrid}

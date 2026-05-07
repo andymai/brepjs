@@ -1,5 +1,4 @@
-// Maps brepjs's SurfaceType / CurveType enums to short human labels for the
-// status bar. Keys must match `getSurfaceType()` / `getCurveType()` exactly.
+// Keys must match the strings returned by `getSurfaceType()` / `getCurveType()` exactly.
 
 const SURFACE_LABELS: Record<string, string> = {
   PLANE: 'Flat face',

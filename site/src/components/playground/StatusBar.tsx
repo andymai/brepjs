@@ -1,5 +1,5 @@
 import { useEngineStore } from '../../stores/engineStore';
-import { usePlaygroundStore } from '../../stores/playgroundStore';
+import { usePlaygroundStore, type Selection } from '../../stores/playgroundStore';
 import {
   formatArea,
   formatCurveType,
@@ -51,7 +51,7 @@ export default function StatusBar() {
         )}
       </div>
       {selection && (
-        <div className="flex items-center gap-2 text-gray-300">
+        <div className="flex min-w-0 items-center gap-2 truncate whitespace-nowrap text-gray-300">
           <SelectionLine selection={selection} />
         </div>
       )}
@@ -59,25 +59,25 @@ export default function StatusBar() {
   );
 }
 
-function SelectionLine({ selection }: { selection: NonNullable<ReturnType<typeof usePlaygroundStore.getState>['selection']> }) {
+function SelectionLine({ selection }: { selection: Selection }) {
   if (selection.kind === 'face') {
-    const f = selection.info;
+    const face = selection.info;
     return (
       <>
-        <span className="font-medium">{formatSurfaceType(f.surfaceType)}</span>
+        <span className="font-medium">{formatSurfaceType(face.surfaceType)}</span>
         <span className="text-gray-500">·</span>
-        <span>area {formatArea(f.area)}</span>
+        <span>area {formatArea(face.area)}</span>
         <span className="text-gray-500">·</span>
-        <span>facing {formatNormalDirection(f.normal)}</span>
+        <span>facing {formatNormalDirection(face.normal)}</span>
       </>
     );
   }
-  const e = selection.info;
+  const edge = selection.info;
   return (
     <>
-      <span className="font-medium">{formatCurveType(e.curveType)}</span>
+      <span className="font-medium">{formatCurveType(edge.curveType)}</span>
       <span className="text-gray-500">·</span>
-      <span>length {formatLength(e.length)}</span>
+      <span>length {formatLength(edge.length)}</span>
     </>
   );
 }

@@ -3,14 +3,17 @@ import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { MeshData } from '../../stores/playgroundStore';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
+import type { FaceInfo } from '../../workers/workerProtocol';
 import { useViewerStore } from '../../stores/viewerStore';
 import { buildFaceFinderSnippet } from '../../lib/finderSnippet';
+import { copyToClipboard } from '../../lib/copyToClipboard';
 import { useToastStore } from '../../stores/toastStore';
 
 export default function ShapeRenderer({ data }: { data: MeshData }) {
   const showWireframe = useViewerStore((s) => s.showWireframe);
   const setSelection = usePlaygroundStore((s) => s.setSelection);
   const addToast = useToastStore((s) => s.addToast);
+  const pickable = Boolean(data.faceGroups && data.faceInfos);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -21,8 +24,8 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
     // which we map back to faceId via `data.faceGroups`.
     if (data.faceGroups) {
       for (let i = 0; i < data.faceGroups.length; i++) {
-        const g = data.faceGroups[i]!;
-        geo.addGroup(g.start, g.count, i);
+        const group = data.faceGroups[i]!;
+        geo.addGroup(group.start, group.count, i);
       }
     }
     return geo;
@@ -36,33 +39,44 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
 
   const faceInfoById = useMemo(() => {
     if (!data.faceInfos) return null;
-    const m = new Map<number, (typeof data.faceInfos)[number]>();
-    for (const info of data.faceInfos) m.set(info.faceId, info);
-    return m;
+    const byId = new Map<number, FaceInfo>();
+    for (const info of data.faceInfos) byId.set(info.faceId, info);
+    return byId;
   }, [data.faceInfos]);
 
   const handleClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
       if (!data.faceGroups || !faceInfoById) return;
-      const idx = event.face?.materialIndex;
-      if (idx === undefined) return;
-      const group = data.faceGroups[idx];
+      const materialIndex = event.face?.materialIndex;
+      if (materialIndex === undefined) return;
+      const group = data.faceGroups[materialIndex];
       if (!group) return;
       const info = faceInfoById.get(group.faceId);
       if (!info) return;
       event.stopPropagation();
       setSelection({ kind: 'face', info });
       const snippet = buildFaceFinderSnippet(info);
-      void navigator.clipboard?.writeText(snippet).then(
-        () => addToast('Face finder copied'),
-        () => addToast('Face selected (copy failed)')
+      void copyToClipboard(snippet).then((copied) =>
+        addToast(copied ? 'Face finder copied' : 'Face selected (clipboard unavailable)')
       );
     },
     [data.faceGroups, faceInfoById, setSelection, addToast]
   );
 
+  const handlePointerOver = useCallback(() => {
+    document.body.style.cursor = 'pointer';
+  }, []);
+  const handlePointerOut = useCallback(() => {
+    document.body.style.cursor = '';
+  }, []);
+
   return (
-    <mesh geometry={geometry} onClick={handleClick}>
+    <mesh
+      geometry={geometry}
+      onClick={pickable ? handleClick : undefined}
+      onPointerOver={pickable ? handlePointerOver : undefined}
+      onPointerOut={pickable ? handlePointerOut : undefined}
+    >
       <meshStandardMaterial
         color="#d4d8dc"
         metalness={0}
