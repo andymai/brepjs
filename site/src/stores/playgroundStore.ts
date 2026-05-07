@@ -35,6 +35,7 @@ interface PlaygroundState {
   isViewerCollapsed: boolean;
   lastSuccessfulCode: string | null;
   selections: Selection[];
+  hoverEntity: Selection | null;
 
   setCode: (code: string) => void;
   setMeshes: (meshes: MeshData[]) => void;
@@ -48,6 +49,7 @@ interface PlaygroundState {
   setLastSuccessfulCode: (code: string) => void;
   pickSelection: (selection: Selection, additive: boolean) => void;
   clearSelections: () => void;
+  setHoverEntity: (entity: Selection | null) => void;
   clearResults: () => void;
 }
 
@@ -71,11 +73,13 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   isViewerCollapsed: false,
   lastSuccessfulCode: null,
   selections: [],
+  hoverEntity: null,
 
   setCode: (code) => set({ code }),
   // Drop selections on every new render — they're bound to the mesh by
   // faceId/edgeId and the new mesh likely won't have the same ids.
-  setMeshes: (meshes) => set({ meshes, error: null, errorLine: null, selections: [] }),
+  setMeshes: (meshes) =>
+    set({ meshes, error: null, errorLine: null, selections: [], hoverEntity: null }),
   setError: (error, line) => set({ error, errorLine: line ?? null }),
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
@@ -95,6 +99,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       return { selections: [...s.selections, selection] };
     }),
   clearSelections: () => set({ selections: [] }),
+  setHoverEntity: (hoverEntity) => set({ hoverEntity }),
   clearResults: () =>
     set({
       meshes: [],
@@ -103,5 +108,6 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       consoleOutput: [],
       timeMs: null,
       selections: [],
+      hoverEntity: null,
     }),
 }));

@@ -11,6 +11,7 @@ import type { Selection } from '../../stores/playgroundStore';
 
 interface Props {
   selections: Selection[];
+  hoverEntity: Selection | null;
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -18,10 +19,15 @@ const OFFSET_X = 12;
 const OFFSET_Y = 12;
 const EDGE_PADDING = 8;
 
-export default function SelectionTooltip({ selections, containerRef }: Props) {
+export default function SelectionTooltip({ selections, hoverEntity, containerRef }: Props) {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const last = selections[selections.length - 1] ?? null;
+  // Hover wins over selection while present — the user is actively pointing at
+  // something new, so the tooltip should follow their attention. When the
+  // pointer leaves the mesh, hoverEntity nulls and we fall back to the most
+  // recent selection (the persistent confirmation of what they last picked).
+  const last = hoverEntity ?? selections[selections.length - 1] ?? null;
+  const isHover = hoverEntity !== null;
 
   // Keep the tooltip pinned next to the click position while clamping to the
   // viewport panel so it never escapes the canvas. useLayoutEffect avoids a
@@ -55,16 +61,18 @@ export default function SelectionTooltip({ selections, containerRef }: Props) {
       style={pos ?? { left: -9999, top: -9999 }}
       role="tooltip"
     >
-      {selections.length > 1 ? (
+      {!isHover && selections.length > 1 ? (
         <MultiTooltip selections={selections} />
       ) : (
-        <SingleTooltip selection={last} />
+        <SingleTooltip selection={last} isHover={isHover} />
       )}
     </div>
   );
 }
 
-function SingleTooltip({ selection }: { selection: Selection }) {
+function SingleTooltip({ selection, isHover }: { selection: Selection; isHover: boolean }) {
+  // Hover state shows metadata only — the snippet preview is committed UI
+  // that pairs with a clipboard write, and we haven't written anything yet.
   if (selection.kind === 'face') {
     const f = selection.info;
     return (
@@ -72,7 +80,7 @@ function SingleTooltip({ selection }: { selection: Selection }) {
         <div className="font-semibold text-teal-light">{formatSurfaceType(f.surfaceType)}</div>
         <div className="text-gray-400">Area: {formatArea(f.area)}</div>
         <div className="text-gray-400">Facing: {formatNormalDirection(f.normal)}</div>
-        <SnippetPreview snippet={buildFaceFinderSnippet(f)} />
+        {!isHover && <SnippetPreview snippet={buildFaceFinderSnippet(f)} />}
       </div>
     );
   }
@@ -81,7 +89,7 @@ function SingleTooltip({ selection }: { selection: Selection }) {
     <div className="flex flex-col gap-0.5">
       <div className="font-semibold text-teal-light">{formatCurveType(e.curveType)}</div>
       <div className="text-gray-400">Length: {formatLength(e.length)}</div>
-      <SnippetPreview snippet={buildEdgeFinderSnippet(e)} />
+      {!isHover && <SnippetPreview snippet={buildEdgeFinderSnippet(e)} />}
     </div>
   );
 }

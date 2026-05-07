@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { MeshData } from '../../stores/playgroundStore';
@@ -12,6 +12,7 @@ import { useToastStore } from '../../stores/toastStore';
 export default function ShapeRenderer({ data }: { data: MeshData }) {
   const viewMode = useViewerStore((s) => s.viewMode);
   const pickSelection = usePlaygroundStore((s) => s.pickSelection);
+  const setHoverEntity = usePlaygroundStore((s) => s.setHoverEntity);
   const addToast = useToastStore((s) => s.addToast);
   const pickable = Boolean(data.faceGroups && data.faceInfos);
 
@@ -72,16 +73,45 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
   }, []);
   const handlePointerOut = useCallback(() => {
     document.body.style.cursor = '';
-  }, []);
+    lastHoverIdRef.current = null;
+    setHoverEntity(null);
+  }, [setHoverEntity]);
+
+  // pointermove fires per-frame while hovering. We update on every tick so
+  // the tooltip follows the cursor (cheap: one shallow-merge re-renders just
+  // the tooltip via zustand selectors). lastHoverIdRef holds the active face
+  // id so handlePointerOut can avoid clearing a stale hover after we've
+  // already moved off this mesh into another.
+  const lastHoverIdRef = useRef<number | null>(null);
+  const handlePointerMove = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      if (!data.faceGroups || !faceInfoById) return;
+      const materialIndex = event.face?.materialIndex;
+      if (materialIndex === undefined) return;
+      const group = data.faceGroups[materialIndex];
+      if (!group) return;
+      const info = faceInfoById.get(group.faceId);
+      if (!info) return;
+      lastHoverIdRef.current = group.faceId;
+      setHoverEntity({
+        kind: 'face',
+        info,
+        screenPos: { x: event.clientX, y: event.clientY },
+      });
+    },
+    [data.faceGroups, faceInfoById, setHoverEntity]
+  );
 
   // R3F doesn't synthesize `pointerout` for an object that gets unmounted
   // mid-hover (e.g. a new eval drops the previous mesh). Without this
-  // cleanup the body cursor stays `pointer` for the rest of the session.
+  // cleanup the body cursor stays `pointer` for the rest of the session
+  // and the hover tooltip would linger pointing at a destroyed mesh.
   useEffect(() => {
     return () => {
       document.body.style.cursor = '';
+      setHoverEntity(null);
     };
-  }, []);
+  }, [setHoverEntity]);
 
   return (
     <mesh
@@ -89,6 +119,7 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
       onClick={pickable ? handleClick : undefined}
       onPointerOver={pickable ? handlePointerOver : undefined}
       onPointerOut={pickable ? handlePointerOut : undefined}
+      onPointerMove={pickable ? handlePointerMove : undefined}
     >
       <meshStandardMaterial
         color="#d4d8dc"

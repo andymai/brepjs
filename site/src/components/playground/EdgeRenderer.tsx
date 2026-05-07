@@ -30,6 +30,7 @@ function findGroupAt(groups: EdgeGroup[], vertexIndex: number): EdgeGroup | null
 
 export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   const pickSelection = usePlaygroundStore((s) => s.pickSelection);
+  const setHoverEntity = usePlaygroundStore((s) => s.setHoverEntity);
   const addToast = useToastStore((s) => s.addToast);
   const pickable = Boolean(edgeGroups && edgeInfos);
 
@@ -80,16 +81,40 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
   }, []);
   const handlePointerOut = useCallback(() => {
     document.body.style.cursor = '';
-  }, []);
+    setHoverEntity(null);
+  }, [setHoverEntity]);
+
+  // pointermove updates hoverEntity each frame so the tooltip tracks the
+  // cursor across the same edge. Cost is one shallow store merge per move
+  // and re-renders only the tooltip via zustand selectors.
+  const handlePointerMove = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      if (!edgeGroups || !edgeInfoById) return;
+      const vertexIndex = event.index;
+      if (vertexIndex === undefined) return;
+      const group = findGroupAt(edgeGroups, vertexIndex);
+      if (!group) return;
+      const info = edgeInfoById.get(group.edgeId);
+      if (!info) return;
+      setHoverEntity({
+        kind: 'edge',
+        info,
+        screenPos: { x: event.clientX, y: event.clientY },
+      });
+    },
+    [edgeGroups, edgeInfoById, setHoverEntity]
+  );
 
   // R3F doesn't synthesize `pointerout` for an object that gets unmounted
   // mid-hover (e.g. a new eval drops the previous mesh). Without this
-  // cleanup the body cursor stays `pointer` for the rest of the session.
+  // cleanup the body cursor stays `pointer` for the rest of the session
+  // and the hover tooltip would linger pointing at a destroyed mesh.
   useEffect(() => {
     return () => {
       document.body.style.cursor = '';
+      setHoverEntity(null);
     };
-  }, []);
+  }, [setHoverEntity]);
 
   return (
     <lineSegments
@@ -98,6 +123,7 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
       onClick={pickable ? handleClick : undefined}
       onPointerOver={pickable ? handlePointerOver : undefined}
       onPointerOut={pickable ? handlePointerOut : undefined}
+      onPointerMove={pickable ? handlePointerMove : undefined}
       raycast={raycastLines}
     >
       <lineBasicMaterial color="#000000" depthTest={true} linewidth={2} />

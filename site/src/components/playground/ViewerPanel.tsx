@@ -252,6 +252,7 @@ export default function ViewerPanel() {
   const controlsRef = useRef(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const selections = usePlaygroundStore((s) => s.selections);
+  const hoverEntity = usePlaygroundStore((s) => s.hoverEntity);
 
   const handleControlsStart = useCallback(() => {
     clearPreset();
@@ -320,7 +321,11 @@ export default function ViewerPanel() {
         </group>
       </Canvas>
       <ViewerToolbar />
-      <SelectionTooltip selections={selections} containerRef={containerRef} />
+      <SelectionTooltip
+        selections={selections}
+        hoverEntity={hoverEntity}
+        containerRef={containerRef}
+      />
     </div>
   );
 }
