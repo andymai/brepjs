@@ -16,7 +16,7 @@ export default function EdgeRenderer({ edges }: { edges: Float32Array }) {
 
   return (
     <lineSegments geometry={geometry} renderOrder={1}>
-      <lineBasicMaterial color="#000000" depthTest={true} />
+      <lineBasicMaterial color="#3a4046" transparent opacity={0.55} depthTest={true} />
     </lineSegments>
   );
 }
