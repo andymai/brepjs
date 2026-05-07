@@ -193,8 +193,17 @@ function computeSharpEdgeHashes(bjs: any, shape: unknown): Set<number> {
         const mid = bjs.curvePointAt(edge, 0.5);
         const n1 = bjs.normalAt(faces[0], mid);
         const n2 = bjs.normalAt(faces[1], mid);
-        const dot = Math.abs(n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2]);
-        if (dot > TANGENT_DOT_THRESHOLD) isTangent = true;
+        // Normalize: kernel's surfaceNormal can return un-normalized cross
+        // products (∂u×∂v) whose magnitude reflects parameterization scale —
+        // e.g. a 0.8 mm-radius fillet face yields a length-0.8 vector. Two
+        // collinear normals of different magnitudes give raw dot < 1 and
+        // would misclassify the tangent edge as sharp.
+        const m1 = Math.hypot(n1[0], n1[1], n1[2]);
+        const m2 = Math.hypot(n2[0], n2[1], n2[2]);
+        if (m1 > 0 && m2 > 0) {
+          const dot = Math.abs(n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2]) / (m1 * m2);
+          if (dot > TANGENT_DOT_THRESHOLD) isTangent = true;
+        }
       }
     } catch {
       // Treat any classification failure as sharp so we never *hide* an edge
