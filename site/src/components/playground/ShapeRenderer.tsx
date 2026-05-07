@@ -10,8 +10,8 @@ import { copyToClipboard } from '../../lib/copyToClipboard';
 import { useToastStore } from '../../stores/toastStore';
 
 export default function ShapeRenderer({ data }: { data: MeshData }) {
-  const showWireframe = useViewerStore((s) => s.showWireframe);
-  const setSelection = usePlaygroundStore((s) => s.setSelection);
+  const viewMode = useViewerStore((s) => s.viewMode);
+  const pickSelection = usePlaygroundStore((s) => s.pickSelection);
   const addToast = useToastStore((s) => s.addToast);
   const pickable = Boolean(data.faceGroups && data.faceInfos);
 
@@ -54,13 +54,17 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
       const info = faceInfoById.get(group.faceId);
       if (!info) return;
       event.stopPropagation();
-      setSelection({ kind: 'face', info });
+      const additive = event.shiftKey;
+      pickSelection(
+        { kind: 'face', info, screenPos: { x: event.clientX, y: event.clientY } },
+        additive
+      );
       const snippet = buildFaceFinderSnippet(info);
       void copyToClipboard(snippet).then((copied) =>
         addToast(copied ? 'Face finder copied' : 'Face selected (clipboard unavailable)')
       );
     },
-    [data.faceGroups, faceInfoById, setSelection, addToast]
+    [data.faceGroups, faceInfoById, pickSelection, addToast]
   );
 
   const handlePointerOver = useCallback(() => {
@@ -96,7 +100,10 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
         polygonOffset
         polygonOffsetFactor={1}
         polygonOffsetUnits={1}
-        wireframe={showWireframe}
+        wireframe={viewMode === 'wireframe'}
+        transparent={viewMode === 'xray'}
+        opacity={viewMode === 'xray' ? 0.35 : 1}
+        depthWrite={viewMode !== 'xray'}
       />
     </mesh>
   );

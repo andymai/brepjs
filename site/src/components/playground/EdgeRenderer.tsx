@@ -29,7 +29,7 @@ function findGroupAt(groups: EdgeGroup[], vertexIndex: number): EdgeGroup | null
 }
 
 export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
-  const setSelection = usePlaygroundStore((s) => s.setSelection);
+  const pickSelection = usePlaygroundStore((s) => s.pickSelection);
   const addToast = useToastStore((s) => s.addToast);
   const pickable = Boolean(edgeGroups && edgeInfos);
 
@@ -62,13 +62,17 @@ export default function EdgeRenderer({ edges, edgeGroups, edgeInfos }: Props) {
       const info = edgeInfoById.get(group.edgeId);
       if (!info) return;
       event.stopPropagation();
-      setSelection({ kind: 'edge', info });
+      const additive = event.shiftKey;
+      pickSelection(
+        { kind: 'edge', info, screenPos: { x: event.clientX, y: event.clientY } },
+        additive
+      );
       const snippet = buildEdgeFinderSnippet(info);
       void copyToClipboard(snippet).then((copied) =>
         addToast(copied ? 'Edge finder copied' : 'Edge selected (clipboard unavailable)')
       );
     },
-    [edgeGroups, edgeInfoById, setSelection, addToast]
+    [edgeGroups, edgeInfoById, pickSelection, addToast]
   );
 
   const handlePointerOver = useCallback(() => {

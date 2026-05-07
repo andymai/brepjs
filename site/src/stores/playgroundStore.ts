@@ -13,9 +13,14 @@ export interface MeshData {
   edgeInfos?: EdgeInfo[];
 }
 
+export interface ScreenPos {
+  x: number;
+  y: number;
+}
+
 export type Selection =
-  | { kind: 'face'; info: FaceInfo }
-  | { kind: 'edge'; info: EdgeInfo };
+  | { kind: 'face'; info: FaceInfo; screenPos: ScreenPos }
+  | { kind: 'edge'; info: EdgeInfo; screenPos: ScreenPos };
 
 interface PlaygroundState {
   code: string;
@@ -29,7 +34,7 @@ interface PlaygroundState {
   isConsoleCollapsed: boolean;
   isViewerCollapsed: boolean;
   lastSuccessfulCode: string | null;
-  selection: Selection | null;
+  selections: Selection[];
 
   setCode: (code: string) => void;
   setMeshes: (meshes: MeshData[]) => void;
@@ -41,8 +46,16 @@ interface PlaygroundState {
   setConsoleCollapsed: (collapsed: boolean) => void;
   setViewerCollapsed: (collapsed: boolean) => void;
   setLastSuccessfulCode: (code: string) => void;
-  setSelection: (selection: Selection | null) => void;
+  pickSelection: (selection: Selection, additive: boolean) => void;
+  clearSelections: () => void;
   clearResults: () => void;
+}
+
+function sameEntity(a: Selection, b: Selection): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'face' && b.kind === 'face') return a.info.faceId === b.info.faceId;
+  if (a.kind === 'edge' && b.kind === 'edge') return a.info.edgeId === b.info.edgeId;
+  return false;
 }
 
 export const usePlaygroundStore = create<PlaygroundState>((set) => ({
@@ -57,12 +70,12 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   isConsoleCollapsed: false,
   isViewerCollapsed: false,
   lastSuccessfulCode: null,
-  selection: null,
+  selections: [],
 
   setCode: (code) => set({ code }),
-  // Drop the prior selection on every new render — selection is bound to the
-  // mesh by faceId/edgeId and the new mesh likely won't have the same ids.
-  setMeshes: (meshes) => set({ meshes, error: null, errorLine: null, selection: null }),
+  // Drop selections on every new render — they're bound to the mesh by
+  // faceId/edgeId and the new mesh likely won't have the same ids.
+  setMeshes: (meshes) => set({ meshes, error: null, errorLine: null, selections: [] }),
   setError: (error, line) => set({ error, errorLine: line ?? null }),
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
@@ -71,7 +84,17 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setConsoleCollapsed: (isConsoleCollapsed) => set({ isConsoleCollapsed }),
   setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
   setLastSuccessfulCode: (lastSuccessfulCode) => set({ lastSuccessfulCode }),
-  setSelection: (selection) => set({ selection }),
+  pickSelection: (selection, additive) =>
+    set((s) => {
+      if (!additive) return { selections: [selection] };
+      const existing = s.selections.findIndex((sel) => sameEntity(sel, selection));
+      if (existing >= 0) {
+        // Toggle: shift-clicking an already-selected entity removes it.
+        return { selections: s.selections.filter((_, i) => i !== existing) };
+      }
+      return { selections: [...s.selections, selection] };
+    }),
+  clearSelections: () => set({ selections: [] }),
   clearResults: () =>
     set({
       meshes: [],
@@ -79,6 +102,6 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
       errorLine: null,
       consoleOutput: [],
       timeMs: null,
-      selection: null,
+      selections: [],
     }),
 }));

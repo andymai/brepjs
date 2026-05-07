@@ -14,7 +14,8 @@ export default function StatusBar() {
   const error = usePlaygroundStore((s) => s.error);
   const timeMs = usePlaygroundStore((s) => s.timeMs);
   const isRunning = usePlaygroundStore((s) => s.isRunning);
-  const selection = usePlaygroundStore((s) => s.selection);
+  const selections = usePlaygroundStore((s) => s.selections);
+  const lastSelection = selections[selections.length - 1] ?? null;
 
   let statusText: string;
   let statusColor: string;
@@ -50,9 +51,14 @@ export default function StatusBar() {
           <span className="text-gray-500">{timeMs.toFixed(0)}ms</span>
         )}
       </div>
-      {selection && (
+      {lastSelection && (
         <div className="flex min-w-0 items-center gap-2 truncate whitespace-nowrap text-gray-300">
-          <SelectionLine selection={selection} />
+          {selections.length > 1 && (
+            <span className="rounded bg-teal-primary/20 px-1.5 py-0.5 text-teal-light">
+              {selections.length} selected
+            </span>
+          )}
+          <SelectionLine selection={lastSelection} />
         </div>
       )}
     </div>

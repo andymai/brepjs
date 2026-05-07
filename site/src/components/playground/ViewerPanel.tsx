@@ -1,14 +1,16 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrthographicCamera } from '@react-three/drei';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { usePlaygroundStore, type MeshData } from '../../stores/playgroundStore';
-import { useViewerStore } from '../../stores/viewerStore';
+import { useViewerStore, type Projection } from '../../stores/viewerStore';
 import { useCameraPresets } from '../../hooks/useCameraPresets';
 import { useTouchDevice } from '../../hooks/useTouchDevice';
 import SceneSetup from '../shared/SceneSetup';
 import ShapeRenderer from './ShapeRenderer';
 import EdgeRenderer from './EdgeRenderer';
 import ViewerToolbar from './ViewerToolbar';
+import SelectionTooltip from './SelectionTooltip';
 
 /**
  * Build a content-derived React key for a mesh. The store hands us a fresh
@@ -21,7 +23,7 @@ import ViewerToolbar from './ViewerToolbar';
 function meshKey(m: MeshData, fallback: number): string {
   const p = m.position;
   if (!p || p.length === 0) return `empty-${fallback}`;
-  const mid = (p.length / 6 | 0) * 3;
+  const mid = ((p.length / 6) | 0) * 3;
   return `${p.length}-${p[0]}-${p[mid] ?? 0}-${p[p.length - 1] ?? 0}`;
 }
 
@@ -87,7 +89,8 @@ function fitCamera(
   controls: any
 ) {
   const { center, radius } = bounds;
-  const fov = (camera as THREE.PerspectiveCamera).fov;
+  const isOrtho = (camera as THREE.OrthographicCamera).isOrthographicCamera === true;
+  const fov = isOrtho ? 45 : (camera as THREE.PerspectiveCamera).fov;
   const fovRad = (fov / 2) * (Math.PI / 180);
   const dist = (radius / Math.sin(fovRad)) * 1.2;
 
@@ -98,18 +101,28 @@ function fitCamera(
     center.z + dist * Math.cos(angle) * Math.sin(angle)
   );
 
+  if (isOrtho) {
+    // For ortho, fov-based distance is meaningless — set zoom so the
+    // bounding sphere fills ~80% of the smaller viewport dimension.
+    const ortho = camera as THREE.OrthographicCamera;
+    const viewSize = Math.min(ortho.right - ortho.left, ortho.top - ortho.bottom);
+    if (viewSize > 0 && radius > 0) {
+      ortho.zoom = viewSize / (radius * 2.4);
+    }
+  }
+
   if (controls?.target) {
     controls.target.copy(center);
     controls.update();
   }
-  (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+  (camera as THREE.PerspectiveCamera | THREE.OrthographicCamera).updateProjectionMatrix();
 }
 
 /**
  * Inner component that adjusts the camera to fit the model whenever meshes change
  * or a manual fit is requested via the viewer store.
  */
-function AutoFit({ meshes }: { meshes: MeshData[] }) {
+function AutoFit({ meshes, projection }: { meshes: MeshData[]; projection: Projection }) {
   const { camera, controls } = useThree();
   const bounds = useBoundsComputation(meshes);
   const prevBoundsKey = useRef('');
@@ -131,6 +144,14 @@ function AutoFit({ meshes }: { meshes: MeshData[] }) {
     if (fitRequest === 0 || !bounds || !controls) return;
     fitCamera(bounds, camera, controls);
   }, [fitRequest, bounds, camera, controls]);
+
+  // Re-fit on projection change so ortho zoom matches the model size.
+  useEffect(() => {
+    if (!bounds || !controls) return;
+    fitCamera(bounds, camera, controls);
+    // Only fire when projection actually flips, not on every bounds tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bounds intentionally omitted
+  }, [projection, camera, controls]);
 
   return null;
 }
@@ -186,6 +207,29 @@ function CameraPresetBridge({ meshes }: { meshes: MeshData[] }) {
   return null;
 }
 
+/**
+ * Mounts an OrthographicCamera with `makeDefault` only when ortho is active,
+ * starting it at the current PerspectiveCamera's position so the swap is
+ * visually continuous. On unmount drei restores the canvas's PerspectiveCamera.
+ */
+function OrthoCameraSwitch() {
+  const { camera } = useThree();
+  // Snapshot the perspective camera's position at swap-in time (ref keeps the
+  // capture stable; React would otherwise re-read it on rerenders).
+  const initialPosition = useRef<[number, number, number]>(
+    camera.position.toArray() as [number, number, number]
+  );
+  return (
+    <OrthographicCamera
+      makeDefault
+      position={initialPosition.current}
+      zoom={20}
+      near={0.1}
+      far={2000}
+    />
+  );
+}
+
 const BASE_CONTROLS_PROPS = {
   enableDamping: true,
   dampingFactor: 0.12,
@@ -197,13 +241,16 @@ const BASE_CONTROLS_PROPS = {
 
 export default function ViewerPanel() {
   const meshes = usePlaygroundStore((s) => s.meshes);
-  const setSelection = usePlaygroundStore((s) => s.setSelection);
+  const clearSelections = usePlaygroundStore((s) => s.clearSelections);
   const showEdges = useViewerStore((s) => s.showEdges);
   const showGrid = useViewerStore((s) => s.showGrid);
-  const showWireframe = useViewerStore((s) => s.showWireframe);
+  const viewMode = useViewerStore((s) => s.viewMode);
+  const projection = useViewerStore((s) => s.projection);
   const clearPreset = useViewerStore((s) => s.clearPreset);
   const isTouch = useTouchDevice();
   const controlsRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const selections = usePlaygroundStore((s) => s.selections);
 
   const handleControlsStart = useCallback(() => {
     clearPreset();
@@ -212,8 +259,8 @@ export default function ViewerPanel() {
   // R3F fires onPointerMissed when a click hits the canvas but no mesh in
   // the scene — empty-space click clears the selection.
   const handlePointerMissed = useCallback(() => {
-    setSelection(null);
-  }, [setSelection]);
+    clearSelections();
+  }, [clearSelections]);
 
   // Snapshot the initial pointer-class via matchMedia so the props object we
   // hand drei stays stable across renders. Runtime device-class flips (a user
@@ -242,13 +289,14 @@ export default function ViewerPanel() {
   }, [isTouch]);
 
   return (
-    <div className="relative h-full w-full">
+    <div ref={containerRef} className="relative h-full w-full">
       <Canvas
         camera={{ position: [40, 30, 40], fov: 45, near: 0.1, far: 2000 }}
         frameloop="demand"
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         onPointerMissed={handlePointerMissed}
       >
+        {projection === 'orthographic' && <OrthoCameraSwitch />}
         <SceneSetup
           gridVisible={showGrid}
           controlsProps={controlsProps}
@@ -256,24 +304,21 @@ export default function ViewerPanel() {
           onControlsStart={handleControlsStart}
         />
         <Invalidator />
-        <AutoFit meshes={meshes} />
+        <AutoFit meshes={meshes} projection={projection} />
         <CameraPresetBridge meshes={meshes} />
         <group rotation={[-Math.PI / 2, 0, 0]}>
           {meshes.map((m, i) => (
             <group key={meshKey(m, i)}>
               <ShapeRenderer data={m} />
-              {showEdges && !showWireframe && m.edges.length > 0 && (
-                <EdgeRenderer
-                  edges={m.edges}
-                  edgeGroups={m.edgeGroups}
-                  edgeInfos={m.edgeInfos}
-                />
+              {showEdges && viewMode !== 'wireframe' && m.edges.length > 0 && (
+                <EdgeRenderer edges={m.edges} edgeGroups={m.edgeGroups} edgeInfos={m.edgeInfos} />
               )}
             </group>
           ))}
         </group>
       </Canvas>
       <ViewerToolbar />
+      <SelectionTooltip selections={selections} containerRef={containerRef} />
     </div>
   );
 }

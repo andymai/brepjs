@@ -1,11 +1,12 @@
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useState } from 'react';
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from 'react-resizable-panels';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
+import { useViewerStore } from '../../stores/viewerStore';
 import { useToastStore } from '../../stores/toastStore';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useUrlState } from '../../hooks/useUrlState';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
-import { SHORTCUTS } from '../../lib/shortcuts';
+import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import { startWASMPreload } from '../../lib/wasmPreloader.js';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
@@ -14,6 +15,8 @@ import OutputPanel from './OutputPanel';
 import StatusBar from './StatusBar';
 import LoadingOverlay from './LoadingOverlay';
 import CollapsedConsoleBar from './CollapsedConsoleBar';
+import ShortcutHelp from './ShortcutHelp';
+import CommandPalette, { type Command } from './CommandPalette';
 import ToastContainer from '../shared/ToastContainer';
 
 const shortcutDefs = Object.values(SHORTCUTS);
@@ -36,6 +39,17 @@ export default function PlaygroundPage() {
   const viewerPanelRef = usePanelRef();
   // Mutable ref to hold the editor format function, set by EditorPanel
   const editorFormatFnRef = useMemo(() => ({ current: null as (() => void) | null }), []);
+
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  const setViewMode = useViewerStore((s) => s.setViewMode);
+  const cycleViewMode = useViewerStore((s) => s.cycleViewMode);
+  const toggleEdges = useViewerStore((s) => s.toggleEdges);
+  const toggleGrid = useViewerStore((s) => s.toggleGrid);
+  const toggleProjection = useViewerStore((s) => s.toggleProjection);
+  const requestFit = useViewerStore((s) => s.requestFit);
+  const setCameraPreset = useViewerStore((s) => s.setCameraPreset);
 
   // Layout persistence
   const storage = typeof window !== 'undefined' ? localStorage : undefined;
@@ -114,6 +128,10 @@ export default function PlaygroundPage() {
     [setViewerCollapsed]
   );
 
+  const openCommandPalette = useCallback(() => {
+    setPaletteOpen(true);
+  }, []);
+
   const shortcutActions = useMemo(
     () => ({
       run: handleRun,
@@ -123,6 +141,7 @@ export default function PlaygroundPage() {
       formatCode: handleFormat,
       toggleOutput: toggleConsole,
       toggleViewer: toggleViewer,
+      commandPalette: openCommandPalette,
     }),
     [
       handleRun,
@@ -132,10 +151,177 @@ export default function PlaygroundPage() {
       handleFormat,
       toggleConsole,
       toggleViewer,
+      openCommandPalette,
     ]
   );
 
   useKeyboardShortcuts(shortcutActions, shortcutDefs);
+
+  // `?` opens the shortcut help. Lives outside useKeyboardShortcuts because it
+  // has no modifier, so it would clobber typed `?` characters in the editor.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== '?') return;
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        if (target.isContentEditable) return;
+        const tag = target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        if (target.closest('.monaco-editor')) return;
+      }
+      e.preventDefault();
+      setShortcutHelpOpen((o) => !o);
+    };
+    document.addEventListener('keydown', handler);
+    return () => {
+      document.removeEventListener('keydown', handler);
+    };
+  }, []);
+
+  const commands: Command[] = useMemo(
+    () => [
+      {
+        id: 'run',
+        group: 'Run',
+        label: 'Run code',
+        keys: formatShortcut(SHORTCUTS.run!),
+        run: handleRun,
+      },
+      {
+        id: 'share',
+        group: 'Run',
+        label: 'Share link',
+        keys: formatShortcut(SHORTCUTS.share!),
+        run: handleShare,
+      },
+      {
+        id: 'exportSTL',
+        group: 'Export',
+        label: 'Export STL',
+        keys: formatShortcut(SHORTCUTS.exportSTL!),
+        run: handleExportSTL,
+      },
+      {
+        id: 'exportSTEP',
+        group: 'Export',
+        label: 'Export STEP',
+        keys: formatShortcut(SHORTCUTS.exportSTEP!),
+        run: handleExportSTEP,
+      },
+      {
+        id: 'format',
+        group: 'Editor',
+        label: 'Format code',
+        keys: formatShortcut(SHORTCUTS.formatCode!),
+        run: handleFormat,
+      },
+      {
+        id: 'toggleConsole',
+        group: 'Layout',
+        label: 'Toggle console',
+        keys: formatShortcut(SHORTCUTS.toggleOutput!),
+        run: toggleConsole,
+      },
+      {
+        id: 'toggleViewer',
+        group: 'Layout',
+        label: 'Toggle viewer',
+        keys: formatShortcut(SHORTCUTS.toggleViewer!),
+        run: toggleViewer,
+      },
+      {
+        id: 'view-solid',
+        group: 'View',
+        label: 'View: Solid',
+        run: () => {
+          setViewMode('solid');
+        },
+      },
+      {
+        id: 'view-wire',
+        group: 'View',
+        label: 'View: Wireframe',
+        run: () => {
+          setViewMode('wireframe');
+        },
+      },
+      {
+        id: 'view-xray',
+        group: 'View',
+        label: 'View: X-ray',
+        run: () => {
+          setViewMode('xray');
+        },
+      },
+      { id: 'cycle-view', group: 'View', label: 'Cycle view mode', run: cycleViewMode },
+      { id: 'toggle-edges', group: 'View', label: 'Toggle edges', run: toggleEdges },
+      { id: 'toggle-grid', group: 'View', label: 'Toggle grid', run: toggleGrid },
+      {
+        id: 'toggle-proj',
+        group: 'View',
+        label: 'Toggle projection (perspective/ortho)',
+        run: toggleProjection,
+      },
+      { id: 'fit', group: 'Camera', label: 'Fit to view', run: requestFit },
+      {
+        id: 'cam-front',
+        group: 'Camera',
+        label: 'Front view',
+        run: () => {
+          setCameraPreset('front');
+        },
+      },
+      {
+        id: 'cam-side',
+        group: 'Camera',
+        label: 'Side view',
+        run: () => {
+          setCameraPreset('side');
+        },
+      },
+      {
+        id: 'cam-top',
+        group: 'Camera',
+        label: 'Top view',
+        run: () => {
+          setCameraPreset('top');
+        },
+      },
+      {
+        id: 'cam-iso',
+        group: 'Camera',
+        label: 'Isometric view',
+        run: () => {
+          setCameraPreset('isometric');
+        },
+      },
+      {
+        id: 'help',
+        group: 'Help',
+        label: 'Show keyboard shortcuts',
+        keys: '?',
+        run: () => {
+          setShortcutHelpOpen(true);
+        },
+      },
+    ],
+    [
+      handleRun,
+      handleShare,
+      handleExportSTL,
+      handleExportSTEP,
+      handleFormat,
+      toggleConsole,
+      toggleViewer,
+      setViewMode,
+      cycleViewMode,
+      toggleEdges,
+      toggleGrid,
+      toggleProjection,
+      requestFit,
+      setCameraPreset,
+    ]
+  );
 
   // Auto-expand console when error occurs
   useEffect(() => {
@@ -234,6 +420,20 @@ export default function PlaygroundPage() {
       </Group>
 
       <StatusBar />
+
+      <ShortcutHelp
+        open={shortcutHelpOpen}
+        onClose={() => {
+          setShortcutHelpOpen(false);
+        }}
+      />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => {
+          setPaletteOpen(false);
+        }}
+        commands={commands}
+      />
     </div>
   );
 }
