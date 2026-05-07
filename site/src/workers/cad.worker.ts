@@ -35,12 +35,19 @@ const codeCache = new Map<string, CachedEval>();
 const MAX_CACHE_SIZE = 20;
 
 function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
-  return {
+  const cloned: MeshTransfer = {
     position: new Float32Array(mesh.position),
     normal: new Float32Array(mesh.normal),
     index: new Uint32Array(mesh.index),
     edges: new Float32Array(mesh.edges),
   };
+  // Inspection metadata is plain JSON — pass-through reference is fine; the
+  // arrays of plain objects are not transferable, just copied structurally.
+  if (mesh.faceGroups) cloned.faceGroups = mesh.faceGroups;
+  if (mesh.edgeGroups) cloned.edgeGroups = mesh.edgeGroups;
+  if (mesh.faceInfos) cloned.faceInfos = mesh.faceInfos;
+  if (mesh.edgeInfos) cloned.edgeInfos = mesh.edgeInfos;
+  return cloned;
 }
 
 async function loadWasmBuild() {
@@ -234,15 +241,37 @@ async function handleEval(id: string, code: string) {
         const shapeMesh = brepjs.mesh(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
         const edgeMesh = brepjs.meshEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
 
-        const bufData = brepjs.toBufferGeometryData(shapeMesh);
+        const grouped = brepjs.toGroupedBufferGeometryData(shapeMesh);
         const lineData = brepjs.toLineGeometryData(edgeMesh);
 
         const mesh: MeshTransfer = {
-          position: bufData.position,
-          normal: bufData.normal,
-          index: bufData.index,
+          position: grouped.position,
+          normal: grouped.normal,
+          index: grouped.index,
           edges: lineData.position,
         };
+
+        // Inspection metadata is only attached to single-shape evals — the
+        // viewer's selection model is per-shape and the click → finder flow
+        // would be ambiguous across multiple bodies.
+        if ((result as unknown[]).length === 1) {
+          mesh.faceGroups = grouped.groups.map(
+            (g: { start: number; count: number; faceId: number }) => ({
+              start: g.start,
+              count: g.count,
+              faceId: g.faceId,
+            })
+          );
+          mesh.edgeGroups = (
+            edgeMesh.edgeGroups as { start: number; count: number; edgeId: number }[]
+          ).map((g) => ({
+            start: g.start,
+            count: g.count,
+            edgeId: g.edgeId,
+          }));
+          mesh.faceInfos = collectFaceInfos(fnShape);
+          mesh.edgeInfos = collectEdgeInfos(fnShape);
+        }
 
         meshes.push(mesh);
         transferables.push(
@@ -285,6 +314,44 @@ async function handleEval(id: string, code: string) {
     console.log = origLog;
     console.warn = origWarn;
     cancelledIds.delete(id);
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs Face handle
+function collectFaceInfos(shape: any) {
+  try {
+    const faces = brepjs.getFaces(shape);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs Face handle
+    return faces.map((face: any) => {
+      const surfaceTypeResult = brepjs.getSurfaceType(face);
+      const surfaceType = brepjs.isOk(surfaceTypeResult)
+        ? (surfaceTypeResult.value as string)
+        : 'OTHER_SURFACE';
+      const normal = brepjs.normalAt(face) as [number, number, number];
+      return {
+        faceId: brepjs.getHashCode(face),
+        surfaceType,
+        area: brepjs.measureArea(face),
+        normal,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs Edge handle
+function collectEdgeInfos(shape: any) {
+  try {
+    const edges = brepjs.getEdges(shape);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs Edge handle
+    return edges.map((edge: any) => ({
+      edgeId: brepjs.getHashCode(edge),
+      curveType: brepjs.getCurveType(edge) as string,
+      length: brepjs.curveLength(edge),
+    }));
+  } catch {
+    return [];
   }
 }
 

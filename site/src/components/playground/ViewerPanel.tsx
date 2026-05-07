@@ -255,7 +255,11 @@ export default function ViewerPanel() {
             <group key={meshKey(m, i)}>
               <ShapeRenderer data={m} />
               {showEdges && !showWireframe && m.edges.length > 0 && (
-                <EdgeRenderer edges={m.edges} />
+                <EdgeRenderer
+                  edges={m.edges}
+                  edgeGroups={m.edgeGroups}
+                  edgeInfos={m.edgeInfos}
+                />
               )}
             </group>
           ))}
