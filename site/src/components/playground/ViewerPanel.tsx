@@ -11,6 +11,7 @@ import ShapeRenderer from './ShapeRenderer';
 import EdgeRenderer from './EdgeRenderer';
 import ViewerToolbar from './ViewerToolbar';
 import SelectionTooltip from './SelectionTooltip';
+import SelectionHighlight from './SelectionHighlight';
 
 /**
  * Build a content-derived React key for a mesh. The store hands us a fresh
@@ -313,6 +314,7 @@ export default function ViewerPanel() {
               {showEdges && viewMode !== 'wireframe' && m.edges.length > 0 && (
                 <EdgeRenderer edges={m.edges} edgeGroups={m.edgeGroups} edgeInfos={m.edgeInfos} />
               )}
+              <SelectionHighlight data={m} selections={selections} />
             </group>
           ))}
         </group>

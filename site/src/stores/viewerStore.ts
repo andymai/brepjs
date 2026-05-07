@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type CameraPreset = 'front' | 'side' | 'top' | 'isometric';
 export type ViewMode = 'solid' | 'wireframe' | 'xray';
@@ -24,42 +25,59 @@ interface ViewerState {
 
 const VIEW_MODE_CYCLE: ViewMode[] = ['solid', 'wireframe', 'xray'];
 
-export const useViewerStore = create<ViewerState>((set) => ({
-  viewMode: 'solid',
-  showEdges: true,
-  showGrid: true,
-  projection: 'perspective',
-  fitRequest: 0,
-  activePreset: null,
+export const useViewerStore = create<ViewerState>()(
+  persist(
+    (set) => ({
+      viewMode: 'solid',
+      showEdges: true,
+      showGrid: true,
+      projection: 'perspective',
+      fitRequest: 0,
+      activePreset: null,
 
-  setViewMode: (viewMode) => {
-    set({ viewMode });
-  },
-  cycleViewMode: () => {
-    set((s) => {
-      const next =
-        VIEW_MODE_CYCLE[(VIEW_MODE_CYCLE.indexOf(s.viewMode) + 1) % VIEW_MODE_CYCLE.length];
-      return { viewMode: next ?? 'solid' };
-    });
-  },
-  toggleEdges: () => {
-    set((s) => ({ showEdges: !s.showEdges }));
-  },
-  toggleGrid: () => {
-    set((s) => ({ showGrid: !s.showGrid }));
-  },
-  toggleProjection: () => {
-    set((s) => ({
-      projection: s.projection === 'perspective' ? 'orthographic' : 'perspective',
-    }));
-  },
-  requestFit: () => {
-    set((s) => ({ fitRequest: s.fitRequest + 1 }));
-  },
-  setCameraPreset: (preset) => {
-    set({ activePreset: preset });
-  },
-  clearPreset: () => {
-    set({ activePreset: null });
-  },
-}));
+      setViewMode: (viewMode) => {
+        set({ viewMode });
+      },
+      cycleViewMode: () => {
+        set((s) => {
+          const next =
+            VIEW_MODE_CYCLE[(VIEW_MODE_CYCLE.indexOf(s.viewMode) + 1) % VIEW_MODE_CYCLE.length];
+          return { viewMode: next ?? 'solid' };
+        });
+      },
+      toggleEdges: () => {
+        set((s) => ({ showEdges: !s.showEdges }));
+      },
+      toggleGrid: () => {
+        set((s) => ({ showGrid: !s.showGrid }));
+      },
+      toggleProjection: () => {
+        set((s) => ({
+          projection: s.projection === 'perspective' ? 'orthographic' : 'perspective',
+        }));
+      },
+      requestFit: () => {
+        set((s) => ({ fitRequest: s.fitRequest + 1 }));
+      },
+      setCameraPreset: (preset) => {
+        set({ activePreset: preset });
+      },
+      clearPreset: () => {
+        set({ activePreset: null });
+      },
+    }),
+    {
+      name: 'brepjs-viewer-settings',
+      storage: createJSONStorage(() => localStorage),
+      // Persist only display preferences. fitRequest is a counter for one-shot
+      // signals and activePreset is a transient highlight state — neither
+      // belongs in storage.
+      partialize: (s) => ({
+        viewMode: s.viewMode,
+        showEdges: s.showEdges,
+        showGrid: s.showGrid,
+        projection: s.projection,
+      }),
+    }
+  )
+);
