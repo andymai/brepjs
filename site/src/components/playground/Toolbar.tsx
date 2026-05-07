@@ -1,4 +1,5 @@
 import { useEngineStore } from '../../stores/engineStore';
+import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { SHORTCUTS, formatShortcut } from '../../lib/shortcuts';
 import Logo from '../shared/Logo';
 
@@ -22,6 +23,8 @@ export default function Toolbar({
   isRunning,
 }: ToolbarProps) {
   const engineReady = useEngineStore((s) => s.status === 'ready');
+  const selectionCount = usePlaygroundStore((s) => s.selections.length);
+  const clearSelections = usePlaygroundStore((s) => s.clearSelections);
 
   return (
     <div className="flex h-11 items-center justify-between border-b border-border-subtle bg-surface px-3">
@@ -34,6 +37,23 @@ export default function Toolbar({
           <Logo className="h-6 w-6" />
           <span className="text-gray-400">brepjs</span>
         </a>
+        {selectionCount > 0 && (
+          <button
+            onClick={clearSelections}
+            title="Click to clear selection"
+            className="ml-2 flex items-center gap-1 rounded-full border border-teal-primary/30 bg-teal-primary/15 px-2 py-0.5 text-[10px] font-semibold text-teal-light transition-colors hover:bg-teal-primary/25"
+          >
+            <span>{selectionCount} selected</span>
+            <svg viewBox="0 0 16 16" className="h-2.5 w-2.5 opacity-70" aria-hidden="true">
+              <path
+                d="M3 3l10 10M13 3L3 13"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
