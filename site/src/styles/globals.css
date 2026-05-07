@@ -80,17 +80,6 @@ body,
   }
 }
 
-@keyframes hero-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes reveal-up {
   from {
     opacity: 0;
@@ -157,10 +146,6 @@ body,
 }
 
 /* --- Animation utilities --- */
-
-.animate-hero-fade-up {
-  animation: hero-fade-up 0.3s ease-out both;
-}
 
 .animate-reveal-up {
   animation: reveal-up 0.25s ease-out both;
@@ -386,7 +371,6 @@ body,
   html {
     scroll-behavior: auto;
   }
-  .animate-hero-fade-up,
   .animate-reveal-up {
     animation: none !important;
     opacity: 1 !important;

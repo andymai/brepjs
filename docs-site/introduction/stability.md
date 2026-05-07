@@ -4,7 +4,7 @@ title: Status, Stability & Versioning
 
 # Status, Stability & Versioning
 
-brepjs is at major version 16. The OpenCascade kernel is production-ready and powers [gridfinitylayouttool.com](https://gridfinitylayouttool.com). The brepkit (Rust) kernel is in active development as a faster replacement and is not yet recommended for production.
+brepjs is at major version 18. The OpenCascade kernel is production-ready and powers [gridfinitylayouttool.com](https://gridfinitylayouttool.com). The brepkit (Rust) kernel is in active development as a faster replacement and is not yet recommended for production.
 
 ## Versioning policy
 
@@ -48,6 +48,8 @@ The `using` keyword (TypeScript 5.2+, browsers/Node since 2024) is the recommend
 
 | brepjs version | OpenCascade kernel                                | brepkit kernel            |
 | -------------- | ------------------------------------------------- | ------------------------- |
+| 18.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16+     | `brepkit-wasm` 2.x        |
+| 17.x           | `occt-wasm` 3.x or `brepjs-opencascade` 0.16+     | `brepkit-wasm` 2.x        |
 | 16.x           | `occt-wasm` 2.x or `brepjs-opencascade` 0.13–0.16 | `brepkit-wasm` 2.x        |
 | 15.x           | `brepjs-opencascade` 0.12–0.15                    | `brepkit-wasm` 1.x or 2.x |
 

@@ -4,7 +4,7 @@ import { withMermaid } from 'vitepress-plugin-mermaid';
 // Update on major bumps — this docs site is deployed independently from the
 // brepjs package, so reading the version from package.json at build time would
 // require shipping the parent package.json into the deploy artifact.
-const major = 'v17';
+const major = 'v18';
 const year = new Date().getFullYear();
 
 export default withMermaid(
