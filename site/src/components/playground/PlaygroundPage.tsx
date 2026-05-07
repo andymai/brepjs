@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from 'react-resizable-panels';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { useViewerStore } from '../../stores/viewerStore';
@@ -32,7 +32,6 @@ export default function PlaygroundPage() {
   const setConsoleCollapsed = usePlaygroundStore((s) => s.setConsoleCollapsed);
   const isViewerCollapsed = usePlaygroundStore((s) => s.isViewerCollapsed);
   const setViewerCollapsed = usePlaygroundStore((s) => s.setViewerCollapsed);
-  const isEditorCollapsed = usePlaygroundStore((s) => s.isEditorCollapsed);
   const setEditorCollapsed = usePlaygroundStore((s) => s.setEditorCollapsed);
   const isRunning = usePlaygroundStore((s) => s.isRunning);
   const error = usePlaygroundStore((s) => s.error);
@@ -422,20 +421,20 @@ export default function PlaygroundPage() {
     ]
   );
 
-  // Auto-expand console when error occurs — and the editor too, so users
-  // who collapsed the editor for a screenshot don't get stuck staring at
-  // a 3D viewer with an error message they can't see or fix.
+  // Auto-expand console + editor on the *transition* into an error — not on
+  // every render while an error persists. Without the wasErrorRef guard, a
+  // user who collapses the editor for a screenshot while an error is on
+  // screen would see the panel snap back open immediately, since the effect
+  // would re-fire as `isEditorCollapsed` flips.
+  const wasErrorRef = useRef(false);
   useEffect(() => {
-    if (!error) return;
-    if (isConsoleCollapsed) {
-      const panel = consolePanelRef.current;
-      if (panel?.isCollapsed()) panel.expand();
+    const isError = !!error;
+    if (isError && !wasErrorRef.current) {
+      if (consolePanelRef.current?.isCollapsed()) consolePanelRef.current.expand();
+      if (editorAreaPanelRef.current?.isCollapsed()) editorAreaPanelRef.current.expand();
     }
-    if (isEditorCollapsed) {
-      const panel = editorAreaPanelRef.current;
-      if (panel?.isCollapsed()) panel.expand();
-    }
-  }, [error, isConsoleCollapsed, isEditorCollapsed, consolePanelRef, editorAreaPanelRef]);
+    wasErrorRef.current = isError;
+  }, [error, consolePanelRef, editorAreaPanelRef]);
 
   return (
     <div className="relative flex h-screen flex-col bg-gray-950">
@@ -490,37 +489,39 @@ export default function PlaygroundPage() {
           defaultSize="50%"
           onResize={handleEditorAreaResize}
         >
-          {isEditorCollapsed ? null : (
-            <Group
-              orientation="vertical"
-              defaultLayout={vLayout.defaultLayout}
-              onLayoutChanged={vLayout.onLayoutChanged}
+          {/* Always-mounted: collapsing this Panel sends its width to 0% but
+              we keep Monaco rendered so its undo stack, cursor position, and
+              scroll state survive a toggle. The 0%-wide container hides the
+              editor visually without remounting it. */}
+          <Group
+            orientation="vertical"
+            defaultLayout={vLayout.defaultLayout}
+            onLayoutChanged={vLayout.onLayoutChanged}
+          >
+            <Panel id="editor" defaultSize="80%" minSize="30%">
+              <EditorPanel
+                onCodeChange={handleCodeChange}
+                onFormat={editorFormatFnRef}
+                jumpToLineRef={editorJumpToLineRef}
+              />
+            </Panel>
+            <Separator className="h-px bg-border-subtle" />
+            <Panel
+              id="console"
+              panelRef={consolePanelRef}
+              collapsible
+              collapsedSize="3.5%"
+              minSize="15%"
+              defaultSize="20%"
+              onResize={handleConsoleResize}
             >
-              <Panel id="editor" defaultSize="80%" minSize="30%">
-                <EditorPanel
-                  onCodeChange={handleCodeChange}
-                  onFormat={editorFormatFnRef}
-                  jumpToLineRef={editorJumpToLineRef}
-                />
-              </Panel>
-              <Separator className="h-px bg-border-subtle" />
-              <Panel
-                id="console"
-                panelRef={consolePanelRef}
-                collapsible
-                collapsedSize="3.5%"
-                minSize="15%"
-                defaultSize="20%"
-                onResize={handleConsoleResize}
-              >
-                {isConsoleCollapsed ? (
-                  <CollapsedConsoleBar onExpand={toggleConsole} />
-                ) : (
-                  <OutputPanel onCollapse={toggleConsole} onJumpToLine={handleJumpToLine} />
-                )}
-              </Panel>
-            </Group>
-          )}
+              {isConsoleCollapsed ? (
+                <CollapsedConsoleBar onExpand={toggleConsole} />
+              ) : (
+                <OutputPanel onCollapse={toggleConsole} onJumpToLine={handleJumpToLine} />
+              )}
+            </Panel>
+          </Group>
         </Panel>
 
         <Separator className="w-px bg-border-subtle" />
