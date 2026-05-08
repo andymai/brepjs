@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { track } from '@vercel/analytics';
 import { Group, Panel, Separator, useDefaultLayout, usePanelRef } from 'react-resizable-panels';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { useViewerStore } from '../../stores/viewerStore';
@@ -89,21 +90,25 @@ export default function PlaygroundPage() {
   const handleRun = useCallback(() => {
     runCode(code);
     updateUrl(code);
+    track('playground_run');
   }, [runCode, code, updateUrl]);
 
   const handleExportSTL = useCallback(() => {
     exportSTL(code);
     addToast('Exporting STL...');
+    track('playground_export', { format: 'stl' });
   }, [exportSTL, code, addToast]);
 
   const handleExportSTEP = useCallback(() => {
     exportSTEP(code);
     addToast('Exporting STEP...');
+    track('playground_export', { format: 'step' });
   }, [exportSTEP, code, addToast]);
 
   const handleShare = useCallback(() => {
     void copyShareUrl(code);
     addToast('Link copied to clipboard');
+    track('playground_share');
   }, [copyShareUrl, code, addToast]);
 
   const handleResetToDefault = useCallback(() => {
