@@ -102,10 +102,14 @@ export default function MobileLayout({
 }
 
 function PaneShell({ active, children }: { active: boolean; children: React.ReactNode }) {
+  // `inert` removes the subtree from the tab order and accessibility tree —
+  // critical for hidden Monaco / focusable buttons. `visibility: hidden`
+  // alone leaves them in the focus order, so a user pressing Tab could land
+  // on something they can't see.
   return (
     <div
-      className={`absolute inset-0 ${active ? '' : 'pointer-events-none invisible'}`}
-      aria-hidden={!active}
+      className={`absolute inset-0 ${active ? '' : 'invisible'}`}
+      inert={!active}
     >
       {children}
     </div>
