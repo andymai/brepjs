@@ -24,6 +24,7 @@ import {
 import { needsTransform, transformToPlacement } from './internalOps.js';
 import { translate, generalTransform } from './transformOps.js';
 import { sew } from './topologyOps.js';
+import { type Vec3, type MutVec3, cross3, len3, normalize3, read3, sub3, wasmIndex } from '@/utils/vec3.js';
 
 export function makeVertex(bk: BrepkitKernel, x: number, y: number, z: number): KernelShape {
   const id = bk.makeVertex(x, y, z);
@@ -170,11 +171,7 @@ export function makeEllipsoid(
   return generalTransform(bk, sphere, [scaleX, 0, 0, 0, scaleY, 0, 0, 0, scaleZ], [0, 0, 0], false);
 }
 
-export function makeLineEdge(
-  bk: BrepkitKernel,
-  p1: [number, number, number],
-  p2: [number, number, number]
-): KernelShape {
+export function makeLineEdge(bk: BrepkitKernel, p1: Vec3, p2: Vec3): KernelShape {
   const id = bk.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
   return edgeHandle(id);
 }
@@ -320,10 +317,8 @@ export function makeBezierEdge(bk: BrepkitKernel, points: [number, number, numbe
   const knots: number[] = [...Array(degree + 1).fill(0), ...Array(degree + 1).fill(1)];
   const weights = Array(n).fill(1);
   const flatCp: number[] = points.flatMap(([x, y, z]) => [x, y, z]);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid after bounds check
-  const startPt = points[0]!;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid after bounds check
-  const endPt = points[n - 1]!;
+  const startPt = wasmIndex(points, 0);
+  const endPt = wasmIndex(points, n - 1);
 
   const id = bk.makeNurbsEdge(
     startPt[0],
@@ -516,11 +511,19 @@ export function triangulatedSurface(
       const i10 = (r + 1) * cols + c;
       const i01 = r * cols + (c + 1);
       const i11 = (r + 1) * cols + (c + 1);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid after bounds check
-      const f1 = buildTriFace(bk, points[i00]!, points[i10]!, points[i01]!);
+      const f1 = buildTriFace(
+        bk,
+        wasmIndex(points, i00),
+        wasmIndex(points, i10),
+        wasmIndex(points, i01)
+      );
       if (f1) faces.push(f1);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid after bounds check
-      const f2 = buildTriFace(bk, points[i10]!, points[i11]!, points[i01]!);
+      const f2 = buildTriFace(
+        bk,
+        wasmIndex(points, i10),
+        wasmIndex(points, i11),
+        wasmIndex(points, i01)
+      );
       if (f2) faces.push(f2);
     }
   }
@@ -530,22 +533,11 @@ export function triangulatedSurface(
 
 export function buildTriFace(
   bk: BrepkitKernel,
-  a: [number, number, number],
-  b: [number, number, number],
-  c: [number, number, number]
+  a: Vec3,
+  b: Vec3,
+  c: Vec3
 ): KernelShape | null {
-  const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-  const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-  const cross = [
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    ab[1]! * ac[2]! - ab[2]! * ac[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    ab[2]! * ac[0]! - ab[0]! * ac[2]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    ab[0]! * ac[1]! - ab[1]! * ac[0]!,
-  ];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  const area = Math.sqrt(cross[0]! ** 2 + cross[1]! ** 2 + cross[2]! ** 2);
+  const area = len3(cross3(sub3(b, a), sub3(c, a)));
   if (area < 1e-12) return null;
 
   try {
@@ -583,8 +575,7 @@ export function interpolatePoints(
   }
   if (points.length < 2) throw new Error('brepkit: need at least 2 points');
   if (points.length === 2) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid after bounds check
-    return makeLineEdge(bk, points[0]!, points[1]!);
+    return makeLineEdge(bk, wasmIndex(points, 0), wasmIndex(points, 1));
   }
 
   const degree = Math.min(3, points.length - 1);
@@ -681,41 +672,16 @@ export function createAxis3(
 
 function makeCircleNurbs(
   bk: BrepkitKernel,
-  center: [number, number, number],
-  normal: [number, number, number],
+  center: Vec3,
+  normal: Vec3,
   radius: number,
   startAngle: number,
   endAngle: number
 ): KernelShape {
-  const len = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
-  const nz = [normal[0] / len, normal[1] / len, normal[2] / len];
-
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  const ref = Math.abs(nz[0]!) < 0.9 ? [1, 0, 0] : [0, 1, 0];
-  const xAxis = [
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[1]! * ref[2]! - nz[2]! * ref[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[2]! * ref[0]! - nz[0]! * ref[2]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[0]! * ref[1]! - nz[1]! * ref[0]!,
-  ];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  const xLen = Math.sqrt(xAxis[0]! ** 2 + xAxis[1]! ** 2 + xAxis[2]! ** 2);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  xAxis[0]! /= xLen;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  xAxis[1]! /= xLen;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  xAxis[2]! /= xLen;
-  const yAxis = [
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[1]! * xAxis[2]! - nz[2]! * xAxis[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[2]! * xAxis[0]! - nz[0]! * xAxis[2]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[0]! * xAxis[1]! - nz[1]! * xAxis[0]!,
-  ];
+  const nz = normalize3(normal);
+  const ref: MutVec3 = Math.abs(nz[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const xAxis = normalize3(cross3(nz, ref));
+  const yAxis = cross3(nz, xAxis);
 
   const nSegments = Math.ceil(Math.abs(endAngle - startAngle) / (Math.PI / 2));
   const dAngle = (endAngle - startAngle) / nSegments;
@@ -727,24 +693,18 @@ function makeCircleNurbs(
     const angle = startAngle + i * dAngle;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const px = center[0] + radius * (cos * xAxis[0]! + sin * yAxis[0]!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const py = center[1] + radius * (cos * xAxis[1]! + sin * yAxis[1]!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const pz = center[2] + radius * (cos * xAxis[2]! + sin * yAxis[2]!);
+    const px = center[0] + radius * (cos * xAxis[0] + sin * yAxis[0]);
+    const py = center[1] + radius * (cos * xAxis[1] + sin * yAxis[1]);
+    const pz = center[2] + radius * (cos * xAxis[2] + sin * yAxis[2]);
 
     if (i > 0) {
       const midAngle = startAngle + (i - 0.5) * dAngle;
       const midCos = Math.cos(midAngle);
       const midSin = Math.sin(midAngle);
       const midR = radius / Math.cos(dAngle / 2);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      const mx = center[0] + midR * (midCos * xAxis[0]! + midSin * yAxis[0]!);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      const my = center[1] + midR * (midCos * xAxis[1]! + midSin * yAxis[1]!);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      const mz = center[2] + midR * (midCos * xAxis[2]! + midSin * yAxis[2]!);
+      const mx = center[0] + midR * (midCos * xAxis[0] + midSin * yAxis[0]);
+      const my = center[1] + midR * (midCos * xAxis[1] + midSin * yAxis[1]);
+      const mz = center[2] + midR * (midCos * xAxis[2] + midSin * yAxis[2]);
       controlPoints.push(mx, my, mz);
       weights.push(Math.cos(dAngle / 2));
     }
@@ -760,29 +720,21 @@ function makeCircleNurbs(
   }
   knots.push(...Array(degree + 1).fill(nSegments));
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  const kMax = knots[knots.length - 1]!;
+  const kMax = wasmIndex(knots, knots.length - 1);
   for (let i = 0; i < knots.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    knots[i] = knots[i]! / kMax;
+    knots[i] = wasmIndex(knots, i) / kMax;
   }
 
-  const startPt = controlPoints.slice(0, 3);
-  const endPt = controlPoints.slice(-3);
+  const startPt = read3(controlPoints, 0);
+  const endPt = read3(controlPoints, controlPoints.length - 3);
 
   const id = bk.makeNurbsEdge(
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    startPt[0]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    startPt[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    startPt[2]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    endPt[0]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    endPt[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    endPt[2]!,
+    startPt[0],
+    startPt[1],
+    startPt[2],
+    endPt[0],
+    endPt[1],
+    endPt[2],
     degree,
     knots,
     controlPoints,
@@ -793,49 +745,22 @@ function makeCircleNurbs(
 
 function makeEllipseNurbs(
   bk: BrepkitKernel,
-  center: [number, number, number],
-  normal: [number, number, number],
+  center: Vec3,
+  normal: Vec3,
   majorRadius: number,
   minorRadius: number,
   startAngle: number,
   endAngle: number,
-  xDir?: [number, number, number]
+  xDir?: Vec3
 ): KernelShape {
-  const len = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
-  const nz = [normal[0] / len, normal[1] / len, normal[2] / len];
-
-  let xAxis: number[];
-  if (xDir) {
-    const xl = Math.sqrt(xDir[0] ** 2 + xDir[1] ** 2 + xDir[2] ** 2);
-    xAxis = [xDir[0] / xl, xDir[1] / xl, xDir[2] / xl];
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const ref = Math.abs(nz[0]!) < 0.9 ? [1, 0, 0] : [0, 1, 0];
-    xAxis = [
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      nz[1]! * ref[2]! - nz[2]! * ref[1]!,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      nz[2]! * ref[0]! - nz[0]! * ref[2]!,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      nz[0]! * ref[1]! - nz[1]! * ref[0]!,
-    ];
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const xLen2 = Math.sqrt(xAxis[0]! ** 2 + xAxis[1]! ** 2 + xAxis[2]! ** 2);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    xAxis[0]! /= xLen2;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    xAxis[1]! /= xLen2;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    xAxis[2]! /= xLen2;
-  }
-  const yAxis = [
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[1]! * xAxis[2]! - nz[2]! * xAxis[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[2]! * xAxis[0]! - nz[0]! * xAxis[2]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    nz[0]! * xAxis[1]! - nz[1]! * xAxis[0]!,
-  ];
+  const nz = normalize3(normal);
+  const xAxis: MutVec3 = xDir
+    ? normalize3(xDir)
+    : (() => {
+        const ref: MutVec3 = Math.abs(nz[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+        return normalize3(cross3(nz, ref));
+      })();
+  const yAxis = cross3(nz, xAxis);
 
   const nSegments = Math.ceil(Math.abs(endAngle - startAngle) / (Math.PI / 2));
   const dAngle = (endAngle - startAngle) / nSegments;
@@ -847,12 +772,9 @@ function makeEllipseNurbs(
     const angle = startAngle + i * dAngle;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const px = center[0] + majorRadius * cos * xAxis[0]! + minorRadius * sin * yAxis[0]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const py = center[1] + majorRadius * cos * xAxis[1]! + minorRadius * sin * yAxis[1]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    const pz = center[2] + majorRadius * cos * xAxis[2]! + minorRadius * sin * yAxis[2]!;
+    const px = center[0] + majorRadius * cos * xAxis[0] + minorRadius * sin * yAxis[0];
+    const py = center[1] + majorRadius * cos * xAxis[1] + minorRadius * sin * yAxis[1];
+    const pz = center[2] + majorRadius * cos * xAxis[2] + minorRadius * sin * yAxis[2];
 
     if (i > 0) {
       const midAngle = startAngle + (i - 0.5) * dAngle;
@@ -860,14 +782,11 @@ function makeEllipseNurbs(
       const midSin = Math.sin(midAngle);
       const scl = 1 / Math.cos(dAngle / 2);
       const mx =
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-        center[0] + majorRadius * scl * midCos * xAxis[0]! + minorRadius * scl * midSin * yAxis[0]!;
+        center[0] + majorRadius * scl * midCos * xAxis[0] + minorRadius * scl * midSin * yAxis[0];
       const my =
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-        center[1] + majorRadius * scl * midCos * xAxis[1]! + minorRadius * scl * midSin * yAxis[1]!;
+        center[1] + majorRadius * scl * midCos * xAxis[1] + minorRadius * scl * midSin * yAxis[1];
       const mz =
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-        center[2] + majorRadius * scl * midCos * xAxis[2]! + minorRadius * scl * midSin * yAxis[2]!;
+        center[2] + majorRadius * scl * midCos * xAxis[2] + minorRadius * scl * midSin * yAxis[2];
       controlPoints.push(mx, my, mz);
       weights.push(Math.cos(dAngle / 2));
     }
@@ -883,29 +802,21 @@ function makeEllipseNurbs(
   }
   knots.push(...Array(degree + 1).fill(nSegments));
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-  const kMax = knots[knots.length - 1]!;
+  const kMax = wasmIndex(knots, knots.length - 1);
   for (let i = 0; i < knots.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    knots[i] = knots[i]! / kMax;
+    knots[i] = wasmIndex(knots, i) / kMax;
   }
 
-  const startPt = controlPoints.slice(0, 3);
-  const endPt = controlPoints.slice(-3);
+  const startPt = read3(controlPoints, 0);
+  const endPt = read3(controlPoints, controlPoints.length - 3);
 
   const id = bk.makeNurbsEdge(
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    startPt[0]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    startPt[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    startPt[2]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    endPt[0]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    endPt[1]!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    endPt[2]!,
+    startPt[0],
+    startPt[1],
+    startPt[2],
+    endPt[0],
+    endPt[1],
+    endPt[2],
     degree,
     knots,
     controlPoints,
