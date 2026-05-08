@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.5.2](https://github.com/andymai/brepjs/compare/brepjs-v18.5.1...brepjs-v18.5.2) (2026-05-08)
+
+
+### Bug Fixes
+
+* **playground:** camera presets in orthographic projection ([#905](https://github.com/andymai/brepjs/issues/905)) ([59e96a2](https://github.com/andymai/brepjs/commit/59e96a2a9dcb2c989c3d9274d2b539718c5dabf4))
+
 ## [18.5.1](https://github.com/andymai/brepjs/compare/brepjs-v18.5.0...brepjs-v18.5.1) (2026-05-08)
 
 
