@@ -18,6 +18,14 @@ export interface KernelConfig {
   readonly envOverrides?: Record<string, string> | undefined;
   readonly excludeTests?: readonly string[] | undefined;
   readonly coverageThresholds?: CoverageThresholds | 'informational' | undefined;
+  /**
+   * Adapter directory under `src/kernel/` exercised by this kernel's tests.
+   * Used to derive coverage exclude patterns: every kernel excludes the
+   * adapter dirs it doesn't load.
+   */
+  readonly adapterDir: string;
+  /** Extra coverage exclude patterns specific to this kernel (e.g. files the kernel doesn't load). */
+  readonly extraCoverageExcludes?: readonly string[] | undefined;
   readonly capabilities: {
     readonly projection: boolean;
     readonly constraintSketch: boolean;
@@ -33,6 +41,9 @@ export const kernelConfigs: readonly KernelConfig[] = [
     id: 'occt',
     displayName: 'OpenCascade',
     coverageThresholds: { statements: 84, branches: 74, functions: 90, lines: 84 },
+    adapterDir: 'src/kernel/occt',
+    // OCCT.js adapter doesn't load the pure-TS 2D module (occt's own 2D ops cover it).
+    extraCoverageExcludes: ['src/kernel/geometry2d.ts'],
     capabilities: {
       projection: true,
       constraintSketch: true,
@@ -46,6 +57,7 @@ export const kernelConfigs: readonly KernelConfig[] = [
     id: 'brepkit',
     displayName: 'brepkit',
     coverageThresholds: 'informational',
+    adapterDir: 'src/kernel/brepkit',
     capabilities: {
       projection: false,
       constraintSketch: true,
@@ -59,6 +71,7 @@ export const kernelConfigs: readonly KernelConfig[] = [
     id: 'occt-wasm',
     displayName: 'occt-wasm',
     coverageThresholds: 'informational',
+    adapterDir: 'src/kernel/occtWasm',
     excludeTests: [
       'tests/brepkitExtended.test.ts',
       'tests/brepkitAdapter.test.ts',
@@ -76,6 +89,18 @@ export const kernelConfigs: readonly KernelConfig[] = [
     },
   },
 ] as const;
+
+/**
+ * Coverage exclude patterns for a given kernel: every other kernel's adapter
+ * directory (those files aren't loaded so coverage there is meaningless),
+ * plus any kernel-specific extras.
+ */
+export function coverageExcludesFor(id: string): readonly string[] {
+  return [
+    ...kernelConfigs.filter((k) => k.id !== id).map((k) => `${k.adapterDir}/**`),
+    ...(getKernelConfig(id)?.extraCoverageExcludes ?? []),
+  ];
+}
 
 export function getKernelConfig(id: string): KernelConfig | undefined {
   return kernelConfigs.find((k) => k.id === id);
