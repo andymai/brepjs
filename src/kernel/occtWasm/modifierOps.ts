@@ -88,11 +88,7 @@ export function offset(
   return wrapResult(k, k.offset(unwrap(shape), distance, tolerance ?? 1e-6));
 }
 
-export function filletVariable(
-  k: OcctKernelWasm,
-  shape: KernelShape,
-  spec: string
-): KernelShape {
+export function filletVariable(k: OcctKernelWasm, shape: KernelShape, spec: string): KernelShape {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON parse
   const parsed: any = JSON.parse(spec);
   if (
