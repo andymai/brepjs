@@ -110,6 +110,23 @@ export function readVecInt(vec: EmVectorInt): number[] {
 }
 
 /**
+ * 4x4 matrix multiplication in row-major order. Used by composeTransform
+ * and any other transform-stack composition.
+ */
+export function multiplyMatrices4x4(a: number[], b: number[]): number[] {
+  const result = new Array(16).fill(0) as number[];
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      for (let k = 0; k < 4; k++) {
+        result[i * 4 + j] =
+          (result[i * 4 + j] as number) + (a[i * 4 + k] as number) * (b[k * 4 + j] as number);
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Resolve a callback-style radius/distance to a uniform number.
  * occt-wasm's fillet/chamfer take a single radius — uniform per call.
  */
