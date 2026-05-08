@@ -20,11 +20,14 @@ import {
 export function iterShapes(k: OcctKernelWasm, shape: KernelShape, type: ShapeType): KernelShape[] {
   const vec = k.getSubShapes(unwrap(shape), type);
   const results: KernelShape[] = [];
-  const n = vec.size();
-  for (let i = 0; i < n; i++) {
-    results.push(handle(type, vec.get(i)));
+  try {
+    const n = vec.size();
+    for (let i = 0; i < n; i++) {
+      results.push(handle(type, vec.get(i)));
+    }
+  } finally {
+    vec.delete();
   }
-  vec.delete();
   return results;
 }
 
@@ -65,8 +68,12 @@ export function shapeOrientation(k: OcctKernelWasm, shape: KernelShape): ShapeOr
 export function edgeToFaceMap(k: OcctKernelWasm, shape: KernelShape): string {
   const HASH_UPPER = 1000000;
   const vec = k.edgeToFaceMap(unwrap(shape), HASH_UPPER);
-  const data = readVecInt(vec);
-  vec.delete();
+  let data: number[];
+  try {
+    data = readVecInt(vec);
+  } finally {
+    vec.delete();
+  }
   const map: Record<number, number[]> = {};
   for (let i = 0; i + 1 < data.length; i += 2) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- pairs
@@ -86,11 +93,14 @@ export function sharedEdges(
 ): KernelShape[] {
   const vec = k.sharedEdges(unwrap(faceA), unwrap(faceB));
   const results: KernelShape[] = [];
-  const n = vec.size();
-  for (let i = 0; i < n; i++) {
-    results.push(handle('edge', vec.get(i)));
+  try {
+    const n = vec.size();
+    for (let i = 0; i < n; i++) {
+      results.push(handle('edge', vec.get(i)));
+    }
+  } finally {
+    vec.delete();
   }
-  vec.delete();
   return results;
 }
 
@@ -101,11 +111,14 @@ export function adjacentFaces(
 ): KernelShape[] {
   const vec = k.adjacentFaces(unwrap(shape), unwrap(face));
   const results: KernelShape[] = [];
-  const n = vec.size();
-  for (let i = 0; i < n; i++) {
-    results.push(handle('face', vec.get(i)));
+  try {
+    const n = vec.size();
+    for (let i = 0; i < n; i++) {
+      results.push(handle('face', vec.get(i)));
+    }
+  } finally {
+    vec.delete();
   }
-  vec.delete();
   return results;
 }
 
