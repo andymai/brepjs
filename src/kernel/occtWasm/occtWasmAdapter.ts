@@ -51,8 +51,6 @@ import type {
 import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
-import * as ow2d from '@/kernel/geometry2d.js';
-import type { Curve2dObj } from '@/kernel/geometry2d.js';
 import type {
   OcctWasmHandle,
   OcctWasmModule,
@@ -81,6 +79,7 @@ import * as sweepOps from './sweepOps.js';
 import * as transformOps from './transformOps.js';
 import * as ioOps from './ioOps.js';
 import * as constructionOps from './constructionOps.js';
+import * as kernel2dOps from './kernel2dOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -2103,34 +2102,28 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   createPoint2d(x: number, y: number): KernelType {
-    return { x, y };
+    return kernel2dOps.createPoint2d(x, y);
   }
   createDirection2d(x: number, y: number): KernelType {
-    const l = Math.sqrt(x * x + y * y);
-    if (l < 1e-15) {
-      throw new Error('occt-wasm: createDirection2d called with zero-length vector');
-    }
-    return { x: x / l, y: y / l };
+    return kernel2dOps.createDirection2d(x, y);
   }
   createVector2d(x: number, y: number): KernelType {
-    return { x, y };
+    return kernel2dOps.createVector2d(x, y);
   }
   createAxis2d(px: number, py: number, dx: number, dy: number): KernelType {
-    // Return a plain object representing the axis (used by mirrorCurve2dAcrossAxis)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return { px, py, dx, dy, delete() {} } as any;
+    return kernel2dOps.createAxis2d(px, py, dx, dy);
   }
-  wrapCurve2dHandle(handle: KernelType): Curve2dHandle {
-    return handle;
+  wrapCurve2dHandle(h: KernelType): Curve2dHandle {
+    return kernel2dOps.wrapCurve2dHandle(h);
   }
   createCurve2dAdaptor(_handle: Curve2dHandle): KernelType {
     notImplemented('createCurve2dAdaptor');
   }
   makeLine2d(x1: number, y1: number, x2: number, y2: number): Curve2dHandle {
-    return c2dWrap(ow2d.makeLine2d(x1, y1, x2, y2));
+    return kernel2dOps.makeLine2d(x1, y1, x2, y2);
   }
   makeCircle2d(cx: number, cy: number, radius: number, sense?: boolean): Curve2dHandle {
-    return c2dWrap(ow2d.makeCircle2d(cx, cy, radius, sense));
+    return kernel2dOps.makeCircle2d(cx, cy, radius, sense);
   }
   makeArc2dThreePoints(
     x1: number,
@@ -2140,48 +2133,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     x2: number,
     y2: number
   ): Curve2dHandle {
-    // Circumscribed circle through 3 points
-    const d = 2 * (x1 * (ym - y2) + xm * (y2 - y1) + x2 * (y1 - ym));
-    if (Math.abs(d) < 1e-12) {
-      // Collinear — return a line
-      return c2dWrap(ow2d.makeLine2d(x1, y1, x2, y2));
-    }
-    const cx =
-      ((x1 * x1 + y1 * y1) * (ym - y2) +
-        (xm * xm + ym * ym) * (y2 - y1) +
-        (x2 * x2 + y2 * y2) * (y1 - ym)) /
-      d;
-    const cy =
-      ((x1 * x1 + y1 * y1) * (x2 - xm) +
-        (xm * xm + ym * ym) * (x1 - x2) +
-        (x2 * x2 + y2 * y2) * (xm - x1)) /
-      d;
-    const radius = Math.sqrt((x1 - cx) ** 2 + (y1 - cy) ** 2);
-
-    // Compute angles for start (p1), mid (pm), and end (p2)
-    const a1 = Math.atan2(y1 - cy, x1 - cx);
-    const am = Math.atan2(ym - cy, xm - cx);
-    const a2 = Math.atan2(y2 - cy, x2 - cx);
-
-    // Determine sense: CCW if mid-point angle is between start and end going CCW
-    let da1m = am - a1;
-    if (da1m < 0) da1m += 2 * Math.PI;
-    let da12 = a2 - a1;
-    if (da12 < 0) da12 += 2 * Math.PI;
-    const sense = da1m < da12;
-
-    const circle = ow2d.makeCircle2d(cx, cy, radius, sense);
-    if (!sense) {
-      // CW circle evaluates angle = -t, so parameter t = -angle.
-      const tStart = -a1;
-      let tEnd = -a2;
-      if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
-      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd });
-    }
-    // CCW: ensure tEnd >= tStart
-    let tEnd = a2;
-    if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
-    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd });
+    return kernel2dOps.makeArc2dThreePoints(x1, y1, xm, ym, x2, y2);
   }
   makeArc2dTangent(
     startX: number,
@@ -2191,41 +2143,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     endX: number,
     endY: number
   ): Curve2dHandle {
-    const len = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
-    const ntx = len > 0 ? tangentX / len : 0;
-    const nty = len > 0 ? tangentY / len : 0;
-
-    const dx = startX - endX;
-    const dy = startY - endY;
-    const denom = 2 * (dy * ntx - dx * nty);
-
-    if (Math.abs(denom) < 1e-12) {
-      return c2dWrap(ow2d.makeLine2d(startX, startY, endX, endY));
-    }
-
-    const chord2 = dx * dx + dy * dy;
-    const t = -chord2 / denom;
-    const cx = startX - t * nty;
-    const cy = startY + t * ntx;
-    const radius = Math.abs(t);
-
-    const a1 = Math.atan2(startY - cy, startX - cx);
-    const a2 = Math.atan2(endY - cy, endX - cx);
-
-    const ccwTanX = -(startY - cy) / radius;
-    const ccwTanY = (startX - cx) / radius;
-    const sense = ccwTanX * ntx + ccwTanY * nty > 0;
-
-    const circle = ow2d.makeCircle2d(cx, cy, radius, sense);
-    if (!sense) {
-      const tStart = -a1;
-      let tEnd = -a2;
-      if (tEnd < tStart - 1e-9) tEnd += 2 * Math.PI;
-      return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart, tEnd });
-    }
-    let tEnd = a2;
-    if (tEnd < a1 - 1e-9) tEnd += 2 * Math.PI;
-    return c2dWrap({ __bk2d: 'trimmed', basis: circle, tStart: a1, tEnd });
+    return kernel2dOps.makeArc2dTangent(startX, startY, tangentX, tangentY, endX, endY);
   }
   makeEllipse2d(
     cx: number,
@@ -2236,11 +2154,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     xDirY?: number,
     sense?: boolean
   ): Curve2dHandle {
-    return c2dWrap(
-      ow2d.makeEllipse2d(cx, cy, majorRadius, minorRadius, xDirX ?? 1, xDirY ?? 0, sense ?? true)
-    );
+    return kernel2dOps.makeEllipse2d(cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense);
   }
-
   makeEllipseArc2d(
     cx: number,
     cy: number,
@@ -2252,20 +2167,20 @@ export class OcctWasmAdapter implements KernelAdapter {
     xDirY?: number,
     sense?: boolean
   ): Curve2dHandle {
-    const full = ow2d.makeEllipse2d(
+    return kernel2dOps.makeEllipseArc2d(
       cx,
       cy,
       majorRadius,
       minorRadius,
-      xDirX ?? 1,
-      xDirY ?? 0,
-      sense ?? true
+      startAngle,
+      endAngle,
+      xDirX,
+      xDirY,
+      sense
     );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return c2dWrap({ ...full, __bk2d: 'ellipse', startAngle, endAngle } as any);
   }
   makeBezier2d(points: [number, number][]): Curve2dHandle {
-    return c2dWrap(ow2d.makeBezier2d(points));
+    return kernel2dOps.makeBezier2d(points);
   }
   makeBSpline2d(
     points: [number, number][],
@@ -2277,87 +2192,47 @@ export class OcctWasmAdapter implements KernelAdapter {
       smoothing?: [number, number, number] | null;
     }
   ): Curve2dHandle {
-    // Approximate B-spline as a Bezier through the control points
-    // This is an approximation — true B-spline fitting would need OCCT's Geom2d
-    if (points.length <= 25) {
-      return c2dWrap(ow2d.makeBezier2d(points));
-    }
-    // For many points, subsample to keep Bezier degree manageable
-    const step = Math.max(1, Math.floor(points.length / 24));
-    const sampled = points.filter((_, i) => i % step === 0 || i === points.length - 1);
-    return c2dWrap(ow2d.makeBezier2d(sampled));
+    return kernel2dOps.makeBSpline2d(points);
   }
   evaluateCurve2d(curve: Curve2dHandle, param: number): [number, number] {
-    return ow2d.evaluateCurve2d(c2d(curve), param);
+    return kernel2dOps.evaluateCurve2d(curve, param);
   }
   evaluateCurve2dD1(
     curve: Curve2dHandle,
     param: number
   ): { point: [number, number]; tangent: [number, number] } {
-    return {
-      point: ow2d.evaluateCurve2d(c2d(curve), param),
-      tangent: ow2d.tangentCurve2d(c2d(curve), param),
-    };
+    return kernel2dOps.evaluateCurve2dD1(curve, param);
   }
   getCurve2dBounds(curve: Curve2dHandle): { first: number; last: number } {
-    return ow2d.curveBounds(c2d(curve));
+    return kernel2dOps.getCurve2dBounds(curve);
   }
   getCurve2dType(curve: Curve2dHandle): string {
-    // Unwrap trimmed curves to return the basis type (matches OCCT Geom2dAdaptor behavior)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect trimmed basis
-    let cu = c2d(curve) as any;
-    while (cu.__bk2d === 'trimmed' && cu.basis) {
-      cu = cu.basis;
-    }
-    return ow2d.curveTypeName(cu);
+    return kernel2dOps.getCurve2dType(curve);
   }
 
   trimCurve2d(curve: Curve2dHandle, start: number, end: number): Curve2dHandle {
-    const basis = c2d(curve);
-
-    return c2dWrap({ __bk2d: 'trimmed' as const, basis, tStart: start, tEnd: end });
+    return kernel2dOps.trimCurve2d(curve, start, end);
   }
-  reverseCurve2d(_curve: Curve2dHandle): void {
-    /* Curves are immutable in our pure-TS 2D system — reverse is a no-op */
+  reverseCurve2d(curve: Curve2dHandle): void {
+    kernel2dOps.reverseCurve2d(curve);
   }
   copyCurve2d(curve: Curve2dHandle): Curve2dHandle {
-    return c2dWrap(JSON.parse(JSON.stringify(c2d(curve))));
+    return kernel2dOps.copyCurve2d(curve);
   }
   offsetCurve2d(curve: Curve2dHandle, offset: number): Curve2dHandle {
-    /* Approximate offset by sampling + shifting normals */ const c = c2d(curve);
-    const bounds = ow2d.curveBounds(c);
-    const pts: [number, number][] = [];
-    for (let i = 0; i <= 20; i++) {
-      const t = bounds.first + ((bounds.last - bounds.first) * i) / 20;
-      const [px, py] = ow2d.evaluateCurve2d(c, t);
-      const [tx, ty] = ow2d.tangentCurve2d(c, t);
-      const len = Math.sqrt(tx * tx + ty * ty) || 1;
-      pts.push([px - (ty / len) * offset, py + (tx / len) * offset]);
-    }
-    return c2dWrap(
-      ow2d.makeBezier2d(
-        pts.length <= 25 ? pts : pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1)
-      )
-    );
+    return kernel2dOps.offsetCurve2d(curve, offset);
   }
   translateCurve2d(curve: Curve2dHandle, dx: number, dy: number): Curve2dHandle {
-    return c2dWrap(ow2d.translateCurve2d(c2d(curve), dx, dy));
+    return kernel2dOps.translateCurve2d(curve, dx, dy);
   }
   rotateCurve2d(curve: Curve2dHandle, angle: number, cx: number, cy: number): Curve2dHandle {
-    return c2dWrap(ow2d.rotateCurve2d(c2d(curve), angle, cx, cy));
+    return kernel2dOps.rotateCurve2d(curve, angle, cx, cy);
   }
   scaleCurve2d(curve: Curve2dHandle, factor: number, cx: number, cy: number): Curve2dHandle {
-    const result = ow2d.scaleCurve2d(c2d(curve), factor, cx, cy);
-    // Fix: geometry2d scaleCurve2d doesn't scale line length. Patch it.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- patch line length
-    const r = result as any;
-    if (r.__bk2d === 'line' && typeof r.len === 'number') {
-      r.len = r.len * Math.abs(factor);
-    }
-    return c2dWrap(result);
+    return kernel2dOps.scaleCurve2d(curve, factor, cx, cy);
   }
   mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle {
-    return c2dWrap(ow2d.mirrorAtPoint(c2d(curve), cx, cy));
+    return kernel2dOps.mirrorCurve2dAtPoint(curve, cx, cy);
   }
   mirrorCurve2dAcrossAxis(
     curve: Curve2dHandle,
@@ -2366,28 +2241,21 @@ export class OcctWasmAdapter implements KernelAdapter {
     dirX: number,
     dirY: number
   ): Curve2dHandle {
-    return c2dWrap(ow2d.mirrorAcrossAxis(c2d(curve), originX, originY, dirX, dirY));
+    return kernel2dOps.mirrorCurve2dAcrossAxis(curve, originX, originY, dirX, dirY);
   }
   affinityTransform2d(
-    _curve: Curve2dHandle,
+    curve: Curve2dHandle,
     _axisOriginX: number,
     _axisOriginY: number,
     _axisDirX: number,
     _axisDirY: number,
     _ratio: number
   ): Curve2dHandle {
-    return _curve; /* affinity not yet supported, pass through */
+    return kernel2dOps.affinityTransform2d(curve);
   }
   createIdentityGTrsf2d(): KernelType {
-    return {
-      type: 'identity2d',
-      delete() {
-        /* no-op */
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
-    } as any;
+    return kernel2dOps.createIdentityGTrsf2d();
   }
-
   createAffinityGTrsf2d(
     originX: number,
     originY: number,
@@ -2395,32 +2263,11 @@ export class OcctWasmAdapter implements KernelAdapter {
     dirY: number,
     ratio: number
   ): KernelType {
-    return {
-      type: 'affinity2d',
-      axOriginX: originX,
-      axOriginY: originY,
-      axDirX: dirX,
-      axDirY: dirY,
-      ratio,
-      delete() {
-        /* no-op */
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
-    } as any;
+    return kernel2dOps.createAffinityGTrsf2d(originX, originY, dirX, dirY, ratio);
   }
-
   createTranslationGTrsf2d(dx: number, dy: number): KernelType {
-    return {
-      type: 'translate2d',
-      dx,
-      dy,
-      delete() {
-        /* no-op */
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
-    } as any;
+    return kernel2dOps.createTranslationGTrsf2d(dx, dy);
   }
-
   createMirrorGTrsf2d(
     cx: number,
     cy: number,
@@ -2430,151 +2277,36 @@ export class OcctWasmAdapter implements KernelAdapter {
     dirX?: number,
     dirY?: number
   ): KernelType {
-    return {
-      type: 'mirror2d',
-      cx,
-      cy,
-      mode,
-      originX,
-      originY,
-      dirX,
-      dirY,
-      delete() {
-        /* no-op */
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
-    } as any;
+    return kernel2dOps.createMirrorGTrsf2d(cx, cy, mode, originX, originY, dirX, dirY);
   }
-
   createRotationGTrsf2d(angle: number, cx: number, cy: number): KernelType {
-    return {
-      type: 'rotate2d',
-      angle,
-      cx,
-      cy,
-      delete() {
-        /* no-op */
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
-    } as any;
+    return kernel2dOps.createRotationGTrsf2d(angle, cx, cy);
   }
-
   createScaleGTrsf2d(factor: number, cx: number, cy: number): KernelType {
-    return {
-      type: 'scale2d',
-      sx: factor,
-      sy: factor,
-      cx,
-      cy,
-      delete() {
-        /* no-op */
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type
-    } as any;
+    return kernel2dOps.createScaleGTrsf2d(factor, cx, cy);
   }
   setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: number): void {
-    const t = gtrsf;
-    t['dx'] = (Number(t['dx']) || 0) + dx;
-    t['dy'] = (Number(t['dy']) || 0) + dy;
+    kernel2dOps.setGTrsf2dTranslationPart(gtrsf, dx, dy);
   }
   multiplyGTrsf2d(base: KernelType, other: KernelType): void {
-    const b = base;
-
-    const o = other;
-    b['dx'] = (Number(b['dx']) || 0) + (Number(o['dx']) || 0);
-    b['dy'] = (Number(b['dy']) || 0) + (Number(o['dy']) || 0);
-    if (o['type'] === 'scale2d') {
-      b['type'] = 'scale2d';
-      b['sx'] = o['sx'];
-      b['sy'] = o['sy'];
-    }
+    kernel2dOps.multiplyGTrsf2d(base, other);
   }
   transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType): Curve2dHandle {
-    const t = gtrsf; /* transform dispatch */
-    if (t['type'] === 'translate2d')
-      return this.translateCurve2d(curve, t['dx'] ?? 0, t['dy'] ?? 0);
-    if (t['type'] === 'rotate2d')
-      return this.rotateCurve2d(curve, t['angle'] ?? 0, t['cx'] ?? 0, t['cy'] ?? 0);
-    if (t['type'] === 'scale2d')
-      return this.scaleCurve2d(curve, t['sx'] ?? 1, t['cx'] ?? 0, t['cy'] ?? 0);
-    if (t['type'] === 'mirror2d')
-      return this.mirrorCurve2dAtPoint(curve, t['ox'] ?? 0, t['oy'] ?? 0);
-    if (t['type'] === 'affinity2d')
-      return this.scaleCurve2d(
-        curve,
-        Number(t['ratio']) || 1,
-        Number(t['axOriginX']) || 0,
-        Number(t['axOriginY']) || 0
-      );
-    // Identity or unknown — apply any accumulated translation
-    if (Number(t['dx']) || Number(t['dy']))
-      return this.translateCurve2d(curve, Number(t['dx']) || 0, Number(t['dy']) || 0);
-    return curve;
-  } // brepjs-patterns-disable: no-double-cast
+    return kernel2dOps.transformCurve2dGeneral(curve, gtrsf);
+  }
   intersectCurves2d(
     c1: Curve2dHandle,
     c2: Curve2dHandle,
     tolerance: number
   ): { points: [number, number][]; segments: Curve2dHandle[] } {
-    const result = ow2d.intersectCurves2dFn(c2d(c1), c2d(c2), tolerance);
-    return { points: result.points, segments: result.segments.map((s) => c2dWrap(s)) };
+    return kernel2dOps.intersectCurves2d(c1, c2, tolerance);
   }
-  // brepjs-patterns-disable: max-function-lines
   projectPointOnCurve2d(
     curve: Curve2dHandle,
     x: number,
     y: number
   ): { param: number; distance: number } | null {
-    // Analytical projection matching OCCT's Geom2dAPI_ProjectPointOnCurve
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
-    const c = c2d(curve) as any;
-    const bounds = ow2d.curveBounds(c);
-
-    // Helper: project onto a basis curve and return raw parameter
-    const projectOnBasis = (
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- curve obj
-      basis: any,
-      bFirst: number,
-      bLast: number
-    ): { param: number; distance: number } | null => {
-      if (basis.__bk2d === 'line') {
-        // Line: (ox + dx*t, oy + dy*t), dx²+dy²=1
-        const rawT = (x - basis.ox) * basis.dx + (y - basis.oy) * basis.dy;
-        const t = Math.max(bFirst, Math.min(bLast, rawT));
-        const [px, py] = ow2d.evaluateCurve2d(basis, t);
-        return { param: t, distance: Math.sqrt((px - x) ** 2 + (py - y) ** 2) };
-      }
-      // For circles and general curves: dense sampling (analytical circle
-      // projection is unreliable due to angle normalization with sense/bounds)
-      const N = 200;
-      let bestT = bFirst;
-      let bestDist = Infinity;
-      for (let i = 0; i <= N; i++) {
-        const t = bFirst + ((bLast - bFirst) * i) / N;
-        const [px, py] = ow2d.evaluateCurve2d(basis, t);
-        const d = (px - x) ** 2 + (py - y) ** 2;
-        if (d < bestDist) {
-          bestDist = d;
-          bestT = t;
-        }
-      }
-      return { param: bestT, distance: Math.sqrt(bestDist) };
-    };
-
-    // For trimmed curves: project on basis, then map parameter to [0,1]
-    if (c.__bk2d === 'trimmed' && c.basis) {
-      const tStart = c.tStart as number;
-      const tEnd = c.tEnd as number;
-      const basisResult = projectOnBasis(c.basis, tStart, tEnd);
-      if (!basisResult) return null;
-      // Map basis parameter back to trimmed [0,1]
-      const range = tEnd - tStart;
-      const trimmedT = range > 1e-15 ? (basisResult.param - tStart) / range : 0;
-      return { param: Math.max(0, Math.min(1, trimmedT)), distance: basisResult.distance };
-    }
-
-    // Direct projection for non-trimmed curves
-    return projectOnBasis(c, bounds.first, bounds.last);
+    return kernel2dOps.projectPointOnCurve2d(curve, x, y);
   }
   distanceBetweenCurves2d(
     c1: Curve2dHandle,
@@ -2584,20 +2316,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     p2Start: number,
     p2End: number
   ): number {
-    // Sample both curves and find minimum distance
-    const n = 20;
-    let minDist = Infinity;
-    for (let i = 0; i <= n; i++) {
-      const t1 = p1Start + (p1End - p1Start) * (i / n);
-      const [x1, y1] = ow2d.evaluateCurve2d(c2d(c1), t1);
-      for (let j = 0; j <= n; j++) {
-        const t2 = p2Start + (p2End - p2Start) * (j / n);
-        const [x2, y2] = ow2d.evaluateCurve2d(c2d(c2), t2);
-        const d = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-        if (d < minDist) minDist = d;
-      }
-    }
-    return minDist;
+    return kernel2dOps.distanceBetweenCurves2d(c1, c2, p1Start, p1End, p2Start, p2End);
   }
   approximateCurve2dAsBSpline(
     curve: Curve2dHandle,
@@ -2605,123 +2324,44 @@ export class OcctWasmAdapter implements KernelAdapter {
     _continuity: 'C0' | 'C1' | 'C2' | 'C3',
     maxSegments: number
   ): Curve2dHandle {
-    // Sample curve and create interpolating cubic BSpline (matches OCCT Geom2dConvert_ApproxCurve)
-    const cu = c2d(curve);
-    const bounds = ow2d.curveBounds(cu);
-    const nPts = Math.min(Math.max(maxSegments + 1, 10), 100);
-    const poles: [number, number][] = [];
-    for (let i = 0; i < nPts; i++) {
-      const t = bounds.first + ((bounds.last - bounds.first) * i) / (nPts - 1);
-      poles.push(ow2d.evaluateCurve2d(cu, t));
-    }
-    // Build uniform cubic BSpline with clamped knot vector
-    const degree = Math.min(3, nPts - 1);
-    const n = poles.length;
-    const knots: number[] = [];
-    const mults: number[] = [];
-    // Clamped: first/last knot has multiplicity degree+1
-    const nInternalKnots = n - degree - 1;
-    knots.push(0);
-    mults.push(degree + 1);
-    for (let i = 1; i <= nInternalKnots; i++) {
-      knots.push(i / (nInternalKnots + 1));
-      mults.push(1);
-    }
-    knots.push(1);
-    mults.push(degree + 1);
-
-    return c2dWrap({
-      __bk2d: 'bspline' as const,
-      poles,
-      knots,
-      multiplicities: mults,
-      degree,
-      isPeriodic: false,
-    });
+    return kernel2dOps.approximateCurve2dAsBSpline(curve, maxSegments);
   }
   decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
-    // Split BSpline at internal knots to produce Bezier-like segments
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
-    const cu = c2d(curve) as any;
-    const knots: number[] = cu.knots ?? [];
-    if (knots.length < 2) return [curve];
-    const result: Curve2dHandle[] = [];
-    for (let i = 0; i < knots.length - 1; i++) {
-      const k0 = knots[i] as number;
-      const k1 = knots[i + 1] as number;
-      if (Math.abs(k1 - k0) < 1e-15) continue;
-      result.push(this.trimCurve2d(curve, k0, k1));
-    }
-    return result.length > 0 ? result : [curve];
+    return kernel2dOps.decomposeBSpline2dToBeziers(curve);
   }
-
   createBoundingBox2d(): BBox2dHandle {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque type bridge
-    return ow2d.createBBox2d() as any;
+    return kernel2dOps.createBoundingBox2d();
   }
   addCurveToBBox2d(bbox: BBox2dHandle, curve: Curve2dHandle, tolerance: number): void {
-    ow2d.addCurveToBBox(bbox /* fromBBox */, c2d(curve), tolerance);
-  } // brepjs-patterns-disable: no-double-cast
+    kernel2dOps.addCurveToBBox2d(bbox, curve, tolerance);
+  }
   getBBox2dBounds(bbox: BBox2dHandle): { xMin: number; yMin: number; xMax: number; yMax: number } {
-    const b = bbox; /* fromBBox */
-    return { xMin: b.xMin, yMin: b.yMin, xMax: b.xMax, yMax: b.yMax };
-  } // brepjs-patterns-disable: no-double-cast
+    return kernel2dOps.getBBox2dBounds(bbox);
+  }
   mergeBBox2d(target: BBox2dHandle, other: BBox2dHandle): void {
-    const t = target; /* fromBBox */
-    const o = other; /* fromBBox */
-    (t as { xMin: number }).xMin = Math.min(t.xMin, o.xMin);
-    (t as { yMin: number }).yMin = Math.min(t.yMin, o.yMin);
-    (t as { xMax: number }).xMax = Math.max(t.xMax, o.xMax);
-    (t as { yMax: number }).yMax = Math.max(t.yMax, o.yMax);
-  } // brepjs-patterns-disable: no-double-cast
+    kernel2dOps.mergeBBox2d(target, other);
+  }
   isBBox2dOut(a: BBox2dHandle, b: BBox2dHandle): boolean {
-    const ba = a; /* fromBBox */
-    const bb = b; /* fromBBox */
-    return ba.xMax < bb.xMin || ba.xMin > bb.xMax || ba.yMax < bb.yMin || ba.yMin > bb.yMax;
-  } // brepjs-patterns-disable: no-double-cast
+    return kernel2dOps.isBBox2dOut(a, b);
+  }
   isBBox2dOutPoint(bbox: BBox2dHandle, x: number, y: number): boolean {
-    const b = bbox; /* fromBBox */
-    return x < b.xMin || x > b.xMax || y < b.yMin || y > b.yMax;
-  } // brepjs-patterns-disable: no-double-cast
+    return kernel2dOps.isBBox2dOutPoint(bbox, x, y);
+  }
   getCurve2dCircleData(
     curve: Curve2dHandle
   ): { cx: number; cy: number; radius: number; isDirect: boolean } | null {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    let c = c2d(curve) as any;
-    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
-    if (c.__bk2d === 'circle')
-      return { cx: c.cx, cy: c.cy, radius: c.radius, isDirect: c.sense !== false };
-    return null;
+    return kernel2dOps.getCurve2dCircleData(curve);
   }
   getCurve2dEllipseData(
     curve: Curve2dHandle
   ): { majorRadius: number; minorRadius: number; xAxisAngle: number; isDirect: boolean } | null {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    let c = c2d(curve) as any;
-    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
-    if (c.__bk2d === 'ellipse')
-      return {
-        majorRadius: c.majorRadius,
-        minorRadius: c.minorRadius,
-        xAxisAngle: c.xDirAngle ?? 0,
-        isDirect: c.sense !== false,
-      };
-    return null;
+    return kernel2dOps.getCurve2dEllipseData(curve);
   }
   getCurve2dBezierPoles(curve: Curve2dHandle): [number, number][] | null {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    let c = c2d(curve) as any;
-    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
-    if (c.__bk2d === 'bezier' && Array.isArray(c.poles)) return c.poles as [number, number][];
-    return null;
+    return kernel2dOps.getCurve2dBezierPoles(curve);
   }
   getCurve2dBezierDegree(curve: Curve2dHandle): number | null {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect opaque curve
-    let c = c2d(curve) as any;
-    while (c.__bk2d === 'trimmed' && c.basis) c = c.basis;
-    if (c['__bk2d'] === 'bezier' && Array.isArray(c['poles']))
-      return (c['poles'] as unknown[]).length - 1;
-    return null;
+    return kernel2dOps.getCurve2dBezierDegree(curve);
   }
   getCurve2dBSplineData(_curve: Curve2dHandle): {
     poles: [number, number][];
@@ -2733,163 +2373,36 @@ export class OcctWasmAdapter implements KernelAdapter {
     notImplemented('getCurve2dBSplineData');
   }
   serializeCurve2d(curve: Curve2dHandle): string {
-    return ow2d.serializeCurve2d(c2d(curve));
+    return kernel2dOps.serializeCurve2d(curve);
   }
   deserializeCurve2d(data: string): Curve2dHandle {
-    return c2dWrap(ow2d.deserializeCurve2d(data));
+    return kernel2dOps.deserializeCurve2d(data);
   }
   splitCurve2d(curve: Curve2dHandle, params: number[]): Curve2dHandle[] {
-    const bounds = ow2d.curveBounds(c2d(curve));
-    const sorted = [bounds.first, ...params.sort((a, b) => a - b), bounds.last];
-    const result: Curve2dHandle[] = [];
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const start = sorted[i] ?? bounds.first;
-      const end = sorted[i + 1] ?? bounds.last;
-      result.push(this.trimCurve2d(curve, start, end));
-    }
-    return result;
+    return kernel2dOps.splitCurve2d(curve, params);
   }
-  // brepjs-patterns-disable: max-function-lines
   liftCurve2dToPlane(
     curve: Curve2dHandle,
     planeOrigin: [number, number, number],
     planeZ: [number, number, number],
     planeX: [number, number, number]
   ): KernelShape {
-    const cu = c2d(curve);
-    const [ox, oy, oz] = planeOrigin;
-    const [zx, zy, zz] = planeZ;
-    const [xx, xy, xz] = planeX;
-    const yx = zy * xz - zz * xy,
-      yy = zz * xx - zx * xz,
-      yz = zx * xy - zy * xx;
-    const lift = (u: number, v: number): [number, number, number] => [
-      ox + u * xx + v * yx,
-      oy + u * xy + v * yy,
-      oz + u * xz + v * yz,
-    ];
-    // Use the internal __bk2d tag for type dispatch (curveTypeName returns uppercase compound names)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
-    const bk2dType = (cu as any).__bk2d as string;
-    if (bk2dType === 'line') {
-      const bounds = ow2d.curveBounds(cu);
-      const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
-      const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
-      const p1 = lift(u1, v1);
-      const p2 = lift(u2, v2);
-      return handle('edge', this.k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
-    }
-    if (bk2dType === 'trimmed') {
-      // Trimmed curve: evaluate at the trim bounds
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect trimmed basis
-      const trimmed = cu as any;
-      if (trimmed.basis && trimmed.basis.__bk2d === 'line') {
-        const [u1, v1] = ow2d.evaluateCurve2d(cu, 0);
-        const [u2, v2] = ow2d.evaluateCurve2d(cu, 1);
-        const p1 = lift(u1, v1);
-        const p2 = lift(u2, v2);
-        return handle('edge', this.k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
-      }
-      if (trimmed.basis && trimmed.basis.__bk2d === 'circle') {
-        // 3-point arc through three lifted points. Building via
-        // makeCircleArc(center, normal, radius, startAngle, endAngle) routes
-        // angles through OCCT's plane-local X-axis, which can disagree with
-        // the Y-axis brepjs computes here (Y = Z × X) on non-XY planes — that
-        // produced arcs at positions displaced by 2r and FP-divergent
-        // endpoints that didn't merge with adjacent line endpoints in
-        // makeWire (rounded-rectangle cutouts on XZ failing as 10F/32E/32V
-        // invalid). Sharing the lift() with the line branches makes endpoint
-        // coordinates bit-identical so MakeWire merges with default tolerance.
-        const bounds = ow2d.curveBounds(cu);
-        const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
-        const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
-        const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
-        const p1 = lift(u1, v1);
-        const pm = lift(um, vm);
-        const p2 = lift(u2, v2);
-        return handle(
-          'edge',
-          this.k.makeArcEdge(p1[0], p1[1], p1[2], pm[0], pm[1], pm[2], p2[0], p2[1], p2[2])
-        );
-      }
-      // Fall through to interpolation for other trimmed basis types
-    }
-    if (bk2dType === 'circle') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect circle data
-      const circleData = cu as any;
-      if (circleData.cx !== undefined && circleData.radius !== undefined) {
-        // Full circle — use makeCircleEdge with center on the plane
-        const [pcx, pcy, pcz] = lift(circleData.cx, circleData.cy);
-        return handle('edge', this.k.makeCircleEdge(pcx, pcy, pcz, zx, zy, zz, circleData.radius));
-      }
-      // Partial circle — use 3-point arc
-      const bounds = ow2d.curveBounds(cu);
-      const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
-      const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
-      const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
-      const p1 = lift(u1, v1);
-      const pm = lift(um, vm);
-      const p2 = lift(u2, v2);
-      return handle(
-        'edge',
-        this.k.makeArcEdge(p1[0], p1[1], p1[2], pm[0], pm[1], pm[2], p2[0], p2[1], p2[2])
-      );
-    }
-    const bounds = ow2d.curveBounds(cu);
-    const nSamples = 24;
-    const dt = (bounds.last - bounds.first) / nSamples;
-    const pts: number[] = [];
-    for (let i = 0; i <= nSamples; i++) {
-      const [u, v] = ow2d.evaluateCurve2d(cu, bounds.first + i * dt);
-      const [px, py, pz] = lift(u, v);
-      pts.push(px, py, pz);
-    }
-    const vec = new this.Module.VectorDouble();
-    for (const p of pts) vec.push_back(p);
-    try {
-      return handle('edge', this.k.interpolatePoints(vec, false));
-    } finally {
-      vec.delete();
-    }
+    return kernel2dOps.liftCurve2dToPlane(this.k, this.Module, curve, planeOrigin, planeZ, planeX);
   }
   buildEdgeOnSurface(curve: Curve2dHandle, surface: KernelType): KernelShape {
-    // Sample the 2D curve, evaluate each point on the surface, interpolate in 3D
-    const cu = c2d(curve);
-    const bounds = ow2d.curveBounds(cu);
-    // brepjs-patterns-disable: no-double-cast
-    const faceId = unwrap(surface);
-    const nSamples = 30;
-    const vec = new this.Module.VectorDouble();
-    for (let i = 0; i <= nSamples; i++) {
-      const t = bounds.first + ((bounds.last - bounds.first) * i) / nSamples;
-      const [u, v] = ow2d.evaluateCurve2d(cu, t);
-      const pt = this.k.pointOnSurface(faceId, u, v);
-      vec.push_back(pt.get(0));
-      vec.push_back(pt.get(1));
-      vec.push_back(pt.get(2));
-      pt.delete();
-    }
-    try {
-      return handle('edge', this.k.interpolatePoints(vec, false));
-    } finally {
-      vec.delete();
-    }
+    return kernel2dOps.buildEdgeOnSurface(this.k, this.Module, curve, surface);
   }
   extractSurfaceFromFace(face: KernelShape): KernelType {
-    // Return the face handle itself — occt-wasm uses faces as surface proxies
-    // brepjs-patterns-disable: no-double-cast
-    return face;
+    return kernel2dOps.extractSurfaceFromFace(face);
   }
   extractCurve2dFromEdge(_edge: KernelShape, _face: KernelShape): Curve2dHandle {
-    /* PCurve extraction not yet supported — return a dummy line */ return c2dWrap(
-      ow2d.makeLine2d(0, 0, 1, 0)
-    );
+    return kernel2dOps.extractCurve2dFromEdge();
   }
   buildCurves3d(wire: KernelShape): void {
-    this.k.buildCurves3d(unwrap(wire));
+    kernel2dOps.buildCurves3d(this.k, wire);
   }
   fixWireOnFace(wire: KernelShape, face: KernelShape, tolerance: number): KernelShape {
-    return handle('wire', this.k.fixWireOnFace(unwrap(wire), unwrap(face), tolerance));
+    return kernel2dOps.fixWireOnFace(this.k, wire, face, tolerance);
   }
   fillSurface(
     _wires: KernelShape[],
@@ -3047,12 +2560,6 @@ function computeConvexHullFaces(
   return faces;
 }
 
-// --- 2D curve helpers (at module scope) ---
-function c2d(handle: Curve2dHandle): Curve2dObj {
-  return handle; // brepjs-patterns-disable: no-double-cast
-}
-function c2dWrap(obj: Curve2dObj): Curve2dHandle {
-  return obj; // brepjs-patterns-disable: no-double-cast
-}
+// 2D curve helpers (c2d, c2dWrap) moved to kernel2dOps.ts
 
 export type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
