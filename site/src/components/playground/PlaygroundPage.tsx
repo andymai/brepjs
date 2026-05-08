@@ -17,7 +17,7 @@ import { useScreenshot } from '../../hooks/useScreenshot';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
-import ViewerPanel from './ViewerPanel';
+import ViewerPanel from './ViewerPanelLazy';
 import OutputPanel from './OutputPanel';
 import StatusBar from './StatusBar';
 import LoadingOverlay from './LoadingOverlay';

@@ -83,9 +83,14 @@ export default defineConfig({
     chunkSizeWarningLimit: 1100,
     rollupOptions: {
       output: {
+        // Keep monaco split out so it doesn't bloat the entry bundle. Three /
+        // R3F / drei are deliberately NOT named here — pinning them to a
+        // single chunk would also pull a `<link rel="modulepreload">` for
+        // the chunk into the entry HTML, defeating the lazy-import on
+        // ViewerPanel. Letting Vite default-split lets the three subtree
+        // load only when the viewer mounts.
         manualChunks(id) {
           if (id.includes('monaco-editor') || id.includes('@monaco-editor/react')) return 'monaco';
-          if (id.includes('/three/') || id.includes('@react-three/')) return 'three';
         },
       },
     },

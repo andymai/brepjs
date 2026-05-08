@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import EditorPanel from './EditorPanel';
-import ViewerPanel from './ViewerPanel';
+import ViewerPanel from './ViewerPanelLazy';
 import OutputPanel from './OutputPanel';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
 
