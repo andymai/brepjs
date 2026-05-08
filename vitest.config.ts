@@ -1,6 +1,6 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
-import { kernelConfigs } from './tests/helpers/kernelRegistry.js';
+import { kernelConfigs, coverageExcludesFor } from './tests/helpers/kernelRegistry.js';
 
 /**
  * Tests excluded from all kernel projects:
@@ -40,18 +40,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/**/*.d.ts',
-        'src/**/index.ts',
-        'src/kernel/brepkit/**',
-        'src/kernel/occtWasm/**',
-        // geometry2d.ts is pure-TS 2D used by brepkit/occt-wasm, not by OCCT.
-        // Excluded from OCCT coverage (the only enforced project). Covered
-        // informally by brepkit/occt-wasm test runs.
-        'src/kernel/geometry2d.ts',
-      ],
       reporter: ['text', 'text-summary', 'lcov'],
       reportsDirectory: './coverage',
+      // OCCT-flavored excludes are applied at the root because vitest's
+      // project-level coverage.exclude does not override the root list (yet);
+      // see PR description. Source of truth lives in kernelRegistry.ts so
+      // adding a kernel doesn't require a vitest edit.
+      exclude: ['src/**/*.d.ts', 'src/**/index.ts', ...coverageExcludesFor('occt')],
       thresholds: {
         statements: 84,
         // 74 reflects intentional skips for V8 RC4 regressions (PRs #605, #639, #641, commit 8c857d65).
