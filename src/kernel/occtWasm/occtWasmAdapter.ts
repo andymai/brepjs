@@ -74,6 +74,7 @@ import * as boolOps from './booleanOps.js';
 import * as primOps from './primitiveOps.js';
 import * as topoOps from './topologyOps.js';
 import * as repairOps from './repairOps.js';
+import * as meshOps from './meshOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -2174,99 +2175,19 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult {
-    const meshData = this.k.tessellate(unwrap(shape), options.tolerance, options.angularTolerance);
-
-    const posCount = meshData.positionCount;
-    const normCount = meshData.normalCount;
-    const idxCount = meshData.indexCount;
-
-    // Read from heap pointers
-    const posPtr = meshData.getPositionsPtr() >> 2; // byte offset to float32 index
-    const normPtr = meshData.getNormalsPtr() >> 2;
-    const idxPtr = meshData.getIndicesPtr() >> 2;
-
-    const vertices = new Float32Array(posCount);
-    for (let i = 0; i < posCount; i++) {
-      vertices[i] = this.Module.HEAPF32[posPtr + i] ?? 0;
-    }
-
-    const normals = new Float32Array(normCount);
-    if (!options.skipNormals) {
-      for (let i = 0; i < normCount; i++) {
-        normals[i] = this.Module.HEAPF32[normPtr + i] ?? 0;
-      }
-    }
-
-    const triangles = new Uint32Array(idxCount);
-    for (let i = 0; i < idxCount; i++) {
-      triangles[i] = this.Module.HEAPU32[idxPtr + i] ?? 0;
-    }
-
-    // Read face groups before deleting meshData
-    const faceGroups: Array<{ start: number; count: number; faceHash: number }> = [];
-    const fgCount = meshData.faceGroupCount;
-    if (fgCount > 0) {
-      const fgPtr = meshData.getFaceGroupsPtr() >> 2;
-      for (let i = 0; i < fgCount; i += 3) {
-        faceGroups.push({
-          start: this.Module.HEAP32[fgPtr + i] ?? 0,
-          count: this.Module.HEAP32[fgPtr + i + 1] ?? 0,
-          faceHash: this.Module.HEAP32[fgPtr + i + 2] ?? 0,
-        });
-      }
-    }
-
-    meshData.delete();
-
-    return {
-      vertices,
-      normals: options.skipNormals ? new Float32Array(0) : normals,
-      triangles,
-      uvs: new Float32Array(0),
-      faceGroups,
-    };
+    return meshOps.mesh(this.k, this.Module, shape, options);
   }
 
-  meshEdges(
-    shape: KernelShape,
-    tolerance: number,
-    _angularTolerance: number
-  ): KernelEdgeMeshResult {
-    const edgeData = this.k.wireframe(unwrap(shape), tolerance);
-    const pointCount = edgeData.pointCount;
-    const ptr = edgeData.getPointsPtr() >> 2;
-
-    const lines = new Float32Array(pointCount);
-    for (let i = 0; i < pointCount; i++) {
-      lines[i] = this.Module.HEAPF32[ptr + i] ?? 0;
-    }
-
-    // Read edge groups before deleting edgeData
-    const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
-    const egCount = edgeData.edgeGroupCount;
-    if (egCount > 0) {
-      const egPtr = edgeData.getEdgeGroupsPtr() >> 2;
-      for (let i = 0; i < egCount; i += 3) {
-        edgeGroups.push({
-          start: this.Module.HEAP32[egPtr + i] ?? 0,
-          count: this.Module.HEAP32[egPtr + i + 1] ?? 0,
-          edgeHash: this.Module.HEAP32[egPtr + i + 2] ?? 0,
-        });
-      }
-    }
-
-    edgeData.delete();
-
-    return { lines, edgeGroups };
+  meshEdges(shape: KernelShape, tolerance: number, angularTolerance: number): KernelEdgeMeshResult {
+    return meshOps.meshEdges(this.k, this.Module, shape, tolerance, angularTolerance);
   }
 
   hasTriangulation(shape: KernelShape): boolean {
-    return this.k.hasTriangulation(unwrap(shape));
+    return meshOps.hasTriangulation(this.k, shape);
   }
 
   meshShape(shape: KernelShape, tolerance: number, angularTolerance: number): void {
-    const meshData = this.k.meshShape(unwrap(shape), tolerance, angularTolerance);
-    meshData.delete();
+    meshOps.meshShape(this.k, shape, tolerance, angularTolerance);
   }
 
   // =========================================================================
