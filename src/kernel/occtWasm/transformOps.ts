@@ -8,14 +8,7 @@
 import type { KernelShape, KernelType, ShapeType } from '@/kernel/types.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
-import {
-  handle,
-  makeVecDouble,
-  multiplyMatrices4x4,
-  noop,
-  unwrap,
-  wrapResult,
-} from './helpers.js';
+import { handle, makeVecDouble, multiplyMatrices4x4, noop, unwrap, wrapResult } from './helpers.js';
 
 export function composeTransform(
   ops: Array<
@@ -119,10 +112,7 @@ export function rotate(
 ): KernelShape {
   const ax = axis ?? [0, 0, 1];
   const cn = center ?? [0, 0, 0];
-  return wrapResult(
-    k,
-    k.rotate(unwrap(shape), cn[0], cn[1], cn[2], ax[0], ax[1], ax[2], angle)
-  );
+  return wrapResult(k, k.rotate(unwrap(shape), cn[0], cn[1], cn[2], ax[0], ax[1], ax[2], angle));
 }
 
 export function mirror(
@@ -329,10 +319,7 @@ export function circularPattern(
   return results;
 }
 
-export function transformBatch(
-  k: OcctKernelWasm,
-  entries: TransformEntry[]
-): KernelShape[] {
+export function transformBatch(k: OcctKernelWasm, entries: TransformEntry[]): KernelShape[] {
   return entries.map((entry) => {
     switch (entry.type) {
       case 'translate':
