@@ -79,6 +79,7 @@ import * as curveOps from './curveOps.js';
 import * as surfaceOps from './surfaceOps.js';
 import * as measureOps from './measureOps.js';
 import * as modifierOps from './modifierOps.js';
+import * as sweepOps from './sweepOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -1174,40 +1175,28 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   extrude(face: KernelShape, direction: [number, number, number], length: number): KernelShape {
-    const dx = direction[0] * length;
-    const dy = direction[1] * length;
-    const dz = direction[2] * length;
-    return wrapResult(this.k, this.k.extrude(unwrap(face), dx, dy, dz));
+    return sweepOps.extrude(this.k, face, direction, length);
   }
 
   revolve(shape: KernelShape, axis: KernelType, angle: number): KernelShape {
-    // axis is a KernelType from createAxis1
-    const o = axis.origin;
-    const d = axis.direction;
-    return wrapResult(this.k, this.k.revolve(unwrap(shape), o.x, o.y, o.z, d.x, d.y, d.z, angle));
+    return sweepOps.revolve(this.k, shape, axis, angle);
   }
 
   loft(
     wires: KernelShape[],
     ruled?: boolean,
-    _startShape?: KernelShape,
-    _endShape?: KernelShape
+    startShape?: KernelShape,
+    endShape?: KernelShape
   ): KernelShape {
-    const vec = makeVecU32(this.Module, wires.map(unwrap));
-    try {
-      return wrapResult(this.k, this.k.loft(vec, true, ruled ?? false));
-    } finally {
-      vec.delete();
-    }
+    return sweepOps.loft(this.k, this.Module, wires, ruled, startShape, endShape);
   }
 
   sweep(wire: KernelShape, spine: KernelShape, options?: { transitionMode?: number }): KernelShape {
-    const mode = options?.transitionMode ?? 0;
-    return wrapResult(this.k, this.k.sweep(unwrap(wire), unwrap(spine), mode));
+    return sweepOps.sweep(this.k, wire, spine, options);
   }
 
   simplePipe(profile: KernelShape, spine: KernelShape): KernelShape {
-    return wrapResult(this.k, this.k.simplePipe(unwrap(profile), unwrap(spine)));
+    return sweepOps.simplePipe(this.k, profile, spine);
   }
 
   helicalSweep(
@@ -1262,26 +1251,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       maxSegments?: number | undefined;
     }
   ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
-    const freenet = options?.frenet ?? false;
-    const smooth = options?.transitionMode === 'round';
-    const shellMode = options?.shellMode ?? false;
-    const result = wrapResult(
-      this.k,
-      this.k.sweepPipeShell(unwrap(profile), unwrap(spine), freenet, smooth)
-    );
-    if (shellMode) {
-      // Shell mode: return { shape, firstShape, lastShape } tuple
-      const edges = this.k.getSubShapes(unwrap(result), 'wire');
-      try {
-        const firstWire = edges.size() > 0 ? wrapResult(this.k, edges.get(0)) : result;
-        const lastWire =
-          edges.size() > 1 ? wrapResult(this.k, edges.get(edges.size() - 1)) : result;
-        return { shape: result, firstShape: firstWire, lastShape: lastWire };
-      } finally {
-        edges.delete();
-      }
-    }
-    return result;
+    return sweepOps.sweepPipeShell(this.k, profile, spine, options);
   }
 
   loftAdvanced(
@@ -1294,37 +1264,11 @@ export class OcctWasmAdapter implements KernelAdapter {
       endVertex?: KernelShape;
     }
   ): KernelShape {
-    const isSolid = options?.solid ?? true;
-    const ruled = options?.ruled ?? false;
-    const startV = options?.startVertex ? unwrap(options.startVertex) : 0;
-    const endV = options?.endVertex ? unwrap(options.endVertex) : 0;
-    const vec = makeVecU32(this.Module, wires.map(unwrap));
-    try {
-      if (startV || endV) {
-        return wrapResult(this.k, this.k.loftWithVertices(vec, isSolid, ruled, startV, endV));
-      }
-      return wrapResult(this.k, this.k.loft(vec, isSolid, ruled));
-    } finally {
-      vec.delete();
-    }
+    return sweepOps.loftAdvanced(this.k, this.Module, wires, options);
   }
 
   buildExtrusionLaw(profile: 'linear' | 's-curve', length: number, endFactor: number): KernelType {
-    // Return a JS law object with Trim method (matching OCCT Law_Linear/Law_S)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- opaque law object
-    const law: any = {
-      __occtWasmLaw: true,
-      profile,
-      length,
-      endFactor,
-      Trim(first: number, last: number, _tol: number) {
-        return { ...law, trimFirst: first, trimLast: last };
-      },
-      delete() {
-        /* no-op */
-      },
-    };
-    return law;
+    return sweepOps.buildExtrusionLaw(this.k, profile, length, endFactor);
   }
 
   revolveVec(
@@ -1333,33 +1277,18 @@ export class OcctWasmAdapter implements KernelAdapter {
     direction: [number, number, number],
     angle: number
   ): KernelShape {
-    return wrapResult(
-      this.k,
-      this.k.revolveVec(
-        unwrap(shape),
-        center[0],
-        center[1],
-        center[2],
-        direction[0],
-        direction[1],
-        direction[2],
-        angle
-      )
-    );
+    return sweepOps.revolveVec(this.k, shape, center, direction, angle);
   }
 
   draftPrism(
     shape: KernelShape,
-    _face: KernelShape,
-    _baseFace: KernelShape,
+    face: KernelShape,
+    baseFace: KernelShape,
     height: number | null,
     angleDeg: number,
-    _fuse: boolean
+    fuse: boolean
   ): KernelShape {
-    // The C++ facade takes (shapeId, dx, dy, dz, angleDeg)
-    // Assume extrusion along Z for now
-    const h = height ?? 10;
-    return wrapResult(this.k, this.k.draftPrism(unwrap(shape), 0, 0, h, angleDeg));
+    return sweepOps.draftPrism(this.k, shape, face, baseFace, height, angleDeg, fuse);
   }
 
   // =========================================================================
