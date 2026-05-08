@@ -77,6 +77,7 @@ import * as repairOps from './repairOps.js';
 import * as meshOps from './meshOps.js';
 import * as curveOps from './curveOps.js';
 import * as surfaceOps from './surfaceOps.js';
+import * as measureOps from './measureOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -2529,40 +2530,30 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   volume(shape: KernelShape): number {
-    return this.k.getVolume(unwrap(shape));
+    return measureOps.volume(this.k, shape);
   }
 
   area(shape: KernelShape): number {
-    return this.k.getSurfaceArea(unwrap(shape));
+    return measureOps.area(this.k, shape);
   }
 
   length(shape: KernelShape): number {
-    return this.k.getLength(unwrap(shape));
+    return measureOps.length(this.k, shape);
   }
 
   centerOfMass(shape: KernelShape): [number, number, number] {
-    const vec = this.k.getCenterOfMass(unwrap(shape));
-    const result: [number, number, number] = [vec.get(0), vec.get(1), vec.get(2)];
-    vec.delete();
-    return result;
+    return measureOps.centerOfMass(this.k, shape);
   }
 
   linearCenterOfMass(shape: KernelShape): [number, number, number] {
-    const vec = this.k.getLinearCenterOfMass(unwrap(shape));
-    const result: [number, number, number] = [vec.get(0), vec.get(1), vec.get(2)];
-    vec.delete();
-    return result;
+    return measureOps.linearCenterOfMass(this.k, shape);
   }
 
   boundingBox(shape: KernelShape): {
     min: [number, number, number];
     max: [number, number, number];
   } {
-    const bb = this.k.getBoundingBox(unwrap(shape), true);
-    return {
-      min: [bb.xmin, bb.ymin, bb.zmin],
-      max: [bb.xmax, bb.ymax, bb.zmax],
-    };
+    return measureOps.boundingBox(this.k, shape);
   }
 
   distance(shape1: KernelShape, shape2: KernelShape): DistanceResult {
@@ -2639,32 +2630,11 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   surfaceCenterOfMass(face: KernelShape): [number, number, number] {
-    // Delegates to occt-wasm's exact `BRepGProp::SurfaceProperties.CentreOfMass()`
-    // (added in occt-wasm 2.0). The previous tessellation-triangle centroid
-    // diverged from brepjs-occt for non-planar faces — for cylindrical faces
-    // it landed `+radius` off-axis (on the surface), and for holed planar
-    // faces it biased toward the holes' weighted x-position. See occt-wasm#90.
-    try {
-      const v = this.k.getSurfaceCenterOfMass(unwrap(face));
-      const result: [number, number, number] = [v.get(0), v.get(1), v.get(2)];
-      v.delete();
-      return result;
-    } catch {
-      // Degenerate or unmeshable face — preserve previous behavior of
-      // returning origin rather than propagating the WASM exception.
-      return [0, 0, 0];
-    }
+    return measureOps.surfaceCenterOfMass(this.k, face);
   }
 
   measureBulk(shape: KernelShape, includeLinear?: boolean): BulkMeasurement {
-    const bb = this.boundingBox(shape);
-    return {
-      volume: this.volume(shape),
-      area: this.area(shape),
-      length: includeLinear ? this.length(shape) : 0,
-      centerOfMass: this.centerOfMass(shape),
-      boundingBox: bb,
-    };
+    return measureOps.measureBulk(this.k, shape, includeLinear);
   }
 
   createDistanceQuery(referenceShape: KernelShape): {
@@ -2675,19 +2645,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     };
     dispose(): void;
   } {
-    const refId = unwrap(referenceShape);
-    const k = this.k;
-    return {
-      distanceTo(shape: KernelShape) {
-        const d = k.distanceBetween(refId, unwrap(shape));
-        return {
-          value: d,
-          point1: [0, 0, 0],
-          point2: [0, 0, 0],
-        };
-      },
-      dispose: noop,
-    };
+    return measureOps.createDistanceQuery(this.k, referenceShape);
   }
 
   // =========================================================================
