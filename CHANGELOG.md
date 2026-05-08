@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.5.1](https://github.com/andymai/brepjs/compare/brepjs-v18.5.0...brepjs-v18.5.1) (2026-05-08)
+
+
+### Bug Fixes
+
+* **docs:** unwrap measureVolume/Area/Length and break out playground links ([#903](https://github.com/andymai/brepjs/issues/903)) ([0510f42](https://github.com/andymai/brepjs/commit/0510f42eda3bbb4b09ae0fa5a46652792399cbfb))
+
 ## [18.5.0](https://github.com/andymai/brepjs/compare/brepjs-v18.4.1...brepjs-v18.5.0) (2026-05-08)
 
 
