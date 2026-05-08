@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.5.3](https://github.com/andymai/brepjs/compare/brepjs-v18.5.2...brepjs-v18.5.3) (2026-05-08)
+
+
+### Bug Fixes
+
+* **occt-wasm:** lift arcs via 3-point makeArcEdge to share endpoints ([#912](https://github.com/andymai/brepjs/issues/912)) ([92e9c51](https://github.com/andymai/brepjs/commit/92e9c51c3fbde3dbe976d21a33cfd100185bf4de))
+
 ## [18.5.2](https://github.com/andymai/brepjs/compare/brepjs-v18.5.1...brepjs-v18.5.2) (2026-05-08)
 
 

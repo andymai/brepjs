@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-05-08T22:19:18.117Z",
+  "generated": "2026-05-08T22:22:49.709Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -36,11 +36,6 @@
       "file": "src/io/threemfExportFns.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|build3MFModel|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/constructionOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|makeCircleNurbs|#0"
     },
     {
       "file": "src/kernel/brepkit/constructionOps.ts",
