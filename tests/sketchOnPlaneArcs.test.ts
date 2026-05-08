@@ -55,9 +55,9 @@ describe('sketchOnPlane is plane-invariant for arc-containing drawings', () => {
     expect(new Set(tops.map((t) => t.edges)).size).toBe(1);
     expect(new Set(tops.map((t) => t.verts)).size).toBe(1);
     // Sanity: edges == 1.5x verts for a closed prism (2 rims + 1 vertical per rim vert).
-    const ref = tops[0];
-    expect(ref).toBeDefined();
-    if (ref) expect(ref.edges).toBe(ref.verts * 1.5);
+    const [ref] = tops;
+    if (!ref) throw new Error('PLANES must yield at least one topology');
+    expect(ref.edges).toBe(ref.verts * 1.5);
   });
 
   it('drawCircle produces identical topology on XY/XZ/YZ', () => {
