@@ -14,6 +14,7 @@ import { DEFAULT_CODE } from '../../lib/constants';
 import { EXAMPLES, type Example } from '../../lib/examples';
 import { copyToClipboard } from '../../lib/copyToClipboard';
 import { useScreenshot } from '../../hooks/useScreenshot';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import Toolbar from './Toolbar';
 import EditorPanel from './EditorPanel';
 import ViewerPanel from './ViewerPanel';
@@ -23,6 +24,7 @@ import LoadingOverlay from './LoadingOverlay';
 import CollapsedConsoleBar from './CollapsedConsoleBar';
 import ShortcutHelp from './ShortcutHelp';
 import CommandPalette, { type Command } from './CommandPalette';
+import MobileLayout from './MobileLayout';
 import ToastContainer from '../shared/ToastContainer';
 
 const shortcutDefs = Object.values(SHORTCUTS);
@@ -57,6 +59,7 @@ export default function PlaygroundPage() {
 
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const setViewMode = useViewerStore((s) => s.setViewMode);
   const cycleViewMode = useViewerStore((s) => s.cycleViewMode);
@@ -485,6 +488,7 @@ export default function PlaygroundPage() {
         onOpenCommandPalette={openCommandPalette}
         onOpenHelp={openShortcutHelp}
         isRunning={isRunning}
+        compact={isMobile}
       />
 
       {pendingReview && (
@@ -509,72 +513,80 @@ export default function PlaygroundPage() {
         </div>
       )}
 
-      <Group
-        orientation="horizontal"
-        defaultLayout={hLayout.defaultLayout}
-        onLayoutChanged={hLayout.onLayoutChanged}
-        className="flex-1 overflow-hidden"
-      >
-        {/* Left: editor + output */}
-        <Panel
-          id="editor-area"
-          panelRef={editorAreaPanelRef}
-          collapsible
-          collapsedSize="0%"
-          minSize="20%"
-          defaultSize="50%"
-          onResize={handleEditorAreaResize}
+      {isMobile ? (
+        <MobileLayout
+          onCodeChange={handleCodeChange}
+          editorFormatRef={editorFormatFnRef}
+          editorJumpToLineRef={editorJumpToLineRef}
+        />
+      ) : (
+        <Group
+          orientation="horizontal"
+          defaultLayout={hLayout.defaultLayout}
+          onLayoutChanged={hLayout.onLayoutChanged}
+          className="flex-1 overflow-hidden"
         >
-          {/* Always-mounted: collapsing this Panel sends its width to 0% but
-              we keep Monaco rendered so its undo stack, cursor position, and
-              scroll state survive a toggle. The 0%-wide container hides the
-              editor visually without remounting it. */}
-          <Group
-            orientation="vertical"
-            defaultLayout={vLayout.defaultLayout}
-            onLayoutChanged={vLayout.onLayoutChanged}
+          {/* Left: editor + output */}
+          <Panel
+            id="editor-area"
+            panelRef={editorAreaPanelRef}
+            collapsible
+            collapsedSize="0%"
+            minSize="20%"
+            defaultSize="50%"
+            onResize={handleEditorAreaResize}
           >
-            <Panel id="editor" defaultSize="80%" minSize="30%">
-              <EditorPanel
-                onCodeChange={handleCodeChange}
-                onFormat={editorFormatFnRef}
-                jumpToLineRef={editorJumpToLineRef}
-              />
-            </Panel>
-            <Separator className="h-px bg-border-subtle" />
-            <Panel
-              id="console"
-              panelRef={consolePanelRef}
-              collapsible
-              collapsedSize="3.5%"
-              minSize="15%"
-              defaultSize="20%"
-              onResize={handleConsoleResize}
+            {/* Always-mounted: collapsing this Panel sends its width to 0% but
+                we keep Monaco rendered so its undo stack, cursor position, and
+                scroll state survive a toggle. The 0%-wide container hides the
+                editor visually without remounting it. */}
+            <Group
+              orientation="vertical"
+              defaultLayout={vLayout.defaultLayout}
+              onLayoutChanged={vLayout.onLayoutChanged}
             >
-              {isConsoleCollapsed ? (
-                <CollapsedConsoleBar onExpand={toggleConsole} />
-              ) : (
-                <OutputPanel onCollapse={toggleConsole} onJumpToLine={handleJumpToLine} />
-              )}
-            </Panel>
-          </Group>
-        </Panel>
+              <Panel id="editor" defaultSize="80%" minSize="30%">
+                <EditorPanel
+                  onCodeChange={handleCodeChange}
+                  onFormat={editorFormatFnRef}
+                  jumpToLineRef={editorJumpToLineRef}
+                />
+              </Panel>
+              <Separator className="h-px bg-border-subtle" />
+              <Panel
+                id="console"
+                panelRef={consolePanelRef}
+                collapsible
+                collapsedSize="3.5%"
+                minSize="15%"
+                defaultSize="20%"
+                onResize={handleConsoleResize}
+              >
+                {isConsoleCollapsed ? (
+                  <CollapsedConsoleBar onExpand={toggleConsole} />
+                ) : (
+                  <OutputPanel onCollapse={toggleConsole} onJumpToLine={handleJumpToLine} />
+                )}
+              </Panel>
+            </Group>
+          </Panel>
 
-        <Separator className="w-px bg-border-subtle" />
+          <Separator className="w-px bg-border-subtle" />
 
-        {/* Right: 3D viewer */}
-        <Panel
-          id="viewer"
-          panelRef={viewerPanelRef}
-          collapsible
-          collapsedSize="0%"
-          minSize="20%"
-          defaultSize="50%"
-          onResize={handleViewerResize}
-        >
-          {isViewerCollapsed ? null : <ViewerPanel />}
-        </Panel>
-      </Group>
+          {/* Right: 3D viewer */}
+          <Panel
+            id="viewer"
+            panelRef={viewerPanelRef}
+            collapsible
+            collapsedSize="0%"
+            minSize="20%"
+            defaultSize="50%"
+            onResize={handleViewerResize}
+          >
+            {isViewerCollapsed ? null : <ViewerPanel />}
+          </Panel>
+        </Group>
+      )}
 
       <StatusBar />
 

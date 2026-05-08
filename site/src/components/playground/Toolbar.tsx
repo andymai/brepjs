@@ -11,6 +11,9 @@ interface ToolbarProps {
   onOpenCommandPalette: () => void;
   onOpenHelp: () => void;
   isRunning: boolean;
+  /** Hide Share/STL/STEP and the help button to fit narrow viewports.
+   *  Those actions stay reachable through the command palette. */
+  compact?: boolean;
 }
 
 export default function Toolbar({
@@ -21,6 +24,7 @@ export default function Toolbar({
   onOpenCommandPalette,
   onOpenHelp,
   isRunning,
+  compact = false,
 }: ToolbarProps) {
   const engineReady = useEngineStore((s) => s.status === 'ready');
   const selectionCount = usePlaygroundStore((s) => s.selections.length);
@@ -66,31 +70,35 @@ export default function Toolbar({
         >
           {isRunning ? 'Running...' : 'Run'}
         </button>
-        <button
-          onClick={onShare}
-          disabled={!engineReady}
-          title={`Share (${formatShortcut(SHORTCUTS.share)})`}
-          className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
-        >
-          Share
-        </button>
-        <button
-          onClick={onExportSTL}
-          disabled={!engineReady || isRunning}
-          title={`Export STL (${formatShortcut(SHORTCUTS.exportSTL)})`}
-          className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
-        >
-          STL
-        </button>
-        <button
-          onClick={onExportSTEP}
-          disabled={!engineReady || isRunning}
-          title={`Export STEP (${formatShortcut(SHORTCUTS.exportSTEP)})`}
-          className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
-        >
-          STEP
-        </button>
-        <div className="mx-1 h-4 w-px bg-border-subtle" />
+        {!compact && (
+          <>
+            <button
+              onClick={onShare}
+              disabled={!engineReady}
+              title={`Share (${formatShortcut(SHORTCUTS.share)})`}
+              className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
+            >
+              Share
+            </button>
+            <button
+              onClick={onExportSTL}
+              disabled={!engineReady || isRunning}
+              title={`Export STL (${formatShortcut(SHORTCUTS.exportSTL)})`}
+              className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
+            >
+              STL
+            </button>
+            <button
+              onClick={onExportSTEP}
+              disabled={!engineReady || isRunning}
+              title={`Export STEP (${formatShortcut(SHORTCUTS.exportSTEP)})`}
+              className="rounded px-2.5 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white disabled:opacity-40"
+            >
+              STEP
+            </button>
+            <div className="mx-1 h-4 w-px bg-border-subtle" />
+          </>
+        )}
         <button
           onClick={onOpenCommandPalette}
           title={`Command palette (${formatShortcut(SHORTCUTS.commandPalette)})`}
@@ -102,14 +110,16 @@ export default function Toolbar({
             <path d="M9 9l4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
         </button>
-        <button
-          onClick={onOpenHelp}
-          title="Keyboard shortcuts (?)"
-          aria-label="Show keyboard shortcuts"
-          className="rounded px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"
-        >
-          ?
-        </button>
+        {!compact && (
+          <button
+            onClick={onOpenHelp}
+            title="Keyboard shortcuts (?)"
+            aria-label="Show keyboard shortcuts"
+            className="rounded px-2 py-1 text-xs font-medium text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"
+          >
+            ?
+          </button>
+        )}
       </div>
     </div>
   );
