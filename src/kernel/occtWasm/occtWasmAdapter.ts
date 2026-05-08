@@ -63,7 +63,6 @@ import {
   noop,
   handle,
   isOcctWasmHandle,
-  mapShapeType,
   unwrap,
   wrapResult,
   makeVecU32,
@@ -73,6 +72,8 @@ import {
 } from './helpers.js';
 import * as boolOps from './booleanOps.js';
 import * as primOps from './primitiveOps.js';
+import * as topoOps from './topologyOps.js';
+import * as repairOps from './repairOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -2771,110 +2772,61 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   iterShapes(shape: KernelShape, type: ShapeType): KernelShape[] {
-    const vec = this.k.getSubShapes(unwrap(shape), type);
-    const results: KernelShape[] = [];
-    const n = vec.size();
-    for (let i = 0; i < n; i++) {
-      results.push(handle(type, vec.get(i)));
-    }
-    vec.delete();
-    return results;
+    return topoOps.iterShapes(this.k, shape, type);
   }
 
   iterShapeList(_list: KernelShape, _callback: (item: KernelShape) => void): void {
     // occt-wasm's arena model has no TopTools_ListOfShape equivalent — the
-    // kernel only yields individual u32 shape IDs, not list handles. This
-    // method is used internally by OCCT's evolution JS fallback path, which
-    // is itself unreachable on occt-wasm (evolution data comes from the C++
-    // facade's EvolutionExtractor). No Layer 2+ code calls this directly.
+    // kernel only yields individual u32 shape IDs, not list handles. Layer 2+
+    // code never calls this directly (evolution data comes from the C++
+    // facade's EvolutionExtractor, not the JS fallback path).
     throw new Error(
       'iterShapeList is not applicable to occt-wasm: the arena model has no TopTools_ListOfShape handles'
     );
   }
 
   shapeType(shape: KernelShape): ShapeType {
-    if (isOcctWasmHandle(shape)) return shape.type;
-    return mapShapeType(this.k.getShapeType(unwrap(shape)));
+    return topoOps.shapeType(this.k, shape);
   }
 
   isSame(a: KernelShape, b: KernelShape): boolean {
-    return this.k.isSame(unwrap(a), unwrap(b));
+    return topoOps.isSame(this.k, a, b);
   }
 
   isEqual(a: KernelShape, b: KernelShape): boolean {
-    return this.k.isEqual(unwrap(a), unwrap(b));
+    return topoOps.isEqual(this.k, a, b);
   }
 
   downcast(shape: KernelShape, type?: ShapeType): KernelShape {
-    if (type) {
-      const id = this.k.downcast(unwrap(shape), type);
-      return handle(type, id);
-    }
-    return shape;
+    return topoOps.downcast(this.k, shape, type);
   }
 
   hashCode(shape: KernelShape, upperBound: number): number {
-    return this.k.hashCode(unwrap(shape), upperBound);
+    return topoOps.hashCode(this.k, shape, upperBound);
   }
 
   isNull(shape: KernelShape): boolean {
-    return this.k.isNull(unwrap(shape));
+    return topoOps.isNull(this.k, shape);
   }
 
   shapeOrientation(shape: KernelShape): ShapeOrientation {
-    const orient = this.k.shapeOrientation(unwrap(shape));
-    return orient.toLowerCase() as ShapeOrientation;
+    return topoOps.shapeOrientation(this.k, shape);
   }
 
   edgeToFaceMap(shape: KernelShape): string {
-    // The C++ facade returns vector<int>, we need to format as JSON
-    const HASH_UPPER = 1000000;
-    const vec = this.k.edgeToFaceMap(unwrap(shape), HASH_UPPER);
-    const data = readVecInt(vec);
-    vec.delete();
-    // Build a JSON map from edge hash -> face hash array
-    const map: Record<number, number[]> = {};
-    for (let i = 0; i + 1 < data.length; i += 2) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- pairs
-      const edgeHash = data[i]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- pairs
-      const faceHash = data[i + 1]!;
-      if (!map[edgeHash]) map[edgeHash] = [];
-
-      map[edgeHash].push(faceHash);
-    }
-    return JSON.stringify(map);
+    return topoOps.edgeToFaceMap(this.k, shape);
   }
 
   sharedEdges(faceA: KernelShape, faceB: KernelShape): KernelShape[] {
-    const vec = this.k.sharedEdges(unwrap(faceA), unwrap(faceB));
-    const results: KernelShape[] = [];
-    const n = vec.size();
-    for (let i = 0; i < n; i++) {
-      results.push(handle('edge', vec.get(i)));
-    }
-    vec.delete();
-    return results;
+    return topoOps.sharedEdges(this.k, faceA, faceB);
   }
 
   adjacentFaces(shape: KernelShape, face: KernelShape): KernelShape[] {
-    const vec = this.k.adjacentFaces(unwrap(shape), unwrap(face));
-    const results: KernelShape[] = [];
-    const n = vec.size();
-    for (let i = 0; i < n; i++) {
-      results.push(handle('face', vec.get(i)));
-    }
-    vec.delete();
-    return results;
+    return topoOps.adjacentFaces(this.k, shape, face);
   }
 
   sew(shapes: KernelShape[], tolerance?: number): KernelShape {
-    const vec = makeVecU32(this.Module, shapes.map(unwrap));
-    try {
-      return wrapResult(this.k, this.k.sew(vec, tolerance ?? 1e-6));
-    } finally {
-      vec.delete();
-    }
+    return topoOps.sew(this.k, this.Module, shapes, tolerance);
   }
 
   // =========================================================================
@@ -3163,40 +3115,35 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   isValid(shape: KernelShape): boolean {
-    return this.k.isValid(unwrap(shape));
+    return repairOps.isValid(this.k, shape);
   }
 
   healSolid(shape: KernelShape): KernelShape | null {
-    const id = this.k.healSolid(unwrap(shape), 1e-6);
-    if (id === 0) return null;
-    return wrapResult(this.k, id);
+    return repairOps.healSolid(this.k, shape);
   }
 
   healFace(shape: KernelShape): KernelShape {
-    return wrapResult(this.k, this.k.healFace(unwrap(shape), 1e-6));
+    return repairOps.healFace(this.k, shape);
   }
 
-  healWire(wire: KernelShape, _face?: KernelShape): KernelShape {
-    return wrapResult(this.k, this.k.healWire(unwrap(wire), 1e-6));
+  healWire(wire: KernelShape, face?: KernelShape): KernelShape {
+    return repairOps.healWire(this.k, wire, face);
   }
 
-  mergeCoincidentVertices(_shape: KernelShape, _tolerance: number): number {
-    // Not directly in the C++ facade
-    return 0;
+  mergeCoincidentVertices(shape: KernelShape, tolerance: number): number {
+    return repairOps.mergeCoincidentVertices(this.k, shape, tolerance);
   }
 
-  removeDegenerateEdges(shape: KernelShape, _tolerance: number): number {
-    this.k.removeDegenerateEdges(unwrap(shape));
-    return 0; // count not returned by facade
+  removeDegenerateEdges(shape: KernelShape, tolerance: number): number {
+    return repairOps.removeDegenerateEdges(this.k, shape, tolerance);
   }
 
   fixFaceOrientations(shape: KernelShape): number {
-    this.k.fixFaceOrientations(unwrap(shape));
-    return 0; // count not returned by facade
+    return repairOps.fixFaceOrientations(this.k, shape);
   }
 
   fixShape(shape: KernelShape): KernelShape {
-    return wrapResult(this.k, this.k.fixShape(unwrap(shape)));
+    return repairOps.fixShape(this.k, shape);
   }
 
   fixSelfIntersection(_wire: KernelShape): KernelShape {
