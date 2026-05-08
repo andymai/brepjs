@@ -1,0 +1,110 @@
+/* v8 ignore file -- occt-wasm kernel not available in brepkit test suite */
+/**
+ * Shared helpers for the occt-wasm adapter — handle wrapping, kernel result
+ * unwrapping, and Embind vector marshalling.
+ *
+ * Extracted from occtWasmAdapter.ts to enable decomposing the adapter into
+ * per-section files (booleanOps, sweepOps, etc.). Each section imports the
+ * helpers it needs without depending on the adapter class.
+ *
+ * @module
+ */
+
+import type { KernelShape, ShapeType } from '@/kernel/types.js';
+import type {
+  OcctWasmHandle,
+  OcctWasmModule,
+  OcctKernelWasm,
+  EmVectorUint32,
+  EmVectorInt,
+  EmVectorDouble,
+} from './occtWasmTypes.js';
+
+export const noop = (): void => {};
+
+/** Build an opaque kernel handle for an arena-allocated WASM shape. */
+export function handle(type: ShapeType, id: number): OcctWasmHandle {
+  return {
+    __occtWasm: true,
+    type,
+    id,
+    delete: noop,
+    HashCode(upperBound: number) {
+      return id % upperBound;
+    },
+    IsNull() {
+      return false;
+    },
+  };
+}
+
+export function isOcctWasmHandle(shape: unknown): shape is OcctWasmHandle {
+  return typeof shape === 'object' && shape !== null && (shape as OcctWasmHandle).__occtWasm;
+}
+
+/** Extract the u32 id from a handle. */
+export function unwrap(shape: KernelShape): number {
+  if (isOcctWasmHandle(shape)) return shape.id;
+  if (typeof shape === 'number') return shape;
+  throw new Error('occt-wasm: expected an OcctWasmHandle or number, got ' + typeof shape);
+}
+
+/** Map a WASM shape type string to our ShapeType enum. */
+export function mapShapeType(wasmType: string): ShapeType {
+  const lower = wasmType.toLowerCase();
+  switch (lower) {
+    case 'vertex':
+      return 'vertex';
+    case 'edge':
+      return 'edge';
+    case 'wire':
+      return 'wire';
+    case 'face':
+      return 'face';
+    case 'shell':
+      return 'shell';
+    case 'solid':
+      return 'solid';
+    case 'compsolid':
+      return 'compsolid';
+    case 'compound':
+      return 'compound';
+    default:
+      return 'compound';
+  }
+}
+
+/** Wrap a WASM u32 result as a typed handle, querying the kernel for type. */
+export function wrapResult(kernel: OcctKernelWasm, id: number): OcctWasmHandle {
+  const type = mapShapeType(kernel.getShapeType(id));
+  return handle(type, id);
+}
+
+// ─── Embind vector helpers ───────────────────────────────────────────────────
+// Embind vectors must be created, populated, and explicitly released via
+// `.delete()`. Callers wrap the lifecycle in try/finally.
+
+export function makeVecU32(Module: OcctWasmModule, values: number[]): EmVectorUint32 {
+  const vec = new Module.VectorUint32();
+  for (const v of values) vec.push_back(v);
+  return vec;
+}
+
+export function makeVecInt(Module: OcctWasmModule, values: number[]): EmVectorInt {
+  const vec = new Module.VectorInt();
+  for (const v of values) vec.push_back(v);
+  return vec;
+}
+
+export function makeVecDouble(Module: OcctWasmModule, values: number[]): EmVectorDouble {
+  const vec = new Module.VectorDouble();
+  for (const v of values) vec.push_back(v);
+  return vec;
+}
+
+export function readVecInt(vec: EmVectorInt): number[] {
+  const result: number[] = [];
+  const n = vec.size();
+  for (let i = 0; i < n; i++) result.push(vec.get(i));
+  return result;
+}

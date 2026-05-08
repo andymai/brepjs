@@ -57,104 +57,25 @@ import type {
   OcctWasmHandle,
   OcctWasmModule,
   OcctKernelWasm,
-  EmVectorUint32,
-  EmVectorInt,
-  EmVectorDouble,
   EmEvolutionData,
 } from './occtWasmTypes.js';
+import {
+  noop,
+  handle,
+  isOcctWasmHandle,
+  mapShapeType,
+  unwrap,
+  wrapResult,
+  makeVecU32,
+  makeVecInt,
+  makeVecDouble,
+  readVecInt,
+} from './helpers.js';
+import * as boolOps from './booleanOps.js';
 
-// ---------------------------------------------------------------------------
-// Handle helpers
-// ---------------------------------------------------------------------------
-
-const noop = () => {};
-
-function handle(type: ShapeType, id: number): OcctWasmHandle {
-  return {
-    __occtWasm: true,
-    type,
-    id,
-    delete: noop,
-    HashCode(upperBound: number) {
-      return id % upperBound;
-    },
-    IsNull() {
-      return false;
-    },
-  };
-}
-
-function isOcctWasmHandle(shape: unknown): shape is OcctWasmHandle {
-  return typeof shape === 'object' && shape !== null && (shape as OcctWasmHandle).__occtWasm;
-}
-
-/** Extract the u32 id from a handle. */
-function unwrap(shape: KernelShape): number {
-  if (isOcctWasmHandle(shape)) return shape.id;
-  if (typeof shape === 'number') return shape;
-  throw new Error('occt-wasm: expected an OcctWasmHandle or number, got ' + typeof shape);
-}
-
-/** Map a WASM shape type string to our ShapeType enum. */
-function mapShapeType(wasmType: string): ShapeType {
-  const lower = wasmType.toLowerCase();
-  // The C++ facade returns e.g. "solid", "face", "edge", etc.
-  switch (lower) {
-    case 'vertex':
-      return 'vertex';
-    case 'edge':
-      return 'edge';
-    case 'wire':
-      return 'wire';
-    case 'face':
-      return 'face';
-    case 'shell':
-      return 'shell';
-    case 'solid':
-      return 'solid';
-    case 'compsolid':
-      return 'compsolid';
-    case 'compound':
-      return 'compound';
-    default:
-      return 'compound'; // fallback
-  }
-}
-
-/** Wrap a WASM u32 result as a typed handle, querying the kernel for type. */
-function wrapResult(kernel: OcctKernelWasm, id: number): OcctWasmHandle {
-  const type = mapShapeType(kernel.getShapeType(id));
-  return handle(type, id);
-}
-
-// ---------------------------------------------------------------------------
-// Vector helpers -- Embind vectors must be created, populated, and deleted
-// ---------------------------------------------------------------------------
-
-function makeVecU32(Module: OcctWasmModule, values: number[]): EmVectorUint32 {
-  const vec = new Module.VectorUint32();
-  for (const v of values) vec.push_back(v);
-  return vec;
-}
-
-function makeVecInt(Module: OcctWasmModule, values: number[]): EmVectorInt {
-  const vec = new Module.VectorInt();
-  for (const v of values) vec.push_back(v);
-  return vec;
-}
-
-function makeVecDouble(Module: OcctWasmModule, values: number[]): EmVectorDouble {
-  const vec = new Module.VectorDouble();
-  for (const v of values) vec.push_back(v);
-  return vec;
-}
-
-function readVecInt(vec: EmVectorInt): number[] {
-  const result: number[] = [];
-  const n = vec.size();
-  for (let i = 0; i < n; i++) result.push(vec.get(i));
-  return result;
-}
+// Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
+// per-section files like ./booleanOps.ts can share them without depending
+// on the adapter class.
 
 // Currently unused but will be needed for batch operations
 // function readVecDouble(vec: EmVectorDouble): number[] {
@@ -833,80 +754,47 @@ export class OcctWasmAdapter implements KernelAdapter {
   // Booleans
   // =========================================================================
 
-  fuse(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    return wrapResult(this.k, this.k.fuse(unwrap(shape), unwrap(tool)));
+  fuse(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape {
+    return boolOps.fuse(this.k, shape, tool, options);
   }
 
-  cut(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    return wrapResult(this.k, this.k.cut(unwrap(shape), unwrap(tool)));
+  cut(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape {
+    return boolOps.cut(this.k, shape, tool, options);
   }
 
-  intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
-    return wrapResult(this.k, this.k.intersect(unwrap(shape), unwrap(tool)));
+  intersect(shape: KernelShape, tool: KernelShape, options?: BooleanOptions): KernelShape {
+    return boolOps.intersect(this.k, shape, tool, options);
   }
 
-  section(shape: KernelShape, plane: KernelShape, _approximation?: boolean): KernelShape {
-    return wrapResult(this.k, this.k.section(unwrap(shape), unwrap(plane)));
+  section(shape: KernelShape, plane: KernelShape, approximation?: boolean): KernelShape {
+    return boolOps.section(this.k, shape, plane, approximation);
   }
 
-  fuseAll(shapes: KernelShape[], _options?: BooleanOptions): KernelShape {
-    const vec = makeVecU32(this.Module, shapes.map(unwrap));
-    try {
-      return wrapResult(this.k, this.k.fuseAll(vec));
-    } finally {
-      vec.delete();
-    }
+  fuseAll(shapes: KernelShape[], options?: BooleanOptions): KernelShape {
+    return boolOps.fuseAll(this.k, this.Module, shapes, options);
   }
 
-  cutAll(shape: KernelShape, tools: KernelShape[], _options?: BooleanOptions): KernelShape {
-    const vec = makeVecU32(this.Module, tools.map(unwrap));
-    try {
-      return wrapResult(this.k, this.k.cutAll(unwrap(shape), vec));
-    } finally {
-      vec.delete();
-    }
+  cutAll(shape: KernelShape, tools: KernelShape[], options?: BooleanOptions): KernelShape {
+    return boolOps.cutAll(this.k, this.Module, shape, tools, options);
   }
 
   split(shape: KernelShape, tools: KernelShape[]): KernelShape {
-    const vec = makeVecU32(this.Module, tools.map(unwrap));
-    try {
-      return wrapResult(this.k, this.k.split(unwrap(shape), vec));
-    } finally {
-      vec.delete();
-    }
+    return boolOps.split(this.k, this.Module, shape, tools);
   }
 
-  checkBoolean(shape: KernelShape, tool: KernelShape, _op: BooleanOpType): CheckBooleanResult {
-    // Basic validation: check if shapes are null or invalid
-    const issues: Array<{
-      operand: 'base' | 'tool';
-      issue: 'null-shape' | 'not-valid';
-      message: string;
-    }> = [];
-    if (this.k.isNull(unwrap(shape))) {
-      issues.push({ operand: 'base', issue: 'null-shape', message: 'Base shape is null' });
-    }
-    if (this.k.isNull(unwrap(tool))) {
-      issues.push({ operand: 'tool', issue: 'null-shape', message: 'Tool shape is null' });
-    }
-    if (issues.length === 0 && !this.k.isValid(unwrap(shape))) {
-      issues.push({ operand: 'base', issue: 'not-valid', message: 'Base shape is not valid' });
-    }
-    if (issues.length === 0 && !this.k.isValid(unwrap(tool))) {
-      issues.push({ operand: 'tool', issue: 'not-valid', message: 'Tool shape is not valid' });
-    }
-    return { valid: issues.length === 0, issues };
+  checkBoolean(shape: KernelShape, tool: KernelShape, op: BooleanOpType): CheckBooleanResult {
+    return boolOps.checkBoolean(this.k, shape, tool, op);
   }
 
   meshBoolean(
-    _positionsA: number[],
-    _indicesA: number[],
-    _positionsB: number[],
-    _indicesB: number[],
-    _op: string,
-    _tolerance: number
+    positionsA: number[],
+    indicesA: number[],
+    positionsB: number[],
+    indicesB: number[],
+    op: string,
+    tolerance: number
   ): KernelMeshResult {
-    throw new Error('occt-wasm: meshBoolean is not supported (use brepkit for mesh booleans)');
+    return boolOps.meshBoolean(positionsA, indicesA, positionsB, indicesB, op, tolerance);
   }
 
   // =========================================================================
