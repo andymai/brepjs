@@ -160,6 +160,31 @@ function unwrapOrThrow<T>(result: Result<T>): T {
 }
 
 // ---------------------------------------------------------------------------
+// Trust casts — fluent-API contract bridges
+//
+// The wrapper expresses a "trust me" contract: callers building a chain like
+// `shape(box(...)).fillet(...)` have implicitly affirmed the shape is a
+// ValidSolid by asking for an operation that requires one. Runtime validation
+// would defeat the fluent ergonomics, so these helpers consolidate the
+// unchecked `unknown` bridge in one auditable place.
+// ---------------------------------------------------------------------------
+
+function asValidSolid(s: Shape3D): ValidSolid {
+  // brepjs-patterns-disable: no-double-cast
+  return s as unknown as ValidSolid;
+}
+
+function asOrientedPlanarFace(f: Face): OrientedFace & PlanarFace {
+  // brepjs-patterns-disable: no-double-cast
+  return f as unknown as OrientedFace & PlanarFace;
+}
+
+function asClosedWire(w: Wire): ClosedWire {
+  // brepjs-patterns-disable: no-double-cast
+  return w as unknown as ClosedWire;
+}
+
+// ---------------------------------------------------------------------------
 // Wrapped interfaces (exported for type annotations)
 // ---------------------------------------------------------------------------
 
@@ -386,38 +411,30 @@ function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
     ): Wrapped3D<T> {
       // brepjs-patterns-disable: no-double-cast
       if (args.length === 1) {
-        return wrap3D(unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0])) as unknown as T);
+        return wrap3D(unwrapOrThrow(fillet(asValidSolid(val), args[0])) as unknown as T);
       }
       // brepjs-patterns-disable: no-double-cast
-      return wrap3D(
-        unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0], args[1])) as unknown as T
-      );
+      return wrap3D(unwrapOrThrow(fillet(asValidSolid(val), args[0], args[1])) as unknown as T);
     },
     chamfer(
       ...args: [ChamferDistance] | [Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, ChamferDistance]
     ): Wrapped3D<T> {
       // brepjs-patterns-disable: no-double-cast
       if (args.length === 1) {
-        return wrap3D(
-          unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0])) as unknown as T
-        );
+        return wrap3D(unwrapOrThrow(chamfer(asValidSolid(val), args[0])) as unknown as T);
       }
       // brepjs-patterns-disable: no-double-cast
-      return wrap3D(
-        unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0], args[1])) as unknown as T
-      );
+      return wrap3D(unwrapOrThrow(chamfer(asValidSolid(val), args[0], args[1])) as unknown as T);
     },
     // brepjs-patterns-disable: no-double-cast
     shell: (faces, thickness, opts) =>
-      wrap3D(
-        unwrapOrThrow(shell(val as unknown as ValidSolid, faces, thickness, opts)) as unknown as T
-      ),
+      wrap3D(unwrapOrThrow(shell(asValidSolid(val), faces, thickness, opts)) as unknown as T),
     // brepjs-patterns-disable: no-double-cast
     offset: (distance, opts) =>
-      wrap3D(unwrapOrThrow(offset(val as unknown as ValidSolid, distance, opts)) as unknown as T),
+      wrap3D(unwrapOrThrow(offset(asValidSolid(val), distance, opts)) as unknown as T),
     // brepjs-patterns-disable: no-double-cast
     draft: (faces, opts) =>
-      wrap3D(unwrapOrThrow(draftFn(val as unknown as ValidSolid, faces, opts)) as unknown as T),
+      wrap3D(unwrapOrThrow(draftFn(asValidSolid(val), faces, opts)) as unknown as T),
 
     // Compound operations
     drill: (opts) => wrap3D(unwrapOrThrow(drillFn(val, opts))),
@@ -461,8 +478,7 @@ function createWrappedCurve<T extends Edge | Wire>(val: T): WrappedCurve<T> {
 
     sweep(spine: Shapeable<Wire>, opts?: SweepOptions): Wrapped3D<Shape3D> {
       if (!isWire(val)) throw new Error('sweep requires a Wire');
-      const w = val as unknown as ClosedWire;
-      const result = unwrapOrThrow(_sweep(w, resolve(spine), opts));
+      const result = unwrapOrThrow(_sweep(asClosedWire(val), resolve(spine), opts));
       // _sweep may return [Shape3D, Wire, Wire] in shell mode; extract the shape
       const shape3D: Shape3D = Array.isArray(result) ? result[0] : result;
       return wrap3D(shape3D);
@@ -483,12 +499,8 @@ function createWrappedFace(val: Face): WrappedFace {
     innerWires: () => innerWires(val),
 
     // Wrapped faces from the fluent API are always oriented and planar
-    // brepjs-patterns-disable: no-double-cast
-    extrude: (height) =>
-      wrap3D(unwrapOrThrow(extrude(val as unknown as OrientedFace & PlanarFace, height))),
-    // brepjs-patterns-disable: no-double-cast
-    revolve: (opts) =>
-      wrap3D(unwrapOrThrow(revolve(val as unknown as OrientedFace & PlanarFace, opts))),
+    extrude: (height) => wrap3D(unwrapOrThrow(extrude(asOrientedPlanarFace(val), height))),
+    revolve: (opts) => wrap3D(unwrapOrThrow(revolve(asOrientedPlanarFace(val), opts))),
   };
 }
 

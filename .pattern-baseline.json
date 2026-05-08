@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-05-08T21:18:11.008Z",
+  "generated": "2026-05-08T22:19:51.219Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -215,117 +215,57 @@
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|368|unwrapOrThrow(\n          fuseAllFn([val, ...tools.map(resolv"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|393|unwrapOrThrow(\n          fuseAllFn([val, ...tools.map(resolv"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|376|unwrapOrThrow(cutAllFn(val, tools, { ...opts, unsafe: true }"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|401|unwrapOrThrow(cutAllFn(val, tools, { ...opts, unsafe: true }"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|389|unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0]))"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|414|unwrapOrThrow(fillet(asValidSolid(val), args[0])) as unknown"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|389|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|424|unwrapOrThrow(chamfer(asValidSolid(val), args[0])) as unknow"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|393|unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0], "
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|431|unwrapOrThrow(shell(asValidSolid(val), faces, thickness, opt"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|393|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|434|unwrapOrThrow(offset(asValidSolid(val), distance, opts)) as "
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|402|unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0])"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|437|unwrapOrThrow(draftFn(asValidSolid(val), faces, opts)) as un"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|402|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|460|unwrapOrThrow(linearPattern(val, dir, count, spacing)) as un"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|407|unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0],"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|462|unwrapOrThrow(circularPattern(val, axis, count, angle)) as u"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|407|val as unknown as ValidSolid"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|413|unwrapOrThrow(shell(val as unknown as ValidSolid, faces, thi"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|413|val as unknown as ValidSolid"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|417|unwrapOrThrow(offset(val as unknown as ValidSolid, distance,"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|417|val as unknown as ValidSolid"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|420|unwrapOrThrow(draftFn(val as unknown as ValidSolid, faces, o"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|420|val as unknown as ValidSolid"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|443|unwrapOrThrow(linearPattern(val, dir, count, spacing)) as un"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|445|unwrapOrThrow(circularPattern(val, axis, count, angle)) as u"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|464|val as unknown as ClosedWire"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|488|val as unknown as OrientedFace & PlanarFace"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|491|val as unknown as OrientedFace & PlanarFace"
-    },
-    {
-      "file": "src/topology/wrapperFns.ts",
-      "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|501|createWrappedFace(val) as unknown as Wrapped<T>"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|513|createWrappedFace(val) as unknown as Wrapped<T>"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/wrapperFns.ts|max-function-lines|345|"
+      "fingerprint": "src/topology/wrapperFns.ts|max-function-lines|370|"
     }
   ]
 }
