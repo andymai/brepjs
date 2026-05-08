@@ -14,7 +14,7 @@ export interface ShortcutDef {
   inEditor?: boolean;
 }
 
-export const SHORTCUTS: Record<string, ShortcutDef> = {
+export const SHORTCUTS = {
   run: { id: 'run', key: 'Enter', ctrl: true, shift: false, label: 'Run Code' },
   share: { id: 'share', key: 's', ctrl: true, shift: true, label: 'Share' },
   exportSTL: { id: 'exportSTL', key: 'e', ctrl: true, shift: false, label: 'Export STL' },
@@ -61,7 +61,9 @@ export const SHORTCUTS: Record<string, ShortcutDef> = {
     // restrict to the viewport / outside Monaco.
     inEditor: false,
   },
-};
+} as const satisfies Record<string, ShortcutDef>;
+
+export type ShortcutId = keyof typeof SHORTCUTS;
 
 export const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);

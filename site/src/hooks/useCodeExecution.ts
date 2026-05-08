@@ -7,6 +7,16 @@ import { useWorker } from './useWorker';
 
 let evalCounter = 0;
 
+function downloadBlob(data: BlobPart, filename: string, mime: string): void {
+  const blob = new Blob([data], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function useCodeExecution() {
   const engineStatus = useEngineStore((s) => s.status);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,26 +91,12 @@ export function useCodeExecution() {
           store.setIsRunning(false);
           isRecoveringRef.current = false;
           break;
-        case 'export-result': {
-          const stlBlob = new Blob([msg.stl], { type: 'model/stl' });
-          const stlUrl = URL.createObjectURL(stlBlob);
-          const stlLink = document.createElement('a');
-          stlLink.href = stlUrl;
-          stlLink.download = 'model.stl';
-          stlLink.click();
-          URL.revokeObjectURL(stlUrl);
+        case 'export-result':
+          downloadBlob(msg.stl, 'model.stl', 'model/stl');
           break;
-        }
-        case 'export-step-result': {
-          const stepBlob = new Blob([msg.step], { type: 'application/step' });
-          const stepUrl = URL.createObjectURL(stepBlob);
-          const stepLink = document.createElement('a');
-          stepLink.href = stepUrl;
-          stepLink.download = 'model.step';
-          stepLink.click();
-          URL.revokeObjectURL(stepUrl);
+        case 'export-step-result':
+          downloadBlob(msg.step, 'model.step', 'application/step');
           break;
-        }
         case 'export-error':
           store.setError(msg.error);
           break;
