@@ -16,8 +16,7 @@ const alwaysExclude = [
   'tests/io-stress.test.ts',
   'benchmarks/**',
   'node_modules/**',
-  'site/**',
-  'docs-site/**',
+  'apps/**',
   '.worktrees/**',
 ];
 

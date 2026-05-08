@@ -172,7 +172,7 @@ export default withMermaid(
         { icon: 'npm', link: 'https://www.npmjs.com/package/brepjs' },
       ],
       editLink: {
-        pattern: 'https://github.com/andymai/brepjs/edit/main/docs-site/:path',
+        pattern: 'https://github.com/andymai/brepjs/edit/main/apps/docs/:path',
         text: 'Edit this page on GitHub',
       },
       footer: {

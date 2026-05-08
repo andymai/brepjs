@@ -23,7 +23,8 @@
   "packageManager": "npm@11.6.1",
   "workspaces": [
     "packages/brepjs-opencascade",
-    "site"
+    "apps/playground",
+    "apps/docs"
   ],
   "main": "./dist/brepjs.cjs",
   "module": "./dist/brepjs.js",
@@ -207,9 +208,9 @@
     "size": "size-limit",
     "docs:api": "typedoc",
     "docs:generate-lookup": "npx tsx scripts/generate-function-lookup.ts",
-    "docs:dev": "npm -C docs-site run dev",
-    "docs:build": "npm -C docs-site run build",
-    "docs:preview": "npm -C docs-site run preview",
+    "docs:dev": "npm -C apps/docs run dev",
+    "docs:build": "npm -C apps/docs run build",
+    "docs:preview": "npm -C apps/docs run preview",
     "docs:extract-tests": "npx tsx scripts/extract-doc-tests.ts",
     "docs:render-images": "npx tsx scripts/render-doc-images.ts",
     "gen:og": "bash scripts/gen-og.sh",

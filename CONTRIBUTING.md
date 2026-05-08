@@ -31,13 +31,13 @@ See the chapter [Architecture & Layers](https://andymai.github.io/brepjs/extendi
 
 ## Documentation
 
-The chapter-based docs live in `docs-site/` and are built with VitePress. The legacy single-page docs in `docs/` are still served and kept around for inbound-link compatibility, but new content goes in `docs-site/`.
+The chapter-based docs live in `apps/docs/` and are built with VitePress. The legacy single-page docs in `docs/` are still served and kept around for inbound-link compatibility, but new content goes in `apps/docs/`.
 
 Common docs commands:
 
 ```bash
 npm run docs:dev            # local preview at http://localhost:5173
-npm run docs:build          # production build (output: docs-site/.vitepress/dist)
+npm run docs:build          # production build (output: apps/docs/.vitepress/dist)
 npm run docs:extract-tests  # extract code blocks from docs into tests/docs/extracted.test.ts
 npm run test:docs           # extract + run the doc tests
 npm run docs:api            # build TypeDoc API reference
@@ -48,7 +48,7 @@ When you add or modify a code block in a chapter, the doc-test harness picks it 
 
 ### Docs deployment
 
-The chapter site (`docs-site/`) and the playground (`site/`) are deployed together to Vercel at `https://brepjs.dev` via a single project rooted at the repo root (config: `vercel.json`). The build runs the playground build, then the VitePress build, then stages the playground assets into `docs-site/.vitepress/dist/playground/` so both ship from one origin and the playground gets the COOP/COEP headers it needs. Pushing to `main` produces a production deploy; PRs get preview deploys.
+The chapter site (`apps/docs/`) and the playground (`apps/playground/`) are deployed together to Vercel at `https://brepjs.dev` via a single project rooted at the repo root (config: `vercel.json`). The build runs the playground build, then the VitePress build, then stages the playground assets into `apps/docs/.vitepress/dist/playground/` so both ship from one origin and the playground gets the COOP/COEP headers it needs. Pushing to `main` produces a production deploy; PRs get preview deploys.
 
 The TypeDoc API reference is a separate deploy on GitHub Pages (`https://andymai.github.io/brepjs/`) via `.github/workflows/docs.yml`. Keeping them split lets the chapter site iterate without re-running TypeDoc.
 

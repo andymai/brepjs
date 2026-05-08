@@ -1,5 +1,5 @@
 {
-  "name": "brepjs-site",
+  "name": "brepjs-playground",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -23,14 +23,12 @@
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "react-resizable-panels": "4.11.0",
-    "shiki": "4.0.2",
     "sucrase": "3.35.1",
     "three": "0.184.0",
     "zustand": "5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.2.4",
-    "@types/lz-string": "1.5.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@types/three": "0.184.0",

@@ -1,6 +1,6 @@
 /**
  * Render hero images for chapter pages by driving the /site playground via
- * puppeteer. Each entry produces a PNG at docs-site/public/images/<chapter>/<name>.png
+ * puppeteer. Each entry produces a PNG at apps/docs/public/images/<chapter>/<name>.png
  * which chapters reference inline.
  *
  * Prereqs:
@@ -130,7 +130,7 @@ return shape(box(30, 20, 10))
 ];
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173';
-const OUT_DIR = 'docs-site/public/images';
+const OUT_DIR = 'apps/docs/public/images';
 const WAIT_AFTER_RENDER_MS = 2500;
 
 async function renderHero(browser: import('puppeteer').Browser, hero: DocHero): Promise<boolean> {

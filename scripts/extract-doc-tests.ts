@@ -1,5 +1,5 @@
 /**
- * Extracts ```typescript / ```ts code blocks from docs-site/**\/*.md and emits
+ * Extracts ```typescript / ```ts code blocks from apps/docs/**\/*.md and emits
  * tests/docs/extracted.test.ts. The generated test file initializes the OCCT
  * kernel once, injects all brepjs exports onto globalThis, then evaluates each
  * snippet inside an AsyncFunction so `await` works.
@@ -13,7 +13,7 @@
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const DOCS_DIR = 'docs-site';
+const DOCS_DIR = 'apps/docs';
 const OUT_DIR = 'tests/docs';
 const OUT_FILE = `${OUT_DIR}/extracted.test.ts`;
 

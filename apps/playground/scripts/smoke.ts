@@ -56,7 +56,7 @@ try {
 console.log(`Waiting up to ${ENGINE_READY_TIMEOUT_MS / 1000}s for engine ready...`);
 try {
   // LoadingOverlay class signature must stay in sync with
-  // site/src/components/playground/LoadingOverlay.tsx.
+  // apps/playground/src/components/playground/LoadingOverlay.tsx.
   await page.waitForFunction(
     () => !document.querySelector('.absolute.inset-0.z-50'),
     { timeout: ENGINE_READY_TIMEOUT_MS }

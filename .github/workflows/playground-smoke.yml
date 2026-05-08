@@ -39,10 +39,10 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/puppeteer
-          key: puppeteer-${{ runner.os }}-${{ hashFiles('site/package-lock.json', 'site/package.json') }}
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json', 'apps/playground/package.json') }}
 
-      - name: Install site dependencies
-        working-directory: site
+      - name: Install playground dependencies
+        working-directory: apps/playground
         # --ignore-scripts skips the root `prepare` (husky + ensure-wasm)
         # which we don't need in a smoke runner. We then run puppeteer's
         # browser install explicitly below since --ignore-scripts also
@@ -50,11 +50,11 @@ jobs:
         run: npm install --legacy-peer-deps --no-audit --no-fund --ignore-scripts
 
       - name: Install Chrome for Puppeteer
-        working-directory: site
+        working-directory: apps/playground
         run: npx puppeteer browsers install chrome
 
       - name: Run smoke against deployment
-        working-directory: site
+        working-directory: apps/playground
         env:
           DEPLOY_URL: ${{ github.event.deployment_status.target_url || github.event.deployment_status.environment_url }}
         run: |

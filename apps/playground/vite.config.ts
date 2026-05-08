@@ -9,8 +9,8 @@ interface PackageJson {
   version?: string;
 }
 // Resolve relative to this config file, not cwd, so the build works regardless
-// of where vite is invoked from (e.g. monorepo root vs `site/`).
-const brepjsPkgPath = fileURLToPath(new URL('../package.json', import.meta.url));
+// of where vite is invoked from (e.g. monorepo root vs `apps/playground/`).
+const brepjsPkgPath = fileURLToPath(new URL('../../package.json', import.meta.url));
 const brepjsPkg = JSON.parse(readFileSync(brepjsPkgPath, 'utf8')) as PackageJson;
 const BREPJS_VERSION = brepjsPkg.version ?? '0.0.0-dev';
 
@@ -20,7 +20,7 @@ const BASE = '/playground/';
 
 function opencascadeWasm(): Plugin {
   // Prefer local monorepo path, fall back to node_modules
-  const local = resolve('../packages/brepjs-opencascade/src');
+  const local = resolve('../../packages/brepjs-opencascade/src');
   const wasmDir = existsSync(resolve(local, WASM_FILES[0]))
     ? local
     : resolve('node_modules/brepjs-opencascade/src');
