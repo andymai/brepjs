@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-05-08T21:18:11.008Z",
+  "generated": "2026-05-08T22:13:00.606Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -40,12 +40,7 @@
     {
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|682|"
-    },
-    {
-      "file": "src/kernel/brepkit/constructionOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|794|"
+      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|761|"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",

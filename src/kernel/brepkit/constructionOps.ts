@@ -24,16 +24,7 @@ import {
 import { needsTransform, transformToPlacement } from './internalOps.js';
 import { translate, generalTransform } from './transformOps.js';
 import { sew } from './topologyOps.js';
-import {
-  type Vec3,
-  type MutVec3,
-  cross3,
-  len3,
-  normalize3,
-  read3,
-  sub3,
-  wasmIndex,
-} from '@/utils/vec3.js';
+import { type Vec3, wasmIndex } from '@/utils/vec3.js';
 
 export function makeVertex(bk: BrepkitKernel, x: number, y: number, z: number): KernelShape {
   const id = bk.makeVertex(x, y, z);
@@ -541,7 +532,17 @@ export function triangulatedSurface(
 }
 
 export function buildTriFace(bk: BrepkitKernel, a: Vec3, b: Vec3, c: Vec3): KernelShape | null {
-  const area = len3(cross3(sub3(b, a), sub3(c, a)));
+  // Inline cross-product to avoid intermediate allocations on hot mesh paths.
+  const abx = b[0] - a[0],
+    aby = b[1] - a[1],
+    abz = b[2] - a[2];
+  const acx = c[0] - a[0],
+    acy = c[1] - a[1],
+    acz = c[2] - a[2];
+  const cx = aby * acz - abz * acy;
+  const cy = abz * acx - abx * acz;
+  const cz = abx * acy - aby * acx;
+  const area = Math.sqrt(cx * cx + cy * cy + cz * cz);
   if (area < 1e-12) return null;
 
   try {
@@ -682,10 +683,23 @@ function makeCircleNurbs(
   startAngle: number,
   endAngle: number
 ): KernelShape {
-  const nz = normalize3(normal);
-  const ref: MutVec3 = Math.abs(nz[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
-  const xAxis = normalize3(cross3(nz, ref));
-  const yAxis = cross3(nz, xAxis);
+  // Inline the axis math to avoid Vec3 helper allocations in this hot path
+  // (called per circle in sweeps; was the source of a 17% regression).
+  const nLen = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
+  const nz: [number, number, number] = [normal[0] / nLen, normal[1] / nLen, normal[2] / nLen];
+  const ref: [number, number, number] = Math.abs(nz[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const xRaw: [number, number, number] = [
+    nz[1] * ref[2] - nz[2] * ref[1],
+    nz[2] * ref[0] - nz[0] * ref[2],
+    nz[0] * ref[1] - nz[1] * ref[0],
+  ];
+  const xLen = Math.sqrt(xRaw[0] ** 2 + xRaw[1] ** 2 + xRaw[2] ** 2);
+  const xAxis: [number, number, number] = [xRaw[0] / xLen, xRaw[1] / xLen, xRaw[2] / xLen];
+  const yAxis: [number, number, number] = [
+    nz[1] * xAxis[2] - nz[2] * xAxis[1],
+    nz[2] * xAxis[0] - nz[0] * xAxis[2],
+    nz[0] * xAxis[1] - nz[1] * xAxis[0],
+  ];
 
   const nSegments = Math.ceil(Math.abs(endAngle - startAngle) / (Math.PI / 2));
   const dAngle = (endAngle - startAngle) / nSegments;
@@ -729,21 +743,14 @@ function makeCircleNurbs(
     knots[i] = wasmIndex(knots, i) / kMax;
   }
 
-  const startPt = read3(controlPoints, 0);
-  const endPt = read3(controlPoints, controlPoints.length - 3);
+  const sx = wasmIndex(controlPoints, 0);
+  const sy = wasmIndex(controlPoints, 1);
+  const sz = wasmIndex(controlPoints, 2);
+  const ex = wasmIndex(controlPoints, controlPoints.length - 3);
+  const ey = wasmIndex(controlPoints, controlPoints.length - 2);
+  const ez = wasmIndex(controlPoints, controlPoints.length - 1);
 
-  const id = bk.makeNurbsEdge(
-    startPt[0],
-    startPt[1],
-    startPt[2],
-    endPt[0],
-    endPt[1],
-    endPt[2],
-    degree,
-    knots,
-    controlPoints,
-    weights
-  );
+  const id = bk.makeNurbsEdge(sx, sy, sz, ex, ey, ez, degree, knots, controlPoints, weights);
   return edgeHandle(id);
 }
 
@@ -757,14 +764,29 @@ function makeEllipseNurbs(
   endAngle: number,
   xDir?: Vec3
 ): KernelShape {
-  const nz = normalize3(normal);
-  const xAxis: MutVec3 = xDir
-    ? normalize3(xDir)
-    : (() => {
-        const ref: MutVec3 = Math.abs(nz[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
-        return normalize3(cross3(nz, ref));
-      })();
-  const yAxis = cross3(nz, xAxis);
+  // Inline math (same hot-path concern as makeCircleNurbs).
+  const nLen = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
+  const nz: [number, number, number] = [normal[0] / nLen, normal[1] / nLen, normal[2] / nLen];
+
+  let xAxis: [number, number, number];
+  if (xDir) {
+    const xl = Math.sqrt(xDir[0] ** 2 + xDir[1] ** 2 + xDir[2] ** 2);
+    xAxis = [xDir[0] / xl, xDir[1] / xl, xDir[2] / xl];
+  } else {
+    const ref: [number, number, number] = Math.abs(nz[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const xRaw: [number, number, number] = [
+      nz[1] * ref[2] - nz[2] * ref[1],
+      nz[2] * ref[0] - nz[0] * ref[2],
+      nz[0] * ref[1] - nz[1] * ref[0],
+    ];
+    const xLen = Math.sqrt(xRaw[0] ** 2 + xRaw[1] ** 2 + xRaw[2] ** 2);
+    xAxis = [xRaw[0] / xLen, xRaw[1] / xLen, xRaw[2] / xLen];
+  }
+  const yAxis: [number, number, number] = [
+    nz[1] * xAxis[2] - nz[2] * xAxis[1],
+    nz[2] * xAxis[0] - nz[0] * xAxis[2],
+    nz[0] * xAxis[1] - nz[1] * xAxis[0],
+  ];
 
   const nSegments = Math.ceil(Math.abs(endAngle - startAngle) / (Math.PI / 2));
   const dAngle = (endAngle - startAngle) / nSegments;
@@ -811,20 +833,13 @@ function makeEllipseNurbs(
     knots[i] = wasmIndex(knots, i) / kMax;
   }
 
-  const startPt = read3(controlPoints, 0);
-  const endPt = read3(controlPoints, controlPoints.length - 3);
+  const sx = wasmIndex(controlPoints, 0);
+  const sy = wasmIndex(controlPoints, 1);
+  const sz = wasmIndex(controlPoints, 2);
+  const ex = wasmIndex(controlPoints, controlPoints.length - 3);
+  const ey = wasmIndex(controlPoints, controlPoints.length - 2);
+  const ez = wasmIndex(controlPoints, controlPoints.length - 1);
 
-  const id = bk.makeNurbsEdge(
-    startPt[0],
-    startPt[1],
-    startPt[2],
-    endPt[0],
-    endPt[1],
-    endPt[2],
-    degree,
-    knots,
-    controlPoints,
-    weights
-  );
+  const id = bk.makeNurbsEdge(sx, sy, sz, ex, ey, ez, degree, knots, controlPoints, weights);
   return edgeHandle(id);
 }
