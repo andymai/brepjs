@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Component, Suspense, lazy, type ReactNode } from 'react';
 
 // `three` (≈900 KB) is only reachable through ViewerPanel's subtree, so
 // gating ViewerPanel behind a dynamic import moves Three.js, R3F, drei,
@@ -20,10 +20,45 @@ function ViewerFallback() {
   );
 }
 
+// React.lazy propagates a rejected promise as a render error. Without an
+// ErrorBoundary, a chunk-load failure (CDN hiccup, going offline mid-load)
+// would unmount the entire playground. Reload-on-retry is used because
+// `lazy()` caches its promise — clearing local state alone wouldn't re-
+// attempt the import.
+class ViewerErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <div
+          className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gray-950 text-sm text-gray-400"
+          role="alert"
+        >
+          <span>Viewer failed to load.</span>
+          <button
+            onClick={() => {
+              window.location.reload();
+            }}
+            className="rounded bg-surface-overlay px-3 py-1 text-xs text-white hover:bg-surface-overlay/80"
+          >
+            Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function ViewerPanelLazy() {
   return (
-    <Suspense fallback={<ViewerFallback />}>
-      <ViewerPanel />
-    </Suspense>
+    <ViewerErrorBoundary>
+      <Suspense fallback={<ViewerFallback />}>
+        <ViewerPanel />
+      </Suspense>
+    </ViewerErrorBoundary>
   );
 }
