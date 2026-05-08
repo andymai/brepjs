@@ -1,331 +1,331 @@
 {
-  "version": 1,
-  "generated": "2026-05-08T21:18:11.008Z",
+  "version": 2,
+  "generated": "2026-05-08T21:52:22.179Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/core/dimensionTypes.ts|no-double-cast|36|s as unknown as Record<string, unknown>"
+      "fingerprint": "src/core/dimensionTypes.ts|no-double-cast|s as unknown as Record<string, unknown>|#0"
     },
     {
       "file": "src/core/dimensionTypes.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/core/dimensionTypes.ts|no-double-cast|46|s as unknown as Record<string, unknown>"
+      "fingerprint": "src/core/dimensionTypes.ts|no-double-cast|s as unknown as Record<string, unknown>|#1"
     },
     {
       "file": "src/core/disposal.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/core/disposal.ts|no-double-cast|48|class NoOpFinalizationRegistry {\n    register(_target: objec"
+      "fingerprint": "src/core/disposal.ts|no-double-cast|class NoOpFinalizationRegistry { register(_target: object, _heldValue: un...|#0"
     },
     {
       "file": "src/io/gltfExportFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|228|"
+      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|buildGltfDocument|#0"
     },
     {
       "file": "src/io/gltfExportFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|431|"
+      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|buildGltfDocFromLayout|#0"
     },
     {
       "file": "src/io/threemfExportFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|66|"
+      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|buildZip|#0"
     },
     {
       "file": "src/io/threemfExportFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|205|"
+      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|build3MFModel|#0"
     },
     {
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|682|"
+      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|makeCircleNurbs|#0"
     },
     {
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|794|"
+      "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|makeEllipseNurbs|#0"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-function-lines|121|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-function-lines|matchFacesGeometrically|#0"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|289|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|buildEvolution/if@5|#0"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|299|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|buildEvolution/if@5|#1"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|317|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|buildEvolution/for@5|#0"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|321|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|buildEvolution/if@5|#2"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|426|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|booleanWithHistoryImpl/if@5|#0"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|432|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|booleanWithHistoryImpl/if@5|#1"
     },
     {
       "file": "src/kernel/brepkit/evolutionOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|438|"
+      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|booleanWithHistoryImpl/if@5|#2"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|125|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|shell|#0"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|142|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|<anonymous>|#0"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|196|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|<anonymous>/if@5|#0"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|200|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|<anonymous>/for-of@5|#0"
     },
     {
       "file": "src/kernel/brepkit/modifierOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|214|"
+      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|<anonymous>/if@5|#1"
     },
     {
       "file": "src/kernel/brepkit/sweepOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-function-lines|252|"
+      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-function-lines|sweepPipeShell|#0"
     },
     {
       "file": "src/kernel/brepkit/sweepOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|288|"
+      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|sweepPipeShell/try@5|#0"
     },
     {
       "file": "src/kernel/brepkit/sweepOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|293|"
+      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|sweepPipeShell/if@6|#0"
     },
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-function-lines|21|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-function-lines|iterShapes|#0"
     },
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|77|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|iterShapes/if@5|#0"
     },
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|113|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|iterShapes/if@5|#1"
     },
     {
       "file": "src/kernel/brepkit/topologyOps.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|220|"
+      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|sew/for-of@5|#0"
     },
     {
       "file": "src/kernel/geometry2d.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/geometry2d.ts|max-function-lines|636|"
+      "fingerprint": "src/kernel/geometry2d.ts|max-function-lines|numericalIntersect|#0"
     },
     {
       "file": "src/kernel/occt/advancedOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|700|"
+      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|surfaceCurvature|#0"
     },
     {
       "file": "src/kernel/occt/advancedOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|1096|"
+      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|exportSTEPConfigured|#0"
     },
     {
       "file": "src/kernel/occt/hullOps.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/hullOps.ts|max-function-lines|208|"
+      "fingerprint": "src/kernel/occt/hullOps.ts|max-function-lines|quickHull|#0"
     },
     {
       "file": "src/operations/mateFns.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|133|"
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@5|#0"
     },
     {
       "file": "src/operations/mateFns.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|135|"
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@5|#1"
     },
     {
       "file": "src/operations/mateFns.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|137|"
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@6|#0"
     },
     {
       "file": "src/operations/mateFns.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|142|"
+      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@6|#1"
     },
     {
       "file": "src/operations/straightSkeleton.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/operations/straightSkeleton.ts|max-function-lines|330|"
+      "fingerprint": "src/operations/straightSkeleton.ts|max-function-lines|computeStraightSkeletonImpl|#0"
     },
     {
       "file": "src/topology/metadata/originTrackingFns.ts",
       "rule": "max-nesting-depth",
-      "fingerprint": "src/topology/metadata/originTrackingFns.ts|max-nesting-depth|209|"
+      "fingerprint": "src/topology/metadata/originTrackingFns.ts|max-nesting-depth|propagateOriginsByHash/if@5|#0"
     },
     {
       "file": "src/topology/modifierFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|199|"
+      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|fillet|#0"
     },
     {
       "file": "src/topology/modifierFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|499|"
+      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|draft|#0"
     },
     {
       "file": "src/topology/surfaceFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/surfaceFns.ts|max-function-lines|176|"
+      "fingerprint": "src/topology/surfaceFns.ts|max-function-lines|surfaceFromImage|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|368|unwrapOrThrow(\n          fuseAllFn([val, ...tools.map(resolv"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow( fuseAllFn([val, ...tools.map(resolve)], { ...|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|376|unwrapOrThrow(cutAllFn(val, tools, { ...opts, unsafe: true }"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(cutAllFn(val, tools, { ...opts, unsafe: true })) as unknown as T|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|389|unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0]))"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0])) as unknown as T|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|389|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ValidSolid|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|393|unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0], "
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(fillet(val as unknown as ValidSolid, args[0], args[1])) as unkn...|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|393|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ValidSolid|#1"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|402|unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0])"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0])) as unknown as T|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|402|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ValidSolid|#2"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|407|unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0],"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(chamfer(val as unknown as ValidSolid, args[0], args[1])) as unk...|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|407|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ValidSolid|#3"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|413|unwrapOrThrow(shell(val as unknown as ValidSolid, faces, thi"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(shell(val as unknown as ValidSolid, faces, thickness, opts)) as...|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|413|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ValidSolid|#4"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|417|unwrapOrThrow(offset(val as unknown as ValidSolid, distance,"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(offset(val as unknown as ValidSolid, distance, opts)) as unknow...|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|417|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ValidSolid|#5"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|420|unwrapOrThrow(draftFn(val as unknown as ValidSolid, faces, o"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(draftFn(val as unknown as ValidSolid, faces, opts)) as unknown ...|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|420|val as unknown as ValidSolid"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ValidSolid|#6"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|443|unwrapOrThrow(linearPattern(val, dir, count, spacing)) as un"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(linearPattern(val, dir, count, spacing)) as unknown as T|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|445|unwrapOrThrow(circularPattern(val, axis, count, angle)) as u"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow(circularPattern(val, axis, count, angle)) as unknown as T|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|464|val as unknown as ClosedWire"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as ClosedWire|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|488|val as unknown as OrientedFace & PlanarFace"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as OrientedFace & PlanarFace|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|491|val as unknown as OrientedFace & PlanarFace"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|val as unknown as OrientedFace & PlanarFace|#1"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|501|createWrappedFace(val) as unknown as Wrapped<T>"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|createWrappedFace(val) as unknown as Wrapped<T>|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "max-function-lines",
-      "fingerprint": "src/topology/wrapperFns.ts|max-function-lines|345|"
+      "fingerprint": "src/topology/wrapperFns.ts|max-function-lines|createWrapped3D|#0"
     }
   ]
 }
