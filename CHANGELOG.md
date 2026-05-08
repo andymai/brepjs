@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.5.0](https://github.com/andymai/brepjs/compare/brepjs-v18.4.1...brepjs-v18.5.0) (2026-05-08)
+
+
+### Features
+
+* **site:** add vercel web analytics to docs and playground ([#901](https://github.com/andymai/brepjs/issues/901)) ([53a67b2](https://github.com/andymai/brepjs/commit/53a67b29b9cc28315bdb79b51d0f84acb60f560f))
+
 ## [18.4.1](https://github.com/andymai/brepjs/compare/brepjs-v18.4.0...brepjs-v18.4.1) (2026-05-08)
 
 
