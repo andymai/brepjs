@@ -80,6 +80,7 @@ import * as surfaceOps from './surfaceOps.js';
 import * as measureOps from './measureOps.js';
 import * as modifierOps from './modifierOps.js';
 import * as sweepOps from './sweepOps.js';
+import * as transformOps from './transformOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -1386,77 +1387,15 @@ export class OcctWasmAdapter implements KernelAdapter {
         }
     >
   ): { handle: KernelType; dispose: () => void } {
-    // Build a 4x4 identity matrix then compose using PreMultiply order
-    // (matches OCCT's trsf.PreMultiply(step) convention)
-    let matrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-    for (const op of ops) {
-      if (op.type === 'translate') {
-        const t = [1, 0, 0, op.x, 0, 1, 0, op.y, 0, 0, 1, op.z, 0, 0, 0, 1];
-        matrix = multiplyMatrices4x4(t, matrix); // PreMultiply
-      } else {
-        // Rotation — angle is DEGREES, convert to radians
-        const ax = op.axis ?? [0, 0, 1];
-        const cn = op.center ?? [0, 0, 0];
-        const rad = (op.angle * Math.PI) / 180;
-        const c = Math.cos(rad);
-        const s = Math.sin(rad);
-        const t = 1 - c;
-        const len = Math.sqrt(ax[0] ** 2 + ax[1] ** 2 + ax[2] ** 2);
-        const [ux, uy, uz] = [ax[0] / len, ax[1] / len, ax[2] / len];
-        const r00 = t * ux * ux + c;
-        const r01 = t * ux * uy - s * uz;
-        const r02 = t * ux * uz + s * uy;
-        const r10 = t * uy * ux + s * uz;
-        const r11 = t * uy * uy + c;
-        const r12 = t * uy * uz - s * ux;
-        const r20 = t * uz * ux - s * uy;
-        const r21 = t * uz * uy + s * ux;
-        const r22 = t * uz * uz + c;
-        const tx = cn[0] - (r00 * cn[0] + r01 * cn[1] + r02 * cn[2]);
-        const ty = cn[1] - (r10 * cn[0] + r11 * cn[1] + r12 * cn[2]);
-        const tz = cn[2] - (r20 * cn[0] + r21 * cn[1] + r22 * cn[2]);
-        const rm = [r00, r01, r02, tx, r10, r11, r12, ty, r20, r21, r22, tz, 0, 0, 0, 1];
-        matrix = multiplyMatrices4x4(rm, matrix); // PreMultiply
-      }
-    }
-    return {
-      handle: { __type: 'transform_matrix', matrix, delete: noop },
-      dispose: noop,
-    };
+    return transformOps.composeTransform(ops);
   }
 
   transform(shape: KernelShape, trsf: KernelType): KernelShape {
-    // Handle various transform representations
-    const t = trsf; /* transform dispatch */ // brepjs-patterns-disable: no-double-cast
-    let matrix: number[] | undefined;
-    if (Array.isArray(t)) {
-      matrix = t as number[];
-    } else if (typeof t === 'object') {
-      if (Array.isArray(t['matrix'])) {
-        matrix = t['matrix'] as number[];
-        if (matrix.length === 16) matrix = matrix.slice(0, 12);
-      } else if (Array.isArray(t['elements'])) matrix = t['elements'] as number[];
-    }
-    if (matrix) {
-      // C++ facade expects 3x4 (12 elements). If we have 4x4 (16), extract rows 0-2.
-      if (matrix.length === 16) {
-        matrix = matrix.slice(0, 12);
-      }
-      if (matrix.length >= 12) {
-        const vec = makeVecDouble(this.Module, matrix);
-        try {
-          return wrapResult(this.k, this.k.transform(unwrap(shape), vec));
-        } finally {
-          vec.delete();
-        }
-      }
-    }
-    // Fallback: just copy the shape (identity transform)
-    return handle(this.k.getShapeType(unwrap(shape)) as ShapeType, this.k.copy(unwrap(shape)));
+    return transformOps.transform(this.k, this.Module, shape, trsf);
   }
 
   translate(shape: KernelShape, x: number, y: number, z: number): KernelShape {
-    return wrapResult(this.k, this.k.translate(unwrap(shape), x, y, z));
+    return transformOps.translate(this.k, shape, x, y, z);
   }
 
   rotate(
@@ -1465,12 +1404,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     axis?: readonly [number, number, number],
     center?: readonly [number, number, number]
   ): KernelShape {
-    const ax = axis ?? [0, 0, 1];
-    const cn = center ?? [0, 0, 0];
-    return wrapResult(
-      this.k,
-      this.k.rotate(unwrap(shape), cn[0], cn[1], cn[2], ax[0], ax[1], ax[2], angle)
-    );
+    return transformOps.rotate(this.k, shape, angle, axis, center);
   }
 
   mirror(
@@ -1478,10 +1412,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     origin: readonly [number, number, number],
     normal: readonly [number, number, number]
   ): KernelShape {
-    return wrapResult(
-      this.k,
-      this.k.mirror(unwrap(shape), origin[0], origin[1], origin[2], normal[0], normal[1], normal[2])
-    );
+    return transformOps.mirror(this.k, shape, origin, normal);
   }
 
   scale(
@@ -1489,36 +1420,23 @@ export class OcctWasmAdapter implements KernelAdapter {
     center: readonly [number, number, number],
     factor: number
   ): KernelShape {
-    return wrapResult(this.k, this.k.scale(unwrap(shape), center[0], center[1], center[2], factor));
+    return transformOps.scale(this.k, shape, center, factor);
   }
 
   generalTransform(
     shape: KernelShape,
     linear: readonly [number, number, number, number, number, number, number, number, number],
     translation: readonly [number, number, number],
-    _isOrthogonal: boolean
+    isOrthogonal: boolean
   ): KernelShape {
-    // Build 3x4 row-major from 3x3 linear + translation (C++ facade expects 12 elements)
-    const matrix = [
-      linear[0],
-      linear[1],
-      linear[2],
-      translation[0],
-      linear[3],
-      linear[4],
-      linear[5],
-      translation[1],
-      linear[6],
-      linear[7],
-      linear[8],
-      translation[2],
-    ];
-    const vec = makeVecDouble(this.Module, matrix);
-    try {
-      return wrapResult(this.k, this.k.generalTransform(unwrap(shape), vec));
-    } finally {
-      vec.delete();
-    }
+    return transformOps.generalTransform(
+      this.k,
+      this.Module,
+      shape,
+      linear,
+      translation,
+      isOrthogonal
+    );
   }
 
   generalTransformNonOrthogonal(
@@ -1526,66 +1444,11 @@ export class OcctWasmAdapter implements KernelAdapter {
     linear: readonly [number, number, number, number, number, number, number, number, number],
     translation: readonly [number, number, number]
   ): KernelShape {
-    return this.generalTransform(shape, linear, translation, false);
+    return transformOps.generalTransform(this.k, this.Module, shape, linear, translation, false);
   }
 
   positionOnCurve(shape: KernelShape, spine: KernelShape, param: number): KernelShape {
-    // Compute Frenet frame at param: point + tangent direction
-    const ptVec = this.k.curvePointAtParam(unwrap(spine), param);
-    const tgVec = this.k.curveTangent(unwrap(spine), param);
-    const px = ptVec.get(0),
-      py = ptVec.get(1),
-      pz = ptVec.get(2);
-    const tx = tgVec.get(0),
-      ty = tgVec.get(1),
-      tz = tgVec.get(2);
-    ptVec.delete();
-    tgVec.delete();
-
-    // Build rotation from Z-axis to tangent direction
-    // Standard frame: origin at (0,0,0), Z-up → target frame: at (px,py,pz), tangent direction
-    // Tangent = new Z direction
-    // Pick a perpendicular X direction
-    let ux: number, uy: number, uz: number;
-    if (Math.abs(tx) < 0.9) {
-      // cross(tangent, (1,0,0))
-      ux = 0;
-      uy = tz;
-      uz = -ty;
-    } else {
-      // cross(tangent, (0,1,0))
-      ux = -tz;
-      uy = 0;
-      uz = tx;
-    }
-    const uLen = Math.sqrt(ux * ux + uy * uy + uz * uz);
-    ux /= uLen;
-    uy /= uLen;
-    uz /= uLen;
-    // V = cross(tangent, U)
-    const vx = ty * uz - tz * uy;
-    const vy = tz * ux - tx * uz;
-    const vz = tx * uy - ty * ux;
-
-    // 3x4 transform matrix: [ux,vx,tx,px, uy,vy,ty,py, uz,vz,tz,pz]
-    const mat = new this.Module.VectorDouble();
-    mat.push_back(ux);
-    mat.push_back(vx);
-    mat.push_back(tx);
-    mat.push_back(px);
-    mat.push_back(uy);
-    mat.push_back(vy);
-    mat.push_back(ty);
-    mat.push_back(py);
-    mat.push_back(uz);
-    mat.push_back(vz);
-    mat.push_back(tz);
-    mat.push_back(pz);
-    try {
-      return wrapResult(this.k, this.k.transform(unwrap(shape), mat));
-    } finally {
-      mat.delete();
-    }
+    return transformOps.positionOnCurve(this.k, this.Module, shape, spine, param);
   }
 
   linearPattern(
@@ -1594,33 +1457,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     spacing: number,
     count: number
   ): KernelShape[] {
-    // The C++ linearPattern returns a compound; we need to extract sub-shapes
-    const compoundId = this.k.linearPattern(
-      unwrap(shape),
-      direction[0],
-      direction[1],
-      direction[2],
-      spacing,
-      count
-    );
-    // Extract solids from compound
-    const subVec = this.k.getSubShapes(compoundId, 'solid');
-    const results: KernelShape[] = [];
-    const n = subVec.size();
-    for (let i = 0; i < n; i++) {
-      results.push(handle('solid', subVec.get(i)));
-    }
-    subVec.delete();
-    // If no solids, try returning the compound's iterShapes
-    if (results.length === 0) {
-      const iter = this.k.iterShapes(compoundId);
-      const n2 = iter.size();
-      for (let i = 0; i < n2; i++) {
-        results.push(wrapResult(this.k, iter.get(i)));
-      }
-      iter.delete();
-    }
-    return results;
+    return transformOps.linearPattern(this.k, shape, direction, spacing, count);
   }
 
   circularPattern(
@@ -1630,56 +1467,11 @@ export class OcctWasmAdapter implements KernelAdapter {
     angleStep: number,
     count: number
   ): KernelShape[] {
-    const compoundId = this.k.circularPattern(
-      unwrap(shape),
-      center[0],
-      center[1],
-      center[2],
-      axis[0],
-      axis[1],
-      axis[2],
-      angleStep,
-      count
-    );
-    const subVec = this.k.getSubShapes(compoundId, 'solid');
-    const results: KernelShape[] = [];
-    try {
-      const n = subVec.size();
-      for (let i = 0; i < n; i++) {
-        results.push(handle('solid', subVec.get(i)));
-      }
-    } finally {
-      subVec.delete();
-    }
-    if (results.length === 0) {
-      const iter = this.k.iterShapes(compoundId);
-      try {
-        const n2 = iter.size();
-        for (let i = 0; i < n2; i++) {
-          results.push(wrapResult(this.k, iter.get(i)));
-        }
-      } finally {
-        iter.delete();
-      }
-    }
-    return results;
+    return transformOps.circularPattern(this.k, shape, center, axis, angleStep, count);
   }
 
   transformBatch(entries: TransformEntry[]): KernelShape[] {
-    return entries.map((entry) => {
-      switch (entry.type) {
-        case 'translate':
-          return this.translate(entry.shape, entry.x, entry.y, entry.z);
-        case 'rotate':
-          return this.rotate(entry.shape, entry.angle, entry.axis, entry.center);
-        case 'scale':
-          return this.scale(entry.shape, entry.center, entry.factor);
-        case 'mirror':
-          return this.mirror(entry.shape, entry.origin, entry.normal);
-        default:
-          notImplemented('transformBatch unknown type');
-      }
-    });
+    return transformOps.transformBatch(this.k, entries);
   }
 
   // =========================================================================
@@ -3671,18 +3463,7 @@ export class OcctWasmAdapter implements KernelAdapter {
 // Matrix multiplication helper (4x4 row-major)
 // ---------------------------------------------------------------------------
 
-function multiplyMatrices4x4(a: number[], b: number[]): number[] {
-  const result = new Array(16).fill(0) as number[];
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
-      for (let k = 0; k < 4; k++) {
-        result[i * 4 + j] =
-          (result[i * 4 + j] as number) + (a[i * 4 + k] as number) * (b[k * 4 + j] as number);
-      }
-    }
-  }
-  return result;
-}
+// multiplyMatrices4x4 has moved to helpers.ts
 
 // --- Convex hull helpers (at module scope) ---
 function findHorizonEdges(
