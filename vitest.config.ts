@@ -42,15 +42,11 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       reporter: ['text', 'text-summary', 'lcov'],
       reportsDirectory: './coverage',
-      // Per-kernel exclude lists: each project measures its own adapter dir
-      // and excludes the others' (which it doesn't load). Source of truth in
-      // kernelRegistry.ts so adding a kernel doesn't require a vitest edit.
-      exclude: [
-        'src/**/*.d.ts',
-        'src/**/index.ts',
-        // Default to OCCT excludes for the root config; per-project blocks below override.
-        ...coverageExcludesFor('occt'),
-      ],
+      // OCCT-flavored excludes are applied at the root because vitest's
+      // project-level coverage.exclude does not override the root list (yet);
+      // see PR description. Source of truth lives in kernelRegistry.ts so
+      // adding a kernel doesn't require a vitest edit.
+      exclude: ['src/**/*.d.ts', 'src/**/index.ts', ...coverageExcludesFor('occt')],
       thresholds: {
         statements: 84,
         // 74 reflects intentional skips for V8 RC4 regressions (PRs #605, #639, #641, commit 8c857d65).

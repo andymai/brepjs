@@ -19,7 +19,7 @@ export interface KernelConfig {
   readonly excludeTests?: readonly string[] | undefined;
   readonly coverageThresholds?: CoverageThresholds | 'informational' | undefined;
   /**
-   * Adapter directory under `src/kernel/` exercised by this kernel's tests.
+   * Repo-root-relative path to this kernel's adapter directory (e.g. `"src/kernel/occt"`).
    * Used to derive coverage exclude patterns: every kernel excludes the
    * adapter dirs it doesn't load.
    */
@@ -94,11 +94,16 @@ export const kernelConfigs: readonly KernelConfig[] = [
  * Coverage exclude patterns for a given kernel: every other kernel's adapter
  * directory (those files aren't loaded so coverage there is meaningless),
  * plus any kernel-specific extras.
+ *
+ * Throws on unknown id so a typo fails at config-load time rather than
+ * silently producing a wrong exclude list.
  */
 export function coverageExcludesFor(id: string): readonly string[] {
+  const config = getKernelConfig(id);
+  if (!config) throw new Error(`Unknown kernel: "${id}"`);
   return [
     ...kernelConfigs.filter((k) => k.id !== id).map((k) => `${k.adapterDir}/**`),
-    ...(getKernelConfig(id)?.extraCoverageExcludes ?? []),
+    ...(config.extraCoverageExcludes ?? []),
   ];
 }
 
