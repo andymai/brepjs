@@ -23,10 +23,13 @@
  * Note: Only src/**\/*.ts files are scanned. This script (in scripts/) is
  * exempt from its own rules by design.
  *
- * Baseline: Fingerprints include the violation's line number. Insertions or
- * deletions above a baselined violation will shift its line, causing it to
- * appear as "new". Run `--update-baseline` after non-trivial edits near
- * baselined code.
+ * Baseline (v2): fingerprints are content-based — `file|rule|snippet|#index`.
+ * Edits *above* a violation no longer reshuffle fingerprints. Editing the
+ * violation itself (rename, signature change, cast text) DOES change the
+ * fingerprint and the line will appear as "new" — which is desired.
+ * Duplicate (file, rule, snippet) triples are disambiguated by source-order
+ * occurrence index, so adding/removing one entry only shifts indices for the
+ * later occurrences in the same group.
  */
 
 import * as ts from 'typescript';
@@ -43,6 +46,8 @@ interface Diagnostic {
   line: number;
   column: number;
   source?: string;
+  /** 0-based index among same (file, ruleId, source) — assigned post-collection. */
+  occurrenceIdx?: number;
 }
 
 interface Rule {
@@ -59,7 +64,7 @@ interface BaselineEntry {
 }
 
 interface Baseline {
-  version: 1;
+  version: 2;
   generated: string;
   entries: BaselineEntry[];
 }
@@ -81,7 +86,9 @@ function getLineAndCol(sourceFile: ts.SourceFile, pos: number): { line: number; 
 }
 
 function getSnippet(sourceFile: ts.SourceFile, node: ts.Node): string {
-  const text = node.getText(sourceFile);
+  // Normalize whitespace BEFORE truncating so multi-line and single-line
+  // formattings of the same expression produce identical fingerprints.
+  const text = node.getText(sourceFile).trim().replace(/\s+/g, ' ');
   return text.length > 80 ? text.slice(0, 77) + '...' : text;
 }
 
@@ -95,8 +102,42 @@ function isDisabledAt(lines: string[], line: number, ruleId: string): boolean {
   return false;
 }
 
-function makeFingerprint(file: string, ruleId: string, line: number, source: string): string {
-  return `${file}|${ruleId}|${line}|${source.trim().slice(0, 60)}`;
+/**
+ * Stable fingerprint that ignores line numbers — invariant under edits above
+ * the violation. Duplicate `(file, rule, snippet)` triples are disambiguated
+ * by occurrence index (0-based, source-order).
+ *
+ * Snippet is whitespace-normalized to absorb formatter changes.
+ */
+function makeFingerprint(file: string, ruleId: string, snippet: string, occurrenceIdx: number): string {
+  const normalized = snippet.trim().replace(/\s+/g, ' ').slice(0, 80);
+  return `${file}|${ruleId}|${normalized}|#${occurrenceIdx}`;
+}
+
+function fingerprintFor(d: Diagnostic): string {
+  return makeFingerprint(d.file, d.ruleId, d.source ?? '', d.occurrenceIdx ?? 0);
+}
+
+/**
+ * Assign each diagnostic an occurrence index among others sharing the same
+ * (file, rule, snippet). Source-ordered so adding/removing a violation only
+ * shifts indices for the violations after it within the same group.
+ */
+function annotateOccurrences(diagnostics: Diagnostic[]): void {
+  const sorted = [...diagnostics].sort((a, b) => {
+    if (a.file !== b.file) return a.file.localeCompare(b.file);
+    if (a.ruleId !== b.ruleId) return a.ruleId.localeCompare(b.ruleId);
+    if (a.line !== b.line) return a.line - b.line;
+    return a.column - b.column;
+  });
+  const counters = new Map<string, number>();
+  for (const d of sorted) {
+    const snippetKey = (d.source ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
+    const groupKey = `${d.file}|${d.ruleId}|${snippetKey}`;
+    const idx = counters.get(groupKey) ?? 0;
+    d.occurrenceIdx = idx;
+    counters.set(groupKey, idx + 1);
+  }
 }
 
 function isUsingDeclaration(declList: ts.VariableDeclarationList): boolean {
@@ -333,6 +374,7 @@ const maxFunctionLines: Rule = {
               file: filePath,
               line,
               column: col,
+              source: name,
             });
           }
         }
@@ -365,17 +407,39 @@ const maxNestingDepth: Rule = {
       );
     }
 
-    function visit(node: ts.Node, depth: number) {
-      let newDepth = depth;
+    function nestingNodeKind(node: ts.Node): string {
+      if (ts.isIfStatement(node)) return 'if';
+      if (ts.isForStatement(node)) return 'for';
+      if (ts.isForInStatement(node)) return 'for-in';
+      if (ts.isForOfStatement(node)) return 'for-of';
+      if (ts.isWhileStatement(node)) return 'while';
+      if (ts.isDoStatement(node)) return 'do';
+      if (ts.isSwitchStatement(node)) return 'switch';
+      if (ts.isTryStatement(node)) return 'try';
+      return '?';
+    }
 
-      // Reset depth inside function bodies
-      if (
-        ts.isFunctionDeclaration(node) ||
-        ts.isMethodDeclaration(node) ||
-        ts.isArrowFunction(node) ||
-        ts.isFunctionExpression(node)
+    function visit(node: ts.Node, depth: number, fnName: string) {
+      let newDepth = depth;
+      let nextFnName = fnName;
+
+      // Reset depth inside function bodies; capture name for snippet
+      if (ts.isFunctionDeclaration(node) && node.name) {
+        newDepth = 0;
+        nextFnName = node.name.text;
+      } else if (ts.isMethodDeclaration(node)) {
+        newDepth = 0;
+        nextFnName = node.name.getText(sourceFile);
+      } else if (
+        ts.isArrowFunction(node) &&
+        ts.isVariableDeclaration(node.parent) &&
+        ts.isIdentifier(node.parent.name)
       ) {
         newDepth = 0;
+        nextFnName = node.parent.name.text;
+      } else if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+        newDepth = 0;
+        nextFnName = '<anonymous>';
       }
 
       if (isNestingNode(node)) {
@@ -391,14 +455,15 @@ const maxNestingDepth: Rule = {
               file: filePath,
               line,
               column: col,
+              source: `${fnName}/${nestingNodeKind(node)}@${newDepth}`,
             });
           }
         }
       }
 
-      ts.forEachChild(node, (child) => visit(child, newDepth));
+      ts.forEachChild(node, (child) => visit(child, newDepth, nextFnName));
     }
-    visit(sourceFile, 0);
+    visit(sourceFile, 0, '<top>');
   },
 };
 
@@ -436,20 +501,34 @@ function collectSrcFiles(dir: string): string[] {
 function loadBaseline(): Baseline | null {
   if (!existsSync(BASELINE_PATH)) return null;
   try {
-    return JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')) as Baseline;
-  } catch {
+    const raw = JSON.parse(readFileSync(BASELINE_PATH, 'utf-8')) as { version: number };
+    if (raw.version !== 2) {
+      console.error(
+        `\x1b[33m⚠ .pattern-baseline.json is version ${raw.version}; expected version 2.\x1b[0m\n` +
+          `  Run \`npm run check:patterns:baseline\` to regenerate with the content-hash format.`
+      );
+      return null;
+    }
+    return raw as Baseline;
+  } catch (err) {
+    console.error(
+      `\x1b[33m⚠ Failed to parse .pattern-baseline.json: ${
+        err instanceof Error ? err.message : String(err)
+      }\x1b[0m\n  Treating as missing; all violations will report as new.`
+    );
     return null;
   }
 }
 
 function saveBaseline(diagnostics: Diagnostic[]): void {
+  annotateOccurrences(diagnostics);
   const entries: BaselineEntry[] = diagnostics.map((d) => ({
     file: d.file,
     rule: d.ruleId,
-    fingerprint: makeFingerprint(d.file, d.ruleId, d.line, d.source ?? ''),
+    fingerprint: fingerprintFor(d),
   }));
   const baseline: Baseline = {
-    version: 1,
+    version: 2,
     generated: new Date().toISOString(),
     entries,
   };
@@ -457,11 +536,9 @@ function saveBaseline(diagnostics: Diagnostic[]): void {
 }
 
 function filterNewViolations(diagnostics: Diagnostic[], baseline: Baseline): Diagnostic[] {
+  annotateOccurrences(diagnostics);
   const baselineSet = new Set(baseline.entries.map((e) => e.fingerprint));
-  return diagnostics.filter((d) => {
-    const fp = makeFingerprint(d.file, d.ruleId, d.line, d.source ?? '');
-    return !baselineSet.has(fp);
-  });
+  return diagnostics.filter((d) => !baselineSet.has(fingerprintFor(d)));
 }
 
 // ─── Output formatters ──────────────────────────────────
