@@ -1,49 +1,21 @@
 /**
- * Vec3 helpers for kernel-adapter math.
+ * Vec3 type alias and bounds-checked WASM index helper.
  *
- * Centralizes the `[number, number, number]` tuple type so kernel ops avoid
- * the `noUncheckedIndexedAccess` × `number[]` pile-up of `arr[0]! arr[1]! arr[2]!`
- * patterns and their accompanying eslint-disable forest.
+ * Centralizes the `[number, number, number]` tuple type so kernel ops can
+ * declare local axis vectors with explicit tuple typing — `nz: [number, number, number]`
+ * instead of `nz: number[]` — and drop the `arr[i]!` non-null assertions that
+ * `noUncheckedIndexedAccess` otherwise demands.
  *
- * For genuinely variadic WASM arrays (matrices, mesh buffers), use {@link wasmIndex}.
+ * `wasmIndex` is the escape hatch for genuinely variadic WASM arrays (knot
+ * vectors, control-point flat arrays) where the index has been structurally
+ * guaranteed by the surrounding loop or the WASM ABI.
+ *
+ * Math helpers (cross/sub/normalize/etc.) are intentionally NOT included —
+ * the closure allocations they introduce regressed the gridfinity benchmark
+ * by 17% in early experiments. Hot-path code keeps inline math.
  */
 
 export type Vec3 = readonly [number, number, number];
-export type MutVec3 = [number, number, number];
-
-/** Subtract two Vec3 values component-wise. */
-export function sub3(a: Vec3, b: Vec3): MutVec3 {
-  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-}
-
-/** Cross product of two Vec3 values. */
-export function cross3(a: Vec3, b: Vec3): MutVec3 {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-}
-
-/** Squared magnitude — cheaper than length when only comparison is needed. */
-export function lenSq3(v: Vec3): number {
-  return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
-}
-
-/** Euclidean length of a Vec3. */
-export function len3(v: Vec3): number {
-  return Math.sqrt(lenSq3(v));
-}
-
-/** Normalize a Vec3, returning the zero vector if length is below {@link eps}. */
-export function normalize3(v: Vec3, eps = 1e-12): MutVec3 {
-  const l = len3(v);
-  return l < eps ? [0, 0, 0] : [v[0] / l, v[1] / l, v[2] / l];
-}
-
-/**
- * Read three consecutive numbers from a flat array as a Vec3 tuple. Caller
- * must guarantee `arr.length >= offset + 3` (typical at WASM boundary).
- */
-export function read3(arr: ArrayLike<number>, offset = 0): MutVec3 {
-  return [arr[offset] as number, arr[offset + 1] as number, arr[offset + 2] as number];
-}
 
 /**
  * Index into a typed/regular array at a position the caller has structurally
