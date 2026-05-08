@@ -31,11 +31,6 @@ export function len3(v: Vec3): number {
   return Math.sqrt(lenSq3(v));
 }
 
-/** Scale a Vec3 by a scalar. */
-export function scale3(v: Vec3, k: number): MutVec3 {
-  return [v[0] * k, v[1] * k, v[2] * k];
-}
-
 /** Normalize a Vec3, returning the zero vector if length is below {@link eps}. */
 export function normalize3(v: Vec3, eps = 1e-12): MutVec3 {
   const l = len3(v);

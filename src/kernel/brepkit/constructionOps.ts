@@ -24,7 +24,16 @@ import {
 import { needsTransform, transformToPlacement } from './internalOps.js';
 import { translate, generalTransform } from './transformOps.js';
 import { sew } from './topologyOps.js';
-import { type Vec3, type MutVec3, cross3, len3, normalize3, read3, sub3, wasmIndex } from '@/utils/vec3.js';
+import {
+  type Vec3,
+  type MutVec3,
+  cross3,
+  len3,
+  normalize3,
+  read3,
+  sub3,
+  wasmIndex,
+} from '@/utils/vec3.js';
 
 export function makeVertex(bk: BrepkitKernel, x: number, y: number, z: number): KernelShape {
   const id = bk.makeVertex(x, y, z);
@@ -531,12 +540,7 @@ export function triangulatedSurface(
   return sew(bk, faces, 1e-6);
 }
 
-export function buildTriFace(
-  bk: BrepkitKernel,
-  a: Vec3,
-  b: Vec3,
-  c: Vec3
-): KernelShape | null {
+export function buildTriFace(bk: BrepkitKernel, a: Vec3, b: Vec3, c: Vec3): KernelShape | null {
   const area = len3(cross3(sub3(b, a), sub3(c, a)));
   if (area < 1e-12) return null;
 
