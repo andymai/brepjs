@@ -63,8 +63,6 @@ export const SHORTCUTS = {
   },
 } as const satisfies Record<string, ShortcutDef>;
 
-export type ShortcutId = keyof typeof SHORTCUTS;
-
 export const isMac =
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent);
 
