@@ -75,6 +75,8 @@ import * as primOps from './primitiveOps.js';
 import * as topoOps from './topologyOps.js';
 import * as repairOps from './repairOps.js';
 import * as meshOps from './meshOps.js';
+import * as curveOps from './curveOps.js';
+import * as surfaceOps from './surfaceOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -2755,76 +2757,41 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   curveType(shape: KernelShape): string {
-    const t = this.k.curveType(unwrap(shape));
-    const map: Record<string, string> = {
-      line: 'LINE',
-      circle: 'CIRCLE',
-      ellipse: 'ELLIPSE',
-      hyperbola: 'HYPERBOLA',
-      parabola: 'PARABOLA',
-      bezier: 'BEZIER_CURVE',
-      bspline: 'BSPLINE_CURVE',
-      offset: 'OFFSET_CURVE',
-      other: 'OTHER_CURVE',
-    };
-    return map[t] ?? t.toUpperCase();
+    return curveOps.curveType(this.k, shape);
   }
 
   curveParameters(shape: KernelShape): [number, number] {
-    const vec = this.k.curveParameters(unwrap(shape));
-    const result: [number, number] = [vec.get(0), vec.get(1)];
-    vec.delete();
-    return result;
+    return curveOps.curveParameters(this.k, shape);
   }
 
   curvePointAtParam(shape: KernelShape, param: number): [number, number, number] {
-    const vec = this.k.curvePointAtParam(unwrap(shape), param);
-    const result: [number, number, number] = [vec.get(0), vec.get(1), vec.get(2)];
-    vec.delete();
-    return result;
+    return curveOps.curvePointAtParam(this.k, shape, param);
   }
 
   curveTangent(
     shape: KernelShape,
     param: number
   ): { point: [number, number, number]; tangent: [number, number, number] } {
-    const tvec = this.k.curveTangent(unwrap(shape), param);
-    const pvec = this.k.curvePointAtParam(unwrap(shape), param);
-    const result = {
-      point: [pvec.get(0), pvec.get(1), pvec.get(2)] as [number, number, number],
-      tangent: [tvec.get(0), tvec.get(1), tvec.get(2)] as [number, number, number],
-    };
-    tvec.delete();
-    pvec.delete();
-    return result;
+    return curveOps.curveTangent(this.k, shape, param);
   }
 
   curveIsClosed(shape: KernelShape): boolean {
-    // C++ handles both wires (BRep_Tool::IsClosed) and edges (BRepAdaptor_Curve::IsClosed)
-    return this.k.curveIsClosed(unwrap(shape));
+    return curveOps.curveIsClosed(this.k, shape);
   }
 
   curveIsPeriodic(shape: KernelShape): boolean {
-    return this.k.curveIsPeriodic(unwrap(shape));
+    return curveOps.curveIsPeriodic(this.k, shape);
   }
 
-  curvePeriod(_shape: KernelShape): number {
-    return 2 * Math.PI; // Periodic curves in OCCT always have period 2π
+  curvePeriod(shape: KernelShape): number {
+    return curveOps.curvePeriod(this.k, shape);
   }
 
   interpolatePoints(
     points: [number, number, number][],
     options?: { periodic?: boolean; tolerance?: number }
   ): KernelShape {
-    const flat: number[] = [];
-    for (const p of points) flat.push(p[0], p[1], p[2]);
-    const vec = makeVecDouble(this.Module, flat);
-    try {
-      const id = this.k.interpolatePoints(vec, options?.periodic ?? false);
-      return handle('edge', id);
-    } finally {
-      vec.delete();
-    }
+    return curveOps.interpolatePoints(this.k, this.Module, points, options);
   }
 
   approximatePoints(
@@ -2836,15 +2803,7 @@ export class OcctWasmAdapter implements KernelAdapter {
       smoothing?: [number, number, number] | null;
     }
   ): KernelShape {
-    const flat: number[] = [];
-    for (const p of points) flat.push(p[0], p[1], p[2]);
-    const vec = makeVecDouble(this.Module, flat);
-    try {
-      const id = this.k.approximatePoints(vec, options?.tolerance ?? 1e-3);
-      return handle('edge', id);
-    } finally {
-      vec.delete();
-    }
+    return curveOps.approximatePoints(this.k, this.Module, points, options);
   }
 
   curveDegreeElevate(_edge: KernelShape, _elevateBy: number): KernelShape {
@@ -2876,73 +2835,44 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   vertexPosition(vertex: KernelShape): [number, number, number] {
-    const vec = this.k.vertexPosition(unwrap(vertex));
-    const result: [number, number, number] = [vec.get(0), vec.get(1), vec.get(2)];
-    vec.delete();
-    return result;
+    return surfaceOps.vertexPosition(this.k, vertex);
   }
 
   surfaceType(face: KernelShape): SurfaceType {
-    const t = this.k.surfaceType(unwrap(face));
-    return t.toLowerCase() as SurfaceType;
+    return surfaceOps.surfaceType(this.k, face);
   }
 
   uvBounds(face: KernelShape): { uMin: number; uMax: number; vMin: number; vMax: number } {
-    const vec = this.k.uvBounds(unwrap(face));
-    const result = {
-      uMin: vec.get(0),
-      uMax: vec.get(1),
-      vMin: vec.get(2),
-      vMax: vec.get(3),
-    };
-    vec.delete();
-    return result;
+    return surfaceOps.uvBounds(this.k, face);
   }
 
   outerWire(face: KernelShape): KernelShape {
-    return handle('wire', this.k.outerWire(unwrap(face)));
+    return surfaceOps.outerWire(this.k, face);
   }
 
   surfaceNormal(face: KernelShape, u: number, v: number): [number, number, number] {
-    const vec = this.k.surfaceNormal(unwrap(face), u, v);
-    const result: [number, number, number] = [vec.get(0), vec.get(1), vec.get(2)];
-    vec.delete();
-    return result;
+    return surfaceOps.surfaceNormal(this.k, face, u, v);
   }
 
   pointOnSurface(face: KernelShape, u: number, v: number): [number, number, number] {
-    const vec = this.k.pointOnSurface(unwrap(face), u, v);
-    const result: [number, number, number] = [vec.get(0), vec.get(1), vec.get(2)];
-    vec.delete();
-    return result;
+    return surfaceOps.pointOnSurface(this.k, face, u, v);
   }
 
   uvFromPoint(face: KernelShape, point: [number, number, number]): [number, number] | null {
-    const vec = this.k.uvFromPoint(unwrap(face), point[0], point[1], point[2]);
-    if (vec.size() < 2) {
-      vec.delete();
-      return null;
-    }
-    const result: [number, number] = [vec.get(0), vec.get(1)];
-    vec.delete();
-    return result;
+    return surfaceOps.uvFromPoint(this.k, face, point);
   }
 
   projectPointOnFace(face: KernelShape, point: [number, number, number]): [number, number, number] {
-    const vec = this.k.projectPointOnFace(unwrap(face), point[0], point[1], point[2]);
-    const result: [number, number, number] = [vec.get(0), vec.get(1), vec.get(2)];
-    vec.delete();
-    return result;
+    return surfaceOps.projectPointOnFace(this.k, face, point);
   }
 
   classifyPointOnFace(
     face: KernelShape,
     u: number,
     v: number,
-    _tolerance?: number
+    tolerance?: number
   ): 'in' | 'on' | 'out' {
-    const result = this.k.classifyPointOnFace(unwrap(face), u, v);
-    return result.toLowerCase() as 'in' | 'on' | 'out';
+    return surfaceOps.classifyPointOnFace(this.k, face, u, v, tolerance);
   }
 
   classifyPointRobust(
@@ -3008,27 +2938,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     visible: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
     hidden: { outline: KernelShape; smooth: KernelShape; sharp: KernelShape };
   } {
-    const [ox, oy, oz] = cameraOrigin;
-    const [dx, dy, dz] = cameraDirection;
-    const hasXAxis = !!cameraXAxis;
-    const [xx, xy, xz] = cameraXAxis ?? [1, 0, 0];
-    const proj = this.k.projectEdges(unwrap(shape), ox, oy, oz, dx, dy, dz, xx, xy, xz, hasXAxis);
-    const wrapOrNull = (id: number): KernelShape =>
-      id === 0
-        ? handle('compound', this.k.makeCompound(new this.Module.VectorUint32()))
-        : handle('compound', id);
-    return {
-      visible: {
-        outline: wrapOrNull(proj.visibleOutline),
-        smooth: wrapOrNull(proj.visibleSmooth),
-        sharp: wrapOrNull(proj.visibleSharp),
-      },
-      hidden: {
-        outline: wrapOrNull(proj.hiddenOutline),
-        smooth: wrapOrNull(proj.hiddenSmooth),
-        sharp: wrapOrNull(proj.hiddenSharp),
-      },
-    };
+    return surfaceOps.projectEdges(
+      this.k,
+      this.Module,
+      shape,
+      cameraOrigin,
+      cameraDirection,
+      cameraXAxis
+    );
   }
 
   // =========================================================================
