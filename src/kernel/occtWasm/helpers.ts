@@ -137,7 +137,7 @@ export function resolveUniformRadius(
   if (typeof radius === 'number') return radius;
   if (Array.isArray(radius)) return radius[0];
   if (edges.length === 0) throw new Error('occt-wasm: no edges provided');
-  const val = radius(edges[0] as KernelShape);
+  const val = radius(edges[0]);
   return typeof val === 'number' ? val : val[0];
 }
 

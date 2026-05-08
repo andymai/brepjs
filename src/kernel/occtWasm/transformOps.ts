@@ -176,27 +176,21 @@ export function positionOnCurve(
 ): KernelShape {
   // Compute Frenet frame at param: point + tangent direction.
   const ptVec = k.curvePointAtParam(unwrap(spine), param);
-  let px = 0,
-    py = 0,
-    pz = 0,
-    tx = 0,
-    ty = 0,
-    tz = 0;
-  try {
-    px = ptVec.get(0);
-    py = ptVec.get(1);
-    pz = ptVec.get(2);
-    const tgVec = k.curveTangent(unwrap(spine), param);
+  const [px, py, pz] = (() => {
     try {
-      tx = tgVec.get(0);
-      ty = tgVec.get(1);
-      tz = tgVec.get(2);
+      return [ptVec.get(0), ptVec.get(1), ptVec.get(2)];
+    } finally {
+      ptVec.delete();
+    }
+  })();
+  const tgVec = k.curveTangent(unwrap(spine), param);
+  const [tx, ty, tz] = (() => {
+    try {
+      return [tgVec.get(0), tgVec.get(1), tgVec.get(2)];
     } finally {
       tgVec.delete();
     }
-  } finally {
-    ptVec.delete();
-  }
+  })();
 
   // Build rotation from Z-axis to tangent direction.
   let ux: number, uy: number, uz: number;

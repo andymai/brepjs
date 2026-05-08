@@ -103,7 +103,7 @@ export function exportSTEP(
   shapes: KernelShape[]
 ): string {
   if (shapes.length === 1) {
-    return k.exportStep(unwrap(shapes[0] as KernelShape));
+    return k.exportStep(unwrap(shapes[0]));
   }
   const compound = makeCompound(shapes);
   return k.exportStep(unwrap(compound));
@@ -159,7 +159,7 @@ export function exportIGES(
   shapes: KernelShape[]
 ): string {
   if (shapes.length === 1) {
-    return k.exportIges(unwrap(shapes[0] as KernelShape));
+    return k.exportIges(unwrap(shapes[0]));
   }
   const compound = makeCompound(shapes);
   return k.exportIges(unwrap(compound));
@@ -276,7 +276,7 @@ export function exportOBJ(mesh: MeshFn, shape: KernelShape, tolerance: number): 
     const triCount = t.length / 3;
     for (let i = 0; i < triCount; i++) pushTri(i * 3);
   }
-  return new TextEncoder().encode(lines.join('\n') + '\n').buffer as ArrayBuffer;
+  return new TextEncoder().encode(lines.join('\n') + '\n').buffer;
 }
 
 export function exportPLY(mesh: MeshFn, shape: KernelShape, tolerance: number): ArrayBuffer {
@@ -321,7 +321,7 @@ export function exportPLY(mesh: MeshFn, shape: KernelShape, tolerance: number): 
     const c = t[i * 3 + 2] ?? 0;
     lines.push(`3 ${a} ${b} ${c}`);
   }
-  return new TextEncoder().encode(lines.join('\n') + '\n').buffer as ArrayBuffer;
+  return new TextEncoder().encode(lines.join('\n') + '\n').buffer;
 }
 
 export function toBREP(k: OcctKernelWasm, shape: KernelShape): string {
@@ -372,20 +372,22 @@ export function writeXCAFToSTEP(
   // brepjs-patterns-disable: no-double-cast
   const id = unwrap(doc);
   const subs = k.getSubShapes(id, 'solid');
-  let hasSolids = false;
-  try {
-    hasSolids = subs.size() > 0;
-  } finally {
-    subs.delete();
-  }
+  const hasSolids = (() => {
+    try {
+      return subs.size() > 0;
+    } finally {
+      subs.delete();
+    }
+  })();
   if (!hasSolids) {
     const faces = k.getSubShapes(id, 'face');
-    let hasFaces = false;
-    try {
-      hasFaces = faces.size() > 0;
-    } finally {
-      faces.delete();
-    }
+    const hasFaces = (() => {
+      try {
+        return faces.size() > 0;
+      } finally {
+        faces.delete();
+      }
+    })();
     if (!hasFaces) return '';
   }
   return k.writeXCAFToSTEP(id);

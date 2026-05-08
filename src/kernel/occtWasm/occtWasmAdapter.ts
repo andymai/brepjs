@@ -60,14 +60,12 @@ import type {
   EmEvolutionData,
 } from './occtWasmTypes.js';
 import {
-  noop,
   handle,
   isOcctWasmHandle,
   unwrap,
   wrapResult,
   makeVecU32,
   makeVecInt,
-  makeVecDouble,
   readVecInt,
 } from './helpers.js';
 import * as boolOps from './booleanOps.js';
@@ -82,6 +80,7 @@ import * as modifierOps from './modifierOps.js';
 import * as sweepOps from './sweepOps.js';
 import * as transformOps from './transformOps.js';
 import * as ioOps from './ioOps.js';
+import * as constructionOps from './constructionOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -685,34 +684,23 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   makeVertex(x: number, y: number, z: number): KernelShape {
-    return handle('vertex', this.k.makeVertex(x, y, z));
+    return constructionOps.makeVertex(this.k, x, y, z);
   }
 
   makeEdge(curve: KernelType, _start?: number, _end?: number): KernelShape {
-    // If curve is two vertex handles, make edge between them
-    // Otherwise this needs the C++ overload for Geom_Curve
-    if (isOcctWasmHandle(curve)) {
-      // Assume this is a vertex-to-vertex edge
-      notImplemented('makeEdge from curve handle');
-    }
-    notImplemented('makeEdge');
+    return constructionOps.makeEdge(this.k, curve);
   }
 
   makeWire(edges: KernelShape[]): KernelShape {
-    const vec = makeVecU32(this.Module, edges.map(unwrap));
-    try {
-      return handle('wire', this.k.makeWire(vec));
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.makeWire(this.k, this.Module, edges);
   }
 
-  makeFace(wire: KernelShape, _planar?: boolean): KernelShape {
-    return handle('face', this.k.makeFace(unwrap(wire)));
+  makeFace(wire: KernelShape, planar?: boolean): KernelShape {
+    return constructionOps.makeFace(this.k, wire, planar);
   }
 
   makeLineEdge(p1: [number, number, number], p2: [number, number, number]): KernelShape {
-    return handle('edge', this.k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
+    return constructionOps.makeLineEdge(this.k, p1, p2);
   }
 
   makeCircleEdge(
@@ -720,18 +708,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     normal: [number, number, number],
     radius: number
   ): KernelShape {
-    return handle(
-      'edge',
-      this.k.makeCircleEdge(
-        center[0],
-        center[1],
-        center[2],
-        normal[0],
-        normal[1],
-        normal[2],
-        radius
-      )
-    );
+    return constructionOps.makeCircleEdge(this.k, center, normal, radius);
   }
 
   makeCircleArc(
@@ -741,20 +718,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     startAngle: number,
     endAngle: number
   ): KernelShape {
-    return handle(
-      'edge',
-      this.k.makeCircleArc(
-        center[0],
-        center[1],
-        center[2],
-        normal[0],
-        normal[1],
-        normal[2],
-        radius,
-        startAngle,
-        endAngle
-      )
-    );
+    return constructionOps.makeCircleArc(this.k, center, normal, radius, startAngle, endAngle);
   }
 
   makeArcEdge(
@@ -762,10 +726,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     p2: [number, number, number],
     p3: [number, number, number]
   ): KernelShape {
-    return handle(
-      'edge',
-      this.k.makeArcEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2], p3[0], p3[1], p3[2])
-    );
+    return constructionOps.makeArcEdge(this.k, p1, p2, p3);
   }
 
   makeEllipseEdge(
@@ -775,19 +736,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     minorRadius: number,
     _xDir?: [number, number, number]
   ): KernelShape {
-    return handle(
-      'edge',
-      this.k.makeEllipseEdge(
-        center[0],
-        center[1],
-        center[2],
-        normal[0],
-        normal[1],
-        normal[2],
-        majorRadius,
-        minorRadius
-      )
-    );
+    return constructionOps.makeEllipseEdge(this.k, center, normal, majorRadius, minorRadius);
   }
 
   makeEllipseArc(
@@ -799,32 +748,19 @@ export class OcctWasmAdapter implements KernelAdapter {
     endAngle: number,
     _xDir?: [number, number, number]
   ): KernelShape {
-    return handle(
-      'edge',
-      this.k.makeEllipseArc(
-        center[0],
-        center[1],
-        center[2],
-        normal[0],
-        normal[1],
-        normal[2],
-        majorRadius,
-        minorRadius,
-        startAngle,
-        endAngle
-      )
+    return constructionOps.makeEllipseArc(
+      this.k,
+      center,
+      normal,
+      majorRadius,
+      minorRadius,
+      startAngle,
+      endAngle
     );
   }
 
   makeBezierEdge(points: [number, number, number][]): KernelShape {
-    const flat: number[] = [];
-    for (const p of points) flat.push(p[0], p[1], p[2]);
-    const vec = makeVecDouble(this.Module, flat);
-    try {
-      return handle('edge', this.k.makeBezierEdge(vec));
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.makeBezierEdge(this.k, this.Module, points);
   }
 
   makeTangentArc(
@@ -832,10 +768,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     startTangent: [number, number, number],
     endPoint: [number, number, number]
   ): KernelShape {
-    const [x1, y1, z1] = startPoint;
-    const [tx, ty, tz] = startTangent;
-    const [x2, y2, z2] = endPoint;
-    return handle('edge', this.k.makeTangentArc(x1, y1, z1, tx, ty, tz, x2, y2, z2));
+    return constructionOps.makeTangentArc(this.k, startPoint, startTangent, endPoint);
   }
 
   makeHelixWire(
@@ -846,35 +779,22 @@ export class OcctWasmAdapter implements KernelAdapter {
     direction?: [number, number, number],
     _leftHanded?: boolean
   ): KernelShape {
-    const px = center ? center[0] : 0;
-    const py = center ? center[1] : 0;
-    const pz = center ? center[2] : 0;
-    const dx = direction ? direction[0] : 0;
-    const dy = direction ? direction[1] : 0;
-    const dz = direction ? direction[2] : 1;
-    return handle('wire', this.k.makeHelixWire(px, py, pz, dx, dy, dz, pitch, height, radius));
+    return constructionOps.makeHelixWire(this.k, pitch, height, radius, center, direction);
   }
 
   makeWireFromMixed(items: KernelShape[]): KernelShape {
-    // Treat all items as edges -- the C++ makeWire handles both
     return this.makeWire(items);
   }
 
   makeCompound(shapes: KernelShape[]): KernelShape {
-    const vec = makeVecU32(this.Module, shapes.map(unwrap));
-    try {
-      return handle('compound', this.k.makeCompound(vec));
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.makeCompound(this.k, this.Module, shapes);
   }
 
   solidFromShell(shell: KernelShape): KernelShape {
-    return handle('solid', this.k.solidFromShell(unwrap(shell)));
+    return constructionOps.solidFromShell(this.k, shell);
   }
 
   hull(_shapes: KernelShape[], _tolerance: number): KernelShape {
-    // TODO: not yet in the C++ facade
     notImplemented('hull');
   }
 
@@ -884,7 +804,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   ): KernelShape {
     if (points.length < 4) throw new Error('hullFromPoints: need at least 4 points');
     const faces = computeConvexHullFaces(points);
-    return this.buildSolidFromFaces(points, faces, tolerance);
+    return constructionOps.buildSolidFromFaces(this.k, this.Module, points, faces, tolerance);
   }
 
   buildSolidFromFaces(
@@ -892,126 +812,31 @@ export class OcctWasmAdapter implements KernelAdapter {
     faces: Array<readonly [number, number, number]>,
     tolerance: number
   ): KernelShape {
-    // Build triangle faces, sew them, and solidify
-    const faceIds: number[] = [];
-    for (const [i0, i1, i2] of faces) {
-      const p0 = points[i0];
-      const p1 = points[i1];
-      const p2 = points[i2];
-      if (!p0 || !p1 || !p2) continue;
-      faceIds.push(this.k.buildTriFace(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z));
-    }
-    const vec = makeVecU32(this.Module, faceIds);
-    try {
-      let sewn = this.k.sewAndSolidify(vec, tolerance);
-      // Fix face orientations for consistent normals (OBJ/hull winding may vary)
-      sewn = this.k.fixFaceOrientations(sewn);
-      return wrapResult(this.k, sewn);
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.buildSolidFromFaces(this.k, this.Module, points, faces, tolerance);
   }
 
   makeNonPlanarFace(wire: KernelShape): KernelShape {
-    return handle('face', this.k.makeNonPlanarFace(unwrap(wire)));
+    return constructionOps.makeNonPlanarFace(this.k, wire);
   }
 
   addHolesInFace(face: KernelShape, holeWires: KernelShape[]): KernelShape {
-    const vec = makeVecU32(this.Module, holeWires.map(unwrap));
-    try {
-      return handle('face', this.k.addHolesInFace(unwrap(face), vec));
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.addHolesInFace(this.k, this.Module, face, holeWires);
   }
 
   removeHolesFromFace(face: KernelShape): KernelShape {
-    // C++ facade takes face + hole indices to remove. Pass all inner wire indices.
-    const allWires = this.k.getSubShapes(unwrap(face), 'wire');
-    const holeCount = allWires.size() - 1; // exclude outer wire
-    allWires.delete();
-    const indices: number[] = [];
-    for (let i = 0; i < holeCount; i++) indices.push(i);
-    const vec = makeVecInt(this.Module, indices);
-    try {
-      return handle('face', this.k.removeHolesFromFace(unwrap(face), vec));
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.removeHolesFromFace(this.k, this.Module, face);
   }
 
   makeFaceOnSurface(surface: KernelType, wire: KernelShape): KernelShape {
-    // surface is a face handle (from extractSurfaceFromFace)
-    // brepjs-patterns-disable: no-double-cast
-    const faceId = unwrap(surface);
-    return handle('face', this.k.makeFaceOnSurface(faceId, unwrap(wire)));
+    return constructionOps.makeFaceOnSurface(this.k, surface, wire);
   }
 
   bsplineSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
-    const vec = new this.Module.VectorDouble();
-    for (const [x, y, z] of points) {
-      vec.push_back(x);
-      vec.push_back(y);
-      vec.push_back(z);
-    }
-    try {
-      return handle('face', this.k.bsplineSurface(vec, rows, cols));
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.bsplineSurface(this.k, this.Module, points, rows, cols);
   }
 
   triangulatedSurface(points: [number, number, number][], rows: number, cols: number): KernelShape {
-    // Build triangulated surface from grid: create triangles + sew into shell
-    const faceIds: number[] = [];
-    for (let r = 0; r < rows - 1; r++) {
-      for (let c = 0; c < cols - 1; c++) {
-        const i00 = r * cols + c;
-        const i10 = (r + 1) * cols + c;
-        const i01 = r * cols + (c + 1);
-        const i11 = (r + 1) * cols + (c + 1);
-        const p00 = points[i00];
-        const p10 = points[i10];
-        const p01 = points[i01];
-        const p11 = points[i11];
-        if (p00 && p10 && p01) {
-          faceIds.push(
-            this.k.buildTriFace(
-              p00[0],
-              p00[1],
-              p00[2],
-              p10[0],
-              p10[1],
-              p10[2],
-              p01[0],
-              p01[1],
-              p01[2]
-            )
-          );
-        }
-        if (p10 && p11 && p01) {
-          faceIds.push(
-            this.k.buildTriFace(
-              p10[0],
-              p10[1],
-              p10[2],
-              p11[0],
-              p11[1],
-              p11[2],
-              p01[0],
-              p01[1],
-              p01[2]
-            )
-          );
-        }
-      }
-    }
-    const vec = makeVecU32(this.Module, faceIds);
-    try {
-      return wrapResult(this.k, this.k.sewAndSolidify(vec, 1e-3));
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.triangulatedSurface(this.k, this.Module, points, rows, cols);
   }
 
   buildTriFace(
@@ -1019,42 +844,27 @@ export class OcctWasmAdapter implements KernelAdapter {
     b: [number, number, number],
     c: [number, number, number]
   ): KernelShape | null {
-    const id = this.k.buildTriFace(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
-    if (id === 0) return null;
-    return handle('face', id);
+    return constructionOps.buildTriFace(this.k, a, b, c);
   }
 
   sewAndSolidify(faces: KernelShape[], tolerance: number): KernelShape {
-    const vec = makeVecU32(this.Module, faces.map(unwrap));
-    try {
-      let sewn = this.k.sewAndSolidify(vec, tolerance);
-      sewn = this.k.fixFaceOrientations(sewn);
-      return handle('solid', sewn);
-    } finally {
-      vec.delete();
-    }
+    return constructionOps.sewAndSolidify(this.k, this.Module, faces, tolerance);
   }
 
-  createPoint3d(_x: number, _y: number, _z: number): KernelType {
-    // Return a plain object -- occt-wasm doesn't expose gp_Pnt via Embind
-    return { x: _x, y: _y, z: _z, __type: 'point3d', delete: noop };
+  createPoint3d(x: number, y: number, z: number): KernelType {
+    return constructionOps.createPoint3d(x, y, z);
   }
 
   createDirection3d(x: number, y: number, z: number): KernelType {
-    return { x, y, z, __type: 'direction3d', delete: noop };
+    return constructionOps.createDirection3d(x, y, z);
   }
 
   createVector3d(x: number, y: number, z: number): KernelType {
-    return { x, y, z, __type: 'vector3d', delete: noop };
+    return constructionOps.createVector3d(x, y, z);
   }
 
   createAxis1(cx: number, cy: number, cz: number, dx: number, dy: number, dz: number): KernelType {
-    return {
-      origin: { x: cx, y: cy, z: cz },
-      direction: { x: dx, y: dy, z: dz },
-      __type: 'axis1',
-      delete: noop,
-    };
+    return constructionOps.createAxis1(cx, cy, cz, dx, dy, dz);
   }
 
   createAxis2(
@@ -1068,13 +878,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     xy?: number,
     xz?: number
   ): KernelType {
-    return {
-      origin: { x: ox, y: oy, z: oz },
-      zDir: { x: zx, y: zy, z: zz },
-      xDir: xx !== undefined ? { x: xx, y: xy, z: xz } : undefined,
-      __type: 'axis2',
-      delete: noop,
-    };
+    return constructionOps.createAxis2(ox, oy, oz, zx, zy, zz, xx, xy, xz);
   }
 
   createAxis3(
@@ -1088,13 +892,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     xy?: number,
     xz?: number
   ): KernelType {
-    return {
-      origin: { x: ox, y: oy, z: oz },
-      zDir: { x: zx, y: zy, z: zz },
-      xDir: xx !== undefined ? { x: xx, y: xy, z: xz } : undefined,
-      __type: 'axis3',
-      delete: noop,
-    };
+    return constructionOps.createAxis3(ox, oy, oz, zx, zy, zz, xx, xy, xz);
   }
 
   // =========================================================================
