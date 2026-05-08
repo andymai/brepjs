@@ -20,7 +20,10 @@ const config: KnipConfig = {
     'packages/brepjs-opencascade': {
       ignore: ['**'],
     },
-    site: {
+    'apps/playground': {
+      ignore: ['**'],
+    },
+    'apps/docs': {
       ignore: ['**'],
     },
   },
