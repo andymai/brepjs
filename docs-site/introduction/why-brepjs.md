@@ -5,7 +5,7 @@ description: 'Code-first CAD for JavaScript: exact B-Rep solids, branded types t
 
 # Why brepjs
 
-> **Try it live:** the [in-browser playground](/playground) compiles a TypeScript snippet and renders the resulting solid in a few hundred milliseconds — no install, no setup.
+> **Try it live:** the <a href="/playground" target="_blank" rel="noopener">in-browser playground</a> compiles a TypeScript snippet and renders the resulting solid in a few hundred milliseconds — no install, no setup.
 
 **brepjs** is a code-first CAD library for JavaScript. It models real solids — exact mathematical boundaries, not triangle meshes — so booleans are precise, fillets land on real edges, measurements are real numbers, and STEP export round-trips with SolidWorks, Fusion, FreeCAD, and OpenSCAD. The library is built on top of OpenCascade WASM today and a Rust-based kernel ([brepkit](https://github.com/andymai/brepkit)) tomorrow; the kernel is pluggable behind a small abstraction layer.
 

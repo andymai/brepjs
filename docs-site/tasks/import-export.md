@@ -54,8 +54,8 @@ const original = box(30, 20, 10);
 const step = unwrap(exportSTEP(original));
 const reimported = unwrap(await importSTEP(step));
 
-console.log('Original volume:', measureVolume(original)); // 6000
-console.log('Reimported volume:', measureVolume(reimported)); // 6000 ± epsilon
+console.log('Original volume:', unwrap(measureVolume(original))); // 6000
+console.log('Reimported volume:', unwrap(measureVolume(reimported))); // 6000 ± epsilon
 ```
 
 Use STEP for any pipeline that involves desktop CAD — Fusion 360, SolidWorks, FreeCAD, OnShape, Rhino.

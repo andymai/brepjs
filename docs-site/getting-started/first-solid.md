@@ -28,7 +28,7 @@ const drilled = unwrap(cut(block, hole));
 const verticalEdges = edgeFinder().inDirection('Z').findAll(drilled);
 const part = unwrap(fillet(drilled, verticalEdges, 1.5));
 
-console.log('Volume:', measureVolume(part).toFixed(2), 'mm³');
+console.log('Volume:', unwrap(measureVolume(part)).toFixed(2), 'mm³');
 
 const step = unwrap(exportSTEP(part));
 console.log('STEP file size:', step.size, 'bytes');
@@ -88,11 +88,11 @@ const part = unwrap(fillet(drilled, edgeFinder().inDirection('Z').findAll(drille
 ### Step 5: measure
 
 ```typescript
-import { box, measureVolume } from 'brepjs/quick';
-console.log('Volume:', measureVolume(box(10, 10, 10)).toFixed(2), 'mm³');
+import { box, measureVolume, unwrap } from 'brepjs/quick';
+console.log('Volume:', unwrap(measureVolume(box(10, 10, 10))).toFixed(2), 'mm³');
 ```
 
-Measurement functions never fail on valid shapes — they return plain numbers. `measureVolume`, `measureArea`, `measureLength` are the most common; see [Measurement](../tasks/measurement) for the full set.
+Measurement functions return `Result<number>` — null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. `unwrap()` extracts the number or throws; in production code prefer `isOk()` / `match()`. `measureVolume`, `measureArea`, `measureLength` are the most common; see [Measurement](../tasks/measurement) for the full set.
 
 ### Step 6: export
 

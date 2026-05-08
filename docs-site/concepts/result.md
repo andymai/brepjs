@@ -51,10 +51,10 @@ The most common pattern. Read the error fields and decide what to do — fall ba
 ### 3. `match` — for exhaustive both-arms handling
 
 ```typescript
-import { box, cylinder, cut, match, measureVolume } from 'brepjs/quick';
+import { box, cylinder, cut, match, measureVolume, unwrap } from 'brepjs/quick';
 
 const summary = match(cut(box(20, 20, 20), cylinder(5, 25)), {
-  ok: (s) => `Volume: ${measureVolume(s).toFixed(2)} mm³`,
+  ok: (s) => `Volume: ${unwrap(measureVolume(s)).toFixed(2)} mm³`,
   err: (e) => `Failed: ${e.code} — ${e.suggestion ?? 'no suggestion'}`,
 });
 console.log(summary);

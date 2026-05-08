@@ -65,10 +65,10 @@ const wires = wireFinder().isClosed().find(face); // closed boundary loops
 A bounded region of a mathematical surface. A box face is a trimmed plane. A cylinder face is a trimmed cylindrical surface. Faces are what you see and interact with in CAD.
 
 ```typescript
-import { faceFinder, measureArea, getSurfaceType } from 'brepjs';
+import { faceFinder, measureArea, getSurfaceType, unwrap } from 'brepjs';
 
 const faces = faceFinder().find(box); // all 6 faces of a box
-const area = measureArea(faces[0]); // area in mm²
+const area = unwrap(measureArea(faces[0])); // area in mm²
 const surfType = getSurfaceType(faces[0]); // 'PLANE', 'CYLINDER', etc.
 ```
 
@@ -88,10 +88,10 @@ A connected set of faces forming a surface. A closed shell (all faces joined, no
 A watertight 3D volume bounded by a closed shell. This is the primary result type in CAD - it represents a real physical part with definite inside and outside.
 
 ```typescript
-import { box, measureVolume } from 'brepjs';
+import { box, measureVolume, unwrap } from 'brepjs';
 
 const myBox = box(10, 10, 10); // returns ValidSolid (a Solid that passes BRepCheck)
-measureVolume(myBox); // 1000
+unwrap(measureVolume(myBox)); // 1000
 ```
 
 ### Compound

@@ -5,7 +5,7 @@ description: 'One-page reference for the brepjs API: init, primitives, booleans,
 
 # Cheat Sheet
 
-A one-page reference for the brepjs API. Bookmark this. Every snippet here is also openable in the [playground](/playground).
+A one-page reference for the brepjs API. Bookmark this. Every snippet here is also openable in the <a href="/playground" target="_blank" rel="noopener">playground</a>.
 
 ## Init
 
@@ -116,11 +116,11 @@ Filters chain — every call narrows the result.
 ## Measurement
 
 ```typescript
-import { measureVolume, measureArea, box } from 'brepjs/quick';
+import { measureVolume, measureArea, box, unwrap } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
-measureVolume(b); // 1000
-measureArea(b); // 600
+unwrap(measureVolume(b)); // 1000
+unwrap(measureArea(b)); // 600
 ```
 
 The fluent equivalents: `shape(b).volume()`, `shape(b).area()`.

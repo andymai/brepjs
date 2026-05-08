@@ -55,7 +55,7 @@ A typical conformance test looks like:
 ```typescript
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { box, measureVolume, measureArea } from '@/index.js';
+import { box, measureVolume, measureArea, unwrap } from '@/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -63,11 +63,11 @@ beforeAll(async () => {
 
 describe('box primitive', () => {
   it('produces correct volume', () => {
-    expect(measureVolume(box(10, 10, 10))).toBeCloseTo(1000, 4);
+    expect(unwrap(measureVolume(box(10, 10, 10)))).toBeCloseTo(1000, 4);
   });
 
   it('produces correct surface area', () => {
-    expect(measureArea(box(10, 10, 10))).toBeCloseTo(600, 4);
+    expect(unwrap(measureArea(box(10, 10, 10)))).toBeCloseTo(600, 4);
   });
 
   it('produces 6 faces, 12 edges, 8 vertices', () => {

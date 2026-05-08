@@ -5,7 +5,7 @@ description: 'Volume, area, length, distance, bounding box, centroid, principal 
 
 # Measurement
 
-Measurement functions return plain numbers. They never throw on valid shapes, never return `Result`, never need to be unwrapped. You ask "what is the volume of this thing?" and you get a number. This chapter is short because the API is small.
+Measurement functions return `Result<number>` — null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. For valid inputs, `unwrap()` extracts the number; in production code prefer `isOk()` / `match()`. You ask "what is the volume of this thing?" and you get a `Result`. This chapter is short because the API is small.
 
 ## The four core measurements
 
@@ -18,31 +18,32 @@ import {
   measureVolume,
   measureArea,
   measureLength,
+  unwrap,
 } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 const cyl = cylinder(5, 20);
 
-console.log('Box volume:', measureVolume(b)); // 1000
-console.log('Cylinder volume:', measureVolume(cyl).toFixed(3)); // 1570.796
-console.log('Box area:', measureArea(b)); // 600
-console.log('Cylinder area:', measureArea(cyl).toFixed(3)); // 785.398
+console.log('Box volume:', unwrap(measureVolume(b))); // 1000
+console.log('Cylinder volume:', unwrap(measureVolume(cyl)).toFixed(3)); // 1570.796
+console.log('Box area:', unwrap(measureArea(b))); // 600
+console.log('Cylinder area:', unwrap(measureArea(cyl)).toFixed(3)); // 785.398
 
 // Edge length
 const cylinder2 = sketchCircle(10).extrude(20);
 const circularEdge = edgeFinder().ofCurveType('CIRCLE').findAll(cylinder2)[0];
 if (circularEdge) {
-  console.log('Edge length:', measureLength(circularEdge).toFixed(3)); // 62.832
+  console.log('Edge length:', unwrap(measureLength(circularEdge)).toFixed(3)); // 62.832
 }
 
 export default cylinder2;
 ```
 
-| Function               | Argument            | Returns                            |
-| ---------------------- | ------------------- | ---------------------------------- |
-| `measureVolume(shape)` | `Shape3D`           | total volume in cubic units        |
-| `measureArea(shape)`   | `Shape3D` or `Face` | total surface area in square units |
-| `measureLength(edge)`  | `Edge` or `Wire`    | length along the curve             |
+| Function               | Argument            | Returns                                               |
+| ---------------------- | ------------------- | ----------------------------------------------------- |
+| `measureVolume(shape)` | `Shape3D`           | `Result<number>` — total volume in cubic units        |
+| `measureArea(shape)`   | `Shape3D` or `Face` | `Result<number>` — total surface area in square units |
+| `measureLength(edge)`  | `Edge` or `Wire`    | `Result<number>` — length along the curve             |
 
 These are the workhorses. The fluent wrapper exposes them as methods: `shape(s).volume()`, `shape(s).area()`.
 
@@ -177,15 +178,15 @@ For a quick "how complex is this shape" check, count entities at each level. A s
 ### Volume check after a boolean
 
 ```typescript
-import { box, cylinder, cut, measureVolume, isOk } from 'brepjs/quick';
+import { box, cylinder, cut, measureVolume, isOk, unwrap } from 'brepjs/quick';
 
 const block = box(20, 20, 20);
 const hole = cylinder(5, 25);
 const result = cut(block, hole);
 
 if (isOk(result)) {
-  const before = measureVolume(block);
-  const after = measureVolume(result.value);
+  const before = unwrap(measureVolume(block));
+  const after = unwrap(measureVolume(result.value));
   const removed = before - after;
   console.log(`Cut removed ${removed.toFixed(2)} mm³`);
 }
@@ -213,10 +214,10 @@ console.log('Total width if linear-packed:', totalWidth);
 The kernel computes everything assuming density 1. Multiply at the end:
 
 ```typescript
-import { box, measureVolume } from 'brepjs/quick';
+import { box, measureVolume, unwrap } from 'brepjs/quick';
 
 const part = box(30, 20, 10);
-const volumeMm3 = measureVolume(part);
+const volumeMm3 = unwrap(measureVolume(part));
 const volumeCm3 = volumeMm3 / 1000;
 const aluminiumDensity = 2.7; // g/cm³
 const massGrams = volumeCm3 * aluminiumDensity;

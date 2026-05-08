@@ -101,8 +101,8 @@ A handful of brepjs functions call `getKernel()` to dispatch:
 
 ```typescript
 // Internal — not user-facing.
-function measureVolume(s: AnyShape): number {
-  return getKernel().measureVolume(s.wrapped);
+function measureVolume(s: Shape3D): Result<number> {
+  return ok(getKernel().volume(s.wrapped));
 }
 ```
 

@@ -184,7 +184,7 @@ if (isClosedWire(someWire)) {
 
 ## What you'll miss (that we'll add)
 
-- **Replicad's workbench.** brepjs has [a similar playground](/playground). Same idea, slightly different UI.
+- **Replicad's workbench.** brepjs has <a href="/playground" target="_blank" rel="noopener">a similar playground</a>. Same idea, slightly different UI.
 - **Some operation names.** `revolution` → `revolve`. `loft` is the same. `pipe` → `sweep`.
 - **Replicad's higher-order helpers.** Some niche helpers (e.g. `genericSweep`) don't have direct brepjs equivalents — usually composing two operations covers the case.
 

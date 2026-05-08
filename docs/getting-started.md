@@ -152,11 +152,11 @@ console.log('Volume:', shape(moved).volume(), 'mm³');
 console.log('Area:', shape(moved).area(), 'mm²');
 
 // Or use the functional API
-import { measureVolume, measureArea } from 'brepjs';
-console.log('Volume:', measureVolume(moved), 'mm³');
+import { measureVolume, measureArea, unwrap } from 'brepjs';
+console.log('Volume:', unwrap(measureVolume(moved)), 'mm³');
 ```
 
-Measurement functions return plain numbers - they never fail on valid shapes.
+Measurement functions return `Result<number>` — null shapes and other inputs that prevent measurement surface as `BrepError` rather than throwing. `unwrap()` extracts the number or throws; in production prefer `isOk()` / `match()`.
 
 ## Step 7: Export
 
@@ -201,7 +201,7 @@ import { box, cylinder, cut, translate, measureVolume, unwrap } from 'brepjs/qui
 const b = box(30, 20, 10);
 const hole = translate(cylinder(4, 15), [15, 10, -2]);
 const part = unwrap(cut(b, hole));
-console.log('Volume:', measureVolume(part).toFixed(1), 'mm³');
+console.log('Volume:', unwrap(measureVolume(part)).toFixed(1), 'mm³');
 ```
 
 ## Browser Setup

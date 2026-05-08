@@ -12,13 +12,13 @@ Three operations turn a 2D profile (or several) into a 3D solid by motion: extru
 The simplest case. A profile pushed along its normal:
 
 ```typescript
-import { sketchRectangle, sketchCircle, measureVolume } from 'brepjs/quick';
+import { sketchRectangle, sketchCircle, measureVolume, unwrap } from 'brepjs/quick';
 
 const block = sketchRectangle(30, 20).extrude(10);
 const cyl = sketchCircle(10).extrude(20);
 
-console.log('Block:', measureVolume(block).toFixed(2));
-console.log('Cylinder:', measureVolume(cyl).toFixed(2));
+console.log('Block:', unwrap(measureVolume(block)).toFixed(2));
+console.log('Cylinder:', unwrap(measureVolume(cyl)).toFixed(2));
 ```
 
 The functional equivalent — `extrude(face, height)` — takes an `OrientedFace` and a distance:

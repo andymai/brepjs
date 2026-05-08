@@ -10,7 +10,7 @@ Every parametric part starts from primitives — boxes, cylinders, spheres, cone
 ## The primitives
 
 ```typescript
-import { box, cylinder, sphere, cone, torus, measureVolume } from 'brepjs/quick';
+import { box, cylinder, sphere, cone, torus, measureVolume, unwrap } from 'brepjs/quick';
 
 box(30, 20, 10); // width × depth × height
 cylinder(5, 20); // radius, height
@@ -18,7 +18,7 @@ sphere(8); // radius
 cone(10, 5, 20); // base radius, top radius, height
 torus(20, 3); // major radius, minor radius
 
-console.log(measureVolume(box(10, 10, 10))); // 1000
+console.log(unwrap(measureVolume(box(10, 10, 10)))); // 1000
 ```
 
 All five return `ValidSolid` — a solid that has passed `BRepCheck`.
@@ -84,7 +84,7 @@ torus(20, 3); // ring of radius 20, tube radius 3
 The three transforms. Each returns a new shape; nothing is mutated.
 
 ```typescript
-import { translate, rotate, scale, box, measureVolume } from 'brepjs/quick';
+import { translate, rotate, scale, box, measureVolume, unwrap } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 
@@ -93,8 +93,8 @@ const rotated = rotate(b, 45, { axis: [0, 0, 1], origin: [0, 0, 0] }); // degree
 const scaled = scale(b, 2); // uniform 2x
 const stretched = scale(b, [2, 1, 1]); // per-axis
 
-console.log(measureVolume(scaled)); // 8000 (2³ × 1000)
-console.log(measureVolume(stretched)); // 2000
+console.log(unwrap(measureVolume(scaled))); // 8000 (2³ × 1000)
+console.log(unwrap(measureVolume(stretched))); // 2000
 ```
 
 `rotate(shape, angleDegrees, { axis, origin })`. The axis defaults to `[0, 0, 1]`, origin to `[0, 0, 0]`.

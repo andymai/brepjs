@@ -26,9 +26,9 @@ const drilled = unwrap(cut(a, b));
 const overlap = unwrap(intersect(a, b));
 
 console.log({
-  glued: measureVolume(glued).toFixed(2),
-  drilled: measureVolume(drilled).toFixed(2),
-  overlap: measureVolume(overlap).toFixed(2),
+  glued: unwrap(measureVolume(glued)).toFixed(2),
+  drilled: unwrap(measureVolume(drilled)).toFixed(2),
+  overlap: unwrap(measureVolume(overlap)).toFixed(2),
 });
 
 export default drilled;
@@ -105,7 +105,10 @@ const a = box(10, 10, 10);
 const b = box(10, 10, 10, { at: [100, 0, 0] });
 const result = cut(a, b);
 
-if (isOk(result) && Math.abs(measureVolume(result.value) - measureVolume(a)) < 1e-6) {
+if (
+  isOk(result) &&
+  Math.abs(unwrap(measureVolume(result.value)) - unwrap(measureVolume(a))) < 1e-6
+) {
   console.warn('Cut had no effect — operands did not overlap');
 }
 ```

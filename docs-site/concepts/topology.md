@@ -88,13 +88,13 @@ Face surface kinds:
 - `OFFSET_SURFACE`, `EXTRUSION`, `REVOLUTION` — derived
 
 ```typescript
-import { box, faceFinder, measureArea, getSurfaceType } from 'brepjs/quick';
+import { box, faceFinder, measureArea, getSurfaceType, unwrap } from 'brepjs/quick';
 
 const b = box(30, 20, 10);
 const faces = faceFinder().findAll(b); // 6
 const top = faceFinder().inDirection('Z').findAll(b)[0];
 if (top) {
-  console.log('Top area:', measureArea(top)); // 600
+  console.log('Top area:', unwrap(measureArea(top))); // 600
   console.log('Surface:', getSurfaceType(top)); // 'PLANE'
 }
 console.log('All faces:', faces.length);
@@ -117,12 +117,12 @@ console.log('Shells:', shells.length); // 1 — the outer shell of the box
 A 3D volume bounded by one or more shells (one outer, possibly inner shells for cavities). The most common output type. Every primitive (`box`, `cylinder`, `sphere`) returns a `ValidSolid` — a solid that has passed `BRepCheck`.
 
 ```typescript
-import { box, sphere, measureVolume } from 'brepjs/quick';
+import { box, sphere, measureVolume, unwrap } from 'brepjs/quick';
 
 const b = box(10, 10, 10);
 const s = sphere(5);
-console.log('Box volume:', measureVolume(b)); // 1000
-console.log('Sphere volume:', measureVolume(s).toFixed(2)); // 523.60
+console.log('Box volume:', unwrap(measureVolume(b))); // 1000
+console.log('Sphere volume:', unwrap(measureVolume(s)).toFixed(2)); // 523.60
 ```
 
 ### Compound
@@ -130,10 +130,10 @@ console.log('Sphere volume:', measureVolume(s).toFixed(2)); // 523.60
 A collection of shapes that don't have to be connected. Useful for grouping parts in an assembly or returning multiple results from an operation.
 
 ```typescript
-import { box, sphere, compound, measureVolume } from 'brepjs/quick';
+import { box, sphere, compound, measureVolume, unwrap } from 'brepjs/quick';
 
 const assembly = compound([box(10, 10, 10), sphere(5)]);
-console.log('Compound volume:', measureVolume(assembly).toFixed(2)); // 1523.60
+console.log('Compound volume:', unwrap(measureVolume(assembly)).toFixed(2)); // 1523.60
 ```
 
 A compound containing only solids is a `CompSolid`. Compound is the fallback type when an operation can return multiple disconnected pieces (e.g. a boolean that splits a shape in two).

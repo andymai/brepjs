@@ -103,11 +103,11 @@ Real fillets, on real edges. See [Fillets & Chamfers](../tasks/fillets).
 `THREE.Box3.expandByObject` gives you a bounding box; for volume or surface area you'd integrate triangles yourself. brepjs:
 
 ```typescript
-import { sphere, measureVolume, measureArea } from 'brepjs/quick';
+import { sphere, measureVolume, measureArea, unwrap } from 'brepjs/quick';
 
 const s = sphere(10);
-console.log('Volume:', measureVolume(s).toFixed(4)); // 4188.7902 (exact)
-console.log('Area:', measureArea(s).toFixed(4)); // 1256.6371 (exact)
+console.log('Volume:', unwrap(measureVolume(s)).toFixed(4)); // 4188.7902 (exact)
+console.log('Area:', unwrap(measureArea(s)).toFixed(4)); // 1256.6371 (exact)
 ```
 
 Exact mathematical values, not Riemann sums.

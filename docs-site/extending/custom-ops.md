@@ -105,7 +105,14 @@ This makes `octahedron` available at both `brepjs/topology` and the main `brepjs
 ```typescript
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOC } from './setup.js';
-import { octahedron, measureVolume, measureArea, faceFinder, vertexFinder } from '@/index.js';
+import {
+  octahedron,
+  measureVolume,
+  measureArea,
+  faceFinder,
+  vertexFinder,
+  unwrap,
+} from '@/index.js';
 
 beforeAll(async () => {
   await initOC();
@@ -119,8 +126,8 @@ describe('octahedron', () => {
   });
 
   it('volume is 4r³/3 for regular octahedron', () => {
-    expect(measureVolume(octahedron(1))).toBeCloseTo(4 / 3, 4);
-    expect(measureVolume(octahedron(2))).toBeCloseTo(32 / 3, 4);
+    expect(unwrap(measureVolume(octahedron(1)))).toBeCloseTo(4 / 3, 4);
+    expect(unwrap(measureVolume(octahedron(2)))).toBeCloseTo(32 / 3, 4);
   });
 
   it('throws on negative radius', () => {

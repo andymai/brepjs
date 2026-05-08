@@ -24,14 +24,20 @@ A sketch is a planar face. From a face you build a solid by extruding (linear), 
 For common cross-sections, use the builder functions — they return a sketch with `.extrude` directly:
 
 ```typescript
-import { sketchCircle, sketchRectangle, sketchRoundedRectangle, measureVolume } from 'brepjs/quick';
+import {
+  sketchCircle,
+  sketchRectangle,
+  sketchRoundedRectangle,
+  measureVolume,
+  unwrap,
+} from 'brepjs/quick';
 
 const cyl = sketchCircle(10).extrude(20); // R=10, H=20
 const block = sketchRectangle(30, 20).extrude(10);
 const softBlock = sketchRoundedRectangle(30, 20, 3).extrude(10);
 
-console.log('Cylinder volume:', measureVolume(cyl).toFixed(2));
-console.log('Soft block volume:', measureVolume(softBlock).toFixed(2));
+console.log('Cylinder volume:', unwrap(measureVolume(cyl)).toFixed(2));
+console.log('Soft block volume:', unwrap(measureVolume(softBlock)).toFixed(2));
 
 export default softBlock;
 ```
@@ -43,7 +49,7 @@ All canned sketches default to the XY plane. Pass a plane name as second argumen
 For arbitrary profiles, build the wire path step by step:
 
 ```typescript
-import { Sketcher, measureVolume } from 'brepjs/quick';
+import { Sketcher, measureVolume, unwrap } from 'brepjs/quick';
 
 const profile = new Sketcher('XY')
   .movePointerTo([0, 0])
@@ -57,7 +63,7 @@ const profile = new Sketcher('XY')
   .close();
 
 const part = profile.extrude(8);
-console.log('Notched plate volume:', measureVolume(part));
+console.log('Notched plate volume:', unwrap(measureVolume(part)));
 
 export default part;
 ```
