@@ -33,20 +33,30 @@ export function useCameraPresets(
     if (!activePreset || !bounds || !controlsRef.current) return;
 
     const controls = controlsRef.current;
-    const camera = controls.object as THREE.PerspectiveCamera;
+    const camera = controls.object as THREE.PerspectiveCamera | THREE.OrthographicCamera;
     const target = controls.target as THREE.Vector3;
     const { center, radius } = bounds;
 
-    // Calculate target camera distance
-    const fov = camera.fov;
+    const isOrtho = (camera as THREE.OrthographicCamera).isOrthographicCamera === true;
+
+    // Ortho has no fov; use 45° just to pick a placement distance — framing
+    // comes from zoom below, not distance.
+    const fov = isOrtho ? 45 : (camera as THREE.PerspectiveCamera).fov;
     const fovRad = (fov / 2) * (Math.PI / 180);
     const dist = (radius / Math.sin(fovRad)) * 1.2;
 
-    // Destination position
     const dir = PRESET_DIRECTIONS[activePreset];
     const destPos = new THREE.Vector3().copy(center).addScaledVector(dir, dist);
 
-    // Starting values
+    let startZoom = 1;
+    let destZoom = 1;
+    if (isOrtho) {
+      const ortho = camera as THREE.OrthographicCamera;
+      const viewSize = Math.min(ortho.right - ortho.left, ortho.top - ortho.bottom);
+      startZoom = ortho.zoom;
+      destZoom = viewSize > 0 && radius > 0 ? viewSize / (radius * 2.4) : ortho.zoom;
+    }
+
     const startPos = camera.position.clone();
     const startTarget = target.clone();
     const startTime = performance.now();
@@ -62,9 +72,13 @@ export function useCameraPresets(
       const t = Math.min(elapsed / TRANSITION_MS, 1);
       const eased = easeOutCubic(t);
 
-      // Lerp camera position and target
       camera.position.lerpVectors(startPos, destPos, eased);
       target.lerpVectors(startTarget, center, eased);
+      if (isOrtho) {
+        const ortho = camera as THREE.OrthographicCamera;
+        ortho.zoom = startZoom + (destZoom - startZoom) * eased;
+        ortho.updateProjectionMatrix();
+      }
       controls.update();
       invalidate();
 
