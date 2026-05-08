@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.4.1](https://github.com/andymai/brepjs/compare/brepjs-v18.4.0...brepjs-v18.4.1) (2026-05-08)
+
+
+### Bug Fixes
+
+* **playground:** transpile user TypeScript and stop pinning stale defaults ([#893](https://github.com/andymai/brepjs/issues/893)) ([171f032](https://github.com/andymai/brepjs/commit/171f032a7214cba003a26a9b7036d3e65ab2a8bd))
+
 ## [18.4.0](https://github.com/andymai/brepjs/compare/brepjs-v18.3.2...brepjs-v18.4.0) (2026-05-07)
 
 
