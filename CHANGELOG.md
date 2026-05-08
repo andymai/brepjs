@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.6.0](https://github.com/andymai/brepjs/compare/brepjs-v18.5.3...brepjs-v18.6.0) (2026-05-08)
+
+
+### Features
+
+* **check-patterns:** content-based fingerprints stable under line shifts ([#915](https://github.com/andymai/brepjs/issues/915)) ([5adfb2d](https://github.com/andymai/brepjs/commit/5adfb2d3b357df193a6b51d2ab2ac8adef4dcc64))
+
 ## [18.5.3](https://github.com/andymai/brepjs/compare/brepjs-v18.5.2...brepjs-v18.5.3) (2026-05-08)
 
 
