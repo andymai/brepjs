@@ -108,3 +108,28 @@ export function readVecInt(vec: EmVectorInt): number[] {
   for (let i = 0; i < n; i++) result.push(vec.get(i));
   return result;
 }
+
+/**
+ * Rotate a shape from the kernel's default Z-axis to an arbitrary direction.
+ * Used by primitives whose creation API only takes a Z-aligned form.
+ */
+export function rotateZToDirection(
+  k: OcctKernelWasm,
+  shapeId: number,
+  dir: [number, number, number]
+): number {
+  const [dx, dy, dz] = dir;
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (len < 1e-10) return shapeId;
+  const nx = dx / len,
+    ny = dy / len,
+    nz = dz / len;
+  if (Math.abs(nz - 1) < 1e-10) return shapeId;
+  if (Math.abs(nz + 1) < 1e-10) return k.rotate(shapeId, 0, 0, 0, 1, 0, 0, Math.PI);
+  const ax = -ny,
+    ay = nx;
+  const axLen = Math.sqrt(ax * ax + ay * ay);
+  if (axLen < 1e-10) return shapeId;
+  const angle = Math.acos(Math.max(-1, Math.min(1, nz)));
+  return k.rotate(shapeId, 0, 0, 0, ax / axLen, ay / axLen, 0, angle);
+}

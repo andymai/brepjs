@@ -72,6 +72,7 @@ import {
   readVecInt,
 } from './helpers.js';
 import * as boolOps from './booleanOps.js';
+import * as primOps from './primitiveOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -266,31 +267,6 @@ function resolveUniformRadius(
 
   const val = radius(edges[0]);
   return typeof val === 'number' ? val : val[0];
-}
-
-/** Rotate a shape from Z-axis to an arbitrary direction. */
-function rotateZToDirection(
-  k: OcctKernelWasm,
-  shapeId: number,
-  dir: [number, number, number]
-): number {
-  const [dx, dy, dz] = dir;
-  const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-  if (len < 1e-10) return shapeId;
-  const nx = dx / len,
-    ny = dy / len,
-    nz = dz / len;
-  // Already Z-up
-  if (Math.abs(nz - 1) < 1e-10) return shapeId;
-  // Flip to -Z: rotate 180° around X
-  if (Math.abs(nz + 1) < 1e-10) return k.rotate(shapeId, 0, 0, 0, 1, 0, 0, Math.PI);
-  // General: cross(Z, dir) = rotation axis, angle = acos(nz)
-  const ax = -ny,
-    ay = nx;
-  const axLen = Math.sqrt(ax * ax + ay * ay);
-  if (axLen < 1e-10) return shapeId;
-  const angle = Math.acos(Math.max(-1, Math.min(1, nz)));
-  return k.rotate(shapeId, 0, 0, 0, ax / axLen, ay / axLen, 0, angle);
 }
 
 /**
@@ -676,7 +652,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   // =========================================================================
 
   makeBox(width: number, height: number, depth: number): KernelShape {
-    return handle('solid', this.k.makeBox(width, height, depth));
+    return primOps.makeBox(this.k, width, height, depth);
   }
 
   makeCylinder(
@@ -685,24 +661,11 @@ export class OcctWasmAdapter implements KernelAdapter {
     center?: [number, number, number],
     direction?: [number, number, number]
   ): KernelShape {
-    let id = this.k.makeCylinder(radius, height);
-    // Rotate from Z-axis to direction if needed
-    if (direction) {
-      id = rotateZToDirection(this.k, id, direction);
-    }
-    // Translate to center
-    if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-      id = this.k.translate(id, center[0], center[1], center[2]);
-    }
-    return handle('solid', id);
+    return primOps.makeCylinder(this.k, radius, height, center, direction);
   }
 
   makeSphere(radius: number, center?: [number, number, number]): KernelShape {
-    let id = this.k.makeSphere(radius);
-    if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-      id = this.k.translate(id, center[0], center[1], center[2]);
-    }
-    return handle('solid', id);
+    return primOps.makeSphere(this.k, radius, center);
   }
 
   makeCone(
@@ -712,14 +675,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     center?: [number, number, number],
     direction?: [number, number, number]
   ): KernelShape {
-    let id = this.k.makeCone(radius1, radius2, height);
-    if (direction) {
-      id = rotateZToDirection(this.k, id, direction);
-    }
-    if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-      id = this.k.translate(id, center[0], center[1], center[2]);
-    }
-    return handle('solid', id);
+    return primOps.makeCone(this.k, radius1, radius2, height, center, direction);
   }
 
   makeTorus(
@@ -728,26 +684,19 @@ export class OcctWasmAdapter implements KernelAdapter {
     center?: [number, number, number],
     direction?: [number, number, number]
   ): KernelShape {
-    let id = this.k.makeTorus(majorRadius, minorRadius);
-    if (direction) {
-      id = rotateZToDirection(this.k, id, direction);
-    }
-    if (center && (center[0] !== 0 || center[1] !== 0 || center[2] !== 0)) {
-      id = this.k.translate(id, center[0], center[1], center[2]);
-    }
-    return handle('solid', id);
+    return primOps.makeTorus(this.k, majorRadius, minorRadius, center, direction);
   }
 
   makeEllipsoid(aLength: number, bLength: number, cLength: number): KernelShape {
-    return handle('solid', this.k.makeEllipsoid(aLength, bLength, cLength));
+    return primOps.makeEllipsoid(this.k, aLength, bLength, cLength);
   }
 
   makeBoxFromCorners(p1: [number, number, number], p2: [number, number, number]): KernelShape {
-    return handle('solid', this.k.makeBoxFromCorners(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
+    return primOps.makeBoxFromCorners(this.k, p1, p2);
   }
 
   makeRectangle(width: number, height: number): KernelShape {
-    return handle('face', this.k.makeRectangle(width, height));
+    return primOps.makeRectangle(this.k, width, height);
   }
 
   // =========================================================================
