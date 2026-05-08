@@ -110,6 +110,21 @@ export function readVecInt(vec: EmVectorInt): number[] {
 }
 
 /**
+ * Resolve a callback-style radius/distance to a uniform number.
+ * occt-wasm's fillet/chamfer take a single radius — uniform per call.
+ */
+export function resolveUniformRadius(
+  edges: KernelShape[],
+  radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])
+): number {
+  if (typeof radius === 'number') return radius;
+  if (Array.isArray(radius)) return radius[0];
+  if (edges.length === 0) throw new Error('occt-wasm: no edges provided');
+  const val = radius(edges[0] as KernelShape);
+  return typeof val === 'number' ? val : val[0];
+}
+
+/**
  * Rotate a shape from the kernel's default Z-axis to an arbitrary direction.
  * Used by primitives whose creation API only takes a Z-aligned form.
  */
