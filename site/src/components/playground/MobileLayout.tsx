@@ -14,8 +14,10 @@ interface MobileLayoutProps {
 
 // Single-tab-at-a-time mobile shell. All three panels stay mounted so Monaco's
 // undo stack and the R3F viewer's camera survive a tab switch — non-active
-// tabs are just `display: none` (R3F pauses rendering automatically when its
-// canvas isn't visible, so the hidden viewer doesn't burn frames).
+// panes get `visibility: hidden` (so the elements stay in layout). The hidden
+// viewer doesn't burn frames because its Canvas uses `frameloop="demand"`,
+// so WebGL only renders on explicit invalidation, not while the user is on
+// another tab.
 export default function MobileLayout({
   onCodeChange,
   editorFormatRef,
