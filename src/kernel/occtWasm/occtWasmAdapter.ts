@@ -4059,30 +4059,26 @@ export class OcctWasmAdapter implements KernelAdapter {
         return handle('edge', this.k.makeLineEdge(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]));
       }
       if (trimmed.basis && trimmed.basis.__bk2d === 'circle') {
-        // Use makeCircleArc with center/normal/radius/angles for robust arc creation
-        const basis = trimmed.basis;
-        const [pcx, pcy, pcz] = lift(basis.cx, basis.cy);
-        const startAngle = basis.sense ? trimmed.tStart : -trimmed.tStart;
-        const endAngle = basis.sense ? trimmed.tEnd : -trimmed.tEnd;
-        try {
-          return handle(
-            'edge',
-            this.k.makeCircleArc(pcx, pcy, pcz, zx, zy, zz, basis.radius, startAngle, endAngle)
-          );
-        } catch {
-          // Fall back to 3-point arc if circle arc fails
-          const bounds = ow2d.curveBounds(cu);
-          const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
-          const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
-          const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
-          const p1 = lift(u1, v1);
-          const pm = lift(um, vm);
-          const p2 = lift(u2, v2);
-          return handle(
-            'edge',
-            this.k.makeArcEdge(p1[0], p1[1], p1[2], pm[0], pm[1], pm[2], p2[0], p2[1], p2[2])
-          );
-        }
+        // 3-point arc through three lifted points. Building via
+        // makeCircleArc(center, normal, radius, startAngle, endAngle) routes
+        // angles through OCCT's plane-local X-axis, which can disagree with
+        // the Y-axis brepjs computes here (Y = Z × X) on non-XY planes — that
+        // produced arcs at positions displaced by 2r and FP-divergent
+        // endpoints that didn't merge with adjacent line endpoints in
+        // makeWire (rounded-rectangle cutouts on XZ failing as 10F/32E/32V
+        // invalid). Sharing the lift() with the line branches makes endpoint
+        // coordinates bit-identical so MakeWire merges with default tolerance.
+        const bounds = ow2d.curveBounds(cu);
+        const [u1, v1] = ow2d.evaluateCurve2d(cu, bounds.first);
+        const [um, vm] = ow2d.evaluateCurve2d(cu, (bounds.first + bounds.last) / 2);
+        const [u2, v2] = ow2d.evaluateCurve2d(cu, bounds.last);
+        const p1 = lift(u1, v1);
+        const pm = lift(um, vm);
+        const p2 = lift(u2, v2);
+        return handle(
+          'edge',
+          this.k.makeArcEdge(p1[0], p1[1], p1[2], pm[0], pm[1], pm[2], p2[0], p2[1], p2[2])
+        );
       }
       // Fall through to interpolation for other trimmed basis types
     }
