@@ -54,7 +54,9 @@ export default defineConfig({
       reportsDirectory: './coverage',
       thresholds: {
         statements: 84,
-        branches: 74, // temporarily lowered: V8 RC4 variable fillet skips reduce coverage
+        // 74 reflects intentional skips for V8 RC4 regressions (PRs #605, #639, #641, #8c857d65).
+        // Restore to 84 once those skips are removed.
+        branches: 74,
         functions: 90,
         lines: 84,
       },

@@ -1,10 +1,10 @@
 /**
- * Render hero images for chapter pages by driving the /site playground via
+ * Render hero images for chapter pages by driving the apps/playground via
  * puppeteer. Each entry produces a PNG at apps/docs/public/images/<chapter>/<name>.png
  * which chapters reference inline.
  *
  * Prereqs:
- *   1. Start the playground: cd site && npm run dev (default http://localhost:5173)
+ *   1. Start the playground: cd apps/playground && npm run dev (default http://localhost:5173)
  *   2. Run: npm run docs:render-images
  *
  * The registry below is the canonical list; add a new entry per chapter hero
@@ -18,7 +18,7 @@ import puppeteer from 'puppeteer';
 const { compressToEncodedURIComponent } = lzString;
 
 interface DocHero {
-  /** Chapter path under docs-site, e.g. 'tasks/booleans' */
+  /** Chapter path under apps/docs, e.g. 'tasks/booleans' */
   chapter: string;
   /** Image filename (sans extension), e.g. 'drilled-and-filleted' */
   name: string;

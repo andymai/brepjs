@@ -11,8 +11,6 @@ const config: KnipConfig = {
   workspaces: {
     '.': {
       project: ['src/**/*.ts'],
-      entry: ['src/kernel/occtWasm/occtWasmAdapter.ts'],
-      ignore: [],
       ignoreBinaries: ['tsx'],
       // occt-wasm is dynamically imported in tests/helpers/kernelInit.ts (outside project scope)
       ignoreDependencies: ['occt-wasm'],
@@ -21,9 +19,6 @@ const config: KnipConfig = {
       ignore: ['**'],
     },
     'apps/playground': {
-      ignore: ['**'],
-    },
-    'apps/docs': {
       ignore: ['**'],
     },
   },

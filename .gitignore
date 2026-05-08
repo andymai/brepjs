@@ -34,9 +34,15 @@ src/kernel/wasm/
 # Ad-hoc test scripts
 test-*.mjs
 
-# Auto-generated docs test (regenerated from docs-site/**/*.md)
+# npm pack output
+*.tgz
+
+# Auto-generated docs test (regenerated from apps/docs/**/*.md)
 tests/docs/extracted.test.ts
 
 # VitePress build outputs
-docs-site/.vitepress/cache/
-docs-site/.vitepress/dist/
+apps/docs/.vitepress/cache/
+apps/docs/.vitepress/dist/
+
+# Playground build outputs
+apps/playground/dist/

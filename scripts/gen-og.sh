@@ -11,7 +11,7 @@ fi
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 
-for surface in docs-site site; do
+for surface in apps/docs apps/playground; do
   src="${root}/${surface}/public/og.svg"
   out="${root}/${surface}/public/og.png"
   rsvg-convert -w 1200 -h 630 "$src" -o "$out"
