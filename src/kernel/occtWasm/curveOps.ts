@@ -54,15 +54,18 @@ export function curveTangent(
   param: number
 ): { point: [number, number, number]; tangent: [number, number, number] } {
   const tvec = k.curveTangent(unwrap(shape), param);
-  const pvec = k.curvePointAtParam(unwrap(shape), param);
   try {
-    return {
-      point: [pvec.get(0), pvec.get(1), pvec.get(2)],
-      tangent: [tvec.get(0), tvec.get(1), tvec.get(2)],
-    };
+    const pvec = k.curvePointAtParam(unwrap(shape), param);
+    try {
+      return {
+        point: [pvec.get(0), pvec.get(1), pvec.get(2)],
+        tangent: [tvec.get(0), tvec.get(1), tvec.get(2)],
+      };
+    } finally {
+      pvec.delete();
+    }
   } finally {
     tvec.delete();
-    pvec.delete();
   }
 }
 
