@@ -38,7 +38,6 @@ interface PlaygroundState {
   consoleOutput: string[];
   timeMs: number | null;
   isRunning: boolean;
-  pendingReview: boolean;
   isConsoleCollapsed: boolean;
   isViewerCollapsed: boolean;
   isEditorCollapsed: boolean;
@@ -57,7 +56,6 @@ interface PlaygroundState {
   setConsoleOutput: (output: string[]) => void;
   setTimeMs: (ms: number) => void;
   setIsRunning: (running: boolean) => void;
-  setPendingReview: (pending: boolean) => void;
   setConsoleCollapsed: (collapsed: boolean) => void;
   setViewerCollapsed: (collapsed: boolean) => void;
   setEditorCollapsed: (collapsed: boolean) => void;
@@ -86,7 +84,6 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   consoleOutput: [],
   timeMs: null,
   isRunning: false,
-  pendingReview: false,
   isConsoleCollapsed: false,
   isViewerCollapsed: false,
   isEditorCollapsed: false,
@@ -112,7 +109,6 @@ export const usePlaygroundStore = create<PlaygroundState>((set) => ({
   setConsoleOutput: (consoleOutput) => set({ consoleOutput }),
   setTimeMs: (timeMs) => set({ timeMs }),
   setIsRunning: (isRunning) => set({ isRunning }),
-  setPendingReview: (pendingReview) => set({ pendingReview }),
   setConsoleCollapsed: (isConsoleCollapsed) => set({ isConsoleCollapsed }),
   setViewerCollapsed: (isViewerCollapsed) => set({ isViewerCollapsed }),
   setEditorCollapsed: (isEditorCollapsed) => set({ isEditorCollapsed }),

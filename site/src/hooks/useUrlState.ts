@@ -20,7 +20,6 @@ function selectionsForUrl(): SharedSelection[] {
 
 export function useUrlState() {
   const setCode = usePlaygroundStore((s) => s.setCode);
-  const setPendingReview = usePlaygroundStore((s) => s.setPendingReview);
   const setPendingSharedSelections = usePlaygroundStore((s) => s.setPendingSharedSelections);
   const initialized = useRef(false);
 
@@ -42,7 +41,6 @@ export function useUrlState() {
     }
 
     setCode(result.code);
-    setPendingReview(true);
     if (result.selections.length > 0) {
       setPendingSharedSelections(result.selections);
     }
@@ -51,7 +49,7 @@ export function useUrlState() {
       const next = `${url.pathname}${encodeCodeQuery(result.code)}`;
       history.replaceState(null, '', next);
     }
-  }, [setCode, setPendingReview, setPendingSharedSelections]);
+  }, [setCode, setPendingSharedSelections]);
 
   const updateUrl = (code: string) => {
     const query = encodeCodeQuery(code, selectionsForUrl());

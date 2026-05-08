@@ -25,17 +25,20 @@ export default function MobileLayout({
 }: MobileLayoutProps) {
   const [tab, setTab] = useState<Tab>('viewer');
   const error = usePlaygroundStore((s) => s.error);
+  const hasHadSuccess = usePlaygroundStore((s) => s.lastSuccessfulCode !== null);
 
   // Auto-jump to console on the transition into an error so users see the
-  // failure without hunting for the tab. Mirrors the desktop auto-expand,
-  // and the `wasErrorRef` guard keeps repeated renders during the error
-  // state from forcing the tab back if the user manually navigated away.
+  // failure without hunting for the tab. Gated on `hasHadSuccess` so the very
+  // first eval's error (e.g. a shared link, a stale draft, the seeded default
+  // failing to compile) leaves the user on Viewer — the Console tab's red
+  // badge handles discoverability. Without this gate, mobile silently
+  // teleports docs-link visitors away from the viewport they came to see.
   const wasErrorRef = useRef(false);
   useEffect(() => {
     const isError = !!error;
-    if (isError && !wasErrorRef.current) setTab('console');
+    if (isError && !wasErrorRef.current && hasHadSuccess) setTab('console');
     wasErrorRef.current = isError;
-  }, [error]);
+  }, [error, hasHadSuccess]);
 
   const dismissConsole = useCallback(() => {
     setTab('viewer');

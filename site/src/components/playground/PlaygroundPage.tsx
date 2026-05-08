@@ -31,8 +31,6 @@ const shortcutDefs = Object.values(SHORTCUTS);
 
 export default function PlaygroundPage() {
   const code = usePlaygroundStore((s) => s.code);
-  const pendingReview = usePlaygroundStore((s) => s.pendingReview);
-  const setPendingReview = usePlaygroundStore((s) => s.setPendingReview);
   const isConsoleCollapsed = usePlaygroundStore((s) => s.isConsoleCollapsed);
   const setConsoleCollapsed = usePlaygroundStore((s) => s.setConsoleCollapsed);
   const isViewerCollapsed = usePlaygroundStore((s) => s.isViewerCollapsed);
@@ -89,10 +87,9 @@ export default function PlaygroundPage() {
   );
 
   const handleRun = useCallback(() => {
-    if (pendingReview) setPendingReview(false);
     runCode(code);
     updateUrl(code);
-  }, [runCode, code, updateUrl, pendingReview, setPendingReview]);
+  }, [runCode, code, updateUrl]);
 
   const handleExportSTL = useCallback(() => {
     exportSTL(code);
@@ -490,28 +487,6 @@ export default function PlaygroundPage() {
         isRunning={isRunning}
         compact={isMobile}
       />
-
-      {pendingReview && (
-        <div className="flex items-center gap-3 border-b border-amber-700/50 bg-amber-950/40 px-4 py-2">
-          <span className="text-sm text-amber-200">
-            Code loaded from a shared link. Review before running.
-          </span>
-          <button
-            onClick={handleRun}
-            className="rounded bg-amber-600 px-3 py-0.5 text-xs font-semibold text-white hover:bg-amber-500"
-          >
-            Run
-          </button>
-          <button
-            onClick={() => {
-              setPendingReview(false);
-            }}
-            className="text-xs text-amber-400 hover:text-amber-200"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {isMobile ? (
         <MobileLayout

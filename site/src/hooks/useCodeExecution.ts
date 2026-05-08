@@ -41,11 +41,7 @@ export function useCodeExecution() {
       const engineStore = useEngineStore.getState();
       switch (msg.type) {
         case 'init-done': {
-          // Auto-run current code the moment engine is ready.
-          // Skip auto-run for shared links (pendingReview) — user must review first.
-          if (store.code.trim() && !store.pendingReview) {
-            submitEval(store.code);
-          }
+          if (store.code.trim()) submitEval(store.code);
           break;
         }
         case 'eval-result': {
