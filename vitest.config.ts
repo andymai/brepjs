@@ -54,7 +54,7 @@ export default defineConfig({
       reportsDirectory: './coverage',
       thresholds: {
         statements: 84,
-        // 74 reflects intentional skips for V8 RC4 regressions (PRs #605, #639, #641, #8c857d65).
+        // 74 reflects intentional skips for V8 RC4 regressions (PRs #605, #639, #641, commit 8c857d65).
         // Restore to 84 once those skips are removed.
         branches: 74,
         functions: 90,
