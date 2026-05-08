@@ -26,36 +26,27 @@ const primitivesShowcase = `import { box, cone, cylinder, sphere, torus, transla
 
 // Multi-shape return: export an array of solids and the playground renders
 // each one. Useful for spec sheets, side-by-side comparisons, and tests.
-const s = sphere(8);
-const b = translate(box(14, 14, 14), [22, 0, -7]);
-const c = translate(cylinder(6, 14), [-22, 0, -7]);
-const co = translate(cone(7, 0, 14), [0, 22, -7]);
-const t = translate(torus(7, 2), [0, -22, 0]);
+const s = translate(sphere(8), [0, 0, 8]);
+const b = translate(box(14, 14, 14), [25, 0, 0]);
+const c = translate(cylinder(6, 14), [-25, 0, 0]);
+const co = translate(cone(7, 0, 14), [0, 25, 0]);
+const t = translate(torus(7, 2), [0, -25, 0]);
 
 export default [s, b, c, co, t];
 `;
 
-const vase = `import { Sketcher, revolve, fillet, edgeFinder, unwrap } from 'brepjs/quick';
+const vase = `import { sketchCircle, sketchLoft } from 'brepjs/quick';
 
-// Sketch a 2D profile, revolve it 360° around Z to make a solid of revolution.
-// The closing \`hLineTo(0)\` snaps the profile back to the axis so the revolve
-// produces a watertight body.
-const profile = new Sketcher('XZ')
-  .hLine(18)
-  .vLine(2)
-  .smoothSplineTo([8, 30])
-  .smoothSplineTo([14, 60])
-  .vLine(8)
-  .hLineTo(0)
-  .close();
+// Build a vase by lofting between four circular cross-sections at different
+// heights. Each ring is a planar Sketch; sketchLoft fits a smooth surface
+// through them and caps the ends to make a watertight solid. Tweak the radii
+// for different silhouettes.
+const base = sketchCircle(18, { plane: 'XY', origin: [0, 0, 0] });
+const belly = sketchCircle(22, { plane: 'XY', origin: [0, 0, 22] });
+const neck = sketchCircle(8, { plane: 'XY', origin: [0, 0, 50] });
+const lip = sketchCircle(12, { plane: 'XY', origin: [0, 0, 64] });
 
-const body = unwrap(revolve(profile));
-
-// Fillet the rim — the top of the profile sits at Z=68.
-const lipEdges = edgeFinder().atZ(68, { tol: 0.5 }).findAll(body);
-const filleted = unwrap(fillet(body, lipEdges, 0.6));
-
-export default filleted;
+export default sketchLoft(base, [belly, neck, lip]);
 `;
 
 const pegboard = `import { box, cutAll, cylinder, unwrap } from 'brepjs/quick';
@@ -143,8 +134,8 @@ export const EXAMPLES: readonly Example[] = [
   },
   {
     id: 'vase',
-    label: 'Vase (sketch + revolve)',
-    description: '2D profile with smooth splines revolved 360° around Z.',
+    label: 'Vase (lofted)',
+    description: 'Vase silhouette built by lofting between four circular cross-sections at different heights.',
     code: vase,
   },
   {
