@@ -86,7 +86,9 @@ function getLineAndCol(sourceFile: ts.SourceFile, pos: number): { line: number; 
 }
 
 function getSnippet(sourceFile: ts.SourceFile, node: ts.Node): string {
-  const text = node.getText(sourceFile);
+  // Normalize whitespace BEFORE truncating so multi-line and single-line
+  // formattings of the same expression produce identical fingerprints.
+  const text = node.getText(sourceFile).trim().replace(/\s+/g, ' ');
   return text.length > 80 ? text.slice(0, 77) + '...' : text;
 }
 
@@ -508,7 +510,12 @@ function loadBaseline(): Baseline | null {
       return null;
     }
     return raw as Baseline;
-  } catch {
+  } catch (err) {
+    console.error(
+      `\x1b[33m⚠ Failed to parse .pattern-baseline.json: ${
+        err instanceof Error ? err.message : String(err)
+      }\x1b[0m\n  Treating as missing; all violations will report as new.`
+    );
     return null;
   }
 }

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-05-08T21:52:22.179Z",
+  "generated": "2026-05-08T22:19:18.117Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -15,7 +15,7 @@
     {
       "file": "src/core/disposal.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/core/disposal.ts|no-double-cast|class NoOpFinalizationRegistry { register(_target: object, _heldValue: un...|#0"
+      "fingerprint": "src/core/disposal.ts|no-double-cast|class NoOpFinalizationRegistry { register(_target: object, _heldValue: unknow...|#0"
     },
     {
       "file": "src/io/gltfExportFns.ts",
@@ -215,7 +215,7 @@
     {
       "file": "src/topology/wrapperFns.ts",
       "rule": "no-double-cast",
-      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow( fuseAllFn([val, ...tools.map(resolve)], { ...|#0"
+      "fingerprint": "src/topology/wrapperFns.ts|no-double-cast|unwrapOrThrow( fuseAllFn([val, ...tools.map(resolve)], { ...opts, unsafe: tru...|#0"
     },
     {
       "file": "src/topology/wrapperFns.ts",
