@@ -5,7 +5,7 @@
  * @module
  */
 
-import type { KernelShape } from '@/kernel/types.js';
+import type { KernelShape, NurbsCurveData } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { handle, makeVecDouble, unwrap } from './helpers.js';
 
@@ -119,5 +119,42 @@ export function approximatePoints(
     return handle('edge', id);
   } finally {
     vec.delete();
+  }
+}
+
+export function getNurbsCurveData(k: OcctKernelWasm, edge: KernelShape): NurbsCurveData | null {
+  try {
+    const data = k.getNurbsCurveData(unwrap(edge));
+    try {
+      const nPoles = data.poles.size() / 3;
+      const poles: [number, number, number][] = [];
+      for (let i = 0; i < nPoles; i++) {
+        poles.push([data.poles.get(i * 3), data.poles.get(i * 3 + 1), data.poles.get(i * 3 + 2)]);
+      }
+      const knots: number[] = [];
+      for (let i = 0; i < data.knots.size(); i++) knots.push(data.knots.get(i));
+      const multiplicities: number[] = [];
+      for (let i = 0; i < data.multiplicities.size(); i++)
+        multiplicities.push(data.multiplicities.get(i));
+      const weights: number[] = [];
+      if (data.rational) {
+        for (let i = 0; i < data.weights.size(); i++) weights.push(data.weights.get(i));
+      } else {
+        for (let i = 0; i < nPoles; i++) weights.push(1);
+      }
+      return {
+        degree: data.degree,
+        poles,
+        weights,
+        knots,
+        multiplicities,
+        isPeriodic: data.periodic,
+        isRational: data.rational,
+      };
+    } finally {
+      data.delete();
+    }
+  } catch {
+    return null;
   }
 }
