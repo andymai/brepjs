@@ -106,21 +106,40 @@ Three focused files:
 `@remarks Consumes the sketch — calling this twice throws on the second call.`
 to `Sketch.{revolve,extrude,sweepSketch}`.
 
-### PR 9 — This document
+### PR 9 — Initial ADR
 
-## Deferred
+This document, in its initial form (findings + first 8 PRs).
 
-Two findings require substantial design work and are not addressed here:
+### PR 10 — Invert OO/Fns for Sketch (F5 part 1)
 
-- **F5 — OO/functional reconciliation.** Inverting the relationship (functions
-  hold the implementation, classes delegate) breaks external API contracts and
-  needs a deprecation strategy.
-- **F6 — Validity types.** Tightening `Sketch.wire: Wire` to
-  `Sketch.wire: ClosedWire & PlanarWire` likely requires a phantom type
-  parameter on `Sketch<W extends Wire>`. The 17 casts remain in place pending
-  that design.
+Move the implementation bodies of `face`, `wires`, `revolve`, `extrude`,
+`sweepSketch`, and `loftWith` from `Sketch` class methods into `sketchFns.ts`.
+Class methods become 1-line delegations. ESM circular import (`sketch.ts` ↔
+`sketchFns.ts`) is safe because all access happens at call time, not module
+evaluation.
 
-Both are candidates for a follow-up ADR.
+### PR 11 — Invert OO/Fns for CompoundSketch (F5 part 2)
+
+Same inversion applied to `CompoundSketch`. The shell-generator helpers
+(`faceFromWires`, `guessFaceFromWires`, `fixWire`, `solidFromShellGenerator`)
+move into `sketchFns.ts`.
+
+### PR 12 — Tighten `Sketch.wire` to `ClosedWire & PlanarWire` (F6)
+
+Promote `Sketch.wire` from `Wire` to `ClosedWire & PlanarWire`, reflecting
+the runtime invariant enforced by all sketcher boundaries. The 16 operation-
+side casts collapse; ~7 casts move to construction sites where the invariant
+is provable. Phantom-type parameter (`Sketch<W>`) was considered but rejected
+for type-system simplicity — the simpler tightening achieves most of the
+value with a clearer mental model.
+
+`Drawing` was deliberately not inverted in PR 11: its methods are mostly
+trivial delegations to `innerShape` operations, and inverting would
+necessitate exposing `innerShape` publicly (breaking encapsulation) for
+no real reduction in code size. `drawFns.ts` continues as a sugar layer
+for callers who prefer functional style.
+
+### PR 13 — This update
 
 ## Consequences
 
@@ -136,15 +155,26 @@ Both are candidates for a follow-up ADR.
 - Consume-on-call behaviour of `Sketch` methods now documented in JSDoc
 - `brepjs/text` and `brepjs/projection` subpath imports work consistently with the rest of the API
 - Zero `any` returns in public Layer 3 API
+- `Sketch` and `CompoundSketch` operation logic lives in `sketchFns.ts`,
+  consistent with CLAUDE.md: "all new functionality goes in `*Fns.ts` files"
+- `Sketch.wire` is typed `ClosedWire & PlanarWire`, removing 16 operation-side
+  casts; the validity invariant is now visible in the type system
 
 ### Negative / Trade-offs
 
-- The phantom-type-parameter approach for validity (F6) was not adopted; the
-  17 casts are still in place. Tracked for follow-up.
-- The OO/functional duplication (F5) was not resolved; both APIs continue to
-  exist with class-side as the implementation.
+- ESM circular import between `sketch.ts` and `sketchFns.ts` (and same for
+  `compoundSketch.ts`). Works at runtime because all access happens inside
+  function bodies, but adds a small mental hazard for future refactors —
+  watch for top-level reads of either module's exports during module
+  evaluation.
+- ~7 casts at `new Sketch(...)` construction sites assert the wire is
+  `ClosedWire & PlanarWire`. Localised but unchecked. A phantom-type approach
+  could push these to the type system but at the cost of generic complexity
+  on every `Sketch` reference.
 - Public API surface gained a few new module paths (`brepjs/text`,
   `brepjs/projection`) but no existing imports break.
+- `Drawing` retains the OO-implementation-with-Fns-shim shape since its
+  methods are too trivial to benefit from inversion. Documented above.
 
 ## Alternatives Considered
 
@@ -159,11 +189,25 @@ Rejected — the whitelist comment said "TODO: fix by extracting BlueprintSketch
 into a shared module," and the fix was straightforward once `sketcher2d.ts` was
 ready to split anyway.
 
-### Adopt phantom validity types in this audit
+### Adopt phantom validity types
 
-Considered for F6. Rejected because (a) the 17 casts are runtime-correct under
-the implicit "Sketcher always closes" invariant, and (b) the migration touches
-both internal code and public API generic shape — a separate design effort.
+Considered for F6. Rejected in favour of a flat tightening of `Sketch.wire` to
+`ClosedWire & PlanarWire`. The flat approach (a) achieves the audit goal of
+removing the operation-side casts, (b) doesn't add generic-parameter noise to
+every `Sketch` reference, and (c) localises the runtime assertion to the few
+construction boundaries where the invariant is genuinely produced.
+
+A phantom-typed `Sketch<W extends Wire>` could be added later if FaceSketcher's
+non-planar case becomes a problem in practice — the current escape hatch is a
+single cast inside `FaceSketcher.done()`.
+
+### Invert Drawing's OO/Fns relationship
+
+Considered as part of F5. Rejected because `Drawing`'s methods are mostly
+1-line delegations to `innerShape` operations (`cut`, `fuse`, `translate`,
+`rotate`, etc.). Inverting would require exposing `innerShape` publicly,
+trading encapsulation for no code-size reduction. `drawFns.ts` continues as
+a sugar layer.
 
 ## Related
 
