@@ -15,8 +15,6 @@
  * @module
  */
 
-import { wasmIndex } from '@/utils/vec3.js';
-
 // ---------------------------------------------------------------------------
 // 2D Curve types
 // ---------------------------------------------------------------------------
@@ -142,8 +140,10 @@ export function tangentCurve2d(c: Curve2dObj, t: number): [number, number] {
     }
     case 'bspline': {
       const h = 1e-8;
-      const kFirst = wasmIndex(c.knots, 0);
-      const kLast = wasmIndex(c.knots, c.knots.length - 1);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
+      const kFirst = c.knots[0]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
+      const kLast = c.knots[c.knots.length - 1]!;
       const p0 = evaluateBSpline2d(c, Math.max(kFirst, t - h));
       const p1 = evaluateBSpline2d(c, Math.min(kLast, t + h));
       const dt = Math.min(kLast, t + h) - Math.max(kFirst, t - h);
@@ -168,7 +168,8 @@ export function curveBounds(c: Curve2dObj): { first: number; last: number } {
     case 'bezier':
       return { first: 0, last: 1 };
     case 'bspline':
-      return { first: wasmIndex(c.knots, 0), last: wasmIndex(c.knots, c.knots.length - 1) };
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- known-valid
+      return { first: c.knots[0]!, last: c.knots[c.knots.length - 1]! };
     case 'trimmed':
       return { first: 0, last: 1 };
   }
@@ -660,8 +661,10 @@ function numericalIntersect(
   const crossTol = Math.max(tolerance * 100, 0.5);
   const seg2Bounds = new Float64Array(N * 6); // xmin, xmax, ymin, ymax, tmid, _pad per segment
   for (let j = 0; j < N; j++) {
-    const a = wasmIndex(pts2, j);
-    const b = wasmIndex(pts2, j + 1);
+    /* eslint-disable @typescript-eslint/no-non-null-assertion -- known array index */
+    const a = pts2[j]!,
+      b = pts2[j + 1]!;
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
     const off = j * 6;
     seg2Bounds[off] = Math.min(a.x, b.x);
     seg2Bounds[off + 1] = Math.max(a.x, b.x);
@@ -674,8 +677,10 @@ function numericalIntersect(
   const candidates: { t1: number; t2: number }[] = [];
   const selfMinSep = (b1.last - b1.first) / 5;
   for (let i = 0; i < N; i++) {
-    const p1a = wasmIndex(pts1, i);
-    const p1b = wasmIndex(pts1, i + 1);
+    /* eslint-disable @typescript-eslint/no-non-null-assertion -- known array index */
+    const p1a = pts1[i]!;
+    const p1b = pts1[i + 1]!;
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
     // Hoist outer segment AABB (computed once per outer iteration)
     const x1min = Math.min(p1a.x, p1b.x) - crossTol;
     const x1max = Math.max(p1a.x, p1b.x) + crossTol;
@@ -684,10 +689,11 @@ function numericalIntersect(
     const t1mid = (p1a.t + p1b.t) / 2;
     for (let j = 0; j < N; j++) {
       const off = j * 6;
-      if (x1max < wasmIndex(seg2Bounds, off) || wasmIndex(seg2Bounds, off + 1) < x1min) continue;
-      if (y1max < wasmIndex(seg2Bounds, off + 2) || wasmIndex(seg2Bounds, off + 3) < y1min)
-        continue;
-      const t2mid = wasmIndex(seg2Bounds, off + 4);
+      /* eslint-disable @typescript-eslint/no-non-null-assertion -- typed array indices known valid */
+      if (x1max < seg2Bounds[off]! || seg2Bounds[off + 1]! < x1min) continue;
+      if (y1max < seg2Bounds[off + 2]! || seg2Bounds[off + 3]! < y1min) continue;
+      const t2mid = seg2Bounds[off + 4]!;
+      /* eslint-enable @typescript-eslint/no-non-null-assertion */
       if (isSelf && Math.abs(t1mid - t2mid) < selfMinSep) continue;
       candidates.push({ t1: t1mid, t2: t2mid });
     }
@@ -838,24 +844,27 @@ function evaluateBezier(poles: [number, number][], t: number): [number, number] 
   // De Casteljau
   const n = poles.length;
   const work = poles.map(([x, y]) => [x, y] as [number, number]);
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
   for (let r = 1; r < n; r++) {
     for (let i = 0; i < n - r; i++) {
-      const wi = wasmIndex(work, i);
-      const wi1 = wasmIndex(work, i + 1);
+      const wi = work[i]!;
+      const wi1 = work[i + 1]!;
       wi[0] = (1 - t) * wi[0] + t * wi1[0];
       wi[1] = (1 - t) * wi[1] + t * wi1[1];
     }
   }
-  return wasmIndex(work, 0);
+  return work[0]!;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
 
 function evaluateBSpline2d(c: BSpline2d, t: number): [number, number] {
+  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM array indices */
   // Expand knots with multiplicities
   const fullKnots: number[] = [];
   for (let i = 0; i < c.knots.length; i++) {
     const mult = c.multiplicities[i] ?? 1;
     for (let j = 0; j < mult; j++) {
-      fullKnots.push(wasmIndex(c.knots, i));
+      fullKnots.push(c.knots[i]!);
     }
   }
 
@@ -865,23 +874,23 @@ function evaluateBSpline2d(c: BSpline2d, t: number): [number, number] {
   const k = fullKnots.length;
 
   // Clamp t to domain
-  const tClamped = Math.max(wasmIndex(fullKnots, p), Math.min(wasmIndex(fullKnots, k - p - 1), t));
+  const tClamped = Math.max(fullKnots[p]!, Math.min(fullKnots[k - p - 1]!, t));
 
   // Find span
   let span = p;
   for (let i = p; i < k - p - 1; i++) {
-    if (tClamped >= wasmIndex(fullKnots, i) && tClamped < wasmIndex(fullKnots, i + 1)) {
+    if (tClamped >= fullKnots[i]! && tClamped < fullKnots[i + 1]!) {
       span = i;
       break;
     }
   }
-  if (tClamped >= wasmIndex(fullKnots, k - p - 1)) span = k - p - 2;
+  if (tClamped >= fullKnots[k - p - 1]!) span = k - p - 2;
 
   // Extract relevant control points
   const d: [number, number][] = [];
   for (let j = 0; j <= p; j++) {
     const idx = Math.min(span - p + j, n - 1);
-    const pole = wasmIndex(c.poles, Math.max(0, idx));
+    const pole = c.poles[Math.max(0, idx)]!;
     d.push([pole[0], pole[1]]);
   }
 
@@ -893,12 +902,13 @@ function evaluateBSpline2d(c: BSpline2d, t: number): [number, number] {
       const right = fullKnots[i + p - r + 1] ?? 1;
       const denom = right - left;
       const alpha = denom > 1e-15 ? (tClamped - left) / denom : 0;
-      const dj = wasmIndex(d, j);
-      const djPrev = wasmIndex(d, j - 1);
+      const dj = d[j]!;
+      const djPrev = d[j - 1]!;
       dj[0] = (1 - alpha) * djPrev[0] + alpha * dj[0];
       dj[1] = (1 - alpha) * djPrev[1] + alpha * dj[1];
     }
   }
 
-  return wasmIndex(d, p);
+  return d[p]!;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
