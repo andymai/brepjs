@@ -27,6 +27,8 @@ export default defineConfig({
         operations: resolve(__dirname, 'src/operations.ts'),
         '2d': resolve(__dirname, 'src/2d.ts'),
         sketching: resolve(__dirname, 'src/sketching.ts'),
+        text: resolve(__dirname, 'src/text.ts'),
+        projection: resolve(__dirname, 'src/projection.ts'),
         query: resolve(__dirname, 'src/query.ts'),
         measurement: resolve(__dirname, 'src/measurement.ts'),
         io: resolve(__dirname, 'src/io.ts'),

@@ -110,6 +110,26 @@
         "default": "./dist/sketching.cjs"
       }
     },
+    "./text": {
+      "import": {
+        "types": "./dist/text.d.ts",
+        "default": "./dist/text.js"
+      },
+      "require": {
+        "types": "./dist/text.d.ts",
+        "default": "./dist/text.cjs"
+      }
+    },
+    "./projection": {
+      "import": {
+        "types": "./dist/projection.d.ts",
+        "default": "./dist/projection.js"
+      },
+      "require": {
+        "types": "./dist/projection.d.ts",
+        "default": "./dist/projection.cjs"
+      }
+    },
     "./query": {
       "import": {
         "types": "./dist/query.d.ts",
