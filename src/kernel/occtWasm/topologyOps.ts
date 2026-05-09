@@ -16,6 +16,7 @@ import {
   unwrap,
   wrapResult,
 } from './helpers.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 export function iterShapes(k: OcctKernelWasm, shape: KernelShape, type: ShapeType): KernelShape[] {
   const vec = k.getSubShapes(unwrap(shape), type);
@@ -76,10 +77,8 @@ export function edgeToFaceMap(k: OcctKernelWasm, shape: KernelShape): string {
   }
   const map: Record<number, number[]> = {};
   for (let i = 0; i + 1 < data.length; i += 2) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- pairs
-    const edgeHash = data[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- pairs
-    const faceHash = data[i + 1]!;
+    const edgeHash = wasmIndex(data, i);
+    const faceHash = wasmIndex(data, i + 1);
     if (!map[edgeHash]) map[edgeHash] = [];
     map[edgeHash].push(faceHash);
   }

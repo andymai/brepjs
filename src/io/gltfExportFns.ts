@@ -7,6 +7,7 @@
 
 import type { ShapeMesh } from '@/topology/meshFns.js';
 import { getAtOrThrow } from '@/utils/arrayAccess.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -100,12 +101,9 @@ function computeMinMax(data: Float32Array): { min: number[]; max: number[] } {
   const max = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < data.length; i += 3) {
     for (let j = 0; j < 3; j++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j < 3, typed array access
-      const v = data[i + j]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j < 3, array has 3 elements
-      if (v < min[j]!) min[j] = v;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j < 3, array has 3 elements
-      if (v > max[j]!) max[j] = v;
+      const v = wasmIndex(data, i + j);
+      if (v < wasmIndex(min, j)) min[j] = v;
+      if (v > wasmIndex(max, j)) max[j] = v;
     }
   }
   return { min, max };
@@ -403,8 +401,7 @@ function computeMaterialLayout(
     for (const gi of groupIndices) {
       const fg = getAtOrThrow(faceGroups, gi);
       for (let i = fg.start; i < fg.start + fg.count; i++) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- i within triangles bounds
-        indices[offset++] = triangles[i]!;
+        indices[offset++] = wasmIndex(triangles, i);
       }
     }
     primitiveData.push({ indices, materialIdx: matIdx });

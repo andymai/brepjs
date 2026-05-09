@@ -15,6 +15,7 @@ import type {
 } from '@/kernel/types.js';
 import { perfTimer } from '../perfStats.js';
 import { cppFuseAll, cppCutAll } from './booleanBatchOps.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 /** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
 const SIMPLIFY_TOLERANCE = 1e-3;
@@ -276,8 +277,7 @@ function fuseAllPairwiseRange(
 ): KernelShape {
   options.signal?.throwIfAborted();
   const count = end - start;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
-  if (count === 1) return shapes[start]!;
+  if (count === 1) return wasmIndex(shapes, start);
   if (count === 2) {
     return fuse(oc, shapes[start], shapes[start + 1], { ...options, simplify: false });
   }
@@ -317,8 +317,7 @@ export function fuseAll(
   options: BooleanOptions = {}
 ): KernelShape {
   if (shapes.length === 0) throw new Error('fuseAll requires at least one shape');
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
-  if (shapes.length === 1) return shapes[0]!;
+  if (shapes.length === 1) return wasmIndex(shapes, 0);
 
   const { strategy = 'native' } = options;
   if (strategy === 'pairwise') {

@@ -11,6 +11,7 @@ import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { type Result, ok, err, unwrap } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
 import { getBounds, type Bounds3D } from '@/topology/shapeFns.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -124,10 +125,8 @@ export function checkAllInterferences(
 
   shapes.forEach((si, i) => {
     for (let j = i + 1; j < shapes.length; j++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j is bounds-checked
-      if (aabbDisjoint(boxes[i]!, boxes[j]!, tolerance)) continue;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- j is bounds-checked
-      const result = unwrap(checkInterference(si, shapes[j]!, tolerance));
+      if (aabbDisjoint(wasmIndex(boxes, i), wasmIndex(boxes, j), tolerance)) continue;
+      const result = unwrap(checkInterference(si, wasmIndex(shapes, j), tolerance));
       if (result.hasInterference) {
         pairs.push({ i, j, result });
       }

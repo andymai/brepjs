@@ -11,6 +11,7 @@
 import type { KernelInstance, KernelShape, KernelType, OperationResult } from '@/kernel/types.js';
 import { transformWithEvolution } from './evolutionOps.js';
 import { uniqueIOFilename } from '@/utils/ioFilename.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Non-orthogonal general transform (gp_GTrsf path)
@@ -527,8 +528,7 @@ export function bsplineSurface(
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const idx = r * cols + c;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by rows*cols
-      const pt = points[idx]!;
+      const pt = wasmIndex(points, idx);
       const pnt = new oc.gp_Pnt_3(pt[0], pt[1], pt[2]);
       arr.SetValue_1(r + 1, c + 1, pnt);
       pnt.delete();
@@ -569,14 +569,10 @@ export function triangulatedSurface(
       const i01 = r * cols + (c + 1);
       const i11 = (r + 1) * cols + (c + 1);
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by grid
-      const p00 = points[i00]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by grid
-      const p10 = points[i10]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by grid
-      const p01 = points[i01]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by grid
-      const p11 = points[i11]!;
+      const p00 = wasmIndex(points, i00);
+      const p10 = wasmIndex(points, i10);
+      const p01 = wasmIndex(points, i01);
+      const p11 = wasmIndex(points, i11);
 
       // Triangle 1: p00, p10, p01
       const face1 = makeTriFace(oc, p00, p10, p01);

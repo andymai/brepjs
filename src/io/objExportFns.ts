@@ -4,18 +4,16 @@
  */
 
 import type { ShapeMesh } from '@/topology/meshFns.js';
+import { vec3At as readVec3 } from '@/utils/vec3.js';
 
 /** Read a vec3 from a typed array at the given vertex index. */
 function vec3At(arr: Float32Array, i: number): [number, number, number] {
-  const off = i * 3;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
-  return [arr[off]!, arr[off + 1]!, arr[off + 2]!];
+  return readVec3(arr, i * 3);
 }
 
 /** Read a triangle's three vertex indices from the triangles array. */
 function triAt(arr: Uint32Array, offset: number): [number, number, number] {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by caller
-  return [arr[offset]!, arr[offset + 1]!, arr[offset + 2]!];
+  return readVec3(arr, offset);
 }
 
 /**

@@ -177,12 +177,9 @@ export function shell(
           oz = 0;
         for (const vid of origVerts) {
           const pos = bk.getVertexPosition(vid);
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
-          ox += pos[0]!;
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
-          oy += pos[1]!;
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
-          oz += pos[2]!;
+          ox += wasmIndex(pos, 0);
+          oy += wasmIndex(pos, 1);
+          oz += wasmIndex(pos, 2);
         }
         const n = origVerts.length;
         ox /= n;
@@ -200,12 +197,9 @@ export function shell(
               sz = 0;
             for (const svid of sv) {
               const spos = bk.getVertexPosition(svid);
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
-              sx += spos[0]!;
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
-              sy += spos[1]!;
-              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
-              sz += spos[2]!;
+              sx += wasmIndex(spos, 0);
+              sy += wasmIndex(spos, 1);
+              sz += wasmIndex(spos, 2);
             }
             const sn = sv.length;
             sx /= sn;
@@ -315,8 +309,7 @@ export function offsetWire2D(
   const coords2d: number[] = [];
   for (const edge of edges) {
     const verts = bk.getEdgeVertices(unwrap(edge, 'edge'));
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM return value
-    coords2d.push(verts[0]!, verts[1]!);
+    coords2d.push(wasmIndex(verts, 0), wasmIndex(verts, 1));
   }
   if (coords2d.length < 6) return wire;
 

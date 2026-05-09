@@ -644,10 +644,8 @@ export function approximateCurve2dAsBSpline(
     for (let i = 0; i < curN; i++) {
       const tMid = bounds.first + ((bounds.last - bounds.first) * (i + 0.5)) / curN;
       const [ex, ey] = g2d.evaluateCurve2d(c, tMid);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
-      const p0 = poles[i]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
-      const p1 = poles[i + 1]!;
+      const p0 = wasmIndex(poles, i);
+      const p1 = wasmIndex(poles, i + 1);
       const mx = (p0[0] + p1[0]) / 2;
       const my = (p0[1] + p1[1]) / 2;
       const err = Math.sqrt((ex - mx) ** 2 + (ey - my) ** 2);
@@ -677,10 +675,8 @@ export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle
   const breakpoints = [first, ...internalKnots, last];
   const result: Curve2dHandle[] = [];
   for (let i = 0; i < breakpoints.length - 1; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
-    const t0 = breakpoints[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
-    const t1 = breakpoints[i + 1]!;
+    const t0 = wasmIndex(breakpoints, i);
+    const t1 = wasmIndex(breakpoints, i + 1);
     const span = t1 - t0;
     if (span < 1e-15) continue;
     const p0 = g2d.evaluateCurve2d(c, t0);
@@ -881,8 +877,7 @@ function interpolatePoints3d(oc: KernelInstance, points: [number, number, number
   const pnts = new oc.TColgp_Array1OfPnt_2(1, points.length);
   const reusePnt = new oc.gp_Pnt_1();
   for (let i = 0; i < points.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
-    const p = points[i]!;
+    const p = wasmIndex(points, i);
     reusePnt.SetCoord_2(p[0], p[1], p[2]);
     pnts.SetValue_1(i + 1, reusePnt);
   }
@@ -977,8 +972,7 @@ export function liftCurve2dToPlane(
   // Bezier/BSpline: lift control points directly
   if (c.__bk2d === 'bezier' || c.__bk2d === 'bspline') {
     const pts3d = c.poles.map(([u, v]) => lift(u, v));
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop index
-    if (pts3d.length === 2) return makeLineEdge3d(oc, pts3d[0]!, pts3d[1]!);
+    if (pts3d.length === 2) return makeLineEdge3d(oc, wasmIndex(pts3d, 0), wasmIndex(pts3d, 1));
     return interpolatePoints3d(oc, pts3d);
   }
 
