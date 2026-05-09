@@ -250,9 +250,11 @@ export {
 
 export { makeBaseBox } from './sketching/shortcuts.js';
 
-export type { Drawing, DrawingPen } from './sketching/draw.js';
+export type { Drawing } from './sketching/drawing.js';
+export { deserializeDrawing } from './sketching/drawing.js';
+export type { DrawingPen } from './sketching/drawingPen.js';
+export { draw } from './sketching/drawingPen.js';
 export {
-  draw,
   drawRoundedRectangle,
   drawRectangle,
   drawSingleCircle,
@@ -263,8 +265,7 @@ export {
   drawText,
   drawPointsInterpolation,
   drawParametricFunction,
-  deserializeDrawing,
-} from './sketching/draw.js';
+} from './sketching/drawingFactories.js';
 
 export { drawProjection, drawFaceOutline } from './sketching/draw3d.js';
 

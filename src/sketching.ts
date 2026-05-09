@@ -54,10 +54,9 @@ export {
 
 // ── Drawing ──
 
+export { Drawing, deserializeDrawing } from './sketching/drawing.js';
+export { DrawingPen, draw } from './sketching/drawingPen.js';
 export {
-  Drawing,
-  DrawingPen,
-  draw,
   drawRoundedRectangle,
   drawRectangle,
   drawSingleCircle,
@@ -68,8 +67,7 @@ export {
   drawText,
   drawPointsInterpolation,
   drawParametricFunction,
-  deserializeDrawing,
-} from './sketching/draw.js';
+} from './sketching/drawingFactories.js';
 
 export { drawProjection, drawFaceOutline } from './sketching/draw3d.js';
 

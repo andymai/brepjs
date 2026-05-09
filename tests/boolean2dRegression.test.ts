@@ -14,7 +14,7 @@ import {
   intersectBlueprints,
 } from '@/index.js';
 import Blueprint from '@/2d/blueprints/blueprint.js';
-import type { Drawing } from '@/sketching/draw.js';
+import type { Drawing } from '@/sketching/drawing.js';
 
 beforeAll(async () => {
   await initKernel();

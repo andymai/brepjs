@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import { drawRectangle, drawCircle } from '@/index.js';
-import { Drawing } from '@/sketching/draw.js';
+import { Drawing } from '@/sketching/drawing.js';
 import {
   drawingToSketchOnPlane,
   drawingFuse,

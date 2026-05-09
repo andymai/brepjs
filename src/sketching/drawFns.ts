@@ -4,7 +4,7 @@
  */
 
 import type { Point2D } from '@/2d/lib/definitions.js';
-import type { Drawing } from './draw.js';
+import type { Drawing } from './drawing.js';
 import type Sketches from './sketches.js';
 import type { SketchInterface } from './sketch.js';
 import type { CornerFinderFn } from '@/query/finderFns.js';

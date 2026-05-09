@@ -12,7 +12,8 @@ import type { SketchInterface } from './sketch.js';
 import type { ProjectionPlane } from '@/projection/projectionPlanes.js';
 import { type Camera, cameraFromPlane, projectEdges } from '@/projection/cameraFns.js';
 import { edgeToCurve } from '@/2d/curves.js';
-import { Drawing, drawRectangle } from './draw.js';
+import { Drawing } from './drawing.js';
+import { drawRectangle } from './drawingFactories.js';
 
 const edgesToDrawing = (edges: Edge[]): Drawing => {
   using scope = new DisposalScope();
