@@ -7,13 +7,22 @@
 
 import type { Plane } from '@/core/planeTypes.js';
 import { createPlane } from '@/core/planeOps.js';
-import { makeFace, makeNewFaceWithinFace } from '@/topology/shapeHelpers.js';
-import { unwrap } from '@/core/result.js';
-import { downcast } from '@/topology/cast.js';
+import {
+  addHolesInFace,
+  makeCompound,
+  makeFace,
+  makeNewFaceWithinFace,
+  makeSolid,
+} from '@/topology/shapeHelpers.js';
+import { isOk, type Result, unwrap } from '@/core/result.js';
+import { cast, downcast } from '@/topology/cast.js';
 import { toVec3, type Vec3, type PointInput } from '@/core/types.js';
 import { vecScale, vecNormalize, vecCross } from '@/core/vecOps.js';
 import { extrude, revolve } from '@/operations/extrudeFns.js';
 import { sweep, complexExtrude, twistExtrude } from '@/operations/sweepFns.js';
+import { firstOrThrow, getAtOrThrow } from '@/utils/arrayAccess.js';
+import { bug } from '@/core/errors.js';
+import { getKernel } from '@/kernel/index.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import { loft } from '@/operations/loftFns.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
@@ -22,10 +31,11 @@ import type {
   Face,
   OrientedFace,
   Shape3D,
+  Shell,
   Wire,
   PlanarWire,
 } from '@/core/shapeTypes.js';
-import { createWire } from '@/core/shapeTypes.js';
+import { createFace, createWire, isFace } from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
 import type { SketchData } from '@/2d/blueprints/lib.js';
 import { curveStartPoint, curveTangentAt } from '@/topology/curveFns.js';
@@ -230,58 +240,170 @@ export function sketchLoft(
 }
 
 // ---------------------------------------------------------------------------
-// CompoundSketch operations (delegate — implementation still in class for now)
+// CompoundSketch operations (canonical implementations)
 // ---------------------------------------------------------------------------
 
+const guessFaceFromWires = (wires: Wire[]): Face => {
+  const wireShapes = wires.map((w) => w.wrapped);
+  const newFace = unwrap(cast(getKernel().fillSurface(wireShapes)));
+
+  if (!isFace(newFace)) {
+    bug('guessFaceFromWires', 'Failed to create a face');
+  }
+  return newFace as Face;
+};
+
+const fixWire = (wire: Wire, baseFace: Face): Wire => {
+  const fixedWire = getKernel().fixWireOnFace(wire.wrapped, baseFace.wrapped, 1e-9);
+  return createWire(fixedWire);
+};
+
+const faceFromWires = (wires: Wire[]): Face => {
+  let baseFace: Face;
+  let holeWires: ClosedWire[];
+
+  // Sweep end-cap wires are always closed boundaries
+  const faceResult = makeFace(firstOrThrow(wires) as ClosedWire & PlanarWire);
+  if (isOk(faceResult)) {
+    baseFace = faceResult.value;
+    holeWires = wires.slice(1) as ClosedWire[];
+  } else {
+    baseFace = guessFaceFromWires(wires);
+    holeWires = wires.slice(1).map((w) => fixWire(w, baseFace)) as ClosedWire[];
+  }
+
+  return addHolesInFace(baseFace, holeWires);
+};
+
+const solidFromShellGenerator = (
+  sketches: Sketch[],
+  shellGenerator: (sketch: Sketch) => Result<[Shape3D, Wire, Wire]>
+): Shape3D => {
+  const shells: Shell[] = [];
+  const startWires: Wire[] = [];
+  const endWires: Wire[] = [];
+
+  sketches.forEach((sketch) => {
+    const [shell, startWire, endWire] = unwrap(shellGenerator(sketch));
+    shells.push(shell as Shell);
+    startWires.push(startWire);
+    endWires.push(endWire);
+  });
+
+  const startFace = faceFromWires(startWires);
+  const endFace = faceFromWires(endWires);
+  const solid = unwrap(makeSolid([startFace, ...shells, endFace]));
+
+  return solid;
+};
+
+/** Build a face from a compound sketch (outer boundary with holes). */
+export function compoundSketchFace(sketch: CompoundSketch): OrientedFace & PlanarFace {
+  const baseFace = sketch.outerSketch.face();
+  // Sketch wires are always closed by construction
+  const newFace = addHolesInFace(
+    baseFace,
+    sketch.innerSketches.map((s) => s.wire as ClosedWire & PlanarWire)
+  );
+  return newFace as OrientedFace & PlanarFace;
+}
+
+/** Return all wires (outer + holes) combined into a compound shape. */
+export function compoundSketchWires(sketch: CompoundSketch) {
+  const wires = sketch.sketches.map((s) => s.wire);
+  return makeCompound(wires);
+}
+
 /**
- * Extrude a compound sketch (outer + holes) to a given distance.
+ * Extrude a compound sketch (outer + holes) along the default or given direction.
  *
- * @see {@link CompoundSketch.extrude} for the OOP equivalent.
+ * Supports twist and profile extrusions. For twist/profile modes each
+ * sub-sketch is extruded as a shell, then capped into a solid.
  */
 export function compoundSketchExtrude(
   sketch: CompoundSketch,
-  height: number,
-  config?: {
+  extrusionDistance: number,
+  {
+    extrusionDirection,
+    extrusionProfile,
+    twistAngle,
+    origin,
+  }: {
     extrusionDirection?: PointInput;
     extrusionProfile?: ExtrusionProfile;
     twistAngle?: number;
     origin?: PointInput;
-  }
+  } = {}
 ): Shape3D {
-  return sketch.extrude(height, config);
+  const rawVec: Vec3 = extrusionDirection
+    ? toVec3(extrusionDirection)
+    : sketch.outerSketch.defaultDirection;
+  const normVec = vecNormalize(rawVec);
+  const extrusionVec = vecScale(normVec, extrusionDistance);
+
+  if (extrusionProfile && !twistAngle) {
+    return solidFromShellGenerator(
+      sketch.sketches,
+      (s: Sketch) =>
+        complexExtrude(
+          s.wire as ClosedWire & PlanarWire,
+          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+          extrusionVec,
+          extrusionProfile,
+          true
+        ) as Result<[Shape3D, Wire, Wire]>
+    );
+  }
+  if (twistAngle) {
+    return solidFromShellGenerator(
+      sketch.sketches,
+      (s: Sketch) =>
+        twistExtrude(
+          s.wire as ClosedWire & PlanarWire,
+          twistAngle,
+          origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
+          extrusionVec,
+          extrusionProfile,
+          true
+        ) as Result<[Shape3D, Wire, Wire]>
+    );
+  }
+  return unwrap(extrude(compoundSketchFace(sketch), extrusionVec));
 }
 
-/**
- * Revolve a compound sketch around an axis to produce a solid of revolution.
- *
- * @see {@link CompoundSketch.revolve} for the OOP equivalent.
- */
+/** Revolve a compound sketch (outer + holes) around an axis. */
 export function compoundSketchRevolve(
   sketch: CompoundSketch,
   revolutionAxis?: PointInput,
-  options?: { origin?: PointInput }
+  { origin }: { origin?: PointInput } = {}
 ): Shape3D {
-  return sketch.revolve(revolutionAxis, options);
+  const center = origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin;
+  const dir = revolutionAxis ? toVec3(revolutionAxis) : ([0, 0, 1] as Vec3);
+  return unwrap(revolve(compoundSketchFace(sketch), center, dir));
 }
 
-/**
- * Build a face from a compound sketch (outer boundary with holes).
- *
- * @see {@link CompoundSketch.face} for the OOP equivalent.
- */
-export function compoundSketchFace(sketch: CompoundSketch): OrientedFace & PlanarFace {
-  return sketch.face() as OrientedFace & PlanarFace;
-}
-
-/**
- * Loft between two compound sketches with matching sub-sketch counts.
- *
- * @see {@link CompoundSketch.loftWith} for the OOP equivalent.
- */
+/** Loft between two compound sketches with matching sub-sketch counts. */
 export function compoundSketchLoft(
   sketch: CompoundSketch,
   other: CompoundSketch,
   loftConfig: LoftOptions
 ): Shape3D {
-  return sketch.loftWith(other, loftConfig);
+  if (sketch.sketches.length !== other.sketches.length)
+    bug(
+      'CompoundSketch.loftWith',
+      'You need to loft with another compound with the same number of sketches'
+    );
+
+  const shells: Array<Shell | Face> = sketch.sketches.map((base, cIndex) => {
+    const outer = getAtOrThrow(other.sketches, cIndex);
+    const loftOpts: LoftOptions = {};
+    if (loftConfig.ruled !== undefined) loftOpts.ruled = loftConfig.ruled;
+    return base.clone().loftWith(outer.clone(), loftOpts, true) as Shell;
+  });
+
+  const baseFaceRaw = compoundSketchFace(sketch);
+  const baseFace = createFace(unwrap(downcast(baseFaceRaw.wrapped)));
+  shells.push(baseFace, compoundSketchFace(other));
+
+  return unwrap(makeSolid(shells));
 }
