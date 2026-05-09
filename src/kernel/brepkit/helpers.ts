@@ -11,6 +11,7 @@ import type { KernelShape, ShapeType } from '@/kernel/types.js';
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import type { Curve2dObj, BBox2d as BkBBox2d } from '../geometry2d.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Handle types
@@ -245,15 +246,14 @@ export function affineMatrix(
   linear: readonly number[],
   translation: readonly [number, number, number]
 ): number[] {
+  const li = (i: number) => wasmIndex(linear, i);
   // prettier-ignore
-  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
   return [
-    linear[0]!, linear[1]!, linear[2]!, translation[0],
-    linear[3]!, linear[4]!, linear[5]!, translation[1],
-    linear[6]!, linear[7]!, linear[8]!, translation[2],
-    0,          0,          0,          1,
+    li(0), li(1), li(2), translation[0],
+    li(3), li(4), li(5), translation[1],
+    li(6), li(7), li(8), translation[2],
+    0,     0,     0,     1,
   ];
-  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
 
 /** Build a 4x4 reflection matrix for a plane defined by origin + normal. */

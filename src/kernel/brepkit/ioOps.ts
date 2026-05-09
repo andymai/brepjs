@@ -16,6 +16,7 @@ import {
   warnOnce,
   DEFAULT_DEFLECTION,
 } from './helpers.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 export function exportSTEP(bk: BrepkitKernel, shapes: KernelShape[]): string {
   if (shapes.length === 0) return '';
@@ -39,12 +40,10 @@ export function exportSTL(
   const solidIds = unwrapSolidsForExport(bk, shape, 'exportSTL');
   // Use the first solid; STL format doesn't natively support multi-solid
   if (binary) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const bytes: Uint8Array = bk.exportStl(solidIds[0]!, DEFAULT_DEFLECTION);
+    const bytes: Uint8Array = bk.exportStl(wasmIndex(solidIds, 0), DEFAULT_DEFLECTION);
     return bytes.buffer as ArrayBuffer;
   }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  const bytes: Uint8Array = bk.exportStlAscii(solidIds[0]!, DEFAULT_DEFLECTION);
+  const bytes: Uint8Array = bk.exportStlAscii(wasmIndex(solidIds, 0), DEFAULT_DEFLECTION);
   return new TextDecoder().decode(bytes);
 }
 

@@ -11,6 +11,7 @@ import type {
   MeshOptions,
 } from '@/kernel/types.js';
 import { type BrepkitHandle, unwrap, toArray, warnOnce, DEFAULT_DEFLECTION } from './helpers.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 export function mesh(
   bk: BrepkitKernel,
@@ -71,10 +72,8 @@ export function meshEdges(
 
   const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
   for (let i = 0; i < edgeCount; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const startIdx = offsets[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const endIdx = i + 1 < edgeCount ? offsets[i + 1]! : positions.length;
+    const startIdx = wasmIndex(offsets, i);
+    const endIdx = i + 1 < edgeCount ? wasmIndex(offsets, i + 1) : positions.length;
     const pointCount = (endIdx - startIdx) / 3;
     edgeGroups.push({ start: startIdx / 3, count: pointCount, edgeHash: i });
   }
@@ -150,10 +149,8 @@ function meshSolidGrouped(
   }
   const faceGroups: Array<{ start: number; count: number; faceHash: number }> = [];
   for (let i = 0; i < data.faceOffsets.length - 1; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const start = data.faceOffsets[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const count = data.faceOffsets[i + 1]! - start;
+    const start = wasmIndex(data.faceOffsets, i);
+    const count = wasmIndex(data.faceOffsets, i + 1) - start;
     if (count === 0) continue; // degenerate face -- skip
     faceGroups.push({
       start,

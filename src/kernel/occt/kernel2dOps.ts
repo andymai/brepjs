@@ -13,6 +13,7 @@ import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import type { Curve2dObj, BBox2d } from '../geometry2d.js';
 import * as g2d from '../geometry2d.js';
 import { iterShapes } from './topologyOps.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Local helpers (no imports from brepkit)
@@ -377,10 +378,8 @@ export function createAffinityGTrsf2d(
     py = dx / len;
   const k = ratio - 1;
   const m = [1 + k * px * px, k * px * py, 0, k * py * px, 1 + k * py * py, 0, 0, 0, 1];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  const txv = ox - m[0]! * ox - m[1]! * oy;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  const tyv = oy - m[3]! * ox - m[4]! * oy;
+  const txv = ox - wasmIndex(m, 0) * ox - wasmIndex(m, 1) * oy;
+  const tyv = oy - wasmIndex(m, 3) * ox - wasmIndex(m, 4) * oy;
   return _gtrsf(m, txv, tyv);
 }
 
@@ -404,10 +403,8 @@ export function createMirrorGTrsf2d(
     const m = [2 * nx * nx - 1, 2 * nx * ny, 0, 2 * nx * ny, 2 * ny * ny - 1, 0, 0, 0, 1];
     const apx = ox ?? cx,
       apy = oy ?? cy;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const txv = apx - m[0]! * apx - m[1]! * apy;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const tyv = apy - m[3]! * apx - m[4]! * apy;
+    const txv = apx - wasmIndex(m, 0) * apx - wasmIndex(m, 1) * apy;
+    const tyv = apy - wasmIndex(m, 3) * apx - wasmIndex(m, 4) * apy;
     return _gtrsf(m, txv, tyv);
   }
   return _gtrsf([-1, 0, 0, 0, -1, 0, 0, 0, 1], 2 * cx, 2 * cy);
@@ -431,28 +428,25 @@ export function setGTrsf2dTranslationPart(gtrsf: KernelType, dx: number, dy: num
 export function multiplyGTrsf2d(base: KernelType, other: KernelType): void {
   const a = base.m as number[],
     b = other.m as number[];
-  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
-  const r = [
-    a[0]! * b[0]! + a[1]! * b[3]! + a[2]! * b[6]!,
-    a[0]! * b[1]! + a[1]! * b[4]! + a[2]! * b[7]!,
-    a[0]! * b[2]! + a[1]! * b[5]! + a[2]! * b[8]!,
-    a[3]! * b[0]! + a[4]! * b[3]! + a[5]! * b[6]!,
-    a[3]! * b[1]! + a[4]! * b[4]! + a[5]! * b[7]!,
-    a[3]! * b[2]! + a[4]! * b[5]! + a[5]! * b[8]!,
-    a[6]! * b[0]! + a[7]! * b[3]! + a[8]! * b[6]!,
-    a[6]! * b[1]! + a[7]! * b[4]! + a[8]! * b[7]!,
-    a[6]! * b[2]! + a[7]! * b[5]! + a[8]! * b[8]!,
+  const ai = (i: number) => wasmIndex(a, i);
+  const bi = (i: number) => wasmIndex(b, i);
+  base.m = [
+    ai(0) * bi(0) + ai(1) * bi(3) + ai(2) * bi(6),
+    ai(0) * bi(1) + ai(1) * bi(4) + ai(2) * bi(7),
+    ai(0) * bi(2) + ai(1) * bi(5) + ai(2) * bi(8),
+    ai(3) * bi(0) + ai(4) * bi(3) + ai(5) * bi(6),
+    ai(3) * bi(1) + ai(4) * bi(4) + ai(5) * bi(7),
+    ai(3) * bi(2) + ai(4) * bi(5) + ai(5) * bi(8),
+    ai(6) * bi(0) + ai(7) * bi(3) + ai(8) * bi(6),
+    ai(6) * bi(1) + ai(7) * bi(4) + ai(8) * bi(7),
+    ai(6) * bi(2) + ai(7) * bi(5) + ai(8) * bi(8),
   ];
-  /* eslint-enable @typescript-eslint/no-non-null-assertion */
-  base.m = r;
   const oldTx = base.tx as number,
     oldTy = base.ty as number;
   const otx = Number(other.tx) || 0,
     oty = Number(other.ty) || 0;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  base.tx = a[0]! * otx + a[1]! * oty + oldTx;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  base.ty = a[3]! * otx + a[4]! * oty + oldTy;
+  base.tx = ai(0) * otx + ai(1) * oty + oldTx;
+  base.ty = ai(3) * otx + ai(4) * oty + oldTy;
 }
 
 export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType): Curve2dHandle {
@@ -460,13 +454,15 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   const m = (gtrsf.m as number[] | undefined) ?? [1, 0, 0, 0, 1, 0, 0, 0, 1];
   const tx = Number(gtrsf.tx) || 0,
     ty = Number(gtrsf.ty) || 0;
-  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
+  const m0 = wasmIndex(m, 0),
+    m1 = wasmIndex(m, 1),
+    m3 = wasmIndex(m, 3),
+    m4 = wasmIndex(m, 4);
   const isIdentityMatrix =
-    Math.abs(m[0]! - 1) < 1e-12 &&
-    Math.abs(m[4]! - 1) < 1e-12 &&
-    Math.abs(m[1]!) < 1e-12 &&
-    Math.abs(m[3]!) < 1e-12;
-  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+    Math.abs(m0 - 1) < 1e-12 &&
+    Math.abs(m4 - 1) < 1e-12 &&
+    Math.abs(m1) < 1e-12 &&
+    Math.abs(m3) < 1e-12;
   if (isIdentityMatrix) {
     return g2d.translateCurve2d(c, tx, ty);
   }
@@ -476,8 +472,7 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   for (let i = 0; i <= N; i++) {
     const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
     const [px, py] = g2d.evaluateCurve2d(c, t);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    pts.push([m[0]! * px + m[1]! * py + tx, m[3]! * px + m[4]! * py + ty]);
+    pts.push([m0 * px + m1 * py + tx, m3 * px + m4 * py + ty]);
   }
   return g2d.makeBezier2d(pts);
 }

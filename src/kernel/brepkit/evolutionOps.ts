@@ -26,6 +26,7 @@ import {
 } from './helpers.js';
 import { applyMatrix } from './internalOps.js';
 import { translate, rotate, mirror, scale, generalTransform } from './transformOps.js';
+import { wasmIndex } from '@/utils/vec3.js';
 import { fuse, cut, intersect } from './booleanOps.js';
 import { fillet, chamfer, shell, thicken, offset, draft } from './modifierOps.js';
 
@@ -101,12 +102,9 @@ function faceCentroidById(bk: BrepkitKernel, faceId: number): [number, number, n
     let cz = 0;
     const nVerts = pos.length / 3;
     for (let i = 0; i < pos.length; i += 3) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      cx += pos[i]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      cy += pos[i + 1]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-      cz += pos[i + 2]!;
+      cx += wasmIndex(pos, i);
+      cy += wasmIndex(pos, i + 1);
+      cz += wasmIndex(pos, i + 2);
     }
     return [cx / nVerts, cy / nVerts, cz / nVerts];
   } catch {

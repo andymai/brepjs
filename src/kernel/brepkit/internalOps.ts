@@ -20,6 +20,7 @@ import {
   DEFAULT_DEFLECTION,
 } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
+import { vec3At, wasmIndex } from '@/utils/vec3.js';
 
 /** Apply a 4x4 row-major matrix to a shape (copy + transform). */
 export function applyMatrix(bk: BrepkitKernel, shape: KernelShape, matrix: number[]): KernelShape {
@@ -147,15 +148,12 @@ export function extractPlaneFromFace(
   } else {
     faceId = unwrap(faceShape, 'face');
   }
-  const n = bk.getFaceNormal(faceId);
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  const normal: [number, number, number] = [n[0]!, n[1]!, n[2]!];
+  const normal: [number, number, number] = vec3At(bk.getFaceNormal(faceId));
 
   const mesh = bk.tessellateFace(faceId, 1.0);
   const positions = mesh.positions;
   if (positions.length >= 3) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    return { point: [positions[0]!, positions[1]!, positions[2]!], normal };
+    return { point: vec3At(positions), normal };
   }
 
   return { point: [0, 0, 0], normal };
@@ -188,8 +186,14 @@ export function extractNurbsFromEdge(
   return {
     degree: 1,
     knots: [0, 0, 1, 1],
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    controlPoints: [verts[0]!, verts[1]!, verts[2]!, verts[3]!, verts[4]!, verts[5]!],
+    controlPoints: [
+      wasmIndex(verts, 0),
+      wasmIndex(verts, 1),
+      wasmIndex(verts, 2),
+      wasmIndex(verts, 3),
+      wasmIndex(verts, 4),
+      wasmIndex(verts, 5),
+    ],
     weights: [1, 1],
   };
 }

@@ -17,6 +17,7 @@ import {
   toArray,
   syntheticCompounds,
 } from './helpers.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 export function iterShapes(bk: BrepkitKernel, shape: KernelShape, type: ShapeType): KernelShape[] {
   const h = unwrap(shape);
@@ -102,12 +103,10 @@ export function iterShapes(bk: BrepkitKernel, shape: KernelShape, type: ShapeTyp
         const results: KernelShape[] = [];
         for (const eid of edgeIds) {
           const verts = bk.getEdgeVertices(eid);
-          /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
           const coords = [
-            [verts[0]!, verts[1]!, verts[2]!],
-            [verts[3]!, verts[4]!, verts[5]!],
+            [wasmIndex(verts, 0), wasmIndex(verts, 1), wasmIndex(verts, 2)],
+            [wasmIndex(verts, 3), wasmIndex(verts, 4), wasmIndex(verts, 5)],
           ] as const;
-          /* eslint-enable @typescript-eslint/no-non-null-assertion */
           for (const [x, y, z] of coords) {
             const key = `${x},${y},${z}`;
             if (!seen.has(key)) {
@@ -125,10 +124,8 @@ export function iterShapes(bk: BrepkitKernel, shape: KernelShape, type: ShapeTyp
       if (type === 'edge') return [shape];
       if (type === 'vertex') {
         const verts = bk.getEdgeVertices(h);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-        const v1 = bk.makeVertex(verts[0]!, verts[1]!, verts[2]!);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-        const v2 = bk.makeVertex(verts[3]!, verts[4]!, verts[5]!);
+        const v1 = bk.makeVertex(wasmIndex(verts, 0), wasmIndex(verts, 1), wasmIndex(verts, 2));
+        const v2 = bk.makeVertex(wasmIndex(verts, 3), wasmIndex(verts, 4), wasmIndex(verts, 5));
         return [vertexHandle(v1), vertexHandle(v2)];
       }
       return [];

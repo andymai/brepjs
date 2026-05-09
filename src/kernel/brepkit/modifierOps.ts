@@ -16,6 +16,7 @@ import {
   warnOnce,
 } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 export function fillet(
   bk: BrepkitKernel,
@@ -322,8 +323,7 @@ export function offsetWire2D(
   const result = bk.offsetPolygon2d(coords2d, offsetVal, 1e-10);
   const coords3d: number[] = [];
   for (let i = 0; i < result.length; i += 2) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM array index
-    coords3d.push(result[i]!, result[i + 1]!, 0);
+    coords3d.push(wasmIndex(result, i), wasmIndex(result, i + 1), 0);
   }
   const wireId: number = bk.makePolygonWire(coords3d);
   return wireHandle(wireId);

@@ -25,6 +25,7 @@ import {
   hasBooleanOptions,
 } from './helpers.js';
 import { extractPlaneFromFace } from './internalOps.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 export function fuse(
   bk: BrepkitKernel,
@@ -116,8 +117,7 @@ export function section(
     return compoundHandle(bk.makeCompound([]));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  const firstWireId = bk.getFaceOuterWire(faceIds[0]!);
+  const firstWireId = bk.getFaceOuterWire(wasmIndex(faceIds, 0));
   return wireHandle(firstWireId);
 }
 
@@ -127,8 +127,7 @@ export function fuseAll(
   options?: BooleanOptions
 ): KernelShape {
   if (shapes.length === 0) throw new Error('brepkit: fuseAll requires at least one shape');
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  if (shapes.length === 1) return shapes[0]!;
+  if (shapes.length === 1) return wasmIndex(shapes, 0);
 
   if (bk.compoundFuse) {
     const solidIds: number[] = [];
@@ -159,8 +158,7 @@ export function fuseAll(
     }
     current = next;
   }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  return current[0]!;
+  return wasmIndex(current, 0);
 }
 
 export function cutAll(
@@ -267,13 +265,11 @@ export function hull(bk: BrepkitKernel, shapes: KernelShape[], _tolerance: numbe
       const vertIds = toArray(bk.getSolidVertices(h.id));
       for (const vid of vertIds) {
         const pos = bk.getVertexPosition(vid);
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-        coords.push(pos[0]!, pos[1]!, pos[2]!);
+        coords.push(wasmIndex(pos, 0), wasmIndex(pos, 1), wasmIndex(pos, 2));
       }
     } else if (h.type === 'vertex') {
       const pos = bk.getVertexPosition(h.id);
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-      coords.push(pos[0]!, pos[1]!, pos[2]!);
+      coords.push(wasmIndex(pos, 0), wasmIndex(pos, 1), wasmIndex(pos, 2));
     }
   }
   if (coords.length < 12) throw new Error('brepkit: hull requires enough points');
@@ -303,16 +299,14 @@ export function buildSolidFromFaces(
 ): KernelShape {
   const positions = new Float64Array(points.length * 3);
   for (let i = 0; i < points.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const p = points[i]!;
+    const p = wasmIndex(points, i);
     positions[i * 3] = p.x;
     positions[i * 3 + 1] = p.y;
     positions[i * 3 + 2] = p.z;
   }
   const indices = new Uint32Array(faces.length * 3);
   for (let i = 0; i < faces.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const f = faces[i]!;
+    const f = wasmIndex(faces, i);
     indices[i * 3] = f[0];
     indices[i * 3 + 1] = f[1];
     indices[i * 3 + 2] = f[2];
