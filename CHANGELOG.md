@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.6.1](https://github.com/andymai/brepjs/compare/brepjs-v18.6.0...brepjs-v18.6.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* **kernel:** revert geometry2d hot-path wasmIndex calls (perf regression) ([#942](https://github.com/andymai/brepjs/issues/942)) ([316d9fc](https://github.com/andymai/brepjs/commit/316d9fcf1a14f4fa16d1e544342b47f7756f0c28))
+
 ## [18.6.0](https://github.com/andymai/brepjs/compare/brepjs-v18.5.3...brepjs-v18.6.0) (2026-05-08)
 
 
