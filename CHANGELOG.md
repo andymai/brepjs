@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.7.0](https://github.com/andymai/brepjs/compare/brepjs-v18.6.1...brepjs-v18.7.0) (2026-05-09)
+
+
+### Features
+
+* **api:** add text and projection subpath barrels ([#945](https://github.com/andymai/brepjs/issues/945)) ([515bff4](https://github.com/andymai/brepjs/commit/515bff420d2f478e97aec7444a502eafb43e6bf0))
+
 ## [18.6.1](https://github.com/andymai/brepjs/compare/brepjs-v18.6.0...brepjs-v18.6.1) (2026-05-09)
 
 
