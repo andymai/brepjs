@@ -8,6 +8,7 @@
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
 import type { OcctPoint } from './wasmTypes/index.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Edge builders
@@ -188,8 +189,7 @@ export function makeBezierEdge(
 ): KernelShape {
   const arr = new oc.TColgp_Array1OfPnt_2(1, points.length);
   for (let i = 0; i < points.length; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- loop is bounded by points.length
-    const p = points[i]!;
+    const p = wasmIndex(points, i);
     const pnt = new oc.gp_Pnt_3(p[0], p[1], p[2]);
     arr.SetValue_1(i + 1, pnt);
     pnt.delete();

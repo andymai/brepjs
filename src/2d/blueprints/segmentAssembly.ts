@@ -1,4 +1,5 @@
 import zip from '@/utils/zip.js';
+import { wasmIndex } from '@/utils/vec3.js';
 import type { Curve2D } from '@/2d/lib/index.js';
 import { make2dSegmentCurve, crossProduct2d, subtract2d } from '@/2d/lib/index.js';
 
@@ -27,8 +28,7 @@ function mergeCollinearSegments(curves: Curve2D[]): Curve2D[] {
   let i = 0;
 
   while (i < curves.length) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by length check
-    const current = curves[i]!;
+    const current = wasmIndex(curves, i);
 
     if (current.geomType !== 'LINE') {
       result.push(current);
@@ -41,8 +41,7 @@ function mergeCollinearSegments(curves: Curve2D[]): Curve2D[] {
     let j = i + 1;
 
     while (j < curves.length) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounded by length check
-      const next = curves[j]!;
+      const next = wasmIndex(curves, j);
       if (next.geomType !== 'LINE') break;
       if (!samePoint(endPoint, next.firstPoint)) break;
 

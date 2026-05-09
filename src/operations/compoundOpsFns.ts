@@ -28,6 +28,7 @@ import { faceFinder } from '@/query/finderFns.js';
 import { normalAt, faceCenter } from '@/topology/faceFns.js';
 import { makeFace as _makeFace, makeCylinder as _makeCylinder } from '@/topology/shapeHelpers.js';
 import { firstOrThrow, getAtOrThrow } from '@/utils/arrayAccess.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,7 +70,7 @@ function resolveTargetFace(
         )
       );
     }
-    return ok(found[0]!); // eslint-disable-line @typescript-eslint/no-non-null-assertion -- checked length > 0
+    return ok(wasmIndex(found, 0));
   }
   return ok(faceSpec);
 }

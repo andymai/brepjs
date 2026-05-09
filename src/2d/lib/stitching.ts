@@ -1,6 +1,7 @@
 import Flatbush from 'flatbush';
 import { bug } from '@/core/errors.js';
 import type { Curve2D } from './curve2D.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 /**
  * Group a flat list of curves into connected chains by matching endpoints.
@@ -44,8 +45,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
         bug('stitchCurves', 'Infinite loop detected');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- array is non-empty
-      const lastPoint = connectedCurves[connectedCurves.length - 1]!.lastPoint;
+      const lastPoint = wasmIndex(connectedCurves, connectedCurves.length - 1).lastPoint;
 
       const [x, y] = lastPoint;
       const neighbors = startPoints.search(
@@ -60,8 +60,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
       const potentialNextCurves = neighbors
         .filter((neighborIndex: number) => !visited.has(neighborIndex))
         .map((neighborIndex: number): [Curve2D, number, number] => [
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- neighborIndex from spatial query
-          curves[neighborIndex]!,
+          wasmIndex(curves, neighborIndex),
           neighborIndex,
           indexDistance(neighborIndex),
         ])
@@ -73,8 +72,7 @@ export const stitchCurves = (curves: Curve2D[], precision = 1e-7): Curve2D[][] =
         break;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
-      const [nextCurve, nextCurveIndex] = potentialNextCurves[0]!;
+      const [nextCurve, nextCurveIndex] = wasmIndex(potentialNextCurves, 0);
 
       connectedCurves.push(nextCurve);
       visited.add(nextCurveIndex);

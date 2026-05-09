@@ -4,6 +4,7 @@ import type { CurveType } from '@/core/typeDiscriminants.js';
 import { type Result, ok, err, unwrap } from '@/core/result.js';
 import { computationError } from '@/core/errors.js';
 import precisionRound from '@/utils/precisionRound.js';
+import { wasmIndex } from '@/utils/vec3.js';
 import { getKernel } from '@/kernel/index.js';
 import { registerForCleanup, unregisterFromCleanup } from '@/core/disposal.js';
 
@@ -288,15 +289,11 @@ export class Curve2D {
     }
 
     // We do not split again on the start and end
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- parameters is non-empty
-    if (Math.abs(parameters[0]! - firstParam) < precision * 100) parameters = parameters.slice(1);
+    if (Math.abs(wasmIndex(parameters, 0) - firstParam) < precision * 100)
+      parameters = parameters.slice(1);
     if (!parameters.length) return [this];
 
-    if (
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- parameters is non-empty
-      Math.abs(parameters[parameters.length - 1]! - lastParam) <
-      precision * 100
-    )
+    if (Math.abs(wasmIndex(parameters, parameters.length - 1) - lastParam) < precision * 100)
       parameters = parameters.slice(0, -1);
     if (!parameters.length) return [this];
 

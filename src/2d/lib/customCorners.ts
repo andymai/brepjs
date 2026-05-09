@@ -10,6 +10,7 @@ import {
 } from './makeCurves.js';
 import { make2dOffset } from './offset.js';
 import { add2d, crossProduct2d, normalize2d, scalarMultiply2d } from './vectorOperations.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number) {
   const sinAngle = crossProduct2d(firstCurve.tangentAt(1), secondCurve.tangentAt(0));
@@ -46,11 +47,11 @@ function removeCorner(firstCurve: Curve2D, secondCurve: Curve2D, radius: number)
     return curve.splitAt([splitParam]);
   };
 
-  const [first] = splitForFillet(firstCurve, firstOffset);
-  const [, second] = splitForFillet(secondCurve, secondOffset);
-
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt always returns segments
-  return { first: first!, second: second!, center };
+  const firstSplit = splitForFillet(firstCurve, firstOffset);
+  const secondSplit = splitForFillet(secondCurve, secondOffset);
+  const first = wasmIndex(firstSplit, 0);
+  const second = wasmIndex(secondSplit, 1);
+  return { first, second, center };
 }
 
 /**
@@ -133,10 +134,10 @@ export function dogboneFilletCurves(firstCurve: Curve2D, secondCurve: Curve2D, r
 
   if (!firstInt || !secondInt) return [firstCurve, secondCurve];
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt returns at least one segment
-  const firstPart = firstCurve.splitAt([firstInt])[0]!;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- splitAt returns at least one segment
-  const secondPart = secondCurve.splitAt([secondInt]).at(-1)!;
+  const firstSplit = firstCurve.splitAt([firstInt]);
+  const secondSplit = secondCurve.splitAt([secondInt]);
+  const firstPart = wasmIndex(firstSplit, 0);
+  const secondPart = wasmIndex(secondSplit, secondSplit.length - 1);
 
   try {
     return [

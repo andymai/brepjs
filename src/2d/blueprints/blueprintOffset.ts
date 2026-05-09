@@ -2,6 +2,7 @@ import Flatbush from 'flatbush';
 
 import { bug, safeIndex } from '@/core/errors.js';
 import { unwrap } from '@/core/result.js';
+import { wasmIndex } from '@/utils/vec3.js';
 import type { Point2D } from '@/2d/lib/index.js';
 import {
   intersectCurves,
@@ -431,8 +432,7 @@ export function offsetBlueprint(
       yMax + absOffset
     );
     return !candidates.some((idx) => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spatial index returns valid indices
-      const c = blueprint.curves[idx]!;
+      const c = wasmIndex(blueprint.curves, idx);
       return c.distanceFrom(curve) < absOffset - PRECISION_OFFSET;
     });
   });

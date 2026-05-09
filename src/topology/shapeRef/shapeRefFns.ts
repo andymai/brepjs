@@ -9,6 +9,7 @@ import { getFaces } from '@/topology/topologyQueryFns.js';
 import { getHashCode } from '@/topology/shapeFns.js';
 import { normalAt, faceCenter, faceGeomType } from '@/topology/faceFns.js';
 import { measureArea } from '@/measurement/measureFns.js';
+import { wasmIndex } from '@/utils/vec3.js';
 import type {
   GeometricHint,
   ShapeRef,
@@ -130,8 +131,7 @@ export function updateRoles(
     // Modified → use first result hash
     const modifiedHashes = evolution.modified.get(hash);
     if (modifiedHashes && modifiedHashes.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
-      updatedOriginRoles.set(role, modifiedHashes[0]!);
+      updatedOriginRoles.set(role, wasmIndex(modifiedHashes, 0));
     } else {
       // Survived unchanged
       updatedOriginRoles.set(role, hash);

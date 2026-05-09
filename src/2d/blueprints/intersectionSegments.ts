@@ -2,6 +2,7 @@ import Flatbush from 'flatbush';
 
 import { unwrap } from '@/core/result.js';
 import zip from '@/utils/zip.js';
+import { wasmIndex } from '@/utils/vec3.js';
 import type { Point2D, Curve2D } from '@/2d/lib/index.js';
 import { intersectCurves, removeDuplicatePoints, PRECISION_INTERSECTION } from '@/2d/lib/index.js';
 
@@ -158,8 +159,7 @@ function findAllIntersections(first: Blueprint, second: Blueprint): CurveInterse
     const candidates = secondIndex.search(xMin, yMin, xMax, yMax);
 
     for (const secondIdx of candidates) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- spatial index returns valid indices
-      const otherCurve = second.curves[secondIdx]!;
+      const otherCurve = wasmIndex(second.curves, secondIdx);
       const { intersections, commonSegments, commonSegmentsPoints } = unwrap(
         intersectCurves(thisCurve, otherCurve, PRECISION_INTERSECTION / 100)
       );

@@ -4,6 +4,7 @@
  */
 
 import { bug, BrepBugError } from '@/utils/bug.js';
+import { wasmIndex } from '@/utils/vec3.js';
 export { bug, BrepBugError };
 
 // ---------------------------------------------------------------------------
@@ -364,6 +365,5 @@ export function safeIndex<T>(arr: readonly T[], index: number, context?: string)
   if (index < 0 || index >= arr.length) {
     bug(context ?? 'safeIndex', `Index ${index} is out of bounds (array length ${arr.length})`);
   }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds proven above
-  return arr[index]!;
+  return wasmIndex(arr, index);
 }

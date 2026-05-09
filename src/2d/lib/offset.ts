@@ -6,13 +6,13 @@ import { selfIntersections } from './intersections.js';
 import { unwrap } from '@/core/result.js';
 import { make2dSegmentCurve } from './makeCurves.js';
 import { add2d, normalize2d, subtract2d } from './vectorOperations.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 const offsetEndPoints = (firstPoint: Point2D, lastPoint: Point2D, offset: number) => {
   const tangent = normalize2d(subtract2d(lastPoint, firstPoint));
   const normal = [tangent[1], -tangent[0]];
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- normal has two elements
-  const offsetVec: Point2D = [normal[0]! * offset, normal[1]! * offset];
+  const offsetVec: Point2D = [wasmIndex(normal, 0) * offset, wasmIndex(normal, 1) * offset];
 
   return {
     firstPoint: add2d(firstPoint, offsetVec),

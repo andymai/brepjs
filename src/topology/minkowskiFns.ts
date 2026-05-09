@@ -12,6 +12,7 @@ import { type Result, ok, err } from '@/core/result.js';
 import { validationError, kernelError, typeCastError, BrepErrorCode } from '@/core/errors.js';
 import { getFaces, getVertices } from './shapeFns.js';
 import { getCachedSurfaceType } from './topologyQueryFns.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,8 +37,7 @@ function detectSphere(shape: Shape3D): number | null {
   const faces: Face[] = getFaces(shape);
   if (faces.length !== 1) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length checked above
-  const face = faces[0]!;
+  const face = wasmIndex(faces, 0);
   const surfType = getCachedSurfaceType(face);
 
   if (surfType !== 'sphere') return null;

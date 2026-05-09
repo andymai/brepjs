@@ -1,3 +1,5 @@
+import { wasmIndex } from './vec3.js';
+
 /** Generate a v4-style UUID string using `crypto.getRandomValues`. */
 export function uuidv(): string {
   return (String([1e7]) + String(-1e3) + String(-4e3) + String(-8e3) + String(-1e11)).replace(
@@ -5,8 +7,7 @@ export function uuidv(): string {
     (c: string) =>
       (
         Number(c) ^
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- single-element array
-        (crypto.getRandomValues(new Uint8Array(1))[0]! & (15 >> (Number(c) / 4)))
+        (wasmIndex(crypto.getRandomValues(new Uint8Array(1)), 0) & (15 >> (Number(c) / 4)))
       ).toString(16)
   );
 }

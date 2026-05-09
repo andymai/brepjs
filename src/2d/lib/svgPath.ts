@@ -2,6 +2,7 @@ import { RAD2DEG } from '@/core/constants.js';
 import { bug } from '@/core/errors.js';
 import { getKernel2D } from '@/kernel/index.js';
 import { round2, round5 } from '@/utils/precisionRound.js';
+import { wasmIndex } from '@/utils/vec3.js';
 import type { Point2D } from './definitions.js';
 import type { Curve2D } from './curve2D.js';
 
@@ -35,16 +36,13 @@ export const adaptedCurveToPathElem = (curve: Curve2D, lastPoint: Point2D): stri
     }
 
     if (deg === 2) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- poles[1] exists for degree 2
-      const [px, py] = poles[1]!;
+      const [px, py] = wasmIndex(poles, 1);
       return `Q ${round2(px)} ${round2(py)} ${endpoint}`;
     }
 
     if (deg === 3) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- poles[1] exists for degree 3
-      const [p1x, p1y] = poles[1]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- poles[2] exists for degree 3
-      const [p2x, p2y] = poles[2]!;
+      const [p1x, p1y] = wasmIndex(poles, 1);
+      const [p2x, p2y] = wasmIndex(poles, 2);
       return `C ${round2(p1x)} ${round2(p1y)} ${round2(p2x)} ${round2(p2y)} ${endpoint}`;
     }
   }

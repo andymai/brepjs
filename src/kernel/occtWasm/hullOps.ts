@@ -14,6 +14,7 @@
 import type { KernelShape } from '@/kernel/types.js';
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { buildSolidFromFaces } from './constructionOps.js';
+import { wasmIndex } from '@/utils/vec3.js';
 
 function findHorizonEdges(
   faces: [number, number, number][],
@@ -54,9 +55,11 @@ export function computeConvexHullFaces(
   const faces: Array<[number, number, number]> = [];
   const p0 = pts[0] as V;
   let i1 = 1;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- bounds checked by i1 < n
-  while (i1 < n && Math.hypot(pts[i1]!.x - p0.x, pts[i1]!.y - p0.y, pts[i1]!.z - p0.z) < 1e-10)
+  while (i1 < n) {
+    const p = wasmIndex(pts, i1);
+    if (Math.hypot(p.x - p0.x, p.y - p0.y, p.z - p0.z) >= 1e-10) break;
     i1++;
+  }
   let i2 = i1 + 1;
   const e01 = sub(pts[i1] as V, p0);
   while (i2 < n) {
