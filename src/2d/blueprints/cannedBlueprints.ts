@@ -1,5 +1,5 @@
 import type Blueprint from './blueprint.js';
-import { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import { BlueprintSketcher } from './blueprintSketcher.js';
 import { lastOrThrow } from '@/utils/arrayAccess.js';
 
 /**

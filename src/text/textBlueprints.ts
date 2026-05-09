@@ -6,7 +6,7 @@ import { bug, BrepErrorCode } from '@/core/errors.js';
 import { type Result, ok, err } from '@/core/result.js';
 import { ioError, validationError } from '@/core/errors.js';
 import { organiseBlueprints } from '@/2d/blueprints/lib.js';
-import { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import { BlueprintSketcher } from '@/2d/blueprints/blueprintSketcher.js';
 import CompoundSketch from '@/sketching/compoundSketch.js';
 import Sketches from '@/sketching/sketches.js';
 import { wrapSketchData } from '@/sketching/sketchFns.js';

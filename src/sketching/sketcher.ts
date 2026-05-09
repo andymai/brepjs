@@ -7,7 +7,7 @@ import { vecSub, vecNormalize, vecCross } from '@/core/vecOps.js';
 import { assembleWire } from '@/topology/shapeHelpers.js';
 import { curvesAsEdgesOnPlane } from '@/2d/curves.js';
 import { samePoint, type Point2D } from '@/2d/lib/index.js';
-import type { GenericSketcher } from './sketcherlib.js';
+import type { GenericSketcher } from '@/2d/blueprints/genericSketcher.js';
 import type { Wire } from '@/core/shapeTypes.js';
 import { createWire } from '@/core/shapeTypes.js';
 import type { PointInput } from '@/core/types.js';
@@ -17,7 +17,7 @@ import { getKernel } from '@/kernel/index.js';
 import { toVec3 } from '@/core/types.js';
 import { planeToWorld } from '@/core/planeOps.js';
 import Sketch from './sketch.js';
-import { BaseSketcher2d } from './sketcher2d.js';
+import { BaseSketcher2d } from '@/2d/blueprints/baseSketcher2d.js';
 
 /**
  * Build 2D wire profiles on a 3D plane using a builder-pen API.

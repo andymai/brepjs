@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import { BlueprintSketcher } from '@/2d/blueprints/blueprintSketcher.js';
 import CompoundBlueprint from '@/2d/blueprints/compoundBlueprint.js';
 import { exportDXF, blueprintToDXF, roundedRectangleBlueprint } from '@/index.js';
 import type { DXFEntity } from '@/index.js';

@@ -226,12 +226,10 @@ export {
 // ── Layer 3: sketching ──
 
 export type { default as Sketcher } from './sketching/sketcher.js';
-export type {
-  default as FaceSketcher,
-  BaseSketcher2d,
-  BlueprintSketcher,
-} from './sketching/sketcher2d.js';
-export type { GenericSketcher, SplineOptions } from './sketching/sketcherlib.js';
+export type { default as FaceSketcher } from './sketching/faceSketcher.js';
+export type { BaseSketcher2d } from './2d/blueprints/baseSketcher2d.js';
+export type { BlueprintSketcher } from './2d/blueprints/blueprintSketcher.js';
+export type { GenericSketcher, SplineOptions } from './2d/blueprints/genericSketcher.js';
 export type { SketchInterface } from './sketching/sketch.js';
 
 export { default as Sketch } from './sketching/sketch.js';

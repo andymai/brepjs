@@ -4,7 +4,7 @@
 
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import { BlueprintSketcher } from '@/2d/blueprints/blueprintSketcher.js';
 import { BoundingBox2d } from '@/2d/lib/boundingBox2d.js';
 
 beforeAll(async () => {

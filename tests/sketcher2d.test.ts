@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import FaceSketcher, { BlueprintSketcher } from '@/sketching/sketcher2d.js';
+import FaceSketcher from '@/sketching/faceSketcher.js';
+import { BlueprintSketcher } from '@/2d/blueprints/blueprintSketcher.js';
 import { Drawing } from '@/sketching/draw.js';
 import {
   draw,

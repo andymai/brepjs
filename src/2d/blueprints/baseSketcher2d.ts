@@ -1,21 +1,11 @@
-import Sketch from './sketch.js';
 import { DEG2RAD, RAD2DEG } from '@/core/constants.js';
-import { DisposalScope } from '@/core/disposal.js';
 import { getKernel } from '@/kernel/index.js';
-import { assembleWire } from '@/topology/shapeHelpers.js';
-import { unwrap } from '@/core/result.js';
-import type { Wire, Face } from '@/core/shapeTypes.js';
-import { createEdge, createFace } from '@/core/shapeTypes.js';
-import { uvBounds, pointOnSurface, normalAt } from '@/topology/faceFns.js';
-import { curveStartPoint, curveIsClosed } from '@/topology/curveFns.js';
-import { downcast } from '@/topology/cast.js';
-import { defaultsSplineOptions } from './sketcherlib.js';
-import type { SplineOptions, GenericSketcher } from './sketcherlib.js';
-import type { KernelType } from '@/kernel/types.js';
-import { chamferCurves, Curve2D, dogboneFilletCurves, filletCurves } from '@/2d/lib/index.js';
 import { bug } from '@/core/errors.js';
-
 import {
+  chamferCurves,
+  Curve2D,
+  dogboneFilletCurves,
+  filletCurves,
   normalize2d,
   polarAngle2d,
   samePoint,
@@ -27,16 +17,9 @@ import {
   make2dBezierCurve,
 } from '@/2d/lib/index.js';
 import type { Point2D } from '@/2d/lib/index.js';
-import { vecScale } from '@/core/vecOps.js';
-import Blueprint from '@/2d/blueprints/blueprint.js';
+import { defaultsSplineOptions } from './genericSketcher.js';
+import type { SplineOptions } from './genericSketcher.js';
 import { normalizeEllipseRadii, makeEllipseArcFromSvgParams } from './ellipseUtils.js';
-
-type UVBounds = {
-  readonly uMin: number;
-  readonly uMax: number;
-  readonly vMin: number;
-  readonly vMax: number;
-};
 
 const cornerModeFns = {
   chamfer: chamferCurves,
@@ -57,7 +40,7 @@ function buildCornerFunction(
  * Base class for 2D sketchers that accumulate {@link Curve2D} segments.
  *
  * Provides the shared pen-drawing API (lines, arcs, ellipses, beziers, splines)
- * used by {@link FaceSketcher}, {@link BlueprintSketcher}, and {@link DrawingPen}.
+ * used by `FaceSketcher`, `BlueprintSketcher`, and `DrawingPen`.
  * Subclasses implement `done()` / `close()` to produce the appropriate output type.
  *
  * @category Sketching
@@ -76,8 +59,6 @@ export class BaseSketcher2d {
     this.pendingCurves = [];
   }
 
-  // ── Coordinate conversion (overridden by FaceSketcher for UV mapping) ──
-
   protected _convertToUV([x, y]: Point2D): Point2D {
     return [x, y];
   }
@@ -86,35 +67,27 @@ export class BaseSketcher2d {
     return [u, v];
   }
 
-  // ── Internal helpers ──
-
-  /** Return the last curve in the pending list, or null if empty. */
   protected _lastCurve(): Curve2D | null {
     const len = this.pendingCurves.length;
     if (len === 0) return null;
     return this.pendingCurves[len - 1] as Curve2D;
   }
 
-  /** Require that a previous curve exists, returning it or throwing. */
   protected _requireLastCurve(caller: string, action: string): Curve2D {
     const curve = this._lastCurve();
     if (!curve) bug(caller, `You need a previous curve to ${action}`);
     return curve;
   }
 
-  /** Resolve a relative offset from the current pointer position. */
   protected _resolveRelative(xDist: number, yDist: number): Point2D {
     return [this.pointer[0] + xDist, this.pointer[1] + yDist];
   }
 
-  /** Save a curve, advance the pointer to the given end point, and return `this`. */
   protected _saveCurveAndAdvance(curve: Curve2D, end: Point2D): this {
     this.saveCurve(curve);
     this.pointer = end;
     return this;
   }
-
-  // ── Drawing state ──
 
   /**
    * Returns the current pen position as [x, y] coordinates
@@ -127,10 +100,6 @@ export class BaseSketcher2d {
 
   /**
    * Returns the current pen angle in degrees
-   *
-   * The angle represents the tangent direction at the current pen position,
-   * based on the last drawing operation (line, arc, bezier, etc.).
-   * Returns 0 if nothing has been drawn yet.
    *
    * @category Drawing State
    */
@@ -165,8 +134,6 @@ export class BaseSketcher2d {
     this.pendingCurves.push(...this._nextCorner(previousCurve, curve));
     this._nextCorner = null;
   }
-
-  // ── Line segments ──
 
   /** Draw a straight line to an absolute 2D point. */
   lineTo(point: Point2D): this {
@@ -217,8 +184,6 @@ export class BaseSketcher2d {
     return this.line(direction[0] * distance, direction[1] * distance);
   }
 
-  // ── Three-point arcs ──
-
   /** Draw a circular arc passing through a mid-point to an absolute end point. */
   threePointsArcTo(end: Point2D, midPoint: Point2D): this {
     const curve = make2dThreePointArc(
@@ -234,8 +199,6 @@ export class BaseSketcher2d {
     const [x0, y0] = this.pointer;
     return this.threePointsArcTo([x0 + xDist, y0 + yDist], [x0 + viaXDist, y0 + viaYDist]);
   }
-
-  // ── Sagitta arcs ──
 
   /** Draw a circular arc to an absolute end point, bulging by the given sagitta. */
   sagittaArcTo(end: Point2D, sagitta: number): this {
@@ -281,8 +244,6 @@ export class BaseSketcher2d {
     return this.sagittaArc(distance, 0, sagitta);
   }
 
-  // ── Bulge arcs ──
-
   /** Draw an arc to an absolute end point using a bulge factor (sagitta as fraction of half-chord). */
   bulgeArcTo(end: Point2D, bulge: number): this {
     if (!bulge) return this.lineTo(end);
@@ -305,8 +266,6 @@ export class BaseSketcher2d {
     return this.bulgeArc(distance, 0, bulge);
   }
 
-  // ── Tangent arcs ──
-
   /** Draw a circular arc tangent to the previous curve, ending at an absolute point. */
   tangentArcTo(end: Point2D): this {
     const previousCurve = this._requireLastCurve('Sketcher2d.tangentArc', 'sketch a tangent arc');
@@ -322,8 +281,6 @@ export class BaseSketcher2d {
   tangentArc(xDist: number, yDist: number): this {
     return this.tangentArcTo(this._resolveRelative(xDist, yDist));
   }
-
-  // ── Ellipse arcs ──
 
   /** Draw an elliptical arc to an absolute end point (SVG-style parameters). */
   ellipseTo(
@@ -386,8 +343,6 @@ export class BaseSketcher2d {
     return this.halfEllipseTo(this._resolveRelative(xDist, yDist), minorRadius, sweep);
   }
 
-  // ── Bezier curves ──
-
   /** Draw a Bezier curve to an absolute end point through one or more control points. */
   bezierCurveTo(end: Point2D, controlPoints: Point2D | Point2D[]): this {
     const cp: Point2D[] =
@@ -412,8 +367,6 @@ export class BaseSketcher2d {
   cubicBezierCurveTo(end: Point2D, startControlPoint: Point2D, endControlPoint: Point2D): this {
     return this.bezierCurveTo(end, [startControlPoint, endControlPoint]);
   }
-
-  // ── Smooth splines ──
 
   /** Draw a smooth cubic Bezier spline to an absolute end point, blending tangent with the previous curve. */
   smoothSplineTo(end: Point2D, config?: SplineOptions): this {
@@ -458,11 +411,7 @@ export class BaseSketcher2d {
     return this.smoothSplineTo(this._resolveRelative(xDist, yDist), splineConfig);
   }
 
-  // ── Corner treatments ──
-
-  /**
-   * Changes the corner between the previous and next segments.
-   */
+  /** Changes the corner between the previous and next segments. */
   customCorner(
     radius: number | ((first: Curve2D, second: Curve2D) => Curve2D[]),
     mode: 'fillet' | 'chamfer' = 'fillet'
@@ -488,8 +437,6 @@ export class BaseSketcher2d {
 
     this.pendingCurves.push(...buildCornerFunction(radius, mode)(previousCurve, curve));
   }
-
-  // ── Close / mirror helpers ──
 
   protected _closeSketch(): void {
     if (!samePoint(this.pointer, this.firstPoint)) {
@@ -529,164 +476,5 @@ export class BaseSketcher2d {
     }
     this.pendingCurves.push(...mirroredCurves);
     this.pointer = this.firstPoint;
-  }
-}
-
-/**
- * The FaceSketcher allows you to sketch on a face that is not planar, for
- * instance the sides of a cylinder.
- *
- * The coordinates passed to the methods corresponds to normalised distances on
- * this surface, between 0 and 1 in both direction.
- *
- * Note that if you are drawing on a closed surface (typically a revolution
- * surface or a cylinder), the first parameters represents the angle and can be
- * smaller than 0 or bigger than 1.
- *
- * @category Sketching
- */
-export default class FaceSketcher extends BaseSketcher2d implements GenericSketcher<Sketch> {
-  protected face: Face;
-  protected _bounds: UVBounds;
-
-  constructor(face: Face, origin: Point2D = [0, 0]) {
-    super(origin);
-    this.face = createFace(unwrap(downcast(face.wrapped)));
-    this._bounds = uvBounds(face);
-  }
-
-  protected override _convertToUV([x, y]: Point2D): Point2D {
-    const { uMin, uMax, vMin, vMax } = this._bounds;
-    return [uMin + x * (uMax - uMin), vMin + y * (vMax - vMin)];
-  }
-
-  protected override _convertFromUV([u, v]: Point2D): Point2D {
-    const { uMin, uMax, vMin, vMax } = this._bounds;
-    return [(u - uMin) / (uMax - uMin), (v - vMin) / (vMax - vMin)];
-  }
-
-  _adaptSurface(): KernelType {
-    return getKernel().extractSurfaceFromFace(this.face.wrapped);
-  }
-
-  /**
-   * @ignore
-   */
-  protected buildWire(): Wire {
-    const kernel = getKernel();
-    const geomSurf = this._adaptSurface();
-
-    const edges = this.pendingCurves.map((curve) => {
-      return createEdge(kernel.buildEdgeOnSurface(curve.wrapped, geomSurf));
-    });
-    const wire = unwrap(assembleWire(edges));
-    kernel.buildCurves3d(wire.wrapped);
-
-    return wire;
-  }
-
-  /** Finish drawing and return the resulting {@link Sketch} (does not close the path). */
-  done(): Sketch {
-    using scope = new DisposalScope();
-
-    const wire = this.buildWire();
-    const sketch = new Sketch(wire);
-    if (curveIsClosed(wire)) {
-      const face = scope.register(sketch.clone().face());
-      const origin = pointOnSurface(face, 0.5, 0.5);
-      const normal = normalAt(face);
-      const direction = vecScale(normal, -1);
-      sketch.defaultOrigin = [origin[0], origin[1], origin[2]];
-      sketch.defaultDirection = [direction[0], direction[1], direction[2]];
-    } else {
-      const startPoint = curveStartPoint(wire);
-      const normal = normalAt(this.face, [startPoint[0], startPoint[1], startPoint[2]]);
-      sketch.defaultOrigin = [startPoint[0], startPoint[1], startPoint[2]];
-      sketch.defaultDirection = [normal[0], normal[1], normal[2]];
-    }
-    sketch.baseFace = this.face;
-    return sketch;
-  }
-
-  /** Close the path with a straight line to the start point and return the Sketch. */
-  close(): Sketch {
-    this._closeSketch();
-    return this.done();
-  }
-
-  /** Close the path by mirroring all curves about the line from first to last point. */
-  closeWithMirror(): Sketch {
-    this._closeWithMirror();
-    return this.close();
-  }
-
-  /**
-   * Close the path and apply a custom corner treatment between the last and first segments.
-   *
-   * @param radius - Fillet/chamfer radius, or a custom corner function.
-   * @param mode - Corner treatment type.
-   * @returns The closed {@link Sketch}.
-   */
-  closeWithCustomCorner(
-    radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
-    mode: 'fillet' | 'chamfer' | 'dogbone' = 'fillet'
-  ): Sketch {
-    this._closeSketch();
-    this._customCornerLastWithFirst(radius, mode);
-
-    return this.done();
-  }
-}
-
-/**
- * Draw 2D curves and produce a {@link Blueprint} (pure-2D shape, no kernel wire).
- *
- * Use this when you need a reusable 2D profile that can later be sketched onto
- * different planes or faces.
- *
- * @see {@link DrawingPen} for the higher-level Drawing wrapper.
- * @category Sketching
- */
-export class BlueprintSketcher extends BaseSketcher2d implements GenericSketcher<Blueprint> {
-  constructor(origin: Point2D = [0, 0]) {
-    super();
-    this.pointer = origin;
-    this.firstPoint = origin;
-
-    this.pendingCurves = [];
-  }
-
-  /** Finish drawing and return the resulting {@link Blueprint} (does not close the path). */
-  done(): Blueprint {
-    return new Blueprint(this.pendingCurves);
-  }
-
-  /** Close the path with a straight line to the start point and return the Blueprint. */
-  close(): Blueprint {
-    this._closeSketch();
-    return this.done();
-  }
-
-  /** Close the path by mirroring all curves about the line from first to last point. */
-  closeWithMirror(): Blueprint {
-    this._closeWithMirror();
-    return this.close();
-  }
-
-  /**
-   * Close the path and apply a custom corner treatment between the last and first segments.
-   *
-   * @param radius - Fillet/chamfer radius.
-   * @param mode - Corner treatment type.
-   * @returns The closed {@link Blueprint}.
-   */
-  closeWithCustomCorner(
-    radius: number | ((f: Curve2D, s: Curve2D) => Curve2D[]),
-    mode: 'fillet' | 'chamfer' | 'dogbone' = 'fillet'
-  ): Blueprint {
-    this._closeSketch();
-    this._customCornerLastWithFirst(radius, mode);
-
-    return this.done();
   }
 }

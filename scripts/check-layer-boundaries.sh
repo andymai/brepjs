@@ -112,11 +112,6 @@ while IFS= read -r file; do
 
     # Check: target layer must be <= source layer
     if (( target_layer > src_layer )); then
-      # Known pre-existing violation: cannedBlueprints (2d, L2) -> sketcher2d (sketching, L3)
-      # TODO: fix by extracting BlueprintSketcher into a shared module
-      if [[ "$file" == *"cannedBlueprints.ts" && "$target_dir" == "sketching" ]]; then
-        continue
-      fi
       ERRORS+=("VIOLATION: $file (layer $src_layer: $src_dir) imports from '$import_path' (layer $target_layer: $target_dir)")
     fi
   done < <(grep -oP "from ['\"](\K[^'\"]+)" "$file" 2>/dev/null || true)

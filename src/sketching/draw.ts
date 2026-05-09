@@ -26,10 +26,10 @@ import {
 import type { Plane, PlaneName } from '@/core/planeTypes.js';
 import type { PointInput } from '@/core/types.js';
 import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
-import { BaseSketcher2d } from './sketcher2d.js';
+import { BaseSketcher2d } from '@/2d/blueprints/baseSketcher2d.js';
 import type { SketchInterface } from './sketch.js';
 import Sketches from './sketches.js';
-import type { GenericSketcher } from './sketcherlib.js';
+import type { GenericSketcher } from '@/2d/blueprints/genericSketcher.js';
 import type { SketchData } from '@/2d/blueprints/lib.js';
 import { textBlueprints } from '@/text/textBlueprints.js';
 

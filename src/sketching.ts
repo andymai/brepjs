@@ -10,8 +10,10 @@
 // ── Sketcher classes ──
 
 import Sketcher from './sketching/sketcher.js';
-import FaceSketcher, { BaseSketcher2d, BlueprintSketcher } from './sketching/sketcher2d.js';
-import { type GenericSketcher, type SplineOptions } from './sketching/sketcherlib.js';
+import FaceSketcher from './sketching/faceSketcher.js';
+import { BaseSketcher2d } from './2d/blueprints/baseSketcher2d.js';
+import { BlueprintSketcher } from './2d/blueprints/blueprintSketcher.js';
+import { type GenericSketcher, type SplineOptions } from './2d/blueprints/genericSketcher.js';
 
 export { Sketcher, FaceSketcher, BaseSketcher2d, BlueprintSketcher };
 export type { GenericSketcher, SplineOptions };
