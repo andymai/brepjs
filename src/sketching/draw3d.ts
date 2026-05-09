@@ -8,7 +8,7 @@ import { outerWire } from '@/topology/faceFns.js';
 import { getEdges } from '@/topology/shapeFns.js';
 import { makeFace } from '@/topology/shapeHelpers.js';
 import { downcast } from '@/topology/cast.js';
-import type { SketchInterface } from './sketchLib.js';
+import type { SketchInterface } from './sketch.js';
 import type { ProjectionPlane } from '@/projection/projectionPlanes.js';
 import { type Camera, cameraFromPlane, projectEdges } from '@/projection/cameraFns.js';
 import { edgeToCurve } from '@/2d/curves.js';

@@ -15,7 +15,7 @@ import { type GenericSketcher, type SplineOptions } from './sketching/sketcherli
 
 export { Sketcher, FaceSketcher, BaseSketcher2d, BlueprintSketcher };
 export type { GenericSketcher, SplineOptions };
-export type { SketchInterface } from './sketching/sketchLib.js';
+export type { SketchInterface } from './sketching/sketch.js';
 
 export { default as Sketch } from './sketching/sketch.js';
 export { default as CompoundSketch } from './sketching/compoundSketch.js';

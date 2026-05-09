@@ -9,7 +9,7 @@ import { extrude, revolve } from '@/operations/extrudeFns.js';
 import { complexExtrude, twistExtrude } from '@/operations/sweepFns.js';
 import type { ExtrusionProfile } from '@/operations/extrudeUtils.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
-import type { SketchInterface } from './sketchLib.js';
+import type { SketchInterface } from './sketch.js';
 import { cast, downcast } from '@/topology/cast.js';
 import { type Result, unwrap, isOk } from '@/core/result.js';
 import { bug } from '@/core/errors.js';

@@ -6,7 +6,7 @@
 import type { Point2D } from '@/2d/lib/definitions.js';
 import type { Drawing } from './draw.js';
 import type Sketches from './sketches.js';
-import type { SketchInterface } from './sketchLib.js';
+import type { SketchInterface } from './sketch.js';
 import type { CornerFinderFn } from '@/query/finderFns.js';
 import type { PointInput } from '@/core/types.js';
 import type { Plane, PlaneName } from '@/core/planeTypes.js';

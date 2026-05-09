@@ -6,10 +6,30 @@
 import type { PointInput } from '@/core/types.js';
 import type { OrientedFace, Shape3D, Wire } from '@/core/shapeTypes.js';
 import type { PlanarFace } from '@/core/validityTypes.js';
+import type { SketchData } from '@/2d/blueprints/lib.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
-import type Sketch from './sketch.js';
-import type CompoundSketch from './compoundSketch.js';
+import Sketch from './sketch.js';
+import CompoundSketch from './compoundSketch.js';
+
+// ---------------------------------------------------------------------------
+// SketchData wrappers
+// ---------------------------------------------------------------------------
+
+/** Wrap SketchData into a Sketch instance. */
+export function wrapSketchData(data: SketchData): Sketch {
+  const opts: { defaultOrigin?: PointInput; defaultDirection?: PointInput } = {};
+  if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
+  if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
+  const sketch = new Sketch(data.wire, opts);
+  if (data.baseFace) sketch.baseFace = data.baseFace;
+  return sketch;
+}
+
+/** Wrap an array of SketchData into a CompoundSketch. */
+export function wrapSketchDataArray(dataArr: SketchData[]): CompoundSketch {
+  return new CompoundSketch(dataArr.map(wrapSketchData));
+}
 
 // ---------------------------------------------------------------------------
 // Sketch operations

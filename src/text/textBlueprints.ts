@@ -9,7 +9,7 @@ import { organiseBlueprints } from '@/2d/blueprints/lib.js';
 import { BlueprintSketcher } from '@/sketching/sketcher2d.js';
 import CompoundSketch from '@/sketching/compoundSketch.js';
 import Sketches from '@/sketching/sketches.js';
-import { wrapSketchData } from '@/sketching/sketchUtils.js';
+import { wrapSketchData } from '@/sketching/sketchFns.js';
 
 import opentype from 'opentype.js';
 import type { OpenTypeFont, OpenTypePathCommand } from '@/kernel/occt/wasmTypes/externals.js';

@@ -27,7 +27,7 @@ import type { Plane, PlaneName } from '@/core/planeTypes.js';
 import type { PointInput } from '@/core/types.js';
 import type { AnyShape, Dimension, Face } from '@/core/shapeTypes.js';
 import { BaseSketcher2d } from './sketcher2d.js';
-import type { SketchInterface } from './sketchLib.js';
+import type { SketchInterface } from './sketch.js';
 import Sketches from './sketches.js';
 import type { GenericSketcher } from './sketcherlib.js';
 import type { SketchData } from '@/2d/blueprints/lib.js';
@@ -39,7 +39,7 @@ import { fillet2D, chamfer2D } from '@/2d/blueprints/blueprintCustomCorners.js';
 import type { BSplineApproximationOptions } from '@/topology/shapeHelpers.js';
 import { approximateForSVG } from '@/2d/blueprints/blueprintApproximations.js';
 import type { SingleFace } from '@/query/helpers.js';
-import { wrapSketchData, wrapSketchDataArray } from './sketchUtils.js';
+import { wrapSketchData, wrapSketchDataArray } from './sketchFns.js';
 
 function wrapBlueprintResult(
   shape: Shape2D,

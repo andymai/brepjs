@@ -232,7 +232,7 @@ export type {
   BlueprintSketcher,
 } from './sketching/sketcher2d.js';
 export type { GenericSketcher, SplineOptions } from './sketching/sketcherlib.js';
-export type { SketchInterface } from './sketching/sketchLib.js';
+export type { SketchInterface } from './sketching/sketch.js';
 
 export { default as Sketch } from './sketching/sketch.js';
 export { default as CompoundSketch } from './sketching/compoundSketch.js';
