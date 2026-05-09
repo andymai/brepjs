@@ -50,8 +50,9 @@ import type {
 import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
-import type { OcctWasmHandle, OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
-import { handle, isOcctWasmHandle } from './helpers.js';
+import type { OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
+import { isOcctWasmHandle } from './helpers.js';
+import { buildOcShim, wrapKernelExceptions } from './adapterShims.js';
 import * as boolOps from './booleanOps.js';
 import * as primOps from './primitiveOps.js';
 import * as topoOps from './topologyOps.js';
@@ -93,46 +94,8 @@ import * as hullOps from './hullOps.js';
  */
 // parseEvolution moved to evolutionOps.ts
 
-// ---------------------------------------------------------------------------
-// Not-implemented helper
-// ---------------------------------------------------------------------------
-
 function notImplemented(method: string): never {
   throw new Error(`occt-wasm: ${method} is not yet implemented`);
-}
-
-// ---------------------------------------------------------------------------
-// GLB (binary glTF 2.0) helpers moved to ioOps.ts
-
-/**
- * Wrap an OcctKernelWasm instance so that every method call converts
- * C++ exceptions (WebAssembly.Exception) into readable JS Errors.
- */
-function wrapKernelExceptions(kernel: OcctKernelWasm, mod: OcctWasmModule): OcctKernelWasm {
-  return new Proxy(kernel, {
-    get(target, prop, receiver) {
-      const val = Reflect.get(target, prop, receiver);
-      if (typeof val !== 'function') return val;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- proxy wraps all methods
-      return function (this: unknown, ...args: any[]) {
-        try {
-          return val.apply(target, args);
-        } catch (ex: unknown) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- WebAssembly.Exception not in TS lib
-          const WasmException = (WebAssembly as any).Exception as { new (): unknown } | undefined;
-          if (WasmException && ex instanceof WasmException) {
-            try {
-              const [, msg] = mod.getExceptionMessage(ex);
-              throw new Error(msg, { cause: ex });
-            } catch (inner) {
-              if (inner instanceof Error && !(inner instanceof WasmException)) throw inner;
-            }
-          }
-          throw ex;
-        }
-      };
-    },
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -154,58 +117,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   constructor(module: OcctWasmModule, kernel: OcctKernelWasm) {
     this.Module = module;
     this.k = wrapKernelExceptions(kernel, module);
-    // Provide .oc with TopoDS_* constructors for null-shape tests
-    const k = this.k;
-    const makeNull = () => handle('compound', k.makeNullShape());
-
-    this.oc = Object.assign(Object.create(module), {
-      TopoDS_Solid: function () {
-        return makeNull();
-      },
-      TopoDS_Face: function () {
-        return makeNull();
-      },
-      TopoDS_Shape: function () {
-        return makeNull();
-      },
-      TopoDS_Wire: function () {
-        return makeNull();
-      },
-      TopoDS_Edge: function () {
-        return makeNull();
-      },
-      TopoDS_Vertex: function () {
-        return makeNull();
-      },
-      TopoDS_Shell: function () {
-        return makeNull();
-      },
-      TopoDS_Compound: function () {
-        return makeNull();
-      },
-
-      gp_Pnt_3: function (x: number, y: number, z: number) {
-        return handle('vertex', k.makeVertex(x, y, z));
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- shim for test compat
-      BRepBuilderAPI_MakeEdge_3: function (p1: any, p2: any) {
-        const v1 = p1 as OcctWasmHandle;
-        const v2 = p2 as OcctWasmHandle;
-        const pos1 = k.vertexPosition(v1.id);
-        const pos2 = k.vertexPosition(v2.id);
-        const edgeId = k.makeLineEdge(
-          pos1.get(0),
-          pos1.get(1),
-          pos1.get(2),
-          pos2.get(0),
-          pos2.get(1),
-          pos2.get(2)
-        );
-        pos1.delete();
-        pos2.delete();
-        return { Edge: () => handle('edge', edgeId), delete() {} };
-      },
-    });
+    this.oc = buildOcShim(module, this.k);
   }
 
   // =========================================================================
