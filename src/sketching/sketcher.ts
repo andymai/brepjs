@@ -8,7 +8,7 @@ import { assembleWire } from '@/topology/shapeHelpers.js';
 import { curvesAsEdgesOnPlane } from '@/2d/curves.js';
 import { samePoint, type Point2D } from '@/2d/lib/index.js';
 import type { GenericSketcher } from '@/2d/blueprints/genericSketcher.js';
-import type { Wire } from '@/core/shapeTypes.js';
+import type { ClosedWire, PlanarWire, Wire } from '@/core/shapeTypes.js';
 import { createWire } from '@/core/shapeTypes.js';
 import type { PointInput } from '@/core/types.js';
 import type { Curve2D } from '@/2d/lib/index.js';
@@ -86,7 +86,9 @@ export default class Sketcher extends BaseSketcher2d implements GenericSketcher<
 
   /** Finish drawing and return the open-wire Sketch (does not close the path). */
   done(): Sketch {
-    return new Sketch(this.buildWire(), {
+    // The wire's closure is the user's contract — done() doesn't enforce it.
+    // Sketcher operates on a plane → planar by construction.
+    return new Sketch(this.buildWire() as ClosedWire & PlanarWire, {
       defaultOrigin: this.plane.origin,
       defaultDirection: this.plane.zDir,
     });
@@ -126,7 +128,7 @@ export default class Sketcher extends BaseSketcher2d implements GenericSketcher<
 
     const combinedWire = unwrap(assembleWire([wire, mirroredWire]));
 
-    return new Sketch(combinedWire, {
+    return new Sketch(combinedWire as ClosedWire & PlanarWire, {
       defaultOrigin: this.plane.origin,
       defaultDirection: this.plane.zDir,
     });

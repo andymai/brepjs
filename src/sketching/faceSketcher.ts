@@ -3,7 +3,7 @@ import { DisposalScope } from '@/core/disposal.js';
 import { getKernel } from '@/kernel/index.js';
 import { assembleWire } from '@/topology/shapeHelpers.js';
 import { unwrap } from '@/core/result.js';
-import type { Wire, Face } from '@/core/shapeTypes.js';
+import type { ClosedWire, Wire, Face, PlanarWire } from '@/core/shapeTypes.js';
 import { createEdge, createFace } from '@/core/shapeTypes.js';
 import { uvBounds, pointOnSurface, normalAt } from '@/topology/faceFns.js';
 import { curveStartPoint, curveIsClosed } from '@/topology/curveFns.js';
@@ -79,7 +79,10 @@ export default class FaceSketcher extends BaseSketcher2d implements GenericSketc
     using scope = new DisposalScope();
 
     const wire = this.buildWire();
-    const sketch = new Sketch(wire);
+    // FaceSketcher operates on a (possibly non-planar) face — the resulting
+    // wire is closed iff the user closed it; planarity is not guaranteed for
+    // curved supports. Sketch.wire's nominal type assumes the common XY case.
+    const sketch = new Sketch(wire as ClosedWire & PlanarWire);
     if (curveIsClosed(wire)) {
       const face = scope.register(sketch.clone().face());
       const origin = pointOnSurface(face, 0.5, 0.5);

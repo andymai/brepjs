@@ -16,7 +16,7 @@ import { vecRotate } from '@/core/vecOps.js';
 import { DEG2RAD } from '@/core/constants.js';
 import Sketcher from './sketcher.js';
 import Sketch from './sketch.js';
-import type { Face } from '@/core/shapeTypes.js';
+import type { ClosedWire, Face, PlanarWire } from '@/core/shapeTypes.js';
 import { faceCenter, normalAt, outerWire } from '@/topology/faceFns.js';
 import { offsetWire2D } from '@/topology/curveFns.js';
 import type { Point2D } from '@/2d/lib/index.js';
@@ -50,7 +50,7 @@ export const sketchCircle = (radius: number, planeConfig: PlaneConfig = {}): Ske
       : unwrap(resolvePlane(planeConfig.plane ?? 'XY', planeConfig.origin));
 
   const wire = unwrap(assembleWire([makeCircle(radius, plane.origin, plane.zDir)]));
-  const sketch = new Sketch(wire, {
+  const sketch = new Sketch(wire as ClosedWire & PlanarWire, {
     defaultOrigin: [...plane.origin],
     defaultDirection: [...plane.zDir],
   });
@@ -87,7 +87,7 @@ export const sketchEllipse = (xRadius = 1, yRadius = 2, planeConfig: PlaneConfig
     assembleWire([unwrap(makeEllipse(majR, minR, plane.origin, plane.zDir, xDir))])
   );
 
-  const sketch = new Sketch(wire, {
+  const sketch = new Sketch(wire as ClosedWire & PlanarWire, {
     defaultOrigin: [...plane.origin],
     defaultDirection: [...plane.zDir],
   });
@@ -150,7 +150,7 @@ export const sketchRoundedRectangle = (
   const opts: { defaultOrigin?: PointInput; defaultDirection?: PointInput } = {};
   if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
   if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
-  return new Sketch(data.wire, opts);
+  return new Sketch(data.wire as ClosedWire & PlanarWire, opts);
 };
 
 /**
@@ -239,7 +239,7 @@ export const sketchFaceOffset = (face: Face, offset: number): Sketch => {
   const defaultDirection: [number, number, number] = [...normalAt(face)];
   const wire = unwrap(offsetWire2D(outerWire(face), offset));
 
-  const sketch = new Sketch(wire, { defaultOrigin, defaultDirection });
+  const sketch = new Sketch(wire as ClosedWire & PlanarWire, { defaultOrigin, defaultDirection });
 
   return sketch;
 };
@@ -279,7 +279,7 @@ export const sketchParametricFunction = (
     assembleWire([scope.register(unwrap(makeBSplineApproximation(points, approximationConfig)))])
   );
 
-  const sketch = new Sketch(wire, {
+  const sketch = new Sketch(wire as ClosedWire & PlanarWire, {
     defaultOrigin: [...plane.origin],
     defaultDirection: [...plane.zDir],
   });
@@ -310,7 +310,10 @@ export const sketchHelix = (
   const centerVec3 = toVec3(center);
   const dirVec3 = toVec3(dir);
 
+  // Helix is open (not closed) but Sketch.wire requires the closed-planar brand.
   return new Sketch(
-    unwrap(assembleWire([makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand)]))
+    unwrap(
+      assembleWire([makeHelix(pitch, height, radius, centerVec3, dirVec3, lefthand)])
+    ) as ClosedWire & PlanarWire
   );
 };

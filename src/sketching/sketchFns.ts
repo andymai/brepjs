@@ -51,7 +51,8 @@ export function wrapSketchData(data: SketchData): Sketch {
   const opts: { defaultOrigin?: PointInput; defaultDirection?: PointInput } = {};
   if (data.defaultOrigin) opts.defaultOrigin = data.defaultOrigin;
   if (data.defaultDirection) opts.defaultDirection = data.defaultDirection;
-  const sketch = new Sketch(data.wire, opts);
+  // SketchData.wire is produced by Drawing.sketchOnPlane on a closed planar profile.
+  const sketch = new Sketch(data.wire as ClosedWire & PlanarWire, opts);
   if (data.baseFace) sketch.baseFace = data.baseFace;
   return sketch;
 }
@@ -67,13 +68,11 @@ export function wrapSketchDataArray(dataArr: SketchData[]): CompoundSketch {
 
 /** Build a face from a sketch's closed planar wire. */
 export function sketchFace(sketch: Sketch): OrientedFace & PlanarFace {
-  // Sketch wires are always closed planar by construction at Sketcher boundary
-  const closedWire = sketch.wire as ClosedWire & PlanarWire;
   let face: Face;
   if (!sketch.baseFace) {
-    face = unwrap(makeFace(closedWire));
+    face = unwrap(makeFace(sketch.wire));
   } else {
-    face = makeNewFaceWithinFace(sketch.baseFace, closedWire);
+    face = makeNewFaceWithinFace(sketch.baseFace, sketch.wire);
   }
   return face as OrientedFace & PlanarFace;
 }
@@ -93,7 +92,7 @@ export function sketchRevolve(
   revolutionAxis?: PointInput,
   { origin }: { origin?: PointInput } = {}
 ): Shape3D {
-  const face = unwrap(makeFace(sketch.wire as ClosedWire & PlanarWire));
+  const face = unwrap(makeFace(sketch.wire));
   const center: Vec3 = origin ? toVec3(origin) : sketch.defaultOrigin;
   const dir: Vec3 = revolutionAxis ? toVec3(revolutionAxis) : [0, 0, 1];
   const solid = unwrap(revolve(face, center, dir));
@@ -131,12 +130,7 @@ export function sketchExtrude(
 
   if (extrusionProfile && !twistAngle) {
     const solid = unwrap(
-      complexExtrude(
-        sketch.wire as ClosedWire & PlanarWire,
-        [...originVec],
-        [...extrusionVec],
-        extrusionProfile
-      )
+      complexExtrude(sketch.wire, [...originVec], [...extrusionVec], extrusionProfile)
     );
     sketch.delete();
     return solid as Shape3D;
@@ -144,19 +138,13 @@ export function sketchExtrude(
 
   if (twistAngle) {
     const solid = unwrap(
-      twistExtrude(
-        sketch.wire as ClosedWire & PlanarWire,
-        twistAngle,
-        [...originVec],
-        [...extrusionVec],
-        extrusionProfile
-      )
+      twistExtrude(sketch.wire, twistAngle, [...originVec], [...extrusionVec], extrusionProfile)
     );
     sketch.delete();
     return solid as Shape3D;
   }
 
-  const face = unwrap(makeFace(sketch.wire as ClosedWire & PlanarWire));
+  const face = unwrap(makeFace(sketch.wire));
   const solid = unwrap(extrude(face, [...extrusionVec]));
   sketch.delete();
   return solid;
@@ -205,7 +193,7 @@ export function sketchSweep(
   if (sketch.baseFace) {
     config.support = sketch.baseFace.wrapped;
   }
-  const shape = unwrap(sweep(profile.wire as ClosedWire, sketch.wire, config)) as Shape3D;
+  const shape = unwrap(sweep(profile.wire, sketch.wire, config)) as Shape3D;
   sketch.delete();
 
   return shape;
@@ -300,10 +288,9 @@ const solidFromShellGenerator = (
 /** Build a face from a compound sketch (outer boundary with holes). */
 export function compoundSketchFace(sketch: CompoundSketch): OrientedFace & PlanarFace {
   const baseFace = sketch.outerSketch.face();
-  // Sketch wires are always closed by construction
   const newFace = addHolesInFace(
     baseFace,
-    sketch.innerSketches.map((s) => s.wire as ClosedWire & PlanarWire)
+    sketch.innerSketches.map((s) => s.wire)
   );
   return newFace as OrientedFace & PlanarFace;
 }
@@ -346,7 +333,7 @@ export function compoundSketchExtrude(
       sketch.sketches,
       (s: Sketch) =>
         complexExtrude(
-          s.wire as ClosedWire & PlanarWire,
+          s.wire,
           origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
           extrusionVec,
           extrusionProfile,
@@ -359,7 +346,7 @@ export function compoundSketchExtrude(
       sketch.sketches,
       (s: Sketch) =>
         twistExtrude(
-          s.wire as ClosedWire & PlanarWire,
+          s.wire,
           twistAngle,
           origin ? toVec3(origin) : sketch.outerSketch.defaultOrigin,
           extrusionVec,

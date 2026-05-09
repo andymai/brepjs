@@ -2,13 +2,13 @@ import { unwrap } from '@/core/result.js';
 import { DisposalScope } from '@/core/disposal.js';
 import { stitchCurves } from '@/2d/lib/index.js';
 import { Blueprint, Blueprints } from '@/2d/blueprints/index.js';
-import type { AnyShape, ClosedWire, Edge, Face, Wire, PlanarWire } from '@/core/shapeTypes.js';
+import type { AnyShape, Edge, Face } from '@/core/shapeTypes.js';
 import { createFace } from '@/core/shapeTypes.js';
 import { outerWire } from '@/topology/faceFns.js';
 import { getEdges } from '@/topology/shapeFns.js';
 import { makeFace } from '@/topology/shapeHelpers.js';
 import { downcast } from '@/topology/cast.js';
-import type { SketchInterface } from './sketch.js';
+import type Sketch from './sketch.js';
 import type { ProjectionPlane } from '@/projection/projectionPlanes.js';
 import { type Camera, cameraFromPlane, projectEdges } from '@/projection/cameraFns.js';
 import { edgeToCurve } from '@/2d/curves.js';
@@ -17,11 +17,9 @@ import { drawRectangle } from './drawingFactories.js';
 
 const edgesToDrawing = (edges: Edge[]): Drawing => {
   using scope = new DisposalScope();
-  const planeSketch = drawRectangle(1000, 1000).sketchOnPlane() as SketchInterface & {
-    wire: Wire;
-  };
-  // Rectangle drawing always produces a closed wire
-  const planeFace = scope.register(unwrap(makeFace(planeSketch.wire as ClosedWire & PlanarWire)));
+  // drawRectangle always produces a single closed planar wire — narrow safely.
+  const planeSketch = drawRectangle(1000, 1000).sketchOnPlane() as Sketch;
+  const planeFace = scope.register(unwrap(makeFace(planeSketch.wire)));
 
   const curves = edges.map((e) => edgeToCurve(e, planeFace));
 

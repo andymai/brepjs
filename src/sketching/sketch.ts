@@ -4,7 +4,7 @@ import { downcast } from '@/topology/cast.js';
 import { toVec3, type Vec3, type PointInput } from '@/core/types.js';
 import type { ExtrusionProfile, SweepOptions } from '@/operations/extrudeUtils.js';
 import type { LoftOptions } from '@/operations/loftFns.js';
-import type { Face, Wire, Shape3D } from '@/core/shapeTypes.js';
+import type { ClosedWire, Face, PlanarWire, Shape3D, Wire } from '@/core/shapeTypes.js';
 import { createFace, createWire } from '@/core/shapeTypes.js';
 import * as fns from './sketchFns.js';
 
@@ -69,7 +69,14 @@ export interface SketchInterface {
  * @category Sketching
  */
 export default class Sketch implements SketchInterface {
-  wire: Wire;
+  /**
+   * The wire is typed as `ClosedWire & PlanarWire` to reflect the contract at
+   * Sketcher boundaries: `Sketcher.close()`, `closeWithMirror()`,
+   * `closeWithCustomCorner()`, and the canned-sketch factories all produce
+   * closed planar wires. Callers constructing `Sketch` from an arbitrary
+   * `Wire` must assert validity at the construction site.
+   */
+  wire: ClosedWire & PlanarWire;
   /**
    * @ignore
    */
@@ -80,7 +87,7 @@ export default class Sketch implements SketchInterface {
   _defaultDirection: Vec3;
   protected _baseFace: Face | null | undefined;
   constructor(
-    wire: Wire,
+    wire: ClosedWire & PlanarWire,
     {
       defaultOrigin = [0, 0, 0],
       defaultDirection = [0, 0, 1],
@@ -112,7 +119,8 @@ export default class Sketch implements SketchInterface {
 
   /** Create an independent deep copy of this sketch. */
   clone(): Sketch {
-    const sketch = new Sketch(createWire(unwrap(downcast(this.wire.wrapped))), {
+    const cloned = createWire(unwrap(downcast(this.wire.wrapped))) as ClosedWire & PlanarWire;
+    const sketch = new Sketch(cloned, {
       defaultOrigin: this.defaultOrigin,
       defaultDirection: this.defaultDirection,
     });
