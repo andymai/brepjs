@@ -171,6 +171,8 @@ export default class Sketch implements SketchInterface {
   /**
    * Revolves the drawing on an axis (defined by its direction and an origin
    * (defaults to the sketch origin)
+   *
+   * @remarks Consumes the sketch — calling this twice throws on the second call.
    */
   revolve(revolutionAxis?: PointInput, { origin }: { origin?: PointInput } = {}): Shape3D {
     const face = unwrap(makeFace(this.wire as ClosedWire & PlanarWire));
@@ -191,6 +193,8 @@ export default class Sketch implements SketchInterface {
    * give a profile to the extrusion (the endFactor will scale the face, and
    * the profile will define how the scale is applied (either linearly or with
    * a s-shape).
+   *
+   * @remarks Consumes the sketch — calling this twice throws on the second call.
    */
   extrude(
     extrusionDistance: number,
@@ -248,6 +252,9 @@ export default class Sketch implements SketchInterface {
   /**
    * Sweep along this sketch another sketch defined in the function
    * `sketchOnPlane`.
+   *
+   * @remarks Consumes both this sketch and the one returned by `sketchOnPlane` —
+   * calling either consumer twice throws on the second call.
    */
   sweepSketch(
     sketchOnPlane: (plane: Plane, origin: Vec3) => this,

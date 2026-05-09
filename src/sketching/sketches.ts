@@ -1,7 +1,7 @@
 import type { PointInput } from '@/core/types.js';
 import { makeCompound } from '@/topology/shapeHelpers.js';
 import type { ExtrusionProfile } from '@/operations/extrudeUtils.js';
-import type { AnyShape } from '@/core/shapeTypes.js';
+import type { Compound } from '@/core/shapeTypes.js';
 
 import type CompoundSketch from './compoundSketch.js';
 import Sketch from './sketch.js';
@@ -22,13 +22,13 @@ export default class Sketches {
   }
 
   /** Return all wires combined into a single compound shape. */
-  wires(): AnyShape {
+  wires(): Compound {
     const wires = this.sketches.map((s) => (s instanceof Sketch ? s.wire : s.wires));
     return makeCompound(wires);
   }
 
   /** Return all sketch faces combined into a single compound shape. */
-  faces(): AnyShape {
+  faces(): Compound {
     const faces = this.sketches.map((s) => s.face());
     return makeCompound(faces);
   }
@@ -51,7 +51,7 @@ export default class Sketches {
       twistAngle?: number;
       origin?: PointInput;
     } = {}
-  ): AnyShape {
+  ): Compound {
     const extruded = this.sketches.map((s) => s.extrude(extrusionDistance, extrusionConfig));
 
     return makeCompound(extruded);
@@ -61,7 +61,7 @@ export default class Sketches {
    * Revolves the drawing on an axis (defined by its direction and an origin
    * (defaults to the sketch origin)
    */
-  revolve(revolutionAxis?: PointInput, config?: { origin?: PointInput }): AnyShape {
+  revolve(revolutionAxis?: PointInput, config?: { origin?: PointInput }): Compound {
     return makeCompound(this.sketches.map((s) => s.revolve(revolutionAxis, config)));
   }
 }
