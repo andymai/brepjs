@@ -42,7 +42,6 @@ import type {
   MeshOptions,
   NurbsCurveData,
   OperationResult,
-  ShapeEvolution,
   ShapeOrientation,
   ShapeType,
   StepAssemblyPart,
@@ -51,21 +50,8 @@ import type {
 import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
-import type {
-  OcctWasmHandle,
-  OcctWasmModule,
-  OcctKernelWasm,
-  EmEvolutionData,
-} from './occtWasmTypes.js';
-import {
-  handle,
-  isOcctWasmHandle,
-  unwrap,
-  wrapResult,
-  makeVecU32,
-  makeVecInt,
-  readVecInt,
-} from './helpers.js';
+import type { OcctWasmHandle, OcctWasmModule, OcctKernelWasm } from './occtWasmTypes.js';
+import { handle, isOcctWasmHandle, unwrap } from './helpers.js';
 import * as boolOps from './booleanOps.js';
 import * as primOps from './primitiveOps.js';
 import * as topoOps from './topologyOps.js';
@@ -80,6 +66,7 @@ import * as transformOps from './transformOps.js';
 import * as ioOps from './ioOps.js';
 import * as constructionOps from './constructionOps.js';
 import * as kernel2dOps from './kernel2dOps.js';
+import * as evolutionOps from './evolutionOps.js';
 
 // Helpers (handle wrapping, vector marshalling) live in ./helpers.ts so
 // per-section files like ./booleanOps.ts can share them without depending
@@ -103,40 +90,7 @@ import * as kernel2dOps from './kernel2dOps.js';
  * The C++ facade returns flat vectors of [inputHash, outputHash, inputHash, outputHash, ...]
  * for modified and generated, and a flat vector of deleted input hashes.
  */
-function parseEvolution(evo: EmEvolutionData): { id: number; evolution: ShapeEvolution } {
-  try {
-    const modifiedRaw = readVecInt(evo.modified);
-    const generatedRaw = readVecInt(evo.generated);
-    const deletedRaw = readVecInt(evo.deleted);
-
-    // C++ format: [inputHash, count, output1, output2, ..., inputHash, count, ...]
-    const parseMap = (raw: number[]): Map<number, number[]> => {
-      const map = new Map<number, number[]>();
-      let i = 0;
-      while (i + 1 < raw.length) {
-        const inputHash = raw[i] ?? 0;
-        const count = raw[i + 1] ?? 0;
-        i += 2;
-        const outputs: number[] = [];
-        for (let j = 0; j < count && i < raw.length; j++, i++) {
-          outputs.push(raw[i] ?? 0);
-        }
-        map.set(inputHash, outputs);
-      }
-      return map;
-    };
-
-    const modified = parseMap(modifiedRaw);
-    const generated = parseMap(generatedRaw);
-    const deleted = new Set<number>(deletedRaw);
-
-    const resultId = evo.resultId;
-
-    return { id: resultId, evolution: { modified, generated, deleted } };
-  } finally {
-    evo.delete();
-  }
-}
+// parseEvolution moved to evolutionOps.ts
 
 // ---------------------------------------------------------------------------
 // Not-implemented helper
@@ -184,22 +138,7 @@ function wrapKernelExceptions(kernel: OcctKernelWasm, mod: OcctWasmModule): Occt
 // OcctWasmAdapter
 // ---------------------------------------------------------------------------
 
-/**
- * Resolve a callback-style radius/distance to a uniform number.
- * occt-wasm only supports uniform fillet/chamfer per call.
- */
-function resolveUniformRadius(
-  edges: KernelShape[],
-  radius: number | [number, number] | ((edge: KernelShape) => number | [number, number])
-): number {
-  if (typeof radius === 'number') return radius;
-  if (Array.isArray(radius)) return radius[0];
-  // callback -- extract from first edge
-  if (edges.length === 0) throw new Error('occt-wasm: no edges provided');
-
-  const val = radius(edges[0]);
-  return typeof val === 'number' ? val : val[0];
-}
+// resolveUniformRadius moved to helpers.ts
 
 /**
  * Collect 3D sample points from a shape for nearest-pair queries: every
@@ -1209,14 +1148,16 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.translateWithHistory(unwrap(shape), x, y, z, hashVec, hashUpperBound);
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.translateWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      x,
+      y,
+      z,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   rotateWithHistory(
@@ -1227,27 +1168,16 @@ export class OcctWasmAdapter implements KernelAdapter {
     axis?: readonly [number, number, number],
     center?: readonly [number, number, number]
   ): OperationResult {
-    const ax = axis ?? [0, 0, 1];
-    const cn = center ?? [0, 0, 0];
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.rotateWithHistory(
-        unwrap(shape),
-        cn[0],
-        cn[1],
-        cn[2],
-        ax[0],
-        ax[1],
-        ax[2],
-        angle,
-        hashVec,
-        hashUpperBound
-      );
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.rotateWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      angle,
+      inputFaceHashes,
+      hashUpperBound,
+      axis,
+      center
+    );
   }
 
   mirrorWithHistory(
@@ -1257,24 +1187,15 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.mirrorWithHistory(
-        unwrap(shape),
-        origin[0],
-        origin[1],
-        origin[2],
-        normal[0],
-        normal[1],
-        normal[2],
-        hashVec,
-        hashUpperBound
-      );
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.mirrorWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      origin,
+      normal,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   scaleWithHistory(
@@ -1284,45 +1205,33 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.scaleWithHistory(
-        unwrap(shape),
-        center[0],
-        center[1],
-        center[2],
-        factor,
-        hashVec,
-        hashUpperBound
-      );
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.scaleWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      center,
+      factor,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   generalTransformWithHistory(
     shape: KernelShape,
     linear: readonly [number, number, number, number, number, number, number, number, number],
     translation: readonly [number, number, number],
-    _isOrthogonal: boolean,
+    isOrthogonal: boolean,
     inputFaceHashes: number[],
     _hashUpperBound: number
   ): OperationResult {
-    // No C++ WithHistory for generalTransform -- fall back to non-history + empty evolution
-    const result = this.generalTransform(shape, linear, translation, _isOrthogonal);
-    const modified = new Map<number, number[]>();
-    // Approximate: mark all input faces as modified -> same hash
-    for (const h of inputFaceHashes) {
-      modified.set(h, [h]);
-    }
-    const evolution: ShapeEvolution = {
-      modified,
-      generated: new Map(),
-      deleted: new Set(),
-    };
-    return { shape: result, evolution };
+    return evolutionOps.generalTransformWithHistory(
+      (s, l, t, o) => this.generalTransform(s, l, t, o),
+      shape,
+      linear,
+      translation,
+      isOrthogonal,
+      inputFaceHashes
+    );
   }
 
   fuseWithHistory(
@@ -1330,20 +1239,17 @@ export class OcctWasmAdapter implements KernelAdapter {
     tool: KernelShape,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    _options?: BooleanOptions
+    options?: BooleanOptions
   ): DiagnosticOperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.fuseWithHistory(unwrap(shape), unwrap(tool), hashVec, hashUpperBound);
-      const { id, evolution } = parseEvolution(evo);
-      return {
-        shape: wrapResult(this.k, id),
-        evolution,
-        diagnostics: { hasErrors: false, hasWarnings: false, messages: [] },
-      };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.fuseWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      tool,
+      inputFaceHashes,
+      hashUpperBound,
+      options
+    );
   }
 
   cutWithHistory(
@@ -1351,20 +1257,17 @@ export class OcctWasmAdapter implements KernelAdapter {
     tool: KernelShape,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    _options?: BooleanOptions
+    options?: BooleanOptions
   ): DiagnosticOperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.cutWithHistory(unwrap(shape), unwrap(tool), hashVec, hashUpperBound);
-      const { id, evolution } = parseEvolution(evo);
-      return {
-        shape: wrapResult(this.k, id),
-        evolution,
-        diagnostics: { hasErrors: false, hasWarnings: false, messages: [] },
-      };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.cutWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      tool,
+      inputFaceHashes,
+      hashUpperBound,
+      options
+    );
   }
 
   intersectWithHistory(
@@ -1372,20 +1275,17 @@ export class OcctWasmAdapter implements KernelAdapter {
     tool: KernelShape,
     inputFaceHashes: number[],
     hashUpperBound: number,
-    _options?: BooleanOptions
+    options?: BooleanOptions
   ): DiagnosticOperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.intersectWithHistory(unwrap(shape), unwrap(tool), hashVec, hashUpperBound);
-      const { id, evolution } = parseEvolution(evo);
-      return {
-        shape: wrapResult(this.k, id),
-        evolution,
-        diagnostics: { hasErrors: false, hasWarnings: false, messages: [] },
-      };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.intersectWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      tool,
+      inputFaceHashes,
+      hashUpperBound,
+      options
+    );
   }
 
   filletWithHistory(
@@ -1395,17 +1295,15 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    const r = resolveUniformRadius(edges, radius);
-    const edgeVec = makeVecU32(this.Module, edges.map(unwrap));
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.filletWithHistory(unwrap(shape), edgeVec, r, hashVec, hashUpperBound);
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      edgeVec.delete();
-      hashVec.delete();
-    }
+    return evolutionOps.filletWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      edges,
+      radius,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   chamferWithHistory(
@@ -1415,17 +1313,15 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    const d = resolveUniformRadius(edges, distance);
-    const edgeVec = makeVecU32(this.Module, edges.map(unwrap));
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.chamferWithHistory(unwrap(shape), edgeVec, d, hashVec, hashUpperBound);
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      edgeVec.delete();
-      hashVec.delete();
-    }
+    return evolutionOps.chamferWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      edges,
+      distance,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   shellWithHistory(
@@ -1436,23 +1332,16 @@ export class OcctWasmAdapter implements KernelAdapter {
     hashUpperBound: number,
     tolerance?: number
   ): OperationResult {
-    const faceVec = makeVecU32(this.Module, faces.map(unwrap));
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.shellWithHistory(
-        unwrap(shape),
-        faceVec,
-        thickness,
-        tolerance ?? 1e-3,
-        hashVec,
-        hashUpperBound
-      );
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      faceVec.delete();
-      hashVec.delete();
-    }
+    return evolutionOps.shellWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      faces,
+      thickness,
+      inputFaceHashes,
+      hashUpperBound,
+      tolerance
+    );
   }
 
   thickenWithHistory(
@@ -1461,20 +1350,14 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.thickenWithHistory(
-        unwrap(shape),
-        thickness,
-        1e-3,
-        hashVec,
-        hashUpperBound
-      );
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.thickenWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      thickness,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   offsetWithHistory(
@@ -1484,20 +1367,15 @@ export class OcctWasmAdapter implements KernelAdapter {
     hashUpperBound: number,
     tolerance?: number
   ): OperationResult {
-    const hashVec = makeVecInt(this.Module, inputFaceHashes);
-    try {
-      const evo = this.k.offsetWithHistory(
-        unwrap(shape),
-        distance,
-        tolerance ?? 1e-6,
-        hashVec,
-        hashUpperBound
-      );
-      const { id, evolution } = parseEvolution(evo);
-      return { shape: wrapResult(this.k, id), evolution };
-    } finally {
-      hashVec.delete();
-    }
+    return evolutionOps.offsetWithHistory(
+      this.k,
+      this.Module,
+      shape,
+      distance,
+      inputFaceHashes,
+      hashUpperBound,
+      tolerance
+    );
   }
 
   draftWithHistory(
@@ -1509,18 +1387,7 @@ export class OcctWasmAdapter implements KernelAdapter {
     _inputFaceHashes: number[],
     _hashUpperBound: number
   ): OperationResult {
-    // Apply draft to each face sequentially (no evolution tracking)
-    const [dx, dy, dz] = pullDirection;
-    let currentId = unwrap(shape);
-    for (const face of faces) {
-      const angle = typeof angleDeg === 'number' ? angleDeg : angleDeg(face);
-      const angleRad = (angle * Math.PI) / 180;
-      currentId = this.k.draft(currentId, unwrap(face), angleRad, dx, dy, dz);
-    }
-    return {
-      shape: wrapResult(this.k, currentId),
-      evolution: { modified: new Map(), generated: new Map(), deleted: new Set() },
-    };
+    return evolutionOps.draftWithHistory(this.k, shape, faces, pullDirection, angleDeg);
   }
 
   applyComposedTransformWithHistory(
@@ -1529,31 +1396,15 @@ export class OcctWasmAdapter implements KernelAdapter {
     inputFaceHashes: number[],
     hashUpperBound: number
   ): OperationResult {
-    // transform() dispatches across all matrix-like handle shapes:
-    // { __type: 'transform_matrix', matrix }, { matrix: [] }, { elements: [] },
-    // and plain number[]. It throws on anything unrecognizable.
-    const result = this.transform(shape, transformHandle);
-
-    // Synthesize per-face evolution by pairing input and output face hashes
-    // by iteration index. Affine transforms preserve topology, and both
-    // the caller (collectInputFaceHashes) and we use iterShapes(..., 'face')
-    // which is order-stable — the correspondence holds. True C++-tracked
-    // evolution would need a facade method for generic transforms (only
-    // translateWithHistory / rotateWithHistory are exposed today).
-    const outFaces = this.iterShapes(result, 'face');
-    const modified = new Map<number, number[]>();
-    const limit = Math.min(inputFaceHashes.length, outFaces.length);
-    for (let i = 0; i < limit; i++) {
-      const outFace = outFaces[i];
-      const inHash = inputFaceHashes[i];
-      if (outFace !== undefined && inHash !== undefined) {
-        modified.set(inHash, [this.hashCode(outFace, hashUpperBound)]);
-      }
-    }
-    return {
-      shape: result,
-      evolution: { modified, generated: new Map(), deleted: new Set() },
-    };
+    return evolutionOps.applyComposedTransformWithHistory(
+      (s, t) => this.transform(s, t),
+      (s, t) => this.iterShapes(s, t),
+      (s, ub) => this.hashCode(s, ub),
+      shape,
+      transformHandle,
+      inputFaceHashes,
+      hashUpperBound
+    );
   }
 
   // =========================================================================
