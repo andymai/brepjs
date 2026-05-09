@@ -300,16 +300,15 @@ export {
 
 // ── Layer 3: text ──
 
+export { loadFont, getFont } from './text/fontRegistry.js';
+export { textBlueprints } from './text/textBlueprints.js';
+export { sketchText } from './text/sketchText.js';
 export {
-  loadFont,
-  getFont,
-  textBlueprints,
-  sketchText,
   textMetrics,
   fontMetrics,
   type TextMetricsResult,
   type FontMetricsResult,
-} from './text/textBlueprints.js';
+} from './text/textMetrics.js';
 
 // ── Layer 3: projection ──
 
