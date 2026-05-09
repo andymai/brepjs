@@ -25,3 +25,14 @@ export type Vec3 = readonly [number, number, number];
 export function wasmIndex<T>(arr: ArrayLike<T>, i: number): T {
   return arr[i] as T;
 }
+
+/**
+ * Extract a 3-element tuple from a numeric array starting at `offset`.
+ * Equivalent to `[arr[offset]!, arr[offset+1]!, arr[offset+2]!]` but typed
+ * as `[T, T, T]` so no eslint-disable comments are needed at the call site.
+ *
+ * Common use cases: WASM result buffers (xyz, bbox min/max, witness points).
+ */
+export function vec3At<T>(arr: ArrayLike<T>, offset = 0): [T, T, T] {
+  return [arr[offset] as T, arr[offset + 1] as T, arr[offset + 2] as T];
+}

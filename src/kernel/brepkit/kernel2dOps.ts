@@ -27,6 +27,7 @@ import {
 } from './helpers.js';
 import { makeLineEdge, interpolatePoints, makeNonPlanarFace } from './constructionOps.js';
 import { iterShapes } from './topologyOps.js';
+import { vec3At, wasmIndex } from '@/utils/vec3.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // Primitive 2D geometry constructors
@@ -387,10 +388,8 @@ export function createAffinityGTrsf2d(
     py = dx / len; // perpendicular to axis
   const k = ratio - 1;
   const m = [1 + k * px * px, k * px * py, 0, k * py * px, 1 + k * py * py, 0, 0, 0, 1];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  const txv = ox - m[0]! * ox - m[1]! * oy;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  const tyv = oy - m[3]! * ox - m[4]! * oy;
+  const txv = ox - wasmIndex(m, 0) * ox - wasmIndex(m, 1) * oy;
+  const tyv = oy - wasmIndex(m, 3) * ox - wasmIndex(m, 4) * oy;
   return _gtrsf(m, txv, tyv);
 }
 
@@ -417,10 +416,8 @@ export function createMirrorGTrsf2d(
     const px = ox ?? cx,
       py = oy ?? cy;
     // Translation: p - R*p
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const txv = px - m[0]! * px - m[1]! * py;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const tyv = py - m[3]! * px - m[4]! * py;
+    const txv = px - wasmIndex(m, 0) * px - wasmIndex(m, 1) * py;
+    const tyv = py - wasmIndex(m, 3) * px - wasmIndex(m, 4) * py;
     return _gtrsf(m, txv, tyv);
   }
   // Point mirror at (cx, cy)
@@ -446,28 +443,25 @@ export function multiplyGTrsf2d(base: KernelType, other: KernelType): void {
   // Full 3x3 matrix multiply: base = base * other
   const a = base.m as number[],
     b = other.m as number[];
-  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
-  const r = [
-    a[0]! * b[0]! + a[1]! * b[3]! + a[2]! * b[6]!,
-    a[0]! * b[1]! + a[1]! * b[4]! + a[2]! * b[7]!,
-    a[0]! * b[2]! + a[1]! * b[5]! + a[2]! * b[8]!,
-    a[3]! * b[0]! + a[4]! * b[3]! + a[5]! * b[6]!,
-    a[3]! * b[1]! + a[4]! * b[4]! + a[5]! * b[7]!,
-    a[3]! * b[2]! + a[4]! * b[5]! + a[5]! * b[8]!,
-    a[6]! * b[0]! + a[7]! * b[3]! + a[8]! * b[6]!,
-    a[6]! * b[1]! + a[7]! * b[4]! + a[8]! * b[7]!,
-    a[6]! * b[2]! + a[7]! * b[5]! + a[8]! * b[8]!,
+  const ai = (i: number) => wasmIndex(a, i);
+  const bi = (i: number) => wasmIndex(b, i);
+  base.m = [
+    ai(0) * bi(0) + ai(1) * bi(3) + ai(2) * bi(6),
+    ai(0) * bi(1) + ai(1) * bi(4) + ai(2) * bi(7),
+    ai(0) * bi(2) + ai(1) * bi(5) + ai(2) * bi(8),
+    ai(3) * bi(0) + ai(4) * bi(3) + ai(5) * bi(6),
+    ai(3) * bi(1) + ai(4) * bi(4) + ai(5) * bi(7),
+    ai(3) * bi(2) + ai(4) * bi(5) + ai(5) * bi(8),
+    ai(6) * bi(0) + ai(7) * bi(3) + ai(8) * bi(6),
+    ai(6) * bi(1) + ai(7) * bi(4) + ai(8) * bi(7),
+    ai(6) * bi(2) + ai(7) * bi(5) + ai(8) * bi(8),
   ];
-  /* eslint-enable @typescript-eslint/no-non-null-assertion */
-  base.m = r;
   const oldTx = base.tx as number,
     oldTy = base.ty as number;
   const otx = Number(other.tx) || 0,
     oty = Number(other.ty) || 0;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  base.tx = a[0]! * otx + a[1]! * oty + oldTx;
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-  base.ty = a[3]! * otx + a[4]! * oty + oldTy;
+  base.tx = ai(0) * otx + ai(1) * oty + oldTx;
+  base.ty = ai(3) * otx + ai(4) * oty + oldTy;
 }
 
 export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType): Curve2dHandle {
@@ -477,13 +471,15 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   const tx = Number(gtrsf.tx) || 0,
     ty = Number(gtrsf.ty) || 0;
   // If transform is just a translation, use fast path
-  /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
+  const m0 = wasmIndex(m, 0),
+    m1 = wasmIndex(m, 1),
+    m3 = wasmIndex(m, 3),
+    m4 = wasmIndex(m, 4);
   const isIdentityMatrix =
-    Math.abs(m[0]! - 1) < 1e-12 &&
-    Math.abs(m[4]! - 1) < 1e-12 &&
-    Math.abs(m[1]!) < 1e-12 &&
-    Math.abs(m[3]!) < 1e-12;
-  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+    Math.abs(m0 - 1) < 1e-12 &&
+    Math.abs(m4 - 1) < 1e-12 &&
+    Math.abs(m1) < 1e-12 &&
+    Math.abs(m3) < 1e-12;
   if (isIdentityMatrix) {
     return bk2d.translateCurve2d(c, tx, ty);
   }
@@ -494,8 +490,7 @@ export function transformCurve2dGeneral(curve: Curve2dHandle, gtrsf: KernelType)
   for (let i = 0; i <= N; i++) {
     const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
     const [px, py] = bk2d.evaluateCurve2d(c, t);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    pts.push([m[0]! * px + m[1]! * py + tx, m[3]! * px + m[4]! * py + ty]);
+    pts.push([m0 * px + m1 * py + tx, m3 * px + m4 * py + ty]);
   }
   return bk2d.makeBezier2d(pts);
 }
@@ -677,10 +672,8 @@ export function approximateCurve2dAsBSpline(
       const tMid = bounds.first + ((bounds.last - bounds.first) * (i + 0.5)) / N;
       const [ex, ey] = bk2d.evaluateCurve2d(c, tMid);
       // Linear interp between adjacent samples
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-      const p0 = poles[i]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-      const p1 = poles[i + 1]!;
+      const p0 = wasmIndex(poles, i);
+      const p1 = wasmIndex(poles, i + 1);
       const mx = (p0[0] + p1[0]) / 2;
       const my = (p0[1] + p1[1]) / 2;
       const err = Math.sqrt((ex - mx) ** 2 + (ey - my) ** 2);
@@ -716,10 +709,8 @@ export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle
   const breakpoints = [first, ...internalKnots, last];
   const result: Curve2dHandle[] = [];
   for (let i = 0; i < breakpoints.length - 1; i++) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const t0 = breakpoints[i]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const t1 = breakpoints[i + 1]!;
+    const t0 = wasmIndex(breakpoints, i);
+    const t1 = wasmIndex(breakpoints, i + 1);
     const span = t1 - t0;
     if (span < 1e-15) continue;
     const p0 = bk2d.evaluateCurve2d(c, t0);
@@ -940,8 +931,7 @@ export function liftCurve2dToPlane(
         const [eu, ev] = bk2d.evaluateCurve2d(c, bounds.first + (seg + 1) * segmentSpan);
         edgeIds.push(bk.makeCircleArc3d(...lift(su, sv), ...lift(eu, ev), ...center3d, ...axis));
       }
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-      if (edgeIds.length === 1) return edgeHandle(edgeIds[0]!);
+      if (edgeIds.length === 1) return edgeHandle(wasmIndex(edgeIds, 0));
       return wireHandle(bk.makeWire(edgeIds, false));
     }
 
@@ -953,8 +943,8 @@ export function liftCurve2dToPlane(
   // For Bezier/BSpline: lift control points exactly (preserves NURBS structure)
   if (c.__bk2d === 'bezier' || c.__bk2d === 'bspline') {
     const points3d = c.poles.map(([u, v]) => lift(u, v));
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    if (points3d.length === 2) return makeLineEdge(bk, points3d[0]!, points3d[1]!);
+    if (points3d.length === 2)
+      return makeLineEdge(bk, wasmIndex(points3d, 0), wasmIndex(points3d, 1));
     const degree = Math.min(3, points3d.length - 1);
     const coords = points3d.flatMap(([px, py, pz]) => [px, py, pz]);
     const id = bk.interpolatePoints(coords, degree);
@@ -993,15 +983,54 @@ export function buildEdgeOnSurface(
   for (let i = 0; i <= N; i++) {
     const t = bounds.first + ((bounds.last - bounds.first) * i) / N;
     const [u, v] = bk2d.evaluateCurve2d(c, t);
-    const p = bk.evaluateSurface(fid, u, v);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    points.push([p[0]!, p[1]!, p[2]!]);
+    points.push(vec3At(bk.evaluateSurface(fid, u, v)));
   }
   return interpolatePoints(bk, points);
 }
 
 export function extractSurfaceFromFace(face: KernelShape): KernelType {
   return face; /* brepkit face IS its surface */
+}
+
+type UVSample = { t: number; uv: [number, number] };
+
+/**
+ * Adaptively refine a UV sample list by inserting midpoints whenever the
+ * sampled UV midpoint deviates from the linear interpolation of its
+ * neighbors by more than `threshold`. Stops at `maxSamples` or when no
+ * pair exceeds the threshold; cap of 3 refinement passes overall.
+ */
+function refineUVSamples(
+  uvSamples: UVSample[],
+  evaluateUV: (t: number) => [number, number],
+  maxSamples: number,
+  threshold: number
+): void {
+  let refinements = 0;
+  while (uvSamples.length < maxSamples) {
+    const insertions: Array<{ index: number; t: number; uv: [number, number] }> = [];
+    for (let i = 0; i < uvSamples.length - 1; i++) {
+      const a = wasmIndex(uvSamples, i);
+      const b = wasmIndex(uvSamples, i + 1);
+      const tMid = (a.t + b.t) / 2;
+      const uvMid = evaluateUV(tMid);
+      const interpU = (a.uv[0] + b.uv[0]) / 2;
+      const interpV = (a.uv[1] + b.uv[1]) / 2;
+      const deviation = Math.sqrt((uvMid[0] - interpU) ** 2 + (uvMid[1] - interpV) ** 2);
+      if (deviation > threshold) {
+        insertions.push({ index: i + 1, t: tMid, uv: uvMid });
+      }
+    }
+    if (insertions.length === 0) break;
+    let budget = maxSamples - uvSamples.length;
+    for (let j = insertions.length - 1; j >= 0 && budget > 0; j--) {
+      const ins = wasmIndex(insertions, j);
+      uvSamples.splice(ins.index, 0, { t: ins.t, uv: ins.uv });
+      budget--;
+    }
+    refinements++;
+    if (refinements > 3) break;
+  }
 }
 
 export function extractCurve2dFromEdge(
@@ -1032,49 +1061,13 @@ export function extractCurve2dFromEdge(
   // Evaluate 3D points -> UV
   const evaluateUV = (t: number): [number, number] => {
     const pt = bk.evaluateEdgeCurve(eid, t);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const uv = bk.projectPointOnSurface(fid, pt[0]!, pt[1]!, pt[2]!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    return [uv[0]!, uv[1]!];
+    const uv = bk.projectPointOnSurface(fid, wasmIndex(pt, 0), wasmIndex(pt, 1), wasmIndex(pt, 2));
+    return [wasmIndex(uv, 0), wasmIndex(uv, 1)];
   };
 
-  const uvSamples: Array<{ t: number; uv: [number, number] }> = tValues.map((t) => ({
-    t,
-    uv: evaluateUV(t),
-  }));
+  const uvSamples: UVSample[] = tValues.map((t) => ({ t, uv: evaluateUV(t) }));
 
-  // Adaptive refinement: insert midpoints where the UV midpoint deviates
-  // significantly from the linear interpolation of its neighbors.
-  let refinements = 0;
-  while (uvSamples.length < MAX_N) {
-    const insertions: Array<{ index: number; t: number; uv: [number, number] }> = [];
-    for (let i = 0; i < uvSamples.length - 1; i++) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-      const a = uvSamples[i]!;
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-      const b = uvSamples[i + 1]!;
-      const tMid = (a.t + b.t) / 2;
-      const uvMid = evaluateUV(tMid);
-      // Linear interpolation of UV
-      const interpU = (a.uv[0] + b.uv[0]) / 2;
-      const interpV = (a.uv[1] + b.uv[1]) / 2;
-      const deviation = Math.sqrt((uvMid[0] - interpU) ** 2 + (uvMid[1] - interpV) ** 2);
-      if (deviation > REFINE_THRESHOLD) {
-        insertions.push({ index: i + 1, t: tMid, uv: uvMid });
-      }
-    }
-    if (insertions.length === 0) break;
-    // Insert in reverse order to preserve indices; cap at MAX_N total samples
-    let budget = MAX_N - uvSamples.length;
-    for (let j = insertions.length - 1; j >= 0 && budget > 0; j--) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-      const ins = insertions[j]!;
-      uvSamples.splice(ins.index, 0, { t: ins.t, uv: ins.uv });
-      budget--;
-    }
-    refinements++;
-    if (refinements > 3) break; // cap refinement passes
-  }
+  refineUVSamples(uvSamples, evaluateUV, MAX_N, REFINE_THRESHOLD);
 
   const uvPoints: [number, number][] = uvSamples.map((s) => s.uv);
 
@@ -1085,12 +1078,24 @@ export function extractCurve2dFromEdge(
   // Fallback: use edge vertices projected to UV
   const verts = bk.getEdgeVertices(eid);
   if (verts.length >= 6) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const uv1 = bk.projectPointOnSurface(fid, verts[0]!, verts[1]!, verts[2]!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    const uv2 = bk.projectPointOnSurface(fid, verts[3]!, verts[4]!, verts[5]!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-    return bk2d.makeLine2d(uv1[0]!, uv1[1]!, uv2[0]!, uv2[1]!);
+    const uv1 = bk.projectPointOnSurface(
+      fid,
+      wasmIndex(verts, 0),
+      wasmIndex(verts, 1),
+      wasmIndex(verts, 2)
+    );
+    const uv2 = bk.projectPointOnSurface(
+      fid,
+      wasmIndex(verts, 3),
+      wasmIndex(verts, 4),
+      wasmIndex(verts, 5)
+    );
+    return bk2d.makeLine2d(
+      wasmIndex(uv1, 0),
+      wasmIndex(uv1, 1),
+      wasmIndex(uv2, 0),
+      wasmIndex(uv2, 1)
+    );
   }
   throw new Error(`brepkit: extractCurve2dFromEdge: degenerate edge (${verts.length} coords)`);
 }
@@ -1122,17 +1127,14 @@ export function fillSurface(
       for (const edge of wireEdges) {
         const edgeId = unwrap(edge, 'edge');
         const params = bk.getEdgeCurveParameters(edgeId);
-        /* eslint-disable @typescript-eslint/no-non-null-assertion -- WASM index */
-        const tMin = params[0]!,
-          tMax = params[1]!;
-        /* eslint-enable @typescript-eslint/no-non-null-assertion */
+        const tMin = wasmIndex(params, 0);
+        const tMax = wasmIndex(params, 1);
         const N = 10;
         const pts: number[] = [];
         for (let i = 0; i <= N; i++) {
           const t = tMin + ((tMax - tMin) * i) / N;
           const p = bk.evaluateEdgeCurve(edgeId, t);
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- WASM index
-          pts.push(p[0]!, p[1]!, p[2]!);
+          pts.push(wasmIndex(p, 0), wasmIndex(p, 1), wasmIndex(p, 2));
         }
         allCoords.push(...pts);
         curveLengths.push(N + 1);
