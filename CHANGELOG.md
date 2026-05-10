@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.10.2](https://github.com/andymai/brepjs/compare/brepjs-v18.10.1...brepjs-v18.10.2) (2026-05-10)
+
+
+### Bug Fixes
+
+* **gear:** silence Lewis-shift caveat under threshold; reorder metric compute ([#994](https://github.com/andymai/brepjs/issues/994)) ([1d62735](https://github.com/andymai/brepjs/commit/1d627358bb3779c2fa2f07492285e3aa1456e254))
+
 ## [18.10.1](https://github.com/andymai/brepjs/compare/brepjs-v18.10.0...brepjs-v18.10.1) (2026-05-10)
 
 
