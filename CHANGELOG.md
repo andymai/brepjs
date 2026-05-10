@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.9.0](https://github.com/andymai/brepjs/compare/brepjs-v18.8.1...brepjs-v18.9.0) (2026-05-10)
+
+
+### Features
+
+* **gear:** add planetPlacements for instanced planet rendering ([#984](https://github.com/andymai/brepjs/issues/984)) ([3766fa6](https://github.com/andymai/brepjs/commit/3766fa6f4f2dfeeeb0ad8b75e179355b7e890f49))
+
 ## [18.8.1](https://github.com/andymai/brepjs/compare/brepjs-v18.8.0...brepjs-v18.8.1) (2026-05-10)
 
 
