@@ -492,6 +492,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'pivotPlane',
   'planarFace',
   'planarWire',
+  'planetPlacements',
   'pocket',
   'pointOnSurface',
   'polygon',

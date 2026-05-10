@@ -1,5 +1,5 @@
 import type { Vec3 } from '@/core/types.js';
-import { type Result, ok, err } from '@/core/result.js';
+import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError } from '@/core/errors.js';
 
 export const DEFAULT_PRESSURE_ANGLE_DEG = 20;
@@ -284,4 +284,63 @@ export function evenToothPhaseOffset(z: number): number {
 
 export function planetSelfRotationAngle(orbitalAngle: number, zs: number, zp: number): number {
   return orbitalAngle * (1 + zs / zp) + evenToothPhaseOffset(zp);
+}
+
+/** Pure-kinematics inputs for {@link planetPlacements}; subset of `PlanetaryGearParams`. */
+export interface PlanetPlacementParams {
+  moduleSize?: number;
+  sunTeeth?: number;
+  planetTeeth?: number;
+  numPlanets?: number;
+  pressureAngleDeg?: number;
+  sunShift?: number;
+  planetShift?: number;
+}
+
+export interface PlanetPlacement {
+  /** Self-rotation around the planet's own Z axis, in degrees. */
+  rotationDeg: number;
+  /** Center of the planet in the assembly frame: `[x, y, 0]`. */
+  position: Vec3;
+}
+
+/**
+ * Compute the rigid placement of each planet without building any solid.
+ *
+ * Pairs with one materialized planet from `makeExternalGear` to support
+ * GPU-instanced rendering: mesh once, draw N times under these transforms.
+ * Defaults match {@link PlanetaryGearParams}.
+ */
+export function planetPlacements(params: PlanetPlacementParams = {}): Result<PlanetPlacement[]> {
+  const moduleSize = params.moduleSize ?? 3;
+  const sunTeeth = params.sunTeeth ?? 15;
+  const planetTeeth = params.planetTeeth ?? 12;
+  const numPlanets = params.numPlanets ?? 3;
+  const alpha = ((params.pressureAngleDeg ?? DEFAULT_PRESSURE_ANGLE_DEG) * Math.PI) / 180;
+  const sunShift = params.sunShift ?? 0;
+  const planetShift = params.planetShift ?? 0;
+
+  const validation = validatePlanetary(sunTeeth, planetTeeth, numPlanets, planetShift);
+  if (isErr(validation)) return validation;
+
+  const sp = solveSunPlanetWorkingPressureAngle(
+    alpha,
+    sunShift,
+    planetShift,
+    sunTeeth,
+    planetTeeth
+  );
+  if (isErr(sp)) return sp;
+  const centerDistance = workingCenterDistance(sunTeeth, planetTeeth, moduleSize, alpha, sp.value);
+
+  const placements: PlanetPlacement[] = [];
+  for (let i = 0; i < numPlanets; i++) {
+    const orbital = (i * 2 * Math.PI) / numPlanets;
+    const selfRot = planetSelfRotationAngle(orbital, sunTeeth, planetTeeth);
+    placements.push({
+      rotationDeg: (selfRot * 180) / Math.PI,
+      position: [centerDistance * Math.cos(orbital), centerDistance * Math.sin(orbital), 0],
+    });
+  }
+  return ok(placements);
 }

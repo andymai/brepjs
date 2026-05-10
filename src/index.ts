@@ -1022,11 +1022,14 @@ export {
   type GearDiagnosticCode,
   type GearDiagnosticSeverity,
   type GearGeometry,
+  type PlanetPlacement,
+  type PlanetPlacementParams,
   makeExternalGear,
   makeInternalGear,
   makePlanetaryGear,
   gearGeometry,
   validatePlanetary,
+  planetPlacements,
 } from './gear/index.js';
 
 // ── Namespace re-exports (grouped API) ──

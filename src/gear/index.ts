@@ -22,6 +22,9 @@ export {
   ringTeeth,
   evenToothPhaseOffset,
   planetSelfRotationAngle,
+  planetPlacements,
+  type PlanetPlacement,
+  type PlanetPlacementParams,
 } from './gearMath.js';
 
 export {

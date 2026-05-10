@@ -21,7 +21,9 @@ import {
   evenToothPhaseOffset,
   planetSelfRotationAngle,
   backlashHalf,
+  planetPlacements,
 } from '@/gear/gearMath.js';
+import { unwrap } from '@/core/result.js';
 
 describe('inv (involute function)', () => {
   it('inv(0) = 0', () => {
@@ -325,5 +327,35 @@ describe('planetary kinematics', () => {
   it('backlashHalf = b/2', () => {
     expect(backlashHalf(0.4)).toBe(0.2);
     expect(backlashHalf(0)).toBe(0);
+  });
+});
+
+describe('planetPlacements', () => {
+  it('default config returns 3 placements with equal orbital spacing', () => {
+    const placements = unwrap(planetPlacements());
+    expect(placements).toHaveLength(3);
+    // 3 planets at 0°, 120°, 240° around sun-planet center distance.
+    // Default zs=15, zp=12, m=3 → centerDistance = (15+12)·3/2 = 40.5.
+    const r = 40.5;
+    expect(placements[0]?.position).toEqual([r, 0, 0]);
+    expect(placements[1]?.position[0]).toBeCloseTo(r * Math.cos((2 * Math.PI) / 3), 8);
+    expect(placements[2]?.position[1]).toBeCloseTo(r * Math.sin((4 * Math.PI) / 3), 8);
+  });
+
+  it('honours numPlanets', () => {
+    expect(unwrap(planetPlacements({ sunTeeth: 20, planetTeeth: 16, numPlanets: 4 }))).toHaveLength(
+      4
+    );
+  });
+
+  it('rejects invalid assemblies (planet collision)', () => {
+    // 5 planets, sun=8, planet=12 — same case the high-level builder rejects.
+    expect(isErr(planetPlacements({ sunTeeth: 8, planetTeeth: 12, numPlanets: 5 }))).toBe(true);
+  });
+
+  it('rotation angles match planetSelfRotationAngle', () => {
+    const placements = unwrap(planetPlacements({ sunTeeth: 20, planetTeeth: 16, numPlanets: 4 }));
+    // i=0 → orbital=0, selfRot = 0·(1+20/16) + π/16 (zp even). In degrees: 180/16.
+    expect(placements[0]?.rotationDeg).toBeCloseTo(180 / 16, 6);
   });
 });
