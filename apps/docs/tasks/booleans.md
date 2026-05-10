@@ -186,18 +186,52 @@ Three potential boolean failures become one. If the holes don't overlap each oth
 ```typescript
 import { box, cut, fuse, unwrap } from 'brepjs/quick';
 
-const part = box(40, 20, 10);
-const tenon = box(8, 6, 4, { at: [16, 7, 10] }); // protrudes from top
-const mortise = box(8.2, 6.2, 4.1, { at: [15.9, 6.9, -0.05] }); // through-cut
+// Through, four-shouldered T-joint between a rail and a stile — the
+// canonical furniture joint (chair stretcher into a leg). Rendered
+// exploded along the rail axis so the tenon is visible in mid-air.
 
-const withTenon = unwrap(fuse(part, tenon));
-const withMortise = unwrap(cut(withTenon, mortise));
-console.log('Built mortise and tenon');
+const stileD = 40; // stile depth  (X, along rail axis)
+const stileW = 60; // stile width  (Y)
+const stileH = 200; // stile height (Z)
 
-export default withMortise;
+const railL = 150; // rail length    (X)
+const railW = 50; // rail width     (Y)
+const railT = 30; // rail thickness (Z)
+
+const tenonH = 30; // tenon height in Y     (~60% of railW → 10 mm shoulder each side)
+const tenonT = 10; // tenon thickness in Z  (~1/3 of railT → 10 mm shoulder each face)
+const clearance = 0.2; // sliding-fit oversize on the mortise
+const gap = 50; // exploded view: air between rail tip and stile face
+
+// `box`'s `at` option places the box CENTER at the given point.
+// Both pieces share Y/Z center on the stile face.
+const cy = stileW / 2;
+const cz = stileH / 2;
+
+// Stile with through-mortise. The cutter spans the full stile depth plus
+// clearance overhang on both X faces, so the slot punches all the way through.
+const stile = unwrap(
+  cut(
+    box(stileD, stileW, stileH),
+    box(stileD + clearance, tenonH + clearance, tenonT + clearance, {
+      at: [stileD / 2, cy, cz],
+    })
+  )
+);
+
+// Rail body sits at X < 0, ending at -gap; tenon protrudes another stileD
+// toward the (empty) mortise space.
+const rail = unwrap(
+  fuse(
+    box(railL, railW, railT, { at: [-gap - railL / 2, cy, cz] }),
+    box(stileD, tenonH, tenonT, { at: [-gap + stileD / 2, cy, cz] })
+  )
+);
+
+export default [rail, stile];
 ```
 
-Add tenons by `fuse`; remove mortises by `cut`. The slight oversize on the mortise (`8.2 × 6.2`) gives manufacturing clearance.
+`fuse` adds the tenon as a boss on the rail; `cut` removes the mortise from the stile. Sizing the tenon to about ⅓ the rail thickness leaves enough wood on either side of the mortise that the stile doesn't split — the same rule a hand-tool woodworker would follow. The `clearance` (0.2 mm here) is the sliding fit that lets the joint actually go together; without it, kernel rounding can produce coincident faces and a failed boolean.
 
 ### Carve a label
 

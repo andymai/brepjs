@@ -68,14 +68,15 @@ import { Sketcher } from 'brepjs/quick';
 
 const goblet = new Sketcher('XZ')
   .movePointerTo([0, 0])
-  .hLine(8)
-  .vLine(2)
-  .hLine(-6)
-  .vLine(20)
-  .hLine(15)
-  .tangentArc(0, 4)
-  .hLine(-17)
-  .vLine(-26)
+  .hLine(8) // base outer radius
+  .vLine(1.5) // thin disc base
+  .hLine(-6) // narrow into the stem (r=2)
+  .vLine(20) // stem
+  .hLine(8) // cup floor at r=10
+  .tangentArc(4, 4) // quarter-arc rounding the cup base, ends tangent +Z
+  .vLine(13) // straight cup wall up to r=14
+  .hLine(-14) // close across the top
+  .vLine(-38.5) // close down the axis
   .close()
   .revolve();
 export default goblet;
@@ -144,14 +145,14 @@ Build a helix as the path, sweep a circle along it:
 ```typescript
 import { sketchCircle, helix, sweep, unwrap } from 'brepjs/quick';
 
-const thread = sketchCircle(0.5).face(); // thread cross-section
+const profile = sketchCircle(0.5).face(); // thread cross-section
 const path = helix({ pitch: 1.5, height: 30, radius: 5 });
 
-const screw = unwrap(sweep(thread, path));
-export default screw;
+const thread = unwrap(sweep(profile, path)); // bare helical coil
+export default thread;
 ```
 
-`helix({ pitch, height, radius })` returns a wire of the helical curve.
+`helix({ pitch, height, radius })` returns a wire of the helical curve. Sweep a small circle along it and you get a thread — fuse it onto a shaft to make a screw (see _Threaded fastener_ below).
 
 ### Frenet vs auxiliary frame
 
@@ -167,16 +168,18 @@ Most parts work with the default. Specify `{ frame: 'auxiliary' }` when you need
 A solid built by smoothly interpolating between two or more profiles:
 
 ```typescript
-import { sketchCircle, sketchRectangle, loft, unwrap } from 'brepjs/quick';
+import { sketchCircle, loft, unwrap } from 'brepjs/quick';
 
-const bottom = sketchCircle(20); // round base
-const top = sketchRectangle(30, 30).translate([0, 0, 50]); // square top
+const base = sketchCircle(15); // narrow base
+const rim = sketchCircle(35, { origin: [0, 0, 50] }); // wider rim, 50 mm up
 
-const bowl = unwrap(loft([bottom, top]));
+const bowl = unwrap(loft([base.wire, rim.wire])); // flared truncated cone
 export default bowl;
 ```
 
-The loft passes through every input profile in order. Profiles must be on parallel planes (or roughly so — non-coplanar lofting works but can produce twisted results).
+The loft passes through every input profile in order. Two parallel circles of different radii produce a flared, bowl-shaped solid — the canonical loft pattern. Hollow it with `shell` (see _Hollowing: shell_ below) to turn it into a usable cup. Profiles must be on parallel planes (or roughly so — non-coplanar lofting works but can produce twisted results).
+
+> Note: `loft` takes `Wire[]`, hence the `.wire` on each sketch. The OO equivalent `sketch.loftWith(otherSketch, opts)` does that unwrapping for you.
 
 ### Multi-section lofts
 
@@ -184,9 +187,9 @@ The loft passes through every input profile in order. Profiles must be on parall
 import { sketchCircle, loft, unwrap } from 'brepjs/quick';
 
 const sections = [
-  sketchCircle(10),
-  sketchCircle(20).translate([0, 0, 30]),
-  sketchCircle(5).translate([0, 0, 60]),
+  sketchCircle(10).wire,
+  sketchCircle(20, { origin: [0, 0, 30] }).wire,
+  sketchCircle(5, { origin: [0, 0, 60] }).wire,
 ];
 
 const vase = unwrap(loft(sections));
@@ -233,8 +236,8 @@ export default cup;
 ```typescript
 import { sketchCircle, helix, sweep, sketchRoundedRectangle, fuse, unwrap } from 'brepjs/quick';
 
-const shaft = sketchCircle(3).extrude(20);
-const threadProfile = sketchCircle(0.5).face();
+const shaft = sketchCircle(3).extrude(20); // M6-ish, 20 mm long
+const threadProfile = sketchCircle(0.75).face(); // ~12% of shaft dia
 const threadPath = helix({ pitch: 1.5, height: 18, radius: 3 });
 const thread = unwrap(sweep(threadProfile, threadPath));
 const head = sketchRoundedRectangle(8, 8, 0.5).extrude(3).translate([0, 0, 20]);

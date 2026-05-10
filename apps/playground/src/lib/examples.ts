@@ -78,45 +78,47 @@ function pegboard(cols: number, rows: number) {
 export default pegboard(6, 4);
 `;
 
-const mortiseAndTenon = `import { box, cut, fuse, translate, unwrap } from 'brepjs/quick';
+const mortiseAndTenon = `import { box, cut, fuse, unwrap } from 'brepjs/quick';
 
-// Two boards joined with a mortise-and-tenon. The tenon (boss on partA)
-// plugs into the mortise (slot in partB) when assembled. Rendered with a
-// 20 mm visual gap between them so both halves are clearly visible.
-const len = 60;          // board length (X)
-const width = 30;        // board width  (Y)
-const thickness = 16;    // board thickness (Z)
+// Through, four-shouldered mortise-and-tenon T-joint between a rail and a
+// stile — the canonical furniture joint (chair stretcher into a leg).
+// Rendered exploded along the rail axis so the tenon hangs in mid-air.
 
-const tenonD = 16;       // depth of the tenon along X
-const tenonH = 14;       // tenon height in Y
-const tenonW = 10;       // tenon thickness in Z
-const clearance = 0.2;   // mortise oversize for a sliding fit
-const visualGap = 20;    // air between the parts in the render
+const stileD = 40;       // stile depth  (X, along rail axis)
+const stileW = 60;       // stile width  (Y)
+const stileH = 200;      // stile height (Z)
 
-// Tenon protrudes from boardA's right face along +X.
-const boardA = box(len, width, thickness);
-const tenon = translate(
-  box(tenonD, tenonH, tenonW),
-  [len, (width - tenonH) / 2, (thickness - tenonW) / 2]
-);
-const partA = unwrap(fuse(boardA, tenon));
+const railL = 150;       // rail length    (X)
+const railW = 50;        // rail width     (Y)
+const railT = 30;        // rail thickness (Z)
 
-// boardB sits visualGap mm beyond where the tenon tip would land. The
-// mortise is cut into its left face, sized to accept the tenon plus
-// clearance.
-const boardBX = len + tenonD + visualGap;
-const boardB = translate(box(len, width, thickness), [boardBX, 0, 0]);
-const mortise = translate(
-  box(tenonD + clearance, tenonH + clearance, tenonW + clearance),
-  [
-    boardBX - clearance / 2,
-    (width - tenonH) / 2 - clearance / 2,
-    (thickness - tenonW) / 2 - clearance / 2,
-  ]
-);
-const partB = unwrap(cut(boardB, mortise));
+const tenonH = 30;       // tenon height in Y     (~60% of railW → 10 mm shoulder each side)
+const tenonT = 10;       // tenon thickness in Z  (~1/3 of railT → 10 mm shoulder each face)
+const clearance = 0.2;   // sliding-fit oversize on the mortise
+const gap = 50;          // exploded view: air between rail tip and stile face
 
-export default [partA, partB];
+// \`box\`'s \`at\` option places the box CENTER at the given point.
+// Both pieces share Y/Z center on the stile face.
+const cy = stileW / 2;
+const cz = stileH / 2;
+
+// Stile with through-mortise. The cutter spans the full stile depth plus
+// clearance overhang on both X faces, so the slot punches all the way through.
+const stile = unwrap(cut(
+  box(stileD, stileW, stileH),
+  box(stileD + clearance, tenonH + clearance, tenonT + clearance, {
+    at: [stileD / 2, cy, cz],
+  })
+));
+
+// Rail body sits at X < 0, ending at -gap; tenon protrudes another stileD
+// toward the (empty) mortise space.
+const rail = unwrap(fuse(
+  box(railL, railW, railT, { at: [-gap - railL / 2, cy, cz] }),
+  box(stileD, tenonH, tenonT, { at: [-gap + stileD / 2, cy, cz] })
+));
+
+export default [rail, stile];
 `;
 
 export const EXAMPLES: readonly Example[] = [
@@ -147,7 +149,7 @@ export const EXAMPLES: readonly Example[] = [
   {
     id: 'mortise-tenon',
     label: 'Mortise & tenon',
-    description: 'Two boards joined by boolean fuse + cut, exported side by side.',
+    description: 'Through, four-shouldered T-joint between a rail and a stile. Exploded so the tenon hangs in mid-air.',
     code: mortiseAndTenon,
   },
 ];
