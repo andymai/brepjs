@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.8.1](https://github.com/andymai/brepjs/compare/brepjs-v18.8.0...brepjs-v18.8.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* **gear:** dispose sun/planet solids on planetary error paths ([#980](https://github.com/andymai/brepjs/issues/980)) ([e6847a2](https://github.com/andymai/brepjs/commit/e6847a2734157a814b655c9b5899f991a88c9d39))
+
 ## [18.8.0](https://github.com/andymai/brepjs/compare/brepjs-v18.7.3...brepjs-v18.8.0) (2026-05-10)
 
 
