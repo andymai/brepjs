@@ -1,7 +1,3 @@
-/**
- * Gear module — involute spur gears and planetary assemblies.
- */
-
 export {
   type GearDiagnostic,
   type GearDiagnosticSeverity,
@@ -10,9 +6,10 @@ export {
   involutePoint,
   cosineSpaceFlankSamples,
   adaptiveSampleCount,
-  adaptiveBSplineTolerance,
   gearGeometry,
   solveWorkingPressureAngle,
+  solveSunPlanetWorkingPressureAngle,
+  solvePlanetRingWorkingPressureAngle,
   workingCenterDistance,
   validatePlanetary,
   externalExternalContactRatio,

@@ -1,8 +1,3 @@
-/**
- * Integration tests for gear builders — runs against the configured kernel
- * (default OCCT, override with TEST_KERNEL=brepkit).
- */
-
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
 import {

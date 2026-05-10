@@ -1,12 +1,3 @@
-/**
- * Gear profile wires — assemble involute flanks, tip arcs, and root arcs into
- * closed planar wires for external and internal gears.
- *
- * Tip and root arcs are stored as `Geom_Circle` segments via `makeThreePointArc`,
- * so they round-trip through STEP as analytic circles, not B-spline approximations.
- * Flanks are `Geom_BSplineCurve` approximations of the involute.
- */
-
 import type { Vec3 } from '@/core/types.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError } from '@/core/errors.js';
@@ -20,42 +11,33 @@ import {
 import { firstOrThrow, lastOrThrow } from '@/utils/arrayAccess.js';
 import {
   type GearGeometry,
-  adaptiveBSplineTolerance,
   adaptiveSampleCount,
   cosineSpaceFlankSamples,
   gearGeometry,
   inv,
 } from './gearMath.js';
 
-// ── Tooth-period edge construction ───────────────────────────────────────────
-
-/**
- * Build the edges for one tooth period, in order:
- *   [optional radial line up from root to base], left flank, tip arc,
- *   right flank, [optional radial line down to root], root arc to next tooth.
- *
- * Endpoints are coincident by construction so `assembleWire` accepts the chain.
- */
 function buildToothPeriodEdges(
   tm: GearGeometry,
   toothIndex: number,
   totalTeeth: number,
-  samples: number,
-  tolerance: number
+  samples: number
 ): Result<Edge[]> {
   const center = toothIndex * tm.toothPitch;
   const nextCenter = ((toothIndex + 1) % totalTeeth) * tm.toothPitch;
   const invPitch = inv(tm.alphaPitch);
 
-  // Anchor angles: at α=α_pitch the involute should hit center ± halfToothAngle.
-  // θ(α) = θ0 + sign·inv(α). At pitch: θ = θ0 ± inv(α_pitch). So:
+  // θ(α) = θ0 + sign·inv(α); at α_pitch the involute must hit center ± halfToothAngle, so:
   //   left:  θ0 = center − halfToothAngle − inv(α_pitch)   (sign=+1)
   //   right: θ0 = center + halfToothAngle + inv(α_pitch)   (sign=-1)
   const thetaLeft = center - tm.halfToothAngle - invPitch;
   const thetaRight = center + tm.halfToothAngle + invPitch;
 
+  // Right flank reversed so the edge chain runs base→tip→base→nextBase in geometric order.
+  // Without this, the wire has a discontinuity that OCCT silently fixes via auto-reorientation
+  // but brepkit doesn't, producing a face with reversed orientation.
   const leftFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaLeft, samples, 1);
-  const rightFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaRight, samples, -1);
+  const rightFlank = cosineSpaceFlankSamples(tm.rb, tm.alphaTip, thetaRight, samples, -1).reverse();
   const leftBase = firstOrThrow(leftFlank);
   const leftTip = lastOrThrow(leftFlank);
   const rightTip = firstOrThrow(rightFlank);
@@ -63,22 +45,22 @@ function buildToothPeriodEdges(
 
   const edges: Edge[] = [];
 
-  // If root is BELOW the base circle (external) or ABOVE it (internal), the involute
-  // can't reach the root. Bridge with a radial line from root to the flank's base point.
+  // Root below base (external) or above it (internal): involute can't reach root; bridge radially.
   const needsRadialBridge = tm.isInternal ? tm.rb < tm.rRoot : tm.rb > tm.rRoot;
   if (needsRadialBridge) {
     const rootPt: Vec3 = [tm.rRoot * Math.cos(thetaLeft), tm.rRoot * Math.sin(thetaLeft), 0];
     edges.push(makeLine(rootPt, leftBase));
   }
 
-  const leftEdge = makeBSplineInterpolation(leftFlank, { tolerance });
+  const interpTol = tm.rPitch * 1e-5;
+  const leftEdge = makeBSplineInterpolation(leftFlank, { tolerance: interpTol });
   if (isErr(leftEdge)) return leftEdge;
   edges.push(leftEdge.value);
 
   const tipMid: Vec3 = [tm.rTip * Math.cos(center), tm.rTip * Math.sin(center), 0];
   edges.push(makeThreePointArc(leftTip, tipMid, rightTip));
 
-  const rightEdge = makeBSplineInterpolation(rightFlank, { tolerance });
+  const rightEdge = makeBSplineInterpolation(rightFlank, { tolerance: interpTol });
   if (isErr(rightEdge)) return rightEdge;
   edges.push(rightEdge.value);
 
@@ -87,7 +69,6 @@ function buildToothPeriodEdges(
     edges.push(makeLine(rightBase, rootPt));
   }
 
-  // Root arc: from current tooth's right anchor to next tooth's left anchor, midpoint on bisector.
   const rootEndAngle = nextCenter - tm.halfToothAngle - invPitch;
   let midAngle = 0.5 * (thetaRight + rootEndAngle);
   if (rootEndAngle < thetaRight) midAngle += Math.PI; // CCW wrap on last tooth
@@ -104,39 +85,24 @@ function buildToothPeriodEdges(
   return ok(edges);
 }
 
-// ── Public profile wire builders ─────────────────────────────────────────────
-
 export interface GearWireParams {
   teeth: number;
   moduleSize: number;
-  pressureAngle: number; // radians
+  /** Pressure angle in radians. */
+  pressureAngle: number;
   shift: number;
   clearance: number;
   backlashHalf: number;
   /** Override sample count per flank; defaults to adaptiveSampleCount(moduleSize). */
   samples?: number;
-  /** Override B-spline tolerance; defaults to adaptiveBSplineTolerance(moduleSize). */
-  tolerance?: number;
 }
 
-/**
- * Build a closed planar wire for an external (spur) gear, centered at origin in XY.
- *
- * The wire bounds the gear's tooth profile (outer boundary). Caller wraps in a Sketch
- * or face-with-hole construction depending on whether a bore is desired.
- */
 export function makeExternalGearProfileWire(
   params: GearWireParams
 ): Result<ClosedWire & PlanarWire> {
   return makeProfileWire(params, false);
 }
 
-/**
- * Build a closed planar wire for an internal (ring) gear's TOOTHED inner boundary.
- *
- * The returned wire is suitable for use as a *hole* in a larger casing face. Caller
- * combines it with an outer cylinder/casing wire to form the ring's annular face.
- */
 export function makeInternalGearProfileWire(
   params: GearWireParams
 ): Result<ClosedWire & PlanarWire> {
@@ -155,7 +121,6 @@ function makeProfileWire(
     clearance,
     backlashHalf,
     samples = adaptiveSampleCount(moduleSize),
-    tolerance = adaptiveBSplineTolerance(moduleSize),
   } = params;
 
   if (teeth < 4)
@@ -175,13 +140,15 @@ function makeProfileWire(
 
   const allEdges: Edge[] = [];
   for (let i = 0; i < teeth; i++) {
-    const periodEdges = buildToothPeriodEdges(tm, i, teeth, samples, tolerance);
+    const periodEdges = buildToothPeriodEdges(tm, i, teeth, samples);
     if (isErr(periodEdges)) return periodEdges;
     allEdges.push(...periodEdges.value);
   }
 
-  const wire = assembleWire(allEdges);
-  if (isErr(wire)) return wire;
-
-  return ok(wire.value as ClosedWire & PlanarWire);
+  const wireResult = assembleWire(allEdges);
+  if (isErr(wireResult)) return wireResult;
+  // Wire is closed and planar by construction (4·N edges chain end-to-end in XY).
+  // Skipping smart-constructor validation here because brepkit's isPlanarWire builds
+  // a temporary face that interferes with the wire's downstream usability.
+  return ok(wireResult.value as ClosedWire & PlanarWire);
 }

@@ -156,7 +156,6 @@ export function makeBSplineApproximation(
   }
 }
 
-/** Configuration for {@link makeBSplineInterpolation}. */
 export interface BSplineInterpolationOptions {
   /** Treat the curve as periodic (closed loop). */
   periodic?: boolean;
@@ -165,13 +164,9 @@ export interface BSplineInterpolationOptions {
 }
 
 /**
- * Create a B-spline edge that passes exactly through every input point.
- *
- * Use when downstream operations (wire assembly, face creation) need precise
- * endpoint coincidence with neighbouring edges; approximation may deviate from
- * input points by up to its tolerance.
- *
- * @returns An error if the kernel interpolation algorithm fails.
+ * Create a B-spline edge that passes exactly through every input point. Use
+ * over {@link makeBSplineApproximation} when downstream wire assembly needs
+ * precise endpoint coincidence with neighbouring edges.
  */
 export function makeBSplineInterpolation(
   points: Vec3[],

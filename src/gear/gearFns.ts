@@ -10,7 +10,7 @@
  *
  * @example Planetary assembly
  * ```typescript
- * const planetary = makePlanetaryGear({ thickness: 10 });   // all defaults
+ * const planetary = makePlanetaryGear({ thickness: 10 });
  * if (isOk(planetary)) {
  *   const { sun, planets, ring, contactRatio } = planetary.value;
  * }
@@ -33,20 +33,20 @@ import {
   DEFAULT_CLEARANCE,
   DEFAULT_PRESSURE_ANGLE_DEG,
   backlashHalf,
+  evenToothPhaseOffset,
   externalExternalContactRatio,
   externalInternalContactRatio,
   gearGeometry,
   lewisRootStress,
   planetSelfRotationAngle,
   ringTeeth,
-  solveWorkingPressureAngle,
+  solvePlanetRingWorkingPressureAngle,
+  solveSunPlanetWorkingPressureAngle,
   undercutDeficit,
   validatePlanetary,
   workingCenterDistance,
 } from './gearMath.js';
 import { makeExternalGearProfileWire, makeInternalGearProfileWire } from './gearProfile.js';
-
-// ── Public types ─────────────────────────────────────────────────────────────
 
 export interface ExternalGearParams {
   teeth: number;
@@ -74,7 +74,7 @@ export interface InternalGearParams {
 }
 
 export interface PlanetaryGearParams {
-  /** Required: extrusion thickness (mm). */
+  /** Extrusion thickness (mm). */
   thickness: number;
   moduleSize?: number;
   sunTeeth?: number;
@@ -95,7 +95,6 @@ export interface PlanetaryGearParams {
 
 export interface GearResult {
   solid: ValidSolid;
-  /** Pitch diameter, base diameter, etc. — useful for assembly placement. */
   pitchDiameter: number;
   baseDiameter: number;
   tipDiameter: number;
@@ -119,8 +118,6 @@ export interface PlanetaryGearAssembly {
   lewisStress?: { sun: number; planet: number; ring: number };
   diagnostics: GearDiagnostic[];
 }
-
-// ── Single-gear builders ─────────────────────────────────────────────────────
 
 export function makeExternalGear(params: ExternalGearParams): Result<GearResult> {
   const {
@@ -146,10 +143,9 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     backlashHalf: bHalf,
   });
   if (isErr(wireResult)) return wireResult;
-  const wire = wireResult.value;
 
   const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, bHalf, false);
-  return finalizeExternalSolid(wire, thickness, bore, geom);
+  return finalizeExternalSolid(wireResult.value, thickness, bore, geom);
 }
 
 export function makeInternalGear(params: InternalGearParams): Result<GearResult> {
@@ -186,8 +182,6 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
 
   return finalizeInternalSolid(outerWireResult.value, innerWireResult.value, thickness, geom);
 }
-
-// ── Planetary assembly ───────────────────────────────────────────────────────
 
 export function makePlanetaryGear(params: PlanetaryGearParams): Result<PlanetaryGearAssembly> {
   const resolved = resolvePlanetaryParams(params);
@@ -231,15 +225,16 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
   if (isErr(ringResult)) return ringResult;
 
   const planets = placePlanets(planetResult.value.solid, cfg);
+  const ringPhased = applyRingPhase(ringResult.value.solid, cfg.zr);
   const metrics = computeMeshMetrics(cfg, sunResult.value, planetResult.value, ringResult.value);
   const diagnostics = collectDiagnostics(cfg, metrics);
 
   return ok({
     sun: sunResult.value.solid,
     planets,
-    ring: ringResult.value.solid,
+    ring: ringPhased,
     ringTeeth: cfg.zr,
-    workingPressureAngle: cfg.alphaW,
+    workingPressureAngle: cfg.alphaW_sp,
     centerDistance: cfg.centerDistance,
     contactRatio: { sunPlanet: metrics.crSunPlanet, planetRing: metrics.crPlanetRing },
     undercut: { sun: metrics.undercutSun, planet: metrics.undercutPlanet },
@@ -248,8 +243,6 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
   });
 }
 
-// ── Internal helpers ─────────────────────────────────────────────────────────
-
 interface ResolvedPlanetary {
   moduleSize: number;
   sunTeeth: number;
@@ -257,7 +250,10 @@ interface ResolvedPlanetary {
   numPlanets: number;
   pressureAngleDeg: number;
   alpha: number;
-  alphaW: number;
+  /** Working PA for the sun-planet mesh. */
+  alphaW_sp: number;
+  /** Working PA for the planet-ring mesh; equals alphaW_sp iff xr = xs + 2·xp. */
+  alphaW_pr: number;
   clearance: number;
   bHalf: number;
   sunShift: number;
@@ -288,18 +284,19 @@ function resolvePlanetaryParams(params: PlanetaryGearParams): Result<ResolvedPla
   const validation = validatePlanetary(sunTeeth, planetTeeth, numPlanets, planetShift);
   if (isErr(validation)) return validation;
 
-  const alphaWResult = solveWorkingPressureAngle(
+  const zr = ringTeeth(sunTeeth, planetTeeth);
+
+  const sp = solveSunPlanetWorkingPressureAngle(
     alpha,
     sunShift,
     planetShift,
     sunTeeth,
-    planetTeeth,
-    ringShift
+    planetTeeth
   );
-  if (isErr(alphaWResult)) return alphaWResult;
-  const alphaW = alphaWResult.value;
-  const centerDistance = workingCenterDistance(sunTeeth, planetTeeth, moduleSize, alpha, alphaW);
-  const zr = ringTeeth(sunTeeth, planetTeeth);
+  if (isErr(sp)) return sp;
+  const pr = solvePlanetRingWorkingPressureAngle(alpha, planetShift, ringShift, planetTeeth, zr);
+  if (isErr(pr)) return pr;
+  const centerDistance = workingCenterDistance(sunTeeth, planetTeeth, moduleSize, alpha, sp.value);
 
   return ok({
     moduleSize,
@@ -308,7 +305,8 @@ function resolvePlanetaryParams(params: PlanetaryGearParams): Result<ResolvedPla
     numPlanets,
     pressureAngleDeg,
     alpha,
-    alphaW,
+    alphaW_sp: sp.value,
+    alphaW_pr: pr.value,
     clearance: params.clearance ?? DEFAULT_CLEARANCE,
     bHalf: backlashHalf(params.backlash ?? 0),
     sunShift,
@@ -327,6 +325,7 @@ function makeOuterCircleWire(radius: number): Result<ClosedWire & PlanarWire> {
   const circleEdge = makeCircle(radius, [0, 0, 0], [0, 0, 1]);
   const wireResult = assembleWire([circleEdge]);
   if (isErr(wireResult)) return wireResult;
+  // A single-edge circle wire is closed and planar by construction; brand once.
   return ok(wireResult.value as ClosedWire & PlanarWire);
 }
 
@@ -342,8 +341,9 @@ function finalizeExternalSolid(
   if (isErr(solidResult)) return solidResult;
   if (bore <= 0) return ok(buildGearResult(solidResult.value, geom));
 
-  // Cut bore cylinder — overshoots in +Z to ensure clean through-cut on both kernels.
-  const boreSolid = sketchExtrude(sketchCircle(bore / 2), thickness + 1) as ValidSolid;
+  // Overshoot bore on both ends (z = -0.5 to thickness + 0.5) so no faces are coplanar with the gear.
+  const boreRaw = sketchExtrude(sketchCircle(bore / 2), thickness + 1) as ValidSolid;
+  const boreSolid = translate(boreRaw, [0, 0, -0.5]);
   const cutResult = cut(solidResult.value, boreSolid);
   if (isErr(cutResult)) return cutResult;
   return ok(buildGearResult(cutResult.value, geom));
@@ -388,6 +388,12 @@ function placePlanets(planetProto: ValidSolid, cfg: ResolvedPlanetary): ValidSol
   return planets;
 }
 
+function applyRingPhase(ring: ValidSolid, zr: number): ValidSolid {
+  const phaseRad = evenToothPhaseOffset(zr);
+  if (phaseRad === 0) return ring;
+  return rotate(ring, (phaseRad * 180) / Math.PI);
+}
+
 interface MeshMetrics {
   crSunPlanet: number;
   crPlanetRing: number;
@@ -410,7 +416,7 @@ function computeMeshMetrics(
     cfg.centerDistance,
     cfg.moduleSize,
     cfg.alpha,
-    cfg.alphaW
+    cfg.alphaW_sp
   );
   const crPlanetRing = externalInternalContactRatio(
     planet.tipDiameter / 2,
@@ -420,7 +426,7 @@ function computeMeshMetrics(
     cfg.centerDistance,
     cfg.moduleSize,
     cfg.alpha,
-    cfg.alphaW
+    cfg.alphaW_pr
   );
   const undercutSun = undercutDeficit(cfg.sunTeeth, cfg.alpha, cfg.sunShift);
   const undercutPlanet = undercutDeficit(cfg.planetTeeth, cfg.alpha, cfg.planetShift);
@@ -470,12 +476,31 @@ function collectDiagnostics(cfg: ResolvedPlanetary, metrics: MeshMetrics): GearD
       context: { deficit: metrics.undercutPlanet, planetTeeth: cfg.planetTeeth },
     });
   }
-  if (cfg.sunShift !== 0 || cfg.planetShift !== 0) {
+  if (
+    cfg.appliedTorque !== undefined &&
+    (cfg.sunShift !== 0 || cfg.planetShift !== 0 || cfg.ringShift !== 0)
+  ) {
     diagnostics.push({
       code: 'LEWIS_Y_SHIFT_UNCORRECTED',
       severity: 'info',
       message:
         'Lewis stress uses unshifted Y(z) approximation; expect ±5% per 0.1 of profile shift',
+    });
+  }
+
+  // Kinematic compatibility: x_ring should equal x_sun + 2·x_planet for both meshes to share αw.
+  const kinematicError = cfg.ringShift - (cfg.sunShift + 2 * cfg.planetShift);
+  if (Math.abs(kinematicError) > 1e-6) {
+    diagnostics.push({
+      code: 'PLANETARY_SHIFT_KINEMATIC_MISMATCH',
+      severity: 'warning',
+      message: `ringShift should equal sunShift + 2·planetShift for both meshes to share working PA; off by ${kinematicError.toFixed(3)}`,
+      context: {
+        kinematicError,
+        sunShift: cfg.sunShift,
+        planetShift: cfg.planetShift,
+        ringShift: cfg.ringShift,
+      },
     });
   }
   return diagnostics;

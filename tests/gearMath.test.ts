@@ -1,7 +1,3 @@
-/**
- * Pure math tests for gear formulas — no WASM init, runs in milliseconds.
- */
-
 import { describe, expect, it } from 'vitest';
 import { isErr, isOk } from '@/core/result.js';
 import {
@@ -9,9 +5,10 @@ import {
   involutePoint,
   cosineSpaceFlankSamples,
   adaptiveSampleCount,
-  adaptiveBSplineTolerance,
   gearGeometry,
   solveWorkingPressureAngle,
+  solveSunPlanetWorkingPressureAngle,
+  solvePlanetRingWorkingPressureAngle,
   workingCenterDistance,
   validatePlanetary,
   externalExternalContactRatio,
@@ -78,7 +75,7 @@ describe('involutePoint', () => {
 });
 
 describe('cosineSpaceFlankSamples', () => {
-  it('returns count1 points', () => {
+  it('returns count + 1 points', () => {
     expect(cosineSpaceFlankSamples(5, 0.5, 0, 10, 1)).toHaveLength(11);
   });
 
@@ -92,17 +89,12 @@ describe('cosineSpaceFlankSamples', () => {
   });
 });
 
-describe('adaptive defaults', () => {
-  it('sample count grows with √module', () => {
-    expect(adaptiveSampleCount(1)).toBe(16); // floor
+describe('adaptiveSampleCount', () => {
+  it('grows with √module, floor of 16', () => {
+    expect(adaptiveSampleCount(1)).toBe(16);
     expect(adaptiveSampleCount(4)).toBe(16); // 8·2 = 16
     expect(adaptiveSampleCount(9)).toBe(24); // 8·3 = 24
     expect(adaptiveSampleCount(25)).toBe(40);
-  });
-
-  it('B-spline tolerance scales linearly with module', () => {
-    expect(adaptiveBSplineTolerance(1)).toBe(1e-5);
-    expect(adaptiveBSplineTolerance(10)).toBe(1e-4);
   });
 });
 
@@ -143,33 +135,51 @@ describe('solveWorkingPressureAngle', () => {
   const alpha = (20 * Math.PI) / 180;
 
   it('zero summed shift → returns α', () => {
-    const r = solveWorkingPressureAngle(alpha, 0, 0, 20, 30);
+    const r = solveWorkingPressureAngle(alpha, 0, 50);
     expect(isOk(r) && r.value).toBeCloseTo(alpha, 9);
   });
 
   it('positive summed shift → αw > α', () => {
-    const r = solveWorkingPressureAngle(alpha, 0.3, 0.3, 20, 30);
+    const r = solveWorkingPressureAngle(alpha, 0.6, 50);
     expect(isOk(r)).toBe(true);
     if (isOk(r)) expect(r.value).toBeGreaterThan(alpha);
   });
 
   it('negative summed shift → αw < α', () => {
-    const r = solveWorkingPressureAngle(alpha, -0.2, -0.1, 20, 30);
+    const r = solveWorkingPressureAngle(alpha, -0.3, 50);
     expect(isOk(r)).toBe(true);
     if (isOk(r)) expect(r.value).toBeLessThan(alpha);
   });
 
   it('inv(αw) satisfies the working PA equation', () => {
-    const xs = 0.2,
-      xp = 0.15,
-      zs = 17,
-      zp = 14;
-    const r = solveWorkingPressureAngle(alpha, xs, xp, zs, zp);
+    const summedShift = 0.35,
+      totalTeeth = 31;
+    const r = solveWorkingPressureAngle(alpha, summedShift, totalTeeth);
     expect(isOk(r)).toBe(true);
     if (isOk(r)) {
-      const target = inv(alpha) + (2 * (xs + xp) * Math.tan(alpha)) / (zs + zp);
+      const target = inv(alpha) + (2 * summedShift * Math.tan(alpha)) / totalTeeth;
       expect(inv(r.value)).toBeCloseTo(target, 6);
     }
+  });
+
+  it('returns Err when summed shift is so negative it pushes αw below ε', () => {
+    const r = solveWorkingPressureAngle(alpha, -100, 30);
+    expect(isErr(r)).toBe(true);
+  });
+
+  it('sun-planet helper sums shifts correctly', () => {
+    const direct = solveWorkingPressureAngle(alpha, 0.4, 50);
+    const helper = solveSunPlanetWorkingPressureAngle(alpha, 0.2, 0.2, 20, 30);
+    expect(isOk(direct) && isOk(helper)).toBe(true);
+    if (isOk(direct) && isOk(helper)) expect(helper.value).toBeCloseTo(direct.value, 9);
+  });
+
+  it('planet-ring helper uses (xRing − xPlanet) and (zRing − zPlanet)', () => {
+    // External-internal: summedShift = xr − xp, totalTeeth = zr − zp
+    const direct = solveWorkingPressureAngle(alpha, 0.1, 27); // xr − xp = 0.1, zr − zp = 27
+    const helper = solvePlanetRingWorkingPressureAngle(alpha, 0.2, 0.3, 12, 39);
+    expect(isOk(direct) && isOk(helper)).toBe(true);
+    if (isOk(direct) && isOk(helper)) expect(helper.value).toBeCloseTo(direct.value, 9);
   });
 });
 
@@ -211,7 +221,7 @@ describe('validatePlanetary', () => {
   it('positive planet shift makes collision check stricter', () => {
     // Find a config near the collision boundary; positive shift should tip it over.
     // (15, 18, 4) → 2·15 + 2·18 = 66; 66/4 = 16.5 → assembly fails. Try (12, 18, 4): 60/4=15 ✓
-    // (1218)·sin(π/4) = 30·0.7071 = 21.21; planet tip = 18+2 = 20 → ok
+    // (12+18)·sin(π/4) = 30·0.7071 = 21.21; planet tip = 18+2 = 20 → ok
     expect(isOk(validatePlanetary(12, 18, 4, 0))).toBe(true);
     // With shift = 0.7, planet tip = 18+21.4 = 21.4 > 21.21 → collision
     expect(isErr(validatePlanetary(12, 18, 4, 0.7))).toBe(true);

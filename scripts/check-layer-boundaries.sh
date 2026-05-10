@@ -127,8 +127,8 @@ if [[ ${#ERRORS[@]} -gt 0 ]]; then
   echo ""
   echo "Layer 0: kernel/, utils/"
   echo "Layer 1: core/"
-  echo "Layer 2: topology/, 2d/, operations/, query/, measurement/, io/"
-  echo "Layer 3: sketching/, text/, projection/"
+  echo "Layer 2: topology/, 2d/, operations/, query/, measurement/, io/, worker/"
+  echo "Layer 3: sketching/, text/, projection/, gear/, ns/"
   echo ""
   echo "Imports must flow downward (higher layer -> lower layer or same layer)."
   exit 1
