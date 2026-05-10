@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.11.0](https://github.com/andymai/brepjs/compare/brepjs-v18.10.2...brepjs-v18.11.0) (2026-05-10)
+
+
+### Features
+
+* **gear:** apply Dolan-Broghamer K_f to Lewis root stress ([#996](https://github.com/andymai/brepjs/issues/996)) ([057f7fd](https://github.com/andymai/brepjs/commit/057f7fd61694bc0c2d6e38822c611507ebd71883))
+
 ## [18.10.2](https://github.com/andymai/brepjs/compare/brepjs-v18.10.1...brepjs-v18.10.2) (2026-05-10)
 
 
