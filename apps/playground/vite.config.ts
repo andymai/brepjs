@@ -79,6 +79,16 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['brepjs-opencascade'],
   },
+  resolve: {
+    // npm hoisting puts react in apps/playground/node_modules (workspace local) but
+    // packages like @vercel/analytics and @monaco-editor/react are hoisted to root,
+    // so their relative `react` resolution fails under vite 8 + rolldown's stricter
+    // module resolution. Force both to find this workspace's react copy.
+    alias: {
+      react: fileURLToPath(new URL('./node_modules/react', import.meta.url)),
+      'react-dom': fileURLToPath(new URL('./node_modules/react-dom', import.meta.url)),
+    },
+  },
   build: {
     chunkSizeWarningLimit: 1100,
     rollupOptions: {
