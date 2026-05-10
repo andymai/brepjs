@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      playground: ${{ steps.filter.outputs.playground }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # Release-please PRs only touch CHANGELOG.md, package.json versions,
@@ -50,6 +51,14 @@ jobs:
               - 'eslint.config.*'
               - 'knip.config.*'
               - '.prettierrc*'
+              - '.github/workflows/ci.yml'
+              - '.github/actions/**'
+            playground:
+              - 'src/**'
+              - 'packages/**'
+              - 'apps/playground/**'
+              - 'package.json'
+              - 'package-lock.json'
               - '.github/workflows/ci.yml'
               - '.github/actions/**'
 
@@ -95,6 +104,23 @@ jobs:
       - uses: ./.github/actions/setup
       - run: npm run build
       - run: npm run docs:api
+
+  playground-build:
+    # Mirrors what Vercel runs (`npm run build --workspace=apps/playground`).
+    # Catches type-resolution and bundler regressions in the playground
+    # before they break Preview deploys — e.g. the duplicate `@types/three`
+    # install in #963 that broke `tsc -b` only inside apps/playground.
+    needs: changes
+    if: needs.changes.outputs.playground == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup
+      # The playground resolves `brepjs` via package exports → `dist/`. Build
+      # the library first so `tsc -b` and `vite build` see real type files.
+      - run: npm run build
+      - run: npm run build --workspace=apps/playground
 
   test:
     needs: changes
@@ -244,7 +270,7 @@ jobs:
 
   ci-pass:
     if: always()
-    needs: [changes, typecheck, lint, quality, build, test, size, benchmark]
+    needs: [changes, typecheck, lint, quality, build, playground-build, test, size, benchmark]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
