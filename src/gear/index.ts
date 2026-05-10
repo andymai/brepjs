@@ -19,6 +19,8 @@ export {
   undercutDeficit,
   lewisYFactor,
   lewisRootStress,
+  lewisRootStressCorrected,
+  filletStressConcentrationFactor,
   ringTeeth,
   evenToothPhaseOffset,
   planetSelfRotationAngle,

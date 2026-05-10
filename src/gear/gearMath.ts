@@ -271,6 +271,25 @@ export function lewisRootStress(
   return (2 * torqueNmm) / (z * moduleSize * moduleSize * faceWidth * Y);
 }
 
+export function filletStressConcentrationFactor(z: number, alpha: number): number {
+  const kf20 = 1.4 + 6.5 / z;
+  const alphaDeg = (alpha * 180) / Math.PI;
+  return kf20 * Math.pow(20 / alphaDeg, 0.15);
+}
+
+export function lewisRootStressCorrected(
+  appliedTorqueNm: number,
+  moduleSize: number,
+  faceWidth: number,
+  z: number,
+  alpha: number
+): number {
+  return (
+    lewisRootStress(appliedTorqueNm, moduleSize, faceWidth, z) *
+    filletStressConcentrationFactor(z, alpha)
+  );
+}
+
 export function backlashHalf(totalBacklash: number): number {
   return totalBacklash / 2;
 }

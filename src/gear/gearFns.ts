@@ -35,8 +35,9 @@ import {
   evenToothPhaseOffset,
   externalExternalContactRatio,
   externalInternalContactRatio,
+  filletStressConcentrationFactor,
   gearGeometry,
-  lewisRootStress,
+  lewisRootStressCorrected,
   planetSelfRotationAngle,
   ringTeeth,
   solvePlanetRingWorkingPressureAngle,
@@ -105,7 +106,7 @@ export interface PlanetaryGearParams {
   /**
    * Applied torque on the SUN (input) shaft, in N·m. Planet and ring stresses
    * are derived via force balance (shared tangential force at the mesh).
-   * When supplied, lewisStress is computed.
+   * When supplied, `lewisStress` and `stressConcentrationFactor` are computed.
    */
   appliedTorque?: number;
   /** See {@link ExternalGearParams.samples}. Applied to sun, planet, and ring. */
@@ -143,8 +144,20 @@ export interface PlanetaryGearAssembly {
    * Positive = undercut risk; zero = clear.
    */
   undercutDeficit: { sun: number; planet: number };
-  /** Lewis bending stress at root (MPa); only present when `appliedTorque` was supplied. */
+  /**
+   * Root bending stress (MPa) at each gear, with the fillet stress
+   * concentration factor applied: `σ = σ_Lewis · K_f`. Only present when
+   * `appliedTorque` was supplied. See {@link stressConcentrationFactor} for
+   * the K_f values used.
+   */
   lewisStress?: { sun: number; planet: number; ring: number };
+  /**
+   * Dolan-Broghamer stress concentration factor `K_f` at each gear's root
+   * fillet, the multiplier already folded into {@link lewisStress}. Exposed
+   * so callers can recover the raw Lewis stress (σ_Lewis = lewisStress / K_f)
+   * or compare against ISO 6336-3 `Y_F·Y_S` from an external check.
+   */
+  stressConcentrationFactor?: { sun: number; planet: number; ring: number };
   diagnostics: GearDiagnostic[];
 }
 
@@ -284,6 +297,9 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     contactRatio: { sunPlanet: metrics.crSunPlanet, planetRing: metrics.crPlanetRing },
     undercutDeficit: { sun: metrics.undercutSun, planet: metrics.undercutPlanet },
     ...(metrics.lewisStress ? { lewisStress: metrics.lewisStress } : {}),
+    ...(metrics.stressConcentrationFactor
+      ? { stressConcentrationFactor: metrics.stressConcentrationFactor }
+      : {}),
     diagnostics,
   });
 }
@@ -524,6 +540,7 @@ interface MeshMetrics {
   undercutSun: number;
   undercutPlanet: number;
   lewisStress?: { sun: number; planet: number; ring: number };
+  stressConcentrationFactor?: { sun: number; planet: number; ring: number };
 }
 
 function computeMeshMetrics(
@@ -557,20 +574,28 @@ function computeMeshMetrics(
 
   const metrics: MeshMetrics = { crSunPlanet, crPlanetRing, undercutSun, undercutPlanet };
   if (cfg.appliedTorque !== undefined) {
-    // appliedTorque is the input (sun) shaft torque. Force balance on the planet means the
-    // tangential force W_t is shared at both meshes; the equivalent torque on each gear's
-    // own pitch radius is T_eff = W_t · r = T_sun · z / z_sun. Pass that to lewisRootStress
-    // so its 2T/(z·m) term recovers the correct W_t for each gear.
     const tSun = cfg.appliedTorque;
     metrics.lewisStress = {
-      sun: lewisRootStress(tSun, cfg.moduleSize, cfg.thickness, cfg.sunTeeth),
-      planet: lewisRootStress(
+      sun: lewisRootStressCorrected(tSun, cfg.moduleSize, cfg.thickness, cfg.sunTeeth, cfg.alpha),
+      planet: lewisRootStressCorrected(
         (tSun * cfg.planetTeeth) / cfg.sunTeeth,
         cfg.moduleSize,
         cfg.thickness,
-        cfg.planetTeeth
+        cfg.planetTeeth,
+        cfg.alpha
       ),
-      ring: lewisRootStress((tSun * cfg.zr) / cfg.sunTeeth, cfg.moduleSize, cfg.thickness, cfg.zr),
+      ring: lewisRootStressCorrected(
+        (tSun * cfg.zr) / cfg.sunTeeth,
+        cfg.moduleSize,
+        cfg.thickness,
+        cfg.zr,
+        cfg.alpha
+      ),
+    };
+    metrics.stressConcentrationFactor = {
+      sun: filletStressConcentrationFactor(cfg.sunTeeth, cfg.alpha),
+      planet: filletStressConcentrationFactor(cfg.planetTeeth, cfg.alpha),
+      ring: filletStressConcentrationFactor(cfg.zr, cfg.alpha),
     };
   }
   return metrics;
@@ -621,7 +646,7 @@ function collectDiagnostics(cfg: ResolvedPlanetary, metrics: MeshMetrics): GearD
       code: 'LEWIS_Y_SHIFT_UNCORRECTED',
       severity: 'info',
       message:
-        'Lewis stress uses unshifted Y(z) approximation; expect ±5% per 0.1 of profile shift',
+        'Lewis stress uses unshifted Y(z) and K_f approximations; expect ±5% per 0.1 of profile shift',
     });
   }
 

@@ -17,6 +17,8 @@ import {
   undercutDeficit,
   lewisYFactor,
   lewisRootStress,
+  lewisRootStressCorrected,
+  filletStressConcentrationFactor,
   ringTeeth,
   evenToothPhaseOffset,
   planetSelfRotationAngle,
@@ -305,6 +307,69 @@ describe('Lewis Y and root stress', () => {
     const small = lewisRootStress(10, 1, 8, 20);
     const big = lewisRootStress(10, 4, 8, 20);
     expect(small / big).toBeCloseTo(16, 1);
+  });
+});
+
+describe('fillet stress concentration factor (K_f)', () => {
+  const alpha20 = (20 * Math.PI) / 180;
+
+  it('K_f(z=15, 20°) ≈ 1.83 (Shigley Table 14-3 ballpark)', () => {
+    expect(filletStressConcentrationFactor(15, alpha20)).toBeCloseTo(1.833, 2);
+  });
+
+  it('K_f monotonically decreases with z (more teeth, gentler fillet effect)', () => {
+    const small = filletStressConcentrationFactor(12, alpha20);
+    const mid = filletStressConcentrationFactor(30, alpha20);
+    const big = filletStressConcentrationFactor(100, alpha20);
+    expect(small).toBeGreaterThan(mid);
+    expect(mid).toBeGreaterThan(big);
+  });
+
+  it('K_f → 1.4 as z → ∞ (asymptote at 20°)', () => {
+    expect(filletStressConcentrationFactor(10000, alpha20)).toBeCloseTo(1.4, 2);
+  });
+
+  it('K_f is higher at sharper (lower) pressure angles', () => {
+    const z = 20;
+    const k145 = filletStressConcentrationFactor(z, (14.5 * Math.PI) / 180);
+    const k20 = filletStressConcentrationFactor(z, alpha20);
+    const k25 = filletStressConcentrationFactor(z, (25 * Math.PI) / 180);
+    expect(k145).toBeGreaterThan(k20);
+    expect(k20).toBeGreaterThan(k25);
+  });
+
+  it('K_f extrapolates upward in undercut territory (z<8)', () => {
+    // The Dolan-Broghamer formula keeps climbing as z shrinks; that's the
+    // physically right signal — a tiny gear has a more severe geometric riser.
+    const k5 = filletStressConcentrationFactor(5, alpha20);
+    const k8 = filletStressConcentrationFactor(8, alpha20);
+    expect(k5).toBeGreaterThan(k8);
+    expect(k5).toBeCloseTo(2.7, 2);
+  });
+
+  it('K_f at 14.5° matches the formula (20/αDeg)^0.15 scaling', () => {
+    const z = 20;
+    const expected = (1.4 + 6.5 / z) * Math.pow(20 / 14.5, 0.15);
+    expect(filletStressConcentrationFactor(z, (14.5 * Math.PI) / 180)).toBeCloseTo(expected, 6);
+  });
+
+  it('corrected stress equals raw Lewis × K_f', () => {
+    const raw = lewisRootStress(10, 2, 8, 20);
+    const corrected = lewisRootStressCorrected(10, 2, 8, 20, alpha20);
+    const kf = filletStressConcentrationFactor(20, alpha20);
+    expect(corrected).toBeCloseTo(raw * kf, 6);
+  });
+
+  it('corrected stress applies K_f even in undercut territory', () => {
+    const raw = lewisRootStress(10, 2, 8, 5);
+    const corrected = lewisRootStressCorrected(10, 2, 8, 5, alpha20);
+    const kf = filletStressConcentrationFactor(5, alpha20);
+    expect(corrected).toBeCloseTo(raw * kf, 6);
+  });
+
+  it('corrected stress propagates Infinity from degenerate inputs', () => {
+    expect(lewisRootStressCorrected(10, 0, 8, 20, alpha20)).toBe(Infinity);
+    expect(lewisRootStressCorrected(10, 2, 0, 20, alpha20)).toBe(Infinity);
   });
 });
 
