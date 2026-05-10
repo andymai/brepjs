@@ -139,6 +139,8 @@ import type {
  * tests in the sections that follow.
  */
 const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
+  'BaseSketcher2d',
+  'BlueprintSketcher',
   'BrepBugError',
   'BrepErrorCode',
   'BrepWrapperError',
@@ -146,11 +148,13 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'CompoundSketch',
   'DEG2RAD',
   'DisposalScope',
+  'FaceSketcher',
   'HASH_CODE_MAX',
   'OK',
   'OcctWasmAdapter',
   'RAD2DEG',
   'Sketch',
+  'Sketcher',
   'Sketches',
   'addChild',
   'addHoles',
