@@ -220,7 +220,10 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     backlashHalf: cfg.bHalf,
     bore: cfg.bores.planet ?? 0,
   });
-  if (isErr(planetResult)) return planetResult;
+  if (isErr(planetResult)) {
+    sunResult.value.solid.delete();
+    return planetResult;
+  }
 
   const ringResult = makeInternalGear({
     teeth: cfg.zr,
@@ -232,7 +235,11 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     backlashHalf: cfg.bHalf,
     ringWallThickness: cfg.ringWallThickness,
   });
-  if (isErr(ringResult)) return ringResult;
+  if (isErr(ringResult)) {
+    sunResult.value.solid.delete();
+    planetResult.value.solid.delete();
+    return ringResult;
+  }
 
   const planets = placePlanets(planetResult.value.solid, cfg);
   planetResult.value.solid.delete();
