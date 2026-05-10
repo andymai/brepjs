@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.7.3](https://github.com/andymai/brepjs/compare/brepjs-v18.7.2...brepjs-v18.7.3) (2026-05-10)
+
+
+### Bug Fixes
+
+* **playground:** pin @types/three to 0.184.0 to dedupe with transitive copies ([#973](https://github.com/andymai/brepjs/issues/973)) ([28888f7](https://github.com/andymai/brepjs/commit/28888f7ac1edec6dafdb531fbfcb6f8e866c65b5))
+
 ## [18.7.2](https://github.com/andymai/brepjs/compare/brepjs-v18.7.1...brepjs-v18.7.2) (2026-05-10)
 
 
