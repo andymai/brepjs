@@ -87,7 +87,11 @@ export interface PlanetaryGearParams {
   ringShift?: number;
   ringWallThickness?: number;
   bores?: { sun?: number; planet?: number };
-  /** Applied torque (Nm). When supplied, lewisStress is computed. */
+  /**
+   * Applied torque on the SUN (input) shaft, in N·m. Planet and ring stresses
+   * are derived via force balance (shared tangential force at the mesh).
+   * When supplied, lewisStress is computed.
+   */
   appliedTorque?: number;
 }
 
@@ -230,6 +234,7 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
   if (isErr(ringResult)) return ringResult;
 
   const planets = placePlanets(planetResult.value.solid, cfg);
+  planetResult.value.solid.delete();
   const ringPhased = applyRingPhase(ringResult.value.solid, cfg.zr);
   const metrics = computeMeshMetrics(cfg, sunResult.value, planetResult.value, ringResult.value);
   const diagnostics = collectDiagnostics(cfg, metrics);
@@ -398,6 +403,7 @@ function placePlanets(planetProto: ValidSolid, cfg: ResolvedPlanetary): ValidSol
       0,
     ];
     planets.push(translate(rotated, offset));
+    rotated.delete();
   }
   return planets;
 }
@@ -405,7 +411,9 @@ function placePlanets(planetProto: ValidSolid, cfg: ResolvedPlanetary): ValidSol
 function applyRingPhase(ring: ValidSolid, zr: number): ValidSolid {
   const phaseRad = evenToothPhaseOffset(zr);
   if (phaseRad === 0) return ring;
-  return rotate(ring, (phaseRad * 180) / Math.PI);
+  const rotated = rotate(ring, (phaseRad * 180) / Math.PI);
+  ring.delete();
+  return rotated;
 }
 
 interface MeshMetrics {
@@ -447,10 +455,20 @@ function computeMeshMetrics(
 
   const metrics: MeshMetrics = { crSunPlanet, crPlanetRing, undercutSun, undercutPlanet };
   if (cfg.appliedTorque !== undefined) {
+    // appliedTorque is the input (sun) shaft torque. Force balance on the planet means the
+    // tangential force W_t is shared at both meshes; the equivalent torque on each gear's
+    // own pitch radius is T_eff = W_t · r = T_sun · z / z_sun. Pass that to lewisRootStress
+    // so its 2T/(z·m) term recovers the correct W_t for each gear.
+    const tSun = cfg.appliedTorque;
     metrics.lewisStress = {
-      sun: lewisRootStress(cfg.appliedTorque, cfg.moduleSize, cfg.thickness, cfg.sunTeeth),
-      planet: lewisRootStress(cfg.appliedTorque, cfg.moduleSize, cfg.thickness, cfg.planetTeeth),
-      ring: lewisRootStress(cfg.appliedTorque, cfg.moduleSize, cfg.thickness, cfg.zr),
+      sun: lewisRootStress(tSun, cfg.moduleSize, cfg.thickness, cfg.sunTeeth),
+      planet: lewisRootStress(
+        (tSun * cfg.planetTeeth) / cfg.sunTeeth,
+        cfg.moduleSize,
+        cfg.thickness,
+        cfg.planetTeeth
+      ),
+      ring: lewisRootStress((tSun * cfg.zr) / cfg.sunTeeth, cfg.moduleSize, cfg.thickness, cfg.zr),
     };
   }
   return metrics;

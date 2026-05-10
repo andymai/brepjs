@@ -148,6 +148,19 @@ describe('makePlanetaryGear', () => {
     expect(withTorque.lewisStress.sun).toBeGreaterThan(0);
   });
 
+  it('Lewis stress force balance: tangential force is shared at each mesh', () => {
+    // W_t = 2·T_sun / (z_sun·m). Stress σ = W_t / (F·m·Y(z)). For two gears at the
+    // same mesh, σ_a / σ_b = Y(z_b) / Y(z_a). So sun:planet stress ratio depends
+    // only on Y, not on the tooth-count ratio.
+    const a = unwrap(makePlanetaryGear({ thickness: 10, appliedTorque: 10 }));
+    if (!a.lewisStress) throw new Error('expected lewisStress');
+    // 15-tooth sun, 12-tooth planet, Y is monotonically increasing in z, so sun has
+    // higher Y → lower stress than planet.
+    expect(a.lewisStress.sun).toBeLessThan(a.lewisStress.planet);
+    // Ring (39 teeth) has the highest Y → lowest stress at the planet-ring mesh.
+    expect(a.lewisStress.ring).toBeLessThan(a.lewisStress.planet);
+  });
+
   it('emits undercut diagnostic for low-tooth-count sun without compensating shift', () => {
     // Need a config that passes assembly + collision but undercuts the sun
     // sun=10, planet=14, N=4 → 2·10 + 2·14 = 48; 48 mod 4 = 0 ✓
