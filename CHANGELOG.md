@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.7.2](https://github.com/andymai/brepjs/compare/brepjs-v18.7.1...brepjs-v18.7.2) (2026-05-10)
+
+
+### Bug Fixes
+
+* **docs/tests:** make doc-test runner actually exercise snippets, switch to opt-in ([#969](https://github.com/andymai/brepjs/issues/969)) ([df31120](https://github.com/andymai/brepjs/commit/df311207f7dfd2a32ffe77b3c4ab814c2225494f))
+
 ## [18.7.1](https://github.com/andymai/brepjs/compare/brepjs-v18.7.0...brepjs-v18.7.1) (2026-05-10)
 
 
