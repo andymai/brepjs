@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.10.1](https://github.com/andymai/brepjs/compare/brepjs-v18.10.0...brepjs-v18.10.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* **gear+ci:** hoist threshold const, scope undercut to external, validate samples ([#990](https://github.com/andymai/brepjs/issues/990)) ([1b75299](https://github.com/andymai/brepjs/commit/1b752999cd125a8d60ba55b59c7f13e7579ff052))
+
 ## [18.10.0](https://github.com/andymai/brepjs/compare/brepjs-v18.9.0...brepjs-v18.10.0) (2026-05-10)
 
 
