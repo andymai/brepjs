@@ -87,6 +87,18 @@ describe('makeExternalGear', () => {
     expect(r.diagnostics).toEqual([]);
   });
 
+  it('rejects samples that is zero, negative, or non-integer', () => {
+    expect(isErr(makeExternalGear({ teeth: 24, moduleSize: 2, thickness: 8, samples: 0 }))).toBe(
+      true
+    );
+    expect(isErr(makeExternalGear({ teeth: 24, moduleSize: 2, thickness: 8, samples: -3 }))).toBe(
+      true
+    );
+    expect(isErr(makeExternalGear({ teeth: 24, moduleSize: 2, thickness: 8, samples: 4.5 }))).toBe(
+      true
+    );
+  });
+
   it('samples override produces a valid solid; volume converges as samples grow', () => {
     // Coarse and fine samples should both build valid solids; the fine-sample
     // gear approximates the true involute more closely, so its volume sits
@@ -129,6 +141,14 @@ describe('makeInternalGear (ring)', () => {
     expect(
       isErr(makeInternalGear({ teeth: 30, moduleSize: 2, thickness: 8, ringWallThickness: 0 }))
     ).toBe(true);
+  });
+
+  it('does not emit UNDERCUT_RISK (rack-cut formula does not apply to ring gears)', () => {
+    // Low-z ring with no shift — the external-gear rack-cut undercut formula
+    // would mistakenly flag this; internal-gear undercut geometry is different
+    // and we don't have a ring-specific check yet, so diagnostics stay empty.
+    const r = unwrap(makeInternalGear({ teeth: 16, moduleSize: 2, thickness: 8 }));
+    expect(r.diagnostics).toEqual([]);
   });
 });
 

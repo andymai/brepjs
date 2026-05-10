@@ -162,6 +162,13 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
   } = params;
   if (thickness <= 0)
     return err(validationError('GEAR_THICKNESS_NONPOSITIVE', 'thickness must be > 0'));
+  if (samples !== undefined && (!Number.isInteger(samples) || samples < 1))
+    return err(
+      validationError(
+        'GEAR_SAMPLES_INVALID',
+        `samples must be a positive integer; got ${String(samples)}`
+      )
+    );
 
   const alpha = (pressureAngleDeg * Math.PI) / 180;
   const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, flankThinning, false);
@@ -183,7 +190,7 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     ...(samples !== undefined ? { samples } : {}),
   });
   if (isErr(wireResult)) return wireResult;
-  const diagnostics = soloGearDiagnostics(teeth, alpha, shift);
+  const diagnostics = externalGearDiagnostics(teeth, alpha, shift);
   return finalizeExternalSolid(wireResult.value, thickness, bore, geom, diagnostics);
 }
 
@@ -203,6 +210,13 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
     return err(validationError('GEAR_THICKNESS_NONPOSITIVE', 'thickness must be > 0'));
   if (ringWallThickness <= 0)
     return err(validationError('GEAR_WALL_NONPOSITIVE', 'ringWallThickness must be > 0'));
+  if (samples !== undefined && (!Number.isInteger(samples) || samples < 1))
+    return err(
+      validationError(
+        'GEAR_SAMPLES_INVALID',
+        `samples must be a positive integer; got ${String(samples)}`
+      )
+    );
 
   const alpha = (pressureAngleDeg * Math.PI) / 180;
   const innerWireResult = makeInternalGearProfileWire({
@@ -221,17 +235,15 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
   const outerWireResult = makeOuterCircleWire(outerRadius);
   if (isErr(outerWireResult)) return outerWireResult;
 
-  const diagnostics = soloGearDiagnostics(teeth, alpha, shift);
-  return finalizeInternalSolid(
-    outerWireResult.value,
-    innerWireResult.value,
-    thickness,
-    geom,
-    diagnostics
-  );
+  // Internal gears use a different undercut criterion (involute-cutter geometry,
+  // shift sign inverted), so the rack-cut formula that drives external-gear
+  // diagnostics doesn't apply here. Leave diagnostics empty until a ring-specific
+  // check exists.
+  return finalizeInternalSolid(outerWireResult.value, innerWireResult.value, thickness, geom, []);
 }
 
-function soloGearDiagnostics(teeth: number, alpha: number, shift: number): GearDiagnostic[] {
+/** Diagnostics for an external (rack-cut) gear in isolation. Not valid for internal gears. */
+function externalGearDiagnostics(teeth: number, alpha: number, shift: number): GearDiagnostic[] {
   const deficit = undercutDeficit(teeth, alpha, shift);
   if (deficit <= 0) return [];
   return [

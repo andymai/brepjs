@@ -205,6 +205,12 @@ jobs:
               mainByName[b.name] = b;
             }
 
+            // 25% threshold: shared CI runners (different machines for main
+            // vs PR sides) show ~9-15% run-to-run variance even on
+            // semantically identical code. Tightening below 25% produces
+            // more false positives than real regressions caught.
+            const REGRESSION_THRESHOLD_PCT = 25;
+
             let hasRegression = false;
             const rows = [];
 
@@ -215,11 +221,6 @@ jobs:
                 continue;
               }
 
-              // 25% threshold: shared CI runners (different machines for main
-              // vs PR sides) show ~9-15% run-to-run variance even on
-              // semantically identical code. Tightening below 25% produces
-              // more false positives than real regressions caught.
-              const REGRESSION_THRESHOLD_PCT = 25;
               const pctChange = ((pr.median - main.median) / main.median) * 100;
               let icon;
               if (pctChange > REGRESSION_THRESHOLD_PCT) {
