@@ -74,7 +74,10 @@ describe('Regression benchmark — gridfinity bin', () => {
         // 5. Mesh the result
         mesh(combined);
       },
-      { warmup: 2, iterations: 5 }
+      // Median-of-15 keeps a single outlier from skewing the result; observed
+      // run-to-run variance on shared CI runners is ~9% with the previous
+      // 5-iteration setup, which sat right under the 10% gate threshold.
+      { warmup: 3, iterations: 15 }
     );
 
     results.push(result);
