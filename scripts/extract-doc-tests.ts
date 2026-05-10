@@ -5,8 +5,15 @@
  * snippet inside an AsyncFunction so `await` works.
  *
  * Markers (placed in HTML comments immediately above a fenced block):
- *   <!-- @no-test -->  : skip this block
+ *   <!-- @run-test --> : opt this block IN to the test suite (default: skipped)
  *   <!-- @setup -->    : block is hidden setup; prepended to all later snippets in the same file
+ *
+ * The default-skip policy exists because OCCT WASM doesn't yield to the JS
+ * event loop, so a stuck snippet hangs the whole worker — vitest's
+ * `testTimeout` can't preempt synchronous WASM. Snippets are opted into the
+ * test suite individually as their underlying brepjs APIs are verified to be
+ * stable. Sucrase still parses every snippet at extraction time, so syntax
+ * regressions surface even on opted-out blocks.
  *
  * Run via `npm run test:docs` (which calls this first, then vitest).
  */
@@ -24,7 +31,7 @@ interface Snippet {
   startLine: number;
   setup: string;
   code: string;
-  skip: boolean;
+  run: boolean;
 }
 
 function* walk(dir: string): Generator<string> {
@@ -37,13 +44,13 @@ function* walk(dir: string): Generator<string> {
   }
 }
 
-function lookbackDirective(lines: string[], openIndex: number): { skip: boolean; setup: boolean } {
+function lookbackDirective(lines: string[], openIndex: number): { run: boolean; setup: boolean } {
   let i = openIndex - 1;
   while (i >= 0 && lines[i]?.trim() === '') i--;
-  if (i < 0) return { skip: false, setup: false };
+  if (i < 0) return { run: false, setup: false };
   const prev = lines[i] ?? '';
   return {
-    skip: prev.includes('<!-- @no-test -->'),
+    run: prev.includes('<!-- @run-test -->'),
     setup: prev.includes('<!-- @setup -->'),
   };
 }
@@ -61,7 +68,7 @@ function extractSnippets(file: string): Snippet[] {
       let j = codeStart;
       while (j < lines.length && !(lines[j] ?? '').trim().startsWith('```')) j++;
       const code = lines.slice(codeStart, j).join('\n');
-      const { skip, setup } = lookbackDirective(lines, i);
+      const { run, setup } = lookbackDirective(lines, i);
       if (setup) {
         cumulativeSetup += (cumulativeSetup ? '\n' : '') + code;
       } else {
@@ -71,7 +78,7 @@ function extractSnippets(file: string): Snippet[] {
           startLine: codeStart + 1,
           setup: cumulativeSetup,
           code,
-          skip,
+          run,
         });
       }
       i = j + 1;
@@ -112,7 +119,7 @@ function generateTestFile(snippets: Snippet[]): string {
             jsCode = '';
             extractError = e instanceof Error ? e.message : String(e);
           }
-          const fn = s.skip ? 'it.skip' : 'it';
+          const fn = s.run ? 'it' : 'it.skip';
           if (extractError) {
             return `  ${fn}(${JSON.stringify(label)}, () => {\n    throw new Error(${JSON.stringify(`Extraction failed: ${extractError}`)});\n  });`;
           }

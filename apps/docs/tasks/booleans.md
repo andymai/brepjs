@@ -183,6 +183,8 @@ Three potential boolean failures become one. If the holes don't overlap each oth
 
 ### Mortise and tenon
 
+<!-- @run-test -->
+
 ```typescript
 import { box, cut, fuse, unwrap } from 'brepjs/quick';
 
