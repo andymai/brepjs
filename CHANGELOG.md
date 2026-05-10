@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.10.0](https://github.com/andymai/brepjs/compare/brepjs-v18.9.0...brepjs-v18.10.0) (2026-05-10)
+
+
+### Features
+
+* **gear:** add per-gear diagnostics for solo external/internal gears ([#987](https://github.com/andymai/brepjs/issues/987)) ([71dae06](https://github.com/andymai/brepjs/commit/71dae06111a97a615aaa26c8238de438eb4311cc))
+
 ## [18.9.0](https://github.com/andymai/brepjs/compare/brepjs-v18.8.1...brepjs-v18.9.0) (2026-05-10)
 
 
