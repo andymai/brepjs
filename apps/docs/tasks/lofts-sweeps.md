@@ -128,33 +128,37 @@ export default ring;
 
 Drag a 2D profile along a 3D wire:
 
-```typescript
-import { sketchCircle, line, sweep, unwrap } from 'brepjs/quick';
+<!-- @run-test -->
 
-const cross = sketchCircle(2).face(); // 2mm tube radius
-const path = line([0, 0, 0], [0, 0, 50]); // 50mm straight up
+```typescript
+import { sketchCircle, line, wire, sweep, unwrap } from 'brepjs/quick';
+
+const cross = sketchCircle(2).wire; // 2 mm tube cross-section (closed wire)
+const path = unwrap(wire([line([0, 0, 0], [0, 0, 50])])); // 50 mm straight up
 
 const tube = unwrap(sweep(cross, path));
 export default tube;
 ```
 
-The path can be any 3D curve — straight, arced, helical, B-spline. The profile rides along it.
+`sweep` takes a closed wire (the profile) and a wire (the spine). `line(p1, p2)` returns an `Edge`, so we wrap it with `wire([...])` to promote it to a `Wire`. The path can be any 3D wire — straight, arced, helical, B-spline. The profile rides along it.
 
 ### Helical sweeps for threads and springs
 
 Build a helix as the path, sweep a circle along it:
 
+<!-- @run-test -->
+
 ```typescript
 import { sketchCircle, helix, sweep, unwrap } from 'brepjs/quick';
 
-const profile = sketchCircle(0.5).face(); // thread cross-section
-const path = helix({ pitch: 1.5, height: 30, radius: 5 });
+const profile = sketchCircle(0.5).wire; // thread cross-section (closed wire)
+const path = helix(1.5, 30, 5); // pitch, height, radius
 
 const thread = unwrap(sweep(profile, path)); // bare helical coil
 export default thread;
 ```
 
-`helix({ pitch, height, radius })` returns a wire of the helical curve. Sweep a small circle along it and you get a thread — fuse it onto a shaft to make a screw (see _Threaded fastener_ below).
+`helix(pitch, height, radius)` returns a wire of the helical curve. Sweep a small circle along it and you get a thread — fuse it onto a shaft to make a screw (see _Threaded fastener_ below).
 
 ### Frenet vs auxiliary frame
 
@@ -244,14 +248,16 @@ export default cup;
 
 ### Threaded fastener
 
+<!-- @run-test -->
+
 ```typescript
-import { sketchCircle, helix, sweep, sketchRoundedRectangle, fuse, unwrap } from 'brepjs/quick';
+import { sketchCircle, helix, sweep, sketchRoundedRectangle, fuse, translate, unwrap } from 'brepjs/quick';
 
 const shaft = sketchCircle(3).extrude(20); // M6-ish, 20 mm long
-const threadProfile = sketchCircle(0.75).face(); // ~12% of shaft dia
-const threadPath = helix({ pitch: 1.5, height: 18, radius: 3 });
+const threadProfile = sketchCircle(0.75).wire; // ~12% of shaft dia
+const threadPath = helix(1.5, 18, 3); // pitch, height, radius
 const thread = unwrap(sweep(threadProfile, threadPath));
-const head = sketchRoundedRectangle(8, 8, 0.5).extrude(3).translate([0, 0, 20]);
+const head = translate(sketchRoundedRectangle(8, 8, 0.5).extrude(3), [0, 0, 20]);
 
 const screw = unwrap(fuse(unwrap(fuse(shaft, thread)), head));
 export default screw;
