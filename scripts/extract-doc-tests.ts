@@ -12,6 +12,7 @@
  */
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { transform } from 'sucrase';
 
 const DOCS_DIR = 'apps/docs';
 const OUT_DIR = 'tests/docs';
@@ -96,8 +97,26 @@ function generateTestFile(snippets: Snippet[]): string {
         .map((s) => {
           const label = `${file}:${s.startLine}`;
           const fullCode = (s.setup ? `${s.setup}\n` : '') + s.code;
+          // Pre-compile TypeScript → JavaScript so the runtime AsyncFunction
+          // sees pure JS (it can't parse type annotations or `as` casts).
+          // Sucrase preserves source layout; if it can't parse the snippet,
+          // emit a failing test that surfaces the syntax error verbatim.
+          let jsCode: string;
+          let extractError: string | null = null;
+          try {
+            jsCode = transform(fullCode, {
+              transforms: ['typescript'],
+              disableESTransforms: true,
+            }).code;
+          } catch (e) {
+            jsCode = '';
+            extractError = e instanceof Error ? e.message : String(e);
+          }
           const fn = s.skip ? 'it.skip' : 'it';
-          return `  ${fn}(${JSON.stringify(label)}, async () => {\n    await runSnippet(${JSON.stringify(fullCode)});\n  });`;
+          if (extractError) {
+            return `  ${fn}(${JSON.stringify(label)}, () => {\n    throw new Error(${JSON.stringify(`Extraction failed: ${extractError}`)});\n  });`;
+          }
+          return `  ${fn}(${JSON.stringify(label)}, async () => {\n    await runSnippet(${JSON.stringify(jsCode)});\n  });`;
         })
         .join('\n');
       return `describe(${JSON.stringify(file)}, () => {\n${cases}\n});`;
@@ -123,11 +142,13 @@ const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
   ...args: string[]
 ) => (...args: unknown[]) => Promise<unknown>;
 
-function stripImports(code: string): string {
-  // Line-by-line strip of ESM import statements. Handles both single-line
-  // (\`import { x } from 'y';\`) and multi-line (named imports broken across
-  // lines) forms. brepjs exports are injected onto globalThis above, so
-  // imports become no-ops in tests.
+function stripModuleSyntax(code: string): string {
+  // Strip ESM \`import\` statements (single- and multi-line) and rewrite
+  // top-level \`export default <expr>;\` into \`void <expr>;\`. AsyncFunction
+  // bodies cannot contain \`export\` declarations, so without the rewrite
+  // every snippet syntax-errors before execution. Keeping the value live as
+  // \`void\` avoids unused-variable noise. brepjs exports are injected onto
+  // globalThis above, so imports become no-ops.
   const lines = code.split('\\n');
   const out: string[] = [];
   let i = 0;
@@ -145,16 +166,22 @@ function stripImports(code: string): string {
         j++;
       }
       i = j + 1;
-    } else {
-      out.push(line);
-      i++;
+      continue;
     }
+    const exportDefault = line.match(/^([ \\t]*)export\\s+default\\s+(.+?);?[ \\t]*$/);
+    if (exportDefault) {
+      out.push(\`\${exportDefault[1]}void \${exportDefault[2]};\`);
+      i++;
+      continue;
+    }
+    out.push(line);
+    i++;
   }
   return out.join('\\n');
 }
 
 async function runSnippet(code: string): Promise<void> {
-  const stripped = stripImports(code);
+  const stripped = stripModuleSyntax(code);
   const fn = new AsyncFunction(stripped);
   await fn();
 }

@@ -258,6 +258,7 @@
     "prettier": "3.8.3",
     "puppeteer": "24.42.0",
     "size-limit": "12.1.0",
+    "sucrase": "3.35.1",
     "typedoc": "0.28.19",
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.1",
