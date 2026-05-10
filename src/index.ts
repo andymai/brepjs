@@ -1019,10 +1019,14 @@ export {
   type GearResult,
   type PlanetaryGearAssembly,
   type GearDiagnostic,
+  type GearDiagnosticCode,
   type GearDiagnosticSeverity,
+  type GearGeometry,
   makeExternalGear,
   makeInternalGear,
   makePlanetaryGear,
+  gearGeometry,
+  validatePlanetary,
 } from './gear/index.js';
 
 // ── Namespace re-exports (grouped API) ──

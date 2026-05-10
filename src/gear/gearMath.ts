@@ -7,8 +7,16 @@ export const DEFAULT_CLEARANCE = 0.25;
 
 export type GearDiagnosticSeverity = 'warning' | 'info';
 
+export type GearDiagnosticCode =
+  | 'CONTACT_RATIO_LOW_SUN_PLANET'
+  | 'CONTACT_RATIO_LOW_PLANET_RING'
+  | 'UNDERCUT_RISK_SUN'
+  | 'UNDERCUT_RISK_PLANET'
+  | 'LEWIS_Y_SHIFT_UNCORRECTED'
+  | 'PLANETARY_SHIFT_KINEMATIC_MISMATCH';
+
 export interface GearDiagnostic {
-  code: string;
+  code: GearDiagnosticCode;
   severity: GearDiagnosticSeverity;
   message: string;
   context?: Record<string, number | string>;

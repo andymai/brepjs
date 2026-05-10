@@ -193,7 +193,7 @@ describe('makePlanetaryGear', () => {
 
   it('planet bores reduce planet volume', () => {
     const noBore = unwrap(makePlanetaryGear({ thickness: 10 }));
-    const withBore = unwrap(makePlanetaryGear({ thickness: 10, bores: { planet: 4 } }));
+    const withBore = unwrap(makePlanetaryGear({ thickness: 10, planetBore: 4 }));
     const noPlanet = noBore.planets[0];
     const withPlanet = withBore.planets[0];
     if (!noPlanet || !withPlanet) throw new Error('expected planets');

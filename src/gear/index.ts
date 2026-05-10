@@ -1,5 +1,6 @@
 export {
   type GearDiagnostic,
+  type GearDiagnosticCode,
   type GearDiagnosticSeverity,
   type GearGeometry,
   inv,

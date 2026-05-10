@@ -54,8 +54,11 @@ export interface ExternalGearParams {
   pressureAngleDeg?: number;
   shift?: number;
   clearance?: number;
-  /** Per-gear thinning (i.e. half of total mesh backlash); 0 = theoretical. */
-  backlashHalf?: number;
+  /**
+   * Per-gear flank thinning (mm); 0 = theoretical involute. For an equal-pair
+   * mesh, total mesh backlash is 2× this value.
+   */
+  flankThinning?: number;
   /** Diameter (mm) of central bore; 0 or omitted = no bore. */
   bore?: number;
 }
@@ -67,7 +70,7 @@ export interface InternalGearParams {
   pressureAngleDeg?: number;
   shift?: number;
   clearance?: number;
-  backlashHalf?: number;
+  flankThinning?: number;
   /** Wall thickness from pitch radius outward; defaults to 2·moduleSize. */
   ringWallThickness?: number;
 }
@@ -87,7 +90,10 @@ export interface PlanetaryGearParams {
   planetShift?: number;
   ringShift?: number;
   ringWallThickness?: number;
-  bores?: { sun?: number; planet?: number };
+  /** Diameter (mm) of central bore in the sun gear; 0 or omitted = no bore. */
+  sunBore?: number;
+  /** Diameter (mm) of central bore in each planet gear; 0 or omitted = no bore. */
+  planetBore?: number;
   /**
    * Applied torque on the SUN (input) shaft, in N·m. Planet and ring stresses
    * are derived via force balance (shared tangential force at the mesh).
@@ -115,8 +121,11 @@ export interface PlanetaryGearAssembly {
   centerDistance: number;
   /** Transverse contact ratios per mesh; ≥ 1.2 is industry-acceptable. */
   contactRatio: { sunPlanet: number; planetRing: number };
-  /** Profile shift deficit relative to undercut threshold (positive = undercut risk). */
-  undercut: { sun: number; planet: number };
+  /**
+   * Additional profile shift each gear needs to clear the undercut threshold.
+   * Positive = undercut risk; zero = clear.
+   */
+  undercutDeficit: { sun: number; planet: number };
   /** Lewis bending stress at root (MPa); only present when `appliedTorque` was supplied. */
   lewisStress?: { sun: number; planet: number; ring: number };
   diagnostics: GearDiagnostic[];
@@ -130,14 +139,14 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     pressureAngleDeg = DEFAULT_PRESSURE_ANGLE_DEG,
     shift = 0,
     clearance = DEFAULT_CLEARANCE,
-    backlashHalf: bHalf = 0,
+    flankThinning = 0,
     bore = 0,
   } = params;
   if (thickness <= 0)
     return err(validationError('GEAR_THICKNESS_NONPOSITIVE', 'thickness must be > 0'));
 
   const alpha = (pressureAngleDeg * Math.PI) / 180;
-  const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, bHalf, false);
+  const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, flankThinning, false);
   if (bore > 0 && bore >= 2 * geom.rRoot)
     return err(
       validationError(
@@ -152,7 +161,7 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     pressureAngle: alpha,
     shift,
     clearance,
-    backlashHalf: bHalf,
+    backlashHalf: flankThinning,
   });
   if (isErr(wireResult)) return wireResult;
   return finalizeExternalSolid(wireResult.value, thickness, bore, geom);
@@ -166,7 +175,7 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
     pressureAngleDeg = DEFAULT_PRESSURE_ANGLE_DEG,
     shift = 0,
     clearance = DEFAULT_CLEARANCE,
-    backlashHalf: bHalf = 0,
+    flankThinning = 0,
     ringWallThickness = 2 * params.moduleSize,
   } = params;
   if (thickness <= 0)
@@ -181,11 +190,11 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
     pressureAngle: alpha,
     shift,
     clearance,
-    backlashHalf: bHalf,
+    backlashHalf: flankThinning,
   });
   if (isErr(innerWireResult)) return innerWireResult;
 
-  const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, bHalf, true);
+  const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, flankThinning, true);
   const outerRadius = geom.rPitch + ringWallThickness;
   const outerWireResult = makeOuterCircleWire(outerRadius);
   if (isErr(outerWireResult)) return outerWireResult;
@@ -205,8 +214,8 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     pressureAngleDeg: cfg.pressureAngleDeg,
     shift: cfg.sunShift,
     clearance: cfg.clearance,
-    backlashHalf: cfg.bHalf,
-    bore: cfg.bores.sun ?? 0,
+    flankThinning: cfg.bHalf,
+    bore: cfg.sunBore,
   });
   if (isErr(sunResult)) return sunResult;
 
@@ -217,8 +226,8 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     pressureAngleDeg: cfg.pressureAngleDeg,
     shift: cfg.planetShift,
     clearance: cfg.clearance,
-    backlashHalf: cfg.bHalf,
-    bore: cfg.bores.planet ?? 0,
+    flankThinning: cfg.bHalf,
+    bore: cfg.planetBore,
   });
   if (isErr(planetResult)) return planetResult;
 
@@ -229,7 +238,7 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     pressureAngleDeg: cfg.pressureAngleDeg,
     shift: cfg.ringShift,
     clearance: cfg.clearance,
-    backlashHalf: cfg.bHalf,
+    flankThinning: cfg.bHalf,
     ringWallThickness: cfg.ringWallThickness,
   });
   if (isErr(ringResult)) return ringResult;
@@ -248,7 +257,7 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     workingPressureAngle: cfg.alphaW_sp,
     centerDistance: cfg.centerDistance,
     contactRatio: { sunPlanet: metrics.crSunPlanet, planetRing: metrics.crPlanetRing },
-    undercut: { sun: metrics.undercutSun, planet: metrics.undercutPlanet },
+    undercutDeficit: { sun: metrics.undercutSun, planet: metrics.undercutPlanet },
     ...(metrics.lewisStress ? { lewisStress: metrics.lewisStress } : {}),
     diagnostics,
   });
@@ -272,7 +281,8 @@ interface ResolvedPlanetary {
   ringShift: number;
   ringWallThickness: number;
   thickness: number;
-  bores: { sun?: number; planet?: number };
+  sunBore: number;
+  planetBore: number;
   appliedTorque?: number;
   zr: number;
   centerDistance: number;
@@ -325,7 +335,8 @@ function resolvePlanetaryParams(params: PlanetaryGearParams): Result<ResolvedPla
     ringShift,
     ringWallThickness: params.ringWallThickness ?? 2 * moduleSize,
     thickness: params.thickness,
-    bores: params.bores ?? {},
+    sunBore: params.sunBore ?? 0,
+    planetBore: params.planetBore ?? 0,
     ...(params.appliedTorque !== undefined ? { appliedTorque: params.appliedTorque } : {}),
     zr,
     centerDistance,
