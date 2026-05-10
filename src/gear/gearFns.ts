@@ -483,19 +483,28 @@ function buildGearResult(
 
 function placePlanets(planetProto: ValidSolid, cfg: ResolvedPlanetary): ValidSolid[] {
   const planets: ValidSolid[] = [];
-  for (let i = 0; i < cfg.numPlanets; i++) {
-    const orbital = (i * 2 * Math.PI) / cfg.numPlanets;
-    const selfRot = planetSelfRotationAngle(orbital, cfg.sunTeeth, cfg.planetTeeth);
-    const rotated = rotate(planetProto, (selfRot * 180) / Math.PI);
-    const offset: Vec3 = [
-      cfg.centerDistance * Math.cos(orbital),
-      cfg.centerDistance * Math.sin(orbital),
-      0,
-    ];
-    planets.push(translate(rotated, offset));
-    rotated.delete();
+  try {
+    for (let i = 0; i < cfg.numPlanets; i++) {
+      const orbital = (i * 2 * Math.PI) / cfg.numPlanets;
+      const selfRot = planetSelfRotationAngle(orbital, cfg.sunTeeth, cfg.planetTeeth);
+      const rotated = rotate(planetProto, (selfRot * 180) / Math.PI);
+      try {
+        const offset: Vec3 = [
+          cfg.centerDistance * Math.cos(orbital),
+          cfg.centerDistance * Math.sin(orbital),
+          0,
+        ];
+        planets.push(translate(rotated, offset));
+      } finally {
+        rotated.delete();
+      }
+    }
+    return planets;
+  } catch (e) {
+    // Mid-loop failure: clean up the planets that did succeed before rethrowing.
+    for (const p of planets) p.delete();
+    throw e;
   }
-  return planets;
 }
 
 function applyRingPhase(ring: ValidSolid, zr: number): ValidSolid {
