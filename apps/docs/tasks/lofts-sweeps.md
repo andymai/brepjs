@@ -210,7 +210,8 @@ After building a solid, hollow it out by removing one or more faces and offsetti
 import { sketchCircle, faceFinder, shell, unwrap } from 'brepjs/quick';
 
 const closed = sketchCircle(20).extrude(40);
-const topFaces = faceFinder().inDirection('Z').withZ({ min: 39 }).findAll(closed);
+// Top face is the only one whose minimum distance from the origin is 40 (the cylinder's height).
+const topFaces = faceFinder().atDistance(40, [0, 0, 0]).findAll(closed);
 const cup = unwrap(shell(closed, topFaces, 2)); // 2mm wall, top open
 export default cup;
 ```
@@ -223,7 +224,7 @@ The fluent equivalent:
 import { shape, sketchCircle } from 'brepjs/quick';
 
 const cup = shape(sketchCircle(20).extrude(40)).shell(
-  (f) => f.inDirection('Z').withZ({ min: 39 }),
+  (f) => f.atDistance(40, [0, 0, 0]),
   2
 ).val;
 export default cup;
