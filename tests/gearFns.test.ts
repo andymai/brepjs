@@ -272,6 +272,22 @@ describe('makePlanetaryGear', () => {
     expect(r.diagnostics.find((d) => d.code === 'UNDERCUT_RISK_SUN')).toBeUndefined();
   });
 
+  it('LEWIS_Y_SHIFT_UNCORRECTED only fires once cumulative shift > 0.05', () => {
+    // Tiny shifts under the 0.05 cumulative threshold should not emit the
+    // Lewis-Y caveat — at this magnitude the Y(z)-approximation error is well
+    // below engineering noise.
+    const small = unwrap(
+      makePlanetaryGear({ thickness: 10, appliedTorque: 5, sunShift: 0.02, planetShift: 0.01 })
+    );
+    expect(small.diagnostics.find((d) => d.code === 'LEWIS_Y_SHIFT_UNCORRECTED')).toBeUndefined();
+
+    // Cumulative |shift| above the threshold should still fire.
+    const big = unwrap(
+      makePlanetaryGear({ thickness: 10, appliedTorque: 5, sunShift: 0.2, planetShift: 0.1 })
+    );
+    expect(big.diagnostics.find((d) => d.code === 'LEWIS_Y_SHIFT_UNCORRECTED')).toBeDefined();
+  });
+
   it('planet bores reduce planet volume', () => {
     const noBore = unwrap(makePlanetaryGear({ thickness: 10 }));
     const withBore = unwrap(makePlanetaryGear({ thickness: 10, planetBore: 4 }));

@@ -265,10 +265,13 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
   if (isErr(stages)) return stages;
   const { sun, planet, ring } = stages.value;
 
+  // Compute metrics before disposing `planet.solid` — the function only reads
+  // scalar fields off GearResult so the order is technically irrelevant today,
+  // but it leaves a footgun for anyone adding a solid-touching read later.
+  const metrics = computeMeshMetrics(cfg, sun, planet, ring);
   const planets = placePlanets(planet.solid, cfg);
   planet.solid.delete();
   const ringPhased = applyRingPhase(ring.solid, cfg.zr);
-  const metrics = computeMeshMetrics(cfg, sun, planet, ring);
   const diagnostics = collectDiagnostics(cfg, metrics);
 
   return ok({
@@ -607,10 +610,13 @@ function collectDiagnostics(cfg: ResolvedPlanetary, metrics: MeshMetrics): GearD
       context: { deficit: metrics.undercutPlanet, planetTeeth: cfg.planetTeeth },
     });
   }
-  if (
-    cfg.appliedTorque !== undefined &&
-    (cfg.sunShift !== 0 || cfg.planetShift !== 0 || cfg.ringShift !== 0)
-  ) {
+  // Only emit when shifts are large enough to matter. The diagnostic exists to
+  // warn that Lewis Y(z) uses unshifted geometry — at ~0.05 of profile shift
+  // the error is under 2.5%, well within engineering noise for a strength
+  // estimate, so don't pester users on canonical setups with small shifts.
+  const totalShiftMagnitude =
+    Math.abs(cfg.sunShift) + Math.abs(cfg.planetShift) + Math.abs(cfg.ringShift);
+  if (cfg.appliedTorque !== undefined && totalShiftMagnitude > 0.05) {
     diagnostics.push({
       code: 'LEWIS_Y_SHIFT_UNCORRECTED',
       severity: 'info',
