@@ -186,7 +186,7 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     pressureAngle: alpha,
     shift,
     clearance,
-    backlashHalf: flankThinning,
+    flankThinning,
     ...(samples !== undefined ? { samples } : {}),
   });
   if (isErr(wireResult)) return wireResult;
@@ -225,7 +225,7 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
     pressureAngle: alpha,
     shift,
     clearance,
-    backlashHalf: flankThinning,
+    flankThinning,
     ...(samples !== undefined ? { samples } : {}),
   });
   if (isErr(innerWireResult)) return innerWireResult;

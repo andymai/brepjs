@@ -58,7 +58,7 @@ export interface GearGeometry {
   /** Inner radius for external, outer for internal. */
   rRoot: number;
   alphaPitch: number;
-  /** Half-tooth angular width at the pitch circle, with shift + backlash applied. */
+  /** Half-tooth angular width at the pitch circle, with shift and flank thinning applied. */
   halfToothAngle: number;
   /** Involute parameter α at the radius the flank reaches (rTip ext, rRoot int). */
   alphaTip: number;

@@ -98,7 +98,8 @@ export interface GearWireParams {
   pressureAngle: number;
   shift: number;
   clearance: number;
-  backlashHalf: number;
+  /** Per-gear flank thinning (mm); see {@link ExternalGearParams.flankThinning}. */
+  flankThinning: number;
   /** Override sample count per flank; defaults to adaptiveSampleCount(moduleSize). */
   samples?: number;
 }
@@ -125,7 +126,7 @@ function makeProfileWire(
     pressureAngle,
     shift,
     clearance,
-    backlashHalf,
+    flankThinning,
     samples = adaptiveSampleCount(moduleSize),
   } = params;
 
@@ -140,7 +141,7 @@ function makeProfileWire(
     pressureAngle,
     shift,
     clearance,
-    backlashHalf,
+    flankThinning,
     isInternal
   );
 
