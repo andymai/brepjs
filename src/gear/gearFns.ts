@@ -26,8 +26,6 @@ import { makeFace } from '@/topology/surfaceBuilders.js';
 import { rotate, translate } from '@/topology/transformFns.js';
 import { cut } from '@/topology/booleanFns.js';
 import { extrude } from '@/operations/extrudeFns.js';
-import { sketchCircle } from '@/sketching/cannedSketches.js';
-import { sketchExtrude } from '@/sketching/sketchFns.js';
 import {
   type GearDiagnostic,
   DEFAULT_CLEARANCE,
@@ -134,6 +132,15 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     return err(validationError('GEAR_THICKNESS_NONPOSITIVE', 'thickness must be > 0'));
 
   const alpha = (pressureAngleDeg * Math.PI) / 180;
+  const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, bHalf, false);
+  if (bore > 0 && bore >= 2 * geom.rRoot)
+    return err(
+      validationError(
+        'GEAR_BORE_TOO_LARGE',
+        `bore diameter ${bore.toFixed(2)} ≥ root diameter ${(2 * geom.rRoot).toFixed(2)} — would erase the gear teeth`
+      )
+    );
+
   const wireResult = makeExternalGearProfileWire({
     teeth,
     moduleSize,
@@ -143,8 +150,6 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     backlashHalf: bHalf,
   });
   if (isErr(wireResult)) return wireResult;
-
-  const geom = gearGeometry(teeth, moduleSize, alpha, shift, clearance, bHalf, false);
   return finalizeExternalSolid(wireResult.value, thickness, bore, geom);
 }
 
@@ -341,12 +346,21 @@ function finalizeExternalSolid(
   if (isErr(solidResult)) return solidResult;
   if (bore <= 0) return ok(buildGearResult(solidResult.value, geom));
 
-  // Overshoot bore on both ends (z = -0.5 to thickness + 0.5) so no faces are coplanar with the gear.
-  const boreRaw = sketchExtrude(sketchCircle(bore / 2), thickness + 1) as ValidSolid;
-  const boreSolid = translate(boreRaw, [0, 0, -0.5]);
+  // Bore overshoots both ends (z = -0.5 to thickness + 0.5) so no faces are coplanar.
+  const boreFaceResult = makeBoreFace(bore / 2);
+  if (isErr(boreFaceResult)) return boreFaceResult;
+  const boreRaw = extrude(boreFaceResult.value, [0, 0, thickness + 1]);
+  if (isErr(boreRaw)) return boreRaw;
+  const boreSolid = translate(boreRaw.value, [0, 0, -0.5]);
   const cutResult = cut(solidResult.value, boreSolid);
   if (isErr(cutResult)) return cutResult;
   return ok(buildGearResult(cutResult.value, geom));
+}
+
+function makeBoreFace(radius: number): Result<Parameters<typeof extrude>[0]> {
+  const wireResult = makeOuterCircleWire(radius);
+  if (isErr(wireResult)) return wireResult;
+  return makeFace(wireResult.value);
 }
 
 function finalizeInternalSolid(

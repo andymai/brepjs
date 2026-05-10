@@ -1,6 +1,7 @@
 import type { Vec3 } from '@/core/types.js';
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError } from '@/core/errors.js';
+import { DisposalScope } from '@/core/disposal.js';
 import type { ClosedWire, Edge, PlanarWire } from '@/core/shapeTypes.js';
 import {
   assembleWire,
@@ -21,7 +22,8 @@ function buildToothPeriodEdges(
   tm: GearGeometry,
   toothIndex: number,
   totalTeeth: number,
-  samples: number
+  samples: number,
+  scope: DisposalScope
 ): Result<Edge[]> {
   const center = toothIndex * tm.toothPitch;
   const nextCenter = ((toothIndex + 1) % totalTeeth) * tm.toothPitch;
@@ -44,29 +46,33 @@ function buildToothPeriodEdges(
   const rightBase = lastOrThrow(rightFlank);
 
   const edges: Edge[] = [];
+  const push = (e: Edge): void => {
+    scope.register(e);
+    edges.push(e);
+  };
 
   // Root below base (external) or above it (internal): involute can't reach root; bridge radially.
   const needsRadialBridge = tm.isInternal ? tm.rb < tm.rRoot : tm.rb > tm.rRoot;
   if (needsRadialBridge) {
     const rootPt: Vec3 = [tm.rRoot * Math.cos(thetaLeft), tm.rRoot * Math.sin(thetaLeft), 0];
-    edges.push(makeLine(rootPt, leftBase));
+    push(makeLine(rootPt, leftBase));
   }
 
   const interpTol = tm.rPitch * 1e-5;
   const leftEdge = makeBSplineInterpolation(leftFlank, { tolerance: interpTol });
   if (isErr(leftEdge)) return leftEdge;
-  edges.push(leftEdge.value);
+  push(leftEdge.value);
 
   const tipMid: Vec3 = [tm.rTip * Math.cos(center), tm.rTip * Math.sin(center), 0];
-  edges.push(makeThreePointArc(leftTip, tipMid, rightTip));
+  push(makeThreePointArc(leftTip, tipMid, rightTip));
 
   const rightEdge = makeBSplineInterpolation(rightFlank, { tolerance: interpTol });
   if (isErr(rightEdge)) return rightEdge;
-  edges.push(rightEdge.value);
+  push(rightEdge.value);
 
   if (needsRadialBridge) {
     const rootPt: Vec3 = [tm.rRoot * Math.cos(thetaRight), tm.rRoot * Math.sin(thetaRight), 0];
-    edges.push(makeLine(rightBase, rootPt));
+    push(makeLine(rightBase, rootPt));
   }
 
   const rootEndAngle = nextCenter - tm.halfToothAngle - invPitch;
@@ -80,7 +86,7 @@ function buildToothPeriodEdges(
   const nextLeftStart: Vec3 = needsRadialBridge
     ? [tm.rRoot * Math.cos(rootEndAngle), tm.rRoot * Math.sin(rootEndAngle), 0]
     : [tm.rb * Math.cos(rootEndAngle), tm.rb * Math.sin(rootEndAngle), 0];
-  edges.push(makeThreePointArc(rootStart, rootMid, nextLeftStart));
+  push(makeThreePointArc(rootStart, rootMid, nextLeftStart));
 
   return ok(edges);
 }
@@ -138,17 +144,21 @@ function makeProfileWire(
     isInternal
   );
 
+  // Register every per-tooth edge with a disposal scope so a mid-loop failure
+  // doesn't leak orphaned WASM handles. assembleWire deep-copies into the wire,
+  // so disposing the registered edges after wire construction is safe.
+  using scope = new DisposalScope();
   const allEdges: Edge[] = [];
   for (let i = 0; i < teeth; i++) {
-    const periodEdges = buildToothPeriodEdges(tm, i, teeth, samples);
+    const periodEdges = buildToothPeriodEdges(tm, i, teeth, samples, scope);
     if (isErr(periodEdges)) return periodEdges;
     allEdges.push(...periodEdges.value);
   }
 
   const wireResult = assembleWire(allEdges);
   if (isErr(wireResult)) return wireResult;
-  // Wire is closed and planar by construction (4·N edges chain end-to-end in XY).
-  // Skipping smart-constructor validation here because brepkit's isPlanarWire builds
+  // Wire is closed and planar by construction (4·N edges chain end-to-end in XY);
+  // skipping smart-constructor validation here because brepkit's isPlanarWire builds
   // a temporary face that interferes with the wire's downstream usability.
   return ok(wireResult.value as ClosedWire & PlanarWire);
 }

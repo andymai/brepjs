@@ -58,6 +58,16 @@ describe('makeExternalGear', () => {
     );
     expect(shifted.tipDiameter).toBeGreaterThan(noShift.tipDiameter);
   });
+
+  it('rejects bore ≥ root diameter (would erase teeth)', () => {
+    // 20-tooth m=2 gear: rRoot = 17.5, root diameter = 35
+    expect(isErr(makeExternalGear({ teeth: 20, moduleSize: 2, thickness: 10, bore: 100 }))).toBe(
+      true
+    );
+    expect(isErr(makeExternalGear({ teeth: 20, moduleSize: 2, thickness: 10, bore: 35 }))).toBe(
+      true
+    );
+  });
 });
 
 describe('makeInternalGear (ring)', () => {
