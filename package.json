@@ -240,7 +240,7 @@
     "prepare": "husky && bash scripts/ensure-wasm.sh"
   },
   "devDependencies": {
-    "@commitlint/cli": "20.5.3",
+    "@commitlint/cli": "21.0.0",
     "@commitlint/config-conventional": "20.5.3",
     "@eslint/js": "10.0.1",
     "@size-limit/file": "12.1.0",
