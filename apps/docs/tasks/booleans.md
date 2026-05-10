@@ -201,7 +201,7 @@ const railT = 30; // rail thickness (Z)
 const tenonH = 30; // tenon height in Y     (~60% of railW → 10 mm shoulder each side)
 const tenonT = 10; // tenon thickness in Z  (~1/3 of railT → 10 mm shoulder each face)
 const clearance = 0.2; // sliding-fit oversize on the mortise
-const gap = 50; // exploded view: air between rail tip and stile face
+const gap = 50; // exploded view: rail body end to stile face (tenon tip sits stileD closer)
 
 // `box`'s `at` option places the box CENTER at the given point.
 // Both pieces share Y/Z center on the stile face.
