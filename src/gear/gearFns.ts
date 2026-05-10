@@ -23,6 +23,7 @@ import { validationError } from '@/core/errors.js';
 import type { ClosedWire, PlanarWire, ValidSolid } from '@/core/shapeTypes.js';
 import { makeCircle, assembleWire } from '@/topology/curveBuilders.js';
 import { makeFace } from '@/topology/surfaceBuilders.js';
+import { DisposalScope } from '@/core/disposal.js';
 import { rotate, translate } from '@/topology/transformFns.js';
 import { cut } from '@/topology/booleanFns.js';
 import { extrude } from '@/operations/extrudeFns.js';
@@ -332,7 +333,8 @@ function resolvePlanetaryParams(params: PlanetaryGearParams): Result<ResolvedPla
 }
 
 function makeOuterCircleWire(radius: number): Result<ClosedWire & PlanarWire> {
-  const circleEdge = makeCircle(radius, [0, 0, 0], [0, 0, 1]);
+  using scope = new DisposalScope();
+  const circleEdge = scope.register(makeCircle(radius, [0, 0, 0], [0, 0, 1]));
   const wireResult = assembleWire([circleEdge]);
   if (isErr(wireResult)) return wireResult;
   // A single-edge circle wire is closed and planar by construction; brand once.
@@ -352,11 +354,14 @@ function finalizeExternalSolid(
   if (bore <= 0) return ok(buildGearResult(solidResult.value, geom));
 
   // Bore overshoots both ends (z = -0.5 to thickness + 0.5) so no faces are coplanar.
+  using boreScope = new DisposalScope();
   const boreFaceResult = makeBoreFace(bore / 2);
   if (isErr(boreFaceResult)) return boreFaceResult;
+  boreScope.register(boreFaceResult.value);
   const boreRaw = extrude(boreFaceResult.value, [0, 0, thickness + 1]);
   if (isErr(boreRaw)) return boreRaw;
-  const boreSolid = translate(boreRaw.value, [0, 0, -0.5]);
+  boreScope.register(boreRaw.value);
+  const boreSolid = boreScope.register(translate(boreRaw.value, [0, 0, -0.5]));
   const cutResult = cut(solidResult.value, boreSolid);
   if (isErr(cutResult)) return cutResult;
   return ok(buildGearResult(cutResult.value, geom));
