@@ -61,6 +61,12 @@ export interface ExternalGearParams {
   flankThinning?: number;
   /** Diameter (mm) of central bore; 0 or omitted = no bore. */
   bore?: number;
+  /**
+   * Sample count per involute flank. Lower = faster mesh, coarser surface.
+   * Defaults to `adaptiveSampleCount(moduleSize)` (≈ 16 at module 2). Try
+   * 8 for previews, 24+ for 3D printing.
+   */
+  samples?: number;
 }
 
 export interface InternalGearParams {
@@ -73,6 +79,8 @@ export interface InternalGearParams {
   flankThinning?: number;
   /** Wall thickness from pitch radius outward; defaults to 2·moduleSize. */
   ringWallThickness?: number;
+  /** See {@link ExternalGearParams.samples}. */
+  samples?: number;
 }
 
 export interface PlanetaryGearParams {
@@ -100,6 +108,8 @@ export interface PlanetaryGearParams {
    * When supplied, lewisStress is computed.
    */
   appliedTorque?: number;
+  /** See {@link ExternalGearParams.samples}. Applied to sun, planet, and ring. */
+  samples?: number;
 }
 
 export interface GearResult {
@@ -141,6 +151,7 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     clearance = DEFAULT_CLEARANCE,
     flankThinning = 0,
     bore = 0,
+    samples,
   } = params;
   if (thickness <= 0)
     return err(validationError('GEAR_THICKNESS_NONPOSITIVE', 'thickness must be > 0'));
@@ -162,6 +173,7 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     shift,
     clearance,
     backlashHalf: flankThinning,
+    ...(samples !== undefined ? { samples } : {}),
   });
   if (isErr(wireResult)) return wireResult;
   return finalizeExternalSolid(wireResult.value, thickness, bore, geom);
@@ -177,6 +189,7 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
     clearance = DEFAULT_CLEARANCE,
     flankThinning = 0,
     ringWallThickness = 2 * params.moduleSize,
+    samples,
   } = params;
   if (thickness <= 0)
     return err(validationError('GEAR_THICKNESS_NONPOSITIVE', 'thickness must be > 0'));
@@ -191,6 +204,7 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
     shift,
     clearance,
     backlashHalf: flankThinning,
+    ...(samples !== undefined ? { samples } : {}),
   });
   if (isErr(innerWireResult)) return innerWireResult;
 
@@ -207,57 +221,18 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
   if (isErr(resolved)) return resolved;
   const cfg = resolved.value;
 
-  const sunResult = makeExternalGear({
-    teeth: cfg.sunTeeth,
-    moduleSize: cfg.moduleSize,
-    thickness: cfg.thickness,
-    pressureAngleDeg: cfg.pressureAngleDeg,
-    shift: cfg.sunShift,
-    clearance: cfg.clearance,
-    flankThinning: cfg.bHalf,
-    bore: cfg.sunBore,
-  });
-  if (isErr(sunResult)) return sunResult;
+  const stages = buildPlanetaryStages(cfg);
+  if (isErr(stages)) return stages;
+  const { sun, planet, ring } = stages.value;
 
-  const planetResult = makeExternalGear({
-    teeth: cfg.planetTeeth,
-    moduleSize: cfg.moduleSize,
-    thickness: cfg.thickness,
-    pressureAngleDeg: cfg.pressureAngleDeg,
-    shift: cfg.planetShift,
-    clearance: cfg.clearance,
-    flankThinning: cfg.bHalf,
-    bore: cfg.planetBore,
-  });
-  if (isErr(planetResult)) {
-    sunResult.value.solid.delete();
-    return planetResult;
-  }
-
-  const ringResult = makeInternalGear({
-    teeth: cfg.zr,
-    moduleSize: cfg.moduleSize,
-    thickness: cfg.thickness,
-    pressureAngleDeg: cfg.pressureAngleDeg,
-    shift: cfg.ringShift,
-    clearance: cfg.clearance,
-    flankThinning: cfg.bHalf,
-    ringWallThickness: cfg.ringWallThickness,
-  });
-  if (isErr(ringResult)) {
-    sunResult.value.solid.delete();
-    planetResult.value.solid.delete();
-    return ringResult;
-  }
-
-  const planets = placePlanets(planetResult.value.solid, cfg);
-  planetResult.value.solid.delete();
-  const ringPhased = applyRingPhase(ringResult.value.solid, cfg.zr);
-  const metrics = computeMeshMetrics(cfg, sunResult.value, planetResult.value, ringResult.value);
+  const planets = placePlanets(planet.solid, cfg);
+  planet.solid.delete();
+  const ringPhased = applyRingPhase(ring.solid, cfg.zr);
+  const metrics = computeMeshMetrics(cfg, sun, planet, ring);
   const diagnostics = collectDiagnostics(cfg, metrics);
 
   return ok({
-    sun: sunResult.value.solid,
+    sun: sun.solid,
     planets,
     ring: ringPhased,
     ringTeeth: cfg.zr,
@@ -268,6 +243,49 @@ export function makePlanetaryGear(params: PlanetaryGearParams): Result<Planetary
     ...(metrics.lewisStress ? { lewisStress: metrics.lewisStress } : {}),
     diagnostics,
   });
+}
+
+function buildPlanetaryStages(
+  cfg: ResolvedPlanetary
+): Result<{ sun: GearResult; planet: GearResult; ring: GearResult }> {
+  const samplesField = cfg.samples !== undefined ? { samples: cfg.samples } : {};
+  const common = {
+    moduleSize: cfg.moduleSize,
+    thickness: cfg.thickness,
+    pressureAngleDeg: cfg.pressureAngleDeg,
+    clearance: cfg.clearance,
+    flankThinning: cfg.bHalf,
+    ...samplesField,
+  };
+  const sun = makeExternalGear({
+    ...common,
+    teeth: cfg.sunTeeth,
+    shift: cfg.sunShift,
+    bore: cfg.sunBore,
+  });
+  if (isErr(sun)) return sun;
+  const planet = makeExternalGear({
+    ...common,
+    teeth: cfg.planetTeeth,
+    shift: cfg.planetShift,
+    bore: cfg.planetBore,
+  });
+  if (isErr(planet)) {
+    sun.value.solid.delete();
+    return planet;
+  }
+  const ring = makeInternalGear({
+    ...common,
+    teeth: cfg.zr,
+    shift: cfg.ringShift,
+    ringWallThickness: cfg.ringWallThickness,
+  });
+  if (isErr(ring)) {
+    sun.value.solid.delete();
+    planet.value.solid.delete();
+    return ring;
+  }
+  return ok({ sun: sun.value, planet: planet.value, ring: ring.value });
 }
 
 interface ResolvedPlanetary {
@@ -291,6 +309,7 @@ interface ResolvedPlanetary {
   sunBore: number;
   planetBore: number;
   appliedTorque?: number;
+  samples?: number;
   zr: number;
   centerDistance: number;
 }
@@ -345,6 +364,7 @@ function resolvePlanetaryParams(params: PlanetaryGearParams): Result<ResolvedPla
     sunBore: params.sunBore ?? 0,
     planetBore: params.planetBore ?? 0,
     ...(params.appliedTorque !== undefined ? { appliedTorque: params.appliedTorque } : {}),
+    ...(params.samples !== undefined ? { samples: params.samples } : {}),
     zr,
     centerDistance,
   });

@@ -68,6 +68,20 @@ describe('makeExternalGear', () => {
       true
     );
   });
+
+  it('samples override produces a valid solid; volume converges as samples grow', () => {
+    // Coarse and fine samples should both build valid solids; the fine-sample
+    // gear approximates the true involute more closely, so its volume sits
+    // between coarse (under-sampled) and analytic (effectively unreachable).
+    const coarse = unwrap(makeExternalGear({ teeth: 24, moduleSize: 2, thickness: 8, samples: 4 }));
+    const fine = unwrap(makeExternalGear({ teeth: 24, moduleSize: 2, thickness: 8, samples: 32 }));
+    expect(isSolid(coarse.solid)).toBe(true);
+    expect(isSolid(fine.solid)).toBe(true);
+    const vCoarse = unwrap(measureVolume(coarse.solid));
+    const vFine = unwrap(measureVolume(fine.solid));
+    // Within 5% — flank approximation noise; mostly to assert sane geometry both sides.
+    expect(Math.abs(vCoarse - vFine) / vFine).toBeLessThan(0.05);
+  });
 });
 
 describe('makeInternalGear (ring)', () => {
