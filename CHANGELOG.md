@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.8.0](https://github.com/andymai/brepjs/compare/brepjs-v18.7.3...brepjs-v18.8.0) (2026-05-10)
+
+
+### Features
+
+* **gear:** add planetary gear module with diagnostics and mesh metrics ([#977](https://github.com/andymai/brepjs/issues/977)) ([4900323](https://github.com/andymai/brepjs/commit/4900323e856734537d7ac35ea12a45e83148e5fa))
+
 ## [18.7.3](https://github.com/andymai/brepjs/compare/brepjs-v18.7.2...brepjs-v18.7.3) (2026-05-10)
 
 
