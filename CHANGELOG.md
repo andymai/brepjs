@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.7.1](https://github.com/andymai/brepjs/compare/brepjs-v18.7.0...brepjs-v18.7.1) (2026-05-10)
+
+
+### Bug Fixes
+
+* **sketching:** restore runtime exports for Sketcher classes ([#960](https://github.com/andymai/brepjs/issues/960)) ([96ef7b5](https://github.com/andymai/brepjs/commit/96ef7b57b8d4b7fc6eb7990038cd4d5c05824439))
+
 ## [18.7.0](https://github.com/andymai/brepjs/compare/brepjs-v18.6.1...brepjs-v18.7.0) (2026-05-09)
 
 
