@@ -215,12 +215,17 @@ jobs:
                 continue;
               }
 
+              // 25% threshold: shared CI runners (different machines for main
+              // vs PR sides) show ~9-15% run-to-run variance even on
+              // semantically identical code. Tightening below 25% produces
+              // more false positives than real regressions caught.
+              const REGRESSION_THRESHOLD_PCT = 25;
               const pctChange = ((pr.median - main.median) / main.median) * 100;
               let icon;
-              if (pctChange > 10) {
+              if (pctChange > REGRESSION_THRESHOLD_PCT) {
                 icon = '🔴';
                 hasRegression = true;
-              } else if (pctChange < -10) {
+              } else if (pctChange < -REGRESSION_THRESHOLD_PCT) {
                 icon = '🟢';
               } else {
                 icon = '⚪';
@@ -238,7 +243,7 @@ jobs:
               '|-----------|------|----|---------|-|',
               ...rows,
               '',
-              hasRegression ? '**🔴 Regression detected:** one or more benchmarks regressed >10%' : 'All benchmarks within tolerance.',
+              hasRegression ? `**🔴 Regression detected:** one or more benchmarks regressed >${REGRESSION_THRESHOLD_PCT}%` : 'All benchmarks within tolerance.',
             ].join('\n');
 
             const comments = await github.paginate(github.rest.issues.listComments, {
@@ -265,7 +270,7 @@ jobs:
             }
 
             if (hasRegression) {
-              core.setFailed('Benchmark regression detected: one or more benchmarks regressed >10%');
+              core.setFailed(`Benchmark regression detected: one or more benchmarks regressed >${REGRESSION_THRESHOLD_PCT}%`);
             }
 
   ci-pass:
