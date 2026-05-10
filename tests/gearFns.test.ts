@@ -69,6 +69,24 @@ describe('makeExternalGear', () => {
     );
   });
 
+  it('emits UNDERCUT_RISK diagnostic for low-z gear without compensating shift', () => {
+    // 12 teeth at α=20° with no shift: undercutMinimumShift ≈ 0.30, deficit > 0.
+    const r = unwrap(makeExternalGear({ teeth: 12, moduleSize: 2, thickness: 8 }));
+    const undercut = r.diagnostics.find((d) => d.code === 'UNDERCUT_RISK');
+    expect(undercut).toBeDefined();
+    expect(undercut?.severity).toBe('warning');
+  });
+
+  it('positive shift suppresses UNDERCUT_RISK on low-z gear', () => {
+    const r = unwrap(makeExternalGear({ teeth: 12, moduleSize: 2, thickness: 8, shift: 0.5 }));
+    expect(r.diagnostics.find((d) => d.code === 'UNDERCUT_RISK')).toBeUndefined();
+  });
+
+  it('high-z gear has no diagnostics by default', () => {
+    const r = unwrap(makeExternalGear({ teeth: 30, moduleSize: 2, thickness: 8 }));
+    expect(r.diagnostics).toEqual([]);
+  });
+
   it('samples override produces a valid solid; volume converges as samples grow', () => {
     // Coarse and fine samples should both build valid solids; the fine-sample
     // gear approximates the true involute more closely, so its volume sits

@@ -10,6 +10,7 @@ export type GearDiagnosticSeverity = 'warning' | 'info';
 export type GearDiagnosticCode =
   | 'CONTACT_RATIO_LOW_SUN_PLANET'
   | 'CONTACT_RATIO_LOW_PLANET_RING'
+  | 'UNDERCUT_RISK'
   | 'UNDERCUT_RISK_SUN'
   | 'UNDERCUT_RISK_PLANET'
   | 'LEWIS_Y_SHIFT_UNCORRECTED'

@@ -118,6 +118,13 @@ export interface GearResult {
   baseDiameter: number;
   tipDiameter: number;
   rootDiameter: number;
+  /**
+   * Diagnostics specific to this gear in isolation (e.g. undercut risk for
+   * low-tooth-count gears with no profile shift). Empty when the gear is
+   * geometrically clean. Planetary assemblies emit additional cross-mesh
+   * diagnostics on `PlanetaryGearAssembly.diagnostics`.
+   */
+  diagnostics: GearDiagnostic[];
 }
 
 export interface PlanetaryGearAssembly {
@@ -176,7 +183,8 @@ export function makeExternalGear(params: ExternalGearParams): Result<GearResult>
     ...(samples !== undefined ? { samples } : {}),
   });
   if (isErr(wireResult)) return wireResult;
-  return finalizeExternalSolid(wireResult.value, thickness, bore, geom);
+  const diagnostics = soloGearDiagnostics(teeth, alpha, shift);
+  return finalizeExternalSolid(wireResult.value, thickness, bore, geom, diagnostics);
 }
 
 export function makeInternalGear(params: InternalGearParams): Result<GearResult> {
@@ -213,7 +221,27 @@ export function makeInternalGear(params: InternalGearParams): Result<GearResult>
   const outerWireResult = makeOuterCircleWire(outerRadius);
   if (isErr(outerWireResult)) return outerWireResult;
 
-  return finalizeInternalSolid(outerWireResult.value, innerWireResult.value, thickness, geom);
+  const diagnostics = soloGearDiagnostics(teeth, alpha, shift);
+  return finalizeInternalSolid(
+    outerWireResult.value,
+    innerWireResult.value,
+    thickness,
+    geom,
+    diagnostics
+  );
+}
+
+function soloGearDiagnostics(teeth: number, alpha: number, shift: number): GearDiagnostic[] {
+  const deficit = undercutDeficit(teeth, alpha, shift);
+  if (deficit <= 0) return [];
+  return [
+    {
+      code: 'UNDERCUT_RISK',
+      severity: 'warning',
+      message: `gear is undercut: increase shift by ${deficit.toFixed(3)} to avoid (z=${teeth})`,
+      context: { deficit, teeth },
+    },
+  ];
 }
 
 export function makePlanetaryGear(params: PlanetaryGearParams): Result<PlanetaryGearAssembly> {
@@ -383,13 +411,14 @@ function finalizeExternalSolid(
   wire: ClosedWire & PlanarWire,
   thickness: number,
   bore: number,
-  geom: ReturnType<typeof gearGeometry>
+  geom: ReturnType<typeof gearGeometry>,
+  diagnostics: GearDiagnostic[]
 ): Result<GearResult> {
   const faceResult = makeFace(wire);
   if (isErr(faceResult)) return faceResult;
   const solidResult = extrude(faceResult.value, [0, 0, thickness]);
   if (isErr(solidResult)) return solidResult;
-  if (bore <= 0) return ok(buildGearResult(solidResult.value, geom));
+  if (bore <= 0) return ok(buildGearResult(solidResult.value, geom, diagnostics));
 
   // Bore overshoots both ends (z = -0.5 to thickness + 0.5) so no faces are coplanar.
   using boreScope = new DisposalScope();
@@ -402,7 +431,7 @@ function finalizeExternalSolid(
   const boreSolid = boreScope.register(translate(boreRaw.value, [0, 0, -0.5]));
   const cutResult = cut(solidResult.value, boreSolid);
   if (isErr(cutResult)) return cutResult;
-  return ok(buildGearResult(cutResult.value, geom));
+  return ok(buildGearResult(cutResult.value, geom, diagnostics));
 }
 
 function makeBoreFace(radius: number): Result<Parameters<typeof extrude>[0]> {
@@ -415,18 +444,24 @@ function finalizeInternalSolid(
   outerWire: ClosedWire & PlanarWire,
   innerToothedWire: ClosedWire & PlanarWire,
   thickness: number,
-  geom: ReturnType<typeof gearGeometry>
+  geom: ReturnType<typeof gearGeometry>,
+  diagnostics: GearDiagnostic[]
 ): Result<GearResult> {
   const faceResult = makeFace(outerWire, [innerToothedWire]);
   if (isErr(faceResult)) return faceResult;
   const solidResult = extrude(faceResult.value, [0, 0, thickness]);
   if (isErr(solidResult)) return solidResult;
-  return ok(buildGearResult(solidResult.value, geom));
+  return ok(buildGearResult(solidResult.value, geom, diagnostics));
 }
 
-function buildGearResult(solid: ValidSolid, geom: ReturnType<typeof gearGeometry>): GearResult {
+function buildGearResult(
+  solid: ValidSolid,
+  geom: ReturnType<typeof gearGeometry>,
+  diagnostics: GearDiagnostic[] = []
+): GearResult {
   return {
     solid,
+    diagnostics,
     pitchDiameter: 2 * geom.rPitch,
     baseDiameter: 2 * geom.rb,
     tipDiameter: 2 * geom.rTip,
