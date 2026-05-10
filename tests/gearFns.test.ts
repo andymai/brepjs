@@ -4,6 +4,7 @@ import {
   isOk,
   isErr,
   isSolid,
+  measureArea,
   measureVolume,
   unwrap,
   makeExternalGear,
@@ -33,6 +34,22 @@ describe('makeExternalGear', () => {
     const upper = Math.PI * rTip * rTip * 10;
     expect(vol).toBeGreaterThan(lower);
     expect(vol).toBeLessThan(upper);
+  });
+
+  it('surface area is bounded between root- and tip-cylinder envelopes', () => {
+    // For an external spur gear: 2 caps + lateral flank surface. The lateral
+    // area sits between the root cylinder (lower bound, smooth) and the tip
+    // cylinder (upper bound, smooth) for the lateral component, plus 2 caps
+    // contributing 2·π·(rTip² − bore²/4) per cap. Loose envelope: between two
+    // cylinders' surface areas — confirms geometry-construction sanity.
+    const r = unwrap(makeExternalGear({ teeth: 20, moduleSize: 2, thickness: 10 }));
+    const area = unwrap(measureArea(r.solid));
+    const rRoot = (20 * 2 - 2 * 1.25 * 2) / 2; // 17.5
+    const rTip = (20 * 2 + 2 * 2) / 2; // 22
+    const lower = 2 * Math.PI * rRoot * 10 + 2 * (Math.PI * rRoot * rRoot);
+    const upper = 2 * Math.PI * rTip * 10 + 2 * (Math.PI * rTip * rTip) * 1.5; // tooth wiggle padding
+    expect(area).toBeGreaterThan(lower);
+    expect(area).toBeLessThan(upper);
   });
 
   it('bore reduces volume', () => {
@@ -169,6 +186,18 @@ describe('makePlanetaryGear', () => {
       makePlanetaryGear({ thickness: 10, sunTeeth: 20, planetTeeth: 16, numPlanets: 4 })
     );
     expect(a.centerDistance).toBeCloseTo(((20 + 16) * 3) / 2, 6);
+  });
+
+  it('ring solid is intact after applyRingPhase rotation (even zr)', () => {
+    // zr = 20 + 2·16 = 52 (even) → applyRingPhase rotates by π/zr and deletes
+    // the original handle. Cover the rotate-and-delete branch with a real
+    // assertion on the returned solid.
+    const a = unwrap(
+      makePlanetaryGear({ thickness: 10, sunTeeth: 20, planetTeeth: 16, numPlanets: 4 })
+    );
+    expect(a.ringTeeth).toBe(52);
+    expect(isSolid(a.ring)).toBe(true);
+    expect(unwrap(measureVolume(a.ring))).toBeGreaterThan(0);
   });
 
   it('rejects assembly violation (zs+zp not divisible by N appropriately)', () => {
