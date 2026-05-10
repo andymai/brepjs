@@ -8,7 +8,7 @@ set -euo pipefail
 # Layer 1: core/                 — can import kernel/, utils/
 # Layer 2: topology/, 2d/, operations/, query/, measurement/, io/
 #                                — can import layers 0-1 + each other
-# Layer 3: sketching/, text/, projection/
+# Layer 3: sketching/, text/, projection/, gear/
 #                                — can import layers 0-2
 
 STAGED_ONLY=false
@@ -26,7 +26,7 @@ get_layer() {
     kernel|utils) echo 0 ;;
     core) echo 1 ;;
     topology|2d|operations|query|measurement|io|worker) echo 2 ;;
-    sketching|text|projection|ns) echo 3 ;;
+    sketching|text|projection|gear|ns) echo 3 ;;
     *) echo -1 ;;
   esac
 }

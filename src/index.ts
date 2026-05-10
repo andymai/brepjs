@@ -1010,6 +1010,21 @@ export {
   type WrappedFace,
 } from './topology/wrapperFns.js';
 
+// ── Gears (planetary + single spur) ──
+
+export {
+  type ExternalGearParams,
+  type InternalGearParams,
+  type PlanetaryGearParams,
+  type GearResult,
+  type PlanetaryGearAssembly,
+  type GearDiagnostic,
+  type GearDiagnosticSeverity,
+  makeExternalGear,
+  makeInternalGear,
+  makePlanetaryGear,
+} from './gear/index.js';
+
 // ── Namespace re-exports (grouped API) ──
 export * as primitives from './ns/primitives.js';
 export * as booleans from './ns/booleans.js';

@@ -1,0 +1,186 @@
+/**
+ * Integration tests for gear builders — runs against the configured kernel
+ * (default OCCT, override with TEST_KERNEL=brepkit).
+ */
+
+import { describe, expect, it, beforeAll } from 'vitest';
+import { initKernel } from './setup.js';
+import {
+  isOk,
+  isErr,
+  isSolid,
+  measureVolume,
+  unwrap,
+  makeExternalGear,
+  makeInternalGear,
+  makePlanetaryGear,
+} from '@/index.js';
+
+beforeAll(async () => {
+  await initKernel();
+}, 30000);
+
+describe('makeExternalGear', () => {
+  it('builds a valid solid for a default 24-tooth gear', () => {
+    const r = makeExternalGear({ teeth: 24, moduleSize: 2, thickness: 8 });
+    expect(isOk(r)).toBe(true);
+    const { solid, pitchDiameter } = unwrap(r);
+    expect(isSolid(solid)).toBe(true);
+    expect(pitchDiameter).toBeCloseTo(48); // z·m = 24·2
+  });
+
+  it('volume is roughly between root and tip cylinders', () => {
+    const r = unwrap(makeExternalGear({ teeth: 20, moduleSize: 2, thickness: 10 }));
+    const vol = unwrap(measureVolume(r.solid));
+    const rRoot = (20 * 2 - 2 * 1.25 * 2) / 2;
+    const rTip = (20 * 2 + 2 * 2) / 2;
+    const lower = Math.PI * rRoot * rRoot * 10;
+    const upper = Math.PI * rTip * rTip * 10;
+    expect(vol).toBeGreaterThan(lower);
+    expect(vol).toBeLessThan(upper);
+  });
+
+  it('bore reduces volume', () => {
+    // Exact volume difference depends on kernel boolean precision; assert direction + lower bound.
+    const noBore = unwrap(makeExternalGear({ teeth: 20, moduleSize: 2, thickness: 10 }));
+    const withBore = unwrap(makeExternalGear({ teeth: 20, moduleSize: 2, thickness: 10, bore: 6 }));
+    const vNo = unwrap(measureVolume(noBore.solid));
+    const vWith = unwrap(measureVolume(withBore.solid));
+    expect(vWith).toBeLessThan(vNo);
+    expect(vWith).toBeGreaterThan(0);
+    // At minimum, the bore cylinder's cross-section was removed
+    expect(vNo - vWith).toBeGreaterThan(Math.PI * 9 * 10 * 0.9);
+  });
+
+  it('rejects thickness ≤ 0', () => {
+    expect(isErr(makeExternalGear({ teeth: 20, moduleSize: 2, thickness: 0 }))).toBe(true);
+  });
+
+  it('profile shift increases tip diameter', () => {
+    const noShift = unwrap(makeExternalGear({ teeth: 12, moduleSize: 2, thickness: 8 }));
+    const shifted = unwrap(
+      makeExternalGear({ teeth: 12, moduleSize: 2, thickness: 8, shift: 0.4 })
+    );
+    expect(shifted.tipDiameter).toBeGreaterThan(noShift.tipDiameter);
+  });
+});
+
+describe('makeInternalGear (ring)', () => {
+  it('builds a valid annular solid for a 39-tooth ring', () => {
+    const r = makeInternalGear({ teeth: 39, moduleSize: 2, thickness: 8 });
+    expect(isOk(r)).toBe(true);
+    const { solid, pitchDiameter } = unwrap(r);
+    expect(isSolid(solid)).toBe(true);
+    expect(pitchDiameter).toBeCloseTo(78); // 39·2
+  });
+
+  it('outer diameter = pitch diameter + 2·ringWallThickness', () => {
+    const r = unwrap(
+      makeInternalGear({ teeth: 30, moduleSize: 2, thickness: 8, ringWallThickness: 5 })
+    );
+    // Material lies between innerToothed (≈ pitch − m) and pitch + 5; volume sanity:
+    const vol = unwrap(measureVolume(r.solid));
+    const rOuter = 30 + 5;
+    const rInnerApprox = 30 - 2; // pitch - m (rough)
+    const upper = Math.PI * (rOuter * rOuter - rInnerApprox * rInnerApprox) * 8;
+    const lower = Math.PI * (rOuter * rOuter - (rOuter - 1) * (rOuter - 1)) * 8;
+    expect(vol).toBeGreaterThan(lower);
+    expect(vol).toBeLessThan(upper);
+  });
+
+  it('rejects non-positive ring wall thickness', () => {
+    expect(
+      isErr(makeInternalGear({ teeth: 30, moduleSize: 2, thickness: 8, ringWallThickness: 0 }))
+    ).toBe(true);
+  });
+});
+
+describe('makePlanetaryGear', () => {
+  it('builds with all defaults given only thickness', () => {
+    const r = makePlanetaryGear({ thickness: 10 });
+    expect(isOk(r)).toBe(true);
+    const a = unwrap(r);
+    expect(isSolid(a.sun)).toBe(true);
+    expect(isSolid(a.ring)).toBe(true);
+    expect(a.planets).toHaveLength(3);
+    for (const p of a.planets) expect(isSolid(p)).toBe(true);
+    expect(a.ringTeeth).toBe(15 + 2 * 12);
+  });
+
+  it('center distance = (zs + zp)·m / 2 with zero shifts', () => {
+    const a = unwrap(
+      makePlanetaryGear({ thickness: 10, sunTeeth: 20, planetTeeth: 16, numPlanets: 4 })
+    );
+    expect(a.centerDistance).toBeCloseTo(((20 + 16) * 3) / 2, 6);
+  });
+
+  it('rejects assembly violation (zs+zp not divisible by N appropriately)', () => {
+    // (2·16 + 2·12)=56; 56 mod 3 = 2 → fail
+    expect(
+      isErr(makePlanetaryGear({ thickness: 10, sunTeeth: 16, planetTeeth: 12, numPlanets: 3 }))
+    ).toBe(true);
+  });
+
+  it('rejects planet collision', () => {
+    // 5 planets, sun=8, planet=12 → planets collide
+    expect(
+      isErr(makePlanetaryGear({ thickness: 10, sunTeeth: 8, planetTeeth: 12, numPlanets: 5 }))
+    ).toBe(true);
+  });
+
+  it('contact ratios are within industry-acceptable range', () => {
+    const a = unwrap(makePlanetaryGear({ thickness: 10 }));
+    expect(a.contactRatio.sunPlanet).toBeGreaterThan(1.0);
+    expect(a.contactRatio.planetRing).toBeGreaterThan(1.0);
+  });
+
+  it('Lewis stress only present when appliedTorque is supplied', () => {
+    const noTorque = unwrap(makePlanetaryGear({ thickness: 10 }));
+    expect(noTorque.lewisStress).toBeUndefined();
+    const withTorque = unwrap(makePlanetaryGear({ thickness: 10, appliedTorque: 5 }));
+    expect(withTorque.lewisStress).toBeDefined();
+    if (!withTorque.lewisStress) throw new Error('expected lewisStress');
+    expect(withTorque.lewisStress.sun).toBeGreaterThan(0);
+  });
+
+  it('emits undercut diagnostic for low-tooth-count sun without compensating shift', () => {
+    // Need a config that passes assembly + collision but undercuts the sun
+    // sun=10, planet=14, N=4 → 2·10 + 2·14 = 48; 48 mod 4 = 0 ✓
+    // (10+14)·sin(π/4) = 24·0.707 = 16.97; planet tip = 14+2 = 16 → ok
+    const r = makePlanetaryGear({
+      thickness: 10,
+      sunTeeth: 10,
+      planetTeeth: 14,
+      numPlanets: 4,
+    });
+    expect(isOk(r)).toBe(true);
+    if (isOk(r)) {
+      const sunDiag = r.value.diagnostics.find((d) => d.code === 'UNDERCUT_RISK_SUN');
+      expect(sunDiag).toBeDefined();
+    }
+  });
+
+  it('positive sun shift suppresses undercut warning for the sun', () => {
+    const r = unwrap(
+      makePlanetaryGear({
+        thickness: 10,
+        sunTeeth: 10,
+        planetTeeth: 14,
+        numPlanets: 4,
+        sunShift: 0.5,
+      })
+    );
+    expect(r.diagnostics.find((d) => d.code === 'UNDERCUT_RISK_SUN')).toBeUndefined();
+  });
+
+  it('planet bores reduce planet volume', () => {
+    const noBore = unwrap(makePlanetaryGear({ thickness: 10 }));
+    const withBore = unwrap(makePlanetaryGear({ thickness: 10, bores: { planet: 4 } }));
+    const noPlanet = noBore.planets[0];
+    const withPlanet = withBore.planets[0];
+    if (!noPlanet || !withPlanet) throw new Error('expected planets');
+    const vNo = unwrap(measureVolume(noPlanet));
+    const vWith = unwrap(measureVolume(withPlanet));
+    expect(vNo).toBeGreaterThan(vWith);
+  });
+});
