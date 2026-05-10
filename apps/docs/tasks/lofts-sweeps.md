@@ -212,6 +212,8 @@ Three or more sections produces a smooth blend through every one. Useful for vas
 
 After building a solid, hollow it out by removing one or more faces and offsetting the rest by a wall thickness:
 
+<!-- @run-test -->
+
 ```typescript
 import { sketchCircle, faceFinder, shell, unwrap } from 'brepjs/quick';
 
@@ -225,6 +227,8 @@ export default cup;
 `shell(solid, openFaces, thickness)`. The top face becomes the open mouth; everything else gains the wall thickness inward.
 
 The fluent equivalent:
+
+<!-- @run-test -->
 
 ```typescript
 import { shape, sketchCircle } from 'brepjs/quick';
