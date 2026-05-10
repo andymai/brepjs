@@ -155,7 +155,8 @@ export interface PlanetaryGearAssembly {
    * Dolan-Broghamer stress concentration factor `K_f` at each gear's root
    * fillet, the multiplier already folded into {@link lewisStress}. Exposed
    * so callers can recover the raw Lewis stress (σ_Lewis = lewisStress / K_f)
-   * or compare against ISO 6336-3 `Y_F·Y_S` from an external check.
+   * or compare against ISO 6336-3 `Y_F·Y_S` from an external check. The ring
+   * value uses the Niemann internal-gear reduction (concave fillet).
    */
   stressConcentrationFactor?: { sun: number; planet: number; ring: number };
   diagnostics: GearDiagnostic[];
@@ -574,6 +575,8 @@ function computeMeshMetrics(
 
   const metrics: MeshMetrics = { crSunPlanet, crPlanetRing, undercutSun, undercutPlanet };
   if (cfg.appliedTorque !== undefined) {
+    // Force balance: W_t is shared at each mesh, so each gear's own-pitch torque
+    // is T_eff = T_sun · z / z_sun (preserves W_t through Lewis's 2T/(z·m) term).
     const tSun = cfg.appliedTorque;
     metrics.lewisStress = {
       sun: lewisRootStressCorrected(tSun, cfg.moduleSize, cfg.thickness, cfg.sunTeeth, cfg.alpha),
@@ -589,13 +592,14 @@ function computeMeshMetrics(
         cfg.moduleSize,
         cfg.thickness,
         cfg.zr,
-        cfg.alpha
+        cfg.alpha,
+        true
       ),
     };
     metrics.stressConcentrationFactor = {
       sun: filletStressConcentrationFactor(cfg.sunTeeth, cfg.alpha),
       planet: filletStressConcentrationFactor(cfg.planetTeeth, cfg.alpha),
-      ring: filletStressConcentrationFactor(cfg.zr, cfg.alpha),
+      ring: filletStressConcentrationFactor(cfg.zr, cfg.alpha, true),
     };
   }
   return metrics;

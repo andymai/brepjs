@@ -244,20 +244,20 @@ describe('makePlanetaryGear', () => {
     expect(a.lewisStress.ring).toBeLessThan(a.lewisStress.planet);
   });
 
-  it('stressConcentrationFactor is exposed and matches lewisStress / σ_Lewis ratio', () => {
-    // K_f is the multiplier already folded into lewisStress; the corrected
-    // stress should be K_f · raw Lewis. We can verify by dividing back: the
-    // ratio sun/planet of the corrected stress should differ from a pure
-    // Y(z)-only ratio by exactly the K_f ratio, which is what's exposed.
+  it('stressConcentrationFactor is exposed; ring uses internal-gear correction', () => {
     const a = unwrap(makePlanetaryGear({ thickness: 10, appliedTorque: 10 }));
     if (!a.lewisStress || !a.stressConcentrationFactor) {
       throw new Error('expected lewisStress and stressConcentrationFactor');
     }
-    // Sun (z=15) has fewer teeth than ring (z=39), so K_f(sun) > K_f(ring).
+    // Sun (z=15) has fewer teeth than ring (z=39), and ring also gets the
+    // Niemann 0.85× concave-fillet reduction — both effects make sun > ring.
     expect(a.stressConcentrationFactor.sun).toBeGreaterThan(a.stressConcentrationFactor.ring);
     // For the default 20° pressure angle, K_f at z=15 is ~1.83.
     expect(a.stressConcentrationFactor.sun).toBeGreaterThan(1.5);
     expect(a.stressConcentrationFactor.sun).toBeLessThan(2.5);
+    // Ring K_f should be 0.85× the equivalent external value at z=39.
+    const externalAtZr = (1.4 + 6.5 / 39) * 1; // α=20° so the (20/20)^0.15 factor is 1
+    expect(a.stressConcentrationFactor.ring).toBeCloseTo(externalAtZr * 0.85, 4);
   });
 
   it('stressConcentrationFactor absent when appliedTorque omitted', () => {

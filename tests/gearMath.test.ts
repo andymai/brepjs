@@ -353,6 +353,14 @@ describe('fillet stress concentration factor (K_f)', () => {
     expect(filletStressConcentrationFactor(z, (14.5 * Math.PI) / 180)).toBeCloseTo(expected, 6);
   });
 
+  it('internal gears apply Niemann 0.85× reduction', () => {
+    const z = 39;
+    const external = filletStressConcentrationFactor(z, alpha20);
+    const internal = filletStressConcentrationFactor(z, alpha20, true);
+    expect(internal).toBeCloseTo(external * 0.85, 6);
+    expect(internal).toBeLessThan(external);
+  });
+
   it('corrected stress equals raw Lewis × K_f', () => {
     const raw = lewisRootStress(10, 2, 8, 20);
     const corrected = lewisRootStressCorrected(10, 2, 8, 20, alpha20);
