@@ -10,10 +10,17 @@ runs:
     - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       id: cache
       with:
-        path: node_modules
-        key: node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('packages/brepjs-opencascade/package.json') }}
+        # Include workspace node_modules so packages that can't be hoisted
+        # (e.g. apps/playground/node_modules/@tailwindcss/vite) survive
+        # cache restore — otherwise they vanish on cache hit and break
+        # workspace-scoped builds like `npm run build --workspace=apps/playground`.
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: node-24-v2-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('packages/brepjs-opencascade/package.json') }}
         restore-keys: |
-          node-24-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+          node-24-v2-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
     - name: Install dependencies
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
