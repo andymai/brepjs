@@ -1,3 +1,5 @@
+<div align="center">
+
 # brepjs
 
 CAD modeling for JavaScript.
@@ -9,6 +11,8 @@ CAD modeling for JavaScript.
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
 **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
+
+</div>
 
 Shapes are exact mathematical boundaries - not triangle meshes - so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
 
