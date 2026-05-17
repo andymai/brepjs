@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.12.0](https://github.com/andymai/brepjs/compare/brepjs-v18.11.0...brepjs-v18.12.0) (2026-05-17)
+
+
+### Features
+
+* **playground:** add Hill tetrahedron examples and per-shape coloring ([#1005](https://github.com/andymai/brepjs/issues/1005)) ([2b16fb6](https://github.com/andymai/brepjs/commit/2b16fb64aea8626e0612c807562d58293b15c608))
+
 ## [18.11.0](https://github.com/andymai/brepjs/compare/brepjs-v18.10.2...brepjs-v18.11.0) (2026-05-10)
 
 
