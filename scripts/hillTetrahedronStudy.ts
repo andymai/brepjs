@@ -367,13 +367,15 @@ async function runAssembly(N: number, L: number, rng: Rng, maxRetries = 60): Pro
     if (!placed) break; // got stuck — return what we have
   }
 
-  // Compute convex hull volume of all vertices
+  // Compute convex hull volume of all vertices. 'using' disposes the
+  // WASM-backed hull when the try block exits — important when this is
+  // called thousands of times in the sweep loop.
   const allVerts: Vec3[] = tets.flatMap((t) => [t.verts[0], t.verts[1], t.verts[2], t.verts[3]]);
   let V: number;
   try {
-    const hull = unwrap(convexHull(allVerts));
+    using hull = unwrap(convexHull(allVerts));
     V = unwrap(measureVolume(hull));
-  } catch (e) {
+  } catch {
     V = NaN;
   }
   const tetSumVol = tets.reduce((s, t) => s + tetVol(t.verts), 0);

@@ -364,8 +364,14 @@ while (tets.length < N && freeFaces.length > 0) {
 }
 
 const Vstar = tets.length * (L*L*L) / 6;
-const hull = unwrap(convexHull(tets.flatMap(t => t.verts)));
-const V = unwrap(measureVolume(hull));
+let V;
+{
+  // 'using' disposes the hull's WASM allocation before the export runs —
+  // the worker context persists across evals, so an undisposed hull would
+  // leak on every re-run.
+  using hull = unwrap(convexHull(tets.flatMap(t => t.verts)));
+  V = unwrap(measureVolume(hull));
+}
 console.log('N =', tets.length, '  V* =', Vstar.toFixed(3), '  V_hull =', V.toFixed(3), '  V*/V =', (Vstar/V).toFixed(3));
 
 export default tets.map(t => color(tetFromPts(t.verts), t.chirality === 'R' ? '#e85d5d' : '#f5f5f5'));

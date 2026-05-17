@@ -128,7 +128,7 @@ describe('Hill tetrahedron (Planckton)', () => {
     expect(vL).toBeCloseTo(vR, 6);
   });
 
-  it('total surface area = (1 + sqrt(3)) * L^2  (2*(L^2/2) + 2*(L^2 * sqrt(3)/2))', () => {
+  it('total surface area = (1 + sqrt(2)) * L^2  (2*(L^2/2) + 2*(L^2 * sqrt(2)/2))', () => {
     const L = 1;
     const area = unwrap(measureArea(hillTet(L, 'R')));
     // 2 isoceles right triangles each area = L^2/2 -> sum L^2
@@ -163,7 +163,10 @@ describe('Hill tetrahedron (Planckton)', () => {
       const V1: Vec3 = [V0[0] + ea[0], V0[1] + ea[1], V0[2] + ea[2]];
       const V2: Vec3 = [V1[0] + eb[0], V1[1] + eb[1], V1[2] + eb[2]];
       const V3: Vec3 = [V2[0] + ec[0], V2[1] + ec[1], V2[2] + ec[2]];
-      const piece = unwrap(polyhedron([V0, V1, V2, V3], HILL_FACES_R));
+      // tetFrom4 auto-orients faces outward, so both R and L permutations
+      // produce well-formed solids (HILL_FACES_R would invert the L pieces).
+      const piece = tetFrom4([V0, V1, V2, V3]);
+      expect(isSolid(piece)).toBe(true);
       sumV += unwrap(measureVolume(piece));
     }
     expect(sumV).toBeCloseTo(L * L * L, 4);
