@@ -38,7 +38,5 @@
     <polygon points="116,272 188,260 198,330 134,344" fill="url(#hcE)"/>
     <!-- left-mid piece -->
     <polygon points="76,178 142,196 158,254 92,250" fill="url(#hcF)"/>
-    <!-- center connector (assembled-cube ghost hint) -->
-    <polygon points="206,196 246,188 256,228 240,254 200,250 188,222" fill="#03B0AD" fill-opacity="0.18"/>
   </g>
 </svg>

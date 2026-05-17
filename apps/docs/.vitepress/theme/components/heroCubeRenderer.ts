@@ -51,7 +51,7 @@ const LIGHT_EDGE = '#ffffff';
 const DARK_EDGE = '#ffffff';
 const LIGHT_BG_RIM = '#4ACECC';
 const DARK_BG_RIM = '#7ADBDD';
-const TET_INSET = 0.035;
+const TET_INSET = 0.02;
 
 export interface HeroCubeHandle {
   destroy(): void;
@@ -93,7 +93,8 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   scene.add(root);
 
   const tiling = cubeTiling(L);
-  const initialShrunk = shrunkTets(tiling, TET_INSET);
+  const INITIAL_EXPLODE = L * 0.55;
+  const initialShrunk = shrunkTets(explodeTets(tiling, INITIAL_EXPLODE), TET_INSET);
   const pieces: PieceObjects[] = tiling.map((_tet, i) => {
     const shrunk = initialShrunk[i] as Tet;
     const positions = new Float32Array(POSITION_FLOATS);
@@ -154,7 +155,8 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   const SWAY_Z_AMPLITUDE = 0.022;
   const RIM_BASE = 0.9;
   const RIM_PULSE = 0.55;
-  const MAX_EXPLODE = L * 0.6;
+  const MIN_EXPLODE = L * 0.4;
+  const MAX_EXPLODE = L * 0.7;
 
   function applyColorScheme(dark: boolean): void {
     const fills = dark ? DARK_PALETTE : LIGHT_PALETTE;
@@ -208,7 +210,7 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
     rimLight.intensity = rimIntensity;
 
     if (Math.abs(breathe - lastBreathe) > 1e-4) {
-      const amount = breathe * MAX_EXPLODE;
+      const amount = MIN_EXPLODE + breathe * (MAX_EXPLODE - MIN_EXPLODE);
       const exploded = shrunkTets(explodeTets(tiling, amount), TET_INSET);
       for (let i = 0; i < PIECE_COUNT; i++) {
         const piece = pieces[i] as PieceObjects;
