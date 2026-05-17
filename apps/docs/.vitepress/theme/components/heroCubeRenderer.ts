@@ -4,7 +4,7 @@ import {
   BufferGeometry,
   Color,
   DirectionalLight,
-  Float32BufferAttribute,
+  EdgesGeometry,
   Group,
   LineBasicMaterial,
   LineSegments,
@@ -16,42 +16,33 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three-stdlib';
-import { cubeTiling, explodeTets, shrunkTets, type Tet, type Vec3 } from './heroCubeGeometry';
+import { cubeTiling, type Tet, type Vec3 } from './heroCubeGeometry';
 
 const L = 1;
-const PIECE_COUNT = 6;
 const TRIS_PER_PIECE = 4;
 const VERTS_PER_TRI = 3;
 const POSITION_FLOATS = TRIS_PER_PIECE * VERTS_PER_TRI * 3;
 const NORMAL_FLOATS = POSITION_FLOATS;
-const EDGE_PAIRS: ReadonlyArray<readonly [number, number]> = [
-  [0, 1],
-  [0, 2],
-  [0, 3],
-  [1, 2],
-  [1, 3],
-  [2, 3],
-];
-const EDGE_FLOATS = EDGE_PAIRS.length * 2 * 3;
-
-interface PieceObjects {
-  mesh: Mesh;
-  edges: LineSegments;
-  positions: Float32Array;
-  normals: Float32Array;
-  edgePositions: Float32Array;
-  fillMaterial: MeshStandardMaterial;
-}
 
 const LIGHT_PALETTE = ['#07606F', '#0C8698', '#03B0AD', '#4ACECC', '#7ADBDD', '#A8E8E8'];
-
 const DARK_PALETTE = ['#0C8698', '#03B0AD', '#4ACECC', '#7ADBDD', '#A8E8E8', '#D0F2F2'];
-
 const LIGHT_EDGE = '#ffffff';
 const DARK_EDGE = '#ffffff';
 const LIGHT_BG_RIM = '#4ACECC';
 const DARK_BG_RIM = '#7ADBDD';
 const TET_INSET = 0.04;
+
+interface Piece {
+  mesh: Mesh;
+  fillMaterial: MeshStandardMaterial;
+  edgeMaterial: LineBasicMaterial;
+  baseX: number;
+  baseY: number;
+  baseZ: number;
+  dirX: number;
+  dirY: number;
+  dirZ: number;
+}
 
 export interface HeroCubeHandle {
   destroy(): void;
@@ -93,16 +84,23 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   scene.add(root);
 
   const tiling = cubeTiling(L);
-  const INITIAL_EXPLODE = L * 0.55;
-  const initialShrunk = shrunkTets(explodeTets(tiling, INITIAL_EXPLODE), TET_INSET);
-  const pieces: PieceObjects[] = tiling.map((_tet, i) => {
-    const shrunk = initialShrunk[i] as Tet;
+  const pieces: Piece[] = tiling.map((tet, i) => {
+    const cx = (tet.verts[0][0] + tet.verts[1][0] + tet.verts[2][0] + tet.verts[3][0]) / 4;
+    const cy = (tet.verts[0][1] + tet.verts[1][1] + tet.verts[2][1] + tet.verts[3][1]) / 4;
+    const cz = (tet.verts[0][2] + tet.verts[1][2] + tet.verts[2][2] + tet.verts[3][2]) / 4;
+    const s = 1 - TET_INSET;
+    const localVerts = tet.verts.map(
+      (v) => [(v[0] - cx) * s, (v[1] - cy) * s, (v[2] - cz) * s] as Vec3
+    ) as unknown as readonly [Vec3, Vec3, Vec3, Vec3];
+    const localTet: Tet = { verts: localVerts, faces: tet.faces };
+
     const positions = new Float32Array(POSITION_FLOATS);
     const normals = new Float32Array(NORMAL_FLOATS);
-    writeTetMesh(shrunk, positions, normals);
-    const geom = new BufferGeometry();
-    geom.setAttribute('position', new BufferAttribute(positions, 3));
-    geom.setAttribute('normal', new BufferAttribute(normals, 3));
+    writeTetMesh(localTet, positions, normals);
+    const meshGeom = new BufferGeometry();
+    meshGeom.setAttribute('position', new BufferAttribute(positions, 3));
+    meshGeom.setAttribute('normal', new BufferAttribute(normals, 3));
+
     const fillMaterial = new MeshStandardMaterial({
       color: new Color(LIGHT_PALETTE[i]),
       flatShading: true,
@@ -112,22 +110,31 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
       polygonOffsetFactor: 1,
       polygonOffsetUnits: 1,
     });
-    const mesh = new Mesh(geom, fillMaterial);
-    root.add(mesh);
+    const mesh = new Mesh(meshGeom, fillMaterial);
 
-    const edgePositions = new Float32Array(EDGE_FLOATS);
-    writeTetEdges(shrunk, edgePositions);
-    const edgeGeom = new BufferGeometry();
-    edgeGeom.setAttribute('position', new Float32BufferAttribute(edgePositions, 3));
-    const edgeMat = new LineBasicMaterial({
+    const edgeGeom = new EdgesGeometry(meshGeom, 1);
+    const edgeMaterial = new LineBasicMaterial({
       color: new Color(LIGHT_EDGE),
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.9,
     });
-    const edges = new LineSegments(edgeGeom, edgeMat);
-    root.add(edges);
+    const edges = new LineSegments(edgeGeom, edgeMaterial);
+    mesh.add(edges);
 
-    return { mesh, edges, positions, normals, edgePositions, fillMaterial };
+    root.add(mesh);
+
+    const len = Math.hypot(cx, cy, cz) || 1;
+    return {
+      mesh,
+      fillMaterial,
+      edgeMaterial,
+      baseX: cx,
+      baseY: cy,
+      baseZ: cz,
+      dirX: cx / len,
+      dirY: cy / len,
+      dirZ: cz / len,
+    };
   });
 
   const controls = new OrbitControls(camera, canvas);
@@ -143,7 +150,6 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   let phase = 0.32;
   let yaw = -0.4;
   let hoverPaused = false;
-  let lastBreathe = -1;
   let rimIntensity = 0.9;
 
   const BREATHE_PERIOD_SEC = 6.8;
@@ -164,8 +170,7 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
     const rimHex = dark ? DARK_BG_RIM : LIGHT_BG_RIM;
     pieces.forEach((p, i) => {
       p.fillMaterial.color.set(fills[i] as string);
-      const edgeMat = p.edges.material as LineBasicMaterial;
-      edgeMat.color.set(edgeHex);
+      p.edgeMaterial.color.set(edgeHex);
     });
     rimLight.color.set(rimHex);
   }
@@ -209,22 +214,13 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
     rimIntensity += (targetRim - rimIntensity) * Math.min(1, dt * 6);
     rimLight.intensity = rimIntensity;
 
-    if (Math.abs(breathe - lastBreathe) > 1e-4) {
-      const amount = MIN_EXPLODE + breathe * (MAX_EXPLODE - MIN_EXPLODE);
-      const exploded = shrunkTets(explodeTets(tiling, amount), TET_INSET);
-      for (let i = 0; i < PIECE_COUNT; i++) {
-        const piece = pieces[i] as PieceObjects;
-        const tet = exploded[i] as Tet;
-        writeTetMesh(tet, piece.positions, piece.normals);
-        writeTetEdges(tet, piece.edgePositions);
-        const pos = piece.mesh.geometry.getAttribute('position');
-        const nrm = piece.mesh.geometry.getAttribute('normal');
-        (pos as BufferAttribute).needsUpdate = true;
-        (nrm as BufferAttribute).needsUpdate = true;
-        const epos = piece.edges.geometry.getAttribute('position');
-        (epos as BufferAttribute).needsUpdate = true;
-      }
-      lastBreathe = breathe;
+    const amount = MIN_EXPLODE + breathe * (MAX_EXPLODE - MIN_EXPLODE);
+    for (const p of pieces) {
+      p.mesh.position.set(
+        p.baseX + p.dirX * amount,
+        p.baseY + p.dirY * amount,
+        p.baseZ + p.dirZ * amount
+      );
     }
 
     controls.update();
@@ -241,8 +237,12 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
       pieces.forEach((p) => {
         p.mesh.geometry.dispose();
         p.fillMaterial.dispose();
-        p.edges.geometry.dispose();
-        (p.edges.material as LineBasicMaterial).dispose();
+        p.mesh.children.forEach((child) => {
+          if (child instanceof LineSegments) {
+            child.geometry.dispose();
+          }
+        });
+        p.edgeMaterial.dispose();
       });
       renderer.dispose();
     },
@@ -313,19 +313,5 @@ function writeTetMesh(tet: Tet, positions: Float32Array, normals: Float32Array):
       normals[ni++] = ny;
       normals[ni++] = nz;
     }
-  }
-}
-
-function writeTetEdges(tet: Tet, out: Float32Array): void {
-  let i = 0;
-  for (const [a, b] of EDGE_PAIRS) {
-    const va = tet.verts[a] as Vec3;
-    const vb = tet.verts[b] as Vec3;
-    out[i++] = va[0];
-    out[i++] = va[1];
-    out[i++] = va[2];
-    out[i++] = vb[0];
-    out[i++] = vb[1];
-    out[i++] = vb[2];
   }
 }
