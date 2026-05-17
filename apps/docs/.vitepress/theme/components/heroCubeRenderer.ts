@@ -51,7 +51,7 @@ const LIGHT_EDGE = '#ffffff';
 const DARK_EDGE = '#ffffff';
 const LIGHT_BG_RIM = '#4ACECC';
 const DARK_BG_RIM = '#7ADBDD';
-const TET_INSET = 0.02;
+const TET_INSET = 0.04;
 
 export interface HeroCubeHandle {
   destroy(): void;
@@ -155,7 +155,7 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   const SWAY_Z_AMPLITUDE = 0.022;
   const RIM_BASE = 0.9;
   const RIM_PULSE = 0.55;
-  const MIN_EXPLODE = L * 0.4;
+  const MIN_EXPLODE = 0;
   const MAX_EXPLODE = L * 0.7;
 
   function applyColorScheme(dark: boolean): void {
@@ -253,9 +253,9 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   };
 }
 
-const BREATHE_HOLD_LOW_END = 0.12;
+const BREATHE_HOLD_LOW_END = 0.03;
 const BREATHE_OPEN_END = 0.42;
-const BREATHE_HOLD_HIGH_END = 0.62;
+const BREATHE_HOLD_HIGH_END = 0.65;
 const EASE_OUT_BACK_C1 = 1.5;
 
 function easeOutBack(u: number): number {
