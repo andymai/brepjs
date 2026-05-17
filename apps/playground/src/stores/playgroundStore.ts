@@ -12,6 +12,7 @@ export interface MeshData {
   edgeGroups?: EdgeGroup[];
   faceInfos?: FaceInfo[];
   edgeInfos?: EdgeInfo[];
+  color?: string;
 }
 
 export interface ScreenPos {

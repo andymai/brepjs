@@ -48,7 +48,17 @@ function cloneMeshTransfer(mesh: MeshTransfer): MeshTransfer {
   if (mesh.edgeGroups) cloned.edgeGroups = mesh.edgeGroups;
   if (mesh.faceInfos) cloned.faceInfos = mesh.faceInfos;
   if (mesh.edgeInfos) cloned.edgeInfos = mesh.edgeInfos;
+  if (mesh.color) cloned.color = mesh.color;
   return cloned;
+}
+
+const PLAYGROUND_COLOR_TAG = '__brepjsPlaygroundColor';
+interface ColoredShape {
+  [PLAYGROUND_COLOR_TAG]: string;
+  shape: unknown;
+}
+function isColoredShape(v: unknown): v is ColoredShape {
+  return typeof v === 'object' && v !== null && PLAYGROUND_COLOR_TAG in v;
 }
 
 async function loadWasmBuild() {
@@ -87,13 +97,20 @@ async function loadWasmBuild() {
 }
 
 // Wrapper module that re-exports the loaded brepjs runtime via self.__brepjs.
-// User code's bare specifiers ('brepjs', 'brepjs/quick') get rewritten to
-// this URL so we keep one live module instance instead of re-importing.
-// `default` is excluded because it's a keyword and can't be used as a named export const.
+// User code's bare specifiers ('brepjs', 'brepjs/quick', 'brepjs/playground')
+// get rewritten to this URL so we keep one live module instance instead of
+// re-importing. `default` is excluded because it's a keyword and can't be
+// used as a named export const.
+//
+// `color` is a playground-local helper (not part of the published brepjs API);
+// it tags a shape with a CSS color string that the eval pipeline lifts onto
+// the resulting MeshTransfer.
 function buildBrepjsWrapperUrl(mod: Record<string, unknown>): string {
-  const names = Object.keys(mod).filter((k) => k !== 'default');
+  const names = Object.keys(mod).filter((k) => k !== 'default' && k !== 'color');
   const lines = names.map((n) => `export const ${n} = m.${n};`);
-  const body = `const m = self.__brepjs;\n${lines.join('\n')}\n`;
+  const colorHelper =
+    `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });`;
+  const body = `const m = self.__brepjs;\n${lines.join('\n')}\n${colorHelper}\n`;
   const blob = new Blob([body], { type: 'application/javascript' });
   return URL.createObjectURL(blob);
 }
@@ -135,7 +152,7 @@ async function handleInit() {
 // The `\2` boundary on the closing quote also rules out 'brepjs-foo' /
 // 'brepjsKit' specifiers.
 function rewriteBrepjsImports(code: string, wrapperUrl: string): string {
-  return code.replace(/(\bfrom\s+)(['"])brepjs(?:\/quick)?\2/g, `$1'${wrapperUrl}'`);
+  return code.replace(/(\bfrom\s+)(['"])brepjs(?:\/quick|\/playground)?\2/g, `$1'${wrapperUrl}'`);
 }
 
 // Strip TypeScript syntax so the browser's `import()` of a JS blob can parse
@@ -245,7 +262,11 @@ async function handleEval(id: string, code: string) {
       return;
     }
 
-    const shapes: unknown[] = Array.isArray(exported) ? exported : [exported];
+    const wrappedShapes: unknown[] = Array.isArray(exported) ? exported : [exported];
+    // Strip the color wrapper so `lastEvalResult` (and any downstream
+    // consumer like STL/STEP export) only ever sees raw brepjs shapes.
+    const shapes = wrappedShapes.map((item) => (isColoredShape(item) ? item.shape : item));
+    const colors = wrappedShapes.map((item) => (isColoredShape(item) ? item[PLAYGROUND_COLOR_TAG] : null));
     lastEvalResult = shapes;
 
     // Inspection metadata is only attached to single-shape evals — the
@@ -255,14 +276,14 @@ async function handleEval(id: string, code: string) {
 
     const meshes: MeshTransfer[] = [];
 
-    for (const shape of shapes) {
+    for (let i = 0; i < shapes.length; i++) {
       if (cancelledIds.has(id)) {
         post({ type: 'eval-cancelled', id });
         return;
       }
 
       try {
-        const fnShape = unwrapResultShape(shape);
+        const fnShape = unwrapResultShape(shapes[i]);
 
         const shapeMesh = brepjs.mesh(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
         const edgeMesh = brepjs.meshEdges(fnShape, { tolerance: 0.1, angularTolerance: 0.2 });
@@ -291,6 +312,9 @@ async function handleEval(id: string, code: string) {
           mesh.faceInfos = collectFaceInfos(fnShape);
           mesh.edgeInfos = collectEdgeInfos(fnShape);
         }
+
+        const c = colors[i];
+        if (c) mesh.color = c;
 
         meshes.push(mesh);
       } catch (meshErr) {

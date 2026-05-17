@@ -43,6 +43,12 @@ export interface MeshTransfer {
   faceInfos?: FaceInfo[];
   /** Per-edge inspection metadata, keyed by edgeId. */
   edgeInfos?: EdgeInfo[];
+  /**
+   * Optional per-shape color (any CSS string Three.js's Color accepts).
+   * Set by the user via the playground `color(shape, value)` helper. When
+   * absent the renderer falls back to its default surface tone.
+   */
+  color?: string;
 }
 
 // -- Main -> Worker --

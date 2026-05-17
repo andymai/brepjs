@@ -152,10 +152,10 @@ export default function ShapeRenderer({ data }: { data: MeshData }) {
       onPointerMove={pickable ? handlePointerMove : undefined}
     >
       <meshStandardMaterial
-        color="#d4d8dc"
+        color={data.color ?? '#d4d8dc'}
         metalness={0}
         roughness={0.45}
-        emissive="#d4d8dc"
+        emissive={data.color ?? '#d4d8dc'}
         emissiveIntensity={0.08}
         side={viewMode === 'solid' ? THREE.FrontSide : THREE.DoubleSide}
         polygonOffset
