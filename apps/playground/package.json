@@ -33,7 +33,7 @@
     "@types/react-dom": "19.2.3",
     "@types/three": "0.184.0",
     "@vitejs/plugin-react": "6.0.1",
-    "puppeteer": "24.43.0",
+    "puppeteer": "25.0.2",
     "tailwindcss": "4.3.0",
     "tsx": "4.21.0",
     "typescript": "6.0.3"
