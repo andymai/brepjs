@@ -54,11 +54,12 @@ export function cubeTiling(L: number): Tet[] {
     [2, 0, 1],
     [2, 1, 0],
   ];
+  const h = L / 2;
   return perms.map(([a, b, c]) => {
     const ea = e[a] as Vec3;
     const eb = e[b] as Vec3;
     const ec = e[c] as Vec3;
-    const v0: Vec3 = [0, 0, 0];
+    const v0: Vec3 = [-h, -h, -h];
     const v1: Vec3 = [v0[0] + ea[0], v0[1] + ea[1], v0[2] + ea[2]];
     const v2: Vec3 = [v1[0] + eb[0], v1[1] + eb[1], v1[2] + eb[2]];
     const v3: Vec3 = [v2[0] + ec[0], v2[1] + ec[1], v2[2] + ec[2]];

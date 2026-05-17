@@ -70,7 +70,7 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   const scene = new Scene();
 
   const camera = new PerspectiveCamera(35, 1, 0.1, 100);
-  camera.position.set(1.8, 1.4, 2.2);
+  camera.position.set(3.2, 2.5, 3.95);
   camera.lookAt(0, 0, 0);
 
   const keyLight = new DirectionalLight('#ffffff', 1.4);
@@ -89,7 +89,6 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   scene.add(ambient);
 
   const root = new Group();
-  root.position.set(-L / 2, -L / 2, -L / 2);
   scene.add(root);
 
   const tiling = cubeTiling(L);
@@ -137,14 +136,22 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
 
   let rafId = 0;
   let lastT = performance.now();
-  let phase = 0;
-  let yaw = 0;
+  let phase = 0.32;
+  let yaw = -0.4;
   let hoverPaused = false;
-  let lastBreathe = 0;
+  let lastBreathe = -1;
+  let rimIntensity = 0.9;
 
-  const ROTATE_SPEED = (Math.PI * 2) / 12;
-  const BREATHE_SPEED = (Math.PI * 2) / 6;
-  const MAX_EXPLODE = L * 1.1;
+  const BREATHE_PERIOD_SEC = 6.8;
+  const ROTATE_PERIOD_SEC = 16;
+  const ROTATE_BASE = (Math.PI * 2) / ROTATE_PERIOD_SEC;
+  const ROTATE_SLOWDOWN_AT_PEAK = 0.55;
+  const SWAY_PERIOD_RATIO = 0.41;
+  const SWAY_X_AMPLITUDE = 0.045;
+  const SWAY_Z_AMPLITUDE = 0.022;
+  const RIM_BASE = 0.9;
+  const RIM_PULSE = 0.55;
+  const MAX_EXPLODE = L * 0.6;
 
   function applyColorScheme(dark: boolean): void {
     const fills = dark ? DARK_PALETTE : LIGHT_PALETTE;
@@ -179,13 +186,25 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
     lastT = now;
 
     if (!hoverPaused) {
-      phase += dt * BREATHE_SPEED;
+      phase += dt / BREATHE_PERIOD_SEC;
     }
-    yaw += dt * ROTATE_SPEED;
-    root.rotation.y = yaw;
+    const tw = phase - Math.floor(phase);
+    const breathe = breatheCurve(tw);
 
-    const breathe = 0.5 - 0.5 * Math.cos(phase);
-    if (Math.abs(breathe - lastBreathe) > 1e-4 || hoverPaused === false) {
+    if (!hoverPaused) {
+      const rotSpeed = ROTATE_BASE * (1 - ROTATE_SLOWDOWN_AT_PEAK * breathe);
+      yaw += dt * rotSpeed;
+    }
+    root.rotation.y = yaw;
+    const swayPhase = phase * Math.PI * 2 * SWAY_PERIOD_RATIO;
+    root.rotation.x = Math.sin(swayPhase) * SWAY_X_AMPLITUDE;
+    root.rotation.z = Math.sin(swayPhase * 0.73 + 1.3) * SWAY_Z_AMPLITUDE;
+
+    const targetRim = RIM_BASE + RIM_PULSE * breathe;
+    rimIntensity += (targetRim - rimIntensity) * Math.min(1, dt * 6);
+    rimLight.intensity = rimIntensity;
+
+    if (Math.abs(breathe - lastBreathe) > 1e-4) {
       const amount = breathe * MAX_EXPLODE;
       const exploded = explodeTets(tiling, amount);
       for (let i = 0; i < PIECE_COUNT; i++) {
@@ -227,6 +246,32 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
       hoverPaused = paused;
     },
   };
+}
+
+const BREATHE_HOLD_LOW_END = 0.12;
+const BREATHE_OPEN_END = 0.42;
+const BREATHE_HOLD_HIGH_END = 0.62;
+const EASE_OUT_BACK_C1 = 1.5;
+
+function easeOutBack(u: number): number {
+  const c3 = EASE_OUT_BACK_C1 + 1;
+  const k = u - 1;
+  return 1 + c3 * k * k * k + EASE_OUT_BACK_C1 * k * k;
+}
+
+function easeInOutSine(u: number): number {
+  return -(Math.cos(Math.PI * u) - 1) / 2;
+}
+
+function breatheCurve(t: number): number {
+  if (t < BREATHE_HOLD_LOW_END) return 0;
+  if (t < BREATHE_OPEN_END) {
+    const u = (t - BREATHE_HOLD_LOW_END) / (BREATHE_OPEN_END - BREATHE_HOLD_LOW_END);
+    return easeOutBack(u);
+  }
+  if (t < BREATHE_HOLD_HIGH_END) return 1;
+  const u = (t - BREATHE_HOLD_HIGH_END) / (1 - BREATHE_HOLD_HIGH_END);
+  return 1 - easeInOutSine(u);
 }
 
 function writeTetMesh(tet: Tet, positions: Float32Array, normals: Float32Array): void {
