@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.13.0](https://github.com/andymai/brepjs/compare/brepjs-v18.12.0...brepjs-v18.13.0) (2026-05-17)
+
+
+### Features
+
+* **docs:** animate exploded Hill-tetrahedron cube in the home hero ([#1007](https://github.com/andymai/brepjs/issues/1007)) ([aa28381](https://github.com/andymai/brepjs/commit/aa28381d062f36a1397092b879b192ee640e772a))
+
 ## [18.12.0](https://github.com/andymai/brepjs/compare/brepjs-v18.11.0...brepjs-v18.12.0) (2026-05-17)
 
 
