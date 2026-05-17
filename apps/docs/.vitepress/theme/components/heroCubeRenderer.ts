@@ -16,7 +16,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three-stdlib';
-import { cubeTiling, explodeTets, type Tet, type Vec3 } from './heroCubeGeometry';
+import { cubeTiling, explodeTets, shrunkTets, type Tet, type Vec3 } from './heroCubeGeometry';
 
 const L = 1;
 const PIECE_COUNT = 6;
@@ -51,6 +51,7 @@ const LIGHT_EDGE = '#ffffff';
 const DARK_EDGE = '#ffffff';
 const LIGHT_BG_RIM = '#4ACECC';
 const DARK_BG_RIM = '#7ADBDD';
+const TET_INSET = 0.035;
 
 export interface HeroCubeHandle {
   destroy(): void;
@@ -92,10 +93,12 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
   scene.add(root);
 
   const tiling = cubeTiling(L);
-  const pieces: PieceObjects[] = tiling.map((tet, i) => {
+  const initialShrunk = shrunkTets(tiling, TET_INSET);
+  const pieces: PieceObjects[] = tiling.map((_tet, i) => {
+    const shrunk = initialShrunk[i] as Tet;
     const positions = new Float32Array(POSITION_FLOATS);
     const normals = new Float32Array(NORMAL_FLOATS);
-    writeTetMesh(tet, positions, normals);
+    writeTetMesh(shrunk, positions, normals);
     const geom = new BufferGeometry();
     geom.setAttribute('position', new BufferAttribute(positions, 3));
     geom.setAttribute('normal', new BufferAttribute(normals, 3));
@@ -112,7 +115,7 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
     root.add(mesh);
 
     const edgePositions = new Float32Array(EDGE_FLOATS);
-    writeTetEdges(tet, edgePositions);
+    writeTetEdges(shrunk, edgePositions);
     const edgeGeom = new BufferGeometry();
     edgeGeom.setAttribute('position', new Float32BufferAttribute(edgePositions, 3));
     const edgeMat = new LineBasicMaterial({
@@ -206,7 +209,7 @@ export function mountHeroCube(canvas: HTMLCanvasElement, initialDark: boolean): 
 
     if (Math.abs(breathe - lastBreathe) > 1e-4) {
       const amount = breathe * MAX_EXPLODE;
-      const exploded = explodeTets(tiling, amount);
+      const exploded = shrunkTets(explodeTets(tiling, amount), TET_INSET);
       for (let i = 0; i < PIECE_COUNT; i++) {
         const piece = pieces[i] as PieceObjects;
         const tet = exploded[i] as Tet;

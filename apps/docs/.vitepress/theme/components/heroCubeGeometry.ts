@@ -67,6 +67,26 @@ export function cubeTiling(L: number): Tet[] {
   });
 }
 
+export function shrunkTets(pieces: readonly Tet[], inset: number): Tet[] {
+  if (inset <= 0) return pieces.map((p) => ({ ...p }));
+  const s = 1 - inset;
+  return pieces.map((p) => {
+    const [v0, v1, v2, v3] = p.verts;
+    const cx = (v0[0] + v1[0] + v2[0] + v3[0]) / 4;
+    const cy = (v0[1] + v1[1] + v2[1] + v3[1]) / 4;
+    const cz = (v0[2] + v1[2] + v2[2] + v3[2]) / 4;
+    const shrink = (v: Vec3): Vec3 => [
+      cx + (v[0] - cx) * s,
+      cy + (v[1] - cy) * s,
+      cz + (v[2] - cz) * s,
+    ];
+    return {
+      verts: [shrink(v0), shrink(v1), shrink(v2), shrink(v3)],
+      faces: p.faces,
+    };
+  });
+}
+
 export function explodeTets(pieces: readonly Tet[], amount: number): Tet[] {
   if (amount === 0) return pieces.map((p) => ({ ...p }));
   let cx = 0;
