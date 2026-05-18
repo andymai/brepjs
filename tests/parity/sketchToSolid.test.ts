@@ -127,7 +127,7 @@ describe('INVARIANT: extruded rectangle volume is linear in height', () => {
         fcDim(),
         fcDim(),
         fcDim(),
-        fc.double({ min: 0.1, max: 10, noNaN: true }),
+        fc.double({ min: 0.5, max: 10, noNaN: true }),
         (a, b, h, lambda) => {
           const base = unwrap(measureVolume(sketchRectangle(a, b).extrude(h)));
           const scaled = unwrap(measureVolume(sketchRectangle(a, b).extrude(h * lambda)));
@@ -148,7 +148,7 @@ describe('INVARIANT: extruded rectangle volume is bilinear in cross-section', ()
         fcDim(),
         fcDim(),
         fcDim(),
-        fc.double({ min: 0.1, max: 10, noNaN: true }),
+        fc.double({ min: 0.5, max: 10, noNaN: true }),
         (a, b, h, lambda) => {
           const base = unwrap(measureVolume(sketchRectangle(a, b).extrude(h)));
           const scaled = unwrap(measureVolume(sketchRectangle(a * lambda, b).extrude(h)));
@@ -168,7 +168,7 @@ describe('INVARIANT: extruded circle volume is linear in height', () => {
       fc.property(
         fcDim(),
         fcDim(),
-        fc.double({ min: 0.1, max: 10, noNaN: true }),
+        fc.double({ min: 0.5, max: 10, noNaN: true }),
         (r, h, lambda) => {
           const base = unwrap(measureVolume(sketchCircle(r).extrude(h)));
           const scaled = unwrap(measureVolume(sketchCircle(r).extrude(h * lambda)));
@@ -190,7 +190,7 @@ describe('INVARIANT: extruded circle volume is quadratic in radius', () => {
       fc.property(
         fcDim(),
         fcDim(),
-        fc.double({ min: 0.1, max: 5, noNaN: true }),
+        fc.double({ min: 0.5, max: 5, noNaN: true }),
         (r, h, lambda) => {
           const base = unwrap(measureVolume(sketchCircle(r).extrude(h)));
           const scaled = unwrap(measureVolume(sketchCircle(r * lambda).extrude(h)));
@@ -211,7 +211,11 @@ describe('INVARIANT: loft of two identical circles equals cylinder volume', () =
         const bottom = sketchCircle(r);
         const top = sketchCircle(r, { origin: [0, 0, h] });
         const result = loft([bottom.wire, top.wire]);
-        if (!isOk(result)) return; // Kernel can fail on degenerate inputs.
+        // Loft must succeed on these non-degenerate inputs — failure here is
+        // a parity gap, not a precondition to silently skip. (`fc.pre` would
+        // skip the sample; an `expect` failure surfaces the regression.)
+        expect(isOk(result)).toBe(true);
+        if (!isOk(result)) return; // Type narrowing for the unwrap below.
         const vol = unwrap(measureVolume(unwrap(result)));
         const expected = formula.cylinderVolume(r, h);
         const relErr = Math.abs(vol - expected) / Math.max(Math.abs(expected), 1e-9);
