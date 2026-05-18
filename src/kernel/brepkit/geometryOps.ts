@@ -4,7 +4,13 @@
  */
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
-import type { KernelShape, KernelType, SurfaceType } from '@/kernel/types.js';
+import type {
+  KernelShape,
+  KernelType,
+  NurbsCurveData,
+  NurbsSurfaceData,
+  SurfaceType,
+} from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
@@ -490,8 +496,6 @@ export function projectEdges(
     hidden: { outline: emptyCompound, smooth: emptyCompound, sharp: emptyCompound },
   };
 }
-
-import type { NurbsCurveData, NurbsSurfaceData } from '@/kernel/types.js';
 
 /** brepkit does not support NURBS introspection on edges. Always returns null. */
 export function getNurbsCurveData(_bk: BrepkitKernel, _edge: KernelShape): NurbsCurveData | null {

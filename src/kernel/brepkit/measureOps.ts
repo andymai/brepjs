@@ -4,8 +4,9 @@
  */
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
-import type { KernelShape, DistanceResult } from '@/kernel/types.js';
+import type { KernelShape, DistanceResult, ShapeType } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
 import { type BrepkitHandle, unwrap, DEFAULT_DEFLECTION } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { vertexPosition, uvBounds, pointOnSurface } from './geometryOps.js';
@@ -317,9 +318,6 @@ export function createDistanceQuery(
     },
   };
 }
-
-import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
-import type { ShapeType } from '@/kernel/types.js';
 
 /**
  * Compose bulk-measurement: brepkit `length()` throws for non-linear shapes,

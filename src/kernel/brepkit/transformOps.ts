@@ -6,6 +6,7 @@
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
+import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import {
   type BrepkitHandle,
   solidHandle,
@@ -172,8 +173,6 @@ export function gridPattern(
   );
   return compoundHandle(id);
 }
-
-import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 
 /** Apply N transforms sequentially. Inline switch — no native batch in brepkit. */
 export function transformBatch(bk: BrepkitKernel, entries: TransformEntry[]): KernelShape[] {
