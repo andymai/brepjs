@@ -53,6 +53,7 @@ function volOf(shape: AnyShape<Dimension>): number {
 // ---------------------------------------------------------------------------
 
 describe('SPEC: BREP round-trip preserves volume (lossless)', () => {
+  // BREP is the kernel's native serialization. Header contract: 6 decimals.
   it.each<[string, () => AnyShape<Dimension>, number]>([
     ['box(2,3,4)', () => box(2, 3, 4), 24],
     ['box(10,10,10)', () => box(10, 10, 10), 1000],
@@ -62,11 +63,12 @@ describe('SPEC: BREP round-trip preserves volume (lossless)', () => {
     const original = make();
     const serialized = unwrap(toBREP(original));
     const restored = unwrap(fromBREP(serialized));
-    expect(volOf(restored)).toBeCloseTo(expected, 4);
+    expect(volOf(restored)).toBeCloseTo(expected, 6);
   });
 });
 
 describe('SPEC: BREP round-trip on sketch.extrude pipeline output', () => {
+  // Header contract: 6 decimals (BREP is lossless).
   it.each<[string, () => AnyShape<Dimension>, number]>([
     ['sketchRectangle(10,20).extrude(5)', () => sketchRectangle(10, 20).extrude(5), 1000],
     [
@@ -77,7 +79,15 @@ describe('SPEC: BREP round-trip on sketch.extrude pipeline output', () => {
   ])('%s round-trips', (_label, make, expected) => {
     const original = make();
     const restored = unwrap(fromBREP(unwrap(toBREP(original))));
-    expect(volOf(restored)).toBeCloseTo(expected, 0);
+    // sketch.extrude(circle) measures vs the closed-form cylinder volume,
+    // which itself has circle-tessellation slack on lossy paths — but here
+    // BREP is lossless, so the round-trip can't *introduce* additional
+    // error beyond what was already in the original. Compare against
+    // volOf(original) instead of the closed-form expected so the test
+    // gates the round-trip's faithfulness, not the kernel's circle precision.
+    expect(volOf(restored)).toBeCloseTo(volOf(make()), 6);
+    // Sanity: the original is within 0.5 of the closed-form expected.
+    expect(volOf(make())).toBeCloseTo(expected, 0);
   });
 });
 
@@ -86,6 +96,8 @@ describe('SPEC: BREP round-trip on sketch.extrude pipeline output', () => {
 // ---------------------------------------------------------------------------
 
 describe('SPEC: STEP round-trip preserves volume (lossless B-rep)', () => {
+  // Header contract: 4 decimals. STEP file I/O round-trips through string
+  // serialization with bounded float precision; ±5e-5 is the contract.
   it.each<[string, () => AnyShape<Dimension>, number]>([
     ['box(2,3,4)', () => box(2, 3, 4), 24],
     ['box(10,10,10)', () => box(10, 10, 10), 1000],
@@ -95,7 +107,11 @@ describe('SPEC: STEP round-trip preserves volume (lossless B-rep)', () => {
     const original = make();
     const blob = unwrap(exportSTEP(original));
     const restored = unwrap(await importSTEP(blob));
-    expect(volOf(restored)).toBeCloseTo(expected, 0);
+    // Gate the round-trip's fidelity, not the kernel's curve precision:
+    // STEP must preserve whatever volume the original had to 4 decimals.
+    expect(volOf(restored)).toBeCloseTo(volOf(original), 4);
+    // Sanity: the original is within 0.5 of the closed-form expected.
+    expect(volOf(original)).toBeCloseTo(expected, 0);
   });
 });
 
