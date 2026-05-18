@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.14.1](https://github.com/andymai/brepjs/compare/brepjs-v18.14.0...brepjs-v18.14.1) (2026-05-18)
+
+
+### Bug Fixes
+
+* **ci:** pin tsx version in docs workflow to fix npx auto-download failure ([#1020](https://github.com/andymai/brepjs/issues/1020)) ([591c935](https://github.com/andymai/brepjs/commit/591c935c43160f81224cc81423a89a02b285ec57))
+
 ## [18.14.0](https://github.com/andymai/brepjs/compare/brepjs-v18.13.0...brepjs-v18.14.0) (2026-05-18)
 
 
