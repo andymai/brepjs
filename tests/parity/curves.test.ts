@@ -34,18 +34,11 @@ import {
   unwrap,
 } from '@/index.js';
 import type { Vec3 } from '@/core/types.js';
+import { vecLen, vecSub } from './helpers.js';
 
 beforeAll(async () => {
   await initKernel();
 }, 30000);
-
-function vecLen(v: Vec3): number {
-  return Math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
-}
-
-function vecSub(a: Vec3, b: Vec3): Vec3 {
-  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
-}
 
 // ---------------------------------------------------------------------------
 // Closed-form references — line

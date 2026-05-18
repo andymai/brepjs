@@ -7,6 +7,7 @@
 
 import * as fc from 'fast-check';
 import { box, cylinder, sphere, cone, torus, translate } from '@/index.js';
+import type { Vec3 } from '@/core/types.js';
 import type { ValidSolid, Shape3D } from '@/core/shapeTypes.js';
 
 /** Number of fast-check runs per property. Balances coverage vs CI runtime. */
@@ -81,3 +82,27 @@ export const formula = {
   /** Torus surface area = 4·π²·R·r. */
   torusArea: (R: number, r: number): number => 4 * Math.PI ** 2 * R * r,
 };
+
+// ---------------------------------------------------------------------------
+// Vector helpers — used across parity tests for spatial assertions.
+// ---------------------------------------------------------------------------
+
+/** Euclidean length of a 3D vector. */
+export function vecLen(v: Vec3): number {
+  return Math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
+}
+
+/** Component-wise subtraction: a − b. */
+export function vecSub(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+
+/** Component-wise addition: a + b. */
+export function vecAdd(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+/** Dot product: a · b. */
+export function vecDot(a: Vec3, b: Vec3): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
