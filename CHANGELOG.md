@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.14.3](https://github.com/andymai/brepjs/compare/brepjs-v18.14.2...brepjs-v18.14.3) (2026-05-18)
+
+
+### Bug Fixes
+
+* **build:** exclude declaration source maps from npm package ([#1024](https://github.com/andymai/brepjs/issues/1024)) ([83d9252](https://github.com/andymai/brepjs/commit/83d92527bd5e34b5ea0e0d93dbf95223755e0cfa))
+
 ## [18.14.2](https://github.com/andymai/brepjs/compare/brepjs-v18.14.1...brepjs-v18.14.2) (2026-05-18)
 
 
