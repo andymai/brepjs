@@ -24,6 +24,8 @@ import {
   toArray,
   warnOnce,
   hasBooleanOptions,
+  nextSyntheticId,
+  syntheticCompounds,
 } from './helpers.js';
 import { extractPlaneFromFace } from './internalOps.js';
 import { isValid as _isValid } from './repairOps.js';
@@ -119,8 +121,20 @@ export function section(
     return compoundHandle(bk.makeCompound([]));
   }
 
-  const firstWireId = bk.getFaceOuterWire(wasmIndex(faceIds, 0));
-  return wireHandle(firstWireId);
+  const allWireHandles: BrepkitHandle[] = [];
+  for (let i = 0; i < faceIds.length; i++) {
+    const wireIds = toArray(bk.getFaceWires(wasmIndex(faceIds, i)));
+    for (let j = 0; j < wireIds.length; j++) {
+      allWireHandles.push(wireHandle(wasmIndex(wireIds, j)));
+    }
+  }
+  const [firstWire] = allWireHandles;
+  if (allWireHandles.length === 1 && firstWire !== undefined) {
+    return firstWire;
+  }
+  const syntheticId = nextSyntheticId();
+  syntheticCompounds.set(syntheticId, allWireHandles);
+  return compoundHandle(syntheticId);
 }
 
 export function fuseAll(

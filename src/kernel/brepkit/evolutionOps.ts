@@ -177,11 +177,19 @@ function matchFacesGeometrically(
 
   const NORMAL_THRESHOLD = 0.707; // cos(45deg)
   const CENTROID_DIST_SQ_MAX = 100.0;
+  // Tolerance for "close-enough" matches — when multiple input faces score
+  // within this band of the best, record all of them. Mirrors the same
+  // relaxation applied in brepkit Rust's `boolean_with_evolution`. Without
+  // this, an output face that legitimately inherits metadata from several
+  // inputs (e.g., the bottom face of a filleted box — close-tied with the
+  // input bottom — that should keep the input's "bottom" tag) only picks
+  // up one input's metadata and drops the rest.
+  const SCORE_TIE_TOL = 0.05;
   const matchedInputIndices = new Set<number>();
 
   for (const out of outputSigs) {
     let bestScore = -Infinity;
-    let bestIdx = -1;
+    const matches: { idx: number; score: number }[] = [];
 
     for (let i = 0; i < inputSigs.length; i++) {
       const inp = wasmIndex(inputSigs, i);
@@ -195,18 +203,20 @@ function matchFacesGeometrically(
       if (distSq > CENTROID_DIST_SQ_MAX) continue;
 
       const score = dot - distSq / CENTROID_DIST_SQ_MAX;
-      if (score > bestScore) {
-        bestScore = score;
-        bestIdx = i;
-      }
+      if (score > bestScore) bestScore = score;
+      matches.push({ idx: i, score });
     }
 
-    if (bestIdx >= 0) {
-      const bestInput = wasmIndex(inputSigs, bestIdx);
-      const existing = modified.get(bestInput.hash) ?? [];
-      existing.push(out.hash);
-      modified.set(bestInput.hash, existing);
-      matchedInputIndices.add(bestIdx);
+    if (matches.length > 0) {
+      for (const m of matches) {
+        if (m.score >= bestScore - SCORE_TIE_TOL) {
+          const inp = wasmIndex(inputSigs, m.idx);
+          const existing = modified.get(inp.hash) ?? [];
+          existing.push(out.hash);
+          modified.set(inp.hash, existing);
+          matchedInputIndices.add(m.idx);
+        }
+      }
     } else {
       // Unmatched output -> generated from nearest input
       let bestDistSq = Infinity;
@@ -230,6 +240,138 @@ function matchFacesGeometrically(
   for (let i = 0; i < inputSigs.length; i++) {
     if (!matchedInputIndices.has(i)) {
       deleted.add(wasmIndex(inputSigs, i).hash);
+    }
+  }
+}
+
+/**
+ * Apply geometric matching to the unmatched input/output residuals from a
+ * hash-overlap evolution, then derive the deleted set as inputs that were
+ * never matched and never attributed to a generated output.
+ */
+function reconcileUnmatchedResiduals(
+  bk: BrepkitKernel,
+  originalShape: KernelShape,
+  unmatchedInputHashes: number[],
+  unmatchedOutputFaces: number[],
+  hashUpperBound: number,
+  modified: Map<number, number[]>,
+  generated: Map<number, number[]>,
+  deleted: Set<number>
+): void {
+  const beforeDeleted = new Set(deleted);
+  const beforeModified = new Map(modified);
+  matchFacesGeometrically(
+    bk,
+    originalShape,
+    unmatchedInputHashes,
+    unmatchedOutputFaces,
+    hashUpperBound,
+    modified,
+    generated,
+    deleted
+  );
+  deleted.clear();
+  for (const old of beforeDeleted) deleted.add(old);
+  for (const h of unmatchedInputHashes) {
+    const isModified =
+      !beforeModified.has(h) && modified.has(h) && (modified.get(h)?.length ?? 0) > 0;
+    const isGenerated = generated.has(h) && (generated.get(h)?.length ?? 0) > 0;
+    if (!isModified && !isGenerated) {
+      deleted.add(h);
+    }
+  }
+}
+
+/**
+ * Hash-only evolution fallback when no original shape is available for
+ * geometric matching: every new output hash becomes "generated", every
+ * input hash that didn't survive becomes "deleted".
+ */
+function fallbackHashOnlyEvolution(
+  inputFaceHashes: number[],
+  outputHashes: number[],
+  inputSet: Set<number>,
+  outputSet: Set<number>,
+  generated: Map<number, number[]>,
+  deleted: Set<number>
+): void {
+  const newFaces = outputHashes.filter((fh) => !inputSet.has(fh));
+  if (newFaces.length > 0 && inputFaceHashes.length > 0) {
+    generated.set(wasmIndex(inputFaceHashes, 0), newFaces);
+  }
+  for (const hash of inputFaceHashes) {
+    if (!outputSet.has(hash)) {
+      deleted.add(hash);
+    }
+  }
+}
+
+/**
+ * Boolean/modifier evolution: compare input and output face hashes, fall
+ * back to geometric matching for the residuals brepkit re-IDs.
+ */
+function buildBooleanEvolution(
+  bk: BrepkitKernel,
+  outputFaces: number[],
+  outputHashes: number[],
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  modified: Map<number, number[]>,
+  generated: Map<number, number[]>,
+  deleted: Set<number>,
+  originalShape?: KernelShape
+): void {
+  const inputSet = new Set(inputFaceHashes);
+  const hasOverlap = outputHashes.some((hash) => inputSet.has(hash));
+
+  if (hasOverlap) {
+    const outputSet = new Set(outputHashes);
+    for (const hash of outputHashes) {
+      if (inputSet.has(hash)) modified.set(hash, [hash]);
+    }
+    const unmatchedInputHashes = inputFaceHashes.filter((h) => !outputSet.has(h));
+    const unmatchedOutputFaces = outputFaces.filter((fid) => !inputSet.has(fid % hashUpperBound));
+    const canGeometricMatch =
+      originalShape && unmatchedInputHashes.length > 0 && unmatchedOutputFaces.length > 0;
+    if (canGeometricMatch) {
+      reconcileUnmatchedResiduals(
+        bk,
+        originalShape,
+        unmatchedInputHashes,
+        unmatchedOutputFaces,
+        hashUpperBound,
+        modified,
+        generated,
+        deleted
+      );
+    } else {
+      fallbackHashOnlyEvolution(
+        inputFaceHashes,
+        outputHashes,
+        inputSet,
+        outputSet,
+        generated,
+        deleted
+      );
+    }
+  } else if (originalShape) {
+    matchFacesGeometrically(
+      bk,
+      originalShape,
+      inputFaceHashes,
+      outputFaces,
+      hashUpperBound,
+      modified,
+      generated,
+      deleted
+    );
+  } else {
+    for (let i = 0; i < inputFaceHashes.length && i < outputHashes.length; i++) {
+      modified.set(wasmIndex(inputFaceHashes, i), [wasmIndex(outputHashes, i)]);
+    }
+    if (outputHashes.length > inputFaceHashes.length && inputFaceHashes.length > 0) {
+      generated.set(wasmIndex(inputFaceHashes, 0), outputHashes.slice(inputFaceHashes.length));
     }
   }
 }
@@ -259,61 +401,21 @@ function buildEvolution(
     const outputHashes = outputFaces.map((fid) => fid % hashUpperBound);
 
     if (isTransform) {
-      // Transforms: 1:1 mapping -- each input face maps to the corresponding output face
       for (let i = 0; i < inputFaceHashes.length && i < outputHashes.length; i++) {
         modified.set(wasmIndex(inputFaceHashes, i), [wasmIndex(outputHashes, i)]);
       }
     } else {
-      // Boolean/modifier: compare face hash sets
-      const inputSet = new Set(inputFaceHashes);
-
-      // Check if any output hash matches an input hash
-      let hasOverlap = false;
-      for (const hash of outputHashes) {
-        if (inputSet.has(hash)) {
-          hasOverlap = true;
-          break;
-        }
-      }
-
-      if (hasOverlap) {
-        // Hash-based matching (OCCT-like behavior)
-        const outputSet = new Set(outputHashes);
-        for (const hash of outputHashes) {
-          if (inputSet.has(hash)) {
-            modified.set(hash, [hash]);
-          }
-        }
-        const newFaces = outputHashes.filter((fh) => !inputSet.has(fh));
-        if (newFaces.length > 0 && inputFaceHashes.length > 0) {
-          generated.set(wasmIndex(inputFaceHashes, 0), newFaces);
-        }
-        for (const hash of inputFaceHashes) {
-          if (!outputSet.has(hash)) {
-            deleted.add(hash);
-          }
-        }
-      } else if (originalShape) {
-        // No hash overlap -- use geometric matching (normal + centroid)
-        matchFacesGeometrically(
-          bk,
-          originalShape,
-          inputFaceHashes,
-          outputFaces,
-          hashUpperBound,
-          modified,
-          generated,
-          deleted
-        );
-      } else {
-        // No original shape available -- positional fallback
-        for (let i = 0; i < inputFaceHashes.length && i < outputHashes.length; i++) {
-          modified.set(wasmIndex(inputFaceHashes, i), [wasmIndex(outputHashes, i)]);
-        }
-        if (outputHashes.length > inputFaceHashes.length && inputFaceHashes.length > 0) {
-          generated.set(wasmIndex(inputFaceHashes, 0), outputHashes.slice(inputFaceHashes.length));
-        }
-      }
+      buildBooleanEvolution(
+        bk,
+        outputFaces,
+        outputHashes,
+        inputFaceHashes,
+        hashUpperBound,
+        modified,
+        generated,
+        deleted,
+        originalShape
+      );
     }
   }
 
