@@ -11,6 +11,7 @@ export default defineConfig({
   plugins: [
     dts({
       rollupTypes: false,
+      compilerOptions: { declarationMap: false },
     }),
   ],
   build: {
