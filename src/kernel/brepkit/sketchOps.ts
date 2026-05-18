@@ -4,6 +4,7 @@
  */
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
+import type { ConstraintSketchCapability } from '@/kernel/types.js';
 
 /** Create a new constraint sketch. Returns an opaque sketch handle. */
 export function sketchNew(bk: BrepkitKernel): number {
@@ -59,4 +60,19 @@ export function sketchAddArc(
 export function sketchDof(bk: BrepkitKernel, sketch: number): string {
   const result = bk.sketchDof(sketch);
   return typeof result === 'string' ? result : String(result);
+}
+
+/** Co-located factory: returns the {@link ConstraintSketchCapability} slice bound to `bk`. */
+export function makeSketchOps(bk: BrepkitKernel): ConstraintSketchCapability {
+  return {
+    sketchNew: () => sketchNew(bk),
+    sketchAddPoint: (sketch, x, y, fixed) => sketchAddPoint(bk, sketch, x, y, fixed),
+    sketchAddArc: (sketch, centerIdx, startIdx, endIdx) =>
+      sketchAddArc(bk, sketch, centerIdx, startIdx, endIdx),
+    sketchAddConstraint: (sketch, json) => {
+      sketchAddConstraint(bk, sketch, json);
+    },
+    sketchSolve: (sketch, maxIter, tolerance) => sketchSolve(bk, sketch, maxIter, tolerance),
+    sketchDof: (sketch) => sketchDof(bk, sketch),
+  };
 }

@@ -12,6 +12,7 @@ import type {
   KernelMeshResult,
   BooleanOptions,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   solidHandle,
@@ -25,6 +26,7 @@ import {
   hasBooleanOptions,
 } from './helpers.js';
 import { extractPlaneFromFace } from './internalOps.js';
+import { isValid as _isValid } from './repairOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
 export function fuse(
@@ -313,4 +315,38 @@ export function buildSolidFromFaces(
   }
   const id = bk.importIndexedMesh(positions, indices);
   return solidHandle(id);
+}
+
+/** Co-located factory: returns the boolean+hull slice of {@link KernelAdapter} bound to `bk`. */
+export function makeBooleanOps(bk: BrepkitKernel) {
+  return {
+    fuse: (shape, tool, options) => fuse(bk, shape, tool, options),
+    cut: (shape, tool, options) => cut(bk, shape, tool, options),
+    intersect: (shape, tool, options) => intersect(bk, shape, tool, options),
+    section: (shape, plane, approximation) => section(bk, shape, plane, approximation),
+    fuseAll: (shapes, options) => fuseAll(bk, shapes, options),
+    cutAll: (shape, tools, options) => cutAll(bk, shape, tools, options),
+    split: (shape, tools) => split(bk, shape, tools),
+    meshBoolean: (positionsA, indicesA, positionsB, indicesB, op, tolerance) =>
+      meshBoolean(bk, positionsA, indicesA, positionsB, indicesB, op, tolerance),
+    checkBoolean: (shape, tool, op) => checkBoolean(bk, shape, tool, op, (s) => _isValid(bk, s)),
+    hull: (shapes, tolerance) => hull(bk, shapes, tolerance),
+    hullFromPoints: (points, tolerance) => hullFromPoints(bk, points, tolerance),
+    buildSolidFromFaces: (points, faces, tolerance) =>
+      buildSolidFromFaces(bk, points, faces, tolerance),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'fuse'
+    | 'cut'
+    | 'intersect'
+    | 'section'
+    | 'fuseAll'
+    | 'cutAll'
+    | 'split'
+    | 'meshBoolean'
+    | 'checkBoolean'
+    | 'hull'
+    | 'hullFromPoints'
+    | 'buildSolidFromFaces'
+  >;
 }

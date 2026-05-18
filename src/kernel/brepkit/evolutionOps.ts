@@ -16,6 +16,7 @@ import type {
   DiagnosticOperationResult,
   BooleanOptions,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   solidHandle,
@@ -729,8 +730,8 @@ export function composeTransform(
     | {
         type: 'rotate';
         angle: number;
-        axis?: readonly [number, number, number];
-        center?: readonly [number, number, number];
+        axis?: readonly [number, number, number] | undefined;
+        center?: readonly [number, number, number] | undefined;
       }
   >
 ): { handle: KernelType; dispose: () => void } {
@@ -745,4 +746,100 @@ export function composeTransform(
     matrix = multiplyMatrices(m, matrix);
   }
   return { handle: matrix, dispose: () => {} };
+}
+
+import { resolveUniformAngle } from './helpers.js';
+
+/** Co-located factory: returns the history-tracking slice of {@link KernelAdapter} bound to `bk`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeEvolutionOps(bk: BrepkitKernel) {
+  return {
+    translateWithHistory: (shape, x, y, z, inputFaceHashes, hashUpperBound) =>
+      translateWithHistory(bk, shape, x, y, z, inputFaceHashes, hashUpperBound),
+    rotateWithHistory: (shape, angle, inputFaceHashes, hashUpperBound, axis, center) =>
+      rotateWithHistory(bk, shape, angle, inputFaceHashes, hashUpperBound, axis, center),
+    mirrorWithHistory: (shape, origin, normal, inputFaceHashes, hashUpperBound) =>
+      mirrorWithHistory(bk, shape, origin, normal, inputFaceHashes, hashUpperBound),
+    scaleWithHistory: (shape, center, factor, inputFaceHashes, hashUpperBound) =>
+      scaleWithHistory(bk, shape, center, factor, inputFaceHashes, hashUpperBound),
+    generalTransformWithHistory: (
+      shape,
+      linear,
+      translation,
+      isOrthogonal,
+      inputFaceHashes,
+      hashUpperBound
+    ) =>
+      generalTransformWithHistory(
+        bk,
+        shape,
+        linear,
+        translation,
+        isOrthogonal,
+        inputFaceHashes,
+        hashUpperBound
+      ),
+    fuseWithHistory: (shape, tool, inputFaceHashes, hashUpperBound, options) =>
+      fuseWithHistory(bk, shape, tool, inputFaceHashes, hashUpperBound, options),
+    cutWithHistory: (shape, tool, inputFaceHashes, hashUpperBound, options) =>
+      cutWithHistory(bk, shape, tool, inputFaceHashes, hashUpperBound, options),
+    intersectWithHistory: (shape, tool, inputFaceHashes, hashUpperBound, options) =>
+      intersectWithHistory(bk, shape, tool, inputFaceHashes, hashUpperBound, options),
+    filletWithHistory: (shape, edges, radius, inputFaceHashes, hashUpperBound) =>
+      filletWithHistory(bk, shape, edges, radius, inputFaceHashes, hashUpperBound),
+    chamferWithHistory: (shape, edges, distance, inputFaceHashes, hashUpperBound) =>
+      chamferWithHistory(bk, shape, edges, distance, inputFaceHashes, hashUpperBound),
+    shellWithHistory: (shape, faces, thickness, inputFaceHashes, hashUpperBound, tolerance) =>
+      shellWithHistory(bk, shape, faces, thickness, inputFaceHashes, hashUpperBound, tolerance),
+    thickenWithHistory: (shape, thickness, inputFaceHashes, hashUpperBound) =>
+      thickenWithHistory(bk, shape, thickness, inputFaceHashes, hashUpperBound),
+    offsetWithHistory: (shape, distance, inputFaceHashes, hashUpperBound, tolerance) =>
+      offsetWithHistory(bk, shape, distance, inputFaceHashes, hashUpperBound, tolerance),
+    draftWithHistory: (
+      shape,
+      faces,
+      pullDirection,
+      neutralPlane,
+      angleDeg,
+      inputFaceHashes,
+      hashUpperBound
+    ) =>
+      draftWithHistory(
+        bk,
+        shape,
+        faces,
+        pullDirection,
+        neutralPlane,
+        resolveUniformAngle(faces, angleDeg),
+        inputFaceHashes,
+        hashUpperBound
+      ),
+    applyComposedTransformWithHistory: (shape, transformHandle, inputFaceHashes, hashUpperBound) =>
+      applyComposedTransformWithHistory(
+        bk,
+        shape,
+        transformHandle,
+        inputFaceHashes,
+        hashUpperBound
+      ),
+    composeTransform: (ops) => composeTransform(bk, ops),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'translateWithHistory'
+    | 'rotateWithHistory'
+    | 'mirrorWithHistory'
+    | 'scaleWithHistory'
+    | 'generalTransformWithHistory'
+    | 'fuseWithHistory'
+    | 'cutWithHistory'
+    | 'intersectWithHistory'
+    | 'filletWithHistory'
+    | 'chamferWithHistory'
+    | 'shellWithHistory'
+    | 'thickenWithHistory'
+    | 'offsetWithHistory'
+    | 'draftWithHistory'
+    | 'applyComposedTransformWithHistory'
+    | 'composeTransform'
+  >;
 }

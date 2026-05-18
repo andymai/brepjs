@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType, SurfaceType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   isBrepkitHandle,
@@ -488,4 +489,100 @@ export function projectEdges(
     visible: { outline: emptyCompound, smooth: emptyCompound, sharp: emptyCompound },
     hidden: { outline: emptyCompound, smooth: emptyCompound, sharp: emptyCompound },
   };
+}
+
+import type { NurbsCurveData, NurbsSurfaceData } from '@/kernel/types.js';
+
+/** brepkit does not support NURBS introspection on edges. Always returns null. */
+export function getNurbsCurveData(_bk: BrepkitKernel, _edge: KernelShape): NurbsCurveData | null {
+  return null;
+}
+
+/** brepkit does not support NURBS introspection on faces. Always returns null. */
+export function getNurbsSurfaceData(
+  _bk: BrepkitKernel,
+  _face: KernelShape
+): NurbsSurfaceData | null {
+  return null;
+}
+
+/** Co-located factory: returns the geometry-query slice of {@link KernelAdapter} bound to `bk`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeGeometryOps(bk: BrepkitKernel) {
+  return {
+    vertexPosition: (vertex) => vertexPosition(bk, vertex),
+    surfaceType: (face) => surfaceType(bk, face),
+    uvBounds: (face) => uvBounds(bk, face),
+    outerWire: (face) => outerWire(bk, face),
+    surfaceNormal: (face, u, v) => surfaceNormal(bk, face, u, v),
+    pointOnSurface: (face, u, v) => pointOnSurface(bk, face, u, v),
+    uvFromPoint: (face, point) => uvFromPoint(bk, face, point),
+    projectPointOnFace: (face, point) => projectPointOnFace(bk, face, point),
+    curveTangent: (shape, param) => curveTangent(bk, shape, param),
+    curveParameters: (shape) => curveParameters(bk, shape),
+    curvePointAtParam: (shape, param) => curvePointAtParam(bk, shape, param),
+    curveIsClosed: (shape) => curveIsClosed(bk, shape),
+    curveIsPeriodic: (shape) => curveIsPeriodic(bk, shape),
+    curvePeriod: (shape) => curvePeriod(bk, shape),
+    curveType: (shape) => curveType(bk, shape),
+    curveDegreeElevate: (edge, elevateBy) => curveDegreeElevate(bk, edge, elevateBy),
+    curveKnotInsert: (edge, knot, times) => curveKnotInsert(bk, edge, knot, times),
+    curveKnotRemove: (edge, knot, tolerance) => curveKnotRemove(bk, edge, knot, tolerance),
+    curveSplit: (edge, param) => curveSplit(bk, edge, param),
+    approximateSurfaceLspia: (coords, rows, cols, degU, degV, cpsU, cpsV, tol, maxIter) =>
+      approximateSurfaceLspia(bk, coords, rows, cols, degU, degV, cpsU, cpsV, tol, maxIter),
+    untrimFace: (face, samplesPerCurve, interiorSamples) =>
+      untrimFace(bk, face, samplesPerCurve, interiorSamples),
+    createCurveAdaptor: (shape) => createCurveAdaptor(bk, shape),
+    getBezierPenultimatePole: (edge) => getBezierPenultimatePole(bk, edge),
+    getSurfaceCylinderData: (surface) => getSurfaceCylinderData(bk, surface),
+    reverseSurfaceU: (surface) => reverseSurfaceU(bk, surface),
+    classifyPointOnFace: (face, u, v, tolerance) => classifyPointOnFace(bk, face, u, v, tolerance),
+    classifyPointRobust: (shape, point, tolerance) =>
+      classifyPointRobust(bk, shape, point, tolerance),
+    classifyPointWinding: (shape, point, tolerance) =>
+      classifyPointWinding(bk, shape, point, tolerance),
+    detectSmallFeatures: (shape, areaThreshold, tolerance) =>
+      detectSmallFeatures(bk, shape, areaThreshold, tolerance),
+    recognizeFeatures: (shape, tolerance) => recognizeFeatures(bk, shape, tolerance),
+    projectEdges: (shape, cameraOrigin, cameraDirection, cameraXAxis) =>
+      projectEdges(bk, shape, cameraOrigin, cameraDirection, cameraXAxis),
+    getNurbsCurveData: (edge) => getNurbsCurveData(bk, edge),
+    getNurbsSurfaceData: (face) => getNurbsSurfaceData(bk, face),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'vertexPosition'
+    | 'surfaceType'
+    | 'uvBounds'
+    | 'outerWire'
+    | 'surfaceNormal'
+    | 'pointOnSurface'
+    | 'uvFromPoint'
+    | 'projectPointOnFace'
+    | 'curveTangent'
+    | 'curveParameters'
+    | 'curvePointAtParam'
+    | 'curveIsClosed'
+    | 'curveIsPeriodic'
+    | 'curvePeriod'
+    | 'curveType'
+    | 'curveDegreeElevate'
+    | 'curveKnotInsert'
+    | 'curveKnotRemove'
+    | 'curveSplit'
+    | 'approximateSurfaceLspia'
+    | 'untrimFace'
+    | 'createCurveAdaptor'
+    | 'getBezierPenultimatePole'
+    | 'getSurfaceCylinderData'
+    | 'reverseSurfaceU'
+    | 'classifyPointOnFace'
+    | 'classifyPointRobust'
+    | 'classifyPointWinding'
+    | 'detectSmallFeatures'
+    | 'recognizeFeatures'
+    | 'projectEdges'
+    | 'getNurbsCurveData'
+    | 'getNurbsSurfaceData'
+  >;
 }

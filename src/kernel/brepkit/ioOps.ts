@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   solidHandle,
@@ -148,7 +149,11 @@ export function fromBREP(bk: BrepkitKernel, data: string): KernelShape {
 
 export function createXCAFDocument(
   _bk: BrepkitKernel,
-  shapes: Array<{ shape: KernelShape; name: string; color?: [number, number, number, number] }>
+  shapes: Array<{
+    shape: KernelShape;
+    name: string;
+    color?: [number, number, number, number] | undefined;
+  }>
 ): KernelType {
   // brepkit doesn't have XCAF -- store as plain object for writeXCAFToSTEP
   return { __brepkit_xcaf: true, shapes, delete: noop };
@@ -157,7 +162,7 @@ export function createXCAFDocument(
 export function writeXCAFToSTEP(
   bk: BrepkitKernel,
   doc: KernelType,
-  _options?: { unit?: string; modelUnit?: string }
+  _options?: { unit?: string | undefined; modelUnit?: string | undefined }
 ): string {
   // Extract shapes from the XCAF document object and export as STEP
   if (doc && doc.__brepkit_xcaf && Array.isArray(doc.shapes)) {
@@ -171,12 +176,67 @@ export function writeXCAFToSTEP(
 
 export function exportSTEPConfigured(
   bk: BrepkitKernel,
-  shapes: Array<{ shape: KernelShape; name?: string; color?: [number, number, number, number] }>,
-  _options?: { unit?: string; modelUnit?: string; schema?: number }
+  shapes: Array<{
+    shape: KernelShape;
+    name?: string | undefined;
+    color?: [number, number, number, number] | undefined;
+  }>,
+  _options?: {
+    unit?: string | undefined;
+    modelUnit?: string | undefined;
+    schema?: number | undefined;
+  }
 ): string {
   // Fall back to basic STEP export (no names/colors)
   return exportSTEP(
     bk,
     shapes.map((s) => s.shape)
   );
+}
+
+/** Co-located factory: returns the file-I/O slice of {@link KernelAdapter} bound to `bk`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeIoOps(bk: BrepkitKernel) {
+  return {
+    exportSTEP: (shapes) => exportSTEP(bk, shapes),
+    exportSTL: (shape, binary) => exportSTL(bk, shape, binary),
+    importSTEP: (data) => importSTEP(bk, data),
+    importSTL: (data) => importSTL(bk, data),
+    exportIGES: (shapes) => exportIGES(bk, shapes),
+    importIGES: (data) => importIGES(bk, data),
+    exportSTEPAssembly: (parts, options) => exportSTEPAssembly(bk, parts, options),
+    export3MF: (shape, tolerance) => export3MF(bk, shape, tolerance),
+    exportGLB: (shape, tolerance) => exportGLB(bk, shape, tolerance),
+    exportOBJ: (shape, tolerance) => exportOBJ(bk, shape, tolerance),
+    exportPLY: (shape, tolerance) => exportPLY(bk, shape, tolerance),
+    import3MF: (data) => import3MF(bk, data),
+    importOBJ: (data) => importOBJ(bk, data),
+    importGLB: (data) => importGLB(bk, data),
+    toBREP: (shape) => toBREP(bk, shape),
+    fromBREP: (data) => fromBREP(bk, data),
+    createXCAFDocument: (shapes) => createXCAFDocument(bk, shapes),
+    writeXCAFToSTEP: (doc, options) => writeXCAFToSTEP(bk, doc, options),
+    exportSTEPConfigured: (shapes, options) => exportSTEPConfigured(bk, shapes, options),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'exportSTEP'
+    | 'exportSTL'
+    | 'importSTEP'
+    | 'importSTL'
+    | 'exportIGES'
+    | 'importIGES'
+    | 'exportSTEPAssembly'
+    | 'export3MF'
+    | 'exportGLB'
+    | 'exportOBJ'
+    | 'exportPLY'
+    | 'import3MF'
+    | 'importOBJ'
+    | 'importGLB'
+    | 'toBREP'
+    | 'fromBREP'
+    | 'createXCAFDocument'
+    | 'writeXCAFToSTEP'
+    | 'exportSTEPConfigured'
+  >;
 }

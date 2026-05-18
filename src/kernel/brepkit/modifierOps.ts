@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   handle,
@@ -337,4 +338,40 @@ export function reverseShape(bk: BrepkitKernel, shape: KernelShape): KernelShape
   const h = shape as BrepkitHandle;
   const newId = bk.reverseShape(h.id);
   return handle(h.type, newId);
+}
+
+import { resolveUniformAngle } from './helpers.js';
+
+/** Co-located factory: returns the modifier slice of {@link KernelAdapter} bound to `bk`. */
+export function makeModifierOps(bk: BrepkitKernel) {
+  return {
+    fillet: (shape, edges, radius) => fillet(bk, shape, edges, radius),
+    chamfer: (shape, edges, distance) => chamfer(bk, shape, edges, distance),
+    chamferDistAngle: (shape, edges, distance, angleDeg) =>
+      chamferDistAngle(bk, shape, edges, distance, angleDeg),
+    shell: (shape, faces, thickness, tolerance) => shell(bk, shape, faces, thickness, tolerance),
+    thicken: (shape, thickness) => thicken(bk, shape, thickness),
+    offset: (shape, distance, tolerance) => offset(bk, shape, distance, tolerance),
+    filletVariable: (shape, spec) => filletVariable(bk, shape, spec),
+    draft: (shape, faces, pullDirection, neutralPlane, angleDeg) =>
+      draft(bk, shape, faces, pullDirection, neutralPlane, resolveUniformAngle(faces, angleDeg)),
+    defeature: (shape, faces) => defeature(bk, shape, faces),
+    offsetWire2D: (wire, off, joinType) => offsetWire2D(bk, wire, off, joinType),
+    simplify: (shape) => simplify(bk, shape),
+    reverseShape: (shape) => reverseShape(bk, shape),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'fillet'
+    | 'chamfer'
+    | 'chamferDistAngle'
+    | 'shell'
+    | 'thicken'
+    | 'offset'
+    | 'filletVariable'
+    | 'draft'
+    | 'defeature'
+    | 'offsetWire2D'
+    | 'simplify'
+    | 'reverseShape'
+  >;
 }

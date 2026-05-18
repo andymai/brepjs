@@ -10,6 +10,7 @@ import type {
   KernelEdgeMeshResult,
   MeshOptions,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { type BrepkitHandle, unwrap, toArray, warnOnce, DEFAULT_DEFLECTION } from './helpers.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
@@ -271,4 +272,17 @@ function meshSingleFace(
     uvs: new Float32Array(uvs),
     faceGroups: [{ start: 0, count: indices.length, faceHash }],
   };
+}
+
+/** Co-located factory: returns the mesh slice of {@link KernelAdapter} bound to `bk`. */
+export function makeMeshOps(bk: BrepkitKernel) {
+  return {
+    mesh: (shape, options) => mesh(bk, shape, options),
+    meshEdges: (shape, tolerance, angularTolerance) =>
+      meshEdges(bk, shape, tolerance, angularTolerance),
+    hasTriangulation: (shape) => hasTriangulation(bk, shape),
+    meshShape: (shape, tolerance, angularTolerance) => {
+      meshShape(bk, shape, tolerance, angularTolerance);
+    },
+  } satisfies Pick<KernelAdapter, 'mesh' | 'meshEdges' | 'hasTriangulation' | 'meshShape'>;
 }

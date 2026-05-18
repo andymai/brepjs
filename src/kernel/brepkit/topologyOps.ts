@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, ShapeType, ShapeOrientation } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   isBrepkitHandle,
@@ -232,3 +233,39 @@ export function sew(bk: BrepkitKernel, shapes: KernelShape[], tolerance?: number
 
 // Import needed by edgeToFaceMap, adjacentFaces
 import { unwrapSolidOrThrow, shellHandle } from './helpers.js';
+
+/** Co-located factory: returns the topology-iteration slice of {@link KernelAdapter} bound to `bk`. */
+export function makeTopologyOps(bk: BrepkitKernel) {
+  return {
+    iterShapes: (shape, type) => iterShapes(bk, shape, type),
+    iterShapeList: (list, callback) => {
+      iterShapeList(bk, list, callback);
+    },
+    shapeType: (shape) => shapeType(bk, shape),
+    isSame: (a, b) => isSame(bk, a, b),
+    isEqual: (a, b) => isEqual(bk, a, b),
+    downcast: (shape, type) => downcast(bk, shape, type),
+    hashCode: (shape, upperBound) => hashCode(bk, shape, upperBound),
+    isNull: (shape) => isNull(bk, shape),
+    shapeOrientation: (shape) => shapeOrientation(bk, shape),
+    edgeToFaceMap: (shape) => edgeToFaceMap(bk, shape),
+    sharedEdges: (faceA, faceB) => sharedEdges(bk, faceA, faceB),
+    adjacentFaces: (shape, face) => adjacentFaces(bk, shape, face),
+    sew: (shapes, tolerance) => sew(bk, shapes, tolerance),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'iterShapes'
+    | 'iterShapeList'
+    | 'shapeType'
+    | 'isSame'
+    | 'isEqual'
+    | 'downcast'
+    | 'hashCode'
+    | 'isNull'
+    | 'shapeOrientation'
+    | 'edgeToFaceMap'
+    | 'sharedEdges'
+    | 'adjacentFaces'
+    | 'sew'
+  >;
+}

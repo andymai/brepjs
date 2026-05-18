@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { type BrepkitHandle, isBrepkitHandle, unwrap, unwrapSolidOrThrow } from './helpers.js';
 
 export function isValid(bk: BrepkitKernel, shape: KernelShape): boolean {
@@ -118,4 +119,33 @@ export function validationDetails(bk: BrepkitKernel, shape: KernelShape): string
   } catch {
     return null;
   }
+}
+
+/** Co-located factory: returns the validation/repair slice of {@link KernelAdapter} bound to `bk`. */
+export function makeRepairOps(bk: BrepkitKernel) {
+  return {
+    isValid: (shape) => isValid(bk, shape),
+    isValidStrict: (shape) => isValidStrict(bk, shape),
+    healSolid: (shape) => healSolid(bk, shape),
+    healFace: (shape) => healFace(bk, shape),
+    healWire: (wire, face) => healWire(bk, wire, face),
+    fixShape: (shape) => fixShape(bk, shape),
+    fixSelfIntersection: (wire) => fixSelfIntersection(bk, wire),
+    mergeCoincidentVertices: (shape, tolerance) => mergeCoincidentVertices(bk, shape, tolerance),
+    removeDegenerateEdges: (shape, tolerance) => removeDegenerateEdges(bk, shape, tolerance),
+    fixFaceOrientations: (shape) => fixFaceOrientations(bk, shape),
+    validationDetails: (shape) => validationDetails(bk, shape),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'isValid'
+    | 'isValidStrict'
+    | 'healSolid'
+    | 'healFace'
+    | 'healWire'
+    | 'fixShape'
+    | 'fixSelfIntersection'
+    | 'mergeCoincidentVertices'
+    | 'removeDegenerateEdges'
+    | 'fixFaceOrientations'
+  > & { validationDetails: (shape: KernelShape) => string | null };
 }

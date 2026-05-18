@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   isBrepkitHandle,
@@ -842,4 +843,101 @@ function makeEllipseNurbs(
 
   const id = bk.makeNurbsEdge(sx, sy, sz, ex, ey, ez, degree, knots, controlPoints, weights);
   return edgeHandle(id);
+}
+
+/** Co-located factory: returns the construction slice of {@link KernelAdapter} bound to `bk`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeConstructionOps(bk: BrepkitKernel) {
+  return {
+    makeVertex: (x, y, z) => makeVertex(bk, x, y, z),
+    makeEdge: (curve, start, end) => makeEdge(bk, curve, start, end),
+    makeWire: (edges) => makeWire(bk, edges),
+    makeWireFromMixed: (items) => makeWireFromMixed(bk, items),
+    makeFace: (wire, planar) => makeFace(bk, wire, planar),
+    makeBox: (w, h, d) => makeBox(bk, w, h, d),
+    makeRectangle: (w, h) => makeRectangle(bk, w, h),
+    makeCylinder: (radius, height, center, direction) =>
+      makeCylinder(bk, radius, height, center, direction),
+    makeSphere: (radius, center) => makeSphere(bk, radius, center),
+    makeCone: (r1, r2, h, center, direction) => makeCone(bk, r1, r2, h, center, direction),
+    makeTorus: (major, minor, center, direction) => makeTorus(bk, major, minor, center, direction),
+    makeEllipsoid: (a, b, c) => makeEllipsoid(bk, a, b, c),
+    makeLineEdge: (p1, p2) => makeLineEdge(bk, p1, p2),
+    makeCircleEdge: (center, normal, radius) => makeCircleEdge(bk, center, normal, radius),
+    makeCircleArc: (center, normal, radius, startAngle, endAngle) =>
+      makeCircleArc(bk, center, normal, radius, startAngle, endAngle),
+    makeArcEdge: (p1, p2, p3) => makeArcEdge(bk, p1, p2, p3),
+    makeEllipseEdge: (center, normal, majorRadius, minorRadius, xDir) =>
+      makeEllipseEdge(bk, center, normal, majorRadius, minorRadius, xDir),
+    makeEllipseArc: (center, normal, majorRadius, minorRadius, startAngle, endAngle, xDir) =>
+      makeEllipseArc(bk, center, normal, majorRadius, minorRadius, startAngle, endAngle, xDir),
+    makeBezierEdge: (points) => makeBezierEdge(bk, points),
+    makeTangentArc: (startPoint, startTangent, endPoint) =>
+      makeTangentArc(bk, startPoint, startTangent, endPoint),
+    makeHelixWire: (pitch, height, radius, center, direction, leftHanded) =>
+      makeHelixWire(bk, pitch, height, radius, center, direction, leftHanded),
+    makeCompound: (shapes) => makeCompound(bk, shapes),
+    makeBoxFromCorners: (p1, p2) => makeBoxFromCorners(bk, p1, p2),
+    solidFromShell: (shell) => solidFromShell(bk, shell),
+    makeNonPlanarFace: (wire) => makeNonPlanarFace(bk, wire),
+    addHolesInFace: (face, holeWires) => addHolesInFace(bk, face, holeWires),
+    removeHolesFromFace: (face) => removeHolesFromFace(bk, face),
+    makeFaceOnSurface: (surface, wire) => makeFaceOnSurface(bk, surface, wire),
+    bsplineSurface: (points, rows, cols) => bsplineSurface(bk, points, rows, cols),
+    triangulatedSurface: (points, rows, cols) => triangulatedSurface(bk, points, rows, cols),
+    buildTriFace: (a, b, c) => buildTriFace(bk, a, b, c),
+    sewAndSolidify: (faces, tolerance) => sewAndSolidify(bk, faces, tolerance),
+    interpolatePoints: (points, options) => interpolatePoints(bk, points, options),
+    approximatePoints: (points, options) => approximatePoints(bk, points, options),
+    createPoint3d: (x, y, z) => createPoint3d(bk, x, y, z),
+    createDirection3d: (x, y, z) => createDirection3d(bk, x, y, z),
+    createVector3d: (x, y, z) => createVector3d(bk, x, y, z),
+    createAxis1: (cx, cy, cz, dx, dy, dz) => createAxis1(bk, cx, cy, cz, dx, dy, dz),
+    createAxis2: (ox, oy, oz, zx, zy, zz, xx, xy, xz) =>
+      createAxis2(bk, ox, oy, oz, zx, zy, zz, xx, xy, xz),
+    createAxis3: (ox, oy, oz, zx, zy, zz, xx, xy, xz) =>
+      createAxis3(bk, ox, oy, oz, zx, zy, zz, xx, xy, xz),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'makeVertex'
+    | 'makeEdge'
+    | 'makeWire'
+    | 'makeWireFromMixed'
+    | 'makeFace'
+    | 'makeBox'
+    | 'makeRectangle'
+    | 'makeCylinder'
+    | 'makeSphere'
+    | 'makeCone'
+    | 'makeTorus'
+    | 'makeEllipsoid'
+    | 'makeLineEdge'
+    | 'makeCircleEdge'
+    | 'makeCircleArc'
+    | 'makeArcEdge'
+    | 'makeEllipseEdge'
+    | 'makeEllipseArc'
+    | 'makeBezierEdge'
+    | 'makeTangentArc'
+    | 'makeHelixWire'
+    | 'makeCompound'
+    | 'makeBoxFromCorners'
+    | 'solidFromShell'
+    | 'makeNonPlanarFace'
+    | 'addHolesInFace'
+    | 'removeHolesFromFace'
+    | 'makeFaceOnSurface'
+    | 'bsplineSurface'
+    | 'triangulatedSurface'
+    | 'buildTriFace'
+    | 'sewAndSolidify'
+    | 'interpolatePoints'
+    | 'approximatePoints'
+    | 'createPoint3d'
+    | 'createDirection3d'
+    | 'createVector3d'
+    | 'createAxis1'
+    | 'createAxis2'
+    | 'createAxis3'
+  >;
 }

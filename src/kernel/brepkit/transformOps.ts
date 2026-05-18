@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import {
   type BrepkitHandle,
   solidHandle,
@@ -170,4 +171,59 @@ export function gridPattern(
     countY
   );
   return compoundHandle(id);
+}
+
+import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
+
+/** Apply N transforms sequentially. Inline switch — no native batch in brepkit. */
+export function transformBatch(bk: BrepkitKernel, entries: TransformEntry[]): KernelShape[] {
+  return entries.map((e) => {
+    switch (e.type) {
+      case 'translate':
+        return translate(bk, e.shape, e.x, e.y, e.z);
+      case 'rotate':
+        return rotate(bk, e.shape, e.angle, e.axis, e.center);
+      case 'scale':
+        return scale(bk, e.shape, e.center, e.factor);
+      case 'mirror':
+        return mirror(bk, e.shape, e.origin, e.normal);
+    }
+  });
+}
+
+/** Co-located factory: returns the transform slice of {@link KernelAdapter} bound to `bk`. */
+export function makeTransformOps(bk: BrepkitKernel) {
+  return {
+    transform: (shape, trsf) => transform(bk, shape, trsf),
+    translate: (shape, x, y, z) => translate(bk, shape, x, y, z),
+    rotate: (shape, angle, axis, center) => rotate(bk, shape, angle, axis, center),
+    mirror: (shape, origin, normal) => mirror(bk, shape, origin, normal),
+    scale: (shape, center, factor) => scale(bk, shape, center, factor),
+    generalTransform: (shape, linear, translation, isOrthogonal) =>
+      generalTransform(bk, shape, linear, translation, isOrthogonal),
+    generalTransformNonOrthogonal: (shape, linear, translation) =>
+      generalTransformNonOrthogonal(bk, shape, linear, translation),
+    positionOnCurve: (shape, spine, param) => positionOnCurve(bk, shape, spine, param),
+    linearPattern: (shape, direction, spacing, count) =>
+      linearPattern(bk, shape, direction, spacing, count),
+    circularPattern: (shape, center, axis, angleStep, count) =>
+      circularPattern(bk, shape, center, axis, angleStep, count),
+    gridPattern: (shape, directionX, directionY, spacingX, spacingY, countX, countY) =>
+      gridPattern(bk, shape, directionX, directionY, spacingX, spacingY, countX, countY),
+    transformBatch: (entries) => transformBatch(bk, entries),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'transform'
+    | 'translate'
+    | 'rotate'
+    | 'mirror'
+    | 'scale'
+    | 'generalTransform'
+    | 'generalTransformNonOrthogonal'
+    | 'positionOnCurve'
+    | 'linearPattern'
+    | 'circularPattern'
+    | 'gridPattern'
+    | 'transformBatch'
+  >;
 }

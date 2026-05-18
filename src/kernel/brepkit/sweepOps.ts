@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { type BrepkitHandle, solidHandle, unwrap, noop, warnOnce } from './helpers.js';
 import { extractNurbsFromEdge } from './internalOps.js';
 import { iterShapes } from './topologyOps.js';
@@ -414,4 +415,41 @@ export function draftPrism(
     return extruded;
   }
   return shape;
+}
+
+/** Co-located factory: returns the sweep slice of {@link KernelAdapter} bound to `bk`. */
+export function makeSweepOps(bk: BrepkitKernel) {
+  return {
+    extrude: (face, direction, length) => extrude(bk, face, direction, length),
+    revolve: (shape, axis, angle) => revolve(bk, shape, axis, angle),
+    revolveVec: (shape, center, direction, angle) =>
+      revolveVec(bk, shape, center, direction, angle),
+    loft: (wires, ruled, startShape, endShape) => loft(bk, wires, ruled, startShape, endShape),
+    sweep: (wire, spine, options) => sweep(bk, wire, spine, options),
+    simplePipe: (profile, spine) => simplePipe(bk, profile, spine),
+    helicalSweep: (profile, axisOrigin, axisDirection, radius, pitch, turns) =>
+      helicalSweep(bk, profile, axisOrigin, axisDirection, radius, pitch, turns),
+    sweepWithOptions: (profile, pathEdge, contactMode, scaleValues, segments) =>
+      sweepWithOptions(bk, profile, pathEdge, contactMode, scaleValues, segments),
+    sweepPipeShell: (profile, spine, options) => sweepPipeShell(bk, profile, spine, options),
+    loftAdvanced: (wires, options) => loftAdvanced(bk, wires, options),
+    buildExtrusionLaw: (profile, length, endFactor) =>
+      buildExtrusionLaw(bk, profile, length, endFactor),
+    draftPrism: (shape, face, baseFace, height, angleDeg, fuse) =>
+      draftPrism(bk, shape, face, baseFace, height, angleDeg, fuse),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'extrude'
+    | 'revolve'
+    | 'revolveVec'
+    | 'loft'
+    | 'sweep'
+    | 'simplePipe'
+    | 'helicalSweep'
+    | 'sweepWithOptions'
+    | 'sweepPipeShell'
+    | 'loftAdvanced'
+    | 'buildExtrusionLaw'
+    | 'draftPrism'
+  >;
 }

@@ -5,6 +5,7 @@
 
 import type { BrepkitKernel } from './brepkitWasmTypes.js';
 import type { KernelShape, DistanceResult } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { type BrepkitHandle, unwrap, DEFAULT_DEFLECTION } from './helpers.js';
 import { iterShapes } from './topologyOps.js';
 import { vertexPosition, uvBounds, pointOnSurface } from './geometryOps.js';
@@ -315,4 +316,59 @@ export function createDistanceQuery(
       // No-op: arena-based
     },
   };
+}
+
+import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
+import type { ShapeType } from '@/kernel/types.js';
+
+/**
+ * Compose bulk-measurement: brepkit `length()` throws for non-linear shapes,
+ * so we guard to edge/wire/face before calling. OCCT's LinearProperties
+ * returns edge-length sum even for solids — intentional divergence per
+ * ADR-0006.
+ */
+export function measureBulk(
+  bk: BrepkitKernel,
+  shape: KernelShape,
+  includeLinear = false
+): BulkMeasurement {
+  const h = shape as { type: ShapeType };
+  const canMeasureLength = h.type === 'edge' || h.type === 'wire' || h.type === 'face';
+  return {
+    volume: volume(bk, shape),
+    area: area(bk, shape),
+    length: includeLinear && canMeasureLength ? length(bk, shape) : 0,
+    centerOfMass: centerOfMass(bk, shape),
+    boundingBox: boundingBox(bk, shape),
+  };
+}
+
+/** Co-located factory: returns the measurement slice of {@link KernelAdapter} bound to `bk`. */
+export function makeMeasureOps(bk: BrepkitKernel) {
+  return {
+    volume: (shape) => volume(bk, shape),
+    area: (shape) => area(bk, shape),
+    length: (shape) => length(bk, shape),
+    centerOfMass: (shape) => centerOfMass(bk, shape),
+    linearCenterOfMass: (shape) => linearCenterOfMass(bk, shape),
+    boundingBox: (shape) => boundingBox(bk, shape),
+    distance: (a, b) => distance(bk, a, b),
+    surfaceCurvature: (face, u, v) => surfaceCurvature(bk, face, u, v),
+    surfaceCenterOfMass: (face) => surfaceCenterOfMass(bk, face),
+    createDistanceQuery: (referenceShape) => createDistanceQuery(bk, referenceShape),
+    measureBulk: (shape, includeLinear) => measureBulk(bk, shape, includeLinear),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'volume'
+    | 'area'
+    | 'length'
+    | 'centerOfMass'
+    | 'linearCenterOfMass'
+    | 'boundingBox'
+    | 'distance'
+    | 'surfaceCurvature'
+    | 'surfaceCenterOfMass'
+    | 'createDistanceQuery'
+    | 'measureBulk'
+  >;
 }

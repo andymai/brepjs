@@ -367,3 +367,37 @@ export function c2dBasis(h: Curve2dHandle): Curve2dObj {
 export function bb2d(h: BBox2dHandle): BkBBox2d {
   return h as BkBBox2d;
 }
+
+/**
+ * Resolve a callback-style draft angle to a uniform number.
+ * brepkit only supports a single angle per draft call — throws if the
+ * callback would produce distinct angles per face.
+ */
+export function resolveUniformAngle(
+  faces: KernelShape[],
+  angleDeg: number | ((face: KernelShape) => number)
+): number {
+  if (typeof angleDeg !== 'function') return angleDeg;
+  let uniform: number | undefined;
+  for (const face of faces) {
+    let angle: number;
+    try {
+      angle = angleDeg(face);
+    } catch {
+      throw new Error(
+        'brepkit does not support variable draft with multiple distinct angles. ' +
+          'Use the OCCT kernel for per-face angle variation, or use a uniform angle.'
+      );
+    }
+    if (uniform === undefined) {
+      uniform = angle;
+    } else if (angle !== uniform) {
+      throw new Error(
+        'brepkit does not support variable draft with multiple distinct angles. ' +
+          'Use the OCCT kernel for per-face angle variation, or use a uniform angle.'
+      );
+    }
+  }
+  if (uniform === undefined) throw new Error('draft: no faces provided');
+  return uniform;
+}
