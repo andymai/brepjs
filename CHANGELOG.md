@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.14.2](https://github.com/andymai/brepjs/compare/brepjs-v18.14.1...brepjs-v18.14.2) (2026-05-18)
+
+
+### Bug Fixes
+
+* **ci:** install tsx directly in docs workflow ([#1022](https://github.com/andymai/brepjs/issues/1022)) ([565ca35](https://github.com/andymai/brepjs/commit/565ca35247105bf5b8ef1f3bf92da6ba7e24c771))
+
 ## [18.14.1](https://github.com/andymai/brepjs/compare/brepjs-v18.14.0...brepjs-v18.14.1) (2026-05-18)
 
 
