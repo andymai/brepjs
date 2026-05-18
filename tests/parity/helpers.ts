@@ -21,9 +21,6 @@ export const REL_TOL = 1e-6;
  */
 export const fcDim = (): fc.Arbitrary<number> => fc.double({ min: 0.5, max: 50, noNaN: true });
 
-/** Same but biased toward integers for cleaner error messages. */
-export const fcIntDim = (): fc.Arbitrary<number> => fc.integer({ min: 1, max: 20 });
-
 /** A coordinate offset (can be negative). */
 export const fcOffset = (): fc.Arbitrary<number> => fc.double({ min: -25, max: 25, noNaN: true });
 

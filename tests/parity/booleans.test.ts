@@ -19,7 +19,7 @@ beforeAll(async () => {
   await initKernel();
 }, 30000);
 
-/** Take a binary boolean operation and return its volume, or NaN on failure. */
+/** Volume of a shape; throws (via unwrap) if the measurement fails. */
 function volOf(shape: Shape3D): number {
   return unwrap(measureVolume(shape));
 }

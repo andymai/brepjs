@@ -184,11 +184,12 @@ describe('INVARIANT: linear scaling of dimensions scales volume cubically', () =
           const base = unwrap(measureVolume(unitCube(w, d, h)));
           const scaled = unwrap(measureVolume(unitCube(w * lambda, d * lambda, h * lambda)));
           const expected = base * lambda ** 3;
-          // Relative tolerance — values can range across many orders of magnitude.
-          expect(scaled).toBeCloseTo(
-            expected,
-            -Math.floor(Math.log10(Math.max(expected, REL_TOL)))
-          );
+          // Relative tolerance: |scaled - expected| / |expected| < REL_TOL.
+          // Box volume is an exact closed-form measurement (no curved geometry),
+          // so the only error source is float arithmetic — REL_TOL = 1e-6 is well
+          // within reach for a correct kernel.
+          const relErr = Math.abs(scaled - expected) / Math.max(Math.abs(expected), 1e-9);
+          expect(relErr).toBeLessThan(REL_TOL);
         }
       ),
       { numRuns: NUM_RUNS }
