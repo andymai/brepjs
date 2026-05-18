@@ -33,10 +33,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # tsx is not in root devDependencies; force npx to install it
-      # explicitly so the script can run. Without -p, npx auto-download
-      # has been unreliable on the CI runner.
-      - run: npx -p tsx@4.22.1 -y -- tsx scripts/generate-function-lookup.ts
+      # tsx is not in root devDependencies; install it directly in the
+      # workspace's node_modules instead of relying on npx auto-download,
+      # which has been unreliable on the CI runner.
+      - run: npm install --no-save tsx@4.22.1
+      - run: ./node_modules/.bin/tsx scripts/generate-function-lookup.ts
       - run: npm run docs:api
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
