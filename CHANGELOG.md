@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.14.0](https://github.com/andymai/brepjs/compare/brepjs-v18.13.0...brepjs-v18.14.0) (2026-05-18)
+
+
+### Features
+
+* **brepkit:** land H section multi-wire + F evolution close-tied match ([#1016](https://github.com/andymai/brepjs/issues/1016)) ([419078e](https://github.com/andymai/brepjs/commit/419078e5f81b679e2621d290aacf93598b75fabf))
+
 ## [18.13.0](https://github.com/andymai/brepjs/compare/brepjs-v18.12.0...brepjs-v18.13.0) (2026-05-17)
 
 
