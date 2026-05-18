@@ -9,6 +9,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { Curve2dHandle, BBox2dHandle } from '@/kernel/kernel2dTypes.js';
 import type { Curve2dObj, BBox2d } from '../geometry2d.js';
 import * as g2d from '../geometry2d.js';
@@ -1102,4 +1103,171 @@ export function fillSurface(
   builder.delete();
   progress.delete();
   return shape;
+}
+
+/** Co-located factory: returns the Kernel2D slice of {@link KernelAdapter} bound to `oc`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeKernel2dOps(oc: KernelInstance) {
+  return {
+    wrapCurve2dHandle: (handle) => wrapCurve2dHandle(handle),
+    createCurve2dAdaptor: (handle) => createCurve2dAdaptor(handle),
+    createPoint2d: (x, y) => createPoint2d(x, y),
+    createDirection2d: (x, y) => createDirection2d(x, y),
+    createVector2d: (x, y) => createVector2d(x, y),
+    createAxis2d: (px, py, dx, dy) => createAxis2d(px, py, dx, dy),
+    makeLine2d: (x1, y1, x2, y2) => makeLine2d(x1, y1, x2, y2),
+    makeCircle2d: (cx, cy, radius, sense) => makeCircle2d(cx, cy, radius, sense),
+    makeArc2dThreePoints: (x1, y1, xm, ym, x2, y2) => makeArc2dThreePoints(x1, y1, xm, ym, x2, y2),
+    makeArc2dTangent: (startX, startY, tangentX, tangentY, endX, endY) =>
+      makeArc2dTangent(startX, startY, tangentX, tangentY, endX, endY),
+    makeEllipse2d: (cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense) =>
+      makeEllipse2d(cx, cy, majorRadius, minorRadius, xDirX, xDirY, sense),
+    makeEllipseArc2d: (
+      cx,
+      cy,
+      majorRadius,
+      minorRadius,
+      startAngle,
+      endAngle,
+      xDirX,
+      xDirY,
+      sense
+    ) =>
+      makeEllipseArc2d(cx, cy, majorRadius, minorRadius, startAngle, endAngle, xDirX, xDirY, sense),
+    makeBezier2d: (points) => makeBezier2d(points),
+    makeBSpline2d: (points, options) => makeBSpline2d(points, options),
+    evaluateCurve2d: (curve, param) => evaluateCurve2d(curve, param),
+    evaluateCurve2dD1: (curve, param) => evaluateCurve2dD1(curve, param),
+    getCurve2dBounds: (curve) => getCurve2dBounds(curve),
+    getCurve2dType: (curve) => getCurve2dType(curve),
+    trimCurve2d: (curve, start, end) => trimCurve2d(curve, start, end),
+    reverseCurve2d: (curve) => {
+      reverseCurve2d(curve);
+    },
+    copyCurve2d: (curve) => copyCurve2d(curve),
+    offsetCurve2d: (curve, offset) => offsetCurve2d(curve, offset),
+    translateCurve2d: (curve, dx, dy) => translateCurve2d(curve, dx, dy),
+    rotateCurve2d: (curve, angle, cx, cy) => rotateCurve2d(curve, angle, cx, cy),
+    scaleCurve2d: (curve, factor, cx, cy) => scaleCurve2d(curve, factor, cx, cy),
+    mirrorCurve2dAtPoint: (curve, cx, cy) => mirrorCurve2dAtPoint(curve, cx, cy),
+    mirrorCurve2dAcrossAxis: (curve, originX, originY, dirX, dirY) =>
+      mirrorCurve2dAcrossAxis(curve, originX, originY, dirX, dirY),
+    affinityTransform2d: (curve, axisOriginX, axisOriginY, axisDirX, axisDirY, ratio) =>
+      affinityTransform2d(curve, axisOriginX, axisOriginY, axisDirX, axisDirY, ratio),
+    createIdentityGTrsf2d: () => createIdentityGTrsf2d(),
+    createAffinityGTrsf2d: (originX, originY, dirX, dirY, ratio) =>
+      createAffinityGTrsf2d(originX, originY, dirX, dirY, ratio),
+    createTranslationGTrsf2d: (dx, dy) => createTranslationGTrsf2d(dx, dy),
+    createMirrorGTrsf2d: (cx, cy, mode, originX, originY, dirX, dirY) =>
+      createMirrorGTrsf2d(cx, cy, mode, originX, originY, dirX, dirY),
+    createRotationGTrsf2d: (angle, cx, cy) => createRotationGTrsf2d(angle, cx, cy),
+    createScaleGTrsf2d: (factor, cx, cy) => createScaleGTrsf2d(factor, cx, cy),
+    setGTrsf2dTranslationPart: (gtrsf, dx, dy) => {
+      setGTrsf2dTranslationPart(gtrsf, dx, dy);
+    },
+    multiplyGTrsf2d: (base, other) => {
+      multiplyGTrsf2d(base, other);
+    },
+    transformCurve2dGeneral: (curve, gtrsf) => transformCurve2dGeneral(curve, gtrsf),
+    intersectCurves2d: (c1, c2, tolerance) => intersectCurves2d(c1, c2, tolerance),
+    projectPointOnCurve2d: (curve, x, y) => projectPointOnCurve2d(curve, x, y),
+    distanceBetweenCurves2d: (c1, c2, p1Start, p1End, p2Start, p2End) =>
+      distanceBetweenCurves2d(c1, c2, p1Start, p1End, p2Start, p2End),
+    approximateCurve2dAsBSpline: (curve, tolerance, continuity, maxSegments) =>
+      approximateCurve2dAsBSpline(curve, tolerance, continuity, maxSegments),
+    decomposeBSpline2dToBeziers: (curve) => decomposeBSpline2dToBeziers(curve),
+    createBoundingBox2d: () => createBoundingBox2d(),
+    addCurveToBBox2d: (bbox, curve, tolerance) => {
+      addCurveToBBox2d(bbox, curve, tolerance);
+    },
+    getBBox2dBounds: (bbox) => getBBox2dBounds(bbox),
+    mergeBBox2d: (target, other) => {
+      mergeBBox2d(target, other);
+    },
+    isBBox2dOut: (a, b) => isBBox2dOut(a, b),
+    isBBox2dOutPoint: (bbox, x, y) => isBBox2dOutPoint(bbox, x, y),
+    getCurve2dCircleData: (curve) => getCurve2dCircleData(curve),
+    getCurve2dEllipseData: (curve) => getCurve2dEllipseData(curve),
+    getCurve2dBezierPoles: (curve) => getCurve2dBezierPoles(curve),
+    getCurve2dBezierDegree: (curve) => getCurve2dBezierDegree(curve),
+    getCurve2dBSplineData: (curve) => getCurve2dBSplineData(curve),
+    serializeCurve2d: (curve) => serializeCurve2d(curve),
+    deserializeCurve2d: (data) => deserializeCurve2d(data),
+    splitCurve2d: (curve, params) => splitCurve2d(curve, params),
+    liftCurve2dToPlane: (curve, planeOrigin, planeZ, planeX) =>
+      liftCurve2dToPlane(oc, curve, planeOrigin, planeZ, planeX),
+    buildEdgeOnSurface: (curve, surface) => buildEdgeOnSurface(oc, curve, surface),
+    extractSurfaceFromFace: (face) => extractSurfaceFromFace(oc, face),
+    extractCurve2dFromEdge: (edge, face) => extractCurve2dFromEdge(oc, edge, face),
+    buildCurves3d: (wire) => {
+      buildCurves3d(oc, wire);
+    },
+    fixWireOnFace: (wire, face, tolerance) => fixWireOnFace(oc, wire, face, tolerance),
+    fillSurface: (wires, options) => fillSurface(oc, wires, options),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'wrapCurve2dHandle'
+    | 'createCurve2dAdaptor'
+    | 'createPoint2d'
+    | 'createDirection2d'
+    | 'createVector2d'
+    | 'createAxis2d'
+    | 'makeLine2d'
+    | 'makeCircle2d'
+    | 'makeArc2dThreePoints'
+    | 'makeArc2dTangent'
+    | 'makeEllipse2d'
+    | 'makeEllipseArc2d'
+    | 'makeBezier2d'
+    | 'makeBSpline2d'
+    | 'evaluateCurve2d'
+    | 'evaluateCurve2dD1'
+    | 'getCurve2dBounds'
+    | 'getCurve2dType'
+    | 'trimCurve2d'
+    | 'reverseCurve2d'
+    | 'copyCurve2d'
+    | 'offsetCurve2d'
+    | 'translateCurve2d'
+    | 'rotateCurve2d'
+    | 'scaleCurve2d'
+    | 'mirrorCurve2dAtPoint'
+    | 'mirrorCurve2dAcrossAxis'
+    | 'affinityTransform2d'
+    | 'createIdentityGTrsf2d'
+    | 'createAffinityGTrsf2d'
+    | 'createTranslationGTrsf2d'
+    | 'createMirrorGTrsf2d'
+    | 'createRotationGTrsf2d'
+    | 'createScaleGTrsf2d'
+    | 'setGTrsf2dTranslationPart'
+    | 'multiplyGTrsf2d'
+    | 'transformCurve2dGeneral'
+    | 'intersectCurves2d'
+    | 'projectPointOnCurve2d'
+    | 'distanceBetweenCurves2d'
+    | 'approximateCurve2dAsBSpline'
+    | 'decomposeBSpline2dToBeziers'
+    | 'createBoundingBox2d'
+    | 'addCurveToBBox2d'
+    | 'getBBox2dBounds'
+    | 'mergeBBox2d'
+    | 'isBBox2dOut'
+    | 'isBBox2dOutPoint'
+    | 'getCurve2dCircleData'
+    | 'getCurve2dEllipseData'
+    | 'getCurve2dBezierPoles'
+    | 'getCurve2dBezierDegree'
+    | 'getCurve2dBSplineData'
+    | 'serializeCurve2d'
+    | 'deserializeCurve2d'
+    | 'splitCurve2d'
+    | 'liftCurve2dToPlane'
+    | 'buildEdgeOnSurface'
+    | 'extractSurfaceFromFace'
+    | 'extractCurve2dFromEdge'
+    | 'buildCurves3d'
+    | 'fixWireOnFace'
+    | 'fillSurface'
+  >;
 }

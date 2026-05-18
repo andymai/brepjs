@@ -5,6 +5,7 @@
  */
 
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { makeTriFace } from './constructorOps.js';
 
 // ---------------------------------------------------------------------------
@@ -577,4 +578,14 @@ export function hullFromPoints(oc: KernelInstance, points: Vec3[], tolerance: nu
   }
 
   return reconstructBrep(oc, hullResult, tolerance);
+}
+
+/** Co-located factory: returns the hull/builder slice of {@link KernelAdapter} bound to `oc`. */
+export function makeHullOps(oc: KernelInstance) {
+  return {
+    hull: (shapes, tolerance) => hull(oc, shapes, tolerance),
+    hullFromPoints: (points, tolerance) => hullFromPoints(oc, points, tolerance),
+    buildSolidFromFaces: (points, faces, tolerance) =>
+      buildSolidFromFaces(oc, points, faces, tolerance),
+  } satisfies Pick<KernelAdapter, 'hull' | 'hullFromPoints' | 'buildSolidFromFaces'>;
 }

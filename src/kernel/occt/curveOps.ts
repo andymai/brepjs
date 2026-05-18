@@ -5,6 +5,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 
 export interface InterpolateOptions {
   periodic?: boolean;
@@ -122,4 +123,12 @@ export function approximatePoints(
   builder.delete();
   splineBuilder.delete();
   return edge;
+}
+
+/** Co-located factory: returns the curve-construction slice of {@link KernelAdapter} bound to `oc`. */
+export function makeCurveOps(oc: KernelInstance) {
+  return {
+    interpolatePoints: (points, options) => interpolatePoints(oc, points, options ?? {}),
+    approximatePoints: (points, options) => approximatePoints(oc, points, options ?? {}),
+  } satisfies Pick<KernelAdapter, 'interpolatePoints' | 'approximatePoints'>;
 }

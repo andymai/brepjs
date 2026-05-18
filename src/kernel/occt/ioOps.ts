@@ -6,6 +6,7 @@
  */
 
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { uniqueIOFilename } from '@/utils/ioFilename.js';
 
 /**
@@ -181,4 +182,19 @@ export function importIGES(oc: KernelInstance, data: string | ArrayBuffer): Kern
   oc.FS.unlink('/' + filename);
   reader.delete();
   throw new Error('Failed to import IGES file: reader could not parse the input data');
+}
+
+/** Co-located factory: returns the file-I/O slice of {@link KernelAdapter} bound to `oc`. */
+export function makeIoOps(oc: KernelInstance) {
+  return {
+    exportSTEP: (shapes) => exportSTEP(oc, shapes),
+    exportSTL: (shape, binary) => exportSTL(oc, shape, binary),
+    importSTEP: (data) => importSTEP(oc, data),
+    importSTL: (data) => importSTL(oc, data),
+    exportIGES: (shapes) => exportIGES(oc, shapes),
+    importIGES: (data) => importIGES(oc, data),
+  } satisfies Pick<
+    KernelAdapter,
+    'exportSTEP' | 'exportSTL' | 'importSTEP' | 'importSTL' | 'exportIGES' | 'importIGES'
+  >;
 }

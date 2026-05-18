@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-05-08T22:28:19.499Z",
+  "generated": "2026-05-18T08:58:06.395Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -261,6 +261,11 @@
       "file": "src/topology/wrapperFns.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/topology/wrapperFns.ts|max-function-lines|createWrapped3D|#0"
+    },
+    {
+      "file": "src/utils/uuid.ts",
+      "rule": "no-double-cast",
+      "fingerprint": "src/utils/uuid.ts|no-double-cast|crypto.getRandomValues(new Uint8Array(1)) as unknown as [number]|#0"
     }
   ]
 }

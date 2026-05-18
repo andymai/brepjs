@@ -6,6 +6,7 @@
  */
 
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 
 export type PipelineOp = 'fuse' | 'cut' | 'intersect';
 
@@ -47,4 +48,12 @@ export function executeBooleanPipeline(
 
   // C++ pipeline not available — return undefined so caller uses higher-level fallback
   return undefined;
+}
+
+/** Co-located factory: returns the boolean-pipeline slice of {@link KernelAdapter} bound to `oc`. */
+export function makeBooleanPipelineOps(oc: KernelInstance) {
+  return {
+    booleanPipeline: (base, steps, options) =>
+      executeBooleanPipeline(oc, base, steps, options) ?? null,
+  } satisfies Pick<KernelAdapter, 'booleanPipeline'>;
 }

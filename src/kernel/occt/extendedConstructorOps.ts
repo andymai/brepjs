@@ -7,6 +7,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { OcctPoint } from './wasmTypes/index.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
@@ -665,4 +666,70 @@ export function createAxis3(
   pnt.delete();
   z.delete();
   return ax;
+}
+
+/** Co-located factory: returns the extended-construction slice of {@link KernelAdapter} bound to `oc`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeExtendedConstructorOps(oc: KernelInstance) {
+  return {
+    makeLineEdge: (p1, p2) => makeLineEdge(oc, p1, p2),
+    makeCircleEdge: (center, normal, radius) => makeCircleEdge(oc, center, normal, radius),
+    makeCircleArc: (center, normal, radius, startAngle, endAngle) =>
+      makeCircleArc(oc, center, normal, radius, startAngle, endAngle),
+    makeArcEdge: (p1, p2, p3) => makeArcEdge(oc, p1, p2, p3),
+    makeEllipseEdge: (center, normal, majorRadius, minorRadius, xDir) =>
+      makeEllipseEdge(oc, center, normal, majorRadius, minorRadius, xDir),
+    makeEllipseArc: (center, normal, majorRadius, minorRadius, startAngle, endAngle, xDir) =>
+      makeEllipseArc(oc, center, normal, majorRadius, minorRadius, startAngle, endAngle, xDir),
+    makeBezierEdge: (points) => makeBezierEdge(oc, points),
+    makeTangentArc: (startPoint, startTangent, endPoint) =>
+      makeTangentArc(oc, startPoint, startTangent, endPoint),
+    makeHelixWire: (pitch, height, radius, center, direction, leftHanded) =>
+      makeHelixWire(oc, pitch, height, radius, center, direction, leftHanded),
+    makeCompound: (shapes) => makeCompound(oc, shapes),
+    makeBoxFromCorners: (p1, p2) => makeBoxFromCorners(oc, p1, p2),
+    makeRectangle: (width, height) => makeRectangle(oc, width, height),
+    solidFromShell: (shell) => solidFromShell(oc, shell),
+    makeEllipsoid: (aLength, bLength, cLength) => makeEllipsoidSolid(oc, aLength, bLength, cLength),
+    toBREP: (shape) => toBREP(oc, shape),
+    fromBREP: (data) => fromBREP(oc, data),
+    exportSTEPAssembly: (parts, options) => exportSTEPAssembly(oc, parts, options ?? {}),
+    dispose: (handle) => {
+      dispose(oc, handle);
+    },
+    createPoint3d: (x, y, z) => createPoint3d(oc, x, y, z),
+    createDirection3d: (x, y, z) => createDirection3d(oc, x, y, z),
+    createVector3d: (x, y, z) => createVector3d(oc, x, y, z),
+    createAxis1: (cx, cy, cz, dx, dy, dz) => createAxis1(oc, cx, cy, cz, dx, dy, dz),
+    createAxis2: (ox, oy, oz, zx, zy, zz, xx, xy, xz) =>
+      createAxis2(oc, ox, oy, oz, zx, zy, zz, xx, xy, xz),
+    createAxis3: (ox, oy, oz, zx, zy, zz, xx, xy, xz) =>
+      createAxis3(oc, ox, oy, oz, zx, zy, zz, xx, xy, xz),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'makeLineEdge'
+    | 'makeCircleEdge'
+    | 'makeCircleArc'
+    | 'makeArcEdge'
+    | 'makeEllipseEdge'
+    | 'makeEllipseArc'
+    | 'makeBezierEdge'
+    | 'makeTangentArc'
+    | 'makeHelixWire'
+    | 'makeCompound'
+    | 'makeBoxFromCorners'
+    | 'makeRectangle'
+    | 'solidFromShell'
+    | 'makeEllipsoid'
+    | 'toBREP'
+    | 'fromBREP'
+    | 'exportSTEPAssembly'
+    | 'dispose'
+    | 'createPoint3d'
+    | 'createDirection3d'
+    | 'createVector3d'
+    | 'createAxis1'
+    | 'createAxis2'
+    | 'createAxis3'
+  >;
 }

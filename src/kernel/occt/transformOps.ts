@@ -7,6 +7,7 @@
 
 import type { TransformEntry } from '@/kernel/interfaces/transformOps.js';
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { perfTimer } from '../perfStats.js';
 
 export type { TransformEntry };
@@ -122,8 +123,8 @@ export function rotate(
   oc: KernelInstance,
   shape: KernelShape,
   angle: number,
-  axis: [number, number, number] = [0, 0, 1],
-  center: [number, number, number] = [0, 0, 0]
+  axis: readonly [number, number, number] = [0, 0, 1],
+  center: readonly [number, number, number] = [0, 0, 0]
 ): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const origin = new oc.gp_Pnt_3(...center);
@@ -144,8 +145,8 @@ export function rotate(
 export function mirror(
   oc: KernelInstance,
   shape: KernelShape,
-  origin: [number, number, number],
-  normal: [number, number, number]
+  origin: readonly [number, number, number],
+  normal: readonly [number, number, number]
 ): KernelShape {
   const trsf = new oc.gp_Trsf_1();
   const pnt = new oc.gp_Pnt_3(...origin);
@@ -166,7 +167,7 @@ export function mirror(
 export function scale(
   oc: KernelInstance,
   shape: KernelShape,
-  center: [number, number, number],
+  center: readonly [number, number, number],
   factor: number
 ): KernelShape {
   const trsf = new oc.gp_Trsf_1();
@@ -243,4 +244,29 @@ export function simplify(oc: KernelInstance, shape: KernelShape): KernelShape {
   const result = upgrader.Shape();
   upgrader.delete();
   return result;
+}
+
+/** Co-located factory: returns the transform slice of {@link KernelAdapter} bound to `oc`. */
+export function makeTransformOps(oc: KernelInstance) {
+  return {
+    transform: (shape, trsf) => transform(oc, shape, trsf),
+    translate: (shape, x, y, z) => translate(oc, shape, x, y, z),
+    rotate: (shape, angle, axis, center) => rotate(oc, shape, angle, axis, center),
+    mirror: (shape, origin, normal) => mirror(oc, shape, origin, normal),
+    scale: (shape, center, factor) => scale(oc, shape, center, factor),
+    transformBatch: (entries) => transformBatch(oc, entries),
+    generalTransform: (shape, linear, translation, isOrthogonal) =>
+      generalTransform(oc, shape, linear, translation, isOrthogonal),
+    simplify: (shape) => simplify(oc, shape),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'transform'
+    | 'translate'
+    | 'rotate'
+    | 'mirror'
+    | 'scale'
+    | 'transformBatch'
+    | 'generalTransform'
+    | 'simplify'
+  >;
 }

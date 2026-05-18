@@ -9,6 +9,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType, OperationResult } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { transformWithEvolution } from './evolutionOps.js';
 import { uniqueIOFilename } from '@/utils/ioFilename.js';
 import { wasmIndex } from '@/utils/vec3.js';
@@ -59,8 +60,8 @@ export function composeTransform(
     | {
         type: 'rotate';
         angle: number;
-        axis?: [number, number, number];
-        center?: [number, number, number];
+        axis?: readonly [number, number, number] | undefined;
+        center?: readonly [number, number, number] | undefined;
       }
   >
 ): { handle: KernelType; dispose: () => void } {
@@ -125,19 +126,19 @@ export function sweepPipeShell(
   profile: KernelShape,
   spine: KernelShape,
   options: {
-    transitionMode?: 'transformed' | 'round' | 'right';
-    auxiliary?: KernelShape;
-    law?: KernelType;
-    contact?: boolean;
-    correction?: boolean;
-    frenet?: boolean;
-    support?: KernelType;
-    shellMode?: boolean;
-    tolerance?: number;
-    boundTolerance?: number;
-    angularTolerance?: number;
-    maxDegree?: number;
-    maxSegments?: number;
+    transitionMode?: 'transformed' | 'round' | 'right' | undefined;
+    auxiliary?: KernelShape | undefined;
+    law?: KernelType | undefined;
+    contact?: boolean | undefined;
+    correction?: boolean | undefined;
+    frenet?: boolean | undefined;
+    support?: KernelType | undefined;
+    shellMode?: boolean | undefined;
+    tolerance?: number | undefined;
+    boundTolerance?: number | undefined;
+    angularTolerance?: number | undefined;
+    maxDegree?: number | undefined;
+    maxSegments?: number | undefined;
   } = {}
 ): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
   const builder = new oc.BRepOffsetAPI_MakePipeShell(spine);
@@ -1001,7 +1002,11 @@ export function draftPrism(
 /** Create an XCAF document with named, colored shape nodes. */
 export function createXCAFDocument(
   oc: KernelInstance,
-  shapes: Array<{ shape: KernelShape; name: string; color?: [number, number, number, number] }>
+  shapes: Array<{
+    shape: KernelShape;
+    name: string;
+    color?: [number, number, number, number] | undefined;
+  }>
 ): KernelType {
   const nameStr = new oc.TCollection_ExtendedString_2('XmlOcaf', true);
   const doc = new oc.TDocStd_Document(nameStr);
@@ -1038,7 +1043,7 @@ export function createXCAFDocument(
 export function writeXCAFToSTEP(
   oc: KernelInstance,
   doc: KernelType,
-  options: { unit?: string; modelUnit?: string } = {}
+  options: { unit?: string | undefined; modelUnit?: string | undefined } = {}
 ): string {
   // Configure units if provided
   if (options.unit || options.modelUnit) {
@@ -1091,8 +1096,16 @@ export function writeXCAFToSTEP(
 /** Export shapes to STEP with full configuration. */
 export function exportSTEPConfigured(
   oc: KernelInstance,
-  shapes: Array<{ shape: KernelShape; name?: string; color?: [number, number, number, number] }>,
-  options: { unit?: string; modelUnit?: string; schema?: number } = {}
+  shapes: Array<{
+    shape: KernelShape;
+    name?: string | undefined;
+    color?: [number, number, number, number] | undefined;
+  }>,
+  options: {
+    unit?: string | undefined;
+    modelUnit?: string | undefined;
+    schema?: number | undefined;
+  } = {}
 ): string {
   const unit = options.unit ?? 'MM';
   const modelUnit = options.modelUnit ?? unit;
@@ -1184,4 +1197,81 @@ export function exportSTEPConfigured(
     return new TextDecoder().decode(file);
   }
   throw new Error('STEP configured export failed: writer did not complete successfully');
+}
+
+/** Co-located factory: returns the advanced-ops slice of {@link KernelAdapter} bound to `oc`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeAdvancedOps(oc: KernelInstance) {
+  return {
+    composeTransform: (ops) => composeTransform(oc, ops),
+    applyComposedTransformWithHistory: (shape, transformHandle, inputFaceHashes, hashUpperBound) =>
+      applyComposedTransformWithHistory(
+        oc,
+        shape,
+        transformHandle,
+        inputFaceHashes,
+        hashUpperBound
+      ),
+    sweepPipeShell: (profile, spine, options) => sweepPipeShell(oc, profile, spine, options ?? {}),
+    loftAdvanced: (wires, options) => loftAdvanced(oc, wires, options ?? {}),
+    buildExtrusionLaw: (profile, length, endFactor) =>
+      buildExtrusionLaw(oc, profile, length, endFactor),
+    revolveVec: (shape, center, direction, angle) =>
+      revolveVec(oc, shape, center, direction, angle),
+    positionOnCurve: (shape, spine, param) => positionOnCurve(oc, shape, spine, param),
+    linearPattern: (shape, direction, spacing, count) =>
+      linearPattern(oc, shape, direction, spacing, count),
+    circularPattern: (shape, center, axis, angleStep, count) =>
+      circularPattern(oc, shape, center, axis, angleStep, count),
+    makeNonPlanarFace: (wire) => makeNonPlanarFace(oc, wire),
+    addHolesInFace: (face, holeWires) => addHolesInFace(oc, face, holeWires),
+    removeHolesFromFace: (face) => removeHolesFromFace(oc, face),
+    makeFaceOnSurface: (surface, wire) => makeFaceOnSurface(oc, surface, wire),
+    bsplineSurface: (points, rows, cols) => bsplineSurface(oc, points, rows, cols),
+    triangulatedSurface: (points, rows, cols) => triangulatedSurface(oc, points, rows, cols),
+    sewAndSolidify: (faces, tolerance) => sewAndSolidify(oc, faces, tolerance),
+    fixShape: (shape) => fixShape(oc, shape),
+    fixSelfIntersection: (wire) => fixSelfIntersection(oc, wire),
+    surfaceCurvature: (face, u, v) => surfaceCurvature(oc, face, u, v),
+    surfaceCenterOfMass: (face) => surfaceCenterOfMass(oc, face),
+    createDistanceQuery: (referenceShape) => createDistanceQuery(oc, referenceShape),
+    projectEdges: (shape, cameraOrigin, cameraDirection, cameraXAxis) =>
+      projectEdges(oc, shape, cameraOrigin, cameraDirection, cameraXAxis),
+    draftPrism: (shape, face, baseFace, height, angleDeg, fuse) =>
+      draftPrism(oc, shape, face, baseFace, height, angleDeg, fuse),
+    generalTransformNonOrthogonal: (shape, linear, translation) =>
+      generalTransformNonOrthogonal(oc, shape, linear, translation),
+    createXCAFDocument: (shapes) => createXCAFDocument(oc, shapes),
+    writeXCAFToSTEP: (doc, options) => writeXCAFToSTEP(oc, doc, options ?? {}),
+    exportSTEPConfigured: (shapes, options) => exportSTEPConfigured(oc, shapes, options ?? {}),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'composeTransform'
+    | 'applyComposedTransformWithHistory'
+    | 'sweepPipeShell'
+    | 'loftAdvanced'
+    | 'buildExtrusionLaw'
+    | 'revolveVec'
+    | 'positionOnCurve'
+    | 'linearPattern'
+    | 'circularPattern'
+    | 'makeNonPlanarFace'
+    | 'addHolesInFace'
+    | 'removeHolesFromFace'
+    | 'makeFaceOnSurface'
+    | 'bsplineSurface'
+    | 'triangulatedSurface'
+    | 'sewAndSolidify'
+    | 'fixShape'
+    | 'fixSelfIntersection'
+    | 'surfaceCurvature'
+    | 'surfaceCenterOfMass'
+    | 'createDistanceQuery'
+    | 'projectEdges'
+    | 'draftPrism'
+    | 'generalTransformNonOrthogonal'
+    | 'createXCAFDocument'
+    | 'writeXCAFToSTEP'
+    | 'exportSTEPConfigured'
+  >;
 }

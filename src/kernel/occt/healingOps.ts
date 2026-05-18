@@ -6,6 +6,7 @@
  */
 
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 
 /**
  * Heals a solid shape using ShapeFix_Solid.
@@ -51,4 +52,13 @@ export function healWire(oc: KernelInstance, wire: KernelShape, face?: KernelSha
   const result = fixer.Wire();
   fixer.delete();
   return result;
+}
+
+/** Co-located factory: returns the healing slice of {@link KernelAdapter} bound to `oc`. */
+export function makeHealingOps(oc: KernelInstance) {
+  return {
+    healSolid: (shape) => healSolid(oc, shape),
+    healFace: (shape) => healFace(oc, shape),
+    healWire: (wire, face) => healWire(oc, wire, face),
+  } satisfies Pick<KernelAdapter, 'healSolid' | 'healFace' | 'healWire'>;
 }

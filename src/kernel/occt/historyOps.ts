@@ -14,6 +14,7 @@ import type {
   BooleanDiagnostics,
   DiagnosticOperationResult,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { OcctSimplifyBuilder } from './wasmTypes/index.js';
 import {
   transformWithEvolution,
@@ -433,4 +434,87 @@ export function draftWithHistory(
     origin.delete();
     dir.delete();
   }
+}
+
+/** Co-located factory: returns the history-tracking slice of {@link KernelAdapter} bound to `oc`. */
+// brepjs-patterns-disable: max-function-lines
+export function makeHistoryOps(oc: KernelInstance) {
+  return {
+    translateWithHistory: (shape, x, y, z, inputFaceHashes, hashUpperBound) =>
+      translateWithHistory(oc, shape, x, y, z, inputFaceHashes, hashUpperBound),
+    rotateWithHistory: (shape, angle, inputFaceHashes, hashUpperBound, axis, center) =>
+      rotateWithHistory(oc, shape, angle, inputFaceHashes, hashUpperBound, axis, center),
+    mirrorWithHistory: (shape, origin, normal, inputFaceHashes, hashUpperBound) =>
+      mirrorWithHistory(oc, shape, origin, normal, inputFaceHashes, hashUpperBound),
+    scaleWithHistory: (shape, center, factor, inputFaceHashes, hashUpperBound) =>
+      scaleWithHistory(oc, shape, center, factor, inputFaceHashes, hashUpperBound),
+    generalTransformWithHistory: (
+      shape,
+      linear,
+      translation,
+      isOrthogonal,
+      inputFaceHashes,
+      hashUpperBound
+    ) =>
+      generalTransformWithHistory(
+        oc,
+        shape,
+        linear,
+        translation,
+        isOrthogonal,
+        inputFaceHashes,
+        hashUpperBound
+      ),
+    fuseWithHistory: (shape, tool, inputFaceHashes, hashUpperBound, options) =>
+      fuseWithHistory(oc, shape, tool, inputFaceHashes, hashUpperBound, options),
+    cutWithHistory: (shape, tool, inputFaceHashes, hashUpperBound, options) =>
+      cutWithHistory(oc, shape, tool, inputFaceHashes, hashUpperBound, options),
+    intersectWithHistory: (shape, tool, inputFaceHashes, hashUpperBound, options) =>
+      intersectWithHistory(oc, shape, tool, inputFaceHashes, hashUpperBound, options),
+    filletWithHistory: (shape, edges, radius, inputFaceHashes, hashUpperBound) =>
+      filletWithHistory(oc, shape, edges, radius, inputFaceHashes, hashUpperBound),
+    chamferWithHistory: (shape, edges, distance, inputFaceHashes, hashUpperBound) =>
+      chamferWithHistory(oc, shape, edges, distance, inputFaceHashes, hashUpperBound),
+    shellWithHistory: (shape, faces, thickness, inputFaceHashes, hashUpperBound, tolerance) =>
+      shellWithHistory(oc, shape, faces, thickness, inputFaceHashes, hashUpperBound, tolerance),
+    thickenWithHistory: (shape, thickness, inputFaceHashes, hashUpperBound) =>
+      thickenWithHistory(oc, shape, thickness, inputFaceHashes, hashUpperBound),
+    offsetWithHistory: (shape, distance, inputFaceHashes, hashUpperBound, tolerance) =>
+      offsetWithHistory(oc, shape, distance, inputFaceHashes, hashUpperBound, tolerance),
+    draftWithHistory: (
+      shape,
+      faces,
+      pullDirection,
+      neutralPlane,
+      angleDeg,
+      inputFaceHashes,
+      hashUpperBound
+    ) =>
+      draftWithHistory(
+        oc,
+        shape,
+        faces,
+        pullDirection,
+        neutralPlane,
+        angleDeg,
+        inputFaceHashes,
+        hashUpperBound
+      ),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'translateWithHistory'
+    | 'rotateWithHistory'
+    | 'mirrorWithHistory'
+    | 'scaleWithHistory'
+    | 'generalTransformWithHistory'
+    | 'fuseWithHistory'
+    | 'cutWithHistory'
+    | 'intersectWithHistory'
+    | 'filletWithHistory'
+    | 'chamferWithHistory'
+    | 'shellWithHistory'
+    | 'thickenWithHistory'
+    | 'offsetWithHistory'
+    | 'draftWithHistory'
+  >;
 }

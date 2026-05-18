@@ -13,8 +13,10 @@ import type {
   KernelShape,
   BooleanOptions,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { perfTimer } from '../perfStats.js';
 import { cppFuseAll, cppCutAll } from './booleanBatchOps.js';
+import { isValid } from './topologyOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
 /** Tolerance passed to OCCT SimplifyResult (ShapeUpgrade_UnifySameDomain). */
@@ -420,4 +422,21 @@ export function checkBoolean(
     });
   }
   return { valid: issues.length === 0, issues };
+}
+
+/** Co-located factory: returns the boolean-ops slice of {@link KernelAdapter} bound to `oc`. */
+export function makeBooleanOps(oc: KernelInstance) {
+  return {
+    fuse: (shape, tool, options) => fuse(oc, shape, tool, options),
+    cut: (shape, tool, options) => cut(oc, shape, tool, options),
+    intersect: (shape, tool, options) => intersect(oc, shape, tool, options),
+    section: (shape, plane, approximation) => section(oc, shape, plane, approximation),
+    fuseAll: (shapes, options) => fuseAll(oc, shapes, options),
+    cutAll: (shape, tools, options) => cutAll(oc, shape, tools, options),
+    split: (shape, tools) => split(oc, shape, tools),
+    checkBoolean: (shape, tool, op) => checkBoolean(oc, shape, tool, op, (s) => isValid(oc, s)),
+  } satisfies Pick<
+    KernelAdapter,
+    'fuse' | 'cut' | 'intersect' | 'section' | 'fuseAll' | 'cutAll' | 'split' | 'checkBoolean'
+  >;
 }

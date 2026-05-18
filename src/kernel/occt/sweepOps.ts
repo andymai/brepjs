@@ -8,6 +8,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { perfTimer } from '../perfStats.js';
 
 /**
@@ -271,4 +272,20 @@ export function extrudeBatch(
 
   // JS fallback — extrude() has its own perfTimer
   return entries.map((e) => extrude(oc, e.face, e.direction, e.length));
+}
+
+/** Co-located factory: returns the sweep slice of {@link KernelAdapter} bound to `oc`. */
+export function makeSweepOps(oc: KernelInstance) {
+  return {
+    extrude: (face, direction, length) => extrude(oc, face, direction, length),
+    revolve: (shape, axis, angle) => revolve(oc, shape, axis, angle),
+    loft: (wires, ruled, startShape, endShape) => loft(oc, wires, ruled, startShape, endShape),
+    sweep: (wire, spine, options) => sweep(oc, wire, spine, options ?? {}),
+    simplePipe: (profile, spine) => simplePipe(oc, profile, spine),
+    loftBatch: (entries) => loftBatch(oc, entries),
+    extrudeBatch: (entries) => extrudeBatch(oc, entries),
+  } satisfies Pick<
+    KernelAdapter,
+    'extrude' | 'revolve' | 'loft' | 'sweep' | 'simplePipe' | 'loftBatch' | 'extrudeBatch'
+  >;
 }

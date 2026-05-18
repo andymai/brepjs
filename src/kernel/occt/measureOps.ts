@@ -7,6 +7,7 @@
 
 import type { BulkMeasurement } from '@/kernel/interfaces/measureOps.js';
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 
 export type { BulkMeasurement };
 
@@ -235,3 +236,29 @@ export interface CurvatureResult {
 
 // Re-export HASH_CODE_MAX for use by other modules
 export { HASH_CODE_MAX };
+
+/** Co-located factory: returns the measurement slice of {@link KernelAdapter} bound to `oc`. */
+export function makeMeasureOps(oc: KernelInstance) {
+  return {
+    volume: (shape) => volume(oc, shape),
+    area: (shape) => area(oc, shape),
+    length: (shape) => length(oc, shape),
+    centerOfMass: (shape) => centerOfMass(oc, shape),
+    linearCenterOfMass: (shape) => linearCenterOfMass(oc, shape),
+    boundingBox: (shape) => boundingBox(oc, shape),
+    distance: (a, b) => distance(oc, a, b),
+    classifyPointOnFace: (face, u, v, tolerance) => classifyPointOnFace(oc, face, u, v, tolerance),
+    measureBulk: (shape, includeLinear) => measureBulk(oc, shape, includeLinear),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'volume'
+    | 'area'
+    | 'length'
+    | 'centerOfMass'
+    | 'linearCenterOfMass'
+    | 'boundingBox'
+    | 'distance'
+    | 'classifyPointOnFace'
+    | 'measureBulk'
+  >;
+}

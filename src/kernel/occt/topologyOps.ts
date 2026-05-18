@@ -8,6 +8,7 @@
  */
 
 import type { KernelInstance, KernelShape, ShapeType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { HASH_CODE_MAX } from './measureOps.js';
 
 // Static type enum map for bulk extraction (TopologyExtractor uses integer types)
@@ -197,4 +198,22 @@ export function isSame(a: KernelShape, b: KernelShape): boolean {
  */
 export function isEqual(a: KernelShape, b: KernelShape): boolean {
   return a.IsEqual(b);
+}
+
+/** Co-located factory: returns the topology-iteration slice of {@link KernelAdapter} bound to `oc`. */
+export function makeTopologyOps(oc: KernelInstance) {
+  return {
+    iterShapes: (shape, type) => iterShapes(oc, shape, type),
+    iterShapeList: (list, callback) => {
+      iterShapeList(oc, list, callback);
+    },
+    shapeType: (shape) => shapeType(oc, shape),
+    isSame: (a, b) => isSame(a, b),
+    isEqual: (a, b) => isEqual(a, b),
+    isValid: (shape) => isValid(oc, shape),
+    sew: (shapes, tolerance) => sew(oc, shapes, tolerance),
+  } satisfies Pick<
+    KernelAdapter,
+    'iterShapes' | 'iterShapeList' | 'shapeType' | 'isSame' | 'isEqual' | 'isValid' | 'sew'
+  >;
 }

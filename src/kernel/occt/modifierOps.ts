@@ -8,6 +8,7 @@
  */
 
 import type { KernelInstance, KernelShape } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { perfTimer } from '../perfStats.js';
 
 export type FilletRadiusSpec =
@@ -410,4 +411,31 @@ export function filletBatch(
     };
     return fillet(oc, e.shape, edges, radiusFn);
   });
+}
+
+/** Co-located factory: returns the modifier slice of {@link KernelAdapter} bound to `oc`. */
+export function makeModifierOps(oc: KernelInstance) {
+  return {
+    fillet: (shape, edges, radius) => fillet(oc, shape, edges, radius),
+    chamfer: (shape, edges, distance) => chamfer(oc, shape, edges, distance),
+    chamferDistAngle: (shape, edges, distance, angleDeg) =>
+      chamferDistAngle(oc, shape, edges, distance, angleDeg),
+    shell: (shape, faces, thickness, tolerance) => shell(oc, shape, faces, thickness, tolerance),
+    thicken: (shape, thickness) => thicken(oc, shape, thickness),
+    offset: (shape, distance, tolerance) => offset(oc, shape, distance, tolerance),
+    offsetWire2D: (wire, dist, joinType) => offsetWire2D(oc, wire, dist, joinType),
+    shellBatch: (entries) => shellBatch(oc, entries),
+    filletBatch: (entries) => filletBatch(oc, entries),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'fillet'
+    | 'chamfer'
+    | 'chamferDistAngle'
+    | 'shell'
+    | 'thicken'
+    | 'offset'
+    | 'offsetWire2D'
+    | 'shellBatch'
+    | 'filletBatch'
+  >;
 }

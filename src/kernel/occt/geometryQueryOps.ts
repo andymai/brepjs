@@ -12,6 +12,7 @@ import type {
   SurfaceType,
   ShapeOrientation,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 
 // ---------------------------------------------------------------------------
 // Vertex queries
@@ -465,4 +466,66 @@ export function getSurfaceCylinderData(
 /** Reverse the U direction of a surface. Returns a new surface handle. */
 export function reverseSurfaceU(_oc: KernelInstance, surface: KernelType): KernelType {
   return surface.get().UReversed();
+}
+
+/** Co-located factory: returns the geometry-query slice of {@link KernelAdapter} bound to `oc`. */
+export function makeGeometryQueryOps(oc: KernelInstance) {
+  return {
+    vertexPosition: (vertex) => vertexPosition(oc, vertex),
+    surfaceType: (face) => surfaceType(oc, face),
+    uvBounds: (face) => uvBounds(oc, face),
+    outerWire: (face) => outerWire(oc, face),
+    surfaceNormal: (face, u, v) => surfaceNormal(oc, face, u, v),
+    pointOnSurface: (face, u, v) => pointOnSurface(oc, face, u, v),
+    uvFromPoint: (face, point) => uvFromPoint(oc, face, point),
+    projectPointOnFace: (face, point) => projectPointOnFace(oc, face, point),
+    curveTangent: (shape, param) => curveTangent(oc, shape, param),
+    curveParameters: (shape) => curveParameters(oc, shape),
+    shapeOrientation: (shape) => shapeOrientation(oc, shape),
+    downcast: (shape, type) => downcast(oc, shape, type),
+    hashCode: (shape, upperBound) => hashCode(oc, shape, upperBound),
+    isNull: (shape) => isNull(oc, shape),
+    hasTriangulation: (shape) => hasTriangulation(oc, shape),
+    meshShape: (shape, tolerance, angularTolerance) => {
+      meshShape(oc, shape, tolerance, angularTolerance);
+    },
+    getBezierPenultimatePole: (edge) => getBezierPenultimatePole(oc, edge),
+    createCurveAdaptor: (shape) => createCurveAdaptor(oc, shape),
+    reverseShape: (shape) => reverseShape(oc, shape),
+    curvePointAtParam: (shape, param) => curvePointAtParam(oc, shape, param),
+    curveIsClosed: (shape) => curveIsClosed(oc, shape),
+    curveIsPeriodic: (shape) => curveIsPeriodic(oc, shape),
+    curvePeriod: (shape) => curvePeriod(oc, shape),
+    curveType: (shape) => curveType(oc, shape),
+    getSurfaceCylinderData: (surface) => getSurfaceCylinderData(oc, surface),
+    reverseSurfaceU: (surface) => reverseSurfaceU(oc, surface),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'vertexPosition'
+    | 'surfaceType'
+    | 'uvBounds'
+    | 'outerWire'
+    | 'surfaceNormal'
+    | 'pointOnSurface'
+    | 'uvFromPoint'
+    | 'projectPointOnFace'
+    | 'curveTangent'
+    | 'curveParameters'
+    | 'shapeOrientation'
+    | 'downcast'
+    | 'hashCode'
+    | 'isNull'
+    | 'hasTriangulation'
+    | 'meshShape'
+    | 'getBezierPenultimatePole'
+    | 'createCurveAdaptor'
+    | 'reverseShape'
+    | 'curvePointAtParam'
+    | 'curveIsClosed'
+    | 'curveIsPeriodic'
+    | 'curvePeriod'
+    | 'curveType'
+    | 'getSurfaceCylinderData'
+    | 'reverseSurfaceU'
+  >;
 }

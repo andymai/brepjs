@@ -8,6 +8,7 @@
  */
 
 import type { KernelInstance, KernelShape, KernelType } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { iterShapes } from './topologyOps.js';
 
 /**
@@ -250,4 +251,35 @@ export function makeTorus(
   origin.delete();
   dir.delete();
   return solid;
+}
+
+/** Co-located factory: returns the constructor slice of {@link KernelAdapter} bound to `oc`. */
+export function makeConstructorOps(oc: KernelInstance) {
+  return {
+    makeVertex: (x, y, z) => makeVertex(oc, x, y, z),
+    makeEdge: (curve, start, end) => makeEdge(oc, curve, start, end),
+    makeWire: (edges) => makeWire(oc, edges),
+    makeWireFromMixed: (items) => makeWireFromMixed(oc, items),
+    makeFace: (wire, planar) => makeFace(oc, wire, planar),
+    makeBox: (w, h, d) => makeBox(oc, w, h, d),
+    makeCylinder: (radius, height, center, direction) =>
+      makeCylinder(oc, radius, height, center, direction),
+    makeSphere: (radius, center) => makeSphere(oc, radius, center),
+    makeCone: (r1, r2, h, center, direction) => makeCone(oc, r1, r2, h, center, direction),
+    makeTorus: (major, minor, center, direction) => makeTorus(oc, major, minor, center, direction),
+    buildTriFace: (a, b, c) => makeTriFace(oc, a, b, c),
+  } satisfies Pick<
+    KernelAdapter,
+    | 'makeVertex'
+    | 'makeEdge'
+    | 'makeWire'
+    | 'makeWireFromMixed'
+    | 'makeFace'
+    | 'makeBox'
+    | 'makeCylinder'
+    | 'makeSphere'
+    | 'makeCone'
+    | 'makeTorus'
+    | 'buildTriFace'
+  >;
 }

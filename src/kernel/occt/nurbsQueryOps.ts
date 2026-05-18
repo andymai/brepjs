@@ -11,6 +11,7 @@ import type {
   NurbsCurveData,
   NurbsSurfaceData,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 
 /**
  * Extract NURBS curve data from a BSpline or Bezier edge.
@@ -175,4 +176,12 @@ export function getNurbsSurfaceData(
   } finally {
     adaptor.delete();
   }
+}
+
+/** Co-located factory: returns the NURBS-query slice of {@link KernelAdapter} bound to `oc`. */
+export function makeNurbsQueryOps(oc: KernelInstance) {
+  return {
+    getNurbsCurveData: (edge) => getNurbsCurveData(oc, edge),
+    getNurbsSurfaceData: (face) => getNurbsSurfaceData(oc, face),
+  } satisfies Pick<KernelAdapter, 'getNurbsCurveData' | 'getNurbsSurfaceData'>;
 }

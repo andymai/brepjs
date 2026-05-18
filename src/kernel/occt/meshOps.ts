@@ -19,6 +19,7 @@ import type {
   KernelMeshResult,
   KernelEdgeMeshResult,
 } from '@/kernel/types.js';
+import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import { perfTimer } from '../perfStats.js';
 
 /** Slice a Float32Array from the WASM heap, or return empty if size is 0. */
@@ -128,4 +129,13 @@ export function meshEdges(
   } finally {
     end();
   }
+}
+
+/** Co-located factory: returns the mesh slice of {@link KernelAdapter} bound to `oc`. */
+export function makeMeshOps(oc: KernelInstance) {
+  return {
+    mesh: (shape, options) => mesh(oc, shape, options),
+    meshEdges: (shape, tolerance, angularTolerance) =>
+      meshEdges(oc, shape, tolerance, angularTolerance),
+  } satisfies Pick<KernelAdapter, 'mesh' | 'meshEdges'>;
 }
