@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.15.0](https://github.com/andymai/brepjs/compare/brepjs-v18.14.3...brepjs-v18.15.0) (2026-05-19)
+
+
+### Features
+
+* **brepkit:** use native makeCircleEdge / makeEllipseEdge bindings ([#1028](https://github.com/andymai/brepjs/issues/1028)) ([f9fa7a4](https://github.com/andymai/brepjs/commit/f9fa7a4295595f3e74b567e69ba33d4b8db70497))
+
 ## [18.14.3](https://github.com/andymai/brepjs/compare/brepjs-v18.14.2...brepjs-v18.14.3) (2026-05-18)
 
 
