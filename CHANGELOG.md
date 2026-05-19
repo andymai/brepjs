@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.16.0](https://github.com/andymai/brepjs/compare/brepjs-v18.15.0...brepjs-v18.16.0) (2026-05-19)
+
+
+### Features
+
+* **brepkit:** handle empty-result boolean operations as identity ([#1030](https://github.com/andymai/brepjs/issues/1030)) ([528c316](https://github.com/andymai/brepjs/commit/528c3166cde24c2aaa0562baffff841884e7d25a))
+
 ## [18.15.0](https://github.com/andymai/brepjs/compare/brepjs-v18.14.3...brepjs-v18.15.0) (2026-05-19)
 
 
