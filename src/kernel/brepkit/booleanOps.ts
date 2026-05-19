@@ -31,6 +31,26 @@ import { extractPlaneFromFace } from './internalOps.js';
 import { isValid as _isValid } from './repairOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
 
+// brepkit throws when intersect/cut produces an empty result (disjoint inputs,
+// cut-of-self, etc). The brepjs contract treats empty as a valid outcome —
+// callers either get an empty compound (caught by castToShape3D as non-3D,
+// returned as Err) or check is3D before measuring. Detect by error message
+// since brepkit-wasm exposes only the message string at the JS boundary.
+export function isEmptyBooleanError(e: unknown): boolean {
+  if (!(e instanceof Error)) return false;
+  const msg = e.message;
+  return msg.includes('produced empty result') || msg.includes('produces empty result');
+}
+
+function isEmptyCompound(bk: BrepkitKernel, h: BrepkitHandle): boolean {
+  if (h.type !== 'compound') return false;
+  return toArray(bk.getCompoundSolids(h.id)).length === 0;
+}
+
+function emptyCompound(bk: BrepkitKernel): KernelShape {
+  return compoundHandle(bk.makeCompound([]));
+}
+
 export function fuse(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -43,6 +63,9 @@ export function fuse(
       'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
     );
   }
+  // Identity: fuse(∅, X) = X, fuse(X, ∅) = X.
+  if (isEmptyCompound(bk, shape as BrepkitHandle)) return tool;
+  if (isEmptyCompound(bk, tool as BrepkitHandle)) return shape;
   const baseId = unwrapSolidOrThrow(shape, 'fuse');
   const toolHandle = tool as BrepkitHandle;
   if (toolHandle.type === 'compound') {
@@ -69,18 +92,31 @@ export function cut(
       'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
     );
   }
+  // Identity: cut(∅, X) = ∅, cut(X, ∅) = X.
+  if (isEmptyCompound(bk, shape as BrepkitHandle)) return emptyCompound(bk);
+  if (isEmptyCompound(bk, tool as BrepkitHandle)) return shape;
   const baseId = unwrapSolidOrThrow(shape, 'cut');
   const toolHandle = tool as BrepkitHandle;
   if (toolHandle.type === 'compound') {
     const toolSolidIds: number[] = toArray(bk.getCompoundSolids(toolHandle.id));
     let currentId = baseId;
     for (const toolSolidId of toolSolidIds) {
-      currentId = bk.cut(currentId, toolSolidId);
+      try {
+        currentId = bk.cut(currentId, toolSolidId);
+      } catch (e) {
+        if (isEmptyBooleanError(e)) return compoundHandle(bk.makeCompound([]));
+        throw e;
+      }
     }
     return solidHandle(currentId);
   }
-  const result = bk.cut(baseId, unwrapSolidOrThrow(tool, 'cut'));
-  return solidHandle(result);
+  try {
+    const result = bk.cut(baseId, unwrapSolidOrThrow(tool, 'cut'));
+    return solidHandle(result);
+  } catch (e) {
+    if (isEmptyBooleanError(e)) return compoundHandle(bk.makeCompound([]));
+    throw e;
+  }
 }
 
 export function intersect(
@@ -95,11 +131,20 @@ export function intersect(
       'BooleanOptions (optimisation, simplify, strategy, fuzzyValue) not supported; ignored.'
     );
   }
-  const result = bk.intersect(
-    unwrapSolidOrThrow(shape, 'intersect'),
-    unwrapSolidOrThrow(tool, 'intersect')
-  );
-  return solidHandle(result);
+  // Identity: intersect(∅, _) = ∅, intersect(_, ∅) = ∅.
+  if (isEmptyCompound(bk, shape as BrepkitHandle) || isEmptyCompound(bk, tool as BrepkitHandle)) {
+    return emptyCompound(bk);
+  }
+  try {
+    const result = bk.intersect(
+      unwrapSolidOrThrow(shape, 'intersect'),
+      unwrapSolidOrThrow(tool, 'intersect')
+    );
+    return solidHandle(result);
+  } catch (e) {
+    if (isEmptyBooleanError(e)) return emptyCompound(bk);
+    throw e;
+  }
 }
 
 export function section(

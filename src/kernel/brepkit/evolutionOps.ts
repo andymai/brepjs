@@ -28,7 +28,7 @@ import {
 import { applyMatrix } from './internalOps.js';
 import { translate, rotate, mirror, scale, generalTransform } from './transformOps.js';
 import { wasmIndex } from '@/utils/vec3.js';
-import { fuse, cut, intersect } from './booleanOps.js';
+import { fuse, cut, intersect, isEmptyBooleanError } from './booleanOps.js';
 import { fillet, chamfer, shell, thicken, offset, draft } from './modifierOps.js';
 
 // ---------------------------------------------------------------------------
@@ -461,6 +461,7 @@ function chainEvolutionMap(
 /**
  * Shared implementation for boolean-with-history operations (fuse, cut, intersect).
  */
+// brepjs-patterns-disable: max-function-lines
 function booleanWithHistoryImpl(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -477,8 +478,13 @@ function booleanWithHistoryImpl(
   const th = tool as BrepkitHandle;
   if (inputFaceHashes.length > 0 && sh.type === 'solid') {
     if (th.type === 'solid') {
-      const json = nativeFn(sh.id, th.id);
-      return { ...parseNativeEvolution(json, hashUpperBound), diagnostics: noDiagnostics };
+      try {
+        const json = nativeFn(sh.id, th.id);
+        return { ...parseNativeEvolution(json, hashUpperBound), diagnostics: noDiagnostics };
+      } catch (e) {
+        if (!isEmptyBooleanError(e)) throw e;
+        // Empty result — drop to fallback path which returns an empty compound.
+      }
     }
     if (th.type === 'compound') {
       // Iteratively apply native evolution for each solid in the compound,
