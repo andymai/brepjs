@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.18.0](https://github.com/andymai/brepjs/compare/brepjs-v18.17.0...brepjs-v18.18.0) (2026-05-19)
+
+
+### Features
+
+* **brepkit:** honor xDir in makeEllipseEdge via native makeEllipseEdgeWithRef ([#1034](https://github.com/andymai/brepjs/issues/1034)) ([6755801](https://github.com/andymai/brepjs/commit/675580129111f7d80e43d9535940050e787c1bf1))
+
 ## [18.17.0](https://github.com/andymai/brepjs/compare/brepjs-v18.16.0...brepjs-v18.17.0) (2026-05-19)
 
 
