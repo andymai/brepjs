@@ -774,7 +774,6 @@ export interface BrepkitKernel {
     semiMinor: number
   ): number;
 
-  /** @unwired */
   makeEllipseEdgeWithRef(
     cx: number,
     cy: number,

@@ -307,6 +307,7 @@ export function makeEllipseEdge(
 ): KernelShape {
   const nLen = Math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2);
   if (xDir !== undefined) {
+    const xLen = Math.sqrt(xDir[0] ** 2 + xDir[1] ** 2 + xDir[2] ** 2);
     const id = bk.makeEllipseEdgeWithRef(
       center[0],
       center[1],
@@ -316,9 +317,9 @@ export function makeEllipseEdge(
       normal[2] / nLen,
       majorRadius,
       minorRadius,
-      xDir[0],
-      xDir[1],
-      xDir[2]
+      xDir[0] / xLen,
+      xDir[1] / xLen,
+      xDir[2] / xLen
     );
     return edgeHandle(id);
   }
