@@ -36,10 +36,18 @@ import { wasmIndex } from '@/utils/vec3.js';
 // callers either get an empty compound (caught by castToShape3D as non-3D,
 // returned as Err) or check is3D before measuring. Detect by error message
 // since brepkit-wasm exposes only the message string at the JS boundary.
+//
+// Matches both the current `EmptyResult` variant (brepkit-wasm >= 2.88.1,
+// "empty result: <reason>") and the legacy `InvalidInput` "produced empty
+// result" message that older brepkit-wasm versions emitted.
 export function isEmptyBooleanError(e: unknown): boolean {
   if (!(e instanceof Error)) return false;
   const msg = e.message;
-  return msg.includes('produced empty result') || msg.includes('produces empty result');
+  return (
+    msg.startsWith('empty result:') ||
+    msg.includes('produced empty result') ||
+    msg.includes('produces empty result')
+  );
 }
 
 function isEmptyCompound(bk: BrepkitKernel, h: BrepkitHandle): boolean {
