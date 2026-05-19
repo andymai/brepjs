@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.17.0](https://github.com/andymai/brepjs/compare/brepjs-v18.16.0...brepjs-v18.17.0) (2026-05-19)
+
+
+### Features
+
+* **brepkit:** bump brepkit-wasm 2.88.0 → 2.88.1 + match new EmptyResult error format ([#1032](https://github.com/andymai/brepjs/issues/1032)) ([58ef0b8](https://github.com/andymai/brepjs/commit/58ef0b8f3299c446d4f156dc3e9591eb918eedcf))
+
 ## [18.16.0](https://github.com/andymai/brepjs/compare/brepjs-v18.15.0...brepjs-v18.16.0) (2026-05-19)
 
 
