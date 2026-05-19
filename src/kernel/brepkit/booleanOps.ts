@@ -104,7 +104,7 @@ export function cut(
       try {
         currentId = bk.cut(currentId, toolSolidId);
       } catch (e) {
-        if (isEmptyBooleanError(e)) return compoundHandle(bk.makeCompound([]));
+        if (isEmptyBooleanError(e)) return emptyCompound(bk);
         throw e;
       }
     }
@@ -114,7 +114,7 @@ export function cut(
     const result = bk.cut(baseId, unwrapSolidOrThrow(tool, 'cut'));
     return solidHandle(result);
   } catch (e) {
-    if (isEmptyBooleanError(e)) return compoundHandle(bk.makeCompound([]));
+    if (isEmptyBooleanError(e)) return emptyCompound(bk);
     throw e;
   }
 }
