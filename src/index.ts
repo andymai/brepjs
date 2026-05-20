@@ -1042,3 +1042,4 @@ export * as io from './ns/ioNs.js';
 export * as query from './ns/query.js';
 export * as construction from './ns/construction.js';
 export * as patterns from './ns/patterns.js';
+export * as csg from './ns/csg.js';
