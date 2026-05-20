@@ -44,7 +44,7 @@ import {
 } from '@/csg/index.js';
 import { optimize, foldExpr } from '@/csg/optimize.js';
 import { toJSON, fromJSON } from '@/csg/serialize.js';
-import { replaceNode, replaceFirst, forEachNode, nodeCount } from '@/csg/edit.js';
+import { replaceNode, forEachNode, nodeCount } from '@/csg/edit.js';
 import { evalScalar, evalVec3, evalExpr, projectEnv } from '@/csg/expressions.js';
 import { isOk, isErr, unwrap, measureVolume, measureArea } from '@/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
@@ -491,6 +491,40 @@ describe('optimize — coverage', () => {
     expect(opt.children[0]?.kind).toBe('Box');
   });
 
+  it('foldExpr propagates partial folds through BinOp', () => {
+    // (2 * 3) + x should fold to 6 + x, not stay as the original tree.
+    const expr = binOp('+', binOp('*', numLit(2), numLit(3)), param('x'));
+    const folded = foldExpr(expr);
+    if (folded.kind !== 'BinOp') throw new Error('expected BinOp');
+    expect(folded.a.kind).toBe('NumLit');
+    if (folded.a.kind === 'NumLit') expect(folded.a.value).toBe(6);
+  });
+
+  it('foldExpr propagates partial folds through UnaryOp', () => {
+    // neg(2 * 3) should fold to -6 (full collapse), and abs(x + 2*3) → abs(x + 6).
+    expect(
+      (foldExpr(unaryOp('neg', binOp('*', numLit(2), numLit(3)))) as { value: number }).value
+    ).toBe(-6);
+    const partial = foldExpr(
+      unaryOp('abs', binOp('+', param('x'), binOp('*', numLit(2), numLit(3))))
+    );
+    if (partial.kind !== 'UnaryOp') throw new Error('expected UnaryOp');
+    if (partial.arg.kind !== 'BinOp') throw new Error('expected BinOp inside');
+    expect(partial.arg.b.kind).toBe('NumLit');
+  });
+
+  it('foldExpr propagates partial folds through Component', () => {
+    // component(buildVec(3, [x, 2*3, 0]), 0) should fold the inner 2*3 to 6.
+    const expr = component(
+      buildVec(3, [param('x'), binOp('*', numLit(2), numLit(3)), numLit(0)]),
+      0
+    );
+    const folded = foldExpr(expr);
+    if (folded.kind !== 'Component') throw new Error('expected Component');
+    if (folded.vec.kind !== 'BuildVec') throw new Error('expected BuildVec');
+    expect(folded.vec.components[1]?.kind).toBe('NumLit');
+  });
+
   it('all the other primitive optimizers route correctly', () => {
     expect(optimize(sphere(2)).kind).toBe('Sphere');
     expect(optimize(cylinder(2, 3)).kind).toBe('Cylinder');
@@ -730,16 +764,6 @@ describe('edit — coverage', () => {
     const tree = box(1, 1, 1);
     const edited = replaceNode(tree, (n) => n.kind === 'Sphere', cylinder(1, 1));
     expect(edited.kind).toBe('Box');
-  });
-
-  it('replaceFirst is just walk with stop flag (same semantics here)', () => {
-    const tree = compound([box(1, 1, 1), box(2, 2, 2)]);
-    const edited = replaceFirst(tree, (n) => n.kind === 'Box', sphere(1));
-    let spheres = 0;
-    forEachNode(edited, (n) => {
-      if (n.kind === 'Sphere') spheres++;
-    });
-    expect(spheres).toBeGreaterThan(0);
   });
 
   it('nodeCount counts deeply nested trees', () => {

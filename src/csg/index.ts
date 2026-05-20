@@ -93,4 +93,4 @@ export { toJSON, fromJSON, CSG_VERSION, type CsgEnvelope } from './serialize.js'
 export { optimize, foldExpr } from './optimize.js';
 
 // Editing
-export { replaceNode, replaceFirst, forEachNode, nodeCount, type NodePredicate } from './edit.js';
+export { replaceNode, forEachNode, nodeCount, type NodePredicate } from './edit.js';

@@ -27,7 +27,7 @@ import { evalScalar, evalVec3 } from '@/csg/expressions.js';
 import { fnvInit, fnvMixString, fnvMixNumber, fnvMixHash, toHex } from '@/csg/hash.js';
 import { optimize, foldExpr } from '@/csg/optimize.js';
 import { toJSON, fromJSON } from '@/csg/serialize.js';
-import { replaceNode, replaceFirst, nodeCount, forEachNode } from '@/csg/edit.js';
+import { replaceNode, nodeCount, forEachNode } from '@/csg/edit.js';
 import { isErr, unwrap } from '@/index.js';
 
 // ---------------------------------------------------------------------------
@@ -275,11 +275,10 @@ describe('edit', () => {
     expect(boxes).toBe(0);
   });
 
-  it('replaceFirst swaps only the first match (still all in pre-order)', () => {
-    // Note: walk is "first match wins per subtree" — when pred matches a
-    // node it stops descending. Here we just verify the basic replacement.
-    const tree = fuse(box(1, 1, 1), sphere(2));
-    const edited = replaceFirst(tree, (n) => n.kind === 'Box', cylinder(3, 4));
+  it('replaceNode does not descend into a replaced subtree', () => {
+    const inner = box(1, 1, 1);
+    const tree = fuse(inner, sphere(2));
+    const edited = replaceNode(tree, (n) => n.kind === 'Box', cylinder(3, 4));
     if (edited.kind !== 'Fuse') throw new Error('expected Fuse root');
     expect(edited.a.kind).toBe('Cylinder');
   });

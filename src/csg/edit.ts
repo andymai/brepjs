@@ -9,15 +9,6 @@ export function replaceNode(root: IRNode, pred: NodePredicate, replacement: IRNo
   return walk(root, pred, replacement);
 }
 
-/**
- * First-match-per-subtree replacement: when `pred(node)` matches, the
- * subtree under it is not descended into. Use {@link replaceNode} for the
- * same semantics — `replaceFirst` is kept as a clarity alias.
- */
-export function replaceFirst(root: IRNode, pred: NodePredicate, replacement: IRNode): IRNode {
-  return walk(root, pred, replacement);
-}
-
 function walk(node: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
   if (pred(node)) return repl;
   return rebuildChildren(node, pred, repl);

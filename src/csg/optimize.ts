@@ -2,7 +2,16 @@
 // identity-elim on booleans, constant-fold scalar arithmetic, transform
 // fusion (literal translates only), Empty-filter on Compound.
 import * as B from './builders.js';
-import { numLit, vec3Lit, vec2Lit, type Expr } from './expressions.js';
+import {
+  numLit,
+  vec3Lit,
+  vec2Lit,
+  binOp,
+  unaryOp,
+  component,
+  buildVec,
+  type Expr,
+} from './expressions.js';
 import type { IRNode } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -39,6 +48,9 @@ export function foldExpr(e: Expr): Expr {
             return numLit(a.value / b.value);
         }
       }
+      // Even if the outer op can't collapse, rebuild with folded children
+      // so partial-constant subtrees propagate up across multiple passes.
+      if (a !== e.a || b !== e.b) return binOp(e.op, a, b);
       return e;
     }
     case 'UnaryOp': {
@@ -58,6 +70,7 @@ export function foldExpr(e: Expr): Expr {
             return numLit(Math.abs(n));
         }
       }
+      if (arg !== e.arg) return unaryOp(e.op, arg);
       return e;
     }
     case 'Component': {
@@ -66,10 +79,16 @@ export function foldExpr(e: Expr): Expr {
       if (v.kind === 'Vec2Lit' && (e.index === 0 || e.index === 1)) {
         return numLit(v.value[e.index]);
       }
+      if (v !== e.vec) return component(v, e.index);
       return e;
     }
-    case 'BuildVec':
-      return foldBuildVec(e.dim, e.components.map(foldExpr)) ?? e;
+    case 'BuildVec': {
+      const folded = e.components.map(foldExpr);
+      const collapsed = foldBuildVec(e.dim, folded);
+      if (collapsed) return collapsed;
+      if (folded.some((c, i) => c !== e.components[i])) return buildVec(e.dim, folded);
+      return e;
+    }
   }
 }
 
