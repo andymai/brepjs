@@ -42,7 +42,7 @@ export interface EvaluatorOptions {
   readonly kernel?: string | undefined;
   /** Default boolean tolerance applied when a node doesn't override it. */
   readonly tolerance?: number | undefined;
-  /** Optional callback fired after each node is materialized (cache hits not reported). */
+  /** Optional callback fired after every node visit, including cache hits (`info.cacheHit` discriminates). */
   readonly onStep?: ((info: StepInfo) => void) | undefined;
 }
 

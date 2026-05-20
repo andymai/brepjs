@@ -46,9 +46,7 @@ export default withMermaid(
         defaultDescription;
       const title = pageData.frontmatter.title ?? pageData.title ?? 'brepjs';
       const fullTitle = title === 'brepjs' ? 'brepjs' : `${title} | brepjs`;
-      const path = pageData.relativePath
-        .replace(/(^|\/)index\.md$/, '$1')
-        .replace(/\.md$/, '');
+      const path = pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '');
       const url = `${siteUrl}/${path}`;
 
       // VitePress emits `<meta name="description">` natively from
@@ -105,6 +103,7 @@ export default withMermaid(
             { text: 'Result<T,E> and Errors', link: '/concepts/result' },
             { text: 'Kernels & withKernel', link: '/concepts/kernels' },
             { text: 'Tolerance & Validity', link: '/concepts/tolerance' },
+            { text: 'CSG as an IR', link: '/concepts/csg-ir' },
           ],
         },
         {
@@ -118,6 +117,7 @@ export default withMermaid(
             { text: 'Finders & Queries', link: '/tasks/finders' },
             { text: 'Measurement', link: '/tasks/measurement' },
             { text: 'Import & Export', link: '/tasks/import-export' },
+            { text: 'Parametric CSG', link: '/tasks/parametric-csg' },
           ],
         },
         {
@@ -127,6 +127,7 @@ export default withMermaid(
             { text: 'Performance', link: '/advanced/performance' },
             { text: 'Web Workers', link: '/advanced/workers' },
             { text: 'Healing & Sewing', link: '/advanced/healing' },
+            { text: 'CSG Caching & Optimization', link: '/advanced/csg-caching' },
           ],
         },
         {
@@ -144,6 +145,7 @@ export default withMermaid(
             { text: 'Coming from Replicad', link: '/migration/replicad' },
             { text: 'Coming from OpenSCAD', link: '/migration/openscad' },
             { text: 'Coming from Three.js', link: '/migration/threejs' },
+            { text: 'From a Hand-Rolled Cache', link: '/migration/manual-csg-cache' },
           ],
         },
         {
