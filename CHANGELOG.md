@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.20.0](https://github.com/andymai/brepjs/compare/brepjs-v18.19.0...brepjs-v18.20.0) (2026-05-20)
+
+
+### Features
+
+* **booleans:** add fuseAllBisect / cutAllBisect with telemetry ([#1040](https://github.com/andymai/brepjs/issues/1040)) ([ecc2408](https://github.com/andymai/brepjs/commit/ecc2408d43506c438bca66fa1ffe43a4dc75006e))
+
 ## [18.19.0](https://github.com/andymai/brepjs/compare/brepjs-v18.18.0...brepjs-v18.19.0) (2026-05-20)
 
 
