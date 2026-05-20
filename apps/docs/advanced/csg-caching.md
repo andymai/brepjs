@@ -29,7 +29,7 @@ Two consequences worth internalizing:
 
 ## Reading the cache stats
 
-`cacheStats()` returns `{ hits, misses, entries }` — running totals since the evaluator was constructed or `resetStats()` was last called.
+`cacheStats()` returns `{ hits, misses, entries }`. `hits` and `misses` are running totals since the evaluator was constructed or `resetStats()` was last called. `entries` is a live snapshot of the current cache size — it is **not** reset by `resetStats()` and accumulates across the evaluator's lifetime.
 
 ```typescript
 import { csg } from 'brepjs/quick';
