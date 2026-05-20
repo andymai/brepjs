@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.20.1](https://github.com/andymai/brepjs/compare/brepjs-v18.20.0...brepjs-v18.20.1) (2026-05-20)
+
+
+### Performance Improvements
+
+* **csg:** add benchmarks + assertion-grade perf invariants ([#1039](https://github.com/andymai/brepjs/issues/1039)) ([63231d0](https://github.com/andymai/brepjs/commit/63231d0b493b9dee1bd44c6acb77882c58b4ec16))
+
 ## [18.20.0](https://github.com/andymai/brepjs/compare/brepjs-v18.19.0...brepjs-v18.20.0) (2026-05-20)
 
 
