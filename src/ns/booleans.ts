@@ -5,6 +5,8 @@ export { fuse, cut, intersect, section, sectionToFace, split, slice } from '@/to
 
 export { fuseAll, cutAll } from '@/topology/booleanFns.js';
 
+export { fuseAllBisect, cutAllBisect } from '@/topology/booleanBatchFns.js';
+
 export { checkBoolean } from '@/topology/booleanDiagnosticFns.js';
 
 export { hull } from '@/topology/hullFns.js';

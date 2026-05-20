@@ -595,8 +595,14 @@ export {
   booleanPipeline,
   type BooleanOptions,
   type BooleanPipelineStep,
-  type PipelineOp,
 } from './topology/booleanFns.js';
+export {
+  fuseAllBisect,
+  cutAllBisect,
+  type BatchBisectResult,
+  type BatchBisectTelemetry,
+} from './topology/booleanBatchFns.js';
+export { type PipelineOp } from './topology/booleanFns.js';
 export { checkBoolean } from './topology/booleanDiagnosticFns.js';
 export type {
   CheckBooleanResult,
