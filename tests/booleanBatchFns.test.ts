@@ -84,10 +84,9 @@ describe('cutAllBisect — happy path', () => {
     expect(result.telemetry.batchAttempts).toBe(0);
   });
 
-  it('single tool: batch path still triggers (one batch attempt)', () => {
+  it('single tool: takes singleton path, no batch attempt', () => {
     const result = unwrap(cutAllBisect(boxAt(0, 0, 0, 30, 10, 10), [boxAt(10, 0, 0, 20, 10, 10)]));
     expect(unwrap(measureVolume(result.shape))).toBeCloseTo(2000, 1);
-    // Length 1 → singleton path, no batch attempt.
     expect(result.telemetry.batchAttempts).toBe(0);
     expect(result.telemetry.singletonFallbacks).toBe(1);
   });
@@ -139,15 +138,17 @@ describe('fuseAllBisect — happy path', () => {
     expect(isErr(result)).toBe(true);
   });
 
-  it('single shape returns it unchanged via singleton path', () => {
+  it('single shape returns it unchanged with no kernel calls counted', () => {
     const only = boxAt(0, 0, 0, 10, 10, 10);
     const result = unwrap(fuseAllBisect([only]));
     expect(unwrap(measureVolume(result.shape))).toBeCloseTo(1000, 1);
+    // Identity case: no batch, no pairwise. singletonFallbacks counts
+    // actual pairwise kernel calls; the trivial passthrough is neither.
     expect(result.telemetry).toEqual({
       totalInputs: 1,
       batchAttempts: 0,
       batchSucceeded: 0,
-      singletonFallbacks: 1,
+      singletonFallbacks: 0,
       failedInputs: [],
     });
   });
@@ -243,6 +244,37 @@ describe('cutAllBisect — bisect recovery via injected ops', () => {
 });
 
 describe('fuseAllBisect — bisect recovery via injected ops', () => {
+  it('failedInputs is deduplicated when fuse fails at multiple recursion levels', () => {
+    // wrapWithBatchFailure(0) makes EVERY batch (size ≥ 1) throw. Pairwise
+    // ops.fuse is the real fuse, which we additionally force to fail so
+    // combineFuseHalves drops both halves at each level. This drives the
+    // multi-level fuse failure case that produced duplicate indices before
+    // the dedup fix.
+    const ops: BisectKernelOps = {
+      cut,
+      fuse: () => {
+        throw new Error('pairwise fuse always fails');
+      },
+      cutAll,
+      fuseAll: () => {
+        throw new Error('batch always fails');
+      },
+    };
+    const shapes = [
+      boxAt(0, 0, 0, 10, 10, 10),
+      boxAt(15, 0, 0, 25, 10, 10),
+      boxAt(30, 0, 0, 40, 10, 10),
+      boxAt(45, 0, 0, 55, 10, 10),
+    ];
+    const result = fuseAllBisectWith(ops, shapes);
+    expect(isOk(result)).toBe(true);
+    const { telemetry } = unwrap(result);
+    // Without dedup, index 1 and 3 would each appear twice in failedInputs.
+    const sorted = [...telemetry.failedInputs];
+    expect(sorted).toEqual([...new Set(sorted)]);
+    expect(sorted).toEqual([...sorted].sort((a, b) => a - b));
+  });
+
   it('bisects and combines halves on failure', () => {
     const ops = wrapWithBatchFailure(2);
     const shapes = [

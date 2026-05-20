@@ -50,13 +50,23 @@ export interface BatchBisectResult<T extends Shape3D = Shape3D> {
 export interface BatchBisectTelemetry {
   /** Number of inputs the caller passed (tools for cut, shapes for fuse). */
   readonly totalInputs: number;
-  /** Kernel batch attempts including failures. */
+  /** N-way kernel batch (`cutAll` / `fuseAll`) attempts, including failures. */
   readonly batchAttempts: number;
-  /** Kernel batch attempts that succeeded. */
+  /** N-way kernel batch attempts that succeeded. */
   readonly batchSucceeded: number;
-  /** Inputs applied via a singleton (pairwise) op after bisection bottomed out. */
+  /**
+   * 2-input pairwise kernel call attempts after bisection bottomed out. For
+   * `cutAllBisect` this counts singleton `cut(base, tool)` calls; for
+   * `fuseAllBisect` this counts the `fuse(a, b)` calls that combine the
+   * results of two recursive halves. Both flavors mean "the kernel did a
+   * pair op, not a batch op."
+   */
   readonly singletonFallbacks: number;
-  /** Indices of inputs that failed even as singletons and were skipped. */
+  /**
+   * Sorted, deduplicated input indices that failed even as pairwise ops and
+   * were dropped from the result. Multi-level fuse failures can target the
+   * same index from different recursion levels — dedup happens at freeze.
+   */
   readonly failedInputs: readonly number[];
 }
 
@@ -65,7 +75,10 @@ interface MutableTelemetry {
   batchAttempts: number;
   batchSucceeded: number;
   singletonFallbacks: number;
-  failedInputs: number[];
+  // Set: multi-level fuse failures can attempt to push the same index twice
+  // (an inner combineFuseHalves drops [k], then the outer drops the same
+  // half including k). Dedup at the source.
+  failedInputs: Set<number>;
 }
 
 function freezeTelemetry(t: MutableTelemetry): BatchBisectTelemetry {
@@ -74,7 +87,7 @@ function freezeTelemetry(t: MutableTelemetry): BatchBisectTelemetry {
     batchAttempts: t.batchAttempts,
     batchSucceeded: t.batchSucceeded,
     singletonFallbacks: t.singletonFallbacks,
-    failedInputs: [...t.failedInputs],
+    failedInputs: [...t.failedInputs].sort((a, b) => a - b),
   };
 }
 
@@ -113,7 +126,7 @@ export function cutAllBisectWith(
     batchAttempts: 0,
     batchSucceeded: 0,
     singletonFallbacks: 0,
-    failedInputs: [],
+    failedInputs: new Set(),
   };
   const result = bisectCut(ops, base, tools, 0, options, telemetry);
   if (isErr(result)) return result;
@@ -162,7 +175,7 @@ function applySingletonCut(
   if (options.signal?.aborted) throw options.signal.reason;
   // Pairwise also failed: skip this tool, return base unchanged so the
   // surrounding bisect can continue with the next slice.
-  telemetry.failedInputs.push(startIdx);
+  telemetry.failedInputs.add(startIdx);
   return ok(base);
 }
 
@@ -202,7 +215,7 @@ export function fuseAllBisectWith(
     batchAttempts: 0,
     batchSucceeded: 0,
     singletonFallbacks: 0,
-    failedInputs: [],
+    failedInputs: new Set(),
   };
   const result = bisectFuse(ops, shapes, 0, options, telemetry);
   if (isErr(result)) return result;
@@ -217,7 +230,11 @@ function bisectFuse(
   telemetry: MutableTelemetry
 ): Result<Shape3D> {
   if (shapes.length === 1) {
-    telemetry.singletonFallbacks++;
+    // No kernel call: a one-shape "fuse" is the identity. Don't count this
+    // as a fallback — the pairwise fuse that actually combines two halves
+    // is counted in combineFuseHalves, keeping the telemetry symmetric
+    // with cutAllBisect (where singletonFallbacks counts actual pairwise
+    // kernel calls).
     return ok(firstOrThrow(shapes));
   }
 
@@ -246,24 +263,24 @@ function combineFuseHalves(
   telemetry: MutableTelemetry
 ): Result<Shape3D> {
   if (left.ok && right.ok) {
-    telemetry.batchAttempts++;
+    // Pairwise fuse(a, b) — the 2-input kernel call, NOT a batch op.
+    telemetry.singletonFallbacks++;
     const merged = tryBatch(() =>
       ops.fuse(left.value as ValidSolid, right.value as ValidSolid, options)
     );
     if (merged && merged.ok) {
-      telemetry.batchSucceeded++;
       return merged;
     }
     // Final pairwise fuse failed: drop the right side's indices and return left.
-    for (let i = mid; i < shapes.length; i++) telemetry.failedInputs.push(startIdx + i);
+    for (let i = mid; i < shapes.length; i++) telemetry.failedInputs.add(startIdx + i);
     return left;
   }
   if (left.ok) {
-    for (let i = mid; i < shapes.length; i++) telemetry.failedInputs.push(startIdx + i);
+    for (let i = mid; i < shapes.length; i++) telemetry.failedInputs.add(startIdx + i);
     return left;
   }
   if (right.ok) {
-    for (let i = 0; i < mid; i++) telemetry.failedInputs.push(startIdx + i);
+    for (let i = 0; i < mid; i++) telemetry.failedInputs.add(startIdx + i);
     return right;
   }
   return left;
