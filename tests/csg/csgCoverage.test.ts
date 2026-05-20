@@ -671,6 +671,25 @@ describe('serialize — coverage', () => {
     expect(isErr(r)).toBe(true);
   });
 
+  it('rejects BuildVec with wrong number of components for its dim', () => {
+    const r = fromJSON({
+      csgVersion: 1,
+      root: {
+        kind: 'Translate',
+        target: { kind: 'Sphere', radius: { kind: 'NumLit', value: 1 } },
+        vector: {
+          kind: 'BuildVec',
+          dim: 3,
+          components: [
+            { kind: 'NumLit', value: 1 },
+            { kind: 'NumLit', value: 2 },
+          ],
+        },
+      },
+    });
+    expect(isErr(r)).toBe(true);
+  });
+
   it('rejects malformed Empty.output', () => {
     const r = fromJSON({ csgVersion: 1, root: { kind: 'Empty', output: 'Banana' } });
     expect(isErr(r)).toBe(true);

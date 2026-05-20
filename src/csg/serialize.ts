@@ -256,6 +256,9 @@ function readBuildVec(j: Record<string, unknown>): Result<Expr> {
   if (dim !== 2 && dim !== 3) return bad(`BuildVec.dim: ${String(dim)}`);
   const comps = j['components'];
   if (!Array.isArray(comps)) return bad('BuildVec.components: not array');
+  if (comps.length !== dim) {
+    return bad(`BuildVec.components: expected ${dim} components, got ${comps.length}`);
+  }
   const out: Expr[] = [];
   for (const c of comps) {
     const r = readExpr(c);
