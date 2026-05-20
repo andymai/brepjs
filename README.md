@@ -14,7 +14,7 @@ CAD modeling for JavaScript.
 
 </div>
 
-Shapes are exact mathematical boundaries - not triangle meshes - so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
+Shapes are exact mathematical boundaries — not triangle meshes — so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
 
 ```typescript
 // Drill a hole, fillet the vertical edges, export to STEP
@@ -36,9 +36,19 @@ brepjs grew out of the love and care I put into [gridfinitylayouttool.com](https
 
 Neither had the type safety I wanted, so brepjs leans hard on it: branded types, `Result<T,E>`, phantom types that prove invariants at compile time. If it compiles, the geometry is valid. Best for parts defined by parameters (enclosures, brackets, fixtures, gridfinity bins) rather than organic sculpting.
 
+## Scope
+
+To set expectations, this project deliberately does not:
+
+- **Render or display geometry** — brepjs produces shape data; pass mesh output to Three.js, Babylon.js, or raw WebGL for rendering.
+- **Support organic or sculpting workflows** — the API is built for parametric parts (enclosures, brackets, fixtures); freeform sculpting is out of scope.
+- **Output SVG or 2D files** — 2D drawing primitives exist solely as an intermediate step toward extruded 3D solids, not as a standalone 2D output format.
+- **Run server-side (SSR)** — WASM requires a browser or Node.js environment with WASM support; server-side rendering frameworks (Next.js, Nuxt, Remix) need a client-only import.
+- **Provide a GUI** — brepjs is a pure programmatic API; there is no visual editor, viewport, or file picker.
+
 ## Status
 
-Production-ready with the OpenCascade kernel. [brepkit](https://github.com/andymai/brepkit), a Rust-based kernel, is in active development as a faster replacement but not yet production-ready. The kernel abstraction layer means switching is a one-line change. See [benchmarks](./benchmarks/results/latest.md) for performance comparisons.
+The OpenCascade kernel is the current default. [brepkit](https://github.com/andymai/brepkit), a Rust-based kernel, is in active development as a faster replacement but not yet ready for production use. The kernel abstraction layer means switching is a one-line change. See [benchmarks](./benchmarks/results/latest.md) for performance comparisons.
 
 ## Install
 
@@ -60,18 +70,7 @@ const oc = await opencascade();
 initFromOC(oc);
 ```
 
-## Architecture
-
-```
-Layer 3  sketching/, text/, projection/   High-level API
-Layer 2  topology/, operations/, 2d/ ...  Domain logic
-Layer 1  core/                            Types, memory, errors
-Layer 0  kernel/, utils/                  WASM bindings
-```
-
-Imports flow downward only. Boundaries are enforced in CI.
-
-## Documentation
+## Usage
 
 The chapter-based guide is the recommended starting point:
 
@@ -88,6 +87,17 @@ The chapter-based guide is the recommended starting point:
 - **[API Reference (TypeDoc)](https://andymai.github.io/brepjs/)** — searchable type-level reference
 
 Legacy single-page docs in [./docs/](./docs/) remain available; the chapter site is the canonical location going forward.
+
+### Architecture
+
+```
+Layer 3  sketching/, text/, projection/   High-level API
+Layer 2  topology/, operations/, 2d/ ...  Domain logic
+Layer 1  core/                            Types, memory, errors
+Layer 0  kernel/, utils/                  WASM bindings
+```
+
+Imports flow downward only. Boundaries are enforced in CI.
 
 ## Projects Using brepjs
 
