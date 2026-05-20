@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.19.0](https://github.com/andymai/brepjs/compare/brepjs-v18.18.0...brepjs-v18.19.0) (2026-05-20)
+
+
+### Features
+
+* **csg:** add CSG-as-IR layer with content-addressed evaluator ([#1037](https://github.com/andymai/brepjs/issues/1037)) ([a739839](https://github.com/andymai/brepjs/commit/a7398392e13480f9e535fe9fda5cf8cca27e6701))
+
 ## [18.18.0](https://github.com/andymai/brepjs/compare/brepjs-v18.17.0...brepjs-v18.18.0) (2026-05-19)
 
 
