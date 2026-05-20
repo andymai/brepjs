@@ -144,6 +144,12 @@ function cacheKey(node: IRNode, env: Env, kernelId: string, tolerance: number | 
 export class Evaluator implements Disposable {
   private readonly scope = new DisposalScope();
   private readonly cache = new Map<string, AnyShape<Dimension>>();
+  // Track which shape handles have been registered with the scope. Identity
+  // short-circuits in boolean/transform evaluators forward a child shape up
+  // through dispatch, so without this set the same handle would land in
+  // scope.handles multiple times — invariant violation even though
+  // ShapeHandle.delete() is itself idempotent.
+  private readonly registered = new WeakSet<AnyShape<Dimension>>();
   private readonly kernelId: string;
   private readonly defaultTolerance: number | undefined;
   private readonly onStep?: (info: StepInfo) => void;
@@ -187,7 +193,10 @@ export class Evaluator implements Disposable {
     };
     const result = dispatch(node, ctx);
     if (!result.ok) return result;
-    this.scope.register(result.value);
+    if (!this.registered.has(result.value)) {
+      this.scope.register(result.value);
+      this.registered.add(result.value);
+    }
     this.cache.set(key, result.value);
     this.onStep?.({ node, cacheKey: key, cacheHit: false });
     return result;

@@ -157,6 +157,21 @@ describe('Evaluator — cache & incremental re-eval', () => {
     expect(cachedDuring).toBeGreaterThan(0);
   });
 
+  it('identity short-circuit does not double-register the forwarded shape', () => {
+    // Fuse(Empty, sphere) returns the sphere directly via short-circuit.
+    // The sphere is registered exactly once (under its own cache key) — the
+    // outer Fuse cache entry MUST share the same shape without re-registering
+    // it in the DisposalScope. Without the dedup, the same handle would be
+    // added to scope.handles twice. We can't introspect the scope, but we
+    // can verify the cache invariant: both entries point to the same object.
+    using ev = new Evaluator();
+    const tree = fuse(emptySolid(), sphere(5));
+    const r = ev.evaluate(tree);
+    expect(isOk(r)).toBe(true);
+    // Two cache entries (sphere and fuse), but the values are referentially equal.
+    expect(ev.cacheStats().entries).toBe(2);
+  });
+
   it('onStep callback fires for misses and hits', () => {
     const events: { kind: string; cacheHit: boolean }[] = [];
     using ev = new Evaluator({

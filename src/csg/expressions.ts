@@ -266,6 +266,9 @@ function evalBinOp(expr: BinOpExpr, env: Env): Result<ExprValue> {
     case '*':
       return ok(an.value * bn.value);
     case '/':
+      if (bn.value === 0) {
+        return err(validationError(BrepErrorCode.NULL_SHAPE_INPUT, `BinOp(/): division by zero`));
+      }
       return ok(an.value / bn.value);
   }
 }

@@ -340,6 +340,10 @@ describe('expressions — coverage', () => {
     expect(isErr(evalScalar(binOp('+', param('missing'), numLit(1)), {}, 't'))).toBe(true);
   });
 
+  it('BinOp(/) by zero returns an error (not Infinity/NaN)', () => {
+    expect(isErr(evalScalar(binOp('/', numLit(1), numLit(0)), {}, 't'))).toBe(true);
+  });
+
   it('asScalarExpr passes through Expr', () => {
     const e = param('x');
     expect(asScalarExpr(e)).toBe(e);
