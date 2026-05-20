@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.20.2](https://github.com/andymai/brepjs/compare/brepjs-v18.20.1...brepjs-v18.20.2) (2026-05-20)
+
+
+### Bug Fixes
+
+* **deps:** bump nested mermaid → dompurify 3.4.2 to 3.4.5 ([#1043](https://github.com/andymai/brepjs/issues/1043)) ([cdb3080](https://github.com/andymai/brepjs/commit/cdb30802f31cccf047503ed42cf6429b25de116b))
+
 ## [18.20.1](https://github.com/andymai/brepjs/compare/brepjs-v18.20.0...brepjs-v18.20.1) (2026-05-20)
 
 
