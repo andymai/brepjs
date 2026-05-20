@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.20.3](https://github.com/andymai/brepjs/compare/brepjs-v18.20.2...brepjs-v18.20.3) (2026-05-20)
+
+
+### Bug Fixes
+
+* **deps:** bump brace-expansion 5.0.4 to 5.0.6 ([#1045](https://github.com/andymai/brepjs/issues/1045)) ([d9a9c23](https://github.com/andymai/brepjs/commit/d9a9c236abca1fc987f0b7da12a0d5d521aa5ad9))
+
 ## [18.20.2](https://github.com/andymai/brepjs/compare/brepjs-v18.20.1...brepjs-v18.20.2) (2026-05-20)
 
 
