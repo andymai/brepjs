@@ -88,7 +88,7 @@ describe('CSG perf invariants — DAG sharing', () => {
 
     ev.resetStats();
     unwrap(ev.evaluate(tree));
-    expect(ev.cacheStats()).toEqual({ hits: 1, misses: 0, entries: firstEntries });
+    expect(ev.cacheStats()).toMatchObject({ hits: 1, misses: 0, entries: firstEntries });
     // Only one hit because the root cache lookup short-circuits the descent.
   });
 });

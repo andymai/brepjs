@@ -2,6 +2,11 @@
 //   - warm vs cold evaluation of the same tree
 //   - param-driven re-eval (only subtrees that depend on the changed param re-run)
 //   - DAG sharing (same structural hash → one kernel call regardless of references)
+//
+// Eager paths wrap every iteration in a DisposalScope so the WASM heap doesn't
+// accumulate handles across iterations (which would slow later iterations and
+// overstate CSG's win). The CSG path's cleanup is already covered by the
+// Evaluator's own DisposalScope.
 
 import { describe, it, beforeAll } from 'vitest';
 import {
@@ -10,10 +15,10 @@ import {
   cylinder,
   translate as eagerTranslate,
   fuse as eagerFuse,
-  fuseAll as eagerFuseAll,
   compound as eagerCompound,
   csg,
   unwrap,
+  DisposalScope,
 } from '../src/index.js';
 import { initBenchKernels, benchBoth } from './setup.js';
 import { collectResults, printResults, type BenchResult } from './harness.js';
@@ -29,13 +34,6 @@ beforeAll(async () => {
 describe('CSG perf — cold vs warm cache', () => {
   const results: BenchResult[] = [];
 
-  const buildEager = () => {
-    const a = box(10, 10, 10);
-    const b = eagerTranslate(sphere(3), [5, 5, 5]);
-    const c = eagerTranslate(cylinder(2, 12), [0, 0, 0]);
-    return unwrap(eagerFuse(unwrap(eagerFuse(a, b)), c));
-  };
-
   const buildCsgTree = () =>
     csg.fuse(
       csg.fuse(csg.box(10, 10, 10), csg.translate(csg.sphere(3), [5, 5, 5])),
@@ -46,7 +44,14 @@ describe('CSG perf — cold vs warm cache', () => {
     collectResults(
       results,
       await benchBoth('eager: build + fuse', () => {
-        buildEager();
+        using scope = new DisposalScope();
+        const a = scope.register(box(10, 10, 10));
+        const sph = scope.register(sphere(3));
+        const b = scope.register(eagerTranslate(sph, [5, 5, 5]));
+        const cyl = scope.register(cylinder(2, 12));
+        const c = scope.register(eagerTranslate(cyl, [0, 0, 0]));
+        const ab = scope.register(unwrap(eagerFuse(a, b)));
+        scope.register(unwrap(eagerFuse(ab, c)));
       })
     );
   });
@@ -99,24 +104,24 @@ describe('CSG perf — incremental param re-eval', () => {
       csg.translate(csg.sphere(2), [70, 0, 0]),
     ]);
 
-  const buildEagerEquivalent = (w: number) =>
-    eagerCompound([
-      box(w, 10, 10),
-      eagerTranslate(sphere(2), [10, 0, 0]),
-      eagerTranslate(sphere(2), [20, 0, 0]),
-      eagerTranslate(sphere(2), [30, 0, 0]),
-      eagerTranslate(sphere(2), [40, 0, 0]),
-      eagerTranslate(sphere(2), [50, 0, 0]),
-      eagerTranslate(sphere(2), [60, 0, 0]),
-      eagerTranslate(sphere(2), [70, 0, 0]),
-    ]);
+  function buildEagerEquivalent(scope: DisposalScope, w: number): void {
+    const children = [
+      scope.register(box(w, 10, 10)),
+      ...Array.from({ length: 7 }, (_, i) => {
+        const s = scope.register(sphere(2));
+        return scope.register(eagerTranslate(s, [(i + 1) * 10, 0, 0]));
+      }),
+    ];
+    scope.register(eagerCompound(children));
+  }
 
   it('eager: changing w forces full rebuild of all 8 children', async () => {
     collectResults(
       results,
       await benchBoth('eager: rebuild 8-child compound on param change', () => {
-        buildEagerEquivalent(5);
-        buildEagerEquivalent(7);
+        using scope = new DisposalScope();
+        buildEagerEquivalent(scope, 5);
+        buildEagerEquivalent(scope, 7);
       })
     );
   });
@@ -154,11 +159,14 @@ describe('CSG perf — DAG sharing via structural hash', () => {
     collectResults(
       results,
       await benchBoth(`eager: ${N}x widget @ different positions`, () => {
+        using scope = new DisposalScope();
         const placements = Array.from({ length: N }, (_, i) => {
-          const widget = unwrap(eagerFuse(box(6, 6, 6), sphere(3)));
-          return eagerTranslate(widget, [i * 20, 0, 0]);
+          const b = scope.register(box(6, 6, 6));
+          const s = scope.register(sphere(3));
+          const widget = scope.register(unwrap(eagerFuse(b, s)));
+          return scope.register(eagerTranslate(widget, [i * 20, 0, 0]));
         });
-        eagerCompound(placements);
+        scope.register(eagerCompound(placements));
       })
     );
   });
