@@ -218,10 +218,23 @@ export class Evaluator implements Disposable {
 }
 
 /**
- * Convenience: run a callback with a freshly-created Evaluator that is
- * disposed automatically when the callback returns. Mirrors `withScope`.
+ * Run a callback with a fresh Evaluator that is disposed when the callback
+ * returns. Sync-only: an async callback would resolve after disposal,
+ * leaving borrowed shapes pointing at freed WASM memory. Mirrors the
+ * Promise-guard pattern in `withKernel`.
  */
-export function withEvaluator<T>(options: EvaluatorOptions, fn: (evaluator: Evaluator) => T): T {
+export function withEvaluator<T extends Exclude<unknown, Promise<unknown>>>(
+  options: EvaluatorOptions,
+  fn: (evaluator: Evaluator) => T
+): T {
   using ev = new Evaluator(options);
-  return fn(ev);
+  const result = fn(ev);
+  if (result instanceof Promise) {
+    throw new Error(
+      'withEvaluator() callback returned a Promise. ' +
+        'Async code must construct an Evaluator directly and dispose it manually — ' +
+        'borrowed shapes would otherwise be freed before the Promise resolves.'
+    );
+  }
+  return result;
 }

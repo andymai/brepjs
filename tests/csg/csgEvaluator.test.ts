@@ -148,6 +148,13 @@ describe('Evaluator — cache & incremental re-eval', () => {
     expect(ev2.cacheStats().entries).toBe(1);
   });
 
+  it('withEvaluator throws if the callback returns a Promise', () => {
+    expect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentionally bypassing the type guard to test the runtime guard
+      withEvaluator({}, ((_ev: Evaluator) => Promise.resolve(1)) as any);
+    }).toThrow(/Promise/);
+  });
+
   it('withEvaluator disposes the evaluator at function exit', () => {
     let cachedDuring = 0;
     withEvaluator({}, (ev) => {
