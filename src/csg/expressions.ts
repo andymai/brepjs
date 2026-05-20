@@ -1,12 +1,5 @@
-/**
- * Expression algebra for CSG IR parameter values.
- *
- * Expressions evaluate to numbers, Vec2s, or Vec3s against a parameter
- * environment. Each constructor pre-computes the structural hash and the
- * set of free params it depends on, so cache invalidation is O(depth) at
- * eval time.
- */
-
+// Each Expr constructor pre-computes its structural hash and freeParams so
+// the evaluator's cache-key step is O(depth), not O(subtree-size).
 import type { Vec2, Vec3 } from '@/core/types.js';
 import { ok, err, type Result } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
@@ -98,34 +91,34 @@ export type Vec2Input = Vec2 | readonly [ScalarInput, ScalarInput] | Expr;
 
 const EMPTY_DEPS: ReadonlySet<string> = new Set();
 
+function startHash(tag: string): bigint {
+  return fnvMixString(fnvInit(), tag);
+}
+
 export function numLit(value: number): NumLitExpr {
-  const h = fnvMixNumber(fnvMixString(fnvInit(), 'NumLit'), value);
+  const h = fnvMixNumber(startHash('NumLit'), value);
   return { kind: 'NumLit', value, structuralHash: h, freeParams: EMPTY_DEPS };
 }
 
 export function vec3Lit(value: Vec3): Vec3LitExpr {
-  let h = fnvMixString(fnvInit(), 'Vec3Lit');
-  h = fnvMixNumber(h, value[0]);
-  h = fnvMixNumber(h, value[1]);
-  h = fnvMixNumber(h, value[2]);
+  let h = startHash('Vec3Lit');
+  for (const n of value) h = fnvMixNumber(h, n);
   return { kind: 'Vec3Lit', value, structuralHash: h, freeParams: EMPTY_DEPS };
 }
 
 export function vec2Lit(value: Vec2): Vec2LitExpr {
-  let h = fnvMixString(fnvInit(), 'Vec2Lit');
-  h = fnvMixNumber(h, value[0]);
-  h = fnvMixNumber(h, value[1]);
+  let h = startHash('Vec2Lit');
+  for (const n of value) h = fnvMixNumber(h, n);
   return { kind: 'Vec2Lit', value, structuralHash: h, freeParams: EMPTY_DEPS };
 }
 
 export function param(name: string): ParamExpr {
-  const h = fnvMixString(fnvMixString(fnvInit(), 'Param'), name);
+  const h = fnvMixString(startHash('Param'), name);
   return { kind: 'Param', name, structuralHash: h, freeParams: new Set([name]) };
 }
 
 export function binOp(op: BinaryOp, a: Expr, b: Expr): BinOpExpr {
-  let h = fnvMixString(fnvInit(), 'BinOp');
-  h = fnvMixString(h, op);
+  let h = fnvMixString(startHash('BinOp'), op);
   h = fnvMixHash(h, a.structuralHash);
   h = fnvMixHash(h, b.structuralHash);
   return {
@@ -139,22 +132,19 @@ export function binOp(op: BinaryOp, a: Expr, b: Expr): BinOpExpr {
 }
 
 export function unaryOp(op: UnaryOp, arg: Expr): UnaryOpExpr {
-  let h = fnvMixString(fnvInit(), 'UnaryOp');
-  h = fnvMixString(h, op);
+  let h = fnvMixString(startHash('UnaryOp'), op);
   h = fnvMixHash(h, arg.structuralHash);
   return { kind: 'UnaryOp', op, arg, structuralHash: h, freeParams: arg.freeParams };
 }
 
 export function component(vec: Expr, index: 0 | 1 | 2): ComponentExpr {
-  let h = fnvMixString(fnvInit(), 'Component');
-  h = fnvMixInt32(h, index);
+  let h = fnvMixInt32(startHash('Component'), index);
   h = fnvMixHash(h, vec.structuralHash);
   return { kind: 'Component', vec, index, structuralHash: h, freeParams: vec.freeParams };
 }
 
 export function buildVec(dim: 2 | 3, components: readonly Expr[]): BuildVecExpr {
-  let h = fnvMixString(fnvInit(), 'BuildVec');
-  h = fnvMixInt32(h, dim);
+  let h = fnvMixInt32(startHash('BuildVec'), dim);
   const deps = new Set<string>();
   for (const c of components) {
     h = fnvMixHash(h, c.structuralHash);
@@ -174,38 +164,27 @@ export const mul = (a: Expr, b: Expr): BinOpExpr => binOp('*', a, b);
 // Input normalization
 // ---------------------------------------------------------------------------
 
-/** Wrap a number/Vec2/Vec3 input as an expression, or pass through if already one. */
 export function asScalarExpr(input: ScalarInput): Expr {
   return typeof input === 'number' ? numLit(input) : input;
 }
 
-/**
- * Accepts a literal `Vec3` (`[number, number, number]`), a mixed array of
- * numbers + Expr nodes, or a bare `Expr`. Mixed arrays are lifted to a
- * `BuildVec(3, ...)` so each Expr component participates in cache keys.
- */
-export function asVec3Expr(input: Vec3Input): Expr {
+function asVecExpr(input: Vec3Input | Vec2Input, dim: 2 | 3): Expr {
   if (!Array.isArray(input)) return input as Expr;
   const arr = input as ReadonlyArray<ScalarInput>;
   if (arr.every((v): v is number => typeof v === 'number')) {
-    return vec3Lit([arr[0] as number, arr[1] as number, arr[2] as number]);
+    return dim === 3
+      ? vec3Lit([arr[0] as number, arr[1] as number, arr[2] as number])
+      : vec2Lit([arr[0] as number, arr[1] as number]);
   }
-  return buildVec(
-    3,
-    arr.map((v) => (typeof v === 'number' ? numLit(v) : v))
-  );
+  return buildVec(dim, arr.map(asScalarExpr));
+}
+
+export function asVec3Expr(input: Vec3Input): Expr {
+  return asVecExpr(input, 3);
 }
 
 export function asVec2Expr(input: Vec2Input): Expr {
-  if (!Array.isArray(input)) return input as Expr;
-  const arr = input as ReadonlyArray<ScalarInput>;
-  if (arr.every((v): v is number => typeof v === 'number')) {
-    return vec2Lit([arr[0] as number, arr[1] as number]);
-  }
-  return buildVec(
-    2,
-    arr.map((v) => (typeof v === 'number' ? numLit(v) : v))
-  );
+  return asVecExpr(input, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +223,6 @@ function expectVecLen(v: ExprValue, len: 2 | 3, where: string): Result<readonly 
   );
 }
 
-/** Evaluate an expression against an environment. */
 export function evalExpr(expr: Expr, env: Env): Result<ExprValue> {
   switch (expr.kind) {
     case 'NumLit':
@@ -348,7 +326,11 @@ function evalBuildVec(expr: BuildVecExpr, env: Env): Result<ExprValue> {
     if (!n.ok) return n;
     out.push(n.value);
   }
-  return ok(expr.dim === 2 ? ([out[0], out[1]] as Vec2) : ([out[0], out[1], out[2]] as Vec3));
+  return ok(
+    expr.dim === 2
+      ? ([out[0] as number, out[1] as number] satisfies Vec2)
+      : ([out[0] as number, out[1] as number, out[2] as number] satisfies Vec3)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -366,13 +348,13 @@ export function evalVec3(expr: Expr, env: Env, where: string): Result<Vec3> {
   if (!r.ok) return r;
   const v = expectVecLen(r.value, 3, where);
   if (!v.ok) return v;
-  const arr = v.value;
-  return ok([arr[0] as number, arr[1] as number, arr[2] as number] as Vec3);
+  const [a, b, c] = v.value;
+  return ok([a as number, b as number, c as number]);
 }
 
 // ---------------------------------------------------------------------------
-// Projection — restrict env to the keys a node actually depends on. Used by
-// the evaluator to make the cache key insensitive to unrelated env changes.
+// Projection — restrict env to the keys a node actually depends on, so cache
+// keys are insensitive to unrelated env changes.
 // ---------------------------------------------------------------------------
 
 export function projectEnv(env: Env, deps: ReadonlySet<string>): Env {

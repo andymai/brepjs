@@ -1,12 +1,5 @@
-/**
- * Builders for CSG IR nodes. Each builder normalizes literal inputs to
- * expression nodes and pre-computes `structuralHash` + `freeParams` so the
- * evaluator can key its cache without re-walking the subtree.
- *
- * Builders are the *only* sanctioned way to construct nodes; the invariants
- * about hash and free-param computation rely on this.
- */
-
+// Builders are the only sanctioned way to construct nodes: they normalize
+// literal inputs to expressions and pre-compute structuralHash + freeParams.
 import {
   asScalarExpr,
   asVec3Expr,
@@ -44,7 +37,7 @@ import type {
   MirrorNode,
   CompoundNode,
   IRNode,
-  OutputKind,
+  EmptyOutputKind,
   SolidNode,
   FaceNode,
   EdgeNode,
@@ -53,25 +46,22 @@ import type {
 
 const EMPTY_DEPS: ReadonlySet<string> = new Set();
 
-// ---------------------------------------------------------------------------
-// Hash + dep helpers
-// ---------------------------------------------------------------------------
+interface Hashable {
+  readonly structuralHash: bigint;
+  readonly freeParams: ReadonlySet<string>;
+}
 
 function startHash(tag: string): bigint {
   return fnvMixString(fnvInit(), tag);
 }
 
-function mixExpr(h: bigint, e: Expr): bigint {
-  return fnvMixHash(h, e.structuralHash);
-}
-
-function mixNode(h: bigint, n: IRNode): bigint {
-  return fnvMixHash(h, n.structuralHash);
+function mix(h: bigint, x: Hashable): bigint {
+  return fnvMixHash(h, x.structuralHash);
 }
 
 function mixOptExpr(h: bigint, e: Expr | undefined): bigint {
   if (e === undefined) return fnvMixBool(h, false);
-  return mixExpr(fnvMixBool(h, true), e);
+  return mix(fnvMixBool(h, true), e);
 }
 
 function mixOptNumber(h: bigint, n: number | undefined): bigint {
@@ -79,9 +69,7 @@ function mixOptNumber(h: bigint, n: number | undefined): bigint {
   return fnvMixNumber(fnvMixBool(h, true), n);
 }
 
-function depsOf(
-  ...sources: ReadonlyArray<{ freeParams: ReadonlySet<string> } | undefined>
-): ReadonlySet<string> {
+function depsOf(...sources: ReadonlyArray<Hashable | undefined>): ReadonlySet<string> {
   const acc = new Set<string>();
   for (const s of sources) {
     if (!s) continue;
@@ -99,20 +87,20 @@ export function box(x: ScalarInput, y: ScalarInput, z: ScalarInput): BoxNode {
   const ye = asScalarExpr(y);
   const ze = asScalarExpr(z);
   let h = startHash('Box');
-  h = mixExpr(mixExpr(mixExpr(h, xe), ye), ze);
+  h = mix(mix(mix(h, xe), ye), ze);
   return { kind: 'Box', x: xe, y: ye, z: ze, structuralHash: h, freeParams: depsOf(xe, ye, ze) };
 }
 
 export function sphere(radius: ScalarInput): SphereNode {
   const re = asScalarExpr(radius);
-  const h = mixExpr(startHash('Sphere'), re);
+  const h = mix(startHash('Sphere'), re);
   return { kind: 'Sphere', radius: re, structuralHash: h, freeParams: re.freeParams };
 }
 
 export function cylinder(radius: ScalarInput, height: ScalarInput): CylinderNode {
   const re = asScalarExpr(radius);
   const he = asScalarExpr(height);
-  const h = mixExpr(mixExpr(startHash('Cylinder'), re), he);
+  const h = mix(mix(startHash('Cylinder'), re), he);
   return {
     kind: 'Cylinder',
     radius: re,
@@ -127,7 +115,7 @@ export function cone(radius1: ScalarInput, radius2: ScalarInput, height: ScalarI
   const r2 = asScalarExpr(radius2);
   const he = asScalarExpr(height);
   let h = startHash('Cone');
-  h = mixExpr(mixExpr(mixExpr(h, r1), r2), he);
+  h = mix(mix(mix(h, r1), r2), he);
   return {
     kind: 'Cone',
     radius1: r1,
@@ -141,7 +129,7 @@ export function cone(radius1: ScalarInput, radius2: ScalarInput, height: ScalarI
 export function torus(majorRadius: ScalarInput, minorRadius: ScalarInput): TorusNode {
   const ma = asScalarExpr(majorRadius);
   const mi = asScalarExpr(minorRadius);
-  const h = mixExpr(mixExpr(startHash('Torus'), ma), mi);
+  const h = mix(mix(startHash('Torus'), ma), mi);
   return {
     kind: 'Torus',
     majorRadius: ma,
@@ -153,28 +141,27 @@ export function torus(majorRadius: ScalarInput, minorRadius: ScalarInput): Torus
 
 export function polygon(points: ReadonlyArray<Vec3Input>): PolygonNode {
   const pts = points.map(asVec3Expr);
-  let h = startHash('Polygon');
-  h = fnvMixInt32(h, pts.length);
-  for (const p of pts) h = mixExpr(h, p);
+  let h = fnvMixInt32(startHash('Polygon'), pts.length);
+  for (const p of pts) h = mix(h, p);
   return { kind: 'Polygon', points: pts, structuralHash: h, freeParams: depsOf(...pts) };
 }
 
 export function circle(radius: ScalarInput): CircleNode {
   const re = asScalarExpr(radius);
-  const h = mixExpr(startHash('Circle'), re);
+  const h = mix(startHash('Circle'), re);
   return { kind: 'Circle', radius: re, structuralHash: h, freeParams: re.freeParams };
 }
 
 export function line(from: Vec3Input, to: Vec3Input): LineNode {
   const fe = asVec3Expr(from);
   const te = asVec3Expr(to);
-  const h = mixExpr(mixExpr(startHash('Line'), fe), te);
+  const h = mix(mix(startHash('Line'), fe), te);
   return { kind: 'Line', from: fe, to: te, structuralHash: h, freeParams: depsOf(fe, te) };
 }
 
 export function vertex(point: Vec3Input): VertexLitNode {
   const pe = asVec3Expr(point);
-  const h = mixExpr(startHash('Vertex'), pe);
+  const h = mix(startHash('Vertex'), pe);
   return { kind: 'Vertex', point: pe, structuralHash: h, freeParams: pe.freeParams };
 }
 
@@ -182,7 +169,7 @@ export function vertex(point: Vec3Input): VertexLitNode {
 // Empty / identity nodes
 // ---------------------------------------------------------------------------
 
-function emptyOf(output: OutputKind): EmptyNode {
+function emptyOf(output: EmptyOutputKind): EmptyNode {
   const h = fnvMixString(startHash('Empty'), output);
   return { kind: 'Empty', output, structuralHash: h, freeParams: EMPTY_DEPS };
 }
@@ -203,31 +190,47 @@ export function emptyWire(): EmptyNode {
 // Booleans
 // ---------------------------------------------------------------------------
 
+function binaryBoolHash(tag: string, a: IRNode, b: IRNode, tol: number | undefined): bigint {
+  const h = mix(mix(startHash(tag), a), b);
+  return mixOptNumber(h, tol);
+}
+
 export function fuse(a: SolidNode, b: SolidNode, tolerance?: number): FuseNode {
-  let h = startHash('Fuse');
-  h = mixNode(mixNode(h, a), b);
-  h = mixOptNumber(h, tolerance);
-  return { kind: 'Fuse', a, b, tolerance, structuralHash: h, freeParams: depsOf(a, b) };
+  return {
+    kind: 'Fuse',
+    a,
+    b,
+    tolerance,
+    structuralHash: binaryBoolHash('Fuse', a, b, tolerance),
+    freeParams: depsOf(a, b),
+  };
 }
 
 export function cut(a: SolidNode, b: SolidNode, tolerance?: number): CutNode {
-  let h = startHash('Cut');
-  h = mixNode(mixNode(h, a), b);
-  h = mixOptNumber(h, tolerance);
-  return { kind: 'Cut', a, b, tolerance, structuralHash: h, freeParams: depsOf(a, b) };
+  return {
+    kind: 'Cut',
+    a,
+    b,
+    tolerance,
+    structuralHash: binaryBoolHash('Cut', a, b, tolerance),
+    freeParams: depsOf(a, b),
+  };
 }
 
 export function intersect(a: SolidNode, b: SolidNode, tolerance?: number): IntersectNode {
-  let h = startHash('Intersect');
-  h = mixNode(mixNode(h, a), b);
-  h = mixOptNumber(h, tolerance);
-  return { kind: 'Intersect', a, b, tolerance, structuralHash: h, freeParams: depsOf(a, b) };
+  return {
+    kind: 'Intersect',
+    a,
+    b,
+    tolerance,
+    structuralHash: binaryBoolHash('Intersect', a, b, tolerance),
+    freeParams: depsOf(a, b),
+  };
 }
 
 export function fuseAll(shapes: ReadonlyArray<SolidNode>, tolerance?: number): FuseAllNode {
-  let h = startHash('FuseAll');
-  h = fnvMixInt32(h, shapes.length);
-  for (const s of shapes) h = mixNode(h, s);
+  let h = fnvMixInt32(startHash('FuseAll'), shapes.length);
+  for (const s of shapes) h = mix(h, s);
   h = mixOptNumber(h, tolerance);
   return { kind: 'FuseAll', shapes, tolerance, structuralHash: h, freeParams: depsOf(...shapes) };
 }
@@ -237,10 +240,9 @@ export function cutAll(
   tools: ReadonlyArray<SolidNode>,
   tolerance?: number
 ): CutAllNode {
-  let h = startHash('CutAll');
-  h = mixNode(h, base);
+  let h = mix(startHash('CutAll'), base);
   h = fnvMixInt32(h, tools.length);
-  for (const t of tools) h = mixNode(h, t);
+  for (const t of tools) h = mix(h, t);
   h = mixOptNumber(h, tolerance);
   return {
     kind: 'CutAll',
@@ -256,11 +258,13 @@ export function cutAll(
 // Transforms (preserve output kind via simple union)
 // ---------------------------------------------------------------------------
 
+function optVec3(v: Vec3Input | undefined): Expr | undefined {
+  return v !== undefined ? asVec3Expr(v) : undefined;
+}
+
 export function translate(target: IRNode, vector: Vec3Input): TranslateNode {
   const ve = asVec3Expr(vector);
-  let h = startHash('Translate');
-  h = mixNode(h, target);
-  h = mixExpr(h, ve);
+  const h = mix(mix(startHash('Translate'), target), ve);
   return {
     kind: 'Translate',
     target,
@@ -277,11 +281,9 @@ export interface RotateOptions {
 
 export function rotate(target: IRNode, angle: ScalarInput, options?: RotateOptions): RotateNode {
   const ae = asScalarExpr(angle);
-  const axisE = options?.axis !== undefined ? asVec3Expr(options.axis) : undefined;
-  const atE = options?.at !== undefined ? asVec3Expr(options.at) : undefined;
-  let h = startHash('Rotate');
-  h = mixNode(h, target);
-  h = mixExpr(h, ae);
+  const axisE = optVec3(options?.axis);
+  const atE = optVec3(options?.at);
+  let h = mix(mix(startHash('Rotate'), target), ae);
   h = mixOptExpr(h, axisE);
   h = mixOptExpr(h, atE);
   return {
@@ -301,10 +303,8 @@ export interface ScaleOptions {
 
 export function scale(target: IRNode, factor: ScalarInput, options?: ScaleOptions): ScaleNode {
   const fe = asScalarExpr(factor);
-  const cE = options?.center !== undefined ? asVec3Expr(options.center) : undefined;
-  let h = startHash('Scale');
-  h = mixNode(h, target);
-  h = mixExpr(h, fe);
+  const cE = optVec3(options?.center);
+  let h = mix(mix(startHash('Scale'), target), fe);
   h = mixOptExpr(h, cE);
   return {
     kind: 'Scale',
@@ -322,10 +322,9 @@ export interface MirrorOptions {
 }
 
 export function mirror(target: IRNode, options?: MirrorOptions): MirrorNode {
-  const nE = options?.normal !== undefined ? asVec3Expr(options.normal) : undefined;
-  const atE = options?.at !== undefined ? asVec3Expr(options.at) : undefined;
-  let h = startHash('Mirror');
-  h = mixNode(h, target);
+  const nE = optVec3(options?.normal);
+  const atE = optVec3(options?.at);
+  let h = mix(startHash('Mirror'), target);
   h = mixOptExpr(h, nE);
   h = mixOptExpr(h, atE);
   return {
@@ -343,9 +342,8 @@ export function mirror(target: IRNode, options?: MirrorOptions): MirrorNode {
 // ---------------------------------------------------------------------------
 
 export function compound(children: ReadonlyArray<IRNode>): CompoundNode {
-  let h = startHash('Compound');
-  h = fnvMixInt32(h, children.length);
-  for (const c of children) h = mixNode(h, c);
+  let h = fnvMixInt32(startHash('Compound'), children.length);
+  for (const c of children) h = mix(h, c);
   return { kind: 'Compound', children, structuralHash: h, freeParams: depsOf(...children) };
 }
 

@@ -477,6 +477,20 @@ describe('optimize — coverage', () => {
     expect(opt.kind).toBe('CutAll');
   });
 
+  it('Translate fusion does NOT trigger when an operand vector is non-literal', () => {
+    const tree = translate(translate(box(1, 1, 1), [param('a'), 0, 0]), [2, 0, 0]);
+    const opt = optimize(tree);
+    if (opt.kind !== 'Translate') throw new Error('expected outer Translate');
+    if (opt.target.kind !== 'Translate') throw new Error('inner Translate should remain');
+  });
+
+  it('Compound filters out optimized-to-Empty children', () => {
+    const opt = optimize(compound([box(1, 1, 1), fuse(emptySolid(), emptySolid())]));
+    if (opt.kind !== 'Compound') throw new Error('expected Compound');
+    expect(opt.children.length).toBe(1);
+    expect(opt.children[0]?.kind).toBe('Box');
+  });
+
   it('all the other primitive optimizers route correctly', () => {
     expect(optimize(sphere(2)).kind).toBe('Sphere');
     expect(optimize(cylinder(2, 3)).kind).toBe('Cylinder');

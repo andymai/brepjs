@@ -1,45 +1,29 @@
-/**
- * Structural edit helpers for CSG IR trees.
- *
- * Edits are immutable — `replaceNode` returns a new tree with the
- * replacement applied wherever the predicate matches. Builders are used
- * to re-construct ancestor nodes, which transparently recomputes
- * structural hashes and free-param sets bottom-up.
- *
- * For parametric edits (changing a `Param` value) you don't need this —
- * just re-evaluate with a different env.
- */
-
+// Edits are immutable: rebuild from the bottom up via builders so hashes and
+// freeParams stay correct. For parameter changes, use `evaluate(tree, env)`.
 import * as B from './builders.js';
 import type { IRNode } from './types.js';
 
 export type NodePredicate = (node: IRNode) => boolean;
 
-/**
- * Walk the tree; whenever `pred(node)` returns true, substitute
- * `replacement`. Ancestors are re-built so hashes stay correct.
- *
- * Note: this is a multi-match operation — every matching node is
- * replaced. Use `replaceFirst` if you want single-match semantics.
- */
 export function replaceNode(root: IRNode, pred: NodePredicate, replacement: IRNode): IRNode {
-  return walk(root, pred, replacement, { stopAfterFirst: false });
+  return walk(root, pred, replacement);
 }
 
+/**
+ * First-match-per-subtree replacement: when `pred(node)` matches, the
+ * subtree under it is not descended into. Use {@link replaceNode} for the
+ * same semantics — `replaceFirst` is kept as a clarity alias.
+ */
 export function replaceFirst(root: IRNode, pred: NodePredicate, replacement: IRNode): IRNode {
-  return walk(root, pred, replacement, { stopAfterFirst: true });
+  return walk(root, pred, replacement);
 }
 
-interface WalkState {
-  readonly stopAfterFirst: boolean;
-}
-
-function walk(node: IRNode, pred: NodePredicate, repl: IRNode, state: WalkState): IRNode {
+function walk(node: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
   if (pred(node)) return repl;
-  return rebuildChildren(node, pred, repl, state);
+  return rebuildChildren(node, pred, repl);
 }
 
-function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode, s: WalkState): IRNode {
+function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode): IRNode {
   switch (n.kind) {
     case 'Box':
     case 'Sphere':
@@ -53,39 +37,35 @@ function rebuildChildren(n: IRNode, pred: NodePredicate, repl: IRNode, s: WalkSt
     case 'Empty':
       return n;
     case 'Fuse':
-      return B.fuse(walk(n.a, pred, repl, s), walk(n.b, pred, repl, s), n.tolerance);
+      return B.fuse(walk(n.a, pred, repl), walk(n.b, pred, repl), n.tolerance);
     case 'Cut':
-      return B.cut(walk(n.a, pred, repl, s), walk(n.b, pred, repl, s), n.tolerance);
+      return B.cut(walk(n.a, pred, repl), walk(n.b, pred, repl), n.tolerance);
     case 'Intersect':
-      return B.intersect(walk(n.a, pred, repl, s), walk(n.b, pred, repl, s), n.tolerance);
+      return B.intersect(walk(n.a, pred, repl), walk(n.b, pred, repl), n.tolerance);
     case 'FuseAll':
       return B.fuseAll(
-        n.shapes.map((c) => walk(c, pred, repl, s)),
+        n.shapes.map((c) => walk(c, pred, repl)),
         n.tolerance
       );
     case 'CutAll':
       return B.cutAll(
-        walk(n.base, pred, repl, s),
-        n.tools.map((c) => walk(c, pred, repl, s)),
+        walk(n.base, pred, repl),
+        n.tools.map((c) => walk(c, pred, repl)),
         n.tolerance
       );
     case 'Translate':
-      return B.translate(walk(n.target, pred, repl, s), n.vector);
+      return B.translate(walk(n.target, pred, repl), n.vector);
     case 'Rotate':
-      return B.rotate(walk(n.target, pred, repl, s), n.angle, {
-        axis: n.axis,
-        at: n.at,
-      });
+      return B.rotate(walk(n.target, pred, repl), n.angle, { axis: n.axis, at: n.at });
     case 'Scale':
-      return B.scale(walk(n.target, pred, repl, s), n.factor, { center: n.center });
+      return B.scale(walk(n.target, pred, repl), n.factor, { center: n.center });
     case 'Mirror':
-      return B.mirror(walk(n.target, pred, repl, s), { normal: n.normal, at: n.at });
+      return B.mirror(walk(n.target, pred, repl), { normal: n.normal, at: n.at });
     case 'Compound':
-      return B.compound(n.children.map((c) => walk(c, pred, repl, s)));
+      return B.compound(n.children.map((c) => walk(c, pred, repl)));
   }
 }
 
-/** Visit every node in the tree (pre-order). */
 export function forEachNode(root: IRNode, fn: (node: IRNode) => void): void {
   fn(root);
   for (const child of childrenOf(root)) forEachNode(child, fn);
@@ -122,7 +102,6 @@ function childrenOf(n: IRNode): readonly IRNode[] {
   }
 }
 
-/** Count the total number of nodes in the tree. */
 export function nodeCount(root: IRNode): number {
   let n = 0;
   forEachNode(root, () => {

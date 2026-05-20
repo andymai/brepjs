@@ -1,28 +1,8 @@
-/**
- * Pure tree-to-tree rewrite passes for CSG IR. Optimizations never touch
- * the kernel — they produce a semantically equivalent tree that the
- * evaluator can materialize more cheaply (fewer kernel calls, smaller
- * cache footprint).
- *
- * v1 passes:
- *   - identity-elim:  Fuse(Empty, x) → x; Cut(x, Empty) → x; ...
- *   - constant-fold:  BinOp(NumLit, NumLit) → NumLit, etc.
- *   - transform fusion: Translate(Translate(x, v1), v2) → Translate(x, v1+v2)
- *     (only when both vectors are literal Vec3s)
- *
- * Each pass is idempotent; running `optimize` multiple times converges
- * after at most one full traversal.
- */
-
+// Pure tree-to-tree rewrites — never touch the kernel. v1 passes:
+// identity-elim on booleans, constant-fold scalar arithmetic, transform
+// fusion (literal translates only), Empty-filter on Compound.
 import * as B from './builders.js';
-import {
-  numLit,
-  vec3Lit,
-  vec2Lit,
-  type Expr,
-  type Vec3LitExpr,
-  type NumLitExpr,
-} from './expressions.js';
+import { numLit, vec3Lit, vec2Lit, type Expr } from './expressions.js';
 import type { IRNode } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -93,31 +73,15 @@ export function foldExpr(e: Expr): Expr {
   }
 }
 
-function isVec3LitExpr(e: Expr): e is Vec3LitExpr {
-  return e.kind === 'Vec3Lit';
-}
-
 function foldBuildVec(dim: 2 | 3, comps: readonly Expr[]): Expr | undefined {
+  if (comps.length !== dim) return undefined;
   const nums: number[] = [];
   for (const c of comps) {
     if (c.kind !== 'NumLit') return undefined;
-    const nl: NumLitExpr = c;
-    nums.push(nl.value);
+    nums.push(c.value);
   }
-  if (dim === 2 && nums.length >= 2) {
-    const a = nums[0];
-    const b = nums[1];
-    if (a === undefined || b === undefined) return undefined;
-    return vec2Lit([a, b]);
-  }
-  if (dim === 3 && nums.length >= 3) {
-    const a = nums[0];
-    const b = nums[1];
-    const c = nums[2];
-    if (a === undefined || b === undefined || c === undefined) return undefined;
-    return vec3Lit([a, b, c]);
-  }
-  return undefined;
+  if (dim === 2) return vec2Lit([nums[0] as number, nums[1] as number]);
+  return vec3Lit([nums[0] as number, nums[1] as number, nums[2] as number]);
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +137,7 @@ function optimizeNode(n: IRNode): IRNode {
         at: n.at ? foldExpr(n.at) : undefined,
       });
     case 'Compound':
-      return B.compound(n.children.map(optimizeNode));
+      return B.compound(n.children.map(optimizeNode).filter((c) => c.kind !== 'Empty'));
   }
 }
 
@@ -204,7 +168,7 @@ function optimizeIntersect(a: IRNode, b: IRNode, tol: number | undefined): IRNod
 function optimizeFuseAll(shapes: readonly IRNode[], tol: number | undefined): IRNode {
   const opt = shapes.map(optimizeNode).filter((s) => s.kind !== 'Empty');
   if (opt.length === 0) return B.emptySolid();
-  if (opt.length === 1 && opt[0]) return opt[0];
+  if (opt.length === 1) return opt[0] as IRNode;
   return B.fuseAll(opt, tol);
 }
 
@@ -219,20 +183,13 @@ function optimizeCutAll(base: IRNode, tools: readonly IRNode[], tol: number | un
 function optimizeTranslate(target: IRNode, vector: Expr): IRNode {
   const ot = optimizeNode(target);
   const ov = foldExpr(vector);
-  // Identity: translate by zero
-  if (isVec3LitExpr(ov) && ov.value[0] === 0 && ov.value[1] === 0 && ov.value[2] === 0) {
-    return ot;
-  }
-  // Fusion: Translate(Translate(x, v1), v2) → Translate(x, v1+v2) when both literal
-  if (ot.kind === 'Translate' && isVec3LitExpr(ov)) {
-    const innerV = foldExpr(ot.vector);
-    if (isVec3LitExpr(innerV)) {
-      const sum: [number, number, number] = [
-        innerV.value[0] + ov.value[0],
-        innerV.value[1] + ov.value[1],
-        innerV.value[2] + ov.value[2],
-      ];
-      return B.translate(ot.target, sum);
+  if (ov.kind !== 'Vec3Lit') return B.translate(ot, ov);
+  const [x, y, z] = ov.value;
+  if (x === 0 && y === 0 && z === 0) return ot;
+  if (ot.kind === 'Translate') {
+    const inner = foldExpr(ot.vector);
+    if (inner.kind === 'Vec3Lit') {
+      return B.translate(ot.target, [inner.value[0] + x, inner.value[1] + y, inner.value[2] + z]);
     }
   }
   return B.translate(ot, ov);

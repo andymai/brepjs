@@ -1,15 +1,6 @@
-/**
- * Tagged-union JSON serialization for CSG IR trees.
- *
- * `toJSON` expands a DAG into a tree (any shared subtree is written inline
- * at every reference point). The evaluator's hash cache opportunistically
- * restores DAG sharing on the first evaluation after `fromJSON`.
- *
- * `fromJSON` is the trust boundary — it validates every field, rejects
- * malformed inputs, and reconstructs nodes via builders so structural
- * hash and free-param sets stay correct.
- */
-
+// toJSON expands DAGs to trees (sharing rebuilt on first re-eval via the
+// hash cache). fromJSON is the trust boundary: validates every field and
+// reconstructs via builders so hashes/freeParams stay correct.
 import type { Vec2, Vec3 } from '@/core/types.js';
 import { ok, err, type Result } from '@/core/result.js';
 import { validationError, BrepErrorCode } from '@/core/errors.js';
@@ -26,7 +17,7 @@ import {
   type UnaryOp,
 } from './expressions.js';
 import * as B from './builders.js';
-import type { IRNode, OutputKind } from './types.js';
+import type { IRNode } from './types.js';
 
 export const CSG_VERSION = 1;
 
@@ -120,6 +111,10 @@ function booleanToJson(n: IRNode): unknown {
   }
 }
 
+function optExprToJson(e: Expr | undefined): unknown {
+  return e ? exprToJson(e) : undefined;
+}
+
 function transformToJson(n: IRNode): unknown {
   switch (n.kind) {
     case 'Translate':
@@ -129,22 +124,22 @@ function transformToJson(n: IRNode): unknown {
         kind: 'Rotate',
         target: nodeToJson(n.target),
         angle: exprToJson(n.angle),
-        axis: n.axis ? exprToJson(n.axis) : undefined,
-        at: n.at ? exprToJson(n.at) : undefined,
+        axis: optExprToJson(n.axis),
+        at: optExprToJson(n.at),
       };
     case 'Scale':
       return {
         kind: 'Scale',
         target: nodeToJson(n.target),
         factor: exprToJson(n.factor),
-        center: n.center ? exprToJson(n.center) : undefined,
+        center: optExprToJson(n.center),
       };
     case 'Mirror':
       return {
         kind: 'Mirror',
         target: nodeToJson(n.target),
-        normal: n.normal ? exprToJson(n.normal) : undefined,
-        at: n.at ? exprToJson(n.at) : undefined,
+        normal: optExprToJson(n.normal),
+        at: optExprToJson(n.at),
       };
     default:
       return undefined;
@@ -321,14 +316,21 @@ function readNode(j: unknown): Result<IRNode> {
   }
 }
 
+function readSingleExpr(
+  j: Record<string, unknown>,
+  key: string,
+  build: (e: Expr) => IRNode
+): Result<IRNode> {
+  const r = readExpr(j[key]);
+  return r.ok ? ok(build(r.value)) : r;
+}
+
 function readPrimitive(kind: string, j: Record<string, unknown>): Result<IRNode> {
   switch (kind) {
     case 'Box':
       return readBox(j);
-    case 'Sphere': {
-      const r = readExpr(j['radius']);
-      return r.ok ? ok(B.sphere(r.value)) : r;
-    }
+    case 'Sphere':
+      return readSingleExpr(j, 'radius', B.sphere);
     case 'Cylinder':
       return readCylinder(j);
     case 'Cone':
@@ -337,16 +339,12 @@ function readPrimitive(kind: string, j: Record<string, unknown>): Result<IRNode>
       return readTorus(j);
     case 'Polygon':
       return readPolygon(j);
-    case 'Circle': {
-      const r = readExpr(j['radius']);
-      return r.ok ? ok(B.circle(r.value)) : r;
-    }
+    case 'Circle':
+      return readSingleExpr(j, 'radius', B.circle);
     case 'Line':
       return readLine(j);
-    case 'Vertex': {
-      const p = readExpr(j['point']);
-      return p.ok ? ok(B.vertex(p.value)) : p;
-    }
+    case 'Vertex':
+      return readSingleExpr(j, 'point', B.vertex);
     case 'Empty':
       return readEmpty(j);
   }
@@ -411,11 +409,7 @@ function readLine(j: Record<string, unknown>): Result<IRNode> {
 
 function readEmpty(j: Record<string, unknown>): Result<IRNode> {
   const out = j['output'];
-  const kinds: ReadonlyArray<OutputKind> = ['Solid', 'Face', 'Wire', 'Edge', 'Vertex', 'Compound'];
-  if (!isString(out) || !kinds.includes(out as OutputKind)) {
-    return bad(`Empty.output: ${String(out)}`);
-  }
-  switch (out as OutputKind) {
+  switch (out) {
     case 'Solid':
       return ok(B.emptySolid());
     case 'Face':
@@ -423,7 +417,7 @@ function readEmpty(j: Record<string, unknown>): Result<IRNode> {
     case 'Wire':
       return ok(B.emptyWire());
     default:
-      return bad(`Empty: unsupported output kind ${out}`);
+      return bad(`Empty.output: ${String(out)}`);
   }
 }
 
@@ -483,30 +477,36 @@ function readTranslate(j: Record<string, unknown>, target: IRNode): Result<IRNod
   return v.ok ? ok(B.translate(target, v.value)) : v;
 }
 
+function readOptExpr(j: Record<string, unknown>, key: string): Result<Expr | undefined> {
+  if (j[key] === undefined) return ok(undefined);
+  const r = readExpr(j[key]);
+  return r.ok ? ok(r.value) : r;
+}
+
 function readRotate(j: Record<string, unknown>, target: IRNode): Result<IRNode> {
   const ang = readExpr(j['angle']);
   if (!ang.ok) return ang;
-  const axis = j['axis'] !== undefined ? readExpr(j['axis']) : undefined;
-  if (axis && !axis.ok) return axis;
-  const at = j['at'] !== undefined ? readExpr(j['at']) : undefined;
-  if (at && !at.ok) return at;
-  return ok(B.rotate(target, ang.value, { axis: axis?.value, at: at?.value }));
+  const axis = readOptExpr(j, 'axis');
+  if (!axis.ok) return axis;
+  const at = readOptExpr(j, 'at');
+  if (!at.ok) return at;
+  return ok(B.rotate(target, ang.value, { axis: axis.value, at: at.value }));
 }
 
 function readScale(j: Record<string, unknown>, target: IRNode): Result<IRNode> {
   const f = readExpr(j['factor']);
   if (!f.ok) return f;
-  const center = j['center'] !== undefined ? readExpr(j['center']) : undefined;
-  if (center && !center.ok) return center;
-  return ok(B.scale(target, f.value, { center: center?.value }));
+  const center = readOptExpr(j, 'center');
+  if (!center.ok) return center;
+  return ok(B.scale(target, f.value, { center: center.value }));
 }
 
 function readMirror(j: Record<string, unknown>, target: IRNode): Result<IRNode> {
-  const normal = j['normal'] !== undefined ? readExpr(j['normal']) : undefined;
-  if (normal && !normal.ok) return normal;
-  const at = j['at'] !== undefined ? readExpr(j['at']) : undefined;
-  if (at && !at.ok) return at;
-  return ok(B.mirror(target, { normal: normal?.value, at: at?.value }));
+  const normal = readOptExpr(j, 'normal');
+  if (!normal.ok) return normal;
+  const at = readOptExpr(j, 'at');
+  if (!at.ok) return at;
+  return ok(B.mirror(target, { normal: normal.value, at: at.value }));
 }
 
 function readCompound(j: Record<string, unknown>): Result<IRNode> {

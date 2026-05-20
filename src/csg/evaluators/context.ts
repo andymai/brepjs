@@ -1,7 +1,3 @@
-/**
- * Evaluator context — passed to each per-node-kind eval function.
- */
-
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { Result } from '@/core/result.js';
 import type { Env } from '../expressions.js';

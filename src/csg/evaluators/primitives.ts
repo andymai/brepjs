@@ -1,9 +1,3 @@
-/**
- * Evaluators for CSG primitive nodes — call the existing functional API in
- * `topology/primitiveFns.ts`. Each function stays under the project's
- * MAX_FUNCTION_LINES=60 and MAX_NESTING_DEPTH=4 pattern-checker limits.
- */
-
 import {
   box as boxFn,
   sphere as sphereFn,

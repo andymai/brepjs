@@ -1,12 +1,6 @@
-/**
- * Evaluator for the Compound node — materializes each child and wraps the
- * results in a single Compound shape.
- */
-
 import { compound as compoundFn } from '@/topology/primitiveFns.js';
-import { ok, type Result } from '@/core/result.js';
+import { ok, err, type Result } from '@/core/result.js';
 import { computationError, BrepErrorCode } from '@/core/errors.js';
-import { err } from '@/core/result.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import type { CompoundNode } from '../types.js';
 import type { EvalContext } from './context.js';

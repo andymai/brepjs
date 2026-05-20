@@ -1,25 +1,16 @@
-/**
- * Evaluator — materializes a CSG IR tree into a kernel-backed shape, with
- * content-addressed memoization scoped to the evaluator's lifetime.
- *
- * Cache key = (structuralHash, kernelId, projectedEnvHash, toleranceHash).
- * Projected-env hash means a subtree only invalidates when an actual
- * parameter it depends on changes — a different `height` doesn't invalidate
- * a subtree whose `freeParams` is `{radius}`.
- *
- * Lifetime: the cached shape handles are owned by the Evaluator. The
- * returned shape from `evaluate()` is **borrowed** — valid only until the
- * Evaluator is disposed. Use `using ev = new Evaluator(...)` or `withEvaluator`.
- */
-
-import { withKernel } from '@/kernel/index.js';
+// Cache key = (structuralHash, kernelId, projectedEnvHash, toleranceHash).
+// Only the param keys a subtree depends on enter its env projection, so
+// unrelated env changes don't invalidate independent subtrees.
+//
+// Returned shapes are borrowed — owned by the Evaluator's DisposalScope.
+// Callers must NOT dispose them; lifetime is the Evaluator's.
+import { getActiveKernelId, withKernel } from '@/kernel/index.js';
 import { DisposalScope } from '@/core/disposal.js';
-import { ok, err, type Result } from '@/core/result.js';
-import { computationError, BrepErrorCode } from '@/core/errors.js';
+import { ok, type Result } from '@/core/result.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { projectEnv, type Env, type ExprValue } from './expressions.js';
 import { fnvInit, fnvMixString, fnvMixNumber, fnvMixBool, fnvMixInt32, toHex } from './hash.js';
-import type { IRNode, NodeKind } from './types.js';
+import type { IRNode } from './types.js';
 import type { EvalContext } from './evaluators/context.js';
 import {
   evalBox,
@@ -67,35 +58,52 @@ export interface CacheStats {
   readonly entries: number;
 }
 
-// ---------------------------------------------------------------------------
-// Registry
-// ---------------------------------------------------------------------------
-
-type EvalFn = (node: IRNode, ctx: EvalContext) => Result<AnyShape<Dimension>>;
-
-// Cast helpers — each registered fn accepts the union node and narrows internally.
-const REGISTRY: ReadonlyMap<NodeKind, EvalFn> = new Map<NodeKind, EvalFn>([
-  ['Box', evalBox as EvalFn],
-  ['Sphere', evalSphere as EvalFn],
-  ['Cylinder', evalCylinder as EvalFn],
-  ['Cone', evalCone as EvalFn],
-  ['Torus', evalTorus as EvalFn],
-  ['Polygon', evalPolygon as EvalFn],
-  ['Circle', evalCircle as EvalFn],
-  ['Line', evalLine as EvalFn],
-  ['Vertex', evalVertex as EvalFn],
-  ['Empty', (_node, _ctx) => evalEmpty()],
-  ['Fuse', evalFuse as EvalFn],
-  ['Cut', evalCut as EvalFn],
-  ['Intersect', evalIntersect as EvalFn],
-  ['FuseAll', evalFuseAll as EvalFn],
-  ['CutAll', evalCutAll as EvalFn],
-  ['Translate', evalTranslate as EvalFn],
-  ['Rotate', evalRotate as EvalFn],
-  ['Scale', evalScale as EvalFn],
-  ['Mirror', evalMirror as EvalFn],
-  ['Compound', evalCompound as EvalFn],
-]);
+// Exhaustive dispatch — TS catches any new NodeKind missing an evaluator at
+// compile time, so there's no runtime "unknown kind" fallback.
+function dispatch(node: IRNode, ctx: EvalContext): Result<AnyShape<Dimension>> {
+  switch (node.kind) {
+    case 'Box':
+      return evalBox(node, ctx);
+    case 'Sphere':
+      return evalSphere(node, ctx);
+    case 'Cylinder':
+      return evalCylinder(node, ctx);
+    case 'Cone':
+      return evalCone(node, ctx);
+    case 'Torus':
+      return evalTorus(node, ctx);
+    case 'Polygon':
+      return evalPolygon(node, ctx);
+    case 'Circle':
+      return evalCircle(node, ctx);
+    case 'Line':
+      return evalLine(node, ctx);
+    case 'Vertex':
+      return evalVertex(node, ctx);
+    case 'Empty':
+      return evalEmpty();
+    case 'Fuse':
+      return evalFuse(node, ctx);
+    case 'Cut':
+      return evalCut(node, ctx);
+    case 'Intersect':
+      return evalIntersect(node, ctx);
+    case 'FuseAll':
+      return evalFuseAll(node, ctx);
+    case 'CutAll':
+      return evalCutAll(node, ctx);
+    case 'Translate':
+      return evalTranslate(node, ctx);
+    case 'Rotate':
+      return evalRotate(node, ctx);
+    case 'Scale':
+      return evalScale(node, ctx);
+    case 'Mirror':
+      return evalMirror(node, ctx);
+    case 'Compound':
+      return evalCompound(node, ctx);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Env projection hash
@@ -143,20 +151,24 @@ export class Evaluator implements Disposable {
   private misses = 0;
 
   constructor(options: EvaluatorOptions = {}) {
-    this.kernelId = options.kernel ?? 'default';
+    // Resolve to the concrete kernel id at construction so cache keys are
+    // stable across `withKernel`/registry mutations during this evaluator's
+    // lifetime. Falls back to a literal sentinel only if no kernel is
+    // registered yet (in which case evaluate() will throw via getKernel()).
+    this.kernelId = options.kernel ?? getActiveKernelId() ?? 'unregistered';
     this.defaultTolerance = options.tolerance;
     if (options.onStep) this.onStep = options.onStep;
   }
 
   /**
    * Materialize a CSG IR tree against the given parameter environment.
-   * The returned shape is borrowed — valid until this Evaluator is disposed.
+   * The returned shape is borrowed — valid for as long as this Evaluator is
+   * not disposed. Callers must NOT call `.delete()` / `[Symbol.dispose]()`
+   * on the returned shape; that would invalidate the cache entry for every
+   * future call returning the same handle.
    */
   evaluate(node: IRNode, env: Env = {}): Result<AnyShape<Dimension>> {
-    if (this.kernelId !== 'default') {
-      return withKernel(this.kernelId, () => this.evaluateInner(node, env));
-    }
-    return this.evaluateInner(node, env);
+    return withKernel(this.kernelId, () => this.evaluateInner(node, env));
   }
 
   private evaluateInner(node: IRNode, env: Env): Result<AnyShape<Dimension>> {
@@ -173,16 +185,7 @@ export class Evaluator implements Disposable {
       tolerance: this.defaultTolerance,
       evalNode: (child) => this.evaluateInner(child, env),
     };
-    const fn = REGISTRY.get(node.kind);
-    if (!fn) {
-      return err(
-        computationError(
-          BrepErrorCode.NULL_SHAPE_INPUT,
-          `Evaluator: no evaluator registered for node kind ${node.kind}`
-        )
-      );
-    }
-    const result = fn(node, ctx);
+    const result = dispatch(node, ctx);
     if (!result.ok) return result;
     this.scope.register(result.value);
     this.cache.set(key, result.value);

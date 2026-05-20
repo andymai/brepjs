@@ -110,23 +110,42 @@ describe('Evaluator — cache & incremental re-eval', () => {
 
   it('changing a Param only invalidates subtrees that depend on it', () => {
     using ev = new Evaluator();
-    // Tree: fuse( box(w, 10, 10), sphere(5) ).
-    // sphere(5) freeParams = {}, box freeParams = {'w'}, fuse freeParams = {'w'}.
-    // Re-evaluate with different `w`: box and fuse miss; sphere should hit.
+    // freeParams: sphere(5)={}, box(w,10,10)={w}, fuse=union={w}.
+    // First eval misses 3 nodes. Second eval with different w: sphere hits,
+    // box+fuse miss → exactly 1 hit and 2 misses.
     const tree = fuse(box(param('w'), 10, 10), sphere(5));
     ev.evaluate(tree, { w: 5 });
     ev.resetStats();
     ev.evaluate(tree, { w: 7 });
-    const stats = ev.cacheStats();
-    // Sphere(5) is independent of `w`, so it should reuse the cached entry.
-    expect(stats.hits).toBeGreaterThanOrEqual(1);
+    expect(ev.cacheStats()).toEqual({ hits: 1, misses: 2, entries: 5 });
   });
 
-  it('different kernel id buckets the cache (single-kernel test: just verifies key formation)', () => {
-    using ev = new Evaluator({ kernel: 'default' });
-    const tree = box(1, 2, 3);
+  it('changing an unrelated env key invalidates nothing', () => {
+    using ev = new Evaluator();
+    const tree = fuse(box(param('w'), 10, 10), sphere(5));
+    ev.evaluate(tree, { w: 5, irrelevant: 999 });
+    ev.resetStats();
+    ev.evaluate(tree, { w: 5, irrelevant: 42 });
+    expect(ev.cacheStats().misses).toBe(0);
+  });
+
+  it('evaluator resolves kernelId at construction (stable cache key)', () => {
+    using ev = new Evaluator();
+    const tree = box(1, 1, 1);
     ev.evaluate(tree);
-    expect(ev.cacheStats().entries).toBeGreaterThan(0);
+    expect(ev.cacheStats().entries).toBe(1);
+    ev.evaluate(tree);
+    expect(ev.cacheStats().hits).toBeGreaterThan(0);
+  });
+
+  it('changing tolerance produces a separate cache entry', () => {
+    using ev1 = new Evaluator({ tolerance: 0.01 });
+    using ev2 = new Evaluator({ tolerance: 0.1 });
+    const tree = box(1, 1, 1);
+    ev1.evaluate(tree);
+    ev2.evaluate(tree);
+    expect(ev1.cacheStats().entries).toBe(1);
+    expect(ev2.cacheStats().entries).toBe(1);
   });
 
   it('withEvaluator disposes the evaluator at function exit', () => {
@@ -136,6 +155,20 @@ describe('Evaluator — cache & incremental re-eval', () => {
       cachedDuring = ev.cacheStats().entries;
     });
     expect(cachedDuring).toBeGreaterThan(0);
+  });
+
+  it('onStep callback fires for misses and hits', () => {
+    const events: { kind: string; cacheHit: boolean }[] = [];
+    using ev = new Evaluator({
+      onStep: (info) => events.push({ kind: info.node.kind, cacheHit: info.cacheHit }),
+    });
+    const tree = sphere(5);
+    ev.evaluate(tree);
+    ev.evaluate(tree);
+    expect(events).toEqual([
+      { kind: 'Sphere', cacheHit: false },
+      { kind: 'Sphere', cacheHit: true },
+    ]);
   });
 });
 

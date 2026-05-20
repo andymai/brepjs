@@ -1,17 +1,6 @@
-/**
- * CSG IR node taxonomy — pure data, no kernel imports.
- *
- * Each node carries a pre-computed `structuralHash: bigint` (Merkle hash of
- * kind + params + child hashes) and a `freeParams: ReadonlySet<string>`
- * (union of children's free params plus the node's own Param refs).
- * Builders compute these at construction so the evaluator can key its cache
- * in O(1) per node, with invalidation scoped to subtrees that actually
- * depend on a changed parameter.
- *
- * Output-kind brands (SolidNode, FaceNode, WireNode, EdgeNode, VertexNode,
- * CompoundNode) are union aliases — each builder narrows to the
- * corresponding alias based on its target.
- */
+// Each node carries `structuralHash` (Merkle hash) and `freeParams`
+// pre-computed by builders, so cache keying is O(1) per node and
+// invalidation is scoped to subtrees that actually depend on a changed param.
 
 import type { Expr } from './expressions.js';
 
@@ -20,6 +9,9 @@ import type { Expr } from './expressions.js';
 // ---------------------------------------------------------------------------
 
 export type OutputKind = 'Solid' | 'Face' | 'Wire' | 'Edge' | 'Vertex' | 'Compound';
+
+/** Output kinds that have a corresponding empty-shape builder + serializer. */
+export type EmptyOutputKind = 'Solid' | 'Face' | 'Wire';
 
 // ---------------------------------------------------------------------------
 // Node base
@@ -89,7 +81,7 @@ export interface VertexLitNode extends IRNodeBase {
 /** A typed empty shape — the identity element for booleans of its output kind. */
 export interface EmptyNode extends IRNodeBase {
   readonly kind: 'Empty';
-  readonly output: OutputKind;
+  readonly output: EmptyOutputKind;
 }
 
 // ---------------------------------------------------------------------------
@@ -215,14 +207,11 @@ export type EdgeNode = AnyNode;
 export type VertexNode = AnyNode;
 
 // ---------------------------------------------------------------------------
-// Output-kind dispatch
+// Output-kind dispatch — used by builders to validate boolean/transform
+// argument kinds, and by the evaluator to dispatch to the correct kernel
+// function.
 // ---------------------------------------------------------------------------
 
-/**
- * Determine the output kind of a node. Used by builders to validate
- * boolean/transform argument kinds, and by the evaluator to dispatch to
- * the correct kernel function.
- */
 export function outputKindOf(node: IRNode): OutputKind {
   switch (node.kind) {
     case 'Box':

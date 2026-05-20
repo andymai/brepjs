@@ -73,6 +73,15 @@ export function getKernel2D(id?: string): KernelAdapter & Kernel2DCapability {
  * restored synchronously in `finally`, so any `getKernel()` call after
  * the first `await` inside `fn` would observe the wrong kernel.
  */
+/**
+ * Return the id of the currently active default kernel, or `null` if none is
+ * registered yet. Useful for code that needs a stable identifier (e.g.
+ * cache keys) but doesn't want to ship the actual adapter.
+ */
+export function getActiveKernelId(): string | null {
+  return _defaultKernelId;
+}
+
 export function withKernel<T extends Exclude<unknown, Promise<unknown>>>(
   id: string,
   fn: () => T
