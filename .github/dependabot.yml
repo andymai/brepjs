@@ -28,6 +28,7 @@ updates:
     # Action tag-retag defense — see SECURITY.md.
     cooldown:
       default-days: 7
+      semver-major-days: 14
     groups:
       actions-minor-patch:
         update-types:

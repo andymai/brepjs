@@ -15,7 +15,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Don't cancel in-progress main/schedule scans — a rapid second push would
+  # otherwise leave the older commit's lockfile unscanned. Matches the pattern
+  # used in ci.yml.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   scan-pr:
