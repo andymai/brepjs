@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Mirrors the npm min-release-age cooldown — see SECURITY.md.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     ignore:
       # opentype.js 1.3.5 and 2.0.0 throw on GSUB lookup type 6 substFormat 2 used by
       # DejaVu Sans / Noto Sans for ccmp glyph composition — breaks textBlueprints /
@@ -21,6 +25,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Action tag-retag defense — see SECURITY.md.
+    cooldown:
+      default-days: 7
     groups:
       actions-minor-patch:
         update-types:
