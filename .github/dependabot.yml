@@ -4,7 +4,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    # Mirrors the npm min-release-age cooldown — see SECURITY.md.
     cooldown:
       default-days: 7
       semver-major-days: 14
@@ -25,7 +24,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    # Action tag-retag defense — see SECURITY.md.
     cooldown:
       default-days: 7
       semver-major-days: 14
