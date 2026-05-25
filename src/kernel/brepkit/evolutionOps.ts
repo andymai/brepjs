@@ -113,6 +113,80 @@ function faceCentroidById(bk: BrepkitKernel, faceId: number): [number, number, n
   }
 }
 
+interface FaceSignature {
+  hash: number;
+  normal: ArrayLike<number>;
+  centroid: [number, number, number];
+}
+
+/**
+ * Snapshot a face's signature (hash + normal + centroid). Non-planar faces
+ * fall back to a zero normal so they still participate in centroid-only matching.
+ */
+function snapshotFaceSignature(bk: BrepkitKernel, faceId: number, hash: number): FaceSignature {
+  try {
+    return { hash, normal: bk.getFaceNormal(faceId), centroid: faceCentroidById(bk, faceId) };
+  } catch {
+    return { hash, normal: [0, 0, 0], centroid: faceCentroidById(bk, faceId) };
+  }
+}
+
+const NORMAL_THRESHOLD = 0.707; // cos(45deg)
+const CENTROID_DIST_SQ_MAX = 100.0;
+// Tolerance for "close-enough" matches — when multiple input faces score
+// within this band of the best, record all of them. Mirrors the same
+// relaxation applied in brepkit Rust's `boolean_with_evolution`. Without
+// this, an output face that legitimately inherits metadata from several
+// inputs (e.g., the bottom face of a filleted box — close-tied with the
+// input bottom — that should keep the input's "bottom" tag) only picks
+// up one input's metadata and drops the rest.
+const SCORE_TIE_TOL = 0.05;
+
+/**
+ * Score every input face against `out` by combined normal/centroid similarity,
+ * returning the candidate matches above thresholds plus the best observed score.
+ */
+function collectOutputMatches(
+  out: FaceSignature,
+  inputSigs: FaceSignature[]
+): { matches: { idx: number; score: number }[]; bestScore: number } {
+  let bestScore = -Infinity;
+  const matches: { idx: number; score: number }[] = [];
+  for (let i = 0; i < inputSigs.length; i++) {
+    const inp = wasmIndex(inputSigs, i);
+    const dot =
+      (out.normal[0] ?? 0) * (inp.normal[0] ?? 0) +
+      (out.normal[1] ?? 0) * (inp.normal[1] ?? 0) +
+      (out.normal[2] ?? 0) * (inp.normal[2] ?? 0);
+    if (dot < NORMAL_THRESHOLD) continue;
+
+    const distSq = centroidDistSq(out.centroid, inp.centroid);
+    if (distSq > CENTROID_DIST_SQ_MAX) continue;
+
+    const score = dot - distSq / CENTROID_DIST_SQ_MAX;
+    if (score > bestScore) bestScore = score;
+    matches.push({ idx: i, score });
+  }
+  return { matches, bestScore };
+}
+
+/** Pick the input signature whose centroid is closest to `out`, or undefined if none. */
+function findNearestInputByCentroid(
+  out: FaceSignature,
+  inputSigs: FaceSignature[]
+): FaceSignature | undefined {
+  let bestDistSq = Infinity;
+  let nearest: FaceSignature | undefined;
+  for (const inp of inputSigs) {
+    const distSq = centroidDistSq(out.centroid, inp.centroid);
+    if (distSq < bestDistSq) {
+      bestDistSq = distSq;
+      nearest = inp;
+    }
+  }
+  return nearest;
+}
+
 /**
  * Match input->output faces geometrically using normal dot product and centroid distance.
  * Mirrors the algorithm in brepkit's `boolean_with_evolution`.
@@ -133,79 +207,20 @@ function matchFacesGeometrically(
   const inputFaceIds = toArray(bk.getSolidFaces(orig.id));
   const hashCount = Math.min(inputFaceIds.length, inputFaceHashes.length);
 
-  // Snapshot input face signatures (skip faces where normal can't be computed)
-  const inputSigs: {
-    hash: number;
-    normal: ArrayLike<number>;
-    centroid: [number, number, number];
-  }[] = [];
+  const inputSigs: FaceSignature[] = [];
   for (let i = 0; i < hashCount; i++) {
     const fid = wasmIndex(inputFaceIds, i);
-    try {
-      const normal = bk.getFaceNormal(fid);
-      const centroid = faceCentroidById(bk, fid);
-      inputSigs.push({ hash: inputFaceHashes[i] ?? fid % hashUpperBound, normal, centroid });
-    } catch {
-      // Non-planar faces can't compute normal via getFaceNormal -- skip
-      inputSigs.push({
-        hash: inputFaceHashes[i] ?? fid % hashUpperBound,
-        normal: [0, 0, 0],
-        centroid: faceCentroidById(bk, fid),
-      });
-    }
+    inputSigs.push(snapshotFaceSignature(bk, fid, inputFaceHashes[i] ?? fid % hashUpperBound));
   }
 
-  // Snapshot output face signatures (skip faces where normal can't be computed)
-  const outputSigs: {
-    hash: number;
-    normal: ArrayLike<number>;
-    centroid: [number, number, number];
-  }[] = [];
-  for (const fid of outputFaceIds) {
-    try {
-      const normal = bk.getFaceNormal(fid);
-      const centroid = faceCentroidById(bk, fid);
-      outputSigs.push({ hash: fid % hashUpperBound, normal, centroid });
-    } catch {
-      outputSigs.push({
-        hash: fid % hashUpperBound,
-        normal: [0, 0, 0],
-        centroid: faceCentroidById(bk, fid),
-      });
-    }
-  }
+  const outputSigs: FaceSignature[] = outputFaceIds.map((fid) =>
+    snapshotFaceSignature(bk, fid, fid % hashUpperBound)
+  );
 
-  const NORMAL_THRESHOLD = 0.707; // cos(45deg)
-  const CENTROID_DIST_SQ_MAX = 100.0;
-  // Tolerance for "close-enough" matches — when multiple input faces score
-  // within this band of the best, record all of them. Mirrors the same
-  // relaxation applied in brepkit Rust's `boolean_with_evolution`. Without
-  // this, an output face that legitimately inherits metadata from several
-  // inputs (e.g., the bottom face of a filleted box — close-tied with the
-  // input bottom — that should keep the input's "bottom" tag) only picks
-  // up one input's metadata and drops the rest.
-  const SCORE_TIE_TOL = 0.05;
   const matchedInputIndices = new Set<number>();
 
   for (const out of outputSigs) {
-    let bestScore = -Infinity;
-    const matches: { idx: number; score: number }[] = [];
-
-    for (let i = 0; i < inputSigs.length; i++) {
-      const inp = wasmIndex(inputSigs, i);
-      const dot =
-        (out.normal[0] ?? 0) * (inp.normal[0] ?? 0) +
-        (out.normal[1] ?? 0) * (inp.normal[1] ?? 0) +
-        (out.normal[2] ?? 0) * (inp.normal[2] ?? 0);
-      if (dot < NORMAL_THRESHOLD) continue;
-
-      const distSq = centroidDistSq(out.centroid, inp.centroid);
-      if (distSq > CENTROID_DIST_SQ_MAX) continue;
-
-      const score = dot - distSq / CENTROID_DIST_SQ_MAX;
-      if (score > bestScore) bestScore = score;
-      matches.push({ idx: i, score });
-    }
+    const { matches, bestScore } = collectOutputMatches(out, inputSigs);
 
     if (matches.length > 0) {
       for (const m of matches) {
@@ -218,16 +233,7 @@ function matchFacesGeometrically(
         }
       }
     } else {
-      // Unmatched output -> generated from nearest input
-      let bestDistSq = Infinity;
-      let nearestInput: (typeof inputSigs)[0] | undefined;
-      for (const inp of inputSigs) {
-        const distSq = centroidDistSq(out.centroid, inp.centroid);
-        if (distSq < bestDistSq) {
-          bestDistSq = distSq;
-          nearestInput = inp;
-        }
-      }
+      const nearestInput = findNearestInputByCentroid(out, inputSigs);
       if (nearestInput) {
         const existing = generated.get(nearestInput.hash) ?? [];
         existing.push(out.hash);
@@ -236,7 +242,6 @@ function matchFacesGeometrically(
     }
   }
 
-  // Input faces not matched -> deleted
   for (let i = 0; i < inputSigs.length; i++) {
     if (!matchedInputIndices.has(i)) {
       deleted.add(wasmIndex(inputSigs, i).hash);
@@ -458,10 +463,87 @@ function chainEvolutionMap(
   }
 }
 
+interface CompoundBooleanAccum {
+  combinedModified: Map<number, number[]>;
+  combinedGenerated: Map<number, number[]>;
+  combinedDeleted: Set<number>;
+  inputFaceHashSet: ReadonlySet<number>;
+}
+
+/**
+ * Fold one child solid of a compound tool into the running boolean accumulator.
+ * Chains existing modified/generated outputs through this step's evolution,
+ * then merges in any step entries not already covered by the chain.
+ */
+function mergeCompoundChildStep(result: OperationResult, accum: CompoundBooleanAccum): void {
+  const intermediateOutputs = new Set<number>();
+
+  chainEvolutionMap(
+    accum.combinedModified,
+    result.evolution.modified,
+    result.evolution.deleted,
+    intermediateOutputs,
+    accum.combinedDeleted
+  );
+  chainEvolutionMap(
+    accum.combinedGenerated,
+    result.evolution.modified,
+    result.evolution.deleted,
+    intermediateOutputs
+  );
+
+  for (const [k, v] of result.evolution.modified) {
+    if (accum.combinedModified.has(k) || intermediateOutputs.has(k)) continue;
+    accum.combinedModified.set(k, [...v]);
+  }
+
+  for (const [k, v] of result.evolution.generated) {
+    if (intermediateOutputs.has(k)) continue;
+    const existing = accum.combinedGenerated.get(k) ?? [];
+    accum.combinedGenerated.set(k, [...existing, ...v]);
+  }
+
+  for (const d of result.evolution.deleted) {
+    if (!accum.inputFaceHashSet.has(d)) continue;
+    accum.combinedDeleted.add(d);
+  }
+}
+
+/**
+ * Iteratively apply native evolution for each solid in a compound tool, chaining
+ * evolution maps so the original input face hashes resolve to final output hashes
+ * rather than intermediates.
+ */
+function applyCompoundBooleanWithHistory(
+  bk: BrepkitKernel,
+  shape: KernelShape,
+  compoundToolId: number,
+  inputFaceHashes: number[],
+  hashUpperBound: number,
+  nativeFn: (a: number, b: number) => string
+): { shape: KernelShape; accum: CompoundBooleanAccum } {
+  const childSolidIds: number[] = toArray(bk.getCompoundSolids(compoundToolId));
+  let currentShape: KernelShape = shape;
+  const accum: CompoundBooleanAccum = {
+    combinedModified: new Map<number, number[]>(),
+    combinedGenerated: new Map<number, number[]>(),
+    combinedDeleted: new Set<number>(),
+    inputFaceHashSet: new Set(inputFaceHashes),
+  };
+  for (const childId of childSolidIds) {
+    const ch = currentShape as BrepkitHandle;
+    if (ch.type !== 'solid') break;
+    const json = nativeFn(ch.id, childId);
+    const result = parseNativeEvolution(json, hashUpperBound);
+    currentShape = result.shape;
+    mergeCompoundChildStep(result, accum);
+  }
+  return { shape: currentShape, accum };
+}
+
 /**
  * Shared implementation for boolean-with-history operations (fuse, cut, intersect).
  */
-// brepjs-patterns-disable: max-function-lines
 function booleanWithHistoryImpl(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -487,64 +569,20 @@ function booleanWithHistoryImpl(
       }
     }
     if (th.type === 'compound') {
-      // Iteratively apply native evolution for each solid in the compound,
-      // chaining evolution maps so that original input face hashes map to
-      // final output face hashes (not intermediate ones).
-      const childSolidIds: number[] = toArray(bk.getCompoundSolids(th.id));
-      let currentShape: KernelShape = shape;
-      const combinedModified = new Map<number, number[]>();
-      const combinedGenerated = new Map<number, number[]>();
-      const combinedDeleted = new Set<number>();
-      const inputFaceHashSet = new Set(inputFaceHashes);
-      for (const childId of childSolidIds) {
-        const ch = currentShape as BrepkitHandle;
-        if (ch.type !== 'solid') break;
-        const json = nativeFn(ch.id, childId);
-        const result = parseNativeEvolution(json, hashUpperBound);
-        currentShape = result.shape;
-
-        const intermediateOutputs = new Set<number>();
-
-        // Chain combinedModified and combinedGenerated through this step.
-        chainEvolutionMap(
-          combinedModified,
-          result.evolution.modified,
-          result.evolution.deleted,
-          intermediateOutputs,
-          combinedDeleted
-        );
-        chainEvolutionMap(
-          combinedGenerated,
-          result.evolution.modified,
-          result.evolution.deleted,
-          intermediateOutputs
-        );
-
-        // Add new entries from this step that aren't already chained
-        for (const [k, v] of result.evolution.modified) {
-          if (!combinedModified.has(k) && !intermediateOutputs.has(k)) {
-            combinedModified.set(k, [...v]);
-          }
-        }
-
-        for (const [k, v] of result.evolution.generated) {
-          if (!intermediateOutputs.has(k)) {
-            const existing = combinedGenerated.get(k) ?? [];
-            combinedGenerated.set(k, [...existing, ...v]);
-          }
-        }
-        for (const d of result.evolution.deleted) {
-          if (inputFaceHashSet.has(d)) {
-            combinedDeleted.add(d);
-          }
-        }
-      }
+      const { shape: resultShape, accum } = applyCompoundBooleanWithHistory(
+        bk,
+        shape,
+        th.id,
+        inputFaceHashes,
+        hashUpperBound,
+        nativeFn
+      );
       return {
-        shape: currentShape,
+        shape: resultShape,
         evolution: {
-          modified: combinedModified,
-          generated: combinedGenerated,
-          deleted: combinedDeleted,
+          modified: accum.combinedModified,
+          generated: accum.combinedGenerated,
+          deleted: accum.combinedDeleted,
         },
         diagnostics: noDiagnostics,
       };
