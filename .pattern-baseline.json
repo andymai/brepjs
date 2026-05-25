@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-05-25T15:58:38.287Z",
+  "generated": "2026-05-25T16:47:45.082Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -18,26 +18,6 @@
       "fingerprint": "src/core/disposal.ts|no-double-cast|class NoOpFinalizationRegistry { register(_target: object, _heldValue: unknow...|#0"
     },
     {
-      "file": "src/io/gltfExportFns.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|buildGltfDocument|#0"
-    },
-    {
-      "file": "src/io/gltfExportFns.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/io/gltfExportFns.ts|max-function-lines|buildGltfDocFromLayout|#0"
-    },
-    {
-      "file": "src/io/threemfExportFns.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|buildZip|#0"
-    },
-    {
-      "file": "src/io/threemfExportFns.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/io/threemfExportFns.ts|max-function-lines|build3MFModel|#0"
-    },
-    {
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|makeEllipseNurbs|#0"
@@ -46,16 +26,6 @@
       "file": "src/kernel/geometry2d.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/kernel/geometry2d.ts|max-function-lines|numericalIntersect|#0"
-    },
-    {
-      "file": "src/kernel/occt/advancedOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|surfaceCurvature|#0"
-    },
-    {
-      "file": "src/kernel/occt/advancedOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/occt/advancedOps.ts|max-function-lines|exportSTEPConfigured|#0"
     },
     {
       "file": "src/kernel/occt/hullOps.ts",
@@ -71,16 +41,6 @@
       "file": "src/topology/metadata/originTrackingFns.ts",
       "rule": "max-nesting-depth",
       "fingerprint": "src/topology/metadata/originTrackingFns.ts|max-nesting-depth|propagateOriginsByHash/if@5|#0"
-    },
-    {
-      "file": "src/topology/modifierFns.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|fillet|#0"
-    },
-    {
-      "file": "src/topology/modifierFns.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/topology/modifierFns.ts|max-function-lines|draft|#0"
     },
     {
       "file": "src/topology/surfaceFns.ts",
