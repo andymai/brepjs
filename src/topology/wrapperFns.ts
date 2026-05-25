@@ -199,16 +199,6 @@ function trustAsT<T extends Shape3D>(s: Shape3D): T {
   return s as unknown as T;
 }
 
-/**
- * Trust-cast a concrete Wrapped<Face> back to the dispatch helper's generic
- * `Wrapped<T>`. After `isFace(val)` narrows the runtime type, T is statically
- * Face, but TypeScript cannot propagate the narrowing through the generic.
- */
-function trustAsWrappedT<T extends AnyShape>(w: Wrapped<Face>): Wrapped<T> {
-  // brepjs-patterns-disable: no-double-cast
-  return w as unknown as Wrapped<T>;
-}
-
 // ---------------------------------------------------------------------------
 // Wrapped interfaces (exported for type annotations)
 // ---------------------------------------------------------------------------
@@ -559,7 +549,12 @@ function createWrappedFace(val: Face): WrappedFace {
 
 function wrapAny<T extends AnyShape>(val: T): Wrapped<T> {
   if (isShape3D(val)) return createWrapped3D(val);
-  if (isFace(val)) return trustAsWrappedT<T>(createWrappedFace(val));
+  if (isFace(val)) {
+    // isFace(val) narrows val to Face at runtime, so T is Face here. TS can't
+    // propagate that into the generic, so the cast is safe by construction.
+    // brepjs-patterns-disable: no-double-cast
+    return createWrappedFace(val) as unknown as Wrapped<T>;
+  }
   if (isEdge(val) || isWire(val)) return createWrappedCurve(val);
   return createWrappedBase(val);
 }
