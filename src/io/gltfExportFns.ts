@@ -449,14 +449,14 @@ function appendVertexNormalSections(
   const { vertices, normals } = mesh;
   const { min, max } = computeMinMax(vertices);
 
-  const verticesBvIdx = 0;
+  const verticesBvIdx = bufferViews.length;
   bufferViews.push({
     buffer: 0,
     byteOffset: verticesOffset,
     byteLength: vertices.byteLength,
     target: ARRAY_BUFFER,
   });
-  const verticesAccIdx = 0;
+  const verticesAccIdx = accessors.length;
   accessors.push({
     bufferView: verticesBvIdx,
     componentType: FLOAT,
@@ -466,14 +466,14 @@ function appendVertexNormalSections(
     max,
   });
 
-  const normalsBvIdx = 1;
+  const normalsBvIdx = bufferViews.length;
   bufferViews.push({
     buffer: 0,
     byteOffset: verticesOffset + vertices.byteLength,
     byteLength: normals.byteLength,
     target: ARRAY_BUFFER,
   });
-  const normalsAccIdx = 1;
+  const normalsAccIdx = accessors.length;
   accessors.push({
     bufferView: normalsBvIdx,
     componentType: FLOAT,
