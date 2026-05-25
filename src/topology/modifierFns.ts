@@ -189,19 +189,22 @@ export function thicken(shape: Face | Shell, thickness: number): Result<Solid> {
 // Fillet
 // ---------------------------------------------------------------------------
 
+type FilletRadiusArg =
+  | number
+  | [number, number]
+  | ((edge: Edge) => number | [number, number] | null);
+
+type FilletKernelRadius = number | [number, number] | KernelHashCallback<number | [number, number]>;
+
 /**
- * Apply a fillet (rounded edge) to selected edges of a 3D shape.
- *
- * @param shape - The shape to modify.
- * @param edges - Edges to fillet. Pass `undefined` to fillet all edges.
- * @param radius - Constant radius, variable radius `[r1, r2]`, or per-edge callback.
+ * Validate fillet inputs and resolve the user-supplied radius into a
+ * kernel-ready value paired with the filtered edge list.
  */
-export function fillet(
+function normalizeFilletInputs(
   shape: ValidSolid,
   edges: ReadonlyArray<Edge> | undefined,
-  radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null),
-  { trackEvolution = true }: { trackEvolution?: boolean | undefined } = {}
-): Result<ValidSolid> {
+  radius: FilletRadiusArg
+): Result<{ filteredEdges: Edge[]; kernelRadius: FilletKernelRadius; selectedCount: number }> {
   const check = validateNotNull(shape, 'fillet: shape');
   if (isErr(check)) return check;
   const paramErr = validatePositiveParam(radius, {
@@ -226,36 +229,55 @@ export function fillet(
     );
   }
 
-  try {
-    let filteredEdges: Edge[];
-    let kernelRadius: number | [number, number] | KernelHashCallback<number | [number, number]>;
-
-    if (typeof radius === 'function') {
-      const resolved = resolveEdgeCallback(selectedEdges, radius);
-      if (!resolved) {
-        return err(
-          validationError(
-            BrepErrorCode.FILLET_NO_EDGES,
-            'No edges with positive radius for fillet',
-            undefined,
-            undefined,
-            'Check that the radius callback returns positive values'
-          )
-        );
-      }
-      filteredEdges = resolved.edges;
-      kernelRadius = resolved.kernelParam;
-    } else {
-      filteredEdges = [...selectedEdges];
-      kernelRadius = radius;
+  if (typeof radius === 'function') {
+    const resolved = resolveEdgeCallback(selectedEdges, radius);
+    if (!resolved) {
+      return err(
+        validationError(
+          BrepErrorCode.FILLET_NO_EDGES,
+          'No edges with positive radius for fillet',
+          undefined,
+          undefined,
+          'Check that the radius callback returns positive values'
+        )
+      );
     }
+    return ok({
+      filteredEdges: resolved.edges,
+      kernelRadius: resolved.kernelParam,
+      selectedCount: selectedEdges.length,
+    });
+  }
+
+  return ok({
+    filteredEdges: [...selectedEdges],
+    kernelRadius: radius,
+    selectedCount: selectedEdges.length,
+  });
+}
+
+/**
+ * Apply a fillet (rounded edge) to selected edges of a 3D shape.
+ *
+ * @param shape - The shape to modify.
+ * @param edges - Edges to fillet. Pass `undefined` to fillet all edges.
+ * @param radius - Constant radius, variable radius `[r1, r2]`, or per-edge callback.
+ */
+export function fillet(
+  shape: ValidSolid,
+  edges: ReadonlyArray<Edge> | undefined,
+  radius: number | [number, number] | ((edge: Edge) => number | [number, number] | null),
+  { trackEvolution = true }: { trackEvolution?: boolean | undefined } = {}
+): Result<ValidSolid> {
+  const normalized = normalizeFilletInputs(shape, edges, radius);
+  if (isErr(normalized)) return normalized;
+  const { filteredEdges, kernelRadius, selectedCount } = normalized.value;
+
+  try {
+    const edgeShapes = filteredEdges.map((e) => e.wrapped);
 
     if (!trackEvolution) {
-      const resultShape = getKernel().fillet(
-        shape.wrapped,
-        filteredEdges.map((e) => e.wrapped),
-        kernelRadius
-      );
+      const resultShape = getKernel().fillet(shape.wrapped, edgeShapes, kernelRadius);
       const cast = castShape(resultShape);
       if (!isShape3D(cast)) {
         return err(kernelError(BrepErrorCode.FILLET_NOT_3D, 'Fillet result is not a 3D shape'));
@@ -266,7 +288,7 @@ export function fillet(
     const inputFaceHashes = collectInputFaceHashes([shape]);
     const { shape: resultShape, evolution } = getKernel().filletWithHistory(
       shape.wrapped,
-      filteredEdges.map((e) => e.wrapped),
+      edgeShapes,
       kernelRadius,
       inputFaceHashes,
       HASH_CODE_MAX
@@ -283,7 +305,7 @@ export function fillet(
     return err(
       kernelError('FILLET_FAILED', `Fillet operation failed: ${raw}`, e, {
         operation: 'fillet',
-        edgeCount: selectedEdges.length,
+        edgeCount: selectedCount,
         radius,
       })
     );
@@ -484,25 +506,14 @@ export function offset(shape: ValidSolid, distance: number, tolerance = 1e-6): R
 // ---------------------------------------------------------------------------
 
 /**
- * Apply a draft (taper) to selected faces of a 3D shape.
- *
- * Draft tilts faces by a specified angle relative to a pull direction,
- * pivoting about a neutral plane. This is essential for injection molding
- * and casting workflows where parts must release from a mold.
- *
- * @param shape - The solid to modify.
- * @param faces - Faces to draft.
- * @param pullDirection - Mold opening direction vector.
- * @param neutralPlane - A point on the plane where faces are not displaced.
- * @param angle - Constant angle in degrees, or per-face callback returning degrees (null to skip).
+ * Validate draft inputs (null shape, scalar angle bounds, faces non-empty).
+ * Returns an Err Result on failure, `undefined` on success.
  */
-export function draft(
+function validateDraftInputs(
   shape: ValidSolid,
   faces: ReadonlyArray<Face>,
-  pullDirection: Vec3,
-  neutralPlane: Vec3,
   angle: DraftAngle
-): Result<ValidSolid> {
+): Err<BrepError> | undefined {
   const check = validateNotNull(shape, 'draft: shape');
   if (isErr(check)) return check;
 
@@ -542,6 +553,32 @@ export function draft(
       )
     );
   }
+
+  return undefined;
+}
+
+/**
+ * Apply a draft (taper) to selected faces of a 3D shape.
+ *
+ * Draft tilts faces by a specified angle relative to a pull direction,
+ * pivoting about a neutral plane. This is essential for injection molding
+ * and casting workflows where parts must release from a mold.
+ *
+ * @param shape - The solid to modify.
+ * @param faces - Faces to draft.
+ * @param pullDirection - Mold opening direction vector.
+ * @param neutralPlane - A point on the plane where faces are not displaced.
+ * @param angle - Constant angle in degrees, or per-face callback returning degrees (null to skip).
+ */
+export function draft(
+  shape: ValidSolid,
+  faces: ReadonlyArray<Face>,
+  pullDirection: Vec3,
+  neutralPlane: Vec3,
+  angle: DraftAngle
+): Result<ValidSolid> {
+  const inputErr = validateDraftInputs(shape, faces, angle);
+  if (inputErr) return inputErr;
 
   try {
     const { filteredFaces, kernelAngle } = resolveDraftCallback(faces, angle);
