@@ -281,21 +281,28 @@ function resolveContactModeEdge(
   bk: BrepkitKernel,
   spine: KernelShape
 ): { edgeId: number } | undefined {
-  const spineHandle = spine as BrepkitHandle;
-  if (spineHandle.type !== 'wire') {
-    return { edgeId: unwrap(spine, 'edge') };
-  }
-  const edges = iterShapes(bk, spine, 'edge');
-  if (edges.length === 1) {
-    const first = edges[0];
-    if (first) return { edgeId: unwrap(first, 'edge') };
+  // The original sweepPipeShell wrapped both the unwrap and the kernel call
+  // in one try/catch so any unexpected spine type silently fell through to
+  // sweepSmooth / simplePipe. The wrap must stay here to preserve that.
+  try {
+    const spineHandle = spine as BrepkitHandle;
+    if (spineHandle.type !== 'wire') {
+      return { edgeId: unwrap(spine, 'edge') };
+    }
+    const edges = iterShapes(bk, spine, 'edge');
+    if (edges.length === 1) {
+      const first = edges[0];
+      if (first) return { edgeId: unwrap(first, 'edge') };
+      return undefined;
+    }
+    warnOnce(
+      'sweepPipeShell-transition-multi-edge',
+      'sweepPipeShell transition mode not supported for multi-edge wires; ignored.'
+    );
+    return undefined;
+  } catch {
     return undefined;
   }
-  warnOnce(
-    'sweepPipeShell-transition-multi-edge',
-    'sweepPipeShell transition mode not supported for multi-edge wires; ignored.'
-  );
-  return undefined;
 }
 
 function tryContactModePipeShell(
