@@ -300,7 +300,11 @@ function resolveContactModeEdge(
       'sweepPipeShell transition mode not supported for multi-edge wires; ignored.'
     );
     return undefined;
-  } catch {
+  } catch (e: unknown) {
+    console.warn(
+      'brepkit: resolveContactModeEdge failed for unexpected spine type, falling through:',
+      e
+    );
     return undefined;
   }
 }
