@@ -81,6 +81,37 @@ function extractPair(
   });
 }
 
+/** Convert a single mate into a solver constraint. */
+function mateToSolverConstraint(mate: MateConstraint): Result<SolverConstraint> {
+  switch (mate.type) {
+    case 'fixed':
+      return ok({
+        type: 'fixed',
+        entityA: { node: mate.entity.node, entity: { type: 'point', origin: [0, 0, 0] } },
+      });
+    case 'coincident': {
+      const pair = extractPair(mate.entityA, mate.entityB);
+      if (!pair.ok) return pair;
+      return ok({ type: 'coincident', ...pair.value });
+    }
+    case 'distance': {
+      const pair = extractPair(mate.entityA, mate.entityB);
+      if (!pair.ok) return pair;
+      return ok({ type: 'distance', ...pair.value, value: mate.distance });
+    }
+    case 'angle': {
+      const pair = extractPair(mate.entityA, mate.entityB);
+      if (!pair.ok) return pair;
+      return ok({ type: 'angle', ...pair.value, value: mate.angle });
+    }
+    case 'concentric': {
+      const pair = extractPair(mate.axisA, mate.axisB);
+      if (!pair.ok) return pair;
+      return ok({ type: 'concentric', ...pair.value });
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -116,32 +147,9 @@ export function solveAssembly(assembly: AssemblyNode): Result<AssemblySolveResul
     const solverConstraints: SolverConstraint[] = [];
 
     for (const mate of mates) {
-      if (mate.type === 'fixed') {
-        solverConstraints.push({
-          type: 'fixed',
-          entityA: { node: mate.entity.node, entity: { type: 'point', origin: [0, 0, 0] } },
-        });
-        continue;
-      }
-
-      if (mate.type === 'coincident') {
-        const pair = extractPair(mate.entityA, mate.entityB);
-        if (!pair.ok) return pair;
-        solverConstraints.push({ type: 'coincident', ...pair.value });
-      } else if (mate.type === 'distance') {
-        const pair = extractPair(mate.entityA, mate.entityB);
-        if (!pair.ok) return pair;
-        solverConstraints.push({ type: 'distance', ...pair.value, value: mate.distance });
-      } else if (mate.type === 'angle') {
-        const pair = extractPair(mate.entityA, mate.entityB);
-        if (!pair.ok) return pair;
-        solverConstraints.push({ type: 'angle', ...pair.value, value: mate.angle });
-      } else {
-        // concentric — only remaining type after fixed/coincident/distance/angle
-        const pair = extractPair(mate.axisA, mate.axisB);
-        if (!pair.ok) return pair;
-        solverConstraints.push({ type: 'concentric', ...pair.value });
-      }
+      const result = mateToSolverConstraint(mate);
+      if (!result.ok) return result;
+      solverConstraints.push(result.value);
     }
 
     const result = solveConstraints(nodes, solverConstraints);
