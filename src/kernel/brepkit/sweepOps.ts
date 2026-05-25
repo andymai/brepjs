@@ -250,85 +250,110 @@ function mapStringTransitionMode(mode: string): string | undefined {
   }
 }
 
+type PipeShellResult =
+  | KernelShape
+  | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape };
+
+function wrapPipeShellResult(
+  shape: KernelShape,
+  profile: KernelShape,
+  shellMode: boolean
+): PipeShellResult {
+  if (shellMode) return { shape, firstShape: profile, lastShape: profile };
+  return shape;
+}
+
+function tryContactModeSweep(
+  bk: BrepkitKernel,
+  faceId: number,
+  edgeId: number,
+  contactMode: string
+): KernelShape | undefined {
+  try {
+    return solidHandle(bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed'));
+  } catch (e: unknown) {
+    console.warn('brepkit: sweepWithOptions failed, falling back to sweepSmooth/simplePipe:', e);
+    return undefined;
+  }
+}
+
+function resolveContactModeEdge(
+  bk: BrepkitKernel,
+  spine: KernelShape
+): { edgeId: number } | undefined {
+  const spineHandle = spine as BrepkitHandle;
+  if (spineHandle.type !== 'wire') {
+    return { edgeId: unwrap(spine, 'edge') };
+  }
+  const edges = iterShapes(bk, spine, 'edge');
+  if (edges.length === 1) {
+    const first = edges[0];
+    if (first) return { edgeId: unwrap(first, 'edge') };
+    return undefined;
+  }
+  warnOnce(
+    'sweepPipeShell-transition-multi-edge',
+    'sweepPipeShell transition mode not supported for multi-edge wires; ignored.'
+  );
+  return undefined;
+}
+
+function tryContactModePipeShell(
+  bk: BrepkitKernel,
+  faceId: number,
+  spine: KernelShape,
+  contactMode: string
+): KernelShape | undefined {
+  const resolved = resolveContactModeEdge(bk, spine);
+  if (!resolved) return undefined;
+  return tryContactModeSweep(bk, faceId, resolved.edgeId, contactMode);
+}
+
+function trySmoothPipeShell(
+  bk: BrepkitKernel,
+  faceId: number,
+  spine: KernelShape
+): KernelShape | undefined {
+  const nurbsData = extractNurbsFromEdge(bk, spine);
+  if (!nurbsData || nurbsData.degree <= 1) return undefined;
+  try {
+    const id = bk.sweepSmooth(
+      faceId,
+      nurbsData.degree,
+      nurbsData.knots,
+      nurbsData.controlPoints,
+      nurbsData.weights
+    );
+    return solidHandle(id);
+  } catch (e: unknown) {
+    console.warn('brepkit: sweepSmooth failed, falling back to simplePipe:', e);
+    return undefined;
+  }
+}
+
 export function sweepPipeShell(
   bk: BrepkitKernel,
   profile: KernelShape,
   spine: KernelShape,
   options?: Record<string, unknown>
-): KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
+): PipeShellResult {
   const profileHandle = profile as BrepkitHandle;
   const faceId =
     profileHandle.type === 'wire' ? bk.makeFaceFromWire(profileHandle.id) : unwrap(profile, 'face');
 
   const shellMode = !!(options && options['shellMode']);
-
   const transitionMode = options?.['transitionMode'] as string | undefined;
   const contactMode = transitionMode ? mapStringTransitionMode(transitionMode) : undefined;
 
   if (contactMode) {
-    const spineHandle = spine as BrepkitHandle;
-    if (spineHandle.type !== 'wire') {
-      try {
-        const edgeId = unwrap(spine, 'edge');
-        const shape = solidHandle(
-          bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
-        );
-        if (shellMode) return { shape, firstShape: profile, lastShape: profile };
-        return shape;
-      } catch (e: unknown) {
-        console.warn(
-          'brepkit: sweepWithOptions failed, falling back to sweepSmooth/simplePipe:',
-          e
-        );
-      }
-    } else {
-      const edges = iterShapes(bk, spine, 'edge');
-      if (edges.length === 1) {
-        const first = edges[0];
-        if (first) {
-          try {
-            const edgeId = unwrap(first, 'edge');
-            const shape = solidHandle(
-              bk.sweepWithOptions(faceId, edgeId, contactMode, [], 0, 'transformed')
-            );
-            if (shellMode) return { shape, firstShape: profile, lastShape: profile };
-            return shape;
-          } catch (e: unknown) {
-            console.warn(
-              'brepkit: sweepWithOptions failed, falling back to sweepSmooth/simplePipe:',
-              e
-            );
-          }
-        }
-      } else {
-        warnOnce(
-          'sweepPipeShell-transition-multi-edge',
-          'sweepPipeShell transition mode not supported for multi-edge wires; ignored.'
-        );
-      }
-    }
+    const shape = tryContactModePipeShell(bk, faceId, spine, contactMode);
+    if (shape) return wrapPipeShellResult(shape, profile, shellMode);
   }
 
-  const nurbsData = extractNurbsFromEdge(bk, spine);
-  if (nurbsData && nurbsData.degree > 1) {
-    try {
-      const id = bk.sweepSmooth(
-        faceId,
-        nurbsData.degree,
-        nurbsData.knots,
-        nurbsData.controlPoints,
-        nurbsData.weights
-      );
-      const shape = solidHandle(id);
-      if (shellMode) return { shape, firstShape: profile, lastShape: profile };
-      return shape;
-    } catch (e: unknown) {
-      console.warn('brepkit: sweepSmooth failed, falling back to simplePipe:', e);
-    }
-  }
-  const shape = simplePipe(bk, profile, spine);
-  if (shellMode) return { shape, firstShape: profile, lastShape: profile };
-  return shape;
+  const smoothShape = trySmoothPipeShell(bk, faceId, spine);
+  if (smoothShape) return wrapPipeShellResult(smoothShape, profile, shellMode);
+
+  return wrapPipeShellResult(simplePipe(bk, profile, spine), profile, shellMode);
 }
 
 export function loftAdvanced(
