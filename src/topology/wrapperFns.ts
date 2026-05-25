@@ -184,6 +184,31 @@ function asClosedWire(w: Wire): ClosedWire {
   return w as unknown as ClosedWire;
 }
 
+/**
+ * Trust-cast the result of a Shape3D-returning operation back to the wrapper's
+ * generic `T`. The fluent API contract claims chained operations preserve the
+ * input shape type T; runtime semantics enforce this (e.g. fillet on a Solid
+ * returns a Solid), but TypeScript can't prove it because the underlying
+ * functional operations return `Shape3D`.
+ *
+ * Centralizing the cast in one helper keeps the unchecked bridge auditable.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- caller-supplied T is the whole purpose of this trust cast
+function trustAsT<T extends Shape3D>(s: Shape3D): T {
+  // brepjs-patterns-disable: no-double-cast
+  return s as unknown as T;
+}
+
+/**
+ * Trust-cast a concrete Wrapped<Face> back to the dispatch helper's generic
+ * `Wrapped<T>`. After `isFace(val)` narrows the runtime type, T is statically
+ * Face, but TypeScript cannot propagate the narrowing through the generic.
+ */
+function trustAsWrappedT<T extends AnyShape>(w: Wrapped<Face>): Wrapped<T> {
+  // brepjs-patterns-disable: no-double-cast
+  return w as unknown as Wrapped<T>;
+}
+
 // ---------------------------------------------------------------------------
 // Wrapped interfaces (exported for type annotations)
 // ---------------------------------------------------------------------------
@@ -367,101 +392,125 @@ function createWrappedBase<T extends AnyShape>(val: T): Wrapped<T> {
   return self;
 }
 
-function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
-  const base = createWrappedBase(val);
+type Wrapped3DBooleans<T extends Shape3D> = Pick<
+  Wrapped3D<T>,
+  'fuse' | 'cut' | 'intersect' | 'fuseAll' | 'cutAll' | 'section' | 'split' | 'slice'
+>;
+type Wrapped3DModifiers<T extends Shape3D> = Pick<
+  Wrapped3D<T>,
+  'fillet' | 'chamfer' | 'shell' | 'offset' | 'draft'
+>;
+type Wrapped3DCompoundOps<T extends Shape3D> = Pick<
+  Wrapped3D<T>,
+  'drill' | 'pocket' | 'boss' | 'mirrorJoin' | 'rectangularPattern'
+>;
+type Wrapped3DMeasurement<T extends Shape3D> = Pick<
+  Wrapped3D<T>,
+  'volume' | 'area' | 'volumeProps' | 'surfaceProps'
+>;
+type Wrapped3DQueries<T extends Shape3D> = Pick<
+  Wrapped3D<T>,
+  'edges' | 'faces' | 'wires' | 'vertices'
+>;
+type Wrapped3DPatterns<T extends Shape3D> = Pick<Wrapped3D<T>, 'linearPattern' | 'circularPattern'>;
 
-  const self: Wrapped3D<T> = {
-    ...base,
-
-    // Booleans — legacy OOP wrappers use unsafe to bypass ValidSolid requirement
+function create3DBooleans<T extends Shape3D>(val: T): Wrapped3DBooleans<T> {
+  return {
+    // `unsafe: true` bypasses the ValidSolid requirement — fluent callers
+    // express trust by chaining, runtime semantics catch genuine failures.
     fuse: (tool, opts) =>
       wrap3D(unwrapOrThrow(fuse(val, resolve(tool), { ...opts, unsafe: true }))),
     cut: (tool, opts) => wrap3D(unwrapOrThrow(cut(val, resolve(tool), { ...opts, unsafe: true }))),
     intersect: (tool, opts) =>
-      wrap3D(
-        unwrapOrThrow(
-          intersect(val, resolve(tool), {
-            ...opts,
-            unsafe: true,
-          })
-        )
-      ),
-
-    // Batch booleans — legacy OOP wrappers use unsafe to bypass ValidSolid requirement
+      wrap3D(unwrapOrThrow(intersect(val, resolve(tool), { ...opts, unsafe: true }))),
     fuseAll: (tools, opts) =>
       wrap3D(
-        unwrapOrThrow(
-          fuseAllFn([val, ...tools.map(resolve)], {
-            ...opts,
-            unsafe: true,
-          })
-        ) as unknown as T
+        trustAsT<T>(
+          unwrapOrThrow(fuseAllFn([val, ...tools.map(resolve)], { ...opts, unsafe: true }))
+        )
       ),
     cutAll: (tools, opts) =>
-      wrap3D(unwrapOrThrow(cutAllFn(val, tools, { ...opts, unsafe: true })) as unknown as T),
-
-    // Boolean variants — wrappers are always 3D context, safe to narrow
+      wrap3D(trustAsT<T>(unwrapOrThrow(cutAllFn(val, tools, { ...opts, unsafe: true })))),
     section: (plane, opts) => wrapAny(unwrapOrThrow(sectionFn(val, plane, opts)) as AnyShape),
     split: (tools) => wrapAny(unwrapOrThrow(splitFn(val, tools)) as AnyShape),
     slice: (planes, opts) => unwrapOrThrow(sliceFn(val, planes, opts)) as AnyShape[],
+  };
+}
 
-    // Modifiers (overloaded — detect by argument types)
+function create3DModifiers<T extends Shape3D>(val: T): Wrapped3DModifiers<T> {
+  return {
     fillet(
       ...args: [FilletRadius] | [Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, FilletRadius]
     ): Wrapped3D<T> {
-      // brepjs-patterns-disable: no-double-cast
       if (args.length === 1) {
-        return wrap3D(unwrapOrThrow(fillet(asValidSolid(val), args[0])) as unknown as T);
+        return wrap3D(trustAsT<T>(unwrapOrThrow(fillet(asValidSolid(val), args[0]))));
       }
-      // brepjs-patterns-disable: no-double-cast
-      return wrap3D(unwrapOrThrow(fillet(asValidSolid(val), args[0], args[1])) as unknown as T);
+      return wrap3D(trustAsT<T>(unwrapOrThrow(fillet(asValidSolid(val), args[0], args[1]))));
     },
     chamfer(
       ...args: [ChamferDistance] | [Edge[] | FinderFn<Edge> | ShapeFinder<Edge>, ChamferDistance]
     ): Wrapped3D<T> {
-      // brepjs-patterns-disable: no-double-cast
       if (args.length === 1) {
-        return wrap3D(unwrapOrThrow(chamfer(asValidSolid(val), args[0])) as unknown as T);
+        return wrap3D(trustAsT<T>(unwrapOrThrow(chamfer(asValidSolid(val), args[0]))));
       }
-      // brepjs-patterns-disable: no-double-cast
-      return wrap3D(unwrapOrThrow(chamfer(asValidSolid(val), args[0], args[1])) as unknown as T);
+      return wrap3D(trustAsT<T>(unwrapOrThrow(chamfer(asValidSolid(val), args[0], args[1]))));
     },
-    // brepjs-patterns-disable: no-double-cast
     shell: (faces, thickness, opts) =>
-      wrap3D(unwrapOrThrow(shell(asValidSolid(val), faces, thickness, opts)) as unknown as T),
-    // brepjs-patterns-disable: no-double-cast
+      wrap3D(trustAsT<T>(unwrapOrThrow(shell(asValidSolid(val), faces, thickness, opts)))),
     offset: (distance, opts) =>
-      wrap3D(unwrapOrThrow(offset(asValidSolid(val), distance, opts)) as unknown as T),
-    // brepjs-patterns-disable: no-double-cast
+      wrap3D(trustAsT<T>(unwrapOrThrow(offset(asValidSolid(val), distance, opts)))),
     draft: (faces, opts) =>
-      wrap3D(unwrapOrThrow(draftFn(asValidSolid(val), faces, opts)) as unknown as T),
+      wrap3D(trustAsT<T>(unwrapOrThrow(draftFn(asValidSolid(val), faces, opts)))),
+  };
+}
 
-    // Compound operations
+function create3DCompoundOps<T extends Shape3D>(val: T): Wrapped3DCompoundOps<T> {
+  return {
     drill: (opts) => wrap3D(unwrapOrThrow(drillFn(val, opts))),
     pocket: (opts) => wrap3D(unwrapOrThrow(pocketFn(val, opts))),
     boss: (opts) => wrap3D(unwrapOrThrow(bossFn(val, opts))),
     mirrorJoin: (opts) => wrap3D(unwrapOrThrow(mirrorJoinFn(val, opts))),
     rectangularPattern: (opts) => wrap3D(unwrapOrThrow(rectPatternFn(val, opts))),
+  };
+}
 
-    // Measurement
+function create3DMeasurement<T extends Shape3D>(val: T): Wrapped3DMeasurement<T> {
+  return {
     volume: () => unwrapOrThrow(measureVolume(val)),
     area: () => unwrapOrThrow(measureArea(val)),
     volumeProps: () => unwrapOrThrow(measureVolumeProps(val)),
     surfaceProps: () => unwrapOrThrow(measureSurfaceProps(val)),
+  };
+}
 
-    // Queries
+function create3DQueries<T extends Shape3D>(val: T): Wrapped3DQueries<T> {
+  return {
     edges: () => getEdges(val),
     faces: () => getFaces(val),
     wires: () => getWires(val),
     vertices: () => getVertices(val),
-
-    // Patterns
-    linearPattern: (dir, count, spacing) =>
-      wrap3D(unwrapOrThrow(linearPattern(val, dir, count, spacing)) as unknown as T),
-    circularPattern: (axis, count, angle) =>
-      wrap3D(unwrapOrThrow(circularPattern(val, axis, count, angle)) as unknown as T),
   };
-  return self;
+}
+
+function create3DPatterns<T extends Shape3D>(val: T): Wrapped3DPatterns<T> {
+  return {
+    linearPattern: (dir, count, spacing) =>
+      wrap3D(trustAsT<T>(unwrapOrThrow(linearPattern(val, dir, count, spacing)))),
+    circularPattern: (axis, count, angle) =>
+      wrap3D(trustAsT<T>(unwrapOrThrow(circularPattern(val, axis, count, angle)))),
+  };
+}
+
+function createWrapped3D<T extends Shape3D>(val: T): Wrapped3D<T> {
+  return {
+    ...createWrappedBase(val),
+    ...create3DBooleans(val),
+    ...create3DModifiers(val),
+    ...create3DCompoundOps(val),
+    ...create3DMeasurement(val),
+    ...create3DQueries(val),
+    ...create3DPatterns(val),
+  };
 }
 
 function createWrappedCurve<T extends Edge | Wire>(val: T): WrappedCurve<T> {
@@ -510,7 +559,7 @@ function createWrappedFace(val: Face): WrappedFace {
 
 function wrapAny<T extends AnyShape>(val: T): Wrapped<T> {
   if (isShape3D(val)) return createWrapped3D(val);
-  if (isFace(val)) return createWrappedFace(val) as unknown as Wrapped<T>;
+  if (isFace(val)) return trustAsWrappedT<T>(createWrappedFace(val));
   if (isEdge(val) || isWire(val)) return createWrappedCurve(val);
   return createWrappedBase(val);
 }
