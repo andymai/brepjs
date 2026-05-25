@@ -18,24 +18,24 @@ graph TD
 
 ## Module map
 
-| Group              | Files                                                                                | Purpose                                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Public API         | `api.ts`, `apiTypes.ts`                                                              | Short-named, options-object functions accepting `Shapeable<T>`. The canonical surface for callers.     |
-| Fluent facade      | `wrapperFns.ts`                                                                      | `shape(x)` returns `Wrapped<T>` — chainable, auto-unwraps `Result` by throwing `BrepWrapperError`.     |
-| Casting & topology | `cast.ts`                                                                            | `cast`, `downcast`, `shapeType`, `iterTopo`, `asTopo`, `isCompSolid`, `fromBREP`.                      |
-| Primitives         | `primitiveFns.ts`, `curveBuilders.ts`, `surfaceBuilders.ts`, `solidBuilders.ts`      | `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`, `wire`, `wireLoop`, `face`, `polygon`, etc. |
-| Transforms         | `transformFns.ts`                                                                    | `translate`, `rotate`, `mirror`, `scale`, `applyMatrix`, `transformCopy`, `composeTransforms`.         |
-| Booleans           | `booleanFns.ts`, `booleanBatchFns.ts`, `booleanDiagnosticFns.ts`, `shapeBooleans.ts` | `fuseShape`, `cutShape`, `intersectShape`, `fuseAll`, `cutAll`, batch variants, `applyGlue` helper.    |
-| Modifiers          | `modifierFns.ts`, `chamferAngleFns.ts`, `shapeModifiers.ts`                          | `fillet`, `chamfer`, `shell`, `offset`, `draft`, `thicken`. `ChamferRadius` / `FilletRadius` types.    |
-| Evolution & hulls  | `evolutionFns.ts`, `hullFns.ts`, `minkowskiFns.ts`, `polyhedronFns.ts`               | Sweep / loft / pipe / extrude-along, convex hull, Minkowski sum, polyhedron construction.              |
-| Queries            | `adjacencyFns.ts`, `topologyQueryFns.ts`, `nurbsFns.ts`, `positionFns.ts`            | Adjacency, bounds, NURBS data extraction, point-on-shape queries.                                      |
-| Domain ops         | `curveFns.ts`, `faceFns.ts`, `surfaceFns.ts`                                         | Curve / face / surface inspection: length, orientation, UV, normals.                                   |
-| Shape utilities    | `shapeFns.ts`, `shapeUtils.ts`, `shapeHelpers.ts`                                    | `clone`, `toBREP`, `getHashCode`, `isEmpty`, `isSameShape`, plus `make*` legacy builder re-exports.    |
-| Meshing & I/O      | `meshFns.ts`, `meshCache.ts`, `threeHelpers.ts`                                      | `mesh`, `meshEdges`, `exportSTEP`, `exportSTL`, three.js buffer/line geometry adapters.                |
-| Healing            | `healingFns.ts`                                                                      | `heal`, `simplify`, autoHeal diagnostics.                                                              |
-| Compound ops       | `compoundOpsFns.ts`                                                                  | Operations on `Compound` / `CompSolid` aggregates.                                                     |
-| Metadata           | `metadata/` (`colorFns.ts`, `faceTagFns.ts`, `trackingFns.ts`)                       | Per-shape colors, face tags, change tracking across operations.                                        |
-| ShapeRef scoring   | `shapeRef/` (`shapeRefFns.ts`, `scoring.ts`)                                         | Persistent shape references that survive boolean / modifier rebuilds.                                  |
+| Group              | Files                                                                                          | Purpose                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Public API         | `api.ts`, `apiTypes.ts`                                                                        | Short-named, options-object functions accepting `Shapeable<T>`. The canonical surface for callers.     |
+| Fluent facade      | `wrapperFns.ts`                                                                                | `shape(x)` returns `Wrapped<T>` — chainable, auto-unwraps `Result` by throwing `BrepWrapperError`.     |
+| Casting & topology | `cast.ts`                                                                                      | `cast`, `downcast`, `shapeType`, `iterTopo`, `asTopo`, `isCompSolid`, `fromBREP`.                      |
+| Primitives         | `primitiveFns.ts`, `curveBuilders.ts`, `surfaceBuilders.ts`, `solidBuilders.ts`                | `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`, `wire`, `wireLoop`, `face`, `polygon`, etc. |
+| Transforms         | `transformFns.ts`                                                                              | `translate`, `rotate`, `mirror`, `scale`, `applyMatrix`, `transformCopy`, `composeTransforms`.         |
+| Booleans           | `booleanFns.ts`, `booleanBatchFns.ts`, `booleanDiagnosticFns.ts`, `shapeBooleans.ts`           | `fuseShape`, `cutShape`, `intersectShape`, `fuseAll`, `cutAll`, batch variants, `applyGlue` helper.    |
+| Modifiers          | `modifierFns.ts`, `chamferAngleFns.ts`, `shapeModifiers.ts`                                    | `fillet`, `chamfer`, `shell`, `offset`, `draft`, `thicken`. `ChamferRadius` / `FilletRadius` types.    |
+| Evolution & hulls  | `evolutionFns.ts`, `hullFns.ts`, `minkowskiFns.ts`, `polyhedronFns.ts`                         | Sweep / loft / pipe / extrude-along, convex hull, Minkowski sum, polyhedron construction.              |
+| Queries            | `adjacencyFns.ts`, `topologyQueryFns.ts`, `nurbsFns.ts`, `positionFns.ts`                      | Adjacency, bounds, NURBS data extraction, point-on-shape queries.                                      |
+| Domain ops         | `curveFns.ts`, `faceFns.ts`, `surfaceFns.ts`                                                   | Curve / face / surface inspection: length, orientation, UV, normals.                                   |
+| Shape utilities    | `shapeFns.ts`, `shapeUtils.ts`, `shapeHelpers.ts`                                              | `clone`, `toBREP`, `getHashCode`, `isEmpty`, `isSameShape`, plus `make*` legacy builder re-exports.    |
+| Meshing & I/O      | `meshFns.ts`, `meshCache.ts`, `threeHelpers.ts`                                                | `mesh`, `meshEdges`, `exportSTEP`, `exportSTL`, three.js buffer/line geometry adapters.                |
+| Healing            | `healingFns.ts`                                                                                | `heal`, `simplify`, autoHeal diagnostics.                                                              |
+| Compound ops       | `compoundOpsFns.ts`                                                                            | Operations on `Compound` / `CompSolid` aggregates.                                                     |
+| Metadata           | `metadata/` (`colorFns.ts`, `faceTagFns.ts`, `originTrackingFns.ts`, `metadataPropagation.ts`) | Per-shape colors, face tags, origin tracking + propagation across operations.                          |
+| ShapeRef scoring   | `shapeRef/` (`shapeRefFns.ts`, `scoring.ts`)                                                   | Persistent shape references that survive boolean / modifier rebuilds.                                  |
 
 ## Validity types
 
