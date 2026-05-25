@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.20.4](https://github.com/andymai/brepjs/compare/brepjs-v18.20.3...brepjs-v18.20.4) (2026-05-25)
+
+
+### Bug Fixes
+
+* **brepkit:** restore try/catch fallback in resolveContactModeEdge ([#1055](https://github.com/andymai/brepjs/issues/1055) follow-up) ([#1057](https://github.com/andymai/brepjs/issues/1057)) ([f793bdf](https://github.com/andymai/brepjs/commit/f793bdfb2aa8441d212f6552f82ccbe31c742b3b))
+
 ## [18.20.3](https://github.com/andymai/brepjs/compare/brepjs-v18.20.2...brepjs-v18.20.3) (2026-05-20)
 
 
