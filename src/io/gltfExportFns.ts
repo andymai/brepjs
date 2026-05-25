@@ -223,6 +223,64 @@ export function exportGlb(mesh: ShapeMesh, options?: GltfExportOptions): ArrayBu
 // Internal: build the glTF document
 // ---------------------------------------------------------------------------
 
+function buildSingleAccessors(
+  triangles: Uint32Array,
+  vertices: Float32Array,
+  normals: Float32Array,
+  min: number[],
+  max: number[]
+): GltfDocument['accessors'] {
+  return [
+    {
+      bufferView: 0,
+      componentType: UNSIGNED_INT,
+      count: triangles.length,
+      type: 'SCALAR',
+    },
+    {
+      bufferView: 1,
+      componentType: FLOAT,
+      count: vertices.length / 3,
+      type: 'VEC3',
+      min,
+      max,
+    },
+    {
+      bufferView: 2,
+      componentType: FLOAT,
+      count: normals.length / 3,
+      type: 'VEC3',
+    },
+  ];
+}
+
+function buildSingleBufferViews(
+  indicesByteLength: number,
+  verticesByteLength: number,
+  normalsByteLength: number
+): GltfDocument['bufferViews'] {
+  return [
+    {
+      buffer: 0,
+      byteOffset: 0,
+      byteLength: indicesByteLength,
+      target: ELEMENT_ARRAY_BUFFER,
+    },
+    {
+      buffer: 0,
+      byteOffset: align4(indicesByteLength),
+      byteLength: verticesByteLength,
+      target: ARRAY_BUFFER,
+    },
+    {
+      buffer: 0,
+      byteOffset: align4(indicesByteLength) + verticesByteLength,
+      byteLength: normalsByteLength,
+      target: ARRAY_BUFFER,
+    },
+  ];
+}
+
 function buildGltfDocument(
   mesh: ShapeMesh,
   mode: 'base64' | 'glb',
@@ -258,48 +316,8 @@ function buildGltfDocument(
         ],
       },
     ],
-    accessors: [
-      {
-        bufferView: 0,
-        componentType: UNSIGNED_INT,
-        count: triangles.length,
-        type: 'SCALAR',
-      },
-      {
-        bufferView: 1,
-        componentType: FLOAT,
-        count: vertices.length / 3,
-        type: 'VEC3',
-        min,
-        max,
-      },
-      {
-        bufferView: 2,
-        componentType: FLOAT,
-        count: normals.length / 3,
-        type: 'VEC3',
-      },
-    ],
-    bufferViews: [
-      {
-        buffer: 0,
-        byteOffset: 0,
-        byteLength: indicesByteLength,
-        target: ELEMENT_ARRAY_BUFFER,
-      },
-      {
-        buffer: 0,
-        byteOffset: align4(indicesByteLength),
-        byteLength: verticesByteLength,
-        target: ARRAY_BUFFER,
-      },
-      {
-        buffer: 0,
-        byteOffset: align4(indicesByteLength) + verticesByteLength,
-        byteLength: normalsByteLength,
-        target: ARRAY_BUFFER,
-      },
-    ],
+    accessors: buildSingleAccessors(triangles, vertices, normals, min, max),
+    bufferViews: buildSingleBufferViews(indicesByteLength, verticesByteLength, normalsByteLength),
     buffers: [
       {
         byteLength: totalByteLength,
@@ -422,20 +440,15 @@ function computeMaterialLayout(
   return { primitiveData, indexBufferInfos, verticesOffset, totalByteLength, uniqueMaterials };
 }
 
-/**
- * Build a glTF document from material layout.
- */
-function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout): GltfDocument {
+function appendVertexNormalSections(
+  mesh: ShapeMesh,
+  verticesOffset: number,
+  accessors: GltfDocument['accessors'],
+  bufferViews: GltfDocument['bufferViews']
+): { verticesAccIdx: number; normalsAccIdx: number } {
   const { vertices, normals } = mesh;
-  const { primitiveData, indexBufferInfos, verticesOffset, totalByteLength, uniqueMaterials } =
-    layout;
   const { min, max } = computeMinMax(vertices);
 
-  const accessors: GltfDocument['accessors'] = [];
-  const bufferViews: GltfDocument['bufferViews'] = [];
-  const primitives: GltfPrimitive[] = [];
-
-  // Vertices buffer view + accessor
   const verticesBvIdx = 0;
   bufferViews.push({
     buffer: 0,
@@ -453,7 +466,6 @@ function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout
     max,
   });
 
-  // Normals buffer view + accessor
   const normalsBvIdx = 1;
   bufferViews.push({
     buffer: 0,
@@ -469,7 +481,18 @@ function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout
     type: 'VEC3',
   });
 
-  // Per-primitive index buffer views + accessors
+  return { verticesAccIdx, normalsAccIdx };
+}
+
+function appendIndexPrimitives(
+  primitiveData: MaterialPrimitiveLayout['primitiveData'],
+  indexBufferInfos: MaterialPrimitiveLayout['indexBufferInfos'],
+  verticesAccIdx: number,
+  normalsAccIdx: number,
+  accessors: GltfDocument['accessors'],
+  bufferViews: GltfDocument['bufferViews']
+): GltfPrimitive[] {
+  const primitives: GltfPrimitive[] = [];
   for (let pi = 0; pi < primitiveData.length; pi++) {
     const pd = getAtOrThrow(primitiveData, pi);
     const info = getAtOrThrow(indexBufferInfos, pi);
@@ -495,6 +518,34 @@ function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout
     if (pd.materialIdx >= 0) prim.material = pd.materialIdx;
     primitives.push(prim);
   }
+  return primitives;
+}
+
+/**
+ * Build a glTF document from material layout.
+ */
+function buildGltfDocFromLayout(mesh: ShapeMesh, layout: MaterialPrimitiveLayout): GltfDocument {
+  const { primitiveData, indexBufferInfos, verticesOffset, totalByteLength, uniqueMaterials } =
+    layout;
+
+  const accessors: GltfDocument['accessors'] = [];
+  const bufferViews: GltfDocument['bufferViews'] = [];
+
+  const { verticesAccIdx, normalsAccIdx } = appendVertexNormalSections(
+    mesh,
+    verticesOffset,
+    accessors,
+    bufferViews
+  );
+
+  const primitives = appendIndexPrimitives(
+    primitiveData,
+    indexBufferInfos,
+    verticesAccIdx,
+    normalsAccIdx,
+    accessors,
+    bufferViews
+  );
 
   return {
     asset: { version: '2.0', generator: 'brepjs' },
