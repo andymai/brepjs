@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.20.5](https://github.com/andymai/brepjs/compare/brepjs-v18.20.4...brepjs-v18.20.5) (2026-05-25)
+
+
+### Bug Fixes
+
+* **security:** patch dompurify/esbuild/brace-expansion and harden eval worker ([#1056](https://github.com/andymai/brepjs/issues/1056)) ([4158650](https://github.com/andymai/brepjs/commit/4158650a8ce1f06189d61af2bbec841e2a3ebaff))
+
 ## [18.20.4](https://github.com/andymai/brepjs/compare/brepjs-v18.20.3...brepjs-v18.20.4) (2026-05-25)
 
 
