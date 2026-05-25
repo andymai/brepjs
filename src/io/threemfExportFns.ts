@@ -63,8 +63,107 @@ interface ZipEntry {
   crc: number;
 }
 
+function writeLocalHeader(view: DataView, bytes: Uint8Array, pos: number, entry: ZipEntry): number {
+  view.setUint32(pos, 0x04034b50, true);
+  pos += 4; // signature
+  view.setUint16(pos, 20, true);
+  pos += 2; // version needed
+  view.setUint16(pos, 0, true);
+  pos += 2; // flags
+  view.setUint16(pos, 0, true);
+  pos += 2; // compression (store)
+  view.setUint16(pos, 0, true);
+  pos += 2; // mod time
+  view.setUint16(pos, 0, true);
+  pos += 2; // mod date
+  view.setUint32(pos, entry.crc, true);
+  pos += 4; // crc32
+  view.setUint32(pos, entry.data.length, true);
+  pos += 4; // compressed size
+  view.setUint32(pos, entry.data.length, true);
+  pos += 4; // uncompressed size
+  view.setUint16(pos, entry.name.length, true);
+  pos += 2; // name length
+  view.setUint16(pos, 0, true);
+  pos += 2; // extra length
+  bytes.set(entry.name, pos);
+  pos += entry.name.length;
+  bytes.set(entry.data, pos);
+  pos += entry.data.length;
+  return pos;
+}
+
+function writeCentralDirEntry(
+  view: DataView,
+  bytes: Uint8Array,
+  pos: number,
+  localOff: number,
+  entry: ZipEntry
+): number {
+  view.setUint32(pos, 0x02014b50, true);
+  pos += 4; // signature
+  view.setUint16(pos, 20, true);
+  pos += 2; // version made by
+  view.setUint16(pos, 20, true);
+  pos += 2; // version needed
+  view.setUint16(pos, 0, true);
+  pos += 2; // flags
+  view.setUint16(pos, 0, true);
+  pos += 2; // compression
+  view.setUint16(pos, 0, true);
+  pos += 2; // mod time
+  view.setUint16(pos, 0, true);
+  pos += 2; // mod date
+  view.setUint32(pos, entry.crc, true);
+  pos += 4; // crc32
+  view.setUint32(pos, entry.data.length, true);
+  pos += 4; // compressed
+  view.setUint32(pos, entry.data.length, true);
+  pos += 4; // uncompressed
+  view.setUint16(pos, entry.name.length, true);
+  pos += 2; // name length
+  view.setUint16(pos, 0, true);
+  pos += 2; // extra length
+  view.setUint16(pos, 0, true);
+  pos += 2; // comment length
+  view.setUint16(pos, 0, true);
+  pos += 2; // disk start
+  view.setUint16(pos, 0, true);
+  pos += 2; // internal attrs
+  view.setUint32(pos, 0, true);
+  pos += 4; // external attrs
+  view.setUint32(pos, localOff, true);
+  pos += 4; // local header offset
+  bytes.set(entry.name, pos);
+  pos += entry.name.length;
+  return pos;
+}
+
+function writeEndOfCentralDir(
+  view: DataView,
+  pos: number,
+  entryCount: number,
+  centralStart: number,
+  centralSize: number
+): void {
+  view.setUint32(pos, 0x06054b50, true);
+  pos += 4;
+  view.setUint16(pos, 0, true);
+  pos += 2; // disk number
+  view.setUint16(pos, 0, true);
+  pos += 2; // central dir disk
+  view.setUint16(pos, entryCount, true);
+  pos += 2; // entries on disk
+  view.setUint16(pos, entryCount, true);
+  pos += 2; // total entries
+  view.setUint32(pos, centralSize, true);
+  pos += 4; // central dir size
+  view.setUint32(pos, centralStart, true);
+  pos += 4; // central dir offset
+  view.setUint16(pos, 0, true); // comment length
+}
+
 function buildZip(entries: ZipEntry[]): ArrayBuffer {
-  // Calculate sizes
   let offset = 0;
   const localHeaders: { offset: number; entry: ZipEntry }[] = [];
 
@@ -85,92 +184,15 @@ function buildZip(entries: ZipEntry[]): ArrayBuffer {
   const bytes = new Uint8Array(buf);
   let pos = 0;
 
-  // Local file headers + data
   for (const { entry } of localHeaders) {
-    view.setUint32(pos, 0x04034b50, true);
-    pos += 4; // signature
-    view.setUint16(pos, 20, true);
-    pos += 2; // version needed
-    view.setUint16(pos, 0, true);
-    pos += 2; // flags
-    view.setUint16(pos, 0, true);
-    pos += 2; // compression (store)
-    view.setUint16(pos, 0, true);
-    pos += 2; // mod time
-    view.setUint16(pos, 0, true);
-    pos += 2; // mod date
-    view.setUint32(pos, entry.crc, true);
-    pos += 4; // crc32
-    view.setUint32(pos, entry.data.length, true);
-    pos += 4; // compressed size
-    view.setUint32(pos, entry.data.length, true);
-    pos += 4; // uncompressed size
-    view.setUint16(pos, entry.name.length, true);
-    pos += 2; // name length
-    view.setUint16(pos, 0, true);
-    pos += 2; // extra length
-    bytes.set(entry.name, pos);
-    pos += entry.name.length;
-    bytes.set(entry.data, pos);
-    pos += entry.data.length;
+    pos = writeLocalHeader(view, bytes, pos, entry);
   }
 
-  // Central directory
   for (const { offset: localOff, entry } of localHeaders) {
-    view.setUint32(pos, 0x02014b50, true);
-    pos += 4; // signature
-    view.setUint16(pos, 20, true);
-    pos += 2; // version made by
-    view.setUint16(pos, 20, true);
-    pos += 2; // version needed
-    view.setUint16(pos, 0, true);
-    pos += 2; // flags
-    view.setUint16(pos, 0, true);
-    pos += 2; // compression
-    view.setUint16(pos, 0, true);
-    pos += 2; // mod time
-    view.setUint16(pos, 0, true);
-    pos += 2; // mod date
-    view.setUint32(pos, entry.crc, true);
-    pos += 4; // crc32
-    view.setUint32(pos, entry.data.length, true);
-    pos += 4; // compressed
-    view.setUint32(pos, entry.data.length, true);
-    pos += 4; // uncompressed
-    view.setUint16(pos, entry.name.length, true);
-    pos += 2; // name length
-    view.setUint16(pos, 0, true);
-    pos += 2; // extra length
-    view.setUint16(pos, 0, true);
-    pos += 2; // comment length
-    view.setUint16(pos, 0, true);
-    pos += 2; // disk start
-    view.setUint16(pos, 0, true);
-    pos += 2; // internal attrs
-    view.setUint32(pos, 0, true);
-    pos += 4; // external attrs
-    view.setUint32(pos, localOff, true);
-    pos += 4; // local header offset
-    bytes.set(entry.name, pos);
-    pos += entry.name.length;
+    pos = writeCentralDirEntry(view, bytes, pos, localOff, entry);
   }
 
-  // End of central directory
-  view.setUint32(pos, 0x06054b50, true);
-  pos += 4;
-  view.setUint16(pos, 0, true);
-  pos += 2; // disk number
-  view.setUint16(pos, 0, true);
-  pos += 2; // central dir disk
-  view.setUint16(pos, entries.length, true);
-  pos += 2; // entries on disk
-  view.setUint16(pos, entries.length, true);
-  pos += 2; // total entries
-  view.setUint32(pos, centralSize, true);
-  pos += 4; // central dir size
-  view.setUint32(pos, centralStart, true);
-  pos += 4; // central dir offset
-  view.setUint16(pos, 0, true); // comment length
+  writeEndOfCentralDir(view, pos, entries.length, centralStart, centralSize);
 
   return buf;
 }
@@ -202,13 +224,7 @@ interface TriangleAttrs {
   p1: number;
 }
 
-function build3MFModel(
-  mesh: ShapeMesh,
-  name: string,
-  unit: string,
-  colors?: Map<number, [number, number, number, number]>,
-  materials?: Map<number, ThreeMFMaterial>
-): string {
+function buildVertexLines(mesh: ShapeMesh): string[] {
   const vertices: string[] = [];
   for (let i = 0; i < mesh.vertices.length; i += 3) {
     const x = mesh.vertices[i] ?? 0;
@@ -216,8 +232,14 @@ function build3MFModel(
     const z = mesh.vertices[i + 2] ?? 0;
     vertices.push(`        <vertex x="${x}" y="${y}" z="${z}" />`);
   }
+  return vertices;
+}
 
-  // Build deduped color palette (hex → index), resource id=2
+// Build deduped color palette (hex → index), resource id=2
+function buildColorPalette(colors?: Map<number, [number, number, number, number]>): {
+  colorIndexByHex: Map<string, number>;
+  colorHexList: string[];
+} {
   const colorIndexByHex = new Map<string, number>();
   const colorHexList: string[] = [];
   if (colors !== undefined && colors.size > 0) {
@@ -229,9 +251,15 @@ function build3MFModel(
       }
     }
   }
+  return { colorIndexByHex, colorHexList };
+}
 
-  // Build deduped materials list (name → index), resource id=3
-  // Use material name as dedup key since ThreeMFMaterial has no id.
+// Build deduped materials list (name → index), resource id=3
+// Use material name as dedup key since ThreeMFMaterial has no id.
+function buildMaterialList(materials?: Map<number, ThreeMFMaterial>): {
+  materialIndexByName: Map<string, number>;
+  materialList: ThreeMFMaterial[];
+} {
   const materialIndexByName = new Map<string, number>();
   const materialList: ThreeMFMaterial[] = [];
   if (materials !== undefined && materials.size > 0) {
@@ -242,9 +270,18 @@ function build3MFModel(
       }
     }
   }
+  return { materialIndexByName, materialList };
+}
 
-  // Build per-triangle pid/p1 lookup.
-  // Materials take priority over colors when both are present.
+// Build per-triangle pid/p1 lookup.
+// Materials take priority over colors when both are present.
+function buildTriangleAttrs(
+  mesh: ShapeMesh,
+  colors: Map<number, [number, number, number, number]> | undefined,
+  materials: Map<number, ThreeMFMaterial> | undefined,
+  colorIndexByHex: Map<string, number>,
+  materialIndexByName: Map<string, number>
+): Map<number, TriangleAttrs> {
   const triangleAttrs = new Map<number, TriangleAttrs>();
   for (const group of mesh.faceGroups) {
     const triStart = group.start / 3; // group.start is index offset into triangles array
@@ -282,7 +319,10 @@ function build3MFModel(
       }
     }
   }
+  return triangleAttrs;
+}
 
+function buildTriangleLines(mesh: ShapeMesh, triangleAttrs: Map<number, TriangleAttrs>): string[] {
   const triangles: string[] = [];
   for (let i = 0; i < mesh.triangles.length; i += 3) {
     const triIdx = i / 3;
@@ -298,8 +338,10 @@ function build3MFModel(
       triangles.push(`        <triangle v1="${v1}" v2="${v2}" v3="${v3}" />`);
     }
   }
+  return triangles;
+}
 
-  // Build resource blocks
+function buildResourceBlocks(colorHexList: string[], materialList: ThreeMFMaterial[]): string[] {
   const resourceBlocks: string[] = [];
 
   if (colorHexList.length > 0) {
@@ -317,6 +359,29 @@ function build3MFModel(
       .join('\n');
     resourceBlocks.push(`    <basematerials id="3">\n${matItems}\n    </basematerials>`);
   }
+
+  return resourceBlocks;
+}
+
+function build3MFModel(
+  mesh: ShapeMesh,
+  name: string,
+  unit: string,
+  colors?: Map<number, [number, number, number, number]>,
+  materials?: Map<number, ThreeMFMaterial>
+): string {
+  const vertices = buildVertexLines(mesh);
+  const { colorIndexByHex, colorHexList } = buildColorPalette(colors);
+  const { materialIndexByName, materialList } = buildMaterialList(materials);
+  const triangleAttrs = buildTriangleAttrs(
+    mesh,
+    colors,
+    materials,
+    colorIndexByHex,
+    materialIndexByName
+  );
+  const triangles = buildTriangleLines(mesh, triangleAttrs);
+  const resourceBlocks = buildResourceBlocks(colorHexList, materialList);
 
   const hasMaterials = materialList.length > 0;
   const materialsNs = hasMaterials
