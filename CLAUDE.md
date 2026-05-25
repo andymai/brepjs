@@ -52,8 +52,8 @@ Monorepo with two publishable packages:
 - Validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`) in `src/core/shapeTypes.ts` — phantom types encoding topological invariants. Smart constructors (`closedWire()`, `orientedFace()`) prove validity at runtime; type guards (`isClosedWire()`, etc.) narrow in-place.
 - Two supported kernels: OpenCascade WASM (`initFromOC`, shipped via `brepjs-opencascade`) and brepkit WASM (`BrepkitAdapter`, external `brepkit-wasm` npm package). Tests run against both via `TEST_KERNEL` env var.
 - `createHandle()` / `createKernelHandle()` from `src/core/disposal.ts` — use `using` keyword for resource cleanup
-- Functional API in `*Fns.ts` files — pure functions taking/returning branded types; prefer over OO API for new code
-- **Never add new methods to class-based wrappers** (e.g. `Shape`, `Solid`, `Edge` classes in `src/topology/`). These are legacy OO wrappers. All new functionality goes in `*Fns.ts` files.
+- Functional API in `*Fns.ts` files — pure functions taking/returning branded types; this is the canonical surface for all shape operations. There is no class hierarchy: `Vertex`, `Edge`, `Wire`, `Face`, `Shell`, `Solid`, `CompSolid`, `Compound` are branded `ShapeHandle` types defined in `src/core/shapeTypes.ts`.
+- **New functionality goes in `*Fns.ts` files first**, then surfaces through `src/topology/api.ts` (short-named public functions accepting `Shapeable<T>`) and optionally through the fluent `shape()` facade in `src/topology/wrapperFns.ts` (chainable `Wrapped<T>` that throws on `Result.Err`). Don't add operations directly to `wrapperFns.ts` without an `*Fns.ts` implementation behind it.
 - `Result<T,E>` in `src/core/result.ts` — prefer over throwing in layers 2-3
 - All `.ts` imports must use `.js` extensions for ESM compatibility
 - Cross-directory imports use `@/` alias (e.g. `@/kernel/index.js`); same-directory imports stay relative (`./foo.js`)

@@ -1,51 +1,49 @@
 # Topology
 
-Layer 2 — Shape hierarchy, casting, constructors, and functional APIs.
+Layer 2 — Casting, primitives, transforms, booleans, modifiers, and the public functional API for shape manipulation.
+
+Shapes are **branded handles**, not class instances. Each shape (`Vertex`, `Edge`, `Wire`, `Face`, `Shell`, `Solid`, `CompSolid`, `Compound`) is a typed `ShapeHandle` defined in `core/shapeTypes.ts` carrying a phantom `D extends Dimension` parameter. Validity brands (`ClosedWire`, `OrientedFace`, `ManifoldShell`, `ValidSolid`) layer on top to encode topological invariants at compile time.
 
 ```mermaid
 graph TD
-    A[Shape] -->|inherits| B[Vertex]
-    A -->|inherits| C[_1DShape]
-    C -->|inherits| D[Edge]
-    C -->|inherits| E[Wire]
-    A -->|inherits| F[Face]
-    A -->|inherits| G[_3DShape]
-    G -->|inherits| H[Shell]
-    G -->|inherits| I[Solid]
-    G -->|inherits| J[CompSolid]
-    G -->|inherits| K[Compound]
+    A[shape&#40;&#41; fluent facade<br/>wrapperFns.ts] --> B[api.ts<br/>functional public API]
+    B --> C[*Fns.ts implementations]
+    C --> D[cast.ts<br/>downcast / iterTopo / fromBREP]
+    C --> E[getKernel&#40;&#41;<br/>kernel adapter]
 
-    L[Curve] -.standalone.-> C
-    M[Surface] -.standalone.-> F
-
-    style A fill:#fff3cd
-    style G fill:#d4edda
-    style C fill:#e1f5ff
+    style A fill:#e1f5ff
+    style B fill:#fff3cd
+    style C fill:#d4edda
 ```
 
-## Key Files
+## Module map
 
-| File                | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `shapes.ts`         | Full class hierarchy: `Shape<T>` base (clone, serialize, hashCode, transforms, edges/faces/wires, mesh, blobSTEP/STL), `Vertex` (asTuple), `Curve` (curveType, pointAt, tangentAt), `_1DShape` (Edge/Wire base with length, orientation, pointAt), `Edge`, `Wire` (offset2D), `Surface` (surfaceType), `Face` (UV, center, normalAt, outerWire, innerWires), `_3DShape` (fuse/cut/intersect/shell/fillet/chamfer), `Shell`, `Solid`, `CompSolid`, `Compound` |
-| `cast.ts`           | `initCast()` for circular dep resolution, `asTopo()`, `iterTopo()` (hash-deduplicated), `shapeType()`, `downcast()`, `cast()` to proper Shape subclass                                                                                                                                                                                                                                                                                                       |
-| `shapeFns.ts`       | Functional: `cloneShape`, `serializeShape`, `translateShape`, `rotateShape`, `mirrorShape`, `scaleShape`, `getEdges/Faces/Wires`, `getBounds`, `vertexPosition`                                                                                                                                                                                                                                                                                              |
-| `curveFns.ts`       | Functional: `getCurveType`, `curveStartPoint/EndPoint`, `curvePointAt/TangentAt`, `curveLength`, `curveIsClosed/Periodic`, `getOrientation`, `flipOrientation`, `offsetWire2D`                                                                                                                                                                                                                                                                               |
-| `faceFns.ts`        | Functional: `getSurfaceType`, `faceOrientation`, `flipFaceOrientation`, `uvBounds`, `pointOnSurface`, `uvCoordinates`, `normalAt`, `faceCenter`, `outerWire`, `innerWires`                                                                                                                                                                                                                                                                                   |
-| `meshFns.ts`        | Functional: `meshShape` → ShapeMesh, `meshShapeEdges` → EdgeMesh, `exportSTEP/STL` → Result<Blob>                                                                                                                                                                                                                                                                                                                                                            |
-| `booleanFns.ts`     | Functional: `fuseShape`, `cutShape`, `intersectShape`, `fuseAll`, `cutAll`, `buildCompound`                                                                                                                                                                                                                                                                                                                                                                  |
-| `shapeBooleans.ts`  | Standalone boolean operations: `fuseAll`, `cutAll`, `buildCompound`, `applyGlue` — extracted from shapes.ts                                                                                                                                                                                                                                                                                                                                                  |
-| `shapeModifiers.ts` | Modifier types and query infrastructure: `ChamferRadius`, `FilletRadius`, `RadiusConfig`, type guards, `getQueryModule`, `registerQueryModule` — extracted from shapes.ts, re-exported for backward compat                                                                                                                                                                                                                                                   |
-| `primitiveFns.ts`   | Functional: `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid` (→ `ValidSolid`), `line`, `circle`, `ellipse`, `helix`, `threePointArc`, `ellipseArc`, `bezier`, `bsplineApprox`, `tangentArc` (→ `Edge`), `wire`, `wireLoop` (→ `ClosedWire`), `face`, `filledFace`, `polygon` (→ `OrientedFace`), `solid` (→ `ValidSolid`), `vertex`, `compound`, `sewShells`, `offsetFace`, `addHoles`                                                              |
-| `shapeHelpers.ts`   | Legacy OO constructors: makeLine, makeCircle, makeEllipse, makeHelix, makeThreePointArc, makeBSplineApproximation, makeBezierCurve, makeTangentArc, assembleWire, makeFace, makeNonPlanarFace, addHolesInFace, makeCylinder, makeSphere, makeEllipsoid, makeBox, compoundShapes, weldShellsAndFaces, makeSolid, makePolygon, makeOffset                                                                                                                      |
+| Group              | Files                                                                                | Purpose                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Public API         | `api.ts`, `apiTypes.ts`                                                              | Short-named, options-object functions accepting `Shapeable<T>`. The canonical surface for callers.     |
+| Fluent facade      | `wrapperFns.ts`                                                                      | `shape(x)` returns `Wrapped<T>` — chainable, auto-unwraps `Result` by throwing `BrepWrapperError`.     |
+| Casting & topology | `cast.ts`                                                                            | `cast`, `downcast`, `shapeType`, `iterTopo`, `asTopo`, `isCompSolid`, `fromBREP`.                      |
+| Primitives         | `primitiveFns.ts`, `curveBuilders.ts`, `surfaceBuilders.ts`, `solidBuilders.ts`      | `box`, `cylinder`, `sphere`, `cone`, `torus`, `ellipsoid`, `wire`, `wireLoop`, `face`, `polygon`, etc. |
+| Transforms         | `transformFns.ts`                                                                    | `translate`, `rotate`, `mirror`, `scale`, `applyMatrix`, `transformCopy`, `composeTransforms`.         |
+| Booleans           | `booleanFns.ts`, `booleanBatchFns.ts`, `booleanDiagnosticFns.ts`, `shapeBooleans.ts` | `fuseShape`, `cutShape`, `intersectShape`, `fuseAll`, `cutAll`, batch variants, `applyGlue` helper.    |
+| Modifiers          | `modifierFns.ts`, `chamferAngleFns.ts`, `shapeModifiers.ts`                          | `fillet`, `chamfer`, `shell`, `offset`, `draft`, `thicken`. `ChamferRadius` / `FilletRadius` types.    |
+| Evolution & hulls  | `evolutionFns.ts`, `hullFns.ts`, `minkowskiFns.ts`, `polyhedronFns.ts`               | Sweep / loft / pipe / extrude-along, convex hull, Minkowski sum, polyhedron construction.              |
+| Queries            | `adjacencyFns.ts`, `topologyQueryFns.ts`, `nurbsFns.ts`, `positionFns.ts`            | Adjacency, bounds, NURBS data extraction, point-on-shape queries.                                      |
+| Domain ops         | `curveFns.ts`, `faceFns.ts`, `surfaceFns.ts`                                         | Curve / face / surface inspection: length, orientation, UV, normals.                                   |
+| Shape utilities    | `shapeFns.ts`, `shapeUtils.ts`, `shapeHelpers.ts`                                    | `clone`, `toBREP`, `getHashCode`, `isEmpty`, `isSameShape`, plus `make*` legacy builder re-exports.    |
+| Meshing & I/O      | `meshFns.ts`, `meshCache.ts`, `threeHelpers.ts`                                      | `mesh`, `meshEdges`, `exportSTEP`, `exportSTL`, three.js buffer/line geometry adapters.                |
+| Healing            | `healingFns.ts`                                                                      | `heal`, `simplify`, autoHeal diagnostics.                                                              |
+| Compound ops       | `compoundOpsFns.ts`                                                                  | Operations on `Compound` / `CompSolid` aggregates.                                                     |
+| Metadata           | `metadata/` (`colorFns.ts`, `faceTagFns.ts`, `trackingFns.ts`)                       | Per-shape colors, face tags, change tracking across operations.                                        |
+| ShapeRef scoring   | `shapeRef/` (`shapeRefFns.ts`, `scoring.ts`)                                         | Persistent shape references that survive boolean / modifier rebuilds.                                  |
 
-## Validity Types
+## Validity types
 
 `primitiveFns.ts` uses validity-branded return types to encode invariants at compile time:
 
-- **`ValidSolid`** — returned by `box()`, `cylinder()`, `sphere()`, `cone()`, `torus()`, `ellipsoid()`, `solid()`
-- **`ClosedWire`** — returned by `wireLoop()` (assembles edges and verifies closure)
-- **`OrientedFace`** — returned by `face()`, `filledFace()`, `polygon()`, `subFace()`, `addHoles()`
+- **`ValidSolid`** — `box()`, `cylinder()`, `sphere()`, `cone()`, `torus()`, `ellipsoid()`, `solid()`
+- **`ClosedWire`** — `wireLoop()` (assembles edges and verifies closure)
+- **`OrientedFace`** — `face()`, `filledFace()`, `polygon()`, `subFace()`, `addHoles()`
 
 Functions that need stronger guarantees require these branded types:
 
@@ -54,14 +52,29 @@ face(w: ClosedWire): Result<OrientedFace>     // Won't accept a plain Wire
 extrude(f: OrientedFace, h: number): ...      // Won't accept a plain Face
 ```
 
+## Two API styles
+
+```typescript
+// Functional (canonical) — explicit Result handling
+const boxR = box(30, 20, 10);
+const filleted = fillet(boxR, (e) => e.inDirection('Z'), 2);
+if (isErr(filleted)) throw filleted.error;
+const moved = translate(filleted.value, [0, 0, 5]);
+
+// Fluent facade — auto-unwraps, throws BrepWrapperError on failure
+const bracket = shape(box(30, 20, 10))
+  .cut(cylinder(5, 15, { at: [15, 10, -1] }))
+  .fillet((e) => e.inDirection('Z'), 2)
+  .moveZ(5);
+```
+
+Prefer the functional API for library code where explicit error handling matters; the fluent facade is for end-user / playground code where exceptions are acceptable.
+
 ## Gotchas
 
-1. **Dual API** — Class methods mutate (`shape.translate()`), functional API is immutable (`translateShape(shape, v)`). Prefer functional API for new code.
-2. **Circular dependency** — `initCast()` must be called at module load to break shapes↔cast circular dependency
-3. **Hash deduplication** — `iterTopo()` deduplicates via hash codes — same shape won't appear twice
-4. **Boolean operations** — On classes return `Result<Shape3D>` — always handle errors
-5. **Query dependency** — `fillet`/`chamfer`/`shell` require query module registration via `registerQueryModule()`
-6. **Chainable transforms** — Shape transforms in class API return `this` (chainable but mutating)
-7. **Flat mesh data** — `meshShape` returns flat typed arrays (Float32Array/Uint32Array) — not nested objects
-8. **Consolidated types** — `ShapeMesh`, `FaceTriangulation`, `SurfaceType` are defined in functional files (`meshFns.ts`, `faceFns.ts`) and re-exported from `shapes.ts` for backward compatibility
-9. **Never add new methods to class wrappers** — All new functionality goes in `*Fns.ts` files; the class-based wrappers in `shapes.ts` are legacy
+1. **`.wrapped` is read-only data** — Layer 2+ code reads `shape.wrapped` to pass the kernel handle to `getKernel().method(...)` but **never calls methods on `.wrapped` directly**. ESLint's `no-restricted-syntax` enforces this.
+2. **`iterTopo` does not deduplicate** — it delegates straight to `getKernel().iterShapes`. If you need unique sub-shapes, dedupe via `getHashCode()` at the call site.
+3. **Fluent facade throws, functional API doesn't** — `shape(x).fillet(...)` throws `BrepWrapperError` on kernel failure; `fillet(x, ...)` returns `Result<T>`. Pick one style per call chain.
+4. **Flat mesh data** — `mesh()` returns `ShapeMesh` with flat `Float32Array` / `Uint32Array` buffers, not nested objects. See `meshFns.ts`.
+5. **Validity brands must round-trip carefully** — applying a transform to a `ValidSolid` does not preserve the brand at the type level; re-validate or use `validSolid()` to re-brand if needed downstream.
+6. **All new functionality goes in `*Fns.ts` files** — surface it via `api.ts` for the functional public API, and (if appropriate) add a method on `Wrapped<T>` in `wrapperFns.ts` to expose it through the fluent facade.
