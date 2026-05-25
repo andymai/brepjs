@@ -124,6 +124,103 @@ export function chamferDistAngle(
   return solidHandle(bk.chamfer(solidId, edgeIds, (distance + d2) / 2));
 }
 
+function faceCentroid(
+  bk: BrepkitKernel,
+  faceId: number
+): { x: number; y: number; z: number } | null {
+  const verts = toArray(bk.getFaceVertices(faceId));
+  if (verts.length < 1) return null;
+  let x = 0,
+    y = 0,
+    z = 0;
+  for (const vid of verts) {
+    const pos = bk.getVertexPosition(vid);
+    x += wasmIndex(pos, 0);
+    y += wasmIndex(pos, 1);
+    z += wasmIndex(pos, 2);
+  }
+  const n = verts.length;
+  return { x: x / n, y: y / n, z: z / n };
+}
+
+function findBestNormalMatch(
+  bk: BrepkitKernel,
+  origFaceId: number,
+  solidFaces: number[]
+): number | null {
+  try {
+    const origNormal = bk.getFaceNormal(origFaceId);
+    let bestMatch = -1;
+    let bestDot = -2;
+    for (const sf of solidFaces) {
+      try {
+        const sn = bk.getFaceNormal(sf);
+        const dot =
+          (origNormal[0] ?? 0) * (sn[0] ?? 0) +
+          (origNormal[1] ?? 0) * (sn[1] ?? 0) +
+          (origNormal[2] ?? 0) * (sn[2] ?? 0);
+        if (dot > bestDot) {
+          bestDot = dot;
+          bestMatch = sf;
+        }
+      } catch {
+        // non-planar face, skip
+      }
+    }
+    if (bestMatch >= 0 && bestDot > 0.99) return bestMatch;
+  } catch {
+    // original face lookup failed
+  }
+  return null;
+}
+
+function findBestCentroidMatch(
+  bk: BrepkitKernel,
+  origFaceId: number,
+  solidFaces: number[]
+): number | null {
+  try {
+    const origCentroid = faceCentroid(bk, origFaceId);
+    if (origCentroid === null) return null;
+
+    let bestMatch = -1;
+    let bestDist = Infinity;
+    for (const sf of solidFaces) {
+      try {
+        const sc = faceCentroid(bk, sf);
+        if (sc === null) continue;
+        const dist = Math.sqrt(
+          (origCentroid.x - sc.x) ** 2 + (origCentroid.y - sc.y) ** 2 + (origCentroid.z - sc.z) ** 2
+        );
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestMatch = sf;
+        }
+      } catch {
+        // vertex lookup failed for this face
+      }
+    }
+    if (bestMatch >= 0 && bestDist < 1e-3) return bestMatch;
+  } catch {
+    // original face vertex lookup failed
+  }
+  return null;
+}
+
+function resolveShellFaceId(
+  bk: BrepkitKernel,
+  fid: number,
+  solidFaces: number[],
+  solidFaceSet: Set<number>
+): number {
+  if (solidFaceSet.has(fid)) return fid;
+  const normalMatch = findBestNormalMatch(bk, fid, solidFaces);
+  if (normalMatch !== null) return normalMatch;
+  const centroidMatch = findBestCentroidMatch(bk, fid, solidFaces);
+  if (centroidMatch !== null) return centroidMatch;
+  return fid;
+}
+
 export function shell(
   bk: BrepkitKernel,
   shape: KernelShape,
@@ -141,88 +238,9 @@ export function shell(
   const solidFaces = toArray(bk.getSolidFaces(solidId));
   const solidFaceSet = new Set(solidFaces);
 
-  const resolvedFaceIds = faces.map((f) => {
-    const fid = unwrap(f, 'face');
-    if (solidFaceSet.has(fid)) return fid;
-
-    try {
-      const origNormal = bk.getFaceNormal(fid);
-      let bestMatch = -1;
-      let bestDot = -2;
-      for (const sf of solidFaces) {
-        try {
-          const sn = bk.getFaceNormal(sf);
-          const dot =
-            (origNormal[0] ?? 0) * (sn[0] ?? 0) +
-            (origNormal[1] ?? 0) * (sn[1] ?? 0) +
-            (origNormal[2] ?? 0) * (sn[2] ?? 0);
-          if (dot > bestDot) {
-            bestDot = dot;
-            bestMatch = sf;
-          }
-        } catch {
-          // non-planar face, skip
-        }
-      }
-      if (bestMatch >= 0 && bestDot > 0.99) return bestMatch;
-    } catch {
-      // original face lookup failed
-    }
-
-    // Centroid-proximity fallback: compare average vertex positions
-    try {
-      const origVerts = toArray(bk.getFaceVertices(fid));
-      if (origVerts.length >= 1) {
-        let ox = 0,
-          oy = 0,
-          oz = 0;
-        for (const vid of origVerts) {
-          const pos = bk.getVertexPosition(vid);
-          ox += wasmIndex(pos, 0);
-          oy += wasmIndex(pos, 1);
-          oz += wasmIndex(pos, 2);
-        }
-        const n = origVerts.length;
-        ox /= n;
-        oy /= n;
-        oz /= n;
-
-        let bestCentroidMatch = -1;
-        let bestCentroidDist = Infinity;
-        for (const sf of solidFaces) {
-          try {
-            const sv = toArray(bk.getFaceVertices(sf));
-            if (sv.length < 1) continue;
-            let sx = 0,
-              sy = 0,
-              sz = 0;
-            for (const svid of sv) {
-              const spos = bk.getVertexPosition(svid);
-              sx += wasmIndex(spos, 0);
-              sy += wasmIndex(spos, 1);
-              sz += wasmIndex(spos, 2);
-            }
-            const sn = sv.length;
-            sx /= sn;
-            sy /= sn;
-            sz /= sn;
-            const dist = Math.sqrt((ox - sx) ** 2 + (oy - sy) ** 2 + (oz - sz) ** 2);
-            if (dist < bestCentroidDist) {
-              bestCentroidDist = dist;
-              bestCentroidMatch = sf;
-            }
-          } catch {
-            // vertex lookup failed for this face
-          }
-        }
-        if (bestCentroidMatch >= 0 && bestCentroidDist < 1e-3) return bestCentroidMatch;
-      }
-    } catch {
-      // original face vertex lookup failed
-    }
-
-    return fid;
-  });
+  const resolvedFaceIds = faces.map((f) =>
+    resolveShellFaceId(bk, unwrap(f, 'face'), solidFaces, solidFaceSet)
+  );
 
   const id = bk.shell(solidId, thickness, resolvedFaceIds);
   return solidHandle(id);
