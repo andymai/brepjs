@@ -693,121 +693,108 @@ export function fixSelfIntersection(oc: KernelInstance, wire: KernelShape): Kern
 // Measurement
 // ---------------------------------------------------------------------------
 
-/** Compute surface curvature at a UV point on a face. */
-export function surfaceCurvature(
-  oc: KernelInstance,
-  face: KernelShape,
-  u: number,
-  v: number
-): {
+type CurvatureResult = {
   gaussian: number;
   mean: number;
   max: number;
   min: number;
   maxDirection: [number, number, number];
   minDirection: [number, number, number];
-} {
-  const adaptor = new oc.BRepAdaptor_Surface_2(face, false);
+};
 
+function degenerateCurvature(): CurvatureResult {
+  return {
+    gaussian: 0,
+    mean: 0,
+    max: 0,
+    min: 0,
+    maxDirection: [1, 0, 0],
+    minDirection: [0, 1, 0],
+  };
+}
+
+/**
+ * Solve principal curvatures and one principal direction in (du, dv) coords
+ * from the first and second fundamental forms. Returns null if the system is
+ * degenerate (E*G - F*F ≈ 0).
+ */
+function solvePrincipalCurvatures(
+  E: number,
+  F: number,
+  G: number,
+  L: number,
+  M: number,
+  N2: number
+): { mean: number; gaussian: number; k1: number; k2: number; du1: number; dv1: number } | null {
+  const denom = E * G - F * F;
+  if (Math.abs(denom) < 1e-15) return null;
+
+  const mean = (E * N2 - 2 * F * M + G * L) / (2 * denom);
+  const gaussian = (L * N2 - M * M) / denom;
+  const sqrtDisc = Math.sqrt(Math.max(0, mean * mean - gaussian));
+  const k1 = mean + sqrtDisc;
+  const k2 = mean - sqrtDisc;
+
+  const a12 = (G * M - F * N2) / denom;
+  const a21 = (E * M - F * L) / denom;
+  const a11 = (G * L - F * M) / denom;
+
+  let du1: number, dv1: number;
+  if (Math.abs(a12) > 1e-15) {
+    du1 = a12;
+    dv1 = k1 - a11;
+  } else if (Math.abs(a21) > 1e-15) {
+    const a22 = (E * N2 - F * M) / denom;
+    du1 = k1 - a22;
+    dv1 = a21;
+  } else {
+    du1 = 1;
+    dv1 = 0;
+  }
+
+  return { mean, gaussian, k1, k2, du1, dv1 };
+}
+
+/** Compute surface curvature at a UV point on a face. */
+export function surfaceCurvature(
+  oc: KernelInstance,
+  face: KernelShape,
+  u: number,
+  v: number
+): CurvatureResult {
+  const adaptor = new oc.BRepAdaptor_Surface_2(face, false);
   const P = new oc.gp_Pnt_1();
   const D1U = new oc.gp_Vec_1();
   const D1V = new oc.gp_Vec_1();
   const D2U = new oc.gp_Vec_1();
   const D2V = new oc.gp_Vec_1();
   const D2UV = new oc.gp_Vec_1();
-
   adaptor.D2(u, v, P, D1U, D1V, D2U, D2V, D2UV);
 
-  // First fundamental form
   const E = D1U.Dot(D1U);
   const F = D1U.Dot(D1V);
   const G = D1V.Dot(D1V);
 
-  // Surface normal
   const N = D1U.Crossed(D1V);
   const nLen = N.Magnitude();
 
-  let result: {
-    gaussian: number;
-    mean: number;
-    max: number;
-    min: number;
-    maxDirection: [number, number, number];
-    minDirection: [number, number, number];
-  };
-
-  if (nLen < 1e-15) {
-    result = {
-      gaussian: 0,
-      mean: 0,
-      max: 0,
-      min: 0,
-      maxDirection: [1, 0, 0],
-      minDirection: [0, 1, 0],
-    };
-  } else {
+  let result: CurvatureResult = degenerateCurvature();
+  if (nLen >= 1e-15) {
     N.Divide(nLen);
-
     const L = D2U.Dot(N);
     const M = D2UV.Dot(N);
     const N2 = D2V.Dot(N);
-    const denom = E * G - F * F;
-
-    if (Math.abs(denom) < 1e-15) {
-      P.delete();
-      D1U.delete();
-      D1V.delete();
-      D2U.delete();
-      D2V.delete();
-      D2UV.delete();
-      N.delete();
-      adaptor.delete();
-      return {
-        gaussian: 0,
-        mean: 0,
-        max: 0,
-        min: 0,
-        maxDirection: [1, 0, 0],
-        minDirection: [0, 1, 0],
+    const solved = solvePrincipalCurvatures(E, F, G, L, M, N2);
+    if (solved) {
+      result = {
+        gaussian: solved.gaussian,
+        mean: solved.mean,
+        max: solved.k1,
+        min: solved.k2,
+        maxDirection: dirFromUV(D1U, D1V, solved.du1, solved.dv1),
+        minDirection: dirFromUV(D1U, D1V, -solved.dv1, solved.du1),
       };
     }
-
-    const mean = (E * N2 - 2 * F * M + G * L) / (2 * denom);
-    const gaussian = (L * N2 - M * M) / denom;
-    const disc = Math.max(0, mean * mean - gaussian);
-    const sqrtDisc = Math.sqrt(disc);
-    const k1 = mean + sqrtDisc;
-    const k2 = mean - sqrtDisc;
-
-    // Principal directions via Weingarten map
-    const a12 = (G * M - F * N2) / denom;
-    const a21 = (E * M - F * L) / denom;
-    const a11 = (G * L - F * M) / denom;
-
-    let du1: number, dv1: number;
-    if (Math.abs(a12) > 1e-15) {
-      du1 = a12;
-      dv1 = k1 - a11;
-    } else if (Math.abs(a21) > 1e-15) {
-      const a22 = (E * N2 - F * M) / denom;
-      du1 = k1 - a22;
-      dv1 = a21;
-    } else {
-      du1 = 1;
-      dv1 = 0;
-    }
-
-    const maxDir = dirFromUV(D1U, D1V, du1, dv1);
-    const minDir = dirFromUV(D1U, D1V, -dv1, du1);
-
-    result = {
-      gaussian,
-      mean,
-      max: k1,
-      min: k2,
-      maxDirection: maxDir,
-      minDirection: minDir,
-    };
   }
 
   P.delete();
@@ -1093,91 +1080,69 @@ export function writeXCAFToSTEP(
 // Export: STEP configured
 // ---------------------------------------------------------------------------
 
-/** Export shapes to STEP with full configuration. */
-export function exportSTEPConfigured(
-  oc: KernelInstance,
-  shapes: Array<{
-    shape: KernelShape;
-    name?: string | undefined;
-    color?: [number, number, number, number] | undefined;
-  }>,
-  options: {
-    unit?: string | undefined;
-    modelUnit?: string | undefined;
-    schema?: number | undefined;
-  } = {}
-): string {
-  const unit = options.unit ?? 'MM';
-  const modelUnit = options.modelUnit ?? unit;
-  const schema = options.schema ?? 5;
+type ConfiguredStepPart = {
+  shape: KernelShape;
+  name?: string | undefined;
+  color?: [number, number, number, number] | undefined;
+};
 
-  oc.Interface_Static.SetCVal('xstep.cascade.unit', modelUnit);
-  oc.Interface_Static.SetCVal('write.step.unit', unit);
-  oc.Interface_Static.SetIVal('write.surfacecurve.mode', true);
-  oc.Interface_Static.SetIVal('write.precision.mode', 0);
-  oc.Interface_Static.SetIVal('write.step.assembly', 2);
-  oc.Interface_Static.SetIVal('write.step.schema', schema);
+function exportStepConfiguredXCAF(oc: KernelInstance, shapes: ConfiguredStepPart[]): string {
+  const initWriter = new oc.STEPCAFControl_Writer_1();
+  initWriter.delete();
 
-  const hasMetadata = shapes.some((s) => s.name || s.color);
+  const nameStr = new oc.TCollection_ExtendedString_2('XmlOcaf', true);
+  const doc = new oc.TDocStd_Document(nameStr);
+  nameStr.delete();
 
-  if (hasMetadata) {
-    // Use XCAF path for named/colored parts
-    const initWriter = new oc.STEPCAFControl_Writer_1();
-    initWriter.delete();
+  const mainLabel = doc.Main();
+  const shapeTool = oc.XCAFDoc_DocumentTool.ShapeTool(mainLabel).get();
+  const colorTool = oc.XCAFDoc_DocumentTool.ColorTool(mainLabel).get();
+  oc.XCAFDoc_ShapeTool.SetAutoNaming(false);
 
-    const nameStr = new oc.TCollection_ExtendedString_2('XmlOcaf', true);
-    const doc = new oc.TDocStd_Document(nameStr);
-    nameStr.delete();
+  for (const part of shapes) {
+    const shapeNode = shapeTool.AddShape(part.shape, false, true);
 
-    const mainLabel = doc.Main();
-    const shapeTool = oc.XCAFDoc_DocumentTool.ShapeTool(mainLabel).get();
-    const colorTool = oc.XCAFDoc_DocumentTool.ColorTool(mainLabel).get();
-    oc.XCAFDoc_ShapeTool.SetAutoNaming(false);
-
-    for (const part of shapes) {
-      const shapeNode = shapeTool.AddShape(part.shape, false, true);
-
-      if (part.name) {
-        const partName = new oc.TCollection_ExtendedString_2(part.name, true);
-        oc.TDataStd_Name.Set_1(shapeNode, partName);
-        partName.delete();
-      }
-
-      if (part.color) {
-        const [r, g, b, a] = part.color;
-        const rgba = new oc.Quantity_ColorRGBA_5(r / 255, g / 255, b / 255, a / 255);
-        colorTool.SetColor_3(shapeNode, rgba, oc.XCAFDoc_ColorType.XCAFDoc_ColorSurf);
-        rgba.delete();
-      }
+    if (part.name) {
+      const partName = new oc.TCollection_ExtendedString_2(part.name, true);
+      oc.TDataStd_Name.Set_1(shapeNode, partName);
+      partName.delete();
     }
 
-    const session = new oc.XSControl_WorkSession();
-    const sessionHandle = new oc.Handle_XSControl_WorkSession_2(session);
-    const writer = new oc.STEPCAFControl_Writer_2(sessionHandle, false);
-    const docHandle = new oc.Handle_TDocStd_Document_2(doc);
-    const progress = new oc.Message_ProgressRange_1();
-    writer.Transfer_1(docHandle, oc.STEPControl_StepModelType.STEPControl_AsIs, null, progress);
-    progress.delete();
-
-    const filename = uniqueIOFilename('_step_cfg_export', 'step');
-    const status = writer.Write(filename);
-
-    let result = '';
-    if (status === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
-      const content = oc.FS.readFile('/' + filename);
-      result = new TextDecoder().decode(content);
-      oc.FS.unlink('/' + filename);
+    if (part.color) {
+      const [r, g, b, a] = part.color;
+      const rgba = new oc.Quantity_ColorRGBA_5(r / 255, g / 255, b / 255, a / 255);
+      colorTool.SetColor_3(shapeNode, rgba, oc.XCAFDoc_ColorType.XCAFDoc_ColorSurf);
+      rgba.delete();
     }
-
-    writer.delete();
-    sessionHandle.delete();
-    docHandle.delete();
-    doc.delete();
-
-    return result;
   }
 
-  // Simple path: no metadata
+  const session = new oc.XSControl_WorkSession();
+  const sessionHandle = new oc.Handle_XSControl_WorkSession_2(session);
+  const writer = new oc.STEPCAFControl_Writer_2(sessionHandle, false);
+  const docHandle = new oc.Handle_TDocStd_Document_2(doc);
+  const progress = new oc.Message_ProgressRange_1();
+  writer.Transfer_1(docHandle, oc.STEPControl_StepModelType.STEPControl_AsIs, null, progress);
+  progress.delete();
+
+  const filename = uniqueIOFilename('_step_cfg_export', 'step');
+  const status = writer.Write(filename);
+
+  let result = '';
+  if (status === oc.IFSelect_ReturnStatus.IFSelect_RetDone) {
+    const content = oc.FS.readFile('/' + filename);
+    result = new TextDecoder().decode(content);
+    oc.FS.unlink('/' + filename);
+  }
+
+  writer.delete();
+  sessionHandle.delete();
+  docHandle.delete();
+  doc.delete();
+
+  return result;
+}
+
+function exportStepConfiguredSimple(oc: KernelInstance, shapes: ConfiguredStepPart[]): string {
   const writer = new oc.STEPControl_Writer_1();
   writer.Model(true).delete();
   const progress = new oc.Message_ProgressRange_1();
@@ -1197,6 +1162,33 @@ export function exportSTEPConfigured(
     return new TextDecoder().decode(file);
   }
   throw new Error('STEP configured export failed: writer did not complete successfully');
+}
+
+/** Export shapes to STEP with full configuration. */
+export function exportSTEPConfigured(
+  oc: KernelInstance,
+  shapes: ConfiguredStepPart[],
+  options: {
+    unit?: string | undefined;
+    modelUnit?: string | undefined;
+    schema?: number | undefined;
+  } = {}
+): string {
+  const unit = options.unit ?? 'MM';
+  const modelUnit = options.modelUnit ?? unit;
+  const schema = options.schema ?? 5;
+
+  oc.Interface_Static.SetCVal('xstep.cascade.unit', modelUnit);
+  oc.Interface_Static.SetCVal('write.step.unit', unit);
+  oc.Interface_Static.SetIVal('write.surfacecurve.mode', true);
+  oc.Interface_Static.SetIVal('write.precision.mode', 0);
+  oc.Interface_Static.SetIVal('write.step.assembly', 2);
+  oc.Interface_Static.SetIVal('write.step.schema', schema);
+
+  const hasMetadata = shapes.some((s) => s.name || s.color);
+  return hasMetadata
+    ? exportStepConfiguredXCAF(oc, shapes)
+    : exportStepConfiguredSimple(oc, shapes);
 }
 
 /** Co-located factory: returns the advanced-ops slice of {@link KernelAdapter} bound to `oc`. */
