@@ -114,7 +114,7 @@ function buildBrepjsWrapperUrl(mod: Record<string, unknown>): string {
     (k) => k !== 'default' && k !== 'color' && JS_IDENT_RE.test(k),
   );
   const lines = names.map((n) => `export const ${n} = m.${n};`);
-  const colorHelper = `export const color = (shape, value) => ({ '${PLAYGROUND_COLOR_TAG}': String(value), shape });`;
+  const colorHelper = `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });`;
   const body = `const m = self.__brepjs;\n${lines.join('\n')}\n${colorHelper}\n`;
   const blob = new Blob([body], { type: 'application/javascript' });
   return URL.createObjectURL(blob);
