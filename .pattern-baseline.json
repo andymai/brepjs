@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-05-25T15:40:37.401Z",
+  "generated": "2026-05-25T15:58:38.287Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -41,61 +41,6 @@
       "file": "src/kernel/brepkit/constructionOps.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/kernel/brepkit/constructionOps.ts|max-function-lines|makeEllipseNurbs|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/evolutionOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-function-lines|matchFacesGeometrically|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/evolutionOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|booleanWithHistoryImpl/if@5|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/evolutionOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|booleanWithHistoryImpl/if@5|#1"
-    },
-    {
-      "file": "src/kernel/brepkit/evolutionOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|booleanWithHistoryImpl/if@5|#2"
-    },
-    {
-      "file": "src/kernel/brepkit/sweepOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-function-lines|sweepPipeShell|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/sweepOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|sweepPipeShell/try@5|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/sweepOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-nesting-depth|sweepPipeShell/if@6|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/topologyOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-function-lines|iterShapes|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/topologyOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|iterShapes/if@5|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/topologyOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|iterShapes/if@5|#1"
-    },
-    {
-      "file": "src/kernel/brepkit/topologyOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/topologyOps.ts|max-nesting-depth|sew/for-of@5|#0"
     },
     {
       "file": "src/kernel/geometry2d.ts",
