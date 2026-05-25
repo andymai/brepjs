@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generated": "2026-05-25T15:10:03.071Z",
+  "generated": "2026-05-25T15:40:37.401Z",
   "entries": [
     {
       "file": "src/core/dimensionTypes.ts",
@@ -63,31 +63,6 @@
       "fingerprint": "src/kernel/brepkit/evolutionOps.ts|max-nesting-depth|booleanWithHistoryImpl/if@5|#2"
     },
     {
-      "file": "src/kernel/brepkit/modifierOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|shell|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/modifierOps.ts",
-      "rule": "max-function-lines",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-function-lines|<anonymous>|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/modifierOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|<anonymous>/if@5|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/modifierOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|<anonymous>/for-of@5|#0"
-    },
-    {
-      "file": "src/kernel/brepkit/modifierOps.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/kernel/brepkit/modifierOps.ts|max-nesting-depth|<anonymous>/if@5|#1"
-    },
-    {
       "file": "src/kernel/brepkit/sweepOps.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/kernel/brepkit/sweepOps.ts|max-function-lines|sweepPipeShell|#0"
@@ -141,26 +116,6 @@
       "file": "src/kernel/occt/hullOps.ts",
       "rule": "max-function-lines",
       "fingerprint": "src/kernel/occt/hullOps.ts|max-function-lines|quickHull|#0"
-    },
-    {
-      "file": "src/operations/mateFns.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@5|#0"
-    },
-    {
-      "file": "src/operations/mateFns.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@5|#1"
-    },
-    {
-      "file": "src/operations/mateFns.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@6|#0"
-    },
-    {
-      "file": "src/operations/mateFns.ts",
-      "rule": "max-nesting-depth",
-      "fingerprint": "src/operations/mateFns.ts|max-nesting-depth|solveAssembly/if@6|#1"
     },
     {
       "file": "src/operations/straightSkeleton.ts",
