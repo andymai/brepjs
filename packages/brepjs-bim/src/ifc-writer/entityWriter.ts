@@ -159,3 +159,29 @@ export function writeWallEntity(
   });
   return id;
 }
+
+export function writeSlabEntity(
+  w: IfcWriter,
+  guid: IfcGuid,
+  name: string,
+  predefinedType: 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB',
+  ownerHistoryId: number,
+  localPlacementId: number,
+  productDefinitionShapeId: number
+): number {
+  const id = w.nextId();
+  w.writeLine({
+    expressID: id,
+    type: WebIFC.IFCSLAB,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: w.mkType(WebIFC.IFCLABEL, name),
+    Description: null,
+    ObjectType: null,
+    ObjectPlacement: w.ref(localPlacementId),
+    Representation: w.ref(productDefinitionShapeId),
+    Tag: null,
+    PredefinedType: { type: 3, value: predefinedType },
+  });
+  return id;
+}

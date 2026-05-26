@@ -8,8 +8,9 @@ import {
   writeBuilding,
   writeStorey,
   writeWallEntity,
+  writeSlabEntity,
 } from '../ifc-writer/entityWriter.js';
-import { writeWallGeometry } from '../ifc-writer/geometryWriter.js';
+import { writeWallGeometry, writeSlabGeometry } from '../ifc-writer/geometryWriter.js';
 import {
   writeRelAggregates,
   writeRelContainedInSpatialStructure,
@@ -20,6 +21,9 @@ import {
   writeManufacturerPset,
   writeCustomPsets,
   writeWallBaseQuantities,
+  writeSlabCommonPset,
+  writeSlabCustomPsets,
+  writeSlabBaseQuantities,
 } from '../ifc-writer/psetWriter.js';
 import {
   writeOpeningGeometry,
@@ -55,6 +59,7 @@ export async function toIfc(
   const elements = model.getAllElements();
   const relationships = model.getAllRelationships();
   const walls = model.getWalls();
+  const slabs = model.getSlabs();
   const doors = model.getDoors();
   const windows = model.getWindows();
 
@@ -127,6 +132,26 @@ export async function toIfc(
       w, ownerHistoryId, wallExpressId, wall.spec,
       openingsByWall.get(wall.localId) ?? []
     );
+  }
+
+  for (const [i, slab] of slabs.entries()) {
+    const containingId = findContainerOf(slab.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeSlabGeometry(
+      w, slab.spec, geomSubContextId, storeyPlacementId
+    );
+    const slabExpressId = writeSlabEntity(
+      w, slab.guid, `Slab ${i + 1}`, slab.spec.predefinedType,
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(slab.localId, slabExpressId);
+    placementMap.set(slab.localId, localPlacementId);
+    writeSlabCommonPset(w, ownerHistoryId, slabExpressId, slab.spec);
+    writeManufacturerPset(w, ownerHistoryId, slabExpressId, slab.spec);
+    if (slab.spec.customProperties !== undefined) {
+      writeSlabCustomPsets(w, ownerHistoryId, slabExpressId, slab.spec.customProperties);
+    }
+    writeSlabBaseQuantities(w, ownerHistoryId, slabExpressId, slab.spec);
   }
 
   const openingPlacementMap = new Map<LocalId, number>();

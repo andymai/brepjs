@@ -494,3 +494,136 @@ describe('IFC Opening round-trip (M3)', () => {
     api.CloseModel(mid);
   });
 });
+
+describe('IFC Slab round-trip (M5)', () => {
+  const SLAB_SPEC = {
+    length: 6000,
+    width: 4000,
+    thickness: 250,
+    origin: [0, 0, 0] as [number, number, number],
+    axisX: [1, 0, 0] as [number, number, number],
+    axisZ: [0, 0, 1] as [number, number, number],
+    predefinedType: 'FLOOR' as const,
+    materialName: 'Concrete',
+    isExternal: false,
+    fireRating: 'REI120',
+    loadBearing: true,
+    compartmentation: true,
+  };
+
+  async function buildSlabModel(extra?: { roof?: boolean }): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
+    const model = new BimModel();
+    const initResult = model.init({ name: 'Slab Test' });
+    if (!initResult.ok) throw new Error(initResult.error.message);
+    const siteId = model.addSite({ name: 'S' });
+    const buildingId = model.addBuilding({ name: 'B' });
+    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    model.aggregate(initResult.value, siteId);
+    model.aggregate(siteId, buildingId);
+    model.aggregate(buildingId, storeyId);
+    const slabResult = model.addSlab(SLAB_SPEC);
+    if (!slabResult.ok) throw new Error(slabResult.error.message);
+    model.placeIn(slabResult.value, storeyId);
+    if (extra?.roof) {
+      const roofResult = model.addSlab({
+        ...SLAB_SPEC,
+        origin: [0, 0, 3000],
+        predefinedType: 'ROOF',
+        materialName: 'Concrete',
+      });
+      if (!roofResult.ok) throw new Error(roofResult.error.message);
+      model.placeIn(roofResult.value, storeyId);
+    }
+    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    if (!result.ok) throw new Error(result.error.message);
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const mid = api.OpenModel(result.value);
+    return { api, mid };
+  }
+
+  it('emits an IfcSlab', async () => {
+    const { api, mid } = await buildSlabModel();
+    const slabs = api.GetLineIDsWithType(mid, WebIFC.IFCSLAB);
+    expect(slabs.size()).toBe(1);
+    api.CloseModel(mid);
+  });
+
+  it('IfcSlab PredefinedType matches spec for FLOOR and ROOF', async () => {
+    const { api, mid } = await buildSlabModel({ roof: true });
+    const slabIds = api.GetLineIDsWithType(mid, WebIFC.IFCSLAB);
+    expect(slabIds.size()).toBe(2);
+    const types: string[] = [];
+    for (let i = 0; i < slabIds.size(); i++) {
+      const slab = api.GetLine(mid, slabIds.get(i)) as Record<string, unknown>;
+      const pred = (slab['PredefinedType'] as { value?: string } | undefined)?.value;
+      if (pred !== undefined) types.push(pred);
+    }
+    expect(types.sort()).toEqual(['FLOOR', 'ROOF']);
+    api.CloseModel(mid);
+  });
+
+  it('slab GlobalId matches BimModel slab GUID', async () => {
+    const { api, mid } = await buildSlabModel();
+    const slabIds = api.GetLineIDsWithType(mid, WebIFC.IFCSLAB);
+    const slab = api.GetLine(mid, slabIds.get(0)) as Record<string, unknown>;
+    const slabGuid = (slab['GlobalId'] as { value?: string } | undefined)?.value;
+    expect(typeof slabGuid).toBe('string');
+    expect((slabGuid as string).length).toBe(22);
+    api.CloseModel(mid);
+  });
+
+  it('emits Pset_SlabCommon with fields from spec', async () => {
+    const { api, mid } = await buildSlabModel();
+    const ids = api.GetLineIDsWithType(mid, WebIFC.IFCPROPERTYSET);
+    let found = false;
+    for (let i = 0; i < ids.size(); i++) {
+      const pset = api.GetLine(mid, ids.get(i)) as Record<string, unknown>;
+      const name = (pset['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Pset_SlabCommon') { found = true; break; }
+    }
+    expect(found).toBe(true);
+    api.CloseModel(mid);
+  });
+
+  it('emits Qto_SlabBaseQuantities with expected numeric values', async () => {
+    const { api, mid } = await buildSlabModel();
+    const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
+    let qto: Record<string, unknown> | undefined;
+    for (let i = 0; i < elemQuantities.size(); i++) {
+      const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
+      const name = (candidate['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Qto_SlabBaseQuantities') { qto = candidate; break; }
+    }
+    if (qto === undefined) throw new Error('Expected Qto_SlabBaseQuantities');
+
+    const numericByName = new Map<string, number>();
+    const refs = qto['Quantities'] as Array<{ value: number }>;
+    for (const ref of refs) {
+      const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
+      const name = (q['Name'] as { value?: string } | undefined)?.value;
+      if (name === undefined) continue;
+      const lengthVal = (q['LengthValue'] as { value?: number } | undefined)?.value;
+      const areaVal = (q['AreaValue'] as { value?: number } | undefined)?.value;
+      const volumeVal = (q['VolumeValue'] as { value?: number } | undefined)?.value;
+      const num = lengthVal ?? areaVal ?? volumeVal;
+      if (num !== undefined) numericByName.set(name, num);
+    }
+    expect(numericByName.get('Length')).toBeCloseTo(6, 5);
+    expect(numericByName.get('Width')).toBeCloseTo(4, 5);
+    expect(numericByName.get('Depth')).toBeCloseTo(0.25, 5);
+    expect(numericByName.get('Perimeter')).toBeCloseTo(2 * (6 + 4), 5);
+    expect(numericByName.get('GrossArea')).toBeCloseTo(6 * 4, 5);
+    expect(numericByName.get('NetArea')).toBeCloseTo(6 * 4, 5);
+    expect(numericByName.get('GrossVolume')).toBeCloseTo(6 * 4 * 0.25, 5);
+    expect(numericByName.get('NetVolume')).toBeCloseTo(6 * 4 * 0.25, 5);
+    api.CloseModel(mid);
+  });
+
+  it('slab is contained in storey via IfcRelContainedInSpatialStructure', async () => {
+    const { api, mid } = await buildSlabModel();
+    const containedRels = api.GetLineIDsWithType(mid, WebIFC.IFCRELCONTAINEDINSPATIALSTRUCTURE);
+    expect(containedRels.size()).toBeGreaterThanOrEqual(1);
+    api.CloseModel(mid);
+  });
+});
