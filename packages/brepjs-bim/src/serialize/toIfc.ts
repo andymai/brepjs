@@ -78,14 +78,14 @@ export async function toIfc(
     placementMap.set(el.localId, placementId);
   }
 
-  for (const wall of walls) {
+  for (const [i, wall] of walls.entries()) {
     const containingId = findContainerOf(wall.localId, relationships);
     const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
     const { localPlacementId, productDefinitionShapeId } = writeWallGeometry(
       w, wall.spec, geomSubContextId, storeyPlacementId
     );
     const wallExpressId = writeWallEntity(
-      w, wall.guid, wall.spec.materialName, ownerHistoryId, localPlacementId, productDefinitionShapeId
+      w, wall.guid, `Wall ${i + 1}`, ownerHistoryId, localPlacementId, productDefinitionShapeId
     );
     idMap.set(wall.localId, wallExpressId);
   }
