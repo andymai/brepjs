@@ -29,6 +29,8 @@ export default defineConfig({
       // Alias to the Node CJS entry so brepkit tests run under vitest.
       '@': resolve(__dirname, 'src'),
       'brepkit-wasm': resolve(__dirname, 'node_modules/brepkit-wasm/brepkit_wasm_node.cjs'),
+      // node_modules/brepjs is a stale published copy; route to live src.
+      brepjs: resolve(__dirname, 'src/index.ts'),
     },
   },
   test: {
