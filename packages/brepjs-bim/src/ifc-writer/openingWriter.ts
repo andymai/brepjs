@@ -199,9 +199,9 @@ export function writeOpeningGeometry(
 // Emits IfcOpeningElement for a vertical through-hole in a slab.
 //
 // Slab body is built in local coords with footprint in XY extruded along +Z.
-// Opening placement is at (offsetX + sizeX/2, offsetY + sizeY/2, thickness/2)
-// so the IfcRectangleProfileDef (centered) covers the opening; extrusion is
-// along +Z by the slab thickness.
+// Opening placement is at (offsetX + sizeX/2, offsetY + sizeY/2, 0) so the
+// IfcRectangleProfileDef (centered on its position) covers the opening; the
+// extrusion goes along +Z by the slab thickness, spanning [0, thickness].
 export function writeSlabOpeningGeometry(
   w: IfcWriter,
   guid: IfcGuid,

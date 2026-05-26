@@ -165,6 +165,26 @@ export class BimModel {
     if (input.offsetY + input.sizeY > slab.spec.width) {
       return err(specError('SLAB_OPENING_EXCEEDS_SLAB_BOUNDS', 'Opening (offsetY + sizeY) exceeds slab width'));
     }
+    // Reject overlap with existing slab openings — overlapping rectangles would
+    // double-subtract from NetArea/NetVolume in Qto_SlabBaseQuantities.
+    const ax0 = input.offsetX;
+    const ax1 = input.offsetX + input.sizeX;
+    const ay0 = input.offsetY;
+    const ay1 = input.offsetY + input.sizeY;
+    for (const rel of this.#relationships.values()) {
+      if (rel.kind !== 'VOIDS_SLAB' || rel.slabLocalId !== input.slabLocalId) continue;
+      const other = this.#elements.get(rel.openingLocalId);
+      if (other === undefined || other.category !== 'OPENING') continue;
+      if (other.spec.kind !== 'SLAB_OPENING') continue;
+      const bx0 = other.spec.offsetX;
+      const bx1 = other.spec.offsetX + other.spec.sizeX;
+      const by0 = other.spec.offsetY;
+      const by1 = other.spec.offsetY + other.spec.sizeY;
+      if (ax0 < bx1 && bx0 < ax1 && ay0 < by1 && by0 < ay1) {
+        return err(specError('SLAB_OPENING_OVERLAP', 'Slab opening overlaps an existing opening on the same slab'));
+      }
+    }
+
     const openingSpec: SlabOpeningSpec = {
       kind: 'SLAB_OPENING',
       sizeX: input.sizeX,

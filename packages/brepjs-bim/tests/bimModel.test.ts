@@ -433,4 +433,39 @@ describe('BimModel.addSlabOpening (M6)', () => {
     expect(model.getAllElements().length).toBe(elementsBefore);
     expect(model.getAllRelationships().length).toBe(relsBefore);
   });
+
+  it('addSlabOpening rejects overlap with an existing opening on the same slab', () => {
+    const { model, slabId } = buildSlabModel();
+    unwrap(model.addSlabOpening({
+      sizeX: 1000, sizeY: 1000, offsetX: 500, offsetY: 500,
+      slabLocalId: slabId,
+    }));
+    const elementsBefore = model.getAllElements().length;
+    const relsBefore = model.getAllRelationships().length;
+    const volAfterFirst = slabVolume(model);
+
+    const result = model.addSlabOpening({
+      sizeX: 600, sizeY: 600, offsetX: 1000, offsetY: 1000,
+      slabLocalId: slabId,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('SLAB_OPENING_OVERLAP');
+
+    expect(model.getAllElements().length).toBe(elementsBefore);
+    expect(model.getAllRelationships().length).toBe(relsBefore);
+    expect(slabVolume(model)).toBeCloseTo(volAfterFirst, -2);
+  });
+
+  it('addSlabOpening allows two openings that touch edge-to-edge (non-overlap)', () => {
+    const { model, slabId } = buildSlabModel();
+    unwrap(model.addSlabOpening({
+      sizeX: 1000, sizeY: 1000, offsetX: 0, offsetY: 0,
+      slabLocalId: slabId,
+    }));
+    const second = model.addSlabOpening({
+      sizeX: 1000, sizeY: 1000, offsetX: 1000, offsetY: 0,
+      slabLocalId: slabId,
+    });
+    expect(second.ok).toBe(true);
+  });
 });
