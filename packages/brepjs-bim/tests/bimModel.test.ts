@@ -263,3 +263,70 @@ describe('BimModel — wall geometry is cut by openings (M4)', () => {
     expect(wallVolume(model)).toBeCloseTo(grossVol, -2);
   });
 });
+
+describe('BimModel.addSlab', () => {
+  const SLAB_SPEC = {
+    length: 5000,
+    width: 4000,
+    thickness: 200,
+    origin: [0, 0, 0] as [number, number, number],
+    axisX: [1, 0, 0] as [number, number, number],
+    axisZ: [0, 0, 1] as [number, number, number],
+    predefinedType: 'FLOOR' as const,
+    materialName: 'Concrete',
+  };
+
+  it('adds a slab and returns a LocalId', () => {
+    const model = new BimModel();
+    const result = model.addSlab(SLAB_SPEC);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(model.getSlabs()).toHaveLength(1);
+    expect(model.getElement(result.value)).not.toBeNull();
+  });
+
+  it('addSlab fails with invalid spec', () => {
+    const model = new BimModel();
+    const result = model.addSlab({ ...SLAB_SPEC, length: -1 });
+    expect(result.ok).toBe(false);
+  });
+
+  it('stores the predefinedType on the spec', () => {
+    const model = new BimModel();
+    unwrap(model.addSlab(SLAB_SPEC));
+    unwrap(model.addSlab({ ...SLAB_SPEC, predefinedType: 'ROOF' }));
+    const slabs = model.getSlabs();
+    expect(slabs.map((s) => s.spec.predefinedType).sort()).toEqual(['FLOOR', 'ROOF']);
+  });
+
+  it('volume of stored slab geometry matches dimensions', () => {
+    const model = new BimModel();
+    const result = model.addSlab(SLAB_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const slab = model.getSlabs()[0];
+    if (!slab) throw new Error('Expected one slab');
+    const vol = unwrap(measureVolume(slab.geometry));
+    expect(vol).toBeCloseTo(5000 * 4000 * 200, -2);
+  });
+
+  it('[Symbol.dispose] disposes slab geometry', () => {
+    const model = new BimModel();
+    const result = model.addSlab(SLAB_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const slab = model.getSlabs()[0];
+    if (!slab) throw new Error('Expected one slab');
+    model[Symbol.dispose]();
+    expect(slab.geometry.disposed).toBe(true);
+  });
+
+  it('emits an ASSOCIATES_MATERIAL relationship', () => {
+    const model = new BimModel();
+    const result = model.addSlab(SLAB_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const matRels = model
+      .getAllRelationships()
+      .filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
+    expect(matRels).toHaveLength(1);
+    expect(matRels[0]?.materialName).toBe('Concrete');
+  });
+});

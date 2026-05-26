@@ -2,6 +2,7 @@ import type { ValidSolid } from 'brepjs';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { LocalId } from '../identity/localId.js';
 import type { WallSpec } from '../specs/wallSpec.js';
+import type { SlabSpec } from '../specs/slabSpec.js';
 import type { DoorSpec, WindowSpec } from '../specs/openingSpec.js';
 import type {
   ProjectSpec,
@@ -10,7 +11,16 @@ import type {
   StoreySpec,
 } from '../specs/spatialSpec.js';
 
-export type BimCategory = 'WALL' | 'OPENING' | 'DOOR' | 'WINDOW' | 'PROJECT' | 'SITE' | 'BUILDING' | 'STOREY';
+export type BimCategory =
+  | 'WALL'
+  | 'SLAB'
+  | 'OPENING'
+  | 'DOOR'
+  | 'WINDOW'
+  | 'PROJECT'
+  | 'SITE'
+  | 'BUILDING'
+  | 'STOREY';
 
 export type OpeningSpec = {
   readonly width: number;
@@ -21,23 +31,25 @@ export type OpeningSpec = {
 
 export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
   ? WallSpec
-  : C extends 'OPENING'
-    ? OpeningSpec
-    : C extends 'DOOR'
-      ? DoorSpec
-      : C extends 'WINDOW'
-        ? WindowSpec
-        : C extends 'PROJECT'
-          ? ProjectSpec
-          : C extends 'SITE'
-            ? SiteSpec
-            : C extends 'BUILDING'
-              ? BuildingSpec
-              : C extends 'STOREY'
-                ? StoreySpec
-                : never;
+  : C extends 'SLAB'
+    ? SlabSpec
+    : C extends 'OPENING'
+      ? OpeningSpec
+      : C extends 'DOOR'
+        ? DoorSpec
+        : C extends 'WINDOW'
+          ? WindowSpec
+          : C extends 'PROJECT'
+            ? ProjectSpec
+            : C extends 'SITE'
+              ? SiteSpec
+              : C extends 'BUILDING'
+                ? BuildingSpec
+                : C extends 'STOREY'
+                  ? StoreySpec
+                  : never;
 
-export type BimGeometryFor<C extends BimCategory> = C extends 'WALL'
+export type BimGeometryFor<C extends BimCategory> = C extends 'WALL' | 'SLAB'
   ? ValidSolid
   : null;
 
@@ -51,6 +63,7 @@ export interface BimElement<C extends BimCategory> {
 
 export type AnyBimElement =
   | BimElement<'WALL'>
+  | BimElement<'SLAB'>
   | BimElement<'OPENING'>
   | BimElement<'DOOR'>
   | BimElement<'WINDOW'>
