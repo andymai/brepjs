@@ -25,7 +25,25 @@ export interface AssociatesMaterialRel {
   readonly relatedObjects: readonly LocalId[];
 }
 
+export interface VoidsWallRel {
+  readonly kind: 'VOIDS_WALL';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly wallLocalId: LocalId;
+  readonly openingLocalId: LocalId;
+}
+
+export interface FillsOpeningRel {
+  readonly kind: 'FILLS_OPENING';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly openingLocalId: LocalId;
+  readonly fillerLocalId: LocalId;
+}
+
 export type BimRelationship =
   | AggregatesRel
   | ContainedInRel
-  | AssociatesMaterialRel;
+  | AssociatesMaterialRel
+  | VoidsWallRel
+  | FillsOpeningRel;
