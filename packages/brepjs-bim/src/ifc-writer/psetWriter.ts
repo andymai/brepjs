@@ -56,7 +56,7 @@ function writePropertySet(
 function writeRelDefinesByProperties(
   w: IfcWriter,
   ownerHistoryId: number,
-  wallExpressId: number,
+  entityExpressId: number,
   psetId: number
 ): void {
   w.writeLine({
@@ -66,7 +66,7 @@ function writeRelDefinesByProperties(
     OwnerHistory: w.ref(ownerHistoryId),
     Name: null,
     Description: null,
-    RelatedObjects: [w.ref(wallExpressId)],
+    RelatedObjects: [w.ref(entityExpressId)],
     RelatingPropertyDefinition: w.ref(psetId),
   });
 }
@@ -112,13 +112,13 @@ export function writeManufacturerPset(
 export function writeCustomPsets(
   w: IfcWriter,
   ownerHistoryId: number,
-  wallExpressId: number,
+  entityExpressId: number,
   customProperties: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
 ): void {
   for (const [psetName, props] of Object.entries(customProperties)) {
     if (Object.keys(props).length === 0) continue;
     const psetId = writePropertySet(w, ownerHistoryId, psetName, { ...props });
-    writeRelDefinesByProperties(w, ownerHistoryId, wallExpressId, psetId);
+    writeRelDefinesByProperties(w, ownerHistoryId, entityExpressId, psetId);
   }
 }
 
@@ -249,19 +249,6 @@ export function writeSlabCommonPset(
   if (Object.keys(props).length === 0) return;
   const psetId = writePropertySet(w, ownerHistoryId, 'Pset_SlabCommon', props);
   writeRelDefinesByProperties(w, ownerHistoryId, slabExpressId, psetId);
-}
-
-export function writeSlabCustomPsets(
-  w: IfcWriter,
-  ownerHistoryId: number,
-  slabExpressId: number,
-  customProperties: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
-): void {
-  for (const [psetName, props] of Object.entries(customProperties)) {
-    if (Object.keys(props).length === 0) continue;
-    const psetId = writePropertySet(w, ownerHistoryId, psetName, { ...props });
-    writeRelDefinesByProperties(w, ownerHistoryId, slabExpressId, psetId);
-  }
 }
 
 export function writeSlabBaseQuantities(

@@ -22,7 +22,6 @@ import {
   writeCustomPsets,
   writeWallBaseQuantities,
   writeSlabCommonPset,
-  writeSlabCustomPsets,
   writeSlabBaseQuantities,
 } from '../ifc-writer/psetWriter.js';
 import {
@@ -149,7 +148,7 @@ export async function toIfc(
     writeSlabCommonPset(w, ownerHistoryId, slabExpressId, slab.spec);
     writeManufacturerPset(w, ownerHistoryId, slabExpressId, slab.spec);
     if (slab.spec.customProperties !== undefined) {
-      writeSlabCustomPsets(w, ownerHistoryId, slabExpressId, slab.spec.customProperties);
+      writeCustomPsets(w, ownerHistoryId, slabExpressId, slab.spec.customProperties);
     }
     writeSlabBaseQuantities(w, ownerHistoryId, slabExpressId, slab.spec);
   }

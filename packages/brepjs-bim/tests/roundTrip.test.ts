@@ -622,8 +622,21 @@ describe('IFC Slab round-trip (M5)', () => {
 
   it('slab is contained in storey via IfcRelContainedInSpatialStructure', async () => {
     const { api, mid } = await buildSlabModel();
+    const slabIds = api.GetLineIDsWithType(mid, WebIFC.IFCSLAB);
+    expect(slabIds.size()).toBe(1);
+    const slabExpressId = slabIds.get(0);
+
     const containedRels = api.GetLineIDsWithType(mid, WebIFC.IFCRELCONTAINEDINSPATIALSTRUCTURE);
-    expect(containedRels.size()).toBeGreaterThanOrEqual(1);
+    let foundSlabInRel = false;
+    for (let i = 0; i < containedRels.size(); i++) {
+      const rel = api.GetLine(mid, containedRels.get(i)) as Record<string, unknown>;
+      const related = (rel['RelatedElements'] ?? []) as Array<{ value: number }>;
+      if (related.some((r) => r.value === slabExpressId)) {
+        foundSlabInRel = true;
+        break;
+      }
+    }
+    expect(foundSlabInRel).toBe(true);
     api.CloseModel(mid);
   });
 });
