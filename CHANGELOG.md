@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.24.0](https://github.com/andymai/brepjs/compare/brepjs-v18.23.1...brepjs-v18.24.0) (2026-05-26)
+
+
+### Features
+
+* **bim:** boolean-cut walls + net quantities — M4 ([#1069](https://github.com/andymai/brepjs/issues/1069)) ([097b62d](https://github.com/andymai/brepjs/commit/097b62d5738c4c6554d8237eb236d79e05f29684))
+
 ## [18.23.1](https://github.com/andymai/brepjs/compare/brepjs-v18.23.0...brepjs-v18.23.1) (2026-05-26)
 
 
