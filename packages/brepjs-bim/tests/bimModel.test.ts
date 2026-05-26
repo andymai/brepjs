@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { unwrap } from 'brepjs';
+import { unwrap, measureVolume } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 
@@ -177,5 +177,89 @@ describe('BimModel.addWindow', () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('WINDOW_EXCEEDS_WALL_BOUNDS');
+  });
+});
+
+describe('BimModel — wall geometry is cut by openings (M4)', () => {
+  function buildWallModel() {
+    const model = new BimModel();
+    unwrap(model.init({ name: 'Test' }));
+    const wallId = unwrap(model.addWall(WALL_SPEC));
+    return { model, wallId };
+  }
+
+  function wallVolume(model: BimModel): number {
+    const wall = model.getWalls()[0];
+    if (!wall) throw new Error('Expected one wall');
+    return unwrap(measureVolume(wall.geometry));
+  }
+
+  it('wall volume drops by door volume after addDoor', () => {
+    const { model, wallId } = buildWallModel();
+    const grossVol = wallVolume(model);
+
+    const doorResult = model.addDoor({
+      width: 900, height: 2100, offsetAlongWall: 1000, offsetFromFloor: 0,
+      wallLocalId: wallId, materialName: 'Wood',
+    });
+    expect(doorResult.ok).toBe(true);
+
+    const netVol = wallVolume(model);
+    const expectedDelta = 900 * 2100 * WALL_SPEC.thickness;
+    expect(grossVol - netVol).toBeCloseTo(expectedDelta, -2);
+  });
+
+  it('wall volume drops by combined opening volumes after door + window', () => {
+    const { model, wallId } = buildWallModel();
+    const grossVol = wallVolume(model);
+
+    unwrap(model.addDoor({
+      width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0,
+      wallLocalId: wallId, materialName: 'Wood',
+    }));
+    unwrap(model.addWindow({
+      width: 1200, height: 1500, offsetAlongWall: 2500, offsetFromFloor: 900,
+      wallLocalId: wallId, materialName: 'Glass',
+    }));
+
+    const netVol = wallVolume(model);
+    const expectedDelta = (900 * 2100 + 1200 * 1500) * WALL_SPEC.thickness;
+    expect(grossVol - netVol).toBeCloseTo(expectedDelta, -2);
+  });
+
+  it('addDoor with bounds violation does not mutate the model', () => {
+    const { model, wallId } = buildWallModel();
+    const elementsBefore = model.getAllElements().length;
+    const relsBefore = model.getAllRelationships().length;
+    const grossVol = wallVolume(model);
+
+    const result = model.addDoor({
+      width: WALL_SPEC.length + 100, height: 2100,
+      offsetAlongWall: 0, offsetFromFloor: 0,
+      wallLocalId: wallId, materialName: 'Wood',
+    });
+    expect(result.ok).toBe(false);
+
+    expect(model.getAllElements().length).toBe(elementsBefore);
+    expect(model.getAllRelationships().length).toBe(relsBefore);
+    expect(wallVolume(model)).toBeCloseTo(grossVol, -2);
+  });
+
+  it('addDoor with invalid wall reference does not mutate the model', () => {
+    const { model } = buildWallModel();
+    const elementsBefore = model.getAllElements().length;
+    const relsBefore = model.getAllRelationships().length;
+    const grossVol = wallVolume(model);
+
+    const result = model.addDoor({
+      width: 900, height: 2100, offsetAlongWall: 0, offsetFromFloor: 0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input
+      wallLocalId: 9999 as any, materialName: 'Wood',
+    });
+    expect(result.ok).toBe(false);
+
+    expect(model.getAllElements().length).toBe(elementsBefore);
+    expect(model.getAllRelationships().length).toBe(relsBefore);
+    expect(wallVolume(model)).toBeCloseTo(grossVol, -2);
   });
 });
