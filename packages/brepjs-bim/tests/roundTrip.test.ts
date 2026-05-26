@@ -7,7 +7,7 @@ import { toIfc } from '../src/serialize/toIfc.js';
 beforeAll(async () => { await initOCCT(); }, 30000);
 
 describe('IFC round-trip (M1)', () => {
-  async function buildModel(): Promise<BimModel> {
+  function buildModel(): BimModel {
     const model = new BimModel();
     const initResult = model.init({ name: 'Test Project' });
     if (!initResult.ok) throw new Error(initResult.error.message);
@@ -33,7 +33,7 @@ describe('IFC round-trip (M1)', () => {
   }
 
   it('toIfc produces non-empty bytes', async () => {
-    const model = await buildModel();
+    const model = buildModel();
     const result = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -41,7 +41,7 @@ describe('IFC round-trip (M1)', () => {
   });
 
   it('exported bytes parse back with web-ifc', async () => {
-    const model = await buildModel();
+    const model = buildModel();
     const result = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' });
     if (!result.ok) throw new Error(result.error.message);
 
@@ -72,7 +72,7 @@ describe('IFC round-trip (M1)', () => {
   });
 
   it('exported IFC contains IfcRelContainedInSpatialStructure', async () => {
-    const model = await buildModel();
+    const model = buildModel();
     const result = await toIfc(model, { applicationName: 'brepjs-bim', applicationVersion: '0.1.0' });
     if (!result.ok) throw new Error(result.error.message);
 

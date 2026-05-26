@@ -139,7 +139,7 @@ describe('BimModel.addDoor', () => {
 
   it('rejects door referencing non-existent wall', () => {
     const { model } = buildWallModel();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- testing invalid input path
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input path
     const result = model.addDoor({ width: 900, height: 2100, offsetAlongWall: 500, offsetFromFloor: 0, wallLocalId: 9999 as any, materialName: 'Wood' });
     expect(result.ok).toBe(false);
   });
