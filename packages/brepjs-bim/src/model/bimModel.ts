@@ -12,8 +12,11 @@ import type {
   AggregatesRel,
   ContainedInRel,
   AssociatesMaterialRel,
+  VoidsWallRel,
+  FillsOpeningRel,
 } from '../types/relationships.js';
 import type { WallSpec } from '../specs/wallSpec.js';
+import type { DoorSpec, WindowSpec } from '../specs/openingSpec.js';
 import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
 import { wallToSolid } from '../elementFns/wallFns.js';
 
@@ -62,6 +65,80 @@ export class BimModel {
       relatedObjects: [id],
     });
     return ok(id);
+  }
+
+  addDoor(spec: DoorSpec): Result<LocalId, BimError> {
+    const wall = this.#elements.get(spec.wallLocalId);
+    if (wall === undefined || wall.category !== 'WALL') {
+      return err(specError('DOOR_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
+    }
+    if (spec.offsetAlongWall + spec.width > wall.spec.length) {
+      return err(specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetAlongWall + width) exceeds wall length'));
+    }
+    if (spec.offsetFromFloor + spec.height > wall.spec.height) {
+      return err(specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetFromFloor + height) exceeds wall height'));
+    }
+    const openingSpec = {
+      width: spec.width,
+      height: spec.height,
+      offsetAlongWall: spec.offsetAlongWall,
+      offsetFromFloor: spec.offsetFromFloor,
+    };
+    const openingId = this.#makeElement('OPENING', openingSpec, null);
+    this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
+    const doorId = this.#makeElement('DOOR', spec, null);
+    this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: doorId });
+    this.#makeRel<AssociatesMaterialRel>({
+      kind: 'ASSOCIATES_MATERIAL',
+      materialName: spec.materialName,
+      relatedObjects: [doorId],
+    });
+    return ok(doorId);
+  }
+
+  addWindow(spec: WindowSpec): Result<LocalId, BimError> {
+    const wall = this.#elements.get(spec.wallLocalId);
+    if (wall === undefined || wall.category !== 'WALL') {
+      return err(specError('WINDOW_WALL_NOT_FOUND', `No wall found for localId ${spec.wallLocalId}`));
+    }
+    if (spec.offsetAlongWall + spec.width > wall.spec.length) {
+      return err(specError('WINDOW_EXCEEDS_WALL_BOUNDS', 'Window (offsetAlongWall + width) exceeds wall length'));
+    }
+    if (spec.offsetFromFloor + spec.height > wall.spec.height) {
+      return err(specError('WINDOW_EXCEEDS_WALL_BOUNDS', 'Window (offsetFromFloor + height) exceeds wall height'));
+    }
+    const openingSpec = {
+      width: spec.width,
+      height: spec.height,
+      offsetAlongWall: spec.offsetAlongWall,
+      offsetFromFloor: spec.offsetFromFloor,
+    };
+    const openingId = this.#makeElement('OPENING', openingSpec, null);
+    this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
+    const windowId = this.#makeElement('WINDOW', spec, null);
+    this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: windowId });
+    this.#makeRel<AssociatesMaterialRel>({
+      kind: 'ASSOCIATES_MATERIAL',
+      materialName: spec.materialName,
+      relatedObjects: [windowId],
+    });
+    return ok(windowId);
+  }
+
+  getDoors(): BimElement<'DOOR'>[] {
+    const doors: BimElement<'DOOR'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'DOOR') doors.push(el);
+    }
+    return doors;
+  }
+
+  getWindows(): BimElement<'WINDOW'>[] {
+    const windows: BimElement<'WINDOW'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'WINDOW') windows.push(el);
+    }
+    return windows;
   }
 
   aggregate(parentId: LocalId, childId: LocalId): void {
