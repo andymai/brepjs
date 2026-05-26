@@ -354,7 +354,7 @@ describe('IFC Opening round-trip (M3)', () => {
     api.CloseModel(mid);
   });
 
-  it('emits all six wall base quantities including Gross/Net Side & Footprint areas', async () => {
+  it('emits all nine wall base quantities including Gross/Net Side & Footprint areas', async () => {
     const { api, mid } = await buildOpeningModel();
     const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
     let qto: Record<string, unknown> | undefined;
@@ -431,8 +431,16 @@ describe('IFC Opening round-trip (M3)', () => {
     const mid = api.OpenModel(result.value);
 
     const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
-     
-    const qto = api.GetLine(mid, elemQuantities.get(0)) as Record<string, unknown>;
+    let qto: Record<string, unknown> | undefined;
+    for (let i = 0; i < elemQuantities.size(); i++) {
+      const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
+      const name = (candidate['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Qto_WallBaseQuantities') {
+        qto = candidate;
+        break;
+      }
+    }
+    if (qto === undefined) throw new Error('Expected Qto_WallBaseQuantities');
     let gross = 0;
     let net = 0;
     const refs = qto['Quantities'] as Array<{ value: number }>;

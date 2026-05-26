@@ -88,9 +88,9 @@ export class BimModel {
 
     const cutResult = this.#cutWallGeometry(wall, openingSpec);
     if (!cutResult.ok) return err(cutResult.error);
+    this.#replaceWallGeometry(wall, cutResult.value);
 
     const openingId = this.#makeElement('OPENING', openingSpec, null);
-    this.#replaceWallGeometry(spec.wallLocalId, cutResult.value);
     this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
     const doorId = this.#makeElement('DOOR', spec, null);
     this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: doorId });
@@ -122,9 +122,9 @@ export class BimModel {
 
     const cutResult = this.#cutWallGeometry(wall, openingSpec);
     if (!cutResult.ok) return err(cutResult.error);
+    this.#replaceWallGeometry(wall, cutResult.value);
 
     const openingId = this.#makeElement('OPENING', openingSpec, null);
-    this.#replaceWallGeometry(spec.wallLocalId, cutResult.value);
     this.#makeRel<VoidsWallRel>({ kind: 'VOIDS_WALL', wallLocalId: spec.wallLocalId, openingLocalId: openingId });
     const windowId = this.#makeElement('WINDOW', spec, null);
     this.#makeRel<FillsOpeningRel>({ kind: 'FILLS_OPENING', openingLocalId: openingId, fillerLocalId: windowId });
@@ -152,15 +152,10 @@ export class BimModel {
     return ok(cutResult.value);
   }
 
-  #replaceWallGeometry(wallId: LocalId, newGeometry: ValidSolid): void {
-    const wall = this.#elements.get(wallId);
-    if (wall === undefined || wall.category !== 'WALL') {
-      newGeometry[Symbol.dispose]();
-      throw new Error(`replaceWallGeometry: ${wallId} is not a wall`);
-    }
+  #replaceWallGeometry(wall: BimElement<'WALL'>, newGeometry: ValidSolid): void {
     const oldGeometry = wall.geometry;
     const replaced: BimElement<'WALL'> = { ...wall, geometry: newGeometry };
-    this.#elements.set(wallId, replaced);
+    this.#elements.set(wall.localId, replaced);
     oldGeometry[Symbol.dispose]();
   }
 
