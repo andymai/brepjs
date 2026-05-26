@@ -23,6 +23,7 @@
   "packageManager": "npm@11.6.1",
   "workspaces": [
     "packages/brepjs-opencascade",
+    "packages/brepjs-bim",
     "apps/playground",
     "apps/docs"
   ],
