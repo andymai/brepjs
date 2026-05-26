@@ -1,7 +1,7 @@
 {
   "framework": "vitepress",
   "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build --workspace=apps/playground && npm run build --workspace=apps/docs && mkdir -p apps/docs/.vitepress/dist/playground && cp -r apps/playground/dist/. apps/docs/.vitepress/dist/playground/",
+  "buildCommand": "npm run build && npm run build --workspace=apps/playground && npm run build --workspace=apps/docs && mkdir -p apps/docs/.vitepress/dist/playground && cp -r apps/playground/dist/. apps/docs/.vitepress/dist/playground/",
   "outputDirectory": "apps/docs/.vitepress/dist",
   "cleanUrls": true,
   "trailingSlash": false,
