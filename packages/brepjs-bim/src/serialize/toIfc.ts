@@ -21,7 +21,6 @@ import {
   writeCustomPsets,
   writeWallBaseQuantities,
 } from '../ifc-writer/psetWriter.js';
-import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
@@ -125,18 +124,22 @@ export async function toIfc(
     );
   }
 
-  const byMaterial = new Map<string, number[]>();
+  const byMaterial = new Map<string, { guid: string; ids: number[] }>();
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
     const objectExpressIds = rel.relatedObjects
       .map((id) => idMap.get(id))
       .filter((id): id is number => id !== undefined);
-    const existing = byMaterial.get(rel.materialName) ?? [];
-    byMaterial.set(rel.materialName, [...existing, ...objectExpressIds]);
+    const existing = byMaterial.get(rel.materialName);
+    if (existing !== undefined) {
+      byMaterial.set(rel.materialName, { guid: existing.guid, ids: [...existing.ids, ...objectExpressIds] });
+    } else {
+      byMaterial.set(rel.materialName, { guid: rel.guid, ids: objectExpressIds });
+    }
   }
-  for (const [materialName, wallIds] of byMaterial) {
-    if (wallIds.length === 0) continue;
-    writeRelAssociatesMaterial(w, newIfcGuid(), ownerHistoryId, materialName, wallIds);
+  for (const [materialName, { guid, ids }] of byMaterial) {
+    if (ids.length === 0) continue;
+    writeRelAssociatesMaterial(w, guid, ownerHistoryId, materialName, ids);
   }
 
   return w.save();

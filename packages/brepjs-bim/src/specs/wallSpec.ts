@@ -4,6 +4,7 @@ import { specError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 
+/** A straight wall aligned along an arbitrary axis in 3D. All dimensions in mm. */
 export interface WallSpec {
   readonly length: number;
   readonly height: number;

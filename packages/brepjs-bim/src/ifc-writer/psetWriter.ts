@@ -174,6 +174,7 @@ export function writeWallBaseQuantities(
     qtyLength('Height', heightM),
     qtyArea('GrossFootprintArea', footprintM2),
     qtyVolume('GrossVolume', volumeM3),
+    // NetVolume equals GrossVolume until opening geometry is tracked (M3+).
     qtyVolume('NetVolume', volumeM3),
   ];
 
