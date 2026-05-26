@@ -8,6 +8,7 @@ export class IfcWriter {
   readonly #api: IfcAPI;
   readonly #modelId: number;
   #nextExpressId = 1;
+  #closed = false;
 
   private constructor(api: IfcAPI, modelId: number) {
     this.#api = api;
@@ -30,10 +31,10 @@ export class IfcWriter {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
-  writeLine(entity: Record<string, unknown>): number {
+  writeLine(entity: { expressID: number } & Record<string, unknown>): number {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
     this.#api.WriteLine(this.#modelId, entity as any);
-    return entity['expressID'] as number;
+    return entity.expressID;
   }
 
   mkType(type: number, value: unknown): Record<string, unknown> {
@@ -50,12 +51,17 @@ export class IfcWriter {
   }
 
   save(): Result<Uint8Array, BimError> {
+    if (this.#closed) {
+      return err(ifcError('IFC_ALREADY_SAVED', 'Model has already been saved and closed'));
+    }
     try {
       const bytes = this.#api.SaveModel(this.#modelId);
-      this.#api.CloseModel(this.#modelId);
       return ok(bytes);
     } catch (e) {
       return err(ifcError('IFC_SAVE_FAILED', 'Failed to serialize IFC model', e));
+    } finally {
+      this.#api.CloseModel(this.#modelId);
+      this.#closed = true;
     }
   }
 }

@@ -14,7 +14,6 @@ export interface BimModelMeta {
 }
 
 export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
-  // IfcOrganization (developer org)
   const devOrgId = w.nextId();
   w.writeLine({
     expressID: devOrgId,
@@ -26,7 +25,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     Addresses: null,
   });
 
-  // IfcApplication
   const appId = w.nextId();
   w.writeLine({
     expressID: appId,
@@ -37,7 +35,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     ApplicationIdentifier: w.mkType(WebIFC.IFCIDENTIFIER, 'brepjs-bim'),
   });
 
-  // IfcPerson (minimal)
   const personId = w.nextId();
   w.writeLine({
     expressID: personId,
@@ -52,7 +49,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     Addresses: null,
   });
 
-  // IfcOrganization (user org)
   const userOrgId = w.nextId();
   w.writeLine({
     expressID: userOrgId,
@@ -64,7 +60,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     Addresses: null,
   });
 
-  // IfcPersonAndOrganization
   const personAndOrgId = w.nextId();
   w.writeLine({
     expressID: personAndOrgId,
@@ -74,7 +69,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     Roles: null,
   });
 
-  // IfcOwnerHistory
   const ownerHistoryId = w.nextId();
   w.writeLine({
     expressID: ownerHistoryId,
@@ -89,7 +83,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     CreationDate: w.mkType(WebIFC.IFCTIMESTAMP, Math.floor(Date.now() / 1000)),
   });
 
-  // SI units
   const lengthUnitId = w.nextId();
   w.writeLine({
     expressID: lengthUnitId,
@@ -120,7 +113,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     Name: { type: 3, value: 'CUBIC_METRE' },
   });
 
-  // IfcUnitAssignment
   const unitAssignmentId = w.nextId();
   w.writeLine({
     expressID: unitAssignmentId,
@@ -132,7 +124,6 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     ],
   });
 
-  // IfcGeometricRepresentationContext (3D model)
   const geomContextId = w.nextId();
   w.writeLine({
     expressID: geomContextId,
@@ -141,11 +132,10 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     ContextType: w.mkType(WebIFC.IFCLABEL, 'Model'),
     CoordinateSpaceDimension: w.mkType(WebIFC.IFCDIMENSIONCOUNT, 3),
     Precision: w.mkType(WebIFC.IFCREAL, 1e-5),
-    WorldCoordinateSystem: writeAxis2Placement3D(w),
+    WorldCoordinateSystem: { type: 5, value: writeAxis2Placement3D(w) },
     TrueNorth: null,
   });
 
-  // IfcGeometricRepresentationSubContext (Body)
   const geomSubContextId = w.nextId();
   w.writeLine({
     expressID: geomSubContextId,
