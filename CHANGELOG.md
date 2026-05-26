@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.23.1](https://github.com/andymai/brepjs/compare/brepjs-v18.23.0...brepjs-v18.23.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* **security:** patch vitepress nested vite (GHSA-4w7w-66w2-5vf9) ([#1066](https://github.com/andymai/brepjs/issues/1066)) ([65a3921](https://github.com/andymai/brepjs/commit/65a3921a1f5994544edf67d8f4103da50b16dde0))
+
 ## [18.23.0](https://github.com/andymai/brepjs/compare/brepjs-v18.22.0...brepjs-v18.23.0) (2026-05-26)
 
 
