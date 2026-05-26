@@ -36,7 +36,6 @@ import type { Result } from 'brepjs';
 import { err } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { DoorSpec } from '../specs/openingSpec.js';
 import type { BimElement } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
 
@@ -132,10 +131,9 @@ export async function toIfc(
 
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
-    const openingSpec = openingElement.spec as DoorSpec;
 
     const { openingEntityId, openingPlacementId } = writeOpeningGeometry(
-      w, openingSpec, wallElement.spec, wallPlacementId, geomSubContextId
+      w, openingElement.guid, openingElement.spec, wallElement.spec, wallPlacementId, geomSubContextId
     );
     idMap.set(rel.openingLocalId, openingEntityId);
     openingPlacementMap.set(rel.openingLocalId, openingPlacementId);

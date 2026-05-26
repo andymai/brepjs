@@ -3,8 +3,14 @@ import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { DoorSpec, WindowSpec } from '../specs/openingSpec.js';
 import type { WallSpec } from '../specs/wallSpec.js';
+
+type OpeningSpec = {
+  readonly width: number;
+  readonly height: number;
+  readonly offsetAlongWall: number;
+  readonly offsetFromFloor: number;
+};
 import { toIfcLengthM } from '../units/units.js';
 
 export interface OpeningIds {
@@ -104,19 +110,10 @@ function writeAxis2Placement2D(w: IfcWriter): number {
   return id;
 }
 
-/**
- * Creates IfcOpeningElement geometry for a door or window void.
- *
- * Opening placement is relative to the wall's local placement:
- * - Origin centered on the opening face: (offsetAlongWall + width/2, 0, offsetFromFloor + height/2)
- * - Axis=[0,-1,0] so extrusion direction points inward (−Y in wall-local = through-wall)
- * - RefDir=[1,0,0] along wall length; cross([0,-1,0],[1,0,0])=[0,0,1] = up, so YDim=height is +Z ✓
- * - Profile: centered IfcRectangleProfileDef (XDim=width, YDim=height)
- * - ExtrudedDirection=[0,0,1], Depth=wallThickness → cuts from outer face to inner face
- */
 export function writeOpeningGeometry(
   w: IfcWriter,
-  openingSpec: DoorSpec | WindowSpec,
+  guid: IfcGuid,
+  openingSpec: OpeningSpec,
   wallSpec: WallSpec,
   wallPlacementId: number,
   geomSubContextId: number
@@ -189,7 +186,7 @@ export function writeOpeningGeometry(
   w.writeLine({
     expressID: openingEntityId,
     type: WebIFC.IFCOPENINGELEMENT,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
     OwnerHistory: null,
     Name: null,
     Description: null,

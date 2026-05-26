@@ -148,7 +148,8 @@ describe('BimModel.addDoor', () => {
 describe('BimModel.addWindow', () => {
   function buildWallModel() {
     const model = new BimModel();
-    model.init({ name: 'Test' });
+    const initResult = model.init({ name: 'Test' });
+    if (!initResult.ok) throw new Error(initResult.error.message);
     const wallResult = model.addWall({
       length: 5000, height: 3000, thickness: 250,
       origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
