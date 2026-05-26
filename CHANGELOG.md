@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.21.0](https://github.com/andymai/brepjs/compare/brepjs-v18.20.5...brepjs-v18.21.0) (2026-05-26)
+
+
+### Features
+
+* **bim:** add brepjs-bim package — IFC4 wall round-trip M1 ([#1061](https://github.com/andymai/brepjs/issues/1061)) ([89112df](https://github.com/andymai/brepjs/commit/89112df15b39a42b8fc3311d3bf3e03a05c3110a))
+
 ## [18.20.5](https://github.com/andymai/brepjs/compare/brepjs-v18.20.4...brepjs-v18.20.5) (2026-05-25)
 
 
