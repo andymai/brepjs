@@ -4,6 +4,7 @@ import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
+import { toIfcLengthM } from '../units/units.js';
 
 type OpeningSpec = {
   readonly width: number;
@@ -11,7 +12,6 @@ type OpeningSpec = {
   readonly offsetAlongWall: number;
   readonly offsetFromFloor: number;
 };
-import { toIfcLengthM } from '../units/units.js';
 
 export interface OpeningIds {
   openingEntityId: number;
@@ -116,7 +116,8 @@ export function writeOpeningGeometry(
   openingSpec: OpeningSpec,
   wallSpec: WallSpec,
   wallPlacementId: number,
-  geomSubContextId: number
+  geomSubContextId: number,
+  ownerHistoryId: number
 ): OpeningIds {
   const widthM = toIfcLengthM(openingSpec.width);
   const heightM = toIfcLengthM(openingSpec.height);
@@ -124,10 +125,10 @@ export function writeOpeningGeometry(
   const offsetFromFloorM = toIfcLengthM(openingSpec.offsetFromFloor);
   const thicknessM = toIfcLengthM(wallSpec.thickness);
 
-  // Placement: centered on the opening, at the wall's outer face (Y=0 in wall coords)
+  // Placement: centered on opening, starting at outer face (+thicknessM/2) so extrusion covers full wall depth
   const placement3DId = writeAxis2Placement3D(
     w,
-    [offsetAlongWallM + widthM / 2, 0, offsetFromFloorM + heightM / 2],
+    [offsetAlongWallM + widthM / 2, thicknessM / 2, offsetFromFloorM + heightM / 2],
     [0, -1, 0],
     [1, 0, 0]
   );
@@ -187,7 +188,7 @@ export function writeOpeningGeometry(
     expressID: openingEntityId,
     type: WebIFC.IFCOPENINGELEMENT,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: null,
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: null,
     Description: null,
     ObjectType: null,
@@ -333,12 +334,32 @@ export function writeWindowCommonPset(
   windowEntityId: number,
   spec: OpeningPsetSpec
 ): void {
-  const props: Record<string, PsetValue> = {};
-  if (spec.isExternal !== undefined) props['IsExternal'] = spec.isExternal;
-  if (spec.fireRating !== undefined) props['FireRating'] = spec.fireRating;
-  if (spec.acousticRating !== undefined) props['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) props['ThermalTransmittance'] = spec.thermalTransmittance;
-  if (Object.keys(props).length === 0) return;
-  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_WindowCommon', props);
+  const propIds: number[] = [];
+  if (spec.isExternal !== undefined) propIds.push(writePropertySingleValue(w, 'IsExternal', spec.isExternal));
+  if (spec.fireRating !== undefined) propIds.push(writePropertySingleValue(w, 'FireRating', spec.fireRating));
+  if (spec.acousticRating !== undefined) propIds.push(writePropertySingleValue(w, 'AcousticRating', spec.acousticRating));
+  if (spec.thermalTransmittance !== undefined) {
+    const id = w.nextId();
+    w.writeLine({
+      expressID: id,
+      type: WebIFC.IFCPROPERTYSINGLEVALUE,
+      Name: w.mkType(WebIFC.IFCIDENTIFIER, 'ThermalTransmittance'),
+      Description: null,
+      NominalValue: w.mkType(WebIFC.IFCTHERMALTRANSMITTANCEMEASURE, spec.thermalTransmittance),
+      Unit: null,
+    });
+    propIds.push(id);
+  }
+  if (propIds.length === 0) return;
+  const psetId = w.nextId();
+  w.writeLine({
+    expressID: psetId,
+    type: WebIFC.IFCPROPERTYSET,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: w.mkType(WebIFC.IFCLABEL, 'Pset_WindowCommon'),
+    Description: null,
+    HasProperties: propIds.map((pid) => w.ref(pid)),
+  });
   writeRelDefinesByProperties(w, ownerHistoryId, windowEntityId, psetId);
 }

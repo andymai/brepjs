@@ -133,7 +133,7 @@ export async function toIfc(
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
 
     const { openingEntityId, openingPlacementId } = writeOpeningGeometry(
-      w, openingElement.guid, openingElement.spec, wallElement.spec, wallPlacementId, geomSubContextId
+      w, openingElement.guid, openingElement.spec, wallElement.spec, wallPlacementId, geomSubContextId, ownerHistoryId
     );
     idMap.set(rel.openingLocalId, openingEntityId);
     openingPlacementMap.set(rel.openingLocalId, openingPlacementId);
