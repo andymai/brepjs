@@ -45,8 +45,10 @@ export function writeWallGeometry(
     YDim: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, heightM),
   });
 
-  const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0]);
-  const extrusionDirId = writeDirection(w, [1, 0, 0]);
+  // Orient so local Z = wall length (X), local X = thickness (Y), local Y = height (Z).
+  // Profile lies in local XY (thickness × height), extrusion along local Z (length).
+  const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0], [1, 0, 0], [0, 1, 0]);
+  const extrusionDirId = writeDirection(w, [0, 0, 1]);
   const extrusionId = w.nextId();
   w.writeLine({
     expressID: extrusionId,
