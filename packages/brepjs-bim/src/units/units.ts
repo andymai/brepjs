@@ -6,7 +6,6 @@ export interface UnitSystem {
 
 export const DEFAULT_UNITS: UnitSystem = { length: 'mm' };
 
-/** Convert a length value from the given unit to millimetres (internal canonical unit). */
 export function toLengthMm(value: number, unit: LengthUnit): number {
   switch (unit) {
     case 'mm':
@@ -20,7 +19,6 @@ export function toLengthMm(value: number, unit: LengthUnit): number {
   }
 }
 
-/** Convert millimetres to metres for IFC export (IFC base unit is METRE). */
 export function toIfcLengthM(mm: number): number {
   return mm / 1000;
 }

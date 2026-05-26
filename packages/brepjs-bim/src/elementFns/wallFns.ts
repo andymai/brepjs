@@ -39,8 +39,10 @@ export function wallToSolid(spec: WallSpec): Result<ValidSolid, BimError> {
     return err(fromBrepError(solidResult.error, 'WALL_EXTRUDE_FAILED', 'Failed to extrude wall profile'));
   }
 
-  if (!isValidSolid(solidResult.value)) {
+  const solid = solidResult.value;
+  if (!isValidSolid(solid)) {
+    solid[Symbol.dispose]();
     return err(geometryError('WALL_INVALID_SOLID', 'Extruded wall solid failed validity check'));
   }
-  return ok(solidResult.value);
+  return ok(solid);
 }

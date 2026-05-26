@@ -21,8 +21,6 @@ export class BimModel {
   readonly #elements = new Map<LocalId, AnyBimElement>();
   readonly #relationships = new Map<LocalId, BimRelationship>();
   readonly #counter = makeLocalIdCounter();
-  readonly #containedBy = new Map<LocalId, LocalId>();
-  readonly #aggregatedBy = new Map<LocalId, LocalId>();
   #projectId: LocalId | null = null;
 
   init(spec: ProjectSpec): Result<LocalId, BimError> {
@@ -87,7 +85,6 @@ export class BimModel {
         relatedObjects: [childId],
       });
     }
-    this.#aggregatedBy.set(childId, parentId);
   }
 
   placeIn(elementId: LocalId, containerId: LocalId): void {
@@ -111,7 +108,6 @@ export class BimModel {
         relatedElements: [elementId],
       });
     }
-    this.#containedBy.set(elementId, containerId);
   }
 
   getProject(): BimElement<'PROJECT'> | null {

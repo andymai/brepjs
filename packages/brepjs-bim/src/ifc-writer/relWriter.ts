@@ -13,11 +13,11 @@ export function writeRelAggregates(
     expressID: w.nextId(),
     type: WebIFC.IFCRELAGGREGATES,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: null,
     Description: null,
-    RelatingObject: { type: 5, value: relatingObjectId },
-    RelatedObjects: relatedObjectIds.map((id) => ({ type: 5, value: id })),
+    RelatingObject: w.ref(relatingObjectId),
+    RelatedObjects: relatedObjectIds.map((id) => w.ref(id)),
   });
 }
 
@@ -32,11 +32,11 @@ export function writeRelContainedInSpatialStructure(
     expressID: w.nextId(),
     type: WebIFC.IFCRELCONTAINEDINSPATIALSTRUCTURE,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: null,
     Description: null,
-    RelatedElements: relatedElementIds.map((id) => ({ type: 5, value: id })),
-    RelatingStructure: { type: 5, value: relatingStructureId },
+    RelatedElements: relatedElementIds.map((id) => w.ref(id)),
+    RelatingStructure: w.ref(relatingStructureId),
   });
 }
 
@@ -59,10 +59,10 @@ export function writeRelAssociatesMaterial(
     expressID: w.nextId(),
     type: WebIFC.IFCRELASSOCIATESMATERIAL,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: null,
     Description: null,
-    RelatedObjects: relatedObjectIds.map((id) => ({ type: 5, value: id })),
-    RelatingMaterial: { type: 5, value: materialId },
+    RelatedObjects: relatedObjectIds.map((id) => w.ref(id)),
+    RelatingMaterial: w.ref(materialId),
   });
 }

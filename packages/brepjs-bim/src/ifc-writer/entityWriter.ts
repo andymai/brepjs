@@ -17,14 +17,14 @@ export function writeProject(
     expressID: id,
     type: WebIFC.IFCPROJECT,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
     ObjectType: null,
     LongName: null,
     Phase: null,
-    RepresentationContexts: [{ type: 5, value: geomContextId }],
-    UnitsInContext: { type: 5, value: unitAssignmentId },
+    RepresentationContexts: [w.ref(geomContextId)],
+    UnitsInContext: w.ref(unitAssignmentId),
   });
   return id;
 }
@@ -41,18 +41,18 @@ export function writeSite(
     expressID: localPlacementId,
     type: WebIFC.IFCLOCALPLACEMENT,
     PlacementRelTo: null,
-    RelativePlacement: { type: 5, value: placement3DId },
+    RelativePlacement: w.ref(placement3DId),
   });
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
     type: WebIFC.IFCSITE,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
     ObjectType: null,
-    ObjectPlacement: { type: 5, value: localPlacementId },
+    ObjectPlacement: w.ref(localPlacementId),
     Representation: null,
     LongName: null,
     CompositionType: { type: 3, value: 'ELEMENT' },
@@ -70,26 +70,26 @@ export function writeBuilding(
   guid: IfcGuid,
   name: string,
   ownerHistoryId: number,
-  parentPlacementId: number
+  parentPlacementId: number | null
 ): { entityId: number; placementId: number } {
   const placement3DId = writeAxis2Placement3D(w, [0, 0, 0]);
   const localPlacementId = w.nextId();
   w.writeLine({
     expressID: localPlacementId,
     type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: { type: 5, value: parentPlacementId },
-    RelativePlacement: { type: 5, value: placement3DId },
+    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
+    RelativePlacement: w.ref(placement3DId),
   });
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
     type: WebIFC.IFCBUILDING,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
     ObjectType: null,
-    ObjectPlacement: { type: 5, value: localPlacementId },
+    ObjectPlacement: w.ref(localPlacementId),
     Representation: null,
     LongName: null,
     CompositionType: { type: 3, value: 'ELEMENT' },
@@ -106,7 +106,7 @@ export function writeStorey(
   name: string,
   elevationMm: number,
   ownerHistoryId: number,
-  parentPlacementId: number
+  parentPlacementId: number | null
 ): { entityId: number; placementId: number } {
   const elevM = toIfcLengthM(elevationMm);
   const placement3DId = writeAxis2Placement3D(w, [0, 0, elevM]);
@@ -114,19 +114,19 @@ export function writeStorey(
   w.writeLine({
     expressID: localPlacementId,
     type: WebIFC.IFCLOCALPLACEMENT,
-    PlacementRelTo: { type: 5, value: parentPlacementId },
-    RelativePlacement: { type: 5, value: placement3DId },
+    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
+    RelativePlacement: w.ref(placement3DId),
   });
   const entityId = w.nextId();
   w.writeLine({
     expressID: entityId,
     type: WebIFC.IFCBUILDINGSTOREY,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
     ObjectType: null,
-    ObjectPlacement: { type: 5, value: localPlacementId },
+    ObjectPlacement: w.ref(localPlacementId),
     Representation: null,
     LongName: null,
     CompositionType: { type: 3, value: 'ELEMENT' },
@@ -148,12 +148,12 @@ export function writeWallEntity(
     expressID: id,
     type: WebIFC.IFCWALL,
     GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: { type: 5, value: ownerHistoryId },
+    OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
     ObjectType: null,
-    ObjectPlacement: { type: 5, value: localPlacementId },
-    Representation: { type: 5, value: productDefinitionShapeId },
+    ObjectPlacement: w.ref(localPlacementId),
+    Representation: w.ref(productDefinitionShapeId),
     Tag: null,
     PredefinedType: null,
   });

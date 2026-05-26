@@ -29,7 +29,7 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
   w.writeLine({
     expressID: appId,
     type: WebIFC.IFCAPPLICATION,
-    ApplicationDeveloper: { type: 5, value: devOrgId },
+    ApplicationDeveloper: w.ref(devOrgId),
     Version: w.mkType(WebIFC.IFCLABEL, meta.applicationVersion),
     ApplicationFullName: w.mkType(WebIFC.IFCLABEL, meta.applicationName),
     ApplicationIdentifier: w.mkType(WebIFC.IFCIDENTIFIER, 'brepjs-bim'),
@@ -64,8 +64,8 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
   w.writeLine({
     expressID: personAndOrgId,
     type: WebIFC.IFCPERSONANDORGANIZATION,
-    ThePerson: { type: 5, value: personId },
-    TheOrganization: { type: 5, value: userOrgId },
+    ThePerson: w.ref(personId),
+    TheOrganization: w.ref(userOrgId),
     Roles: null,
   });
 
@@ -73,8 +73,8 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
   w.writeLine({
     expressID: ownerHistoryId,
     type: WebIFC.IFCOWNERHISTORY,
-    OwningUser: { type: 5, value: personAndOrgId },
-    OwningApplication: { type: 5, value: appId },
+    OwningUser: w.ref(personAndOrgId),
+    OwningApplication: w.ref(appId),
     State: null,
     ChangeAction: { type: 3, value: 'ADDED' },
     LastModifiedDate: null,
@@ -117,11 +117,7 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
   w.writeLine({
     expressID: unitAssignmentId,
     type: WebIFC.IFCUNITASSIGNMENT,
-    Units: [
-      { type: 5, value: lengthUnitId },
-      { type: 5, value: areaUnitId },
-      { type: 5, value: volumeUnitId },
-    ],
+    Units: [w.ref(lengthUnitId), w.ref(areaUnitId), w.ref(volumeUnitId)],
   });
 
   const geomContextId = w.nextId();
@@ -132,7 +128,7 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     ContextType: w.mkType(WebIFC.IFCLABEL, 'Model'),
     CoordinateSpaceDimension: w.mkType(WebIFC.IFCDIMENSIONCOUNT, 3),
     Precision: w.mkType(WebIFC.IFCREAL, 1e-5),
-    WorldCoordinateSystem: { type: 5, value: writeAxis2Placement3D(w) },
+    WorldCoordinateSystem: w.ref(writeAxis2Placement3D(w)),
     TrueNorth: null,
   });
 
@@ -146,7 +142,7 @@ export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
     Precision: null,
     WorldCoordinateSystem: null,
     TrueNorth: null,
-    ParentContext: { type: 5, value: geomContextId },
+    ParentContext: w.ref(geomContextId),
     TargetScale: null,
     TargetView: { type: 3, value: 'MODEL_VIEW' },
     UserDefinedTargetView: null,
@@ -168,9 +164,9 @@ export function writeAxis2Placement3D(
   w.writeLine({
     expressID: id,
     type: WebIFC.IFCAXIS2PLACEMENT3D,
-    Location: { type: 5, value: originId },
-    Axis: { type: 5, value: axisZId },
-    RefDirection: { type: 5, value: axisXId },
+    Location: w.ref(originId),
+    Axis: w.ref(axisZId),
+    RefDirection: w.ref(axisXId),
   });
   return id;
 }

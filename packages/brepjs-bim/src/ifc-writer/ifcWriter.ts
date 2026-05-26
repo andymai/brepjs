@@ -36,17 +36,13 @@ export class IfcWriter {
     return entity.expressID;
   }
 
+  ref(id: number): { type: 5; value: number } {
+    return { type: 5, value: id };
+  }
+
   mkType(type: number, value: unknown): Record<string, unknown> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
     return this.#api.CreateIfcType(this.#modelId, type, value as any) as Record<string, unknown>;
-  }
-
-  mkEntity(type: number, ...args: unknown[]): Record<string, unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- web-ifc WASM type gap
-    return this.#api.CreateIfcEntity(this.#modelId, type, ...(args as any[])) as unknown as Record<
-      string,
-      unknown
-    >;
   }
 
   save(): Result<Uint8Array, BimError> {

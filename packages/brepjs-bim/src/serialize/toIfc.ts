@@ -59,7 +59,7 @@ export async function toIfc(
   for (const el of elements) {
     if (el.category !== 'BUILDING') continue;
     const parentSiteId = findParentOf(el.localId, relationships);
-    const parentPlacementId = parentSiteId !== null ? (placementMap.get(parentSiteId) ?? 0) : 0;
+    const parentPlacementId = parentSiteId !== null ? (placementMap.get(parentSiteId) ?? null) : null;
     const { entityId, placementId } = writeBuilding(
       w, el.guid, el.spec.name, ownerHistoryId, parentPlacementId
     );
@@ -70,7 +70,7 @@ export async function toIfc(
   for (const el of elements) {
     if (el.category !== 'STOREY') continue;
     const parentBuildingId = findParentOf(el.localId, relationships);
-    const parentPlacementId = parentBuildingId !== null ? (placementMap.get(parentBuildingId) ?? 0) : 0;
+    const parentPlacementId = parentBuildingId !== null ? (placementMap.get(parentBuildingId) ?? null) : null;
     const { entityId, placementId } = writeStorey(
       w, el.guid, el.spec.name, el.spec.elevation, ownerHistoryId, parentPlacementId
     );

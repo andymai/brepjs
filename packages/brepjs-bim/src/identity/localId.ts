@@ -7,9 +7,9 @@ export interface LocalIdCounter {
 }
 
 export function makeLocalIdCounter(start = 1): LocalIdCounter {
-  let _n = start;
+  let n = start;
   return {
-    next: () => _n++ as LocalId,
-    current: () => (_n - 1) as LocalId,
+    next: () => n++ as LocalId,
+    current: () => (n - 1) as LocalId,
   };
 }
