@@ -1,5 +1,5 @@
-import { initOC } from '@/kernel/occtWasm/occtWasmAdapter.js';
+import { initOCCT } from '../../../tests/setup.js';
 
 beforeAll(async () => {
-  await initOC();
+  await initOCCT();
 }, 30000);
