@@ -26,6 +26,7 @@ import {
 } from '../ifc-writer/psetWriter.js';
 import {
   writeOpeningGeometry,
+  writeSlabOpeningGeometry,
   writeDoorEntity,
   writeWindowEntity,
   writeRelVoidsElement,
@@ -39,8 +40,8 @@ import type { Result } from 'brepjs';
 import { err } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { BimElement, WallOpeningSpec } from '../types/bimTypes.js';
-import { isWallOpening } from '../types/bimTypes.js';
+import type { BimElement, WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
+import { isWallOpening, isSlabOpening } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
 
 export async function toIfc(
@@ -113,6 +114,17 @@ export async function toIfc(
     openingsByWall.set(rel.wallLocalId, list);
   }
 
+  const openingsBySlab = new Map<LocalId, SlabOpeningSpec[]>();
+  for (const rel of relationships) {
+    if (rel.kind !== 'VOIDS_SLAB') continue;
+    const opening = elements.find((el) => el.localId === rel.openingLocalId);
+    if (opening === undefined || opening.category !== 'OPENING') continue;
+    if (!isSlabOpening(opening.spec)) continue;
+    const list = openingsBySlab.get(rel.slabLocalId) ?? [];
+    list.push(opening.spec);
+    openingsBySlab.set(rel.slabLocalId, list);
+  }
+
   for (const [i, wall] of walls.entries()) {
     const containingId = findContainerOf(wall.localId, relationships);
     const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
@@ -152,7 +164,10 @@ export async function toIfc(
     if (slab.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, slabExpressId, slab.spec.customProperties);
     }
-    writeSlabBaseQuantities(w, ownerHistoryId, slabExpressId, slab.spec);
+    writeSlabBaseQuantities(
+      w, ownerHistoryId, slabExpressId, slab.spec,
+      openingsBySlab.get(slab.localId) ?? []
+    );
   }
 
   const openingPlacementMap = new Map<LocalId, number>();
@@ -180,6 +195,28 @@ export async function toIfc(
     openingEntityMap.set(rel.openingLocalId, openingEntityId);
 
     writeRelVoidsElement(w, rel.guid, ownerHistoryId, wallExpressId, openingEntityId);
+  }
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'VOIDS_SLAB') continue;
+    const slabElement = elements.find(
+      (el): el is BimElement<'SLAB'> => el.category === 'SLAB' && el.localId === rel.slabLocalId
+    );
+    if (slabElement === undefined) continue;
+    const slabExpressId = idMap.get(rel.slabLocalId);
+    const slabPlacementId = placementMap.get(rel.slabLocalId);
+    if (slabExpressId === undefined || slabPlacementId === undefined) continue;
+
+    const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
+    if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
+    if (!isSlabOpening(openingElement.spec)) continue;
+
+    const { openingEntityId } = writeSlabOpeningGeometry(
+      w, openingElement.guid, openingElement.spec, slabElement.spec, slabPlacementId, geomSubContextId, ownerHistoryId
+    );
+    idMap.set(rel.openingLocalId, openingEntityId);
+
+    writeRelVoidsElement(w, rel.guid, ownerHistoryId, slabExpressId, openingEntityId);
   }
 
   for (const [i, door] of doors.entries()) {

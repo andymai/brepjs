@@ -4,7 +4,8 @@ import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
-import type { WallOpeningSpec } from '../types/bimTypes.js';
+import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
+import type { SlabSpec } from '../specs/slabSpec.js';
 import { toIfcLengthM } from '../units/units.js';
 
 export interface OpeningIds {
@@ -144,6 +145,102 @@ export function writeOpeningGeometry(
     Position: w.ref(writeAxis2Placement2D(w)),
     XDim: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, widthM),
     YDim: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, heightM),
+  });
+
+  const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0]);
+  const extrusionDirId = writeDirection(w, [0, 0, 1]);
+  const extrusionId = w.nextId();
+  w.writeLine({
+    expressID: extrusionId,
+    type: WebIFC.IFCEXTRUDEDAREASOLID,
+    SweptArea: w.ref(profileId),
+    Position: w.ref(extrusionPosId),
+    ExtrudedDirection: w.ref(extrusionDirId),
+    Depth: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, thicknessM),
+  });
+
+  const shapeRepId = w.nextId();
+  w.writeLine({
+    expressID: shapeRepId,
+    type: WebIFC.IFCSHAPEREPRESENTATION,
+    ContextOfItems: w.ref(geomSubContextId),
+    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, 'Body'),
+    RepresentationType: w.mkType(WebIFC.IFCLABEL, 'SweptSolid'),
+    Items: [w.ref(extrusionId)],
+  });
+
+  const productDefinitionShapeId = w.nextId();
+  w.writeLine({
+    expressID: productDefinitionShapeId,
+    type: WebIFC.IFCPRODUCTDEFINITIONSHAPE,
+    Name: null,
+    Description: null,
+    Representations: [w.ref(shapeRepId)],
+  });
+
+  const openingEntityId = w.nextId();
+  w.writeLine({
+    expressID: openingEntityId,
+    type: WebIFC.IFCOPENINGELEMENT,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: null,
+    Description: null,
+    ObjectType: null,
+    ObjectPlacement: w.ref(openingPlacementId),
+    Representation: w.ref(productDefinitionShapeId),
+    Tag: null,
+    PredefinedType: null,
+  });
+
+  return { openingEntityId, openingPlacementId };
+}
+
+// Emits IfcOpeningElement for a vertical through-hole in a slab.
+//
+// Slab body is built in local coords with footprint in XY extruded along +Z.
+// Opening placement is at (offsetX + sizeX/2, offsetY + sizeY/2, thickness/2)
+// so the IfcRectangleProfileDef (centered) covers the opening; extrusion is
+// along +Z by the slab thickness.
+export function writeSlabOpeningGeometry(
+  w: IfcWriter,
+  guid: IfcGuid,
+  openingSpec: SlabOpeningSpec,
+  slabSpec: SlabSpec,
+  slabPlacementId: number,
+  geomSubContextId: number,
+  ownerHistoryId: number
+): OpeningIds {
+  const sizeXM = toIfcLengthM(openingSpec.sizeX);
+  const sizeYM = toIfcLengthM(openingSpec.sizeY);
+  const offsetXM = toIfcLengthM(openingSpec.offsetX);
+  const offsetYM = toIfcLengthM(openingSpec.offsetY);
+  const thicknessM = toIfcLengthM(slabSpec.thickness);
+
+  const placement3DId = writeAxis2Placement3D(
+    w,
+    [offsetXM + sizeXM / 2, offsetYM + sizeYM / 2, 0],
+    [0, 0, 1],
+    [1, 0, 0]
+  );
+
+  const openingPlacementId = w.nextId();
+  w.writeLine({
+    expressID: openingPlacementId,
+    type: WebIFC.IFCLOCALPLACEMENT,
+    PlacementRelTo: w.ref(slabPlacementId),
+    RelativePlacement: w.ref(placement3DId),
+  });
+
+  const profileId = w.nextId();
+  w.writeLine({
+    expressID: profileId,
+    type: WebIFC.IFCRECTANGLEPROFILEDEF,
+    ProfileType: { type: 3, value: 'AREA' },
+    ProfileName: null,
+    Position: w.ref(writeAxis2Placement2D(w)),
+    XDim: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, sizeXM),
+    YDim: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, sizeYM),
   });
 
   const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0]);

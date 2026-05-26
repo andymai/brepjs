@@ -640,3 +640,147 @@ describe('IFC Slab round-trip (M5)', () => {
     api.CloseModel(mid);
   });
 });
+
+describe('IFC Slab Opening round-trip (M6)', () => {
+  const SLAB_SPEC = {
+    length: 6000,
+    width: 4000,
+    thickness: 250,
+    origin: [0, 0, 0] as [number, number, number],
+    axisX: [1, 0, 0] as [number, number, number],
+    axisZ: [0, 0, 1] as [number, number, number],
+    predefinedType: 'FLOOR' as const,
+    materialName: 'Concrete',
+  };
+
+  async function buildSlabWithOpenings(): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
+    const model = new BimModel();
+    const initResult = model.init({ name: 'Slab Opening Test' });
+    if (!initResult.ok) throw new Error(initResult.error.message);
+    const siteId = model.addSite({ name: 'S' });
+    const buildingId = model.addBuilding({ name: 'B' });
+    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    model.aggregate(initResult.value, siteId);
+    model.aggregate(siteId, buildingId);
+    model.aggregate(buildingId, storeyId);
+    const slabResult = model.addSlab(SLAB_SPEC);
+    if (!slabResult.ok) throw new Error(slabResult.error.message);
+    model.placeIn(slabResult.value, storeyId);
+    // Stairwell + MEP penetration
+    const o1 = model.addSlabOpening({
+      sizeX: 1200, sizeY: 1500, offsetX: 500, offsetY: 500,
+      slabLocalId: slabResult.value,
+    });
+    if (!o1.ok) throw new Error(o1.error.message);
+    const o2 = model.addSlabOpening({
+      sizeX: 400, sizeY: 400, offsetX: 4500, offsetY: 3000,
+      slabLocalId: slabResult.value,
+    });
+    if (!o2.ok) throw new Error(o2.error.message);
+    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    if (!result.ok) throw new Error(result.error.message);
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const mid = api.OpenModel(result.value);
+    return { api, mid };
+  }
+
+  it('emits two IfcOpeningElements for two slab openings', async () => {
+    const { api, mid } = await buildSlabWithOpenings();
+    const openings = api.GetLineIDsWithType(mid, WebIFC.IFCOPENINGELEMENT);
+    expect(openings.size()).toBe(2);
+    api.CloseModel(mid);
+  });
+
+  it('emits two IfcRelVoidsElement linking openings to the slab', async () => {
+    const { api, mid } = await buildSlabWithOpenings();
+    const slabIds = api.GetLineIDsWithType(mid, WebIFC.IFCSLAB);
+    const slabExpressId = slabIds.get(0);
+    const voids = api.GetLineIDsWithType(mid, WebIFC.IFCRELVOIDSELEMENT);
+    expect(voids.size()).toBe(2);
+    for (let i = 0; i < voids.size(); i++) {
+      const rel = api.GetLine(mid, voids.get(i)) as Record<string, unknown>;
+      const relating = (rel['RelatingBuildingElement'] as { value?: number } | undefined)?.value;
+      expect(relating).toBe(slabExpressId);
+    }
+    api.CloseModel(mid);
+  });
+
+  it('Qto_SlabBaseQuantities has NetArea < GrossArea and NetVolume < GrossVolume', async () => {
+    const { api, mid } = await buildSlabWithOpenings();
+    const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
+    let qto: Record<string, unknown> | undefined;
+    for (let i = 0; i < elemQuantities.size(); i++) {
+      const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
+      const name = (candidate['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Qto_SlabBaseQuantities') { qto = candidate; break; }
+    }
+    if (qto === undefined) throw new Error('Expected Qto_SlabBaseQuantities');
+
+    const numericByName = new Map<string, number>();
+    const refs = qto['Quantities'] as Array<{ value: number }>;
+    for (const ref of refs) {
+      const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
+      const name = (q['Name'] as { value?: string } | undefined)?.value;
+      if (name === undefined) continue;
+      const areaVal = (q['AreaValue'] as { value?: number } | undefined)?.value;
+      const volumeVal = (q['VolumeValue'] as { value?: number } | undefined)?.value;
+      const num = areaVal ?? volumeVal;
+      if (num !== undefined) numericByName.set(name, num);
+    }
+
+    // 6 × 4 slab, openings 1.2×1.5 + 0.4×0.4
+    const totalOpeningAreaM2 = 1.2 * 1.5 + 0.4 * 0.4;
+    expect(numericByName.get('GrossArea')).toBeCloseTo(6 * 4, 5);
+    expect(numericByName.get('NetArea')).toBeCloseTo(6 * 4 - totalOpeningAreaM2, 5);
+    expect(numericByName.get('GrossVolume')).toBeCloseTo(6 * 4 * 0.25, 5);
+    expect(numericByName.get('NetVolume')).toBeCloseTo((6 * 4 - totalOpeningAreaM2) * 0.25, 5);
+    api.CloseModel(mid);
+  });
+
+  it('slab without openings still emits NetArea === GrossArea', async () => {
+    const model = new BimModel();
+    const initResult = model.init({ name: 'No-op Slab' });
+    if (!initResult.ok) throw new Error(initResult.error.message);
+    const siteId = model.addSite({ name: 'S' });
+    const buildingId = model.addBuilding({ name: 'B' });
+    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    model.aggregate(initResult.value, siteId);
+    model.aggregate(siteId, buildingId);
+    model.aggregate(buildingId, storeyId);
+    const slabResult = model.addSlab(SLAB_SPEC);
+    if (!slabResult.ok) throw new Error(slabResult.error.message);
+    model.placeIn(slabResult.value, storeyId);
+
+    const result = await toIfc(model, { applicationName: 't', applicationVersion: '0' });
+    if (!result.ok) throw new Error(result.error.message);
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const mid = api.OpenModel(result.value);
+
+    const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
+    let qto: Record<string, unknown> | undefined;
+    for (let i = 0; i < elemQuantities.size(); i++) {
+      const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
+      const name = (candidate['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Qto_SlabBaseQuantities') { qto = candidate; break; }
+    }
+    if (qto === undefined) throw new Error('Expected Qto_SlabBaseQuantities');
+    let grossArea = 0, netArea = 0, grossVol = 0, netVol = 0;
+    const refs = qto['Quantities'] as Array<{ value: number }>;
+    for (const ref of refs) {
+      const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
+      const name = (q['Name'] as { value?: string } | undefined)?.value;
+      const a = (q['AreaValue'] as { value?: number } | undefined)?.value;
+      const v = (q['VolumeValue'] as { value?: number } | undefined)?.value;
+      if (name === 'GrossArea' && a !== undefined) grossArea = a;
+      if (name === 'NetArea' && a !== undefined) netArea = a;
+      if (name === 'GrossVolume' && v !== undefined) grossVol = v;
+      if (name === 'NetVolume' && v !== undefined) netVol = v;
+    }
+    expect(grossArea).toBeGreaterThan(0);
+    expect(netArea).toBeCloseTo(grossArea, 6);
+    expect(netVol).toBeCloseTo(grossVol, 6);
+    api.CloseModel(mid);
+  });
+});

@@ -3,7 +3,7 @@ import type { IfcWriter } from './ifcWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
-import type { WallOpeningSpec } from '../types/bimTypes.js';
+import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
 import { toIfcLengthM } from '../units/units.js';
 
 type PsetValue = string | number | boolean;
@@ -255,7 +255,8 @@ export function writeSlabBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   slabExpressId: number,
-  spec: SlabSpec
+  spec: SlabSpec,
+  openings: readonly SlabOpeningSpec[]
 ): void {
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
@@ -264,9 +265,14 @@ export function writeSlabBaseQuantities(
   const perimeterM = 2 * (lengthM + widthM);
   const grossVolumeM3 = grossAreaM2 * thicknessM;
 
-  // M5 has no slab openings; Net == Gross until that lands.
-  const netAreaM2 = grossAreaM2;
-  const netVolumeM3 = grossVolumeM3;
+  let sumOpeningAreaM2 = 0;
+  for (const op of openings) {
+    const opSizeXM = toIfcLengthM(op.sizeX);
+    const opSizeYM = toIfcLengthM(op.sizeY);
+    sumOpeningAreaM2 += opSizeXM * opSizeYM;
+  }
+  const netAreaM2 = grossAreaM2 - sumOpeningAreaM2;
+  const netVolumeM3 = grossVolumeM3 - sumOpeningAreaM2 * thicknessM;
 
   const qtyIds = [
     writeQtyLength(w, 'Width', widthM),
