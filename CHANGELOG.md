@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.23.0](https://github.com/andymai/brepjs/compare/brepjs-v18.22.0...brepjs-v18.23.0) (2026-05-26)
+
+
+### Features
+
+* **bim:** add Openings, Doors, and Windows — M3 ([#1065](https://github.com/andymai/brepjs/issues/1065)) ([66d1cfe](https://github.com/andymai/brepjs/commit/66d1cfe7cd9c40a94170c3166b8a1c36e89bf9c7))
+
 ## [18.22.0](https://github.com/andymai/brepjs/compare/brepjs-v18.21.0...brepjs-v18.22.0) (2026-05-26)
 
 
