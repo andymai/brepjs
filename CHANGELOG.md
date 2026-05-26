@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.22.0](https://github.com/andymai/brepjs/compare/brepjs-v18.21.0...brepjs-v18.22.0) (2026-05-26)
+
+
+### Features
+
+* **bim:** add Psets, Qtos, and material grouping — M2 ([#1063](https://github.com/andymai/brepjs/issues/1063)) ([277bde0](https://github.com/andymai/brepjs/commit/277bde0eae2440075616ccc6a4bd6bc51ddf51f5))
+
 ## [18.21.0](https://github.com/andymai/brepjs/compare/brepjs-v18.20.5...brepjs-v18.21.0) (2026-05-26)
 
 
