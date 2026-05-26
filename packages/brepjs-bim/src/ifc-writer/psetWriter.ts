@@ -2,6 +2,7 @@ import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
+import type { OpeningSpec } from '../types/bimTypes.js';
 import { toIfcLengthM } from '../units/units.js';
 
 type PsetValue = string | number | boolean;
@@ -114,17 +115,37 @@ export function writeCustomPsets(
   }
 }
 
+// Openings whose floor offset is within this many metres of 0 are treated as
+// reaching the floor (i.e. they reduce the wall footprint), e.g. doors.
+const FLOOR_TOUCH_EPSILON_M = 1e-3;
+
 export function writeWallBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   wallExpressId: number,
-  spec: WallSpec
+  spec: WallSpec,
+  openings: readonly OpeningSpec[]
 ): void {
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.thickness);
   const heightM = toIfcLengthM(spec.height);
-  const footprintM2 = lengthM * widthM;
-  const volumeM3 = lengthM * widthM * heightM;
+  const grossFootprintM2 = lengthM * widthM;
+  const grossSideAreaM2 = lengthM * heightM;
+  const grossVolumeM3 = lengthM * widthM * heightM;
+
+  let sumOpeningAreaM2 = 0;
+  let sumFloorTouchingFootprintM2 = 0;
+  for (const op of openings) {
+    const opWidthM = toIfcLengthM(op.width);
+    const opHeightM = toIfcLengthM(op.height);
+    sumOpeningAreaM2 += opWidthM * opHeightM;
+    if (toIfcLengthM(op.offsetFromFloor) < FLOOR_TOUCH_EPSILON_M) {
+      sumFloorTouchingFootprintM2 += opWidthM * widthM;
+    }
+  }
+  const netSideAreaM2 = grossSideAreaM2 - sumOpeningAreaM2;
+  const netVolumeM3 = grossVolumeM3 - sumOpeningAreaM2 * widthM;
+  const netFootprintM2 = grossFootprintM2 - sumFloorTouchingFootprintM2;
 
   const qtyLength = (name: string, value: number): number => {
     const id = w.nextId();
@@ -172,10 +193,12 @@ export function writeWallBaseQuantities(
     qtyLength('Length', lengthM),
     qtyLength('Width', widthM),
     qtyLength('Height', heightM),
-    qtyArea('GrossFootprintArea', footprintM2),
-    qtyVolume('GrossVolume', volumeM3),
-    // NetVolume equals GrossVolume until opening geometry is tracked (M3+).
-    qtyVolume('NetVolume', volumeM3),
+    qtyArea('GrossFootprintArea', grossFootprintM2),
+    qtyArea('NetFootprintArea', netFootprintM2),
+    qtyArea('GrossSideArea', grossSideAreaM2),
+    qtyArea('NetSideArea', netSideAreaM2),
+    qtyVolume('GrossVolume', grossVolumeM3),
+    qtyVolume('NetVolume', netVolumeM3),
   ];
 
   const qtoId = w.nextId();

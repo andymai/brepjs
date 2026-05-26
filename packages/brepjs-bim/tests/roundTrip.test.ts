@@ -354,6 +354,101 @@ describe('IFC Opening round-trip (M3)', () => {
     api.CloseModel(mid);
   });
 
+  it('emits all six wall base quantities including Gross/Net Side & Footprint areas', async () => {
+    const { api, mid } = await buildOpeningModel();
+    const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
+    let qto: Record<string, unknown> | undefined;
+    for (let i = 0; i < elemQuantities.size(); i++) {
+       
+      const candidate = api.GetLine(mid, elemQuantities.get(i)) as Record<string, unknown>;
+      const name = (candidate['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Qto_WallBaseQuantities') {
+        qto = candidate;
+        break;
+      }
+    }
+    if (qto === undefined) throw new Error('Expected Qto_WallBaseQuantities');
+
+    const quantityNames = new Set<string>();
+    const numericByName = new Map<string, number>();
+    const refs = qto['Quantities'] as Array<{ value: number }>;
+    for (const ref of refs) {
+       
+      const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
+      const name = (q['Name'] as { value?: string } | undefined)?.value;
+      if (name === undefined) continue;
+      quantityNames.add(name);
+      const lengthVal = (q['LengthValue'] as { value?: number } | undefined)?.value;
+      const areaVal = (q['AreaValue'] as { value?: number } | undefined)?.value;
+      const volumeVal = (q['VolumeValue'] as { value?: number } | undefined)?.value;
+      const num = lengthVal ?? areaVal ?? volumeVal;
+      if (num !== undefined) numericByName.set(name, num);
+    }
+    expect(quantityNames.has('Length')).toBe(true);
+    expect(quantityNames.has('Width')).toBe(true);
+    expect(quantityNames.has('Height')).toBe(true);
+    expect(quantityNames.has('GrossFootprintArea')).toBe(true);
+    expect(quantityNames.has('NetFootprintArea')).toBe(true);
+    expect(quantityNames.has('GrossSideArea')).toBe(true);
+    expect(quantityNames.has('NetSideArea')).toBe(true);
+    expect(quantityNames.has('GrossVolume')).toBe(true);
+    expect(quantityNames.has('NetVolume')).toBe(true);
+
+    // 5 m × 3 m wall, 250 mm thick. Door 0.9×2.1, Window 1.2×1.4.
+    const totalOpeningAreaM2 = 0.9 * 2.1 + 1.2 * 1.4;
+    expect(numericByName.get('GrossSideArea')).toBeCloseTo(5 * 3, 5);
+    expect(numericByName.get('NetSideArea')).toBeCloseTo(5 * 3 - totalOpeningAreaM2, 5);
+    expect(numericByName.get('GrossVolume')).toBeCloseTo(5 * 3 * 0.25, 5);
+    expect(numericByName.get('NetVolume')).toBeCloseTo(5 * 3 * 0.25 - totalOpeningAreaM2 * 0.25, 5);
+    // Only the door reaches the floor (offsetFromFloor 0); window starts at 0.9 m.
+    expect(numericByName.get('GrossFootprintArea')).toBeCloseTo(5 * 0.25, 5);
+    expect(numericByName.get('NetFootprintArea')).toBeCloseTo(5 * 0.25 - 0.9 * 0.25, 5);
+
+    api.CloseModel(mid);
+  });
+
+  it('wall without openings emits NetVolume === GrossVolume', async () => {
+    const model = new BimModel();
+    const initResult = model.init({ name: 'No-Op Wall' });
+    if (!initResult.ok) throw new Error(initResult.error.message);
+    const siteId = model.addSite({ name: 'S' });
+    const buildingId = model.addBuilding({ name: 'B' });
+    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    model.aggregate(initResult.value, siteId);
+    model.aggregate(siteId, buildingId);
+    model.aggregate(buildingId, storeyId);
+    const wallResult = model.addWall({
+      length: 4000, height: 2800, thickness: 200,
+      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1], materialName: 'Concrete',
+    });
+    if (!wallResult.ok) throw new Error(wallResult.error.message);
+    model.placeIn(wallResult.value, storeyId);
+
+    const result = await toIfc(model, { applicationName: 'test', applicationVersion: '0' });
+    if (!result.ok) throw new Error(result.error.message);
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const mid = api.OpenModel(result.value);
+
+    const elemQuantities = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
+     
+    const qto = api.GetLine(mid, elemQuantities.get(0)) as Record<string, unknown>;
+    let gross = 0;
+    let net = 0;
+    const refs = qto['Quantities'] as Array<{ value: number }>;
+    for (const ref of refs) {
+       
+      const q = api.GetLine(mid, ref.value) as Record<string, unknown>;
+      const name = (q['Name'] as { value?: string } | undefined)?.value;
+      const vol = (q['VolumeValue'] as { value?: number } | undefined)?.value;
+      if (name === 'GrossVolume' && vol !== undefined) gross = vol;
+      if (name === 'NetVolume' && vol !== undefined) net = vol;
+    }
+    expect(gross).toBeGreaterThan(0);
+    expect(net).toBeCloseTo(gross, 6);
+    api.CloseModel(mid);
+  });
+
   it('door GlobalId matches BimModel door GUID', async () => {
     const model = new BimModel();
     const initResult = model.init({ name: 'GUID Test' });

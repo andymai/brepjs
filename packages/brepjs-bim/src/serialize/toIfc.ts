@@ -36,7 +36,7 @@ import type { Result } from 'brepjs';
 import { err } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { BimElement } from '../types/bimTypes.js';
+import type { BimElement, OpeningSpec } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
 
 export async function toIfc(
@@ -97,6 +97,16 @@ export async function toIfc(
     placementMap.set(el.localId, placementId);
   }
 
+  const openingsByWall = new Map<LocalId, OpeningSpec[]>();
+  for (const rel of relationships) {
+    if (rel.kind !== 'VOIDS_WALL') continue;
+    const opening = elements.find((el) => el.localId === rel.openingLocalId);
+    if (opening === undefined || opening.category !== 'OPENING') continue;
+    const list = openingsByWall.get(rel.wallLocalId) ?? [];
+    list.push(opening.spec);
+    openingsByWall.set(rel.wallLocalId, list);
+  }
+
   for (const [i, wall] of walls.entries()) {
     const containingId = findContainerOf(wall.localId, relationships);
     const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
@@ -113,7 +123,10 @@ export async function toIfc(
     if (wall.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
-    writeWallBaseQuantities(w, ownerHistoryId, wallExpressId, wall.spec);
+    writeWallBaseQuantities(
+      w, ownerHistoryId, wallExpressId, wall.spec,
+      openingsByWall.get(wall.localId) ?? []
+    );
   }
 
   const openingPlacementMap = new Map<LocalId, number>();
