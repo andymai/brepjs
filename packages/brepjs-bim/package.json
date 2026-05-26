@@ -28,12 +28,14 @@
     "brepjs": ">=18.0.0",
     "web-ifc": ">=0.0.50"
   },
-  "dependencies": {
-    "zod": "^3.23.0"
-  },
   "devDependencies": {
+    "@eslint/js": "*",
+    "eslint": "*",
+    "typescript": "*",
+    "typescript-eslint": "*",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^5.0.0",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "zod": "^3.23.0"
   }
 }

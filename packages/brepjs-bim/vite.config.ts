@@ -12,7 +12,7 @@ export default defineConfig({
       formats: ['es', 'cjs'],
     },
     rollupOptions: {
-      external: ['brepjs', 'web-ifc', 'zod'],
+      external: ['brepjs', 'web-ifc'],
     },
   },
 });

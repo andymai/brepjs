@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 90000,
     pool: 'forks',
+    execArgv: ['--max-old-space-size=6144'],
     include: ['tests/**/*.test.ts'],
   },
 });
