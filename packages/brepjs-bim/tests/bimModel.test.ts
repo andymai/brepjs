@@ -49,6 +49,30 @@ describe('BimModel', () => {
     expect(result.ok).toBe(false);
   });
 
+  it('init() called twice returns DUPLICATE_PROJECT error', () => {
+    const model = new BimModel();
+    unwrap(model.init({ name: 'First' }));
+    const second = model.init({ name: 'Second' });
+    expect(second.ok).toBe(false);
+    if (second.ok) return;
+    expect(second.error.code).toBe('DUPLICATE_PROJECT');
+  });
+
+  it('getProject returns null before init()', () => {
+    const model = new BimModel();
+    expect(model.getProject()).toBeNull();
+  });
+
+  it('[Symbol.dispose] disposes wall geometry handles', () => {
+    const model = new BimModel();
+    const result = model.addWall(WALL_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const wall = model.getElement(result.value);
+    if (!wall || wall.category !== 'WALL') throw new Error('Expected wall element');
+    model[Symbol.dispose]();
+    expect(wall.geometry.disposed).toBe(true);
+  });
+
   it('getWalls returns only wall elements', () => {
     const model = new BimModel();
     unwrap(model.init({ name: 'P' }));

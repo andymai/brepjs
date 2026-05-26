@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
 import { wallToSolid } from '../src/elementFns/wallFns.js';
+import { parseWallSpec } from '../src/specs/wallSpec.js';
 import { measureVolume } from 'brepjs';
 
 beforeAll(async () => { await initOCCT(); }, 30000);
@@ -38,10 +39,63 @@ describe('wallToSolid', () => {
     expect(result.error.code).toBe('WALL_ZERO_LENGTH');
   });
 
+  it('rejects zero height', () => {
+    const result = wallToSolid({ ...spec, height: 0 });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('WALL_ZERO_HEIGHT');
+  });
+
   it('rejects negative thickness', () => {
     const result = wallToSolid({ ...spec, thickness: -1 });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.kind).toBe('BIM_SPEC');
+  });
+});
+
+describe('parseWallSpec', () => {
+  const valid = {
+    length: 3000,
+    height: 2700,
+    thickness: 200,
+    origin: [0, 0, 0],
+    axisX: [1, 0, 0],
+    axisZ: [0, 0, 1],
+    materialName: 'Concrete',
+  };
+
+  it('accepts a valid spec', () => {
+    expect(parseWallSpec(valid).ok).toBe(true);
+  });
+
+  it('rejects non-unit axisX', () => {
+    const result = parseWallSpec({ ...valid, axisX: [2, 0, 0] });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('INVALID_WALL_SPEC');
+  });
+
+  it('rejects non-unit axisZ', () => {
+    const result = parseWallSpec({ ...valid, axisZ: [0, 0, 2] });
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects non-orthogonal axes', () => {
+    const result = parseWallSpec({ ...valid, axisX: [1, 0, 0], axisZ: [1, 0, 0] });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('INVALID_WALL_SPEC');
+  });
+
+  it('rejects zero or negative dimensions', () => {
+    expect(parseWallSpec({ ...valid, length: 0 }).ok).toBe(false);
+    expect(parseWallSpec({ ...valid, height: -1 }).ok).toBe(false);
+  });
+
+  it('rejects missing required fields', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { materialName: _, ...noMaterial } = valid;
+    expect(parseWallSpec(noMaterial).ok).toBe(false);
   });
 });
