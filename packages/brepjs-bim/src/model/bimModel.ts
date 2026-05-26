@@ -6,7 +6,7 @@ import type { LocalId } from '../identity/localId.js';
 import { makeLocalIdCounter } from '../identity/localId.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError } from '../errors/bimError.js';
-import type { AnyBimElement, BimElement, OpeningSpec } from '../types/bimTypes.js';
+import type { AnyBimElement, BimElement, WallOpeningSpec } from '../types/bimTypes.js';
 import type {
   BimRelationship,
   AggregatesRel,
@@ -93,7 +93,8 @@ export class BimModel {
     if (spec.offsetFromFloor + spec.height > wall.spec.height) {
       return err(specError('DOOR_EXCEEDS_WALL_BOUNDS', 'Door (offsetFromFloor + height) exceeds wall height'));
     }
-    const openingSpec: OpeningSpec = {
+    const openingSpec: WallOpeningSpec = {
+      kind: 'WALL_OPENING',
       width: spec.width,
       height: spec.height,
       offsetAlongWall: spec.offsetAlongWall,
@@ -127,7 +128,8 @@ export class BimModel {
     if (spec.offsetFromFloor + spec.height > wall.spec.height) {
       return err(specError('WINDOW_EXCEEDS_WALL_BOUNDS', 'Window (offsetFromFloor + height) exceeds wall height'));
     }
-    const openingSpec: OpeningSpec = {
+    const openingSpec: WallOpeningSpec = {
+      kind: 'WALL_OPENING',
       width: spec.width,
       height: spec.height,
       offsetAlongWall: spec.offsetAlongWall,
@@ -152,7 +154,7 @@ export class BimModel {
 
   #cutWallGeometry(
     wall: BimElement<'WALL'>,
-    openingSpec: OpeningSpec
+    openingSpec: WallOpeningSpec
   ): Result<ValidSolid, BimError> {
     const toolResult = openingToSolid(openingSpec, wall.spec.thickness);
     if (!toolResult.ok) return err(toolResult.error);

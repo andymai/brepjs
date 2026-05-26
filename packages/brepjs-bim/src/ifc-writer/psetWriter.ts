@@ -3,7 +3,7 @@ import type { IfcWriter } from './ifcWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
-import type { OpeningSpec } from '../types/bimTypes.js';
+import type { WallOpeningSpec } from '../types/bimTypes.js';
 import { toIfcLengthM } from '../units/units.js';
 
 type PsetValue = string | number | boolean;
@@ -193,7 +193,7 @@ export function writeWallBaseQuantities(
   ownerHistoryId: number,
   wallExpressId: number,
   spec: WallSpec,
-  openings: readonly OpeningSpec[]
+  openings: readonly WallOpeningSpec[]
 ): void {
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.thickness);

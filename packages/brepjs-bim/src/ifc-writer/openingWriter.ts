@@ -4,14 +4,8 @@ import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
+import type { WallOpeningSpec } from '../types/bimTypes.js';
 import { toIfcLengthM } from '../units/units.js';
-
-type OpeningSpec = {
-  readonly width: number;
-  readonly height: number;
-  readonly offsetAlongWall: number;
-  readonly offsetFromFloor: number;
-};
 
 export interface OpeningIds {
   openingEntityId: number;
@@ -113,7 +107,7 @@ function writeAxis2Placement2D(w: IfcWriter): number {
 export function writeOpeningGeometry(
   w: IfcWriter,
   guid: IfcGuid,
-  openingSpec: OpeningSpec,
+  openingSpec: WallOpeningSpec,
   wallSpec: WallSpec,
   wallPlacementId: number,
   geomSubContextId: number,

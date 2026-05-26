@@ -1,7 +1,7 @@
 import { polygon, extrude, isValidSolid } from 'brepjs';
 import type { ValidSolid, Result } from 'brepjs';
 import { ok, err } from 'brepjs';
-import type { OpeningSpec } from '../types/bimTypes.js';
+import type { WallOpeningSpec } from '../types/bimTypes.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
 
@@ -17,7 +17,7 @@ const EPSILON_MM = 1;
 //   Y ∈ [-ε, thickness + ε]   ← overshoots the wall depth on both sides
 //   Z ∈ [offsetFromFloor, offsetFromFloor + height]
 export function openingToSolid(
-  spec: OpeningSpec,
+  spec: WallOpeningSpec,
   wallThickness: number
 ): Result<ValidSolid, BimError> {
   if (spec.width <= 0) {

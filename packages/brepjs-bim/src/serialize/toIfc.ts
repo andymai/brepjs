@@ -39,7 +39,8 @@ import type { Result } from 'brepjs';
 import { err } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import type { BimElement, OpeningSpec } from '../types/bimTypes.js';
+import type { BimElement, WallOpeningSpec } from '../types/bimTypes.js';
+import { isWallOpening } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
 
 export async function toIfc(
@@ -101,11 +102,12 @@ export async function toIfc(
     placementMap.set(el.localId, placementId);
   }
 
-  const openingsByWall = new Map<LocalId, OpeningSpec[]>();
+  const openingsByWall = new Map<LocalId, WallOpeningSpec[]>();
   for (const rel of relationships) {
     if (rel.kind !== 'VOIDS_WALL') continue;
     const opening = elements.find((el) => el.localId === rel.openingLocalId);
     if (opening === undefined || opening.category !== 'OPENING') continue;
+    if (!isWallOpening(opening.spec)) continue;
     const list = openingsByWall.get(rel.wallLocalId) ?? [];
     list.push(opening.spec);
     openingsByWall.set(rel.wallLocalId, list);
@@ -168,6 +170,7 @@ export async function toIfc(
 
     const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
     if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
+    if (!isWallOpening(openingElement.spec)) continue;
 
     const { openingEntityId, openingPlacementId } = writeOpeningGeometry(
       w, openingElement.guid, openingElement.spec, wallElement.spec, wallPlacementId, geomSubContextId, ownerHistoryId

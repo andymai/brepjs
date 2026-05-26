@@ -22,12 +22,31 @@ export type BimCategory =
   | 'BUILDING'
   | 'STOREY';
 
-export type OpeningSpec = {
+export type WallOpeningSpec = {
+  readonly kind: 'WALL_OPENING';
   readonly width: number;
   readonly height: number;
   readonly offsetAlongWall: number;
   readonly offsetFromFloor: number;
 };
+
+export type SlabOpeningSpec = {
+  readonly kind: 'SLAB_OPENING';
+  readonly sizeX: number;
+  readonly sizeY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+};
+
+export type OpeningSpec = WallOpeningSpec | SlabOpeningSpec;
+
+export function isWallOpening(spec: OpeningSpec): spec is WallOpeningSpec {
+  return spec.kind === 'WALL_OPENING';
+}
+
+export function isSlabOpening(spec: OpeningSpec): spec is SlabOpeningSpec {
+  return spec.kind === 'SLAB_OPENING';
+}
 
 export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
   ? WallSpec

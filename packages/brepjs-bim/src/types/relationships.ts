@@ -33,6 +33,14 @@ export interface VoidsWallRel {
   readonly openingLocalId: LocalId;
 }
 
+export interface VoidsSlabRel {
+  readonly kind: 'VOIDS_SLAB';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly slabLocalId: LocalId;
+  readonly openingLocalId: LocalId;
+}
+
 export interface FillsOpeningRel {
   readonly kind: 'FILLS_OPENING';
   readonly guid: IfcGuid;
@@ -46,4 +54,5 @@ export type BimRelationship =
   | ContainedInRel
   | AssociatesMaterialRel
   | VoidsWallRel
+  | VoidsSlabRel
   | FillsOpeningRel;
