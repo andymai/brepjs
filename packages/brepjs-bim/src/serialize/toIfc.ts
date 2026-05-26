@@ -15,6 +15,13 @@ import {
   writeRelContainedInSpatialStructure,
   writeRelAssociatesMaterial,
 } from '../ifc-writer/relWriter.js';
+import {
+  writeWallCommonPset,
+  writeManufacturerPset,
+  writeCustomPsets,
+  writeWallBaseQuantities,
+} from '../ifc-writer/psetWriter.js';
+import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
@@ -88,6 +95,12 @@ export async function toIfc(
       w, wall.guid, `Wall ${i + 1}`, ownerHistoryId, localPlacementId, productDefinitionShapeId
     );
     idMap.set(wall.localId, wallExpressId);
+    writeWallCommonPset(w, ownerHistoryId, wallExpressId, wall.spec);
+    writeManufacturerPset(w, ownerHistoryId, wallExpressId, wall.spec);
+    if (wall.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
+    }
+    writeWallBaseQuantities(w, ownerHistoryId, wallExpressId, wall.spec);
   }
 
   for (const rel of relationships) {
@@ -112,15 +125,18 @@ export async function toIfc(
     );
   }
 
+  const byMaterial = new Map<string, number[]>();
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
     const objectExpressIds = rel.relatedObjects
       .map((id) => idMap.get(id))
       .filter((id): id is number => id !== undefined);
-    if (objectExpressIds.length === 0) continue;
-    writeRelAssociatesMaterial(
-      w, rel.guid, ownerHistoryId, rel.materialName, objectExpressIds
-    );
+    const existing = byMaterial.get(rel.materialName) ?? [];
+    byMaterial.set(rel.materialName, [...existing, ...objectExpressIds]);
+  }
+  for (const [materialName, wallIds] of byMaterial) {
+    if (wallIds.length === 0) continue;
+    writeRelAssociatesMaterial(w, newIfcGuid(), ownerHistoryId, materialName, wallIds);
   }
 
   return w.save();
