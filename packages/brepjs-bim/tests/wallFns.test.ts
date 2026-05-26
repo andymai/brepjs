@@ -98,4 +98,49 @@ describe('parseWallSpec', () => {
     const { materialName: _, ...noMaterial } = valid;
     expect(parseWallSpec(noMaterial).ok).toBe(false);
   });
+
+  it('accepts spec with Pset_WallCommon fields', () => {
+    const result = parseWallSpec({
+      ...valid,
+      isExternal: true,
+      fireRating: 'REI90',
+      acousticRating: 'Rw55',
+      thermalTransmittance: 0.3,
+      loadBearing: false,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.isExternal).toBe(true);
+    expect(result.value.thermalTransmittance).toBe(0.3);
+  });
+
+  it('accepts spec with manufacturer fields', () => {
+    const result = parseWallSpec({
+      ...valid,
+      manufacturerName: 'Wienerberger',
+      manufacturerModel: 'Porotherm 20 DF',
+      manufacturerProductionYear: 2024,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts spec with customProperties', () => {
+    const result = parseWallSpec({
+      ...valid,
+      customProperties: {
+        'Pset_AcousticPerformance': { SoundReductionIndex: 45 },
+      },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects non-positive thermalTransmittance', () => {
+    const result = parseWallSpec({ ...valid, thermalTransmittance: -1 });
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects non-integer manufacturerProductionYear', () => {
+    const result = parseWallSpec({ ...valid, manufacturerProductionYear: 2024.5 });
+    expect(result.ok).toBe(false);
+  });
 });
