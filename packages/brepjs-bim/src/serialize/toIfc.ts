@@ -21,11 +21,23 @@ import {
   writeCustomPsets,
   writeWallBaseQuantities,
 } from '../ifc-writer/psetWriter.js';
+import {
+  writeOpeningGeometry,
+  writeDoorEntity,
+  writeWindowEntity,
+  writeRelVoidsElement,
+  writeRelFillsElement,
+  writeDoorCommonPset,
+  writeWindowCommonPset,
+} from '../ifc-writer/openingWriter.js';
 import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { err } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
+import type { IfcGuid } from '../identity/ifcGuid.js';
+import type { DoorSpec } from '../specs/openingSpec.js';
+import type { BimElement } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
 
 export async function toIfc(
@@ -44,6 +56,8 @@ export async function toIfc(
   const elements = model.getAllElements();
   const relationships = model.getAllRelationships();
   const walls = model.getWalls();
+  const doors = model.getDoors();
+  const windows = model.getWindows();
 
   const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(w, meta);
 
@@ -94,12 +108,68 @@ export async function toIfc(
       w, wall.guid, `Wall ${i + 1}`, ownerHistoryId, localPlacementId, productDefinitionShapeId
     );
     idMap.set(wall.localId, wallExpressId);
+    placementMap.set(wall.localId, localPlacementId);
     writeWallCommonPset(w, ownerHistoryId, wallExpressId, wall.spec);
     writeManufacturerPset(w, ownerHistoryId, wallExpressId, wall.spec);
     if (wall.spec.customProperties !== undefined) {
       writeCustomPsets(w, ownerHistoryId, wallExpressId, wall.spec.customProperties);
     }
     writeWallBaseQuantities(w, ownerHistoryId, wallExpressId, wall.spec);
+  }
+
+  const openingPlacementMap = new Map<LocalId, number>();
+  const openingEntityMap = new Map<LocalId, number>();
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'VOIDS_WALL') continue;
+    const wallElement = elements.find(
+      (el): el is BimElement<'WALL'> => el.category === 'WALL' && el.localId === rel.wallLocalId
+    );
+    if (wallElement === undefined) continue;
+    const wallExpressId = idMap.get(rel.wallLocalId);
+    const wallPlacementId = placementMap.get(rel.wallLocalId);
+    if (wallExpressId === undefined || wallPlacementId === undefined) continue;
+
+    const openingElement = elements.find((el) => el.localId === rel.openingLocalId);
+    if (openingElement === undefined || openingElement.category !== 'OPENING') continue;
+    const openingSpec = openingElement.spec as DoorSpec;
+
+    const { openingEntityId, openingPlacementId } = writeOpeningGeometry(
+      w, openingSpec, wallElement.spec, wallPlacementId, geomSubContextId
+    );
+    idMap.set(rel.openingLocalId, openingEntityId);
+    openingPlacementMap.set(rel.openingLocalId, openingPlacementId);
+    openingEntityMap.set(rel.openingLocalId, openingEntityId);
+
+    writeRelVoidsElement(w, rel.guid, ownerHistoryId, wallExpressId, openingEntityId);
+  }
+
+  for (const [i, door] of doors.entries()) {
+    const fillsRel = relationships.find(
+      (rel) => rel.kind === 'FILLS_OPENING' && rel.fillerLocalId === door.localId
+    );
+    if (fillsRel === undefined || fillsRel.kind !== 'FILLS_OPENING') continue;
+    const openingPlacementId = openingPlacementMap.get(fillsRel.openingLocalId);
+    const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
+    if (openingPlacementId === undefined || openingEntityId === undefined) continue;
+    const doorExpressId = writeDoorEntity(w, door.guid, `Door ${i + 1}`, ownerHistoryId, openingPlacementId);
+    idMap.set(door.localId, doorExpressId);
+    writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, doorExpressId);
+    writeDoorCommonPset(w, ownerHistoryId, doorExpressId, door.spec);
+  }
+
+  for (const [i, win] of windows.entries()) {
+    const fillsRel = relationships.find(
+      (rel) => rel.kind === 'FILLS_OPENING' && rel.fillerLocalId === win.localId
+    );
+    if (fillsRel === undefined || fillsRel.kind !== 'FILLS_OPENING') continue;
+    const openingPlacementId = openingPlacementMap.get(fillsRel.openingLocalId);
+    const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
+    if (openingPlacementId === undefined || openingEntityId === undefined) continue;
+    const windowExpressId = writeWindowEntity(w, win.guid, `Window ${i + 1}`, ownerHistoryId, openingPlacementId);
+    idMap.set(win.localId, windowExpressId);
+    writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, windowExpressId);
+    writeWindowCommonPset(w, ownerHistoryId, windowExpressId, win.spec);
   }
 
   for (const rel of relationships) {
@@ -124,7 +194,7 @@ export async function toIfc(
     );
   }
 
-  const byMaterial = new Map<string, { guid: string; ids: number[] }>();
+  const byMaterial = new Map<string, { guid: IfcGuid; ids: number[] }>();
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
     const objectExpressIds = rel.relatedObjects
