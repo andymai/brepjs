@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.25.0](https://github.com/andymai/brepjs/compare/brepjs-v18.24.0...brepjs-v18.25.0) (2026-05-26)
+
+
+### Features
+
+* **bim:** slabs & roofs (IfcSlab + Pset_SlabCommon + Qto) — M5 ([#1071](https://github.com/andymai/brepjs/issues/1071)) ([1a136a6](https://github.com/andymai/brepjs/commit/1a136a6045afa272abb2fa97b7cc3ae39a9364b5))
+
 ## [18.24.0](https://github.com/andymai/brepjs/compare/brepjs-v18.23.1...brepjs-v18.24.0) (2026-05-26)
 
 
