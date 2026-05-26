@@ -15,14 +15,24 @@ export interface WallSpec {
   readonly materialName: string;
 }
 
+const unitVec = z.tuple([z.number(), z.number(), z.number()]).refine(
+  (v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6,
+  { message: 'must be a unit vector' }
+);
+
 const WallSpecSchema = z.object({
   length: z.number().positive(),
   height: z.number().positive(),
   thickness: z.number().positive(),
   origin: z.tuple([z.number(), z.number(), z.number()]),
-  axisX: z.tuple([z.number(), z.number(), z.number()]),
-  axisZ: z.tuple([z.number(), z.number(), z.number()]),
+  axisX: unitVec,
+  axisZ: unitVec,
   materialName: z.string().min(1),
+}).superRefine((data, ctx) => {
+  const dot = data.axisX[0] * data.axisZ[0] + data.axisX[1] * data.axisZ[1] + data.axisX[2] * data.axisZ[2];
+  if (Math.abs(dot) > 1e-6) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'axisX and axisZ must be orthogonal', path: ['axisZ'] });
+  }
 });
 
 export function parseWallSpec(input: unknown): Result<WallSpec, BimError> {

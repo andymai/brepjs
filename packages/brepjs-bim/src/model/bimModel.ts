@@ -5,6 +5,7 @@ import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { LocalId } from '../identity/localId.js';
 import { makeLocalIdCounter } from '../identity/localId.js';
 import type { BimError } from '../errors/bimError.js';
+import { specError } from '../errors/bimError.js';
 import type { AnyBimElement, BimElement } from '../types/bimTypes.js';
 import type {
   BimRelationship,
@@ -24,13 +25,21 @@ export class BimModel {
   readonly #aggregatedBy = new Map<LocalId, LocalId>();
   #projectId: LocalId | null = null;
 
-  init(spec: ProjectSpec): LocalId {
+  init(spec: ProjectSpec): Result<LocalId, BimError> {
     if (this.#projectId !== null) {
-      throw new Error('BimModel.init() called twice — only one project per model');
+      return err(specError('DUPLICATE_PROJECT', 'BimModel.init() called twice — only one project per model'));
     }
     const id = this.#makeElement('PROJECT', spec, null);
     this.#projectId = id;
-    return id;
+    return ok(id);
+  }
+
+  [Symbol.dispose](): void {
+    for (const el of this.#elements.values()) {
+      if (el.category === 'WALL') {
+        el.geometry[Symbol.dispose]();
+      }
+    }
   }
 
   addSite(spec: SiteSpec): LocalId {
@@ -108,7 +117,7 @@ export class BimModel {
   getProject(): BimElement<'PROJECT'> | null {
     if (this.#projectId === null) return null;
     const el = this.#elements.get(this.#projectId);
-    return el?.category === 'PROJECT' ? (el as BimElement<'PROJECT'>) : null;
+    return el?.category === 'PROJECT' ? el : null;
   }
 
   getElement(id: LocalId): AnyBimElement | null {
@@ -118,7 +127,7 @@ export class BimModel {
   getWalls(): BimElement<'WALL'>[] {
     const walls: BimElement<'WALL'>[] = [];
     for (const el of this.#elements.values()) {
-      if (el.category === 'WALL') walls.push(el as BimElement<'WALL'>);
+      if (el.category === 'WALL') walls.push(el);
     }
     return walls;
   }

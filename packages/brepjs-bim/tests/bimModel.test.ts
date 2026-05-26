@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import { unwrap } from 'brepjs';
 import { initOCCT } from '../../../tests/setup.js';
 import { BimModel } from '../src/model/bimModel.js';
 
@@ -17,7 +18,7 @@ const WALL_SPEC = {
 describe('BimModel', () => {
   it('init creates a project element', () => {
     const model = new BimModel();
-    model.init({ name: 'Test Project' });
+    unwrap(model.init({ name: 'Test Project' }));
     const project = model.getProject();
     expect(project).not.toBeNull();
     expect(project?.spec.name).toBe('Test Project');
@@ -25,7 +26,7 @@ describe('BimModel', () => {
 
   it('addWall returns a LocalId on success', () => {
     const model = new BimModel();
-    model.init({ name: 'P' });
+    unwrap(model.init({ name: 'P' }));
     const siteId = model.addSite({ name: 'S' });
     const buildingId = model.addBuilding({ name: 'B' });
     const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
@@ -50,7 +51,7 @@ describe('BimModel', () => {
 
   it('getWalls returns only wall elements', () => {
     const model = new BimModel();
-    model.init({ name: 'P' });
+    unwrap(model.init({ name: 'P' }));
     const siteId = model.addSite({ name: 'S' });
     const buildingId = model.addBuilding({ name: 'B' });
     const storeyId = model.addStorey({ name: 'L1', elevation: 0 });

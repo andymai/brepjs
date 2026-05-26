@@ -9,7 +9,9 @@ beforeAll(async () => { await initOCCT(); }, 30000);
 describe('IFC round-trip (M1)', () => {
   async function buildModel(): Promise<BimModel> {
     const model = new BimModel();
-    const projectLocalId = model.init({ name: 'Test Project' });
+    const initResult = model.init({ name: 'Test Project' });
+    if (!initResult.ok) throw new Error(initResult.error.message);
+    const projectLocalId = initResult.value;
     const siteLocalId = model.addSite({ name: 'Test Site' });
     const buildingLocalId = model.addBuilding({ name: 'Test Building' });
     const storeyLocalId = model.addStorey({ name: 'Ground Floor', elevation: 0 });

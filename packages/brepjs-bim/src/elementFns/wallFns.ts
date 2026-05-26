@@ -5,6 +5,9 @@ import type { WallSpec } from '../specs/wallSpec.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
 
+// Returned solid is unplaced template geometry (profile in global YZ plane,
+// extruded along +X). origin/axisX/axisZ are applied by the IFC layer via
+// IfcLocalPlacement and are not embedded in this brepjs solid.
 export function wallToSolid(spec: WallSpec): Result<ValidSolid, BimError> {
   if (spec.length <= 0) {
     return err(specError('WALL_ZERO_LENGTH', 'Wall length must be positive'));
@@ -29,7 +32,8 @@ export function wallToSolid(spec: WallSpec): Result<ValidSolid, BimError> {
     return err(fromBrepError(profileResult.error, 'WALL_PROFILE_FAILED', 'Failed to create wall profile'));
   }
 
-  const solidResult = extrude(profileResult.value, [length, 0, 0]);
+  using profile = profileResult.value;
+  const solidResult = extrude(profile, [length, 0, 0]);
 
   if (!solidResult.ok) {
     return err(fromBrepError(solidResult.error, 'WALL_EXTRUDE_FAILED', 'Failed to extrude wall profile'));

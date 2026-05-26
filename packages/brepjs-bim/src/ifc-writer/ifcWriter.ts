@@ -30,7 +30,6 @@ export class IfcWriter {
     return this.#nextExpressId++;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
   writeLine(entity: { expressID: number } & Record<string, unknown>): number {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
     this.#api.WriteLine(this.#modelId, entity as any);
@@ -43,7 +42,7 @@ export class IfcWriter {
   }
 
   mkEntity(type: number, ...args: unknown[]): Record<string, unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- web-ifc WASM type gap
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument -- web-ifc WASM type gap
     return this.#api.CreateIfcEntity(this.#modelId, type, ...(args as any[])) as unknown as Record<
       string,
       unknown
@@ -60,6 +59,7 @@ export class IfcWriter {
     } catch (e) {
       return err(ifcError('IFC_SAVE_FAILED', 'Failed to serialize IFC model', e));
     } finally {
+      // CloseModel always runs to prevent WASM handle leaks; a failed save is therefore terminal.
       this.#api.CloseModel(this.#modelId);
       this.#closed = true;
     }
