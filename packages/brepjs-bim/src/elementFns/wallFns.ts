@@ -1,9 +1,9 @@
-import { polygon, extrude } from 'brepjs';
+import { polygon, extrude, isValidSolid } from 'brepjs';
 import type { ValidSolid, Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { BimError } from '../errors/bimError.js';
-import { specError, fromBrepError } from '../errors/bimError.js';
+import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
 
 export function wallToSolid(spec: WallSpec): Result<ValidSolid, BimError> {
   if (spec.length <= 0) {
@@ -35,5 +35,8 @@ export function wallToSolid(spec: WallSpec): Result<ValidSolid, BimError> {
     return err(fromBrepError(solidResult.error, 'WALL_EXTRUDE_FAILED', 'Failed to extrude wall profile'));
   }
 
+  if (!isValidSolid(solidResult.value)) {
+    return err(geometryError('WALL_INVALID_SOLID', 'Extruded wall solid failed validity check'));
+  }
   return ok(solidResult.value);
 }
