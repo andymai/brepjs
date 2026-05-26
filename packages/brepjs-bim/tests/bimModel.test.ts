@@ -330,3 +330,107 @@ describe('BimModel.addSlab', () => {
     expect(matRels[0]?.materialName).toBe('Concrete');
   });
 });
+
+describe('BimModel.addSlabOpening (M6)', () => {
+  const SLAB_SPEC = {
+    length: 6000,
+    width: 4000,
+    thickness: 200,
+    origin: [0, 0, 0] as [number, number, number],
+    axisX: [1, 0, 0] as [number, number, number],
+    axisZ: [0, 0, 1] as [number, number, number],
+    predefinedType: 'FLOOR' as const,
+    materialName: 'Concrete',
+  };
+
+  function buildSlabModel() {
+    const model = new BimModel();
+    unwrap(model.init({ name: 'Test' }));
+    const slabId = unwrap(model.addSlab(SLAB_SPEC));
+    return { model, slabId };
+  }
+
+  function slabVolume(model: BimModel): number {
+    const slab = model.getSlabs()[0];
+    if (!slab) throw new Error('Expected one slab');
+    return unwrap(measureVolume(slab.geometry));
+  }
+
+  it('adds a slab opening and creates VOIDS_SLAB rel', () => {
+    const { model, slabId } = buildSlabModel();
+    const result = model.addSlabOpening({
+      sizeX: 1000, sizeY: 1500, offsetX: 1000, offsetY: 800,
+      slabLocalId: slabId,
+    });
+    expect(result.ok).toBe(true);
+    const voidsRels = model.getAllRelationships().filter((r) => r.kind === 'VOIDS_SLAB');
+    expect(voidsRels).toHaveLength(1);
+  });
+
+  it('slab volume drops by opening volume after addSlabOpening', () => {
+    const { model, slabId } = buildSlabModel();
+    const grossVol = slabVolume(model);
+
+    unwrap(model.addSlabOpening({
+      sizeX: 1000, sizeY: 1500, offsetX: 1000, offsetY: 800,
+      slabLocalId: slabId,
+    }));
+
+    const netVol = slabVolume(model);
+    const expectedDelta = 1000 * 1500 * SLAB_SPEC.thickness;
+    expect(grossVol - netVol).toBeCloseTo(expectedDelta, -2);
+  });
+
+  it('multiple slab openings each remove their volume', () => {
+    const { model, slabId } = buildSlabModel();
+    const grossVol = slabVolume(model);
+
+    unwrap(model.addSlabOpening({
+      sizeX: 800, sizeY: 1200, offsetX: 200, offsetY: 200,
+      slabLocalId: slabId,
+    }));
+    unwrap(model.addSlabOpening({
+      sizeX: 600, sizeY: 600, offsetX: 4000, offsetY: 2500,
+      slabLocalId: slabId,
+    }));
+
+    const netVol = slabVolume(model);
+    const expectedDelta = (800 * 1200 + 600 * 600) * SLAB_SPEC.thickness;
+    expect(grossVol - netVol).toBeCloseTo(expectedDelta, -2);
+  });
+
+  it('addSlabOpening with bounds violation does not mutate the model', () => {
+    const { model, slabId } = buildSlabModel();
+    const elementsBefore = model.getAllElements().length;
+    const relsBefore = model.getAllRelationships().length;
+    const grossVol = slabVolume(model);
+
+    const result = model.addSlabOpening({
+      sizeX: SLAB_SPEC.length + 100, sizeY: 100,
+      offsetX: 0, offsetY: 0,
+      slabLocalId: slabId,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('SLAB_OPENING_EXCEEDS_SLAB_BOUNDS');
+
+    expect(model.getAllElements().length).toBe(elementsBefore);
+    expect(model.getAllRelationships().length).toBe(relsBefore);
+    expect(slabVolume(model)).toBeCloseTo(grossVol, -2);
+  });
+
+  it('addSlabOpening with invalid slab reference does not mutate the model', () => {
+    const { model } = buildSlabModel();
+    const elementsBefore = model.getAllElements().length;
+    const relsBefore = model.getAllRelationships().length;
+
+    const result = model.addSlabOpening({
+      sizeX: 500, sizeY: 500, offsetX: 0, offsetY: 0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- testing invalid input
+      slabLocalId: 9999 as any,
+    });
+    expect(result.ok).toBe(false);
+
+    expect(model.getAllElements().length).toBe(elementsBefore);
+    expect(model.getAllRelationships().length).toBe(relsBefore);
+  });
+});

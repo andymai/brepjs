@@ -67,3 +67,31 @@ export function parseWindowSpec(input: unknown): Result<WindowSpec, BimError> {
   }
   return ok(result.data as WindowSpec);
 }
+
+/**
+ * Input for BimModel.addSlabOpening — a vertical through-hole in a slab.
+ * All dimensions in mm, offsets in the slab's local XY frame.
+ */
+export interface SlabOpeningInput {
+  readonly sizeX: number;
+  readonly sizeY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly slabLocalId: LocalId;
+}
+
+const SlabOpeningInputSchema = z.object({
+  sizeX: z.number().positive(),
+  sizeY: z.number().positive(),
+  offsetX: z.number().nonnegative(),
+  offsetY: z.number().nonnegative(),
+  slabLocalId: z.number().int().positive(),
+});
+
+export function parseSlabOpeningInput(input: unknown): Result<SlabOpeningInput, BimError> {
+  const result = SlabOpeningInputSchema.safeParse(input);
+  if (!result.success) {
+    return err(specError('INVALID_SLAB_OPENING_INPUT', result.error.message, result.error));
+  }
+  return ok(result.data as SlabOpeningInput);
+}
