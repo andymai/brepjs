@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.26.0](https://github.com/andymai/brepjs/compare/brepjs-v18.25.0...brepjs-v18.26.0) (2026-05-26)
+
+
+### Features
+
+* **bim:** slab openings — M6 ([#1073](https://github.com/andymai/brepjs/issues/1073)) ([8fec5dd](https://github.com/andymai/brepjs/commit/8fec5dd9a2f9cfe1e4e6ef5097e98e273f965508))
+
 ## [18.25.0](https://github.com/andymai/brepjs/compare/brepjs-v18.24.0...brepjs-v18.25.0) (2026-05-26)
 
 
