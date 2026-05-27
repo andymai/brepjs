@@ -867,6 +867,52 @@ describe('IFC Beam round-trip (M7)', () => {
     api.CloseModel(mid);
   });
 
+  it('IFC beam placement orients local Y to spec.axisZ (P1 regression guard)', async () => {
+    // Beam along +X with axisZ = [0,0,1]; profile should sit with width along +Y
+    // and height along +Z in world space.
+    const model = new BimModel();
+    unwrap(model.init({ name: 'Orient Test' }));
+    unwrap(model.addBeam({
+      length: 5000,
+      profile: { kind: 'I_BEAM', overallWidth: 200, overallDepth: 400, flangeThickness: 15, webThickness: 10 },
+      origin: [0, 0, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      materialName: 'Steel',
+    }));
+    const result = await toIfc(model, { applicationName: 't', applicationVersion: '0' });
+    if (!result.ok) throw new Error(result.error.message);
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const mid = api.OpenModel(result.value);
+    const beamIds = api.GetLineIDsWithType(mid, WebIFC.IFCBEAM);
+    const beam = api.GetLine(mid, beamIds.get(0)) as Record<string, unknown>;
+    const placementRef = beam['ObjectPlacement'] as { value: number };
+    const placement = api.GetLine(mid, placementRef.value) as Record<string, unknown>;
+    const relPlacementRef = placement['RelativePlacement'] as { value: number };
+    const relPlacement = api.GetLine(mid, relPlacementRef.value) as Record<string, unknown>;
+
+    const axisRef = relPlacement['Axis'] as { value: number };
+    const refDirRef = relPlacement['RefDirection'] as { value: number };
+    const axisLine = api.GetLine(mid, axisRef.value) as Record<string, unknown>;
+    const refDirLine = api.GetLine(mid, refDirRef.value) as Record<string, unknown>;
+    const axis = (axisLine['DirectionRatios'] as Array<{ value: number }>).map((r) => r.value);
+    const refDir = (refDirLine['DirectionRatios'] as Array<{ value: number }>).map((r) => r.value);
+
+    // Axis = beam length direction
+    expect(axis).toEqual([1, 0, 0]);
+    // Derived local Y = Axis × RefDirection should equal spec.axisZ = [0, 0, 1]
+    const [ax = 0, ay = 0, az = 0] = axis;
+    const [rx = 0, ry = 0, rz = 0] = refDir;
+    const localY: [number, number, number] = [
+      ay * rz - az * ry,
+      az * rx - ax * rz,
+      ax * ry - ay * rx,
+    ];
+    expect(localY[0]).toBeCloseTo(0, 6);
+    expect(localY[1]).toBeCloseTo(0, 6);
+    expect(localY[2]).toBeCloseTo(1, 6);
+    api.CloseModel(mid);
+  });
+
   it('Qto_BeamBaseQuantities has expected numeric values', async () => {
     const { api, mid } = await buildBeamModel();
     const qtoIds = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);

@@ -103,6 +103,12 @@ describe('profileToPolygon', () => {
     }
   });
 
+  it('throws if circleSegments < 3', () => {
+    expect(() =>
+      profileToPolygon({ kind: 'CIRCULAR', radius: 100 }, 2)
+    ).toThrow(/circleSegments/);
+  });
+
   it('I-beam returns 12 points forming the I outline', () => {
     const pts = profileToPolygon({
       kind: 'I_BEAM',

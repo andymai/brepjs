@@ -38,6 +38,9 @@ export function profileToPolygon(
       ];
     }
     case 'CIRCULAR': {
+      if (circleSegments < 3) {
+        throw new Error(`profileToPolygon: circleSegments must be >= 3, got ${circleSegments}`);
+      }
       const pts: Array<[number, number, number]> = [];
       for (let i = 0; i < circleSegments; i++) {
         const theta = (2 * Math.PI * i) / circleSegments;

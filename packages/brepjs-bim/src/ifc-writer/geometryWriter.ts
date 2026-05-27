@@ -252,15 +252,33 @@ export function writeProfile(w: IfcWriter, profile: Profile): number {
   }
 }
 
+// Cross product. Assumes both inputs are unit vectors and orthogonal so the
+// result is also unit-length — the placement consumers require unit axes.
+function crossUnit(
+  a: [number, number, number],
+  b: [number, number, number]
+): [number, number, number] {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+}
+
 // Emits IfcLocalPlacement + IfcExtrudedAreaSolid + IfcProductDefinitionShape
 // for a linear element (beam or column). Profile is in local XY, extrusion
-// along +Z by extrusionLengthM.
+// along local +Z by extrusionLengthM.
+//
+// placementAxis is the IFC Axis (local Z, the extrusion direction in world).
+// placementRefDirection is the IFC RefDirection (local X). IFC derives the
+// local Y as Axis × RefDirection, so callers must supply RefDirection such
+// that the derived local Y matches the desired profile-up direction.
 function writeLinearExtrusion(
   w: IfcWriter,
   profile: Profile,
   origin: [number, number, number],
-  axisX: [number, number, number],
-  axisZ: [number, number, number],
+  placementAxis: [number, number, number],
+  placementRefDirection: [number, number, number],
   extrusionLengthM: number,
   geomSubContextId: number,
   parentPlacementId: number | null
@@ -268,8 +286,8 @@ function writeLinearExtrusion(
   const placement3DId = writeAxis2Placement3D(
     w,
     origin.map(toIfcLengthM) as [number, number, number],
-    axisZ,
-    axisX
+    placementAxis,
+    placementRefDirection
   );
 
   const localPlacementId = w.nextId();
@@ -315,29 +333,32 @@ function writeLinearExtrusion(
   return { localPlacementId, productDefinitionShapeId };
 }
 
-// Beam geometry: profile rotated from local XY → local YZ at placement time
-// by setting the placement's axisX (along beam) and axisZ (profile up).
-// IFC convention extrudes along the placement's local +Z, so we set
-// placement axisZ = world axisX (beam length direction).
+// Beam geometry: IFC extrudes the profile along the placement's local +Z, so
+// we set placementAxis = spec.axisX (the beam's length direction in world).
+// We want the derived local Y (= IFC's Axis × RefDirection) to equal
+// spec.axisZ (the profile's "up"), so RefDirection = spec.axisZ × spec.axisX.
 export function writeBeamGeometry(
   w: IfcWriter,
   spec: BeamSpec,
   geomSubContextId: number,
   parentPlacementId: number | null
 ): LinearElementRepresentationIds {
+  const refDirection = crossUnit(spec.axisZ, spec.axisX);
   return writeLinearExtrusion(
     w,
     spec.profile,
     spec.origin,
-    spec.axisZ,
     spec.axisX,
+    refDirection,
     toIfcLengthM(spec.length),
     geomSubContextId,
     parentPlacementId
   );
 }
 
-// Column geometry: profile in local XY extruded along local +Z (= world axisZ).
+// Column geometry: profile in local XY extruded along local +Z (= spec.axisZ).
+// spec.axisX directly defines the profile's X orientation, which is exactly
+// IFC's RefDirection.
 export function writeColumnGeometry(
   w: IfcWriter,
   spec: ColumnSpec,
@@ -348,8 +369,8 @@ export function writeColumnGeometry(
     w,
     spec.profile,
     spec.origin,
-    spec.axisX,
     spec.axisZ,
+    spec.axisX,
     toIfcLengthM(spec.height),
     geomSubContextId,
     parentPlacementId
