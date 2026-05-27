@@ -18,10 +18,14 @@ import type {
 } from '../types/relationships.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
+import type { BeamSpec } from '../specs/beamSpec.js';
+import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { DoorSpec, WindowSpec, SlabOpeningInput } from '../specs/openingSpec.js';
 import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
 import { wallToSolid } from '../elementFns/wallFns.js';
 import { slabToSolid } from '../elementFns/slabFns.js';
+import { beamToSolid } from '../elementFns/beamFns.js';
+import { columnToSolid } from '../elementFns/columnFns.js';
 import { openingToSolid } from '../elementFns/openingFns.js';
 import { slabOpeningToSolid } from '../elementFns/slabOpeningFns.js';
 
@@ -42,7 +46,12 @@ export class BimModel {
 
   [Symbol.dispose](): void {
     for (const el of this.#elements.values()) {
-      if (el.category === 'WALL' || el.category === 'SLAB') {
+      if (
+        el.category === 'WALL' ||
+        el.category === 'SLAB' ||
+        el.category === 'BEAM' ||
+        el.category === 'COLUMN'
+      ) {
         el.geometry[Symbol.dispose]();
       }
     }
@@ -76,6 +85,30 @@ export class BimModel {
     const geomResult = slabToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
     const id = this.#makeElement('SLAB', spec, geomResult.value);
+    this.#makeRel<AssociatesMaterialRel>({
+      kind: 'ASSOCIATES_MATERIAL',
+      materialName: spec.materialName,
+      relatedObjects: [id],
+    });
+    return ok(id);
+  }
+
+  addBeam(spec: BeamSpec): Result<LocalId, BimError> {
+    const geomResult = beamToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('BEAM', spec, geomResult.value);
+    this.#makeRel<AssociatesMaterialRel>({
+      kind: 'ASSOCIATES_MATERIAL',
+      materialName: spec.materialName,
+      relatedObjects: [id],
+    });
+    return ok(id);
+  }
+
+  addColumn(spec: ColumnSpec): Result<LocalId, BimError> {
+    const geomResult = columnToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('COLUMN', spec, geomResult.value);
     this.#makeRel<AssociatesMaterialRel>({
       kind: 'ASSOCIATES_MATERIAL',
       materialName: spec.materialName,
@@ -334,6 +367,22 @@ export class BimModel {
       if (el.category === 'SLAB') slabs.push(el);
     }
     return slabs;
+  }
+
+  getBeams(): BimElement<'BEAM'>[] {
+    const beams: BimElement<'BEAM'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'BEAM') beams.push(el);
+    }
+    return beams;
+  }
+
+  getColumns(): BimElement<'COLUMN'>[] {
+    const columns: BimElement<'COLUMN'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'COLUMN') columns.push(el);
+    }
+    return columns;
   }
 
   getAllElements(): AnyBimElement[] {

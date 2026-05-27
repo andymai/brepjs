@@ -3,6 +3,8 @@ import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { LocalId } from '../identity/localId.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
+import type { BeamSpec } from '../specs/beamSpec.js';
+import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { DoorSpec, WindowSpec } from '../specs/openingSpec.js';
 import type {
   ProjectSpec,
@@ -14,6 +16,8 @@ import type {
 export type BimCategory =
   | 'WALL'
   | 'SLAB'
+  | 'BEAM'
+  | 'COLUMN'
   | 'OPENING'
   | 'DOOR'
   | 'WINDOW'
@@ -52,23 +56,31 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
   ? WallSpec
   : C extends 'SLAB'
     ? SlabSpec
-    : C extends 'OPENING'
-      ? OpeningSpec
-      : C extends 'DOOR'
-        ? DoorSpec
-        : C extends 'WINDOW'
-          ? WindowSpec
-          : C extends 'PROJECT'
-            ? ProjectSpec
-            : C extends 'SITE'
-              ? SiteSpec
-              : C extends 'BUILDING'
-                ? BuildingSpec
-                : C extends 'STOREY'
-                  ? StoreySpec
-                  : never;
+    : C extends 'BEAM'
+      ? BeamSpec
+      : C extends 'COLUMN'
+        ? ColumnSpec
+        : C extends 'OPENING'
+          ? OpeningSpec
+          : C extends 'DOOR'
+            ? DoorSpec
+            : C extends 'WINDOW'
+              ? WindowSpec
+              : C extends 'PROJECT'
+                ? ProjectSpec
+                : C extends 'SITE'
+                  ? SiteSpec
+                  : C extends 'BUILDING'
+                    ? BuildingSpec
+                    : C extends 'STOREY'
+                      ? StoreySpec
+                      : never;
 
-export type BimGeometryFor<C extends BimCategory> = C extends 'WALL' | 'SLAB'
+export type BimGeometryFor<C extends BimCategory> = C extends
+  | 'WALL'
+  | 'SLAB'
+  | 'BEAM'
+  | 'COLUMN'
   ? ValidSolid
   : null;
 
@@ -83,6 +95,8 @@ export interface BimElement<C extends BimCategory> {
 export type AnyBimElement =
   | BimElement<'WALL'>
   | BimElement<'SLAB'>
+  | BimElement<'BEAM'>
+  | BimElement<'COLUMN'>
   | BimElement<'OPENING'>
   | BimElement<'DOOR'>
   | BimElement<'WINDOW'>

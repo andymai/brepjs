@@ -469,3 +469,107 @@ describe('BimModel.addSlabOpening (M6)', () => {
     expect(second.ok).toBe(true);
   });
 });
+
+describe('BimModel.addBeam (M7)', () => {
+  const BEAM_SPEC = {
+    length: 5000,
+    profile: { kind: 'RECTANGULAR' as const, width: 200, height: 400 },
+    origin: [0, 0, 0] as [number, number, number],
+    axisX: [1, 0, 0] as [number, number, number],
+    axisZ: [0, 0, 1] as [number, number, number],
+    materialName: 'Steel',
+  };
+
+  it('adds a beam and returns a LocalId', () => {
+    const model = new BimModel();
+    const result = model.addBeam(BEAM_SPEC);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(model.getBeams()).toHaveLength(1);
+    expect(model.getElement(result.value)).not.toBeNull();
+  });
+
+  it('addBeam fails with invalid spec', () => {
+    const model = new BimModel();
+    const result = model.addBeam({ ...BEAM_SPEC, length: -1 });
+    expect(result.ok).toBe(false);
+  });
+
+  it('beam volume matches profile area × length', () => {
+    const model = new BimModel();
+    const result = model.addBeam(BEAM_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const beam = model.getBeams()[0];
+    if (!beam) throw new Error('Expected one beam');
+    const vol = unwrap(measureVolume(beam.geometry));
+    expect(vol).toBeCloseTo(200 * 400 * 5000, -2);
+  });
+
+  it('[Symbol.dispose] disposes beam geometry', () => {
+    const model = new BimModel();
+    const result = model.addBeam(BEAM_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const beam = model.getBeams()[0];
+    if (!beam) throw new Error('Expected one beam');
+    model[Symbol.dispose]();
+    expect(beam.geometry.disposed).toBe(true);
+  });
+
+  it('emits an ASSOCIATES_MATERIAL relationship', () => {
+    const model = new BimModel();
+    const result = model.addBeam(BEAM_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const matRels = model
+      .getAllRelationships()
+      .filter((r) => r.kind === 'ASSOCIATES_MATERIAL');
+    expect(matRels).toHaveLength(1);
+    expect(matRels[0]?.materialName).toBe('Steel');
+  });
+});
+
+describe('BimModel.addColumn (M7)', () => {
+  const COLUMN_SPEC = {
+    height: 3000,
+    profile: { kind: 'CIRCULAR' as const, radius: 200 },
+    origin: [0, 0, 0] as [number, number, number],
+    axisX: [1, 0, 0] as [number, number, number],
+    axisZ: [0, 0, 1] as [number, number, number],
+    materialName: 'Concrete',
+  };
+
+  it('adds a column and returns a LocalId', () => {
+    const model = new BimModel();
+    const result = model.addColumn(COLUMN_SPEC);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(model.getColumns()).toHaveLength(1);
+  });
+
+  it('addColumn fails with invalid spec', () => {
+    const model = new BimModel();
+    const result = model.addColumn({ ...COLUMN_SPEC, height: 0 });
+    expect(result.ok).toBe(false);
+  });
+
+  it('column volume matches profile area × height', () => {
+    const model = new BimModel();
+    const result = model.addColumn(COLUMN_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const column = model.getColumns()[0];
+    if (!column) throw new Error('Expected one column');
+    const vol = unwrap(measureVolume(column.geometry));
+    const nominal = Math.PI * 200 * 200 * 3000;
+    expect(vol).toBeGreaterThan(nominal * 0.99);
+    expect(vol).toBeLessThan(nominal * 1.01);
+  });
+
+  it('[Symbol.dispose] disposes column geometry', () => {
+    const model = new BimModel();
+    const result = model.addColumn(COLUMN_SPEC);
+    if (!result.ok) throw new Error(result.error.message);
+    const column = model.getColumns()[0];
+    if (!column) throw new Error('Expected one column');
+    model[Symbol.dispose]();
+    expect(column.geometry.disposed).toBe(true);
+  });
+});
