@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.27.0](https://github.com/andymai/brepjs/compare/brepjs-v18.26.0...brepjs-v18.27.0) (2026-05-27)
+
+
+### Features
+
+* **bim:** beams & columns with profile family — M7 ([#1075](https://github.com/andymai/brepjs/issues/1075)) ([dd27d7f](https://github.com/andymai/brepjs/commit/dd27d7fe5b73f6f1d0cdc913a186e02efdc49a7b))
+
 ## [18.26.0](https://github.com/andymai/brepjs/compare/brepjs-v18.25.0...brepjs-v18.26.0) (2026-05-26)
 
 
