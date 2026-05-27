@@ -1,0 +1,43 @@
+import { polygon, extrude, isValidSolid } from 'brepjs';
+import type { ValidSolid, Result } from 'brepjs';
+import { ok, err } from 'brepjs';
+import type { BeamSpec } from '../specs/beamSpec.js';
+import type { BimError } from '../errors/bimError.js';
+import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
+import { profileToPolygon } from './profileFns.js';
+
+// Returned solid is unplaced template geometry: profile in the global YZ plane
+// (cross-section centered on the local Y/Z axes), extruded along +X by length.
+// origin/axisX/axisZ are applied by the IFC layer via IfcLocalPlacement.
+//
+// The profile is rotated from its native XY definition into YZ here so that
+// the brepjs solid grows in +X to match the standard wall/extrusion pattern.
+export function beamToSolid(spec: BeamSpec): Result<ValidSolid, BimError> {
+  if (spec.length <= 0) {
+    return err(specError('BEAM_ZERO_LENGTH', 'Beam length must be positive'));
+  }
+
+  // profileToPolygon returns points in XY (z=0). Map (x,y,0) → (0,x,y) so the
+  // profile lies in the YZ plane at x=0 ready to extrude along +X.
+  const profilePts = profileToPolygon(spec.profile).map<[number, number, number]>(
+    ([px, py]) => [0, px, py]
+  );
+
+  const profileResult = polygon(profilePts);
+  if (!profileResult.ok) {
+    return err(fromBrepError(profileResult.error, 'BEAM_PROFILE_FAILED', 'Failed to create beam profile'));
+  }
+
+  using profile = profileResult.value;
+  const solidResult = extrude(profile, [spec.length, 0, 0]);
+  if (!solidResult.ok) {
+    return err(fromBrepError(solidResult.error, 'BEAM_EXTRUDE_FAILED', 'Failed to extrude beam profile'));
+  }
+
+  const solid = solidResult.value;
+  if (!isValidSolid(solid)) {
+    solid[Symbol.dispose]();
+    return err(geometryError('BEAM_INVALID_SOLID', 'Extruded beam solid failed validity check'));
+  }
+  return ok(solid);
+}
