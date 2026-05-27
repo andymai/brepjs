@@ -3,7 +3,10 @@ import type { IfcWriter } from './ifcWriter.js';
 import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
+import type { BeamSpec } from '../specs/beamSpec.js';
+import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
+import { profileCrossSectionArea } from '../elementFns/profileFns.js';
 import { toIfcLengthM } from '../units/units.js';
 
 type PsetValue = string | number | boolean;
@@ -287,4 +290,89 @@ export function writeSlabBaseQuantities(
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_SlabBaseQuantities', qtyIds);
   writeRelDefinesByProperties(w, ownerHistoryId, slabExpressId, qtoId);
+}
+
+interface CommonStructuralFields {
+  readonly isExternal?: boolean | undefined;
+  readonly loadBearing?: boolean | undefined;
+  readonly fireRating?: string | undefined;
+  readonly acousticRating?: string | undefined;
+  readonly thermalTransmittance?: number | undefined;
+}
+
+function buildCommonProps(spec: CommonStructuralFields): Record<string, PsetValue> {
+  const props: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) props['IsExternal'] = spec.isExternal;
+  if (spec.loadBearing !== undefined) props['LoadBearing'] = spec.loadBearing;
+  if (spec.fireRating !== undefined) props['FireRating'] = spec.fireRating;
+  if (spec.acousticRating !== undefined) props['AcousticRating'] = spec.acousticRating;
+  if (spec.thermalTransmittance !== undefined) props['ThermalTransmittance'] = spec.thermalTransmittance;
+  return props;
+}
+
+export function writeBeamCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  beamExpressId: number,
+  spec: BeamSpec
+): void {
+  const props = buildCommonProps(spec);
+  if (Object.keys(props).length === 0) return;
+  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_BeamCommon', props);
+  writeRelDefinesByProperties(w, ownerHistoryId, beamExpressId, psetId);
+}
+
+export function writeColumnCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  columnExpressId: number,
+  spec: ColumnSpec
+): void {
+  const props = buildCommonProps(spec);
+  if (Object.keys(props).length === 0) return;
+  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_ColumnCommon', props);
+  writeRelDefinesByProperties(w, ownerHistoryId, columnExpressId, psetId);
+}
+
+export function writeBeamBaseQuantities(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  beamExpressId: number,
+  spec: BeamSpec
+): void {
+  const lengthM = toIfcLengthM(spec.length);
+  // Profile area is in mm²; convert to m² (divide by 1e6).
+  const crossSectionAreaM2 = profileCrossSectionArea(spec.profile) / 1_000_000;
+  const grossVolumeM3 = crossSectionAreaM2 * lengthM;
+
+  const qtyIds = [
+    writeQtyLength(w, 'Length', lengthM),
+    writeQtyArea(w, 'CrossSectionArea', crossSectionAreaM2),
+    writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+  ];
+
+  const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_BeamBaseQuantities', qtyIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, beamExpressId, qtoId);
+}
+
+export function writeColumnBaseQuantities(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  columnExpressId: number,
+  spec: ColumnSpec
+): void {
+  const heightM = toIfcLengthM(spec.height);
+  const crossSectionAreaM2 = profileCrossSectionArea(spec.profile) / 1_000_000;
+  const grossVolumeM3 = crossSectionAreaM2 * heightM;
+
+  const qtyIds = [
+    writeQtyLength(w, 'Length', heightM),
+    writeQtyArea(w, 'CrossSectionArea', crossSectionAreaM2),
+    writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+  ];
+
+  const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_ColumnBaseQuantities', qtyIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, columnExpressId, qtoId);
 }

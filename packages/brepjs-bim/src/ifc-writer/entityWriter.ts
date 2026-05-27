@@ -185,3 +185,68 @@ export function writeSlabEntity(
   });
   return id;
 }
+
+export type BeamPredefinedTypeIfc =
+  | 'BEAM'
+  | 'JOIST'
+  | 'LINTEL'
+  | 'HOLLOWCORE'
+  | 'PURLIN'
+  | 'RAFTER'
+  | 'SPANDREL'
+  | 'T_BEAM'
+  | 'NOTDEFINED';
+
+export function writeBeamEntity(
+  w: IfcWriter,
+  guid: IfcGuid,
+  name: string,
+  predefinedType: BeamPredefinedTypeIfc,
+  ownerHistoryId: number,
+  localPlacementId: number,
+  productDefinitionShapeId: number
+): number {
+  const id = w.nextId();
+  w.writeLine({
+    expressID: id,
+    type: WebIFC.IFCBEAM,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: w.mkType(WebIFC.IFCLABEL, name),
+    Description: null,
+    ObjectType: null,
+    ObjectPlacement: w.ref(localPlacementId),
+    Representation: w.ref(productDefinitionShapeId),
+    Tag: null,
+    PredefinedType: { type: 3, value: predefinedType },
+  });
+  return id;
+}
+
+export type ColumnPredefinedTypeIfc = 'COLUMN' | 'PILASTER' | 'NOTDEFINED';
+
+export function writeColumnEntity(
+  w: IfcWriter,
+  guid: IfcGuid,
+  name: string,
+  predefinedType: ColumnPredefinedTypeIfc,
+  ownerHistoryId: number,
+  localPlacementId: number,
+  productDefinitionShapeId: number
+): number {
+  const id = w.nextId();
+  w.writeLine({
+    expressID: id,
+    type: WebIFC.IFCCOLUMN,
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
+    OwnerHistory: w.ref(ownerHistoryId),
+    Name: w.mkType(WebIFC.IFCLABEL, name),
+    Description: null,
+    ObjectType: null,
+    ObjectPlacement: w.ref(localPlacementId),
+    Representation: w.ref(productDefinitionShapeId),
+    Tag: null,
+    PredefinedType: { type: 3, value: predefinedType },
+  });
+  return id;
+}

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { initOCCT } from '../../../tests/setup.js';
+import { unwrap } from 'brepjs';
 import * as WebIFC from 'web-ifc';
 import { BimModel } from '../src/model/bimModel.js';
 import { toIfc } from '../src/serialize/toIfc.js';
@@ -781,6 +782,239 @@ describe('IFC Slab Opening round-trip (M6)', () => {
     expect(grossArea).toBeGreaterThan(0);
     expect(netArea).toBeCloseTo(grossArea, 6);
     expect(netVol).toBeCloseTo(grossVol, 6);
+    api.CloseModel(mid);
+  });
+});
+
+describe('IFC Beam round-trip (M7)', () => {
+  async function buildBeamModel(): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
+    const model = new BimModel();
+    unwrap(model.init({ name: 'Beam Test' }));
+    const siteId = model.addSite({ name: 'S' });
+    const buildingId = model.addBuilding({ name: 'B' });
+    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const project = model.getProject();
+    if (!project) throw new Error('expected project');
+    model.aggregate(project.localId, siteId);
+    model.aggregate(siteId, buildingId);
+    model.aggregate(buildingId, storeyId);
+
+    const rect = unwrap(model.addBeam({
+      length: 5000,
+      profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
+      origin: [0, 0, 3000], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      predefinedType: 'BEAM',
+      materialName: 'Steel',
+      isExternal: false,
+      loadBearing: true,
+      fireRating: 'R60',
+    }));
+    const ibeam = unwrap(model.addBeam({
+      length: 5000,
+      profile: { kind: 'I_BEAM', overallWidth: 200, overallDepth: 400, flangeThickness: 15, webThickness: 10 },
+      origin: [0, 2000, 3000], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      predefinedType: 'JOIST',
+      materialName: 'Steel',
+    }));
+    model.placeIn(rect, storeyId);
+    model.placeIn(ibeam, storeyId);
+
+    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    if (!result.ok) throw new Error(result.error.message);
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const mid = api.OpenModel(result.value);
+    return { api, mid };
+  }
+
+  it('emits two IfcBeam entities', async () => {
+    const { api, mid } = await buildBeamModel();
+    const beams = api.GetLineIDsWithType(mid, WebIFC.IFCBEAM);
+    expect(beams.size()).toBe(2);
+    api.CloseModel(mid);
+  });
+
+  it('IfcBeam PredefinedType matches spec', async () => {
+    const { api, mid } = await buildBeamModel();
+    const beamIds = api.GetLineIDsWithType(mid, WebIFC.IFCBEAM);
+    const types: string[] = [];
+    for (let i = 0; i < beamIds.size(); i++) {
+      const b = api.GetLine(mid, beamIds.get(i)) as Record<string, unknown>;
+      const pred = (b['PredefinedType'] as { value?: string } | undefined)?.value;
+      if (pred !== undefined) types.push(pred);
+    }
+    expect(types.sort()).toEqual(['BEAM', 'JOIST']);
+    api.CloseModel(mid);
+  });
+
+  it('emits an IfcIShapeProfileDef for the I-beam', async () => {
+    const { api, mid } = await buildBeamModel();
+    const profiles = api.GetLineIDsWithType(mid, WebIFC.IFCISHAPEPROFILEDEF);
+    expect(profiles.size()).toBe(1);
+    api.CloseModel(mid);
+  });
+
+  it('emits Pset_BeamCommon for the rect beam (has spec fields)', async () => {
+    const { api, mid } = await buildBeamModel();
+    const ids = api.GetLineIDsWithType(mid, WebIFC.IFCPROPERTYSET);
+    let found = false;
+    for (let i = 0; i < ids.size(); i++) {
+      const pset = api.GetLine(mid, ids.get(i)) as Record<string, unknown>;
+      const name = (pset['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Pset_BeamCommon') { found = true; break; }
+    }
+    expect(found).toBe(true);
+    api.CloseModel(mid);
+  });
+
+  it('Qto_BeamBaseQuantities has expected numeric values', async () => {
+    const { api, mid } = await buildBeamModel();
+    const qtoIds = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
+    const qtos: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < qtoIds.size(); i++) {
+      const candidate = api.GetLine(mid, qtoIds.get(i)) as Record<string, unknown>;
+      const name = (candidate['Name'] as { value?: string } | undefined)?.value;
+      if (name === 'Qto_BeamBaseQuantities') qtos.push(candidate);
+    }
+    expect(qtos).toHaveLength(2);
+
+    // Pull the rect beam's qto (cross section = 0.2 × 0.4 = 0.08 m²)
+    let rectQto: Record<string, unknown> | undefined;
+    for (const qto of qtos) {
+      const refs = qto['Quantities'] as Array<{ value: number }>;
+      for (const r of refs) {
+        const q = api.GetLine(mid, r.value) as Record<string, unknown>;
+        const name = (q['Name'] as { value?: string } | undefined)?.value;
+        const area = (q['AreaValue'] as { value?: number } | undefined)?.value;
+        if (name === 'CrossSectionArea' && area !== undefined && Math.abs(area - 0.08) < 1e-6) {
+          rectQto = qto;
+        }
+      }
+    }
+    if (rectQto === undefined) throw new Error('Expected rect beam Qto');
+
+    const numericByName = new Map<string, number>();
+    const refs = rectQto['Quantities'] as Array<{ value: number }>;
+    for (const r of refs) {
+      const q = api.GetLine(mid, r.value) as Record<string, unknown>;
+      const name = (q['Name'] as { value?: string } | undefined)?.value;
+      if (name === undefined) continue;
+      const lengthVal = (q['LengthValue'] as { value?: number } | undefined)?.value;
+      const areaVal = (q['AreaValue'] as { value?: number } | undefined)?.value;
+      const volumeVal = (q['VolumeValue'] as { value?: number } | undefined)?.value;
+      const num = lengthVal ?? areaVal ?? volumeVal;
+      if (num !== undefined) numericByName.set(name, num);
+    }
+    expect(numericByName.get('Length')).toBeCloseTo(5, 5);
+    expect(numericByName.get('CrossSectionArea')).toBeCloseTo(0.08, 5);
+    expect(numericByName.get('GrossVolume')).toBeCloseTo(5 * 0.08, 5);
+    expect(numericByName.get('NetVolume')).toBeCloseTo(5 * 0.08, 5);
+    api.CloseModel(mid);
+  });
+});
+
+describe('IFC Column round-trip (M7)', () => {
+  async function buildColumnModel(): Promise<{ api: WebIFC.IfcAPI; mid: number }> {
+    const model = new BimModel();
+    unwrap(model.init({ name: 'Column Test' }));
+    const siteId = model.addSite({ name: 'S' });
+    const buildingId = model.addBuilding({ name: 'B' });
+    const storeyId = model.addStorey({ name: 'L1', elevation: 0 });
+    const project = model.getProject();
+    if (!project) throw new Error('expected project');
+    model.aggregate(project.localId, siteId);
+    model.aggregate(siteId, buildingId);
+    model.aggregate(buildingId, storeyId);
+
+    const round = unwrap(model.addColumn({
+      height: 3000,
+      profile: { kind: 'CIRCULAR', radius: 200 },
+      origin: [1000, 1000, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      predefinedType: 'COLUMN',
+      materialName: 'Concrete',
+      loadBearing: true,
+    }));
+    const pilaster = unwrap(model.addColumn({
+      height: 3000,
+      profile: { kind: 'RECTANGULAR', width: 200, height: 400 },
+      origin: [2000, 2000, 0], axisX: [1, 0, 0], axisZ: [0, 0, 1],
+      predefinedType: 'PILASTER',
+      materialName: 'Concrete',
+    }));
+    model.placeIn(round, storeyId);
+    model.placeIn(pilaster, storeyId);
+
+    const result = await toIfc(model, { applicationName: 'brepjs-bim-test', applicationVersion: '0.0.0' });
+    if (!result.ok) throw new Error(result.error.message);
+    const api = new WebIFC.IfcAPI();
+    await api.Init();
+    const mid = api.OpenModel(result.value);
+    return { api, mid };
+  }
+
+  it('emits two IfcColumn entities', async () => {
+    const { api, mid } = await buildColumnModel();
+    const columns = api.GetLineIDsWithType(mid, WebIFC.IFCCOLUMN);
+    expect(columns.size()).toBe(2);
+    api.CloseModel(mid);
+  });
+
+  it('IfcColumn PredefinedType matches spec', async () => {
+    const { api, mid } = await buildColumnModel();
+    const ids = api.GetLineIDsWithType(mid, WebIFC.IFCCOLUMN);
+    const types: string[] = [];
+    for (let i = 0; i < ids.size(); i++) {
+      const c = api.GetLine(mid, ids.get(i)) as Record<string, unknown>;
+      const pred = (c['PredefinedType'] as { value?: string } | undefined)?.value;
+      if (pred !== undefined) types.push(pred);
+    }
+    expect(types.sort()).toEqual(['COLUMN', 'PILASTER']);
+    api.CloseModel(mid);
+  });
+
+  it('emits an IfcCircleProfileDef for the round column', async () => {
+    const { api, mid } = await buildColumnModel();
+    const profiles = api.GetLineIDsWithType(mid, WebIFC.IFCCIRCLEPROFILEDEF);
+    expect(profiles.size()).toBe(1);
+    api.CloseModel(mid);
+  });
+
+  it('Qto_ColumnBaseQuantities reflects circular cross-section area', async () => {
+    const { api, mid } = await buildColumnModel();
+    const qtoIds = api.GetLineIDsWithType(mid, WebIFC.IFCELEMENTQUANTITY);
+    let roundQto: Record<string, unknown> | undefined;
+    for (let i = 0; i < qtoIds.size(); i++) {
+      const candidate = api.GetLine(mid, qtoIds.get(i)) as Record<string, unknown>;
+      const name = (candidate['Name'] as { value?: string } | undefined)?.value;
+      if (name !== 'Qto_ColumnBaseQuantities') continue;
+      const refs = candidate['Quantities'] as Array<{ value: number }>;
+      for (const r of refs) {
+        const q = api.GetLine(mid, r.value) as Record<string, unknown>;
+        const qName = (q['Name'] as { value?: string } | undefined)?.value;
+        const area = (q['AreaValue'] as { value?: number } | undefined)?.value;
+        // Round column area in m² = π × 0.2² ≈ 0.12566
+        if (qName === 'CrossSectionArea' && area !== undefined && Math.abs(area - Math.PI * 0.04) < 1e-4) {
+          roundQto = candidate;
+        }
+      }
+    }
+    if (roundQto === undefined) throw new Error('Expected round-column Qto');
+
+    const numericByName = new Map<string, number>();
+    const refs = roundQto['Quantities'] as Array<{ value: number }>;
+    for (const r of refs) {
+      const q = api.GetLine(mid, r.value) as Record<string, unknown>;
+      const name = (q['Name'] as { value?: string } | undefined)?.value;
+      if (name === undefined) continue;
+      const lengthVal = (q['LengthValue'] as { value?: number } | undefined)?.value;
+      const areaVal = (q['AreaValue'] as { value?: number } | undefined)?.value;
+      const volumeVal = (q['VolumeValue'] as { value?: number } | undefined)?.value;
+      const num = lengthVal ?? areaVal ?? volumeVal;
+      if (num !== undefined) numericByName.set(name, num);
+    }
+    expect(numericByName.get('Length')).toBeCloseTo(3, 5);
+    expect(numericByName.get('CrossSectionArea')).toBeCloseTo(Math.PI * 0.04, 5);
+    expect(numericByName.get('GrossVolume')).toBeCloseTo(3 * Math.PI * 0.04, 4);
     api.CloseModel(mid);
   });
 });

@@ -9,8 +9,15 @@ import {
   writeStorey,
   writeWallEntity,
   writeSlabEntity,
+  writeBeamEntity,
+  writeColumnEntity,
 } from '../ifc-writer/entityWriter.js';
-import { writeWallGeometry, writeSlabGeometry } from '../ifc-writer/geometryWriter.js';
+import {
+  writeWallGeometry,
+  writeSlabGeometry,
+  writeBeamGeometry,
+  writeColumnGeometry,
+} from '../ifc-writer/geometryWriter.js';
 import {
   writeRelAggregates,
   writeRelContainedInSpatialStructure,
@@ -23,6 +30,10 @@ import {
   writeWallBaseQuantities,
   writeSlabCommonPset,
   writeSlabBaseQuantities,
+  writeBeamCommonPset,
+  writeBeamBaseQuantities,
+  writeColumnCommonPset,
+  writeColumnBaseQuantities,
 } from '../ifc-writer/psetWriter.js';
 import {
   writeOpeningGeometry,
@@ -61,6 +72,8 @@ export async function toIfc(
   const relationships = model.getAllRelationships();
   const walls = model.getWalls();
   const slabs = model.getSlabs();
+  const beams = model.getBeams();
+  const columns = model.getColumns();
   const doors = model.getDoors();
   const windows = model.getWindows();
 
@@ -168,6 +181,46 @@ export async function toIfc(
       w, ownerHistoryId, slabExpressId, slab.spec,
       openingsBySlab.get(slab.localId) ?? []
     );
+  }
+
+  for (const [i, beam] of beams.entries()) {
+    const containingId = findContainerOf(beam.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeBeamGeometry(
+      w, beam.spec, geomSubContextId, storeyPlacementId
+    );
+    const beamExpressId = writeBeamEntity(
+      w, beam.guid, `Beam ${i + 1}`, beam.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(beam.localId, beamExpressId);
+    placementMap.set(beam.localId, localPlacementId);
+    writeBeamCommonPset(w, ownerHistoryId, beamExpressId, beam.spec);
+    writeManufacturerPset(w, ownerHistoryId, beamExpressId, beam.spec);
+    if (beam.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, beamExpressId, beam.spec.customProperties);
+    }
+    writeBeamBaseQuantities(w, ownerHistoryId, beamExpressId, beam.spec);
+  }
+
+  for (const [i, column] of columns.entries()) {
+    const containingId = findContainerOf(column.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeColumnGeometry(
+      w, column.spec, geomSubContextId, storeyPlacementId
+    );
+    const columnExpressId = writeColumnEntity(
+      w, column.guid, `Column ${i + 1}`, column.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(column.localId, columnExpressId);
+    placementMap.set(column.localId, localPlacementId);
+    writeColumnCommonPset(w, ownerHistoryId, columnExpressId, column.spec);
+    writeManufacturerPset(w, ownerHistoryId, columnExpressId, column.spec);
+    if (column.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, columnExpressId, column.spec.customProperties);
+    }
+    writeColumnBaseQuantities(w, ownerHistoryId, columnExpressId, column.spec);
   }
 
   const openingPlacementMap = new Map<LocalId, number>();
