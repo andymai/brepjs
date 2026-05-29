@@ -16,7 +16,8 @@
  * Exits non-zero if any requested example fails to load or render.
  */
 import puppeteer from 'puppeteer';
-import { compressToEncodedURIComponent } from 'lz-string';
+import lzString from 'lz-string';
+const { compressToEncodedURIComponent } = lzString;
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { EXAMPLES, type Example } from '../src/lib/examples';
