@@ -73,14 +73,13 @@ export function makeWire(bk: BrepkitKernel, edges: KernelShape[]): KernelShape {
   return wireHandle(id);
 }
 
-export function makeFace(bk: BrepkitKernel, wire: KernelShape, _planar?: boolean): KernelShape {
+export function makeFace(bk: BrepkitKernel, wire: KernelShape, planar?: boolean): KernelShape {
   const h = wire as BrepkitHandle;
-  if (h.type === 'edge') {
-    const wireId = bk.makeWire([h.id], true);
-    const id = bk.makeFaceFromWire(wireId);
-    return faceHandle(id);
-  }
-  const id = bk.makeFaceFromWire(unwrap(wire, 'wire'));
+  const wireId = h.type === 'edge' ? bk.makeWire([h.id], true) : unwrap(wire, 'wire');
+  // Planar-only intent: build a strictly planar face that throws for a
+  // non-coplanar wire, so callers probing planarity get a hard failure
+  // instead of a silently-promoted plane.
+  const id = planar ? bk.makePlanarFaceFromWire(wireId) : bk.makeFaceFromWire(wireId);
   return faceHandle(id);
 }
 
@@ -491,7 +490,9 @@ export function solidFromShell(bk: BrepkitKernel, shell: KernelShape): KernelSha
 }
 
 export function makeNonPlanarFace(bk: BrepkitKernel, wire: KernelShape): KernelShape {
-  return makeFace(bk, wire, true);
+  // General construction: the kernel attaches a non-planar surface when the
+  // wire is not coplanar, so a planar-only build must not be requested here.
+  return makeFace(bk, wire, false);
 }
 
 export function addHolesInFace(
@@ -514,7 +515,7 @@ export function makeFaceOnSurface(
   _surface: KernelType,
   wire: KernelShape
 ): KernelShape {
-  return makeFace(bk, wire, true);
+  return makeFace(bk, wire, false);
 }
 
 export function bsplineSurface(

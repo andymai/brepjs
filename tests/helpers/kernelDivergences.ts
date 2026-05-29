@@ -235,22 +235,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // validityTypes.test.ts
-    // -----------------------------------------------------------------------
-    'validityTypes.nonPlanarWire': {
-      kind: 'skip',
-      reason: "brepkit's makeFace + surfaceType reports 'plane' even for non-coplanar wires",
-    },
-    'validityTypes.cylinderLateralWire': {
-      kind: 'skip',
-      reason: "brepkit's makeFace + surfaceType reports 'plane' even for non-coplanar wires",
-    },
-    'validityTypes.planarWireErr': {
-      kind: 'skip',
-      reason: "brepkit's makeFace + surfaceType reports 'plane' even for non-coplanar wires",
-    },
-
-    // -----------------------------------------------------------------------
     // draftFns.test.ts (OCCT draft test skipped on brepkit)
     // -----------------------------------------------------------------------
     'draftFns.occtDraft': {
