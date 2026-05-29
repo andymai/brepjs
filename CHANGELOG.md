@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.29.0](https://github.com/andymai/brepjs/compare/brepjs-v18.28.0...brepjs-v18.29.0) (2026-05-29)
+
+
+### Features
+
+* **brepkit:** wire type-gated free-form surface data extraction ([#1085](https://github.com/andymai/brepjs/issues/1085)) ([5312f3d](https://github.com/andymai/brepjs/commit/5312f3d1b1c88df782557ad42250ae0abebc6b49))
+
 ## [18.28.0](https://github.com/andymai/brepjs/compare/brepjs-v18.27.0...brepjs-v18.28.0) (2026-05-29)
 
 
