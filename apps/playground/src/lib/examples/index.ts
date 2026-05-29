@@ -10,7 +10,6 @@ export type { Example } from './types';
 
 import type { Example } from './types';
 import { BASIC_EXAMPLES } from './basics';
-import { GEOMETRY_EXAMPLES } from './geometry';
 import { MECHANICAL_EXAMPLES } from './mechanical';
 
 export interface ExampleCategory {
@@ -21,7 +20,6 @@ export interface ExampleCategory {
 
 export const CATEGORIES: readonly ExampleCategory[] = [
   { id: 'basics', label: 'Basics', examples: BASIC_EXAMPLES },
-  { id: 'geometry', label: 'Geometry', examples: GEOMETRY_EXAMPLES },
   { id: 'mechanical', label: 'Mechanical', examples: MECHANICAL_EXAMPLES },
 ];
 

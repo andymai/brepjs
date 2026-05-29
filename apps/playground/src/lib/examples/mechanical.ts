@@ -9,8 +9,7 @@ export const MECHANICAL_EXAMPLES: readonly Example[] = [
   {
     id: 'o-ring',
     label: 'O-ring (nitrile seal)',
-    description:
-      'Parametric nitrile O-ring torus: bore diameter, cord thickness, and volume-conserving stretch.',
+    description: 'A nitrile O-ring with volume-conserving stretch.',
     code: `import { torus } from 'brepjs/quick';
 
 // Nitrile O-ring — a torus sized from the bore it seals and the rubber cord.
@@ -35,8 +34,7 @@ export default oRing();
   {
     id: 'axial-fan',
     label: 'Axial Cooling Fan (57x15)',
-    description:
-      'Parametric axial cooling fan: rounded square frame with air bore, four corner screw holes, central hub, and a ring of swept impeller blades.',
+    description: 'An axial cooling fan with a curved impeller.',
     code: `import {
   box,
   convexHull,
@@ -125,8 +123,7 @@ export default axialFan();`,
   {
     id: 'domed-foot',
     label: 'Domed appliance foot',
-    description:
-      'Parametric tapered rubber equipment foot with a domed top, raised central screw boss, and an axial clearance hole.',
+    description: 'A tapered rubber foot with a domed top and boss.',
     code: `import { cone, cut, cylinder, fuse, intersect, sphere, unwrap } from 'brepjs/quick';
 
 // Rubber appliance foot: a tapered puck with a domed top, a raised central
@@ -170,8 +167,7 @@ export default domedFoot();`,
   {
     id: 'rounded-cylinder',
     label: 'Rounded-top cylinder (post / tube)',
-    description:
-      'A cylindrical post with a quarter-round rolled top shoulder, optionally bored through the centre to make a rounded-top tube.',
+    description: 'A post with a rolled top, optionally bored to a tube.',
     code: `import { cylinder, sphere, intersect, cut, unwrap } from 'brepjs/quick';
 
 // Rounded-top cylinder: a post whose top rim is rolled into a dome by clipping
@@ -202,8 +198,7 @@ export default roundedCylinder();
   {
     id: 'fan-guard',
     label: 'Fan guard grille',
-    description:
-      'Parametric axial-fan finger guard: square mounting frame with a concentric-ring and radial-spoke grille plus four corner mounting holes.',
+    description: 'A fan finger guard: ring-and-spoke grille on a plate.',
     code: `import {
   box,
   cylinder,
@@ -287,8 +282,7 @@ export default fanGuard();`,
   {
     id: 'gt2-pulley',
     label: 'GT2 Timing Pulley',
-    description:
-      'Parametric GT2 timing pulley: a toothed belt body caged between two flanges on a bored hub, with a radial grub-screw hole.',
+    description: 'A GT2 timing pulley with flanges and a bored hub.',
     code: `import {
   cutAll,
   cylinder,
@@ -356,47 +350,55 @@ export default gt2Pulley();`,
   },
   {
     id: 'fluted-knob',
-    label: 'Fluted Control Knob',
-    description:
-      'A tapered, fluted potentiometer knob — scalloped grip over a cone frustum with a blind shaft socket, fully parametric.',
-    code: `import { cylinder, cone, cutAll, cut, unwrap } from 'brepjs/quick';
+    label: 'Fluted knob',
+    description: 'Tapered grip knob with full-height flutes and a shaft socket.',
+    code: `import { cone, cylinder, cutAll, cut, rotate, translate, unwrap } from 'brepjs/quick';
 
-// A fluted potentiometer knob. The grip is a tapered drum with a ring of
-// vertical flutes CARVED into its rim — concave scallops your fingers grip,
-// the way a real control knob is knurled. A central stem socket runs up from
-// the base to press onto a shaft.
+// A fluted potentiometer knob: a tapered drum with vertical flutes carved into
+// the rim, concave scallops your fingers grip. The cutters are tilted to follow
+// the cone slant, so the flutes run the full height instead of fading out near
+// the narrow top. A central socket presses onto a shaft.
 function flutedKnob(
-  height = 18,         // overall body height (mm)
-  topDiameter = 22,    // diameter at the top (mm) — narrower than the base
-  bottomDiameter = 30, // diameter at the base (mm) — wider so it sits like a skirt
-  fluteCount = 16,     // number of flutes around the rim
-  fluteDepth = 1.6,    // how deep each scallop bites into the rim (mm)
-  boreDiameter = 6,    // shaft socket diameter (mm)
-  boreDepth = 12,      // how deep the shaft socket runs up from the base (mm)
+  height = 18,
+  topDiameter = 24,
+  bottomDiameter = 30,
+  fluteCount = 16,
+  fluteDepth = 1.4,
+  boreDiameter = 6,
+  boreDepth = 12,
 ) {
   const topR = topDiameter / 2;
   const botR = bottomDiameter / 2;
+  const cutterR = 2.2;
 
-  // Tapered drum: a cone frustum gives the classic wider-at-the-base profile.
+  // Tapered drum.
   const core = cone(botR, topR, height, { at: [0, 0, 0] });
 
-  // Flute cutters orbit on the rim, each carving a concave vertical scallop.
-  // Placing the centre at (rim − fluteDepth + cutterR) makes it bite fluteDepth deep.
-  const cutterR = 2.2;
-  const orbit = botR - fluteDepth + cutterR;
+  // Surface slant in the (radial, z) plane: direction up the wall and the
+  // outward normal. The cutter is laid parallel to the wall, offset out along
+  // the normal so it bites the same depth uniformly from base to top.
+  const dr = topR - botR; // negative, wall leans inward going up
+  const slantLen = Math.hypot(dr, height);
+  const nR = height / slantLen; // outward-normal radial component
+  const nZ = -dr / slantLen; // outward-normal z component
+  const tiltDeg = -Math.atan2(-dr, height) * (180 / Math.PI); // lean top inward
+  const offset = cutterR - fluteDepth;
+  const cR = (botR + topR) / 2 + nR * offset; // cutter centre radius
+  const cZ = height / 2 + nZ * offset; // cutter centre height
+  const len = slantLen + 4; // overshoot both ends
+
   const flutes = [];
   for (let i = 0; i < fluteCount; i++) {
-    const a = (i * 2 * Math.PI) / fluteCount;
-    flutes.push(
-      cylinder(cutterR, height + 2, {
-        at: [orbit * Math.cos(a), orbit * Math.sin(a), -1],
-      }),
-    );
+    // Build the cutter centred on the origin, tilt it to the wall slant, push
+    // it out to the cutter centre, then swing it round to its azimuth.
+    let cutter = cylinder(cutterR, len, { at: [0, 0, -len / 2] });
+    cutter = rotate(cutter, tiltDeg, { axis: [0, 1, 0], at: [0, 0, 0] });
+    cutter = translate(cutter, [cR, 0, cZ]);
+    flutes.push(rotate(cutter, (i * 360) / fluteCount, { axis: [0, 0, 1], at: [0, 0, 0] }));
   }
   const fluted = unwrap(cutAll(core, flutes));
 
-  // Shaft socket: a blind bore rising from the base (started below z=0 so the
-  // cut faces are clean).
+  // Shaft socket: a blind bore rising from the base.
   const socket = cylinder(boreDiameter / 2, boreDepth + 1, { at: [0, 0, -1] });
   return unwrap(cut(fluted, socket));
 }
@@ -404,67 +406,9 @@ function flutedKnob(
 export default flutedKnob();`,
   },
   {
-    id: 'pie-wedge',
-    label: 'Pie Wedge (circular sector)',
-    description:
-      'An extruded circular sector with adjustable sweep angle and a central shaft bore.',
-    code: `//
-// A pie wedge: an extruded circular sector with an adjustable sweep angle and
-// an optional central shaft bore. The slice is carved from a solid disc by
-// half-space cuts, so a single path handles any angle in (0, 360).
-
-import { box, cut, cutAll, cylinder, rotate, unwrap } from 'brepjs/quick';
-
-// Remove everything on one side of a plane through the Z axis at the given angle.
-function halfSpaceCutter(angleDeg: number, span: number) {
-  const big = span * 4;
-  const block = box(big, big, big, { at: [-big / 2, 0, -big / 2] });
-  return rotate(block, angleDeg, { axis: [0, 0, 1], at: [0, 0, 0] });
-}
-
-// A wedge of up to 180°, kept between ray 0° and ray \`sweep\`.
-function convexWedge(radius: number, thickness: number, sweep: number) {
-  const disc = cylinder(radius, thickness, { at: [0, 0, 0] });
-  const belowStart = halfSpaceCutter(180, radius + thickness);
-  const aboveEnd = halfSpaceCutter(sweep, radius + thickness);
-  return unwrap(cutAll(disc, [belowStart, aboveEnd]));
-}
-
-function pieWedge(
-  radius = 30, // disc radius (mm)
-  thickness = 8, // wedge height / extrusion depth (mm)
-  sweepDeg = 75, // included angle of the slice (degrees)
-  boreRadius = 4, // central shaft bore radius (mm); 0 disables
-) {
-  const sweep = Math.min(Math.max(sweepDeg, 1), 359);
-
-  let wedge;
-  if (sweep <= 180) {
-    wedge = convexWedge(radius, thickness, sweep);
-  } else {
-    // Reflex slice: cut the small complementary wedge out of the full disc.
-    const disc = cylinder(radius, thickness, { at: [0, 0, 0] });
-    const complement = convexWedge(radius + 2, thickness + 2, 360 - sweep);
-    const placed = rotate(complement, sweep, { axis: [0, 0, 1], at: [0, 0, 0] });
-    wedge = unwrap(cut(disc, placed));
-  }
-
-  // Central shaft bore through the apex.
-  if (boreRadius > 0) {
-    const bore = cylinder(boreRadius, thickness + 4, { at: [0, 0, -2] });
-    wedge = unwrap(cut(wedge, bore));
-  }
-
-  return wedge;
-}
-
-export default pieWedge();`,
-  },
-  {
     id: 'rubber-foot',
     label: 'Rubber foot (tapered, hollow, screw-mount)',
-    description:
-      'A parametric tapered equipment foot with a rounded rim, washer recess, and through screw-clearance hole.',
+    description: 'A tapered rubber foot with a washer recess.',
     code: `import { cone, cylinder, cut, fillet, unwrap, edgeFinder } from 'brepjs/quick';
 
 // Printed rubber foot: a tapered post with rounded rims, a washer recess in the
