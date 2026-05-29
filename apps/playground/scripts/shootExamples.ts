@@ -10,8 +10,8 @@
  *
  * A shape can pass the eval+mesh test yet still render wrong (off-centre,
  * floating, degenerate) — this is how we catch that. Used both by humans
- * eyeballing tmp/shots and by the nopscadlib-to-playground workflow's audit
- * stage, which feeds each PNG to a vision agent.
+ * eyeballing tmp/shots and by the scad-to-playground workflow's audit stage,
+ * which feeds each PNG to a vision agent.
  *
  * Exits non-zero if any requested example fails to load or render.
  */

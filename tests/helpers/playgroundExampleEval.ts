@@ -14,7 +14,7 @@
  * trust level as the doc-snippet harness, run only in tests, never in
  * production. This is the single validation path shared by the permanent
  * regression test (tests/playgroundExamples.test.ts) and the
- * nopscadlib-to-playground workflow's validate stage, so "passes here" means
+ * scad-to-playground workflow's validate stage, so "passes here" means
  * "renders in the playground".
  */
 import { transform } from 'sucrase';

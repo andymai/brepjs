@@ -47,5 +47,6 @@ apps/docs/.vitepress/dist/
 # Playground build outputs
 apps/playground/dist/
 
-# NopSCADlib reference clone (GPLv3 — reference-only, never committed)
+# Scratch: OpenSCAD reference clone, example screenshots, candidate scratch, etc.
 tmp/
+**/tmp/

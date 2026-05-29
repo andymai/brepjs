@@ -1,13 +1,13 @@
 export const meta = {
-  name: 'nopscadlib-to-playground',
+  name: 'scad-to-playground',
   description:
-    'Survey NopSCADlib (GPLv3, reference-only) and produce validated brepjs playground examples via clean-room reimplementation',
+    'Survey an OpenSCAD reference library and produce validated brepjs playground examples via clean-room reimplementation',
   whenToUse:
-    'Generate brepjs playground examples inspired by NopSCADlib models. Requires the reference clone at tmp/nopscadlib (gitignored).',
+    'Generate brepjs playground examples from an OpenSCAD reference library. Requires the reference clone at tmp/scad-reference (gitignored).',
   phases: [
-    { title: 'Survey', detail: 'rank NopSCADlib models by translatability' },
+    { title: 'Survey', detail: 'rank reference models by translatability' },
     { title: 'Translate', detail: 'clean-room reimplement + eval/mesh-validate each model' },
-    { title: 'Synthesize', detail: 'write nopscadExamples.ts + translation report' },
+    { title: 'Synthesize', detail: 'append to examples/mechanical.ts + translation report' },
     { title: 'Audit', detail: 'screenshot each example + AI vision gate on resemblance' },
     { title: 'Repair', detail: 'fix examples that render wrong, then re-audit' },
   ],
@@ -35,22 +35,20 @@ const CATEGORIES = OPTS.categories ?? ['vitamins', 'printed', 'utils'];
 const DRY_RUN = OPTS.dryRun ?? false; // if true, synthesis writes a .preview file instead of the real module
 const MAX_REPAIRS = 3;
 
-const SRC = 'tmp/nopscadlib';
+const SRC = 'tmp/scad-reference';
 const CAND_DIR = 'tmp/candidates';
-const MODULE_PATH = 'apps/playground/src/lib/nopscadExamples.ts';
-const REPORT_PATH = 'tmp/nopscadlib-translation-report.md';
+const MODULE_PATH = 'apps/playground/src/lib/examples/mechanical.ts';
+const REPORT_PATH = 'tmp/scad-translation-report.md';
 
 // ── Shared context every agent needs ──────────────────────────────────────
 const LICENSE_RULES = `
-LICENSING (load-bearing — non-negotiable):
-NopSCADlib is GPLv3. brepjs is permissively licensed. You are doing a CLEAN-ROOM
-REIMPLEMENTATION, never a port. That means:
+CLEAN-ROOM REIMPLEMENTATION (load-bearing — non-negotiable):
+The reference library may be GPL-licensed; brepjs is permissively licensed. You are doing a
+CLEAN-ROOM REIMPLEMENTATION from functional geometry, never a port. That means:
 - Study the model's GEOMETRY, DIMENSIONS, and INTENT, then write ORIGINAL brepjs code.
 - Do NOT copy or transliterate OpenSCAD structure line-by-line. Different decomposition,
   different idioms. If your output reads like a mechanical translation of the .scad, redo it.
-- Never paste OpenSCAD source or comments into the output.
-- Every example's code MUST open with exactly this attribution line (adjust <model>):
-  // Inspired by NopSCADlib's <model> (GPLv3) — independent brepjs reimplementation.
+- Never paste OpenSCAD source or comments into the output. Build from dimensions, not text.
 `;
 
 const API_RULES = `
@@ -154,7 +152,7 @@ const SURVEY_SCHEMA = {
         properties: {
           scadPath: {
             type: 'string',
-            description: 'path relative to repo root, e.g. tmp/nopscadlib/printed/knob.scad',
+            description: 'path relative to repo root, e.g. tmp/scad-reference/printed/knob.scad',
           },
           modelName: { type: 'string', description: 'human label, e.g. "Adjuster knob"' },
           score: { type: 'number', description: '0-100 overall translatability+appeal score' },
@@ -166,7 +164,10 @@ const SURVEY_SCHEMA = {
             type: 'number',
             description: '0-100: visually recognizable as a real part',
           },
-          selfContained: { type: 'number', description: '0-100: few NopSCADlib cross-module deps' },
+          selfContained: {
+            type: 'number',
+            description: '0-100: few cross-module deps in the reference',
+          },
           primaryOps: {
             type: 'array',
             items: { type: 'string' },
@@ -188,7 +189,7 @@ const TRANSLATE_SCHEMA = {
   additionalProperties: false,
   required: ['id', 'label', 'description', 'code', 'status'],
   properties: {
-    id: { type: 'string', description: 'kebab-case, prefixed nopscad-, e.g. nopscad-knob' },
+    id: { type: 'string', description: 'short kebab-case, no source prefix, e.g. knob, fan-guard' },
     label: { type: 'string', description: 'command-palette label' },
     description: { type: 'string', description: 'one-line palette description' },
     code: {
@@ -217,7 +218,8 @@ const SYNTH_SCHEMA = {
     writtenIds: {
       type: 'array',
       items: { type: 'string' },
-      description: 'exact example ids actually written into the module (only those that survived assembly + regression)',
+      description:
+        'exact example ids actually written into the module (only those that survived assembly + regression)',
     },
     regressionPassed: { type: 'boolean' },
     summary: { type: 'string', description: 'counts + any caveats' },
@@ -265,7 +267,7 @@ if (FORCED_IDS) {
     CATEGORIES.map(
       (cat) => () =>
         agent(
-          `Survey NopSCADlib category "${cat}" for brepjs-translatable models.
+          `Survey reference-library category "${cat}" for brepjs-translatable models.
 
 The reference clone is at ${SRC}/${cat}/ (GPLv3 — read-only reference). List the *.scad
 files there (use Bash: ls ${SRC}/${cat}/*.scad), then read the most promising ones.
@@ -275,7 +277,7 @@ Rank models that would make GOOD brepjs playground examples. Score each on:
     Heavily penalize anything needing threads, minkowski, text-on-surface, gears, or
     sub-millimeter swept profiles brepjs can't easily do.
   - recognizable: a viewer instantly recognizes the part (a knob, a fan, a foot, a bracket).
-  - selfContained: minimal include/use of OTHER NopSCADlib modules.
+  - selfContained: minimal include/use of OTHER reference modules.
 Favor DIVERSE operations across your picks (don't return five boolean-only boxes).
 
 Return up to 8 candidates for this category, best first.
@@ -309,7 +311,7 @@ const translated = await parallel(
   chosen.map(
     (cand, i) => () =>
       agent(
-        `Clean-room reimplement NopSCADlib model "${cand.modelName}" as a brepjs playground example.
+        `Clean-room reimplement reference model "${cand.modelName}" as a brepjs playground example.
 
 Reference source (GPLv3, study geometry only — DO NOT port): ${cand.scadPath}
 Read it now, plus any sibling it includes if you need a dimension. Then design ORIGINAL
@@ -329,7 +331,8 @@ WORKFLOW YOU MUST FOLLOW:
 6. Return the FINAL validated source as 'code' with status 'validated'. If you exhaust repairs,
    return your best attempt with status 'failed' and put the error tail in validationOutput.
 
-Set id to "nopscad-<short-kebab>" and write a crisp palette label + one-line description.
+Set id to a short kebab-case slug with no source prefix (e.g. "fan-guard", "knob")
+and write a crisp palette label + one-line description.
 ${LICENSE_RULES}
 ${API_RULES}
 ${EXAMPLE_REFERENCE}`,
@@ -350,7 +353,7 @@ if (validated.length === 0) {
 }
 
 const synthesisResult = await agent(
-  `Assemble the validated NopSCADlib-derived examples into the playground module and write a report.
+  `Assemble the validated examples into the playground module and write a report.
 
 VALIDATED EXAMPLES (JSON):
 ${JSON.stringify(
@@ -380,20 +383,22 @@ ${JSON.stringify(
 )}
 
 TASKS:
-1. ${DRY_RUN ? `DRY RUN: write the module to ${MODULE_PATH}.preview (do NOT overwrite the real module).` : `Write ${MODULE_PATH}.`}
-   It must keep its existing header doc comment (read the current file first), import the
-   Example type:  import type { Example } from './examples';
-   and export:    export const NOPSCAD_EXAMPLES: readonly Example[] = [ ...one entry per validated example... ];
+1. ${DRY_RUN ? `DRY RUN: write the module to ${MODULE_PATH}.preview (do NOT touch the real module).` : `APPEND your entries to the existing ${MODULE_PATH}.`}
+   Read the current file first. It already has a header doc comment, the import
+   \`import type { Example } from './types';\`, and exports
+   \`export const MECHANICAL_EXAMPLES: readonly Example[] = [ ... ];\`. Insert your new
+   entries INSIDE that existing array (before its closing \`];\`) — do not create a
+   second export, change the export name, or drop the entries already there.
    Each entry is { id, label, description, code } where 'code' is the validated source as a
-   template literal. PRESERVE the attribution line at the top of each code string. Keep entries
-   in the order given. Do not alter the validated source otherwise.
+   template literal. PRESERVE the attribution line at the top of each code string. Keep new
+   entries in the order given. Do not alter any existing entry or the validated source.
 2. After writing, run the regression test to prove the whole set still evals+meshes:
      TEST_KERNEL=occt npx vitest run tests/playgroundExamples.test.ts --reporter=dot
    Report the final pass/fail counts. If anything fails, fix the module assembly (escaping,
    backticks inside code) — NOT the validated logic — and re-run.
 3. Write a markdown translation report to ${REPORT_PATH} covering: each accepted model
    (id, source .scad, ops exercised, fidelity caveats), each failed model with its reason,
-   and a note that all examples are clean-room reimplementations of GPLv3 NopSCADlib models.
+   and a note that all examples are clean-room reimplementations built from reference dimensions.
 
 Return the EXACT list of example ids you actually wrote into the module (some
 validated candidates may be dropped here if assembly or the regression run
@@ -411,16 +416,16 @@ const writtenIds = (synthesisResult?.writtenIds ?? validated.map((v) => v.id)).f
 // floating, degenerate, missing a promised feature). Screenshot every
 // integrated example and have a vision agent judge resemblance. In dryRun the
 // module isn't written, so skip — there's nothing live to shoot.
-phase('Audit')
+phase('Audit');
 
-let auditResult = null
-let repairResult = null
+let auditResult = null;
+let repairResult = null;
 
 if (!DRY_RUN && writtenIds.length > 0) {
   // Audit ONLY what synthesis actually wrote to the module — looking up each
   // id's description from the validated set where available.
-  const descById = new Map(validated.map((v) => [v.id, v.description]))
-  const auditIds = writtenIds
+  const descById = new Map(validated.map((v) => [v.id, v.description]));
+  const auditIds = writtenIds;
   // One agent owns the dev-server lifecycle so the port stays live across all
   // shots, then judges each PNG it captured.
   auditResult = await agent(
@@ -449,13 +454,13 @@ ${auditIds.map((id) => `  ${id} — ${descById.get(id) ?? '(see the entry in the
 
 Kill the dev server when done (pkill -f 'vite' for the playground, or the bg job).`,
     { label: 'audit', phase: 'Audit', schema: AUDIT_SCHEMA }
-  )
+  );
 
-  const flagged = (auditResult?.verdicts ?? []).filter((v) => v && v.looksRight === false)
-  log(`Audit: ${flagged.length}/${auditIds.length} examples flagged as rendering wrong`)
+  const flagged = (auditResult?.verdicts ?? []).filter((v) => v && v.looksRight === false);
+  log(`Audit: ${flagged.length}/${auditIds.length} examples flagged as rendering wrong`);
 
   // ───────────────────────────────────────────────────────────────────────
-  phase('Repair')
+  phase('Repair');
 
   if (flagged.length > 0) {
     repairResult = await parallel(
@@ -487,9 +492,9 @@ WORKFLOW:
 
 Return a one-line status: fixed / still-broken, and what you changed.`,
           { label: `repair:${v.id}`, phase: 'Repair' }
-        )
+        );
       })
-    )
+    );
   }
 }
 

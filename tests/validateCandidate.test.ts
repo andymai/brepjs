@@ -1,5 +1,5 @@
 /**
- * Single-candidate validator used by the nopscadlib-to-playground workflow.
+ * Single-candidate validator used by the scad-to-playground workflow.
  *
  * The workflow writes a candidate example's source to a file and runs:
  *   CANDIDATE_FILE=tmp/candidates/<id>.ts npx vitest run tests/validateCandidate.test.ts

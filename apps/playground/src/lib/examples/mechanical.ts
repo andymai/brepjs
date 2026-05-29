@@ -1,46 +1,20 @@
 /**
- * Playground examples reimplemented from NopSCADlib
- * (https://github.com/nophead/NopSCADlib).
- *
- * NopSCADlib is GPLv3. These entries are NOT ports — each is an independent
- * clean-room reimplementation in idiomatic brepjs, written from the geometry
- * and dimensions of the referenced model. No OpenSCAD source is copied or
- * transliterated, and the vendored reference clone (tmp/nopscadlib) is
- * gitignored and never committed. Every entry's `code` opens with an
- * attribution line crediting the original model.
- *
- * Generated and curated by the `nopscadlib-to-playground` workflow and kept in
- * a separate module so provenance stays isolated from the hand-written core
- * examples in examples.ts. Same authoring rules apply: each `code` string is
- * fully self-contained, imports from 'brepjs/quick' (plus `color` from
- * 'brepjs/playground' when multi-colored), and ends in `export default`.
+ * Mechanical / hardware part examples — fans, feet, knobs, pulleys, seals, and
+ * other recognizable parts. Each is a parametric, clean-room brepjs build. See
+ * the module-authoring rules in ./types.
  */
-import type { Example } from './examples';
+import type { Example } from './types';
 
-export const NOPSCAD_EXAMPLES: readonly Example[] = [
+export const MECHANICAL_EXAMPLES: readonly Example[] = [
   {
-    id: 'nopscad-o-ring',
+    id: 'o-ring',
     label: 'O-ring (nitrile seal)',
     description:
       'Parametric nitrile O-ring torus: bore diameter, cord thickness, and volume-conserving stretch.',
-    code: `// Inspired by NopSCADlib's O-ring (GPLv3) — independent brepjs reimplementation.
+    code: `import { torus } from 'brepjs/quick';
 
-import { torus } from 'brepjs/quick';
-
-// Nitrile O-ring: a circular cross-section ring defined by its internal
-// diameter (\`id\`, the hole it seals around) and its minor diameter
-// (\`minorD\`, the thickness of the rubber cord).
-//
-// An O-ring can be modelled as a torus revolved about Z. The cord cross-section
-// is a circle of radius r = minorD/2 swept along a centreline circle of radius R.
-// With the ring relaxed, the cord's inner edge sits on the internal diameter, so
-// the centreline radius is R = id/2 + r (one cord radius outboard of the hole).
-//
-// \`actualId\` lets the ring be shown stretched around something larger than its
-// nominal hole. Rubber is near-incompressible, so volume is conserved: torus
-// volume ∝ R · r². Stretching the centreline (larger D) thins the cord by
-// r = (minorD/2)·sqrt(id/D), and the centreline radius rebalances to
-// R = D/2 + r/2 so the (now thinner) cord still hugs the part it wraps.
+// Nitrile O-ring — a torus sized from the bore it seals and the rubber cord.
+// Stretch it past its nominal bore (actualId) and the cord thins to conserve volume.
 function oRing(id: number = 20, minorD: number = 3, actualId: number = 0) {
   // Effective major diameter: stretch only ever grows the ring, never shrinks it.
   const D = actualId > id ? actualId : id;
@@ -51,7 +25,6 @@ function oRing(id: number = 20, minorD: number = 3, actualId: number = 0) {
   // Centreline (major) radius of the swept torus.
   const R = D / 2 + r / 2;
 
-  // Torus: major radius R (hole + half cord), minor radius r (cord thickness).
   return torus(R, r);
 }
 
@@ -60,12 +33,11 @@ export default oRing();
 `,
   },
   {
-    id: 'nopscad-axial-fan',
+    id: 'axial-fan',
     label: 'Axial Cooling Fan (57x15)',
     description:
       'Parametric axial cooling fan: rounded square frame with air bore, four corner screw holes, central hub, and a ring of swept impeller blades.',
-    code: `// Inspired by NopSCADlib's Axial cooling fan (GPLv3) — independent brepjs reimplementation.
-import {
+    code: `import {
   box,
   convexHull,
   cutAll,
@@ -77,14 +49,8 @@ import {
   unwrap,
 } from 'brepjs/quick';
 
-// Axial cooling fan, modeled after the common 57x15 form factor.
-// A square frame with rounded corners carries a large circular air bore,
-// four corner screw holes, a central hub, and a ring of swept impeller
-// blades. The four corner-hole centers sit on a square of side \`bore\` (the
-// mounting-screw separation), which also fixes the corner radius at
-// (width - bore) / 2. Primitives (box, cylinder) return shapes directly;
-// only boolean/modifier ops (cutAll, fuseAll, fillet, convexHull) return a
-// Result and are unwrapped.
+// Axial cooling fan (57×15 form factor): rounded square frame, air bore,
+// four corner mounting holes, a central hub, and a ring of swept blades.
 function axialFan({
   width = 57, // outer square width and height (mm)
   depth = 15, // frame thickness (mm)
@@ -96,18 +62,15 @@ function axialFan({
 } = {}) {
   const cornerR = (width - bore) / 2; // 4.25 mm for the 57x15 default
 
-  // --- Frame plate -----------------------------------------------------
-  // A plain box gives a boolean-clean solid; the four vertical corner edges
-  // are filleted to \`cornerR\` to recreate the rounded-square outline.
+  // Frame: round the four vertical corners of a plain box.
   const blank = box(width, width, depth, { at: [0, 0, depth / 2] });
   const verticalEdges = edgeFinder().inDirection('Z').findAll(blank);
   const plate = unwrap(fillet(blank, verticalEdges, cornerR));
 
-  // Central air bore: a through cylinder just under the frame width so a
-  // thin web of plastic remains at the rounded corners.
+  // Air bore through the centre.
   const airBore = cylinder(width / 2 - 4, depth + 2, { at: [0, 0, -1] });
 
-  // Four corner mounting holes on the \`bore\`-side square.
+  // Four corner mounting holes.
   const screwHoles = [];
   for (const sx of [-1, 1]) {
     for (const sy of [-1, 1]) {
@@ -121,25 +84,18 @@ function axialFan({
 
   const frame = unwrap(cutAll(plate, [airBore, ...screwHoles]));
 
-  // --- Hub -------------------------------------------------------------
-  // Solid cylinder spanning the frame thickness and protruding \`hubHeight\`
-  // above the top face, where the motor and blade roots live.
+  // Hub: solid cylinder protruding above the top face.
   const hubBody = cylinder(hub / 2, depth + hubHeight, { at: [0, 0, 0] });
 
-  // --- Blades ----------------------------------------------------------
-  // Each blade is a swept vane reaching from the hub wall out toward the
-  // air bore. Built as the convex hull of a near-hub edge (lower, radial)
-  // and a near-rim edge (higher, swept tangentially): the height step gives
-  // the blade pitch, the tangential \`rake\` gives the impeller curve. Kept
-  // chunky (not paper-thin) so the hull stays non-degenerate on every
-  // kernel.
-  const rInner = hub / 2 - 0.5; // root bites 0.5 mm into the hub for a clean fuse
-  const rOuter = width / 2 - 2; // tips bite into the frame's bore ring so the rotor fuses to the frame
-  const halfChord = 2.0; // half the blade chord (along tangent) at each edge
-  const thick = 1.6; // blade material thickness (mm)
-  const zLo = depth - 9; // root height
-  const zHi = depth - 2; // tip height (pitched up toward the rim)
-  const rake = 4; // tangential offset of the tip, giving the swept curve
+  // Each blade is the convex hull of a low radial edge at the hub and a
+  // higher, tangentially-swept edge at the rim — the offset gives the pitch.
+  const rInner = hub / 2 - 0.5;  // bite into the hub for a clean fuse
+  const rOuter = width / 2 - 2;  // bite into the frame so the rotor fuses to it
+  const halfChord = 2.0;         // half blade chord at each edge
+  const thick = 1.6;             // blade thickness
+  const zLo = depth - 9;         // root height
+  const zHi = depth - 2;         // tip height (pitched up)
+  const rake = 4;                // tangential tip offset → swept curve
 
   const bladePts = [
     // inner (hub) edge — lower
@@ -154,76 +110,54 @@ function axialFan({
     [rOuter, rake + halfChord, zHi + thick],
   ];
 
-  // Build the full blade ring up front. A fresh hull is made per blade
-  // because rotate consumes the shape handle it is given; reusing one base
-  // solid would invalidate it after the first rotation.
+  // A fresh hull per blade — rotate consumes the handle it's given.
   const makeBlade = () => unwrap(convexHull(bladePts));
   const bladeRing = [];
   for (let i = 0; i < blades; i++) {
     bladeRing.push(rotate(makeBlade(), (360 * i) / blades, { axis: [0, 0, 1] }));
   }
 
-  // One union of every part: frame, hub, and all blades.
   return unwrap(fuseAll([frame, hubBody, ...bladeRing]));
 }
 
 export default axialFan();`,
   },
   {
-    id: 'nopscad-domed-foot',
+    id: 'domed-foot',
     label: 'Domed appliance foot',
     description:
       'Parametric tapered rubber equipment foot with a domed top, raised central screw boss, and an axial clearance hole.',
-    code: `// Inspired by NopSCADlib's Domed appliance foot (GPLv3) — independent brepjs reimplementation.
-import { cone, cut, cylinder, fuse, intersect, sphere, unwrap } from 'brepjs/quick';
+    code: `import { cone, cut, cylinder, fuse, intersect, sphere, unwrap } from 'brepjs/quick';
 
-// Parametric rubber appliance foot.
-//
-// The original NopSCADlib part is a squat, slightly tapered puck with a domed
-// (rounded) top edge, a flat seating face, a raised central boss the screw head
-// bears on, and a central screw clearance hole. Recognizable controls:
-//   diameter   – outside diameter at the base seating face (mm)
-//   height     – total height of the foot (mm)
-//   slant      – wall taper angle; the top is narrower than the base (deg)
-//   domeRad    – radius of the rounded-over top edge / cap (mm)
-//   bossDia    – diameter of the raised central boss under the screw (mm)
-//   bossThick  – thickness of that seating land under the screw head (mm)
-//   screwClear – clearance-hole radius for the fastener shank (mm; M4 ≈ 2.4)
+// Rubber appliance foot: a tapered puck with a domed top, a raised central
+// screw boss, and an axial clearance hole. Defaults suit an M4 foot.
 function domedFoot(
-  diameter = 25,
-  height = 12,
-  slant = 10,
-  domeRad = 2,
-  bossDia = 9,
-  bossThick = 3,
-  screwClear = 2.4,
+  diameter = 25,   // base diameter (mm)
+  height = 12,     // total height (mm)
+  slant = 10,      // wall taper angle (deg)
+  domeRad = 2,     // rounded-top radius (mm)
+  bossDia = 9,     // central screw-boss diameter (mm)
+  bossThick = 3,   // boss seating thickness (mm)
+  screwClear = 2.4, // clearance-hole radius (M4)
 ) {
   const rBase = diameter / 2;
-  // Taper the wall inward by \`slant\` degrees over the full height, mirroring the
-  // original's r2 = r3 - h*tan(slant). The top is the narrower end.
-  const rTop = rBase - height * Math.tan((slant * Math.PI) / 180);
+  const rTop = rBase - height * Math.tan((slant * Math.PI) / 180); // narrower top
 
-  // Body: a truncated cone — wide base seating on the ground, narrow top.
+  // Body: a truncated cone, wide base to narrow top.
   const cylBody = cone(rBase, rTop, height);
 
-  // Dome the top edge. Instead of a fragile edge-filtered fillet, build a large
-  // rounding sphere centred one dome-radius below the top rim and intersect a
-  // slightly over-tall cone with it. The sphere's curvature shaves the sharp top
-  // circumferential edge into a smooth rounded-over crown — the foot's "domed"
-  // signature — while the straight tapered walls below stay intact.
+  // Dome the top by intersecting an over-tall cone with a rounding sphere — more
+  // robust than an edge fillet, and the straight walls below stay intact.
   const rounder = sphere(rTop + domeRad, { at: [0, 0, height - (rTop + domeRad) + domeRad] });
   const tall = cone(rBase, Math.max(rTop - domeRad, 0.5), height + domeRad);
   const domed = unwrap(intersect(tall, rounder));
-  // Fuse the rounded crown onto the full-height tapered body so the part keeps
-  // its true base diameter and seating face, gaining only the rounded top.
   const body = unwrap(fuse(cylBody, domed));
 
-  // Raised central boss: the flat land the screw head/washer bears on.
+  // Raised central boss the screw head bears on.
   const boss = cylinder(bossDia / 2, bossThick, { at: [0, 0, 0] });
   const withBoss = unwrap(fuse(body, boss));
 
-  // Axial through clearance hole for the fastener; over-length so it punches
-  // cleanly through both the boss and the domed crown.
+  // Axial clearance hole, over-length to punch cleanly through.
   const hole = cylinder(screwClear, height + bossThick + domeRad + 2, { at: [0, 0, -1] });
   return unwrap(cut(withBoss, hole));
 }
@@ -231,40 +165,26 @@ function domedFoot(
 export default domedFoot();`,
   },
   {
-    id: 'nopscad-rounded-cylinder',
+    id: 'rounded-cylinder',
     label: 'Rounded-top cylinder (post / tube)',
     description:
       'A cylindrical post with a quarter-round rolled top shoulder, optionally bored through the centre to make a rounded-top tube.',
-    code: `// Inspired by NopSCADlib's rounded_cylinder (GPLv3) — independent brepjs reimplementation.
-import { cylinder, sphere, intersect, cut, unwrap } from 'brepjs/quick';
+    code: `import { cylinder, sphere, intersect, cut, unwrap } from 'brepjs/quick';
 
-// Rounded-top cylinder. NopSCADlib's rounded_cylinder is a post whose top edge
-// is rolled over, optionally bored into a tube. Built the robust brepjs way:
-// intersect a straight cylinder with a large sphere so the top rim is clipped
-// to the sphere's curvature — a smooth domed shoulder — while the wall below
-// stays straight. The optional central bore turns the post into a tube.
-//
-// Params (mm):
-//   radius      outer radius                                  (default 12)
-//   height      overall height                                (default 24)
-//   topRadius   how far the domed shoulder dips below the top (default 6)
-//   boreRadius  central through-hole radius; 0 = solid post   (default 5)
+// Rounded-top cylinder: a post whose top rim is rolled into a dome by clipping
+// it with a sphere, optionally bored through to make a tube.
 function roundedCylinder(radius = 12, height = 24, topRadius = 6, boreRadius = 5) {
-  // Clamp the round-over so it stays within the wall and height.
-  const r2 = Math.min(topRadius, radius - 0.5, height / 2);
+  const r2 = Math.min(topRadius, radius - 0.5, height / 2); // clamp the round-over
 
   const post = cylinder(radius, height, { at: [0, 0, 0] });
 
-  // Clip the top rim with a large sphere so the corner rolls into a smooth
-  // domed shoulder while the side wall below stays straight. The sphere radius
-  // R that meets the wall exactly r2 below the top satisfies
-  // R² = radius² + (R − r2)², giving:
+  // Sphere sized to meet the wall r2 below the top (R² = radius² + (R−r2)²),
+  // positioned so its pole sits at the top face — clips the rim to a dome.
   const sphereR = (radius * radius + r2 * r2) / (2 * r2);
-  // Centre it so the sphere's top pole sits at the cylinder's top face.
   const clipper = sphere(sphereR, { at: [0, 0, height - sphereR] });
   let solid = unwrap(intersect(post, clipper));
 
-  // Optional central bore: a clean concentric through-cylinder makes it a tube.
+  // Optional concentric bore → tube.
   if (boreRadius > 0) {
     const bore = cylinder(boreRadius, height + 2, { at: [0, 0, -1] });
     solid = unwrap(cut(solid, bore));
@@ -277,12 +197,11 @@ export default roundedCylinder();
 `,
   },
   {
-    id: 'nopscad-fan-guard',
+    id: 'fan-guard',
     label: 'Fan guard grille',
     description:
       'Parametric axial-fan finger guard: square mounting frame with a concentric-ring and radial-spoke grille plus four corner mounting holes.',
-    code: `// Inspired by NopSCADlib's Fan guard (GPLv3) — independent brepjs reimplementation.
-import {
+    code: `import {
   box,
   cylinder,
   cut,
@@ -294,16 +213,9 @@ import {
   unwrap,
 } from 'brepjs/quick';
 
-// Fan guard: a square mounting plate with a circular air opening, filled by a
-// concentric-ring + spoke grille that keeps fingers out and stops cables
-// fouling the blades. The four solid corners carry the mounting holes. Built
-// from a square plate with a round cutout, a central hub, radial spokes, and
-// concentric guard rings, then drilled at the corners.
-//
-// Geometry is driven off a standard axial-fan footprint. For a 60 mm fan:
-//   width = 60 mm square, screw pitch 50 mm, M4 mounting screws.
-// The whole guard is a single flat plate of \`thickness\` (default 2.5 mm) so it
-// prints face-down with no supports — matching the NopSCADlib intent.
+// Fan finger guard: a rounded square plate with a circular air opening, filled
+// by a concentric-ring + spoke grille. Solid corners carry the mounting holes.
+// Defaults fit a 60 mm fan (50 mm screw pitch, M4).
 function fanGuard(
   width = 60, // fan side length (mm) → plate is width × width
   thickness = 2.5, // plate thickness; also the ring / spoke width
@@ -312,30 +224,22 @@ function fanGuard(
 ) {
   const half = width / 2;
 
-  // --- Plate with circular air opening ---------------------------------
-  // Round the four outer corners FIRST (a clean 4-edge fillet on a plain box),
-  // THEN punch a circular air opening, leaving the corners SOLID so the
-  // mounting screws have material to pass through. Filleting before the cut
-  // keeps the edge set simple enough to succeed.
+  // Round the corners FIRST (clean 4-edge fillet on a plain box), THEN punch the
+  // air opening — leaving solid corner gussets for the screws to pass through.
   const cornerR = Math.min(thickness * 1.5, half - 0.5);
   const plate = box(width, width, thickness, { at: [0, 0, thickness / 2] });
   const rounded = unwrap(
     fillet(plate, edgeFinder().inDirection('Z').findAll(plate), cornerR),
   );
-  // Opening radius leaves a thin rim at the edge midpoints and large solid
-  // corner gussets at the diagonals — exactly where the screw holes land.
   const openingR = half - thickness;
   const frame = unwrap(cut(rounded, cylinder(openingR, thickness + 2, { at: [0, 0, -1] })));
 
-  // --- Central hub: a small solid disc the spokes radiate from. ---
-  // Sized to roughly a third of the bore so it shadows the motor centre only.
+  // Central hub the spokes radiate from.
   const hubRadius = Math.max(thickness * 1.5, width * 0.08);
   const parts = [frame, cylinder(hubRadius, thickness, { at: [0, 0, 0] })];
 
-  // --- Concentric guard rings between hub and frame. ---
-  // Each ring is a thin annulus (outer cyl − inner cyl). Spaced ~2×thickness
-  // apart so the open gaps stay narrower than a finger.
-  const ringSpan = half - thickness - hubRadius; // radial room for rings
+  // Concentric rings, each a thin annulus, spaced so gaps stay finger-safe.
+  const ringSpan = half - thickness - hubRadius;
   const ringCount = Math.max(1, Math.floor(ringSpan / (2 * thickness)));
   const pitch = ringSpan / ringCount;
   for (let i = 1; i <= ringCount; i++) {
@@ -350,10 +254,8 @@ function fanGuard(
     parts.push(ring);
   }
 
-  // --- Spokes: thin bars from centre to frame at 45° increments. ---
-  // A single bar spanning the full width, rotated about Z, gives crossing
-  // spokes that tie the rings to the frame.
-  const spokeLen = width; // long enough to reach the frame on both sides
+  // Spokes: full-width bars rotated onto 45° increments, tying rings to frame.
+  const spokeLen = width;
   for (const angle of [0, 45, 90, 135]) {
     const bar = box(spokeLen, thickness, thickness, {
       at: [0, 0, thickness / 2],
@@ -361,10 +263,9 @@ function fanGuard(
     parts.push(rotate(bar, angle, { axis: [0, 0, 1], at: [0, 0, 0] }));
   }
 
-  // Merge frame + hub + rings + spokes into one grille.
   const grille = unwrap(fuseAll(parts));
 
-  // --- Mounting holes: four corners on the diagonal hole pitch. ---
+  // Drill the four corner mounting holes through the solid gussets.
   const o = holePitch / 2;
   const holeCenters = [
     [-o, -o],
@@ -375,22 +276,17 @@ function fanGuard(
   const holes = holeCenters.map(([x, y]) =>
     cylinder(screwClearance, thickness + 2, { at: [x, y, -1] }),
   );
-  // Drill the four corner mounting holes through the solid corner gussets.
-  // (Per-spoke edge rounding is intentionally omitted: filleting the fully
-  // fused grille is unreliable on its many overlapping edges. The rounded
-  // frame corners above carry the printed-part look.)
   return unwrap(cutAll(grille, holes));
 }
 
 export default fanGuard();`,
   },
   {
-    id: 'nopscad-gt2-pulley',
+    id: 'gt2-pulley',
     label: 'GT2 Timing Pulley',
     description:
       'Parametric GT2 timing pulley: a toothed belt body caged between two flanges on a bored hub, with a radial grub-screw hole.',
-    code: `// Inspired by NopSCADlib's GT2 timing pulley (GPLv3) — independent brepjs reimplementation.
-import {
+    code: `import {
   cutAll,
   cylinder,
   fuseAll,
@@ -400,18 +296,8 @@ import {
   unwrap,
 } from 'brepjs/quick';
 
-// Parametric GT2 timing pulley.
-//
-// A GT2 pulley is a stack of three coaxial features on a central bore:
-//   - a toothed pulley body whose rim carries \`teeth\` belt grooves at the
-//     standard 2 mm GT2 pitch (groove depth ~0.75 mm),
-//   - two thin flanges (top + bottom) wider than the body that keep the
-//     timing belt from walking off, and
-//   - a hub below the body that gives the grub screw something to bite into.
-// A through bore runs the full height and a radial grub-screw hole pierces
-// the hub so the pulley can clamp onto a motor shaft.
-//
-// Defaults model the ubiquitous GT2x20 pulley for 6 mm belt on a 5 mm shaft.
+// GT2 timing pulley: a toothed body caged between two flanges on a bored hub,
+// with a radial grub-screw hole. Defaults model the common GT2x20 for a 5 mm shaft.
 function gt2Pulley(
   teeth = 20, // number of belt grooves around the rim
   beltWidth = 7, // axial height of the toothed body (mm)
@@ -420,56 +306,41 @@ function gt2Pulley(
   hubLength = 6, // hub height below the body (mm)
   flangeThickness = 1, // each flange disc thickness (mm)
 ) {
-  const pitch = 2; // GT2 belt pitch — fixed by the standard
-  const toothDepth = 0.75; // GT2 groove depth — fixed by the standard
-  // Pitch circumference is teeth * pitch, so the body radius follows directly
-  // from the tooth count (pitch-circle relation).
-  const bodyR = (teeth * pitch) / Math.PI / 2;
+  const pitch = 2; // GT2 belt pitch (standard)
+  const toothDepth = 0.75; // GT2 groove depth (standard)
+  const bodyR = (teeth * pitch) / Math.PI / 2; // from the pitch circle
   const flangeR = bodyR + 1.5; // flanges overhang the rim to cage the belt
 
-  // --- Toothed body -------------------------------------------------------
-  // Start from a plain disc the full belt width, then carve rounded grooves
-  // spaced evenly around the rim. Each cutter is a rounded rectangle sketched
-  // on the XY plane, parked radially at the rim, extruded the full height,
-  // and rotated into position — the lands left behind form the GT2 teeth.
-  // The rounded ends echo the curved GT2 tooth profile.
+  // Toothed body: carve evenly-spaced rounded grooves into a plain disc; the
+  // lands left between them are the teeth.
   const body = cylinder(bodyR, beltWidth);
-  const grooveW = pitch * 0.9; // groove mouth width along the rim
-  const grooveR = grooveW / 2; // fully rounded ends → lens-shaped groove
-  // The cutter is \`cutterDepth\` long radially; park it so its inner end reaches
-  // \`toothDepth\` below the rim and its outer end pokes clear of the body.
+  const grooveW = pitch * 0.9; // groove mouth width
+  const grooveR = grooveW / 2; // rounded ends → lens-shaped groove
   const cutterDepth = toothDepth + 1;
   const cutterCx = bodyR + cutterDepth / 2 - toothDepth;
   const grooveCutters = [];
   for (let i = 0; i < teeth; i++) {
     const a = (i / teeth) * 360;
     const flat = sketchRoundedRectangle(cutterDepth, grooveW, grooveR);
-    // Extrude a bit past both faces so the groove cuts cleanly top to bottom.
     const cutter = translate(flat.extrude(beltWidth + 2), [cutterCx, 0, -1]);
     grooveCutters.push(rotate(cutter, a, { axis: [0, 0, 1] }));
   }
   const toothed = unwrap(cutAll(body, grooveCutters));
 
-  // --- Flanges ------------------------------------------------------------
-  // Two thin discs wider than the body, capping the belt channel top and
-  // bottom: one flush with z=0, one flush with the body's upper face.
+  // Flanges: two discs wider than the body, capping the belt channel.
   const bottomFlange = cylinder(flangeR, flangeThickness, { at: [0, 0, 0] });
   const topFlange = cylinder(flangeR, flangeThickness, {
     at: [0, 0, beltWidth - flangeThickness],
   });
 
-  // --- Hub ----------------------------------------------------------------
-  // Solid stub below the body for the clamping grub screw.
+  // Hub: solid stub below the body for the grub screw.
   const hub = cylinder(hubDia / 2, hubLength, { at: [0, 0, -hubLength] });
 
-  // Weld body, flanges and hub into one blank.
   const blank = unwrap(fuseAll([toothed, bottomFlange, topFlange, hub]));
 
-  // --- Bore + grub-screw hole --------------------------------------------
+  // Through bore plus a radial grub-screw hole tipped onto the X axis.
   const totalH = hubLength + beltWidth;
   const boreCut = cylinder(bore / 2, totalH + 2, { at: [0, 0, -hubLength - 1] });
-  // Radial M3-ish grub screw through the hub wall into the bore, halfway up
-  // the hub. Built along Z then tipped 90° onto the X axis.
   const grubScrew = rotate(cylinder(1.5, hubDia, { at: [0, 0, 0] }), 90, {
     axis: [1, 0, 0],
     at: [0, 0, -hubLength / 2],
@@ -481,12 +352,11 @@ function gt2Pulley(
 export default gt2Pulley();`,
   },
   {
-    id: 'nopscad-fluted-knob',
+    id: 'fluted-knob',
     label: 'Fluted Control Knob',
     description:
       'A tapered, fluted potentiometer knob — scalloped grip over a cone frustum with a blind shaft socket, fully parametric.',
-    code: `// Inspired by NopSCADlib's fluted control knob (GPLv3) — independent brepjs reimplementation.
-import { cylinder, cone, cutAll, cut, unwrap } from 'brepjs/quick';
+    code: `import { cylinder, cone, cutAll, cut, unwrap } from 'brepjs/quick';
 
 // A fluted potentiometer knob. The grip is a tapered drum with a ring of
 // vertical flutes CARVED into its rim — concave scallops your fingers grip,
@@ -507,11 +377,8 @@ function flutedKnob(
   // Tapered drum: a cone frustum gives the classic wider-at-the-base profile.
   const core = cone(botR, topR, height, { at: [0, 0, 0] });
 
-  // Flute cutters orbit ON the rim so each one carves a concave vertical
-  // scallop into the surface. The cutter radius sets the scallop width; placing
-  // each cutter centre at (rim - fluteDepth + cutterR) makes it bite exactly
-  // fluteDepth into the wall. Cutters run the full height (over-tall on both
-  // ends) so the flutes read top to bottom.
+  // Flute cutters orbit on the rim, each carving a concave vertical scallop.
+  // Placing the centre at (rim − fluteDepth + cutterR) makes it bite fluteDepth deep.
   const cutterR = 2.2;
   const orbit = botR - fluteDepth + cutterR;
   const flutes = [];
@@ -534,42 +401,27 @@ function flutedKnob(
 export default flutedKnob();`,
   },
   {
-    id: 'nopscad-pie-wedge',
+    id: 'pie-wedge',
     label: 'Pie Wedge (circular sector)',
     description:
       'An extruded circular sector with adjustable sweep angle and a central shaft bore.',
-    code: `// Inspired by NopSCADlib's sector / pie wedge (GPLv3) — independent brepjs reimplementation.
-//
-// NopSCADlib's \`sector(r, a, b)\` produces a flat circular sector: the slice of a
-// disc swept between two angles. Here we build the recognizable 3D form — a pie
-// wedge — by extruding that sector to a finite thickness, and we add the usual
-// mechanical embellishment you'd want on a real part: an optional central hub
-// bore (for a shaft).
-//
-// Construction strategy (kept fully brep-robust):
-//   * Start from a solid disc (cylinder) of radius \`radius\` and height \`thickness\`.
-//   * Carve the angular slice by removing half-space blocks that lie on the wrong
-//     side of each cut plane through the central axis. Two half-space cuts isolate
-//     a wedge of up to 180°; for a reflex wedge (> 180°) we instead build the
-//     SMALL complementary wedge with the same helper and subtract it from the
-//     full disc, so a single code path covers any sweep angle in (0, 360).
+    code: `//
+// A pie wedge: an extruded circular sector with an adjustable sweep angle and
+// an optional central shaft bore. The slice is carved from a solid disc by
+// half-space cuts, so a single path handles any angle in (0, 360).
 
 import { box, cut, cutAll, cylinder, rotate, unwrap } from 'brepjs/quick';
 
-// Remove everything on one side of a plane that passes through the Z axis at the
-// given angle. The removal block is a large box placed entirely on the cut-away
-// side (its inner face on y = 0, extending into +Y), then rotated into place.
+// Remove everything on one side of a plane through the Z axis at the given angle.
 function halfSpaceCutter(angleDeg: number, span: number) {
   const big = span * 4;
   const block = box(big, big, big, { at: [-big / 2, 0, -big / 2] });
   return rotate(block, angleDeg, { axis: [0, 0, 1], at: [0, 0, 0] });
 }
 
-// Build a convex wedge (sweep <= 180°) of a disc, from 0° up to \`sweep\`.
+// A wedge of up to 180°, kept between ray 0° and ray \`sweep\`.
 function convexWedge(radius: number, thickness: number, sweep: number) {
   const disc = cylinder(radius, thickness, { at: [0, 0, 0] });
-  // Keep the region between ray 0° and ray \`sweep\`. Remove the half-space below
-  // ray 0° (the -Y side) and the half-space beyond ray \`sweep\`.
   const belowStart = halfSpaceCutter(180, radius + thickness);
   const aboveEnd = halfSpaceCutter(sweep, radius + thickness);
   return unwrap(cutAll(disc, [belowStart, aboveEnd]));
@@ -587,11 +439,9 @@ function pieWedge(
   if (sweep <= 180) {
     wedge = convexWedge(radius, thickness, sweep);
   } else {
-    // Reflex slice: carve the small complementary wedge out of the full disc.
+    // Reflex slice: cut the small complementary wedge out of the full disc.
     const disc = cylinder(radius, thickness, { at: [0, 0, 0] });
     const complement = convexWedge(radius + 2, thickness + 2, 360 - sweep);
-    // The complement spans 0°..(360-sweep); rotate it to occupy the gap
-    // sweep..360 so the kept slice remains.
     const placed = rotate(complement, sweep, { axis: [0, 0, 1], at: [0, 0, 0] });
     wedge = unwrap(cut(disc, placed));
   }
@@ -608,52 +458,36 @@ function pieWedge(
 export default pieWedge();`,
   },
   {
-    id: 'nopscad-rubber-foot',
+    id: 'rubber-foot',
     label: 'Rubber foot (tapered, hollow, screw-mount)',
     description:
       'A parametric tapered equipment foot with a rounded rim, washer recess, and through screw-clearance hole.',
-    code: `// Inspired by NopSCADlib's Rubber foot (GPLv3) — independent brepjs reimplementation.
+    code: `import { cone, cylinder, cut, fillet, unwrap, edgeFinder } from 'brepjs/quick';
 
-import { cone, cylinder, cut, fillet, unwrap, edgeFinder } from 'brepjs/quick';
-
-// Parametric printed rubber foot for equipment cases.
-//
-// The recognizable form is a short tapered post (a slanted cone frustum) with a
-// gently rounded top rim, a solid base of thickness \`baseThickness\`, a circular
-// recess in the underside sized to a washer, and a screw clearance hole drilled
-// clean through. Defaults follow NopSCADlib's M4 \`foot\`: 25 mm outside diameter,
-// 12 mm tall, 3 mm base under the screw, 10° taper, 2 mm rounded rim.
+// Printed rubber foot: a tapered post with rounded rims, a washer recess in the
+// underside, and a screw clearance hole. Defaults suit an M4 foot.
 function rubberFoot(
-  diameter = 25, // outside diameter at the base (mm)
-  height = 12, // total height of the foot (mm)
-  baseThickness = 3, // solid material under the screw head (mm)
-  slantDeg = 10, // sidewall taper angle from vertical (deg)
-  rimRadius = 2, // rounded-edge radius on the rims (mm)
-  washerRadius = 4.5, // radius of the washer recess in the underside (M4 washer)
-  clearanceRadius = 2.2, // screw shank clearance hole radius (M4 cap screw)
+  diameter = 25,        // base diameter (mm)
+  height = 12,          // total height (mm)
+  baseThickness = 3,    // solid material under the screw head (mm)
+  slantDeg = 10,        // sidewall taper angle (deg)
+  rimRadius = 2,        // rounded-edge radius (mm)
+  washerRadius = 4.5,   // washer recess radius (M4)
+  clearanceRadius = 2.2, // screw clearance radius (M4)
 ) {
-  // Bottom and top radii of the frustum. The wall leans inward by
-  // height * tan(slant), so a 10° slant over 12 mm pulls the top in ~2.1 mm.
   const rBottom = diameter / 2;
-  const rTop = rBottom - height * Math.tan((slantDeg * Math.PI) / 180);
+  const rTop = rBottom - height * Math.tan((slantDeg * Math.PI) / 180); // taper in
 
-  // Tapered body, base sitting on the z = 0 plane and growing up the +Z axis.
+  // Tapered body, then soften every rim so it reads as molded, not machined.
   const body = cone(rBottom, rTop, height);
-
-  // Soften every rim with a small fillet — this is what makes the molded
-  // rubber read as rounded rather than machined. rimRadius (2 mm) is far below
-  // the shortest edge so the fillet can never consume an edge and fail.
   const rounded = unwrap(fillet(body, edgeFinder().findAll(body), rimRadius));
 
-  // Hollow out the underside: a washer-sized recess bored from the bottom up to
-  // z = baseThickness, leaving \`baseThickness\` of solid above it. The recess
-  // cylinder starts 1 mm below z = 0 so the cut face stays flush and clean.
+  // Washer recess bored from the underside, leaving baseThickness of solid.
   const recessHeight = height - baseThickness + 1;
   const recess = cylinder(washerRadius, recessHeight, { at: [0, 0, -1] });
   const hollow = unwrap(cut(rounded, recess));
 
-  // Drill the screw clearance hole straight through the remaining base. The
-  // drill overshoots both faces by 1 mm so it punches fully through.
+  // Screw clearance hole through the base.
   const drill = cylinder(clearanceRadius, height + 2, { at: [0, 0, -1] });
   return unwrap(cut(hollow, drill));
 }
@@ -661,42 +495,30 @@ function rubberFoot(
 export default rubberFoot();`,
   },
   {
-    id: 'nopscad-rounded-knob',
+    id: 'rounded-knob',
     label: 'Rounded-top knob / post',
     description:
       'Cylindrical knob with a rounded-over top rim and an optional concentric through-bore.',
-    code: `// Inspired by NopSCADlib's rounded_cylinder (GPLv3) — independent brepjs reimplementation.
-import { cylinder, cut, fillet, edgeFinder, unwrap } from 'brepjs/quick';
+    code: `import { cylinder, cut, fillet, edgeFinder, unwrap } from 'brepjs/quick';
 
-// Rounded-top knob / post: a plain cylindrical body whose TOP outer rim is
-// rounded over by r2, with an optional concentric through-bore (ir) that turns
-// the post into a tube. The bottom stays flat so the part sits on a surface —
-// matching the turned profile NopSCADlib sweeps with rotate_extrude.
-//
-//   r   — body radius (outer)
-//   h   — overall height
-//   r2  — top edge round-over radius (must be <= r and < h)
-//   ir  — internal bore radius (0 = solid knob, >0 = tube)
+// Rounded-top knob / post: a cylinder whose top rim is rounded over by r2, with
+// an optional concentric bore (ir) that turns it into a tube. The base stays flat.
+//   r   — body radius        r2 — top round-over radius (<= r, < h)
+//   h   — overall height     ir — bore radius (0 = solid)
 function roundedKnob(r: number, h: number, r2: number, ir: number) {
-  // Body centred on the origin, base sitting on the z = 0 plane.
   const body = cylinder(r, h, { at: [0, 0, 0] });
 
-  // Optional concentric bore. The cutter overhangs both ends (h + 2, started
-  // 1 mm below z = 0) so it punches cleanly through top and bottom.
+  // Optional concentric bore, over-tall to punch through both faces.
   const blank = ir > 0 ? unwrap(cut(body, cylinder(ir, h + 2, { at: [0, 0, -1] }))) : body;
 
-  // Round only the TOP outer rim. Every point on that circle sits exactly r
-  // away from the top-centre point [0, 0, h], so atDistance(r, …) isolates it:
-  // the bottom outer rim is sqrt(r²+h²) away and the bore rim (if any) only ir
-  // away — leaving them crisp, like the rotate_extrude profile (flat base,
-  // rounded top).
+  // Only the top outer rim sits exactly r from the top centre, so atDistance
+  // isolates it — leaving the base and bore rims crisp.
   const topRim = edgeFinder().atDistance(r, [0, 0, h]).findAll(blank);
 
   return unwrap(fillet(blank, topRim, r2));
 }
 
-// Defaults: a 12 mm-tall, 16 mm-diameter knob with a 3 mm rounded top and a
-// 4 mm-diameter mounting bore through the centre.
+// Default: 12 mm tall, 16 mm diameter, 3 mm rounded top, bored through.
 export default roundedKnob(8, 12, 3, 2);
 `,
   },
