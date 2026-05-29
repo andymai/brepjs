@@ -5,6 +5,8 @@
  * the worker's sucrase strip can't handle. The `code` field becomes the editor
  * buffer verbatim when the user picks the example.
  */
+import { NOPSCAD_EXAMPLES } from './nopscadExamples';
+
 export interface Example {
   id: string;
   label: string;
@@ -393,7 +395,8 @@ export const EXAMPLES: readonly Example[] = [
   {
     id: 'vase',
     label: 'Vase (lofted)',
-    description: 'Vase silhouette built by lofting between four circular cross-sections at different heights.',
+    description:
+      'Vase silhouette built by lofting between four circular cross-sections at different heights.',
     code: vase,
   },
   {
@@ -405,31 +408,37 @@ export const EXAMPLES: readonly Example[] = [
   {
     id: 'mortise-tenon',
     label: 'Mortise & tenon',
-    description: 'Through, four-shouldered T-joint between a rail and a stile. Exploded so the tenon hangs in mid-air.',
+    description:
+      'Through, four-shouldered T-joint between a rail and a stile. Exploded so the tenon hangs in mid-air.',
     code: mortiseAndTenon,
   },
   {
     id: 'hill-tetrahedron',
     label: 'Hill tetrahedron',
-    description: 'Chiral pair mated face-to-face — the space-filling right tet with 2 isoceles + 2 scalene right-triangle faces.',
+    description:
+      'Chiral pair mated face-to-face — the space-filling right tet with 2 isoceles + 2 scalene right-triangle faces.',
     code: hillTetrahedron,
   },
   {
     id: 'hill-tetrahedron-cube',
     label: 'Hill tetrahedra: 6 tile a cube',
-    description: 'Six Hill tets (3 R + 3 L) tile a cube — one per permutation of the edge vectors. Zero void.',
+    description:
+      'Six Hill tets (3 R + 3 L) tile a cube — one per permutation of the edge vectors. Zero void.',
     code: hillTetrahedronCube,
   },
   {
     id: 'hill-tetrahedron-reptile',
     label: 'Hill tetrahedra: 8-reptile',
-    description: 'Eight unit Hill tets tile a 2× parent: 4 corner pieces + 4 octahedral pieces. Slightly exploded.',
+    description:
+      'Eight unit Hill tets tile a 2× parent: 4 corner pieces + 4 octahedral pieces. Slightly exploded.',
     code: hillTetrahedronReptile,
   },
   {
     id: 'hill-tetrahedron-growth',
     label: 'Hill tetrahedra: random face-to-face pile',
-    description: 'Grow a cluster by mating random Hill tets onto free faces. Logs V*/V hull efficiency to the console.',
+    description:
+      'Grow a cluster by mating random Hill tets onto free faces. Logs V*/V hull efficiency to the console.',
     code: hillTetrahedronGrowth,
   },
+  ...NOPSCAD_EXAMPLES,
 ];
