@@ -58,7 +58,7 @@ function axialFan({
   hub = 29, // central hub diameter (mm)
   hubHeight = 2, // hub protrusion above the top face (mm)
   screwDia = 4.3, // mounting-screw clearance hole diameter (mm)
-  blades = 7, // number of impeller blades
+  blades = 9, // number of impeller blades
 } = {}) {
   const cornerR = (width - bore) / 2; // 4.25 mm for the 57x15 default
 
@@ -87,31 +87,61 @@ function axialFan({
   // Hub: solid cylinder protruding above the top face.
   const hubBody = cylinder(hub / 2, depth + hubHeight, { at: [0, 0, 0] });
 
-  // Each blade is the convex hull of a low radial edge at the hub and a
-  // higher, tangentially-swept edge at the rim — the offset gives the pitch.
-  const rInner = hub / 2 - 0.5;  // bite into the hub for a clean fuse
-  const rOuter = width / 2 - 2;  // bite into the frame so the rotor fuses to it
-  const halfChord = 2.0;         // half blade chord at each edge
-  const thick = 1.6;             // blade thickness
-  const zLo = depth - 9;         // root height
-  const zHi = depth - 2;         // tip height (pitched up)
-  const rake = 4;                // tangential tip offset → swept curve
+  // Each blade is an organically curved, pitched vane. We march a rectangular
+  // cross-section along a curling path from hub to rim — the path sweeps
+  // tangentially (so the blade scoops like a real impeller) and the section
+  // twists from a steep pitch at the root to a shallow one at the tip. Hulling
+  // each consecutive pair of sections and fusing the chain yields a smooth,
+  // concave-curved blade a single straight hull can't express.
+  const rInner = hub / 2 - 1; // root bites into the hub for a clean fuse
+  const rOuter = width / 2 - 5; // tip stays ~1mm inside the air bore (width/2 - 4)
+  const chord = 9; // blade chord (tangential width)
+  const thick = 1.1; // blade material thickness
+  const zBase = depth - 4; // sits just below the top face
+  const sweep = 1.05; // total tangential curl from root to tip (radians)
+  const pitch0 = 0.95; // steep pitch at the root
+  const pitch1 = 0.35; // shallower pitch at the tip
+  const steps = 10; // sections along the blade — more = smoother
 
-  const bladePts = [
-    // inner (hub) edge — lower
-    [rInner, -halfChord, zLo],
-    [rInner, halfChord, zLo],
-    [rInner, -halfChord, zLo + thick],
-    [rInner, halfChord, zLo + thick],
-    // outer (rim) edge — higher and swept tangentially
-    [rOuter, rake - halfChord, zHi],
-    [rOuter, rake + halfChord, zHi],
-    [rOuter, rake - halfChord, zHi + thick],
-    [rOuter, rake + halfChord, zHi + thick],
-  ];
+  // One cross-section (4 corners) at path parameter t in [0, 1].
+  const section = (t) => {
+    const rr = rInner + (rOuter - rInner) * t;
+    const ang = sweep * t * t; // accelerating curl reads as an organic scoop
+    const pitch = pitch0 + (pitch1 - pitch0) * t;
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const cx = rr * cos;
+    const cy = rr * sin;
+    const tx = -sin; // tangential direction at this radius
+    const ty = cos;
+    const ch = chord / 2;
+    const th = thick / 2;
+    const cHx = Math.cos(pitch) * tx * ch;
+    const cHy = Math.cos(pitch) * ty * ch;
+    const cHz = Math.sin(pitch) * ch;
+    const nHx = -Math.sin(pitch) * tx * th;
+    const nHy = -Math.sin(pitch) * ty * th;
+    const nHz = Math.cos(pitch) * th;
+    return [
+      [cx - cHx - nHx, cy - cHy - nHy, zBase - cHz - nHz],
+      [cx + cHx - nHx, cy + cHy - nHy, zBase + cHz - nHz],
+      [cx + cHx + nHx, cy + cHy + nHy, zBase + cHz + nHz],
+      [cx - cHx + nHx, cy - cHy + nHy, zBase - cHz + nHz],
+    ];
+  };
 
-  // A fresh hull per blade — rotate consumes the handle it's given.
-  const makeBlade = () => unwrap(convexHull(bladePts));
+  // One blade = a fused chain of per-segment hulls; place a ring of them
+  // (fresh blade per slot — rotate consumes the handle it's given).
+  const makeBlade = () => {
+    const segs = [];
+    let prev = section(0);
+    for (let stp = 1; stp <= steps; stp++) {
+      const cur = section(stp / steps);
+      segs.push(unwrap(convexHull([...prev, ...cur])));
+      prev = cur;
+    }
+    return unwrap(fuseAll(segs));
+  };
   const bladeRing = [];
   for (let i = 0; i < blades; i++) {
     bladeRing.push(rotate(makeBlade(), (360 * i) / blades, { axis: [0, 0, 1] }));
