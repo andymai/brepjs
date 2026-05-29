@@ -60,10 +60,6 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // modifierFns.test.ts
     // -----------------------------------------------------------------------
-    'modifierFns.filletAllEdges': {
-      kind: 'skip',
-      reason: 'brepkit over-fillets when all 12 edges are filleted (vol ~530 vs >800 expected)',
-    },
     'modifierFns.variableFilletRadius': {
       kind: 'not-implemented',
       reason:
