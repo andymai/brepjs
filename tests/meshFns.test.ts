@@ -40,6 +40,19 @@ describe('meshFns', () => {
       expect(fine.vertices.length).toBeGreaterThanOrEqual(coarse.vertices.length);
     });
 
+    it.skipIf(shouldSkipSuite('meshFns.angularDensity'))(
+      'a tighter angularTolerance produces a denser mesh on curved geometry',
+      () => {
+        clearMeshCache();
+        // Separate shape instances: some kernels cache triangulation on the
+        // shape in place, so a second mesh() on the same object would reuse it.
+        // Loose linear deflection so the angular cap, not chord error, drives density.
+        const coarse = mesh(sphere(5), { tolerance: 2.0, angularTolerance: 1.0, cache: false });
+        const fine = mesh(sphere(5), { tolerance: 2.0, angularTolerance: 0.1, cache: false });
+        expect(fine.triangles.length).toBeGreaterThan(coarse.triangles.length);
+      }
+    );
+
     it('returns cached result on second call with same parameters', () => {
       clearMeshCache();
       const b = box(10, 10, 10);

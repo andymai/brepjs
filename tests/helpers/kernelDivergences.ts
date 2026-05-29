@@ -363,6 +363,12 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Mesh deflection control uses OCCT-specific API',
     },
+    'meshFns.angularDensity': {
+      kind: 'not-implemented',
+      reason:
+        'brepkit angular tessellation tolerance lands in a brepkit-wasm release after the current pin (2.93.0). Un-skip once the tessellate* bindings accept angularTolerance.',
+      tracking: 'https://github.com/andymai/brepkit/pull/717',
+    },
 
     // -----------------------------------------------------------------------
     // Whole-suite OCCT-only (describe.skipIf)

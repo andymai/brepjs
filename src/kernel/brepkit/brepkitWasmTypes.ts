@@ -532,14 +532,14 @@ export interface BrepkitKernel {
 
   // ── Tessellation ──────────────────────────────────────────────
 
-  tessellateFace(face: number, deflection: number): BrepkitMesh;
+  tessellateFace(face: number, deflection: number, angularTolerance?: number): BrepkitMesh;
 
   /** @unwired */
-  tessellateSolid(solid: number, deflection: number): BrepkitMesh;
+  tessellateSolid(solid: number, deflection: number, angularTolerance?: number): BrepkitMesh;
 
-  tessellateSolidGrouped(solid: number, deflection: number): string;
+  tessellateSolidGrouped(solid: number, deflection: number, angularTolerance?: number): string;
 
-  tessellateSolidUV(solid: number, deflection: number): string;
+  tessellateSolidUV(solid: number, deflection: number, angularTolerance?: number): string;
 
   /** @unwired */
   tessellateEdge(edge: number, numPoints: number): Float64Array;

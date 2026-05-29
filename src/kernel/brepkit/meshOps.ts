@@ -19,21 +19,16 @@ export function mesh(
   shape: KernelShape,
   options: MeshOptions
 ): KernelMeshResult {
-  if (options.angularTolerance > 0) {
-    warnOnce(
-      'mesh-angular',
-      'mesh angularTolerance is not supported; only linear deflection is used.'
-    );
-  }
   const h = unwrap(shape);
   const bkHandle = shape as BrepkitHandle;
   const deflection = options.tolerance || DEFAULT_DEFLECTION;
+  const angularTol = options.angularTolerance > 0 ? options.angularTolerance : undefined;
 
   let result: KernelMeshResult;
   if (bkHandle.type === 'solid') {
-    result = meshSolid(bk, h, deflection, !!options.includeUVs);
+    result = meshSolid(bk, h, deflection, !!options.includeUVs, angularTol);
   } else if (bkHandle.type === 'face') {
-    result = meshSingleFace(bk, h, deflection, 0);
+    result = meshSingleFace(bk, h, deflection, 0, angularTol);
   } else {
     throw new Error(`brepkit: cannot mesh shape of type '${bkHandle.type}'`);
   }
@@ -107,16 +102,17 @@ function meshSolid(
   bk: BrepkitKernel,
   solidId: number,
   deflection: number,
-  includeUVs: boolean
+  includeUVs: boolean,
+  angularTolerance?: number
 ): KernelMeshResult {
   try {
-    return meshSolidGrouped(bk, solidId, deflection, includeUVs);
+    return meshSolidGrouped(bk, solidId, deflection, includeUVs, angularTolerance);
   } catch (e: unknown) {
     console.warn(
       `brepkit: tessellateSolidGrouped failed (solidId=${solidId}), falling back to per-face:`,
       e
     );
-    return meshSolidPerFace(bk, solidId, deflection);
+    return meshSolidPerFace(bk, solidId, deflection, angularTolerance);
   }
 }
 
@@ -131,9 +127,10 @@ function meshSolidGrouped(
   bk: BrepkitKernel,
   solidId: number,
   deflection: number,
-  includeUVs: boolean
+  includeUVs: boolean,
+  angularTolerance?: number
 ): KernelMeshResult {
-  const json = bk.tessellateSolidGrouped(solidId, deflection);
+  const json = bk.tessellateSolidGrouped(solidId, deflection, angularTolerance);
   const data: {
     positions: number[];
     normals: number[];
@@ -165,7 +162,7 @@ function meshSolidGrouped(
   if (includeUVs) {
     const expectedUvLen = (data.positions.length / 3) * 2;
     try {
-      const uvJson = bk.tessellateSolidUV(solidId, deflection);
+      const uvJson = bk.tessellateSolidUV(solidId, deflection, angularTolerance);
       const uvData: { uvs: number[] } = JSON.parse(uvJson);
       if (uvData.uvs.length === expectedUvLen) {
         uvs = new Float32Array(uvData.uvs);
@@ -191,7 +188,8 @@ function meshSolidGrouped(
 function meshSolidPerFace(
   bk: BrepkitKernel,
   solidId: number,
-  deflection: number
+  deflection: number,
+  angularTolerance?: number
 ): KernelMeshResult {
   const faceIds = toArray(bk.getSolidFaces(solidId));
 
@@ -205,7 +203,7 @@ function meshSolidPerFace(
 
   for (const faceId of faceIds) {
     try {
-      const faceMesh = bk.tessellateFace(faceId, deflection);
+      const faceMesh = bk.tessellateFace(faceId, deflection, angularTolerance);
       const positions = faceMesh.positions;
       const normals = faceMesh.normals;
       const indices = faceMesh.indices;
@@ -252,9 +250,10 @@ function meshSingleFace(
   bk: BrepkitKernel,
   faceId: number,
   deflection: number,
-  faceHash: number
+  faceHash: number,
+  angularTolerance?: number
 ): KernelMeshResult {
-  const faceMesh = bk.tessellateFace(faceId, deflection);
+  const faceMesh = bk.tessellateFace(faceId, deflection, angularTolerance);
   const positions = faceMesh.positions;
   const normals = faceMesh.normals;
   const indices = faceMesh.indices;
