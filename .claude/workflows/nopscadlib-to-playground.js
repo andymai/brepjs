@@ -71,15 +71,31 @@ BREPJS PLAYGROUND AUTHORING RULES:
               apps/playground/src/types/brepjs-ambient.d.ts before relying on it)
   measure:    measureVolume, measureArea, measureBoundingBox
   utils:      unwrap, clone, convexHull
-- OpenSCAD 'rotate_extrude' maps to revolve (profile sketch revolved about an axis);
-  'linear_extrude' maps to extrude; 'hull' of round profiles maps well to convexHull or loft.
-- For repeated features you can either use the pattern helpers above OR a plain JS loop that
-  pushes shapes into an array and fuseAll/cutAll them (see the pegboard example). If a pattern
-  helper's signature is uncertain, the explicit loop is the safe, always-valid fallback.
-- box's 'at' option places the box CENTER at that point. cylinder(radius, height, { at }).
+- FINDER METHODS ARE LIMITED. The ONLY methods that exist are:
+    edgeFinder(): inDirection(dir, angle?), parallelTo(dir), ofCurveType(type),
+                  ofLength(len, tol?), atDistance(dist, point?), then .find(shape) / .findAll(shape)
+    faceFinder(): inDirection(dir, angle?), parallelTo(dir), ofSurfaceType(type),
+                  ofArea(area, tol?), atDistance(dist, point?), then .find(shape) / .findAll(shape)
+  THERE IS NO inPlane, ofSurface, inBox, atPosition, onPlane, or containsPoint. Do not invent
+  finder methods — a wrong method name throws "X is not a function" and your defensive try/catch
+  won't catch it (it throws while BUILDING the finder, before the op runs). To fillet the top
+  rim of a cylinder, the robust route is NOT a finder — intersect with a large sphere, or
+  fillet ALL edges (edgeFinder().findAll(shape)) when that's acceptable.
+- OpenSCAD 'rotate_extrude' maps to revolve — BUT revolve() of a profile whose points TOUCH the
+  axis (x=0) is degenerate and only sweeps a partial arc. Build rounded/turned posts from
+  primitives instead (cylinder ∩ sphere for a domed top, cylinder + fillet, cone for a taper).
+  'linear_extrude' maps to extrude; 'hull' of round profiles maps to convexHull or loft.
+- For repeated features use the pattern helpers above OR a plain JS loop that pushes shapes into
+  an array and fuseAll/cutAll them. If a pattern helper's signature is uncertain, the explicit
+  loop is the safe, always-valid fallback.
+- 'at' IS THE CENTRE of the primitive, NOT an OpenSCAD-style corner. box(w, d, h, { at }) centres
+  the box at that point; cylinder(r, h, { at }) puts its base centre there. To centre a plate on
+  the origin use { at: [0, 0, h/2] } — NEVER { at: [-w/2, -d/2, 0] } (that shoves it into a
+  corner so other origin-centred parts float off to the side; this was the #1 bug last run).
 - rotate(shape, degrees, { axis, at }). Angles are DEGREES.
-- Boolean/modifier ops return Result<T> — always unwrap(...) them. Use 'using' for any
-  intermediate shape you measure-then-discard to avoid WASM leaks (see hill-tetrahedron-growth).
+- Boolean/modifier ops return Result<T> — always unwrap(...) them. Do NOT wrap a finishing op in
+  isOk()/.ok with a fallback to the pre-op shape — that silently ships an unfinished part and the
+  regression suite bans it. Use 'using' for any intermediate shape you measure-then-discard.
 
 HOUSE STYLE (match examples in apps/playground/src/lib/examples.ts):
 - Wrap the model in a parametric function with named params + sensible mm defaults, then
@@ -95,7 +111,10 @@ A COMPLETE REFERENCE EXAMPLE (this is the exact shape/quality of output expected
 
 import { box, cutAll, cylinder, unwrap } from 'brepjs/quick';
 
-// Parametric pegboard: any width × height, fixed 25 mm grid, 6 mm pegs.
+// Parametric pegboard: any cols × rows, fixed 25 mm grid, 6 mm pegs.
+// NOTE the placement idiom: the plate is centred on the origin with
+// { at: [0, 0, thickness/2] }, and every peg is positioned about the origin
+// too — so all parts share one coordinate frame and nothing floats off-centre.
 function pegboard(cols: number, rows: number) {
   const pitch = 25;
   const padding = 12.5;
@@ -103,10 +122,12 @@ function pegboard(cols: number, rows: number) {
   const pegRadius = 3;
   const W = cols * pitch + padding * 2;
   const H = rows * pitch + padding * 2;
-  const plate = box(W, H, thickness, { at: [-W / 2, -H / 2, 0] });
+  // Plate centred on the origin (at = CENTRE of the box).
+  const plate = box(W, H, thickness, { at: [0, 0, thickness / 2] });
   const pegs = [];
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
+      // Peg centres laid out symmetrically about the origin.
       const x = -W / 2 + padding + i * pitch + pitch / 2;
       const y = -H / 2 + padding + j * pitch + pitch / 2;
       pegs.push(cylinder(pegRadius, thickness + 2, { at: [x, y, -1] }));
@@ -185,6 +206,21 @@ const TRANSLATE_SCHEMA = {
     },
     opsUsed: { type: 'array', items: { type: 'string' } },
     notes: { type: 'string', description: 'fidelity caveats / simplifications made' },
+  },
+};
+
+const SYNTH_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['writtenIds', 'regressionPassed'],
+  properties: {
+    writtenIds: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'exact example ids actually written into the module (only those that survived assembly + regression)',
+    },
+    regressionPassed: { type: 'boolean' },
+    summary: { type: 'string', description: 'counts + any caveats' },
   },
 };
 
@@ -359,9 +395,16 @@ TASKS:
    (id, source .scad, ops exercised, fidelity caveats), each failed model with its reason,
    and a note that all examples are clean-room reimplementations of GPLv3 NopSCADlib models.
 
-Return a short plain-text summary: count written, regression pass/fail, and any caveats.`,
-  { label: 'synthesize', phase: 'Synthesize' }
+Return the EXACT list of example ids you actually wrote into the module (some
+validated candidates may be dropped here if assembly or the regression run
+rejects them — report only what survived), the regression pass/fail, and caveats.`,
+  { label: 'synthesize', phase: 'Synthesize', schema: SYNTH_SCHEMA }
 );
+
+// What synthesis actually committed to the module — the source of truth for the
+// audit, NOT the in-memory `validated` list (they can diverge when synthesis
+// drops a candidate during assembly).
+const writtenIds = (synthesisResult?.writtenIds ?? validated.map((v) => v.id)).filter(Boolean);
 
 // ─────────────────────────────────────────────────────────────────────────
 // Visual audit — a shape can pass eval+mesh yet render wrong (off-centre,
@@ -373,8 +416,11 @@ phase('Audit')
 let auditResult = null
 let repairResult = null
 
-if (!DRY_RUN && validated.length > 0) {
-  const auditIds = validated.map((v) => v.id)
+if (!DRY_RUN && writtenIds.length > 0) {
+  // Audit ONLY what synthesis actually wrote to the module — looking up each
+  // id's description from the validated set where available.
+  const descById = new Map(validated.map((v) => [v.id, v.description]))
+  const auditIds = writtenIds
   // One agent owns the dev-server lifecycle so the port stays live across all
   // shots, then judges each PNG it captured.
   auditResult = await agent(
@@ -399,7 +445,7 @@ STEPS:
    defect; the workflow will route those to repair.
 
 Examples to audit (id — description):
-${validated.map((v) => `  ${v.id} — ${v.description}`).join('\n')}
+${auditIds.map((id) => `  ${id} — ${descById.get(id) ?? '(see the entry in the module)'}`).join('\n')}
 
 Kill the dev server when done (pkill -f 'vite' for the playground, or the bg job).`,
     { label: 'audit', phase: 'Audit', schema: AUDIT_SCHEMA }
@@ -414,13 +460,12 @@ Kill the dev server when done (pkill -f 'vite' for the playground, or the bg job
   if (flagged.length > 0) {
     repairResult = await parallel(
       flagged.map((v) => () => {
-        const ex = validated.find((e) => e.id === v.id)
         return agent(
           `Fix the playground example "${v.id}" so it RENDERS correctly. It passes the
 eval+mesh test but the visual audit flagged it:
 
   ISSUE: ${v.issues}
-  DESCRIPTION (what it should look like): ${ex?.description ?? ''}
+  DESCRIPTION (what it should look like): ${descById.get(v.id) ?? '(read the entry in the module)'}
 
 It lives in ${MODULE_PATH} as the entry with id '${v.id}'. Edit ONLY that entry's
 \`code\`. Common root causes seen in this codebase:
