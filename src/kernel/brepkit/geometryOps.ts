@@ -502,12 +502,18 @@ export function getNurbsCurveData(_bk: BrepkitKernel, _edge: KernelShape): Nurbs
   return null;
 }
 
-/** brepkit does not support NURBS introspection on faces. Always returns null. */
-export function getNurbsSurfaceData(
-  _bk: BrepkitKernel,
-  _face: KernelShape
-): NurbsSurfaceData | null {
-  return null;
+/**
+ * Read-only B-Spline/NURBS surface data for a face.
+ *
+ * Type-gated: analytic faces (plane, cylinder, cone, sphere, torus) return
+ * `null`; only intrinsically free-form faces yield a record. The kernel emits
+ * distinct knots paired with multiplicities, matching {@link NurbsSurfaceData}.
+ */
+export function getNurbsSurfaceData(bk: BrepkitKernel, face: KernelShape): NurbsSurfaceData | null {
+  const data = JSON.parse(
+    bk.getNurbsSurfaceDataParity(unwrap(face, 'face'))
+  ) as NurbsSurfaceData | null;
+  return data;
 }
 
 /** Co-located factory: returns the geometry-query slice of {@link KernelAdapter} bound to `bk`. */

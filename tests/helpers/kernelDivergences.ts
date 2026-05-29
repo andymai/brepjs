@@ -133,18 +133,6 @@ export const divergences: DivergenceMap = {
       reason:
         'brepkit getNurbsCurveData returns null for interpolated curves (regressed in 2.43.2)',
     },
-    'nurbsFns.planarFaceSurface': {
-      kind: 'not-implemented',
-      reason: 'brepkit does not expose BSpline surface data extraction (getNurbsSurfaceData)',
-    },
-    'nurbsFns.cylindricalFaceSurface': {
-      kind: 'not-implemented',
-      reason: 'brepkit does not expose BSpline surface data extraction (getNurbsSurfaceData)',
-    },
-    'nurbsFns.bsplineSurface': {
-      kind: 'not-implemented',
-      reason: 'brepkit does not expose BSpline surface data extraction from fillet faces',
-    },
 
     // -----------------------------------------------------------------------
     // sketcher3d.test.ts

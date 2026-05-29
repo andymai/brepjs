@@ -438,6 +438,8 @@ export interface BrepkitKernel {
 
   getAnalyticSurfaceParams(face: number): string;
 
+  getNurbsSurfaceDataParity(face: number): string;
+
   getEdgeCurveType(edge: number): string;
 
   getEdgeCurveParameters(edge: number): Float64Array;
