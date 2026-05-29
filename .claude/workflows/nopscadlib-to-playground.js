@@ -188,6 +188,35 @@ const TRANSLATE_SCHEMA = {
   },
 };
 
+const AUDIT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['verdicts'],
+  properties: {
+    verdicts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'looksRight', 'issues'],
+        properties: {
+          id: { type: 'string' },
+          looksRight: {
+            type: 'boolean',
+            description:
+              'true only if the render clearly resembles the real part with no obvious defect',
+          },
+          issues: {
+            type: 'string',
+            description:
+              'concrete visual problems: off-centre/floating parts, missing promised features, degenerate/partial geometry, blank viewport. Empty if looksRight.',
+          },
+        },
+      },
+    },
+  },
+};
+
 // ─────────────────────────────────────────────────────────────────────────
 phase('Survey');
 
