@@ -240,10 +240,11 @@ describe('INVARIANT: fuseAll equals chained pairwise fuse by volume', () => {
         if (!isOk(abc)) return;
         const lhs = volOf(unwrap(all));
         const rhs = volOf(unwrap(abc));
-        // 1% relative, with a 0.06 absolute floor — strictly subsumes the prior
+        // 1% relative, with a 0.051 absolute floor — strictly subsumes the prior
         // `toBeCloseTo(_, 1)` (0.05) so any case the old test accepted is still
-        // accepted, plus headroom for the 1-ULP shrinker cases on dx ≈ 4e-7.
-        const tol = Math.max(0.06, 1e-2 * Math.max(Math.abs(lhs), Math.abs(rhs)));
+        // accepted, plus 1e-3 (≈ 5e15 ULP) headroom for the 1-ULP shrinker
+        // cases on dx ≈ 4e-7.
+        const tol = Math.max(0.051, 1e-2 * Math.max(Math.abs(lhs), Math.abs(rhs)));
         expect(Math.abs(lhs - rhs)).toBeLessThanOrEqual(tol);
       }),
       { numRuns: NUM_RUNS }
@@ -278,10 +279,10 @@ describe('INVARIANT: cut-then-fuse-back recovers original volume', () => {
         if (!isOk(recombined)) return;
         const lhs = volOf(unwrap(recombined));
         const rhs = volOf(a);
-        // 1% relative, with a 0.06 absolute floor — strictly subsumes the prior
+        // 1% relative, with a 0.051 absolute floor — strictly subsumes the prior
         // `toBeCloseTo(_, 1)` (0.05). The 0.05 cap was real ULP headroom on the
         // dx ≈ 4e-7 near-concentric case the kernel resolves to within 0.05.
-        const tol = Math.max(0.06, 1e-2 * Math.max(Math.abs(lhs), Math.abs(rhs)));
+        const tol = Math.max(0.051, 1e-2 * Math.max(Math.abs(lhs), Math.abs(rhs)));
         expect(Math.abs(lhs - rhs)).toBeLessThanOrEqual(tol);
       }),
       { numRuns: NUM_RUNS }
