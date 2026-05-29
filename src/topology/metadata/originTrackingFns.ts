@@ -130,9 +130,25 @@ function findBestOriginMatch(
 // ---------------------------------------------------------------------------
 
 /**
- * Fallback origin propagation when no kernel op object is available.
- * Matches result faces to input faces by hash code first; if no hash matches
- * are found, falls back to geometric matching (normal + centroid comparison).
+ * Fallback origin propagation when no kernel op object is available
+ * (native `fuseAll` / `cutAll`, which expose no ShapeEvolution record).
+ *
+ * Matches result faces to input faces by hash code first. Faces that pass
+ * through the boolean unchanged keep their hash and recover their origin
+ * directly. Faces the boolean *regenerates* (split, merged, or re-created at
+ * the intersection) get a fresh hash that matches no input — these fall back
+ * to geometric matching (normal + centroid) against the input face
+ * signatures.
+ *
+ * The geometric pass runs for every unmatched face, not only when the hash
+ * pass found nothing. A partial hash match is the common case for additive
+ * features (pass-through side walls match by hash; the surfaces where the
+ * tool meets the body — feature tops, flush walls — are regenerated and need
+ * the geometric pass). Gating the fallback on "zero hash matches" left those
+ * regenerated faces with no origin, so they fell back to 0 (body) at mesh
+ * time — the multi-color export bug where a scoop/label/lip top printed in
+ * the body color. Matching against the full signature set (body origin 0
+ * included) keeps body faces body and feature faces feature.
  */
 export function propagateOriginsByHash(
   inputs: readonly AnyShape<Dimension>[],
@@ -152,20 +168,21 @@ export function propagateOriginsByHash(
   const resultMap = new Map<number, number>();
   const resultFaces = getFaces(result);
 
-  // Try hash-based matching first
+  // Hash pass: faces unchanged by the boolean keep their origin directly.
+  const unmatched: typeof resultFaces = [];
   for (const f of resultFaces) {
     const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
     const origin = lookup.get(hash);
     if (origin !== undefined) {
       resultMap.set(hash, origin);
+    } else {
+      unmatched.push(f);
     }
   }
 
-  // Geometric fallback: when hash matching finds nothing, match by normal + centroid
-  // This path only triggers with brepkit (arena-based face IDs) — not covered by OCCT tests
-  /* v8 ignore start */
-  if (resultMap.size === 0) {
-    // Collect input face signatures
+  // Geometric pass: recover origins for boolean-regenerated faces by matching
+  // surface normal + centroid against the input faces.
+  if (unmatched.length > 0) {
     const inputSigs: {
       origin: number;
       normal: [number, number, number];
@@ -194,7 +211,7 @@ export function propagateOriginsByHash(
     }
 
     if (inputSigs.length > 0) {
-      for (const f of resultFaces) {
+      for (const f of unmatched) {
         const hash = kernel.hashCode(f.wrapped, HASH_CODE_MAX);
         try {
           const outBounds = kernel.uvBounds(f.wrapped);
@@ -215,7 +232,6 @@ export function propagateOriginsByHash(
       }
     }
   }
-  /* v8 ignore stop */
 
   if (resultMap.size > 0) {
     const cache = getOrCreateCache(result);
