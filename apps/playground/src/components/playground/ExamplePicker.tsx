@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CATEGORIES, EXAMPLES, type Example } from '../../lib/examples';
 
 interface Props {
@@ -18,23 +18,51 @@ const FILTERS = [
 
 export default function ExamplePicker({ open, onClose, onSelect }: Props) {
   const [filter, setFilter] = useState('all');
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   // Reset to the full set each time the modal opens.
   useEffect(() => {
     if (open) setFilter('all');
   }, [open]);
 
+  // Focus management: move focus into the dialog on open, trap Tab within it
+  // (aria-modal is only honoured by assistive tech when focus starts inside),
+  // and restore focus to the previously-focused element on close.
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      // Wrap focus at the boundaries so Tab can't escape behind the overlay.
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
       }
     };
     document.addEventListener('keydown', handler);
     return () => {
       document.removeEventListener('keydown', handler);
+      previouslyFocused?.focus();
     };
   }, [open, onClose]);
 
@@ -81,6 +109,7 @@ export default function ExamplePicker({ open, onClose, onSelect }: Props) {
             ))}
           </div>
           <button
+            ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close"
             className="rounded p-1 text-gray-400 transition-colors hover:bg-surface-overlay hover:text-white"

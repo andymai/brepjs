@@ -36,7 +36,6 @@ const baseUrl = (positional.find((a) => a.startsWith('http')) ?? 'http://localho
 );
 // Thumbnails always go to the committed public/ dir; audit mode takes an optional outDir.
 const THUMB_DIR = resolve(scriptDir, '../public/example-thumbs');
-const THUMB_PX = 512; // 2x the ~256px display size for crisp retina cards
 const outDir = thumbsMode
   ? THUMB_DIR
   : resolve(positional.find((a) => !a.startsWith('http') && !looksLikeId(a)) ?? 'tmp/shots');
@@ -110,7 +109,9 @@ async function captureThumbnail(page: Page, id: string): Promise<void> {
   if (!box || box.width < 50)
     throw new Error(`no usable viewer canvas (box=${JSON.stringify(box)})`);
 
-  // Centred square within the (wider) viewer canvas.
+  // Capture a centred square at the viewer canvas's natural height (~800px at
+  // the 1280×800 viewport — well above each card's ~256px display size, so it
+  // stays crisp on retina). Resize here later if a fixed output size is needed.
   const side = Math.min(box.width, box.height);
   await page.screenshot({
     path: resolve(outDir, `${id}.webp`) as `${string}.webp`,
