@@ -54,7 +54,7 @@ function pegboard(cols: number, rows: number) {
   const W = cols * pitch + padding * 2;
   const H = rows * pitch + padding * 2;
 
-  const plate = box(W, H, thickness, { at: [-W / 2, -H / 2, 0] });
+  const plate = box(W, H, thickness, { at: [0, 0, thickness / 2] });
 
   const pegs = [];
   for (let i = 0; i < cols; i++) {

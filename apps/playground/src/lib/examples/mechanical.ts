@@ -153,12 +153,15 @@ function domedFoot(
   const domed = unwrap(intersect(tall, rounder));
   const body = unwrap(fuse(cylBody, domed));
 
-  // Raised central boss the screw head bears on.
-  const boss = cylinder(bossDia / 2, bossThick, { at: [0, 0, 0] });
+  // Raised central boss the screw head bears on — protrudes below the flat base.
+  const boss = cylinder(bossDia / 2, bossThick, { at: [0, 0, -bossThick] });
   const withBoss = unwrap(fuse(body, boss));
 
-  // Axial clearance hole, over-length to punch cleanly through.
-  const hole = cylinder(screwClear, height + bossThick + domeRad + 2, { at: [0, 0, -1] });
+  // Axial clearance hole, started below the protruding boss and over-length so
+  // it punches cleanly through the boss, body, and domed crown.
+  const hole = cylinder(screwClear, height + bossThick + domeRad + 2, {
+    at: [0, 0, -bossThick - 1],
+  });
   return unwrap(cut(withBoss, hole));
 }
 

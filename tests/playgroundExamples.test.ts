@@ -10,7 +10,6 @@
 import { describe, it, beforeAll, expect } from 'vitest';
 import { initOC } from './setup.js';
 import { EXAMPLES } from '../apps/playground/src/lib/examples/index.js';
-import { MECHANICAL_EXAMPLES } from '../apps/playground/src/lib/examples/mechanical.js';
 import { evalAndMeshExample } from './helpers/playgroundExampleEval.js';
 
 beforeAll(async () => {
@@ -39,7 +38,7 @@ describe('playground examples', () => {
   // Result-returning ops to be unwrap()'d so failures throw and get caught.
   // Matches patterns like `x.ok ? x.value : base` and `isOk(x) ? unwrap(x) : base`.
   const SILENT_FALLBACK = /(\.ok\s*\?[^:]*:|isOk\s*\([^)]*\)\s*\?[^:]*:)/;
-  for (const example of MECHANICAL_EXAMPLES) {
+  for (const example of EXAMPLES) {
     it(`has no silent finishing-op fallback: ${example.id}`, () => {
       expect(
         SILENT_FALLBACK.test(example.code),
