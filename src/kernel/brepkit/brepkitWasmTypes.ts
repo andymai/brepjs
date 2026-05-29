@@ -288,6 +288,14 @@ export interface BrepkitKernel {
   /** @unwired */
   offsetWireWithJoinType(face: number, distance: number, joinType: string): number;
 
+  /**
+   * Offset a planar wire directly with a corner join type, without first
+   * building a face. Optional: present only on wasm builds that ship the
+   * binding.
+   * @unwired
+   */
+  offsetWire2DWithJoin?(wire: number, distance: number, joinType: string): number;
+
   thicken(face: number, thickness: number): number;
 
   draft(

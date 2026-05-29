@@ -347,10 +347,6 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'Property-based boolean tests use OCCT-specific volume precision',
     },
-    'offsetWire2D.chamferJoin': {
-      kind: 'not-implemented',
-      reason: 'offsetWire2D chamfer join type not implemented in brepkit kernel',
-    },
     occtBoundary: {
       kind: 'not-implemented',
       reason: 'toKernelVec / fromKernelVec are OCCT-specific boundary layer functions',
