@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.28.0](https://github.com/andymai/brepjs/compare/brepjs-v18.27.0...brepjs-v18.28.0) (2026-05-29)
+
+
+### Features
+
+* **brepkit:** thread mesh angularTolerance to tessellation bindings ([#1080](https://github.com/andymai/brepjs/issues/1080)) ([2fe8468](https://github.com/andymai/brepjs/commit/2fe84682e63acd7b7b28ebe6aeb0d3a26baac168))
+
 ## [18.27.0](https://github.com/andymai/brepjs/compare/brepjs-v18.26.0...brepjs-v18.27.0) (2026-05-27)
 
 
