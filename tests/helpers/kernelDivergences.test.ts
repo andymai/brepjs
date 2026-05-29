@@ -85,7 +85,7 @@ describe('kernelDivergences', () => {
   });
 
   it('shouldSkipSuite returns true for skip divergences', () => {
-    expect(shouldSkipSuite('booleanFns.disjointIntersection', 'brepkit')).toBe(true);
+    expect(shouldSkipSuite('booleanFns.sectionToFaceSphere', 'brepkit')).toBe(true);
   });
 
   it('shouldSkipSuite returns false for tolerance divergences', () => {
@@ -112,7 +112,7 @@ describe('kernelDivergences', () => {
         skipped = true;
       },
     } as unknown as Parameters<typeof skipIfDiverges>[0];
-    skipIfDiverges(mockCtx, 'booleanFns.disjointIntersection', 'brepkit');
+    skipIfDiverges(mockCtx, 'booleanFns.sectionToFaceSphere', 'brepkit');
     expect(skipped).toBe(true);
   });
 

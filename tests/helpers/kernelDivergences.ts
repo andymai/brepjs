@@ -47,14 +47,6 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // booleanFns.test.ts
     // -----------------------------------------------------------------------
-    'booleanFns.disjointIntersection': {
-      kind: 'skip',
-      reason: 'brepkit throws on disjoint intersection instead of returning empty shape',
-    },
-    'booleanFns.sectionNonIntersecting': {
-      kind: 'skip',
-      reason: 'brepkit returns Err for non-intersecting section; OCCT returns Ok with empty edges',
-    },
     'booleanFns.sectionToFaceSphere': {
       kind: 'skip',
       reason: 'brepkit sectionToFace produces degenerate face for sphere cross-sections',

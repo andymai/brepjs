@@ -126,10 +126,9 @@ describe('boolean edge cases', () => {
       expect(unwrap(measureVolume(unwrap(result)))).toBeCloseTo(2000, 0);
     });
 
-    it('intersect disjoint boxes produces empty or negligible volume', (ctx) => {
-      skipIfDiverges(ctx, 'booleanFns.disjointIntersection');
+    it('intersect disjoint boxes produces empty or negligible volume', () => {
       const result = intersect(boxAt(0, 0, 0, 10, 10, 10), boxAt(100, 0, 0, 110, 10, 10));
-      // OCCT returns Ok with an empty/near-zero-volume result for disjoint intersection
+      // Disjoint intersection yields a successful empty / near-zero-volume result.
       expect(isOk(result)).toBe(true);
       const vol = unwrap(measureVolume(unwrap(result)));
       expect(vol).toBeLessThan(1);
@@ -386,8 +385,7 @@ describe('section', () => {
     expect(edges.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('returns result for plane not intersecting shape', (ctx) => {
-    skipIfDiverges(ctx, 'booleanFns.sectionNonIntersecting');
+  it('returns result for plane not intersecting shape', () => {
     // Box at z=0..10, plane at z=100 — no intersection
     const b = boxAt(0, 0, 0, 10, 10, 10);
     const result = section(b, {
@@ -417,7 +415,7 @@ describe('section', () => {
 describe('null-shape pre-validation', () => {
   function makeNullShape(): Shape3D {
     const oc = getKernel().oc;
-    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+    return createSolid(new oc.TopoDS_Solid());
   }
 
   it('fuse rejects null first operand', (ctx) => {
