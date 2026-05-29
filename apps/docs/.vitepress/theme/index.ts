@@ -19,7 +19,9 @@ import './custom.css';
  * of looping forever.
  */
 function registerPreloadErrorRecovery(): void {
-  const RELOAD_KEY = 'brepjs:preload-error-reloaded-at';
+  if (typeof window === 'undefined') return;
+
+  const RELOAD_KEY = 'brepjs:docs:preload-error-reloaded-at';
   const RELOAD_DEBOUNCE_MS = 10_000;
 
   window.addEventListener('vite:preloadError', (event) => {

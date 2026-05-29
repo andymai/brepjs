@@ -15,7 +15,7 @@
 export function registerPreloadErrorRecovery(): void {
   if (typeof window === 'undefined') return;
 
-  const RELOAD_KEY = 'brepjs:preload-error-reloaded-at';
+  const RELOAD_KEY = 'brepjs:playground:preload-error-reloaded-at';
   const RELOAD_DEBOUNCE_MS = 10_000;
 
   window.addEventListener('vite:preloadError', (event) => {
