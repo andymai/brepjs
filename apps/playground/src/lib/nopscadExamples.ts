@@ -90,7 +90,7 @@ function axialFan({
   depth = 15, // frame thickness (mm)
   bore = 48.5, // screw-hole center-to-center separation (mm)
   hub = 29, // central hub diameter (mm)
-  hubHeight = 4.7, // hub protrusion above the top face (mm)
+  hubHeight = 2, // hub protrusion above the top face (mm)
   screwDia = 4.3, // mounting-screw clearance hole diameter (mm)
   blades = 7, // number of impeller blades
 } = {}) {
@@ -99,13 +99,13 @@ function axialFan({
   // --- Frame plate -----------------------------------------------------
   // A plain box gives a boolean-clean solid; the four vertical corner edges
   // are filleted to \`cornerR\` to recreate the rounded-square outline.
-  const blank = box(width, width, depth, { at: [-width / 2, -width / 2, 0] });
+  const blank = box(width, width, depth, { at: [0, 0, depth / 2] });
   const verticalEdges = edgeFinder().inDirection('Z').findAll(blank);
   const plate = unwrap(fillet(blank, verticalEdges, cornerR));
 
   // Central air bore: a through cylinder just under the frame width so a
   // thin web of plastic remains at the rounded corners.
-  const airBore = cylinder(width / 2, depth + 2, { at: [0, 0, -1] });
+  const airBore = cylinder(width / 2 - 4, depth + 2, { at: [0, 0, -1] });
 
   // Four corner mounting holes on the \`bore\`-side square.
   const screwHoles = [];
@@ -134,7 +134,7 @@ function axialFan({
   // chunky (not paper-thin) so the hull stays non-degenerate on every
   // kernel.
   const rInner = hub / 2 - 0.5; // root bites 0.5 mm into the hub for a clean fuse
-  const rOuter = width / 2 - 4; // tip stays inside the air bore (radius width/2)
+  const rOuter = width / 2 - 2; // tips bite into the frame's bore ring so the rotor fuses to the frame
   const halfChord = 2.0; // half the blade chord (along tangent) at each edge
   const thick = 1.6; // blade material thickness (mm)
   const zLo = depth - 9; // root height
@@ -335,7 +335,7 @@ function fanGuard(
   // the fillet before the boolean keeps the edge set simple enough to succeed —
   // filleting the fully-fused grille fails on its busy overlapping geometry.
   const cornerR = Math.min(thickness * 1.5, half - 0.5);
-  const outerBlank = box(width, width, thickness, { at: [-half, -half, 0] });
+  const outerBlank = box(width, width, thickness, { at: [0, 0, thickness / 2] });
   const outer = unwrap(
     fillet(outerBlank, edgeFinder().inDirection('Z').findAll(outerBlank), cornerR),
   );
@@ -343,7 +343,7 @@ function fanGuard(
   const frame = unwrap(
     cut(
       outer,
-      box(innerW, innerW, thickness + 2, { at: [-innerW / 2, -innerW / 2, -1] }),
+      box(innerW, innerW, thickness + 2, { at: [0, 0, (thickness + 2) / 2 - 1] }),
     ),
   );
 
@@ -376,7 +376,7 @@ function fanGuard(
   const spokeLen = width; // long enough to reach the frame on both sides
   for (const angle of [0, 45, 90, 135]) {
     const bar = box(spokeLen, thickness, thickness, {
-      at: [-spokeLen / 2, -thickness / 2, 0],
+      at: [0, 0, thickness / 2],
     });
     parts.push(rotate(bar, angle, { axis: [0, 0, 1], at: [0, 0, 0] }));
   }
