@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   divergences,
   getDivergence,
@@ -9,7 +9,24 @@ import {
   skipIfDiverges,
 } from './kernelDivergences.js';
 
+// No production tolerance divergence currently exists, so register a synthetic
+// one for the duration of these tests to exercise the tolerance code paths.
+const TOLERANCE_FIXTURE_KEY = '__test.toleranceFixture';
+
 describe('kernelDivergences', () => {
+  beforeAll(() => {
+    (divergences['brepkit'] ??= {})[TOLERANCE_FIXTURE_KEY] = {
+      kind: 'tolerance',
+      relativeTol: 0.01,
+      metric: 'volume',
+      reason: 'synthetic tolerance fixture for kernelDivergences self-tests',
+    };
+  });
+
+  afterAll(() => {
+    delete divergences['brepkit']?.[TOLERANCE_FIXTURE_KEY];
+  });
+
   it('exports a non-empty divergence map', () => {
     const all = getAllDivergences();
     expect(Object.keys(all).length).toBeGreaterThan(0);
@@ -46,7 +63,7 @@ describe('kernelDivergences', () => {
   });
 
   it('getToleranceFor returns tolerance divergence with numeric fields', () => {
-    const tol = getToleranceFor('operations.loftCircles', 'brepkit');
+    const tol = getToleranceFor(TOLERANCE_FIXTURE_KEY, 'brepkit');
     expect(tol).toBeDefined();
     expect(tol?.kind).toBe('tolerance');
     expect(typeof tol?.relativeTol).toBe('number');
@@ -89,7 +106,7 @@ describe('kernelDivergences', () => {
   });
 
   it('shouldSkipSuite returns false for tolerance divergences', () => {
-    expect(shouldSkipSuite('operations.loftCircles', 'brepkit')).toBe(false);
+    expect(shouldSkipSuite(TOLERANCE_FIXTURE_KEY, 'brepkit')).toBe(false);
   });
 
   it('shouldSkipSuite returns false for topology-differs divergences', () => {
@@ -123,7 +140,7 @@ describe('kernelDivergences', () => {
         skipped = true;
       },
     } as unknown as Parameters<typeof skipIfDiverges>[0];
-    skipIfDiverges(mockCtx, 'operations.loftCircles', 'brepkit');
+    skipIfDiverges(mockCtx, TOLERANCE_FIXTURE_KEY, 'brepkit');
     expect(skipped).toBe(false);
   });
 
