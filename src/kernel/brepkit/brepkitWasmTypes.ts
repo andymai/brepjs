@@ -128,8 +128,6 @@ export interface BrepkitKernel {
 
   makeFaceFromWire(wire: number): number;
 
-  makePlanarFaceFromWire(wire: number): number;
-
   makeCompound(solidHandles: Uint32Array | number[]): number;
 
   /** @unwired */
@@ -800,7 +798,6 @@ export interface BrepkitKernel {
     rz: number
   ): number;
 
-  /** @unwired */
   makePlanarFaceFromWire(wire: number): number;
 
   /** @unwired */
