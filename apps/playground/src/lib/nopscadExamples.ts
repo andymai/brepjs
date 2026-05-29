@@ -236,52 +236,35 @@ export default domedFoot();`,
     description:
       'A cylindrical post with a quarter-round rolled top shoulder, optionally bored through the centre to make a rounded-top tube.',
     code: `// Inspired by NopSCADlib's rounded_cylinder (GPLv3) — independent brepjs reimplementation.
-import { polygon, revolve, cylinder, cut, unwrap } from 'brepjs/quick';
+import { cylinder, sphere, intersect, cut, unwrap } from 'brepjs/quick';
 
-// Rounded-top cylinder. The OpenSCAD original revolves a 2D "rounded corner" profile
-// (a rectangle whose top-outer corner is replaced by a quarter circle) a full turn
-// about the Z axis. We do the same thing the brepjs way: build the cross-section as a
-// closed planar profile in the XZ plane, then revolve it about Z.
-//
-// Cross-section, walking the boundary (x = radial distance from axis, z = height):
-//   (0, 0) -> (r, 0)             flat base, from the axis out to the rim
-//   (r, 0) -> (r, h - r2)        straight outer wall up to where the round-over starts
-//   quarter arc (faceted)        the rolled shoulder, radius r2, centre (r-r2, h-r2)
-//   (r - r2, h) -> (0, h)        flat top cap back to the axis
-//   close down the axis to (0,0)
+// Rounded-top cylinder. NopSCADlib's rounded_cylinder is a post whose top edge
+// is rolled over, optionally bored into a tube. Built the robust brepjs way:
+// intersect a straight cylinder with a large sphere so the top rim is clipped
+// to the sphere's curvature — a smooth domed shoulder — while the wall below
+// stays straight. The optional central bore turns the post into a tube.
 //
 // Params (mm):
-//   radius      outer radius                                   (default 12)
-//   height      overall height                                 (default 24)
-//   topRadius   radius of the rounded top shoulder             (default 5)
-//   boreRadius  central through-hole radius; 0 = solid post     (default 0)
-function roundedCylinder(radius = 12, height = 24, topRadius = 5, boreRadius = 0) {
-  // Clamp the round-over so it can never exceed the available wall / height room and
-  // produce a self-intersecting profile.
-  const r2 = Math.min(topRadius, radius - 0.5, height - 0.5);
+//   radius      outer radius                                  (default 12)
+//   height      overall height                                (default 24)
+//   topRadius   how far the domed shoulder dips below the top (default 6)
+//   boreRadius  central through-hole radius; 0 = solid post   (default 5)
+function roundedCylinder(radius = 12, height = 24, topRadius = 6, boreRadius = 5) {
+  // Clamp the round-over so it stays within the wall and height.
+  const r2 = Math.min(topRadius, radius - 0.5, height / 2);
 
-  // Profile points in the XZ plane (y = 0). The inner edge sits on the Z axis (x = 0)
-  // so the revolve sweeps a fully solid post; the optional bore is cut afterwards.
-  const seg = 12;
-  const pts = [];
-  pts.push([0, 0, 0]); // base on the axis
-  pts.push([radius, 0, 0]); // out to the rim
-  pts.push([radius, 0, height - r2]); // up the straight wall to the shoulder start
-  const cx = radius - r2;
-  const cz = height - r2;
-  for (let i = 1; i <= seg; i++) {
-    const a = (Math.PI / 2) * (i / seg); // 0 -> 90°, sweeping the quarter round
-    pts.push([cx + r2 * Math.cos(a), 0, cz + r2 * Math.sin(a)]);
-  }
-  pts.push([0, 0, height]); // across the flat top cap back to the axis
+  const post = cylinder(radius, height, { at: [0, 0, 0] });
 
-  // polygon() builds a closed planar face from the loop; revolve() sweeps it a full
-  // turn about the Z axis through the origin to make the solid of revolution.
-  const profile = unwrap(polygon(pts));
-  let solid = unwrap(revolve(profile, { axis: [0, 0, 1], at: [0, 0, 0], angle: 360 }));
+  // Clip the top rim with a large sphere so the corner rolls into a smooth
+  // domed shoulder while the side wall below stays straight. The sphere radius
+  // R that meets the wall exactly r2 below the top satisfies
+  // R² = radius² + (R − r2)², giving:
+  const sphereR = (radius * radius + r2 * r2) / (2 * r2);
+  // Centre it so the sphere's top pole sits at the cylinder's top face.
+  const clipper = sphere(sphereR, { at: [0, 0, height - sphereR] });
+  let solid = unwrap(intersect(post, clipper));
 
-  // Optional central bore: punch a clean concentric cylinder (slightly over-tall) so
-  // the inner wall is a true cylinder and the hole clears both faces.
+  // Optional central bore: a clean concentric through-cylinder makes it a tube.
   if (boreRadius > 0) {
     const bore = cylinder(boreRadius, height + 2, { at: [0, 0, -1] });
     solid = unwrap(cut(solid, bore));
@@ -311,41 +294,38 @@ import {
   unwrap,
 } from 'brepjs/quick';
 
-// Fan guard: a square mounting frame with a concentric-ring + spoke grille that
-// keeps fingers out and stops cables fouling the blades. Built up from a flat
-// frame ring, a central hub, a few radial spokes, and concentric guard rings,
-// then drilled with four corner mounting holes.
+// Fan guard: a square mounting plate with a circular air opening, filled by a
+// concentric-ring + spoke grille that keeps fingers out and stops cables
+// fouling the blades. The four solid corners carry the mounting holes. Built
+// from a square plate with a round cutout, a central hub, radial spokes, and
+// concentric guard rings, then drilled at the corners.
 //
 // Geometry is driven off a standard axial-fan footprint. For a 60 mm fan:
 //   width = 60 mm square, screw pitch 50 mm, M4 mounting screws.
 // The whole guard is a single flat plate of \`thickness\` (default 2.5 mm) so it
 // prints face-down with no supports — matching the NopSCADlib intent.
 function fanGuard(
-  width = 60, // fan side length (mm) → frame is width × width
-  thickness = 2.5, // plate thickness; also the frame wall / spoke width
+  width = 60, // fan side length (mm) → plate is width × width
+  thickness = 2.5, // plate thickness; also the ring / spoke width
   holePitch = 50, // centre-to-centre of the diagonal mounting holes (mm)
   screwClearance = 2.4, // mounting hole radius (M4 clearance ≈ 2.4 mm)
 ) {
   const half = width / 2;
 
-  // --- Outer frame: a square tube of wall = thickness, full plate height. ---
-  // Round the four outer corners FIRST (a clean 4-edge fillet on a plain box,
-  // the same reliable pattern the axial-fan frame uses), THEN hollow it out by
-  // subtracting a concentric inner box so only the rounded rim remains. Doing
-  // the fillet before the boolean keeps the edge set simple enough to succeed —
-  // filleting the fully-fused grille fails on its busy overlapping geometry.
+  // --- Plate with circular air opening ---------------------------------
+  // Round the four outer corners FIRST (a clean 4-edge fillet on a plain box),
+  // THEN punch a circular air opening, leaving the corners SOLID so the
+  // mounting screws have material to pass through. Filleting before the cut
+  // keeps the edge set simple enough to succeed.
   const cornerR = Math.min(thickness * 1.5, half - 0.5);
-  const outerBlank = box(width, width, thickness, { at: [0, 0, thickness / 2] });
-  const outer = unwrap(
-    fillet(outerBlank, edgeFinder().inDirection('Z').findAll(outerBlank), cornerR),
+  const plate = box(width, width, thickness, { at: [0, 0, thickness / 2] });
+  const rounded = unwrap(
+    fillet(plate, edgeFinder().inDirection('Z').findAll(plate), cornerR),
   );
-  const innerW = width - 2 * thickness;
-  const frame = unwrap(
-    cut(
-      outer,
-      box(innerW, innerW, thickness + 2, { at: [0, 0, (thickness + 2) / 2 - 1] }),
-    ),
-  );
+  // Opening radius leaves a thin rim at the edge midpoints and large solid
+  // corner gussets at the diagonals — exactly where the screw holes land.
+  const openingR = half - thickness;
+  const frame = unwrap(cut(rounded, cylinder(openingR, thickness + 2, { at: [0, 0, -1] })));
 
   // --- Central hub: a small solid disc the spokes radiate from. ---
   // Sized to roughly a third of the bore so it shadows the motor centre only.
@@ -395,7 +375,7 @@ function fanGuard(
   const holes = holeCenters.map(([x, y]) =>
     cylinder(screwClearance, thickness + 2, { at: [x, y, -1] }),
   );
-  // Drill the four corner mounting holes; this is the finished grille.
+  // Drill the four corner mounting holes through the solid corner gussets.
   // (Per-spoke edge rounding is intentionally omitted: filleting the fully
   // fused grille is unreliable on its many overlapping edges. The rounded
   // frame corners above carry the printed-part look.)
@@ -506,44 +486,49 @@ export default gt2Pulley();`,
     description:
       'A tapered, fluted potentiometer knob — scalloped grip over a cone frustum with a blind shaft socket, fully parametric.',
     code: `// Inspired by NopSCADlib's fluted control knob (GPLv3) — independent brepjs reimplementation.
-import { cylinder, cone, fuseAll, cut, unwrap } from 'brepjs/quick';
+import { cylinder, cone, cutAll, cut, unwrap } from 'brepjs/quick';
 
-// A fluted potentiometer knob. The grip is a slightly tapered body skinned with
-// a ring of overlapping flutes (scallops) so fingers get purchase. A central
-// stem socket runs up from the base to press onto a shaft.
+// A fluted potentiometer knob. The grip is a tapered drum with a ring of
+// vertical flutes CARVED into its rim — concave scallops your fingers grip,
+// the way a real control knob is knurled. A central stem socket runs up from
+// the base to press onto a shaft.
 function flutedKnob(
   height = 18,         // overall body height (mm)
-  topDiameter = 24,    // diameter at the top (mm) — narrower than the base
+  topDiameter = 22,    // diameter at the top (mm) — narrower than the base
   bottomDiameter = 30, // diameter at the base (mm) — wider so it sits like a skirt
-  fluteCount = 14,     // number of flutes around the rim
-  fluteDepth = 2.4,    // radius of each flute lobe (mm) — how pronounced the grip is
+  fluteCount = 16,     // number of flutes around the rim
+  fluteDepth = 1.6,    // how deep each scallop bites into the rim (mm)
   boreDiameter = 6,    // shaft socket diameter (mm)
   boreDepth = 12,      // how deep the shaft socket runs up from the base (mm)
 ) {
   const topR = topDiameter / 2;
   const botR = bottomDiameter / 2;
 
-  // Tapered core: a cone frustum gives the classic wider-at-the-base profile.
+  // Tapered drum: a cone frustum gives the classic wider-at-the-base profile.
   const core = cone(botR, topR, height, { at: [0, 0, 0] });
 
-  // Flute lobes ride the outer surface. Each lobe sits a touch inside the mean
-  // radius; overlapping vertical cylinders fuse into a scalloped grip skin.
-  const meanR = (topR + botR) / 2;
-  const lobeOrbit = meanR - fluteDepth * 0.4;
-  const lobes = [];
+  // Flute cutters orbit ON the rim so each one carves a concave vertical
+  // scallop into the surface. The cutter radius sets the scallop width; placing
+  // each cutter centre at (rim - fluteDepth + cutterR) makes it bite exactly
+  // fluteDepth into the wall. Cutters run the full height (over-tall on both
+  // ends) so the flutes read top to bottom.
+  const cutterR = 2.2;
+  const orbit = botR - fluteDepth + cutterR;
+  const flutes = [];
   for (let i = 0; i < fluteCount; i++) {
     const a = (i * 2 * Math.PI) / fluteCount;
-    const x = lobeOrbit * Math.cos(a);
-    const y = lobeOrbit * Math.sin(a);
-    lobes.push(cylinder(fluteDepth, height, { at: [x, y, 0] }));
+    flutes.push(
+      cylinder(cutterR, height + 2, {
+        at: [orbit * Math.cos(a), orbit * Math.sin(a), -1],
+      }),
+    );
   }
-  // fuseAll takes a single array of solids.
-  const body = unwrap(fuseAll([core, ...lobes]));
+  const fluted = unwrap(cutAll(core, flutes));
 
   // Shaft socket: a blind bore rising from the base (started below z=0 so the
   // cut faces are clean).
   const socket = cylinder(boreDiameter / 2, boreDepth + 1, { at: [0, 0, -1] });
-  return unwrap(cut(body, socket));
+  return unwrap(cut(fluted, socket));
 }
 
 export default flutedKnob();`,
