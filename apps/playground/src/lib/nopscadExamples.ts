@@ -607,4 +607,97 @@ function pieWedge(
 
 export default pieWedge();`,
   },
+  {
+    id: 'nopscad-rubber-foot',
+    label: 'Rubber foot (tapered, hollow, screw-mount)',
+    description:
+      'A parametric tapered equipment foot with a rounded rim, washer recess, and through screw-clearance hole.',
+    code: `// Inspired by NopSCADlib's Rubber foot (GPLv3) — independent brepjs reimplementation.
+
+import { cone, cylinder, cut, fillet, unwrap, edgeFinder } from 'brepjs/quick';
+
+// Parametric printed rubber foot for equipment cases.
+//
+// The recognizable form is a short tapered post (a slanted cone frustum) with a
+// gently rounded top rim, a solid base of thickness \`baseThickness\`, a circular
+// recess in the underside sized to a washer, and a screw clearance hole drilled
+// clean through. Defaults follow NopSCADlib's M4 \`foot\`: 25 mm outside diameter,
+// 12 mm tall, 3 mm base under the screw, 10° taper, 2 mm rounded rim.
+function rubberFoot(
+  diameter = 25, // outside diameter at the base (mm)
+  height = 12, // total height of the foot (mm)
+  baseThickness = 3, // solid material under the screw head (mm)
+  slantDeg = 10, // sidewall taper angle from vertical (deg)
+  rimRadius = 2, // rounded-edge radius on the rims (mm)
+  washerRadius = 4.5, // radius of the washer recess in the underside (M4 washer)
+  clearanceRadius = 2.2, // screw shank clearance hole radius (M4 cap screw)
+) {
+  // Bottom and top radii of the frustum. The wall leans inward by
+  // height * tan(slant), so a 10° slant over 12 mm pulls the top in ~2.1 mm.
+  const rBottom = diameter / 2;
+  const rTop = rBottom - height * Math.tan((slantDeg * Math.PI) / 180);
+
+  // Tapered body, base sitting on the z = 0 plane and growing up the +Z axis.
+  const body = cone(rBottom, rTop, height);
+
+  // Soften every rim with a small fillet — this is what makes the molded
+  // rubber read as rounded rather than machined. rimRadius (2 mm) is far below
+  // the shortest edge so the fillet can never consume an edge and fail.
+  const rounded = unwrap(fillet(body, edgeFinder().findAll(body), rimRadius));
+
+  // Hollow out the underside: a washer-sized recess bored from the bottom up to
+  // z = baseThickness, leaving \`baseThickness\` of solid above it. The recess
+  // cylinder starts 1 mm below z = 0 so the cut face stays flush and clean.
+  const recessHeight = height - baseThickness + 1;
+  const recess = cylinder(washerRadius, recessHeight, { at: [0, 0, -1] });
+  const hollow = unwrap(cut(rounded, recess));
+
+  // Drill the screw clearance hole straight through the remaining base. The
+  // drill overshoots both faces by 1 mm so it punches fully through.
+  const drill = cylinder(clearanceRadius, height + 2, { at: [0, 0, -1] });
+  return unwrap(cut(hollow, drill));
+}
+
+export default rubberFoot();`,
+  },
+  {
+    id: 'nopscad-rounded-knob',
+    label: 'Rounded-top knob / post',
+    description:
+      'Cylindrical knob with a rounded-over top rim and an optional concentric through-bore.',
+    code: `// Inspired by NopSCADlib's rounded_cylinder (GPLv3) — independent brepjs reimplementation.
+import { cylinder, cut, fillet, edgeFinder, unwrap } from 'brepjs/quick';
+
+// Rounded-top knob / post: a plain cylindrical body whose TOP outer rim is
+// rounded over by r2, with an optional concentric through-bore (ir) that turns
+// the post into a tube. The bottom stays flat so the part sits on a surface —
+// matching the turned profile NopSCADlib sweeps with rotate_extrude.
+//
+//   r   — body radius (outer)
+//   h   — overall height
+//   r2  — top edge round-over radius (must be <= r and < h)
+//   ir  — internal bore radius (0 = solid knob, >0 = tube)
+function roundedKnob(r: number, h: number, r2: number, ir: number) {
+  // Body centred on the origin, base sitting on the z = 0 plane.
+  const body = cylinder(r, h, { at: [0, 0, 0] });
+
+  // Optional concentric bore. The cutter overhangs both ends (h + 2, started
+  // 1 mm below z = 0) so it punches cleanly through top and bottom.
+  const blank = ir > 0 ? unwrap(cut(body, cylinder(ir, h + 2, { at: [0, 0, -1] }))) : body;
+
+  // Round only the TOP outer rim. Every point on that circle sits exactly r
+  // away from the top-centre point [0, 0, h], so atDistance(r, …) isolates it:
+  // the bottom outer rim is sqrt(r²+h²) away and the bore rim (if any) only ir
+  // away — leaving them crisp, like the rotate_extrude profile (flat base,
+  // rounded top).
+  const topRim = edgeFinder().atDistance(r, [0, 0, h]).findAll(blank);
+
+  return unwrap(fillet(blank, topRim, r2));
+}
+
+// Defaults: a 12 mm-tall, 16 mm-diameter knob with a 3 mm rounded top and a
+// 4 mm-diameter mounting bore through the centre.
+export default roundedKnob(8, 12, 3, 2);
+`,
+  },
 ];
