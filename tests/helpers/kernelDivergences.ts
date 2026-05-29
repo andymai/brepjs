@@ -126,22 +126,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // nurbsFns.test.ts
-    // -----------------------------------------------------------------------
-    'nurbsFns.planarFaceSurface': {
-      kind: 'not-implemented',
-      reason: 'brepkit does not expose BSpline surface data extraction (getNurbsSurfaceData)',
-    },
-    'nurbsFns.cylindricalFaceSurface': {
-      kind: 'not-implemented',
-      reason: 'brepkit does not expose BSpline surface data extraction (getNurbsSurfaceData)',
-    },
-    'nurbsFns.bsplineSurface': {
-      kind: 'not-implemented',
-      reason: 'brepkit does not expose BSpline surface data extraction from fillet faces',
-    },
-
-    // -----------------------------------------------------------------------
     // sketcher3d.test.ts
     // -----------------------------------------------------------------------
     'sketcher3d.sagittaArcTo': {
