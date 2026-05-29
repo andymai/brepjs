@@ -1,5 +1,6 @@
 # Claude Code agent memory (user-specific, not shared)
 .claude/agent-memory-local/
+.claude/scheduled_tasks.lock
 
 # Git worktrees
 .worktrees/
