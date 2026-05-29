@@ -128,11 +128,6 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // nurbsFns.test.ts
     // -----------------------------------------------------------------------
-    'nurbsFns.bsplineData': {
-      kind: 'not-implemented',
-      reason:
-        'brepkit getNurbsCurveData returns null for interpolated curves (regressed in 2.43.2)',
-    },
     'nurbsFns.planarFaceSurface': {
       kind: 'not-implemented',
       reason: 'brepkit does not expose BSpline surface data extraction (getNurbsSurfaceData)',

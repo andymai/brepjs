@@ -497,9 +497,37 @@ export function projectEdges(
   };
 }
 
-/** brepkit does not support NURBS introspection on edges. Always returns null. */
-export function getNurbsCurveData(_bk: BrepkitKernel, _edge: KernelShape): NurbsCurveData | null {
-  return null;
+/**
+ * Read-only canonical NURBS data for the curve underlying an edge.
+ *
+ * Analytic curves (line, circle, ellipse) are converted to their exact NURBS
+ * form by the kernel; interpolated/approximated B-spline edges return their
+ * native poles and knots. The kernel emits a compressed knot representation
+ * (distinct knots + multiplicities), which maps directly to the brepjs
+ * {@link NurbsCurveData} shape.
+ */
+export function getNurbsCurveData(bk: BrepkitKernel, edge: KernelShape): NurbsCurveData | null {
+  const edgeId = unwrap(edge, 'edge');
+  const json = bk.getNurbsCurveData(edgeId);
+  if (!json) return null;
+  const data = JSON.parse(json) as {
+    degree: number;
+    controlPoints: Array<[number, number, number]>;
+    weights: number[];
+    distinctKnots: number[];
+    multiplicities: number[];
+    periodic: boolean;
+    rational: boolean;
+  };
+  return {
+    degree: data.degree,
+    poles: data.controlPoints,
+    weights: data.weights,
+    knots: data.distinctKnots,
+    multiplicities: data.multiplicities,
+    isPeriodic: data.periodic,
+    isRational: data.rational,
+  };
 }
 
 /** brepkit does not support NURBS introspection on faces. Always returns null. */

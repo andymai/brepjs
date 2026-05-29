@@ -38,8 +38,7 @@ describe('getNurbsCurveData', () => {
     }
   });
 
-  it('extracts data from a BSpline edge', (ctx) => {
-    skipIfDiverges(ctx, 'nurbsFns.bsplineData');
+  it('extracts data from a BSpline edge', () => {
     const pts: Vec3[] = [
       [0, 0, 0],
       [5, 5, 0],
