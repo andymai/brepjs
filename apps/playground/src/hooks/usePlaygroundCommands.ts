@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { usePlaygroundStore } from '../stores/playgroundStore';
 import { useViewerStore } from '../stores/viewerStore';
 import { SHORTCUTS, formatShortcut } from '../lib/shortcuts';
-import { EXAMPLES } from '../lib/examples';
 import type { Command } from '../components/playground/CommandPalette';
 import type { PlaygroundActions } from './usePlaygroundActions';
 import type { PlaygroundPanels } from './usePlaygroundPanels';
@@ -196,14 +195,9 @@ export function usePlaygroundCommands({
         keys: '?',
         run: openShortcutHelp,
       },
-      ...EXAMPLES.map((ex) => ({
-        id: `example-${ex.id}`,
-        group: 'Examples',
-        label: `Load: ${ex.label}`,
-        run: () => {
-          actions.handleLoadExample(ex);
-        },
-      })),
+      // Examples are intentionally NOT surfaced in the command palette — a
+      // dedicated example picker is coming in a follow-up. The EXAMPLES library
+      // (apps/playground/src/lib/examples/) stays available for that UI.
     ],
     [
       actions,
