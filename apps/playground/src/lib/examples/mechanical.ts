@@ -94,7 +94,7 @@ function axialFan({
   // each consecutive pair of sections and fusing the chain yields a smooth,
   // concave-curved blade a single straight hull can't express.
   const rInner = hub / 2 - 1; // root bites into the hub for a clean fuse
-  const rOuter = width / 2 - 5; // tip stays ~1mm inside the air bore (width/2 - 4)
+  const rOuter = width / 2 - 5; // tip stays 1 mm inside the air bore radius (width/2 - 4)
   const chord = 9; // blade chord (tangential width)
   const thick = 1.1; // blade material thickness
   const zBase = depth - 4; // sits just below the top face
@@ -104,7 +104,7 @@ function axialFan({
   const steps = 10; // sections along the blade — more = smoother
 
   // One cross-section (4 corners) at path parameter t in [0, 1].
-  const section = (t) => {
+  const section = (t: number) => {
     const rr = rInner + (rOuter - rInner) * t;
     const ang = sweep * t * t; // accelerating curl reads as an organic scoop
     const pitch = pitch0 + (pitch1 - pitch0) * t;
