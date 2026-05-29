@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchCircle,
   sketchEllipse,
@@ -108,8 +107,7 @@ describe('Canned sketches', () => {
     expect(sketchPolysides(10, 5, 0, { plane })).toBeDefined();
   });
 
-  it('sketchFaceOffset shrinks a face inward', (ctx) => {
-    skipIfDiverges(ctx, 'cannedSketches.faceOffset');
+  it('sketchFaceOffset shrinks a face inward', () => {
     const b = box(20, 20, 20);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test indexing
     const face = getFaces(b)[0]!;

@@ -96,14 +96,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // cannedSketches.test.ts
-    // -----------------------------------------------------------------------
-    'cannedSketches.faceOffset': {
-      kind: 'skip',
-      reason: 'brepkit: face offset area=576 vs expected<400 (offset not applied correctly)',
-    },
-
-    // -----------------------------------------------------------------------
     // kernelCall.test.ts
     // -----------------------------------------------------------------------
     'kernelCall.doubleFillet': {
