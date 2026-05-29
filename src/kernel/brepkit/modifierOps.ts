@@ -316,12 +316,40 @@ export function defeature(
   return solidHandle(bk.defeature(solidId, faceIds));
 }
 
+/** Map a public join-type kind onto the brepkit kernel's join-type strings. */
+function brepkitJoinType(
+  joinType?: number | 'arc' | 'intersection' | 'tangent'
+): 'intersection' | 'arc' | 'chamfer' {
+  switch (joinType) {
+    case 'arc':
+    case 'tangent':
+      return 'arc';
+    case 'intersection':
+      return 'intersection';
+    default:
+      return 'intersection';
+  }
+}
+
 export function offsetWire2D(
   bk: BrepkitKernel,
   wire: KernelShape,
   offsetVal: number,
-  _joinType?: number | 'arc' | 'intersection' | 'tangent'
+  joinType?: number | 'arc' | 'intersection' | 'tangent'
 ): KernelShape {
+  // Preferred path: route the join type through the join-aware kernel
+  // builder so 'arc' produces rounded corners instead of silently
+  // collapsing to the sharp polygon offset. Falls back to the legacy
+  // polygon path when the binding is unavailable (older wasm builds).
+  if (typeof bk.offsetWire2DWithJoin === 'function') {
+    const wireId = bk.offsetWire2DWithJoin(
+      unwrap(wire, 'wire'),
+      offsetVal,
+      brepkitJoinType(joinType)
+    );
+    return wireHandle(wireId);
+  }
+
   const edges = iterShapes(bk, wire, 'edge');
   if (edges.length === 0) return wire;
 

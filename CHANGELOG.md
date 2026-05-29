@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.31.0](https://github.com/andymai/brepjs/compare/brepjs-v18.30.0...brepjs-v18.31.0) (2026-05-29)
+
+
+### Features
+
+* **brepkit:** honor wire-offset join type (offsetWire2D arc/intersection/chamfer) ([#1089](https://github.com/andymai/brepjs/issues/1089)) ([7b82cd4](https://github.com/andymai/brepjs/commit/7b82cd410e81bfe66a3648156779f18f52a29330))
+
 ## [18.30.0](https://github.com/andymai/brepjs/compare/brepjs-v18.29.0...brepjs-v18.30.0) (2026-05-29)
 
 

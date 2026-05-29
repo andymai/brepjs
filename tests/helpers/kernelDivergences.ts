@@ -60,10 +60,6 @@ export const divergences: DivergenceMap = {
     // -----------------------------------------------------------------------
     // modifierFns.test.ts
     // -----------------------------------------------------------------------
-    'modifierFns.filletAllEdges': {
-      kind: 'skip',
-      reason: 'brepkit over-fillets when all 12 edges are filleted (vol ~530 vs >800 expected)',
-    },
     'modifierFns.variableFilletRadius': {
       kind: 'not-implemented',
       reason:
@@ -337,10 +333,6 @@ export const divergences: DivergenceMap = {
     'booleanFns.propertyTests': {
       kind: 'not-implemented',
       reason: 'Property-based boolean tests use OCCT-specific volume precision',
-    },
-    'offsetWire2D.chamferJoin': {
-      kind: 'not-implemented',
-      reason: 'offsetWire2D chamfer join type not implemented in brepkit kernel',
     },
     occtBoundary: {
       kind: 'not-implemented',

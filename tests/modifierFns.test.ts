@@ -68,8 +68,7 @@ describe('thicken', () => {
 });
 
 describe('fillet', () => {
-  it('fillets all edges of a box with constant radius', (ctx) => {
-    skipIfDiverges(ctx, 'modifierFns.filletAllEdges');
+  it('fillets all edges of a box with constant radius', () => {
     const b = box(10, 10, 10);
     const result = fillet(b, 1);
     expect(isOk(result)).toBe(true);
@@ -342,7 +341,7 @@ describe('variableFillet validation', () => {
 describe('null-shape pre-validation', () => {
   function makeNullShape(): Shape3D {
     const oc = getKernel().oc;
-    return createSolid(new oc.TopoDS_Solid()) as Shape3D;
+    return createSolid(new oc.TopoDS_Solid());
   }
 
   it('fillet rejects null shape', (ctx) => {
