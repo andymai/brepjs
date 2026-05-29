@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.30.0](https://github.com/andymai/brepjs/compare/brepjs-v18.29.0...brepjs-v18.30.0) (2026-05-29)
+
+
+### Features
+
+* **brepkit:** wire getNurbsCurveData adapter and un-skip parity test ([#1086](https://github.com/andymai/brepjs/issues/1086)) ([fab2ac0](https://github.com/andymai/brepjs/commit/fab2ac044359a491ce7eda8711ff01f1b2095892))
+
 ## [18.29.0](https://github.com/andymai/brepjs/compare/brepjs-v18.28.0...brepjs-v18.29.0) (2026-05-29)
 
 
