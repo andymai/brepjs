@@ -51,6 +51,13 @@ export const SHORTCUTS = {
     shift: false,
     label: 'Command Palette',
   },
+  examples: {
+    id: 'examples',
+    key: 'o',
+    ctrl: true,
+    shift: true,
+    label: 'Browse Examples',
+  },
   cycleViewMode: {
     id: 'cycleViewMode',
     key: 'v',
