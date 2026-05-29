@@ -46,7 +46,7 @@ export default function Toolbar({
         <button
           onClick={onOpenExamples}
           title={`Browse examples (${formatShortcut(SHORTCUTS.examples)})`}
-          className="flex items-center gap-1 rounded border border-gray-700 bg-surface-overlay px-2.5 py-1 text-xs font-medium text-gray-200 transition-colors hover:border-gray-500 hover:bg-gray-700 hover:text-white"
+          className="rounded border border-gray-700 bg-surface-overlay px-2.5 py-1 text-xs font-medium text-gray-200 transition-colors hover:border-gray-500 hover:bg-gray-700 hover:text-white"
         >
           Examples
         </button>
