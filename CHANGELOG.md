@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.32.0](https://github.com/andymai/brepjs/compare/brepjs-v18.31.0...brepjs-v18.32.0) (2026-05-29)
+
+
+### Features
+
+* **playground:** scad-derived example library + validation/visual-audit tooling ([#1095](https://github.com/andymai/brepjs/issues/1095)) ([038c4df](https://github.com/andymai/brepjs/commit/038c4df1c5ae7ddddfd6895bdcd5f101443546b3))
+
 ## [18.31.0](https://github.com/andymai/brepjs/compare/brepjs-v18.30.0...brepjs-v18.31.0) (2026-05-29)
 
 

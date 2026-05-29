@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "smoke": "npx tsx scripts/smoke.ts",
+    "shoot": "npx tsx scripts/shootExamples.ts",
     "generate-types": "npx tsx scripts/generate-ambient-types.ts"
   },
   "dependencies": {

@@ -46,3 +46,7 @@ apps/docs/.vitepress/dist/
 
 # Playground build outputs
 apps/playground/dist/
+
+# Scratch: OpenSCAD reference clone, example screenshots, candidate scratch, etc.
+tmp/
+**/tmp/
