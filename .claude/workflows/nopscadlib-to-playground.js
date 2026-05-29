@@ -8,6 +8,8 @@ export const meta = {
     { title: 'Survey', detail: 'rank NopSCADlib models by translatability' },
     { title: 'Translate', detail: 'clean-room reimplement + eval/mesh-validate each model' },
     { title: 'Synthesize', detail: 'write nopscadExamples.ts + translation report' },
+    { title: 'Audit', detail: 'screenshot each example + AI vision gate on resemblance' },
+    { title: 'Repair', detail: 'fix examples that render wrong, then re-audit' },
   ],
 };
 
@@ -332,6 +334,91 @@ Return a short plain-text summary: count written, regression pass/fail, and any 
   { label: 'synthesize', phase: 'Synthesize' }
 );
 
+// ─────────────────────────────────────────────────────────────────────────
+// Visual audit — a shape can pass eval+mesh yet render wrong (off-centre,
+// floating, degenerate, missing a promised feature). Screenshot every
+// integrated example and have a vision agent judge resemblance. In dryRun the
+// module isn't written, so skip — there's nothing live to shoot.
+phase('Audit')
+
+let auditResult = null
+let repairResult = null
+
+if (!DRY_RUN && validated.length > 0) {
+  const auditIds = validated.map((v) => v.id)
+  // One agent owns the dev-server lifecycle so the port stays live across all
+  // shots, then judges each PNG it captured.
+  auditResult = await agent(
+    `Visually audit the freshly-integrated playground examples. A shape can pass
+the eval+mesh test yet still render wrong — your job is to catch that.
+
+STEPS:
+1. Start the playground dev server in the background and capture its URL:
+     cd apps/playground && (npm run dev > /tmp/pg-audit.log 2>&1 &) ; sleep 6 ; grep -oE 'http://localhost:[0-9]+' /tmp/pg-audit.log | head -1
+   (Vite may pick a non-5173 port if one is busy — use whatever it prints.)
+2. Screenshot the audited examples into tmp/shots:
+     cd apps/playground && npm run shoot <THAT_URL> tmp/shots ${auditIds.join(' ')}
+   Each writes apps/playground/tmp/shots/<id>.png.
+3. For EACH id below, Read its PNG (apps/playground/tmp/shots/<id>.png) and judge:
+   does the 3D render in the right-hand viewport clearly look like the described
+   real-world part, with no obvious defect? Compare against each example's
+   description and the part it's named after. Flag: parts floating away from each
+   other, geometry off to one side instead of centred, only a partial/wedge
+   slice of what should be a full revolve, a blank/empty viewport, or a feature
+   the code comments promise (e.g. screw holes, flutes) that isn't visible.
+4. Return a verdict per id. Set looksRight=false with concrete issues for any
+   defect; the workflow will route those to repair.
+
+Examples to audit (id — description):
+${validated.map((v) => `  ${v.id} — ${v.description}`).join('\n')}
+
+Kill the dev server when done (pkill -f 'vite' for the playground, or the bg job).`,
+    { label: 'audit', phase: 'Audit', schema: AUDIT_SCHEMA }
+  )
+
+  const flagged = (auditResult?.verdicts ?? []).filter((v) => v && v.looksRight === false)
+  log(`Audit: ${flagged.length}/${auditIds.length} examples flagged as rendering wrong`)
+
+  // ───────────────────────────────────────────────────────────────────────
+  phase('Repair')
+
+  if (flagged.length > 0) {
+    repairResult = await parallel(
+      flagged.map((v) => () => {
+        const ex = validated.find((e) => e.id === v.id)
+        return agent(
+          `Fix the playground example "${v.id}" so it RENDERS correctly. It passes the
+eval+mesh test but the visual audit flagged it:
+
+  ISSUE: ${v.issues}
+  DESCRIPTION (what it should look like): ${ex?.description ?? ''}
+
+It lives in ${MODULE_PATH} as the entry with id '${v.id}'. Edit ONLY that entry's
+\`code\`. Common root causes seen in this codebase:
+- box/cylinder/cone 'at' is the shape CENTRE, not an OpenSCAD-style corner. A
+  frame at { at: [-w/2,-w/2,0] } lands in a corner while other parts sit at the
+  origin → things look offset/floating. Centre everything on the origin.
+- revolve() of a polygon profile that TOUCHES the axis is degenerate and sweeps
+  only a partial arc → rebuild from primitives (cylinder ∩ sphere, fillet, etc.).
+- features 'added' as bumps when they should be 'cut' (or vice-versa).
+- a finishing op silently failing — don't reintroduce isOk()/.ok fallbacks.
+
+WORKFLOW:
+1. Edit the entry's code in ${MODULE_PATH}.
+2. Re-validate: TEST_KERNEL=occt npx vitest run tests/playgroundExamples.test.ts --reporter=dot
+3. Re-screenshot just this one (reuse the running server if up, else start it as
+   the audit step did): cd apps/playground && npm run shoot <URL> tmp/shots ${v.id}
+4. Read apps/playground/tmp/shots/${v.id}.png and confirm the issue is resolved.
+   Repeat up to ${MAX_REPAIRS} times. If you cannot fix it, say so plainly.
+
+Return a one-line status: fixed / still-broken, and what you changed.`,
+          { label: `repair:${v.id}`, phase: 'Repair' }
+        )
+      })
+    )
+  }
+}
+
 return {
   surveyed: ranked.length,
   chosen: chosen.length,
@@ -340,4 +427,6 @@ return {
   validatedIds: validated.map((v) => v.id),
   failedModels: failed.map((f) => f.label ?? f.id),
   synthesis: synthesisResult,
+  audit: auditResult,
+  repaired: repairResult,
 };
