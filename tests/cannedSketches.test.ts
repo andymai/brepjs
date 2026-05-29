@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
 import {
   sketchCircle,
   sketchEllipse,
@@ -108,8 +107,7 @@ describe('Canned sketches', () => {
     expect(sketchPolysides(10, 5, 0, { plane })).toBeDefined();
   });
 
-  it('sketchFaceOffset shrinks a face inward', (ctx) => {
-    skipIfDiverges(ctx, 'cannedSketches.faceOffset');
+  it('sketchFaceOffset shrinks a face inward', () => {
     const b = box(20, 20, 20);
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- test indexing
     const face = getFaces(b)[0]!;
@@ -117,8 +115,10 @@ describe('Canned sketches', () => {
     expect(sketch).toBeDefined();
     const area = unwrap(measureArea(sketch.face()));
     expect(area).toBeGreaterThan(0);
-    // Offset inward by 2 on each side → (20-4)² = 256 < 400
+    // Offset inward by 2 on each side → (20-4)² = 256, well under the
+    // original 400. (Outward would have produced 24² = 576.)
     expect(area).toBeLessThan(400);
+    expect(area).toBeGreaterThan(200);
   });
 
   it('sketchParametricFunction creates a sine curve sketch', () => {
