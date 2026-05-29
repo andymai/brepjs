@@ -72,7 +72,20 @@ try {
   }
   console.log(`✓ filter '${firstCat.label}' shows ${filtered} cards`);
 
-  // 3. Clicking a card closes the modal.
+  // 3. Focus trap: focus starts inside the dialog, and Tab never escapes it.
+  const focusInDialog = () =>
+    page.evaluate((sel) => {
+      const dialog = document.querySelector(sel);
+      return !!(dialog && document.activeElement && dialog.contains(document.activeElement));
+    }, pickerSel);
+  if (!(await focusInDialog())) fail('focus did not move into the dialog on open');
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.press('Tab');
+    if (!(await focusInDialog())) fail(`Tab escaped the dialog after ${i + 1} presses`);
+  }
+  console.log('✓ focus stays trapped within the dialog across 40 Tabs');
+
+  // 4. Clicking a card closes the modal.
   await page.$eval(`${pickerSel} button[class*="group"]`, (el) => (el as HTMLElement).click());
   await new Promise((r) => setTimeout(r, 500));
   const stillOpen = await page.$(pickerSel);

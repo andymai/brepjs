@@ -82,6 +82,7 @@ export default function ExamplePicker({ open, onClose, onSelect }: Props) {
       aria-label="Example picker"
     >
       <div
+        ref={panelRef}
         className="flex max-h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-2xl"
         onClick={(e) => {
           e.stopPropagation();
