@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { initKernel } from './setup.js';
-import { skipIfDiverges } from './helpers/kernelDivergences.js';
+import { expectClose } from './helpers/kernelDivergences.js';
 import Sketcher from '@/sketching/sketcher.js';
 import {
   box,
@@ -71,8 +71,7 @@ describe('revolve', () => {
 });
 
 describe('loft', () => {
-  it('lofts between two circles', (ctx) => {
-    skipIfDiverges(ctx, 'operations.loftCircles');
+  it('lofts between two circles', () => {
     const bottom = sketchCircle(10);
     const top = sketchCircle(5, { origin: [0, 0, 10] });
     const solid = unwrap(loft([bottom.wire, top.wire]));
@@ -80,7 +79,8 @@ describe('loft', () => {
     const vol = unwrap(measureVolume(solid));
     // Truncated cone: (π*h/3)(R² + Rr + r²)
     const expected = ((Math.PI * 10) / 3) * (100 + 50 + 25);
-    expect(vol).toBeCloseTo(expected, -1);
+    // Analytic skinning makes coaxial-circle lofts exact across kernels.
+    expectClose(vol, expected, 1e-3);
   });
 });
 

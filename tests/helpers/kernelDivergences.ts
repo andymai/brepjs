@@ -199,17 +199,6 @@ export const divergences: DivergenceMap = {
     },
 
     // -----------------------------------------------------------------------
-    // operations.test.ts
-    // -----------------------------------------------------------------------
-    'operations.loftCircles': {
-      kind: 'tolerance',
-      relativeTol: 0.01,
-      metric: 'volume',
-      reason:
-        'brepkit: loft volume ~1821 vs expected ~1833 (precision difference, not wrong geometry)',
-    } satisfies ToleranceDivergence,
-
-    // -----------------------------------------------------------------------
     // gridfinity-smoke.test.ts
     // -----------------------------------------------------------------------
     'gridfinity.roundedRectExtrude': {
