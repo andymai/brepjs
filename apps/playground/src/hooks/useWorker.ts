@@ -2,50 +2,49 @@ import { useEffect, useRef, useCallback } from 'react';
 import type { ToWorker, FromWorker } from '../workers/workerProtocol';
 import { useEngineStore } from '../stores/engineStore';
 
-export function useWorker(
-  onMessage: (msg: FromWorker) => void,
-  onCrash?: () => void
-) {
+export function useWorker(onMessage: (msg: FromWorker) => void, onCrash?: () => void) {
   const workerRef = useRef<Worker | null>(null);
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
   const onCrashRef = useRef(onCrash);
   onCrashRef.current = onCrash;
 
-  const engineStore = useEngineStore();
+  // Wire init-lifecycle + message/crash handlers on a worker. Reads the engine
+  // store via getState() rather than subscribing, so the hook doesn't re-render
+  // on every progress tick. `onSettled` fires on init-done AND init-error, so a
+  // restart awaiting init doesn't hang forever when the new worker fails to init.
+  const wireWorker = useCallback((worker: Worker, onSettled?: () => void) => {
+    worker.onmessage = (e: MessageEvent<FromWorker>) => {
+      const msg = e.data;
+      const engine = useEngineStore.getState();
+      switch (msg.type) {
+        case 'init-progress':
+          engine.setProgress(msg.stage, msg.progress);
+          break;
+        case 'init-done':
+          engine.setStatus('ready');
+          onSettled?.();
+          break;
+        case 'init-error':
+          engine.setError(msg.error);
+          onSettled?.();
+          break;
+      }
+      onMessageRef.current(msg);
+    };
+
+    worker.onerror = (e) => {
+      useEngineStore.getState().setError(e.message || 'Worker crashed');
+      if (onCrashRef.current) onCrashRef.current();
+    };
+  }, []);
 
   useEffect(() => {
     const worker = new Worker(new URL('../workers/cad.worker.ts', import.meta.url), {
       type: 'module',
     });
 
-    worker.onmessage = (e: MessageEvent<FromWorker>) => {
-      const msg = e.data;
-
-      // Update engine store for init lifecycle
-      switch (msg.type) {
-        case 'init-progress':
-          engineStore.setProgress(msg.stage, msg.progress);
-          break;
-        case 'init-done':
-          engineStore.setStatus('ready');
-          break;
-        case 'init-error':
-          engineStore.setError(msg.error);
-          break;
-      }
-
-      onMessageRef.current(msg);
-    };
-
-    worker.onerror = (e) => {
-      engineStore.setError(e.message || 'Worker crashed');
-      // Trigger crash recovery callback if provided
-      if (onCrashRef.current) {
-        onCrashRef.current();
-      }
-    };
-
+    wireWorker(worker);
     workerRef.current = worker;
 
     // Start init immediately
@@ -55,8 +54,7 @@ export function useWorker(
       worker.terminate();
       workerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run once on mount
-  }, []);
+  }, [wireWorker]);
 
   const postMessage = useCallback((msg: ToWorker) => {
     workerRef.current?.postMessage(msg);
@@ -77,45 +75,19 @@ export function useWorker(
         workerRef.current = null;
       }
 
-      // Create new worker
+      // Create new worker. Settle the promise on init-done OR init-error so a
+      // worker that crashes during re-init can't hang the recovery chain.
       const worker = new Worker(new URL('../workers/cad.worker.ts', import.meta.url), {
         type: 'module',
       });
 
-      worker.onmessage = (e: MessageEvent<FromWorker>) => {
-        const msg = e.data;
-
-        // Update engine store for init lifecycle
-        switch (msg.type) {
-          case 'init-progress':
-            engineStore.setProgress(msg.stage, msg.progress);
-            break;
-          case 'init-done':
-            engineStore.setStatus('ready');
-            resolve(); // Resolve promise when init is done
-            break;
-          case 'init-error':
-            engineStore.setError(msg.error);
-            break;
-        }
-
-        onMessageRef.current(msg);
-      };
-
-      worker.onerror = (e) => {
-        engineStore.setError(e.message || 'Worker crashed');
-        // Trigger crash recovery callback if provided
-        if (onCrashRef.current) {
-          onCrashRef.current();
-        }
-      };
-
+      wireWorker(worker, resolve);
       workerRef.current = worker;
 
       // Start init immediately
       worker.postMessage({ type: 'init' } satisfies ToWorker);
     });
-  }, [engineStore]);
+  }, [wireWorker]);
 
   return { postMessage, terminate, restart };
 }

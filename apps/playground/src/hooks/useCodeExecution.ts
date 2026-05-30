@@ -25,6 +25,10 @@ export function useCodeExecution() {
   const engineStatus = useEngineStore((s) => s.status);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestIdRef = useRef<string>('');
+  // Latest in-flight export id per format. A superseded export (e.g. an
+  // impatient double-click) is ignored so we don't fire two downloads.
+  const latestStlIdRef = useRef<string>('');
+  const latestStepIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
@@ -96,9 +100,11 @@ export function useCodeExecution() {
           isRecoveringRef.current = false;
           break;
         case 'export-result':
+          if (msg.id !== latestStlIdRef.current) return;
           downloadBlob(msg.stl, 'model.stl', 'model/stl');
           break;
         case 'export-step-result':
+          if (msg.id !== latestStepIdRef.current) return;
           downloadBlob(msg.step, 'model.step', 'application/step');
           break;
         case 'export-error':
@@ -170,6 +176,7 @@ export function useCodeExecution() {
     (code: string) => {
       if (engineStatus !== 'ready') return;
       const id = `stl-${++evalCounter}`;
+      latestStlIdRef.current = id;
       postMessage({ type: 'export-stl', id, code });
     },
     [engineStatus, postMessage]
@@ -179,6 +186,7 @@ export function useCodeExecution() {
     (code: string) => {
       if (engineStatus !== 'ready') return;
       const id = `step-${++evalCounter}`;
+      latestStepIdRef.current = id;
       postMessage({ type: 'export-step', id, code });
     },
     [engineStatus, postMessage]
