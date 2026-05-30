@@ -68,7 +68,21 @@ Adapter for the external `brepkit-wasm` WASM package. Create with `new BrepkitAd
 
 ### `OcctWasmAdapter`
 
-Adapter for the external `occt-wasm` WASM package. This is an arena-based OCCT V8 kernel compiled to WASM — all geometry is identified by `u32` handles into the arena. Create with `new OcctWasmAdapter(Module, kernel)` and register via `registerKernel('occt-wasm', adapter)`.
+Adapter for the external `occt-wasm` WASM package. This is an arena-based OCCT V8 kernel compiled to WASM — all geometry is identified by `u32` handles into the arena.
+
+When you use occt-wasm's high-level `OcctKernel` wrapper, build the adapter with `OcctWasmAdapter.fromKernel(kernel)`:
+
+```typescript
+import { OcctKernel } from 'occt-wasm';
+import { OcctWasmAdapter } from 'brepjs/kernel/occtWasm/occtWasmAdapter';
+
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+```
+
+> **Lifetime coupling.** `OcctKernel` registers itself with a `FinalizationRegistry` that deletes its raw kernel on garbage collection. An adapter that only borrows the raw kernel (`new OcctWasmAdapter(kernel.getRawModule(), kernel.getRawKernel())`) can be left pointing at freed memory once the wrapper is collected, surfacing as `BindingError: Cannot pass deleted object as a pointer of type OcctKernel*`. `fromKernel` pins the wrapper for the adapter's lifetime, so prefer it over the raw constructor whenever a wrapper exists.
+
+The raw `new OcctWasmAdapter(Module, kernel)` constructor remains for callers that own a raw Embind kernel directly (`new Module.OcctKernel()`), which the adapter already retains.
 
 Unlike `brepjs-opencascade`, `occt-wasm` is not auto-detected by `init()` because the WASM binary location cannot be inferred without build-tool configuration. You must register it manually.
 

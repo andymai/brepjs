@@ -9,10 +9,24 @@
  *
  * ## Lifecycle
  *
+ * occt-wasm's high-level `OcctKernel` wrapper is the recommended owner. Build
+ * the adapter from it with {@link OcctWasmAdapter.fromKernel} so the adapter
+ * pins the wrapper for its own lifetime:
+ *
  * ```ts
- * import createOcctWasm from 'occt-wasm';
+ * import { OcctKernel } from 'occt-wasm';
  * import { OcctWasmAdapter } from './occtWasmAdapter.js';
  * import { registerKernel } from '../index.js';
+ *
+ * const kernel = await OcctKernel.init();
+ * registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+ * ```
+ *
+ * The raw `(module, kernel)` constructor remains for callers that own the raw
+ * Embind kernel directly (e.g. `new Module.OcctKernel()`):
+ *
+ * ```ts
+ * import createOcctWasm from 'occt-wasm';
  *
  * const Module = await createOcctWasm();
  * const kernel = new Module.OcctKernel();
@@ -107,17 +121,45 @@ function notImplemented(method: string): never {
 // - collectDistanceSamples, computePrincipalDirections, surfaceDerivatives,
 //   eigenvector2x2, liftAndNormalize, degenerateOrthoFrame, pointAt → ./measureOps.ts
 
+/**
+ * Minimal view of occt-wasm's `OcctKernel` wrapper — anything exposing the raw
+ * Embind module and kernel. Accepted by {@link OcctWasmAdapter.fromKernel}.
+ */
+export interface OcctKernelOwner {
+  getRawModule(): OcctWasmModule;
+  getRawKernel(): OcctKernelWasm;
+}
+
 export class OcctWasmAdapter implements KernelAdapter {
   readonly oc: KernelInstance;
   readonly kernelId = 'occt-wasm';
 
   private readonly Module: OcctWasmModule;
   private readonly k: OcctKernelWasm;
+  // Pins the owning OcctKernel wrapper so its FinalizationRegistry can't reclaim
+  // the borrowed raw kernel while this adapter is still live.
+  private readonly owner: unknown;
 
-  constructor(module: OcctWasmModule, kernel: OcctKernelWasm) {
+  constructor(module: OcctWasmModule, kernel: OcctKernelWasm, owner?: unknown) {
     this.Module = module;
     this.k = wrapKernelExceptions(kernel, module);
     this.oc = buildOcShim(module, this.k);
+    this.owner = owner;
+  }
+
+  /**
+   * Build an adapter from occt-wasm's `OcctKernel` wrapper, retaining it for the
+   * adapter's lifetime. Prefer this over the raw `(module, kernel)` constructor:
+   * the wrapper deletes its raw kernel when garbage-collected, so an adapter that
+   * only borrows the raw kernel can be left pointing at freed memory.
+   */
+  static fromKernel(kernel: OcctKernelOwner): OcctWasmAdapter {
+    return new OcctWasmAdapter(kernel.getRawModule(), kernel.getRawKernel(), kernel);
+  }
+
+  /** The owner retained to keep the borrowed raw kernel alive, or `undefined` when built from a raw kernel. */
+  get retainedKernelOwner(): unknown {
+    return this.owner;
   }
 
   // =========================================================================
