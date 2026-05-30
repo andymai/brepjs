@@ -5,7 +5,7 @@
  * Adding a new kernel requires a branch here in addition to a kernelRegistry entry.
  */
 
-import { initFromOC, registerKernel } from '@/kernel/index.js';
+import { initFromManifold, initFromOC, registerKernel } from '@/kernel/index.js';
 import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
 import { OcctWasmAdapter } from '@/kernel/occtWasm/occtWasmAdapter.js';
 import { kernelConfigs } from './kernelRegistry.js';
@@ -14,6 +14,7 @@ import { kernelConfigs } from './kernelRegistry.js';
 let _oc: any = null;
 let _bkInitialized = false;
 let _occtWasmInitialized = false;
+let _manifoldInitialized = false;
 
 const _available: string[] = [];
 
@@ -52,6 +53,13 @@ export async function initKernel(id?: string): Promise<void> {
     const k = new Module.OcctKernel();
     registerKernel('occt-wasm', new OcctWasmAdapter(Module, k));
     _available.push('occt-wasm');
+  } else if (kernel === 'manifold') {
+    if (_manifoldInitialized) return;
+    _manifoldInitialized = true;
+    const { initManifold } = await import('brepjs-manifold');
+    const module = await initManifold();
+    initFromManifold(module);
+    _available.push('manifold');
   } else if (kernel === 'occt') {
     await initOCCT();
   } else {

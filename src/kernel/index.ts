@@ -3,6 +3,7 @@ import type { Kernel2DCapability } from './kernel2dTypes.js';
 import { supportsKernel2D } from './kernel2dTypes.js';
 import { DefaultAdapter } from './occt/defaultAdapter.js';
 import { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
+import { ManifoldAdapter } from './manifold/manifoldAdapter.js';
 import { resetMeasureDetectionCache } from './occt/measureOps.js';
 import { resetTransformDetectionCache } from './occt/transformOps.js';
 import { resetBooleanBatchDetectionCache } from './occt/booleanBatchOps.js';
@@ -21,10 +22,15 @@ const _kernels = new Map<string, KernelAdapter>();
 let _defaultKernelId: string | null = null;
 let _cachedDefault: KernelAdapter | null = null;
 
-/**
- * Register a kernel adapter under a unique identifier.
- * The first registered kernel becomes the default.
- */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- WASM module type gap
+type ManifoldModule = any;
+
+/** Initialise and register the manifold kernel from a loaded manifold-3d module. */
+export function initFromManifold(module: ManifoldModule): void {
+  const adapter = new ManifoldAdapter(module);
+  registerKernel('manifold', adapter);
+}
+
 export function registerKernel(id: string, adapter: KernelAdapter): void {
   _kernels.set(id, adapter);
   if (!_defaultKernelId) _defaultKernelId = id;

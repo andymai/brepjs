@@ -1,0 +1,36 @@
+{
+  "name": "brepjs-manifold",
+  "version": "0.1.0",
+  "description": "Manifold mesh CSG kernel for brepjs",
+  "keywords": [
+    "manifold",
+    "cad",
+    "wasm",
+    "csg",
+    "mesh"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "src",
+    "dist"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andymai/brepjs.git",
+    "directory": "packages/brepjs-manifold"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "manifold-3d": "^3.5.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  }
+}

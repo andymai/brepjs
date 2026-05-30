@@ -88,6 +88,20 @@ export const kernelConfigs: readonly KernelConfig[] = [
       gridPattern: false,
     },
   },
+  {
+    id: 'manifold',
+    displayName: 'Manifold',
+    coverageThresholds: 'informational',
+    adapterDir: 'src/kernel/manifold',
+    capabilities: {
+      projection: false,
+      constraintSketch: false,
+      kernel2D: false,
+      variableFillet: false,
+      offsetSolidV2: false,
+      gridPattern: false,
+    },
+  },
 ] as const;
 
 /**

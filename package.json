@@ -24,6 +24,7 @@
   "workspaces": [
     "packages/brepjs-opencascade",
     "packages/brepjs-bim",
+    "packages/brepjs-manifold",
     "apps/playground",
     "apps/docs"
   ],
@@ -286,6 +287,7 @@
   },
   "dependencies": {
     "flatbush": "4.5.1",
+    "manifold-3d": "3.5.0",
     "opentype.js": "1.3.4"
   },
   "overrides": {
