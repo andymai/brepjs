@@ -85,11 +85,12 @@ await bkInit();
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
 
 // occt-wasm (external occt-wasm package)
-import createOcctWasm from 'occt-wasm';
+import { OcctKernel } from 'occt-wasm';
 import { OcctWasmAdapter } from 'brepjs/kernel/occtWasm/occtWasmAdapter';
-const Module = await createOcctWasm();
-const kernel = new Module.OcctKernel();
-registerKernel('occt-wasm', new OcctWasmAdapter(Module, kernel));
+// fromKernel pins the OcctKernel wrapper so its FinalizationRegistry can't free
+// the raw kernel out from under the adapter. See docs/kernel-swap.md.
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 
 // Custom kernel
 registerKernel('rust', new RustAdapter(wasm));
