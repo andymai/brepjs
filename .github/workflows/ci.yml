@@ -127,10 +127,35 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Sharded across runners so each fork processes ~1/4 of the suite. OCCT WASM
+    # linear memory grows monotonically across tests; a long single-runner run
+    # (173 files / 4 forks × 6 GB heap) over-commits the 16 GB runner into swap,
+    # stalling a fork until the 90s per-test timeout trips (#1102). Short shards
+    # exit before accumulation reaches that threshold. Coverage runs separately
+    # (the `coverage` job) — vitest --merge-reports can't recombine coverage
+    # across shards in this workspace+v8 setup.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
-      - run: npm run test:full -- --reporter=default --reporter=github-actions
+      - run: npm run test:ci -- --shard=${{ matrix.shard }}/4 --reporter=default --reporter=github-actions
+
+  coverage:
+    # Coverage thresholds run on main only — informational, not a PR gate (kept
+    # out of ci-pass). The full instrumented suite can't shard (see `test`), so
+    # it runs on one runner with maxWorkers=2 and a raised per-test timeout to
+    # ride out any residual swap stall rather than red on the 90s default.
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup
+      - run: npm run test:full -- --reporter=default --maxWorkers=2 --testTimeout=180000
 
   size:
     needs: changes

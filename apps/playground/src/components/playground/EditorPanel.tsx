@@ -4,7 +4,7 @@ import { usePlaygroundStore } from '../../stores/playgroundStore';
 import { setupMonaco } from '../../lib/monacoSetup';
 
 interface EditorPanelProps {
-  onCodeChange: (code: string) => void;
+  onCodeChange: (code: string, opts?: { immediate?: boolean }) => void;
   onFormat?: { current: (() => void) | null };
   jumpToLineRef?: { current: ((line: number) => void) | null };
 }
@@ -16,7 +16,11 @@ export default function EditorPanel({ onCodeChange, onFormat, jumpToLineRef }: E
   const errorLine = usePlaygroundStore((s) => s.errorLine);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
-  // Track last code from user typing to distinguish from external updates
+  // Mirrors the last value we know the model holds. The sync effect and the
+  // mount reconcile set it to a programmatically-pushed value before the edit;
+  // genuine typing changes the model to something else. handleChange uses the
+  // equality to tell an echoed buffer swap (run immediately) from typing
+  // (debounce).
   const lastUserCodeRef = useRef(code);
 
   // beforeMount fires before the Editor instance is created, so the theme is
@@ -29,6 +33,17 @@ export default function EditorPanel({ onCodeChange, onFormat, jumpToLineRef }: E
     (editor, monaco) => {
       editorRef.current = editor;
       monacoRef.current = monaco;
+
+      // A setCode (share link / draft restore / example) can land before Monaco
+      // finishes its async mount; the sync effect early-returns while editorRef
+      // is null and never re-runs, leaving the buffer stale. Reconcile to the
+      // authoritative store code now. The echoed change runs immediately via
+      // handleChange's external-equality check.
+      const current = usePlaygroundStore.getState().code;
+      if (editor.getValue() !== current) {
+        lastUserCodeRef.current = current;
+        editor.setValue(current);
+      }
 
       // Register format function for external access
       if (onFormat) {
@@ -56,9 +71,12 @@ export default function EditorPanel({ onCodeChange, onFormat, jumpToLineRef }: E
   const handleChange = useCallback(
     (value: string | undefined) => {
       const newCode = value ?? '';
+      // An echo of a programmatic buffer swap arrives equal to the value the
+      // sync effect/mount reconcile just recorded; typing differs from it.
+      const isExternal = newCode === lastUserCodeRef.current;
       lastUserCodeRef.current = newCode;
       setCode(newCode);
-      onCodeChange(newCode);
+      onCodeChange(newCode, { immediate: isExternal });
     },
     [setCode, onCodeChange]
   );

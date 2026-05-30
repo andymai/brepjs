@@ -10,6 +10,7 @@ interface ToolbarProps {
   onShare: () => void;
   onOpenCommandPalette: () => void;
   onOpenHelp: () => void;
+  onOpenExamples: () => void;
   isRunning: boolean;
   /** Hide Share/STL/STEP and the help button to fit narrow viewports.
    *  Those actions stay reachable through the command palette. */
@@ -23,6 +24,7 @@ export default function Toolbar({
   onShare,
   onOpenCommandPalette,
   onOpenHelp,
+  onOpenExamples,
   isRunning,
   compact = false,
 }: ToolbarProps) {
@@ -41,6 +43,13 @@ export default function Toolbar({
           <Logo className="h-6 w-6" />
           <span className="text-gray-400">brepjs</span>
         </a>
+        <button
+          onClick={onOpenExamples}
+          title={`Browse examples (${formatShortcut(SHORTCUTS.examples)})`}
+          className="rounded border border-gray-700 bg-surface-overlay px-2.5 py-1 text-xs font-medium text-gray-200 transition-colors hover:border-gray-500 hover:bg-gray-700 hover:text-white"
+        >
+          Examples
+        </button>
         {selectionCount > 0 && (
           <button
             onClick={clearSelections}

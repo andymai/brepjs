@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.33.0](https://github.com/andymai/brepjs/compare/brepjs-v18.32.0...brepjs-v18.33.0) (2026-05-29)
+
+
+### Features
+
+* **playground:** example picker modal with pre-generated thumbnails ([#1099](https://github.com/andymai/brepjs/issues/1099)) ([31d6985](https://github.com/andymai/brepjs/commit/31d6985176ca97c13eb16da2226481f112291204))
+
 ## [18.32.0](https://github.com/andymai/brepjs/compare/brepjs-v18.31.0...brepjs-v18.32.0) (2026-05-29)
 
 

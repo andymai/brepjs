@@ -17,7 +17,6 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
 let brepjs: any = null;
 
 let brepjsBlobUrl: string | null = null;
-let lastEvalResult: unknown[] | null = null;
 
 // Per-eval cancellation: ids land here when the main thread sends `cancel`
 // or when a newer eval supersedes them. Each `handleEval` checks the set at
@@ -111,7 +110,7 @@ function buildBrepjsWrapperUrl(mod: Record<string, unknown>): string {
   // that becomes a JS module via Blob URL, so any non-identifier would
   // either fail to parse or open a code-injection path.
   const names = Object.keys(mod).filter(
-    (k) => k !== 'default' && k !== 'color' && JS_IDENT_RE.test(k),
+    (k) => k !== 'default' && k !== 'color' && JS_IDENT_RE.test(k)
   );
   const lines = names.map((n) => `export const ${n} = m.${n};`);
   const colorHelper = `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });`;
@@ -268,11 +267,11 @@ async function handleEval(id: string, code: string) {
     }
 
     const wrappedShapes: unknown[] = Array.isArray(exported) ? exported : [exported];
-    // Strip the color wrapper so `lastEvalResult` (and any downstream
-    // consumer like STL/STEP export) only ever sees raw brepjs shapes.
+    // Strip the color wrapper so meshing only ever sees raw brepjs shapes.
     const shapes = wrappedShapes.map((item) => (isColoredShape(item) ? item.shape : item));
-    const colors = wrappedShapes.map((item) => (isColoredShape(item) ? item[PLAYGROUND_COLOR_TAG] : null));
-    lastEvalResult = shapes;
+    const colors = wrappedShapes.map((item) =>
+      isColoredShape(item) ? item[PLAYGROUND_COLOR_TAG] : null
+    );
 
     // Inspection metadata is only attached to single-shape evals — the
     // viewer's selection model is per-shape and the click → finder flow
@@ -438,14 +437,56 @@ function unwrapResultShape(shape: unknown): unknown {
   return shape;
 }
 
-function handleExportSTL(id: string) {
+// Evaluate user code to its default-exported shapes (color wrapper stripped),
+// the same way handleEval does. Export re-evaluates the exact code being
+// exported rather than reusing the last rendered shape, so the file always
+// matches the editor even if a render is still pending/debounced.
+async function evalDefaultShapes(code: string): Promise<unknown[]> {
+  if (!brepjsBlobUrl) throw new Error('Worker not initialized');
+  const rewritten = rewriteBrepjsImports(stripTypeScript(code), brepjsBlobUrl);
+  const userBlob = new Blob([rewritten], { type: 'application/javascript' });
+  const userBlobUrl = URL.createObjectURL(userBlob);
+  // Export has no console channel — silence user logs during the re-eval so they
+  // don't leak to devtools or get captured by a concurrently-running render's
+  // console buffer.
+  const origLog = console.log;
+  const origWarn = console.warn;
+  console.log = () => {};
+  console.warn = () => {};
   try {
-    if (!lastEvalResult || lastEvalResult.length === 0) {
-      post({ type: 'export-error', id, error: 'Run code successfully before exporting STL.' });
+    const userModule = (await import(/* @vite-ignore */ userBlobUrl)) as { default?: unknown };
+    const exported = userModule.default;
+    if (exported == null) return [];
+    const wrapped = Array.isArray(exported) ? exported : [exported];
+    return wrapped.map((item) => (isColoredShape(item) ? item.shape : item));
+  } finally {
+    console.log = origLog;
+    console.warn = origWarn;
+    URL.revokeObjectURL(userBlobUrl);
+  }
+}
+
+// Reduce the default export to a single shape for IO: a multi-body model
+// (`export default [a, b]`) is wrapped in a compound so every body is written,
+// not just the first.
+function exportableShape(shapes: unknown[]): unknown {
+  const bodies = shapes.map(unwrapResultShape);
+  return bodies.length === 1 ? bodies[0] : brepjs.compound(bodies);
+}
+
+async function handleExportSTL(id: string, code: string) {
+  try {
+    const shapes = await evalDefaultShapes(code);
+    if (shapes.length === 0) {
+      post({
+        type: 'export-error',
+        id,
+        error: 'No model to export — check that your code returns a shape.',
+      });
       return;
     }
 
-    const stlResult = brepjs.exportSTL(unwrapResultShape(lastEvalResult[0]), { binary: true });
+    const stlResult = brepjs.exportSTL(exportableShape(shapes), { binary: true });
 
     if (brepjs.isOk(stlResult)) {
       const blob: Blob = stlResult.value;
@@ -460,14 +501,19 @@ function handleExportSTL(id: string) {
   }
 }
 
-function handleExportSTEP(id: string) {
+async function handleExportSTEP(id: string, code: string) {
   try {
-    if (!lastEvalResult || lastEvalResult.length === 0) {
-      post({ type: 'export-error', id, error: 'Run code successfully before exporting STEP.' });
+    const shapes = await evalDefaultShapes(code);
+    if (shapes.length === 0) {
+      post({
+        type: 'export-error',
+        id,
+        error: 'No model to export — check that your code returns a shape.',
+      });
       return;
     }
 
-    const stepResult = brepjs.exportSTEP(unwrapResultShape(lastEvalResult[0]));
+    const stepResult = brepjs.exportSTEP(exportableShape(shapes));
 
     if (brepjs.isOk(stepResult)) {
       const blob: Blob = stepResult.value;
@@ -499,10 +545,10 @@ addEventListener('message', (e: MessageEvent<ToWorker>) => {
       setTimeout(() => cancelledIds.delete(msg.id), 5000);
       break;
     case 'export-stl':
-      handleExportSTL(msg.id);
+      void handleExportSTL(msg.id, msg.code);
       break;
     case 'export-step':
-      handleExportSTEP(msg.id);
+      void handleExportSTEP(msg.id, msg.code);
       break;
   }
 });

@@ -13,7 +13,11 @@ function downloadBlob(data: BlobPart, filename: string, mime: string): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
+  // Firefox historically ignores click() on a detached anchor — match the
+  // screenshot path and insert it before triggering the download.
+  document.body.appendChild(link);
   link.click();
+  link.remove();
   URL.revokeObjectURL(url);
 }
 
@@ -21,6 +25,10 @@ export function useCodeExecution() {
   const engineStatus = useEngineStore((s) => s.status);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestIdRef = useRef<string>('');
+  // Latest in-flight export id per format. A superseded export (e.g. an
+  // impatient double-click) is ignored so we don't fire two downloads.
+  const latestStlIdRef = useRef<string>('');
+  const latestStepIdRef = useRef<string>('');
   const isRecoveringRef = useRef(false);
   // Snapshot the code submitted under each eval id so eval-result records
   // what actually ran, not whatever the user has typed since.
@@ -92,9 +100,11 @@ export function useCodeExecution() {
           isRecoveringRef.current = false;
           break;
         case 'export-result':
+          if (msg.id !== latestStlIdRef.current) return;
           downloadBlob(msg.stl, 'model.stl', 'model/stl');
           break;
         case 'export-step-result':
+          if (msg.id !== latestStepIdRef.current) return;
           downloadBlob(msg.step, 'model.step', 'application/step');
           break;
         case 'export-error':
@@ -131,11 +141,12 @@ export function useCodeExecution() {
       return;
     }
 
-    // Restore last successful code and re-execute
-    toastStore.addToast('Worker crashed. Restarting and restoring last successful code...');
+    // Restart and re-render the last good shape so the viewer recovers — but
+    // DON'T overwrite the editor: the code the user has now (which may be what
+    // crashed) is their work, and silently replacing it loses edits.
+    toastStore.addToast('Worker crashed and was restarted — your code is unchanged.');
     if (restartRef.current) {
       await restartRef.current();
-      playgroundStore.setCode(lastSuccessfulCode);
       submitEval(lastSuccessfulCode);
     }
   }, [submitEval]);
@@ -151,6 +162,14 @@ export function useCodeExecution() {
       if (engineStatus !== 'ready') return;
       const store = usePlaygroundStore.getState();
 
+      // Drop any armed typing debounce — otherwise an immediate run (example
+      // switch, Ctrl+Enter) gets clobbered ~450 ms later when the stale timer
+      // fires and re-evaluates the previously-typed code.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+
       // Cancel previous execution if still running
       if (store.isRunning && latestIdRef.current) {
         postMessage({ type: 'cancel', id: latestIdRef.current });
@@ -165,6 +184,7 @@ export function useCodeExecution() {
     (code: string) => {
       if (engineStatus !== 'ready') return;
       const id = `stl-${++evalCounter}`;
+      latestStlIdRef.current = id;
       postMessage({ type: 'export-stl', id, code });
     },
     [engineStatus, postMessage]
@@ -174,6 +194,7 @@ export function useCodeExecution() {
     (code: string) => {
       if (engineStatus !== 'ready') return;
       const id = `step-${++evalCounter}`;
+      latestStepIdRef.current = id;
       postMessage({ type: 'export-step', id, code });
     },
     [engineStatus, postMessage]

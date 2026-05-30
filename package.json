@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "18.32.0",
+  "version": "18.33.0",
   "description": "Web CAD library with pluggable geometry kernel",
   "keywords": [
     "cad",
@@ -213,6 +213,7 @@
     "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts'",
     "test": "vitest run --project occt --changed",
     "test:full": "vitest run --project occt --coverage",
+    "test:ci": "vitest run --project occt",
     "test:watch": "vitest --project occt",
     "test:brepkit": "vitest run --project brepkit",
     "test:stress": "vitest run --config vitest.stress.config.ts",
@@ -248,7 +249,7 @@
     "@types/opentype.js": "1.3.9",
     "@vitest/coverage-v8": "4.1.6",
     "brepjs-opencascade": "*",
-    "brepkit-wasm": "2.101.1",
+    "brepkit-wasm": "2.101.2",
     "eslint": "10.4.0",
     "fast-check": "4.8.0",
     "husky": "9.1.7",

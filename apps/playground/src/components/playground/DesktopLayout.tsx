@@ -8,7 +8,7 @@ import CollapsedConsoleBar from './CollapsedConsoleBar';
 
 interface Props {
   panels: PlaygroundPanels;
-  onCodeChange: (code: string) => void;
+  onCodeChange: (code: string, opts?: { immediate?: boolean }) => void;
   formatRef: { current: (() => void) | null };
   jumpToLineRef: { current: ((line: number) => void) | null };
   onJumpToLine: (line: number) => void;

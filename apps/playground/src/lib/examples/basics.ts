@@ -4,6 +4,7 @@
  * terse 1-line section notes); match it when adding examples.
  */
 import type { Example } from './types';
+import { DEFAULT_CODE } from '../constants';
 
 const drilledBracket = `import { box, cut, cylinder, fillet, edgeFinder, unwrap } from 'brepjs/quick';
 
@@ -26,20 +27,6 @@ const co = translate(cone(7, 0, 14), [0, 25, 0]);
 const t = translate(torus(7, 2), [0, -25, 0]);
 
 export default [s, b, c, co, t];
-`;
-
-const vase = `import { sketchCircle, sketchLoft } from 'brepjs/quick';
-
-// Build a vase by lofting between four circular cross-sections at different
-// heights. Each ring is a planar Sketch; sketchLoft fits a smooth surface
-// through them and caps the ends to make a watertight solid. Tweak the radii
-// for different silhouettes.
-const base = sketchCircle(18, { plane: 'XY', origin: [0, 0, 0] });
-const belly = sketchCircle(22, { plane: 'XY', origin: [0, 0, 22] });
-const neck = sketchCircle(8, { plane: 'XY', origin: [0, 0, 50] });
-const lip = sketchCircle(12, { plane: 'XY', origin: [0, 0, 64] });
-
-export default sketchLoft(base, [belly, neck, lip]);
 `;
 
 const pegboard = `import { box, cutAll, cylinder, unwrap } from 'brepjs/quick';
@@ -116,35 +103,35 @@ export default [rail, stile];
 
 export const BASIC_EXAMPLES: readonly Example[] = [
   {
+    // The playground's default code, also surfaced in the picker so users can
+    // get back to it. Reuses DEFAULT_CODE so the two never drift.
+    id: 'stud-brick',
+    label: 'Stud brick',
+    description: 'Parametric interlocking brick — any size from 3 numbers.',
+    code: DEFAULT_CODE,
+  },
+  {
     id: 'drilled-bracket',
     label: 'Drilled bracket (5 lines)',
-    description: 'box → cut a cylinder → fillet vertical edges. The canonical workflow.',
+    description: 'Box, drilled and filleted — the canonical loop.',
     code: drilledBracket,
   },
   {
     id: 'primitives',
     label: 'Primitives showcase',
-    description: 'sphere · box · cylinder · cone · torus arranged in a plus.',
+    description: 'Sphere, box, cylinder, cone and torus in a plus.',
     code: primitivesShowcase,
-  },
-  {
-    id: 'vase',
-    label: 'Vase (lofted)',
-    description:
-      'Vase silhouette built by lofting between four circular cross-sections at different heights.',
-    code: vase,
   },
   {
     id: 'pegboard',
     label: 'Parametric pegboard',
-    description: 'cols × rows grid of pegs cut from a plate. Tweak the call at the bottom.',
+    description: 'A cols × rows grid of pegs cut from a plate.',
     code: pegboard,
   },
   {
     id: 'mortise-tenon',
     label: 'Mortise & tenon',
-    description:
-      'Through, four-shouldered T-joint between a rail and a stile. Exploded so the tenon hangs in mid-air.',
+    description: 'A through mortise-and-tenon joint, exploded.',
     code: mortiseAndTenon,
   },
 ];

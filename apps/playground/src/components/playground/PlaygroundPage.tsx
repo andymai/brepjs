@@ -18,6 +18,7 @@ import StatusBar from './StatusBar';
 import LoadingOverlay from './LoadingOverlay';
 import ShortcutHelp from './ShortcutHelp';
 import CommandPalette from './CommandPalette';
+import ExamplePicker from './ExamplePicker';
 import MobileLayout from './MobileLayout';
 import DesktopLayout from './DesktopLayout';
 import ToastContainer from '../shared/ToastContainer';
@@ -38,12 +39,16 @@ export default function PlaygroundPage() {
 
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [examplePickerOpen, setExamplePickerOpen] = useState(false);
 
   const openCommandPalette = useCallback(() => {
     setPaletteOpen(true);
   }, []);
   const openShortcutHelp = useCallback(() => {
     setShortcutHelpOpen(true);
+  }, []);
+  const openExamplePicker = useCallback(() => {
+    setExamplePickerOpen(true);
   }, []);
   const toggleShortcutHelp = useCallback(() => {
     setShortcutHelpOpen((o) => !o);
@@ -65,6 +70,7 @@ export default function PlaygroundPage() {
       toggleViewer: panels.toggleViewer,
       toggleEditor: panels.toggleEditor,
       commandPalette: openCommandPalette,
+      examples: openExamplePicker,
       cycleViewMode,
     },
     shortcutDefs
@@ -78,6 +84,7 @@ export default function PlaygroundPage() {
     panels,
     onFormat: editorBridges.onFormat,
     openShortcutHelp,
+    openExamplePicker,
   });
 
   return (
@@ -92,6 +99,7 @@ export default function PlaygroundPage() {
         onShare={actions.handleShare}
         onOpenCommandPalette={openCommandPalette}
         onOpenHelp={openShortcutHelp}
+        onOpenExamples={openExamplePicker}
         isRunning={isRunning}
         compact={isMobile}
       />
@@ -126,6 +134,13 @@ export default function PlaygroundPage() {
           setPaletteOpen(false);
         }}
         commands={commands}
+      />
+      <ExamplePicker
+        open={examplePickerOpen}
+        onClose={() => {
+          setExamplePickerOpen(false);
+        }}
+        onSelect={actions.handleLoadExample}
       />
     </div>
   );

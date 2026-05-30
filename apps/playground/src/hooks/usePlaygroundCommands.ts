@@ -11,6 +11,7 @@ interface Args {
   panels: PlaygroundPanels;
   onFormat: () => void;
   openShortcutHelp: () => void;
+  openExamplePicker: () => void;
 }
 
 export function usePlaygroundCommands({
@@ -18,6 +19,7 @@ export function usePlaygroundCommands({
   panels,
   onFormat,
   openShortcutHelp,
+  openExamplePicker,
 }: Args): Command[] {
   const setViewMode = useViewerStore((s) => s.setViewMode);
   const cycleViewMode = useViewerStore((s) => s.cycleViewMode);
@@ -195,15 +197,22 @@ export function usePlaygroundCommands({
         keys: '?',
         run: openShortcutHelp,
       },
-      // Examples are intentionally NOT surfaced in the command palette — a
-      // dedicated example picker is coming in a follow-up. The EXAMPLES library
-      // (apps/playground/src/lib/examples/) stays available for that UI.
+      {
+        id: 'examples',
+        group: 'Examples',
+        label: 'Browse examples…',
+        keys: formatShortcut(SHORTCUTS.examples),
+        run: openExamplePicker,
+      },
+      // Individual examples are surfaced through the ExamplePicker modal (opened
+      // by this command), not as separate palette entries.
     ],
     [
       actions,
       panels,
       onFormat,
       openShortcutHelp,
+      openExamplePicker,
       clearSelections,
       setViewMode,
       cycleViewMode,
