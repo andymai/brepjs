@@ -213,6 +213,7 @@
     "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts'",
     "test": "vitest run --project occt --changed",
     "test:full": "vitest run --project occt --coverage",
+    "test:ci": "vitest run --project occt",
     "test:watch": "vitest --project occt",
     "test:brepkit": "vitest run --project brepkit",
     "test:stress": "vitest run --config vitest.stress.config.ts",

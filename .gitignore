@@ -16,6 +16,7 @@ dist/
 isolate-*.log
 docs-api/
 coverage/
+.vitest-reports/
 *.tsbuildinfo
 .env
 .vercel
