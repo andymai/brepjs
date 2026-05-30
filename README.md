@@ -14,6 +14,8 @@ CAD modeling for JavaScript.
 
 **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
 
+[![brepjs playground: write TypeScript on the left, see the exact solid render on the right](https://raw.githubusercontent.com/andymai/brepjs/main/media/demo.webp)](https://brepjs.dev/playground)
+
 </div>
 
 Shapes are exact mathematical boundaries — not triangle meshes — so booleans are precise, measurements are real, and you can export to STEP. TypeScript types prove the geometry is valid at compile time.
@@ -31,12 +33,6 @@ const part = unwrap(fillet(drilled, edges, 1.5));
 
 const step = unwrap(exportSTEP(part));
 ```
-
-<div align="center">
-
-[![brepjs playground: write TypeScript on the left, see the exact solid render on the right](https://raw.githubusercontent.com/andymai/brepjs/main/media/demo.webp)](https://brepjs.dev/playground)
-
-</div>
 
 ## Why?
 
