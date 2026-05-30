@@ -10,6 +10,8 @@ CAD modeling for JavaScript.
 [![Commit activity](https://img.shields.io/github/commit-activity/m/andymai/brepjs?label=commits%2Fmonth)](https://github.com/andymai/brepjs/commits/main)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 
+**[▶ Try the live playground](https://brepjs.dev/playground)** — write code, watch the solid render, and export STEP, all in your browser.
+
 **[Getting Started](./docs/getting-started.md)** · **[Cheat Sheet](./docs/cheat-sheet.md)** · **[Docs](https://brepjs.dev/)**
 
 </div>
@@ -29,6 +31,12 @@ const part = unwrap(fillet(drilled, edges, 1.5));
 
 const step = unwrap(exportSTEP(part));
 ```
+
+<div align="center">
+
+[![brepjs playground: write TypeScript on the left, see the exact solid render on the right](https://raw.githubusercontent.com/andymai/brepjs/main/media/demo.webp)](https://brepjs.dev/playground)
+
+</div>
 
 ## Why?
 
