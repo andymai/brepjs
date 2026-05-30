@@ -49,6 +49,15 @@ cleanroom rewrite and represent the parity gap. They do not block PRs.
   expected sum. Property tests run with `numRuns: 50`.
 - **Round-trip serialization**: `toBeCloseTo(original, 6)` — six decimals.
 
+## Input generators
+
+`fcDim` excludes near-zero/huge dimensions; `fcOffset` is **quantized to a
+0.05 mm grid**. Sub-micron, non-zero offsets put solids in near-coincident
+configurations OCCT booleans resolve unstably (volumes up to ~98% wrong), and
+fast-check shrinks straight toward them — a nondeterministic CI red. Use
+`fcOffset` for positional offsets rather than a raw `fc.double`, or the
+degeneracy returns.
+
 ## Adding a test
 
 Use the helpers in `tests/parity/helpers.ts`:
