@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.33.2](https://github.com/andymai/brepjs/compare/brepjs-v18.33.1...brepjs-v18.33.2) (2026-05-30)
+
+
+### Bug Fixes
+
+* **occt-wasm:** retain OcctKernel wrapper to prevent GC use-after-free ([#1114](https://github.com/andymai/brepjs/issues/1114)) ([9bc269d](https://github.com/andymai/brepjs/commit/9bc269d76d5f2a10985e25760dfefbfad547c442)), closes [#1091](https://github.com/andymai/brepjs/issues/1091)
+
 ## [18.33.1](https://github.com/andymai/brepjs/compare/brepjs-v18.33.0...brepjs-v18.33.1) (2026-05-30)
 
 
