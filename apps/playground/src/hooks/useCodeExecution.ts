@@ -162,6 +162,14 @@ export function useCodeExecution() {
       if (engineStatus !== 'ready') return;
       const store = usePlaygroundStore.getState();
 
+      // Drop any armed typing debounce — otherwise an immediate run (example
+      // switch, Ctrl+Enter) gets clobbered ~450 ms later when the stale timer
+      // fires and re-evaluates the previously-typed code.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+
       // Cancel previous execution if still running
       if (store.isRunning && latestIdRef.current) {
         postMessage({ type: 'cancel', id: latestIdRef.current });

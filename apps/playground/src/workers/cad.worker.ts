@@ -446,6 +446,13 @@ async function evalDefaultShapes(code: string): Promise<unknown[]> {
   const rewritten = rewriteBrepjsImports(stripTypeScript(code), brepjsBlobUrl);
   const userBlob = new Blob([rewritten], { type: 'application/javascript' });
   const userBlobUrl = URL.createObjectURL(userBlob);
+  // Export has no console channel — silence user logs during the re-eval so they
+  // don't leak to devtools or get captured by a concurrently-running render's
+  // console buffer.
+  const origLog = console.log;
+  const origWarn = console.warn;
+  console.log = () => {};
+  console.warn = () => {};
   try {
     const userModule = (await import(/* @vite-ignore */ userBlobUrl)) as { default?: unknown };
     const exported = userModule.default;
@@ -453,6 +460,8 @@ async function evalDefaultShapes(code: string): Promise<unknown[]> {
     const wrapped = Array.isArray(exported) ? exported : [exported];
     return wrapped.map((item) => (isColoredShape(item) ? item.shape : item));
   } finally {
+    console.log = origLog;
+    console.warn = origWarn;
     URL.revokeObjectURL(userBlobUrl);
   }
 }
