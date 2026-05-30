@@ -21,6 +21,14 @@ const alwaysExclude = [
   '.worktrees/**',
 ];
 
+// Default 4 — CI's sharded `test` job runs on 16 GB runners where OCCT WASM
+// linear memory grows monotonically across a fork's files; more forks over-commit
+// into swap and trip the per-test timeout (#1102). Overridable so a many-core,
+// high-RAM machine can raise it locally without changing the CI default.
+const parsedMaxWorkers = Number(process.env['VITEST_MAX_WORKERS']);
+const maxWorkers =
+  Number.isInteger(parsedMaxWorkers) && parsedMaxWorkers > 0 ? parsedMaxWorkers : 4;
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -39,7 +47,7 @@ export default defineConfig({
     testTimeout: 90000,
     pool: 'forks',
     execArgv: ['--max-old-space-size=6144'],
-    maxWorkers: 4,
+    maxWorkers,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

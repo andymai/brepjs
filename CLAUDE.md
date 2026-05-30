@@ -39,7 +39,7 @@ Monorepo with two publishable packages:
 ## Git hooks
 
 - **Pre-commit**: lint-staged (ESLint + Prettier + pattern checker) + typecheck + boundary check (parallel), then changed-file tests (no coverage thresholds). Set `FULL_TESTS=1` for full coverage run
-- **Pre-push**: Full `test:full` + `knip` (~30s)
+- **Pre-push**: Full `test:ci` (no coverage, mirrors the CI gate) + `knip`. Coverage is main-only/non-blocking in CI, so it's not run here. Set `VITEST_MAX_WORKERS` to use more cores locally (default 4)
 - Bypass: `--no-verify` (not recommended)
 
 ## Key patterns
