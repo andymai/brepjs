@@ -138,9 +138,9 @@ export class OcctWasmAdapter implements KernelAdapter {
   private readonly k: OcctKernelWasm;
   // Pins the owning OcctKernel wrapper so its FinalizationRegistry can't reclaim
   // the borrowed raw kernel while this adapter is still live.
-  private readonly owner: unknown;
+  private readonly owner: OcctKernelOwner | undefined;
 
-  constructor(module: OcctWasmModule, kernel: OcctKernelWasm, owner?: unknown) {
+  constructor(module: OcctWasmModule, kernel: OcctKernelWasm, owner?: OcctKernelOwner) {
     this.Module = module;
     this.k = wrapKernelExceptions(kernel, module);
     this.oc = buildOcShim(module, this.k);
@@ -158,7 +158,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   /** The owner retained to keep the borrowed raw kernel alive, or `undefined` when built from a raw kernel. */
-  get retainedKernelOwner(): unknown {
+  get retainedKernelOwner(): OcctKernelOwner | undefined {
     return this.owner;
   }
 
