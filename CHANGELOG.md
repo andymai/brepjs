@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.33.1](https://github.com/andymai/brepjs/compare/brepjs-v18.33.0...brepjs-v18.33.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* **origins:** recover boolean-regenerated faces in propagateOriginsByHash ([#1100](https://github.com/andymai/brepjs/issues/1100)) ([68c25f1](https://github.com/andymai/brepjs/commit/68c25f11198da46e841a51b5c650af8363de6756))
+
 ## [18.33.0](https://github.com/andymai/brepjs/compare/brepjs-v18.32.0...brepjs-v18.33.0) (2026-05-29)
 
 
