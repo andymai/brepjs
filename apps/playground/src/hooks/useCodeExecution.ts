@@ -13,7 +13,11 @@ function downloadBlob(data: BlobPart, filename: string, mime: string): void {
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
+  // Firefox historically ignores click() on a detached anchor — match the
+  // screenshot path and insert it before triggering the download.
+  document.body.appendChild(link);
   link.click();
+  link.remove();
   URL.revokeObjectURL(url);
 }
 
@@ -131,11 +135,12 @@ export function useCodeExecution() {
       return;
     }
 
-    // Restore last successful code and re-execute
-    toastStore.addToast('Worker crashed. Restarting and restoring last successful code...');
+    // Restart and re-render the last good shape so the viewer recovers — but
+    // DON'T overwrite the editor: the code the user has now (which may be what
+    // crashed) is their work, and silently replacing it loses edits.
+    toastStore.addToast('Worker crashed and was restarted — your code is unchanged.');
     if (restartRef.current) {
       await restartRef.current();
-      playgroundStore.setCode(lastSuccessfulCode);
       submitEval(lastSuccessfulCode);
     }
   }, [submitEval]);

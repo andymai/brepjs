@@ -7,7 +7,7 @@ import { usePlaygroundStore } from '../../stores/playgroundStore';
 type Tab = 'editor' | 'viewer' | 'console';
 
 interface MobileLayoutProps {
-  onCodeChange: (code: string) => void;
+  onCodeChange: (code: string, opts?: { immediate?: boolean }) => void;
   editorFormatRef: { current: (() => void) | null };
   editorJumpToLineRef: { current: ((line: number) => void) | null };
 }
@@ -110,10 +110,7 @@ function PaneShell({ active, children }: { active: boolean; children: React.Reac
   // alone leaves them in the focus order, so a user pressing Tab could land
   // on something they can't see.
   return (
-    <div
-      className={`absolute inset-0 ${active ? '' : 'invisible'}`}
-      inert={!active}
-    >
+    <div className={`absolute inset-0 ${active ? '' : 'invisible'}`} inert={!active}>
       {children}
     </div>
   );

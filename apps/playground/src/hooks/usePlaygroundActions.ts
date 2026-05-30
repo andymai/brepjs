@@ -12,7 +12,7 @@ import { DEFAULT_CODE } from '../lib/constants';
 import type { Example } from '../lib/examples';
 
 export interface PlaygroundActions {
-  onCodeChange: (code: string) => void;
+  onCodeChange: (code: string, opts?: { immediate?: boolean }) => void;
   handleRun: () => void;
   handleShare: () => void;
   handleExportSTL: () => void;
@@ -32,11 +32,15 @@ export function usePlaygroundActions(): PlaygroundActions {
   const handleScreenshot = useScreenshot();
   const resetViewerDefaults = useViewerStore((s) => s.resetViewerDefaults);
 
+  // Typing debounces; an external buffer swap (example/share/draft load) runs
+  // immediately so the viewer reflects the switch without the 450 ms typing
+  // delay — that lag was what made example switching feel unreliable.
   const onCodeChange = useCallback(
-    (newCode: string) => {
-      debouncedRun(newCode);
+    (newCode: string, opts?: { immediate?: boolean }) => {
+      if (opts?.immediate) runCode(newCode);
+      else debouncedRun(newCode);
     },
-    [debouncedRun]
+    [debouncedRun, runCode]
   );
 
   const handleRun = useCallback(() => {

@@ -25,11 +25,11 @@ export function useKeyboardShortcuts(actions: ShortcutActions, shortcuts: Shortc
       const ctrl = e.ctrlKey || e.metaKey;
       const inEditable = isEditableTarget(e.target);
       for (const def of shortcutsRef.current) {
-        if (
-          ctrl === def.ctrl &&
-          e.shiftKey === def.shift &&
-          e.key.toLowerCase() === def.key.toLowerCase()
-        ) {
+        // Shift changes the printed char (Shift+\ → '|'), so a `\` binding can
+        // never match on e.key when it requires Shift — match the physical key.
+        const keyMatches =
+          def.key === '\\' ? e.code === 'Backslash' : e.key.toLowerCase() === def.key.toLowerCase();
+        if (ctrl === def.ctrl && e.shiftKey === def.shift && keyMatches) {
           // Skip layout toggles (Ctrl+B / Ctrl+\\) when the user is typing —
           // those overlap with Monaco's own keybindings.
           if (inEditable && def.inEditor === false) return;

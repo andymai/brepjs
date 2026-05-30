@@ -29,18 +29,39 @@ const t = translate(torus(7, 2), [0, -25, 0]);
 export default [s, b, c, co, t];
 `;
 
-const vase = `import { sketchCircle, sketchLoft } from 'brepjs/quick';
+const vase = `import {
+  sketchCircle,
+  sketchLoft,
+  shell,
+  faceFinder,
+  isSolid,
+  isValidSolid,
+  unwrap,
+} from 'brepjs/quick';
 
 // Build a vase by lofting between four circular cross-sections at different
-// heights. Each ring is a planar Sketch; sketchLoft fits a smooth surface
-// through them and caps the ends to make a watertight solid. Tweak the radii
-// for different silhouettes.
+// heights, then hollowing it out so it's a real vessel: thin walls with an
+// open top, not a solid blob. Tweak the radii for different silhouettes.
 const base = sketchCircle(18, { plane: 'XY', origin: [0, 0, 0] });
 const belly = sketchCircle(22, { plane: 'XY', origin: [0, 0, 22] });
 const neck = sketchCircle(8, { plane: 'XY', origin: [0, 0, 50] });
 const lip = sketchCircle(12, { plane: 'XY', origin: [0, 0, 64] });
 
-export default sketchLoft(base, [belly, neck, lip]);
+// sketchLoft fits a smooth surface through the rings and caps the ends to make
+// a watertight solid. The type guards narrow it to a ValidSolid so shell() can
+// take it (modifiers only accept solids proven valid).
+const solid = sketchLoft(base, [belly, neck, lip]);
+if (!isSolid(solid) || !isValidSolid(solid)) {
+  throw new Error('loft did not produce a valid solid');
+}
+
+// shell() deletes the chosen face(s) and offsets every remaining wall inward by
+// the thickness. We remove just the top cap — the disc the lip sits on — by
+// matching the one face that touches the lip-centre point at z = 64.
+const wallThickness = 2.5;
+const openTop = faceFinder().atDistance(0, [0, 0, 64]);
+
+export default unwrap(shell(solid, openTop, wallThickness));
 `;
 
 const pegboard = `import { box, cutAll, cylinder, unwrap } from 'brepjs/quick';
@@ -139,7 +160,7 @@ export const BASIC_EXAMPLES: readonly Example[] = [
   {
     id: 'vase',
     label: 'Vase (lofted)',
-    description: 'A vase lofted through four circular cross-sections.',
+    description: 'A hollow vase lofted through four circular cross-sections, then shelled.',
     code: vase,
   },
   {
