@@ -34,10 +34,14 @@ function Framing({
   const invalidate = useThree((s) => s.invalidate);
   const fired = useRef(false);
   const { center, radius } = useMemo(() => {
+    // Throwaway geometry just for the bounding sphere — dispose it so its GPU buffers
+    // aren't leaked on every `data` change (GC alone won't free them).
     const g = buildGeometry(data);
     g.computeBoundingSphere();
     const s = g.boundingSphere ?? new THREE.Sphere(new THREE.Vector3(), 1);
-    return { center: s.center.clone(), radius: s.radius || 1 };
+    const result = { center: s.center.clone(), radius: s.radius || 1 };
+    g.dispose();
+    return result;
   }, [data]);
   useEffect(() => {
     const dir = VIEW_DIR[view].clone().normalize();

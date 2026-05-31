@@ -43,7 +43,9 @@ function cutVolume(x: Shape3D, y: Shape3D, errors: string[]): number {
     errors.push(`cut: ${r.error.message}`);
     return 0;
   }
-  return volumeOf(r.value, errors);
+  // The cut result is a live WASM-backed shape; dispose it once the volume is read.
+  using shape = r.value;
+  return volumeOf(shape, errors);
 }
 
 export async function runDiff(aPath: string, bPath: string): Promise<DiffReport> {
