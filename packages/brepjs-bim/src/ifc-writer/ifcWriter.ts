@@ -1,4 +1,4 @@
-import { IfcAPI } from 'web-ifc';
+import { IfcAPI, Handle } from 'web-ifc';
 import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
@@ -36,8 +36,11 @@ export class IfcWriter {
     return entity.expressID;
   }
 
-  ref(id: number): { type: 5; value: number } {
-    return { type: 5, value: id };
+  ref(id: number): InstanceType<typeof Handle> {
+    // web-ifc 0.0.77 identifies references by the Handle class (not a {type:5,value}
+    // shape); plain objects break serialization of SELECT-typed sets like
+    // IfcUnitAssignment.Units ("Cannot pass non-string to std::string").
+    return new Handle(id);
   }
 
   mkType(type: number, value: unknown): Record<string, unknown> {
