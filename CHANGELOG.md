@@ -1,5 +1,17 @@
 # Changelog
 
+## [18.35.0](https://github.com/andymai/brepjs/compare/brepjs-v18.34.0...brepjs-v18.35.0) (2026-05-31)
+
+
+### Features
+
+* **topology:** add getSolids/getShells/getCompSolids extractors ([#1127](https://github.com/andymai/brepjs/issues/1127)) ([d162a17](https://github.com/andymai/brepjs/commit/d162a178beaac33e9372f46db188dbe7550b10d2))
+
+
+### Bug Fixes
+
+* **io:** report STEP/STL writer crashes accurately instead of as file-read errors ([#1128](https://github.com/andymai/brepjs/issues/1128)) ([cb8f275](https://github.com/andymai/brepjs/commit/cb8f275250c7cdd49abad989ee707126fe86f1fd))
+
 ## [18.34.0](https://github.com/andymai/brepjs/compare/brepjs-v18.33.2...brepjs-v18.34.0) (2026-05-31)
 
 
