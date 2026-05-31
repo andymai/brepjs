@@ -1,0 +1,113 @@
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import type { ThreeEvent } from '@react-three/fiber';
+import { buildGeometry, findFaceGroupAt } from './geometry.js';
+import type { MeshData, FaceInfo, ViewMode, ScreenPos } from './types.js';
+
+export interface RendererProps {
+  data: MeshData;
+  viewMode?: ViewMode;
+  onFacePick?: (info: FaceInfo, additive: boolean, pos: ScreenPos) => void;
+  onFaceHover?: (info: FaceInfo | null, pos?: ScreenPos) => void;
+  onFaceContextMenu?: (info: FaceInfo, pos: ScreenPos) => void;
+}
+
+export function Renderer({
+  data,
+  viewMode = 'solid',
+  onFacePick,
+  onFaceHover,
+  onFaceContextMenu,
+}: RendererProps) {
+  const pickable = Boolean(
+    data.faceGroups && data.faceInfos && (onFacePick || onFaceHover || onFaceContextMenu)
+  );
+  const geometry = useMemo(() => buildGeometry(data), [data.position, data.normal, data.index]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  const faceInfoById = useMemo(() => {
+    if (!data.faceInfos) return null;
+    const m = new Map<number, FaceInfo>();
+    for (const i of data.faceInfos) m.set(i.faceId, i);
+    return m;
+  }, [data.faceInfos]);
+
+  const resolveFace = useCallback(
+    (e: ThreeEvent<PointerEvent | MouseEvent>): FaceInfo | null => {
+      if (!data.faceGroups || !faceInfoById) return null;
+      const t = e.faceIndex;
+      if (t === undefined || t === null) return null;
+      const g = findFaceGroupAt(data.faceGroups, t);
+      return g ? (faceInfoById.get(g.faceId) ?? null) : null;
+    },
+    [data.faceGroups, faceInfoById]
+  );
+
+  const lastFaceId = useRef<number | null>(null);
+  const onClick = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      const info = resolveFace(e);
+      if (!info) return;
+      e.stopPropagation();
+      onFacePick?.(info, e.shiftKey, { x: e.clientX, y: e.clientY });
+    },
+    [resolveFace, onFacePick]
+  );
+  const onCtx = useCallback(
+    (e: ThreeEvent<MouseEvent>) => {
+      const info = resolveFace(e);
+      if (!info) return;
+      e.stopPropagation();
+      e.nativeEvent.preventDefault();
+      onFaceContextMenu?.(info, { x: e.clientX, y: e.clientY });
+    },
+    [resolveFace, onFaceContextMenu]
+  );
+  const onMove = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      const info = resolveFace(e);
+      if (!info) return;
+      lastFaceId.current = info.faceId;
+      onFaceHover?.(info, { x: e.clientX, y: e.clientY });
+    },
+    [resolveFace, onFaceHover]
+  );
+  const onOver = useCallback(() => {
+    document.body.style.cursor = 'pointer';
+  }, []);
+  const onOut = useCallback(() => {
+    document.body.style.cursor = '';
+    onFaceHover?.(null);
+    lastFaceId.current = null;
+  }, [onFaceHover]);
+
+  const handlers = pickable
+    ? {
+        onClick,
+        onContextMenu: onCtx,
+        onPointerOver: onOver,
+        onPointerOut: onOut,
+        onPointerMove: onMove,
+      }
+    : {};
+
+  return (
+    <mesh geometry={geometry} {...handlers}>
+      <meshStandardMaterial
+        color={data.color ?? '#d4d8dc'}
+        metalness={0}
+        roughness={0.45}
+        emissive={data.color ?? '#d4d8dc'}
+        emissiveIntensity={0.08}
+        side={viewMode === 'solid' ? THREE.FrontSide : THREE.DoubleSide}
+        polygonOffset
+        polygonOffsetFactor={1}
+        polygonOffsetUnits={1}
+        wireframe={viewMode === 'wireframe'}
+        transparent={viewMode === 'xray'}
+        opacity={viewMode === 'xray' ? 0.35 : 1}
+        depthWrite={viewMode !== 'xray'}
+      />
+    </mesh>
+  );
+}

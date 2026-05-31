@@ -35,6 +35,7 @@
     "@types/react": "19.2.14",
     "@types/three": "0.184.1",
     "eslint": "*",
+    "jsdom": "*",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "@react-three/fiber": "9.6.1",
