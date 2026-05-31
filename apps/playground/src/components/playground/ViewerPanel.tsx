@@ -6,12 +6,11 @@ import { usePlaygroundStore, type MeshData } from '../../stores/playgroundStore'
 import { useViewerStore, type Projection } from '../../stores/viewerStore';
 import { useCameraPresets } from '../../hooks/useCameraPresets';
 import { useTouchDevice } from '../../hooks/useTouchDevice';
-import SceneSetup from '../shared/SceneSetup';
+import { SceneSetup, SelectionHighlight } from 'brepjs-viewer';
 import ShapeRenderer from './ShapeRenderer';
 import EdgeRenderer from './EdgeRenderer';
 import ViewerToolbar from './ViewerToolbar';
 import SelectionTooltip from './SelectionTooltip';
-import SelectionHighlight from './SelectionHighlight';
 import OnboardingHint from './OnboardingHint';
 import ContextMenu from './ContextMenu';
 
@@ -257,6 +256,20 @@ export default function ViewerPanel() {
   const hoverEntity = usePlaygroundStore((s) => s.hoverEntity);
   const closeContextMenu = usePlaygroundStore((s) => s.closeContextMenu);
 
+  // The decoupled brepjs-viewer SelectionHighlight takes plain id arrays and
+  // filters per-mesh internally, so flatten the store's Selection objects to
+  // ids once here rather than threading the store entities through.
+  const selectedFaceIds = useMemo(
+    () => selections.filter((s) => s.kind === 'face').map((s) => s.info.faceId),
+    [selections]
+  );
+  const selectedEdgeIds = useMemo(
+    () => selections.filter((s) => s.kind === 'edge').map((s) => s.info.edgeId),
+    [selections]
+  );
+  const hoverFaceId = hoverEntity?.kind === 'face' ? hoverEntity.info.faceId : null;
+  const hoverEdgeId = hoverEntity?.kind === 'edge' ? hoverEntity.info.edgeId : null;
+
   const handleControlsStart = useCallback(() => {
     clearPreset();
     closeContextMenu();
@@ -340,7 +353,13 @@ export default function ViewerPanel() {
               {showEdges && viewMode !== 'wireframe' && m.edges.length > 0 && (
                 <EdgeRenderer edges={m.edges} edgeGroups={m.edgeGroups} edgeInfos={m.edgeInfos} />
               )}
-              <SelectionHighlight data={m} selections={selections} hoverEntity={hoverEntity} />
+              <SelectionHighlight
+                data={m}
+                selectedFaceIds={selectedFaceIds}
+                selectedEdgeIds={selectedEdgeIds}
+                hoverFaceId={hoverFaceId}
+                hoverEdgeId={hoverEdgeId}
+              />
             </group>
           ))}
         </group>

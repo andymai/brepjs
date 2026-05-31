@@ -1,171 +1,66 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import * as THREE from 'three';
-import type { ThreeEvent } from '@react-three/fiber';
-import type { MeshData } from '../../stores/playgroundStore';
+import { useCallback, useEffect, useRef } from 'react';
+import { Renderer } from 'brepjs-viewer';
+import type { MeshData, FaceInfo, ScreenPos } from 'brepjs-viewer';
 import { usePlaygroundStore } from '../../stores/playgroundStore';
-import type { FaceGroup, FaceInfo } from '../../workers/workerProtocol';
 import { useViewerStore } from '../../stores/viewerStore';
-
-function findFaceGroupAt(groups: FaceGroup[], triangleIndex: number): FaceGroup | null {
-  const indexBufferOffset = triangleIndex * 3;
-  let lo = 0;
-  let hi = groups.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >>> 1;
-    const group = groups[mid]!;
-    if (indexBufferOffset < group.start) hi = mid - 1;
-    else if (indexBufferOffset >= group.start + group.count) lo = mid + 1;
-    else return group;
-  }
-  return null;
-}
 
 export default function ShapeRenderer({ data }: { data: MeshData }) {
   const viewMode = useViewerStore((s) => s.viewMode);
   const pickSelection = usePlaygroundStore((s) => s.pickSelection);
   const setHoverEntity = usePlaygroundStore((s) => s.setHoverEntity);
   const openContextMenu = usePlaygroundStore((s) => s.openContextMenu);
-  const pickable = Boolean(data.faceGroups && data.faceInfos);
-  // Tracks the faceId we last advertised to the global hover store so
-  // pointerOut only nulls hover when *we* are the current target. R3F can
+  // Tracks the faceId we last advertised to the global hover store so a
+  // pointer-out only nulls hover when *we* are the current target. R3F can
   // fire a sibling's pointerMove before our pointerOut in the same tick;
   // unconditionally nulling here would clobber a freshly-set hover.
-  const lastAdvertisedFaceId = useRef<number | null>(null);
+  const lastFaceId = useRef<number | null>(null);
 
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(data.position, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(data.normal, 3));
-    geo.setIndex(new THREE.BufferAttribute(data.index, 1));
-    return geo;
-  }, [data.position, data.normal, data.index]);
-
-  useEffect(() => {
-    return () => {
-      geometry.dispose();
-    };
-  }, [geometry]);
-
-  const faceInfoById = useMemo(() => {
-    if (!data.faceInfos) return null;
-    const byId = new Map<number, FaceInfo>();
-    for (const info of data.faceInfos) byId.set(info.faceId, info);
-    return byId;
-  }, [data.faceInfos]);
-
-  // three.js only sets face.materialIndex when the mesh has a materials array;
-  // with a single material it defaults to 0. Look up by faceIndex instead.
-  const resolveFace = useCallback(
-    (event: ThreeEvent<PointerEvent | MouseEvent>): FaceInfo | null => {
-      if (!data.faceGroups || !faceInfoById) return null;
-      const triangleIndex = event.faceIndex;
-      if (triangleIndex === undefined || triangleIndex === null) return null;
-      const group = findFaceGroupAt(data.faceGroups, triangleIndex);
-      if (!group) return null;
-      return faceInfoById.get(group.faceId) ?? null;
-    },
-    [data.faceGroups, faceInfoById]
+  const onFacePick = useCallback(
+    (info: FaceInfo, additive: boolean, pos: ScreenPos) =>
+      pickSelection({ kind: 'face', info, screenPos: pos }, additive),
+    [pickSelection]
   );
-
-  const handleClick = useCallback(
-    (event: ThreeEvent<MouseEvent>) => {
-      const info = resolveFace(event);
-      if (!info) return;
-      event.stopPropagation();
-      pickSelection(
-        { kind: 'face', info, screenPos: { x: event.clientX, y: event.clientY } },
-        event.shiftKey
-      );
-    },
-    [resolveFace, pickSelection]
+  const onFaceContextMenu = useCallback(
+    (info: FaceInfo, pos: ScreenPos) =>
+      openContextMenu({ kind: 'face', info, screenPos: pos }, pos),
+    [openContextMenu]
   );
-
-  const handleContextMenu = useCallback(
-    (event: ThreeEvent<MouseEvent>) => {
-      const info = resolveFace(event);
-      if (!info) return;
-      event.stopPropagation();
-      event.nativeEvent.preventDefault();
-      openContextMenu(
-        { kind: 'face', info, screenPos: { x: event.clientX, y: event.clientY } },
-        { x: event.clientX, y: event.clientY }
-      );
-    },
-    [resolveFace, openContextMenu]
-  );
-
-  const handlePointerOver = useCallback(() => {
-    document.body.style.cursor = 'pointer';
-  }, []);
-  const handlePointerOut = useCallback(() => {
-    document.body.style.cursor = '';
-    // Only null hover if WE are the current target. A sibling pointerMove
-    // (e.g. an edge in the same canvas) may have already overwritten the
-    // store with its own entity in the same tick — clobbering it here
-    // produced the "+Z tops only" symptom by nulling face hovers seconds
-    // after they were set.
-    const cur = usePlaygroundStore.getState().hoverEntity;
-    if (cur?.kind === 'face' && cur.info.faceId === lastAdvertisedFaceId.current) {
-      setHoverEntity(null);
-    }
-    lastAdvertisedFaceId.current = null;
-  }, [setHoverEntity]);
-
-  // pointermove fires per-frame while hovering. We update on every tick so
-  // the tooltip follows the cursor — cost is one shallow store merge per
-  // move and re-renders only the tooltip via zustand selectors.
-  const handlePointerMove = useCallback(
-    (event: ThreeEvent<PointerEvent>) => {
-      const info = resolveFace(event);
-      if (!info) return;
-      lastAdvertisedFaceId.current = info.faceId;
-      setHoverEntity({
-        kind: 'face',
-        info,
-        screenPos: { x: event.clientX, y: event.clientY },
-      });
-    },
-    [resolveFace, setHoverEntity]
-  );
-
-  // R3F doesn't synthesize `pointerout` for an object that gets unmounted
-  // mid-hover (e.g. a new eval drops the previous mesh). Without this
-  // cleanup the body cursor stays `pointer` for the rest of the session
-  // and the hover tooltip would linger pointing at a destroyed mesh.
-  useEffect(() => {
-    return () => {
-      document.body.style.cursor = '';
+  const onFaceHover = useCallback(
+    (info: FaceInfo | null, pos?: ScreenPos) => {
+      if (info && pos) {
+        lastFaceId.current = info.faceId;
+        setHoverEntity({ kind: 'face', info, screenPos: pos });
+        return;
+      }
       const cur = usePlaygroundStore.getState().hoverEntity;
-      if (cur?.kind === 'face' && cur.info.faceId === lastAdvertisedFaceId.current) {
+      if (cur?.kind === 'face' && cur.info.faceId === lastFaceId.current) {
         setHoverEntity(null);
       }
+      lastFaceId.current = null;
+    },
+    [setHoverEntity]
+  );
+
+  // R3F doesn't synthesize pointerout for an object unmounted mid-hover (e.g.
+  // a new eval drops the previous mesh). Without this cleanup the hover
+  // tooltip would linger pointing at a destroyed mesh.
+  useEffect(() => {
+    return () => {
+      const cur = usePlaygroundStore.getState().hoverEntity;
+      if (cur?.kind === 'face' && cur.info.faceId === lastFaceId.current) {
+        setHoverEntity(null);
+      }
+      lastFaceId.current = null;
     };
   }, [setHoverEntity]);
 
   return (
-    <mesh
-      geometry={geometry}
-      onClick={pickable ? handleClick : undefined}
-      onContextMenu={pickable ? handleContextMenu : undefined}
-      onPointerOver={pickable ? handlePointerOver : undefined}
-      onPointerOut={pickable ? handlePointerOut : undefined}
-      onPointerMove={pickable ? handlePointerMove : undefined}
-    >
-      <meshStandardMaterial
-        color={data.color ?? '#d4d8dc'}
-        metalness={0}
-        roughness={0.45}
-        emissive={data.color ?? '#d4d8dc'}
-        emissiveIntensity={0.08}
-        side={viewMode === 'solid' ? THREE.FrontSide : THREE.DoubleSide}
-        polygonOffset
-        polygonOffsetFactor={1}
-        polygonOffsetUnits={1}
-        wireframe={viewMode === 'wireframe'}
-        transparent={viewMode === 'xray'}
-        opacity={viewMode === 'xray' ? 0.35 : 1}
-        depthWrite={viewMode !== 'xray'}
-      />
-    </mesh>
+    <Renderer
+      data={data}
+      viewMode={viewMode}
+      onFacePick={onFacePick}
+      onFaceHover={onFaceHover}
+      onFaceContextMenu={onFaceContextMenu}
+    />
   );
 }
