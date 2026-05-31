@@ -19,10 +19,35 @@ import type {
 import type { KernelBooleanOps } from '@/kernel/interfaces/booleanOps.js';
 import type { ManifoldModule } from './helpers.js';
 import { makeNode } from './opGraph.js';
-import { type ManifoldShape, nodeOf, unwrap, wrap } from './meshHandle.js';
+import {
+  type ManifoldShape,
+  type ManifoldSolid,
+  nodeOf,
+  unwrap,
+  wrap,
+} from './meshHandle.js';
 
 function asShape(shape: KernelShape): ManifoldShape {
   return shape as ManifoldShape;
+}
+
+function applyMeshOp(
+  a: ManifoldSolid,
+  b: ManifoldSolid,
+  op: string,
+): ManifoldSolid {
+  switch (op) {
+    case 'cut':
+    case 'subtract':
+    case 'difference':
+      return a.subtract(b);
+    case 'intersect':
+    case 'common':
+    case 'intersection':
+      return a.intersect(b);
+    default:
+      return a.add(b);
+  }
 }
 
 function planeFromShape(plane: KernelShape): { normal: [number, number, number]; offset: number } {
@@ -165,12 +190,7 @@ export function makeBooleanOps(module: ManifoldModule): KernelBooleanOps {
     });
     const a = Manifold.ofMesh(meshA);
     const b = Manifold.ofMesh(meshB);
-    const result =
-      op === 'cut' || op === 'subtract' || op === 'difference'
-        ? a.subtract(b)
-        : op === 'intersect' || op === 'common' || op === 'intersection'
-          ? a.intersect(b)
-          : a.add(b);
+    const result = applyMeshOp(a, b, op);
     return meshToResult(result.getMesh());
   }
 

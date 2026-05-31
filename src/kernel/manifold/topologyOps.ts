@@ -1,37 +1,16 @@
 import type { KernelTopologyOps } from '@/kernel/interfaces/topologyOps.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelShape, ShapeOrientation, ShapeType } from '@/kernel/types.js';
-import { getKernel } from '@/kernel/index.js';
 import type { ManifoldModule } from './helpers.js';
-import type { ManifoldShape } from './meshHandle.js';
-import { unwrap } from './meshHandle.js';
-import type { OpNode } from './opGraph.js';
+import {
+  asManifoldShape,
+  brepCache,
+  hashCache,
+  occtOrThrow,
+  resolveOcct,
+  unwrap,
+} from './meshHandle.js';
 import { replay } from './replay.js';
-
-function asManifoldShape(shape: KernelShape): ManifoldShape | undefined {
-  if (shape && typeof shape === 'object' && 'manifold' in shape && 'node' in shape) {
-    return shape as ManifoldShape;
-  }
-  return undefined;
-}
-
-function resolveOcct(): KernelAdapter | undefined {
-  try {
-    return getKernel('occt');
-  } catch {
-    return undefined;
-  }
-}
-
-function occtOrThrow(method: string): KernelAdapter {
-  const occt = resolveOcct();
-  if (!occt) {
-    throw new Error(
-      `manifold: ${method} requires a registered occt kernel; none is available`,
-    );
-  }
-  return occt;
-}
 
 function brepOf(shape: KernelShape, method: string): { occt: KernelAdapter; brep: KernelShape } {
   const ms = asManifoldShape(shape);
@@ -44,13 +23,12 @@ function brepOf(shape: KernelShape, method: string): { occt: KernelAdapter; brep
     );
   }
   const occt = occtOrThrow(method);
-  const node = ms.node as OpNode & { _brep?: KernelShape };
-  const cached = node._brep;
+  const cached = brepCache.get(ms.node);
   if (cached !== undefined) {
     return { occt, brep: cached };
   }
-  const brep = replay(node, occt);
-  node._brep = brep;
+  const brep = replay(ms.node, occt);
+  brepCache.set(ms.node, brep);
   return { occt, brep };
 }
 
@@ -74,12 +52,12 @@ export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
   function hashCode(shape: KernelShape, upperBound: number): number {
     const ms = asManifoldShape(shape);
     if (!ms) return 0;
-    const node = ms.node as OpNode & { _hash?: number };
-    if (node._hash === undefined) {
-      const { occt, brep } = brepOf(shape, 'hashCode');
-      node._hash = occt.hashCode(brep, upperBound);
-    }
-    return node._hash;
+    const cached = hashCache.get(ms.node);
+    if (cached !== undefined) return cached;
+    const { occt, brep } = brepOf(shape, 'hashCode');
+    const hash = occt.hashCode(brep, upperBound);
+    hashCache.set(ms.node, hash);
+    return hash;
   }
 
   function isNull(shape: KernelShape): boolean {
@@ -96,7 +74,24 @@ export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
   function iterShapes(shape: KernelShape, type: ShapeType): KernelShape[] {
     const s = asManifoldShape(shape);
     if (!s) return [];
-    return type === 'solid' ? [shape] : [];
+    if (type === 'solid') return [shape];
+    if (type !== 'edge' && type !== 'face') return [];
+    // Manifold has no B-rep edges/faces; replay to OCCT, then expose each
+    // sub-shape as a witness handle carrying its OCCT bounding box. Subset
+    // fillet/chamfer/shell selection re-identifies these by box center on replay.
+    if (!s.node.replayable) return [];
+    const occt = resolveOcct();
+    if (!occt) return [];
+    const brep = brepCache.get(s.node) ?? (() => {
+      const b = replay(s.node, occt);
+      brepCache.set(s.node, b);
+      return b;
+    })();
+    return occt.iterShapes(brep, type).map((sub, index) => ({
+      __manifoldSub: true,
+      index,
+      box: occt.boundingBox(sub),
+    }));
   }
 
   function iterShapeList(list: KernelShape, callback: (item: KernelShape) => void): void {

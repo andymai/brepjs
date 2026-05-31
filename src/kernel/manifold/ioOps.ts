@@ -13,10 +13,9 @@
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelIOOps } from '@/kernel/interfaces/ioOps.js';
 import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.js';
-import { getKernel } from '@/kernel/index.js';
 import type { ManifoldModule } from './helpers.js';
 import { makeNode } from './opGraph.js';
-import { type ManifoldShape, nodeOf, unwrap, wrap } from './meshHandle.js';
+import { type ManifoldShape, nodeOf, occtOrThrow, unwrap, wrap } from './meshHandle.js';
 import { replay } from './replay.js';
 
 interface RawMesh {
@@ -220,7 +219,6 @@ function parseSTL(module: ManifoldModule, data: ArrayBufferLike): ManifoldShape 
   const isAscii = ascii.trimStart().toLowerCase().startsWith('solid') && looksLikeAsciiStl(bytes);
 
   const verts: number[] = [];
-  const tris: number[] = [];
 
   if (isAscii) {
     const text = new TextDecoder().decode(bytes);
@@ -247,11 +245,39 @@ function parseSTL(module: ManifoldModule, data: ArrayBufferLike): ManifoldShape 
     }
   }
 
-  for (let i = 0; i < verts.length / 3; i++) tris.push(i);
+  // STL stores per-facet vertex soup; weld coincident vertices so Manifold sees
+  // a watertight indexed mesh instead of disconnected triangles.
+  const welded = weldVertices(verts);
   return meshToManifold(module, {
-    vertProperties: Float32Array.from(verts),
-    triVerts: Uint32Array.from(tris),
+    vertProperties: Float32Array.from(welded.vertices),
+    triVerts: Uint32Array.from(welded.indices),
   });
+}
+
+const WELD_QUANTUM = 1e6;
+
+/** Deduplicate coincident vertices (quantized to ~1e-6) and remap triangle indices. */
+function weldVertices(flat: readonly number[]): {
+  vertices: number[];
+  indices: number[];
+} {
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const lookup = new Map<string, number>();
+  for (let i = 0; i + 2 < flat.length; i += 3) {
+    const x = flat[i] ?? 0;
+    const y = flat[i + 1] ?? 0;
+    const z = flat[i + 2] ?? 0;
+    const key = `${Math.round(x * WELD_QUANTUM)},${Math.round(y * WELD_QUANTUM)},${Math.round(z * WELD_QUANTUM)}`;
+    let index = lookup.get(key);
+    if (index === undefined) {
+      index = vertices.length / 3;
+      lookup.set(key, index);
+      vertices.push(x, y, z);
+    }
+    indices.push(index);
+  }
+  return { vertices, indices };
 }
 
 function looksLikeAsciiStl(bytes: Uint8Array): boolean {
@@ -263,20 +289,6 @@ function looksLikeAsciiStl(bytes: Uint8Array): boolean {
 
 const FACET_SEW_TOLERANCE = 1e-6;
 
-/** Return the registered B-rep kernel, or undefined when none is available. */
-function occtKernel(): KernelAdapter | undefined {
-  try {
-    return getKernel('occt');
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * Resolve a manifold shape to a true B-rep on the occt kernel by replaying its
- * op-graph. Returns undefined (and the caller degrades) when the graph is not
- * replayable. Throws only if replay itself fails on a graph it claimed to support.
- */
 function brepFromReplay(occt: KernelAdapter, shape: KernelShape): KernelShape | undefined {
   const node = nodeOf(shape as ManifoldShape);
   if (!node.replayable) return undefined;
@@ -307,12 +319,7 @@ function faceted(occt: KernelAdapter, shape: KernelShape): KernelShape {
  * otherwise facet the mesh and warn. Throws if no B-rep kernel is registered.
  */
 function brepForExport(shape: KernelShape): { occt: KernelAdapter; brep: KernelShape } {
-  const occt = occtKernel();
-  if (!occt) {
-    throw new Error(
-      'manifold: B-rep export requires a registered occt kernel; none is available',
-    );
-  }
+  const occt = occtOrThrow('B-rep export');
   const exact = brepFromReplay(occt, shape);
   if (exact !== undefined) return { occt, brep: exact };
 
@@ -563,30 +570,19 @@ export function makeIoOps(module: ManifoldModule): KernelIOOps {
 
     // B-rep formats: replay the exact op-graph onto occt, else facet + warn.
     exportSTEP: (shapes) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: STEP export requires a registered occt kernel');
-      }
-      const breps = shapes.map((shape) => brepForExport(shape).brep);
-      return occt.exportSTEP(breps);
+      const occt = occtOrThrow('exportSTEP');
+      return occt.exportSTEP(shapes.map((shape) => brepForExport(shape).brep));
     },
     exportIGES: (shapes) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: IGES export requires a registered occt kernel');
-      }
-      const breps = shapes.map((shape) => brepForExport(shape).brep);
-      return occt.exportIGES(breps);
+      const occt = occtOrThrow('exportIGES');
+      return occt.exportIGES(shapes.map((shape) => brepForExport(shape).brep));
     },
     toBREP: (shape) => {
       const { occt, brep } = brepForExport(shape);
       return occt.toBREP(brep);
     },
     exportSTEPAssembly: (parts: StepAssemblyPart[], options) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: STEP assembly export requires a registered occt kernel');
-      }
+      const occt = occtOrThrow('exportSTEPAssembly');
       const mapped = parts.map((part): StepAssemblyPart => {
         const base: StepAssemblyPart = {
           shape: brepForExport(part.shape).brep,
@@ -597,10 +593,7 @@ export function makeIoOps(module: ManifoldModule): KernelIOOps {
       return occt.exportSTEPAssembly(mapped, options);
     },
     createXCAFDocument: (shapes): KernelType => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: XCAF export requires a registered occt kernel');
-      }
+      const occt = occtOrThrow('createXCAFDocument');
       const mapped = shapes.map((entry) => {
         const base: { shape: KernelShape; name: string; color?: [number, number, number, number] } =
           {
@@ -611,18 +604,10 @@ export function makeIoOps(module: ManifoldModule): KernelIOOps {
       });
       return occt.createXCAFDocument(mapped);
     },
-    writeXCAFToSTEP: (doc: KernelType, options) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: XCAF export requires a registered occt kernel');
-      }
-      return occt.writeXCAFToSTEP(doc, options);
-    },
+    writeXCAFToSTEP: (doc: KernelType, options) =>
+      occtOrThrow('writeXCAFToSTEP').writeXCAFToSTEP(doc, options),
     exportSTEPConfigured: (shapes, options) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: STEP export requires a registered occt kernel');
-      }
+      const occt = occtOrThrow('exportSTEPConfigured');
       const mapped = shapes.map((entry) => {
         const base: {
           shape: KernelShape;
@@ -636,24 +621,15 @@ export function makeIoOps(module: ManifoldModule): KernelIOOps {
     },
 
     importSTEP: (data) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: STEP import requires a registered occt kernel');
-      }
+      const occt = occtOrThrow('importSTEP');
       return occt.importSTEP(data).map((brep) => brepToManifold(module, occt, brep, 'importSTEP'));
     },
     importIGES: (data) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: IGES import requires a registered occt kernel');
-      }
+      const occt = occtOrThrow('importIGES');
       return occt.importIGES(data).map((brep) => brepToManifold(module, occt, brep, 'importIGES'));
     },
     fromBREP: (data) => {
-      const occt = occtKernel();
-      if (!occt) {
-        throw new Error('manifold: BREP import requires a registered occt kernel');
-      }
+      const occt = occtOrThrow('fromBREP');
       return brepToManifold(module, occt, occt.fromBREP(data), 'fromBREP');
     },
 

@@ -16,11 +16,14 @@ import type { KernelCurveOps } from '@/kernel/interfaces/curveOps.js';
 import type { KernelSurfaceOps } from '@/kernel/interfaces/surfaceOps.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelShape } from '@/kernel/types.js';
-import { getKernel } from '@/kernel/index.js';
 import type { ManifoldModule } from './helpers.js';
-import type { OpNode } from './opGraph.js';
-import type { ManifoldShape } from './meshHandle.js';
-import { unwrap } from './meshHandle.js';
+import {
+  asManifoldShape,
+  brepCache,
+  occtOrThrow,
+  resolveOcct,
+  unwrap,
+} from './meshHandle.js';
 import { replay } from './replay.js';
 
 type Vec3 = [number, number, number];
@@ -31,35 +34,8 @@ interface RawMesh {
   readonly numProp?: number;
 }
 
-const replayCache = new WeakMap<OpNode, unknown>();
-
-function asManifoldShape(shape: KernelShape): ManifoldShape | undefined {
-  if (shape && typeof shape === 'object' && 'manifold' in shape && 'node' in shape) {
-    return shape as ManifoldShape;
-  }
-  return undefined;
-}
-
-function resolveOcct(): KernelAdapter | undefined {
-  try {
-    return getKernel('occt');
-  } catch {
-    return undefined;
-  }
-}
-
-function occtOrThrow(method: string): KernelAdapter {
-  const occt = resolveOcct();
-  if (!occt) {
-    throw new Error(
-      `manifold: ${method} requires a registered occt kernel; none is available`,
-    );
-  }
-  return occt;
-}
-
 function meshOf(shape: KernelShape): RawMesh {
-  return unwrap(shape as ManifoldShape).getMesh() as RawMesh;
+  return unwrap(shape).getMesh() as RawMesh;
 }
 
 function vertexAt(mesh: RawMesh, index: number): Vec3 {
@@ -72,10 +48,6 @@ function vertexAt(mesh: RawMesh, index: number): Vec3 {
   ];
 }
 
-/**
- * Replay the shape's op-graph onto OCCT and answer an exact query from the real
- * B-rep. Memoizes the replayed OCCT shape on the op-node.
- */
 function viaOcct<T>(shape: KernelShape, query: (occtShape: KernelShape, occt: KernelAdapter) => T): T {
   const ms = asManifoldShape(shape);
   if (!ms) {
@@ -92,10 +64,10 @@ function viaOcct<T>(shape: KernelShape, query: (occtShape: KernelShape, occt: Ke
       'manifold: exact geometry query unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)',
     );
   }
-  let occtShape = replayCache.get(ms.node);
+  let occtShape = brepCache.get(ms.node);
   if (occtShape === undefined) {
     occtShape = replay(ms.node, occt);
-    replayCache.set(ms.node, occtShape);
+    brepCache.set(ms.node, occtShape);
   }
   return query(occtShape, occt);
 }

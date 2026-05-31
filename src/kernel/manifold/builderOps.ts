@@ -1,24 +1,12 @@
 import type { KernelBuilderOps } from '@/kernel/interfaces/builderOps.js';
-import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelShape } from '@/kernel/types.js';
-import { getKernel } from '@/kernel/index.js';
 import type { ManifoldModule } from './helpers.js';
 import { notImplemented } from './helpers.js';
 import { makeNode } from './opGraph.js';
-import { nodeOf, unwrap, wrap } from './meshHandle.js';
+import { nodeOf, occtOrThrow, unwrap, wrap } from './meshHandle.js';
 
 export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
   const Manifold = module.Manifold;
-
-  function occtOrThrow(method: string): KernelAdapter {
-    try {
-      return getKernel('occt');
-    } catch {
-      throw new Error(
-        `manifold: ${method} requires a registered occt kernel; none is available`,
-      );
-    }
-  }
 
   function hullFromPoints(
     points: Array<{ x: number; y: number; z: number }>,

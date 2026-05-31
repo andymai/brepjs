@@ -105,9 +105,7 @@ describe('TIER A (tight): primitives', () => {
     if (!k) return;
     const m = k.m.makeCone(5, 2, 10);
     const o = k.o.makeCone(5, 2, 10);
-    // skipCentroid: manifold reports the AABB center; for a frustum that differs
-    // from OCCT's true mass center (which is pulled toward the wider base).
-    compareMetrics(k.m, m, k.o, o, { volTol: 0.05, areaTol: 0.05, bboxAbs: 0.2, skipCentroid: true });
+    compareMetrics(k.m, m, k.o, o, { volTol: 0.05, areaTol: 0.05, bboxAbs: 0.2 });
   });
 });
 
@@ -126,7 +124,7 @@ describe('TIER A (tight): booleans', () => {
     if (!k) return;
     const m = k.m.cut(k.m.makeBox(10, 10, 10), k.m.translate(k.m.makeBox(5, 5, 5), 2.5, 2.5, 5));
     const o = k.o.cut(k.o.makeBox(10, 10, 10), k.o.translate(k.o.makeBox(5, 5, 5), 2.5, 2.5, 5));
-    compareMetrics(k.m, m, k.o, o, { volTol: 1e-3, areaTol: 1e-3, bboxAbs: 1e-3, skipCentroid: true });
+    compareMetrics(k.m, m, k.o, o, { volTol: 1e-3, areaTol: 1e-3, bboxAbs: 1e-3 });
     expect(hausdorff(tessellate(k.m, m), tessellate(k.o, o))).toBeLessThanOrEqual(FLAT_BAND);
   });
 
@@ -290,6 +288,19 @@ describe('TIER C (replay oracle): replayable ops match a direct OCCT build', () 
       const base = k.makeBox(10, 10, 10);
       return k.chamfer(base, k.iterShapes(base, 'edge'), 1);
     }); });
+
+  // Subset selection: filleting a single edge must replay onto the SAME OCCT
+  // edge a direct build selects, proving witness-point selection round-trips
+  // (positional indices alone do not).
+  it('fillet a subset (one edge) matches direct OCCT on the same edge', () => {
+    const k = kernels();
+    if (!k) return;
+    const directOne = (kk: KernelAdapter): KernelShape => {
+      const base = kk.makeBox(10, 10, 10);
+      return kk.fillet(base, kk.iterShapes(base, 'edge').slice(2, 3), 1);
+    };
+    expectReplayMatchesDirect(k.m, k.o, directOne, directOne);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -320,7 +331,7 @@ describe('TIER D (degradation): raw-mesh origin exports faceted + warns', () => 
     expect(message).toContain('faceted');
     // Faceted STEP is still a valid, non-empty STEP document.
     expect(typeof step).toBe('string');
-    expect((step).length).toBeGreaterThan(0);
+    expect(step.length).toBeGreaterThan(0);
     expect(step).toContain('ISO-10303');
   });
 
@@ -335,6 +346,6 @@ describe('TIER D (degradation): raw-mesh origin exports faceted + warns', () => 
     const message = warn.mock.calls.map((c) => String(c[0])).join('\n');
     expect(message).not.toContain('faceted');
     expect(typeof step).toBe('string');
-    expect((step).length).toBeGreaterThan(0);
+    expect(step.length).toBeGreaterThan(0);
   });
 });

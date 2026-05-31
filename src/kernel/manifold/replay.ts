@@ -28,9 +28,10 @@ type MutVec3 = [number, number, number];
 type Mat9 = [number, number, number, number, number, number, number, number, number];
 
 interface Selection {
-  readonly kind: 'all' | 'index' | 'box';
+  readonly kind: 'all' | 'index' | 'box' | 'witness';
   readonly count: number;
   readonly indices?: readonly number[];
+  readonly points?: ReadonlyArray<Vec3>;
   readonly regions?: ReadonlyArray<{
     readonly min: Vec3;
     readonly max: Vec3;
@@ -101,6 +102,22 @@ function faceFromSection(
   return faceFromOutline(target, section);
 }
 
+function subCenter(target: KernelAdapter, sub: KernelShape): Vec3 {
+  const box = target.boundingBox(sub);
+  return [
+    (box.min[0] + box.max[0]) / 2,
+    (box.min[1] + box.max[1]) / 2,
+    (box.min[2] + box.max[2]) / 2,
+  ];
+}
+
+function dist2(a: Vec3, b: Vec3): number {
+  const dx = a[0] - b[0];
+  const dy = a[1] - b[1];
+  const dz = a[2] - b[2];
+  return dx * dx + dy * dy + dz * dz;
+}
+
 function resolveSelection(
   target: KernelAdapter,
   shape: KernelShape,
@@ -109,6 +126,34 @@ function resolveSelection(
 ): KernelShape[] {
   const subs: KernelShape[] = target.iterShapes(shape, kind);
   if (!selection || selection.kind === 'all') return subs;
+
+  // Geometric selection: for each recorded witness point, pick the sub-shape
+  // whose bounding-box center is nearest. This re-identifies the right OCCT
+  // sub-shape regardless of iteration order, which positional indices cannot.
+  if (selection.kind === 'witness') {
+    const points = selection.points ?? [];
+    const centers = subs.map((sub) => subCenter(target, sub));
+    const picked: KernelShape[] = [];
+    const used = new Set<number>();
+    for (const point of points) {
+      let best = -1;
+      let bestD = Infinity;
+      for (let i = 0; i < subs.length; i++) {
+        if (used.has(i)) continue;
+        const d = dist2(point, centers[i] ?? [0, 0, 0]);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      const sub = subs[best];
+      if (best >= 0 && sub !== undefined) {
+        used.add(best);
+        picked.push(sub);
+      }
+    }
+    return picked;
+  }
 
   if (selection.kind === 'index') {
     const indices = selection.indices ?? [];
@@ -132,15 +177,7 @@ function resolveSelection(
         c[2] >= r.min[2] &&
         c[2] <= r.max[2],
     );
-  return subs.filter((sub: KernelShape) => {
-    const box = target.boundingBox(sub);
-    const center: Vec3 = [
-      (box.min[0] + box.max[0]) / 2,
-      (box.min[1] + box.max[1]) / 2,
-      (box.min[2] + box.max[2]) / 2,
-    ];
-    return inside(center);
-  });
+  return subs.filter((sub: KernelShape) => inside(subCenter(target, sub)));
 }
 
 function selectionOf(params: Readonly<Record<string, unknown>>): Selection | undefined {
@@ -302,8 +339,11 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
       num(p['turns'], 1),
     ),
   draftPrism: (t, p) => {
+    // OCCT's draftPrism derives geometry from the profile face; it ignores the
+    // base/endFace and fuse args (the fuse case is replayed by the wrapping
+    // makeFuse node), so we forward the recorded fuse purely for contract parity.
     const face = faceFromOutline(t, p);
-    return t.draftPrism(face, face, face, num(p['height']), num(p['angleDeg']), false);
+    return t.draftPrism(face, face, face, num(p['height']), num(p['angleDeg']), Boolean(p['fuse']));
   },
 
   // --- Modifiers ---

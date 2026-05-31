@@ -49,6 +49,43 @@ function clampRevolveDeg(angleRad: number): number {
   return deg > 360 ? 360 : deg;
 }
 
+interface GpComponent {
+  X(): number;
+  Y(): number;
+  Z(): number;
+}
+
+function gpToVec3(value: unknown): Vec3 | undefined {
+  const c = value as Partial<GpComponent> | null | undefined;
+  if (c && typeof c.X === 'function' && typeof c.Y === 'function' && typeof c.Z === 'function') {
+    return [c.X(), c.Y(), c.Z()];
+  }
+  return undefined;
+}
+
+/**
+ * Extract (origin, direction) from a revolve axis. Accepts the manifold-native
+ * `{origin, direction}` form and a gp_Ax1-style KernelType (what `createAxis1`
+ * produces, matching the KernelSweepOps contract and every other adapter).
+ */
+function axisOriginDirection(
+  axis: unknown,
+): { origin: Vec3; direction: Vec3 } | undefined {
+  if (axis && typeof axis === 'object') {
+    const obj = axis as { origin?: unknown; direction?: unknown };
+    if ('origin' in obj && 'direction' in obj) {
+      return { origin: obj.origin as Vec3, direction: obj.direction as Vec3 };
+    }
+    const ax1 = axis as { Location?: () => unknown; Direction?: () => unknown };
+    if (typeof ax1.Location === 'function' && typeof ax1.Direction === 'function') {
+      const origin = gpToVec3(ax1.Location());
+      const direction = gpToVec3(ax1.Direction());
+      if (origin && direction) return { origin, direction };
+    }
+  }
+  return undefined;
+}
+
 /** manifold-3d Polygons input: a single closed loop as Vec2 tuples. */
 function toPolygon(section: CrossSection): Array<[number, number]> {
   return section.outline.map((p): [number, number] => [p[0], p[1]]);
@@ -368,17 +405,20 @@ function revolveEntries(
 ): Pick<KernelSweepOps, 'revolve' | 'revolveVec'> {
   return {
     revolve: (shape, axis, angle) => {
-      if (axis && typeof axis === 'object' && 'origin' in axis && 'direction' in axis) {
-        const { origin, direction } = axis as { origin: Vec3; direction: Vec3 };
-        const section = profileCrossSection(shape);
-        return revolveOp(module, shape, origin, direction, angle, 'revolve', {
-          ...serializeSection(section),
-          axisOrigin: [origin[0], origin[1], origin[2]],
-          axisDirection: [direction[0], direction[1], direction[2]],
-          angleDeg: clampRevolveDeg(angle),
-        });
+      const resolved = axisOriginDirection(axis);
+      if (!resolved) {
+        throw new Error(
+          'manifold: revolve could not read the axis; pass {origin,direction}, a gp_Ax1, or use revolveVec',
+        );
       }
-      throw new Error('manifold: revolve requires axis with origin and direction');
+      const { origin, direction } = resolved;
+      const section = profileCrossSection(shape);
+      return revolveOp(module, shape, origin, direction, angle, 'revolve', {
+        ...serializeSection(section),
+        axisOrigin: [origin[0], origin[1], origin[2]],
+        axisDirection: [direction[0], direction[1], direction[2]],
+        angleDeg: clampRevolveDeg(angle),
+      });
     },
     revolveVec: (shape, center, direction, angle) => {
       const section = profileCrossSection(shape);

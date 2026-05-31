@@ -12,14 +12,16 @@
  */
 
 import type { BulkMeasurement, KernelMeasureOps } from '@/kernel/interfaces/measureOps.js';
-import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { DistanceResult, KernelShape } from '@/kernel/types.js';
-import { getKernel } from '@/kernel/index.js';
 import type { ManifoldModule } from './helpers.js';
 import { notImplemented } from './helpers.js';
-import type { ManifoldShape } from './meshHandle.js';
-import type { OpNode } from './opGraph.js';
-import { unwrap } from './meshHandle.js';
+import {
+  asManifoldShape,
+  brepCache,
+  resolveOcct,
+  type ManifoldShape,
+  unwrap,
+} from './meshHandle.js';
 import { replay } from './replay.js';
 
 type Vec3 = [number, number, number];
@@ -29,12 +31,119 @@ interface ManifoldBox {
   readonly max: Vec3;
 }
 
+interface ManifoldMeshLike {
+  readonly numProp: number;
+  readonly vertProperties: Float32Array;
+  readonly triVerts: Uint32Array;
+}
+
 function solidOf(shape: KernelShape): ReturnType<typeof unwrap> {
   return unwrap(shape as ManifoldShape);
 }
 
 function boxOf(shape: KernelShape): ManifoldBox {
   return solidOf(shape).boundingBox() as ManifoldBox;
+}
+
+function meshOf(shape: KernelShape): ManifoldMeshLike | undefined {
+  const solid = solidOf(shape) as { getMesh?: () => ManifoldMeshLike } | undefined;
+  return solid?.getMesh?.();
+}
+
+function vertexAt(mesh: ManifoldMeshLike, i: number): Vec3 {
+  const base = i * mesh.numProp;
+  return [
+    mesh.vertProperties[base] ?? 0,
+    mesh.vertProperties[base + 1] ?? 0,
+    mesh.vertProperties[base + 2] ?? 0,
+  ];
+}
+
+function triangleAt(mesh: ManifoldMeshLike, t: number): [number, number, number] {
+  const base = t * 3;
+  return [mesh.triVerts[base] ?? 0, mesh.triVerts[base + 1] ?? 0, mesh.triVerts[base + 2] ?? 0];
+}
+
+function cross3(a: Vec3, b: Vec3): Vec3 {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function dot3(a: Vec3, b: Vec3): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+function aabbCenter(shape: KernelShape): Vec3 {
+  const bb = boxOf(shape);
+  return [
+    (bb.min[0] + bb.max[0]) / 2,
+    (bb.min[1] + bb.max[1]) / 2,
+    (bb.min[2] + bb.max[2]) / 2,
+  ];
+}
+
+function vertexAverage(mesh: ManifoldMeshLike): Vec3 {
+  const count = Math.floor(mesh.vertProperties.length / mesh.numProp);
+  if (count === 0) return [0, 0, 0];
+  const sum: Vec3 = [0, 0, 0];
+  for (let i = 0; i < count; i++) {
+    const v = vertexAt(mesh, i);
+    sum[0] += v[0];
+    sum[1] += v[1];
+    sum[2] += v[2];
+  }
+  return [sum[0] / count, sum[1] / count, sum[2] / count];
+}
+
+/**
+ * True volume centroid via the divergence theorem: sum signed tetrahedra spanned
+ * from the origin to each triangle, weighting each tet's centroid by its signed
+ * volume. Manifold's boundingBox center is only correct for symmetric shapes — a
+ * frustum or any asymmetric solid has its mass center pulled off the AABB midpoint.
+ */
+function volumeCentroid(shape: KernelShape): Vec3 {
+  const mesh = meshOf(shape);
+  if (!mesh) return aabbCenter(shape);
+  const triCount = Math.floor(mesh.triVerts.length / 3);
+  let totalVol = 0;
+  const accum: Vec3 = [0, 0, 0];
+  for (let t = 0; t < triCount; t++) {
+    const [ia, ib, ic] = triangleAt(mesh, t);
+    const a = vertexAt(mesh, ia);
+    const b = vertexAt(mesh, ib);
+    const c = vertexAt(mesh, ic);
+    const tetVol = dot3(a, cross3(b, c)) / 6;
+    totalVol += tetVol;
+    accum[0] += ((a[0] + b[0] + c[0]) / 4) * tetVol;
+    accum[1] += ((a[1] + b[1] + c[1]) / 4) * tetVol;
+    accum[2] += ((a[2] + b[2] + c[2]) / 4) * tetVol;
+  }
+  if (Math.abs(totalVol) < 1e-12) return vertexAverage(mesh);
+  return [accum[0] / totalVol, accum[1] / totalVol, accum[2] / totalVol];
+}
+
+/** Area-weighted average of triangle centroids — the true surface center of mass. */
+function surfaceCentroid(shape: KernelShape): Vec3 {
+  const mesh = meshOf(shape);
+  if (!mesh) return aabbCenter(shape);
+  const triCount = Math.floor(mesh.triVerts.length / 3);
+  let totalArea = 0;
+  const accum: Vec3 = [0, 0, 0];
+  for (let t = 0; t < triCount; t++) {
+    const [ia, ib, ic] = triangleAt(mesh, t);
+    const a = vertexAt(mesh, ia);
+    const b = vertexAt(mesh, ib);
+    const c = vertexAt(mesh, ic);
+    const e1: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const e2: Vec3 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const n = cross3(e1, e2);
+    const area = Math.hypot(n[0], n[1], n[2]) / 2;
+    totalArea += area;
+    accum[0] += ((a[0] + b[0] + c[0]) / 3) * area;
+    accum[1] += ((a[1] + b[1] + c[1]) / 3) * area;
+    accum[2] += ((a[2] + b[2] + c[2]) / 3) * area;
+  }
+  if (totalArea < 1e-12) return vertexAverage(mesh);
+  return [accum[0] / totalArea, accum[1] / totalArea, accum[2] / totalArea];
 }
 
 export function volume(shape: KernelShape): number {
@@ -51,12 +160,7 @@ export function boundingBox(shape: KernelShape): { min: Vec3; max: Vec3 } {
 }
 
 export function centerOfMass(shape: KernelShape): Vec3 {
-  const bb = boxOf(shape);
-  return [
-    (bb.min[0] + bb.max[0]) / 2,
-    (bb.min[1] + bb.max[1]) / 2,
-    (bb.min[2] + bb.max[2]) / 2,
-  ];
+  return volumeCentroid(shape);
 }
 
 /**
@@ -98,21 +202,6 @@ export function measureBulk(shape: KernelShape, _includeLinear = false): BulkMea
   };
 }
 
-function asManifoldShape(shape: KernelShape): ManifoldShape | undefined {
-  if (shape && typeof shape === 'object' && 'manifold' in shape && 'node' in shape) {
-    return shape as ManifoldShape;
-  }
-  return undefined;
-}
-
-function resolveOcct(): KernelAdapter | undefined {
-  try {
-    return getKernel('occt');
-  } catch {
-    return undefined;
-  }
-}
-
 function surfaceCurvature(
   face: KernelShape,
   u: number,
@@ -133,8 +222,11 @@ function surfaceCurvature(
       'manifold: surfaceCurvature unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)',
     );
   }
-  const node = ms.node as OpNode & { _brep?: KernelShape };
-  const brep = node._brep ?? (node._brep = replay(node, occt));
+  const brep = brepCache.get(ms.node) ?? (() => {
+    const b = replay(ms.node, occt);
+    brepCache.set(ms.node, b);
+    return b;
+  })();
   return occt.surfaceCurvature(brep, u, v);
 }
 
@@ -148,7 +240,7 @@ export function makeMeasureOps(_module: ManifoldModule): KernelMeasureOps {
     boundingBox: (shape) => boundingBox(shape),
     distance: (a, b) => distance(a, b),
     surfaceCurvature: (face, u, v) => surfaceCurvature(face, u, v),
-    surfaceCenterOfMass: (shape) => centerOfMass(shape),
+    surfaceCenterOfMass: (shape) => surfaceCentroid(shape),
     measureBulk: (shape, includeLinear) => measureBulk(shape, includeLinear),
     createDistanceQuery: (referenceShape) => ({
       distanceTo: (shape) => distance(referenceShape, shape),

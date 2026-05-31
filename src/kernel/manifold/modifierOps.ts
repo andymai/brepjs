@@ -8,21 +8,29 @@ import { makeNode } from './opGraph.js';
 
 const ROUNDING_BALL_SEGMENTS = 16;
 
+// A pass-through op (no geometric change available) must still yield a distinct
+// manifold object so two handles never alias the same one — otherwise the
+// adapter's dispose() double-frees. translate by zero returns a fresh Manifold.
+function cloneSolid(solid: ManifoldSolid): ManifoldSolid {
+  return typeof solid?.translate === 'function' ? solid.translate([0, 0, 0]) : solid;
+}
+
 // Rolling-ball preview: Minkowski shrink-then-grow rounds convex edges by
-// `radius`. Falls back to the input solid when the build lacks Minkowski ops.
+// `radius`. Falls back to a clone of the input solid when the build lacks
+// Minkowski ops (a clone, not the input, to avoid handle aliasing).
 function approxFilletMesh(
   module: ManifoldModule,
   solid: ManifoldSolid,
   radius: number,
 ): ManifoldSolid {
-  if (!(radius > 0)) return solid;
+  if (!(radius > 0)) return cloneSolid(solid);
   const ball = roundingBall(module, radius);
-  if (ball === undefined) return solid;
+  if (ball === undefined) return cloneSolid(solid);
   if (
     typeof solid?.minkowskiDifference !== 'function' ||
     typeof solid?.minkowskiSum !== 'function'
   ) {
-    return solid;
+    return cloneSolid(solid);
   }
   return solid.minkowskiDifference(ball).minkowskiSum(ball);
 }
@@ -34,15 +42,17 @@ function approxOffsetMesh(
   solid: ManifoldSolid,
   distance: number,
 ): ManifoldSolid {
-  if (distance === 0) return solid;
+  if (distance === 0) return cloneSolid(solid);
   const ball = roundingBall(module, Math.abs(distance));
-  if (ball === undefined) return solid;
+  if (ball === undefined) return cloneSolid(solid);
   if (distance > 0) {
-    return typeof solid?.minkowskiSum === 'function' ? solid.minkowskiSum(ball) : solid;
+    return typeof solid?.minkowskiSum === 'function'
+      ? solid.minkowskiSum(ball)
+      : cloneSolid(solid);
   }
   return typeof solid?.minkowskiDifference === 'function'
     ? solid.minkowskiDifference(ball)
-    : solid;
+    : cloneSolid(solid);
 }
 
 // Hollow the solid (subtract an inward offset). `keepSolid` instead grows it
@@ -53,10 +63,10 @@ function approxShellMesh(
   thickness: number,
   keepSolid: boolean,
 ): ManifoldSolid {
-  if (thickness === 0) return solid;
+  if (thickness === 0) return cloneSolid(solid);
   if (keepSolid) return approxOffsetMesh(module, solid, Math.abs(thickness));
   const inner = approxOffsetMesh(module, solid, -Math.abs(thickness));
-  return typeof solid?.subtract === 'function' ? solid.subtract(inner) : solid;
+  return typeof solid?.subtract === 'function' ? solid.subtract(inner) : cloneSolid(solid);
 }
 
 function roundingBall(module: ManifoldModule, radius: number): ManifoldSolid | undefined {
@@ -72,14 +82,13 @@ type FilletRadius =
   | [number, number]
   | ((edge: KernelShape) => number | [number, number]);
 
+type Vec3 = readonly [number, number, number];
+
 interface Selection {
-  readonly kind: 'all' | 'index' | 'box';
+  readonly kind: 'all' | 'index' | 'witness';
   readonly count: number;
   readonly indices?: readonly number[];
-  readonly regions?: ReadonlyArray<{
-    readonly min: readonly [number, number, number];
-    readonly max: readonly [number, number, number];
-  }>;
+  readonly points?: ReadonlyArray<Vec3>;
 }
 
 function asShape(shape: KernelShape): ManifoldShape {
@@ -94,33 +103,51 @@ function readIndex(handle: KernelShape): number | undefined {
   return undefined;
 }
 
-function readRegion(handle: KernelShape):
-  | {
-      min: readonly [number, number, number];
-      max: readonly [number, number, number];
-    }
-  | undefined {
-  const solid = (handle as { manifold?: { boundingBox?: () => unknown } } | null)
-    ?.manifold;
+function boxCenter(box: {
+  min?: readonly number[];
+  max?: readonly number[];
+}): Vec3 | undefined {
+  const { min, max } = box;
+  if (min === undefined || max === undefined || min.length < 3 || max.length < 3) {
+    return undefined;
+  }
+  return [
+    ((min[0] ?? 0) + (max[0] ?? 0)) / 2,
+    ((min[1] ?? 0) + (max[1] ?? 0)) / 2,
+    ((min[2] ?? 0) + (max[2] ?? 0)) / 2,
+  ];
+}
+
+/**
+ * A representative 3D point on a selected sub-shape, used to re-identify the
+ * matching OCCT sub-shape on replay (positional indices don't survive the
+ * round-trip). manifold `iterShapes` handles carry the sub-shape's OCCT
+ * bounding box directly; other handles expose a `manifold.boundingBox()`.
+ */
+function readWitness(handle: KernelShape): Vec3 | undefined {
+  const sub = handle as { box?: { min?: readonly number[]; max?: readonly number[] } } | null;
+  if (sub?.box !== undefined) return boxCenter(sub.box);
+  const solid = (handle as { manifold?: { boundingBox?: () => unknown } } | null)?.manifold;
   const box = solid?.boundingBox?.() as
     | { min?: readonly number[]; max?: readonly number[] }
     | undefined;
-  if (
-    box?.min === undefined ||
-    box.max === undefined ||
-    box.min.length < 3 ||
-    box.max.length < 3
-  ) {
-    return undefined;
-  }
-  const [minX = 0, minY = 0, minZ = 0] = box.min;
-  const [maxX = 0, maxY = 0, maxZ = 0] = box.max;
-  return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
+  return box === undefined ? undefined : boxCenter(box);
 }
 
 function describeSelection(handles: readonly KernelShape[]): Selection {
   const count = handles.length;
   if (count === 0) return { kind: 'all', count };
+
+  const points: Vec3[] = [];
+  for (const handle of handles) {
+    const point = readWitness(handle);
+    if (point === undefined) {
+      points.length = 0;
+      break;
+    }
+    points.push(point);
+  }
+  if (points.length === count) return { kind: 'witness', count, points };
 
   const indices: number[] = [];
   for (const handle of handles) {
@@ -132,20 +159,6 @@ function describeSelection(handles: readonly KernelShape[]): Selection {
     indices.push(idx);
   }
   if (indices.length === count) return { kind: 'index', count, indices };
-
-  const regions: Array<{
-    min: readonly [number, number, number];
-    max: readonly [number, number, number];
-  }> = [];
-  for (const handle of handles) {
-    const region = readRegion(handle);
-    if (region === undefined) {
-      regions.length = 0;
-      break;
-    }
-    regions.push(region);
-  }
-  if (regions.length === count) return { kind: 'box', count, regions };
 
   return { kind: 'all', count };
 }
@@ -258,7 +271,7 @@ function draft(
   const input = asShape(shape);
   const selection = describeSelection(faces);
   return wrap(
-    unwrap(input),
+    cloneSolid(unwrap(input)),
     makeNode('draft', { pullDirection, neutralPlane, angleDeg, selection }, [
       nodeOf(input),
     ]),
@@ -268,20 +281,21 @@ function draft(
 function defeature(shape: KernelShape, faces: readonly KernelShape[]): ManifoldShape {
   const input = asShape(shape);
   const selection = describeSelection(faces);
-  return wrap(unwrap(input), makeNode('defeature', { selection }, [nodeOf(input)]));
+  return wrap(cloneSolid(unwrap(input)), makeNode('defeature', { selection }, [nodeOf(input)]));
 }
 
 function simplify(shape: KernelShape): ManifoldShape {
   const input = asShape(shape);
   const solid = unwrap(input);
-  const simplified = typeof solid?.simplify === 'function' ? solid.simplify() : solid;
+  const simplified = typeof solid?.simplify === 'function' ? solid.simplify() : cloneSolid(solid);
   return wrap(simplified, makeNode('simplify', {}, [nodeOf(input)]));
 }
 
 function reverseShape(shape: KernelShape): ManifoldShape {
   const input = asShape(shape);
   const solid = unwrap(input);
-  const reversed = typeof solid?.mirror === 'function' ? solid.mirror([1, 0, 0]) : solid;
+  const reversed =
+    typeof solid?.mirror === 'function' ? solid.mirror([1, 0, 0]) : cloneSolid(solid);
   return wrap(reversed, makeNode('reverseShape', {}, [nodeOf(input)]));
 }
 
