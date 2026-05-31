@@ -91,7 +91,9 @@ function faceFromOutline(
     edges.push(target.makeLineEdge([a[0], a[1], a[2]], [b[0], b[1], b[2]]));
   }
   const wire = target.makeWire(edges);
-  return target.makeFace(wire, true);
+  const face = target.makeFace(wire, true);
+  for (const edge of edges) target.dispose(edge);
+  return face;
 }
 
 /** Build a section face from a serialized CrossSection record. */
@@ -457,7 +459,9 @@ function spineWire(target: KernelAdapter, params: Readonly<Record<string, unknow
     const b = path[i + 1] ?? [0, 0, 0];
     edges.push(target.makeLineEdge([a[0], a[1], a[2]], [b[0], b[1], b[2]]));
   }
-  return target.makeWire(edges);
+  const wire = target.makeWire(edges);
+  for (const edge of edges) target.dispose(edge);
+  return wire;
 }
 
 function isShellResult(

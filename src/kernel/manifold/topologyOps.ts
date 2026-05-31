@@ -2,14 +2,7 @@ import type { KernelTopologyOps } from '@/kernel/interfaces/topologyOps.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelShape, ShapeOrientation, ShapeType } from '@/kernel/types.js';
 import type { ManifoldModule } from './helpers.js';
-import {
-  asManifoldShape,
-  brepCache,
-  hashCache,
-  occtOrThrow,
-  resolveOcct,
-  unwrap,
-} from './meshHandle.js';
+import { asManifoldShape, brepCache, occtOrThrow, resolveOcct, unwrap } from './meshHandle.js';
 import { replay } from './replay.js';
 
 function brepOf(shape: KernelShape, method: string): { occt: KernelAdapter; brep: KernelShape } {
@@ -52,12 +45,11 @@ export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
   function hashCode(shape: KernelShape, upperBound: number): number {
     const ms = asManifoldShape(shape);
     if (!ms) return 0;
-    const cached = hashCache.get(ms.node);
-    if (cached !== undefined) return cached;
+    // No per-node cache: occt.hashCode depends on upperBound (a node-keyed cache
+    // returns a stale out-of-range value when the bound changes). The expensive
+    // replay is already memoized in brepCache via brepOf.
     const { occt, brep } = brepOf(shape, 'hashCode');
-    const hash = occt.hashCode(brep, upperBound);
-    hashCache.set(ms.node, hash);
-    return hash;
+    return occt.hashCode(brep, upperBound);
   }
 
   function isNull(shape: KernelShape): boolean {

@@ -49,4 +49,3 @@ export function occtOrThrow(method: string): KernelAdapter {
 // Caches the replayed OCCT B-rep (a KernelShape) per op-node. KernelShape is `any`,
 // so the value type is left implicit; dispose() frees these so they don't leak.
 export const brepCache: WeakMap<OpNode, KernelShape> = new WeakMap();
-export const hashCache = new WeakMap<OpNode, number>();
