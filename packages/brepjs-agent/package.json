@@ -5,7 +5,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/andymai/brepjs",
@@ -16,12 +18,26 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-agent.js" },
-      "require": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-agent.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-agent.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/brepjs-agent.cjs"
+      }
     }
   },
-  "bin": { "brepjs-agent-verify": "./dist/cli/main.js" },
-  "files": ["dist", "viewer/dist", "CHANGELOG.md", "LICENSE", "README.md"],
+  "bin": {
+    "brepjs-agent-verify": "./dist/cli/main.js"
+  },
+  "files": [
+    "dist",
+    "viewer/dist",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "build": "vite build && vite build --config viewer/vite.config.ts",
     "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit",
@@ -34,14 +50,22 @@
     "brepjs-opencascade": ">=0.16.0"
   },
   "dependencies": {
-    "commander": "^13.0.0"
+    "commander": "^13.0.0",
+    "brepjs-viewer": "*",
+    "react": "*",
+    "react-dom": "*",
+    "three": "0.184.0",
+    "@react-three/fiber": "*",
+    "@react-three/drei": "*"
   },
   "devDependencies": {
     "@types/node": "*",
     "@types/three": "0.184.1",
+    "@vitejs/plugin-react": "*",
+    "@types/react": "*",
+    "@types/react-dom": "*",
     "eslint": "*",
     "puppeteer": "*",
-    "three": "0.184.0",
     "tsx": "*",
     "typescript": "*",
     "vite": "*",
