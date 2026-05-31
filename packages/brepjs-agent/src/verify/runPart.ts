@@ -1,4 +1,4 @@
-import { init, isOk, type AnyShape, type Result } from 'brepjs';
+import { init, isOk, mesh, exportGlb, exportSTEP, type AnyShape, type Result } from 'brepjs';
 import { runChecks } from './checks.js';
 import { emptyReport, type VerifyReport } from './report.js';
 
@@ -13,12 +13,22 @@ function isResult(v: unknown): v is Result<AnyShape> {
   );
 }
 
+export interface RunPartOptions {
+  step?: boolean;
+  glb?: boolean;
+}
+
 export interface RunPartResult {
   shape: AnyShape | null;
   report: VerifyReport;
+  step?: ArrayBuffer | undefined;
+  glb?: ArrayBuffer | undefined;
 }
 
-export async function runPart(modulePath: string): Promise<RunPartResult> {
+export async function runPart(
+  modulePath: string,
+  opts: RunPartOptions = {},
+): Promise<RunPartResult> {
   await init();
   const report = emptyReport();
   let mod: { default?: PartFn };
@@ -53,5 +63,13 @@ export async function runPart(modulePath: string): Promise<RunPartResult> {
     report.errors.push('part produced no shape');
     return { shape: null, report };
   }
-  return { shape, report: runChecks(shape) };
+  let glb: ArrayBuffer | undefined;
+  let step: ArrayBuffer | undefined;
+  if (opts.glb) glb = exportGlb(mesh(shape));
+  if (opts.step) {
+    const r = exportSTEP(shape);
+    if (isOk(r)) step = await r.value.arrayBuffer();
+    else report.errors.push(`exportSTEP: ${String(r.error)}`);
+  }
+  return { shape, report: runChecks(shape), step, glb };
 }

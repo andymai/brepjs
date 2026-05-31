@@ -1,4 +1,4 @@
-export { runPart, type RunPartResult } from './verify/runPart.js';
+export { runPart, type RunPartOptions, type RunPartResult } from './verify/runPart.js';
 export { runChecks } from './verify/checks.js';
 export {
   serializeReport,

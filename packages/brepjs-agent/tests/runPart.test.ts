@@ -16,4 +16,16 @@ describe('runPart', () => {
     const failed = report.errors.length + report.checks.filter((c) => !c.passed).length;
     expect(failed).toBeGreaterThan(0);
   }, 30000);
+
+  it('emits a STEP buffer (primary artifact) for a valid shape', async () => {
+    const { step } = await runPart(fix('validBox.brep.ts'), { step: true });
+    expect(step).toBeInstanceOf(ArrayBuffer);
+    expect((step as ArrayBuffer).byteLength).toBeGreaterThan(0);
+  }, 30000);
+
+  it('emits a GLB buffer (derived preview) for a valid shape', async () => {
+    const { glb } = await runPart(fix('validBox.brep.ts'), { glb: true });
+    expect(glb).toBeInstanceOf(ArrayBuffer);
+    expect((glb as ArrayBuffer).byteLength).toBeGreaterThan(0);
+  }, 30000);
 });
