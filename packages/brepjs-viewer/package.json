@@ -1,0 +1,49 @@
+{
+  "name": "brepjs-viewer",
+  "version": "0.1.0",
+  "description": "Shared React/R3F renderer for brepjs meshes (used by the playground and the brepjs-agent viewer)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "engines": { "node": ">=24" },
+  "main": "./dist/brepjs-viewer.cjs",
+  "module": "./dist/brepjs-viewer.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-viewer.js" },
+      "require": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-viewer.cjs" }
+    }
+  },
+  "files": ["dist", "CHANGELOG.md", "LICENSE", "README.md"],
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19",
+    "three": ">=0.184",
+    "@react-three/fiber": ">=9",
+    "@react-three/drei": ">=10"
+  },
+  "devDependencies": {
+    "@eslint/js": "*",
+    "@react-three/test-renderer": "*",
+    "@types/react": "19.2.14",
+    "@types/three": "0.184.1",
+    "eslint": "*",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "@react-three/fiber": "9.6.1",
+    "@react-three/drei": "10.7.7",
+    "three": "0.184.0",
+    "typescript": "*",
+    "typescript-eslint": "*",
+    "vite": "*",
+    "vite-plugin-dts": "*",
+    "vitest": "*"
+  }
+}

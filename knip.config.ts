@@ -18,6 +18,9 @@ const config: KnipConfig = {
     'packages/brepjs-opencascade': {
       ignore: ['**'],
     },
+    'packages/brepjs-viewer': {
+      ignore: ['**'],
+    },
     'apps/playground': {
       ignore: ['**'],
     },

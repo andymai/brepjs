@@ -26,6 +26,7 @@
     "packages/brepjs-bim",
     "packages/brepjs-manifold",
     "packages/brepjs-agent",
+    "packages/brepjs-viewer",
     "apps/playground",
     "apps/docs"
   ],
