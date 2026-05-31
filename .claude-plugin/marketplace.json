@@ -1,0 +1,11 @@
+{
+  "name": "brepjs",
+  "owner": { "name": "andymai" },
+  "plugins": [
+    {
+      "name": "brepjs-cad",
+      "source": "./packages/brepjs-agent",
+      "description": "Author and verify parametric brepjs CAD models"
+    }
+  ]
+}

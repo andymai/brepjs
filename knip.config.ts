@@ -21,6 +21,9 @@ const config: KnipConfig = {
     'packages/brepjs-viewer': {
       ignore: ['**'],
     },
+    'packages/brepjs-agent': {
+      ignore: ['**'],
+    },
     'apps/playground': {
       ignore: ['**'],
     },
