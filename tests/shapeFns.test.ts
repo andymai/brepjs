@@ -22,9 +22,13 @@ import {
   getWires,
   getSolids,
   getShells,
+  getCompSolids,
   iterEdges,
   iterFaces,
   iterWires,
+  iterSolids,
+  iterShells,
+  iterCompSolids,
   getBounds,
   vertexPosition,
   compound,
@@ -181,6 +185,19 @@ describe('getSolids / getShells / getCompSolids', () => {
     const shells = getShells(box(10, 10, 10));
     expect(shells.length).toBe(1);
     expect(isShell(shells[0]!)).toBe(true); // eslint-disable-line @typescript-eslint/no-non-null-assertion
+  });
+
+  it('returns an empty array of compsolids for a box (no compsolids)', () => {
+    expect(getCompSolids(box(10, 10, 10))).toEqual([]);
+  });
+
+  it('iterators yield the same results as their getters', () => {
+    const b = box(10, 10, 10);
+    expect([...iterSolids(b)].length).toBe(getSolids(b).length); // 1
+    expect([...iterShells(b)].length).toBe(getShells(b).length); // 1
+    expect([...iterCompSolids(b)]).toEqual(getCompSolids(b)); // []
+    expect([...iterSolids(b)].every((s) => isSolid(s))).toBe(true);
+    expect([...iterShells(b)].every((s) => isShell(s))).toBe(true);
   });
 });
 
