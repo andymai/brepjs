@@ -24,6 +24,14 @@ export function Renderer({
   );
   const geometry = useMemo(() => buildGeometry(data), [data.position, data.normal, data.index]);
   useEffect(() => () => geometry.dispose(), [geometry]);
+  // R3F doesn't synthesize pointerOut for a mesh unmounted mid-hover (e.g. a new model replaces
+  // this one), so reset the body cursor on unmount or it stays `pointer` for the session.
+  useEffect(
+    () => () => {
+      document.body.style.cursor = '';
+    },
+    []
+  );
 
   const faceInfoById = useMemo(() => {
     if (!data.faceInfos) return null;
