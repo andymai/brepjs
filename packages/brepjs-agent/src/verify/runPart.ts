@@ -63,13 +63,23 @@ export async function runPart(
     report.errors.push('part produced no shape');
     return { shape: null, report };
   }
+  // Run checks first, then push any export errors into THIS (returned) report — earlier code
+  // pushed export errors into `report` but returned a fresh runChecks() report, silently
+  // dropping them (a failed exportSTEP then read as ok:true with no file written).
+  const result = runChecks(shape);
   let glb: ArrayBuffer | undefined;
   let step: ArrayBuffer | undefined;
-  if (opts.glb) glb = exportGlb(mesh(shape));
+  if (opts.glb) {
+    try {
+      glb = exportGlb(mesh(shape));
+    } catch (e) {
+      result.errors.push(`exportGlb: ${(e as Error).message}`);
+    }
+  }
   if (opts.step) {
     const r = exportSTEP(shape);
     if (isOk(r)) step = await r.value.arrayBuffer();
-    else report.errors.push(`exportSTEP: ${r.error.message}`);
+    else result.errors.push(`exportSTEP: ${r.error.message}`);
   }
-  return { shape, report: runChecks(shape), step, glb };
+  return { shape, report: result, step, glb };
 }
