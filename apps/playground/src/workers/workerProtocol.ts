@@ -1,29 +1,8 @@
 /** Message types for main thread <-> CAD worker communication. */
 
-export interface FaceGroup {
-  start: number;
-  count: number;
-  faceId: number;
-}
+import type { FaceGroup, EdgeGroup, FaceInfo, EdgeInfo } from 'brepjs-viewer';
 
-export interface EdgeGroup {
-  start: number;
-  count: number;
-  edgeId: number;
-}
-
-export interface FaceInfo {
-  faceId: number;
-  surfaceType: string;
-  area: number;
-  normal: [number, number, number];
-}
-
-export interface EdgeInfo {
-  edgeId: number;
-  curveType: string;
-  length: number;
-}
+export type { FaceGroup, EdgeGroup, FaceInfo, EdgeInfo } from 'brepjs-viewer';
 
 export interface MeshTransfer {
   position: Float32Array;

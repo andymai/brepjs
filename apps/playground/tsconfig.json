@@ -11,7 +11,10 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "brepjs-viewer": ["../../packages/brepjs-viewer/src/index.ts"]
+    }
   },
   "include": ["src"]
 }

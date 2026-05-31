@@ -1,24 +1,10 @@
 import { create } from 'zustand';
 import { DEFAULT_CODE } from '../lib/constants';
-import type { FaceGroup, EdgeGroup, FaceInfo, EdgeInfo } from '../workers/workerProtocol';
+import type { FaceInfo, EdgeInfo } from '../workers/workerProtocol';
 import type { SharedSelection } from '../lib/urlCodec';
 
-export interface MeshData {
-  position: Float32Array;
-  normal: Float32Array;
-  index: Uint32Array;
-  edges: Float32Array;
-  faceGroups?: FaceGroup[];
-  edgeGroups?: EdgeGroup[];
-  faceInfos?: FaceInfo[];
-  edgeInfos?: EdgeInfo[];
-  color?: string;
-}
-
-export interface ScreenPos {
-  x: number;
-  y: number;
-}
+export type { MeshData, ScreenPos } from 'brepjs-viewer';
+import type { MeshData, ScreenPos } from 'brepjs-viewer';
 
 export type Selection =
   | { kind: 'face'; info: FaceInfo; screenPos: ScreenPos }

@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 export type CameraPreset = 'front' | 'side' | 'top' | 'isometric';
-export type ViewMode = 'solid' | 'wireframe' | 'xray';
+export type { ViewMode } from 'brepjs-viewer';
+import type { ViewMode } from 'brepjs-viewer';
 export type Projection = 'perspective' | 'orthographic';
 
 interface ViewerState {

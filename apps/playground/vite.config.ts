@@ -1,9 +1,12 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { createReadStream, existsSync, mkdirSync, copyFileSync, readFileSync } from 'fs';
+
+const reactRequire = createRequire(import.meta.url);
 
 interface PackageJson {
   version?: string;
@@ -80,13 +83,14 @@ export default defineConfig({
     exclude: ['brepjs-opencascade'],
   },
   resolve: {
-    // npm hoisting puts react in apps/playground/node_modules (workspace local) but
-    // packages like @vercel/analytics and @monaco-editor/react are hoisted to root,
-    // so their relative `react` resolution fails under vite 8 + rolldown's stricter
-    // module resolution. Force both to find this workspace's react copy.
+    // Pin react/react-dom to a single physical copy so vite 8 + rolldown's stricter
+    // module resolution can't pick up two instances across hoist boundaries. The copy
+    // may live at the workspace root or nested in apps/playground depending on how npm
+    // hoists once sibling workspaces (brepjs-viewer) pull the same React major, so
+    // resolve the package dir at config time rather than hardcoding either location.
     alias: {
-      react: fileURLToPath(new URL('./node_modules/react', import.meta.url)),
-      'react-dom': fileURLToPath(new URL('./node_modules/react-dom', import.meta.url)),
+      react: dirname(reactRequire.resolve('react/package.json')),
+      'react-dom': dirname(reactRequire.resolve('react-dom/package.json')),
     },
   },
   build: {
