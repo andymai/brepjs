@@ -12,12 +12,12 @@ const fakeMesh = {
 function makeFakeBrepjs() {
   return {
     isOk: (r: { ok: boolean }) => r.ok,
-    importSTEP: vi.fn(async () => ({ ok: true, value: fakeShape })),
-    importSTL: vi.fn(async () => ({ ok: true, value: fakeShape })),
-    importGLB: vi.fn(async () => ({ ok: true, value: fakeShape })),
-    importIGES: vi.fn(async () => ({ ok: true, value: fakeShape })),
-    importThreeMF: vi.fn(async () => ({ ok: true, value: fakeShape })),
-    importOBJ: vi.fn(async () => ({ ok: true, value: fakeShape })),
+    importSTEP: vi.fn(() => Promise.resolve({ ok: true, value: fakeShape })),
+    importSTL: vi.fn(() => Promise.resolve({ ok: true, value: fakeShape })),
+    importGLB: vi.fn(() => Promise.resolve({ ok: true, value: fakeShape })),
+    importIGES: vi.fn(() => Promise.resolve({ ok: true, value: fakeShape })),
+    importThreeMF: vi.fn(() => Promise.resolve({ ok: true, value: fakeShape })),
+    importOBJ: vi.fn(() => Promise.resolve({ ok: true, value: fakeShape })),
     mesh: vi.fn(() => fakeMesh),
     meshEdges: vi.fn(() => ({ lines: new Float32Array([0, 0, 0, 1, 0, 0]), edgeGroups: [] })),
   };
@@ -44,7 +44,9 @@ describe('loadModel', () => {
   });
   it('rejects on Err', async () => {
     const bk = makeFakeBrepjs();
-    bk.importSTEP = vi.fn(async () => ({ ok: false, error: 'bad STEP' }) as { ok: boolean });
+    bk.importSTEP = vi.fn(
+      () => Promise.resolve({ ok: false, error: 'bad STEP' }) as Promise<{ ok: boolean }>,
+    );
     await expect(loadModel(bk, new Blob([]), '.step')).rejects.toThrow(/bad STEP/);
   });
 });

@@ -16,7 +16,7 @@ export async function runMeasure(aPath: string, bPath?: string): Promise<Measure
   if (bPath === undefined) {
     const len = measureLength(a.shape);
     if (isOk(len)) return { length: len.value, errors };
-    errors.push(`measureLength: ${String(len.error)}`);
+    errors.push(`measureLength: ${len.error.message}`);
     return { errors };
   }
 
@@ -26,6 +26,6 @@ export async function runMeasure(aPath: string, bPath?: string): Promise<Measure
 
   const dist = measureDistance(a.shape, b.shape);
   if (isOk(dist)) return { distance: dist.value, errors };
-  errors.push(`measureDistance: ${String(dist.error)}`);
+  errors.push(`measureDistance: ${dist.error.message}`);
   return { errors };
 }

@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { existsSync, rmSync } from 'node:fs';
+import type { VerifyReport } from '@/verify/report.js';
+
+type SerializedReport = VerifyReport & { ok: boolean };
 
 const pkgRoot = fileURLToPath(new URL('..', import.meta.url));
 const fix = (n: string) => fileURLToPath(new URL(`./fixtures/${n}`, import.meta.url));
@@ -15,7 +18,7 @@ describe('verify CLI', () => {
     const stdout = execFileSync('npx', ['tsx', cli, fix('validBox.brep.ts'), '--step', step, '--glb', glb], {
       encoding: 'utf8', cwd: pkgRoot,
     });
-    const json = JSON.parse(stdout);
+    const json = JSON.parse(stdout) as SerializedReport;
     expect(json.ok).toBe(true);
     expect(json.measurements.volume).toBeCloseTo(1000, 1);
     expect(existsSync(step)).toBe(true);

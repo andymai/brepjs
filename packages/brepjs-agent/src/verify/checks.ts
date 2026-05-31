@@ -43,7 +43,7 @@ export function runChecks(shape: AnyShape): VerifyReport {
       r.measurements.volume = vol.value;
       r.checks.push({ name: 'positiveVolume', passed: vol.value > 0 });
     } else {
-      r.errors.push(`measureVolume: ${vol.error}`);
+      r.errors.push(`measureVolume: ${vol.error.message}`);
     }
   }
 

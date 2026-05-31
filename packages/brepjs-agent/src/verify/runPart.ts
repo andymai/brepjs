@@ -5,12 +5,7 @@ import { emptyReport, type VerifyReport } from './report.js';
 type PartFn = () => unknown;
 
 function isResult(v: unknown): v is Result<AnyShape> {
-  return (
-    typeof v === 'object' &&
-    v !== null &&
-    'ok' in v &&
-    typeof (v as { ok: unknown }).ok === 'boolean'
-  );
+  return typeof v === 'object' && v !== null && 'ok' in v && typeof v.ok === 'boolean';
 }
 
 export interface RunPartOptions {
@@ -49,11 +44,11 @@ export async function runPart(
     report.errors.push(`part threw: ${(e as Error).message}`);
     return { shape: null, report };
   }
-  let shape: AnyShape | null = null;
+  let shape: AnyShape | null;
   if (isResult(out)) {
     if (isOk(out)) shape = out.value;
     else {
-      report.errors.push(`part returned Err: ${String(out.error)}`);
+      report.errors.push(`part returned Err: ${out.error.message}`);
       return { shape: null, report };
     }
   } else {
@@ -69,7 +64,7 @@ export async function runPart(
   if (opts.step) {
     const r = exportSTEP(shape);
     if (isOk(r)) step = await r.value.arrayBuffer();
-    else report.errors.push(`exportSTEP: ${String(r.error)}`);
+    else report.errors.push(`exportSTEP: ${r.error.message}`);
   }
   return { shape, report: runChecks(shape), step, glb };
 }

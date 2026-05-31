@@ -18,6 +18,10 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/prefer-readonly': 'error',
       'prefer-const': 'error',
       eqeqeq: 'error',
@@ -37,6 +41,10 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/prefer-readonly': 'error',
       'prefer-const': 'error',
       eqeqeq: 'error',
@@ -61,6 +69,33 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/prefer-readonly': 'error',
+      'prefer-const': 'error',
+      eqeqeq: 'error',
+      'no-var': 'error',
+      'no-console': ['error', { allow: ['error', 'warn'] }],
+    },
+  },
+  {
+    files: ['viewer/tests/**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        project: './viewer/tsconfig.test.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/prefer-readonly': 'error',
       'prefer-const': 'error',
       eqeqeq: 'error',

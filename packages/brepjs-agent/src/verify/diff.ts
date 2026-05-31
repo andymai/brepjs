@@ -24,7 +24,7 @@ function emptyDiff(errors: string[]): DiffReport {
 function volumeOf(shape: Shape3D, errors: string[]): number {
   const v = measureVolume(shape);
   if (isOk(v)) return v.value;
-  errors.push(`measureVolume: ${String(v.error)}`);
+  errors.push(`measureVolume: ${v.error.message}`);
   return 0;
 }
 
@@ -32,7 +32,7 @@ function areaOf(shape: AnyShape, errors: string[]): number {
   if (!isShape3D(shape)) return 0;
   const a = measureArea(shape);
   if (isOk(a)) return a.value;
-  errors.push(`measureArea: ${String(a.error)}`);
+  errors.push(`measureArea: ${a.error.message}`);
   return 0;
 }
 
@@ -40,7 +40,7 @@ function areaOf(shape: AnyShape, errors: string[]): number {
 function cutVolume(x: Shape3D, y: Shape3D, errors: string[]): number {
   const r = cut(x, y);
   if (!isOk(r)) {
-    errors.push(`cut: ${String(r.error)}`);
+    errors.push(`cut: ${r.error.message}`);
     return 0;
   }
   return volumeOf(r.value, errors);

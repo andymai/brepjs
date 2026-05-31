@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
-import { loadModel } from './loaders.js';
+import { loadModel, type BrepjsForLoad } from './loaders.js';
 import type { MeshData } from 'brepjs-viewer';
+
+type BrepjsKernel = BrepjsForLoad & { initFromOC: (oc: unknown) => void };
 
 export interface LoadRequest {
   type: 'load';
@@ -27,12 +29,11 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- brepjs module (WASM type gap)
-let brepjs: any = null;
+let brepjs: BrepjsKernel | null = null;
 
 // Boot OpenCascade WASM once, init brepjs against it. Pattern: cad.worker.ts:63-96,122-152.
-async function ensureKernel(): Promise<void> {
-  if (brepjs) return;
+async function ensureKernel(): Promise<BrepjsKernel> {
+  if (brepjs) return brepjs;
   // Resolve the wasm dir from the viewer base (matches cad.worker.ts), NOT the worker chunk's own dir:
   // base:'./' + assetsDir means the ES worker chunk lands in dist/assets/ while wasm is at dist/wasm/,
   // so `new URL('./', self.location.href)` would 404 (dist/assets/wasm/...). import.meta.env.BASE_URL
@@ -50,8 +51,10 @@ async function ensureKernel(): Promise<void> {
   const oc = await ocModule.default({
     locateFile: (p: string) => (p.endsWith('.wasm') ? `${base}wasm/brepjs_single.wasm` : p),
   });
-  brepjs = await import('brepjs');
-  brepjs.initFromOC(oc);
+  const mod = (await import('brepjs')) as unknown as BrepjsKernel;
+  mod.initFromOC(oc);
+  brepjs = mod;
+  return mod;
 }
 
 function transferablesFor(md: MeshData): Transferable[] {
@@ -60,8 +63,8 @@ function transferablesFor(md: MeshData): Transferable[] {
 
 async function handleLoad(req: LoadRequest): Promise<void> {
   try {
-    await ensureKernel();
-    const meshData = await loadModel(brepjs, new Blob([req.bytes]), req.ext);
+    const kernel = await ensureKernel();
+    const meshData = await loadModel(kernel, new Blob([req.bytes]), req.ext);
     post({ type: 'loaded', meshData }, transferablesFor(meshData));
   } catch (e) {
     post({ type: 'error', error: e instanceof Error ? e.message : String(e) });

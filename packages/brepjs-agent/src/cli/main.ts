@@ -54,7 +54,8 @@ program
         for (const p of pngs) process.stdout.write(p + '\n');
       }
       process.stdout.write(json + '\n');
-      if (!opts.serve && JSON.parse(json).ok !== true) process.exitCode = 1;
+      const parsed = JSON.parse(json) as { ok: boolean };
+      if (!opts.serve && parsed.ok !== true) process.exitCode = 1;
       if (opts.serve && stepPath) {
         const { serve } = await import('../snapshot/serve.js'); // lazy: no server deps on the default path
         const { url } = await serve({ file: stepPath }); // builds a ?dir=&file= URL; server runs until Ctrl-C
@@ -83,4 +84,4 @@ program
     if (result.errors.length > 0) process.exitCode = 1;
   });
 
-program.parseAsync();
+void program.parseAsync();

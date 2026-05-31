@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["vite/client", "three", "vitest/globals"],
+    "paths": {
+      "@viewer/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "tests"]
+}
