@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import SceneSetup from './SceneSetup.js'; // DEFAULT export (lifted from playground); it renders its own OrbitControls
+import SceneSetup from './SceneSetup.js'; // default export; renders its own OrbitControls
 import { buildGeometry } from './geometry.js';
 import type { MeshData, ViewName } from './types.js';
 

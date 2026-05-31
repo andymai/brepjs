@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildGeometry, findFaceGroupAt } from './geometry.js';
@@ -43,7 +43,6 @@ export function Renderer({
     [data.faceGroups, faceInfoById]
   );
 
-  const lastFaceId = useRef<number | null>(null);
   const onClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
       const info = resolveFace(e);
@@ -67,7 +66,6 @@ export function Renderer({
     (e: ThreeEvent<PointerEvent>) => {
       const info = resolveFace(e);
       if (!info) return;
-      lastFaceId.current = info.faceId;
       onFaceHover?.(info, { x: e.clientX, y: e.clientY });
     },
     [resolveFace, onFaceHover]
@@ -78,7 +76,6 @@ export function Renderer({
   const onOut = useCallback(() => {
     document.body.style.cursor = '';
     onFaceHover?.(null);
-    lastFaceId.current = null;
   }, [onFaceHover]);
 
   const handlers = pickable

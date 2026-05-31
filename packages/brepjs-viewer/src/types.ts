@@ -35,7 +35,7 @@ export interface ScreenPos {
   x: number;
   y: number;
 }
-// Camera presets for the standalone viewer's screenshot API (Phase C/D). Defined HERE in the
-// shared lib so ViewerCanvas can type its `view?` prop without importing the agent's screenshotApi.
+// Camera presets for the standalone viewer's screenshot API. Defined HERE in the shared lib so
+// ViewerCanvas can type its `view?` prop without importing the agent's screenshotApi.
 export const VIEW_NAMES = ['iso', 'front', 'top', 'right'] as const;
 export type ViewName = (typeof VIEW_NAMES)[number];

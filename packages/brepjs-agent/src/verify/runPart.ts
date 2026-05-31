@@ -63,9 +63,8 @@ export async function runPart(
     report.errors.push('part produced no shape');
     return { shape: null, report };
   }
-  // Run checks first, then push any export errors into THIS (returned) report — earlier code
-  // pushed export errors into `report` but returned a fresh runChecks() report, silently
-  // dropping them (a failed exportSTEP then read as ok:true with no file written).
+  // Push export errors into the report we actually return (runChecks's), so a failed export
+  // surfaces as ok:false rather than being dropped.
   const result = runChecks(shape);
   let glb: ArrayBuffer | undefined;
   let step: ArrayBuffer | undefined;
