@@ -12,6 +12,9 @@ import type {
   Face,
   Wire,
   Vertex,
+  Shell,
+  Solid,
+  CompSolid,
   ShapeKind,
 } from '@/core/shapeTypes.js';
 import { castShapeWithKnownType } from '@/core/shapeTypes.js';
@@ -47,6 +50,9 @@ export interface TopoCacheEntry {
   faces?: Face<Dimension>[];
   wires?: Wire<Dimension>[];
   vertices?: Vertex<Dimension>[];
+  shells?: Shell[];
+  solids?: Solid[];
+  compSolids?: CompSolid[];
   faceOrigins?: Map<number, number>;
   bounds?: Bounds3D;
   isValid?: boolean;
@@ -126,6 +132,39 @@ export function getVertices<D extends Dimension>(shape: AnyShape<D>): Vertex<D>[
   return vertices;
 }
 
+/**
+ * Get all solids of a shape as branded Solid handles. Results are cached per shape.
+ *
+ * Booleans (`cut`/`fuse`/`fuseAll`), `chamfer`/`fillet`, and some sweeps return a
+ * `Compound` wrapping the solid(s); use this to unwrap them without reaching into
+ * the kernel. Returns `[]` for shapes with no solids (wires, bare faces, shells).
+ */
+export function getSolids(shape: AnyShape<Dimension>): Solid[] {
+  const cache = getOrCreateCache(shape);
+  if (cache.solids) return cache.solids;
+  const solids = castSubShapes<Solid>(shape.wrapped, 'solid');
+  cache.solids = solids;
+  return solids;
+}
+
+/** Get all shells of a shape as branded Shell handles. Results are cached per shape. */
+export function getShells(shape: AnyShape<Dimension>): Shell[] {
+  const cache = getOrCreateCache(shape);
+  if (cache.shells) return cache.shells;
+  const shells = castSubShapes<Shell>(shape.wrapped, 'shell');
+  cache.shells = shells;
+  return shells;
+}
+
+/** Get all compsolids of a shape as branded CompSolid handles. Results are cached per shape. */
+export function getCompSolids(shape: AnyShape<Dimension>): CompSolid[] {
+  const cache = getOrCreateCache(shape);
+  if (cache.compSolids) return cache.compSolids;
+  const compSolids = castSubShapes<CompSolid>(shape.wrapped, 'compsolid');
+  cache.compSolids = compSolids;
+  return compSolids;
+}
+
 // ---------------------------------------------------------------------------
 // Lazy topology iterators (generators)
 // ---------------------------------------------------------------------------
@@ -155,6 +194,27 @@ export function* iterWires<D extends Dimension>(shape: AnyShape<D>): Generator<W
 export function* iterVertices<D extends Dimension>(shape: AnyShape<D>): Generator<Vertex<D>> {
   for (const v of getKernel().iterShapes(shape.wrapped, 'vertex')) {
     yield castShapeWithKnownType(v, 'vertex') as Vertex<D>;
+  }
+}
+
+/** Lazily iterate solids of a shape, yielding branded Solid handles one at a time. */
+export function* iterSolids(shape: AnyShape<Dimension>): Generator<Solid> {
+  for (const s of getKernel().iterShapes(shape.wrapped, 'solid')) {
+    yield castShapeWithKnownType(s, 'solid') as Solid;
+  }
+}
+
+/** Lazily iterate shells of a shape, yielding branded Shell handles one at a time. */
+export function* iterShells(shape: AnyShape<Dimension>): Generator<Shell> {
+  for (const s of getKernel().iterShapes(shape.wrapped, 'shell')) {
+    yield castShapeWithKnownType(s, 'shell') as Shell;
+  }
+}
+
+/** Lazily iterate compsolids of a shape, yielding branded CompSolid handles one at a time. */
+export function* iterCompSolids(shape: AnyShape<Dimension>): Generator<CompSolid> {
+  for (const s of getKernel().iterShapes(shape.wrapped, 'compsolid')) {
+    yield castShapeWithKnownType(s, 'compsolid') as CompSolid;
   }
 }
 
