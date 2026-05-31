@@ -5,7 +5,7 @@
 import { getKernel } from '@/kernel/index.js';
 import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { type Result, ok, err } from '@/core/result.js';
-import { ioError } from '@/core/errors.js';
+import { ioError, type BrepError } from '@/core/errors.js';
 
 import {
   buildMeshCacheKey,
@@ -166,18 +166,34 @@ export function meshEdges(
  *
  * @returns Ok with a Blob (MIME type `application/STEP`), or Err on failure.
  */
+/**
+ * Classify a thrown export error into three distinct cases:
+ * - the kernel throws "<FMT> export failed:" when the writer reports a non-success status;
+ * - a `WebAssembly.RuntimeError` means the writer trapped on geometry it could not serialize
+ *   (e.g. a degenerate sub-shape) — this can corrupt the kernel for the rest of the session,
+ *   so it must not be silently relabelled as a file-read issue;
+ * - anything else is an FS read failure on the V7 file path (write succeeded, readback threw).
+ */
+function exportError(e: unknown, fmt: 'STEP' | 'STL'): BrepError {
+  if (e instanceof Error && e.message.startsWith(`${fmt} export failed`)) {
+    return ioError(`${fmt}_EXPORT_FAILED`, `Failed to write ${fmt} file`, e);
+  }
+  if (e instanceof WebAssembly.RuntimeError) {
+    return ioError(
+      `${fmt}_EXPORT_CRASHED`,
+      `${fmt} export crashed the kernel (${e.message}); the shape likely contains geometry the ${fmt} writer cannot serialize`,
+      e
+    );
+  }
+  return ioError(`${fmt}_FILE_READ_ERROR`, `Failed to read exported ${fmt} file`, e);
+}
+
 export function exportSTEP(shape: AnyShape<Dimension>): Result<Blob> {
   try {
     const stepString = getKernel().exportSTEP([shape.wrapped]);
     return ok(new Blob([stepString], { type: 'application/STEP' }));
   } catch (e) {
-    // Distinguish FS read errors from write/transfer failures.
-    // The kernel throws with "STEP export failed:" when the writer itself fails;
-    // any other error (e.g. FS.readFile throwing) is a file-read issue.
-    const isWriteFailure = e instanceof Error && e.message.startsWith('STEP export failed');
-    const code = isWriteFailure ? 'STEP_EXPORT_FAILED' : 'STEP_FILE_READ_ERROR';
-    const msg = isWriteFailure ? 'Failed to write STEP file' : 'Failed to read exported STEP file';
-    return err(ioError(code, msg, e));
+    return err(exportError(e, 'STEP'));
   }
 }
 
@@ -202,10 +218,7 @@ export function exportSTL(
     const stlData = getKernel().exportSTL(shape.wrapped, binary);
     return ok(new Blob([stlData], { type: 'application/sla' }));
   } catch (e) {
-    const isWriteFailure = e instanceof Error && e.message.startsWith('STL export failed');
-    const code = isWriteFailure ? 'STL_EXPORT_FAILED' : 'STL_FILE_READ_ERROR';
-    const msg = isWriteFailure ? 'Failed to write STL file' : 'Failed to read exported STL file';
-    return err(ioError(code, msg, e));
+    return err(exportError(e, 'STL'));
   }
 }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { initKernel } from './setup.js';
 import { shouldSkipSuite } from './helpers/kernelDivergences.js';
 import {
@@ -130,6 +130,22 @@ describe('meshFns', () => {
         }
       }
     );
+
+    it('returns STEP_EXPORT_CRASHED (not a file-read error) when the kernel writer traps', () => {
+      // A WebAssembly.RuntimeError means the OCCT STEP writer crashed on geometry it
+      // could not serialize — it must not be relabelled as a phantom "file read" error.
+      const spy = vi.spyOn(getKernel(), 'exportSTEP').mockImplementation(() => {
+        throw new WebAssembly.RuntimeError('memory access out of bounds');
+      });
+      try {
+        const result = exportSTEP(box(5, 5, 5));
+        expect(isErr(result)).toBe(true);
+        expect(unwrapErr(result).code).toBe('STEP_EXPORT_CRASHED');
+        expect(unwrapErr(result).message).toContain('memory access out of bounds');
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 
   describe('exportSTL', () => {
