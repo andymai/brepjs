@@ -476,17 +476,11 @@ function isShellResult(
   );
 }
 
-/**
- * Replay an op-graph onto `targetKernel`, returning the exact B-rep shape.
- *
- * Memoized post-order: each node's inputs are replayed first (deduplicated via
- * the shared cache so a DAG with reused sub-graphs replays each node once), then
- * the node's own handler runs. Throws on any non-replayable node or unmapped op.
- */
-export function replay(
+function replayNode(
   node: OpNode,
   targetKernel: KernelAdapter,
-  cache: Map<OpNode, KernelShape> = new Map()
+  cache: Map<OpNode, KernelShape>,
+  allocated: Set<KernelShape>
 ): KernelShape {
   const cached = cache.get(node);
   if (cached !== undefined) return cached;
@@ -502,8 +496,36 @@ export function replay(
     throw new Error(`manifold replay: no replay handler for op '${node.op}'`);
   }
 
-  const inputs = node.inputs.map((child) => replay(child, targetKernel, cache));
+  const inputs = node.inputs.map((child) => replayNode(child, targetKernel, cache, allocated));
   const result = handler(targetKernel, node.params, inputs);
   cache.set(node, result);
+  allocated.add(result);
   return result;
+}
+
+/**
+ * Replay an op-graph onto `targetKernel`, returning the exact B-rep shape.
+ *
+ * Memoized post-order: each node's inputs are replayed first (deduplicated via
+ * the shared cache so a DAG with reused sub-graphs replays each node once), then
+ * the node's own handler runs. Throws on any non-replayable node or unmapped op.
+ *
+ * Every node produces an intermediate OCCT WASM-heap shape, but only the root is
+ * returned (and retained by the caller's `brepCache`). To avoid leaking the rest
+ * for the lifetime of the session, the intermediates this call allocated are
+ * disposed once the full recursion completes — they are only inputs to copying
+ * ops (booleans/modifiers), so the root holds its own geometry. Shapes the caller
+ * pre-seeded into `cache` are not in `allocated` and so are never disposed here.
+ */
+export function replay(
+  node: OpNode,
+  targetKernel: KernelAdapter,
+  cache: Map<OpNode, KernelShape> = new Map()
+): KernelShape {
+  const allocated = new Set<KernelShape>();
+  const root = replayNode(node, targetKernel, cache, allocated);
+  for (const shape of allocated) {
+    if (shape !== root) targetKernel.dispose(shape);
+  }
+  return root;
 }

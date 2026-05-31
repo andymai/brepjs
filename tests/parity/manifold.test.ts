@@ -30,6 +30,9 @@ import {
   hausdorff,
   tessellate,
 } from '../helpers/meshParity.js';
+import { replay } from '@/kernel/manifold/replay.js';
+import { nodeOf, type ManifoldShape } from '@/kernel/manifold/meshHandle.js';
+import type { OpNode } from '@/kernel/manifold/opGraph.js';
 
 interface Pair {
   readonly m: KernelAdapter;
@@ -391,5 +394,70 @@ describe('TIER D (degradation): raw-mesh origin exports faceted + warns', () => 
     expect(message).not.toContain('faceted');
     expect(typeof step).toBe('string');
     expect(step.length).toBeGreaterThan(0);
+  });
+});
+
+/** Count distinct nodes in an op-graph (DAG-safe). */
+function countNodes(root: OpNode): number {
+  const seen = new Set<OpNode>();
+  const walk = (n: OpNode): void => {
+    if (seen.has(n)) return;
+    seen.add(n);
+    n.inputs.forEach(walk);
+  };
+  walk(root);
+  return seen.size;
+}
+
+describe('replay disposal (#1118): no intermediate WASM-heap leak', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('frees every intermediate except the root, and the root stays valid', () => {
+    const k = kernels();
+    if (!k) return;
+
+    // A deep graph of copying ops only (no extrude/sweep/loft, whose helpers also
+    // call dispose), so the dispose spy counts exactly the node intermediates.
+    const base = k.m.makeBox(10, 10, 10);
+    const filleted = k.m.fillet(base, k.m.iterShapes(base, 'edge').slice(0, 1), 1);
+    const tool = k.m.translate(k.m.makeBox(4, 4, 4), 5, 0, 0);
+    const fused = k.m.fuse(filleted, tool);
+    const shape = k.m.cut(fused, k.m.makeBox(3, 3, 20));
+
+    const node = nodeOf(shape as ManifoldShape);
+    const nodeCount = countNodes(node);
+    expect(nodeCount).toBe(7);
+
+    const disposeSpy = vi.spyOn(k.o, 'dispose');
+    const root = replay(node, k.o);
+
+    // Root survives disposal of the intermediates and is a real, non-empty solid.
+    expect(k.o.volume(root)).toBeGreaterThan(0);
+    const bb = k.o.boundingBox(root);
+    expect(bb.max[0] - bb.min[0]).toBeGreaterThan(0);
+    // Exactly the non-root intermediates were freed (one dispose per node but the root).
+    expect(disposeSpy).toHaveBeenCalledTimes(nodeCount - 1);
+
+    k.o.dispose(root);
+  });
+
+  it('repeated replay of the same graph stays valid (no use-after-free)', () => {
+    const k = kernels();
+    if (!k) return;
+
+    const shape = k.m.cut(k.m.makeBox(8, 8, 8), k.m.translate(k.m.makeBox(4, 4, 4), 2, 2, 2));
+    const node = nodeOf(shape as ManifoldShape);
+
+    let prevVol = -1;
+    for (let i = 0; i < 3; i++) {
+      const root = replay(node, k.o);
+      const vol = k.o.volume(root);
+      expect(vol).toBeGreaterThan(0);
+      if (prevVol >= 0) expect(vol).toBeCloseTo(prevVol, 6);
+      prevVol = vol;
+      k.o.dispose(root);
+    }
   });
 });
