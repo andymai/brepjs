@@ -50,4 +50,11 @@ describe('static server', () => {
   it('404s an unknown model file', async () => {
     expect((await get(`/__model/nope.glb?dir=${enc(modelRoot)}`)).status).toBe(404);
   });
+  it('serves the SPA on the root page even with a ?dir=&file= query (not 403)', async () => {
+    // Regression: the viewer's own page URL is `/?dir=<abs>&file=<rel>`; an over-broad guard
+    // 403'd it, so the app never loaded. Root page must not be rejected for carrying the query.
+    // (200 when viewer/dist is built, 404 when not — never 403.)
+    const { status } = await get(`/?dir=${enc(modelRoot)}&file=sub/part.step`);
+    expect(status).not.toBe(403);
+  });
 });

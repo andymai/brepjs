@@ -77,9 +77,10 @@ async function handle(req: IncomingMessage, res: ServerResponse, port: number): 
     await sendFile(res, abs).catch(() => res.writeHead(404).end('not found'));
     return;
   }
-  // A `?dir=` outside `/__model/` means client-side normalization collapsed a
-  // `../` traversal and stripped the model prefix — reject rather than fall through.
-  if (url.searchParams.has('dir')) {
+  // The viewer page loads as `/?dir=<abs>&file=<rel>` — the SPA reads dir/file from its own query
+  // (model bytes come from the `/__model/` route above), so a query on the ROOT path is expected.
+  // A `?dir=` on any OTHER path means a `../` traversal normalized away the `/__model` prefix — reject it.
+  if (url.searchParams.has('dir') && url.pathname !== '/') {
     res.writeHead(403).end('forbidden');
     return;
   }

@@ -52,8 +52,8 @@
   "dependencies": {
     "commander": "^13.0.0",
     "brepjs-viewer": "*",
-    "react": "*",
-    "react-dom": "*",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "three": "0.184.0",
     "@react-three/fiber": "*",
     "@react-three/drei": "*"
@@ -62,8 +62,8 @@
     "@types/node": "*",
     "@types/three": "0.184.1",
     "@vitejs/plugin-react": "*",
-    "@types/react": "*",
-    "@types/react-dom": "*",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "eslint": "*",
     "puppeteer": "*",
     "tsx": "*",
