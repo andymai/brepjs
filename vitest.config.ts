@@ -19,6 +19,8 @@ const alwaysExclude = [
   'packages/**/node_modules/**',
   // brepjs-agent aliases `@` to its own src and runs via its own vitest config + CI job.
   'packages/brepjs-agent/**',
+  // brepjs-viewer likewise aliases `@`→its own src and runs via its own vitest config + CI job.
+  'packages/brepjs-viewer/**',
   'apps/**',
   '.worktrees/**',
 ];

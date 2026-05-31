@@ -4,6 +4,9 @@ import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
+  // Never lint build output — `eslint src tests viewer` walks viewer/ which contains the emitted
+  // viewer/dist after a build; type-checked rules choke on those un-projected .js chunks.
+  { ignores: ['dist/**', 'viewer/dist/**'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
