@@ -17,6 +17,23 @@ export interface VerifyReport {
   errors: string[];
 }
 
+export interface BoundsDelta {
+  xMin: number;
+  xMax: number;
+  yMin: number;
+  yMax: number;
+  zMin: number;
+  zMax: number;
+}
+
+export interface DiffReport {
+  volumeDelta: number;
+  areaDelta: number;
+  bboxDelta: BoundsDelta;
+  symmetricDifferenceVolume: number;
+  errors: string[];
+}
+
 export function emptyReport(): VerifyReport {
   return { shapeType: null, checks: [], measurements: {}, errors: [] };
 }

@@ -5,6 +5,8 @@ import { resolve, join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { runPart } from '../verify/runPart.js';
 import { serializeReport } from '../verify/report.js';
+import { runMeasure } from '../verify/measure.js';
+import { runDiff } from '../verify/diff.js';
 
 // OCCT's WASM STEP writer emits a "Statistics on Transfer" banner via console.log
 // (Emscripten's default stdout sink). The CLI owns stdout for machine-readable JSON,
@@ -15,8 +17,10 @@ console.log = (...args: unknown[]) => {
 };
 
 const program = new Command();
+program.name('brepjs-agent-verify');
+
 program
-  .name('brepjs-agent-verify')
+  .command('verify', { isDefault: true })
   .argument('<file>', 'path to a .brep.ts module with a default-exported part function')
   .option('--step <out>', 'write the primary STEP artifact to this path')
   .option('--glb <out>', 'write a derived GLB preview to this path')
@@ -58,4 +62,25 @@ program
       }
     },
   );
+
+program
+  .command('measure')
+  .argument('<a>', 'path to a .brep.ts module')
+  .argument('[b]', 'optional second module; if given, measures distance between the two parts')
+  .action(async (a: string, b?: string) => {
+    const result = await runMeasure(resolve(a), b === undefined ? undefined : resolve(b));
+    process.stdout.write(JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n');
+    if (result.errors.length > 0) process.exitCode = 1;
+  });
+
+program
+  .command('diff')
+  .argument('<a>', 'path to the baseline .brep.ts module')
+  .argument('<b>', 'path to the comparison .brep.ts module')
+  .action(async (a: string, b: string) => {
+    const result = await runDiff(resolve(a), resolve(b));
+    process.stdout.write(JSON.stringify({ ok: result.errors.length === 0, ...result }, null, 2) + '\n');
+    if (result.errors.length > 0) process.exitCode = 1;
+  });
+
 program.parseAsync();
