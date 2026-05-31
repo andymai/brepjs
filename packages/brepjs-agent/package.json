@@ -50,23 +50,23 @@
     "brepjs-opencascade": ">=0.16.0"
   },
   "dependencies": {
-    "commander": "^13.0.0",
+    "@react-three/drei": "*",
+    "@react-three/fiber": "*",
     "brepjs-viewer": "*",
+    "commander": "^13.0.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "three": "0.184.0",
-    "@react-three/fiber": "*",
-    "@react-three/drei": "*"
+    "three": "0.184.0"
   },
   "devDependencies": {
     "@types/node": "*",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
     "@types/three": "0.184.1",
     "@vitejs/plugin-react": "*",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
     "eslint": "*",
     "puppeteer": "*",
-    "tsx": "*",
+    "tsx": "4.22.3",
     "typescript": "*",
     "vite": "*",
     "vite-plugin-dts": "*",

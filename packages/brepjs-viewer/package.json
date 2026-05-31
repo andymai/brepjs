@@ -32,7 +32,7 @@
   "devDependencies": {
     "@eslint/js": "*",
     "@react-three/test-renderer": "*",
-    "@types/react": "19.2.14",
+    "@types/react": "19.2.15",
     "@types/three": "0.184.1",
     "eslint": "*",
     "jsdom": "*",
