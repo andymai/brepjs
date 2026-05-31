@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 const pkgSrc = resolve(__dirname, 'src');
 const rootSrc = resolve(__dirname, '../../src');
+const viewerSrc = resolve(__dirname, 'viewer/src');
 
 export default defineConfig({
   resolve: {
@@ -11,6 +12,7 @@ export default defineConfig({
     // the root src tree. A single `@`→pkgSrc alias misroutes brepjs's internal
     // `@/utils`/`@/kernel` imports and breaks any test that imports `brepjs`.
     alias: [
+      { find: /^@viewer\//, replacement: `${viewerSrc}/` },
       { find: /^@\/(verify|snapshot|cli)\//, replacement: `${pkgSrc}/$1/` },
       { find: /^@\//, replacement: `${rootSrc}/` },
       { find: 'brepjs', replacement: resolve(rootSrc, 'index.ts') },
