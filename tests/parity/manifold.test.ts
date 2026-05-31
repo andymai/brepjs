@@ -204,10 +204,13 @@ describe('TIER B (loose): modifiers', () => {
     const k = kernels();
     if (!k) return;
 
-    const occtVol = previewVolume(() => {
-      const baseO = k.o.makeBox(10, 10, 10);
-      return k.o.fillet(baseO, k.o.iterShapes(baseO, 'edge').slice(0, 1), [1]);
-    }, { m: k.o, o: k.o });
+    const occtVol = previewVolume(
+      () => {
+        const baseO = k.o.makeBox(10, 10, 10);
+        return k.o.fillet(baseO, k.o.iterShapes(baseO, 'edge').slice(0, 1), [1]);
+      },
+      { m: k.o, o: k.o }
+    );
     if (occtVol !== undefined) {
       expect(occtVol).toBeGreaterThan(900);
       expect(occtVol).toBeLessThan(1000);
@@ -256,38 +259,51 @@ describe('TIER C (replay oracle): replayable ops match a direct OCCT build', () 
     expectReplayMatchesDirect(k.m, k.o, build, direct ?? build);
   };
 
-  it('makeBox', () => { oracle((k) => k.makeBox(2, 3, 4)); });
-  it('makeSphere', () => { oracle((k) => k.makeSphere(5)); });
-  it('makeCylinder', () => { oracle((k) => k.makeCylinder(3, 10)); });
-  it('makeCone', () => { oracle((k) => k.makeCone(5, 2, 10)); });
+  it('makeBox', () => {
+    oracle((k) => k.makeBox(2, 3, 4));
+  });
+  it('makeSphere', () => {
+    oracle((k) => k.makeSphere(5));
+  });
+  it('makeCylinder', () => {
+    oracle((k) => k.makeCylinder(3, 10));
+  });
+  it('makeCone', () => {
+    oracle((k) => k.makeCone(5, 2, 10));
+  });
 
-  it('fuse', () =>
-    { oracle((k) => k.fuse(k.makeBox(2, 2, 2), k.translate(k.makeBox(2, 2, 2), 1, 0, 0))); });
+  it('fuse', () => {
+    oracle((k) => k.fuse(k.makeBox(2, 2, 2), k.translate(k.makeBox(2, 2, 2), 1, 0, 0)));
+  });
 
-  it('cut', () =>
-    { oracle((k) =>
-      k.cut(k.makeBox(10, 10, 10), k.translate(k.makeBox(5, 5, 5), 2.5, 2.5, 5))
-    ); });
+  it('cut', () => {
+    oracle((k) => k.cut(k.makeBox(10, 10, 10), k.translate(k.makeBox(5, 5, 5), 2.5, 2.5, 5)));
+  });
 
-  it('intersect', () =>
-    { oracle((k) =>
-      k.intersect(k.makeBox(4, 4, 4), k.translate(k.makeBox(4, 4, 4), 2, 2, 2))
-    ); });
+  it('intersect', () => {
+    oracle((k) => k.intersect(k.makeBox(4, 4, 4), k.translate(k.makeBox(4, 4, 4), 2, 2, 2)));
+  });
 
-  it('translate', () => { oracle((k) => k.translate(k.makeBox(2, 3, 4), 10, 20, 30)); });
-  it('scale', () => { oracle((k) => k.scale(k.makeBox(2, 2, 2), [0, 0, 0], 2)); });
+  it('translate', () => {
+    oracle((k) => k.translate(k.makeBox(2, 3, 4), 10, 20, 30));
+  });
+  it('scale', () => {
+    oracle((k) => k.scale(k.makeBox(2, 2, 2), [0, 0, 0], 2));
+  });
 
-  it('fillet (B-rep vs B-rep is exact even though the mesh is not)', () =>
-    { oracle((k) => {
+  it('fillet (B-rep vs B-rep is exact even though the mesh is not)', () => {
+    oracle((k) => {
       const base = k.makeBox(10, 10, 10);
       return k.fillet(base, k.iterShapes(base, 'edge'), 1);
-    }); });
+    });
+  });
 
-  it('chamfer', () =>
-    { oracle((k) => {
+  it('chamfer', () => {
+    oracle((k) => {
       const base = k.makeBox(10, 10, 10);
       return k.chamfer(base, k.iterShapes(base, 'edge'), 1);
-    }); });
+    });
+  });
 
   // Subset selection: filleting a single edge must replay onto the SAME OCCT
   // edge a direct build selects, proving witness-point selection round-trips
@@ -300,6 +316,34 @@ describe('TIER C (replay oracle): replayable ops match a direct OCCT build', () 
       return kk.fillet(base, kk.iterShapes(base, 'edge').slice(2, 3), 1);
     };
     expectReplayMatchesDirect(k.m, k.o, directOne, directOne);
+  });
+
+  // Per-edge radii: filletBatch records radii[i] per selected edge. Replay must
+  // apply radii[i] to edges[i], not a single scalar to all edges. Both kernels
+  // build makeBox the same way, so edge iteration order matches; the first two
+  // edges get r=1 and r=2. If replay collapsed to one scalar the asymmetric
+  // result would diverge from the direct OCCT build that rounds the same two
+  // edges with the same distinct radii.
+  it('filletBatch with distinct per-edge radii replays to match direct OCCT', () => {
+    const k = kernels();
+    if (!k) return;
+    const build = (kk: KernelAdapter): KernelShape => {
+      const base = kk.makeBox(10, 10, 10);
+      const edges = kk.iterShapes(base, 'edge').slice(0, 2);
+      const out = kk.filletBatch?.([
+        {
+          shape: base,
+          edges: [
+            { edge: edges[0], radius: 1 },
+            { edge: edges[1], radius: 2 },
+          ],
+        },
+      ]);
+      const shape = out?.[0];
+      if (!shape) throw new Error('filletBatch returned no shape');
+      return shape;
+    };
+    expectReplayMatchesDirect(k.m, k.o, build, build);
   });
 });
 

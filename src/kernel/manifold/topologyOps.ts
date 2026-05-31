@@ -19,7 +19,7 @@ function brepOf(shape: KernelShape, method: string): { occt: KernelAdapter; brep
   }
   if (!ms.node.replayable) {
     throw new Error(
-      `manifold: ${method} unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)`,
+      `manifold: ${method} unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)`
     );
   }
   const occt = occtOrThrow(method);
@@ -82,11 +82,13 @@ export function makeTopologyOps(_module: ManifoldModule): KernelTopologyOps {
     if (!s.node.replayable) return [];
     const occt = resolveOcct();
     if (!occt) return [];
-    const brep = brepCache.get(s.node) ?? (() => {
-      const b = replay(s.node, occt);
-      brepCache.set(s.node, b);
-      return b;
-    })();
+    const brep =
+      brepCache.get(s.node) ??
+      (() => {
+        const b = replay(s.node, occt);
+        brepCache.set(s.node, b);
+        return b;
+      })();
     return occt.iterShapes(brep, type).map((sub, index) => ({
       __manifoldSub: true,
       index,

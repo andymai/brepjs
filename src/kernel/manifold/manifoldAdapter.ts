@@ -18,9 +18,10 @@ import { makeRepairOps } from './repairOps.js';
 import { makeKernel2DOps } from './kernel2dOps.js';
 import { makeConstraintSketchOps } from './constraintSketchOps.js';
 import { makeProjectionOps } from './projectionOps.js';
+import { asManifoldShape, brepCache, resolveOcct } from './meshHandle.js';
 
 function makeCoreOps(
-  _module: ManifoldModule,
+  _module: ManifoldModule
 ): Pick<
   KernelCore,
   | 'dispose'
@@ -32,8 +33,18 @@ function makeCoreOps(
 > {
   return {
     dispose(handle: unknown): void {
-      const solid = (handle as { manifold?: { delete?: () => void } } | null)
-        ?.manifold;
+      const ms = asManifoldShape(handle);
+      if (ms) {
+        // A replayed OCCT B-rep is a WASM-heap object whose lifetime follows the
+        // manifold handle that triggered the replay; free it here so brepCache (a
+        // WeakMap that never disposes evicted values) can't strand it until GC.
+        const replayed = brepCache.get(ms.node);
+        if (replayed !== undefined) {
+          resolveOcct()?.dispose(replayed);
+          brepCache.delete(ms.node);
+        }
+      }
+      const solid = (handle as { manifold?: { delete?: () => void } } | null)?.manifold;
       solid?.delete?.();
     },
     executeBatch: () => notImplemented('executeBatch'),
@@ -73,7 +84,7 @@ export class ManifoldAdapter {
       makeKernel2DOps(module),
       makeConstraintSketchOps(module),
       makeProjectionOps(module),
-      makeCoreOps(module),
+      makeCoreOps(module)
     );
   }
 }

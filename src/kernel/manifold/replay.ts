@@ -73,7 +73,7 @@ function worldPoint(p: Vec2, origin: Vec3, xAxis: Vec3, yAxis: Vec3): MutVec3 {
  */
 function faceFromOutline(
   target: KernelAdapter,
-  params: Readonly<Record<string, unknown>>,
+  params: Readonly<Record<string, unknown>>
 ): KernelShape {
   const outline = (params['outline'] as Vec2[] | undefined) ?? [];
   if (outline.length < 3) {
@@ -97,7 +97,7 @@ function faceFromOutline(
 /** Build a section face from a serialized CrossSection record. */
 function faceFromSection(
   target: KernelAdapter,
-  section: Readonly<Record<string, unknown>>,
+  section: Readonly<Record<string, unknown>>
 ): KernelShape {
   return faceFromOutline(target, section);
 }
@@ -122,7 +122,7 @@ function resolveSelection(
   target: KernelAdapter,
   shape: KernelShape,
   selection: Selection | undefined,
-  kind: 'edge' | 'face',
+  kind: 'edge' | 'face'
 ): KernelShape[] {
   const subs: KernelShape[] = target.iterShapes(shape, kind);
   if (!selection || selection.kind === 'all') return subs;
@@ -175,7 +175,7 @@ function resolveSelection(
         c[1] >= r.min[1] &&
         c[1] <= r.max[1] &&
         c[2] >= r.min[2] &&
-        c[2] <= r.max[2],
+        c[2] <= r.max[2]
     );
   return subs.filter((sub: KernelShape) => inside(subCenter(target, sub)));
 }
@@ -188,7 +188,7 @@ function selectionOf(params: Readonly<Record<string, unknown>>): Selection | und
 type ReplayHandler = (
   target: KernelAdapter,
   params: Readonly<Record<string, unknown>>,
-  inputs: readonly KernelShape[],
+  inputs: readonly KernelShape[]
 ) => KernelShape;
 
 function input0(inputs: readonly KernelShape[]): KernelShape {
@@ -206,7 +206,7 @@ function axisFor(target: KernelAdapter, origin: Vec3, direction: Vec3): KernelTy
     origin[2],
     direction[0],
     direction[1],
-    direction[2],
+    direction[2]
   );
 }
 
@@ -225,7 +225,12 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
   makeBox: (t, p) => t.makeBox(num(p['width']), num(p['height']), num(p['depth'])),
   makeBoxWithCorners: (t, p) => t.makeBoxFromCorners(asVec3(p['p1']), asVec3(p['p2'])),
   makeCylinder: (t, p) =>
-    t.makeCylinder(num(p['radius']), num(p['height']), asVec3(p['center']), asVec3(p['direction'], [0, 0, 1])),
+    t.makeCylinder(
+      num(p['radius']),
+      num(p['height']),
+      asVec3(p['center']),
+      asVec3(p['direction'], [0, 0, 1])
+    ),
   makeSphere: (t, p) => t.makeSphere(num(p['radius']), asVec3(p['center'])),
   makeCone: (t, p) =>
     t.makeCone(
@@ -233,17 +238,16 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
       num(p['radius2']),
       num(p['height']),
       asVec3(p['center']),
-      asVec3(p['direction'], [0, 0, 1]),
+      asVec3(p['direction'], [0, 0, 1])
     ),
   makeTorus: (t, p) =>
     t.makeTorus(
       num(p['majorRadius']),
       num(p['minorRadius']),
       asVec3(p['center']),
-      asVec3(p['direction'], [0, 0, 1]),
+      asVec3(p['direction'], [0, 0, 1])
     ),
-  makeEllipsoid: (t, p) =>
-    t.makeEllipsoid(num(p['aLength']), num(p['bLength']), num(p['cLength'])),
+  makeEllipsoid: (t, p) => t.makeEllipsoid(num(p['aLength']), num(p['bLength']), num(p['cLength'])),
 
   // --- Booleans ---
   makeFuse: (t, _p, inputs) => {
@@ -275,7 +279,12 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
     t.mirror(input0(inputs), asVec3(p['origin']), asVec3(p['normal'], [1, 0, 0])),
   transformShape: (t, p, inputs) => t.transform(input0(inputs), p['matrix'] as KernelType),
   generalTransform: (t, p, inputs) =>
-    t.generalTransform(input0(inputs), p['linear'] as Mat9, asVec3(p['translation']), Boolean(p['isOrthogonal'])),
+    t.generalTransform(
+      input0(inputs),
+      p['linear'] as Mat9,
+      asVec3(p['translation']),
+      Boolean(p['isOrthogonal'])
+    ),
   generalTransformNonOrthogonal: (t, p, inputs) =>
     t.generalTransformNonOrthogonal(input0(inputs), p['linear'] as Mat9, asVec3(p['translation'])),
   gridPattern: (t, p, inputs) => {
@@ -289,7 +298,7 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
       num(p['spacingX']),
       num(p['spacingY']),
       num(p['countX'], 1),
-      num(p['countY'], 1),
+      num(p['countY'], 1)
     );
   },
 
@@ -323,7 +332,7 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
       spineWire(t, p),
       str(p['contactMode']),
       (p['scaleValues'] as number[] | undefined) ?? [],
-      num(p['segments'], 0),
+      num(p['segments'], 0)
     ),
   sweepPipeShell: (t, p) => {
     const result = t.sweepPipeShell(sweepFace(t, p), spineWire(t, p));
@@ -336,7 +345,7 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
       asVec3(p['axisDirection'], [0, 0, 1]),
       num(p['radius']),
       num(p['pitch']),
-      num(p['turns'], 1),
+      num(p['turns'], 1)
     ),
   draftPrism: (t, p) => {
     // OCCT's draftPrism derives geometry from the profile face; it ignores the
@@ -351,7 +360,19 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
     const shape = input0(inputs);
     const edges = resolveSelection(t, shape, selectionOf(p), 'edge');
     const radii = p['radii'] as Array<number | [number, number]> | undefined;
-    const radius = radii?.[0] ?? (p['radius'] as number | [number, number] | undefined);
+    const scalar = p['radius'] as number | [number, number] | undefined;
+    if (radii && radii.length > 1) {
+      // resolveSelection returns edges in recorded order, so radii[i] aligns
+      // with edges[i]; a per-edge callback preserves the distinct radii.
+      const byEdge = new Map<KernelShape, number | [number, number]>();
+      for (let i = 0; i < edges.length; i++) {
+        const edge = edges[i];
+        const r = radii[i] ?? radii[radii.length - 1];
+        if (edge !== undefined && r !== undefined) byEdge.set(edge, r);
+      }
+      return t.fillet(shape, edges, (edge) => byEdge.get(edge) ?? 0);
+    }
+    const radius = radii?.[0] ?? scalar;
     return t.fillet(shape, edges, radius ?? 0);
   },
   chamfer: (t, p, inputs) => {
@@ -385,7 +406,7 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
       faces,
       asVec3(p['pullDirection'], [0, 0, 1]),
       asVec3(p['neutralPlane']),
-      num(p['angleDeg']),
+      num(p['angleDeg'])
     );
   },
   defeature: (t, p, inputs) => {
@@ -402,7 +423,7 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
     const coords = (p['points'] as Vec3[] | undefined) ?? [];
     return t.hullFromPoints(
       coords.map((c) => ({ x: c[0], y: c[1], z: c[2] })),
-      num(p['tolerance']),
+      num(p['tolerance'])
     );
   },
   sewAndSolidify: (t, p, inputs) => t.sewAndSolidify([...inputs], num(p['tolerance'])),
@@ -410,7 +431,7 @@ const HANDLERS: Readonly<Record<string, ReplayHandler>> = {
 
 function sectionWire(
   target: KernelAdapter,
-  section: Readonly<Record<string, unknown>>,
+  section: Readonly<Record<string, unknown>>
 ): KernelShape {
   // Lofts consume wires, not faces.
   const face = faceFromSection(target, section);
@@ -419,19 +440,13 @@ function sectionWire(
   return first ?? face;
 }
 
-function sweepFace(
-  target: KernelAdapter,
-  params: Readonly<Record<string, unknown>>,
-): KernelShape {
+function sweepFace(target: KernelAdapter, params: Readonly<Record<string, unknown>>): KernelShape {
   const section = params['section'] as Record<string, unknown> | undefined;
   if (section) return faceFromSection(target, section);
   return faceFromOutline(target, params);
 }
 
-function spineWire(
-  target: KernelAdapter,
-  params: Readonly<Record<string, unknown>>,
-): KernelShape {
+function spineWire(target: KernelAdapter, params: Readonly<Record<string, unknown>>): KernelShape {
   const path = (params['path'] as Vec3[] | undefined) ?? [];
   if (path.length < 2) {
     throw new Error('manifold replay: sweep spine needs at least two path points');
@@ -446,7 +461,7 @@ function spineWire(
 }
 
 function isShellResult(
-  value: KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape },
+  value: KernelShape | { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape }
 ): value is { shape: KernelShape; firstShape: KernelShape; lastShape: KernelShape } {
   return (
     typeof value === 'object' &&
@@ -467,14 +482,14 @@ function isShellResult(
 export function replay(
   node: OpNode,
   targetKernel: KernelAdapter,
-  cache: Map<OpNode, KernelShape> = new Map(),
+  cache: Map<OpNode, KernelShape> = new Map()
 ): KernelShape {
   const cached = cache.get(node);
   if (cached !== undefined) return cached;
 
   if (!node.replayable) {
     throw new Error(
-      `manifold replay: op '${node.op}' is not replayable (raw-mesh origin or unsupported)`,
+      `manifold replay: op '${node.op}' is not replayable (raw-mesh origin or unsupported)`
     );
   }
 

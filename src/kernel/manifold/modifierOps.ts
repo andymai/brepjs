@@ -21,7 +21,7 @@ function cloneSolid(solid: ManifoldSolid): ManifoldSolid {
 function approxFilletMesh(
   module: ManifoldModule,
   solid: ManifoldSolid,
-  radius: number,
+  radius: number
 ): ManifoldSolid {
   if (!(radius > 0)) return cloneSolid(solid);
   const ball = roundingBall(module, radius);
@@ -40,15 +40,13 @@ function approxFilletMesh(
 function approxOffsetMesh(
   module: ManifoldModule,
   solid: ManifoldSolid,
-  distance: number,
+  distance: number
 ): ManifoldSolid {
   if (distance === 0) return cloneSolid(solid);
   const ball = roundingBall(module, Math.abs(distance));
   if (ball === undefined) return cloneSolid(solid);
   if (distance > 0) {
-    return typeof solid?.minkowskiSum === 'function'
-      ? solid.minkowskiSum(ball)
-      : cloneSolid(solid);
+    return typeof solid?.minkowskiSum === 'function' ? solid.minkowskiSum(ball) : cloneSolid(solid);
   }
   return typeof solid?.minkowskiDifference === 'function'
     ? solid.minkowskiDifference(ball)
@@ -61,7 +59,7 @@ function approxShellMesh(
   module: ManifoldModule,
   solid: ManifoldSolid,
   thickness: number,
-  keepSolid: boolean,
+  keepSolid: boolean
 ): ManifoldSolid {
   if (thickness === 0) return cloneSolid(solid);
   if (keepSolid) return approxOffsetMesh(module, solid, Math.abs(thickness));
@@ -77,10 +75,7 @@ function roundingBall(module: ManifoldModule, radius: number): ManifoldSolid | u
   return Manifold.sphere(radius, ROUNDING_BALL_SEGMENTS);
 }
 
-type FilletRadius =
-  | number
-  | [number, number]
-  | ((edge: KernelShape) => number | [number, number]);
+type FilletRadius = number | [number, number] | ((edge: KernelShape) => number | [number, number]);
 
 type Vec3 = readonly [number, number, number];
 
@@ -103,10 +98,7 @@ function readIndex(handle: KernelShape): number | undefined {
   return undefined;
 }
 
-function boxCenter(box: {
-  min?: readonly number[];
-  max?: readonly number[];
-}): Vec3 | undefined {
+function boxCenter(box: { min?: readonly number[]; max?: readonly number[] }): Vec3 | undefined {
   const { min, max } = box;
   if (min === undefined || max === undefined || min.length < 3 || max.length < 3) {
     return undefined;
@@ -184,7 +176,7 @@ function rounded(
   op: string,
   shape: KernelShape,
   edges: readonly KernelShape[],
-  radius: FilletRadius,
+  radius: FilletRadius
 ): ManifoldShape {
   const input = asShape(shape);
   const value = normalizeRadius(radius);
@@ -198,14 +190,14 @@ function chamferDistAngle(
   shape: KernelShape,
   edges: readonly KernelShape[],
   distance: number,
-  angleDeg: number,
+  angleDeg: number
 ): ManifoldShape {
   const input = asShape(shape);
   const selection = describeSelection(edges);
   const manifold = approxFilletMesh(module, unwrap(input), distance);
   return wrap(
     manifold,
-    makeNode('chamferDistAngle', { distance, angleDeg, selection }, [nodeOf(input)]),
+    makeNode('chamferDistAngle', { distance, angleDeg, selection }, [nodeOf(input)])
   );
 }
 
@@ -214,23 +206,17 @@ function shell(
   shape: KernelShape,
   faces: readonly KernelShape[],
   thickness: number,
-  tolerance: number | undefined,
+  tolerance: number | undefined
 ): ManifoldShape {
   const input = asShape(shape);
   const selection = describeSelection(faces);
   const manifold = approxShellMesh(module, unwrap(input), thickness, false);
   const params =
-    tolerance === undefined
-      ? { thickness, selection }
-      : { thickness, selection, tolerance };
+    tolerance === undefined ? { thickness, selection } : { thickness, selection, tolerance };
   return wrap(manifold, makeNode('shell', params, [nodeOf(input)]));
 }
 
-function thicken(
-  module: ManifoldModule,
-  shape: KernelShape,
-  thickness: number,
-): ManifoldShape {
+function thicken(module: ManifoldModule, shape: KernelShape, thickness: number): ManifoldShape {
   const input = asShape(shape);
   const manifold = approxShellMesh(module, unwrap(input), thickness, true);
   return wrap(manifold, makeNode('thicken', { thickness }, [nodeOf(input)]));
@@ -240,7 +226,7 @@ function offset(
   module: ManifoldModule,
   shape: KernelShape,
   distance: number,
-  tolerance: number | undefined,
+  tolerance: number | undefined
 ): ManifoldShape {
   const input = asShape(shape);
   const manifold = approxOffsetMesh(module, unwrap(input), distance);
@@ -248,11 +234,7 @@ function offset(
   return wrap(manifold, makeNode('offset', params, [nodeOf(input)]));
 }
 
-function filletVariable(
-  module: ManifoldModule,
-  shape: KernelShape,
-  spec: string,
-): ManifoldShape {
+function filletVariable(module: ManifoldModule, shape: KernelShape, spec: string): ManifoldShape {
   const input = asShape(shape);
   const manifold = approxFilletMesh(module, unwrap(input), parseVariableSpecRadius(spec));
   return wrap(manifold, makeNode('filletVariable', { spec }, [nodeOf(input)]));
@@ -263,7 +245,7 @@ function draft(
   faces: readonly KernelShape[],
   pullDirection: readonly [number, number, number],
   neutralPlane: readonly [number, number, number],
-  angleDeg: number | ((face: KernelShape) => number),
+  angleDeg: number | ((face: KernelShape) => number)
 ): ManifoldShape {
   if (typeof angleDeg === 'function') {
     notImplemented('draft (per-face angle callback)');
@@ -272,9 +254,7 @@ function draft(
   const selection = describeSelection(faces);
   return wrap(
     cloneSolid(unwrap(input)),
-    makeNode('draft', { pullDirection, neutralPlane, angleDeg, selection }, [
-      nodeOf(input),
-    ]),
+    makeNode('draft', { pullDirection, neutralPlane, angleDeg, selection }, [nodeOf(input)])
   );
 }
 
@@ -304,12 +284,12 @@ function filletBatchEntry(
   entry: {
     shape: KernelShape;
     edges: ReadonlyArray<{ edge: KernelShape; radius: number; r2?: number | undefined }>;
-  },
+  }
 ): ManifoldShape {
   const input = asShape(entry.shape);
   const selection = describeSelection(entry.edges.map((e) => e.edge));
   const radii = entry.edges.map((e) =>
-    e.r2 === undefined ? e.radius : ([e.radius, e.r2] as [number, number]),
+    e.r2 === undefined ? e.radius : ([e.radius, e.r2] as [number, number])
   );
   const firstRadius = entry.edges[0]?.radius ?? 0;
   const manifold = approxFilletMesh(module, unwrap(input), firstRadius);
@@ -319,8 +299,7 @@ function filletBatchEntry(
 export function makeModifierOps(module: ManifoldModule): KernelModifierOps {
   return {
     fillet: (shape, edges, radius) => rounded(module, 'fillet', shape, edges, radius),
-    chamfer: (shape, edges, distance) =>
-      rounded(module, 'chamfer', shape, edges, distance),
+    chamfer: (shape, edges, distance) => rounded(module, 'chamfer', shape, edges, distance),
     chamferDistAngle: (shape, edges, distance, angleDeg) =>
       chamferDistAngle(module, shape, edges, distance, angleDeg),
     shell: (shape, faces, thickness, tolerance) =>

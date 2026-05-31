@@ -10,14 +10,11 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
 
   function hullFromPoints(
     points: Array<{ x: number; y: number; z: number }>,
-    tolerance: number,
+    tolerance: number
   ): KernelShape {
     const coords = points.map((p) => [p.x, p.y, p.z] as [number, number, number]);
     const solid = Manifold.hull(coords);
-    return wrap(
-      solid,
-      makeNode('hullFromPoints', { points: coords, tolerance }, []),
-    );
+    return wrap(solid, makeNode('hullFromPoints', { points: coords, tolerance }, []));
   }
 
   function hull(shapes: KernelShape[], tolerance: number): KernelShape {
@@ -28,8 +25,8 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
       makeNode(
         'hull',
         { tolerance },
-        shapes.map((s) => nodeOf(s)),
-      ),
+        shapes.map((s) => nodeOf(s))
+      )
     );
   }
 
@@ -46,8 +43,8 @@ export function makeBuilderOps(module: ManifoldModule): KernelBuilderOps {
       makeNode(
         'sewAndSolidify',
         { tolerance },
-        faces.map((f) => nodeOf(f)),
-      ),
+        faces.map((f) => nodeOf(f))
+      )
     );
   }
 

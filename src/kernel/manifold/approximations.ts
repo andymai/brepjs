@@ -157,7 +157,15 @@ function crossSectionFromMesh(shape: ManifoldShape): CrossSection {
   z /= Math.max(1, count);
   const hull = convexHull2D(flat);
   return {
-    outline: ensureCCW(hull.length >= 3 ? hull : [[-0.5, -0.5], [0.5, -0.5], [0, 0.5]]),
+    outline: ensureCCW(
+      hull.length >= 3
+        ? hull
+        : [
+            [-0.5, -0.5],
+            [0.5, -0.5],
+            [0, 0.5],
+          ]
+    ),
     origin: [0, 0, z],
     xAxis: [1, 0, 0],
     yAxis: [0, 1, 0],

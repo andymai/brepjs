@@ -55,8 +55,7 @@ export function makeEvolutionOps(module: ManifoldModule): KernelEvolutionOps {
     translateWithHistory: (shape, x, y, z) => result(transform.translate(shape, x, y, z)),
     rotateWithHistory: (shape, angle, _hashes, _bound, axis, center) =>
       result(transform.rotate(shape, angle, axis, center)),
-    mirrorWithHistory: (shape, origin, normal) =>
-      result(transform.mirror(shape, origin, normal)),
+    mirrorWithHistory: (shape, origin, normal) => result(transform.mirror(shape, origin, normal)),
     scaleWithHistory: (shape, center, factor) => result(transform.scale(shape, center, factor)),
     generalTransformWithHistory: (shape, linear, translation, isOrthogonal) =>
       result(transform.generalTransform(shape, linear, translation, isOrthogonal)),
@@ -66,8 +65,7 @@ export function makeEvolutionOps(module: ManifoldModule): KernelEvolutionOps {
       diagnostic(boolean.cut(shape, tool, options)),
     intersectWithHistory: (shape, tool, _hashes, _bound, options) =>
       diagnostic(boolean.intersect(shape, tool, options)),
-    filletWithHistory: (shape, edges, radius) =>
-      result(modifier.fillet(shape, edges, radius)),
+    filletWithHistory: (shape, edges, radius) => result(modifier.fillet(shape, edges, radius)),
     chamferWithHistory: (shape, edges, distance) =>
       result(modifier.chamfer(shape, edges, distance)),
     shellWithHistory: (shape, faces, thickness, _hashes, _bound, tolerance) =>

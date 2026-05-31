@@ -28,12 +28,16 @@ function meshOf(shape: KernelShape): RawMesh {
   return unwrap(shape as ManifoldShape).getMesh() as RawMesh;
 }
 
+function vertexStride(mesh: RawMesh): number {
+  return mesh.numProp && mesh.numProp >= 3 ? mesh.numProp : 3;
+}
+
 function vertexCount(mesh: RawMesh): number {
-  return Math.floor(mesh.vertProperties.length / 3);
+  return Math.floor(mesh.vertProperties.length / vertexStride(mesh));
 }
 
 function vertexAt(mesh: RawMesh, i: number): [number, number, number] {
-  const base = i * 3;
+  const base = i * vertexStride(mesh);
   return [
     mesh.vertProperties[base] ?? 0,
     mesh.vertProperties[base + 1] ?? 0,
@@ -169,11 +173,7 @@ function exportPLY(shape: KernelShape): ArrayBuffer {
   return out.buffer;
 }
 
-function meshToManifold(
-  module: ManifoldModule,
-  mesh: RawMesh,
-  op = 'importMesh',
-): ManifoldShape {
+function meshToManifold(module: ManifoldModule, mesh: RawMesh, op = 'importMesh'): ManifoldShape {
   const built = new module.Mesh({
     numProp: 3,
     vertProperties: mesh.vertProperties,
@@ -324,7 +324,7 @@ function brepForExport(shape: KernelShape): { occt: KernelAdapter; brep: KernelS
   if (exact !== undefined) return { occt, brep: exact };
 
   console.warn(
-    'manifold: exact B-rep unavailable (non-replayable op-graph); exporting faceted approximation',
+    'manifold: exact B-rep unavailable (non-replayable op-graph); exporting faceted approximation'
   );
   return { occt, brep: faceted(occt, shape) };
 }
@@ -337,7 +337,7 @@ function brepToManifold(
   module: ManifoldModule,
   occt: KernelAdapter,
   brep: KernelShape,
-  op: string,
+  op: string
 ): ManifoldShape {
   const meshResult = occt.mesh(brep, { tolerance: 0.01, angularTolerance: 0.5 });
   const vertProperties = Float32Array.from(meshResult.vertices);
@@ -351,6 +351,8 @@ const GLB_CHUNK_JSON = 0x4e4f534a;
 const GLB_CHUNK_BIN = 0x004e4942;
 const GLTF_FLOAT = 5126;
 const GLTF_UNSIGNED_INT = 5125;
+const GLTF_UNSIGNED_SHORT = 5123;
+const GLTF_UNSIGNED_BYTE = 5121;
 const GLTF_ARRAY_BUFFER = 34962;
 const GLTF_ELEMENT_ARRAY_BUFFER = 34963;
 const GLTF_TRIANGLES = 4;
@@ -402,9 +404,7 @@ function exportGLB(shape: KernelShape): ArrayBuffer {
     nodes: [{ mesh: 0 }],
     meshes: [
       {
-        primitives: [
-          { attributes: { POSITION: 0 }, indices: 1, mode: GLTF_TRIANGLES },
-        ],
+        primitives: [{ attributes: { POSITION: 0 }, indices: 1, mode: GLTF_TRIANGLES }],
       },
     ],
     accessors: [
@@ -462,7 +462,7 @@ function exportGLB(shape: KernelShape): ArrayBuffer {
   bytes.set(new Uint8Array(positions.buffer, positions.byteOffset, posBytes), offset);
   bytes.set(
     new Uint8Array(indices.buffer, indices.byteOffset, indices.byteLength),
-    offset + idxByteOffset,
+    offset + idxByteOffset
   );
 
   return out;
@@ -530,8 +530,8 @@ function parseGLB(module: ManifoldModule, data: ArrayBuffer): ManifoldShape {
   const vertProperties = new Float32Array(
     bin.buffer.slice(
       bin.byteOffset + (posView.byteOffset ?? 0),
-      bin.byteOffset + (posView.byteOffset ?? 0) + posAccessor.count * 3 * 4,
-    ),
+      bin.byteOffset + (posView.byteOffset ?? 0) + posAccessor.count * 3 * 4
+    )
   );
 
   let triVerts: Uint32Array;
@@ -544,13 +544,30 @@ function parseGLB(module: ManifoldModule, data: ArrayBuffer): ManifoldShape {
     if (!idxView) {
       throw new Error('manifold: importGLB — invalid indices bufferView');
     }
+    const stride =
+      idxAccessor.componentType === GLTF_UNSIGNED_INT
+        ? 4
+        : idxAccessor.componentType === GLTF_UNSIGNED_SHORT
+          ? 2
+          : idxAccessor.componentType === GLTF_UNSIGNED_BYTE
+            ? 1
+            : 0;
+    if (stride === 0) {
+      throw new Error(
+        `manifold: importGLB — unsupported index component type ${idxAccessor.componentType}`
+      );
+    }
     const base = bin.byteOffset + (idxView.byteOffset ?? 0);
-    const idxDataView = new DataView(bin.buffer, base, idxAccessor.count * 4);
+    const idxDataView = new DataView(bin.buffer, base, idxAccessor.count * stride);
     triVerts = new Uint32Array(idxAccessor.count);
-    if (idxAccessor.componentType === GLTF_UNSIGNED_INT) {
-      for (let i = 0; i < idxAccessor.count; i++) triVerts[i] = idxDataView.getUint32(i * 4, true);
-    } else {
-      throw new Error('manifold: importGLB — unsupported index component type');
+    for (let i = 0; i < idxAccessor.count; i++) {
+      const off = i * stride;
+      triVerts[i] =
+        stride === 4
+          ? idxDataView.getUint32(off, true)
+          : stride === 2
+            ? idxDataView.getUint16(off, true)
+            : idxDataView.getUint8(off);
     }
   } else {
     triVerts = Uint32Array.from({ length: posAccessor.count }, (_v, i) => i);
@@ -640,12 +657,12 @@ export function makeIoOps(module: ManifoldModule): KernelIOOps {
     // is out of scope for the mesh kernel — export GLB/STL/OBJ or use a B-rep kernel.
     export3MF: () => {
       throw new Error(
-        'manifold: 3MF IO is unsupported on the mesh kernel; export GLB/STL/OBJ or use a B-rep kernel',
+        'manifold: 3MF IO is unsupported on the mesh kernel; export GLB/STL/OBJ or use a B-rep kernel'
       );
     },
     import3MF: () => {
       throw new Error(
-        'manifold: 3MF IO is unsupported on the mesh kernel; export GLB/STL/OBJ or use a B-rep kernel',
+        'manifold: 3MF IO is unsupported on the mesh kernel; export GLB/STL/OBJ or use a B-rep kernel'
       );
     },
   };

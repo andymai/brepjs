@@ -112,10 +112,10 @@ export function mesh(shape: KernelShape, options: MeshOptions): KernelMeshResult
   const m = getMesh(shape);
   const vertices = readPositions(m);
   const triangles = new Uint32Array(m.triVerts);
-  const normals = options.skipNormals
-    ? new Float32Array(0)
-    : computeNormals(vertices, triangles);
-  const uvs = options.includeUVs ? new Float32Array((vertices.length / 3) * 2) : new Float32Array(0);
+  const normals = options.skipNormals ? new Float32Array(0) : computeNormals(vertices, triangles);
+  const uvs = options.includeUVs
+    ? new Float32Array((vertices.length / 3) * 2)
+    : new Float32Array(0);
   return {
     vertices,
     normals,
@@ -139,11 +139,7 @@ export function meshEdges(
   const vertCount = positions.length / 3;
 
   const pushPoint = (idx: number): void => {
-    lines.push(
-      positions[idx * 3] ?? 0,
-      positions[idx * 3 + 1] ?? 0,
-      positions[idx * 3 + 2] ?? 0
-    );
+    lines.push(positions[idx * 3] ?? 0, positions[idx * 3 + 1] ?? 0, positions[idx * 3 + 2] ?? 0);
   };
 
   for (let t = 0; t < tri.length; t += 3) {

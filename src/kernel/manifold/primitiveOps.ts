@@ -55,11 +55,7 @@ export function makePrimitiveOps(module: ManifoldModule): KernelPrimitiveOps {
         Math.abs(p2[1] - p1[1]),
         Math.abs(p2[2] - p1[2]),
       ];
-      const min: Vec3 = [
-        Math.min(p1[0], p2[0]),
-        Math.min(p1[1], p2[1]),
-        Math.min(p1[2], p2[2]),
-      ];
+      const min: Vec3 = [Math.min(p1[0], p2[0]), Math.min(p1[1], p2[1]), Math.min(p1[2], p2[2])];
       const solid = Manifold.cube(size, false).translate(min);
       return wrap(solid, makeNode('makeBoxWithCorners', { p1, p2 }, []));
     },
@@ -67,10 +63,7 @@ export function makePrimitiveOps(module: ManifoldModule): KernelPrimitiveOps {
     makeCylinder: (radius, height, center = ORIGIN, direction = Z_AXIS) => {
       const base = Manifold.cylinder(height, radius, radius, 0, false);
       const solid = orient(base, center, direction);
-      return wrap(
-        solid,
-        makeNode('makeCylinder', { radius, height, center, direction }, []),
-      );
+      return wrap(solid, makeNode('makeCylinder', { radius, height, center, direction }, []));
     },
 
     makeSphere: (radius, center = ORIGIN) => {
@@ -84,10 +77,7 @@ export function makePrimitiveOps(module: ManifoldModule): KernelPrimitiveOps {
     makeCone: (radius1, radius2, height, center = ORIGIN, direction = Z_AXIS) => {
       const base = Manifold.cylinder(height, radius1, radius2, 0, false);
       const solid = orient(base, center, direction);
-      return wrap(
-        solid,
-        makeNode('makeCone', { radius1, radius2, height, center, direction }, []),
-      );
+      return wrap(solid, makeNode('makeCone', { radius1, radius2, height, center, direction }, []));
     },
 
     makeTorus: (majorRadius, minorRadius, center = ORIGIN, direction = Z_AXIS) => {
@@ -101,16 +91,13 @@ export function makePrimitiveOps(module: ManifoldModule): KernelPrimitiveOps {
       const solid = orient(base, center, direction);
       return wrap(
         solid,
-        makeNode('makeTorus', { majorRadius, minorRadius, center, direction }, []),
+        makeNode('makeTorus', { majorRadius, minorRadius, center, direction }, [])
       );
     },
 
     makeEllipsoid: (aLength, bLength, cLength) => {
       const solid = Manifold.sphere(1, 0).scale([aLength, bLength, cLength] as Vec3);
-      return wrap(
-        solid,
-        makeNode('makeEllipsoid', { aLength, bLength, cLength }, []),
-      );
+      return wrap(solid, makeNode('makeEllipsoid', { aLength, bLength, cLength }, []));
     },
 
     makeRectangle: () => notImplemented('makeRectangle'),

@@ -19,23 +19,13 @@ import type {
 import type { KernelBooleanOps } from '@/kernel/interfaces/booleanOps.js';
 import type { ManifoldModule } from './helpers.js';
 import { makeNode } from './opGraph.js';
-import {
-  type ManifoldShape,
-  type ManifoldSolid,
-  nodeOf,
-  unwrap,
-  wrap,
-} from './meshHandle.js';
+import { type ManifoldShape, type ManifoldSolid, nodeOf, unwrap, wrap } from './meshHandle.js';
 
 function asShape(shape: KernelShape): ManifoldShape {
   return shape as ManifoldShape;
 }
 
-function applyMeshOp(
-  a: ManifoldSolid,
-  b: ManifoldSolid,
-  op: string,
-): ManifoldSolid {
+function applyMeshOp(a: ManifoldSolid, b: ManifoldSolid, op: string): ManifoldSolid {
   switch (op) {
     case 'cut':
     case 'subtract':
@@ -100,7 +90,11 @@ export function makeBooleanOps(module: ManifoldModule): KernelBooleanOps {
     return wrap(result, makeNode('makeCut', {}, [nodeOf(a), nodeOf(b)]));
   }
 
-  function intersect(shape: KernelShape, tool: KernelShape, _options?: BooleanOptions): KernelShape {
+  function intersect(
+    shape: KernelShape,
+    tool: KernelShape,
+    _options?: BooleanOptions
+  ): KernelShape {
     const a = asShape(shape);
     const b = asShape(tool);
     const result = unwrap(a).intersect(unwrap(b));
@@ -147,10 +141,7 @@ export function makeBooleanOps(module: ManifoldModule): KernelBooleanOps {
     const { normal, offset } = planeFromShape(first);
     const [below, above] = unwrap(solid).splitByPlane(normal, offset);
     const result = Manifold.union([below, above]);
-    return wrap(
-      result,
-      makeNode('split', { normal, offset }, [nodeOf(solid), nodeOf(planeShape)])
-    );
+    return wrap(result, makeNode('split', { normal, offset }, [nodeOf(solid), nodeOf(planeShape)]));
   }
 
   function checkBoolean(

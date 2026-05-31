@@ -74,11 +74,7 @@ function dot3(a: Vec3, b: Vec3): number {
 
 function aabbCenter(shape: KernelShape): Vec3 {
   const bb = boxOf(shape);
-  return [
-    (bb.min[0] + bb.max[0]) / 2,
-    (bb.min[1] + bb.max[1]) / 2,
-    (bb.min[2] + bb.max[2]) / 2,
-  ];
+  return [(bb.min[0] + bb.max[0]) / 2, (bb.min[1] + bb.max[1]) / 2, (bb.min[2] + bb.max[2]) / 2];
 }
 
 function vertexAverage(mesh: ManifoldMeshLike): Vec3 {
@@ -205,12 +201,12 @@ export function measureBulk(shape: KernelShape, _includeLinear = false): BulkMea
 function surfaceCurvature(
   face: KernelShape,
   u: number,
-  v: number,
+  v: number
 ): ReturnType<KernelMeasureOps['surfaceCurvature']> {
   const occt = resolveOcct();
   if (!occt) {
     throw new Error(
-      'manifold: surfaceCurvature requires a registered occt kernel; none is available',
+      'manifold: surfaceCurvature requires a registered occt kernel; none is available'
     );
   }
   const ms = asManifoldShape(face);
@@ -219,14 +215,16 @@ function surfaceCurvature(
   }
   if (!ms.node.replayable) {
     throw new Error(
-      'manifold: surfaceCurvature unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)',
+      'manifold: surfaceCurvature unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)'
     );
   }
-  const brep = brepCache.get(ms.node) ?? (() => {
-    const b = replay(ms.node, occt);
-    brepCache.set(ms.node, b);
-    return b;
-  })();
+  const brep =
+    brepCache.get(ms.node) ??
+    (() => {
+      const b = replay(ms.node, occt);
+      brepCache.set(ms.node, b);
+      return b;
+    })();
   return occt.surfaceCurvature(brep, u, v);
 }
 

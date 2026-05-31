@@ -73,11 +73,7 @@ function pointTriangleDistanceSq(p: Vec3, a: Vec3, b: Vec3, c: Vec3): number {
   const va = d3 * d6 - d5 * d4;
   if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
     const w = (d4 - d3) / (d4 - d3 + (d5 - d6));
-    const q: Vec3 = [
-      b[0] + w * (c[0] - b[0]),
-      b[1] + w * (c[1] - b[1]),
-      b[2] + w * (c[2] - b[2]),
-    ];
+    const q: Vec3 = [b[0] + w * (c[0] - b[0]), b[1] + w * (c[1] - b[1]), b[2] + w * (c[2] - b[2])];
     const qp: Vec3 = [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
     return dot(qp, qp);
   }

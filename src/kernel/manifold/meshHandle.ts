@@ -41,12 +41,12 @@ export function resolveOcct(): KernelAdapter | undefined {
 export function occtOrThrow(method: string): KernelAdapter {
   const occt = resolveOcct();
   if (!occt) {
-    throw new Error(
-      `manifold: ${method} requires a registered occt kernel; none is available`,
-    );
+    throw new Error(`manifold: ${method} requires a registered occt kernel; none is available`);
   }
   return occt;
 }
 
-export const brepCache = new WeakMap<OpNode>();
+// Caches the replayed OCCT B-rep (a KernelShape) per op-node. KernelShape is `any`,
+// so the value type is left implicit; dispose() frees these so they don't leak.
+export const brepCache: WeakMap<OpNode, KernelShape> = new WeakMap();
 export const hashCache = new WeakMap<OpNode, number>();

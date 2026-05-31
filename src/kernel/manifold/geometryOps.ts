@@ -17,13 +17,7 @@ import type { KernelSurfaceOps } from '@/kernel/interfaces/surfaceOps.js';
 import type { KernelAdapter } from '@/kernel/interfaces/index.js';
 import type { KernelShape } from '@/kernel/types.js';
 import type { ManifoldModule } from './helpers.js';
-import {
-  asManifoldShape,
-  brepCache,
-  occtOrThrow,
-  resolveOcct,
-  unwrap,
-} from './meshHandle.js';
+import { asManifoldShape, brepCache, occtOrThrow, resolveOcct, unwrap } from './meshHandle.js';
 import { replay } from './replay.js';
 
 type Vec3 = [number, number, number];
@@ -48,7 +42,10 @@ function vertexAt(mesh: RawMesh, index: number): Vec3 {
   ];
 }
 
-function viaOcct<T>(shape: KernelShape, query: (occtShape: KernelShape, occt: KernelAdapter) => T): T {
+function viaOcct<T>(
+  shape: KernelShape,
+  query: (occtShape: KernelShape, occt: KernelAdapter) => T
+): T {
   const ms = asManifoldShape(shape);
   if (!ms) {
     throw new Error('manifold: exact geometry query requires a manifold shape handle');
@@ -56,12 +53,12 @@ function viaOcct<T>(shape: KernelShape, query: (occtShape: KernelShape, occt: Ke
   const occt = resolveOcct();
   if (!occt) {
     throw new Error(
-      'manifold: exact geometry query unsupported on manifold kernel; no B-rep kernel registered',
+      'manifold: exact geometry query unsupported on manifold kernel; no B-rep kernel registered'
     );
   }
   if (!ms.node.replayable) {
     throw new Error(
-      'manifold: exact geometry query unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)',
+      'manifold: exact geometry query unsupported; shape originates from a non-replayable op (raw mesh import or mesh boolean)'
     );
   }
   let occtShape = brepCache.get(ms.node);
@@ -97,8 +94,7 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
     createCurveAdaptor: (shape) => viaOcct(shape, (s, occt) => occt.createCurveAdaptor(s)),
     getBezierPenultimatePole: (edge) =>
       viaOcct(edge, (s, occt) => occt.getBezierPenultimatePole(s)),
-    getNurbsCurveData: (edge) =>
-      viaOcct(edge, (s, occt) => occt.getNurbsCurveData?.(s) ?? null),
+    getNurbsCurveData: (edge) => viaOcct(edge, (s, occt) => occt.getNurbsCurveData?.(s) ?? null),
 
     // --- Cheap mesh-derivable query ---
     vertexPosition: (vertex) => {
@@ -132,7 +128,7 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
       numCpsU,
       numCpsV,
       tolerance,
-      maxIterations,
+      maxIterations
     ) =>
       occtOrThrow('approximateSurfaceLspia').approximateSurfaceLspia(
         coords,
@@ -143,14 +139,13 @@ export function makeGeometryOps(_module: ManifoldModule): KernelCurveOps & Kerne
         numCpsU,
         numCpsV,
         tolerance,
-        maxIterations,
+        maxIterations
       ),
     untrimFace: (face, samplesPerCurve, interiorSamples) =>
       viaOcct(face, (s, occt) => occt.untrimFace(s, samplesPerCurve, interiorSamples)),
     getSurfaceCylinderData: (surface) =>
       viaOcct(surface, (s, occt) => occt.getSurfaceCylinderData(s)),
-    reverseSurfaceU: (surface) =>
-      occtOrThrow('reverseSurfaceU').reverseSurfaceU(surface),
+    reverseSurfaceU: (surface) => occtOrThrow('reverseSurfaceU').reverseSurfaceU(surface),
     detectSmallFeatures: (shape, areaThreshold, tolerance) =>
       viaOcct(shape, (s, occt) => occt.detectSmallFeatures(s, areaThreshold, tolerance)),
     recognizeFeatures: (shape, tolerance) =>

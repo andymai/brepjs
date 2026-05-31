@@ -40,9 +40,8 @@ export interface OpNode {
 export function makeNode(
   op: OpKind,
   params: Readonly<Record<string, unknown>>,
-  inputs: readonly OpNode[],
+  inputs: readonly OpNode[]
 ): OpNode {
-  const replayable =
-    opIsReplayable(op) && inputs.every((input) => input.replayable);
+  const replayable = opIsReplayable(op) && inputs.every((input) => input.replayable);
   return { op, params, inputs, replayable };
 }

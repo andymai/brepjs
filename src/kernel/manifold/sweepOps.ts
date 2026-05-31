@@ -68,9 +68,7 @@ function gpToVec3(value: unknown): Vec3 | undefined {
  * `{origin, direction}` form and a gp_Ax1-style KernelType (what `createAxis1`
  * produces, matching the KernelSweepOps contract and every other adapter).
  */
-function axisOriginDirection(
-  axis: unknown,
-): { origin: Vec3; direction: Vec3 } | undefined {
+function axisOriginDirection(axis: unknown): { origin: Vec3; direction: Vec3 } | undefined {
   if (axis && typeof axis === 'object') {
     const obj = axis as { origin?: unknown; direction?: unknown };
     if ('origin' in obj && 'direction' in obj) {
@@ -165,7 +163,11 @@ function spineNodeOrSynthetic(spine: KernelShape): OpNode {
  * `dir`. Sections are typically in the XY plane; this keeps the common case
  * exact and otherwise re-bases onto the section frame.
  */
-function orientExtrusion(solid: ManifoldOriented, section: CrossSection, dir: Vec3): ManifoldOriented {
+function orientExtrusion(
+  solid: ManifoldOriented,
+  section: CrossSection,
+  dir: Vec3
+): ManifoldOriented {
   let placed = solid;
   const alignedZ = Math.abs(dir[0]) < 1e-9 && Math.abs(dir[1]) < 1e-9 && dir[2] > 0;
   if (!alignedZ) {
@@ -191,7 +193,10 @@ function profileRadialOutline(
 ): Array<[number, number]> {
   const axis = normalize3(axisDirection);
   return section.outline.map((p): [number, number] => {
-    const world = add(section.origin, add(scaleVec(section.xAxis, p[0]), scaleVec(section.yAxis, p[1])));
+    const world = add(
+      section.origin,
+      add(scaleVec(section.xAxis, p[0]), scaleVec(section.yAxis, p[1]))
+    );
     const rel = sub(world, axisOrigin);
     const axial = rel[0] * axis[0] + rel[1] * axis[1] + rel[2] * axis[2];
     const radius = length3(sub(rel, scaleVec(axis, axial)));
@@ -204,7 +209,11 @@ function profileRadialOutline(
  * world revolution axis: rotate local +Y onto the axis direction via a single
  * rotation about their cross product, then translate to the axis origin.
  */
-function orientRevolution(solid: ManifoldOriented, axisOrigin: Vec3, axisDirection: Vec3): ManifoldOriented {
+function orientRevolution(
+  solid: ManifoldOriented,
+  axisOrigin: Vec3,
+  axisDirection: Vec3
+): ManifoldOriented {
   let placed = solid;
   const axis = normalize3(axisDirection);
   const alignedY = Math.abs(axis[0]) < 1e-9 && Math.abs(axis[2]) < 1e-9 && axis[1] > 0;
@@ -213,7 +222,11 @@ function orientRevolution(solid: ManifoldOriented, axisOrigin: Vec3, axisDirecti
     let rotAxis = cross([0, 1, 0], axis);
     if (length3(rotAxis) < 1e-9) rotAxis = [1, 0, 0];
     rotAxis = normalize3(rotAxis);
-    placed = placed.rotate([rotAxis[0] * angle, rotAxis[1] * angle, rotAxis[2] * angle]) as ManifoldOriented;
+    placed = placed.rotate([
+      rotAxis[0] * angle,
+      rotAxis[1] * angle,
+      rotAxis[2] * angle,
+    ]) as ManifoldOriented;
   }
   if (axisOrigin[0] !== 0 || axisOrigin[1] !== 0 || axisOrigin[2] !== 0) {
     placed = placed.translate([axisOrigin[0], axisOrigin[1], axisOrigin[2]]) as ManifoldOriented;
@@ -237,7 +250,10 @@ function helicalPath(
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const a = totalAngle * t;
-    const radial = add(scaleVec(xAxis, radius * Math.cos(a)), scaleVec(yAxis, radius * Math.sin(a)));
+    const radial = add(
+      scaleVec(xAxis, radius * Math.cos(a)),
+      scaleVec(yAxis, radius * Math.sin(a))
+    );
     pts.push(add(axisOrigin, add(radial, scaleVec(axis, height * t))));
   }
   return pts;
@@ -348,7 +364,11 @@ function sweepAlong(
     solid,
     makeNode(
       op,
-      { section: serializeSection(section), path: path.map((p): Vec3 => [p[0], p[1], p[2]]), ...extraParams },
+      {
+        section: serializeSection(section),
+        path: path.map((p): Vec3 => [p[0], p[1], p[2]]),
+        ...extraParams,
+      },
       [nodeOf(asShape(profile)), spineNode]
     )
   );
@@ -400,15 +420,13 @@ function draftPrismOp(
   return wrap(prism, node);
 }
 
-function revolveEntries(
-  module: ManifoldModule
-): Pick<KernelSweepOps, 'revolve' | 'revolveVec'> {
+function revolveEntries(module: ManifoldModule): Pick<KernelSweepOps, 'revolve' | 'revolveVec'> {
   return {
     revolve: (shape, axis, angle) => {
       const resolved = axisOriginDirection(axis);
       if (!resolved) {
         throw new Error(
-          'manifold: revolve could not read the axis; pass {origin,direction}, a gp_Ax1, or use revolveVec',
+          'manifold: revolve could not read the axis; pass {origin,direction}, a gp_Ax1, or use revolveVec'
         );
       }
       const { origin, direction } = resolved;
@@ -442,10 +460,24 @@ function sweepFamilyEntries(
     sweep: (wire, spine, options) => {
       const extra: Record<string, unknown> = {};
       if (options?.transitionMode !== undefined) extra['transitionMode'] = options.transitionMode;
-      return sweepAlong(module, wire, spinePath(spine, 16), spineNodeOrSynthetic(spine), 'sweep', extra);
+      return sweepAlong(
+        module,
+        wire,
+        spinePath(spine, 16),
+        spineNodeOrSynthetic(spine),
+        'sweep',
+        extra
+      );
     },
     simplePipe: (profile, spine) =>
-      sweepAlong(module, profile, spinePath(spine, 16), spineNodeOrSynthetic(spine), 'simplePipe', {}),
+      sweepAlong(
+        module,
+        profile,
+        spinePath(spine, 16),
+        spineNodeOrSynthetic(spine),
+        'simplePipe',
+        {}
+      ),
     sweepWithOptions: (profile, pathEdge, contactMode, scaleValues, segments) =>
       sweepAlong(
         module,

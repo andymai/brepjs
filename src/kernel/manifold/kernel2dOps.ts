@@ -82,14 +82,14 @@ const KERNEL_2D_METHODS: readonly (keyof Kernel2DCapability)[] = [
 ];
 
 function resolveOcct2D(
-  method: keyof Kernel2DCapability,
+  method: keyof Kernel2DCapability
 ): Record<keyof Kernel2DCapability, (...a: unknown[]) => unknown> {
   let occt: KernelAdapter;
   try {
     occt = getKernel('occt');
   } catch {
     throw new Error(
-      `manifold: ${method} unsupported on manifold kernel; no B-rep kernel registered`,
+      `manifold: ${method} unsupported on manifold kernel; no B-rep kernel registered`
     );
   }
   return occt as unknown as Record<keyof Kernel2DCapability, (...a: unknown[]) => unknown>;
