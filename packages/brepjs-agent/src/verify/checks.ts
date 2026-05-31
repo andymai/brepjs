@@ -60,15 +60,13 @@ export function runChecks(shape: AnyShape): VerifyReport {
     if (isOk(area)) r.measurements.area = area.value;
   }
 
-  const b = getBounds(shape);
-  r.measurements.bounds = {
-    xMin: b.xMin,
-    xMax: b.xMax,
-    yMin: b.yMin,
-    yMax: b.yMax,
-    zMin: b.zMin,
-    zMax: b.zMax,
-  };
+  // getBounds → kernel boundingBox can throw on a degenerate/empty shape; keep the report
+  // well-formed (runPart's always-return-a-report contract) by recording the failure instead.
+  try {
+    r.measurements.bounds = getBounds(shape);
+  } catch (e) {
+    r.errors.push(`getBounds: ${(e as Error).message}`);
+  }
 
   return r;
 }

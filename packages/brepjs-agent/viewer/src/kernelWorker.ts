@@ -29,15 +29,24 @@ function post(msg: FromWorker, transfer?: Transferable[]) {
   }
 }
 
-let brepjs: BrepjsKernel | null = null;
+// Memoized boot promise, assigned synchronously so concurrent `load` messages share one boot
+// instead of racing two initFromOC calls; reset on failure so a later message can retry.
+let kernel: Promise<BrepjsKernel> | null = null;
+function ensureKernel(): Promise<BrepjsKernel> {
+  if (!kernel) {
+    kernel = bootKernel().catch((e: unknown) => {
+      kernel = null;
+      throw e;
+    });
+  }
+  return kernel;
+}
 
 // Boot OpenCascade WASM once, init brepjs against it. Pattern: cad.worker.ts:63-96,122-152.
-async function ensureKernel(): Promise<BrepjsKernel> {
-  if (brepjs) return brepjs;
-  // Resolve the wasm dir from the viewer base (matches cad.worker.ts), NOT the worker chunk's own dir:
-  // base:'./' + assetsDir means the ES worker chunk lands in dist/assets/ while wasm is at dist/wasm/,
-  // so `new URL('./', self.location.href)` would 404 (dist/assets/wasm/...). import.meta.env.BASE_URL
-  // resolved against origin reaches the dist root, where the wasm-copy plugin writes wasm/.
+async function bootKernel(): Promise<BrepjsKernel> {
+  // Resolve the wasm dir from the viewer base (import.meta.env.BASE_URL → dist root), NOT the
+  // worker chunk's own dir: with base:'./' the ES worker chunk lands in dist/assets/ while the
+  // wasm-copy plugin writes dist/wasm/, so `new URL('./', self.location.href)` would 404.
   const base = new URL(import.meta.env.BASE_URL, self.location.origin).href;
   const resp = await fetch(`${base}wasm/brepjs_single.js`);
   if (!resp.ok) throw new Error(`failed to load brepjs_single.js: ${resp.status}`);
@@ -53,7 +62,6 @@ async function ensureKernel(): Promise<BrepjsKernel> {
   });
   const mod = (await import('brepjs')) as unknown as BrepjsKernel;
   mod.initFromOC(oc);
-  brepjs = mod;
   return mod;
 }
 

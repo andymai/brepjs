@@ -55,9 +55,12 @@ export async function runDiff(aPath: string, bPath: string): Promise<DiffReport>
   const b = await runPart(bPath);
   errors.push(...b.report.errors);
   if (!a.shape || !b.shape) return emptyDiff(errors);
+  // runPart hands back live kernel shapes; dispose both on every exit path.
+  using sa = a.shape;
+  using sb = b.shape;
 
-  const ba = getBounds(a.shape);
-  const bb = getBounds(b.shape);
+  const ba = getBounds(sa);
+  const bb = getBounds(sb);
   const bboxDelta = {
     xMin: bb.xMin - ba.xMin,
     xMax: bb.xMax - ba.xMax,
@@ -67,14 +70,13 @@ export async function runDiff(aPath: string, bPath: string): Promise<DiffReport>
     zMax: bb.zMax - ba.zMax,
   };
 
-  const areaDelta = areaOf(b.shape, errors) - areaOf(a.shape, errors);
+  const areaDelta = areaOf(sb, errors) - areaOf(sa, errors);
 
   let volumeDelta = 0;
   let symmetricDifferenceVolume = 0;
-  if (isShape3D(a.shape) && isShape3D(b.shape)) {
-    volumeDelta = volumeOf(b.shape, errors) - volumeOf(a.shape, errors);
-    symmetricDifferenceVolume =
-      cutVolume(a.shape, b.shape, errors) + cutVolume(b.shape, a.shape, errors);
+  if (isShape3D(sa) && isShape3D(sb)) {
+    volumeDelta = volumeOf(sb, errors) - volumeOf(sa, errors);
+    symmetricDifferenceVolume = cutVolume(sa, sb, errors) + cutVolume(sb, sa, errors);
   }
 
   return { volumeDelta, areaDelta, bboxDelta, symmetricDifferenceVolume, errors };
