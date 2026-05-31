@@ -14,6 +14,11 @@ export interface RunPartOptions {
 }
 
 export interface RunPartResult {
+  /**
+   * The built shape, or null on failure. This is a LIVE WASM-backed kernel handle: the CLI exits
+   * right after use, but long-running programmatic callers own its lifetime and should release it
+   * (e.g. `using s = result.shape` or a `DisposalScope`) once done, or WASM memory accumulates.
+   */
   shape: AnyShape | null;
   report: VerifyReport;
   step?: ArrayBuffer | undefined;

@@ -14,6 +14,8 @@ export interface ShootOptions extends AcquireOptions {
   file: string;
   outDir: string;
   views?: readonly ViewName[];
+  /** Wall-clock ms to let the camera settle before each capture (default 400; raise on slow CI). */
+  settleMs?: number;
 }
 export interface ShootResult {
   outDir: string;
@@ -44,7 +46,7 @@ export async function shoot(opts: ShootOptions): Promise<ShootResult> {
       await page.evaluate((v: string) => {
         (globalThis as unknown as { __renderView(s: string): void }).__renderView(v);
       }, view);
-      await new Promise((r) => setTimeout(r, 400)); // let the camera settle before capture
+      await new Promise((r) => setTimeout(r, opts.settleMs ?? 400)); // let the camera settle before capture
       const path = resolve(opts.outDir, `${view}.png`) as `${string}.png`;
       await page.screenshot({ path });
       pngs.push(path);
