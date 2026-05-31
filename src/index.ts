@@ -7,6 +7,7 @@
 export {
   init,
   initFromOC,
+  initFromManifold,
   prewarm,
   getKernel,
   registerKernel,
