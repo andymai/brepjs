@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.34.0](https://github.com/andymai/brepjs/compare/brepjs-v18.33.2...brepjs-v18.34.0) (2026-05-31)
+
+
+### Features
+
+* **kernel:** Manifold mesh/CSG kernel adapter for fast previews ([#1117](https://github.com/andymai/brepjs/issues/1117)) ([0b6ca97](https://github.com/andymai/brepjs/commit/0b6ca97e6a4b47a7a97ab8435d01060ffb11e428))
+
 ## [18.33.2](https://github.com/andymai/brepjs/compare/brepjs-v18.33.1...brepjs-v18.33.2) (2026-05-30)
 
 
