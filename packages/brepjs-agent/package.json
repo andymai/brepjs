@@ -1,0 +1,51 @@
+{
+  "name": "brepjs-agent",
+  "version": "0.1.0",
+  "description": "Agent skill + verify/preview tooling for authoring parametric brepjs CAD code",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "engines": { "node": ">=24" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-agent"
+  },
+  "main": "./dist/brepjs-agent.cjs",
+  "module": "./dist/brepjs-agent.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-agent.js" },
+      "require": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-agent.cjs" }
+    }
+  },
+  "bin": { "brepjs-agent-verify": "./dist/cli/main.js" },
+  "files": ["dist", "viewer/dist", "CHANGELOG.md", "LICENSE", "README.md"],
+  "scripts": {
+    "build": "vite build && vite build --config viewer/vite.config.ts",
+    "typecheck": "tsc --noEmit && tsc -p viewer/tsconfig.json --noEmit",
+    "lint": "eslint src tests viewer",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "peerDependencies": {
+    "brepjs": ">=18.0.0",
+    "brepjs-opencascade": ">=0.16.0"
+  },
+  "dependencies": {
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "@types/three": "0.184.1",
+    "eslint": "*",
+    "puppeteer": "*",
+    "three": "0.184.0",
+    "tsx": "*",
+    "typescript": "*",
+    "vite": "*",
+    "vite-plugin-dts": "*",
+    "vitest": "*"
+  }
+}

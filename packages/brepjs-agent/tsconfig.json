@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "lib": ["ES2022", "ESNext.Disposable", "DOM"],
+    "paths": {}
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "tests"]
+}
