@@ -7,6 +7,7 @@ import {
   isVertex,
   isCompound,
   isCompSolid,
+  isShape3D,
   measureVolume,
   measureArea,
   getBounds,
@@ -32,12 +33,19 @@ export function runChecks(shape: AnyShape): VerifyReport {
   const r = emptyReport();
   r.shapeType = shapeTypeOf(shape);
 
+  // Strongest validity check available: BRepCheck on a single Solid.
   if (isSolid(shape)) {
     const valid = validSolid(shape);
     const validCheck: VerifyCheck = { name: 'isValidSolid', passed: isOk(valid) };
     if (!isOk(valid)) validCheck.detail = valid.error;
     r.checks.push(validCheck);
+  }
 
+  // Volume + positiveVolume for ANY 3D shape. Booleans/modifiers (cut/fuse/chamfer) routinely
+  // return a Compound wrapping a single solid; measureVolume sums solids, so gating this on
+  // isSolid would silently skip validation for ~half of real multi-feature parts (and leave
+  // `ok:true` vacuously true with no checks).
+  if (isShape3D(shape)) {
     const vol = measureVolume(shape);
     if (isOk(vol)) {
       r.measurements.volume = vol.value;
@@ -47,13 +55,7 @@ export function runChecks(shape: AnyShape): VerifyReport {
     }
   }
 
-  if (
-    isFace(shape) ||
-    isShell(shape) ||
-    isSolid(shape) ||
-    isCompSolid(shape) ||
-    isCompound(shape)
-  ) {
+  if (isFace(shape) || isShape3D(shape)) {
     const area = measureArea(shape);
     if (isOk(area)) r.measurements.area = area.value;
   }
