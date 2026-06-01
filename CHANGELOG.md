@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.35.2](https://github.com/andymai/brepjs/compare/brepjs-v18.35.1...brepjs-v18.35.2) (2026-06-01)
+
+
+### Bug Fixes
+
+* **io:** name the offending sub-solid when STEP/STL export aborts on degenerate geometry ([#1133](https://github.com/andymai/brepjs/issues/1133)) ([dccc046](https://github.com/andymai/brepjs/commit/dccc0469e452e9c310c5270001db149032cee1b8))
+
 ## [18.35.1](https://github.com/andymai/brepjs/compare/brepjs-v18.35.0...brepjs-v18.35.1) (2026-06-01)
 
 
