@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.35.4](https://github.com/andymai/brepjs/compare/brepjs-v18.35.3...brepjs-v18.35.4) (2026-06-01)
+
+
+### Bug Fixes
+
+* **kernel:** close occt-wasm in-repo parity gaps (hull, B-spline, divergences) ([#1139](https://github.com/andymai/brepjs/issues/1139)) ([17986b4](https://github.com/andymai/brepjs/commit/17986b4bee781482c9a7e5b4a548906ee7be864d))
+
 ## [18.35.3](https://github.com/andymai/brepjs/compare/brepjs-v18.35.2...brepjs-v18.35.3) (2026-06-01)
 
 
