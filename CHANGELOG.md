@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.36.0](https://github.com/andymai/brepjs/compare/brepjs-v18.35.6...brepjs-v18.36.0) (2026-06-01)
+
+
+### Features
+
+* **voxel:** add voxel/SDF domain foundation ([#1146](https://github.com/andymai/brepjs/issues/1146)) ([df2de27](https://github.com/andymai/brepjs/commit/df2de272d51deb8d7b9592c5bd3fe6337055fd76))
+
 ## [18.35.6](https://github.com/andymai/brepjs/compare/brepjs-v18.35.5...brepjs-v18.35.6) (2026-06-01)
 
 
