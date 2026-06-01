@@ -22,6 +22,18 @@ function validateInputs(mesh: VoxelMeshInput, queries: Float32Array): BrepError 
   if (mesh.triangles.length % 3 !== 0) {
     return validationError('VOXEL_INVALID_MESH', 'mesh.triangles length must be a multiple of 3.');
   }
+  // Bounds-check indices here: an out-of-range index would otherwise panic in
+  // Rust and surface as a wasm trap, escaping the Result contract.
+  const vertexCount = mesh.vertices.length / 3;
+  for (let i = 0; i < mesh.triangles.length; i++) {
+    const idx = mesh.triangles[i];
+    if (idx === undefined || idx >= vertexCount) {
+      return validationError(
+        'VOXEL_INVALID_TRIANGLE_INDEX',
+        `triangle index ${idx} at position ${i} is out of range for ${vertexCount} vertices.`
+      );
+    }
+  }
   if (queries.length % 3 !== 0) {
     return validationError(
       'VOXEL_INVALID_QUERIES',

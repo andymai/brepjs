@@ -61,4 +61,11 @@ describe('voxel sign engine (FWN keystone)', () => {
     );
     expect(isErr(result)).toBe(true);
   });
+
+  it('errors on out-of-bounds triangle index instead of trapping in wasm', () => {
+    // 100 >= 8 vertices: would panic in Rust without the bounds check.
+    const badTris = new Uint32Array([0, 1, 100]);
+    const result = windingNumbers({ vertices: VERTS, triangles: badTris }, QUERIES);
+    expect(isErr(result)).toBe(true);
+  });
 });
