@@ -42,6 +42,15 @@ export function mesh(
       }
     }
 
+    const uvCount = meshData.uvCount;
+    const uvs = new Float32Array(options.includeUVs ? uvCount : 0);
+    if (options.includeUVs && uvCount > 0) {
+      const uvPtr = meshData.getUvsPtr() >> 2;
+      for (let i = 0; i < uvCount; i++) {
+        uvs[i] = Module.HEAPF32[uvPtr + i] ?? 0;
+      }
+    }
+
     const triangles = new Uint32Array(idxCount);
     for (let i = 0; i < idxCount; i++) {
       triangles[i] = Module.HEAPU32[idxPtr + i] ?? 0;
@@ -64,7 +73,7 @@ export function mesh(
       vertices,
       normals: options.skipNormals ? new Float32Array(0) : normals,
       triangles,
-      uvs: new Float32Array(0),
+      uvs,
       faceGroups,
     };
   } finally {

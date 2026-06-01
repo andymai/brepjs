@@ -40,9 +40,11 @@ export interface OcctWasmHandle {
 export interface EmMeshData {
   positionCount: number;
   normalCount: number;
+  uvCount: number;
   indexCount: number;
   getPositionsPtr(): number;
   getNormalsPtr(): number;
+  getUvsPtr(): number;
   getIndicesPtr(): number;
   getFaceGroupsPtr(): number;
   faceGroupCount: number;

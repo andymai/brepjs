@@ -260,7 +260,7 @@
     "knip": "6.14.2",
     "lint-staged": "17.0.5",
     "lz-string": "1.5.0",
-    "occt-wasm": "3.1.0",
+    "occt-wasm": "3.2.0",
     "prettier": "3.8.3",
     "puppeteer": "25.0.4",
     "size-limit": "12.1.0",
