@@ -1,3 +1,6 @@
+import { type Result, ok, err, isErr } from '@/core/result.js';
+import { type BrepError, validationError, moduleInitError } from '@/core/errors.js';
+import type { VoxelEngine } from './engine.js';
 import { getVoxel } from './registry.js';
 
 /**
@@ -9,18 +12,36 @@ export interface VoxelMeshInput {
   triangles: Uint32Array;
 }
 
-function assertMesh(mesh: VoxelMeshInput): void {
+function validateInputs(mesh: VoxelMeshInput, queries: Float32Array): BrepError | null {
   if (mesh.vertices.length % 3 !== 0) {
-    throw new Error('voxel: mesh.vertices length must be a multiple of 3 (flat xyz).');
+    return validationError(
+      'VOXEL_INVALID_MESH',
+      'mesh.vertices length must be a multiple of 3 (flat xyz).'
+    );
   }
   if (mesh.triangles.length % 3 !== 0) {
-    throw new Error('voxel: mesh.triangles length must be a multiple of 3.');
+    return validationError('VOXEL_INVALID_MESH', 'mesh.triangles length must be a multiple of 3.');
   }
+  if (queries.length % 3 !== 0) {
+    return validationError(
+      'VOXEL_INVALID_QUERIES',
+      'queries length must be a multiple of 3 (flat xyz).'
+    );
+  }
+  return null;
 }
 
-function assertQueries(queries: Float32Array): void {
-  if (queries.length % 3 !== 0) {
-    throw new Error('voxel: queries length must be a multiple of 3 (flat xyz).');
+function resolveEngine(id: string | undefined): Result<VoxelEngine> {
+  try {
+    return ok(getVoxel(id));
+  } catch (cause) {
+    return err(
+      moduleInitError(
+        'VOXEL_NOT_INITIALIZED',
+        cause instanceof Error ? cause.message : 'voxel engine not initialized',
+        cause
+      )
+    );
   }
 }
 
@@ -35,10 +56,12 @@ export function windingNumbers(
   mesh: VoxelMeshInput,
   queries: Float32Array,
   id?: string
-): Float32Array {
-  assertMesh(mesh);
-  assertQueries(queries);
-  return getVoxel(id).winding_numbers(mesh.vertices, mesh.triangles, queries);
+): Result<Float32Array> {
+  const invalid = validateInputs(mesh, queries);
+  if (invalid) return err(invalid);
+  const engine = resolveEngine(id);
+  if (isErr(engine)) return engine;
+  return ok(engine.value.winding_numbers(mesh.vertices, mesh.triangles, queries));
 }
 
 /**
@@ -46,9 +69,15 @@ export function windingNumbers(
  *
  * `queries` is flat xyz (length 3·Q); the result has length Q.
  */
-export function pointsInside(mesh: VoxelMeshInput, queries: Float32Array, id?: string): boolean[] {
-  assertMesh(mesh);
-  assertQueries(queries);
-  const flags = getVoxel(id).points_inside(mesh.vertices, mesh.triangles, queries);
-  return Array.from(flags, (flag) => flag === 1);
+export function pointsInside(
+  mesh: VoxelMeshInput,
+  queries: Float32Array,
+  id?: string
+): Result<boolean[]> {
+  const invalid = validateInputs(mesh, queries);
+  if (invalid) return err(invalid);
+  const engine = resolveEngine(id);
+  if (isErr(engine)) return engine;
+  const flags = engine.value.points_inside(mesh.vertices, mesh.triangles, queries);
+  return ok(Array.from(flags, (flag) => flag === 1));
 }

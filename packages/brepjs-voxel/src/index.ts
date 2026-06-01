@@ -1,15 +1,15 @@
 import initWasm, * as wasm from 'brepjs-voxel-wasm';
 
 /**
- * The wasm surface re-exposed to consumers. Matches `VoxelEngine` in
- * `brepjs` structurally, so the loaded engine can be passed straight to
- * `initVoxel()` with no adapter.
+ * The wasm surface re-exposed to consumers, derived directly from the
+ * `brepjs-voxel-wasm` generated types so it tracks the artifact and cannot
+ * drift. Structurally matches `VoxelEngine` in `brepjs`, so the loaded engine
+ * can be passed straight to `initVoxel()` with no adapter.
  */
-export interface VoxelEngine {
-  winding_numbers(verts: Float32Array, tris: Uint32Array, queries: Float32Array): Float32Array;
-  points_inside(verts: Float32Array, tris: Uint32Array, queries: Float32Array): Uint8Array;
-  version(): string;
-}
+export type VoxelEngine = Pick<
+  typeof import('brepjs-voxel-wasm'),
+  'winding_numbers' | 'points_inside' | 'version'
+>;
 
 let _engine: VoxelEngine | null = null;
 

@@ -18,8 +18,7 @@
     "directory": "packages/brepjs-voxel"
   },
   "files": [
-    "src",
-    "dist"
+    "src"
   ],
   "dependencies": {
     "brepjs-voxel-wasm": "^0.1.0"

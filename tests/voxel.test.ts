@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import initWasm, * as voxelWasm from 'brepjs-voxel-wasm';
 import { initVoxel, windingNumbers, pointsInside, getActiveVoxelId } from '@/voxel/index.js';
+import { unwrap, isErr } from '@/core/result.js';
 
 // Unit cube [0,1]^3, outward-facing triangles (CCW from outside).
 const VERTS = new Float32Array([
@@ -32,29 +33,32 @@ describe('voxel sign engine (FWN keystone)', () => {
     expect(voxelWasm.version()).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it('throws on an unregistered engine id', () => {
-    expect(() =>
-      windingNumbers({ vertices: VERTS, triangles: WATERTIGHT }, QUERIES, 'nope')
-    ).toThrow(/not registered/);
+  it('errors on an unregistered engine id', () => {
+    const result = windingNumbers({ vertices: VERTS, triangles: WATERTIGHT }, QUERIES, 'nope');
+    expect(isErr(result)).toBe(true);
   });
 
   it('classifies a watertight cube exactly', () => {
-    const [center, above] = windingNumbers({ vertices: VERTS, triangles: WATERTIGHT }, QUERIES);
+    const [center, above] = unwrap(
+      windingNumbers({ vertices: VERTS, triangles: WATERTIGHT }, QUERIES)
+    );
     expect(center).toBeCloseTo(1.0, 5);
     expect(above).toBeCloseTo(0.0, 5);
   });
 
   it('still classifies the holey cube center as inside (the keystone)', () => {
-    const [center, above] = pointsInside({ vertices: VERTS, triangles: HOLEY }, QUERIES);
+    const [center, above] = unwrap(pointsInside({ vertices: VERTS, triangles: HOLEY }, QUERIES));
     // Center stays inside despite a whole missing face, where a ray cast up
     // through the hole would misclassify. Above the hole stays outside.
     expect(center).toBe(true);
     expect(above).toBe(false);
   });
 
-  it('rejects mis-shaped query buffers', () => {
-    expect(() =>
-      windingNumbers({ vertices: VERTS, triangles: WATERTIGHT }, new Float32Array([0, 0]))
-    ).toThrow(/multiple of 3/);
+  it('rejects mis-shaped query buffers with a validation error', () => {
+    const result = windingNumbers(
+      { vertices: VERTS, triangles: WATERTIGHT },
+      new Float32Array([0, 0])
+    );
+    expect(isErr(result)).toBe(true);
   });
 });
