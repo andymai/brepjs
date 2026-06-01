@@ -16,6 +16,7 @@ import {
   setEdgeMeshForShape,
 } from './meshCache.js';
 import { getFaceOrigins } from './shapeFns.js';
+import { getBounds } from './topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Mesh types
@@ -188,7 +189,33 @@ function exportError(e: unknown, fmt: 'STEP' | 'STL'): BrepError {
   return ioError(`${fmt}_FILE_READ_ERROR`, `Failed to read exported ${fmt} file`, e);
 }
 
+/**
+ * Probe a shape's bounding box before handing it to the STEP/STL writer.
+ *
+ * Some sub-shapes pass `isValid`/`validSolid` yet are degenerate enough that the
+ * OCCT writer traps with a `WebAssembly.RuntimeError` (OOB) mid-transfer — which
+ * corrupts the Emscripten heap and poisons the kernel for the rest of the session
+ * (#1126). `getBounds` exercises the same geometry but fails *catchably*, so a
+ * cheap pre-export probe lets us return a clean `Err` instead of crashing.
+ * Heuristic, not universal: it only catches shapes whose bounding-box evaluation
+ * also throws.
+ */
+function probeSerializable(shape: AnyShape<Dimension>, fmt: 'STEP' | 'STL'): BrepError | null {
+  try {
+    getBounds(shape);
+    return null;
+  } catch (e) {
+    return ioError(
+      `${fmt}_EXPORT_UNSERIALIZABLE`,
+      `${fmt} export aborted: the shape contains degenerate geometry the ${fmt} writer cannot serialize (bounding-box evaluation failed); export was skipped to avoid crashing the kernel`,
+      e
+    );
+  }
+}
+
 export function exportSTEP(shape: AnyShape<Dimension>): Result<Blob> {
+  const unserializable = probeSerializable(shape, 'STEP');
+  if (unserializable) return err(unserializable);
   try {
     const stepString = getKernel().exportSTEP([shape.wrapped]);
     return ok(new Blob([stepString], { type: 'application/STEP' }));
@@ -210,6 +237,8 @@ export function exportSTL(
     binary = false,
   }: MeshOptions & { binary?: boolean } = {}
 ): Result<Blob> {
+  const unserializable = probeSerializable(shape, 'STL');
+  if (unserializable) return err(unserializable);
   try {
     // Ensure shape has triangulation before export
     if (!getKernel().hasTriangulation(shape.wrapped)) {

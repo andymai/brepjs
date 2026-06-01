@@ -146,6 +146,24 @@ describe('meshFns', () => {
         spy.mockRestore();
       }
     });
+
+    it('returns STEP_EXPORT_UNSERIALIZABLE without invoking the writer when bounds eval throws', () => {
+      // getBounds fails catchably on degenerate geometry that the writer would instead
+      // OOB-trap on; the guard must abort before exportSTEP is ever called (#1126).
+      const boundsSpy = vi.spyOn(getKernel(), 'boundingBox').mockImplementation(() => {
+        throw new Error('Bnd_Box is void');
+      });
+      const writerSpy = vi.spyOn(getKernel(), 'exportSTEP');
+      try {
+        const result = exportSTEP(box(7, 7, 7));
+        expect(isErr(result)).toBe(true);
+        expect(unwrapErr(result).code).toBe('STEP_EXPORT_UNSERIALIZABLE');
+        expect(writerSpy).not.toHaveBeenCalled();
+      } finally {
+        boundsSpy.mockRestore();
+        writerSpy.mockRestore();
+      }
+    });
   });
 
   describe('exportSTL', () => {
@@ -205,6 +223,22 @@ describe('meshFns', () => {
         }
       }
     );
+
+    it('returns STL_EXPORT_UNSERIALIZABLE without meshing when bounds eval throws', () => {
+      const boundsSpy = vi.spyOn(getKernel(), 'boundingBox').mockImplementation(() => {
+        throw new Error('Bnd_Box is void');
+      });
+      const meshSpy = vi.spyOn(getKernel(), 'meshShape');
+      try {
+        const result = exportSTL(box(7, 7, 7));
+        expect(isErr(result)).toBe(true);
+        expect(unwrapErr(result).code).toBe('STL_EXPORT_UNSERIALIZABLE');
+        expect(meshSpy).not.toHaveBeenCalled();
+      } finally {
+        boundsSpy.mockRestore();
+        meshSpy.mockRestore();
+      }
+    });
   });
 
   describe('kernel.exportOBJ', () => {
