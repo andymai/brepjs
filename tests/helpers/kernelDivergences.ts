@@ -413,6 +413,51 @@ export const divergences: DivergenceMap = {
   // excludeTests in kernelRegistry.ts. Add entries here when specific
   // tests need per-test skipping rather than whole-file exclusion.
   'occt-wasm': {
+    // ---------------------------------------------------------------------
+    // Raw-OCCT-API tests: exercise the Emscripten `oc` object (gp_Vec,
+    // TopoDS_*, FS.readFile, raw BREP) that occt-wasm does not expose by
+    // design. Same class brepkit skips; not a geometry-parity gap.
+    // ---------------------------------------------------------------------
+    occtBoundary: {
+      kind: 'not-implemented',
+      reason: 'toKernelVec / fromKernelVec are raw-OCCT boundary helpers; occt-wasm has no `oc`',
+    },
+    disposal: {
+      kind: 'not-implemented',
+      reason: 'createHandle tests wrap raw `oc` shapes; occt-wasm exposes no raw `oc` instance',
+    },
+    'meshFns.stepReadError': {
+      kind: 'not-implemented',
+      reason: 'Patches oc.FS.readFile — OCCT Emscripten FS API not exposed by occt-wasm',
+    },
+    'meshFns.meshDeflection': {
+      kind: 'not-implemented',
+      reason: 'STL read-error test patches oc.FS.readFile — not exposed by occt-wasm',
+    },
+    'cast.garbageInput': {
+      kind: 'not-implemented',
+      reason: 'BREP garbage-input test uses raw `oc` API; occt-wasm exposes no raw `oc`',
+    },
+    // ---------------------------------------------------------------------
+    // Already divergent on `occt` too: the sampled B-spline 2D bridge loses
+    // analytic precision vs native Geom2d (see the `occt` entries above).
+    // ---------------------------------------------------------------------
+    'sketcher3d.halfEllipseTo': {
+      kind: 'skip',
+      reason:
+        'Sampled B-spline approximation of ellipse arcs is lower-precision than native Geom2d',
+    },
+    'sketcher3d.ellipseTo': {
+      kind: 'skip',
+      reason:
+        'Sampled B-spline approximation of ellipse arcs is lower-precision than native Geom2d',
+    },
+    'docsExamples.2dTo3dWorkflow': {
+      kind: 'skip',
+      reason:
+        'Sampled B-spline bridge for circle cut holes loses analytic precision — ' +
+        'face builder needs exact circle geometry for hole subtraction during extrusion',
+    },
     brepkitSketchArc: {
       kind: 'not-implemented',
       reason: 'Sketch arc entity and constraints are brepkit-only features',

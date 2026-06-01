@@ -474,12 +474,13 @@ export interface OcctKernelWasm {
   ): number;
 
   // --- XCAF ---
-  createXCAFDocument(
-    shapeIds: EmVectorUint32,
-    joinedNames: string,
-    flatColors: EmVectorDouble
-  ): number;
-  writeXCAFToSTEP(docId: number): string;
+  xcafNewDocument(): number;
+  xcafClose(docId: number): void;
+  xcafAddShape(docId: number, shapeId: number): number;
+  xcafSetColor(docId: number, labelId: number, r: number, g: number, b: number): void;
+  xcafSetName(docId: number, labelId: number, name: string): void;
+  xcafGetRootLabels(docId: number): EmVectorInt;
+  xcafExportSTEP(docId: number): string;
 
   // --- Surface construction ---
   bsplineSurface(flatPoints: EmVectorDouble, rows: number, cols: number): number;

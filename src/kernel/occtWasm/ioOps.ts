@@ -334,34 +334,30 @@ export function fromBREP(k: OcctKernelWasm, data: string): KernelShape {
 
 export function createXCAFDocument(
   k: OcctKernelWasm,
-  Module: OcctWasmModule,
+  _Module: OcctWasmModule,
   shapes: Array<{
     shape: KernelShape;
     name: string;
     color?: [number, number, number, number] | undefined;
   }>
 ): KernelType {
-  const ids = new Module.VectorUint32();
-  const colors = new Module.VectorDouble();
-  const nameParts: string[] = [];
+  // occt-wasm exposes the XCAF document API as discrete xcaf* kernel methods
+  // (there is no single createXCAFDocument binding). Build the document by
+  // adding each shape as a free part, then tagging its name and color.
+  const docId = k.xcafNewDocument();
   for (const entry of shapes) {
-    ids.push_back(unwrap(entry.shape));
-    nameParts.push(entry.name);
-    const [r, g, b, a] = entry.color ?? [0.5, 0.5, 0.5, 1];
-    colors.push_back(r);
-    colors.push_back(g);
-    colors.push_back(b);
-    colors.push_back(a);
+    const labelId = k.xcafAddShape(docId, unwrap(entry.shape));
+    if (entry.name) k.xcafSetName(docId, labelId, entry.name);
+    if (entry.color) {
+      // Colors arrive 0-255 (see exporterFns); xcafSetColor wants 0-1.
+      const [r, g, b] = entry.color;
+      k.xcafSetColor(docId, labelId, r / 255, g / 255, b / 255);
+    }
   }
-  try {
-    const joinedNames = nameParts.join('\0');
-    const docId = k.createXCAFDocument(ids, joinedNames, colors);
-    // brepjs-patterns-disable: no-double-cast
-    return handle('compound', docId);
-  } finally {
-    ids.delete();
-    colors.delete();
-  }
+  // The doc id is carried in a handle; delete() is a noop for occt-wasm, so
+  // writeXCAFToSTEP closes the document after exporting.
+  // brepjs-patterns-disable: no-double-cast
+  return handle('compound', docId);
 }
 
 export function writeXCAFToSTEP(
@@ -369,28 +365,20 @@ export function writeXCAFToSTEP(
   doc: KernelType,
   _options?: { unit?: string | undefined; modelUnit?: string | undefined }
 ): string {
-  // brepjs-patterns-disable: no-double-cast
-  const id = unwrap(doc);
-  const subs = k.getSubShapes(id, 'solid');
-  const hasSolids = (() => {
+  const docId = unwrap(doc);
+  const roots = k.xcafGetRootLabels(docId);
+  const hasShapes = (() => {
     try {
-      return subs.size() > 0;
+      return roots.size() > 0;
     } finally {
-      subs.delete();
+      roots.delete();
     }
   })();
-  if (!hasSolids) {
-    const faces = k.getSubShapes(id, 'face');
-    const hasFaces = (() => {
-      try {
-        return faces.size() > 0;
-      } finally {
-        faces.delete();
-      }
-    })();
-    if (!hasFaces) return '';
+  try {
+    return hasShapes ? k.xcafExportSTEP(docId) : '';
+  } finally {
+    k.xcafClose(docId);
   }
-  return k.writeXCAFToSTEP(id);
 }
 
 export function exportSTEPConfigured(
