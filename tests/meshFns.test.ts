@@ -224,19 +224,22 @@ describe('meshFns', () => {
       }
     );
 
-    it('returns STL_EXPORT_UNSERIALIZABLE without meshing when bounds eval throws', () => {
+    it('returns STL_EXPORT_UNSERIALIZABLE without meshing or invoking the writer when bounds eval throws', () => {
       const boundsSpy = vi.spyOn(getKernel(), 'boundingBox').mockImplementation(() => {
         throw new Error('Bnd_Box is void');
       });
       const meshSpy = vi.spyOn(getKernel(), 'meshShape');
+      const writerSpy = vi.spyOn(getKernel(), 'exportSTL');
       try {
         const result = exportSTL(box(7, 7, 7));
         expect(isErr(result)).toBe(true);
         expect(unwrapErr(result).code).toBe('STL_EXPORT_UNSERIALIZABLE');
         expect(meshSpy).not.toHaveBeenCalled();
+        expect(writerSpy).not.toHaveBeenCalled();
       } finally {
         boundsSpy.mockRestore();
         meshSpy.mockRestore();
+        writerSpy.mockRestore();
       }
     });
   });

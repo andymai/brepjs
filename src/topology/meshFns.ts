@@ -205,6 +205,9 @@ function probeSerializable(shape: AnyShape<Dimension>, fmt: 'STEP' | 'STL'): Bre
     getBounds(shape);
     return null;
   } catch (e) {
+    // A TypeError signals a caller/programming bug (e.g. a malformed handle), not
+    // unserializable geometry — let it surface rather than masking it as an export error.
+    if (e instanceof TypeError) throw e;
     return ioError(
       `${fmt}_EXPORT_UNSERIALIZABLE`,
       `${fmt} export aborted: the shape contains degenerate geometry the ${fmt} writer cannot serialize (bounding-box evaluation failed); export was skipped to avoid crashing the kernel`,
