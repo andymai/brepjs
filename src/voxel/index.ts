@@ -6,8 +6,10 @@
  * grid / contour / bridge seams land behind the same registry.
  */
 
-export type { VoxelEngine } from './engine.js';
+export type { VoxelEngine, VoxelRepairResult } from './engine.js';
 export type { VoxelMeshInput } from './signFns.js';
+export type { RepairOptions } from './repairFns.js';
 
 export { registerVoxel, getVoxel, getActiveVoxelId, initVoxel } from './registry.js';
 export { windingNumbers, pointsInside } from './signFns.js';
+export { repairMesh } from './repairFns.js';

@@ -529,6 +529,7 @@ const EXPECTED_RUNTIME_EXPORTS: readonly string[] = [
   'rejectAll',
   'removeChild',
   'removeHolesFromFace',
+  'repairMesh',
   'replayFrom',
   'replayHistory',
   'resetDisposalStats',

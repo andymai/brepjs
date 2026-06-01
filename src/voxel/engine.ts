@@ -11,6 +11,24 @@ export interface VoxelEngine {
   winding_numbers(verts: Float32Array, tris: Uint32Array, queries: Float32Array): Float32Array;
   /** Inside/outside classification per query point (1 = inside, 0 = outside). */
   points_inside(verts: Float32Array, tris: Uint32Array, queries: Float32Array): Uint8Array;
+  /** Voxelize-and-contour a mesh into a closed surface (FWN sign keystone). */
+  repair_mesh(
+    verts: Float32Array,
+    tris: Uint32Array,
+    resolution: number,
+    padding: number
+  ): VoxelRepairResult;
   /** Engine artifact version, for loader/artifact compatibility checks. */
   version(): string;
+}
+
+/**
+ * The repaired-mesh handle the wasm `repair_mesh` returns. Flat xyz
+ * `positions`/`normals` (length 3·V) and a triangle-list `indices` (3 per tri),
+ * in world space. Structurally satisfied by the generated `RepairResult` class.
+ */
+export interface VoxelRepairResult {
+  readonly positions: Float32Array;
+  readonly normals: Float32Array;
+  readonly indices: Uint32Array;
 }

@@ -1,6 +1,58 @@
 /* @ts-self-types="./index.d.ts" */
 
 /**
+ * Repaired triangle mesh handed back across the wasm boundary. wasm-bindgen
+ * exposes the `Vec` getters as typed arrays (flat xyz positions/normals,
+ * triangle-list indices). World-space coords; the bridge does not re-scale.
+ */
+export class RepairResult {
+    static __wrap(ptr) {
+        const obj = Object.create(RepairResult.prototype);
+        obj.__wbg_ptr = ptr;
+        RepairResultFinalization.register(obj, obj.__wbg_ptr, obj);
+        return obj;
+    }
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        RepairResultFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_repairresult_free(ptr, 0);
+    }
+    /**
+     * @returns {Uint32Array}
+     */
+    get indices() {
+        const ret = wasm.repairresult_indices(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @returns {Float32Array}
+     */
+    get normals() {
+        const ret = wasm.repairresult_normals(this.__wbg_ptr);
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @returns {Float32Array}
+     */
+    get positions() {
+        const ret = wasm.repairresult_positions(this.__wbg_ptr);
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+}
+if (Symbol.dispose) RepairResult.prototype[Symbol.dispose] = RepairResult.prototype.free;
+
+/**
  * Inside/outside classification per query point (winding number > 0.5).
  *
  * Returns length Q: 1 = inside, 0 = outside. This is the sign decision the
@@ -21,6 +73,32 @@ export function points_inside(verts, tris, queries) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Repair a (possibly non-watertight) mesh into a closed surface: voxelize the
+ * FWN-signed SDF over a grid sized to the mesh bbox, then Surface-Nets contour
+ * it back to triangles (world-space). `resolution` sizes the longest bbox axis;
+ * `padding` is the positive air margin Surface Nets needs (>= 1 to avoid clip).
+ *
+ * `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+ * Errors (as a JS exception) if the grid exceeds the voxel cap.
+ * @param {Float32Array} verts
+ * @param {Uint32Array} tris
+ * @param {number} resolution
+ * @param {number} padding
+ * @returns {RepairResult}
+ */
+export function repair_mesh(verts, tris, resolution, padding) {
+    const ptr0 = passArrayF32ToWasm0(verts, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(tris, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.repair_mesh(ptr0, len0, ptr1, len1, resolution, padding);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return RepairResult.__wrap(ret[0]);
 }
 
 /**
@@ -65,6 +143,13 @@ export function winding_numbers(verts, tris, queries) {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
+        __wbg_Error_ef53bc310eb298a0: function(arg0, arg1) {
+            const ret = Error(getStringFromWasm0(arg0, arg1));
+            return ret;
+        },
+        __wbg___wbindgen_throw_1506f2235d1bdba0: function(arg0, arg1) {
+            throw new Error(getStringFromWasm0(arg0, arg1));
+        },
         __wbindgen_init_externref_table: function() {
             const table = wasm.__wbindgen_externrefs;
             const offset = table.grow(4);
@@ -81,9 +166,18 @@ function __wbg_get_imports() {
     };
 }
 
+const RepairResultFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_repairresult_free(ptr, 1));
+
 function getArrayF32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
 function getArrayU8FromWasm0(ptr, len) {
@@ -131,6 +225,12 @@ function passArrayF32ToWasm0(arg, malloc) {
     getFloat32ArrayMemory0().set(arg, ptr / 4);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
+}
+
+function takeFromExternrefTable0(idx) {
+    const value = wasm.__wbindgen_externrefs.get(idx);
+    wasm.__externref_table_dealloc(idx);
+    return value;
 }
 
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });

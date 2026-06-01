@@ -233,8 +233,14 @@ export {
   getActiveVoxelId,
   windingNumbers,
   pointsInside,
+  repairMesh,
 } from './voxel/index.js';
-export type { VoxelEngine, VoxelMeshInput } from './voxel/index.js';
+export type {
+  VoxelEngine,
+  VoxelMeshInput,
+  VoxelRepairResult,
+  RepairOptions,
+} from './voxel/index.js';
 
 // ── Layer 3: sketching ──
 

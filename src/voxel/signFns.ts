@@ -12,7 +12,13 @@ export interface VoxelMeshInput {
   triangles: Uint32Array;
 }
 
-function validateInputs(mesh: VoxelMeshInput, queries: Float32Array): BrepError | null {
+/**
+ * Validate a triangle-soup mesh before it crosses into wasm: flat-xyz vertices,
+ * triangle-multiple indices, and every index in range. An out-of-range index
+ * would otherwise panic in Rust and surface as a wasm trap, escaping the Result
+ * contract — so it must be rejected here.
+ */
+export function validateMesh(mesh: VoxelMeshInput): BrepError | null {
   if (mesh.vertices.length % 3 !== 0) {
     return validationError(
       'VOXEL_INVALID_MESH',
@@ -22,8 +28,6 @@ function validateInputs(mesh: VoxelMeshInput, queries: Float32Array): BrepError 
   if (mesh.triangles.length % 3 !== 0) {
     return validationError('VOXEL_INVALID_MESH', 'mesh.triangles length must be a multiple of 3.');
   }
-  // Bounds-check indices here: an out-of-range index would otherwise panic in
-  // Rust and surface as a wasm trap, escaping the Result contract.
   const vertexCount = mesh.vertices.length / 3;
   for (let i = 0; i < mesh.triangles.length; i++) {
     const idx = mesh.triangles[i];
@@ -34,6 +38,12 @@ function validateInputs(mesh: VoxelMeshInput, queries: Float32Array): BrepError 
       );
     }
   }
+  return null;
+}
+
+function validateInputs(mesh: VoxelMeshInput, queries: Float32Array): BrepError | null {
+  const meshInvalid = validateMesh(mesh);
+  if (meshInvalid) return meshInvalid;
   if (queries.length % 3 !== 0) {
     return validationError(
       'VOXEL_INVALID_QUERIES',
@@ -43,7 +53,8 @@ function validateInputs(mesh: VoxelMeshInput, queries: Float32Array): BrepError 
   return null;
 }
 
-function resolveEngine(id: string | undefined): Result<VoxelEngine> {
+/** Resolve a registered voxel engine, mapping an unregistered id to an error. */
+export function resolveEngine(id: string | undefined): Result<VoxelEngine> {
   try {
     return ok(getVoxel(id));
   } catch (cause) {
