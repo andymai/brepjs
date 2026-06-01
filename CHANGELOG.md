@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.35.6](https://github.com/andymai/brepjs/compare/brepjs-v18.35.5...brepjs-v18.35.6) (2026-06-01)
+
+
+### Bug Fixes
+
+* **security:** clear open Dependabot + CodeQL alerts ([#1144](https://github.com/andymai/brepjs/issues/1144)) ([0ac6411](https://github.com/andymai/brepjs/commit/0ac6411e866df0b88e048db52cae550734a20765))
+
 ## [18.35.5](https://github.com/andymai/brepjs/compare/brepjs-v18.35.4...brepjs-v18.35.5) (2026-06-01)
 
 
