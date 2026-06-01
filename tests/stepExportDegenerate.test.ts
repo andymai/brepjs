@@ -15,6 +15,7 @@ import {
   unwrap,
   unwrapErr,
   type AnyShape,
+  type Result,
 } from '@/index.js';
 
 const deg = (d: number) => (d * Math.PI) / 180;
@@ -86,13 +87,16 @@ describe.skipIf(currentKernel !== 'occt')(
       const shape = buildCorruptingFuse();
 
       // Core #1126/#1128 guarantee: the writer trap is caught and returned as a Result,
-      // so we reach here at all instead of an uncaught WASM trap escaping to the caller.
-      const result = exportSTEP(shape);
-      expect(result).toBeDefined();
+      // never an uncaught WASM trap escaping to the caller. Assert the no-throw contract
+      // directly (one call only — a second would hit the now-poisoned writer).
+      let result: Result<Blob> | undefined;
+      expect(() => {
+        result = exportSTEP(shape);
+      }).not.toThrow();
 
       // A future OCCT fix flips this to Ok — allowed. What must never regress: the trap
       // being mislabelled as the phantom "Failed to read exported STEP file" error.
-      if (isErr(result)) {
+      if (result && isErr(result)) {
         const { code } = unwrapErr(result);
         expect(['STEP_EXPORT_CRASHED', 'STEP_EXPORT_UNSERIALIZABLE']).toContain(code);
         expect(code).not.toBe('STEP_FILE_READ_ERROR');
