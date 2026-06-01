@@ -123,11 +123,22 @@ replay helper. No duplicated CSG.
   API = **Layer 3** (`src/lattice/`). They cannot co-locate (`get_src_dir()` returns the first path
   component only).
 - `scripts/check-layer-boundaries.sh` `get_layer()` currently has **no `voxel`/`lattice` case** →
-  returns -1 → silently escapes enforcement. P0 must: add `voxel` to the Layer-2 arm
-  (`…|worker|csg|voxel`) and `lattice` to the Layer-3 arm (`…|gear|ns|lattice`) — preserving every
-  existing token — update both legend lines and the header comment, and add negative tests proving
-  enforcement is live (an L2→L3 import and a `lattice` upward import the script must reject).
-  Precedent: `csg` (L2), `gear`/`ns` (L3) already exist.
+  returns -1 → silently escapes enforcement. P0 must add `voxel` (Layer 2) and `lattice` (Layer 3) in
+  **three places**, writing the _complete_ token set each time. Note the script already has
+  pre-existing legend/header drift, so do **not** copy the current legend/header verbatim — restore the
+  missing tokens while adding the new ones:
+  - `get_layer()` arms (the source of truth, currently correct) — L2:
+    `topology|2d|operations|query|measurement|io|worker|csg|voxel`; L3:
+    `sketching|text|projection|gear|ns|lattice`.
+  - The printed legend (≈lines 130-131) — L2: `topology/, 2d/, operations/, query/, measurement/, io/,
+worker/, csg/, voxel/` (currently **omits `csg/`**); L3: `sketching/, text/, projection/, gear/,
+ns/, lattice/`.
+  - The header comment (≈lines 9, 11) — the same two sets (currently L2 **omits `worker` and `csg`**;
+    L3 **omits `ns`**).
+
+  Then add negative tests proving enforcement is live (an L2→L3 import and a `lattice` upward import the
+  script must reject). Precedent: `csg` (L2), `gear`/`ns` (L3) already exist in `get_layer()`.
+
 - Accessor rule: B-rep inputs are `ShapeHandle` → `.wrapped` only at `getKernel().method(...)` sites
   (ESLint bans `.wrapped.method()` in Layer 2+). Voxel handles are `KernelHandle<VoxelGrid>` →
   `.value`.
