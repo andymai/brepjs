@@ -31,7 +31,7 @@ export interface WallSpec {
 
 const unitVec = z.tuple([z.number(), z.number(), z.number()]).refine(
   (v) => Math.abs(v[0] ** 2 + v[1] ** 2 + v[2] ** 2 - 1) < 1e-6,
-  { message: 'must be a unit vector' }
+  { error: 'must be a unit vector' }
 );
 
 const WallSpecSchema = z.object({
@@ -64,7 +64,7 @@ const WallSpecSchema = z.object({
     data.axisX[2] * data.axisZ[2];
   if (Math.abs(dot) > 1e-6) {
     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
+      code: 'custom',
       message: 'axisX and axisZ must be orthogonal',
       path: ['axisZ'],
     });
