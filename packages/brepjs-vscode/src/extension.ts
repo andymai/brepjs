@@ -13,8 +13,8 @@ const BREP_SELECTOR: vscode.DocumentSelector = {
   pattern: '**/*.brep.ts',
 };
 
-// Tracks the in-flight verify run so rapid saves cancel the previous one
-let currentAbort: AbortController | undefined;
+// One AbortController per document URI so saving file B never cancels file A's verify
+const abortMap = new Map<string, AbortController>();
 
 export function activate(context: vscode.ExtensionContext): void {
   const output = vscode.window.createOutputChannel('brepjs');
@@ -54,7 +54,8 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
-  currentAbort?.abort();
+  for (const controller of abortMap.values()) controller.abort();
+  abortMap.clear();
 }
 
 function isBrepFile(filePath: string): boolean {
@@ -67,10 +68,12 @@ async function handleSave(
   preview: BrepPreviewManager,
   output: vscode.OutputChannel,
 ): Promise<void> {
-  // Cancel any in-flight verify for the previous save
-  currentAbort?.abort();
-  currentAbort = new AbortController();
-  const { signal } = currentAbort;
+  // Cancel any prior in-flight verify for this specific file, leaving other files unaffected
+  const key = doc.uri.toString();
+  abortMap.get(key)?.abort();
+  const controller = new AbortController();
+  abortMap.set(key, controller);
+  const { signal } = controller;
 
   const name = basename(doc.fileName);
   preview.showLoading(doc.fileName);

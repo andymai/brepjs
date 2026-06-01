@@ -21,6 +21,8 @@ export class BrepPreviewManager implements vscode.Disposable, vscode.WebviewView
   // Explicit `| undefined` (not `?`) satisfies exactOptionalPropertyTypes when clearing on dispose
   private sidebarView: vscode.WebviewView | undefined;
   private columnPanel: vscode.WebviewPanel | undefined;
+  // Last verify result kept so the sidebar can replay it when it initializes late
+  private lastUpdate: { filePath: string; report: VerifyReport; glbPath: string | null } | undefined;
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -33,6 +35,21 @@ export class BrepPreviewManager implements vscode.Disposable, vscode.WebviewView
     };
     webviewView.webview.html = getWebviewHtml(webviewView.webview, this.context.extensionUri);
     this.sidebarView = webviewView;
+
+    // When the webview signals it is ready, replay the last cached result so the
+    // sidebar is not stuck in idle state when it initializes after the first verify
+    // (VS Code lazy-initializes sidebar views, so resolveWebviewView often runs after
+    // the first save-triggered verify has already completed).
+    webviewView.webview.onDidReceiveMessage((msg: { type: string }) => {
+      if (msg.type === 'ready' && this.lastUpdate !== undefined) {
+        const { filePath, report, glbPath } = this.lastUpdate;
+        const glbUri = glbPath
+          ? webviewView.webview.asWebviewUri(vscode.Uri.file(glbPath)).toString()
+          : null;
+        this.postTo(webviewView.webview, { type: 'update', glbUri, report, filePath });
+      }
+    });
+
     webviewView.onDidDispose(() => {
       this.sidebarView = undefined;
     });
@@ -74,6 +91,7 @@ export class BrepPreviewManager implements vscode.Disposable, vscode.WebviewView
   }
 
   update(filePath: string, report: VerifyReport, glbPath: string | null): void {
+    this.lastUpdate = { filePath, report, glbPath };
     if (this.sidebarView) {
       const glbUri = glbPath
         ? this.sidebarView.webview.asWebviewUri(vscode.Uri.file(glbPath)).toString()

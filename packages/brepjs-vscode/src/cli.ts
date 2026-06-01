@@ -80,7 +80,10 @@ function spawnCli(
 }
 
 export async function runVerify(filePath: string, signal: AbortSignal): Promise<VerifyResult> {
-  const glbPath = join(tmpdir(), `brepjs-${Date.now()}.glb`);
+  // Stable name derived from the source path so repeated saves overwrite the same temp file
+  // rather than accumulating unbounded GLB files in tmpdir across a dev session.
+  const safeName = filePath.replace(/[^a-zA-Z0-9]/g, '_');
+  const glbPath = join(tmpdir(), `brepjs-${safeName}.glb`);
 
   const { stdout, stderr } = await spawnCli(
     ['verify', filePath, '--glb', glbPath],

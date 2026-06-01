@@ -15,6 +15,9 @@ function Model({ uri }: { uri: string }) {
     [],
   );
 
+  // Release the GPU resource when the component unmounts (triggered by key={glbUri} on Suspense)
+  useEffect(() => () => { material.dispose(); }, [material]);
+
   useEffect(() => {
     gltf.scene.traverse((child) => {
       if (child instanceof Mesh) child.material = material;

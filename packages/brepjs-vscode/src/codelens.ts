@@ -29,12 +29,18 @@ function formatLens(report: VerifyReport): string {
   return parts.join('  |  ');
 }
 
-export class BrepCodeLensProvider implements vscode.CodeLensProvider {
+export class BrepCodeLensProvider implements vscode.CodeLensProvider, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeCodeLenses: vscode.Event<void> = this.changeEmitter.event;
+  private readonly cacheSubscription: vscode.Disposable;
 
   constructor(private readonly cache: ReportCache) {
-    cache.onDidUpdate(() => this.changeEmitter.fire());
+    this.cacheSubscription = cache.onDidUpdate(() => this.changeEmitter.fire());
+  }
+
+  dispose(): void {
+    this.cacheSubscription.dispose();
+    this.changeEmitter.dispose();
   }
 
   provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
