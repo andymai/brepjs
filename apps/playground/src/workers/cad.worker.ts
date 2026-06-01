@@ -104,15 +104,33 @@ async function loadWasmBuild() {
 // `color` is a playground-local helper (not part of the published brepjs API);
 // it tags a shape with a CSS color string that the eval pipeline lifts onto
 // the resulting MeshTransfer.
-const JS_IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+const IDENT_HEAD = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
+const IDENT_TAIL = IDENT_HEAD + '0123456789';
+
+// Rebuilds an export name out of a constant alphabet rather than passing the
+// raw key through: `n` is interpolated as a code token in the generated Blob
+// module, so its characters must provably originate from a fixed safe set, not
+// from `Object.keys(mod)`. Returns null for anything that isn't a valid JS
+// identifier, which the caller drops.
+function asSafeIdentifier(raw: string): string | null {
+  if (raw.length === 0) return null;
+  const head = IDENT_HEAD.indexOf(raw.charAt(0));
+  if (head === -1) return null;
+  let safe = IDENT_HEAD.charAt(head);
+  for (let i = 1; i < raw.length; i++) {
+    const idx = IDENT_TAIL.indexOf(raw.charAt(i));
+    if (idx === -1) return null;
+    safe += IDENT_TAIL.charAt(idx);
+  }
+  return safe;
+}
+
 function buildBrepjsWrapperUrl(mod: Record<string, unknown>): string {
-  // Only allow valid JS identifier export names — `n` flows into a string
-  // that becomes a JS module via Blob URL, so any non-identifier would
-  // either fail to parse or open a code-injection path.
-  const names = Object.keys(mod).filter(
-    (k) => k !== 'default' && k !== 'color' && JS_IDENT_RE.test(k)
-  );
-  const lines = names.map((n) => `export const ${n} = m.${n};`);
+  const names = Object.keys(mod)
+    .filter((k) => k !== 'default' && k !== 'color')
+    .map(asSafeIdentifier)
+    .filter((n): n is string => n !== null);
+  const lines = names.map((n) => `export const ${n} = m[${JSON.stringify(n)}];`);
   const colorHelper = `export const color = (shape, value) => ({ ${JSON.stringify(PLAYGROUND_COLOR_TAG)}: String(value), shape });`;
   const body = `const m = self.__brepjs;\n${lines.join('\n')}\n${colorHelper}\n`;
   const blob = new Blob([body], { type: 'application/javascript' });
