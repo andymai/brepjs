@@ -1,0 +1,21 @@
+[package]
+name = "brepjs-voxel-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "Voxel/SDF geometry engine for brepjs (Rust → WASM)"
+license = "Apache-2.0"
+repository = "https://github.com/andymai/brepjs"
+# The npm package is published; the crate itself is not pushed to crates.io.
+publish = false
+
+[lib]
+# cdylib: linked into the wasm-bindgen artifact. rlib: lets `cargo test` build a
+# native harness so the FWN keystone assertions run without a wasm runtime.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true

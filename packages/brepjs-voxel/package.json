@@ -1,0 +1,32 @@
+{
+  "name": "brepjs-voxel",
+  "version": "0.1.0",
+  "description": "Loader for the brepjs voxel/SDF engine (brepjs-voxel-wasm)",
+  "keywords": [
+    "voxel",
+    "sdf",
+    "wasm",
+    "cad"
+  ],
+  "author": "Andy Aragon",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andymai/brepjs.git",
+    "directory": "packages/brepjs-voxel"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "brepjs-voxel-wasm": "^0.1.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  }
+}

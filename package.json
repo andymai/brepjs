@@ -1,6 +1,6 @@
 {
   "name": "brepjs",
-  "version": "18.35.6",
+  "version": "18.36.0",
   "description": "Web CAD library with pluggable geometry kernel",
   "keywords": [
     "cad",
@@ -25,6 +25,8 @@
     "packages/brepjs-opencascade",
     "packages/brepjs-bim",
     "packages/brepjs-manifold",
+    "packages/brepjs-voxel-wasm",
+    "packages/brepjs-voxel",
     "packages/brepjs-agent",
     "packages/brepjs-viewer",
     "packages/brepjs-vscode",
