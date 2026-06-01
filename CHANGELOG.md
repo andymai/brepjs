@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.35.3](https://github.com/andymai/brepjs/compare/brepjs-v18.35.2...brepjs-v18.35.3) (2026-06-01)
+
+
+### Bug Fixes
+
+* **kernel:** occt-wasm loft vertices, mixed-wire assembly, and XCAF STEP export ([#1137](https://github.com/andymai/brepjs/issues/1137)) ([e219ed2](https://github.com/andymai/brepjs/commit/e219ed29b628166251633aeb0ec55460428bfac5))
+
 ## [18.35.2](https://github.com/andymai/brepjs/compare/brepjs-v18.35.1...brepjs-v18.35.2) (2026-06-01)
 
 
