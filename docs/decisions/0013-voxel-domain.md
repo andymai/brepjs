@@ -88,9 +88,12 @@ wasm. An unpublished loader package `packages/brepjs-voxel` (mirroring `initMani
 ### 6. Contour — surface nets for v1, manifold dual contouring as the target
 
 Meshing is pluggable behind a `Contourer` seam. **v1 uses surface nets** (reuse the maintained
-`fast-surface-nets` crate): fast, robust, manifold, and correct for the organic repair fixture where
-sharp features do not apply. **Manifold dual contouring remains the target** (sharp features) and is
-added later as a second `Contourer` impl over the same grid (which already carries edge normals).
+`fast-surface-nets` crate, MIT/Apache, wasm32-clean): fast, robust, watertight, and correct for the
+organic repair fixture where sharp features do not apply. Naive surface nets does **not** recover
+sharp features and is **not** strictly 2-manifold at thin/pinch regions — strict 2-manifoldness and
+sharp edges wait for the manifold-DC `Contourer` (v2 upgrade target: the `tessellation` crate, the
+only maintained Rust crate that guarantees both). **Manifold dual contouring remains the target** and
+is added later as a second `Contourer` impl over the same grid (which already carries edge normals).
 Honest claims when DC lands: manifoldness via cell-splitting; self-intersection mitigated (AABB
 vertex clamp) not eliminated — a runtime invariant test is the real guard; sharp-feature loss
 unbounded in split cells; QEF via truncated SVD with a _relative_ singular-value cutoff + mass-point
@@ -145,9 +148,10 @@ All fallible ops return `Result<T, BrepError>` (no thrown errors in Layers 2-3).
 demonstrably errs" gating leg, since OCCT cannot boolean non-watertight input. Pipeline:
 `import → voxelize (sign via hierarchical Fast Winding Number, Barill 2018, + 6-connected flood-fill
 for open inputs) → repair → surface-nets mesh → GLB`. This front-loads the single hardest algorithm
-(mesh→SDF sign). Per-fixture acceptance: (i) the exact kernel errs (gating); (ii) output watertight +
-2-manifold; (iii) Hausdorff ≤ c·h; (iv) volume within tolerance; (v) thinnest feature ≥ 4h or
-`Result.Err`. Offset/shell, lattices/TPMS, and scalar/vector fields are subsequent Ops-seam additions.
+(mesh→SDF sign). Per-fixture acceptance: (i) the exact kernel errs (gating); (ii) output watertight,
+with 2-manifoldness enforced by a runtime invariant test (naive surface nets does not strictly
+guarantee it; the manifold-DC `Contourer` does); (iii) Hausdorff ≤ c·h; (iv) volume within tolerance;
+(v) thinnest feature ≥ 4h or `Result.Err`. Offset/shell, lattices/TPMS, and scalar/vector fields are subsequent Ops-seam additions.
 
 ### 12. Licensing
 
