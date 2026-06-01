@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.35.1](https://github.com/andymai/brepjs/compare/brepjs-v18.35.0...brepjs-v18.35.1) (2026-06-01)
+
+
+### Bug Fixes
+
+* **io:** guard STEP/STL export against kernel-crashing degenerate geometry ([#1131](https://github.com/andymai/brepjs/issues/1131)) ([56b528e](https://github.com/andymai/brepjs/commit/56b528eeccc52806235e0ce5d43fecf46ccae579))
+
 ## [18.35.0](https://github.com/andymai/brepjs/compare/brepjs-v18.34.0...brepjs-v18.35.0) (2026-05-31)
 
 
