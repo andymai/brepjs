@@ -224,6 +224,18 @@ export {
   type StepExportPart,
 } from './io/stepConfigFns.js';
 
+// ── Layer 2: voxel (ADR-0013) ──
+
+export {
+  initVoxel,
+  registerVoxel,
+  getVoxel,
+  getActiveVoxelId,
+  windingNumbers,
+  pointsInside,
+} from './voxel/index.js';
+export type { VoxelEngine, VoxelMeshInput } from './voxel/index.js';
+
 // ── Layer 3: sketching ──
 
 export { default as Sketcher } from './sketching/sketcher.js';

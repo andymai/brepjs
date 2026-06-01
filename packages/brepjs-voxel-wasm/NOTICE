@@ -1,0 +1,20 @@
+brepjs-voxel-wasm
+Copyright 2026 Andy Aragon
+
+This package contains a WebAssembly geometry engine compiled from original
+Rust source in this directory, distributed under the Apache License 2.0
+(see LICENSE).
+
+The inside/outside sign test is a clean-room implementation of the
+Generalized / Fast Winding Number, based on the published algorithms:
+
+  Jacobson, Kavan & Sorkine-Hornung (2013) — "Robust Inside-Outside
+  Segmentation using Generalized Winding Numbers"
+
+  Barill, Dickson, Schmidt, Levin & Jacobson (2018) — "Fast Winding
+  Numbers for Soups and Clouds"
+
+  Van Oosterom & Strackee (1983) — "The Solid Angle of a Plane Triangle"
+
+No third-party source code is included or derived; only the mathematical
+formulations from these publications are implemented.

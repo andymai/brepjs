@@ -25,6 +25,8 @@
     "packages/brepjs-opencascade",
     "packages/brepjs-bim",
     "packages/brepjs-manifold",
+    "packages/brepjs-voxel-wasm",
+    "packages/brepjs-voxel",
     "packages/brepjs-agent",
     "packages/brepjs-viewer",
     "apps/playground",

@@ -1,0 +1,41 @@
+{
+  "name": "brepjs-voxel-wasm",
+  "version": "0.1.0",
+  "description": "Voxel/SDF geometry engine for brepjs (Rust → WASM)",
+  "keywords": [
+    "voxel",
+    "sdf",
+    "implicit",
+    "wasm",
+    "cad"
+  ],
+  "author": "Andy Aragon",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andymai/brepjs",
+    "directory": "packages/brepjs-voxel-wasm"
+  },
+  "sideEffects": false,
+  "main": "pkg/index.js",
+  "types": "pkg/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./pkg/index.d.ts",
+      "default": "./pkg/index.js"
+    },
+    "./index_bg.wasm": "./pkg/index_bg.wasm"
+  },
+  "files": [
+    "pkg/index.js",
+    "pkg/index.d.ts",
+    "pkg/index_bg.wasm",
+    "pkg/index_bg.wasm.d.ts",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "wasm-pack build --target web --out-dir pkg --out-name index --release && rm -f pkg/.gitignore pkg/package.json pkg/LICENSE"
+  }
+}

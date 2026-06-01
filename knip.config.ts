@@ -21,6 +21,11 @@ const config: KnipConfig = {
     'packages/brepjs-opencascade': {
       ignore: ['**'],
     },
+    // Committed Rust→WASM artifact: knip can't reason about the wasm-pack output
+    // or the external wasm-pack build binary.
+    'packages/brepjs-voxel-wasm': {
+      ignore: ['**'],
+    },
     'packages/brepjs-viewer': {
       ignore: ['**'],
     },
