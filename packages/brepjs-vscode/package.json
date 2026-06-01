@@ -1,0 +1,117 @@
+{
+  "name": "brepjs-vscode",
+  "displayName": "brepjs",
+  "description": "Live 3D preview, IntelliSense, and export for .brep.ts CAD files",
+  "version": "0.1.0",
+  "publisher": "brepjs",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.87.0",
+    "node": ">=24"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onLanguage:typescript"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "brepjs.openPreviewColumn",
+        "title": "brepjs: Open Preview in Column",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "brepjs.exportStep",
+        "title": "brepjs: Export to STEP"
+      },
+      {
+        "command": "brepjs.exportGlb",
+        "title": "brepjs: Export to GLB"
+      },
+      {
+        "command": "brepjs.diffFiles",
+        "title": "brepjs: Diff Two Parts"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "brepjs.openPreviewColumn",
+          "when": "resourceFilename =~ /\\.brep\\.ts$/",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "brepjs.openPreviewColumn",
+          "when": "resourceFilename =~ /\\.brep\\.ts$/"
+        },
+        {
+          "command": "brepjs.exportStep",
+          "when": "resourceFilename =~ /\\.brep\\.ts$/"
+        },
+        {
+          "command": "brepjs.exportGlb",
+          "when": "resourceFilename =~ /\\.brep\\.ts$/"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "brepjs-sidebar",
+          "title": "brepjs",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "brepjs-sidebar": [
+        {
+          "type": "webview",
+          "id": "brepjs.previewView",
+          "name": "CAD Preview"
+        }
+      ]
+    },
+    "snippets": [
+      {
+        "language": "typescript",
+        "path": "./snippets/brepjs.json"
+      }
+    ],
+    "configuration": {
+      "title": "brepjs",
+      "properties": {
+        "brepjs.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to brepjs-agent-verify binary. Leave empty for auto-detection from workspace node_modules."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs && vite build --config webview/vite.config.ts",
+    "build:ext": "node esbuild.mjs",
+    "build:webview": "vite build --config webview/vite.config.ts",
+    "typecheck": "tsc --noEmit && tsc -p webview/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@react-three/drei": "*",
+    "@react-three/fiber": "*",
+    "@types/node": "*",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "@types/three": "*",
+    "@types/vscode": "^1.87.0",
+    "@vitejs/plugin-react": "*",
+    "esbuild": "*",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "three": "0.184.0",
+    "typescript": "*",
+    "vite": "*"
+  }
+}

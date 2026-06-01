@@ -27,6 +27,7 @@
     "packages/brepjs-manifold",
     "packages/brepjs-agent",
     "packages/brepjs-viewer",
+    "packages/brepjs-vscode",
     "apps/playground",
     "apps/docs"
   ],

@@ -1,0 +1,79 @@
+{
+  "brepjs part": {
+    "prefix": ["brep:part"],
+    "description": "Full .brep.ts part module with named parameters",
+    "body": [
+      "import { ${1|box,cylinder,sphere|} } from 'brepjs';",
+      "",
+      "const ${2:width} = ${3:40};",
+      "const ${4:depth} = ${5:20};",
+      "const ${6:height} = ${7:10};",
+      "",
+      "export default () => ${1:box}(${2:width}, ${4:depth}, ${6:height});"
+    ]
+  },
+  "brepjs box": {
+    "prefix": ["brep:box"],
+    "description": "Rectangular box primitive",
+    "body": "box(${1:width}, ${2:depth}, ${3:height}${4:, { centered: true }})"
+  },
+  "brepjs cylinder": {
+    "prefix": ["brep:cylinder"],
+    "description": "Cylinder primitive",
+    "body": "cylinder(${1:radius}, ${2:height}${3:, { centered: true }})"
+  },
+  "brepjs sphere": {
+    "prefix": ["brep:sphere"],
+    "description": "Sphere primitive",
+    "body": "sphere(${1:radius})"
+  },
+  "brepjs fuse": {
+    "prefix": ["brep:fuse"],
+    "description": "Boolean union (fuse) with error handling",
+    "body": [
+      "const ${1:result} = fuse(${2:shapeA}, ${3:shapeB});",
+      "if (!isOk(${1:result})) throw ${1:result}.error;",
+      "const ${4:shape} = ${1:result}.value;"
+    ]
+  },
+  "brepjs cut": {
+    "prefix": ["brep:cut"],
+    "description": "Boolean difference (cut) with error handling",
+    "body": [
+      "const ${1:result} = cut(${2:base}, ${3:tool});",
+      "if (!isOk(${1:result})) throw ${1:result}.error;",
+      "const ${4:shape} = ${1:result}.value;"
+    ]
+  },
+  "brepjs fillet": {
+    "prefix": ["brep:fillet"],
+    "description": "Fillet edges of a solid",
+    "body": [
+      "const ${1:filleted} = fillet(${2:solid}, ${3:radius});",
+      "if (!isOk(${1:filleted})) throw ${1:filleted}.error;"
+    ]
+  },
+  "brepjs sketch-extrude": {
+    "prefix": ["brep:sketch"],
+    "description": "2D sketch extruded to a solid",
+    "body": [
+      "const ${1:profile} = wire([",
+      "  segment([0, 0], [${2:width}, 0]),",
+      "  segment([${2:width}, 0], [${2:width}, ${3:depth}]),",
+      "  segment([${2:width}, ${3:depth}], [0, ${3:depth}]),",
+      "  segment([0, ${3:depth}], [0, 0]),",
+      "]);",
+      "const ${4:shape} = extrude(${1:profile}, ${5:height});"
+    ]
+  },
+  "brepjs measure": {
+    "prefix": ["brep:measure"],
+    "description": "Measure volume and area of a shape",
+    "body": [
+      "const vol = measureVolume(${1:shape});",
+      "if (!isOk(vol)) throw vol.error;",
+      "const area = measureArea(${1:shape});",
+      "if (!isOk(area)) throw area.error;"
+    ]
+  }
+}
