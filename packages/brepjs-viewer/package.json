@@ -43,8 +43,8 @@
     "three": "0.184.0",
     "typescript": "*",
     "typescript-eslint": "*",
-    "vite": "*",
+    "vite": "^8.0.0",
     "vite-plugin-dts": "*",
-    "vitest": "*"
+    "vitest": "^4.0.0"
   }
 }

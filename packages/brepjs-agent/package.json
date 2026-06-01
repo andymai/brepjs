@@ -65,11 +65,11 @@
     "@types/three": "0.184.1",
     "@vitejs/plugin-react": "*",
     "eslint": "*",
-    "puppeteer": "*",
+    "puppeteer": "^25.0.0",
     "tsx": "4.22.3",
     "typescript": "*",
-    "vite": "*",
+    "vite": "^8.0.0",
     "vite-plugin-dts": "*",
-    "vitest": "*"
+    "vitest": "^4.0.0"
   }
 }
