@@ -207,12 +207,14 @@ function describeOffendingSolids(shape: AnyShape<Dimension>): string {
   solids.forEach((solid, i) => {
     try {
       getBounds(solid);
-    } catch {
+    } catch (e) {
+      // Mirror probeSerializable: a TypeError is a programming bug, not degenerate geometry.
+      if (e instanceof TypeError) throw e;
       bad.push(i);
     }
   });
   if (bad.length === 0) {
-    return `; could not localize the offending sub-shape among ${solids.length} solids`;
+    return `; could not localize the offending sub-solid among ${solids.length} solids`;
   }
   return `; offending sub-solid${bad.length > 1 ? 's' : ''} (of ${solids.length}): index ${bad.join(', ')}`;
 }
