@@ -229,6 +229,13 @@ function describeOffendingSolids(shape: AnyShape<Dimension>): string {
  * cheap pre-export probe lets us return a clean `Err` instead of crashing.
  * Heuristic, not universal: it only catches shapes whose bounding-box evaluation
  * also throws.
+ *
+ * Note: the canonical #1126 shape (an annular-sector tread fused with a frenet
+ * helical rail) is NOT caught here — `getBounds` *succeeds* on it, as do
+ * `isValid`/`validSolid`/`mesh`/`measureArea`, and `autoHeal` cannot repair it.
+ * No known non-trapping check detects that BOPAlgo corruption; the only safety net
+ * for it is `exportError` classifying the writer's `WebAssembly.RuntimeError` as
+ * `*_EXPORT_CRASHED`. A real fix must come from the kernel (OCCT BOPAlgo).
  */
 function probeSerializable(shape: AnyShape<Dimension>, fmt: 'STEP' | 'STL'): BrepError | null {
   try {
