@@ -9,6 +9,7 @@ import {
   exportSTEP,
   exportSTL,
   exportIGES,
+  compound,
   isOk,
   isErr,
   unwrap,
@@ -162,6 +163,25 @@ describe('meshFns', () => {
       } finally {
         boundsSpy.mockRestore();
         writerSpy.mockRestore();
+      }
+    });
+
+    it('localizes the offending sub-solid index in the UNSERIALIZABLE message for a compound', () => {
+      // When bounds fail on a multi-solid compound, the error should name which
+      // sub-solid(s) failed so callers can locate and heal them (#1126).
+      const comp = compound([box(4, 4, 4), box(4, 4, 4)]);
+      const boundsSpy = vi.spyOn(getKernel(), 'boundingBox').mockImplementation(() => {
+        throw new Error('Bnd_Box is void');
+      });
+      try {
+        const result = exportSTEP(comp);
+        expect(isErr(result)).toBe(true);
+        const msg = unwrapErr(result).message;
+        expect(msg).toContain('offending sub-solid');
+        expect(msg).toContain('of 2');
+        expect(msg).toMatch(/index 0, 1/);
+      } finally {
+        boundsSpy.mockRestore();
       }
     });
   });

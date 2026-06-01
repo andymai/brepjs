@@ -16,7 +16,7 @@ import {
   setEdgeMeshForShape,
 } from './meshCache.js';
 import { getFaceOrigins } from './shapeFns.js';
-import { getBounds } from './topologyQueryFns.js';
+import { getBounds, getSolids } from './topologyQueryFns.js';
 
 // ---------------------------------------------------------------------------
 // Mesh types
@@ -190,6 +190,34 @@ function exportError(e: unknown, fmt: 'STEP' | 'STL'): BrepError {
 }
 
 /**
+ * When a compound's bounds probe fails, localize the offending sub-solid(s) so the
+ * caller can heal or drop them. Returns a suffix for the error message; empty when
+ * the shape is a single solid or localization itself fails. Only reached on the
+ * error path, so the extra per-solid probes cost nothing in the happy case.
+ */
+function describeOffendingSolids(shape: AnyShape<Dimension>): string {
+  let solids;
+  try {
+    solids = getSolids(shape);
+  } catch {
+    return '';
+  }
+  if (solids.length <= 1) return '';
+  const bad: number[] = [];
+  solids.forEach((solid, i) => {
+    try {
+      getBounds(solid);
+    } catch {
+      bad.push(i);
+    }
+  });
+  if (bad.length === 0) {
+    return `; could not localize the offending sub-shape among ${solids.length} solids`;
+  }
+  return `; offending sub-solid${bad.length > 1 ? 's' : ''} (of ${solids.length}): index ${bad.join(', ')}`;
+}
+
+/**
  * Probe a shape's bounding box before handing it to the STEP/STL writer.
  *
  * Some sub-shapes pass `isValid`/`validSolid` yet are degenerate enough that the
@@ -210,7 +238,7 @@ function probeSerializable(shape: AnyShape<Dimension>, fmt: 'STEP' | 'STL'): Bre
     if (e instanceof TypeError) throw e;
     return ioError(
       `${fmt}_EXPORT_UNSERIALIZABLE`,
-      `${fmt} export aborted: the shape contains degenerate geometry the ${fmt} writer cannot serialize (bounding-box evaluation failed); export was skipped to avoid crashing the kernel`,
+      `${fmt} export aborted: the shape contains degenerate geometry the ${fmt} writer cannot serialize (bounding-box evaluation failed); export was skipped to avoid crashing the kernel${describeOffendingSolids(shape)}`,
       e
     );
   }
