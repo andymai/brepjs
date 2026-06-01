@@ -42,6 +42,32 @@ export function makeWire(
   }
 }
 
+export function makeWireFromMixed(
+  k: OcctKernelWasm,
+  Module: OcctWasmModule,
+  items: KernelShape[]
+): KernelShape {
+  // The native makeWire casts every input to TopoDS::Edge, so a wire input
+  // throws. Explode each item to its edges first (an edge yields itself),
+  // which lets a mix of edges and wires assemble into one wire.
+  const edgeIds: number[] = [];
+  for (const item of items) {
+    const sub = k.getSubShapes(unwrap(item), 'edge');
+    try {
+      const n = sub.size();
+      for (let i = 0; i < n; i++) edgeIds.push(sub.get(i));
+    } finally {
+      sub.delete();
+    }
+  }
+  const vec = makeVecU32(Module, edgeIds);
+  try {
+    return handle('wire', k.makeWire(vec));
+  } finally {
+    vec.delete();
+  }
+}
+
 export function makeFace(k: OcctKernelWasm, wire: KernelShape, _planar?: boolean): KernelShape {
   return handle('face', k.makeFace(unwrap(wire)));
 }

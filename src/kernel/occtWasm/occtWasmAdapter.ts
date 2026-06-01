@@ -398,7 +398,7 @@ export class OcctWasmAdapter implements KernelAdapter {
   }
 
   makeWireFromMixed(items: KernelShape[]): KernelShape {
-    return this.makeWire(items);
+    return constructionOps.makeWireFromMixed(this.k, this.Module, items);
   }
 
   makeCompound(shapes: KernelShape[]): KernelShape {

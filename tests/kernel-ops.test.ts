@@ -259,13 +259,13 @@ describe('sweepOps', () => {
   });
 
   it('loft with start and end vertices', () => {
-    const face1 = box(6, 6, 0.01);
-    const face2 = translate(box(6, 6, 0.01), [0, 0, 15]);
+    const face1 = box(10, 10, 0.01);
+    const face2 = translate(box(5, 5, 0.01), [2.5, 2.5, 20]);
     const wires1 = getWires(face1);
     const wires2 = getWires(face2);
     if (wires1.length > 0 && wires2.length > 0) {
-      const startVertex = kernel.makeVertex(3, 3, -5);
-      const endVertex = kernel.makeVertex(3, 3, 20);
+      const startVertex = kernel.makeVertex(5, 5, -5);
+      const endVertex = kernel.makeVertex(5, 5, 25);
       const lofted = kernel.loft(
         [oc(wires1[0]!), oc(wires2[0]!)], // eslint-disable-line @typescript-eslint/no-non-null-assertion
         false,

@@ -38,11 +38,16 @@ export function loft(
   Module: OcctWasmModule,
   wires: KernelShape[],
   ruled?: boolean,
-  _startShape?: KernelShape,
-  _endShape?: KernelShape
+  startShape?: KernelShape,
+  endShape?: KernelShape
 ): KernelShape {
+  const startV = startShape ? unwrap(startShape) : 0;
+  const endV = endShape ? unwrap(endShape) : 0;
   const vec = makeVecU32(Module, wires.map(unwrap));
   try {
+    if (startV || endV) {
+      return wrapResult(k, k.loftWithVertices(vec, true, ruled ?? false, startV, endV));
+    }
     return wrapResult(k, k.loft(vec, true, ruled ?? false));
   } finally {
     vec.delete();
