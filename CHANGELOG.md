@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.35.5](https://github.com/andymai/brepjs/compare/brepjs-v18.35.4...brepjs-v18.35.5) (2026-06-01)
+
+
+### Bug Fixes
+
+* **kernel:** bump occt-wasm to 3.2.0 and read mesh UVs ([#1141](https://github.com/andymai/brepjs/issues/1141)) ([bafa3cf](https://github.com/andymai/brepjs/commit/bafa3cfc0f7768ad8f6a5dc2396bc5317e901ccf))
+
 ## [18.35.4](https://github.com/andymai/brepjs/compare/brepjs-v18.35.3...brepjs-v18.35.4) (2026-06-01)
 
 
