@@ -409,8 +409,8 @@ export class OcctWasmAdapter implements KernelAdapter {
     return constructionOps.solidFromShell(this.k, shell);
   }
 
-  hull(_shapes: KernelShape[], _tolerance: number): KernelShape {
-    notImplemented('hull');
+  hull(shapes: KernelShape[], tolerance: number): KernelShape {
+    return hullOps.hull(this.k, this.Module, shapes, tolerance);
   }
 
   hullFromPoints(

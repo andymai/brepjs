@@ -202,14 +202,40 @@ export function makeBezier2d(points: [number, number][]): Curve2dHandle {
   return c2dWrap(ow2d.makeBezier2d(points));
 }
 
-export function makeBSpline2d(points: [number, number][]): Curve2dHandle {
-  // Approximate B-spline as a Bezier through the control points.
-  if (points.length <= 25) {
-    return c2dWrap(ow2d.makeBezier2d(points));
+export function makeBSpline2d(
+  points: [number, number][],
+  options?: {
+    degMin?: number;
+    degMax?: number;
+    continuity?: 'C0' | 'C1' | 'C2' | 'C3';
+    tolerance?: number;
+    smoothing?: [number, number, number] | null;
   }
-  const step = Math.max(1, Math.floor(points.length / 24));
-  const sampled = points.filter((_, i) => i % step === 0 || i === points.length - 1);
-  return c2dWrap(ow2d.makeBezier2d(sampled));
+): Curve2dHandle {
+  // Build a genuine B-spline (poles = input points, clamped knot vector) so
+  // getCurve2dType reports BSPLINE_CURVE and decomposeBSpline2dToBeziers works.
+  // The pure-TS 2D system has no fitting solver, so this approximates (passes
+  // through the endpoints) rather than interpolating every point.
+  const poles = points;
+  const n = poles.length;
+  const degree = Math.max(1, Math.min(options?.degMax ?? 3, n - 1));
+  const knots: number[] = [0];
+  const mults: number[] = [degree + 1];
+  const nInternalKnots = n - degree - 1;
+  for (let i = 1; i <= nInternalKnots; i++) {
+    knots.push(i / (nInternalKnots + 1));
+    mults.push(1);
+  }
+  knots.push(1);
+  mults.push(degree + 1);
+  return c2dWrap({
+    __bk2d: 'bspline' as const,
+    poles,
+    knots,
+    multiplicities: mults,
+    degree,
+    isPeriodic: false,
+  });
 }
 
 // ─── Curve evaluation / metadata ────────────────────────────────────────────
@@ -560,17 +586,72 @@ export function approximateCurve2dAsBSpline(
 
 export function decomposeBSpline2dToBeziers(curve: Curve2dHandle): Curve2dHandle[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inspect curve internals
-  const cu = c2d(curve) as any;
-  const knots: number[] = cu.knots ?? [];
-  if (knots.length < 2) return [curve];
-  const result: Curve2dHandle[] = [];
-  for (let i = 0; i < knots.length - 1; i++) {
-    const k0 = knots[i] as number;
-    const k1 = knots[i + 1] as number;
-    if (Math.abs(k1 - k0) < 1e-15) continue;
-    result.push(trimCurve2d(curve, k0, k1));
+  let cu = c2d(curve) as any;
+  while (cu.__bk2d === 'trimmed' && cu.basis) cu = cu.basis;
+  if (cu.__bk2d !== 'bspline') return [curve];
+
+  const poles: [number, number][] = cu.poles;
+  const p: number = cu.degree;
+  // Expand knots+multiplicities into the full knot vector U.
+  const U: number[] = [];
+  for (let i = 0; i < cu.knots.length; i++) {
+    for (let j = 0; j < cu.multiplicities[i]; j++) U.push(cu.knots[i]);
   }
-  return result.length > 0 ? result : [curve];
+  const n = poles.length - 1;
+  const m = n + p + 1;
+  // A clamped, non-rational B-spline has |U| = n + p + 2. Bail to a single
+  // Bezier on the control polygon if the curve is malformed.
+  if (p < 1 || U.length !== m + 1) {
+    return [c2dWrap(ow2d.makeBezier2d(poles))];
+  }
+
+  // NURBS Book Algorithm A5.6 (DecomposeCurve): knot-insert every interior knot
+  // up to multiplicity p, yielding one Bezier segment (p+1 poles) per span.
+  const clone = (pt: [number, number]): [number, number] => [pt[0], pt[1]];
+  const segments: [number, number][][] = [];
+  let a = p;
+  let b = p + 1;
+  let segPoles: [number, number][] = [];
+  for (let i = 0; i <= p; i++) segPoles[i] = clone(poles[i] as [number, number]);
+  let nextPoles: [number, number][] = [];
+  while (b < m) {
+    const i0 = b;
+    while (b < m && U[b + 1] === U[b]) b++;
+    const mult = b - i0 + 1;
+    if (mult < p) {
+      const numer = (U[b] as number) - (U[a] as number);
+      const alphas: number[] = [];
+      for (let j = p; j > mult; j--) {
+        alphas[j - mult - 1] = numer / ((U[a + j] as number) - (U[a] as number));
+      }
+      const r = p - mult;
+      for (let j = 1; j <= r; j++) {
+        const save = r - j;
+        const s = mult + j;
+        for (let k = p; k >= s; k--) {
+          const alpha = alphas[k - s] as number;
+          const cur = segPoles[k] as [number, number];
+          const prev = segPoles[k - 1] as [number, number];
+          segPoles[k] = [
+            alpha * cur[0] + (1 - alpha) * prev[0],
+            alpha * cur[1] + (1 - alpha) * prev[1],
+          ];
+        }
+        if (b < m) nextPoles[save] = clone(segPoles[p] as [number, number]);
+      }
+    }
+    segments.push(segPoles);
+    if (b < m) {
+      for (let i = p - mult; i <= p; i++) {
+        nextPoles[i] = clone(poles[b - p + i] as [number, number]);
+      }
+      segPoles = nextPoles;
+      nextPoles = [];
+      a = b;
+      b++;
+    }
+  }
+  return segments.map((sp) => c2dWrap(ow2d.makeBezier2d(sp)));
 }
 
 // ─── 2D bounding boxes ──────────────────────────────────────────────────────

@@ -1,0 +1,375 @@
+/**
+ * Pure-TS 3D convex hull (QuickHull).
+ *
+ * Kernel-agnostic: operates on plain {x,y,z} points and returns triangle
+ * indices. Shared by the occt and occt-wasm adapters, which supply their own
+ * vertex extraction and BREP reconstruction around it.
+ */
+
+export interface Vec3 {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+export interface HullResult {
+  readonly faces: ReadonlyArray<readonly [number, number, number]>;
+  readonly points: readonly Vec3[];
+}
+
+// ---------------------------------------------------------------------------
+// Vector math helpers
+// ---------------------------------------------------------------------------
+
+function sub(a: Vec3, b: Vec3): Vec3 {
+  return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+}
+
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x,
+  };
+}
+
+function dot(a: Vec3, b: Vec3): number {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function lengthVec(v: Vec3): number {
+  return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+function distSq(a: Vec3, b: Vec3): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return dx * dx + dy * dy + dz * dz;
+}
+
+/** Safe array access — throws on out-of-bounds instead of returning undefined. */
+function at(arr: readonly Vec3[], i: number): Vec3 {
+  const v = arr[i];
+  if (v === undefined) throw new Error(`Index ${i} out of bounds`);
+  return v;
+}
+
+/** Safe number array access. */
+function atN(arr: readonly number[], i: number): number {
+  const v = arr[i];
+  if (v === undefined) throw new Error(`Index ${i} out of bounds`);
+  return v;
+}
+
+// ---------------------------------------------------------------------------
+// QuickHull face
+// ---------------------------------------------------------------------------
+
+interface HullFace {
+  readonly a: number; // indices into points array
+  readonly b: number;
+  readonly c: number;
+  readonly normal: Vec3;
+  readonly offset: number; // dot(normal, points[a])
+  alive: boolean;
+  outsidePoints: number[];
+}
+
+function makeFace(points: readonly Vec3[], a: number, b: number, c: number): HullFace {
+  const normal = cross(sub(at(points, b), at(points, a)), sub(at(points, c), at(points, a)));
+  const len = lengthVec(normal);
+  const n = len > 1e-14 ? { x: normal.x / len, y: normal.y / len, z: normal.z / len } : normal;
+  return {
+    a,
+    b,
+    c,
+    normal: n,
+    offset: dot(n, at(points, a)),
+    alive: true,
+    outsidePoints: [],
+  };
+}
+
+function signedDist(face: HullFace, point: Vec3): number {
+  return dot(face.normal, point) - face.offset;
+}
+
+// ---------------------------------------------------------------------------
+// Deduplication
+// ---------------------------------------------------------------------------
+
+function deduplicatePoints(points: Vec3[], tolerance: number): Vec3[] {
+  const tolSq = tolerance * tolerance;
+  const result: Vec3[] = [];
+  for (const p of points) {
+    let isDuplicate = false;
+    for (const q of result) {
+      if (distSq(p, q) < tolSq) {
+        isDuplicate = true;
+        break;
+      }
+    }
+    if (!isDuplicate) result.push(p);
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Initial tetrahedron
+// ---------------------------------------------------------------------------
+
+function findInitialTetrahedron(points: readonly Vec3[]): [number, number, number, number] | null {
+  const n = points.length;
+  if (n < 4) return null;
+
+  // Find two most distant points along each axis, pick the pair with max distance
+  let i0 = 0;
+  let i1 = 1;
+  let maxDist = distSq(at(points, 0), at(points, 1));
+
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const d = distSq(at(points, i), at(points, j));
+      if (d > maxDist) {
+        maxDist = d;
+        i0 = i;
+        i1 = j;
+      }
+    }
+  }
+
+  if (maxDist < 1e-20) return null;
+
+  // Find point most distant from line i0-i1
+  const lineDir = sub(at(points, i1), at(points, i0));
+  let i2 = -1;
+  let maxLineDist = -1;
+
+  for (let i = 0; i < n; i++) {
+    if (i === i0 || i === i1) continue;
+    const v = sub(at(points, i), at(points, i0));
+    const c = cross(lineDir, v);
+    const d = dot(c, c);
+    if (d > maxLineDist) {
+      maxLineDist = d;
+      i2 = i;
+    }
+  }
+
+  if (i2 === -1 || maxLineDist < 1e-20) return null;
+
+  // Find point most distant from plane i0-i1-i2
+  const planeNormal = cross(
+    sub(at(points, i1), at(points, i0)),
+    sub(at(points, i2), at(points, i0))
+  );
+  const planeLen = lengthVec(planeNormal);
+  if (planeLen < 1e-14) return null;
+
+  const pn = {
+    x: planeNormal.x / planeLen,
+    y: planeNormal.y / planeLen,
+    z: planeNormal.z / planeLen,
+  };
+  const planeOffset = dot(pn, at(points, i0));
+
+  let i3 = -1;
+  let maxPlaneDist = -1;
+
+  for (let i = 0; i < n; i++) {
+    if (i === i0 || i === i1 || i === i2) continue;
+    const d = Math.abs(dot(pn, at(points, i)) - planeOffset);
+    if (d > maxPlaneDist) {
+      maxPlaneDist = d;
+      i3 = i;
+    }
+  }
+
+  if (i3 === -1 || maxPlaneDist < 1e-14) return null;
+
+  // Orient tetrahedron so that i3 is "above" the base triangle
+  const sd = dot(pn, at(points, i3)) - planeOffset;
+  if (sd > 0) {
+    return [i0, i2, i1, i3]; // flip base winding
+  }
+  return [i0, i1, i2, i3];
+}
+
+// ---------------------------------------------------------------------------
+// QuickHull
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute the 3D convex hull of a point set.
+ *
+ * @throws if fewer than 4 non-coincident, non-coplanar points are supplied.
+ */
+// brepjs-patterns-disable: max-function-lines -- cohesive QuickHull main loop; splitting hurts readability
+export function quickHull(inputPoints: Vec3[], tolerance: number): HullResult {
+  const points = deduplicatePoints(inputPoints, tolerance);
+
+  if (points.length < 4) {
+    throw new Error(
+      points.length === 0
+        ? 'No points provided for convex hull'
+        : 'Fewer than 4 non-coincident points; cannot form a 3D convex hull'
+    );
+  }
+
+  const tet = findInitialTetrahedron(points);
+  if (tet === null) {
+    throw new Error('All points are coplanar; cannot form a 3D convex hull');
+  }
+
+  const [t0, t1, t2, t3] = tet;
+
+  // Centroid of initial tetrahedron for ensuring outward normals
+  const centroid: Vec3 = {
+    x: (at(points, t0).x + at(points, t1).x + at(points, t2).x + at(points, t3).x) / 4,
+    y: (at(points, t0).y + at(points, t1).y + at(points, t2).y + at(points, t3).y) / 4,
+    z: (at(points, t0).z + at(points, t1).z + at(points, t2).z + at(points, t3).z) / 4,
+  };
+
+  // Build initial 4 faces of tetrahedron, ensuring outward normals
+  function makeOutwardFace(a: number, b: number, c: number): HullFace {
+    const face = makeFace(points, a, b, c);
+    // If normal points toward centroid, flip the winding
+    const faceCenter: Vec3 = {
+      x: (at(points, a).x + at(points, b).x + at(points, c).x) / 3,
+      y: (at(points, a).y + at(points, b).y + at(points, c).y) / 3,
+      z: (at(points, a).z + at(points, b).z + at(points, c).z) / 3,
+    };
+    const toCentroid = sub(centroid, faceCenter);
+    if (dot(face.normal, toCentroid) > 0) {
+      // Normal points inward, flip
+      return makeFace(points, a, c, b);
+    }
+    return face;
+  }
+
+  const faces: HullFace[] = [
+    makeOutwardFace(t0, t1, t2),
+    makeOutwardFace(t0, t2, t3),
+    makeOutwardFace(t0, t3, t1),
+    makeOutwardFace(t1, t3, t2),
+  ];
+
+  const tetSet = new Set([t0, t1, t2, t3]);
+
+  // Use a small geometric epsilon for "outside" tests, independent of mesh tolerance.
+  // Mesh tolerance controls deduplication; hull geometry uses a much tighter epsilon.
+  const epsilon = 1e-10;
+
+  // Assign each non-tet point to the first visible face
+  for (let i = 0; i < points.length; i++) {
+    if (tetSet.has(i)) continue;
+    for (const face of faces) {
+      if (signedDist(face, at(points, i)) > epsilon) {
+        face.outsidePoints.push(i);
+        break;
+      }
+    }
+  }
+
+  for (let iteration = 0; iteration < points.length * 4; iteration++) {
+    // Find a face with outside points
+    let currentFace: HullFace | null = null;
+    for (const face of faces) {
+      if (face.alive && face.outsidePoints.length > 0) {
+        currentFace = face;
+        break;
+      }
+    }
+    if (currentFace === null) break;
+
+    // Find the furthest point from this face
+    let furthestIdx = atN(currentFace.outsidePoints, 0);
+    let furthestDist = signedDist(currentFace, at(points, furthestIdx));
+    for (let i = 1; i < currentFace.outsidePoints.length; i++) {
+      const idx = atN(currentFace.outsidePoints, i);
+      const d = signedDist(currentFace, at(points, idx));
+      if (d > furthestDist) {
+        furthestDist = d;
+        furthestIdx = idx;
+      }
+    }
+
+    // Find all visible faces from this point
+    const visibleFaces: HullFace[] = [];
+    for (const face of faces) {
+      if (face.alive && signedDist(face, at(points, furthestIdx)) > epsilon) {
+        visibleFaces.push(face);
+      }
+    }
+
+    // Find horizon edges (edges shared by exactly one visible face)
+    const edgeCount = new Map<string, { a: number; b: number; count: number }>();
+    for (const face of visibleFaces) {
+      const edges: [number, number][] = [
+        [face.a, face.b],
+        [face.b, face.c],
+        [face.c, face.a],
+      ];
+      for (const [ea, eb] of edges) {
+        const key = ea < eb ? `${ea}-${eb}` : `${eb}-${ea}`;
+        const entry = edgeCount.get(key);
+        if (entry) {
+          entry.count++;
+        } else {
+          // Store in the order from the visible face
+          edgeCount.set(key, { a: ea, b: eb, count: 1 });
+        }
+      }
+    }
+
+    const horizonEdges: Array<{ a: number; b: number }> = [];
+    for (const entry of edgeCount.values()) {
+      if (entry.count === 1) {
+        // Keep edge in same direction as the visible face; makeFace with apex
+        // produces outward normal by winding convention
+        horizonEdges.push({ a: entry.a, b: entry.b });
+      }
+    }
+
+    // Collect orphaned outside points from visible faces
+    const orphanedPoints: number[] = [];
+    for (const face of visibleFaces) {
+      for (const idx of face.outsidePoints) {
+        if (idx !== furthestIdx) {
+          orphanedPoints.push(idx);
+        }
+      }
+      face.alive = false;
+      face.outsidePoints = [];
+    }
+
+    // Create new faces from horizon edges to the furthest point
+    const newFaces: HullFace[] = [];
+    for (const edge of horizonEdges) {
+      const newFaceObj = makeFace(points, edge.a, edge.b, furthestIdx);
+      newFaces.push(newFaceObj);
+      faces.push(newFaceObj);
+    }
+
+    // Reassign orphaned points to new faces
+    for (const idx of orphanedPoints) {
+      for (const face of newFaces) {
+        if (signedDist(face, at(points, idx)) > epsilon) {
+          face.outsidePoints.push(idx);
+          break;
+        }
+      }
+    }
+  }
+
+  // Collect alive faces
+  const resultFaces: Array<readonly [number, number, number]> = [];
+  for (const face of faces) {
+    if (face.alive) {
+      resultFaces.push([face.a, face.b, face.c] as const);
+    }
+  }
+
+  return { faces: resultFaces, points };
+}

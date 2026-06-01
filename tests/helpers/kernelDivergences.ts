@@ -438,6 +438,18 @@ export const divergences: DivergenceMap = {
       kind: 'not-implemented',
       reason: 'BREP garbage-input test uses raw `oc` API; occt-wasm exposes no raw `oc`',
     },
+    'geometry.findCurveType': {
+      kind: 'not-implemented',
+      reason: 'Test feeds raw oc.GeomAbs_CurveType enums; getKernel().curveType works on occt-wasm',
+    },
+    guidedSweepFns: {
+      kind: 'not-implemented',
+      reason: 'Test builds the spine via raw `oc` (gp_Ax2_4/gp_Circ_2); occt-wasm exposes no `oc`',
+    },
+    multiSweepFns: {
+      kind: 'not-implemented',
+      reason: 'Test builds sections via raw `oc` (gp_Circ_2/BRepBuilderAPI_MakeEdge); no `oc`',
+    },
     // ---------------------------------------------------------------------
     // Already divergent on `occt` too: the sampled B-spline 2D bridge loses
     // analytic precision vs native Geom2d (see the `occt` entries above).
