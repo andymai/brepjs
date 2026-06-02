@@ -1,6 +1,6 @@
 import type { BrepError } from 'brepjs';
 
-export type BimErrorKind = 'BIM_SPEC' | 'BIM_IFC' | 'BIM_GEOMETRY';
+export type BimErrorKind = 'BIM_SPEC' | 'BIM_IFC' | 'BIM_GEOMETRY' | 'BIM_IMPORT';
 
 export interface BimError {
   readonly kind: BimErrorKind;
@@ -20,6 +20,20 @@ export function ifcError(code: string, message: string, cause?: unknown): BimErr
 
 export function geometryError(code: string, message: string, cause?: unknown): BimError {
   return { kind: 'BIM_GEOMETRY', code, message, cause };
+}
+
+/**
+ * IFC-import error factory. Codes used by the reader subsystem:
+ * - `OPEN_MODEL_FAILED` — web-ifc returned an invalid model id on OpenModel
+ * - `SCHEMA_UNSUPPORTED` — schema string not in `['IFC2X3', 'IFC4', 'IFC4X3']`
+ * - `UNSUPPORTED_PROFILE` — profile entity type not in the supported set
+ * - `GEOMETRY_RECONSTRUCTION_FAILED` — parametric reconstruction threw
+ * - `TESSELLATION_NOT_MANIFOLD` — STL round-trip did not produce a closed solid
+ * - `PLACEMENT_READ_FAILED` — placement chain produced a degenerate matrix
+ * - `UNIT_ASSIGNMENT_MISSING` — no IfcUnitAssignment found (assume metres, warn)
+ */
+export function importError(code: string, message: string, cause?: unknown): BimError {
+  return { kind: 'BIM_IMPORT', code, message, cause };
 }
 
 export function fromBrepError(inner: BrepError, code: string, message: string): BimError {

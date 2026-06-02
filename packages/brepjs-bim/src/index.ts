@@ -1,6 +1,11 @@
 export { BimModel } from './model/bimModel.js';
 export { toIfc, toIfcValidated } from './serialize/toIfc.js';
 export type { ValidatedIfcResult } from './serialize/toIfc.js';
+export { fromIfc } from './import/fromIfc.js';
+export { disposeImportedModel } from './import/importedModel.js';
+export type { FromIfcOptions } from './import/fromIfc.js';
+export { SpfReader } from './import/spfReader.js';
+export type { SpfReaderSettings } from './import/spfReader.js';
 export { parseWallSpec } from './specs/wallSpec.js';
 export { parseSlabSpec } from './specs/slabSpec.js';
 export { parseBeamSpec } from './specs/beamSpec.js';
@@ -153,7 +158,20 @@ export type {
   PsetTemplate,
   PsetPropertyTemplate,
 } from './psets/psetTemplates.js';
+export { importError } from './errors/bimError.js';
 export type { BimError, BimErrorKind } from './errors/bimError.js';
+export type {
+  ImportedModel,
+  ImportedSchema,
+  ImportedElement,
+  ImportedElementCategory,
+  ImportedGeometry,
+  GeometryFidelity,
+  ImportedPset,
+  ImportedMaterial,
+  ImportedClassification,
+  ImportedSpatialNode,
+} from './import/importedModel.js';
 export type { IfcGuid } from './identity/ifcGuid.js';
 export type { LocalId, LocalIdCounter } from './identity/localId.js';
 export type { UnitSystem, LengthUnit } from './units/units.js';
