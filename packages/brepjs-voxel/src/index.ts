@@ -13,6 +13,9 @@ export type VoxelEngine = Pick<
   | 'repair_mesh'
   | 'lattice_infill'
   | 'tpms_box'
+  | 'offset_mesh'
+  | 'shell_mesh'
+  | 'voxel_boolean'
   | 'version'
 >;
 
@@ -50,6 +53,9 @@ export async function loadVoxelEngine(): Promise<VoxelEngine> {
     repair_mesh: wasm.repair_mesh,
     lattice_infill: wasm.lattice_infill,
     tpms_box: wasm.tpms_box,
+    offset_mesh: wasm.offset_mesh,
+    shell_mesh: wasm.shell_mesh,
+    voxel_boolean: wasm.voxel_boolean,
     version: wasm.version,
   };
   return _engine;

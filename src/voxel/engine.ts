@@ -42,6 +42,32 @@ export interface VoxelEngine {
     period: number,
     thickness: number
   ): VoxelRepairResult;
+  /** Offset a mesh by a true-SDF iso-level shift (>0 outward, <0 inward). */
+  offset_mesh(
+    verts: Float32Array,
+    tris: Uint32Array,
+    distance: number,
+    resolution: number,
+    padding: number
+  ): VoxelRepairResult;
+  /** Hollow a solid mesh into an inward shell of the given thickness (>0). */
+  shell_mesh(
+    verts: Float32Array,
+    tris: Uint32Array,
+    thickness: number,
+    resolution: number,
+    padding: number
+  ): VoxelRepairResult;
+  /** Voxel CSG of two meshes (op: 0=union, 1=intersection, 2=difference A−B). */
+  voxel_boolean(
+    verts_a: Float32Array,
+    tris_a: Uint32Array,
+    verts_b: Float32Array,
+    tris_b: Uint32Array,
+    op: number,
+    resolution: number,
+    padding: number
+  ): VoxelRepairResult;
   /** Engine artifact version, for loader/artifact compatibility checks. */
   version(): string;
 }

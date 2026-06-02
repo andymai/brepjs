@@ -200,6 +200,147 @@ pub fn tpms_box(
     })
 }
 
+/// Offset (grow/shrink) a mesh by an exact SDF iso-shift. Voxelize the mesh into
+/// a true SDF, subtract `distance` from every voxel (so `distance > 0` grows
+/// outward, `< 0` shrinks inward), then Surface-Nets contour back to triangles.
+/// Because the field is a true SDF this is an exact offset — no reinitialization.
+///
+/// `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+/// An outward offset surface extends past the input bbox, so the grid bounds are
+/// expanded by `distance.max(0)` on every side before allocation.
+/// Errors (as a JS exception) on a non-finite `distance` or a grid over the cap.
+#[wasm_bindgen]
+pub fn offset_mesh(
+    verts: &[f32],
+    tris: &[u32],
+    distance: f32,
+    resolution: u32,
+    padding: u32,
+) -> Result<RepairResult, JsError> {
+    if !distance.is_finite() {
+        return Err(JsError::new("offset distance must be a finite number"));
+    }
+
+    let mesh = fwn::Mesh::from_flat(verts, tris);
+    let (min, max) = bbox(verts);
+
+    let grow = distance.max(0.0);
+    let emin = [min[0] - grow, min[1] - grow, min[2] - grow];
+    let emax = [max[0] + grow, max[1] + grow, max[2] + grow];
+
+    let mut grid = Grid::for_bounds(emin, emax, resolution as usize, padding as usize)
+        .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
+    ops::voxelize_mesh(&mut grid, &mesh);
+    ops::offset_sdf(&mut grid, distance);
+
+    let out = contour::surface_nets_mesh(&grid);
+
+    Ok(RepairResult {
+        positions: out.positions,
+        normals: out.normals,
+        indices: out.indices,
+    })
+}
+
+/// Hollow a mesh into a shell of wall `thickness` inward from the surface.
+/// Voxelize the mesh into a solid SDF, build the shell field
+/// `max(solid, -(solid + thickness))` (the solid intersected with the complement
+/// of its inward erosion), then Surface-Nets contour back to triangles.
+///
+/// `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T. The
+/// shell grows inward only, so the grid is sized to the mesh bbox (no expansion).
+/// Errors (as a JS exception) on a non-positive/non-finite `thickness` or a grid
+/// over the voxel cap.
+#[wasm_bindgen]
+pub fn shell_mesh(
+    verts: &[f32],
+    tris: &[u32],
+    thickness: f32,
+    resolution: u32,
+    padding: u32,
+) -> Result<RepairResult, JsError> {
+    if !(thickness.is_finite() && thickness > 0.0) {
+        return Err(JsError::new("shell thickness must be a positive finite number"));
+    }
+
+    let mesh = fwn::Mesh::from_flat(verts, tris);
+    let (min, max) = bbox(verts);
+
+    let mut solid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
+        .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
+    ops::voxelize_mesh(&mut solid, &mesh);
+
+    let shell = ops::shell_sdf(&solid, thickness);
+    let out = contour::surface_nets_mesh(&shell);
+
+    Ok(RepairResult {
+        positions: out.positions,
+        normals: out.normals,
+        indices: out.indices,
+    })
+}
+
+/// Robust CSG boolean of two meshes via voxelized SDFs. Voxelize both meshes over
+/// a shared grid sized to their UNION bbox, combine by `op`
+/// (0=union, 1=intersection, 2=difference A−B), then Surface-Nets contour.
+///
+/// `verts_a`/`verts_b`: flat xyz; `tris_a`/`tris_b`: flat vertex indices.
+/// Errors (as a JS exception) on an unknown `op` tag, a dim mismatch, or a grid
+/// over the voxel cap.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn voxel_boolean(
+    verts_a: &[f32],
+    tris_a: &[u32],
+    verts_b: &[f32],
+    tris_b: &[u32],
+    op: u32,
+    resolution: u32,
+    padding: u32,
+) -> Result<RepairResult, JsError> {
+    if op > 2 {
+        return Err(JsError::new(&format!("unknown boolean op: {op}")));
+    }
+
+    let mesh_a = fwn::Mesh::from_flat(verts_a, tris_a);
+    let mesh_b = fwn::Mesh::from_flat(verts_b, tris_b);
+    let (min_a, max_a) = bbox(verts_a);
+    let (min_b, max_b) = bbox(verts_b);
+
+    let umin = [
+        min_a[0].min(min_b[0]),
+        min_a[1].min(min_b[1]),
+        min_a[2].min(min_b[2]),
+    ];
+    let umax = [
+        max_a[0].max(max_b[0]),
+        max_a[1].max(max_b[1]),
+        max_a[2].max(max_b[2]),
+    ];
+
+    let mut grid_a = Grid::for_bounds(umin, umax, resolution as usize, padding as usize)
+        .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
+    ops::voxelize_mesh(&mut grid_a, &mesh_a);
+
+    let mut grid_b = grid_a.same_shape();
+    ops::voxelize_mesh(&mut grid_b, &mesh_b);
+
+    let combined = match op {
+        0 => ops::voxel_union(&grid_a, &grid_b),
+        1 => ops::voxel_intersection(&grid_a, &grid_b),
+        _ => ops::voxel_difference(&grid_a, &grid_b),
+    }
+    .map_err(|e| JsError::new(&format!("voxel boolean failed: {e:?}")))?;
+
+    let out = contour::surface_nets_mesh(&combined);
+
+    Ok(RepairResult {
+        positions: out.positions,
+        normals: out.normals,
+        indices: out.indices,
+    })
+}
+
 /// Winding number at each query point, against a triangle-soup mesh.
 ///
 /// `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
@@ -255,6 +396,55 @@ mod tests {
         let r = lattice_infill(&verts, &tris, 32, 2, 0, 0.4, 0.4).expect("infill must succeed");
         assert!(!r.positions.is_empty(), "infill mesh must have vertices");
         assert!(!r.indices.is_empty(), "infill mesh must have triangles");
+    }
+
+    /// Bounding box of flat xyz vertices, for asserting offset growth.
+    fn flat_bbox(verts: &[f32]) -> ([f32; 3], [f32; 3]) {
+        bbox(verts)
+    }
+
+    #[test]
+    fn offset_mesh_grows_bbox_outward() {
+        let (verts, tris) = unit_cube();
+        let r = offset_mesh(&verts, &tris, 0.25, 24, 2).expect("offset must succeed");
+        assert!(!r.positions.is_empty(), "offset mesh must have vertices");
+        assert!(!r.indices.is_empty(), "offset mesh must have triangles");
+
+        let (omin, omax) = flat_bbox(&r.positions);
+        let (imin, imax) = flat_bbox(&verts);
+        // An outward offset must push the surface past the input bbox on every axis.
+        for axis in 0..3 {
+            assert!(
+                omin[axis] < imin[axis] && omax[axis] > imax[axis],
+                "offset bbox must grow on axis {axis}: in [{},{}] out [{},{}]",
+                imin[axis],
+                imax[axis],
+                omin[axis],
+                omax[axis]
+            );
+        }
+    }
+
+    #[test]
+    fn shell_mesh_produces_a_mesh() {
+        let (verts, tris) = unit_cube();
+        let r = shell_mesh(&verts, &tris, 0.2, 32, 2).expect("shell must succeed");
+        assert!(!r.positions.is_empty(), "shell mesh must have vertices");
+        assert!(!r.indices.is_empty(), "shell mesh must have triangles");
+    }
+
+    #[test]
+    fn voxel_boolean_union_of_overlapping_cubes() {
+        let (verts_a, tris_a) = unit_cube();
+        // Second cube shifted +0.5 on x so the two overlap.
+        let (mut verts_b, tris_b) = unit_cube();
+        for p in verts_b.chunks_exact_mut(3) {
+            p[0] += 0.5;
+        }
+        let r = voxel_boolean(&verts_a, &tris_a, &verts_b, &tris_b, 0, 24, 2)
+            .expect("union must succeed");
+        assert!(!r.positions.is_empty(), "union mesh must have vertices");
+        assert!(!r.indices.is_empty(), "union mesh must have triangles");
     }
 
     #[test]

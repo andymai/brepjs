@@ -1,7 +1,9 @@
 import { type Result, ok, err, isErr } from '@/core/result.js';
 import { validationError, computationError } from '@/core/errors.js';
 import type { KernelMeshResult } from '@/kernel/types.js';
+import type { AnyShape, Dimension } from '@/core/shapeTypes.js';
 import { type VoxelMeshInput, validateMesh, resolveEngine } from '@/voxel/signFns.js';
+import { shapeToMeshInput } from '@/voxel/shapeMesh.js';
 import type { VoxelRepairResult } from '@/voxel/engine.js';
 
 /** TPMS lattice families. Maps to the wasm tag (0=Gyroid, 1=SchwarzP, 2=Diamond). */
@@ -137,6 +139,21 @@ export function latticeInfill(
       )
     );
   }
+}
+
+/**
+ * Fill a B-rep shape with a TPMS lattice infill: tessellate the shape, then run
+ * {@link latticeInfill} on the resulting triangle soup. Threads a meshing
+ * failure straight back as an `err(...)`.
+ */
+export function latticeInfillShape(
+  shape: AnyShape<Dimension>,
+  opts: LatticeOptions,
+  id?: string
+): Result<KernelMeshResult> {
+  const meshInput = shapeToMeshInput(shape);
+  if (isErr(meshInput)) return meshInput;
+  return latticeInfill(meshInput.value, opts, id);
 }
 
 /** Axis-aligned bounds for a clipped TPMS lattice. */

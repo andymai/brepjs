@@ -174,6 +174,38 @@ pub fn voxel_difference(a: &Grid, b: &Grid) -> Result<Grid, GridError> {
     combine(a, b, |x, y| x.max(-y))
 }
 
+/// Shift an SDF iso-level: subtract `distance` from every voxel in place. On a
+/// true SDF this is an exact offset — `distance > 0` grows the surface outward,
+/// `distance < 0` shrinks it inward — with no reinitialization needed.
+pub fn offset_sdf(grid: &mut Grid, distance: f32) {
+    let [nx, ny, nz] = grid.dims();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                grid.set(x, y, z, grid.at(x, y, z) - distance);
+            }
+        }
+    }
+}
+
+/// Hollow an SDF into a shell of wall `thickness` inward from the surface:
+/// `shell = max(solid, -(solid + thickness))` per voxel (the solid intersected
+/// with the complement of its inward erosion). Returns a new grid shaped like
+/// `solid`. `thickness` is assumed positive and finite (guarded at the boundary).
+pub fn shell_sdf(solid: &Grid, thickness: f32) -> Grid {
+    let [nx, ny, nz] = solid.dims();
+    let mut out = solid.same_shape();
+    for z in 0..nz {
+        for y in 0..ny {
+            for x in 0..nx {
+                let s = solid.at(x, y, z);
+                out.set(x, y, z, s.max(-(s + thickness)));
+            }
+        }
+    }
+    out
+}
+
 /// Fill a grid with the exact signed distance to the axis-aligned box
 /// `[min, max]`: negative inside, positive outside. Intersecting another field
 /// with this clips it to the box (and writes positive into any padding ring).
@@ -344,6 +376,30 @@ mod tests {
         // max(-1, -(-3)) = max(-1, 3) = 3.
         let d = voxel_difference(&a, &b).unwrap();
         assert_eq!(d.at(0, 0, 0), 3.0);
+    }
+
+    #[test]
+    fn offset_sdf_shifts_iso_level() {
+        let mut g = filled_grid(0.5);
+        offset_sdf(&mut g, 1.0);
+        // 0.5 - 1.0 = -0.5: an outward grow turns a near-surface positive cell
+        // negative (now inside the offset surface).
+        assert_eq!(g.at(0, 0, 0), -0.5);
+    }
+
+    #[test]
+    fn shell_sdf_hollows_interior() {
+        // Deep interior of the solid (very negative) becomes positive in the
+        // shell (carved out), while a near-surface cell stays inside the wall.
+        let deep = filled_grid(-5.0);
+        let shell = shell_sdf(&deep, 1.0);
+        // max(-5, -(-5 + 1)) = max(-5, 4) = 4 -> carved out (positive).
+        assert_eq!(shell.at(0, 0, 0), 4.0);
+
+        let near = filled_grid(-0.25);
+        let shell = shell_sdf(&near, 1.0);
+        // max(-0.25, -(-0.25 + 1)) = max(-0.25, -0.75) = -0.25 -> still solid wall.
+        assert_eq!(shell.at(0, 0, 0), -0.25);
     }
 
     #[test]

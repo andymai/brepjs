@@ -84,6 +84,35 @@ export function lattice_infill(verts, tris, resolution, padding, lattice_type, p
 }
 
 /**
+ * Offset (grow/shrink) a mesh by an exact SDF iso-shift. Voxelize the mesh into
+ * a true SDF, subtract `distance` from every voxel (so `distance > 0` grows
+ * outward, `< 0` shrinks inward), then Surface-Nets contour back to triangles.
+ * Because the field is a true SDF this is an exact offset — no reinitialization.
+ *
+ * `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+ * An outward offset surface extends past the input bbox, so the grid bounds are
+ * expanded by `distance.max(0)` on every side before allocation.
+ * Errors (as a JS exception) on a non-finite `distance` or a grid over the cap.
+ * @param {Float32Array} verts
+ * @param {Uint32Array} tris
+ * @param {number} distance
+ * @param {number} resolution
+ * @param {number} padding
+ * @returns {RepairResult}
+ */
+export function offset_mesh(verts, tris, distance, resolution, padding) {
+    const ptr0 = passArrayF32ToWasm0(verts, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(tris, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.offset_mesh(ptr0, len0, ptr1, len1, distance, resolution, padding);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return RepairResult.__wrap(ret[0]);
+}
+
+/**
  * Inside/outside classification per query point (winding number > 0.5).
  *
  * Returns length Q: 1 = inside, 0 = outside. This is the sign decision the
@@ -133,6 +162,35 @@ export function repair_mesh(verts, tris, resolution, padding) {
 }
 
 /**
+ * Hollow a mesh into a shell of wall `thickness` inward from the surface.
+ * Voxelize the mesh into a solid SDF, build the shell field
+ * `max(solid, -(solid + thickness))` (the solid intersected with the complement
+ * of its inward erosion), then Surface-Nets contour back to triangles.
+ *
+ * `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T. The
+ * shell grows inward only, so the grid is sized to the mesh bbox (no expansion).
+ * Errors (as a JS exception) on a non-positive/non-finite `thickness` or a grid
+ * over the voxel cap.
+ * @param {Float32Array} verts
+ * @param {Uint32Array} tris
+ * @param {number} thickness
+ * @param {number} resolution
+ * @param {number} padding
+ * @returns {RepairResult}
+ */
+export function shell_mesh(verts, tris, thickness, resolution, padding) {
+    const ptr0 = passArrayF32ToWasm0(verts, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(tris, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.shell_mesh(ptr0, len0, ptr1, len1, thickness, resolution, padding);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return RepairResult.__wrap(ret[0]);
+}
+
+/**
  * The infinite TPMS lattice clipped to an axis-aligned box. Build a grid over
  * `[min..max]`, fill the chosen lattice shell field, Surface-Nets contour it.
  *
@@ -175,6 +233,39 @@ export function version() {
     } finally {
         wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
     }
+}
+
+/**
+ * Robust CSG boolean of two meshes via voxelized SDFs. Voxelize both meshes over
+ * a shared grid sized to their UNION bbox, combine by `op`
+ * (0=union, 1=intersection, 2=difference A−B), then Surface-Nets contour.
+ *
+ * `verts_a`/`verts_b`: flat xyz; `tris_a`/`tris_b`: flat vertex indices.
+ * Errors (as a JS exception) on an unknown `op` tag, a dim mismatch, or a grid
+ * over the voxel cap.
+ * @param {Float32Array} verts_a
+ * @param {Uint32Array} tris_a
+ * @param {Float32Array} verts_b
+ * @param {Uint32Array} tris_b
+ * @param {number} op
+ * @param {number} resolution
+ * @param {number} padding
+ * @returns {RepairResult}
+ */
+export function voxel_boolean(verts_a, tris_a, verts_b, tris_b, op, resolution, padding) {
+    const ptr0 = passArrayF32ToWasm0(verts_a, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(tris_a, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF32ToWasm0(verts_b, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray32ToWasm0(tris_b, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.voxel_boolean(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, op, resolution, padding);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return RepairResult.__wrap(ret[0]);
 }
 
 /**

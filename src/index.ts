@@ -234,17 +234,25 @@ export {
   windingNumbers,
   pointsInside,
   repairMesh,
+  offsetMesh,
+  shellMesh,
+  voxelBoolean,
+  offsetShape,
+  shellShape,
+  voxelBooleanShapes,
+  shapeToMeshInput,
 } from './voxel/index.js';
 export type {
   VoxelEngine,
   VoxelMeshInput,
   VoxelRepairResult,
   RepairOptions,
+  VoxelOpOptions,
 } from './voxel/index.js';
 
 // ── Layer 3: lattice (ADR-0013) ──
 
-export { latticeInfill, tpmsLattice } from './lattice/index.js';
+export { latticeInfill, latticeInfillShape, tpmsLattice } from './lattice/index.js';
 export type { LatticeType, LatticeOptions, LatticeBounds } from './lattice/index.js';
 
 // ── Layer 3: sketching ──
