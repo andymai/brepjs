@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.45.0](https://github.com/andymai/brepjs/compare/brepjs-v18.44.0...brepjs-v18.45.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 5 certification, IDS, BCF & FM deliverables ([#1160](https://github.com/andymai/brepjs/issues/1160)) ([addc71f](https://github.com/andymai/brepjs/commit/addc71fb34c2862ee38ea36414afd55636be7bbb))
+
 ## [18.44.0](https://github.com/andymai/brepjs/compare/brepjs-v18.43.0...brepjs-v18.44.0) (2026-06-02)
 
 
