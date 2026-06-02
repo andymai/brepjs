@@ -4,6 +4,7 @@ import { supportsKernel2D } from './kernel2dTypes.js';
 import { DefaultAdapter } from './occt/defaultAdapter.js';
 import { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 import { ManifoldAdapter } from './manifold/manifoldAdapter.js';
+import { OcctWasmAdapter } from './occtWasm/occtWasmAdapter.js';
 import { resetMeasureDetectionCache } from './occt/measureOps.js';
 import { resetTransformDetectionCache } from './occt/transformOps.js';
 import { resetBooleanBatchDetectionCache } from './occt/booleanBatchOps.js';
@@ -157,13 +158,15 @@ export function prewarm(): void {
 /**
  * Auto-detect and initialise the best available kernel.
  *
- * Tries `brepjs-opencascade` (OCCT) first, then falls back to `brepkit-wasm`.
- * For `occt-wasm`, use {@link registerKernel} directly (see tests/helpers/kernelInit.ts).
+ * Tries `occt-wasm` (the default kernel) first, then falls back to
+ * `brepjs-opencascade`, then `brepkit-wasm`. `occt-wasm` loads via its
+ * browser-safe `OcctKernel.init()` (auto-locates the `.wasm` via
+ * `import.meta.url`), so no manual registration is required.
  *
  * Idempotent — calling it again after a kernel is registered is a no-op that
  * returns the current kernel ID immediately.
  *
- * @returns The kernel ID that was initialised (`'occt'` or `'brepkit'`).
+ * @returns The kernel ID that was initialised (`'occt-wasm'`, `'occt'`, or `'brepkit'`).
  * @throws If no kernel package can be imported.
  *
  * @example
@@ -177,7 +180,19 @@ export function prewarm(): void {
 export async function init(): Promise<string> {
   if (_defaultKernelId) return _defaultKernelId;
 
-  // Try OpenCascade first
+  // Try occt-wasm first (the default kernel). Browser-safe: OcctKernel.init()
+  // auto-locates its .wasm via import.meta.url.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
+    const { OcctKernel } = (await import(/* @vite-ignore */ 'occt-wasm')) as any;
+    const kernel = await OcctKernel.init();
+    registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+    return 'occt-wasm';
+  } catch {
+    // occt-wasm not available, try brepjs-opencascade
+  }
+
+  // Fallback: brepjs-opencascade (legacy default kernel)
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
     const mod = (await import(/* @vite-ignore */ 'brepjs-opencascade')) as any;
@@ -188,7 +203,7 @@ export async function init(): Promise<string> {
     // OCCT not available, try brepkit
   }
 
-  // Try brepkit
+  // Fallback: brepkit
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import
     const bk = (await import(/* @vite-ignore */ 'brepkit-wasm')) as any;
@@ -199,16 +214,11 @@ export async function init(): Promise<string> {
     // brepkit not available either
   }
 
-  // occt-wasm is supported but requires explicit registration via
-  // registerKernel() because its WASM loading uses Node.js APIs
-  // (import.meta.resolve, node:path) that cannot be auto-detected
-  // in all environments. See tests/helpers/kernelInit.ts for the pattern.
-
   throw new Error(
     'brepjs: no kernel package found. Install one of:\n' +
-      '  npm install brepjs-opencascade   (recommended)\n' +
-      '  npm install brepkit-wasm\n' +
-      '  npm install occt-wasm            (requires manual registerKernel)'
+      '  npm install occt-wasm            (recommended, default)\n' +
+      '  npm install brepjs-opencascade\n' +
+      '  npm install brepkit-wasm'
   );
 }
 
@@ -257,7 +267,7 @@ export type { Kernel2DCapability, Curve2dHandle, BBox2dHandle } from './kernel2d
 export { BrepkitAdapter } from './brepkit/brepkitAdapter.js';
 export type { BrepkitHandle } from './brepkit/helpers.js';
 
-export { OcctWasmAdapter } from './occtWasm/occtWasmAdapter.js';
+export { OcctWasmAdapter };
 export type { OcctWasmHandle } from './occtWasm/occtWasmTypes.js';
 export type { OcctWasmModule, OcctKernelWasm } from './occtWasm/occtWasmTypes.js';
 
