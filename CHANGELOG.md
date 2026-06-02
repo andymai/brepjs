@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.40.1](https://github.com/andymai/brepjs/compare/brepjs-v18.40.0...brepjs-v18.40.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* **occtwasm:** line-mirror transform, STL export adapter, compound boolean tool ([#1161](https://github.com/andymai/brepjs/issues/1161)) ([f25a40d](https://github.com/andymai/brepjs/commit/f25a40d537bf0d3c0f75f8c481385e622f1c25de))
+
 ## [18.40.0](https://github.com/andymai/brepjs/compare/brepjs-v18.39.0...brepjs-v18.40.0) (2026-06-02)
 
 
