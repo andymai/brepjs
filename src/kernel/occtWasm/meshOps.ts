@@ -128,7 +128,7 @@ export function meshEdges(
     const lineList: number[] = [];
     const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
     const egCount = edgeData.edgeGroupCount;
-    const egPtr = edgeData.getEdgeGroupsPtr() >> 2;
+    const egPtr = egCount > 0 ? edgeData.getEdgeGroupsPtr() >> 2 : 0;
     for (let i = 0; i < egCount; i += 3) {
       const start = ptr + (Module.HEAP32[egPtr + i] ?? 0);
       const pointCount = Math.floor((Module.HEAP32[egPtr + i + 1] ?? 0) / 3);
