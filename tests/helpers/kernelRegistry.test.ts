@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { kernelConfigs, getKernelConfig, getKernelCapabilities } from './kernelRegistry.js';
+import {
+  kernelConfigs,
+  getKernelConfig,
+  getKernelCapabilities,
+  defaultKernelId,
+} from './kernelRegistry.js';
 
 describe('kernelRegistry', () => {
   it('exports at least occt and brepkit configs', () => {
@@ -28,8 +33,18 @@ describe('kernelRegistry', () => {
 
   it('getKernelCapabilities returns capabilities', () => {
     const caps = getKernelCapabilities('occt');
-    expect(caps.variableFillet).toBe(true);
+    // occt's filletVariable is a throwing brepkit-only stub — not a real capability.
+    expect(caps.variableFillet).toBe(false);
     expect(caps.offsetSolidV2).toBe(false);
+  });
+
+  it('occt-wasm implements variableFillet; occt does not', () => {
+    expect(getKernelCapabilities('occt-wasm').variableFillet).toBe(true);
+    expect(getKernelCapabilities('occt').variableFillet).toBe(false);
+  });
+
+  it('marks occt-wasm as the default kernel', () => {
+    expect(defaultKernelId()).toBe('occt-wasm');
   });
 
   it('getKernelCapabilities throws for unknown kernel', () => {

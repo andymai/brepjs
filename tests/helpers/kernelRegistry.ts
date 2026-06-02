@@ -24,6 +24,8 @@ export interface KernelConfig {
    * adapter dirs it doesn't load.
    */
   readonly adapterDir: string;
+  /** Marks the auto-selected default kernel for the test gate. Exactly one config sets this. */
+  readonly default?: boolean | undefined;
   /** Extra coverage exclude patterns specific to this kernel (e.g. files the kernel doesn't load). */
   readonly extraCoverageExcludes?: readonly string[] | undefined;
   readonly capabilities: {
@@ -46,9 +48,12 @@ export const kernelConfigs: readonly KernelConfig[] = [
     extraCoverageExcludes: ['src/kernel/geometry2d.ts'],
     capabilities: {
       projection: true,
-      constraintSketch: true,
+      // constraintSketch (sketchNew/sketchDof) is brepkit/manifold-only — the OCCT
+      // adapter does not implement it. variableFillet (filletVariable) is a throwing
+      // brepkit-only stub on this adapter; only occt-wasm implements it.
+      constraintSketch: false,
       kernel2D: true,
-      variableFillet: true,
+      variableFillet: false,
       offsetSolidV2: false,
       gridPattern: false,
     },
@@ -70,8 +75,11 @@ export const kernelConfigs: readonly KernelConfig[] = [
   {
     id: 'occt-wasm',
     displayName: 'occt-wasm',
+    default: true,
     coverageThresholds: 'informational',
     adapterDir: 'src/kernel/occtWasm',
+    // brepkit-only and gltf-roundtrip files that don't exercise the occt-wasm
+    // adapter; they stay excluded even though occt-wasm is now the default project.
     excludeTests: [
       'tests/brepkitExtended.test.ts',
       'tests/brepkitAdapter.test.ts',
@@ -83,7 +91,8 @@ export const kernelConfigs: readonly KernelConfig[] = [
       projection: true,
       constraintSketch: false,
       kernel2D: true,
-      variableFillet: false,
+      // occt-wasm implements filletVariable (single-edge); occt's is a throwing stub.
+      variableFillet: true,
       offsetSolidV2: false,
       gridPattern: false,
     },
@@ -129,4 +138,11 @@ export function getKernelCapabilities(id: string): KernelConfig['capabilities'] 
   const cfg = getKernelConfig(id);
   if (!cfg) throw new Error(`Unknown kernel: "${id}"`);
   return cfg.capabilities;
+}
+
+/** The id of the default kernel for the test gate (single source of truth). */
+export function defaultKernelId(): string {
+  const found = kernelConfigs.find((k) => k.default);
+  if (!found) throw new Error('kernelRegistry: no kernel marked default');
+  return found.id;
 }
