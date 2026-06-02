@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.40.0](https://github.com/andymai/brepjs/compare/brepjs-v18.39.0...brepjs-v18.40.0) (2026-06-02)
+
+
+### Features
+
+* **voxel:** brep↔voxel interop — robust CSG, offset/shell, shape conveniences ([#1154](https://github.com/andymai/brepjs/issues/1154)) ([5aaf1f2](https://github.com/andymai/brepjs/commit/5aaf1f23f59fd0886d3d6941a6f98f3c04580c82))
+
 ## [18.39.0](https://github.com/andymai/brepjs/compare/brepjs-v18.38.0...brepjs-v18.39.0) (2026-06-02)
 
 
