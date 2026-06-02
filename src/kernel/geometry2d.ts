@@ -300,8 +300,25 @@ export function scaleCurve2d(c: Curve2dObj, factor: number, cx: number, cy: numb
 
   switch (c.__bk2d) {
     case 'line': {
+      // Scale BOTH endpoints and recompute direction/length. Scaling only the
+      // origin (keeping dx/dy/len) left the endpoint wrong for factor != 1 —
+      // most damagingly for mirror (factor = -1, via mirrorAtPoint), which
+      // reflected the origin but kept the original direction, so the line
+      // pointed the wrong way. Consecutive glyph lines then no longer shared a
+      // vertex, leaving font wires disconnected/invalid (engraved-text bug).
       const [ox, oy] = scalePoint(c.ox, c.oy);
-      return { ...c, ox, oy };
+      const [ex, ey] = scalePoint(c.ox + c.dx * c.len, c.oy + c.dy * c.len);
+      const ndx = ex - ox;
+      const ndy = ey - oy;
+      const nlen = Math.sqrt(ndx * ndx + ndy * ndy);
+      return {
+        ...c,
+        ox,
+        oy,
+        dx: nlen > 0 ? ndx / nlen : c.dx,
+        dy: nlen > 0 ? ndy / nlen : c.dy,
+        len: nlen,
+      };
     }
     case 'circle': {
       const [ncx, ncy] = scalePoint(c.cx, c.cy);
