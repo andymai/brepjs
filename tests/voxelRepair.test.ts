@@ -94,7 +94,7 @@ describe('voxel repair (FWN-signed SDF → Surface Nets)', () => {
     expect(isErr(repairMesh({ vertices: VERTS, triangles: HOLEY }, { resolution: 1.5 }))).toBe(
       true
     );
-    expect(isErr(repairMesh({ vertices: VERTS, triangles: HOLEY }, { padding: -1 }))).toBe(true);
+    expect(isErr(repairMesh({ vertices: VERTS, triangles: HOLEY }, { padding: 0 }))).toBe(true);
   });
 
   it('returns err (not a wasm trap) when resolution blows past the voxel cap', () => {

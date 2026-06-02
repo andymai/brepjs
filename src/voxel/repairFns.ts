@@ -41,8 +41,10 @@ export function repairMesh(
   if (!Number.isInteger(resolution) || resolution < 1) {
     return err(validationError('VOXEL_INVALID_RESOLUTION', 'resolution must be an integer >= 1.'));
   }
-  if (!Number.isInteger(padding) || padding < 0) {
-    return err(validationError('VOXEL_INVALID_PADDING', 'padding must be an integer >= 0.'));
+  if (!Number.isInteger(padding) || padding < 1) {
+    // Surface Nets needs >= 1 voxel of air margin on every face, else the
+    // extracted surface is clipped at the grid boundary.
+    return err(validationError('VOXEL_INVALID_PADDING', 'padding must be an integer >= 1.'));
   }
 
   const engine = resolveEngine(id);
@@ -52,7 +54,9 @@ export function repairMesh(
     // repair_mesh returns Result<_, JsError> in Rust: a grid over MAX_VOXELS
     // surfaces as a thrown JS exception, which must be caught to honour the
     // Result contract (the cap is reachable purely from `resolution`).
-    const repaired = engine.value.repair_mesh(mesh.vertices, mesh.triangles, resolution, padding);
+    // `using` frees the WASM-owned RepairResult on scope exit (the getters copy
+    // their buffers out, so the returned mesh stays valid after free()).
+    using repaired = engine.value.repair_mesh(mesh.vertices, mesh.triangles, resolution, padding);
     const vertexCount = repaired.positions.length / 3;
     return ok({
       vertices: repaired.positions,

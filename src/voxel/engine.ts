@@ -31,4 +31,7 @@ export interface VoxelRepairResult {
   readonly positions: Float32Array;
   readonly normals: Float32Array;
   readonly indices: Uint32Array;
+  /** Release the backing WASM allocation (wasm-bindgen lifecycle). */
+  free(): void;
+  [Symbol.dispose](): void;
 }
