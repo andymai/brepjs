@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.44.0](https://github.com/andymai/brepjs/compare/brepjs-v18.43.0...brepjs-v18.44.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 4 IFC import & symmetric round-trip ([#1159](https://github.com/andymai/brepjs/issues/1159)) ([f15ce9b](https://github.com/andymai/brepjs/commit/f15ce9b87260dde01a60809319df2bcccaa04b49))
+
 ## [18.43.0](https://github.com/andymai/brepjs/compare/brepjs-v18.42.0...brepjs-v18.43.0) (2026-06-02)
 
 
