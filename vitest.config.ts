@@ -1,6 +1,10 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vitest/config';
-import { kernelConfigs, coverageExcludesFor } from './tests/helpers/kernelRegistry.js';
+import {
+  kernelConfigs,
+  coverageExcludesFor,
+  defaultKernelId,
+} from './tests/helpers/kernelRegistry.js';
 
 /**
  * Tests excluded from all kernel projects:
@@ -60,18 +64,20 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       reporter: ['text', 'text-summary', 'lcov'],
       reportsDirectory: './coverage',
-      // OCCT-flavored excludes are applied at the root because vitest's
+      // Default-kernel excludes are applied at the root because vitest's
       // project-level coverage.exclude does not override the root list (yet);
-      // see PR description. Source of truth lives in kernelRegistry.ts so
-      // adding a kernel doesn't require a vitest edit.
-      exclude: ['src/**/*.d.ts', 'src/**/index.ts', ...coverageExcludesFor('occt')],
+      // see PR description. Source of truth lives in kernelRegistry.ts (the
+      // default kernel) so adding/flipping a kernel doesn't require a vitest edit.
+      exclude: ['src/**/*.d.ts', 'src/**/index.ts', ...coverageExcludesFor(defaultKernelId())],
+      // Floored at the occt-wasm (default kernel) measured coverage, rounded down
+      // to the nearest whole percent. occt-wasm's adapter-dir denominator differs
+      // from occt's, so these are not directly comparable to the prior occt floor;
+      // re-measure and re-floor (npm run test:full) if the default kernel changes.
       thresholds: {
-        statements: 84,
-        // 74 reflects intentional skips for V8 RC4 regressions (PRs #605, #639, #641, commit 8c857d65).
-        // Restore to 84 once those skips are removed.
-        branches: 74,
-        functions: 90,
-        lines: 84,
+        statements: 85,
+        branches: 71,
+        functions: 91,
+        lines: 88,
       },
     },
     projects: kernelConfigs.map((k) => ({
