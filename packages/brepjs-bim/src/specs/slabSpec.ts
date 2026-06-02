@@ -3,6 +3,9 @@ import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
+import type { MaterialLayer } from '../types/materialTypes.js';
+import type { ClassificationRef } from '../types/classificationTypes.js';
+import { MaterialLayerSchema, ClassificationRefSchema } from './materialSpec.js';
 
 export type SlabPredefinedType = 'FLOOR' | 'ROOF' | 'LANDING' | 'BASESLAB';
 
@@ -27,6 +30,17 @@ export interface SlabSpec {
   readonly loadBearing?: boolean | undefined;
   readonly combustible?: boolean | undefined;
   readonly compartmentation?: boolean | undefined;
+  readonly status?: string | undefined;
+
+  /**
+   * When present, the slab is associated via a layered IfcMaterialLayerSet built
+   * from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+
+  /** When present, associates the slab with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
 
   readonly manufacturerName?: string | undefined;
   readonly manufacturerModel?: string | undefined;
@@ -59,6 +73,11 @@ const SlabSpecSchema = z.object({
   loadBearing: z.boolean().optional(),
   combustible: z.boolean().optional(),
   compartmentation: z.boolean().optional(),
+  status: z.string().optional(),
+
+  materialLayers: z.array(MaterialLayerSchema).optional(),
+  layerSetName: z.string().optional(),
+  classification: ClassificationRefSchema.optional(),
 
   manufacturerName: z.string().optional(),
   manufacturerModel: z.string().optional(),

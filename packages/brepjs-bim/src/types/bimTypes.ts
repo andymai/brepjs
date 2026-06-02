@@ -6,6 +6,7 @@ import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
 import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { DoorSpec, WindowSpec } from '../specs/openingSpec.js';
+import type { ProxySpec } from '../specs/proxySpec.js';
 import type {
   ProjectSpec,
   SiteSpec,
@@ -21,6 +22,7 @@ export type BimCategory =
   | 'OPENING'
   | 'DOOR'
   | 'WINDOW'
+  | 'PROXY'
   | 'PROJECT'
   | 'SITE'
   | 'BUILDING'
@@ -66,21 +68,24 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
             ? DoorSpec
             : C extends 'WINDOW'
               ? WindowSpec
-              : C extends 'PROJECT'
-                ? ProjectSpec
-                : C extends 'SITE'
-                  ? SiteSpec
-                  : C extends 'BUILDING'
-                    ? BuildingSpec
-                    : C extends 'STOREY'
-                      ? StoreySpec
-                      : never;
+              : C extends 'PROXY'
+                ? ProxySpec
+                : C extends 'PROJECT'
+                  ? ProjectSpec
+                  : C extends 'SITE'
+                    ? SiteSpec
+                    : C extends 'BUILDING'
+                      ? BuildingSpec
+                      : C extends 'STOREY'
+                        ? StoreySpec
+                        : never;
 
 export type BimGeometryFor<C extends BimCategory> = C extends
   | 'WALL'
   | 'SLAB'
   | 'BEAM'
   | 'COLUMN'
+  | 'PROXY'
   ? ValidSolid
   : null;
 
@@ -100,6 +105,7 @@ export type AnyBimElement =
   | BimElement<'OPENING'>
   | BimElement<'DOOR'>
   | BimElement<'WINDOW'>
+  | BimElement<'PROXY'>
   | BimElement<'PROJECT'>
   | BimElement<'SITE'>
   | BimElement<'BUILDING'>

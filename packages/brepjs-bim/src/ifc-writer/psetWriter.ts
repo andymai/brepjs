@@ -7,10 +7,27 @@ import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
 import { profileCrossSectionArea } from '../elementFns/profileFns.js';
 import { toIfcLengthM } from '../units/units.js';
+import type { PsetCategory, PsetTemplate } from '../psets/psetTemplates.js';
+import { measureTypeFor, webIfcConstantFor, templateFor } from '../psets/psetTemplates.js';
 
 type PsetValue = string | number | boolean;
 
-function writePsetValue(w: IfcWriter, value: PsetValue): Record<string, unknown> {
+/**
+ * Resolves the IFC measure value for a Pset property by name. Properties listed
+ * in the Pset measure-type table emit their canonical IFC measure type (e.g.
+ * `ThermalTransmittance` → IFCTHERMALTRANSMITTANCEMEASURE); unlisted properties
+ * fall back to the JS-type heuristic (boolean→IFCBOOLEAN, number→IFCREAL,
+ * string→IFCLABEL).
+ */
+function writePsetValueTyped(
+  w: IfcWriter,
+  name: string,
+  value: PsetValue
+): Record<string, unknown> {
+  const measureType = measureTypeFor(name);
+  if (measureType !== undefined) {
+    return w.mkType(webIfcConstantFor(measureType), value);
+  }
   if (typeof value === 'boolean') {
     return w.mkType(WebIFC.IFCBOOLEAN, value);
   }
@@ -20,28 +37,60 @@ function writePsetValue(w: IfcWriter, value: PsetValue): Record<string, unknown>
   return w.mkType(WebIFC.IFCLABEL, value);
 }
 
-function writePropertySingleValue(w: IfcWriter, name: string, value: PsetValue): number {
+export function writePropertySingleValueTyped(
+  w: IfcWriter,
+  name: string,
+  value: PsetValue
+): number {
   const id = w.nextId();
   w.writeLine({
     expressID: id,
     type: WebIFC.IFCPROPERTYSINGLEVALUE,
     Name: w.mkType(WebIFC.IFCIDENTIFIER, name),
     Description: null,
-    NominalValue: writePsetValue(w, value),
+    NominalValue: writePsetValueTyped(w, name, value),
     Unit: null,
   });
   return id;
 }
 
-function writePropertySet(
+/**
+ * Emits an IfcPropertyEnumeratedValue: the value plus the backing
+ * IfcPropertyEnumeration listing every legal value. Used for enumerated Pset
+ * properties such as `Status`.
+ */
+export function writePropertyEnumeratedValue(
+  w: IfcWriter,
+  name: string,
+  value: string,
+  enumValues: readonly string[]
+): number {
+  const enumerationId = w.nextId();
+  w.writeLine({
+    expressID: enumerationId,
+    type: WebIFC.IFCPROPERTYENUMERATION,
+    Name: w.mkType(WebIFC.IFCLABEL, name),
+    EnumerationValues: enumValues.map((v) => w.mkType(WebIFC.IFCLABEL, v)),
+    Unit: null,
+  });
+  const id = w.nextId();
+  w.writeLine({
+    expressID: id,
+    type: WebIFC.IFCPROPERTYENUMERATEDVALUE,
+    Name: w.mkType(WebIFC.IFCIDENTIFIER, name),
+    Description: null,
+    EnumerationValues: [w.mkType(WebIFC.IFCLABEL, value)],
+    EnumerationReference: w.ref(enumerationId),
+  });
+  return id;
+}
+
+export function writePropertySet(
   w: IfcWriter,
   ownerHistoryId: number,
   name: string,
-  properties: Record<string, PsetValue>
+  propertyIds: readonly number[]
 ): number {
-  const propIds = Object.entries(properties).map(([k, v]) =>
-    writePropertySingleValue(w, k, v)
-  );
   const id = w.nextId();
   w.writeLine({
     expressID: id,
@@ -50,12 +99,12 @@ function writePropertySet(
     OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
-    HasProperties: propIds.map((pid) => w.ref(pid)),
+    HasProperties: propertyIds.map((pid) => w.ref(pid)),
   });
   return id;
 }
 
-function writeRelDefinesByProperties(
+export function writeRelDefinesByProperties(
   w: IfcWriter,
   ownerHistoryId: number,
   entityExpressId: number,
@@ -74,21 +123,65 @@ function writeRelDefinesByProperties(
   });
 }
 
+/**
+ * Writes the Pset_*Common set for an element from its category template: each
+ * value present in `values` is emitted with the measure type declared in the
+ * template (single value, or enumerated value where the template marks it so).
+ * Properties absent from `values` are skipped; an empty set writes nothing.
+ */
+function writeCommonPsetFromTemplate(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  entityExpressId: number,
+  template: PsetTemplate,
+  values: Readonly<Record<string, PsetValue>>
+): void {
+  const propIds: number[] = [];
+  for (const prop of template.properties) {
+    const value = values[prop.name];
+    if (value === undefined) continue;
+    if (prop.kind === 'enumerated') {
+      propIds.push(
+        writePropertyEnumeratedValue(w, prop.name, String(value), prop.enumValues)
+      );
+    } else {
+      propIds.push(writePropertySingleValueTyped(w, prop.name, value));
+    }
+  }
+  if (propIds.length === 0) return;
+  const psetId = writePropertySet(w, ownerHistoryId, template.psetName, propIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, entityExpressId, psetId);
+}
+
+/**
+ * Writes the standard Pset_*Common set for an element from its category template
+ * and a set of property values. Shared by the door/window pset writers in
+ * openingWriter.ts so every element type emits the correct measure types.
+ */
+export function writeCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  entityExpressId: number,
+  category: PsetCategory,
+  values: Readonly<Record<string, PsetValue>>
+): void {
+  writeCommonPsetFromTemplate(w, ownerHistoryId, entityExpressId, templateFor(category), values);
+}
+
 export function writeWallCommonPset(
   w: IfcWriter,
   ownerHistoryId: number,
   wallExpressId: number,
   spec: WallSpec
 ): void {
-  const props: Record<string, PsetValue> = {};
-  if (spec.isExternal !== undefined) props['IsExternal'] = spec.isExternal;
-  if (spec.fireRating !== undefined) props['FireRating'] = spec.fireRating;
-  if (spec.acousticRating !== undefined) props['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) props['ThermalTransmittance'] = spec.thermalTransmittance;
-  if (spec.loadBearing !== undefined) props['LoadBearing'] = spec.loadBearing;
-  if (Object.keys(props).length === 0) return;
-  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_WallCommon', props);
-  writeRelDefinesByProperties(w, ownerHistoryId, wallExpressId, psetId);
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.acousticRating !== undefined) values['AcousticRating'] = spec.acousticRating;
+  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, wallExpressId, 'WALL', values);
 }
 
 interface ManufacturerFields {
@@ -106,9 +199,13 @@ export function writeManufacturerPset(
   const props: Record<string, PsetValue> = {};
   if (spec.manufacturerName !== undefined) props['Manufacturer'] = spec.manufacturerName;
   if (spec.manufacturerModel !== undefined) props['ModelLabel'] = spec.manufacturerModel;
-  if (spec.manufacturerProductionYear !== undefined) props['ProductionYear'] = spec.manufacturerProductionYear;
-  if (Object.keys(props).length === 0) return;
-  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_ManufacturerTypeInformation', props);
+  if (spec.manufacturerProductionYear !== undefined)
+    // Pset_ManufacturerTypeInformation.ProductionYear is an IfcLabel (string) in
+    // IFC4; stringify the numeric year so the SPF token is well-formed.
+    props['ProductionYear'] = String(spec.manufacturerProductionYear);
+  const propIds = Object.entries(props).map(([k, v]) => writePropertySingleValueTyped(w, k, v));
+  if (propIds.length === 0) return;
+  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_ManufacturerTypeInformation', propIds);
   writeRelDefinesByProperties(w, ownerHistoryId, entityExpressId, psetId);
 }
 
@@ -119,8 +216,9 @@ export function writeCustomPsets(
   customProperties: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>
 ): void {
   for (const [psetName, props] of Object.entries(customProperties)) {
-    if (Object.keys(props).length === 0) continue;
-    const psetId = writePropertySet(w, ownerHistoryId, psetName, { ...props });
+    const propIds = Object.entries(props).map(([k, v]) => writePropertySingleValueTyped(w, k, v));
+    if (propIds.length === 0) continue;
+    const psetId = writePropertySet(w, ownerHistoryId, psetName, propIds);
     writeRelDefinesByProperties(w, ownerHistoryId, entityExpressId, psetId);
   }
 }
@@ -241,17 +339,16 @@ export function writeSlabCommonPset(
   slabExpressId: number,
   spec: SlabSpec
 ): void {
-  const props: Record<string, PsetValue> = {};
-  if (spec.isExternal !== undefined) props['IsExternal'] = spec.isExternal;
-  if (spec.fireRating !== undefined) props['FireRating'] = spec.fireRating;
-  if (spec.acousticRating !== undefined) props['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) props['ThermalTransmittance'] = spec.thermalTransmittance;
-  if (spec.loadBearing !== undefined) props['LoadBearing'] = spec.loadBearing;
-  if (spec.combustible !== undefined) props['Combustible'] = spec.combustible;
-  if (spec.compartmentation !== undefined) props['Compartmentation'] = spec.compartmentation;
-  if (Object.keys(props).length === 0) return;
-  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_SlabCommon', props);
-  writeRelDefinesByProperties(w, ownerHistoryId, slabExpressId, psetId);
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.acousticRating !== undefined) values['AcousticRating'] = spec.acousticRating;
+  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
+  if (spec.combustible !== undefined) values['Combustible'] = spec.combustible;
+  if (spec.compartmentation !== undefined) values['Compartmentation'] = spec.compartmentation;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, slabExpressId, 'SLAB', values);
 }
 
 export function writeSlabBaseQuantities(
@@ -298,16 +395,18 @@ interface CommonStructuralFields {
   readonly fireRating?: string | undefined;
   readonly acousticRating?: string | undefined;
   readonly thermalTransmittance?: number | undefined;
+  readonly status?: string | undefined;
 }
 
-function buildCommonProps(spec: CommonStructuralFields): Record<string, PsetValue> {
-  const props: Record<string, PsetValue> = {};
-  if (spec.isExternal !== undefined) props['IsExternal'] = spec.isExternal;
-  if (spec.loadBearing !== undefined) props['LoadBearing'] = spec.loadBearing;
-  if (spec.fireRating !== undefined) props['FireRating'] = spec.fireRating;
-  if (spec.acousticRating !== undefined) props['AcousticRating'] = spec.acousticRating;
-  if (spec.thermalTransmittance !== undefined) props['ThermalTransmittance'] = spec.thermalTransmittance;
-  return props;
+function buildCommonValues(spec: CommonStructuralFields): Record<string, PsetValue> {
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.acousticRating !== undefined) values['AcousticRating'] = spec.acousticRating;
+  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  return values;
 }
 
 export function writeBeamCommonPset(
@@ -316,10 +415,7 @@ export function writeBeamCommonPset(
   beamExpressId: number,
   spec: BeamSpec
 ): void {
-  const props = buildCommonProps(spec);
-  if (Object.keys(props).length === 0) return;
-  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_BeamCommon', props);
-  writeRelDefinesByProperties(w, ownerHistoryId, beamExpressId, psetId);
+  writeCommonPset(w, ownerHistoryId, beamExpressId, 'BEAM', buildCommonValues(spec));
 }
 
 export function writeColumnCommonPset(
@@ -328,10 +424,7 @@ export function writeColumnCommonPset(
   columnExpressId: number,
   spec: ColumnSpec
 ): void {
-  const props = buildCommonProps(spec);
-  if (Object.keys(props).length === 0) return;
-  const psetId = writePropertySet(w, ownerHistoryId, 'Pset_ColumnCommon', props);
-  writeRelDefinesByProperties(w, ownerHistoryId, columnExpressId, psetId);
+  writeCommonPset(w, ownerHistoryId, columnExpressId, 'COLUMN', buildCommonValues(spec));
 }
 
 export function writeBeamBaseQuantities(

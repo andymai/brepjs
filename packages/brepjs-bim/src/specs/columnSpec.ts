@@ -5,6 +5,9 @@ import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 import type { Profile } from './profile.js';
 import { ProfileSchema, parseProfile } from './profile.js';
+import type { MaterialLayer } from '../types/materialTypes.js';
+import type { ClassificationRef } from '../types/classificationTypes.js';
+import { MaterialLayerSchema, ClassificationRefSchema } from './materialSpec.js';
 
 export type ColumnPredefinedType = 'COLUMN' | 'PILASTER' | 'NOTDEFINED';
 
@@ -25,6 +28,17 @@ export interface ColumnSpec {
   readonly fireRating?: string | undefined;
   readonly acousticRating?: string | undefined;
   readonly thermalTransmittance?: number | undefined;
+  readonly status?: string | undefined;
+
+  /**
+   * When present, the column is associated via a layered IfcMaterialLayerSet
+   * built from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+
+  /** When present, associates the column with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
 
   readonly manufacturerName?: string | undefined;
   readonly manufacturerModel?: string | undefined;
@@ -54,6 +68,11 @@ const ColumnSpecSchema = z.object({
   fireRating: z.string().optional(),
   acousticRating: z.string().optional(),
   thermalTransmittance: z.number().positive().optional(),
+  status: z.string().optional(),
+
+  materialLayers: z.array(MaterialLayerSchema).optional(),
+  layerSetName: z.string().optional(),
+  classification: ClassificationRefSchema.optional(),
 
   manufacturerName: z.string().optional(),
   manufacturerModel: z.string().optional(),

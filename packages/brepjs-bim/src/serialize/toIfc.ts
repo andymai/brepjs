@@ -21,8 +21,11 @@ import {
 import {
   writeRelAggregates,
   writeRelContainedInSpatialStructure,
-  writeRelAssociatesMaterial,
 } from '../ifc-writer/relWriter.js';
+import { writeMaterialLayerSet, writeMaterialSimple } from '../ifc-writer/materialWriter.js';
+import type { MaterialLayer } from '../types/materialTypes.js';
+import { writeClassificationRefs } from '../ifc-writer/classificationWriter.js';
+import type { ClassificationRef } from '../types/classificationTypes.js';
 import {
   writeWallCommonPset,
   writeManufacturerPset,
@@ -45,11 +48,14 @@ import {
   writeDoorCommonPset,
   writeWindowCommonPset,
 } from '../ifc-writer/openingWriter.js';
+import { writeProxyGeometry, writeProxyEntity } from '../ifc-writer/proxyWriter.js';
 import { writeIfcType } from '../ifc-writer/typeWriter.js';
 import type { IfcTypeName } from '../ifc-writer/typeWriter.js';
+import { toIfcLengthM } from '../units/units.js';
+import { checkGeometryValidity } from '../validation/geometryValidity.js';
 import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
-import type { Result } from 'brepjs';
+import type { Result, ValidSolid } from 'brepjs';
 import { err, ok } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
@@ -60,7 +66,7 @@ import type { BimRelationship } from '../types/relationships.js';
 import { checkReferentialIntegrity } from '../validation/referentialIntegrity.js';
 import { checkSchema } from '../validation/schemaCheck.js';
 import { checkRoundTrip } from '../validation/roundTrip.js';
-import { hasErrors, type ValidationReport } from '../validation/severity.js';
+import { hasErrors, type ValidationReport, type ValidationIssue } from '../validation/severity.js';
 
 export async function toIfc(
   model: BimModel,
@@ -85,6 +91,7 @@ export async function toIfc(
   const columns = model.getColumns();
   const doors = model.getDoors();
   const windows = model.getWindows();
+  const proxies = model.getProxies();
 
   const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(w, meta);
 
@@ -232,6 +239,24 @@ export async function toIfc(
     writeColumnBaseQuantities(w, ownerHistoryId, columnExpressId, column.spec);
   }
 
+  for (const [i, proxy] of proxies.entries()) {
+    const containingId = findContainerOf(proxy.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeProxyGeometry(
+      w, proxy.spec, geomSubContextId, storeyPlacementId
+    );
+    const proxyExpressId = writeProxyEntity(
+      w, proxy.guid, proxy.spec.name || `Proxy ${i + 1}`,
+      proxy.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(proxy.localId, proxyExpressId);
+    placementMap.set(proxy.localId, localPlacementId);
+    if (proxy.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, proxyExpressId, proxy.spec.customProperties);
+    }
+  }
+
   const openingPlacementMap = new Map<LocalId, number>();
   const openingEntityMap = new Map<LocalId, number>();
 
@@ -289,7 +314,10 @@ export async function toIfc(
     const openingPlacementId = openingPlacementMap.get(fillsRel.openingLocalId);
     const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
     if (openingPlacementId === undefined || openingEntityId === undefined) continue;
-    const doorExpressId = writeDoorEntity(w, door.guid, `Door ${i + 1}`, ownerHistoryId, openingPlacementId);
+    const doorExpressId = writeDoorEntity(
+      w, door.guid, `Door ${i + 1}`, ownerHistoryId, openingPlacementId, geomSubContextId,
+      toIfcLengthM(door.spec.width), toIfcLengthM(door.spec.height)
+    );
     idMap.set(door.localId, doorExpressId);
     writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, doorExpressId);
     writeDoorCommonPset(w, ownerHistoryId, doorExpressId, door.spec);
@@ -303,7 +331,10 @@ export async function toIfc(
     const openingPlacementId = openingPlacementMap.get(fillsRel.openingLocalId);
     const openingEntityId = openingEntityMap.get(fillsRel.openingLocalId);
     if (openingPlacementId === undefined || openingEntityId === undefined) continue;
-    const windowExpressId = writeWindowEntity(w, win.guid, `Window ${i + 1}`, ownerHistoryId, openingPlacementId);
+    const windowExpressId = writeWindowEntity(
+      w, win.guid, `Window ${i + 1}`, ownerHistoryId, openingPlacementId, geomSubContextId,
+      toIfcLengthM(win.spec.width), toIfcLengthM(win.spec.height)
+    );
     idMap.set(win.localId, windowExpressId);
     writeRelFillsElement(w, fillsRel.guid, ownerHistoryId, openingEntityId, windowExpressId);
     writeWindowCommonPset(w, ownerHistoryId, windowExpressId, win.spec);
@@ -331,22 +362,93 @@ export async function toIfc(
     );
   }
 
-  const byMaterial = new Map<string, { guid: IfcGuid; ids: number[] }>();
+  // Bare (single-name) material associations are deduplicated by material name so
+  // every element sharing a material points at one IfcMaterial. Layered material
+  // associations cannot be deduplicated by name (each carries its own layer
+  // build-up) so each is written individually as an IfcMaterialLayerSet.
+  const bySimpleMaterial = new Map<string, { guid: IfcGuid; ids: number[] }>();
+  interface LayeredAssociation {
+    readonly guid: IfcGuid;
+    readonly layerSetName: string;
+    readonly layers: readonly MaterialLayer[];
+    readonly ids: number[];
+    readonly direction: 'AXIS2' | 'AXIS3';
+  }
+  const layeredAssociations: LayeredAssociation[] = [];
+  const categoryById = new Map<LocalId, string>(elements.map((e) => [e.localId, e.category]));
+
   for (const rel of relationships) {
     if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
     const objectExpressIds = rel.relatedObjects
       .map((id) => idMap.get(id))
       .filter((id): id is number => id !== undefined);
-    const existing = byMaterial.get(rel.materialName);
+    if (objectExpressIds.length === 0) continue;
+
+    if (rel.materialLayers !== undefined && rel.materialLayers.length > 0) {
+      const firstObj = rel.relatedObjects[0];
+      const hostCat = firstObj !== undefined ? categoryById.get(firstObj) : undefined;
+      // Walls layer across their thickness (AXIS2); slabs/roofs/coverings layer
+      // vertically (AXIS3). The wrong sense misrenders the build-up in viewers.
+      const direction: 'AXIS2' | 'AXIS3' =
+        hostCat === 'SLAB' || hostCat === 'ROOF' || hostCat === 'COVERING' ? 'AXIS3' : 'AXIS2';
+      layeredAssociations.push({
+        guid: rel.guid,
+        layerSetName: rel.layerSetName ?? rel.materialName,
+        layers: rel.materialLayers,
+        ids: objectExpressIds,
+        direction,
+      });
+      continue;
+    }
+
+    const existing = bySimpleMaterial.get(rel.materialName);
     if (existing !== undefined) {
-      byMaterial.set(rel.materialName, { guid: existing.guid, ids: [...existing.ids, ...objectExpressIds] });
+      bySimpleMaterial.set(rel.materialName, {
+        guid: existing.guid,
+        ids: [...existing.ids, ...objectExpressIds],
+      });
     } else {
-      byMaterial.set(rel.materialName, { guid: rel.guid, ids: objectExpressIds });
+      bySimpleMaterial.set(rel.materialName, { guid: rel.guid, ids: objectExpressIds });
     }
   }
-  for (const [materialName, { guid, ids }] of byMaterial) {
+
+  for (const [materialName, { guid, ids }] of bySimpleMaterial) {
     if (ids.length === 0) continue;
-    writeRelAssociatesMaterial(w, guid, ownerHistoryId, materialName, ids);
+    writeMaterialSimple(w, guid, ownerHistoryId, materialName, ids);
+  }
+  for (const assoc of layeredAssociations) {
+    writeMaterialLayerSet(
+      w,
+      assoc.guid,
+      ownerHistoryId,
+      { kind: 'LAYER_SET', layerSetName: assoc.layerSetName, layers: assoc.layers },
+      assoc.ids,
+      assoc.direction
+    );
+  }
+
+  // Dedupe by system:code (not object identity) so two elements citing the same
+  // classification share one IfcClassificationReference instead of producing two
+  // entities with identical derived GlobalIds. Accumulate all referencing objects.
+  const classByKey = new Map<string, { ref: ClassificationRef; ids: number[] }>();
+  for (const rel of relationships) {
+    if (rel.kind !== 'ASSOCIATES_CLASSIFICATION') continue;
+    const objectExpressIds = rel.relatedObjects
+      .map((id) => idMap.get(id))
+      .filter((id): id is number => id !== undefined);
+    if (objectExpressIds.length === 0) continue;
+    const key = `${rel.ref.system}:${rel.ref.code}`;
+    const entry = classByKey.get(key);
+    if (entry === undefined) {
+      classByKey.set(key, { ref: rel.ref, ids: [...objectExpressIds] });
+    } else {
+      entry.ids.push(...objectExpressIds);
+    }
+  }
+  const byClassification = new Map<ClassificationRef, number[]>();
+  for (const { ref, ids } of classByKey.values()) byClassification.set(ref, ids);
+  if (byClassification.size > 0) {
+    writeClassificationRefs(w, ownerHistoryId, byClassification);
   }
 
   writeTypeLayer(w, ownerHistoryId, model, idMap);
@@ -448,15 +550,45 @@ export async function toIfcValidated(
   if (!bytesResult.ok) return bytesResult;
   const bytes = bytesResult.value;
 
+  const geometry = collectGeometryIssues(model);
   const schema = await checkSchema(bytes);
   const roundTrip = await checkRoundTrip(bytes);
 
   // Integrity warnings (e.g. orphaned openings) are carried through alongside the
-  // post-save diagnostics; integrity errors already short-circuited above.
+  // geometry-validity and post-save diagnostics; integrity errors already
+  // short-circuited above.
   const report: ValidationReport = {
-    issues: [...integrity.issues, ...schema.issues, ...roundTrip.issues],
+    issues: [
+      ...integrity.issues,
+      ...geometry.issues,
+      ...schema.issues,
+      ...roundTrip.issues,
+    ],
   };
   return ok({ bytes, report });
+}
+
+/**
+ * Runs the GEOMETRY-VALIDITY gate over every solid-bearing element (walls,
+ * slabs, beams, columns, proxies) and merges the per-element reports. Used by
+ * {@link toIfcValidated}; plain {@link toIfc} stays permissive and never runs it.
+ */
+function collectGeometryIssues(model: BimModel): ValidationReport {
+  const issues: ValidationIssue[] = [];
+  const groups: ReadonlyArray<readonly [string, ReadonlyArray<{ geometry: ValidSolid }>]> = [
+    ['Wall', model.getWalls()],
+    ['Slab', model.getSlabs()],
+    ['Beam', model.getBeams()],
+    ['Column', model.getColumns()],
+    ['Proxy', model.getProxies()],
+  ];
+  for (const [label, elements] of groups) {
+    elements.forEach((el, index) => {
+      const report = checkGeometryValidity(el.geometry, `${label} ${index + 1}`);
+      issues.push(...report.issues);
+    });
+  }
+  return { issues };
 }
 
 function findParentOf(childId: LocalId, relationships: readonly BimRelationship[]): LocalId | null {

@@ -39,30 +39,3 @@ export function writeRelContainedInSpatialStructure(
     RelatingStructure: w.ref(relatingStructureId),
   });
 }
-
-export function writeRelAssociatesMaterial(
-  w: IfcWriter,
-  guid: IfcGuid,
-  ownerHistoryId: number,
-  materialName: string,
-  relatedObjectIds: number[]
-): void {
-  const materialId = w.nextId();
-  w.writeLine({
-    expressID: materialId,
-    type: WebIFC.IFCMATERIAL,
-    Name: w.mkType(WebIFC.IFCLABEL, materialName),
-    Description: null,
-    Category: null,
-  });
-  w.writeLine({
-    expressID: w.nextId(),
-    type: WebIFC.IFCRELASSOCIATESMATERIAL,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, guid),
-    OwnerHistory: w.ref(ownerHistoryId),
-    Name: null,
-    Description: null,
-    RelatedObjects: relatedObjectIds.map((id) => w.ref(id)),
-    RelatingMaterial: w.ref(materialId),
-  });
-}

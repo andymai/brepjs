@@ -12,15 +12,19 @@ import type {
   AggregatesRel,
   ContainedInRel,
   AssociatesMaterialRel,
+  AssociatesClassificationRel,
   VoidsWallRel,
   VoidsSlabRel,
   FillsOpeningRel,
 } from '../types/relationships.js';
+import type { MaterialLayer } from '../types/materialTypes.js';
+import type { ClassificationRef } from '../types/classificationTypes.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
 import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { DoorSpec, WindowSpec, SlabOpeningInput } from '../specs/openingSpec.js';
+import type { ProxySpec } from '../specs/proxySpec.js';
 import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
 import { wallToSolid } from '../elementFns/wallFns.js';
 import { slabToSolid } from '../elementFns/slabFns.js';
@@ -57,7 +61,8 @@ export class BimModel {
         el.category === 'WALL' ||
         el.category === 'SLAB' ||
         el.category === 'BEAM' ||
-        el.category === 'COLUMN'
+        el.category === 'COLUMN' ||
+        el.category === 'PROXY'
       ) {
         el.geometry[Symbol.dispose]();
       }
@@ -80,11 +85,8 @@ export class BimModel {
     const geomResult = wallToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
     const id = this.#makeElement('WALL', spec, geomResult.value);
-    this.#makeRel<AssociatesMaterialRel>({
-      kind: 'ASSOCIATES_MATERIAL',
-      materialName: spec.materialName,
-      relatedObjects: [id],
-    });
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
     return ok(id);
   }
 
@@ -92,11 +94,8 @@ export class BimModel {
     const geomResult = slabToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
     const id = this.#makeElement('SLAB', spec, geomResult.value);
-    this.#makeRel<AssociatesMaterialRel>({
-      kind: 'ASSOCIATES_MATERIAL',
-      materialName: spec.materialName,
-      relatedObjects: [id],
-    });
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
     return ok(id);
   }
 
@@ -104,11 +103,8 @@ export class BimModel {
     const geomResult = beamToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
     const id = this.#makeElement('BEAM', spec, geomResult.value);
-    this.#makeRel<AssociatesMaterialRel>({
-      kind: 'ASSOCIATES_MATERIAL',
-      materialName: spec.materialName,
-      relatedObjects: [id],
-    });
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
     return ok(id);
   }
 
@@ -116,11 +112,74 @@ export class BimModel {
     const geomResult = columnToSolid(spec);
     if (!geomResult.ok) return err(geomResult.error);
     const id = this.#makeElement('COLUMN', spec, geomResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  /**
+   * Associates a classification reference with one or more elements, creating an
+   * IfcRelAssociatesClassification on export. Returns the relationship's localId.
+   */
+  addClassification(ref: ClassificationRef, elementLocalIds: readonly LocalId[]): LocalId {
+    return this.#makeRel<AssociatesClassificationRel>({
+      kind: 'ASSOCIATES_CLASSIFICATION',
+      ref,
+      relatedObjects: [...elementLocalIds],
+    });
+  }
+
+  #associateMaterial(
+    id: LocalId,
+    spec: {
+      readonly materialName: string;
+      readonly materialLayers?: readonly MaterialLayer[] | undefined;
+      readonly layerSetName?: string | undefined;
+    }
+  ): void {
+    const hasLayers = spec.materialLayers !== undefined && spec.materialLayers.length > 0;
     this.#makeRel<AssociatesMaterialRel>({
       kind: 'ASSOCIATES_MATERIAL',
       materialName: spec.materialName,
       relatedObjects: [id],
+      ...(hasLayers
+        ? {
+            materialLayers: spec.materialLayers,
+            layerSetName: spec.layerSetName ?? spec.materialName,
+          }
+        : {}),
     });
+  }
+
+  #associateClassification(
+    id: LocalId,
+    spec: { readonly classification?: ClassificationRef | undefined }
+  ): void {
+    if (spec.classification === undefined) return;
+    this.#makeRel<AssociatesClassificationRel>({
+      kind: 'ASSOCIATES_CLASSIFICATION',
+      ref: spec.classification,
+      relatedObjects: [id],
+    });
+  }
+
+  /**
+   * Adds an IfcBuildingElementProxy. The model TAKES OWNERSHIP of `spec.solid`
+   * and disposes it on model disposal; the caller must not dispose it (see
+   * {@link ProxySpec.solid}).
+   */
+  addProxy(spec: ProxySpec): Result<LocalId, BimError> {
+    if (spec.solid === null || spec.solid === undefined) {
+      return err(specError('PROXY_NO_GEOMETRY', 'ProxySpec.solid is required'));
+    }
+    const id = this.#makeElement('PROXY', spec, spec.solid);
+    if (spec.materialName !== undefined) {
+      this.#makeRel<AssociatesMaterialRel>({
+        kind: 'ASSOCIATES_MATERIAL',
+        materialName: spec.materialName,
+        relatedObjects: [id],
+      });
+    }
     return ok(id);
   }
 
@@ -390,6 +449,14 @@ export class BimModel {
       if (el.category === 'COLUMN') columns.push(el);
     }
     return columns;
+  }
+
+  getProxies(): BimElement<'PROXY'>[] {
+    const proxies: BimElement<'PROXY'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'PROXY') proxies.push(el);
+    }
+    return proxies;
   }
 
   getAllElements(): AnyBimElement[] {

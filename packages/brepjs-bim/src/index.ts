@@ -13,6 +13,7 @@ export { makeLocalIdCounter } from './identity/localId.js';
 export { checkReferentialIntegrity } from './validation/referentialIntegrity.js';
 export { checkSchema } from './validation/schemaCheck.js';
 export { checkRoundTrip } from './validation/roundTrip.js';
+export { checkGeometryValidity } from './validation/geometryValidity.js';
 export {
   issue,
   emptyReport,
@@ -20,6 +21,18 @@ export {
   countBySeverity,
 } from './validation/severity.js';
 export { writeIfcType } from './ifc-writer/typeWriter.js';
+export {
+  writeMaterialLayerSet,
+  writeMaterialProfileSet,
+  writeMaterialSimple,
+} from './ifc-writer/materialWriter.js';
+export { writeClassificationRefs } from './ifc-writer/classificationWriter.js';
+export {
+  PSET_TEMPLATES,
+  PSET_PROPERTY_TYPE_TABLE,
+  measureTypeFor,
+  templateFor,
+} from './psets/psetTemplates.js';
 export { DEFAULT_UNITS, toLengthMm, toIfcLengthM } from './units/units.js';
 export { specError, ifcError, geometryError, fromBrepError } from './errors/bimError.js';
 
@@ -34,10 +47,31 @@ export type {
   IShapeProfile,
 } from './specs/profile.js';
 export type { DoorSpec, WindowSpec, SlabOpeningInput } from './specs/openingSpec.js';
+export type { ProxySpec } from './specs/proxySpec.js';
 export type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from './specs/spatialSpec.js';
 export type { BimCategory, BimElement, AnyBimElement, OpeningSpec, WallOpeningSpec, SlabOpeningSpec } from './types/bimTypes.js';
 export { isWallOpening, isSlabOpening } from './types/bimTypes.js';
-export type { BimRelationship, VoidsWallRel, VoidsSlabRel, FillsOpeningRel } from './types/relationships.js';
+export type {
+  BimRelationship,
+  AssociatesMaterialRel,
+  AssociatesClassificationRel,
+  VoidsWallRel,
+  VoidsSlabRel,
+  FillsOpeningRel,
+} from './types/relationships.js';
+export type { MaterialLayer } from './types/materialTypes.js';
+export type {
+  MaterialLayerSetSpec,
+  MaterialProfileSpec,
+  MaterialSpec,
+} from './ifc-writer/materialWriter.js';
+export type { ClassificationRef } from './types/classificationTypes.js';
+export type {
+  PsetCategory,
+  PsetMeasureType,
+  PsetTemplate,
+  PsetPropertyTemplate,
+} from './psets/psetTemplates.js';
 export type { BimError, BimErrorKind } from './errors/bimError.js';
 export type { IfcGuid } from './identity/ifcGuid.js';
 export type { LocalId, LocalIdCounter } from './identity/localId.js';

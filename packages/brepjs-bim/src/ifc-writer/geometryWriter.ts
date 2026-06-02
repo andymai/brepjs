@@ -1,6 +1,7 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
+import { writeWallAxisRepresentation } from './tessellationWriter.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
@@ -83,13 +84,17 @@ export function writeWallGeometry(
     Items: [w.ref(extrusionId)],
   });
 
+  // Axis representation: a 2D centreline from (0,0) to (length,0) in the wall's
+  // local XY plane, the standard companion to the SweptSolid body for walls.
+  const axisRepId = writeWallAxisRepresentation(w, spec.length, geomSubContextId);
+
   const productDefinitionShapeId = w.nextId();
   w.writeLine({
     expressID: productDefinitionShapeId,
     type: WebIFC.IFCPRODUCTDEFINITIONSHAPE,
     Name: null,
     Description: null,
-    Representations: [w.ref(shapeRepId)],
+    Representations: [w.ref(axisRepId), w.ref(shapeRepId)],
   });
 
   return { localPlacementId, productDefinitionShapeId };

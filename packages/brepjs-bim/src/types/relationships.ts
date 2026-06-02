@@ -1,5 +1,7 @@
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { LocalId } from '../identity/localId.js';
+import type { MaterialLayer } from './materialTypes.js';
+import type { ClassificationRef } from './classificationTypes.js';
 
 export interface AggregatesRel {
   readonly kind: 'AGGREGATES';
@@ -22,6 +24,20 @@ export interface AssociatesMaterialRel {
   readonly guid: IfcGuid;
   readonly localId: LocalId;
   readonly materialName: string;
+  readonly relatedObjects: readonly LocalId[];
+  /**
+   * When present, the element is associated via an IfcMaterialLayerSet built from
+   * these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+}
+
+export interface AssociatesClassificationRel {
+  readonly kind: 'ASSOCIATES_CLASSIFICATION';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly ref: ClassificationRef;
   readonly relatedObjects: readonly LocalId[];
 }
 
@@ -53,6 +69,7 @@ export type BimRelationship =
   | AggregatesRel
   | ContainedInRel
   | AssociatesMaterialRel
+  | AssociatesClassificationRel
   | VoidsWallRel
   | VoidsSlabRel
   | FillsOpeningRel;

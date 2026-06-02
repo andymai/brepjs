@@ -3,6 +3,9 @@ import type { BimError } from '../errors/bimError.js';
 import { specError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
+import type { MaterialLayer } from '../types/materialTypes.js';
+import type { ClassificationRef } from '../types/classificationTypes.js';
+import { MaterialLayerSchema, ClassificationRefSchema } from './materialSpec.js';
 
 /** A straight wall aligned along an arbitrary axis in 3D. All dimensions in mm. */
 export interface WallSpec {
@@ -19,6 +22,17 @@ export interface WallSpec {
   readonly acousticRating?: string | undefined;
   readonly thermalTransmittance?: number | undefined;
   readonly loadBearing?: boolean | undefined;
+  readonly status?: string | undefined;
+
+  /**
+   * When present, the wall is associated via a layered IfcMaterialLayerSet built
+   * from these layers instead of the bare `materialName` IfcMaterial.
+   */
+  readonly materialLayers?: readonly MaterialLayer[] | undefined;
+  readonly layerSetName?: string | undefined;
+
+  /** When present, associates the wall with an external classification code. */
+  readonly classification?: ClassificationRef | undefined;
 
   readonly manufacturerName?: string | undefined;
   readonly manufacturerModel?: string | undefined;
@@ -48,6 +62,11 @@ const WallSpecSchema = z.object({
   acousticRating: z.string().optional(),
   thermalTransmittance: z.number().positive().optional(),
   loadBearing: z.boolean().optional(),
+  status: z.string().optional(),
+
+  materialLayers: z.array(MaterialLayerSchema).optional(),
+  layerSetName: z.string().optional(),
+  classification: ClassificationRefSchema.optional(),
 
   manufacturerName: z.string().optional(),
   manufacturerModel: z.string().optional(),
