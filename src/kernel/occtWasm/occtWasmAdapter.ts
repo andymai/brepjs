@@ -124,10 +124,17 @@ function notImplemented(method: string): never {
 /**
  * Minimal view of occt-wasm's `OcctKernel` wrapper — anything exposing the raw
  * Embind module and kernel. Accepted by {@link OcctWasmAdapter.fromKernel}.
+ *
+ * Accessors are typed `unknown` on purpose: occt-wasm's published `OcctKernel`
+ * exposes a *curated* raw surface (`OcctRawKernel` and a trimmed module type)
+ * that is narrower than the full Embind API this adapter drives — the runtime
+ * objects have every method, but the package `.d.ts` under-declares them. So the
+ * wrapper is accepted structurally and bridged to the rich internal types once
+ * inside {@link OcctWasmAdapter.fromKernel} (a WASM type gap, not a real one).
  */
 export interface OcctKernelOwner {
-  getRawModule(): OcctWasmModule;
-  getRawKernel(): OcctKernelWasm;
+  getRawModule(): unknown;
+  getRawKernel(): unknown;
 }
 
 export class OcctWasmAdapter implements KernelAdapter {
@@ -154,7 +161,11 @@ export class OcctWasmAdapter implements KernelAdapter {
    * only borrows the raw kernel can be left pointing at freed memory.
    */
   static fromKernel(kernel: OcctKernelOwner): OcctWasmAdapter {
-    return new OcctWasmAdapter(kernel.getRawModule(), kernel.getRawKernel(), kernel);
+    // WASM type gap: occt-wasm under-declares its raw module/kernel surface; the
+    // runtime objects expose the full Embind API this adapter needs.
+    const module = kernel.getRawModule() as OcctWasmModule;
+    const rawKernel = kernel.getRawKernel() as OcctKernelWasm;
+    return new OcctWasmAdapter(module, rawKernel, kernel);
   }
 
   /** The owner retained to keep the borrowed raw kernel alive, or `undefined` when built from a raw kernel. */
