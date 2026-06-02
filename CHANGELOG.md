@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.43.0](https://github.com/andymai/brepjs/compare/brepjs-v18.42.0...brepjs-v18.43.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 3 element & profile breadth ([#1158](https://github.com/andymai/brepjs/issues/1158)) ([2dad1aa](https://github.com/andymai/brepjs/commit/2dad1aa07ac8f7ad2ccdb9cdc5527a0c0d7c31de))
+
 ## [18.42.0](https://github.com/andymai/brepjs/compare/brepjs-v18.41.1...brepjs-v18.42.0) (2026-06-02)
 
 
