@@ -10,8 +10,6 @@ import {
   rotate,
   translate,
   getBounds,
-  getSolids,
-  isSolid,
   vecSub,
   vecAdd,
   vecScale,
@@ -20,6 +18,7 @@ import {
   vecNormalize,
 } from 'brepjs';
 import type { SheetMetalPart } from './types.js';
+import { normalizeSolid } from './internal.js';
 
 /** An oriented cutting plane: material on the `+normal` side is removed. */
 export interface MiterPlane {
@@ -158,11 +157,4 @@ function alignZTo(shape: Solid, target: Vec3): Solid {
   const axis = vecNormalize(vecCross(Z_AXIS, target));
   const angleDeg = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
   return rotate(shape, angleDeg, { at: [0, 0, 0], axis });
-}
-
-function normalizeSolid(shape: Solid): Solid {
-  if (isSolid(shape)) return shape;
-  const solids = getSolids(shape);
-  const only = solids.length === 1 ? solids[0] : undefined;
-  return only ?? shape;
 }

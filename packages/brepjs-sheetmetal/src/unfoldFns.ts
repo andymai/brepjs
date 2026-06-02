@@ -1,6 +1,5 @@
 import {
   type Result,
-  type Vec3,
   type Wire,
   type Edge,
   ok,
@@ -19,6 +18,7 @@ import type {
 } from './types.js';
 import { featureTree, type FeatureTree, type FlatNode } from './featureTreeFns.js';
 import { developedLength } from './allowanceFns.js';
+import { classifyRunDir, type RunDir } from './internal.js';
 
 type Pt2 = [number, number];
 
@@ -87,8 +87,6 @@ export function unfold(part: SheetMetalPart): Result<UnfoldResult> {
   return ok({ pattern, report, warnings });
 }
 
-type RunDir = 'east' | 'north';
-
 interface FlangeLayout {
   id: string;
   dir: RunDir;
@@ -114,12 +112,6 @@ interface RunLayout {
   flanges: FlangeLayout[];
   east?: FlangeLayout | undefined;
   north?: FlangeLayout | undefined;
-}
-
-function classifyRunDir(axisDir: Vec3): RunDir | undefined {
-  if (Math.abs(axisDir[1]) > 0.5) return 'east';
-  if (Math.abs(axisDir[0]) > 0.5) return 'north';
-  return undefined;
 }
 
 function flangeSpanOf(node: FlatNode, fallback: number): number {

@@ -1,7 +1,8 @@
-import { type Result, type Vec3, ok, err, validationError } from 'brepjs';
+import { type Result, ok, err, validationError } from 'brepjs';
 import type { BendReport, SheetMetalPart, UnfoldResult } from './types.js';
 import { featureTree } from './featureTreeFns.js';
 import { developedLength } from './allowanceFns.js';
+import { classifyRunDir } from './internal.js';
 
 interface ReportEntry {
   id: string;
@@ -10,12 +11,6 @@ interface ReportEntry {
   allowance: number;
   flatLength: number;
   direction: 'up' | 'down';
-}
-
-function classifyRunDir(axisDir: Vec3): 'east' | 'north' | undefined {
-  if (Math.abs(axisDir[1]) > 0.5) return 'east';
-  if (Math.abs(axisDir[0]) > 0.5) return 'north';
-  return undefined;
 }
 
 /**

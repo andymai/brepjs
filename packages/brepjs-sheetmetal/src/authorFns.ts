@@ -13,8 +13,6 @@ import {
   intersect,
   rotate,
   translate,
-  getSolids,
-  isSolid,
 } from 'brepjs';
 import type {
   BendFeature,
@@ -25,6 +23,7 @@ import type {
   MiterSpec,
   SheetMetalPart,
 } from './types.js';
+import { normalizeSolid } from './internal.js';
 
 /** Authoring options for the base flat the flanges attach to. */
 export interface BaseFlatSpec {
@@ -94,11 +93,21 @@ export function authorPart(spec: AuthorSpec): Result<SheetMetalPart> {
   }
 
   const seen = new Set<string>();
+  const seenSides = new Set<FlangeSide>();
   for (const flange of spec.flanges) {
     if (seen.has(flange.id)) {
       return err(validationError('DUPLICATE_FLANGE', `duplicate flange id '${flange.id}'`));
     }
     seen.add(flange.id);
+    // Phase 1 places one flange per base edge; two on the same side would overlap
+    // and the unfold would silently keep only the last, so reject it up front.
+    const side: FlangeSide = flange.side ?? 'xmax';
+    if (seenSides.has(side)) {
+      return err(
+        validationError('DUPLICATE_SIDE', `flange '${flange.id}' reuses side '${side}'; one flange per side in Phase 1`)
+      );
+    }
+    seenSides.add(side);
   }
 
   let solid: Solid = box(baseLen, width, thickness);
@@ -123,18 +132,6 @@ export function authorPart(spec: AuthorSpec): Result<SheetMetalPart> {
     bends,
     solid: normalizeSolid(solid),
   });
-}
-
-/**
- * OCCT boolean fuse returns a compound wrapping the unioned solid. Extract the
- * single solid so the part's cached shape is a true `Solid` (clean STEP/GLB
- * export); fall back to the compound if the union produced multiple bodies.
- */
-function normalizeSolid(shape: Solid): Solid {
-  if (isSolid(shape)) return shape;
-  const solids = getSolids(shape);
-  const only = solids.length === 1 ? solids[0] : undefined;
-  return only ?? shape;
 }
 
 interface BuiltFlange {

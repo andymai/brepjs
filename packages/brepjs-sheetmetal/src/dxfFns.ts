@@ -71,7 +71,7 @@ function writeTables(w: DxfWriter): void {
   w.pair(2, 'TABLES');
   w.pair(0, 'TABLE');
   w.pair(2, 'LAYER');
-  w.pair(70, 4);
+  w.pair(70, 3);
   writeLayer(w, LAYER_OUTLINE, COLOR_OUTLINE);
   writeLayer(w, LAYER_BEND_UP, COLOR_BEND_UP);
   writeLayer(w, LAYER_BEND_DOWN, COLOR_BEND_DOWN);

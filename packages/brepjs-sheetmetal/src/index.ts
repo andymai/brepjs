@@ -67,7 +67,6 @@ export type {
   BendFeature,
   FlangeFeature,
   SheetMetalPart,
-  FlatInput,
   FlatPattern,
   BendReport,
   SheetMetalWarning,

@@ -175,3 +175,45 @@ describe('miter — two-flange corner', () => {
     expect(cut.ok).toBe(false);
   });
 });
+
+describe('authorPart — input validation', () => {
+  const rule = { innerRadius: R, kFactor: 0.44 };
+
+  it('rejects two flanges on the same side (would overlap and corrupt the flat pattern)', () => {
+    const result = authorPart({
+      thickness: T,
+      base: { length: 30, width: 10 },
+      flanges: [
+        { id: 'a', length: 12, angleDeg: 90, rule, side: 'xmax' },
+        { id: 'b', length: 12, angleDeg: 90, rule, side: 'xmax' },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('DUPLICATE_SIDE');
+  });
+
+  it('treats an omitted side as xmax for the duplicate-side check', () => {
+    const result = authorPart({
+      thickness: T,
+      base: { length: 30, width: 10 },
+      flanges: [
+        { id: 'a', length: 12, angleDeg: 90, rule },
+        { id: 'b', length: 12, angleDeg: 90, rule, side: 'xmax' },
+      ],
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it('accepts one flange per side (xmax + ymax)', () => {
+    const result = authorPart({
+      thickness: T,
+      base: { length: 30, width: 10 },
+      flanges: [
+        { id: 'a', length: 12, angleDeg: 90, rule, side: 'xmax' },
+        { id: 'b', length: 12, angleDeg: 90, rule, side: 'ymax' },
+      ],
+    });
+    expect(result.ok).toBe(true);
+  });
+});

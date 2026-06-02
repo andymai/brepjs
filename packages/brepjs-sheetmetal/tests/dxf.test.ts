@@ -79,6 +79,16 @@ describe('flatPatternToDXF — structure', () => {
     expect(r.value).toContain('BEND_UP');
     expect(r.value).toContain('BEND_DOWN');
   });
+
+  it('LAYER table entry count matches the 3 layers written', () => {
+    const r = flatPatternToDXF(unfoldPattern('up'));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const lines = r.value.split('\n');
+    const tableIdx = lines.indexOf('LAYER');
+    expect(lines[tableIdx + 1]).toBe('70');
+    expect(lines[tableIdx + 2]).toBe('3');
+  });
 });
 
 describe('flatPatternToDXF — entities', () => {

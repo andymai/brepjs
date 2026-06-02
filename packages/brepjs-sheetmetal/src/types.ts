@@ -61,17 +61,6 @@ export interface SheetMetalPart {
   miters?: CornerMiter[] | undefined;
 }
 
-export interface FlatInput {
-  outline: Wire;
-  foldLines: {
-    a: [number, number];
-    b: [number, number];
-    angleDeg: number;
-    direction: 'up' | 'down';
-    rule: BendRule;
-  }[];
-}
-
 export interface FlatPattern {
   outline: Wire;
   bendLines: { line: Edge; angleDeg: number; direction: 'up' | 'down' }[];
