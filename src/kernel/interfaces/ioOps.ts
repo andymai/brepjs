@@ -11,7 +11,12 @@ import type { KernelShape, KernelType, StepAssemblyPart } from '@/kernel/types.j
 export interface KernelIOOps {
   // --- Standard formats ---
   exportSTEP(shapes: KernelShape[]): string;
-  exportSTL(shape: KernelShape, binary?: boolean): string | ArrayBuffer;
+  exportSTL(
+    shape: KernelShape,
+    binary?: boolean,
+    tolerance?: number,
+    angularTolerance?: number
+  ): string | ArrayBuffer;
   importSTEP(data: string | ArrayBuffer): KernelShape[];
   importSTL(data: string | ArrayBuffer): KernelShape;
   exportIGES(shapes: KernelShape[]): string;
