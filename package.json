@@ -24,6 +24,7 @@
   "workspaces": [
     "packages/brepjs-opencascade",
     "packages/brepjs-bim",
+    "packages/brepjs-sheetmetal",
     "packages/brepjs-manifold",
     "packages/brepjs-voxel-wasm",
     "packages/brepjs-voxel",

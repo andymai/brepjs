@@ -1,0 +1,43 @@
+{
+  "name": "brepjs-sheetmetal",
+  "version": "0.1.0",
+  "description": "Sheet-metal CAD domain for brepjs — flange authoring, auto-miter, fold/unfold flat patterns",
+  "keywords": ["sheet-metal", "cad", "brep", "unfold", "flat-pattern", "bend-allowance"],
+  "author": "Andy Aragon",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "engines": { "node": ">=24" },
+  "main": "./dist/brepjs-sheetmetal.cjs",
+  "module": "./dist/brepjs-sheetmetal.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-sheetmetal.js" },
+      "require": { "types": "./dist/index.d.ts", "default": "./dist/brepjs-sheetmetal.cjs" }
+    }
+  },
+  "files": ["dist", "LICENSE"],
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "snapshot": "tsx harness/snapshot.ts",
+    "lint": "eslint src tests"
+  },
+  "peerDependencies": {
+    "brepjs": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "*",
+    "@types/node": "*",
+    "brepjs-opencascade": ">=0.16.0",
+    "eslint": "*",
+    "tsx": "^4.0.0",
+    "typescript": "*",
+    "typescript-eslint": "*",
+    "vite": "^8.0.0",
+    "vite-plugin-dts": "^5.0.0",
+    "vitest": "^4.0.0"
+  }
+}

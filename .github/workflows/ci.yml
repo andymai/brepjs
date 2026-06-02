@@ -156,6 +156,24 @@ jobs:
       - run: npm run test --workspace=brepjs-agent
       - run: npm run build --workspace=brepjs-agent
 
+  packages-sheetmetal:
+    # Experimental sheet-metal domain satellite. Build root brepjs first so the
+    # package typecheck/build resolve `brepjs` via package exports → dist/; tests
+    # resolve `brepjs` to source through the vitest alias and need the OCCT WASM
+    # the setup composite restores.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup
+      - run: npm run build
+      - run: npm run typecheck --workspace=brepjs-sheetmetal
+      - run: npm run lint --workspace=brepjs-sheetmetal
+      - run: npm run test --workspace=brepjs-sheetmetal
+      - run: npm run build --workspace=brepjs-sheetmetal
+
   test:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -335,7 +353,7 @@ jobs:
 
   ci-pass:
     if: always()
-    needs: [changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-agent, test, size, benchmark]
+    needs: [changes, typecheck, lint, quality, build, playground-build, packages-viewer, packages-agent, packages-sheetmetal, test, size, benchmark]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
