@@ -80,7 +80,7 @@ export interface BendReport {
 }
 
 export type SheetMetalWarning = {
-  code: 'COLLISION' | 'MIN_RADIUS' | 'INVALID_SOLID';
+  code: 'COLLISION' | 'SEAM_CUT' | 'MIN_RADIUS' | 'INVALID_SOLID';
   message: string;
   featureId?: string | undefined;
 };

@@ -96,9 +96,9 @@ export function reportFromUnfold(result: UnfoldResult): Result<BendReport> {
   }
 
   const [run, width] = report.totalFlatSize;
-  if (!Number.isFinite(run) || run < 0 || !Number.isFinite(width) || width <= 0) {
+  if (!Number.isFinite(run) || run <= 0 || !Number.isFinite(width) || width <= 0) {
     return err(
-      validationError('INVALID_FLAT_SIZE', `totalFlatSize must be finite with positive width, got [${run}, ${width}]`)
+      validationError('INVALID_FLAT_SIZE', `totalFlatSize must be finite with positive dimensions, got [${run}, ${width}]`)
     );
   }
 

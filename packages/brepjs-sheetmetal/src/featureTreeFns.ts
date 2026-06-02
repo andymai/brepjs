@@ -149,7 +149,7 @@ export function buildFeatureTree(graph: FeatureGraph, rootId: string = ROOT_FLAT
     if (treeEdges.has(edge)) continue;
     seams.push({ bend: edge.bend, between: [edge.parent, edge.child] });
     warnings.push({
-      code: 'COLLISION',
+      code: 'SEAM_CUT',
       message: `closed profile: bend '${edge.bend.id}' (${edge.parent}↔${edge.child}) becomes a seam cut`,
       featureId: edge.bend.id,
     });

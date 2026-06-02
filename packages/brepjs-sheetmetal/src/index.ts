@@ -66,6 +66,7 @@ export type {
   MiterSpec,
   BendFeature,
   FlangeFeature,
+  CornerMiter,
   SheetMetalPart,
   FlatPattern,
   BendReport,

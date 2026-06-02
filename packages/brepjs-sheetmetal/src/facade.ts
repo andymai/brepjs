@@ -103,6 +103,8 @@ class SheetMetalPartHandle {
 
 /** Authoring builder — accumulates the base/flanges/material spec, then folds. */
 class SheetMetalBuilder {
+  private built?: SheetMetalPartHandle;
+
   constructor(private readonly spec: AuthorSpec) {}
 
   /** Add a flange folded up off a base edge. */
@@ -115,9 +117,14 @@ class SheetMetalBuilder {
     return new SheetMetalBuilder({ ...this.spec, material });
   }
 
-  /** Fold the accumulated spec into a 3D part, re-entering the fluent chain. */
+  /**
+   * Fold the accumulated spec into a 3D part, re-entering the fluent chain.
+   * Memoized so chaining multiple terminal shortcuts (e.g. `unfold()` then
+   * `report()`) authors the solid only once.
+   */
   build(): SheetMetalPartHandle {
-    return new SheetMetalPartHandle(unwrapOrThrow(author(this.spec)));
+    this.built ??= new SheetMetalPartHandle(unwrapOrThrow(author(this.spec)));
+    return this.built;
   }
 
   // ----- part-consuming shortcuts (build then delegate) -----
