@@ -81,6 +81,30 @@ export function mesh(
   }
 }
 
+/**
+ * Append a per-edge polyline (`pointCount` points starting at float index
+ * `start` in `heap`) to `out` as a line list — consecutive point pairs, one per
+ * segment. Skips degenerate samples the curve sampler repeats on tiny edges.
+ */
+function pushPolylineSegments(
+  heap: Float32Array,
+  start: number,
+  pointCount: number,
+  out: number[]
+): void {
+  for (let j = 0; j + 1 < pointCount; j++) {
+    const a = start + j * 3;
+    const x0 = heap[a] ?? 0,
+      y0 = heap[a + 1] ?? 0,
+      z0 = heap[a + 2] ?? 0;
+    const x1 = heap[a + 3] ?? 0,
+      y1 = heap[a + 4] ?? 0,
+      z1 = heap[a + 5] ?? 0;
+    if (x0 === x1 && y0 === y1 && z0 === z1) continue;
+    out.push(x0, y0, z0, x1, y1, z1);
+  }
+}
+
 export function meshEdges(
   k: OcctKernelWasm,
   Module: OcctWasmModule,
@@ -90,28 +114,34 @@ export function meshEdges(
 ): KernelEdgeMeshResult {
   const edgeData = k.wireframe(unwrap(shape), tolerance);
   try {
-    const pointCount = edgeData.pointCount;
+    const heap = Module.HEAPF32;
     const ptr = edgeData.getPointsPtr() >> 2;
 
-    const lines = new Float32Array(pointCount);
-    for (let i = 0; i < pointCount; i++) {
-      lines[i] = Module.HEAPF32[ptr + i] ?? 0;
-    }
-
+    // wireframe() samples each edge into a polyline (N points along the curve),
+    // concatenated per edge with edgeGroups giving each edge's {start, count} as
+    // float offsets into the points buffer. KernelEdgeMeshResult.lines is a flat
+    // *line list* (consecutive point pairs, one per segment) for THREE.LineSegments
+    // — so expand each polyline into pairs. Emitting the raw polyline as a line
+    // list draws every other segment and joins the end of one edge to the start of
+    // the next: zero-length pairs where edges share a vertex, spurious diagonals
+    // across empty space where they don't.
+    const lineList: number[] = [];
     const edgeGroups: Array<{ start: number; count: number; edgeHash: number }> = [];
     const egCount = edgeData.edgeGroupCount;
-    if (egCount > 0) {
-      const egPtr = edgeData.getEdgeGroupsPtr() >> 2;
-      for (let i = 0; i < egCount; i += 3) {
-        edgeGroups.push({
-          start: Module.HEAP32[egPtr + i] ?? 0,
-          count: Module.HEAP32[egPtr + i + 1] ?? 0,
-          edgeHash: Module.HEAP32[egPtr + i + 2] ?? 0,
-        });
-      }
+    const egPtr = egCount > 0 ? edgeData.getEdgeGroupsPtr() >> 2 : 0;
+    for (let i = 0; i < egCount; i += 3) {
+      const start = ptr + (Module.HEAP32[egPtr + i] ?? 0);
+      const pointCount = Math.floor((Module.HEAP32[egPtr + i + 1] ?? 0) / 3);
+      const segStart = lineList.length / 3;
+      pushPolylineSegments(heap, start, pointCount, lineList);
+      edgeGroups.push({
+        start: segStart,
+        count: lineList.length / 3 - segStart,
+        edgeHash: Module.HEAP32[egPtr + i + 2] ?? 0,
+      });
     }
 
-    return { lines, edgeGroups };
+    return { lines: new Float32Array(lineList), edgeGroups };
   } finally {
     edgeData.delete();
   }

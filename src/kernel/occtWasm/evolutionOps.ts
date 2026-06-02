@@ -26,6 +26,7 @@ import {
   unwrap,
   wrapResult,
 } from './helpers.js';
+import { resolveBooleanTool } from './booleanOps.js';
 
 /**
  * Parse an EvolutionData result from the WASM kernel into a ShapeEvolution.
@@ -236,7 +237,12 @@ export function cutWithHistory(
 ): DiagnosticOperationResult {
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
-    const evo = k.cutWithHistory(unwrap(shape), unwrap(tool), hashVec, hashUpperBound);
+    const evo = k.cutWithHistory(
+      unwrap(shape),
+      resolveBooleanTool(k, tool),
+      hashVec,
+      hashUpperBound
+    );
     const { id, evolution } = parseEvolution(evo);
     return {
       shape: wrapResult(k, id),
@@ -259,7 +265,12 @@ export function intersectWithHistory(
 ): DiagnosticOperationResult {
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
-    const evo = k.intersectWithHistory(unwrap(shape), unwrap(tool), hashVec, hashUpperBound);
+    const evo = k.intersectWithHistory(
+      unwrap(shape),
+      resolveBooleanTool(k, tool),
+      hashVec,
+      hashUpperBound
+    );
     const { id, evolution } = parseEvolution(evo);
     return {
       shape: wrapResult(k, id),
