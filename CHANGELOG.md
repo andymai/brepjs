@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.38.0](https://github.com/andymai/brepjs/compare/brepjs-v18.37.0...brepjs-v18.38.0) (2026-06-02)
+
+
+### Features
+
+* **tooling:** add brepjs-vscode extension package ([#1148](https://github.com/andymai/brepjs/issues/1148)) ([f19a47b](https://github.com/andymai/brepjs/commit/f19a47bc25875296bdd3014ea0c17cfb275b722b))
+
 ## [18.37.0](https://github.com/andymai/brepjs/compare/brepjs-v18.36.0...brepjs-v18.37.0) (2026-06-02)
 
 
