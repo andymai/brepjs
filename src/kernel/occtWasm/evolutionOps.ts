@@ -265,7 +265,12 @@ export function intersectWithHistory(
 ): DiagnosticOperationResult {
   const hashVec = makeVecInt(Module, inputFaceHashes);
   try {
-    const evo = k.intersectWithHistory(unwrap(shape), unwrap(tool), hashVec, hashUpperBound);
+    const evo = k.intersectWithHistory(
+      unwrap(shape),
+      resolveBooleanTool(k, tool),
+      hashVec,
+      hashUpperBound
+    );
     const { id, evolution } = parseEvolution(evo);
     return {
       shape: wrapResult(k, id),

@@ -127,7 +127,7 @@ export function exportSTL(
     const { vertices, triangles } = mesh(shape, { tolerance, angularTolerance, skipNormals: true });
     return buildBinarySTL(vertices, triangles);
   }
-  return k.exportStl(unwrap(shape), 0.1, true);
+  return k.exportStl(unwrap(shape), tolerance, true);
 }
 
 /** Serialize a triangle soup as a binary STL (80-byte header + uint32 count + 50B/tri). */

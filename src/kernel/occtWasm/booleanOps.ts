@@ -59,7 +59,7 @@ export function intersect(
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  return wrapResult(k, k.intersect(unwrap(shape), unwrap(tool)));
+  return wrapResult(k, k.intersect(unwrap(shape), resolveBooleanTool(k, tool)));
 }
 
 export function section(
