@@ -45,6 +45,19 @@ impl RepairResult {
 
 /// Axis-aligned bounding box of flat xyz vertices. `verts` must be non-empty and
 /// a multiple of 3 (the TS bridge validates this before crossing the boundary).
+// Guard the lattice scalar params at the wasm boundary. The TS layer already
+// validates these, but this artifact is also consumed directly, and period == 0
+// makes the 2*PI/period scale non-finite (NaN field).
+fn check_lattice_params(period: f32, thickness: f32) -> Result<(), JsError> {
+    if !(period.is_finite() && period > 0.0) {
+        return Err(JsError::new("lattice period must be a positive finite number"));
+    }
+    if !(thickness.is_finite() && thickness > 0.0) {
+        return Err(JsError::new("lattice thickness must be a positive finite number"));
+    }
+    Ok(())
+}
+
 fn bbox(verts: &[f32]) -> ([f32; 3], [f32; 3]) {
     let mut min = [f32::INFINITY; 3];
     let mut max = [f32::NEG_INFINITY; 3];
@@ -113,6 +126,7 @@ pub fn lattice_infill(
 ) -> Result<RepairResult, JsError> {
     let kind = LatticeType::from_u32(lattice_type)
         .ok_or_else(|| JsError::new(&format!("unknown lattice type: {lattice_type}")))?;
+    check_lattice_params(period, thickness)?;
 
     let mesh = fwn::Mesh::from_flat(verts, tris);
     let (min, max) = bbox(verts);
@@ -159,6 +173,7 @@ pub fn tpms_box(
 ) -> Result<RepairResult, JsError> {
     let kind = LatticeType::from_u32(lattice_type)
         .ok_or_else(|| JsError::new(&format!("unknown lattice type: {lattice_type}")))?;
+    check_lattice_params(period, thickness)?;
 
     let mut grid = Grid::for_bounds(
         [min_x, min_y, min_z],

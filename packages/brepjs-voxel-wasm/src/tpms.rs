@@ -86,16 +86,21 @@ mod tests {
     }
 
     #[test]
-    fn gyroid_is_periodic_in_x() {
+    fn tpms_fields_are_periodic_on_every_axis() {
         let period = 2.0;
         let p = [0.37, 0.81, 0.12];
-        let shifted = [p[0] + period, p[1], p[2]];
-        let f0 = tpms_value(LatticeType::Gyroid, p, period);
-        let f1 = tpms_value(LatticeType::Gyroid, shifted, period);
-        assert!(
-            (f0 - f1).abs() < 1e-4,
-            "gyroid must repeat after one period in x: {f0} vs {f1}"
-        );
+        for kind in [LatticeType::Gyroid, LatticeType::SchwarzP, LatticeType::Diamond] {
+            let f0 = tpms_value(kind, p, period);
+            for axis in 0..3 {
+                let mut shifted = p;
+                shifted[axis] += period;
+                let f1 = tpms_value(kind, shifted, period);
+                assert!(
+                    (f0 - f1).abs() < 1e-4,
+                    "{kind:?} must repeat after one period on axis {axis}: {f0} vs {f1}"
+                );
+            }
+        }
     }
 
     #[test]
