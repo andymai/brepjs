@@ -319,14 +319,9 @@ export function scaleCurve2d(
   cx: number,
   cy: number
 ): Curve2dHandle {
-  const result = ow2d.scaleCurve2d(c2d(curve), factor, cx, cy);
-  // Fix: geometry2d scaleCurve2d doesn't scale line length. Patch it.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- patch line length
-  const r = result as any;
-  if (r.__bk2d === 'line' && typeof r.len === 'number') {
-    r.len = r.len * Math.abs(factor);
-  }
-  return c2dWrap(result);
+  // geometry2d.scaleCurve2d already scales line endpoints and recomputes length;
+  // do not re-patch len here (it would double-apply).
+  return c2dWrap(ow2d.scaleCurve2d(c2d(curve), factor, cx, cy));
 }
 
 export function mirrorCurve2dAtPoint(curve: Curve2dHandle, cx: number, cy: number): Curve2dHandle {

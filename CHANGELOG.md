@@ -1,5 +1,40 @@
 # Changelog
 
+## [18.43.0](https://github.com/andymai/brepjs/compare/brepjs-v18.42.0...brepjs-v18.43.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 3 element & profile breadth ([#1158](https://github.com/andymai/brepjs/issues/1158)) ([2dad1aa](https://github.com/andymai/brepjs/commit/2dad1aa07ac8f7ad2ccdb9cdc5527a0c0d7c31de))
+
+## [18.42.0](https://github.com/andymai/brepjs/compare/brepjs-v18.41.1...brepjs-v18.42.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 2 data conformance + geometry-representation breadth ([#1166](https://github.com/andymai/brepjs/issues/1166)) ([bafb95e](https://github.com/andymai/brepjs/commit/bafb95ea04687a4fb0d2ecb7b55f3f7a1d150a1d))
+
+## [18.41.1](https://github.com/andymai/brepjs/compare/brepjs-v18.41.0...brepjs-v18.41.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* **occtwasm:** expand wireframe polylines into a line list in meshEdges ([#1163](https://github.com/andymai/brepjs/issues/1163)) ([e4a05d8](https://github.com/andymai/brepjs/commit/e4a05d8670ea8a011d92e4e59bfa860163f7ccd9))
+
+## [18.41.0](https://github.com/andymai/brepjs/compare/brepjs-v18.40.1...brepjs-v18.41.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 1 foundations — deterministic guids, type layer, mvd, validation gates ([#1156](https://github.com/andymai/brepjs/issues/1156)) ([cf70425](https://github.com/andymai/brepjs/commit/cf70425ac496de7f7b7e822d36f0b653350ad27c))
+
+## [18.40.1](https://github.com/andymai/brepjs/compare/brepjs-v18.40.0...brepjs-v18.40.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* **occtwasm:** line-mirror transform, STL export adapter, compound boolean tool ([#1161](https://github.com/andymai/brepjs/issues/1161)) ([f25a40d](https://github.com/andymai/brepjs/commit/f25a40d537bf0d3c0f75f8c481385e622f1c25de))
+
 ## [18.40.0](https://github.com/andymai/brepjs/compare/brepjs-v18.39.0...brepjs-v18.40.0) (2026-06-02)
 
 

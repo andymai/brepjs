@@ -18,6 +18,23 @@ import type {
 import type { OcctKernelWasm, OcctWasmModule } from './occtWasmTypes.js';
 import { makeVecU32, unwrap, wrapResult } from './helpers.js';
 
+/**
+ * Normalize a boolean tool to a single fused solid when it is a compound of
+ * multiple solids (e.g. engraved text — one solid per glyph). occt-wasm's
+ * boolean returns an empty result for such compound tools where opencascade
+ * tolerated them; fusing the solids first yields a usable single tool.
+ * Single-solid (or non-solid) tools pass through untouched.
+ */
+export function resolveBooleanTool(k: OcctKernelWasm, tool: KernelShape): number {
+  const toolId = unwrap(tool);
+  const solids = k.getSubShapes(toolId, 'solid');
+  try {
+    return solids.size() > 1 ? k.fuseAll(solids) : toolId;
+  } finally {
+    solids.delete();
+  }
+}
+
 export function fuse(
   k: OcctKernelWasm,
   shape: KernelShape,
@@ -33,7 +50,7 @@ export function cut(
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  return wrapResult(k, k.cut(unwrap(shape), unwrap(tool)));
+  return wrapResult(k, k.cut(unwrap(shape), resolveBooleanTool(k, tool)));
 }
 
 export function intersect(
@@ -42,7 +59,7 @@ export function intersect(
   tool: KernelShape,
   _options?: BooleanOptions
 ): KernelShape {
-  return wrapResult(k, k.intersect(unwrap(shape), unwrap(tool)));
+  return wrapResult(k, k.intersect(unwrap(shape), resolveBooleanTool(k, tool)));
 }
 
 export function section(

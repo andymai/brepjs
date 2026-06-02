@@ -284,7 +284,7 @@ export function exportSTL(
     if (!getKernel().hasTriangulation(shape.wrapped)) {
       getKernel().meshShape(shape.wrapped, tolerance, angularTolerance);
     }
-    const stlData = getKernel().exportSTL(shape.wrapped, binary);
+    const stlData = getKernel().exportSTL(shape.wrapped, binary, tolerance, angularTolerance);
     return ok(new Blob([stlData], { type: 'application/sla' }));
   } catch (e) {
     return err(exportError(e, 'STL'));
