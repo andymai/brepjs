@@ -319,8 +319,8 @@ export function scaleCurve2d(
   cx: number,
   cy: number
 ): Curve2dHandle {
-  // geometry2d.scaleCurve2d now scales line endpoints + recomputes length, so
-  // the previous len-only patch here is removed (it would double-apply).
+  // geometry2d.scaleCurve2d already scales line endpoints and recomputes length;
+  // do not re-patch len here (it would double-apply).
   return c2dWrap(ow2d.scaleCurve2d(c2d(curve), factor, cx, cy));
 }
 
