@@ -17,7 +17,38 @@ import {
   writeSlabGeometry,
   writeBeamGeometry,
   writeColumnGeometry,
+  writeRoofGeometry,
 } from '../ifc-writer/geometryWriter.js';
+import {
+  writeSpaceGeometry,
+  writeSpaceEntity,
+  writeRelSpaceBoundary,
+} from '../ifc-writer/spaceWriter.js';
+import { writeRoofEntity, writeRoofType } from '../ifc-writer/roofWriter.js';
+import type { RoofPredefinedType } from '../specs/roofSpec.js';
+import { writeCurtainWall } from '../ifc-writer/curtainWallWriter.js';
+import {
+  writeFootingGeometry,
+  writePileGeometry,
+  writeFootingEntity,
+  writePileEntity,
+} from '../ifc-writer/foundationWriter.js';
+import { writeStairAssembly, writeRampAssembly } from '../ifc-writer/stairWriter.js';
+import { writeRailingGeometry, writeRailingEntity } from '../ifc-writer/railingWriter.js';
+import {
+  writeCoveringGeometry,
+  writeCoveringEntity,
+  writeRelCoversBldgElements,
+} from '../ifc-writer/coveringWriter.js';
+import {
+  writeElementAssemblyEntity,
+  writeRelNests,
+} from '../ifc-writer/assemblyWriter.js';
+import { writeSurfaceStyle, writeStyledItem } from '../ifc-writer/styleWriter.js';
+import {
+  writeRelConnectsElements,
+  writeRelConnectsPathElements,
+} from '../ifc-writer/connectivityWriter.js';
 import {
   writeRelAggregates,
   writeRelContainedInSpatialStructure,
@@ -37,6 +68,19 @@ import {
   writeBeamBaseQuantities,
   writeColumnCommonPset,
   writeColumnBaseQuantities,
+  writeSpaceCommonPset,
+  writeSpaceBaseQuantities,
+  writeRoofCommonPset,
+  writeRoofBaseQuantities,
+  writeCurtainWallCommonPset,
+  writeFootingCommonPset,
+  writeFootingBaseQuantities,
+  writePileCommonPset,
+  writePileBaseQuantities,
+  writeStairCommonPset,
+  writeRampCommonPset,
+  writeRailingCommonPset,
+  writeCoveringCommonPset,
 } from '../ifc-writer/psetWriter.js';
 import {
   writeOpeningGeometry,
@@ -66,7 +110,7 @@ import type { BimRelationship } from '../types/relationships.js';
 import { checkReferentialIntegrity } from '../validation/referentialIntegrity.js';
 import { checkSchema } from '../validation/schemaCheck.js';
 import { checkRoundTrip } from '../validation/roundTrip.js';
-import { hasErrors, type ValidationReport, type ValidationIssue } from '../validation/severity.js';
+import { hasErrors, issue, type ValidationReport, type ValidationIssue } from '../validation/severity.js';
 
 export async function toIfc(
   model: BimModel,
@@ -92,6 +136,16 @@ export async function toIfc(
   const doors = model.getDoors();
   const windows = model.getWindows();
   const proxies = model.getProxies();
+  const spaces = model.getSpaces();
+  const roofs = model.getRoofs();
+  const curtainWalls = model.getCurtainWalls();
+  const footings = model.getFootings();
+  const piles = model.getPiles();
+  const stairs = model.getStairs();
+  const ramps = model.getRamps();
+  const railings = model.getRailings();
+  const coverings = model.getCoverings();
+  const assemblies = model.getElementAssemblies();
 
   const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(w, meta);
 
@@ -257,6 +311,179 @@ export async function toIfc(
     }
   }
 
+  for (const [i, space] of spaces.entries()) {
+    const containingId = findContainerOf(space.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeSpaceGeometry(
+      w, space.spec, geomSubContextId, storeyPlacementId
+    );
+    const spaceExpressId = writeSpaceEntity(
+      w, space.guid, space.spec.name || `Space ${i + 1}`,
+      space.spec.longName ?? null,
+      space.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(space.localId, spaceExpressId);
+    placementMap.set(space.localId, localPlacementId);
+    writeSpaceCommonPset(w, ownerHistoryId, spaceExpressId, space.spec);
+    if (space.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, spaceExpressId, space.spec.customProperties);
+    }
+    writeSpaceBaseQuantities(w, ownerHistoryId, spaceExpressId, space.spec);
+  }
+
+  for (const [i, roof] of roofs.entries()) {
+    const containingId = findContainerOf(roof.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeRoofGeometry(
+      w, roof.spec, geomSubContextId, storeyPlacementId
+    );
+    const roofExpressId = writeRoofEntity(
+      w, roof.guid, `Roof ${i + 1}`, roof.spec.predefinedType,
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(roof.localId, roofExpressId);
+    placementMap.set(roof.localId, localPlacementId);
+    writeRoofCommonPset(w, ownerHistoryId, roofExpressId, roof.spec);
+    writeManufacturerPset(w, ownerHistoryId, roofExpressId, roof.spec);
+    if (roof.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, roofExpressId, roof.spec.customProperties);
+    }
+    writeRoofBaseQuantities(w, ownerHistoryId, roofExpressId, roof.spec);
+  }
+
+  for (const [i, curtainWall] of curtainWalls.entries()) {
+    const containingId = findContainerOf(curtainWall.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    // The writer also emits the wall's plates/members plus the IfcRelAggregates
+    // decomposing them into the wall. Only the wall is tracked in idMap so the
+    // spatial-containment relationship references the wall, not its parts.
+    const { curtainWallId } = writeCurtainWall(
+      w, curtainWall.spec, curtainWall.geometry,
+      `elem:CURTAIN_WALL:${curtainWall.localId}`,
+      `Curtain Wall ${i + 1}`,
+      ownerHistoryId, geomSubContextId, storeyPlacementId
+    );
+    idMap.set(curtainWall.localId, curtainWallId);
+    writeCurtainWallCommonPset(w, ownerHistoryId, curtainWallId, curtainWall.spec);
+    if (curtainWall.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, curtainWallId, curtainWall.spec.customProperties);
+    }
+  }
+
+  for (const [i, footing] of footings.entries()) {
+    const containingId = findContainerOf(footing.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writeFootingGeometry(
+      w, footing.spec, geomSubContextId, storeyPlacementId
+    );
+    const footingExpressId = writeFootingEntity(
+      w, footing.guid, `Footing ${i + 1}`, footing.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(footing.localId, footingExpressId);
+    placementMap.set(footing.localId, localPlacementId);
+    writeFootingCommonPset(w, ownerHistoryId, footingExpressId, footing.spec);
+    if (footing.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, footingExpressId, footing.spec.customProperties);
+    }
+    writeFootingBaseQuantities(w, ownerHistoryId, footingExpressId, footing.spec);
+  }
+
+  for (const [i, pile] of piles.entries()) {
+    const containingId = findContainerOf(pile.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId } = writePileGeometry(
+      w, pile.spec, geomSubContextId, storeyPlacementId
+    );
+    const pileExpressId = writePileEntity(
+      w, pile.guid, `Pile ${i + 1}`, pile.spec.predefinedType ?? 'NOTDEFINED',
+      pile.spec.constructionType ?? null,
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(pile.localId, pileExpressId);
+    placementMap.set(pile.localId, localPlacementId);
+    writePileCommonPset(w, ownerHistoryId, pileExpressId, pile.spec);
+    if (pile.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, pileExpressId, pile.spec.customProperties);
+    }
+    writePileBaseQuantities(w, ownerHistoryId, pileExpressId, pile.spec);
+  }
+
+  for (const [i, assembly] of assemblies.entries()) {
+    const containingId = findContainerOf(assembly.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const assemblyExpressId = writeElementAssemblyEntity(
+      w, assembly.guid, assembly.spec.name ?? `Assembly ${i + 1}`,
+      assembly.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, storeyPlacementId, null,
+      assembly.spec.assemblyPlace ?? 'NOTDEFINED'
+    );
+    idMap.set(assembly.localId, assemblyExpressId);
+  }
+
+  for (const stair of stairs) {
+    const containingId = findContainerOf(stair.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const result = writeStairAssembly(
+      w, stair.spec, `${stair.localId}`, ownerHistoryId, geomSubContextId, storeyPlacementId
+    );
+    if (!result.ok) return err(result.error);
+    idMap.set(stair.localId, result.value.assemblyExpressId);
+    writeStairCommonPset(w, ownerHistoryId, result.value.assemblyExpressId, stair.spec);
+  }
+
+  for (const ramp of ramps) {
+    const containingId = findContainerOf(ramp.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const result = writeRampAssembly(
+      w, ramp.spec, `${ramp.localId}`, ownerHistoryId, geomSubContextId, storeyPlacementId
+    );
+    if (!result.ok) return err(result.error);
+    idMap.set(ramp.localId, result.value.assemblyExpressId);
+    writeRampCommonPset(w, ownerHistoryId, result.value.assemblyExpressId, ramp.spec);
+  }
+
+  for (const [i, railing] of railings.entries()) {
+    const containingId = findContainerOf(railing.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId, bodyItemId } = writeRailingGeometry(
+      w, railing.spec, geomSubContextId, storeyPlacementId
+    );
+    const railingExpressId = writeRailingEntity(
+      w, railing.guid, `Railing ${i + 1}`, railing.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(railing.localId, railingExpressId);
+    placementMap.set(railing.localId, localPlacementId);
+    writeRailingCommonPset(w, ownerHistoryId, railingExpressId, railing.spec);
+    writeManufacturerPset(w, ownerHistoryId, railingExpressId, railing.spec);
+    if (railing.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, railingExpressId, railing.spec.customProperties);
+    }
+    applySurfaceStyle(w, model, railing.localId, bodyItemId);
+  }
+
+  for (const [i, covering] of coverings.entries()) {
+    const containingId = findContainerOf(covering.localId, relationships);
+    const storeyPlacementId = containingId !== null ? (placementMap.get(containingId) ?? null) : null;
+    const { localPlacementId, productDefinitionShapeId, bodyItemId } = writeCoveringGeometry(
+      w, covering.spec, geomSubContextId, storeyPlacementId
+    );
+    const coveringExpressId = writeCoveringEntity(
+      w, covering.guid, `Covering ${i + 1}`, covering.spec.predefinedType ?? 'NOTDEFINED',
+      ownerHistoryId, localPlacementId, productDefinitionShapeId
+    );
+    idMap.set(covering.localId, coveringExpressId);
+    placementMap.set(covering.localId, localPlacementId);
+    writeCoveringCommonPset(w, ownerHistoryId, coveringExpressId, covering.spec);
+    writeManufacturerPset(w, ownerHistoryId, coveringExpressId, covering.spec);
+    if (covering.spec.customProperties !== undefined) {
+      writeCustomPsets(w, ownerHistoryId, coveringExpressId, covering.spec.customProperties);
+    }
+    applySurfaceStyle(w, model, covering.localId, bodyItemId);
+  }
+
   const openingPlacementMap = new Map<LocalId, number>();
   const openingEntityMap = new Map<LocalId, number>();
 
@@ -359,6 +586,55 @@ export async function toIfc(
     if (structureExpressId === undefined || elementExpressIds.length === 0) continue;
     writeRelContainedInSpatialStructure(
       w, rel.guid, ownerHistoryId, structureExpressId, elementExpressIds
+    );
+  }
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'SPACE_BOUNDARY') continue;
+    const spaceExpressId = idMap.get(rel.spaceLocalId);
+    const elementExpressId = idMap.get(rel.elementLocalId);
+    if (spaceExpressId === undefined || elementExpressId === undefined) continue;
+    writeRelSpaceBoundary(
+      w, rel.guid, ownerHistoryId, spaceExpressId, elementExpressId, rel.connectionType
+    );
+  }
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'NESTS') continue;
+    const parentExpressId = idMap.get(rel.relatingObject);
+    const childExpressIds = rel.relatedObjects
+      .map((id) => idMap.get(id))
+      .filter((id): id is number => id !== undefined);
+    if (parentExpressId === undefined || childExpressIds.length === 0) continue;
+    writeRelNests(w, rel.guid, ownerHistoryId, parentExpressId, childExpressIds);
+  }
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'COVERS_ELEMENT') continue;
+    const hostExpressId = idMap.get(rel.hostLocalId);
+    const coveringExpressId = idMap.get(rel.coveringLocalId);
+    if (hostExpressId === undefined || coveringExpressId === undefined) continue;
+    writeRelCoversBldgElements(w, rel.guid, ownerHistoryId, hostExpressId, [coveringExpressId]);
+  }
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'CONNECTS_ELEMENTS') continue;
+    const relatingExpressId = idMap.get(rel.relatingElementLocalId);
+    const relatedExpressId = idMap.get(rel.relatedElementLocalId);
+    if (relatingExpressId === undefined || relatedExpressId === undefined) continue;
+    writeRelConnectsElements(
+      w, rel.guid, ownerHistoryId, relatingExpressId, relatedExpressId, rel.description ?? null
+    );
+  }
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'CONNECTS_PATH_ELEMENTS') continue;
+    const relatingExpressId = idMap.get(rel.relatingElementLocalId);
+    const relatedExpressId = idMap.get(rel.relatedElementLocalId);
+    if (relatingExpressId === undefined || relatedExpressId === undefined) continue;
+    writeRelConnectsPathElements(
+      w, rel.guid, ownerHistoryId, relatingExpressId, relatedExpressId,
+      rel.relatingConnectionType, rel.relatedConnectionType, rel.description ?? null
     );
   }
 
@@ -480,6 +756,11 @@ function writeTypeLayer(
     ['IFCCOLUMNTYPE', 'COLUMN', toOccurrences(model.getColumns(), (s) => s.predefinedType)],
     ['IFCDOORTYPE', 'DOOR', toOccurrences(model.getDoors(), () => 'NOTDEFINED')],
     ['IFCWINDOWTYPE', 'WINDOW', toOccurrences(model.getWindows(), () => 'NOTDEFINED')],
+    ['IFCSPACETYPE', 'SPACE', toOccurrences(model.getSpaces(), (s) => s.predefinedType)],
+    ['IFCFOOTINGTYPE', 'FOOTING', toOccurrences(model.getFootings(), (s) => s.predefinedType)],
+    ['IFCPILETYPE', 'PILE', toOccurrences(model.getPiles(), (s) => s.predefinedType)],
+    ['IFCRAILINGTYPE', 'RAILING', toOccurrences(model.getRailings(), (s) => s.predefinedType)],
+    ['IFCCOVERINGTYPE', 'COVERING', toOccurrences(model.getCoverings(), (s) => s.predefinedType)],
   ];
 
   // Model-scope (project GlobalId) mixed into type/rel GUID keys so type objects
@@ -502,6 +783,24 @@ function writeTypeLayer(
       const relGuid = deriveIfcGuidSync(`rel-type:${scope}:${category}:${pred}`);
       writeIfcType(w, ownerHistoryId, typeName, typeGuid, relGuid, pred, expressIds);
     }
+  }
+
+  // Roof uses its own self-contained IfcRoofType writer (which carries the
+  // IfcRoofTypeEnum predefined-type), grouped by predefinedType like the others.
+  const roofByPredefined = new Map<RoofPredefinedType, number[]>();
+  for (const roof of model.getRoofs()) {
+    const expressId = idMap.get(roof.localId);
+    if (expressId === undefined) continue;
+    const pred = roof.spec.predefinedType;
+    const list = roofByPredefined.get(pred) ?? [];
+    list.push(expressId);
+    roofByPredefined.set(pred, list);
+  }
+  for (const [pred, expressIds] of roofByPredefined) {
+    if (expressIds.length === 0) continue;
+    const typeGuid = deriveIfcGuidSync(`type:${scope}:ROOF:${pred}`);
+    const relGuid = deriveIfcGuidSync(`rel-type:${scope}:ROOF:${pred}`);
+    writeRoofType(w, ownerHistoryId, typeGuid, relGuid, pred, expressIds);
   }
 }
 
@@ -581,6 +880,12 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
     ['Beam', model.getBeams()],
     ['Column', model.getColumns()],
     ['Proxy', model.getProxies()],
+    ['Space', model.getSpaces()],
+    ['Roof', model.getRoofs()],
+    ['Footing', model.getFootings()],
+    ['Pile', model.getPiles()],
+    ['Railing', model.getRailings()],
+    ['Covering', model.getCoverings()],
   ];
   for (const [label, elements] of groups) {
     elements.forEach((el, index) => {
@@ -588,6 +893,31 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
       issues.push(...report.issues);
     });
   }
+
+  // Ramp flights are emitted as simplified-but-valid inclined-slab solids; surface
+  // this as an info-level note (does not block export). Stair flights are real
+  // stepped solids and are not flagged here.
+  model.getRamps().forEach((ramp, index) => {
+    if (ramp.spec.flights.length === 0) return;
+    issues.push(
+      issue(
+        'info',
+        'SIMPLIFIED_GEOMETRY',
+        `Ramp ${index + 1} uses simplified inclined-slab flight geometry`
+      )
+    );
+  });
+
+  // Curtain wall geometry is a grid of component solids (panels + mullions);
+  // validate each component individually.
+  model.getCurtainWalls().forEach((cw, index) => {
+    const components = [...cw.geometry.panels, ...cw.geometry.mullions];
+    components.forEach((component, ci) => {
+      const report = checkGeometryValidity(component.solid, `CurtainWall ${index + 1} component ${ci + 1}`);
+      issues.push(...report.issues);
+    });
+  });
+
   return { issues };
 }
 
@@ -598,6 +928,23 @@ function findParentOf(childId: LocalId, relationships: readonly BimRelationship[
     }
   }
   return null;
+}
+
+/**
+ * Emits an IfcSurfaceStyle + IfcStyledItem for an element when the model has a
+ * surface style assigned to it, linking the style to the element's body
+ * representation item. No-op when no style is set.
+ */
+function applySurfaceStyle(
+  w: IfcWriter,
+  model: BimModel,
+  elementLocalId: LocalId,
+  bodyItemId: number
+): void {
+  const style = model.getSurfaceStyle(elementLocalId);
+  if (style === null) return;
+  const styleId = writeSurfaceStyle(w, style);
+  writeStyledItem(w, bodyItemId, styleId);
 }
 
 function findContainerOf(elementId: LocalId, relationships: readonly BimRelationship[]): LocalId | null {

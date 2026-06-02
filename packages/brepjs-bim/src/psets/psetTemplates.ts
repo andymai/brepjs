@@ -20,8 +20,23 @@ export type PsetMeasureType =
   | 'IFCPLANEANGLEMEASURE'
   | 'IFCTHERMALTRANSMITTANCEMEASURE';
 
-/** The six element categories that carry a standard Pset_*Common set. */
-export type PsetCategory = 'WALL' | 'SLAB' | 'BEAM' | 'COLUMN' | 'DOOR' | 'WINDOW';
+/** The element categories that carry a standard Pset_*Common set. */
+export type PsetCategory =
+  | 'WALL'
+  | 'SLAB'
+  | 'BEAM'
+  | 'COLUMN'
+  | 'DOOR'
+  | 'WINDOW'
+  | 'SPACE'
+  | 'ROOF'
+  | 'CURTAIN_WALL'
+  | 'FOOTING'
+  | 'PILE'
+  | 'STAIR'
+  | 'RAMP'
+  | 'RAILING'
+  | 'COVERING';
 
 interface SingleValueTemplate {
   readonly name: string;
@@ -100,6 +115,10 @@ export const PSET_PROPERTY_TYPE_TABLE: Readonly<Record<string, PsetMeasureType>>
   Infiltration: 'IFCREAL',
   GlazingAreaFraction: 'IFCPOSITIVERATIOMEASURE',
   SecurityRating: 'IFCLABEL',
+  // Space-specific (Pset_SpaceCommon)
+  OccupancyType: 'IFCLABEL',
+  FinishCeiling: 'IFCLABEL',
+  FinishFloor: 'IFCLABEL',
 };
 
 const WALL_COMMON_TEMPLATE: PsetTemplate = {
@@ -196,6 +215,103 @@ const WINDOW_COMMON_TEMPLATE: PsetTemplate = {
   ],
 };
 
+const SPACE_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_SpaceCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FinishCeiling', 'IFCLABEL'),
+    single('FinishFloor', 'IFCLABEL'),
+    single('OccupancyType', 'IFCLABEL'),
+  ],
+};
+
+const ROOF_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_RoofCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FireRating', 'IFCLABEL'),
+    single('ThermalTransmittance', 'IFCTHERMALTRANSMITTANCEMEASURE'),
+  ],
+};
+
+const CURTAIN_WALL_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_CurtainWallCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FireRating', 'IFCLABEL'),
+    single('ThermalTransmittance', 'IFCTHERMALTRANSMITTANCEMEASURE'),
+  ],
+};
+
+const FOOTING_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_FootingCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('LoadBearing', 'IFCBOOLEAN'),
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FireRating', 'IFCLABEL'),
+  ],
+};
+
+const PILE_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_PileCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('LoadBearing', 'IFCBOOLEAN'),
+  ],
+};
+
+const STAIR_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_StairCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FireRating', 'IFCLABEL'),
+    single('LoadBearing', 'IFCBOOLEAN'),
+  ],
+};
+
+const RAMP_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_RampCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FireRating', 'IFCLABEL'),
+    single('LoadBearing', 'IFCBOOLEAN'),
+  ],
+};
+
+const RAILING_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_RailingCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FireRating', 'IFCLABEL'),
+  ],
+};
+
+const COVERING_COMMON_TEMPLATE: PsetTemplate = {
+  psetName: 'Pset_CoveringCommon',
+  properties: [
+    single('Reference', 'IFCIDENTIFIER'),
+    STATUS_PROPERTY,
+    single('IsExternal', 'IFCBOOLEAN'),
+    single('FireRating', 'IFCLABEL'),
+    single('ThermalTransmittance', 'IFCTHERMALTRANSMITTANCEMEASURE'),
+  ],
+};
+
 /** Standard Pset_*Common template keyed by element category. */
 export const PSET_TEMPLATES: Readonly<Record<PsetCategory, PsetTemplate>> = {
   WALL: WALL_COMMON_TEMPLATE,
@@ -204,6 +320,15 @@ export const PSET_TEMPLATES: Readonly<Record<PsetCategory, PsetTemplate>> = {
   COLUMN: COLUMN_COMMON_TEMPLATE,
   DOOR: DOOR_COMMON_TEMPLATE,
   WINDOW: WINDOW_COMMON_TEMPLATE,
+  SPACE: SPACE_COMMON_TEMPLATE,
+  ROOF: ROOF_COMMON_TEMPLATE,
+  CURTAIN_WALL: CURTAIN_WALL_COMMON_TEMPLATE,
+  FOOTING: FOOTING_COMMON_TEMPLATE,
+  PILE: PILE_COMMON_TEMPLATE,
+  STAIR: STAIR_COMMON_TEMPLATE,
+  RAMP: RAMP_COMMON_TEMPLATE,
+  RAILING: RAILING_COMMON_TEMPLATE,
+  COVERING: COVERING_COMMON_TEMPLATE,
 };
 
 const WEBIFC_CONSTANT_BY_MEASURE: Readonly<Record<PsetMeasureType, number>> = {

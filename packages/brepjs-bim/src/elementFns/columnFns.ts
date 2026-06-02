@@ -5,6 +5,8 @@ import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { BimError } from '../errors/bimError.js';
 import { specError, fromBrepError, geometryError } from '../errors/bimError.js';
 import { profileToPolygon } from './profileFns.js';
+import { isExtendedProfile } from '../specs/profile.js';
+import { extendedProfileToFace } from '../specs/profilesExtended.js';
 
 // Returned solid is unplaced template geometry: profile in the global XY plane
 // (cross-section centered on the local origin), extruded along +Z by height.
@@ -14,7 +16,27 @@ export function columnToSolid(spec: ColumnSpec): Result<ValidSolid, BimError> {
     return err(specError('COLUMN_ZERO_HEIGHT', 'Column height must be positive'));
   }
 
-  const profilePts = profileToPolygon(spec.profile);
+  // Extended/hollow profiles have no single outer polygon; build the face (with
+  // voids) directly and extrude along +Z like the core path.
+  if (isExtendedProfile(spec.profile)) {
+    const faceResult = extendedProfileToFace(spec.profile);
+    if (!faceResult.ok) return err(faceResult.error);
+    using face = faceResult.value;
+    const extResult = extrude(face, [0, 0, spec.height]);
+    if (!extResult.ok) {
+      return err(fromBrepError(extResult.error, 'COLUMN_EXTRUDE_FAILED', 'Failed to extrude column profile'));
+    }
+    const extSolid = extResult.value;
+    if (!isValidSolid(extSolid)) {
+      extSolid[Symbol.dispose]();
+      return err(geometryError('COLUMN_INVALID_SOLID', 'Extruded column solid failed validity check'));
+    }
+    return ok(extSolid);
+  }
+
+  const profilePtsResult = profileToPolygon(spec.profile);
+  if (!profilePtsResult.ok) return err(profilePtsResult.error);
+  const profilePts = profilePtsResult.value;
 
   const profileResult = polygon(profilePts);
   if (!profileResult.ok) {

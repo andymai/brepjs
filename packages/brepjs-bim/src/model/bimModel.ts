@@ -16,6 +16,11 @@ import type {
   VoidsWallRel,
   VoidsSlabRel,
   FillsOpeningRel,
+  SpaceBoundaryRel,
+  NestsRel,
+  ConnectsElementsRel,
+  ConnectsPathElementsRel,
+  CoversElementRel,
 } from '../types/relationships.js';
 import type { MaterialLayer } from '../types/materialTypes.js';
 import type { ClassificationRef } from '../types/classificationTypes.js';
@@ -25,6 +30,16 @@ import type { BeamSpec } from '../specs/beamSpec.js';
 import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { DoorSpec, WindowSpec, SlabOpeningInput } from '../specs/openingSpec.js';
 import type { ProxySpec } from '../specs/proxySpec.js';
+import type { SpaceSpec } from '../specs/spaceSpec.js';
+import type { RoofSpec } from '../specs/roofSpec.js';
+import type { CurtainWallSpec } from '../specs/curtainWallSpec.js';
+import type { FootingSpec, PileSpec } from '../specs/foundationSpec.js';
+import type { StairSpec } from '../specs/stairSpec.js';
+import type { RampSpec } from '../specs/rampSpec.js';
+import type { RailingSpec } from '../specs/railingSpec.js';
+import type { CoveringSpec } from '../specs/coveringSpec.js';
+import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
+import type { SurfaceStyleSpec } from '../ifc-writer/styleWriter.js';
 import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
 import { wallToSolid } from '../elementFns/wallFns.js';
 import { slabToSolid } from '../elementFns/slabFns.js';
@@ -32,10 +47,17 @@ import { beamToSolid } from '../elementFns/beamFns.js';
 import { columnToSolid } from '../elementFns/columnFns.js';
 import { openingToSolid } from '../elementFns/openingFns.js';
 import { slabOpeningToSolid } from '../elementFns/slabOpeningFns.js';
+import { spaceToSolid } from '../elementFns/spaceFns.js';
+import { roofToSolid } from '../elementFns/roofFns.js';
+import { curtainWallToGrid } from '../elementFns/curtainWallFns.js';
+import { footingToSolid, pileToSolid } from '../elementFns/foundationFns.js';
+import { railingToSolid } from '../elementFns/railingFns.js';
+import { coveringToSolid } from '../elementFns/coveringFns.js';
 
 export class BimModel {
   readonly #elements = new Map<LocalId, AnyBimElement>();
   readonly #relationships = new Map<LocalId, BimRelationship>();
+  readonly #surfaceStyles = new Map<LocalId, SurfaceStyleSpec>();
   readonly #counter = makeLocalIdCounter();
   #projectId: LocalId | null = null;
   // Per-model scope mixed into every derived GlobalId so two distinct models do
@@ -62,9 +84,19 @@ export class BimModel {
         el.category === 'SLAB' ||
         el.category === 'BEAM' ||
         el.category === 'COLUMN' ||
-        el.category === 'PROXY'
+        el.category === 'PROXY' ||
+        el.category === 'SPACE' ||
+        el.category === 'ROOF' ||
+        el.category === 'FOOTING' ||
+        el.category === 'PILE' ||
+        el.category === 'RAILING' ||
+        el.category === 'COVERING'
       ) {
         el.geometry[Symbol.dispose]();
+      } else if (el.category === 'CURTAIN_WALL') {
+        // Curtain wall geometry is a grid of component solids (panels + mullions).
+        for (const panel of el.geometry.panels) panel.solid[Symbol.dispose]();
+        for (const mullion of el.geometry.mullions) mullion.solid[Symbol.dispose]();
       }
     }
   }
@@ -115,6 +147,210 @@ export class BimModel {
     this.#associateMaterial(id, spec);
     this.#associateClassification(id, spec);
     return ok(id);
+  }
+
+  addSpace(spec: SpaceSpec): Result<LocalId, BimError> {
+    const geomResult = spaceToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('SPACE', spec, geomResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  addRoof(spec: RoofSpec): Result<LocalId, BimError> {
+    const geomResult = roofToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('ROOF', spec, geomResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  addCurtainWall(spec: CurtainWallSpec): Result<LocalId, BimError> {
+    const gridResult = curtainWallToGrid(spec);
+    if (!gridResult.ok) return err(gridResult.error);
+    const id = this.#makeElement('CURTAIN_WALL', spec, gridResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  addFooting(spec: FootingSpec): Result<LocalId, BimError> {
+    const geomResult = footingToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('FOOTING', spec, geomResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  addPile(spec: PileSpec): Result<LocalId, BimError> {
+    const geomResult = pileToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('PILE', spec, geomResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  /**
+   * Adds an IfcStair assembly. Geometry for each flight is built and written by
+   * the IFC layer from `spec.flights`; the STAIR element itself carries no solid
+   * (the assembly container's Representation is null, valid per IFC4).
+   */
+  addStair(spec: StairSpec): Result<LocalId, BimError> {
+    const id = this.#makeElement('STAIR', spec, null);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  /**
+   * Adds an IfcRamp assembly. Geometry for each flight is built and written by the
+   * IFC layer from `spec.flights`; the RAMP element carries no solid of its own.
+   */
+  addRamp(spec: RampSpec): Result<LocalId, BimError> {
+    const id = this.#makeElement('RAMP', spec, null);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  addRailing(spec: RailingSpec): Result<LocalId, BimError> {
+    const geomResult = railingToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('RAILING', spec, geomResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    return ok(id);
+  }
+
+  /**
+   * Adds an IfcCovering. When `hostLocalId` is supplied, an
+   * IfcRelCoversBldgElements linking the covering to its host (e.g. a slab it
+   * finishes) is recorded for export.
+   */
+  addCovering(spec: CoveringSpec, hostLocalId?: LocalId): Result<LocalId, BimError> {
+    const geomResult = coveringToSolid(spec);
+    if (!geomResult.ok) return err(geomResult.error);
+    const id = this.#makeElement('COVERING', spec, geomResult.value);
+    this.#associateMaterial(id, spec);
+    this.#associateClassification(id, spec);
+    if (hostLocalId !== undefined) {
+      this.#makeRel<CoversElementRel>({
+        kind: 'COVERS_ELEMENT',
+        hostLocalId,
+        coveringLocalId: id,
+      });
+    }
+    return ok(id);
+  }
+
+  /**
+   * Adds an IfcElementAssembly grouping container. The assembly has no geometry;
+   * attach parts with {@link aggregate} (IfcRelAggregates) or {@link nest}
+   * (IfcRelNests, order-preserving). Returns the assembly's localId.
+   */
+  addElementAssembly(spec: ElementAssemblySpec): LocalId {
+    return this.#makeElement('ELEMENT_ASSEMBLY', spec, null);
+  }
+
+  /**
+   * Records an order-preserving IfcRelNests decomposing `parentId` into
+   * `childId`. Unlike {@link aggregate}, repeated calls extend the same nesting
+   * relationship in call order.
+   */
+  nest(parentId: LocalId, childId: LocalId): void {
+    let existingRel: NestsRel | undefined;
+    for (const rel of this.#relationships.values()) {
+      if (rel.kind === 'NESTS' && rel.relatingObject === parentId) {
+        existingRel = rel;
+        break;
+      }
+    }
+    if (existingRel !== undefined) {
+      const updated: NestsRel = {
+        ...existingRel,
+        relatedObjects: [...existingRel.relatedObjects, childId],
+      };
+      this.#relationships.set(existingRel.localId, updated);
+    } else {
+      this.#makeRel<NestsRel>({
+        kind: 'NESTS',
+        relatingObject: parentId,
+        relatedObjects: [childId],
+      });
+    }
+  }
+
+  /**
+   * Records an IfcRelConnectsElements logical connection between two elements.
+   * Returns the relationship's localId.
+   */
+  connectElements(
+    relatingElementLocalId: LocalId,
+    relatedElementLocalId: LocalId,
+    description?: string
+  ): LocalId {
+    return this.#makeRel<ConnectsElementsRel>({
+      kind: 'CONNECTS_ELEMENTS',
+      relatingElementLocalId,
+      relatedElementLocalId,
+      ...(description !== undefined ? { description } : {}),
+    });
+  }
+
+  /**
+   * Records an IfcRelConnectsPathElements connection between two path-based
+   * elements at the given path ends. Returns the relationship's localId.
+   */
+  connectPathElements(
+    relatingElementLocalId: LocalId,
+    relatedElementLocalId: LocalId,
+    relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED',
+    relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED',
+    description?: string
+  ): LocalId {
+    return this.#makeRel<ConnectsPathElementsRel>({
+      kind: 'CONNECTS_PATH_ELEMENTS',
+      relatingElementLocalId,
+      relatedElementLocalId,
+      relatingConnectionType,
+      relatedConnectionType,
+      ...(description !== undefined ? { description } : {}),
+    });
+  }
+
+  /**
+   * Assigns a surface style (colour + transparency) to an element. On export the
+   * style is emitted as IfcSurfaceStyle and linked to the element's body geometry
+   * via IfcStyledItem (currently honoured for railings and coverings, whose body
+   * representation item is surfaced by their geometry writers).
+   */
+  setSurfaceStyle(elementLocalId: LocalId, style: SurfaceStyleSpec): void {
+    this.#surfaceStyles.set(elementLocalId, style);
+  }
+
+  getSurfaceStyle(elementLocalId: LocalId): SurfaceStyleSpec | null {
+    return this.#surfaceStyles.get(elementLocalId) ?? null;
+  }
+
+  /**
+   * Records an IfcRelSpaceBoundary between a space and one of its bounding
+   * building elements. Returns the relationship's localId.
+   */
+  addSpaceBoundary(
+    spaceLocalId: LocalId,
+    elementLocalId: LocalId,
+    connectionType: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED' = 'PHYSICAL'
+  ): LocalId {
+    return this.#makeRel<SpaceBoundaryRel>({
+      kind: 'SPACE_BOUNDARY',
+      spaceLocalId,
+      elementLocalId,
+      connectionType,
+    });
   }
 
   /**
@@ -457,6 +693,86 @@ export class BimModel {
       if (el.category === 'PROXY') proxies.push(el);
     }
     return proxies;
+  }
+
+  getSpaces(): BimElement<'SPACE'>[] {
+    const spaces: BimElement<'SPACE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'SPACE') spaces.push(el);
+    }
+    return spaces;
+  }
+
+  getRoofs(): BimElement<'ROOF'>[] {
+    const roofs: BimElement<'ROOF'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'ROOF') roofs.push(el);
+    }
+    return roofs;
+  }
+
+  getCurtainWalls(): BimElement<'CURTAIN_WALL'>[] {
+    const curtainWalls: BimElement<'CURTAIN_WALL'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'CURTAIN_WALL') curtainWalls.push(el);
+    }
+    return curtainWalls;
+  }
+
+  getFootings(): BimElement<'FOOTING'>[] {
+    const footings: BimElement<'FOOTING'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'FOOTING') footings.push(el);
+    }
+    return footings;
+  }
+
+  getPiles(): BimElement<'PILE'>[] {
+    const piles: BimElement<'PILE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'PILE') piles.push(el);
+    }
+    return piles;
+  }
+
+  getStairs(): BimElement<'STAIR'>[] {
+    const stairs: BimElement<'STAIR'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'STAIR') stairs.push(el);
+    }
+    return stairs;
+  }
+
+  getRamps(): BimElement<'RAMP'>[] {
+    const ramps: BimElement<'RAMP'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'RAMP') ramps.push(el);
+    }
+    return ramps;
+  }
+
+  getRailings(): BimElement<'RAILING'>[] {
+    const railings: BimElement<'RAILING'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'RAILING') railings.push(el);
+    }
+    return railings;
+  }
+
+  getCoverings(): BimElement<'COVERING'>[] {
+    const coverings: BimElement<'COVERING'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'COVERING') coverings.push(el);
+    }
+    return coverings;
+  }
+
+  getElementAssemblies(): BimElement<'ELEMENT_ASSEMBLY'>[] {
+    const assemblies: BimElement<'ELEMENT_ASSEMBLY'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'ELEMENT_ASSEMBLY') assemblies.push(el);
+    }
+    return assemblies;
   }
 
   getAllElements(): AnyBimElement[] {

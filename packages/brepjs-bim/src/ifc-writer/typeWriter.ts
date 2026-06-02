@@ -8,7 +8,12 @@ export type IfcTypeName =
   | 'IFCBEAMTYPE'
   | 'IFCCOLUMNTYPE'
   | 'IFCDOORTYPE'
-  | 'IFCWINDOWTYPE';
+  | 'IFCWINDOWTYPE'
+  | 'IFCSPACETYPE'
+  | 'IFCFOOTINGTYPE'
+  | 'IFCPILETYPE'
+  | 'IFCRAILINGTYPE'
+  | 'IFCCOVERINGTYPE';
 
 export interface TypeWriteResult {
   typeExpressId: number;
@@ -22,6 +27,11 @@ const TYPE_CONSTANT: Record<IfcTypeName, number> = {
   IFCCOLUMNTYPE: WebIFC.IFCCOLUMNTYPE,
   IFCDOORTYPE: WebIFC.IFCDOORTYPE,
   IFCWINDOWTYPE: WebIFC.IFCWINDOWTYPE,
+  IFCSPACETYPE: WebIFC.IFCSPACETYPE,
+  IFCFOOTINGTYPE: WebIFC.IFCFOOTINGTYPE,
+  IFCPILETYPE: WebIFC.IFCPILETYPE,
+  IFCRAILINGTYPE: WebIFC.IFCRAILINGTYPE,
+  IFCCOVERINGTYPE: WebIFC.IFCCOVERINGTYPE,
 };
 
 function commonTypeFields(
@@ -63,6 +73,20 @@ function writeTypeObject(
       OperationType: { type: 3, value: 'NOTDEFINED' },
       ParameterTakesPrecedence: w.mkType(WebIFC.IFCBOOLEAN, false),
       UserDefinedOperationType: null,
+    });
+    return id;
+  }
+
+  // IfcSpaceType carries a trailing LongName attribute after the standard
+  // ElementType/PredefinedType tail shared by the other building element types.
+  if (typeName === 'IFCSPACETYPE') {
+    w.writeLine({
+      expressID: id,
+      type: WebIFC.IFCSPACETYPE,
+      ...base,
+      ElementType: null,
+      PredefinedType: { type: 3, value: predefinedType },
+      LongName: null,
     });
     return id;
   }

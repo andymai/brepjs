@@ -87,14 +87,20 @@ describe('profileCrossSectionArea', () => {
 
 describe('profileToPolygon', () => {
   it('rectangular returns 4 corners centered on origin', () => {
-    const pts = profileToPolygon({ kind: 'RECTANGULAR', width: 200, height: 400 });
+    const result = profileToPolygon({ kind: 'RECTANGULAR', width: 200, height: 400 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const pts = result.value;
     expect(pts).toHaveLength(4);
     expect(pts[0]).toEqual([-100, -200, 0]);
     expect(pts[2]).toEqual([100, 200, 0]);
   });
 
   it('circular returns N segments centered on origin', () => {
-    const pts = profileToPolygon({ kind: 'CIRCULAR', radius: 100 }, 16);
+    const result = profileToPolygon({ kind: 'CIRCULAR', radius: 100 }, 16);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const pts = result.value;
     expect(pts).toHaveLength(16);
     expect(pts[0]).toEqual([100, 0, 0]);
     // All points equidistant from origin
@@ -103,20 +109,24 @@ describe('profileToPolygon', () => {
     }
   });
 
-  it('throws if circleSegments < 3', () => {
-    expect(() =>
-      profileToPolygon({ kind: 'CIRCULAR', radius: 100 }, 2)
-    ).toThrow(/circleSegments/);
+  it('returns an error if circleSegments < 3', () => {
+    const result = profileToPolygon({ kind: 'CIRCULAR', radius: 100 }, 2);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('PROFILE_CIRCLE_SEGMENTS');
   });
 
   it('I-beam returns 12 points forming the I outline', () => {
-    const pts = profileToPolygon({
+    const result = profileToPolygon({
       kind: 'I_BEAM',
       overallWidth: 200,
       overallDepth: 400,
       flangeThickness: 15,
       webThickness: 10,
     });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const pts = result.value;
     expect(pts).toHaveLength(12);
     // Bottom-left flange corner
     expect(pts[0]).toEqual([-100, -200, 0]);

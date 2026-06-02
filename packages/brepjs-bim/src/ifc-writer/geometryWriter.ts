@@ -6,7 +6,10 @@ import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
 import type { ColumnSpec } from '../specs/columnSpec.js';
+import type { RoofSpec } from '../specs/roofSpec.js';
 import type { Profile } from '../specs/profile.js';
+import { isExtendedProfile } from '../specs/profile.js';
+import { writeExtendedProfileDef } from './profileDefWriter.js';
 import { toIfcLengthM } from '../units/units.js';
 
 export interface WallRepresentationIds {
@@ -190,6 +193,96 @@ export function writeSlabGeometry(
   return { localPlacementId, productDefinitionShapeId };
 }
 
+// Roof geometry mirrors a flat slab: a centred rectangle profile (length ×
+// width) extruded along local +Z by thickness. predefinedType carries the
+// intended roof shape to IFC consumers; the body is a flat slab regardless.
+export function writeRoofGeometry(
+  w: IfcWriter,
+  spec: RoofSpec,
+  geomSubContextId: number,
+  parentPlacementId: number | null
+): SlabRepresentationIds {
+  const placement3DId = writeAxis2Placement3D(
+    w,
+    spec.origin.map(toIfcLengthM) as [number, number, number],
+    spec.axisZ,
+    spec.axisX
+  );
+
+  const localPlacementId = w.nextId();
+  w.writeLine({
+    expressID: localPlacementId,
+    type: WebIFC.IFCLOCALPLACEMENT,
+    PlacementRelTo: parentPlacementId !== null ? w.ref(parentPlacementId) : null,
+    RelativePlacement: w.ref(placement3DId),
+  });
+
+  const lengthM = toIfcLengthM(spec.length);
+  const widthM = toIfcLengthM(spec.width);
+  const thicknessM = toIfcLengthM(spec.thickness);
+
+  const profileOriginId = w.nextId();
+  w.writeLine({
+    expressID: profileOriginId,
+    type: WebIFC.IFCCARTESIANPOINT,
+    Coordinates: [
+      w.mkType(WebIFC.IFCLENGTHMEASURE, lengthM / 2),
+      w.mkType(WebIFC.IFCLENGTHMEASURE, widthM / 2),
+    ],
+  });
+  const profilePosId = w.nextId();
+  w.writeLine({
+    expressID: profilePosId,
+    type: WebIFC.IFCAXIS2PLACEMENT2D,
+    Location: w.ref(profileOriginId),
+    RefDirection: null,
+  });
+
+  const profileId = w.nextId();
+  w.writeLine({
+    expressID: profileId,
+    type: WebIFC.IFCRECTANGLEPROFILEDEF,
+    ProfileType: { type: 3, value: 'AREA' },
+    ProfileName: null,
+    Position: w.ref(profilePosId),
+    XDim: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, lengthM),
+    YDim: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, widthM),
+  });
+
+  const extrusionPosId = writeAxis2Placement3D(w, [0, 0, 0]);
+  const extrusionDirId = writeDirection(w, [0, 0, 1]);
+  const extrusionId = w.nextId();
+  w.writeLine({
+    expressID: extrusionId,
+    type: WebIFC.IFCEXTRUDEDAREASOLID,
+    SweptArea: w.ref(profileId),
+    Position: w.ref(extrusionPosId),
+    ExtrudedDirection: w.ref(extrusionDirId),
+    Depth: w.mkType(WebIFC.IFCPOSITIVELENGTHMEASURE, thicknessM),
+  });
+
+  const shapeRepId = w.nextId();
+  w.writeLine({
+    expressID: shapeRepId,
+    type: WebIFC.IFCSHAPEREPRESENTATION,
+    ContextOfItems: w.ref(geomSubContextId),
+    RepresentationIdentifier: w.mkType(WebIFC.IFCLABEL, 'Body'),
+    RepresentationType: w.mkType(WebIFC.IFCLABEL, 'SweptSolid'),
+    Items: [w.ref(extrusionId)],
+  });
+
+  const productDefinitionShapeId = w.nextId();
+  w.writeLine({
+    expressID: productDefinitionShapeId,
+    type: WebIFC.IFCPRODUCTDEFINITIONSHAPE,
+    Name: null,
+    Description: null,
+    Representations: [w.ref(shapeRepId)],
+  });
+
+  return { localPlacementId, productDefinitionShapeId };
+}
+
 function writeAxis2Placement2D(w: IfcWriter): number {
   const originId = w.nextId();
   w.writeLine({
@@ -214,6 +307,9 @@ function writeAxis2Placement2D(w: IfcWriter): number {
 // ID of the profile entity (IfcRectangleProfileDef / IfcCircleProfileDef /
 // IfcIShapeProfileDef). All dimensions are converted to metres for IFC export.
 export function writeProfile(w: IfcWriter, profile: Profile): number {
+  if (isExtendedProfile(profile)) {
+    return writeExtendedProfileDef(w, profile);
+  }
   const positionId = writeAxis2Placement2D(w);
   const id = w.nextId();
   switch (profile.kind) {

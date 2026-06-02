@@ -65,6 +65,55 @@ export interface FillsOpeningRel {
   readonly fillerLocalId: LocalId;
 }
 
+export interface SpaceBoundaryRel {
+  readonly kind: 'SPACE_BOUNDARY';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly spaceLocalId: LocalId;
+  readonly elementLocalId: LocalId;
+  readonly connectionType: 'PHYSICAL' | 'VIRTUAL' | 'NOTDEFINED';
+}
+
+/** Element-level decomposition of an IfcElementAssembly into its parts. */
+export interface NestsRel {
+  readonly kind: 'NESTS';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly relatingObject: LocalId;
+  readonly relatedObjects: readonly LocalId[];
+}
+
+/** Logical connection between two elements (IfcRelConnectsElements). */
+export interface ConnectsElementsRel {
+  readonly kind: 'CONNECTS_ELEMENTS';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly relatingElementLocalId: LocalId;
+  readonly relatedElementLocalId: LocalId;
+  readonly description?: string | undefined;
+}
+
+/** Connection between two path-based elements at specified ends (IfcRelConnectsPathElements). */
+export interface ConnectsPathElementsRel {
+  readonly kind: 'CONNECTS_PATH_ELEMENTS';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly relatingElementLocalId: LocalId;
+  readonly relatedElementLocalId: LocalId;
+  readonly relatingConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
+  readonly relatedConnectionType: 'ATSTART' | 'ATEND' | 'ATPATH' | 'NOTDEFINED';
+  readonly description?: string | undefined;
+}
+
+/** Links a covering to the building element it covers (IfcRelCoversBldgElements). */
+export interface CoversElementRel {
+  readonly kind: 'COVERS_ELEMENT';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly hostLocalId: LocalId;
+  readonly coveringLocalId: LocalId;
+}
+
 export type BimRelationship =
   | AggregatesRel
   | ContainedInRel
@@ -72,4 +121,9 @@ export type BimRelationship =
   | AssociatesClassificationRel
   | VoidsWallRel
   | VoidsSlabRel
-  | FillsOpeningRel;
+  | FillsOpeningRel
+  | SpaceBoundaryRel
+  | NestsRel
+  | ConnectsElementsRel
+  | ConnectsPathElementsRel
+  | CoversElementRel;

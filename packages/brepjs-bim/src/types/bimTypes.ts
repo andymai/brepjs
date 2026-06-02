@@ -7,6 +7,16 @@ import type { BeamSpec } from '../specs/beamSpec.js';
 import type { ColumnSpec } from '../specs/columnSpec.js';
 import type { DoorSpec, WindowSpec } from '../specs/openingSpec.js';
 import type { ProxySpec } from '../specs/proxySpec.js';
+import type { SpaceSpec } from '../specs/spaceSpec.js';
+import type { RoofSpec } from '../specs/roofSpec.js';
+import type { CurtainWallSpec } from '../specs/curtainWallSpec.js';
+import type { CurtainWallGrid } from '../elementFns/curtainWallFns.js';
+import type { FootingSpec, PileSpec } from '../specs/foundationSpec.js';
+import type { StairSpec } from '../specs/stairSpec.js';
+import type { RampSpec } from '../specs/rampSpec.js';
+import type { RailingSpec } from '../specs/railingSpec.js';
+import type { CoveringSpec } from '../specs/coveringSpec.js';
+import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
 import type {
   ProjectSpec,
   SiteSpec,
@@ -23,6 +33,16 @@ export type BimCategory =
   | 'DOOR'
   | 'WINDOW'
   | 'PROXY'
+  | 'SPACE'
+  | 'ROOF'
+  | 'CURTAIN_WALL'
+  | 'FOOTING'
+  | 'PILE'
+  | 'STAIR'
+  | 'RAMP'
+  | 'RAILING'
+  | 'COVERING'
+  | 'ELEMENT_ASSEMBLY'
   | 'PROJECT'
   | 'SITE'
   | 'BUILDING'
@@ -70,24 +90,52 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
               ? WindowSpec
               : C extends 'PROXY'
                 ? ProxySpec
-                : C extends 'PROJECT'
-                  ? ProjectSpec
-                  : C extends 'SITE'
-                    ? SiteSpec
-                    : C extends 'BUILDING'
-                      ? BuildingSpec
-                      : C extends 'STOREY'
-                        ? StoreySpec
-                        : never;
+                : C extends 'SPACE'
+                  ? SpaceSpec
+                  : C extends 'ROOF'
+                    ? RoofSpec
+                    : C extends 'CURTAIN_WALL'
+                      ? CurtainWallSpec
+                      : C extends 'FOOTING'
+                        ? FootingSpec
+                        : C extends 'PILE'
+                          ? PileSpec
+                          : C extends 'STAIR'
+                            ? StairSpec
+                            : C extends 'RAMP'
+                              ? RampSpec
+                              : C extends 'RAILING'
+                                ? RailingSpec
+                                : C extends 'COVERING'
+                                  ? CoveringSpec
+                                  : C extends 'ELEMENT_ASSEMBLY'
+                                    ? ElementAssemblySpec
+                                    : C extends 'PROJECT'
+                                      ? ProjectSpec
+                                      : C extends 'SITE'
+                                        ? SiteSpec
+                                        : C extends 'BUILDING'
+                                          ? BuildingSpec
+                                          : C extends 'STOREY'
+                                            ? StoreySpec
+                                            : never;
 
-export type BimGeometryFor<C extends BimCategory> = C extends
-  | 'WALL'
-  | 'SLAB'
-  | 'BEAM'
-  | 'COLUMN'
-  | 'PROXY'
-  ? ValidSolid
-  : null;
+export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
+  ? CurtainWallGrid
+  : C extends
+        | 'WALL'
+        | 'SLAB'
+        | 'BEAM'
+        | 'COLUMN'
+        | 'PROXY'
+        | 'SPACE'
+        | 'ROOF'
+        | 'FOOTING'
+        | 'PILE'
+        | 'RAILING'
+        | 'COVERING'
+    ? ValidSolid
+    : null;
 
 export interface BimElement<C extends BimCategory> {
   readonly guid: IfcGuid;
@@ -106,6 +154,16 @@ export type AnyBimElement =
   | BimElement<'DOOR'>
   | BimElement<'WINDOW'>
   | BimElement<'PROXY'>
+  | BimElement<'SPACE'>
+  | BimElement<'ROOF'>
+  | BimElement<'CURTAIN_WALL'>
+  | BimElement<'FOOTING'>
+  | BimElement<'PILE'>
+  | BimElement<'STAIR'>
+  | BimElement<'RAMP'>
+  | BimElement<'RAILING'>
+  | BimElement<'COVERING'>
+  | BimElement<'ELEMENT_ASSEMBLY'>
   | BimElement<'PROJECT'>
   | BimElement<'SITE'>
   | BimElement<'BUILDING'>

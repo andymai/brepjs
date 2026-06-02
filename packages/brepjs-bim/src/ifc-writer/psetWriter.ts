@@ -4,6 +4,14 @@ import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
 import type { ColumnSpec } from '../specs/columnSpec.js';
+import type { SpaceSpec } from '../specs/spaceSpec.js';
+import type { RoofSpec } from '../specs/roofSpec.js';
+import type { CurtainWallSpec } from '../specs/curtainWallSpec.js';
+import type { FootingSpec, PileSpec } from '../specs/foundationSpec.js';
+import type { RailingSpec } from '../specs/railingSpec.js';
+import type { CoveringSpec } from '../specs/coveringSpec.js';
+import type { StairSpec } from '../specs/stairSpec.js';
+import type { RampSpec } from '../specs/rampSpec.js';
 import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
 import { profileCrossSectionArea } from '../elementFns/profileFns.js';
 import { toIfcLengthM } from '../units/units.js';
@@ -468,4 +476,214 @@ export function writeColumnBaseQuantities(
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_ColumnBaseQuantities', qtyIds);
   writeRelDefinesByProperties(w, ownerHistoryId, columnExpressId, qtoId);
+}
+
+export function writeSpaceCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  spaceExpressId: number,
+  spec: SpaceSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.finishCeiling !== undefined) values['FinishCeiling'] = spec.finishCeiling;
+  if (spec.finishFloor !== undefined) values['FinishFloor'] = spec.finishFloor;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, spaceExpressId, 'SPACE', values);
+}
+
+export function writeSpaceBaseQuantities(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  spaceExpressId: number,
+  spec: SpaceSpec
+): void {
+  const lengthM = toIfcLengthM(spec.length);
+  const widthM = toIfcLengthM(spec.width);
+  const heightM = toIfcLengthM(spec.height);
+  const grossFloorAreaM2 = lengthM * widthM;
+  const grossPerimeterM = 2 * (lengthM + widthM);
+  const grossVolumeM3 = grossFloorAreaM2 * heightM;
+
+  const qtyIds = [
+    writeQtyLength(w, 'Height', heightM),
+    writeQtyLength(w, 'GrossPerimeter', grossPerimeterM),
+    writeQtyArea(w, 'GrossFloorArea', grossFloorAreaM2),
+    writeQtyArea(w, 'NetFloorArea', grossFloorAreaM2),
+    writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+  ];
+
+  const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_SpaceBaseQuantities', qtyIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, spaceExpressId, qtoId);
+}
+
+export function writeRoofCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  roofExpressId: number,
+  spec: RoofSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, roofExpressId, 'ROOF', values);
+}
+
+export function writeRoofBaseQuantities(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  roofExpressId: number,
+  spec: RoofSpec
+): void {
+  const lengthM = toIfcLengthM(spec.length);
+  const widthM = toIfcLengthM(spec.width);
+  const thicknessM = toIfcLengthM(spec.thickness);
+  const grossAreaM2 = lengthM * widthM;
+  const grossVolumeM3 = grossAreaM2 * thicknessM;
+
+  const qtyIds = [
+    writeQtyArea(w, 'GrossArea', grossAreaM2),
+    writeQtyArea(w, 'NetArea', grossAreaM2),
+    writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+  ];
+
+  const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_RoofBaseQuantities', qtyIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, roofExpressId, qtoId);
+}
+
+export function writeCurtainWallCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  curtainWallExpressId: number,
+  spec: CurtainWallSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, curtainWallExpressId, 'CURTAIN_WALL', values);
+}
+
+export function writeFootingCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  footingExpressId: number,
+  spec: FootingSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, footingExpressId, 'FOOTING', values);
+}
+
+export function writeFootingBaseQuantities(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  footingExpressId: number,
+  spec: FootingSpec
+): void {
+  const lengthM = toIfcLengthM(spec.length);
+  const widthM = toIfcLengthM(spec.width);
+  const depthM = toIfcLengthM(spec.thickness);
+  const grossVolumeM3 = lengthM * widthM * depthM;
+
+  const qtyIds = [
+    writeQtyLength(w, 'Length', lengthM),
+    writeQtyLength(w, 'Width', widthM),
+    writeQtyLength(w, 'Depth', depthM),
+    writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+  ];
+
+  const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_FootingBaseQuantities', qtyIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, footingExpressId, qtoId);
+}
+
+export function writePileCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  pileExpressId: number,
+  spec: PileSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.loadBearing !== undefined) values['LoadBearing'] = spec.loadBearing;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, pileExpressId, 'PILE', values);
+}
+
+export function writePileBaseQuantities(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  pileExpressId: number,
+  spec: PileSpec
+): void {
+  const lengthM = toIfcLengthM(spec.length);
+  const crossSectionAreaM2 = profileCrossSectionArea(spec.profile) / 1_000_000;
+  const grossVolumeM3 = crossSectionAreaM2 * lengthM;
+
+  const qtyIds = [
+    writeQtyLength(w, 'Length', lengthM),
+    writeQtyArea(w, 'CrossSectionArea', crossSectionAreaM2),
+    writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
+    writeQtyVolume(w, 'NetVolume', grossVolumeM3),
+  ];
+
+  const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_PileBaseQuantities', qtyIds);
+  writeRelDefinesByProperties(w, ownerHistoryId, pileExpressId, qtoId);
+}
+
+export function writeStairCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  stairExpressId: number,
+  spec: StairSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, stairExpressId, 'STAIR', values);
+}
+
+export function writeRampCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  rampExpressId: number,
+  spec: RampSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, rampExpressId, 'RAMP', values);
+}
+
+export function writeRailingCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  railingExpressId: number,
+  spec: RailingSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, railingExpressId, 'RAILING', values);
+}
+
+export function writeCoveringCommonPset(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  coveringExpressId: number,
+  spec: CoveringSpec
+): void {
+  const values: Record<string, PsetValue> = {};
+  if (spec.isExternal !== undefined) values['IsExternal'] = spec.isExternal;
+  if (spec.fireRating !== undefined) values['FireRating'] = spec.fireRating;
+  if (spec.thermalTransmittance !== undefined) values['ThermalTransmittance'] = spec.thermalTransmittance;
+  if (spec.status !== undefined) values['Status'] = spec.status;
+  writeCommonPset(w, ownerHistoryId, coveringExpressId, 'COVERING', values);
 }
