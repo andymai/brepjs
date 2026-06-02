@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.37.0](https://github.com/andymai/brepjs/compare/brepjs-v18.36.0...brepjs-v18.37.0) (2026-06-02)
+
+
+### Features
+
+* **voxel:** Grid/Ops/Contour/Bridge seams (v1 repair slice) ([#1149](https://github.com/andymai/brepjs/issues/1149)) ([3ca84a0](https://github.com/andymai/brepjs/commit/3ca84a016005d28ac4970e197ba1ceb38f043b61))
+
 ## [18.36.0](https://github.com/andymai/brepjs/compare/brepjs-v18.35.6...brepjs-v18.36.0) (2026-06-01)
 
 
