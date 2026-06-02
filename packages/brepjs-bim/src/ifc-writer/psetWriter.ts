@@ -1,6 +1,5 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
-import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { SlabSpec } from '../specs/slabSpec.js';
 import type { BeamSpec } from '../specs/beamSpec.js';
@@ -47,7 +46,7 @@ function writePropertySet(
   w.writeLine({
     expressID: id,
     type: WebIFC.IFCPROPERTYSET,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(id)),
     OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
@@ -62,10 +61,11 @@ function writeRelDefinesByProperties(
   entityExpressId: number,
   psetId: number
 ): void {
+  const relId = w.nextId();
   w.writeLine({
-    expressID: w.nextId(),
+    expressID: relId,
     type: WebIFC.IFCRELDEFINESBYPROPERTIES,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(relId)),
     OwnerHistory: w.ref(ownerHistoryId),
     Name: null,
     Description: null,
@@ -181,7 +181,7 @@ function writeElementQuantity(
   w.writeLine({
     expressID: qtoId,
     type: WebIFC.IFCELEMENTQUANTITY,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(qtoId)),
     OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, qtoName),
     Description: null,

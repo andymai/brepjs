@@ -45,15 +45,22 @@ import {
   writeDoorCommonPset,
   writeWindowCommonPset,
 } from '../ifc-writer/openingWriter.js';
+import { writeIfcType } from '../ifc-writer/typeWriter.js';
+import type { IfcTypeName } from '../ifc-writer/typeWriter.js';
 import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { Result } from 'brepjs';
-import { err } from 'brepjs';
+import { err, ok } from 'brepjs';
 import type { LocalId } from '../identity/localId.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
+import { deriveIfcGuidSync } from '../identity/guidDerivation.js';
 import type { BimElement, WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
 import { isWallOpening, isSlabOpening } from '../types/bimTypes.js';
 import type { BimRelationship } from '../types/relationships.js';
+import { checkReferentialIntegrity } from '../validation/referentialIntegrity.js';
+import { checkSchema } from '../validation/schemaCheck.js';
+import { checkRoundTrip } from '../validation/roundTrip.js';
+import { hasErrors, type ValidationReport } from '../validation/severity.js';
 
 export async function toIfc(
   model: BimModel,
@@ -64,9 +71,11 @@ export async function toIfc(
     return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
   }
 
-  const writerResult = await IfcWriter.create();
+  const writerResult = await IfcWriter.create(meta.mvdViewDefinition);
   if (!writerResult.ok) return writerResult;
   const w = writerResult.value;
+  // Scope writer-minted GUIDs (psets/quantities/rels) to this model.
+  w.setModelScope(project.guid);
 
   const elements = model.getAllElements();
   const relationships = model.getAllRelationships();
@@ -340,7 +349,114 @@ export async function toIfc(
     writeRelAssociatesMaterial(w, guid, ownerHistoryId, materialName, ids);
   }
 
+  writeTypeLayer(w, ownerHistoryId, model, idMap);
+
   return w.save();
+}
+
+interface TypeOccurrence {
+  readonly localId: LocalId;
+  readonly predefinedType: string;
+}
+
+/**
+ * Auto-derives one IfcType per (category, predefinedType) group of occurrences
+ * and one IfcRelDefinesByType linking the type to its occurrences. Type/rel
+ * GUIDs are deterministic, keyed on the group, so re-serializing an identical
+ * model yields identical type GlobalIds.
+ */
+function writeTypeLayer(
+  w: IfcWriter,
+  ownerHistoryId: number,
+  model: BimModel,
+  idMap: ReadonlyMap<LocalId, number>
+): void {
+  const groups: ReadonlyArray<readonly [IfcTypeName, string, readonly TypeOccurrence[]]> = [
+    ['IFCWALLTYPE', 'WALL', toOccurrences(model.getWalls(), () => 'NOTDEFINED')],
+    ['IFCSLABTYPE', 'SLAB', toOccurrences(model.getSlabs(), (s) => s.predefinedType)],
+    ['IFCBEAMTYPE', 'BEAM', toOccurrences(model.getBeams(), (s) => s.predefinedType)],
+    ['IFCCOLUMNTYPE', 'COLUMN', toOccurrences(model.getColumns(), (s) => s.predefinedType)],
+    ['IFCDOORTYPE', 'DOOR', toOccurrences(model.getDoors(), () => 'NOTDEFINED')],
+    ['IFCWINDOWTYPE', 'WINDOW', toOccurrences(model.getWindows(), () => 'NOTDEFINED')],
+  ];
+
+  // Model-scope (project GlobalId) mixed into type/rel GUID keys so type objects
+  // from distinct models do not collide — mirrors element/rel GUID scoping.
+  const scope = model.getProject()?.guid ?? '';
+
+  for (const [typeName, category, occurrences] of groups) {
+    // Bucket occurrences by predefinedType so each distinct type gets one IfcType.
+    const byPredefined = new Map<string, number[]>();
+    for (const occ of occurrences) {
+      const expressId = idMap.get(occ.localId);
+      if (expressId === undefined) continue;
+      const list = byPredefined.get(occ.predefinedType) ?? [];
+      list.push(expressId);
+      byPredefined.set(occ.predefinedType, list);
+    }
+    for (const [pred, expressIds] of byPredefined) {
+      if (expressIds.length === 0) continue;
+      const typeGuid = deriveIfcGuidSync(`type:${scope}:${category}:${pred}`);
+      const relGuid = deriveIfcGuidSync(`rel-type:${scope}:${category}:${pred}`);
+      writeIfcType(w, ownerHistoryId, typeName, typeGuid, relGuid, pred, expressIds);
+    }
+  }
+}
+
+function toOccurrences<S>(
+  elements: ReadonlyArray<{ localId: LocalId; spec: S }>,
+  predefined: (spec: S) => string | undefined
+): TypeOccurrence[] {
+  return elements.map((el) => {
+    const pred = predefined(el.spec);
+    return {
+      localId: el.localId,
+      predefinedType: pred !== undefined && pred.length > 0 ? pred : 'NOTDEFINED',
+    };
+  });
+}
+
+export interface ValidatedIfcResult {
+  readonly bytes: Uint8Array;
+  readonly report: ValidationReport;
+}
+
+/**
+ * Serializes the model to IFC and runs the full validation suite: a
+ * pre-serialization referential-integrity gate, then the post-save EXPRESS/STEP
+ * schema gate and the write→read→re-write round-trip check. Returns both the
+ * bytes and a combined report. A model that fails the integrity gate returns an
+ * INTEGRITY_FAILURE BimError without serializing (unlike plain {@link toIfc},
+ * which serializes unconditionally).
+ */
+export async function toIfcValidated(
+  model: BimModel,
+  meta: BimModelMeta
+): Promise<Result<ValidatedIfcResult, BimError>> {
+  const integrity = checkReferentialIntegrity(model);
+  if (hasErrors(integrity)) {
+    return err(
+      ifcError(
+        'INTEGRITY_FAILURE',
+        'Model failed referential integrity check',
+        integrity.issues.filter((i) => i.severity === 'error')
+      )
+    );
+  }
+
+  const bytesResult = await toIfc(model, meta);
+  if (!bytesResult.ok) return bytesResult;
+  const bytes = bytesResult.value;
+
+  const schema = await checkSchema(bytes);
+  const roundTrip = await checkRoundTrip(bytes);
+
+  // Integrity warnings (e.g. orphaned openings) are carried through alongside the
+  // post-save diagnostics; integrity errors already short-circuited above.
+  const report: ValidationReport = {
+    issues: [...integrity.issues, ...schema.issues, ...roundTrip.issues],
+  };
+  return ok({ bytes, report });
 }
 
 function findParentOf(childId: LocalId, relationships: readonly BimRelationship[]): LocalId | null {

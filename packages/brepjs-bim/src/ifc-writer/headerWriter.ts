@@ -11,6 +11,8 @@ export interface HeaderIds {
 export interface BimModelMeta {
   applicationName: string;
   applicationVersion: string;
+  /** MVD ViewDefinition declared in the STEP FILE_DESCRIPTION header. */
+  mvdViewDefinition?: string | undefined;
 }
 
 export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {

@@ -1,5 +1,6 @@
 export { BimModel } from './model/bimModel.js';
-export { toIfc } from './serialize/toIfc.js';
+export { toIfc, toIfcValidated } from './serialize/toIfc.js';
+export type { ValidatedIfcResult } from './serialize/toIfc.js';
 export { parseWallSpec } from './specs/wallSpec.js';
 export { parseSlabSpec } from './specs/slabSpec.js';
 export { parseBeamSpec } from './specs/beamSpec.js';
@@ -7,7 +8,18 @@ export { parseColumnSpec } from './specs/columnSpec.js';
 export { parseProfile } from './specs/profile.js';
 export { parseDoorSpec, parseWindowSpec, parseSlabOpeningInput } from './specs/openingSpec.js';
 export { newIfcGuid, isValidIfcGuid } from './identity/ifcGuid.js';
+export { deriveIfcGuid, deriveIfcGuidSync } from './identity/guidDerivation.js';
 export { makeLocalIdCounter } from './identity/localId.js';
+export { checkReferentialIntegrity } from './validation/referentialIntegrity.js';
+export { checkSchema } from './validation/schemaCheck.js';
+export { checkRoundTrip } from './validation/roundTrip.js';
+export {
+  issue,
+  emptyReport,
+  hasErrors,
+  countBySeverity,
+} from './validation/severity.js';
+export { writeIfcType } from './ifc-writer/typeWriter.js';
 export { DEFAULT_UNITS, toLengthMm, toIfcLengthM } from './units/units.js';
 export { specError, ifcError, geometryError, fromBrepError } from './errors/bimError.js';
 
@@ -31,3 +43,12 @@ export type { IfcGuid } from './identity/ifcGuid.js';
 export type { LocalId, LocalIdCounter } from './identity/localId.js';
 export type { UnitSystem, LengthUnit } from './units/units.js';
 export type { BimModelMeta } from './ifc-writer/headerWriter.js';
+export type {
+  ValidationSeverity,
+  ValidationIssue,
+  ValidationReport,
+  SeverityCounts,
+} from './validation/severity.js';
+export type { ModelGraph, IntegrityInput } from './validation/referentialIntegrity.js';
+export type { RoundTripReport, EntityCounts } from './validation/roundTrip.js';
+export type { IfcTypeName, TypeWriteResult } from './ifc-writer/typeWriter.js';

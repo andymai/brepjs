@@ -1,7 +1,7 @@
 import type { Result, ValidSolid } from 'brepjs';
 import { ok, err, cut } from 'brepjs';
 import type { IfcGuid } from '../identity/ifcGuid.js';
-import { newIfcGuid } from '../identity/ifcGuid.js';
+import { deriveIfcGuidSync, makeElementKey, makeRelKey } from '../identity/guidDerivation.js';
 import type { LocalId } from '../identity/localId.js';
 import { makeLocalIdCounter } from '../identity/localId.js';
 import type { BimError } from '../errors/bimError.js';
@@ -34,11 +34,18 @@ export class BimModel {
   readonly #relationships = new Map<LocalId, BimRelationship>();
   readonly #counter = makeLocalIdCounter();
   #projectId: LocalId | null = null;
+  // Per-model scope mixed into every derived GlobalId so two distinct models do
+  // not collide. Set from the project identity in init() before any element is
+  // created; empty until init() runs.
+  #modelScope = '';
 
   init(spec: ProjectSpec): Result<LocalId, BimError> {
     if (this.#projectId !== null) {
       return err(specError('DUPLICATE_PROJECT', 'BimModel.init() called twice — only one project per model'));
     }
+    // Prefer an explicit, globally-unique projectId; otherwise fall back to the
+    // project name+description (stable, but unique only per distinct name).
+    this.#modelScope = spec.projectId ?? `${spec.name}::${spec.description ?? ''}`;
     const id = this.#makeElement('PROJECT', spec, null);
     this.#projectId = id;
     return ok(id);
@@ -399,7 +406,9 @@ export class BimModel {
     geometry: Extract<AnyBimElement, { category: C }>['geometry']
   ): LocalId {
     const localId = this.#counter.next();
-    const guid: IfcGuid = newIfcGuid();
+    // Deterministic GUID keyed on (category, localId) so re-serializing an
+    // identical model yields byte-for-byte identical GlobalIds.
+    const guid: IfcGuid = deriveIfcGuidSync(makeElementKey(this.#modelScope, category, localId));
     const el = { guid, localId, category, spec, geometry } as AnyBimElement;
     this.#elements.set(localId, el);
     return localId;
@@ -409,7 +418,9 @@ export class BimModel {
     fields: Omit<R, 'guid' | 'localId'>
   ): LocalId {
     const localId = this.#counter.next();
-    const guid: IfcGuid = newIfcGuid();
+    // Deterministic GUID keyed on (kind, localId). localIds are assigned in a
+    // fixed sequence, so an identical model produces identical relationship GUIDs.
+    const guid: IfcGuid = deriveIfcGuidSync(makeRelKey(this.#modelScope, fields.kind, localId));
     const rel = { ...fields, guid, localId } as unknown as BimRelationship;
     this.#relationships.set(localId, rel);
     return localId;

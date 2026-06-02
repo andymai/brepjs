@@ -1,7 +1,6 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
 import { writeAxis2Placement3D, writeDirection } from './headerWriter.js';
-import { newIfcGuid } from '../identity/ifcGuid.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import type { WallSpec } from '../specs/wallSpec.js';
 import type { WallOpeningSpec, SlabOpeningSpec } from '../types/bimTypes.js';
@@ -58,7 +57,7 @@ function writePropertySet(
   w.writeLine({
     expressID: id,
     type: WebIFC.IFCPROPERTYSET,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(id)),
     OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, name),
     Description: null,
@@ -73,10 +72,11 @@ function writeRelDefinesByProperties(
   entityId: number,
   psetId: number
 ): void {
+  const relId = w.nextId();
   w.writeLine({
-    expressID: w.nextId(),
+    expressID: relId,
     type: WebIFC.IFCRELDEFINESBYPROPERTIES,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(relId)),
     OwnerHistory: w.ref(ownerHistoryId),
     Name: null,
     Description: null,
@@ -446,7 +446,7 @@ export function writeWindowCommonPset(
   w.writeLine({
     expressID: psetId,
     type: WebIFC.IFCPROPERTYSET,
-    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, newIfcGuid()),
+    GlobalId: w.mkType(WebIFC.IFCGLOBALLYUNIQUEID, w.guidFor(psetId)),
     OwnerHistory: w.ref(ownerHistoryId),
     Name: w.mkType(WebIFC.IFCLABEL, 'Pset_WindowCommon'),
     Description: null,
