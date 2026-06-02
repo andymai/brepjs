@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.41.0](https://github.com/andymai/brepjs/compare/brepjs-v18.40.1...brepjs-v18.41.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 1 foundations — deterministic guids, type layer, mvd, validation gates ([#1156](https://github.com/andymai/brepjs/issues/1156)) ([cf70425](https://github.com/andymai/brepjs/commit/cf70425ac496de7f7b7e822d36f0b653350ad27c))
+
 ## [18.40.1](https://github.com/andymai/brepjs/compare/brepjs-v18.40.0...brepjs-v18.40.1) (2026-06-02)
 
 
