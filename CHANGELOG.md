@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.41.1](https://github.com/andymai/brepjs/compare/brepjs-v18.41.0...brepjs-v18.41.1) (2026-06-02)
+
+
+### Bug Fixes
+
+* **occtwasm:** expand wireframe polylines into a line list in meshEdges ([#1163](https://github.com/andymai/brepjs/issues/1163)) ([e4a05d8](https://github.com/andymai/brepjs/commit/e4a05d8670ea8a011d92e4e59bfa860163f7ccd9))
+
 ## [18.41.0](https://github.com/andymai/brepjs/compare/brepjs-v18.40.1...brepjs-v18.41.0) (2026-06-02)
 
 
