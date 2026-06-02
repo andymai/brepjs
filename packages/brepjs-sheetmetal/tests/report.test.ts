@@ -49,7 +49,7 @@ function makePart(k: number): SheetMetalPart {
 
 describe('buildReport — bend table from authored part', () => {
   for (const k of [0.33, 0.44, 0.5]) {
-    it(`K=${k} reports one bend with developed allowance and flat length`, () => {
+    it(`K=${k} reports one bend with developed allowance and straight flat length`, () => {
       const expectedBA = HALF_PI * (radius + k * thickness);
       const result = buildReport(makePart(k));
       expect(result.ok).toBe(true);
@@ -65,7 +65,8 @@ describe('buildReport — bend table from authored part', () => {
       expect(bend.radius).toBe(radius);
       expect(bend.direction).toBe('up');
       expect(bend.allowance).toBeCloseTo(expectedBA, 5);
-      expect(bend.flatLength).toBeCloseTo(expectedBA, 5);
+      // flatLength is the straight flange leg, distinct from the bend allowance
+      expect(bend.flatLength).toBe(flangeLen);
     });
   }
 
@@ -95,7 +96,8 @@ describe('buildReport — bend table from authored part', () => {
     expect(bend).toBeDefined();
     if (bend === undefined) return;
     expect(bend.allowance).toBe(7);
-    expect(bend.flatLength).toBe(7);
+    // flatLength tracks the straight leg, NOT the (now overridden) allowance
+    expect(bend.flatLength).toBe(flangeLen);
   });
 
   it('rejects an out-of-range K-factor', () => {

@@ -277,7 +277,7 @@ function buildReport(layout: RunLayout): BendReport {
     angleDeg: flange.angleDeg,
     radius: flange.rule.innerRadius,
     allowance: flange.dev,
-    flatLength: flange.dev,
+    flatLength: flange.length,
     direction: flange.direction,
   }));
   return { bends, totalFlatSize: [layout.maxX, layout.maxY] };

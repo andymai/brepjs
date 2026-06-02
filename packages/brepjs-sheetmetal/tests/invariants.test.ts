@@ -105,7 +105,7 @@ describe('§8 invariant — developed area = Σ(flat faces) + Σ(bend strips)', 
     if (isErr(unfolded)) return;
     const { report } = unfolded.value;
 
-    const strip = report.bends.reduce((sum, b) => sum + b.flatLength, 0);
+    const strip = report.bends.reduce((sum, b) => sum + b.allowance, 0);
     const [maxX] = report.totalFlatSize;
     expect(maxX).toBeCloseTo(baseLen + flangeLen + strip, 6);
   });

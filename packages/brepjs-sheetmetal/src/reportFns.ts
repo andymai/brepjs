@@ -15,11 +15,10 @@ interface ReportEntry {
 
 /**
  * Build the bend-table JSON report directly from an authored part. Walks the
- * same feature tree the unfold consumes so the per-bend developed lengths and
- * the total flat size agree with the flat pattern. Each bend's developed length
- * serves as both `allowance` (the consumed neutral-axis length) and `flatLength`
- * (the strip width laid down in the flat pattern); the two are reported under
- * distinct names so a downstream nesting tool can treat them independently.
+ * same feature tree the unfold consumes so the per-bend values and the total
+ * flat size agree with the flat pattern. `allowance` is the consumed neutral-axis
+ * arc length (the bend allowance); `flatLength` is the straight flange leg past
+ * the bend — distinct values a downstream nesting/cut-list tool needs separately.
  */
 export function buildReport(part: SheetMetalPart): Result<BendReport> {
   const treeResult = featureTree(part);
@@ -51,15 +50,6 @@ export function buildReport(part: SheetMetalPart): Result<BendReport> {
     if (!devResult.ok) return devResult;
     const devLength = devResult.value;
 
-    bends.push({
-      id: treeBend.bend.id,
-      angleDeg: treeBend.bend.angleDeg,
-      radius: treeBend.bend.rule.innerRadius,
-      allowance: devLength,
-      flatLength: devLength,
-      direction: treeBend.bend.direction,
-    });
-
     const childNode = tree.nodes.get(treeBend.child);
     if (childNode === undefined) {
       return err(
@@ -67,6 +57,16 @@ export function buildReport(part: SheetMetalPart): Result<BendReport> {
       );
     }
     const length = childNode.flange?.length ?? 0;
+
+    bends.push({
+      id: treeBend.bend.id,
+      angleDeg: treeBend.bend.angleDeg,
+      radius: treeBend.bend.rule.innerRadius,
+      allowance: devLength,
+      flatLength: length,
+      direction: treeBend.bend.direction,
+    });
+
     if (dir === 'east') maxX = baseLength + devLength + length;
     else maxY = width + devLength + length;
   }

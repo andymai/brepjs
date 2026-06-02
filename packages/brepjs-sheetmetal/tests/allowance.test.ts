@@ -113,7 +113,8 @@ describe('unfold — flat lengths across K', () => {
       expect(bend).toBeDefined();
       if (bend === undefined) return;
       expect(bend.allowance).toBeCloseTo(expectedBA, 5);
-      expect(bend.flatLength).toBeCloseTo(expectedBA, 5);
+      // flatLength is the straight flange leg, distinct from the bend allowance
+      expect(bend.flatLength).toBe(flangeLen);
 
       expect(result.value.pattern.bendLines).toHaveLength(1);
       expect(result.value.pattern.developedArea).toBeGreaterThan(0);
