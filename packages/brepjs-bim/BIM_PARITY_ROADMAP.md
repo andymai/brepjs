@@ -1,8 +1,20 @@
 # brepjs-bim — BIM Standards Parity Roadmap
 
-> **Status:** v0.1.0 (experimental, write-only, IFC4-aligned via web-ifc 0.0.77)
-> **Scope:** Path to defensible IFC4 / buildingSMART parity across four dimensions — element breadth, import/round-trip, data standards, and validation/certification.
-> **Audience:** Lead architect + contributors planning the next several PRs.
+> **Status: ✅ ALL 5 PHASES COMPLETE** — bidirectional IFC4/IFC4X3 via web-ifc, reviewed to 5/5 and merged to `main`.
+> **Scope:** Defensible IFC4 / buildingSMART parity across four dimensions — element breadth, import/round-trip, data standards, and validation/certification.
+> **Audience:** Lead architect + contributors. The roadmap below is preserved for historical context; the phase tables now record what shipped.
+
+> **Delivery summary (2026-06-02):** the package went from a write-only exporter (~15% parity, 167 tests) to a bidirectional IFC toolkit (**564+ tests**, all four dimensions covered). Shipped as five dependency-ordered PRs, each adversarially reviewed to Greptile 5/5 before merge:
+>
+> | Phase                           | PR                                                   | Lands                                                                                                                 |
+> | ------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+> | 1 — Foundations                 | [#1156](https://github.com/andymai/brepjs/pull/1156) | deterministic GUIDs, IfcType layer, MVD, validation/round-trip gates                                                  |
+> | 2 — Data + geometry             | [#1166](https://github.com/andymai/brepjs/pull/1166) | typed Psets, layered/profiled materials, classification, tessellation/Brep, proxy, geometry-validity gate             |
+> | 3 — Element & profile breadth   | [#1158](https://github.com/andymai/brepjs/pull/1158) | full profile set, space/roof/stair/ramp/railing/covering/curtain-wall/footing/pile, assembly + styling + connectivity |
+> | 4 — IFC import & round-trip     | [#1159](https://github.com/andymai/brepjs/pull/1159) | SPF reader, units/placement, spatial-tree, parametric + tessellated geometry reconstruction, `fromIfc()`              |
+> | 5 — Certification, IDS, BCF, FM | [#1160](https://github.com/andymai/brepjs/pull/1160) | IDS 1.0 checker, BCF 3.0, COBie export, real OwnerHistory, IfcZone/System, IFC4↔IFC4X3, Qto weights                   |
+>
+> **Deferred by design** (separate domains, gated behind a product decision): MEP/`IfcDistributionElement`, gbXML, IFC-JSON/XML, BCF `.bcfzip` zip container, and an external IfcOpenShell validation-service CI gate.
 
 ---
 
@@ -34,9 +46,9 @@ The strategic read: the **type layer, deterministic identity, an MVD declaration
 
 ## 3. Prioritized Phases
 
-Phases are sequenced by dependency and leverage. **Phase 1 is deliberately dependency-free, high-leverage foundation work** that unblocks the rest.
+Phases are sequenced by dependency and leverage. **Phase 1 is deliberately dependency-free, high-leverage foundation work** that unblocks the rest. _All five phases are now shipped (see the delivery summary above); each phase table is retained as the as-built record._
 
-### Phase 1 — Foundations: identity, MVD, type layer, self-validation gate
+### Phase 1 — Foundations: identity, MVD, type layer, self-validation gate ✅ Shipped (#1156)
 
 **Goal:** Make every later conformance claim _meaningful and non-regressing_ before adding breadth.
 
@@ -53,7 +65,7 @@ Phases are sequenced by dependency and leverage. **Phase 1 is deliberately depen
 
 **Why first:** The type layer is named by both the verified set and the completeness critic as a _foundational prerequisite_ — door/window types, type-level Psets, COBie Type rows, and standard-case modeling all depend on it. Deterministic + unique GUIDs are the identity floor for COBie, BCF, diffing, and any future import-merge. The self-validation + round-trip gate is the cheapest real validation any exporter ships and catches the exact SELECT-serialization class of bug already documented in `ifcWriter.ts`. None of this depends on anything else.
 
-### Phase 2 — Data conformance & geometry-representation breadth
+### Phase 2 — Data conformance & geometry-representation breadth ✅ Shipped (#1166)
 
 **Goal:** Make the data brepjs-bim already writes _correct and complete_, and unlock arbitrary geometry.
 
@@ -70,7 +82,7 @@ Phases are sequenced by dependency and leverage. **Phase 1 is deliberately depen
 
 **Why second:** Depends on Phase 1's type layer (type-level Psets/materials) and severity model. The Brep/Tessellation path is itself a prerequisite for the proxy element and for furnishing/MEP later, and for the tessellated _import_ fallback in Phase 4. Fixing measure types + completing templates is required for any IDS/validator pass.
 
-### Phase 3 — Element & profile breadth
+### Phase 3 — Element & profile breadth ✅ Shipped (#1158)
 
 **Goal:** Expand the authorable taxonomy to a credible architectural/structural set.
 
@@ -87,7 +99,7 @@ Phases are sequenced by dependency and leverage. **Phase 1 is deliberately depen
 
 **Why third:** Profiles and arbitrary-profile support feed curtain-wall/member realism. Composite elements (stairs, curtain walls, railings) are _intrinsically aggregated_ and would produce structurally invalid IFC without the `IfcElementAssembly`/`IfcRelAggregates`-on-elements machinery — so assembly support precedes them within the phase. All of these benefit from Phase 1's type layer and Phase 2's representation/Pset infrastructure.
 
-### Phase 4 — IFC import & round-trip
+### Phase 4 — IFC import & round-trip ✅ Shipped (#1159)
 
 **Goal:** Turn brepjs-bim bidirectional, starting with a true symmetric round-trip of its own output.
 
@@ -110,7 +122,7 @@ Phases are sequenced by dependency and leverage. **Phase 1 is deliberately depen
 
 **Why fourth:** Import is the largest greenfield and depends on Phase 1 identity (GUID preservation) and Phase 2/3 representations/profiles to reconstruct into. Sequence _within_ the phase: parser → identity/units → spatial tree → placement → symmetric SweptSolid round-trip → tessellated fallback → robustness/streaming → Clipping/CSG. The symmetric round-trip is the natural first target because it validates the writer too.
 
-### Phase 5 — Certification, IDS, BCF & FM deliverables
+### Phase 5 — Certification, IDS, BCF & FM deliverables ✅ Shipped (#1160)
 
 **Goal:** Move from "valid output" to "certifiable, requirement-checkable, collaboration-ready."
 
