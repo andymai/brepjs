@@ -10,12 +10,12 @@ Build your first 3D part, from `npm install` to exported STEP file.
 ## Step 1: Install
 
 ```bash
-npm install brepjs brepjs-opencascade
+npm install brepjs occt-wasm
 ```
 
-`brepjs` is the API layer. `brepjs-opencascade` provides the default WASM geometry kernel.
+`brepjs` is the API layer. `occt-wasm` (OpenCascade compiled to WebAssembly) is the default WASM geometry kernel.
 
-Two alternative kernels are also supported: `brepkit-wasm` and `occt-wasm`. See [Custom Kernel Guide](./kernel-swap.md) for details.
+Two alternative kernels are also supported: `brepjs-opencascade` and `brepkit-wasm`. See [Custom Kernel Guide](./kernel-swap.md) for details.
 
 ## Step 2: Initialize
 
@@ -36,20 +36,20 @@ Best for: scripts, quick prototypes, any ESM environment that supports top-level
 ```typescript
 import { init, box, cylinder, shape } from 'brepjs';
 
-await init(); // auto-detects brepjs-opencascade or brepkit-wasm
+await init(); // auto-detects occt-wasm, brepjs-opencascade, or brepkit-wasm
 const b = box(30, 20, 10);
 ```
 
-Best for: apps where you control the async startup flow. `init()` is idempotent and returns the kernel ID (`'occt'` or `'brepkit'`).
+Best for: apps where you control the async startup flow. `init()` is idempotent and returns the kernel ID (`'occt-wasm'`, `'occt'`, or `'brepkit'`).
 
-**Manual init: `initFromOC()`**
+**Manual registration: `registerKernel()`**
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box, cylinder, shape } from 'brepjs';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter, box, cylinder, shape } from 'brepjs';
 
-const oc = await opencascade();
-initFromOC(oc); // call once, then all brepjs functions are ready
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel)); // call once, then all brepjs functions are ready
 
 const b = box(30, 20, 10);
 ```
@@ -211,7 +211,7 @@ brepjs works in browsers with WASM support. The simplest way to get started is w
 ```bash
 npm create vite@latest my-cad-app -- --template vanilla-ts
 cd my-cad-app
-npm install brepjs brepjs-opencascade
+npm install brepjs occt-wasm
 ```
 
 In your `main.ts`:
@@ -352,19 +352,19 @@ See [B-Rep Concepts](./concepts.md#validity-types) for how validity types work -
 
 ## Advanced: Browser Loading Indicator
 
-When using `initFromOC()` (from Step 2), you can show a loading indicator while the WASM kernel downloads. (`init()` and `brepjs/quick` handle this automatically.)
+When using manual registration (from Step 2), you can show a loading indicator while the WASM kernel downloads. (`init()` and `brepjs/quick` handle this automatically.)
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box, shape } from 'brepjs';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter, box, shape } from 'brepjs';
 
 async function initCAD() {
   const loader = document.getElementById('loader');
   loader.textContent = 'Loading CAD kernel...';
 
   try {
-    const oc = await opencascade();
-    initFromOC(oc);
+    const kernel = await OcctKernel.init();
+    registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
     loader.remove();
 
     const b = box(10, 10, 10);
@@ -377,7 +377,7 @@ async function initCAD() {
 initCAD();
 ```
 
-`initFromOC()` only needs to be called once per application lifetime.
+The kernel only needs to be registered once per application lifetime.
 
 ---
 
@@ -385,7 +385,7 @@ initCAD();
 
 ### "Cannot read properties of undefined" on first API call
 
-If using manual init (not `brepjs/quick`), make sure you've called `init()` or `initFromOC()` before using any shape functions. See [Step 2: Initialize](#step-2-initialize) above.
+If using manual init (not `brepjs/quick`), make sure you've called `init()` or `registerKernel()` before using any shape functions. See [Step 2: Initialize](#step-2-initialize) above.
 
 ### Boolean operation returns an error
 

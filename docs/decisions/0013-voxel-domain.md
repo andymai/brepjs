@@ -21,7 +21,7 @@ forks. **No code exists yet.** The broader plan lives in the project owner's des
 is the in-repo decision record.
 
 Note: this is explicitly **not** a fix for the #1126 STEP-export crash — that is a build-specific
-`BOPAlgo` bug resolved by the #1136 default-kernel migration. A voxel engine cannot pass #1126's
+`BOPAlgo` bug resolved by the #1136 migration that made `occt-wasm` the default kernel. A voxel engine cannot pass #1126's
 exact-STEP acceptance (exact faces, exact volume, valid STEP, Hausdorff≈0) by construction; #1126 is
 a _counter-example_ to "exact booleans are unreliable," not motivation for this work.
 
@@ -220,7 +220,7 @@ TPMS formulas are textbook trigonometric implicits with no copyright — cite pr
   segregation), ADR-0010 (Layer 2 audit), ADR-0012 (Layer 3 audit).
 - `packages/brepjs-manifold` (preview-kernel precedent); `brepjs-opencascade` / `occt-wasm`
   (published-wasm-artifact precedent).
-- Issues #1126 (counter-example), #1136 (default-kernel migration).
+- Issues #1126 (counter-example), #1136 (migration that made `occt-wasm` the default kernel).
 - PicoGK (https://github.com/leap71/PicoGK), OpenVDB (https://www.openvdb.org/).
 - Open items deferred to measurement: sparse-vs-dense crossover, wasm size caps + total
   co-instantiated footprint, QEF relative-cutoff value, Hausdorff constant c, voxel-count cap.

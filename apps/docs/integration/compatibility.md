@@ -92,11 +92,12 @@ The supported pattern is **client-only rendering** — wrap brepjs-using compone
 
 ## Bundle size
 
-| Resource                  | Compressed |
-| ------------------------- | ---------- |
-| `brepjs` (JS, gzipped)    | ~80 KB     |
-| `brepjs-opencascade` WASM | ~3.2 MB    |
-| `brepkit-wasm` WASM       | ~2.4 MB    |
+| Resource                          | Compressed |
+| --------------------------------- | ---------- |
+| `brepjs` (JS, gzipped)            | ~80 KB     |
+| `occt-wasm` WASM (default kernel) | ~6.6 MB    |
+| `brepjs-opencascade` WASM (alt)   | ~3.2 MB    |
+| `brepkit-wasm` WASM (alt)         | ~2.4 MB    |
 
 The WASM is the dominant cost. brepjs is treeshakeable per sub-path — importing only `brepjs/measurement` skips the topology bundle.
 

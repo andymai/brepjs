@@ -9,22 +9,22 @@ brepjs is not married to OpenCascade. The library sits behind a small abstractio
 
 ## The two kernels
 
-| Kernel          | Status             | Backend               | Install                                                           | Strengths                                                          |
-| --------------- | ------------------ | --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **OpenCascade** | Production         | C++ via Emscripten    | `brepjs-opencascade` (or `occt-wasm` for the lower-level package) | Mature, complete operation set, STEP/IGES, decades of CAD heritage |
-| **brepkit**     | Active development | Rust via wasm-bindgen | `brepkit-wasm`                                                    | Smaller, faster, simpler API surface, no JS heritage               |
+| Kernel          | Status             | Backend               | Install                                                       | Strengths                                                          |
+| --------------- | ------------------ | --------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **OpenCascade** | Production         | C++ via Emscripten    | `occt-wasm` (default; or `brepjs-opencascade` as alternative) | Mature, complete operation set, STEP/IGES, decades of CAD heritage |
+| **brepkit**     | Active development | Rust via wasm-bindgen | `brepkit-wasm`                                                | Smaller, faster, simpler API surface, no JS heritage               |
 
-The OpenCascade kernel is the default. brepkit is a drop-in alternative for environments where binary size or performance matters more than the long tail of operations OpenCascade supports.
+occt-wasm (OpenCascade compiled to WebAssembly) is the default kernel. brepkit is a drop-in alternative for environments where binary size or performance matters more than the long tail of operations OpenCascade supports.
 
 ## Selecting a kernel at init
 
 There are three init paths from [Install & Initialize](../getting-started/install). Each picks a kernel:
 
-| Init style                            | Kernel chosen                                                            |
-| ------------------------------------- | ------------------------------------------------------------------------ |
-| `import 'brepjs/quick'`               | Whatever's installed; prefers `brepjs-opencascade`                       |
-| `await init()`                        | Auto-detect: `occt` if `brepjs-opencascade` is installed, else `brepkit` |
-| `await opencascade(); initFromOC(oc)` | OpenCascade explicitly                                                   |
+| Init style                                                | Kernel chosen                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `import 'brepjs/quick'`                                   | Whatever's installed; prefers `occt-wasm`                                 |
+| `await init()`                                            | Auto-detect: `occt-wasm` first, then `brepjs-opencascade`, then `brepkit` |
+| `OcctKernel.init(); registerKernel('occt-wasm', adapter)` | OpenCascade (occt-wasm) explicitly                                        |
 
 For brepkit explicitly:
 
@@ -89,8 +89,8 @@ This is a real footgun. The pattern checker (`npm run check:patterns`) flags `as
 
 Three reasons:
 
-1. **Future-proofing.** brepkit may eventually replace OpenCascade as the default. The abstraction means user code doesn't change when that happens.
-2. **Testing.** Every operation in brepjs runs against both kernels in CI (`TEST_KERNEL=occt npm test`, `TEST_KERNEL=brepkit npm test`). Bugs that show in one kernel and not the other surface immediately.
+1. **Future-proofing.** brepkit may eventually replace the OpenCascade-based default. The abstraction means user code doesn't change when that happens.
+2. **Testing.** Every operation in brepjs runs against multiple kernels in CI. The default gate runs `occt-wasm` (`npm test`); the other kernels run via `npm run test:occt` and `npm run test:brepkit`. Bugs that show in one kernel and not the other surface immediately.
 3. **Custom kernels.** If you have your own geometry library, you can implement `KernelInterface` and plug it in. See [Writing a Custom Kernel](../extending/custom-kernel).
 
 The kernel interface is intentionally minimal — only the methods brepjs actually calls. New methods are added when new operations are added; the interface is segregated by concern (booleans, mesh, IO, etc.) so partial-conformance kernels are possible.
@@ -110,7 +110,7 @@ function measureVolume(s: Shape3D): Result<number> {
 
 ## When you might not need this chapter
 
-If you install `brepjs-opencascade`, run `import 'brepjs/quick'`, and never think about kernels again, that's fine — that's the intended path for 90% of users. This chapter exists for the other 10%: people writing kernel adapters, dual-kernel test suites, or apps that need to compare results between kernels.
+If you install `occt-wasm`, run `import 'brepjs/quick'`, and never think about kernels again, that's fine — that's the intended path for 90% of users. This chapter exists for the other 10%: people writing kernel adapters, dual-kernel test suites, or apps that need to compare results between kernels.
 
 ## Next steps
 

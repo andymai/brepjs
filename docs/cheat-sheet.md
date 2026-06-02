@@ -10,13 +10,13 @@ import { box } from 'brepjs/quick';
 
 // Auto-detect kernel
 import { init, box } from 'brepjs';
-await init(); // returns 'occt' or 'brepkit'
+await init(); // returns 'occt-wasm', 'occt', or 'brepkit'
 
 // Manual (explicit kernel, works with CJS)
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box } from 'brepjs';
-const oc = await opencascade();
-initFromOC(oc);
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter, box } from 'brepjs';
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 ```
 
 ## Shape Creation

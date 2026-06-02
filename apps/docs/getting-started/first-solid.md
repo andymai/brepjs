@@ -200,7 +200,7 @@ The most common failures and their typical causes:
 | `BOOLEAN_NO_OVERLAP`     | The two operands don't share volume. `cut(a, b)` requires `b` ⊆ `a` (at least partially).           |
 | `FILLET_TOO_LARGE`       | The radius is bigger than the local edge geometry can support. Try a smaller radius or fewer edges. |
 | `INVALID_SHAPE`          | One of your inputs failed `BRepCheck`. Run `autoHeal(shape)` first.                                 |
-| `KERNEL_NOT_INITIALIZED` | You called a brepjs function before `init()` / `initFromOC` resolved.                               |
+| `KERNEL_NOT_INITIALIZED` | You called a brepjs function before `init()` / `registerKernel` resolved.                           |
 
 [Error Codes](../reference/errors) lists every code with recovery patterns.
 

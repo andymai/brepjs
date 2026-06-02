@@ -14,7 +14,7 @@ Vite handles WASM out of the box. The minimum configuration:
 ```bash
 npm create vite@latest my-cad-app -- --template vanilla-ts
 cd my-cad-app
-npm install brepjs brepjs-opencascade
+npm install brepjs occt-wasm
 ```
 
 Then in your `src/main.ts`:

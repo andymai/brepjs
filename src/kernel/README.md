@@ -68,29 +68,29 @@ All raw kernel API calls are isolated in these files. A new kernel replaces `def
 ```typescript
 // Auto-detect and initialize the best available kernel
 import { init } from 'brepjs';
-const kernelId = await init(); // 'occt' or 'brepkit'
+const kernelId = await init(); // 'occt-wasm', 'occt', or 'brepkit'
 
 // Or initialize a specific kernel manually:
 
-// OpenCascade WASM
+// occt-wasm (the default kernel, external occt-wasm package)
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter } from 'brepjs';
+// fromKernel pins the OcctKernel wrapper so its FinalizationRegistry can't free
+// the raw kernel out from under the adapter. See docs/kernel-swap.md.
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
+
+// OpenCascade WASM (legacy brepjs-opencascade package)
 import opencascade from 'brepjs-opencascade';
 import { initFromOC } from 'brepjs';
 const oc = await opencascade();
 initFromOC(oc);
 
 // brepkit WASM (external brepkit-wasm package)
-import { registerKernel, BrepkitAdapter } from 'brepjs';
+import { BrepkitAdapter } from 'brepjs';
 import bkInit, { BrepKernel } from 'brepkit-wasm';
 await bkInit();
 registerKernel('brepkit', new BrepkitAdapter(new BrepKernel()));
-
-// occt-wasm (external occt-wasm package)
-import { OcctKernel } from 'occt-wasm';
-import { OcctWasmAdapter } from 'brepjs/kernel/occtWasm/occtWasmAdapter';
-// fromKernel pins the OcctKernel wrapper so its FinalizationRegistry can't free
-// the raw kernel out from under the adapter. See docs/kernel-swap.md.
-const kernel = await OcctKernel.init();
-registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 
 // Custom kernel
 registerKernel('rust', new RustAdapter(wasm));

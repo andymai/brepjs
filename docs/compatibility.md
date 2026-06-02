@@ -58,7 +58,7 @@
 
 ### WASM External
 
-The `brepjs-opencascade` WASM module must be external:
+The kernel WASM module must be external. For the default `occt-wasm` kernel:
 
 **Vite:**
 
@@ -66,7 +66,7 @@ The `brepjs-opencascade` WASM module must be external:
 // vite.config.ts
 export default defineConfig({
   optimizeDeps: {
-    exclude: ['brepjs-opencascade'],
+    exclude: ['occt-wasm'],
   },
 });
 ```
@@ -77,10 +77,12 @@ export default defineConfig({
 // webpack.config.js
 module.exports = {
   externals: {
-    'brepjs-opencascade': 'commonjs brepjs-opencascade',
+    'occt-wasm': 'commonjs occt-wasm',
   },
 };
 ```
+
+If you use the alternative `brepjs-opencascade` kernel instead, externalize that package in the same way.
 
 ## WASM Requirements
 
@@ -96,22 +98,20 @@ brepjs requires WebAssembly support:
 
 ### WASM Module Variants
 
-**brepjs-opencascade** (default kernel):
+**occt-wasm** (default kernel):
 
-| Module                   | Size   | Features                                            |
-| ------------------------ | ------ | --------------------------------------------------- |
-| `brepjs_single`          | ~15 MB | Standard, single-threaded, no exceptions            |
-| `brepjs_threaded`        | ~16 MB | Multi-threaded variant (SharedArrayBuffer required) |
-| `brepjs_with_exceptions` | ~17 MB | C++ exceptions for better error messages            |
+| Module           | Size   | Features                                                        |
+| ---------------- | ------ | --------------------------------------------------------------- |
+| `occt-wasm.wasm` | ~21 MB | Arena-based OCCT V8, single-threaded, handle-based memory model |
 
 **Alternative kernels** (optional peer dependencies):
 
-| Package        | Description                                         |
-| -------------- | --------------------------------------------------- |
-| `brepkit-wasm` | Alternative kernel with growing operation coverage  |
-| `occt-wasm`    | Arena-based OCCT V8 kernel with handle-based memory |
+| Package              | Description                                                                                                             |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `brepjs-opencascade` | Legacy OpenCascade WASM build — `brepjs_single` (~15 MB), `brepjs_threaded` (~16 MB), `brepjs_with_exceptions` (~17 MB) |
+| `brepkit-wasm`       | Alternative kernel with growing operation coverage                                                                      |
 
-All three kernels are optional peer dependencies — install whichever you need. See [Custom Kernel Guide](./kernel-swap.md) for initialization details.
+All kernels are optional peer dependencies — install whichever you need. See [Custom Kernel Guide](./kernel-swap.md) for initialization details.
 
 ## Known Limitations
 

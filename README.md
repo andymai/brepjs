@@ -52,12 +52,12 @@ To set expectations, this project deliberately does not:
 
 ## Status
 
-The OpenCascade kernel is the current default. [brepkit](https://github.com/andymai/brepkit), a Rust-based kernel, is in active development as a faster replacement but not yet ready for production use. The kernel abstraction layer means switching is a one-line change. See [benchmarks](./benchmarks/results/latest.md) for performance comparisons.
+[occt-wasm](https://github.com/andymai/occt-wasm) (OpenCascade compiled to WebAssembly) is the default kernel. [brepkit](https://github.com/andymai/brepkit), a Rust-based kernel, is in active development as a faster replacement but not yet ready for production use. The kernel abstraction layer means switching is a one-line change. See [benchmarks](./benchmarks/results/latest.md) for performance comparisons.
 
 ## Install
 
 ```bash
-npm install brepjs brepjs-opencascade
+npm install brepjs occt-wasm
 ```
 
 `brepjs/quick` handles WASM init automatically via top-level await (ESM only). Other options:
@@ -68,10 +68,10 @@ import { init } from 'brepjs';
 await init();
 
 // Or manual setup
-import opencascade from 'brepjs-opencascade';
-import { initFromOC } from 'brepjs';
-const oc = await opencascade();
-initFromOC(oc);
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter } from 'brepjs';
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 ```
 
 ## Usage

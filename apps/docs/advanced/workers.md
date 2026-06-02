@@ -127,16 +127,16 @@ For environments without top-level await:
 <!-- @no-test -->
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box } from 'brepjs';
+import { OcctKernel } from 'occt-wasm/worker';
+import { registerKernel, OcctWasmAdapter, box } from 'brepjs';
 
 let ready: Promise<void> | null = null;
 
 async function ensureReady() {
   if (!ready) {
     ready = (async () => {
-      const oc = await opencascade();
-      initFromOC(oc);
+      const kernel = await OcctKernel.init();
+      registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
     })();
   }
   return ready;
@@ -151,6 +151,8 @@ self.onmessage = async (e) => {
 ```
 
 The `ensureReady` pattern handles concurrent first-message races: every message awaits the same singleton promise.
+
+occt-wasm ships a dedicated `./worker` export (imported above) that loads its WASM in a worker-friendly way, so you don't have to wire up an explicit asset URL. If you instead use the `brepjs-opencascade` build, see the `?url` pattern below for handing the worker an explicit WASM URL.
 
 ## Vite + workers
 

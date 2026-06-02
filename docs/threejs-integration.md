@@ -5,7 +5,7 @@ Render brepjs shapes in the browser with Three.js. This guide builds up progress
 All examples use Three.js r175+ ESM imports and `brepjs/quick` for auto-initialization.
 
 ```bash
-npm install three brepjs brepjs-opencascade
+npm install three brepjs occt-wasm
 npm install -D @types/three
 ```
 

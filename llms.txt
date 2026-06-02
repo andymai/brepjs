@@ -12,7 +12,7 @@
 
 Install:
 ```bash
-npm install brepjs brepjs-opencascade
+npm install brepjs occt-wasm
 ```
 
 ### Quick start (zero ceremony, ESM only)
@@ -24,17 +24,17 @@ const myBox = box(10, 10, 10); // just works
 
 `brepjs/quick` auto-initializes the WASM kernel via top-level await. No setup code needed. Requires ESM (top-level await is incompatible with CJS).
 
-### Standard (explicit init, works with CJS)
+### Standard (explicit registration, works with CJS)
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC } from 'brepjs';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter } from 'brepjs';
 
-const oc = await opencascade();
-initFromOC(oc);
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 ```
 
-`initFromOC(oc)` must be called once before using any brepjs API. All shape-creating functions require the kernel to be initialized.
+The kernel must be registered once before using any brepjs API. All shape-creating functions require the kernel to be initialized.
 
 ### Custom or alternative WASM build
 

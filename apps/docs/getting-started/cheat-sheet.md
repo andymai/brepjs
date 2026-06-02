@@ -9,11 +9,11 @@ A one-page reference for the brepjs API. Bookmark this. Every snippet here is al
 
 ## Init
 
-| Pattern                               | Use when                                      |
-| ------------------------------------- | --------------------------------------------- |
-| `import 'brepjs/quick'`               | Scripts, prototypes, ESM with top-level await |
-| `await init()`                        | App startup, auto-detect kernel               |
-| `await opencascade(); initFromOC(oc)` | Need a loading indicator or error UI          |
+| Pattern                                                   | Use when                                      |
+| --------------------------------------------------------- | --------------------------------------------- |
+| `import 'brepjs/quick'`                                   | Scripts, prototypes, ESM with top-level await |
+| `await init()`                                            | App startup, auto-detect kernel               |
+| `OcctKernel.init(); registerKernel('occt-wasm', adapter)` | Need a loading indicator or error UI          |
 
 ## Primitives
 

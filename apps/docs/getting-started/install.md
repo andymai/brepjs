@@ -15,10 +15,10 @@ Pick an init style, run `npm install`, and you are modelling. The first call to 
 ## Install
 
 ```bash
-npm install brepjs brepjs-opencascade
+npm install brepjs occt-wasm
 ```
 
-`brepjs` is the API. `brepjs-opencascade` ships the OpenCascade WASM build; you install it as a peer because alternative kernels (`occt-wasm`, `brepkit-wasm`) exist and are interchangeable. See [Custom Kernels](../extending/custom-kernel) for swapping.
+`brepjs` is the API. `occt-wasm` (OpenCascade compiled to WebAssembly) is the default kernel. You install it as a peer because alternative kernels (`brepjs-opencascade`, `brepkit-wasm`) exist and are interchangeable. See [Custom Kernels](../extending/custom-kernel) for swapping.
 
 ## Three init styles
 
@@ -34,7 +34,7 @@ const cyl = cylinder(5, 20);
 const part = shape(b).cut(cyl).val;
 ```
 
-Best for scripts, prototypes, and any ESM environment with top-level await. The `brepjs/quick` entry runs `await opencascade(); initFromOC(oc)` at module-load time, then re-exports the full API.
+Best for scripts, prototypes, and any ESM environment with top-level await. The `brepjs/quick` entry resolves the default `occt-wasm` kernel (falling back to `brepjs-opencascade`) at module-load time, then re-exports the full API.
 
 ### `init()` — auto-detect
 
@@ -43,29 +43,29 @@ Best for scripts, prototypes, and any ESM environment with top-level await. The 
 ```typescript
 import { init, box, cylinder, shape } from 'brepjs';
 
-await init(); // resolves with 'occt' or 'brepkit'
+await init(); // resolves with 'occt-wasm', 'occt', or 'brepkit'
 
 const b = box(30, 20, 10);
 const cyl = cylinder(5, 20);
 ```
 
-Best for apps where you control startup. `init()` is idempotent and returns the kernel ID it picked (`'occt'` if `brepjs-opencascade` is installed, `'brepkit'` if `brepkit-wasm` is installed, or whichever is available).
+Best for apps where you control startup. `init()` is idempotent and returns the kernel ID it picked (`'occt-wasm'` if `occt-wasm` is installed, `'occt'` if `brepjs-opencascade` is installed, `'brepkit'` if `brepkit-wasm` is installed, or whichever is available).
 
-### `initFromOC(oc)` — manual
+### Manual registration
 
 <!-- @no-test -->
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box, cylinder, shape } from 'brepjs';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter, box, cylinder, shape } from 'brepjs';
 
-const oc = await opencascade();
-initFromOC(oc);
+const kernel = await OcctKernel.init();
+registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
 
 const b = box(30, 20, 10);
 ```
 
-Best for apps that need a loading indicator, explicit error handling, or environments without top-level await. `initFromOC` only needs to be called once per app lifetime.
+Best for apps that need a loading indicator, explicit error handling, or environments without top-level await. The kernel only needs to be registered once per app lifetime.
 
 ## Bundler notes
 
@@ -109,25 +109,25 @@ import { box, shape } from 'brepjs/quick';
 console.log('Volume:', shape(box(10, 10, 10)).volume()); // 1000
 ```
 
-If you see `Volume: 1000`, you are wired up correctly. If you see a kernel-not-initialized error, switch to `init()` or `initFromOC` and `await` it before any shape call.
+If you see `Volume: 1000`, you are wired up correctly. If you see a kernel-not-initialized error, switch to `init()` or manual registration and `await` it before any shape call.
 
 ## Browser loading indicator
 
-When using manual init, you can show a loading UI while the kernel downloads:
+When using manual registration, you can show a loading UI while the kernel downloads:
 
 <!-- @no-test -->
 
 ```typescript
-import opencascade from 'brepjs-opencascade';
-import { initFromOC, box, shape } from 'brepjs';
+import { OcctKernel } from 'occt-wasm';
+import { registerKernel, OcctWasmAdapter, box, shape } from 'brepjs';
 
 async function initCAD() {
   const loader = document.getElementById('loader');
   if (loader) loader.textContent = 'Loading CAD kernel...';
 
   try {
-    const oc = await opencascade();
-    initFromOC(oc);
+    const kernel = await OcctKernel.init();
+    registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(kernel));
     loader?.remove();
 
     const b = box(10, 10, 10);
@@ -140,7 +140,7 @@ async function initCAD() {
 initCAD();
 ```
 
-`init()` and `brepjs/quick` handle the load themselves; `initFromOC` is the only path where you can wrap progress UI around the load.
+`init()` and `brepjs/quick` handle the load themselves; manual registration is the only path where you can wrap progress UI around the load.
 
 ## Sub-path imports (smaller autocomplete)
 

@@ -35,7 +35,7 @@ The codes below are grouped by domain. Use Ctrl+F.
 
 ### `KERNEL_NOT_INITIALIZED`
 
-You called a brepjs function before any kernel was registered. Either you forgot `await init()` / `await initFromOC(oc)`, or you're using `brepjs/quick` in an environment without top-level await support.
+You called a brepjs function before any kernel was registered. Either you forgot `await init()` / `await registerKernel(...)`, or you're using `brepjs/quick` in an environment without top-level await support.
 
 **Fix**: Use one of the three init paths in [Install & Initialize](../getting-started/install). For environments without top-level await, prefer `init()` and explicitly `await` it before any shape call.
 
@@ -254,7 +254,7 @@ if (!isOk(result)) {
 }
 ```
 
-The `cause` field carries the underlying kernel error (often a string from OpenCascade). Search the brepjs issues for the code; if it's not documented, file a bug.
+The `cause` field carries the underlying kernel error (often a string from the OpenCascade kernel). Search the brepjs issues for the code; if it's not documented, file a bug.
 
 ## Stability of error codes
 
