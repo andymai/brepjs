@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.42.0](https://github.com/andymai/brepjs/compare/brepjs-v18.41.1...brepjs-v18.42.0) (2026-06-02)
+
+
+### Features
+
+* **bim:** phase 2 data conformance + geometry-representation breadth ([#1166](https://github.com/andymai/brepjs/issues/1166)) ([bafb95e](https://github.com/andymai/brepjs/commit/bafb95ea04687a4fb0d2ecb7b55f3f7a1d150a1d))
+
 ## [18.41.1](https://github.com/andymai/brepjs/compare/brepjs-v18.41.0...brepjs-v18.41.1) (2026-06-02)
 
 
