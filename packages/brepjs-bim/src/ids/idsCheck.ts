@@ -60,7 +60,7 @@ function checkSpecification(
 
   const applicable = elements.filter((el) =>
     spec.applicability.every((facet) =>
-      evalFacet(el, facet, spec.name, unsupportedFacets, issues, 'applicability')
+      evalFacet(el, facet, spec.name, unsupportedFacets, issues, 'applicability', spec.cardinality)
     )
   );
 
@@ -69,7 +69,7 @@ function checkSpecification(
 
   for (const el of applicable) {
     const satisfies = spec.requirements.every((facet) =>
-      evalFacet(el, facet, spec.name, unsupportedFacets, issues, 'requirement')
+      evalFacet(el, facet, spec.name, unsupportedFacets, issues, 'requirement', spec.cardinality)
     );
 
     const ok = satisfiesCardinality(spec.cardinality, satisfies);
@@ -192,7 +192,8 @@ function evalFacet(
   specName: string,
   unsupportedFacets: string[],
   issues: ValidationIssue[],
-  role: 'applicability' | 'requirement'
+  role: 'applicability' | 'requirement',
+  cardinality: IdsSpecification['cardinality']
 ): boolean {
   switch (facet.kind) {
     case 'Entity':
@@ -217,9 +218,12 @@ function evalFacet(
       );
     case 'PartOf':
       markUnsupported(`PartOf in "${specName}"`, unsupportedFacets, issues, specName);
-      // An unsupported requirement is treated as satisfied; an unsupported
-      // applicability is treated as non-matching to avoid over-broad selection.
-      return role === 'requirement';
+      // Applicability: non-matching, to avoid over-broad selection. Requirement:
+      // neutral per cardinality — 'required'/'optional' treat the unevaluable
+      // facet as satisfied (no failure), but 'prohibited' must NOT, else it would
+      // raise a false violation for a requirement it cannot actually evaluate.
+      if (role === 'applicability') return false;
+      return cardinality !== 'prohibited';
   }
 }
 

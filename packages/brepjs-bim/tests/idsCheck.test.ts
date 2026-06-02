@@ -44,6 +44,33 @@ const WALL_IS_EXTERNAL_IDS = `<?xml version="1.0" encoding="UTF-8"?>
   </specifications>
 </ids>`;
 
+const WALL_PROHIBITED_PARTOF_IDS = `<?xml version="1.0" encoding="UTF-8"?>
+<ids xmlns="http://standards.buildingsmart.org/IDS">
+  <info>
+    <title>Walls must not be part of an assembly</title>
+  </info>
+  <specifications>
+    <specification name="No wall in assembly" ifcVersion="IFC4" cardinality="prohibited">
+      <applicability minOccurs="1" maxOccurs="unbounded">
+        <entity>
+          <name>
+            <simpleValue>IFCWALL</simpleValue>
+          </name>
+        </entity>
+      </applicability>
+      <requirements>
+        <partOf relation="IFCRELAGGREGATES">
+          <entity>
+            <name>
+              <simpleValue>IFCELEMENTASSEMBLY</simpleValue>
+            </name>
+          </entity>
+        </partOf>
+      </requirements>
+    </specification>
+  </specifications>
+</ids>`;
+
 /** Builds a minimal spatial tree plus one wall, optionally marking it external. */
 function buildWallModel(withIsExternal: boolean): BimModel {
   const model = new BimModel();
@@ -169,5 +196,20 @@ describe('IDS check — Pset_WallCommon.IsExternal requirement', () => {
     expect(report.unsupportedFacets.some((f) => f.includes('PartOf'))).toBe(true);
     // The model used to build the IFC is not needed for this pure-parse path.
     void model;
+  });
+
+  it('does not flag a prohibited spec whose requirement is an unsupported PartOf', async () => {
+    const model = buildWallModel(true);
+    const bytes = await toIfc(model, META);
+    if (!bytes.ok) throw new Error(bytes.error.message);
+    const imported = await fromIfc(bytes.value);
+    if (!imported.ok) throw new Error(imported.error.message);
+    const parsed = parseIdsXml(WALL_PROHIBITED_PARTOF_IDS);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const report = checkModelAgainstIds(imported.value, parsed.value);
+    // The PartOf requirement is unsupported; a prohibited spec must NOT raise a
+    // spurious violation for a facet it cannot evaluate.
+    expect(report.pass).toBe(true);
+    expect(report.unsupportedFacets.some((f) => f.includes('PartOf'))).toBe(true);
   });
 });

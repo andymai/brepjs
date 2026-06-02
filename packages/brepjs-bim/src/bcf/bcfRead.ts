@@ -30,15 +30,14 @@ export function parseBcfFiles(files: BcfFiles): Result<BcfContainerData, BimErro
     return err(bcfError('BCF_MISSING_FILE', 'Container is missing the required bcf.version file'));
   }
   const projectXml = files.get('project.bcfp');
-  if (projectXml === undefined) {
-    return err(bcfError('BCF_MISSING_FILE', 'Container is missing the required project.bcfp file'));
-  }
 
   try {
     const version = parseVersion(versionXml);
     if (!isOk(version)) return version;
 
-    const project = parseProject(projectXml);
+    // project.bcfp is optional per BCF 3.0; default to an empty project when absent.
+    const project =
+      projectXml !== undefined ? parseProject(projectXml) : { projectId: '', name: '' };
 
     const topics: BcfTopic[] = [];
     for (const [path, xml] of files) {

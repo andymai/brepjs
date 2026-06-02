@@ -158,4 +158,11 @@ describe('BCF 3.0 read/write', () => {
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.value).toEqual(data);
   });
+
+  it('parses a container without the optional project.bcfp (BCF 3.0)', () => {
+    const files = serializeBcfFiles(buildContainer());
+    files.delete('project.bcfp');
+    const parsed = parseBcfFiles(files);
+    expect(parsed.ok).toBe(true);
+  });
 });
