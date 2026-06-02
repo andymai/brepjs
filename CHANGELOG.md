@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.39.0](https://github.com/andymai/brepjs/compare/brepjs-v18.38.0...brepjs-v18.39.0) (2026-06-02)
+
+
+### Features
+
+* **lattice:** add Layer-3 TPMS lattice domain ([#1152](https://github.com/andymai/brepjs/issues/1152)) ([54e714e](https://github.com/andymai/brepjs/commit/54e714e9ee67019052dc948b698b7594fdc2c346))
+
 ## [18.38.0](https://github.com/andymai/brepjs/compare/brepjs-v18.37.0...brepjs-v18.38.0) (2026-06-02)
 
 
