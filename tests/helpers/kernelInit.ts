@@ -8,7 +8,7 @@
 import { initFromManifold, initFromOC, registerKernel } from '@/kernel/index.js';
 import { BrepkitAdapter } from '@/kernel/brepkit/brepkitAdapter.js';
 import { OcctWasmAdapter } from '@/kernel/occtWasm/occtWasmAdapter.js';
-import { kernelConfigs } from './kernelRegistry.js';
+import { kernelConfigs, defaultKernelId } from './kernelRegistry.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten instance
 let _oc: any = null;
@@ -19,12 +19,13 @@ let _manifoldInitialized = false;
 const _available: string[] = [];
 
 /**
- * Initialise whichever kernel `id` selects (defaults to `TEST_KERNEL` env, then `"occt"`).
+ * Initialise whichever kernel `id` selects (defaults to `TEST_KERNEL` env, then
+ * the registry default `"occt-wasm"`).
  *
  * Safe to call multiple times — only the first call per kernel has an effect.
  */
 export async function initKernel(id?: string): Promise<void> {
-  const kernel = id ?? process.env['TEST_KERNEL'] ?? 'occt';
+  const kernel = id ?? process.env['TEST_KERNEL'] ?? defaultKernelId();
 
   if (kernel === 'brepkit') {
     if (_bkInitialized) return;
@@ -39,19 +40,11 @@ export async function initKernel(id?: string): Promise<void> {
   } else if (kernel === 'occt-wasm') {
     if (_occtWasmInitialized) return;
     _occtWasmInitialized = true;
-    // occt-wasm npm package bundles the Emscripten module in its dist/
-    const { resolve } = await import('node:path');
-    // Locate the occt-wasm dist directory via the package's import resolution
-    const occtWasmEntry = import.meta.resolve('occt-wasm');
-    const { fileURLToPath, URL: UrlClass } = await import('node:url');
-    const wasmDir = fileURLToPath(new UrlClass('.', occtWasmEntry));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Emscripten factory
-    const { default: createOcctWasm }: any = await import(resolve(wasmDir, 'occt-wasm.js'));
-    const Module = await createOcctWasm({
-      locateFile: (p: string) => (p.endsWith('.wasm') ? resolve(wasmDir, 'occt-wasm.wasm') : p),
-    });
-    const k = new Module.OcctKernel();
-    registerKernel('occt-wasm', new OcctWasmAdapter(Module, k));
+    // Browser-safe high-level loader: OcctKernel.init() auto-locates the .wasm
+    // via import.meta.url — the same path init()/quick use.
+    const { OcctKernel } = await import('occt-wasm');
+    const k = await OcctKernel.init();
+    registerKernel('occt-wasm', OcctWasmAdapter.fromKernel(k));
     _available.push('occt-wasm');
   } else if (kernel === 'manifold') {
     if (_manifoldInitialized) return;
