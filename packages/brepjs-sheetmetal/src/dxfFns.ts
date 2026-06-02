@@ -21,9 +21,11 @@ type Pt2 = [number, number];
  * (`blueprintToDXF`) is R12 LINE/POLYLINE-only with no MTEXT, layer color, or
  * INSUNITS, so it cannot carry the annotated multi-layer output required here.
  *
- * Emits an AC1015 (R2000) DXF: `INSUNITS=4` (mm), the outline polyline on layer
- * OUTLINE, each bend line on BEND_UP / BEND_DOWN, and an MTEXT angle/direction
- * annotation (e.g. "∠90° U") at each bend-line midpoint.
+ * Emits a strict AC1015 (R2000) DXF: `INSUNITS=4` (mm), the outline polyline on
+ * layer OUTLINE, each bend line on BEND_UP / BEND_DOWN, and an MTEXT
+ * angle/direction annotation (e.g. "∠90° U") at each bend-line midpoint. Every
+ * table record and entity carries a unique handle and the AcDb subclass markers
+ * R13+ readers (AutoCAD AUDIT, ODA/Teigha) require to parse the file cleanly.
  */
 export function flatPatternToDXF(pattern: FlatPattern, options: DxfOptions = {}): Result<string> {
   const textHeight = options.textHeight ?? DEFAULT_TEXT_HEIGHT;
@@ -35,34 +37,52 @@ export function flatPatternToDXF(pattern: FlatPattern, options: DxfOptions = {})
   if (!outlineResult.ok) return outlineResult;
   const outline = outlineResult.value;
 
-  const w = new DxfWriter();
-  writeHeader(w);
-  writeTables(w);
-  writeEntities(w, outline, pattern, textHeight);
-  return ok(w.build());
+  // Tables + entities consume handles; the header's $HANDSEED must exceed them,
+  // so build the body first and seed the header from the next free handle.
+  const body = new DxfWriter();
+  writeTables(body);
+  writeEntities(body, outline, pattern, textHeight);
+
+  const head = new DxfWriter();
+  writeHeader(head, body.seedHex());
+
+  return ok([head.text(), body.text(), '0', 'EOF'].join('\n') + '\n');
 }
 
 class DxfWriter {
   private readonly lines: string[] = [];
+  private nextHandle = 0xa0;
 
   pair(code: number, value: string | number): void {
     this.lines.push(String(code));
     this.lines.push(typeof value === 'number' ? String(value) : value);
   }
 
-  build(): string {
-    this.pair(0, 'EOF');
-    return this.lines.join('\n') + '\n';
+  /** Emit a unique entity/record handle (group code 5). */
+  handle(): void {
+    this.pair(5, this.nextHandle.toString(16).toUpperCase());
+    this.nextHandle += 1;
+  }
+
+  /** Next free handle (hex) — written as the header `$HANDSEED`. */
+  seedHex(): string {
+    return this.nextHandle.toString(16).toUpperCase();
+  }
+
+  text(): string {
+    return this.lines.join('\n');
   }
 }
 
-function writeHeader(w: DxfWriter): void {
+function writeHeader(w: DxfWriter, handseed: string): void {
   w.pair(0, 'SECTION');
   w.pair(2, 'HEADER');
   w.pair(9, '$ACADVER');
   w.pair(1, 'AC1015');
   w.pair(9, '$INSUNITS');
   w.pair(70, 4);
+  w.pair(9, '$HANDSEED');
+  w.pair(5, handseed);
   w.pair(0, 'ENDSEC');
 }
 
@@ -71,6 +91,8 @@ function writeTables(w: DxfWriter): void {
   w.pair(2, 'TABLES');
   w.pair(0, 'TABLE');
   w.pair(2, 'LAYER');
+  w.handle();
+  w.pair(100, 'AcDbSymbolTable');
   w.pair(70, 3);
   writeLayer(w, LAYER_OUTLINE, COLOR_OUTLINE);
   writeLayer(w, LAYER_BEND_UP, COLOR_BEND_UP);
@@ -81,6 +103,9 @@ function writeTables(w: DxfWriter): void {
 
 function writeLayer(w: DxfWriter, name: string, color: number): void {
   w.pair(0, 'LAYER');
+  w.handle();
+  w.pair(100, 'AcDbSymbolTableRecord');
+  w.pair(100, 'AcDbLayerTableRecord');
   w.pair(2, name);
   w.pair(70, 0);
   w.pair(62, color);
@@ -108,7 +133,10 @@ function writeEntities(w: DxfWriter, outline: Pt2[], pattern: FlatPattern, textH
 
 function writePolyline(w: DxfWriter, points: Pt2[], layer: string): void {
   w.pair(0, 'LWPOLYLINE');
+  w.handle();
+  w.pair(100, 'AcDbEntity');
   w.pair(8, layer);
+  w.pair(100, 'AcDbPolyline');
   w.pair(90, points.length);
   w.pair(70, 1);
   for (const [x, y] of points) {
@@ -119,7 +147,10 @@ function writePolyline(w: DxfWriter, points: Pt2[], layer: string): void {
 
 function writeLine(w: DxfWriter, start: Pt2, end: Pt2, layer: string): void {
   w.pair(0, 'LINE');
+  w.handle();
+  w.pair(100, 'AcDbEntity');
   w.pair(8, layer);
+  w.pair(100, 'AcDbLine');
   w.pair(10, start[0]);
   w.pair(20, start[1]);
   w.pair(30, 0);
@@ -130,11 +161,15 @@ function writeLine(w: DxfWriter, start: Pt2, end: Pt2, layer: string): void {
 
 function writeMText(w: DxfWriter, at: Pt2, text: string, layer: string, height: number): void {
   w.pair(0, 'MTEXT');
+  w.handle();
+  w.pair(100, 'AcDbEntity');
   w.pair(8, layer);
+  w.pair(100, 'AcDbMText');
   w.pair(10, at[0]);
   w.pair(20, at[1]);
   w.pair(30, 0);
   w.pair(40, height);
+  w.pair(41, height * 10);
   w.pair(71, 5);
   w.pair(1, text);
 }

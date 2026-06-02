@@ -85,9 +85,24 @@ describe('flatPatternToDXF — structure', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const lines = r.value.split('\n');
-    const tableIdx = lines.indexOf('LAYER');
-    expect(lines[tableIdx + 1]).toBe('70');
-    expect(lines[tableIdx + 2]).toBe('3');
+    const symIdx = lines.indexOf('AcDbSymbolTable');
+    expect(lines[symIdx + 1]).toBe('70');
+    expect(lines[symIdx + 2]).toBe('3');
+  });
+
+  it('is R2000-conformant: $HANDSEED + AcDb subclass markers on every entity', () => {
+    const r = flatPatternToDXF(unfoldPattern('up'));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value).toContain('$HANDSEED');
+    expect(r.value).toContain('AcDbEntity');
+    expect(r.value).toContain('AcDbPolyline');
+    expect(r.value).toContain('AcDbLine');
+    expect(r.value).toContain('AcDbMText');
+    // MTEXT reference rectangle width (group 41) so readers size the text box
+    const lines = r.value.split('\n');
+    const mtextIdx = lines.indexOf('MTEXT');
+    expect(lines.indexOf('41', mtextIdx)).toBeGreaterThan(-1);
   });
 });
 
@@ -119,8 +134,8 @@ describe('flatPatternToDXF — entities', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const lines = r.value.split('\n');
-    const lineIdx = lines.indexOf('LINE');
-    expect(lines[lineIdx + 2]).toBe('BEND_UP');
+    const subIdx = lines.indexOf('AcDbLine');
+    expect(lines[subIdx - 2]).toBe('BEND_UP');
     expect(r.value).toContain('∠90° U');
     expect(r.value).not.toContain('∠90° D');
   });
@@ -130,8 +145,8 @@ describe('flatPatternToDXF — entities', () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const lines = r.value.split('\n');
-    const lineIdx = lines.indexOf('LINE');
-    expect(lines[lineIdx + 2]).toBe('BEND_DOWN');
+    const subIdx = lines.indexOf('AcDbLine');
+    expect(lines[subIdx - 2]).toBe('BEND_DOWN');
     expect(r.value).toContain('∠90° D');
   });
 });
