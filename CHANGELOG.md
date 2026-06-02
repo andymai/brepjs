@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.46.0](https://github.com/andymai/brepjs/compare/brepjs-v18.45.0...brepjs-v18.46.0) (2026-06-02)
+
+
+### Features
+
+* **sheetmetal:** add experimental sheet-metal domain package ([#1172](https://github.com/andymai/brepjs/issues/1172)) ([e86b73c](https://github.com/andymai/brepjs/commit/e86b73c8bb6da20b0f34f18897e5afa366994aa3))
+
 ## [18.45.0](https://github.com/andymai/brepjs/compare/brepjs-v18.44.0...brepjs-v18.45.0) (2026-06-02)
 
 
