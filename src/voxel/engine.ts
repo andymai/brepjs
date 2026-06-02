@@ -18,6 +18,30 @@ export interface VoxelEngine {
     resolution: number,
     padding: number
   ): VoxelRepairResult;
+  /** Fill an FWN-signed solid with a TPMS lattice infill, contoured to a mesh. */
+  lattice_infill(
+    verts: Float32Array,
+    tris: Uint32Array,
+    resolution: number,
+    padding: number,
+    lattice_type: number,
+    period: number,
+    thickness: number
+  ): VoxelRepairResult;
+  /** Contour the infinite TPMS lattice clipped to an axis-aligned box. */
+  tpms_box(
+    min_x: number,
+    min_y: number,
+    min_z: number,
+    max_x: number,
+    max_y: number,
+    max_z: number,
+    resolution: number,
+    padding: number,
+    lattice_type: number,
+    period: number,
+    thickness: number
+  ): VoxelRepairResult;
   /** Engine artifact version, for loader/artifact compatibility checks. */
   version(): string;
 }

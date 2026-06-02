@@ -8,7 +8,12 @@ import initWasm, * as wasm from 'brepjs-voxel-wasm';
  */
 export type VoxelEngine = Pick<
   typeof import('brepjs-voxel-wasm'),
-  'winding_numbers' | 'points_inside' | 'repair_mesh' | 'version'
+  | 'winding_numbers'
+  | 'points_inside'
+  | 'repair_mesh'
+  | 'lattice_infill'
+  | 'tpms_box'
+  | 'version'
 >;
 
 let _engine: VoxelEngine | null = null;
@@ -43,6 +48,8 @@ export async function loadVoxelEngine(): Promise<VoxelEngine> {
     winding_numbers: wasm.winding_numbers,
     points_inside: wasm.points_inside,
     repair_mesh: wasm.repair_mesh,
+    lattice_infill: wasm.lattice_infill,
+    tpms_box: wasm.tpms_box,
     version: wasm.version,
   };
   return _engine;

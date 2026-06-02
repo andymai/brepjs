@@ -53,6 +53,37 @@ export class RepairResult {
 if (Symbol.dispose) RepairResult.prototype[Symbol.dispose] = RepairResult.prototype.free;
 
 /**
+ * Fill a mesh with a TPMS lattice infill: voxelize the FWN-signed solid over a
+ * grid sized to the mesh bbox, build a shell field of the chosen lattice over the
+ * same grid, intersect them (keep voxels both inside the solid AND in strut
+ * material), then Surface-Nets contour back to triangles (world-space).
+ *
+ * `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+ * `lattice_type`: 0=Gyroid, 1=SchwarzP, 2=Diamond. `period` is the unit-cell size
+ * (world units); `thickness` is the strut wall width in field units.
+ * Errors (as a JS exception) on a bad lattice tag or a grid over the voxel cap.
+ * @param {Float32Array} verts
+ * @param {Uint32Array} tris
+ * @param {number} resolution
+ * @param {number} padding
+ * @param {number} lattice_type
+ * @param {number} period
+ * @param {number} thickness
+ * @returns {RepairResult}
+ */
+export function lattice_infill(verts, tris, resolution, padding, lattice_type, period, thickness) {
+    const ptr0 = passArrayF32ToWasm0(verts, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray32ToWasm0(tris, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.lattice_infill(ptr0, len0, ptr1, len1, resolution, padding, lattice_type, period, thickness);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return RepairResult.__wrap(ret[0]);
+}
+
+/**
  * Inside/outside classification per query point (winding number > 0.5).
  *
  * Returns length Q: 1 = inside, 0 = outside. This is the sign decision the
@@ -95,6 +126,34 @@ export function repair_mesh(verts, tris, resolution, padding) {
     const ptr1 = passArray32ToWasm0(tris, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
     const ret = wasm.repair_mesh(ptr0, len0, ptr1, len1, resolution, padding);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return RepairResult.__wrap(ret[0]);
+}
+
+/**
+ * The infinite TPMS lattice clipped to an axis-aligned box. Build a grid over
+ * `[min..max]`, fill the chosen lattice shell field, Surface-Nets contour it.
+ *
+ * `lattice_type`: 0=Gyroid, 1=SchwarzP, 2=Diamond. `period` is the unit-cell size
+ * (world units); `thickness` is the strut wall width in field units.
+ * Errors (as a JS exception) on a bad lattice tag or a grid over the voxel cap.
+ * @param {number} min_x
+ * @param {number} min_y
+ * @param {number} min_z
+ * @param {number} max_x
+ * @param {number} max_y
+ * @param {number} max_z
+ * @param {number} resolution
+ * @param {number} padding
+ * @param {number} lattice_type
+ * @param {number} period
+ * @param {number} thickness
+ * @returns {RepairResult}
+ */
+export function tpms_box(min_x, min_y, min_z, max_x, max_y, max_z, resolution, padding, lattice_type, period, thickness) {
+    const ret = wasm.tpms_box(min_x, min_y, min_z, max_x, max_y, max_z, resolution, padding, lattice_type, period, thickness);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }

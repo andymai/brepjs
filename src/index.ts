@@ -242,6 +242,11 @@ export type {
   RepairOptions,
 } from './voxel/index.js';
 
+// ── Layer 3: lattice (ADR-0013) ──
+
+export { latticeInfill, tpmsLattice } from './lattice/index.js';
+export type { LatticeType, LatticeOptions, LatticeBounds } from './lattice/index.js';
+
 // ── Layer 3: sketching ──
 
 export { default as Sketcher } from './sketching/sketcher.js';

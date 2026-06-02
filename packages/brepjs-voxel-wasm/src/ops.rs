@@ -174,6 +174,37 @@ pub fn voxel_difference(a: &Grid, b: &Grid) -> Result<Grid, GridError> {
     combine(a, b, |x, y| x.max(-y))
 }
 
+/// Fill a grid with the exact signed distance to the axis-aligned box
+/// `[min, max]`: negative inside, positive outside. Intersecting another field
+/// with this clips it to the box (and writes positive into any padding ring).
+pub fn fill_box_sdf(grid: &mut Grid, min: [f32; 3], max: [f32; 3]) {
+    let center = [
+        (min[0] + max[0]) * 0.5,
+        (min[1] + max[1]) * 0.5,
+        (min[2] + max[2]) * 0.5,
+    ];
+    let half = [
+        (max[0] - min[0]) * 0.5,
+        (max[1] - min[1]) * 0.5,
+        (max[2] - min[2]) * 0.5,
+    ];
+    let dims = grid.dims();
+    for z in 0..dims[2] {
+        for y in 0..dims[1] {
+            for x in 0..dims[0] {
+                let p = grid.world_pos(x, y, z);
+                let dx = (p[0] - center[0]).abs() - half[0];
+                let dy = (p[1] - center[1]).abs() - half[1];
+                let dz = (p[2] - center[2]).abs() - half[2];
+                let outside =
+                    (dx.max(0.0).powi(2) + dy.max(0.0).powi(2) + dz.max(0.0).powi(2)).sqrt();
+                let inside = dx.max(dy).max(dz).min(0.0);
+                grid.set(x, y, z, outside + inside);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

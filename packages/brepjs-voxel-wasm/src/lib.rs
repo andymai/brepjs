@@ -8,10 +8,12 @@ mod contour;
 mod fwn;
 mod grid;
 mod ops;
+mod tpms;
 
 use wasm_bindgen::prelude::*;
 
 use crate::grid::Grid;
+use crate::tpms::LatticeType;
 
 /// Repaired triangle mesh handed back across the wasm boundary. wasm-bindgen
 /// exposes the `Vec` getters as typed arrays (flat xyz positions/normals,
@@ -89,6 +91,100 @@ pub fn repair_mesh(
     })
 }
 
+/// Fill a mesh with a TPMS lattice infill: voxelize the FWN-signed solid over a
+/// grid sized to the mesh bbox, build a shell field of the chosen lattice over the
+/// same grid, intersect them (keep voxels both inside the solid AND in strut
+/// material), then Surface-Nets contour back to triangles (world-space).
+///
+/// `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
+/// `lattice_type`: 0=Gyroid, 1=SchwarzP, 2=Diamond. `period` is the unit-cell size
+/// (world units); `thickness` is the strut wall width in field units.
+/// Errors (as a JS exception) on a bad lattice tag or a grid over the voxel cap.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn lattice_infill(
+    verts: &[f32],
+    tris: &[u32],
+    resolution: u32,
+    padding: u32,
+    lattice_type: u32,
+    period: f32,
+    thickness: f32,
+) -> Result<RepairResult, JsError> {
+    let kind = LatticeType::from_u32(lattice_type)
+        .ok_or_else(|| JsError::new(&format!("unknown lattice type: {lattice_type}")))?;
+
+    let mesh = fwn::Mesh::from_flat(verts, tris);
+    let (min, max) = bbox(verts);
+
+    let mut solid = Grid::for_bounds(min, max, resolution as usize, padding as usize)
+        .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
+    ops::voxelize_mesh(&mut solid, &mesh);
+
+    let mut shell = solid.same_shape();
+    tpms::fill_tpms_shell(&mut shell, kind, period, thickness);
+
+    let infill = ops::voxel_intersection(&solid, &shell)
+        .map_err(|e| JsError::new(&format!("voxel intersection failed: {e:?}")))?;
+
+    let out = contour::surface_nets_mesh(&infill);
+
+    Ok(RepairResult {
+        positions: out.positions,
+        normals: out.normals,
+        indices: out.indices,
+    })
+}
+
+/// The infinite TPMS lattice clipped to an axis-aligned box. Build a grid over
+/// `[min..max]`, fill the chosen lattice shell field, Surface-Nets contour it.
+///
+/// `lattice_type`: 0=Gyroid, 1=SchwarzP, 2=Diamond. `period` is the unit-cell size
+/// (world units); `thickness` is the strut wall width in field units.
+/// Errors (as a JS exception) on a bad lattice tag or a grid over the voxel cap.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn tpms_box(
+    min_x: f32,
+    min_y: f32,
+    min_z: f32,
+    max_x: f32,
+    max_y: f32,
+    max_z: f32,
+    resolution: u32,
+    padding: u32,
+    lattice_type: u32,
+    period: f32,
+    thickness: f32,
+) -> Result<RepairResult, JsError> {
+    let kind = LatticeType::from_u32(lattice_type)
+        .ok_or_else(|| JsError::new(&format!("unknown lattice type: {lattice_type}")))?;
+
+    let mut grid = Grid::for_bounds(
+        [min_x, min_y, min_z],
+        [max_x, max_y, max_z],
+        resolution as usize,
+        padding as usize,
+    )
+    .map_err(|e| JsError::new(&format!("voxel grid allocation failed: {e:?}")))?;
+    tpms::fill_tpms_shell(&mut grid, kind, period, thickness);
+
+    // Clip the (periodic) lattice to the requested box: intersect with the box
+    // SDF so struts are bounded at [min..max] and the padding ring stays air.
+    let mut clip = grid.same_shape();
+    ops::fill_box_sdf(&mut clip, [min_x, min_y, min_z], [max_x, max_y, max_z]);
+    let bounded = ops::voxel_intersection(&grid, &clip)
+        .map_err(|e| JsError::new(&format!("voxel intersection failed: {e:?}")))?;
+
+    let out = contour::surface_nets_mesh(&bounded);
+
+    Ok(RepairResult {
+        positions: out.positions,
+        normals: out.normals,
+        indices: out.indices,
+    })
+}
+
 /// Winding number at each query point, against a triangle-soup mesh.
 ///
 /// `verts`: flat xyz, length 3·V. `tris`: flat vertex indices, length 3·T.
@@ -119,4 +215,38 @@ pub fn points_inside(verts: &[f32], tris: &[u32], queries: &[f32]) -> Vec<u8> {
 #[wasm_bindgen]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Unit cube [0,1]^3, outward-facing triangles.
+    fn unit_cube() -> (Vec<f32>, Vec<u32>) {
+        let verts: Vec<f32> = vec![
+            0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+            1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0,
+        ];
+        let tris: Vec<u32> = vec![
+            0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 3, 7, 6, 3, 6, 2, 0, 4, 7, 0, 7,
+            3, 1, 2, 6, 1, 6, 5,
+        ];
+        (verts, tris)
+    }
+
+    #[test]
+    fn lattice_infill_produces_a_mesh() {
+        let (verts, tris) = unit_cube();
+        let r = lattice_infill(&verts, &tris, 32, 2, 0, 0.4, 0.4).expect("infill must succeed");
+        assert!(!r.positions.is_empty(), "infill mesh must have vertices");
+        assert!(!r.indices.is_empty(), "infill mesh must have triangles");
+    }
+
+    #[test]
+    fn tpms_box_produces_a_mesh() {
+        let r = tpms_box(0.0, 0.0, 0.0, 3.0, 3.0, 3.0, 32, 1, 0, 1.0, 0.4)
+            .expect("tpms_box must succeed");
+        assert!(!r.positions.is_empty(), "tpms_box mesh must have vertices");
+        assert!(!r.indices.is_empty(), "tpms_box mesh must have triangles");
+    }
 }
