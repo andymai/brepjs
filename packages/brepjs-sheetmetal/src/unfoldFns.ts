@@ -235,7 +235,10 @@ function outlineCorners(layout: RunLayout, miters: CornerMiter[]): Pt2[] {
   const reflex: Pt2 = [baseLength, width];
   const gap = miterGapFor(miters, east.id, north.id);
 
-  if (gap === undefined) {
+  // A zero (or negative) gap removes no clearance, so the chamfer would collapse
+  // both vertices onto the reflex corner — a degenerate zero-length edge that
+  // wireLoop rejects. Treat it as the plain L-hexagon (no notch).
+  if (gap === undefined || gap <= 0) {
     return [
       [0, 0],
       [maxX, 0],

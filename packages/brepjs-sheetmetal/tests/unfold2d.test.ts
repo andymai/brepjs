@@ -126,6 +126,30 @@ describe('2D perpendicular unfold layout', () => {
     if (isErr(um)) return;
     expect(hasDiagonalEdge(um.value.pattern.outline)).toBe(true);
   });
+
+  it('e) default zero-gap miter unfolds (no degenerate edge) as a plain L-hexagon', () => {
+    const authored = author({
+      thickness: T,
+      base: { length: baseLen, width },
+      flanges: [
+        { id: 'east', length: eastLen, angleDeg: 90, rule, side: 'xmax' },
+        { id: 'north', length: northLen, angleDeg: 90, rule, side: 'ymax' },
+      ],
+    });
+    expect(authored.ok).toBe(true);
+    if (isErr(authored)) return;
+
+    // Default gap = 0 — the most common autoMiterCorner invocation.
+    const mitered = miterCorner(authored.value, 'east', 'north');
+    expect(mitered.ok).toBe(true);
+    if (isErr(mitered)) return;
+
+    const um = unfold(mitered.value);
+    expect(um.ok).toBe(true);
+    if (isErr(um)) return;
+    // Zero clearance removes no material, so the outline stays the plain L.
+    expect(hasDiagonalEdge(um.value.pattern.outline)).toBe(false);
+  });
 });
 
 function hasDiagonalEdge(outline: Wire): boolean {
