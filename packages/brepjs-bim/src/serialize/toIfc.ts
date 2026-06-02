@@ -44,6 +44,11 @@ import {
   writeElementAssemblyEntity,
   writeRelNests,
 } from '../ifc-writer/assemblyWriter.js';
+import {
+  writeZoneEntity,
+  writeSystemEntity,
+  writeRelAssignsToGroup,
+} from '../ifc-writer/groupWriter.js';
 import { writeSurfaceStyle, writeStyledItem } from '../ifc-writer/styleWriter.js';
 import {
   writeRelConnectsElements,
@@ -81,6 +86,7 @@ import {
   writeRampCommonPset,
   writeRailingCommonPset,
   writeCoveringCommonPset,
+  resolveDensityKgM3,
 } from '../ifc-writer/psetWriter.js';
 import {
   writeOpeningGeometry,
@@ -121,7 +127,7 @@ export async function toIfc(
     return err(ifcError('NO_PROJECT', 'BimModel has no project — call model.init() first'));
   }
 
-  const writerResult = await IfcWriter.create(meta.mvdViewDefinition);
+  const writerResult = await IfcWriter.create(meta.mvdViewDefinition, meta.ifcSchema);
   if (!writerResult.ok) return writerResult;
   const w = writerResult.value;
   // Scope writer-minted GUIDs (psets/quantities/rels) to this model.
@@ -146,8 +152,12 @@ export async function toIfc(
   const railings = model.getRailings();
   const coverings = model.getCoverings();
   const assemblies = model.getElementAssemblies();
+  const zones = model.getZones();
+  const systems = model.getSystems();
 
   const { ownerHistoryId, geomContextId, geomSubContextId, unitAssignmentId } = writeHeader(w, meta);
+
+  const densityByElement = buildDensityMap(relationships);
 
   const idMap = new Map<LocalId, number>();
   const placementMap = new Map<LocalId, number>();
@@ -226,7 +236,8 @@ export async function toIfc(
     }
     writeWallBaseQuantities(
       w, ownerHistoryId, wallExpressId, wall.spec,
-      openingsByWall.get(wall.localId) ?? []
+      openingsByWall.get(wall.localId) ?? [],
+      densityByElement.get(wall.localId)
     );
   }
 
@@ -249,7 +260,8 @@ export async function toIfc(
     }
     writeSlabBaseQuantities(
       w, ownerHistoryId, slabExpressId, slab.spec,
-      openingsBySlab.get(slab.localId) ?? []
+      openingsBySlab.get(slab.localId) ?? [],
+      densityByElement.get(slab.localId)
     );
   }
 
@@ -420,6 +432,22 @@ export async function toIfc(
       assembly.spec.assemblyPlace ?? 'NOTDEFINED'
     );
     idMap.set(assembly.localId, assemblyExpressId);
+  }
+
+  for (const zone of zones) {
+    const zoneExpressId = writeZoneEntity(
+      w, zone.guid, zone.spec.name, zone.spec.longName ?? null,
+      zone.spec.objectType ?? null, ownerHistoryId
+    );
+    idMap.set(zone.localId, zoneExpressId);
+  }
+
+  for (const system of systems) {
+    const systemExpressId = writeSystemEntity(
+      w, system.guid, system.spec.name, system.spec.longName ?? null,
+      system.spec.objectType ?? null, ownerHistoryId
+    );
+    idMap.set(system.localId, systemExpressId);
   }
 
   for (const stair of stairs) {
@@ -615,6 +643,16 @@ export async function toIfc(
     const coveringExpressId = idMap.get(rel.coveringLocalId);
     if (hostExpressId === undefined || coveringExpressId === undefined) continue;
     writeRelCoversBldgElements(w, rel.guid, ownerHistoryId, hostExpressId, [coveringExpressId]);
+  }
+
+  for (const rel of relationships) {
+    if (rel.kind !== 'ASSIGNS_TO_GROUP') continue;
+    const groupExpressId = idMap.get(rel.groupLocalId);
+    const memberExpressIds = rel.memberLocalIds
+      .map((id) => idMap.get(id))
+      .filter((id): id is number => id !== undefined);
+    if (groupExpressId === undefined || memberExpressIds.length === 0) continue;
+    writeRelAssignsToGroup(w, rel.guid, ownerHistoryId, groupExpressId, memberExpressIds);
   }
 
   for (const rel of relationships) {
@@ -919,6 +957,37 @@ function collectGeometryIssues(model: BimModel): ValidationReport {
   });
 
   return { issues };
+}
+
+/**
+ * Resolves an analytic bulk density (kg/m³) per element from its material
+ * association: a layered material uses the first layer that yields a density
+ * (explicit `densityKgM3`, else a nominal lookup by layer name); a bare material
+ * uses an explicit value if any, else a nominal lookup by material name. Elements
+ * whose material has no resolvable density are absent from the map and emit no
+ * weight quantity.
+ */
+function buildDensityMap(
+  relationships: readonly BimRelationship[]
+): ReadonlyMap<LocalId, number> {
+  const map = new Map<LocalId, number>();
+  for (const rel of relationships) {
+    if (rel.kind !== 'ASSOCIATES_MATERIAL') continue;
+    let density: number | undefined;
+    if (rel.materialLayers !== undefined && rel.materialLayers.length > 0) {
+      for (const layer of rel.materialLayers) {
+        density = resolveDensityKgM3(layer.name, layer.densityKgM3);
+        if (density !== undefined) break;
+      }
+    } else {
+      density = resolveDensityKgM3(rel.materialName, undefined);
+    }
+    if (density === undefined) continue;
+    for (const objectId of rel.relatedObjects) {
+      map.set(objectId, density);
+    }
+  }
+  return map;
 }
 
 function findParentOf(childId: LocalId, relationships: readonly BimRelationship[]): LocalId | null {

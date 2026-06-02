@@ -10,4 +10,6 @@ export interface MaterialLayer {
   readonly thicknessMm: number;
   readonly isVentilated?: boolean | undefined;
   readonly priority?: number | undefined;
+  /** Bulk density (kg/m³) for analytic weight quantities; nominal lookup used when absent. */
+  readonly densityKgM3?: number | undefined;
 }

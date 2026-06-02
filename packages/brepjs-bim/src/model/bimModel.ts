@@ -21,6 +21,7 @@ import type {
   ConnectsElementsRel,
   ConnectsPathElementsRel,
   CoversElementRel,
+  AssignsToGroupRel,
 } from '../types/relationships.js';
 import type { MaterialLayer } from '../types/materialTypes.js';
 import type { ClassificationRef } from '../types/classificationTypes.js';
@@ -39,6 +40,7 @@ import type { RampSpec } from '../specs/rampSpec.js';
 import type { RailingSpec } from '../specs/railingSpec.js';
 import type { CoveringSpec } from '../specs/coveringSpec.js';
 import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
+import type { ZoneSpec, SystemSpec } from '../specs/groupSpec.js';
 import type { SurfaceStyleSpec } from '../ifc-writer/styleWriter.js';
 import type { ProjectSpec, SiteSpec, BuildingSpec, StoreySpec } from '../specs/spatialSpec.js';
 import { wallToSolid } from '../elementFns/wallFns.js';
@@ -254,6 +256,52 @@ export class BimModel {
    */
   addElementAssembly(spec: ElementAssemblySpec): LocalId {
     return this.#makeElement('ELEMENT_ASSEMBLY', spec, null);
+  }
+
+  /**
+   * Adds an IfcZone grouping object (a thermal/fire/occupancy zone). The zone
+   * carries no geometry; attach members (spaces or other elements) with
+   * {@link assignToGroup}. Returns the zone's localId.
+   */
+  addZone(spec: ZoneSpec): LocalId {
+    return this.#makeElement('ZONE', spec, null);
+  }
+
+  /**
+   * Adds an IfcSystem grouping object (an HVAC/electrical/plumbing system). The
+   * system carries no geometry; attach members with {@link assignToGroup}.
+   * Returns the system's localId.
+   */
+  addSystem(spec: SystemSpec): LocalId {
+    return this.#makeElement('SYSTEM', spec, null);
+  }
+
+  /**
+   * Assigns members to a zone or system via IfcRelAssignsToGroup. Repeated calls
+   * for the same group extend the single relationship in call order. Returns the
+   * relationship's localId.
+   */
+  assignToGroup(groupId: LocalId, memberIds: readonly LocalId[]): LocalId {
+    let existingRel: AssignsToGroupRel | undefined;
+    for (const rel of this.#relationships.values()) {
+      if (rel.kind === 'ASSIGNS_TO_GROUP' && rel.groupLocalId === groupId) {
+        existingRel = rel;
+        break;
+      }
+    }
+    if (existingRel !== undefined) {
+      const updated: AssignsToGroupRel = {
+        ...existingRel,
+        memberLocalIds: [...existingRel.memberLocalIds, ...memberIds],
+      };
+      this.#relationships.set(existingRel.localId, updated);
+      return existingRel.localId;
+    }
+    return this.#makeRel<AssignsToGroupRel>({
+      kind: 'ASSIGNS_TO_GROUP',
+      groupLocalId: groupId,
+      memberLocalIds: [...memberIds],
+    });
   }
 
   /**
@@ -773,6 +821,22 @@ export class BimModel {
       if (el.category === 'ELEMENT_ASSEMBLY') assemblies.push(el);
     }
     return assemblies;
+  }
+
+  getZones(): BimElement<'ZONE'>[] {
+    const zones: BimElement<'ZONE'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'ZONE') zones.push(el);
+    }
+    return zones;
+  }
+
+  getSystems(): BimElement<'SYSTEM'>[] {
+    const systems: BimElement<'SYSTEM'>[] = [];
+    for (const el of this.#elements.values()) {
+      if (el.category === 'SYSTEM') systems.push(el);
+    }
+    return systems;
   }
 
   getAllElements(): AnyBimElement[] {

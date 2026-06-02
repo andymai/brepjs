@@ -21,6 +21,7 @@ export { parseRampSpec, parseRampFlightSpec } from './specs/rampSpec.js';
 export { parseRailingSpec } from './specs/railingSpec.js';
 export { parseCoveringSpec } from './specs/coveringSpec.js';
 export { parseElementAssemblySpec } from './specs/assemblySpec.js';
+export { parseZoneSpec, parseSystemSpec } from './specs/groupSpec.js';
 export { parseSurfaceStyleSpec } from './specs/styleSpec.js';
 export { parseDoorSpec, parseWindowSpec, parseSlabOpeningInput } from './specs/openingSpec.js';
 export { newIfcGuid, isValidIfcGuid } from './identity/ifcGuid.js';
@@ -37,6 +38,18 @@ export {
   countBySeverity,
 } from './validation/severity.js';
 export { writeIfcType } from './ifc-writer/typeWriter.js';
+export {
+  writeZoneEntity,
+  writeSystemEntity,
+  writeRelAssignsToGroup,
+} from './ifc-writer/groupWriter.js';
+export {
+  IFC_SCHEMAS,
+  DEFAULT_IFC_SCHEMA,
+  fileSchemaString,
+  isIfcSchema,
+  schemaSupports,
+} from './ifc-writer/schemaVersion.js';
 export {
   writeElementAssemblyEntity,
   writeRelAggregatesElements,
@@ -121,6 +134,7 @@ export type {
   AssemblyPredefinedType,
   AssemblyPlace,
 } from './specs/assemblySpec.js';
+export type { ZoneSpec, SystemSpec } from './specs/groupSpec.js';
 export type { SurfaceStyleSpec } from './specs/styleSpec.js';
 export type {
   AssemblyPlaceIfc,
@@ -144,6 +158,7 @@ export type {
   ConnectsElementsRel,
   ConnectsPathElementsRel,
   CoversElementRel,
+  AssignsToGroupRel,
 } from './types/relationships.js';
 export type { MaterialLayer } from './types/materialTypes.js';
 export type {
@@ -185,3 +200,65 @@ export type {
 export type { ModelGraph, IntegrityInput } from './validation/referentialIntegrity.js';
 export type { RoundTripReport, EntityCounts } from './validation/roundTrip.js';
 export type { IfcTypeName, TypeWriteResult } from './ifc-writer/typeWriter.js';
+export type { IfcSchema } from './ifc-writer/schemaVersion.js';
+export type { OwnerHistoryAuthor, OwnerHistoryMeta } from './ifc-writer/ownerHistoryWriter.js';
+
+// COBie export (deriveCobieModel is the canonical name; exportCobie is the
+// friendly public alias). CSV/JSON serializers follow.
+export {
+  deriveCobieModel,
+  deriveCobieModel as exportCobie,
+  serializeCobieToCsv,
+  serializeCobieToJson,
+} from './cobie/index.js';
+export type {
+  CobieModel,
+  CobieJson,
+  CobieExportMeta,
+  CobieContactMeta,
+  CobieContactRow,
+  CobieFacilityRow,
+  CobieFloorRow,
+  CobieSpaceRow,
+  CobieZoneRow,
+  CobieTypeRow,
+  CobieComponentRow,
+  CobieSystemRow,
+  CobieAttributeRow,
+} from './cobie/index.js';
+
+// IDS 1.0 checker (checkModelAgainstIds is the canonical name; checkIds is the
+// friendly public alias).
+export {
+  parseIdsXml,
+  checkModelAgainstIds,
+  checkModelAgainstIds as checkIds,
+} from './ids/index.js';
+export type {
+  IdsDocument,
+  IdsSpecification,
+  IdsFacet,
+  IdsRestriction,
+  IdsCardinality,
+  IdsCheckReport,
+  IdsCheckResult,
+} from './ids/index.js';
+
+// BCF 3.0 read/write (container is the unzipped BcfFiles map; zip packaging is
+// the caller's responsibility — see FLAG: BCF_ZIP_PACKAGING_ABSENT).
+export { serializeBcfFiles, parseBcfFiles } from './bcf/index.js';
+export type {
+  BcfColoring,
+  BcfComment,
+  BcfComponent,
+  BcfComponents,
+  BcfContainerData,
+  BcfFiles,
+  BcfProject,
+  BcfTopic,
+  BcfVersion,
+  BcfViewpoint,
+  BcfVisibility,
+} from './bcf/index.js';
+
+export { bcfError, idsError } from './errors/bimError.js';

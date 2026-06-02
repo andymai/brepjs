@@ -3,6 +3,8 @@ import type { BimError } from '../errors/bimError.js';
 import { ifcError } from '../errors/bimError.js';
 import type { IfcGuid } from '../identity/ifcGuid.js';
 import { deriveIfcGuidSync, makeLineKey } from '../identity/guidDerivation.js';
+import type { IfcSchema } from './schemaVersion.js';
+import { DEFAULT_IFC_SCHEMA, fileSchemaString } from './schemaVersion.js';
 import type { Result } from 'brepjs';
 import { ok, err } from 'brepjs';
 
@@ -30,12 +32,13 @@ export class IfcWriter {
   }
 
   static async create(
-    mvdViewDefinition: string = DEFAULT_MVD_VIEW_DEFINITION
+    mvdViewDefinition: string = DEFAULT_MVD_VIEW_DEFINITION,
+    ifcSchema: IfcSchema = DEFAULT_IFC_SCHEMA
   ): Promise<Result<IfcWriter, BimError>> {
     try {
       const api = new IfcAPI();
       await api.Init();
-      const modelId = api.CreateModel({ schema: 'IFC4' });
+      const modelId = api.CreateModel({ schema: fileSchemaString(ifcSchema) });
       return ok(new IfcWriter(api, modelId, mvdViewDefinition));
     } catch (e) {
       return err(ifcError('IFC_INIT_FAILED', 'Failed to initialize web-ifc', e));

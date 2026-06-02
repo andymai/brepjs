@@ -17,6 +17,7 @@ import type { RampSpec } from '../specs/rampSpec.js';
 import type { RailingSpec } from '../specs/railingSpec.js';
 import type { CoveringSpec } from '../specs/coveringSpec.js';
 import type { ElementAssemblySpec } from '../specs/assemblySpec.js';
+import type { ZoneSpec, SystemSpec } from '../specs/groupSpec.js';
 import type {
   ProjectSpec,
   SiteSpec,
@@ -43,6 +44,8 @@ export type BimCategory =
   | 'RAILING'
   | 'COVERING'
   | 'ELEMENT_ASSEMBLY'
+  | 'ZONE'
+  | 'SYSTEM'
   | 'PROJECT'
   | 'SITE'
   | 'BUILDING'
@@ -110,15 +113,19 @@ export type BimSpecFor<C extends BimCategory> = C extends 'WALL'
                                   ? CoveringSpec
                                   : C extends 'ELEMENT_ASSEMBLY'
                                     ? ElementAssemblySpec
-                                    : C extends 'PROJECT'
-                                      ? ProjectSpec
-                                      : C extends 'SITE'
-                                        ? SiteSpec
-                                        : C extends 'BUILDING'
-                                          ? BuildingSpec
-                                          : C extends 'STOREY'
-                                            ? StoreySpec
-                                            : never;
+                                    : C extends 'ZONE'
+                                      ? ZoneSpec
+                                      : C extends 'SYSTEM'
+                                        ? SystemSpec
+                                        : C extends 'PROJECT'
+                                          ? ProjectSpec
+                                          : C extends 'SITE'
+                                            ? SiteSpec
+                                            : C extends 'BUILDING'
+                                              ? BuildingSpec
+                                              : C extends 'STOREY'
+                                                ? StoreySpec
+                                                : never;
 
 export type BimGeometryFor<C extends BimCategory> = C extends 'CURTAIN_WALL'
   ? CurtainWallGrid
@@ -164,6 +171,8 @@ export type AnyBimElement =
   | BimElement<'RAILING'>
   | BimElement<'COVERING'>
   | BimElement<'ELEMENT_ASSEMBLY'>
+  | BimElement<'ZONE'>
+  | BimElement<'SYSTEM'>
   | BimElement<'PROJECT'>
   | BimElement<'SITE'>
   | BimElement<'BUILDING'>

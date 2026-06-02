@@ -114,6 +114,19 @@ export interface CoversElementRel {
   readonly coveringLocalId: LocalId;
 }
 
+/**
+ * Assigns members to a grouping object — a zone or system (IfcRelAssignsToGroup).
+ * `groupLocalId` is the IfcZone/IfcSystem; `memberLocalIds` are the assigned
+ * spaces or elements.
+ */
+export interface AssignsToGroupRel {
+  readonly kind: 'ASSIGNS_TO_GROUP';
+  readonly guid: IfcGuid;
+  readonly localId: LocalId;
+  readonly groupLocalId: LocalId;
+  readonly memberLocalIds: readonly LocalId[];
+}
+
 export type BimRelationship =
   | AggregatesRel
   | ContainedInRel
@@ -126,4 +139,5 @@ export type BimRelationship =
   | NestsRel
   | ConnectsElementsRel
   | ConnectsPathElementsRel
-  | CoversElementRel;
+  | CoversElementRel
+  | AssignsToGroupRel;

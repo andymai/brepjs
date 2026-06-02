@@ -1,5 +1,8 @@
 import * as WebIFC from 'web-ifc';
 import type { IfcWriter } from './ifcWriter.js';
+import { writeOwnerHistory } from './ownerHistoryWriter.js';
+import type { OwnerHistoryAuthor } from './ownerHistoryWriter.js';
+import type { IfcSchema } from './schemaVersion.js';
 
 export interface HeaderIds {
   ownerHistoryId: number;
@@ -13,76 +16,27 @@ export interface BimModelMeta {
   applicationVersion: string;
   /** MVD ViewDefinition declared in the STEP FILE_DESCRIPTION header. */
   mvdViewDefinition?: string | undefined;
+  /** Authoring person for the IfcOwnerHistory chain. Defaults to an empty person. */
+  author?: OwnerHistoryAuthor | undefined;
+  /** Owning organization name for the IfcOwnerHistory chain. Defaults to "Unknown". */
+  organizationName?: string | undefined;
+  /**
+   * Unix epoch seconds for IfcOwnerHistory.CreationDate. Defaults to 0 (epoch)
+   * so serialized output stays byte-deterministic; pass a real timestamp to
+   * record authoring time.
+   */
+  creationTimestamp?: number | undefined;
+  /** Target IFC schema (FILE_SCHEMA + CreateModel). Defaults to IFC4. */
+  ifcSchema?: IfcSchema | undefined;
 }
 
 export function writeHeader(w: IfcWriter, meta: BimModelMeta): HeaderIds {
-  const devOrgId = w.nextId();
-  w.writeLine({
-    expressID: devOrgId,
-    type: WebIFC.IFCORGANIZATION,
-    Identification: null,
-    Name: w.mkType(WebIFC.IFCLABEL, 'brepjs-bim'),
-    Description: null,
-    Roles: null,
-    Addresses: null,
-  });
-
-  const appId = w.nextId();
-  w.writeLine({
-    expressID: appId,
-    type: WebIFC.IFCAPPLICATION,
-    ApplicationDeveloper: w.ref(devOrgId),
-    Version: w.mkType(WebIFC.IFCLABEL, meta.applicationVersion),
-    ApplicationFullName: w.mkType(WebIFC.IFCLABEL, meta.applicationName),
-    ApplicationIdentifier: w.mkType(WebIFC.IFCIDENTIFIER, 'brepjs-bim'),
-  });
-
-  const personId = w.nextId();
-  w.writeLine({
-    expressID: personId,
-    type: WebIFC.IFCPERSON,
-    Identification: null,
-    FamilyName: null,
-    GivenName: null,
-    MiddleNames: null,
-    PrefixTitles: null,
-    SuffixTitles: null,
-    Roles: null,
-    Addresses: null,
-  });
-
-  const userOrgId = w.nextId();
-  w.writeLine({
-    expressID: userOrgId,
-    type: WebIFC.IFCORGANIZATION,
-    Identification: null,
-    Name: w.mkType(WebIFC.IFCLABEL, 'Unknown'),
-    Description: null,
-    Roles: null,
-    Addresses: null,
-  });
-
-  const personAndOrgId = w.nextId();
-  w.writeLine({
-    expressID: personAndOrgId,
-    type: WebIFC.IFCPERSONANDORGANIZATION,
-    ThePerson: w.ref(personId),
-    TheOrganization: w.ref(userOrgId),
-    Roles: null,
-  });
-
-  const ownerHistoryId = w.nextId();
-  w.writeLine({
-    expressID: ownerHistoryId,
-    type: WebIFC.IFCOWNERHISTORY,
-    OwningUser: w.ref(personAndOrgId),
-    OwningApplication: w.ref(appId),
-    State: null,
-    ChangeAction: { type: 3, value: 'ADDED' },
-    LastModifiedDate: null,
-    LastModifyingUser: null,
-    LastModifyingApplication: null,
-    CreationDate: w.mkType(WebIFC.IFCTIMESTAMP, Math.floor(Date.now() / 1000)),
+  const ownerHistoryId = writeOwnerHistory(w, {
+    author: meta.author ?? {},
+    organizationName: meta.organizationName ?? 'Unknown',
+    applicationName: meta.applicationName,
+    applicationVersion: meta.applicationVersion,
+    creationTimestamp: meta.creationTimestamp ?? 0,
   });
 
   const lengthUnitId = w.nextId();

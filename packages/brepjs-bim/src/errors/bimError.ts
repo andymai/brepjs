@@ -1,6 +1,6 @@
 import type { BrepError } from 'brepjs';
 
-export type BimErrorKind = 'BIM_SPEC' | 'BIM_IFC' | 'BIM_GEOMETRY' | 'BIM_IMPORT';
+export type BimErrorKind = 'BIM_SPEC' | 'BIM_IFC' | 'BIM_GEOMETRY' | 'BIM_IMPORT' | 'BIM_BCF' | 'BIM_IDS';
 
 export interface BimError {
   readonly kind: BimErrorKind;
@@ -34,6 +34,27 @@ export function geometryError(code: string, message: string, cause?: unknown): B
  */
 export function importError(code: string, message: string, cause?: unknown): BimError {
   return { kind: 'BIM_IMPORT', code, message, cause };
+}
+
+/**
+ * BCF (BIM Collaboration Format) error factory. Codes used by the BCF subsystem:
+ * - `BCF_PARSE_FAILED` — an XML file could not be parsed into the BCF data model
+ * - `BCF_VERSION_UNSUPPORTED` — `bcf.version` declares a version other than 3.0
+ * - `BCF_MISSING_FILE` — a required container file (`bcf.version`, `project.bcfp`) is absent
+ */
+export function bcfError(code: string, message: string, cause?: unknown): BimError {
+  return { kind: 'BIM_BCF', code, message, cause };
+}
+
+/**
+ * IDS (Information Delivery Specification) error factory. Codes used by the IDS
+ * subsystem:
+ * - `IDS_PARSE_FAILED` — the IDS XML could not be parsed into a document tree
+ * - `IDS_INVALID_SCHEMA` — the root element is not `<ids>` or has no specifications
+ * - `IDS_UNSUPPORTED_VERSION` — the document declares an IDS version this subset rejects
+ */
+export function idsError(code: string, message: string, cause?: unknown): BimError {
+  return { kind: 'BIM_IDS', code, message, cause };
 }
 
 export function fromBrepError(inner: BrepError, code: string, message: string): BimError {

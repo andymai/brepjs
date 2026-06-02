@@ -17,6 +17,7 @@ import { profileCrossSectionArea } from '../elementFns/profileFns.js';
 import { toIfcLengthM } from '../units/units.js';
 import type { PsetCategory, PsetTemplate } from '../psets/psetTemplates.js';
 import { measureTypeFor, webIfcConstantFor, templateFor } from '../psets/psetTemplates.js';
+import { densityFor, writeWeightQuantity } from '../psets/qtoWeights.js';
 
 type PsetValue = string | number | boolean;
 
@@ -297,12 +298,44 @@ function writeElementQuantity(
   return qtoId;
 }
 
+/**
+ * Resolves a bulk density (kg/m³) for an element's material association: an
+ * explicit `densityKgM3` on the material spec wins, otherwise a nominal value is
+ * looked up from the material name. Returns `undefined` when neither is available
+ * so the caller can skip emitting a weight quantity.
+ */
+export function resolveDensityKgM3(
+  materialName: string | undefined,
+  explicitDensityKgM3: number | undefined
+): number | undefined {
+  if (explicitDensityKgM3 !== undefined) return explicitDensityKgM3;
+  if (materialName !== undefined) return densityFor(materialName);
+  return undefined;
+}
+
+/**
+ * Appends an analytic IfcQuantityWeight (mass = `volumeM3 * densityKgM3`, kg) to
+ * the given quantity-id list when a density is available. Kept inside the
+ * element's existing Qto_*BaseQuantities set rather than a separate same-named
+ * set so the weight surfaces alongside the other base quantities on read.
+ */
+function pushWeightQuantity(
+  w: IfcWriter,
+  qtyIds: number[],
+  volumeM3: number,
+  densityKgM3: number | undefined
+): void {
+  if (densityKgM3 === undefined) return;
+  qtyIds.push(writeWeightQuantity(w, 'GrossWeight', volumeM3, densityKgM3));
+}
+
 export function writeWallBaseQuantities(
   w: IfcWriter,
   ownerHistoryId: number,
   wallExpressId: number,
   spec: WallSpec,
-  openings: readonly WallOpeningSpec[]
+  openings: readonly WallOpeningSpec[],
+  densityKgM3?: number
 ): void {
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.thickness);
@@ -336,6 +369,7 @@ export function writeWallBaseQuantities(
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
     writeQtyVolume(w, 'NetVolume', netVolumeM3),
   ];
+  pushWeightQuantity(w, qtyIds, netVolumeM3, densityKgM3);
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_WallBaseQuantities', qtyIds);
   writeRelDefinesByProperties(w, ownerHistoryId, wallExpressId, qtoId);
@@ -364,7 +398,8 @@ export function writeSlabBaseQuantities(
   ownerHistoryId: number,
   slabExpressId: number,
   spec: SlabSpec,
-  openings: readonly SlabOpeningSpec[]
+  openings: readonly SlabOpeningSpec[],
+  densityKgM3?: number
 ): void {
   const lengthM = toIfcLengthM(spec.length);
   const widthM = toIfcLengthM(spec.width);
@@ -392,6 +427,7 @@ export function writeSlabBaseQuantities(
     writeQtyVolume(w, 'GrossVolume', grossVolumeM3),
     writeQtyVolume(w, 'NetVolume', netVolumeM3),
   ];
+  pushWeightQuantity(w, qtyIds, netVolumeM3, densityKgM3);
 
   const qtoId = writeElementQuantity(w, ownerHistoryId, 'Qto_SlabBaseQuantities', qtyIds);
   writeRelDefinesByProperties(w, ownerHistoryId, slabExpressId, qtoId);
