@@ -29,15 +29,12 @@ const CUBE_TRIS = new Uint32Array([
 const UNIT_CUBE: VoxelMeshInput = { vertices: VERTS, triangles: CUBE_TRIS };
 
 // A second unit cube translated +0.5 in x: overlaps UNIT_CUBE on [0.5,1].
-const SHIFTED_VERTS = (() => {
-  const v = VERTS.slice();
-  for (let i = 0; i < v.length; i += 3) {
-    const x = v[i];
-    if (x !== undefined) v[i] = x + 0.5;
-  }
-  return v;
-})();
+const SHIFTED_VERTS = Float32Array.from(VERTS, (val, i) => (i % 3 === 0 ? val + 0.5 : val));
 const SHIFTED_CUBE: VoxelMeshInput = { vertices: SHIFTED_VERTS, triangles: CUBE_TRIS };
+
+// A unit cube translated +5 in x: fully disjoint from UNIT_CUBE.
+const FAR_VERTS = Float32Array.from(VERTS, (val, i) => (i % 3 === 0 ? val + 5 : val));
+const FAR_CUBE: VoxelMeshInput = { vertices: FAR_VERTS, triangles: CUBE_TRIS };
 
 interface Bbox {
   minX: number;
@@ -177,6 +174,10 @@ describe('voxelBoolean (CSG on a shared grid)', () => {
     // The overlap is x in [0.5, 1] — its x-extent is far below the unit width.
     const b = bbox(out);
     expect(b.maxX - b.minX).toBeLessThan(0.9);
+  });
+
+  it('errs (degenerate result) when intersecting disjoint meshes', () => {
+    expect(isErr(voxelBoolean(UNIT_CUBE, FAR_CUBE, 'intersection'))).toBe(true);
   });
 
   it('errs on an out-of-bounds triangle index in either operand', () => {

@@ -39,15 +39,26 @@ function meshFromResult(result: {
   positions: Float32Array;
   normals: Float32Array;
   indices: Uint32Array;
-}): KernelMeshResult {
+}): Result<KernelMeshResult> {
+  if (result.positions.length === 0 || result.indices.length === 0) {
+    // An op can legitimately erase all geometry (an over-shrunk offset, a
+    // disjoint intersection). Surface that as a discoverable error rather than
+    // a silently-empty mesh, mirroring the VOXEL_EMPTY_MESH input guard.
+    return err(
+      computationError(
+        'VOXEL_DEGENERATE_RESULT',
+        'the voxel operation produced an empty mesh (over-shrunk offset or disjoint operands?).'
+      )
+    );
+  }
   const vertexCount = result.positions.length / 3;
-  return {
+  return ok({
     vertices: result.positions,
     normals: result.normals,
     triangles: result.indices,
     uvs: new Float32Array(vertexCount * 2),
     faceGroups: [{ start: 0, count: result.indices.length / 3, faceHash: 0 }],
-  };
+  });
 }
 
 /**
@@ -87,7 +98,7 @@ export function offsetMesh(
       params.value.resolution,
       params.value.padding
     );
-    return ok(meshFromResult(offset));
+    return meshFromResult(offset);
   } catch (cause) {
     return err(
       computationError(
@@ -138,7 +149,7 @@ export function shellMesh(
       params.value.resolution,
       params.value.padding
     );
-    return ok(meshFromResult(shelled));
+    return meshFromResult(shelled);
   } catch (cause) {
     return err(
       computationError(
@@ -196,7 +207,7 @@ export function voxelBoolean(
       params.value.resolution,
       params.value.padding
     );
-    return ok(meshFromResult(result));
+    return meshFromResult(result);
   } catch (cause) {
     return err(
       computationError(
