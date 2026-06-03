@@ -1,5 +1,12 @@
 # Changelog
 
+## [18.47.0](https://github.com/andymai/brepjs/compare/brepjs-v18.46.0...brepjs-v18.47.0) (2026-06-03)
+
+
+### Features
+
+* **kernel:** make occt-wasm the default kernel ([#1176](https://github.com/andymai/brepjs/issues/1176)) ([81d5236](https://github.com/andymai/brepjs/commit/81d5236ba5610e2d2f0d7f65f619567523477069))
+
 ## [18.46.0](https://github.com/andymai/brepjs/compare/brepjs-v18.45.0...brepjs-v18.46.0) (2026-06-02)
 
 
